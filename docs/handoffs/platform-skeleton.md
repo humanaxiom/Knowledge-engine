@@ -116,3 +116,14 @@ Base: `agent/harness-claude-code` @ a11842d (the remote has no `main`).
 ## 2026-10-18 — orchestrator: placeholder-secret ruling
 - This overrides the architect's §2.4 choice to copy `.env.example` into the app image. Instead, every secret placeholder in `.env.example` is `changeme-<key>`, and startup refuses any secret whose value starts with `changeme` outside `dev`. `.env.example` is not shipped in the image.
 - The analyst updates the PS-1.9 definition, and the architect updates §2.3/§2.4. Both are done at the start of `platform-config`, as its first plan step.
+
+## 2026-10-18 — orchestrator: human rulings Q30, Q20, Q7
+- Q30 (human): automated integration tests get external network access. The mechanism is ADR-KE-009 minus the isolation: compose services, no Docker socket, but the `gates-it` network is NOT `internal`. This amends DR31 ("CI never calls a model") and the offline-gates constraint, for integration tests only. Consequences:
+  - model-calling integration tests run when aria-gb10-2 is reachable, and skip with a visible reason when it isn't, as on GitHub runners;
+  - CLAUDE.md gains a "What verify.sh runs that CI cannot" row;
+  - the app's egress allowlist (DR30) still limits model calls to the configured host;
+  - unit tests (`gates`, `verify fast`) keep `network_mode: none`;
+  - the offline-bundle check (`ci/offline`, `ci/deployable-offline`) still proves the *deployed* product runs offline.
+  The architect amends ADR-KE-009, and the analyst amends DR31, the Q30 entry and PS-2.4–2.7.
+- Q20 (human): no macOS for now; Windows (PowerShell) and Linux only. Apple silicon is out of scope.
+- Q7 (human): the model host is `aria-gb10-2` (OpenAI-compatible). It is configured via `KE_MODEL_UPSTREAM` and the per-pass base URLs, never hardcoded.
