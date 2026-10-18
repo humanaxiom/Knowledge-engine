@@ -163,3 +163,19 @@ Each role: read this file; append a 3-line section headed `<date> — <role>: di
 - Done: committed d2bfd0d "harness-claude-code: run the harness natively in Claude Code" on agent/harness-claude-code. `docs/knowledge-engine-claude-code-prompt.md` left untracked (user's file). Not pushed.
 - Evidence: docs/evidence/harness-claude-code/ (orchestrator-verify-full.txt, green-rework4.txt).
 - Next: item 13 clean-checkout verify and CI (needs push, human approval).
+
+## 2026-10-18 — orchestrator: item closed
+- Pushed `agent/harness-claude-code` (human approved). CI green on 615adf8: 62 tests OK, smoke pass, clean banner (`ci-run.txt`).
+- Item 13 proven: clean-checkout `verify.sh fast` and `full` pass on 615adf8 with empty `git status` (`clean-checkout-fast.txt`, `clean-checkout-full.txt`). All 14 criteria met.
+- New follow-ups from CI annotations:
+  - pinned actions/checkout v4 targets deprecated Node 20, so move to a v5 SHA;
+  - `ubuntu-latest` moves to Ubuntu 26 from 2026-10-19, so pin the runner image.
+- Author identity is set repo-locally (Adam Salah).
+- Remote has no `main`: next items branch from `agent/harness-claude-code`.
+
+## 2026-10-18 — orchestrator: milestone Done check
+- Outcome metric(s) this item names: neither (gate machinery).
+- Value now: drafts reviewed n/a, ratified rules n/a — no data store exists yet, so there is no query to run.
+- Value at the last milestone: n/a (first milestone).
+- If it did not move, why: by design; nothing a reviewer or ratifier can act on exists until `platform-skeleton` through `frontend`.
+- External blocker: Q18 branch protection on main — Adam Salah — date not set. Q14 ratification owners still OWNER-TBD.
