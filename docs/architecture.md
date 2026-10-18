@@ -5,7 +5,11 @@ and is rewritten whole whenever the design changes. ADRs follow the overview.
 
 **Current state (2026-10-18):** the repository holds the `monitored-harness`
 template (tracing helpers, the Copilot role agents, and test and smoke scripts).
-None of the engine described below exists yet. This document is the **proposed
+The branch `agent/harness-claude-code` adds the Claude Code port (ADR-KE-001):
+`CLAUDE.md`, eight `.claude/agents/`, the commit hook in
+`.claude/settings.json`, and `scripts/verify.sh`, which runs every gate in the
+one-shot `gates` compose service with no network. The engine itself still does
+not exist: none of the engine described below has been built. This document is the **proposed
 design** for plan approval. Each section is marked *proposed* until the plan
 item that builds it is committed. Assumptions `(A<n>)` refer to
 [open-questions.md](open-questions.md).
@@ -390,9 +394,78 @@ are **proposed**.
   frontmatter is incompatible. A Claude-only harness was rejected because
   Copilot users still rely on it.
 - **Consequences:** two sets of agent files must stay in sync, so a unit test
-  compares their Constraints sections.
+  (`tests/test_harness_port.py`) compares their Constraints sections and their
+  handoff/log duty step.
 - **Done only with proof:** a dispatch transcript for each role and every
   verify mode run on a clean checkout.
+- **As built (`agent/harness-claude-code`):**
+  - `scripts/verify.sh` re-runs itself in the one-shot `gates` compose service
+    (`docker/gates.Dockerfile`, `network_mode: none` in `docker-compose.yml`).
+  - CI's only step is `./scripts/verify.sh full` (`.github/workflows/ci.yml`),
+    so nothing runs in CI that verify does not.
+  - `.gitattributes` forces LF on `*.sh`. The Windows checkout
+    (`core.autocrlf=true`) had CRLF scripts, which fail in containers.
+  - `scripts/hooks/block-main-commit.sh` used to print `permissionDecision:
+    "allow"` for every non-blocked call. In Claude Code that auto-approves
+    every Bash command and bypasses permission prompts. It now never prints
+    `allow`. It prints a fixed deny, or it prints nothing so the call goes
+    through the normal permission flow. The same script serves the Copilot developer
+    agent, so it no longer auto-approves there either.
+  - The hook is a simple fail-safe text rule, not a shell lexer: broad on
+    main/master (deny `git` plus any history-writing verb), narrow off main
+    (deny a single line that pushes to main/master or forces). It uses no awk.
+    See the decision record below, which supersedes the round-3 precise
+    off-main lexer.
+  - Claude Code loads `.claude/agents/` only at session start, so the dispatch
+    proof needed a fresh session (evidence:
+    `docs/evidence/harness-claude-code/dispatch-*.md`).
+
+#### Decision: commit hook is a simple fail-safe text rule (2026-10-18)
+The orchestrator ruled this in round 4. It also answers review N15, which
+asked for the hook design to be recorded in this ADR.
+- **Context:**
+  - Three review rounds of a precise awk shell lexer each produced a
+    fail-open regression:
+    - B5: compact JSON with no jq.
+    - B8: nested syntax.
+    - H2: gawk doubles backslashes, which the mawk-only gates cannot see.
+  - Each round also produced timing failures (L9, B10): the lexer was
+    quadratic under mawk and went past the 10 s hook timeout.
+  - Off-main push protection was a medium, non-blocking finding (security
+    M1). Branch protection is the real control (Q18).
+- **Decision:**
+  - Extract the `command` field: jq if it works, else a single sed on the
+    first `"command":"…"` value, else the raw input.
+  - Normalise: join line continuations, turn JSON `\n` into newlines, delete
+    quotes and backslashes, lower-case.
+  - On main/master: deny if the text contains the word `git` and any of
+    commit, push, merge, cherry-pick, am, rebase or revert.
+  - Off main: deny any line containing `git … push` followed on that same
+    line by any of:
+    - `main`/`master` as a word
+    - `--force`/`--force-with-lease`
+    - `--mirror`
+    - `--all`
+    - a single-dash short-flag cluster containing `f`
+    - a `+` refspec
+  - Use no awk, so there are no dialect differences. Cost is linear.
+  - It never prints `allow`.
+- **Consequences:**
+  - Accepted false positives, which fail safe: a one-line command that
+    mentions git, push and main, e.g. `git commit -m "fix git push to main
+    docs"` or `echo "git push origin main"`. Heredoc commit bodies stay
+    silent unless a single line says it. This reverses the earlier B6
+    ruling.
+  - Accepted bypasses off main:
+    - anything that hides the words (variables, eval, aliases, encodings)
+    - `gh` and `update-ref`
+    - a push spread across lines without a continuation
+- **Alternatives rejected:**
+  - Keep extending the lexer: each round added fail-open gaps.
+  - A Python or shlex hook: it needs a runtime on the host, and the host has
+    only Git Bash.
+  - Drop the off-main rule: it would lose cheap coverage of the most likely
+    accident.
 
 ### ADR-KE-002: Storage split
 - **Decision:**

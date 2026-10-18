@@ -1,0 +1,43 @@
+== mode: host natural (no jq)
+OK   [agent/x] 'git push \\\norigin main' expected=deny actual=deny
+OK   [agent/x] 'git push \\\n-f origin agent/x' expected=deny actual=deny
+OK   [agent/x] 'git commit -m "a\\"b"; git push origin main' expected=deny actual=deny
+OK   [agent/x] 'git push origin ma\\in' expected=deny actual=deny
+OK   [main] '"g"it commit -m x' expected=deny actual=deny
+OK   [main] 'GIT commit -m x' expected=deny actual=deny
+OK   [main] 'Git commit -m x' expected=deny actual=deny
+OK   [main] 'gi\\t commit -m x' expected=deny actual=deny
+OK   [main] "g''it commit -m x" expected=deny actual=deny
+OK   [main] 'git commit -m x' expected=deny actual=deny
+OK   [agent/x] 'git status' expected=silent actual=silent
+OK   [agent/x] 'git log --oneline main' expected=silent actual=silent
+OK   [agent/x] 'git push origin agent/x' expected=silent actual=silent
+OK   [agent/x] "git commit -m 'wip'" expected=silent actual=silent
+OK   [agent/x] 'ls -la' expected=silent actual=silent
+OK   [agent/x] 'git diff main' expected=silent actual=silent
+OK   [agent/x] "git commit -m x\ncat <<'E'\nnote: push to main\nE" expected=silent actual=silent
+OK   [agent/x] 'git push --force origin agent/x' expected=deny actual=deny
+OK   [agent/x] 'git push origin +agent/x' expected=deny actual=deny
+OK   [agent/x] 'git push --all' expected=deny actual=deny
+== mode: fake jq (exit 127)
+OK   [agent/x] 'git push \\\norigin main' expected=deny actual=deny
+OK   [agent/x] 'git push \\\n-f origin agent/x' expected=deny actual=deny
+OK   [agent/x] 'git commit -m "a\\"b"; git push origin main' expected=deny actual=deny
+OK   [agent/x] 'git push origin ma\\in' expected=deny actual=deny
+OK   [main] '"g"it commit -m x' expected=deny actual=deny
+OK   [main] 'GIT commit -m x' expected=deny actual=deny
+OK   [main] 'Git commit -m x' expected=deny actual=deny
+OK   [main] 'gi\\t commit -m x' expected=deny actual=deny
+OK   [main] "g''it commit -m x" expected=deny actual=deny
+OK   [main] 'git commit -m x' expected=deny actual=deny
+OK   [agent/x] 'git status' expected=silent actual=silent
+OK   [agent/x] 'git log --oneline main' expected=silent actual=silent
+OK   [agent/x] 'git push origin agent/x' expected=silent actual=silent
+OK   [agent/x] "git commit -m 'wip'" expected=silent actual=silent
+OK   [agent/x] 'ls -la' expected=silent actual=silent
+OK   [agent/x] 'git diff main' expected=silent actual=silent
+OK   [agent/x] "git commit -m x\ncat <<'E'\nnote: push to main\nE" expected=silent actual=silent
+OK   [agent/x] 'git push --force origin agent/x' expected=deny actual=deny
+OK   [agent/x] 'git push origin +agent/x' expected=deny actual=deny
+OK   [agent/x] 'git push --all' expected=deny actual=deny
+failures: 0

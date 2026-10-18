@@ -1,0 +1,12 @@
+branch=agent/x jq=none shape='unquoted token' bytes=1048635 exit=0 out=silent time=0.51s
+branch=agent/x jq=none shape='-m message' bytes=1048642 exit=0 out=silent time=0.54s
+branch=agent/x jq=none shape='heredoc line' bytes=1048638 exit=0 out=silent time=0.60s
+branch=agent/x jq=fake127 shape='unquoted token' bytes=1048635 exit=0 out=silent time=0.54s
+branch=agent/x jq=fake127 shape='-m message' bytes=1048642 exit=0 out=silent time=0.51s
+branch=agent/x jq=fake127 shape='heredoc line' bytes=1048638 exit=0 out=silent time=0.50s
+branch=main jq=none shape='unquoted token' bytes=1048635 exit=0 out=silent time=0.51s
+branch=main jq=none shape='-m message' bytes=1048642 exit=0 out=deny time=0.50s
+branch=main jq=none shape='heredoc line' bytes=1048638 exit=0 out=silent time=0.46s
+branch=main jq=fake127 shape='unquoted token' bytes=1048635 exit=0 out=silent time=0.52s
+branch=main jq=fake127 shape='-m message' bytes=1048642 exit=0 out=deny time=0.53s
+branch=main jq=fake127 shape='heredoc line' bytes=1048638 exit=0 out=silent time=0.52s

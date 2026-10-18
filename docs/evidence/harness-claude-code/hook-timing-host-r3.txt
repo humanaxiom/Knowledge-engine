@@ -1,0 +1,5 @@
+host: Git Bash, no jq (GNU Awk 5.4.0, API 4.1, PMA Avon 8-g1, (GNU MPFR 4.2.2, GNU MP 6.3.0)), body bytes: 1000006
+branch=main
+output_len=0 elapsed=1.12376
+branch=agent/x
+output_len=0 elapsed=1.11581

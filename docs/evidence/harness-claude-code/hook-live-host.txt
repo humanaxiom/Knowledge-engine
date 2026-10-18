@@ -1,0 +1,13 @@
+jq: none (scratch repo, payloads piped, no git commit/push run)
+branch=main cmd: git commit -m x
+  -> {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first."}}
+branch=main cmd: git push origin main
+  -> {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first."}}
+branch=main cmd: git log --grep revert
+  -> <silent>
+branch=agent/x cmd: git commit -m \"fix push to main docs\"
+  -> <silent>
+branch=agent/x cmd: git push origin agent/x
+  -> <silent>
+branch=agent/x cmd: git push origin HEAD:main
+  -> {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Pushing to main/master is not allowed."}}

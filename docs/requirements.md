@@ -50,10 +50,57 @@ relies on. Done when the proof below exists, not when the files exist.
 3. Model tiers: analyst, architect, tester, reviewer, security → `opus`;
    developer, documenter, marketer → `sonnet` or `haiku`. Reviewer and security
    are never below `opus`. `[unit: test_agent_model_tiers]`
-4. Given `.claude/settings.json`, when any `Bash` tool call runs `git commit` or
-   `git push` on `main`/`master`, then `scripts/hooks/block-main-commit.sh` denies
-   it; on any other branch it allows. `[unit: test_block_main_commit_hook]` covers
-   commit, push, chained commands (`a && git commit`), and a non-git command.
+4. `.claude/settings.json` wires `scripts/hooks/block-main-commit.sh` as a
+   `PreToolUse` hook on `Bash`. The hook is a **guard rail against agent
+   mistakes, not a security boundary**: it is a simple, fail-safe text rule,
+   not a shell parser, and any string-matching hook on a shell command can be
+   bypassed. The real control is branch protection on the remote (Q18).
+   Decision record: ADR-KE-001 "Decision: commit hook is a simple fail-safe
+   text rule (2026-10-18)" in `docs/architecture.md`; round-4 ruling on
+   security H2/L13/M3 (`docs/evidence/harness-claude-code/security-rework3.md`)
+   and review B10/B11 (`docs/evidence/harness-claude-code/review-rework3.md`).
+   The round-4 ruling replaces the round-3 segment/command-position parsing
+   (earlier history: security M1/L9/L10, review B5-B9, in `security.md`,
+   `security-rework2.md`, `review-rework1.md`, `review-rework2.md`).
+   a. **Extraction.** The hook takes the command text from the payload with
+      `jq` if `jq` is present and succeeds; otherwise the first
+      `"command":"…"` value in the payload; otherwise the raw input. A JSON
+      payload with no `command` field prints nothing.
+   b. **Normalisation.** Before any rule is applied the extracted text is
+      normalised: line continuations (backslash-newline) are joined, JSON `\n`
+      escapes become newlines, all quote characters and backslashes are
+      deleted, and the text is lower-cased.
+   c. **On `main`/`master`** the hook denies when the normalised text contains
+      the word `git` and any of the words `commit`, `push`, `merge`,
+      `cherry-pick`, `am`, `rebase` or `revert`, anywhere in the text.
+   d. **Off `main`/`master`** the hook denies any normalised line that contains
+      `git`, later `push`, and later on that same line any of:
+      - `main` or `master` as a word;
+      - `--force` or `--force-with-lease`;
+      - `--mirror` or `--all`;
+      - a single-dash short-flag cluster containing `f` (e.g. `-f`, `-fu`);
+      - a `+` refspec.
+   e. **Otherwise** it prints nothing, so the normal permission flow decides. It
+      never emits `allow` (which would auto-approve every Bash call).
+      - **Accepted false positives (fail safe):** one-line commands that mention
+        git, push and main (e.g. `git commit -m "fix push to main docs"` on a
+        plan-item branch, or `echo "git push origin main"`).
+      - **Accepted bypasses off `main`/`master`** (silent by design; Q18 branch
+        protection is the real control): words hidden from the text (variables,
+        `eval`, aliases, encodings), `gh`, `git update-ref`, and a push split
+        across lines without a line continuation.
+   f. **Performance.** The hook's cost is linear in the command's length and it
+      uses no `awk`. Given a 1 MB command, when the hook runs in the gates image
+      with `jq` present and with it absent, then it completes in under 3 s,
+      whatever the command's shape: many short tokens, one long token, or one
+      long heredoc line.
+   `[unit: tests/test_block_main_commit_hook.py]` feeds Claude Code's real
+   compact payload (`{"tool_input":{"command":"…"}}`, no spaces after `:`) and
+   tests every rule in a-f both with `jq` on `PATH` and with it absent,
+   including: a line continuation; an escaped quote; `ma\in`; `g''it` and
+   uppercase `GIT` on `main`; `sh -c` and a bash heredoc on `main`;
+   `>/dev/null git push origin main` and the backtick form off `main`; and the
+   three 1 MB timing shapes of f.
 5. `scripts/verify.sh` is the single verification entry point. It runs inside the
    `gates` compose service and only *calls* `scripts/test.sh`, `scripts/smoke.sh`
    and the CI step scripts; it never re-lists their commands.
@@ -71,8 +118,12 @@ relies on. Done when the proof below exists, not when the files exist.
    RED the same way. The orchestrator re-runs `scripts/verify.sh` and reads the
    diff before approving a commit. `[unit: test_evidence_contract_present]`
 9. `CLAUDE.md` lists everything CI runs that `verify.sh` does not, and every
-   committed generated artifact with its regenerate command.
-   `[gate: ci/generated-artifacts-drift]` regenerates each one and fails on diff.
+   committed generated artifact with its regenerate command. Today CI runs
+   nothing beyond `scripts/verify.sh full`, and the only generated artifact is
+   `uv.lock`; its drift check is that every gate script and the gates image run
+   uv with `--locked`, so a stale lock turns verify red.
+   `[unit: test_gate_scripts_use_locked]` The generic regenerate-and-diff gate
+   (`ci/generated-artifacts-drift`) belongs to policy-book criterion 2.
 10. The tester agent owns contradiction resolution: a change that contradicts an
     existing test resolves it in the same commit, citing the decision record.
 11. Every role logs with `harness_telemetry.log_event` and appends to
@@ -209,7 +260,9 @@ Outcome metric moved: **ratified rules** (directly).
    policy book fails to load if a knob has no entry; a `ratified` entry must carry
    `decided_by`, `decided_on`, `decision_note`. `[unit: test_registry_enforced]` (DR16)
 2. A generated human-readable register (`docs/register.md`) has a CI drift check.
-   `[gate: ci/generated-artifacts-drift]` (DR16)
+   This item introduces the generic drift gate, called by `scripts/verify.sh`: it
+   regenerates every non-lockfile generated artifact listed in `CLAUDE.md` and
+   fails on `git diff --exit-code`. `[gate: ci/generated-artifacts-drift]` (DR16)
 3. Every rule has an owner tier: `institutional_policy | policy_informed | technical`;
    the review queue routes by tier. `[unit: test_rule_requires_owner_tier]` (DR17)
 4. Every policy-book version is baselined over the full corpus snapshot before it

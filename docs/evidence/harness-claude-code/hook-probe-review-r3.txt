@@ -1,0 +1,280 @@
+# reviewer rework-3 probes. Payloads: compact Claude Code JSON (python json.dumps separators=(',',':')), piped into the hook; no git command executed.
+# Section A: host Git Bash, no jq (gawk). Section B: knowledge-engine-gates:latest with jq (mawk). Decisions identical (diff of column 1 empty).
+## A host no-jq
+[agent/x] DENY   rc=0 | git add -A && git commit -m \"$(cat <<'EOF'\nharness: port to Claude Code\n\nHook denies git push origin main 
+[agent/x] silent rc=0 | git log --oneline -5
+[agent/x] silent rc=0 | git diff 886de45 --stat
+[agent/x] silent rc=0 | git push -u origin agent/harness-claude-code
+[agent/x] silent rc=0 | git commit -m \"fix push to main docs\"
+[agent/x] silent rc=0 | git commit -m \"docs: note push -f is denied\"
+[agent/x] silent rc=0 | echo \"git push origin main is blocked\"
+[agent/x] silent rc=0 | git commit -F - <<'EOF'\nharness: hook\n\nnote: git push to main is denied\nEOF
+[agent/x] silent rc=0 | git push origin agent/x
+[agent/x] silent rc=0 | git log --oneline main
+[agent/x] silent rc=0 | git status
+[agent/x] silent rc=0 | git diff main...HEAD -- scripts/
+[agent/x] silent rc=0 | git log --grep revert --oneline
+[agent/x] silent rc=0 | git fetch origin main
+[agent/x] silent rc=0 | git rebase origin/main
+[agent/x] silent rc=0 | git merge --ff-only main
+[agent/x] silent rc=0 | git checkout -b agent/new-item main
+[agent/x] silent rc=0 | git branch -f main origin/main
+[agent/x] silent rc=0 | cd /c/repos/Knowledge-engine && git status --short && git diff --stat
+[agent/x] silent rc=0 | git stash push -m \"wip: push fix\"
+[agent/x] silent rc=0 | git push --follow-tags origin agent/x
+[agent/x] silent rc=0 | git push origin agent/fix-main-guard
+[agent/x] silent rc=0 | git push origin HEAD
+[agent/x] silent rc=0 | git push -u origin HEAD:agent/x
+[agent/x] silent rc=0 | git commit -m 'single quoted; git push --force origin main'
+[agent/x] silent rc=0 | git commit --amend --no-edit && git log -1 --format=%B
+[agent/x] silent rc=0 | out=$(git status --porcelain 2>&1); echo \"$out\"
+[agent/x] silent rc=0 | for f in a b; do git add \"$f\"; done && git commit -m \"x\"
+[agent/x] silent rc=0 | git log --format='%h %s' -3 | grep -i push
+[agent/x] silent rc=0 | uv run python -m harness_telemetry.log_event --role reviewer --plan-item x --action \"push to main blocked; -f
+[agent/x] silent rc=0 | git push -o ci.skip origin agent/x
+[agent/x] silent rc=0 | git tag -a v1 -m \"release main\" && git push origin v1
+[agent/x] silent rc=0 | git commit -m \"$(printf 'a\\nb')\"
+[agent/x] silent rc=0 | git commit -m \"a (b) {c} & d | e; f\"
+[agent/x] silent rc=0 | git commit -m \"x\" # push to main later
+[agent/x] silent rc=0 | git add -A && git commit -m \"$(cat <<'EOF'\nharness: port\n\nIt's a guard rail; don't use `git push -f` or gi
+[agent/x] DENY   rc=0 | git add -A && git commit -m \"$(cat <<'EOF'\nharness: port\n\na 12\" ruler\ngit push --force origin main\nEOF\
+[agent/x] silent rc=0 | git add -A && git commit -m \"$(cat <<'EOF'\nharness: port\n\na 12\" ruler, nothing else\nEOF\n)\"
+[agent/x] silent rc=0 | git add -A && git commit -m \"$(cat <<'EOF'\nharness: port\n\nUses $(git rev-parse HEAD) and `date`.\nEOF\n)\"
+[agent/x] DENY   rc=0 | git commit -m \"$(cat <<'EOF'\nx\nEOF\n)\" && git push origin main
+[agent/x] silent rc=0 | git commit -m \"$(cat <<'EOF'\na 12\" ruler\nEOF\n)\" && git push origin main
+[agent/x] DENY   rc=0 | (git push origin main)
+[agent/x] DENY   rc=0 | { git push origin main; }
+[agent/x] DENY   rc=0 | if git push origin main; then :; fi
+[agent/x] DENY   rc=0 | true & git push origin main
+[agent/x] DENY   rc=0 | >/dev/null git push origin main
+[agent/x] DENY   rc=0 | 2>&1 git push origin main
+[agent/x] DENY   rc=0 | echo $(git push origin main)
+[agent/x] DENY   rc=0 | echo `git push origin main`
+[agent/x] DENY   rc=0 | echo $((1<<2))\ngit push origin main
+[agent/x] DENY   rc=0 | ! git push origin main
+[agent/x] DENY   rc=0 | time git push origin main
+[agent/x] DENY   rc=0 | command git push origin main
+[agent/x] DENY   rc=0 | exec git push origin main
+[agent/x] DENY   rc=0 | while git push origin main; do :; done
+[agent/x] DENY   rc=0 | out=$(git push origin main 2>&1)
+[agent/x] DENY   rc=0 | git -c x=y push origin main
+[agent/x] DENY   rc=0 | git push origin refs/heads/main
+[agent/x] DENY   rc=0 | git push origin :main
+[agent/x] DENY   rc=0 | git push --force-with-lease origin agent/x
+[agent/x] DENY   rc=0 | git push --force-with-lease=agent/x origin agent/x
+[agent/x] DENY   rc=0 | git push -f origin agent/x
+[agent/x] DENY   rc=0 | git push origin master
+[agent/x] DENY   rc=0 | git push origin HEAD:refs/heads/master
+[agent/x] DENY   rc=0 | git push --delete origin main
+[agent/x] DENY   rc=0 | git push origin +agent/x
+[agent/x] DENY   rc=0 | git push --all origin
+[agent/x] DENY   rc=0 | git push --mirror origin
+[agent/x] DENY   rc=0 | git push -fu origin agent/x
+[agent/x] DENY   rc=0 | git commit -m \"x \\\"y\\\"\" && git push origin main
+[agent/x] silent rc=0 | git push origin main&>/dev/null
+[agent/x] DENY   rc=0 | git push origin main 2>&1 | tail -3
+[agent/x] DENY   rc=0 | git push origin main >/dev/null 2>&1
+[agent/x] DENY   rc=0 | git --no-pager -C . push origin main
+[agent/x] DENY   rc=0 | /usr/bin/git push origin main
+[agent/x] DENY   rc=0 | FOO=1 git push origin main
+[agent/x] DENY   rc=0 | cd sub && git push origin main
+[agent/x] silent rc=0 | (( x = 1 << 2 ))\ngit push origin main
+[agent/x] silent rc=0 | git push --branches origin
+[agent/x] silent rc=0 | \"$(git push origin main)\"
+[agent/x] silent rc=0 | bash -c \"git push origin main\"
+[main] silent rc=0 | git status
+[main] silent rc=0 | git log --oneline -5
+[main] silent rc=0 | git diff 886de45 --stat
+[main] silent rc=0 | git checkout -b agent/new-item
+[main] silent rc=0 | ls -la
+[main] DENY   rc=0 | sh -c \"git commit -m x\"
+[main] DENY   rc=0 | bash <<'EOF'\ngit commit -m x\nEOF
+[main] DENY   rc=0 | \"$(git push origin main)\"
+[main] DENY   rc=0 | eval \"git commit -m x\"
+[main] DENY   rc=0 | G=git; $G commit -m x
+[main] DENY   rc=0 | git commit -m x
+[main] DENY   rc=0 | git cherry-pick abc
+[main] DENY   rc=0 | git am p.patch
+[main] DENY   rc=0 | git rebase x
+[main] DENY   rc=0 | git revert abc
+[main] DENY   rc=0 | git merge x
+[main] silent rc=0 | git pull
+[main] silent rc=0 | gh pr merge 1
+[main] DENY   rc=0 | git.exe commit -m x
+[main] DENY   rc=0 | C:\\Git\\cmd\\git.exe commit -m x
+[main] DENY   rc=0 | git commit -m x 2>&1 | tail
+[main] DENY   rc=0 | xargs git commit -m x < /dev/null
+[main] DENY   rc=0 | git add -A && git commit -m \"$(cat <<'EOF'\nharness: port to Claude Code\n\nHook denies git push origin main 
+[main] silent rc=0 | git log --oneline -5
+[main] silent rc=0 | git diff 886de45 --stat
+[main] DENY   rc=0 | git push -u origin agent/harness-claude-code
+[main] DENY   rc=0 | git commit -m \"fix push to main docs\"
+[main] DENY   rc=0 | git commit -m \"docs: note push -f is denied\"
+[main] DENY   rc=0 | echo \"git push origin main is blocked\"
+[main] DENY   rc=0 | git commit -F - <<'EOF'\nharness: hook\n\nnote: git push to main is denied\nEOF
+[main] DENY   rc=0 | git push origin agent/x
+[main] silent rc=0 | git log --oneline main
+[main] silent rc=0 | git status
+[main] silent rc=0 | git diff main...HEAD -- scripts/
+[main] DENY   rc=0 | git log --grep revert --oneline
+[main] silent rc=0 | git fetch origin main
+[main] DENY   rc=0 | git rebase origin/main
+[main] DENY   rc=0 | git merge --ff-only main
+[main] silent rc=0 | git checkout -b agent/new-item main
+[main] silent rc=0 | git branch -f main origin/main
+[main] silent rc=0 | cd /c/repos/Knowledge-engine && git status --short && git diff --stat
+[main] DENY   rc=0 | git stash push -m \"wip: push fix\"
+[main] DENY   rc=0 | git push --follow-tags origin agent/x
+[main] DENY   rc=0 | git push origin agent/fix-main-guard
+[main] DENY   rc=0 | git push origin HEAD
+[main] DENY   rc=0 | git push -u origin HEAD:agent/x
+[main] DENY   rc=0 | git commit -m 'single quoted; git push --force origin main'
+[main] DENY   rc=0 | git commit --amend --no-edit && git log -1 --format=%B
+[main] silent rc=0 | out=$(git status --porcelain 2>&1); echo \"$out\"
+[main] DENY   rc=0 | for f in a b; do git add \"$f\"; done && git commit -m \"x\"
+[main] DENY   rc=0 | git log --format='%h %s' -3 | grep -i push
+[main] silent rc=0 | uv run python -m harness_telemetry.log_event --role reviewer --plan-item x --action \"push to main blocked; -f
+[main] DENY   rc=0 | git push -o ci.skip origin agent/x
+[main] DENY   rc=0 | git tag -a v1 -m \"release main\" && git push origin v1
+[main] DENY   rc=0 | git commit -m \"$(printf 'a\\nb')\"
+[main] DENY   rc=0 | git commit -m \"a (b) {c} & d | e; f\"
+[main] DENY   rc=0 | git commit -m \"x\" # push to main later
+## B gates image jq
+[agent/x] DENY   rc=0 | git add -A && git commit -m \"$(cat <<'EOF'\nharness: port to Claude Code\n\nHook denies git push origin main 
+[agent/x] silent rc=0 | git log --oneline -5
+[agent/x] silent rc=0 | git diff 886de45 --stat
+[agent/x] silent rc=0 | git push -u origin agent/harness-claude-code
+[agent/x] silent rc=0 | git commit -m \"fix push to main docs\"
+[agent/x] silent rc=0 | git commit -m \"docs: note push -f is denied\"
+[agent/x] silent rc=0 | echo \"git push origin main is blocked\"
+[agent/x] silent rc=0 | git commit -F - <<'EOF'\nharness: hook\n\nnote: git push to main is denied\nEOF
+[agent/x] silent rc=0 | git push origin agent/x
+[agent/x] silent rc=0 | git log --oneline main
+[agent/x] silent rc=0 | git status
+[agent/x] silent rc=0 | git diff main...HEAD -- scripts/
+[agent/x] silent rc=0 | git log --grep revert --oneline
+[agent/x] silent rc=0 | git fetch origin main
+[agent/x] silent rc=0 | git rebase origin/main
+[agent/x] silent rc=0 | git merge --ff-only main
+[agent/x] silent rc=0 | git checkout -b agent/new-item main
+[agent/x] silent rc=0 | git branch -f main origin/main
+[agent/x] silent rc=0 | cd /c/repos/Knowledge-engine && git status --short && git diff --stat
+[agent/x] silent rc=0 | git stash push -m \"wip: push fix\"
+[agent/x] silent rc=0 | git push --follow-tags origin agent/x
+[agent/x] silent rc=0 | git push origin agent/fix-main-guard
+[agent/x] silent rc=0 | git push origin HEAD
+[agent/x] silent rc=0 | git push -u origin HEAD:agent/x
+[agent/x] silent rc=0 | git commit -m 'single quoted; git push --force origin main'
+[agent/x] silent rc=0 | git commit --amend --no-edit && git log -1 --format=%B
+[agent/x] silent rc=0 | out=$(git status --porcelain 2>&1); echo \"$out\"
+[agent/x] silent rc=0 | for f in a b; do git add \"$f\"; done && git commit -m \"x\"
+[agent/x] silent rc=0 | git log --format='%h %s' -3 | grep -i push
+[agent/x] silent rc=0 | uv run python -m harness_telemetry.log_event --role reviewer --plan-item x --action \"push to main blocked; -f
+[agent/x] silent rc=0 | git push -o ci.skip origin agent/x
+[agent/x] silent rc=0 | git tag -a v1 -m \"release main\" && git push origin v1
+[agent/x] silent rc=0 | git commit -m \"$(printf 'a\\nb')\"
+[agent/x] silent rc=0 | git commit -m \"a (b) {c} & d | e; f\"
+[agent/x] silent rc=0 | git commit -m \"x\" # push to main later
+[agent/x] silent rc=0 | git add -A && git commit -m \"$(cat <<'EOF'\nharness: port\n\nIt's a guard rail; don't use `git push -f` or gi
+[agent/x] DENY   rc=0 | git add -A && git commit -m \"$(cat <<'EOF'\nharness: port\n\na 12\" ruler\ngit push --force origin main\nEOF\
+[agent/x] silent rc=0 | git add -A && git commit -m \"$(cat <<'EOF'\nharness: port\n\na 12\" ruler, nothing else\nEOF\n)\"
+[agent/x] silent rc=0 | git add -A && git commit -m \"$(cat <<'EOF'\nharness: port\n\nUses $(git rev-parse HEAD) and `date`.\nEOF\n)\"
+[agent/x] DENY   rc=0 | git commit -m \"$(cat <<'EOF'\nx\nEOF\n)\" && git push origin main
+[agent/x] silent rc=0 | git commit -m \"$(cat <<'EOF'\na 12\" ruler\nEOF\n)\" && git push origin main
+[agent/x] DENY   rc=0 | (git push origin main)
+[agent/x] DENY   rc=0 | { git push origin main; }
+[agent/x] DENY   rc=0 | if git push origin main; then :; fi
+[agent/x] DENY   rc=0 | true & git push origin main
+[agent/x] DENY   rc=0 | >/dev/null git push origin main
+[agent/x] DENY   rc=0 | 2>&1 git push origin main
+[agent/x] DENY   rc=0 | echo $(git push origin main)
+[agent/x] DENY   rc=0 | echo `git push origin main`
+[agent/x] DENY   rc=0 | echo $((1<<2))\ngit push origin main
+[agent/x] DENY   rc=0 | ! git push origin main
+[agent/x] DENY   rc=0 | time git push origin main
+[agent/x] DENY   rc=0 | command git push origin main
+[agent/x] DENY   rc=0 | exec git push origin main
+[agent/x] DENY   rc=0 | while git push origin main; do :; done
+[agent/x] DENY   rc=0 | out=$(git push origin main 2>&1)
+[agent/x] DENY   rc=0 | git -c x=y push origin main
+[agent/x] DENY   rc=0 | git push origin refs/heads/main
+[agent/x] DENY   rc=0 | git push origin :main
+[agent/x] DENY   rc=0 | git push --force-with-lease origin agent/x
+[agent/x] DENY   rc=0 | git push --force-with-lease=agent/x origin agent/x
+[agent/x] DENY   rc=0 | git push -f origin agent/x
+[agent/x] DENY   rc=0 | git push origin master
+[agent/x] DENY   rc=0 | git push origin HEAD:refs/heads/master
+[agent/x] DENY   rc=0 | git push --delete origin main
+[agent/x] DENY   rc=0 | git push origin +agent/x
+[agent/x] DENY   rc=0 | git push --all origin
+[agent/x] DENY   rc=0 | git push --mirror origin
+[agent/x] DENY   rc=0 | git push -fu origin agent/x
+[agent/x] DENY   rc=0 | git commit -m \"x \\\"y\\\"\" && git push origin main
+[agent/x] silent rc=0 | git push origin main&>/dev/null
+[agent/x] DENY   rc=0 | git push origin main 2>&1 | tail -3
+[agent/x] DENY   rc=0 | git push origin main >/dev/null 2>&1
+[agent/x] DENY   rc=0 | git --no-pager -C . push origin main
+[agent/x] DENY   rc=0 | /usr/bin/git push origin main
+[agent/x] DENY   rc=0 | FOO=1 git push origin main
+[agent/x] DENY   rc=0 | cd sub && git push origin main
+[agent/x] silent rc=0 | (( x = 1 << 2 ))\ngit push origin main
+[agent/x] silent rc=0 | git push --branches origin
+[agent/x] silent rc=0 | \"$(git push origin main)\"
+[agent/x] silent rc=0 | bash -c \"git push origin main\"
+[main] silent rc=0 | git status
+[main] silent rc=0 | git log --oneline -5
+[main] silent rc=0 | git diff 886de45 --stat
+[main] silent rc=0 | git checkout -b agent/new-item
+[main] silent rc=0 | ls -la
+[main] DENY   rc=0 | sh -c \"git commit -m x\"
+[main] DENY   rc=0 | bash <<'EOF'\ngit commit -m x\nEOF
+[main] DENY   rc=0 | \"$(git push origin main)\"
+[main] DENY   rc=0 | eval \"git commit -m x\"
+[main] DENY   rc=0 | G=git; $G commit -m x
+[main] DENY   rc=0 | git commit -m x
+[main] DENY   rc=0 | git cherry-pick abc
+[main] DENY   rc=0 | git am p.patch
+[main] DENY   rc=0 | git rebase x
+[main] DENY   rc=0 | git revert abc
+[main] DENY   rc=0 | git merge x
+[main] silent rc=0 | git pull
+[main] silent rc=0 | gh pr merge 1
+[main] DENY   rc=0 | git.exe commit -m x
+[main] DENY   rc=0 | C:\\Git\\cmd\\git.exe commit -m x
+[main] DENY   rc=0 | git commit -m x 2>&1 | tail
+[main] DENY   rc=0 | xargs git commit -m x < /dev/null
+[main] DENY   rc=0 | git add -A && git commit -m \"$(cat <<'EOF'\nharness: port to Claude Code\n\nHook denies git push origin main 
+[main] silent rc=0 | git log --oneline -5
+[main] silent rc=0 | git diff 886de45 --stat
+[main] DENY   rc=0 | git push -u origin agent/harness-claude-code
+[main] DENY   rc=0 | git commit -m \"fix push to main docs\"
+[main] DENY   rc=0 | git commit -m \"docs: note push -f is denied\"
+[main] DENY   rc=0 | echo \"git push origin main is blocked\"
+[main] DENY   rc=0 | git commit -F - <<'EOF'\nharness: hook\n\nnote: git push to main is denied\nEOF
+[main] DENY   rc=0 | git push origin agent/x
+[main] silent rc=0 | git log --oneline main
+[main] silent rc=0 | git status
+[main] silent rc=0 | git diff main...HEAD -- scripts/
+[main] DENY   rc=0 | git log --grep revert --oneline
+[main] silent rc=0 | git fetch origin main
+[main] DENY   rc=0 | git rebase origin/main
+[main] DENY   rc=0 | git merge --ff-only main
+[main] silent rc=0 | git checkout -b agent/new-item main
+[main] silent rc=0 | git branch -f main origin/main
+[main] silent rc=0 | cd /c/repos/Knowledge-engine && git status --short && git diff --stat
+[main] DENY   rc=0 | git stash push -m \"wip: push fix\"
+[main] DENY   rc=0 | git push --follow-tags origin agent/x
+[main] DENY   rc=0 | git push origin agent/fix-main-guard
+[main] DENY   rc=0 | git push origin HEAD
+[main] DENY   rc=0 | git push -u origin HEAD:agent/x
+[main] DENY   rc=0 | git commit -m 'single quoted; git push --force origin main'
+[main] DENY   rc=0 | git commit --amend --no-edit && git log -1 --format=%B
+[main] silent rc=0 | out=$(git status --porcelain 2>&1); echo \"$out\"
+[main] DENY   rc=0 | for f in a b; do git add \"$f\"; done && git commit -m \"x\"
+[main] DENY   rc=0 | git log --format='%h %s' -3 | grep -i push
+[main] silent rc=0 | uv run python -m harness_telemetry.log_event --role reviewer --plan-item x --action \"push to main blocked; -f
+[main] DENY   rc=0 | git push -o ci.skip origin agent/x
+[main] DENY   rc=0 | git tag -a v1 -m \"release main\" && git push origin v1
+[main] DENY   rc=0 | git commit -m \"$(printf 'a\\nb')\"
+[main] DENY   rc=0 | git commit -m \"a (b) {c} & d | e; f\"
+[main] DENY   rc=0 | git commit -m \"x\" # push to main later

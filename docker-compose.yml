@@ -10,5 +10,17 @@ services:
     volumes:
       - phoenix-data:/mnt/data
 
+  # One-shot gate runner; invoked only through `scripts/verify.sh`.
+  # No network: gates must never reach a model host or the internet.
+  gates:
+    profiles: ["gates"]
+    build:
+      context: .
+      dockerfile: docker/gates.Dockerfile
+    network_mode: none
+    working_dir: /work
+    volumes:
+      - .:/work
+
 volumes:
   phoenix-data:

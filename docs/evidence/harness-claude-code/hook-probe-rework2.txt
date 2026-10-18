@@ -1,0 +1,293 @@
+# reviewer, rework 2 hook probes (2026-10-18). Payloads piped into the hook only; no git commit/push run.
+# Payloads: compact Claude Code envelope (json.dumps separators=(',',':')). Repos: scratch 'main' on main, 'agent' on agent/x.
+
+## A. Host Git Bash, NO jq (GNU Awk 5.4.0)
+arith_heredoc            main   SILENT
+arith_heredoc            agent  SILENT
+backtick                 main   SILENT
+backtick                 agent  SILENT
+bang                     main   SILENT
+bang                     agent  SILENT
+bash_c                   main   SILENT
+bash_c                   agent  SILENT
+bg_amp                   main   SILENT
+bg_amp                   agent  SILENT
+brace                    main   SILENT
+brace                    agent  SILENT
+branches                 main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+branches                 agent  SILENT
+c_opt                    main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+c_opt                    agent  Pushing to main/master is not allowed.
+c_opt_force              main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+c_opt_force              agent  Force pushes are not allowed.
+cc_heredoc               main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+cc_heredoc               agent  SILENT
+cc_heredoc_oddquote      main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+cc_heredoc_oddquote      agent  Force pushes are not allowed.
+cc_heredoc_quotes        main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+cc_heredoc_quotes        agent  SILENT
+cd_commit                main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+cd_commit                agent  SILENT
+colon_main               main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+colon_main               agent  Pushing to main/master is not allowed.
+comment_tail             main   SILENT
+comment_tail             agent  SILENT
+delete_main              main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+delete_main              agent  Pushing to main/master is not allowed.
+desc_injection_first     main   SILENT
+desc_injection_first     agent  SILENT
+desc_injection_ls        main   SILENT
+desc_injection_ls        agent  SILENT
+env_git                  main   SILENT
+env_git                  agent  SILENT
+esc_quotes_msg           main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+esc_quotes_msg           agent  SILENT
+esc_quotes_msg_force     main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+esc_quotes_msg_force     agent  SILENT
+fwl                      main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+fwl                      agent  Force pushes are not allowed.
+fwl_eq                   main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+fwl_eq                   agent  Force pushes are not allowed.
+git_dir_eq               main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+git_dir_eq               agent  Pushing to main/master is not allowed.
+git_dir_sp               main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+git_dir_sp               agent  Pushing to main/master is not allowed.
+if                       main   SILENT
+if                       agent  SILENT
+log_main                 main   SILENT
+log_main                 agent  SILENT
+master_tgt               main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+master_tgt               agent  Pushing to main/master is not allowed.
+newline_seq              main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+newline_seq              agent  Pushing to main/master is not allowed.
+no_pager                 main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+no_pager                 agent  Pushing to main/master is not allowed.
+plain_push               main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+plain_push               agent  SILENT
+pull_on_main             main   SILENT
+pull_on_main             agent  SILENT
+redir_amp                main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+redir_amp                agent  SILENT
+redir_ok                 main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+redir_ok                 agent  Pushing to main/master is not allowed.
+refs_heads               main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+refs_heads               agent  Pushing to main/master is not allowed.
+subshell                 main   SILENT
+subshell                 agent  SILENT
+subshell_cd              main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+subshell_cd              agent  SILENT
+subst_assign             main   SILENT
+subst_assign             agent  SILENT
+subst_echo               main   SILENT
+subst_echo               agent  SILENT
+subst_quoted             main   SILENT
+subst_quoted             agent  SILENT
+unicode_nonascii         main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+unicode_nonascii         agent  SILENT
+winpath_git              main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+winpath_git              agent  Pushing to main/master is not allowed.
+
+## B. Host, no jq: \uXXXX escapes (crafted; JSON.stringify never emits these for ASCII)
+u0022_commit             main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+u0022_commit             agent  SILENT
+u0022_msg                main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+u0022_msg                agent  SILENT
+u0022_msg_main_force     main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+u0022_msg_main_force     agent  Force pushes are not allowed.
+u002d_force              main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+u002d_force              agent  SILENT
+
+## C. Host, no jq: escaped quotes and description injection
+bs_bs_q                  main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+bs_bs_q                  agent  Pushing to main/master is not allowed.
+desc_cmd_inject          main   SILENT
+desc_cmd_inject          agent  SILENT
+desc_first               main   SILENT
+desc_first               agent  SILENT
+esc_q_echo               main   SILENT
+esc_q_echo               agent  SILENT
+esc_q_msg                main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+esc_q_msg                agent  SILENT
+esc_q_msg_force          main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+esc_q_msg_force          agent  SILENT
+esc_q_then_push          main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+esc_q_then_push          agent  Pushing to main/master is not allowed.
+
+## D. Same payloads in knowledge-engine-gates:latest WITH jq (--network none)
+# gates image, jq=/usr/bin/jq
+arith_heredoc            main   SILENT
+arith_heredoc            agent  SILENT
+backtick                 main   SILENT
+backtick                 agent  SILENT
+bang                     main   SILENT
+bang                     agent  SILENT
+bash_c                   main   SILENT
+bash_c                   agent  SILENT
+bg_amp                   main   SILENT
+bg_amp                   agent  SILENT
+brace                    main   SILENT
+brace                    agent  SILENT
+branches                 main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+branches                 agent  SILENT
+c_opt                    main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+c_opt                    agent  Pushing to main/master is not allowed.
+c_opt_force              main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+c_opt_force              agent  Force pushes are not allowed.
+cc_heredoc               main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+cc_heredoc               agent  SILENT
+cc_heredoc_oddquote      main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+cc_heredoc_oddquote      agent  Force pushes are not allowed.
+cc_heredoc_quotes        main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+cc_heredoc_quotes        agent  SILENT
+cd_commit                main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+cd_commit                agent  SILENT
+colon_main               main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+colon_main               agent  Pushing to main/master is not allowed.
+comment_tail             main   SILENT
+comment_tail             agent  SILENT
+delete_main              main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+delete_main              agent  Pushing to main/master is not allowed.
+desc_injection_first     main   SILENT
+desc_injection_first     agent  SILENT
+desc_injection_ls        main   SILENT
+desc_injection_ls        agent  SILENT
+env_git                  main   SILENT
+env_git                  agent  SILENT
+esc_quotes_msg           main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+esc_quotes_msg           agent  SILENT
+esc_quotes_msg_force     main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+esc_quotes_msg_force     agent  SILENT
+fwl                      main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+fwl                      agent  Force pushes are not allowed.
+fwl_eq                   main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+fwl_eq                   agent  Force pushes are not allowed.
+git_dir_eq               main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+git_dir_eq               agent  Pushing to main/master is not allowed.
+git_dir_sp               main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+git_dir_sp               agent  Pushing to main/master is not allowed.
+if                       main   SILENT
+if                       agent  SILENT
+log_main                 main   SILENT
+log_main                 agent  SILENT
+master_tgt               main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+master_tgt               agent  Pushing to main/master is not allowed.
+newline_seq              main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+newline_seq              agent  Pushing to main/master is not allowed.
+no_pager                 main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+no_pager                 agent  Pushing to main/master is not allowed.
+plain_push               main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+plain_push               agent  SILENT
+pull_on_main             main   SILENT
+pull_on_main             agent  SILENT
+redir_amp                main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+redir_amp                agent  SILENT
+redir_ok                 main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+redir_ok                 agent  Pushing to main/master is not allowed.
+refs_heads               main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+refs_heads               agent  Pushing to main/master is not allowed.
+subshell                 main   SILENT
+subshell                 agent  SILENT
+subshell_cd              main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+subshell_cd              agent  SILENT
+subst_assign             main   SILENT
+subst_assign             agent  SILENT
+subst_echo               main   SILENT
+subst_echo               agent  SILENT
+subst_quoted             main   SILENT
+subst_quoted             agent  SILENT
+u0022_commit             main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+u0022_commit             agent  Pushing to main/master is not allowed.
+u0022_msg                main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+u0022_msg                agent  SILENT
+u0022_msg_main_force     main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+u0022_msg_main_force     agent  SILENT
+u002d_force              main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+u002d_force              agent  Force pushes are not allowed.
+unicode_nonascii         main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+unicode_nonascii         agent  SILENT
+winpath_git              main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+winpath_git              agent  Pushing to main/master is not allowed.
+bs_bs_q                  main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+bs_bs_q                  agent  Pushing to main/master is not allowed.
+desc_cmd_inject          main   SILENT
+desc_cmd_inject          agent  SILENT
+desc_first               main   SILENT
+desc_first               agent  SILENT
+esc_q_echo               main   SILENT
+esc_q_echo               agent  SILENT
+esc_q_msg                main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+esc_q_msg                agent  SILENT
+esc_q_msg_force          main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+esc_q_msg_force          agent  SILENT
+esc_q_then_push          main   Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first.
+esc_q_then_push          agent  Pushing to main/master is not allowed.
+
+## E. On main: base hook (886de45) vs new hook, no jq
+subshell       base=deny   new=silent
+subst_echo     base=deny   new=silent
+subst_assign   base=deny   new=silent
+subst_quoted   base=deny   new=silent
+backtick       base=deny   new=silent
+brace          base=deny   new=silent
+if             base=deny   new=silent
+bang           base=deny   new=silent
+bg_amp         base=deny   new=silent
+env_git        base=deny   new=silent
+comment_tail   base=deny   new=silent
+
+## Payload commands (from gen.py / gen2.py)
+cases = [
+ # (name, command, description)
+ ("u0022_commit", None, None),  # crafted raw payload below
+ ("esc_quotes_msg", 'git commit -m "say \\"push to main\\" now"', "Commit"),
+ ("esc_quotes_msg_force", 'git commit -m "note \\"git push -f\\" is denied"', "Commit"),
+ ("desc_injection_ls", "ls", 'x "command":"git push origin main"'),
+ ("desc_injection_first", None, None),  # crafted: description before command
+ ("subst_echo", "echo $(git push origin main)", "d"),
+ ("subst_assign", "out=$(git push origin main 2>&1)", "d"),
+ ("subst_quoted", 'echo "$(git push origin main)"', "d"),
+ ("backtick", "echo `git push origin main`", "d"),
+ ("subshell", "(git push origin main)", "d"),
+ ("subshell_cd", "(cd sub && git push origin main)", "d"),
+ ("brace", "{ git push origin main; }", "d"),
+ ("if", "if git push origin main; then echo ok; fi", "d"),
+ ("bang", "! git push origin main", "d"),
+ ("bg_amp", "sleep 1 & git push origin main", "d"),
+ ("c_opt", "git -c x=y push origin main", "d"),
+ ("c_opt_force", "git -c x=y push -f origin agent/x", "d"),
+ ("C_opt", "git -C . push origin main", "d"),
+ ("cd_commit", "cd elsewhere && git commit -m x", "d"),
+ ("cc_heredoc", "git commit -m \"$(cat <<'EOF'\nharness: hook\n\nThe hook now denies git push to main from any branch.\ngit push --force is denied too.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\"", "Commit"),
+ ("cc_heredoc_quotes", "git commit -m \"$(cat <<'EOF'\nharness: \"quoted\" word and it's fine\ngit push origin main is denied\nEOF\n)\"", "Commit"),
+ ("cc_heredoc_oddquote", "git commit -m \"$(cat <<'EOF'\nharness: a 12\" ruler\ngit push --force is denied\nEOF\n)\"", "Commit"),
+ ("refs_heads", "git push origin refs/heads/main", "d"),
+ ("colon_main", "git push origin :main", "d"),
+ ("fwl", "git push --force-with-lease origin agent/x", "d"),
+ ("fwl_eq", "git push --force-with-lease=agent/x origin agent/x", "d"),
+ ("master_tgt", "git push origin HEAD:refs/heads/master", "d"),
+ ("delete_main", "git push origin --delete main", "d"),
+ ("branches", "git push --branches origin", "d"),
+ ("plain_push", "git push -u origin agent/x", "d"),
+ ("log_main", "git log --oneline main", "d"),
+ ("winpath_git", '"/c/Program Files/Git/bin/git.exe" push origin main', "d"),
+ ("env_git", "env git push origin main", "d"),
+ ("redir_amp", "git push origin main&>/dev/null", "d"),
+ ("redir_ok", "git push origin main >/dev/null 2>&1", "d"),
+ ("arith_heredoc", "x=$((1<<2))\ngit push origin main", "d"),
+ ("comment_tail", "git status # git push origin main", "d"),
+ ("pull_on_main", "git pull", "d"),
+ ("unicode_nonascii", "git commit -m \"café push main\"", "d"),
+ ("bash_c", "bash -c 'git push origin main'", "d"),
+ ("newline_seq", "echo hi\ngit push origin main", "d"),
+ ("no_pager", "git --no-pager push origin main", "d"),
+ ("git_dir_eq", "git --git-dir=.git push origin main", "d"),
+ ("git_dir_sp", "git --git-dir .git push origin main", "d"),
+]
+cases = {
+ "esc_q_msg": f'git commit -m "say {BS}"push to main{BS}" now"',
+ "esc_q_msg_force": f'git commit -m "note {BS}"git push -f{BS}" is denied; git push origin main"',
+ "esc_q_echo": f'echo "a {BS}" ; git push origin main {BS}""',
+ "esc_q_then_push": f'git commit -m "x {BS}"y{BS}"" && git push origin main',
+ "bs_bs_q": f'git commit -m "path C:{BS}{BS}" && git push origin main',
+ "desc_cmd_inject": None,
+}

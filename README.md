@@ -23,7 +23,11 @@ See [AGENTS.md](AGENTS.md) for the full workflow and role/file conventions.
    docker compose up -d phoenix   # UI at http://localhost:6006
    ```
 
-3. Open the agent picker in VS Code and select **Orchestrator**.
+3. Open the repo in [Claude Code](https://claude.com/claude-code) (the
+   primary runner). The session is the orchestrator
+   ([CLAUDE.md](CLAUDE.md)) and delegates to the role subagents in
+   `.claude/agents/`. GitHub Copilot in VS Code still works: pick
+   **Orchestrator** from the agent picker (`.github/agents/`).
 4. Describe the task. The orchestrator plans it, delegates to the right
    role agents on a plan-item branch, enforces the gates in
    [AGENTS.md](AGENTS.md) (including reviewer/security approval), and only
@@ -31,10 +35,25 @@ See [AGENTS.md](AGENTS.md) for the full workflow and role/file conventions.
    Phoenix's **Sessions** view.
 5. Extend [scripts/test.sh](scripts/test.sh) and
    [scripts/smoke.sh](scripts/smoke.sh) with the real commands for this
-   project's stack (they currently cover `harness_telemetry`).
+   project's stack (they currently cover `harness_telemetry`). Do not run
+   them directly; they run through `scripts/verify.sh` (below).
 6. When you're ready to merge a plan-item branch, open a PR and paste in
    [.github/pull_request_template.md](.github/pull_request_template.md)'s
    checklist.
+
+## Verification
+
+`scripts/verify.sh` is the one verification command, locally, for agents, and
+in CI (CI runs `./scripts/verify.sh full`):
+
+```bash
+scripts/verify.sh fast   # docs-only and pure-function changes
+scripts/verify.sh full   # everything else, and always before a commit
+```
+
+It needs Docker (on Windows, run it from Git Bash). It builds the `gates`
+image from `docker/gates.Dockerfile` and runs the gate scripts inside it with
+networking disabled. See [CLAUDE.md](CLAUDE.md) for which run a change needs.
 
 ## Tracing your own agents
 
@@ -68,16 +87,25 @@ Run the stub example: `HARNESS_TRACING=console uv run python examples/custom_age
 
 ## Structure
 
-- `.github/agents/` — orchestrator + the eight role agents
+- `CLAUDE.md` — Claude Code entry point: the session is the orchestrator
+- `.claude/agents/` — the eight role subagents for Claude Code
+- `.claude/settings.json` — wires the commit hook (`PreToolUse` on Bash)
+- `.github/agents/` — orchestrator + the eight role agents (Copilot)
 - `.github/workflows/ci.yml` — CI entrypoint
 - `.github/pull_request_template.md` — gate checklist for PR descriptions
 - `harness_telemetry/` — OpenInference span helpers and the `log_event` CLI
 - `examples/custom_agent.py` — traced pure-Python agent loop (stubbed services)
-- `docker-compose.yml` — local Phoenix
-- `scripts/hooks/block-main-commit.sh` — `PreToolUse` hook enforcing the
-  branch policy (wired into `developer.agent.md`)
-- `scripts/test.sh`, `scripts/smoke.sh` — test/smoke entrypoints; the smoke
-  test exports real OTLP traces to a stub collector
+- `docker-compose.yml` — local Phoenix and the one-shot `gates` service
+- `docker/gates.Dockerfile` — the image `verify.sh` runs the gates in
+- `.gitattributes` — forces LF line endings for shell scripts
+- `scripts/verify.sh` — the single verification entrypoint (`fast|full`)
+- `scripts/hooks/block-main-commit.sh` — `PreToolUse` hook for the branch
+  policy (wired in `.claude/settings.json` and `developer.agent.md`). It is a
+  guard rail, not a security boundary (see ADR-KE-001 in
+  [docs/architecture.md](docs/architecture.md)); branch protection on `main`
+  is the real control.
+- `scripts/test.sh`, `scripts/smoke.sh` — gate scripts called by
+  `verify.sh`; the smoke test exports real OTLP traces to a stub collector
 - `docs/requirements.md`, `docs/architecture.md` — living plan artifacts
 - `docs/log.md` — append-only observability log, written via `log_event`
 - `docs/handoffs/<plan-item-slug>.md` — running handoff doc per plan item,

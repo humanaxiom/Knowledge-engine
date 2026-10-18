@@ -1,0 +1,142 @@
+# reviewer round-4 hook timing, 1 MB-class payloads (2026-10-18). Budget 4f: < 3 s in the gates image.
+# Generator tmk.py, driver time.sh (EPOCHREALTIME). Columns: branch mode shape rc decision elapsed.
+
+## gates image (mawk, jq-1.6)
+agent/x  jq    unquoted-token   rc=0 silent 83ms
+agent/x  jq    m-message        rc=0 silent 82ms
+agent/x  jq    heredoc-line     rc=0 silent 77ms
+agent/x  jq    many-segments    rc=0 silent 82ms
+agent/x  jq    push-many-W      rc=0 silent 85ms
+agent/x  jq    push-repeated    rc=0 silent 87ms
+agent/x  jq    escaped-quotes   rc=0 silent 69ms
+agent/x  jq    backslashes      rc=0 silent 70ms
+agent/x  jq    push-lines       rc=0 silent 78ms
+agent/x  jq    push-dashes      rc=0 silent 85ms
+agent/x  jq    git-words        rc=0 silent 90ms
+agent/x  jq    continuations    rc=0 silent 92ms
+agent/x  nojq  unquoted-token   rc=0 silent 286ms
+agent/x  nojq  m-message        rc=0 silent 285ms
+agent/x  nojq  heredoc-line     rc=0 silent 285ms
+agent/x  nojq  many-segments    rc=0 silent 296ms
+agent/x  nojq  push-many-W      rc=0 silent 294ms
+agent/x  nojq  push-repeated    rc=0 silent 282ms
+agent/x  nojq  escaped-quotes   rc=0 silent 415ms
+agent/x  nojq  backslashes      rc=0 silent 457ms
+agent/x  nojq  push-lines       rc=0 silent 306ms
+agent/x  nojq  push-dashes      rc=0 silent 302ms
+agent/x  nojq  git-words        rc=0 silent 291ms
+agent/x  nojq  continuations    rc=0 silent 370ms
+main     jq    unquoted-token   rc=0 silent 73ms
+main     jq    m-message        rc=0 deny   81ms
+main     jq    heredoc-line     rc=0 silent 68ms
+main     jq    many-segments    rc=0 silent 65ms
+main     jq    push-many-W      rc=0 deny   76ms
+main     jq    push-repeated    rc=0 deny   75ms
+main     jq    escaped-quotes   rc=0 silent 66ms
+main     jq    backslashes      rc=0 silent 66ms
+main     jq    push-lines       rc=0 deny   73ms
+main     jq    push-dashes      rc=0 deny   76ms
+main     jq    git-words        rc=0 deny   92ms
+main     jq    continuations    rc=0 silent 90ms
+main     nojq  unquoted-token   rc=0 silent 283ms
+main     nojq  m-message        rc=0 deny   291ms
+main     nojq  heredoc-line     rc=0 silent 286ms
+main     nojq  many-segments    rc=0 silent 284ms
+main     nojq  push-many-W      rc=0 deny   278ms
+main     nojq  push-repeated    rc=0 deny   261ms
+main     nojq  escaped-quotes   rc=0 silent 413ms
+main     nojq  backslashes      rc=0 silent 428ms
+main     nojq  push-lines       rc=0 deny   290ms
+main     nojq  push-dashes      rc=0 deny   293ms
+main     nojq  git-words        rc=0 deny   293ms
+main     nojq  continuations    rc=0 silent 360ms
+
+## Windows host Git Bash (no jq; jq column = natural absence)
+agent/x  jq    unquoted-token   rc=0 silent 473ms
+agent/x  jq    m-message        rc=0 silent 456ms
+agent/x  jq    heredoc-line     rc=0 silent 448ms
+agent/x  jq    many-segments    rc=0 silent 493ms
+agent/x  jq    push-many-W      rc=0 silent 485ms
+agent/x  jq    push-repeated    rc=0 silent 498ms
+agent/x  jq    escaped-quotes   rc=0 silent 729ms
+agent/x  jq    backslashes      rc=0 silent 915ms
+agent/x  jq    push-lines       rc=0 silent 544ms
+agent/x  jq    push-dashes      rc=0 silent 468ms
+agent/x  jq    git-words        rc=0 silent 526ms
+agent/x  jq    continuations    rc=0 silent 1282ms
+agent/x  nojq  unquoted-token   rc=0 silent 476ms
+agent/x  nojq  m-message        rc=0 silent 442ms
+agent/x  nojq  heredoc-line     rc=0 silent 518ms
+agent/x  nojq  many-segments    rc=0 silent 482ms
+agent/x  nojq  push-many-W      rc=0 silent 493ms
+agent/x  nojq  push-repeated    rc=0 silent 477ms
+agent/x  nojq  escaped-quotes   rc=0 silent 770ms
+agent/x  nojq  backslashes      rc=0 silent 922ms
+agent/x  nojq  push-lines       rc=0 silent 570ms
+agent/x  nojq  push-dashes      rc=0 silent 478ms
+agent/x  nojq  git-words        rc=0 silent 470ms
+agent/x  nojq  continuations    rc=0 silent 1192ms
+main     jq    unquoted-token   rc=0 silent 436ms
+main     jq    m-message        rc=0 deny   450ms
+main     jq    heredoc-line     rc=0 silent 497ms
+main     jq    many-segments    rc=0 silent 447ms
+main     jq    push-many-W      rc=0 deny   484ms
+main     jq    push-repeated    rc=0 deny   495ms
+main     jq    escaped-quotes   rc=0 silent 744ms
+main     jq    backslashes      rc=0 silent 895ms
+main     jq    push-lines       rc=0 deny   588ms
+main     jq    push-dashes      rc=0 deny   473ms
+main     jq    git-words        rc=0 deny   481ms
+main     jq    continuations    rc=0 silent 1222ms
+main     nojq  unquoted-token   rc=0 silent 475ms
+main     nojq  m-message        rc=0 deny   491ms
+main     nojq  heredoc-line     rc=0 silent 461ms
+main     nojq  many-segments    rc=0 silent 444ms
+main     nojq  push-many-W      rc=0 deny   504ms
+main     nojq  push-repeated    rc=0 deny   479ms
+main     nojq  escaped-quotes   rc=0 silent 719ms
+main     nojq  backslashes      rc=0 silent 862ms
+main     nojq  push-lines       rc=0 deny   571ms
+main     nojq  push-dashes      rc=0 deny   473ms
+main     nojq  git-words        rc=0 deny   438ms
+main     nojq  continuations    rc=0 silent 1259ms
+
+## tmk.py
+import json, os
+os.makedirs("t", exist_ok=True)
+G = "gi" + "t"; N = 1_000_000; NL = chr(10); BS = chr(92); DQ = chr(34)
+shapes = {
+ "unquoted-token": "echo " + "a" * N,
+ "m-message": G + " commit -m " + DQ + "a" * N + DQ,
+ "heredoc-line": "cat <<'EOF'" + NL + "a" * N + NL + "EOF",
+ "many-segments": "echo x && " * 100_000 + "echo x",
+ "push-many-W": G + " push " + "a/" * (N // 2),
+ "push-repeated": (G + " push origin x ") * (N // 19),
+ "escaped-quotes": "echo " + DQ + (BS + DQ) * (N // 2) + DQ,
+ "backslashes": "echo " + BS * N,
+ "push-lines": (G + " push origin agent/x" + NL) * (N // 24),
+ "push-dashes": G + " push " + "-" * N,
+ "git-words": (G + " ") * (N // 4) + "push",
+ "continuations": ("a " + BS + NL) * (N // 4),
+}
+with open("t/list", "w", newline=NL) as f:
+    for k, c in shapes.items():
+        p = json.dumps({"session_id":"s","hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":c,"description":"d"}}, separators=(",",":"))
+        open("t/" + k + ".json", "w", newline=NL).write(p)
+        f.write(k + NL)
+
+## time.sh
+#!/usr/bin/env bash
+HOOK=$1; W=$2; gc=gi; gc=${gc}t
+mkdir -p $W/fake; printf '#!/bin/sh\nexit 127\n' > $W/fake/jq; chmod +x $W/fake/jq
+rm -rf $W/r; $gc init -q -b main $W/r
+for br in agent/x main; do
+  $gc -C $W/r symbolic-ref HEAD refs/heads/$br
+  for m in jq nojq; do P=$PATH; [ $m = nojq ] && P="$W/fake:$PATH"
+    while read -r k; do
+      s=${EPOCHREALTIME/./}; out=$(cd $W/r && PATH="$P" bash "$HOOK" < /s/t/$k.json); rc=$?; e=${EPOCHREALTIME/./}
+      case "$out" in *deny*) d=deny;; '') d=silent;; *) d=other;; esac
+      printf '%-8s %-5s %-16s rc=%s %-6s %s\n' "$br" "$m" "$k" "$rc" "$d" "$(( (e - s) / 1000 ))ms"
+    done < /s/t/list
+  done
+done

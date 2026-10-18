@@ -12,7 +12,7 @@ role-based agent team, coordinated by an **orchestrator**, following a strict
 | `analyst` | Clarifies requirements, writes acceptance criteria to `docs/requirements.md` | Subagent only | Reasoning |
 | `architect` | Designs technical approach, records decisions in `docs/architecture.md` (ADR style) | Subagent only | Reasoning |
 | `developer` | Implements code via TDD (red→green→refactor), stages and commits once gates pass | Subagent only | Trivial |
-| `tester` | Writes/runs unit tests and `scripts/smoke.sh`, judges pass/fail with evidence | Subagent only | Reasoning |
+| `tester` | Writes/runs unit tests and the smoke test via `scripts/verify.sh`, judges pass/fail with evidence | Subagent only | Reasoning |
 | `reviewer` | Reviews the diff for design conformance, code quality, and test adequacy; merge-blocking | Subagent only | Reasoning |
 | `security` | Audits the diff for injection, secrets, unsafe dependencies, and other OWASP Top 10 risks; merge-blocking | Subagent only | Reasoning |
 | `documenter` | Keeps `README.md` and in-repo docs in sync with shipped behavior | Subagent only | Trivial |
@@ -37,7 +37,7 @@ Work moves forward only when the current gate passes. No gate may be skipped.
 3. **Review & Security** — `reviewer` and `security` audit the integrated diff in
    parallel. Both are merge-blocking: any unresolved finding sends the change back
    to `developer`, capped at the iteration limit below.
-4. **Smoke Test** — `tester` runs `scripts/smoke.sh` against the integrated change.
+4. **Smoke Test** — `tester` runs `scripts/verify.sh full`, which includes the smoke test, against the integrated change.
    Must pass before merge/commit is approved.
 5. **CI** — `.github/workflows/ci.yml` must be green (or updated to cover the new
    surface) before the orchestrator approves a commit.
@@ -50,8 +50,7 @@ Work moves forward only when the current gate passes. No gate may be skipped.
 - `docs/requirements.md` — living acceptance criteria (analyst)
 - `docs/architecture.md` — design decisions / ADRs (architect)
 - `CHANGELOG.md` — user-facing change log (marketer)
-- `scripts/test.sh` — unit/integration test entrypoint (tester/developer)
-- `scripts/smoke.sh` — smoke test entrypoint, run after integration (tester)
+- `scripts/verify.sh` — the single verification entry point; it runs the unit/integration and smoke gate scripts in `scripts/` inside the `gates` container
 - `.github/workflows/ci.yml` — CI entrypoint, calls the scripts above
 - `docs/log.md` — append-only observability log, written only through
   `harness_telemetry.log_event`, which also traces each entry to Phoenix

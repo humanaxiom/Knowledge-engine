@@ -1,0 +1,159 @@
+# reviewer round-4 independent mutation run (2026-10-18).
+# Each mutant is an isolated copy (hook + tests/test_block_main_commit_hook.py + docker/gates.Dockerfile);
+# the live hook was never modified. Run: python3 -m unittest tests.test_block_main_commit_hook in knowledge-engine-gates:latest.
+# a-d rebuild the developer's mutation-hook-r4.txt mutants; e-n are reviewer extras.
+
+## results
+a-drop-lowercase           FAILED (failures=4) |  4 FAIL: test_split_or_cased_git_word_denied_on_main;
+b-drop-backslash-delete    FAILED (failures=5) |  2 FAIL: test_backslash_forms_deny_push_off_main; 3 FAIL: test_split_or_cased_git_word_denied_on_main;
+base                       OK | 
+c-drop-main-master         FAILED (failures=56) |  6 FAIL: test_backslash_forms_deny_push_off_main; 12 FAIL: test_denies_nested_push_to_main_or_force_from_plan_item_branch; 6 FAIL: test_denies_push_refspec_forms_from_plan_item_branch; 8 FAIL: test_denies_push_to_main_or_force_push_from_any_branch; 2 FAIL: test_denies_push_with_c_global_option_from_plan_item_branch; 2 FAIL: test_escaped_quote_does_not_hide_following_push; 10 FAIL: test_one_line_mentions_are_accepted_false_positives_off_main; 10 FAIL: test_prefixed_push_to_main_denied_off_main;
+d-drop-on-main-rule        FAILED (failures=66) |  6 FAIL: test_denies_commit_and_push_on_main; 10 FAIL: test_denies_commit_creating_commands_on_main; 8 FAIL: test_denies_git_first_word_on_main; 18 FAIL: test_denies_nested_git_on_main; 2 FAIL: test_denies_on_master; 2 FAIL: test_denies_push_on_master; 2 FAIL: test_grep_for_a_verb_on_main_is_accepted_false_positive; 2 FAIL: test_judges_only_the_command_field; 4 FAIL: test_shell_wrapped_commit_denied_on_main; 10 FAIL: test_split_or_cased_git_word_denied_on_main; 2 FAIL: test_works_without_jq_on_raw_input;
+e-drop-continuation-join   FAILED (failures=4) |  4 FAIL: test_backslash_forms_deny_push_off_main;
+f-drop-short-f-cluster     FAILED (failures=8) |  2 FAIL: test_backslash_forms_deny_push_off_main; 2 FAIL: test_denies_push_refspec_forms_from_plan_item_branch; 2 FAIL: test_denies_push_to_main_or_force_push_from_any_branch; 2 FAIL: test_one_line_mentions_are_accepted_false_positives_off_main;
+g-drop-plus-refspec        FAILED (failures=2) |  2 FAIL: test_denies_push_to_main_or_force_push_from_any_branch;
+h-drop-force-long          FAILED (failures=6) |  2 FAIL: test_denies_nested_push_to_main_or_force_from_plan_item_branch; 2 FAIL: test_denies_push_refspec_forms_from_plan_item_branch; 2 FAIL: test_denies_push_to_main_or_force_push_from_any_branch;
+i-break-jq-filter          FAILED (failures=74) |  4 FAIL: test_backslash_forms_deny_push_off_main; 4 FAIL: test_denies_commit_and_push_on_main; 5 FAIL: test_denies_commit_creating_commands_on_main; 4 FAIL: test_denies_git_first_word_on_main; 12 FAIL: test_denies_nested_git_on_main; 7 FAIL: test_denies_nested_push_to_main_or_force_from_plan_item_branch; 1 FAIL: test_denies_on_master; 1 FAIL: test_denies_push_on_master; 5 FAIL: test_denies_push_refspec_forms_from_plan_item_branch; 9 FAIL: test_denies_push_to_main_or_force_push_from_any_branch; 1 FAIL: test_denies_push_with_c_global_option_from_plan_item_branch; 1 FAIL: test_escaped_quote_does_not_hide_following_push; 1 FAIL: test_grep_for_a_verb_on_main_is_accepted_false_positive; 1 FAIL: test_judges_only_the_command_field; 6 FAIL: test_one_line_mentions_are_accepted_false_positives_off_main; 5 FAIL: test_prefixed_push_to_main_denied_off_main; 2 FAIL: test_shell_wrapped_commit_denied_on_main; 5 FAIL: test_split_or_cased_git_word_denied_on_main;
+j-head-to-tail             OK | 
+k-drop-json-newline        FAILED (failures=6) |  1 FAIL: test_backslash_forms_deny_push_off_main; 1 FAIL: test_denies_nested_push_to_main_or_force_from_plan_item_branch; 1 FAIL: test_shell_wrapped_commit_denied_on_main; 1 FAIL: test_silent_for_claude_code_heredoc_commit_on_plan_item_branch; 1 FAIL: test_silent_for_everyday_commands_on_plan_item_branch; 1 FAIL: test_silent_for_text_that_only_mentions_push_on_plan_item_branch;
+l-drop-empty-exit          OK | 
+m-drop-am                  FAILED (failures=2) |  2 FAIL: test_denies_commit_creating_commands_on_main;
+n-drop-mirror-all          FAILED (failures=4) |  4 FAIL: test_denies_push_to_main_or_force_push_from_any_branch;
+
+## diffs
+=== base
+(identical to live hook)
+=== a-drop-lowercase
+--- hook
++++ a-drop-lowercase
+@@ -34 +34 @@
+-text="$(printf '%s' "$text" | sed -z 's/\\\n/ /g' | tr -d "\"'\\\\" | tr '[:upper:]' '[:lower:]')"
++text="$(printf '%s' "$text" | sed -z 's/\\\n/ /g' | tr -d "\"'\\\\")"
+=== b-drop-backslash-delete
+--- hook
++++ b-drop-backslash-delete
+@@ -34 +34 @@
+-text="$(printf '%s' "$text" | sed -z 's/\\\n/ /g' | tr -d "\"'\\\\" | tr '[:upper:]' '[:lower:]')"
++text="$(printf '%s' "$text" | sed -z 's/\\\n/ /g' | tr -d "\"'" | tr '[:upper:]' '[:lower:]')"
+=== c-drop-main-master
+--- hook
++++ c-drop-main-master
+@@ -48 +48 @@
+-  if grep -Eq "${PUSH}((.*$W)?((main|master)($W|\$)|--mirror|--all))" <<<"$text"; then
++  if grep -Eq "${PUSH}((.*$W)?(--mirror|--all))" <<<"$text"; then
+=== d-drop-on-main-rule
+--- hook
++++ d-drop-on-main-rule
+@@ -41 +41 @@
+-if [ "$branch" = "main" ] || [ "$branch" = "master" ]; then
++if false; then
+=== e-drop-continuation-join
+--- hook
++++ e-drop-continuation-join
+@@ -34 +34 @@
+-text="$(printf '%s' "$text" | sed -z 's/\\\n/ /g' | tr -d "\"'\\\\" | tr '[:upper:]' '[:lower:]')"
++text="$(printf '%s' "$text" | tr -d "\"'\\\\" | tr '[:upper:]' '[:lower:]')"
+=== f-drop-short-f-cluster
+--- hook
++++ f-drop-short-f-cluster
+@@ -50 +50 @@
+-  elif grep -Eq "${PUSH}((.*$W)?--force|(.*[[:space:]])?-[[:alpha:]]*f|(.*[[:space:]:])?\\+)" <<<"$text"; then
++  elif grep -Eq "${PUSH}((.*$W)?--force|(.*[[:space:]:])?\\+)" <<<"$text"; then
+=== g-drop-plus-refspec
+--- hook
++++ g-drop-plus-refspec
+@@ -50 +50 @@
+-  elif grep -Eq "${PUSH}((.*$W)?--force|(.*[[:space:]])?-[[:alpha:]]*f|(.*[[:space:]:])?\\+)" <<<"$text"; then
++  elif grep -Eq "${PUSH}((.*$W)?--force|(.*[[:space:]])?-[[:alpha:]]*f)" <<<"$text"; then
+=== h-drop-force-long
+--- hook
++++ h-drop-force-long
+@@ -50 +50 @@
+-  elif grep -Eq "${PUSH}((.*$W)?--force|(.*[[:space:]])?-[[:alpha:]]*f|(.*[[:space:]:])?\\+)" <<<"$text"; then
++  elif grep -Eq "${PUSH}((.*[[:space:]])?-[[:alpha:]]*f|(.*[[:space:]:])?\\+)" <<<"$text"; then
+=== i-break-jq-filter
+--- hook
++++ i-break-jq-filter
+@@ -18 +18 @@
+-if ! text="$(printf '%s' "$input" | jq -r '.tool_input.command // .toolInput.command // .tool_input.cmd // empty' 2>/dev/null)"; then
++if ! text="$(printf '%s' "$input" | jq -r '.tool_input.commandx // .toolInput.command // .tool_input.cmd // empty' 2>/dev/null)"; then
+=== j-head-to-tail
+--- hook
++++ j-head-to-tail
+@@ -25 +25 @@
+-        head -n 1 |
++        tail -n 1 |
+=== k-drop-json-newline
+--- hook
++++ k-drop-json-newline
+@@ -27 +27 @@
+-            -e 's/\\\\/\x01/g' -e 's/\\n/\n/g' -e 's/\\t/ /g' -e 's/\x01/\\/g')" ;;
++            -e 's/\\\\/\x01/g' -e 's/\\t/ /g' -e 's/\x01/\\/g')" ;;
+=== l-drop-empty-exit
+--- hook
++++ l-drop-empty-exit
+@@ -31 +31 @@
+-[ -n "$text" ] || exit 0
++:
+=== m-drop-am
+--- hook
++++ m-drop-am
+@@ -43 +43 @@
+-     grep -Eq "(^|$W)(commit|push|merge|cherry-pick|am|rebase|revert)($W|\$)" <<<"$text"; then
++     grep -Eq "(^|$W)(commit|push|merge|cherry-pick|rebase|revert)($W|\$)" <<<"$text"; then
+=== n-drop-mirror-all
+--- hook
++++ n-drop-mirror-all
+@@ -48 +48 @@
+-  if grep -Eq "${PUSH}((.*$W)?((main|master)($W|\$)|--mirror|--all))" <<<"$text"; then
++  if grep -Eq "${PUSH}((.*$W)?((main|master)($W|\$)))" <<<"$text"; then
+
+## mut.py
+import os, shutil, difflib, hashlib, sys
+R = r"C:\repos\Knowledge-engine"
+OUT = sys.argv[1]
+B = chr(92)
+H = os.path.join(R, "scripts", "hooks", "block-main-commit.sh")
+orig = open(H, "rb").read().decode()
+muts = {
+ "a-drop-lowercase": (" | tr '[:upper:]' '[:lower:]'", ""),
+ "b-drop-backslash-delete": ('tr -d "' + B + '"' + "'" + B*4 + '"', 'tr -d "' + B + '"' + "'" + '"'),
+ "c-drop-main-master": ("((main|master)($W|" + B + "$)|--mirror|--all)", "(--mirror|--all)"),
+ "d-drop-on-main-rule": ('if [ "$branch" = "main" ] || [ "$branch" = "master" ]; then', "if false; then"),
+ "e-drop-continuation-join": ("sed -z 's/" + B*3 + "n/ /g' | ", ""),
+ "f-drop-short-f-cluster": ("|(.*[[:space:]])?-[[:alpha:]]*f", ""),
+ "g-drop-plus-refspec": ("|(.*[[:space:]:])?" + B*2 + "+", ""),
+ "h-drop-force-long": ("(.*$W)?--force|", ""),
+ "i-break-jq-filter": (".tool_input.command //", ".tool_input.commandx //"),
+ "j-head-to-tail": ("head -n 1", "tail -n 1"),
+ "k-drop-json-newline": (" -e 's/" + B*2 + "n/" + B + "n/g'", ""),
+ "l-drop-empty-exit": ('[ -n "$text" ] || exit 0', ":"),
+ "m-drop-am": ("|am|", "|"),
+ "n-drop-mirror-all": ("|--mirror|--all", ""),
+}
+os.makedirs(OUT, exist_ok=True)
+with open(os.path.join(OUT, "diffs.txt"), "w", newline="\n") as dl:
+    for name, (old, new) in [("base", ("", ""))] + list(muts.items()):
+        d = os.path.join(OUT, name)
+        shutil.rmtree(d, ignore_errors=True)
+        os.makedirs(os.path.join(d, "scripts", "hooks")); os.makedirs(os.path.join(d, "tests")); os.makedirs(os.path.join(d, "docker"))
+        if name != "base":
+            assert orig.count(old) == 1, name + " target count %d" % orig.count(old)
+            m = orig.replace(old, new, 1)
+        else:
+            m = orig
+        open(os.path.join(d, "scripts", "hooks", "block-main-commit.sh"), "w", newline="\n").write(m)
+        shutil.copy(os.path.join(R, "tests", "test_block_main_commit_hook.py"), os.path.join(d, "tests"))
+        open(os.path.join(d, "tests", "__init__.py"), "w").close()
+        shutil.copy(os.path.join(R, "docker", "gates.Dockerfile"), os.path.join(d, "docker"))
+        diff = "".join(difflib.unified_diff(orig.splitlines(True), m.splitlines(True), "hook", name, n=0))
+        dl.write("=== " + name + "\n" + (diff or "(identical to live hook)\n"))
+print("sha256 live hook:", hashlib.sha256(orig.encode()).hexdigest())
+
+## mutrun.sh
+#!/usr/bin/env bash
+gc=gi; gc=${gc}t; $gc config --global user.email a@b; $gc config --global user.name a
+for d in /m/*/; do n=$(basename $d)
+  out=$(cd /tmp && rm -rf t && cp -r $d t && cd t && python3 -m unittest tests.test_block_main_commit_hook 2>&1)
+  printf '%-26s %s | %s\n' "$n" "$(echo "$out" | grep -E '^(OK|FAILED)' | tail -1)" "$(echo "$out" | grep -oE '^(FAIL|ERROR): test_[a-z_0-9]+' | sort | uniq -c | tr '\n' ';' | tr -s ' ')"
+done

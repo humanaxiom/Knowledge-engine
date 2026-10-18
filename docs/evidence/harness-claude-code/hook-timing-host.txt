@@ -1,0 +1,4 @@
+jq on host: none
+400 segments, compact JSON, branch agent/x
+output: []
+elapsed seconds: 0.229097

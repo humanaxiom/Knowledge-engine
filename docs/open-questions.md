@@ -10,19 +10,30 @@ answer it. Answer by number; anything left unanswered stands as assumed.
   not created from the template. **A1:** the `monitored-harness` template (commit
   `9abb753`) was imported verbatim as the first commit (`119aca7`).
 - **Q2. Branches and pushing.** The prompt says pushing and PRs need your
-  approval, and plan items go on `agent/<slug>`. This cloud session is assigned
-  the branch `ccr-19465ed4-j1u0m5` and is reclaimed when idle, so unpushed work
-  is lost. **A2:** the planning documents are pushed to `ccr-19465ed4-j1u0m5`
-  only, so they survive. Each plan item is then built on a local
-  `agent/<slug>` branch, and nothing goes to `agent/*` on the remote, and no PR
+  approval, and plan items go on `agent/<slug>`. The cloud session that started
+  this work was assigned the branch `ccr-19465ed4-j1u0m5`, which is still the
+  only branch on the remote. Since 2026-10-18 the work runs in your local clone,
+  so idle reclamation no longer applies. **A2:** the planning documents are on
+  `ccr-19465ed4-j1u0m5`. Each plan item is built on a local `agent/<slug>`
+  branch, and nothing is pushed (to `agent/*` or any other branch), and no PR
   is opened, without your explicit go-ahead.
-- **Q3. No Docker daemon in this cloud session.** The Docker CLI is installed
+- **Q3. Resolved 2026-10-18.** The work moved to your local clone on Windows,
+  where Docker 29.5.2 runs, and every gate now runs locally through
+  `scripts/verify.sh` (evidence:
+  `docs/evidence/harness-claude-code/green-full.txt`). Original question, kept
+  for the record: *No Docker daemon in this cloud session.* The Docker CLI is installed
   but `/var/run/docker.sock` is absent. Every gate must run inside Docker, and
   item 0 is not done until `scripts/verify.sh` has run in every mode on a clean
   checkout. **A3:** gates are proven in GitHub Actions (which has Docker) and on
   your machine, and the evidence files say which. Nothing is reported green here
   that ran outside Docker. If you can enable Docker for this environment, say so.
 - **Q4. Iteration cap.** **A4:** 5 per fix-and-retest loop, as in `AGENTS.md`.
+- **Q18. Branch protection on `main`.** Is branch protection enabled on `main` in
+  `humanaxiom/Knowledge-engine`? The local hook (`block-main-commit.sh`,
+  harness-claude-code criterion 4) is only a guard rail against agent mistakes
+  and can be bypassed; branch protection is the real control (security M1).
+  **A18:** not verified from here. Recommend enabling it: require a PR to merge
+  into `main` and block force pushes.
 
 ## Deployment
 

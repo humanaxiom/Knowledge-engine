@@ -4,6 +4,32 @@ Maintained by the `marketer` agent. Follows a Keep a Changelog style.
 
 ## [Unreleased]
 
+### 2026-10-18
+
+**Added:**
+- Claude Code support. `CLAUDE.md` makes the orchestrator, `.claude/agents/`
+  holds the eight role subagents, and `scripts/verify.sh [fast|full]` is the
+  single verification entry point. It re-runs inside a `gates` container with
+  networking disabled. CI calls only `./scripts/verify.sh full`.
+
+**Changed:**
+- `AGENTS.md` names `scripts/verify.sh` as the only verification command.
+
+**Fixed:**
+- Shell scripts are forced to LF (`.gitattributes`). CRLF checkouts on
+  Windows broke them inside the gates container.
+- Gates run offline (`UV_OFFLINE=1`). A stale uv cache previously sent
+  `uv run` to PyPI, which fails without network.
+
+**Security:**
+- The commit hook (`scripts/hooks/block-main-commit.sh`) no longer prints
+  `allow`. That output auto-approved every Bash call in Claude Code.
+- The hook also denies pushes that name main/master, force pushes, and
+  `--all`/`--mirror`, from any branch. It works without jq.
+- It is a text-matching guard rail, not a boundary, and it has known bypasses
+  (see ADR-KE-001). Enable branch protection on the remote.
+- Gate base images are pinned by digest. `actions/checkout` is pinned by SHA.
+
 ### Added
 - Arize Phoenix observability: every agent action logged through
   `harness_telemetry.log_event` is also traced, grouped per plan item in
