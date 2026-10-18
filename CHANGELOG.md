@@ -14,20 +14,31 @@ Maintained by the `marketer` agent. Follows a Keep a Changelog style.
 
 **Changed:**
 - `AGENTS.md` names `scripts/verify.sh` as the only verification command.
+- CI runs on `ubuntu-24.04`. `actions/checkout` is pinned by SHA
+  (v5.1.0) and does not persist credentials.
+- `scripts/verify.sh` fails unless at least one test ran and the top-level
+  sentinel test reported ok.
+- `scripts/test.sh` runs integration tests only in `full`, finds tests at any
+  depth, and fails loudly on a test directory without `__init__.py`.
 
 **Fixed:**
 - Shell scripts are forced to LF (`.gitattributes`). CRLF checkouts on
   Windows broke them inside the gates container.
 - Gates run offline (`UV_OFFLINE=1`). A stale uv cache previously sent
   `uv run` to PyPI, which fails without network.
+- The integration suite ran twice.
+- Unit tests could silently stop running.
 
 **Security:**
 - The commit hook (`scripts/hooks/block-main-commit.sh`) no longer prints
   `allow`. That output auto-approved every Bash call in Claude Code.
 - The hook also denies pushes that name main/master, force pushes, and
   `--all`/`--mirror`, from any branch. It works without jq.
-- It is a text-matching guard rail, not a boundary, and it has known bypasses
-  (see ADR-KE-001). Enable branch protection on the remote.
+- The hook now handles carriage returns and backslash-newline continuations
+  the way bash does. Command shapes that previously slipped through are denied.
+- It is still a guard rail, not a boundary, and it has known bypasses
+  (see ADR-KE-001). Branch protection is the real control. Enable it on the
+  remote.
 - Gate base images are pinned by digest. `actions/checkout` is pinned by SHA.
 
 ### Added

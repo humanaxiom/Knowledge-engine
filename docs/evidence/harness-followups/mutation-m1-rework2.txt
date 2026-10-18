@@ -1,0 +1,24 @@
+mutation m1: deleted top-level unit run line from scripts/test.sh; before sha256=057e4682c7ae3df52b5dec0133331d680105c38365141282eed77929f96b1420
+1
+#14 CACHED
+
+#15 exporting to image
+#15 exporting layers done
+#15 exporting manifest sha256:e7a2ae7d03859dfc226941bba538fe65aba8fea97bd3727fd5cb82f524943ee8 done
+#15 exporting config sha256:4ed1e2e0afabd9703b35490e89ec81b34274900b6d27cf8f9432b1cf3ff221e2 done
+#15 exporting attestation manifest sha256:304bd73f556370df83da4e142d398cc2136d7a27fbc052c42db502e3d87c716c 0.0s done
+#15 exporting manifest list sha256:3d975f0ab2f8d73b7919f717eed6be0901941ab3ffc371f2750cffba82e43a8c 0.0s done
+#15 naming to docker.io/library/knowledge-engine-gates:latest done
+#15 unpacking to docker.io/library/knowledge-engine-gates:latest done
+#15 DONE 0.1s
+
+#16 resolving provenance for metadata file
+#16 DONE 0.0s
+ Image knowledge-engine-gates Built 
+ Container knowledge-engine-gates-run-1dd272631c6a Creating 
+ Container knowledge-engine-gates-run-1dd272631c6a Created 
+== verify fast: a11842d+dirty ==
+verify fast: FAIL (no Ran N tests line with N > 0 in the test output)
+
+verify rc=1
+restored sha256=057e4682c7ae3df52b5dec0133331d680105c38365141282eed77929f96b1420 match=yes

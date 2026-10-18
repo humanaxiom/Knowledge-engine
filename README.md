@@ -55,6 +55,18 @@ It needs Docker (on Windows, run it from Git Bash). It builds the `gates`
 image from `docker/gates.Dockerfile` and runs the gate scripts inside it with
 networking disabled. See [CLAUDE.md](CLAUDE.md) for which run a change needs.
 
+Guards that make a green run mean something:
+
+- `verify.sh` fails unless the test run reports at least one test and includes
+  the sentinel test in `tests/test_sentinel.py`. Keep that file top-level and
+  leave its module, class and method names unchanged; renaming any of them
+  turns every run red. A test enforces this.
+- `scripts/test.sh` fails loudly if a test directory has test files but no
+  `__init__.py` (its tests would otherwise be skipped silently).
+  `tests/integration/` runs only in `full`.
+- CI runs on `ubuntu-24.04`, with the checkout action pinned to a commit SHA
+  and credentials not persisted.
+
 ## Tracing your own agents
 
 ```python

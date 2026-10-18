@@ -1,0 +1,329 @@
+# Reviewer rework-4 raw output (2026-10-18). Repo scripts never edited. sha256 at review: hook 4f7d313e..., verify.sh ab9ef8b0..., test.sh 057e4682... (unchanged since rework 2), ci.yml b1a3e54c... (unchanged since rework 3), tests/test_block_main_commit_hook.py 9156b0ce..., tests/test_harness_followups.py 66ba4d87..., tests/test_sentinel.py 1fb16a81.... Scratch copies deleted afterwards.
+
+## 1. Hook probes: base a11842d (old) vs working tree (new). Payload files written by python json.dumps (compact), piped to the hook on stdin in a throwaway repo (branch via symbolic-ref).
+## Modes: jq = gates image jq 1.6; nojq = gates image with jq shadowed by a stub exiting 127; host = Windows Git Bash, no jq. Shapes: section 5 below (python literals; B = backslash, N = newline, BN = B+N, G = git, P = push).
+row                  branch   | jq old/new      | nojq old/new    | host old/new   
+M01                  main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+M02                  main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+M03                  main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+M04                  main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+M05                  main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+M06                  main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+M07                  main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+M08                  main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+M09                  main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+M10                  main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+M11                  main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+M12                  main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+M13                  main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+M14                  main     | silent/silent   | silent/silent   | silent/silent  
+M15                  main     | silent/silent   | silent/silent   | silent/silent  
+M16                  main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+benign-cont          main     | silent/silent   | silent/silent   | silent/silent  
+benign-ls            main     | silent/silent   | silent/silent   | silent/silent  
+benign               main     | silent/silent   | silent/silent   | silent/silent  
+comment-bs           main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+commit-cont          main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+commit-glued         main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+cont-gitpush-glued   main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+cont-gitword-split   main     | silent/DENY     | silent/DENY     | silent/DENY    
+cont-mid-word        main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+cont-originmain      main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+cont-push-main       main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+cont-space-before    main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+cr-literal           main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+cr-sep               main     | DENY/silent     | silent/silent   | silent/silent  
+crlf-cont            main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+even-run2            main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+even-run4            main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+feature-main-suffix  main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+force-cont           main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+forcef-cont          main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+fp-ls-comment        main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+ml-echo-main         main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+ml-heredoc           main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+ml-push-then-log     main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+odd-run3             main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+plan-item-cont       main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+plus-cont            main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+q1                   main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+q2                   main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+refspec-head         main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+sq-literal           main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+winpath-comment      main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+x-bn-main            main     | DENY/DENY       | DENY/DENY       | DENY/DENY      
+M01                  agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+M02                  agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+M03                  agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+M04                  agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+M05                  agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+M06                  agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+M07                  agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+M08                  agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+M09                  agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+M10                  agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+M11                  agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+M12                  agent/x  | silent/silent   | silent/silent   | silent/silent  
+M13                  agent/x  | silent/silent   | silent/silent   | silent/silent  
+M14                  agent/x  | silent/silent   | silent/silent   | silent/silent  
+M15                  agent/x  | silent/silent   | silent/silent   | silent/silent  
+M16                  agent/x  | silent/silent   | silent/silent   | silent/silent  
+benign-cont          agent/x  | silent/silent   | silent/silent   | silent/silent  
+benign-ls            agent/x  | silent/silent   | silent/silent   | silent/silent  
+benign               agent/x  | silent/silent   | silent/silent   | silent/silent  
+comment-bs           agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+commit-cont          agent/x  | silent/silent   | silent/silent   | silent/silent  
+commit-glued         agent/x  | silent/silent   | silent/silent   | silent/silent  
+cont-gitpush-glued   agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+cont-gitword-split   agent/x  | silent/DENY     | silent/DENY     | silent/DENY    
+cont-mid-word        agent/x  | silent/DENY     | silent/DENY     | silent/DENY    
+cont-originmain      agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+cont-push-main       agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+cont-space-before    agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+cr-literal           agent/x  | DENY/DENY       | silent/DENY     | silent/DENY    
+cr-sep               agent/x  | DENY/silent     | silent/silent   | silent/silent  
+crlf-cont            agent/x  | silent/DENY     | silent/DENY     | silent/DENY    
+even-run2            agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+even-run4            agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+feature-main-suffix  agent/x  | silent/silent   | silent/silent   | silent/silent  
+force-cont           agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+forcef-cont          agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+fp-ls-comment        agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+ml-echo-main         agent/x  | silent/silent   | silent/silent   | silent/silent  
+ml-heredoc           agent/x  | silent/silent   | silent/silent   | silent/silent  
+ml-push-then-log     agent/x  | silent/silent   | silent/silent   | silent/silent  
+odd-run3             agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+plan-item-cont       agent/x  | silent/silent   | silent/silent   | silent/silent  
+plus-cont            agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+q1                   agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+q2                   agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+refspec-head         agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+sq-literal           agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+winpath-comment      agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+x-bn-main            agent/x  | DENY/DENY       | DENY/DENY       | DENY/DENY      
+
+## 2. Sentinel mutants and forging cases (scratch copy, image knowledge-engine-gates:latest, --network none, KE_IN_GATES=1, scripts/verify.sh fast)
+=== s0
+== verify fast: no-git+dirty ==
+Ran 97 tests in 15.685s
+OK
+== verify fast: PASS ==
+test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok
+rc=0
+=== s1
+1
+== verify fast: no-git+dirty ==
+  test_ran_without_sentinel_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_ran_without_sentinel_fails) (mode='fast') ... FAIL
+  test_ran_without_sentinel_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_ran_without_sentinel_fails) (mode='full') ... FAIL
+  test_sentinel_name_in_other_module_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_name_in_other_module_fails) (mode='fast') ... FAIL
+  test_sentinel_name_in_other_module_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_name_in_other_module_fails) (mode='full') ... FAIL
+  test_sentinel_text_in_skip_reason_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_text_in_skip_reason_fails) (shape='other test, reason quotes sentinel', mode='fast') ... FAIL
+  test_sentinel_text_in_skip_reason_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_text_in_skip_reason_fails) (shape='other test, reason quotes sentinel', mode='full') ... FAIL
+  test_sentinel_text_in_skip_reason_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_text_in_skip_reason_fails) (shape='sentinel skipped, reason has ok', mode='fast') ... FAIL
+  test_sentinel_text_in_skip_reason_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_text_in_skip_reason_fails) (shape='sentinel skipped, reason has ok', mode='full') ... FAIL
+FAIL: test_ran_without_sentinel_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_ran_without_sentinel_fails) (mode='fast')
+  File "/work/tests/test_harness_followups.py", line 328, in test_ran_without_sentinel_fails
+Ran 1 test in 0.001s
+OK
+== verify fast: PASS ==
+FAIL: test_ran_without_sentinel_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_ran_without_sentinel_fails) (mode='full')
+  File "/work/tests/test_harness_followups.py", line 328, in test_ran_without_sentinel_fails
+Ran 1 test in 0.001s
+OK
+== verify full: PASS ==
+FAIL: test_sentinel_name_in_other_module_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_name_in_other_module_fails) (mode='fast')
+  File "/work/tests/test_harness_followups.py", line 351, in test_sentinel_name_in_other_module_fails
+Ran 1 test in 0.001s
+OK
+== verify fast: PASS ==
+FAIL: test_sentinel_name_in_other_module_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_name_in_other_module_fails) (mode='full')
+  File "/work/tests/test_harness_followups.py", line 351, in test_sentinel_name_in_other_module_fails
+Ran 1 test in 0.001s
+OK
+== verify full: PASS ==
+FAIL: test_sentinel_text_in_skip_reason_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_text_in_skip_reason_fails) (shape='other test, reason quotes sentinel', mode='fast')
+  File "/work/tests/test_harness_followups.py", line 369, in test_sentinel_text_in_skip_reason_fails
+Ran 1 test in 0.001s
+OK (skipped=1)
+== verify fast: PASS ==
+FAIL: test_sentinel_text_in_skip_reason_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_text_in_skip_reason_fails) (shape='other test, reason quotes sentinel', mode='full')
+  File "/work/tests/test_harness_followups.py", line 369, in test_sentinel_text_in_skip_reason_fails
+Ran 1 test in 0.001s
+OK (skipped=1)
+== verify full: PASS ==
+FAIL: test_sentinel_text_in_skip_reason_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_text_in_skip_reason_fails) (shape='sentinel skipped, reason has ok', mode='fast')
+  File "/work/tests/test_harness_followups.py", line 369, in test_sentinel_text_in_skip_reason_fails
+Ran 1 test in 0.001s
+OK (skipped=1)
+== verify fast: PASS ==
+FAIL: test_sentinel_text_in_skip_reason_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_text_in_skip_reason_fails) (shape='sentinel skipped, reason has ok', mode='full')
+  File "/work/tests/test_harness_followups.py", line 369, in test_sentinel_text_in_skip_reason_fails
+Ran 1 test in 0.001s
+OK (skipped=1)
+== verify full: PASS ==
+Ran 97 tests in 16.146s
+FAILED (failures=8)
+verify fast: FAIL (test.sh exited non-zero)
+test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok
+test_top_level_unit_suite_ran (tests.unit.test_x.T.test_top_level_unit_suite_ran) ... ok
+test_top_level_unit_suite_ran (tests.unit.test_x.T.test_top_level_unit_suite_ran) ... ok
+test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... skipped 'not ok'
+test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... skipped 'not ok'
+rc=1
+=== s2
+0
+== verify fast: no-git+dirty ==
+Ran 2 tests in 0.000s
+OK
+verify fast: FAIL (sentinel test_top_level_unit_suite_ran did not report ok: the top-level unit suite did not run)
+test_top_level_unit_suite_ran (tests.unit.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok
+rc=1
+=== s3
+== verify fast: no-git+dirty ==
+Ran 97 tests in 16.225s
+OK (skipped=1)
+verify fast: FAIL (sentinel test_top_level_unit_suite_ran did not report ok: the top-level unit suite did not run)
+test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... skipped 'x'
+rc=1
+=== s3b
+== verify fast: no-git+dirty ==
+Ran 97 tests in 15.913s
+OK (skipped=1)
+verify fast: FAIL (sentinel test_top_level_unit_suite_ran did not report ok: the top-level unit suite did not run)
+test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... skipped '... ok'
+rc=1
+=== s4
+== verify fast: no-git+dirty ==
+FAIL: test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran)
+  File "/work/tests/test_sentinel.py", line 15, in test_top_level_unit_suite_ran
+Ran 97 tests in 16.076s
+FAILED (failures=1)
+verify fast: FAIL (test.sh exited non-zero)
+test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... FAIL
+rc=1
+=== s5
+== verify fast: no-git+dirty ==
+Ran 96 tests in 15.641s
+OK
+verify fast: FAIL (sentinel test_top_level_unit_suite_ran did not report ok: the top-level unit suite did not run)
+rc=1
+=== s6
+0
+== verify fast: no-git+dirty ==
+Ran 2 tests in 0.000s
+OK
+verify fast: FAIL (sentinel test_top_level_unit_suite_ran did not report ok: the top-level unit suite did not run)
+test_top_level_unit_suite_ran (tests.unit.test_forge.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok
+rc=1
+=== s8
+27:for f in tests/test_sent*.py; do
+== verify fast: no-git+dirty ==
+Ran 1 test in 0.000s
+OK
+== verify fast: PASS ==
+test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok
+rc=0
+=== s9
+36:uv run --locked python -m unittest -v "$mods"
+== verify fast: no-git+dirty ==
+Ran 45 tests in 15.358s
+OK
+verify fast: FAIL (sentinel test_top_level_unit_suite_ran did not report ok: the top-level unit suite did not run)
+rc=1
+=== s7 (re-run, fixture fixed: skip reason starts with a newline then the full sentinel line; m1 + tests/unit)
+== verify fast: no-git+dirty ==
+test_s (tests.unit.test_skip.S.test_s) ... skipped '\ntest_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok'
+Ran 2 tests in 0.000s
+OK (skipped=1)
+verify fast: FAIL (sentinel test_top_level_unit_suite_ran did not report ok: the top-level unit suite did not run)
+rc=1
+=== f3 (m1 + tests/unit test that writes newline + exact sentinel line + newline to stderr)
+== verify fast: no-git+dirty ==
+test_p (tests.unit.test_print.P.test_p) ... 
+test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok
+Ran 2 tests in 0.000s
+OK
+== verify fast: PASS ==
+rc=0
+=== f4 (m1 + tests/unit test skipped with reason = full sentinel line)
+== verify fast: no-git+dirty ==
+test_s (tests.unit.test_skip.S.test_s) ... skipped 'test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok'
+Ran 2 tests in 0.000s
+OK (skipped=1)
+verify fast: FAIL (sentinel test_top_level_unit_suite_ran did not report ok: the top-level unit suite did not run)
+rc=1
+
+## 3. Hook test mutants (uv run --locked python -m unittest tests.test_block_main_commit_hook, gates image)
+# hA: text (b) back to newline (rework-3 shape); hB: L21 guard removed (text b always built)
+     12 FAIL: test_comment_or_even_run_then_continued_push_denies_off_main (mode='jq', 
+     12 FAIL: test_comment_or_even_run_then_continued_push_denies_off_main (mode='no-jq', 
+      1 FAILED (failures=24)
+      1 Ran 45 tests in 15.408s
+      1 OK
+      1 Ran 45 tests in 17.374s
+
+## 4. verify.sh sentinel pipeline under set -euo pipefail (gates image): log = 200 ok lines + sentinel + N bytes after, 10 runs each
+bytes-after-sentinel=0 size=7712: PASS PASS PASS PASS PASS PASS PASS PASS PASS PASS
+bytes-after-sentinel=4000 size=11761: PASS PASS PASS PASS PASS PASS PASS PASS PASS PASS
+bytes-after-sentinel=20000 size=27961: PASS PASS PASS PASS PASS PASS PASS PASS PASS PASS
+bytes-after-sentinel=60000 size=68461: FAIL PASS PASS PASS PASS PASS PASS PASS PASS PASS
+bytes-after-sentinel=70000 size=78586: PASS PASS PASS PASS PASS PASS PASS FAIL PASS FAIL
+bytes-after-sentinel=200000 size=210211: FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL
+bytes-after-sentinel=1000000 size=1020211: FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL FAIL
+# Cause: grep -q exits on the first match; tr then gets SIGPIPE (141) and pipefail makes the pipeline non-zero, so `if ! ...` reports a missing sentinel.
+
+## 5. Probe shapes (from the generator)
+rows = [
+ # rework-3 probe set (reconstructed)
+ ("cont-push-main",      f"{G} {P} {BN}origin main"),
+ ("cont-mid-word",       f"{G} {P} origin ma{BN}in"),
+ ("cont-originmain",     f"{G} {P} origin{BN}main"),
+ ("cont-gitpush-glued",  f"{G}{BN}{P} origin main"),
+ ("cont-space-before",   f"{G} {P} {BN}  origin main"),
+ ("comment-bs",          f"#x{BN}{G} {P} origin main"),
+ ("winpath-comment",     f"# push from C:{B}repo{BN}{G} {P} origin main"),
+ ("even-run2",           f"echo a{B}{BN}{G} {P} origin main"),
+ ("even-run4",           f"echo a{B*3}{BN}{G} {P} origin main"),
+ ("odd-run3",            f"echo a{B*2}{BN}{G} {P} origin main"),
+ ("crlf-cont",           f"{G} {P} {B}\r{N}origin main"),
+ ("cr-literal",          f"{G} {P} origin main\r"),
+ ("cr-sep",              f"{G}\r{P} origin main"),
+ ("force-cont",          f"{G} {P} {BN}--force"),
+ ("forcef-cont",         f"{G} {P} {BN}-f origin x"),
+ ("plus-cont",           f"{G} {P} origin {BN}+x"),
+ ("refspec-head",        f"{G} {P} origin {BN}HEAD:main"),
+ ("benign",              f"{G} status"),
+ ("benign-cont",         f"{G} log {BN}--oneline"),
+ ("benign-ls",           f"ls {BN}-la"),
+ ("sq-literal",          f"echo 'a{BN}' && {G} {P} origin agent/x{BN}main"),
+ ("commit-cont",         f"{G} {BN}commit -m x"),
+ ("commit-glued",        f"{G}{BN}commit -m x"),
+ ("cont-gitword-split",  f"gi{BN}t {P} origin main"),
+ ("fp-ls-comment",       f"ls # {G} {P} origin main"),
+ ("feature-main-suffix", f"{G} {P} origin feature-main"),
+ ("plan-item-cont",      f"{G} {P} {BN}origin agent/x"),
+ ("x-bn-main",           f"{G} {P} origin x{BN}main"),
+ # N14: multi-line without backslash-newline
+ ("ml-push-then-log",    f"{G} {P} origin agent/x{N}{G} log main"),
+ ("ml-echo-main",        f"echo main{N}{G} {P} origin agent/x"),
+ ("ml-heredoc",          f"cat <<E{N}main --force{N}E{N}{G} {P} origin agent/x"),
+ # security Table M rows 1-16
+ ("M01", f"#x{BN}{G} {P} {BN}origin main"),
+ ("M02", f"#x{BN}{G} {P} origin {BN}main"),
+ ("M03", f"#x{BN}{G} {P} {BN}  origin main"),
+ ("M04", f"#x{BN}{G} {P} {BN}-f origin x"),
+ ("M05", f"#x{BN}{G} {P} {BN}--force"),
+ ("M06", f"#x{BN}{G} {P} {BN}--all"),
+ ("M07", f"#x{BN}{G} {P} origin {BN}HEAD:main"),
+ ("M08", f"# push from C:{B}repo{BN}{G} {P} {BN}  origin main"),
+ ("M09", f"echo a{B}{BN}{G} {P} {BN}origin main"),
+ ("M10", f"#x{BN}{G} {BN}{P} origin main"),
+ ("M11", f"{G} {P} {BN}origin main #x{BN}ls"),
+ ("M12", f"{G} {P} {BN}origin agent/x"),
+ ("M13", f"#x{BN}{G} {BN}commit -m x"),
+ ("M14", f"#x{BN}{G} commi{BN}t -m x"),
+ ("M15", f"#x{BN}gi{BN}t commit -m x"),
+ ("M16", f"# C:{B}a{BN}{G} {BN}  commit -m x"),
+ ("q1",  f"#x{BN}{G} {P} {BN}origin HEAD:main"),
+ ("q2",  f"# push from C:{B}repo{BN}{G} {P} {BN}  origin HEAD:main"),
+]

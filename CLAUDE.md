@@ -89,6 +89,14 @@ register, `docs/register.md`, arriving with `policy-book`).
 - **Deployable without the assistant.** Every feature ships through the
   build/launch/teardown scripts and the offline install bundle, and the
   "deployable offline" CI gate proves it.
+- **Verify has a sentinel.** `scripts/verify.sh` fails unless the test run
+  reports at least one test and includes the top-level sentinel test in
+  `tests/test_sentinel.py`. Its module, class and method names must stay
+  top-level and unchanged; renaming or moving any of them turns every verify
+  run red. A test enforces this. A test directory without `__init__.py` also
+  fails the run, and the integration suite runs only in `full`. CI is pinned
+  to `ubuntu-24.04`, with the checkout action pinned to a SHA and no
+  persisted credentials.
 - **Docs never restate live counts.** One live page computes counts from the
   database. Docs point to it, or to a dated findings file that names its query.
 - **Handoff docs stay under 200 lines** and forward-looking; history moves to

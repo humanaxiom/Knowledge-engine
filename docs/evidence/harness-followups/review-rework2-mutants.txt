@@ -1,0 +1,188 @@
+# Reviewer rework-2 mutants. Scratch copy of the repo, gates image knowledge-engine-gates run with --network none, verify.sh <mode> inside (KE_IN_GATES=1). Each section: grep of key lines, then the last 6 raw lines.
+
+=== m0-fast
+Ran 82 tests in 6.730s
+OK
+== verify fast: PASS ==
+--- tail
+----------------------------------------------------------------------
+Ran 82 tests in 6.730s
+
+OK
+== verify fast: PASS ==
+rc=0
+
+=== m1-fast
+verify fast: FAIL (no Ran N tests line with N > 0 in the test output)
+--- tail
+== verify fast: a11842d+dirty ==
+verify fast: FAIL (no Ran N tests line with N > 0 in the test output)
+rc=1
+
+=== m1-full
+verify full: FAIL (no Ran N tests line with N > 0 in the test output)
+--- tail
+== verify full: a11842d+dirty ==
+verify full: FAIL (no Ran N tests line with N > 0 in the test output)
+rc=1
+
+=== m2-fast
+FAIL: test_helper_package_without_tests_passes (tests.test_harness_followups.IntegrationRunsOnceTest.test_helper_package_without_tests_passes) (mode='full')
+FAIL: test_package_with_only_nested_tests_runs_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_package_with_only_nested_tests_runs_once) (mode='fast')
+FAIL: test_package_with_only_nested_tests_runs_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_package_with_only_nested_tests_runs_once) (mode='full')
+FAIL: test_unit_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_tests_run_once) (mode='fast', label='sub')
+FAIL: test_unit_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_tests_run_once) (mode='fast', label='deep')
+FAIL: test_unit_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_tests_run_once) (mode='full', label='sub')
+FAIL: test_unit_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_tests_run_once) (mode='full', label='deep')
+Ran 82 tests in 6.489s
+FAILED (failures=8)
+verify fast: FAIL (test.sh exited non-zero)
+--- tail
+----------------------------------------------------------------------
+Ran 82 tests in 6.489s
+
+FAILED (failures=8)
+verify fast: FAIL (test.sh exited non-zero)
+rc=1
+
+=== m3-fast
+  test_unit_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_tests_run_once) (mode='fast', label='testfoo') ... FAIL
+  test_unit_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_tests_run_once) (mode='full', label='testfoo') ... FAIL
+FAIL: test_unit_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_tests_run_once) (mode='fast', label='testfoo')
+FAIL: test_unit_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_tests_run_once) (mode='full', label='testfoo')
+Ran 82 tests in 6.655s
+FAILED (failures=2)
+verify fast: FAIL (test.sh exited non-zero)
+--- tail
+----------------------------------------------------------------------
+Ran 82 tests in 6.655s
+
+FAILED (failures=2)
+verify fast: FAIL (test.sh exited non-zero)
+rc=1
+
+=== m4-baseline-fast
+(scratch adds tests/unit/{__init__,test_dummy}.py, 1 test)
+Ran 82 tests in 6.829s
+OK
+Ran 1 test in 0.000s
+OK
+== verify fast: PASS ==
+--- tail
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+== verify fast: PASS ==
+rc=0
+
+=== m4-fast
+(scratch adds tests/unit/{__init__,test_dummy}.py, 1 test)
+Ran 1 test in 0.000s
+OK
+== verify fast: PASS ==
+--- tail
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+== verify fast: PASS ==
+rc=0
+
+=== m7-full
+(scratch adds tests/integration/{__init__,test_int}.py, 1 test)
+Ran 1 test in 0.000s
+OK
+smoke: pass (4 spans exported)
+== verify full: PASS ==
+--- tail
+
+OK
+Based on the graph, Project X needs Component Y.
+smoke: pass (4 spans exported)
+== verify full: PASS ==
+rc=0
+
+=== m7-fast
+(scratch adds tests/integration/{__init__,test_int}.py, 1 test)
+verify fast: FAIL (no Ran N tests line with N > 0 in the test output)
+--- tail
+== verify fast: a11842d+dirty ==
+verify fast: FAIL (no Ran N tests line with N > 0 in the test output)
+rc=1
+
+=== m5-fast
+OK
+== verify fast: PASS ==
+FAIL: test_ran_zero_tests_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_ran_zero_tests_fails) (mode='full')
+Ran 0 tests in 0.000s
+OK
+fake smoke: ok
+== verify full: PASS ==
+Ran 82 tests in 6.756s
+FAILED (failures=4)
+verify fast: FAIL (test.sh exited non-zero)
+--- tail
+----------------------------------------------------------------------
+Ran 82 tests in 6.756s
+
+FAILED (failures=4)
+verify fast: FAIL (test.sh exited non-zero)
+rc=1
+
+=== m6-fast
+test_failing_test_sh_still_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_failing_test_sh_still_fails) ... FAIL
+FAIL: test_failing_test_sh_still_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_failing_test_sh_still_fails)
+Ran 3 tests in 0.001s
+FAILED (failures=1)
+== verify fast: PASS ==
+Ran 82 tests in 6.908s
+FAILED (failures=1)
+== verify fast: PASS ==
+--- tail
+----------------------------------------------------------------------
+Ran 82 tests in 6.908s
+
+FAILED (failures=1)
+== verify fast: PASS ==
+rc=0
+
+=== m8-full
+Ran 82 tests in 6.834s
+OK
+smoke: forced fail
+--- tail
+----------------------------------------------------------------------
+Ran 82 tests in 6.834s
+
+OK
+smoke: forced fail
+rc=3
+
+=== m9-fast
+test_fail (tests.test_zz_forced.F.test_fail) ... FAIL
+FAIL: test_fail (tests.test_zz_forced.F.test_fail)
+Ran 83 tests in 6.743s
+FAILED (failures=1)
+verify fast: FAIL (test.sh exited non-zero)
+--- tail
+----------------------------------------------------------------------
+Ran 83 tests in 6.743s
+
+FAILED (failures=1)
+verify fast: FAIL (test.sh exited non-zero)
+rc=1
+
+=== m9-full
+test_fail (tests.test_zz_forced.F.test_fail) ... FAIL
+FAIL: test_fail (tests.test_zz_forced.F.test_fail)
+Ran 83 tests in 6.889s
+FAILED (failures=1)
+verify full: FAIL (test.sh exited non-zero)
+--- tail
+----------------------------------------------------------------------
+Ran 83 tests in 6.889s
+
+FAILED (failures=1)
+verify full: FAIL (test.sh exited non-zero)
+rc=1

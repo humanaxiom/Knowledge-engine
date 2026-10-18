@@ -180,5 +180,8 @@ agent's context window:
 - Do not skip a gate to save time; report a blocker to the orchestrator instead.
 - Do not commit or push without the orchestrator's explicit go-ahead.
 - Keep changes scoped to the current plan item.
+- Never rename, move or delete the top-level sentinel test
+  (`tests/test_sentinel.py`): `scripts/verify.sh` requires it to report ok,
+  so any change to its module, class or method names turns every verify red.
 - Do not act without first reading the plan item's handoff doc; do not finish
   without appending to it and to `docs/log.md`.

@@ -1,0 +1,18 @@
+### m4: top-level run line deleted + tests/unit package (verify fast)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+verify fast: FAIL (sentinel test_top_level_unit_suite_ran did not report ok: the top-level unit suite did not run)
+
+exit=1
+### m7: top-level run line deleted + tests/integration package (verify full)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+verify full: FAIL (sentinel test_top_level_unit_suite_ran did not report ok: the top-level unit suite did not run)
+
+exit=1

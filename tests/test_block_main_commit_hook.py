@@ -384,6 +384,208 @@ class BlockMainCommitHookTest(unittest.TestCase):
                 self.assertEqual(out, "")
                 self.assertLess(elapsed, 3.0)
 
+    # --- harness-followups: PS-0.4 (security M4) and PS-0.5 (review N16,
+    # N17), docs/requirements.md § platform-skeleton. ---
+
+    def cr_payloads(self, command: str) -> dict:
+        """The compact payload with each CR as the JSON `\\r` escape, and the
+        same payload with a literal CR byte in the string."""
+        escaped = claude_code_payload(command, self.repo)
+        self.assertIn("\\r", escaped)
+        return {"escaped": escaped, "literal": escaped.replace("\\r", "\r")}
+
+    def assert_cr_same_as_without(self, commands, expected) -> None:
+        for mode in MODES:
+            for command in commands:
+                for form, payload in self.cr_payloads(command).items():
+                    with self.subTest(mode=mode, command=command, cr=form):
+                        self.require_mode(mode)
+                        plain = self.decision(command.replace("\r", ""), mode)
+                        self.assertEqual(plain, expected, "baseline without CR")
+                        out = self.run_raw(payload, mode)
+                        got = (json.loads(out)["hookSpecificOutput"]["permissionDecision"]
+                               if out else None)
+                        self.assertEqual(got, plain)
+
+    def test_carriage_return_denies_as_without_it_on_main(self):
+        # PS-0.4 / security M4: a CR must not hide `git` or the verb on main
+        # (it failed open on the no-jq host path: `\r` became a letter r).
+        self.assert_cr_same_as_without(("git commit -m x\r\n",
+                                        "git\r commit -m x"), "deny")
+
+    def test_carriage_return_denies_as_without_it_off_main(self):
+        # PS-0.4 / security M4, criterion 4d push rules off main.
+        self.switch("agent/x")
+        self.assert_cr_same_as_without(("git push origin main\r",
+                                        "git status\r\ngit push origin main"), "deny")
+
+    def test_carriage_return_stays_silent_as_without_it(self):
+        # PS-0.4: "exactly as without the CR" also means no new denials.
+        self.assert_cr_same_as_without(("ls -la\r\n",), None)
+        self.switch("agent/x")
+        self.assert_cr_same_as_without(("git push origin agent/x\r\n",), None)
+
+    def test_backslash_newline_joins_to_nothing_off_main(self):
+        # PS-0.5 / review N16: `ma\<newline>in` is read as `main` and
+        # `pu\<newline>sh` as `push`, as bash reads them.
+        self.switch("agent/x")
+        self.assert_all(("git push origin ma\\\nin",
+                         "git pu\\\nsh origin main"), "deny")
+
+    def test_backslash_newline_joins_to_nothing_on_main(self):
+        # PS-0.5 / review N16: `gi\<newline>t` is read as `git`.
+        self.assert_all(("gi\\\nt commit -m x",), "deny")
+
+    # --- harness-followups rework 3: security M5 (docs/evidence/
+    # harness-followups/security.md § M5). Orchestrator ruling: the hook
+    # judges the command under two normalisations and denies if either
+    # matches: (a) backslash-newline joined to nothing (PS-0.5, kept by the
+    # two tests above) and (b) backslash-newline kept as a newline. Bash does
+    # not join lines when the backslash ends a comment or is the second of an
+    # even run, so the next line is a separate command there. ---
+
+    def test_backslash_newline_after_comment_or_even_run_denies_on_main(self):
+        # Security M5 rows 1-6 (main) and live shapes c1-c3.
+        self.assert_all((
+            "#x\\\ngit commit -m x",                    # c1: comment ends in a backslash
+            "# copy to C:\\out\\\ngit commit -m x",     # c3: comment ends in a Windows path
+            "ls #a\\\ngit commit -m x",                 # comment after a command
+            "#x\\\ngit push",                           # comment, then a push on main
+            "echo a\\\\\ngit commit -m x",              # c2: even run (two) then newline
+            "echo a\\\\\\\\\ngit commit -m x",          # even run (four) then newline
+        ), "deny")
+
+    def test_backslash_newline_after_comment_or_even_run_denies_off_main(self):
+        # Security M5 rows 7-9 (off main) and live shape p1.
+        self.switch("agent/x")
+        self.assert_all((
+            "#x\\\ngit push origin main",               # comment, then push to main
+            "#x\\\ngit push -f",                        # comment, then force push
+            "echo a\\\\\ngit push origin main",         # even run, then push to main
+            "#x\\\ngit push origin HEAD:main",          # p1
+        ), "deny")
+
+    # --- harness-followups rework 4: security M6 (docs/evidence/
+    # harness-followups/security-rework3.md § M6, Table M), review N14,
+    # security L21. Orchestrator ruling: in text (b) backslash-newline
+    # becomes a space, not a newline, and text (b) is built only when the
+    # command contains a backslash-newline. A non-continuation
+    # backslash-newline (end of a comment, or an even backslash run) followed
+    # by a real continuation inside the push line must still deny off main,
+    # as the base hook a11842d did. ---
+
+    def test_comment_or_even_run_then_continued_push_denies_off_main(self):
+        # Security M6, Table M rows 1-11 (agent/x) and live shapes q1, q2:
+        # rework 3 was silent on rows 1-10, q1 and q2; the base denied all.
+        self.switch("agent/x")
+        self.assert_all((
+            "#x\\\ngit push \\\norigin main",                # M row 1
+            "#x\\\ngit push origin \\\nmain",                # M row 2
+            "#x\\\ngit push \\\n  origin main",              # M row 3
+            "#x\\\ngit push \\\n-f origin x",                # M row 4
+            "#x\\\ngit push \\\n--force",                    # M row 5
+            "#x\\\ngit push \\\n--all",                      # M row 6
+            "#x\\\ngit push origin \\\nHEAD:main",           # M row 7
+            "# push from C:\\repo\\\ngit push \\\n  origin main",  # M row 8
+            "echo a\\\\\ngit push \\\norigin main",          # M row 9: even run
+            "#x\\\ngit \\\npush origin main",                # M row 10
+            "git push \\\norigin main #x\\\nls",             # M row 11 (already DENY)
+            "#x\\\ngit push \\\norigin HEAD:main",           # q1 (live: moved remote main)
+            "# push from C:\\repo\\\ngit push \\\n  origin HEAD:main",  # q2 (live)
+        ), "deny")
+
+    def test_comment_then_continued_commit_denies_on_main(self):
+        # Security M6, Table M rows 13 and 16 (main): DENY on base and rework
+        # 3, pinned so the space reading keeps them. Rows 14 and 15 (a
+        # continuation splitting the word git or commit after such a comment)
+        # are silent on base, rework 3 and the space variant: an accepted
+        # bypass (info), deliberately not asserted either way.
+        self.assert_all((
+            "#x\\\ngit \\\ncommit -m x",                     # M row 13
+            "# C:\\a\\\ngit \\\n  commit -m x",              # M row 16
+        ), "deny")
+
+    def test_real_continuation_of_plan_item_push_stays_silent(self):
+        # Security M6, Table M row 12, and review N14: a real continuation in
+        # a push of the plan-item branch is silent, with or without a comment
+        # line before it.
+        self.switch("agent/x")
+        self.assert_all((
+            "git push \\\norigin agent/x",                   # M row 12
+            "git push -u \\\n  origin agent/x",
+            "#x\\\ngit push \\\norigin agent/x",
+            "#x\\\nls",
+        ), None)
+
+    def test_multiline_without_backslash_newline_unchanged(self):
+        # Review N14: with no backslash-newline the second text must add no
+        # decision. Ordinary multi-line commands stay silent on both branches.
+        benign = ("git status\nls",
+                  "git log --oneline -3\ngit diff --stat",
+                  "ls -la\necho done",
+                  "#c\ngit status")
+        self.assert_all(benign + ("echo a\\\nb", "#x\\\nls", "git status \\\n--short"), None)
+        self.switch("agent/x")
+        self.assert_all(benign + ("ls\ngit push origin agent/x",
+                                  "git status\ngit push -u origin agent/x"), None)
+
+    def test_five_megabyte_command_without_backslash_newline_is_one_pass(self):
+        # Security L21: the second text is built only when the command holds a
+        # backslash-newline, so a 5 MB command without one costs one pass and
+        # stays under 3 s in both modes (Table C: two passes took up to 2.3 s
+        # in the image without jq and 9.4 s on the Windows host).
+        mb5 = 5_000_000
+        cases = {
+            "heredoc lines": "cat <<'EOF'\n" + "abcdefghi\n" * (mb5 // 10) + "EOF",
+            "one token": "echo " + "a" * mb5,
+            "windows paths": "echo " + "C:\\a\\b " * (mb5 // 7 + 1),
+        }
+        self.switch("agent/x")
+        for mode in MODES:
+            for name, command in cases.items():
+                with self.subTest(mode=mode, shape=name):
+                    self.require_mode(mode)
+                    self.assertGreaterEqual(len(command), mb5)
+                    self.assertNotIn("\\\n", command)
+                    start = time.monotonic()
+                    out = self.run_hook(command, mode)
+                    elapsed = time.monotonic() - start
+                    self.assertEqual(out, "")
+                    self.assertLess(elapsed, 3.0)
+
+    def test_json_without_command_field_is_silent(self):
+        # PS-0.5 / review N17: no command field means nothing to judge, even
+        # on main with git commit text elsewhere in the payload.
+        payload = json.dumps({
+            "session_id": "00000000-0000-0000-0000-000000000000",
+            "cwd": self.repo,
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Bash",
+            "tool_input": {"description": "git commit -m x"},
+        }, separators=(",", ":"))
+        for mode in MODES:
+            with self.subTest(mode=mode):
+                self.require_mode(mode)
+                self.assertEqual(self.run_raw(payload, mode), "")
+
+    def test_only_first_command_value_is_judged(self):
+        # PS-0.5 / review N17: tool_input.command comes first; a later
+        # "command" key elsewhere in the payload is not judged.
+        def payload(first: str, later: str) -> str:
+            return json.dumps({
+                "session_id": "00000000-0000-0000-0000-000000000000",
+                "cwd": self.repo,
+                "hook_event_name": "PreToolUse",
+                "tool_name": "Bash",
+                "tool_input": {"command": first, "description": "Run command"},
+                "extra": {"command": later},
+            }, separators=(",", ":"))
+        for mode in MODES:
+            with self.subTest(mode=mode):
+                self.require_mode(mode)
+                self.assertIn('"deny"', self.run_raw(payload("git commit -m x", "ls"), mode))
+                self.assertEqual(self.run_raw(payload("ls", "git commit -m x"), mode), "")
+
     def test_works_without_jq_on_raw_input(self):
         # Git Bash on Windows has no jq; the hook falls back to scanning stdin.
         for mode in MODES:
