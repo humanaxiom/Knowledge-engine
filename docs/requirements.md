@@ -17,6 +17,12 @@ Conventions:
   traceability table in §R-DR must be kept in sync in the same commit.
 - "Integration" means real PostgreSQL / Neo4j / Valkey via testcontainers inside
   the `gates` compose service, with mocked model calls (design rule 31).
+  ADR-KE-009 proposes a different mechanism (compose services on an internal
+  network, reached by a one-shot `gates-it`) that keeps the intent: real
+  stores, mocked models, no egress. Which mechanism binds is open as Q30
+  (human); this line and DR31 stay as written until the human rules.
+- "Smoke" means a check run by `scripts/smoke.sh` on the host against the
+  launched stack, inside `verify.sh full` (so also in CI).
 - **Outcome metrics** for the whole project (shipping rule): *drafts a human
   reviewer has acted on* and *ratified rules*. Every plan item states which of
   the two it moves, or that it moves neither and why it is still next.
@@ -145,30 +151,378 @@ relies on. Done when the proof below exists, not when the files exist.
 ## Item: platform-skeleton
 
 Outcome metric moved: neither; makes the product deployable, which is a
-precondition for any human using it.
+precondition for any human using it. It is still next because every later item
+(ingest-ledger onward) needs the stores, configuration, egress guard and
+integration gate it creates.
 
-1. `docker compose up` brings up api, worker, postgres, neo4j, valkey, phoenix
-   and the `gates` one-shot service. Every host port comes from `.env` and the
-   defaults sit in a non-default range (A6). `[unit: test_no_hardcoded_ports]`
-   scans source and compose for literal ports outside config.
-2. Configuration is typed (pydantic-settings); every key has a default in
-   `config/defaults.yaml`, an env override, and a register entry (DR16).
-3. **Egress guard:** given an inference host not on `EGRESS_ALLOWLIST`, when the
-   app starts, then startup fails; when a runtime call targets it, then the call
-   raises before any socket opens. `[unit: test_egress_guard_startup]`,
-   `[unit: test_egress_guard_runtime]` (DR30).
-4. `/healthz` (process) and `/readyz` (postgres, neo4j, valkey, model host,
-   embedding-dimension check DR13) return per-dependency status.
-5. **Offline:** `[gate: ci/offline]` runs the integration suite with container
-   networking disabled (`network_mode: none` for app containers, internal-only
-   compose network). `[gate: ci/deployable-offline]` builds the offline bundle
-   (`scripts/bundle.sh`: saved images, wheels, vendored JS/CSS, checksums) and
-   installs it into a clean, network-less runner, then runs the smoke test.
-6. Build/launch/teardown scripts and a fresh-machine quickstart exist for
-   PowerShell, macOS and Linux; CI lints them (`shellcheck`, `PSScriptAnalyzer`).
-7. Startup refuses unsafe settings: auth off outside `ENV=dev`, tracing to a
-   non-local collector, `OPENINFERENCE_HIDE_*` not `true`. `[unit: test_startup_refuses_unsafe]` (DR39).
-8. Coverage ≥ 80% and `mypy --strict` are enforced by `scripts/test.sh`.
+Analyst review 2026-10-18 (first review by the ported analyst). Criteria are
+numbered `PS-<sub-item>.<n>` so they survive the split below. Open
+questions specific to this item are `PS-Q<n>` at the end of the section. The
+orchestrator ruled on PS-Q1–PS-Q6, PS-Q8, PS-Q9 and PS-Q11 on 2026-10-18
+(`docs/handoffs/platform-skeleton.md`, "orchestrator: split accepted, rulings");
+each criterion a ruling settles cites it. The architect answered PS-Q7 (Q19)
+with ADR-KE-009, and the orchestrator ruled on the architect's findings F1–F6
+the same day ("orchestrator: rulings on architect F1–F6"); F2–F6 are folded in
+below. F1 is with the human as Q30, and the criteria that depend on it say
+**Blocked on Q30**. PS-Q10 (Q20) stays open. Criteria that depend on an open
+question cite it and must not be closed on a guessed value.
+
+**Variable names (F2).** Environment variables are `KE_`-prefixed with `__`
+for nesting (ADR-KE-010): `KE_ENV`, `KE_EGRESS_ALLOWLIST`,
+`KE_MODEL_UPSTREAM`, `KE_MODELS__<PASS>__BASE_URL`. The unprefixed spellings
+used earlier (`ENV`, `EGRESS_ALLOWLIST`, `MODEL_BASE_URL`) are not aliases.
+Names that other tools already read keep their own names:
+`PHOENIX_COLLECTOR_ENDPOINT`, `HARNESS_TRACING`, `OPENINFERENCE_HIDE_INPUTS`,
+`OPENINFERENCE_HIDE_OUTPUTS`.
+
+**Already delivered by harness-claude-code (do not rebuild; covered by
+`tests/test_harness_port.py` and the hook tests):** the one-shot `gates` compose
+service with `network_mode: none`; `scripts/verify.sh [fast|full]` as the only
+entry point; CI's single step `./scripts/verify.sh full`
+(`test_ci_calls_verify_only`); uv `--locked` everywhere and `UV_OFFLINE=1` in the
+gates image (`test_gate_scripts_use_locked`); LF line endings for `*.sh`; the
+`phoenix` compose service (this item changes only how its ports are set, PS-2.2).
+A criterion below that restates one of these only extends it.
+
+**Gate depth.** Every sub-item touches compose, Dockerfiles, `scripts/` or CI,
+so every sub-item's gate is `scripts/verify.sh full`. The tag on each criterion
+says where its named test runs: `fast` = in the unit suite (also part of
+`full`); `full` = only in the integration, smoke or offline stage of `full`.
+
+**Split into four plan items (accepted by the orchestrator 2026-10-18).**
+platform-skeleton is no longer built as one item. It is split into four plan
+items, each on its own `agent/<slug>` branch and with its own handoff doc,
+built in the order below: `harness-followups` → `platform-config` →
+`platform-stack` → `platform-offline`. `docs/handoffs/platform-skeleton.md`
+stays the umbrella plan record. Each row ends with `verify.sh full` green and
+the stack launchable by its own scripts. Each plan item's outcome-metric line:
+
+- `harness-followups` — Outcome metric moved: neither; keeps CI green after the
+  runner image change and closes carried security M4.
+- `platform-config` — Outcome metric moved: neither; config, egress and startup
+  safety that every service reads.
+- `platform-stack` — Outcome metric moved: neither; the running stack and the
+  real-store integration gate, a precondition for any reviewer to act.
+- `platform-offline` — Outcome metric moved: neither; proves "deployable
+  without the assistant", which must hold before any reviewer-facing feature
+  ships.
+
+| Order | Sub-item slug | Criteria | Outcome metric | Deployable as |
+|---|---|---|---|---|
+| 0 | `harness-followups` | PS-0.* | neither; keeps CI green after the runner image change and closes carried security M4 | harness only; no product runtime |
+| 1 | `platform-config` | PS-1.* | neither; config, egress and startup safety every service reads | Python package exercised by the gates; no service yet |
+| 2 | `platform-stack` | PS-2.* | neither; the running stack and the real-store integration gate | `scripts/launch` + live smoke on the developer's machine |
+| 3 | `platform-offline` | PS-3.* | neither; proves "deployable without the assistant" | offline bundle installed with no network |
+
+`platform-stack` may merge before `platform-offline` exists. The shipping rule
+"deployable without the assistant" is met at the end of `platform-offline`, and
+no reviewer-facing feature ships before then (PS-Q9, ruled 2026-10-18).
+
+### PS-0 harness-followups (carry-in from `docs/handoffs/archive/harness-claude-code.md`)
+
+- **PS-0.1 CI runner pinned.** Given `.github/workflows/ci.yml`, every job's
+  `runs-on` names a versioned runner image, never `*-latest`.
+  `[unit: test_ci_runner_pinned]` (fast). The image is `ubuntu-24.04` (PS-Q1).
+- **PS-0.2 Checkout v5.** Every `uses:` in CI is pinned to a full 40-hex commit
+  SHA with a version comment, and `actions/checkout` is a v5 release (the v4.4.0
+  pin targets the deprecated Node 20 runtime). The SHA is read from the action's
+  repository at implementation time and the source recorded in the handoff; it
+  is not taken from this document. `[unit: test_ci_actions_pinned_to_sha]` (fast)
+- **PS-0.3 Integration tests run once (review N3).** Given a `tests/integration/`
+  package, when `scripts/test.sh full` runs, then each integration test executes
+  exactly once; when `scripts/test.sh fast` runs, then no integration test
+  executes. `[unit: test_integration_tests_run_once]` (fast; uses a fixture
+  package, so it does not wait for PS-2).
+- **PS-0.4 Hook CR fails safe (security M4).** Given the compact payload whose
+  command contains a carriage return (`\r` JSON escape or a literal CR), when
+  the hook runs on `main` with `jq` absent, then it denies exactly as it does
+  for the same command without the CR; the same holds with `jq` present and off
+  `main` for the push rules of harness-claude-code criterion 4d.
+  `[unit: tests/test_block_main_commit_hook.py]` new cases (fast). Criterion 4
+  of harness-claude-code is otherwise unchanged.
+- **PS-0.5 Hook nits N16, N17.** A backslash-newline joins to nothing (N16:
+  `pu\<newline>sh` is read as `push`); tests exist for "JSON payload without a
+  `command` field prints nothing" and "only the first `command` value is used"
+  (N17). `[unit: tests/test_block_main_commit_hook.py]` (fast)
+
+Not carried into this item (stay deferred, no criterion here): review N5, N6,
+N18, N19; security L2, L5, L7, L16, L17, L18.
+
+### PS-1 platform-config
+
+- **PS-1.1 Typed configuration.** Configuration is one typed settings object.
+  Every key has a default in `config/defaults.yaml` and an environment override;
+  given an env value of the wrong type, startup fails naming the key.
+  `[unit: test_config_defaults_and_env_override]`,
+  `[unit: test_config_rejects_bad_type]` (fast). The register entry for each
+  key (DR16) is not required here: the register and `test_registry_enforced`
+  arrive with policy-book, which then covers these keys (PS-Q8, confirmed
+  2026-10-18).
+  - *Variable names (F2).* Overrides are read only from the `KE_` names (and
+    the standard tool names listed above). Given an unprefixed `ENV`,
+    `EGRESS_ALLOWLIST` or `MODEL_BASE_URL` in the environment, it has no
+    effect on the settings. `[unit: test_config_ignores_unprefixed_names]` (fast)
+  - *Secrets exception (F3).* Secrets (passwords and other credentials) are
+    the one accepted exception to "every key has a default": they have no
+    default in `config/defaults.yaml` and come from the environment only.
+    Given a required secret that is not set, startup fails with an error
+    naming the key, never a value.
+    `[unit: test_config_missing_secret_names_key]` (fast)
+- **PS-1.2 No hardcoded hosts, ports or model names.** Given product source,
+  compose files and scripts, no literal host port, host name or model name
+  appears outside `config/defaults.yaml`, `.env.example`, `config/verify.env`
+  (the verify-run overrides; accepted exemption, F4) and compose variable
+  defaults. `[unit: test_no_hardcoded_ports]`, `[unit: test_no_hardcoded_hosts_or_models]`
+  (fast). The model defaults are the prompt's (`qwen2.5:14b-instruct`, fallback
+  `llama3.1:8b`, `nomic-embed-text` 768-dim, A7) and live only in config.
+  `harness_telemetry`'s default collector endpoint is in scope (PS-Q2): it
+  changes with the phoenix port in PS-2.2, not here.
+- **PS-1.3 Egress guard at startup (DR30).** Given a configured inference host
+  (any per-pass `KE_MODELS__<PASS>__BASE_URL`, or `KE_MODEL_UPSTREAM`) not on
+  `KE_EGRESS_ALLOWLIST`, when the app starts, then startup fails with an error
+  naming the host. An empty allowlist with a
+  configured host also fails. `[unit: test_egress_guard_startup]` (fast)
+- **PS-1.4 Egress guard at runtime (DR30).** Given a call whose target host is
+  not on the allowlist, when the model client is invoked, then it raises before
+  any socket is opened (asserted by a socket-level spy that records zero
+  connection attempts). `[unit: test_egress_guard_runtime]` (fast). The guard is
+  proven able to fail (DR38): `[unit: test_egress_guard_mutant_goes_red]` or a
+  recorded mutation run in the evidence folder.
+- **PS-1.5 Startup refuses unsafe settings (DR39, startup part).** Given each of
+  the following, startup fails with a message naming the setting: auth disabled
+  while `KE_ENV` is not `dev`; trace export to a collector that is not local;
+  `OPENINFERENCE_HIDE_INPUTS` or `OPENINFERENCE_HIDE_OUTPUTS` not `true`
+  outside `KE_ENV=dev`. Given `KE_ENV=dev` with auth off, startup succeeds and logs a
+  warning. `[unit: test_startup_refuses_unsafe]` (fast), one case per setting.
+  Auth itself is built in auth-audit; here only the setting and the refusal
+  exist.
+  - *Local collector (PS-Q3).* A collector endpoint is local when its host is a
+    loopback address or the name of a compose service on the stack's internal
+    network. Given any other host (including a public name or an external IP),
+    startup fails naming the endpoint. Test cases cover an accepted loopback
+    host, an accepted compose service name, and a refused external host.
+  - *Hidden trace content (PS-Q4).* `OPENINFERENCE_HIDE_INPUTS` and
+    `OPENINFERENCE_HIDE_OUTPUTS` default to `true` in every `KE_ENV`, including
+    `dev`. Only `KE_ENV=dev` may set either to `false`; given that, startup
+    succeeds and logs a warning naming the flag. Given `false` in any other
+    `KE_ENV`, startup fails naming the flag. Test cases cover the default with no
+    override, dev with `false` (warning), and non-dev with `false` (refused).
+- **PS-1.6 Quality gates.** `scripts/test.sh` fails when combined line and
+  branch coverage is below 80% or `mypy --strict` reports any error, and
+  `verify.sh` only calls it (`test_verify_sh_has_no_inlined_commands` stays
+  green). Scope (PS-Q5): every first-party package, today `harness_telemetry`
+  and the new engine package; tests are excluded from both measurements. A
+  first-party package added later is in scope without a new ruling.
+  `[unit: test_test_sh_enforces_coverage_and_mypy]` (fast) asserts branch
+  coverage is on, the threshold is 80, and both packages are measured and
+  type-checked; plus a recorded RED run showing each threshold failing.
+- **PS-1.7 Tracing.** The settings load and the startup check run inside a span
+  per `AGENTS.md` (`chain_span`), asserted with the in-memory exporter.
+  `[unit: test_startup_is_traced]` (fast)
+- **PS-1.8 Python 3.12 pinned (PS-Q11).** `pyproject.toml` declares
+  `requires-python = ">=3.12,<3.13"`, and `uv.lock` is regenerated from it
+  (the existing `--locked` runs catch drift).
+  `[unit: test_python_pinned_to_312]` (fast)
+- **PS-1.9 Placeholder secrets refused outside dev (F3).** A placeholder secret
+  is one whose value equals the value `.env.example` gives that key. Given
+  `KE_ENV` other than `dev` and any secret set to its placeholder, startup
+  fails with an error naming the key, never the value. Given `KE_ENV=dev` and
+  the placeholders, startup succeeds. Test cases cover one refused non-dev
+  case per secret key and the accepted dev case.
+  `[unit: test_startup_refuses_placeholder_secrets]` (fast)
+
+### PS-2 platform-stack
+
+- **PS-2.1 Services.** Given a fresh `.env` copied from `.env.example`, when
+  the launch script runs, then api, worker, postgres, neo4j, valkey and phoenix
+  are running and healthy, and `gates` stays a profile-only one-shot service.
+  Engine versions follow `docs/architecture.md` §2 (PostgreSQL 16, Neo4j 5
+  community, Valkey 8); every image is pinned by digest (architect picks the
+  digest; not specified here). `[smoke: test_stack_services_healthy]` (full;
+  re-tagged from integration, because only the host side can see container
+  health: the launch script's wait on every healthcheck plus the probe),
+  `[unit: test_compose_images_pinned_by_digest]` (fast)
+- **PS-2.2 Ports from `.env` (A6).** Every published host port, including
+  phoenix's (today literal `6006`/`4317`), is a compose variable set in `.env`,
+  and every default in `.env.example` lies in 47100–47199. No two defaults
+  collide. `[unit: test_no_hardcoded_ports]` (fast, extends PS-1.2),
+  `[unit: test_env_example_ports_in_range_and_unique]` (fast). Specific port
+  numbers: architect.
+  - *One Phoenix (PS-Q2).* The harness and the product share the one phoenix
+    service. `log_event` keeps reading `PHOENIX_COLLECTOR_ENDPOINT`; only its
+    default changes, to the phoenix host port that `.env.example` sets.
+    `[unit: test_harness_default_collector_matches_env_example]` (fast). Every
+    doc that states the default endpoint or phoenix's ports (today `AGENTS.md`,
+    `README.md`, the `harness_telemetry` docstring and the compose comment)
+    states the new value, and none still names `6006` or `4317` as a host
+    port. `[unit: test_docs_name_current_phoenix_port]` (fast)
+- **PS-2.3 Restart policies (DR41).** Every long-running service declares a
+  restart policy; `gates` does not. `[unit: test_compose_services_have_restart_policy]` (fast)
+- **PS-2.4 `/healthz`.** Given the api process is up, `GET /healthz` returns 200
+  without touching any dependency. `[integration: test_healthz]` (full).
+  **Blocked on Q30** (integration mechanism).
+- **PS-2.5 `/readyz`.** `GET /readyz` returns one entry per dependency
+  (postgres, neo4j, valkey, model host), each with a status and, on failure, a
+  reason; given one store unreachable, then that entry fails and the response
+  is not ready. `[integration: test_readyz_reports_each_dependency]`,
+  `[integration: test_readyz_fails_when_store_down]` (full; the store is made
+  unreachable in process, by pointing that store's settings at a closed port,
+  because the integration container cannot stop a container). **Blocked on
+  Q30** (integration mechanism).
+  - *Real store stop (smoke).* Given the launched stack, when the smoke stops
+    one real store container, then `/readyz` is not ready and names that
+    store; when the store is started again, then `/readyz` is ready again.
+    `[smoke: scripts/smoke.sh store stop/start]` (full; re-tagged from
+    integration). The model-host
+  probe goes through the egress guard (PS-1.4). The embedding-dimension check
+  (DR13) joins `/readyz` in knowledge-plane, where the vector index exists; it
+  is removed from this item.
+  - *Model host (PS-Q6).* The model host is reported as its own field, but
+    overall readiness excludes it, because ingest and review work without a
+    model. Given all stores up and no model host reachable (as in CI, A7), the
+    model-host field reports failure with a reason and the response is still
+    ready. Routes that compose drafts check the model host themselves rather
+    than relying on `/readyz`.
+    `[integration: test_readyz_ready_without_model_host]` (full)
+- **PS-2.6 Worker.** Given a no-op job enqueued on Valkey, the worker consumes
+  it exactly once and records completion. `[integration: test_worker_consumes_noop_job]` (full).
+  **Blocked on Q30** (integration mechanism).
+- **PS-2.7 Real-store integration gate, no egress (DR31).** `verify.sh full`
+  runs `tests/integration/` against real PostgreSQL, Neo4j and Valkey, while
+  any connection to a host outside the stack fails.
+  `[integration: test_socket_guard_blocks_outbound]` (full), proven able to
+  fail (DR38). The architect answered PS-Q7 (Q19) with ADR-KE-009: compose
+  services on an internal network, reached by a one-shot `gates-it`, with no
+  Docker socket and no testcontainers. That replaces the mechanism DR31 names,
+  so this criterion is **Blocked on Q30** (human). Its intent does not depend
+  on the answer: real stores, mocked models, no route outside the stack.
+- **PS-2.8 Live-stack smoke.** `scripts/smoke.sh` launches the stack through
+  the launch script, checks `/healthz` and `/readyz`, stops and starts one
+  real store (PS-2.5), checks every service healthy (PS-2.1), then tears it
+  down, in addition to the existing OTLP check. It runs in `verify.sh full`,
+  so in CI. `[smoke: scripts/smoke.sh]` (full)
+- **PS-2.9 Build, launch, teardown, quickstart.** Scripts exist for Windows
+  PowerShell and for bash (Linux and macOS), with a fresh-machine quickstart in
+  `README.md` or `docs/quickstart.md` that names only those scripts and the
+  host prerequisites Git and Docker. Teardown leaves no running container of the
+  project and keeps named volumes unless asked to remove them.
+  `[unit: test_quickstart_names_existing_scripts]` (fast); lints run inside
+  `verify.sh full`: `[gate: shellcheck]`, `[gate: PSScriptAnalyzer]` (full).
+  Proof per OS: PS-Q10 (open, asked of the human, Q20).
+- **PS-2.10 Only the gateway has a route out.** Given the compose files, only
+  `gateway` is attached to a network that is not `internal: true`; every other
+  stack service is attached only to internal networks.
+  `[unit: test_only_gateway_on_edge_network]` (fast)
+- **PS-2.11 No Docker socket.** Given every compose file, no service mounts the
+  Docker socket (`/var/run/docker.sock`, or the Windows named pipe
+  `//./pipe/docker_engine`), whatever its profile.
+  `[unit: test_no_docker_socket_mounted]` (fast)
+- **PS-2.12 Stack services use named volumes only.** Given the compose files,
+  no stack service (one without a compose profile) has a bind mount; only
+  named volumes. One-shot gate services may bind-mount the checkout.
+  `[unit: test_stack_services_have_no_bind_mounts]` (fast)
+
+### PS-3 platform-offline
+
+- **PS-3.1 Offline bundle.** `scripts/bundle.sh` (and its PowerShell twin)
+  writes one bundle holding every image the stack runs, any vendored assets,
+  and a checksum manifest; given a modified file, the install step rejects the
+  bundle. `[unit: test_bundle_manifest_rejects_tamper]` (fast)
+  - *No wheels (orchestrator ruling, 2026-10-18).* The bundle carries no
+    Python wheels: the images carry their own dependencies. Rebuilding an
+    image offline is out of scope.
+  - *Every image listed.* Given the compose files, every image the stack
+    services use is in the bundle. `[unit: test_bundle_lists_every_compose_image]` (fast)
+  - *Platform.* The bundle is linux/amd64 only for now. Other platforms,
+    including macOS on Apple silicon, are recorded under Q20 and are not a
+    criterion of this item.
+- **PS-3.2 Deployable offline.** Given the bundle and a Docker daemon that has
+  none of the stack's images and no network egress, when the install and launch
+  scripts run, then the stack starts and the PS-2.8 smoke passes without a pull
+  or a package-index call. `[gate: ci/deployable-offline]` (full), called from
+  `verify.sh full`. The clean daemon is the one ADR-KE-009 proposes (answers
+  PS-Q7, Q19). When this criterion passes, the shipping rule "deployable
+  without the assistant" is met (PS-Q9).
+  - *Runs in every local `full` (F5).* The offline check runs in every
+    `scripts/verify.sh full`, locally and in CI, so CI runs nothing that
+    `verify.sh` does not. Given a local daemon that cannot run the check, the
+    run fails and reports a blocker; it never skips the check and reports
+    green. The orchestrator revisits this if a local `full` run takes more
+    than about 15 minutes.
+- **PS-3.3 Offline at runtime.** App containers have no route outside the
+  stack's internal network except the allowlisted model host.
+  `[gate: ci/offline]` (full) asserts an outbound call from api and worker to a
+  non-allowlisted address fails.
+- **PS-3.4 CI timeout from a measurement (F6).** The CI job's
+  `timeout-minutes` equals the measured duration of a `verify.sh full` run in
+  CI plus 50%, rounded up to a whole minute. The measured run (its CI log or
+  the evidence file, and the duration read from it) is recorded in the
+  sub-item's evidence folder. It is set in `platform-stack` and measured again
+  in `platform-offline`, which makes `full` slower.
+  `[unit: test_ci_job_has_timeout]` (fast) asserts the job declares
+  `timeout-minutes`; the value is checked by the reviewer against the
+  recorded measurement.
+
+### Open questions for this item
+
+Questions raised in the analyst review of 2026-10-18; rulings by the
+orchestrator the same day. Full text and numbering in `docs/open-questions.md`
+§ "platform-skeleton" (Q19–Q30).
+
+Open:
+
+- **Q30 Integration mechanism vs DR31 (human; blocks `platform-stack`).**
+  DR31 says integration tests use real stores "via testcontainers".
+  ADR-KE-009 proposes compose services on an internal network instead,
+  reached by a one-shot `gates-it`, and keeps the intent (real stores, mocked
+  models, no egress). Which mechanism binds? Blocks PS-2.4–PS-2.7.
+- **PS-Q10 macOS and Windows proof (human; Q20).** CI runs Linux only. Is a
+  recorded run on the human's Windows machine enough for the PowerShell
+  scripts, and who proves macOS (no macOS machine is recorded)? The bundle is
+  linux/amd64 only, so macOS on Apple silicon is part of this question.
+
+Answered by the architect:
+
+- **PS-Q7 Gates network vs real stores (Q19).** ADR-KE-009: stores as compose
+  services on an internal network; a one-shot `gates-it` joins it; `gates`
+  keeps `network_mode: none`; no Docker socket; the offline check uses a
+  privileged DinD daemon on an internal network. The change of mechanism from
+  DR31 is Q30. Settles PS-3.2; PS-2.4–PS-2.7 wait on Q30.
+
+Ruled (each cited by the criteria it settles):
+
+- **PS-Q1 Runner image.** `ubuntu-24.04`, the image `ubuntu-latest` resolved to
+  before the 2026-10-19 move; confirm from the CI log of 615adf8 when
+  implementing. Settles PS-0.1.
+- **PS-Q2 Harness Phoenix and A6.** One Phoenix for harness and product, ports
+  from `.env` in 47100–47199; `log_event` keeps reading
+  `PHOENIX_COLLECTOR_ENDPOINT`, only its default and the docs change. Settles
+  PS-1.2, PS-2.2.
+- **PS-Q3 "Local" collector.** A loopback address or a compose service name on
+  the internal network; anything else is refused at startup. Settles PS-1.5.
+- **PS-Q4 Hidden inputs in dev.** `OPENINFERENCE_HIDE_*` default `true` in every
+  env; only `KE_ENV=dev` may set `false`, with a warning. Settles PS-1.5.
+- **PS-Q5 Coverage and mypy scope.** Line + branch coverage >= 80% and
+  `mypy --strict` over every first-party package (`harness_telemetry` and the
+  engine package), tests excluded. Settles PS-1.6.
+- **PS-Q6 Readiness without a model host.** Reported as its own field, excluded
+  from overall readiness; model-dependent routes check it themselves. Settles
+  PS-2.5.
+- **PS-Q8 DR16 register.** Confirmed: register entries for config keys arrive
+  with policy-book. Settles PS-1.1.
+- **PS-Q9 Shipping rule timing.** `platform-stack` may merge before
+  `platform-offline`; "deployable offline" is met at the end of
+  `platform-offline`, before any reviewer-facing feature ships. Settles the
+  split note and PS-3.2.
+- **PS-Q11 Python version.** Pin 3.12 (`requires-python = ">=3.12,<3.13"`) in
+  `platform-config`. Settles PS-1.8.
+- **F2–F6 (architect findings, ruled 2026-10-18).** F2 `KE_` names canonical,
+  no aliases (variable-names note, PS-1.1, PS-1.3, PS-1.5). F3 secrets have no
+  default; placeholders refused outside dev (PS-1.1, PS-1.9). F4
+  `config/verify.env` exempt (PS-1.2). F5 offline check in every local
+  `full` (PS-3.2). F6 CI timeout = measured + 50% (PS-3.4). Bundle: no wheels,
+  linux/amd64 only (PS-3.1). Re-tags and new criteria accepted (PS-2.1,
+  PS-2.5, PS-2.8, PS-2.10–PS-2.12).
 
 ---
 
@@ -538,7 +892,7 @@ of the next version.
 | 27 | Prompts fit the schema | `test_prompt_schema_alignment` | verifier-validator |
 | 28 | One-to-one alignment | `test_alignment_one_to_one` | verifier-validator |
 | 29 | Per-pass model config | `test_per_pass_model_config` | verifier-validator |
-| 30 | Egress allowlist fails closed | `test_egress_guard_startup`, `test_egress_guard_runtime` | platform-skeleton |
+| 30 | Egress allowlist fails closed | `test_egress_guard_startup`, `test_egress_guard_runtime`, `test_socket_guard_blocks_outbound`, `ci/offline` | platform-skeleton |
 | 31 | CI never calls a model | `test_no_model_calls_in_ci` | agent-workflow |
 | 32 | Check the store, not the counter | `test_funnel_counts_match_store`, `test_freshness_after_new_source_revision` | frontend, data-plane |
 | 33 | Buckets + unaccounted | `test_snapshot_compare_buckets_sum` | data-plane |
@@ -547,9 +901,9 @@ of the next version.
 | 36 | Full corpus before thresholds | `test_threshold_requires_full_corpus_run` | policy-book |
 | 37 | Rising score suspicion | `test_score_increase_requires_carry_through_check` | verifier-validator |
 | 38 | Each guard can fail | `ci/guard-mutation` | verifier-validator |
-| 39 | Authz matrix, session actor, startup check, CSRF | `test_authz_matrix_covers_all_routes`, `test_actor_from_session_only`, `test_startup_refuses_unsafe`, `test_csrf_required` | auth-audit |
+| 39 | Authz matrix, session actor, startup check, CSRF | `test_authz_matrix_covers_all_routes`, `test_actor_from_session_only`, `test_startup_refuses_unsafe`, `test_csrf_required` | auth-audit; platform-skeleton (`test_startup_refuses_unsafe`) |
 | 40 | Hash-chained audit + verify | `test_audit_chain_detects_tamper` | auth-audit |
-| 41 | Manifests, resume, runbooks, tested restore | `test_ingest_resume_after_kill`, `test_restore_not_empty` | ingest-ledger, auth-audit |
+| 41 | Manifests, resume, runbooks, tested restore, restart policies | `test_ingest_resume_after_kill`, `test_restore_not_empty`, `test_compose_services_have_restart_policy` | ingest-ledger, auth-audit, platform-skeleton |
 | 42 | Pluggable SSO, dev hatch | `test_sso_dev_provider_offline` | auth-audit |
 
 ---
