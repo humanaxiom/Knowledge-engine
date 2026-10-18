@@ -157,3 +157,9 @@ Each role: read this file; append a 3-line section headed `<date> — <role>: di
   - security L2, L5, L7: root in gates, `KE_IN_GATES` override, web tools on analyst/marketer.
 - Item 13 still open after commit: clean-checkout `verify.sh fast|full` (use `-c core.autocrlf=false` clone), and CI green (needs a push, i.e. human approval).
 - Human actions: Q18 branch protection on main; delete the stray empty `git init` skeleton at `C:\c` left by a security probe.
+
+## developer, commit (2026-10-18)
+- Asked: commit locally after review APPROVED, security PASS, orchestrator verify full green.
+- Done: committed d2bfd0d "harness-claude-code: run the harness natively in Claude Code" on agent/harness-claude-code. `docs/knowledge-engine-claude-code-prompt.md` left untracked (user's file). Not pushed.
+- Evidence: docs/evidence/harness-claude-code/ (orchestrator-verify-full.txt, green-rework4.txt).
+- Next: item 13 clean-checkout verify and CI (needs push, human approval).
