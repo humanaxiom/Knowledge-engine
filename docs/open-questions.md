@@ -114,6 +114,41 @@ PS-Q1–PS-Q11 (`docs/requirements.md` § "Item: platform-skeleton"); the
 orchestrator ruled the same day (`docs/handoffs/platform-skeleton.md`,
 "orchestrator: split accepted, rulings"). The ones still open come first.
 
+Open, raised 2026-10-19 by the analyst for `platform-offline`
+(`docs/requirements.md` § PS-3). Moved with PS-3.6 to `platform-supply-chain`
+by the split ruling (`docs/handoffs/platform-offline.md`, "rulings on
+analyst plan") and decided when that item opens. It does not block
+`platform-offline`, which has no scan stage.
+
+- **Q42. Scan threshold and the vendored libraries.** **A42 (assumed):**
+  - the run fails on any CRITICAL or HIGH finding that has a fixed version
+    available;
+  - other findings are reported in the evidence only;
+  - exceptions go in a committed file, each with a reason, and security
+    reviews them.
+
+  Not settled: psycopg-binary vendors old native libraries (krb5 1.15.1,
+  cyrus-sasl 2.1.26, pcre 8.32; L-13). If the scanner flags them, should they
+  be accepted as exceptions (gssencmode is already disabled), or should the
+  image switch to psycopg built against the base image's libpq? That
+  switch changes the app image and the licence picture. Orchestrator or
+  security.
+
+Open, raised 2026-10-19 by the analyst for `platform-offline` (reconciling
+R2 with spike S1). Does not block RED.
+
+- **Q47. No gate covers a classic-store install.** R2 makes the install
+  store-independent so operators need no containerd store. But the CI
+  `dind` uses the containerd store (by ruling) and the human's Windows host
+  does too (spike S1), so no recorded run installs the bundle on a
+  classic-store (`overlay2`) daemon, where spike S1 showed `ref@digest`
+  never resolves. **A47 (assumed):** the stubbed installer tests
+  (`test_install_tags_loaded_image_as_bundle_name`,
+  `test_install_override_maps_every_service_to_as_tag`) plus spike S1's
+  manual classic-store run are enough for this item; no classic-store gate
+  is added. Orchestrator: accept, or ask for a one-off recorded
+  classic-store install in the evidence.
+
 Open, raised 2026-10-19 (orchestrator note in `docs/handoffs/platform-skeleton.md`,
 "human rulings: model endpoint; orchestrator note Q38"; recorded by the analyst
 in `platform-stack-ready` rework round 1):
@@ -155,6 +190,81 @@ Open, raised 2026-10-19 for `platform-stack-ready` (analyst, after ruling S1):
   prints that it skipped it (never reports it as passed), reading "never
   stops an operator's live stack" as covering a single store. Does not
   block RED; the tester writes the pre-existing case to that assumption.
+
+Resolved 2026-10-19 for `platform-offline` (`docs/handoffs/platform-offline.md`,
+"rulings on analyst plan", "rulings on architect R1–R7", "rulings from
+spikes (R2, R6)"; Q43 by the human). Criteria: `docs/requirements.md` § PS-3,
+"Reconciled with the rulings".
+
+- **Q40. Resolved (orchestrator ruling).** **A40:** as assumed: `dist/` is gitignored, a verify run removes its own
+  bundle, there is no size cap (sizes are recorded in the evidence), and a
+  dirty-tree bundle is allowed and marked in `bundle.json`. Amended by R2
+  (per-image tars, no single `.tar` of the directory) and R6 (a 10 GB
+  free-disk check; PS-3.1, PS-3.2).
+  Original question, kept for the record: Bundle location, size and dirty trees. §2.5 writes
+  `dist/knowledge-engine-<git sha>/` plus a `.tar` of it, but `dist/` is
+  not gitignored. Bundle and tar on disk, plus the images loaded into DinD,
+  roughly triple the image footprint, and CI runner disk is finite. A sha
+  does not identify an uncommitted tree. **A40 (assumed):**
+  - `dist/` is gitignored;
+  - a verify run removes its own bundle when the check ends;
+  - there is no size cap, but the size of the bundle and the tar is
+    recorded in the evidence;
+  - a bundle built from a dirty tree is allowed (verify tests the working
+    tree), and `bundle.json` marks it as dirty.
+- **Q41. Resolved (orchestrator ruling).** **A41:** as assumed. It applies to `platform-supply-chain`, which now holds
+  the scan (R3); this branch has no scan stage.
+  Original question, kept for the record: Scanner vulnerability DB: offline or build-time. The deployed
+  product has no runtime internet, but builds may fetch. **A41 (assumed):**
+  - the scanner and its DB are build and verify tools, fetched in the
+    `verify.sh full` host half alongside the image builds, in CI and
+    locally;
+  - they are not in the bundle, and a deployed box never scans;
+  - a newly published CVE can turn `full` red with no code change, and
+    that is the gate working, not a flake.
+- **Q43. Resolved (human ruling on Phoenix; orchestrator R4, R7).** **A43:** the bundle holds the stack images only (R7), so `ke-gates` and
+  `dind` are not redistributed. Only `ke-app` is scanned, in
+  `platform-supply-chain`. The notices list `ke-app`'s Python packages and
+  every third-party stack image by name and licence. Neo4j Community is
+  listed as GPL-3.0 with a source URL (R4). Arize Phoenix is kept as a
+  documented exception to "open-source components only" (human, 2026-10-19):
+  likely Elastic License 2.0, internal on-prem use allowed, listed in the
+  notices; security confirms the licence text at the pinned digest
+  (PS-3.8).
+  Original question, kept for the record: Scan and licence scope beyond `ke-app`. The ruling names the
+  `ke-app` scan and psycopg notices only. The bundle also redistributes
+  `ke-gateway`, `ke-gates`, `dind` and the third-party images (postgres,
+  neo4j, valkey, phoenix). Neo4j Community is GPLv3. Phoenix's licence
+  (Elastic License 2.0 as I understand it) should be confirmed by security at
+  the pinned version against the prompt's "open-source components only".
+  **A43 (assumed):**
+  - only `ke-app` is scanned;
+  - notices cover `ke-app`'s Python packages;
+  - the third-party images are listed in the notices by name and licence,
+    with no further obligation work in this item;
+  - Phoenix's licence goes to the human.
+- **Q44. Resolved (orchestrator ruling).** **A44:** as assumed (R5): 20 minutes when the offline stages land, then
+  measured + 50% from the first green CI run (PS-3.4).
+  Original question, kept for the record: CI timeout before the first measured run. The offline check may
+  push `full` past today's 10 minutes, and a cancelled run costs a round.
+  **A44 (assumed):** as C1 did for 2b, the commit that wires in the offline
+  check raises `timeout-minutes` to 20. The first green CI run then sets
+  measured + 50% in a follow-up commit on the branch.
+- **Q45. Resolved (orchestrator ruling).** **A45:** as assumed. With no `bundle.ps1` (R1), the Windows run proves the
+  PowerShell installer and `launch.ps1`; the bundle is built on a Linux
+  build host.
+  Original question, kept for the record: Windows proof of the PowerShell installer. **A45 (assumed):** a
+  recorded run on the human's Windows host (Q31) does three things: it
+  rejects a tampered bundle, installs the untouched bundle, and launches
+  with `launch.ps1`. The host's network is not disabled, because the
+  offline property is proven by DinD on Linux and the Windows run proves
+  the scripts.
+- **Q46. Resolved (orchestrator ruling).** **A46:** as assumed.
+  Original question, kept for the record: `ci/offline` probe target. §2.5 leaves it to implementation.
+  **A46 (assumed):** the target is neither the model host nor any
+  allowlisted host. The gate's verdict does not depend on a public
+  third-party host being up, so the control has to succeed in CI and on a
+  dev box alike. The target is recorded in the handoff.
 
 Resolved by the orchestrator 2026-10-19 (`docs/handoffs/platform-stack-ready.md`,
 "orchestrator: rulings on analyst plan"; C1 in "rulings on architect plan"):

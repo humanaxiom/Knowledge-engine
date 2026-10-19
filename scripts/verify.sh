@@ -24,7 +24,15 @@ esac
 if [ "${KE_IN_GATES:-}" != "1" ]; then
   # MSYS_NO_PATHCONV stops Git Bash on Windows rewriting the container path.
   export MSYS_NO_PATHCONV=1
+  # PS-3.5: with a repo-root .env present, the gate services see an empty file
+  # in its place. No .env, no overlay: a mount point cannot be created inside
+  # the read-only checkout.
+  gates_mask=""
+  if [ -e .env ]; then gates_mask="docker-compose.gates-mask.yml"; fi
   if [ "$mode" = fast ]; then
+    # Always pinned (security M-1): a caller COMPOSE_FILE or an auto-loaded
+    # docker-compose.override.yml must not be able to replace `.:/work:ro`.
+    export COMPOSE_FILE="docker-compose.yml${gates_mask:+:$gates_mask}" COMPOSE_PATH_SEPARATOR=":"
     exec docker compose --env-file .env.example --profile gates run --rm --build gates \
       scripts/verify.sh fast
   fi
@@ -42,6 +50,7 @@ if [ "${KE_IN_GATES:-}" != "1" ]; then
   started="$(date +%s)"
   export COMPOSE_PROJECT_NAME="ke-verify-${RANDOM}${RANDOM}"
   export COMPOSE_FILE="docker-compose.yml:docker-compose.verify.yml"
+  if [ -n "$gates_mask" ]; then COMPOSE_FILE="$COMPOSE_FILE:$gates_mask"; fi
   export COMPOSE_PATH_SEPARATOR=":"
   export KE_ENV_FILE=".env.example"
   # This project is verify's own: smoke may stop and restart a store in it and

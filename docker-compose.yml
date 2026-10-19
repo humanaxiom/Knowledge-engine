@@ -40,8 +40,20 @@ x-gates: &gates
     context: .
     dockerfile: docker/gates.Dockerfile
   working_dir: /work
+  # L-5 (PS-3.5): uid 10001, a read-only checkout, /tmp the only writable path.
+  user: "10001:10001"
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
   volumes:
-    - .:/work
+    - type: bind
+      source: .
+      target: /work
+      read_only: true
+  tmpfs: ["/tmp:exec,mode=1777"]
+  environment: &gates-env
+    MYPY_CACHE_DIR: /tmp/mypy
+    PYTHONDONTWRITEBYTECODE: "1"
+    GIT_OPTIONAL_LOCKS: "0"
 
 services:
   gateway:
@@ -179,7 +191,7 @@ services:
     profiles: ["gates-it"]
     networks: [backend]
     environment:
-      <<: *model-env
+      <<: [*gates-env, *model-env]
       KE_GATEWAY_MODEL_LISTEN: ${KE_GATEWAY_MODEL_LISTEN:-8102}
       KE_API__LISTEN_PORT: ${KE_API_LISTEN:-8080}
       KE_MODEL_UPSTREAM: ${KE_MODEL_UPSTREAM:-}

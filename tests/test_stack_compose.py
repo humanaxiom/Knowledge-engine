@@ -37,10 +37,9 @@ def _internal(name: str) -> bool:
 
 
 def _find_service(name: str) -> dict[str, Any] | None:
-    for _, svc_name, svc in cs.all_services():
-        if svc_name == name:
-            return svc
-    return None
+    # The base file defines each service; overlays (the `.env` mask) hold only
+    # partial extras, so a per-service property is read from the base (review B1).
+    return cs.services().get(name)
 
 
 class ServicesTest(unittest.TestCase):
@@ -212,7 +211,7 @@ class NetworksTest(unittest.TestCase):
         for path in cs.compose_files():
             declared |= set((cs.load(path).get("volumes") or {}))
         for file, name, svc in cs.all_services():
-            if not cs.is_stack_service(svc):
+            if not cs.is_stack_service(cs.services().get(name, svc)):
                 continue
             for kind, source in cs.volume_sources(svc):
                 with self.subTest(file=file, service=name, source=source):

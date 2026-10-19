@@ -36,6 +36,12 @@ dev = [
 [tool.coverage.run]
 branch = true
 source = ["engine", "harness_telemetry"]
+# The checkout is read-only in the gates (PS-3.5), so the data lives in /tmp.
+# `parallel = true` is what makes `coverage erase` also remove stale
+# `/tmp/.coverage.*` files (without it erase deletes only the main data file);
+# `combine` reads them. Not the COVERAGE_FILE env var (leaks into nested runs).
+data_file = "/tmp/.coverage"
+parallel = true
 
 [tool.coverage.report]
 fail_under = 80

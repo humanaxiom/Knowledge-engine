@@ -307,21 +307,31 @@ class IntegrationRunsOnceTest(unittest.TestCase):
                 self.assert_quality_gates_ran(mode)
 
     def test_stale_parallel_coverage_data_is_not_combined(self):
-        # Review B5: a run that stopped between `coverage run -p` and
-        # `combine` (every RED step does, under set -e) leaves
-        # .coverage.<host>.<pid>.<rand> behind, and `coverage erase` keeps it
-        # unless parallel is configured. The next run must not combine it.
-        # The repo's real pyproject.toml is used, so a fix in either test.sh
-        # or [tool.coverage] is exercised.
+        # Review B5, reworked for PS-3.5 (the checkout is read-only in the
+        # gates, so test.sh may not `rm` anything in it): a run that stopped
+        # between `coverage run -p` and `combine` leaves parallel data files,
+        # and the next run must not combine them. They now live beside
+        # `[tool.coverage.run] data_file` (/tmp, a fresh tmpfs per container),
+        # and test.sh clears them with `coverage erase`, which removes them only
+        # because `parallel = true` is set (the real erase runs in
+        # tests/test_gate_least_privilege.py, review B2). So: erase runs before the
+        # first coverage run, data_file is under /tmp, and test.sh touches no file
+        # in the checkout.
+        import tomllib
+
+        data_file = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8")
+                                  )["tool"]["coverage"]["run"]["data_file"]
+        self.assertTrue(str(data_file).startswith("/tmp/"), data_file)
         shutil.copyfile(ROOT / "pyproject.toml", self.project / "pyproject.toml")
         for mode in ("fast", "full"):
-            stale = self.project / ".coverage.stale-host.pid1.x1y2z3"
-            stale.write_bytes(b"stale coverage data from a failed run")
+            in_checkout = self.project / ".coverage.stale-host.pid1.x1y2z3"
+            in_checkout.write_bytes(b"left alone: the checkout is read-only in the gates")
             with self.subTest(mode=mode):
                 calls = self.assert_quality_gates_ran(mode)
-                self.assertNotIn(f"stale-present {stale.name}", calls,
-                                 "coverage combine saw the stale data file")
-                self.assertFalse(stale.exists(), "stale coverage data survived the run")
+                erase = calls.index("python -m coverage erase")
+                first_run = min(i for i, c in enumerate(calls) if c.startswith("python -m coverage run"))
+                self.assertLess(erase, first_run, "coverage erase must run before the first coverage run")
+                self.assertTrue(in_checkout.exists(), "test.sh removed a file in the checkout")
 
 
 @unittest.skipUnless(shutil.which("bash"), "needs bash")

@@ -637,7 +637,7 @@ exit 0
 """
 
 DOCKER_STUB = """#!/usr/bin/env bash
-echo "docker $* | project=${COMPOSE_PROJECT_NAME:-} | file=${COMPOSE_FILE:-}" >> "$STAGE_LOG"
+echo "docker $* | project=${COMPOSE_PROJECT_NAME:-} | file=${COMPOSE_FILE:-} | sep=${COMPOSE_PATH_SEPARATOR:-}" >> "$STAGE_LOG"
 case "$*" in *gates-it*)
   case "|${FAIL_STAGE:-}|" in *"|gates-it|"*) echo "stub gates-it: failing" >&2; exit 7 ;; esac ;;
 esac
@@ -849,6 +849,53 @@ class VerifyHostHalfTest(unittest.TestCase):
         self.assertEqual(self._stages(lines), ["build", "launch", "gates-it", "smoke", "teardown"])
         self.assertNotEqual(result.returncode, 0, "a failed teardown was swallowed (rc=0)")
         self.assertRegex(output, r"(?i)teardown", "verify must name the failed teardown")
+
+    def test_gates_mask_overlay_only_when_env_exists(self):  # PS-3.5
+        # With a repo-root .env, both modes add the overlay that masks it for
+        # the gate services; without one, no overlay (a mount point cannot be
+        # created in the read-only checkout).
+        for mode in ("fast", "full"):
+            for has_env in (False, True):
+                with self.subTest(mode=mode, env=has_env):
+                    env_file = self.tmp / ".env"
+                    env_file.unlink(missing_ok=True)
+                    if has_env:
+                        env_file.write_text("KE_STORES__POSTGRES__PASSWORD=secret\n", encoding="utf-8")
+                    result, lines = self._verify(mode)
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    gates = [l for l in lines if re.search(r"\b(gates|gates-it)\s+scripts/verify\.sh", l)]
+                    self.assertEqual(len(gates), 1, lines)
+                    masked = "docker-compose.gates-mask.yml" in gates[0]
+                    self.assertEqual(masked, has_env, gates[0])
+        env_file.unlink(missing_ok=True)
+
+    def test_gates_compose_files_are_pinned_whatever_the_caller_sets(self):  # security M-1
+        # A caller COMPOSE_FILE, or an auto-loaded docker-compose.override.yml,
+        # could replace `.:/work:ro`. Both modes pin COMPOSE_FILE to the repo's
+        # own files, with a ":" separator, with and without a repo-root .env.
+        (self.tmp / "docker-compose.override.yml").write_text(
+            "services:\n  gates:\n    volumes:\n      - .:/work\n", encoding="utf-8")
+        env_file = self.tmp / ".env"
+        for mode in ("fast", "full"):
+            for has_env in (False, True):
+                with self.subTest(mode=mode, env=has_env):
+                    env_file.unlink(missing_ok=True)
+                    if has_env:
+                        env_file.write_text("KE_X=1\n", encoding="utf-8")
+                    result, lines = self._verify(mode, COMPOSE_FILE="evil.yml;rw-overlay.yml",
+                                                 COMPOSE_PATH_SEPARATOR=";")
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    gates = [l for l in lines if re.search(r"\b(gates|gates-it)\s+scripts/verify\.sh", l)]
+                    self.assertEqual(len(gates), 1, lines)
+                    files = re.search(r"\| file=(\S*)", gates[0])
+                    self.assertIsNotNone(files, gates[0])
+                    assert files is not None
+                    base = ("docker-compose.yml:docker-compose.verify.yml" if mode == "full"
+                            else "docker-compose.yml")
+                    expected = base + (":docker-compose.gates-mask.yml" if has_env else "")
+                    self.assertEqual(files.group(1), expected, gates[0])
+                    self.assertTrue(gates[0].endswith("| sep=:"), gates[0])
+        env_file.unlink(missing_ok=True)
 
     def test_fast_runs_gates_without_publishing(self):
         result, lines = self._verify("fast")

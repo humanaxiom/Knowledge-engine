@@ -16,8 +16,6 @@ mode="${1:-full}"
 
 # Stale data from an earlier run must not count towards this run.
 uv run --locked python -m coverage erase
-# `erase` keeps parallel data files from a run that stopped before `combine`.
-rm -f .coverage.*
 
 # Fail loudly before running anything: a test dir without __init__.py would
 # otherwise be skipped silently. Applies at every depth.

@@ -69,7 +69,8 @@ flowchart LR
 
 Criteria: `docs/requirements.md` § platform-skeleton (PS-1.x, PS-2.x, PS-3.x).
 Decisions: ADR-KE-009 (gates topology), ADR-KE-010 (configuration and egress),
-ADR-KE-011 (stack topology and job queue), ADR-KE-012 (offline bundle).
+ADR-KE-011 (stack topology and job queue), ADR-KE-012 (offline bundle),
+ADR-KE-013 (image scan, platform-supply-chain).
 Every image is pinned by digest. **No tag or digest is chosen in this
 document.** The developer resolves and records each one at implementation
 time, in the sub-item's handoff.
@@ -87,8 +88,19 @@ upstream forward to the configured model host.
 | Network | `internal` | Members |
 |---|---|---|
 | `edge` | no | `gateway` |
-| `backend` | yes (no route out), and `gateway_mode_ipv4: isolated` (no route to the Docker host; rework 1, M-2) | every stack service, `gates-it`, `probe` |
-| `offline` | yes | `dind`, `offline-client` |
+| `backend` | yes (no route out), and `gateway_mode_ipv4: isolated` (no route to the Docker host; rework 1, M-2) | every stack service, `gates-it` |
+| `offline` | yes, and `gateway_mode_ipv4: isolated` (platform-offline) | `dind`, `offline-client` |
+
+Profile-only one-shots outside these networks: `gates` (`network_mode:
+none`) and, from **platform-supply-chain** (not this branch, ruling R3), the
+scanner pair of ADR-KE-013 (`scan-db` on the default bridge, the only one-shot
+with a route out, which fetches the vulnerability database; `scan` with
+`network_mode: none`).
+
+**Every network that sets `gateway_mode_ipv4: isolated` also sets
+`internal: true`** (`backend`, `offline`, and any inner network inside
+`dind`). Engine 29 refuses `isolated` without `--internal` (spike S3), so the
+pair is one invariant and a static test checks it.
 
 **`backend` is isolated from the Docker host too (amended, platform-stack
 rework 1, security M-2).** `internal: true` removes the route out, but the
@@ -116,9 +128,9 @@ own `<project>_backend` and never hit "Pool overlaps". (Two *live* stacks
 still need different published ports; verify publishes none.) The runtime
 proof of isolation is the network's own configuration, checked from the
 host (§2.2 No route out). `edge` is unchanged:
-the gateway needs its route out. `offline` (platform-offline) should take the
-same option when it is created; that is recorded here for that item, not done
-in this one.
+the gateway needs its route out. `offline` (platform-offline) takes the same
+option and `internal: true`, and the offline check asserts both at runtime
+(§2.5).
 
 | Service | Image (digest pinned at implementation) | Networks | Restart | Role |
 |---|---|---|---|---|
@@ -129,15 +141,35 @@ in this one.
 | `neo4j` | official `neo4j`, 5.x community | `backend` | `unless-stopped` | graph and vector indexes (ADR-KE-002) |
 | `valkey` | `valkey/valkey`, major 8, AOF on | `backend` | `unless-stopped` | job queue only |
 | `phoenix` | `arizephoenix/phoenix` (today `version-20.22.0`; digest added) | `backend` | `unless-stopped` | traces for the product and the harness (Q2 ruling) |
-| `gates` | `ke-gates` (`docker/gates.Dockerfile`) | `network_mode: none` | none | one-shot: lint and unit gates (unchanged from ADR-KE-001) |
-| `gates-it` | `ke-gates` (same YAML anchor) | `backend` only; no Docker socket | none | one-shot: unit, integration, coverage and mypy against the real stores; model-calling tests reach the model host only through `gateway`, and run only when it is reachable (ADR-KE-009, Q30/F-A) |
-| `probe` | `ke-app` | `backend` only | none | **Not built in platform-stack** (2b simplification): the live smoke runs its in-stack checks with `compose exec` in `gateway` and `api` instead (§2.4 Smoke). platform-offline decides whether its offline check needs a one-shot probe; until then no compose file defines `probe` |
-| `dind` | official `docker` image, `dind` variant, privileged | `offline` (internal) | none | clean daemon for the offline check (ADR-KE-009, ADR-KE-012) |
-| `offline-client` | `ke-gates` | `offline` (internal) | none | runs install, launch and smoke against `dind` |
+| `gates` | `ke-gates` (`docker/gates.Dockerfile`) | `network_mode: none` | none | one-shot, profile `gates`: lint and unit gates (unchanged from ADR-KE-001) |
+| `gates-it` | `ke-gates` (same YAML anchor) | `backend` only; no Docker socket | none | one-shot, profile `gates-it`: unit, integration, coverage and mypy against the real stores; model-calling tests reach the model host only through `gateway`, and run only when it is reachable (ADR-KE-009, Q30/F-A) |
+| `probe` | — | — | — | **Dropped (platform-offline plan).** Never built. The live smoke runs its in-stack checks with `compose exec`, and the `ci/offline` control runs as a throwaway `docker run` of the api image on `<project>_edge` (§2.5), so no compose service other than `gateway` joins `edge` |
+| `dind` | official `docker` image, `dind` variant, digest pinned, Engine ≥ 28, its default (containerd) image store; privileged | `offline` (internal, isolated), network alias `docker` (the TLS server cert's SAN; spike S3) | none | profile `offline`: clean daemon for the offline check (ADR-KE-009, ADR-KE-012) |
+| `offline-client` | `ke-gates` (not the `x-gates` anchor: no repo mount); uid 10001 | `offline` (internal, isolated) | none | profile `offline`: installs the bundle into `dind`, launches, smokes, tears down (§2.5) |
+| `scan-db`, `scan` | **platform-supply-chain, not this branch.** The scanner image (ADR-KE-013), digest pinned | `scan-db`: default bridge; `scan`: `network_mode: none` | none | profile `scan`: fetch the vulnerability database, then scan the `ke-app` image tar offline |
 | model host | external, OpenAI-compatible | — | — | The deployment's model host is `aria-gb10-2` (Q7 ruling). Ollama now, vLLM later. The app reaches it only through `gateway`. Config carries it in `KE_MODEL_UPSTREAM`; no code names it |
 
-`gates`, `gates-it`, `probe`, `dind` and `offline-client` are behind compose
-profiles (`gates`, `probe`, `offline`), so `up` never starts them.
+`gates`, `gates-it`, `dind` and `offline-client` (and, from
+platform-supply-chain, `scan-db` and `scan`) are behind compose profiles
+(`gates`, `gates-it`, `offline`; later `scan`; as built, `gates-it` has its
+own profile), so `up` never starts them.
+
+**Image tags (platform-offline, review N6).** The three first-party images
+are `ke-app:${KE_IMAGE_TAG:-local}`, `ke-gateway:${KE_IMAGE_TAG:-local}` and
+`ke-gates:${KE_IMAGE_TAG:-local}`; `.env.example` gains `KE_IMAGE_TAG=local`.
+As built they were bare names (implicitly `:latest`), so a verify run in one
+worktree retagged the image the live stack or another worktree's verify run
+would start next. `verify.sh` (host half, both modes, after the L-11 unset)
+exports `KE_IMAGE_TAG=wt-<first 12 hex of the SHA-256 of the checkout's
+absolute path>`. So:
+- verify never moves `:local`, which only an operator's own `build.sh` sets
+  (`install.sh` tags `ke-<x>:bundle-<sha12>` and never touches `:local`,
+  §2.5);
+- each worktree has one stable tag set, so there is nothing to clean up per
+  run and layers stay shared through the build cache;
+- two runs in the same worktree build from the same files.
+`wt-*` tags are never removed automatically; `docker image prune` is the
+operator's call.
 
 ```mermaid
 flowchart LR
@@ -154,7 +186,6 @@ flowchart LR
     n4[(neo4j)]
     vk[(valkey)]
     ph[phoenix]
-    pr[probe<br/>one-shot]
     git[gates-it<br/>one-shot, verify only]
   end
   mh[(model host aria-gb10-2<br/>via KE_MODEL_UPSTREAM)]
@@ -164,7 +195,6 @@ flowchart LR
   api & wk -- "model port on gateway" --> gw -- "TCP, one upstream (edge)" --> mh
   api & wk --> pg & n4 & vk
   api & wk -- OTLP --> ph
-  pr --> api & gw
   git --> pg & n4 & vk & api
   git -- "model port on gateway" --> gw
 ```
@@ -302,17 +332,30 @@ sequenceDiagram
   H->>S: smoke.sh
   S->>D: launch.sh (idempotent), checks, exec api readyz ready
   S->>D: stop postgres, exec api readyz not-ready:postgres, up --wait postgres, exec api readyz ready
-  S->>D: teardown.sh (smoke's EXIT trap; verify's trap then adds --volumes)
+  S->>D: ci/offline: control from a throwaway api-image container on edge, then api and worker must get no_route (§2.5)
   Note over H,G: the OTLP check runs in the container half (gates-it), as in 2a
-  H->>O: offline_check.sh (platform-offline; §2.5)
+  H->>D: teardown.sh --volumes (stage: frees memory and disk before DinD; the trap repeats it)
+  H->>O: offline_check.sh (disk check, bundle.sh, dind, offline-client: install, launch, smoke, teardown; df logged per stage; §2.5)
 ```
+
+*As built (2b) and planned (platform-offline):* smoke runs with
+`KE_SMOKE_OWNS_PROJECT=1` and leaves the teardown to verify's trap (ruling
+Q37); the container half also runs `smoke.sh`, which in the gates image is
+the OTLP check. platform-offline appends the last two stages above. Each is
+one script call; `verify.sh` gains no command of its own (F5,
+`test_verify_sh_has_no_inlined_commands`, whose forbidden list gains
+`docker save` and `sha256sum`). *platform-supply-chain* later inserts
+`scan.sh` (ADR-KE-013) between the teardown and `offline_check.sh`, and adds
+the scanner's name to the forbidden list; this branch has no scan stage (R3).
 
 - **Two-sided scripts.** `smoke.sh` has the same two-sided shape as
   `verify.sh`, keyed on `KE_IN_GATES`.
   - On the host it runs the live-stack smoke (PS-2.8).
   - In `gates` it runs today's OTLP check (`smoke_otlp.py`).
-  - `smoke.sh --live` runs the host half only. The offline check uses it,
-    because the bundle carries no gates image.
+  - *Drift fixed (platform-offline plan):* there is no `smoke.sh --live`
+    flag. `offline-client` runs on the gates image, which sets
+    `KE_IN_GATES=1`, so its service sets `KE_IN_GATES` to the empty string
+    and the same `smoke.sh` takes its host half there.
 - **Store-down cases.** Because `gates-it` has no Docker socket, it cannot stop
   a container. Integration tests make a store "down" in process, by pointing
   one store's settings at a closed port on a stack host. The real stop and
@@ -381,8 +424,98 @@ sequenceDiagram
   `--locked`, so a verify run can never pass locally only because it fetched
   a dependency that CI could not.
 - **Container health.** Health of the running containers is proven by
-  `launch.sh --wait`, which fails unless every healthcheck passes, and by the
-  probe.
+  `launch.sh --wait`, which fails unless every healthcheck passes, and by
+  smoke's `check_healthy` before the proxy checks and after the final ready
+  (as built; there is no `probe` service).
+- **Unprivileged gates, read-only checkout (platform-offline, security
+  L-5).** As built, `gates` and `gates-it` run as root with the checkout
+  mounted read-write, so test code could write `.git/hooks` or any file.
+  The `x-gates` anchor changes for both services. Amended from spike S2
+  (`docs/evidence/platform-offline/spikes.md` §S2), which ran the fast suite
+  as uid 10001 on a read-only checkout and listed every failing write:
+  - **Image (`docker/gates.Dockerfile`).**
+    - `ENV UV_CACHE_DIR=/opt/uv-cache` before the build-time `uv sync`, so
+      the cache that holds the build backend (hatchling) is image-owned, not
+      root's 0700 `/root/.cache/uv`. `uv run --locked` re-installs the
+      editable project on every run and needs both the cache and a writable
+      venv.
+    - `chown -R 10001:10001 /opt/venv /opt/uv-cache` after the last sync
+      (security L-1: with group 0 the gates user could also write the
+      group-writable PowerShell tree).
+    - `git config --system --add safe.directory /work` (that one path, never
+      `*`), so git accepts a CI checkout owned by another uid ("dubious
+      ownership"). The system file is used because HOME is not writable.
+    - The Docker CLI and compose plugin, pinned (Lint, below), because
+      `offline-client` needs them (S3 found none in the image).
+    - It ends with `USER 10001`.
+  - **Compose (`x-gates`).**
+    - `user: "10001:10001"`, matching the image ownership; never group 0
+      (security L-1).
+    - `cap_drop: [ALL]` and `security_opt: [no-new-privileges:true]` on both
+      `gates` and `gates-it` (security L-2). The gates need no capability.
+    - The checkout is mounted `read_only: true` (long syntax). Nothing else
+      in it is writable.
+    - `tmpfs: ["/tmp:exec,mode=1777"]` (short syntax, which carries the
+      options). `exec` is required: Docker's tmpfs default is `noexec`, and
+      the tests that copy and run `scripts/*.sh` from a temp directory then
+      fail (S2 found 197 failures).
+    - Environment: `MYPY_CACHE_DIR=/tmp/mypy`, `PYTHONDONTWRITEBYTECODE=1`
+      and `GIT_OPTIONAL_LOCKS=0` (so the container half's `git diff --quiet`
+      never tries to write the index). `UV_OFFLINE=1` stays.
+  - **Coverage data goes to `/tmp` through `pyproject.toml`, not the
+    environment.** `[tool.coverage.run]` gains `data_file =
+    "/tmp/.coverage"`. The env var `COVERAGE_FILE` is **not** used: nested
+    coverage runs started by tests inherit it, write statement-only data into
+    the same files, and `coverage combine` then fails ("Can't combine
+    statement coverage data with branch data"). A nested run reads its own
+    temp `pyproject.toml` and is unaffected by `data_file` (S2 item 4).
+  - `test.sh` drops its `rm -f .coverage.*` in the checkout. Two guarantees
+    keep stale parallel data out of `coverage combine` (corrected, review B2):
+    - `[tool.coverage.run]` sets `parallel = true`. In coverage 7.16,
+      `coverage erase` removes the `data_file.*` parallel files **only** when
+      `parallel` is configured; `-p` on `coverage run` does not change what
+      erase does, and without the setting `/tmp/.coverage.*` survives erase.
+      A fast test runs the real `coverage erase` with the repo's
+      `[tool.coverage.run]` table (`data_file` redirected to a temp dir) and
+      asserts that a planted stale parallel file is gone.
+    - `/tmp` is a fresh tmpfs in each `docker compose run` container, so no
+      parallel file survives from an earlier run. This is the second
+      guarantee, not the only one.
+  - **`UV_NO_SYNC` is forbidden** in compose, Dockerfiles and scripts. It
+    lets the gates pass when `pyproject.toml` has drifted from `uv.lock`
+    (S2 item 5), which hides the lock gate. A static test asserts its
+    absence.
+  A test that writes into the checkout now fails with `EROFS`; that is a
+  test defect, fixed in the test. The checkout must be readable by uid
+  10001: true for CI checkouts and Docker Desktop mounts; a Linux checkout
+  made under `umask 077` fails loudly, and `docs/quickstart.md` says so.
+  - **`.env` is masked (PS-3.5).** When `./.env` exists, the host half of
+    `verify.sh` adds the overlay `docker-compose.gates-mask.yml`. That
+    overlay binds the committed empty file `docker/empty` read-only over
+    `/work/.env` for `gates` and `gates-it`. Masking a file that exists
+    needs no writable mount point.
+    - The overlay holds **only** that mask volume for the two services. It
+      carries no `profiles`, `networks`, `network_mode` or other copied keys
+      (review B1). Per-service properties are read from
+      `docker-compose.yml`, and a test pins the overlay's content.
+    - Fast mode **always** exports `COMPOSE_FILE` (the base file, plus the
+      mask overlay when `.env` exists) and `COMPOSE_PATH_SEPARATOR`, whether
+      or not `.env` exists (security M-1, review N7). A `COMPOSE_FILE` set by
+      the caller and an auto-loaded `docker-compose.override.yml` are
+      therefore ignored and cannot replace the read-only checkout mount. A
+      fake-docker unit test asserts both.
+    - When `.env` is absent there is nothing to read, so no overlay is
+      added: a mount point inside the read-only checkout cannot be
+      created.
+    - The choice is one file test in the host half. `env_value.sh` still
+      reads `.env` on the host, as before.
+    - Other gitignored `.env.*` files are not masked, which is a residual
+      for security. For example, smoke's temporary `.env.smoke.*` holds
+      nothing.
+  - **Scope.** The analyst's PS-3.5 scopes this to `gates-it`. Because the
+    anchor is shared, `gates` (fast) gets it too. That costs nothing and
+    keeps one anchor. If the orchestrator wants `gates` left alone, the
+    anchor splits.
 - **Lint (made concrete in rework 1, review B5).** `scripts/lint.sh` runs
   shellcheck over `scripts/**/*.sh` and `docker/**/*.sh`, and PSScriptAnalyzer
   (`Invoke-ScriptAnalyzer`, severity Warning and Error, any finding is
@@ -392,9 +525,34 @@ sequenceDiagram
   (full) both lint. The command lines stay in `lint.sh`
   (`test_verify_sh_has_no_inlined_commands`).
   - Gates image: `shellcheck` from the pinned Debian base's apt; `pwsh` from a
-    version-pinned release archive checked by SHA-256; PSScriptAnalyzer saved
-    at a pinned `-RequiredVersion` at **build** time. With `UV_OFFLINE=1` and
+    version-pinned release archive checked by SHA-256; PSScriptAnalyzer at a
+    pinned version, fetched at **build** time. With `UV_OFFLINE=1` and
     `network_mode: none`, nothing is fetched at gate time.
+  - **PSScriptAnalyzer by hash (platform-supply-chain, PS-3.7, security
+    L-8; review N-7; not this branch).** As built it is `Install-Module -RequiredVersion` from a gallery
+    set `Trusted`, with no hash or signature check. Instead the Dockerfile
+    downloads the package (`.nupkg`) for the pinned version from the
+    PowerShell Gallery's package endpoint with `curl`, checks it with
+    `sha256sum -c` against `ARG PSSCRIPTANALYZER_SHA256` (the same control
+    as the pwsh tarball), and unpacks it with Python's `zipfile` into the
+    AllUsers module path for that version, dropping the NuGet packaging
+    files. No `Install-Module` and no `Set-PSRepository`. The hash is
+    computed at implementation from the downloaded file, cross-checked
+    against the hash the gallery publishes for that version, and both are
+    recorded in the handoff. `Get-AuthenticodeSignature` was not chosen: it
+    does not verify signatures on Linux. `POWERSHELL_TELEMETRY_OPTOUT` and
+    `POWERSHELL_UPDATECHECK` move to an `ENV` **before** the first `RUN`
+    that starts pwsh (N-7).
+  - The gates image also gains the Docker CLI and the compose plugin
+    (static release binaries, version pinned and SHA-256 checked, compose
+    ≥ 2.24) for `offline-client` (§2.5; platform-offline). The gates
+    services never get a socket or a `DOCKER_HOST`; only `offline-client`
+    points at `dind`.
+  - **Layer order (review N8 applied to the gates image).** As built, the
+    gates image copies the code before `uv sync`, so every code change
+    reinstalls every dependency. It follows `app.Dockerfile`: copy
+    `pyproject.toml` and `uv.lock`, `uv sync --locked --no-install-project`,
+    then copy the code and sync again.
   - **Paths never become code (rework 2, security L-7).** `lint.sh` never
     builds PowerShell source from file names. The `-Command` text is one
     fixed single-quoted shell constant with no expansion in it. The `.ps1`
@@ -424,8 +582,6 @@ sequenceDiagram
     from L-7 (and the U+0027 form) is linted and leaves no marker file.
   - Inline `# shellcheck disable=` comments name the rule and give a reason;
     a blanket disable is a review finding.
-  - The Docker CLI and compose plugin, which `offline-client` needs, arrive
-    with platform-offline, not here.
   - First test: `test_lint_sh_runs_shellcheck_and_psscriptanalyzer` (fast,
     static: `lint.sh` names both tools over those globs, and `verify.sh`'s
     container half calls `lint.sh` before `test.sh`). The proof that lint can
@@ -561,7 +717,9 @@ is a pure function, `find_hardcoded(files, declared_values, exemptions)`, in
 - **Scanned:** `engine/`, `harness_telemetry/`, `scripts/`, `docker/`,
   `docker-compose*.yml`, `.github/`.
 - **Allowed locations:** `config/defaults.yaml`, `.env.example`,
-  `config/verify.env` (F4 ruling: an accepted literal exemption under PS-1.2),
+  `config/verify.env` (F4 ruling: an accepted literal exemption under PS-1.2;
+  as built the file does not exist, because no verify-only override has
+  been needed),
   `tests/`, `docs/`, and compose `${VAR:-default}` defaults. **In compose
   files only** (`docker-compose*.yml`), the scanner treats the `default` of a
   `${VAR:-default}` as a declared value, not a literal (B4, B7a ruling). The
@@ -1316,86 +1474,408 @@ matches real compose.
 - **`KE_API_LISTEN`** in place of `KE_API__LISTEN_PORT`, and **the long port
   syntax**: accepted (N1, N3; Ports above).
 
-### 2.5 platform-offline (ADR-KE-012)
+### 2.5 platform-offline (ADR-KE-012; the scan, ADR-KE-013, is platform-supply-chain)
 
-**Bundle (PS-3.1).** `scripts/bundle.sh` / `.ps1` writes
-`dist/knowledge-engine-<git sha>/` (and a `.tar` of it) containing:
-- `images/*.tar`: `docker save` of every image `docker compose config --images`
-  lists for the stack services, plus `ke-app`, `ke-gateway`, `ke-gates` and the
-  `dind` image. The gates image is included so that verification can run on the
-  box;
-- no wheels: the images carry their dependencies (bundle ruling);
-- `assets/`: vendored assets (none until `frontend`);
-- `compose/`: `docker-compose.yml`, `.env.example`, `config/`, `scripts/`,
-  `docs/quickstart.md`;
-- `bundle.json`: git sha, creation time, and each image's name and digest;
-- `MANIFEST.sha256`: `sha256sum` format, covering every file except itself.
+**Checked against what was built (2026-10-19, platform-offline plan).** The
+as-built stack at 4b19971 differs from the earlier draft of this section as
+follows, and the design below accounts for each difference:
+- The bundle carried `ke-gates` and `dind` "so verification can run on the
+  box". Dropped: the bundle is the product, so it holds the **stack images
+  only**. `verify.sh full` builds, so it cannot run offline anyway, and the
+  gates image (pwsh, shellcheck, dev dependencies) is large.
+- There is no `smoke.sh --live`. `offline-client` empties `KE_IN_GATES`
+  instead (§2.2).
+- `ci/offline` probed an external `KE_OFFLINE_PROBE_TARGET`, which needs
+  the internet for its control. The control would then be inconclusive on
+  locked-down networks and always inside `dind`. It is replaced by the
+  gateway's own `edge` address (below).
+- The first-party images were bare names (review N6). They are now
+  per-worktree tags (§2.1 Image tags).
+- `gates-it` has its own profile. There is no `probe` service, and none is
+  added.
+- `.dockerignore` has no `dist/` entry, so a bundle written under the
+  checkout would enter every build context. `dist/` is added to both
+  `.dockerignore` and `.gitignore`.
 
-**Platform.** The bundle is linux/amd64 only, installed from Linux (bash) or
-Windows (PowerShell). macOS and Apple silicon are out of scope (Q20 ruling).
+**Bundle (PS-3.1): `scripts/bundle.sh --out <dir> [--tar]`.** Bash only
+(ruling R1 below): bundling runs on the build host (CI, or Git Bash on
+Windows, which `verify.sh` already needs) after `build.sh`. It never builds
+or pulls, and it makes no network call.
+1. **Preconditions.**
+   - `--out` must not exist, or must be an empty directory.
+   - The image list is `docker compose -f docker-compose.yml --env-file
+     .env.example config --images` with no profile, which gives the stack
+     services only (api and worker share `ke-app`).
+   - Every reference must match a strict pattern
+     (`[a-z0-9._/-]+(:[A-Za-z0-9._-]+)?(@sha256:[0-9a-f]{64})?`), because
+     references go into JSON and file names.
+   - Each image must be present locally: `docker image inspect <ref>`, with
+     the digest for vendor references, so **the digest pin is enforced here,
+     on the build host**. It must be `linux/amd64` (Q20), read from the same
+     inspect.
+   - **Disk (R6).** The filesystem holding `--out` must have at least
+     10 GB free (`df -Pk`); otherwise exit non-zero with "need 10 GB free on
+     <path>, found <n> GB" before any `save`. 10 GB is a default from spike
+     S4 (0.96 GB tar, 3.3 GB inner store, about 9 GB all resident), revised
+     from the first CI run's `df` log.
+   - No image-store check: bundling uses only `docker tag` and `docker save
+     <tag>`, which work on the classic and containerd stores alike (spike
+     S1; the CI build host's store is unmeasured).
+   - Any failure exits non-zero and names the image.
+2. **Images (store-independent; ruling R2).** One tar per image. Each image
+   gets a bundle tag `as`, then `docker tag <ref> <as>` (adds a tag, moves
+   none of the compose references) and `docker save -o images/<name>.tar
+   <as>`. **No `--platform`**: that flag rewrites the manifest and changes
+   the digest (S1). `<name>` is the last path segment of the repository (for
+   example `postgres`, `phoenix`, `ke-app`), and a collision fails.
+   - First-party: `as` = `ke-<x>:bundle-<sha12>` (`<sha12>` from `git_sha`).
+   - Vendor: `as` = `ke-vendor/<name>:<digest12>` (the first 12 hex of the
+     pinned digest).
+   - The `as` tags stay on the build host; they are cheap and reused by the
+     next bundle of the same images.
+3. **`app/`.** This is what `install` copies to the operator's directory:
+   - `docker-compose.yml`, unchanged;
+   - `.env.example` and `config/`;
+   - `scripts/{launch,teardown,smoke}.sh`, `scripts/{launch,teardown}.ps1`
+     and `scripts/net_isolated.sh` (below);
+   - `docs/quickstart.md`.
+   Nothing else goes in: no `verify`, `test`, `lint`, `build` or
+   `env_value` script, and no `docker/` directory. `up --no-build` never
+   needs the build files. If compose turns out to refuse a missing build
+   context, ship `docker/` rather than edit the compose file.
+   `assets/` is added when `frontend` creates it.
+4. **Bundle root.**
+   - `install.sh` and `install.ps1`, copied from `scripts/`;
+   - `NOTICE.md`, `licenses/` and the generated `THIRD_PARTY_NOTICES.md`
+     (Licence notices, below).
+5. **`bundle.json`** is written with `printf`, one image per line, so that
+   the bash installer can read it with a fixed pattern and needs no `jq`
+   ("Git and Docker only" hosts):
+   ```
+   {"format": 1, "git_sha": "<40 hex>", "dirty": <bool>, "created": "<UTC ISO-8601>", "platform": "linux/amd64", "images": [
+   {"file": "images/postgres.tar", "ref": "postgres:<tag>@sha256:<64 hex>", "as": "ke-vendor/postgres:<digest12>", "services": "postgres"},
+   {"file": "images/ke-app.tar", "ref": "ke-app:<build tag>", "as": "ke-app:bundle-<sha12>", "services": "api worker"}
+   ]}
+   ```
+   - `file`, `ref` and `as` are the R2 ruling's record: `ref` is the
+     compose reference the image was checked against, `as` the tag it
+     travels and installs under.
+   - `services` (space-separated compose service names, `[a-z0-9_-]+`) is
+     what install needs to write the compose override; it comes from the
+     same `compose config` that gave the image list.
+   - `dirty` records an uncommitted tree. It does not refuse one, because
+     agents run `verify` on dirty trees. A dirty bundle reuses
+     `bundle-<sha12>`, so installing it moves that tag on the target; this
+     is accepted (dirty bundles are for verify, not for release).
+6. **`MANIFEST.sha256`.** It is in `sha256sum` text format and lists every
+   regular file except itself, with relative paths, sorted with `LC_ALL=C`.
+   `bundle.sh` prints the manifest's own SHA-256 for an out-of-band check.
+   With `--tar` it also writes `<dir>.tar` and prints that file's SHA-256.
+   The verify run does not pass `--tar` (disk; R6).
 
-**Install.** `scripts/install.sh` / `.ps1` verifies the manifest before
-anything else. It rejects a mismatch, a missing file, or **any file not listed
-in the manifest**. Only then does it run `docker load` for each image.
-- **Tools:** bash uses `sha256sum -c --strict` plus a listing comparison;
-  PowerShell uses `Get-FileHash`.
-- **Integrity, not authenticity:** `bundle.sh` prints the manifest's own hash
-  for an out-of-band comparison. Signing is out of scope (flagged to security).
+**Install (PS-3.1, PS-3.2): `install.sh <target>`, `install.ps1 -Target
+<dir>`.** The installer runs from the bundle root, on its own directory.
+Until step 1 passes, no `docker` command runs.
+1. **Manifest.** All four checks must pass:
+   - **Lines.** Every line matches `^[0-9a-f]{64}  <path>$`.
+     - Each path segment is `[A-Za-z0-9._-]+`.
+     - No segment is `.` or `..`.
+     - A path has no leading `/` and no backslash.
+     - Duplicate paths are refused.
+   - **File set.** The set of regular files under the bundle root, except
+     `MANIFEST.sha256`, equals the listed set exactly.
+     - Any missing file is refused, and so is any unlisted one.
+     - Any other entry type anywhere is refused: a symlink, a Windows
+       reparse point (junction), a fifo or a device.
+   - **Hashes.** Every hash matches: `sha256sum -c --strict --quiet` in
+     bash, `Get-FileHash -Algorithm SHA256` in PowerShell, with paths
+     compared as ordinal strings after `\` is turned into `/`.
+   - **Messages.** A message names the rule and the path. Listed paths are
+     safe to print because of the pattern above. An unlisted name is
+     printed escaped (`printf %q`, or the PowerShell equivalent), never raw.
+2. **Daemon.** `docker info` must answer; otherwise install refuses. **No
+   image-store check** (R2): install works on the classic and containerd
+   stores alike, so the store type is not an operator prerequisite.
+3. **Target.** The target must not exist, or must be an empty directory.
+   Upgrading in place is out of scope. A re-install goes to a new
+   directory, and the operator copies `.env` across.
+4. **`bundle.json`.** Every line must match the fixed pattern, and every
+   `ref`, `as` and service name its strict pattern (they are written into a
+   YAML file next). Every `images/*.tar` must appear in it, and the
+   reverse. A mismatch refuses, before any `load`.
+5. **Load and tag** (store-independent, spike S1), per image:
+   - `docker load -i <file>`; its output must hold exactly one `Loaded
+     image: <name>` or `Loaded image ID: sha256:<hex>` line (a classic or
+     an unnamed containerd load prints the second). Zero or several refuse.
+   - `docker tag <that name or id> <as>`, then `docker image inspect <as>`
+     must succeed.
+   - **Image IDs are never compared** with the build host or with
+     `bundle.json`: the loaded ID differs by store (S1). Integrity rests on
+     the manifest hashes of the tars; the digest pin was enforced on the
+     build host.
+   - Nothing is untagged or removed, and `:local` is never touched.
+6. **Copy.** It copies `app/` to the target.
+7. **Override.** It writes `<target>/docker-compose.override.yml` with
+   `printf`, one block per service in `services`:
+   `services: <svc>: {image: "<as>", pull_policy: never}`. Nothing else.
+   - Compose loads `docker-compose.override.yml` automatically whenever no
+     `-f` or `COMPOSE_FILE` is given, which is how `launch`, `teardown` and
+     `smoke` (sh and ps1) call it, so **no script changes** and the shipped
+     `docker-compose.yml` stays the tested file. `offline-client` must not
+     set `COMPOSE_FILE`. (`verify.sh` sets `COMPOSE_FILE`, so a stray
+     override in a checkout never reaches verify.)
+   - No digest reference remains for the installed stack, so nothing is
+     ever pulled. With `pull_policy: never`, a missing image fails at `up`
+     with "No such image", without a network attempt (S1 verified fail
+     closed either way).
+   - It prints the next step (`scripts/launch.sh` or `scripts\launch.ps1`
+     there).
 
-**Gates (both are stages inside `verify.sh full`, not separate CI jobs).**
-- `ci/offline` (PS-3.3) runs in `smoke.sh` against the verify stack.
-  - Assertion: `docker compose exec api` and `exec worker` each attempt a TCP
-    connection to `KE_OFFLINE_PROBE_TARGET`, and the attempt must fail.
-  - Control: the same probe from a throwaway `ke-app` container on `edge` must
-    succeed. If the control fails, the gate fails as *inconclusive*; it never
-    passes silently.
-  - The target is chosen at implementation and recorded in the handoff.
-- `ci/deployable-offline` (PS-3.2) is `scripts/offline_check.sh` (host):
-  1. `bundle.sh`.
-  2. Start `dind` (a fresh anonymous `/var/lib/docker`, on the internal network
-     `offline`, TLS certificates on a shared volume).
-  3. In `offline-client`:
-     - assert `docker image ls -q` is empty;
-     - `install.sh`;
-     - `launch.sh`;
-     - `smoke.sh --live`;
-     - `teardown.sh`.
-  4. `down -v` of the `ke-offline-<suffix>` project.
+*Integrity, not authenticity.* The installer checks itself through a
+manifest it ships with, so the guarantee comes from comparing the printed
+manifest hash out of band. Signing stays deferred (ADR-KE-012).
+`install.ps1` keeps the PowerShell baseline of `launch.ps1`. Fast tests run
+it under pwsh 7 in the gates image with a fake `docker`. A recorded run on
+the Windows host proves it on Docker Desktop (Q31/Q34).
 
-  Any pull or package-index call fails, because the inner daemon has no route
-  out.
+**`ci/offline` (PS-3.3): in the host half of `smoke.sh`**, after the
+readiness checks. It therefore runs in every `verify.sh full`, in every
+live smoke and inside `dind`.
+- **Target.** The target is the gateway's IPv4 address on
+  `<project>_edge`, read with `docker inspect` of `compose ps -q gateway`.
+  The port is the gateway's API listen port, read from the resolved compose
+  config. A value that is not an IPv4 address fails the check.
+  - It is an address off `backend` that is live and routable.
+  - It needs no internet, so the result is the same in CI, locally, on a
+    locked-down network and inside `dind`.
+  - The internet is one more off-`backend` destination behind the same
+    missing route. The TEST-NET-1 integration test (§2.2) still covers an
+    off-host address.
+- **Control first.** `docker run --rm --network <project>_edge --entrypoint
+  python <api image> -m engine.netprobe <ip> <port> --within 5` must print
+  `connected`. Otherwise the gate fails with `ci/offline inconclusive`. It
+  never passes.
+  - `<api image>` is the api service's image from `compose config`.
+  - The container is not a compose service, so `edge` still has only
+    `gateway` (PS-2.10). `--rm` leaves nothing for teardown's leftover
+    check.
+- **Assertion.** `compose exec -T api python -m engine.netprobe <ip> <port>
+  --within 2` must print `no_route`, and so must the same command in
+  `worker`.
+  - `connected`, `timeout`, `refused` or anything else fails, naming the
+    service. A timeout means packets left (§2.2).
+- **`engine/netprobe.py`.**
+  - It makes one TCP connect with a timeout.
+  - It prints one word, and its exit code is 0 only for `connected`:
+    - `ENETUNREACH` or `EHOSTUNREACH` → `no_route`;
+    - `ECONNREFUSED` → `refused`;
+    - a timeout → `timeout`;
+    - any other error → `error:<name>`;
+    - success → `connected`.
+  - It lives in `engine` so that coverage and mypy cover it and it ships in
+    the api image.
+  - It runs no `startup()` and opens no span, because it is not an agent
+    step. It takes no input except its arguments.
+- **`scripts/net_isolated.sh <network>`.** This is the "internal and
+  `gateway_mode_ipv4=isolated`" check, moved out of `smoke.sh` into one
+  script that `smoke.sh` and `offline_check.sh` both call. One `docker
+  network inspect --format '{{json .}}'` is parsed once, which also closes
+  review R2-N8.
 
-  **F5 ruling:** it runs in every local `full`, so the offline proof is the
-  same locally and in CI. (Since Q30, local `full` covers more than CI
-  overall: see ADR-KE-009.) A daemon that cannot run privileged containers is a blocker, never a
-  skip. Revisit if `full` exceeds about 15 minutes locally.
+**`ci/deployable-offline` (PS-3.2): `scripts/offline_check.sh`.** The
+script is two-sided, keyed on `KE_OFFLINE_CLIENT=1`.
+- **Compose additions (profile `offline`).**
+  - Network `offline`: `internal: true` and `gateway_mode_ipv4: isolated`.
+  - `dind`:
+    - the official `docker:<ver>-dind` image, digest pinned, Engine ≥ 28
+      (`launch.sh` refuses older);
+    - its default image store, which for the pinned Engine 29 is containerd
+      (S1). The bundle does not depend on it: install is store-independent,
+      so this is a property of the CI dind only, never an operator
+      prerequisite;
+    - `privileged: true`, on `offline` only, with `DOCKER_TLS_CERTDIR=/certs`;
+    - **network alias `docker`** on `offline`. The generated server cert's
+      SANs are the container id, `docker` and `localhost` only, so
+      `tcp://dind:2376` fails TLS (S3). `DOCKER_TLS_SAN` was not chosen: the
+      alias needs no extra variable;
+    - a named volume `offline-certs:/certs`; `/var/lib/docker` stays the
+      image's anonymous volume, so every run starts empty and `down -v`
+      removes it;
+    - a healthcheck of `docker info`, no ports and no restart policy.
+  - `offline-client`:
+    - `ke-gates:${KE_IMAGE_TAG:-local}`, on `offline` only, `user: "10001"`
+      (S3: the client key is 0644 and readable by that uid);
+    - environment `DOCKER_HOST=tcp://docker:2376`, `DOCKER_TLS_VERIFY=1`,
+      `DOCKER_CERT_PATH=/certs/client`, `KE_IN_GATES=""` and
+      `KE_OFFLINE_CLIENT=1`; no `COMPOSE_FILE`;
+    - mounts: `${KE_OFFLINE_BUNDLE:?}:/bundle:ro`,
+      `./scripts/offline_check.sh:/opt/ke/offline_check.sh:ro`, and **only
+      the `client` subpath of the certs volume, read-only** (long syntax:
+      `type: volume`, `source: offline-certs`, `target: /certs/client`,
+      `read_only: true`, `volume: {subpath: client}`). `ca/` holds the CA
+      private key and is **never** mounted. `offline_check.sh` refuses a
+      compose that cannot apply `volume.subpath` (the minimum version is
+      measured at implementation and named in the message);
+    - `tmpfs` on `/install` and `/tmp` (`/tmp` with `exec,mode=1777`, as
+      L-5);
+    - **no checkout mount**, so the run tests the bundle and not the tree.
+  - Inner networks: the stack's `backend` inside `dind` is `internal` and
+    `isolated` from the same compose file; S3 confirmed the option is
+    honoured there.
+- **Host half.**
+  1. Project `ke-offline-<random>`. The `EXIT` trap removes the bundle
+     directory and runs `teardown.sh --volumes --profile offline`. Teardown
+     accepts exactly that one profile, and only for this caller; it keeps
+     F3 otherwise, and its label check reports leftovers.
+  2. **Disk (R6).** At least 10 GB free on the filesystem holding `dist/`,
+     and on the daemon's `DockerRootDir` when that path exists on the host
+     (on Docker Desktop it is inside the VM and is reported as not
+     measurable, not as a failure). Below that, exit non-zero with the
+     path, the figure found and "need 10 GB free" before anything is
+     saved.
+  3. `bundle.sh --out dist/<project>`.
+  4. `compose --profile offline up -d --wait dind`.
+  5. `net_isolated.sh <project>_offline`.
+  6. `compose --profile offline run --rm offline-client`.
+  - **`df` log (R6).** `offline_check.sh` prints one `offline: df <stage>`
+    block (`df -Pk` of the same paths) before step 2, after steps 3, 4 and
+    6, and after the trap's teardown. The first CI run's log is saved as
+    evidence and replaces the 10 GB default with a measured figure.
+- **Client half** (inside `offline-client`):
+  1. `docker image ls -q` must be empty, or the check fails with "daemon
+     not clean". Then `docker pull` of the first vendor reference in
+     `bundle.json`, bounded by `timeout`, must fail. If the pull succeeds,
+     the gate fails as *inconclusive*, because the daemon has egress (PS-3.2
+     analyst addition). Any failure counts, including DNS: the authoritative
+     proof is still the network inspect in host step 4.
+  2. `/bundle/install.sh /install/ke`.
+  3. In `/install/ke`, `scripts/launch.sh`. It creates `.env` from
+     `.env.example`, which is the operator path.
+  4. `KE_SMOKE_OWNS_PROJECT=1 scripts/smoke.sh`: the full PS-2.8 smoke,
+     store stop and start included, plus `ci/offline` inside `dind`.
+  5. `scripts/teardown.sh --volumes`.
+  6. **No pull happened.** The set of `repository:tag` names in `dind`
+     (`docker image ls --format`, dangling entries excluded) equals the set
+     of `as` values in `bundle.json`. Names, not IDs, are compared (IDs
+     differ by store). A missing image would also have failed at `up`
+     (`pull_policy: never`, and `dind` has no route out).
+- *F5 ruling:* the check runs in every local `full`. A daemon that cannot
+  run privileged containers, or a host below the disk floor, is a blocker
+  and never a skip. Revisit if `full` exceeds about 15 minutes locally
+  (time estimate below).
 
-`.github/workflows/ci.yml` keeps its single step. **F6 ruling:**
-`timeout-minutes` is set to the measured duration of `verify.sh full` plus 50%
-(PS-3.4, `test_ci_job_has_timeout`); the measurement is recorded in the
-sub-item's handoff.
+**Image scan: platform-supply-chain, not this branch (ruling R3).**
+ADR-KE-013's `scripts/scan.sh` becomes a stage of the host half of
+`verify.sh full` when that item lands; this branch's stage order has no scan.
 
-**PS-3.4 first measurement (platform-stack-ready).** The CI run of
-`verify.sh full` at 0f2821c on `ubuntu-24.04` took **274 s**
-(`docs/evidence/platform-stack/ci-run-0f2821c.txt`). 274 × 1.5 = 411 s,
-which rounds up to **`timeout-minutes: 7`** (from today's 20).
-- *Where it is recorded:* in `.github/workflows/ci.yml`, a comment on the
-  `timeout-minutes` line gives the arithmetic and the evidence path, for
-  example `# PS-3.4: ceil(274 s x 1.5 / 60); docs/evidence/platform-stack/ci-run-0f2821c.txt`.
-  The 2b evidence folder also gets a short `ci-timeout.md` with the run
-  URL, the commit, the duration line read from the log, and the arithmetic.
-- *Re-measure:* 2b adds the store stop and start and more integration
-  tests. At close-out, the orchestrator reads the duration of 2b's own green
-  CI run, and if `ceil(d × 1.5 / 60)` differs from 7, a one-line follow-up
-  sets the new value with the same comment and evidence. platform-offline
-  re-measures again, as PS-3.4 says.
-- *Test:* `test_ci_job_has_timeout` (fast) asserts the job declares an
-  integer `timeout-minutes`, and that the line's comment names an evidence
-  path that exists in the repository. Whether the value is right stays
-  with the reviewer (PS-3.4).
-- Risk: if 2b's first CI run exceeds 7 minutes, the job is cancelled. That
-  cancellation is itself a measurement, but it costs a round. Ruling C1 in
-  the plan evidence asks which order the orchestrator wants.
+**Licence notices (security 2b audit, PS-3.8, A43).**
+- `ke-app` keeps each package's `*.dist-info/licenses/`. uv installs them,
+  and nothing may delete them. A static test asserts that `app.Dockerfile`
+  removes nothing under the venv.
+- **Generated at bundle time (PS-3.8), not committed:**
+  `THIRD_PARTY_NOTICES.md` at the bundle root.
+  - `bundle.sh` runs `docker run --rm --network none --entrypoint python
+    <ke-app image> -m engine.notices`.
+  - `engine/notices.py` uses `importlib.metadata` to list every installed
+    distribution: name, version, licence (`License-Expression`, else
+    `License`, else the licence classifiers), and the in-image paths of its
+    licence files.
+  - It exits non-zero if any distribution whose licence names LGPL or GPL
+    has no licence file in the image. Every `full` therefore proves that
+    psycopg's LGPL text is in `ke-app`. This is the mechanism behind the
+    analyst's `test_app_image_keeps_psycopg_licence`; the tester decides
+    whether a separate test still adds anything.
+  - Unit tests run it against stubbed metadata.
+- **Committed `NOTICE.md`** (repository root, hand-maintained) holds what
+  cannot be generated:
+  - the psycopg / psycopg-binary statement: `LGPL-3.0-only`, used
+    unmodified and imported dynamically so it can be replaced, and the
+    source as the sdist URL and sha256 from `uv.lock` (a drift test ties
+    the version and URL to `uv.lock`);
+  - a table of the bundled vendor images with their licences, which
+    security confirms at the pinned digests (A43: Neo4j Community GPL-3.0,
+    Phoenix's licence to the human). A drift test checks that every vendor
+    repository in compose appears in the table.
+- `licenses/LGPL-3.0.txt` and `licenses/GPL-3.0.txt` are committed verbatim.
+- `app.Dockerfile` copies `NOTICE.md` and `licenses/` to `/app/`. The
+  bundle carries them and `THIRD_PARTY_NOTICES.md` at its root.
+- Any obligation work beyond listing (for example a GPL source offer for
+  the Neo4j image) is ruling R4.
+
+**Time cost (estimate, re-based on spike S4; measured at implementation,
+PS-3.4).**
+
+| Stage added to `full` | CI estimate | Basis |
+|---|---|---|
+| stack teardown before DinD | 10 s | today's teardown |
+| disk check and `df` logging | < 1 s | |
+| `bundle.sh` (save about 1 GB, hash it) | 15–40 s | S4: six saves 10.8 s, 0.96 GB, Docker Desktop |
+| `dind` up, empty-store check | 10–20 s | |
+| install: hash check plus `docker load` into `dind` | 20–60 s | S4: load 15.3 s into an empty dind |
+| launch inside `dind` (cold neo4j) | 40–80 s | 2b launch with no cache |
+| smoke inside `dind` (stop and start included) | 30–45 s | 2b smoke was about 25 s |
+| teardowns, `down -v`, removing the bundle | 15–25 s | |
+| **Total added** | **about 2.5–4.5 min** | |
+
+- **CI.** Today the job takes 389 s (`verify` 362 s) against
+  `timeout-minutes: 10`. The projection is about 9–11 min, which can exceed
+  the limit, so ruling R5 (20 min first, then measured + 50%) stands.
+- **Local.** Today `full` takes about 146 s, so the projection is about 5–7
+  min, under F5's ~15 min.
+- **Disk.** S4: bundle tar about 1.0 GB, `dind`'s store 3.3 GB after load,
+  gates image 1.35 GB, host copies of the stack images about 3.3 GB: about
+  9 GB resident, plus build cache. Hence the 10 GB floor (R6), checked by
+  `bundle.sh` and `offline_check.sh`, with `df` logged per stage. CI runner
+  figures are unmeasured until the first run.
+- **Memory.** It stays near today's peak, because the verify stack is torn
+  down before `dind` starts.
+
+**Spikes S1–S4 (done, 2026-10-19).** Evidence:
+`docs/evidence/platform-offline/spikes.md`. Results folded into this
+section:
+- **S1 → R2.** `save --platform` changes the digest; the classic store never
+  resolves `ref@digest` after a load; containerd resolves it only when the
+  image is named. Per-image tar, load, tag the loaded name or ID, and a
+  compose override work on both stores, with no pull. Hence the
+  store-independent bundle and install above.
+- **S2 → L-5.** The writable set for uid 10001 on a read-only checkout:
+  image-owned `/opt/venv` and uv cache, `/tmp` tmpfs with `exec`,
+  `MYPY_CACHE_DIR`, `data_file` in pyproject; no `UV_NO_SYNC` (§2.2).
+- **S3.** Client key readable by 10001; server SAN lacks `dind` (alias
+  `docker`); `isolated` needs `internal` and is honoured inside `dind`.
+- **S4 → R6.** Sizes and times above.
+- Still unmeasured: the CI runner's image-store type (irrelevant now, R2),
+  free disk and timings; the first CI run's `df` log and duration close
+  them (R5, R6).
+
+**CI timeout (PS-3.4).** `.github/workflows/ci.yml` keeps its single step.
+The current value is 10 min: 389 s × 1.5, from
+`docs/evidence/platform-stack-ready/ci-timeout.md`.
+`test_ci_job_has_timeout` stays as it is. platform-offline measures its
+own first green run and sets `ceil(d × 1.5 / 60)` with the same comment and
+evidence form (R5 covers the order).
+
+**Rulings (all decided 2026-10-19; handoff "rulings on architect R1–R7"
+and "rulings from spikes (R2, R6)").**
+- **R1.** No `bundle.ps1`: bundling is bash on the build host; install has
+  bash and PowerShell.
+- **R2.** Store-independent bundle and install (above). The containerd
+  store is not an operator prerequisite; only the CI `dind` uses it, as its
+  default.
+- **R3.** The scan (ADR-KE-013) moves to platform-supply-chain: `ke-app`
+  only, fresh database. This branch has no scan stage.
+- **R4.** Neo4j GPL-3.0 listed with a source URL in the notices; Phoenix
+  per the human's Q43 ruling.
+- **R5.** The CI timeout goes to 20 min in the commit that wires in the
+  offline stages, then measured + 50%.
+- **R6.** `bundle.sh` and `offline_check.sh` fail early below 10 GB free;
+  the first CI run logs `df` per offline stage; 10 GB is a default until
+  measured. `verify.sh` never prunes the operator's images. If CI runs out
+  anyway, a larger runner or a CI-only cleanup step (which would need a
+  CLAUDE.md row) goes back to the orchestrator.
+- **R7.** The bundle holds stack images only; L-5 applies to both gate
+  services (shared anchor); the psycopg licence test is covered by the
+  bundle-time notices generator. PS-3.7 (L-8, N-7) is platform-supply-chain.
 
 ### 2.6 First failing tests
 
@@ -1568,13 +2048,170 @@ Suggested first test per sub-item, followed by the order of the rest.
        `require_model_host`).
   - **Smoke:** the store stop and start in `smoke.sh` (PS-2.8), measured by
     the real `verify.sh full`.
-- **platform-offline.** First: `test_bundle_manifest_rejects_tamper` (fast).
-  It covers both `install.sh` and `install.ps1` on a tiny fixture bundle, in
-  three cases: a byte changed, a file missing, and an extra file. Then:
-  1. `test_bundle_lists_every_compose_image`.
-  2. `test_ci_job_has_timeout` (PS-3.4, F6), plus the recorded measurement.
-  3. The gates `ci/offline` and `ci/deployable-offline`, each with a recorded
-     run that shows it can go red (DR38).
+- **platform-offline** (rewritten in the platform-offline plan, in TDD
+  order; re-ordered after spikes S1–S4 and the R2/R3/R6 rulings). Names
+  marked *proposed* need the analyst to adopt them. Every fake-docker test
+  reuses `tests/fake_docker.py`. PS-3.6 (scan) and PS-3.7 (L-8, N-7) tests
+  belong to platform-supply-chain and are listed at the end only to mark
+  them out of scope.
+  - **Fast** (`verify.sh fast`):
+    1. *proposed* `test_gate_services_unprivileged_read_only_checkout`
+       (L-5, static). **First**, because every later RED and GREEN step then
+       runs under the final gates runtime, and a test that writes into the
+       checkout shows up at once as `EROFS` (S2 found 197 such failures from
+       a `noexec` `/tmp` alone).
+       - `x-gates`: `user` is `10001`; the checkout is `read_only`; `/tmp`
+         is a tmpfs whose options include `exec` and `mode=1777`; the
+         environment has `MYPY_CACHE_DIR=/tmp/mypy`,
+         `PYTHONDONTWRITEBYTECODE=1`, `GIT_OPTIONAL_LOCKS=0`, `UV_OFFLINE=1`
+         and **no** `COVERAGE_FILE`.
+       - `pyproject.toml`: `[tool.coverage.run] data_file` is under `/tmp`.
+       - `gates.Dockerfile`: `UV_CACHE_DIR=/opt/uv-cache` is set before the
+         first `uv sync`; `/opt/venv` and `/opt/uv-cache` are chowned to
+         10001; `safe.directory` is `/work` (never `*`); the last `USER` is
+         10001.
+       - `UV_NO_SYNC` appears nowhere in compose files, Dockerfiles or
+         `scripts/`.
+       - `test.sh` has no `rm` of `.coverage*` in the checkout.
+       - In the B6 harness, the `.env` mask overlay is added exactly when
+         `.env` exists.
+    2. `test_bundle_manifest_rejects_tamper` (PS-3.1). It runs `install.sh`
+       under bash and `install.ps1` under pwsh, both in the gates image, on
+       a tiny fixture bundle (two small "image" files, an `app/` file,
+       `bundle.json` and a manifest) with a fake `docker` first on `PATH`.
+       - Each case must exit non-zero, and the fake docker log must be
+         **empty**:
+         - a changed byte;
+         - a missing file;
+         - an unlisted extra file;
+         - a symlink;
+         - a manifest line with `..`, a leading `/` or a backslash;
+         - a malformed line;
+         - a duplicate path.
+       - The untampered fixture is the control. It passes and logs `docker
+         info`, then per image `load -i`, `tag <loaded> <as>` and `image
+         inspect <as>`.
+    3. *proposed* `test_install_refuses_unfit_target_or_daemon`: a
+       non-empty target, a failing `docker info`, a `bundle.json` line or
+       value that fails its pattern, and a tar missing from `bundle.json`
+       (or the reverse) are each refused with no `load` logged. There is no
+       image-store case (R2).
+    4. *proposed* `test_install_tags_loaded_images_and_writes_override`
+       (R2): the fake `docker load` prints `Loaded image: <as>` for one tar
+       and `Loaded image ID: sha256:<hex>` for the other.
+       - Install tags each to its `as`, then inspects `as`.
+       - Zero or two `Loaded` lines, or a failing `image inspect <as>`, fail
+         the install.
+       - No `rm`/`rmi` is logged, `:local` is never named, and no image ID
+         is compared.
+       - `<target>/docker-compose.override.yml` maps every service in
+         `services` to `image: <as>` with `pull_policy: never`, and holds
+         nothing else (parsed as YAML).
+    5. `test_bundle_lists_every_compose_image` (PS-3.1). The expected list
+       is the images of every service with no `profiles` in the parsed
+       `docker-compose.yml`. `bundle.sh` runs with a fake `docker` and a
+       fake `df`, and the test asserts:
+       - per image: `image inspect <ref>`, `tag <ref> <as>`, then `save -o
+         images/<name>.tar <as>`, and **no** `--platform`;
+       - `as` is `ke-<x>:bundle-<sha12>` for first-party and
+         `ke-vendor/<name>:<digest12>` for vendor images;
+       - `bundle.json` lists each image with `file`, `ref`, `as` and
+         `services`;
+       - `MANIFEST.sha256` covers every file but itself.
+       Refusals, each before any `save`:
+       - a missing image (and no `pull` is ever logged);
+       - a non-amd64 image;
+       - a reference that fails the pattern;
+       - a non-empty `--out`;
+       - under 10 GB free (fake `df`), with "need 10 GB free" and the path
+         in the message (R6).
+    6. *proposed* `test_bundle_contents`: the `app/` file set is exact (no
+       verify, test, lint, build or `env_value` script, no `.env`, no
+       `docker-compose.override.yml`), and the root holds `NOTICE.md` and
+       `licenses/`.
+    7. *proposed* `test_compose_offline_services`:
+       - `dind` is privileged, on `offline` only with alias `docker`, and
+         has no ports;
+       - `offline` is internal and isolated, and every network in every
+         compose file that sets `gateway_mode_ipv4: isolated` is
+         `internal: true`;
+       - `offline-client` runs as 10001, has `DOCKER_HOST=tcp://docker:2376`
+         and no `COMPOSE_FILE`, has no checkout mount and no socket, mounts
+         the bundle read-only, mounts the certs volume only at
+         `/certs/client` with `subpath: client` and read-only (no mount
+         reaches `ca`), and empties `KE_IN_GATES`;
+       - neither service has a restart policy.
+       Extend `test_compose_services_have_restart_policy`,
+       `test_no_docker_socket_mounted` and `test_compose_images_pinned_by_digest`
+       to cover `dind`.
+    8. *proposed* `test_gates_image_pins_docker_cli_by_hash`: the Docker CLI
+       and compose plugin are version-pinned release binaries with a
+       `sha256sum -c` (needed by `offline-client`).
+    9. *proposed* `test_first_party_images_use_image_tag` (N6): compose uses
+       `${KE_IMAGE_TAG:-local}` for `ke-app`, `ke-gateway` and `ke-gates`,
+       and `.env.example` has `KE_IMAGE_TAG=local`. In the `verify.sh` B6
+       harness, `KE_IMAGE_TAG` matches `wt-[0-9a-f]{12}`, is equal for two
+       runs from the same directory, and differs for another directory.
+    10. The `verify.sh` B6 harness extended. The order is build, launch,
+        `gates-it`, smoke, `teardown.sh --volumes`, `offline_check.sh`
+        (**no `scan.sh`**, R3); each failing stage stops the later ones;
+        the trap still tears down. `test_verify_sh_has_no_inlined_commands`
+        gains `docker save` and `sha256sum`.
+    11. *proposed* `NetprobeTest` (`engine.netprobe`, with socket stubs):
+        `ENETUNREACH`/`EHOSTUNREACH` → `no_route` with exit 1; refused,
+        timeout, other error; connected → exit 0. Then the smoke `ci/offline`
+        fake-docker cases:
+        - control not `connected` → FAIL with "inconclusive", and api is
+          never probed;
+        - api or worker `connected` or `timeout` → FAIL naming the service;
+        - a non-IPv4 target → FAIL;
+        - the passing path runs the control on `<project>_edge` with `--rm`.
+    12. *proposed* `OfflineCheckScriptTest` (fake docker, fake `df`):
+        - Host half: under 10 GB free fails before `bundle.sh` runs; then
+          bundle, `up --wait dind`, `net_isolated.sh` (refuses an inspect
+          that is not internal or not isolated), `run offline-client`. An
+          `offline: df` block is printed before the disk check, after
+          bundle, after dind up, after the client run and after teardown.
+          On every exit path it runs `teardown.sh --volumes --profile
+          offline` and removes the bundle directory.
+        - Client half: a non-empty image store fails before install; the
+          order is install, launch, smoke (with `KE_SMOKE_OWNS_PROJECT=1`),
+          teardown; a `repository:tag` set different from the `as` set in
+          `bundle.json` fails.
+        - Plus: `teardown.sh` refuses any profile but `offline`.
+    13. *proposed* `NoticesTest` (`engine.notices` on stubbed metadata:
+        every distribution is listed with its licence; an LGPL distribution
+        without a licence file exits non-zero). Then
+        `test_notice_lists_lgpl_packages_at_locked_versions`, the vendor
+        image table drift test, and `test_app_image_ships_notices` (a
+        static Dockerfile check: `NOTICE.md` and `licenses/` are copied, and
+        nothing under the venv is removed).
+    14. `test_ci_job_has_timeout` (PS-3.4) stays as it is. The value comes
+        from the recorded measurement.
+  - **Integration** (`gates-it`): *proposed*
+    `test_gates_cannot_write_the_checkout` (L-5 at runtime): `os.geteuid()
+    != 0`, and creating a file under `/work` or `/work/.git/hooks` fails
+    with `EROFS`, while a write under `/tmp` succeeds (the control). Then
+    `/work/.env`, if present, reads as empty. These match the analyst's
+    `test_gates_it_cannot_write_repo` and `test_gates_it_cannot_read_repo_env`.
+  - **Gates with recorded red runs (DR38)**, saved under
+    `docs/evidence/platform-offline/`:
+    - L-5: as uid 10001 on the read-only checkout, a `pyproject.toml` with
+      an extra dependency and `uv.lock` unchanged must fail `uv run
+      --locked` (the drift `UV_NO_SYNC` would hide, S2 item 5).
+    - `ci/offline`: a mutant compose that puts `api` on `edge` must fail the
+      assertion, and a control pointed at a closed port must fail as
+      inconclusive.
+    - `ci/deployable-offline`: a mutant bundle with one image tar removed
+      from both the manifest and `bundle.json` must fail at launch (no
+      override entry, so compose falls back to the digest reference and
+      `dind` cannot pull).
+    - The real `verify.sh full` is the integration proof, and its first CI
+      run's `df` log and duration are saved as R5/R6 evidence.
+  - **Out of scope here (platform-supply-chain):** `ScanScriptTest`,
+    `test_scan_ignores_are_justified`, the scan's recorded red runs, the
+    `scan-db`/`scan` compose checks (ADR-KE-013), and
+    `test_gates_image_pins_psscriptanalyzer_by_hash` (L-8, N-7).
 
 ## 3. The three planes (proposed)
 
@@ -2222,23 +2859,31 @@ asked for the hook design to be recorded in this ADR.
     1. It sets a trap that runs `teardown.sh --volumes`.
     2. It runs `build.sh`, then `launch.sh` for an isolated project,
        `ke-verify-<suffix>`. That project:
-       - uses `--env-file .env.example`, overlaid by `config/verify.env`;
+       - uses `--env-file .env.example` (as built there is no
+         `config/verify.env` overlay; the two model keys arrive through the
+         process environment, §2.2);
        - uses `docker-compose.verify.yml`, which resets every `ports:`, so
          nothing is published.
     3. It runs `compose run gates-it scripts/verify.sh full`. Inside, that does
-       `lint.sh` and `test.sh full` (store integration always; model-calling
-       tests when the probe succeeds).
-    4. It runs `smoke.sh`, then `offline_check.sh`.
-  - The gate commands stay only in `lint.sh`, `test.sh`, `smoke.sh` and
-    `offline_check.sh`. `verify.sh` calls scripts and `compose run`, nothing
-    else.
+       `lint.sh`, `test.sh full` (store integration always; model-calling
+       tests when the probe succeeds) and the OTLP `smoke.sh`.
+    4. It runs `smoke.sh` (host half, including `ci/offline`), then
+       (platform-offline) `teardown.sh --volumes` and `offline_check.sh`.
+       (platform-supply-chain later inserts `scan.sh` between them,
+       ADR-KE-013; not this branch.)
+  - The gate commands stay only in `lint.sh`, `test.sh`, `smoke.sh`,
+    `bundle.sh`, `install.sh` and `offline_check.sh` (and later `scan.sh`).
+    `verify.sh` calls scripts and `compose run`, nothing else.
   - The gates anchor sets `UV_OFFLINE=1`, so a run never depends on fetching
     a dependency (and `gates-it` has no route to an index anyway).
 - **Clean daemon:**
   - `offline_check.sh` starts the official Docker `dind` image (privileged,
     with a fresh anonymous `/var/lib/docker`) on an internal network,
     `offline`.
-  - It drives that daemon from `offline-client`, which uses the gates image.
+  - It drives that daemon from `offline-client`, which uses the gates image
+    as uid 10001, over TLS at `tcp://docker:2376` (`dind`'s network alias,
+    which the server cert names), with only the certs volume's `client`
+    subpath mounted read-only; `ca/` is never mounted (spike S3).
   - It runs **in every `verify.sh full`, locally and in CI** (F5 ruling;
     revisit if `full` exceeds about 15 minutes locally). The offline proof of
     the *deployed* product (`ci/offline`, `ci/deployable-offline`) is
@@ -2309,8 +2954,28 @@ asked for the hook design to be recorded in this ADR.
       daemon;
     - no test or third-party Python runs there;
     - its daemon has no route out.
+    *(Amended, platform-offline plan.)* The second point was too strong:
+    the stack the offline check launches inside `dind` runs our images and
+    the vendor store images, with their third-party code. They run as
+    **unprivileged** containers of the inner daemon, on inner networks with
+    no route out (`offline` is internal and isolated). A container escape
+    there lands in a privileged container, which is root on the host.
+    Accepted on the same grounds as the stack itself (the same images run on
+    the host daemon in every `verify.sh full`); flagged to security.
+  - (Amended, platform-offline plan, security L-5; corrected from spike
+    S2.) `gates` and `gates-it` run as uid 10001 with the checkout mounted
+    read-only. The venv and uv cache are image-owned by 10001; `/tmp` is a
+    tmpfs with `exec` and mode 1777 for coverage (`data_file` in
+    pyproject, not `COVERAGE_FILE`) and mypy; git trusts `/work` through
+    `safe.directory`. `UV_NO_SYNC` is forbidden because it hides lock drift
+    (§2.2 Unprivileged gates).
+  - (Amended, platform-offline plan, review N6.) First-party images carry
+    `${KE_IMAGE_TAG:-local}`; verify uses a per-worktree `wt-<hash>` tag, so
+    it never retags the live stack's images (§2.1 Image tags).
   - `verify.sh full` becomes slower and needs more disk. The CI
     `timeout-minutes` is the measured duration plus 50% (F6 ruling, PS-3.4).
+    `bundle.sh` and `offline_check.sh` refuse to start below 10 GB free and
+    log `df` around the offline stages (R6).
     An unreachable model host costs at most one probe timeout.
 - **First tests** (names aligned to PS-2.7 on 2026-10-19):
   - `test_gates_it_internal_only_and_no_socket` (fast);
@@ -2403,7 +3068,8 @@ asked for the hook design to be recorded in this ADR.
     and `.env.example` (compose and deployment keys).
   - `config/verify.env` is a third, and small, allowed location (F4 ruling:
     an accepted literal exemption under PS-1.2). It does not override
-    `KE_MODEL_UPSTREAM` (Q30).
+    `KE_MODEL_UPSTREAM` (Q30). As built (through platform-stack-ready) it
+    has never been created.
   - The placeholder check needs no file at runtime; a fast test keeps
     `.env.example`'s secret values on the `changeme-` prefix.
   - Alternative rejected by the orchestrator's ruling: copying `.env.example`
@@ -2845,37 +3511,187 @@ asked for the hook design to be recorded in this ADR.
   - **First tests:** §2.6, platform-stack-ready.
 
 ### ADR-KE-012: Offline bundle with a checksum manifest (platform-offline)
-- **Context:** PS-3.1/3.2 require a bundle that installs and runs on a daemon
-  with no images and no egress, and that rejects tampering.
+- **Status:** proposed. It was revised in the platform-offline plan
+  (2026-10-19) after the design was checked against what 2a and 2b built
+  (§2.5), and amended the same day after spikes S1–S4 (rulings R2, R6):
+  the bundle and install became store-independent.
+- **Context:**
+  - PS-3.1, 3.2 and 3.3 require a bundle that installs and runs on a daemon
+    with no images and no egress, and that rejects tampering.
+  - The stack pins its vendor images by digest (PS-2.1). Its first-party
+    images are built locally.
+  - Hosts are Linux (bash) and Windows (PowerShell) (Q20).
 - **Decision:**
-  - **Bundle:** a directory, plus a tar of it, holding:
-    - `docker save` image tars;
-    - no wheels: the images carry their dependencies (bundle ruling);
-    - vendored assets;
-    - the compose files, config and scripts;
-    - `bundle.json`;
+  - **Bundle.** `bundle.sh` (bash only, on the build host) writes a
+    directory, plus a tar of it with `--tar`. It holds:
+    - one `docker save <as>` tar per image, of the **stack images only**
+      (no `--platform`, which changes the digest; the platform is checked
+      by inspect instead). The gates and `dind` images are not shipped: the
+      bundle is the product;
+    - `app/`: the unchanged compose file, `.env.example`, `config/`, the
+      launch, teardown and smoke scripts, and the quickstart;
+    - `install.sh` and `install.ps1`;
+    - `NOTICE.md` and `licenses/` (committed), and `THIRD_PARTY_NOTICES.md`
+      (generated from `ke-app` at bundle time);
+    - a line-oriented `bundle.json`: per image `file`, `ref` (the compose
+      reference), `as` (the bundle tag) and `services`;
     - `MANIFEST.sha256`.
-  - **Install:** checks the manifest first, rejecting changed, missing and
-    unlisted files, and then loads the images.
-  - **Proof:** `ci/deployable-offline` runs in DinD within `verify.sh full`
-    (ADR-KE-009). `ci/offline` runs in the host-side smoke, with a control
-    probe that must succeed.
+    No wheels are shipped (bundle ruling). `bundle.sh` refuses to start
+    below 10 GB free (R6).
+  - **Tags (`as`).** First-party `ke-<x>:bundle-<sha12>`; vendor
+    `ke-vendor/<name>:<digest12>`. `bundle.sh` checks each `ref` (vendor
+    digest included) on the build host, tags it `as` and saves by `as`. The
+    digest pin is enforced there and by the tar hashes, not by the target
+    daemon.
+  - **Install (store-independent).**
+    1. It checks the manifest first, rejecting changed, missing and
+       unlisted files, non-regular entries and unsafe paths, with no
+       `docker` call before that check passes.
+    2. It checks that the daemon answers. It does not check the image
+       store.
+    3. Per image: `docker load`, read the one `Loaded image` or `Loaded
+       image ID` line, `docker tag` it to `as`, and inspect `as`. Image
+       IDs are never compared across stores.
+    4. It copies `app/` into an empty target and writes
+       `docker-compose.override.yml` there, mapping each service to its
+       `as` tag with `pull_policy: never`. Compose loads it by default, so
+       the scripts and the shipped `docker-compose.yml` are unchanged.
+  - **Proof.**
+    - `ci/deployable-offline` is `offline_check.sh`: install, launch, smoke
+      and teardown inside a privileged, empty `dind` on an internal,
+      isolated network, from an `offline-client` with no checkout mount,
+      within `verify.sh full` (ADR-KE-009, F5). It asserts that the image
+      store is empty before install and that afterwards its tag set equals
+      the `as` set. It refuses to start below 10 GB free and logs `df`
+      around each stage (R6).
+    - `ci/offline` runs in the host half of `smoke.sh`. api and worker must
+      get a no-route error connecting to the gateway's `edge` address,
+      after a control container on `edge` reached that address.
 - **Alternatives considered:**
   - A private registry inside the bundle: an extra service just to serve
     images.
   - OCI layout plus skopeo: an extra host tool, against the "Git and Docker
     only" rule.
-  - A signed manifest (minisign or cosign): a stronger guarantee, but it needs
-    key management. Deferred and flagged to security.
+  - **Digest references resolved on the target, with a containerd image
+    store as an operator prerequisite** (the previous decision). Rejected
+    after S1: the classic store never resolves `ref@digest` after a load,
+    containerd resolves it only when the image is named, and `save
+    --platform` changes the digest. It also added a prerequisite the
+    store-independent install does not need.
+  - A signed manifest (minisign or cosign): a stronger guarantee, but it
+    needs key management. Deferred and flagged to security.
+  - Shipping `ke-gates` so the box can verify itself: `verify.sh full`
+    builds, so it cannot run offline, and the image is large. Rejected.
+  - An external probe target for `ci/offline`: it needs the internet for
+    its control, so it is inconclusive on locked-down networks and always
+    inside `dind`. Rejected.
+  - A `bundle.ps1` twin: bundling happens on the build host, and Git Bash
+    is already a prerequisite there. Not chosen, pending ruling R1, because
+    PS-3.1 names a twin.
+  - Shipping the override inside `app/` (generated by `bundle.sh`): equally
+    simple, but the ruling places it in install, next to the tagging it
+    must match.
+  - Saving vendor images from a networked containerd `dind` on the build
+    host: more moving parts for no gain once the install is
+    store-independent.
 - **Consequences:**
-  - The bundle is large and linux/amd64 only. Hosts are Linux (bash
-    installer) and Windows (PowerShell installer); macOS and Apple silicon
-    are out of scope (Q20 ruling).
+  - The bundle is about 1 GB (S4: 0.96 GB for the six images) and
+    linux/amd64 only. Hosts are Linux (bash installer) and Windows
+    (PowerShell installer); macOS and Apple silicon are out of scope (Q20
+    ruling).
   - With no wheels, an offline image rebuild is not supported; the bundle
     ships built images only.
-  - `ci/deployable-offline` runs in every local `full` (F5 ruling); the CI
-    timeout is measured plus 50% (F6 ruling).
+  - **No image-store prerequisite.** Bundle and install work on the classic
+    and containerd stores (S1). The containerd store appears only as the
+    CI `dind`'s default.
+  - The installed stack runs from the override's `as` tags, not from the
+    digest references: the target daemon does not re-check the digest. The
+    pin is enforced on the build host and carried by the manifest hashes.
+    The shipped `docker-compose.yml` is unchanged, and the override path is
+    exactly what `ci/deployable-offline` exercises.
+  - `ci/deployable-offline` runs in every local `full` (F5). It adds an
+    estimated 2.5–4.5 min to `full` (re-based on S4), so the CI timeout
+    goes to 20 min first (R5). It needs about 9 GB resident, hence the
+    10 GB floor until the first CI run's `df` log measures it (R6).
   - Integrity is proven, authenticity is not.
-- **First tests:**
-  - `test_bundle_manifest_rejects_tamper` (bash and PowerShell installers);
-  - `test_bundle_lists_every_compose_image`.
+  - Installing adds `ke-<x>:bundle-<sha12>` and `ke-vendor/*` tags and
+    never touches `:local`, so a bundle install and an operator's own
+    build coexist. Two dirty bundles of one commit share a tag; the later
+    install wins. Upgrading in place is out of scope.
+  - Redistributing vendor images carries their licence terms (ruling R4).
+- **First tests:** §2.6, platform-offline. After the L-5 static test,
+  `test_bundle_manifest_rejects_tamper` (bash and PowerShell installers),
+  then `test_install_refuses_unfit_target_or_daemon`,
+  `test_install_tags_loaded_images_and_writes_override` and
+  `test_bundle_lists_every_compose_image`.
+
+### ADR-KE-013: Container image vulnerability scan (platform-supply-chain)
+- **Status:** proposed (platform-offline plan, 2026-10-19). Security
+  carry-in from L-13; the orchestrator's ruling said "trivy or grype,
+  pinned". **Moved to platform-supply-chain (ruling R3, 2026-10-19):** the
+  platform-offline branch has no scan stage, no `scan`/`scan-db` services
+  and no scan tests. The design below is kept for that item.
+- **Context:**
+  - `ke-app` ships `psycopg-binary`, which vendors old native libraries
+    that pip-audit cannot see (L-13). Nothing scans the images today.
+  - A scanner needs a vulnerability database, and the database changes
+    daily, so it has to be fetched over the network. The gates have no
+    route out (`gates`: none; `gates-it`: internal `backend`).
+  - No container may hold the Docker socket (ADR-KE-009).
+- **Decision:**
+  - **Tool:** grype, the official image, pinned by digest at
+    implementation. Before pinning, security reviews the release's
+    provenance (signature or attestation).
+  - **Mechanism (platform-supply-chain):** `scripts/scan.sh`, a stage in
+    the host half of `verify.sh full`, inserted after the stack teardown
+    and before `offline_check.sh` when that item lands. Two compose one-shots run in the verify project,
+    under profile `scan`:
+    - `scan-db` runs `db update` into the project's named volume `scan-db`.
+      It is on the default bridge network, the only one-shot with a route
+      out. It has no checkout mount and no other volume, and a read-only
+      root filesystem.
+    - `scan` uses `network_mode: none` and mounts the `scan-db` volume
+      read-only. Database auto-update and the update check are off. Its
+      input is `docker-archive:/in/ke-app.tar`, from a `docker save` of
+      `ke-app:${KE_IMAGE_TAG}` into `dist/<project>-scan/`, mounted
+      read-only. No socket is involved. The trap removes the tar, and the
+      verify teardown's `--volumes` removes the database.
+  - **Database:** a fresh download on every run, locally and in CI alike,
+    the same as `build.sh`'s image pulls (which already need the network).
+    It is never put in the bundle, and the operator never scans.
+  - **Policy:**
+    - The scan fails on any match of severity **High or Critical that has
+      a fix available** (`--only-fixed --fail-on high`).
+    - Unfixed and lower-severity matches are printed and do not fail.
+    - Ignores live in `config/scan-ignore.yaml`. Every entry carries a
+      `reason` and an `until` date. `test_scan_ignores_are_justified` fails
+      when an entry lacks either one or its date has passed.
+  - **Scope:** `ke-app` only (the carry-in). Extending the scan to
+    `ke-gateway` and to the vendor store images is ruling R3.
+- **Alternatives considered:**
+  - trivy: equivalent (`--input` tar, `--skip-db-update`). grype was chosen
+    because its database is one archive behind one command, which makes
+    the fetch and scan split trivial, and because the Java database trivy
+    needs for jars is irrelevant here. Security may swap the tool; the
+    design does not change.
+  - Scanning through the Docker socket: rejected (ADR-KE-009).
+  - Fetching the database inside `gates-it`: it has no route out, and
+    giving it one is what F-A rejected.
+  - A database baked into a pinned image: reproducible, but stale by
+    design.
+- **Consequences:**
+  - CI can turn red with no code change, when a fix is published for a
+    High finding. That is the point of a scan (R3 asks the orchestrator to
+    confirm).
+  - It adds an estimated 40–80 s to `full`, and `verify.sh full` now needs
+    to reach the database host as well as the registries.
+  - Whether grype sees the libraries vendored in `psycopg_binary.libs`
+    (krb5, cyrus-sasl, pcre) is recorded at implementation. If it does
+    not, the L-13 residual stays documented and is not claimed covered.
+- **First tests:** `ScanScriptTest` (fake docker):
+  - the order is save, `scan-db`, then `scan`;
+  - `scan` runs with `network_mode: none` and a read-only input;
+  - a non-zero scanner exit fails the stage;
+  - the tar is removed on every exit path.
+  Static compose checks: `scan-db` has only the database volume, and
+  `scan` has no network. Then `test_scan_ignores_are_justified`.

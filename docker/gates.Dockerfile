@@ -54,7 +54,20 @@ COPY pyproject.toml uv.lock ./
 COPY harness_telemetry ./harness_telemetry
 COPY engine ./engine
 COPY config ./config
-RUN uv sync --locked
+# The uv cache lives in the image, owned by the gate user, not in root's 0700
+# home: `uv run --locked` re-installs the editable project on every run and
+# needs both the cache and a writable venv (L-5; never set the no-sync env
+# var, it hides lock drift).
+ENV UV_CACHE_DIR=/opt/uv-cache
+# Ownership is set in the same layer as the sync so the venv and cache are not
+# stored twice (L-5): the gate user (10001:10001) owns both, nothing else in
+# the image is writable by it.
+RUN uv sync --locked \
+ && chown -R 10001:10001 /opt/venv /opt/uv-cache
 # Gates have no network. After the build-time sync, never let uv reach PyPI
 # (a stale build cache otherwise sends `uv run` to the index and it fails).
 ENV UV_OFFLINE=1
+
+# Least privilege (security L-5, PS-3.5): the gate services run as 10001:10001
+# on a read-only checkout; only /tmp (tmpfs) is writable.
+USER 10001:10001

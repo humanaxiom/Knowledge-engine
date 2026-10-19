@@ -1113,7 +1113,7 @@ orchestrator ruling, and the 3 s bound is never loosened quietly.
 | round-0 N5 | done | closed by 2a B4 (smoke resolves without `.env`) |
 | rework-1 N-6 (M-2 errno record) | close | superseded by the inspect proof (ruling R1-B1 (ii)); orchestrator confirms |
 | security L-5 (gates-it root, rw repo) | no | `platform-offline`, which reworks the verify host half for DinD; see Q35 |
-| security L-8; rework-1 N-7 (PSScriptAnalyzer hash, telemetry ENV order) | no | `platform-offline` (gates image and supply chain) |
+| security L-8; rework-1 N-7 (PSScriptAnalyzer hash, telemetry ENV order) | no | `platform-offline` (gates image and supply chain); since moved to `platform-supply-chain` (PS-3.7, split ruling 2026-10-19) |
 | round-0 N6 (shared image tags), N8 (Dockerfile layer order) | no | `platform-offline`, where the bundle names and rebuilds images |
 
 **2b size (analyst, 2026-10-19).** One branch. The product part (PS-2.5,
@@ -1135,17 +1135,22 @@ orchestrator.
 
 ### PS-3 platform-offline
 
-- **PS-3.1 Offline bundle.** `scripts/bundle.sh` (and its PowerShell twin)
-  writes one bundle holding every image the stack runs, any vendored assets,
-  and a checksum manifest; given a modified file, the install step rejects the
-  bundle. `[unit: test_bundle_manifest_rejects_tamper]` (fast)
+- **PS-3.1 Offline bundle.** `scripts/bundle.sh` writes one bundle holding
+  every image the stack runs, any vendored assets, and a checksum manifest;
+  given a modified file, the install step rejects the bundle.
+  `[unit: test_bundle_manifest_rejects_tamper]` (fast)
+  - *Bash only for bundling (orchestrator R1, 2026-10-19).* Bundling runs on
+    a Linux build host; there is no `bundle.ps1`. Install has a bash and a
+    PowerShell script.
   - *No wheels (orchestrator ruling, 2026-10-18).* The bundle carries no
     Python wheels: the images carry their own dependencies. Rebuilding an
     image offline is out of scope.
   - *Every image listed.* Given the compose files, every image the stack
     services use is in the bundle. `[unit: test_bundle_lists_every_compose_image]` (fast)
-  - *Platform.* The bundle is linux/amd64 only. macOS, including Apple
-    silicon, is out of scope (human ruling Q20, 2026-10-18).
+  - *Platform.* The bundle is linux/amd64 only: it carries the images as
+    built or pulled on the linux/amd64 build host, and `bundle.sh` never
+    passes `--platform` to any docker command (spike S1). macOS, including
+    Apple silicon, is out of scope (human ruling Q20, 2026-10-18).
 - **PS-3.2 Deployable offline.** Given the bundle and a Docker daemon that has
   none of the stack's images and no network egress, when the install and launch
   scripts run, then the stack starts and the PS-2.8 smoke passes without a pull
@@ -1173,11 +1178,390 @@ orchestrator.
   `timeout-minutes`; the value is checked by the reviewer against the
   recorded measurement.
 
+**Analyst review for `platform-offline` (2026-10-19).** PS-3.1–PS-3.4 above
+stand as written; the sub-bullets below make each one testable case by case,
+and PS-3.5–PS-3.9 place the carry-ins (`docs/handoffs/archive/platform-stack-ready.md`,
+"item closed"). Design: `docs/architecture.md` §2.5, ADR-KE-012. Open
+questions Q40–Q46 (`docs/open-questions.md`) each carry an assumption, and
+none blocks the RED step. Where a criterion depends on one, it cites it.
+
+*Reconciled with the rulings (analyst, 2026-10-19).* The criteria below now
+follow the orchestrator's rulings in `docs/handoffs/platform-offline.md`
+("rulings on analyst plan", "rulings on architect R1–R7", "rulings from
+spikes (R2, R6)") and spike evidence `docs/evidence/platform-offline/spikes.md`.
+Q40, Q41, Q43–Q46 are resolved; Q42 moves to `platform-supply-chain`; Q47
+is new and does not block RED. Where the earlier text and a ruling differed,
+the text was changed in place. Change list:
+`docs/evidence/platform-offline/analyst-reconcile.md`.
+
+PS-3.1 additions (bundle and install):
+- *Manifest covers every file.* `MANIFEST.sha256` lists every file in the
+  bundle except itself, and `bundle.json` has one entry per image.
+  `[unit: test_bundle_manifest_covers_every_file]`, `[unit: test_bundle_json_names_every_image]` (fast)
+- *One tar per image (R2).* The bundle holds one image tar per stack image,
+  each written from the image's tag with no `--platform` flag (that flag
+  changes the manifest digest; spike S1).
+  `[unit: test_bundle_saves_one_tar_per_image_without_platform]` (fast,
+  stubbed docker)
+- *`bundle.json` entries (R2; orchestrator ruling on the architect's spikes
+  amendment, 2026-10-19).* Each entry records exactly four fields: `file`
+  (the tar's path in the bundle, which `MANIFEST.sha256` lists), `ref` (the
+  pinned source reference, digest included for vendor images), `as` (the
+  local tag the installer gives the loaded image) and `services` (the
+  space-separated compose service names that run this image, each matching
+  `[a-z0-9_-]+`). Every stack service appears in exactly one entry's
+  `services`. `as` carries no `@sha256:` digest and no registry host, and no
+  two entries share an `as`. Given an entry missing any of the four fields,
+  or a `services` value that is empty or has a name outside `[a-z0-9_-]+`,
+  the installer rejects the bundle before any `docker load`.
+  `[unit: test_bundle_json_records_file_ref_as]` (asserts all four fields),
+  `[unit: test_install_rejects_bundle_json_missing_field]` (parametrised
+  over the four fields) (fast).
+- *`as` tag scheme (architect §2.5, accepted 2026-10-19).* A first-party
+  image's `as` is `ke-<x>:bundle-<sha12>`, where `<sha12>` is the first 12
+  hex characters of the bundle's `git_sha`. A vendor image's `as` is
+  `ke-vendor/<name>:<digest12>`, where `<digest12>` is the first 12 hex
+  characters of the pinned digest and `<name>` is the last path segment of
+  the repository. Given two images with the same `<name>`, `bundle.sh` exits
+  non-zero and writes no bundle. The installer never creates or moves a
+  `:local` tag. Covered by `test_bundle_json_records_file_ref_as` (fast).
+- *Digest pin checked on the build host (R2).* Before saving a vendor image,
+  `bundle.sh` checks that its pinned `ref@digest` resolves on the build host;
+  given one that does not, it exits non-zero naming the image and writes no
+  bundle. After that, the tar hashes in `MANIFEST.sha256` carry the pin. The
+  target daemon's image IDs are never compared with the pin.
+  `[unit: test_bundle_fails_when_pinned_digest_unresolved]` (fast, stubbed docker)
+- *Store-independent install (R2).* After the manifest check passes, the
+  installer (bash and PowerShell) loads each tar, reads the one
+  `Loaded image ID: ...` or `Loaded image: ...` line, and tags that image
+  as the entry's `as`. Given a load that prints no such line, or more than
+  one, the installer exits non-zero naming the tar. It never relies on
+  `ref@digest` resolving on the target. Works on the classic and the
+  containerd image store. There is no image-store prerequisite for
+  operators: the installer neither checks nor refuses a target because of
+  its image store, and `docs/quickstart.md` asks for no store setting.
+  `[unit: test_install_tags_loaded_image_as_bundle_name]` (parametrised:
+  ID line / name line / no line / two lines x sh/ps1; stubbed docker) (fast)
+- *Compose override (R2).* The installer writes a compose override mapping
+  every stack service to its `as` tag, taking the service names from the
+  entries' `services` fields (it does not run `compose config`). With it applied, the resolved
+  compose config names no image by digest and every service image is an
+  `as` tag from `bundle.json`. Given a stack service with no `bundle.json`
+  entry, the installer exits non-zero naming the service. With the override,
+  a missing image fails the launch instead of pulling (spike S1).
+  `[unit: test_install_override_maps_every_service_to_as_tag]`,
+  `[unit: test_install_fails_when_service_has_no_bundle_entry]` (fast);
+  launch from the bundle with no pull is proved by `ci/deployable-offline`.
+- *Free disk (R6).* `bundle.sh` checks for at least 10 GB free before it
+  writes anything. Below that, it exits non-zero with a message giving the
+  required and available space, and runs no `docker save`. 10 GB is a
+  default until the first CI run measures it (PS-3.2 *Disk logging*).
+  Control: with enough space it proceeds (same test).
+  `[unit: test_bundle_fails_below_free_disk]` (fast, stubbed `df`)
+- *Tamper cases.* Given a bundle with (a) a changed file, (b) a listed file
+  missing, or (c) a file not in the manifest, the installer exits non-zero,
+  names the file, and runs no `docker load`. Each case is tested for the bash
+  and the PowerShell installer (pwsh is in the gates image).
+  `[unit: test_bundle_manifest_rejects_tamper]` (parametrised a/b/c x sh/ps1),
+  `[unit: test_install_loads_nothing_when_manifest_fails]` (fast). Control:
+  the untouched bundle passes the same check (same test).
+- *Manifest hash printed.* `bundle.sh` prints the manifest's own sha256
+  for out-of-band comparison (integrity, not authenticity; ADR-KE-012).
+  `[unit: test_bundle_prints_manifest_hash]` (fast)
+- *Stack images only (R7).* The bundle holds the images of the stack
+  services and nothing else: not the gates image and not `dind`, which are
+  verification tools. `test_bundle_lists_every_compose_image` (fast) checks
+  every stack service's image is present, and
+  `[unit: test_bundle_holds_stack_images_only]` (fast) checks no other image
+  is.
+- *No wheels.* No `*.whl` file is in the bundle. `[unit: test_bundle_has_no_wheels]` (fast)
+- *Where written (A40).* Under a gitignored `dist/`; a verify run removes its
+  own bundle after the check; bundle sizes are recorded in the evidence; a
+  bundle from a dirty tree is allowed and `bundle.json` marks it dirty.
+  `[unit: test_dist_is_gitignored]`, `[unit: test_bundle_json_marks_dirty_tree]` (fast)
+- *Windows (A45).* The PowerShell installer is proven by a recorded run on
+  the human's Windows host (Q31/Q34) with a bundle built on a Linux build
+  host: tamper rejection, then install and `launch.ps1` from the bundle.
+  (manual)
+
+PS-3.2 additions (`ci/deployable-offline`):
+- *Wired into full.* `verify.sh full` runs the offline check, and its
+  non-zero exit fails the run. `[unit: test_verify_full_runs_offline_check]` (fast)
+- *Clean daemon precondition.* Before install, the check asserts the inner
+  daemon lists no images, and that a registry pull from it fails. If
+  either assertion fails, the gate fails as *inconclusive*, never as passed.
+  (full, part of `ci/deployable-offline`; `[unit: test_offline_check_asserts_clean_daemon]` (fast, stubbed docker))
+- *No privileged daemon is a blocker.* Given a daemon that refuses the
+  privileged `dind` container, the check exits non-zero with a message
+  naming the blocker. It never prints a pass or a skip.
+  `[unit: test_offline_check_fails_without_privileged_daemon]` (fast, stubbed)
+- *Nothing left behind.* After the check (pass or fail), no `ke-offline-*`
+  container, network or volume remains on the host daemon. (full, asserted by
+  the check's trap; `[unit: test_offline_check_tears_down_on_failure]` (fast, stubbed))
+- *Inner daemon (spike S1, S3; ruling "rulings from spikes").* The `dind`
+  daemon the check uses runs the containerd image store, is reachable on its
+  network under the alias `docker` (the name its TLS server certificate
+  covers), and the client container mounts only the `client` subpath of the
+  certs volume, read-only; the `ca/` directory is never mounted. Any
+  isolated inner network the check creates is `--internal`. Before install,
+  the check asserts the inner daemon reports the containerd store; otherwise
+  the gate fails as *inconclusive*. The containerd store is a property of
+  this check's daemon only, not an operator prerequisite (R2).
+  `[unit: test_offline_dind_uses_containerd_store]`,
+  `[unit: test_offline_dind_has_network_alias_docker]`,
+  `[unit: test_offline_client_mounts_only_client_certs_read_only]`,
+  `[unit: test_offline_inner_networks_are_internal]` (fast, compose or script
+  config)
+- *No pull happened (orchestrator ruling on the architect's spikes
+  amendment, 2026-10-19).* After teardown, the check compares the set of
+  `repository:tag` names in the inner daemon (dangling entries excluded)
+  with the set of `as` values in `bundle.json`. Image IDs are never
+  compared (they differ by image store). Given the two sets differ (a name
+  missing, or an extra name), the gate fails and names the differing tags;
+  given they are equal, this step passes.
+  `[unit: test_offline_check_fails_when_tag_set_differs_from_as_set]`
+  (fast, stubbed docker; parametrised extra / missing; control: equal
+  sets pass), and `ci/deployable-offline` (full).
+- *Free disk (R6).* `offline_check.sh` checks for at least 10 GB free before
+  its first stage. Below that it exits non-zero with a message giving the
+  required and available space; it is reported as a failure, never a skip
+  or a pass. Control: with enough space it proceeds.
+  `[unit: test_offline_check_fails_below_free_disk]` (fast, stubbed `df`)
+- *Disk logging (R6).* The check prints `df` output for the disk it uses
+  before and after each offline stage, so the first CI run measures the
+  real footprint. That measurement and the 10 GB default are recorded in
+  `docs/evidence/platform-offline/`.
+  `[unit: test_offline_check_logs_disk_around_each_stage]` (fast, stubbed)
+- *Docs.* `docs/quickstart.md` describes building the bundle on a Linux
+  build host, comparing the manifest hash, and installing with no network
+  with bash and with PowerShell.
+  `[unit: test_quickstart_describes_offline_install]` (fast)
+
+PS-3.3 additions (`ci/offline`):
+- *Both app containers probed.* The probe runs from `api` and from `worker`,
+  each against the same non-allowlisted target, and each must fail.
+- *Control probe.* The same probe from a throwaway `ke-app` container on
+  `edge` must succeed; if it fails, the gate fails as *inconclusive*.
+  `[unit: test_offline_probe_fails_when_control_fails]` (fast, stubbed),
+  `[gate: ci/offline]` (full). Target: A46.
+- The other services are covered at network level by
+  `test_only_gateway_on_edge_network` (PS-2.10) and `test_gates_it_has_no_route_out`.
+
+PS-3.4 addition (re-measure): the current value is 10 minutes (389 s on
+42547d0; `docs/evidence/platform-stack-ready/ci-timeout.md`). The offline check
+adds a bundle, a load into DinD, a second launch and a second smoke, so 10
+minutes may not be enough. Ruling R5 (A44): the commit that adds the offline
+stages to `verify.sh full` sets `timeout-minutes` to 20. The first green CI
+run that includes `ci/deployable-offline` then sets it to that run's
+measured duration plus 50%, rounded up to a whole minute, in a follow-up
+commit on the branch, with the run's log and arithmetic saved in
+`docs/evidence/platform-offline/`. The local `full` elapsed time is also recorded. If it is over about 15
+minutes, that goes to the orchestrator (F5). `test_ci_job_has_timeout` (fast)
+is unchanged.
+
+- **PS-3.5 Gate services least privilege (security L-5).** Both gate
+  services, `gates` and `gates-it`, run as a non-root user, see the
+  repository read-only with `/tmp` as the only writable path, and cannot
+  read the repo-root `.env`. This closes the filesystem half of A35(c).
+  Ruling R7: L-5 applies to both services through their shared definition;
+  this replaces the earlier exclusion of `gates`. Each test below is
+  parametrised over both services.
+  `[unit: test_gates_it_is_non_root_with_read_only_repo]` (fast, compose
+  config), `[integration: test_gates_it_cannot_write_repo]` (a write to the
+  repo root and to `.git/hooks` fails), `[integration: test_gates_it_cannot_read_repo_env]` (full).
+  Control: a write to `/tmp` succeeds (same test).
+  The spike S2 specifics (`docs/evidence/platform-offline/spikes.md` § S2):
+  - *Non-root uid.* Both services run as uid 10001.
+    `[unit: test_gate_services_run_as_uid_10001]` (fast, compose config)
+  - *Read-only checkout.* The repository mount is read-only in both
+    services, and no other bind mount is writable.
+    `[unit: test_gate_services_mount_repo_read_only]` (fast, compose config)
+  - *Executable tmpfs.* `/tmp` is a tmpfs mounted with `exec` and mode 1777
+    (tests run copied scripts from it; a `noexec` tmpfs failed 197 tests in
+    S2). `[unit: test_gate_services_tmp_is_exec_tmpfs]` (fast, compose config)
+  - *Image-owned venv and uv cache.* In the gates image, the uv cache is at
+    a fixed path inside the image (not under a home directory) and it and
+    `/opt/venv` are owned by uid 10001.
+    `[unit: test_gates_image_venv_and_uv_cache_owned_by_gate_user]` (fast,
+    Dockerfile). As uid 10001 with no network, `uv run --locked` passes on
+    the committed lock, and fails when `pyproject.toml` drifts from
+    `uv.lock` (control and drift case).
+    `[integration: test_gates_uv_locked_catches_drift_as_non_root]` (full)
+  - *Caches off the checkout.* Both services set
+    `MYPY_CACHE_DIR=/tmp/mypy`, `PYTHONDONTWRITEBYTECODE=1` and
+    `GIT_OPTIONAL_LOCKS=0`. `[unit: test_gate_services_env_for_read_only_repo]` (fast)
+  - *Coverage data file.* `pyproject.toml` sets `data_file = "/tmp/.coverage"`
+    under `[tool.coverage.run]`, and `COVERAGE_FILE` is set nowhere in the
+    compose files, Dockerfiles, `scripts/` or the CI workflow (the env var
+    leaks into nested coverage runs; S2 item 4).
+    `[unit: test_coverage_data_file_is_under_tmp]`,
+    `[unit: test_coverage_file_env_is_never_set]` (fast)
+  - *No `UV_NO_SYNC`.* `UV_NO_SYNC` is set nowhere in the compose files,
+    Dockerfiles, `scripts/`, `.env.example` or the CI workflow; it hides lock
+    drift (S2 item 5). `[unit: test_uv_no_sync_is_never_set]` (fast)
+  - *Git on CI.* If the CI checkout's owner differs from uid 10001 and git
+    refuses it, the fix is a `safe.directory` setting inside the gate
+    services, never a writable checkout. Unmeasured; settled by the first
+    CI run (no separate test; `verify.sh full` on CI proves it).
+  - *Proof.* `scripts/verify.sh fast` and `full` pass with these settings
+    (the gates themselves run under them).
+- **PS-3.6 Image scan (security L-13; orchestrator ruling 2026-10-19).**
+  *Moved to `platform-supply-chain` (split ruling and R3, 2026-10-19);
+  `platform-offline` has no scan stage. Q41 resolved, Q42 open there.*
+  `verify.sh full` scans the `ke-app` image with trivy or grype. The scanner
+  is pinned by version and digest. A finding at or above the threshold fails
+  the run, and the full report is saved under `docs/evidence/<slug>/`.
+  - `[unit: test_image_scanner_is_pinned]` (fast)
+  - `[unit: test_verify_full_fails_when_image_scan_fails]` (fast, stubbed
+    scanner exit)
+  - `[gate: image-scan]` (full)
+  - Accepted findings are listed in a committed exceptions file, each with
+    a reason; security reviews that file.
+  - Threshold, the vendored psycopg-binary libraries, and scope: Q42, Q43.
+    Vulnerability DB: Q41.
+  - The scanner and its DB are not part of the bundle; the deployed product
+    never scans.
+- **PS-3.7 Gates image supply chain (security L-8, review rework-1 N-7).**
+  *Moved to `platform-supply-chain` (split ruling, 2026-10-19).*
+  PSScriptAnalyzer is installed from a package whose sha256 is pinned and
+  checked before install (no install from a trusted PSGallery by version
+  alone). `POWERSHELL_TELEMETRY_OPTOUT` is set before the first instruction
+  that runs pwsh. `[unit: test_gates_image_verifies_psscriptanalyzer_hash]`,
+  `[unit: test_gates_image_sets_telemetry_optout_before_pwsh]` (fast). The
+  build in `verify.sh full` proves the pinned hash matches. The reviewer
+  checks that a wrong hash fails the build (mutation).
+- **PS-3.8 Licence notices (orchestrator ruling on psycopg LGPL, 2026-10-19).**
+  The `ke-app` image keeps the licence files of its installed Python
+  distributions, including psycopg's LGPL-3.0 text. The bundle carries a
+  third-party notices file listing each runtime package from `uv.lock` with
+  its licence, generated at bundle time and not committed.
+  `[unit: test_bundle_has_third_party_notices]` (fast; every runtime package
+  in `uv.lock` appears).
+  - *Licence check in the generator (R7).* The bundle-time notices generator
+    takes each runtime package's licence from the `ke-app` image being
+    bundled. Given a runtime package whose licence file is not in that
+    image, `bundle.sh` exits non-zero naming the package and writes no
+    bundle. This replaces the separate
+    `test_app_image_keeps_psycopg_licence`.
+    `[unit: test_notices_fail_when_package_licence_missing]` (fast,
+    parametrised with psycopg's licence removed; control: the full set
+    passes). The real image is checked each time `ci/deployable-offline`
+    builds a bundle (full).
+  - *Third-party images (A43, R4).* The notices list every third-party stack
+    image in `bundle.json` by name, pinned reference and licence. Neo4j
+    Community is listed as GPL-3.0 with an `https` source URL.
+    `[unit: test_notices_list_every_stack_image_with_licence]`,
+    `[unit: test_notices_neo4j_has_source_url]` (fast)
+  - *Phoenix exception (human Q43, 2026-10-19).* Arize Phoenix is a documented
+    exception to "open-source components only". The notices list it with its
+    licence and mark it as that exception, citing the human ruling.
+    `[unit: test_notices_mark_phoenix_as_exception]` (fast). Security confirms
+    the licence text at the pinned digest (manual, security audit).
+- **PS-3.9 Image tags and rebuilds (review round-0 N6, N8).**
+  - *N6.* A `verify.sh full` run does not move any image tag that the live
+    stack's compose resolves to. Verify-built images carry a per-project or
+    per-run tag. `[unit: test_verify_does_not_retag_live_images]` (fast,
+    compose config with and without the verify overlay)
+  - *N8.* `docker/app.Dockerfile` installs locked dependencies before it
+    copies the engine code, so a code-only change reuses the dependency
+    layer. `[unit: test_app_dockerfile_syncs_deps_before_code]` (fast)
+- **PS-3.10 Pinned Docker CLI in the gates image (architecture §2.2 Lint,
+  §2.6 item 8; orchestrator ruling 2026-10-19).** `offline-client` runs on
+  the gates image and needs the Docker CLI and the compose plugin (spike S3
+  found neither). The gates image installs both from static release
+  binaries at a pinned version, fetched by URL and checked against a
+  SHA-256 committed in the repo, the same control as the pwsh tarball.
+  - *Pinned and hash-checked.* Given `docker/gates.Dockerfile`, then for the
+    Docker CLI and for the compose plugin: the version is a fixed value (no
+    `latest`, no range); the download URL contains that version; a 64-hex
+    SHA-256 is committed for each architecture the image builds for (amd64
+    and arm64, as for pwsh); and the downloaded file goes through
+    `sha256sum -c` before it is unpacked or installed, in the same
+    fail-fast step. `[unit: test_gates_image_pins_docker_cli_by_hash]`,
+    `[unit: test_gates_image_pins_compose_plugin_by_hash]` (fast, Dockerfile)
+  - *Compose version.* The pinned compose plugin version is 2.24 or later
+    (the `offline-client` compose features, §2.5).
+    `[unit: test_gates_image_compose_plugin_at_least_2_24]` (fast)
+  - *No other install route.* The Dockerfile installs no Docker package from
+    apt or a Docker package repository, and pipes no download into a shell
+    (no `get.docker.com`, no `curl … | sh`).
+    `[unit: test_gates_image_installs_docker_only_from_pinned_binaries]` (fast)
+  - *Client only in the gate services.* `gates` and `gates-it` set no
+    `DOCKER_HOST` and mount no Docker socket; only `offline-client` points at
+    `dind` (that half is in `test_compose_offline_services`).
+    `[unit: test_gate_services_have_no_docker_host]` (fast, compose config)
+  - *Mismatch fails the build.* With a wrong committed hash the image build
+    exits non-zero and no image is produced. The reviewer checks this by
+    mutation (as PS-3.7). The real hashes are proven by the image build in
+    `verify.sh full`, and the binaries by `ci/deployable-offline`, where
+    `offline-client` uses them.
+  - *Hash provenance.* Each committed hash is computed from the downloaded
+    file and cross-checked against a checksum the upstream publishes for
+    that release where one exists; the developer records both, or the lack
+    of an upstream checksum, in the handoff. Whether a release with no
+    upstream checksum is acceptable is open (raised to the orchestrator,
+    analyst 2026-10-19; not yet numbered in `docs/open-questions.md`).
+
+**Carry-in placement (analyst, 2026-10-19):**
+
+| Carry-in | Here? | Where |
+|---|---|---|
+| security L-5 | yes | PS-3.5 |
+| security L-8; review rework-1 N-7 | moved (split ruling) | PS-3.7, `platform-supply-chain` |
+| ke-app image scan (L-13 follow-up, ruling 2026-10-19) | moved (split ruling) | PS-3.6, `platform-supply-chain` |
+| psycopg licence notices | yes | PS-3.8 |
+| review round-0 N6, N8 | yes | PS-3.9 |
+| ADR-KE-012 manifest signing | no | flagged to security; no target item (authenticity out of scope) |
+
+**Size and proposed split (analyst; the orchestrator decides).** About 30
+named tests, plus a new Windows run (Q34: new PowerShell scripts and
+Dockerfile changes). That is larger than 2b. The image scan is the one part
+that can go red for reasons outside this repository, through the
+vendored libraries (Q42). Proposed split, in this order:
+1. `platform-offline`: PS-3.1–PS-3.5, PS-3.8, PS-3.9 and the PS-3.4
+   re-measure. This meets the shipping rule.
+2. `platform-supply-chain`: PS-3.6 and PS-3.7, which re-measure PS-3.4 if
+   the scan adds a minute or more.
+
+Both change a Dockerfile, so each needs its own Windows run under Q34. If
+the orchestrator keeps one branch, the suggested TDD order is PS-3.9 →
+PS-3.1 → PS-3.5 → PS-3.2 → PS-3.3 → PS-3.8 → PS-3.7 → PS-3.6 → PS-3.4.
+
+*Split accepted (orchestrator, 2026-10-19).* This branch builds PS-3.1–PS-3.5,
+PS-3.8, PS-3.9 and the PS-3.4 re-measure, in the TDD order PS-3.9 → PS-3.1 →
+PS-3.5 → PS-3.2 → PS-3.3 → PS-3.8 → PS-3.4. It has no scan stage. PS-3.6 and
+PS-3.7 are built in `platform-supply-chain`, which re-measures PS-3.4 if
+they add a minute or more.
+
+Tags summary for `platform-offline`. Fast: every `unit:` test in PS-3.1–PS-3.5,
+PS-3.8, PS-3.9 and PS-3.10. Full: `ci/deployable-offline` (which also runs the notices
+licence check against the real `ke-app` image), `ci/offline`,
+`test_gates_it_cannot_write_repo`, `test_gates_it_cannot_read_repo_env`,
+`test_gates_uv_locked_catches_drift_as_non_root`. Manual: the Windows
+install run, security's Phoenix licence confirmation and the reviewer's
+PS-3.4 check. `image-scan` and the PS-3.7 checks belong to
+`platform-supply-chain`. Gate: `scripts/verify.sh full`.
+
+*Q47 (new, does not block RED).* No gate installs the bundle on a
+classic-store daemon: the CI `dind` uses the containerd store, and the
+Windows host does too (spike S1). The classic-store path rests on the
+stubbed installer tests and spike S1. See `docs/open-questions.md`.
+
 ### Open questions for this item
 
 Questions raised in the analyst review of 2026-10-18; rulings by the
 orchestrator the same day. Full text and numbering in `docs/open-questions.md`
 § "platform-skeleton" (Q19–Q30).
+
+Raised 2026-10-19 for `platform-offline`. Resolved the same day
+(orchestrator rulings; Q43 by the human): **Q40** bundle location, size and
+dirty trees; **Q41** scanner vulnerability DB (applies to
+`platform-supply-chain`); **Q43** scan and licence scope beyond `ke-app`
+(Phoenix a documented exception); **Q44** CI timeout before the first
+measured run; **Q45** Windows proof of the PowerShell installer; **Q46** the
+`ci/offline` probe target. Still open, for `platform-supply-chain`:
+**Q42** scan threshold and the vendored psycopg-binary libraries. Open, does
+not block RED: **Q47** no gate covers a classic-store install.
 
 Open (raised 2026-10-19 for `platform-stack-ready`; does not block the RED
 step, has a stated assumption): **Q37** whether the PS-2.8 store stop/start
