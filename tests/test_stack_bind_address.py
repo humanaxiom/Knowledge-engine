@@ -316,10 +316,14 @@ class TeardownScriptTest(unittest.TestCase):
             shutil.copy(extra, tmp / "scripts" / extra.name)
         for rel in (".env.example", "docker-compose.yml"):
             shutil.copy(ROOT / rel, tmp / rel)
-        (tmp / "fakebin").mkdir()
-        fake = tmp / "fakebin" / "docker"
-        fake.write_text(FAKE_DOCKER, encoding="utf-8", newline="\n")
-        fake.chmod(0o755)
+        # platform-stack-ready (PS-2.22, security L-9; §2.4 Teardown leftovers):
+        # teardown now resolves the project with `docker compose config` and
+        # lists leftovers, so it needs the fake that answers like compose
+        # (tests/fake_docker.py, same one-line FAKE_DOCKER_LOG format). Fixture
+        # change only; the assertions below are unchanged.
+        from tests import fake_docker
+
+        fake_docker.install(tmp / "fakebin")
         log = tmp / "docker.log"
         env = _clean_env(PATH=f"{tmp / 'fakebin'}{os.pathsep}{os.environ.get('PATH', '')}",
                          FAKE_DOCKER_LOG=str(log))

@@ -109,30 +109,38 @@ def _overridden_env_names() -> list[str]:
 
 
 def startup() -> Settings:
-    """Load settings from the environment and run every refusal, traced.
+    """Load settings from the environment once and run every refusal, traced.
 
-    Order (L6): pre-flight load and `check()`, then `configure_tracing` only
-    if they passed, then the traced block, which repeats both so a refusal
-    is recorded on the spans.
+    Order (L6): load, then verify the installed tracer provider and run
+    `check()`, then `configure_tracing` only if they passed, then the traced
+    block, which repeats `check()` so a refusal is recorded on the spans. The
+    environment is read exactly once (PS-2.18).
     """
+    load_error: ConfigError | None = None
     try:
-        preflight: Settings | None = Settings()
-    except ConfigError:
-        preflight = None
+        settings: Settings | None = Settings()
+    except ConfigError as exc:
+        settings, load_error = None, exc
     # M3: verify the installed provider before any span can reach it.
     # Without settings only loopback counts as local.
-    verify_provider(preflight.stack.service_names if preflight else [])
-    if preflight is not None:
+    try:
+        verify_provider()
+    except StartupRefused as exc:
+        log.warning("%s: %s", exc.setting, exc.reason)
+        raise
+    if settings is not None:
         try:
-            check(preflight)
+            check(settings)
         except StartupRefused:
             pass  # the traced block below raises the same error, inside its spans
         else:
-            configure_tracing(preflight)
+            configure_tracing(settings)
     with chain_span("engine.startup") as root:
         with chain_span("engine.config.load") as load_span:
             load_span.set_attribute("ke.overridden_env", _overridden_env_names())
-            settings = Settings()
+            if settings is None:
+                assert load_error is not None
+                raise load_error
         root.set_attribute("ke.env", settings.env)
         with chain_span("engine.startup.refusals") as refusals:
             try:

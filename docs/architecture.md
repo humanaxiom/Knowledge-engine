@@ -124,14 +124,14 @@ in this one.
 |---|---|---|---|---|
 | `gateway` | `ke-gateway`, built `FROM` the official nginx image (unprivileged variant) with the config baked in | `edge`, `backend` | `unless-stopped` | Publishes the only host ports, on `KE_BIND_ADDRESS` (loopback by default; §2.4). Reverse-proxies `api` and `phoenix`, and forwards one TCP port to the model host. Its entrypoint refuses an upstream that is not on the allowlist (§2.4) |
 | `api` | `ke-app` (`docker/app.Dockerfile`): Python 3.12, FastAPI, uvicorn | `backend` | `unless-stopped` | HTTP API, server-rendered UI, `/healthz`, `/readyz` |
-| `worker` | `ke-app` | `backend` | `unless-stopped` | RQ worker (ADR-KE-011). Only the no-op job for now. In 2a it is a placeholder, `python -m engine.worker`, that runs `startup()` and then idles (§2.4 Worker) |
+| `worker` | `ke-app` | `backend` | `unless-stopped` | RQ worker (ADR-KE-011). Only the no-op job for now. In 2a it is a placeholder, `python -m engine.worker`, that runs `startup()` and then idles; 2b runs an RQ `SimpleWorker` on queue `default` after `startup()` (§2.4 Worker) |
 | `postgres` | official `postgres`, major 16 | `backend` | `unless-stopped` | records, revisions, ledger, policy book, review queue, audit chain |
 | `neo4j` | official `neo4j`, 5.x community | `backend` | `unless-stopped` | graph and vector indexes (ADR-KE-002) |
 | `valkey` | `valkey/valkey`, major 8, AOF on | `backend` | `unless-stopped` | job queue only |
 | `phoenix` | `arizephoenix/phoenix` (today `version-20.22.0`; digest added) | `backend` | `unless-stopped` | traces for the product and the harness (Q2 ruling) |
 | `gates` | `ke-gates` (`docker/gates.Dockerfile`) | `network_mode: none` | none | one-shot: lint and unit gates (unchanged from ADR-KE-001) |
 | `gates-it` | `ke-gates` (same YAML anchor) | `backend` only; no Docker socket | none | one-shot: unit, integration, coverage and mypy against the real stores; model-calling tests reach the model host only through `gateway`, and run only when it is reachable (ADR-KE-009, Q30/F-A) |
-| `probe` | `ke-app` | `backend` only | none | one-shot: the live-smoke checks (`python -m engine.ops.smoke`) |
+| `probe` | `ke-app` | `backend` only | none | **Not built in platform-stack** (2b simplification): the live smoke runs its in-stack checks with `compose exec` in `gateway` and `api` instead (§2.4 Smoke). platform-offline decides whether its offline check needs a one-shot probe; until then no compose file defines `probe` |
 | `dind` | official `docker` image, `dind` variant, privileged | `offline` (internal) | none | clean daemon for the offline check (ADR-KE-009, ADR-KE-012) |
 | `offline-client` | `ke-gates` | `offline` (internal) | none | runs install, launch and smoke against `dind` |
 | model host | external, OpenAI-compatible | — | — | The deployment's model host is `aria-gb10-2` (Q7 ruling). Ollama now, vLLM later. The app reaches it only through `gateway`. Config carries it in `KE_MODEL_UPSTREAM`; no code names it |
@@ -200,20 +200,56 @@ No gate command is ever written in `verify.sh`
 (`test_verify_sh_has_no_inlined_commands` stays as it is).
 
 - **Isolation.** Each run uses its own compose project,
-  `ke-verify-<random suffix>`. It reads `--env-file .env.example`, then
-  `--env-file config/verify.env`, which holds only the verify overrides.
-  `docker-compose.verify.yml` resets every `ports:` to an empty list (`!reset`,
+  `ke-verify-<random suffix>`. It reads `--env-file .env.example` only
+  (`KE_ENV_FILE=.env.example`). *As built (2a; drift fixed in 2b plan):* there
+  is no `config/verify.env`; no verify-only override has been needed, and the
+  two model keys below arrive through the process environment, which compose
+  ranks above any env file. `docker-compose.verify.yml` resets every `ports:` to an empty list (`!reset`,
   Compose ≥ 2.24), so a verify run publishes nothing. `backend` has no fixed
   subnet (§2.1, rework 2), so each project's networks come from Docker's
   default pools. A verify run therefore never collides with the live stack
   or with a parallel verify run.
 - **The real model host, through the gateway, skipped when unreachable (Q30,
-  F-A, Q7).** `config/verify.env` does **not** override `KE_MODEL_UPSTREAM`,
-  so the verify stack's gateway (on `edge`) forwards to the configured host
-  from `.env.example`. (Rework 2, R2: `.env.example` now leaves
-  `KE_MODEL_UPSTREAM` empty, so as written a verify run has no upstream and
-  the model-calling tests skip with a named reason. How an operator points a
-  local verify run at `aria-gb10-2` is open, flagged to the orchestrator.)
+  F-A, Q7).** `.env.example` leaves `KE_MODEL_UPSTREAM` and
+  `KE_EGRESS_ALLOWLIST` empty (rework 2, R2), so by itself a verify run has no
+  upstream. **Model keys in local verify (umbrella ruling, 2026-10-19;
+  designed in platform-stack-ready):** the host half of `verify.sh full`
+  passes exactly these two keys, from the caller's environment or else the
+  operator's gitignored `.env`, into the verify project, and nothing else
+  from `.env`:
+  - `scripts/env_value.sh <NAME>` prints one value. `NAME` must be
+    `KE_MODEL_UPSTREAM` or `KE_EGRESS_ALLOWLIST`; any other name exits 2
+    before anything runs, so it can never become a general `.env` reader.
+    1. If `NAME` is set in the process environment, even to the empty
+       string (`${NAME+x}`), it prints that value. The caller wins.
+    2. Else, if `./.env` does not exist, it prints nothing.
+    3. Else it runs `docker compose -f docker-compose.yml --env-file .env
+       config --format json gateway` with compose's stderr discarded, and
+       extracts `services.gateway.environment.<NAME>` line by line, with the
+       same narrow pattern as `launch.sh` (§2.4 Bind address, Launch). So
+       compose's own dotenv grammar resolves the value (all the L-1 forms),
+       and `.env` is **never sourced, `eval`ed or parsed by the script**.
+       Only the `gateway` service is rendered, and it carries neither store
+       secret, so no secret value enters the captured output. The JSON is
+       held in a shell variable, never written to disk.
+    4. `config` failing, or a value that does not match the pattern (for
+       example one with a JSON escape), exits non-zero with a message that
+       names `.env` and `NAME` and never echoes file content.
+  - `verify.sh` (host half, `full` only, before `build.sh`) assigns each key
+    from `"$(scripts/env_value.sh <NAME>)"`, a plain string assignment with
+    no evaluation; under `set -e` a helper failure stops the run before
+    anything is built. **Both or neither:** if either value is empty, both
+    are set empty and verify prints one line saying the model-calling tests
+    will skip and naming the two keys. Then both are exported. The verify
+    project's `gateway`, `api`, `worker` and `gates-it` read them from the
+    process environment, ahead of `.env.example`.
+  - The operator sets, in `.env` or the shell, `KE_MODEL_UPSTREAM=<host>:<port>`
+    and `KE_EGRESS_ALLOWLIST=<host>` (the gateway prefix is added by compose
+    for the app containers, §2.4 Model wiring).
+  - When the keys are empty the model-calling tests skip with the named
+    reason `model host not configured: KE_MODEL_UPSTREAM is empty (set it and
+    KE_EGRESS_ALLOWLIST in the caller environment or .env)`, which is what CI
+    always shows.
   `gates-it` itself
   has no route out; the gateway forward is its only path to the model host.
   Model-calling integration tests:
@@ -225,6 +261,13 @@ No gate command is ever written in `verify.sh`
     configured value and the fixed reason vocabulary of `/readyz`, e.g.
     `model host unreachable: <KE_MODEL_UPSTREAM> (timeout)`. unittest prints
     it in the verbose output, so the skip is visible in the evidence file.
+  - *Where (2b):* the helper is `require_model_host(test)` in
+    `tests/integration/model.py`. It reads `KE_MODEL_UPSTREAM` from the
+    `gates-it` environment (empty → the "not configured" reason above), then
+    calls `ModelClient(settings, "compose").probe(readiness.timeout_s)` once
+    per process (cached), and builds the reason with
+    `engine.readiness.classify`, the same function `/readyz` uses, so the two
+    vocabularies cannot drift.
   On GitHub runners the host is never reachable, so those tests always skip
   in CI. The probe outcome is never a failure, and no other test may skip on
   network grounds.
@@ -243,6 +286,7 @@ sequenceDiagram
   participant S as smoke.sh (host)
   participant O as offline_check.sh (host)
   H->>H: trap → teardown.sh --volumes (this project)
+  H->>H: env_value.sh KE_MODEL_UPSTREAM / KE_EGRESS_ALLOWLIST (caller env, else .env via compose config; both or neither)
   H->>D: build.sh (ke-app, ke-gateway, ke-gates; store images by digest)
   H->>D: launch.sh (up -d --no-build --wait)
   H->>G: compose run gates-it scripts/verify.sh full
@@ -256,9 +300,10 @@ sequenceDiagram
     G->>G: skip them: "model host unreachable: <upstream> (<reason>)"
   end
   H->>S: smoke.sh
-  S->>D: launch.sh (idempotent), run probe, stop/start valkey, run probe
-  S->>D: run gates scripts/smoke.sh (inner half: OTLP export check, no network)
-  S->>D: teardown.sh --volumes
+  S->>D: launch.sh (idempotent), checks, exec api readyz ready
+  S->>D: stop postgres, exec api readyz not-ready:postgres, up --wait postgres, exec api readyz ready
+  S->>D: teardown.sh (smoke's EXIT trap; verify's trap then adds --volumes)
+  Note over H,G: the OTLP check runs in the container half (gates-it), as in 2a
   H->>O: offline_check.sh (platform-offline; §2.5)
 ```
 
@@ -357,7 +402,20 @@ sequenceDiagram
     `KE_LINT_PS1_FILES`, the paths joined by newlines, and the fixed command
     splits `$env:KE_LINT_PS1_FILES` and calls `Invoke-ScriptAnalyzer -Path`
     on each as a value. A path containing a newline is refused (exit
-    non-zero) before pwsh runs. (`pwsh -Command` joins trailing arguments
+    non-zero) before pwsh runs.
+  - **No wildcard characters in a linted path (2b, security L-10).**
+    `Invoke-ScriptAnalyzer -Path` treats its value as a PowerShell wildcard
+    pattern and has no `-LiteralPath`, so `scripts/a[1].ps1` matches no file
+    and is silently not analysed, while `*` or `?` can match other files.
+    `lint.sh` refuses any `.ps1` path containing `[`, `]`, `*` or `?`, in the
+    same loop and the same way as the newline: exit non-zero before pwsh
+    runs, with a message naming the rule (the path itself is not echoed, for
+    the same reason as L-7). Escaping (`[WildcardPattern]::Escape`) was not
+    chosen: it is one more piece of PowerShell source to get right, and no
+    script here needs those characters. First test (fast): a temp tree with
+    `scripts/x[1].ps1`, then one each with `*` and `?` (legal on Linux),
+    makes `lint.sh` exit non-zero, and a stub `pwsh` first on `PATH` records
+    that it was never called; a plain name still reaches the stub. (`pwsh -Command` joins trailing arguments
     into the command text, so arguments are not used; a separate `-File`
     analyzer script was not chosen, because it would be one more `.ps1` to
     keep lint-covered.) First tests (fast): a static test that the
@@ -801,7 +859,11 @@ span is a review finding.
     empty is refused too, because the template would render an empty
     `listen`. The upstream keeps its rules above. Each failure exits
     non-zero before `20-envsubst-on-templates.sh`, names the variable and
-    never echoes the value.
+    never echoes the value. *As built (2a):* this is a third script,
+    `docker/gateway/12-ke-port-check.sh`, so the entrypoint order is
+    `10-ke-bind-check.sh` → `11-ke-upstream-check.sh` →
+    `12-ke-port-check.sh` → the image's `20-envsubst-on-templates.sh`, each
+    copied mode 0755 by `docker/gateway.Dockerfile`.
   - **Drift test (fast):** the set of `${…}` names in
     `docker/gateway/templates/*` must equal the set the entrypoint checks
     validate (the five ports plus `KE_MODEL_UPSTREAM`), read from one list in
@@ -848,14 +910,45 @@ span is a review finding.
 - `KE_AUTH__ENABLED=false`, because auth arrives in auth-audit;
 - the secret placeholders, each `changeme-<key>` (placeholder-secret ruling).
 
-`api` and `worker` dial `http://gateway:<KE_GATEWAY_MODEL_LISTEN>/v1`. That
-port is reachable on `backend` only and never published. The per-pass
-`base_url` defaults in `defaults.yaml` carry it, and a drift test ties them to
-`.env.example`.
+**Model wiring (amended in the 2b plan; replaces "the per-pass `base_url`
+defaults in `defaults.yaml` carry it", which 2a did not build:
+`defaults.yaml` has `base_url: null` for every pass).** `api` and `worker`
+dial `http://gateway:<KE_GATEWAY_MODEL_LISTEN>/v1`. That port is reachable on
+`backend` only and never published. One source per port, so compose, not
+`defaults.yaml`, sets it:
+- The `x-app` environment (so `api` and `worker`) and `gates-it` set
+  `KE_MODELS__{COMPOSE,REWRITE,AUDIT,EMBED}__BASE_URL:
+  http://gateway:${KE_GATEWAY_MODEL_LISTEN:-8102}/v1`, from one YAML anchor
+  (`x-model-env`) merged into both, so they cannot differ.
+  `defaults.yaml` keeps `null`, so a process outside compose has no model
+  host unless configured.
+- The app containers' allowlist is `KE_EGRESS_ALLOWLIST:
+  gateway,${KE_EGRESS_ALLOWLIST:-}`. `gateway` is the stack's own forward,
+  which the base URLs above name, so it belongs to the topology and is
+  written where the topology is. The operator lists only the model host. The
+  engine already drops empty entries, so an empty operator value gives
+  `[gateway]`, and startup refusal (`check_egress`) passes with the base URLs
+  set. Without this prefix, setting the base URLs would make every
+  `api`/`worker` start refuse with the empty `.env.example` allowlist.
+- The `gateway` service keeps `KE_EGRESS_ALLOWLIST: ${KE_EGRESS_ALLOWLIST:-}`
+  unchanged (`test_gateway_gets_the_egress_allowlist`). The upstream host is
+  in both lists or in neither, so the engine and gateway checks still agree
+  on it. `gateway` in the app's list never reaches the gateway check.
+- `gates-it` gets the same app-form allowlist, `KE_MODEL_UPSTREAM`, and the
+  two store passwords (`KE_STORES__POSTGRES__PASSWORD`,
+  `KE_STORES__NEO4J__PASSWORD`), because the in-process `/readyz` tests
+  connect to the real stores. `gates-it` runs only through `verify.sh full`
+  with `--env-file .env.example`, so those are the `changeme-` placeholders
+  of the throwaway verify project, never an operator's secrets (only the two
+  model keys are taken from `.env`).
+- `.env.example` is unchanged (both model keys empty). Its comment above
+  `KE_EGRESS_ALLOWLIST` says to list the model host only.
 
 **`/healthz` (PS-2.4).** Returns `200 {"status":"ok"}` from process state only,
 with no I/O. It is untraced, because it is liveness and is called every few
-seconds. The compose healthchecks of `api` and `gateway` use it.
+seconds. The compose healthcheck of `api` uses it. *As built (2a):* the
+`gateway` healthcheck uses the gateway's own `/_gateway/healthz` route, not
+`api`'s, because the gateway must be healthy without `api` (Images below).
 
 **`/readyz` (PS-2.5, Q6 ruling).** The response looks like this:
 ```json
@@ -865,19 +958,74 @@ seconds. The compose healthchecks of `api` and `gateway` use it.
             "model_host": {"ok": false, "reason": "refused", "required": false}}}
 ```
 - `ready` = postgres ∧ neo4j ∧ valkey. The status code is 200 if ready,
-  otherwise 503.
-- **Probes:**
-  - postgres: `SELECT 1`.
-  - neo4j: `RETURN 1`.
-  - valkey: `PING`.
-  - model host: `GET {compose.base_url}/models` through `ModelClient`, so it
-    passes the egress guard.
-- **Timeouts:** each probe has `readiness.timeout_s`.
-- **Reasons:** a fixed vocabulary (`timeout | refused | auth_failed |
-  egress_denied | error:<ExceptionClass>`). It never includes a DSN, host
-  credential or message text.
-- **Spans:** `api.readyz` (CHAIN), with one `readyz.<dep>` (TOOL) per
-  dependency.
+  otherwise 503. `model_host` always carries `"required": false` (PS-Q6) and
+  never changes `ready` or the status code.
+- **Module (2b design).** `engine/readiness.py` holds the probes, `classify`,
+  `check_all(settings) -> dict` and a small CLI (Smoke below). `engine/api.py`
+  adds `GET /readyz`, a plain `def` route (FastAPI runs it in its threadpool),
+  which calls `check_all` with the settings from a FastAPI dependency
+  `get_settings(request)` that returns `request.app.state.settings`.
+  `main()` stores the `Settings` that `startup()` returned there before
+  `uvicorn.run`. Tests override the dependency
+  (`app.dependency_overrides[get_settings]`) and drive the route with
+  FastAPI's `TestClient`, so the in-process integration tests and the fast
+  tests use the real route with no module-global mutation.
+- **Probes,** run in order postgres, neo4j, valkey, model host, each bounded
+  by `readiness.timeout_s` (call it `t`). Each store probe has two steps, so
+  network failures are classified the same way for every driver and no
+  driver message is ever parsed:
+  1. A raw TCP dial, `socket.create_connection((host, port), t)`, closed at
+     once. This is what gives `refused`, `timeout` and `unreachable`.
+  2. The protocol check through the driver, with its own timeout set to `t`:
+     - postgres: `psycopg.connect(host, port, dbname, user, password,
+       connect_timeout=max(2, ceil(t)))` (libpq treats values under 2 as 2),
+       then `SELECT 1`;
+     - neo4j: `neo4j.GraphDatabase.driver("bolt://<host>:<port>", auth=…,
+       connection_timeout=t, connection_acquisition_timeout=t)`, then a
+       session `RETURN 1`, `.consume()`, and the driver closed;
+     - valkey: `redis.Redis(host, port, socket_connect_timeout=t,
+       socket_timeout=t).ping()`, then closed.
+  3. Model host: if `models.compose.base_url` is `null`, the result is
+     `not_configured` with no I/O. Otherwise `ModelClient(settings,
+     "compose").probe(t)`, a new method that sends `GET {base_url}/models`
+     through the client's guarded httpx client with `timeout=t` (overriding
+     the pass's 120 s) and calls `raise_for_status()`. It goes through
+     `GuardedTransport`, so an off-list host is `egress_denied` before any
+     socket opens (DR30). `probe` is not an LLM call (no prompt, no tokens),
+     so it opens no `llm_span`; its TOOL span is the `readyz.model_host` one.
+     The same `probe` backs the integration skip helper (§2.2).
+  Worst case for one call is about `2t` per store plus `t` for the model,
+  `7t` (14 s at the default 2 s); a store that refuses answers at once.
+- **Reasons:** one fixed vocabulary, produced only by
+  `engine.readiness.classify(exc) -> str`:
+  `timeout | refused | unreachable | auth_failed | egress_denied |
+  not_configured | error:<ExceptionClass>`.
+  - `ConnectionRefusedError`, or an `httpx.ConnectError` caused by one →
+    `refused`;
+  - `TimeoutError` (`socket.timeout`), `httpx.TimeoutException`,
+    `psycopg.errors.ConnectionTimeout` → `timeout`;
+  - `socket.gaierror` or any other `OSError` from the dial →
+    `unreachable`;
+  - an exception whose psycopg `sqlstate` starts with `28` (invalid
+    authorization), `neo4j.exceptions.AuthError`,
+    `redis.exceptions.AuthenticationError`, or an `httpx.HTTPStatusError`
+    with status 401 or 403 → `auth_failed`;
+  - `engine.egress.EgressDenied` → `egress_denied`;
+  - anything else → `error:` plus `type(exc).__name__`, the class name only.
+  The body never contains `str(exc)`, a DSN, a host credential or message
+  text, and nor does any span attribute or log line: a probe catches its
+  exception and records only the reason, so no `record_exception` runs on
+  these spans. Host names and ports are not in the body either.
+- **Spans** (OpenInference kinds via `harness_telemetry`):
+  - `api.readyz` — CHAIN, the parent, one per request; attribute
+    `ke.readyz.ready` (bool).
+  - `readyz.postgres`, `readyz.neo4j`, `readyz.valkey`, `readyz.model_host`
+    — TOOL, one child each; attributes `ke.readyz.ok`, `ke.readyz.reason`
+    (vocabulary or absent) and, on `model_host`, `ke.readyz.required=false`.
+    A failed check sets the span status to ERROR with the reason as the
+    description (vocabulary only).
+  - No span input or output values are set, so the hide flags have nothing
+    to hide here.
 
 **Worker (PS-2.6).**
 - The worker is RQ on Valkey, started as `python -m engine.worker`, and listens
@@ -888,6 +1036,50 @@ seconds. The compose healthchecks of `api` and `gateway` use it.
 - The integration test enqueues to the real `worker` container from
   `gates-it`. It then asserts that the status is `finished` and the counter
   is 1.
+- **Concrete shape (2b plan).**
+  - `engine/worker.py` stays a module (the compose `command`, `python -m
+    engine.worker`, and the 2a test that asserts `engine/worker.py` exists
+    both stay valid) and holds `main()` and `run(settings)`. Jobs live in a
+    new `engine/jobs.py`, so the job path is **`engine.jobs.noop`** (this
+    replaces `engine.worker.jobs.noop` above).
+  - `main()` is `settings = startup(); run(settings)`. `startup()` still
+    runs first, so every refusal holds (PS-2.14 (1)).
+  - `run(settings)` builds `redis.Redis(host=stores.valkey.host,
+    port=stores.valkey.port)` and calls
+    `rq.SimpleWorker(["default"], connection=conn).work(with_scheduler=False)`.
+    The queue name is a module constant, `QUEUE = "default"`.
+  - **`SimpleWorker`, not RQ's default forking `Worker`:** the forking worker
+    runs each job in a child that ends with `os._exit`, so the batch span
+    processor that `startup()` installed never flushes the child's spans,
+    and the forked child would also inherit the parent's exporter threads.
+    `SimpleWorker` runs jobs in the worker process, so `job.*` spans export
+    like any other. Cost: a job that crashes the interpreter takes the
+    worker down (`unless-stopped` restarts it), and there is no per-job
+    memory isolation. Revisit when a real job needs isolation.
+  - **Tracing:** a decorator `traced_job` in `engine/jobs.py` wraps
+    each job in `chain_span(f"job.{fn.__name__}")` with attributes
+    `ke.job.id` and `ke.job.queue` from `rq.get_current_job()` (absent when
+    called outside RQ). `noop` is `@traced_job`. Every function in
+    `jobs.__all__` must be traced, which a fast test checks by calling each
+    with a stub job and counting spans.
+  - `noop(token: str) -> int` returns
+    `int(get_current_job().connection.incr(f"ke:noop:{token}"))`, using the
+    job's own connection, so it opens no second client. No TTL: the key
+    lives only in throwaway verify projects.
+  - Compose: `worker` gains `depends_on: valkey: {condition:
+    service_healthy}` (as `api` has). If Valkey goes away later, `work()`
+    raises, the process exits non-zero and `unless-stopped` restarts it
+    until Valkey is back. The healthcheck stays `python -c "import engine"`
+    for now; a heartbeat-based check belongs to the DR41 runbook item.
+  - **Entrypoint test seam moves (flag for the tester):** the 2a tests
+    `test_worker_main_idles_after_a_passing_startup` and
+    `test_worker_main_refused_setting_exits_before_idling` patch
+    `signal.pause`/`time.sleep`, which the worker no longer calls. They
+    patch `engine.worker.run` instead. The assertions are unchanged:
+    `startup()` runs first, a refusal propagates before `run`, and a
+    passing startup reaches `run` with the `Settings` it returned. The
+    subprocess test (`test_worker_module_refuses_as_a_process`) needs no
+    change.
 - **2a placeholder (developer decision, accepted by review only with B2).**
   Until 2b brings RQ, `worker` runs `python -m engine.worker`, whose `main()`
   calls `engine.startup.startup()` and then idles (`signal.pause()`). So
@@ -907,6 +1099,12 @@ seconds. The compose healthchecks of `api` and `gateway` use it.
   `uv` bases, runs `uv sync --locked --no-dev`, runs as a non-root user, and
   copies `engine/` and `config/`. It does **not** copy `.env.example`
   (placeholder-secret ruling; the refusal checks the `changeme` prefix).
+  - *Layer order (2b, review carry-in N11; 2b adds the store drivers, so the
+    dependency layer grows):* copy `pyproject.toml` and `uv.lock`, run `uv
+    sync --locked --no-dev --no-install-project`, then copy
+    `harness_telemetry/`, `engine/` and `config/` and run `uv sync --locked
+    --no-dev --no-editable`. A code change then rebuilds only the last two
+    layers. Reviewer judges; no new test.
 - `docker/gateway.Dockerfile` is the pinned nginx image plus templates. Its
   upstreams resolve per connection, so the gateway **starts and serves the
   other routes when any upstream is absent**: CI has no model host, and the
@@ -914,15 +1112,80 @@ seconds. The compose healthchecks of `api` and `gateway` use it.
 
 **Scripts (PS-2.9).** Each script is a bash file for Linux plus a PowerShell
 twin for Windows. macOS is not supported (Q20 ruling). They contain only
-`docker compose` calls, plus the read-only `docker version` (launch) and
-`docker network inspect` (smoke host half) checks.
+`docker compose` calls, plus the read-only `docker version` (launch),
+`docker network inspect` (smoke host half), and, from 2b, the read-only
+label-filtered `docker ps -a`, `docker network ls` and `docker volume ls`
+(teardown leftover check, L-9). `smoke.sh`, `verify.sh` and
+`env_value.sh` are bash only; Windows runs them from Git Bash, as today.
 
 | Script | Does |
 |---|---|
 | `build.sh` / `.ps1` | `compose build` (ke-app, ke-gateway, ke-gates), then `compose pull` of the digest-pinned images |
 | `launch.sh` / `.ps1` | Copies `.env.example` to `.env` if it is missing (and says so). Checks Compose ≥ 2.24 and Docker Engine ≥ 28 (`docker version --format '{{.Server.Version}}'`; rework 1, M-2; Engine rule below), refusing below either. Reads the resolved `KE_ENV` and gateway `host_ip`s from `compose config --format json gateway` and applies the bind-address rule (Bind address above). Runs `compose up -d --no-build --wait` with the same arguments. Prints the URLs from the resolved `host_ip` and `published` values |
-| `teardown.sh` / `.ps1` | `compose <args> down`, and `--volumes` only when asked. No `--profile` and no `--remove-orphans` (rework 2, Windows proof F3; rule below) |
-| `smoke.sh` | the two-sided live smoke (§2.2), including the host-side `docker network inspect` isolation check (rework 2) |
+| `teardown.sh` / `.ps1` | `compose <args> down`, and `--volumes` only when asked. No `--profile` and no `--remove-orphans` (rework 2, Windows proof F3; rule below). From 2b, then checks for leftovers with the project label and exits non-zero if any (L-9, rule below) |
+| `smoke.sh` | the two-sided live smoke (§2.2), including the host-side `docker network inspect` isolation check (rework 2). From 2b, the host half launches, checks `/readyz`, stops and restarts a real store, and tears down (Smoke below) |
+| `env_value.sh` (bash only, 2b) | prints `KE_MODEL_UPSTREAM` or `KE_EGRESS_ALLOWLIST` from the caller env, else from `.env` through `compose config` (§2.2 Model keys in local verify) |
+
+**Smoke, host half (PS-2.8, 2b).** `smoke.sh` keeps every 2a check and
+adds launch, readiness, a real store stop and start, and teardown. All the
+commands stay in `smoke.sh` (and the HTTP client in `engine.readiness`), so
+`verify.sh` is unchanged apart from the two model keys and still calls
+`scripts/smoke.sh` as its last step (`test_verify_sh_has_no_inlined_commands`
+holds). Order:
+1. The 2a "resolves without `.env`" check (no stack needed).
+2. `trap` on EXIT → `scripts/teardown.sh` (no `--volumes`; under `verify.sh`
+   the verify trap runs `teardown.sh --volumes` afterwards, and `down` on a
+   project with no containers still removes its volumes). A failed teardown
+   makes smoke fail, naming the project. PS-2.8 says smoke tears the stack
+   down, so `smoke.sh` run by hand against the operator's live project
+   takes that project down too; its header says so (flagged, ruling S1 in
+   the plan evidence).
+3. `scripts/launch.sh` (PS-2.8 "launches through the launch script").
+   Under `verify.sh` the project is already up, and `up -d --no-build
+   --wait` is a no-op that returns once healthy.
+4. The 2a checks: `backend` isolated and internal, every stack service
+   healthy, `gateway` → `api` and `phoenix` `/healthz`.
+5. `compose exec -T api python -m engine.readiness --wait-for ready
+   --within 60`.
+6. `compose stop postgres`. Postgres is the store to stop because, today,
+   only `/readyz` uses it at runtime. Stopping `valkey` would also crash
+   the worker into a restart loop, which makes the "every service healthy"
+   check depend on timing. `unless-stopped` does not restart a container
+   that was stopped by hand.
+7. `compose exec -T api python -m engine.readiness --wait-for
+   not-ready:postgres --within 30`.
+8. `compose up -d --no-build --wait postgres`, which starts it and returns
+   only when its healthcheck passes.
+9. `compose exec -T api python -m engine.readiness --wait-for ready
+   --within 60`.
+
+`python -m engine.readiness` (the CLI in `engine/readiness.py`) runs inside
+the `api` container and is a client of the real route. It loads `Settings`
+(no `startup()`, no tracing), polls
+`GET http://127.0.0.1:<api.listen_port>/readyz` once a second through an
+opener with no proxy handler until the condition holds or `--within`
+seconds pass. `ready` means a 200 with `ready: true`.
+`not-ready:<dep>` means a 503 whose `checks.<dep>.ok` is false. It exits 0
+when the condition holds. Otherwise it exits 1 and prints, to stderr, the
+last status and body (the body carries only the vocabulary). A
+`<dep>` outside the four names is a usage error, exit 2. It runs in `api`
+because the verify project publishes nothing, and `api` already has Python
+and the settings; the gateway's busybox `wget` cannot read a 503's body.
+
+First tests (fast):
+- `engine.readiness` CLI: the CLI against a stub opener covers each
+  condition met, never met (exit 1 within `--within`, stderr has the status
+  and no exception text), and a bad dependency name (exit 2).
+- Smoke host half, against a fake docker (extending `tests/fake_docker.py`
+  with per-call exit codes for `compose exec`): the order above, with `stop
+  postgres` strictly between a ready and a not-ready readiness `exec`, and
+  `up -d --no-build --wait postgres` before the final ready `exec`. When
+  any step fails, smoke exits non-zero and `teardown.sh` still runs.
+  `teardown.sh` runs on success too.
+
+The real run inside `verify.sh full` is the integration proof. The
+reviewer measures one mutant: a `/readyz` that ignores postgres must make
+step 7 time out and smoke fail.
 
 **Engine version rule (rework 2, review R1-B2, security L-6).** The
 `isolated` option is silently ignored below Engine 28, so this check is the
@@ -964,6 +1227,55 @@ compose argument list as launch (`KE_ENV_FILE`, `COMPOSE_FILE`,
 - First tests (fast, fake docker, sh and ps1): the `down` call carries no
   `--profile` and no `--remove-orphans`, carries the project and env-file
   arguments, and carries `--volumes` only with `--volumes`/`-Volumes`.
+
+**Teardown leftovers (2b, security L-9; reconciled with F3).** L-9: after
+`down`, the project's profile and one-off containers (and the `backend`
+network they hold) can remain while teardown exits 0, and `verify.sh`'s N7
+warning never fires. F3: teardown must never remove a container outside
+its own project's default-profile services, because another run may own
+it under the same label. The two meet in one rule: **detect, report, exit
+non-zero, and never remove.**
+- Before `down`, teardown resolves the project name exactly as smoke does
+  (the `name:` line of `docker compose <args> config`). Empty or failing
+  → exit non-zero, naming the check, without running `down`.
+- After `down` (whose own non-zero exit still fails teardown first), it
+  lists, read-only, anything still labelled
+  `com.docker.compose.project=<project>`:
+  - containers: `docker ps -a --filter label=… --format '{{.Names}}'`;
+  - networks: `docker network ls --filter label=… --format '{{.Name}}'`;
+  - volumes, **only with `--volumes`**:
+    `docker volume ls --filter label=… --format '{{.Name}}'`. Without it,
+    kept volumes are the point.
+- If any list is non-empty, or any listing command fails, teardown exits
+  non-zero. Its message names the project and the leftover names (resource
+  names are not secret), and gives the commands to remove them by hand
+  (`docker rm -f …`, `docker network rm …`, `docker volume rm …`). It runs
+  none of them.
+- This satisfies F3 (nothing is removed beyond `down`'s scope) and L-9 (a
+  leftover is never a silent 0). A one-shot still running under the same
+  project, such as a `verify.sh fast` `gates` container under the default
+  project, makes teardown report it and fail. That is accurate, because
+  the project is not fully down, and a re-run after it exits passes.
+- `verify.sh`'s project is unique per run, so automatic removal there
+  would be safe. It is not done anyway: one rule for every caller, and
+  N7's message already names the project. N7's hand command changes from
+  `docker compose -p <project> down --volumes` (which cannot remove
+  profile containers) to "see the teardown output above".
+- `tests/fake_docker.py` answers the three listing commands from
+  `FAKE_DOCKER_LEFTOVER_CONTAINERS`, `FAKE_DOCKER_LEFTOVER_NETWORKS` and
+  `FAKE_DOCKER_LEFTOVER_VOLUMES` (newline-separated, empty by default),
+  and logs the filter it was given.
+- First tests (fast, fake docker, sh and ps1):
+  - a leftover container → non-zero, the message names the project and the
+    container, and no `rm` call is logged;
+  - a leftover network → non-zero;
+  - a leftover volume → non-zero with `--volumes`/`-Volumes`, and ignored
+    without it;
+  - nothing left → 0;
+  - the filter label carries the project that `config` names
+    (`ke-verify-123` in the fixture);
+  - a failing listing command → non-zero;
+  - the `down` assertions above still hold.
 
 All scripts honor `KE_ENV_FILE` and `COMPOSE_PROJECT_NAME`. `docs/quickstart.md`
 names only these scripts and the prerequisites: Git, and **Docker Engine ≥ 28**
@@ -1063,6 +1375,28 @@ in the manifest**. Only then does it run `docker load` for each image.
 (PS-3.4, `test_ci_job_has_timeout`); the measurement is recorded in the
 sub-item's handoff.
 
+**PS-3.4 first measurement (platform-stack-ready).** The CI run of
+`verify.sh full` at 0f2821c on `ubuntu-24.04` took **274 s**
+(`docs/evidence/platform-stack/ci-run-0f2821c.txt`). 274 × 1.5 = 411 s,
+which rounds up to **`timeout-minutes: 7`** (from today's 20).
+- *Where it is recorded:* in `.github/workflows/ci.yml`, a comment on the
+  `timeout-minutes` line gives the arithmetic and the evidence path, for
+  example `# PS-3.4: ceil(274 s x 1.5 / 60); docs/evidence/platform-stack/ci-run-0f2821c.txt`.
+  The 2b evidence folder also gets a short `ci-timeout.md` with the run
+  URL, the commit, the duration line read from the log, and the arithmetic.
+- *Re-measure:* 2b adds the store stop and start and more integration
+  tests. At close-out, the orchestrator reads the duration of 2b's own green
+  CI run, and if `ceil(d × 1.5 / 60)` differs from 7, a one-line follow-up
+  sets the new value with the same comment and evidence. platform-offline
+  re-measures again, as PS-3.4 says.
+- *Test:* `test_ci_job_has_timeout` (fast) asserts the job declares an
+  integer `timeout-minutes`, and that the line's comment names an evidence
+  path that exists in the repository. Whether the value is right stays
+  with the reviewer (PS-3.4).
+- Risk: if 2b's first CI run exceeds 7 minutes, the job is cancelled. That
+  cancellation is itself a measurement, but it costs a round. Ruling C1 in
+  the plan evidence asks which order the orchestrator wants.
+
 ### 2.6 First failing tests
 
 Suggested first test per sub-item, followed by the order of the rest.
@@ -1160,6 +1494,80 @@ Suggested first test per sub-item, followed by the order of the rest.
     PSScriptAnalyzer (PS-2.9); the recorded Windows run (Q31).
   - That the *app* containers have no route out stays proven by `ci/offline`
     (platform-offline).
+- **platform-stack-ready (2b; written in the 2b plan, in TDD order).** Names
+  that the analyst has not adopted are marked *proposed*.
+  - **Fast** (`verify.sh fast`):
+    1. `test_readyz_reason_vocabulary` (*proposed*): `engine.readiness.classify`
+       maps each exception family in §2.4 `/readyz` Reasons to its word.
+       Messages, and a psycopg error carrying a marker password, never
+       appear in the result.
+    2. `test_readyz_is_traced` (PS-2.5): with stubbed probes and the
+       in-memory exporter, one `GET /readyz` through `TestClient` gives one
+       `api.readyz` CHAIN with four `readyz.<dep>` TOOL children, and the
+       failing child has ERROR status and a vocabulary reason.
+    3. `test_readyz_ready_excludes_model_host` (*proposed*): with stubbed
+       probes, stores ok and model failing → 200, `ready: true`,
+       `required: false`; one store failing → 503. With `base_url` null the
+       model is `not_configured`, and no probe is called.
+    4. `test_store_probe_classifies_closed_port` (*proposed*): a store
+       probe against a closed loopback port in `gates` (which has `lo`
+       under `network_mode: none`) returns `refused` well within
+       `readiness.timeout_s`.
+    5. `test_worker_job_is_traced` (PS-2.6): `engine.jobs.noop` called with
+       a stub `get_current_job` (id and a fake connection with `incr`)
+       gives one `job.noop` CHAIN span with `ke.job.id`; every function in
+       `engine.jobs.__all__` is traced.
+    6. The worker entrypoint tests retargeted to `engine.worker.run` (§2.4
+       Worker), then `test_compose_worker_waits_for_valkey` (*proposed*).
+    7. `test_compose_model_wiring` (*proposed*): `api`, `worker` and
+       `gates-it` set the four `KE_MODELS__*__BASE_URL` to
+       `http://gateway:${KE_GATEWAY_MODEL_LISTEN:-8102}/v1` and the
+       allowlist to `gateway,${KE_EGRESS_ALLOWLIST:-}`, while `gateway`
+       keeps `${KE_EGRESS_ALLOWLIST:-}`. Then
+       `test_compose_postgres_identity_matches_defaults` (PS-2.5, N4).
+    8. `env_value.sh` cases (*proposed* `EnvValueScriptTest`, fake docker):
+       - another name → exit 2 and no docker call;
+       - set in the env, even empty → printed, with no docker call;
+       - no `.env` → empty;
+       - `.env` holding a bare `touch <marker>` line and a secret marker → the
+         value is read through `compose -f docker-compose.yml --env-file .env
+         config --format json gateway`, no marker file appears, and the
+         secret is not in the output;
+       - `config` failing → non-zero, with no file content in the message.
+       Then the `verify.sh` B6 harness (its temp tree gains an
+       `env_value.sh` stub, a fixture change for the tester): both keys
+       reach the `gates-it` run's environment; one empty → both empty plus
+       the note; a helper failure → non-zero before `build.sh`.
+    9. `test_model_tests_skip_with_named_reason` and
+       `test_no_model_calls_in_unit_suite` (PS-2.7).
+    10. Teardown leftover cases, sh and ps1 (§2.4 Teardown leftovers, L-9).
+    11. Lint wildcard refusal (§2.2 Lint, L-10).
+    12. The `engine.readiness` CLI cases and the smoke host-half fake-docker
+        order test (§2.4 Smoke).
+    13. `test_ci_job_has_timeout` (PS-3.4), `test_claude_md_lists_verify_only_checks`
+        (PS-2.13), then PS-2.18's `test_startup_loads_settings_once` and
+        `test_installed_provider_refusal_is_logged`.
+  - **Integration** (`verify.sh full`, in `gates-it`, after the three 2a
+    tests):
+    1. `test_readyz_reports_each_dependency`: `GET http://api:<port>/readyz`
+       against the real stack gives 200, four checks, and the stores ok.
+    2. `test_readyz_fails_when_store_down`: in process, through
+       `TestClient` with `KE_STORES__POSTGRES__PORT=1` and the *postgres*
+       password set to a marker, gives 503, `postgres.reason ==
+       "refused"`, no marker in the body, and an answer within `t` plus the
+       stated margin. The other stores keep their real passwords: a wrong
+       neo4j password counts toward neo4j's failed-auth lock and could make
+       the next test's neo4j check fail.
+    3. `test_readyz_ready_without_model_host`: in process, with the real
+       stores and `KE_MODELS__COMPOSE__BASE_URL=http://gateway:1/v1`
+       (allowlisted, closed port), gives 200 and `model_host.ok == false`.
+    4. `test_worker_consumes_noop_job`: enqueue `engine.jobs.noop` by
+       dotted path on `default` from `gates-it`, then wait (bounded) for
+       `finished` and a counter of 1.
+    5. `test_readyz_reports_reachable_model_host` (model-calling, through
+       `require_model_host`).
+  - **Smoke:** the store stop and start in `smoke.sh` (PS-2.8), measured by
+    the real `verify.sh full`.
 - **platform-offline.** First: `test_bundle_manifest_rejects_tamper` (fast).
   It covers both `install.sh` and `install.ps1` on a tiny fixture bundle, in
   three cases: a byte changed, a file missing, and an extra file. Then:
@@ -2342,12 +2750,99 @@ asked for the hook design to be recorded in this ADR.
     - A leftover one-shot container in a project makes teardown fail loudly
       instead of being removed silently.
     - Local verify runs have no model upstream unless the open R2 question
-      (§2.2) is ruled.
+      (§2.2) is ruled. (Ruled by the umbrella on 2026-10-19 and designed in
+      the platform-stack-ready amendment below.)
     - The Windows proof goes stale again (Q34) and is repeated.
   - **First tests:** the Engine version cases and the teardown argument
     cases (§2.4 Scripts), the per-port gateway cases and the template drift
     test (§2.4 Gateway upstream check), the smoke host-half isolation check
     (§2.2), and the lint fixed-command tests (§2.2 Lint), all fast.
+- **Amendment, 2026-10-19: platform-stack-ready (2b plan)** (PS-2.5, 2.6,
+  2.8, PS-3.4; umbrella ruling on model keys; security L-9, L-10; review
+  N4, N11; details in §2.2, §2.4, §2.5 and §2.6).
+  - **Context:** 2b brings the first store clients and the job queue, and
+    with them the first new runtime dependencies since `fastapi`/`uvicorn`.
+    Several 2a texts no longer match what was built: there is no
+    `config/verify.env`, the per-pass `base_url` is `null`, the gateway has
+    a third check script, and its healthcheck uses its own route.
+  - **Decision:**
+    - **New runtime dependencies,** added with `uv add` so `uv.lock` pins
+      exact versions and hashes at implementation (none are chosen here).
+      ADR-KE-011 already chose the libraries; this fixes the
+      distributions:
+      - `psycopg[binary]` (v3): the `binary` extra ships libpq in the
+        wheel. The app image is `python:3.12-slim` with no libpq, so plain
+        `psycopg` would need an apt layer.
+      - `neo4j`: the official Bolt driver.
+      - `redis` (redis-py): Valkey speaks the same protocol, and RQ
+        requires redis-py, so one client serves both the worker and the
+        `/readyz` PING.
+      - `rq`.
+      mypy `--strict` stays global. If a package ships no type
+      information, the developer adds a per-module override in
+      `pyproject.toml` naming that module with a reason. No blanket
+      `ignore_missing_imports`. Licences and advisories are checked by
+      `security` at the pinned versions; psycopg is LGPL-3.0 (to be
+      confirmed at the pin), which is fine for dynamic use but is recorded
+      here for the human.
+    - **`/readyz`:** two-step store probes (raw TCP dial, then the driver)
+      with one `classify` vocabulary; the model probe through
+      `ModelClient.probe` (guarded); spans `api.readyz` (CHAIN) and
+      `readyz.<dep>` (TOOL).
+    - **Model wiring:** compose sets the per-pass base URLs to the gateway
+      forward, and the app allowlist to `gateway,${KE_EGRESS_ALLOWLIST:-}`.
+    - **Worker:** RQ `SimpleWorker` on `default`, jobs in `engine/jobs.py`
+      under `traced_job` (`job.<name>`, CHAIN).
+    - **Local verify model keys:** `scripts/env_value.sh` resolves only the
+      two keys, from the caller env or else `.env` through `compose config`
+      (never sourced); both or neither.
+    - **Smoke:** launch, readiness, `compose stop`/`up --wait` of
+      `postgres`, teardown; the HTTP client is `python -m engine.readiness`
+      run in `api`.
+    - **Teardown:** detect label leftovers after `down`, exit non-zero, and
+      never remove them (L-9 within F3).
+    - **Lint:** refuse `[ ] * ?` in `.ps1` paths (L-10).
+    - **CI timeout:** 7 minutes from 274 s × 1.5, recorded in a `ci.yml`
+      comment and the evidence folder.
+  - **Alternatives:**
+    - `valkey` (the redis-py fork) as the client: RQ still needs redis-py,
+      so it would mean two clients for one server.
+    - Plain `psycopg` plus apt `libpq5` in the image: an extra system layer
+      to pin and patch.
+    - asyncpg or the neo4j async driver: an async `/readyz` buys nothing
+      for four sequential short probes.
+    - Classifying failures from each driver's exceptions alone: psycopg
+      raises `OperationalError` for refused, timeout and DNS alike, so it
+      could not tell them apart without parsing message text, which could
+      also leak into reasons.
+    - Probes run in parallel threads: a lower worst case, but the OTel
+      context would have to be carried into each thread. Not needed while
+      the worst case is `7t`.
+    - RQ's forking `Worker`: loses the job spans (`os._exit` in the child).
+    - Running the smoke readiness check from a `probe` one-shot service: one
+      more service and profile, for what `compose exec api` already does.
+    - Defaulting `KE_EGRESS_ALLOWLIST=gateway` in `.env.example`: an
+      operator who sets only the model host would lose `gateway` and every
+      app container would refuse to start.
+    - Sourcing `.env` in `verify.sh`: it executes operator content, and
+      could leak every key into the verify project.
+    - Teardown that removes leftovers: it contradicts F3.
+  - **Consequences:**
+    - The app image grows by the driver wheels, and `uv.lock` and the
+      offline bundle (platform-offline) carry them.
+    - `gates-it` holds the verify project's placeholder store passwords,
+      never real ones. Security L-5 (`gates-it` runs as root with the repo
+      read-write) is still open and makes this worth recording.
+    - `/readyz` is unauthenticated until auth-audit, and reveals only
+      dependency names and vocabulary words.
+    - An operator's `KE_EGRESS_ALLOWLIST` lists the model host only. Listing
+      `gateway` as well is harmless.
+    - `smoke.sh` takes down whatever project it targets (ruling S1).
+    - A one-shot still running in a project makes that project's teardown
+      fail until it ends.
+    - The Windows proof goes stale (scripts and compose change) and is
+      repeated (Q34).
+  - **First tests:** §2.6, platform-stack-ready.
 
 ### ADR-KE-012: Offline bundle with a checksum manifest (platform-offline)
 - **Context:** PS-3.1/3.2 require a bundle that installs and runs on a daemon

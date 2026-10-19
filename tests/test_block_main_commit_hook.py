@@ -24,6 +24,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 HOOK = Path(__file__).resolve().parent.parent / "scripts" / "hooks" / "block-main-commit.sh"
 
@@ -550,9 +551,16 @@ class BlockMainCommitHookTest(unittest.TestCase):
 
     def trace_passes(self, command: str, mode: str) -> tuple[int, int, str]:
         """Run the hook under bash -x; return (texts built, texts judged, stdout)."""
+        # review-ci-fix N2 (platform-stack-ready, PS-2.24): the trace prefix is
+        # pinned, so a caller's PS4 (or a BASH_ENV/ENV file that sets one)
+        # cannot change the `+` the anchored regexes count.
+        env = self.env(mode)
+        env["PS4"] = "+ "
+        for name in ("BASH_ENV", "ENV"):
+            env.pop(name, None)
         result = subprocess.run(["bash", "-x", str(HOOK)],
                                 input=claude_code_payload(command, self.repo),
-                                cwd=self.repo, env=self.env(mode),
+                                cwd=self.repo, env=env,
                                 capture_output=True, text=True, check=True)
         return (len(self.TRACE_BUILT.findall(result.stderr)),
                 len(self.TRACE_JUDGED.findall(result.stderr)),
@@ -591,6 +599,26 @@ class BlockMainCommitHookTest(unittest.TestCase):
                     built, judged, out = self.trace_passes(command, mode)
                     self.assertEqual(out, "")
                     self.assertEqual((built, judged), (2, 2))
+
+    def test_trace_count_independent_of_caller_ps4(self):  # PS-2.24, review-ci-fix N2
+        # A caller's PS4 changes the xtrace prefix. Bash ignores PS4 from the
+        # environment when it runs as root (as in the gates image), so the
+        # BASH_ENV case sets it from a startup file, which bash reads as root
+        # too. Either way the structural counts must not change.
+        self.switch("agent/x")
+        rc = Path(self.repo) / "ps4.rc"
+        rc.write_text("PS4='>>> '\n", encoding="utf-8")
+        callers = {"PS4 in the environment": {"PS4": ">>> "},
+                   "PS4 from BASH_ENV": {"BASH_ENV": str(rc)}}
+        for mode in MODES:
+            for caller, extra in callers.items():
+                for command, expected in (("echo hello", (1, 1)), ("echo a\\\nb", (2, 2))):
+                    with self.subTest(mode=mode, caller=caller, command=command):
+                        self.require_mode(mode)
+                        with mock.patch.dict(os.environ, extra):
+                            built, judged, out = self.trace_passes(command, mode)
+                        self.assertEqual(out, "")
+                        self.assertEqual((built, judged), expected)
 
     def test_five_megabyte_command_without_backslash_newline_is_one_pass(self):
         # Security L21 sanity bound only (see the ruling note above): a 5 MB

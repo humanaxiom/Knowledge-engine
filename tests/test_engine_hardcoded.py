@@ -199,7 +199,9 @@ def _declared() -> tuple[set[str], set[str]]:
         upper = key.upper()
         if not value or value.startswith("changeme"):
             continue
-        if "PORT" in upper and value.isdigit():
+        # Review round-0 N3 (platform-stack-ready, PS-2.24): `*_LISTEN` keys
+        # are container listen ports, so their values count as ports too.
+        if ("PORT" in upper or upper.endswith("_LISTEN")) and value.isdigit():
             ports.add(value)
         elif "MODEL" in upper and "UPSTREAM" not in upper and "URL" not in upper:
             names.add(value)
@@ -225,6 +227,20 @@ class RepositoryScanTest(unittest.TestCase):
     def test_no_hardcoded_ports(self):
         ports, _ = _declared()
         self.assertTrue(ports, "no ports declared in defaults.yaml/.env.example")
+        # Review round-0 N3 (PS-2.24, mutant P5): every *_LISTEN value is a
+        # declared port, and a literal compose `target:` port is flagged.
+        listens = {k: v for k, v in read_env_example().items() if k.endswith("_LISTEN")}
+        self.assertTrue(listens, "precondition: .env.example declares *_LISTEN ports")
+        for key, value in listens.items():
+            with self.subTest(listen=key):
+                self.assertIn(value, ports, f"{key}={value} is not treated as a port")
+        api_listen = listens["KE_GATEWAY_API_LISTEN"]
+        literal = {"docker-compose.yml": f"    ports:\n      - target: {api_listen}\n"}
+        with self.subTest(case="literal compose target"):
+            self.assertTrue(_scan(literal, sorted(ports)), "a literal `target:` port is not flagged")
+        variable = {"docker-compose.yml": f"      - target: ${{KE_GATEWAY_API_LISTEN:-{api_listen}}}\n"}
+        with self.subTest(case="compose target variable (control)"):
+            self.assertEqual(_scan(variable, sorted(ports)), [])
         findings = _scan(_collect_repo_files(), sorted(ports), EXEMPTIONS)
         self.assertEqual(findings, [], "hardcoded ports:\n" + self._report(findings))
 

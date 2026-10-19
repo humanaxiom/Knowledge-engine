@@ -28,11 +28,31 @@ if [ "${KE_IN_GATES:-}" != "1" ]; then
     exec docker compose --env-file .env.example --profile gates run --rm --build gates \
       scripts/verify.sh fast
   fi
+  # Only the two model keys come from the caller's environment or the
+  # repo-root .env (PS-2.21); both or neither, so a half-set pair cannot leave
+  # the model host reachable by the gateway but refused by the engine.
+  model_upstream="$(bash scripts/env_value.sh KE_MODEL_UPSTREAM)"
+  egress_allowlist="$(bash scripts/env_value.sh KE_EGRESS_ALLOWLIST)"
+  # Compose lets the process environment outrank --env-file, so every other
+  # caller KE_* variable is dropped here: the verify project runs on the
+  # placeholder values of .env.example, never real secrets (security L-11).
+  while IFS= read -r name; do
+    unset "$name"
+  done < <(compgen -e | grep '^KE_' || true)
   started="$(date +%s)"
   export COMPOSE_PROJECT_NAME="ke-verify-${RANDOM}${RANDOM}"
   export COMPOSE_FILE="docker-compose.yml:docker-compose.verify.yml"
   export COMPOSE_PATH_SEPARATOR=":"
   export KE_ENV_FILE=".env.example"
+  # This project is verify's own: smoke may stop and restart a store in it and
+  # leaves the teardown to the trap below (ruling Q37).
+  export KE_SMOKE_OWNS_PROJECT=1
+  if [ -n "$model_upstream" ] && [ -n "$egress_allowlist" ]; then
+    export KE_MODEL_UPSTREAM="$model_upstream" KE_EGRESS_ALLOWLIST="$egress_allowlist"
+  else
+    export KE_MODEL_UPSTREAM="" KE_EGRESS_ALLOWLIST=""
+    echo "verify full: KE_MODEL_UPSTREAM and KE_EGRESS_ALLOWLIST must both be set to reach the model host; running without it (model-calling tests skip)"
+  fi
   echo "== verify full: project $COMPOSE_PROJECT_NAME =="
   # Teardown runs once on every exit path. A failed teardown after a green
   # run still fails verify (N7): a leaked project is not a pass.

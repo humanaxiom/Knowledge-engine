@@ -41,6 +41,7 @@ fi
 # 2. Normalise: delete CR, delete quotes and backslashes, lower-case. Text (a)
 #    joins backslash-newline to nothing (M5). Text (b), built only when the
 #    command contains a backslash-newline (L21), turns it into a space (M6).
+# NOTE: a test (L21) counts the `tr '[:upper:]'` call and the `for text in` loop; update it if you change them.
 norm() { tr -d "\"'\\\\" | tr '[:upper:]' '[:lower:]'; }
 base="$(printf '%s' "$text" | tr -d '\r')"
 texts=("$(printf '%s' "$base" | sed -z 's/\\\n//g' | norm)")

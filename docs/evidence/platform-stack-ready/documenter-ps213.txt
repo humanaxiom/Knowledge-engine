@@ -1,0 +1,1983 @@
+$ MSYS_NO_PATHCONV=1 docker compose --profile gates run --rm gates uv run --locked python -m unittest tests.test_stack_ready_docs -v
+time="2026-10-18T23:14:41-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T23:14:41-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T23:14:41-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T23:14:41-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T23:14:41-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T23:14:41-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T23:14:41-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T23:14:41-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T23:14:41-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T23:14:41-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T23:14:41-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T23:14:41-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+ Container knowledge-engine-gates-run-1792b2e5a760 Creating 
+ Container knowledge-engine-gates-run-1792b2e5a760 Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.68ms
+Installed 1 package in 0.85ms
+test_ci_job_has_timeout (tests.test_stack_ready_docs.CiTimeoutTest.test_ci_job_has_timeout) ... ok
+test_claude_md_lists_verify_only_checks (tests.test_stack_ready_docs.ClaudeMdVerifyOnlyTest.test_claude_md_lists_verify_only_checks) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.029s
+
+OK
+
+$ scripts/verify.sh fast
+ Image ke-gates Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 521B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from gates.Dockerfile
+#2 transferring dockerfile: 2.96kB done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#3 DONE 0.0s
+
+#4 [internal] load metadata for docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#4 DONE 0.0s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 91B done
+#5 DONE 0.0s
+
+#6 [stage-1  1/10] FROM docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#6 resolve docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258 0.0s done
+#6 DONE 0.0s
+
+#7 [uv 1/1] FROM ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#7 resolve ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946 0.0s done
+#7 DONE 0.0s
+
+#8 [internal] load build context
+#8 transferring context: 2.04kB done
+#8 DONE 0.0s
+
+#9 [stage-1  3/10] RUN apt-get update  && apt-get install -y --no-install-recommends git jq ca-certificates curl       shellcheck=0.9.0-1 libicu72 libssl3 zlib1g  && rm -rf /var/lib/apt/lists/*  && git config --system --add safe.directory /work  && git config --system core.autocrlf true
+#9 CACHED
+
+#10 [stage-1  6/10] COPY pyproject.toml uv.lock ./
+#10 CACHED
+
+#11 [stage-1  9/10] COPY config ./config
+#11 CACHED
+
+#12 [stage-1  2/10] COPY --from=uv /uv /usr/local/bin/uv
+#12 CACHED
+
+#13 [stage-1  5/10] WORKDIR /work
+#13 CACHED
+
+#14 [stage-1  4/10] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x64; sha="3fc5e1567c450bd7bd5ae69ebb0a9a4a4e0418bbc36b0232cf6dd547f0bfc0eb" ;;       arm64) arch=arm64; sha="d0c216cec4c6c866fc15a105f039740228b53206f8576d2ed0bcd656a35ed6f6" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     tarball="powershell-7.4.21-linux-${arch}.tar.gz";     curl -fsSL -o "/tmp/$tarball"       "https://github.com/PowerShell/PowerShell/releases/download/v7.4.21/$tarball";     echo "$sha  /tmp/$tarball" | sha256sum -c -;     mkdir -p /opt/microsoft/powershell;     tar -xzf "/tmp/$tarball" -C /opt/microsoft/powershell;     chmod +x /opt/microsoft/powershell/pwsh;     ln -s /opt/microsoft/powershell/pwsh /usr/local/bin/pwsh;     rm "/tmp/$tarball";     pwsh -NoProfile -NonInteractive -Command "       $ErrorActionPreference = 'Stop';       Set-PSRepository PSGallery -InstallationPolicy Trusted;       Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope AllUsers -Force"
+#14 CACHED
+
+#15 [stage-1  8/10] COPY engine ./engine
+#15 CACHED
+
+#16 [stage-1  7/10] COPY harness_telemetry ./harness_telemetry
+#16 CACHED
+
+#17 [stage-1 10/10] RUN uv sync --locked
+#17 CACHED
+
+#18 exporting to image
+#18 exporting layers done
+#18 exporting manifest sha256:fdf507f6925485d08f9089c3b2acff9d4e6060fbcc79f899534d6104036ad043 done
+#18 exporting config sha256:07fb755afbd92a536242402241a9fabf017573ae1287cac12b55a88d4b0115f5 done
+#18 exporting attestation manifest sha256:44c87dd72ee2e13a2c26d94464dc49c9e9c4867a38ce09e349f753aaab38e1ab 0.0s done
+#18 exporting manifest list sha256:2860625fbecafebac48e0342ed30a4c85bc0237c0108d24ab6148ec0e36ac0d9 0.0s done
+#18 naming to docker.io/library/ke-gates:latest done
+#18 unpacking to docker.io/library/ke-gates:latest done
+#18 DONE 0.1s
+
+#19 resolving provenance for metadata file
+#19 DONE 0.0s
+ Image ke-gates Built 
+ Container knowledge-engine-gates-run-fa9c5103317e Creating 
+ Container knowledge-engine-gates-run-fa9c5103317e Created 
+== verify fast: fe2f101+dirty ==
+lint: shellcheck on 11 files
+lint: PSScriptAnalyzer on 3 files
+
+lint: PASS
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.93ms
+Installed 1 package in 0.95ms
+test_backslash_forms_deny_push_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_forms_deny_push_off_main) ... ok
+test_backslash_newline_after_comment_or_even_run_denies_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_off_main) ... ok
+test_backslash_newline_after_comment_or_even_run_denies_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_on_main) ... ok
+test_backslash_newline_joins_to_nothing_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_joins_to_nothing_off_main) ... ok
+test_backslash_newline_joins_to_nothing_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_joins_to_nothing_on_main) ... ok
+test_carriage_return_denies_as_without_it_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_carriage_return_denies_as_without_it_off_main) ... ok
+test_carriage_return_denies_as_without_it_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_carriage_return_denies_as_without_it_on_main) ... ok
+test_carriage_return_stays_silent_as_without_it (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_carriage_return_stays_silent_as_without_it) ... ok
+test_comment_or_even_run_then_continued_push_denies_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_comment_or_even_run_then_continued_push_denies_off_main) ... ok
+test_comment_then_continued_commit_denies_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_comment_then_continued_commit_denies_on_main) ... ok
+test_denies_commit_and_push_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_commit_and_push_on_main) ... ok
+test_denies_commit_creating_commands_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_commit_creating_commands_on_main) ... ok
+test_denies_git_first_word_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_git_first_word_on_main) ... ok
+test_denies_nested_git_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_nested_git_on_main) ... ok
+test_denies_nested_push_to_main_or_force_from_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_nested_push_to_main_or_force_from_plan_item_branch) ... ok
+test_denies_on_master (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_on_master) ... ok
+test_denies_push_on_master (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_on_master) ... ok
+test_denies_push_refspec_forms_from_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_refspec_forms_from_plan_item_branch) ... ok
+test_denies_push_to_main_or_force_push_from_any_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_to_main_or_force_push_from_any_branch) ... ok
+test_denies_push_with_c_global_option_from_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_with_c_global_option_from_plan_item_branch) ... ok
+test_description_with_forged_command_key_is_not_judged (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_description_with_forged_command_key_is_not_judged) ... ok
+test_escaped_quote_does_not_hide_following_push (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_escaped_quote_does_not_hide_following_push) ... ok
+test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) ... ok
+test_grep_for_a_verb_on_main_is_accepted_false_positive (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_grep_for_a_verb_on_main_is_accepted_false_positive) ... ok
+test_json_without_command_field_is_silent (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_json_without_command_field_is_silent) ... ok
+test_judges_only_the_command_field (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_judges_only_the_command_field) ... ok
+test_long_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_long_command_finishes_quickly) ... ok
+test_multiline_without_backslash_newline_unchanged (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_multiline_without_backslash_newline_unchanged) ... ok
+test_one_line_mentions_are_accepted_false_positives_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_line_mentions_are_accepted_false_positives_off_main) ... ok
+test_one_megabyte_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_command_finishes_quickly) ... ok
+test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) ... ok
+test_only_first_command_value_is_judged (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_only_first_command_value_is_judged) ... ok
+test_payload_helper_is_compact_claude_code_shape (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_payload_helper_is_compact_claude_code_shape) ... ok
+test_prefixed_push_to_main_denied_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_prefixed_push_to_main_denied_off_main) ... ok
+test_real_continuation_of_plan_item_push_stays_silent (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_real_continuation_of_plan_item_push_stays_silent) ... ok
+test_second_text_built_and_judged_only_with_backslash_newline (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_second_text_built_and_judged_only_with_backslash_newline) ... ok
+test_shell_wrapped_commit_denied_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_shell_wrapped_commit_denied_on_main) ... ok
+test_silent_for_claude_code_heredoc_commit_on_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_claude_code_heredoc_commit_on_plan_item_branch) ... ok
+test_silent_for_everyday_commands_on_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_everyday_commands_on_plan_item_branch) ... ok
+test_silent_for_non_git_command (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_non_git_command) ... ok
+test_silent_for_plain_push_of_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_plain_push_of_plan_item_branch) ... ok
+test_silent_for_text_that_only_mentions_push_on_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_text_that_only_mentions_push_on_plan_item_branch) ... ok
+test_silent_on_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_on_plan_item_branch) ... ok
+test_split_or_cased_git_word_denied_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_split_or_cased_git_word_denied_on_main) ... ok
+test_trace_count_independent_of_caller_ps4 (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_trace_count_independent_of_caller_ps4) ... ok
+test_works_without_jq_on_raw_input (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_works_without_jq_on_raw_input) ... ok
+test_gates_image_installs_jq (tests.test_block_main_commit_hook.GatesImageJqTest.test_gates_image_installs_jq) ... ok
+test_malformed_values_raise_config_error (tests.test_engine_config.ConfigErrorContractTest.test_malformed_values_raise_config_error) ... ok
+test_config_error_has_no_value_anywhere (tests.test_engine_config.ConfigErrorNeverCarriesValueTest.test_config_error_has_no_value_anywhere) ... ok
+test_base_url_with_userinfo_is_refused (tests.test_engine_config.ModelUrlUserinfoTest.test_base_url_with_userinfo_is_refused) ... ok
+test_model_upstream_with_userinfo_is_refused (tests.test_engine_config.ModelUrlUserinfoTest.test_model_upstream_with_userinfo_is_refused) ... ok
+test_startup_refuses_userinfo_without_the_password (tests.test_engine_config.ModelUrlUserinfoTest.test_startup_refuses_userinfo_without_the_password) ... ok
+test_urls_without_userinfo_still_load (tests.test_engine_config.ModelUrlUserinfoTest.test_urls_without_userinfo_still_load) ... ok
+test_error_names_the_variable_the_user_set (tests.test_engine_config.PrecedenceTest.test_error_names_the_variable_the_user_set) ... ok
+test_ke_names_outrank_standard_names (tests.test_engine_config.PrecedenceTest.test_ke_names_outrank_standard_names) ... ok
+test_model_upstream_has_one_name (tests.test_engine_config.PrecedenceTest.test_model_upstream_has_one_name) ... ok
+test_standard_name_used_when_ke_name_unset (tests.test_engine_config.PrecedenceTest.test_standard_name_used_when_ke_name_unset) ... ok
+test_config_defaults_and_env_override (tests.test_engine_config.TypedConfigTest.test_config_defaults_and_env_override) ... ok
+test_config_ignores_unprefixed_names (tests.test_engine_config.TypedConfigTest.test_config_ignores_unprefixed_names) ... ok
+test_config_init_args_take_precedence (tests.test_engine_config.TypedConfigTest.test_config_init_args_take_precedence) ... ok
+test_config_missing_defaults_file_names_path (tests.test_engine_config.TypedConfigTest.test_config_missing_defaults_file_names_path) ... ok
+test_config_missing_secret_names_key (tests.test_engine_config.TypedConfigTest.test_config_missing_secret_names_key) ... ok
+test_config_rejects_bad_type (tests.test_engine_config.TypedConfigTest.test_config_rejects_bad_type) ... ok
+test_config_secrets_have_no_yaml_default (tests.test_engine_config.TypedConfigTest.test_config_secrets_have_no_yaml_default) ... ok
+test_every_non_secret_setting_has_a_yaml_default (tests.test_engine_config.TypedConfigTest.test_every_non_secret_setting_has_a_yaml_default) ... ok
+test_secret_values_are_not_in_repr (tests.test_engine_config.TypedConfigTest.test_secret_values_are_not_in_repr) ... ok
+test_env_example_is_not_ignored (tests.test_engine_deploy_files.GitIgnoreTest.test_env_example_is_not_ignored) ... ok
+test_env_file_is_ignored (tests.test_engine_deploy_files.GitIgnoreTest.test_env_file_is_ignored) ... ok
+test_egress_guard_allows_listed_host (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_allows_listed_host) ... ok
+test_egress_guard_checks_every_redirect_hop (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_checks_every_redirect_hop) ... ok
+test_egress_guard_mutant_goes_red (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_mutant_goes_red)
+DR38: the runtime assertion fails when the guard is removed. ... ok
+test_egress_guard_runtime (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_runtime) ... ok
+test_model_client_uses_guarded_transport (tests.test_engine_egress.EgressRuntimeTest.test_model_client_uses_guarded_transport) ... ok
+test_egress_guard_startup (tests.test_engine_egress.EgressStartupTest.test_egress_guard_startup) ... ok
+test_egress_startup_check_refuses_in_every_env (tests.test_engine_egress.EgressStartupTest.test_egress_startup_check_refuses_in_every_env) ... ok
+test_is_local_endpoint (tests.test_engine_egress.LocalEndpointTest.test_is_local_endpoint) ... ok
+test_declared_value_files_exist (tests.test_engine_hardcoded.RepositoryScanTest.test_declared_value_files_exist) ... ok
+test_model_host_name_only_in_allowed_locations (tests.test_engine_hardcoded.RepositoryScanTest.test_model_host_name_only_in_allowed_locations) ... ok
+test_no_hardcoded_hosts_or_models (tests.test_engine_hardcoded.RepositoryScanTest.test_no_hardcoded_hosts_or_models) ... ok
+test_no_hardcoded_ports (tests.test_engine_hardcoded.RepositoryScanTest.test_no_hardcoded_ports) ... ok
+test_allowed_locations_are_never_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_allowed_locations_are_never_flagged) ... ok
+test_compose_variable_default_is_allowed (tests.test_engine_hardcoded.ScannerContractTest.test_compose_variable_default_is_allowed) ... ok
+test_exemption_covers_only_its_symbol_and_path (tests.test_engine_hardcoded.ScannerContractTest.test_exemption_covers_only_its_symbol_and_path) ... ok
+test_integer_port_assignment_in_python_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_integer_port_assignment_in_python_is_flagged) ... ok
+test_planted_host_name_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_planted_host_name_is_flagged) ... ok
+test_planted_model_name_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_planted_model_name_is_flagged) ... ok
+test_planted_port_literal_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_planted_port_literal_is_flagged) ... ok
+test_port_token_boundaries (tests.test_engine_hardcoded.ScannerContractTest.test_port_token_boundaries) ... ok
+test_rule_two_is_python_only (tests.test_engine_hardcoded.ScannerContractTest.test_rule_two_is_python_only) ... ok
+test_shell_parameter_default_is_flagged_outside_compose (tests.test_engine_hardcoded.ScannerContractTest.test_shell_parameter_default_is_flagged_outside_compose) ... ok
+test_url_literal_in_python_is_flagged_even_if_undeclared (tests.test_engine_hardcoded.ScannerContractTest.test_url_literal_in_python_is_flagged_even_if_undeclared) ... ok
+test_hardcoded_scan_covers_every_text_file (tests.test_engine_hardcoded.ScannerWideningTest.test_hardcoded_scan_covers_every_text_file) ... ok
+test_n1_host_names_match_case_insensitively (tests.test_engine_hardcoded.ScannerWideningTest.test_n1_host_names_match_case_insensitively) ... ok
+test_n2_compose_files_of_any_name_keep_their_defaults (tests.test_engine_hardcoded.ScannerWideningTest.test_n2_compose_files_of_any_name_keep_their_defaults) ... ok
+test_n3_tuple_and_dict_ports_are_flagged (tests.test_engine_hardcoded.ScannerWideningTest.test_n3_tuple_and_dict_ports_are_flagged) ... ok
+test_n4_exemption_covers_only_the_assignment_line (tests.test_engine_hardcoded.ScannerWideningTest.test_n4_exemption_covers_only_the_assignment_line) ... ok
+test_n5_no_loopback_definition_includes_unspecified_address (tests.test_engine_hardcoded.ScannerWideningTest.test_n5_no_loopback_definition_includes_unspecified_address) ... ok
+test_complete_emits_llm_span_with_model_name (tests.test_engine_llm.ModelClientTracingTest.test_complete_emits_llm_span_with_model_name) ... ok
+test_denied_host_marks_llm_span_error (tests.test_engine_llm.ModelClientTracingTest.test_denied_host_marks_llm_span_error) ... ok
+test_engine_dependencies_declared (tests.test_engine_quality.DependenciesTest.test_engine_dependencies_declared) ... ok
+test_pin_equivalence_check_accepts_uv_forms_and_rejects_others (tests.test_engine_quality.PythonPinTest.test_pin_equivalence_check_accepts_uv_forms_and_rejects_others)
+Guards the checker above: uv's forms pass, looser/other pins fail. ... ok
+test_python_pinned_to_312 (tests.test_engine_quality.PythonPinTest.test_python_pinned_to_312) ... ok
+test_test_sh_enforces_coverage_and_mypy (tests.test_engine_quality.QualityGateTest.test_test_sh_enforces_coverage_and_mypy) ... ok
+test_tests_excluded_from_measurement (tests.test_engine_quality.QualityGateTest.test_tests_excluded_from_measurement) ... ok
+test_env_example_secret_placeholders_are_changeme (tests.test_engine_startup.PlaceholderSecretTest.test_env_example_secret_placeholders_are_changeme) ... ok
+test_placeholder_check_is_prefix_only (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_check_is_prefix_only) ... ok
+test_placeholder_check_reads_no_file (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_check_reads_no_file) ... ok
+test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) ... ok
+test_placeholder_hidden_by_invisible_characters_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_by_invisible_characters_is_refused) ... ok
+test_real_secrets_with_ordinary_characters_are_accepted (tests.test_engine_startup.PlaceholderSecretTest.test_real_secrets_with_ordinary_characters_are_accepted) ... ok
+test_startup_refuses_placeholder_secrets (tests.test_engine_startup.PlaceholderSecretTest.test_startup_refuses_placeholder_secrets) ... ok
+test_installed_provider_refusal_is_logged (tests.test_engine_startup.StartupCarryInTest.test_installed_provider_refusal_is_logged) ... FAIL
+test_startup_loads_settings_once (tests.test_engine_startup.StartupCarryInTest.test_startup_loads_settings_once) ... 
+  test_startup_loads_settings_once (tests.test_engine_startup.StartupCarryInTest.test_startup_loads_settings_once) (env='prod') ... FAIL
+  test_startup_loads_settings_once (tests.test_engine_startup.StartupCarryInTest.test_startup_loads_settings_once) (env='dev') ... FAIL
+test_dev_auth_off_warns (tests.test_engine_startup.StartupRefusalTest.test_dev_auth_off_warns) ... ok
+test_dev_hide_flag_off_warns_naming_flag (tests.test_engine_startup.StartupRefusalTest.test_dev_hide_flag_off_warns_naming_flag) ... ok
+test_hide_flags_default_true_in_every_env (tests.test_engine_startup.StartupRefusalTest.test_hide_flags_default_true_in_every_env) ... ok
+test_startup_accepts_local_collectors (tests.test_engine_startup.StartupRefusalTest.test_startup_accepts_local_collectors) ... ok
+test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) ... ok
+test_startup_safe_defaults_pass (tests.test_engine_startup.StartupRefusalTest.test_startup_safe_defaults_pass) ... ok
+test_config_load_span_names_overridden_keys_not_values (tests.test_engine_startup.StartupTracingTest.test_config_load_span_names_overridden_keys_not_values) ... ok
+test_configure_tracing_attaches_nothing_for_non_local (tests.test_engine_startup.StartupTracingTest.test_configure_tracing_attaches_nothing_for_non_local) ... ok
+test_non_local_collector_gets_no_exporter (tests.test_engine_startup.StartupTracingTest.test_non_local_collector_gets_no_exporter) ... ok
+test_refused_startup_marks_spans (tests.test_engine_startup.StartupTracingTest.test_refused_startup_marks_spans) ... ok
+test_startup_is_traced (tests.test_engine_startup.StartupTracingTest.test_startup_is_traced) ... ok
+test_console_mode_never_builds_otlp (tests.test_engine_telemetry.ChooseExporterTest.test_console_mode_never_builds_otlp) ... ok
+test_off_gives_no_exporter (tests.test_engine_telemetry.ChooseExporterTest.test_off_gives_no_exporter) ... ok
+test_otlp_to_local_collector_builds_traces_url (tests.test_engine_telemetry.ChooseExporterTest.test_otlp_to_local_collector_builds_traces_url) ... ok
+test_otlp_to_non_local_collector_gives_none (tests.test_engine_telemetry.ChooseExporterTest.test_otlp_to_non_local_collector_gives_none) ... ok
+test_console_mode_installs_console_exporter_only (tests.test_engine_telemetry.ConfigureTracingTest.test_console_mode_installs_console_exporter_only) ... ok
+test_hide_defaults_apply_before_any_span (tests.test_engine_telemetry.ConfigureTracingTest.test_hide_defaults_apply_before_any_span)
+The YAML hide defaults (true) redact span values even when the ... ok
+test_local_collector_gets_an_otlp_exporter (tests.test_engine_telemetry.ConfigureTracingTest.test_local_collector_gets_an_otlp_exporter) ... ok
+test_non_local_collector_gets_no_exporter (tests.test_engine_telemetry.ConfigureTracingTest.test_non_local_collector_gets_no_exporter) ... ok
+test_engine_built_shapes_are_accepted (tests.test_engine_telemetry.InstalledProviderTest.test_engine_built_shapes_are_accepted) ... ok
+test_formerly_accepted_foreign_shapes_are_refused (tests.test_engine_telemetry.InstalledProviderTest.test_formerly_accepted_foreign_shapes_are_refused) ... ok
+test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) ... ok
+test_refused_startup_installs_nothing (tests.test_engine_telemetry.StartupWiringTest.test_refused_startup_installs_nothing) ... ok
+test_refused_startup_leaves_hide_env_untouched (tests.test_engine_telemetry.StartupWiringTest.test_refused_startup_leaves_hide_env_untouched) ... ok
+test_startup_installs_the_exporter (tests.test_engine_telemetry.StartupWiringTest.test_startup_installs_the_exporter) ... ok
+test_chosen_exporter_dials_only_the_collector (tests.test_engine_tracing_guard.ExporterIgnoresProxyEnvTest.test_chosen_exporter_dials_only_the_collector) ... Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+ok
+test_chosen_exporter_session_does_not_trust_env (tests.test_engine_tracing_guard.ExporterIgnoresProxyEnvTest.test_chosen_exporter_session_does_not_trust_env) ... ok
+test_configured_exporter_dials_only_the_collector (tests.test_engine_tracing_guard.ExporterIgnoresProxyEnvTest.test_configured_exporter_dials_only_the_collector) ... Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+ok
+test_custom_span_processor_is_refused (tests.test_engine_tracing_guard.InstalledProviderGuardTest.test_custom_span_processor_is_refused) ... ok
+test_local_otlp_that_ignores_proxy_env_is_refused_unless_engine_built (tests.test_engine_tracing_guard.InstalledProviderGuardTest.test_local_otlp_that_ignores_proxy_env_is_refused_unless_engine_built) ... ok
+test_local_otlp_that_trusts_proxy_env_is_refused (tests.test_engine_tracing_guard.InstalledProviderGuardTest.test_local_otlp_that_trusts_proxy_env_is_refused) ... ok
+test_local_otlp_with_unreachable_session_is_refused (tests.test_engine_tracing_guard.InstalledProviderGuardTest.test_local_otlp_with_unreachable_session_is_refused) ... ok
+test_non_sdk_provider_is_refused (tests.test_engine_tracing_guard.InstalledProviderGuardTest.test_non_sdk_provider_is_refused) ... ok
+test_proxy_provider_is_accepted (tests.test_engine_tracing_guard.InstalledProviderGuardTest.test_proxy_provider_is_accepted) ... ok
+test_build_provider_does_not_install_globally (tests.test_engine_tracing_guard.ProviderIdentityTest.test_build_provider_does_not_install_globally) ... ok
+test_build_provider_resource_and_processors (tests.test_engine_tracing_guard.ProviderIdentityTest.test_build_provider_resource_and_processors) ... ok
+test_configure_tracing_installs_an_engine_built_provider (tests.test_engine_tracing_guard.ProviderIdentityTest.test_configure_tracing_installs_an_engine_built_provider) ... ok
+test_configure_tracing_refuses_if_its_provider_is_not_the_global (tests.test_engine_tracing_guard.ProviderIdentityTest.test_configure_tracing_refuses_if_its_provider_is_not_the_global) ... ok
+test_decoy_equal_to_an_engine_provider_is_refused (tests.test_engine_tracing_guard.ProviderIdentityTest.test_decoy_equal_to_an_engine_provider_is_refused) ... ok
+test_engine_built_provider_is_accepted (tests.test_engine_tracing_guard.ProviderIdentityTest.test_engine_built_provider_is_accepted) ... auth.enabled: authentication is disabled
+auth.enabled: authentication is disabled
+ok
+test_private_attribute_inspection_removed (tests.test_engine_tracing_guard.ProviderIdentityTest.test_private_attribute_inspection_removed) ... ok
+test_provider_not_built_by_engine_is_refused (tests.test_engine_tracing_guard.ProviderIdentityTest.test_provider_not_built_by_engine_is_refused) ... ok
+test_support_provider_is_engine_built (tests.test_engine_tracing_guard.ProviderIdentityTest.test_support_provider_is_engine_built) ... ok
+test_provider_resource_carries_openinference_project_name (tests.test_engine_tracing_guard.ResourceProjectNameTest.test_provider_resource_carries_openinference_project_name) ... ok
+test_control_spans_do_reach_an_accepted_provider (tests.test_engine_tracing_guard.StartupVerifiesProviderFirstTest.test_control_spans_do_reach_an_accepted_provider) ... ok
+test_foreign_provider_gets_no_span_with_refusing_settings (tests.test_engine_tracing_guard.StartupVerifiesProviderFirstTest.test_foreign_provider_gets_no_span_with_refusing_settings) ... ok
+test_foreign_provider_refused_before_any_span_passing_settings (tests.test_engine_tracing_guard.StartupVerifiesProviderFirstTest.test_foreign_provider_refused_before_any_span_passing_settings) ... ok
+test_ci_actions_pinned_to_sha (tests.test_harness_followups.CiWorkflowTest.test_ci_actions_pinned_to_sha) ... ok
+test_ci_checkout_does_not_persist_credentials (tests.test_harness_followups.CiWorkflowTest.test_ci_checkout_does_not_persist_credentials) ... ok
+test_ci_runner_pinned (tests.test_harness_followups.CiWorkflowTest.test_ci_runner_pinned) ... ok
+test_helper_package_without_tests_passes (tests.test_harness_followups.IntegrationRunsOnceTest.test_helper_package_without_tests_passes) ... ok
+test_integration_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_integration_tests_run_once) ... ok
+test_nested_dir_without_init_fails_loudly (tests.test_harness_followups.IntegrationRunsOnceTest.test_nested_dir_without_init_fails_loudly) ... ok
+test_no_top_level_unit_tests_fails_clearly (tests.test_harness_followups.IntegrationRunsOnceTest.test_no_top_level_unit_tests_fails_clearly) ... ok
+test_package_with_only_nested_tests_runs_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_package_with_only_nested_tests_runs_once) ... ok
+test_quality_gates_always_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_always_run) ... ok
+test_quality_gates_run_with_pyproject (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_run_with_pyproject) ... ok
+test_stale_parallel_coverage_data_is_not_combined (tests.test_harness_followups.IntegrationRunsOnceTest.test_stale_parallel_coverage_data_is_not_combined) ... ok
+test_test_dir_without_init_fails_loudly (tests.test_harness_followups.IntegrationRunsOnceTest.test_test_dir_without_init_fails_loudly) ... ok
+test_unit_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_tests_run_once) ... ok
+test_failing_smoke_fails_full (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_failing_smoke_fails_full) ... ok
+test_failing_test_sh_still_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_failing_test_sh_still_fails) ... ok
+test_no_ran_line_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_no_ran_line_fails) ... ok
+test_ran_some_tests_passes (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_ran_some_tests_passes) ... ok
+test_ran_without_sentinel_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_ran_without_sentinel_fails) ... ok
+test_ran_zero_tests_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_ran_zero_tests_fails) ... ok
+test_sentinel_followed_by_large_output_passes (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_followed_by_large_output_passes) ... ok
+test_sentinel_line_is_the_exact_full_line (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_line_is_the_exact_full_line) ... ok
+test_sentinel_name_in_other_module_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_name_in_other_module_fails) ... ok
+test_sentinel_text_in_skip_reason_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_text_in_skip_reason_fails) ... ok
+test_sentinel_with_ran_passes (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_with_ran_passes) ... ok
+test_agent_model_tiers (tests.test_harness_port.AgentPortTest.test_agent_model_tiers) ... ok
+test_agent_port_preserves_constraints (tests.test_harness_port.AgentPortTest.test_agent_port_preserves_constraints) ... ok
+test_copilot_agents_kept (tests.test_harness_port.AgentPortTest.test_copilot_agents_kept) ... ok
+test_every_role_ported (tests.test_harness_port.AgentPortTest.test_every_role_ported) ... ok
+test_judges_cannot_edit (tests.test_harness_port.AgentPortTest.test_judges_cannot_edit) ... ok
+test_non_producer_body_identical_to_copilot (tests.test_harness_port.AgentPortTest.test_non_producer_body_identical_to_copilot) ... ok
+test_producer_sections_identical_except_verification_steps (tests.test_harness_port.AgentPortTest.test_producer_sections_identical_except_verification_steps) ... ok
+test_ci_only_and_generated_artifacts_listed (tests.test_harness_port.ClaudeMdTest.test_ci_only_and_generated_artifacts_listed) ... ok
+test_claude_md_imports_agents (tests.test_harness_port.ClaudeMdTest.test_claude_md_imports_agents) ... ok
+test_delivery_rules_present (tests.test_harness_port.ClaudeMdTest.test_delivery_rules_present) ... ok
+test_done_check_in_handoff_readme (tests.test_harness_port.HandoffCapTest.test_done_check_in_handoff_readme) ... ok
+test_handoff_line_cap (tests.test_harness_port.HandoffCapTest.test_handoff_line_cap) ... ok
+test_hook_wired_on_bash (tests.test_harness_port.SettingsTest.test_hook_wired_on_bash) ... ok
+test_ci_calls_verify_only (tests.test_harness_port.VerificationEntryPointTest.test_ci_calls_verify_only) ... ok
+test_depth_table_identical_everywhere (tests.test_harness_port.VerificationEntryPointTest.test_depth_table_identical_everywhere) ... ok
+test_evidence_contract_present (tests.test_harness_port.VerificationEntryPointTest.test_evidence_contract_present) ... ok
+test_gate_scripts_use_locked (tests.test_harness_port.VerificationEntryPointTest.test_gate_scripts_use_locked) ... ok
+test_no_stray_verification_commands (tests.test_harness_port.VerificationEntryPointTest.test_no_stray_verification_commands) ... ok
+test_tester_owns_contradictions (tests.test_harness_port.VerificationEntryPointTest.test_tester_owns_contradictions) ... ok
+test_verify_sh_has_no_inlined_commands (tests.test_harness_port.VerificationEntryPointTest.test_verify_sh_has_no_inlined_commands) ... ok
+test_appends_one_line_and_emits_session_span (tests.test_log_event.LogEventTest.test_appends_one_line_and_emits_session_span) ... ok
+test_failed_gate_marks_span_error (tests.test_log_event.LogEventTest.test_failed_gate_marks_span_error) ... ok
+test_format_line_keeps_one_line_per_entry (tests.test_log_event.LogEventTest.test_format_line_keeps_one_line_per_entry) ... ok
+test_rejects_unknown_role (tests.test_log_event.LogEventTest.test_rejects_unknown_role) ... ok
+test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok
+test_bind_address_setting_defaults_to_loopback (tests.test_stack_bind_address.EngineRefusalTest.test_bind_address_setting_defaults_to_loopback) ... ok
+test_bind_address_that_is_not_an_address_is_a_config_error (tests.test_stack_bind_address.EngineRefusalTest.test_bind_address_that_is_not_an_address_is_a_config_error) ... ok
+test_dev_non_loopback_bind_address_warns (tests.test_stack_bind_address.EngineRefusalTest.test_dev_non_loopback_bind_address_warns) ... ok
+test_ipv6_bind_address_is_a_config_error_in_every_env (tests.test_stack_bind_address.EngineRefusalTest.test_ipv6_bind_address_is_a_config_error_in_every_env) ... ok
+test_loopback_or_unset_bind_address_passes_everywhere (tests.test_stack_bind_address.EngineRefusalTest.test_loopback_or_unset_bind_address_passes_everywhere) ... ok
+test_startup_refusal_is_recorded_on_the_span (tests.test_stack_bind_address.EngineRefusalTest.test_startup_refusal_is_recorded_on_the_span) ... ok
+test_startup_refuses_non_loopback_bind_address (tests.test_stack_bind_address.EngineRefusalTest.test_startup_refuses_non_loopback_bind_address) ... ok
+test_gateway_bind_check_allows_loopback_and_warns_in_dev (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_bind_check_allows_loopback_and_warns_in_dev) ... ok
+test_gateway_bind_check_refuses_non_loopback (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_bind_check_refuses_non_loopback) ... ok
+test_gateway_bind_check_rejects_non_ipv4_in_every_env (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_bind_check_rejects_non_ipv4_in_every_env) ... ok
+test_gateway_image_runs_bind_check (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_image_runs_bind_check) ... ok
+test_launch_ps1_checks_bind_address (tests.test_stack_bind_address.LaunchScriptTest.test_launch_ps1_checks_bind_address) ... ok
+test_launch_sh_allows_loopback_and_warns_in_dev (tests.test_stack_bind_address.LaunchScriptTest.test_launch_sh_allows_loopback_and_warns_in_dev) ... ok
+test_launch_sh_creates_env_from_example (tests.test_stack_bind_address.LaunchScriptTest.test_launch_sh_creates_env_from_example) ... ok
+test_launch_sh_refuses_non_loopback_bind_address (tests.test_stack_bind_address.LaunchScriptTest.test_launch_sh_refuses_non_loopback_bind_address) ... ok
+test_teardown_keeps_volumes_unless_asked (tests.test_stack_bind_address.TeardownScriptTest.test_teardown_keeps_volumes_unless_asked) ... ok
+test_agents_md_hook_wording_not_absolute (tests.test_stack_carry_ins.AgentsHookWordingTest.test_agents_md_hook_wording_not_absolute) ... ok
+test_pyproject_name_matches_project_name (tests.test_stack_carry_ins.ProjectNameTest.test_pyproject_name_matches_project_name) ... ok
+test_quickstart_names_existing_scripts (tests.test_stack_carry_ins.QuickstartTest.test_quickstart_names_existing_scripts) ... ok
+test_test_sh_header_matches_integration_mechanism (tests.test_stack_carry_ins.TestShHeaderTest.test_test_sh_header_matches_integration_mechanism) ... ok
+test_env_example_not_in_app_image (tests.test_stack_compose.ImageContentsTest.test_env_example_not_in_app_image) ... ok
+test_gates_it_internal_only_and_no_socket (tests.test_stack_compose.NetworksTest.test_gates_it_internal_only_and_no_socket) ... ok
+test_no_docker_socket_mounted (tests.test_stack_compose.NetworksTest.test_no_docker_socket_mounted) ... ok
+test_only_gateway_on_edge_network (tests.test_stack_compose.NetworksTest.test_only_gateway_on_edge_network) ... ok
+test_stack_services_have_no_bind_mounts (tests.test_stack_compose.NetworksTest.test_stack_services_have_no_bind_mounts) ... ok
+test_compose_phoenix_listen_port_matches_config (tests.test_stack_compose.PhoenixPortTest.test_compose_phoenix_listen_port_matches_config) ... ok
+test_docs_name_current_phoenix_port (tests.test_stack_compose.PhoenixPortTest.test_docs_name_current_phoenix_port) ... ok
+test_harness_default_collector_matches_env_example (tests.test_stack_compose.PhoenixPortTest.test_harness_default_collector_matches_env_example) ... ok
+test_compose_defaults_match_env_example (tests.test_stack_compose.PortsTest.test_compose_defaults_match_env_example) ... ok
+test_compose_passes_bind_address_to_app (tests.test_stack_compose.PortsTest.test_compose_passes_bind_address_to_app) ... ok
+test_env_example_bind_address_is_loopback (tests.test_stack_compose.PortsTest.test_env_example_bind_address_is_loopback) ... ok
+test_env_example_ports_in_range_and_unique (tests.test_stack_compose.PortsTest.test_env_example_ports_in_range_and_unique) ... ok
+test_published_ports_use_bind_address (tests.test_stack_compose.PortsTest.test_published_ports_use_bind_address) ... ok
+test_backend_bridge_gateway_is_isolated (tests.test_stack_compose.Rework1ComposeTest.test_backend_bridge_gateway_is_isolated) ... ok
+test_gateway_gets_the_egress_allowlist (tests.test_stack_compose.Rework1ComposeTest.test_gateway_gets_the_egress_allowlist) ... ok
+test_no_ke_env_default_anywhere_in_compose (tests.test_stack_compose.Rework1ComposeTest.test_no_ke_env_default_anywhere_in_compose) ... ok
+test_quickstart_requires_docker_engine_28 (tests.test_stack_compose.Rework1ComposeTest.test_quickstart_requires_docker_engine_28) ... ok
+test_worker_command_runs_engine_startup (tests.test_stack_compose.Rework1ComposeTest.test_worker_command_runs_engine_startup) ... ok
+test_backend_has_no_ipam_subnet_or_ip_range (tests.test_stack_compose.Rework2ComposeTest.test_backend_has_no_ipam_subnet_or_ip_range) ... ok
+test_no_fixed_address_pool_anywhere (tests.test_stack_compose.Rework2ComposeTest.test_no_fixed_address_pool_anywhere) ... ok
+test_scripts_create_no_fixed_subnet (tests.test_stack_compose.Rework2ComposeTest.test_scripts_create_no_fixed_subnet) ... ok
+test_compose_images_pinned_by_digest (tests.test_stack_compose.ServicesTest.test_compose_images_pinned_by_digest) ... ok
+test_compose_services_have_restart_policy (tests.test_stack_compose.ServicesTest.test_compose_services_have_restart_policy) ... ok
+test_dockerfiles_pin_base_images_by_digest (tests.test_stack_compose.ServicesTest.test_dockerfiles_pin_base_images_by_digest) ... ok
+test_api_main_is_not_exempt_from_coverage (tests.test_stack_entrypoints.ApiEntrypointTest.test_api_main_is_not_exempt_from_coverage) ... ok
+test_api_main_refused_setting_never_serves (tests.test_stack_entrypoints.ApiEntrypointTest.test_api_main_refused_setting_never_serves) ... ok
+test_api_main_runs_startup_before_serving (tests.test_stack_entrypoints.ApiEntrypointTest.test_api_main_runs_startup_before_serving) ... ok
+test_every_substituted_variable_refuses_an_injection (tests.test_stack_entrypoints.GatewayPortCheckTest.test_every_substituted_variable_refuses_an_injection) ... ok
+test_gateway_accepts_valid_ports (tests.test_stack_entrypoints.GatewayPortCheckTest.test_gateway_accepts_valid_ports) ... ok
+test_gateway_refuses_every_bad_or_injected_port (tests.test_stack_entrypoints.GatewayPortCheckTest.test_gateway_refuses_every_bad_or_injected_port) ... ok
+test_local_resolvers_is_overwritten_by_the_image (tests.test_stack_entrypoints.GatewayPortCheckTest.test_local_resolvers_is_overwritten_by_the_image) ... ok
+test_template_variables_are_known (tests.test_stack_entrypoints.GatewayPortCheckTest.test_template_variables_are_known) ... ok
+test_every_gateway_check_is_installed_as_an_entrypoint_script (tests.test_stack_entrypoints.GatewayUpstreamCheckTest.test_every_gateway_check_is_installed_as_an_entrypoint_script) ... ok
+test_gateway_accepts_empty_or_allowlisted_upstream (tests.test_stack_entrypoints.GatewayUpstreamCheckTest.test_gateway_accepts_empty_or_allowlisted_upstream) ... ok
+test_gateway_checks_run_before_envsubst (tests.test_stack_entrypoints.GatewayUpstreamCheckTest.test_gateway_checks_run_before_envsubst) ... ok
+test_gateway_refuses_upstream_not_on_allowlist_or_malformed (tests.test_stack_entrypoints.GatewayUpstreamCheckTest.test_gateway_refuses_upstream_not_on_allowlist_or_malformed) ... ok
+test_worker_main_idles_after_a_passing_startup (tests.test_stack_entrypoints.WorkerEntrypointTest.test_worker_main_idles_after_a_passing_startup) ... ERROR
+test_worker_main_is_not_exempt_from_coverage (tests.test_stack_entrypoints.WorkerEntrypointTest.test_worker_main_is_not_exempt_from_coverage) ... ok
+test_worker_main_refused_setting_exits_before_idling (tests.test_stack_entrypoints.WorkerEntrypointTest.test_worker_main_refused_setting_exits_before_idling) ... ERROR
+test_worker_module_refuses_as_a_process (tests.test_stack_entrypoints.WorkerEntrypointTest.test_worker_module_refuses_as_a_process) ... ok
+test_env_value_caller_env_wins_even_when_empty (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_caller_env_wins_even_when_empty) ... FAIL
+test_env_value_config_failure_is_reported_without_content (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_config_failure_is_reported_without_content) ... FAIL
+test_env_value_reads_dotenv_only_through_compose_config (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_reads_dotenv_only_through_compose_config) ... FAIL
+test_env_value_refuses_a_json_escaped_value (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_refuses_a_json_escaped_value) ... FAIL
+test_env_value_refuses_any_other_name (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_refuses_any_other_name) ... FAIL
+test_env_value_trusts_compose_resolution (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_trusts_compose_resolution) ... FAIL
+test_env_value_without_dotenv_is_empty (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_without_dotenv_is_empty) ... FAIL
+test_verify_full_model_keys_both_or_neither (tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_model_keys_both_or_neither) ... FAIL
+test_verify_full_passes_model_upstream_keys (tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_passes_model_upstream_keys) ... FAIL
+test_verify_full_stops_before_build_when_the_helper_fails (tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_stops_before_build_when_the_helper_fails) ... FAIL
+test_verify_full_takes_no_other_env_key (tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_takes_no_other_env_key) ... FAIL
+test_model_tests_skip_not_configured (tests.test_stack_model_skip.ModelSkipHelperTest.test_model_tests_skip_not_configured) ... ok
+test_model_tests_skip_with_named_reason (tests.test_stack_model_skip.ModelSkipHelperTest.test_model_tests_skip_with_named_reason) ... 
+  test_model_tests_skip_with_named_reason (tests.test_stack_model_skip.ModelSkipHelperTest.test_model_tests_skip_with_named_reason) (case='unreachable') ... FAIL
+  test_model_tests_skip_with_named_reason (tests.test_stack_model_skip.ModelSkipHelperTest.test_model_tests_skip_with_named_reason) (case='reachable') ... FAIL
+test_real_probe_of_a_closed_port_skips_as_refused (tests.test_stack_model_skip.ModelSkipHelperTest.test_real_probe_of_a_closed_port_skips_as_refused) ... FAIL
+test_unmarked_test_fails_rather_than_skips (tests.test_stack_model_skip.ModelSkipHelperTest.test_unmarked_test_fails_rather_than_skips) ... ok
+test_no_model_calls_in_unit_suite (tests.test_stack_model_skip.UnitSuiteModelTest.test_no_model_calls_in_unit_suite) ... ok
+test_readiness_cli_api_unreachable (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_api_unreachable) ... ok
+test_readiness_cli_condition_met (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_met) ... 
+  test_readiness_cli_condition_met (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_met) (case='ready at once') ... FAIL
+  test_readiness_cli_condition_met (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_met) (case='ready after two not-ready answers') ... FAIL
+  test_readiness_cli_condition_met (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_met) (case='not-ready:postgres') ... FAIL
+test_readiness_cli_condition_never_met (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_never_met) ... 
+  test_readiness_cli_condition_never_met (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_never_met) (case='ready, store down') ... FAIL
+  test_readiness_cli_condition_never_met (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_never_met) (case='not-ready:postgres, neo4j down instead') ... FAIL
+  test_readiness_cli_condition_never_met (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_never_met) (case='not-ready:postgres, all ready') ... FAIL
+test_readiness_cli_unknown_dependency_is_a_usage_error (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_unknown_dependency_is_a_usage_error) ... 
+  test_readiness_cli_unknown_dependency_is_a_usage_error (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_unknown_dependency_is_a_usage_error) (arg='not-ready:mysql') ... FAIL
+  test_readiness_cli_unknown_dependency_is_a_usage_error (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_unknown_dependency_is_a_usage_error) (arg='not-ready:') ... FAIL
+  test_readiness_cli_unknown_dependency_is_a_usage_error (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_unknown_dependency_is_a_usage_error) (arg='sometimes') ... FAIL
+test_readyz_body_never_carries_error_text (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_body_never_carries_error_text) ... ERROR
+test_readyz_is_traced (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_is_traced) ... ERROR
+test_readyz_ready_excludes_model_host (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_ready_excludes_model_host) ... 
+  test_readyz_ready_excludes_model_host (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_ready_excludes_model_host) (case='stores ok, model host refused') ... ERROR
+  test_readyz_ready_excludes_model_host (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_ready_excludes_model_host) (case='all ok') ... ERROR
+  test_readyz_ready_excludes_model_host (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_ready_excludes_model_host) (case='postgres refused') ... ERROR
+  test_readyz_ready_excludes_model_host (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_ready_excludes_model_host) (case='neo4j refused') ... ERROR
+  test_readyz_ready_excludes_model_host (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_ready_excludes_model_host) (case='valkey refused') ... ERROR
+  test_readyz_ready_excludes_model_host (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_ready_excludes_model_host) (case='model host not configured') ... ERROR
+test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) ... 
+  test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='ConnectionRefusedError') ... ERROR
+  test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='httpx.ConnectError caused by a refusal') ... ERROR
+  test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='TimeoutError') ... ERROR
+  test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='socket.timeout') ... ERROR
+  test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='httpx.ConnectTimeout') ... ERROR
+  test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='httpx.ReadTimeout') ... ERROR
+  test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='socket.gaierror') ... ERROR
+  test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='OSError EHOSTUNREACH') ... ERROR
+  test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='OSError ENETUNREACH') ... ERROR
+  test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='HTTP 401') ... ERROR
+  test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='HTTP 403') ... ERROR
+  test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='HTTP 500') ... ERROR
+  test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='EgressDenied') ... ERROR
+  test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='anything else') ... ERROR
+test_readyz_reason_vocabulary_for_store_drivers (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary_for_store_drivers) ... 
+  test_readyz_reason_vocabulary_for_store_drivers (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary_for_store_drivers) (case='psycopg ConnectionTimeout') ... ERROR
+  test_readyz_reason_vocabulary_for_store_drivers (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary_for_store_drivers) (case='psycopg sqlstate 28P01') ... ERROR
+  test_readyz_reason_vocabulary_for_store_drivers (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary_for_store_drivers) (case='psycopg sqlstate 28000') ... ERROR
+  test_readyz_reason_vocabulary_for_store_drivers (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary_for_store_drivers) (case='psycopg OperationalError, no sqlstate') ... ERROR
+  test_readyz_reason_vocabulary_for_store_drivers (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary_for_store_drivers) (case='neo4j AuthError') ... ERROR
+  test_readyz_reason_vocabulary_for_store_drivers (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary_for_store_drivers) (case='redis AuthenticationError') ... ERROR
+test_store_probe_classifies_closed_port (tests.test_stack_readiness.StoreProbeTest.test_store_probe_classifies_closed_port) ... ERROR
+test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) ... 
+  test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='api', model_pass='COMPOSE') ... FAIL
+  test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='api', model_pass='REWRITE') ... FAIL
+  test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='api', model_pass='AUDIT') ... FAIL
+  test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='api', model_pass='EMBED') ... FAIL
+  test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='api', key='KE_EGRESS_ALLOWLIST') ... FAIL
+  test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='worker', model_pass='COMPOSE') ... FAIL
+  test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='worker', model_pass='REWRITE') ... FAIL
+  test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='worker', model_pass='AUDIT') ... FAIL
+  test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='worker', model_pass='EMBED') ... FAIL
+  test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='worker', key='KE_EGRESS_ALLOWLIST') ... FAIL
+  test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='gates-it', model_pass='COMPOSE') ... FAIL
+  test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='gates-it', model_pass='REWRITE') ... FAIL
+  test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='gates-it', model_pass='AUDIT') ... FAIL
+  test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='gates-it', model_pass='EMBED') ... FAIL
+  test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='gates-it', key='KE_EGRESS_ALLOWLIST') ... FAIL
+test_defaults_keep_null_base_urls (tests.test_stack_ready_compose.ModelWiringTest.test_defaults_keep_null_base_urls) ... ok
+test_gates_it_gets_model_upstream_and_store_passwords (tests.test_stack_ready_compose.ModelWiringTest.test_gates_it_gets_model_upstream_and_store_passwords) ... FAIL
+test_model_base_urls_come_from_one_anchor (tests.test_stack_ready_compose.ModelWiringTest.test_model_base_urls_come_from_one_anchor) ... FAIL
+test_compose_postgres_identity_matches_defaults (tests.test_stack_ready_compose.StoreIdentityTest.test_compose_postgres_identity_matches_defaults) ... ok
+test_ci_job_has_timeout (tests.test_stack_ready_docs.CiTimeoutTest.test_ci_job_has_timeout) ... ok
+test_claude_md_lists_verify_only_checks (tests.test_stack_ready_docs.ClaudeMdVerifyOnlyTest.test_claude_md_lists_verify_only_checks) ... ok
+test_launch_accepts_docker_engine_28_or_later (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_accepts_docker_engine_28_or_later) ... ok
+test_launch_accepts_loopback_and_warns_for_dev (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_accepts_loopback_and_warns_for_dev) ... ok
+test_launch_honours_every_dotenv_form_compose_honours (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_honours_every_dotenv_form_compose_honours) ... ok
+test_launch_never_falls_back_to_env_example (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_never_falls_back_to_env_example) ... ok
+test_launch_port_without_host_ip_warns_in_dev (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_port_without_host_ip_warns_in_dev) ... ok
+test_launch_refuses_docker_engine_below_28_or_unreadable (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_refuses_docker_engine_below_28_or_unreadable) ... ok
+test_launch_refuses_when_env_file_lacks_ke_env (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_refuses_when_env_file_lacks_ke_env) ... ok
+test_launch_resolves_with_the_env_file_compose_will_use (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_resolves_with_the_env_file_compose_will_use) ... ok
+test_launch_treats_a_port_without_host_ip_as_all_interfaces (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_treats_a_port_without_host_ip_as_all_interfaces) ... ok
+test_launch_trusts_compose_config_not_its_own_parser (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_trusts_compose_config_not_its_own_parser) ... ok
+test_launch_accepts_docker_engine_28_or_later (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_accepts_docker_engine_28_or_later) ... ok
+test_launch_accepts_loopback_and_warns_for_dev (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_accepts_loopback_and_warns_for_dev) ... ok
+test_launch_honours_every_dotenv_form_compose_honours (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_honours_every_dotenv_form_compose_honours) ... ok
+test_launch_never_falls_back_to_env_example (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_never_falls_back_to_env_example) ... ok
+test_launch_port_without_host_ip_warns_in_dev (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_port_without_host_ip_warns_in_dev) ... ok
+test_launch_refuses_docker_engine_below_28_or_unreadable (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_refuses_docker_engine_below_28_or_unreadable) ... ok
+test_launch_refuses_when_env_file_lacks_ke_env (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_refuses_when_env_file_lacks_ke_env) ... ok
+test_launch_resolves_with_the_env_file_compose_will_use (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_resolves_with_the_env_file_compose_will_use) ... ok
+test_launch_treats_a_port_without_host_ip_as_all_interfaces (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_treats_a_port_without_host_ip_as_all_interfaces) ... ok
+test_launch_trusts_compose_config_not_its_own_parser (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_trusts_compose_config_not_its_own_parser) ... ok
+test_gates_image_has_shellcheck_and_psscriptanalyzer (tests.test_stack_scripts.LintScriptTest.test_gates_image_has_shellcheck_and_psscriptanalyzer) ... ok
+test_lint_covers_every_shell_and_powershell_script (tests.test_stack_scripts.LintScriptTest.test_lint_covers_every_shell_and_powershell_script) ... 
+  test_lint_covers_every_shell_and_powershell_script (tests.test_stack_scripts.LintScriptTest.test_lint_covers_every_shell_and_powershell_script) (ps1_path='scripts/sub/nested.ps1') ... FAIL
+test_lint_fails_on_warning_severity_finding (tests.test_stack_scripts.LintScriptTest.test_lint_fails_on_warning_severity_finding) ... ok
+test_lint_fails_when_either_tool_fails (tests.test_stack_scripts.LintScriptTest.test_lint_fails_when_either_tool_fails) ... ok
+test_lint_powershell_command_text_is_fixed (tests.test_stack_scripts.LintScriptTest.test_lint_powershell_command_text_is_fixed) ... ok
+test_lint_ps1_wildcard_name_cannot_escape (tests.test_stack_scripts.LintScriptTest.test_lint_ps1_wildcard_name_cannot_escape) ... 
+  test_lint_ps1_wildcard_name_cannot_escape (tests.test_stack_scripts.LintScriptTest.test_lint_ps1_wildcard_name_cannot_escape) (name='b[1].ps1') ... FAIL
+  test_lint_ps1_wildcard_name_cannot_escape (tests.test_stack_scripts.LintScriptTest.test_lint_ps1_wildcard_name_cannot_escape) (name='x]y.ps1') ... FAIL
+  test_lint_ps1_wildcard_name_cannot_escape (tests.test_stack_scripts.LintScriptTest.test_lint_ps1_wildcard_name_cannot_escape) (name='x*.ps1') ... FAIL
+  test_lint_ps1_wildcard_name_cannot_escape (tests.test_stack_scripts.LintScriptTest.test_lint_ps1_wildcard_name_cannot_escape) (name='x?.ps1') ... FAIL
+test_lint_runs_no_code_from_a_powershell_filename (tests.test_stack_scripts.LintScriptTest.test_lint_runs_no_code_from_a_powershell_filename) ... ok
+test_lint_with_real_tools_fails_on_a_planted_finding (tests.test_stack_scripts.LintScriptTest.test_lint_with_real_tools_fails_on_a_planted_finding) ... ok
+test_smoke_fails_when_backend_is_not_internal (tests.test_stack_scripts.SmokeBackendIsolatedTest.test_smoke_fails_when_backend_is_not_internal) ... ok
+test_smoke_fails_when_backend_is_not_isolated (tests.test_stack_scripts.SmokeBackendIsolatedTest.test_smoke_fails_when_backend_is_not_isolated) ... ok
+test_smoke_fails_when_backend_network_is_missing (tests.test_stack_scripts.SmokeBackendIsolatedTest.test_smoke_fails_when_backend_network_is_missing) ... ok
+test_smoke_inspects_its_own_backend_network (tests.test_stack_scripts.SmokeBackendIsolatedTest.test_smoke_inspects_its_own_backend_network) ... ok
+test_smoke_fails_when_a_port_is_not_loopback (tests.test_stack_scripts.SmokeResolvesWithoutEnvTest.test_smoke_fails_when_a_port_is_not_loopback) ... ok
+test_smoke_fails_when_resolution_fails (tests.test_stack_scripts.SmokeResolvesWithoutEnvTest.test_smoke_fails_when_resolution_fails) ... ok
+test_smoke_resolves_compose_without_env_file (tests.test_stack_scripts.SmokeResolvesWithoutEnvTest.test_smoke_resolves_compose_without_env_file) ... ok
+test_smoke_sh_contains_the_check (tests.test_stack_scripts.SmokeResolvesWithoutEnvTest.test_smoke_sh_contains_the_check) ... ok
+test_smoke_decides_it_launched_before_launching (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_decides_it_launched_before_launching) ... FAIL
+test_smoke_fails_naming_the_store_when_readiness_never_recovers (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_fails_naming_the_store_when_readiness_never_recovers) ... FAIL
+test_smoke_fails_when_each_store_step_fails (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_fails_when_each_store_step_fails) ... 
+  test_smoke_fails_when_each_store_step_fails (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_fails_when_each_store_step_fails) (case='first ready never met') ... FAIL
+  test_smoke_fails_when_each_store_step_fails (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_fails_when_each_store_step_fails) (case='stop postgres fails') ... FAIL
+  test_smoke_fails_when_each_store_step_fails (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_fails_when_each_store_step_fails) (case='not-ready never seen') ... FAIL
+  test_smoke_fails_when_each_store_step_fails (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_fails_when_each_store_step_fails) (case='postgres restart fails') ... FAIL
+  test_smoke_fails_when_each_store_step_fails (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_fails_when_each_store_step_fails) (case='launch fails') ... FAIL
+test_smoke_flag_without_a_running_project_fails_loudly (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_flag_without_a_running_project_fails_loudly) ... FAIL
+test_smoke_leaves_a_project_it_did_not_launch (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_leaves_a_project_it_did_not_launch) ... FAIL
+test_smoke_owned_by_verify_stops_and_restarts_without_teardown (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_owned_by_verify_stops_and_restarts_without_teardown) ... FAIL
+test_smoke_stops_and_restarts_a_store (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_stops_and_restarts_a_store) ... FAIL
+test_teardown_fails_when_a_listing_fails (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_fails_when_a_listing_fails) ... FAIL
+test_teardown_fails_without_a_resolved_project (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_fails_without_a_resolved_project) ... FAIL
+test_teardown_kept_volume_is_not_a_leftover_without_volumes (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_kept_volume_is_not_a_leftover_without_volumes) ... ok
+test_teardown_leaves_other_projects_alone (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_leaves_other_projects_alone) ... ok
+test_teardown_lists_with_the_project_compose_resolves (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_lists_with_the_project_compose_resolves) ... 
+  test_teardown_lists_with_the_project_compose_resolves (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_lists_with_the_project_compose_resolves) (project='ke-verify-123') ... FAIL
+  test_teardown_lists_with_the_project_compose_resolves (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_lists_with_the_project_compose_resolves) (project='default project') ... FAIL
+test_teardown_removes_or_reports_project_leftovers (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_removes_or_reports_project_leftovers) ... 
+  test_teardown_removes_or_reports_project_leftovers (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_removes_or_reports_project_leftovers) (case='leftover container') ... FAIL
+  test_teardown_removes_or_reports_project_leftovers (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_removes_or_reports_project_leftovers) (case='leftover network') ... FAIL
+  test_teardown_removes_or_reports_project_leftovers (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_removes_or_reports_project_leftovers) (case='leftover volume, volumes asked') ... FAIL
+test_teardown_with_nothing_left_passes (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_with_nothing_left_passes) ... 
+  test_teardown_with_nothing_left_passes (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_with_nothing_left_passes) (args='(none)') ... FAIL
+  test_teardown_with_nothing_left_passes (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_with_nothing_left_passes) (args='-Volumes') ... FAIL
+test_teardown_activates_no_profile (tests.test_stack_scripts.TeardownPs1ScopeTest.test_teardown_activates_no_profile) ... ok
+test_teardown_carries_project_and_env_file (tests.test_stack_scripts.TeardownPs1ScopeTest.test_teardown_carries_project_and_env_file) ... ok
+test_teardown_does_not_remove_orphans (tests.test_stack_scripts.TeardownPs1ScopeTest.test_teardown_does_not_remove_orphans) ... ok
+test_teardown_script_has_no_profile_wildcard (tests.test_stack_scripts.TeardownPs1ScopeTest.test_teardown_script_has_no_profile_wildcard) ... ok
+test_teardown_fails_when_a_listing_fails (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_fails_when_a_listing_fails) ... FAIL
+test_teardown_fails_without_a_resolved_project (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_fails_without_a_resolved_project) ... FAIL
+test_teardown_kept_volume_is_not_a_leftover_without_volumes (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_kept_volume_is_not_a_leftover_without_volumes) ... ok
+test_teardown_leaves_other_projects_alone (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_leaves_other_projects_alone) ... ok
+test_teardown_lists_with_the_project_compose_resolves (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_lists_with_the_project_compose_resolves) ... 
+  test_teardown_lists_with_the_project_compose_resolves (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_lists_with_the_project_compose_resolves) (project='ke-verify-123') ... FAIL
+  test_teardown_lists_with_the_project_compose_resolves (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_lists_with_the_project_compose_resolves) (project='default project') ... FAIL
+test_teardown_removes_or_reports_project_leftovers (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_removes_or_reports_project_leftovers) ... 
+  test_teardown_removes_or_reports_project_leftovers (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_removes_or_reports_project_leftovers) (case='leftover container') ... FAIL
+  test_teardown_removes_or_reports_project_leftovers (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_removes_or_reports_project_leftovers) (case='leftover network') ... FAIL
+  test_teardown_removes_or_reports_project_leftovers (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_removes_or_reports_project_leftovers) (case='leftover volume, volumes asked') ... FAIL
+test_teardown_with_nothing_left_passes (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_with_nothing_left_passes) ... 
+  test_teardown_with_nothing_left_passes (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_with_nothing_left_passes) (args='(none)') ... FAIL
+  test_teardown_with_nothing_left_passes (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_with_nothing_left_passes) (args='--volumes') ... FAIL
+test_teardown_activates_no_profile (tests.test_stack_scripts.TeardownShScopeTest.test_teardown_activates_no_profile) ... ok
+test_teardown_carries_project_and_env_file (tests.test_stack_scripts.TeardownShScopeTest.test_teardown_carries_project_and_env_file) ... ok
+test_teardown_does_not_remove_orphans (tests.test_stack_scripts.TeardownShScopeTest.test_teardown_does_not_remove_orphans) ... ok
+test_teardown_script_has_no_profile_wildcard (tests.test_stack_scripts.TeardownShScopeTest.test_teardown_script_has_no_profile_wildcard) ... ok
+test_container_half_runs_lint_before_tests (tests.test_stack_scripts.VerifyCallsLintTest.test_container_half_runs_lint_before_tests) ... ok
+test_lint_failure_fails_verify (tests.test_stack_scripts.VerifyCallsLintTest.test_lint_failure_fails_verify) ... ok
+test_each_failing_stage_fails_verify_and_still_tears_down (tests.test_stack_scripts.VerifyHostHalfTest.test_each_failing_stage_fails_verify_and_still_tears_down) ... ok
+test_every_stage_sees_the_verify_overlay_and_nothing_publishes (tests.test_stack_scripts.VerifyHostHalfTest.test_every_stage_sees_the_verify_overlay_and_nothing_publishes) ... ok
+test_fast_runs_gates_without_publishing (tests.test_stack_scripts.VerifyHostHalfTest.test_fast_runs_gates_without_publishing) ... ok
+test_full_runs_stages_in_order_then_tears_down (tests.test_stack_scripts.VerifyHostHalfTest.test_full_runs_stages_in_order_then_tears_down) ... ok
+test_project_name_is_random_and_shared_by_every_stage (tests.test_stack_scripts.VerifyHostHalfTest.test_project_name_is_random_and_shared_by_every_stage) ... ok
+test_removing_the_gates_it_stage_is_caught (tests.test_stack_scripts.VerifyHostHalfTest.test_removing_the_gates_it_stage_is_caught) ... ok
+test_teardown_failure_after_green_run_is_reported (tests.test_stack_scripts.VerifyHostHalfTest.test_teardown_failure_after_green_run_is_reported) ... ok
+test_teardown_runs_on_interrupt (tests.test_stack_scripts.VerifyHostHalfTest.test_teardown_runs_on_interrupt) ... ok
+test_verify_fast_does_not_set_the_smoke_flag (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_fast_does_not_set_the_smoke_flag) ... ok
+test_verify_full_marks_its_own_project_for_smoke (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_marks_its_own_project_for_smoke) ... FAIL
+test_verify_overlay_resets_every_published_port (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_overlay_resets_every_published_port) ... ok
+test_compose_worker_waits_for_valkey (tests.test_stack_worker.WorkerComposeTest.test_compose_worker_waits_for_valkey) ... FAIL
+test_worker_command_unchanged (tests.test_stack_worker.WorkerComposeTest.test_worker_command_unchanged) ... ok
+test_every_job_is_traced (tests.test_stack_worker.WorkerJobTracingTest.test_every_job_is_traced) ... ERROR
+test_failing_job_marks_its_span (tests.test_stack_worker.WorkerJobTracingTest.test_failing_job_marks_its_span) ... ERROR
+test_worker_job_is_traced (tests.test_stack_worker.WorkerJobTracingTest.test_worker_job_is_traced) ... ERROR
+test_agent_loop_renders_as_nested_tree (tests.test_tracing.TracingTest.test_agent_loop_renders_as_nested_tree) ... ok
+test_chain_span_kind (tests.test_tracing.TracingTest.test_chain_span_kind) ... ok
+test_exception_marks_span_error_and_propagates (tests.test_tracing.TracingTest.test_exception_marks_span_error_and_propagates) ... ok
+test_hide_inputs_and_outputs_redacts_values (tests.test_tracing.TracingTest.test_hide_inputs_and_outputs_redacts_values) ... ok
+test_llm_records_model_and_token_usage (tests.test_tracing.TracingTest.test_llm_records_model_and_token_usage) ... ok
+test_retriever_records_parameterised_query_and_documents (tests.test_tracing.TracingTest.test_retriever_records_parameterised_query_and_documents) ... ok
+test_setup_tracing_is_idempotent (tests.test_tracing.TracingTest.test_setup_tracing_is_idempotent) ... ok
+test_spans_tolerate_non_recording_span (tests.test_tracing.TracingTest.test_spans_tolerate_non_recording_span)
+Regression (platform-config): with tracing off and no provider ... ok
+
+======================================================================
+ERROR: test_worker_main_idles_after_a_passing_startup (tests.test_stack_entrypoints.WorkerEntrypointTest.test_worker_main_idles_after_a_passing_startup)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_entrypoints.py", line 152, in test_worker_main_idles_after_a_passing_startup
+    error = self._main(PASSING)
+            ^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_entrypoints.py", line 136, in _main
+    with environ(env), mock.patch.object(worker, "run", run), \
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1467, in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1437, in get_original
+    raise AttributeError(
+AttributeError: <module 'engine.worker' from '/work/engine/worker.py'> does not have the attribute 'run'
+
+======================================================================
+ERROR: test_worker_main_refused_setting_exits_before_idling (tests.test_stack_entrypoints.WorkerEntrypointTest.test_worker_main_refused_setting_exits_before_idling)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_entrypoints.py", line 146, in test_worker_main_refused_setting_exits_before_idling
+    error = self._main(REFUSING)
+            ^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_entrypoints.py", line 136, in _main
+    with environ(env), mock.patch.object(worker, "run", run), \
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1467, in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1437, in get_original
+    raise AttributeError(
+AttributeError: <module 'engine.worker' from '/work/engine/worker.py'> does not have the attribute 'run'
+
+======================================================================
+ERROR: test_readyz_body_never_carries_error_text (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_body_never_carries_error_text)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 318, in test_readyz_body_never_carries_error_text
+    response, _ = self._get(settings, driver_errors=errors)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 226, in _get
+    with stubbed_probes(settings, **stubs) as mocks, readyz_client(settings) as client:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/contextlib.py", line 137, in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 105, in stubbed_probes
+    stack.enter_context(mock.patch("psycopg.connect", mocks["postgres"]))
+  File "/usr/local/lib/python3.12/contextlib.py", line 526, in enter_context
+    result = _enter(cm)
+             ^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1451, in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/pkgutil.py", line 513, in resolve_name
+    mod = importlib.import_module(modname)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1324, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'psycopg'
+
+======================================================================
+ERROR: test_readyz_is_traced (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_is_traced)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 244, in test_readyz_is_traced
+    response, _ = self._get(settings, refuse=("postgres",))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 226, in _get
+    with stubbed_probes(settings, **stubs) as mocks, readyz_client(settings) as client:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/contextlib.py", line 137, in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 105, in stubbed_probes
+    stack.enter_context(mock.patch("psycopg.connect", mocks["postgres"]))
+  File "/usr/local/lib/python3.12/contextlib.py", line 526, in enter_context
+    result = _enter(cm)
+             ^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1451, in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/pkgutil.py", line 513, in resolve_name
+    mod = importlib.import_module(modname)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1324, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'psycopg'
+
+======================================================================
+ERROR: test_readyz_ready_excludes_model_host (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_ready_excludes_model_host) (case='stores ok, model host refused')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 282, in test_readyz_ready_excludes_model_host
+    response, _ = self._get(settings, model_error=_refused_connect_error())
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 226, in _get
+    with stubbed_probes(settings, **stubs) as mocks, readyz_client(settings) as client:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/contextlib.py", line 137, in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 105, in stubbed_probes
+    stack.enter_context(mock.patch("psycopg.connect", mocks["postgres"]))
+  File "/usr/local/lib/python3.12/contextlib.py", line 526, in enter_context
+    result = _enter(cm)
+             ^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1451, in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/pkgutil.py", line 513, in resolve_name
+    mod = importlib.import_module(modname)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1324, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'psycopg'
+
+======================================================================
+ERROR: test_readyz_ready_excludes_model_host (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_ready_excludes_model_host) (case='all ok')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 290, in test_readyz_ready_excludes_model_host
+    response, _ = self._get(settings)
+                  ^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 226, in _get
+    with stubbed_probes(settings, **stubs) as mocks, readyz_client(settings) as client:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/contextlib.py", line 137, in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 105, in stubbed_probes
+    stack.enter_context(mock.patch("psycopg.connect", mocks["postgres"]))
+  File "/usr/local/lib/python3.12/contextlib.py", line 526, in enter_context
+    result = _enter(cm)
+             ^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1451, in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/pkgutil.py", line 513, in resolve_name
+    mod = importlib.import_module(modname)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1324, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'psycopg'
+
+======================================================================
+ERROR: test_readyz_ready_excludes_model_host (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_ready_excludes_model_host) (case='postgres refused')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 297, in test_readyz_ready_excludes_model_host
+    response, _ = self._get(settings, refuse=(store,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 226, in _get
+    with stubbed_probes(settings, **stubs) as mocks, readyz_client(settings) as client:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/contextlib.py", line 137, in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 105, in stubbed_probes
+    stack.enter_context(mock.patch("psycopg.connect", mocks["postgres"]))
+  File "/usr/local/lib/python3.12/contextlib.py", line 526, in enter_context
+    result = _enter(cm)
+             ^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1451, in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/pkgutil.py", line 513, in resolve_name
+    mod = importlib.import_module(modname)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1324, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'psycopg'
+
+======================================================================
+ERROR: test_readyz_ready_excludes_model_host (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_ready_excludes_model_host) (case='neo4j refused')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 297, in test_readyz_ready_excludes_model_host
+    response, _ = self._get(settings, refuse=(store,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 226, in _get
+    with stubbed_probes(settings, **stubs) as mocks, readyz_client(settings) as client:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/contextlib.py", line 137, in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 105, in stubbed_probes
+    stack.enter_context(mock.patch("psycopg.connect", mocks["postgres"]))
+  File "/usr/local/lib/python3.12/contextlib.py", line 526, in enter_context
+    result = _enter(cm)
+             ^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1451, in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/pkgutil.py", line 513, in resolve_name
+    mod = importlib.import_module(modname)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1324, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'psycopg'
+
+======================================================================
+ERROR: test_readyz_ready_excludes_model_host (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_ready_excludes_model_host) (case='valkey refused')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 297, in test_readyz_ready_excludes_model_host
+    response, _ = self._get(settings, refuse=(store,))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 226, in _get
+    with stubbed_probes(settings, **stubs) as mocks, readyz_client(settings) as client:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/contextlib.py", line 137, in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 105, in stubbed_probes
+    stack.enter_context(mock.patch("psycopg.connect", mocks["postgres"]))
+  File "/usr/local/lib/python3.12/contextlib.py", line 526, in enter_context
+    result = _enter(cm)
+             ^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1451, in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/pkgutil.py", line 513, in resolve_name
+    mod = importlib.import_module(modname)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1324, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'psycopg'
+
+======================================================================
+ERROR: test_readyz_ready_excludes_model_host (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_ready_excludes_model_host) (case='model host not configured')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 308, in test_readyz_ready_excludes_model_host
+    response, mocks = self._get(unset)
+                      ^^^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 226, in _get
+    with stubbed_probes(settings, **stubs) as mocks, readyz_client(settings) as client:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/contextlib.py", line 137, in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 105, in stubbed_probes
+    stack.enter_context(mock.patch("psycopg.connect", mocks["postgres"]))
+  File "/usr/local/lib/python3.12/contextlib.py", line 526, in enter_context
+    result = _enter(cm)
+             ^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 1451, in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/pkgutil.py", line 513, in resolve_name
+    mod = importlib.import_module(modname)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1324, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'psycopg'
+
+======================================================================
+ERROR: test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='ConnectionRefusedError')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 171, in test_readyz_reason_vocabulary
+    self._assert(build(), expected)
+  File "/work/tests/test_stack_readiness.py", line 133, in _assert
+    reason = self._classify(exc)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 128, in _classify
+    from engine.readiness import classify
+ModuleNotFoundError: No module named 'engine.readiness'
+
+======================================================================
+ERROR: test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='httpx.ConnectError caused by a refusal')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 171, in test_readyz_reason_vocabulary
+    self._assert(build(), expected)
+  File "/work/tests/test_stack_readiness.py", line 133, in _assert
+    reason = self._classify(exc)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 128, in _classify
+    from engine.readiness import classify
+ModuleNotFoundError: No module named 'engine.readiness'
+
+======================================================================
+ERROR: test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='TimeoutError')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 171, in test_readyz_reason_vocabulary
+    self._assert(build(), expected)
+  File "/work/tests/test_stack_readiness.py", line 133, in _assert
+    reason = self._classify(exc)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 128, in _classify
+    from engine.readiness import classify
+ModuleNotFoundError: No module named 'engine.readiness'
+
+======================================================================
+ERROR: test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='socket.timeout')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 171, in test_readyz_reason_vocabulary
+    self._assert(build(), expected)
+  File "/work/tests/test_stack_readiness.py", line 133, in _assert
+    reason = self._classify(exc)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 128, in _classify
+    from engine.readiness import classify
+ModuleNotFoundError: No module named 'engine.readiness'
+
+======================================================================
+ERROR: test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='httpx.ConnectTimeout')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 171, in test_readyz_reason_vocabulary
+    self._assert(build(), expected)
+  File "/work/tests/test_stack_readiness.py", line 133, in _assert
+    reason = self._classify(exc)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 128, in _classify
+    from engine.readiness import classify
+ModuleNotFoundError: No module named 'engine.readiness'
+
+======================================================================
+ERROR: test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='httpx.ReadTimeout')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 171, in test_readyz_reason_vocabulary
+    self._assert(build(), expected)
+  File "/work/tests/test_stack_readiness.py", line 133, in _assert
+    reason = self._classify(exc)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 128, in _classify
+    from engine.readiness import classify
+ModuleNotFoundError: No module named 'engine.readiness'
+
+======================================================================
+ERROR: test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='socket.gaierror')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 171, in test_readyz_reason_vocabulary
+    self._assert(build(), expected)
+  File "/work/tests/test_stack_readiness.py", line 133, in _assert
+    reason = self._classify(exc)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 128, in _classify
+    from engine.readiness import classify
+ModuleNotFoundError: No module named 'engine.readiness'
+
+======================================================================
+ERROR: test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='OSError EHOSTUNREACH')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 171, in test_readyz_reason_vocabulary
+    self._assert(build(), expected)
+  File "/work/tests/test_stack_readiness.py", line 133, in _assert
+    reason = self._classify(exc)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 128, in _classify
+    from engine.readiness import classify
+ModuleNotFoundError: No module named 'engine.readiness'
+
+======================================================================
+ERROR: test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='OSError ENETUNREACH')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 171, in test_readyz_reason_vocabulary
+    self._assert(build(), expected)
+  File "/work/tests/test_stack_readiness.py", line 133, in _assert
+    reason = self._classify(exc)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 128, in _classify
+    from engine.readiness import classify
+ModuleNotFoundError: No module named 'engine.readiness'
+
+======================================================================
+ERROR: test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='HTTP 401')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 171, in test_readyz_reason_vocabulary
+    self._assert(build(), expected)
+  File "/work/tests/test_stack_readiness.py", line 133, in _assert
+    reason = self._classify(exc)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 128, in _classify
+    from engine.readiness import classify
+ModuleNotFoundError: No module named 'engine.readiness'
+
+======================================================================
+ERROR: test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='HTTP 403')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 171, in test_readyz_reason_vocabulary
+    self._assert(build(), expected)
+  File "/work/tests/test_stack_readiness.py", line 133, in _assert
+    reason = self._classify(exc)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 128, in _classify
+    from engine.readiness import classify
+ModuleNotFoundError: No module named 'engine.readiness'
+
+======================================================================
+ERROR: test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='HTTP 500')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 171, in test_readyz_reason_vocabulary
+    self._assert(build(), expected)
+  File "/work/tests/test_stack_readiness.py", line 133, in _assert
+    reason = self._classify(exc)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 128, in _classify
+    from engine.readiness import classify
+ModuleNotFoundError: No module named 'engine.readiness'
+
+======================================================================
+ERROR: test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='EgressDenied')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 171, in test_readyz_reason_vocabulary
+    self._assert(build(), expected)
+  File "/work/tests/test_stack_readiness.py", line 133, in _assert
+    reason = self._classify(exc)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 128, in _classify
+    from engine.readiness import classify
+ModuleNotFoundError: No module named 'engine.readiness'
+
+======================================================================
+ERROR: test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) (case='anything else')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 171, in test_readyz_reason_vocabulary
+    self._assert(build(), expected)
+  File "/work/tests/test_stack_readiness.py", line 133, in _assert
+    reason = self._classify(exc)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 128, in _classify
+    from engine.readiness import classify
+ModuleNotFoundError: No module named 'engine.readiness'
+
+======================================================================
+ERROR: test_readyz_reason_vocabulary_for_store_drivers (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary_for_store_drivers) (case='psycopg ConnectionTimeout')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 215, in test_readyz_reason_vocabulary_for_store_drivers
+    self._assert(build(), expected)
+                 ^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 175, in psycopg_timeout
+    import psycopg
+ModuleNotFoundError: No module named 'psycopg'
+
+======================================================================
+ERROR: test_readyz_reason_vocabulary_for_store_drivers (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary_for_store_drivers) (case='psycopg sqlstate 28P01')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 215, in test_readyz_reason_vocabulary_for_store_drivers
+    self._assert(build(), expected)
+                 ^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 180, in psycopg_bad_password
+    import psycopg
+ModuleNotFoundError: No module named 'psycopg'
+
+======================================================================
+ERROR: test_readyz_reason_vocabulary_for_store_drivers (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary_for_store_drivers) (case='psycopg sqlstate 28000')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 215, in test_readyz_reason_vocabulary_for_store_drivers
+    self._assert(build(), expected)
+                 ^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 186, in psycopg_bad_authorization
+    import psycopg
+ModuleNotFoundError: No module named 'psycopg'
+
+======================================================================
+ERROR: test_readyz_reason_vocabulary_for_store_drivers (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary_for_store_drivers) (case='psycopg OperationalError, no sqlstate')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 215, in test_readyz_reason_vocabulary_for_store_drivers
+    self._assert(build(), expected)
+                 ^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 191, in psycopg_operational
+    import psycopg
+ModuleNotFoundError: No module named 'psycopg'
+
+======================================================================
+ERROR: test_readyz_reason_vocabulary_for_store_drivers (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary_for_store_drivers) (case='neo4j AuthError')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 215, in test_readyz_reason_vocabulary_for_store_drivers
+    self._assert(build(), expected)
+                 ^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 196, in neo4j_auth
+    import neo4j.exceptions
+ModuleNotFoundError: No module named 'neo4j'
+
+======================================================================
+ERROR: test_readyz_reason_vocabulary_for_store_drivers (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary_for_store_drivers) (case='redis AuthenticationError')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 215, in test_readyz_reason_vocabulary_for_store_drivers
+    self._assert(build(), expected)
+                 ^^^^^^^
+  File "/work/tests/test_stack_readiness.py", line 201, in redis_auth
+    import redis.exceptions
+ModuleNotFoundError: No module named 'redis'
+
+======================================================================
+ERROR: test_store_probe_classifies_closed_port (tests.test_stack_readiness.StoreProbeTest.test_store_probe_classifies_closed_port)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 335, in test_store_probe_classifies_closed_port
+    from engine.readiness import check_all
+ModuleNotFoundError: No module named 'engine.readiness'
+
+======================================================================
+ERROR: test_every_job_is_traced (tests.test_stack_worker.WorkerJobTracingTest.test_every_job_is_traced)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_worker.py", line 68, in test_every_job_is_traced
+    import engine.jobs as jobs
+ModuleNotFoundError: No module named 'engine.jobs'
+
+======================================================================
+ERROR: test_failing_job_marks_its_span (tests.test_stack_worker.WorkerJobTracingTest.test_failing_job_marks_its_span)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_worker.py", line 86, in test_failing_job_marks_its_span
+    import engine.jobs as jobs
+ModuleNotFoundError: No module named 'engine.jobs'
+
+======================================================================
+ERROR: test_worker_job_is_traced (tests.test_stack_worker.WorkerJobTracingTest.test_worker_job_is_traced)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_worker.py", line 53, in test_worker_job_is_traced
+    import engine.jobs as jobs
+ModuleNotFoundError: No module named 'engine.jobs'
+
+======================================================================
+FAIL: test_installed_provider_refusal_is_logged (tests.test_engine_startup.StartupCarryInTest.test_installed_provider_refusal_is_logged)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 368, in test_installed_provider_refusal_is_logged
+    self.assertLogs("engine", level="WARNING") as logs:
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/unittest/_log.py", line 84, in __exit__
+    self._raiseFailure(
+AssertionError: no logs of level WARNING or higher triggered on engine
+
+======================================================================
+FAIL: test_startup_loads_settings_once (tests.test_engine_startup.StartupCarryInTest.test_startup_loads_settings_once) (env='prod')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 354, in test_startup_loads_settings_once
+    self.assertEqual(len(built), 1,
+AssertionError: 2 != 1 : one startup() built Settings 2 times
+
+======================================================================
+FAIL: test_startup_loads_settings_once (tests.test_engine_startup.StartupCarryInTest.test_startup_loads_settings_once) (env='dev')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 354, in test_startup_loads_settings_once
+    self.assertEqual(len(built), 1,
+AssertionError: 2 != 1 : one startup() built Settings 2 times
+
+======================================================================
+FAIL: test_env_value_caller_env_wins_even_when_empty (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_caller_env_wins_even_when_empty)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_model_keys.py", line 57, in setUp
+    self.assertTrue(ENV_VALUE.is_file(),
+AssertionError: False is not true : scripts/env_value.sh is missing (PS-2.21, architecture §2.2)
+
+======================================================================
+FAIL: test_env_value_config_failure_is_reported_without_content (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_config_failure_is_reported_without_content)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_model_keys.py", line 57, in setUp
+    self.assertTrue(ENV_VALUE.is_file(),
+AssertionError: False is not true : scripts/env_value.sh is missing (PS-2.21, architecture §2.2)
+
+======================================================================
+FAIL: test_env_value_reads_dotenv_only_through_compose_config (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_reads_dotenv_only_through_compose_config)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_model_keys.py", line 57, in setUp
+    self.assertTrue(ENV_VALUE.is_file(),
+AssertionError: False is not true : scripts/env_value.sh is missing (PS-2.21, architecture §2.2)
+
+======================================================================
+FAIL: test_env_value_refuses_a_json_escaped_value (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_refuses_a_json_escaped_value)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_model_keys.py", line 57, in setUp
+    self.assertTrue(ENV_VALUE.is_file(),
+AssertionError: False is not true : scripts/env_value.sh is missing (PS-2.21, architecture §2.2)
+
+======================================================================
+FAIL: test_env_value_refuses_any_other_name (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_refuses_any_other_name)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_model_keys.py", line 57, in setUp
+    self.assertTrue(ENV_VALUE.is_file(),
+AssertionError: False is not true : scripts/env_value.sh is missing (PS-2.21, architecture §2.2)
+
+======================================================================
+FAIL: test_env_value_trusts_compose_resolution (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_trusts_compose_resolution)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_model_keys.py", line 57, in setUp
+    self.assertTrue(ENV_VALUE.is_file(),
+AssertionError: False is not true : scripts/env_value.sh is missing (PS-2.21, architecture §2.2)
+
+======================================================================
+FAIL: test_env_value_without_dotenv_is_empty (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_without_dotenv_is_empty)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_model_keys.py", line 57, in setUp
+    self.assertTrue(ENV_VALUE.is_file(),
+AssertionError: False is not true : scripts/env_value.sh is missing (PS-2.21, architecture §2.2)
+
+======================================================================
+FAIL: test_verify_full_model_keys_both_or_neither (tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_model_keys_both_or_neither)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_model_keys.py", line 174, in setUp
+    self.assertTrue(ENV_VALUE.is_file(),
+AssertionError: False is not true : scripts/env_value.sh is missing (PS-2.21, architecture §2.2)
+
+======================================================================
+FAIL: test_verify_full_passes_model_upstream_keys (tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_passes_model_upstream_keys)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_model_keys.py", line 174, in setUp
+    self.assertTrue(ENV_VALUE.is_file(),
+AssertionError: False is not true : scripts/env_value.sh is missing (PS-2.21, architecture §2.2)
+
+======================================================================
+FAIL: test_verify_full_stops_before_build_when_the_helper_fails (tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_stops_before_build_when_the_helper_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_model_keys.py", line 174, in setUp
+    self.assertTrue(ENV_VALUE.is_file(),
+AssertionError: False is not true : scripts/env_value.sh is missing (PS-2.21, architecture §2.2)
+
+======================================================================
+FAIL: test_verify_full_takes_no_other_env_key (tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_takes_no_other_env_key)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_model_keys.py", line 174, in setUp
+    self.assertTrue(ENV_VALUE.is_file(),
+AssertionError: False is not true : scripts/env_value.sh is missing (PS-2.21, architecture §2.2)
+
+======================================================================
+FAIL: test_model_tests_skip_with_named_reason (tests.test_stack_model_skip.ModelSkipHelperTest.test_model_tests_skip_with_named_reason) (case='unreachable')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_model_skip.py", line 87, in test_model_tests_skip_with_named_reason
+    self.assertEqual(set(skipped), {"test_marked", "test_in_marked_class"}, skipped)
+AssertionError: Items in the second set but not the first:
+'test_marked'
+'test_in_marked_class' : {}
+
+======================================================================
+FAIL: test_model_tests_skip_with_named_reason (tests.test_stack_model_skip.ModelSkipHelperTest.test_model_tests_skip_with_named_reason) (case='reachable')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_model_skip.py", line 95, in test_model_tests_skip_with_named_reason
+    self.assertEqual(outcome.testsRun - len(outcome.failures) - len(outcome.errors), 2,
+AssertionError: 0 != 2 : both marked tests run when the host answers
+
+======================================================================
+FAIL: test_real_probe_of_a_closed_port_skips_as_refused (tests.test_stack_model_skip.ModelSkipHelperTest.test_real_probe_of_a_closed_port_skips_as_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_model_skip.py", line 143, in test_real_probe_of_a_closed_port_skips_as_refused
+    self.assertEqual(set(skipped), {"test_marked", "test_in_marked_class"},
+AssertionError: Items in the second set but not the first:
+'test_marked'
+'test_in_marked_class' : skipped={} errors=[(<tests.test_stack_model_skip._fixture_suite.<locals>.Fixture testMethod=test_marked>, 'Traceback (most recent call last):\n  File "/work/tests/test_stack_model_skip.py", line 49, in test_marked\n    require_model_host(self)\n  File "/work/tests/integration/model.py", line 92, in require_model_host\n    reason = _probe_reason()\n             ^^^^^^^^^^^^^^^\n  File "/work/tests/integration/model.py", line 58, in _probe_reason\n    from engine.readiness import classify\nModuleNotFoundError: No module named \'engine.readiness\'\n'), (<tests.test_stack_model_skip._fixture_suite.<locals>.MarkedClass testMethod=test_in_marked_class>, 'Traceback (most recent call last):\n  File "/work/tests/test_stack_model_skip.py", line 57, in test_in_marked_class\n    require_model_host(self)\n  File "/work/tests/integration/model.py", line 92, in require_model_host\n    reason = _probe_reason()\n             ^^^^^^^^^^^^^^^\n  File "/work/tests/integration/model.py", line 58, in _probe_reason\n    from engine.readiness import classify\nModuleNotFoundError: No module named \'engine.readiness\'\n')]
+
+======================================================================
+FAIL: test_readiness_cli_condition_met (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_met) (case='ready at once')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 429, in test_readiness_cli_condition_met
+    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+AssertionError: 1 != 0 : /opt/venv/bin/python3: No module named engine.readiness
+
+
+======================================================================
+FAIL: test_readiness_cli_condition_met (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_met) (case='ready after two not-ready answers')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 429, in test_readiness_cli_condition_met
+    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+AssertionError: 1 != 0 : /opt/venv/bin/python3: No module named engine.readiness
+
+
+======================================================================
+FAIL: test_readiness_cli_condition_met (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_met) (case='not-ready:postgres')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 429, in test_readiness_cli_condition_met
+    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+AssertionError: 1 != 0 : /opt/venv/bin/python3: No module named engine.readiness
+
+
+======================================================================
+FAIL: test_readiness_cli_condition_never_met (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_never_met) (case='ready, store down')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 445, in test_readiness_cli_condition_never_met
+    self.assertRegex(result.stderr, r"\b(?:503|200)\b", "stderr names the last status")
+AssertionError: Regex didn't match: '\\b(?:503|200)\\b' not found in '/opt/venv/bin/python3: No module named engine.readiness\n' : stderr names the last status
+
+======================================================================
+FAIL: test_readiness_cli_condition_never_met (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_never_met) (case='not-ready:postgres, neo4j down instead')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 445, in test_readiness_cli_condition_never_met
+    self.assertRegex(result.stderr, r"\b(?:503|200)\b", "stderr names the last status")
+AssertionError: Regex didn't match: '\\b(?:503|200)\\b' not found in '/opt/venv/bin/python3: No module named engine.readiness\n' : stderr names the last status
+
+======================================================================
+FAIL: test_readiness_cli_condition_never_met (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_never_met) (case='not-ready:postgres, all ready')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 445, in test_readiness_cli_condition_never_met
+    self.assertRegex(result.stderr, r"\b(?:503|200)\b", "stderr names the last status")
+AssertionError: Regex didn't match: '\\b(?:503|200)\\b' not found in '/opt/venv/bin/python3: No module named engine.readiness\n' : stderr names the last status
+
+======================================================================
+FAIL: test_readiness_cli_unknown_dependency_is_a_usage_error (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_unknown_dependency_is_a_usage_error) (arg='not-ready:mysql')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 458, in test_readiness_cli_unknown_dependency_is_a_usage_error
+    self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+AssertionError: 1 != 2 : /opt/venv/bin/python3: No module named engine.readiness
+
+
+======================================================================
+FAIL: test_readiness_cli_unknown_dependency_is_a_usage_error (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_unknown_dependency_is_a_usage_error) (arg='not-ready:')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 458, in test_readiness_cli_unknown_dependency_is_a_usage_error
+    self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+AssertionError: 1 != 2 : /opt/venv/bin/python3: No module named engine.readiness
+
+
+======================================================================
+FAIL: test_readiness_cli_unknown_dependency_is_a_usage_error (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_unknown_dependency_is_a_usage_error) (arg='sometimes')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 458, in test_readiness_cli_unknown_dependency_is_a_usage_error
+    self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+AssertionError: 1 != 2 : /opt/venv/bin/python3: No module named engine.readiness
+
+
+======================================================================
+FAIL: test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='api', model_pass='COMPOSE')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_ready_compose.py", line 43, in test_compose_model_wiring
+    self.assertEqual(env.get(f"KE_MODELS__{p}__BASE_URL"), BASE_URL)
+AssertionError: None != 'http://gateway:${KE_GATEWAY_MODEL_LISTEN:-8102}/v1'
+
+======================================================================
+FAIL: test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='api', model_pass='REWRITE')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_ready_compose.py", line 43, in test_compose_model_wiring
+    self.assertEqual(env.get(f"KE_MODELS__{p}__BASE_URL"), BASE_URL)
+AssertionError: None != 'http://gateway:${KE_GATEWAY_MODEL_LISTEN:-8102}/v1'
+
+======================================================================
+FAIL: test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='api', model_pass='AUDIT')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_ready_compose.py", line 43, in test_compose_model_wiring
+    self.assertEqual(env.get(f"KE_MODELS__{p}__BASE_URL"), BASE_URL)
+AssertionError: None != 'http://gateway:${KE_GATEWAY_MODEL_LISTEN:-8102}/v1'
+
+======================================================================
+FAIL: test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='api', model_pass='EMBED')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_ready_compose.py", line 43, in test_compose_model_wiring
+    self.assertEqual(env.get(f"KE_MODELS__{p}__BASE_URL"), BASE_URL)
+AssertionError: None != 'http://gateway:${KE_GATEWAY_MODEL_LISTEN:-8102}/v1'
+
+======================================================================
+FAIL: test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='api', key='KE_EGRESS_ALLOWLIST')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_ready_compose.py", line 45, in test_compose_model_wiring
+    self.assertEqual(env.get("KE_EGRESS_ALLOWLIST"), APP_ALLOWLIST,
+AssertionError: '${KE_EGRESS_ALLOWLIST:-}' != 'gateway,${KE_EGRESS_ALLOWLIST:-}'
+- ${KE_EGRESS_ALLOWLIST:-}
++ gateway,${KE_EGRESS_ALLOWLIST:-}
+? ++++++++
+ : the app allowlist is the stack's own forward plus the operator's
+
+======================================================================
+FAIL: test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='worker', model_pass='COMPOSE')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_ready_compose.py", line 43, in test_compose_model_wiring
+    self.assertEqual(env.get(f"KE_MODELS__{p}__BASE_URL"), BASE_URL)
+AssertionError: None != 'http://gateway:${KE_GATEWAY_MODEL_LISTEN:-8102}/v1'
+
+======================================================================
+FAIL: test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='worker', model_pass='REWRITE')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_ready_compose.py", line 43, in test_compose_model_wiring
+    self.assertEqual(env.get(f"KE_MODELS__{p}__BASE_URL"), BASE_URL)
+AssertionError: None != 'http://gateway:${KE_GATEWAY_MODEL_LISTEN:-8102}/v1'
+
+======================================================================
+FAIL: test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='worker', model_pass='AUDIT')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_ready_compose.py", line 43, in test_compose_model_wiring
+    self.assertEqual(env.get(f"KE_MODELS__{p}__BASE_URL"), BASE_URL)
+AssertionError: None != 'http://gateway:${KE_GATEWAY_MODEL_LISTEN:-8102}/v1'
+
+======================================================================
+FAIL: test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='worker', model_pass='EMBED')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_ready_compose.py", line 43, in test_compose_model_wiring
+    self.assertEqual(env.get(f"KE_MODELS__{p}__BASE_URL"), BASE_URL)
+AssertionError: None != 'http://gateway:${KE_GATEWAY_MODEL_LISTEN:-8102}/v1'
+
+======================================================================
+FAIL: test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='worker', key='KE_EGRESS_ALLOWLIST')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_ready_compose.py", line 45, in test_compose_model_wiring
+    self.assertEqual(env.get("KE_EGRESS_ALLOWLIST"), APP_ALLOWLIST,
+AssertionError: '${KE_EGRESS_ALLOWLIST:-}' != 'gateway,${KE_EGRESS_ALLOWLIST:-}'
+- ${KE_EGRESS_ALLOWLIST:-}
++ gateway,${KE_EGRESS_ALLOWLIST:-}
+? ++++++++
+ : the app allowlist is the stack's own forward plus the operator's
+
+======================================================================
+FAIL: test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='gates-it', model_pass='COMPOSE')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_ready_compose.py", line 43, in test_compose_model_wiring
+    self.assertEqual(env.get(f"KE_MODELS__{p}__BASE_URL"), BASE_URL)
+AssertionError: None != 'http://gateway:${KE_GATEWAY_MODEL_LISTEN:-8102}/v1'
+
+======================================================================
+FAIL: test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='gates-it', model_pass='REWRITE')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_ready_compose.py", line 43, in test_compose_model_wiring
+    self.assertEqual(env.get(f"KE_MODELS__{p}__BASE_URL"), BASE_URL)
+AssertionError: None != 'http://gateway:${KE_GATEWAY_MODEL_LISTEN:-8102}/v1'
+
+======================================================================
+FAIL: test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='gates-it', model_pass='AUDIT')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_ready_compose.py", line 43, in test_compose_model_wiring
+    self.assertEqual(env.get(f"KE_MODELS__{p}__BASE_URL"), BASE_URL)
+AssertionError: None != 'http://gateway:${KE_GATEWAY_MODEL_LISTEN:-8102}/v1'
+
+======================================================================
+FAIL: test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='gates-it', model_pass='EMBED')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_ready_compose.py", line 43, in test_compose_model_wiring
+    self.assertEqual(env.get(f"KE_MODELS__{p}__BASE_URL"), BASE_URL)
+AssertionError: None != 'http://gateway:${KE_GATEWAY_MODEL_LISTEN:-8102}/v1'
+
+======================================================================
+FAIL: test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) (service='gates-it', key='KE_EGRESS_ALLOWLIST')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_ready_compose.py", line 45, in test_compose_model_wiring
+    self.assertEqual(env.get("KE_EGRESS_ALLOWLIST"), APP_ALLOWLIST,
+AssertionError: None != 'gateway,${KE_EGRESS_ALLOWLIST:-}' : the app allowlist is the stack's own forward plus the operator's
+
+======================================================================
+FAIL: test_gates_it_gets_model_upstream_and_store_passwords (tests.test_stack_ready_compose.ModelWiringTest.test_gates_it_gets_model_upstream_and_store_passwords)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_ready_compose.py", line 64, in test_gates_it_gets_model_upstream_and_store_passwords
+    self.assertEqual(env.get("KE_MODEL_UPSTREAM"), "${KE_MODEL_UPSTREAM:-}")
+AssertionError: None != '${KE_MODEL_UPSTREAM:-}'
+
+======================================================================
+FAIL: test_model_base_urls_come_from_one_anchor (tests.test_stack_ready_compose.ModelWiringTest.test_model_base_urls_come_from_one_anchor)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_ready_compose.py", line 55, in test_model_base_urls_come_from_one_anchor
+    self.assertIsNotNone(re.search(r"(?m)^x-model-env:\s*&\S+", text),
+AssertionError: unexpectedly None : docker-compose.yml has no top-level x-model-env anchor
+
+======================================================================
+FAIL: test_lint_covers_every_shell_and_powershell_script (tests.test_stack_scripts.LintScriptTest.test_lint_covers_every_shell_and_powershell_script) (ps1_path='scripts/sub/nested.ps1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 951, in test_lint_covers_every_shell_and_powershell_script
+    self.assertIn(rel, listed,
+AssertionError: 'scripts/sub/nested.ps1' not found in {'scripts/teardown.ps1', 'scripts/launch.ps1', 'scripts/build.ps1'} : scripts/sub/nested.ps1 is not passed to PSScriptAnalyzer by its own path (KE_LINT_PS1_FILES held ['scripts/build.ps1', 'scripts/launch.ps1', 'scripts/teardown.ps1'])
+
+======================================================================
+FAIL: test_lint_ps1_wildcard_name_cannot_escape (tests.test_stack_scripts.LintScriptTest.test_lint_ps1_wildcard_name_cannot_escape) (name='b[1].ps1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 1084, in test_lint_ps1_wildcard_name_cannot_escape
+    self.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : lint.sh passed with a wildcard .ps1 name 'b[1].ps1':
+lint: shellcheck on 11 files
+lint: PSScriptAnalyzer on 4 files
+lint: PASS
+
+
+======================================================================
+FAIL: test_lint_ps1_wildcard_name_cannot_escape (tests.test_stack_scripts.LintScriptTest.test_lint_ps1_wildcard_name_cannot_escape) (name='x]y.ps1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 1084, in test_lint_ps1_wildcard_name_cannot_escape
+    self.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : lint.sh passed with a wildcard .ps1 name 'x]y.ps1':
+lint: shellcheck on 11 files
+lint: PSScriptAnalyzer on 4 files
+lint: PASS
+
+
+======================================================================
+FAIL: test_lint_ps1_wildcard_name_cannot_escape (tests.test_stack_scripts.LintScriptTest.test_lint_ps1_wildcard_name_cannot_escape) (name='x*.ps1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 1084, in test_lint_ps1_wildcard_name_cannot_escape
+    self.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : lint.sh passed with a wildcard .ps1 name 'x*.ps1':
+lint: shellcheck on 11 files
+lint: PSScriptAnalyzer on 4 files
+lint: PASS
+
+
+======================================================================
+FAIL: test_lint_ps1_wildcard_name_cannot_escape (tests.test_stack_scripts.LintScriptTest.test_lint_ps1_wildcard_name_cannot_escape) (name='x?.ps1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 1084, in test_lint_ps1_wildcard_name_cannot_escape
+    self.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : lint.sh passed with a wildcard .ps1 name 'x?.ps1':
+lint: shellcheck on 11 files
+lint: PSScriptAnalyzer on 4 files
+lint: PASS
+
+
+======================================================================
+FAIL: test_smoke_decides_it_launched_before_launching (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_decides_it_launched_before_launching)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 1491, in test_smoke_decides_it_launched_before_launching
+    self.assertTrue(launches, "smoke never ran scripts/launch.sh (PS-2.8)")
+AssertionError: [] is not true : smoke never ran scripts/launch.sh (PS-2.8)
+
+======================================================================
+FAIL: test_smoke_fails_naming_the_store_when_readiness_never_recovers (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_fails_naming_the_store_when_readiness_never_recovers)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 1417, in test_smoke_fails_naming_the_store_when_readiness_never_recovers
+    self.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : smoke passed with postgres never ready again:
+smoke: compose resolves with no .env; 2 ports, all on 127.0.0.1
+smoke: ke-verify-test_backend is internal with gateway_mode_ipv4=isolated
+smoke: gateway healthy
+smoke: api healthy
+smoke: worker healthy
+smoke: postgres healthy
+smoke: neo4j healthy
+smoke: valkey healthy
+smoke: phoenix healthy
+smoke: gateway proxies api /healthz
+smoke: gateway proxies phoenix /healthz
+smoke: PASS
+
+
+======================================================================
+FAIL: test_smoke_fails_when_each_store_step_fails (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_fails_when_each_store_step_fails) (case='first ready never met')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 1436, in test_smoke_fails_when_each_store_step_fails
+    self.assertNotEqual(result.returncode, 0, f"smoke passed although {case}:\n{output}")
+AssertionError: 0 == 0 : smoke passed although first ready never met:
+smoke: compose resolves with no .env; 2 ports, all on 127.0.0.1
+smoke: ke-verify-test_backend is internal with gateway_mode_ipv4=isolated
+smoke: gateway healthy
+smoke: api healthy
+smoke: worker healthy
+smoke: postgres healthy
+smoke: neo4j healthy
+smoke: valkey healthy
+smoke: phoenix healthy
+smoke: gateway proxies api /healthz
+smoke: gateway proxies phoenix /healthz
+smoke: PASS
+
+
+======================================================================
+FAIL: test_smoke_fails_when_each_store_step_fails (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_fails_when_each_store_step_fails) (case='stop postgres fails')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 1436, in test_smoke_fails_when_each_store_step_fails
+    self.assertNotEqual(result.returncode, 0, f"smoke passed although {case}:\n{output}")
+AssertionError: 0 == 0 : smoke passed although stop postgres fails:
+smoke: compose resolves with no .env; 2 ports, all on 127.0.0.1
+smoke: ke-verify-test_backend is internal with gateway_mode_ipv4=isolated
+smoke: gateway healthy
+smoke: api healthy
+smoke: worker healthy
+smoke: postgres healthy
+smoke: neo4j healthy
+smoke: valkey healthy
+smoke: phoenix healthy
+smoke: gateway proxies api /healthz
+smoke: gateway proxies phoenix /healthz
+smoke: PASS
+
+
+======================================================================
+FAIL: test_smoke_fails_when_each_store_step_fails (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_fails_when_each_store_step_fails) (case='not-ready never seen')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 1436, in test_smoke_fails_when_each_store_step_fails
+    self.assertNotEqual(result.returncode, 0, f"smoke passed although {case}:\n{output}")
+AssertionError: 0 == 0 : smoke passed although not-ready never seen:
+smoke: compose resolves with no .env; 2 ports, all on 127.0.0.1
+smoke: ke-verify-test_backend is internal with gateway_mode_ipv4=isolated
+smoke: gateway healthy
+smoke: api healthy
+smoke: worker healthy
+smoke: postgres healthy
+smoke: neo4j healthy
+smoke: valkey healthy
+smoke: phoenix healthy
+smoke: gateway proxies api /healthz
+smoke: gateway proxies phoenix /healthz
+smoke: PASS
+
+
+======================================================================
+FAIL: test_smoke_fails_when_each_store_step_fails (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_fails_when_each_store_step_fails) (case='postgres restart fails')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 1436, in test_smoke_fails_when_each_store_step_fails
+    self.assertNotEqual(result.returncode, 0, f"smoke passed although {case}:\n{output}")
+AssertionError: 0 == 0 : smoke passed although postgres restart fails:
+smoke: compose resolves with no .env; 2 ports, all on 127.0.0.1
+smoke: ke-verify-test_backend is internal with gateway_mode_ipv4=isolated
+smoke: gateway healthy
+smoke: api healthy
+smoke: worker healthy
+smoke: postgres healthy
+smoke: neo4j healthy
+smoke: valkey healthy
+smoke: phoenix healthy
+smoke: gateway proxies api /healthz
+smoke: gateway proxies phoenix /healthz
+smoke: PASS
+
+
+======================================================================
+FAIL: test_smoke_fails_when_each_store_step_fails (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_fails_when_each_store_step_fails) (case='launch fails')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 1436, in test_smoke_fails_when_each_store_step_fails
+    self.assertNotEqual(result.returncode, 0, f"smoke passed although {case}:\n{output}")
+AssertionError: 0 == 0 : smoke passed although launch fails:
+smoke: compose resolves with no .env; 2 ports, all on 127.0.0.1
+smoke: ke-verify-test_backend is internal with gateway_mode_ipv4=isolated
+smoke: gateway healthy
+smoke: api healthy
+smoke: worker healthy
+smoke: postgres healthy
+smoke: neo4j healthy
+smoke: valkey healthy
+smoke: phoenix healthy
+smoke: gateway proxies api /healthz
+smoke: gateway proxies phoenix /healthz
+smoke: PASS
+
+
+======================================================================
+FAIL: test_smoke_flag_without_a_running_project_fails_loudly (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_flag_without_a_running_project_fails_loudly)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 1479, in test_smoke_flag_without_a_running_project_fails_loudly
+    self.assertNotEqual(result.returncode, 0, f"smoke passed with the flag and no project:\n{output}")
+AssertionError: 0 == 0 : smoke passed with the flag and no project:
+smoke: compose resolves with no .env; 2 ports, all on 127.0.0.1
+smoke: ke-verify-test_backend is internal with gateway_mode_ipv4=isolated
+smoke: gateway healthy
+smoke: api healthy
+smoke: worker healthy
+smoke: postgres healthy
+smoke: neo4j healthy
+smoke: valkey healthy
+smoke: phoenix healthy
+smoke: gateway proxies api /healthz
+smoke: gateway proxies phoenix /healthz
+smoke: PASS
+
+
+======================================================================
+FAIL: test_smoke_leaves_a_project_it_did_not_launch (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_leaves_a_project_it_did_not_launch)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 1452, in test_smoke_leaves_a_project_it_did_not_launch
+    self.assertIn("ready", steps, "smoke still checks /readyz on a running project (PS-2.8)")
+AssertionError: 'ready' not found in [] : smoke still checks /readyz on a running project (PS-2.8)
+
+======================================================================
+FAIL: test_smoke_owned_by_verify_stops_and_restarts_without_teardown (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_owned_by_verify_stops_and_restarts_without_teardown)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 1470, in test_smoke_owned_by_verify_stops_and_restarts_without_teardown
+    self.assertEqual(steps, ["ready", "stop postgres", "not-ready:postgres", "up postgres", "ready"],
+AssertionError: Lists differ: [] != ['ready', 'stop postgres', 'not-ready:postgres', 'up postgres', 'ready']
+
+Second list contains 5 additional elements.
+First extra element 0:
+'ready'
+
+- []
++ ['ready', 'stop postgres', 'not-ready:postgres', 'up postgres', 'ready'] : with the flag, smoke runs the stop/restart and no teardown
+
+======================================================================
+FAIL: test_smoke_stops_and_restarts_a_store (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_stops_and_restarts_a_store)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 1394, in test_smoke_stops_and_restarts_a_store
+    self.assertEqual(_smoke_steps(records), self.LAUNCHED_ORDER,
+AssertionError: Lists differ: [] != ['launch', 'ready', 'stop postgres', 'not-[47 chars]own']
+
+Second list contains 7 additional elements.
+First extra element 0:
+'launch'
+
+- []
++ ['launch',
++  'ready',
++  'stop postgres',
++  'not-ready:postgres',
++  'up postgres',
++  'ready',
++  'teardown'] : smoke must launch, wait ready, stop postgres, wait not-ready:postgres, start postgres with --wait, wait ready, then tear down
+
+======================================================================
+FAIL: test_teardown_fails_when_a_listing_fails (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_fails_when_a_listing_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 582, in test_teardown_fails_when_a_listing_fails
+    test.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : teardown passed although it could not list leftovers
+
+======================================================================
+FAIL: test_teardown_fails_without_a_resolved_project (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_fails_without_a_resolved_project)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 589, in test_teardown_fails_without_a_resolved_project
+    test.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : teardown passed although compose config (the project name) failed
+
+======================================================================
+FAIL: test_teardown_lists_with_the_project_compose_resolves (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_lists_with_the_project_compose_resolves) (project='ke-verify-123')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 574, in test_teardown_lists_with_the_project_compose_resolves
+    test.assertEqual(kinds, {"containers": True, "networks": True},
+AssertionError: {'containers': False, 'networks': False} != {'containers': True, 'networks': True}
+- {'containers': False, 'networks': False}
+?                ^^^^               ^^^^
+
++ {'containers': True, 'networks': True}
+?                ^^^               ^^^
+ : teardown must list containers and networks: []
+
+======================================================================
+FAIL: test_teardown_lists_with_the_project_compose_resolves (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_lists_with_the_project_compose_resolves) (project='default project')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 574, in test_teardown_lists_with_the_project_compose_resolves
+    test.assertEqual(kinds, {"containers": True, "networks": True},
+AssertionError: {'containers': False, 'networks': False} != {'containers': True, 'networks': True}
+- {'containers': False, 'networks': False}
+?                ^^^^               ^^^^
+
++ {'containers': True, 'networks': True}
+?                ^^^               ^^^
+ : teardown must list containers and networks: []
+
+======================================================================
+FAIL: test_teardown_removes_or_reports_project_leftovers (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_removes_or_reports_project_leftovers) (case='leftover container')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 530, in test_teardown_removes_or_reports_project_leftovers
+    test.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : teardown exited 0 with a leftover (leftover container):
+
+
+======================================================================
+FAIL: test_teardown_removes_or_reports_project_leftovers (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_removes_or_reports_project_leftovers) (case='leftover network')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 530, in test_teardown_removes_or_reports_project_leftovers
+    test.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : teardown exited 0 with a leftover (leftover network):
+
+
+======================================================================
+FAIL: test_teardown_removes_or_reports_project_leftovers (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_removes_or_reports_project_leftovers) (case='leftover volume, volumes asked')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 530, in test_teardown_removes_or_reports_project_leftovers
+    test.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : teardown exited 0 with a leftover (leftover volume, volumes asked):
+
+
+======================================================================
+FAIL: test_teardown_with_nothing_left_passes (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_with_nothing_left_passes) (args='(none)')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 555, in test_teardown_with_nothing_left_passes
+    test.assertTrue(listings, "teardown never listed what is left of its project")
+AssertionError: [] is not true : teardown never listed what is left of its project
+
+======================================================================
+FAIL: test_teardown_with_nothing_left_passes (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_with_nothing_left_passes) (args='-Volumes')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 555, in test_teardown_with_nothing_left_passes
+    test.assertTrue(listings, "teardown never listed what is left of its project")
+AssertionError: [] is not true : teardown never listed what is left of its project
+
+======================================================================
+FAIL: test_teardown_fails_when_a_listing_fails (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_fails_when_a_listing_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 582, in test_teardown_fails_when_a_listing_fails
+    test.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : teardown passed although it could not list leftovers
+
+======================================================================
+FAIL: test_teardown_fails_without_a_resolved_project (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_fails_without_a_resolved_project)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 589, in test_teardown_fails_without_a_resolved_project
+    test.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : teardown passed although compose config (the project name) failed
+
+======================================================================
+FAIL: test_teardown_lists_with_the_project_compose_resolves (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_lists_with_the_project_compose_resolves) (project='ke-verify-123')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 574, in test_teardown_lists_with_the_project_compose_resolves
+    test.assertEqual(kinds, {"containers": True, "networks": True},
+AssertionError: {'containers': False, 'networks': False} != {'containers': True, 'networks': True}
+- {'containers': False, 'networks': False}
+?                ^^^^               ^^^^
+
++ {'containers': True, 'networks': True}
+?                ^^^               ^^^
+ : teardown must list containers and networks: []
+
+======================================================================
+FAIL: test_teardown_lists_with_the_project_compose_resolves (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_lists_with_the_project_compose_resolves) (project='default project')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 574, in test_teardown_lists_with_the_project_compose_resolves
+    test.assertEqual(kinds, {"containers": True, "networks": True},
+AssertionError: {'containers': False, 'networks': False} != {'containers': True, 'networks': True}
+- {'containers': False, 'networks': False}
+?                ^^^^               ^^^^
+
++ {'containers': True, 'networks': True}
+?                ^^^               ^^^
+ : teardown must list containers and networks: []
+
+======================================================================
+FAIL: test_teardown_removes_or_reports_project_leftovers (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_removes_or_reports_project_leftovers) (case='leftover container')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 530, in test_teardown_removes_or_reports_project_leftovers
+    test.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : teardown exited 0 with a leftover (leftover container):
+
+
+======================================================================
+FAIL: test_teardown_removes_or_reports_project_leftovers (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_removes_or_reports_project_leftovers) (case='leftover network')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 530, in test_teardown_removes_or_reports_project_leftovers
+    test.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : teardown exited 0 with a leftover (leftover network):
+
+
+======================================================================
+FAIL: test_teardown_removes_or_reports_project_leftovers (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_removes_or_reports_project_leftovers) (case='leftover volume, volumes asked')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 530, in test_teardown_removes_or_reports_project_leftovers
+    test.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : teardown exited 0 with a leftover (leftover volume, volumes asked):
+
+
+======================================================================
+FAIL: test_teardown_with_nothing_left_passes (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_with_nothing_left_passes) (args='(none)')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 555, in test_teardown_with_nothing_left_passes
+    test.assertTrue(listings, "teardown never listed what is left of its project")
+AssertionError: [] is not true : teardown never listed what is left of its project
+
+======================================================================
+FAIL: test_teardown_with_nothing_left_passes (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_with_nothing_left_passes) (args='--volumes')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 555, in test_teardown_with_nothing_left_passes
+    test.assertTrue(listings, "teardown never listed what is left of its project")
+AssertionError: [] is not true : teardown never listed what is left of its project
+
+======================================================================
+FAIL: test_verify_full_marks_its_own_project_for_smoke (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_marks_its_own_project_for_smoke)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 838, in test_verify_full_marks_its_own_project_for_smoke
+    self.assertTrue(smoke[0].endswith("| owns=1"),
+AssertionError: False is not true : smoke did not get KE_SMOKE_OWNS_PROJECT=1: smoke  | project=ke-verify-1003114200 | file=docker-compose.yml:docker-compose.verify.yml | owns=<unset>
+
+======================================================================
+FAIL: test_compose_worker_waits_for_valkey (tests.test_stack_worker.WorkerComposeTest.test_compose_worker_waits_for_valkey)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_worker.py", line 102, in test_compose_worker_waits_for_valkey
+    self.assertEqual((depends.get("valkey") or {}).get("condition"), "service_healthy",
+AssertionError: None != 'service_healthy' : the worker must wait for a healthy valkey
+
+----------------------------------------------------------------------
+Ran 393 tests in 71.159s
+
+FAILED (failures=79, errors=34)
+verify fast: FAIL (test.sh exited non-zero)
+
+exit=1

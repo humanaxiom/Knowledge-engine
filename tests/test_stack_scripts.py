@@ -234,8 +234,12 @@ class _LaunchResolvedBase:
 
     # -- Rework 2: R1-B2 + security L-6, the Docker Engine >= 28 check --------
 
-    ENGINE_ACCEPTED = {"28.0.0": "28.0.0", "29.5.2": "29.5.2"}
+    # platform-stack-ready (PS-2.24, review R2-N3, mutants L3-anchor and
+    # L6-anchor): a suffixed build is refused (the version regex is anchored
+    # at the end) and the major is compared as an integer (100 >= 28).
+    ENGINE_ACCEPTED = {"28.0.0": "28.0.0", "29.5.2": "29.5.2", "100.0.0": "100.0.0"}
     ENGINE_REFUSED = {
+        "28.0.1-rc.1 (suffixed build, R2-N3)": ("28.0.1-rc.1", None),
         "27.1.1": ("27.1.1", None),
         "27.99.99": ("27.99.99", None),
         "empty": ("", None),
@@ -390,6 +394,47 @@ class _TeardownScopeBase:
         test.assertNotRegex(body, r"--profile|COMPOSE_PROFILES",
                             f"{script.name} activates profiles (F3)")
 
+    # -- platform-stack-ready, PS-2.24 ---------------------------------------
+
+    def test_teardown_does_not_remove_orphans(self):  # R2-N1, mutants T3/T4
+        # §2.4 Teardown scope: no --remove-orphans (F3: only the project's
+        # default-profile services).
+        test: Any = self
+        for args in ((), (self.volumes_flag,)):
+            with test.subTest(args=" ".join(args) or "(none)"):
+                result, records = self._teardown(*args)
+                test.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                downs = [r for r in records if r["argv"][:1] == ["compose"] and "down" in r["argv"]]
+                test.assertTrue(downs, "teardown did not call compose down")
+                for record in records:
+                    test.assertNotIn("--remove-orphans", record["argv"],
+                                     f"teardown passes --remove-orphans (F3): {record['argv']}")
+
+    def test_teardown_carries_project_and_env_file(self):  # R2-N2, mutants T5/T8
+        test: Any = self
+        shutil.copy(self.tmp / ".env.example", self.tmp / "custom.env")
+        self.json.write_text("", encoding="utf-8")
+        env = _clean_env(PATH=f"{self.tmp / 'fakebin'}{os.pathsep}{os.environ.get('PATH', '')}",
+                         FAKE_DOCKER_JSON=str(self.json), KE_ENV_FILE="custom.env",
+                         COMPOSE_PROJECT_NAME="ke-verify-123")
+        result = subprocess.run(self.command, cwd=self.tmp, env=env,
+                                capture_output=True, text=True, timeout=120)
+        records = fake_docker.records(self.json)
+        test.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        downs = [r for r in records if r["argv"][:1] == ["compose"] and "down" in r["argv"]]
+        test.assertTrue(downs, "teardown did not call compose down")
+        for record in downs:
+            argv = record["argv"]
+            pairs = list(zip(argv, argv[1:]))
+            test.assertTrue(("--env-file", "custom.env") in pairs
+                            or "--env-file=custom.env" in argv,
+                            f"down does not carry KE_ENV_FILE as --env-file: {argv}")
+            project = record["env"].get("COMPOSE_PROJECT_NAME")
+            test.assertTrue(project == "ke-verify-123"
+                            or ("-p", "ke-verify-123") in pairs
+                            or ("--project-name", "ke-verify-123") in pairs,
+                            f"down does not carry the project ke-verify-123: {argv}, env={project!r}")
+
 
 class TeardownShScopeTest(_TeardownScopeBase, unittest.TestCase):
     command = ["bash", "scripts/teardown.sh"]
@@ -407,12 +452,185 @@ class TeardownPs1ScopeTest(_TeardownScopeBase, unittest.TestCase):
 
 
 # --------------------------------------------------------------------------
+# platform-stack-ready, PS-2.22 (security L-9, within ruling F3): teardown
+# detects what is left of its project after `down`, reports it, exits
+# non-zero, and never removes it (architecture §2.4 "Teardown leftovers").
+# --------------------------------------------------------------------------
+
+PROJECT_LABEL = "com.docker.compose.project"
+
+# Calls that would remove or stop something. `compose down` is teardown's
+# own job and is allowed; anything else on this list is not (F3).
+def _destructive(argv: list[str]) -> bool:
+    if argv[:1] == ["STUB"]:
+        return False
+    if argv[:1] == ["compose"]:
+        return any(a in {"rm", "stop", "kill"} for a in argv)
+    verbs = {"rm", "rmi", "kill", "stop", "prune", "remove"}
+    if argv[:1] and argv[0] in verbs:
+        return True
+    return len(argv) >= 2 and argv[0] in {"container", "network", "volume", "system"} \
+        and argv[1] in verbs
+
+
+class _TeardownLeftoversBase:
+    """Subclasses set `command` and `volumes_flag` (sh and ps1)."""
+
+    command: list[str]
+    volumes_flag: str
+    PROJECT = "ke-verify-123"
+
+    setUp = _TeardownScopeBase.setUp
+
+    def _teardown(self, *args: str, project: str | None = PROJECT,
+                  **extra: str) -> tuple[subprocess.CompletedProcess, list[dict]]:
+        self.json.write_text("", encoding="utf-8")
+        env = _clean_env(PATH=f"{self.tmp / 'fakebin'}{os.pathsep}{os.environ.get('PATH', '')}",
+                         FAKE_DOCKER_JSON=str(self.json), **extra)
+        if project is not None:
+            env["COMPOSE_PROJECT_NAME"] = project
+        result = subprocess.run([*self.command, *args], cwd=self.tmp, env=env,
+                                capture_output=True, text=True, timeout=120)
+        return result, fake_docker.records(self.json)
+
+    @staticmethod
+    def _leftovers(project: str, **kinds: list[str]) -> str:
+        return json.dumps({project: kinds})
+
+    @staticmethod
+    def _listings(records: list[dict]) -> list[list[str]]:
+        return [r["argv"] for r in records
+                if any(a.startswith(f"label={PROJECT_LABEL}=") for a in r["argv"])]
+
+    def _assert_nothing_removed(self, records: list[dict]) -> None:
+        test: Any = self
+        for record in records:
+            argv = record["argv"]
+            test.assertFalse(_destructive(argv),
+                             f"teardown removed or stopped something itself (F3): {argv}")
+            test.assertFalse(any(a == "--profile" or a.startswith("--profile=") for a in argv),
+                             f"teardown activates a profile (F3): {argv}")
+
+    def test_teardown_removes_or_reports_project_leftovers(self):
+        test: Any = self
+        cases = {
+            "leftover container": ((), {"containers": [f"{self.PROJECT}-gates-it-run-1a2b3c"]},
+                                   f"{self.PROJECT}-gates-it-run-1a2b3c"),
+            "leftover network": ((), {"networks": [f"{self.PROJECT}_backend"]},
+                                 f"{self.PROJECT}_backend"),
+            "leftover volume, volumes asked": ((self.volumes_flag,),
+                                               {"volumes": [f"{self.PROJECT}_postgres-data"]},
+                                               f"{self.PROJECT}_postgres-data"),
+        }
+        for case, (args, kinds, name) in cases.items():
+            with test.subTest(case=case):
+                result, records = self._teardown(
+                    *args, FAKE_DOCKER_LEFTOVERS=self._leftovers(self.PROJECT, **kinds))
+                output = result.stdout + result.stderr
+                test.assertNotEqual(result.returncode, 0,
+                                    f"teardown exited 0 with a leftover ({case}):\n{output}")
+                test.assertIn(self.PROJECT, output, "the report must name the project")
+                test.assertIn(name, output, "the report must name the leftover")
+                downs = [r for r in records if r["argv"][:1] == ["compose"] and "down" in r["argv"]]
+                test.assertTrue(downs, "teardown did not call compose down")
+                self._assert_nothing_removed(records)
+
+    def test_teardown_kept_volume_is_not_a_leftover_without_volumes(self):
+        test: Any = self
+        result, records = self._teardown(
+            FAKE_DOCKER_LEFTOVERS=self._leftovers(self.PROJECT,
+                                                  volumes=[f"{self.PROJECT}_postgres-data"]))
+        test.assertEqual(result.returncode, 0,
+                         "kept volumes are the point of a teardown without "
+                         f"{self.volumes_flag}:\n{result.stdout}{result.stderr}")
+        self._assert_nothing_removed(records)
+
+    def test_teardown_with_nothing_left_passes(self):
+        test: Any = self
+        for args in ((), (self.volumes_flag,)):
+            with test.subTest(args=" ".join(args) or "(none)"):
+                result, records = self._teardown(*args)
+                test.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                listings = self._listings(records)
+                test.assertTrue(listings, "teardown never listed what is left of its project")
+                self._assert_nothing_removed(records)
+
+    def test_teardown_lists_with_the_project_compose_resolves(self):
+        test: Any = self
+        cases = {"ke-verify-123": "ke-verify-123", "default project": None}
+        for case, project in cases.items():
+            with test.subTest(project=case):
+                result, records = self._teardown(project=project)
+                test.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                expected = f"label={PROJECT_LABEL}={project or 'knowledge-engine'}"
+                listings = self._listings(records)
+                kinds = {"containers": False, "networks": False}
+                for argv in listings:
+                    test.assertIn(expected, argv, f"a listing filters on another project: {argv}")
+                    if argv[:1] == ["ps"] or argv[:1] == ["container"]:
+                        kinds["containers"] = True
+                    if argv[:1] == ["network"]:
+                        kinds["networks"] = True
+                test.assertEqual(kinds, {"containers": True, "networks": True},
+                                 f"teardown must list containers and networks: {listings}")
+                configs = [r for r in records if r["argv"][:1] == ["compose"] and "config" in r["argv"]]
+                test.assertTrue(configs, "teardown must resolve the project with compose config")
+
+    def test_teardown_fails_when_a_listing_fails(self):
+        test: Any = self
+        result, records = self._teardown(FAKE_DOCKER_FAIL=f"label={PROJECT_LABEL}=")
+        test.assertNotEqual(result.returncode, 0,
+                            "teardown passed although it could not list leftovers")
+        self._assert_nothing_removed(records)
+
+    def test_teardown_fails_without_a_resolved_project(self):
+        test: Any = self
+        result, records = self._teardown(FAKE_DOCKER_FAIL="config")
+        test.assertNotEqual(result.returncode, 0,
+                            "teardown passed although compose config (the project name) failed")
+        downs = [r for r in records if r["argv"][:1] == ["compose"] and "down" in r["argv"]]
+        test.assertEqual(downs, [], "down ran without a resolved project name")
+
+    def test_teardown_leaves_other_projects_alone(self):
+        test: Any = self
+        other = "ke-verify-999"
+        result, records = self._teardown(
+            self.volumes_flag,
+            FAKE_DOCKER_LEFTOVERS=self._leftovers(
+                other, containers=[f"{other}-gates-1"], networks=[f"{other}_backend"],
+                volumes=[f"{other}_postgres-data"]))
+        output = result.stdout + result.stderr
+        test.assertEqual(result.returncode, 0,
+                         f"another project's resources failed this teardown:\n{output}")
+        test.assertNotIn(other, output)
+        for record in records:
+            test.assertNotIn(other, " ".join(record["argv"]),
+                             f"teardown touched another project: {record['argv']}")
+        self._assert_nothing_removed(records)
+
+
+class TeardownShLeftoversTest(_TeardownLeftoversBase, unittest.TestCase):
+    command = ["bash", "scripts/teardown.sh"]
+    volumes_flag = "--volumes"
+
+
+class TeardownPs1LeftoversTest(_TeardownLeftoversBase, unittest.TestCase):
+    command = ["pwsh", "-NoProfile", "-NonInteractive", "-File", "scripts/teardown.ps1"]
+    volumes_flag = "-Volumes"
+
+    def setUp(self) -> None:
+        if shutil.which("pwsh") is None:
+            self.fail(PWSH_MISSING)
+        _TeardownScopeBase.setUp(self)  # type: ignore[arg-type]
+
+
+# --------------------------------------------------------------------------
 # B6 + N7: the verify.sh host half
 # --------------------------------------------------------------------------
 
 STAGE_STUB = """#!/usr/bin/env bash
 name="{name}"
-echo "$name $* | project=${{COMPOSE_PROJECT_NAME:-}} | file=${{COMPOSE_FILE:-}}" >> "$STAGE_LOG"
+echo "$name $* | project=${{COMPOSE_PROJECT_NAME:-}} | file=${{COMPOSE_FILE:-}} | owns=${{KE_SMOKE_OWNS_PROJECT-<unset>}}" >> "$STAGE_LOG"
 case "|${{HANG_STAGE:-}}|" in *"|$name|"*) exec sleep 60 ;; esac
 case "|${{FAIL_STAGE:-}}|" in *"|$name|"*) echo "stub $name: failing" >&2; exit 7 ;; esac
 exit 0
@@ -444,6 +662,16 @@ class VerifyHostHalfTest(unittest.TestCase):
             stub = self.tmp / "scripts" / f"{name}.sh"
             stub.write_text(STAGE_STUB.format(name=name), encoding="utf-8", newline="\n")
             _make_executable(stub)
+        # platform-stack-ready, ruling W1 (docs/handoffs/platform-stack-ready.md
+        # "orchestrator: rulings on architect plan"): verify.sh full calls
+        # scripts/env_value.sh for the two model keys (PS-2.21, §2.2). This
+        # fixture-only stub prints the caller's value, logs nothing to
+        # STAGE_LOG, and leaves every assertion below unchanged. The real
+        # helper is tested in tests/test_stack_model_keys.py.
+        env_value = self.tmp / "scripts" / "env_value.sh"
+        env_value.write_text('#!/usr/bin/env bash\nprintf \'%s\' "${!1-}"\n',
+                             encoding="utf-8", newline="\n")
+        _make_executable(env_value)
         (self.tmp / "bin").mkdir()
         docker = self.tmp / "bin" / "docker"
         docker.write_text(DOCKER_STUB, encoding="utf-8", newline="\n")
@@ -598,6 +826,23 @@ class VerifyHostHalfTest(unittest.TestCase):
                 self.assertIsInstance(ports, Reset, f"{name}: ports are not `!reset` in the overlay")
                 self.assertEqual(ports.value, [])
 
+    def test_verify_full_marks_its_own_project_for_smoke(self):
+        # Orchestrator ruling "Q37 vs CI": the host half exports
+        # KE_SMOKE_OWNS_PROJECT=1 for its own random project before smoke, so
+        # smoke runs the postgres stop/restart and leaves teardown to verify.
+        result, lines = self._verify()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        smoke = [l for l in lines if self._stage(l) == "smoke"]
+        self.assertEqual(len(smoke), 1)
+        self.assertRegex(smoke[0], r"\| project=ke-verify-[a-z0-9]+ \|")
+        self.assertTrue(smoke[0].endswith("| owns=1"),
+                        f"smoke did not get KE_SMOKE_OWNS_PROJECT=1: {smoke[0]}")
+
+    def test_verify_fast_does_not_set_the_smoke_flag(self):
+        result, lines = self._verify("fast")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse([l for l in lines if "owns=1" in l], lines)
+
     def test_teardown_failure_after_green_run_is_reported(self):  # N7
         result, lines = self._verify(FAIL_STAGE="teardown")
         output = result.stdout + result.stderr
@@ -622,6 +867,9 @@ LINT = ROOT / "scripts" / "lint.sh"
 
 RECORDER = """#!/usr/bin/env bash
 printf '%s\\n' "{name} $*" >> "$LINT_LOG"
+# PS-2.23 (N-1, N-5): the .ps1 paths reach the analyzer only through
+# KE_LINT_PS1_FILES (security L-7), so the recorder keeps that list too.
+if [ "{name}" = pwsh ]; then printf '%s' "${{KE_LINT_PS1_FILES-}}" >> "$LINT_LOG.ps1files"; fi
 case "|${{LINT_FAIL:-}}|" in *"|{name}|"*) exit 1 ;; esac
 exit 0
 """
@@ -648,9 +896,10 @@ class LintScriptTest(unittest.TestCase):
         self.addCleanup(shutil.rmtree, tmp, True)
         _copy_repo_files(tmp, ["scripts/lint.sh", *_repo_shell_files(), *_repo_ps1_files()])
         # Some implementations list files with git; give them a repository.
+        # autocrlf off (review R2-N9 = rework-1 N-8): no LF/CRLF warning flood.
         if shutil.which("git"):
             subprocess.run(["git", "init", "-q"], cwd=tmp, check=True)
-            subprocess.run(["git", "add", "-A"], cwd=tmp, check=True)
+            subprocess.run(["git", "-c", "core.autocrlf=false", "add", "-A"], cwd=tmp, check=True)
         return tmp
 
     def _run(self, project: Path, path: str, **extra: str) -> subprocess.CompletedProcess:
@@ -671,6 +920,11 @@ class LintScriptTest(unittest.TestCase):
 
     def test_lint_covers_every_shell_and_powershell_script(self):
         project, path, log = self._with_recorders()
+        # PS-2.23 (rework-1 N-1, N-5): a .ps1 in a subdirectory is covered too,
+        # and every .ps1 reaches the analyzer by its own path.
+        nested = "scripts/sub/nested.ps1"
+        (project / nested).parent.mkdir(parents=True, exist_ok=True)
+        (project / nested).write_text("Write-Output 'ok'\n", encoding="utf-8", newline="\n")
         result = self._run(project, path, LINT_LOG=str(log))
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
@@ -688,6 +942,15 @@ class LintScriptTest(unittest.TestCase):
                 name = rel.rsplit("/", 1)[-1]
                 self.assertTrue(name in joined or re.search(r"\bscripts\b", joined),
                                 f"PSScriptAnalyzer never saw {rel}")
+        listed_file = Path(f"{log}.ps1files")
+        listed = {l.removeprefix("./") for l in
+                  (listed_file.read_text(encoding="utf-8").splitlines() if listed_file.exists() else [])
+                  if l}
+        for rel in [*_repo_ps1_files(), nested]:
+            with self.subTest(ps1_path=rel):
+                self.assertIn(rel, listed,
+                              f"{rel} is not passed to PSScriptAnalyzer by its own path "
+                              f"(KE_LINT_PS1_FILES held {sorted(listed)})")
 
     def test_lint_fails_when_either_tool_fails(self):
         for tool in ("shellcheck", "pwsh"):
@@ -732,7 +995,8 @@ class LintScriptTest(unittest.TestCase):
                 project = self._project()
                 (project / rel).write_text(body, encoding="utf-8", newline="\n")
                 if (project / ".git").exists():
-                    subprocess.run(["git", "add", "-A"], cwd=project, check=True)
+                    subprocess.run(["git", "-c", "core.autocrlf=false", "add", "-A"],
+                                   cwd=project, check=True)
                 result = self._run(project, path)
                 self.assertNotEqual(result.returncode, 0, f"lint.sh passed with a finding in {rel}")
 
@@ -747,11 +1011,20 @@ class LintScriptTest(unittest.TestCase):
         if shutil.which("pwsh") is None:
             self.fail(PWSH_MISSING)
         real_pwsh = shutil.which("pwsh")
-        for label, quote in self.QUOTES.items():
-            with self.subTest(quote=label):
+        # PS-2.23 (review R2-N6, mutant LN-L7): the "closing" payload only
+        # parses when the path is embedded in a list; the "comment" payload
+        # ends in a `#` comment, so it parses in any context, including a
+        # per-file `-Path '<name>'` shape.
+        shapes = {
+            "closing": lambda q, m: f"x{q}; Set-Content -Path {m} -Value pwned; {q}.ps1",
+            "comment": lambda q, m: f"x{q}; Set-Content -Path {m} -Value pwned #.ps1",
+        }
+        for (label, quote), (shape, build) in [(q, s) for q in self.QUOTES.items()
+                                               for s in shapes.items()]:
+            with self.subTest(quote=label, shape=shape):
                 project = self._project()
-                marker = f"l7-marker-{label[2:]}"
-                name = f"x{quote}; Set-Content -Path {marker} -Value pwned; {quote}.ps1"
+                marker = f"l7-marker-{label[2:]}-{shape}"
+                name = build(quote, marker)
                 (project / "scripts" / name).write_text("Write-Output 'ok'\n",
                                                         encoding="utf-8", newline="\n")
                 if (project / ".git").exists():
@@ -774,6 +1047,236 @@ class LintScriptTest(unittest.TestCase):
                 ran = log.exists() and "pwsh" in log.read_text(encoding="utf-8")
                 self.assertTrue(ran or result.returncode != 0,
                                 "lint.sh neither analysed the file nor refused it")
+
+    def test_lint_powershell_command_text_is_fixed(self):  # R2-N6, static half
+        # The -Command text is one quoted-heredoc constant: no shell expansion
+        # can put a path (or anything else) into PowerShell source.
+        text = LINT.read_text(encoding="utf-8")
+        calls = [l for l in text.splitlines()
+                 if re.match(r"^\s*pwsh\b", l) and not l.lstrip().startswith("#")]
+        self.assertEqual(len(calls), 1, f"expected one pwsh call in lint.sh: {calls}")
+        match = re.search(r"-Command\s+\"\$(\w+)\"", calls[0])
+        self.assertIsNotNone(match, f"pwsh -Command must take one variable: {calls[0]}")
+        var = match.group(1)  # type: ignore[union-attr]
+        assignments = re.findall(rf"(?m)^\s*{var}=(.*)$", text)
+        self.assertEqual(len(assignments), 1, f"{var} must be assigned exactly once")
+        self.assertRegex(assignments[0], r"^\"\$\(cat <<'(\w+)'$",
+                         f"{var} must come from a quoted heredoc (no expansion)")
+
+    # -- PS-2.23, security L-10: wildcard characters in a .ps1 name ----------
+
+    def test_lint_ps1_wildcard_name_cannot_escape(self):
+        # Invoke-ScriptAnalyzer -Path treats its value as a wildcard pattern
+        # and has no -LiteralPath, so `x[1].ps1` would be silently skipped and
+        # `*`/`?` could match other files. lint.sh refuses such a path before
+        # pwsh runs (architecture §2.2 Lint, L-10); the stub pwsh proves it
+        # was never called.
+        for name in ("b[1].ps1", "x]y.ps1", "x*.ps1", "x?.ps1"):
+            with self.subTest(name=name):
+                project, path, log = self._with_recorders()
+                (project / "scripts" / name).write_text(
+                    "Invoke-Expression $args[0]\n", encoding="utf-8", newline="\n")
+                if (project / ".git").exists():
+                    subprocess.run(["git", "-c", "core.autocrlf=false", "add", "-A"],
+                                   cwd=project, check=True)
+                result = self._run(project, path, LINT_LOG=str(log))
+                output = result.stdout + result.stderr
+                self.assertNotEqual(result.returncode, 0,
+                                    f"lint.sh passed with a wildcard .ps1 name {name!r}:\n{output}")
+                calls = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
+                self.assertFalse([c for c in calls if c.startswith("pwsh")],
+                                 "pwsh ran although a .ps1 path holds a wildcard character")
+                self.assertRegex(output, r"(?i)wildcard|\[|refus",
+                                 "the refusal must name the rule")
+
+    def test_lint_ps1_lone_open_bracket_is_refused_before_pwsh(self):  # review N4 (LN1)
+        # Every name above also holds `]`; this pins the `[` alternative alone.
+        project, path, log = self._with_recorders()
+        (project / "scripts" / "a[1.ps1").write_text("Invoke-Expression $args[0]\n",
+                                                      encoding="utf-8", newline="\n")
+        if (project / ".git").exists():
+            subprocess.run(["git", "-c", "core.autocrlf=false", "add", "-A"], cwd=project, check=True)
+        result = self._run(project, path, LINT_LOG=str(log))
+        output = result.stdout + result.stderr
+        self.assertNotEqual(result.returncode, 0, f"lint.sh passed with a lone '[' in a .ps1 name:\n{output}")
+        calls = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
+        self.assertFalse([c for c in calls if c.startswith("pwsh")],
+                         "pwsh ran although a .ps1 path holds '['")
+        self.assertRegex(output, r"(?i)wildcard|\[|refus", "the refusal must name the rule")
+
+    # Rework 1, security L-12: PowerShell files the lint used to skip. Windows
+    # runs `x.PS1`, modules (`.psm1`) are PowerShell too, and `find -type f`
+    # skipped a symlinked script. Each plant holds a Warning-severity finding
+    # (PSAvoidUsingInvokeExpression, or SC2086 for the shell case); lint must
+    # fail, by analysing the file or by refusing it.
+    def _real_lint_with(self, plants: dict[str, str], links: dict[str, str]) -> subprocess.CompletedProcess:
+        project = self._project()
+        for rel, body in plants.items():
+            (project / rel).parent.mkdir(parents=True, exist_ok=True)
+            (project / rel).write_text(body, encoding="utf-8", newline="\n")
+        for link, target in links.items():
+            (project / link).parent.mkdir(parents=True, exist_ok=True)
+            os.symlink(target, project / link)
+        if (project / ".git").exists():
+            subprocess.run(["git", "-c", "core.autocrlf=false", "add", "-A"], cwd=project, check=True)
+        return self._run(project, os.environ.get("PATH", ""))
+
+    def test_lint_covers_upper_case_ps1_and_psm1(self):  # L-12
+        if shutil.which("pwsh") is None:
+            self.fail(PWSH_MISSING)
+        if shutil.which("shellcheck") is None:
+            self.fail(SHELLCHECK_MISSING)
+        for rel in ("scripts/x.PS1", "scripts/m.psm1", "scripts/sub/Mixed.Ps1", "scripts/M.PSM1"):
+            with self.subTest(planted=rel):
+                result = self._real_lint_with({rel: "Invoke-Expression $args[0]\n"}, {})
+                output = result.stdout + result.stderr
+                self.assertNotEqual(result.returncode, 0, f"lint.sh passed with a finding in {rel}:\n{output}")
+                self.assertIn(rel.rsplit("/", 1)[-1], output, "the failure must name the file")
+
+    def test_lint_fails_on_a_symlinked_script(self):  # L-12
+        if shutil.which("pwsh") is None:
+            self.fail(PWSH_MISSING)
+        if shutil.which("shellcheck") is None:
+            self.fail(SHELLCHECK_MISSING)
+        cases = {
+            "ps1 link to a file outside scripts/": (
+                {"outside/evil.txt": "Invoke-Expression $args[0]\n"},
+                {"scripts/l.ps1": "../outside/evil.txt"}),
+            "ps1 link inside scripts/": (
+                {"scripts/real/target.ps1.txt": "Invoke-Expression $args[0]\n"},
+                {"scripts/l.ps1": "real/target.ps1.txt"}),
+            "sh link to a file outside scripts/": (
+                {"outside/evil.txt": "#!/usr/bin/env bash\nrm -rf $1/tmp\n"},
+                {"scripts/l.sh": "../outside/evil.txt"}),
+        }
+        for case, (plants, links) in cases.items():
+            with self.subTest(case=case):
+                result = self._real_lint_with(plants, links)
+                self.assertNotEqual(result.returncode, 0,
+                                    f"lint.sh passed with a symlinked script ({case}):\n"
+                                    f"{result.stdout}{result.stderr}")
+
+    # Rework round 2 (handoff "orchestrator: rework round 2 of 5").
+    # Review R1-B1: every target above has a finding of its own, so the tools
+    # fail the run even without the symlink rule (mutant L12b survives). These
+    # targets are clean: only the refusal can fail lint. The recorder tools
+    # always pass, so the refusal is the only possible cause of a failure.
+    def _recorded_lint_with(self, plants: dict[str, str],
+                            links: dict[str, str]) -> subprocess.CompletedProcess:
+        project, path, log = self._with_recorders()
+        for rel, body in plants.items():
+            (project / rel).parent.mkdir(parents=True, exist_ok=True)
+            (project / rel).write_text(body, encoding="utf-8", newline="\n")
+        for link, target in links.items():
+            (project / link).parent.mkdir(parents=True, exist_ok=True)
+            os.symlink(target, project / link)
+        if (project / ".git").exists():
+            subprocess.run(["git", "-c", "core.autocrlf=false", "add", "-A"], cwd=project, check=True)
+        return self._run(project, path, LINT_LOG=str(log))
+
+    CLEAN_SH = "#!/usr/bin/env bash\necho ok\n"
+    CLEAN_PS1 = "Write-Output 'ok'\n"
+
+    def test_lint_refuses_a_symlink_to_a_clean_script(self):  # review R1-B1, mutant L12b
+        cases = {
+            "sh link to a clean file outside scripts/": (
+                {"outside/clean.txt": self.CLEAN_SH}, {"scripts/l.sh": "../outside/clean.txt"}),
+            "sh link to a clean file inside scripts/": (
+                {"scripts/real/clean.sh.txt": self.CLEAN_SH}, {"scripts/l.sh": "real/clean.sh.txt"}),
+            "ps1 link to a clean file outside scripts/": (
+                {"outside/clean.txt": self.CLEAN_PS1}, {"scripts/l.ps1": "../outside/clean.txt"}),
+            "ps1 link to a clean file inside scripts/": (
+                {"scripts/real/clean.ps1.txt": self.CLEAN_PS1}, {"scripts/l.ps1": "real/clean.ps1.txt"}),
+        }
+        for case, (plants, links) in cases.items():
+            with self.subTest(case=case):
+                result = self._recorded_lint_with(plants, links)
+                output = result.stdout + result.stderr
+                self.assertNotEqual(result.returncode, 0,
+                                    f"lint.sh passed with a symlink to a clean target ({case}):\n{output}")
+                self.assertRegex(output, r"(?i)symlink", "the failure must name the symlink refusal")
+                link = next(iter(links))
+                self.assertIn(link, output, "the refusal must name the symlink")
+
+    # Security L-15: `find` without -L does not descend into a symlinked
+    # directory, so a script reached through one was neither linted nor
+    # refused; and `*.SH` was not shellchecked. Fix per L-15: refuse any
+    # symlink under scripts/ and docker/, and select shell scripts by
+    # `-iname '*.sh'`.
+    def test_lint_fails_on_a_directory_symlink_holding_a_finding(self):  # L-15
+        if shutil.which("pwsh") is None:
+            self.fail(PWSH_MISSING)
+        if shutil.which("shellcheck") is None:
+            self.fail(SHELLCHECK_MISSING)
+        evil_ps1 = {"outside/dir/evil.ps1": "Invoke-Expression $args[0]\n"}
+        evil_sh = {"outside/dir/evil.sh": "#!/usr/bin/env bash\nrm -rf $1/tmp\n"}
+        cases = {
+            "scripts/linkdir -> outside, holding an IEX .ps1": (evil_ps1, {"scripts/linkdir": "../outside/dir"}),
+            "scripts/linkdir -> outside, holding an SC2086 .sh": (evil_sh, {"scripts/linkdir": "../outside/dir"}),
+            "docker/linkdir -> outside, holding an SC2086 .sh": (evil_sh, {"docker/linkdir": "../outside/dir"}),
+            "docker/linkdir -> outside, holding an IEX .ps1": (evil_ps1, {"docker/linkdir": "../outside/dir"}),
+            "scripts/sub/deep -> outside, holding an IEX .ps1": (
+                evil_ps1, {"scripts/sub/deep": "../../outside/dir"}),
+        }
+        for case, (plants, links) in cases.items():
+            with self.subTest(case=case):
+                result = self._real_lint_with(plants, links)
+                output = result.stdout + result.stderr
+                self.assertNotEqual(result.returncode, 0,
+                                    f"lint.sh passed with a script reachable through a "
+                                    f"directory symlink ({case}):\n{output}")
+
+    def test_lint_refuses_any_symlink_under_scripts_and_docker(self):  # L-15
+        cases = {
+            "scripts/ file link, non-script name": (
+                {"outside/clean.txt": "hello\n"}, {"scripts/notes.txt": "../outside/clean.txt"}),
+            "docker/ file link, non-script name": (
+                {"outside/clean.txt": "hello\n"}, {"docker/notes.txt": "../outside/clean.txt"}),
+            "scripts/ directory link to a clean dir": (
+                {"outside/dir/clean.sh": self.CLEAN_SH}, {"scripts/linkdir": "../outside/dir"}),
+            "docker/ directory link to a clean dir": (
+                {"outside/dir/clean.sh": self.CLEAN_SH}, {"docker/linkdir": "../outside/dir"}),
+            "nested scripts/ link to a clean script inside scripts/": (
+                {"scripts/real/clean.sh.txt": self.CLEAN_SH}, {"scripts/sub/x": "../real/clean.sh.txt"}),
+            "dangling link under docker/": ({}, {"docker/gone": "../nowhere/missing"}),
+        }
+        for case, (plants, links) in cases.items():
+            with self.subTest(case=case):
+                result = self._recorded_lint_with(plants, links)
+                output = result.stdout + result.stderr
+                self.assertNotEqual(result.returncode, 0,
+                                    f"lint.sh passed with a symlink under scripts/ or docker/ ({case}):\n{output}")
+                self.assertRegex(output, r"(?i)symlink", "the failure must name the symlink refusal")
+                self.assertIn(next(iter(links)), output, "the refusal must name the symlink")
+
+    def test_lint_shellchecks_upper_case_sh(self):  # L-15
+        if shutil.which("pwsh") is None:
+            self.fail(PWSH_MISSING)
+        if shutil.which("shellcheck") is None:
+            self.fail(SHELLCHECK_MISSING)
+        for rel in ("scripts/u.SH", "scripts/sub/m.Sh", "docker/gateway/u.SH"):
+            with self.subTest(planted=rel):
+                result = self._real_lint_with({rel: "#!/usr/bin/env bash\nrm -rf $1/tmp\n"}, {})
+                output = result.stdout + result.stderr
+                self.assertNotEqual(result.returncode, 0, f"lint.sh passed with SC2086 in {rel}:\n{output}")
+                self.assertIn(rel.rsplit("/", 1)[-1], output, "the failure must name the file")
+
+    def test_lint_fails_on_warning_severity_finding(self):  # PS-2.23, review N-2
+        if shutil.which("pwsh") is None:
+            self.fail(PWSH_MISSING)
+        if shutil.which("shellcheck") is None:
+            self.fail(SHELLCHECK_MISSING)
+        project = self._project()
+        # PSAvoidUsingCmdletAliases is Warning severity.
+        (project / "scripts" / "planted-warning.ps1").write_text(
+            "gci | % { $_.Name }\n", encoding="utf-8", newline="\n")
+        if (project / ".git").exists():
+            subprocess.run(["git", "-c", "core.autocrlf=false", "add", "-A"],
+                           cwd=project, check=True)
+        result = self._run(project, os.environ.get("PATH", ""))
+        self.assertNotEqual(result.returncode, 0,
+                            f"lint.sh passed a Warning-severity finding:\n{result.stdout}{result.stderr}")
+        self.assertIn("planted-warning.ps1", result.stdout + result.stderr)
 
 
 class VerifyCallsLintTest(unittest.TestCase):
@@ -828,6 +1331,27 @@ class VerifyCallsLintTest(unittest.TestCase):
 # B4: smoke resolves the compose file with no .env
 # --------------------------------------------------------------------------
 
+SCRIPT_STUB = """#!/usr/bin/env bash
+# Stand-in for scripts/{name}: one JSON record in the fake docker's call log,
+# so stub and docker calls form one ordered sequence.
+if [ -n "${{FAKE_DOCKER_JSON:-}}" ]; then
+  extra=""
+  for a in "$@"; do extra="$extra, \\"$a\\""; done
+  printf '{{"argv": ["STUB", "{name}"%s], "env": {{}}, "cwd": "", "project_dir": "", "dotenv_present": false}}\\n' "$extra" >> "$FAKE_DOCKER_JSON"
+fi
+case "|${{FAKE_STUB_FAIL:-}}|" in *"|{name}|"*) echo "stub {name}: failing" >&2; exit 7 ;; esac
+exit 0
+"""
+
+
+def _install_script_stubs(root: Path, names: tuple[str, ...]) -> None:
+    for name in names:
+        stub = root / "scripts" / name
+        stub.parent.mkdir(parents=True, exist_ok=True)
+        stub.write_text(SCRIPT_STUB.format(name=name), encoding="utf-8", newline="\n")
+        _make_executable(stub)
+
+
 class SmokeResolvesWithoutEnvTest(unittest.TestCase):
     """B4, PS-2.2 *Resolves without .env* [smoke:
     test_compose_resolves_without_env_file]: the smoke.sh host half runs
@@ -848,6 +1372,11 @@ class SmokeResolvesWithoutEnvTest(unittest.TestCase):
                                        encoding="utf-8", newline="\n")
         fake_docker.install(self.tmp / "fakebin")
         self.json = self.tmp / "docker.jsonl"
+        # platform-stack-ready (PS-2.8, §2.4 Smoke): the smoke host half now
+        # calls scripts/launch.sh and scripts/teardown.sh. Fixture-only stubs
+        # that log into the fake docker's call log; the 2a assertions in this
+        # class and SmokeBackendIsolatedTest are unchanged.
+        _install_script_stubs(self.tmp, ("launch.sh", "teardown.sh"))
 
     def _smoke(self, **extra: str) -> tuple[subprocess.CompletedProcess, list[dict]]:
         self.json.write_text("", encoding="utf-8")
@@ -972,6 +1501,225 @@ class SmokeBackendIsolatedTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0,
                             "smoke passed although `docker network inspect` failed")
         self.assertNotIn("smoke: PASS", result.stdout + result.stderr)
+
+    def test_smoke_fails_when_backend_is_not_internal(self):  # PS-2.24, R2-N4, mutant SM-I3
+        result, _ = self._smoke(FAKE_DOCKER_BACKEND_INTERNAL="false")
+        output = result.stdout + result.stderr
+        self.assertNotEqual(result.returncode, 0,
+                            f"smoke passed although the backend network is not internal:\n{output}")
+        self.assertNotIn("smoke: PASS", output)
+        self.assertRegex(output, r"(?i)ke-verify-test_backend[^\n]*internal|internal[^\n]*ke-verify-test_backend",
+                         "the failure must name the network and say it is not internal")
+
+
+# --------------------------------------------------------------------------
+# platform-stack-ready, PS-2.8 (§2.4 "Smoke, host half"; rulings S1, Q37):
+# smoke launches through launch.sh, waits for /readyz, stops and restarts
+# postgres with readiness waits, and tears down only a project it launched.
+# --------------------------------------------------------------------------
+
+READY_RX = re.compile(r"--wait-for[ =]ready\b")
+NOT_READY_PG_RX = re.compile(r"--wait-for[ =]not-ready:postgres\b")
+
+
+def _smoke_steps(records: list[dict]) -> list[str]:
+    """The PS-2.8 steps in call order; other calls are left out."""
+    steps: list[str] = []
+    for r in records:
+        argv = r["argv"]
+        joined = " ".join(argv)
+        if argv[:2] == ["STUB", "launch.sh"]:
+            steps.append("launch")
+        elif argv[:2] == ["STUB", "teardown.sh"]:
+            steps.append("teardown" + ("".join(" " + a for a in argv[2:])))
+        elif argv[:1] == ["compose"] and "exec" in argv and "engine.readiness" in joined:
+            if NOT_READY_PG_RX.search(joined):
+                steps.append("not-ready:postgres")
+            elif READY_RX.search(joined):
+                steps.append("ready")
+            else:
+                steps.append("readiness:other")
+        elif argv[:1] == ["compose"] and "stop" in argv:
+            steps.append("stop " + " ".join(a for a in argv[argv.index("stop") + 1:]
+                                            if not a.startswith("-")))
+        elif argv[:1] == ["compose"] and "up" in argv and "postgres" in argv:
+            steps.append("up postgres")
+    return steps
+
+
+class SmokeStoreStopStartTest(unittest.TestCase):
+    setUp = SmokeResolvesWithoutEnvTest.setUp
+    _smoke = SmokeBackendIsolatedTest._smoke
+
+    LAUNCHED_ORDER = ["launch", "ready", "stop postgres", "not-ready:postgres",
+                      "up postgres", "ready", "teardown"]
+
+    def _readiness_calls(self, records: list[dict]) -> list[list[str]]:
+        return [r["argv"] for r in records if r["argv"][:1] == ["compose"]
+                and "exec" in r["argv"] and "engine.readiness" in " ".join(r["argv"])]
+
+    def test_smoke_stops_and_restarts_a_store(self):
+        result, records = self._smoke()
+        output = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 0, output)
+        self.assertIn("smoke: PASS", output)
+        self.assertEqual(_smoke_steps(records), self.LAUNCHED_ORDER,
+                         "smoke must launch, wait ready, stop postgres, wait not-ready:postgres, "
+                         "start postgres with --wait, wait ready, then tear down")
+        inspects = [i for i, r in enumerate(records) if r["argv"][:2] == ["network", "inspect"]]
+        launch = next(i for i, r in enumerate(records) if r["argv"][:2] == ["STUB", "launch.sh"])
+        self.assertTrue(inspects and min(inspects) > launch,
+                        "the 2a checks run against the launched stack, after launch.sh")
+        for argv in self._readiness_calls(records):
+            with self.subTest(readiness=" ".join(argv)):
+                self.assertIn("api", argv[argv.index("exec") + 1:],
+                              "the readiness CLI runs in the api container (§2.4 Smoke)")
+                self.assertRegex(" ".join(argv), r"--within[ =]\d+", "every readiness wait is bounded")
+        ups = [r["argv"] for r in records if r["argv"][:1] == ["compose"]
+               and "up" in r["argv"] and "postgres" in r["argv"]]
+        for flag in ("-d", "--no-build", "--wait"):
+            self.assertIn(flag, ups[0], f"postgres restart must use `up {flag}` (§2.4 Smoke)")
+        teardowns = [r["argv"] for r in records if r["argv"][:2] == ["STUB", "teardown.sh"]]
+        self.assertEqual(len(teardowns), 1)
+        self.assertNotIn("--volumes", teardowns[0], "smoke's own teardown keeps volumes")
+
+    def test_smoke_fails_naming_the_store_when_readiness_never_recovers(self):
+        result, records = self._smoke(FAKE_DOCKER_FAIL_NTH=r"engine\.readiness.*--wait-for[ =]ready\b#2")
+        output = result.stdout + result.stderr
+        self.assertNotEqual(result.returncode, 0,
+                            f"smoke passed with postgres never ready again:\n{output}")
+        self.assertNotIn("smoke: PASS", output)
+        self.assertRegex(output, r"postgres", "the failure must name the store")
+        steps = _smoke_steps(records)
+        self.assertEqual(steps[-1], "teardown", f"teardown must still run: {steps}")
+
+    def test_smoke_fails_when_each_store_step_fails(self):
+        cases = {
+            "first ready never met": {"FAKE_DOCKER_FAIL_NTH": r"engine\.readiness.*--wait-for[ =]ready\b#1"},
+            "stop postgres fails": {"FAKE_DOCKER_FAIL_NTH": r"\bstop\b.*\bpostgres\b#1"},
+            "not-ready never seen": {"FAKE_DOCKER_FAIL": "not-ready:postgres"},
+            "postgres restart fails": {"FAKE_DOCKER_FAIL_NTH": r"\bup\b.*\bpostgres\b#1"},
+            "launch fails": {"FAKE_STUB_FAIL": "launch.sh"},
+        }
+        for case, extra in cases.items():
+            with self.subTest(case=case):
+                result, records = self._smoke(**extra)
+                output = result.stdout + result.stderr
+                self.assertNotEqual(result.returncode, 0, f"smoke passed although {case}:\n{output}")
+                self.assertNotIn("smoke: PASS", output)
+                steps = _smoke_steps(records)
+                self.assertTrue(steps and steps[-1] == "teardown",
+                                f"smoke launched the project, so teardown must run last: {steps}")
+                self.assertEqual(steps.count("teardown"), 1)
+
+    def test_smoke_leaves_a_project_it_did_not_launch(self):  # S1, Q37
+        result, records = self._smoke(FAKE_DOCKER_RUNNING="0123456789ab")
+        output = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 0, output)
+        steps = _smoke_steps(records)
+        self.assertNotIn("teardown", steps, "smoke tore down a project it did not launch (S1)")
+        self.assertFalse([s for s in steps if s.startswith("stop")],
+                         "smoke stopped a store of a project it did not launch (Q37)")
+        self.assertNotIn("up postgres", steps)
+        self.assertIn("ready", steps, "smoke still checks /readyz on a running project (PS-2.8)")
+        lines = [l for l in output.splitlines() if re.search(r"(?i)skip", l)]
+        self.assertTrue([l for l in lines if re.search(r"(?i)postgres|store", l)],
+                        f"smoke must say the store stop/start was skipped:\n{output}")
+        for line in output.splitlines():
+            if re.search(r"(?i)stop|restart|store", line) and not re.search(r"(?i)skip", line):
+                self.assertNotRegex(line, r"(?i)\bpass|\bok\b",
+                                    f"a skipped store stop/start is reported as passed: {line!r}")
+
+    def test_smoke_owned_by_verify_stops_and_restarts_without_teardown(self):
+        # Ruling "Q37 vs CI": verify.sh sets KE_SMOKE_OWNS_PROJECT=1 for its own
+        # running project; smoke then runs the store stop/restart and leaves
+        # teardown to verify's trap.
+        result, records = self._smoke(FAKE_DOCKER_RUNNING="0123456789ab", KE_SMOKE_OWNS_PROJECT="1")
+        output = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 0, output)
+        self.assertIn("smoke: PASS", output)
+        steps = [s for s in _smoke_steps(records) if s != "launch"]
+        self.assertEqual(steps, ["ready", "stop postgres", "not-ready:postgres", "up postgres", "ready"],
+                         "with the flag, smoke runs the stop/restart and no teardown")
+
+    def test_smoke_flag_without_a_running_project_fails_loudly(self):
+        # Ruling "Q37 vs CI": the flag promises a running verify project; with
+        # nothing running the verify contract is broken, so smoke fails and
+        # neither launches, stops nor tears anything down.
+        result, records = self._smoke(KE_SMOKE_OWNS_PROJECT="1")
+        output = result.stdout + result.stderr
+        self.assertNotEqual(result.returncode, 0, f"smoke passed with the flag and no project:\n{output}")
+        self.assertNotIn("smoke: PASS", output)
+        self.assertIn("KE_SMOKE_OWNS_PROJECT", output, "the failure must name the broken contract")
+        steps = _smoke_steps(records)
+        self.assertNotIn("launch", steps)
+        self.assertNotIn("teardown", steps)
+        self.assertFalse([s for s in steps if s.startswith("stop") or s == "up postgres"], steps)
+
+    # Rework 1, review R-B3 (PS-2.8 *Every service healthy*, which the
+    # orchestrator kept as written): every stack service is checked healthy
+    # AFTER the store is back, that is after the final `ready`.
+    SERVICES = ("gateway", "api", "worker", "postgres", "neo4j", "valkey", "phoenix")
+
+    @staticmethod
+    def _health_queries(records: list[dict]) -> list[tuple[int, str]]:
+        out = []
+        for i, r in enumerate(records):
+            argv = r["argv"]
+            if argv[:1] == ["compose"] and "ps" in argv and "Health" in " ".join(argv):
+                out.append((i, argv[-1]))
+        return out
+
+    def _final_ready_index(self, records: list[dict]) -> int:
+        readies = [i for i, r in enumerate(records) if r["argv"][:1] == ["compose"]
+                   and "engine.readiness" in " ".join(r["argv"])
+                   and READY_RX.search(" ".join(r["argv"]))]
+        self.assertTrue(readies, "smoke never waited for ready")
+        return readies[-1]
+
+    def test_smoke_checks_every_service_healthy_after_the_store_is_back(self):
+        cases = {"smoke launched the project": {},
+                 "verify owns the project": {"FAKE_DOCKER_RUNNING": "0123456789ab",
+                                             "KE_SMOKE_OWNS_PROJECT": "1"}}
+        for case, extra in cases.items():
+            with self.subTest(case=case):
+                result, records = self._smoke(**extra)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                final_ready = self._final_ready_index(records)
+                ups = [i for i, r in enumerate(records) if r["argv"][:1] == ["compose"]
+                       and "up" in r["argv"] and "postgres" in r["argv"]]
+                self.assertTrue(ups and ups[-1] < final_ready, "precondition: the restart came first")
+                after = {svc for i, svc in self._health_queries(records) if i > final_ready}
+                for service in self.SERVICES:
+                    self.assertIn(service, after,
+                                  f"{service} is not checked healthy after the final ready (PS-2.8)")
+                teardowns = [i for i, r in enumerate(records) if r["argv"][:2] == ["STUB", "teardown.sh"]]
+                if teardowns:
+                    last_health = max(i for i, _ in self._health_queries(records))
+                    self.assertLess(last_health, teardowns[0], "health is checked before teardown")
+
+    def test_smoke_fails_when_a_service_is_unhealthy_after_the_restart(self):
+        # The second health query for postgres is the one after the restart.
+        result, records = self._smoke(FAKE_DOCKER_FAIL_NTH=r"\bps\b.*Health.*\bpostgres$#2")
+        output = result.stdout + result.stderr
+        self.assertNotEqual(result.returncode, 0,
+                            f"smoke passed with postgres failing its health check after the restart:\n{output}")
+        self.assertNotIn("smoke: PASS", output)
+        steps = _smoke_steps(records)
+        self.assertEqual(steps[-1], "teardown", f"smoke launched the project, so teardown runs last: {steps}")
+
+    def test_smoke_decides_it_launched_before_launching(self):  # S1
+        result, records = self._smoke()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        launches = [i for i, r in enumerate(records) if r["argv"][:2] == ["STUB", "launch.sh"]]
+        self.assertTrue(launches, "smoke never ran scripts/launch.sh (PS-2.8)")
+        launch = launches[0]
+        probes = [i for i, r in enumerate(records)
+                  if (r["argv"][:1] == ["compose"] and "ps" in r["argv"]
+                      and ("-q" in r["argv"] or "--quiet" in r["argv"] or "--services" in r["argv"]))
+                  or (r["argv"][:1] == ["ps"] and "-q" in r["argv"])]
+        self.assertTrue(probes and min(probes) < launch,
+                        "smoke must check whether the project already runs before launch.sh (S1)")
 
 
 if __name__ == "__main__":

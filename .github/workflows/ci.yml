@@ -21,6 +21,7 @@ jobs:
           persist-credentials: false
 
       # The same entry point as local and agent runs: it builds the `gates`
-      # image and runs every gate inside it with networking disabled.
+      # image. Unit tests run with no network; `full` also launches a throwaway
+      # stack on an internal-only network, and model tests skip on CI.
       - name: Verify (full)
         run: ./scripts/verify.sh full

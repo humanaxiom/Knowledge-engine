@@ -6,6 +6,16 @@
 # Every variable default written with :- equals its value in .env.example.
 name: knowledge-engine
 
+# The app containers reach the model host only through the gateway's forward
+# (architecture §2.4 Model wiring). `gateway` is the stack's own host, so it is
+# written into the app allowlist here; the operator lists only the model host.
+x-model-env: &model-env
+  KE_MODELS__COMPOSE__BASE_URL: http://gateway:${KE_GATEWAY_MODEL_LISTEN:-8102}/v1
+  KE_MODELS__REWRITE__BASE_URL: http://gateway:${KE_GATEWAY_MODEL_LISTEN:-8102}/v1
+  KE_MODELS__AUDIT__BASE_URL: http://gateway:${KE_GATEWAY_MODEL_LISTEN:-8102}/v1
+  KE_MODELS__EMBED__BASE_URL: http://gateway:${KE_GATEWAY_MODEL_LISTEN:-8102}/v1
+  KE_EGRESS_ALLOWLIST: gateway,${KE_EGRESS_ALLOWLIST:-}
+
 x-app: &app
   image: ke-app
   build:
@@ -14,12 +24,12 @@ x-app: &app
   restart: unless-stopped
   networks: [backend]
   environment:
+    <<: *model-env
     KE_ENV: ${KE_ENV}
     KE_BIND_ADDRESS: ${KE_BIND_ADDRESS:-127.0.0.1}
     KE_AUTH__ENABLED: ${KE_AUTH__ENABLED:-false}
     KE_API__LISTEN_PORT: ${KE_API_LISTEN:-8080}
     KE_MODEL_UPSTREAM: ${KE_MODEL_UPSTREAM:-}
-    KE_EGRESS_ALLOWLIST: ${KE_EGRESS_ALLOWLIST:-}
     KE_STORES__POSTGRES__PASSWORD: ${KE_STORES__POSTGRES__PASSWORD}
     KE_STORES__NEO4J__PASSWORD: ${KE_STORES__NEO4J__PASSWORD}
     HARNESS_TRACING: ${HARNESS_TRACING:-otlp}
@@ -81,11 +91,12 @@ services:
       retries: 12
       start_period: 5s
 
-  # Placeholder until platform-stack-ready (PS-2.6) adds the RQ worker: the
-  # same image, idle and healthy, so the topology is final.
+  # The RQ worker (PS-2.6): the same image, consuming `default` from Valkey.
   worker:
     <<: *app
     command: ["python", "-m", "engine.worker"]
+    depends_on:
+      valkey: {condition: service_healthy}
     healthcheck:
       test: ["CMD", "python", "-c", "import engine"]
       interval: 10s
@@ -168,8 +179,14 @@ services:
     profiles: ["gates-it"]
     networks: [backend]
     environment:
+      <<: *model-env
       KE_GATEWAY_MODEL_LISTEN: ${KE_GATEWAY_MODEL_LISTEN:-8102}
       KE_API__LISTEN_PORT: ${KE_API_LISTEN:-8080}
+      KE_MODEL_UPSTREAM: ${KE_MODEL_UPSTREAM:-}
+      # The verify project's throwaway placeholders (--env-file .env.example);
+      # the in-process /readyz tests connect to the real stores.
+      KE_STORES__POSTGRES__PASSWORD: ${KE_STORES__POSTGRES__PASSWORD}
+      KE_STORES__NEO4J__PASSWORD: ${KE_STORES__NEO4J__PASSWORD}
 
 networks:
   # The only network with a route out; only the gateway joins it.

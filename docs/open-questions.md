@@ -114,6 +114,79 @@ PS-Q1–PS-Q11 (`docs/requirements.md` § "Item: platform-skeleton"); the
 orchestrator ruled the same day (`docs/handoffs/platform-skeleton.md`,
 "orchestrator: split accepted, rulings"). The ones still open come first.
 
+Open, raised 2026-10-19 (orchestrator note in `docs/handoffs/platform-skeleton.md`,
+"human rulings: model endpoint; orchestrator note Q38"; recorded by the analyst
+in `platform-stack-ready` rework round 1):
+
+- **Q38. Default models missing on the model host (human).** The prompt's
+  default models `qwen2.5:14b-instruct` and `llama3.1:8b` are not installed
+  on `aria-gb10-2`; `nomic-embed-text` is. Either pull the two models on
+  `aria-gb10-2`, or name installed models as the defaults (a config change
+  only). Must be settled before the first item that composes a draft; does
+  not block the platform items. **Ruled alongside (human, 2026-10-19):**
+  this deployment's `KE_MODEL_UPSTREAM` is `aria-gb10-2:11434` (Ollama,
+  OpenAI-compatible `/v1`), with allowlist host `aria-gb10-2`; checked with
+  `GET /v1/models` answering 200 from the dev host. This is the endpoint the
+  PS-2.21 recorded run uses. No assumption is taken for the model names.
+
+Open, raised 2026-10-19 by the analyst (`platform-stack-ready` rework round 1):
+
+- **Q39. When the Valkey network/auth carry-in lands.** The orchestrator
+  placed security M-1's network side (Valkey on its own network, password or
+  ACL) in auth-audit as carry-in 7, "to be done before any ingest exposure".
+  `docs/requirements.md` lists ingest-ledger before auth-audit, and
+  ingest-ledger criterion 5 puts files on the job queue. Is carry-in 7 built
+  at the start of ingest-ledger (or a small item before it), or does
+  auth-audit move ahead of ingest-ledger? **A39 (assumed):** carry-in 7 is
+  done as the first unit of whichever item first feeds untrusted input to
+  the queue (today ingest-ledger), and is tracked in auth-audit until then.
+  Does not block `platform-stack-ready`.
+
+Open, raised 2026-10-19 for `platform-stack-ready` (analyst, after ruling S1):
+
+- **Q37. Store stop/start against a pre-existing project.** Ruling S1 says
+  the PS-2.8 smoke tears down only a project it launched and "never stops an
+  operator's live stack". Not settled: given smoke run by hand against an
+  already-running project, does it still stop and restart one store (a
+  brief outage of the operator's postgres), or does it skip the store
+  stop/start and say so? Inside `verify.sh full` and CI the project is
+  always smoke-launched, so the gate is unaffected. **A37 (assumed):** the
+  smoke skips the store stop/start against a pre-existing project and
+  prints that it skipped it (never reports it as passed), reading "never
+  stops an operator's live stack" as covering a single store. Does not
+  block RED; the tester writes the pre-existing case to that assumption.
+
+Resolved by the orchestrator 2026-10-19 (`docs/handoffs/platform-stack-ready.md`,
+"orchestrator: rulings on analyst plan"; C1 in "rulings on architect plan"):
+
+- **Q35. Resolved (orchestrator ruling).** **A35:** as assumed: (a) the
+  caller's environment wins, even when set empty; (b) only the repo-root
+  `.env` counts; (c) until platform-offline (L-5), "no other key" covers the
+  verify project's environment and compose arguments only. Settled in
+  PS-2.21 *Precedence*. Original question, kept for the record:
+  Model upstream keys in local verify: source and precedence. The
+  umbrella ruling passes `KE_MODEL_UPSTREAM` and `KE_EGRESS_ALLOWLIST` "from
+  the caller's environment or the operator's `.env`". Not settled: (a) when
+  both set a key, which wins; (b) whether "the operator's `.env`" is only the
+  repo-root `.env` or also a file named by `KE_ENV_FILE` (the launch scripts
+  read both); (c) security L-5 (deferred) leaves `gates-it` able to read the
+  whole `.env` through its read-write repo mount, so "no other `.env` value
+  is read" holds for the verify project's environment and compose arguments,
+  not for the filesystem. Is that acceptable until `platform-offline`?
+  **A35 (assumed):** (a) the caller's environment wins, as compose does;
+  (b) the repo-root `.env` only; (c) acceptable, with PS-2.21 testing the
+  environment and arguments only.
+- **Q36. Resolved (orchestrator ruling; reaffirmed as C1 against the
+  architect's "7 min now").** **A36:** as assumed: CI stays at 20 minutes
+  until 2b's first green CI run, then that run's duration plus 50%, rounded
+  up, in a follow-up commit before close. Settled in PS-3.4 in 2b. Original
+  question, kept for the record: Which CI run sets the PS-3.4 timeout. The 274 s baseline
+  (0f2821c) predates 2b's store stop/start and worker, so 2b's `full` will be
+  slower. **A36 (assumed):** the timeout stays 20 minutes until the first
+  green CI run of the 2b branch; the value is then set to that run's
+  duration plus 50%, rounded up, in a follow-up commit on the same branch
+  before the item closes, and the reviewer checks it against that run's log.
+
 Resolved by the orchestrator 2026-10-19 (`docs/handoffs/platform-stack.md`,
 "orchestrator: split + rulings Q33, Q34" and "rulings on architect R1–R4"):
 
@@ -143,7 +216,11 @@ Resolved by the orchestrator 2026-10-19 (`docs/handoffs/platform-stack.md`,
 - **Q34. Resolved (orchestrator ruling).** **A34:** accepted as the analyst
   proposed: the recorded Windows run must use the branch head, or the diff
   since must change no script, compose file or Dockerfile; otherwise it is
-  repeated before commit. Settled in PS-2.9. Original question, kept for the
+  repeated before commit. Settled in PS-2.9. **Scope ruling (orchestrator,
+  2026-10-19, `platform-stack-ready` rework round 1):** "script" means the
+  PowerShell launch, build and teardown path; gate-only bash scripts and
+  engine code do not make the Windows proof stale, while the PowerShell
+  launch/build/teardown scripts, compose files and Dockerfiles do. Original question, kept for the
   record: Q31 accepts a
   recorded run on the human's Windows host. If scripts, compose files or
   Dockerfiles change after the run, must it be repeated before commit? PS-2.9

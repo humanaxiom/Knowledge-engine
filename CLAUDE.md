@@ -69,11 +69,16 @@ ever added, list it here with the reason it cannot run locally.
 
 ## What verify.sh runs that CI cannot
 
-Integration tests that call the model run only where the model host
-(`KE_MODEL_UPSTREAM`) is reachable. Elsewhere, including CI on GitHub runners,
-they skip with a named reason and never pass silently. A green CI run therefore
-says nothing about model behaviour; run `scripts/verify.sh full` on a machine
-that can reach the model host before approving a change that touches it.
+Integration tests that call the model run only where the model host is
+reachable and both `KE_MODEL_UPSTREAM` and `KE_EGRESS_ALLOWLIST` are set. These
+are the only two keys a local `scripts/verify.sh full` takes from outside the
+repo, and no other key is taken. Each comes from the caller's environment if
+set there, otherwise from the repo-root `.env`; the caller's environment wins.
+If either key is unset or empty, or the host is not reachable, the tests skip
+with a named reason and never pass silently. The same happens on GitHub CI,
+where the model host is not reachable. A green CI run therefore says nothing
+about model behaviour; run `scripts/verify.sh full` on a machine that can reach
+the model host before approving a change that touches it.
 
 ## Generated artifacts
 

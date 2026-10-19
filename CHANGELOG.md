@@ -4,6 +4,31 @@ Maintained by the `marketer` agent. Follows a Keep a Changelog style.
 
 ## [Unreleased]
 
+### 2026-10-19 (platform-stack-ready)
+
+**Added:**
+- `/readyz` on the api, with a status for each dependency and a fixed set of
+  reasons. The model host is reported but is not required for readiness.
+- A worker on Valkey (RQ) that runs allowlisted jobs.
+- A smoke test that stops and restarts postgres and checks that the stack
+  recovers.
+- Model-calling checks in `scripts/verify.sh full`. They run when
+  `KE_MODEL_UPSTREAM` and `KE_EGRESS_ALLOWLIST` are set.
+- Dependencies: psycopg (LGPL-3.0), neo4j, redis and rq.
+
+**Changed:**
+- Teardown reports any leftover containers and fails instead of exiting clean.
+- Lint refuses symlinks under `scripts/` and `docker/`, and checks scripts
+  whatever the case of their extension.
+
+**Security:**
+- Readiness never reports credentials or error text.
+- The worker decodes jobs as JSON only and refuses any job outside the
+  allowlist.
+- `scripts/verify.sh` passes no `KE_*` variable from the caller except the two
+  model keys.
+- Postgres connections disable GSS encryption.
+
 ### 2026-10-19 (platform-stack-up)
 
 **Added:**

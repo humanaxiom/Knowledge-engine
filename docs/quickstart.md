@@ -43,8 +43,33 @@ authentication yet.
 The API answers at http://localhost:47100/healthz and Phoenix at
 http://localhost:47101 by default.
 
+## Readiness
+
+http://localhost:47100/readyz returns 200 when postgres, neo4j and valkey are
+ready and 503 otherwise. Each check carries `ok` and a `reason` (null, or one
+of `refused`, `timeout`, `unreachable`, `auth_failed`, `egress_denied`,
+`not_configured`, `error:<ExceptionClass>`). The model host is listed as
+`model_host`, is not required, and shows `not_configured` until
+`KE_MODEL_UPSTREAM` is set.
+
 ## Model host
 
-Set `KE_MODEL_UPSTREAM` (`host:port`, for example `aria-gb10-2:PORT`) in `.env`
-and add its host to `KE_EGRESS_ALLOWLIST`. The gateway refuses to start with an
-upstream that is not on the allowlist.
+Set `KE_MODEL_UPSTREAM` (`host:port`) in `.env` and add its host to
+`KE_EGRESS_ALLOWLIST`. The gateway refuses to start with an upstream that is not
+on the allowlist. This deployment:
+
+```
+KE_MODEL_UPSTREAM=aria-gb10-2:11434
+KE_EGRESS_ALLOWLIST=aria-gb10-2
+```
+
+`scripts/verify.sh full` runs the model-calling checks only when both are set
+(the caller's environment wins over `.env`) and the host is reachable; it skips
+them with a named reason otherwise.
+
+## Teardown leftovers
+
+`scripts/teardown.sh` (`teardown.ps1`) reports any container, network or (with
+`--volumes`) volume of its own project that survives `down`, exits non-zero and
+prints what to remove by hand, for example
+`docker compose -p <project> down --volumes`. It never removes anything itself.

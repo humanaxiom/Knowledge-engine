@@ -136,3 +136,12 @@ Base: `agent/harness-claude-code` @ a11842d (the remote has no `main`).
 - `verify.sh full` passes exactly two keys, `KE_MODEL_UPSTREAM` and `KE_EGRESS_ALLOWLIST`, from the caller's environment or the operator's gitignored `.env` into the verify project. No other `.env` value is read.
 - When either key is unset, the model-calling tests skip with a named reason (as in CI). This delivers Q30's "run when aria-gb10-2 is reachable".
 - Lands with PS-2.5/2.7 model tests in platform-stack-ready, not in 2a.
+
+## 2026-10-19 — human rulings: model endpoint; orchestrator note Q38
+- Human: this deployment's `KE_MODEL_UPSTREAM` is `aria-gb10-2:11434` (Ollama, OpenAI-compatible `/v1`), allowlist host `aria-gb10-2`. Checked: `GET /v1/models` 200 in 12 ms from the dev host.
+- `aria-gb10:8080` (named by the human) also answers `/v1/models` 200 (2.9 s) with the identical Ollama model list, so it is likely a proxy in front of the same Ollama. vLLM on aria-gb10 is not identified yet. Not used.
+- Q38 (open, human): the prompt's default models `qwen2.5:14b-instruct` and `llama3.1:8b` are NOT installed on aria-gb10-2; `nomic-embed-text` is. Either pull them or name installed defaults (config only) before the first item that composes. Does not block the platform items.
+
+## 2026-10-19 — orchestrator: rulings Q39 and image scan
+- Q39 accepted as A39: the M-1 network side (valkey on its own network plus password/ACL) is the FIRST unit of the first item that puts untrusted input on the job queue (today ingest-ledger). Tracked under auth-audit until then.
+- Security L-13's ke-app image scan (trivy or grype, pinned) goes into platform-offline. The analyst adds the criterion when that item opens.

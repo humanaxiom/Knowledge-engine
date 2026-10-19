@@ -66,17 +66,53 @@ Linux (bash) and Windows (PowerShell) are supported; macOS is not. See
 
    `launch` creates `.env` from `.env.example` if it is missing and waits until
    every service is healthy.
-3. The API is at http://localhost:47100 (`/healthz`) and Phoenix at
+3. The API is at http://localhost:47100 (`/healthz`, `/readyz`) and Phoenix at
    http://localhost:47101. Both go through the gateway, the only service that
    publishes ports, and are bound to loopback.
+
+`teardown` removes the project's containers and networks (and volumes with
+`--volumes`), then lists anything of the same project that is still there. If
+something is left it prints each resource, exits non-zero and tells you to
+remove it by hand; it never removes a leftover itself.
+
+### Readiness
+
+`GET http://localhost:47100/readyz` returns 200 when postgres, neo4j and valkey
+all answer, and 503 otherwise. The body lists each check as
+`{"ok": bool, "reason": ...}`; `reason` is null when ok, else one word:
+
+| Reason | Meaning |
+|---|---|
+| `refused` | the connection was refused |
+| `timeout` | no answer in time |
+| `unreachable` | the host could not be reached |
+| `auth_failed` | credentials were rejected |
+| `egress_denied` | the egress allowlist refused the host (model host) |
+| `not_configured` | not set up (model host only) |
+| `error:<ExceptionClass>` | anything else, by exception class only |
+
+Reasons never carry credentials, hosts or exception text. The model host is
+reported as `model_host` with `"required": false`: it never makes `/readyz`
+return 503, and it shows `not_configured` until `KE_MODEL_UPSTREAM` is set.
+
+### Worker
+
+The `worker` service consumes one RQ queue (`default`) on Valkey. Job data is
+JSON, not pickle, and the worker runs only the functions listed in
+`engine.jobs.__all__`; any other job is failed without being resolved or run.
 
 Exposing the ports on the LAN by setting `KE_BIND_ADDRESS` to a non-loopback
 IPv4 address is refused outside `KE_ENV=dev` (by the launch scripts, the
 gateway and the engine) until the stack has authentication.
 
-Model host: set `KE_MODEL_UPSTREAM` to `host:port` (for example
-`aria-gb10-2:PORT`) and add the host to `KE_EGRESS_ALLOWLIST`. The gateway
-refuses an upstream that is not on the allowlist.
+Model host: set `KE_MODEL_UPSTREAM` to `host:port` and add the host to
+`KE_EGRESS_ALLOWLIST`. The gateway refuses an upstream that is not on the
+allowlist. For this deployment, put these in `.env`:
+
+```
+KE_MODEL_UPSTREAM=aria-gb10-2:11434
+KE_EGRESS_ALLOWLIST=aria-gb10-2
+```
 
 ## Verification
 
@@ -95,6 +131,21 @@ random project name with nothing published, runs lint, the unit tests, the
 integration tests (in the isolated `gates-it` container) and the smoke test,
 then tears the stack down. Several runs can go in parallel. See
 [CLAUDE.md](CLAUDE.md) for which run a change needs.
+
+The model-calling checks in `full` run only when `KE_MODEL_UPSTREAM` and
+`KE_EGRESS_ALLOWLIST` are both set and the host is reachable. Each is taken
+from the caller's environment first, else from the repo-root `.env`; these are
+the only two `KE_*` values `verify.sh` passes on (the rest of the run uses the
+`.env.example` placeholders). Otherwise those checks skip with a named reason
+(`not configured` or `model host unreachable`), as on GitHub runners.
+
+`scripts/smoke.sh` is meant to be run through `verify.sh`. Run by hand against
+a stack that is already up, it checks that stack, skips the postgres
+stop/restart and never tears it down; it tears down only a stack it launched
+itself.
+
+`scripts/lint.sh` (part of `full`) refuses any symlink under `scripts/` and
+`docker/`.
 
 Guards that make a green run mean something:
 
@@ -152,8 +203,8 @@ in an image.
 - Tracing is off by default in `config/defaults.yaml`. `.env.example` sets
   `HARNESS_TRACING=otlp` to send traces to the local Phoenix.
 - The model host is set per deployment as `host:port` in `KE_MODEL_UPSTREAM`
-  (this deployment: `aria-gb10-2`, OpenAI-compatible; scheme and port are
-  chosen in `.env`). It must be on `KE_EGRESS_ALLOWLIST`.
+  (this deployment: `aria-gb10-2:11434`, OpenAI-compatible). It must be on
+  `KE_EGRESS_ALLOWLIST` (this deployment: `aria-gb10-2`).
 
 The engine refuses to start when: auth is off outside dev; the trace collector
 is not local; the hide-inputs/outputs flags are off outside dev; a secret is a

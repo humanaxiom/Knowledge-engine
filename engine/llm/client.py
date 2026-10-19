@@ -49,5 +49,14 @@ class ModelClient:
                 record_token_usage(span, prompt, completion)
             return result
 
+    def probe(self, timeout: float) -> None:
+        """GET `{base_url}/models` through the guarded client, bounded by
+        `timeout`. Not an LLM call (no prompt, no tokens), so no `llm_span`;
+        the caller's readiness span covers it. Raises on any failure."""
+        if not self.base_url:
+            raise ValueError(f"no base_url is configured for the {self.pass_name} pass")
+        response = self.http_client.get(f"{self.base_url.rstrip('/')}/models", timeout=timeout)
+        response.raise_for_status()
+
     def close(self) -> None:
         self.http_client.close()

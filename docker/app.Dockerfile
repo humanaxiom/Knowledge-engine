@@ -12,7 +12,9 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
     PYTHONUNBUFFERED=1
 
 WORKDIR /app
+# Dependencies first: a code change rebuilds only the layers below (N11).
 COPY pyproject.toml uv.lock ./
+RUN uv sync --locked --no-dev --no-install-project
 COPY harness_telemetry ./harness_telemetry
 COPY engine ./engine
 COPY config ./config

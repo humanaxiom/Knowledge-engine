@@ -21,11 +21,9 @@ from __future__ import annotations
 
 import os
 import re
-import signal
 import subprocess
 import sys
 import threading
-import time
 import unittest
 from pathlib import Path
 from typing import Any
@@ -101,12 +99,28 @@ class _Idled(BaseException):
 
 
 class WorkerEntrypointTest(unittest.TestCase):
+    # platform-stack-ready, ruling W1 (docs/handoffs/platform-stack-ready.md
+    # "orchestrator: rulings on architect plan"; architecture §2.4 Worker,
+    # "Entrypoint test seam moves"): main() is `settings = startup();
+    # run(settings)`, so the seam is `engine.worker.run` instead of
+    # signal.pause/time.sleep. The assertions are unchanged: startup() runs
+    # first, a refusal propagates before run, and a passing startup reaches
+    # run with the Settings it returned (asserted below as well).
     def _main(self, env: dict[str, str]) -> BaseException | None:
         import importlib
 
         worker = importlib.import_module("engine.worker")
+        self.run_args: list[tuple[Any, ...]] = []
+        self.startup_results: list[Any] = []
+        real_startup = worker.startup
 
-        def idle(*args: Any, **kwargs: Any) -> Any:
+        def startup() -> Any:
+            settings = real_startup()
+            self.startup_results.append(settings)
+            return settings
+
+        def run(*args: Any, **kwargs: Any) -> Any:
+            self.run_args.append(args + tuple(kwargs.values()))
             raise _Idled()
 
         outcome: list[BaseException | None] = []
@@ -119,24 +133,28 @@ class WorkerEntrypointTest(unittest.TestCase):
             else:
                 outcome.append(None)
 
-        with environ(env), mock.patch.object(signal, "pause", idle), \
-                mock.patch.object(time, "sleep", idle):
+        with environ(env), mock.patch.object(worker, "run", run), \
+                mock.patch.object(worker, "startup", startup):
             thread = threading.Thread(target=target, daemon=True)
             thread.start()
             thread.join(30)
         if thread.is_alive():
-            self.fail("engine.worker.main() neither refused nor idled via signal.pause "
-                      "or time.sleep within 30 s")
+            self.fail("engine.worker.main() neither refused nor reached run() within 30 s")
         return outcome[0]
 
     def test_worker_main_refused_setting_exits_before_idling(self):
         error = self._main(REFUSING)
-        self.assertNotIsInstance(error, _Idled, "the worker idled despite a refused setting")
+        self.assertNotIsInstance(error, _Idled, "the worker ran despite a refused setting")
         _assert_refusal(self, error)
+        self.assertEqual(self.run_args, [], "run() was called despite a refused setting")
 
     def test_worker_main_idles_after_a_passing_startup(self):
         error = self._main(PASSING)
-        self.assertIsInstance(error, _Idled, f"the worker did not reach its idle loop: {error!r}")
+        self.assertIsInstance(error, _Idled, f"the worker did not reach run(): {error!r}")
+        self.assertEqual(len(self.startup_results), 1, "startup() must run exactly once, first")
+        self.assertEqual(len(self.run_args), 1)
+        self.assertIs(self.run_args[0][0], self.startup_results[0],
+                      "run() must get the Settings that startup() returned")
 
     def test_worker_module_refuses_as_a_process(self):
         env = {**REFUSING, "PYTHONPATH": str(ROOT)}
@@ -262,6 +280,24 @@ class GatewayUpstreamCheckTest(unittest.TestCase):
                 # nginx's 20-envsubst-on-templates.sh renders the upstream; the
                 # check must run before it.
                 self.assertRegex(script.name, r"^1\d-", f"{script.name} must sort before 20-envsubst")
+
+    def test_gateway_checks_run_before_envsubst(self):  # PS-2.24, R2-N5, mutant GP-order
+        # The entrypoint runs /docker-entrypoint.d/* in name order, so what
+        # counts is the name each check is installed under, not its source name.
+        text = (ROOT / "docker" / "gateway.Dockerfile").read_text(encoding="utf-8")
+        envsubst = "20-envsubst-on-templates.sh"
+        for script in _gateway_checks():
+            with self.subTest(script=script.name):
+                targets = re.findall(
+                    rf"(?m)^COPY\s.*docker/gateway/{re.escape(script.name)}\s+/docker-entrypoint\.d/(\S*)\s*$",
+                    text)
+                self.assertTrue(targets, f"{script.name} is not installed into /docker-entrypoint.d/")
+                for target in targets:
+                    installed = target or script.name  # a bare directory keeps the source name
+                    self.assertLess(installed, envsubst,
+                                    f"{script.name} is installed as {installed}, which runs after "
+                                    f"{envsubst}")
+                    self.assertRegex(installed, r"^1\d-", f"{installed} must be a 1x- check")
 
 
 # --------------------------------------------------------------------------

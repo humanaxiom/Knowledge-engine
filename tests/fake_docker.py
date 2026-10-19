@@ -50,6 +50,29 @@ never touches a real daemon. What it does:
   - Output: no `--format` gives docker's JSON array. `--format` (or `-f`)
     understands `{{json .}}`, `{{json .Options}}`, `{{.Options}}` and
     `{{index .Options "KEY"}}`; any other template exits 2 naming it.
+- platform-stack-ready (2b) additions:
+  - `compose ... config`: the gateway environment also carries
+    KE_MODEL_UPSTREAM and KE_EGRESS_ALLOWLIST as compose resolves them
+    (`${VAR:-}`; process env over env file), overridable through
+    FAKE_COMPOSE_RESOLVED (PS-2.21, env_value.sh reads them).
+  - `network inspect`: `"Internal"` is false when FAKE_DOCKER_BACKEND_INTERNAL
+    is `false` (review R2-N4).
+  - `compose ps -q` / `--quiet` prints FAKE_DOCKER_RUNNING (container ids,
+    empty by default: nothing of the project runs); `compose ps --services`
+    prints the stack names only when FAKE_DOCKER_RUNNING is non-empty. Plain
+    `docker ps -q` (no --format) prints FAKE_DOCKER_RUNNING too. Smoke uses
+    this to know whether it launched the project (ruling S1, Q37).
+  - Leftover listings (security L-9, teardown): `docker ps -a ... --format`
+    (or `container ls`), `docker network ls` and `docker volume ls`, each
+    with `--filter label=com.docker.compose.project=<p>`, print the names in
+    FAKE_DOCKER_LEFTOVERS, a JSON object `{"<p>": {"containers": [...],
+    "networks": [...], "volumes": [...]}}`, for the project the filter names.
+    FAKE_DOCKER_LEFTOVER_CONTAINERS / _NETWORKS / _VOLUMES (newline-
+    separated) answer for any project. The filter is in the call log.
+  - FAKE_DOCKER_FAIL_NTH: `|`-separated `<regex>#<n>` items. The n-th call
+    (1-based, counted from FAKE_DOCKER_JSON, which must be set) whose joined
+    argv matches the regex exits 1 after logging. Records whose argv starts
+    with "STUB" (stub scripts logging into the same file) are not counted.
 - Every other call exits 0.
 """
 
@@ -107,6 +130,29 @@ for needle in filter(None, os.environ.get("FAKE_DOCKER_FAIL", "").split("|")):
         sys.stderr.write("fake docker: failing on %r\n" % needle)
         sys.exit(1)
 
+def _calls_matching(rx):
+    import re as _re
+    if not jlog or not os.path.isfile(jlog):
+        return 0
+    n = 0
+    with open(jlog, encoding="utf-8") as fh:
+        for line in fh:
+            if not line.strip():
+                continue
+            rec = json.loads(line)
+            if rec.get("argv", [None])[:1] == ["STUB"]:
+                continue
+            if _re.search(rx, " ".join(rec.get("argv", []))):
+                n += 1
+    return n
+
+for item in filter(None, os.environ.get("FAKE_DOCKER_FAIL_NTH", "").split("|")):
+    import re as _re
+    rx, _, nth = item.rpartition("#")
+    if _re.search(rx, joined) and _calls_matching(rx) == int(nth):
+        sys.stderr.write("fake docker: failing call %s matching %r\n" % (nth, rx))
+        sys.exit(1)
+
 ISOLATED = {"com.docker.network.bridge.gateway_mode_ipv4": "isolated"}
 CLIENT_VERSION = "27.0.0"
 project = os.environ.get("COMPOSE_PROJECT_NAME") or "knowledge-engine"
@@ -137,6 +183,38 @@ def engine_reply(server_template):
 
 if argv[:1] == ["version"]:
     engine_reply(".Server.Version")
+
+def _label_project():
+    for f in opt_values("--filter"):
+        if f.startswith("label=com.docker.compose.project="):
+            return f.split("=", 2)[2]
+    return None
+
+def _leftovers(kind):
+    names = [n for n in os.environ.get("FAKE_DOCKER_LEFTOVER_" + kind.upper(), "").splitlines() if n]
+    p = _label_project()
+    table = json.loads(os.environ.get("FAKE_DOCKER_LEFTOVERS") or "{}")
+    if p is not None:
+        names += list((table.get(p) or {}).get(kind, []))
+    return names
+
+def _listing(kind):
+    out = _leftovers(kind)
+    if out:
+        print("\n".join(out))
+    sys.exit(0)
+
+if argv[:1] == ["ps"] or argv[:2] in (["container", "ls"], ["container", "list"], ["container", "ps"]):
+    if ("-q" in argv or "--quiet" in argv) and not opt_values("--format"):
+        running = os.environ.get("FAKE_DOCKER_RUNNING", "")
+        if running:
+            print(running)
+        sys.exit(0)
+    _listing("containers")
+if argv[:2] in (["network", "ls"], ["network", "list"]):
+    _listing("networks")
+if argv[:2] in (["volume", "ls"], ["volume", "list"]):
+    _listing("volumes")
 if argv[:1] == ["info"]:
     engine_reply(".ServerVersion")
 
@@ -151,7 +229,8 @@ if argv[:2] == ["network", "inspect"]:
             sys.stderr.write("Error response from daemon: network %s not found\n"
                              "Error: No such network: %s\n" % (n, n))
             sys.exit(1)
-        nets.append({"Name": n, "Driver": "bridge", "Internal": True, "Options": options,
+        internal = os.environ.get("FAKE_DOCKER_BACKEND_INTERNAL", "true").lower() != "false"
+        nets.append({"Name": n, "Driver": "bridge", "Internal": internal, "Options": options,
                      "Labels": {"com.docker.compose.network": "backend",
                                 "com.docker.compose.project": project}})
     if not nets:
@@ -230,6 +309,8 @@ if "config" in argv:
         "KE_BIND_ADDRESS": env.get("KE_BIND_ADDRESS") or "127.0.0.1",
         "KE_API_PORT": env.get("KE_API_PORT") or "47100",
         "KE_PHOENIX_PORT": env.get("KE_PHOENIX_PORT") or "47101",
+        "KE_MODEL_UPSTREAM": env.get("KE_MODEL_UPSTREAM", ""),
+        "KE_EGRESS_ALLOWLIST": env.get("KE_EGRESS_ALLOWLIST", ""),
     }
     resolved.update(json.loads(os.environ.get("FAKE_COMPOSE_RESOLVED") or "{}"))
     if "--environment" in argv:
@@ -251,7 +332,9 @@ if "config" in argv:
     if os.environ.get("FAKE_COMPOSE_PORTS"):
         ports = json.loads(os.environ["FAKE_COMPOSE_PORTS"])
     model = {"name": project, "services": {
-        "gateway": {"environment": dict(app_env), "networks": {"backend": None, "edge": None},
+        "gateway": {"environment": dict(app_env, KE_MODEL_UPSTREAM=resolved["KE_MODEL_UPSTREAM"],
+                                        KE_EGRESS_ALLOWLIST=resolved["KE_EGRESS_ALLOWLIST"]),
+                    "networks": {"backend": None, "edge": None},
                     "ports": ports},
         "api": {"environment": dict(app_env), "networks": {"backend": None}},
         "worker": {"environment": dict(app_env), "networks": {"backend": None}},
@@ -291,6 +374,15 @@ if "config" in argv:
     sys.exit(0)
 
 if "ps" in argv:
+    running = os.environ.get("FAKE_DOCKER_RUNNING", "")
+    if "-q" in argv or "--quiet" in argv:
+        if running:
+            print(running)
+        sys.exit(0)
+    if "--services" in argv:
+        if running:
+            print("\n".join(["gateway", "api", "worker", "postgres", "neo4j", "valkey", "phoenix"]))
+        sys.exit(0)
     print(os.environ.get("FAKE_DOCKER_HEALTH", "healthy"))
     sys.exit(0)
 

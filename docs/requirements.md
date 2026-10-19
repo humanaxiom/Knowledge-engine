@@ -478,13 +478,123 @@ N18, N19; security L2, L5, L7, L16, L17, L18.
     `aria-gb10-2` is up. Routes that compose drafts check the model host
     themselves rather than relying on `/readyz`.
     `[integration: test_readyz_ready_without_model_host]` (full)
+    - *Unit form (adopted from architect §2.6, 2026-10-19).* Given stubbed
+      probes with every store ok and the model probe failing, `/readyz`
+      answers 200, ready, with the model-host entry marked not required;
+      given one store failing, it answers 503. Given the compose model
+      `base_url` unset (null), the model-host reason is `not_configured`
+      and no model probe is called.
+      `[unit: test_readyz_ready_excludes_model_host]` (fast). This unit test
+      and the integration test above are kept as two names: the unit test
+      fixes the rule with stubs, the integration test proves it against
+      the real stores.
+    - *No upstream means not configured (Windows proof F1; orchestrator
+      rework round 1, 2026-10-19).* Compose always sets every
+      `KE_MODELS__*__BASE_URL` to the gateway forward (PS-2.7 *Model
+      wiring*), so a set base URL does not mean a model host is configured.
+      Given `KE_MODEL_UPSTREAM` unset or empty (`settings.models.model_upstream`
+      falsy), with the compose base URL set to the gateway, the model-host
+      entry is `{"ok": false, "reason": "not_configured", "required": false}`,
+      no model probe is made, and the response is still ready (200). Given
+      `KE_MODEL_UPSTREAM` set, the probe is made (control case).
+      `[unit: test_readyz_model_host_not_configured_without_upstream]` (fast;
+      cases: unset, empty), control `test_readyz_model_host_probed_when_upstream_set`
+      (fast). In the integration suite, `test_readyz_reports_each_dependency`
+      asserts `not_configured` when `KE_MODEL_UPSTREAM` is empty in the
+      verify project, and `test_readyz_ready_without_model_host` sets
+      `KE_MODEL_UPSTREAM` so its closed-port case still exercises a probe
+      failure (full).
   - *Model host reachable.* Given the configured model host reachable, the
     model-host field reports success. This is a model-calling integration
     test: it skips with a named reason when the host is unreachable (PS-2.7).
     `[integration: test_readyz_reports_reachable_model_host]` (full)
+  - *Status and reasons (analyst, 2b plan, 2026-10-19; shape from
+    `docs/architecture.md` §2.4 "/readyz").* Ready answers 200, not ready
+    503. Given any failing check, its reason is one of the fixed vocabulary
+    the architecture names and contains no DSN, password, host credential or
+    exception message text. `test_readyz_fails_when_store_down` asserts both,
+    with a store password set to a known marker that must not appear in the
+    body.
+    - *Vocabulary (adopted 2026-10-19, architect §2.4 "/readyz" Reasons).*
+      Every reason is exactly one of `timeout`, `refused`, `unreachable`,
+      `auth_failed`, `egress_denied`, `not_configured`, or `error:` followed
+      by the exception class name only. `unreachable` is a dial failure
+      other than refused or timed out (for example a name that does not
+      resolve); `not_configured` is the model host with no base URL or no
+      `KE_MODEL_UPSTREAM` (F1, below *Unit form*). Given
+      each exception family the architecture maps, the classifier returns
+      its word; given an exception whose message (or a psycopg error) carries
+      a marker password, the marker never appears in the result.
+      `[unit: test_readyz_reason_vocabulary]` (fast)
+  - *Bounded.* Given a store whose address accepts no connection, `/readyz`
+    answers within that store's configured `readiness.timeout_s` plus a
+    margin the test states, never hanging. Asserted in
+    `test_readyz_fails_when_store_down` (full).
+    - *Probe unit (adopted 2026-10-19, architect §2.6).* Given a store probe
+      pointed at a closed loopback port inside `gates`, it returns `refused`
+      well within `readiness.timeout_s`.
+      `[unit: test_store_probe_classifies_closed_port]` (fast)
+  - *Traced (AGENTS.md "Untraced agent steps").* One `/readyz` call produces
+    an `api.readyz` CHAIN span with one `readyz.<dep>` TOOL child per
+    dependency. `[unit: test_readyz_is_traced]` (fast; probes stubbed,
+    in-memory exporter)
+  - *Store identity has one source (carry-in, review round-0 N4).* Given the
+    compose files and `config/defaults.yaml`, the postgres user and database
+    the `postgres` service creates equal `stores.postgres.user` and
+    `stores.postgres.database`. `[unit: test_compose_postgres_identity_matches_defaults]`
+    (fast)
+  - *No GSS encryption on postgres connections (security L-13; rework
+    round 1, 2026-10-19).* psycopg-binary vendors old Kerberos/SASL
+    libraries that pip-audit cannot see, so the engine never negotiates GSS
+    encryption. Given the postgres readiness probe, it connects with
+    `gssencmode="disable"`. `[unit: test_postgres_probe_disables_gss_encryption]`
+    (fast). Given the engine source, every psycopg connect call passes
+    `gssencmode="disable"`.
+    `[unit: test_every_postgres_connect_in_engine_disables_gss_encryption]`
+    (fast; static scan). The image scanner security also suggested
+    (trivy/grype over `ke-app`) is not placed by this criterion (see the
+    analyst rework-1 note).
 - **PS-2.6 Worker.** Given a no-op job enqueued on Valkey, the worker consumes
   it exactly once and records completion. `[integration: test_worker_consumes_noop_job]` (full;
   runs in `gates-it` under the Q30 integration convention).
+  - *Observable result (analyst, 2b plan).* "Exactly once" and "records
+    completion" are asserted as: the job's queue status is `finished` and
+    the job's side effect (the counter named in `docs/architecture.md` §2.4
+    "Worker") equals 1 after the test's wait, enqueued from `gates-it` to the
+    real `worker` container, never an in-process worker.
+  - *Job path (2026-10-19, architect §2.4 "Worker").* The no-op job is
+    `engine.jobs.noop`, enqueued by that dotted path on the `default` queue.
+    This replaces `engine.worker.jobs.noop`; no criterion or test names the
+    old path.
+  - *Still refuses unsafe settings.* The 2a refusal behaviour of
+    `python -m engine.worker` (startup refusals, including refusal 6) holds
+    after the idle loop is replaced: the existing entrypoint unit test stays
+    green unweakened. Its fixture patches `engine.worker.run` instead of
+    `signal.pause`/`time.sleep`; its assertions are unchanged (orchestrator
+    ruling W1, 2026-10-19).
+  - *Traced.* Each job runs in a `job.<name>` CHAIN span carrying the job id.
+    `[unit: test_worker_job_is_traced]` (fast; in-memory exporter)
+  - *Runs only engine jobs, never unpickles (security M-1, engine side;
+    orchestrator rework round 1, 2026-10-19).* Valkey is reachable from
+    every `backend` service, so the worker trusts nothing it reads there.
+    - *JSON only.* Given the worker built by `engine.worker.run`, the worker
+      and each of its queues use `rq.serializers.JSONSerializer`; job data is
+      never decoded with pickle. `[unit: test_worker_uses_json_serializer]`
+      (fast)
+    - *Allowlist.* Given a job whose function is not named in
+      `engine.jobs.__all__` (cases: `platform.node`, `os.getcwd`, and
+      `engine.jobs.traced_job`, which is in the module but not in `__all__`),
+      when the worker executes it, then the function is never called and the
+      job does not reach status `finished`. Given `engine.jobs.noop` (in
+      `__all__`), it runs and finishes (control).
+      `[unit: test_worker_refuses_a_job_outside_engine_jobs]`, control
+      `test_worker_runs_a_job_in_engine_jobs` (fast)
+    - *SimpleWorker pinned (review nit, mutant WK3).* The worker is an
+      `rq.SimpleWorker` (no fork, so job spans are flushed, architecture §2.4
+      "Worker"). `[unit: test_worker_is_a_simple_worker]` (fast)
+    - *Network side deferred.* Valkey on its own network and a Valkey
+      password/ACL are not in this item; they are auth-audit carry-in 7 and
+      must land before any ingest exposure.
 - **PS-2.7 Real-store integration gate (DR31 as amended by Q30, narrowed by
   F-A).** Human rulings Q30 and F-A, 2026-10-18.
   - *Mechanism.* `verify.sh full` runs `tests/integration/` in the one-shot
@@ -515,6 +625,15 @@ N18, N19; security L2, L5, L7, L16, L17, L18.
     services share an internal network with `gateway`, so the forward is
     reachable without a non-internal network (checked by
     `test_gates_it_internal_only_and_no_socket`, extended).
+    - *Model wiring (adopted 2026-10-19, architect §2.4 "Model wiring").*
+      Given the compose files, `api`, `worker` and `gates-it` each set every
+      `KE_MODELS__*__BASE_URL` to the gateway's model forward
+      (`http://gateway:${KE_GATEWAY_MODEL_LISTEN:-8102}/v1`) and their egress
+      allowlist to `gateway` followed by `${KE_EGRESS_ALLOWLIST:-}`, while
+      `gateway` keeps `${KE_EGRESS_ALLOWLIST:-}` unprefixed.
+      `[unit: test_compose_model_wiring]` (fast). It checks environment
+      wiring only; network membership stays with
+      `test_gates_it_internal_only_and_no_socket`.
   - *Egress allowlist still holds (DR30).* Given model calls going through the
     gateway forward, when the app's model client is asked to reach a host not
     on `KE_EGRESS_ALLOWLIST`, then it raises before any connection is made.
@@ -531,6 +650,15 @@ N18, N19; security L2, L5, L7, L16, L17, L18.
     that do not call a model never skip for this reason.
     `[unit: test_model_tests_skip_with_named_reason]` (fast; uses a fixture
     test and an unreachable host).
+    - *Not configured (umbrella ruling, model upstream in local verify).*
+      Given `KE_MODEL_UPSTREAM` or `KE_EGRESS_ALLOWLIST` unset or empty in
+      the verify project, each model-calling test is reported skipped with a
+      reason that names the unset key and says it is not configured (not
+      "unreachable"), and no reachability probe is attempted. Covered by a
+      second case of `test_model_tests_skip_with_named_reason` (fast).
+    - *Only model-calling tests skip on network grounds.* Given the fixture
+      run, a test not marked model-calling that hits the probe's failure
+      fails rather than skips. Same test (fast).
   - *Unit suite calls no model.* No test in the unit suite (`verify.sh fast`)
     opens a connection to a model host. `[unit: test_no_model_calls_in_unit_suite]`
     (fast; network guard).
@@ -552,6 +680,43 @@ N18, N19; security L2, L5, L7, L16, L17, L18.
   real store (PS-2.5), checks every service healthy (PS-2.1), then tears it
   down, in addition to the existing OTLP check. It runs in `verify.sh full`,
   so in CI. `[smoke: scripts/smoke.sh]` (full)
+  - *Who launches (carry-in, review round-0 N11; aligns with ADR-KE-009 and
+    `docs/architecture.md` §2.2).* Inside `verify.sh full`, the stack the
+    smoke checks is brought up by the launch script and removed by the
+    teardown script, which `verify.sh` runs around the smoke host half (trap
+    teardown); "smoke launches ... tears down" above is met by that
+    sequence. The 2a split-table wording "smoke launches, checks /healthz,
+    tears down" is read the same way.
+  - *Tears down only what it launched (orchestrator ruling S1, 2026-10-19).*
+    "Then tears it down" applies only to a project the smoke itself
+    launched. Given no running container of the project before the smoke
+    starts, the smoke launches it and tears it down on every exit path,
+    pass or fail. Given the project already running (an operator's live
+    stack, smoke run by hand), the smoke runs its checks against it and
+    leaves it running on every exit path: it never runs the teardown
+    script against it. Static cases are added to
+    `test_smoke_stops_and_restarts_a_store` (fast, fake docker): no
+    pre-existing project → teardown runs, including after a failed check;
+    pre-existing project → teardown never runs. Whether the store
+    stop/start runs against a pre-existing project is Q37.
+  - *Store stop/start (PS-2.5 smoke).* Given the launched stack, the smoke
+    host half stops one real store container, then asserts `/readyz` answers
+    503 with that store's check failing and naming it, then starts it and
+    asserts `/readyz` returns to 200 within a configured wait. Given the
+    store fails to come back, the smoke fails naming the store; it never
+    passes with a store left stopped. Static cases: `[unit: test_smoke_stops_and_restarts_a_store]`
+    (fast, fake docker: asserts the stop, the start, both readiness checks,
+    and a non-zero exit when readiness never recovers).
+  - *Every service healthy.* `test_stack_services_healthy` (PS-2.1) runs in
+    the same smoke after the store is back.
+    - *Order (review R-B3, rework round 1, 2026-10-19; the criterion stands
+      as written).* The every-service health check runs after the final
+      `/readyz` ready, that is after the stopped store is started and
+      readiness has recovered, never only before the stop. Given a service
+      left unhealthy after the restart, the smoke fails naming it.
+      `[unit: test_smoke_checks_every_service_healthy_after_the_store_is_back]`,
+      `[unit: test_smoke_fails_when_a_service_is_unhealthy_after_the_restart]`
+      (fast, fake docker)
 - **PS-2.9 Build, launch, teardown, quickstart.** Scripts exist for Windows
   PowerShell and for bash on Linux, with a fresh-machine quickstart in
   `README.md` or `docs/quickstart.md` that names only those scripts and the
@@ -576,6 +741,14 @@ N18, N19; security L2, L5, L7, L16, L17, L18.
     reporting every PS-2.1 service healthy, the PowerShell launch script's
     refusal case (PS-2.14), and the teardown script followed by
     `docker compose ps` listing no running container of the project.
+  - *What makes the Windows run stale (Q34 scope ruling, orchestrator
+    rework round 1, 2026-10-19).* "Script" in the Q34 rule above means the
+    PowerShell launch, build and teardown path. Only a diff since the
+    recorded run that touches the PowerShell launch/build/teardown scripts,
+    any compose file or any Dockerfile makes it stale, and then the run is
+    repeated before commit. Gate-only bash scripts (for example
+    `scripts/verify.sh`, `scripts/lint.sh`, `scripts/smoke.sh`,
+    `scripts/env_value.sh`) and engine code do not make it stale.
 - **PS-2.10 Only the gateway has a route out.** Given the compose files, only
   `gateway` is attached to a network that is not `internal: true`; every other
   stack service is attached only to internal networks.
@@ -596,6 +769,12 @@ N18, N19; security L2, L5, L7, L16, L17, L18.
   model-calling integration tests (PS-2.7) as running only where the model
   host is reachable, and skipping by name on GitHub runners.
   `[unit: test_claude_md_lists_verify_only_checks]` (fast)
+  - *Names how to turn them on (umbrella ruling, model upstream in local
+    verify).* The same section names `KE_MODEL_UPSTREAM` and
+    `KE_EGRESS_ALLOWLIST` as the only two keys a local `verify.sh full`
+    takes from the caller's environment or the operator's `.env`, and says
+    the tests skip by name when either is unset. Same test (fast). The
+    section's text was added at the 2a docs gate; only the test is new.
 - **PS-2.14 LAN exposure refused outside dev (port ruling, umbrella
   2026-10-19).** Exposing published ports beyond the host is a deliberate
   operator choice (`KE_BIND_ADDRESS` set to a non-loopback address in `.env`)
@@ -717,6 +896,124 @@ N18, N19; security L2, L5, L7, L16, L17, L18.
   that `docs/architecture.md` §2.3 gives the product, and `uv.lock` is
   regenerated (the `--locked` runs catch drift).
   `[unit: test_pyproject_name_matches_project_name]` (fast)
+- **PS-2.21 Model upstream in local verify (umbrella ruling, 2026-10-19,
+  "model upstream in local verify"; 2b).** Delivers Q30's "model-calling
+  tests run when `aria-gb10-2` is reachable" for local runs.
+  - *Exactly two keys.* Given `KE_MODEL_UPSTREAM` and `KE_EGRESS_ALLOWLIST`
+    set in the caller's environment, or in the operator's gitignored `.env`,
+    when `verify.sh full` launches its verify project, then those two values
+    reach the verify project's `gateway`, `api`, `worker` and `gates-it`.
+    `[unit: test_verify_full_passes_model_upstream_keys]` (fast; fake
+    docker as in the B6 tests; cases: caller env only, `.env` only, neither).
+  - *Nothing else from `.env`.* Given a `.env` that also sets other keys
+    (a secret, `KE_ENV`, `KE_BIND_ADDRESS`, a port), each with a marker
+    value, none of those markers reaches the verify project's environment
+    or compose arguments. `[unit: test_verify_full_takes_no_other_env_key]`
+    (fast)
+  - *No other caller `KE_*` key (security L-11; rework round 1,
+    2026-10-19).* Compose gives the caller's shell precedence over
+    `--env-file`, so the caller environment is filtered too. Given the
+    caller's environment sets other `KE_*` keys (for example
+    `KE_STORES__POSTGRES__PASSWORD`, `KE_ENV`, `KE_BIND_ADDRESS`), each with
+    a marker value, when `verify.sh full` launches its verify project, then
+    none of those markers reaches the verify project's environment or
+    compose arguments (so no real store password reaches the verify stores
+    or `gates-it`); only `KE_MODEL_UPSTREAM` and `KE_EGRESS_ALLOWLIST` pass.
+    `[unit: test_verify_full_takes_no_caller_ke_key_but_the_model_keys]`
+    (fast; fake docker as in the B6 tests)
+  - *Unset means skip, never fail.* Given either key unset (as in CI, which
+    has no `.env`), `verify.sh full` still passes, and the model-calling
+    tests skip with the "not configured" reason of PS-2.7.
+  - *No bypass.* The passed values go through the same checks as a launched
+    stack: the gateway's upstream check (2a, security M-3) and the engine's
+    egress guard (PS-1.3, PS-1.4). The existing tests for those stay green
+    unweakened.
+  - *Shown once with the host reachable.* The 2b evidence folder holds one
+    local `verify.sh full` run with both keys set and `aria-gb10-2`
+    reachable (human ruling 2026-10-19: `KE_MODEL_UPSTREAM` is
+    `aria-gb10-2:11434`, allowlist host `aria-gb10-2`; Q38), in which the model-calling tests ran and passed (not
+    skipped). If the host is unreachable when 2b closes, the tester reports
+    that to the orchestrator; it is never shown with a skip in its place.
+    `[gate: recorded local full run]` (manual)
+  - *Precedence (Q35, resolved 2026-10-19).* Given a key set in both the
+    caller's environment (even empty) and the repo-root `.env`, the caller's
+    value wins. Only the repo-root `.env` counts as the operator's `.env`; a
+    file named by `KE_ENV_FILE` is not read. Until platform-offline (L-5),
+    "nothing else from `.env`" is asserted for the verify project's
+    environment and compose arguments only, not the filesystem.
+  - *Fixture (orchestrator ruling W1, 2026-10-19).* The `verify.sh` B6 temp
+    tree used by these tests gains an `env_value.sh` stub; assertions are
+    unchanged.
+- **PS-2.22 Teardown leaves nothing of its project (carry-in, security L-9;
+  2b).** Given a project with its own profile service containers (`gates`,
+  `gates-it`), a `gates-it-run-*` one-off still running and its `backend`
+  network still attached, when the teardown script (bash and PowerShell)
+  runs, then afterwards no container or network labelled with that
+  project's compose project name remains; if one cannot be removed, teardown
+  exits non-zero naming it. Given another project's containers and
+  networks, teardown leaves them untouched (it acts only on the resolved
+  project name, never a default). With this, `verify.sh full`'s
+  leaked-project check (2a review N7) fires on such a leak.
+  `[unit: test_teardown_removes_or_reports_project_leftovers]`,
+  `[unit: test_teardown_leaves_other_projects_alone]` (fast; fake docker,
+  bash under `sh`, PowerShell under `pwsh` in the gates image). The
+  Windows run (PS-2.9) shows the PowerShell teardown leaving none. This
+  must stay consistent with ruling F3 (teardown never uses `--profile '*'`);
+  the architect states how.
+- **PS-2.23 PowerShell lint cannot be escaped by a file name (carry-in,
+  security L-10, review rework-1 N-1, N-2, N-5, rework-2 R2-N6; 2b).**
+  - *Wildcard names (L-10).* Given a `.ps1` whose name contains `[`, `]`,
+    `*` or `?` and whose content has a finding (e.g. `b[1].ps1` with
+    `Invoke-Expression`), `scripts/lint.sh` fails, either reporting that
+    finding for that exact file or refusing the name and naming the file;
+    it never passes. `[unit: test_lint_ps1_wildcard_name_cannot_escape]`
+    (fast)
+  - *Each file covered (N-1, N-5).* Every `.ps1` that lint.sh's scope
+    covers is passed to PSScriptAnalyzer by its own path, including one in a
+    subdirectory. `test_lint_covers_every_shell_and_powershell_script`
+    (fast) is extended to require each path and to include a nested file.
+  - *Warnings fail (N-2).* Given a planted Warning-severity finding, lint
+    fails. `[unit: test_lint_fails_on_warning_severity_finding]` (fast)
+  - *Any-context payload (R2-N6).* `test_lint_runs_no_code_from_a_powershell_filename`
+    gains a payload that parses in any context (or a static assertion that
+    the `-Command` text is fixed), so a per-file shape cannot pass it.
+  - *Any case, modules, no links (security L-12; rework round 1,
+    2026-10-19).* PowerShell files are selected case-insensitively and
+    include modules: given a finding planted in `scripts/x.PS1`,
+    `scripts/m.psm1`, `scripts/sub/Mixed.Ps1` or `scripts/M.PSM1`, lint fails
+    naming the file. `[unit: test_lint_covers_upper_case_ps1_and_psm1]`
+    (fast). Given a symlink under `scripts/` named like a script (`.ps1` or
+    `.sh`), whether its target is inside or outside `scripts/`, lint fails
+    (exits non-zero); it never passes.
+    `[unit: test_lint_fails_on_a_symlinked_script]` (fast)
+  - *Lone `[` (review nit, rework round 1).* Given a `.ps1` whose name
+    contains a lone `[`, lint fails without running PowerShell, and its
+    output names the rule it refused under. `[unit: test_lint_ps1_lone_open_bracket_is_refused_before_pwsh]`
+    (fast)
+- **PS-2.24 Tests that guard 2a security controls (carry-in, review
+  rework-2 R2-N1–N5, review-ci-fix N2; 2b).** Each new case is shown RED
+  against the mutant the reviewer recorded as surviving.
+  - *R2-N1 (T3/T4).* Teardown (bash and PowerShell) never passes
+    `--remove-orphans`. `[unit: test_teardown_does_not_remove_orphans]` (fast)
+  - *R2-N2 (T5/T8).* Given `KE_ENV_FILE` set, teardown passes it as
+    `--env-file` and carries the project name.
+    `[unit: test_teardown_carries_project_and_env_file]` (fast)
+  - *R2-N3 (version anchors).* The launch scripts refuse Engine
+    `28.0.1-rc.1` and accept `100.0.0`; cases added to
+    `test_launch_refuses_docker_engine_below_28_or_unreadable` (fast).
+  - *R2-N4 (SM-I3).* Given the backend network inspected as not internal,
+    the smoke host half fails naming the network; case added to
+    `SmokeBackendIsolatedTest` (fast).
+  - *R2-N5 (GP-order).* Every `docker/gateway/1x-ke-*.sh` check sorts
+    before the image's `20-envsubst` step.
+    `[unit: test_gateway_checks_run_before_envsubst]` (fast)
+  - *ci-fix N2.* The hook's structural L21 trace count does not depend on the
+    caller's `PS4`. `[unit: test_trace_count_independent_of_caller_ps4]`
+    (fast). ci-fix N1 (a comment in the hook next to the counted lines)
+    has no test; the reviewer checks it.
+  - *Round-0 N3 (P5).* `*_LISTEN` keys count as ports for the PS-1.2 scan,
+    and a literal `target:` port in a compose file is flagged; cases added
+    to `test_no_hardcoded_ports` (fast).
 
 **Also delivered in platform-stack (criteria live elsewhere):** PS-1.9
 *Not shipped* (`test_env_example_not_in_app_image`, fast; the app image
@@ -747,7 +1044,7 @@ plan items, in order, each on its own branch and handoff doc, each ending
 | Order | Slug | Criteria | Deployable as |
 |---|---|---|---|
 | 2a | `platform-stack-up` | PS-2.17 (M5, first unit), PS-2.1–PS-2.4, PS-2.7 *Mechanism* and *No route out, at runtime*, PS-2.9 (with the Windows run, including the PowerShell refusal case), PS-2.10–PS-2.12, PS-2.14–PS-2.16, PS-2.19, PS-2.20, PS-1.9 *Not shipped* | `scripts/launch` brings every service up healthy; smoke launches, checks `/healthz`, tears down |
-| 2b | `platform-stack-ready` | PS-2.5, PS-2.6, the rest of PS-2.7, PS-2.8, PS-2.13, PS-2.18, the PS-3.4 measurement | the same stack with readiness, worker, model-gated integration tests and the full smoke |
+| 2b | `platform-stack-ready` | PS-2.5, PS-2.6, the rest of PS-2.7, PS-2.8, PS-2.13, PS-2.18, PS-2.21–PS-2.24, the PS-3.4 measurement, a fresh PS-2.9 Windows run (Q34: 2b changes compose and scripts) | the same stack with readiness, worker, model-gated integration tests and the full smoke |
 
 Outcome-metric lines:
 
@@ -763,6 +1060,78 @@ PS-2.4 is in 2a because PS-2.1's health check needs `/healthz`, and it runs in
 moves into 2a too. PS-2.17 is in 2a because the engine-built provider changes
 `tests/support.py`, which every later test uses. PS-2.18 stays in 2b, and with
 it the review R6 clean-up named in the placement table.
+
+**2b gate depth (analyst, 2026-10-19; names adopted from architect §2.6
+the same day).** Fast: `test_readyz_reason_vocabulary`, `test_readyz_is_traced`,
+`test_readyz_ready_excludes_model_host`, `test_store_probe_classifies_closed_port`,
+`test_compose_model_wiring`,
+`test_compose_postgres_identity_matches_defaults`, `test_worker_job_is_traced`,
+`test_gateway_only_external_upstream_is_model_upstream`,
+`test_model_tests_skip_with_named_reason`, `test_no_model_calls_in_unit_suite`,
+`test_smoke_stops_and_restarts_a_store`, `test_claude_md_lists_verify_only_checks`,
+both PS-2.18 tests, every PS-2.21–PS-2.24 unit test, `test_ci_job_has_timeout`.
+Full: the four `test_readyz_*` integration tests, `test_worker_consumes_noop_job`,
+and the smoke (store stop/start, every service healthy). Manual: the
+PS-2.21 reachable-host run and the PS-2.9 Windows run. The item's gate is
+`scripts/verify.sh full`.
+
+**PS-3.4 in 2b.** The baseline is 274 s (CI on 0f2821c, ubuntu-24.04,
+`docs/evidence/platform-stack/ci-run-0f2821c.txt`), which gives 7 minutes.
+2b adds the store stop/start and the worker, so the value is set from a CI
+run that includes them (Q36, resolved). *Orchestrator ruling C1,
+2026-10-19:* `timeout-minutes` stays at 20 until 2b's first green CI run;
+the 7 minutes derived from the 274 s baseline is not applied. That run's
+duration plus 50%, rounded up to a whole minute, is then set in a
+follow-up commit on the 2b branch before the item closes, with the run's
+log saved in `docs/evidence/platform-stack-ready/` and the reviewer
+checking the value against it. The stale `ci.yml` comment that every gate runs
+"with networking disabled" is corrected in the same edit (round-0 N10;
+reviewer checks). The 2b CI evidence also records the elapsed time of the two
+requirement-4f 1 MB hook tests (ci-fix watch); if one flakes, that goes to an
+orchestrator ruling, and the 3 s bound is never loosened quietly.
+
+**Carry-ins from platform-stack-up (`docs/handoffs/archive/platform-stack-up.md`)
+— placement (analyst, 2026-10-19):**
+
+| Finding | Here? | Where |
+|---|---|---|
+| model upstream in local verify (umbrella ruling) | yes | PS-2.21; PS-2.7 *Not configured*; PS-2.13 |
+| security L-9 | yes | PS-2.22 |
+| security L-10; review rework-1 N-1, N-2, N-5; R2-N6 | yes | PS-2.23 |
+| review R2-N1–N5; review-ci-fix N2; round-0 N3 | yes | PS-2.24 |
+| review-ci-fix N1 (hook comment) | yes, no criterion | reviewer checks (PS-2.24) |
+| 1 MB timing-margin watch | yes, no test | elapsed recorded in the 2b CI evidence (PS-3.4 note above) |
+| round-0 N4 (postgres identity) | yes | PS-2.5 *Store identity* |
+| round-0 N10 (ci.yml comment) | yes, no criterion | with PS-3.4 |
+| round-0 N11 (who launches the smoke) | yes | PS-2.8 *Who launches* |
+| round-0 N9 (dead code: `support.py` fallback, `verify_provider` arg) | yes, no criterion | with PS-2.18 and the R6 clean-up; reviewer checks |
+| R2-N7 (fake vs §2.4 names) | yes, no criterion | architect aligns §2.4 or the tester the fake |
+| R2-N8 (single network inspect) | yes, no criterion | only if PS-2.8 rewrites that smoke code |
+| R2-N9 = rework-1 N-8 (autocrlf in lint tests) | yes, no criterion | the class is edited for PS-2.23 anyway |
+| rework-1 N-4 (gateway charset check) | yes, no criterion | security rules at the 2b audit: test it or record it as defence in depth |
+| rework-1 N-3 | done | resolved in 2a rework 2 (L4 killed, `review-rework2.md`) |
+| round-0 N5 | done | closed by 2a B4 (smoke resolves without `.env`) |
+| rework-1 N-6 (M-2 errno record) | close | superseded by the inspect proof (ruling R1-B1 (ii)); orchestrator confirms |
+| security L-5 (gates-it root, rw repo) | no | `platform-offline`, which reworks the verify host half for DinD; see Q35 |
+| security L-8; rework-1 N-7 (PSScriptAnalyzer hash, telemetry ENV order) | no | `platform-offline` (gates image and supply chain) |
+| round-0 N6 (shared image tags), N8 (Dockerfile layer order) | no | `platform-offline`, where the bundle names and rebuilds images |
+
+**2b size (analyst, 2026-10-19).** One branch. The product part (PS-2.5,
+2.6, 2.7 rest, 2.8, 2.13, 2.18, 2.21, PS-3.4) is about 20 named tests; the
+carry-ins (PS-2.22–2.24) mostly add cases to existing 2a test classes. Both
+halves change compose or scripts, so each would need its own Windows run
+(Q34); one branch needs one. If the TDD RED for 2b exceeds what one review
+loop can judge, the fallback split is: `platform-stack-ready` (product
+part) then `platform-stack-hardening` (PS-2.22–PS-2.24), in that order.
+Suggested TDD order: PS-2.18 → PS-2.24 → PS-2.22/2.23 → PS-2.5 →
+PS-2.6 → PS-2.7 rest and PS-2.21 → PS-2.8 → PS-2.13 → PS-3.4.
+
+**2b dependency licence note (orchestrator ruling, 2026-10-19).** 2b adds
+`psycopg[binary]`, `neo4j`, `redis` and `rq`. psycopg is LGPL-licensed;
+this is accepted because it is open source and used unmodified. Security
+confirms the licence of the version pinned in `uv.lock` at the 2b audit;
+if the pinned version's licence differs from that, it goes back to the
+orchestrator.
 
 ### PS-3 platform-offline
 
@@ -809,6 +1178,29 @@ it the review R6 clean-up named in the placement table.
 Questions raised in the analyst review of 2026-10-18; rulings by the
 orchestrator the same day. Full text and numbering in `docs/open-questions.md`
 § "platform-skeleton" (Q19–Q30).
+
+Open (raised 2026-10-19 for `platform-stack-ready`; does not block the RED
+step, has a stated assumption): **Q37** whether the PS-2.8 store stop/start
+runs against a pre-existing project.
+
+Open (raised 2026-10-19, rework round 1 of `platform-stack-ready`): **Q38**
+the default models are missing on `aria-gb10-2` (human; does not block the
+platform items; the model endpoint itself is ruled: `aria-gb10-2:11434`);
+**Q39** where the auth-audit carry-in 7 (Valkey network + auth) is
+scheduled, given ingest-ledger precedes auth-audit in this document.
+
+Rework round 1 (orchestrator, 2026-10-19,
+`docs/handoffs/platform-stack-ready.md` "rework round 1 of 5"): F1 and L-13
+in PS-2.5, M-1 engine side in PS-2.6, R-B3 in PS-2.8, the Q34 scope ruling
+in PS-2.9, L-11 in PS-2.21, L-12 in PS-2.23; M-1 network side is auth-audit
+carry-in 7.
+
+Resolved (raised and ruled 2026-10-19 for `platform-stack-ready`,
+`docs/handoffs/platform-stack-ready.md` "orchestrator: rulings on analyst
+plan" and "rulings on architect plan"): **Q35** caller env wins, repo-root
+`.env` only, "no other key" covers env and compose args until
+platform-offline (PS-2.21); **Q36** CI stays at 20 min until 2b's first
+green CI run, then measured + 50% (PS-3.4 in 2b, ruling C1).
 
 Resolved (raised 2026-10-19 for platform-stack, ruled by the orchestrator the
 same day, `docs/handoffs/platform-stack.md`): **Q33** LAN-exposure refusal
@@ -1082,6 +1474,17 @@ once published, DR39).
    never contacts a live IdP in CI. (DR42, A5)
 6. Runbooks: "healthy silence vs hung" with its one query; a tested restore
    runbook whose test fails if a restore empties the store and exits 0. (DR41)
+7. **Valkey isolated and authenticated (carry-in, security M-1 network side,
+   from `platform-stack-ready`; orchestrator rework round 1, 2026-10-19).**
+   Must be done before any ingest exposure, that is before any item lets
+   untrusted input reach the job queue, even if that item comes before
+   auth-audit. Given the compose files, `valkey` sits on its own internal
+   network that only `api`, `worker` (and `gates-it`) join, so no other
+   service (`gateway`, `phoenix`, the stores) can reach it; and Valkey
+   requires a password or ACL, passed only to `api` and `worker`, so an
+   unauthenticated client is refused. The engine side of M-1 (JSON
+   serializer, `engine.jobs.__all__` allowlist) is already PS-2.6. Test
+   names are left to the tester (Q39 asks where it is scheduled).
 
 ---
 
