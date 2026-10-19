@@ -111,3 +111,15 @@ Base: `agent/platform-stack-up` @ fe2f101. Previous handoff: `docs/handoffs/arch
 - README.md and docs/quickstart.md now describe /readyz (reason vocabulary, model_host not required), the allowlisted JSON worker, teardown leftover reporting, model keys in verify full (skip otherwise), smoke by hand, lint symlink refusal. Details: `docs/evidence/platform-stack-ready/documenter.md`.
 - `verify.sh fast` PASS: `docs/evidence/platform-stack-ready/documenter-verify.txt`.
 - Gaps: CLAUDE.md "What CI runs that verify.sh does not" model section is still unwritten here (out of my scope; test_stack_ready_docs expects it).
+
+## 2026-10-19 — orchestrator: item closed + milestone Done check (platform-stack-ready)
+- Pushed (human approved). CI green on 42547d0 (389 s job) and on 8c7d3d8 (timeout set to 10 min, 366 s job). Evidence: `ci-run-42547d0.txt`, `ci-run-8c7d3d8.txt`, `ci-timeout.md`. Doc-gate sections from the documenter/marketer are in `documenter.md` and `marketer.md`.
+- PS-2.21 model run against aria-gb10-2:11434 is recorded (`model-run-aria-gb10-2.txt`).
+- Outcome metrics: drafts reviewed n/a, ratified rules n/a (no data store yet). Not moved, by design: platform precondition.
+- External blockers: Q18 branch protection (Adam Salah, no date); Q14 ratification owners (OWNER-TBD); Q38 compose models to pull on aria-gb10-2 (Adam Salah, agreed to pull).
+- Carried forward:
+  - to the FIRST unit of ingest-ledger (Q39): security M-1 network side (valkey network + password/ACL), M-2 (RQ callbacks/webhooks), L-14/N-R2 (bad job stops the worker), N-R3;
+  - to the next lint touch: L-16;
+  - to platform-offline: L-5, L-8, the ke-app image scan, psycopg licence notices.
+  - Review nits are recorded in review-rework1.md and review-rework2.md.
+- The profile path remains in pushed history of agent/platform-stack-up (0f2821c, fe2f101). The human declined a history rewrite.
