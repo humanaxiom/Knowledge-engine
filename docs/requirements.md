@@ -1897,9 +1897,15 @@ is unchanged.
   - *Hash provenance.* Each committed hash is computed from the downloaded
     file and cross-checked against a checksum the upstream publishes for
     that release where one exists; the developer records both, or the lack
-    of an upstream checksum, in the handoff. Whether a release with no
-    upstream checksum is acceptable is open (raised to the orchestrator,
-    analyst 2026-10-19; not yet numbered in `docs/open-questions.md`).
+    of an upstream checksum, in the handoff. Ruled by Q48 (orchestrator,
+    2026-10-19; recorded in `docs/handoffs/archive/platform-offline-part1.md`):
+    where upstream publishes a checksum (the compose plugin `.sha256`), the
+    pin must equal it. Where upstream publishes none (the Docker static CLI
+    tarball), a hash from an HTTPS fetch from `download.docker.com` is
+    accepted on trust-on-first-use, and on every version bump security
+    confirms it with an independent second fetch. The first such
+    confirmation is `docs/evidence/platform-offline/audit-cli.md` §1
+    (Docker CLI 29.9.1).
 
 **Carry-in placement (analyst, 2026-10-19):**
 

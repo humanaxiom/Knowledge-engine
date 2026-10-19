@@ -26,7 +26,7 @@ RUN set -eu; \
       *) echo "unsupported architecture" >&2; exit 1 ;; \
     esac; \
     tarball="powershell-${POWERSHELL_VERSION}-linux-${arch}.tar.gz"; \
-    curl -fsSL -o "/tmp/$tarball" \
+    curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball" \
       "https://github.com/PowerShell/PowerShell/releases/download/v${POWERSHELL_VERSION}/$tarball"; \
     echo "$sha  /tmp/$tarball" | sha256sum -c -; \
     mkdir -p /opt/microsoft/powershell; \
@@ -38,6 +38,50 @@ RUN set -eu; \
       \$ErrorActionPreference = 'Stop'; \
       Set-PSRepository PSGallery -InstallationPolicy Trusted; \
       Install-Module PSScriptAnalyzer -RequiredVersion ${PSSCRIPTANALYZER_VERSION} -Scope AllUsers -Force"
+
+# Docker client for the offline check (PS-3.10, architecture §2.2): the static
+# `docker` client binary and the compose plugin, each pinned by version and
+# SHA-256 and checked before it is installed. No daemon (dockerd, containerd,
+# runc, ctr) and no package repository; the gate services get no socket and no
+# DOCKER_HOST. Hash provenance (ruling Q48), recorded in
+# docs/handoffs/platform-offline.md:
+#   - Docker CLI: download.docker.com publishes no checksum for the static
+#     tarball, so these hashes are trust-on-first-use over HTTPS (computed from
+#     a fresh download on 2026-10-19; security re-fetches them).
+#   - compose plugin: each value EQUALS the upstream
+#     docker-compose-linux-<arch>.sha256 asset of the v5.6.0 release.
+# To bump: change the version and both hashes together; a mismatch fails the build.
+ARG DOCKER_VERSION=29.9.1
+ARG DOCKER_SHA256_X64=c158ecc55adb3afb01bbd3539ed3b997d20c26dbdc418080506cc1bf5243ff57
+ARG DOCKER_SHA256_ARM64=3e93cc6d1a686456a3b18eefdde26467a837a7a2b257af22e27cba1dbc1b2018
+RUN set -eu; \
+    case "$(dpkg --print-architecture)" in \
+      amd64) arch=x86_64; sha="$DOCKER_SHA256_X64" ;; \
+      arm64) arch=aarch64; sha="$DOCKER_SHA256_ARM64" ;; \
+      *) echo "unsupported architecture" >&2; exit 1 ;; \
+    esac; \
+    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker.tgz \
+      "https://download.docker.com/linux/static/stable/$arch/docker-${DOCKER_VERSION}.tgz"; \
+    echo "$sha  /tmp/docker.tgz" | sha256sum -c -; \
+    tar -xzf /tmp/docker.tgz -C /usr/local/bin --strip-components=1 \
+      --no-same-owner docker/docker; \
+    rm /tmp/docker.tgz
+
+ARG COMPOSE_VERSION=5.6.0
+ARG COMPOSE_SHA256_X64=40343e21ca777173e69cff5dbafeb37c6f81f3b0d57d9e597f036e95eb63e76a
+ARG COMPOSE_SHA256_ARM64=733ec76717ceb59052a9609b9dadfb523b2df8eab57a54212872d10a58078ea2
+RUN set -eu; \
+    case "$(dpkg --print-architecture)" in \
+      amd64) arch=x86_64; sha="$COMPOSE_SHA256_X64" ;; \
+      arm64) arch=aarch64; sha="$COMPOSE_SHA256_ARM64" ;; \
+      *) echo "unsupported architecture" >&2; exit 1 ;; \
+    esac; \
+    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose \
+      "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-$arch"; \
+    echo "$sha  /tmp/docker-compose" | sha256sum -c -; \
+    mkdir -p /usr/local/lib/docker/cli-plugins; \
+    install -m 0755 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose; \
+    rm /tmp/docker-compose
 
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
     UV_PYTHON_DOWNLOADS=never \
