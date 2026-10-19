@@ -14,14 +14,15 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 env_file="${KE_ENV_FILE:-.env}"
-if [ ! -f "$env_file" ]; then
+if [ ! -e "$env_file" ] && [ ! -L "$env_file" ]; then
   if [ -n "${KE_ENV_FILE:-}" ]; then
     echo "error: KE_ENV_FILE does not exist: $env_file" >&2
     exit 1
   fi
   # .env holds the stack's secrets: private (0600) whatever the caller's umask (F12).
-  # A redirect, not cp: cp would carry over the example's own mode bits.
-  (umask 077; cat .env.example > .env)
+  # A redirect, not cp: cp would carry over the example's own mode bits. set -C
+  # (noclobber) opens with O_EXCL, so a dangling .env symlink is never followed.
+  (umask 077; set -C; cat .env.example > .env)
   echo "created .env from .env.example (placeholder secrets; edit it before any use beyond local development)"
 fi
 

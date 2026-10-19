@@ -195,8 +195,11 @@ The copy holds your real secrets, and `cp` leaves it readable by every local
 user unless you run `chmod 600 .env`, so run it before you put the secrets in.
 On Windows use `Copy-Item .env.example .env` and keep the install under your
 user profile, so that `.env` is readable only by you and administrators. To
-remove other access explicitly, run
-`icacls .env /inheritance:r /grant:r "$($env:USERNAME):(R,W)"`.
+remove other access explicitly, run this in PowerShell from the install
+directory:
+`icacls .env /inheritance:r /grant:r "*$([System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value):(R,W)"`.
+It grants your account by SID, not by name, so a local account with the same
+name as yours cannot shadow you.
 
 This release runs in dev mode only. Keep `KE_ENV=dev` (the value
 `.env.example` ships) on a trusted host with the default loopback binding

@@ -907,6 +907,9 @@ class _InstallBase:
     # name first. Subclasses override.
     next_launch_rx: str = r"bash scripts/launch\.sh"
     next_env_copy_rx: str = r"\bcp\s+['\"]?\.env\.example['\"]?\s+['\"]?\.env\b"
+    # Security L-L2e: the step that restricts .env to its owner. install.sh
+    # says `chmod 600 .env`; install.ps1 overrides it.
+    next_env_restrict_rx: str = r"\bchmod\s+0?600\s+['\"]?\.env\b"
 
     def test_install_next_line_creates_env_before_launch(self):
         """Smoke-gate loop 2, F9 (docs/evidence/platform-offline/recorded2-runs.md):
@@ -934,6 +937,37 @@ class _InstallBase:
         assert env_copy is not None
         t.assertLess(env_copy.start(), launch[-1],
                      f"the `next:` line must name the .env step before the launch command (F9): {line!r}")
+
+    def test_install_next_line_restricts_env_before_launch(self):
+        """Security L-L2e (docs/evidence/platform-offline/audit-l2.md): the
+        `next:` line of install.sh names `chmod 600 .env`, but install.ps1's
+        named only `Copy-Item`, so its operator puts real secrets into a file
+        every local user may read. The one `next:` line names restricting
+        `.env` to its owner (install.ps1: icacls in the `*<SID>` form, `chmod
+        600 .env`, or a pointer to the quickstart step that does it), after
+        the copy and before the launch command."""
+        t: Any = self
+        bundle, target = self._fresh()
+        result, _, _ = self._install(bundle, target)
+        out = self._out(result)
+        t.assertEqual(result.returncode, 0, out)
+        nxt = [ln.strip() for ln in out.splitlines() if ln.strip().startswith("next:")]
+        t.assertEqual(len(nxt), 1, f"{self.script} prints one `next:` line:\n{out}")
+        line = nxt[0]
+        restrict = re.search(self.next_env_restrict_rx, line)
+        t.assertIsNotNone(restrict, f"the `next:` line must say to restrict .env to its owner "
+                                    f"(/{self.next_env_restrict_rx}/) before secrets go in (L-L2e): {line!r}")
+        assert restrict is not None
+        t.assertNotIn("USERNAME", line.upper(), "an icacls grant names the SID, not the user name (L-L2c/e)")
+        env_copy = re.search(self.next_env_copy_rx, line)
+        launch = [m.start() for m in re.finditer(self.next_launch_rx, line)]
+        t.assertIsNotNone(env_copy, f"precondition (F9): the `next:` line names the .env copy: {line!r}")
+        t.assertTrue(launch, f"precondition (F9): the `next:` line names the launch command: {line!r}")
+        assert env_copy is not None
+        t.assertLess(env_copy.start(), restrict.start(),
+                     f"the restriction must come after the .env copy (L-L2e): {line!r}")
+        t.assertLess(restrict.start(), launch[-1],
+                     f"the restriction must come before the launch command (L-L2e): {line!r}")
 
     # ---- architecture §2.5 Install: private staging, removed on every exit --
 
@@ -2024,6 +2058,11 @@ class InstallPs1Test(_InstallBase, unittest.TestCase):
     next_launch_rx = r"launch\.ps1"
     next_env_copy_rx = (r"(?i)(?:\bCopy-Item|\bcp)\s+(?:-Path\s+)?['\"]?\.env\.example['\"]?\s+"
                         r"(?:-Destination\s+)?['\"]?\.env\b")
+    # Security L-L2e: icacls by SID (L-L2c), chmod 600 off Windows, or a
+    # pointer to the quickstart step that restricts .env.
+    next_env_restrict_rx = (r"(?i)\bicacls(?:\.exe)?\s+['\"]?\.env\b[^;]*?/grant:r\s+['\"]?\*"
+                            r"|\bchmod\s+0?600\s+['\"]?\.env\b"
+                            r"|\bquickstart\b")
 
     def setUp(self) -> None:
         if shutil.which("pwsh") is None:
@@ -4107,6 +4146,26 @@ class QuickstartOfflineTest(unittest.TestCase):
             self.assertTrue(media, "say that the target is not on synced or shared media (OneDrive, Dropbox, a "
                                    "network share): the parent check cannot see who can write there (security "
                                    "I-14)")
+
+    def test_quickstart_icacls_grants_current_user_sid(self):
+        """Security L-L2c (docs/evidence/platform-offline/audit-l2.md): the
+        quickstart's icacls one-liner granted `$env:USERNAME`, which is
+        resolved by name, so a local account with the same name can shadow
+        the domain user. Every icacls command in the quickstart grants the
+        current user's SID in the `*<SID>` form, for example
+        `"*$([Security.Principal.WindowsIdentity]::GetCurrent().User.Value):(R,W)"`."""
+        text = self._text()
+        calls = [m.group(0) for m in re.finditer(r"(?i)\bicacls(?:\.exe)?\b[^`\n]*", text)
+                 if re.search(r"(?i)/grant", m.group(0))]
+        self.assertTrue(calls, "the quickstart no longer shows an icacls grant that restricts .env on Windows")
+        for call in calls:
+            with self.subTest(call=call):
+                self.assertNotIn("USERNAME", call.upper(), "grant by SID, not by user name (L-L2c)")
+                self.assertRegex(call, r"/grant:r\s+['\"]\*(?:\$\(\s*\[(?:System\.)?Security\.Principal\."
+                                       r"WindowsIdentity\]::GetCurrent\(\)\.User(?:\.Value)?\s*\)|S-1-)",
+                                 "the grant must be the current user's SID: "
+                                 "`\"*$([Security.Principal.WindowsIdentity]::GetCurrent().User.Value):(R,W)\"` "
+                                 "(L-L2c)")
 
     def _offline_section(self) -> str:
         text = self._text()

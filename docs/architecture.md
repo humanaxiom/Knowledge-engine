@@ -784,8 +784,32 @@ and (c)).**
 
 6. (platform-stack, §2.4, port ruling 2026-10-19) `bind_address`
    (`KE_BIND_ADDRESS`) not loopback while `env≠dev`, until auth-audit.
+7. (platform-offline, orchestrator ruling 2026-10-19, ADR-KE-010
+   consequence) `KE_ENV=prod` with `auth.enabled=true` is refused until
+   auth-audit: auth is not built, so `true` would claim a protection the API
+   does not have. The refusal names `auth.enabled` and says authentication is
+   not implemented until auth-audit. Together with case 1, prod cannot start
+   at all in this release.
+
+`check()` runs them in the order 1, 2, 3, 4, 6, 5, 7. Case 7 is
+deliberately **last**, so that every other prod refusal still names its own
+setting (hide flag, collector, egress, bind address, placeholder secret)
+instead of being masked by the auth-audit refusal
+(`test_startup_refuses_prod_until_auth_audit`).
 
 In `dev`, cases 1, 3 and 6 log a warning instead (Q4 ruling); case 5 is allowed.
+
+**Auth enabled outside prod warns (security M-L2a, 2026-10-19).** Given
+`auth.enabled=true` and `env≠prod` (`dev` or `ci`), `check()` does not refuse;
+it logs a WARNING on the `engine` logger, like the other dev warnings, that
+names `auth.enabled` and says it has no effect until auth-audit. Reason: in
+`dev`, `true` silenced the only "authentication is disabled" warning, so
+`KE_ENV=dev KE_AUTH__ENABLED=true KE_BIND_ADDRESS=0.0.0.0` published an
+unauthenticated API while the operator believed auth was on. It warns rather
+than refuses because the `ci` path runs with auth `true`. In `dev` with a
+non-loopback bind, both warnings are logged and startup continues
+(`test_auth_enabled_outside_prod_warns_no_effect_until_auth_audit`).
+auth-audit revisits this warning and case 7 when it builds auth.
 
 **Tracing does not leak before the checks pass (amended, rework 1: B1, B7b,
 L6).**
@@ -3899,7 +3923,9 @@ asked for the hook design to be recorded in this ADR.
     production image.
   - Default `env=prod` with `auth.enabled=true` refuses to start until
     auth-audit exists. `.env.example` therefore ships `KE_ENV=dev` with auth
-    off, which logs a warning.
+    off, which logs a warning. (Built in platform-offline as §2.3 refusal 7,
+    checked last; outside prod, `auth.enabled=true` logs a WARNING that it
+    has no effect until auth-audit, security M-L2a.)
   - The exceptions are ruled and recorded in PS-1.1/PS-1.2: secrets have no
     YAML default (F3), and the requirement names are `KE_` variables (F2).
   - (Rework 1) The installed-provider check reads private OTel SDK

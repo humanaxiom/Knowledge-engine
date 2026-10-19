@@ -346,6 +346,22 @@ N18, N19; security L2, L5, L7, L16, L17, L18.
   warning. `[unit: test_startup_refuses_unsafe]` (fast), one case per setting.
   Auth itself is built in auth-audit; here only the setting and the refusal
   exist.
+  - *Prod refused until auth-audit (orchestrator ruling 2026-10-19,
+    platform-offline; architecture §2.3 refusal 7, ADR-KE-010).* Given
+    `KE_ENV=prod` with `auth.enabled=true` (the `defaults.yaml` default, or
+    `KE_AUTH__ENABLED=true`), startup fails with a message naming
+    `auth.enabled` and saying authentication is not implemented until
+    auth-audit. With the auth-disabled refusal above, prod cannot start in
+    this release. This check runs after every other startup check, so any
+    other unsafe prod setting is still refused naming its own setting.
+    `[unit: test_startup_refuses_prod_until_auth_audit]` (fast)
+  - *Auth enabled outside prod warns (security M-L2a).* Given
+    `auth.enabled=true` with `KE_ENV` `dev` or `ci`, startup succeeds and logs
+    a WARNING naming `auth.enabled` that says it has no effect until
+    auth-audit; with `KE_ENV=dev` and a non-loopback `KE_BIND_ADDRESS`, both
+    warnings are logged and startup succeeds.
+    `[unit: test_auth_enabled_outside_prod_warns_no_effect_until_auth_audit]`
+    (fast)
   - *Local collector (PS-Q3).* A collector endpoint is local when its host is a
     loopback address or the name of a compose service on the stack's internal
     network. Given any other host (including a public name or an external IP),

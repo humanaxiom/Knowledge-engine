@@ -831,7 +831,7 @@ try {
 
     Write-Host "manifest sha256: $manifestSha"
     Write-Host "installed to $targetPath"
-    Write-Host "next: cd '$targetPath'; Copy-Item .env.example .env (set real secrets in it); $(Join-Path 'scripts' 'launch.ps1')"
+    Write-Host "next: cd '$targetPath'; Copy-Item .env.example .env; restrict .env to your account before adding secrets (see docs/quickstart.md, Offline bundle step 5); set real secrets in it; $(Join-Path 'scripts' 'launch.ps1')"
     $finished = $true
 } catch {
     $finished = $true

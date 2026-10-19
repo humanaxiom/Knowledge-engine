@@ -1,0 +1,21 @@
+test_launch_ps1_icacls_failure_warns_and_continues (tests.test_stack_scripts.LaunchPs1WindowsEnvTest.test_launch_ps1_icacls_failure_warns_and_continues) ... ok
+test_launch_ps1_restricts_env_to_current_user_sid (tests.test_stack_scripts.LaunchPs1WindowsEnvTest.test_launch_ps1_restricts_env_to_current_user_sid) ... ok
+test_launch_ps1_creates_env_with_mode_at_open (tests.test_stack_scripts.LaunchEnvCreationStaticTest.test_launch_ps1_creates_env_with_mode_at_open)
+L-L2b: off Windows, launch.ps1 created `.env` empty at the umask's ... ok
+test_launch_ps1_icacls_failure_only_warns (tests.test_stack_scripts.LaunchEnvCreationStaticTest.test_launch_ps1_icacls_failure_only_warns)
+L-L2c (i): under Windows PowerShell 5.1 (the code-first ... ok
+test_launch_ps1_icacls_grants_current_user_sid (tests.test_stack_scripts.LaunchEnvCreationStaticTest.test_launch_ps1_icacls_grants_current_user_sid)
+L-L2c (ii): `$env:USERNAME` is resolved by name, and a local account ... ok
+test_launch_ps1_icacls_warning_says_restrict_before_secrets (tests.test_stack_scripts.LaunchEnvCreationStaticTest.test_launch_ps1_icacls_warning_says_restrict_before_secrets)
+L-L2c (iii): when the restriction fails, `.env` keeps the inherited ... ok
+test_launch_sh_creates_env_with_noclobber (tests.test_stack_scripts.LaunchEnvCreationStaticTest.test_launch_sh_creates_env_with_noclobber)
+L-L2a: the check-then-create `[ ! -f .env ]` + `> .env` follows a ... ok
+test_auth_enabled_outside_prod_warns_no_effect_until_auth_audit (tests.test_engine_startup.StartupRefusalTest.test_auth_enabled_outside_prod_warns_no_effect_until_auth_audit)
+Security M-L2a (docs/evidence/platform-offline/audit-l2.md, routed ... ok
+test_quickstart_icacls_grants_current_user_sid (tests.test_offline_bundle.QuickstartOfflineTest.test_quickstart_icacls_grants_current_user_sid)
+Security L-L2c (docs/evidence/platform-offline/audit-l2.md): the ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 1.762s
+
+OK

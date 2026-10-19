@@ -179,6 +179,30 @@ class _LaunchResolvedBase:
                                  f"launch created .env with mode {oct(mode)} under umask {umask:03o}; the "
                                  "secrets file must be 0600 (owner only) whatever the umask (F12)")
 
+    def test_launch_leaves_dangling_env_symlink_alone(self):
+        """Security L-L2a (docs/evidence/platform-offline/audit-l2.md): a
+        `.env` that is a symlink to a missing path made launch.sh's
+        `cat .env.example > .env` follow the link and create its target
+        (placeholder secrets wherever the link points). Launch either refuses
+        or leaves the link alone; it never creates the target, never replaces
+        the link, and never says it created .env. (`set -C` gives this: the
+        create opens with O_EXCL, which fails on any existing name.)"""
+        test: Any = self
+        if os.name == "nt":
+            test.skipTest("POSIX symlinks: the gates image is Linux")
+        env_file = self.tmp / ".env"
+        env_file.unlink(missing_ok=True)
+        target = self.tmp / "victim.env"  # its directory exists, so a followed link succeeds
+        os.symlink(target, env_file)
+        result, _ = self._launch()
+        out = result.stdout + result.stderr
+        test.assertFalse(target.exists() or target.is_symlink(),
+                         f"launch followed the dangling .env symlink and created {target.name} (L-L2a):\n{out}")
+        test.assertTrue(env_file.is_symlink(), f"launch replaced the .env symlink (L-L2a):\n{out}")
+        test.assertEqual(os.readlink(env_file), str(target), "the .env symlink was retargeted (L-L2a)")
+        test.assertNotIn("created .env", out,
+                         f"launch claims it created .env, but nothing may be created through the link:\n{out}")
+
     def test_launch_refuses_when_env_file_lacks_ke_env(self):  # B3
         test: Any = self
         cases = {
@@ -363,6 +387,220 @@ class LaunchPs1ResolvedTest(_LaunchResolvedBase, unittest.TestCase):
         if shutil.which("pwsh") is None:
             self.fail(PWSH_MISSING)
         super().setUp()
+
+
+# --------------------------------------------------------------------------
+# Security L-L2a/b/c (docs/evidence/platform-offline/audit-l2.md): how launch
+# creates .env. Static, so the Linux gates image checks the Windows branch too;
+# LaunchPs1WindowsEnvTest below runs the Windows branch on a Windows host.
+# --------------------------------------------------------------------------
+
+# A restriction warning that tells the operator to restrict .env before adding
+# secrets (L-L2c iii), in any order of the words on one line.
+RESTRICT_BEFORE_SECRETS_RX = (r"(?i)^(?=.*\b(?:restrict|lock|private|owner[- ]only)\w*)(?=.*\.env\b)"
+                              r"(?=.*\bbefore\b)(?=.*\bsecrets?\b)")
+
+
+def _code_only(text: str) -> str:
+    """Drop full-line comments (`#` in sh and ps1), so prose cannot satisfy a code check."""
+    return re.sub(r"(?m)^\s*#.*$", "", text)
+
+
+def _ps1_env_block(test: unittest.TestCase) -> str:
+    """launch.ps1's .env creation block: from the `Test-Path` on the env file
+    to the `created .env` message, comments dropped."""
+    text = (ROOT / "scripts" / "launch.ps1").read_text(encoding="utf-8")
+    start = re.search(r"Test-Path\b[^\n]*\$envFile", text)
+    test.assertIsNotNone(start, "launch.ps1 has no `Test-Path ... $envFile` before creating .env")
+    assert start is not None
+    end = text.find("created .env", start.end())
+    test.assertNotEqual(end, -1, "launch.ps1 no longer says `created .env` after creating it")
+    return _code_only(text[start.start():end])
+
+
+class LaunchEnvCreationStaticTest(unittest.TestCase):
+    def test_launch_sh_creates_env_with_noclobber(self):
+        """L-L2a: the check-then-create `[ ! -f .env ]` + `> .env` follows a
+        dangling symlink and truncates a `.env` another process created in
+        between. The redirect that creates `.env` runs under `set -C`
+        (noclobber; bash then opens with O_EXCL), and never with `>|`, which
+        overrides it. The dangling-link behaviour itself is
+        LaunchShResolvedTest.test_launch_leaves_dangling_env_symlink_alone."""
+        code = _code_only((ROOT / "scripts" / "launch.sh").read_text(encoding="utf-8"))
+        lines = code.splitlines()
+        rx = re.compile(r"(>\|?)\s*[\"']?\.env[\"']?(?![\w.])")
+        hits = [(i, m) for i, line in enumerate(lines) for m in rx.finditer(line)]
+        self.assertTrue(hits, "launch.sh no longer redirects into .env; update this test with the new create")
+        for i, m in hits:
+            line = lines[i]
+            with self.subTest(line=line.strip()):
+                self.assertNotEqual(m.group(1), ">|", "`>|` overrides noclobber (L-L2a)")
+                before = "\n".join(lines[max(0, i - 3):i] + [line[:m.start()]])
+                self.assertRegex(before, r"\bset\s+(?:-C|-o\s+noclobber)\b",
+                                 "the redirect that creates .env must run under `set -C` (noclobber), for "
+                                 "example `(umask 077; set -C; cat .env.example > .env)`, so it never follows "
+                                 "a dangling symlink or truncates an existing .env (security L-L2a)")
+
+    def test_launch_ps1_creates_env_with_mode_at_open(self):
+        """L-L2b: off Windows, launch.ps1 created `.env` empty at the umask's
+        mode (0644/0664), then set 0600, then wrote. A reader that opened it
+        in that window keeps an fd that reads the secrets written later. The
+        file is created 0600 at open: FileStreamOptions with Mode CreateNew
+        (which also refuses links and clobbering) and UnixCreateMode
+        UserRead|UserWrite, never WriteAllBytes then SetUnixFileMode."""
+        block = _ps1_env_block(self)
+        self.assertTrue(re.search(r"\bFileStreamOptions\b", block),
+                        "create .env through a FileStream with FileStreamOptions (L-L2b)")
+        self.assertTrue(re.search(r"\bCreateNew\b", block), "open .env with FileMode CreateNew (L-L2b)")
+        modes = re.findall(r"UnixCreateMode\b[^\n]*", block)
+        self.assertTrue(modes, "set UnixCreateMode on the FileStreamOptions so .env is 0600 at creation (L-L2b)")
+        self.assertTrue([m for m in modes if "UserRead" in m and "UserWrite" in m
+                         and not re.search(r"Group|Other|Execute", m)],
+                        f"UnixCreateMode must be UserRead|UserWrite only (0600) (L-L2b): {modes}")
+        for call in ("SetUnixFileMode", r"WriteAll(?:Bytes|Text|Lines)\s*\(", r"\]::Create\s*\(",
+                     r"\bNew-Item\b", r"\bSet-Content\b", r"\bOut-File\b", r"\bAdd-Content\b"):
+            with self.subTest(call=call):
+                found = re.search(call, block)
+                self.assertIsNone(found, f"the .env create uses {found.group(0) if found else ''!r}: it must not "
+                                         "make the file at a wider mode and narrow it afterwards; write through "
+                                         "the CreateNew stream (L-L2b)")
+
+    def test_launch_ps1_icacls_grants_current_user_sid(self):
+        """L-L2c (ii): `$env:USERNAME` is resolved by name, and a local account
+        with the same name can shadow the domain user. The grant names the
+        current user's SID (`*S-1-...` syntax), taken from
+        `[Security.Principal.WindowsIdentity]::GetCurrent().User`."""
+        text = _code_only((ROOT / "scripts" / "launch.ps1").read_text(encoding="utf-8"))
+        block = _ps1_env_block(self)
+        calls = [ln.strip() for ln in block.splitlines() if re.search(r"(?i)\bicacls\b", ln)]
+        self.assertTrue(calls, "launch.ps1 no longer restricts .env with icacls on Windows")
+        self.assertTrue(re.search(r"WindowsIdentity\]::GetCurrent\(\)\.User\b", text),
+                        "take the SID from [Security.Principal.WindowsIdentity]::GetCurrent().User (L-L2c)")
+        for call in calls:
+            with self.subTest(call=call):
+                self.assertNotIn("USERNAME", call.upper(), "grant by SID, not by user name (L-L2c)")
+                self.assertRegex(call, r"/grant:r\b[\s\S]*['\"]\*(?:\$|S-1-|['\"]\s*\+)",
+                                 "the /grant:r argument must be the `*<SID>` form (L-L2c)")
+
+    def test_launch_ps1_icacls_failure_only_warns(self):
+        """L-L2c (i): under Windows PowerShell 5.1 (the code-first
+        `scripts\\launch.ps1` has no `#Requires`), `& icacls ... 2>&1` with
+        `$ErrorActionPreference = 'Stop'` turns icacls's stderr into a
+        terminating NativeCommandError, so a failed restriction stops launch
+        instead of warning. The call runs inside `try { } catch {
+        Write-Warning }`, or in a scriptblock with a local
+        `$ErrorActionPreference = 'Continue'`. Proven on a Windows host by
+        LaunchPs1WindowsEnvTest."""
+        block = _ps1_env_block(self)
+        guarded = (re.search(r"(?s)\btry\s*\{(?:(?!\bcatch\b).)*\bicacls\b.*?\bcatch\b[^{]*\{[^}]*Write-Warning",
+                             block)
+                   or re.search(r"(?is)&\s*\{[^{}]*\$ErrorActionPreference\s*=\s*['\"](?:Silently)?Continue['\"]"
+                                r"[^{}]*\bicacls\b", block))
+        self.assertTrue(guarded, "the icacls call must not be able to terminate launch under Windows PowerShell "
+                                 "5.1: wrap it in try/catch with Write-Warning, or run it in `& { }` with a "
+                                 "local $ErrorActionPreference = 'Continue' (security L-L2c)")
+
+    def test_launch_ps1_icacls_warning_says_restrict_before_secrets(self):
+        """L-L2c (iii): when the restriction fails, `.env` keeps the inherited
+        ACL and the next run skips creation silently. The warning tells the
+        operator to restrict `.env` before adding secrets to it."""
+        block = _ps1_env_block(self)
+        warnings = re.findall(r"Write-Warning\b[^\n]*", block)
+        self.assertTrue(warnings, "launch.ps1 warns when it cannot restrict .env")
+        self.assertTrue([w for w in warnings if re.search(RESTRICT_BEFORE_SECRETS_RX, w)],
+                        f"the warning must tell the operator to restrict .env before adding secrets "
+                        f"(L-L2c): {warnings}")
+
+
+class LaunchPs1WindowsEnvTest(unittest.TestCase):
+    """L-L2c on a Windows host, under pwsh and Windows PowerShell 5.1: launch
+    creates `.env` granted only to the current user's SID with inheritance
+    removed, and an icacls failure warns and carries on. Windows only: the
+    gates image is Linux, so `scripts/verify.sh` skips it; run it on a Windows
+    host. No Docker is reachable: PATH holds only the Windows system
+    directories (plus the failing icacls), so launch stops at the Docker step,
+    after `.env`.
+
+    Failure injection: a copy of System32 whoami.exe (and its MUI) named
+    `icacls.exe`, first on PATH, which exits 1 with an error on stderr, as a
+    real icacls failure does. This relies on launch.ps1 resolving `icacls.exe`
+    through PATH, as it does today."""
+
+    def setUp(self) -> None:
+        if os.name != "nt":
+            self.skipTest("Windows ACLs and Windows PowerShell 5.1: runs only on a Windows host; the gates "
+                          "image is Linux, so verify.sh skips it (security L-L2c)")
+        pwsh = shutil.which("pwsh")
+        if pwsh is None:
+            self.fail(PWSH_MISSING)
+        root = os.environ.get("SystemRoot", r"C:\Windows")
+        self.system = [os.path.join(root, "System32"), root, os.path.join(root, "System32", "Wbem"),
+                       os.path.join(root, "System32", "WindowsPowerShell", "v1.0")]
+        self.shells = {"pwsh": pwsh, "Windows PowerShell 5.1": os.path.join(self.system[3], "powershell.exe")}
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def _run(self, shell: str, prefix: list[str]) -> tuple[Path, str]:
+        work = self.tmp / re.sub(r"\W+", "-", shell)
+        shutil.rmtree(work, ignore_errors=True)
+        _copy_repo_files(work, [".env.example", "scripts/launch.ps1"])
+        env = {k: v for k, v in os.environ.items()
+               if not k.upper().startswith(("KE_", "COMPOSE_", "DOCKER_")) and k.upper() != "PATH"}
+        env["PATH"] = os.pathsep.join([*prefix, *self.system])
+        result = subprocess.run([self.shells[shell], "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+                                 "-File", str(work / "scripts" / "launch.ps1")],
+                                cwd=work, env=env, capture_output=True, text=True, timeout=120)
+        return work / ".env", result.stdout + result.stderr
+
+    @staticmethod
+    def _current_sid() -> str:
+        out = subprocess.run(["whoami", "/user", "/fo", "csv", "/nh"], capture_output=True, text=True,
+                             check=True).stdout
+        return out.strip().split(",")[-1].strip('"')
+
+    def test_launch_ps1_restricts_env_to_current_user_sid(self):
+        from tests import test_offline_bundle
+
+        sid = self._current_sid()
+        for shell in self.shells:
+            with self.subTest(shell=shell):
+                env_file, out = self._run(shell, [])
+                self.assertTrue(env_file.is_file(), f"launch did not create .env under {shell}:\n{out}")
+                self.assertIn("created .env", out)
+                sddl = test_offline_bundle.InstallPs1WindowsAclTest._sddl(str(env_file))
+                self.assertIsNotNone(sddl, "could not read the .env security descriptor")
+                assert sddl is not None
+                dacl = sddl.split("D:", 1)[1] if "D:" in sddl else ""
+                self.assertTrue(dacl.startswith("P"), f"inheritance is not removed from .env: {sddl}")
+                aces = re.findall(r"\(([^)]*)\)", dacl)
+                self.assertEqual(len(aces), 1, f".env must have exactly one ACE, the current user's: {sddl}")
+                parts = aces[0].split(";")
+                self.assertEqual((parts[0], parts[-1]), ("A", sid),
+                                 f"the one ACE must allow the current user's SID {sid}: {sddl}")
+
+    def test_launch_ps1_icacls_failure_warns_and_continues(self):
+        system32 = Path(self.system[0])
+        fake = self.tmp / "failing-icacls"
+        fake.mkdir()
+        shutil.copy(system32 / "whoami.exe", fake / "icacls.exe")
+        muis = sorted(system32.glob("*/whoami.exe.mui"))
+        if not muis:
+            self.skipTest("no whoami.exe.mui under System32: the stand-in icacls would fail without stderr")
+        for mui in muis:
+            (fake / mui.parent.name).mkdir(exist_ok=True)
+            shutil.copy(mui, fake / mui.parent.name / "icacls.exe.mui")
+        for shell in self.shells:
+            with self.subTest(shell=shell):
+                env_file, out = self._run(shell, [str(fake)])
+                self.assertNotIn("NativeCommandError", out,
+                                 f"a failed icacls terminated launch under {shell}; it must only warn "
+                                 f"(security L-L2c):\n{out}")
+                self.assertIn("created .env", out,
+                              f"launch stopped at the failed icacls under {shell} instead of carrying on:\n{out}")
+                self.assertTrue(env_file.is_file())
+                self.assertTrue([ln for ln in out.splitlines() if re.search(RESTRICT_BEFORE_SECRETS_RX, ln)],
+                                f"under {shell} the warning must tell the operator to restrict .env before "
+                                f"adding secrets (L-L2c):\n{out}")
 
 
 # --------------------------------------------------------------------------

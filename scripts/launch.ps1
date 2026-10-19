@@ -19,17 +19,36 @@ if (-not (Test-Path $envFile)) {
     }
     if ([System.IO.Path]::DirectorySeparatorChar -eq '\') {
         Copy-Item '.env.example' '.env'
-        # Windows: keep only the current user on the ACL (best effort; F12).
-        $acl = & icacls.exe '.env' '/inheritance:r' '/grant:r' "$($env:USERNAME):(F)" 2>&1
-        if ($LASTEXITCODE -ne 0) { Write-Warning "could not restrict .env to the current user: $acl" }
+        # Windows: keep only the current user (by SID, not by name) on the ACL
+        # (best effort; F12). A failure only warns, under pwsh 7 and under
+        # Windows PowerShell 5.1, where stderr from `2>&1` is a terminating
+        # error while $ErrorActionPreference is 'Stop': hence the local
+        # 'Continue', the exit-code check and the try/catch.
+        $restricted = $false
+        $acl = ''
+        try {
+            $acl = & {
+                $ErrorActionPreference = 'Continue'
+                & icacls.exe '.env' '/inheritance:r' '/grant:r' "*$([System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value):(F)" 2>&1 | ForEach-Object { "$_" }
+                $script:restricted = ($LASTEXITCODE -eq 0)
+            }
+        } catch {
+            $acl = $_.Exception.Message
+        }
+        if (-not $restricted) {
+            Write-Warning "could not restrict .env to the current user; restrict .env before adding secrets to it: $acl"
+        }
     } else {
-        # .env holds the stack's secrets: create it 0600 before writing, whatever the umask (F12).
+        # .env holds the stack's secrets: create it 0600 at open (CreateNew refuses
+        # an existing file or link), whatever the umask (F12, L-L2b).
         $envPath = Join-Path (Get-Location).Path '.env'
-        [System.IO.File]::WriteAllBytes($envPath, [byte[]]@())
-        [System.IO.File]::SetUnixFileMode($envPath,
-            [System.IO.UnixFileMode]::UserRead -bor [System.IO.UnixFileMode]::UserWrite)
-        [System.IO.File]::WriteAllBytes($envPath,
-            [System.IO.File]::ReadAllBytes((Join-Path (Get-Location).Path '.env.example')))
+        $options = [System.IO.FileStreamOptions]::new()
+        $options.Mode = [System.IO.FileMode]::CreateNew
+        $options.Access = [System.IO.FileAccess]::Write
+        $options.UnixCreateMode = [System.IO.UnixFileMode]::UserRead -bor [System.IO.UnixFileMode]::UserWrite
+        $bytes = [System.IO.File]::ReadAllBytes((Join-Path (Get-Location).Path '.env.example'))
+        $stream = [System.IO.FileStream]::new($envPath, $options)
+        try { $stream.Write($bytes, 0, $bytes.Length) } finally { $stream.Dispose() }
     }
     Write-Host 'created .env from .env.example (placeholder secrets; edit it before any use beyond local development)'
 }

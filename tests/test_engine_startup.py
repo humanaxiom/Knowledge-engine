@@ -21,6 +21,7 @@ point is a passing startup in a non-dev env therefore use `ci`, or accept in
 
 from __future__ import annotations
 
+import re
 import unittest
 from typing import Any
 from unittest import mock
@@ -55,6 +56,10 @@ AUTH_NAMES = ("auth.enabled", "KE_AUTH__ENABLED")
 # The prod refusal's message says authentication is not implemented until
 # auth-audit (orchestrator ruling 2026-10-19, see the module docstring).
 AUTH_AUDIT_RX = r"(?i)\bnot (?:yet )?(?:implemented|built|available)\b[\s\S]*\bauth-audit\b"
+# Security M-L2a: outside prod, auth.enabled=true is accepted with a warning
+# that it has no effect until auth-audit.
+NO_EFFECT_RX = (r"(?i)(?:\bno effect\b|\bdoes nothing\b|\bnot (?:yet )?(?:implemented|enforced|built|active)\b)"
+                r"[\s\S]*\bauth-audit\b")
 
 
 def _check_passes(test: unittest.TestCase, settings: Any) -> None:
@@ -168,6 +173,48 @@ class StartupRefusalTest(unittest.TestCase):
         with self.assertLogs("engine", level="WARNING") as logs:
             _check(settings)
         self.assertTrue(any("auth" in line.lower() for line in logs.output), logs.output)
+
+    def test_auth_enabled_outside_prod_warns_no_effect_until_auth_audit(self):
+        """Security M-L2a (docs/evidence/platform-offline/audit-l2.md, routed
+        as an orchestrator follow-up 2026-10-19): `auth.enabled=true` was
+        accepted silently in dev and ci. In dev it removed the only
+        "authentication is disabled" warning, so `KE_ENV=dev
+        KE_AUTH__ENABLED=true KE_BIND_ADDRESS=0.0.0.0` published an
+        unauthenticated API while the operator believed auth was on. Auth is
+        not built until auth-audit, so outside prod (where it is refused,
+        test_startup_refuses_prod_until_auth_audit) startup still starts but
+        logs a WARNING (logger namespace `engine`, as the other dev warnings)
+        that names the setting and says it has no effect until auth-audit.
+        It warns, it does not refuse: the ci path needs auth=true."""
+        for env_name in ("dev", "ci"):
+            with self.subTest(env=env_name):
+                settings = load_settings(base_env(KE_ENV=env_name, KE_AUTH__ENABLED="true"))
+                self.assertIs(settings.auth.enabled, True, "precondition: auth is enabled")
+                with self.assertLogs("engine", level="WARNING") as logs:
+                    _check(settings)  # starts: a warning, never a refusal
+                hits = [line for line in logs.output
+                        if _names_any(line, *AUTH_NAMES) and re.search(NO_EFFECT_RX, line)]
+                self.assertTrue(hits, f"KE_ENV={env_name} with auth.enabled=true must log a WARNING naming "
+                                      "auth.enabled (or KE_AUTH__ENABLED) that says it has no effect until "
+                                      f"auth-audit (security M-L2a); logged: {logs.output}")
+        with self.subTest(case="dev, auth on, non-loopback bind: both warnings, still starts"):
+            settings = load_settings(base_env(KE_ENV="dev", KE_AUTH__ENABLED="true",
+                                              KE_BIND_ADDRESS="0.0.0.0"))
+            with self.assertLogs("engine", level="WARNING") as logs:
+                _check(settings)
+            self.assertTrue([l for l in logs.output if _names_any(l, *AUTH_NAMES) and re.search(NO_EFFECT_RX, l)],
+                            f"the auth warning must not vanish when the API is published (M-L2a): {logs.output}")
+            self.assertTrue([l for l in logs.output if "KE_BIND_ADDRESS" in l],
+                            f"control: the bind warning is still logged: {logs.output}")
+        with self.subTest(case="startup() in ci with auth on starts and warns"):
+            from engine.startup import startup
+
+            with environ(base_env(KE_ENV="ci", KE_AUTH__ENABLED="true")):
+                with self.assertLogs("engine", level="WARNING") as logs:
+                    settings = startup()
+            self.assertEqual(settings.env, "ci")
+            self.assertTrue([l for l in logs.output if _names_any(l, *AUTH_NAMES) and re.search(NO_EFFECT_RX, l)],
+                            f"startup() in ci must log the auth no-effect warning (M-L2a): {logs.output}")
 
     def test_hide_flags_default_true_in_every_env(self):
         for env_name in ("dev", "ci", "prod"):

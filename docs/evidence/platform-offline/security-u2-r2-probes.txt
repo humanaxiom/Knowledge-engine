@@ -354,8 +354,8 @@ target ACL after install: O:<me-sid>D:P(A;OICI;FA;;;<me-sid>)
 ### parent-shared exit=0
 install: warning: the target's parent <scratch>\pw-warn-shared\par is writable by others (group, world or another account); anyone who can write it can replace the installed target afterwards; use a directory only you can write
 ### parent-private exit=0
-### ps-L9-PATH[.;C:\Users\a...] exit=1 :: install: PATH has a relative entry ('.'); set PATH to absolute directories only
+### ps-L9-PATH[.;<scratch>...] exit=1 :: install: PATH has a relative entry ('.'); set PATH to absolute directories only
 ### ps-L9-PATH[winbin;C:\Us...] exit=1 :: install: PATH has a relative entry ('winbin'); set PATH to absolute directories only
-### ps-L9-PATH[;;C:\Users\a...] exit=0 :: next: cd '<scratch>\pw-path\par\t'; scripts\launch.ps1
+### ps-L9-PATH[;;<scratch>...] exit=0 :: next: cd '<scratch>\pw-path\par\t'; scripts\launch.ps1
 ### ps-L9-PATH[C:winbin;C:\...] exit=1 :: install: PATH has a relative entry ('C?winbin'); set PATH to absolute directories only
-### ps-L9-PATH["C:\Users\ad...] exit=0 :: next: cd '<scratch>\pw-path\par\t'; scripts\launch.ps1
+### ps-L9-PATH["<scratch>...] exit=0 :: next: cd '<scratch>\pw-path\par\t'; scripts\launch.ps1

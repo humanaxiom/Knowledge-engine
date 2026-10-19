@@ -75,6 +75,12 @@ def check(settings: Settings) -> None:
     for auth and the hide flags."""
     if not settings.auth.enabled:
         _refuse_or_warn(settings, "auth.enabled", "authentication is disabled")
+    elif settings.env != "prod":
+        # Accepted so ci can start, but it must not silence the dev warning
+        # above (security M-L2a): auth is not built until auth-audit.
+        log.warning(
+            "auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, "
+            "so the API is not authenticated (env=%s)", settings.env)
 
     telemetry = settings.telemetry
     endpoint = str(telemetry.collector_endpoint)
