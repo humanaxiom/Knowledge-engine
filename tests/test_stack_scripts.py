@@ -150,6 +150,35 @@ class _LaunchResolvedBase:
         test.assertIn(VAR, result.stdout + result.stderr)
         test.assertEqual(self._ups(records), [], "compose up ran despite the refusal")
 
+    def test_launch_creates_env_private_whatever_the_umask(self):
+        """Smoke-gate loop 2, F12 (docs/evidence/platform-offline/recorded2-runs.md):
+        `.env` holds the stack's secrets, and a copy made under the caller's
+        umask is 0644 (umask 022) or 0664 (umask 002), readable by every local
+        user. When launch creates `.env` itself it must be 0600 whatever the
+        umask, and still a copy of `.env.example`."""
+        test: Any = self
+        if os.name == "nt":
+            test.skipTest("POSIX file modes: the gates image is Linux")
+        example = (self.tmp / ".env.example").read_bytes()
+        for umask in (0o022, 0o002):
+            with test.subTest(umask=oct(umask)):
+                env_file = self.tmp / ".env"
+                env_file.unlink(missing_ok=True)
+                saved = self.command
+                self.command = ["bash", "-c", f"umask {umask:03o}; exec \"$@\"", "umask", *saved]
+                try:
+                    result, _ = self._launch()
+                finally:
+                    self.command = saved
+                out = result.stdout + result.stderr
+                test.assertTrue(env_file.is_file(), f"launch did not create .env:\n{out}")
+                test.assertEqual(env_file.read_bytes(), example,
+                                 "the created .env must be a copy of .env.example")
+                mode = stat.S_IMODE(env_file.stat().st_mode)
+                test.assertEqual(mode, 0o600,
+                                 f"launch created .env with mode {oct(mode)} under umask {umask:03o}; the "
+                                 "secrets file must be 0600 (owner only) whatever the umask (F12)")
+
     def test_launch_refuses_when_env_file_lacks_ke_env(self):  # B3
         test: Any = self
         cases = {
@@ -873,6 +902,10 @@ class VerifyHostHalfTest(unittest.TestCase):
         # A caller COMPOSE_FILE, or an auto-loaded docker-compose.override.yml,
         # could replace `.:/work:ro`. Both modes pin COMPOSE_FILE to the repo's
         # own files, with a ":" separator, with and without a repo-root .env.
+        # The fake docker never reads the planted override: that it is not
+        # loaded rests on compose's own rule that a set COMPOSE_FILE disables
+        # the override auto-load, so this test asserts COMPOSE_FILE is pinned
+        # (review-l5-r1 n2).
         (self.tmp / "docker-compose.override.yml").write_text(
             "services:\n  gates:\n    volumes:\n      - .:/work\n", encoding="utf-8")
         env_file = self.tmp / ".env"

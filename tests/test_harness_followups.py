@@ -306,8 +306,11 @@ class IntegrationRunsOnceTest(unittest.TestCase):
             with self.subTest(mode=mode):
                 self.assert_quality_gates_ran(mode)
 
-    def test_stale_parallel_coverage_data_is_not_combined(self):
-        # Review B5, reworked for PS-3.5 (the checkout is read-only in the
+    def test_coverage_erase_precedes_first_run_and_spares_checkout(self):
+        # Formerly test_stale_parallel_coverage_data_is_not_combined (renamed,
+        # review-l5-r1 n4: that stale data is not combined is proven by
+        # test_coverage_erase_removes_stale_parallel_data in
+        # tests/test_gate_least_privilege.py). Review B5, reworked for PS-3.5 (the checkout is read-only in the
         # gates, so test.sh may not `rm` anything in it): a run that stopped
         # between `coverage run -p` and `combine` leaves parallel data files,
         # and the next run must not combine them. They now live beside

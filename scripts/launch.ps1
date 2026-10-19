@@ -17,7 +17,20 @@ if (-not (Test-Path $envFile)) {
         Write-Error "KE_ENV_FILE does not exist: $envFile"
         exit 1
     }
-    Copy-Item '.env.example' '.env'
+    if ([System.IO.Path]::DirectorySeparatorChar -eq '\') {
+        Copy-Item '.env.example' '.env'
+        # Windows: keep only the current user on the ACL (best effort; F12).
+        $acl = & icacls.exe '.env' '/inheritance:r' '/grant:r' "$($env:USERNAME):(F)" 2>&1
+        if ($LASTEXITCODE -ne 0) { Write-Warning "could not restrict .env to the current user: $acl" }
+    } else {
+        # .env holds the stack's secrets: create it 0600 before writing, whatever the umask (F12).
+        $envPath = Join-Path (Get-Location).Path '.env'
+        [System.IO.File]::WriteAllBytes($envPath, [byte[]]@())
+        [System.IO.File]::SetUnixFileMode($envPath,
+            [System.IO.UnixFileMode]::UserRead -bor [System.IO.UnixFileMode]::UserWrite)
+        [System.IO.File]::WriteAllBytes($envPath,
+            [System.IO.File]::ReadAllBytes((Join-Path (Get-Location).Path '.env.example')))
+    }
     Write-Host 'created .env from .env.example (placeholder secrets; edit it before any use beyond local development)'
 }
 

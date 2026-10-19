@@ -101,6 +101,15 @@ def check(settings: Settings) -> None:
                 raise StartupRefused(
                     env_name(path), "secret still has the placeholder prefix; set a real value")
 
+    # Last, so every other prod refusal still names its own setting. Auth is
+    # not built: `enabled=true` would claim a protection the API lacks
+    # (architecture ADR-KE-010).
+    if settings.env == "prod" and settings.auth.enabled:
+        raise StartupRefused(
+            "auth.enabled",
+            "KE_ENV=prod with auth.enabled=true (KE_AUTH__ENABLED): authentication is not "
+            "implemented until auth-audit, so prod is refused until then")
+
 
 def _overridden_env_names() -> list[str]:
     names = {n for n in os.environ if n.upper().startswith("KE_")}

@@ -1497,25 +1497,104 @@ follows, and the design below accounts for each difference:
   checkout would enter every build context. `dist/` is added to both
   `.dockerignore` and `.gitignore`.
 
-**Bundle (PS-3.1): `scripts/bundle.sh --out <dir> [--tar]`.** Bash only
-(ruling R1 below): bundling runs on the build host (CI, or Git Bash on
-Windows, which `verify.sh` already needs) after `build.sh`. It never builds
-or pulls, and it makes no network call.
+**Arch: one bundle per arch, built natively (amended 2026-10-19; human
+rulings Q49, "build it for both", native arm64 on `aria-gb10`; Q50 in
+scope).**
+- **Two arches, both first-class.** linux/amd64 and linux/arm64. The arm64
+  bundle serves both the GB10s (Linux arm64) and an Apple-silicon Mac,
+  whose Docker Desktop daemon runs a linux/arm64 VM. Model serving with MLX
+  on the Mac is a separate later item (Q52), not designed here.
+- **The arch is the target daemon's.** `bundle.sh` bundles for the daemon
+  it talks to, which is the active `DOCKER_CONTEXT` or `DOCKER_HOST`. It
+  takes no `--platform` anywhere, so spike S1's digest problem never
+  arises, and it still never builds or pulls. Against the local daemon it
+  gives an amd64 bundle. With `DOCKER_CONTEXT=aria-gb10` (a context over
+  SSH: `docker context create aria-gb10 --docker host=ssh://<alias>`), the
+  operator first runs `scripts/build.sh` with the same context, which
+  builds and pulls natively on the GB10, and then `bundle.sh` gives an
+  arm64 bundle. `save` streams each tar to the client, so `--out`, the
+  disk check, `git_sha` and the manifest stay on the machine running the
+  script. The notices generator's `docker run` runs on the target daemon,
+  on its own arch.
+- **Normalisation, one rule everywhere.** `bundle.sh`, `install.sh` and
+  `install.ps1` read `docker info --format '{{.Architecture}}'` and map
+  `x86_64|amd64` → `amd64` and `aarch64|arm64` → `arm64`. Any other value
+  refuses, naming the value. They use the daemon's arch, not `uname -m`,
+  because with a remote context or Docker Desktop the two differ.
+- **`--arch` is an assertion only.** `bundle.sh [--arch amd64|arm64]`:
+  given a value that differs from the daemon's arch, it refuses and names
+  both, before any `save`. It never selects anything. It guards against a
+  wrong `DOCKER_CONTEXT` in a release script.
+- **Every image has the arch.** The existing per-image `docker image
+  inspect` check (precondition 1) compares `{{.Os}}/{{.Architecture}}`
+  with `linux/<daemon arch>` instead of the fixed `linux/amd64`. Any
+  mismatch, whether one image or all of them, refuses and names the image
+  and what it found.
+- **Recorded.** The `bundle.json` header has `"arch": "<arch>"` in place of
+  `"platform": "linux/amd64"`. The `--out` basename must end in `-<arch>`
+  (usage error otherwise), so the directory, the `--tar` archive and the
+  `<out>.manifest.sha256` release record all carry it. The `as` tags are
+  unchanged: each arch's images live on their own daemon.
+- **Install.** After step 4 (`docker info` answers), step 5 reads the
+  header's `arch` and compares it with the normalised daemon arch. A
+  mismatch refuses, naming both, before `compose config` or any `load`.
+- **Proof.** `ci/deployable-offline` bundles for the local daemon, so on
+  `ubuntu-24.04` it proves amd64. arm64 is proven by a recorded run on
+  `aria-gb10` itself: build and bundle through the context, then the
+  trust-anchor check, install, launch, smoke and teardown there (Q51,
+  resolved). The orchestrator's build probe is
+  `docs/evidence/platform-offline/buildx-arm64-gb10.txt`. The Mac gets a
+  recorded manual install, launch and teardown when it arrives (Q53).
+- **Alternatives, not chosen.**
+  - *Cross-build with buildx and QEMU emulation* (`buildx build
+    --platform`, `pull --platform`, `save --platform`). Rejected as the
+    default: the dev host's Docker Desktop has no arm64 emulation
+    registered (exec format error); on Linux, binfmt needs a privileged,
+    host-wide install; emulated builds are slow; and on the classic image
+    store a foreign `pull --platform` rebinds the host's own `ref@digest`.
+    *Optional, documented, not required:* someone with no arm64 machine
+    but with binfmt registered can run a `docker:dind` container with
+    `--platform linux/arm64` and point a context at it. That daemon
+    reports `aarch64`, so `build.sh` and `bundle.sh` run against it
+    unchanged and still pass no `--platform`. It is slow, and no gate
+    covers it.
+  - *An `ubuntu-24.04-arm` CI runner* running `verify.sh full`. It would
+    prove arm64 in CI with no new script, but repo access to ARM runners is
+    unconfirmed. It is a later option, not required.
+
+**Bundle (PS-3.1): `scripts/bundle.sh [--arch amd64|arm64] --out <dir>
+[--tar]`.** Bash only (ruling R1 below): bundling runs on the build host
+(CI, or Git Bash on Windows, which `verify.sh` already needs) after
+`build.sh` against the same daemon. It never builds or pulls, and it makes
+no network call except to the target daemon itself (a remote context,
+Arch above).
 1. **Preconditions.**
-   - `--out` must not exist, or must be an empty directory.
-   - The image list is `docker compose -f docker-compose.yml --env-file
-     .env.example config --images` with no profile, which gives the stack
-     services only (api and worker share `ke-app`).
+   - `--out` must not exist, or must be an empty directory, and
+     `<out>.manifest.sha256` must not exist (step 6).
+   - The services and their images come from `docker compose -f
+     docker-compose.yml --env-file .env.example` with no profile, which
+     gives the stack services only (api and worker share `ke-app`). The
+     script runs `config --services` (sorted with `LC_ALL=C`) and then
+     `config --format json` **once**. It checks the exit status and refuses
+     an empty model. For each service it reads the image with `jq -er --arg
+     s "$svc" '.services[$s].image'`; the name is bound as a JSON string, so
+     it is a key lookup and never program text. It does not use `config
+     --images <svc>`: on Compose 5.x that form also prints the images of the
+     service's `depends_on` services, so `worker` resolved to more than one
+     image and the bundle died (D1, `recorded-runs.md`). A null or missing
+     image, or more than one line, refuses. `jq` is checked first, before any
+     `docker` call, and the script refuses without it.
    - Every reference must match a strict pattern
      (`[a-z0-9._/-]+(:[A-Za-z0-9._-]+)?(@sha256:[0-9a-f]{64})?`), because
      references go into JSON and file names.
-   - Each image must be present locally: `docker image inspect <ref>`, with
-     the digest for vendor references, so **the digest pin is enforced here,
-     on the build host**. It must be `linux/amd64` (Q20), read from the same
-     inspect.
+   - Each image must be present on the target daemon: `docker image
+     inspect <ref>`, with the digest for vendor references, so **the digest
+     pin is enforced here, on the build host**. It must be
+     `linux/<daemon arch>` (amended 2026-10-19, was `linux/amd64` per Q20),
+     read from the same inspect (Arch, above).
    - **Disk (R6).** The filesystem holding `--out` must have at least
-     10 GB free (`df -Pk`); otherwise exit non-zero with "need 10 GB free on
-     <path>, found <n> GB" before any `save`. 10 GB is a default from spike
+     10 GiB free (`df -Pk`); otherwise exit non-zero with "need 10 GiB free on
+     <path>, found <n> GiB" (rounded down) before any `save`. 10 GiB is a default from spike
      S4 (0.96 GB tar, 3.3 GB inner store, about 9 GB all resident), revised
      from the first CI run's `df` log.
    - No image-store check: bundling uses only `docker tag` and `docker save
@@ -1526,7 +1605,8 @@ or pulls, and it makes no network call.
    gets a bundle tag `as`, then `docker tag <ref> <as>` (adds a tag, moves
    none of the compose references) and `docker save -o images/<name>.tar
    <as>`. **No `--platform`**: that flag rewrites the manifest and changes
-   the digest (S1). `<name>` is the last path segment of the repository (for
+   the digest (S1); per-arch bundles keep this, because the arch comes from
+   the daemon. `<name>` is the last path segment of the repository (for
    example `postgres`, `phoenix`, `ke-app`), and a collision fails.
    - First-party: `as` = `ke-<x>:bundle-<sha12>` (`<sha12>` from `git_sha`).
    - Vendor: `as` = `ke-vendor/<name>:<digest12>` (the first 12 hex of the
@@ -1552,7 +1632,7 @@ or pulls, and it makes no network call.
    the bash installer can read it with a fixed pattern and needs no `jq`
    ("Git and Docker only" hosts):
    ```
-   {"format": 1, "git_sha": "<40 hex>", "dirty": <bool>, "created": "<UTC ISO-8601>", "platform": "linux/amd64", "images": [
+   {"format": 1, "git_sha": "<40 hex>", "dirty": <bool>, "created": "<UTC ISO-8601>", "arch": "<amd64|arm64>", "images": [
    {"file": "images/postgres.tar", "ref": "postgres:<tag>@sha256:<64 hex>", "as": "ke-vendor/postgres:<digest12>", "services": "postgres"},
    {"file": "images/ke-app.tar", "ref": "ke-app:<build tag>", "as": "ke-app:bundle-<sha12>", "services": "api worker"}
    ]}
@@ -1567,56 +1647,463 @@ or pulls, and it makes no network call.
      agents run `verify` on dirty trees. A dirty bundle reuses
      `bundle-<sha12>`, so installing it moves that tag on the target; this
      is accepted (dirty bundles are for verify, not for release).
+   - `arch` is the normalised arch of the daemon the bundle was made on;
+     every image was checked against it.
 6. **`MANIFEST.sha256`.** It is in `sha256sum` text format and lists every
    regular file except itself, with relative paths, sorted with `LC_ALL=C`.
    `bundle.sh` prints the manifest's own SHA-256 for an out-of-band check.
+   It also writes that value to **`<out>.manifest.sha256`, beside the
+   bundle and not inside it** (security M-3). The file holds one
+   `sha256sum`-format line, `<64 hex>  <basename of out>/MANIFEST.sha256`,
+   so `sha256sum -c` run from the parent directory checks it. It is the
+   release record that the operator gets through a separate channel. It is
+   not in the manifest and not in the `--tar` archive. If it already
+   exists, `bundle.sh` refuses before any write (precondition 1, like a
+   non-empty `--out`).
    With `--tar` it also writes `<dir>.tar` and prints that file's SHA-256.
    The verify run does not pass `--tar` (disk; R6).
 
-**Install (PS-3.1, PS-3.2): `install.sh <target>`, `install.ps1 -Target
-<dir>`.** The installer runs from the bundle root, on its own directory.
-Until step 1 passes, no `docker` command runs.
-1. **Manifest.** All four checks must pass:
+**Install (PS-3.1, PS-3.2): `install.sh [--expect-manifest <sha256>]
+<target>`, `install.ps1 -Target <dir> [-ExpectManifest <sha256>]`.** The
+installer runs from the bundle root, on its own directory. Until the
+manifest check (step 3) passes, no `docker` command runs.
+*Amended 2026-10-19 (unit-2 rework round 1): staging (security M-1, L-2,
+L-3, L-6), trust anchor (M-3), exact-case and Windows-safe paths (M-2,
+I-1), service coverage (review B2).* *Amended again 2026-10-19 (unit-2
+rework round 2): entry hardening, parent rule, claimed target, Windows ACL
+at creation, staging pinned by cwd, publish by renames into the claim
+(security H-1, M-4, L-8, L-9, L-10; review RB1, RB2, P1–P7; I-3).*
+*Amended again 2026-10-19 (unit-2 rework round 4): the parent rule
+refuses instead of warning (step 1); staging is pinned only after it is
+proven to be this run's empty directory (step 2); publish chmods `.` from
+inside the target (step 9); the Windows write mask is built from integers
+(security H-2, M-5, M-6, L-15; review RB6, N6, N7).*
+
+**`install.sh` portability (Q50, in scope 2026-10-19).** `install.sh` runs
+on Linux and on macOS, where `/bin/bash` is 3.2 and the tools are BSD.
+- **bash 3.2 only.** No associative arrays, `mapfile`/`readarray`, case
+  expansions (`${x,,}`, `${x^^}`), namerefs, `|&`, `&>>` or `coproc`.
+  Lowercasing is `tr '[:upper:]' '[:lower:]'`. Sets are newline lists,
+  sorted with `LC_ALL=C sort`: duplicates by `uniq -d`, case-only
+  collisions by `uniq -d` on the lowercased list, and set equality by
+  comparing the two sorted lists. Lists hold only names that already
+  matched the safe path pattern, so a newline cannot appear in one.
+  Membership tests over a list run as **one** `awk` pass over the whole
+  list, never one `awk` run per entry (review P7).
+- **POSIX/BSD tool forms only.** Walk with `find ... -print0` read by
+  `while IFS= read -r -d ''` (bash 3.2 has both); classify with `-type`,
+  never `-printf`. Any name failing the safe pattern refuses at once
+  (printed with `printf %q`), so it never reaches a sorted list. Sizes
+  come from `wc -c <`, not `stat`. Disk is `df -Pk`. The staging directory
+  is `mktemp -d "<parent>/.ke-install.XXXXXXXX"` (0700 on both).
+- **Copy (amended 2026-10-19, round 2; security I-3, review P2).** Before
+  the copy, the walked source names are lowercased and checked with
+  `uniq -d`; a hit refuses as "paths differ only by case", naming the
+  path, so the rule is named on every filesystem. The copy is then
+  `cp -R -P -- <bundle>/. ./` into the fresh, empty staging (cwd, step 2),
+  with no `-n`: BSD `-n` skips silently and GNU 9.x warns or exits 1 on
+  it. An overwrite on a case-insensitive volume cannot pass, because the
+  pre-check refused it and the hash check runs on staging anyway. This
+  replaces the earlier `set -C` plus `cat` text, which was never built.
+- **One hash helper.** `sha256_file` uses `sha256sum` if it is on `PATH`,
+  otherwise `shasum -a 256`, and prints only the hex. Every hash in the
+  installer goes through it. The manifest check compares the helper's
+  output with each listed hash, not `sha256sum -c`.
+- **Publish without `mv -T`** (step 9 below: a claimed target, entries
+  renamed into it).
+- **Enforced by** a static forbid-list test and a shimmed-PATH behavioural
+  test (PS-3.1). Real macOS proof is a recorded install, launch and
+  teardown on the Mac.
+- **Q53 extended (orchestrator, round 2, 2026-10-19).** `launch.sh` and
+  `teardown.sh` are under the same bash 3.2/BSD rule, because the Mac
+  operator runs them after install. In `launch.sh`, the two `mapfile`
+  reads become `while IFS= read -r` loops over a here-string, and
+  `at_least` (`sort -V`) becomes a pure-bash compare of dot-separated
+  numeric fields (`10#` arithmetic, missing fields count as 0).
+  `teardown.sh` already passes. The static forbid list covers all three
+  scripts. `smoke.sh`, `net_isolated.sh` and `verify.sh` stay Linux and
+  dev only; the Mac proof claims install, launch and teardown, not smoke.
+- **Forbid list additions (review P5).** `[[ -v`, `${x@` (any `@`
+  operator), negative subscripts (`${a[-1]}`), `$EPOCHSECONDS`,
+  `$EPOCHREALTIME`, `printf '%(...)T'` and a bare `local -`. An array that
+  can be empty is expanded as `${a[@]+"${a[@]}"}` (bash < 4.4 with
+  `set -u`); this form is reviewed, not statically checked.
+- `install.ps1` is unchanged by this; pwsh on a Mac is not a supported
+  path.
+
+**Entry hardening, both installers (unit-2 rework round 2, 2026-10-19;
+security M-4, L-9, L-10, review RB1, RB2b).** These run before step 1.
+- **`install.sh` is parsed whole before it runs (M-4).** bash reads a
+  script lazily, so a writer of the bundle directory could append code
+  after the operator checked the file. Everything is inside functions,
+  and the file ends with the single line `main "$@"; exit`. At top level
+  there are only comments, the shebang, `set` lines, function definitions
+  and assignments with no command substitution. bash therefore has parsed
+  `main` and every helper before any of them runs, and `exit` stops it
+  from reading further.
+- **PATH (L-9).** The first thing `main` does, using builtins only, is to
+  split `PATH` on `:` and refuse any entry that is empty or does not start
+  with `/` ("refused (rule: PATH must hold absolute directories only)"),
+  before any external command, `mktemp` included. POSIX treats an empty
+  entry as the cwd, and the cwd is the bundle root. `install.ps1` refuses
+  any non-empty entry that is not fully qualified
+  (`[IO.Path]::IsPathFullyQualified`); on Windows it drops empty entries
+  from its own process's `PATH` instead of refusing, because a trailing
+  `;` is common there and PowerShell never searches the cwd for native
+  commands. On Linux pwsh an empty entry refuses, as in bash.
+- **PowerShell version.** `install.ps1` starts with `#Requires -Version
+  7.3`: `CreateDirectory(path, UnixFileMode)` is .NET 7, and Windows
+  PowerShell 5.1 fails at `Add-Type` otherwise. The script keeps to syntax
+  that 5.1 can parse, so 5.1 reports the `#Requires` message and not a
+  parse error. The documented call is `pwsh -NoProfile -File
+  .\install.ps1 ...`, which also keeps the signal handlers out of the
+  operator's session. **ConstrainedLanguage mode (AppLocker or WDAC script
+  enforcement without a trusted signature) is not supported:** `Add-Type`
+  is refused there before staging exists, so nothing is created and pwsh
+  exits non-zero (security judged this fail-safe).
+- **Interrupts (L-10, RB1).**
+  - bash: `trap cleanup EXIT`, plus `INT` → exit 130, `TERM` → 143, `HUP` →
+    129 (review P1) and `QUIT` → 131. bash runs the trap when the current
+    foreground command returns, so the install stops at the next step.
+  - pwsh: `KeInterrupt` registers SIGINT, SIGTERM, SIGHUP and SIGQUIT
+    (`PosixSignalRegistration`, `Cancel = true`, sets `Fired`; SIGQUIT is
+    what .NET raises for Ctrl+Break, review P4). `Install()` resets
+    `Fired` to false; `Dispose()` disposes every registration and runs in
+    the outer `finally`. The script calls one helper,
+    `Assert-NotInterrupted`, which throws "install: interrupted" when
+    `Fired` is set: after every `docker` call, at each step boundary, on
+    each iteration of the copy and hash loops, and immediately before
+    publish. An interrupted install exits 1 with that message, leaves no
+    target (other than a pre-existing empty one, restored) and no staging.
+    It leaves through the script's own `exit 1`, never
+    `[Environment]::Exit`, so an in-process run (`& .\install.ps1` in an
+    open session) returns to the session with `$LASTEXITCODE` 1, a second
+    run there works, and after it returns the session dies on SIGTERM again
+    (handlers disposed). `[Environment]::Exit(1)` stays only for the case
+    where pwsh itself stopped the pipeline (SIGINT), which otherwise
+    reports 0.
+  - A `SIGKILL` cannot be handled. It can leave staging and an empty,
+    0700, claimed target. Both are private and hold no secret; the target
+    is empty until publish, so a re-run accepts it.
+
+**Path comparison, both installers.** Every path and name comparison is
+ordinal and case-sensitive: `LC_ALL=C`, `[[ == ]]` and `LC_ALL=C sort`
+lists in bash (no associative arrays, Q50); `-ceq`, `-cmatch` and `[hashtable]::new([StringComparer]::Ordinal)`
+(or `HashSet[string]` with the same comparer) in PowerShell, never `@{}`,
+`-eq` or `-match`. Paths are compared after `\` is turned into `/`.
+
+1. **Arguments.**
+   - `--expect-manifest` / `-ExpectManifest`, if given, must be 64 hex
+     characters. It is lowercased for the comparison. Any other value is a
+     usage error, and nothing else runs.
+   - **Target.** Its parent must exist and be a directory that is not a
+     link or reparse point. The target must not exist, or must be an empty
+     directory. Upgrading in place is out of scope. A re-install goes to a
+     new directory, and the operator copies `.env` across.
+   - **Parent owned or writable by others: refused (round 4, 2026-10-19;
+     orchestrator ruling on security H-2, M-5, M-6, L-15 and review RB6;
+     supersedes the round-2 "warn, not refuse").** Both installers, on
+     every platform, refuse a target parent that is **owned by**, or
+     **writable by**, any principal other than the operator, root (POSIX)
+     or, on Windows, `SYSTEM` (S-1-5-18) and `Administrators`
+     (S-1-5-32-544). The check runs right after the argument checks,
+     before the claim, staging or any `docker` command, so a refusal
+     leaves nothing behind. **It fails closed:** any error reading the
+     owner, the mode or the ACL, or output the installer cannot parse, is
+     a refusal. Messages:
+     - `install: refused (rule: the target's parent must be owned and
+       writable only by you): <parent> (<what was found>)`, where *what was
+       found* is `owned by uid <n>` / `owned by <SID>`, `writable by group
+       or others (mode <mode string>)`, or `writable by <SID> (<rights in
+       hex>)` for an ACE (the tester's regexes match "owned by" and
+       "writable by group|others");
+     - `install: refused (rule: the target's parent must be owned and
+       writable only by you): could not check <parent> (<reason>)` on a
+       read error.
+     Exit status 1 (a refusal, not a usage error).
+     *Why refuse:* every round-2/3 race (H-1's swap, L-11, H-2's emptied
+     victim, M-5's chmod through a link, L-15) needs one precondition: an
+     account other than the operator that can rename or create entries in
+     the parent. Refusing that parent removes the attacker, instead of
+     closing one window at a time (ADR-KE-012, round 4). The defences in
+     steps 2 and 9 stay as defence in depth.
+     What is checked (the parent itself, as named; its ancestors are out
+     of scope, see ADR-KE-012 Consequences):
+     - **POSIX, bash.** One `ls -ldn -- <parent>` (already used; BSD and
+       GNU print the same fields). Refuse when the listing fails or does
+       not parse; when the owner (field 3) is neither `id -u` nor `0`
+       (an `id -u` failure is a read error); or when the mode string has
+       `w` in the group or other position. **The sticky bit no longer
+       exempts** a world-writable parent: others can still create names in
+       it, which is the precondition this rule removes. On Linux a POSIX
+       ACL that grants a named user or group write shows as `w` in the
+       group position (the ACL mask), so it is caught. **macOS only**
+       (`uname -s` is `Darwin`): an extended ACL is invisible in the mode
+       bits, so when the mode string ends in `+` the installer also reads
+       `ls -lde -- <parent>` and refuses if any entry is an `allow` entry
+       (a home directory's `group:everyone deny delete` is a deny entry
+       and passes). This branch is proven by the recorded Mac run only.
+     - **POSIX, pwsh off Windows (L-15).** The mode from
+       `[IO.File]::GetUnixFileMode` (refuse on `GroupWrite` or
+       `OtherWrite`, sticky or not), and the owner from `ls -ldn --
+       <parent>` field 3 (`Get-OwnerUid`, the same read as bash) compared
+       with `id -u` (`Get-OperatorUid`) and `0` (pwsh off Windows is Linux
+       only; `UnixStat` is not used because the floor is pwsh 7.3). Any
+       non-zero exit, unparsable or non-integer output or exception
+       refuses.
+     - **Windows.** From `Get-Acl` in SID form: refuse if the **owner**
+       SID is not the current user, `SYSTEM` or `Administrators`, or if an
+       **Allow** ACE that is not inherit-only gives a SID other than those
+       three any right in the write mask. Deny ACEs are ignored (they
+       can only remove rights, so ignoring them errs towards refusal).
+       **Two placeholder SIDs are also allowed in an ACE (review N15;
+       never as the owner):** *OWNER RIGHTS* (S-1-3-4) applies only to the
+       object's owner, and the owner check above already limits that owner
+       to the operator, SYSTEM or Administrators. *CREATOR OWNER*
+       (S-1-3-0) is never in a token: it is substituted at inheritance, and
+       Windows rewrites a non-inherit-only CREATOR OWNER ACE to the owner's
+       SID when it is set, so such an ACE on the parent grants nobody else
+       anything (an inherit-only one is skipped anyway). Every other
+       well-known SID, *CREATOR GROUP* (S-1-3-1) included, is refused when
+       it holds a write right (Windows probes: review-u2-r4, security
+       W6b).
+       *TrustedInstaller* (S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464)
+       is no longer exempt: the ruling names only SYSTEM and Administrators;
+       it owns `C:\Program Files` and `C:\Windows`, which are not install
+       parents (flagged to the orchestrator; adding it back is a one-SID
+       change).
+     - **Windows write mask, built from integers (M-6).** The mask is a
+       `[long]` OR of literal constants, never a cast of an undefined
+       `FileSystemRights` value (`[FileSystemRights]0x40000000` throws):
+       WriteData/CreateFiles `0x2`, AppendData/CreateDirectories `0x4`,
+       WriteExtendedAttributes `0x10`, DeleteSubdirectoriesAndFiles
+       `0x40`, WriteAttributes `0x100`, Delete `0x10000`,
+       ChangePermissions (WRITE_DAC) `0x40000`, TakeOwnership (WRITE_OWNER)
+       `0x80000`, GenericAll `0x10000000`, GenericWrite `0x40000000`. An
+       ACE matches when `([long]$ace.FileSystemRights -band $mask) -ne 0`.
+       The `catch` around the whole check refuses with the read-error
+       message; it never returns silently.
+     Examples: `C:\` grants Authenticated Users AppendData, so a target
+     `C:\knowledge-engine` is **refused**;
+     `$env:USERPROFILE\knowledge-engine` installs. `$HOME/knowledge-engine`
+     installs (home is the operator's, 0700/0750/0755). `/opt/ke/<name>`
+     installs as root when `/opt/ke` is root-owned 0755. `/tmp/<name>`
+     (1777) is **refused** on Linux; on macOS `/tmp` is a link and was
+     already refused.
+   - **Claim the target (security L-8; round 2).** Right after these checks,
+     the installer claims the target. An existing empty target is first
+     removed with `rmdir` (recorded, so a refusal can restore it). Then:
+     - bash: `mkdir -m 0700 -- <target>`. `mkdir` is exclusive and fails on
+       any existing entry, a symlink included (it never follows a final
+       symlink), on POSIX and BSD alike;
+     - pwsh on Windows: created with its protected ACL in one call (step 2,
+       the same helper as staging), then the owner and ACL are verified;
+     - pwsh off Windows: `CreateDirectory(path, UnixFileMode 0700)` right
+       after an absence check, then verified to be a directory, not a link,
+       mode 0700 and empty (`CreateDirectory` is not exclusive).
+     - **Claim marker.** Inside the claimed target the installer creates
+       one empty file `.ke-claim.<random>` (`mktemp` in bash; a random name
+       created with `FileMode.CreateNew` in pwsh). It identifies the claim
+       at publish and in cleanup: a target that was removed and replaced
+       (by a directory or a link) lacks it. On Windows, pwsh keeps that file
+       open with `FileShare.None` until publish, so the OS refuses to rename
+       or delete the target meanwhile.
+     From here until publish, only the operator can write into the target.
+     This also closes the step-1-to-step-9 check-then-use gap.
+2. **Staging (M-1).** The installer verifies, loads and publishes only a
+   private copy of the bundle, never the bundle directory itself.
+   - It creates `<parent of target>/.ke-install.<random>` exclusively, with
+     mode 0700. In bash this is `mktemp -d`. In pwsh on Linux it is
+     `CreateDirectory` with `UnixFileMode` 0700, created in one call. Staging
+     sits beside the claimed target, in the same parent, so that it is on
+     the same filesystem, which makes step 9 a set of renames.
+   - **Windows: protected ACL at creation (security H-1 fix 1; round 2).**
+     Staging (and the claimed target) is never created with an inherited
+     ACL that is fixed afterwards. One helper builds a `DirectorySecurity`
+     with owner = the current user's SID, `SetAccessRuleProtection($true,
+     $false)` and a single Allow ACE, current user FullControl,
+     ContainerInherit and ObjectInherit, then calls
+     `[System.IO.FileSystemAclExtensions]::Create([IO.DirectoryInfo]<path>,
+     $sec)`. That call does nothing if the directory exists, so the helper
+     first checks the name is absent and afterwards verifies, from
+     `Get-Acl` in SID form: the owner is the current user, the DACL is
+     protected, and the explicit ACEs are exactly that one ACE with no
+     inherited ACE. Anything else refuses, naming the path and what was
+     found. This replaces `CreateDirectory` followed by `Set-Acl`, whose
+     window let Authenticated Users open a handle with DELETE.
+   - **Pinned after creation (security H-1 fix 2; round 2).** The installer
+     makes staging its working directory and from then on names nothing in
+     staging by an absolute path. A rename of staging by name cannot then
+     redirect a later read.
+     - **Pin only what this run created (round 4; security H-2, review
+       RB6, N7).** "Pinned" is what allows cleanup to empty the working
+       directory from inside (I-7), so it must prove "the staging this run
+       just created", not just "a private directory".
+       - bash: staging is `mktemp -d "<parent>/.ke-install.XXXXXXXX"`,
+         which creates it 0700. **Nothing chmods staging by name**
+         (the round-3 `chmod 0700 -- "$staging"` is removed: it followed a
+         swapped-in link). Step 1 records `parent_real="$(cd -- <parent>
+         && pwd -P)"`. Then `cd -- "$staging"`, and before `pinned=1` all
+         of these must hold, else `die` with `pinned` still 0 (so cleanup
+         never empties the directory `cd` reached):
+         1. `[ "$(pwd -P)" = "$parent_real/${staging##*/}" ]`;
+         2. the directory is empty: `[ -z "$(ls -A .)" ]` (a fresh
+            `mktemp -d` always is; nobody else can write into an
+            operator-owned 0700 directory, so an empty one cannot hold the
+            operator's data);
+         3. `[ -O . ]`;
+         4. the mode string of `ls -ld .` is exactly `drwx------`.
+         Only then `pinned=1`. If a mode fix is ever wanted it is `chmod
+         0700 .`, after these checks, never by name.
+       - pwsh: `$script:Pinned` is set **only after** `Set-Location`,
+         `[Environment]::CurrentDirectory`, `Assert-PrivateDirectory '.'`
+         and an emptiness check (`Get-ChildItem -Force -LiteralPath .` is
+         empty; N7) have all passed, and, off Windows, `Initialize-Staging`
+         has checked that the owner of `.` is the operator (`ls -ldn .`
+         field 3 = `id -u`, L-15). Off Windows `Assert-PrivateDirectory`
+         itself checks only "a directory, not a link, mode 0700"; the owner
+         check lives in `Initialize-Staging` (review N14). *Note, not a
+         requirement:* the claimed target (step 1) also goes through
+         `Assert-PrivateDirectory`, so off Windows it is not owner-checked.
+         Moving the owner check into `Assert-PrivateDirectory` would cover
+         the claim too, as defence in depth; under the parent rule only the
+         operator or root can create the name, so nothing depends on it.
+         Cleanup
+         empties the pin only when `$script:Pinned` is true **and**
+         `Get-EntryKind <pin>` is `'dir'`. It **never enumerates or
+         empties a reparse point** (junction, symlink, mount point): a
+         reparse point is removed as a link (`[IO.Directory]::Delete(<pin>,
+         $false)`), never with `-Recurse`. The name prefix
+         `.ke-install.` is no longer what gates the emptying.
+     - bash: `cd -- <staging>` straight after `mktemp -d` and the checks above; the copy writes
+       to `./`, and every later reference is relative (`./MANIFEST.sha256`,
+       `./<file>` for `docker load -i`, `--project-directory ./app -f
+       ./app/docker-compose.yml --env-file ./app/.env.example` for compose,
+       `./app/docker-compose.override.yml`). The cwd follows the inode on
+       Linux and macOS. The target is reached by its absolute path and
+       re-identified by its claim marker at publish (step 9); a swap there
+       can make the install refuse, or (in the instant between check and
+       rename) receive verified, secret-free files, but never change what
+       was verified. Security judged that residue acceptable (L-8).
+     - pwsh: `Set-Location -LiteralPath <staging>` and
+       `[Environment]::CurrentDirectory = <staging>` (native `docker` starts
+       in it). Every later path is relative (`.\images\x.tar`, `.\app`). On
+       Windows, a process's current directory is opened without
+       FILE_SHARE_DELETE, so the OS refuses to rename staging. The `finally`
+       sets the location back to the caller's before removing staging.
+   - **Disk (L-6).** Before copying, the parent's filesystem must have at
+     least the summed size of the bundle's regular files free. Otherwise
+     install refuses with "need <n> GiB free on <parent>, found <m> GiB".
+     The need is rounded up, the free space down.
+   - **Copy.** The copy walks the bundle root without following any link.
+     It copies regular files and directories only. Any other entry (a
+     symlink, a junction or reparse point, a fifo, a device) refuses and
+     names the path. Each file is created exclusively (no clobber), so two
+     source names that collide on a case-insensitive staging filesystem
+     refuse as "paths differ only by case". Each byte is read once, into
+     staging. Hardlinks and later writes to the bundle directory therefore
+     cannot reach what is verified (closes L-3).
+   - **Cleanup.** Staging is removed on every exit: success, refusal,
+     error or interrupt (`trap ... EXIT` with INT, TERM, HUP and QUIT in
+     bash, `try/finally` in pwsh; Entry hardening above). A refusal leaves
+     no target behind, other than an empty target that already existed:
+     unless publish completed, cleanup removes the target **only if it is
+     still the claim** (a directory, not a link, holding the claim marker),
+     so it never deletes or writes through something planted there, and it
+     re-creates the empty directory if one was there before (round 2).
+     While pinned (and only then, round 4) cleanup first empties the
+     working directory from inside (I-7). **Then it removes staging by its
+     absolute path, never recursively (round 5; security M-7):** bash
+     `rmdir -- "$staging"` (errors ignored), pwsh
+     `[IO.Directory]::Delete(<staging>, $false)` in a `try`. The real
+     staging is empty by then (a pinned one was just emptied from inside;
+     an unpinned one was never filled), so this removes it. If something
+     else holds the name (staging renamed away and another directory
+     renamed in, or a link), the removal fails and leaves it intact, or
+     removes only the link; it never deletes contents or follows a link.
+     The renamed-away private copy (0700, emptied) is left where the
+     renamer put it. The round-4 `rm -rf -- <staging>` / `Remove-Item
+     -Recurse` is gone: by name it deleted whatever directory had been
+     renamed in, including an operator folder swapped in by an ancestor
+     writer (security A10). With the parent rule no other account can
+     rename staging at all, so these paths are defence in depth (ancestors:
+     ADR-KE-012).
+3. **Manifest, on staging.** `MANIFEST.sha256` is checked to be a regular
+   file, not a link, and at most 1 MiB before it is read (L-4).
+   - **Expected hash (M-3).** The installer computes the SHA-256 of the
+     staged `MANIFEST.sha256` first. If `--expect-manifest` was given and
+     the values differ, it refuses and prints both values, with no
+     `docker` call.
    - **Lines.** Every line matches `^[0-9a-f]{64}  <path>$`.
-     - Each path segment is `[A-Za-z0-9._-]+`.
-     - No segment is `.` or `..`.
-     - A path has no leading `/` and no backslash.
-     - Duplicate paths are refused.
-   - **File set.** The set of regular files under the bundle root, except
-     `MANIFEST.sha256`, equals the listed set exactly.
-     - Any missing file is refused, and so is any unlisted one.
-     - Any other entry type anywhere is refused: a symlink, a Windows
-       reparse point (junction), a fifo or a device.
-   - **Hashes.** Every hash matches: `sha256sum -c --strict --quiet` in
-     bash, `Get-FileHash -Algorithm SHA256` in PowerShell, with paths
-     compared as ordinal strings after `\` is turned into `/`.
-   - **Messages.** A message names the rule and the path. Listed paths are
-     safe to print because of the pattern above. An unlisted name is
-     printed escaped (`printf %q`, or the PowerShell equivalent), never raw.
-2. **Daemon.** `docker info` must answer; otherwise install refuses. **No
+     - Each path segment is `[A-Za-z0-9._-]+`, so it holds no `:`, space
+       or backslash.
+     - No segment is `.` or `..`, and no segment ends in `.`.
+     - **Windows reserved names (I-1).** No segment's stem (the text before
+       its first `.`) equals `CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9` or
+       `LPT1`–`LPT9`, in any case. For example, `nul.txt` and `Com1` are
+       refused.
+     - A path has no leading `/`.
+     - Duplicate paths are refused. **Two paths that are equal after
+       lowercasing are refused** as "paths differ only by case" (M-2).
+       This applies to the manifest, and the same rule keeps an unlisted
+       case variant of a listed file out of the file set below.
+   - **File set.** The set of regular files under the staging root, except
+     `MANIFEST.sha256`, equals the listed set exactly, compared ordinally.
+     Any missing file is refused, and so is any unlisted one, including a
+     case variant of a listed name.
+   - **Hashes.** Every hash matches: the `sha256_file` helper compared
+     with the listed hash in bash (Q50; formerly `sha256sum -c`),
+     `Get-FileHash -Algorithm SHA256` in PowerShell.
+   - **Messages.** A message names the rule and the bundle-relative path.
+     Listed paths are safe to print because of the pattern above. An
+     unlisted name is printed escaped (`printf %q`, or the PowerShell
+     equivalent), never raw.
+   - **Accepted hash printed.** Once the checks pass, the installer prints
+     `manifest sha256: <64 hex>`, followed by either "(matches
+     --expect-manifest)" or "(not checked: compare it with the value from
+     your release record)".
+4. **Daemon.** `docker info` must answer; otherwise install refuses. **No
    image-store check** (R2): install works on the classic and containerd
    stores alike, so the store type is not an operator prerequisite.
-3. **Target.** The target must not exist, or must be an empty directory.
-   Upgrading in place is out of scope. A re-install goes to a new
-   directory, and the operator copies `.env` across.
-4. **`bundle.json`.** Every line must match the fixed pattern, and every
-   `ref`, `as` and service name its strict pattern (they are written into a
-   YAML file next). Every `images/*.tar` must appear in it, and the
-   reverse. A mismatch refuses, before any `load`.
-5. **Load and tag** (store-independent, spike S1), per image:
-   - `docker load -i <file>`; its output must hold exactly one `Loaded
-     image: <name>` or `Loaded image ID: sha256:<hex>` line (a classic or
-     an unnamed containerd load prints the second). Zero or several refuse.
+5. **`bundle.json`** (staged). Every line must match the fixed pattern, and
+   every `ref`, `as` and service name must match its strict pattern (they
+   are written into a YAML file later). Every `images/*.tar` must appear in
+   it, and the reverse. A mismatch refuses, before any `load`.
+   - **Arch (2026-10-19).** The header's `arch` (`amd64` or `arm64`) must
+     equal the daemon's normalised `Architecture` (Arch, above).
+     Otherwise install refuses with both values (for example "bundle is
+     arm64, daemon is amd64"), before step 6 and any `load`.
+6. **Service coverage (review B2).** The installer runs `docker compose
+   --project-directory ./app -f ./app/docker-compose.yml
+   --env-file ./app/.env.example config --services`, from staging (step 2), on the copied
+   app, with `COMPOSE_PROFILES` and `COMPOSE_FILE` unset. It uses the
+   output **only to check service coverage**: every listed service must
+   appear in exactly one entry's `services`. Otherwise install exits
+   non-zero naming the service.
+   - A non-zero exit, empty output, or a line that does not match
+     `[a-z0-9_-]+` refuses. A non-zero exit is a refusal, never a warning.
+     In bash, the exit status is checked explicitly; a process substitution
+     must not hide it (review N6).
+   - The output is not used to write the override, which takes its service
+     names from `bundle.json` alone (step 8). `config` neither pulls nor
+     calls the network.
+7. **Load and tag** (store-independent, spike S1), per image, **from
+   staging**:
+   - `docker load -i ./<file>` (relative to staging, step 2); its output must hold exactly one
+     `Loaded image: <name>` or `Loaded image ID: sha256:<hex>` line (a
+     classic or an unnamed containerd load prints the second). Zero or
+     several refuse. A `Loaded image:` name must equal the entry's `as`
+     (L-5).
    - `docker tag <that name or id> <as>`, then `docker image inspect <as>`
      must succeed.
    - **Image IDs are never compared** with the build host or with
      `bundle.json`: the loaded ID differs by store (S1). Integrity rests on
-     the manifest hashes of the tars; the digest pin was enforced on the
-     build host.
+     the manifest hashes of the staged tars; the digest pin was enforced on
+     the build host.
    - Nothing is untagged or removed, and `:local` is never touched.
-6. **Copy.** It copies `app/` to the target.
-7. **Override.** It writes `<target>/docker-compose.override.yml` with
-   `printf`, one block per service in `services`:
+8. **Override.** It writes `./app/docker-compose.override.yml` (in staging)
+   with `printf`, explicitly mode 0644 (I-2), one block per service in
+   `services`:
    `services: <svc>: {image: "<as>", pull_policy: never}`. Nothing else.
    - Compose loads `docker-compose.override.yml` automatically whenever no
      `-f` or `COMPOSE_FILE` is given, which is how `launch`, `teardown` and
@@ -1628,15 +2115,140 @@ Until step 1 passes, no `docker` command runs.
      ever pulled. With `pull_policy: never`, a missing image fails at `up`
      with "No such image", without a network attempt (S1 verified fail
      closed either way).
-   - It prints the next step (`scripts/launch.sh` or `scripts\launch.ps1`
-     there).
+   - **Modes (F6).** After the override is written, still inside the pinned
+     staging, the installer sets the modes of the staged `app/` tree with
+     relative paths (`app`, `app/scripts`) and following no link: directories
+     and everything under `app/scripts/` get 0755, every other file gets
+     0644. The result does not depend on the modes the bundle had on the
+     build host (a Windows or NTFS carry, or a build host `umask 002`) or on
+     the operator's umask. `install.ps1` does the same off Windows. It runs
+     before publish (step 9), so the renamed entries keep these modes.
+9. **Publish into the claimed target (L-2, L-6, L-8; replaced 2026-10-19,
+   round 2).** The target was claimed in step 1 as the operator's empty
+   0700 directory, so no one else can add anything to it. The installer:
+   1. checks that the target is still a directory, not a link, and holds
+      exactly its claim marker; otherwise it refuses ("the target was
+      replaced during install") and writes nothing there (a directory or
+      link planted after the claim lacks the marker);
+   2. renames each top-level entry of the staged `app/` into it:
+      `mv -- ./app/<e> <target>/<e>` in bash (cwd is staging),
+      `[IO.Directory]::Move` / `[IO.File]::Move` with relative sources in
+      pwsh. The entries are the first path segments of the verified
+      manifest paths under `app/`, plus `docker-compose.override.yml`; each
+      already matched the safe-name pattern, so no glob is used and dot
+      files (`.env.example`) are included. The destination is absent in a
+      directory only the operator can write, so each `mv` is a rename and
+      never moves *into* something;
+   3. checks `./app` is now empty;
+   4. **last, by working directory, never by name (round 4; security
+      M-5).** The round-3 "re-check the target is a real directory, then
+      `chmod 0755 <target>`" left a fork+exec window in which a link could
+      be swapped in and `chmod` followed it. Instead:
+      - bash: (a) `pinned=0`, so cleanup can no longer empty a directory
+        from inside; (b) `cd -- "$target"`; (c) require `[ "$(pwd -P)" =
+        "$parent_real/${target##*/}" ]`, `[ -f "./$claim_marker" ] && [ !
+        -L "./$claim_marker" ]` and `[ -O . ]` (the random marker in a 0700
+        directory cannot be in any swapped-in directory); (d) `rm --
+        "./$claim_marker"`; (e) `chmod 0755 .`; (f) `[ "$target" -ef . ]`,
+        else `die "the target was replaced during install"` (the name no
+        longer leads to the directory that was published); (g) `cd /`.
+        Staging was emptied from inside before (a) (I-7); cleanup then
+        removes it with `rmdir` (step 2).
+      - pwsh (shipped code, review N14): staging is emptied from inside
+        while pinned, then `$script:Pinned = $false`; `Set-Location
+        -LiteralPath <target>` and `[Environment]::CurrentDirectory`;
+        `Get-EntryKind .` is `'dir'` and `Get-EntryKind <marker>` is
+        `'file'`; then by name, `Get-EntryKind <target>` is `'dir'` and
+        `<target>/<marker>` is `'file'`; `[IO.File]::Delete(<target>/<marker>)`.
+        **Off Windows only:** `Get-EntryKind <target>` is `'dir'`, then
+        `[IO.File]::SetUnixFileMode(<target>, 0755)` **by name**. On every
+        platform `Get-EntryKind <target>` must still be `'dir'` afterwards.
+        The location is set back in `finally`. There is no owner-of-`.`
+        check here. *Why by name is acceptable:* .NET resolves `'.'`
+        through `Path.GetFullPath` against the `getcwd()` string, so
+        `SetUnixFileMode('.')` (and `Get-EntryKind '.'`) would act by path
+        as well; only a native `chmod 0755 .` from inside acts on the
+        directory itself. Under the parent rule only the operator or root
+        can swap the name in the guard-to-chmod window, which is
+        in-process (review-u2-r4 Q, security L-18 note). The round-3b
+        re-check by name therefore stays for pwsh.
+      - pwsh on Windows: the claim marker's handle is closed and the
+        marker deleted; no mode change. The target keeps its protected
+        current-user ACL, which is what the moved staging directory carried
+        before round 2.
+      In bash, the `[ -d "$target" ] && [ ! -L "$target" ]` re-check
+      before `chmod 0755 <target>` (round 3b) is replaced by (c)–(f).
+   This replaces the post-checked `mv -- <staging>/app <target>` (no
+   `mv -T` on BSD) and the pwsh `Directory.Move` of the whole app, and with
+   them the residual window security judged in L-8. The target appears
+   complete, override included, or not at all (cleanup, step 2), and
+   nothing is written through a link planted in the meantime. The installer
+   prints the accepted manifest hash again and the next step, with the
+   platform's separator (`bash scripts/launch.sh` from `install.sh`, review
+   N6, so the file mode does not matter; `scripts\launch.ps1` on Windows;
+   review P3). Staging, already emptied from inside, is removed
+   non-recursively (step 2).
 
-*Integrity, not authenticity.* The installer checks itself through a
-manifest it ships with, so the guarantee comes from comparing the printed
-manifest hash out of band. Signing stays deferred (ADR-KE-012).
-`install.ps1` keeps the PowerShell baseline of `launch.ps1`. Fast tests run
-it under pwsh 7 in the gates image with a fake `docker`. A recorded run on
-the Windows host proves it on Docker Desktop (Q31/Q34).
+*Integrity, not authenticity; the trust anchor (M-3).* The installers ship
+inside the bundle they check, so a tampered installer can skip its own
+check. The guarantee holds only when the operator, before running
+anything from the bundle, uses their own tools to:
+1. compare the SHA-256 of `MANIFEST.sha256` with the value from
+   `<out>.manifest.sha256`, obtained through a channel separate from the
+   bundle (`sha256sum MANIFEST.sha256` / `Get-FileHash`);
+2. check `install.sh` or `install.ps1` against its manifest line
+   (`sha256sum -c --strict MANIFEST.sha256`, or `Get-FileHash` on the
+   installer);
+3. then run the installer with `--expect-manifest <value>` /
+   `-ExpectManifest <value>`, which repeats check 1 on the staged copy.
+`docs/quickstart.md` gives this procedure (documenter; PS-3.2 *Docs*).
+Signing stays deferred (ADR-KE-012).
+
+*Trust-anchor additions (round 2, security quickstart gaps a–e, review
+RB2, P6).* The quickstart also tells the operator:
+- (b, M-4) if the bundle is on removable media, a share, or anywhere
+  another account can write, first copy it to a directory only they can
+  write, and run checks 1–3 on that copy;
+- (c) on a Mac, check 2 is `shasum -a 256 -c MANIFEST.sha256`, because
+  `sha256sum` may be absent; `Get-FileHash` prints uppercase hex, which
+  `-ExpectManifest` accepts;
+- (d, L-9, RB2c) run `bash ./install.sh ...`, never `./install.sh` (the
+  exec bit does not survive FAT/zip carriage), with a `PATH` of absolute
+  directories only (for example `PATH=/usr/bin:/bin:/usr/sbin:/sbin`);
+- (a, e, RB2d; round 4) the target's parent must be owned and writable
+  only by the operator (or root/Administrators); **the installer refuses
+  otherwise** (step 1), and it must have free space for the whole bundle; the examples use a directory
+  under the operator's home (`$HOME/knowledge-engine`,
+  `$env:USERPROFILE\knowledge-engine`), never `C:\` or `/opt` as a
+  non-root user, and on macOS never `/tmp` (a symlink, so refused);
+- (RB2b) Windows: `pwsh -NoProfile -File .\install.ps1 ...`, PowerShell
+  7.3 or later; Windows PowerShell 5.1 and ConstrainedLanguage mode are
+  not supported;
+- (P6) Finder's `.DS_Store` and AppleDouble `._*` files, and OneDrive
+  placeholder files (reparse points), are refused as unlisted or as links:
+  do not browse the bundle in Finder, carry it on exFAT/FAT, or keep it in
+  a OneDrive folder;
+- (P6) `bundle.sh` needs a Linux build host with bash 4 and GNU tools,
+  and `jq` (D1, step 1 of Bundle). The target needs no `jq`: the installers
+  read `bundle.json` with a fixed pattern.
+
+`install.ps1` needs pwsh 7.3+ (Entry hardening, above); `launch.ps1`'s
+PowerShell baseline is unchanged. Fast tests run install.ps1 under pwsh 7
+in the gates image with a fake `docker`. A recorded run on the Windows
+host proves it on Docker Desktop (Q31/Q34), including the ACL helper and
+the parent rule, which no fast test can reach (round 4 adds Windows-host
+tests of the parent refusal and of a junction swapped in for staging;
+they skip in the gates image; §2.6 5d).
+
+*Exec bits (review RB2c; round 2).* `core.filemode=false` on the Windows
+dev host means a plain `git add` records a new script as 100644. The
+developer adds `scripts/bundle.sh` and `scripts/install.sh` with `git add
+--chmod=+x`, and a fast test asserts that `bundle.sh`, `install.sh`,
+`launch.sh` and `teardown.sh` are 100755 in `git ls-files -s`. Docs still
+call the scripts with `bash`, so a lost bit never blocks the operator.
+*Piped checks (security I-5).* A `... | { ...; }` group in `install.sh`
+ends `} || exit 1`, so a `die` in its subshell does not rest on errexit and
+pipefail alone.
 
 **`ci/offline` (PS-3.3): in the host half of `smoke.sh`**, after the
 readiness checks. It therefore runs in every `verify.sh full`, in every
@@ -1727,20 +2339,20 @@ script is two-sided, keyed on `KE_OFFLINE_CLIENT=1`.
      directory and runs `teardown.sh --volumes --profile offline`. Teardown
      accepts exactly that one profile, and only for this caller; it keeps
      F3 otherwise, and its label check reports leftovers.
-  2. **Disk (R6).** At least 10 GB free on the filesystem holding `dist/`,
+  2. **Disk (R6).** At least 10 GiB free on the filesystem holding `dist/`,
      and on the daemon's `DockerRootDir` when that path exists on the host
      (on Docker Desktop it is inside the VM and is reported as not
      measurable, not as a failure). Below that, exit non-zero with the
-     path, the figure found and "need 10 GB free" before anything is
+     path, the figure found and "need 10 GiB free" before anything is
      saved.
-  3. `bundle.sh --out dist/<project>`.
+  3. `bundle.sh --out dist/<project>-<arch>` (the local daemon's normalised arch; no `--arch`).
   4. `compose --profile offline up -d --wait dind`.
   5. `net_isolated.sh <project>_offline`.
   6. `compose --profile offline run --rm offline-client`.
   - **`df` log (R6).** `offline_check.sh` prints one `offline: df <stage>`
     block (`df -Pk` of the same paths) before step 2, after steps 3, 4 and
     6, and after the trap's teardown. The first CI run's log is saved as
-    evidence and replaces the 10 GB default with a measured figure.
+    evidence and replaces the 10 GiB default with a measured figure.
 - **Client half** (inside `offline-client`):
   1. `docker image ls -q` must be empty, or the check fails with "daemon
      not clean". Then `docker pull` of the first vendor reference in
@@ -1748,8 +2360,12 @@ script is two-sided, keyed on `KE_OFFLINE_CLIENT=1`.
      the gate fails as *inconclusive*, because the daemon has egress (PS-3.2
      analyst addition). Any failure counts, including DNS: the authoritative
      proof is still the network inspect in host step 4.
-  2. `/bundle/install.sh /install/ke`.
-  3. In `/install/ke`, `scripts/launch.sh`. It creates `.env` from
+  2. `mkdir -m 0755 /install/op`, then `bash /bundle/install.sh
+     /install/op/ke`. *(Round 4.)* `/install` is a root-owned 1777 tmpfs,
+     which the parent rule now refuses (sticky is no longer exempt), so
+     the client first makes an operator-owned 0755 parent, as the
+     quickstart tells an operator to.
+  3. In `/install/op/ke`, `scripts/launch.sh`. It creates `.env` from
      `.env.example`, which is the operator path.
   4. `KE_SMOKE_OWNS_PROJECT=1 scripts/smoke.sh`: the full PS-2.8 smoke,
      store stop and start included, plus `ci/offline` inside `dind`.
@@ -1824,7 +2440,7 @@ PS-3.4).**
   min, under F5's ~15 min.
 - **Disk.** S4: bundle tar about 1.0 GB, `dind`'s store 3.3 GB after load,
   gates image 1.35 GB, host copies of the stack images about 3.3 GB: about
-  9 GB resident, plus build cache. Hence the 10 GB floor (R6), checked by
+  9 GB resident, plus build cache. Hence the 10 GiB floor (R6), checked by
   `bundle.sh` and `offline_check.sh`, with `df` logged per stage. CI runner
   figures are unmeasured until the first run.
 - **Memory.** It stays near today's peak, because the verify stack is torn
@@ -1868,8 +2484,8 @@ and "rulings from spikes (R2, R6)").**
   per the human's Q43 ruling.
 - **R5.** The CI timeout goes to 20 min in the commit that wires in the
   offline stages, then measured + 50%.
-- **R6.** `bundle.sh` and `offline_check.sh` fail early below 10 GB free;
-  the first CI run logs `df` per offline stage; 10 GB is a default until
+- **R6.** `bundle.sh` and `offline_check.sh` fail early below 10 GiB free;
+  the first CI run logs `df` per offline stage; 10 GiB is a default until
   measured. `verify.sh` never prunes the operator's images. If CI runs out
   anyway, a larger runner or a CI-only cleanup step (which would need a
   CLAUDE.md row) goes back to the orchestrator.
@@ -2091,13 +2707,14 @@ Suggested first test per sub-item, followed by the order of the rest.
        - The untampered fixture is the control. It passes and logs `docker
          info`, then per image `load -i`, `tag <loaded> <as>` and `image
          inspect <as>`.
-    3. *proposed* `test_install_refuses_unfit_target_or_daemon`: a
+    3. `test_install_refuses_unfit_target_or_daemon`: a
        non-empty target, a failing `docker info`, a `bundle.json` line or
        value that fails its pattern, and a tar missing from `bundle.json`
        (or the reverse) are each refused with no `load` logged. There is no
        image-store case (R2).
-    4. *proposed* `test_install_tags_loaded_images_and_writes_override`
-       (R2): the fake `docker load` prints `Loaded image: <as>` for one tar
+    4. `test_install_tags_loaded_image_as_bundle_name` and
+       `test_install_override_maps_every_service_to_as_tag` (R2; also
+       `test_install_rejects_bundle_json_missing_field`): the fake `docker load` prints `Loaded image: <as>` for one tar
        and `Loaded image ID: sha256:<hex>` for the other.
        - Install tags each to its `as`, then inspects `as`.
        - Zero or two `Loaded` lines, or a failing `image inspect <as>`, fail
@@ -2118,13 +2735,218 @@ Suggested first test per sub-item, followed by the order of the rest.
        - `bundle.json` lists each image with `file`, `ref`, `as` and
          `services`;
        - `MANIFEST.sha256` covers every file but itself.
+       The per-image and `bundle.json` assertions are split over
+       `test_bundle_saves_one_tar_per_image_without_platform`,
+       `test_bundle_json_records_file_ref_as`,
+       `test_bundle_json_names_every_image` and
+       `test_bundle_manifest_covers_every_file`.
        Refusals, each before any `save`:
-       - a missing image (and no `pull` is ever logged);
-       - a non-amd64 image;
-       - a reference that fails the pattern;
-       - a non-empty `--out`;
-       - under 10 GB free (fake `df`), with "need 10 GB free" and the path
-         in the message (R6).
+       - a missing image (and no `pull` is ever logged):
+         `test_bundle_fails_when_pinned_digest_unresolved`;
+       - a reference that fails the pattern, a non-empty `--out`:
+         `test_bundle_refuses_unfit_image_or_out` (its `non_amd64` case
+         moves to `test_bundle_refuses_image_of_other_arch`, 5b);
+       - under 10 GiB free (fake `df`), with "need 10 GiB free", "found <n>
+         GiB" rounded down, and the path in the message (R6):
+         `test_bundle_fails_below_free_disk`,
+         `test_bundle_reads_available_column_when_filesystem_has_spaces`.
+    5a. *Unit-2 rework round 1 (2026-10-19). Names are the tester's, from
+       `tests/test_offline_bundle.py` (reconciled 2026-10-19); requirements
+       PS-3.1 is canonical.* Install cases run for sh and ps1
+       (`_InstallBase`), with a fake `docker`. *No test yet* marks a
+       behaviour this design asks for that no test asserts; it is flagged
+       to the orchestrator.
+       - `test_install_loads_and_copies_verified_bytes_only` (M-1, L-3).
+         The fake docker swaps a tar and `app/scripts/launch.sh` in the
+         bundle directory (or in a hardlink partner) when it gets `info`.
+         Install still succeeds with the verified bytes: the loaded bytes
+         hash to the manifest value, and the target's `launch.sh` is the
+         original. *No test yet:* staging is a 0700 directory in the
+         target's parent.
+       - `test_install_does_not_follow_target_planted_during_load` (L-2)
+         and `test_install_leaves_no_partial_target` (L-6): after a refusal
+         no target exists, except a pre-existing empty one. *No test yet:*
+         no `.ke-install.*` remains after a success, a manifest refusal or
+         a failed `load`.
+       - `test_install_prints_and_checks_manifest_hash` (M-3). Cases:
+         prints the accepted hash; matching `--expect-manifest` proceeds;
+         a mismatch exits non-zero, prints the actual value, and the
+         docker log is empty; a value that is not 64 hex characters runs no
+         docker command. *No test yet:* the mismatch also prints the
+         expected value.
+       - `test_install_refuses_case_variant_paths` (M-2, N5). Cases: an
+         unlisted `app/scripts/LAUNCH.sh` next to the listed `launch.sh`;
+         a manifest naming `App/docker-compose.yml`; ps1 only, two listed
+         paths equal ignoring case. The docker log is empty.
+       - Windows-unsafe names (I-1) are cases of
+         `test_bundle_manifest_rejects_tamper`: `reserved_name_con`,
+         `reserved_name_nul_ext`, `reserved_name_com1_mixed_case`,
+         `reserved_name_lpt9`, `trailing_dot`, `colon`. The docker log is
+         empty. *No test yet:* a segment ending in a space.
+       - Manifest size cap (L-4, §2.5): `test_install_refuses_manifest_link_or_fifo`,
+         cases `manifest_over_1_mib` (refused, naming `MANIFEST.sha256` and
+         the size rule) and `manifest_exactly_1_mib_not_refused_by_cap`
+         (control), beside `manifest_is_symlink` and `manifest_is_fifo`.
+       - `test_install_writes_override_0644` (I-2).
+       - B2/N6: `test_install_fails_when_compose_config_fails`:
+         `compose config --services` exits non-zero and install refuses.
+       - `BundleScriptTest.test_bundle_writes_manifest_hash_beside_bundle`
+         (M-3). `<out>.manifest.sha256` exists outside `<out>`, starts
+         with the manifest's sha256, and is not in the bundle.
+         `test_bundle_prints_manifest_hash` covers the printed hash.
+         *No test yet:* an existing one is refused before any `save`.
+       - Also in the file: `test_bundle_ships_tracked_config_only` (L-7),
+         `test_bundle_refuses_unpinned_third_party_image` (N7),
+         `test_bundle_fails_when_compose_config_fails` (N6).
+    5b. *Per-arch bundles and portable `install.sh` (2026-10-19; §2.5
+       Arch; names from PS-3.1, which is canonical).* The fake docker's
+       `info` answers `Architecture` from a test parameter, and its image
+       records carry `Os`/`Architecture` (as `_image_record` already
+       allows).
+       1. `test_arch_normalisation` (sh and ps1 installers, and
+          `bundle.sh`): `x86_64`, `amd64`, `aarch64`, `arm64` map to two
+          values; an unknown value is refused, naming it. **First**: the
+          other arch tests depend on it.
+       2. `test_install_refuses_arch_mismatch` (sh, ps1): amd64 bundle on
+          an `aarch64` daemon and arm64 bundle on an `x86_64` daemon refuse
+          with both values and no `load` or `compose config` logged;
+          control `aarch64` daemon with an arm64 bundle installs.
+       3. `test_bundle_arch_comes_from_daemon`: the header `arch` follows
+          the fake daemon; a matching `--arch` passes; a mismatched one
+          refuses with both values and no `save`; a bad value is a usage
+          error. `test_bundle_saves_one_tar_per_image_without_platform`
+          stays green on both arches.
+       4. `test_bundle_refuses_image_of_other_arch` (`mixed`,
+          `all_foreign`, on amd64 and arm64 daemons), then
+          `test_bundle_json_records_arch` and
+          `test_bundle_out_name_carries_arch`. The header regex in the
+          fixture and both installers changes from `"platform":
+          "linux/amd64"` to `"arch": "(amd64|arm64)"`.
+       5. `test_install_sh_uses_no_gnu_or_bash4_constructs` (static), then
+          `test_install_sh_runs_with_bsd_tool_shims` (clean install, one
+          tamper case, arch mismatch, under `bash --posix` with shims that
+          exit 97 on GNU-only options and no `sha256sum`). The existing
+          install tests must stay green after the rewrite; they are the
+          regression net for it.
+       6. Docs: `test_quickstart_code_first_comes_first` and the amended
+          `test_quickstart_describes_offline_install`.
+    5c. *Unit-2 rework round 2 (2026-10-19; §2.5 Entry hardening, Install
+       steps 1, 2, 9). Names are the tester's, from
+       `tests/test_offline_bundle.py` (reconciled 2026-10-19); requirements
+       PS-3.1 is canonical.* `_InstallBase` tests run for sh and ps1. In
+       TDD order:
+       1. **H-1 first** (the merge blocker):
+          `test_install_survives_staging_swap_after_verification`. At
+          `info` the fake docker renames `.ke-install.*` away and plants a
+          self-consistent lookalike (evil tars, a `privileged` compose).
+          Install refuses, or loads and publishes only the verified bytes.
+          Windows: `InstallPs1Test.test_install_ps1_creates_windows_staging_with_its_acl`
+          (static: `FileSystemAclExtensions]::Create`, no `Set-Acl`) and
+          `InstallPs1WindowsAclTest.test_staging_never_inherits_an_ace`
+          (Windows host only; skipped in the gates image).
+       2. **RB1/L-10:** `test_install_stops_on_signal_to_its_own_pid`
+          (SIGTERM and SIGHUP to the pid only, during load: non-zero, no
+          target, no staging; kills mutant i1), then
+          `InstallPs1Test.test_install_ps1_session_recovers_after_signal`
+          (in-process run returns non-zero, a second run exits 0, the
+          session dies on SIGTERM afterwards).
+       3. **L-8 claim:** `test_install_claims_target_before_docker` (the
+          target is a 0700 directory at `info`; a failed install removes
+          the claim) and `test_install_refuses_target_replaced_during_load`
+          (a directory or symlink replacing the claim during load is
+          refused; nothing lands in it or through it; the claim marker is
+          what detects this).
+       4. **H-1 fix 3:** `test_install_flags_target_parent_others_can_write`
+          (POSIX modes; 0777 and 0775 parents produce the named warning,
+          0755 does not and installs). Windows ACE cases are recorded-run
+          only. *Superseded by 5d item 1 (round 4: refuse, not warn).*
+       5. **M-4:** `test_install_ignores_script_changed_during_run` (a
+          command appended to the bundle's installer at `info` never runs).
+       6. **L-9:** `InstallShTest.test_install_sh_refuses_relative_or_empty_path_entries`
+          (leading, trailing and doubled `:`, `.`, `bin`; no bundle tool
+          runs, empty docker log, message names PATH). The ps1 PATH rule
+          has *no test yet*.
+       7. **I-5:** `InstallShTest.test_install_sh_piped_checks_exit_explicitly`.
+       8. **P2/I-3:** `InstallShTest.test_install_sh_names_case_rule_for_present_case_variant`.
+       9. **RB2b:** `InstallPs1Test.test_install_ps1_requires_pwsh_7_3`.
+       10. **RB2c:** `ExecBitTest.test_operator_scripts_are_executable_in_git`
+           (`bundle.sh`, `install.sh`, `launch.sh`, `teardown.sh` are
+           100755 in the index; red until the developer stages with
+           `git add --chmod=+x`).
+       11. **Q53 / P5:** `InstallShPortableTest.test_operator_scripts_use_no_gnu_or_bash4_constructs`
+           (forbid list with the P5 forms over the three scripts) and
+           `.test_launch_and_teardown_run_with_bsd_tool_shims`.
+       12. **Docs (documenter):** `QuickstartOfflineTest.test_quickstart_offline_commands_run_as_written`
+           (`pwsh ... -File`, `bash ./install.sh`, `bash scripts/bundle.sh`,
+           `shasum -a 256 -c`, no bare script command),
+           `.test_quickstart_offline_safety_notes` (copy off shared media,
+           operator-only parent, Linux build host) and
+           `.test_quickstart_target_not_directly_under_c_or_opt`.
+       *No test yet:* the static "no `$staging/` absolute path after the
+       `cd`" pin; the last line `main "$@"; exit` (behaviour is covered by
+       item 5); the ps1 PATH rule; the claim marker's removal before
+       `chmod 0755` and the final 0755 mode.
+    5d. *Unit-2 rework round 4 (2026-10-19; §2.5 Install steps 1, 2, 9;
+       ADR-KE-012 round 4). Names are the tester's, from
+       `tests/test_offline_bundle.py` (RED written concurrently; reconciled
+       by the architect 2026-10-19 against the file as it stood). Requirements
+       PS-3.1 is canonical.* In TDD order:
+       1. **Parent rule first** (it removes the racer for everything
+          below):
+          - `test_install_flags_target_parent_others_can_write` (amended;
+            sh, and ps1 off Windows): parents 0777, 0775, 0770 are refused,
+            exit non-zero, the message names the parent and the rule, the
+            docker log is empty, no target and no staging; control 0755
+            installs with no such message.
+          - `InstallShTest.test_install_sh_flags_parent_owned_by_another_user`
+            (amended: an `id -u` shim makes the owner "another user"; now
+            refused) and `InstallPs1Test.test_install_ps1_refuses_parent_owned_by_another_user`
+            (L-15; a host directory owned by another non-root uid).
+          - Fail closed: `InstallShTest.test_install_sh_refuses_parent_it_cannot_check`
+            (`ls`/`find`/`stat` fail on the parent, or `id -u` fails) and
+            `InstallPs1Test.test_install_ps1_acl_read_failure_is_not_silent`
+            (static: no quiet `catch` around an ACL or mode read).
+          - Windows host only (skip in the gates image):
+            `InstallPs1WindowsAclTest.test_parent_granting_authenticated_users_modify_is_refused`
+            and `.test_parent_others_can_create_in_is_refused` (M-6
+            behavioural). `.test_staging_never_inherits_an_ace` keeps
+            proving the ACL at creation under an operator-only parent.
+          *No test yet:* a sticky 1777 parent is refused (§2.5 drops the
+          sticky exemption; the tester's docstring still says "without the
+          sticky bit" — flagged).
+       2. **H-2/RB6:** `InstallShTest.test_install_sh_never_empties_dir_swapped_in_for_staging`
+          (a `mktemp` shim swaps the fresh staging for a symlink to a
+          non-empty operator directory; victims 0700 and 0755 keep every
+          file, non-zero exit, no docker call).
+          `InstallPs1Test.test_install_ps1_refuses_non_empty_staging` (N7).
+          Windows host: `InstallPs1WindowsAclTest.test_staging_junction_to_operator_dir_is_never_emptied`
+          (W1). `InstallShTest.test_install_sh_refuses_staging_loosened_before_cd`
+          relies on a `chmod` of staging by name, which §2.5 removes; its
+          own guard ("update this test with the code") will fire at GREEN,
+          and the tester re-seats or retires it (the new H-2 test covers
+          the same window).
+       3. **M-5:** `InstallShTest.test_install_sh_never_chmods_a_target_swapped_at_publish`
+          (a `chmod` shim swaps the target name at `chmod`; victim stays
+          0700, non-zero exit) and the amended
+          `InstallShTest.test_install_sh_refuses_target_swapped_for_link_before_chmod`
+          (an `rm` shim swaps it right after the marker `rm`; the `-ef`
+          check of §2.5 step 9 turns that into a non-zero exit).
+          `InstallPs1Test.test_install_ps1_rechecks_target_is_dir_right_before_chmod`
+          and `.test_install_ps1_checks_marker_exists_right_before_delete`
+          follow the ps1 publish order of step 9.
+       4. **M-6:** `InstallPs1Test.test_install_ps1_never_casts_undefined_rights`
+          (static: no cast of a value outside 0x001F01FF to
+          `[FileSystemRights]`) beside `.test_install_ps1_counts_generic_write_rights`.
+       5. **N6:** `InstallShTest.test_install_sh_next_line_runs_launch_with_bash`.
+          *No test yet:* the L-13 message no longer saying "something
+          appeared there" when the claim's `mkdir -m` failed.
+       6. **Docs (documenter):** the quickstart's parent note says the
+          parent must be owned and writable only by the operator and that
+          the installer refuses otherwise;
+          `test_quickstart_offline_safety_notes` keeps matching
+          (`OPERATOR_ONLY`); *no test yet* for the word "refuses". The
+          `offline-client` target moves to `/install/op/ke` (§2.5 client
+          half) when `offline_check.sh` is built.
     6. *proposed* `test_bundle_contents`: the `app/` file set is exact (no
        verify, test, lint, build or `env_value` script, no `.env`, no
        `docker-compose.override.yml`), and the root holds `NOTICE.md` and
@@ -2167,7 +2989,7 @@ Suggested first test per sub-item, followed by the order of the rest.
         - a non-IPv4 target → FAIL;
         - the passing path runs the control on `<project>_edge` with `--rm`.
     12. *proposed* `OfflineCheckScriptTest` (fake docker, fake `df`):
-        - Host half: under 10 GB free fails before `bundle.sh` runs; then
+        - Host half: under 10 GiB free fails before `bundle.sh` runs; then
           bundle, `up --wait dind`, `net_isolated.sh` (refuses an inspect
           that is not internal or not isolated), `run offline-client`. An
           `offline: df` block is printed before the disk check, after
@@ -2974,7 +3796,7 @@ asked for the hook design to be recorded in this ADR.
     it never retags the live stack's images (§2.1 Image tags).
   - `verify.sh full` becomes slower and needs more disk. The CI
     `timeout-minutes` is the measured duration plus 50% (F6 ruling, PS-3.4).
-    `bundle.sh` and `offline_check.sh` refuse to start below 10 GB free and
+    `bundle.sh` and `offline_check.sh` refuse to start below 10 GiB free and
     log `df` around the offline stages (R6).
     An unreachable model host costs at most one probe timeout.
 - **First tests** (names aligned to PS-2.7 on 2026-10-19):
@@ -3514,13 +4336,34 @@ asked for the hook design to be recorded in this ADR.
 - **Status:** proposed. It was revised in the platform-offline plan
   (2026-10-19) after the design was checked against what 2a and 2b built
   (§2.5), and amended the same day after spikes S1–S4 (rulings R2, R6):
-  the bundle and install became store-independent.
+  the bundle and install became store-independent. Amended again on
+  2026-10-19 (unit-2 rework round 1) to add private staging, the
+  manifest-hash trust anchor, exact-case and Windows-safe paths, and the
+  service-coverage `compose config` step (security M-1, M-2, M-3, I-1;
+  review B2). Amended again on 2026-10-19 for per-arch bundles (human
+  rulings Q49, "build it for both", native arm64 on `aria-gb10`) and a
+  macOS-portable `install.sh` (Q50). Amended again on 2026-10-19
+  (unit-2 rework round 2) after security H-1: the installer claims the
+  target first, pins staging by its working directory, creates Windows
+  directories with their ACL in one call, warns about a parent others can
+  write, and hardens its entry (parse-whole `install.sh`, absolute `PATH`,
+  pwsh 7.3, interrupt checks); Q53 extended to `launch.sh`/`teardown.sh`.
+  Amended again on 2026-10-19 (unit-2 rework round 4, orchestrator ruling
+  after security H-2, M-5, M-6, L-15 and review RB6): a parent owned or
+  writable by others is **refused**, failing closed; staging is pinned
+  only once proven to be this run's empty directory; publish chmods `.`
+  from inside the target; the Windows write mask is built from integers.
 - **Context:**
   - PS-3.1, 3.2 and 3.3 require a bundle that installs and runs on a daemon
     with no images and no egress, and that rejects tampering.
   - The stack pins its vendor images by digest (PS-2.1). Its first-party
     images are built locally.
-  - Hosts are Linux (bash) and Windows (PowerShell) (Q20).
+  - Hosts are Linux (bash) and Windows (PowerShell) (Q20), plus, for the
+    offline install only, an Apple-silicon Mac (bash 3.2, BSD tools; Q50).
+  - Targets are linux/amd64 and linux/arm64 (the GB10s, the Mac's Docker
+    Desktop VM). The dev host's Docker Desktop has no arm64 emulation, and
+    `aria-gb10` (aarch64, Docker 29.6.2) is reachable as a docker context
+    over SSH.
 - **Decision:**
   - **Bundle.** `bundle.sh` (bash only, on the build host) writes a
     directory, plus a tar of it with `--tar`. It holds:
@@ -3537,32 +4380,92 @@ asked for the hook design to be recorded in this ADR.
       reference), `as` (the bundle tag) and `services`;
     - `MANIFEST.sha256`.
     No wheels are shipped (bundle ruling). `bundle.sh` refuses to start
-    below 10 GB free (R6).
+    below 10 GiB free (R6). Beside the bundle, not inside it, `bundle.sh`
+    writes `<out>.manifest.sha256`, the manifest's own hash, as the
+    release record (M-3).
+  - **One bundle per arch, built natively.** `bundle.sh` bundles for the
+    arch of the daemon it talks to (`DOCKER_CONTEXT` / `DOCKER_HOST`),
+    normalised from `docker info` `Architecture` (`x86_64`→`amd64`,
+    `aarch64`→`arm64`, anything else refused). Every image must be
+    `linux/<that arch>`. No command carries `--platform`. `--arch` is only
+    an assertion. `bundle.json` records `arch`, and the `--out` basename
+    ends in `-<arch>`. Both installers normalise the target daemon's arch
+    the same way and refuse a mismatch, naming both, before any `load`.
+    arm64 bundles are made with `DOCKER_CONTEXT=aria-gb10` after
+    `build.sh` on the same context.
+  - **Portable operator scripts (Q50, Q53 extended).** `install.sh`,
+    `launch.sh` and `teardown.sh` use bash 3.2 and POSIX/BSD tool forms
+    only; `install.sh` has one SHA-256 helper (`sha256sum`, else `shasum
+    -a 256`) and needs no `mv -T` (publish below).
   - **Tags (`as`).** First-party `ke-<x>:bundle-<sha12>`; vendor
     `ke-vendor/<name>:<digest12>`. `bundle.sh` checks each `ref` (vendor
     digest included) on the build host, tags it `as` and saves by `as`. The
     digest pin is enforced there and by the tar hashes, not by the target
     daemon.
-  - **Install (store-independent).**
-    1. It checks the manifest first, rejecting changed, missing and
+  - **Install (store-independent, staged).** §2.5 Install gives the steps.
+    0. *Entry (round 2).* `install.sh` is wrapped as `main "$@"; exit` so
+       bash parses it whole first (M-4). Both installers refuse a relative
+       or empty `PATH` entry before anything else (L-9; Windows pwsh drops
+       empty entries). `install.ps1` requires pwsh 7.3 and is not supported
+       in ConstrainedLanguage mode. Interrupts stop the install at the next
+       step boundary (bash traps INT, TERM, HUP, QUIT; pwsh checks
+       `KeInterrupt.Fired`, resets it on install and disposes it in
+       `finally`) (L-10).
+    1. *Target (round 2; parent rule round 4).* If the target's parent is
+       owned or writable by anyone other than the operator, root, or (on
+       Windows) SYSTEM or Administrators, or if its owner, mode or ACL
+       cannot be read, the installer refuses before claiming anything. It
+       then claims the target exclusively as an empty 0700 directory (`mkdir -m
+       0700`, which never follows a final symlink; on Windows created with
+       its protected ACL in one call) and marks the claim with a random
+       `.ke-claim.*` file, re-checked at publish (L-8).
+    2. It copies the bundle, without following links, into a private
+       staging directory (mode 0700; on Windows created with its protected
+       ACL in one call and then verified, H-1) beside the target, on the
+       same filesystem, and makes staging its working directory. Every
+       later step reads only the staged copy, by relative path (H-1), and
+       staging is removed on every exit (M-1). Staging counts as pinned,
+       and may be emptied from inside, only after the working directory
+       is proven to be the directory this run created: its real path is
+       the expected one, it is empty, owned by the operator and 0700
+       (round 4, H-2). Nothing chmods staging by name, and pwsh never
+       empties a reparse point.
+    3. It checks the staged manifest first, rejecting changed, missing and
        unlisted files, non-regular entries and unsafe paths, with no
-       `docker` call before that check passes.
-    2. It checks that the daemon answers. It does not check the image
+       `docker` call before that check passes. Unsafe paths include case-only
+       variants and Windows reserved names, trailing dots and `:`. Every
+       comparison is ordinal and case-sensitive in both installers (M-2,
+       I-1). If `--expect-manifest` / `-ExpectManifest` is given and differs
+       from the staged manifest's hash, it refuses. It prints the hash it
+       accepted (M-3).
+    4. It checks that the daemon answers. It does not check the image
        store.
-    3. Per image: `docker load`, read the one `Loaded image` or `Loaded
-       image ID` line, `docker tag` it to `as`, and inspect `as`. Image
-       IDs are never compared across stores.
-    4. It copies `app/` into an empty target and writes
-       `docker-compose.override.yml` there, mapping each service to its
-       `as` tag with `pull_policy: never`. Compose loads it by default, so
-       the scripts and the shipped `docker-compose.yml` are unchanged.
+    5. It runs `docker compose config --services` on the staged app
+       **only to check service coverage**. A non-zero exit refuses (B2).
+    6. Per image, from staging: `docker load`, read the one `Loaded image`
+       or `Loaded image ID` line, `docker tag` it to `as`, and inspect
+       `as`. Image IDs are never compared across stores.
+    7. It writes `docker-compose.override.yml` (0644) into the staged
+       `app/`, mapping each service to its `as` tag with `pull_policy:
+       never`. It then renames each staged `app/` entry into the claimed
+       target and makes the target 0755 last (round 2), from inside it:
+       `cd` to the target, check the claim marker and owner, remove the
+       marker, `chmod 0755 .`, then confirm the name still leads there
+       (round 4, M-5). Compose loads the
+       override by default, so the scripts and the shipped
+       `docker-compose.yml` are unchanged.
+  - **Trust anchor (M-3).** Before running anything from the bundle, the
+    operator compares the manifest's hash with `<out>.manifest.sha256`,
+    obtained through a separate channel, and checks the installer against
+    its manifest line with their own `sha256sum` / `Get-FileHash`.
+    `docs/quickstart.md` gives the procedure.
   - **Proof.**
     - `ci/deployable-offline` is `offline_check.sh`: install, launch, smoke
       and teardown inside a privileged, empty `dind` on an internal,
       isolated network, from an `offline-client` with no checkout mount,
       within `verify.sh full` (ADR-KE-009, F5). It asserts that the image
       store is empty before install and that afterwards its tag set equals
-      the `as` set. It refuses to start below 10 GB free and logs `df`
+      the `as` set. It refuses to start below 10 GiB free and logs `df`
       around each stage (R6).
     - `ci/offline` runs in the host half of `smoke.sh`. api and worker must
       get a no-route error connecting to the gateway's `edge` address,
@@ -3594,11 +4497,128 @@ asked for the hook design to be recorded in this ADR.
   - Saving vendor images from a networked containerd `dind` on the build
     host: more moving parts for no gain once the install is
     store-independent.
+  - Closing M-1 by hashing the same stream that `docker load` reads (tee
+    into sha256): `load` would finish before the hash is known, so a
+    swapped tar's RepoTags would already have moved host tags when the
+    check failed. Rejected in favour of staging, which also closes L-2,
+    L-3 and L-6.
+  - Refusing hardlinks and re-hashing just before use, instead of staging:
+    this narrows the M-1 window but leaves one open. Rejected.
+  - Staging in the system temp directory: it may be on another filesystem,
+    so publishing would be a copy and not a rename. Rejected.
+  - **Cross-building arm64 with buildx and QEMU** (`--platform` on build,
+    pull and save). Rejected as the default: the dev host has no arm64
+    emulation; binfmt on Linux is a privileged, host-wide install;
+    emulated builds are slow; `save --platform` changes digests (S1); and
+    on the classic store a foreign `pull --platform` rebinds the host's own
+    `ref@digest`. It remains an optional, documented route, through an
+    emulated arm64 `dind` used as the target daemon, so `bundle.sh` is
+    unchanged (§2.5 Arch).
+  - **An `ubuntu-24.04-arm` CI runner for the arm64 proof.** It needs no
+    new script, but repo access to ARM runners is unconfirmed. Later
+    option; the recorded `aria-gb10` run is the proof (Q51).
+  - **Arch in the `as` tag.** Not needed: each arch's images live on their
+    own daemon, so tags never collide.
+  - *Round 2 (H-1, L-8):*
+    - **Refuse, not warn, on a parent others can write.** Rejected in
+      round 2 (the install's integrity seemed not to depend on the
+      parent). *Reversed in round 4: refusing is now the decision; see
+      below.*
+    - **Stage inside the claimed target** instead of beside it. Equally
+      safe, but it moves staging out of the target's parent, which the
+      existing pinned test and the free-space rule describe; beside is the
+      smaller change.
+    - **A `perl` one-line `rename()`, or `mv -T` when `mv --version` says
+      GNU.** Each publishes atomically, but perl is one more host tool and
+      the GNU branch is a second code path that the Mac never runs. The
+      `mkdir` claim needs neither.
+    - **Re-hash the staged files just before each use** instead of pinning
+      by cwd. It narrows the H-1 window without closing it. Rejected.
+    - **Fix the Windows staging ACL with `Set-Acl` after `CreateDirectory`**
+      (the round-1 code). Rejected: handles opened in the window keep
+      DELETE (H-1).
+  - *Round 4 (H-2, M-5, M-6, L-15, RB6):*
+    - **Warn, not refuse, on a parent owned or writable by others** (the
+      round-2/3 decision). **Rejected.** Three rounds of race fixes
+      (round 2's pin and claim, round 3's L-11 check, I-7 emptying and
+      L-12 re-check) each opened a new race: I-7 turned a swapped staging
+      into recursive deletion of an operator directory (H-2), and the L-12
+      re-check left a `chmod` through a link (M-5). Every one of them
+      needs an account other than the operator that can rename or create
+      entries in the parent. Refusing that parent removes the attacker's
+      precondition, instead of narrowing one window per round. The cost
+      is that an operator must choose an operator-only parent, which the
+      quickstart already told them to do.
+    - **Exempt a sticky world-writable parent** (round 2 did). Rejected:
+      the ruling counts any principal who can write; others can still
+      create names there, and one rule is simpler to state and test on
+      three platforms. The `offline-client` creates its own 0755 parent.
+    - **Keep the defences in steps 2 and 9 only, without the parent
+      rule.** Rejected: that is the approach that failed three times.
+      They stay as defence in depth.
+    - **Check every ancestor of the target, not just the parent.** Not
+      chosen. An ancestor writer can swap the whole parent. The staging
+      pin (real path, empty, owner, 0700) and the claim marker still
+      refuse such a swap, but the cleanup was exposed: it removed staging
+      recursively by name, so a racer who renamed the operator's folder
+      into the staging name had it deleted (security M-7, A10). *Round 5:*
+      cleanup now removes staging non-recursively (`rmdir` /
+      `Directory.Delete(path, $false)`) after the pinned emptying, so a
+      directory renamed in is left intact. On the documented paths (home,
+      `/opt/ke` as root, `%USERPROFILE%`) the ancestors are
+      root/SYSTEM-owned, and the quickstart advises that no directory
+      above the target be writable by others either. Such a writer could
+      in any case replace the installed tree before the next `launch`, so
+      an ancestor check would add no protection for the installed stack.
+      The claim removal and the publish `mv` by name (security L-16, L-17)
+      stay as accepted residues.
+    - **Require pwsh 7.4 to read the owner through `UnixStat`.** Not
+      chosen: raises the documented floor for the off-Windows path only,
+      which is not a supported operator path; `ls -ldn` field 3 (the read
+      `install.sh` uses) suffices.
 - **Consequences:**
-  - The bundle is about 1 GB (S4: 0.96 GB for the six images) and
-    linux/amd64 only. Hosts are Linux (bash installer) and Windows
-    (PowerShell installer); macOS and Apple silicon are out of scope (Q20
-    ruling).
+  - The bundle is about 1 GB (S4: 0.96 GB for the six images), for one
+    arch: linux/amd64 or linux/arm64. Hosts are Linux (bash installer),
+    Windows (PowerShell installer) and, for the offline install, an
+    Apple-silicon Mac (bash installer; Q50). An arm64 bundle needs an
+    arm64 daemon at build time (`aria-gb10`).
+  - CI proves amd64 only. arm64 rests on a recorded `aria-gb10` run, and
+    the Mac on a recorded install when it arrives; neither is a gate, so a
+    regression on arm64 or macOS is caught only by the next recorded run.
+  - `install.sh` gives up `mv -T` with no residual window: the target is
+    claimed with an exclusive `mkdir` before staging, and publish renames
+    entries into a 0700 directory only the operator can write (round 2,
+    replacing the post-checked `mv` that security L-8 judged).
+  - **A parent owned or writable by others is refused** (round 4,
+    replacing the round-2 warning). The installer fails closed: an
+    unreadable owner, mode or ACL is a refusal. Operators install under a
+    directory they own and only they can write (the home directory,
+    `%USERPROFILE%`, or `/opt/ke` as root). `C:\<name>` and `/tmp/<name>`
+    are refused, sticky or not; macOS `/tmp` is a symlink and was already
+    refused. On Windows only SYSTEM and Administrators are trusted besides
+    the operator (TrustedInstaller is not; flagged). The Windows ACL test
+    under an Authenticated-Users-Modify parent now expects a refusal. The
+    CI `offline-client` installs under an operator-owned 0755
+    `/install/op`. Ancestors above the parent are not checked; the
+    quickstart advises keeping them unwritable by others too.
+  - The staging and publish defences (pin only an empty, real-path,
+    operator-owned 0700 staging; no chmod of staging by name; bash
+    `chmod 0755 .` from inside the target, pwsh off Windows a chmod of the
+    target by name guarded by `Get-EntryKind`; no emptying of a reparse
+    point; non-recursive removal of staging, round 5) remain as defence
+    in depth, in case the parent check is wrong on some filesystem.
+  - On Windows the parent rule allows OWNER RIGHTS and CREATOR OWNER
+    ACEs (they reach only the owner, which is already checked; §2.5).
+  - `install.ps1` needs PowerShell 7.3 or later and full language mode;
+    Windows PowerShell 5.1 and ConstrainedLanguage (AppLocker/WDAC without
+    a trusted signature) are not supported. The Windows ACL helper, the
+    Windows parent rule and the cwd pin's rename refusal are proven only by
+    the recorded Windows run (Q31/Q34) and the Windows-host tests that
+    skip in the gates image, not by a fast gate test; the macOS ACL branch
+    of the parent rule only by the recorded Mac run.
+  - A `SIGKILL` mid-install can leave staging and an empty 0700 target;
+    both are private and secret-free, and a re-run accepts the empty
+    target.
   - With no wheels, an offline image rebuild is not supported; the bundle
     ships built images only.
   - **No image-store prerequisite.** Bundle and install work on the classic
@@ -3612,8 +4632,16 @@ asked for the hook design to be recorded in this ADR.
   - `ci/deployable-offline` runs in every local `full` (F5). It adds an
     estimated 2.5–4.5 min to `full` (re-based on S4), so the CI timeout
     goes to 20 min first (R5). It needs about 9 GB resident, hence the
-    10 GB floor until the first CI run's `df` log measures it (R6).
-  - Integrity is proven, authenticity is not.
+    10 GiB floor until the first CI run's `df` log measures it (R6).
+  - Integrity is proven, authenticity is not. Integrity also depends on the
+    operator's out-of-band hash comparison and their own check of the
+    installer (M-3).
+  - Install temporarily needs free space on the target's filesystem equal
+    to the bundle's size (about 1 GB) for staging, and it checks for it
+    first. The target appears complete (0755) or not at all; until the
+    last step it is the operator's empty-or-partial 0700 directory.
+  - Install runs `docker compose config` once, on the staged app, for
+    service coverage only.
   - Installing adds `ke-<x>:bundle-<sha12>` and `ke-vendor/*` tags and
     never touches `:local`, so a bundle install and an operator's own
     build coexist. Two dirty bundles of one commit share a tag; the later
@@ -3622,7 +4650,8 @@ asked for the hook design to be recorded in this ADR.
 - **First tests:** §2.6, platform-offline. After the L-5 static test,
   `test_bundle_manifest_rejects_tamper` (bash and PowerShell installers),
   then `test_install_refuses_unfit_target_or_daemon`,
-  `test_install_tags_loaded_images_and_writes_override` and
+  `test_install_tags_loaded_image_as_bundle_name`,
+  `test_install_override_maps_every_service_to_as_tag` and
   `test_bundle_lists_every_compose_image`.
 
 ### ADR-KE-013: Container image vulnerability scan (platform-supply-chain)

@@ -1,0 +1,220 @@
+# security-u2-r4 raw probe output (redacted: <scratch> = session scratch dir final/r4, <wsltmp> = WSL ext4 fixture dir, removed after the run, <me-sid>/<sid> = operator SIDs)
+# Fake docker only (DOCKER_HOST=tcp://127.0.0.1:1); no daemon, image, HEAD, index or tracked file touched. Every probe ran with cwd in <scratch>.
+# Scripts in <scratch>: wsl-r4.sh, gb-r4.sh, ps-r4.ps1, ps-r4-w10.ps1, mkfix.sh, bin/docker, winbin/docker.cmd, hooks/w11.sh,
+#   shims/{mktemp-symlink,mktemp-rename,chmod-dot,mv-target,ls-fail,id}, swap-junction.ps1, swap-rename.ps1,
+#   install-hooked.ps1 (= scripts/install.ps1 plus TWO probe lines in Initialize-Staging: PROBE_SWAP_A after '$script:Staging = $path', PROBE_SWAP_B after the kind check, before Set-Location)
+# A shim/hook stands in for a racer. In A2r/W1r/A6b the racer needs rename rights in the parent, which the round-4 rule now refuses; they show what the remaining by-name code does IF that precondition is met.
+# Note A10: 'exit=0' there is the exit of 'tail' in the pipeline; the installer itself died ('the target is no longer the directory...').
+
+== A. install.sh, WSL Ubuntu ext4, bash 5.3.9 ==
+### A0 baseline (parent 0755, owned by me)
+installed to <wsltmp>/A0/par/t
+next: cd <wsltmp>/A0/par/t && bash scripts/launch.sh
+exit=0
+t
+755 <wsltmp>/A0/par/t
+### A2-700 H-2: staging name swapped for a symlink to an operator-owned non-empty 700 dir right after mktemp -d
+victim <wsltmp>/A2-700/victim: mode 700 entries=[.hidden keep1 sub ]
+install: the staging directory is not the one this install created (its name leads elsewhere): <wsltmp>/A2-700/par/.ke-install.SyJcn7Ze
+exit=1
+victim <wsltmp>/A2-700/victim: mode 700 entries=[.hidden keep1 sub ]
+par: .ke-install.SyJcn7Ze.moved 
+docker calls: 0
+### A2-755 H-2: staging name swapped for a symlink to an operator-owned non-empty 755 dir right after mktemp -d
+victim <wsltmp>/A2-755/victim: mode 755 entries=[.hidden keep1 sub ]
+install: the staging directory is not the one this install created (its name leads elsewhere): <wsltmp>/A2-755/par/.ke-install.yrXwu5QY
+exit=1
+victim <wsltmp>/A2-755/victim: mode 755 entries=[.hidden keep1 sub ]
+par: .ke-install.yrXwu5QY.moved 
+docker calls: 0
+### A2e H-2: symlink to an operator-owned EMPTY 0700 dir (passes empty/-O/mode; only pwd -P can refuse)
+install: the staging directory is not the one this install created (its name leads elsewhere): <wsltmp>/A2e/par/.ke-install.7hAVMHgb
+exit=1
+victim <wsltmp>/A2e/victim: mode 700 entries=[]
+par: .ke-install.7hAVMHgb.moved 
+docker calls: 0
+### A2r cleanup by name: a non-empty operator-owned SIBLING dir in the parent renamed into the staging name
+victim <wsltmp>/A2r/par/sibling: mode 700 entries=[.hidden keep1 sub ]
+install: the staging directory is not empty (something replaced it after creation): <wsltmp>/A2r/par/.ke-install.IclxnDFm
+exit=1
+victim <wsltmp>/A2r/par/sibling: GONE
+par: .ke-install.IclxnDFm.moved 
+.ke-install.IclxnDFm.moved: entries=[]
+### A6 M-5: target name swapped for a symlink to an operator-owned 0700 victim at 'chmod 0755 .'
+install: the target's name no longer leads to the directory this install published (something replaced it during install): <wsltmp>/A6/par/t
+exit=1
+victim <wsltmp>/A6/victim: mode 700 entries=[.hidden keep1 sub ]
+par: t t.moved 
+t.moved: mode 755 [.env.example docker-compose.override.yml docker-compose.yml scripts ]
+### A6b publish mv loop: target name swapped for a symlink to a victim after the first mv (by-name mv)
+install: the target is no longer the directory this install claimed (something replaced it during install): <wsltmp>/A6b/par/t
+exit=1
+victim <wsltmp>/A6b/victim: mode 700 entries=[.env.example .hidden docker-compose.yml keep1 scripts sub ]
+victim docker-compose.yml: services:|  web:|    image: x|
+### A10 ancestor: grandparent G 0777 non-sticky (stands in for a group-writable team dir), parent G/adam 0755 operator-owned
+before: . ./adam ./adam/notes ./adam/notes/keep 
+loaded web.tar as ke-web:bundle-0123456789ab
+install: the target is no longer the directory this install claimed (something replaced it during install): <wsltmp>/A10/G/adam/t
+exit=0
+after: . ./adam 
+operator's adam/notes/keep: GONE
+### A10b same layout, no racer: the ancestor is not checked (accepted)
+next: cd <wsltmp>/A10b/G/adam/t && bash scripts/launch.sh
+exit=0
+### A11 parent policy: modes
+mode 1777 -> exit=1 target=none refused (rule: the target's parent must be writable only by you or root)
+mode 0777 -> exit=1 target=none refused (rule: the target's parent must be writable only by you or root)
+mode 0775 -> exit=1 target=none refused (rule: the target's parent must be writable only by you or root)
+mode 0770 -> exit=1 target=none refused (rule: the target's parent must be writable only by you or root)
+mode 0757 -> exit=1 target=none refused (rule: the target's parent must be writable only by you or root)
+mode 0730 -> exit=1 target=none refused (rule: the target's parent must be writable only by you or root)
+mode 2775 -> exit=1 target=none refused (rule: the target's parent must be writable only by you or root)
+mode 0750 -> exit=0 target=present 
+mode 0700 -> exit=0 target=present 
+mode 1755 -> exit=0 target=present 
+### A11a POSIX ACL: named user write on a 0755 parent (shows as group w via the mask)
+setfacl not installed: skipped
+### A11o parent owned by another uid (id -u shim answers 4242; parent is uid 1000)
+install: refused (rule: the target's parent must be owned by you or root): <wsltmp>/A11o/par is owned by another user (uid 1000); its owner can replace the installed target; use a directory you own
+exit=1
+target: none
+### A11r root-owned parent: /  (target /ke-sec-r4-probe would need root; expect owner ok, then mkdir fails) -- skipped: needs root
+### A12 fail closed
+install: cannot check the target's parent <wsltmp>/A12-ls-fail/par (reading its owner and mode failed); use a directory only you can write exit=1  target: none docker calls: 0
+install: cannot check the target's parent <wsltmp>/A12-ls-junk/par (its owner could not be read); use a directory only you can write exit=1  target: none docker calls: 0
+install: cannot check the target's parent <wsltmp>/A12-ls-noowner/par (its owner could not be read); use a directory only you can write exit=1  target: none docker calls: 0
+install: cannot check the target's parent <wsltmp>/A12-id-fail/par (the operator's uid could not be read with id -u) exit=1  target: none docker calls: 0
+install: cannot check the target's parent <wsltmp>/A12-id-junk/par (the operator's uid could not be read with id -u) exit=1  target: none docker calls: 0
+install: cannot check the target's parent <wsltmp>/A12-id-empty/par (the operator's uid could not be read with id -u) exit=1  target: none docker calls: 0
+cleaned: ls: cannot access '<wsltmp>': No such file or directory
+
+== B. install.sh, Git Bash on NTFS (noacl mount) ==
+mount: C: on /c type ntfs (binary,noacl,posix=0,user,noumount,auto)
+### G1-own: ls -ldn reports: drwxr-xr-x 197610
+mkdir: cannot change permissions of '<scratch>/gb/G1-own/par/t': Permission denied
+install: cannot claim the target (mkdir failed; the directory may have appeared during install, or its parent is not writable): <scratch>/gb/G1-own/par/t
+exit=1
+par: [] docker calls: 0
+ntfs acl now: O:<me-sid>G:<me-sid>D:AI(A;;0x1301bf;;;WD)(A;OICIID;FA;;;SY)(A;OICIID;FA;;;BA)(A;OICIID;FA;;;<me-sid>)
+### G2-everyone: ls -ldn reports: drwxr-xr-x 197610
+mkdir: cannot change permissions of '<scratch>/gb/G2-everyone/par/t': Permission denied
+install: cannot claim the target (mkdir failed; the directory may have appeared during install, or its parent is not writable): <scratch>/gb/G2-everyone/par/t
+exit=1
+par: [] docker calls: 0
+
+== C. install.ps1, pwsh 7.6.7 on Windows 11 NTFS ==
+### W0 baseline (genuine install.ps1, parent under the profile)
+installed to <scratch>\ps\W0\par\t
+next: cd '<scratch>\ps\W0\par\t'; scripts\launch.ps1
+exit=0
+par: [t]
+target sddl: O:<me-sid>G:<sid>D:P(A;OICI;FA;;;<me-sid>)
+### W1A H-2: staging swapped for a junction to a non-empty operator dir (hook A : A = before the kind check, B = after it, before Set-Location)
+victim entries=[sub keep1]
+install: the staging directory is not the one this install created (its name leads elsewhere): <scratch>\ps\W1A\par\.ke-install.6d7a92bf4bf50e65
+exit=1
+victim entries=[sub keep1]
+par: [.ke-install.6d7a92bf4bf50e65.moved]
+### W1B H-2: staging swapped for a junction to a non-empty operator dir (hook B : A = before the kind check, B = after it, before Set-Location)
+victim entries=[sub keep1]
+install: . is not the private directory this install created
+exit=1
+victim entries=[sub keep1]
+par: [.ke-install.79b5b99daecfa714.moved]
+### W1r cleanup by name: a non-empty operator-owned sibling in the parent renamed into the staging name (hook B)
+victim entries=[sub keep1]
+install: . does not have the private ACL this install gave it (something else created it first)
+exit=1
+victim: GONE
+par: [.ke-install.7763186a87f82d6c.moved]
+### W2 parent ACL: Everyone CreateDirectories only (AppendData)
+install: refused (rule: the target's parent must not be writable by others): <scratch>\ps\W2\par is writable by another account (S-1-1-0); anyone who can write it can replace the installed target; use a directory only you can write
+exit=1
+par: []
+### W3 parent ACL: Everyone GW via SDDL
+stored: O:<me-sid>G:<sid>D:AI(A;;FW;;;WD)(A;OICIID;FA;;;SY)(A;OICIID;FA;;;BA)(A;OICIID;FA;;;<me-sid>)
+install: refused (rule: the target's parent must not be writable by others): <scratch>\ps\W3\par is writable by another account (S-1-1-0); anyone who can write it can replace the installed target; use a directory only you can write
+exit=1
+par: []
+### W3b parent ACL: Everyone GA via SDDL
+stored: O:<me-sid>G:<sid>D:AI(A;;FA;;;WD)(A;OICIID;FA;;;SY)(A;OICIID;FA;;;BA)(A;OICIID;FA;;;<me-sid>)
+install: refused (rule: the target's parent must not be writable by others): <scratch>\ps\W3b\par is writable by another account (S-1-1-0); anyone who can write it can replace the installed target; use a directory only you can write
+exit=1
+### W4 parent ACL: BUILTIN\Users Modify (operator is a member, so are others)
+stored: O:<me-sid>G:<sid>D:AI(A;;0x1301bf;;;BU)(A;OICIID;FA;;;SY)(A;OICIID;FA;;;BA)(A;OICIID;FA;;;<me-sid>)
+install: refused (rule: the target's parent must not be writable by others): <scratch>\ps\W4\par is writable by another account (S-1-5-32-545); anyone who can write it can replace the installed target; use a directory only you can write
+exit=1
+### W4b parent ACL: Authenticated Users DeleteChild only
+stored: O:<me-sid>G:<sid>D:AI(A;;DC;;;AU)(A;OICIID;FA;;;SY)(A;OICIID;FA;;;BA)(A;OICIID;FA;;;<me-sid>)
+install: refused (rule: the target's parent must not be writable by others): <scratch>\ps\W4b\par is writable by another account (S-1-5-11); anyone who can write it can replace the installed target; use a directory only you can write
+exit=1
+### W5 parent ACL: conditional (callback) allow ACE, Everyone FullControl when Member_of Everyone
+stored: O:<me-sid>G:<sid>D:AI(XA;;FA;;;WD;(Member_of {SID(WD)}))(A;OICIID;FA;;;SY)(A;OICIID;FA;;;BA)(A;OICIID;FA;;;<me-sid>)
+  .NET GetAccessRules sees: S-1-1-0:2032127 S-1-5-18:2032127 S-1-5-32-544:2032127 <me-sid>:2032127
+install: refused (rule: the target's parent must not be writable by others): <scratch>\ps\W5\par is writable by another account (S-1-1-0); anyone who can write it can replace the installed target; use a directory only you can write
+exit=1
+par: []
+### W5g does such an ACE grant write? a dir whose ONLY allow ACE is that conditional ACE (owner = me; implicit owner rights are RC+WDAC only)
+  stored: O:<me-sid>G:<sid>D:PAI(XA;OICI;FA;;;WD;(Member_of {SID(WD)}))
+  create file in W5g: OK (granted by the conditional ACE)
+### W5c control: same, condition false (Member_of Guests)
+Set-Content: <scratch>\ps-r4.ps1:69
+Line |
+  69 |  try { 'x' | Set-Content (Join-Path $g2 'probe.txt'); "  create file i .
+     |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | Access to the path
+     | '<scratch>\ps\W5c\probe.txt' is denied.
+  create file in W5c: OK
+### W6 parent ACL: OWNER RIGHTS FullControl + CREATOR OWNER inherit-only (allowed by the ruling)
+stored: O:<me-sid>G:<sid>D:AI(A;OICIIO;FA;;;CO)(A;;FA;;;OW)(A;OICIID;FA;;;SY)(A;OICIID;FA;;;BA)(A;OICIID;FA;;;<me-sid>)
+installed to <scratch>\ps\W6\par\t
+next: cd '<scratch>\ps\W6\par\t'; scripts\launch.ps1
+exit=0
+### W6b parent ACL: CREATOR OWNER FullControl NOT inherit-only (applies to no token; allowed)
+stored: O:<me-sid>G:<sid>D:AI(A;;FA;;;<me-sid>)(A;OICIID;FA;;;SY)(A;OICIID;FA;;;BA)(A;OICIID;FA;;;<me-sid>)
+installed to <scratch>\ps\W6b\par\t
+next: cd '<scratch>\ps\W6b\par\t'; scripts\launch.ps1
+exit=0
+### W7 parent ACL: Everyone FullControl inherit-only (does not apply to the parent; target must stay private)
+stored: O:<me-sid>G:<sid>D:AI(A;OICIIO;FA;;;WD)(A;OICIID;FA;;;SY)(A;OICIID;FA;;;BA)(A;OICIID;FA;;;<me-sid>)
+installed to <scratch>\ps\W7\par\t
+next: cd '<scratch>\ps\W7\par\t'; scripts\launch.ps1
+exit=0
+target sddl: O:<me-sid>G:<sid>D:P(A;OICI;FA;;;<me-sid>)
+target file sddl: O:<me-sid>G:<sid>D:(A;ID;FA;;;<me-sid>)
+### W10 fail closed: parent DACL withholds READ_CONTROL from the owner (OWNER RIGHTS 0x1D01FF)
+MethodInvocationException: <scratch>\ps-r4.ps1:79
+Line |
+  79 |  . FA;;;SY)"); [System.IO.FileSystemAclExtensions]::SetAccessControl([Sy .
+     |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | Exception calling "SetAccessControl" with "2" argument(s): "The process does not possess the
+     | 'SeSecurityPrivilege' privilege which is required for this operation."
+  Get-Acl: readable (probe invalid)
+installed to <scratch>\ps\W10\par\t
+next: cd '<scratch>\ps\W10\par\t'; scripts\launch.ps1
+exit=0
+target: present
+MethodInvocationException: <scratch>\ps-r4.ps1:82
+Line |
+  82 |  . {meSid})"); [System.IO.FileSystemAclExtensions]::SetAccessControl([Sy .
+     |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | Exception calling "SetAccessControl" with "2" argument(s): "The process does not possess the
+     | 'SeSecurityPrivilege' privilege which is required for this operation."
+### W11 ancestor: G grants Everyone Modify (not inherited), parent G\adam operator-only; a racer renames adam at docker load
+installed to <scratch>\ps\W11\G\adam\t
+next: cd '<scratch>\ps\W11\G\adam\t'; scripts\launch.ps1
+exit=0
+hook.log: mv: cannot move '<scratch>/ps/W11/G/adam' to '<scratch>/ps/W11/G/zzz': Permission denied | rename adam during run: rc=1
+G: [adam]  adam: [notes t]
+# W5c: the Set-Content error above IS the result (access denied; non-terminating error, so the 'OK' line after it is an artifact of the probe).
+# W10 in section C was invalid (SetAccessControl also wrote the SACL and failed); re-run below with the Access section only.
+
+== C2. W10 re-run ==
+### W10 fail closed: parent DACL withholds READ_CONTROL from the owner (OWNER RIGHTS 0x1D01FF), Access section only
+  GetAccessControl: MethodInvocationException
+  can still create a dir in it: no
+install: cannot check the target's parent <scratch>\ps10\W10\par (reading its ACL failed); use a directory only you can write
+exit=1
+target: none; docker calls: 0
+  restored: 
+# (the fixture's DACL could not be restored through .NET; it was reset with SetFileSecurity(DACL only) and removed)

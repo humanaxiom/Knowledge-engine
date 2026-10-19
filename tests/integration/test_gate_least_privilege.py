@@ -63,8 +63,13 @@ class GateLeastPrivilegeTest(unittest.TestCase):
                 self.assertEqual(error.errno, errno.EROFS, f"{target}: {error}")
         # A git worktree (or submodule) has `.git` as a file: the hooks path is
         # not under /work, so that target is not applicable here (review N4).
+        # It is reported as a skipped subTest so the run log records it
+        # (review-l5-r1 n1).
         if not (WORK / ".git").is_dir():
             self.assertTrue((WORK / ".git").is_file(), "/work/.git is neither a directory nor a file")
+            with self.subTest(target=str(WORK / ".git" / "hooks" / "ke-write-probe")):
+                self.skipTest("/work/.git is a file (worktree or submodule): .git/hooks is "
+                              "outside the checkout, so that write probe does not apply")
         # Control: /tmp is writable, so a container that cannot write anywhere
         # does not pass this test.
         self.assertIsNone(_try_write(Path(tempfile.gettempdir()) / "ke-write-probe"))

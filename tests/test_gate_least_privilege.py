@@ -198,6 +198,8 @@ class GateServicesComposeTest(unittest.TestCase):
                                  "would be writable")
         users = [ln for ln in _logical_lines(GATES_DOCKERFILE)
                  if re.match(r"^USER\s", ln, re.IGNORECASE)]
+        self.assertTrue(users, "gates.Dockerfile sets no USER; it must end as 10001:10001 "
+                               "(review-l5-r1 n3)")
         self.assertEqual(users[-1].split(None, 1)[1].strip(), f"{GATE_UID}:{GATE_UID}")
 
     def test_gate_services_drop_capabilities_and_new_privileges(self):  # security L-2

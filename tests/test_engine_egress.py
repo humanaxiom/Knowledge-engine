@@ -105,7 +105,10 @@ class EgressStartupTest(unittest.TestCase):
         }
         for name, overrides in accepted.items():
             with self.subTest(case=name):
-                settings = load_settings(base_env(**overrides))
+                # KE_ENV=ci, not the defaults' prod: prod is refused until
+                # auth-audit (orchestrator ruling 2026-10-19, platform-offline
+                # smoke loop 2; docs/architecture.md line 3900, ADR-KE-010).
+                settings = load_settings(base_env(KE_ENV="ci", **overrides))
                 spy = SocketSpy()
                 with spy.active():
                     _check(settings)  # must not raise

@@ -1,0 +1,361 @@
+# security-u2-r2 raw probe output (redacted: <scratch> = session scratch dir, <profile> = user profile path, <me-sid> = operator SID)
+# Fake docker only (DOCKER_HOST=tcp://127.0.0.1:1); no daemon, image, HEAD, index or tracked file touched.
+# Scripts: <scratch>/probes-r2.sh, wsl-r2.sh, wsl-sig2.sh, probes-ps-r2.ps1, warn.ps1, pathps.ps1, bin/docker, winbin/docker.cmd, winbin/swap.sh, shim-chmod/chmod, shim-mv/mv
+
+== A. install.sh, WSL Ubuntu ext4, mawk (authoritative POSIX run) ==
+### H1-staging-swap-at-info
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241
+installed to <scratch>/p/SS-info/par/t
+next: cd <scratch>/p/SS-info/par/t && scripts/launch.sh
+exit=0
+swap: done at info
+loaded-bytes content=tar-genuine
+published launch.sh: echo GENUINE
+compose: no privileged
+parent now: .ke-install.epMnjN9f.moved t 
+### H1-staging-swap-at-compose
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241
+installed to <scratch>/p/SS-compose/par/t
+next: cd <scratch>/p/SS-compose/par/t && scripts/launch.sh
+exit=0
+swap: done at compose
+loaded-bytes content=tar-genuine
+published launch.sh: echo GENUINE
+compose: no privileged
+parent now: .ke-install.1ZuW74Ke.moved t 
+### H1-staging-swap-at-load
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241
+installed to <scratch>/p/SS-load/par/t
+next: cd <scratch>/p/SS-load/par/t && scripts/launch.sh
+exit=0
+swap: done at load
+loaded-bytes content=tar-genuine
+published launch.sh: echo GENUINE
+compose: no privileged
+parent now: .ke-install.IZWUDXNO.moved t 
+### H1-staging-swap-at-tag
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241
+installed to <scratch>/p/SS-tag/par/t
+next: cd <scratch>/p/SS-tag/par/t && scripts/launch.sh
+exit=0
+loaded-bytes content=tar-genuine
+swap: done at tag
+published launch.sh: echo GENUINE
+compose: no privileged
+parent now: .ke-install.X2zBRcyx.moved t 
+### H1-staging-swap-at-inspect
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241
+installed to <scratch>/p/SS-inspect/par/t
+next: cd <scratch>/p/SS-inspect/par/t && scripts/launch.sh
+exit=0
+loaded-bytes content=tar-genuine
+swap: done at inspect
+published launch.sh: echo GENUINE
+compose: no privileged
+parent now: .ke-install.hmBiKBiv.moved t 
+### H1-chmod-cd-gap
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241
+installed to <scratch>/p/CH/par/t
+next: cd <scratch>/p/CH/par/t && scripts/launch.sh
+exit=0
+evil-into: wrote <scratch>/p/CH/par/.ke-install.nBetTSX9
+loaded-bytes content=tar-EVIL
+published launch.sh: echo GENUINE
+parent now: .ke-install.nBetTSX9.moved t 
+### M4-append-at-info
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241
+installed to <scratch>/p/SM/par/t
+next: cd <scratch>/p/SM/par/t && scripts/launch.sh
+exit=0
+loaded-bytes content=tar-genuine
+ls: cannot access '<scratch>/p/SM/INJECTED-append': No such file or directory
+### M4-inplace-rewrite-of-trailing-exit
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241
+installed to <scratch>/p/RW/par/t
+next: cd <scratch>/p/RW/par/t && scripts/launch.sh
+exit=0
+rewrite: at 23235
+loaded-bytes content=tar-genuine
+<scratch>/p/RW/INJECTED-rewrite
+tail of bundle install.sh: main "$@"|touch <scratch>/p/RW/INJECTED-rewrite|
+### L8-claim-replaced-before-publish-mv[dir]
+manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241 (not checked: compare it with the value from your release record)
+loaded web.tar as ke-web:bundle-0123456789ab
+rm: cannot remove '<scratch>/p/MV-dir/par/t/.ke-claim.cDMHzz8B': No such file or directory
+install: the claim marker is gone (something replaced the target during install): <scratch>/p/MV-dir/par/t
+exit=1
+loaded-bytes content=tar-genuine
+parent now: t t.claim-moved 
+planted dir holds: .env.example docker-compose.override.yml docker-compose.yml scripts 
+### L8-claim-replaced-before-publish-mv[link]
+manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241 (not checked: compare it with the value from your release record)
+loaded web.tar as ke-web:bundle-0123456789ab
+rm: cannot remove '<scratch>/p/MV-link/par/t/.ke-claim.uked97s4': No such file or directory
+install: the claim marker is gone (something replaced the target during install): <scratch>/p/MV-link/par/t
+exit=1
+loaded-bytes content=tar-genuine
+parent now: t t.claim-moved 
+victim dir: .env.example docker-compose.override.yml docker-compose.yml scripts  mode=drwx------
+### L9-PATH[:<scratch>/bin:<scratch>/awkbin:/usr/loc]
+install: PATH has a relative or empty entry (''); set PATH to absolute directories only
+exit=1
+### L9-PATH[<scratch>/bin:<scratch>/awkbin:/usr/loca]
+install: PATH has a relative or empty entry (''); set PATH to absolute directories only
+exit=1
+### L9-PATH[.:<scratch>/bin:<scratch>/awkbin:/usr/lo]
+install: PATH has a relative or empty entry ('.'); set PATH to absolute directories only
+exit=1
+### L9-PATH[bin:<scratch>/bin:<scratch>/awkbin:/usr/]
+install: PATH has a relative or empty entry ('bin'); set PATH to absolute directories only
+exit=1
+### L9-PATH[<scratch>/bin:<scratch>/awkbin:/usr/loca]
+install: PATH has a relative or empty entry (''); set PATH to absolute directories only
+exit=1
+ls: cannot access '<scratch>/p/PT/PWNED_PATH': No such file or directory
+### L10-sh-TERM: exit=143  parent now: 
+### L10-sh-HUP: exit=129  parent now: 
+### L10-sh-QUIT: exit=0  parent now: t 
+### L10-sh-INT: exit=0  parent now: t 
+### parent-mode-0775
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241
+installed to <scratch>/p/PW-0775/par/t
+next: cd <scratch>/p/PW-0775/par/t && scripts/launch.sh
+exit=0
+loaded-bytes content=tar-genuine
+1
+### parent-mode-0757
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241
+installed to <scratch>/p/PW-0757/par/t
+next: cd <scratch>/p/PW-0757/par/t && scripts/launch.sh
+exit=0
+loaded-bytes content=tar-genuine
+1
+### parent-mode-1777
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241
+installed to <scratch>/p/PW-1777/par/t
+next: cd <scratch>/p/PW-1777/par/t && scripts/launch.sh
+exit=0
+loaded-bytes content=tar-genuine
+1
+### parent-mode-0755
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241
+installed to <scratch>/p/PW-0755/par/t
+next: cd <scratch>/p/PW-0755/par/t && scripts/launch.sh
+exit=0
+loaded-bytes content=tar-genuine
+0
+
+== B. install.sh signals, WSL; first pass ran as a background job (INT/QUIT inherited SIG_IGN: probe artifact), second pass with env --default-signal ==
+pid-from-docker=465 job=465
+### L10-sh-INT (job control on): exit=0; parent now: 't '; out: next: cd <scratch>/p/SG2-INT/par/t && scripts/launch.sh
+pid-from-docker=583 job=583
+### L10-sh-QUIT (job control on): exit=0; parent now: 't '; out: next: cd <scratch>/p/SG2-QUIT/par/t && scripts/launch.sh
+pid-from-docker=701 job=701
+### L10-sh-TERM (job control on): exit=143; parent now: ''; out: manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241 (not checked: compare it with the value from your release record)
+pid-from-docker=809 job=809
+### L10-sh-HUP (job control on): exit=129; parent now: ''; out: manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241 (not checked: compare it with the value from your release record)
+SigIgn of install.sh: SigIgn:	0000000000000000
+### L10-sh-INT (default dispositions): exit=130; parent now: ''; out: manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241 (not checked: compare it with the value from your release record)
+SigIgn of install.sh: SigIgn:	0000000000000000
+### L10-sh-QUIT (default dispositions): exit=131; parent now: ''; out: manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241 (not checked: compare it with the value from your release record)
+
+== C. install.sh, Git Bash 5.3 on NTFS (claim fails closed: MSYS mkdir -m 0700 cannot set permissions here; L-9 cases valid) ==
+### H1-staging-swap-at-info
+mkdir: cannot change permissions of '<scratch>/p/SS-info/par/t': Permission denied
+install: cannot claim the target (something appeared there): <scratch>/p/SS-info/par/t
+exit=1
+published launch.sh: cat: <scratch>/p/SS-info/par/t/scripts/launch.sh: No such file or directory
+compose: no privileged
+parent now: t 
+### H1-staging-swap-at-compose
+mkdir: cannot change permissions of '<scratch>/p/SS-compose/par/t': Permission denied
+install: cannot claim the target (something appeared there): <scratch>/p/SS-compose/par/t
+exit=1
+published launch.sh: cat: <scratch>/p/SS-compose/par/t/scripts/launch.sh: No such file or directory
+compose: no privileged
+parent now: t 
+### H1-staging-swap-at-load
+mkdir: cannot change permissions of '<scratch>/p/SS-load/par/t': Permission denied
+install: cannot claim the target (something appeared there): <scratch>/p/SS-load/par/t
+exit=1
+published launch.sh: cat: <scratch>/p/SS-load/par/t/scripts/launch.sh: No such file or directory
+compose: no privileged
+parent now: t 
+### H1-staging-swap-at-tag
+mkdir: cannot change permissions of '<scratch>/p/SS-tag/par/t': Permission denied
+install: cannot claim the target (something appeared there): <scratch>/p/SS-tag/par/t
+exit=1
+published launch.sh: cat: <scratch>/p/SS-tag/par/t/scripts/launch.sh: No such file or directory
+compose: no privileged
+parent now: t 
+### H1-staging-swap-at-inspect
+mkdir: cannot change permissions of '<scratch>/p/SS-inspect/par/t': Permission denied
+install: cannot claim the target (something appeared there): <scratch>/p/SS-inspect/par/t
+exit=1
+published launch.sh: cat: <scratch>/p/SS-inspect/par/t/scripts/launch.sh: No such file or directory
+compose: no privileged
+parent now: t 
+### H1-chmod-cd-gap
+mkdir: cannot change permissions of '<scratch>/p/CH/par/t': Permission denied
+install: cannot claim the target (something appeared there): <scratch>/p/CH/par/t
+exit=1
+published launch.sh: cat: <scratch>/p/CH/par/t/scripts/launch.sh: No such file or directory
+parent now: t 
+### M4-append-at-info
+mkdir: cannot change permissions of '<scratch>/p/SM/par/t': Permission denied
+install: cannot claim the target (something appeared there): <scratch>/p/SM/par/t
+exit=1
+ls: cannot access '<scratch>/p/SM/INJECTED-append': No such file or directory
+### M4-inplace-rewrite-of-trailing-exit
+mkdir: cannot change permissions of '<scratch>/p/RW/par/t': Permission denied
+install: cannot claim the target (something appeared there): <scratch>/p/RW/par/t
+exit=1
+ls: cannot access '<scratch>/p/RW/INJECTED-rewrite': No such file or directory
+tail of bundle install.sh: main "$@"|exit|
+### L8-claim-replaced-before-publish-mv[dir]
+mkdir: cannot change permissions of '<scratch>/p/MV-dir/par/t': Permission denied
+install: cannot claim the target (something appeared there): <scratch>/p/MV-dir/par/t
+exit=1
+parent now: t 
+planted dir holds: 
+### L8-claim-replaced-before-publish-mv[link]
+mkdir: cannot change permissions of '<scratch>/p/MV-link/par/t': Permission denied
+install: cannot claim the target (something appeared there): <scratch>/p/MV-link/par/t
+exit=1
+parent now: t 
+victim dir:  mode=drwxr-xr-x
+### L9-PATH[:<scratch>/bin:<profile>:/...]
+install: PATH has a relative or empty entry (''); set PATH to absolute directories only
+exit=1
+### L9-PATH[<scratch>/bin:<profile>:/...]
+install: PATH has a relative or empty entry (''); set PATH to absolute directories only
+exit=1
+### L9-PATH[.:<scratch>/bin:<profile>:/mingw]
+install: PATH has a relative or empty entry ('.'); set PATH to absolute directories only
+exit=1
+### L9-PATH[bin:<scratch>/bin:<profile>:/min]
+install: PATH has a relative or empty entry ('bin'); set PATH to absolute directories only
+exit=1
+### L9-PATH[<scratch>/bin:<profile>:/...]
+install: PATH has a relative or empty entry (''); set PATH to absolute directories only
+exit=1
+ls: cannot access '<scratch>/p/PT/PWNED_PATH': No such file or directory
+cat: <scratch>/p/SG-TERM/pid: No such file or directory
+./probes-r2.sh: line 57: kill: `': not a pid or valid job spec
+### L10-sh-TERM: exit=1  parent now: t 
+cat: <scratch>/p/SG-HUP/pid: No such file or directory
+./probes-r2.sh: line 57: kill: `': not a pid or valid job spec
+### L10-sh-HUP: exit=1  parent now: t 
+cat: <scratch>/p/SG-QUIT/pid: No such file or directory
+./probes-r2.sh: line 57: kill: `': not a pid or valid job spec
+### L10-sh-QUIT: exit=1  parent now: t 
+cat: <scratch>/p/SG-INT/pid: No such file or directory
+./probes-r2.sh: line 57: kill: `': not a pid or valid job spec
+### L10-sh-INT: exit=1  parent now: t 
+### parent-mode-0775
+mkdir: cannot change permissions of '<scratch>/p/PW-0775/par/t': Permission denied
+install: cannot claim the target (something appeared there): <scratch>/p/PW-0775/par/t
+exit=1
+0
+### parent-mode-0757
+mkdir: cannot change permissions of '<scratch>/p/PW-0757/par/t': Permission denied
+install: cannot claim the target (something appeared there): <scratch>/p/PW-0757/par/t
+exit=1
+0
+### parent-mode-1777
+mkdir: cannot change permissions of '<scratch>/p/PW-1777/par/t': Permission denied
+install: cannot claim the target (something appeared there): <scratch>/p/PW-1777/par/t
+exit=1
+0
+### parent-mode-0755
+mkdir: cannot change permissions of '<scratch>/p/PW-0755/par/t': Permission denied
+install: cannot claim the target (something appeared there): <scratch>/p/PW-0755/par/t
+exit=1
+0
+
+== D. install.ps1, pwsh 7.6.7 on Windows 11 ==
+me = <me-sid>
+### ps-H1-swap-at-info (parent grants Authenticated Users (OI)(CI)(IO)(M) + (AD), as C:\)
+exit=0
+manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241 (not checked: compare it with the value from your release record)
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241
+installed to <scratch>\pw-info\par\t
+next: cd '<scratch>\pw-info\par\t'; scripts\launch.ps1
+swap.log: staging swap at info: rename refused
+swap.log: target rename at info: refused
+loaded content: tar-genuine
+docker cwd <scratch>\pw-info\par\.ke-install.592561e4356cbfdf 
+published launch.ps1: Write-Host GENUINE
+parent now: t swap.log
+target first-seen: O:<me-sid>D:P(A;OICI;FA;;;<me-sid>)
+staging first-seen: O:<me-sid>D:P(A;OICI;FA;;;<me-sid>)
+target ACL after install: O:<me-sid>D:P(A;OICI;FA;;;<me-sid>)
+### ps-H1-swap-at-load (parent grants Authenticated Users (OI)(CI)(IO)(M) + (AD), as C:\)
+exit=0
+manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241 (not checked: compare it with the value from your release record)
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241
+installed to <scratch>\pw-load\par\t
+next: cd '<scratch>\pw-load\par\t'; scripts\launch.ps1
+swap.log: staging swap at load: rename refused
+swap.log: target rename at load: refused
+loaded content: tar-genuine
+docker cwd <scratch>\pw-load\par\.ke-install.36fefd521a5ffa06 
+published launch.ps1: Write-Host GENUINE
+parent now: t swap.log
+staging first-seen: O:<me-sid>D:P(A;OICI;FA;;;<me-sid>)
+target first-seen: O:<me-sid>D:P(A;OICI;FA;;;<me-sid>)
+target ACL after install: O:<me-sid>D:P(A;OICI;FA;;;<me-sid>)
+### ps-H1-swap-at-tag (parent grants Authenticated Users (OI)(CI)(IO)(M) + (AD), as C:\)
+exit=0
+manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241 (not checked: compare it with the value from your release record)
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241
+installed to <scratch>\pw-tag\par\t
+next: cd '<scratch>\pw-tag\par\t'; scripts\launch.ps1
+swap.log: staging swap at tag: rename refused
+swap.log: target rename at tag: refused
+loaded content: tar-genuine
+docker cwd <scratch>\pw-tag\par\.ke-install.e1fbf1006533bbb7 
+published launch.ps1: Write-Host GENUINE
+parent now: t swap.log
+target first-seen: O:<me-sid>D:P(A;OICI;FA;;;<me-sid>)
+staging first-seen: O:<me-sid>D:P(A;OICI;FA;;;<me-sid>)
+target ACL after install: O:<me-sid>D:P(A;OICI;FA;;;<me-sid>)
+### ps-H1-swap-at-image (parent grants Authenticated Users (OI)(CI)(IO)(M) + (AD), as C:\)
+exit=0
+manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241 (not checked: compare it with the value from your release record)
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 5dc8eddc8d5860b39ec2387f089568224755dcef490e82da1d3c700f0a2c2241
+installed to <scratch>\pw-image\par\t
+next: cd '<scratch>\pw-image\par\t'; scripts\launch.ps1
+swap.log: staging swap at image: rename refused
+swap.log: target rename at image: refused
+loaded content: tar-genuine
+docker cwd <scratch>\pw-image\par\.ke-install.ae11b8d54bf01759 
+published launch.ps1: Write-Host GENUINE
+parent now: t swap.log
+staging first-seen: O:<me-sid>D:P(A;OICI;FA;;;<me-sid>)
+target first-seen: O:<me-sid>D:P(A;OICI;FA;;;<me-sid>)
+target ACL after install: O:<me-sid>D:P(A;OICI;FA;;;<me-sid>)
+### parent-shared exit=0
+install: warning: the target's parent <scratch>\pw-warn-shared\par is writable by others (group, world or another account); anyone who can write it can replace the installed target afterwards; use a directory only you can write
+### parent-private exit=0
+### ps-L9-PATH[.;C:\Users\a...] exit=1 :: install: PATH has a relative entry ('.'); set PATH to absolute directories only
+### ps-L9-PATH[winbin;C:\Us...] exit=1 :: install: PATH has a relative entry ('winbin'); set PATH to absolute directories only
+### ps-L9-PATH[;;C:\Users\a...] exit=0 :: next: cd '<scratch>\pw-path\par\t'; scripts\launch.ps1
+### ps-L9-PATH[C:winbin;C:\...] exit=1 :: install: PATH has a relative entry ('C?winbin'); set PATH to absolute directories only
+### ps-L9-PATH["C:\Users\ad...] exit=0 :: next: cd '<scratch>\pw-path\par\t'; scripts\launch.ps1

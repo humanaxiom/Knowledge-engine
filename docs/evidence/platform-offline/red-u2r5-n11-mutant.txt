@@ -1,0 +1,26 @@
+# tester r5 mutant probe (scratch copy of the working tree, both [ "$target" -ef . ] checks removed from install.sh), ke-gates:latest, --network none, --cap-drop ALL, uid 10001
+test_install_sh_refuses_real_dir_swapped_in_at_publish (tests.test_offline_bundle.InstallShTest.test_install_sh_refuses_real_dir_swapped_in_at_publish)
+Review N11 (probe dir_swap_at_publish): at `chmod 0755 .` inside ... FAIL
+test_install_sh_never_chmods_a_target_swapped_at_publish (tests.test_offline_bundle.InstallShTest.test_install_sh_never_chmods_a_target_swapped_at_publish)
+Security M-5 (probe A6): at the `chmod 0755` that opens up the ... ok
+
+======================================================================
+FAIL: test_install_sh_refuses_real_dir_swapped_in_at_publish (tests.test_offline_bundle.InstallShTest.test_install_sh_refuses_real_dir_swapped_in_at_publish)
+Review N11 (probe dir_swap_at_publish): at `chmod 0755 .` inside
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 1745, in test_install_sh_refuses_real_dir_swapped_in_at_publish
+    self.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : install.sh reported success although a different real directory now sits at the target's name: keep `[ "$target" -ef . ]` after `chmod 0755 .` (review N11):
+manifest sha256: 5096e0c3720e5a437731660ceb611f1f2b42aa4d406303a0404ab28958b61ab0 (not checked: compare it with the value from your release record)
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+manifest sha256: 5096e0c3720e5a437731660ceb611f1f2b42aa4d406303a0404ab28958b61ab0
+installed to /tmp/tmp9gm8m8yy/target1
+next: cd /tmp/tmp9gm8m8yy/target1 && bash scripts/launch.sh
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.426s
+
+FAILED (failures=1)

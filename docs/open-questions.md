@@ -149,6 +149,34 @@ R2 with spike S1). Does not block RED.
   is added. Orchestrator: accept, or ask for a one-off recorded
   classic-store install in the evidence.
 
+Raised and mostly settled 2026-10-19 for `platform-offline` (handoff
+orchestrator sections "Q49 resolved", "build it for both", and later
+rulings). Design: `docs/architecture.md` §2.5 *Arch*; criteria: PS-3.1
+"per-arch bundles".
+
+- **Q49. Resolved (human).** Per-arch bundles: linux/amd64 and
+  linux/arm64, one bundle each. Built natively on a daemon of that arch
+  (arm64 on `aria-gb10` through a docker context); no `--platform`; the
+  installer refuses an arch mismatch before any load.
+- **Q50. Resolved: in scope (human, "a path for mlx").** `install.sh` must
+  run on macOS (bash 3.2, BSD tools) as well as Linux. Proven by a static
+  forbid-list test, a shimmed-PATH test, and a recorded install on the
+  Apple-silicon Mac when it arrives (not CI).
+- **Q51. Resolved (orchestrator, 2026-10-19).** arm64 proof is a recorded
+  build, bundle, install, launch and smoke on `aria-gb10` (aarch64,
+  Ubuntu 24.04, Docker 29.6.2), reached through a docker context over SSH.
+  An `ubuntu-24.04-arm` CI runner stays a later option; whether the repo
+  can use one is unconfirmed.
+- **Q52. Open, not this item.** Model serving with MLX on the Mac belongs
+  to a later `model-hosts` plan item.
+- **Q53. Resolved: extended (orchestrator, unit-2 rework round 2,
+  2026-10-19; review RB2a).** The bash 3.2 and BSD rule now covers
+  `install.sh`, `launch.sh` and `teardown.sh`, and the static forbid list
+  runs over all three. `smoke.sh`, `net_isolated.sh` and `verify.sh` stay
+  Linux and dev only. The Mac's recorded proof is install, launch and
+  teardown, not smoke. A53 (install only) is withdrawn. Design:
+  `docs/architecture.md` §2.5 *`install.sh` portability*.
+
 Open, raised 2026-10-19 (orchestrator note in `docs/handoffs/platform-skeleton.md`,
 "human rulings: model endpoint; orchestrator note Q38"; recorded by the analyst
 in `platform-stack-ready` rework round 1):
@@ -397,8 +425,10 @@ Resolved by the human 2026-10-18 (`docs/handoffs/platform-skeleton.md`,
   testcontainers? **A30 (before the ruling):** none; asked of you.
 - **Q20. Resolved (human ruling).** No macOS for now: Windows (PowerShell) and
   Linux only; Apple silicon is out of scope. Settles PS-2.9 and the PS-3.1
-  platform note. The proof sub-question is carried as Q31. Original question,
-  kept for the record:
+  platform note. The proof sub-question is carried as Q31. *Narrowed
+  2026-10-19 by Q49 and Q50:* arm64 bundles and `install.sh` on an
+  Apple-silicon Mac are now in scope. Original question, kept for the
+  record:
 - *(original)* **Q20 (PS-Q10). macOS and Windows proof (human).** CI runs Linux only. Is a
   recorded run on your Windows machine enough proof for the PowerShell build,
   launch and teardown scripts, and who proves macOS (no macOS machine is

@@ -409,8 +409,11 @@ class StartupWiringTest(unittest.TestCase):
         return iso, error, after
 
     def test_startup_installs_the_exporter(self):  # kills M11
+        # ci, not prod: prod is refused until auth-audit (orchestrator ruling
+        # 2026-10-19, platform-offline smoke loop 2; docs/architecture.md
+        # line 3900, ADR-KE-010).
         iso, error, _ = self._startup(base_env(
-            KE_ENV="prod", HARNESS_TRACING="otlp", PHOENIX_COLLECTOR_ENDPOINT=LOCAL))
+            KE_ENV="ci", HARNESS_TRACING="otlp", PHOENIX_COLLECTOR_ENDPOINT=LOCAL))
         self.assertIsNone(error)
         self.assertEqual(iso.otlp_urls(), [f"{LOCAL}/v1/traces"])
         self.assertEqual(len(iso.installed), 1)
