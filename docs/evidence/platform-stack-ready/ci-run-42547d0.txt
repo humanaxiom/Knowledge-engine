@@ -1,0 +1,18 @@
+ci exit=0
+42547d0d0f3ea4eefd6cb3b71f563360df21629b 2026-10-19T09:41:11Z 2026-10-19T09:47:44Z
+verify	Verify (full)	2026-10-19T09:43:14.1937753Z == verify full: 42547d0 ==
+verify	Verify (full)	2026-10-19T09:44:25.5909991Z test_backend_bridge_gateway_is_isolated (tests.test_stack_compose.Rework1ComposeTest.test_backend_bridge_gateway_is_isolated) ... ok
+verify	Verify (full)	2026-10-19T09:46:25.5517999Z test_smoke_fails_when_backend_is_not_isolated (tests.test_stack_scripts.SmokeBackendIsolatedTest.test_smoke_fails_when_backend_is_not_isolated) ... ok
+verify	Verify (full)	2026-10-19T09:46:56.0737511Z Ran 419 tests in 215.159s
+verify	Verify (full)	2026-10-19T09:46:56.0737867Z OK
+verify	Verify (full)	2026-10-19T09:47:01.4808216Z Ran 8 tests in 4.968s
+verify	Verify (full)	2026-10-19T09:47:01.4809102Z OK (skipped=1)
+verify	Verify (full)	2026-10-19T09:47:01.9678835Z TOTAL                              813     78    184     14    89%
+verify	Verify (full)	2026-10-19T09:47:13.3805738Z == verify full: PASS ==
+verify	Verify (full)	2026-10-19T09:47:13.9472826Z smoke: ke-verify-1314318748_backend is internal with gateway_mode_ipv4=isolated
+verify	Verify (full)	2026-10-19T09:47:20.3616748Z smoke: /readyz reports postgres down
+verify	Verify (full)	2026-10-19T09:47:28.2218724Z smoke: /readyz ready again after postgres restart
+verify	Verify (full)	2026-10-19T09:47:29.3938539Z smoke: PASS
+verify	Verify (full)	2026-10-19T09:47:39.6295444Z == verify full: PASS (382s) ==
+
+[exited with code 0]
