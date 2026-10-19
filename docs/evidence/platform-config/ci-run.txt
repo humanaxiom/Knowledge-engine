@@ -1,0 +1,148 @@
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-config CI · 39189000735
+Triggered via push less than a minute ago
+
+JOBS
+* verify (ID 117857425931)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-config CI · 39189000735
+Triggered via push less than a minute ago
+
+JOBS
+* verify (ID 117857425931)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-config CI · 39189000735
+Triggered via push less than a minute ago
+
+JOBS
+* verify (ID 117857425931)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-config CI · 39189000735
+Triggered via push less than a minute ago
+
+JOBS
+* verify (ID 117857425931)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-config CI · 39189000735
+Triggered via push less than a minute ago
+
+JOBS
+* verify (ID 117857425931)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-config CI · 39189000735
+Triggered via push less than a minute ago
+
+JOBS
+* verify (ID 117857425931)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-config CI · 39189000735
+Triggered via push less than a minute ago
+
+JOBS
+* verify (ID 117857425931)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-config CI · 39189000735
+Triggered via push less than a minute ago
+
+JOBS
+* verify (ID 117857425931)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-config CI · 39189000735
+Triggered via push less than a minute ago
+
+JOBS
+* verify (ID 117857425931)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-config CI · 39189000735
+Triggered via push less than a minute ago
+
+JOBS
+* verify (ID 117857425931)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-config CI · 39189000735
+Triggered via push about 1 minute ago
+
+JOBS
+* verify (ID 117857425931)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-config CI · 39189000735
+Triggered via push about 1 minute ago
+
+JOBS
+* verify (ID 117857425931)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  ✓ Verify (full)
+  ✓ Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  ✓ Complete job
+✓ agent/platform-config CI · 39189000735
+Triggered via push about 1 minute ago
+
+JOBS
+✓ verify in 1m3s (ID 117857425931)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  ✓ Verify (full)
+  ✓ Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  ✓ Complete job
+verify	Verify (full)	2026-10-19T02:14:32.2206405Z == verify full: de177ec ==
+verify	Verify (full)	2026-10-19T02:15:04.9515170Z Ran 199 tests in 30.906s
+verify	Verify (full)	2026-10-19T02:15:05.2309240Z TOTAL                              587     19    146     12    95%
+verify	Verify (full)	2026-10-19T02:15:08.4856925Z smoke: pass (4 spans exported)
+verify	Verify (full)	2026-10-19T02:15:08.4956093Z == verify full: PASS ==

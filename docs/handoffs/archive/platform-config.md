@@ -169,3 +169,9 @@ Umbrella: `docs/handoffs/platform-skeleton.md`. Base: `agent/harness-followups` 
 
 ## documenter: docs gate
 - README.md and AGENTS.md updated (Phoenix 47101, config section). R7 open (.env.example comment). Details: docs/evidence/platform-config/documenter.md
+
+## 2026-10-19 — orchestrator: item closed + milestone Done check
+- Pushed (human approved); CI green on de177ec: 199 OK, 95% coverage, smoke pass (`ci-run.txt`).
+- Outcome metrics: drafts reviewed n/a, ratified rules n/a. No data store yet, so no query exists. Not moved by design: config and guards are preconditions.
+- External blockers: Q18 branch protection (Adam Salah, no date); Q14 ratification owners (OWNER-TBD).
+- Carried forward: security M5 (identity-marker provider check, needs a test-suite plan), L1c; review R3–R7, N1–N5, N11, N13 (pyproject name); see review-rework3.md and security-rework2.md.
