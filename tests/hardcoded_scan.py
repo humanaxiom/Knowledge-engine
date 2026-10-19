@@ -4,6 +4,7 @@ docstring of tests/test_engine_hardcoded.py."""
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
@@ -17,6 +18,10 @@ _COMPOSE_DEFAULT = re.compile(r"\$\{[A-Za-z_][A-Za-z0-9_]*:?-([^}]*)\}")
 _URL_LITERAL = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://(?:\[[0-9A-Fa-f:]+\]|[A-Za-z0-9])[^\s\"'`)>,]*")
 # Integer assigned to a name containing "port": `port = 1`, `p_port: int = 1`, `port=1`.
 _PORT_ASSIGN = re.compile(r"\b\w*port\w*\s*(?::\s*[\w\[\], .|]+?)?\s*=(?!=)\s*\d+\b", re.I)
+# Review N3: a "port" dict key or subscript with an integer, and a
+# (host, port) tuple with a four- or five-digit port.
+_PORT_KEY = re.compile(r"""["']\w*port\w*["']\s*(?::|\]\s*=(?!=))\s*\d+\b""", re.I)
+_ADDR_TUPLE = re.compile(r"""\(\s*["'][^"']*["']\s*,\s*\d{4,5}\s*\)""")
 
 
 @dataclass(frozen=True)
@@ -31,11 +36,35 @@ def _allowed(path: str) -> bool:
 
 
 def _is_compose(path: str) -> bool:
-    return bool(re.fullmatch(r"(?:.*/)?docker-compose[^/]*\.ya?ml", path))
+    return bool(re.fullmatch(r"(?:.*/)?(?:docker-)?compose[^/]*\.ya?ml", path))
+
+
+# PS-1.2 scope: these roots, and a compose file of any name at the root.
+_SCOPE_ROOTS = ("engine/", "harness_telemetry/", "scripts/", "docker/", ".github/")
+
+
+def in_scope(path: str) -> bool:
+    return path.startswith(_SCOPE_ROOTS) or (
+        "/" not in path and _is_compose(path))
+
+
+def collect_files(root: Path, paths: Iterable[str]) -> Mapping[str, str]:
+    """Text of every path in the PS-1.2 scope, whatever its suffix (review N2).
+    A scoped path that is not UTF-8 text raises ValueError naming it."""
+    files: dict[str, str] = {}
+    for rel in paths:
+        if not in_scope(rel):
+            continue
+        try:
+            files[rel] = (root / rel).read_text(encoding="utf-8")
+        except UnicodeDecodeError as exc:
+            raise ValueError(f"{rel}: not UTF-8 text, cannot be scanned ({exc.reason})") from exc
+    return files
 
 
 def _token(value: str) -> re.Pattern[str]:
-    return re.compile(rf"(?<![\w.-]){re.escape(value)}(?![\w-]|\.\w)")
+    # Case-insensitive: DNS names are (review N1).
+    return re.compile(rf"(?<![\w.-]){re.escape(value)}(?![\w-]|\.\w)", re.I)
 
 
 def find_hardcoded(
@@ -46,7 +75,9 @@ def find_hardcoded(
     """Declared values as whole tokens (rule 1) and, in Python, URL literals
     and integer ports (rule 2). Exempt lines assign an exempt symbol."""
     patterns = [(v, _token(v)) for v in dict.fromkeys(str(v) for v in declared_values) if v]
-    exempt = [(path, re.compile(rf"^\s*{re.escape(symbol)}\b")) for path, symbol, _ in exemptions]
+    # Review N4: only the line that assigns the symbol (not ==, +=, a call).
+    exempt = [(path, re.compile(rf"^\s*{re.escape(symbol)}\s*(?::[^=]*)?=(?!=)"))
+              for path, symbol, _ in exemptions]
     findings: list[Finding] = []
     for path, text in files.items():
         if _allowed(path):
@@ -67,4 +98,10 @@ def find_hardcoded(
                     findings.append(Finding(path, number, match.group(0)))
                 for match in _PORT_ASSIGN.finditer(line):
                     findings.append(Finding(path, number, match.group(0)))
+                # N3 shapes: one finding per line, and none when rule 1 or the
+                # shapes above already flagged that line.
+                if not any(f.path == path and f.line == number for f in findings):
+                    for pattern in (_PORT_KEY, _ADDR_TUPLE):
+                        for match in pattern.finditer(line):
+                            findings.append(Finding(path, number, match.group(0)))
     return findings

@@ -131,3 +131,8 @@ Base: `agent/harness-claude-code` @ a11842d (the remote has no `main`).
 ## 2026-10-19 — orchestrator: ruling for platform-stack ports (from platform-config B7a)
 - §2.4's `${KE_…_PORT:?set in .env}` becomes `${KE_BIND_ADDRESS:-127.0.0.1}:${KE_…_PORT:-<default in 47100–47199>}:<container port>` for every published port (gateway API and Phoenix). Reason: `:?` breaks verify/CI without a `.env`, and the services have no auth until auth-audit.
 - LAN exposure is a deliberate operator choice (`KE_BIND_ADDRESS=0.0.0.0` in `.env`), refused at startup outside `dev` until auth-audit lands. The architect applies this at the start of platform-stack.
+
+## 2026-10-19 — orchestrator: ruling, model upstream in local verify (for platform-stack-ready)
+- `verify.sh full` passes exactly two keys, `KE_MODEL_UPSTREAM` and `KE_EGRESS_ALLOWLIST`, from the caller's environment or the operator's gitignored `.env` into the verify project. No other `.env` value is read.
+- When either key is unset, the model-calling tests skip with a named reason (as in CI). This delivers Q30's "run when aria-gb10-2 is reachable".
+- Lands with PS-2.5/2.7 model tests in platform-stack-ready, not in 2a.

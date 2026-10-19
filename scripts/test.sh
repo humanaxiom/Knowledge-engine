@@ -2,8 +2,9 @@
 # Test entrypoint, called only by scripts/verify.sh. Ends with the coverage and
 # type-check gates.
 #   fast: unit tests only.  full: unit tests, then the integration suite
-#   (tests/integration, once it exists; real stores via testcontainers arrive
-#   with platform-skeleton) exactly once.
+#   (tests/integration) exactly once. Under `verify.sh full` that runs inside
+#   the gates-it compose service, on the internal backend network against the
+#   launched stack (PS-2.7, ADR-KE-009); nowhere else do those tests pass.
 # Unit tests are discovered per directory so the integration package, which
 # sits under tests/, is never picked up by the unit run.
 # A package whose test*.py files define no tests fails closed (unittest exits

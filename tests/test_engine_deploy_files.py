@@ -1,85 +1,28 @@
-"""platform-config rework 1: compose, .env and .gitignore (review B7c; security M1, M2).
+"""platform-config rework 1: .env and .gitignore (security M1).
 
-- B7c (ruling 1, amended by B7a): compose publishes Phoenix as
-  `${KE_PHOENIX_PORT:-47101}:${PHOENIX_PORT:-6006}`. The container-side
-  default must equal the port of `telemetry.collector_endpoint` in
-  config/defaults.yaml, and the host-side default must equal
-  `KE_PHOENIX_PORT` in .env.example (architecture §2.3, ADR-KE-010 Compose).
 - M1: a real `.env` (secrets) is git-ignored; `.env.example` is not.
-- M2: Phoenix (no auth) is published on 127.0.0.1 only.
+
+Removed in platform-stack-up (contradiction, resolved in the same item):
+`PhoenixDriftTest` (`test_compose_phoenix_defaults_match_config`, review B7c,
+and `test_phoenix_published_on_loopback_only`, security M2) asserted that the
+`phoenix` service publishes one port on `127.0.0.1`. By the ADR-KE-011 ports
+amendment (2026-10-19) and docs/architecture.md §2.4, phoenix publishes
+nothing and only `gateway` publishes, on `${KE_BIND_ADDRESS:-127.0.0.1}`.
+Their assertions move, generalised, to tests/test_stack_compose.py:
+- M2 (loopback publish): `test_published_ports_use_bind_address`, plus the
+  bind-address refusals in tests/test_stack_bind_address.py;
+- B7c host side (`KE_PHOENIX_PORT` default = .env.example):
+  `test_compose_defaults_match_env_example` (PS-2.2 generalises it);
+- B7c container side (phoenix's listen port = defaults.yaml collector port):
+  `test_compose_phoenix_listen_port_matches_config`.
 """
 
 from __future__ import annotations
 
-import re
 import subprocess
 import unittest
-from typing import Any
-from urllib.parse import urlsplit
 
-from tests.engine_support import DEFAULTS, ROOT, read_env_example
-
-COMPOSE = ROOT / "docker-compose.yml"
-
-
-def _compose() -> dict[str, Any]:
-    import yaml
-
-    return yaml.safe_load(COMPOSE.read_text(encoding="utf-8"))
-
-
-def _phoenix() -> dict[str, Any]:
-    return _compose()["services"]["phoenix"]
-
-
-def _default_of(text: str, var: str) -> str | None:
-    match = re.search(rf"\$\{{{var}:-([^}}]*)\}}", text)
-    return match.group(1) if match else None
-
-
-def _port_entries() -> list[Any]:
-    ports = _phoenix().get("ports", [])
-    return [p for p in ports if p is not None]
-
-
-class PhoenixDriftTest(unittest.TestCase):
-    def test_compose_phoenix_defaults_match_config(self):
-        import yaml
-
-        entries = [p if isinstance(p, str) else
-                   f"{p.get('host_ip', '')}:{p.get('published', '')}:{p.get('target', '')}"
-                   for p in _port_entries()]
-        self.assertEqual(len(entries), 1, f"phoenix should publish one port: {entries}")
-        entry = entries[0]
-
-        container = _default_of(entry, "PHOENIX_PORT")
-        host = _default_of(entry, "KE_PHOENIX_PORT")
-        self.assertIsNotNone(container, f"container side is not ${{PHOENIX_PORT:-...}}: {entry}")
-        self.assertIsNotNone(host, f"host side is not ${{KE_PHOENIX_PORT:-...}}: {entry}")
-
-        defaults = yaml.safe_load(DEFAULTS.read_text(encoding="utf-8"))
-        endpoint = urlsplit(defaults["telemetry"]["collector_endpoint"])
-        self.assertEqual(container, str(endpoint.port),
-                         "compose PHOENIX_PORT default != defaults.yaml collector port")
-        self.assertEqual(host, read_env_example().get("KE_PHOENIX_PORT"),
-                         "compose KE_PHOENIX_PORT default != .env.example KE_PHOENIX_PORT")
-
-        # Phoenix's own listen port uses the same default.
-        env = _phoenix().get("environment", {})
-        listen = env.get("PHOENIX_PORT") if isinstance(env, dict) else next(
-            (e.split("=", 1)[1] for e in env if e.startswith("PHOENIX_PORT=")), None)
-        self.assertEqual(_default_of(str(listen), "PHOENIX_PORT"), container)
-
-    def test_phoenix_published_on_loopback_only(self):  # security M2
-        entries = _port_entries()
-        self.assertTrue(entries, "phoenix publishes no port")
-        for entry in entries:
-            with self.subTest(entry=entry):
-                if isinstance(entry, dict):
-                    self.assertEqual(entry.get("host_ip"), "127.0.0.1")
-                else:
-                    self.assertTrue(str(entry).startswith("127.0.0.1:"),
-                                    f"published on every interface: {entry}")
+from tests.engine_support import ROOT
 
 
 class GitIgnoreTest(unittest.TestCase):  # security M1

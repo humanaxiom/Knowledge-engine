@@ -1,0 +1,5 @@
+# Overlay for `scripts/verify.sh full`: a verify run publishes nothing, so it
+# never collides with the live stack or a parallel verify run (§2.2).
+services:
+  gateway:
+    ports: !reset []

@@ -69,9 +69,14 @@ Work moves forward only when the current gate passes. No gate may be skipped.
 - No one — human or agent — commits directly to `main`. Every plan item gets a
   branch: `agent/<plan-item-slug>` for agent-driven work, or `feat|fix|chore/<slug>`
   for human-driven work.
-- `developer` creates/checks out the branch before writing any code, and a
+- `developer` creates/checks out the branch before writing any code. A
   `PreToolUse` hook (`scripts/hooks/block-main-commit.sh`, wired in
-  `developer.agent.md`) denies any commit/push attempted while on `main`.
+  `developer.agent.md`) is a guardrail, not a guarantee: it denies the
+  commit/push shapes it recognises while on `main`, and a command that hides
+  the verb can get past it. Known bypasses: shell variables, `eval`, git
+  aliases, encoded or quoted command text, and `gh` (which can create commits
+  or push through the API). Branch discipline rests on the rules above and on
+  human review of every merge.
 - Merging `agent/*` branches to `main` is a human action (PR + review), same as
   pushing — never automated.
 

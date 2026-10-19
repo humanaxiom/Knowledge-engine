@@ -67,6 +67,14 @@ Nothing. CI's only step is `./scripts/verify.sh full`
 (`.github/workflows/ci.yml`), and a test enforces that. If a CI-only step is
 ever added, list it here with the reason it cannot run locally.
 
+## What verify.sh runs that CI cannot
+
+Integration tests that call the model run only where the model host
+(`KE_MODEL_UPSTREAM`) is reachable. Elsewhere, including CI on GitHub runners,
+they skip with a named reason and never pass silently. A green CI run therefore
+says nothing about model behaviour; run `scripts/verify.sh full` on a machine
+that can reach the model host before approving a change that touches it.
+
 ## Generated artifacts
 
 Committed files generated from a source file, and how to regenerate them:

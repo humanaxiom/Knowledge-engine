@@ -94,8 +94,11 @@ def isolated(current: Any = None) -> Iterator[Isolated]:
 
     iso = Isolated(current if current is not None else trace.ProxyTracerProvider())
     with ExitStack() as stack:
-        stack.enter_context(mock.patch.object(trace, "get_tracer_provider",
-                                              lambda: iso.current))
+        # As in real OTel, once installed the global is what was installed
+        # (platform-stack-up security M-1: configure_tracing checks it).
+        stack.enter_context(mock.patch.object(
+            trace, "get_tracer_provider",
+            lambda: iso.installed[-1] if iso.installed else iso.current))
         stack.enter_context(mock.patch.object(trace, "set_tracer_provider",
                                               iso.installed.append))
         stack.enter_context(mock.patch.object(otlp_module, "OTLPSpanExporter", iso.otlp))
@@ -260,9 +263,10 @@ class ConfigureTracingTest(unittest.TestCase):
 class InstalledProviderTest(unittest.TestCase):
     """B1 (N10): an already-installed provider is verified, never trusted.
 
-    Pins every accepted shape and the refused ones, so an OTel upgrade that
-    moves the SDK's private processor attributes fails here instead of
-    silently accepting (architecture §2.3, rework 1)."""
+    Since platform-stack-up (PS-2.17, ADR-KE-010 M5 amendment, ruling R3)
+    "verified" means built by `engine.telemetry.build_provider`: every shape
+    built outside the engine is refused, and the engine-built ones are the
+    accepted controls."""
 
     MODES = {
         "off": base_env(HARNESS_TRACING="off"),
@@ -306,7 +310,12 @@ class InstalledProviderTest(unittest.TestCase):
                 return exc
         return None
 
-    def test_accepted_shapes(self):
+    def test_formerly_accepted_foreign_shapes_are_refused(self):
+        # Was `test_accepted_shapes`. Flipped by orchestrator ruling R3
+        # (docs/handoffs/platform-stack.md) and the ADR-KE-010 M5 amendment:
+        # a provider built outside the engine is refused whatever its
+        # exporters (PS-2.17). The same exporters inside an engine-built
+        # provider are the accepted control below.
         from opentelemetry.sdk.trace.export import (
             BatchSpanProcessor,
             ConsoleSpanExporter,
@@ -326,6 +335,28 @@ class InstalledProviderTest(unittest.TestCase):
             for mode, env in self.MODES.items():
                 with self.subTest(shape=shape, mode=mode):
                     error = self._configure(env, self._provider(build()))
+                    self.assertIsInstance(error, _refused(), f"{shape} trusted in {mode}")
+                    self.assertIn("telemetry.tracing", str(error))
+
+    def test_engine_built_shapes_are_accepted(self):
+        # The R3 control: the exporters above, in a provider from build_provider.
+        from opentelemetry.sdk.trace.export import ConsoleSpanExporter
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+        from engine.telemetry import build_provider
+
+        shapes = {
+            "console": ConsoleSpanExporter,
+            "in-memory": InMemorySpanExporter,
+            "otlp localhost": lambda: self._real_otlp(f"{LOCAL}/v1/traces"),
+            "otlp service name": lambda: self._real_otlp("http://phoenix:6006/v1/traces"),
+        }
+        for shape, make in shapes.items():
+            for mode, env in self.MODES.items():
+                with self.subTest(shape=shape, mode=mode):
+                    provider = build_provider(make())
+                    self.addCleanup(provider.shutdown)
+                    error = self._configure(env, provider)
                     self.assertIsNone(error, f"{shape} refused in {mode}: {error!r}")
 
     def test_non_local_or_unknown_exporter_is_refused(self):

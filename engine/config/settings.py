@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ipaddress import IPv4Address
 from typing import Annotated, Any, Literal
 from urllib.parse import urlsplit
 
@@ -160,6 +161,7 @@ class Settings(BaseSettings):
     )
 
     env: Literal["dev", "ci", "prod"]
+    bind_address: IPv4Address  # IPv4 only; the host address the gateway publishes on (PS-2.14)
     auth: Auth
     egress_allowlist: Annotated[list[str], NoDecode]
     stack: Stack

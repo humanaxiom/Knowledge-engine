@@ -343,6 +343,10 @@ class VerifyRequiresTestsRunTest(unittest.TestCase):
         (self.project / "scripts").mkdir(parents=True)
         shutil.copyfile(VERIFY_SH, self.project / "scripts" / "verify.sh")
         self.script("smoke.sh", "echo 'fake smoke: ok'\nexit 0\n")
+        # platform-stack-up B5 (architecture §2.2 Lint): the container half
+        # also calls scripts/lint.sh; a passing stand-in keeps these cases
+        # about the Ran/sentinel checks only.
+        self.script("lint.sh", "echo 'fake lint: ok'\nexit 0\n")
 
     def script(self, name: str, body: str) -> None:
         path = self.project / "scripts" / name

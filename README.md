@@ -21,12 +21,12 @@ See [AGENTS.md](AGENTS.md) for the full workflow and role/file conventions.
    ```bash
    uv sync
    cp .env.example .env           # .env is gitignored
-   docker compose up -d phoenix   # UI at http://localhost:47101
+   scripts/build.sh && scripts/launch.sh   # Phoenix UI at http://localhost:47101
    ```
 
-   Phoenix is published on loopback only (`127.0.0.1`); the host port is
-   `KE_PHOENIX_PORT` in `.env` (47101 if unset). The OTLP/gRPC port is not
-   published.
+   See [Running the stack](#running-the-stack). Phoenix is reached through the
+   gateway, on loopback only (`127.0.0.1`); the host port is `KE_PHOENIX_PORT`
+   in `.env` (47101 if unset). The OTLP/gRPC port is not published.
 
 3. Open the repo in [Claude Code](https://claude.com/claude-code) (the
    primary runner). The session is the orchestrator
@@ -46,6 +46,38 @@ See [AGENTS.md](AGENTS.md) for the full workflow and role/file conventions.
    [.github/pull_request_template.md](.github/pull_request_template.md)'s
    checklist.
 
+## Running the stack
+
+Prerequisites: Git, and Docker Engine 28 or later with Compose 2.24 or later.
+Linux (bash) and Windows (PowerShell) are supported; macOS is not. See
+[docs/quickstart.md](docs/quickstart.md).
+
+1. Copy `.env.example` to `.env` and set the secrets
+   (`KE_STORES__POSTGRES__PASSWORD`, `KE_STORES__NEO4J__PASSWORD`). The
+   placeholders are accepted only with `KE_ENV=dev`.
+2. Build, launch, tear down:
+
+   ```bash
+   scripts/build.sh       # PowerShell: scripts\build.ps1
+   scripts/launch.sh      # PowerShell: scripts\launch.ps1
+   scripts/teardown.sh    # PowerShell: scripts\teardown.ps1
+   scripts/teardown.sh --volumes   # also removes the data (PowerShell: -Volumes)
+   ```
+
+   `launch` creates `.env` from `.env.example` if it is missing and waits until
+   every service is healthy.
+3. The API is at http://localhost:47100 (`/healthz`) and Phoenix at
+   http://localhost:47101. Both go through the gateway, the only service that
+   publishes ports, and are bound to loopback.
+
+Exposing the ports on the LAN by setting `KE_BIND_ADDRESS` to a non-loopback
+IPv4 address is refused outside `KE_ENV=dev` (by the launch scripts, the
+gateway and the engine) until the stack has authentication.
+
+Model host: set `KE_MODEL_UPSTREAM` to `host:port` (for example
+`aria-gb10-2:PORT`) and add the host to `KE_EGRESS_ALLOWLIST`. The gateway
+refuses an upstream that is not on the allowlist.
+
 ## Verification
 
 `scripts/verify.sh` is the one verification command, locally, for agents, and
@@ -58,7 +90,11 @@ scripts/verify.sh full   # everything else, and always before a commit
 
 It needs Docker (on Windows, run it from Git Bash). It builds the `gates`
 image from `docker/gates.Dockerfile` and runs the gate scripts inside it with
-networking disabled. See [CLAUDE.md](CLAUDE.md) for which run a change needs.
+networking disabled. `full` also builds and launches a throwaway stack under a
+random project name with nothing published, runs lint, the unit tests, the
+integration tests (in the isolated `gates-it` container) and the smoke test,
+then tears the stack down. Several runs can go in parallel. See
+[CLAUDE.md](CLAUDE.md) for which run a change needs.
 
 Guards that make a green run mean something:
 
@@ -134,8 +170,11 @@ credentials (`user:pass@`). The error names the setting, never its value.
 - `.github/pull_request_template.md` — gate checklist for PR descriptions
 - `harness_telemetry/` — OpenInference span helpers and the `log_event` CLI
 - `examples/custom_agent.py` — traced pure-Python agent loop (stubbed services)
-- `docker-compose.yml` — local Phoenix and the one-shot `gates` service
-- `docker/gates.Dockerfile` — the image `verify.sh` runs the gates in
+- `docker-compose.yml` — the stack (gateway, api, worker, postgres, neo4j,
+  valkey, Phoenix) and the one-shot `gates` and `gates-it` services;
+  `docker-compose.verify.yml` is the overlay `verify.sh` uses (nothing published)
+- `docker/` — the gates, app and gateway images
+- `scripts/{build,launch,teardown}.{sh,ps1}` — run the stack
 - `.gitattributes` — forces LF line endings for shell scripts
 - `scripts/verify.sh` — the single verification entrypoint (`fast|full`)
 - `scripts/hooks/block-main-commit.sh` — `PreToolUse` hook for the branch

@@ -2,6 +2,7 @@
 # come from the environment only. Override any key with a KE_ variable, using
 # __ for nesting (KE_STORES__POSTGRES__PORT).
 env: prod                  # dev | ci | prod; fail-closed default
+bind_address: 127.0.0.1    # IPv4 only; non-loopback is refused outside dev (PS-2.14)
 auth:
   enabled: true
 egress_allowlist: []       # hosts; exact, case-folded, no wildcards

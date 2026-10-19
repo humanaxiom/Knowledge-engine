@@ -1,0 +1,409 @@
+# security scan output, platform-stack-up, 2026-10-19 (scratch compose project ke-sec-15807, torn down)
+
+## 1. Gateway entrypoint check matrix (sh /docker-entrypoint.d/10-ke-bind-check.sh in ke-gateway, --network none)
+env=dev      val=0.0.0.0                    rc=0 warning: KE_BIND_ADDRESS is not loopback; the stack is published beyond this host without authentication (dev only) 
+env=dev      val=127.0.0.1                  rc=0  
+env=dev      val=127.1.2.3                  rc=0  
+env=dev      val=127.255.255.255            rc=0  
+env=dev      val=10.0.0.5                   rc=0 warning: KE_BIND_ADDRESS is not loopback; the stack is published beyond this host without authentication (dev only) 
+env=dev      val=192.168.1.10               rc=0 warning: KE_BIND_ADDRESS is not loopback; the stack is published beyond this host without authentication (dev only) 
+env=dev      val=::1                        rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=dev      val=::                         rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=dev      val=\[::1\]                    rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=dev      val=fe80::1                    rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=dev      val=garbage                    rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=dev      val=''                         rc=0  
+env=dev      val=\                          rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=dev      val=\ 127.0.0.1                rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=dev      val=127.0.0.1\                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=dev      val=\ 0.0.0.0                  rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=dev      val=$'127.0.0.1\n0.0.0.0'      rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=dev      val=$'127.0.0.1\t'             rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=dev      val=127.0.0.01                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=dev      val=0127.0.0.1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=dev      val=127.1                      rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=dev      val=0x7f.0.0.1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=dev      val=127.0.0.1/8                rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=dev      val=127.0.0.1:80               rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=dev      val=128.0.0.1                  rc=0 warning: KE_BIND_ADDRESS is not loopback; the stack is published beyond this host without authentication (dev only) 
+env=dev      val=1127.0.0.1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=dev      val=127.0.0.1.example.com      rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=dev      val=+127.0.0.1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=dev      val=127.0.0.-1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=dev      val=127.0.0.256                rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=dev      val=localhost                  rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=dev      val=127.0.0.1\;0.0.0.0         rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=dev      val=\$\(id\)                   rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=dev      val=-1.0.0.0                   rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=0.0.0.0                    rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to start (until auth-audit lands) 
+env=ci       val=127.0.0.1                  rc=0  
+env=ci       val=127.1.2.3                  rc=0  
+env=ci       val=127.255.255.255            rc=0  
+env=ci       val=10.0.0.5                   rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to start (until auth-audit lands) 
+env=ci       val=192.168.1.10               rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to start (until auth-audit lands) 
+env=ci       val=::1                        rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=::                         rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=\[::1\]                    rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=fe80::1                    rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=garbage                    rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=''                         rc=0  
+env=ci       val=\                          rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=\ 127.0.0.1                rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=127.0.0.1\                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=\ 0.0.0.0                  rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=$'127.0.0.1\n0.0.0.0'      rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=$'127.0.0.1\t'             rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=127.0.0.01                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=0127.0.0.1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=127.1                      rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=0x7f.0.0.1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=127.0.0.1/8                rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=127.0.0.1:80               rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=128.0.0.1                  rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to start (until auth-audit lands) 
+env=ci       val=1127.0.0.1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=127.0.0.1.example.com      rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=+127.0.0.1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=127.0.0.-1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=127.0.0.256                rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=localhost                  rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=127.0.0.1\;0.0.0.0         rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=\$\(id\)                   rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci       val=-1.0.0.0                   rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=0.0.0.0                    rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to start (until auth-audit lands) 
+env=prod     val=127.0.0.1                  rc=0  
+env=prod     val=127.1.2.3                  rc=0  
+env=prod     val=127.255.255.255            rc=0  
+env=prod     val=10.0.0.5                   rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to start (until auth-audit lands) 
+env=prod     val=192.168.1.10               rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to start (until auth-audit lands) 
+env=prod     val=::1                        rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=::                         rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=\[::1\]                    rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=fe80::1                    rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=garbage                    rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=''                         rc=0  
+env=prod     val=\                          rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=\ 127.0.0.1                rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=127.0.0.1\                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=\ 0.0.0.0                  rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=$'127.0.0.1\n0.0.0.0'      rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=$'127.0.0.1\t'             rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=127.0.0.01                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=0127.0.0.1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=127.1                      rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=0x7f.0.0.1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=127.0.0.1/8                rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=127.0.0.1:80               rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=128.0.0.1                  rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to start (until auth-audit lands) 
+env=prod     val=1127.0.0.1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=127.0.0.1.example.com      rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=+127.0.0.1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=127.0.0.-1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=127.0.0.256                rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=localhost                  rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=127.0.0.1\;0.0.0.0         rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=\$\(id\)                   rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=prod     val=-1.0.0.0                   rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=0.0.0.0                    rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to start (until auth-audit lands) 
+env=\<unset\> val=127.0.0.1                  rc=0  
+env=\<unset\> val=127.1.2.3                  rc=0  
+env=\<unset\> val=127.255.255.255            rc=0  
+env=\<unset\> val=10.0.0.5                   rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to start (until auth-audit lands) 
+env=\<unset\> val=192.168.1.10               rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to start (until auth-audit lands) 
+env=\<unset\> val=::1                        rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=::                         rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=\[::1\]                    rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=fe80::1                    rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=garbage                    rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=''                         rc=0  
+env=\<unset\> val=\                          rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=\ 127.0.0.1                rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=127.0.0.1\                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=\ 0.0.0.0                  rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=$'127.0.0.1\n0.0.0.0'      rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=$'127.0.0.1\t'             rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=127.0.0.01                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=0127.0.0.1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=127.1                      rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=0x7f.0.0.1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=127.0.0.1/8                rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=127.0.0.1:80               rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=128.0.0.1                  rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to start (until auth-audit lands) 
+env=\<unset\> val=1127.0.0.1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=127.0.0.1.example.com      rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=+127.0.0.1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=127.0.0.-1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=127.0.0.256                rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=localhost                  rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=127.0.0.1\;0.0.0.0         rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=\$\(id\)                   rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\<unset\> val=-1.0.0.0                   rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=0.0.0.0                    rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to start (until auth-audit lands) 
+env=DEV      val=127.0.0.1                  rc=0  
+env=DEV      val=127.1.2.3                  rc=0  
+env=DEV      val=127.255.255.255            rc=0  
+env=DEV      val=10.0.0.5                   rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to start (until auth-audit lands) 
+env=DEV      val=192.168.1.10               rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to start (until auth-audit lands) 
+env=DEV      val=::1                        rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=::                         rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=\[::1\]                    rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=fe80::1                    rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=garbage                    rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=''                         rc=0  
+env=DEV      val=\                          rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=\ 127.0.0.1                rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=127.0.0.1\                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=\ 0.0.0.0                  rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=$'127.0.0.1\n0.0.0.0'      rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=$'127.0.0.1\t'             rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=127.0.0.01                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=0127.0.0.1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=127.1                      rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=0x7f.0.0.1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=127.0.0.1/8                rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=127.0.0.1:80               rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=128.0.0.1                  rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to start (until auth-audit lands) 
+env=DEV      val=1127.0.0.1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=127.0.0.1.example.com      rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=+127.0.0.1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=127.0.0.-1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=127.0.0.256                rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=localhost                  rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=127.0.0.1\;0.0.0.0         rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=\$\(id\)                   rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=DEV      val=-1.0.0.0                   rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=0.0.0.0                    rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to start (until auth-audit lands) 
+env=\ dev    val=127.0.0.1                  rc=0  
+env=\ dev    val=127.1.2.3                  rc=0  
+env=\ dev    val=127.255.255.255            rc=0  
+env=\ dev    val=10.0.0.5                   rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to start (until auth-audit lands) 
+env=\ dev    val=192.168.1.10               rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to start (until auth-audit lands) 
+env=\ dev    val=::1                        rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=::                         rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=\[::1\]                    rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=fe80::1                    rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=garbage                    rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=''                         rc=0  
+env=\ dev    val=\                          rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=\ 127.0.0.1                rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=127.0.0.1\                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=\ 0.0.0.0                  rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=$'127.0.0.1\n0.0.0.0'      rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=$'127.0.0.1\t'             rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=127.0.0.01                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=0127.0.0.1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=127.1                      rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=0x7f.0.0.1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=127.0.0.1/8                rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=127.0.0.1:80               rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=128.0.0.1                  rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to start (until auth-audit lands) 
+env=\ dev    val=1127.0.0.1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=127.0.0.1.example.com      rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=+127.0.0.1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=127.0.0.-1                 rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=127.0.0.256                rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=localhost                  rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=127.0.0.1\;0.0.0.0         rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=\$\(id\)                   rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=\ dev    val=-1.0.0.0                   rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+env=ci val=<unset> rc=0 
+env=prod val=<unset> rc=0 
+
+## 2. Gateway full entrypoint (nginx must not start on refusal)
+== KE_ENV=prod KE_BIND_ADDRESS=0.0.0.0: running=false exit=1
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/10-ke-bind-check.sh
+error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to start (until auth-audit lands)
+== KE_ENV=ci KE_BIND_ADDRESS=10.0.0.5: running=false exit=1
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/10-ke-bind-check.sh
+error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to start (until auth-audit lands)
+== KE_ENV=dev KE_BIND_ADDRESS=::1: running=false exit=1
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/10-ke-bind-check.sh
+error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported)
+== KE_ENV=prod KE_BIND_ADDRESS=127.0.0.1: running=true exit=0
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/10-ke-bind-check.sh
+2026/10/19 03:00:48 [notice] 1#1: start worker processes
+
+## 3. Engine Settings()+check() matrix (gates image, --network none)
+env=dev   val='0.0.0.0'              ACCEPTED parsed=0.0.0.0
+env=dev   val='127.0.0.1'            ACCEPTED parsed=127.0.0.1
+env=dev   val='127.1.2.3'            ACCEPTED parsed=127.1.2.3
+env=dev   val='10.0.0.5'             ACCEPTED parsed=10.0.0.5
+env=dev   val='::1'                  ConfigError names_var=True leaks_value=False
+env=dev   val='::'                   ConfigError names_var=True leaks_value=False
+env=dev   val='[::1]'                ConfigError names_var=True leaks_value=False
+env=dev   val='fe80::1'              ConfigError names_var=True leaks_value=False
+env=dev   val='garbage'              ConfigError names_var=True leaks_value=False
+env=dev   val=''                     ACCEPTED parsed=127.0.0.1
+env=dev   val=' '                    ConfigError names_var=True leaks_value=
+env=dev   val=' 127.0.0.1'           ConfigError names_var=True leaks_value=False
+env=dev   val='127.0.0.1 '           ConfigError names_var=True leaks_value=False
+env=dev   val='\t127.0.0.1'          ConfigError names_var=True leaks_value=False
+env=dev   val='127.0.0.01'           ConfigError names_var=True leaks_value=False
+env=dev   val='127.1'                ConfigError names_var=True leaks_value=False
+env=dev   val='0x7f.0.0.1'           ConfigError names_var=True leaks_value=False
+env=dev   val='127.0.0.1/8'          ConfigError names_var=True leaks_value=False
+env=dev   val='128.0.0.1'            ACCEPTED parsed=128.0.0.1
+env=dev   val='127.0.0.1\n'          ConfigError names_var=True leaks_value=False
+env=dev   val='0.0.0.0\n'            ConfigError names_var=True leaks_value=False
+env=dev   val='localhost'            ConfigError names_var=True leaks_value=False
+env=dev   val='2130706433'           ConfigError names_var=True leaks_value=False
+env=dev   val='::ffff:127.0.0.1'     ConfigError names_var=True leaks_value=False
+env=ci    val='0.0.0.0'              StartupRefused KE_BIND_ADDRESS
+env=ci    val='127.0.0.1'            ACCEPTED parsed=127.0.0.1
+env=ci    val='127.1.2.3'            ACCEPTED parsed=127.1.2.3
+env=ci    val='10.0.0.5'             StartupRefused KE_BIND_ADDRESS
+env=ci    val='::1'                  ConfigError names_var=True leaks_value=False
+env=ci    val='::'                   ConfigError names_var=True leaks_value=False
+env=ci    val='[::1]'                ConfigError names_var=True leaks_value=False
+env=ci    val='fe80::1'              ConfigError names_var=True leaks_value=False
+env=ci    val='garbage'              ConfigError names_var=True leaks_value=False
+env=ci    val=''                     ACCEPTED parsed=127.0.0.1
+env=ci    val=' '                    ConfigError names_var=True leaks_value=
+env=ci    val=' 127.0.0.1'           ConfigError names_var=True leaks_value=False
+env=ci    val='127.0.0.1 '           ConfigError names_var=True leaks_value=False
+env=ci    val='\t127.0.0.1'          ConfigError names_var=True leaks_value=False
+env=ci    val='127.0.0.01'           ConfigError names_var=True leaks_value=False
+env=ci    val='127.1'                ConfigError names_var=True leaks_value=False
+env=ci    val='0x7f.0.0.1'           ConfigError names_var=True leaks_value=False
+env=ci    val='127.0.0.1/8'          ConfigError names_var=True leaks_value=False
+env=ci    val='128.0.0.1'            StartupRefused KE_BIND_ADDRESS
+env=ci    val='127.0.0.1\n'          ConfigError names_var=True leaks_value=False
+env=ci    val='0.0.0.0\n'            ConfigError names_var=True leaks_value=False
+env=ci    val='localhost'            ConfigError names_var=True leaks_value=False
+env=ci    val='2130706433'           ConfigError names_var=True leaks_value=False
+env=ci    val='::ffff:127.0.0.1'     ConfigError names_var=True leaks_value=False
+env=prod  val='0.0.0.0'              StartupRefused KE_BIND_ADDRESS
+env=prod  val='127.0.0.1'            ACCEPTED parsed=127.0.0.1
+env=prod  val='127.1.2.3'            ACCEPTED parsed=127.1.2.3
+env=prod  val='10.0.0.5'             StartupRefused KE_BIND_ADDRESS
+env=prod  val='::1'                  ConfigError names_var=True leaks_value=False
+env=prod  val='::'                   ConfigError names_var=True leaks_value=False
+env=prod  val='[::1]'                ConfigError names_var=True leaks_value=False
+env=prod  val='fe80::1'              ConfigError names_var=True leaks_value=False
+env=prod  val='garbage'              ConfigError names_var=True leaks_value=False
+env=prod  val=''                     ACCEPTED parsed=127.0.0.1
+env=prod  val=' '                    ConfigError names_var=True leaks_value=
+env=prod  val=' 127.0.0.1'           ConfigError names_var=True leaks_value=False
+env=prod  val='127.0.0.1 '           ConfigError names_var=True leaks_value=False
+env=prod  val='\t127.0.0.1'          ConfigError names_var=True leaks_value=False
+env=prod  val='127.0.0.01'           ConfigError names_var=True leaks_value=False
+env=prod  val='127.1'                ConfigError names_var=True leaks_value=False
+env=prod  val='0x7f.0.0.1'           ConfigError names_var=True leaks_value=False
+env=prod  val='127.0.0.1/8'          ConfigError names_var=True leaks_value=False
+env=prod  val='128.0.0.1'            StartupRefused KE_BIND_ADDRESS
+env=prod  val='127.0.0.1\n'          ConfigError names_var=True leaks_value=False
+env=prod  val='0.0.0.0\n'            ConfigError names_var=True leaks_value=False
+env=prod  val='localhost'            ConfigError names_var=True leaks_value=False
+env=prod  val='2130706433'           ConfigError names_var=True leaks_value=False
+env=prod  val='::ffff:127.0.0.1'     ConfigError names_var=True leaks_value=False
+unset -> 127.0.0.1
+
+## 4. launch.sh matrix (temp copy, fake docker)
+procenv env=dev   val=0.0.0.0            -> warning: KE_BIND_ADDRESS is not loopback; the stack will be published beyond this host without authentication (dev only) FAKE-DOCKER-UP compose up -d --no-build --wait stack is up: 
+procenv env=dev   val=127.0.0.1          -> FAKE-DOCKER-UP compose up -d --no-build --wait stack is up:   api:     http://127.0.0.1:47100 
+procenv env=dev   val=127.9.9.9          -> FAKE-DOCKER-UP compose up -d --no-build --wait stack is up:   api:     http://127.9.9.9:47100 
+procenv env=dev   val=10.0.0.5           -> warning: KE_BIND_ADDRESS is not loopback; the stack will be published beyond this host without authentication (dev only) FAKE-DOCKER-UP compose up -d --no-build --wait stack is up: 
+procenv env=dev   val=::1                -> error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+procenv env=dev   val=::                 -> error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+procenv env=dev   val=garbage            -> error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+procenv env=dev   val=''                 -> FAKE-DOCKER-UP compose up -d --no-build --wait stack is up:   api:     http://127.0.0.1:47100 
+procenv env=dev   val=\                  -> error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+procenv env=dev   val=\ 127.0.0.1        -> error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+procenv env=dev   val=127.0.0.01         -> error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+procenv env=dev   val=128.0.0.1          -> warning: KE_BIND_ADDRESS is not loopback; the stack will be published beyond this host without authentication (dev only) FAKE-DOCKER-UP compose up -d --no-build --wait stack is up: 
+procenv env=dev   val=\$\(touch\ /tmp/pwn\) -> error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+procenv env=ci    val=0.0.0.0            -> error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) 
+procenv env=ci    val=127.0.0.1          -> FAKE-DOCKER-UP compose up -d --no-build --wait stack is up:   api:     http://127.0.0.1:47100 
+procenv env=ci    val=127.9.9.9          -> FAKE-DOCKER-UP compose up -d --no-build --wait stack is up:   api:     http://127.9.9.9:47100 
+procenv env=ci    val=10.0.0.5           -> error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) 
+procenv env=ci    val=::1                -> error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+procenv env=ci    val=::                 -> error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+procenv env=ci    val=garbage            -> error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+procenv env=ci    val=''                 -> FAKE-DOCKER-UP compose up -d --no-build --wait stack is up:   api:     http://127.0.0.1:47100 
+procenv env=ci    val=\                  -> error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+procenv env=ci    val=\ 127.0.0.1        -> error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+procenv env=ci    val=127.0.0.01         -> error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+procenv env=ci    val=128.0.0.1          -> error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) 
+procenv env=ci    val=\$\(touch\ /tmp/pwn\) -> error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+procenv env=prod  val=0.0.0.0            -> error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) 
+procenv env=prod  val=127.0.0.1          -> FAKE-DOCKER-UP compose up -d --no-build --wait stack is up:   api:     http://127.0.0.1:47100 
+procenv env=prod  val=127.9.9.9          -> FAKE-DOCKER-UP compose up -d --no-build --wait stack is up:   api:     http://127.9.9.9:47100 
+procenv env=prod  val=10.0.0.5           -> error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) 
+procenv env=prod  val=::1                -> error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+procenv env=prod  val=::                 -> error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+procenv env=prod  val=garbage            -> error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+procenv env=prod  val=''                 -> FAKE-DOCKER-UP compose up -d --no-build --wait stack is up:   api:     http://127.0.0.1:47100 
+procenv env=prod  val=\                  -> error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+procenv env=prod  val=\ 127.0.0.1        -> error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+procenv env=prod  val=127.0.0.01         -> error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+procenv env=prod  val=128.0.0.1          -> error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) 
+procenv env=prod  val=\$\(touch\ /tmp/pwn\) -> error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+envfile KE_BIND_ADDRESS=0.0.0.0            -> error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) 
+envfile export\ KE_BIND_ADDRESS=0.0.0.0    -> FAKE-DOCKER-UP compose up -d --no-build --wait stack is up:   api:     http://127.0.0.1:47100 
+envfile KE_BIND_ADDRESS\ =\ 0.0.0.0        -> FAKE-DOCKER-UP compose up -d --no-build --wait stack is up:   api:     http://127.0.0.1:47100 
+envfile KE_BIND_ADDRESS=\"0.0.0.0\"        -> error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) 
+envfile KE_BIND_ADDRESS=\'0.0.0.0\'        -> error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) 
+envfile KE_BIND_ADDRESS=0.0.0.0\ #\ c      -> error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) 
+envfile $'KE_BIND_ADDRESS=0.0.0.0\r'       -> error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) 
+envfile \ \ KE_BIND_ADDRESS=0.0.0.0        -> error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) 
+envfile KE_BIND_ADDRESS:\ 0.0.0.0          -> FAKE-DOCKER-UP compose up -d --no-build --wait stack is up:   api:     http://127.0.0.1:47100 
+envfile no-KE_ENV bind=0.0.0.0 -> warning: KE_BIND_ADDRESS is not loopback; the stack will be published beyond this host without authentication (dev only) FAKE-DOCKER-UP compose up -d --no-build --wait stack is up: 
+envfile export-KE_ENV=prod bind=0.0.0.0 -> warning: KE_BIND_ADDRESS is not loopback; the stack will be published beyond this host without authentication (dev only) FAKE-DOCKER-UP compose up -d --no-build --wait stack is up: 
+
+## 5. compose interpolation of env-file variants (docker compose config, KE_ENV=prod)
+export KE_BIND_ADDRESS=0.0.0.0 -> host_ip 0.0.0.0; 'KE_BIND_ADDRESS = 0.0.0.0' -> host_ip 0.0.0.0; 'KE_BIND_ADDRESS: 0.0.0.0' -> host_ip 0.0.0.0; 'export KE_ENV=prod' -> KE_ENV prod
+process env ' 0.0.0.0' / 'garbage' / '127.1' -> compose error 'invalid ip address'; '' -> 127.0.0.1; '::' -> host_ip ::
+
+## 6. M5 provider shapes (fresh interpreter per shape; sink_during_startup = spans/dials the foreign sink got during startup())
+HARNESS_TRACING=off  proxies                            REFUSED(telemetry.tracing) sink_during_startup=0 sink_after_probe=8 global=TracerProvider
+HARNESS_TRACING=off  rerouting_adapter                  REFUSED(telemetry.tracing) sink_during_startup=0 sink_after_probe=8 global=TracerProvider
+HARNESS_TRACING=off  rewritten_endpoint                 REFUSED(telemetry.tracing) sink_during_startup=0 sink_after_probe=8 global=TracerProvider
+HARNESS_TRACING=off  processor_subclass                 REFUSED(telemetry.tracing) sink_during_startup=0 sink_after_probe=1 global=TracerProvider
+HARNESS_TRACING=off  session_subclass                   REFUSED(telemetry.tracing) sink_during_startup=0 sink_after_probe=8 global=TracerProvider
+HARNESS_TRACING=off  decoy_sdk_subclass                 REFUSED(telemetry.tracing) sink_during_startup=0 sink_after_probe=1 global=D
+HARNESS_TRACING=off  inmemory_foreign                   REFUSED(telemetry.tracing) sink_during_startup=0 sink_after_probe=1 global=TracerProvider
+HARNESS_TRACING=off  decoy_eq_hash_forgery              ACCEPTED sink_during_startup=5 sink_after_probe=6 global=D
+HARNESS_TRACING=off  proxy_subclass                     ACCEPTED sink_during_startup=5 sink_after_probe=6 global=EvilProxy
+HARNESS_TRACING=off  build_provider_foreign_exporter    ACCEPTED sink_during_startup=5 sink_after_probe=6 global=TracerProvider
+HARNESS_TRACING=off  engine_built_then_extra_processor  ACCEPTED sink_during_startup=5 sink_after_probe=6 global=TracerProvider
+HARNESS_TRACING=off  registry_add_private               ACCEPTED sink_during_startup=5 sink_after_probe=6 global=TracerProvider
+HARNESS_TRACING=off  control_engine_built               ACCEPTED sink_during_startup=0 sink_after_probe=0 global=TracerProvider
+HARNESS_TRACING=otlp proxies                            REFUSED(telemetry.tracing) sink_during_startup=0 sink_after_probe=8 global=TracerProvider
+HARNESS_TRACING=otlp rerouting_adapter                  REFUSED(telemetry.tracing) sink_during_startup=0 sink_after_probe=8 global=TracerProvider
+HARNESS_TRACING=otlp rewritten_endpoint                 REFUSED(telemetry.tracing) sink_during_startup=0 sink_after_probe=8 global=TracerProvider
+HARNESS_TRACING=otlp processor_subclass                 REFUSED(telemetry.tracing) sink_during_startup=0 sink_after_probe=1 global=TracerProvider
+HARNESS_TRACING=otlp session_subclass                   REFUSED(telemetry.tracing) sink_during_startup=0 sink_after_probe=8 global=TracerProvider
+HARNESS_TRACING=otlp decoy_sdk_subclass                 REFUSED(telemetry.tracing) sink_during_startup=0 sink_after_probe=1 global=D
+HARNESS_TRACING=otlp inmemory_foreign                   REFUSED(telemetry.tracing) sink_during_startup=0 sink_after_probe=1 global=TracerProvider
+HARNESS_TRACING=otlp decoy_eq_hash_forgery              ACCEPTED sink_during_startup=5 sink_after_probe=6 global=D
+HARNESS_TRACING=otlp proxy_subclass                     ACCEPTED sink_during_startup=5 sink_after_probe=6 global=EvilProxy
+HARNESS_TRACING=otlp build_provider_foreign_exporter    ACCEPTED sink_during_startup=5 sink_after_probe=6 global=TracerProvider
+HARNESS_TRACING=otlp engine_built_then_extra_processor  ACCEPTED sink_during_startup=5 sink_after_probe=6 global=TracerProvider
+HARNESS_TRACING=otlp registry_add_private               ACCEPTED sink_during_startup=5 sink_after_probe=6 global=TracerProvider
+HARNESS_TRACING=otlp control_engine_built               ACCEPTED sink_during_startup=0 sink_after_probe=0 global=TracerProvider
+
+## 7. Network runtime (scratch project)
+networks: backend internal=true (phoenix, api, neo4j, postgres, gateway, worker, valkey); edge internal=false (gateway only)
+gateway PortBindings: 8100->127.0.0.1:47190, 8101->127.0.0.1:47191; no other service publishes
+users: api/worker uid=10001(ke), gateway uid=101(nginx), ke-gates image root (unset)
+gates-it probe:
+1.1.1.1:443 Network is unreachable | 8.8.8.8:53 unreachable | 169.254.169.254:80 unreachable | 192.168.96.1 (edge gw) unreachable
+host.docker.internal / gateway.docker.internal / example.com / aria-gb10-2: name resolution failure
+192.168.80.1:47190 Connection refused (host stack answered) | 192.168.80.1:29800 timed out (DNAT to other bridge dropped)
+gateway:8100/8101/8102, postgres:5432, api:8080 CONNECTED
+host-bound listener (network=host, 0.0.0.0:47199) reached from api container via backend bridge gateway 192.168.80.1: CONNECTED b'HOSTSVC\n'
+gateway model forward with KE_MODEL_UPSTREAM=one.one.one.one:80, KE_EGRESS_ALLOWLIST=gateway: gates-it got 'HTTP/1.1 409 Conflict' from Cloudflare (forwarded, allowlist not consulted)
+KE_MODEL_UPSTREAM='127.0.0.1:1"; } server { listen 9999; proxy_pass 10.9.9.9:22; } map $server_port $ke_x { default "x': nginx started, extra stream server listening on 0.0.0.0:9999
+LAN check from host: 47190/47191 closed on 192.168.1.80, 100.75.144.77, 172.22.16.1, 172.19.32.1; open on 127.0.0.1; control 0.0.0.0-published port 29800 open on all
+
+## 8. Images
+registry index digest == pinned digest for: postgres:16-bookworm, neo4j:5-community, valkey/valkey:8-alpine, arizephoenix/phoenix:version-20.22.0, nginxinc/nginx-unprivileged:1.28-alpine, python:3.12-slim-bookworm, ghcr.io/astral-sh/uv:0.11.21 (docker buildx imagetools inspect)
+ke-app: /app = config engine harness_telemetry pyproject.toml uv.lock (root-owned, read-only to ke); no .env* anywhere; only 'changeme' hit is the PLACEHOLDER_PREFIX constant in engine/startup.py; image ENV carries no secrets
+ke-gateway: no .env*; /docker-entrypoint.d root-owned 0755; ENV only NGINX_ENTRYPOINT_LOCAL_RESOLVERS, NGINX_ENVSUBST_FILTER
+empty POSTGRES_PASSWORD -> postgres refuses to init; NEO4J_AUTH=neo4j/ -> neo4j 'Invalid value'
+docker scout: unavailable (not logged in); image CVE scan not run
+
+## 9. pip-audit (uv export --locked --no-dev, --require-hashes)
+No known vulnerabilities found
+
+## 10. secret/profile-path grep over 56 changed+untracked files (plain and JSON-escaped)
+one hit: docs/evidence/platform-stack/windows-proof.txt:565, the Windows user-profile temp path of the driver script (value not repeated here)

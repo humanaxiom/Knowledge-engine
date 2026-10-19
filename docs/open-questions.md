@@ -114,7 +114,41 @@ PS-Q1–PS-Q11 (`docs/requirements.md` § "Item: platform-skeleton"); the
 orchestrator ruled the same day (`docs/handoffs/platform-skeleton.md`,
 "orchestrator: split accepted, rulings"). The ones still open come first.
 
-Open: none.
+Resolved by the orchestrator 2026-10-19 (`docs/handoffs/platform-stack.md`,
+"orchestrator: split + rulings Q33, Q34" and "rulings on architect R1–R4"):
+
+- **Q33. Resolved (orchestrator ruling).** **A33:** (a) the build/launch
+  scripts (bash and PowerShell) also refuse a non-loopback `KE_BIND_ADDRESS`
+  outside `dev` before `docker compose up`, in addition to the engine's
+  startup refusal; the gateway image's entrypoint bind check refuses under
+  the same rule (ruling R4), and is the check that stops the publish;
+  (b) loopback means any address in `127.0.0.0/8`, plus `::1`;
+  `KE_BIND_ADDRESS` itself is IPv4 only (architect, §2.4), so IPv6 binding is
+  out of scope and an IPv6 value is rejected as not IPv4; (c) in `dev` each
+  check warns naming `KE_BIND_ADDRESS` and continues. Settled in PS-2.14.
+  Original question, kept for the record: The port
+  ruling (umbrella, 2026-10-19) says a non-loopback `KE_BIND_ADDRESS` is
+  refused at startup outside `dev`. Not settled:
+  (a) *Where.* The engine's startup check runs in `api` and `worker`, but
+  `gateway` publishes the ports whether or not `api` starts, so a refused
+  `api` still leaves the gateway (and Phoenix behind it) on the LAN. Should
+  the launch scripts (bash and PowerShell) also refuse before
+  `docker compose up`, or is the `api` refusal enough until auth-audit?
+  (b) *Loopback set.* Is it exactly `127.0.0.1` and `::1` (the addresses
+  Docker accepts as a bind host), or the whole `127.0.0.0/8`? PS-Q3's list
+  also has `localhost`, which Docker does not accept as a bind address.
+  (c) *Dev warning.* Should `KE_ENV=dev` with a non-loopback value log a
+  warning naming `KE_BIND_ADDRESS`, as PS-1.5 does for auth off and hidden
+  trace content?
+- **Q34. Resolved (orchestrator ruling).** **A34:** accepted as the analyst
+  proposed: the recorded Windows run must use the branch head, or the diff
+  since must change no script, compose file or Dockerfile; otherwise it is
+  repeated before commit. Settled in PS-2.9. Original question, kept for the
+  record: Q31 accepts a
+  recorded run on the human's Windows host. If scripts, compose files or
+  Dockerfiles change after the run, must it be repeated before commit? PS-2.9
+  currently requires it to match the branch head, or the diff since to touch
+  none of those files.
 
 Resolved by the orchestrator 2026-10-18 (`docs/handoffs/platform-config.md`,
 "orchestrator: rulings on analyst Q31, Q32 and casing"):

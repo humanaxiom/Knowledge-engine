@@ -1,0 +1,23 @@
+# 2026-10-19: analyst applies the split, Q33, Q34 and R1–R4
+
+- **Asked:** record the 2a/2b split with outcome-metric lines; apply Q33, Q34, R1 (test names), R2 (drop the socket-guard name), R3 (M5 into 2a); mark Q33 and Q34 resolved. Only `docs/requirements.md` and `docs/open-questions.md` were touched.
+- **Split:** PS-2 "Split into 2a and 2b" now lists the accepted criteria. 2a `platform-stack-up` has PS-2.17 (first unit), PS-2.1–2.4, PS-2.7 *Mechanism* + *No route out, at runtime*, 2.9, 2.10–2.12, 2.14–2.16, 2.19, 2.20 and PS-1.9 *Not shipped*. 2b `platform-stack-ready` has PS-2.5, 2.6, the rest of 2.7, 2.8, 2.13, 2.18 and the PS-3.4 measurement. Each has its own outcome-metric line, and the umbrella table has a note on row 2.
+- **Q33 → PS-2.14 rewritten:**
+  - Loopback means 127.0.0.0/8 plus ::1. `KE_BIND_ADDRESS` is IPv4 only, so `::` and `::1` are rejected as not IPv4 in every env. IPv6 is out of scope.
+  - One rule is applied in three places: engine refusal 6, the gateway entrypoint check (R4), and the bash and PowerShell launch scripts before `compose up`. Outside dev a non-loopback value is refused. In dev it warns and continues. A loopback, unset or empty value continues silently.
+  - The cases now include `127.0.0.2`.
+  - Tests: `test_startup_refuses_non_loopback_bind_address`, `test_gateway_bind_check_refuses_non_loopback`, the new `test_launch_script_refuses_non_loopback_bind_address` (bash, fast), and a PowerShell refusal case in the recorded Windows run (PS-2.9). `test_compose_passes_bind_address_to_app` now covers `gateway` too.
+- **Q34 → PS-2.9:** the staleness rule is cited as ruled. The Windows evidence must also show the PowerShell refusal case.
+- **R1 names (one each):**
+  - `test_published_ports_use_bind_address` (was `..._form`). It also asserts that only `gateway` has `ports:`, per §2.4.
+  - `test_compose_defaults_match_env_example` (was `test_compose_port_defaults_match_env_example`). It is widened to every `${VAR:-default}`.
+  - `test_gates_it_has_no_route_out` is new under PS-2.7 (integration, full, in 2a).
+- **R2:** `test_socket_guard_blocks_outbound` no longer appears in requirements.md or open-questions.md. The record-keeping text says "in-process socket-guard test" instead.
+- **R3 → PS-2.17 rewritten:**
+  - Only an engine-built provider is accepted, with 4 subtest shapes.
+  - First failing test: `test_provider_not_built_by_engine_is_refused`. Control: `test_engine_built_provider_is_accepted`.
+  - The flip of `InstalledProviderTest`'s accepted cases and of `test_local_otlp_that_ignores_proxy_env_is_accepted` to "refused" is recorded as authorised by R3.
+  - The old name `test_installed_exporter_rerouting_is_refused` is kept only as superseded record.
+- **Orchestrator/architect, fix:** `docs/architecture.md` lines ~243, ~798 and ~1531 and handoff line 12 still name `test_socket_guard_blocks_outbound`. They are outside the files I may touch.
+- **Open questions:** none new.
+- **Evidence:** `docs/evidence/platform-stack/analyst-rulings-verify-fast.txt` (`scripts/verify.sh fast`: PASS; the tester's RED tests were not present or not failing at run time).

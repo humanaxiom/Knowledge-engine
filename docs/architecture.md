@@ -87,14 +87,44 @@ upstream forward to the configured model host.
 | Network | `internal` | Members |
 |---|---|---|
 | `edge` | no | `gateway` |
-| `backend` | yes (no route out) | every stack service, `gates-it`, `probe` |
+| `backend` | yes (no route out), and `gateway_mode_ipv4: isolated` (no route to the Docker host; rework 1, M-2) | every stack service, `gates-it`, `probe` |
 | `offline` | yes | `dind`, `offline-client` |
+
+**`backend` is isolated from the Docker host too (amended, platform-stack
+rework 1, security M-2).** `internal: true` removes the route out, but the
+bridge still gives the host an address on `backend` (the bridge gateway), so
+any backend container could reach a host service bound to `0.0.0.0`, such as
+a local model server, a proxy or sshd, and bypass the gateway and the
+allowlist. `backend` therefore also sets
+```yaml
+driver_opts:
+  com.docker.network.bridge.gateway_mode_ipv4: isolated
+```
+and Docker then gives the bridge no host address. This needs **Docker Engine
+28 or later**. Older engines ignore the option without an error, so
+`launch.sh`/`.ps1` refuse anything but a numeric Engine version ≥ 28 (§2.4
+Scripts; rework 2) and `docs/quickstart.md` lists Engine ≥ 28 as a
+prerequisite.
+
+**No fixed address on `backend` (rework 2, review R1-B1 option (ii),
+security M-4).** `backend` has **no `ipam` block**: no subnet, no
+`ip_range`, and no address literal anywhere in compose, config or tests.
+Docker picks the subnet from its default pools per project. So parallel
+stacks from this compose file are supported again: the live stack, any
+number of `ke-verify-*` runs, and stacks in other worktrees each get their
+own `<project>_backend` and never hit "Pool overlaps". (Two *live* stacks
+still need different published ports; verify publishes none.) The runtime
+proof of isolation is the network's own configuration, checked from the
+host (§2.2 No route out). `edge` is unchanged:
+the gateway needs its route out. `offline` (platform-offline) should take the
+same option when it is created; that is recorded here for that item, not done
+in this one.
 
 | Service | Image (digest pinned at implementation) | Networks | Restart | Role |
 |---|---|---|---|---|
-| `gateway` | `ke-gateway`, built `FROM` the official nginx image (unprivileged variant) with the config baked in | `edge`, `backend` | `unless-stopped` | Publishes the only host ports. Reverse-proxies `api` and `phoenix`, and forwards one TCP port to the model host |
+| `gateway` | `ke-gateway`, built `FROM` the official nginx image (unprivileged variant) with the config baked in | `edge`, `backend` | `unless-stopped` | Publishes the only host ports, on `KE_BIND_ADDRESS` (loopback by default; §2.4). Reverse-proxies `api` and `phoenix`, and forwards one TCP port to the model host. Its entrypoint refuses an upstream that is not on the allowlist (§2.4) |
 | `api` | `ke-app` (`docker/app.Dockerfile`): Python 3.12, FastAPI, uvicorn | `backend` | `unless-stopped` | HTTP API, server-rendered UI, `/healthz`, `/readyz` |
-| `worker` | `ke-app` | `backend` | `unless-stopped` | RQ worker (ADR-KE-011). Only the no-op job for now |
+| `worker` | `ke-app` | `backend` | `unless-stopped` | RQ worker (ADR-KE-011). Only the no-op job for now. In 2a it is a placeholder, `python -m engine.worker`, that runs `startup()` and then idles (§2.4 Worker) |
 | `postgres` | official `postgres`, major 16 | `backend` | `unless-stopped` | records, revisions, ledger, policy book, review queue, audit chain |
 | `neo4j` | official `neo4j`, 5.x community | `backend` | `unless-stopped` | graph and vector indexes (ADR-KE-002) |
 | `valkey` | `valkey/valkey`, major 8, AOF on | `backend` | `unless-stopped` | job queue only |
@@ -173,12 +203,18 @@ No gate command is ever written in `verify.sh`
   `ke-verify-<random suffix>`. It reads `--env-file .env.example`, then
   `--env-file config/verify.env`, which holds only the verify overrides.
   `docker-compose.verify.yml` resets every `ports:` to an empty list (`!reset`,
-  Compose ≥ 2.24), so a verify run publishes nothing. It therefore never
-  collides with the live stack or with a parallel verify run.
+  Compose ≥ 2.24), so a verify run publishes nothing. `backend` has no fixed
+  subnet (§2.1, rework 2), so each project's networks come from Docker's
+  default pools. A verify run therefore never collides with the live stack
+  or with a parallel verify run.
 - **The real model host, through the gateway, skipped when unreachable (Q30,
   F-A, Q7).** `config/verify.env` does **not** override `KE_MODEL_UPSTREAM`,
   so the verify stack's gateway (on `edge`) forwards to the configured host
-  from `.env.example` (`aria-gb10-2` for this deployment). `gates-it` itself
+  from `.env.example`. (Rework 2, R2: `.env.example` now leaves
+  `KE_MODEL_UPSTREAM` empty, so as written a verify run has no upstream and
+  the model-calling tests skip with a named reason. How an operator points a
+  local verify run at `aria-gb10-2` is open, flagged to the orchestrator.)
+  `gates-it` itself
   has no route out; the gateway forward is its only path to the model host.
   Model-calling integration tests:
   - first run one reachability probe per test run: `GET {compose.base_url}/models`
@@ -236,21 +272,127 @@ sequenceDiagram
   a container. Integration tests make a store "down" in process, by pointing
   one store's settings at a closed port on a stack host. The real stop and
   start of a container happens in `smoke.sh` on the host.
-- **Socket guard.** The `tests/integration` socket guard (ADR-KE-009) allows
-  only the (host, port) pairs of stack services, which now include the
-  gateway's model port. It is the test-side layer; `backend` being
-  `internal: true` is the network layer behind it (F-A), so a raw connection
-  out of `gates-it` fails even if the guard is bypassed.
+- **No route out, proven at runtime (amended 2026-10-19, F-A drift fix).**
+  `backend` being `internal: true` is the boundary for `gates-it`. The earlier
+  `tests/integration` socket-guard fixture is dropped: it could not see libpq
+  (psycopg connects in C), and since F-A the network layer already refuses
+  every raw connection out. The in-process socket-guard test that went with
+  it was superseded in the requirements (PS-2.7). Two tests prove the boundary:
+  - **Statically:** `test_gates_it_internal_only_and_no_socket` (fast), and
+    `test_backend_network_isolated_from_host` (fast, rework 1): `backend` has
+    `internal: true` and the driver option
+    `com.docker.network.bridge.gateway_mode_ipv4: isolated`.
+  - **At runtime:** `test_gates_it_has_no_route_out` (PS-2.7). Amended in
+    rework 1 (review B1, security M-2), because "the connect failed" alone
+    also passes when a route exists and nothing answers:
+    1. A raw TCP connect from `gates-it` to a TEST-NET-1 address must fail
+       **fast and with a no-route errno**: `errno in {ENETUNREACH,
+       EHOSTUNREACH}`, not `TimeoutError`, within a tight bound (about 2 s,
+       well under the socket timeout). A timeout means packets left, so it
+       fails the test.
+    2. *(Removed in rework 2, R1-B1 option (ii).)* The in-container probe of
+       the `backend` bridge-gateway address is gone, with its derived `.1`
+       address. Host isolation is proven by the host-side check below.
+    3. The control: `gateway`'s model listen port accepts.
+  - **Host isolation, at runtime (rework 2, R1-B1 option (ii); closes
+    security M-4).** The host half of `smoke.sh` (so every `verify.sh full`,
+    for its own `ke-verify-*` project, and every live smoke) asserts that the
+    project's `backend` network carries the option:
+    - The project name is the `name:` line of `docker compose <args> config`
+      (the same argument list launch uses), so `COMPOSE_PROJECT_NAME` and
+      the compose file's top-level `name` both resolve as compose resolves
+      them, and the script names no project literal.
+    - `docker network inspect <project>_backend --format '{{index .Options
+      "com.docker.network.bridge.gateway_mode_ipv4"}}'` must print exactly
+      `isolated`. A missing network, an inspect error, an empty value or any
+      other value fails the smoke, naming the network and the option.
+    - It also checks `.Internal` is `true` on the same inspect.
+    - **Why not probe an address from inside:** a connect from a container
+      can only show that one address did not answer, never that the host
+      has no address on the bridge. Measured in this item:
+      - With `isolated`, Docker hands the subnet's `.1` to a container, so a
+        `.1` probe can hit a stack service (rework 1 saw an RST from one).
+      - Without `isolated` and with an `ip_range`, the host's bridge address
+        is the first `ip_range` address, not `.1`, so the probe missed it
+        and passed with isolation lost (security M-4, control 3).
+      - On Docker Desktop the host side is a VM, and probes of `.1` give the
+        same timeouts and errnos with and without `isolated` (review
+        rework 1, server 29.5.2), so no errno discriminates.
+      The daemon's network configuration is the authoritative source, and
+      the host half can read it without a Docker socket in any container.
+    - The static `test_backend_network_isolated_from_host` stays. Together
+      they cover both "the compose file lost the option" and "the engine
+      ignored it".
+    - First tests (fast, fake docker): the smoke host half fails when
+      inspect prints an empty value, `nat`, or exits non-zero, and passes on
+      `isolated`; it inspects `<project>_backend` for the project that
+      `config` names (`ke-verify-123` in the fixture). The real run in
+      `verify.sh full` is the integration proof; a mutant compose file
+      without the option must make it fail (reviewer measures).
+
+  The allowlist layer is proven separately, by
+  `test_egress_allowlist_holds_with_network_access`.
 - **No runtime installs.** The gates anchor sets `UV_OFFLINE=1` alongside
   `--locked`, so a verify run can never pass locally only because it fetched
   a dependency that CI could not.
 - **Container health.** Health of the running containers is proven by
   `launch.sh --wait`, which fails unless every healthcheck passes, and by the
   probe.
-- **Lint.** `lint.sh` runs shellcheck over `scripts/**/*.sh` and
-  PSScriptAnalyzer over `scripts/*.ps1`. It runs in both modes. The gates image
-  gains `shellcheck` and `pwsh` with a version-pinned PSScriptAnalyzer, plus the
-  Docker CLI and compose plugin, which `offline-client` needs.
+- **Lint (made concrete in rework 1, review B5).** `scripts/lint.sh` runs
+  shellcheck over `scripts/**/*.sh` and `docker/**/*.sh`, and PSScriptAnalyzer
+  (`Invoke-ScriptAnalyzer`, severity Warning and Error, any finding is
+  non-zero) over `scripts/*.ps1`. It runs **inside the gates image only**,
+  never on the host. The container half of `verify.sh` calls `scripts/lint.sh`
+  and then `scripts/test.sh`, in both modes, so `gates` (fast) and `gates-it`
+  (full) both lint. The command lines stay in `lint.sh`
+  (`test_verify_sh_has_no_inlined_commands`).
+  - Gates image: `shellcheck` from the pinned Debian base's apt; `pwsh` from a
+    version-pinned release archive checked by SHA-256; PSScriptAnalyzer saved
+    at a pinned `-RequiredVersion` at **build** time. With `UV_OFFLINE=1` and
+    `network_mode: none`, nothing is fetched at gate time.
+  - **Paths never become code (rework 2, security L-7).** `lint.sh` never
+    builds PowerShell source from file names. The `-Command` text is one
+    fixed single-quoted shell constant with no expansion in it. The `.ps1`
+    paths reach it only through the environment: `lint.sh` exports
+    `KE_LINT_PS1_FILES`, the paths joined by newlines, and the fixed command
+    splits `$env:KE_LINT_PS1_FILES` and calls `Invoke-ScriptAnalyzer -Path`
+    on each as a value. A path containing a newline is refused (exit
+    non-zero) before pwsh runs. (`pwsh -Command` joins trailing arguments
+    into the command text, so arguments are not used; a separate `-File`
+    analyzer script was not chosen, because it would be one more `.ps1` to
+    keep lint-covered.) First tests (fast): a static test that the
+    `-Command` argument in `lint.sh` is a literal with no `$`-expansion by
+    the shell; a behavioural test that a `.ps1` named with the U+2019 payload
+    from L-7 (and the U+0027 form) is linted and leaves no marker file.
+  - Inline `# shellcheck disable=` comments name the rule and give a reason;
+    a blanket disable is a review finding.
+  - The Docker CLI and compose plugin, which `offline-client` needs, arrive
+    with platform-offline, not here.
+  - First test: `test_lint_sh_runs_shellcheck_and_psscriptanalyzer` (fast,
+    static: `lint.sh` names both tools over those globs, and `verify.sh`'s
+    container half calls `lint.sh` before `test.sh`). The proof that lint can
+    go red is a recorded run with a planted shellcheck finding and a planted
+    PSScriptAnalyzer finding (DR38), saved under `docs/evidence/`.
+- **The host half is tested with a fake docker (rework 1, review B6).** A
+  fast test copies `scripts/verify.sh` into a temp tree whose
+  `scripts/{build,launch,teardown,smoke}.sh` are stubs that log their name
+  and arguments and exit with a code the test sets, and puts a fake `docker`
+  first on `PATH` that logs its arguments and `COMPOSE_FILE` and
+  `COMPOSE_PROJECT_NAME`. `verify.sh` needs no new seam, because it already
+  `cd`s to its own parent. The test asserts:
+  - the order build, launch, `docker compose … run … gates-it scripts/verify.sh full`,
+    smoke;
+  - a non-zero exit when each stage fails, and no later stage runs;
+  - `teardown.sh --volumes` runs on success, on each failure, and on SIGINT
+    and SIGTERM;
+  - `COMPOSE_FILE` includes `docker-compose.verify.yml`;
+  - the project name matches `ke-verify-<digits>` and differs between two
+    runs;
+  - no `ports`/`-p`/`--publish` argument reaches docker.
+- **A failed teardown is reported (rework 1, review N7).** The `EXIT` trap
+  prints a warning naming the project when `teardown.sh` fails, instead of
+  hiding it behind `|| true`. The exit code of the run is unchanged, because
+  the gates have already passed or failed. The B6 test covers the warning.
 
 ### 2.3 platform-config (ADR-KE-010)
 
@@ -424,7 +566,10 @@ and (c)).**
    `SecretStr` field of `Settings`, so a new secret is covered without a list
    to maintain. It reads no file. The refusal names the key, never the value.
 
-In `dev`, cases 1 and 3 log a warning instead (Q4 ruling); case 5 is allowed.
+6. (platform-stack, §2.4, port ruling 2026-10-19) `bind_address`
+   (`KE_BIND_ADDRESS`) not loopback while `env≠dev`, until auth-audit.
+
+In `dev`, cases 1, 3 and 6 log a warning instead (Q4 ruling); case 5 is allowed.
 
 **Tracing does not leak before the checks pass (amended, rework 1: B1, B7b,
 L6).**
@@ -459,6 +604,9 @@ L6).**
   so a fast test builds each accepted shape and one unknown shape. An OTel
   upgrade that moves those attributes then fails that test, rather than
   silently accepting.
+  **Superseded by the M5 amendment to ADR-KE-010 (2026-10-19) when that
+  lands:** only a provider built by `engine.telemetry.build_provider` is
+  accepted, and the exporter-shape inspection is deleted.
 - **Order in `startup()` (L6).**
   1. `settings = Settings()` (a `ConfigError` propagates).
   2. `check(settings)` runs as a pre-flight with no exporter installed.
@@ -524,21 +672,186 @@ span is a review finding.
 - **Not published:** Phoenix's gRPC port 4317 is dropped, because nothing uses
   it. Stores publish nothing; use `docker compose exec` for psql, cypher-shell
   or valkey-cli.
-- **Compose:** host ports in compose are `${KE_…_PORT:?set in .env}`, so a
-  missing value fails loudly and there is no second default to drift.
+- **Compose (amended 2026-10-19, port ruling from platform-config B7a;
+  amended again in platform-stack rework 1, review N1: long syntax).** Every
+  published port uses compose's **long syntax**, with these three keys
+  (plus `protocol: tcp`):
+  ```yaml
+  ports:
+    - target: ${KE_GATEWAY_API_LISTEN:-<n>}
+      host_ip: ${KE_BIND_ADDRESS:-127.0.0.1}
+      published: ${KE_API_PORT:-47100}
+    - target: ${KE_GATEWAY_PHOENIX_LISTEN:-<n>}
+      host_ip: ${KE_BIND_ADDRESS:-127.0.0.1}
+      published: ${KE_PHOENIX_PORT:-47101}
+  ```
+  It means the same as the short string
+  `"${KE_BIND_ADDRESS:-127.0.0.1}:${KE_<X>_PORT:-<default>}:<container port>"`
+  that this section first prescribed. The long form is preferred because each
+  part is a separate key that a test can check, and an address is never
+  split on `:`. Rules: `host_ip` is exactly `${KE_BIND_ADDRESS:-127.0.0.1}`;
+  `published` is `${KE_<X>_PORT:-<default>}` with `<default>` in
+  47100–47199; `target` is a `${KE_GATEWAY_<X>_LISTEN:-<n>}` variable, never
+  a literal (review N3: the hardcoded scan treats `*_LISTEN` values as ports).
+  Only `gateway` has `ports:`.
+
+  `:-` rather than `:?`, because `verify.sh` and CI run compose without a
+  `.env`. The container ports are the gateway's unprivileged listen ports,
+  `KE_GATEWAY_API_LISTEN`, `KE_GATEWAY_PHOENIX_LISTEN` and
+  `KE_GATEWAY_MODEL_LISTEN` (the last is never published). The API's own
+  listen port is `KE_API_LISTEN`, which compose passes to `api`, `gateway`
+  and `gates-it` as `KE_API__LISTEN_PORT` (the `Settings` name); its compose
+  default equals `api.listen_port` in `defaults.yaml`. These are compose
+  variables, and the gateway's nginx templates read the same variables (the
+  official image's envsubst templates), so there is one source per port. The
+  developer picked them outside 47100–47199 and recorded them in the
+  handoff. Every `${VAR:-default}` default in compose equals that
+  variable's value in `.env.example` (`test_compose_defaults_match_env_example`,
+  which generalizes platform-config's phoenix drift test). The `phoenix`
+  service itself publishes nothing once the gateway exists; its
+  platform-config line `127.0.0.1:${KE_PHOENIX_PORT:-47101}:…` moves to the
+  gateway.
+- **Bind address.** `KE_BIND_ADDRESS` is an IPv4 literal, `127.0.0.1` by
+  default. IPv6 binding is out of scope (the long syntax would carry it, but
+  nothing validates it yet). Binding anything other than loopback
+  (127.0.0.0/8) exposes unauthenticated services to the LAN. That is a
+  deliberate operator choice in `.env`, and **outside `dev` it is refused
+  until auth-audit lands**. An empty or unset `KE_ENV` is **not** `dev` in
+  all three places (fail closed). Three places enforce it (PS-2.14, Q33a),
+  because the engine does not own the socket the gateway binds:
+  - **Engine:** startup refusal 6 (§2.3 list). `Settings.bind_address`
+    (env `KE_BIND_ADDRESS`, default `127.0.0.1` in `defaults.yaml`) is
+    validated as an IPv4 address at load, so a bad value is a `ConfigError`
+    naming the variable. `check()` raises
+    `StartupRefused("KE_BIND_ADDRESS", …)` when it is not loopback while
+    `env≠dev`. Compose passes `KE_BIND_ADDRESS` and `KE_ENV` into `api` and
+    `worker`.
+  - **Gateway:** the gateway image adds one POSIX `sh` script to
+    `/docker-entrypoint.d/` (`docker/gateway/10-ke-bind-check.sh`). Under the
+    same rule it exits non-zero, so nginx never starts and nothing is
+    published. Compose passes the same two variables into `gateway`. This is
+    the check that actually stops the publish: the gateway must start without
+    `api` (see Images), so the engine's refusal alone would leave Phoenix on
+    the LAN. `lint.sh`'s shellcheck glob gains `docker/**/*.sh`.
+  - **Launch (amended, rework 1: review B3, security L-1).** `launch.sh` and
+    `launch.ps1` check **the values compose will actually use**, not their
+    own reading of the env file. They build one compose argument list
+    (`--env-file "$KE_ENV_FILE"` when set, plus whatever `COMPOSE_FILE` and
+    `COMPOSE_PROJECT_NAME` say) and use it for both
+    `docker compose … config --format json gateway` and `up`, so the check
+    and the launch cannot read different inputs. From the JSON they read
+    `services.gateway.environment.KE_ENV` and every
+    `services.gateway.ports[].host_ip` (and `published`, for the printed
+    URLs). There is **no `.env.example` fallback** any more (it said
+    `KE_ENV=dev` and made launch fail open). Rules, all fail closed:
+    - `KE_ENV` missing, empty, or anything but exactly `dev` → not dev.
+    - A port entry with no `host_ip` binds every interface → treated as
+      `0.0.0.0`.
+    - A `host_ip` that is not an IPv4 literal → refused in every env (as
+      today).
+    - No port entries at all (the verify overlay resets `ports:`) →
+      nothing is published, so there is nothing to check.
+    - `docker compose config` failing → launch fails.
+
+    PowerShell parses with `ConvertFrom-Json`. Bash has no JSON parser among
+    the prerequisites (Git and Docker only), so it extracts the keys line by
+    line from compose's indented JSON. It joins lines but **never strips
+    whitespace inside values** (`" dev"` must stay not-dev). A value with
+    a JSON escape does not match the pattern, which counts as missing, so the
+    result is still refused. This resolves all the L-1 dotenv forms
+    (`export KEY=…`, `KEY = …`, `KEY: …`), because compose has already
+    parsed them.
+  - In `dev` all three log or print a warning naming `KE_BIND_ADDRESS` and start.
+  - When auth-audit lands, it narrows the condition to "auth disabled", in
+    all three places.
+  - Residual: someone who edits the compose file by hand can bypass all of
+    them. That is accepted, the same trust level as editing the code.
+- **Gateway upstream check (rework 1, security M-3 and L-3; extends DR30 to
+  the gateway).** The engine's egress startup check refuses an upstream that
+  is not on the allowlist, but only in `api` and `worker`. The gateway itself
+  forwarded to any `KE_MODEL_UPSTREAM` for every `backend` container, and the
+  value went through envsubst into nginx config unchecked, so a crafted value
+  could add a server block. A second POSIX `sh` script,
+  `docker/gateway/11-ke-upstream-check.sh`, runs from `/docker-entrypoint.d/`
+  after the bind check and **before** the image's `20-envsubst-on-templates.sh`.
+  On any failure it exits non-zero, so no template is rendered and nginx never
+  starts. Like the bind check, it names the variable and never echoes the
+  value.
+  - `KE_MODEL_UPSTREAM` empty or unset: allowed. The forward has no upstream,
+    and its connections fail, as in CI.
+  - Otherwise the whole value must be a strict `host:port`, matched as one
+    line (a value containing a newline is refused first, because `grep`
+    matches per line):
+    - host: an IPv4 dotted quad, or DNS labels `[A-Za-z0-9]` or
+      `[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]`, each at most 63 characters,
+      joined by single dots, with no trailing dot;
+    - port: decimal `1`–`65535`, no leading zero, no sign;
+    - nothing else (no whitespace, quote, `;`, `{`, `}`, `$`, `/`, scheme or
+      brackets).
+  - The host, case-folded, must equal an entry of `KE_EGRESS_ALLOWLIST`.
+    Entries are comma-separated, trimmed, case-folded, with a trailing dot
+    removed, exactly as the engine's `normalise_host` does. No wildcards. An
+    empty allowlist with a non-empty upstream is refused.
+  - **Every other value the templates substitute is checked too (L-3;
+    rework 1 left it partly open, security re-audit R3/R3b; required in
+    rework 2):** `KE_GATEWAY_API_LISTEN`, `KE_GATEWAY_PHOENIX_LISTEN`,
+    `KE_GATEWAY_MODEL_LISTEN`, `KE_API__LISTEN_PORT` and `PHOENIX_PORT` must
+    each be a decimal integer `1`–`65535`, with the same port grammar as the
+    upstream (no leading zero, no sign, no whitespace, one line). Unset or
+    empty is refused too, because the template would render an empty
+    `listen`. The upstream keeps its rules above. Each failure exits
+    non-zero before `20-envsubst-on-templates.sh`, names the variable and
+    never echoes the value.
+  - **Drift test (fast):** the set of `${…}` names in
+    `docker/gateway/templates/*` must equal the set the entrypoint checks
+    validate (the five ports plus `KE_MODEL_UPSTREAM`), read from one list in
+    the script, so a new template variable cannot skip the check. If the
+    image's envsubst filter (`NGINX_ENVSUBST_FILTER`) is set, the test reads
+    it too.
+  - **First tests (fast), per port variable:** a payload such as
+    `80; } location /x { proxy_pass http://1.1.1.1:80; } server { listen 81`,
+    `0`, `65536`, `080`, `-1`, `80 `, a newline, empty and unset → exit
+    non-zero, output without the value; `1` and `65535` → pass.
+  - Compose passes `KE_MODEL_UPSTREAM` and `KE_EGRESS_ALLOWLIST` into
+    `gateway` from the same variables the engine reads, so the two checks
+    cannot disagree.
+  - The proposed first test is `test_gateway_upstream_check_refuses_off_allowlist`
+    (fast). It runs the script under `sh` with: empty (passes); allowlisted
+    `host:port` (passes); the same host in a different case (passes); a host
+    not on the allowlist, as in the M-3 repro (`one.one.one.one:80` with
+    allowlist `gateway`); an empty allowlist; the L-3 injection payload; a
+    newline; a missing port, port `0`, `65536`, a leading zero; a scheme; a
+    trailing dot; and a non-integer listen port. Each failure exits non-zero
+    and its output does not contain the value. A Dockerfile test asserts the
+    script is copied mode 0755 with a name that sorts before `20-`.
 
 **`.env.example`** holds:
-- the published ports;
-- `KE_MODEL_UPSTREAM`, the host:port of the model host. The host is the
-  deployment's model host, `aria-gb10-2` (Q7 ruling); the port is chosen at
-  implementation. This is the only committed config file that names it; the
-  hardcoded scan (§2.3, rule 1) fails if any scanned code repeats it;
-- `KE_EGRESS_ALLOWLIST=gateway,<upstream host>`;
+- the published ports, and `KE_BIND_ADDRESS=127.0.0.1` with a comment that
+  any other value is refused outside `dev` until auth-audit;
+- the gateway listen ports (`KE_GATEWAY_API_LISTEN`,
+  `KE_GATEWAY_PHOENIX_LISTEN`, `KE_GATEWAY_MODEL_LISTEN`), which are not
+  published, and the API listen port `KE_API_LISTEN` (rework 1, review N3;
+  it replaced `KE_API__LISTEN_PORT` in `.env.example`, because the port-range
+  test matches `KE_*_PORT`);
+- `KE_MODEL_UPSTREAM=` **empty** (amended, rework 2, review R2). A comment
+  above it says the value is the model host as `host:port`, set per
+  deployment in `.env`, and that this deployment's host is `aria-gb10-2`
+  (Q7 ruling). An empty upstream is valid: the gateway starts and the model
+  forward has no upstream (as in CI). The comment is the only committed
+  config text that names the host; the hardcoded scan (§2.3, rule 1) fails
+  if any scanned code repeats it;
+- `KE_EGRESS_ALLOWLIST=` **empty**, set by the operator in `.env` together
+  with the upstream (for example `gateway,<upstream host>`). With an empty
+  upstream nothing needs allowing; a non-empty upstream with an empty
+  allowlist is refused by the gateway and the engine;
 - `KE_ENV=dev`;
 - `KE_AUTH__ENABLED=false`, because auth arrives in auth-audit;
 - the secret placeholders, each `changeme-<key>` (placeholder-secret ruling).
 
-`api` and `worker` dial `http://gateway:<model listen port>/v1`.
+`api` and `worker` dial `http://gateway:<KE_GATEWAY_MODEL_LISTEN>/v1`. That
+port is reachable on `backend` only and never published. The per-pass
+`base_url` defaults in `defaults.yaml` carry it, and a drift test ties them to
+`.env.example`.
 
 **`/healthz` (PS-2.4).** Returns `200 {"status":"ok"}` from process state only,
 with no I/O. It is untraced, because it is liveness and is called every few
@@ -575,6 +888,19 @@ seconds. The compose healthchecks of `api` and `gateway` use it.
 - The integration test enqueues to the real `worker` container from
   `gates-it`. It then asserts that the status is `finished` and the counter
   is 1.
+- **2a placeholder (developer decision, accepted by review only with B2).**
+  Until 2b brings RQ, `worker` runs `python -m engine.worker`, whose `main()`
+  calls `engine.startup.startup()` and then idles (`signal.pause()`). So
+  refusal 6 and every other refusal hold in `worker` as PS-2.14 (1) requires.
+  A refusal exits non-zero; the container then restarts and never becomes
+  healthy, so `launch.sh --wait` fails. 2b replaces the idle with the RQ
+  loop in the same module, so the compose `command` does not change.
+- **Entrypoints are unit-tested (review B2).** `engine.api.main()` and
+  `engine.worker.main()` lose `pragma: no cover`. A fast test patches
+  `uvicorn.run` (api) and `signal.pause` (worker), and asserts that
+  `startup()` runs first and its `Settings` give the listen port, and that a
+  `StartupRefused` (for example a non-loopback `KE_BIND_ADDRESS` with
+  `KE_ENV=prod`) propagates before `run`/`pause` is called.
 
 **Images.**
 - `docker/app.Dockerfile` reuses the pinned `python:3.12-slim-bookworm` and
@@ -588,19 +914,95 @@ seconds. The compose healthchecks of `api` and `gateway` use it.
 
 **Scripts (PS-2.9).** Each script is a bash file for Linux plus a PowerShell
 twin for Windows. macOS is not supported (Q20 ruling). They contain only
-`docker compose` calls.
+`docker compose` calls, plus the read-only `docker version` (launch) and
+`docker network inspect` (smoke host half) checks.
 
 | Script | Does |
 |---|---|
 | `build.sh` / `.ps1` | `compose build` (ke-app, ke-gateway, ke-gates), then `compose pull` of the digest-pinned images |
-| `launch.sh` / `.ps1` | Copies `.env.example` to `.env` if it is missing (and says so). Checks Compose ≥ 2.24. Runs `compose up -d --no-build --wait`. Prints the URLs from the port variables |
-| `teardown.sh` / `.ps1` | `compose --profile '*' down --remove-orphans`, and `--volumes` only when asked |
-| `smoke.sh` | the two-sided live smoke (§2.2) |
+| `launch.sh` / `.ps1` | Copies `.env.example` to `.env` if it is missing (and says so). Checks Compose ≥ 2.24 and Docker Engine ≥ 28 (`docker version --format '{{.Server.Version}}'`; rework 1, M-2; Engine rule below), refusing below either. Reads the resolved `KE_ENV` and gateway `host_ip`s from `compose config --format json gateway` and applies the bind-address rule (Bind address above). Runs `compose up -d --no-build --wait` with the same arguments. Prints the URLs from the resolved `host_ip` and `published` values |
+| `teardown.sh` / `.ps1` | `compose <args> down`, and `--volumes` only when asked. No `--profile` and no `--remove-orphans` (rework 2, Windows proof F3; rule below) |
+| `smoke.sh` | the two-sided live smoke (§2.2), including the host-side `docker network inspect` isolation check (rework 2) |
+
+**Engine version rule (rework 2, review R1-B2, security L-6).** The
+`isolated` option is silently ignored below Engine 28, so this check is the
+only M-2 control on such hosts, and it fails closed:
+- `docker version --format '{{.Server.Version}}'` must exit 0, and its
+  output, with only the trailing newline removed, must match the whole of
+  `^[0-9]+\.[0-9]+\.[0-9]+$`. Empty output, a daemon error, a leading or
+  trailing space, `garbage`, or a suffixed build such as `28.0.1-rc.1` are
+  refused. Suffixed builds are refused on purpose (fail closed); an operator
+  on one sees a message naming the Engine check.
+- The major part is compared as an integer, `≥ 28`. No `sort -V` and no
+  string comparison (`100.0.0` passes, `27.99.99` is refused).
+- Refusal exits non-zero before `compose config` or `up`, and the message
+  names the requirement and the version read (it is not secret).
+- Both scripts implement the same rule; PowerShell anchors with `\A…\z`.
+- `tests/fake_docker.py` answers `version --format …` with
+  `FAKE_DOCKER_ENGINE` (default `28.0.0`), and exits non-zero when
+  `FAKE_DOCKER_ENGINE_FAIL` is set. Cases for sh and ps1, each asserting no
+  `compose up`: `27.5.1`, `27.99.99`, empty, `garbage`, ` 27.1.1`,
+  `28.0.1-rc.1` and a non-zero exit refused; `28.0.0`, `29.5.2` and
+  `100.0.0` accepted.
+
+**Teardown scope (rework 2, Windows proof F3).** `teardown.sh`/`.ps1` stop
+and remove only **their own project's default-profile services**: the same
+compose argument list as launch (`KE_ENV_FILE`, `COMPOSE_FILE`,
+`COMPOSE_PROJECT_NAME`), then `down`, plus `--volumes` when asked.
+- `--profile '*'` is dropped: it pulled in `gates-it`, `probe` and the
+  offline services, so a teardown of the default project removed one-shot
+  containers that another run had started under the same project label.
+- `--remove-orphans` is dropped too: which containers compose counts as
+  orphans for profile-disabled services has varied between Compose
+  releases, and the ruling is "only default-profile services". A container
+  of a renamed or deleted service is removed by hand.
+- One-shot services already run with `compose run --rm`. If one is left
+  behind (for example a verify run killed mid-`run`), `down` cannot remove
+  the network it holds and exits non-zero; `verify.sh`'s N7 warning names the
+  project. That is accepted: it fails loudly, never silently removes
+  another run's container.
+- First tests (fast, fake docker, sh and ps1): the `down` call carries no
+  `--profile` and no `--remove-orphans`, carries the project and env-file
+  arguments, and carries `--volumes` only with `--volumes`/`-Volumes`.
 
 All scripts honor `KE_ENV_FILE` and `COMPOSE_PROJECT_NAME`. `docs/quickstart.md`
-names only these scripts and the prerequisites: Git, and Docker with Compose
-≥ 2.24. It has two paths only, Windows (PowerShell) and Linux (bash), and no
-macOS path (Q20 ruling).
+names only these scripts and the prerequisites: Git, and **Docker Engine ≥ 28**
+(for the isolated `backend` bridge, §2.1; amended in rework 1, M-2) with
+Compose ≥ 2.24. It has two paths only, Windows (PowerShell) and Linux (bash),
+and no macOS path (Q20 ruling).
+
+**Script lint and tests (rework 1).** `scripts/lint.sh` (§2.2) lints every
+script here. Fast tests drive `launch.sh`, and `launch.ps1` under the gates
+image's `pwsh`, with a fake `docker` on `PATH` that answers `version` and
+`compose version` and returns fixture `config --format json` output. The
+cases: `KE_ENV` missing, empty, `" dev"`, `DEV` or `prod` with `host_ip`
+`0.0.0.0` → exit non-zero and no `up`; `dev` with `0.0.0.0` → a warning, then
+`up`; a port with no `host_ip` → treated as `0.0.0.0`; no ports → `up`;
+`config` failing → exit non-zero; the Engine version cases (Engine version
+rule above; rework 2, R1-B2). One case in the
+host half of `smoke.sh` (full) runs the **real** `docker compose config`
+with an env file holding `KE_ENV=prod` and `export KE_BIND_ADDRESS=0.0.0.0`,
+and asserts that `launch.sh` refuses, which proves that the fixture shape
+matches real compose.
+
+**Developer decisions accepted in review (2a, 2026-10-19).**
+- **Worker placeholder:** accepted only because it calls `startup()` (B2;
+  Worker above).
+- **Postgres user and database are the literal `engine`** in compose: accepted
+  for 2a. They duplicate `stores.postgres.{user,database}` in
+  `defaults.yaml`. Before readyz connects in 2b, either a drift test ties the
+  two, or compose takes the user from a variable with an `.env.example` entry
+  (review N4, deferred).
+- **Compose warns when there is no `.env`** about unset `KE_ENV` and the two
+  store secrets: accepted, because each fails closed. Unset `KE_ENV` is not
+  dev in the engine, the gateway and launch. The secrets have no default
+  (F3), and postgres and neo4j refuse to start on an empty one. The PS-2.2
+  smoke `test_compose_resolves_without_env_file` (host half of `smoke.sh`,
+  restored to 2a by review B4) asserts that `docker compose config` succeeds
+  despite the warnings from a temp copy with no `.env`, and that every
+  `host_ip` is `127.0.0.1`.
+- **`KE_API_LISTEN`** in place of `KE_API__LISTEN_PORT`, and **the long port
+  syntax**: accepted (N1, N3; Ports above).
 
 ### 2.5 platform-offline (ADR-KE-012)
 
@@ -686,40 +1088,78 @@ Suggested first test per sub-item, followed by the order of the rest.
   8. `test_harness_default_collector_matches_env_example`.
   9. `test_test_sh_enforces_coverage_and_mypy`, plus recorded RED runs.
   10. `test_python_pinned_to_312`.
-- **platform-stack.** First: `test_compose_services_have_restart_policy`
-  (fast; parse the compose YAML).
-  Then the fast tests:
-  1. `test_compose_images_pinned_by_digest`.
-  2. `test_env_example_ports_in_range_and_unique`.
-  3. `test_only_gateway_on_edge_network` (PS-2.10).
-  4. `test_no_docker_socket_mounted` (PS-2.11).
-  5. `test_stack_services_have_no_bind_mounts` (PS-2.12).
-  6. `test_quickstart_names_existing_scripts` (Windows and Linux paths only,
-     Q20).
-  7. `test_healthz`, in process with a socket spy, so it can be fast.
-  8. `test_gates_it_network_topology` (Q30/F-A): `gates-it` joins `backend`
-     and no other network, `backend` is `internal: true`, no network other
-     than `edge` is non-internal (and only `gateway` is on it), `gates-it`
-     mounts no Docker socket, and `gates` keeps `network_mode: none`.
-  9. `test_model_skip_reason_names_upstream` (Q30): the skip helper, given a
-     failed probe result, raises `SkipTest` whose reason contains the
-     configured `KE_MODEL_UPSTREAM` and a vocabulary reason; given success, it
-     does not skip.
-
-  Then integration in `gates-it` (not blocked: Q30/F-A ruled). The first one
-  is `test_socket_guard_blocks_outbound`, which proves ADR-KE-009's two
-  layers: the guard refuses a non-stack host (a TEST-NET-1 address from the
-  test's own fixture) with zero connects and allows the stack pairs; and,
-  with the guard bypassed, a raw connection to that address fails because
-  `backend` is internal (F-A restores this clause). That the *app* containers
-  have no route out stays proven by `ci/offline`.
-
-  After it:
-  - `test_readyz_reports_each_dependency`;
-  - `test_readyz_fails_when_store_down`;
-  - `test_worker_consumes_noop_job`;
-  - `test_model_client_reaches_configured_host` (skips with a named reason
-    when the model host is unreachable).
+- **platform-stack** (rewritten 2026-10-19 in implementation order, with the
+  names aligned to PS-2.x; the names marked *proposed* need the analyst to
+  adopt them). The compose tests parse the YAML of every compose file.
+  - **Rework 1 (2026-10-19), first:** the new M-1/L-2 subtests of
+    `test_provider_not_built_by_engine_is_refused` and
+    `test_configure_tracing_refuses_when_install_is_ignored` (ADR-KE-010);
+    `test_backend_network_isolated_from_host`;
+    `test_gateway_upstream_check_refuses_off_allowlist` and the template
+    variable drift test (§2.4); the launch fake-docker cases on resolved
+    config (§2.4 Scripts); the api/worker entrypoint tests (§2.4 Worker);
+    `test_lint_sh_runs_shellcheck_and_psscriptanalyzer` and the `verify.sh`
+    host-half fake-docker test (§2.2); then the amended
+    `test_gates_it_has_no_route_out` (integration).
+  - **Fast first** (`verify.sh fast`, `gates`):
+    0. *If M5 lands here (recommended; ADR-KE-010 M5 amendment):*
+       `test_provider_not_built_by_engine_is_refused`.
+    1. `test_compose_services_have_restart_policy` (PS-2.3): every service
+       without a profile has `unless-stopped`; `gates`, `gates-it`, `probe`,
+       `dind` and `offline-client` have none.
+    2. `test_compose_images_pinned_by_digest` (PS-2.1).
+    3. `test_published_ports_use_bind_address` (port ruling; long syntax
+       since rework 1, N1). Every `ports:` entry of every service is a
+       long-syntax mapping with `host_ip: ${KE_BIND_ADDRESS:-127.0.0.1}`,
+       `published: ${KE_<X>_PORT:-<n>}` and `target` a `${…_LISTEN:-<n>}`
+       variable, and only `gateway` has any.
+    4. `test_env_example_ports_in_range_and_unique` (PS-2.2), plus
+       `test_compose_defaults_match_env_example`, which generalizes
+       platform-config's phoenix drift test.
+    5. `test_startup_refuses_non_loopback_bind_address`
+       (refusal 6). Subtests: `0.0.0.0` and a LAN address are refused in
+       `prod`/`ci` and the refusal names `KE_BIND_ADDRESS`; in `dev` there is
+       a warning; `127.0.0.1` and `127.0.0.2` pass; a non-IPv4 value is a
+       `ConfigError`. Then `test_gateway_bind_check_refuses_non_loopback`,
+       which runs `docker/gateway/10-ke-bind-check.sh` under `sh` with the same
+       cases and checks the exit codes.
+    6. `test_only_gateway_on_edge_network` (PS-2.10).
+    7. `test_gates_it_internal_only_and_no_socket` (PS-2.7): every network
+       `gates-it` joins is `internal: true`, it mounts no socket, and `gates`
+       keeps `network_mode: none`.
+    8. `test_no_docker_socket_mounted` (PS-2.11), then
+       `test_stack_services_have_no_bind_mounts` (PS-2.12).
+    9. `test_harness_default_collector_matches_env_example` and
+       `test_docs_name_current_phoenix_port` (PS-2.2).
+    10. `test_model_tests_skip_with_named_reason` (PS-2.7): the skip helper,
+        given a failed probe, raises `SkipTest` naming `KE_MODEL_UPSTREAM` and
+        a vocabulary reason; given success, it does not skip. Then
+        `test_no_model_calls_in_unit_suite`.
+    11. `test_env_example_not_in_app_image` (PS-1.9): parse
+        `docker/app.Dockerfile` and its `.dockerignore`.
+    12. `test_quickstart_names_existing_scripts` (PS-2.9) and
+        `test_claude_md_lists_verify_only_checks` (PS-2.13).
+  - **Then integration** (`verify.sh full`, in `gates-it`):
+    1. `test_gates_it_has_no_route_out` (F-A, PS-2.7, §2.2). A raw TCP
+       connect to a TEST-NET-1 address fails fast with `ENETUNREACH` or
+       `EHOSTUNREACH`, never a timeout (rework 1, B1); a connect to the
+       `backend` bridge gateway does not reach the host (rework 1, M-2); and
+       `gateway`'s model listen port accepts. It goes first because every
+       later test assumes this topology. The earlier in-process socket-guard
+       test is superseded (PS-2.7), and its guard fixture is dropped.
+    2. `test_egress_allowlist_holds_with_network_access` (PS-2.7, DR38
+       mutant recorded).
+    3. `test_healthz` (PS-2.4; integration per the criterion).
+    4. `test_readyz_reports_each_dependency`, `test_readyz_fails_when_store_down`,
+       `test_readyz_ready_without_model_host` (PS-2.5).
+    5. `test_worker_consumes_noop_job` (PS-2.6).
+    6. Model-calling, skipping by name when the host is unreachable:
+       `test_readyz_reports_reachable_model_host`.
+  - **Then smoke and gates:** `test_stack_services_healthy` and the store
+    stop/start in `scripts/smoke.sh` (PS-2.1, PS-2.5, PS-2.8); shellcheck and
+    PSScriptAnalyzer (PS-2.9); the recorded Windows run (Q31).
+  - That the *app* containers have no route out stays proven by `ci/offline`
+    (platform-offline).
 - **platform-offline.** First: `test_bundle_manifest_rejects_tamper` (fast).
   It covers both `install.sh` and `install.ps1` on a tiny fixture bundle, in
   three cases: a byte changed, a file missing, and an extra file. Then:
@@ -1209,12 +1649,13 @@ asked for the hook design to be recorded in this ADR.
 - **Made concrete by:**
   - ADR-KE-010: the guarded httpx transport and the startup checks.
   - ADR-KE-011: the network layer, where `gateway` is the only way out.
-  - ADR-KE-009: the socket guard, which runs in `gates-it`.
+  - ADR-KE-009: the internal `backend` network that `gates-it` sits on. The
+    CI socket guard named above was dropped on 2026-10-19 (F-A drift fix):
+    the internal network is the guard, and a runtime test proves it.
 - **Amended by Q30 (human, 2026-10-18), narrowed by F-A, for integration
   tests only:** model-calling tests may call the configured model host, through
   the gateway's upstream forward and the DR30 allowlist, the app's own path.
-  `gates-it` has no other route out, so the socket guard keeps the network
-  layer behind it. The app's allowlist and the network layer of ADR-KE-011 are
+  `gates-it` has no other route out, because `backend` is internal. The app's allowlist and the network layer of ADR-KE-011 are
   unchanged.
 
 ### ADR-KE-004: Domain packs and institution profiles
@@ -1411,11 +1852,43 @@ asked for the hook design to be recorded in this ADR.
     arbitrary address. The only off-machine peer a test can reach is the
     trusted model host the app already uses, and only through the gateway.
     Unit `gates` stays without a network.
-  - The test socket guard is a `tests/integration` fixture that patches
-    `socket.socket.connect` and `connect_ex`. It allows only the (host, port)
-    pairs of stack services, including the gateway's model port. It does not
-    see libpq, because psycopg connects in C; the internal `backend` network
-    is the boundary behind it.
+  - (Amended 2026-10-19, F-A drift fix.) There is no test socket guard. The
+    earlier `tests/integration` fixture, which patched `socket.socket.connect`,
+    could not see libpq (psycopg connects in C). Since F-A, the internal
+    `backend` network is the boundary, and it refuses every raw connection
+    out. A runtime integration test proves it (§2.2,
+    `test_gates_it_has_no_route_out`).
+  - (Amended, platform-stack rework 1, review B1 and security M-2.)
+    `internal: true` alone left the Docker host reachable through the
+    `backend` bridge gateway, and the runtime test could not tell "no route"
+    from "nothing answered". `backend` now also sets
+    `com.docker.network.bridge.gateway_mode_ipv4: isolated` (Docker Engine
+    ≥ 28, ADR-KE-011), and the runtime test requires a fast no-route errno,
+    rather than a timeout, both for TEST-NET-1 and for the bridge gateway.
+  - (Amended, platform-stack rework 2, review R1-B1 option (ii), security
+    M-4.) The rework-1 fixed `backend` subnet is removed, so no address
+    literal exists and parallel stacks and verify runs from this compose
+    file work again (Docker refused a second project with "Pool overlaps").
+    The in-container bridge-gateway probe is dropped: a probe can show only
+    that one address did not answer, it missed the host's real bridge
+    address when isolation was off (M-4), and on Docker Desktop it gives
+    the same result either way. The runtime proof of host isolation is now
+    the host half of `smoke.sh` asserting that `docker network inspect
+    <project>_backend` shows `gateway_mode_ipv4=isolated` and `Internal`
+    true (§2.2). The TEST-NET-1 probe keeps the fast no-route errno
+    requirement for outside hosts.
+    - *Alternative rejected:* a per-run subnet variable (R1-B1 option (i))
+      adds config and verify plumbing and still proves isolation only by
+      probing addresses.
+  - (Amended, rework 2, security L-7.) `lint.sh` passes `.ps1` paths to
+    PSScriptAnalyzer through an environment variable read by a fixed
+    command, never inside generated PowerShell source (§2.2 Lint).
+  - (Amended, rework 1, review B5 and B6.) `scripts/lint.sh` (shellcheck and
+    PSScriptAnalyzer, pinned in the gates image) runs in the container half
+    of both modes. The host half of `verify.sh` is covered by a fast
+    fake-docker test of its stage order, failure exits, teardown on every
+    exit path, the overlay and the per-run project name. A failed teardown
+    prints a warning (N7).
   - Integration tests cannot stop containers, so store-down cases are made in
     process, and real stop and start happens in the host-side smoke.
   - DNS on internal networks (`backend`, `offline`) may still forward queries
@@ -1431,10 +1904,18 @@ asked for the hook design to be recorded in this ADR.
   - `verify.sh full` becomes slower and needs more disk. The CI
     `timeout-minutes` is the measured duration plus 50% (F6 ruling, PS-3.4).
     An unreachable model host costs at most one probe timeout.
-- **First tests:**
-  - `test_gates_it_network_topology` (fast);
-  - `test_model_skip_reason_names_upstream` (fast);
-  - `test_socket_guard_blocks_outbound` (integration);
+- **First tests** (names aligned to PS-2.7 on 2026-10-19):
+  - `test_gates_it_internal_only_and_no_socket` (fast);
+  - `test_model_tests_skip_with_named_reason` (fast);
+  - `test_gates_it_has_no_route_out` (integration) and
+    `test_egress_allowlist_holds_with_network_access` (integration). These
+    replace the in-process socket-guard test (PS-2.7);
+  - rework 1: `test_backend_network_isolated_from_host`,
+    `test_lint_sh_runs_shellcheck_and_psscriptanalyzer` and the fake-docker
+    test of the `verify.sh` host half (all fast);
+  - rework 2: the smoke host-half isolation check against a fake `docker
+    network inspect` (empty, `nat`, error refused; `isolated` passes), and
+    the `lint.sh` fixed-command and U+2019 filename tests (all fast);
   - `test_no_docker_socket_mounted` (fast);
   - `test_verify_sh_has_no_inlined_commands` (existing, stays green).
 
@@ -1550,6 +2031,122 @@ asked for the hook design to be recorded in this ADR.
     - `test_compose_phoenix_defaults_match_config`, and a test that the
       compose publish is bound to `127.0.0.1`.
     - The `ModelClient` call emits an LLM span (N12).
+- **Amendment, 2026-10-19: security M5 (installed-provider identity).**
+  Status: proposed. Recommended to land in platform-stack, as its first unit.
+  - **Context:**
+    - `_verify_installed` admits any SDK provider whose exporters *look*
+      local. Security M5 found three shapes that pass and still export
+      off-host: explicit `session.proxies`, a mounted rerouting adapter, and a
+      rewritten `_endpoint`. Hostile variants (I3) also pass.
+    - The obvious fix, accepting only a provider the engine built, collides
+      with `tests/support.py`. At import, it installs a global SDK provider
+      with an `InMemorySpanExporter` through `harness_telemetry.setup_tracing`,
+      and OTel allows the global provider to be set only once.
+  - **Options:**
+    - **(a) A test-only registration API**, `engine.telemetry.trust(provider)`.
+      Rejected. It ships a bypass in production code: any in-process code can
+      mark any provider as trusted, including custom processors (E1) and every
+      M5 shape. Gating it on an env var makes it worse.
+    - **(b) A marker on the tests' provider through a supported hook**, for
+      example a resource attribute `ke.provider.owner=engine`. Rejected. A
+      marker is data, so any library can copy or forge it. It also puts a
+      trust flag into exported trace data.
+    - **(c) An engine-owned provider used by the tests. Chosen.**
+  - **Decision (c):**
+    - A new
+      `engine.telemetry.build_provider(exporter: SpanExporter, *, project_name: str = PROJECT_NAME) -> TracerProvider`
+      is the only constructor:
+      - it sets the resource (`service.name` and the OpenInference project
+        name);
+      - it adds `SimpleSpanProcessor` for console and in-memory exporters and
+        `BatchSpanProcessor` otherwise;
+      - it records the provider in a module-private `weakref.WeakSet`.
+    - `configure_tracing` uses it for `choose_exporter(settings)`.
+    - `verify_provider` accepts a `ProxyTracerProvider`, or a provider that
+      *is* (identity) in that set. (Tightened by the rework-1 amendment
+      below: exactly `type(p) is ProxyTracerProvider`, identity by `is`, and
+      a post-install check.) It refuses everything else with
+      `StartupRefused("telemetry.tracing", …)`.
+    - `_verify_installed`, `_exporters_of`, `_sessions_of` and
+      `_ignores_proxy_env` are deleted. The check no longer reads private SDK
+      attributes, which removes the rework-1 consequence about them.
+    - `tests/support.py` builds its provider with
+      `engine.telemetry.build_provider(EXPORTER, project_name="harness-tests")`
+      and installs it with `trace.set_tracer_provider`, instead of calling
+      `setup_tracing`. `harness_telemetry.setup_tracing` is unchanged:
+      `log_event` and the template still use it, and it returns the
+      already-installed provider, so `test_tracing`'s project-name assertion
+      holds.
+  - **Consequences:**
+    - Any foreign SDK provider is refused, whatever its exporters, including
+      every M5 and I3 shape.
+    - Code that deliberately calls `build_provider` with its own exporter is
+      accepted. That is in-process code inside the trust boundary (I3); a
+      library cannot reach this state by accident.
+    - `tests/support.py`, a harness template file, now imports `engine`.
+      That is acceptable in this product repo. The template upstream is not
+      changed.
+    - Tests that pin today's accepted foreign shapes flip from accepted to
+      refused. These are the console, in-memory and local-OTLP cases of
+      `InstalledProviderTest`, and
+      `test_local_otlp_that_ignores_proxy_env_is_accepted`. The
+      tracing-guard control `test_control_spans_do_reach_an_accepted_provider`
+      must then build its provider with `build_provider`. This tightens the
+      tests, it does not weaken them, but the tester needs an orchestrator
+      ruling to edit tests that are green, citing this amendment.
+  - **First failing test:** `test_provider_not_built_by_engine_is_refused`
+    in `tests/test_engine_tracing_guard.py`. It uses one subtest per shape,
+    each a provider built *outside* the engine:
+    - local OTLP with `trust_env=False` and `session.proxies` set;
+    - the same with a mounted rerouting `HTTPAdapter`;
+    - an `_endpoint` rewritten to localhost;
+    - a plain in-memory exporter.
+
+    `startup()` must refuse naming `telemetry.tracing`, and the provider's
+    exporter must get zero spans. It is RED today because all four are
+    accepted. Its control, `test_engine_built_provider_is_accepted`, uses
+    `build_provider(InMemorySpanExporter())`, is accepted, and receives the
+    startup spans.
+- **Amendment, 2026-10-19: M5 forgery gaps (platform-stack rework 1,
+  security M-1 and L-2).** Status: accepted for 2a.
+  - **Context:** the M5 check had two gaps.
+    - M-1: `verify_provider` returned early on
+      `isinstance(provider, ProxyTracerProvider)`. A foreign *subclass* of
+      the proxy, whose `get_tracer` hands out its own SDK tracers, passed as
+      "nothing installed". The later `set_tracer_provider(build_provider(…))`
+      was then ignored by OTel (the global can be set once), yet
+      `configure_tracing` returned `True`, and every engine span went to the
+      foreign sink.
+    - L-2: `provider in _ENGINE_PROVIDERS` compares with `__eq__`/`__hash__`,
+      so a decoy that overrides both to match a live engine provider passed.
+  - **Decision:**
+    - "Nothing installed" is exactly `type(provider) is ProxyTracerProvider`.
+      A subclass is a foreign provider and is refused.
+    - Registry membership is identity:
+      `any(p is provider for p in _ENGINE_PROVIDERS)`. `in` is not used.
+    - **Post-install check.** After `trace.set_tracer_provider(built)`,
+      `configure_tracing` asserts `trace.get_tracer_provider() is built`, and
+      otherwise raises `StartupRefused("telemetry.tracing", …)`. This catches
+      any path where the install was silently ignored, including ones not yet
+      known.
+    - Everything else in the M5 amendment stands.
+  - **Alternatives:** keeping `isinstance` and also inspecting `get_tracer`
+    on subclasses re-creates the shape inspection that M5 deleted. The
+    post-install check alone would catch M-1 but not a decoy accepted
+    *before* any install (L-2); both changes are kept.
+  - **Consequences:** a provider is accepted only if it is the stock unset
+    proxy, or an object the engine itself built. Forging either one now
+    needs in-process code that writes to `_ENGINE_PROVIDERS` or replaces OTel
+    internals. That stays inside the accepted I3 trust boundary.
+  - **First tests:** add two subtests to
+    `test_provider_not_built_by_engine_is_refused`: a `ProxyTracerProvider`
+    subclass that routes to a foreign SDK provider, and a decoy whose
+    `__eq__`/`__hash__` match a live engine-built provider. Each is refused
+    naming `telemetry.tracing`, and its sink gets zero spans. Add
+    `test_configure_tracing_refuses_when_install_is_ignored`: patch
+    `trace.set_tracer_provider` to a no-op (the M-1 effect), so
+    `configure_tracing` raises `StartupRefused` instead of returning `True`.
+    The control, `test_engine_built_provider_is_accepted`, stays green.
 
 ### ADR-KE-011: Stack topology, gateway and job queue (platform-stack)
 - **Context:**
@@ -1564,7 +2161,8 @@ asked for the hook design to be recorded in this ADR.
       `gates-it` service also sits on `backend` only (ADR-KE-009, Q30/F-A), so
       this layer is the same for tests as for the app.
     - The gateway is an nginx image with baked-in templates. It:
-      - publishes `KE_API_PORT` and `KE_PHOENIX_PORT`;
+      - publishes `KE_API_PORT` and `KE_PHOENIX_PORT`, on `KE_BIND_ADDRESS`
+        (amended below);
       - reverse-proxies `api` and `phoenix`;
       - forwards one TCP listen port to `KE_MODEL_UPSTREAM`.
     - The app's allowlist covers the host it dials (`gateway`) and the
@@ -1600,10 +2198,156 @@ asked for the hook design to be recorded in this ADR.
   - Compose ≥ 2.24 is a host prerequisite.
   - `/readyz` is public; auth-audit's authorization matrix must classify it.
     Its reasons use a fixed vocabulary, so it leaks no credentials.
+- **Amendment, 2026-10-19: ports and the bind address** (orchestrator port
+  ruling, from platform-config B7a; details in §2.4).
+  - **Context:** `${KE_…_PORT:?set in .env}` breaks `verify.sh` and CI,
+    which have no `.env`. None of the published services has auth until
+    auth-audit.
+  - **Decision:**
+    - Every published port is
+      `${KE_BIND_ADDRESS:-127.0.0.1}:${KE_<X>_PORT:-<default in 47100–47199>}:<container port>`,
+      and compose defaults are drift-tested against `.env.example`.
+      (Rework 1, N1: written in compose's long syntax, `host_ip` /
+      `published` / `target`, with the same three variables; §2.4.)
+    - A `KE_BIND_ADDRESS` that is not loopback is refused outside `dev`,
+      until auth-audit, in three places (PS-2.14):
+      - engine startup refusal 6;
+      - the gateway's entrypoint check, which is the check that actually
+        prevents the publish, because the gateway runs without `api`;
+      - `launch.sh`/`.ps1`, before any container starts (rework 1: on the
+        values `docker compose config` resolves).
+  - **Alternatives:**
+    - `:?`: rejected, as above.
+    - Literal `127.0.0.1` with no variable: LAN exposure would mean editing
+      the compose file, which no check sees.
+    - The engine check alone: Phoenix behind a gateway that started without
+      `api` would still be published to the LAN.
+    - `depends_on: api` on the gateway: this contradicts "the gateway starts
+      with any upstream absent".
+  - **Consequences:**
+    - A fresh checkout publishes on loopback only.
+    - LAN exposure needs both an `.env` edit and `KE_ENV=dev` until
+      auth-audit, which then narrows the rule to "auth disabled".
+    - Hand-edited compose files bypass the rule (accepted residual).
+- **Amendment, 2026-10-19: platform-stack rework 1** (review B2, B3, N1,
+  N3; security M-2, M-3, L-1, L-3; details in §2.1 and §2.4).
+  - **Context:** review and security found that the Docker host was
+    reachable from `backend`, that the gateway forwarded to any upstream and
+    rendered it into nginx config unchecked, that launch read the env file
+    differently from compose and fell back to `.env.example`'s `KE_ENV=dev`,
+    and that `worker` never ran `startup()`.
+  - **Decision:**
+    - **Ports:** compose long syntax (`host_ip`, `published`, `target`). The
+      gateway listen ports come from `KE_GATEWAY_{API,PHOENIX,MODEL}_LISTEN`,
+      and the API's from `KE_API_LISTEN`, passed in as
+      `KE_API__LISTEN_PORT`. `target` is always a variable.
+    - **Host isolation:** `backend` sets
+      `com.docker.network.bridge.gateway_mode_ipv4: isolated`. Docker Engine
+      ≥ 28 becomes a host prerequisite (quickstart), and launch checks it,
+      because older engines ignore the option silently.
+    - **Gateway enforces the allowlist (DR30 extended to the gateway):**
+      `docker/gateway/11-ke-upstream-check.sh` runs before the envsubst step
+      and requires `KE_MODEL_UPSTREAM` to be empty, or a strict `host:port`
+      whose host is on `KE_EGRESS_ALLOWLIST` (exact, case-folded). It also
+      requires every listen port the templates substitute to be an integer
+      from 1 to 65535. Otherwise it exits non-zero and nginx never starts.
+      DR30 now holds in three layers: the engine (startup check and
+      `GuardedTransport`), the gateway entrypoint, and the network topology.
+    - **Launch reads compose's resolved values** (`config --format json
+      gateway`), with no `.env.example` fallback. A missing or empty
+      `KE_ENV` is not dev.
+    - **Worker placeholder** runs `startup()`, then idles, as
+      `python -m engine.worker`, until 2b.
+  - **Alternatives:**
+    - A host firewall rule instead of `isolated`: host-specific, and not
+      portable to Docker Desktop (the same reason iptables was rejected
+      above).
+    - An explicit `ipam` subnet so tests know the gateway address: this adds
+      a network literal to config, and the test can derive the address.
+      (Rework 1 adopted it anyway; rework 2 removed it, see below.)
+    - Validating the upstream only in the engine: third-party images on
+      `backend` never run the engine check.
+    - Escaping the value for nginx instead of validating it: the grammar is
+      tiny, and refusing is simpler and fails closed.
+    - Parsing the env file in the launch scripts (the 2a approach): it can
+      never match compose's dotenv grammar exactly (L-1).
+  - **Consequences:**
+    - Hosts on Docker Engine < 28 cannot launch the stack. The CI runner and
+      the Windows proof host must meet this, so the Windows run (Q31/Q34) is
+      repeated after this round.
+    - A host service such as a local Ollama is no longer reachable from
+      `backend`. The model host is reached only through
+      `KE_MODEL_UPSTREAM` on the gateway, as the design always intended.
+    - Changing the allowlist or the upstream needs a gateway restart, the
+      same as any other config change.
+    - The bash launch script parses compose's JSON line by line. That is
+      deliberately narrow and fails closed, and a smoke case against real
+      compose checks that the fixture shape is right.
 - **First tests:**
   - `test_compose_services_have_restart_policy`;
+  - `test_published_ports_use_bind_address` (long syntax, rework 1);
+  - `test_startup_refuses_non_loopback_bind_address`;
   - `test_only_gateway_on_edge_network`;
   - `test_worker_consumes_noop_job`.
+  - Rework 1: `test_backend_network_isolated_from_host`,
+    `test_gateway_upstream_check_refuses_off_allowlist`, the gateway
+    template-variable drift test, the launch fake-docker cases on resolved
+    config (§2.4 Scripts), and the api/worker entrypoint tests (§2.4 Worker).
+- **Amendment, 2026-10-19: platform-stack rework 2** (review R1-B1 option
+  (ii), R1-B2; security M-4, L-3, L-6, L-7; Windows proof F3; review R2 on
+  `.env.example`; details in §2.1, §2.2 and §2.4).
+  - **Context:** rework 1 added a fixed `backend` subnet, which broke
+    parallel projects ("Pool overlaps") and still let the runtime probe pass
+    with isolation lost (M-4). The Engine check accepted empty or garbage
+    versions (L-6). The gateway substituted listen ports unchecked (L-3).
+    `lint.sh` built PowerShell source from file names (L-7). Teardown with
+    `--profile '*'` removed other runs' one-shot containers (F3).
+  - **Decision:**
+    - **No fixed address:** `backend` has no `ipam`; Docker's default pools
+      give each project its own subnet, so parallel stacks from this compose
+      file are supported. Host isolation is proven at runtime by the smoke
+      host half reading `docker network inspect <project>_backend` for
+      `gateway_mode_ipv4=isolated` (and `Internal`), not by probing an
+      address from inside, which cannot prove absence (§2.2).
+    - **Engine version:** launch requires `docker version` to succeed with a
+      strictly numeric `MAJOR.MINOR.PATCH`, major ≥ 28 compared as an
+      integer; anything else is refused before compose runs.
+    - **Gateway templates:** the entrypoint validates every
+      template-substituted variable: the five ports as integers 1–65535, the
+      upstream as before. A drift test ties the template variables to the
+      checked set.
+    - **Lint:** `.ps1` paths reach PSScriptAnalyzer only through
+      `KE_LINT_PS1_FILES`, read by a fixed command.
+    - **Teardown:** `down` on the project's default-profile services only,
+      without `--profile '*'` or `--remove-orphans`.
+    - **`.env.example`:** `KE_MODEL_UPSTREAM` and `KE_EGRESS_ALLOWLIST` are
+      empty; a comment names `aria-gb10-2`; the operator sets both in `.env`.
+  - **Alternatives:**
+    - A per-run subnet variable overridden by verify (R1-B1 option (i)):
+      more config, and still a probe of guessed addresses.
+    - Identifying the owner of `.1` by resolving service names (the
+      review's suggested form of option (ii)): depends on Docker's
+      allocation order and still cannot see a host address elsewhere in the
+      subnet; the daemon's own setting is direct.
+    - `sort -V` version comparison: ranks garbage and leading-space values
+      at or above 28 (L-6).
+    - A `-File` analyzer script taking paths as arguments (also allowed by
+      L-7): one more `.ps1` to keep lint-covered.
+  - **Consequences:**
+    - Docker's default address pools must not overlap the host's LAN or
+      VPN; that is a host Docker setting (`default-address-pools`), not
+      ours.
+    - Engine builds with suffixed versions (release candidates, some
+      distro packages) cannot launch the stack.
+    - A leftover one-shot container in a project makes teardown fail loudly
+      instead of being removed silently.
+    - Local verify runs have no model upstream unless the open R2 question
+      (§2.2) is ruled.
+    - The Windows proof goes stale again (Q34) and is repeated.
+  - **First tests:** the Engine version cases and the teardown argument
+    cases (§2.4 Scripts), the per-port gateway cases and the template drift
+    test (§2.4 Gateway upstream check), the smoke host-half isolation check
+    (§2.2), and the lint fixed-command tests (§2.2 Lint), all fast.
 
 ### ADR-KE-012: Offline bundle with a checksum manifest (platform-offline)
 - **Context:** PS-3.1/3.2 require a bundle that installs and runs on a daemon

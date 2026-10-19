@@ -4,9 +4,14 @@
 #   scripts/verify.sh fast   unit tests (pure functions, docs)
 #   scripts/verify.sh full   fast + integration + smoke (everything CI runs)
 #
-# On the host it re-runs itself inside the one-shot `gates` compose service,
-# so every caller gets the same image, the same tools and no network. Inside,
-# it only calls the real gate scripts; never list their commands here.
+# On the host it only orchestrates Docker (ADR-KE-009, architecture §2.2):
+#   fast: re-runs itself in the one-shot `gates` compose service (no network).
+#   full: builds, launches a `ke-verify-<suffix>` project that publishes
+#         nothing, re-runs itself in the one-shot `gates-it` service on the
+#         internal backend network, then runs the live smoke, and always tears
+#         the project down with its volumes.
+# Inside either container it only calls the real gate scripts; never list
+# their commands here.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -18,11 +23,42 @@ esac
 
 if [ "${KE_IN_GATES:-}" != "1" ]; then
   # MSYS_NO_PATHCONV stops Git Bash on Windows rewriting the container path.
-  MSYS_NO_PATHCONV=1 exec docker compose --profile gates run --rm --build gates \
-    scripts/verify.sh "$mode"
+  export MSYS_NO_PATHCONV=1
+  if [ "$mode" = fast ]; then
+    exec docker compose --env-file .env.example --profile gates run --rm --build gates \
+      scripts/verify.sh fast
+  fi
+  started="$(date +%s)"
+  export COMPOSE_PROJECT_NAME="ke-verify-${RANDOM}${RANDOM}"
+  export COMPOSE_FILE="docker-compose.yml:docker-compose.verify.yml"
+  export COMPOSE_PATH_SEPARATOR=":"
+  export KE_ENV_FILE=".env.example"
+  echo "== verify full: project $COMPOSE_PROJECT_NAME =="
+  # Teardown runs once on every exit path. A failed teardown after a green
+  # run still fails verify (N7): a leaked project is not a pass.
+  # shellcheck disable=SC2317  # runs from the EXIT trap
+  cleanup() {
+    local rc=$?
+    trap - EXIT
+    if ! scripts/teardown.sh --volumes; then
+      echo "verify full: FAIL (teardown of project $COMPOSE_PROJECT_NAME failed; remove it by hand: docker compose -p $COMPOSE_PROJECT_NAME down --volumes)" >&2
+      [ "$rc" -eq 0 ] && rc=1
+    elif [ "$rc" -eq 0 ]; then
+      echo "== verify full: PASS ($(( $(date +%s) - started ))s) =="
+    fi
+    exit "$rc"
+  }
+  trap cleanup EXIT
+  scripts/build.sh
+  scripts/launch.sh
+  docker compose --env-file "$KE_ENV_FILE" --profile gates-it run --rm gates-it \
+    scripts/verify.sh full
+  scripts/smoke.sh
+  exit 0
 fi
 
 echo "== verify $mode: $(git rev-parse --short HEAD 2>/dev/null || echo no-git)$(git diff --quiet 2>/dev/null || echo '+dirty') =="
+scripts/lint.sh || { echo "verify $mode: FAIL (lint.sh exited non-zero)" >&2; exit 1; }
 # Stream test.sh output through while keeping a copy: a run that executed no
 # tests (no "Ran N tests" line, or N = 0) must not count as green.
 log="$(mktemp)"

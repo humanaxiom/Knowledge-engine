@@ -91,6 +91,10 @@ def check(settings: Settings) -> None:
 
     check_egress(settings)
 
+    if not settings.bind_address.is_loopback:
+        _refuse_or_warn(settings, "KE_BIND_ADDRESS",
+                        "services would be published beyond this host (not 127.0.0.0/8)")
+
     if settings.env != "dev":
         for path, secret in _secrets(settings):
             if _visible(secret.get_secret_value()).lower().startswith(PLACEHOLDER_PREFIX):

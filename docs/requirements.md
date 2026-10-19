@@ -234,6 +234,11 @@ the stack launchable by its own scripts. Each plan item's outcome-metric line:
 | 2 | `platform-stack` | PS-2.* | neither; the running stack and the real-store integration gate | `scripts/launch` + live smoke on the developer's machine |
 | 3 | `platform-offline` | PS-3.* | neither; proves "deployable without the assistant" | offline bundle installed with no network |
 
+*Row 2 split (orchestrator ruling, 2026-10-19):* `platform-stack` is built as
+two plan items, `platform-stack-up` (2a) then `platform-stack-ready` (2b),
+each on its own `agent/<slug>` branch with its own handoff doc. The criteria
+of each are listed under PS-2, "Split into 2a and 2b".
+
 `platform-stack` may merge before `platform-offline` exists. The shipping rule
 "deployable without the assistant" is met at the end of `platform-offline`, and
 no reviewer-facing feature ships before then (PS-Q9, ruled 2026-10-18).
@@ -401,12 +406,34 @@ N18, N19; security L2, L5, L7, L16, L17, L18.
   re-tagged from integration, because only the host side can see container
   health: the launch script's wait on every healthcheck plus the probe),
   `[unit: test_compose_images_pinned_by_digest]` (fast)
-- **PS-2.2 Ports from `.env` (A6).** Every published host port, including
-  phoenix's (today literal `6006`/`4317`), is a compose variable set in `.env`,
-  and every default in `.env.example` lies in 47100–47199. No two defaults
-  collide. `[unit: test_no_hardcoded_ports]` (fast, extends PS-1.2),
-  `[unit: test_env_example_ports_in_range_and_unique]` (fast). Specific port
-  numbers: architect.
+- **PS-2.2 Ports from `.env` (A6; port ruling, umbrella 2026-10-19).** Every
+  published host port, including phoenix's (today literal `6006`/`4317`), is a
+  compose variable that `.env` overrides, and every default in `.env.example`
+  lies in 47100–47199. No two defaults collide. `[unit: test_no_hardcoded_ports]`
+  (fast, extends PS-1.2), `[unit: test_env_example_ports_in_range_and_unique]`
+  (fast). Specific port numbers: architect (§2.4).
+  - *Published-port form (port ruling).* Given every compose file, every
+    published port is written `${KE_BIND_ADDRESS:-127.0.0.1}:${KE_<X>_PORT:-<default>}:<container port>`:
+    the host address is never a literal and never omitted, and no host port
+    uses the `:?` form (which breaks `verify.sh` and CI when no `.env`
+    exists). Only `gateway` has a `ports:` entry (`docs/architecture.md`
+    §2.4). `[unit: test_published_ports_use_bind_address]` (fast; name
+    adopted from the architect by ruling R1, 2026-10-19; replaces the
+    analyst's earlier `test_published_ports_use_bind_address_form`)
+  - *No second default drifts.* Given every compose file, every
+    `${VAR:-default}` default (ports included) equals the value
+    `.env.example` sets for that variable, and every `KE_<X>_PORT` a compose
+    file publishes is set in `.env.example`.
+    `[unit: test_compose_defaults_match_env_example]` (fast; name adopted
+    by R1, replaces `test_compose_port_defaults_match_env_example`;
+    generalises platform-config's `test_compose_phoenix_defaults_match_config`).
+  - *Resolves without `.env`.* Given a checkout with no `.env`, `docker
+    compose config` succeeds and every published port binds to `127.0.0.1`.
+    `[smoke: test_compose_resolves_without_env_file]` (full; needs the
+    compose CLI, which the `gates` container does not have).
+  - *Loopback by default.* `.env.example` either does not set
+    `KE_BIND_ADDRESS` or sets it to `127.0.0.1`; it never sets a non-loopback
+    value. `[unit: test_env_example_bind_address_is_loopback]` (fast)
   - *Delivered early (orchestrator ruling, 2026-10-18).* Phoenix's compose
     port (`KE_PHOENIX_PORT=47101`) lands in platform-config (see PS-1.2);
     the rest of this criterion stays here.
@@ -435,10 +462,12 @@ N18, N19; security L2, L5, L7, L16, L17, L18.
     one real store container, then `/readyz` is not ready and names that
     store; when the store is started again, then `/readyz` is ready again.
     `[smoke: scripts/smoke.sh store stop/start]` (full; re-tagged from
-    integration). The model-host
-  probe goes through the egress guard (PS-1.4). The embedding-dimension check
-  (DR13) joins `/readyz` in knowledge-plane, where the vector index exists; it
-  is removed from this item.
+    integration).
+  - *Model-host probe guarded.* The model-host probe goes through the egress
+    guard (PS-1.4); it is covered by
+    `test_egress_allowlist_holds_with_network_access` (PS-2.7, full). The
+    embedding-dimension check (DR13) joins `/readyz` in knowledge-plane, where
+    the vector index exists; it is removed from this item.
   - *Model host (PS-Q6).* The model host is reported as its own field, but
     overall readiness excludes it, because ingest and review work without a
     model. Given all stores up and the model host unreachable, the
@@ -467,10 +496,25 @@ N18, N19; security L2, L5, L7, L16, L17, L18.
     `[unit: test_gates_it_internal_only_and_no_socket]` (fast) asserts that
     every network `gates-it` joins is `internal: true`, that `gates-it` mounts
     no Docker socket, and that `gates` still has `network_mode: none`.
+  - *No route out, at runtime (ruling R2, 2026-10-19).* The internal
+    `backend` network is the boundary; there is no in-process socket-guard
+    fixture. Given `gates-it` running, when a test opens a raw TCP connection
+    to a TEST-NET-1 address (192.0.2.0/24), then the connection fails; and
+    when it connects to `gateway`'s model listen port, then the connection is
+    accepted (the control). `[integration: test_gates_it_has_no_route_out]`
+    (full; name adopted by R1; the first integration test, since every later
+    one assumes this topology).
   - *Model host only through the gateway (human ruling F-A).* The only host
     outside the stack that a test reaches is the model host (`aria-gb10-2`),
     and only through the stack gateway's model forward (model client →
     `gateway` → `KE_MODEL_UPSTREAM`). No test reaches any other outside host.
+    Given the gateway's configuration, the only upstream outside the stack is
+    the value of `KE_MODEL_UPSTREAM`; every other upstream is a compose
+    service name. `[unit: test_gateway_only_external_upstream_is_model_upstream]`
+    (fast). Given the compose files, `gates-it` and the `api`/`worker`
+    services share an internal network with `gateway`, so the forward is
+    reachable without a non-internal network (checked by
+    `test_gates_it_internal_only_and_no_socket`, extended).
   - *Egress allowlist still holds (DR30).* Given model calls going through the
     gateway forward, when the app's model client is asked to reach a host not
     on `KE_EGRESS_ALLOWLIST`, then it raises before any connection is made.
@@ -500,7 +544,9 @@ N18, N19; security L2, L5, L7, L16, L17, L18.
   - *Superseded wording, kept for the record:* "PS-2.7 Real-store integration
     gate, no egress (DR31). `verify.sh full` runs `tests/integration/` against
     real PostgreSQL, Neo4j and Valkey, while any connection to a host outside
-    the stack fails. `[integration: test_socket_guard_blocks_outbound]`."
+    the stack fails", proven then by an in-process socket-guard test. That
+    test and its fixture are dropped (F-A, ruling R2); the runtime proof is
+    `test_gates_it_has_no_route_out` above.
 - **PS-2.8 Live-stack smoke.** `scripts/smoke.sh` launches the stack through
   the launch script, checks `/healthz` and `/readyz`, stops and starts one
   real store (PS-2.5), checks every service healthy (PS-2.1), then tears it
@@ -521,7 +567,15 @@ N18, N19; security L2, L5, L7, L16, L17, L18.
     CI (`verify.sh full`). Windows is proven by a recorded run of the
     PowerShell build, launch and teardown scripts on the human's Windows
     host, with its output saved under `docs/evidence/platform-stack/`
-    `[gate: recorded Windows run]`.
+    `[gate: recorded Windows run]` (manual: neither fast nor full; it runs
+    outside `verify.sh` and is checked by the reviewer). The evidence file
+    shows, unedited: the Windows version, the commit the run used (equal to
+    the branch head at review, or the diff since names no script, compose or
+    Dockerfile change; orchestrator ruling Q34, 2026-10-19: otherwise the run
+    is repeated before commit), the build script's output, the launch script
+    reporting every PS-2.1 service healthy, the PowerShell launch script's
+    refusal case (PS-2.14), and the teardown script followed by
+    `docker compose ps` listing no running container of the project.
 - **PS-2.10 Only the gateway has a route out.** Given the compose files, only
   `gateway` is attached to a network that is not `internal: true`; every other
   stack service is attached only to internal networks.
@@ -542,6 +596,173 @@ N18, N19; security L2, L5, L7, L16, L17, L18.
   model-calling integration tests (PS-2.7) as running only where the model
   host is reachable, and skipping by name on GitHub runners.
   `[unit: test_claude_md_lists_verify_only_checks]` (fast)
+- **PS-2.14 LAN exposure refused outside dev (port ruling, umbrella
+  2026-10-19).** Exposing published ports beyond the host is a deliberate
+  operator choice (`KE_BIND_ADDRESS` set to a non-loopback address in `.env`)
+  and is refused until auth-audit lands. Q33 ruled by the orchestrator
+  2026-10-19; design in `docs/architecture.md` §2.4 and the ADR-KE-011
+  amendment.
+  - *Definitions.* "Loopback" means any address in `127.0.0.0/8`, plus
+    `::1` (Q33b). `KE_BIND_ADDRESS` takes an IPv4 literal only; IPv6 binding
+    is out of scope for this item (architect, §2.4), so an IPv6 value such as
+    `::` or `::1` is rejected in every `KE_ENV` as not IPv4, with an error
+    naming `KE_BIND_ADDRESS`. Unset or empty means `127.0.0.1`, as in the
+    compose `:-` default.
+  - *Same rule in three places (Q33a, ruling R4).* Each of these applies the
+    rule below: (1) engine startup in `api` and `worker` (refusal 6);
+    (2) the gateway image's entrypoint check, which stops nginx before it
+    publishes anything; (3) the build/launch scripts, bash and PowerShell,
+    before `docker compose up`. The rule: given `KE_ENV` other than `dev` and
+    a `KE_BIND_ADDRESS` that is not loopback, it refuses (startup fails, the
+    entrypoint exits non-zero, the launch script exits non-zero without
+    starting any container) with a message naming `KE_BIND_ADDRESS`; given
+    `KE_ENV=dev` and a non-loopback IPv4 value, it logs or prints a warning
+    naming `KE_BIND_ADDRESS` and continues (Q33c); given a loopback value,
+    unset or empty, it continues in every `KE_ENV` with no warning. No
+    message contains a secret setting value.
+  - *Test cases (each check).* Unset, `127.0.0.1`, `127.0.0.2`, `0.0.0.0`
+    and a private LAN address (e.g. `192.168.1.10`), each in `dev` and one
+    non-dev `KE_ENV`; plus `::` and `::1`, rejected as not IPv4 in both.
+    Expected: the loopback cases pass silently; `0.0.0.0` and the LAN
+    address are refused outside `dev` and warn in `dev`.
+  - `[unit: test_startup_refuses_non_loopback_bind_address]` (fast; engine,
+    refusal 6; a non-IPv4 value is a `ConfigError` naming the variable).
+  - `[unit: test_gateway_bind_check_refuses_non_loopback]` (fast; runs
+    `docker/gateway/10-ke-bind-check.sh` under `sh` with the cases above and
+    checks exit codes and that the message names `KE_BIND_ADDRESS`).
+  - `[unit: test_launch_script_refuses_non_loopback_bind_address]` (fast;
+    runs the bash launch script with the refused and the dev cases and
+    asserts it exits non-zero, names `KE_BIND_ADDRESS`, and invokes no
+    `docker compose up`; the dev case warns). The PowerShell launch script's
+    refusal is shown by one refused non-dev case in the recorded Windows run
+    (PS-2.9; manual).
+  - *The checks see the value compose binds with.* Given the compose files,
+    `api`, `worker` and `gateway` each receive `KE_BIND_ADDRESS` (same
+    variable, same `127.0.0.1` default as the published ports) and `KE_ENV`.
+    `[unit: test_compose_passes_bind_address_to_app]` (fast; covers
+    `gateway` as well as the app services)
+  - *Lifted only by auth-audit.* This criterion stays until auth-audit
+    narrows it to "auth disabled" in every place above; no other item
+    relaxes it.
+  - *Out of scope.* IPv6 bind addresses; a hand-edited compose file that
+    bypasses the variable (accepted residual, §2.4).
+- **PS-2.15 test.sh header is current (carry-in, harness-followups).** Given
+  `scripts/test.sh`, its header comment does not mention testcontainers and
+  describes the `full` integration stage as `tests/integration/` run once in
+  the `gates-it` compose service against the real stores (PS-2.7).
+  `[unit: test_test_sh_header_matches_integration_mechanism]` (fast)
+- **PS-2.16 AGENTS.md hook wording (carry-in, security L24).** Given
+  `AGENTS.md`, the Branch Policy paragraph no longer says the hook "denies
+  any commit/push attempted while on `main`"; it describes the hook as a guard
+  rail that denies most such attempts, and names the on-`main` bypasses that
+  ADR-KE-001 records (words hidden from the text: variables, `eval`, git
+  aliases, encodings; and `gh`). No hook code changes.
+  `[unit: test_agents_md_hook_wording_not_absolute]` (fast; asserts the
+  absolute phrase is gone and each named bypass class appears).
+- **PS-2.17 Installed-provider identity (carry-in, security M5; in 2a as the
+  first unit, ruling R3, 2026-10-19; design: ADR-KE-010 M5 amendment, option
+  c).** Only a tracer provider built by the engine's own constructor is
+  accepted. Given a tracer provider installed before `startup()` that the
+  engine did not build, when startup runs with otherwise passing settings,
+  then it refuses naming `telemetry.tracing` and zero spans reach that
+  provider's exporter, whatever its exporter. Cases, one subtest each, every
+  provider built outside the engine: (a) local OTLP with `trust_env=False`
+  and `session.proxies` set; (b) the same with a mounted rerouting transport
+  adapter; (c) an `_endpoint` rewritten to localhost; (d) a plain in-memory
+  exporter. `[unit: test_provider_not_built_by_engine_is_refused]` (fast;
+  the first failing test of 2a). Control: given a provider built by the
+  engine with an in-memory exporter, startup accepts it and that exporter
+  receives the startup spans.
+  `[unit: test_engine_built_provider_is_accepted]` (fast). With no provider
+  installed (the proxy provider), startup is unchanged.
+  - *Tests flip by ruling.* Tests that today pin a foreign provider as
+    accepted (the console, in-memory and local-OTLP cases of
+    `InstalledProviderTest`, and
+    `test_local_otlp_that_ignores_proxy_env_is_accepted`) now expect
+    "refused", and the controls (including
+    `test_control_spans_do_reach_an_accepted_provider`) build their provider
+    through the engine. This tightens those tests; it is authorised by
+    ruling R3 and is not a weakened gate.
+  - *Superseded, kept for the record:* the earlier shape-by-shape criterion
+    named `test_installed_exporter_rerouting_is_refused` and waited on the
+    architect's test-suite plan; that plan is now recorded (ADR-KE-010 M5
+    amendment).
+- **PS-2.18 Startup loads settings once; refusals logged (carry-in, review R3,
+  R4).** Given one `startup()` call, the settings object is built exactly once
+  (R3). Given an installed provider that startup refuses, a log record names
+  `telemetry.tracing` and the reason, and contains no setting value (R4).
+  `[unit: test_startup_loads_settings_once]`,
+  `[unit: test_installed_provider_refusal_is_logged]` (fast)
+- **PS-2.19 Hardcoded-value scanner covers the new surface (carry-in, review
+  N1–N5).** This item adds compose files, gateway templates, PowerShell and
+  bash scripts and store clients, so the PS-1.2 scanner is widened here:
+  - *N1.* Host names match case-insensitively (`ARIA-GB10-2` is flagged like
+    `aria-gb10-2`).
+  - *N2.* Every tracked text file in the PS-1.2 scope is scanned whatever its
+    suffix (including `*.conf`, `*.template`, `*.ps1`, `*.sql`, `*.cypher`,
+    and compose files of any name); given a file whose type the scanner
+    cannot classify, the test fails naming it rather than skipping it.
+  - *N3.* A port number in a host/port tuple or under a `port` key in
+    product source is flagged like any other literal port.
+  - *N4.* The `DEFAULT_COLLECTOR` exemption covers only its assignment line;
+    another line starting with the same name that holds a literal port is
+    flagged.
+  - *N5.* No test or product definition of loopback includes `0.0.0.0`
+    (it is the LAN-exposure value PS-2.14 refuses).
+  `[unit: test_no_hardcoded_hosts_or_models]`, `[unit: test_no_hardcoded_ports]`
+  extended with one case per nit, `[unit: test_hardcoded_scan_covers_every_text_file]`
+  (fast). Each new case is shown RED against the platform-config scanner.
+- **PS-2.20 Project name (carry-in, review N13 remainder).** Given
+  `pyproject.toml`, `[project].name` equals the OpenInference project name
+  that `docs/architecture.md` §2.3 gives the product, and `uv.lock` is
+  regenerated (the `--locked` runs catch drift).
+  `[unit: test_pyproject_name_matches_project_name]` (fast)
+
+**Also delivered in platform-stack (criteria live elsewhere):** PS-1.9
+*Not shipped* (`test_env_example_not_in_app_image`, fast; the app image
+arrives here) and the first PS-3.4 measurement (`test_ci_job_has_timeout`,
+fast, plus the recorded CI duration).
+
+**Carry-ins from platform-config (`docs/handoffs/archive/platform-config.md`,
+close-out) — placement:**
+
+| Finding | Here? | Where |
+|---|---|---|
+| security M5 | yes | PS-2.17, first unit of 2a (ruling R3; plan recorded in the ADR-KE-010 M5 amendment) |
+| review R3, R4 | yes | PS-2.18 |
+| review R5 (`ModelClient.complete` attributes, non-dict body, `base_url` error outside the span) | no | the first item that calls `complete()` in product code; this item only probes `/models` |
+| review R6 (vacuous tests in `test_engine_startup.py`) | yes, no criterion | tester deletes them or points them at `test_engine_telemetry` while writing PS-2.18; reviewer checks |
+| review R7 (`.env.example` Phoenix comment) | done | reworded at the platform-config docs gate (`docs/evidence/platform-config/r7-verify.txt`); nothing left |
+| review N1–N5 | yes | PS-2.19 |
+| review N11 (Dockerfile layer order) | yes, no criterion | applies to the new `docker/app.Dockerfile`; architect's call, reviewer judges |
+| review N13 (pyproject name) | yes | PS-2.20; the other N13 docs drift was fixed at the platform-config docs gate |
+| security L1c, L2, L3, L5, L7, I1 | no | stay deferred; not named for this item |
+
+**Split into 2a and 2b (proposed by the analyst; accepted by the orchestrator
+2026-10-19, with PS-2.17 moved into 2a by ruling R3).** PS-2.1–PS-2.20 is too
+large for one fix-and-review loop under the 5-round cap, so it is built as two
+plan items, in order, each on its own branch and handoff doc, each ending
+`scripts/verify.sh full` green:
+
+| Order | Slug | Criteria | Deployable as |
+|---|---|---|---|
+| 2a | `platform-stack-up` | PS-2.17 (M5, first unit), PS-2.1–PS-2.4, PS-2.7 *Mechanism* and *No route out, at runtime*, PS-2.9 (with the Windows run, including the PowerShell refusal case), PS-2.10–PS-2.12, PS-2.14–PS-2.16, PS-2.19, PS-2.20, PS-1.9 *Not shipped* | `scripts/launch` brings every service up healthy; smoke launches, checks `/healthz`, tears down |
+| 2b | `platform-stack-ready` | PS-2.5, PS-2.6, the rest of PS-2.7, PS-2.8, PS-2.13, PS-2.18, the PS-3.4 measurement | the same stack with readiness, worker, model-gated integration tests and the full smoke |
+
+Outcome-metric lines:
+
+- `platform-stack-up` — Outcome metric moved: neither directly; the stack
+  launches on loopback with every service healthy, behind the real-store
+  `gates-it` gate, a precondition for any reviewer to act.
+- `platform-stack-ready` — Outcome metric moved: neither directly; readiness,
+  the worker, model-gated integration tests and the full live-stack smoke,
+  a precondition for any reviewer to act.
+
+PS-2.4 is in 2a because PS-2.1's health check needs `/healthz`, and it runs in
+`gates-it`, so the `gates-it` mechanism (and its runtime no-route-out proof)
+moves into 2a too. PS-2.17 is in 2a because the engine-built provider changes
+`tests/support.py`, which every later test uses. PS-2.18 stays in 2b, and with
+it the review R6 clean-up named in the placement table.
 
 ### PS-3 platform-offline
 
@@ -589,7 +810,10 @@ Questions raised in the analyst review of 2026-10-18; rulings by the
 orchestrator the same day. Full text and numbering in `docs/open-questions.md`
 § "platform-skeleton" (Q19–Q30).
 
-Open: none for this item.
+Resolved (raised 2026-10-19 for platform-stack, ruled by the orchestrator the
+same day, `docs/handoffs/platform-stack.md`): **Q33** LAN-exposure refusal
+details, settled in PS-2.14; **Q34** Windows proof staleness, settled in
+PS-2.9. Full text in `docs/open-questions.md`.
 
 Ruled by the orchestrator 2026-10-18 (`docs/handoffs/platform-config.md`,
 "orchestrator: rulings on analyst Q31, Q32 and casing"):
@@ -1073,8 +1297,8 @@ and DR31's test was `test_gates_it_has_network_access_and_no_socket` (now
 `test_gates_it_internal_only_and_no_socket`). *Original wording, kept for the record:* the table row read
 "CI never calls a model | `test_no_model_calls_in_ci` | agent-workflow", and
 the build prompt's rule said integration tests use real Postgres/Neo4j/Valkey
-"via testcontainers" with mocked model calls. DR30's
-`test_socket_guard_blocks_outbound` is replaced by
+"via testcontainers" with mocked model calls. DR30's earlier
+in-process socket-guard test is replaced by
 `test_egress_allowlist_holds_with_network_access` for the same reason; it is
 kept under F-A because model calls still go through the gateway forward and
 the allowlist must still hold.

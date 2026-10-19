@@ -4,6 +4,32 @@ Maintained by the `marketer` agent. Follows a Keep a Changelog style.
 
 ## [Unreleased]
 
+### 2026-10-19 (platform-stack-up)
+
+**Added:**
+- A launchable stack: gateway, api, worker, postgres, neo4j, valkey and
+  phoenix.
+- Build, launch and teardown scripts for Linux (bash) and Windows (PowerShell).
+- `/healthz` on the api.
+- Lint gates: shellcheck and PSScriptAnalyzer, run from `scripts/lint.sh`.
+- `scripts/verify.sh full` runs a throwaway stack and the integration tests in
+  an isolated container.
+
+**Changed:**
+- Only the gateway publishes ports, on loopback: 47100 for the API and 47101
+  for Phoenix.
+- Docker Engine 28 or later is required. The launch scripts refuse older
+  engines.
+- All images are pinned by digest.
+
+**Security:**
+- The internal network is isolated from the host and the internet. Tests
+  reach only the model host, through the gateway.
+- The gateway refuses a model upstream that is not on the egress allowlist,
+  and refuses malformed port values.
+- LAN exposure is refused outside dev until the auth audit.
+- Tracing accepts only a provider the engine built.
+
 ### 2026-10-19
 
 **Added:**

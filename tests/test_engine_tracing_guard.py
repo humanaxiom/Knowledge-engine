@@ -12,6 +12,11 @@ orchestrator "rework round 2 of 5" in docs/handoffs/platform-config.md):
   fails verification, or is not an SDK provider at all, is refused and gets
   zero spans. A `ProxyTracerProvider` (nothing installed) is accepted.
 - R2: the engine's provider resource carries the OpenInference project name.
+- platform-stack-up, PS-2.17 / security M5 (ADR-KE-010 M5 amendment, option
+  (c); orchestrator ruling R3 in docs/handoffs/platform-stack.md): only a
+  provider built by `engine.telemetry.build_provider` (or nothing installed)
+  is accepted. Tests that pinned foreign shapes as accepted were flipped to
+  refused under R3, and their controls now use `build_provider`.
 
 How spans are routed here: harness_telemetry's module tracer (`_tracer`) is a
 ProxyTracer that resolves to the first global provider (tests/support.py's).
@@ -24,6 +29,7 @@ runs under a SocketSpy, which refuses and records every resolve/connect.
 from __future__ import annotations
 
 import importlib
+import io
 import unittest
 from contextlib import ExitStack, contextmanager
 from typing import Any, Iterator
@@ -129,11 +135,15 @@ def export_once(exporter: Any, env: dict[str, str]) -> list[str]:
 
 @contextmanager
 def globals_patched(current: Any) -> Iterator[list[Any]]:
-    """get_tracer_provider returns `current`; set_tracer_provider records."""
+    """get_tracer_provider returns `current`; set_tracer_provider records.
+
+    As in real OTel, once something is installed get_tracer_provider returns
+    it (security M-1: configure_tracing checks the global after installing)."""
     from opentelemetry import trace
 
     installed: list[Any] = []
-    with mock.patch.object(trace, "get_tracer_provider", lambda: current), \
+    with mock.patch.object(trace, "get_tracer_provider",
+                           lambda: installed[-1] if installed else current), \
             mock.patch.object(trace, "set_tracer_provider", installed.append):
         try:
             yield installed
@@ -277,6 +287,13 @@ def _unknown_exporter() -> Any:
     return Unknown()
 
 
+def _engine_built(exporter: Any, **kwargs: Any) -> Any:
+    """A provider from the engine's only constructor (ADR-KE-010 M5 amendment)."""
+    from engine.telemetry import build_provider
+
+    return build_provider(exporter, **kwargs)
+
+
 def _vendor_provider(inner: Any) -> Any:
     """A non-SDK API TracerProvider (e.g. a vendor distro) wrapping `inner`."""
     from opentelemetry import trace
@@ -334,13 +351,24 @@ class InstalledProviderGuardTest(unittest.TestCase):
                     self.assertIsInstance(error, _refused(), f"{shape} trusted in {mode}")
                     self.assertEqual(error.setting, "telemetry.tracing")
 
-    def test_local_otlp_that_ignores_proxy_env_is_accepted(self):  # H2 control
+    def test_local_otlp_that_ignores_proxy_env_is_refused_unless_engine_built(self):
+        # Flipped from "..._is_accepted" (platform-config H2 control) by
+        # orchestrator ruling R3 (docs/handoffs/platform-stack.md) and the
+        # ADR-KE-010 M5 amendment: a provider built outside the engine is
+        # refused whatever its exporters; the same exporter in a provider
+        # from `engine.telemetry.build_provider` is the accepted control.
         from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 
         for mode, env in MODES.items():
-            with self.subTest(mode=mode):
+            with self.subTest(mode=mode, built="outside the engine"):
                 provider = self._sdk(SimpleSpanProcessor(
                     _real_otlp(f"{LOCAL}/v1/traces", trust_env=False)))
+                error, _ = self._configure(env, provider)
+                self.assertIsInstance(error, _refused(), "a foreign provider was trusted")
+                self.assertEqual(error.setting, "telemetry.tracing")
+            with self.subTest(mode=mode, built="by build_provider"):
+                provider = _engine_built(_real_otlp(f"{LOCAL}/v1/traces", trust_env=False))
+                self.addCleanup(provider.shutdown)
                 error, _ = self._configure(env, provider)
                 self.assertIsNone(error, repr(error))
 
@@ -451,7 +479,7 @@ class StartupVerifiesProviderFirstTest(unittest.TestCase):
             "sdk, local otlp that trusts proxy env": lambda: _real_otlp(
                 f"{LOCAL}/v1/traces", trust_env=True),
             "non-sdk vendor provider": None,
-            "sdk, in-memory only (accepted)": None,
+            "sdk, in-memory only": None,
             "sdk, custom span processor": None,
         }[shape]
         if extra is not None:
@@ -483,12 +511,20 @@ class StartupVerifiesProviderFirstTest(unittest.TestCase):
                 return exc, spy.attempts
         return None, spy.attempts
 
+    # "sdk, in-memory only" was the accepted control until ruling R3
+    # (docs/handoffs/platform-stack.md, ADR-KE-010 M5 amendment): built
+    # outside the engine, it is now a foreign provider like the rest.
     FOREIGN = ("sdk, unknown exporter", "sdk, otlp to an external collector",
                "sdk, local otlp that trusts proxy env", "non-sdk vendor provider",
-               "sdk, custom span processor")
+               "sdk, custom span processor", "sdk, in-memory only")
 
     def test_control_spans_do_reach_an_accepted_provider(self):
-        provider, memory = self._foreign("sdk, in-memory only (accepted)")
+        # Ruling R3: the control is now built by engine.telemetry.build_provider.
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+        memory = InMemorySpanExporter()
+        provider = _engine_built(memory)
+        self.addCleanup(provider.shutdown)
         error, _ = self._startup(PASSING["ci, passing"], provider)
         self.assertIsNone(error, repr(error))
         names = [s.name for s in memory.get_finished_spans()]
@@ -517,6 +553,320 @@ class StartupVerifiesProviderFirstTest(unittest.TestCase):
                     self.assertEqual([s.name for s in memory.get_finished_spans()], [],
                                      "spans reached the unverified provider")
                     self.assertEqual(attempts, [])
+
+
+def _run_startup(env: dict[str, str], installed: Any) -> tuple[BaseException | None, list]:
+    """startup() with `installed` as the global provider (see the module docstring)."""
+    from engine.startup import startup
+
+    tracing = importlib.import_module("harness_telemetry.tracing")
+    spy = SocketSpy()
+    with ExitStack() as stack:
+        stack.enter_context(globals_patched(installed))
+        stack.enter_context(mock.patch.object(
+            tracing, "_tracer", installed.get_tracer("harness_telemetry")))
+        stack.enter_context(environ(env))
+        stack.enter_context(spy.active())
+        try:
+            startup()
+        except Exception as exc:
+            return exc, spy.attempts
+    return None, spy.attempts
+
+
+def _proxied_session() -> Any:
+    import requests
+
+    session = requests.Session()
+    session.trust_env = False
+    session.proxies = {"http": PROXY, "https": PROXY, "all": PROXY}
+    return session
+
+
+def _rerouting_session() -> Any:
+    import requests
+    from requests.adapters import HTTPAdapter
+
+    class Reroute(HTTPAdapter):  # sends every request to the proxy host instead
+        def send(self, request: Any, **kwargs: Any) -> Any:
+            request.url = f"{PROXY}/v1/traces"
+            return super().send(request, **kwargs)
+
+    session = requests.Session()
+    session.trust_env = False
+    session.mount("http://", Reroute())
+    session.mount("https://", Reroute())
+    return session
+
+
+def _otlp_with(url: str, session: Any) -> Any:
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+
+    exporter = OTLPSpanExporter(url, timeout=5, session=session)
+    exporter.export = mock.MagicMock(name="export")  # type: ignore[method-assign]
+    return exporter
+
+
+def _rewritten_endpoint() -> Any:
+    """Built for an external collector, then `_endpoint` rewritten to localhost
+    (the real URL stays on the client; security M5 shape 3)."""
+    import requests
+
+    session = requests.Session()
+    session.trust_env = False
+    exporter = _otlp_with(f"{REMOTE}/v1/traces", session)
+    exporter._endpoint = f"{LOCAL}/v1/traces"
+    return exporter
+
+
+class ProviderIdentityTest(unittest.TestCase):
+    """PS-2.17 / security M5, ADR-KE-010 M5 amendment option (c), ruling R3:
+    startup() accepts a ProxyTracerProvider or a provider that *is* one built
+    by `engine.telemetry.build_provider`, and refuses every other provider,
+    whatever its exporters look like."""
+
+    # (shape, exporter factory or None). Every provider here is an SDK
+    # TracerProvider built outside the engine, with an in-memory exporter
+    # alongside so any span that reaches it is seen.
+    OUTSIDE = {
+        "local otlp, trust_env False, explicit session.proxies": lambda: _otlp_with(
+            f"{LOCAL}/v1/traces", _proxied_session()),
+        "local otlp, trust_env False, rerouting adapter mounted": lambda: _otlp_with(
+            f"{LOCAL}/v1/traces", _rerouting_session()),
+        "otlp with _endpoint rewritten to localhost": _rewritten_endpoint,
+        "plain in-memory provider built outside the engine": None,
+    }
+
+    def _outside(self, make: Any) -> tuple[Any, Any, Any]:
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+        memory = InMemorySpanExporter()
+        provider = TracerProvider()
+        self.addCleanup(provider.shutdown)
+        exporter = make() if make is not None else None
+        if exporter is not None:
+            provider.add_span_processor(SimpleSpanProcessor(exporter))
+        provider.add_span_processor(SimpleSpanProcessor(memory))
+        return provider, memory, exporter
+
+    def test_provider_not_built_by_engine_is_refused(self):
+        for shape, make in self.OUTSIDE.items():
+            for case, env in PASSING.items():
+                with self.subTest(shape=shape, env=case):
+                    provider, memory, exporter = self._outside(make)
+                    error, attempts = _run_startup(env, provider)
+                    self.assertIsInstance(error, _refused(), f"{shape} was trusted ({case})")
+                    self.assertEqual(error.setting, "telemetry.tracing")
+                    self.assertEqual([s.name for s in memory.get_finished_spans()], [],
+                                     "spans reached a provider the engine did not build")
+                    if exporter is not None:
+                        exporter.export.assert_not_called()
+                    self.assertEqual(attempts, [])
+        # Security M-1: a ProxyTracerProvider subclass that hands out tracers
+        # from its own SDK provider is not "nothing installed". Only
+        # type(provider) is ProxyTracerProvider is.
+        for case, env in {**PASSING, "console, passing": base_env(
+                KE_ENV="ci", HARNESS_TRACING="console")}.items():
+            with self.subTest(shape="ProxyTracerProvider subclass with its own sink", env=case):
+                provider, memory = _proxy_subclass(self)
+                error, attempts = _run_startup(env, provider)
+                self.assertIsInstance(error, _refused(), f"the proxy subclass was trusted ({case})")
+                self.assertEqual(error.setting, "telemetry.tracing")
+                self.assertEqual([s.name for s in memory.get_finished_spans()], [],
+                                 "spans reached the proxy subclass's sink")
+                self.assertEqual(attempts, [])
+
+    def test_decoy_equal_to_an_engine_provider_is_refused(self):  # security L-2
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+        from engine.telemetry import verify_provider
+
+        live = _engine_built(InMemorySpanExporter())  # kept alive for the whole test
+        self.addCleanup(live.shutdown)
+
+        class Decoy(TracerProvider):
+            def __eq__(self, other: object) -> bool:
+                return True
+
+            def __hash__(self) -> int:
+                return hash(live)
+
+        memory = InMemorySpanExporter()
+        decoy = Decoy()
+        decoy.add_span_processor(SimpleSpanProcessor(memory))
+        self.addCleanup(decoy.shutdown)
+        with globals_patched(decoy):
+            with self.assertRaises(_refused()) as ctx:
+                verify_provider([])
+        self.assertEqual(ctx.exception.setting, "telemetry.tracing")
+        error, attempts = _run_startup(PASSING["ci, passing"], decoy)
+        self.assertIsInstance(error, _refused(), "a decoy equal to an engine provider was trusted")
+        self.assertEqual([s.name for s in memory.get_finished_spans()], [])
+        self.assertEqual(attempts, [])
+
+    def test_configure_tracing_refuses_if_its_provider_is_not_the_global(self):  # M-1
+        # OTel sets the global only once. If set_tracer_provider is ignored, or
+        # another provider wins, configure_tracing must refuse, not return True.
+        from opentelemetry import trace
+        from opentelemetry.sdk.trace import TracerProvider
+
+        from engine.telemetry import configure_tracing
+
+        env = MODES["console"]
+        settings = load_settings(env)
+        foreign = TracerProvider()
+        self.addCleanup(foreign.shutdown)
+        proxy = trace.ProxyTracerProvider()
+        winners = {"set ignored (global stays the proxy)": lambda built: proxy,
+                   "another provider won the race": lambda built: foreign}
+        for case, winner in winners.items():
+            with self.subTest(case=case):
+                built: list[Any] = []
+
+                def get() -> Any:
+                    return winner(built) if built else proxy
+
+                with mock.patch.object(trace, "get_tracer_provider", get), \
+                        mock.patch.object(trace, "set_tracer_provider", built.append), \
+                        environ(env):
+                    with self.assertRaises(_refused()) as ctx:
+                        configure_tracing(settings)
+                for provider in built:
+                    provider.shutdown()
+                self.assertEqual(ctx.exception.setting, "telemetry.tracing")
+
+    def test_engine_built_provider_is_accepted(self):
+        from opentelemetry.sdk.trace.export import ConsoleSpanExporter
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+        for case, env in PASSING.items():
+            with self.subTest(exporter="in-memory", env=case):
+                memory = InMemorySpanExporter()
+                provider = _engine_built(memory)
+                self.addCleanup(provider.shutdown)
+                error, attempts = _run_startup(env, provider)
+                self.assertIsNone(error, repr(error))
+                self.assertIn("engine.startup", [s.name for s in memory.get_finished_spans()])
+                self.assertEqual(attempts, [])
+        others = {
+            "console": lambda: ConsoleSpanExporter(out=io.StringIO()),
+            "local otlp": lambda: _otlp_with(f"{LOCAL}/v1/traces", _plain_session()),
+        }
+        for name, make in others.items():
+            with self.subTest(exporter=name):
+                provider = _engine_built(make())
+                self.addCleanup(provider.shutdown)
+                error, _ = _run_startup(PASSING["ci, passing"], provider)
+                self.assertIsNone(error, repr(error))
+
+    def test_build_provider_resource_and_processors(self):
+        from opentelemetry.sdk.trace.export import (
+            BatchSpanProcessor,
+            ConsoleSpanExporter,
+            SimpleSpanProcessor,
+        )
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+        from engine.telemetry import PROJECT_NAME
+
+        cases = {
+            "console": (ConsoleSpanExporter, SimpleSpanProcessor),
+            "in-memory": (InMemorySpanExporter, SimpleSpanProcessor),
+            "otlp": (lambda: _otlp_with(f"{LOCAL}/v1/traces", _plain_session()),
+                     BatchSpanProcessor),
+        }
+        for name, (make, processor_type) in cases.items():
+            with self.subTest(exporter=name):
+                exporter = make()
+                provider = _engine_built(exporter)
+                self.addCleanup(provider.shutdown)
+                processors = provider._active_span_processor._span_processors
+                self.assertEqual([type(p) for p in processors], [processor_type])
+                self.assertIn(exporter, exporters_of(provider))
+                attributes = dict(provider.resource.attributes)
+                self.assertEqual(attributes.get("openinference.project.name"), PROJECT_NAME)
+                self.assertTrue(attributes.get("service.name"), attributes)
+        provider = _engine_built(InMemorySpanExporter(), project_name="harness-tests")
+        self.addCleanup(provider.shutdown)
+        self.assertEqual(provider.resource.attributes.get("openinference.project.name"),
+                         "harness-tests")
+
+    def test_build_provider_does_not_install_globally(self):
+        # The caller installs it (tests/support.py, configure_tracing).
+        from opentelemetry import trace
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+        with mock.patch.object(trace, "set_tracer_provider") as install:
+            provider = _engine_built(InMemorySpanExporter())
+        self.addCleanup(provider.shutdown)
+        install.assert_not_called()
+
+    def test_private_attribute_inspection_removed(self):
+        # ADR-KE-010 M5 amendment: identity replaces the private-attribute walk.
+        import engine.telemetry as telemetry
+
+        for name in ("_verify_installed", "_exporters_of", "_sessions_of", "_ignores_proxy_env"):
+            with self.subTest(name=name):
+                self.assertFalse(hasattr(telemetry, name), f"engine.telemetry.{name} still exists")
+
+    def test_configure_tracing_installs_an_engine_built_provider(self):
+        # The provider configure_tracing installs is itself accepted on a
+        # second startup (it goes through build_provider).
+        from opentelemetry import trace
+
+        from engine.telemetry import configure_tracing, verify_provider
+
+        env = MODES["console"]
+        settings = load_settings(env)
+        with globals_patched(trace.ProxyTracerProvider()) as installed, environ(env):
+            configure_tracing(settings)
+        self.assertEqual(len(installed), 1)
+        with globals_patched(installed[0]):
+            verify_provider([])  # must not raise
+
+    def test_support_provider_is_engine_built(self):
+        # tests/support.py builds the suite's provider with build_provider (ruling R3).
+        from opentelemetry import trace
+
+        from engine.telemetry import verify_provider
+        from tests import support
+
+        self.assertIsNone(support.BUILD_PROVIDER_ERROR,
+                          f"tests/support.py fell back to setup_tracing: {support.BUILD_PROVIDER_ERROR!r}")
+        self.assertIs(trace.get_tracer_provider(), support.PROVIDER)
+        verify_provider([])  # the real global, unpatched: must not raise
+
+
+def _proxy_subclass(test: unittest.TestCase) -> tuple[Any, Any]:
+    """Security M-1: a ProxyTracerProvider subclass whose tracers come from
+    its own SDK provider (an in-memory sink), so it passes an isinstance check."""
+    from opentelemetry import trace
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+    memory = InMemorySpanExporter()
+    sink = TracerProvider()
+    sink.add_span_processor(SimpleSpanProcessor(memory))
+    test.addCleanup(sink.shutdown)
+
+    class Sneaky(trace.ProxyTracerProvider):
+        def get_tracer(self, *args: Any, **kwargs: Any) -> Any:
+            return sink.get_tracer(*args, **kwargs)
+
+    return Sneaky(), memory
+
+
+def _plain_session() -> Any:
+    import requests
+
+    session = requests.Session()
+    session.trust_env = False
+    return session
 
 
 if __name__ == "__main__":
