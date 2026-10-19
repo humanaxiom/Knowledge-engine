@@ -1,0 +1,720 @@
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push less than a minute ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push less than a minute ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push less than a minute ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push less than a minute ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push less than a minute ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push less than a minute ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push less than a minute ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push less than a minute ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push less than a minute ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push less than a minute ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 1 minute ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 1 minute ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 1 minute ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 1 minute ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 1 minute ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 1 minute ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 1 minute ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 1 minute ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 1 minute ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 1 minute ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 1 minute ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 1 minute ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 1 minute ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 1 minute ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 1 minute ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 2 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 2 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 2 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 2 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 2 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 2 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 2 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 2 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 2 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 2 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 2 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 2 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 2 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 2 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 2 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 3 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 3 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 3 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 3 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 3 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 3 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 3 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 3 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 3 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 3 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 3 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 3 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 3 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 3 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 3 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 3 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 4 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 4 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 4 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 4 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 4 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 4 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+Refreshing run status every 3 seconds. Press Ctrl+C to quit.
+
+* agent/platform-stack-up CI · 39203787378
+Triggered via push about 4 minutes ago
+
+JOBS
+* verify (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  * Verify (full)
+  * Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+X agent/platform-stack-up CI · 39203787378
+Triggered via push about 4 minutes ago
+
+JOBS
+X verify in 4m25s (ID 117902115544)
+  ✓ Set up job
+  ✓ Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  X Verify (full)
+  ✓ Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+  ✓ Complete job
+
+ANNOTATIONS
+X Process completed with exit code 1.
+verify: .github#2207
+
+verify	Verify (full)	2026-10-19T05:20:21.4147815Z test_config_error_has_no_value_anywhere (tests.test_engine_config.ConfigErrorNeverCarriesValueTest.test_config_error_has_no_value_anywhere) ... ok
+verify	Verify (full)	2026-10-19T05:20:47.3235366Z test_backend_bridge_gateway_is_isolated (tests.test_stack_compose.Rework1ComposeTest.test_backend_bridge_gateway_is_isolated) ... ok
+verify	Verify (full)	2026-10-19T05:21:48.5178952Z test_smoke_fails_when_backend_is_not_isolated (tests.test_stack_scripts.SmokeBackendIsolatedTest.test_smoke_fails_when_backend_is_not_isolated) ... ok
+verify	Verify (full)	2026-10-19T05:21:52.3031838Z FAIL: test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='no-jq', shape='heredoc lines')
+verify	Verify (full)	2026-10-19T05:21:52.3038163Z AssertionError: 6.433756566 not less than 3.0
+verify	Verify (full)	2026-10-19T05:21:52.3041399Z FAIL: test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='no-jq', shape='one token')
+verify	Verify (full)	2026-10-19T05:21:52.3047718Z AssertionError: 3.919155356999994 not less than 3.0
+verify	Verify (full)	2026-10-19T05:21:52.3051331Z FAIL: test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='no-jq', shape='windows paths')
+verify	Verify (full)	2026-10-19T05:21:52.3060221Z AssertionError: 4.417783678000006 not less than 3.0
+verify	Verify (full)	2026-10-19T05:21:52.3062365Z Ran 319 tests in 128.216s
+verify	Verify (full)	2026-10-19T05:21:52.3063195Z FAILED (failures=3)
+verify	Verify (full)	2026-10-19T05:21:52.4436614Z verify full: FAIL (test.sh exited non-zero)

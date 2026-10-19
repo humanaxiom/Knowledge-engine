@@ -529,11 +529,75 @@ class BlockMainCommitHookTest(unittest.TestCase):
         self.assert_all(benign + ("ls\ngit push origin agent/x",
                                   "git status\ngit push -u origin agent/x"), None)
 
+    # --- platform-stack-up CI fix (2026-10-19), orchestrator ruling,
+    # criterion 10 contradiction owned by tester. The 5 MB test below failed
+    # on GitHub's 2-core runner in no-jq mode (3.9-6.4 s against 3 s;
+    # docs/evidence/platform-stack/ci-run.txt) while it passed locally and in
+    # earlier CI runs: timing variance on shared runners made a wall-clock
+    # bound a flaky proxy for security L21, which is structural. L21 (text (b)
+    # is built and judged ONLY when the command contains a backslash-newline)
+    # is now checked directly from the hook's xtrace on small inputs; the
+    # 5 MB run keeps only a loose sanity bound well under the 10 s hook
+    # timeout. The binding timing spec, requirement 4f (1 MB under 3 s in
+    # both modes), is unchanged in test_one_megabyte_token_shapes_finish_quickly
+    # and test_one_megabyte_command_finishes_quickly. ---
+
+    # Under `bash -x` each built text is one call of norm's
+    # `tr '[:upper:]' '[:lower:]'`, and each judged text is one iteration of
+    # the `for text in` loop. Anchored so command text in the trace can't match.
+    TRACE_BUILT = re.compile(r"^\++ tr '\[:upper:\]' '\[:lower:\]'$", re.M)
+    TRACE_JUDGED = re.compile(r"^\++ for text in ", re.M)
+
+    def trace_passes(self, command: str, mode: str) -> tuple[int, int, str]:
+        """Run the hook under bash -x; return (texts built, texts judged, stdout)."""
+        result = subprocess.run(["bash", "-x", str(HOOK)],
+                                input=claude_code_payload(command, self.repo),
+                                cwd=self.repo, env=self.env(mode),
+                                capture_output=True, text=True, check=True)
+        return (len(self.TRACE_BUILT.findall(result.stderr)),
+                len(self.TRACE_JUDGED.findall(result.stderr)),
+                result.stdout.strip())
+
+    def test_second_text_built_and_judged_only_with_backslash_newline(self):
+        # Security L21, checked structurally, no timing: without a
+        # backslash-newline exactly one text is built and judged; with one,
+        # text (b) is built and judged as well (M6 needs it). Fixtures are
+        # silent off main, so the judge loop is never cut short by a match.
+        self.switch("agent/x")
+        without = {
+            "one line": "echo hello",
+            "multi line": "git status\nls -la\necho done",
+            "heredoc": "cat <<'EOF'\nabcdefghi\nabcdefghi\nEOF",
+            "windows paths": "echo C:\\a\\b C:\\c\\d",
+            "backslash, space, newline": "echo a\\ \nb",
+        }
+        with_backslash_newline = {
+            "continuation": "echo a\\\nb",
+            "comment continuation": "#x\\\nls",
+            "plan-item push": "git push \\\norigin agent/x",
+        }
+        for mode in MODES:
+            for name, command in without.items():
+                with self.subTest(mode=mode, shape=name):
+                    self.require_mode(mode)
+                    self.assertNotIn("\\\n", command)
+                    built, judged, out = self.trace_passes(command, mode)
+                    self.assertEqual(out, "")
+                    self.assertEqual((built, judged), (1, 1))
+            for name, command in with_backslash_newline.items():
+                with self.subTest(mode=mode, shape=name):
+                    self.require_mode(mode)
+                    self.assertIn("\\\n", command)
+                    built, judged, out = self.trace_passes(command, mode)
+                    self.assertEqual(out, "")
+                    self.assertEqual((built, judged), (2, 2))
+
     def test_five_megabyte_command_without_backslash_newline_is_one_pass(self):
-        # Security L21: the second text is built only when the command holds a
-        # backslash-newline, so a 5 MB command without one costs one pass and
-        # stays under 3 s in both modes (Table C: two passes took up to 2.3 s
-        # in the image without jq and 9.4 s on the Windows host).
+        # Security L21 sanity bound only (see the ruling note above): a 5 MB
+        # command without a backslash-newline stays silent and finishes well
+        # inside the 10 s hook timeout (< 9 s, loose on purpose: shared-runner
+        # timing variance). The one-pass property itself is asserted by
+        # test_second_text_built_and_judged_only_with_backslash_newline.
         mb5 = 5_000_000
         cases = {
             "heredoc lines": "cat <<'EOF'\n" + "abcdefghi\n" * (mb5 // 10) + "EOF",
@@ -551,7 +615,7 @@ class BlockMainCommitHookTest(unittest.TestCase):
                     out = self.run_hook(command, mode)
                     elapsed = time.monotonic() - start
                     self.assertEqual(out, "")
-                    self.assertLess(elapsed, 3.0)
+                    self.assertLess(elapsed, 9.0)
 
     def test_json_without_command_field_is_silent(self):
         # PS-0.5 / review N17: no command field means nothing to judge, even

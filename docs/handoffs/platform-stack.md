@@ -146,3 +146,9 @@ Umbrella: `docs/handoffs/platform-skeleton.md`. Base: `agent/platform-config` @ 
 - PS-2.13: section was absent, so added. Its test (`test_claude_md_lists_verify_only_checks`) and the model-calling integration tests are 2b and do not exist yet; the section states the rule only.
 - Not claimed: readyz, worker behaviour, store stop/start (2b).
 - Verify: `scripts/verify.sh fast` PASS; output in docs/evidence/platform-stack/documenter-verify.txt.
+
+## 2026-10-19 tester: CI fix, 5 MB hook test (criterion 10 contradiction, orchestrator ruling)
+- Cause: CI 1e89584 red, `test_five_megabyte_command_without_backslash_newline_is_one_pass` no-jq 3.9-6.4 s vs 3 s on the 2-core runner (`ci-run.txt`); wall-clock proxy for security L21.
+- Change (tests/test_block_main_commit_hook.py only): NEW `test_second_text_built_and_judged_only_with_backslash_newline` counts, from `bash -x`, norm calls (texts built) and `for text in` iterations (texts judged): (1, 1) without a backslash-newline, (2, 2) with one, both modes, small inputs. 5 MB test kept as sanity bound < 9 s (hook timeout 10 s). Requirement 4f 1 MB < 3 s tests unchanged. Comment cites the ruling.
+- Mutation (guard case/esac removed, body verbatim): new test RED 10 failures `(2, 2) != (1, 1)`; scratch copy deleted: `ci-fix-mutation.txt`.
+- `scripts/verify.sh full` PASS, 320 unit OK, smoke pass: `ci-fix-verify.txt`. Next: developer commits, push on human approval, confirm CI green.
