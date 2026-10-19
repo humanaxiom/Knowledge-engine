@@ -15,12 +15,25 @@ Conventions:
   `[integration]`, `[gate: ci/deployable-offline]`.
 - Test names are the intended names. The tester may rename them, but the
   traceability table in §R-DR must be kept in sync in the same commit.
-- "Integration" means real PostgreSQL / Neo4j / Valkey via testcontainers inside
-  the `gates` compose service, with mocked model calls (design rule 31).
-  ADR-KE-009 proposes a different mechanism (compose services on an internal
-  network, reached by a one-shot `gates-it`) that keeps the intent: real
-  stores, mocked models, no egress. Which mechanism binds is open as Q30
-  (human); this line and DR31 stay as written until the human rules.
+- "Integration" means tests run by a one-shot compose service (`gates-it`)
+  against real PostgreSQL / Neo4j / Valkey running as compose services, with
+  no Docker socket mounted anywhere. `gates-it` is attached only to the
+  stack's internal network and has no internet access. The only host outside
+  the stack that tests reach is the LLM on `aria-gb10-2`, and only through the
+  stack gateway (the app's own path: model client → `gateway` →
+  `KE_MODEL_UPSTREAM`). Integration tests that call a model run when that host
+  is reachable through the gateway, and skip with a visible reason naming the
+  host when it is not, as on GitHub runners. Unit tests (`gates`,
+  `verify.sh fast`) keep `network_mode: none`. The app's egress allowlist
+  (DR30) still applies inside every test, and the offline-bundle checks
+  (`ci/offline`, `ci/deployable-offline`) still prove the deployed product
+  runs offline. This is the human's ruling on Q30 (2026-10-18), as narrowed by
+  the human's ruling F-A (2026-10-18); it amends DR31; see §R-DR.
+  - *Q30 as first ruled, narrowed by F-A:* "The `gates-it` network has
+    external access (it is not `internal`)."
+  - *Original wording, superseded by Q30:* "'Integration' means real
+    PostgreSQL / Neo4j / Valkey via testcontainers inside the `gates` compose
+    service, with mocked model calls (design rule 31)."
 - "Smoke" means a check run by `scripts/smoke.sh` on the host against the
   launched stack, inside `verify.sh full` (so also in CI).
 - **Outcome metrics** for the whole project (shipping rule): *drafts a human
@@ -163,9 +176,16 @@ orchestrator ruled on PS-Q1–PS-Q6, PS-Q8, PS-Q9 and PS-Q11 on 2026-10-18
 each criterion a ruling settles cites it. The architect answered PS-Q7 (Q19)
 with ADR-KE-009, and the orchestrator ruled on the architect's findings F1–F6
 the same day ("orchestrator: rulings on architect F1–F6"); F2–F6 are folded in
-below. F1 is with the human as Q30, and the criteria that depend on it say
-**Blocked on Q30**. PS-Q10 (Q20) stays open. Criteria that depend on an open
-question cite it and must not be closed on a guessed value.
+below. The human ruled on F1 (Q30), Q20 and Q7 on 2026-10-18
+(`docs/handoffs/platform-skeleton.md`, "orchestrator: human rulings Q30, Q20,
+Q7"), and the orchestrator replaced the placeholder-secret definition the same
+day ("orchestrator: placeholder-secret ruling"). The human narrowed Q30 the
+same day (ruling F-A: tests reach only the LLM on `aria-gb10-2`, through the
+stack gateway, and get no internet access), and the orchestrator ruled on the
+platform-config tester risks and on Q31/Q32 (`docs/handoffs/platform-config.md`,
+"orchestrator: rulings on analyst Q31, Q32 and casing"); all are folded in below and
+nothing in this item is blocked on them any more. Criteria that depend on an
+open question cite it and must not be closed on a guessed value.
 
 **Variable names (F2).** Environment variables are `KE_`-prefixed with `__`
 for nesting (ADR-KE-010): `KE_ENV`, `KE_EGRESS_ALLOWLIST`,
@@ -275,8 +295,33 @@ N18, N19; security L2, L5, L7, L16, L17, L18.
   defaults. `[unit: test_no_hardcoded_ports]`, `[unit: test_no_hardcoded_hosts_or_models]`
   (fast). The model defaults are the prompt's (`qwen2.5:14b-instruct`, fallback
   `llama3.1:8b`, `nomic-embed-text` 768-dim, A7) and live only in config.
-  `harness_telemetry`'s default collector endpoint is in scope (PS-Q2): it
-  changes with the phoenix port in PS-2.2, not here.
+  The model host is `aria-gb10-2`, an OpenAI-compatible endpoint (human
+  ruling Q7). It is reached only through `KE_MODEL_UPSTREAM` and the per-pass
+  `KE_MODELS__<PASS>__BASE_URL` settings, and the name `aria-gb10-2` is a
+  host name under this criterion: given product source, compose files or
+  scripts, it appears only in the locations listed above.
+  `[unit: test_no_hardcoded_hosts_or_models]` (fast) includes it.
+  `harness_telemetry`'s default collector endpoint is in scope (PS-Q2): its
+  drift test lands in platform-stack (PS-2.2).
+  - *What is not a hardcoded host (orchestrator ruling, 2026-10-18).* A
+    loopback address (`localhost`, `127.0.0.1`, `::1`) and the name of a
+    compose service are not hardcoded hosts under this criterion;
+    `test_no_hardcoded_hosts_or_models` does not flag them. Every other host
+    name or address, including `aria-gb10-2`, is flagged outside the listed
+    locations. The port rule above is unchanged by this.
+  - *Phoenix ports land here (orchestrator ruling, 2026-10-18).* The compose
+    part of PS-2.2 moves into this item: phoenix's published host port is the
+    compose variable `KE_PHOENIX_PORT`, and `.env.example` sets
+    `KE_PHOENIX_PORT=47101`. Given the compose files, no phoenix host port is
+    a literal (today `6006`/`4317`). `[unit: test_no_hardcoded_ports]` (fast)
+    covers it. `test_harness_default_collector_matches_env_example` and
+    `test_docs_name_current_phoenix_port` stay in platform-stack.
+  - *Model host per deployment (orchestrator ruling Q32, 2026-10-18).* The
+    model host's scheme, port and URL are set per deployment in `.env`.
+    Given `config/defaults.yaml`, it sets no model-host default (no
+    `KE_MODEL_UPSTREAM` value and no model-host allowlist entry). Given
+    `.env.example`, `KE_MODEL_UPSTREAM` is empty and a comment names
+    `aria-gb10-2` as this deployment's host. No scheme or port is assumed.
 - **PS-1.3 Egress guard at startup (DR30).** Given a configured inference host
   (any per-pass `KE_MODELS__<PASS>__BASE_URL`, or `KE_MODEL_UPSTREAM`) not on
   `KE_EGRESS_ALLOWLIST`, when the app starts, then startup fails with an error
@@ -323,13 +368,27 @@ N18, N19; security L2, L5, L7, L16, L17, L18.
   `requires-python = ">=3.12,<3.13"`, and `uv.lock` is regenerated from it
   (the existing `--locked` runs catch drift).
   `[unit: test_python_pinned_to_312]` (fast)
-- **PS-1.9 Placeholder secrets refused outside dev (F3).** A placeholder secret
-  is one whose value equals the value `.env.example` gives that key. Given
-  `KE_ENV` other than `dev` and any secret set to its placeholder, startup
-  fails with an error naming the key, never the value. Given `KE_ENV=dev` and
-  the placeholders, startup succeeds. Test cases cover one refused non-dev
-  case per secret key and the accepted dev case.
-  `[unit: test_startup_refuses_placeholder_secrets]` (fast)
+- **PS-1.9 Placeholder secrets refused outside dev (F3; orchestrator
+  placeholder-secret ruling, 2026-10-18).**
+  - *Placeholder form.* Given `.env.example`, every secret key's placeholder
+    value is `changeme-<key in lowercase>`: the part after `changeme-` is
+    lowercase and names that key (orchestrator casing ruling, 2026-10-18).
+    `[unit: test_env_example_secret_placeholders_are_changeme]` (fast)
+  - *Refusal.* Given `KE_ENV` other than `dev` and any secret whose value
+    starts with `changeme`, matched case-insensitively (so `CHANGEME…` and
+    `ChangeMe…` are refused too; orchestrator ruling, 2026-10-18), startup
+    fails with an error naming the key, never the value. Given `KE_ENV=dev` and such values, startup succeeds. The check
+    is by prefix and does not read `.env.example` at runtime. Test cases cover
+    one refused non-dev case per secret key, a refused non-dev value that
+    starts with `changeme` but differs from the `.env.example` placeholder,
+    and the accepted dev case.
+    `[unit: test_startup_refuses_placeholder_secrets]` (fast)
+  - *Not shipped.* `.env.example` is not copied into any product image.
+    `[unit: test_env_example_not_in_app_image]` (fast). The app image arrives
+    in `platform-stack`, so this test is written and goes green there.
+  - *Superseded definition, kept for the record:* "A placeholder secret is one
+    whose value equals the value `.env.example` gives that key", with
+    `.env.example` copied into the app image for the check.
 
 ### PS-2 platform-stack
 
@@ -348,6 +407,9 @@ N18, N19; security L2, L5, L7, L16, L17, L18.
   collide. `[unit: test_no_hardcoded_ports]` (fast, extends PS-1.2),
   `[unit: test_env_example_ports_in_range_and_unique]` (fast). Specific port
   numbers: architect.
+  - *Delivered early (orchestrator ruling, 2026-10-18).* Phoenix's compose
+    port (`KE_PHOENIX_PORT=47101`) lands in platform-config (see PS-1.2);
+    the rest of this criterion stays here.
   - *One Phoenix (PS-Q2).* The harness and the product share the one phoenix
     service. `log_event` keeps reading `PHOENIX_COLLECTOR_ENDPOINT`; only its
     default changes, to the phoenix host port that `.env.example` sets.
@@ -359,16 +421,16 @@ N18, N19; security L2, L5, L7, L16, L17, L18.
 - **PS-2.3 Restart policies (DR41).** Every long-running service declares a
   restart policy; `gates` does not. `[unit: test_compose_services_have_restart_policy]` (fast)
 - **PS-2.4 `/healthz`.** Given the api process is up, `GET /healthz` returns 200
-  without touching any dependency. `[integration: test_healthz]` (full).
-  **Blocked on Q30** (integration mechanism).
+  without touching any dependency. `[integration: test_healthz]` (full; runs
+  in `gates-it` under the Q30 integration convention).
 - **PS-2.5 `/readyz`.** `GET /readyz` returns one entry per dependency
   (postgres, neo4j, valkey, model host), each with a status and, on failure, a
   reason; given one store unreachable, then that entry fails and the response
   is not ready. `[integration: test_readyz_reports_each_dependency]`,
   `[integration: test_readyz_fails_when_store_down]` (full; the store is made
   unreachable in process, by pointing that store's settings at a closed port,
-  because the integration container cannot stop a container). **Blocked on
-  Q30** (integration mechanism).
+  because the integration container cannot stop a container: it has no Docker
+  socket, Q30).
   - *Real store stop (smoke).* Given the launched stack, when the smoke stops
     one real store container, then `/readyz` is not ready and names that
     store; when the store is started again, then `/readyz` is ready again.
@@ -379,40 +441,93 @@ N18, N19; security L2, L5, L7, L16, L17, L18.
   is removed from this item.
   - *Model host (PS-Q6).* The model host is reported as its own field, but
     overall readiness excludes it, because ingest and review work without a
-    model. Given all stores up and no model host reachable (as in CI, A7), the
+    model. Given all stores up and the model host unreachable, the
     model-host field reports failure with a reason and the response is still
-    ready. Routes that compose drafts check the model host themselves rather
-    than relying on `/readyz`.
+    ready. Because `gates-it` can reach the model host through the gateway
+    (Q30 as narrowed by F-A), the test makes the model host unreachable in process (its configured base URL
+    points at a closed port), so the result does not depend on whether
+    `aria-gb10-2` is up. Routes that compose drafts check the model host
+    themselves rather than relying on `/readyz`.
     `[integration: test_readyz_ready_without_model_host]` (full)
+  - *Model host reachable.* Given the configured model host reachable, the
+    model-host field reports success. This is a model-calling integration
+    test: it skips with a named reason when the host is unreachable (PS-2.7).
+    `[integration: test_readyz_reports_reachable_model_host]` (full)
 - **PS-2.6 Worker.** Given a no-op job enqueued on Valkey, the worker consumes
-  it exactly once and records completion. `[integration: test_worker_consumes_noop_job]` (full).
-  **Blocked on Q30** (integration mechanism).
-- **PS-2.7 Real-store integration gate, no egress (DR31).** `verify.sh full`
-  runs `tests/integration/` against real PostgreSQL, Neo4j and Valkey, while
-  any connection to a host outside the stack fails.
-  `[integration: test_socket_guard_blocks_outbound]` (full), proven able to
-  fail (DR38). The architect answered PS-Q7 (Q19) with ADR-KE-009: compose
-  services on an internal network, reached by a one-shot `gates-it`, with no
-  Docker socket and no testcontainers. That replaces the mechanism DR31 names,
-  so this criterion is **Blocked on Q30** (human). Its intent does not depend
-  on the answer: real stores, mocked models, no route outside the stack.
+  it exactly once and records completion. `[integration: test_worker_consumes_noop_job]` (full;
+  runs in `gates-it` under the Q30 integration convention).
+- **PS-2.7 Real-store integration gate (DR31 as amended by Q30, narrowed by
+  F-A).** Human rulings Q30 and F-A, 2026-10-18.
+  - *Mechanism.* `verify.sh full` runs `tests/integration/` in the one-shot
+    `gates-it` compose service against real PostgreSQL, Neo4j and Valkey
+    compose services. `gates-it` mounts no Docker socket (PS-2.11) and is
+    attached only to `internal: true` networks, so it has no internet access
+    (human ruling F-A); `gates` keeps `network_mode: none` (`verify.sh fast`
+    is unchanged).
+    `[unit: test_gates_it_internal_only_and_no_socket]` (fast) asserts that
+    every network `gates-it` joins is `internal: true`, that `gates-it` mounts
+    no Docker socket, and that `gates` still has `network_mode: none`.
+  - *Model host only through the gateway (human ruling F-A).* The only host
+    outside the stack that a test reaches is the model host (`aria-gb10-2`),
+    and only through the stack gateway's model forward (model client →
+    `gateway` → `KE_MODEL_UPSTREAM`). No test reaches any other outside host.
+  - *Egress allowlist still holds (DR30).* Given model calls going through the
+    gateway forward, when the app's model client is asked to reach a host not
+    on `KE_EGRESS_ALLOWLIST`, then it raises before any connection is made.
+    `[integration: test_egress_allowlist_holds_with_network_access]` (full;
+    name kept: the gateway forward is the network access it holds against),
+    proven able to fail (DR38).
+  - *Model-calling tests run or skip by name.* Every integration test that
+    calls a model is marked as such. Given the configured model host
+    (`KE_MODEL_UPSTREAM`) reachable from `gates-it` through the gateway,
+    those tests run. Given it
+    unreachable, each is reported as skipped with a reason that names the
+    host and says it is unreachable, and that reason appears in the
+    `verify.sh full` output; it is never reported as passed. Integration tests
+    that do not call a model never skip for this reason.
+    `[unit: test_model_tests_skip_with_named_reason]` (fast; uses a fixture
+    test and an unreachable host).
+  - *Unit suite calls no model.* No test in the unit suite (`verify.sh fast`)
+    opens a connection to a model host. `[unit: test_no_model_calls_in_unit_suite]`
+    (fast; network guard).
+  - *Deployed product still offline.* The offline-bundle checks are not
+    changed by this ruling: PS-3.2 (`ci/deployable-offline`) and PS-3.3
+    (`ci/offline`) still prove the deployed product runs without egress.
+  - *Q30 wording narrowed by F-A, kept for the record:* "`gates-it` ... is
+    attached to a network that is not `internal`, so it has external access",
+    tested by `test_gates_it_has_network_access_and_no_socket`, which asserted
+    at least one non-internal network.
+  - *Superseded wording, kept for the record:* "PS-2.7 Real-store integration
+    gate, no egress (DR31). `verify.sh full` runs `tests/integration/` against
+    real PostgreSQL, Neo4j and Valkey, while any connection to a host outside
+    the stack fails. `[integration: test_socket_guard_blocks_outbound]`."
 - **PS-2.8 Live-stack smoke.** `scripts/smoke.sh` launches the stack through
   the launch script, checks `/healthz` and `/readyz`, stops and starts one
   real store (PS-2.5), checks every service healthy (PS-2.1), then tears it
   down, in addition to the existing OTLP check. It runs in `verify.sh full`,
   so in CI. `[smoke: scripts/smoke.sh]` (full)
 - **PS-2.9 Build, launch, teardown, quickstart.** Scripts exist for Windows
-  PowerShell and for bash (Linux and macOS), with a fresh-machine quickstart in
+  PowerShell and for bash on Linux, with a fresh-machine quickstart in
   `README.md` or `docs/quickstart.md` that names only those scripts and the
   host prerequisites Git and Docker. Teardown leaves no running container of the
   project and keeps named volumes unless asked to remove them.
   `[unit: test_quickstart_names_existing_scripts]` (fast); lints run inside
   `verify.sh full`: `[gate: shellcheck]`, `[gate: PSScriptAnalyzer]` (full).
-  Proof per OS: PS-Q10 (open, asked of the human, Q20).
+  - *Supported host OS (human ruling Q20, 2026-10-18).* Windows (PowerShell)
+    and Linux only. macOS, including Apple silicon, is out of scope: no
+    criterion requires a macOS script, run or proof, and the quickstart does
+    not name macOS as supported.
+  - *Proof per OS (orchestrator ruling Q31, 2026-10-18).* Linux is proven by
+    CI (`verify.sh full`). Windows is proven by a recorded run of the
+    PowerShell build, launch and teardown scripts on the human's Windows
+    host, with its output saved under `docs/evidence/platform-stack/`
+    `[gate: recorded Windows run]`.
 - **PS-2.10 Only the gateway has a route out.** Given the compose files, only
   `gateway` is attached to a network that is not `internal: true`; every other
   stack service is attached only to internal networks.
-  `[unit: test_only_gateway_on_edge_network]` (fast)
+  `[unit: test_only_gateway_on_edge_network]` (fast). "Stack service" is as
+  defined in PS-2.12 (no compose profile), so the profile-only `gates-it` is
+  outside this criterion; it is internal-only anyway (PS-2.7, F-A).
 - **PS-2.11 No Docker socket.** Given every compose file, no service mounts the
   Docker socket (`/var/run/docker.sock`, or the Windows named pipe
   `//./pipe/docker_engine`), whatever its profile.
@@ -421,6 +536,12 @@ N18, N19; security L2, L5, L7, L16, L17, L18.
   no stack service (one without a compose profile) has a bind mount; only
   named volumes. One-shot gate services may bind-mount the checkout.
   `[unit: test_stack_services_have_no_bind_mounts]` (fast)
+- **PS-2.13 CLAUDE.md lists what verify.sh runs that CI cannot (Q30).** Given
+  `CLAUDE.md`, it has a section titled "What verify.sh runs that CI cannot"
+  next to "What CI runs that verify.sh does not", and that section names the
+  model-calling integration tests (PS-2.7) as running only where the model
+  host is reachable, and skipping by name on GitHub runners.
+  `[unit: test_claude_md_lists_verify_only_checks]` (fast)
 
 ### PS-3 platform-offline
 
@@ -433,9 +554,8 @@ N18, N19; security L2, L5, L7, L16, L17, L18.
     image offline is out of scope.
   - *Every image listed.* Given the compose files, every image the stack
     services use is in the bundle. `[unit: test_bundle_lists_every_compose_image]` (fast)
-  - *Platform.* The bundle is linux/amd64 only for now. Other platforms,
-    including macOS on Apple silicon, are recorded under Q20 and are not a
-    criterion of this item.
+  - *Platform.* The bundle is linux/amd64 only. macOS, including Apple
+    silicon, is out of scope (human ruling Q20, 2026-10-18).
 - **PS-3.2 Deployable offline.** Given the bundle and a Docker daemon that has
   none of the stack's images and no network egress, when the install and launch
   scripts run, then the stack starts and the PS-2.8 smoke passes without a pull
@@ -469,25 +589,51 @@ Questions raised in the analyst review of 2026-10-18; rulings by the
 orchestrator the same day. Full text and numbering in `docs/open-questions.md`
 § "platform-skeleton" (Q19–Q30).
 
-Open:
+Open: none for this item.
 
-- **Q30 Integration mechanism vs DR31 (human; blocks `platform-stack`).**
-  DR31 says integration tests use real stores "via testcontainers".
-  ADR-KE-009 proposes compose services on an internal network instead,
-  reached by a one-shot `gates-it`, and keeps the intent (real stores, mocked
-  models, no egress). Which mechanism binds? Blocks PS-2.4–PS-2.7.
-- **PS-Q10 macOS and Windows proof (human; Q20).** CI runs Linux only. Is a
-  recorded run on the human's Windows machine enough for the PowerShell
-  scripts, and who proves macOS (no macOS machine is recorded)? The bundle is
-  linux/amd64 only, so macOS on Apple silicon is part of this question.
+Ruled by the orchestrator 2026-10-18 (`docs/handoffs/platform-config.md`,
+"orchestrator: rulings on analyst Q31, Q32 and casing"):
+
+- **Q31 Windows proof.** A recorded run on the human's Windows host proves
+  the PowerShell scripts. Settles the PS-2.9 proof note.
+- **Q32 Model-host defaults.** Scheme, port and URL are set per deployment
+  in `.env`; `config/defaults.yaml` has no model-host default. Settles the
+  PS-1.2 note.
+- Also ruled: loopback and compose service names are not hardcoded hosts
+  (PS-1.2); phoenix compose ports move into platform-config (PS-1.2, PS-2.2);
+  `changeme` matching is case-insensitive and placeholders are
+  `changeme-<key in lowercase>` (PS-1.9).
+
+Ruled by the human 2026-10-18 (`docs/handoffs/platform-skeleton.md`,
+"orchestrator: human rulings Q30, Q20, Q7"; F-A narrowing the same day):
+
+- **Q30 Integration mechanism vs DR31 (narrowed by F-A).** Compose services,
+  no Docker socket, `gates-it` on internal networks only with no internet
+  access; tests reach only the LLM on `aria-gb10-2`, through the stack
+  gateway; model-calling integration tests run when it is reachable and skip
+  by name otherwise; unit tests keep no network; DR30 still applies;
+  offline-bundle checks unchanged. Amends DR31 and the "Integration"
+  convention. Settles PS-2.4–PS-2.7, PS-2.13. As first ruled, `gates-it`'s
+  network had external access; F-A withdrew that.
+- **PS-Q10 / Q20 Supported OS.** Windows (PowerShell) and Linux only; no
+  macOS. Settles PS-2.9 and the PS-3.1 platform note; the Windows proof is
+  carried as Q31.
+- **Q7 Model host.** `aria-gb10-2`, OpenAI-compatible, configured via
+  `KE_MODEL_UPSTREAM` and the per-pass base URLs, never hardcoded. Settles
+  the PS-1.2 note.
+
+Ruled by the orchestrator 2026-10-18 ("orchestrator: placeholder-secret
+ruling"): placeholders are `changeme-<key>`, refused by prefix outside `dev`,
+`.env.example` not shipped in the image. Settles PS-1.9.
 
 Answered by the architect:
 
 - **PS-Q7 Gates network vs real stores (Q19).** ADR-KE-009: stores as compose
   services on an internal network; a one-shot `gates-it` joins it; `gates`
   keeps `network_mode: none`; no Docker socket; the offline check uses a
-  privileged DinD daemon on an internal network. The change of mechanism from
-  DR31 is Q30. Settles PS-3.2; PS-2.4–PS-2.7 wait on Q30.
+  privileged DinD daemon on an internal network. Settles PS-3.2. Amended by
+  Q30, then narrowed by F-A: `gates-it` stays internal-only and reaches the
+  model host only through the gateway.
 
 Ruled (each cited by the criteria it settles):
 
@@ -683,8 +829,15 @@ Outcome metric moved: drafts produced → drafts reviewed.
    `[integration: test_publish_requires_human]`
 6. Every output records the policy-book version and rule revision ids and the
    corpus revisions it cited (§R-REV-P.6, §R-REV-C.7).
-7. CI never calls a model; live golden tests are opt-in and skip without an
-   endpoint. `[unit: test_no_model_calls_in_ci]` (network guard) (DR31)
+7. Unit tests never call a model; model-calling integration and live golden
+   tests run when the configured model host is reachable and skip with a
+   visible, named reason when it is not (DR31 as amended by Q30).
+   `[unit: test_no_model_calls_in_unit_suite]` (network guard),
+   `[unit: test_model_tests_skip_with_named_reason]` (both delivered in
+   platform-stack, PS-2.7; this item extends them to the workflow's tests).
+   Original wording, superseded by Q30: "CI never calls a model; live golden
+   tests are opt-in and skip without an endpoint.
+   `[unit: test_no_model_calls_in_ci]`".
 
 ---
 
@@ -892,8 +1045,8 @@ of the next version.
 | 27 | Prompts fit the schema | `test_prompt_schema_alignment` | verifier-validator |
 | 28 | One-to-one alignment | `test_alignment_one_to_one` | verifier-validator |
 | 29 | Per-pass model config | `test_per_pass_model_config` | verifier-validator |
-| 30 | Egress allowlist fails closed | `test_egress_guard_startup`, `test_egress_guard_runtime`, `test_socket_guard_blocks_outbound`, `ci/offline` | platform-skeleton |
-| 31 | CI never calls a model | `test_no_model_calls_in_ci` | agent-workflow |
+| 30 | Egress allowlist fails closed | `test_egress_guard_startup`, `test_egress_guard_runtime`, `test_egress_allowlist_holds_with_network_access`, `ci/offline` | platform-skeleton |
+| 31 | Unit tests never call a model; model-calling integration tests reach the model host only through the gateway, run when it is reachable, else skip by name; no internet access (amended by Q30 and F-A, see note) | `test_no_model_calls_in_unit_suite`, `test_model_tests_skip_with_named_reason`, `test_gates_it_internal_only_and_no_socket` | platform-skeleton (platform-stack), agent-workflow |
 | 32 | Check the store, not the counter | `test_funnel_counts_match_store`, `test_freshness_after_new_source_revision` | frontend, data-plane |
 | 33 | Buckets + unaccounted | `test_snapshot_compare_buckets_sum` | data-plane |
 | 34 | Population defined per metric | `test_metric_declares_population` (metric registry) | jd-metrics-and-demo |
@@ -905,6 +1058,26 @@ of the next version.
 | 40 | Hash-chained audit + verify | `test_audit_chain_detects_tamper` | auth-audit |
 | 41 | Manifests, resume, runbooks, tested restore, restart policies | `test_ingest_resume_after_kill`, `test_restore_not_empty`, `test_compose_services_have_restart_policy` | ingest-ledger, auth-audit, platform-skeleton |
 | 42 | Pluggable SSO, dev hatch | `test_sso_dev_provider_offline` | auth-audit |
+
+**DR31 amendment (human rulings Q30 and F-A, 2026-10-18).** DR31 now reads:
+integration tests run as compose services with no Docker socket, on internal
+networks only, with no internet access; the only outside host they reach is
+the LLM on `aria-gb10-2`, and only through the stack gateway; model-calling
+integration tests run when that host is reachable and skip with a visible,
+named reason when it is not (for example on GitHub runners); unit tests
+(`verify.sh fast`) keep no network; the app's egress allowlist (DR30) still
+applies; the offline-bundle checks still prove the deployed product runs
+offline. Criteria: PS-2.7, PS-2.13 and agent-workflow 7. *Q30 as first ruled,
+narrowed by F-A:* integration tests ran "on a network with external access",
+and DR31's test was `test_gates_it_has_network_access_and_no_socket` (now
+`test_gates_it_internal_only_and_no_socket`). *Original wording, kept for the record:* the table row read
+"CI never calls a model | `test_no_model_calls_in_ci` | agent-workflow", and
+the build prompt's rule said integration tests use real Postgres/Neo4j/Valkey
+"via testcontainers" with mocked model calls. DR30's
+`test_socket_guard_blocks_outbound` is replaced by
+`test_egress_allowlist_holds_with_network_access` for the same reason; it is
+kept under F-A because model calls still go through the gateway forward and
+the allowlist must still hold.
 
 ---
 

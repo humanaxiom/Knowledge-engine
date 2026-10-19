@@ -17,7 +17,12 @@ item that builds it is committed. Assumptions `(A<n>)` refer to
 **Next to build (2026-10-18):** `platform-skeleton`, split into
 `platform-config` → `platform-stack` → `platform-offline` (§2, ADR-KE-009 to
 ADR-KE-012). ADR-KE-009 answers Q19 (formerly PS-Q7): how the gates reach real
-stores and a clean Docker daemon. It amends the as-built gates of ADR-KE-001.
+stores and a clean Docker daemon. It amends the as-built gates of ADR-KE-001,
+and is accepted with the human's Q30 amendment, narrowed by ruling F-A
+(model-calling integration tests reach the model host through the gateway
+only; no route to the internet). Human rulings folded in: Q30 (as narrowed by
+F-A), Q20 (Windows and Linux only),
+Q7 (model host `aria-gb10-2`), and the `changeme-` placeholder-secret ruling.
 
 ## 1. What the system is
 
@@ -73,7 +78,17 @@ time, in the sub-item's handoff.
 
 Everything runs under docker compose. The compose file sets the top-level
 `name: knowledge-engine`, so volumes keep their names whatever the checkout
-directory is called. **Only `gateway` touches a network with a route out.**
+directory is called. **Of the stack services, only `gateway` touches a network
+with a route out.** The one-shot `gates-it` verify service sits on `backend`
+only, like the app containers (Q30 as narrowed by F-A, ADR-KE-009). There is no
+`gates-it` network. Its only way off the machine is the gateway's single
+upstream forward to the configured model host.
+
+| Network | `internal` | Members |
+|---|---|---|
+| `edge` | no | `gateway` |
+| `backend` | yes (no route out) | every stack service, `gates-it`, `probe` |
+| `offline` | yes | `dind`, `offline-client` |
 
 | Service | Image (digest pinned at implementation) | Networks | Restart | Role |
 |---|---|---|---|---|
@@ -85,11 +100,11 @@ directory is called. **Only `gateway` touches a network with a route out.**
 | `valkey` | `valkey/valkey`, major 8, AOF on | `backend` | `unless-stopped` | job queue only |
 | `phoenix` | `arizephoenix/phoenix` (today `version-20.22.0`; digest added) | `backend` | `unless-stopped` | traces for the product and the harness (Q2 ruling) |
 | `gates` | `ke-gates` (`docker/gates.Dockerfile`) | `network_mode: none` | none | one-shot: lint and unit gates (unchanged from ADR-KE-001) |
-| `gates-it` | `ke-gates` (same YAML anchor) | `backend` only | none | one-shot: unit, integration, coverage and mypy against the real stores (ADR-KE-009) |
+| `gates-it` | `ke-gates` (same YAML anchor) | `backend` only; no Docker socket | none | one-shot: unit, integration, coverage and mypy against the real stores; model-calling tests reach the model host only through `gateway`, and run only when it is reachable (ADR-KE-009, Q30/F-A) |
 | `probe` | `ke-app` | `backend` only | none | one-shot: the live-smoke checks (`python -m engine.ops.smoke`) |
 | `dind` | official `docker` image, `dind` variant, privileged | `offline` (internal) | none | clean daemon for the offline check (ADR-KE-009, ADR-KE-012) |
 | `offline-client` | `ke-gates` | `offline` (internal) | none | runs install, launch and smoke against `dind` |
-| model host | external, OpenAI-compatible | — | — | Ollama now, vLLM later. Reached only through `gateway` |
+| model host | external, OpenAI-compatible | — | — | The deployment's model host is `aria-gb10-2` (Q7 ruling). Ollama now, vLLM later. The app reaches it only through `gateway`. Config carries it in `KE_MODEL_UPSTREAM`; no code names it |
 
 `gates`, `gates-it`, `probe`, `dind` and `offline-client` are behind compose
 profiles (`gates`, `probe`, `offline`), so `up` never starts them.
@@ -109,17 +124,25 @@ flowchart LR
     n4[(neo4j)]
     vk[(valkey)]
     ph[phoenix]
-    git[gates-it / probe<br/>one-shot]
+    pr[probe<br/>one-shot]
+    git[gates-it<br/>one-shot, verify only]
   end
-  mh[(model host<br/>KE_MODEL_UPSTREAM)]
+  mh[(model host aria-gb10-2<br/>via KE_MODEL_UPSTREAM)]
   user -- "KE_API_PORT 47100" --> gw
   user -- "KE_PHOENIX_PORT 47101" --> gw
   gw --> api & ph
-  api & wk -- "model port on gateway" --> gw -- "TCP, one upstream" --> mh
+  api & wk -- "model port on gateway" --> gw -- "TCP, one upstream (edge)" --> mh
   api & wk --> pg & n4 & vk
   api & wk -- OTLP --> ph
-  git --> pg & n4 & vk & api & gw
+  pr --> api & gw
+  git --> pg & n4 & vk & api
+  git -- "model port on gateway" --> gw
 ```
+
+`gates-it` is on `backend` only. Its model-calling tests go through
+`ModelClient` → `gateway` → `KE_MODEL_UPSTREAM`, the same path as the app, so
+the DR30 allowlist and the gateway forward are what the tests exercise. No
+other path leaves `backend`.
 
 Stack services (everything without a profile) use **named volumes only, with
 no bind mounts**, so the same compose file runs unchanged inside `dind`. Only
@@ -131,8 +154,13 @@ into `api` and `worker`, content-addressed by SHA-256 and encrypted per source
 
 ### 2.2 How `verify.sh` runs the gates (ADR-KE-009, answers Q19)
 
-**Status: proposed, pending human ruling Q30** (F1: DR31 names testcontainers).
-`platform-stack` waits on Q30; `platform-config` does not.
+**Status: accepted with a human amendment (Q30, 2026-10-18), narrowed by
+ruling F-A (2026-10-18).** The mechanism is compose services with no Docker
+socket, as proposed. `gates-it` sits on the `internal: true` `backend` network
+only; there is no separate external network for it. Tests need to reach only
+the LLM on `aria-gb10-2`, not the internet, so model-calling integration tests
+reach it through the gateway's upstream forward (edge network) and nothing
+else. Unit `gates` keeps `network_mode: none`. `platform-stack` is not blocked.
 
 `scripts/verify.sh` keeps its two halves.
 - **Host half:** only Docker orchestration, which calls other scripts.
@@ -147,25 +175,50 @@ No gate command is ever written in `verify.sh`
   `docker-compose.verify.yml` resets every `ports:` to an empty list (`!reset`,
   Compose ≥ 2.24), so a verify run publishes nothing. It therefore never
   collides with the live stack or with a parallel verify run.
-- **No model reachable.** `config/verify.env` sets `KE_MODEL_UPSTREAM` to a
-  name under the reserved `.invalid` TLD, so the gateway's model port leads
-  nowhere. The test socket guard also refuses that port.
+- **The real model host, through the gateway, skipped when unreachable (Q30,
+  F-A, Q7).** `config/verify.env` does **not** override `KE_MODEL_UPSTREAM`,
+  so the verify stack's gateway (on `edge`) forwards to the configured host
+  from `.env.example` (`aria-gb10-2` for this deployment). `gates-it` itself
+  has no route out; the gateway forward is its only path to the model host.
+  Model-calling integration tests:
+  - first run one reachability probe per test run: `GET {compose.base_url}/models`
+    through `ModelClient`, so it passes the egress guard, with
+    `readiness.timeout_s`;
+  - run when the probe succeeds;
+  - otherwise raise `unittest.SkipTest` with a named reason built from the
+    configured value and the fixed reason vocabulary of `/readyz`, e.g.
+    `model host unreachable: <KE_MODEL_UPSTREAM> (timeout)`. unittest prints
+    it in the verbose output, so the skip is visible in the evidence file.
+  On GitHub runners the host is never reachable, so those tests always skip
+  in CI. The probe outcome is never a failure, and no other test may skip on
+  network grounds.
 - **`fast`:** unchanged. `docker compose … --profile gates run --rm --build
-  gates scripts/verify.sh fast` → `lint.sh`, `test.sh fast`.
+  gates scripts/verify.sh fast` → `lint.sh`, `test.sh fast`, with
+  `network_mode: none`.
 - **`full`:**
 
 ```mermaid
 sequenceDiagram
   participant H as verify.sh (host)
   participant D as host Docker daemon
-  participant G as gates-it (backend net)
+  participant G as gates-it (backend only)
+  participant W as gateway (backend + edge)
+  participant M as model host (KE_MODEL_UPSTREAM)
   participant S as smoke.sh (host)
   participant O as offline_check.sh (host)
   H->>H: trap → teardown.sh --volumes (this project)
   H->>D: build.sh (ke-app, ke-gateway, ke-gates; store images by digest)
   H->>D: launch.sh (up -d --no-build --wait)
   H->>G: compose run gates-it scripts/verify.sh full
-  G->>G: lint.sh; test.sh full (unit + integration, coverage, mypy)
+  G->>G: lint.sh; test.sh full (unit + store integration, coverage, mypy)
+  G->>W: probe GET /models via ModelClient (DR30 allowlist)
+  W->>M: TCP forward, one upstream
+  alt reachable
+    G->>W: model-calling integration tests
+    W->>M: TCP forward
+  else unreachable (always on GitHub runners)
+    G->>G: skip them: "model host unreachable: <upstream> (<reason>)"
+  end
   H->>S: smoke.sh
   S->>D: launch.sh (idempotent), run probe, stop/start valkey, run probe
   S->>D: run gates scripts/smoke.sh (inner half: OTLP export check, no network)
@@ -183,6 +236,14 @@ sequenceDiagram
   a container. Integration tests make a store "down" in process, by pointing
   one store's settings at a closed port on a stack host. The real stop and
   start of a container happens in `smoke.sh` on the host.
+- **Socket guard.** The `tests/integration` socket guard (ADR-KE-009) allows
+  only the (host, port) pairs of stack services, which now include the
+  gateway's model port. It is the test-side layer; `backend` being
+  `internal: true` is the network layer behind it (F-A), so a raw connection
+  out of `gates-it` fails even if the guard is bypassed.
+- **No runtime installs.** The gates anchor sets `UV_OFFLINE=1` alongside
+  `--locked`, so a verify run can never pass locally only because it fetched
+  a dependency that CI could not.
 - **Container health.** Health of the running containers is proven by
   `launch.sh --wait`, which fails unless every healthcheck passes, and by the
   probe.
@@ -228,7 +289,9 @@ Environment variables:
   with no aliases (`test_config_ignores_unprefixed_names`).
 - **Standard tool names stay:** variables other tools already read keep their
   own names: `PHOENIX_COLLECTOR_ENDPOINT`, `HARNESS_TRACING`,
-  `OPENINFERENCE_HIDE_INPUTS`, `OPENINFERENCE_HIDE_OUTPUTS`.
+  `OPENINFERENCE_HIDE_INPUTS`, `OPENINFERENCE_HIDE_OUTPUTS`. For the engine,
+  `Settings` is their **only** reader (they fill `telemetry.*`); no engine
+  code path lets `harness_telemetry` read them again (B1, rework 1).
 - **Lists:** comma-separated in the environment.
 
 `defaults.yaml` layout. The values shown are the A7 defaults:
@@ -250,7 +313,7 @@ models:                      # one block per pass (DR29); no inheritance between
   rewrite: {base_url: null, model: qwen2.5:14b-instruct, fallback_model: llama3.1:8b, timeout_s: 120}
   audit:   {base_url: null, model: qwen2.5:14b-instruct, fallback_model: llama3.1:8b, timeout_s: 120}
   embed:   {base_url: null, model: nomic-embed-text, dim: 768, timeout_s: 60}
-telemetry: {tracing: otlp, collector_endpoint: "http://phoenix:6006", hide_inputs: true, hide_outputs: true}
+telemetry: {tracing: "off", collector_endpoint: "http://phoenix:6006", hide_inputs: true, hide_outputs: true}  # B7b: off by default; .env.example sets HARNESS_TRACING=otlp
 readiness: {timeout_s: 2}
 ```
 
@@ -260,9 +323,12 @@ here for the layout only. They live **only** in this file.
 **Secrets (F3 ruling).** Passwords are `SecretStr` with **no** YAML default, an
 accepted exception to PS-1.1. They come from the environment only. A missing
 secret is a `ConfigError` that names the key
-(`test_config_missing_secret_names_key`). `.env.example` carries clearly
-marked dev placeholders, which are refused outside `dev` (PS-1.9, startup
-refusal 5 below).
+(`test_config_missing_secret_names_key`). Every secret placeholder in
+`.env.example` is `changeme-<key>` (for example
+`KE_STORES__POSTGRES__PASSWORD=changeme-postgres-password`), and any secret
+whose value starts with `changeme` is refused outside `dev` (placeholder-secret
+ruling, PS-1.9, startup refusal 5 below). `.env.example` is **not** copied into
+any image; the check needs only the prefix.
 
 **Errors.** A bad type (PS-1.1) raises `ConfigError`. Its message names the
 environment variable or YAML key, never the value.
@@ -296,9 +362,12 @@ is a pure function, `find_hardcoded(files, declared_values, exemptions)`, in
   `docker-compose*.yml`, `.github/`.
 - **Allowed locations:** `config/defaults.yaml`, `.env.example`,
   `config/verify.env` (F4 ruling: an accepted literal exemption under PS-1.2),
-  `tests/`, `docs/`, and compose `${VAR:-default}`
-  defaults for container-internal listen ports. A drift test checks those
-  compose defaults against `defaults.yaml`.
+  `tests/`, `docs/`, and compose `${VAR:-default}` defaults. **In compose
+  files only** (`docker-compose*.yml`), the scanner treats the `default` of a
+  `${VAR:-default}` as a declared value, not a literal (B4, B7a ruling). The
+  same text in any other file is scanned as usual. Drift tests tie every such
+  compose default to its source: host ports to `.env.example`,
+  container-internal listen ports to `defaults.yaml`.
 - **Mutation test:** a planted literal must be flagged (DR38).
 
 **`harness_telemetry` default collector (orchestrator input, 2026-10-18).**
@@ -311,6 +380,38 @@ port equals `KE_PHOENIX_PORT` in `.env.example`, so PS-2.2 holds.
 - **Rejected alternative:** reading `.env.example` at import time depends on
   the working directory and ties a template package to this repo's layout.
 
+**Orchestrator rulings for the scan (2026-10-18, answering tester risks (a)
+and (c)).**
+1. **Phoenix's literal ports move to `.env` in platform-config**, not
+   platform-stack. `.env.example` gains `KE_PHOENIX_PORT=47101` (the A6
+   value). Until `gateway` exists (platform-stack), the harness `phoenix`
+   service publishes it directly. **Amended by ruling B7a (rework 1,
+   2026-10-19):** the publish is
+   `"127.0.0.1:${KE_PHOENIX_PORT:-47101}:${PHOENIX_PORT:-6006}"`.
+   - Bound to loopback, because Phoenix has no auth and must not be reachable
+     from the LAN (security M2).
+   - `:-`, not `:?`: `verify.sh` and CI run compose with no `.env`, and `:?`
+     fails there.
+   - The defaults cannot drift: one drift test,
+     `test_compose_phoenix_defaults_match_config`, asserts that the host
+     default (47101) equals `KE_PHOENIX_PORT` in `.env.example`, and that the
+     container default (6006, in both `ports` and the `PHOENIX_PORT`
+     environment entry) equals the port of `telemetry.collector_endpoint` in
+     `defaults.yaml`.
+
+   Phoenix's gRPC port 4317
+   is **not published**. Consequences in this item: `DEFAULT_COLLECTOR` and the
+   `harness_telemetry/tracing.py` docstring move to `http://localhost:47101`;
+   the compose header comment stops naming 6006/4317; README's Phoenix URL
+   changes (documenter). platform-stack later moves the publish onto `gateway`
+   with the same variable.
+2. **Loopback addresses and compose service names are not hardcoded hosts.**
+   `localhost`, 127.0.0.0/8 and `::1`, and any name in `stack.service_names`
+   (the compose services; drift-tested), are never flagged as hosts by either
+   rule. This matches the Q3 meaning of "local". Ports are still checked on
+   their own: `f"http://127.0.0.1:{port}"` is clean (loopback host, port from a
+   variable), while `http://127.0.0.1:6006` is flagged for the port.
+
 **Startup refusals (PS-1.5).** `startup.check(settings)` raises
 `StartupRefused(setting, reason)` on the first of the following:
 1. `auth.enabled=false` while `env≠dev`;
@@ -318,17 +419,67 @@ port equals `KE_PHOENIX_PORT` in `.env.example`, so PS-2.2 holds.
    `localhost`, 127.0.0.0/8, `::1`, or a name in `stack.service_names`;
 3. `hide_inputs` or `hide_outputs` not true while `env≠dev`;
 4. the egress startup check;
-5. a secret whose value equals its `.env.example` placeholder while `env≠dev`
-   (F3 ruling, PS-1.9). The placeholder values are read from the
-   `.env.example` that the app image copies alongside `config/`; the refusal
-   names the key, never the value.
+5. a secret whose value starts with `changeme` while `env≠dev`
+   (placeholder-secret ruling, PS-1.9). The check iterates over every
+   `SecretStr` field of `Settings`, so a new secret is covered without a list
+   to maintain. It reads no file. The refusal names the key, never the value.
 
 In `dev`, cases 1 and 3 log a warning instead (Q4 ruling); case 5 is allowed.
 
-**Tracing does not leak before the checks pass.** `telemetry.configure_tracing`
-attaches the OTLP exporter **only if** the collector is local, and decides
-that from the raw environment before the traced startup runs. A refused
-startup still produces spans, but they go nowhere.
+**Tracing does not leak before the checks pass (amended, rework 1: B1, B7b,
+L6).**
+- **Defaults.** `telemetry.tracing` is `off` in `defaults.yaml` (B7b).
+  `.env.example` sets `HARNESS_TRACING=otlp`, so a stack started from the
+  template traces to its local Phoenix; the collector endpoint stays the
+  `defaults.yaml` value.
+- **The exporter comes from `Settings` alone (B1).** One pure function,
+  `telemetry.choose_exporter(settings) -> SpanExporter | None`, decides:
+
+  | `telemetry.tracing` | Exporter |
+  |---|---|
+  | `otlp` | `OTLPSpanExporter(<collector_endpoint>/v1/traces, timeout=5)`, only if `is_local_endpoint(collector_endpoint, stack.service_names)`; otherwise none |
+  | `console` | `ConsoleSpanExporter()` |
+  | `off` | none |
+
+  `configure_tracing(settings)` builds the engine's own `TracerProvider`
+  (resource: OpenInference project name `knowledge-engine`, which also fixes
+  N8), adds the exporter (batched for OTLP, simple for console) and installs
+  it. It never calls `harness_telemetry.setup_tracing`, whose env reading
+  (`HARNESS_TRACING`, `PHOENIX_COLLECTOR_ENDPOINT`) is how B1 leaked.
+  `configure_tracing` takes `settings` as a required argument; it no longer
+  builds its own (N9).
+- **An already-installed provider is verified, not trusted (B1, N10).** The
+  OTel global provider can be set only once, so it cannot be replaced; it is
+  refused instead. If an SDK `TracerProvider` is already installed in any
+  mode, every exporter attached to it must be positively identified as local:
+  `ConsoleSpanExporter`, `InMemorySpanExporter`, or `OTLPSpanExporter` whose
+  endpoint passes `is_local_endpoint`. Anything else, including an exporter
+  that cannot be identified, raises `StartupRefused("telemetry.tracing", …)`.
+  The check fails closed. It needs the SDK's private processor attributes,
+  so a fast test builds each accepted shape and one unknown shape. An OTel
+  upgrade that moves those attributes then fails that test, rather than
+  silently accepting.
+- **Order in `startup()` (L6).**
+  1. `settings = Settings()` (a `ConfigError` propagates).
+  2. `check(settings)` runs as a pre-flight with no exporter installed.
+  3. Only if it passes: `configure_tracing(settings)`. It first writes the
+     resolved hide flags to `OPENINFERENCE_HIDE_INPUTS`/`_OUTPUTS` (the
+     values `Settings` read from those same names, so an operator's setting
+     is kept, not overridden), then verifies or installs the provider. The
+     hide flags are therefore in force before any span can be exported.
+  4. The traced block (`engine.startup` → `engine.config.load` →
+     `engine.startup.refusals`) runs with the same `settings` object and
+     records the spans.
+
+  On a refusal, step 3 is skipped. Step 4 still runs, so the refusal is
+  recorded and re-raised, but in production no exporter exists and the spans
+  go nowhere. Tests see them through the in-memory provider from
+  `tests/support.py`, which passes the installed-provider check.
+- **Rejected alternatives:** reusing `setup_tracing(PROJECT_NAME,
+  exporter=…)` (it returns any existing provider unchecked and uses a
+  synchronous processor for every exporter); a new harness API for the hide
+  flags (more surface than the env write, which carries the value `Settings`
+  already resolved).
 
 **Spans (PS-1.7).** All are `harness_telemetry` spans:
 
@@ -339,6 +490,12 @@ startup still produces spans, but they go nowhere.
 | `engine.startup.refusals` | CHAIN | `ke.refused_setting` on refusal |
 | `engine.egress.startup_check` | CHAIN | host names checked |
 | `model.<pass>` | LLM | wraps every `ModelClient` call; model name; `EgressDenied` marks it ERROR |
+
+N12 (rework 1): every `ModelClient` call method, including any added in
+platform-config, opens `llm_span(f"model.{pass}")` around the HTTP request,
+and comes with a test that asserts the span (kind LLM, model name, ERROR on
+`EgressDenied`) through the in-memory exporter. A call method without its
+span is a review finding.
 
 **Quality gates (PS-1.6, Q5 ruling).**
 - **Coverage:** `[tool.coverage]` in `pyproject.toml` sets `branch = true`,
@@ -372,12 +529,14 @@ startup still produces spans, but they go nowhere.
 
 **`.env.example`** holds:
 - the published ports;
-- `KE_MODEL_UPSTREAM`, the host:port of the model host. The dev default is
-  chosen at implementation and marked as a placeholder;
+- `KE_MODEL_UPSTREAM`, the host:port of the model host. The host is the
+  deployment's model host, `aria-gb10-2` (Q7 ruling); the port is chosen at
+  implementation. This is the only committed config file that names it; the
+  hardcoded scan (§2.3, rule 1) fails if any scanned code repeats it;
 - `KE_EGRESS_ALLOWLIST=gateway,<upstream host>`;
 - `KE_ENV=dev`;
 - `KE_AUTH__ENABLED=false`, because auth arrives in auth-audit;
-- the dev secret placeholders.
+- the secret placeholders, each `changeme-<key>` (placeholder-secret ruling).
 
 `api` and `worker` dial `http://gateway:<model listen port>/v1`.
 
@@ -420,15 +579,16 @@ seconds. The compose healthchecks of `api` and `gateway` use it.
 **Images.**
 - `docker/app.Dockerfile` reuses the pinned `python:3.12-slim-bookworm` and
   `uv` bases, runs `uv sync --locked --no-dev`, runs as a non-root user, and
-  copies `engine/`, `config/` and `.env.example` (for the placeholder-secret
-  refusal, §2.3).
+  copies `engine/` and `config/`. It does **not** copy `.env.example`
+  (placeholder-secret ruling; the refusal checks the `changeme` prefix).
 - `docker/gateway.Dockerfile` is the pinned nginx image plus templates. Its
   upstreams resolve per connection, so the gateway **starts and serves the
   other routes when any upstream is absent**: CI has no model host, and the
   harness may run `phoenix` without `api`.
 
-**Scripts (PS-2.9).** Each script is a bash file for Linux and macOS plus a
-PowerShell twin for Windows. They contain only `docker compose` calls.
+**Scripts (PS-2.9).** Each script is a bash file for Linux plus a PowerShell
+twin for Windows. macOS is not supported (Q20 ruling). They contain only
+`docker compose` calls.
 
 | Script | Does |
 |---|---|
@@ -439,7 +599,8 @@ PowerShell twin for Windows. They contain only `docker compose` calls.
 
 All scripts honor `KE_ENV_FILE` and `COMPOSE_PROJECT_NAME`. `docs/quickstart.md`
 names only these scripts and the prerequisites: Git, and Docker with Compose
-≥ 2.24.
+≥ 2.24. It has two paths only, Windows (PowerShell) and Linux (bash), and no
+macOS path (Q20 ruling).
 
 ### 2.5 platform-offline (ADR-KE-012)
 
@@ -456,8 +617,8 @@ names only these scripts and the prerequisites: Git, and Docker with Compose
 - `bundle.json`: git sha, creation time, and each image's name and digest;
 - `MANIFEST.sha256`: `sha256sum` format, covering every file except itself.
 
-**Platform.** The bundle is linux/amd64 only. macOS on Apple silicon (arm64
-images) is recorded under Q20.
+**Platform.** The bundle is linux/amd64 only, installed from Linux (bash) or
+Windows (PowerShell). macOS and Apple silicon are out of scope (Q20 ruling).
 
 **Install.** `scripts/install.sh` / `.ps1` verifies the manifest before
 anything else. It rejects a mismatch, a missing file, or **any file not listed
@@ -490,8 +651,9 @@ in the manifest**. Only then does it run `docker load` for each image.
   Any pull or package-index call fails, because the inner daemon has no route
   out.
 
-  **F5 ruling:** it runs in every local `full`, so CI stays identical to
-  local. A daemon that cannot run privileged containers is a blocker, never a
+  **F5 ruling:** it runs in every local `full`, so the offline proof is the
+  same locally and in CI. (Since Q30, local `full` covers more than CI
+  overall: see ADR-KE-009.) A daemon that cannot run privileged containers is a blocker, never a
   skip. Revisit if `full` exceeds about 15 minutes locally.
 
 `.github/workflows/ci.yml` keeps its single step. **F6 ruling:**
@@ -513,7 +675,10 @@ Suggested first test per sub-item, followed by the order of the rest.
   4. `test_egress_guard_runtime`, with a socket spy recording zero connects,
      plus `test_egress_guard_mutant_goes_red`.
   5. `test_startup_refuses_unsafe`, one subTest per case, plus the dev
-     warnings; then `test_startup_refuses_placeholder_secrets` (PS-1.9).
+     warnings; then `test_startup_refuses_placeholder_secrets` (PS-1.9: any
+     `SecretStr` starting with `changeme`, outside `dev`; allowed in `dev`)
+     and `test_env_example_secrets_use_changeme_prefix` (every secret key in
+     `.env.example` has a `changeme-` value, so the two cannot drift).
   6. `test_startup_is_traced`, using the in-memory exporter, which also proves
      nothing is exported to a non-local collector.
   7. `test_no_hardcoded_ports` and `test_no_hardcoded_hosts_or_models`:
@@ -529,20 +694,32 @@ Suggested first test per sub-item, followed by the order of the rest.
   3. `test_only_gateway_on_edge_network` (PS-2.10).
   4. `test_no_docker_socket_mounted` (PS-2.11).
   5. `test_stack_services_have_no_bind_mounts` (PS-2.12).
-  6. `test_quickstart_names_existing_scripts`.
+  6. `test_quickstart_names_existing_scripts` (Windows and Linux paths only,
+     Q20).
   7. `test_healthz`, in process with a socket spy, so it can be fast.
+  8. `test_gates_it_network_topology` (Q30/F-A): `gates-it` joins `backend`
+     and no other network, `backend` is `internal: true`, no network other
+     than `edge` is non-internal (and only `gateway` is on it), `gates-it`
+     mounts no Docker socket, and `gates` keeps `network_mode: none`.
+  9. `test_model_skip_reason_names_upstream` (Q30): the skip helper, given a
+     failed probe result, raises `SkipTest` whose reason contains the
+     configured `KE_MODEL_UPSTREAM` and a vocabulary reason; given success, it
+     does not skip.
 
-  Then integration in `gates-it` (blocked on Q30, like PS-2.4 to PS-2.7). The
-  first one is
-  `test_socket_guard_blocks_outbound`, which proves ADR-KE-009's wiring:
-  - the guard refuses a non-stack host;
-  - with the guard off, a raw connection out still fails, because the network
-    is internal.
+  Then integration in `gates-it` (not blocked: Q30/F-A ruled). The first one
+  is `test_socket_guard_blocks_outbound`, which proves ADR-KE-009's two
+  layers: the guard refuses a non-stack host (a TEST-NET-1 address from the
+  test's own fixture) with zero connects and allows the stack pairs; and,
+  with the guard bypassed, a raw connection to that address fails because
+  `backend` is internal (F-A restores this clause). That the *app* containers
+  have no route out stays proven by `ci/offline`.
 
   After it:
   - `test_readyz_reports_each_dependency`;
   - `test_readyz_fails_when_store_down`;
-  - `test_worker_consumes_noop_job`.
+  - `test_worker_consumes_noop_job`;
+  - `test_model_client_reaches_configured_host` (skips with a named reason
+    when the model host is unreachable).
 - **platform-offline.** First: `test_bundle_manifest_rejects_tamper` (fast).
   It covers both `install.sh` and `install.ps1` on a tiny fixture bundle, in
   three cases: a byte changed, a file missing, and an extra file. Then:
@@ -906,10 +1083,28 @@ ADR-KE-009). ADR-KE-002 to ADR-KE-012 are **proposed**.
   - Claude Code loads `.claude/agents/` only at session start, so the dispatch
     proof needed a fresh session (evidence:
     `docs/evidence/harness-claude-code/dispatch-*.md`).
-- **Amended by ADR-KE-009 (proposed):**
+- **Amended by ADR-KE-009 (accepted with the Q30 amendment, narrowed by F-A):**
   - `gates` keeps `network_mode: none` and still runs the fast path.
   - `verify.sh full` adds a host-side orchestration and a second one-shot
-    service, `gates-it`, that sits on the internal `backend` network.
+    service, `gates-it`, that sits on the internal `backend` network only. It
+    reaches the model host only through the gateway's upstream forward.
+- **Further consequences (harness-followups review, recorded 2026-10-18):**
+  - **verify.sh needs a grep with PCRE (I2).** The sentinel check is
+    `grep -Pq '^…\) \.\.\. ok\r?$' "$log"`. The gates image's GNU grep has
+    `-P`, and so does Git Bash's. A grep without PCRE (BSD grep, or GNU built
+    with `--disable-perl-regexp`) exits 2, `if !` treats that as no match, and
+    verify **fails closed**. The FAIL message then blames the sentinel, not
+    grep; grep's own stderr line just above it is the tell. It only matters
+    outside the image (`KE_IN_GATES=1` exported on a host, or a verify test
+    run directly on a host), neither of which is a documented workflow.
+  - **On-main accepted bypasses are wider than Table M rows 14 and 15
+    (security L24).** On main/master the hook is also silent for anything
+    that hides the words from the text: a git alias verb (`git ci -m x`),
+    variables, `eval`, and base64 or other encodings. It is also silent for
+    `gh` (`gh pr merge`), as off main. The hook is a guard rail that denies
+    most commits and pushes on main, not all; branch protection (Q18) is the
+    control. AGENTS.md's "denies any commit/push" wording overclaims; that
+    edit is the documenter's (L24 ask).
 
 #### Decision: commit hook is a simple fail-safe text rule (2026-10-18)
 The orchestrator ruled this in round 4. It also answers review N15, which
@@ -974,7 +1169,9 @@ asked for the hook design to be recorded in this ADR.
       as bash reads it
   - Accepted bypasses on main: Table M rows 14 and 15, where after a comment
     or even backslash run a continuation splits the `git` or `commit` word.
-    These shapes are contrived; branch protection (Q18) is the control.
+    These shapes are contrived; branch protection (Q18) is the control. Also
+    anything that hides the words, and `gh` (security L24; see "Further
+    consequences" above).
   - Cost: host timing for 5 MB-plus commands (Git Bash, no jq) is 4.9 s with
     one text and 6.8 s with two, under the 10 s hook timeout but with low
     headroom when a backslash-newline is present
@@ -1013,6 +1210,12 @@ asked for the hook design to be recorded in this ADR.
   - ADR-KE-010: the guarded httpx transport and the startup checks.
   - ADR-KE-011: the network layer, where `gateway` is the only way out.
   - ADR-KE-009: the socket guard, which runs in `gates-it`.
+- **Amended by Q30 (human, 2026-10-18), narrowed by F-A, for integration
+  tests only:** model-calling tests may call the configured model host, through
+  the gateway's upstream forward and the DR30 allowlist, the app's own path.
+  `gates-it` has no other route out, so the socket guard keeps the network
+  layer behind it. The app's allowlist and the network layer of ADR-KE-011 are
+  unchanged.
 
 ### ADR-KE-004: Domain packs and institution profiles
 - **Decision:**
@@ -1105,21 +1308,28 @@ asked for the hook design to be recorded in this ADR.
     `ke audit verify`.
 - **Context:** this follows the JD repo's ADR-008, generalized.
 
-### ADR-KE-009: Gates reach real stores over an internal compose network (answers Q19, amends ADR-KE-001)
-- **Status:** proposed, pending human ruling Q30 (F1). DR31 is binding and
-  names testcontainers, so the human decides. `platform-stack` waits on Q30;
-  `platform-config` does not.
+### ADR-KE-009: Gates reach real stores over compose networks, with no Docker socket (answers Q19, amends ADR-KE-001)
+- **Status:** accepted with a human amendment (Q30, 2026-10-18), narrowed by
+  ruling F-A (2026-10-18): automated tests need to reach only the LLM on
+  `aria-gb10-2`, not the internet. The mechanism is option (a) below,
+  unchanged: `gates-it` on the `internal: true` `backend` network only, no
+  separate external network, no Docker socket, no testcontainers.
+  Model-calling integration tests reach the model host only through the
+  gateway's upstream forward. This amends DR31 ("CI never calls a model") for
+  integration tests only; the analyst edits DR31 and PS-2.4 to PS-2.7.
 - **Context:**
   - `gates` runs with `network_mode: none` and has no Docker socket.
   - Yet integration needs real PostgreSQL, Neo4j and Valkey (DR31).
   - The live smoke (PS-2.8) needs to launch the stack, and the offline check
     (PS-3.2) needs a daemon that has no images and no egress.
-  - The rule: everything runs in Docker, gates are identical in CI, and CI's
-    only step is `verify.sh full`.
+  - The rule: everything runs in Docker, and CI's only step is
+    `verify.sh full`.
+  - Q30 (human): model-calling integration tests should run against the real
+    model host (`aria-gb10-2`, Q7) when it is reachable. F-A (human) narrows
+    this: the model host only, not the internet.
 - **Options:**
-  - **(a) Compose services on an internal network.**
-    - The stores are ordinary compose services on `backend` (`internal: true`,
-      no route out).
+  - **(a) Compose services, one-shot `gates-it` on the stack network.**
+    - The stores are ordinary compose services on `backend` (`internal: true`).
     - A second one-shot service, `gates-it` (same image, same YAML anchor),
       joins `backend`.
     - The host half of `verify.sh` starts the stack before running `gates-it`
@@ -1131,19 +1341,34 @@ asked for the hook design to be recorded in this ADR.
     testcontainers.
 - **Security trade-off of the socket (b):**
   - The Docker API socket is root-equivalent on the host. Any code running in
-    gates could start a privileged container with the host's `/` mounted, or
-    attach a container to a network with internet access. That includes every
-    test, every imported dependency, and a test file added by a hostile PR.
-  - That defeats `network_mode: none` and DR31 outright.
+    gates could start a privileged container with the host's `/` mounted.
+    That includes every test, every imported dependency, and a test file
+    added by a hostile PR.
   - It also lets that code read other projects' volumes and secrets. On Docker
     Desktop it reaches the VM, which mounts the host drives.
-  - Testcontainers also pulls its Ryuk image at test time and puts containers
-    on the default bridge, which has internet access.
-  - **Rejected.**
-- **Option (c) rejected:** a bridge network gives the test process a route to
-  the internet and to the model host. It is (a) with the isolation removed.
+  - Testcontainers also pulls its Ryuk image at test time.
+  - **Rejected.** Q30 and F-A did not change this.
+- **(c) rejected (F-A).** An ordinary bridge network would give tests a route
+  to the internet, which F-A rules unnecessary: only the model host is
+  needed, and the gateway already forwards to it.
 - **Decision: (a).**
-  - `verify.sh fast` is unchanged.
+  - **Networks:** `gates-it` joins `backend` only (to reach the stores, `api`
+    and `gateway`). There is no `gates-it` network. `backend` stays
+    `internal: true`, so neither the app containers nor `gates-it` have a
+    route out except the gateway's single upstream forward (DR30,
+    ADR-KE-011).
+  - **Unit `gates`** keeps `network_mode: none`; `verify.sh fast` is
+    unchanged.
+  - **Model-calling integration tests** go through `ModelClient` → `gateway`
+    (model port on `backend`) → upstream forward over `edge` →
+    `KE_MODEL_UPSTREAM`, the app's own path, so the DR30 egress allowlist
+    applies to them. `config/verify.env` no longer overrides
+    `KE_MODEL_UPSTREAM` (the earlier `.invalid` upstream is dropped), so the
+    configured host is used. One reachability probe per run
+    (`GET {compose.base_url}/models`, `readiness.timeout_s`) decides: run
+    them, or skip them with `model host unreachable: <KE_MODEL_UPSTREAM>
+    (<reason>)`, using the `/readyz` reason vocabulary. No other test may
+    skip on network grounds.
   - **`verify.sh full`, host half:**
     1. It sets a trap that runs `teardown.sh --volumes`.
     2. It runs `build.sh`, then `launch.sh` for an isolated project,
@@ -1152,31 +1377,50 @@ asked for the hook design to be recorded in this ADR.
        - uses `docker-compose.verify.yml`, which resets every `ports:`, so
          nothing is published.
     3. It runs `compose run gates-it scripts/verify.sh full`. Inside, that does
-       `lint.sh` and `test.sh full`.
+       `lint.sh` and `test.sh full` (store integration always; model-calling
+       tests when the probe succeeds).
     4. It runs `smoke.sh`, then `offline_check.sh`.
   - The gate commands stay only in `lint.sh`, `test.sh`, `smoke.sh` and
     `offline_check.sh`. `verify.sh` calls scripts and `compose run`, nothing
     else.
+  - The gates anchor sets `UV_OFFLINE=1`, so a run never depends on fetching
+    a dependency (and `gates-it` has no route to an index anyway).
 - **Clean daemon:**
   - `offline_check.sh` starts the official Docker `dind` image (privileged,
     with a fresh anonymous `/var/lib/docker`) on an internal network,
     `offline`.
   - It drives that daemon from `offline-client`, which uses the gates image.
-  - It runs **in every `verify.sh full`, locally and in CI**, so CLAUDE.md's
-    "What CI runs that verify.sh does not: Nothing" stays true (F5 ruling;
-    revisit if `full` exceeds about 15 minutes locally).
+  - It runs **in every `verify.sh full`, locally and in CI** (F5 ruling;
+    revisit if `full` exceeds about 15 minutes locally). The offline proof of
+    the *deployed* product (`ci/offline`, `ci/deployable-offline`) is
+    unchanged by Q30 and F-A.
   - Locally this needs a daemon that permits privileged containers. Docker
     Desktop and Linux Docker Engine both do. Rootless or Podman setups report
     a blocker rather than skipping.
 - **Consequences:**
+  - **Local `verify.sh full` covers more than CI.** Where `aria-gb10-2` is
+    reachable, the model-calling tests run; on GitHub runners they always
+    skip. CLAUDE.md records this in a new "What verify.sh runs that CI
+    cannot" row (orchestrator or documenter edit). "What CI runs that
+    verify.sh does not: Nothing" stays true. A green CI therefore does not
+    prove the model-calling tests passed; the evidence file shows whether
+    they ran or skipped.
+  - **The checkout cannot leave the machine through tests (F-A).** `gates-it`
+    has no route to the internet: `backend` is internal, and the gateway's
+    forward goes to one configured upstream, the model host, never to an
+    arbitrary address. The only off-machine peer a test can reach is the
+    trusted model host the app already uses, and only through the gateway.
+    Unit `gates` stays without a network.
   - The test socket guard is a `tests/integration` fixture that patches
-    `socket.socket.connect` and `connect_ex`. It allows only the
-    (host, port) pairs of stack services. It does not see libpq, because
-    psycopg connects in C; the internal network covers that.
+    `socket.socket.connect` and `connect_ex`. It allows only the (host, port)
+    pairs of stack services, including the gateway's model port. It does not
+    see libpq, because psycopg connects in C; the internal `backend` network
+    is the boundary behind it.
   - Integration tests cannot stop containers, so store-down cases are made in
     process, and real stop and start happens in the host-side smoke.
-  - DNS on internal networks may still forward queries outward through
-    Docker's embedded resolver. This is residual, and flagged to security.
+  - DNS on internal networks (`backend`, `offline`) may still forward queries
+    outward through Docker's embedded resolver. This is residual (it applies
+    to `gates-it` too), and flagged to security.
   - DinD is privileged too. Control of its API is effectively root on the
     host. Accepted because:
     - the only code with that control is our shell scripts, at the same trust
@@ -1186,11 +1430,10 @@ asked for the hook design to be recorded in this ADR.
     - its daemon has no route out.
   - `verify.sh full` becomes slower and needs more disk. The CI
     `timeout-minutes` is the measured duration plus 50% (F6 ruling, PS-3.4).
-  - **This deviates from the wording of DR31 and the requirements conventions
-    ("via testcontainers"):** the intent (real stores, mocked models, no
-    egress) is kept, but the mechanism changes. Open as Q30 for the human;
-    the analyst edits DR31 and the conventions only after that ruling.
+    An unreachable model host costs at most one probe timeout.
 - **First tests:**
+  - `test_gates_it_network_topology` (fast);
+  - `test_model_skip_reason_names_upstream` (fast);
   - `test_socket_guard_blocks_outbound` (integration);
   - `test_no_docker_socket_mounted` (fast);
   - `test_verify_sh_has_no_inlined_commands` (existing, stays green).
@@ -1208,14 +1451,38 @@ asked for the hook design to be recorded in this ADR.
       names only, with no unprefixed aliases (F2 ruling).
     - Standard tool variables (`PHOENIX_COLLECTOR_ENDPOINT`,
       `HARNESS_TRACING`, `OPENINFERENCE_HIDE_*`) keep their own names.
-    - Secrets come from the environment only, with no default (F3 ruling);
-      placeholder secrets are refused outside `dev` (PS-1.9).
+    - Secrets come from the environment only, with no default (F3 ruling).
+      `.env.example` placeholders are `changeme-<key>`, and any secret
+      starting with `changeme` is refused outside `dev` (PS-1.9,
+      placeholder-secret ruling). `.env.example` is not shipped in an image.
+    - The model host (`aria-gb10-2` for this deployment, Q7) is configuration
+      only: `KE_MODEL_UPSTREAM` and the per-pass base URLs. No code names it,
+      and the hardcoded scan enforces that.
     - Errors name the key, never the value.
   - **Egress:** an httpx `GuardedTransport` runs before any socket is opened,
     with `trust_env=False`. The startup check covers every pass `base_url`
     and `model_upstream`.
   - **Startup refusals:** run in `engine.startup`. OTLP export is attached
     only after the collector is shown to be local.
+  - **Tracing (amended, rework 1, 2026-10-19: B1, B7b, L6):**
+    - `telemetry.tracing` defaults to `off`; `.env.example` turns `otlp` on
+      for the local Phoenix.
+    - The exporter is chosen from `Settings` only, by the pure
+      `choose_exporter`: `otlp` → OTLP to the checked local collector,
+      `console` → `ConsoleSpanExporter`, `off` → none. The engine never uses
+      `harness_telemetry.setup_tracing` or its env reading.
+    - A tracer provider that is already installed is refused
+      (`StartupRefused("telemetry.tracing", …)`) unless every exporter on it
+      is positively identified as local.
+    - `configure_tracing` runs only after `check()` passes, and applies the
+      hide flags before it installs the exporter.
+    - Every `ModelClient` call method is wrapped in an `llm_span` (N12).
+  - **Compose (amended, rework 1: B7a, M2):** Phoenix is published as
+    `127.0.0.1:${KE_PHOENIX_PORT:-47101}:${PHOENIX_PORT:-6006}`, on loopback
+    only. It uses `:-` because verify and CI run compose without a `.env`. A
+    drift test ties both defaults to `.env.example` and `defaults.yaml`. The
+    scanner reads `${VAR:-default}` defaults as declared values in compose
+    files only.
   - **Hardcoded scan:** a pure scanner in `tests/`. Its single exemption is
     `harness_telemetry.tracing.DEFAULT_COLLECTOR`, which is pinned to
     `.env.example` by a drift test.
@@ -1236,21 +1503,53 @@ asked for the hook design to be recorded in this ADR.
     tests.
   - Making the harness read its default from `.env.example`: this couples the
     template to the working directory.
+  - (Rework 1) `${KE_PHOENIX_PORT:?set in .env}`: this breaks `verify.sh` and
+    CI, which have no `.env`. Defaulting tracing to `otlp`: a fresh checkout
+    would try to export before anyone has chosen to. Replacing an installed
+    provider: OTel allows the global provider to be set only once.
+    `setup_tracing(…, exporter=…)`: it returns an existing provider
+    unchecked.
 - **Consequences:**
   - Defaults live in exactly two committed files: `defaults.yaml` (app keys)
     and `.env.example` (compose and deployment keys).
   - `config/verify.env` is a third, and small, allowed location (F4 ruling:
-    an accepted literal exemption under PS-1.2).
+    an accepted literal exemption under PS-1.2). It does not override
+    `KE_MODEL_UPSTREAM` (Q30).
+  - The placeholder check needs no file at runtime; a fast test keeps
+    `.env.example`'s secret values on the `changeme-` prefix.
+  - Alternative rejected by the orchestrator's ruling: copying `.env.example`
+    into the app image and comparing values, which ships a dev file in a
+    production image.
   - Default `env=prod` with `auth.enabled=true` refuses to start until
     auth-audit exists. `.env.example` therefore ships `KE_ENV=dev` with auth
     off, which logs a warning.
   - The exceptions are ruled and recorded in PS-1.1/PS-1.2: secrets have no
     YAML default (F3), and the requirement names are `KE_` variables (F2).
+  - (Rework 1) The installed-provider check reads private OTel SDK
+    attributes. It fails closed, and a fast test pins every accepted shape.
+  - (Rework 1) Startup runs `check()` twice: once untraced as the pre-flight,
+    and once inside the traced block. It is pure and cheap.
+  - (Rework 1) The spans of a refused startup are recorded but not exported
+    (no exporter exists yet). Tests see them through the in-memory provider.
 - **First tests:**
   - `test_config_defaults_and_env_override`;
   - `test_config_ignores_unprefixed_names`;
   - `test_egress_guard_runtime`;
   - `test_startup_refuses_unsafe`.
+  - Rework 1:
+    - `choose_exporter` is pure and needs no global provider (this avoids
+      B2's vacuous pass). With `console` and an external
+      `PHOENIX_COLLECTOR_ENDPOINT` while `HARNESS_TRACING` is unset or
+      `otlp`, the result is a `ConsoleSpanExporter` and never OTLP (the H1
+      repro).
+    - With `off`, it returns none.
+    - With `otlp` and a non-local collector, it returns none.
+    - An installed provider with a non-local OTLP exporter, or an unknown
+      exporter, is refused.
+    - `configure_tracing` is not called when `check()` refuses (L6).
+    - `test_compose_phoenix_defaults_match_config`, and a test that the
+      compose publish is bound to `127.0.0.1`.
+    - The `ModelClient` call emits an LLM span (N12).
 
 ### ADR-KE-011: Stack topology, gateway and job queue (platform-stack)
 - **Context:**
@@ -1261,7 +1560,9 @@ asked for the hook design to be recorded in this ADR.
 - **Decision:**
   - **Networks:**
     - Every stack service sits only on `backend` (`internal: true`), except
-      `gateway`, which sits on both `backend` and `edge`.
+      `gateway`, which sits on both `backend` and `edge`. The verify-only
+      `gates-it` service also sits on `backend` only (ADR-KE-009, Q30/F-A), so
+      this layer is the same for tests as for the app.
     - The gateway is an nginx image with baked-in templates. It:
       - publishes `KE_API_PORT` and `KE_PHOENIX_PORT`;
       - reverse-proxies `api` and `phoenix`;
@@ -1328,8 +1629,9 @@ asked for the hook design to be recorded in this ADR.
   - A signed manifest (minisign or cosign): a stronger guarantee, but it needs
     key management. Deferred and flagged to security.
 - **Consequences:**
-  - The bundle is large and linux/amd64 only. macOS on Apple silicon would
-    need arm64 images; recorded under Q20.
+  - The bundle is large and linux/amd64 only. Hosts are Linux (bash
+    installer) and Windows (PowerShell installer); macOS and Apple silicon
+    are out of scope (Q20 ruling).
   - With no wheels, an offline image rebuild is not supported; the bundle
     ships built images only.
   - `ci/deployable-offline` runs in every local `full` (F5 ruling); the CI

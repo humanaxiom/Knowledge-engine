@@ -127,3 +127,7 @@ Base: `agent/harness-claude-code` @ a11842d (the remote has no `main`).
   The architect amends ADR-KE-009, and the analyst amends DR31, the Q30 entry and PS-2.4–2.7.
 - Q20 (human): no macOS for now; Windows (PowerShell) and Linux only. Apple silicon is out of scope.
 - Q7 (human): the model host is `aria-gb10-2` (OpenAI-compatible). It is configured via `KE_MODEL_UPSTREAM` and the per-pass base URLs, never hardcoded.
+
+## 2026-10-19 — orchestrator: ruling for platform-stack ports (from platform-config B7a)
+- §2.4's `${KE_…_PORT:?set in .env}` becomes `${KE_BIND_ADDRESS:-127.0.0.1}:${KE_…_PORT:-<default in 47100–47199>}:<container port>` for every published port (gateway API and Phoenix). Reason: `:?` breaks verify/CI without a `.env`, and the services have no auth until auth-audit.
+- LAN exposure is a deliberate operator choice (`KE_BIND_ADDRESS=0.0.0.0` in `.env`), refused at startup outside `dev` until auth-audit lands. The architect applies this at the start of platform-stack.

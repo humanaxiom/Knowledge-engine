@@ -1,0 +1,33 @@
+DR38 mutation H2: drop session= from OTLPSpanExporter in engine/telemetry.py
+diff --git a/<tmp>/telemetry.bak b/engine/telemetry.py
+index 7b4577a..cf70d54 100644
+--- a/<tmp>/telemetry.bak
++++ b/engine/telemetry.py
+@@ -49,7 +49,7 @@ def choose_exporter(settings: Settings) -> SpanExporter | None:
+         session = requests.Session()
+         session.trust_env = False
+         return trace_exporter.OTLPSpanExporter(
+-            f"{endpoint.rstrip('/')}/v1/traces", timeout=5, session=session)
++            f"{endpoint.rstrip('/')}/v1/traces", timeout=5)
+     return None
+ 
+ 
+verify fast exit: 1
+      1 FAIL: test_chosen_exporter_dials_only_the_collector (tests.test_engine_tracing_guard.ExporterIgnoresProxyEnvTest.test_chosen_exporter_dials_only_the_collector) (case='127.0.0.1, ALL_PROXY')
+      1 FAIL: test_chosen_exporter_dials_only_the_collector (tests.test_engine_tracing_guard.ExporterIgnoresProxyEnvTest.test_chosen_exporter_dials_only_the_collector) (case='localhost, HTTP_PROXY')
+      1 FAIL: test_chosen_exporter_dials_only_the_collector (tests.test_engine_tracing_guard.ExporterIgnoresProxyEnvTest.test_chosen_exporter_dials_only_the_collector) (case='phoenix, HTTP_PROXY')
+      1 FAIL: test_chosen_exporter_dials_only_the_collector (tests.test_engine_tracing_guard.ExporterIgnoresProxyEnvTest.test_chosen_exporter_dials_only_the_collector) (case='phoenix, http_proxy + NO_PROXY=localhost')
+      1 FAIL: test_chosen_exporter_session_does_not_trust_env (tests.test_engine_tracing_guard.ExporterIgnoresProxyEnvTest.test_chosen_exporter_session_does_not_trust_env) (case='127.0.0.1, ALL_PROXY')
+      1 FAIL: test_chosen_exporter_session_does_not_trust_env (tests.test_engine_tracing_guard.ExporterIgnoresProxyEnvTest.test_chosen_exporter_session_does_not_trust_env) (case='localhost, HTTP_PROXY')
+      1 FAIL: test_chosen_exporter_session_does_not_trust_env (tests.test_engine_tracing_guard.ExporterIgnoresProxyEnvTest.test_chosen_exporter_session_does_not_trust_env) (case='phoenix, HTTP_PROXY')
+      1 FAIL: test_chosen_exporter_session_does_not_trust_env (tests.test_engine_tracing_guard.ExporterIgnoresProxyEnvTest.test_chosen_exporter_session_does_not_trust_env) (case='phoenix, http_proxy + NO_PROXY=localhost')
+      1 FAIL: test_configured_exporter_dials_only_the_collector (tests.test_engine_tracing_guard.ExporterIgnoresProxyEnvTest.test_configured_exporter_dials_only_the_collector) (case='127.0.0.1, ALL_PROXY')
+      1 FAIL: test_configured_exporter_dials_only_the_collector (tests.test_engine_tracing_guard.ExporterIgnoresProxyEnvTest.test_configured_exporter_dials_only_the_collector) (case='localhost, HTTP_PROXY')
+Ran 197 tests in 23.016s
+
+FAILED (failures=12)
+verify fast: FAIL (test.sh exited non-zero)
+
+sha before: f9bd5b33ce8eb574b35875fa4a59d7bcd742433d6f343e7a3cc124665679a9bd
+sha after restore: f9bd5b33ce8eb574b35875fa4a59d7bcd742433d6f343e7a3cc124665679a9bd
+MATCH

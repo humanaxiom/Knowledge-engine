@@ -146,7 +146,7 @@ Rules:
   Phoenix is down the trace is dropped after a few seconds. Set
   `HARNESS_TRACING=off` to skip export, or `console` to print spans.
 
-Configuration: `PHOENIX_COLLECTOR_ENDPOINT` (default `http://localhost:6006`),
+Configuration: `PHOENIX_COLLECTOR_ENDPOINT` (default `http://localhost:47101`, the host port set by `KE_PHOENIX_PORT`),
 `HARNESS_TRACING` (`otlp` | `console` | `off`), and the two `OPENINFERENCE_HIDE_*`
 flags above.
 

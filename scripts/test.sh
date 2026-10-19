@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Test entrypoint, called only by scripts/verify.sh.
+# Test entrypoint, called only by scripts/verify.sh. Ends with the coverage and
+# type-check gates.
 #   fast: unit tests only.  full: unit tests, then the integration suite
 #   (tests/integration, once it exists; real stores via testcontainers arrive
 #   with platform-skeleton) exactly once.
@@ -11,6 +12,11 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 mode="${1:-full}"
+
+# Stale data from an earlier run must not count towards this run.
+uv run --locked python -m coverage erase
+# `erase` keeps parallel data files from a run that stopped before `combine`.
+rm -f .coverage.*
 
 # Fail loudly before running anything: a test dir without __init__.py would
 # otherwise be skipped silently. Applies at every depth.
@@ -33,7 +39,7 @@ if [ "${#mods[@]}" -eq 0 ]; then
   echo "error: no top-level unit tests in tests/" >&2
   exit 1
 fi
-uv run --locked python -m unittest -v "${mods[@]}"
+uv run --locked python -m coverage run -p -m unittest -v "${mods[@]}"
 
 # Other unit-test packages under tests/; integration excluded, and packages
 # with no test*.py at any depth (helpers such as fixtures) are skipped.
@@ -41,9 +47,17 @@ for d in tests/*/; do
   d="${d%/}"
   case "$d" in tests/integration|tests/__pycache__) continue ;; esac
   [ -n "$(find "$d" -name __pycache__ -prune -o -name 'test*.py' -print -quit)" ] || continue
-  uv run --locked python -m unittest discover -s "$d" -t . -v
+  uv run --locked python -m coverage run -p -m unittest discover -s "$d" -t . -v
 done
 
 if [ "$mode" = "full" ] && [ -d tests/integration ]; then
-  uv run --locked python -m unittest discover -s tests/integration -t . -v
+  uv run --locked python -m coverage run -p -m unittest discover -s tests/integration -t . -v
 fi
+
+# Quality gates (PS-1.6), configured in pyproject.toml: line + branch coverage
+# of engine and harness_telemetry must reach the threshold on what this mode
+# ran, and mypy --strict must be clean. Tests are in neither. These always run
+# (no silent skip); test_engine_quality pins the configuration itself.
+uv run --locked python -m coverage combine
+uv run --locked python -m coverage report
+uv run --locked python -m mypy

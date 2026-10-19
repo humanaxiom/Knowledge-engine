@@ -42,14 +42,19 @@ answer it. Answer by number; anything left unanswered stands as assumed.
   with a dev provider for CI.
 - **Q6. Port range.** The box runs other stacks. **A6:** all host ports default to
   the `47100–47199` range, set in `.env`, never in code.
-- **Q7. Model host.** What is the model host's address, and is it reachable from
-  where the gates run? **A7:** it is an OpenAI-compatible endpoint whose
-  host:port is set by `KE_MODEL_UPSTREAM`; each pass's base URL is
-  `KE_MODELS__<PASS>__BASE_URL`, and both hosts must be on
-  `KE_EGRESS_ALLOWLIST` (names per ADR-KE-010; the unprefixed
-  `MODEL_BASE_URL` is retired, ruling F2 of 2026-10-18). CI never calls it,
-  and live golden tests skip when it is absent. Defaults are `qwen2.5:14b-instruct` (fallback `llama3.1:8b`) and
-  `nomic-embed-text` (768-dim).
+- **Q7. Resolved 2026-10-18 (human ruling).** The model host is
+  `aria-gb10-2`, an OpenAI-compatible endpoint. **A7:** it is configured via
+  `KE_MODEL_UPSTREAM` and each pass's `KE_MODELS__<PASS>__BASE_URL`, never
+  hardcoded (PS-1.2), and both hosts must be on `KE_EGRESS_ALLOWLIST` (names
+  per ADR-KE-010; the unprefixed `MODEL_BASE_URL` is retired, ruling F2 of
+  2026-10-18). GitHub runners cannot reach it, so model-calling integration
+  and live golden tests skip there with a named reason and run where it is
+  reachable through the stack gateway (Q30, narrowed by F-A). Model defaults
+  are `qwen2.5:14b-instruct` (fallback `llama3.1:8b`) and `nomic-embed-text`
+  (768-dim). Its port, URL scheme and URL are set per deployment in `.env`,
+  with no default in `config/defaults.yaml` (Q32, resolved). Original question, kept for the
+  record: *What is the model host's address, and is it reachable from where
+  the gates run?* The earlier assumption said "CI never calls it".
 - **Q8. Target hardware.** CPU and GPU, RAM, and disk on the on-premises box,
   which decide the OCR and layout models. **A8:** a CPU-only path (Tesseract,
   Docling or unstructured layout) is the default, and GPU models are opt-in per
@@ -109,9 +114,56 @@ PS-Q1–PS-Q11 (`docs/requirements.md` § "Item: platform-skeleton"); the
 orchestrator ruled the same day (`docs/handoffs/platform-skeleton.md`,
 "orchestrator: split accepted, rulings"). The ones still open come first.
 
-Open:
+Open: none.
 
-- **Q30 (architect finding F1). Integration mechanism vs DR31 (human; blocks
+Resolved by the orchestrator 2026-10-18 (`docs/handoffs/platform-config.md`,
+"orchestrator: rulings on analyst Q31, Q32 and casing"):
+
+- **Q31. Resolved (orchestrator ruling).** **A31:** a recorded run on the
+  human's Windows host proves the PowerShell build, launch and teardown
+  scripts, with its output saved as evidence in platform-stack (PS-2.9).
+  Original question, kept for the record: *Q20 settled the scope (Windows and
+  Linux only) but not the proof. CI runs Linux only. Is a recorded run on
+  your Windows machine, with its output in the evidence folder, enough proof
+  for the PowerShell scripts?*
+- **Q32. Resolved (orchestrator ruling).** **A32:** the model host's scheme,
+  port and URL are set per deployment in `.env`. `config/defaults.yaml` ships
+  no model-host default; `.env.example` leaves `KE_MODEL_UPSTREAM` empty with
+  a comment naming `aria-gb10-2` as this deployment's host (PS-1.2). Original
+  question, kept for the record: *Q7 names the host but not its port or URL
+  scheme, and does not say whether `config/defaults.yaml` ships it as the
+  default `KE_MODEL_UPSTREAM` (and `KE_EGRESS_ALLOWLIST` entry) or leaves
+  both unset so each deployment supplies them.*
+- Also ruled the same day (tester risks, platform-config): loopback addresses
+  and compose service names are not hardcoded hosts (PS-1.2); phoenix's
+  compose port moves to `.env` (`KE_PHOENIX_PORT=47101`) within
+  platform-config, while `test_harness_default_collector_matches_env_example`
+  stays in platform-stack (PS-2.2); `changeme` matching is case-insensitive
+  and placeholders are `changeme-<key in lowercase>` (PS-1.9).
+
+Resolved by the human 2026-10-18 (`docs/handoffs/platform-skeleton.md`,
+"orchestrator: human rulings Q30, Q20, Q7"):
+
+- **Q30. Resolved (human ruling, narrowed by the human's ruling F-A the same
+  day).** Integration tests run as compose services with no Docker socket.
+  `gates-it` is on internal networks only and has no internet access; the
+  only outside host tests reach is the LLM on `aria-gb10-2`, through the
+  stack gateway (F-A). Model-calling integration tests run when that host is
+  reachable and skip with a visible, named reason when it is not
+  (for example on GitHub runners). Unit tests (`verify.sh fast`) keep no
+  network. The app's egress allowlist (DR30) still applies. The offline-bundle
+  checks still prove the deployed product runs offline. This amends DR31 and
+  the "Integration" convention in `docs/requirements.md` (both keep their
+  original wording as a note) and settles PS-2.4–PS-2.7; `CLAUDE.md` gains a
+  "What verify.sh runs that CI cannot" section (PS-2.13).
+  `test_gates_it_internal_only_and_no_socket` replaces
+  `test_gates_it_has_network_access_and_no_socket`;
+  `test_egress_allowlist_holds_with_network_access` is kept (model calls go
+  through the gateway forward). As first ruled, Q30 put `gates-it` on a
+  network WITH external access (not `internal`); F-A withdrew that, on the
+  architect's flag that the gateway already gives the model route. Original
+  question, kept for the record:
+- *(original)* **Q30 (architect finding F1). Integration mechanism vs DR31 (human; blocks
   `platform-stack`).** DR31, a binding rule of the build prompt, says
   integration tests use real Postgres/Neo4j/Valkey "via testcontainers".
   ADR-KE-009 (the answer to Q19) proposes instead that the stores run as
@@ -121,16 +173,22 @@ Open:
   egress. The architect rejected mounting the Docker socket for testcontainers
   because the socket is root-equivalent on the host and would let test code
   escape `network_mode: none`. Do you accept the compose mechanism in place of
-  testcontainers? **A30:** none; asked of you. Until you rule, DR31's text and
-  the requirements' "Integration" convention stay as written, `platform-config`
-  proceeds, and PS-2.4–PS-2.7 are blocked.
-- **Q20 (PS-Q10). macOS and Windows proof (human).** CI runs Linux only. Is a
+  testcontainers? **A30 (before the ruling):** none; asked of you.
+- **Q20. Resolved (human ruling).** No macOS for now: Windows (PowerShell) and
+  Linux only; Apple silicon is out of scope. Settles PS-2.9 and the PS-3.1
+  platform note. The proof sub-question is carried as Q31. Original question,
+  kept for the record:
+- *(original)* **Q20 (PS-Q10). macOS and Windows proof (human).** CI runs Linux only. Is a
   recorded run on your Windows machine enough proof for the PowerShell build,
   launch and teardown scripts, and who proves macOS (no macOS machine is
   recorded)? The offline bundle is linux/amd64 only for now (orchestrator
   ruling, 2026-10-18), so a Mac on Apple silicon (arm64) can run it only under
   emulation, if at all: is Apple silicon a target, and if so, does it need
-  arm64 images in the bundle? **A20:** none yet; asked of you.
+  arm64 images in the bundle? **A20 (before the ruling):** none; asked of you.
+- **Placeholder secrets (orchestrator ruling, replaces part of F3).** Every
+  secret placeholder in `.env.example` is `changeme-<key>`; startup refuses
+  any secret starting with `changeme` outside `dev`; `.env.example` is not
+  shipped in the image (PS-1.9).
 
 Answered by the architect 2026-10-18:
 
@@ -141,7 +199,8 @@ Answered by the architect 2026-10-18:
   internal network, a one-shot `gates-it` joins that network, `gates` stays
   network-less, and the offline check drives a privileged DinD daemon on an
   internal network in every `verify.sh full`. The change of mechanism from
-  DR31 is Q30.
+  DR31 was Q30, now ruled and narrowed by F-A: `gates-it` is internal-only
+  and reaches the model host only through the gateway.
 
 Ruled 2026-10-18:
 
@@ -178,4 +237,5 @@ aliases; secrets have no default and placeholders are refused outside `dev`;
 `config/verify.env` is an allowed literal location; the offline check runs in
 every local `verify.sh full`; CI `timeout-minutes` is the measured duration
 plus 50%; the bundle carries no wheels and is linux/amd64 only (Apple silicon
-under Q20).
+out of scope, Q20). The placeholder definition in F3 was later replaced by the
+`changeme-` prefix ruling above.

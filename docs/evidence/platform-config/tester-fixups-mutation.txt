@@ -1,0 +1,20 @@
+tester-fixups mutation proofs (2026-10-18). Scratch copy of the repo under the
+session scratchpad, run in knowledge-engine-gates:latest with --network none;
+scratch copy deleted afterwards. Working tree untouched.
+
+A. harness_telemetry/tracing.py guard reverted to `if span.status.status_code is StatusCode.UNSET:`
+   cmd: uv run --locked python -m unittest tests.test_tracing.TracingTest.test_spans_tolerate_non_recording_span
+   result:
+     File "/work/harness_telemetry/tracing.py", line 149, in _span
+       status = span.status
+     AttributeError: 'NonRecordingSpan' object has no attribute 'status'
+     Ran 1 test in 0.004s
+     FAILED (errors=1)
+
+B. uv.lock line 3 set to uv's normalised `requires-python = "==3.12.*"`
+   cmd: python -m unittest tests.test_engine_quality.PythonPinTest.test_python_pinned_to_312
+   result: Ran 1 test ... OK
+
+C. uv.lock line 3 set to loose `requires-python = ">=3.12"`
+   same cmd
+   result: Ran 1 test ... FAILED (failures=5)   (3.13.0, 3.13.5, 3.14.0, 4.0.0, 4.12.0 allowed)

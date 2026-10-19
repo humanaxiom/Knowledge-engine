@@ -1,0 +1,1014 @@
+ Image knowledge-engine-gates Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 535B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from gates.Dockerfile
+#2 transferring dockerfile: 1.26kB done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#3 DONE 0.0s
+
+#4 [internal] load metadata for docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#4 DONE 0.4s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 91B done
+#5 DONE 0.0s
+
+#6 [uv 1/1] FROM ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#6 resolve ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946 0.0s done
+#6 DONE 0.0s
+
+#7 [stage-1 1/9] FROM docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#7 resolve docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258 0.0s done
+#7 DONE 0.0s
+
+#8 [internal] load build context
+#8 transferring context: 1.75kB done
+#8 DONE 0.0s
+
+#9 [stage-1 8/9] COPY config ./config
+#9 CACHED
+
+#10 [stage-1 6/9] COPY harness_telemetry ./harness_telemetry
+#10 CACHED
+
+#11 [stage-1 7/9] COPY engine ./engine
+#11 CACHED
+
+#12 [stage-1 4/9] WORKDIR /work
+#12 CACHED
+
+#13 [stage-1 5/9] COPY pyproject.toml uv.lock ./
+#13 CACHED
+
+#14 [stage-1 2/9] COPY --from=uv /uv /usr/local/bin/uv
+#14 CACHED
+
+#15 [stage-1 3/9] RUN apt-get update  && apt-get install -y --no-install-recommends git jq  && rm -rf /var/lib/apt/lists/*  && git config --system --add safe.directory /work  && git config --system core.autocrlf true
+#15 CACHED
+
+#16 [stage-1 9/9] RUN uv sync --locked
+#16 CACHED
+
+#17 exporting to image
+#17 exporting layers done
+#17 exporting manifest sha256:dfdba6f8563089d22ef665dc1aa340a9761f979dab7a56cddeecf39e21a6e795 done
+#17 exporting config sha256:2d061ba683b308a677e94c4549670479c1a29b34fb4dc53d9f4da6de5e7e9fd4 done
+#17 exporting attestation manifest sha256:e929e7336bf3d6f22d32d55158bdad2208ed0cd4db85067c3ea7c8209af8a328 0.0s done
+#17 exporting manifest list sha256:9c9a177b77da8d2682728af770e812d4be0df2fe73a41896865ea5b24331441e 0.0s done
+#17 naming to docker.io/library/knowledge-engine-gates:latest
+#17 naming to docker.io/library/knowledge-engine-gates:latest done
+#17 unpacking to docker.io/library/knowledge-engine-gates:latest done
+#17 DONE 0.1s
+
+#18 resolving provenance for metadata file
+#18 DONE 0.0s
+ Image knowledge-engine-gates Built 
+ Container knowledge-engine-gates-run-25fa76f65729 Creating 
+ Container knowledge-engine-gates-run-25fa76f65729 Created 
+== verify fast: 40c0c75+dirty ==
+   Building monitored-harness @ file:///work
+      Built monitored-harness @ file:///work
+Uninstalled 1 package in 0.93ms
+Installed 1 package in 1ms
+test_backslash_forms_deny_push_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_forms_deny_push_off_main) ... ok
+test_backslash_newline_after_comment_or_even_run_denies_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_off_main) ... ok
+test_backslash_newline_after_comment_or_even_run_denies_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_on_main) ... ok
+test_backslash_newline_joins_to_nothing_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_joins_to_nothing_off_main) ... ok
+test_backslash_newline_joins_to_nothing_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_joins_to_nothing_on_main) ... ok
+test_carriage_return_denies_as_without_it_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_carriage_return_denies_as_without_it_off_main) ... ok
+test_carriage_return_denies_as_without_it_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_carriage_return_denies_as_without_it_on_main) ... ok
+test_carriage_return_stays_silent_as_without_it (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_carriage_return_stays_silent_as_without_it) ... ok
+test_comment_or_even_run_then_continued_push_denies_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_comment_or_even_run_then_continued_push_denies_off_main) ... ok
+test_comment_then_continued_commit_denies_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_comment_then_continued_commit_denies_on_main) ... ok
+test_denies_commit_and_push_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_commit_and_push_on_main) ... ok
+test_denies_commit_creating_commands_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_commit_creating_commands_on_main) ... ok
+test_denies_git_first_word_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_git_first_word_on_main) ... ok
+test_denies_nested_git_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_nested_git_on_main) ... ok
+test_denies_nested_push_to_main_or_force_from_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_nested_push_to_main_or_force_from_plan_item_branch) ... ok
+test_denies_on_master (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_on_master) ... ok
+test_denies_push_on_master (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_on_master) ... ok
+test_denies_push_refspec_forms_from_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_refspec_forms_from_plan_item_branch) ... ok
+test_denies_push_to_main_or_force_push_from_any_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_to_main_or_force_push_from_any_branch) ... ok
+test_denies_push_with_c_global_option_from_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_with_c_global_option_from_plan_item_branch) ... ok
+test_description_with_forged_command_key_is_not_judged (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_description_with_forged_command_key_is_not_judged) ... ok
+test_escaped_quote_does_not_hide_following_push (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_escaped_quote_does_not_hide_following_push) ... ok
+test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) ... ok
+test_grep_for_a_verb_on_main_is_accepted_false_positive (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_grep_for_a_verb_on_main_is_accepted_false_positive) ... ok
+test_json_without_command_field_is_silent (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_json_without_command_field_is_silent) ... ok
+test_judges_only_the_command_field (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_judges_only_the_command_field) ... ok
+test_long_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_long_command_finishes_quickly) ... ok
+test_multiline_without_backslash_newline_unchanged (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_multiline_without_backslash_newline_unchanged) ... ok
+test_one_line_mentions_are_accepted_false_positives_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_line_mentions_are_accepted_false_positives_off_main) ... ok
+test_one_megabyte_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_command_finishes_quickly) ... ok
+test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) ... ok
+test_only_first_command_value_is_judged (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_only_first_command_value_is_judged) ... ok
+test_payload_helper_is_compact_claude_code_shape (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_payload_helper_is_compact_claude_code_shape) ... ok
+test_prefixed_push_to_main_denied_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_prefixed_push_to_main_denied_off_main) ... ok
+test_real_continuation_of_plan_item_push_stays_silent (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_real_continuation_of_plan_item_push_stays_silent) ... ok
+test_shell_wrapped_commit_denied_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_shell_wrapped_commit_denied_on_main) ... ok
+test_silent_for_claude_code_heredoc_commit_on_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_claude_code_heredoc_commit_on_plan_item_branch) ... ok
+test_silent_for_everyday_commands_on_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_everyday_commands_on_plan_item_branch) ... ok
+test_silent_for_non_git_command (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_non_git_command) ... ok
+test_silent_for_plain_push_of_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_plain_push_of_plan_item_branch) ... ok
+test_silent_for_text_that_only_mentions_push_on_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_text_that_only_mentions_push_on_plan_item_branch) ... ok
+test_silent_on_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_on_plan_item_branch) ... ok
+test_split_or_cased_git_word_denied_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_split_or_cased_git_word_denied_on_main) ... ok
+test_works_without_jq_on_raw_input (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_works_without_jq_on_raw_input) ... ok
+test_gates_image_installs_jq (tests.test_block_main_commit_hook.GatesImageJqTest.test_gates_image_installs_jq) ... ok
+test_malformed_values_raise_config_error (tests.test_engine_config.ConfigErrorContractTest.test_malformed_values_raise_config_error) ... 
+  test_malformed_values_raise_config_error (tests.test_engine_config.ConfigErrorContractTest.test_malformed_values_raise_config_error) (variable='KE_STACK__SERVICE_NAMES') ... ERROR
+  test_malformed_values_raise_config_error (tests.test_engine_config.ConfigErrorContractTest.test_malformed_values_raise_config_error) (variable='KE_MODEL_UPSTREAM') ... ERROR
+test_config_error_has_no_value_anywhere (tests.test_engine_config.ConfigErrorNeverCarriesValueTest.test_config_error_has_no_value_anywhere) ... ok
+test_error_names_the_variable_the_user_set (tests.test_engine_config.PrecedenceTest.test_error_names_the_variable_the_user_set) ... 
+  test_error_names_the_variable_the_user_set (tests.test_engine_config.PrecedenceTest.test_error_names_the_variable_the_user_set) (variable='HARNESS_TRACING') ... FAIL
+  test_error_names_the_variable_the_user_set (tests.test_engine_config.PrecedenceTest.test_error_names_the_variable_the_user_set) (variable='PHOENIX_COLLECTOR_ENDPOINT') ... FAIL
+  test_error_names_the_variable_the_user_set (tests.test_engine_config.PrecedenceTest.test_error_names_the_variable_the_user_set) (variable='OPENINFERENCE_HIDE_INPUTS') ... FAIL
+  test_error_names_the_variable_the_user_set (tests.test_engine_config.PrecedenceTest.test_error_names_the_variable_the_user_set) (variable='OPENINFERENCE_HIDE_OUTPUTS') ... FAIL
+test_ke_names_outrank_standard_names (tests.test_engine_config.PrecedenceTest.test_ke_names_outrank_standard_names) ... ok
+test_model_upstream_has_one_name (tests.test_engine_config.PrecedenceTest.test_model_upstream_has_one_name) ... FAIL
+test_standard_name_used_when_ke_name_unset (tests.test_engine_config.PrecedenceTest.test_standard_name_used_when_ke_name_unset) ... ok
+test_config_defaults_and_env_override (tests.test_engine_config.TypedConfigTest.test_config_defaults_and_env_override) ... ok
+test_config_ignores_unprefixed_names (tests.test_engine_config.TypedConfigTest.test_config_ignores_unprefixed_names) ... ok
+test_config_init_args_take_precedence (tests.test_engine_config.TypedConfigTest.test_config_init_args_take_precedence) ... ok
+test_config_missing_defaults_file_names_path (tests.test_engine_config.TypedConfigTest.test_config_missing_defaults_file_names_path) ... ok
+test_config_missing_secret_names_key (tests.test_engine_config.TypedConfigTest.test_config_missing_secret_names_key) ... ok
+test_config_rejects_bad_type (tests.test_engine_config.TypedConfigTest.test_config_rejects_bad_type) ... ok
+test_config_secrets_have_no_yaml_default (tests.test_engine_config.TypedConfigTest.test_config_secrets_have_no_yaml_default) ... ok
+test_every_non_secret_setting_has_a_yaml_default (tests.test_engine_config.TypedConfigTest.test_every_non_secret_setting_has_a_yaml_default) ... ok
+test_secret_values_are_not_in_repr (tests.test_engine_config.TypedConfigTest.test_secret_values_are_not_in_repr) ... ok
+test_env_example_is_not_ignored (tests.test_engine_deploy_files.GitIgnoreTest.test_env_example_is_not_ignored) ... ok
+test_env_file_is_ignored (tests.test_engine_deploy_files.GitIgnoreTest.test_env_file_is_ignored) ... FAIL
+test_compose_phoenix_defaults_match_config (tests.test_engine_deploy_files.PhoenixDriftTest.test_compose_phoenix_defaults_match_config) ... ok
+test_phoenix_published_on_loopback_only (tests.test_engine_deploy_files.PhoenixDriftTest.test_phoenix_published_on_loopback_only) ... 
+  test_phoenix_published_on_loopback_only (tests.test_engine_deploy_files.PhoenixDriftTest.test_phoenix_published_on_loopback_only) (entry='${KE_PHOENIX_PORT:-47101}:${PHOENIX_PORT:-6006}') ... FAIL
+test_egress_guard_allows_listed_host (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_allows_listed_host) ... ok
+test_egress_guard_checks_every_redirect_hop (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_checks_every_redirect_hop) ... ok
+test_egress_guard_mutant_goes_red (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_mutant_goes_red)
+DR38: the runtime assertion fails when the guard is removed. ... ok
+test_egress_guard_runtime (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_runtime) ... ok
+test_model_client_uses_guarded_transport (tests.test_engine_egress.EgressRuntimeTest.test_model_client_uses_guarded_transport) ... ok
+test_egress_guard_startup (tests.test_engine_egress.EgressStartupTest.test_egress_guard_startup) ... ok
+test_egress_startup_check_refuses_in_every_env (tests.test_engine_egress.EgressStartupTest.test_egress_startup_check_refuses_in_every_env) ... ok
+test_is_local_endpoint (tests.test_engine_egress.LocalEndpointTest.test_is_local_endpoint) ... ok
+test_declared_value_files_exist (tests.test_engine_hardcoded.RepositoryScanTest.test_declared_value_files_exist) ... ok
+test_model_host_name_only_in_allowed_locations (tests.test_engine_hardcoded.RepositoryScanTest.test_model_host_name_only_in_allowed_locations) ... ok
+test_no_hardcoded_hosts_or_models (tests.test_engine_hardcoded.RepositoryScanTest.test_no_hardcoded_hosts_or_models) ... ok
+test_no_hardcoded_ports (tests.test_engine_hardcoded.RepositoryScanTest.test_no_hardcoded_ports) ... ok
+test_allowed_locations_are_never_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_allowed_locations_are_never_flagged) ... ok
+test_compose_variable_default_is_allowed (tests.test_engine_hardcoded.ScannerContractTest.test_compose_variable_default_is_allowed) ... ok
+test_exemption_covers_only_its_symbol_and_path (tests.test_engine_hardcoded.ScannerContractTest.test_exemption_covers_only_its_symbol_and_path) ... ok
+test_integer_port_assignment_in_python_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_integer_port_assignment_in_python_is_flagged) ... ok
+test_planted_host_name_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_planted_host_name_is_flagged) ... ok
+test_planted_model_name_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_planted_model_name_is_flagged) ... ok
+test_planted_port_literal_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_planted_port_literal_is_flagged) ... ok
+test_port_token_boundaries (tests.test_engine_hardcoded.ScannerContractTest.test_port_token_boundaries) ... ok
+test_rule_two_is_python_only (tests.test_engine_hardcoded.ScannerContractTest.test_rule_two_is_python_only) ... ok
+test_shell_parameter_default_is_flagged_outside_compose (tests.test_engine_hardcoded.ScannerContractTest.test_shell_parameter_default_is_flagged_outside_compose) ... 
+  test_shell_parameter_default_is_flagged_outside_compose (tests.test_engine_hardcoded.ScannerContractTest.test_shell_parameter_default_is_flagged_outside_compose) (path='scripts/x.sh', line='PORT=${PG_PORT:-5432}\n') ... FAIL
+  test_shell_parameter_default_is_flagged_outside_compose (tests.test_engine_hardcoded.ScannerContractTest.test_shell_parameter_default_is_flagged_outside_compose) (path='scripts/x.sh', line='psql -p "${PG_PORT:-5432}"\n') ... FAIL
+  test_shell_parameter_default_is_flagged_outside_compose (tests.test_engine_hardcoded.ScannerContractTest.test_shell_parameter_default_is_flagged_outside_compose) (path='docker/entry.sh', line='exec app --port ${PORT-5432}\n') ... FAIL
+  test_shell_parameter_default_is_flagged_outside_compose (tests.test_engine_hardcoded.ScannerContractTest.test_shell_parameter_default_is_flagged_outside_compose) (path='.github/workflows/ci.yml', line='  PG: ${PG_PORT:-5432}\n') ... FAIL
+  test_shell_parameter_default_is_flagged_outside_compose (tests.test_engine_hardcoded.ScannerContractTest.test_shell_parameter_default_is_flagged_outside_compose) (path='engine/x.py', line='PORT = os.path.expandvars("${PG_PORT:-5432}")\n') ... FAIL
+test_url_literal_in_python_is_flagged_even_if_undeclared (tests.test_engine_hardcoded.ScannerContractTest.test_url_literal_in_python_is_flagged_even_if_undeclared) ... ok
+test_complete_emits_llm_span_with_model_name (tests.test_engine_llm.ModelClientTracingTest.test_complete_emits_llm_span_with_model_name) ... ERROR
+test_denied_host_marks_llm_span_error (tests.test_engine_llm.ModelClientTracingTest.test_denied_host_marks_llm_span_error) ... ERROR
+test_engine_dependencies_declared (tests.test_engine_quality.DependenciesTest.test_engine_dependencies_declared) ... ok
+test_pin_equivalence_check_accepts_uv_forms_and_rejects_others (tests.test_engine_quality.PythonPinTest.test_pin_equivalence_check_accepts_uv_forms_and_rejects_others)
+Guards the checker above: uv's forms pass, looser/other pins fail. ... ok
+test_python_pinned_to_312 (tests.test_engine_quality.PythonPinTest.test_python_pinned_to_312) ... ok
+test_test_sh_enforces_coverage_and_mypy (tests.test_engine_quality.QualityGateTest.test_test_sh_enforces_coverage_and_mypy) ... ok
+test_tests_excluded_from_measurement (tests.test_engine_quality.QualityGateTest.test_tests_excluded_from_measurement) ... ok
+test_env_example_secret_placeholders_are_changeme (tests.test_engine_startup.PlaceholderSecretTest.test_env_example_secret_placeholders_are_changeme) ... ok
+test_placeholder_check_is_prefix_only (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_check_is_prefix_only) ... ok
+test_placeholder_check_reads_no_file (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_check_reads_no_file) ... ok
+test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) ... 
+  test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="' changeme-x'", env='prod') ... FAIL
+  test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="' changeme-x'", env='ci') ... FAIL
+  test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="'\\tchangeme-x'", env='prod') ... FAIL
+  test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="'\\tchangeme-x'", env='ci') ... FAIL
+  test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="'\\u200bchangeme-x'", env='prod') ... FAIL
+  test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="'\\u200bchangeme-x'", env='ci') ... FAIL
+  test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="'\\u200b \\tCHANGEME-x'", env='prod') ... FAIL
+  test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="'\\u200b \\tCHANGEME-x'", env='ci') ... FAIL
+  test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="'  \\u200b\\u200bChangeMe'", env='prod') ... FAIL
+  test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="'  \\u200b\\u200bChangeMe'", env='ci') ... FAIL
+  test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__POSTGRES__PASSWORD', value="' changeme-x'", env='prod') ... FAIL
+  test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__POSTGRES__PASSWORD', value="' changeme-x'", env='ci') ... FAIL
+  test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__POSTGRES__PASSWORD', value="'\\tchangeme-x'", env='prod') ... FAIL
+  test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__POSTGRES__PASSWORD', value="'\\tchangeme-x'", env='ci') ... FAIL
+  test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__POSTGRES__PASSWORD', value="'\\u200bchangeme-x'", env='prod') ... FAIL
+  test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__POSTGRES__PASSWORD', value="'\\u200bchangeme-x'", env='ci') ... FAIL
+  test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__POSTGRES__PASSWORD', value="'\\u200b \\tCHANGEME-x'", env='prod') ... FAIL
+  test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__POSTGRES__PASSWORD', value="'\\u200b \\tCHANGEME-x'", env='ci') ... FAIL
+  test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__POSTGRES__PASSWORD', value="'  \\u200b\\u200bChangeMe'", env='prod') ... FAIL
+  test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__POSTGRES__PASSWORD', value="'  \\u200b\\u200bChangeMe'", env='ci') ... FAIL
+test_startup_refuses_placeholder_secrets (tests.test_engine_startup.PlaceholderSecretTest.test_startup_refuses_placeholder_secrets) ... ok
+test_dev_auth_off_warns (tests.test_engine_startup.StartupRefusalTest.test_dev_auth_off_warns) ... ok
+test_dev_hide_flag_off_warns_naming_flag (tests.test_engine_startup.StartupRefusalTest.test_dev_hide_flag_off_warns_naming_flag) ... ok
+test_hide_flags_default_true_in_every_env (tests.test_engine_startup.StartupRefusalTest.test_hide_flags_default_true_in_every_env) ... ok
+test_startup_accepts_local_collectors (tests.test_engine_startup.StartupRefusalTest.test_startup_accepts_local_collectors) ... ok
+test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) ... ok
+test_startup_safe_defaults_pass (tests.test_engine_startup.StartupRefusalTest.test_startup_safe_defaults_pass) ... ok
+test_config_load_span_names_overridden_keys_not_values (tests.test_engine_startup.StartupTracingTest.test_config_load_span_names_overridden_keys_not_values) ... ok
+test_configure_tracing_attaches_nothing_for_non_local (tests.test_engine_startup.StartupTracingTest.test_configure_tracing_attaches_nothing_for_non_local) ... ok
+test_non_local_collector_gets_no_exporter (tests.test_engine_startup.StartupTracingTest.test_non_local_collector_gets_no_exporter) ... ok
+test_refused_startup_marks_spans (tests.test_engine_startup.StartupTracingTest.test_refused_startup_marks_spans) ... ok
+test_startup_is_traced (tests.test_engine_startup.StartupTracingTest.test_startup_is_traced) ... ok
+test_console_mode_never_builds_otlp (tests.test_engine_telemetry.ChooseExporterTest.test_console_mode_never_builds_otlp) ... 
+  test_console_mode_never_builds_otlp (tests.test_engine_telemetry.ChooseExporterTest.test_console_mode_never_builds_otlp) (case='KE console, HARNESS_TRACING unset, external PHOENIX endpoint') ... ERROR
+  test_console_mode_never_builds_otlp (tests.test_engine_telemetry.ChooseExporterTest.test_console_mode_never_builds_otlp) (case='KE console, HARNESS_TRACING=otlp, external PHOENIX endpoint') ... ERROR
+  test_console_mode_never_builds_otlp (tests.test_engine_telemetry.ChooseExporterTest.test_console_mode_never_builds_otlp) (case='settings look local, harness env points outside') ... ERROR
+  test_console_mode_never_builds_otlp (tests.test_engine_telemetry.ChooseExporterTest.test_console_mode_never_builds_otlp) (case='console from the YAML file, external PHOENIX endpoint') ... ERROR
+test_off_gives_no_exporter (tests.test_engine_telemetry.ChooseExporterTest.test_off_gives_no_exporter) ... 
+  test_off_gives_no_exporter (tests.test_engine_telemetry.ChooseExporterTest.test_off_gives_no_exporter) (env={'HARNESS_TRACING': 'off'}) ... ERROR
+  test_off_gives_no_exporter (tests.test_engine_telemetry.ChooseExporterTest.test_off_gives_no_exporter) (env={'HARNESS_TRACING': 'otlp', 'KE_TELEMETRY__TRACING': 'off'}) ... ERROR
+test_otlp_to_local_collector_builds_traces_url (tests.test_engine_telemetry.ChooseExporterTest.test_otlp_to_local_collector_builds_traces_url) ... 
+  test_otlp_to_local_collector_builds_traces_url (tests.test_engine_telemetry.ChooseExporterTest.test_otlp_to_local_collector_builds_traces_url) (endpoint='http://localhost:47101') ... ERROR
+  test_otlp_to_local_collector_builds_traces_url (tests.test_engine_telemetry.ChooseExporterTest.test_otlp_to_local_collector_builds_traces_url) (endpoint='http://phoenix:6006/') ... ERROR
+test_otlp_to_non_local_collector_gives_none (tests.test_engine_telemetry.ChooseExporterTest.test_otlp_to_non_local_collector_gives_none) ... 
+  test_otlp_to_non_local_collector_gives_none (tests.test_engine_telemetry.ChooseExporterTest.test_otlp_to_non_local_collector_gives_none) (endpoint='http://collector.example.com:6006') ... ERROR
+  test_otlp_to_non_local_collector_gives_none (tests.test_engine_telemetry.ChooseExporterTest.test_otlp_to_non_local_collector_gives_none) (endpoint='http://203.0.113.5:6006') ... ERROR
+  test_otlp_to_non_local_collector_gives_none (tests.test_engine_telemetry.ChooseExporterTest.test_otlp_to_non_local_collector_gives_none) (endpoint='http://10.0.0.5:6006') ... ERROR
+test_console_mode_installs_console_exporter_only (tests.test_engine_telemetry.ConfigureTracingTest.test_console_mode_installs_console_exporter_only) ... 
+  test_console_mode_installs_console_exporter_only (tests.test_engine_telemetry.ConfigureTracingTest.test_console_mode_installs_console_exporter_only) (case='KE console, HARNESS_TRACING unset, external PHOENIX endpoint') ... FAIL
+  test_console_mode_installs_console_exporter_only (tests.test_engine_telemetry.ConfigureTracingTest.test_console_mode_installs_console_exporter_only) (case='KE console, HARNESS_TRACING=otlp, external PHOENIX endpoint') ... FAIL
+  test_console_mode_installs_console_exporter_only (tests.test_engine_telemetry.ConfigureTracingTest.test_console_mode_installs_console_exporter_only) (case='settings look local, harness env points outside') ... FAIL
+test_hide_defaults_apply_before_any_span (tests.test_engine_telemetry.ConfigureTracingTest.test_hide_defaults_apply_before_any_span)
+The YAML hide defaults (true) redact span values even when the ... ok
+test_local_collector_gets_an_otlp_exporter (tests.test_engine_telemetry.ConfigureTracingTest.test_local_collector_gets_an_otlp_exporter) ... ok
+test_non_local_collector_gets_no_exporter (tests.test_engine_telemetry.ConfigureTracingTest.test_non_local_collector_gets_no_exporter) ... ok
+test_accepted_shapes (tests.test_engine_telemetry.InstalledProviderTest.test_accepted_shapes) ... ok
+test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) ... 
+  test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='simple otlp external', mode='off') ... FAIL
+  test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='simple otlp external', mode='console') ... FAIL
+  test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='simple otlp external', mode='otlp local') ... FAIL
+  test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='batch otlp external ip', mode='off') ... FAIL
+  test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='batch otlp external ip', mode='console') ... FAIL
+  test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='batch otlp external ip', mode='otlp local') ... FAIL
+  test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='unknown exporter', mode='off') ... FAIL
+  test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='unknown exporter', mode='console') ... FAIL
+  test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='unknown exporter', mode='otlp local') ... FAIL
+test_refused_startup_installs_nothing (tests.test_engine_telemetry.StartupWiringTest.test_refused_startup_installs_nothing) ... 
+  test_refused_startup_installs_nothing (tests.test_engine_telemetry.StartupWiringTest.test_refused_startup_installs_nothing) (case='auth off in prod, local collector') ... FAIL
+  test_refused_startup_installs_nothing (tests.test_engine_telemetry.StartupWiringTest.test_refused_startup_installs_nothing) (case='placeholder secret, console') ... FAIL
+test_refused_startup_leaves_hide_env_untouched (tests.test_engine_telemetry.StartupWiringTest.test_refused_startup_leaves_hide_env_untouched) ... 
+  test_refused_startup_leaves_hide_env_untouched (tests.test_engine_telemetry.StartupWiringTest.test_refused_startup_leaves_hide_env_untouched) (case='unset stays unset') ... FAIL
+  test_refused_startup_leaves_hide_env_untouched (tests.test_engine_telemetry.StartupWiringTest.test_refused_startup_leaves_hide_env_untouched) (case='operator values kept verbatim') ... FAIL
+test_startup_installs_the_exporter (tests.test_engine_telemetry.StartupWiringTest.test_startup_installs_the_exporter) ... ok
+test_ci_actions_pinned_to_sha (tests.test_harness_followups.CiWorkflowTest.test_ci_actions_pinned_to_sha) ... ok
+test_ci_checkout_does_not_persist_credentials (tests.test_harness_followups.CiWorkflowTest.test_ci_checkout_does_not_persist_credentials) ... ok
+test_ci_runner_pinned (tests.test_harness_followups.CiWorkflowTest.test_ci_runner_pinned) ... ok
+test_helper_package_without_tests_passes (tests.test_harness_followups.IntegrationRunsOnceTest.test_helper_package_without_tests_passes) ... ok
+test_integration_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_integration_tests_run_once) ... ok
+test_nested_dir_without_init_fails_loudly (tests.test_harness_followups.IntegrationRunsOnceTest.test_nested_dir_without_init_fails_loudly) ... ok
+test_no_top_level_unit_tests_fails_clearly (tests.test_harness_followups.IntegrationRunsOnceTest.test_no_top_level_unit_tests_fails_clearly) ... ok
+test_package_with_only_nested_tests_runs_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_package_with_only_nested_tests_runs_once) ... ok
+test_quality_gates_always_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_always_run) ... 
+  test_quality_gates_always_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_always_run) (mode='fast') ... FAIL
+  test_quality_gates_always_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_always_run) (mode='full') ... FAIL
+test_quality_gates_run_with_pyproject (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_run_with_pyproject) ... ok
+test_stale_parallel_coverage_data_is_not_combined (tests.test_harness_followups.IntegrationRunsOnceTest.test_stale_parallel_coverage_data_is_not_combined) ... 
+  test_stale_parallel_coverage_data_is_not_combined (tests.test_harness_followups.IntegrationRunsOnceTest.test_stale_parallel_coverage_data_is_not_combined) (mode='fast') ... FAIL
+  test_stale_parallel_coverage_data_is_not_combined (tests.test_harness_followups.IntegrationRunsOnceTest.test_stale_parallel_coverage_data_is_not_combined) (mode='full') ... FAIL
+test_test_dir_without_init_fails_loudly (tests.test_harness_followups.IntegrationRunsOnceTest.test_test_dir_without_init_fails_loudly) ... ok
+test_unit_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_tests_run_once) ... ok
+test_failing_smoke_fails_full (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_failing_smoke_fails_full) ... ok
+test_failing_test_sh_still_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_failing_test_sh_still_fails) ... ok
+test_no_ran_line_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_no_ran_line_fails) ... ok
+test_ran_some_tests_passes (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_ran_some_tests_passes) ... ok
+test_ran_without_sentinel_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_ran_without_sentinel_fails) ... ok
+test_ran_zero_tests_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_ran_zero_tests_fails) ... ok
+test_sentinel_followed_by_large_output_passes (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_followed_by_large_output_passes) ... ok
+test_sentinel_line_is_the_exact_full_line (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_line_is_the_exact_full_line) ... ok
+test_sentinel_name_in_other_module_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_name_in_other_module_fails) ... ok
+test_sentinel_text_in_skip_reason_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_text_in_skip_reason_fails) ... ok
+test_sentinel_with_ran_passes (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_with_ran_passes) ... ok
+test_agent_model_tiers (tests.test_harness_port.AgentPortTest.test_agent_model_tiers) ... ok
+test_agent_port_preserves_constraints (tests.test_harness_port.AgentPortTest.test_agent_port_preserves_constraints) ... ok
+test_copilot_agents_kept (tests.test_harness_port.AgentPortTest.test_copilot_agents_kept) ... ok
+test_every_role_ported (tests.test_harness_port.AgentPortTest.test_every_role_ported) ... ok
+test_judges_cannot_edit (tests.test_harness_port.AgentPortTest.test_judges_cannot_edit) ... ok
+test_non_producer_body_identical_to_copilot (tests.test_harness_port.AgentPortTest.test_non_producer_body_identical_to_copilot) ... ok
+test_producer_sections_identical_except_verification_steps (tests.test_harness_port.AgentPortTest.test_producer_sections_identical_except_verification_steps) ... ok
+test_ci_only_and_generated_artifacts_listed (tests.test_harness_port.ClaudeMdTest.test_ci_only_and_generated_artifacts_listed) ... ok
+test_claude_md_imports_agents (tests.test_harness_port.ClaudeMdTest.test_claude_md_imports_agents) ... ok
+test_delivery_rules_present (tests.test_harness_port.ClaudeMdTest.test_delivery_rules_present) ... ok
+test_done_check_in_handoff_readme (tests.test_harness_port.HandoffCapTest.test_done_check_in_handoff_readme) ... ok
+test_handoff_line_cap (tests.test_harness_port.HandoffCapTest.test_handoff_line_cap) ... ok
+test_hook_wired_on_bash (tests.test_harness_port.SettingsTest.test_hook_wired_on_bash) ... ok
+test_ci_calls_verify_only (tests.test_harness_port.VerificationEntryPointTest.test_ci_calls_verify_only) ... ok
+test_depth_table_identical_everywhere (tests.test_harness_port.VerificationEntryPointTest.test_depth_table_identical_everywhere) ... ok
+test_evidence_contract_present (tests.test_harness_port.VerificationEntryPointTest.test_evidence_contract_present) ... ok
+test_gate_scripts_use_locked (tests.test_harness_port.VerificationEntryPointTest.test_gate_scripts_use_locked) ... ok
+test_no_stray_verification_commands (tests.test_harness_port.VerificationEntryPointTest.test_no_stray_verification_commands) ... ok
+test_tester_owns_contradictions (tests.test_harness_port.VerificationEntryPointTest.test_tester_owns_contradictions) ... ok
+test_verify_sh_has_no_inlined_commands (tests.test_harness_port.VerificationEntryPointTest.test_verify_sh_has_no_inlined_commands) ... ok
+test_appends_one_line_and_emits_session_span (tests.test_log_event.LogEventTest.test_appends_one_line_and_emits_session_span) ... ok
+test_failed_gate_marks_span_error (tests.test_log_event.LogEventTest.test_failed_gate_marks_span_error) ... ok
+test_format_line_keeps_one_line_per_entry (tests.test_log_event.LogEventTest.test_format_line_keeps_one_line_per_entry) ... ok
+test_rejects_unknown_role (tests.test_log_event.LogEventTest.test_rejects_unknown_role) ... ok
+test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok
+test_agent_loop_renders_as_nested_tree (tests.test_tracing.TracingTest.test_agent_loop_renders_as_nested_tree) ... ok
+test_chain_span_kind (tests.test_tracing.TracingTest.test_chain_span_kind) ... ok
+test_exception_marks_span_error_and_propagates (tests.test_tracing.TracingTest.test_exception_marks_span_error_and_propagates) ... ok
+test_hide_inputs_and_outputs_redacts_values (tests.test_tracing.TracingTest.test_hide_inputs_and_outputs_redacts_values) ... ok
+test_llm_records_model_and_token_usage (tests.test_tracing.TracingTest.test_llm_records_model_and_token_usage) ... ok
+test_retriever_records_parameterised_query_and_documents (tests.test_tracing.TracingTest.test_retriever_records_parameterised_query_and_documents) ... ok
+test_setup_tracing_is_idempotent (tests.test_tracing.TracingTest.test_setup_tracing_is_idempotent) ... ok
+test_spans_tolerate_non_recording_span (tests.test_tracing.TracingTest.test_spans_tolerate_non_recording_span)
+Regression (platform-config): with tracing off and no provider ... ok
+
+======================================================================
+ERROR: test_malformed_values_raise_config_error (tests.test_engine_config.ConfigErrorContractTest.test_malformed_values_raise_config_error) (variable='KE_STACK__SERVICE_NAMES')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/opt/venv/lib/python3.12/site-packages/pydantic_settings/sources/base.py", line 715, in __call__
+    field_value = self.prepare_field_value(field_name, field, field_value, value_is_complex)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/venv/lib/python3.12/site-packages/pydantic_settings/sources/providers/env.py", line 149, in prepare_field_value
+    env_val_built = self.explode_env_vars(field_name, field, self.env_vars)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/venv/lib/python3.12/site-packages/pydantic_settings/sources/providers/env.py", line 338, in explode_env_vars
+    env_val = self.decode_complex_value(last_key, field_info, env_val)  # type: ignore
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/venv/lib/python3.12/site-packages/pydantic_settings/sources/base.py", line 212, in decode_complex_value
+    return json.loads(value)
+           ^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/json/decoder.py", line 338, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/json/decoder.py", line 356, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/work/tests/test_engine_config.py", line 344, in test_malformed_values_raise_config_error
+    startup()
+  File "/work/engine/startup.py", line 102, in startup
+    configure_tracing()
+  File "/work/engine/telemetry.py", line 27, in configure_tracing
+    settings = Settings()
+               ^^^^^^^^^^
+  File "/work/engine/config/settings.py", line 130, in __init__
+    super().__init__(**values)
+  File "/opt/venv/lib/python3.12/site-packages/pydantic_settings/main.py", line 292, in __init__
+    super().__init__(**__pydantic_self__.__class__._settings_build_values(sources, init_kwargs))
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/venv/lib/python3.12/site-packages/pydantic_settings/main.py", line 572, in _settings_build_values
+    source_state = source()
+                   ^^^^^^^^
+  File "/opt/venv/lib/python3.12/site-packages/pydantic_settings/sources/base.py", line 717, in __call__
+    raise SettingsError(
+pydantic_settings.exceptions.SettingsError: error parsing value for field "stack" from source "EnvSettingsSource"
+
+======================================================================
+ERROR: test_malformed_values_raise_config_error (tests.test_engine_config.ConfigErrorContractTest.test_malformed_values_raise_config_error) (variable='KE_MODEL_UPSTREAM')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_config.py", line 344, in test_malformed_values_raise_config_error
+    startup()
+  File "/work/engine/startup.py", line 110, in startup
+    check(settings)
+  File "/work/engine/startup.py", line 85, in check
+    check_egress(settings)
+  File "/work/engine/startup.py", line 57, in check_egress
+    hosts = _configured_model_hosts(settings)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/engine/startup.py", line 51, in _configured_model_hosts
+    hosts.append(host_of(settings.models.model_upstream))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/engine/egress.py", line 56, in host_of
+    parts = urlsplit(value if "://" in value else f"//{value}")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/urllib/parse.py", line 514, in urlsplit
+    raise ValueError("Invalid IPv6 URL")
+ValueError: Invalid IPv6 URL
+
+======================================================================
+ERROR: test_complete_emits_llm_span_with_model_name (tests.test_engine_llm.ModelClientTracingTest.test_complete_emits_llm_span_with_model_name)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_llm.py", line 64, in test_complete_emits_llm_span_with_model_name
+    result = client.complete(MESSAGES)
+             ^^^^^^^^^^^^^^^
+AttributeError: 'ModelClient' object has no attribute 'complete'
+
+======================================================================
+ERROR: test_denied_host_marks_llm_span_error (tests.test_engine_llm.ModelClientTracingTest.test_denied_host_marks_llm_span_error)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_llm.py", line 95, in test_denied_host_marks_llm_span_error
+    client.complete(MESSAGES)
+    ^^^^^^^^^^^^^^^
+AttributeError: 'ModelClient' object has no attribute 'complete'
+
+======================================================================
+ERROR: test_console_mode_never_builds_otlp (tests.test_engine_telemetry.ChooseExporterTest.test_console_mode_never_builds_otlp) (case='KE console, HARNESS_TRACING unset, external PHOENIX endpoint')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 161, in test_console_mode_never_builds_otlp
+    exporter, iso = self._choose(env)
+                    ^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_telemetry.py", line 144, in _choose
+    from engine.telemetry import choose_exporter
+ImportError: cannot import name 'choose_exporter' from 'engine.telemetry' (/work/engine/telemetry.py)
+
+======================================================================
+ERROR: test_console_mode_never_builds_otlp (tests.test_engine_telemetry.ChooseExporterTest.test_console_mode_never_builds_otlp) (case='KE console, HARNESS_TRACING=otlp, external PHOENIX endpoint')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 161, in test_console_mode_never_builds_otlp
+    exporter, iso = self._choose(env)
+                    ^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_telemetry.py", line 144, in _choose
+    from engine.telemetry import choose_exporter
+ImportError: cannot import name 'choose_exporter' from 'engine.telemetry' (/work/engine/telemetry.py)
+
+======================================================================
+ERROR: test_console_mode_never_builds_otlp (tests.test_engine_telemetry.ChooseExporterTest.test_console_mode_never_builds_otlp) (case='settings look local, harness env points outside')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 161, in test_console_mode_never_builds_otlp
+    exporter, iso = self._choose(env)
+                    ^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_telemetry.py", line 144, in _choose
+    from engine.telemetry import choose_exporter
+ImportError: cannot import name 'choose_exporter' from 'engine.telemetry' (/work/engine/telemetry.py)
+
+======================================================================
+ERROR: test_console_mode_never_builds_otlp (tests.test_engine_telemetry.ChooseExporterTest.test_console_mode_never_builds_otlp) (case='console from the YAML file, external PHOENIX endpoint')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 161, in test_console_mode_never_builds_otlp
+    exporter, iso = self._choose(env)
+                    ^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_telemetry.py", line 144, in _choose
+    from engine.telemetry import choose_exporter
+ImportError: cannot import name 'choose_exporter' from 'engine.telemetry' (/work/engine/telemetry.py)
+
+======================================================================
+ERROR: test_off_gives_no_exporter (tests.test_engine_telemetry.ChooseExporterTest.test_off_gives_no_exporter) (env={'HARNESS_TRACING': 'off'})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 171, in test_off_gives_no_exporter
+    exporter, iso = self._choose(env)
+                    ^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_telemetry.py", line 144, in _choose
+    from engine.telemetry import choose_exporter
+ImportError: cannot import name 'choose_exporter' from 'engine.telemetry' (/work/engine/telemetry.py)
+
+======================================================================
+ERROR: test_off_gives_no_exporter (tests.test_engine_telemetry.ChooseExporterTest.test_off_gives_no_exporter) (env={'HARNESS_TRACING': 'otlp', 'KE_TELEMETRY__TRACING': 'off'})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 171, in test_off_gives_no_exporter
+    exporter, iso = self._choose(env)
+                    ^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_telemetry.py", line 144, in _choose
+    from engine.telemetry import choose_exporter
+ImportError: cannot import name 'choose_exporter' from 'engine.telemetry' (/work/engine/telemetry.py)
+
+======================================================================
+ERROR: test_otlp_to_local_collector_builds_traces_url (tests.test_engine_telemetry.ChooseExporterTest.test_otlp_to_local_collector_builds_traces_url) (endpoint='http://localhost:47101')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 188, in test_otlp_to_local_collector_builds_traces_url
+    exporter, iso = self._choose(base_env(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_telemetry.py", line 144, in _choose
+    from engine.telemetry import choose_exporter
+ImportError: cannot import name 'choose_exporter' from 'engine.telemetry' (/work/engine/telemetry.py)
+
+======================================================================
+ERROR: test_otlp_to_local_collector_builds_traces_url (tests.test_engine_telemetry.ChooseExporterTest.test_otlp_to_local_collector_builds_traces_url) (endpoint='http://phoenix:6006/')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 188, in test_otlp_to_local_collector_builds_traces_url
+    exporter, iso = self._choose(base_env(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_telemetry.py", line 144, in _choose
+    from engine.telemetry import choose_exporter
+ImportError: cannot import name 'choose_exporter' from 'engine.telemetry' (/work/engine/telemetry.py)
+
+======================================================================
+ERROR: test_otlp_to_non_local_collector_gives_none (tests.test_engine_telemetry.ChooseExporterTest.test_otlp_to_non_local_collector_gives_none) (endpoint='http://collector.example.com:6006')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 178, in test_otlp_to_non_local_collector_gives_none
+    exporter, iso = self._choose(base_env(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_telemetry.py", line 144, in _choose
+    from engine.telemetry import choose_exporter
+ImportError: cannot import name 'choose_exporter' from 'engine.telemetry' (/work/engine/telemetry.py)
+
+======================================================================
+ERROR: test_otlp_to_non_local_collector_gives_none (tests.test_engine_telemetry.ChooseExporterTest.test_otlp_to_non_local_collector_gives_none) (endpoint='http://203.0.113.5:6006')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 178, in test_otlp_to_non_local_collector_gives_none
+    exporter, iso = self._choose(base_env(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_telemetry.py", line 144, in _choose
+    from engine.telemetry import choose_exporter
+ImportError: cannot import name 'choose_exporter' from 'engine.telemetry' (/work/engine/telemetry.py)
+
+======================================================================
+ERROR: test_otlp_to_non_local_collector_gives_none (tests.test_engine_telemetry.ChooseExporterTest.test_otlp_to_non_local_collector_gives_none) (endpoint='http://10.0.0.5:6006')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 178, in test_otlp_to_non_local_collector_gives_none
+    exporter, iso = self._choose(base_env(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_telemetry.py", line 144, in _choose
+    from engine.telemetry import choose_exporter
+ImportError: cannot import name 'choose_exporter' from 'engine.telemetry' (/work/engine/telemetry.py)
+
+======================================================================
+FAIL: test_error_names_the_variable_the_user_set (tests.test_engine_config.PrecedenceTest.test_error_names_the_variable_the_user_set) (variable='HARNESS_TRACING')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_config.py", line 299, in test_error_names_the_variable_the_user_set
+    self.assertIn(name, message, f"error does not name {name}: {message!r}")
+AssertionError: 'HARNESS_TRACING' not found in "invalid configuration: KE_TELEMETRY__TRACING (telemetry.tracing): Input should be 'otlp', 'console' or 'off'" : error does not name HARNESS_TRACING: "invalid configuration: KE_TELEMETRY__TRACING (telemetry.tracing): Input should be 'otlp', 'console' or 'off'"
+
+======================================================================
+FAIL: test_error_names_the_variable_the_user_set (tests.test_engine_config.PrecedenceTest.test_error_names_the_variable_the_user_set) (variable='PHOENIX_COLLECTOR_ENDPOINT')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_config.py", line 299, in test_error_names_the_variable_the_user_set
+    self.assertIn(name, message, f"error does not name {name}: {message!r}")
+AssertionError: 'PHOENIX_COLLECTOR_ENDPOINT' not found in 'invalid configuration: KE_TELEMETRY__COLLECTOR_ENDPOINT (telemetry.collector_endpoint): Input should be a valid URL, relative URL without a base' : error does not name PHOENIX_COLLECTOR_ENDPOINT: 'invalid configuration: KE_TELEMETRY__COLLECTOR_ENDPOINT (telemetry.collector_endpoint): Input should be a valid URL, relative URL without a base'
+
+======================================================================
+FAIL: test_error_names_the_variable_the_user_set (tests.test_engine_config.PrecedenceTest.test_error_names_the_variable_the_user_set) (variable='OPENINFERENCE_HIDE_INPUTS')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_config.py", line 299, in test_error_names_the_variable_the_user_set
+    self.assertIn(name, message, f"error does not name {name}: {message!r}")
+AssertionError: 'OPENINFERENCE_HIDE_INPUTS' not found in 'invalid configuration: KE_TELEMETRY__HIDE_INPUTS (telemetry.hide_inputs): Input should be a valid boolean, unable to interpret input' : error does not name OPENINFERENCE_HIDE_INPUTS: 'invalid configuration: KE_TELEMETRY__HIDE_INPUTS (telemetry.hide_inputs): Input should be a valid boolean, unable to interpret input'
+
+======================================================================
+FAIL: test_error_names_the_variable_the_user_set (tests.test_engine_config.PrecedenceTest.test_error_names_the_variable_the_user_set) (variable='OPENINFERENCE_HIDE_OUTPUTS')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_config.py", line 299, in test_error_names_the_variable_the_user_set
+    self.assertIn(name, message, f"error does not name {name}: {message!r}")
+AssertionError: 'OPENINFERENCE_HIDE_OUTPUTS' not found in 'invalid configuration: KE_TELEMETRY__HIDE_OUTPUTS (telemetry.hide_outputs): Input should be a valid boolean, unable to interpret input' : error does not name OPENINFERENCE_HIDE_OUTPUTS: 'invalid configuration: KE_TELEMETRY__HIDE_OUTPUTS (telemetry.hide_outputs): Input should be a valid boolean, unable to interpret input'
+
+======================================================================
+FAIL: test_model_upstream_has_one_name (tests.test_engine_config.PrecedenceTest.test_model_upstream_has_one_name)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_config.py", line 249, in test_model_upstream_has_one_name
+    self.assertIsNone(alone.models.model_upstream,
+AssertionError: 'nested.internal:9001' is not None : KE_MODELS__MODEL_UPSTREAM must have no effect (F2: no aliases)
+
+======================================================================
+FAIL: test_env_file_is_ignored (tests.test_engine_deploy_files.GitIgnoreTest.test_env_file_is_ignored)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_deploy_files.py", line 94, in test_env_file_is_ignored
+    self.assertTrue(self._ignored(".env"), ".env (real secrets) is not git-ignored")
+AssertionError: False is not true : .env (real secrets) is not git-ignored
+
+======================================================================
+FAIL: test_phoenix_published_on_loopback_only (tests.test_engine_deploy_files.PhoenixDriftTest.test_phoenix_published_on_loopback_only) (entry='${KE_PHOENIX_PORT:-47101}:${PHOENIX_PORT:-6006}')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_deploy_files.py", line 81, in test_phoenix_published_on_loopback_only
+    self.assertTrue(str(entry).startswith("127.0.0.1:"),
+AssertionError: False is not true : published on every interface: ${KE_PHOENIX_PORT:-47101}:${PHOENIX_PORT:-6006}
+
+======================================================================
+FAIL: test_shell_parameter_default_is_flagged_outside_compose (tests.test_engine_hardcoded.ScannerContractTest.test_shell_parameter_default_is_flagged_outside_compose) (path='scripts/x.sh', line='PORT=${PG_PORT:-5432}\n')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_hardcoded.py", line 108, in test_shell_parameter_default_is_flagged_outside_compose
+    self.assertIn("5432", _values(_scan({path: line}, ["5432"])))
+AssertionError: '5432' not found in set()
+
+======================================================================
+FAIL: test_shell_parameter_default_is_flagged_outside_compose (tests.test_engine_hardcoded.ScannerContractTest.test_shell_parameter_default_is_flagged_outside_compose) (path='scripts/x.sh', line='psql -p "${PG_PORT:-5432}"\n')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_hardcoded.py", line 108, in test_shell_parameter_default_is_flagged_outside_compose
+    self.assertIn("5432", _values(_scan({path: line}, ["5432"])))
+AssertionError: '5432' not found in set()
+
+======================================================================
+FAIL: test_shell_parameter_default_is_flagged_outside_compose (tests.test_engine_hardcoded.ScannerContractTest.test_shell_parameter_default_is_flagged_outside_compose) (path='docker/entry.sh', line='exec app --port ${PORT-5432}\n')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_hardcoded.py", line 108, in test_shell_parameter_default_is_flagged_outside_compose
+    self.assertIn("5432", _values(_scan({path: line}, ["5432"])))
+AssertionError: '5432' not found in set()
+
+======================================================================
+FAIL: test_shell_parameter_default_is_flagged_outside_compose (tests.test_engine_hardcoded.ScannerContractTest.test_shell_parameter_default_is_flagged_outside_compose) (path='.github/workflows/ci.yml', line='  PG: ${PG_PORT:-5432}\n')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_hardcoded.py", line 108, in test_shell_parameter_default_is_flagged_outside_compose
+    self.assertIn("5432", _values(_scan({path: line}, ["5432"])))
+AssertionError: '5432' not found in set()
+
+======================================================================
+FAIL: test_shell_parameter_default_is_flagged_outside_compose (tests.test_engine_hardcoded.ScannerContractTest.test_shell_parameter_default_is_flagged_outside_compose) (path='engine/x.py', line='PORT = os.path.expandvars("${PG_PORT:-5432}")\n')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_hardcoded.py", line 108, in test_shell_parameter_default_is_flagged_outside_compose
+    self.assertIn("5432", _values(_scan({path: line}, ["5432"])))
+AssertionError: '5432' not found in set()
+
+======================================================================
+FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="' changeme-x'", env='prod')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 161, in test_placeholder_hidden_behind_invisible_prefix_is_refused
+    with self.assertRaises(_refused()) as ctx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: StartupRefused not raised
+
+======================================================================
+FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="' changeme-x'", env='ci')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 161, in test_placeholder_hidden_behind_invisible_prefix_is_refused
+    with self.assertRaises(_refused()) as ctx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: StartupRefused not raised
+
+======================================================================
+FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="'\\tchangeme-x'", env='prod')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 161, in test_placeholder_hidden_behind_invisible_prefix_is_refused
+    with self.assertRaises(_refused()) as ctx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: StartupRefused not raised
+
+======================================================================
+FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="'\\tchangeme-x'", env='ci')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 161, in test_placeholder_hidden_behind_invisible_prefix_is_refused
+    with self.assertRaises(_refused()) as ctx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: StartupRefused not raised
+
+======================================================================
+FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="'\\u200bchangeme-x'", env='prod')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 161, in test_placeholder_hidden_behind_invisible_prefix_is_refused
+    with self.assertRaises(_refused()) as ctx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: StartupRefused not raised
+
+======================================================================
+FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="'\\u200bchangeme-x'", env='ci')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 161, in test_placeholder_hidden_behind_invisible_prefix_is_refused
+    with self.assertRaises(_refused()) as ctx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: StartupRefused not raised
+
+======================================================================
+FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="'\\u200b \\tCHANGEME-x'", env='prod')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 161, in test_placeholder_hidden_behind_invisible_prefix_is_refused
+    with self.assertRaises(_refused()) as ctx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: StartupRefused not raised
+
+======================================================================
+FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="'\\u200b \\tCHANGEME-x'", env='ci')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 161, in test_placeholder_hidden_behind_invisible_prefix_is_refused
+    with self.assertRaises(_refused()) as ctx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: StartupRefused not raised
+
+======================================================================
+FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="'  \\u200b\\u200bChangeMe'", env='prod')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 161, in test_placeholder_hidden_behind_invisible_prefix_is_refused
+    with self.assertRaises(_refused()) as ctx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: StartupRefused not raised
+
+======================================================================
+FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="'  \\u200b\\u200bChangeMe'", env='ci')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 161, in test_placeholder_hidden_behind_invisible_prefix_is_refused
+    with self.assertRaises(_refused()) as ctx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: StartupRefused not raised
+
+======================================================================
+FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__POSTGRES__PASSWORD', value="' changeme-x'", env='prod')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 161, in test_placeholder_hidden_behind_invisible_prefix_is_refused
+    with self.assertRaises(_refused()) as ctx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: StartupRefused not raised
+
+======================================================================
+FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__POSTGRES__PASSWORD', value="' changeme-x'", env='ci')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 161, in test_placeholder_hidden_behind_invisible_prefix_is_refused
+    with self.assertRaises(_refused()) as ctx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: StartupRefused not raised
+
+======================================================================
+FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__POSTGRES__PASSWORD', value="'\\tchangeme-x'", env='prod')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 161, in test_placeholder_hidden_behind_invisible_prefix_is_refused
+    with self.assertRaises(_refused()) as ctx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: StartupRefused not raised
+
+======================================================================
+FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__POSTGRES__PASSWORD', value="'\\tchangeme-x'", env='ci')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 161, in test_placeholder_hidden_behind_invisible_prefix_is_refused
+    with self.assertRaises(_refused()) as ctx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: StartupRefused not raised
+
+======================================================================
+FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__POSTGRES__PASSWORD', value="'\\u200bchangeme-x'", env='prod')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 161, in test_placeholder_hidden_behind_invisible_prefix_is_refused
+    with self.assertRaises(_refused()) as ctx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: StartupRefused not raised
+
+======================================================================
+FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__POSTGRES__PASSWORD', value="'\\u200bchangeme-x'", env='ci')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 161, in test_placeholder_hidden_behind_invisible_prefix_is_refused
+    with self.assertRaises(_refused()) as ctx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: StartupRefused not raised
+
+======================================================================
+FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__POSTGRES__PASSWORD', value="'\\u200b \\tCHANGEME-x'", env='prod')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 161, in test_placeholder_hidden_behind_invisible_prefix_is_refused
+    with self.assertRaises(_refused()) as ctx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: StartupRefused not raised
+
+======================================================================
+FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__POSTGRES__PASSWORD', value="'\\u200b \\tCHANGEME-x'", env='ci')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 161, in test_placeholder_hidden_behind_invisible_prefix_is_refused
+    with self.assertRaises(_refused()) as ctx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: StartupRefused not raised
+
+======================================================================
+FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__POSTGRES__PASSWORD', value="'  \\u200b\\u200bChangeMe'", env='prod')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 161, in test_placeholder_hidden_behind_invisible_prefix_is_refused
+    with self.assertRaises(_refused()) as ctx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: StartupRefused not raised
+
+======================================================================
+FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__POSTGRES__PASSWORD', value="'  \\u200b\\u200bChangeMe'", env='ci')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 161, in test_placeholder_hidden_behind_invisible_prefix_is_refused
+    with self.assertRaises(_refused()) as ctx:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: StartupRefused not raised
+
+======================================================================
+FAIL: test_console_mode_installs_console_exporter_only (tests.test_engine_telemetry.ConfigureTracingTest.test_console_mode_installs_console_exporter_only) (case='KE console, HARNESS_TRACING unset, external PHOENIX endpoint')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 231, in test_console_mode_installs_console_exporter_only
+    iso.otlp.assert_not_called()
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 910, in assert_not_called
+    raise AssertionError(msg)
+AssertionError: Expected 'OTLPSpanExporter' to not have been called. Called 1 times.
+Calls: [call('http://collector.example.com:6006/v1/traces', timeout=5),
+ call().shutdown()].
+
+======================================================================
+FAIL: test_console_mode_installs_console_exporter_only (tests.test_engine_telemetry.ConfigureTracingTest.test_console_mode_installs_console_exporter_only) (case='KE console, HARNESS_TRACING=otlp, external PHOENIX endpoint')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 231, in test_console_mode_installs_console_exporter_only
+    iso.otlp.assert_not_called()
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 910, in assert_not_called
+    raise AssertionError(msg)
+AssertionError: Expected 'OTLPSpanExporter' to not have been called. Called 1 times.
+Calls: [call('http://collector.example.com:6006/v1/traces', timeout=5),
+ call().shutdown()].
+
+======================================================================
+FAIL: test_console_mode_installs_console_exporter_only (tests.test_engine_telemetry.ConfigureTracingTest.test_console_mode_installs_console_exporter_only) (case='settings look local, harness env points outside')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 231, in test_console_mode_installs_console_exporter_only
+    iso.otlp.assert_not_called()
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 910, in assert_not_called
+    raise AssertionError(msg)
+AssertionError: Expected 'OTLPSpanExporter' to not have been called. Called 1 times.
+Calls: [call('http://collector.example.com:6006/v1/traces', timeout=5),
+ call().shutdown()].
+
+======================================================================
+FAIL: test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='simple otlp external', mode='off')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 351, in test_non_local_or_unknown_exporter_is_refused
+    self.assertIsInstance(error, _refused(),
+AssertionError: None is not an instance of <class 'engine.startup.StartupRefused'> : simple otlp external was trusted in off
+
+======================================================================
+FAIL: test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='simple otlp external', mode='console')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 351, in test_non_local_or_unknown_exporter_is_refused
+    self.assertIsInstance(error, _refused(),
+AssertionError: None is not an instance of <class 'engine.startup.StartupRefused'> : simple otlp external was trusted in console
+
+======================================================================
+FAIL: test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='simple otlp external', mode='otlp local')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 351, in test_non_local_or_unknown_exporter_is_refused
+    self.assertIsInstance(error, _refused(),
+AssertionError: None is not an instance of <class 'engine.startup.StartupRefused'> : simple otlp external was trusted in otlp local
+
+======================================================================
+FAIL: test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='batch otlp external ip', mode='off')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 351, in test_non_local_or_unknown_exporter_is_refused
+    self.assertIsInstance(error, _refused(),
+AssertionError: None is not an instance of <class 'engine.startup.StartupRefused'> : batch otlp external ip was trusted in off
+
+======================================================================
+FAIL: test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='batch otlp external ip', mode='console')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 351, in test_non_local_or_unknown_exporter_is_refused
+    self.assertIsInstance(error, _refused(),
+AssertionError: None is not an instance of <class 'engine.startup.StartupRefused'> : batch otlp external ip was trusted in console
+
+======================================================================
+FAIL: test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='batch otlp external ip', mode='otlp local')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 351, in test_non_local_or_unknown_exporter_is_refused
+    self.assertIsInstance(error, _refused(),
+AssertionError: None is not an instance of <class 'engine.startup.StartupRefused'> : batch otlp external ip was trusted in otlp local
+
+======================================================================
+FAIL: test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='unknown exporter', mode='off')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 351, in test_non_local_or_unknown_exporter_is_refused
+    self.assertIsInstance(error, _refused(),
+AssertionError: None is not an instance of <class 'engine.startup.StartupRefused'> : unknown exporter was trusted in off
+
+======================================================================
+FAIL: test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='unknown exporter', mode='console')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 351, in test_non_local_or_unknown_exporter_is_refused
+    self.assertIsInstance(error, _refused(),
+AssertionError: None is not an instance of <class 'engine.startup.StartupRefused'> : unknown exporter was trusted in console
+
+======================================================================
+FAIL: test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='unknown exporter', mode='otlp local')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 351, in test_non_local_or_unknown_exporter_is_refused
+    self.assertIsInstance(error, _refused(),
+AssertionError: None is not an instance of <class 'engine.startup.StartupRefused'> : unknown exporter was trusted in otlp local
+
+======================================================================
+FAIL: test_refused_startup_installs_nothing (tests.test_engine_telemetry.StartupWiringTest.test_refused_startup_installs_nothing) (case='auth off in prod, local collector')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 394, in test_refused_startup_installs_nothing
+    iso.otlp.assert_not_called()
+  File "/usr/local/lib/python3.12/unittest/mock.py", line 910, in assert_not_called
+    raise AssertionError(msg)
+AssertionError: Expected 'OTLPSpanExporter' to not have been called. Called 1 times.
+Calls: [call('http://localhost:47101/v1/traces', timeout=5), call().shutdown()].
+
+======================================================================
+FAIL: test_refused_startup_installs_nothing (tests.test_engine_telemetry.StartupWiringTest.test_refused_startup_installs_nothing) (case='placeholder secret, console')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 395, in test_refused_startup_installs_nothing
+    self.assertEqual(iso.installed, [], "a provider was installed before check()")
+AssertionError: Lists differ: [<opentelemetry.sdk.trace.TracerProvider object at 0x70786716bb90>] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+<opentelemetry.sdk.trace.TracerProvider object at 0x70786716bb90>
+
+- [<opentelemetry.sdk.trace.TracerProvider object at 0x70786716bb90>]
++ [] : a provider was installed before check()
+
+======================================================================
+FAIL: test_refused_startup_leaves_hide_env_untouched (tests.test_engine_telemetry.StartupWiringTest.test_refused_startup_leaves_hide_env_untouched) (case='unset stays unset')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 409, in test_refused_startup_leaves_hide_env_untouched
+    self.assertEqual(after, {
+AssertionError: {'OPENINFERENCE_HIDE_INPUTS': 'true', 'OPENINFERENCE_HIDE_OUTPUTS': 'true'} != {'OPENINFERENCE_HIDE_INPUTS': None, 'OPENINFERENCE_HIDE_OUTPUTS': None}
+- {'OPENINFERENCE_HIDE_INPUTS': 'true', 'OPENINFERENCE_HIDE_OUTPUTS': 'true'}
+?                               ^^^^ -                                ^^^^ -
+
++ {'OPENINFERENCE_HIDE_INPUTS': None, 'OPENINFERENCE_HIDE_OUTPUTS': None}
+?                               ^^^                                 ^^^
+
+
+======================================================================
+FAIL: test_refused_startup_leaves_hide_env_untouched (tests.test_engine_telemetry.StartupWiringTest.test_refused_startup_leaves_hide_env_untouched) (case='operator values kept verbatim')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_telemetry.py", line 409, in test_refused_startup_leaves_hide_env_untouched
+    self.assertEqual(after, {
+AssertionError: {'OPENINFERENCE_HIDE_INPUTS': 'true', 'OPENINFERENCE_HIDE_OUTPUTS': 'true'} != {'OPENINFERENCE_HIDE_INPUTS': '1', 'OPENINFERENCE_HIDE_OUTPUTS': 'yes'}
+- {'OPENINFERENCE_HIDE_INPUTS': 'true', 'OPENINFERENCE_HIDE_OUTPUTS': 'true'}
+?                                ^^^^                                  ^^^
+
++ {'OPENINFERENCE_HIDE_INPUTS': '1', 'OPENINFERENCE_HIDE_OUTPUTS': 'yes'}
+?                                ^                                  ^ +
+
+
+======================================================================
+FAIL: test_quality_gates_always_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_always_run) (mode='fast')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 299, in test_quality_gates_always_run
+    self.assert_quality_gates_ran(mode)
+  File "/work/tests/test_harness_followups.py", line 289, in assert_quality_gates_ran
+    self.assertEqual(len(matching), 1, f"{step} ran {len(matching)} times: {calls}")
+AssertionError: 0 != 1 : -m coverage combine ran 0 times: ['python -m coverage erase', 'python -m coverage run -p -m unittest -v tests.test_x tests.testfoo', 'python -m coverage run -p -m unittest discover -s tests/unit -t . -v']
+
+======================================================================
+FAIL: test_quality_gates_always_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_always_run) (mode='full')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 299, in test_quality_gates_always_run
+    self.assert_quality_gates_ran(mode)
+  File "/work/tests/test_harness_followups.py", line 289, in assert_quality_gates_ran
+    self.assertEqual(len(matching), 1, f"{step} ran {len(matching)} times: {calls}")
+AssertionError: 0 != 1 : -m coverage combine ran 0 times: ['python -m coverage erase', 'python -m coverage run -p -m unittest -v tests.test_x tests.testfoo', 'python -m coverage run -p -m unittest discover -s tests/unit -t . -v', 'python -m coverage run -p -m unittest discover -s tests/integration -t . -v']
+
+======================================================================
+FAIL: test_stale_parallel_coverage_data_is_not_combined (tests.test_harness_followups.IntegrationRunsOnceTest.test_stale_parallel_coverage_data_is_not_combined) (mode='fast')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 322, in test_stale_parallel_coverage_data_is_not_combined
+    self.assertNotIn(f"stale-present {stale.name}", calls,
+AssertionError: 'stale-present .coverage.stale-host.pid1.x1y2z3' unexpectedly found in ['python -m coverage erase', 'python -m coverage run -p -m unittest -v tests.test_x tests.testfoo', 'python -m coverage run -p -m unittest discover -s tests/unit -t . -v', 'python -m coverage combine', 'stale-present .coverage.stale-host.pid1.x1y2z3', 'python -m coverage report', 'python -m mypy'] : coverage combine saw the stale data file
+
+======================================================================
+FAIL: test_stale_parallel_coverage_data_is_not_combined (tests.test_harness_followups.IntegrationRunsOnceTest.test_stale_parallel_coverage_data_is_not_combined) (mode='full')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 322, in test_stale_parallel_coverage_data_is_not_combined
+    self.assertNotIn(f"stale-present {stale.name}", calls,
+AssertionError: 'stale-present .coverage.stale-host.pid1.x1y2z3' unexpectedly found in ['python -m coverage erase', 'python -m coverage run -p -m unittest -v tests.test_x tests.testfoo', 'python -m coverage run -p -m unittest discover -s tests/unit -t . -v', 'python -m coverage run -p -m unittest discover -s tests/integration -t . -v', 'python -m coverage combine', 'stale-present .coverage.stale-host.pid1.x1y2z3', 'python -m coverage report', 'python -m mypy'] : coverage combine saw the stale data file
+
+----------------------------------------------------------------------
+Ran 180 tests in 21.444s
+
+FAILED (failures=52, errors=15)
+verify fast: FAIL (test.sh exited non-zero)
+

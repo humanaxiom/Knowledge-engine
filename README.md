@@ -16,12 +16,17 @@ See [AGENTS.md](AGENTS.md) for the full workflow and role/file conventions.
 ## Getting Started
 
 1. Use this repo as a GitHub template for a new project.
-2. Install dependencies and start Phoenix:
+2. Install dependencies, create your `.env` and start Phoenix:
 
    ```bash
    uv sync
-   docker compose up -d phoenix   # UI at http://localhost:6006
+   cp .env.example .env           # .env is gitignored
+   docker compose up -d phoenix   # UI at http://localhost:47101
    ```
+
+   Phoenix is published on loopback only (`127.0.0.1`); the host port is
+   `KE_PHOENIX_PORT` in `.env` (47101 if unset). The OTLP/gRPC port is not
+   published.
 
 3. Open the repo in [Claude Code](https://claude.com/claude-code) (the
    primary runner). The session is the orchestrator
@@ -93,9 +98,31 @@ Run the stub example: `HARNESS_TRACING=console uv run python examples/custom_age
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `PHOENIX_COLLECTOR_ENDPOINT` | `http://localhost:6006` | Phoenix base URL (`/v1/traces` is appended) |
+| `PHOENIX_COLLECTOR_ENDPOINT` | `http://localhost:47101` | Phoenix base URL (`/v1/traces` is appended) |
 | `HARNESS_TRACING` | `otlp` | `otlp`, `console`, or `off` |
 | `OPENINFERENCE_HIDE_INPUTS` / `_OUTPUTS` | unset | `true` redacts prompts, queries, documents, answers |
+
+## Engine configuration
+
+Copy `.env.example` to `.env` (gitignored) and edit it. Never ship `.env.example`
+in an image.
+
+- Settings are `KE_`-prefixed environment variables layered over
+  `config/defaults.yaml`; `__` nests (`KE_STORES__POSTGRES__PORT`). Lists are
+  comma-separated.
+- Secrets (`KE_STORES__POSTGRES__PASSWORD`, `KE_STORES__NEO4J__PASSWORD`) have
+  no defaults. The `changeme-...` placeholders in `.env.example` are refused
+  outside `KE_ENV=dev`.
+- Tracing is off by default in `config/defaults.yaml`. `.env.example` sets
+  `HARNESS_TRACING=otlp` to send traces to the local Phoenix.
+- The model host is set per deployment as `host:port` in `KE_MODEL_UPSTREAM`
+  (this deployment: `aria-gb10-2`, OpenAI-compatible; scheme and port are
+  chosen in `.env`). It must be on `KE_EGRESS_ALLOWLIST`.
+
+The engine refuses to start when: auth is off outside dev; the trace collector
+is not local; the hide-inputs/outputs flags are off outside dev; a secret is a
+placeholder; a model host is not on the allowlist; or a model URL carries
+credentials (`user:pass@`). The error names the setting, never its value.
 
 ## Structure
 

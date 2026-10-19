@@ -1,0 +1,148 @@
+# platform-config rework 1: reviewer mutation re-run (2026-10-19)
+# Scratch copy of the working tree (git init'd for check-ignore), knowledge-engine-gates:latest, --network none, PYTHONDONTWRITEBYTECODE=1.
+# Runner: one mutant at a time, restore, then a post-restore baseline. Copy deleted afterwards.
+
+### baseline rc=0
+Ran 115 tests in 11.791s
+
+OK
+== M1 choose_exporter local check removed  [targets: tests.test_engine_telemetry.ChooseExporterTest.test_otlp_to_non_local_collector_gives_none tests.test_engine_telemetry.ConfigureTracingTest.test_non_local_collector_gets_no_exporter]
+  FAIL: test_otlp_to_non_local_collector_gives_none (tests.test_engine_telemetry.ChooseExporterTest.test_otlp_to_non_local_collector_gives_none) (endpoint='http://collector.example.com:6006')
+  FAIL: test_otlp_to_non_local_collector_gives_none (tests.test_engine_telemetry.ChooseExporterTest.test_otlp_to_non_local_collector_gives_none) (endpoint='http://203.0.113.5:6006')
+  FAIL: test_otlp_to_non_local_collector_gives_none (tests.test_engine_telemetry.ChooseExporterTest.test_otlp_to_non_local_collector_gives_none) (endpoint='http://10.0.0.5:6006')
+  FAIL: test_non_local_collector_gets_no_exporter (tests.test_engine_telemetry.ConfigureTracingTest.test_non_local_collector_gets_no_exporter)
+  Ran 2 tests in 0.215s | FAILED (failures=4)
+  rc=1 => KILLED
+== M2 hide flags not written to env  [targets: tests.test_engine_telemetry.ConfigureTracingTest.test_hide_defaults_apply_before_any_span]
+  FAIL: test_hide_defaults_apply_before_any_span (tests.test_engine_telemetry.ConfigureTracingTest.test_hide_defaults_apply_before_any_span)
+  Ran 1 test in 0.186s | FAILED (failures=1)
+  rc=1 => KILLED
+== M5 standard names above KE_ env  [targets: tests.test_engine_config.PrecedenceTest]
+  FAIL: test_ke_names_outrank_standard_names (tests.test_engine_config.PrecedenceTest.test_ke_names_outrank_standard_names) (overrides={'KE_TELEMETRY__TRACING': 'console', 'HARNESS_TRACING': 'otlp'})
+  FAIL: test_ke_names_outrank_standard_names (tests.test_engine_config.PrecedenceTest.test_ke_names_outrank_standard_names) (overrides={'KE_TELEMETRY__TRACING': 'off', 'HARNESS_TRACING': 'console'})
+  FAIL: test_ke_names_outrank_standard_names (tests.test_engine_config.PrecedenceTest.test_ke_names_outrank_standard_names) (overrides={'KE_TELEMETRY__COLLECTOR_ENDPOINT': 'http://localhost:47101', 'PHOENIX_COLLECTOR_ENDPOINT': 'http://collector.example.com:6006'})
+  FAIL: test_ke_names_outrank_standard_names (tests.test_engine_config.PrecedenceTest.test_ke_names_outrank_standard_names) (overrides={'KE_TELEMETRY__HIDE_INPUTS': 'true', 'OPENINFERENCE_HIDE_INPUTS': 'false'})
+  FAIL: test_ke_names_outrank_standard_names (tests.test_engine_config.PrecedenceTest.test_ke_names_outrank_standard_names) (overrides={'KE_TELEMETRY__HIDE_OUTPUTS': 'false', 'OPENINFERENCE_HIDE_OUTPUTS': 'true'})
+  Ran 4 tests in 0.292s | FAILED (failures=5)
+  rc=1 => KILLED
+== M11 startup does not call configure_tracing  [targets: tests.test_engine_telemetry.StartupWiringTest.test_startup_installs_the_exporter]
+  FAIL: test_startup_installs_the_exporter (tests.test_engine_telemetry.StartupWiringTest.test_startup_installs_the_exporter)
+  Ran 1 test in 0.167s | FAILED (failures=1)
+  rc=1 => KILLED
+== M15 egress check skipped in dev  [targets: tests.test_engine_egress]
+  FAIL: test_egress_startup_check_refuses_in_every_env (tests.test_engine_egress.EgressStartupTest.test_egress_startup_check_refuses_in_every_env) (env='dev', case='pass base_url, empty allowlist')
+  FAIL: test_egress_startup_check_refuses_in_every_env (tests.test_engine_egress.EgressStartupTest.test_egress_startup_check_refuses_in_every_env) (env='dev', case='pass base_url off-list')
+  FAIL: test_egress_startup_check_refuses_in_every_env (tests.test_engine_egress.EgressStartupTest.test_egress_startup_check_refuses_in_every_env) (env='dev', case='model upstream off-list')
+  Ran 8 tests in 0.571s | FAILED (failures=3)
+  rc=1 => KILLED
+== M17 ConfigError chained (both branches)  [targets: tests.test_engine_config]
+  FAIL: test_malformed_values_raise_config_error (tests.test_engine_config.ConfigErrorContractTest.test_malformed_values_raise_config_error) (variable='KE_MODEL_UPSTREAM')
+  FAIL: test_config_error_has_no_value_anywhere (tests.test_engine_config.ConfigErrorNeverCarriesValueTest.test_config_error_has_no_value_anywhere) (variable='KE_STORES__POSTGRES__PORT')
+  FAIL: test_config_error_has_no_value_anywhere (tests.test_engine_config.ConfigErrorNeverCarriesValueTest.test_config_error_has_no_value_anywhere) (variable='KE_ENV')
+  FAIL: test_config_error_has_no_value_anywhere (tests.test_engine_config.ConfigErrorNeverCarriesValueTest.test_config_error_has_no_value_anywhere) (variable='KE_AUTH__ENABLED')
+  FAIL: test_config_error_has_no_value_anywhere (tests.test_engine_config.ConfigErrorNeverCarriesValueTest.test_config_error_has_no_value_anywhere) (variable='KE_MODELS__COMPOSE__BASE_URL')
+  FAIL: test_config_error_has_no_value_anywhere (tests.test_engine_config.ConfigErrorNeverCarriesValueTest.test_config_error_has_no_value_anywhere) (variable='KE_MODELS__EMBED__DIM')
+  Ran 15 tests in 0.503s | FAILED (failures=11)
+  rc=1 => KILLED
+== M17b ConfigError chained (ValidationError branch only)  [targets: tests.test_engine_config]
+  FAIL: test_malformed_values_raise_config_error (tests.test_engine_config.ConfigErrorContractTest.test_malformed_values_raise_config_error) (variable='KE_MODEL_UPSTREAM')
+  FAIL: test_config_error_has_no_value_anywhere (tests.test_engine_config.ConfigErrorNeverCarriesValueTest.test_config_error_has_no_value_anywhere) (variable='KE_STORES__POSTGRES__PORT')
+  FAIL: test_config_error_has_no_value_anywhere (tests.test_engine_config.ConfigErrorNeverCarriesValueTest.test_config_error_has_no_value_anywhere) (variable='KE_ENV')
+  FAIL: test_config_error_has_no_value_anywhere (tests.test_engine_config.ConfigErrorNeverCarriesValueTest.test_config_error_has_no_value_anywhere) (variable='KE_AUTH__ENABLED')
+  FAIL: test_config_error_has_no_value_anywhere (tests.test_engine_config.ConfigErrorNeverCarriesValueTest.test_config_error_has_no_value_anywhere) (variable='KE_MODELS__COMPOSE__BASE_URL')
+  FAIL: test_config_error_has_no_value_anywhere (tests.test_engine_config.ConfigErrorNeverCarriesValueTest.test_config_error_has_no_value_anywhere) (variable='KE_MODELS__EMBED__DIM')
+  Ran 15 tests in 0.541s | FAILED (failures=11)
+  rc=1 => KILLED
+== M17c ConfigError chained (parse-failure branch only)  [targets: tests.test_engine_config]
+  Ran 15 tests in 0.502s | OK
+  rc=0 => SURVIVED
+== T1 quality gates behind pyproject.tom guard  [targets: tests.test_harness_followups tests.test_engine_quality]
+  FAIL: test_quality_gates_always_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_always_run) (mode='fast')
+  FAIL: test_quality_gates_always_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_always_run) (mode='full')
+  FAIL: test_quality_gates_run_with_pyproject (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_run_with_pyproject) (mode='fast')
+  FAIL: test_quality_gates_run_with_pyproject (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_run_with_pyproject) (mode='full')
+  FAIL: test_stale_parallel_coverage_data_is_not_combined (tests.test_harness_followups.IntegrationRunsOnceTest.test_stale_parallel_coverage_data_is_not_combined) (mode='fast')
+  FAIL: test_stale_parallel_coverage_data_is_not_combined (tests.test_harness_followups.IntegrationRunsOnceTest.test_stale_parallel_coverage_data_is_not_combined) (mode='full')
+  Ran 29 tests in 10.124s | FAILED (failures=6)
+  rc=1 => KILLED
+== B4 plant PORT=${PG_PORT:-5432} in scripts/plant.sh  [targets: tests.test_engine_hardcoded]
+  FAIL: test_no_hardcoded_ports (tests.test_engine_hardcoded.RepositoryScanTest.test_no_hardcoded_ports)
+  Ran 15 tests in 0.251s | FAILED (failures=1)
+  rc=1 => KILLED
+== N1 verify_installed trusts everything  [targets: tests.test_engine_telemetry.InstalledProviderTest]
+  FAIL: test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='simple otlp external', mode='off')
+  FAIL: test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='simple otlp external', mode='console')
+  FAIL: test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='simple otlp external', mode='otlp local')
+  FAIL: test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='batch otlp external ip', mode='off')
+  FAIL: test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='batch otlp external ip', mode='console')
+  FAIL: test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='batch otlp external ip', mode='otlp local')
+  Ran 2 tests in 0.310s | FAILED (failures=9)
+  rc=1 => KILLED
+== N2 verify_installed: OTLP accepted without locality check  [targets: tests.test_engine_telemetry.InstalledProviderTest]
+  FAIL: test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='simple otlp external', mode='off')
+  FAIL: test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='simple otlp external', mode='console')
+  FAIL: test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='simple otlp external', mode='otlp local')
+  FAIL: test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='batch otlp external ip', mode='off')
+  FAIL: test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='batch otlp external ip', mode='console')
+  FAIL: test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) (shape='batch otlp external ip', mode='otlp local')
+  Ran 2 tests in 0.323s | FAILED (failures=6)
+  rc=1 => KILLED
+== N3 L6 configure_tracing before check  [targets: tests.test_engine_telemetry.StartupWiringTest]
+  FAIL: test_refused_startup_installs_nothing (tests.test_engine_telemetry.StartupWiringTest.test_refused_startup_installs_nothing) (case='auth off in prod, local collector')
+  FAIL: test_refused_startup_installs_nothing (tests.test_engine_telemetry.StartupWiringTest.test_refused_startup_installs_nothing) (case='placeholder secret, console')
+  FAIL: test_refused_startup_leaves_hide_env_untouched (tests.test_engine_telemetry.StartupWiringTest.test_refused_startup_leaves_hide_env_untouched) (case='unset stays unset')
+  FAIL: test_refused_startup_leaves_hide_env_untouched (tests.test_engine_telemetry.StartupWiringTest.test_refused_startup_leaves_hide_env_untouched) (case='operator values kept verbatim')
+  FAIL: test_startup_installs_the_exporter (tests.test_engine_telemetry.StartupWiringTest.test_startup_installs_the_exporter)
+  Ran 3 tests in 0.212s | FAILED (failures=5)
+  rc=1 => KILLED
+== N4 _EnvSource pop removed (N6 alias)  [targets: tests.test_engine_config.PrecedenceTest]
+  FAIL: test_model_upstream_has_one_name (tests.test_engine_config.PrecedenceTest.test_model_upstream_has_one_name)
+  Ran 4 tests in 0.270s | FAILED (failures=1)
+  rc=1 => KILLED
+== N5 B5 rm -f .coverage.* removed  [targets: tests.test_harness_followups]
+  FAIL: test_stale_parallel_coverage_data_is_not_combined (tests.test_harness_followups.IntegrationRunsOnceTest.test_stale_parallel_coverage_data_is_not_combined) (mode='fast')
+  FAIL: test_stale_parallel_coverage_data_is_not_combined (tests.test_harness_followups.IntegrationRunsOnceTest.test_stale_parallel_coverage_data_is_not_combined) (mode='full')
+  Ran 24 tests in 10.127s | FAILED (failures=2)
+  rc=1 => KILLED
+== N6 L1 invisible strip removed  [targets: tests.test_engine_startup tests.test_engine_config]
+  FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="' changeme-x'", env='prod')
+  FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="' changeme-x'", env='ci')
+  FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="'\\tchangeme-x'", env='prod')
+  FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="'\\tchangeme-x'", env='ci')
+  FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="'\\u200bchangeme-x'", env='prod')
+  FAIL: test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) (secret='KE_STORES__NEO4J__PASSWORD', value="'\\u200bchangeme-x'", env='ci')
+  Ran 31 tests in 0.835s | FAILED (failures=20)
+  rc=1 => KILLED
+== N7 llm_span removed from complete  [targets: tests.test_engine_llm]
+  ERROR: test_complete_emits_llm_span_with_model_name (tests.test_engine_llm.ModelClientTracingTest.test_complete_emits_llm_span_with_model_name)
+  ERROR: test_denied_host_marks_llm_span_error (tests.test_engine_llm.ModelClientTracingTest.test_denied_host_marks_llm_span_error)
+  Ran 2 tests in 0.382s | FAILED (errors=2)
+  rc=1 => KILLED
+== N8 console mode builds OTLP via harness (B1 regress)  [targets: tests.test_engine_telemetry]
+  FAIL: test_console_mode_never_builds_otlp (tests.test_engine_telemetry.ChooseExporterTest.test_console_mode_never_builds_otlp) (case='KE console, HARNESS_TRACING unset, external PHOENIX endpoint')
+  FAIL: test_console_mode_never_builds_otlp (tests.test_engine_telemetry.ChooseExporterTest.test_console_mode_never_builds_otlp) (case='KE console, HARNESS_TRACING=otlp, external PHOENIX endpoint')
+  FAIL: test_console_mode_never_builds_otlp (tests.test_engine_telemetry.ChooseExporterTest.test_console_mode_never_builds_otlp) (case='settings look local, harness env points outside')
+  FAIL: test_console_mode_never_builds_otlp (tests.test_engine_telemetry.ChooseExporterTest.test_console_mode_never_builds_otlp) (case='console from the YAML file, external PHOENIX endpoint')
+  FAIL: test_console_mode_installs_console_exporter_only (tests.test_engine_telemetry.ConfigureTracingTest.test_console_mode_installs_console_exporter_only) (case='KE console, HARNESS_TRACING unset, external PHOENIX endpoint')
+  FAIL: test_console_mode_installs_console_exporter_only (tests.test_engine_telemetry.ConfigureTracingTest.test_console_mode_installs_console_exporter_only) (case='KE console, HARNESS_TRACING=otlp, external PHOENIX endpoint')
+  Ran 13 tests in 0.417s | FAILED (failures=7)
+  rc=1 => KILLED
+== N9 var_name ignores standard names  [targets: tests.test_engine_config.PrecedenceTest]
+  FAIL: test_error_names_the_variable_the_user_set (tests.test_engine_config.PrecedenceTest.test_error_names_the_variable_the_user_set) (variable='HARNESS_TRACING')
+  FAIL: test_error_names_the_variable_the_user_set (tests.test_engine_config.PrecedenceTest.test_error_names_the_variable_the_user_set) (variable='PHOENIX_COLLECTOR_ENDPOINT')
+  FAIL: test_error_names_the_variable_the_user_set (tests.test_engine_config.PrecedenceTest.test_error_names_the_variable_the_user_set) (variable='OPENINFERENCE_HIDE_INPUTS')
+  FAIL: test_error_names_the_variable_the_user_set (tests.test_engine_config.PrecedenceTest.test_error_names_the_variable_the_user_set) (variable='OPENINFERENCE_HIDE_OUTPUTS')
+  Ran 4 tests in 0.289s | FAILED (failures=4)
+  rc=1 => KILLED
+== N10 compose bind all interfaces  [targets: tests.test_engine_deploy_files]
+  FAIL: test_phoenix_published_on_loopback_only (tests.test_engine_deploy_files.PhoenixDriftTest.test_phoenix_published_on_loopback_only) (entry='${KE_PHOENIX_PORT:-47101}:${PHOENIX_PORT:-6006}')
+  Ran 4 tests in 0.061s | FAILED (failures=1)
+  rc=1 => KILLED
+### post-restore rc=0
+Ran 115 tests in 11.416s
+
+OK
+
+### probe: non-SDK provider already installed (R1)
+Overriding of current TracerProvider is not allowed
+configure_tracing returned True ; refused: no; global provider is now Foreign

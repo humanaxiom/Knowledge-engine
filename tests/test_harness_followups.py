@@ -117,12 +117,30 @@ class IntegrationRunsOnceTest(unittest.TestCase):
         "            f.write({label!r} + '\\n')\n"
     )
     UNIT_LABELS = ("top", "testfoo", "sub", "deep")
+    # Rework 1 (review B6): the fake uv logs every python invocation to
+    # $KE_TEST_UV_LOG and treats `coverage combine`, `coverage report` and
+    # `mypy` as no-ops, so test.sh needs no pyproject.toml guard to run in
+    # this throwaway project. On `coverage combine` it also logs any planted
+    # stale parallel data file still present (review B5).
     FAKE_UV = (
         "#!/bin/sh\n"
         "# Fake uv: skip to the first python argument and run it with the\n"
         "# test interpreter.\n"
         "while [ $# -gt 0 ]; do\n"
-        "  case \"$1\" in python|python3) shift; exec \"$KE_TEST_PYTHON\" \"$@\" ;; esac\n"
+        "  case \"$1\" in python|python3)\n"
+        "    shift\n"
+        "    [ -n \"${KE_TEST_UV_LOG:-}\" ] && echo \"python $*\" >> \"$KE_TEST_UV_LOG\"\n"
+        "    case \"$1 $2 $3\" in\n"
+        "      '-m coverage combine'*)\n"
+        "        for f in .coverage.stale*; do\n"
+        "          [ -e \"$f\" ] && echo \"stale-present $f\" >> \"$KE_TEST_UV_LOG\"\n"
+        "        done\n"
+        "        exit 0 ;;\n"
+        "      '-m coverage report'*) exit 0 ;;\n"
+        "    esac\n"
+        "    case \"$1 $2\" in '-m mypy'*) exit 0 ;; esac\n"
+        "    exec \"$KE_TEST_PYTHON\" \"$@\" ;;\n"
+        "  esac\n"
         "  shift\n"
         "done\n"
         "echo 'fake uv: no python argument' >&2\n"
@@ -168,6 +186,10 @@ class IntegrationRunsOnceTest(unittest.TestCase):
         env["PATH"] = str(self.bin_dir) + os.pathsep + env.get("PATH", "")
         env["KE_TEST_PYTHON"] = sys.executable
         env["KE_TEST_COUNTER"] = str(counter)
+        self.uv_log = self.root / f"uv-{mode}.log"
+        if self.uv_log.exists():
+            self.uv_log.unlink()
+        env["KE_TEST_UV_LOG"] = str(self.uv_log)
         result = subprocess.run(["bash", str(self.project / "scripts" / "test.sh"), mode],
                                 cwd=self.project, env=env, capture_output=True, text=True)
         counts = {}
@@ -251,6 +273,55 @@ class IntegrationRunsOnceTest(unittest.TestCase):
                 self.assertNotEqual(code, 0, output)
                 self.assertIn("no top-level unit tests", output)
                 self.assertNotIn("ImportError", output)
+
+    def uv_calls(self) -> list[str]:
+        if not self.uv_log.exists():
+            return []
+        return self.uv_log.read_text(encoding="utf-8").splitlines()
+
+    def assert_quality_gates_ran(self, mode: str) -> list[str]:
+        code, output, _ = self.run_mode(mode)
+        self.assertEqual(code, 0, output)
+        calls = self.uv_calls()
+        last_unittest = max(i for i, c in enumerate(calls) if "-m unittest" in c)
+        for step in ("-m coverage combine", "-m coverage report", "-m mypy"):
+            matching = [i for i, c in enumerate(calls) if c.startswith(f"python {step}")]
+            self.assertEqual(len(matching), 1, f"{step} ran {len(matching)} times: {calls}")
+            self.assertGreater(matching[0], last_unittest, f"{step} ran before the tests")
+        return calls
+
+    def test_quality_gates_always_run(self):
+        # Review B6: no silent skip. This project has no pyproject.toml; the
+        # coverage and mypy steps must run anyway (here as fake-uv no-ops).
+        self.assertFalse((self.project / "pyproject.toml").exists())
+        for mode in ("fast", "full"):
+            with self.subTest(mode=mode):
+                self.assert_quality_gates_ran(mode)
+
+    def test_quality_gates_run_with_pyproject(self):
+        # Review B6, mutant T1 (`pyproject.tom`): with a pyproject.toml the
+        # steps run too, whatever the guard spelling.
+        self.write("pyproject.toml", '[project]\nname = "fixture"\nversion = "0"\n')
+        for mode in ("fast", "full"):
+            with self.subTest(mode=mode):
+                self.assert_quality_gates_ran(mode)
+
+    def test_stale_parallel_coverage_data_is_not_combined(self):
+        # Review B5: a run that stopped between `coverage run -p` and
+        # `combine` (every RED step does, under set -e) leaves
+        # .coverage.<host>.<pid>.<rand> behind, and `coverage erase` keeps it
+        # unless parallel is configured. The next run must not combine it.
+        # The repo's real pyproject.toml is used, so a fix in either test.sh
+        # or [tool.coverage] is exercised.
+        shutil.copyfile(ROOT / "pyproject.toml", self.project / "pyproject.toml")
+        for mode in ("fast", "full"):
+            stale = self.project / ".coverage.stale-host.pid1.x1y2z3"
+            stale.write_bytes(b"stale coverage data from a failed run")
+            with self.subTest(mode=mode):
+                calls = self.assert_quality_gates_ran(mode)
+                self.assertNotIn(f"stale-present {stale.name}", calls,
+                                 "coverage combine saw the stale data file")
+                self.assertFalse(stale.exists(), "stale coverage data survived the run")
 
 
 @unittest.skipUnless(shutil.which("bash"), "needs bash")

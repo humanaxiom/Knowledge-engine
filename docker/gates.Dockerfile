@@ -21,6 +21,8 @@ WORKDIR /work
 # repo is bind-mounted over /work at run time, so gates run offline.
 COPY pyproject.toml uv.lock ./
 COPY harness_telemetry ./harness_telemetry
+COPY engine ./engine
+COPY config ./config
 RUN uv sync --locked
 # Gates have no network. After the build-time sync, never let uv reach PyPI
 # (a stale build cache otherwise sends `uv run` to the index and it fails).

@@ -93,6 +93,27 @@ class TracingTest(unittest.TestCase):
     def test_setup_tracing_is_idempotent(self):
         self.assertIs(setup_tracing(), setup_tracing())
 
+    def test_spans_tolerate_non_recording_span(self):
+        """Regression (platform-config): with tracing off and no provider
+        installed, the tracer hands out a NonRecordingSpan, which has no
+        `status`. `_span` used to read `span.status` on a clean exit and crash.
+
+        The shared in-memory provider (tests/support.py) stays the global one:
+        only the module's tracer is swapped for a NoOpTracer, which yields
+        exactly the span a missing provider yields."""
+        from opentelemetry import trace
+
+        from harness_telemetry import tracing
+
+        with mock.patch.object(tracing, "_tracer", trace.NoOpTracer()):
+            with agent_span("noop agent", input="q", session_id="s-noop") as span:
+                self.assertIsInstance(span, trace.NonRecordingSpan)
+                self.assertFalse(span.is_recording())
+                with tool_span("noop tool", input="x"):
+                    pass
+        self.assertNotIn("noop agent", finished_spans())
+        self.assertNotIn("noop tool", finished_spans())
+
 
 if __name__ == "__main__":
     unittest.main()

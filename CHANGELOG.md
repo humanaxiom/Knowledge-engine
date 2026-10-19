@@ -4,6 +4,31 @@ Maintained by the `marketer` agent. Follows a Keep a Changelog style.
 
 ## [Unreleased]
 
+### 2026-10-19
+
+**Added:**
+- The `engine` package with typed configuration. Settings come from `KE_`
+  environment variables over `config/defaults.yaml`. Secrets are read from the
+  environment only.
+- An egress allowlist guard on model calls. It fails closed before any socket
+  opens.
+- Startup refuses unsafe settings and names the setting, never its value.
+- Startup and model calls are traced.
+- Coverage of at least 80% and strict type-checking are gates in
+  `scripts/verify.sh`.
+
+**Changed:**
+- Phoenix is published on port 47101, on loopback only (`127.0.0.1`). The port
+  is set in `.env`.
+- Python is pinned to 3.12.
+
+**Security:**
+- Traces are exported only to a verified local collector, and never via proxy
+  settings.
+- Placeholder secrets are refused outside dev.
+- Credentials in model URLs are refused.
+- `.env` is gitignored.
+
 ### 2026-10-18
 
 **Added:**
