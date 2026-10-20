@@ -16,9 +16,9 @@ stores:
   valkey: {host: valkey, port: 6379}
 models:                    # one block per pass (DR29); no inheritance between passes
   model_upstream: null     # host:port of the model host; set per deployment in .env
-  compose: {base_url: null, model: "qwen2.5:14b-instruct", fallback_model: "llama3.1:8b", timeout_s: 120}
-  rewrite: {base_url: null, model: "qwen2.5:14b-instruct", fallback_model: "llama3.1:8b", timeout_s: 120}
-  audit: {base_url: null, model: "qwen2.5:14b-instruct", fallback_model: "llama3.1:8b", timeout_s: 120}
+  compose: {base_url: null, model: "qwen3.5:latest", fallback_model: "gpt-oss:20b", timeout_s: 120}
+  rewrite: {base_url: null, model: "qwen3.5:latest", fallback_model: "gpt-oss:20b", timeout_s: 120}
+  audit: {base_url: null, model: "gpt-oss:120b", fallback_model: "gpt-oss:20b", timeout_s: 120}
   embed: {base_url: null, model: "nomic-embed-text", dim: 768, timeout_s: 60}
 telemetry:
   tracing: "off"           # otlp | console | off; the stack's .env turns otlp on

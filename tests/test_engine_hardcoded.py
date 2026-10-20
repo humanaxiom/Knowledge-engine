@@ -77,8 +77,9 @@ class ScannerContractTest(unittest.TestCase):
         self.assertEqual(_scan(files, ["5432"]), [])
 
     def test_planted_model_name_is_flagged(self):
-        files = {"scripts/pull.sh": "ollama pull qwen2.5:14b-instruct\n"}
-        self.assertIn("qwen2.5:14b-instruct", _values(_scan(files, ["qwen2.5:14b-instruct"])))
+        # model-roles MR-3: a current role name (ADR-KE-014).
+        files = {"scripts/pull.sh": "ollama pull gpt-oss:120b\n"}
+        self.assertIn("gpt-oss:120b", _values(_scan(files, ["gpt-oss:120b"])))
 
     def test_planted_host_name_is_flagged(self):
         files = {"docker-compose.yml": f"    extra_hosts: ['{MODEL_HOST_NAME}:10.0.0.9']\n"}
@@ -246,7 +247,8 @@ class RepositoryScanTest(unittest.TestCase):
 
     def test_no_hardcoded_hosts_or_models(self):
         _, names = _declared()
-        for model in ("qwen2.5:14b-instruct", "llama3.1:8b", "nomic-embed-text"):
+        # model-roles MR-3 (ADR-KE-014): the role and fallback names now declared.
+        for model in ("qwen3.5:latest", "gpt-oss:120b", "gpt-oss:20b", "nomic-embed-text"):
             self.assertIn(model, names, f"{model} is not declared in config")
         self.assertIn(MODEL_HOST_NAME, names)
         findings = _scan(_collect_repo_files(), sorted(names), EXEMPTIONS)

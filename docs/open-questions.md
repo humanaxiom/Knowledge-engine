@@ -50,8 +50,13 @@ answer it. Answer by number; anything left unanswered stands as assumed.
   2026-10-18). GitHub runners cannot reach it, so model-calling integration
   and live golden tests skip there with a named reason and run where it is
   reachable through the stack gateway (Q30, narrowed by F-A). Model defaults
-  are `qwen2.5:14b-instruct` (fallback `llama3.1:8b`) and `nomic-embed-text`
-  (768-dim). Its port, URL scheme and URL are set per deployment in `.env`,
+  are set by the Q38 ruling of 2026-10-20: compose and rewrite use
+  `qwen3.5:latest`, audit uses `gpt-oss:120b`, and embed uses
+  `nomic-embed-text` (768-dim); the fallback is `gpt-oss:20b` (A54). These
+  config names are tags, not pins: the `/api/tags` digests recorded by the
+  MR-5 run are the record of what was tested (see ADR-KE-014). *Superseded, kept
+  for the record:* "Model defaults are `qwen2.5:14b-instruct` (fallback
+  `llama3.1:8b`) and `nomic-embed-text` (768-dim)." Its port, URL scheme and URL are set per deployment in `.env`,
   with no default in `config/defaults.yaml` (Q32, resolved). Original question, kept for the
   record: *What is the model host's address, and is it reachable from where
   the gates run?* The earlier assumption said "CI never calls it".
@@ -181,7 +186,13 @@ Open, raised 2026-10-19 (orchestrator note in `docs/handoffs/platform-skeleton.m
 "human rulings: model endpoint; orchestrator note Q38"; recorded by the analyst
 in `platform-stack-ready` rework round 1):
 
-- **Q38. Default models missing on the model host (human).** The prompt's
+- **Q38. Resolved 2026-10-20 (human ruling, `docs/handoffs/model-roles.md`).**
+  **A38:** compose and rewrite use `qwen3.5:latest`, audit uses
+  `gpt-oss:120b`, and embed uses `nomic-embed-text`. All three are installed
+  on `aria-gb10-2` (`GET /api/tags`), so nothing needs pulling. This is a
+  config change only, delivered by item model-roles (MR-1 to MR-7). The
+  ruling does not name a fallback model; Q54 (A54) sets it to `gpt-oss:20b`. Original question, kept for
+  the record: *Default models missing on the model host (human).* The prompt's
   default models `qwen2.5:14b-instruct` and `llama3.1:8b` are not installed
   on `aria-gb10-2`; `nomic-embed-text` is. Either pull the two models on
   `aria-gb10-2`, or name installed models as the defaults (a config change
@@ -191,6 +202,34 @@ in `platform-stack-ready` rework round 1):
   OpenAI-compatible `/v1`), with allowlist host `aria-gb10-2`; checked with
   `GET /v1/models` answering 200 from the dev host. This is the endpoint the
   PS-2.21 recorded run uses. No assumption is taken for the model names.
+
+Resolved 2026-10-20 by the orchestrator for `model-roles`
+(`docs/handoffs/model-roles.md`, rulings Q54, Q55; raised by the analyst,
+`docs/requirements.md` § Item: model-roles):
+
+- **Q54. Resolved 2026-10-20 (orchestrator ruling; the human may change
+  it).** **A54:** `fallback_model` for compose, rewrite and audit is
+  `gpt-oss:20b`. It is installed on `aria-gb10-2`, faster than the
+  primaries and distinct from each of them. The key stays a required
+  string (no schema change); no product code reads it. This unblocks MR-2,
+  and `llama3.1:8b` leaves the living files (MR-4). Original question,
+  kept for the record: *Fallback model for the chat roles (orchestrator or
+  human; blocks MR-2).* The Q38 ruling names each role's `model` but not the
+  `fallback_model` that compose, rewrite and audit each carry. That key is a
+  required string in the settings, it is `llama3.1:8b` today, and that model
+  is not installed on `aria-gb10-2`. No product code reads it yet (grep,
+  2026-10-20). The options are: (a) each role's own model; (b) another model
+  that is installed on `aria-gb10-2`, named by the human; (c) make the key
+  optional and set it to null, which changes the settings schema. No
+  assumption is taken.
+- **Q55. Resolved 2026-10-20 (orchestrator ruling: A55 accepted).**
+  **A55:** the timeouts stay as they are (120 s for the chat roles, 60 s for
+  embed) unless the MR-5 recorded run measures a call that exceeds its
+  role's `timeout_s`. In that case the architect proposes a value derived
+  from that measurement and the orchestrator rules on it. Original
+  question, kept for the record: *Chat-role timeouts for the new models
+  (orchestrator; does not block RED).* `gpt-oss:120b` on audit may need more
+  than `timeout_s: 120`, counting the cold load and the reasoning time.
 
 Open, raised 2026-10-19 by the analyst (`platform-stack-ready` rework round 1):
 

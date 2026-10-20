@@ -669,7 +669,9 @@ Environment variables:
   code path lets `harness_telemetry` read them again (B1, rework 1).
 - **Lists:** comma-separated in the environment.
 
-`defaults.yaml` layout. The values shown are the A7 defaults:
+`defaults.yaml` layout. The values shown are the A7 defaults, with the model
+names as amended by the Q38 and Q54 rulings (model-roles, §2.4 *Model
+roles*, ADR-KE-014):
 
 ```yaml
 env: prod                    # dev | ci | prod; fail-closed default
@@ -684,9 +686,9 @@ stores:
   valkey:   {host: valkey, port: 6379}
 models:                      # one block per pass (DR29); no inheritance between passes
   model_upstream: null       # gateway's upstream host:port, checked against the allowlist
-  compose: {base_url: null, model: qwen2.5:14b-instruct, fallback_model: llama3.1:8b, timeout_s: 120}
-  rewrite: {base_url: null, model: qwen2.5:14b-instruct, fallback_model: llama3.1:8b, timeout_s: 120}
-  audit:   {base_url: null, model: qwen2.5:14b-instruct, fallback_model: llama3.1:8b, timeout_s: 120}
+  compose: {base_url: null, model: "qwen3.5:latest", fallback_model: "gpt-oss:20b", timeout_s: 120}
+  rewrite: {base_url: null, model: "qwen3.5:latest", fallback_model: "gpt-oss:20b", timeout_s: 120}
+  audit:   {base_url: null, model: "gpt-oss:120b",   fallback_model: "gpt-oss:20b", timeout_s: 120}
   embed:   {base_url: null, model: nomic-embed-text, dim: 768, timeout_s: 60}
 telemetry: {tracing: "off", collector_endpoint: "http://phoenix:6006", hide_inputs: true, hide_outputs: true}  # B7b: off by default; .env.example sets HARNESS_TRACING=otlp
 readiness: {timeout_s: 2}
@@ -1144,6 +1146,148 @@ dial `http://gateway:<KE_GATEWAY_MODEL_LISTEN>/v1`. That port is reachable on
   model keys are taken from `.env`).
 - `.env.example` is unchanged (both model keys empty). Its comment above
   `KE_EGRESS_ALLOWLIST` says to list the model host only.
+
+**Model roles (model-roles, ADR-KE-014; MR-1 to MR-6).** Config only; the
+wiring above, the egress guard, the gateway forward and `ModelClient` do not
+change.
+- **Roles and models** (Q38 ruling and Q54 ruling, 2026-10-20). All five
+  names are installed on `aria-gb10-2` (`GET /api/tags`); nothing is pulled.
+
+  | Role | `model` | `fallback_model` | `timeout_s` |
+  |---|---|---|---|
+  | compose | `qwen3.5:latest` | `gpt-oss:20b` | 120 |
+  | rewrite | `qwen3.5:latest` | `gpt-oss:20b` | 120 |
+  | audit | `gpt-oss:120b` | `gpt-oss:20b` | 120 |
+  | embed | `nomic-embed-text` (`dim: 768`) | none (no key) | 60 |
+
+  - Each block still sets every key itself (DR29, no inheritance).
+  - `fallback_model` stays a required `str`, so there is no schema change.
+    No code reads it (any fallback mechanism is out of scope).
+  - Values stay quoted in `defaults.yaml`, as today, because each contains
+    a `:` inside a YAML flow mapping.
+  - All five names are declared model values, so the hardcoded scan (MR-3)
+    flags each of them, `gpt-oss:20b` included, outside the PS-1.2
+    locations.
+- **No new client method.** `ModelClient` keeps `complete()` and `probe()`.
+  `test_embed_role_answers` builds `ModelClient(settings, "embed")` and
+  POSTs `{base_url}/embeddings` with `{"model": client.model, "input":
+  <short text>}` through `client.http_client`. That path has the guarded
+  transport, `trust_env=False` and the embed role's 60 s timeout. The test
+  asserts that the `base_url` host is `gateway`, HTTP 200, exactly one
+  `data` item, and `len(data[0].embedding) == settings.models.embed.dim`.
+  This call lives in test code, not product code, so it needs no span.
+  MR-5's "Traced" clause applies only to product paths. The product
+  `embed()` method, with its `llm_span` (or an EMBEDDING-kind span) and unit
+  test, arrives with knowledge-plane. The chat tests call `complete()`,
+  which already emits `model.<role>` (LLM). **No new spans** in this item.
+- **Chat assertions and `max_tokens`.** Both `qwen3.5` and `gpt-oss` reason
+  before they answer. Requests capped below what the reasoning needs end
+  with `finish_reason: "length"` and an empty `content`. The design:
+  - **Send no `max_tokens`.** `complete()` sends none today. Adding a
+    parameter would change the client interface, which this item does not
+    do. With no cap, an OpenAI-compatible server generates until the
+    model's stop token. It stops early only on a server-side limit: an
+    Ollama Modelfile `num_predict`, or the context length. The tester
+    records `ollama show <model> --parameters` for `qwen3.5:latest` and
+    `gpt-oss:120b` in the evidence (or the `/api/show` equivalent), so a
+    server-side cap is visible.
+  - **Prompt:** one user message asking for one word (for example, "Reply
+    with the single word: ready"). It keeps reasoning, and so latency,
+    short. The test does no prompt tuning, sends no reasoning-effort hint
+    and no system prompt.
+  - **Assert `content`, not "content OR reasoning".** Assert HTTP 200,
+    `result["model"] == client.model`, and
+    `choices[0].message.content.strip()` non-empty, as MR-5 states. A
+    reply that holds only reasoning is not an answer: product code calls
+    `complete()` the same way and needs `content`. A test that accepted
+    reasoning alone would pass a role that never answers.
+  - **Failure message:** on failure, report `choices[0].finish_reason` and
+    the key names of `choices[0].message`, never their values. The
+    reasoning field is `reasoning` on Ollama and `reasoning_content` on
+    vLLM; the test does not depend on either name. `"length"` with empty
+    content is a real finding for the orchestrator. It is not fixed by
+    loosening the assertion.
+- **Run order and cold loads.** `gpt-oss:120b` is about 65 GB. Ollama
+  unloads a model after its keep-alive (5 min by default) or when another
+  model needs the memory. Whether `qwen3.5:latest` and `gpt-oss:120b` fit
+  together depends on the host, so the design does not assume either
+  outcome.
+  - The four tests live in one module,
+    `tests/integration/test_model_roles.py`, in the order **embed,
+    compose, rewrite, audit**:
+    - embed is the smallest load;
+    - compose and rewrite share one `qwen3.5:latest` load;
+    - audit (the largest) runs last, so nothing after it needs a model it
+      may have evicted.
+  - unittest sorts methods by name, which would give audit first. The
+    module therefore defines `load_tests(loader, tests, pattern)` and
+    returns a suite in that explicit order. `discover` honours it.
+    `test_model_roles.py` sorts after `test_gate_least_privilege.py` and
+    before `test_stack_ready.py`. The readiness test and the shared probe
+    only `GET /models`, which loads no model.
+  - **Timing:** each test reads `time.monotonic()` around the one model
+    call and writes one line to stderr: `model-role <role> <model>
+    <seconds>s`. The tester copies these into the evidence as MR-5's
+    per-role times.
+  - **Warm-up:** none in the tests or in `verify.sh`. A hidden warm-up
+    would hide the cold-load time that MR-6 is about. Before the run, the
+    tester records `GET /api/ps` (the models already loaded) from the dev
+    host, and records it again after the run. A role time is then read as
+    cold or warm against that list. If audit fails with
+    `httpx.ReadTimeout`, that is the MR-6 measurement, not a flake. A
+    warm-up may be used only as a separate, timed, recorded step after
+    that failure is saved: Ollama `POST /api/generate` with `{"model":
+    "gpt-oss:120b", "keep_alive": "10m"}` and no prompt loads the model,
+    and its time is the cold-load measurement.
+- **Timeouts (Q55, A55 accepted).** They stay 120 s for chat and 60 s for
+  embed. `httpx` applies `timeout_s` to each of connect, write, read and
+  pool. For a non-streamed completion the read wait spans everything from
+  the request being sent to the first response byte: model load, then
+  reasoning, then the answer. So the 120 s bounds the cold load plus
+  generation. If the MR-5 run shows a role's call exceeding its
+  `timeout_s`:
+  1. Measure the call's full time once, recorded, with no client timeout
+     (the timed warm-up above, plus one timed completion).
+  2. Proposed `timeout_s` = ⌈1.5 × measured, rounded up to the next
+     30 s⌉. This is the same ×1.5 margin as the CI timeout (ADR-KE-011,
+     platform-offline).
+  3. The orchestrator rules on it. MR-1's test pins it.
+  4. If the result exceeds 570 s, it is too close to the gateway's 10 min
+     idle timeout. Escalate instead, because changing the gateway is out of
+     scope.
+  - **Measured (MR-5 run, 2026-10-20,
+    `docs/evidence/model-roles/model-run-aria-gb10-2.txt`):** the longest
+    call was the cold `qwen3.5:latest` compose at 32.6 s, about 27% of
+    120 s. Every role finished inside its `timeout_s`, so the Q55 procedure
+    above was not triggered and the timeouts stay as they are.
+- **Gateway forward timeouts do not bind.** The model forward is an nginx
+  `stream` (TCP) proxy, so HTTP read timeouts do not apply to it.
+  - `proxy_connect_timeout 5s` covers only the TCP connect from `gateway`
+    to `aria-gb10-2:11434`. Ollama accepts connections while a model
+    loads, so load time is never inside it.
+  - `proxy_timeout` (unset, so nginx's default of 10 min) is the longest
+    gap between two successive reads or writes on either side. A
+    non-streamed completion is silent for its whole load and generation
+    time, so this is the bound that applies. At 600 s it is five times
+    the 120 s client timeout, so `httpx` always gives up first.
+  - Neither changes in this item.
+- **Tags, not pins (audit §4, `docs/evidence/model-roles/audit.md`).**
+  - The config values are Ollama tags, not pins. `qwen3.5:latest` and
+    `nomic-embed-text` (implicitly `:latest`) are moving tags, and the
+    other tags (`gpt-oss:*`) can change too. Only a digest is immutable,
+    so any `ollama pull` on the model host can swap the weights behind an
+    unchanged config value, and for `:latest` the parameter size, memory
+    and cold-load time with them.
+  - MR-5 records the `/api/tags` digest of each model it tested; that
+    evidence is the record of what was verified. Re-run the recorded
+    model run (MR-5) after any pull on the model host.
+  - When knowledge-plane stores embeddings, it records the embed model's
+    digest with each vector set, so a silent swap (which needs a
+    re-embed) is detectable.
+  - A later item may have readiness compare the live digests with the
+    recorded ones. Not in this item.
+  - Keeping Ollama on the model host patched is the host owner's job,
+    outside this repo.
 
 **`/healthz` (PS-2.4).** Returns `200 {"status":"ok"}` from process state only,
 with no I/O. It is untraced, because it is liveness and is called every few
@@ -3220,6 +3364,33 @@ Suggested first test per sub-item, followed by the order of the rest.
     `test_scan_ignores_are_justified`, the scan's recorded red runs, the
     `scan-db`/`scan` compose checks (ADR-KE-013), and
     `test_gates_image_pins_psscriptanalyzer_by_hash` (L-8, N-7).
+- **model-roles** (ADR-KE-014; design in §2.4 *Model roles*), in TDD order:
+  - **Fast:**
+    1. `test_model_role_defaults` (MR-1, MR-2, MR-6), in
+       `tests/test_engine_config.py`. It may replace the model lines of
+       `test_config_defaults_and_env_override`. All four blocks: `model`
+       per the table, `fallback_model == "gpt-oss:20b"` for the three chat
+       roles, `embed.dim == 768`, `timeout_s` 120/120/120/60, `base_url`
+       None. With `KE_MODELS__AUDIT__MODEL` set to a marker, only
+       `audit.model` changes. It is RED against today's `defaults.yaml`.
+    2. `test_no_hardcoded_hosts_or_models` (MR-3): the required declared
+       set becomes `qwen3.5:latest`, `gpt-oss:120b`, `gpt-oss:20b`,
+       `nomic-embed-text`. It is RED until `defaults.yaml` changes.
+    3. `test_planted_model_name_is_flagged` (MR-3): plant `ollama pull
+       gpt-oss:120b` in `scripts/pull.sh`. This one stays green (the
+       scanner is name-agnostic); it is an update, not a RED step.
+  - **Integration** (model-calling, `full`, new module
+    `tests/integration/test_model_roles.py`, order fixed by `load_tests`):
+    `test_embed_role_answers`, `test_compose_role_answers`,
+    `test_rewrite_role_answers`, `test_audit_role_answers`. Each is
+    `@model_calling` and calls `require_model_host(self)` first. The RED
+    for these is the recorded run itself. Without the keys they skip by
+    name (PS-2.7), and `test_stack_model_skip` stays unchanged.
+  - **Gates:** MR-4 recorded grep
+    (`docs/evidence/model-roles/retired-names-grep.txt`); MR-5 recorded
+    full run (`model-run-aria-gb10-2.txt`, with `/api/tags` digests,
+    `/api/ps` before and after, `ollama show --parameters` and per-role
+    times).
 
 ## 3. The three planes (proposed)
 
@@ -3506,7 +3677,8 @@ the last published version). These gaps are what §4 and ADR-KE-007 address.
 
 The template's existing ADR (OpenInference tracing to Arize Phoenix) stays in
 force, and its text is kept below unchanged. ADR-KE-001 is built (amended by
-ADR-KE-009). ADR-KE-002 to ADR-KE-012 are **proposed**.
+ADR-KE-009). ADR-KE-002 to ADR-KE-012 are **proposed**. ADR-KE-014
+(model roles) is **accepted** by the 2026-10-20 rulings.
 
 ### ADR: OpenInference tracing to Arize Phoenix
 - Context: `docs/log.md` records what each role did, but not how agent code
@@ -4937,3 +5109,65 @@ asked for the hook design to be recorded in this ADR.
   - the tar is removed on every exit path.
   Static compose checks: `scan-db` has only the database volume, and
   `scan` has no network. Then `test_scan_ignores_are_justified`.
+
+### ADR-KE-014: Model roles on the installed models (model-roles)
+- **Status:** accepted (Q38 ruling, human, 2026-10-20; Q54 and Q55 rulings,
+  orchestrator, 2026-10-20). It amends the model values in A7 and in the
+  ADR-KE-010 layout (§2.3).
+- **Context:**
+  - The defaults named `qwen2.5:14b-instruct` and `llama3.1:8b`. The
+    second is not installed on the model host `aria-gb10-2`.
+  - The new chat models reason before answering, and `gpt-oss:120b` is
+    about 65 GB, so cold loads and reasoning press on the 120 s client
+    timeout.
+  - `ModelClient` has no embedding call.
+- **Decision:**
+  - **Models:** compose and rewrite use `qwen3.5:latest`, audit uses
+    `gpt-oss:120b`, and embed uses `nomic-embed-text` (768). The fallback
+    for the three chat roles is `gpt-oss:20b`.
+  - **Config only:** no schema change, no client change and no gateway
+    change.
+  - **Embedding proof:** the embedding test posts `/embeddings` through
+    `ModelClient.http_client`, so it uses the guarded transport and the
+    gateway forward.
+  - **Chat tests:** they call `complete()` unchanged, with no
+    `max_tokens`, and assert non-empty `content`.
+  - **Test order:** embed, compose, rewrite, audit, fixed by `load_tests`.
+  - **Timeouts:** they change only from a recorded measurement, by the
+    rule in §2.4 *Model roles*.
+- **Alternatives considered:**
+  - **`ModelClient.embed()` now:** rejected. It is a product feature with
+    its own span and test, and knowledge-plane needs it, not this item.
+  - **`max_tokens` on `complete()` or a raw POST in the test:** rejected.
+    The first is an interface change. The second bypasses the `model.<role>`
+    span and the path product code uses.
+  - **Asserting content or reasoning:** rejected. It passes a role that
+    never answers.
+  - **Fallback as each role's own model, or a nullable key:** the human
+    and orchestrator chose (b) in Q54. A nullable key would be a schema
+    change.
+  - **Raising timeouts pre-emptively:** rejected by Q55. Only a measured
+    number may change them.
+  - **Warm-up inside `verify.sh`:** rejected. It hides the cold load that
+    a production call would meet.
+- **Consequences:**
+  - **Tags, not pins.** The config names are Ollama tags.
+    `qwen3.5:latest` and `nomic-embed-text` (implicitly `:latest`) move,
+    and other tags can change too. MR-5 records the digests of what was
+    tested, so the recorded model run is re-run after any pull on the
+    model host. When knowledge-plane stores embeddings, it records the
+    embed model's digest with each vector set. A later item may have
+    readiness compare live digests with the recorded ones. Keeping Ollama
+    on the model host patched is the host owner's job, outside this repo.
+    Detail in §2.4 *Model roles*.
+  - The first call to audit after an eviction pays the full cold load, and
+    MR-5 measures it. Measured on 2026-10-20: the cold `qwen3.5:latest`
+    compose took 32.6 s, the longest call, at about 27% of 120 s, so Q55
+    was not triggered.
+  - The readiness probe still checks only compose `/models`, not
+    per-model presence. MR-5 is the per-role proof.
+  - Nothing exercises `fallback_model` until a fallback mechanism is
+    specified.
+- **First tests:** `test_model_role_defaults` (RED on today's
+  `defaults.yaml`), then `test_no_hardcoded_hosts_or_models` with the new
+  declared set. The integration list is in §2.6 *model-roles*.

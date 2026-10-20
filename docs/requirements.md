@@ -298,8 +298,12 @@ N18, N19; security L2, L5, L7, L16, L17, L18.
   appears outside `config/defaults.yaml`, `.env.example`, `config/verify.env`
   (the verify-run overrides; accepted exemption, F4) and compose variable
   defaults. `[unit: test_no_hardcoded_ports]`, `[unit: test_no_hardcoded_hosts_or_models]`
-  (fast). The model defaults are the prompt's (`qwen2.5:14b-instruct`, fallback
-  `llama3.1:8b`, `nomic-embed-text` 768-dim, A7) and live only in config.
+  (fast). The model defaults live only in config. *Amended 2026-10-20 (Q38
+  resolved; item model-roles MR-1):* compose and rewrite use `qwen3.5:latest`,
+  audit uses `gpt-oss:120b`, and embed uses `nomic-embed-text` (768-dim); the
+  fallback is `gpt-oss:20b` (Q54, A54). *Superseded, kept for the record:* "the prompt's
+  (`qwen2.5:14b-instruct`, fallback `llama3.1:8b`, `nomic-embed-text` 768-dim,
+  A7)".
   The model host is `aria-gb10-2`, an OpenAI-compatible endpoint (human
   ruling Q7). It is reached only through `KE_MODEL_UPSTREAM` and the per-pass
   `KE_MODELS__<PASS>__BASE_URL` settings, and the name `aria-gb10-2` is a
@@ -1990,11 +1994,12 @@ Open (raised 2026-10-19 for `platform-stack-ready`; does not block the RED
 step, has a stated assumption): **Q37** whether the PS-2.8 store stop/start
 runs against a pre-existing project.
 
-Open (raised 2026-10-19, rework round 1 of `platform-stack-ready`): **Q38**
-the default models are missing on `aria-gb10-2` (human; does not block the
-platform items; the model endpoint itself is ruled: `aria-gb10-2:11434`);
+Open (raised 2026-10-19, rework round 1 of `platform-stack-ready`):
 **Q39** where the auth-audit carry-in 7 (Valkey network + auth) is
-scheduled, given ingest-ledger precedes auth-audit in this document.
+scheduled, given ingest-ledger precedes auth-audit in this document. Q38,
+raised in the same round (the default models were missing on
+`aria-gb10-2`), was resolved by the human's ruling of 2026-10-20; see item
+model-roles.
 
 Rework round 1 (orchestrator, 2026-10-19,
 `docs/handoffs/platform-stack-ready.md` "rework round 1 of 5"): F1 and L-13
@@ -2093,6 +2098,183 @@ Ruled (each cited by the criteria it settles):
   `full` (PS-3.2). F6 CI timeout = measured + 50% (PS-3.4). Bundle: no wheels,
   linux/amd64 only (PS-3.1). Re-tags and new criteria accepted (PS-2.1,
   PS-2.5, PS-2.8, PS-2.10–PS-2.12).
+
+---
+
+## Item: model-roles
+
+Outcome metric moved: neither directly. It points every model role at a
+model that is installed on the model host, which any draft a reviewer can act
+on depends on. It comes next because Q38 had to be settled "before the first
+item that composes a draft".
+
+Source: human ruling, 2026-10-20 (`docs/handoffs/model-roles.md`,
+"orchestrator: item opened"; `docs/handoffs/archive/platform-offline.md`).
+It resolves Q38 and amends the model-default sentence of PS-1.2 and A7. Scope
+is config, the tests and docs that name models, and one recorded run. Nothing
+else changes: the per-pass settings shape (DR29, one block per pass with no
+inheritance), the egress guard (PS-1.3, PS-1.4), the gateway's model forward,
+the skip rule (PS-2.7, PS-2.21) and the endpoint ruling (`aria-gb10-2:11434`,
+allowlist host `aria-gb10-2`) all stay as they are. Criteria are `MR-<n>`.
+
+| Role (pass) | `model` | Other keys in the block |
+|---|---|---|
+| compose | `qwen3.5:latest` | `fallback_model: gpt-oss:20b` (Q54 ruling); `timeout_s: 120` unchanged (Q55) |
+| rewrite | `qwen3.5:latest` | `fallback_model: gpt-oss:20b` (Q54 ruling); `timeout_s: 120` unchanged (Q55) |
+| audit | `gpt-oss:120b` | `fallback_model: gpt-oss:20b` (Q54 ruling); `timeout_s: 120` unchanged (Q55) |
+| embed | `nomic-embed-text` | `dim: 768`, `timeout_s: 60` unchanged |
+
+- **MR-1 Role defaults in config.** Given `config/defaults.yaml` and no
+  `KE_MODELS__*` override, when the settings load, then `models.compose.model`
+  and `models.rewrite.model` are `qwen3.5:latest`, `models.audit.model` is
+  `gpt-oss:120b`, `models.embed.model` is `nomic-embed-text` and
+  `models.embed.dim` is 768. Each block's `base_url` is still null. The test
+  checks all four roles, not only compose and embed as it does today. Given
+  `KE_MODELS__AUDIT__MODEL` set to a marker value, then `audit.model` is the
+  marker and compose, rewrite and embed keep their defaults (no inheritance
+  between roles, DR29). `[unit: test_model_role_defaults]` (fast; the tester
+  can do this by extending `test_config_defaults_and_env_override` instead)
+- **MR-2 Fallback model (Q54 ruled 2026-10-20 by the orchestrator; the
+  human may change it).** Given `config/defaults.yaml` and no
+  `KE_MODELS__*` override, when the settings load, then
+  `models.compose.fallback_model`, `models.rewrite.fallback_model` and
+  `models.audit.fallback_model` are each `gpt-oss:20b` (installed on
+  `aria-gb10-2`, distinct from every primary). The key stays a required
+  string, so there is no schema change, and the embed block still has no
+  `fallback_model`. `gpt-oss:20b` is a declared model value, so MR-3's
+  scan requires it in config and flags it outside the PS-1.2 locations.
+  No code reads the key (a fallback mechanism stays out of scope).
+  `[unit: test_model_role_defaults]` (fast)
+- **MR-3 The scanner knows the new names.** `test_no_hardcoded_hosts_or_models`
+  requires `qwen3.5:latest`, `gpt-oss:120b` and `nomic-embed-text` to be
+  declared in config. It flags each of them in product source, compose files
+  and scripts outside the PS-1.2 locations, and it no longer requires the
+  retired names. `test_planted_model_name_is_flagged` plants a current role
+  name (for example `gpt-oss:120b` in a script) and sees it flagged.
+  `[unit: test_no_hardcoded_hosts_or_models]`,
+  `[unit: test_planted_model_name_is_flagged]` (fast)
+- **MR-4 Retired names gone from living files.** Given the repository,
+  excluding history (`docs/handoffs/**` including the archive,
+  `docs/evidence/**`, `docs/log.md`, published `CHANGELOG.md` entries, and the
+  build prompt `docs/knowledge-engine-claude-code-prompt.md`), when it is
+  searched for `qwen2.5:14b-instruct` and `llama3.1:8b`, then the only hits are
+  in text that is explicitly marked as superseded or kept for the record, or
+  that records the retirement itself. That is exactly: the PS-1.2 superseded
+  note; the original wording of A7 and Q38 in `docs/open-questions.md`; the
+  text of Q54/A54 (in `docs/open-questions.md` and this item's open-questions
+  summary); MR-4's own text; and the ADR-KE-014 context in
+  `docs/architecture.md`. Any hit outside that list fails MR-4. The recorded
+  grep of 2026-10-20 gives 12 matching lines, all inside the list (an
+  occurrence count with `grep -o` gives 16, because some lines name both
+  retired names). The files to update
+  are `config/defaults.yaml`, `tests/test_engine_config.py`,
+  `tests/test_engine_hardcoded.py` (including the planted-name fixture),
+  `docs/architecture.md` §2.4 (the `defaults.yaml` layout block),
+  `docs/requirements.md` PS-1.2, and `docs/open-questions.md` A7 and Q38. The
+  last two are done in this item's analyst step. `llama3.1:8b` does not stay:
+  Q54 ruled the fallback `gpt-oss:20b` (A54), so `llama3.1:8b` is a retired
+  name like `qwen2.5:14b-instruct`. `README.md` and the quickstart name no model
+  today (grep, 2026-10-20), so neither changes.
+  `[gate: recorded grep]` (`docs/evidence/model-roles/retired-names-grep.txt`
+  holds the command and its output)
+- **MR-5 Recorded run: each role answers through the gateway.** Given
+  `KE_MODEL_UPSTREAM=aria-gb10-2:11434` and `KE_EGRESS_ALLOWLIST=aria-gb10-2`
+  (the Q38 endpoint ruling), and `aria-gb10-2` reachable, when
+  `scripts/verify.sh full` runs, then:
+  - *Readiness.* `test_readyz_reports_reachable_model_host` runs and passes.
+  - *Chat roles.* For each of compose, rewrite and audit, one model-calling
+    integration test sends a short chat completion through
+    `ModelClient(settings, <role>)`. That means the role's configured `model`
+    and `base_url` are used and the egress guard is in the path. The test gets
+    HTTP 200, the response's `model` names the role's configured model, and
+    `choices[0].message.content` is non-empty.
+  - *Embed role.* One model-calling integration test asks for an embedding
+    with the embed role's configured model, through the embed role's
+    `base_url` on the same guarded client path. It gets HTTP 200 and one
+    vector whose length equals `models.embed.dim` (768).
+  - *Through the gateway forward.* Each of these tests asserts that the
+    role's `base_url` host is the stack's `gateway` service (set by compose
+    as `KE_MODELS__<PASS>__BASE_URL`). No test addresses `aria-gb10-2`
+    directly.
+  - *Ran, not skipped.* In this run none of the model-calling tests skips.
+    The evidence lists each one by name as `ok`. If the host is unreachable
+    when the item closes, the tester reports that to the orchestrator; a
+    skip never stands in for the run (as in PS-2.21).
+  - *Unset still skips.* Each new test is marked `@model_calling` and calls
+    `require_model_host` first. Without the two keys (CI, `verify.sh fast`),
+    it skips with PS-2.7's "not configured" reason and the run passes.
+    `test_stack_model_skip` stays green unweakened.
+  - *Traced.* The chat calls are already LLM spans (`model.<role>`). If the
+    embedding request goes through product code, that path emits the same
+    kind of span with the model name, and a fast unit test using the
+    in-memory exporter asserts it (AGENTS.md: untraced model calls are a
+    review finding). The architect decides where the embedding call lives;
+    see the notes below.
+  - *Evidence.* `docs/evidence/model-roles/model-run-aria-gb10-2.txt` has the
+    same header as the PS-2.21 run: date, HEAD, the two keys, the exact
+    command, and the preflight `GET /v1/models` → 200 from the dev host. It
+    adds the `GET /api/tags` name and digest of each of the three models
+    (`:latest` is a moving tag, so the digest records what answered) and each
+    role's measured call time. The whole run passes, teardown included.
+  `[integration: test_compose_role_answers]`,
+  `[integration: test_rewrite_role_answers]`,
+  `[integration: test_audit_role_answers]`,
+  `[integration: test_embed_role_answers]` (model-calling, full),
+  `[gate: recorded local full run]` (manual)
+- **MR-6 Role timeouts (Q55).** This item leaves `timeout_s` unchanged
+  (compose, rewrite and audit 120, embed 60, `readiness.timeout_s` 2)
+  unless the MR-5 run shows a role's call does not finish within its
+  `timeout_s`. In that case the new value comes from the measured time in
+  that run, using a rule the architect states and the orchestrator rules on,
+  never a guessed number. Any change is pinned by MR-1's test.
+  `[unit: test_model_role_defaults]` (fast)
+- **MR-7 Q38 closed.** `docs/open-questions.md` shows Q38 as resolved by the
+  2026-10-20 ruling, and A7's model-default sentence is marked superseded.
+  This document's open-question lists no longer show Q38 as open. Done in the
+  analyst step.
+
+*Notes for the architect (not criteria):*
+- **The embedding call.** `ModelClient` has `complete()` and `probe()` but
+  no embedding call (`engine/llm/client.py`). Either add one (a small piece
+  of product code, which then needs the MR-5 span and its unit test) or let
+  the integration test post to `{base_url}/embeddings` through
+  `client.http_client`. The item says "no new features", so state which
+  approach you choose and why.
+- **Latency on audit.** `gpt-oss:120b` is roughly a 65 GB model. A cold load
+  on `aria-gb10-2`, plus memory pressure if Ollama has to evict `qwen3.5` or
+  `nomic-embed-text` to load it, can take a large share of the 120 s
+  `timeout_s`. That is the httpx client timeout for each operation, and on a
+  non-streamed completion the read wait covers load plus generation. Test
+  order also matters: role switches can force reloads.
+- **Reasoning models.** `qwen3.5` and `gpt-oss` both reason before they
+  answer. A low `max_tokens` cap can end on reasoning and leave `content`
+  empty, and reasoning adds latency. The MR-5 prompts should be short and
+  not cap tokens below what an answer needs.
+- **Gateway forward timeouts.** The model forward is an nginx `stream`
+  proxy (`docker/gateway/templates/model.conf.stream-template`) with
+  `proxy_connect_timeout 5s` and nginx's default `proxy_timeout` (10 min
+  idle). Neither should bind at 120 s, but say so.
+- **The readiness probe** checks only `GET {compose.base_url}/models`. It
+  does not check that each role's model is installed. That is not in scope
+  here; MR-5 is the per-role proof.
+
+Out of scope: pulling models; any fallback mechanism (no product code reads
+`fallback_model` today, grep 2026-10-20); prompt tuning; streaming; gateway
+changes beyond what MR-6 might need.
+
+Gates: MR-1 to MR-4, MR-6 and MR-7 under `scripts/verify.sh fast`. MR-5 needs
+`scripts/verify.sh full` with the two keys set on a host that can reach
+`aria-gb10-2`. `scripts/verify.sh full` runs before the commit regardless.
+
+### Open questions for this item
+
+None open. Both questions raised for this item were ruled by the
+orchestrator on 2026-10-20 (see `docs/open-questions.md`):
+- **Q54 resolved (A54).** `fallback_model` for compose, rewrite and audit is
+  `gpt-oss:20b`; the human may change it. MR-2 is unblocked, and MR-4
+  removes `llama3.1:8b` from living files.
+- **Q55 resolved (A55 accepted).** Timeouts stay as they are unless the MR-5
+  run measures a slower call (MR-6).
 
 ---
 
