@@ -4,8 +4,10 @@
 
 Run by `scripts/bundle.sh` inside the `ke-app` image being bundled, so it lists
 what the image really holds. Standard library only, and it reads nothing but
-the installed distributions' metadata: no arguments, no network, no files
-outside the interpreter's own `sys.path`.
+the installed distributions' metadata: no arguments, no network, and it never
+reads a licence file's contents. A file counts as a licence file only if its
+resolved real path (after symlinks and `..`) is inside the distribution's own
+site-packages directory.
 
 stdout is a Markdown table, one row per installed distribution except the
 project's own (`knowledge-engine`):
@@ -99,15 +101,19 @@ def licence_files(dist: metadata.Distribution) -> list[str]:
     if info is None:
         return []
     found: set[str] = set()
+    site = Path(str(dist.locate_file(""))).resolve()
     candidates = _header_candidates(dist, info)
     for f in files:
         path = PurePosixPath(f.as_posix())
+        if path.is_absolute() or ".." in path.parts:
+            continue  # a RECORD entry is never a path out of its directory
         under_licenses = path.is_relative_to(info / "licenses")
         named = path.parent == info and bool(_NAMED_LICENCE_FILE.match(path.name))
         if under_licenses or named:
             candidates.append(path)
     for path in candidates:
-        if Path(str(dist.locate_file(path.as_posix()))).is_file():
+        real = Path(str(dist.locate_file(path.as_posix()))).resolve()
+        if real.is_file() and real.is_relative_to(site):
             found.add(path.as_posix())
     return sorted(found)
 

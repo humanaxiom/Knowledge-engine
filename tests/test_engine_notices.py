@@ -84,6 +84,65 @@ class NoticesTest(unittest.TestCase):
         self.assertEqual(notices.licence_files(escaping), [])
         self.assertEqual(notices.licence_files(no_metadata_in_record), [])
 
+    def test_licence_file_outside_site_packages_is_not_found(self):
+        # audit-nt L-NT2 / L-NT4 (M6): a RECORD entry or a License-File value
+        # counts only if it names a path inside the distribution's
+        # site-packages, with no `..` segment and not through a symlink that
+        # leaves site-packages. The `licenses/` directory exists in every case,
+        # so a `..` path really resolves to the planted file.
+        root = self.site
+        site = root / "lib" / "site-packages"
+        site.mkdir(parents=True)
+        (site / "outside").mkdir()
+        (site / "outside" / "NOT_A_LICENCE").write_text("x", encoding="utf-8")
+        (site / "planted").write_text("x", encoding="utf-8")
+        (root / "far").mkdir()
+        (root / "far" / "LICENCE").write_text("x", encoding="utf-8")
+
+        def with_licenses_dir(name: str, headers: list[str], record_extra: list[str]) -> metadata.Distribution:
+            info = f"{name}-1.0.dist-info"
+            dist = _dist(site, name, headers, record=[f"{info}/METADATA", *record_extra])
+            (site / info / "licenses").mkdir(exist_ok=True)
+            return dist
+
+        cases = {
+            "RECORD: `..` back into site-packages": with_licenses_dir(
+                "rec_dotdot", [], ["rec_dotdot-1.0.dist-info/licenses/../../outside/NOT_A_LICENCE"]),
+            "RECORD: `..` out of site-packages": with_licenses_dir(
+                "rec_far", [], ["rec_far-1.0.dist-info/licenses/../../../../far/LICENCE"]),
+            "License-File: `../planted` (dist-info parent)": with_licenses_dir(
+                "hdr_up", ["License-File: ../planted"], []),
+            "License-File: `../../planted` (licenses/ parent's parent)": with_licenses_dir(
+                "hdr_up2", ["License-File: ../../planted"], []),
+            "License-File: `licenses/../../planted` form": with_licenses_dir(
+                "hdr_mixed", ["License-File: licenses/../../planted"], []),
+        }
+        for case, dist in cases.items():
+            with self.subTest(case=case):
+                self.assertEqual(notices.licence_files(dist), [],
+                                 "a path with a `..` segment is never a licence file of the distribution "
+                                 "(audit-nt L-NT2)")
+        for how in ("RECORD", "License-File"):
+            with self.subTest(case=f"{how}: licenses/LICENSE is a symlink out of site-packages"):
+                name = f"link_{how.replace('-', '_').lower()}"
+                info = f"{name}-1.0.dist-info"
+                headers = ["License-File: LICENSE"] if how == "License-File" else []
+                extra = [f"{info}/licenses/LICENSE"] if how == "RECORD" else []
+                dist = with_licenses_dir(name, headers, extra)
+                link = site / info / "licenses" / "LICENSE"
+                try:
+                    link.symlink_to(root / "far" / "LICENCE")
+                except OSError as exc:  # pragma: no cover - the gates image is Linux
+                    self.fail(f"cannot create a symlink here ({exc}); this test needs the gates image")
+                self.assertTrue(link.is_file(), "precondition: the symlink resolves to an existing file")
+                self.assertEqual(notices.licence_files(dist), [],
+                                 "a licence file that resolves outside site-packages does not count "
+                                 "(audit-nt L-NT2)")
+        with self.subTest(case="control: a plain file under licenses/ still counts"):
+            dist = with_licenses_dir("plain", ["License-File: LICENSE"], ["plain-1.0.dist-info/licenses/LICENSE"])
+            (site / "plain-1.0.dist-info" / "licenses" / "LICENSE").write_text("x", encoding="utf-8")
+            self.assertEqual(notices.licence_files(dist), ["plain-1.0.dist-info/licenses/LICENSE"])
+
     def test_rows_skip_the_project_and_duplicates_and_name_missing(self):
         mine = _dist(self.site, "Knowledge_Engine", [], {})
         a = _dist(self.site, "A-Pkg", ["License-Expression: MIT"], {"licenses/LICENSE": "x"})

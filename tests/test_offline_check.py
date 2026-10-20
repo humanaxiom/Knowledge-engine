@@ -42,6 +42,7 @@ import re
 import shutil
 import signal
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -738,6 +739,178 @@ class OfflineCheckScriptTest(_OfflineBase):
         self.assertIsNone(SKIP_RX.search(out), "never a skip")
         self.assertNotRegex(out, r"(?i)\bpass(?:ed)?\b", "never a pass")
         self.assertNotIn("run client", self._events(records))
+
+    # ---- host half: the throwaway bundle is opened to the client's uid -------
+    # Orchestrator ruling after CI run 39364201188 (docs/handoffs/platform-offline.md,
+    # 2026-10-20; log docs/evidence/platform-offline/ci-39364201188.log, "Permission
+    # denied" on /bundle/images/*.tar): bundle.sh writes its output private (0600
+    # files, 0700 dirs, owned by the host user) and stays so; offline-client runs
+    # as uid 10001. The host half therefore runs `chmod -R a+rX` on exactly its own
+    # $bundle_rel directory, after bundle.sh and before the client starts. Nothing
+    # else changes mode: not dist/, not a sibling bundle, not <out>.manifest.sha256.
+    # Docker Desktop bind mounts hide file modes, so only Linux CI saw the bug.
+
+    _SNAP = r'''import json, os, stat, sys
+root = os.environ["KE_TEST_SNAP_ROOT"]
+tree = {}
+for here, dirs, files in os.walk(root):
+    for name in dirs + files:
+        path = os.path.join(here, name)
+        st = os.lstat(path)
+        tree[os.path.relpath(path, root).replace(os.sep, "/")] = [stat.S_IMODE(st.st_mode), stat.S_ISDIR(st.st_mode)]
+with open(os.environ["KE_TEST_SNAP_LOG"], "a", encoding="utf-8") as fh:
+    fh.write(json.dumps({"label": sys.argv[1], "tree": tree}) + "\n")
+'''
+
+    # bundle.sh stand-in that writes what the real one does on Linux: private
+    # files and dirs, and the manifest hash beside (not inside) the bundle.
+    _PRIVATE_BUNDLE_PRE = r'''out=""; prev=""
+for a in "$@"; do [ "$prev" = "--out" ] && out="$a"; prev="$a"; done
+if [ -n "$out" ]; then
+  umask 077
+  mkdir -p "$out/images" "$out/app/scripts"
+  echo '{}' > "$out/bundle.json"
+  for f in images/ke-app.tar images/valkey.tar app/compose.yml MANIFEST.sha256; do
+    printf 'x\n' > "$out/$f"; chmod 600 "$out/$f"
+  done
+  for f in install.sh app/scripts/launch.sh; do
+    printf '#!/bin/sh\n' > "$out/$f"; chmod 700 "$out/$f"
+  done
+  chmod 600 "$out/bundle.json"
+  chmod 700 "$out" "$out/images" "$out/app" "$out/app/scripts"
+  printf 'h\n' > "$out.manifest.sha256"; chmod 600 "$out.manifest.sha256"
+fi'''
+
+    _DECOY = "dist/ke-offline-decoy-amd64"
+
+    def _host_private_bundle(self) -> tuple[subprocess.CompletedProcess, list[dict], dict, list[dict]]:
+        """Run the host half under umask 077 with a private-writing bundle.sh,
+        a decoy sibling bundle, and a snapshot of every mode under the repo at
+        the end of bundle.sh, at each docker call, and in the teardown trap."""
+        repo = self._host_setup()
+        snap = self.tmp / "snap.py"
+        _executable(snap, f"#!{os.path.realpath(sys.executable)}\n" + self._SNAP)
+        call_snap = '"$KE_TEST_SNAP" "@WHAT@"'
+        _executable(repo / "scripts" / "bundle.sh",
+                    _stub("bundle.sh", pre=self._PRIVATE_BUNDLE_PRE,
+                          post=call_snap.replace("@WHAT@", "bundle.sh done")))
+        _executable(repo / "scripts" / "teardown.sh",
+                    _stub("teardown.sh", pre=call_snap.replace("@WHAT@", "teardown")))
+        wrap = self.tmp / "wrapbin" / "docker"
+        _executable(wrap, '#!/usr/bin/env bash\n"$KE_TEST_SNAP" "docker $*"\n'
+                          f'exec "{self.tmp / "fakebin" / "docker"}" "$@"\n')
+        decoy = repo / self._DECOY
+        (decoy / "images").mkdir(parents=True)
+        (decoy / "images" / "ke-app.tar").write_text("decoy\n", encoding="utf-8")
+        (decoy / "bundle.json").write_text("{}\n", encoding="utf-8")
+        (repo / f"{self._DECOY}.manifest.sha256").write_text("d\n", encoding="utf-8")
+        for path, mode in ((decoy / "images" / "ke-app.tar", 0o600), (decoy / "bundle.json", 0o600),
+                           (repo / f"{self._DECOY}.manifest.sha256", 0o600), (decoy / "images", 0o700),
+                           (decoy, 0o700), (repo / "dist", 0o700)):
+            path.chmod(mode)
+        log = self.tmp / "snap.jsonl"
+        log.write_text("", encoding="utf-8")
+        self.json.write_text("", encoding="utf-8")
+        env = self._base_env(COMPOSE_PROJECT_NAME="ke-verify-1234", KE_SMOKE_OWNS_PROJECT="1",
+                             FAKE_DOCKER_ROOT_DIR=str(self.tmp / "no-such-docker-root"),
+                             KE_TEST_SNAP=str(snap), KE_TEST_SNAP_ROOT=str(repo),
+                             KE_TEST_SNAP_LOG=str(log))
+        env["PATH"] = f"{wrap.parent}{os.pathsep}{env['PATH']}"
+        baseline_log = self.tmp / "baseline.jsonl"
+        subprocess.run([str(snap), "baseline"], env={**env, "KE_TEST_SNAP_LOG": str(baseline_log)},
+                       check=True, timeout=60)
+        baseline = json.loads(baseline_log.read_text(encoding="utf-8"))["tree"]
+        result = subprocess.run(["bash", "-c", "umask 077 && exec bash scripts/offline_check.sh"],
+                                cwd=repo, env=env, capture_output=True, text=True, timeout=120)
+        snaps = [json.loads(l) for l in log.read_text(encoding="utf-8").splitlines() if l.strip()]
+        return result, fake_docker.records(self.json), baseline, snaps
+
+    def _bundle_rel(self, records: list[dict]) -> str:
+        argv = next(r["argv"] for r in records if self._event(r) == "bundle")
+        self.assertIn("--out", argv)
+        return os.path.normpath(argv[argv.index("--out") + 1]).replace(os.sep, "/")
+
+    @staticmethod
+    def _snap(snaps: list[dict], pattern: str) -> dict[str, list]:
+        found = [s["tree"] for s in snaps if re.search(pattern, s["label"])]
+        if not found:
+            raise AssertionError(f"no snapshot matching {pattern!r}: {[s['label'] for s in snaps]}")
+        return found[0]
+
+    @staticmethod
+    def _opened(mode: int, is_dir: bool) -> int:
+        """What `chmod a+rX` makes of mode: r for all; x for all on a dir or
+        on a file some class can already execute; no write bit added."""
+        return mode | 0o444 | (0o111 if is_dir or mode & 0o111 else 0)
+
+    def _inside(self, rel: str, bundle_rel: str) -> bool:
+        return rel == bundle_rel or rel.startswith(bundle_rel + "/")
+
+    def _assert_private(self, tree: dict[str, list], bundle_rel: str) -> None:
+        own = {k: v for k, v in tree.items() if self._inside(k, bundle_rel)}
+        self.assertIn(f"{bundle_rel}/images/ke-app.tar", own, f"the stub bundle is missing: {sorted(own)}")
+        for rel, (mode, _) in own.items():
+            self.assertEqual(mode & 0o077, 0, f"the stub bundle.sh did not write {rel} private "
+                             f"({oct(mode)}): the test would prove nothing")
+
+    def _assert_opened(self, tree: dict[str, list], private: dict[str, list], bundle_rel: str,
+                       when: str) -> None:
+        own = sorted(k for k in private if self._inside(k, bundle_rel))
+        self.assertTrue(own)
+        for rel in own:
+            mode, is_dir = private[rel]
+            with self.subTest(when=when, path=rel):
+                self.assertIn(rel, tree, f"{rel} vanished before {when}")
+                got = tree[rel][0]
+                self.assertEqual(oct(got), oct(self._opened(mode, is_dir)),
+                                 f"{when}: {rel} is {oct(got)}; the client (uid 10001) needs "
+                                 f"`chmod -R a+rX {bundle_rel}` (r for all, x on dirs, no write added): "
+                                 "CI run 39364201188 failed with Permission denied on /bundle/images/*.tar")
+
+    def test_offline_check_opens_its_own_bundle_to_the_client_only(self):
+        result, records, baseline, snaps = self._host_private_bundle()
+        out = self._out(result)
+        self.assertEqual(result.returncode, 0, out)
+        bundle_rel = self._bundle_rel(records)
+        self.assertRegex(bundle_rel, r"^dist/ke-offline-[a-z0-9]+-amd64$")
+        self.assertNotEqual(bundle_rel, self._DECOY)
+        private = self._snap(snaps, r"^bundle\.sh done$")
+        self._assert_private(private, bundle_rel)
+        final = self._snap(snaps, r"^teardown$")
+        self._assert_opened(final, private, bundle_rel, "at teardown")
+        # Nothing outside $bundle_rel changes mode: every path that existed
+        # before the run (dist/, the decoy bundle and its hash, the scripts),
+        # and the hash file bundle.sh wrote beside the bundle.
+        outside = {k: v for k, v in baseline.items() if not self._inside(k, bundle_rel)}
+        outside[f"{bundle_rel}.manifest.sha256"] = private[f"{bundle_rel}.manifest.sha256"]
+        self.assertIn(f"{self._DECOY}/images/ke-app.tar", outside)
+        for rel, (mode, _) in sorted(outside.items()):
+            with self.subTest(outside=rel):
+                self.assertIn(rel, final, f"{rel} vanished")
+                self.assertEqual(oct(final[rel][0]), oct(mode),
+                                 f"{rel} changed mode outside the check's own bundle dir {bundle_rel}: "
+                                 "the chmod must name exactly $bundle_rel")
+
+    def test_offline_check_opens_bundle_before_the_client_starts(self):
+        result, records, _, snaps = self._host_private_bundle()
+        out = self._out(result)
+        self.assertEqual(result.returncode, 0, out)
+        self.assertEqual(self._events(records),
+                         ["bundle", "up dind", "net_isolated", "run client", "teardown"], out)
+        bundle_rel = self._bundle_rel(records)
+        private = self._snap(snaps, r"^bundle\.sh done$")
+        self._assert_private(private, bundle_rel)
+        # The wrapper snapshots before the fake docker runs, so this is the
+        # tree the client would see: it must already be open, not opened by
+        # the cleanup trap after the client has failed.
+        for start in (r"^docker compose\b.*\brun\b.*\boffline-client\b",
+                      r"^docker compose\b.*\bup\b.*\boffline-client\b"):
+            if any(re.search(start, s["label"]) for s in snaps):
+                self._assert_opened(self._snap(snaps, start), private, bundle_rel,
+                                    "when the client starts")
+                break
+        else:
+            self.fail(f"no `compose run|up offline-client` call: {[s['label'] for s in snaps]}")
 
     # ---- client half ---------------------------------------------------------
 

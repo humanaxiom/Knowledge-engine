@@ -2844,7 +2844,7 @@ def _image_record(ref: str, arch: str = "amd64") -> dict[str, Any]:
 
 
 _REPO_COPY = (".env.example", ".gitignore", ".dockerignore", "docker-compose.yml", "pyproject.toml",
-              "uv.lock", "NOTICE.md", "config", "scripts", "licenses", "docs/quickstart.md")
+              "uv.lock", "LICENSE", "NOTICE.md", "config", "scripts", "licenses", "docs/quickstart.md")
 
 
 # ---- PS-3.8 licence notices: a stand-in for the ke-app image's venv --------
@@ -3867,6 +3867,138 @@ class BundleNoticesTest(_BundleBase, unittest.TestCase):
         self.assertFalse([r for r in others if re.search(r"\bQ43\b", " | ".join(r.values()))],
                          "only Phoenix carries the Q43 exception")
 
+    # ---- audit-nt L-NT3 / L-NT4: the NOTICE.md vendor-row parse is strict -----
+
+    def _valkey_row(self) -> tuple[str, str, list[str]]:
+        """(the fixture's NOTICE.md text, the valkey row line, its cells split on `|`)."""
+        ref = self._vendor().get("valkey")
+        self.assertIsNotNone(ref, "precondition: valkey is a stack image")
+        text = (self.repo / "NOTICE.md").read_bytes().decode("utf-8")
+        lines = [ln for ln in text.splitlines() if ln.startswith("|") and f"`{ref}`" in ln]
+        self.assertEqual(len(lines), 1, f"precondition: NOTICE.md has one row for {ref}")
+        cells = lines[0].split("|")
+        self.assertEqual(len(cells), 7, f"precondition: the valkey row has five cells: {lines[0]!r}")
+        return text, lines[0], cells
+
+    def _with_valkey_cells(self, **cell: str) -> None:
+        """Rewrite the fixture's valkey row with the given cells replaced."""
+        text, line, cells = self._valkey_row()
+        index = {"image": 1, "reference": 2, "licence": 3, "source": 4, "note": 5}
+        for key, value in cell.items():
+            cells[index[key]] = value
+        (self.repo / "NOTICE.md").write_bytes(text.replace(line, "|".join(cells), 1).encode("utf-8"))
+
+    def test_notices_vendor_row_parse_is_strict(self):
+        # L-NT3: a row with a control byte (0x1F, the parse's own separator) in
+        # any cell, a row whose field count is wrong (a pipe in a cell), a
+        # licence that is blank once Unicode spaces are counted, or a licence
+        # that is not SPDX-like, fails the bundle naming NOTICE.md and the row.
+        # L-NT4 (M2c): the placeholder licences still fail.
+        _, _, cells = self._valkey_row()
+        ref = self._vendor()["valkey"]
+        image, licence, note = cells[1], cells[3], cells[5]
+        cases = {
+            "0x1F in the Image cell, Licence cell empty": dict(image=" valkey\x1fBSD-3-Clause ", licence=" "),
+            "0x1F in the Reference cell": dict(reference=f" `{ref}`\x1fx "),
+            "0x1F in the Licence cell": dict(licence=" BSD-3-Clause\x1f "),
+            "0x1F in the Note cell": dict(note=note.rstrip() + "\x1fextra "),
+            "another control byte (0x07) in the Source cell": dict(source=cells[4].rstrip() + "\x07 "),
+            "a pipe in the Note cell (eight fields)": dict(note=note.rstrip() + " | shifted "),
+            "a pipe in the Licence cell (eight fields)": dict(licence=" BSD-3-Clause | MIT "),
+            "licence of spaces only": dict(licence="    "),
+            "licence of a no-break space": dict(licence="   "),
+            "licence of a tab and a no-break space": dict(licence="\t \t"),
+            "non-SPDX licence: see LICENSE": dict(licence=" see LICENSE "),
+            "non-SPDX licence: prose": dict(licence=" BSD licence, see COPYING "),
+            "placeholder: Unknown (M2c)": dict(licence=" Unknown "),
+            "placeholder: TBD (M2c)": dict(licence=" TBD "),
+            "placeholder: ??? (M2c)": dict(licence=" ??? "),
+        }
+        original = (self.repo / "NOTICE.md").read_bytes()
+        for case, change in cases.items():
+            with self.subTest(case=case):
+                self._with_valkey_cells(**change)
+                try:
+                    result, calls, out = self._bundle()
+                finally:
+                    (self.repo / "NOTICE.md").write_bytes(original)
+                self.assertNotEqual(result.returncode, 0,
+                                    f"bundle.sh accepted a malformed valkey row in NOTICE.md ({case}):\n"
+                                    + self._out(result))
+                self._assert_nothing_written(result, calls, out, r"valkey")
+                self.assertIn("NOTICE.md", self._out(result), "the refusal names NOTICE.md")
+        with self.subTest(case="control: an SPDX expression is a licence"):
+            self._with_valkey_cells(licence=" BSD-3-Clause AND MIT ")
+            try:
+                result, _, out = self._bundle()
+            finally:
+                (self.repo / "NOTICE.md").write_bytes(original)
+            self.assertEqual(result.returncode, 0, "bundle.sh refused an SPDX expression:\n" + self._out(result))
+        self.assertEqual((image.strip(), licence.strip()), ("valkey", "BSD-3-Clause"), "precondition: the row")
+
+    def test_notices_run_carries_its_own_compose_label(self):
+        # L-NT4 (M5): the generator's container overrides the compose project
+        # label the ke-app image carries, so it never looks like part of the
+        # project that built it.
+        _, calls, _, _ = self._ok()
+        runs = self._notice_runs(calls)
+        self.assertEqual(len(runs), 1, "one `docker run ... engine.notices`")
+        argv = runs[0][1] if runs else []
+        labels = [b for a, b in zip(argv, argv[1:]) if a in ("--label", "-l")]
+        labels += [a.split("=", 1)[1] for a in argv if a.startswith("--label=")]
+        own = r"com\.docker\.compose\.project=[a-z0-9][a-z0-9_-]*-notices"
+        self.assertTrue([v for v in labels if re.fullmatch(own, v)],
+                        f"the notices run carries --label com.docker.compose.project=<project>-notices: {argv}")
+        body = "\n".join(l for l in (ROOT / "scripts" / "bundle.sh").read_text(encoding="utf-8").splitlines()
+                         if not l.lstrip().startswith("#"))
+        runs_static = [l for l in body.splitlines() if "docker run" in l and "engine.notices" in l]
+        self.assertEqual(len(runs_static), 1, "static: one `docker run ... engine.notices` line in bundle.sh")
+        self.assertRegex(runs_static[0] if runs_static else "",
+                         r'--label[ =]"?com\.docker\.compose\.project=\$\{?project\}?-notices"?',
+                         "static: the notices run labels itself <project>-notices")
+
+    def test_notices_refuse_output_without_package_table(self):
+        # L-NT4 (M8c): bundle.sh accepts the generator's output only if it
+        # starts with the exact package-table header.
+        app = self.tmp / "fake-app"
+        (app / "engine").mkdir(parents=True)
+        (app / "engine" / "__init__.py").write_text("", encoding="utf-8")
+        cases = {
+            "another table": "| Name | Licence |\n|---|---|\n| x | MIT |\n",
+            "a header with a column missing": "| Package | Version | Licence |\n|---|---|---|\n| x | 1 | MIT |\n",
+            "a bare pipe": "|\n",
+            "no output": "",
+        }
+        for case, printed in cases.items():
+            with self.subTest(case=case):
+                (app / "engine" / "notices.py").write_text(
+                    f"import sys\nsys.stdout.write({printed!r})\nsys.exit(0)\n", encoding="utf-8")
+                result, calls, out = self._bundle(FAKE_NOTICES_APP_ROOT=str(app))
+                self.assertNotEqual(result.returncode, 0,
+                                    f"bundle.sh accepted generator output with no package table ({case}):\n"
+                                    + self._out(result))
+                self.assertTrue(self._notice_runs(calls), "precondition: the generator ran")
+                self._assert_nothing_written(result, calls, out, r"(?i)table|notices")
+
+    # ---- audit-nt L-NT5: licenses/ ships the tracked files only ---------------
+
+    def test_bundle_ships_tracked_licenses_only(self):
+        with open(self.repo / ".gitignore", "a", encoding="utf-8") as fh:
+            fh.write("\nlicenses/*.local\n")
+        self._git("add", ".gitignore")
+        self._git("commit", "-q", "-m", "fixture: ignore licenses/*.local")
+        tracked = sorted((p[len("licenses/"):] for p in self._git("ls-files", "licenses").split()),
+                         key=lambda s: s.encode("utf-8"))
+        self.assertTrue(tracked, "precondition: licenses/ has tracked files")
+        (self.repo / "licenses" / "UNTRACKED.txt").write_text("not committed\n", encoding="utf-8")
+        (self.repo / "licenses" / "scratch.local").write_text("ignored\n", encoding="utf-8")
+        _, _, out, _ = self._ok()
+        shipped = _regular_files(out / "licenses") if (out / "licenses").is_dir() else []
+        self.assertEqual(shipped, tracked, "licenses/ ships exactly `git ls-files -- licenses` (L-7 parity)")
+        listed = (out / "MANIFEST.sha256").read_text(encoding="utf-8")
+        for stray in ("licenses/UNTRACKED.txt", "licenses/scratch.local"):
+            self.assertNotIn(f"  {stray}\n", listed, f"{stray} (not tracked) is in the manifest")
+
     # ---- architecture §2.5 Bundle root, §2.6 item 6 ---------------------------
 
     def test_bundle_contents(self):
@@ -3888,9 +4020,15 @@ class BundleNoticesTest(_BundleBase, unittest.TestCase):
             self.assertEqual(_regular_files(out / "app"), expected, "app/ holds exactly §2.5 Bundle step 3")
         with self.subTest(part="the root is exact"):
             self.assertEqual(sorted(p.name for p in out.iterdir()),
-                             sorted(["MANIFEST.sha256", "bundle.json", "install.sh", "install.ps1", "NOTICE.md",
-                                     "licenses", self.NOTICES, "app", "images"]),
-                             "the bundle root holds §2.5 Bundle step 4 and the records")
+                             sorted(["MANIFEST.sha256", "bundle.json", "install.sh", "install.ps1", "LICENSE",
+                                     "NOTICE.md", "licenses", self.NOTICES, "app", "images"]),
+                             "the bundle root holds §2.5 Bundle step 4, the project's LICENSE (MIT, human "
+                             "ruling 2026-10-20) and the records")
+        with self.subTest(part="LICENSE is the committed MIT licence"):
+            self.assertTrue((ROOT / "LICENSE").is_file(), "LICENSE is not committed at the repository root")
+            self.assertTrue((out / "LICENSE").is_file(), "the bundle has no LICENSE at its root")
+            if (ROOT / "LICENSE").is_file() and (out / "LICENSE").is_file():
+                self.assertEqual(_sha256(out / "LICENSE"), _sha256(ROOT / "LICENSE"))
         with self.subTest(part="NOTICE.md and licenses/ are the committed files"):
             self.assertTrue((ROOT / "NOTICE.md").is_file(), "NOTICE.md is not committed at the repository root")
             for lic in ("LGPL-3.0.txt", "GPL-3.0.txt"):
@@ -3907,7 +4045,7 @@ class BundleNoticesTest(_BundleBase, unittest.TestCase):
         with self.subTest(part="listed in the manifest"):
             listed = {ln.split("  ", 1)[1] for ln in
                       (out / "MANIFEST.sha256").read_text(encoding="utf-8").splitlines() if "  " in ln}
-            want = {"NOTICE.md", self.NOTICES} | {f"licenses/{r}" for r in
+            want = {"LICENSE", "NOTICE.md", self.NOTICES} | {f"licenses/{r}" for r in
                                                   (_regular_files(out / "licenses") if (out / "licenses").is_dir()
                                                    else [])}
             self.assertEqual(sorted(want - listed), [], "not in MANIFEST.sha256")
@@ -3922,7 +4060,7 @@ class BundleNoticesTest(_BundleBase, unittest.TestCase):
             self.assertNotRegex(body, r"\[\[?\s+-[efd]\s+\"?(?:NOTICE\.md|licenses)\b",
                                 "bundle.sh guards the NOTICE.md/licenses copy with an exists-test (§2.5: "
                                 "copied unconditionally)")
-        for rel in ("NOTICE.md", "licenses"):
+        for rel in ("LICENSE", "NOTICE.md", "licenses"):
             with self.subTest(part=f"missing from the tree: {rel}"):
                 src = self.repo / rel
                 self.assertTrue(src.exists(), f"precondition: {rel} is committed (copied into the fixture)")
@@ -3949,6 +4087,107 @@ class DistIgnoredTest(unittest.TestCase):
                 lines = [ln.strip() for ln in (ROOT / name).read_text(encoding="utf-8").splitlines()]
                 self.assertTrue({"dist", "dist/", "/dist", "/dist/"} & set(lines),
                                 f"{name} does not ignore dist/")
+
+
+# The MIT licence body (SPDX `MIT`), compared with runs of whitespace collapsed.
+_MIT_BODY = """
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
+
+
+def _words(text: str) -> str:
+    return " ".join(text.split())
+
+
+class ProjectLicenceTextTest(unittest.TestCase):
+    """The project's own licence and the hand-written NOTICE.md statements:
+    human ruling 2026-10-20 (MIT, holder "Humanaxiom"), audit-nt M-NT1 (the
+    Valkey BSD-3-Clause text) and L-NT1 (NOTICE.md asserts no more than the
+    facts). Static checks on committed files."""
+
+    def _notice(self) -> str:
+        path = ROOT / "NOTICE.md"
+        self.assertTrue(path.is_file(), "NOTICE.md is not committed at the repository root")
+        return path.read_text(encoding="utf-8")
+
+    def _row(self, image: str) -> str:
+        rows = [ln for ln in self._notice().splitlines() if re.match(rf"^\|\s*{re.escape(image)}\s*\|", ln)]
+        self.assertEqual(len(rows), 1, f"precondition: NOTICE.md has one vendor row for {image}")
+        return rows[0] if rows else ""
+
+    def _prose(self) -> str:
+        """NOTICE.md without its table rows, whitespace collapsed."""
+        return _words("\n".join(ln for ln in self._notice().splitlines() if not ln.lstrip().startswith("|")))
+
+    def test_licence_file_is_mit(self):
+        path = ROOT / "LICENSE"
+        self.assertTrue(path.is_file(), "LICENSE (the project's MIT licence) is not at the repository root")
+        text = path.read_text(encoding="utf-8")
+        self.assertRegex(text, r"(?m)^Copyright \(c\) 2026 Humanaxiom\s*$",
+                         "LICENSE carries `Copyright (c) 2026 Humanaxiom` (human ruling 2026-10-20)")
+        head, sep, body = text.partition("Permission is hereby granted")
+        self.assertTrue(sep, "LICENSE has the MIT permission grant")
+        self.assertEqual(_words(sep + body), _words(_MIT_BODY), "LICENSE is the standard MIT text, unmodified")
+        self.assertEqual(_words(head), "MIT License Copyright (c) 2026 Humanaxiom",
+                         "LICENSE holds only the title, the copyright line and the MIT text")
+
+    def test_notice_states_project_is_mit(self):
+        prose = self._prose()
+        self.assertRegex(prose, r"Knowledge Engine[^.]*\bMIT\b",
+                         "NOTICE.md states that the Knowledge Engine is MIT-licensed")
+        self.assertRegex(prose, r"(?<![\w/.-])`?LICENSE`?(?![\w./-])",
+                         "NOTICE.md points to the LICENSE file at the root")
+
+    def test_valkey_bsd_text_is_committed_and_referenced(self):
+        found = sorted(p.name for p in (ROOT / "licenses").glob("*") if "valkey" in p.name.lower())
+        self.assertEqual(len(found), 1, f"licenses/ holds one Valkey licence text (M-NT1): {found}")
+        name = found[0] if found else "BSD-3-Clause-valkey.txt"
+        self.assertRegex(name, r"^BSD-3-Clause[-\w.]*\.txt$", "the Valkey text is named for its licence")
+        if found:
+            text = _words((ROOT / "licenses" / name).read_text(encoding="utf-8"))
+            for phrase in ("Redistribution and use in source and binary forms, with or without modification, "
+                           "are permitted provided that the following conditions are met",
+                           "Redistributions in binary form must reproduce the above copyright notice",
+                           "Neither the name of",
+                           'THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"'):
+                with self.subTest(phrase=phrase[:40]):
+                    self.assertIn(phrase, text, "the BSD-3-Clause text")
+            with self.subTest(part="both upstream grants (audit-nt P5: Valkey contributors; Redis Ltd.)"):
+                self.assertRegex(text, r"(?i)Copyright \(c\)[^.]*Valkey contributors")
+                self.assertRegex(text, r"(?i)Copyright \(c\)[^.]*Redis Ltd")
+        self.assertIn(f"licenses/{name}", self._row("valkey"), "NOTICE.md's valkey row points to the text")
+
+    def test_notice_wording_asserts_no_more_than_the_facts(self):
+        # audit-nt L-NT1.
+        neo4j = self._row("neo4j")
+        with self.subTest(part="neo4j: upstream source, no compliance claim"):
+            self.assertIn("Upstream source:", neo4j)
+            self.assertNotRegex(neo4j, r"(?i)corresponding source is at")
+        with self.subTest(part="phoenix: the licence-key limitation"):
+            self.assertRegex(self._row("phoenix"), r"(?i)licen[cs]e[- ]key",
+                             "the ELv2 summary names its licence-key limitation")
+        with self.subTest(part="the Knowledge Engine is the code, not the images"):
+            prose = self._prose()
+            self.assertNotRegex(prose, r"Knowledge Engine is the code in this repository: the `ke-app`",
+                                "NOTICE.md says the Knowledge Engine is the images (they hold third-party layers)")
+            self.assertRegex(prose, r"Knowledge Engine is the code in this repository[^.]*\bbuilt into\b",
+                             "NOTICE.md says the code is built into the images (audit-nt L-NT1)")
 
 
 # --------------------------------------------------------------------------
@@ -4476,6 +4715,23 @@ class QuickstartOfflineTest(unittest.TestCase):
         for what, rx in required.items():
             with self.subTest(item=what):
                 self.assertIsNotNone(re.search(rx, text), f"docs/quickstart.md does not say: {what} (/{rx}/)")
+
+    def test_quickstart_names_bundle_disk_floor(self):
+        """R6 as amended (7 GiB, CI run 39359710258): the build-host
+        requirements next to `jq` say bundle.sh needs 7 GiB free on the
+        output disk."""
+        text = self._text()
+        jq = text.find("needs `jq`")
+        self.assertNotEqual(jq, -1, "precondition: quickstart states the jq requirement")
+        start = text.rfind("\n## ", 0, jq)
+        end = text.find("\n### ", jq)
+        section = _words(text[start:end if end != -1 else len(text)])
+        sentences = [s for s in re.split(r"(?<=[.!?])\s+", section) if re.search(r"\b7 GiB\b", s)]
+        self.assertTrue(sentences, "the offline build-host requirements (with jq) give no 7 GiB figure")
+        self.assertTrue([s for s in sentences if re.search(r"bundle\.sh", s) and re.search(r"(?i)\bfree\b", s)
+                         and re.search(r"(?i)\boutput\b|--out\b", s)],
+                        f"no sentence says bundle.sh needs 7 GiB free on the output disk: {sentences}")
+        self.assertNotRegex(text, r"\b10 ?Gi?B\b", "quickstart still gives the old 10 GB floor")
 
     def test_quickstart_target_not_directly_under_c_or_opt(self):
         """Security H-1 (gap a), review RB2(d): an example target directly

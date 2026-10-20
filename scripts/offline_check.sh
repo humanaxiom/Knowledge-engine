@@ -221,6 +221,8 @@ if [ -z "$compose_version" ] || ! at_least "$compose_minimum" "$compose_version"
 fi
 
 bash scripts/bundle.sh --out "$bundle_rel" || die "bundle.sh failed"
+# CI run 39364201188: bundle.sh writes private (0600) files but the offline client runs as uid 10001; open only this throwaway dir, read-only.
+chmod -R a+rX -- "$bundle_rel"
 df_log "after bundle"
 
 echo "offline: starting dind (privileged) in project $project"

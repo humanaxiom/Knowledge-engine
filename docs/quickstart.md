@@ -52,7 +52,8 @@ and it bundles for the Docker daemon it talks to.
 The build host also needs `jq`; `bundle.sh` refuses to start without it. If
 `jq --version` fails, install it: `sudo apt-get install -y jq` (Debian,
 Ubuntu) or `sudo dnf install -y jq` (Fedora, RHEL). The target machine does
-not need it.
+not need it. `bundle.sh` also needs at least 7 GiB free on the disk that holds
+the output directory and refuses otherwise.
 
 On a Windows machine the Linux build host can be WSL, but only with Docker
 Desktop's WSL integration turned on for that distro (Docker Desktop, Settings,
