@@ -14,6 +14,9 @@
   (docs/evidence/platform-offline/ci-39359710258.log), so orchestrator ruling 2
   (docs/handoffs/platform-offline.md, 2026-10-20) sets 30 for the measurement
   run; the follow-up commit changes CI_TIMEOUT_MINUTES to measured + 50%.
+  The first green CI run, 39370927416 (c7b905f), took 994 s, about 16.6 min
+  (docs/evidence/platform-offline/ci-39370927416.log, job 04:41:48 to
+  04:58:22), so the value is 16.6 x 1.5 = 24.9, rounded up to 25.
 """
 
 from __future__ import annotations
@@ -27,9 +30,11 @@ CLAUDE_MD = ROOT / "CLAUDE.md"
 CI = ROOT / ".github" / "workflows" / "ci.yml"
 VERIFY_ONLY = "What verify.sh runs that CI cannot"
 CI_ONLY = "What CI runs that verify.sh does not"
-# PS-3.4, orchestrator ruling 2 after CI run 39359710258: 30 min for the
-# measurement run. The next commit sets this to the measured run + 50%.
-CI_TIMEOUT_MINUTES = 30
+# PS-3.4, ruling R5 (measured + 50%): CI run 39370927416, the first green run
+# (c7b905f), took 994 s = 16.6 min (docs/evidence/platform-offline/
+# ci-39370927416.log); 16.6 x 1.5 = 24.9, rounded up to 25. Before it, ruling 2
+# set 30 for the measurement run (CI run 39359710258).
+CI_TIMEOUT_MINUTES = 25
 
 
 def _sections(text: str) -> list[tuple[str, str]]:
@@ -79,7 +84,7 @@ class CiTimeoutTest(unittest.TestCase):
                 self.assertGreater(value, 0)
                 self.assertEqual(value, CI_TIMEOUT_MINUTES,
                                  f"job {name}: timeout-minutes is {value}, the ruling is "
-                                 f"{CI_TIMEOUT_MINUTES} (PS-3.4, ruling 2, CI run 39359710258)")
+                                 f"{CI_TIMEOUT_MINUTES} (PS-3.4, ruling R5: CI run 39370927416, 16.6 min + 50%)")
 
 
 if __name__ == "__main__":

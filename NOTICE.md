@@ -18,7 +18,8 @@ reviewed licence for exactly that digest: `scripts/bundle.sh` reads this table
 and refuses to write a bundle for a digest-pinned stack image that has no row
 with a licence. Changing a digest in `docker-compose.yml` therefore needs the
 licence checked again and this row updated. Keep each cell on one line and
-never put a pipe character in one.
+never put a pipe character in one. The Licence cell must be an SPDX licence
+identifier or expression, such as `GPL-3.0` or `BSD-3-Clause AND MIT`.
 
 | Image | Reference | Licence | Source | Note |
 |---|---|---|---|---|

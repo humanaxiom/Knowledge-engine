@@ -4,6 +4,42 @@ Maintained by the `marketer` agent. Follows a Keep a Changelog style.
 
 ## [Unreleased]
 
+### 2026-10-19 (platform-offline)
+
+**Added:**
+- An offline install bundle for machines with no internet access.
+  `scripts/bundle.sh` writes one bundle per architecture (amd64 or arm64). It
+  builds against whatever Docker daemon it talks to, including a remote ARM
+  host. Each bundle holds the stack images, the app files, both installers,
+  a manifest and the licence notices.
+- `scripts/install.sh` (Linux and macOS) and `scripts/install.ps1` (Windows)
+  install a bundle without the network. Before any `docker` command runs, the
+  installer checks the bundle's manifest. Compare its hash with the value
+  `bundle.sh` writes alongside the bundle, or pass `--expect-manifest <sha256>`.
+- Licence notices in every bundle: `THIRD_PARTY_NOTICES.md`, `NOTICE.md`, and
+  the licence texts they cite.
+- An offline check in CI. It runs a clean Docker-in-Docker with networking
+  disabled, installs the bundle, launches the stack and smoke-tests it. It
+  fails if any image is pulled or if outbound traffic gets through.
+
+**Changed:**
+- The project is MIT-licensed. See `LICENSE`.
+- The install target's parent directory must be owned by the operator (or
+  root). The installer refuses one owned by another user.
+- Build host requirements: `bundle.sh` needs `jq` and at least 7 GiB free on
+  its output disk. Docker Engine 28 or later is required, as before.
+- The code-first install is still the primary path. See `docs/quickstart.md`
+  for both paths.
+
+**Security:**
+- Test containers run with least privilege.
+- The Docker CLI and compose plugin in the gates image are pinned by version.
+- `.env` is created private (0600), whatever the caller's umask.
+- The bundle installer does not run `docker` until the manifest passes, and
+  it installs only the staged copy it has verified.
+- Production mode is refused. Authentication is not built yet, so this
+  release is not for production use.
+
 ### 2026-10-19 (platform-stack-ready)
 
 **Added:**

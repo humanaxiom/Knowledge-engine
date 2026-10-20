@@ -3936,6 +3936,82 @@ class BundleNoticesTest(_BundleBase, unittest.TestCase):
             self.assertEqual(result.returncode, 0, "bundle.sh refused an SPDX expression:\n" + self._out(result))
         self.assertEqual((image.strip(), licence.strip()), ("valkey", "BSD-3-Clause"), "precondition: the row")
 
+    # ---- audit-nt2 L-NT6: the survivors of the parse mutants ------------------
+
+    _NOT_SPDX = "its Licence cell is not an SPDX id or expression"
+
+    def _refused_row(self, case: str, change: dict[str, str]) -> str:
+        """Run bundle.sh with the valkey row changed; assert the refusal wrote
+        nothing and return its output."""
+        original = (self.repo / "NOTICE.md").read_bytes()
+        self._with_valkey_cells(**change)
+        try:
+            result, calls, out = self._bundle()
+        finally:
+            (self.repo / "NOTICE.md").write_bytes(original)
+        self.assertNotEqual(result.returncode, 0,
+                            f"bundle.sh accepted a malformed valkey row in NOTICE.md ({case}):\n"
+                            + self._out(result))
+        self._assert_nothing_written(result, calls, out, r"valkey")
+        return self._out(result)
+
+    def test_notices_licence_tokens_are_spdx_characters(self):
+        # n10: an SPDX id is letters, digits, `.`, `+` and `-` only; punctuation
+        # inside or after a token is not a licence.
+        for value in ("BSD;3-Clause", "MIT,", "GPL/MIT"):
+            with self.subTest(licence=value):
+                text = self._refused_row(value, dict(licence=f" {value} "))
+                self.assertIn(self._NOT_SPDX, text, "the refusal gives the Licence-cell reason")
+
+    def test_notices_licence_operators_sit_between_ids(self):
+        # n12: in an expression every second token is AND, OR or WITH. Prose
+        # with an odd token count is not an expression.
+        for value in ("see the COPYING", "MIT Apache-2.0 BSD"):
+            with self.subTest(licence=value):
+                text = self._refused_row(value, dict(licence=f" {value} "))
+                self.assertIn(self._NOT_SPDX, text, "the refusal gives the Licence-cell reason")
+
+    def test_notices_accept_crlf_notice_md(self):
+        # n11: a NOTICE.md with CRLF line ends (a Windows checkout read from WSL,
+        # which quickstart allows as the build host) is the same table: the CR
+        # is not a control byte in the row and never reaches the notices.
+        original = (self.repo / "NOTICE.md").read_bytes()
+        self.assertNotIn(b"\r", original, "precondition: the committed NOTICE.md has LF line ends")
+        (self.repo / "NOTICE.md").write_bytes(original.replace(b"\n", b"\r\n"))
+        try:
+            result, _, out = self._bundle()
+        finally:
+            (self.repo / "NOTICE.md").write_bytes(original)
+        self.assertEqual(result.returncode, 0, "bundle.sh refused a CRLF NOTICE.md:\n" + self._out(result))
+        text = self._notices(out)
+        rows = self._image_rows(text)
+        for name, ref in self._vendor().items():
+            with self.subTest(image=name):
+                self.assertIn(ref, rows, f"{self.NOTICES} lists {ref}")
+                lines = [ln for ln in text.split("\n") if f"`{ref}`" in ln]
+                self.assertEqual(len(lines), 1, f"{self.NOTICES} has one row for {ref}")
+                self.assertNotIn("\r", lines[0] if lines else "", "a CR reached the generated notices")
+        valkey = rows.get(self._vendor()["valkey"], {})
+        self.assertEqual(_cell(valkey.get("licence", "")), "BSD-3-Clause", "the valkey licence, without a CR")
+
+    def test_notices_malformed_row_refusal_names_row_and_reason(self):
+        # n4: a malformed row is refused as malformed, naming the row's pinned
+        # reference and the reason, not as a row that is missing.
+        ref = self._vendor()["valkey"]
+        _, _, cells = self._valkey_row()
+        cases = {
+            "control byte": (dict(source=cells[4].rstrip() + "\x07 "), "the row holds a control byte"),
+            "cell count": (dict(note=cells[5].rstrip() + " | shifted "),
+                           "the row has 6 cells, not 5 (a pipe inside a cell?)"),
+            "licence": (dict(licence=" see the COPYING "), self._NOT_SPDX),
+        }
+        for case, (change, why) in cases.items():
+            with self.subTest(case=case):
+                text = self._refused_row(case, change)
+                self.assertIn(f"NOTICE.md vendor row for the image {ref} is malformed: {why}", text,
+                              "the refusal names the row and why it is malformed")
+                self.assertNotIn("no licence entry", text, "a malformed row was reported as a missing one")
+
     def test_notices_run_carries_its_own_compose_label(self):
         # L-NT4 (M5): the generator's container overrides the compose project
         # label the ke-app image carries, so it never looks like part of the
@@ -4069,12 +4145,29 @@ class BundleNoticesTest(_BundleBase, unittest.TestCase):
                 aside = self.tmp / f"aside-{rel}"
                 shutil.move(str(src), str(aside))
                 try:
-                    result, _, out2 = self._bundle()
+                    result, calls2, out2 = self._bundle()
                 finally:
                     shutil.move(str(aside), str(src))
                 self.assertNotEqual(result.returncode, 0,
                                     f"bundle.sh wrote a bundle without {rel}:\n" + self._out(result))
                 self.assertFalse((out2 / "MANIFEST.sha256").exists(), "a manifest was written regardless")
+                if rel == "LICENSE":
+                    # audit-nt2 L-NT6 (n6): the LICENSE check runs with the other
+                    # notices checks, before any save, so --out stays empty.
+                    self._assert_nothing_written(result, calls2, out2, r"(?<![\w./-])LICENSE(?![\w./-])")
+        with self.subTest(part="empty in the tree: LICENSE"):
+            # audit-nt2 L-NT6 (n6): an empty LICENSE is refused like a missing one.
+            src = self.repo / "LICENSE"
+            original = src.read_bytes() if src.is_file() else b""
+            self.assertTrue(original, "precondition: LICENSE is committed and not empty")
+            src.write_bytes(b"")
+            try:
+                result, calls2, out2 = self._bundle()
+            finally:
+                src.write_bytes(original)
+            self.assertNotEqual(result.returncode, 0,
+                                "bundle.sh wrote a bundle with an empty LICENSE:\n" + self._out(result))
+            self._assert_nothing_written(result, calls2, out2, r"(?<![\w./-])LICENSE(?![\w./-])")
 
 
 class DistIgnoredTest(unittest.TestCase):
@@ -4188,6 +4281,50 @@ class ProjectLicenceTextTest(unittest.TestCase):
                                 "NOTICE.md says the Knowledge Engine is the images (they hold third-party layers)")
             self.assertRegex(prose, r"Knowledge Engine is the code in this repository[^.]*\bbuilt into\b",
                              "NOTICE.md says the code is built into the images (audit-nt L-NT1)")
+
+    def test_notice_table_guidance_requires_spdx_licence(self):
+        # audit-nt2 I-NT6: bundle.sh refuses a Licence cell that is not an SPDX
+        # id or expression, so the guidance above the vendor table says so.
+        text = self._notice()
+        head, sep, rest = text.partition("## Vendor images")
+        self.assertTrue(sep, "precondition: NOTICE.md has a `## Vendor images` section")
+        guidance = _words(rest.split("\n|", 1)[0])
+        sentences = re.split(r"(?<=[.;:])\s+", guidance)
+        found = [s for s in sentences
+                 if re.search(r"\bLicen[cs]e\b", s) and re.search(r"\bSPDX\b", s)
+                 and re.search(r"\b(identifier|id)\b", s) and re.search(r"\bexpression\b", s)]
+        self.assertTrue(found, "the vendor-table guidance in NOTICE.md states that the Licence cell must be an "
+                               f"SPDX identifier or expression (audit-nt2 I-NT6): {guidance!r}")
+
+    def test_pyproject_declares_mit_licence(self):
+        # audit-nt2 I-NT7: the package metadata carries the project licence
+        # (human ruling 2026-10-20, MIT). PEP 639 form: `license` is an SPDX
+        # expression string; the old `{text = ...}` / `{file = ...}` table is
+        # deprecated. The backend is hatchling, which writes the PEP 639 field
+        # `License-Expression` (Metadata 2.4) from 1.27; its default
+        # `license-files` globs (LICEN[CS]E*, COPYING*, NOTICE*, AUTHORS*)
+        # already pick up LICENSE, so `license-files` is not required, but if it
+        # is set it must name LICENSE.
+        import tomllib
+        from importlib import metadata
+
+        doc = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+        self.assertEqual(doc.get("build-system", {}).get("build-backend"), "hatchling.build",
+                         "precondition: the build backend is hatchling")
+        project = doc.get("project", {})
+        self.assertEqual(project.get("license"), "MIT",
+                         "pyproject.toml [project] declares `license = \"MIT\"` (PEP 639 SPDX expression)")
+        files = project.get("license-files")
+        if files is not None:
+            self.assertIsInstance(files, list, "PEP 639 `license-files` is a list of globs")
+            self.assertTrue(any(Path("LICENSE").match(g) for g in files), f"license-files names LICENSE: {files}")
+        classifiers = [c for c in project.get("classifiers", []) if c.startswith("License ::")]
+        self.assertEqual(classifiers, [], "PEP 639: no `License ::` classifier next to a licence expression")
+        with self.subTest(part="the installed metadata (built by the backend) carries it"):
+            meta = metadata.metadata("knowledge-engine")
+            self.assertEqual(meta.get("License-Expression"), "MIT",
+                             "the built knowledge-engine metadata has `License-Expression: MIT`, so the "
+                             "backend reads the field")
 
 
 # --------------------------------------------------------------------------

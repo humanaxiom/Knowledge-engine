@@ -14,7 +14,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30  # PS-3.4: 30 for the measurement run (ruling 2, ci-39359710258: unit tests 770 s, offline stage reached at ~16 min); the next commit sets measured + 50%, see docs/evidence/platform-offline
+    timeout-minutes: 25  # PS-3.4/R5: CI run 39370927416 took 16.6 min (994 s); 16.6 + 50% = 25 min, see docs/evidence/platform-offline
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
