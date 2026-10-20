@@ -59,3 +59,18 @@ Base: `agent/platform-stack-ready` @ 4b19971. Previous handoffs: `docs/handoffs/
 
 - 2026-10-20 developer GREEN close: `.github/workflows/ci.yml` `timeout-minutes: 25` (comment cites CI 39370927416, 16.6 min + 50%); `pyproject.toml` `license = "MIT"`; `NOTICE.md` one sentence above the vendor table (Licence cell must be an SPDX identifier or expression). uv.lock unchanged (`--locked` runs inside verify). `COMPOSE_PROJECT_NAME=ke-dev-close scripts/verify.sh full` -> PASS (492s, offline_check PASS 89s). Evidence: `green-close-verify-full.txt`. Not committed.
 - 2026-10-20 human: model roles → compose + rewrite = qwen3.5:latest, audit = gpt-oss:120b, embed = nomic-embed-text (all present on aria-gb10-2; Q38 closes with no pulls). Lands as a small unit (config/defaults.yaml + tests + a recorded model run) after platform-offline closes.
+- 2026-10-20 tester RED (R5 correction): `tests/test_stack_ready_docs.py` `CI_TIMEOUT_MINUTES = 29` (slower green run 39465361808, 19.0 min x 1.5 = 28.5 -> 29; comment cites 39370927416 and 39465361808). `COMPOSE_PROJECT_NAME=ke-tester-29 scripts/verify.sh fast` -> FAIL only `test_ci_job_has_timeout` (`25 != 29`), 685 run, 8 skipped. Evidence: `red-29-verify-fast.txt`. Developer: ci.yml timeout-minutes 29 + its comment; the assert message (line 87) still names 39370927416/16.6 min, left untouched per scope.
+- 2026-10-20 developer GREEN 29: ci.yml `timeout-minutes: 29` (comment cites 39370927416 16.6 min and 39465361808 19.0 min; slower + 50% = 28.5 -> 29, PS-3.4/R5). `COMPOSE_PROJECT_NAME=ke-dev-29 scripts/verify.sh full` -> PASS (502s, offline_check PASS 98s); `test_ci_job_has_timeout` ok. Evidence: `green-29-verify-full.txt`. Not committed.
+
+## 2026-10-20 — orchestrator: item closed + milestone Done check (platform-offline)
+- Pushed (human approved). CI: 39359710258 FAIL (10 GiB floor; 9.1 GiB free) → floor 7 GiB; 39364201188 FAIL (client uid 10001 could not read 0600 tars; Docker Desktop masked it) → chmod own bundle; 39370927416 GREEN 16.6 min; 39465361808 GREEN 19.0 min (unit tests 790 s) → timeout 29 min (slower run + 50%). Logs: ci-*.log.
+- Recorded proofs: arm64 end to end on aria-gb10 (recorded2-*), amd64 end to end on the dev host via WSL (recorded3-*), arch refusal both ways, DR38 red runs (dr38-*).
+- Outcome metrics: drafts reviewed n/a, ratified rules n/a (no data store yet). Not moved, by design: this item is the "deployable without the assistant" precondition.
+- External blockers: Q18 branch protection (Adam Salah, no date); Q14 ratification owners (OWNER-TBD). Q38 closed by the human's model-role mapping (qwen3.5:latest / gpt-oss:120b / nomic-embed-text; config change pending as its own unit).
+- Carried forward:
+  - next small unit: model roles in config/defaults.yaml + recorded model run on aria-gb10-2;
+  - CI unit-test speed (483–790 s on 2-core runners; parallel test modules) — top follow-up, the 29-min timeout leaves thin margin;
+  - platform-supply-chain: PS-3.6 image scan, PS-3.7 L-8, Q42, M-NT1 full SBOM + GPL source offers (seek SFU legal/IP advice before third-party distribution);
+  - ingest-ledger FIRST unit: security M-1 network side, M-2, L-14/N-R2, N-R3 (from platform-stack-ready);
+  - known limits: L-OCa (shared bundle tags), N4 (compose subpath minimum unmeasured); I-NT8 (local Linux-daemon option for permission bugs); F7/F11 (compose warnings, ke-app built twice); Q50 recorded Mac install when the MLX box is used; D-1 Q5 (reorg scope) unanswered → out of scope.
+- Housekeeping: aria-gb10 keeps the `*:probe-arm64` images; docker context `aria-gb10` exists on the dev host; jq installed on Windows + WSL.
