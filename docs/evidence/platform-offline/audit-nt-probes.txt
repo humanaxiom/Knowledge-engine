@@ -1,0 +1,387 @@
+# audit-nt probes (security, platform-offline, 2026-10-20). <scratch> = session scratch dir. Every docker run: --network none --pull never, own --label com.docker.compose.project=ke-sec-nt-*.
+
+######## P1 licence texts: curl --proto '=https' --tlsv1.2 https://www.gnu.org/licenses/{gpl,lgpl}-3.0.txt
+3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986 *gpl-3.0.txt
+e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118 *lgpl-3.0.txt
+35149 gpl-3.0.txt
+ 7652 lgpl-3.0.txt
+42801 total
+committed:
+3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986 *licenses/GPL-3.0.txt
+e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118 *licenses/LGPL-3.0.txt
+developer recorded: GPL 3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986, LGPL e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118
+
+######## P2 .gitattributes round trip, core.autocrlf=true, fresh repos (with = repo .gitattributes, without = none)
+with:    GPL 3972dc97...6986  LGPL e3a994d8...3118  i/lf w/lf attr/-text
+without: GPL 230184f6...4809  LGPL 7d3a95e5...8059  i/lf w/crlf (control: the attribute is what preserves the bytes)
+
+######## P3 Phoenix at the pinned digest
+## P-PHX: docker run --rm --network none --pull never --read-only --cap-drop ALL --label com.docker.compose.project=ke-sec-nt-probe --entrypoint /usr/bin/python3.13 arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd...c704c -I -c <script>
+version 20.22.0 at /phoenix/.venv/lib/python3.13/site-packages
+License ['Elastic-2.0']
+License-Expression None
+License-File ['IP_NOTICE', 'LICENSE']
+classifiers []
+FILE arize_phoenix-20.22.0.dist-info/licenses/IP_NOTICE 469 5c5ce443f38a11fbed05464446572c69ea083065d9b1e5657a5eb2ceaaa459da
+Copyright 2025 Arize AI, Inc. All Rights Reserved.
+
+Portions of this code are patent protected by one or more of U.S. Patent Nos. 11,315,043 and 11,615,345. The patent protection includes, but is not limited to, functionality enabled by executing the portions of the code, a device or a system executing the portions of the code, a memory storing the portions of the code, etc.
+
+This software is licensed under the terms of the Elastic License 2.0 (ELv2). See LICENSE.
+
+...
+FILE arize_phoenix-20.22.0.dist-info/licenses/LICENSE 3794 1c5916f5112e30e92f291002bb02cf4f4851c9d1dbdf3360f9f745b7de2d775f
+Elastic License 2.0 (ELv2)
+
+**Acceptance**
+By using the software, you agree to all of the terms and conditions below.
+
+**Copyright License**
+The licensor grants you a non-exclusive, royalty-free, worldwide, non-sublicensable, non-transferable license to use, copy, distribute, make available, and prepare derivative works of the software, in each case subject to the limitations and conditions below.
+
+**Limitations**
+You may not provide the software to third parties as a hosted or managed service, where the service provides users with access to any substantial set of the features or functionality
+...
+rc=0
+
+######## P4 neo4j at the pinned digest
+## P-NEO: docker run --rm --network none --pull never --read-only --cap-drop ALL --label com.docker.compose.project=ke-sec-nt-probe --entrypoint sh neo4j:5-community@sha256:0a6e7aed...b02b -c <script>
+total 240
+drwxrwxrwx 13 neo4j neo4j   4096 Oct 17 01:28 .
+drwxr-xr-x  1 root  root    4096 Oct 17 01:28 ..
+-rwxrwxrwx  1 neo4j neo4j  36008 Oct  8 11:07 LICENSE.txt
+-rwxrwxrwx  1 neo4j neo4j 118612 Oct  8 11:07 LICENSES.txt
+-rwxrwxrwx  1 neo4j neo4j  11382 Oct  8 11:07 NOTICE.txt
+-rwxrwxrwx  1 neo4j neo4j   1908 Oct  8 11:07 README.txt
+-rwxrwxrwx  1 neo4j neo4j     94 Oct  8 11:07 UPGRADE.txt
+drwxr-xr-x  3 neo4j neo4j   4096 Oct 17 01:28 bin
+drwxrwxrwx  2 neo4j neo4j   4096 Oct  8 11:07 certificates
+drwxrwxrwx  2 neo4j neo4j   4096 Oct  8 14:24 conf
+lrwxrwxrwx  1 root  root       5 Oct 17 01:28 data -> /data
+drwxrwxrwx  2 neo4j neo4j   4096 Oct  8 11:07 import
+drwxrwxrwx  2 neo4j neo4j   4096 Oct  8 14:24 labs
+drwxrwxrwx  3 neo4j neo4j  16384 Oct  8 14:24 lib
+drwxrwxrwx  2 neo4j neo4j   4096 Oct  8 11:07 licenses
+lrwxrwxrwx  1 root  root       5 Oct 17 01:28 logs -> /logs
+-rwxrwxrwx  1 neo4j neo4j     63 Oct 17 01:28 packaging_info
+drwxrwxrwx  2 neo4j neo4j   4096 Oct  8 14:24 plugins
+drwxrwxrwx  2 neo4j neo4j   4096 Oct  8 14:24 products
+drwxrwxrwx  2 neo4j neo4j   4096 Oct  8 11:07 run
+drwxrwxrwx  2 neo4j neo4j   4096 Oct  8 14:24 web
+NEO4J_VERSION env: 
+neo4j-5.26.32.jar
+neo4j-kernel-5.26.32.jar
+neo4j-kernel-api-5.26.32.jar
+a27565f141354ee9f8ece5c579f35706ef560353a95103b1ec33dd03cffd90ea  LICENSE.txt
+7d6b62bc953deedfddde19730dc9c1912d9fb854279e8bd31770e80a503796d4  LICENSES.txt
+156a98a1042bc65573692b7a3f6a40c16dcbadc54b76da14a35a071ea666dcd0  NOTICE.txt
+NOTICE
+This package contains software licensed under different
+licenses, please refer to the NOTICE.txt file for further
+information and LICENSES.txt for full license texts.
+
+The software ("Software") developed and owned by Neo4j Sweden AB
+(referred to in this notice as "Neo4j") is licensed under the
+GNU GENERAL PUBLIC LICENSE Version 3 to all third
+parties and that license is included below.
+
+However, if you have executed an End User Software License and Services
+Agreement or an OEM Software License and Support Services Agreement, or
+another commercial license agreement with Neo4j or one of its
+affiliates (each, a "Commercial Agreement"), the terms of the license in
+such Commercial Agreement will supersede the GNU GENERAL PUBLIC LICENSE
+Version 3 and you may use the Software solely pursuant to the terms of
+the relevant Commercial Agreement.
+
+
+
+                     GNU GENERAL PUBLIC LICENSE
+                       Version 3, 29 June 2007
+
+ Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
+ Everyone is permitted to copy and distribute verbatim copies
+ of this license document, but changing it is not allowed.
+
+                            Preamble
+
+  The GNU General
+...
+592:Public License "or any later version" applies to it, you have the
+594:version or of any later version published by the Free Software
+659:    the Free Software Foundation, either version 3 of the License, or
+660:    (at your option) any later version.
+14
+-- NOTICE.txt head
+Neo4j
+Copyright © 2002-2023 Neo4j Sweden AB (referred to in this notice as "Neo4j")
+[https://neo4j.com]
+
+This product includes software ("Software") developed by Neo4j.
+
+The copyright in the bundled Neo4j graph database (including the
+Software) is owned by Neo4j. The Software developed and owned
+by Neo4j is licensed under the GNU GENERAL PUBLIC LICENSE Version 3
+(http://www.fsf.org/licensing/licenses/gpl-3.0.html) ("GPL")
+to all third parties and that license, as required by the GPL, is
+included in the LICENSE.txt file.
+
+However, if you have executed an End User Software License and Services
+Agreement or an OEM Software License and Support Services Agreement, or
+another commercial license agreement with Neo4j or one of its
+affiliates (each, a "Commercial Agreement"), the terms of the license in
+such Commercial Agreement will supersede the GPL and you may use the
+software solely pursuant to the terms of the relevant Commercial
+Agreement.
+
+Full license texts are found in LICENSES.txt.
+
+
+Third-party licenses
+--------------------
+
+Apache Software License, Version 2.0
+  @firebase/app
+  @firebase/app-types
+-- java
+openjdk
+openjdk version "21.0.12.1" 2026-08-18 LTS
+OpenJDK Runtime Environment Temurin-21.0.12.1+1 (build 21.0.12.1+1-LTS)
+OpenJDK 64-Bit Server VM Temurin-21.0.12.1+1 (build 21.0.12.1+1-LTS, mixed mode, sharing)
+rc=0
+GPL body of /var/lib/neo4j/LICENSE.txt (from line 21) vs licenses/GPL-3.0.txt, blank lines and trailing spaces ignored: only diff is 1 leading space on the title line
+github: refs/tags/5.26.32 exists (tag object d766af19fdef5520fc7b148d5d77b9297ea1315d); LICENSE.txt at that tag is GNU GPL v3
+
+######## P5 valkey at the pinned digest
+## P-VAL: docker run --rm --network none --pull never --read-only --cap-drop ALL --label com.docker.compose.project=ke-sec-nt-probe --entrypoint sh valkey/valkey:8-alpine@sha256:081c2f5c...8507 -c <script>
+Valkey server v=8.1.10 sha=00000000:1 malloc=jemalloc-5.3.0 bits=64 build=fd3b186b1408478b
+-- licence-like files outside /usr/share/licenses, /proc, /sys:
+-- /usr/share/licenses:
+-- apk busybox:
+busybox-1.37.0-r31 contains:
+bin/busybox
+busybox-1.37.0-r31 description:
+V:1.37.0-r31
+rc=0
+P:alpine-baselayout L:GPL-2.0-only
+P:alpine-baselayout-data L:GPL-2.0-only
+P:alpine-keys L:MIT
+P:alpine-release L:MIT
+P:apk-tools L:GPL-2.0-only
+P:busybox L:GPL-2.0-only
+P:busybox-binsh L:GPL-2.0-only
+P:ca-certificates-bundle L:MPL-2.0 AND MIT
+P:libapk L:GPL-2.0-only
+P:libcap-ng L:GPL-2.0-or-later AND LGPL-2.1-or-later
+P:libcrypto3 L:Apache-2.0
+P:libeconf L:MIT
+P:libgcc L:GPL-2.0-or-later AND LGPL-2.1-or-later
+P:libssl3 L:Apache-2.0
+P:musl L:MIT
+P:musl-utils L:MIT AND BSD-2-Clause AND GPL-2.0-or-later
+P:openssl L:Apache-2.0
+P:scanelf L:GPL-2.0-only
+P:setpriv L:GPL-2.0-or-later
+P:ssl_client L:GPL-2.0-only
+P:tini L:MIT
+P:tzdata L:Public-Domain
+P:zlib L:Zlib
+upstream https://raw.githubusercontent.com/valkey-io/valkey/8.1.10/COPYING sha256 1a53dca3aab7ce048e91e77b03c0342f3075366f9dede8ec4d19d0cf229e12a0: License 1 BSD-3-Clause (Valkey contributors 2024-), License 2 BSD-3-Clause (Redis Ltd. 2006-2020)
+
+######## P6 postgres / nginx base / psycopg-binary
+## P-PG
+postgres (PostgreSQL) 16.15 (Debian 16.15-1.pgdg12+2)
+7:Files: *
+8:Copyright: Portions Copyright (c) 1996-2019, PostgreSQL Global Development Group
+10:License: PostgreSQL
+12:Files: src/backend/regex/*
+13:Copyright:
+18:License: PostgreSQL and Custom-regex and Tcl
+## P-NGX
+{"maintainer":"NGINX Docker Maintainers <docker-maint@nginx.com>","org.opencontainers.image.created":"2026-02-23T01:48:31.459Z","org.opencontainers.image.description":"Unprivileged NGINX Dockerfiles","org.opencontainers.image.licenses":"Apache-2.0","org.opencontainers.image.revision":"61141700fbe3bb03ee7379fd0a5cba5c9c5fc885","org.opencontainers.image.source":"https://github.com/nginx/docker-nginx-unprivileged","org.opencontainers.image.title":"docker-nginx-unprivileged","org.opencontainers.image.url":"https://github.com/nginx/docker-nginx-unprivileged","org.opencontainers.image.version":"1.28.2-alpine"}
+nginx version: nginx/1.28.2
+COPYRIGHT
+/* 
+ * Copyright (C) Igor Sysoev
+ * Copyright (C) Nginx, Inc.
+1
+## P-PSYB dist-info
+/opt/venv/lib/python3.12/site-packages/psycopg_binary-3.3.6.dist-info:
+INSTALLER
+METADATA
+RECORD
+REQUESTED
+WHEEL
+licenses
+sboms
+top_level.txt
+
+/opt/venv/lib/python3.12/site-packages/psycopg_binary-3.3.6.dist-info/licenses:
+LICENSE.txt
+
+/opt/venv/lib/python3.12/site-packages/psycopg_binary-3.3.6.dist-info/sboms:
+auditwheel.cdx.json
+License-Expression: LGPL-3.0-only
+License-File: LICENSE.txt
+
+######## P7 engine/notices.py path containment (copy of notices.py, crafted dist-infos, ke-app image python -I)
+ROW c_control_missing -> <none>
+ROW c_control_ok -> c_control_ok-1.0.dist-info/licenses/LICENSE
+ROW c_hdr_abs -> <none>
+ROW c_hdr_dotdot -> <none>
+ROW c_hdr_licenses_dotdot -> <none>
+ROW c_rec_abs -> <none>
+ROW c_rec_licenses_dotdot -> <none>
+ROW c_rec_metadata_out -> <none>
+ROW c_rec_named_abs_parent -> <none>
+ROW c_symlink_licence -> c_symlink_licence-1.0.dist-info/licenses/LICENSE
+MISSING ['c_control_missing', 'c_hdr_abs', 'c_hdr_dotdot', 'c_hdr_licenses_dotdot', 'c_rec_abs', 'c_rec_licenses_dotdot', 'c_rec_metadata_out', 'c_rec_named_abs_parent']
+d2 files= [] info= None licence_files= []
+d1 files= ['d1-1.0.dist-info/METADATA', 'd1-1.0.dist-info/licenses/../../../outside/NOT_A_LICENCE'] info= d1-1.0.dist-info licence_files= ['d1-1.0.dist-info/licenses/../../../outside/NOT_A_LICENCE']
+
+######## P8 bundle.sh vendor-table parse (lines 190-223 + 290-293 sourced verbatim, bash 5.2 in the gates image)
+GNU bash, version 5.2.15(1)-release (x86_64-pc-linux-gnu)
+awk: not an option: --version
+### 00-control rc=0
+| postgres | `postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4` | PostgreSQL | s | n |
+| neo4j | `neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b` | GPL-3.0 | s | n |
+### 01-missing-neo4j rc=1
+bundle: no licence entry in NOTICE.md for the stack image(s): neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+### 02-empty-licence rc=1
+bundle: no licence entry in NOTICE.md for the stack image(s): postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
+### 03-placeholder rc=1
+bundle: no licence entry in NOTICE.md for the stack image(s): postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+### 04-see-licence rc=1
+bundle: no licence entry in NOTICE.md for the stack image(s): neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+### 05-shell-meta rc=1
+bundle: no licence entry in NOTICE.md for the stack image(s): postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
+### 06-pipe-in-cell rc=0
+| postgres | `postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4` | PostgreSQL | a | b |
+| neo4j | `neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b` | GPL-3.0 | s | n |
+### 07-us-in-image-shifts-licence rc=0
+| postgres | `postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4` | MIT |  | s^_n |
+| neo4j | `neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b` | GPL-3.0 | s | n |
+### 08-us-in-ref-cell rc=0
+| junk | `postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4` | x |  | s^_n |
+| neo4j | `neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b` | GPL-3.0 | s | n |
+### 09-duplicate rc=1
+bundle: NOTICE.md lists postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 twice
+### 10-crlf rc=0
+| postgres | `postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4` | PostgreSQL | s | n |
+| neo4j | `neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b` | GPL-3.0 | s | n |
+### 11-indented-row rc=1
+bundle: no licence entry in NOTICE.md for the stack image(s): postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
+### 12-short-row rc=1
+bundle: no licence entry in NOTICE.md for the stack image(s): postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
+### 13-ref-prefix-or-suffix rc=1
+bundle: no licence entry in NOTICE.md for the stack image(s): postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+### 14-row-in-prose-section rc=1
+bundle: no licence entry in NOTICE.md for the stack image(s): postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
+### 15-row-for-other-ref-sets-nothing rc=1
+bundle: no licence entry in NOTICE.md for the stack image(s): postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
+### 16-tab-cell-licence rc=1
+bundle: no licence entry in NOTICE.md for the stack image(s): postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
+### 17-nbsp-licence rc=0
+| postgres | `postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4` | M-BM-  | s | n |
+| neo4j | `neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b` | GPL-3.0 | s | n |
+### 18-us-in-licence-extra-field rc=0
+| postgres | `postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4` | PostgreSQL | EXTRA | s^_n |
+| neo4j | `neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b` | GPL-3.0 | s | n |
+### 19-no-notice rc=1
+cat: NOTICE.md: No such file or directory
+bundle: NOTICE.md is missing or unreadable; it carries the vendor image licences
+### 20-empty-lgpl rc=1
+bundle: licenses/LGPL-3.0.txt is missing or empty (the full licence texts are committed and ship with the bundle)
+ls: cannot access '/tmp/pwned': No such file or directory
+### 05-shell-meta (rerun, heredoc) rc=0
+| $(touch /tmp/pwned1) | `postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4` | PostgreSQL; `touch /tmp/pwned2` $(touch /tmp/pwned3) | s\n'"${IFS}"${HOME} | %s %n %q \x41 |
+| neo4j | `neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b` | GPL-3.0 | s | n |
+ls: cannot access '/tmp/pwned*': No such file or directory
+
+######## M mutants (scratch copies of the working tree, gates image python, ro mount)
+targeted = tests.test_engine_notices tests.test_offline_bundle.BundleNoticesTest tests.test_offline_netprobe.SmokeCiOfflineTest (20 tests)
+base: Ran 20 tests in 21.144s OK
+m1: Ran 20 tests in 22.230s FAILED (failures=5)
+m1b: Ran 20 tests in 22.482s FAILED (failures=6)
+m2: Ran 20 tests in 21.635s FAILED (failures=1)
+m2b: Ran 20 tests in 21.263s OK
+m3: Ran 20 tests in 21.185s FAILED (failures=3)
+m4: Ran 20 tests in 21.069s FAILED (failures=1)
+m5: Ran 20 tests in 21.595s OK
+m6: Ran 20 tests in 20.990s OK
+m7: Ran 20 tests in 21.462s FAILED (failures=1)
+m8: Ran 20 tests in 21.040s OK
+full top-level suite (667 tests; the same 6 .git-only tests fail in base):
+base: FAILED (failures=3, errors=3, skipped=8) | extra vs base: 
+m2b: FAILED (failures=4, errors=3, skipped=8) | extra vs base: FAIL: test_lint_with_real_tools_fails_on_a_planted_finding 
+m5: FAILED (failures=3, errors=3, skipped=8) | extra vs base: 
+m6: FAILED (failures=3, errors=3, skipped=8) | extra vs base: 
+m8: FAILED (failures=4, errors=3, skipped=8) | extra vs base: FAIL: test_lint_with_real_tools_fails_on_a_planted_finding 
+m2b/m8 extra failure is shellcheck SC2034/SC2221 on the mutant form only; lint-clean variants:
+m2c (test_engine_notices + test_offline_bundle + test_stack_scripts, 269 tests): FAILED (failures=1, skipped=8) FAIL: test_operator_scripts_are_executable_in_git 
+m8c (test_engine_notices + test_offline_bundle + test_stack_scripts, 269 tests): FAILED (failures=1, skipped=8) FAIL: test_operator_scripts_are_executable_in_git 
+mutant diffs:
+-- m1
+<     if missing:
+>     if False and missing:
+-- m1b
+<         if not files:
+>         if False:
+-- m2
+< if [ "${#missing_licence[@]}" -gt 0 ]; then
+> if false; then
+-- m2b
+<   if [ -z "$licence" ] || [[ "${licence,,}" =~ ^(unknown|n/?a|none|tbd|todo|-+|\?+)$ ]]; then
+>   if [ -z "$row" ]; then
+-- m2c
+<   if [ -z "$licence" ] || [[ "${licence,,}" =~ ^(unknown|n/?a|none|tbd|todo|-+|\?+)$ ]]; then
+>   if [ -z "$licence" ]; then
+-- m3
+< control="$(docker run --rm --pull never --label "com.docker.compose.project=${project}-probe" --network "${project}_edge" --entrypoint python "$app_image" -m engine.netprobe "$edge_ip" "$control_port" --within 5)" || true
+> control="$(docker run --rm --pull never --network "${project}_edge" --entrypoint python "$app_image" -m engine.netprobe "$edge_ip" "$control_port" --within 5)" || true
+-- m4
+< package_table="$(docker run --rm --network none --pull never --label "com.docker.compose.project=${project}-notices" --entrypoint python "$app_ref" -m engine.notices)" \
+> package_table="$(docker run --rm --pull never --label "com.docker.compose.project=${project}-notices" --entrypoint python "$app_ref" -m engine.notices)" \
+-- m5
+< package_table="$(docker run --rm --network none --pull never --label "com.docker.compose.project=${project}-notices" --entrypoint python "$app_ref" -m engine.notices)" \
+> package_table="$(docker run --rm --network none --pull never --entrypoint python "$app_ref" -m engine.notices)" \
+-- m6
+<         if not rel.parts or rel.is_absolute() or ".." in rel.parts:
+>         if not rel.parts or rel.is_absolute():
+-- m7
+<         if not rel.parts or rel.is_absolute() or ".." in rel.parts:
+>         if not rel.parts:
+-- m8
+<   "| Package | Version | Licence | Licence files |"*) ;;
+>   *) ;;
+-- m8c
+<   "| Package | Version | Licence | Licence files |"*) ;;
+>   "|"*) ;;
+killers:
+-- m1
+NoticesTest.test_main_prints_the_table_or_refuses
+BundleNoticesTest.test_notices_fail_when_package_licence_missing (case='psycopg (LGPL, licenses/LICENSE.txt)')
+BundleNoticesTest.test_notices_fail_when_package_licence_missing (case='psycopg-binary')
+BundleNoticesTest.test_notices_fail_when_package_licence_missing (case='six (legacy layout, MIT)')
+BundleNoticesTest.test_notices_fail_when_package_licence_missing (case='httpx (no License-File header)')
+-- m1b
+NoticesTest.test_main_prints_the_table_or_refuses
+NoticesTest.test_rows_skip_the_project_and_duplicates_and_name_missing
+BundleNoticesTest.test_notices_fail_when_package_licence_missing (case='psycopg (LGPL, licenses/LICENSE.txt)')
+BundleNoticesTest.test_notices_fail_when_package_licence_missing (case='psycopg-binary')
+BundleNoticesTest.test_notices_fail_when_package_licence_missing (case='six (legacy layout, MIT)')
+BundleNoticesTest.test_notices_fail_when_package_licence_missing (case='httpx (no License-File header)')
+-- m2
+BundleNoticesTest.test_notices_list_every_stack_image_with_licence (case='an image with no known licence fails the bundle')
+-- m3
+SmokeCiOfflineTest.test_ci_offline_control_run_labels_its_own_probe_project (case='static: every smoke.sh docker run passes the label')
+SmokeCiOfflineTest.test_ci_offline_control_run_labels_its_own_probe_project (project='ke-verify-test')
+SmokeCiOfflineTest.test_ci_offline_control_run_labels_its_own_probe_project (project='ke-site-b')
+-- m4
+BundleNoticesTest.test_bundle_has_third_party_notices (part='generated in the ke-app image, offline, before any save')
+-- m7
+NoticesTest.test_missing_or_escaping_licence_file_is_not_found
+
+######## secrets grep over the diff + new files (1535 lines): 4 hits, all benign
+quickstart prose 'secrets', 'set real passwords'; test fixture .env 'KE_STORES__POSTGRES__PASSWORD=local-secret' (asserts .env is NOT shipped); test literal '/etc/passwd' (escape case)
+
+######## leftover containers: docker ps -a | grep ke-sec-nt -> none

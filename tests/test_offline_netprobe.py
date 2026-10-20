@@ -515,6 +515,52 @@ class SmokeCiOfflineTest(unittest.TestCase):
                       "the inconclusive message must name the address:port the control actually probed")
         self.assertNotIn(":8100", inconclusive[0], "the message names the app port, not the control's target")
 
+    def test_ci_offline_control_run_labels_its_own_probe_project(self):
+        # Security I-OC1b-2 (audit-oc1b.md; orchestrator 2026-10-20): ke-app
+        # carries compose project labels, so a plain `docker run` of it looks
+        # like part of whichever project built it, and that project's teardown
+        # label check then trips on it. The control run overrides the label with
+        # `<project>-probe`, where <project> is the one compose resolved.
+        with self.subTest(case="static: every smoke.sh docker run passes the label"):
+            text = (ROOT / "scripts" / "smoke.sh").read_text(encoding="utf-8")
+            body = "\n".join(l for l in text.replace("\\\n", " ").splitlines() if not l.lstrip().startswith("#"))
+            runs = re.findall(r"\bdocker\s+(?:container\s+)?run\b[^\n]*", body)
+            self.assertTrue(runs, "no `docker run` in smoke.sh")
+            for run in runs:
+                self.assertRegex(run, r"(?:^|\s)(?:--label(?:\s+|=)|-l\s+)\"?com\.docker\.compose\.project=",
+                                 f"smoke.sh's `docker run` passes no explicit compose project label: {run}")
+        for project in ("ke-verify-test", "ke-site-b"):
+            with self.subTest(project=project):
+                result, records = self._smoke(project)
+                out = result.stdout + result.stderr
+                self.assertEqual(result.returncode, 0, out)
+                controls, _ = self._probes(records)
+                self.assertEqual(len(controls), 1, out)
+                argv = controls[0][1]["argv"]
+                labels = [b for a, b in zip(argv, argv[1:]) if a in ("--label", "-l")]
+                labels += [a.split("=", 1)[1] for a in argv if a.startswith("--label=")]
+                self.assertIn(f"com.docker.compose.project={project}-probe", labels,
+                              f"the control run must carry --label com.docker.compose.project={project}-probe: "
+                              f"{argv}")
+                self.assertNotIn(f"com.docker.compose.project={project}", labels,
+                                 "the control is never labelled as part of the project itself")
+
+    def test_ci_offline_pass_says_in_plain_words_what_it_checked(self):
+        # Recorded run 3, finding Q2 (recorded3-runs.md): an operator sees
+        # `smoke: ci/offline api has no route to <ip>:<port>`, and `ci/offline`
+        # means nothing to them. Each passing line also says, in plain words,
+        # that the service cannot reach outside the stack.
+        result, _ = self._smoke()
+        out = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 0, out)
+        for svc in ("api", "worker"):
+            with self.subTest(service=svc):
+                lines = [l for l in out.splitlines() if re.search(rf"\b{svc}\b", l)
+                         and re.search(r"(?i)\bno route\b|ci/offline", l)]
+                self.assertTrue(lines, f"no ci/offline result line for {svc}:\n{out}")
+                self.assertTrue([l for l in lines if re.search(r"(?i)\bcannot reach outside the stack\b", l)],
+                                f"the {svc} line must say it `cannot reach outside the stack` (Q2): {lines}")
+
     def test_ci_offline_refuses_a_non_ipv4_target(self):
         for value in ("", "fe80::1", "gateway", "300.1.2.3", "172.30.0", "172.30.0.2 172.30.0.3"):
             with self.subTest(target=value or "(empty)"):

@@ -14,7 +14,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20  # PS-3.4: raised from 10 for the offline check (R5); the measured first green run + 50% replaces it, see docs/evidence/platform-offline
+    timeout-minutes: 30  # PS-3.4: 30 for the measurement run (ruling 2, ci-39359710258: unit tests 770 s, offline stage reached at ~16 min); the next commit sets measured + 50%, see docs/evidence/platform-offline
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:

@@ -7,7 +7,11 @@
 # Docker daemon's own arch, and --arch only asserts it), after build.sh. It never
 # builds, pulls or pushes, and makes no network call. The bundle holds the
 # stack images only (one tar each, saved from a bundle tag with no
-# --platform), the files `install` copies (app/), the two installers, a
+# --platform), the files `install` copies (app/), the two installers, the
+# committed NOTICE.md and licenses/, a generated THIRD_PARTY_NOTICES.md (the
+# ke-app image's package licences, read inside that image with no network, and
+# the stack images' licences from NOTICE.md; any package or digest-pinned image
+# without a licence refuses the bundle before anything is written), a
 # bundle.json record and MANIFEST.sha256 over every other file.
 set -euo pipefail
 export LC_ALL=C
@@ -82,10 +86,13 @@ if [ -e "$record" ] || [ -L "$record" ]; then
   die "the manifest record already exists: $record"
 fi
 
-# --- free disk (R6): 10 GiB, before any save -------------------------------
+# --- free disk (R6): 7 GiB, before any save --------------------------------
+# Basis (ruling 1, docs/evidence/platform-offline/ci-39359710258.log): the
+# measured need is this bundle (0.94 GiB) plus the dind image store (3.3 GiB),
+# about 4.3 GiB; 7 GiB leaves about 60% headroom.
 # The Available column is the number before the "NN%" capacity field, so a
 # filesystem or mount name with spaces cannot shift it (security L-6).
-floor_kb=$((10 * 1024 * 1024))
+floor_kb=$((7 * 1024 * 1024))
 probe="$out"
 while [ ! -e "$probe" ]; do probe="$(dirname "$probe")"; done
 df_text="$(df -Pk -- "$probe")" || die "cannot read the free space on $probe"
@@ -100,7 +107,7 @@ case "$avail_kb" in
   '' | *[!0-9]*) die "cannot read the free space on $probe" ;;
 esac
 if [ "$avail_kb" -lt "$floor_kb" ]; then
-  die "need 10 GiB free on $out, found $((avail_kb / 1024 / 1024)) GiB"
+  die "need 7 GiB free on $out, found $((avail_kb / 1024 / 1024)) GiB"
 fi
 
 # --- the stack's images ----------------------------------------------------
@@ -177,6 +184,68 @@ for ref in "${refs[@]}"; do
   [ "$platform" = "linux/$arch" ] || die "image $ref is $platform, not linux/$arch"
 done
 
+# --- licence notices (PS-3.8): everything that can refuse the bundle runs here,
+# before any tag or save, so a refusal leaves nothing in --out and no record.
+#
+# Vendor images: every digest-pinned stack image needs a row with a licence in
+# the committed NOTICE.md (Image | Reference | Licence | Source | Note), keyed by
+# its full pinned reference, so a digest bump has to be reviewed again.
+notice_src="$(cat -- NOTICE.md)" || die "NOTICE.md is missing or unreadable; it carries the vendor image licences"
+for lic in GPL-3.0.txt LGPL-3.0.txt; do
+  [ -s "licenses/$lic" ] || die "licenses/$lic is missing or empty (the full licence texts are committed and ship with the bundle)"
+done
+# One record per row, fields (reference, image, licence, source, note) joined by
+# the ASCII unit separator: not whitespace, so an empty cell stays empty.
+sep=$'\037'
+declare -A vendor_row=()
+while IFS="$sep" read -r nref nrest; do
+  [ -n "$nref" ] || continue
+  [ -z "${vendor_row[$nref]+x}" ] || die "NOTICE.md lists $nref twice"
+  vendor_row[$nref]="${nref}${sep}${nrest}"
+done < <(printf '%s\n' "$notice_src" | awk -F'|' '
+  function trim(s) { gsub(/^[ \t]+|[ \t]+$/, "", s); return s }
+  /^\|/ && NF >= 7 {
+    ref = trim($3); gsub(/`/, "", ref)
+    if (index(ref, "@sha256:") == 0) next
+    printf "%s\037%s\037%s\037%s\037%s\n", ref, trim($2), trim($4), trim($5), trim($6)
+  }')
+vendor_refs=()
+missing_licence=()
+for ref in "${refs[@]}"; do
+  [[ "$ref" == *"@sha256:"* ]] || continue
+  vendor_refs+=("$ref")
+  row="${vendor_row[$ref]:-}"
+  licence=""
+  if [ -n "$row" ]; then IFS="$sep" read -r _ _ licence _ <<< "$row"; fi
+  if [ -z "$licence" ] || [[ "${licence,,}" =~ ^(unknown|n/?a|none|tbd|todo|-+|\?+)$ ]]; then
+    missing_licence+=("$ref")
+  fi
+done
+if [ "${#missing_licence[@]}" -gt 0 ]; then
+  die "no licence entry in NOTICE.md for the stack image(s): ${missing_licence[*]}"
+fi
+
+# Python packages: run the generator inside the ke-app image being bundled, with
+# no network and no pull. The compose label overrides the one the image carries
+# (the same hazard as smoke.sh's control run), so this container never looks
+# like part of the project that built it.
+app_ref=""
+for ref in "${refs[@]}"; do
+  if [ "${ref_name[$ref]}" = ke-app ]; then
+    [ -z "$app_ref" ] || die "more than one ke-app image in the stack: $app_ref and $ref"
+    app_ref="$ref"
+  fi
+done
+[ -n "$app_ref" ] || die "the stack has no ke-app image to read the package licences from"
+project="$(printf '%s' "$model" | jq -er '.name')" || die "the resolved compose model has no project name"
+[[ "$project" =~ ^[a-z0-9][a-z0-9_-]*$ ]] || die "the compose project name fails its pattern"
+package_table="$(docker run --rm --network none --pull never --label "com.docker.compose.project=${project}-notices" --entrypoint python "$app_ref" -m engine.notices)" \
+  || die "the licence notices generator failed in $app_ref (a package has no licence file in the image); no bundle written"
+case "$package_table" in
+  "| Package | Version | Licence | Licence files |"*) ;;
+  *) die "the licence notices generator printed no package table" ;;
+esac
+
 dirty=false
 if [ -n "$(git status --porcelain)" ]; then dirty=true; fi
 
@@ -207,8 +276,25 @@ cp -- scripts/net_isolated.sh "$app/scripts/net_isolated.sh"
 cp -- docs/quickstart.md "$app/docs/quickstart.md"
 
 cp -- scripts/install.sh scripts/install.ps1 "$out/"
-if [ -f NOTICE.md ]; then cp -- NOTICE.md "$out/"; fi
-if [ -d licenses ]; then cp -R -- licenses "$out/licenses"; fi
+# NOTICE.md and licenses/ ship as committed (the checks above already refused a
+# tree without them), and THIRD_PARTY_NOTICES.md is generated from this build.
+tick='`'
+cp -- NOTICE.md "$out/"
+cp -R -- licenses "$out/licenses"
+{
+  printf '# Third-party notices\n\n'
+  printf 'Generated by scripts/bundle.sh from build %s. NOTICE.md holds the statements that cannot be generated, and licenses/ the full licence texts.\n\n' "$git_sha"
+  printf '## Python packages in the ke-app image\n\n'
+  printf 'Read from the image being bundled; the licence files are paths inside its site-packages directory.\n\n'
+  printf '%s\n\n' "$package_table"
+  printf '## Stack images\n\n'
+  printf 'The third-party images in this bundle, by pinned reference. The licence of each is the reviewed entry in NOTICE.md.\n\n'
+  printf '| Image | Reference | Licence | Source | Note |\n|---|---|---|---|---|\n'
+  for ref in "${vendor_refs[@]}"; do
+    IFS="$sep" read -r _ nimage nlicence nsource nnote <<< "${vendor_row[$ref]}"
+    printf '| %s | %s%s%s | %s | %s | %s |\n' "$nimage" "$tick" "$ref" "$tick" "$nlicence" "$nsource" "$nnote"
+  done
+} > "$out/THIRD_PARTY_NOTICES.md"
 
 {
   printf '{"format": 1, "git_sha": "%s", "dirty": %s, "created": "%s", "arch": "%s", "images": [\n' \

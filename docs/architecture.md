@@ -1636,10 +1636,10 @@ Arch above).
      `linux/<daemon arch>` (amended 2026-10-19, was `linux/amd64` per Q20),
      read from the same inspect (Arch, above).
    - **Disk (R6).** The filesystem holding `--out` must have at least
-     10 GiB free (`df -Pk`); otherwise exit non-zero with "need 10 GiB free on
-     <path>, found <n> GiB" (rounded down) before any `save`. 10 GiB is a default from spike
-     S4 (0.96 GB tar, 3.3 GB inner store, about 9 GB all resident), revised
-     from the first CI run's `df` log.
+     7 GiB free (`df -Pk`); otherwise exit non-zero with "need 7 GiB free on
+     <path>, found <n> GiB" (rounded down) before any `save`. 7 GiB is the
+     measured floor (R6, amended 2026-10-20; see "Disk" under the time
+     cost below); it replaced the 10 GiB spike default.
    - No image-store check: bundling uses only `docker tag` and `docker save
      <tag>`, which work on the classic and containerd stores alike (spike
      S1; the CI build host's store is unmeasured).
@@ -2438,11 +2438,11 @@ script is two-sided, keyed on `KE_OFFLINE_CLIENT=1`.
      does not pre-check that `docker-compose.offline.yml` exists: compose
      fails on a missing `-f`/`COMPOSE_FILE` entry, and the fake-docker host
      test copies only `docker-compose.yml` and `.env.example`.
-  2. **Disk (R6).** At least 10 GiB free on the filesystem holding `dist/`,
+  2. **Disk (R6).** At least 7 GiB free on the filesystem holding `dist/`,
      and on the daemon's `DockerRootDir` when that path exists on the host
      (on Docker Desktop it is inside the VM and is reported as not
      measurable, not as a failure). Below that, exit non-zero with the
-     path, the figure found and "need 10 GiB free" before anything is
+     path, the figure found and "need 7 GiB free" before anything is
      saved.
   3. `bundle.sh --out dist/<project>-<arch>` (the local daemon's normalised arch; no `--arch`).
   4. `compose --profile offline up -d --wait dind`.
@@ -2450,8 +2450,9 @@ script is two-sided, keyed on `KE_OFFLINE_CLIENT=1`.
   6. `compose --profile offline run --rm offline-client`.
   - **`df` log (R6).** `offline_check.sh` prints one `offline: df <stage>`
     block (`df -Pk` of the same paths) before step 2, after steps 3, 4 and
-    6, and after the trap's teardown. The first CI run's log is saved as
-    evidence and replaces the 10 GiB default with a measured figure.
+    6, and after the trap's teardown. The first CI run's log
+    (`ci-39359710258.log`) is saved as evidence; the floor is now the
+    measured 7 GiB (R6, amended 2026-10-20).
 - **Client half** (inside `offline-client`):
   - *Test seams (orchestrator ruling 3).* It reads the bundle from
     `${KE_OFFLINE_BUNDLE_DIR:-/bundle}` and installs under
@@ -2576,14 +2577,34 @@ PS-3.4).**
 
 - **CI.** Today the job takes 389 s (`verify` 362 s) against
   `timeout-minutes: 10`. The projection is about 9–11 min, which can exceed
-  the limit, so ruling R5 (20 min first, then measured + 50%) stands.
+  the limit, so ruling R5 (20 min first, then measured + 50%) stood.
+  *Measured (CI run 39359710258, ubuntu-24.04, 2 cores, 2026-10-20;
+  `docs/evidence/platform-offline/ci-39359710258.log`):* the job started at
+  02:35:10 and reached the offline stage at 02:51:07, about 16 min in,
+  because the unit tests alone took 770.7 s (651 tests) against about
+  280 s locally. 20 min would leave about 4 min for 2.5–4.5 min of offline
+  stages, so R5 is amended: 30 min for the measurement run, then measured
+  + 50%.
+- **Follow-up (not this unit): unit-test time on CI.** 770 s on the 2-core
+  runner vs about 280 s locally dominates `full` on CI. Running test
+  modules in parallel is the candidate fix; it goes to the orchestrator as
+  a separate plan item and does not change the PS-3.4 rule.
 - **Local.** Today `full` takes about 146 s, so the projection is about 5–7
   min, under F5's ~15 min.
 - **Disk.** S4: bundle tar about 1.0 GB, `dind`'s store 3.3 GB after load,
   gates image 1.35 GB, host copies of the stack images about 3.3 GB: about
-  9 GB resident, plus build cache. Hence the 10 GiB floor (R6), checked by
-  `bundle.sh` and `offline_check.sh`, with `df` logged per stage. CI runner
-  figures are unmeasured until the first run.
+  9 GB resident, plus build cache. That gave the first 10 GiB floor (R6),
+  checked by `bundle.sh` and `offline_check.sh`, with `df` logged per stage.
+  *Measured (R6 amended 2026-10-20):* the floor guards only what the
+  offline stages add, since the host's stack and gates images already
+  exist before the check: the bundle (941 MiB amd64, 2.4 GiB arm64 from the
+  native build host; `recorded-runs.md`) plus the `dind` store after load
+  (about 3.3 GiB, S4), about 4.3 GiB, plus about 60% headroom: **7 GiB**.
+  Install's staging copy lands on the client's `/install` tmpfs, so it
+  costs memory (about the bundle's size), not disk.
+  The first GitHub ubuntu-24.04 runner had 9.1 GiB (9,552,372 KiB) free on
+  `/` at the offline stage (CI run 39359710258), which failed the 10 GiB
+  floor and passes 7 GiB with about 2 GiB to spare.
 - **Memory.** It stays near today's peak, because the verify stack is torn
   down before `dind` starts.
 
@@ -2603,7 +2624,8 @@ section:
 - **S4 → R6.** Sizes and times above.
 - Still unmeasured: the CI runner's image-store type (irrelevant now, R2),
   free disk and timings; the first CI run's `df` log and duration close
-  them (R5, R6).
+  them (R5, R6). Free disk is closed (CI run 39359710258: 9.1 GiB, floor
+  7 GiB); the duration closes with the first green run under 30 min.
 
 **CI timeout (PS-3.4).** `.github/workflows/ci.yml` keeps its single step.
 The current value is 10 min: 389 s × 1.5, from
@@ -2624,10 +2646,15 @@ and "rulings from spikes (R2, R6)").**
 - **R4.** Neo4j GPL-3.0 listed with a source URL in the notices; Phoenix
   per the human's Q43 ruling.
 - **R5.** The CI timeout goes to 20 min in the commit that wires in the
-  offline stages, then measured + 50%.
-- **R6.** `bundle.sh` and `offline_check.sh` fail early below 10 GiB free;
-  the first CI run logs `df` per offline stage; 10 GiB is a default until
-  measured. `verify.sh` never prunes the operator's images. If CI runs out
+  offline stages, then measured + 50%. *Amended 2026-10-20 (orchestrator,
+  CI run 39359710258):* 30 min for the measurement run, since the offline
+  stage started at about 16 min; then measured + 50%.
+- **R6.** `bundle.sh` and `offline_check.sh` fail early below the disk
+  floor; the first CI run logs `df` per offline stage. *Amended 2026-10-20
+  (orchestrator, CI run 39359710258):* the floor is 7 GiB, measured (bundle
+  plus `dind` store, about 4.3 GiB, plus about 60% headroom); it was a
+  10 GiB default, which the runner's 9.1 GiB free failed. `verify.sh`
+  never prunes the operator's images. If CI runs out
   anyway, a larger runner or a CI-only cleanup step (which would need a
   CLAUDE.md row) goes back to the orchestrator.
 - **R7.** The bundle holds stack images only; L-5 applies to both gate
@@ -2887,8 +2914,9 @@ Suggested first test per sub-item, followed by the order of the rest.
        - a reference that fails the pattern, a non-empty `--out`:
          `test_bundle_refuses_unfit_image_or_out` (its `non_amd64` case
          moves to `test_bundle_refuses_image_of_other_arch`, 5b);
-       - under 10 GiB free (fake `df`), with "need 10 GiB free", "found <n>
-         GiB" rounded down, and the path in the message (R6):
+       - under 7 GiB free (fake `df`), with "need 7 GiB free", "found <n>
+         GiB" rounded down, and the path in the message (R6, floor amended
+         10→7 GiB on 2026-10-20):
          `test_bundle_fails_below_free_disk`,
          `test_bundle_reads_available_column_when_filesystem_has_spaces`.
     5a. *Unit-2 rework round 1 (2026-10-19). Names are the tester's, from
@@ -3139,7 +3167,7 @@ Suggested first test per sub-item, followed by the order of the rest.
         - a non-IPv4 target → FAIL;
         - the passing path runs the control on `<project>_edge` with `--rm`.
     12. *proposed* `OfflineCheckScriptTest` (fake docker, fake `df`):
-        - Host half: under 10 GiB free fails before `bundle.sh` runs; then
+        - Host half: under 7 GiB free fails before `bundle.sh` runs; then
           bundle, `up --wait dind`, `net_isolated.sh` (refuses an inspect
           that is not internal or not isolated), `run offline-client`. An
           `offline: df` block is printed before the disk check, after
@@ -3968,9 +3996,11 @@ asked for the hook design to be recorded in this ADR.
     `${KE_IMAGE_TAG:-local}`; verify uses a per-worktree `wt-<hash>` tag, so
     it never retags the live stack's images (§2.1 Image tags).
   - `verify.sh full` becomes slower and needs more disk. The CI
-    `timeout-minutes` is the measured duration plus 50% (F6 ruling, PS-3.4).
-    `bundle.sh` and `offline_check.sh` refuse to start below 10 GiB free and
-    log `df` around the offline stages (R6).
+    `timeout-minutes` is the measured duration plus 50% (F6 ruling, PS-3.4;
+    30 min for the platform-offline measurement run, R5 amended
+    2026-10-20). `bundle.sh` and `offline_check.sh` refuse to start below
+    7 GiB free (measured, R6 amended 2026-10-20; was 10 GiB) and log `df`
+    around the offline stages (R6).
     An unreachable model host costs at most one probe timeout.
 - **First tests** (names aligned to PS-2.7 on 2026-10-19):
   - `test_gates_it_internal_only_and_no_socket` (fast);
@@ -4528,6 +4558,9 @@ asked for the hook design to be recorded in this ADR.
   writable by others is **refused**, failing closed; staging is pinned
   only once proven to be this run's empty directory; publish chmods `.`
   from inside the target; the Windows write mask is built from integers.
+  Amended on 2026-10-20 (orchestrator, CI run 39359710258): the disk floor
+  is a measured 7 GiB (was a 10 GiB default) and the CI timeout is 30 min
+  for the measurement run (was 20), rulings R6 and R5 in §2.5.
 - **Context:**
   - PS-3.1, 3.2 and 3.3 require a bundle that installs and runs on a daemon
     with no images and no egress, and that rejects tampering.
@@ -4555,7 +4588,8 @@ asked for the hook design to be recorded in this ADR.
       reference), `as` (the bundle tag) and `services`;
     - `MANIFEST.sha256`.
     No wheels are shipped (bundle ruling). `bundle.sh` refuses to start
-    below 10 GiB free (R6). Beside the bundle, not inside it, `bundle.sh`
+    below 7 GiB free (R6, measured; amended 2026-10-20 from 10 GiB).
+    Beside the bundle, not inside it, `bundle.sh`
     writes `<out>.manifest.sha256`, the manifest's own hash, as the
     release record (M-3).
   - **One bundle per arch, built natively.** `bundle.sh` bundles for the
@@ -4640,7 +4674,7 @@ asked for the hook design to be recorded in this ADR.
       isolated network, from an `offline-client` with no checkout mount,
       within `verify.sh full` (ADR-KE-009, F5). It asserts that the image
       store is empty before install and that afterwards its tag set equals
-      the `as` set. It refuses to start below 10 GiB free and logs `df`
+      the `as` set. It refuses to start below 7 GiB free and logs `df`
       around each stage (R6).
     - `ci/offline` runs in the host half of `smoke.sh`. api and worker must
       get a no-route error connecting to the gateway's `edge` address,
@@ -4805,9 +4839,13 @@ asked for the hook design to be recorded in this ADR.
     The shipped `docker-compose.yml` is unchanged, and the override path is
     exactly what `ci/deployable-offline` exercises.
   - `ci/deployable-offline` runs in every local `full` (F5). It adds an
-    estimated 2.5–4.5 min to `full` (re-based on S4), so the CI timeout
-    goes to 20 min first (R5). It needs about 9 GB resident, hence the
-    10 GiB floor until the first CI run's `df` log measures it (R6).
+    estimated 2.5–4.5 min to `full` (re-based on S4). On the 2-core CI
+    runner the offline stage starts about 16 min in (unit tests 770 s), so
+    the CI timeout goes to 30 min for the measurement run, then measured +
+    50% (R5, amended 2026-10-20). The offline stages add about 4.3 GiB on
+    disk (bundle plus `dind` store), hence a measured 7 GiB floor; the
+    first GitHub ubuntu-24.04 runner had 9.1 GiB free and failed the
+    earlier 10 GiB default (R6, amended 2026-10-20; CI run 39359710258).
   - Integrity is proven, authenticity is not. Integrity also depends on the
     operator's out-of-band hash comparison and their own check of the
     installer (M-3).

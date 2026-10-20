@@ -166,9 +166,12 @@ if [ -z "$app_image" ]; then
   exit 1
 fi
 # The control probes the port the gateway listens on; it has its own variable so
-# the message below names exactly what it probed.
+# the message below names exactly what it probed. ke-app carries compose project
+# labels, so a plain `docker run` of it would look like part of this project and
+# trip the project's teardown label check; the control is labelled as its own
+# project instead (security I-OC1b-2).
 control_port="$probe_port"
-control="$(docker run --rm --pull never --network "${project}_edge" --entrypoint python "$app_image" -m engine.netprobe "$edge_ip" "$control_port" --within 5)" || true
+control="$(docker run --rm --pull never --label "com.docker.compose.project=${project}-probe" --network "${project}_edge" --entrypoint python "$app_image" -m engine.netprobe "$edge_ip" "$control_port" --within 5)" || true
 if [ "$control" != connected ]; then
   echo "smoke: FAIL (ci/offline inconclusive: the control probe from ${project}_edge to $edge_ip:$control_port printed '${control:-nothing}', want connected)" >&2
   exit 1
@@ -179,7 +182,7 @@ for service in api worker; do
     echo "smoke: FAIL (ci/offline: $service printed '${result:-nothing}' for $edge_ip:$probe_port, want no_route; it can leave the backend network)" >&2
     exit 1
   fi
-  echo "smoke: ci/offline $service has no route to $edge_ip:$probe_port"
+  echo "smoke: ci/offline $service has no route to $edge_ip:$probe_port ($service cannot reach outside the stack)"
 done
 
 if [ "$launched" -eq 1 ] || [ "${KE_SMOKE_OWNS_PROJECT:-}" = 1 ]; then

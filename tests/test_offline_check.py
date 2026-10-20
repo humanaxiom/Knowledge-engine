@@ -23,8 +23,10 @@ Interface pinned by these tests (tester, RED offline check, 2026-10-19):
   DOCKER_CERT_PATH is /certs/client in offline-client; no new seam.
 - `bash scripts/net_isolated.sh <network>` exits 0 only for a network that is
   `Internal` and has `gateway_mode_ipv4=isolated`, from one inspect.
-- Below the disk floor the message says "need 10 GiB free" and "found <N>
-  GiB" (rounded down), as bundle.sh does (review N8).
+- Below the disk floor the message says "need 7 GiB free" and "found <N>
+  GiB" (rounded down), as bundle.sh does (review N8). The floor was 10 GiB
+  until orchestrator ruling 1 after CI run 39359710258 (handoff, 2026-10-20;
+  docs/evidence/platform-offline/ci-39359710258.log).
 
 Full tier: what only a real `dind` run proves (the containerd store of the
 pinned Engine, the TLS alias, `volume.subpath` honoured, no pull, the stack
@@ -601,29 +603,37 @@ class OfflineCheckScriptTest(_OfflineBase):
                 self.assertEqual(self._bundle_dirs(repo), [], "the bundle directory was left behind")
 
     def test_offline_check_fails_below_free_disk(self):
-        with self.subTest(free="9.5 GiB (above 10 GB decimal, below 10 GiB)"):
-            result, records, _ = self._host(FAKE_DF_AVAIL_KB=str(int(9.5 * GIB_KB)))
-            out = self._out(result)
-            self.assertNotEqual(result.returncode, 0, "the check ran below the 10 GiB floor:\n" + out)
-            self.assertNotIn("bundle", self._events(records), "bundle.sh ran below the floor")
-            self.assertNotIn("up dind", self._events(records))
-            self.assertRegex(out, r"need 10 GiB free")
-            self.assertRegex(out, r"found 9 GiB\b", "the figure found, rounded down")
-            self.assertIsNone(SKIP_RX.search(out), "below the floor is a failure, never a skip")
-            self.assertNotRegex(out, r"(?i)\bpass(?:ed)?\b")
-            self.assertTrue([r for r in records if r["argv"][:1] == ["DF"]], "df was not consulted")
-        with self.subTest(free="exactly 10 GiB (accepted)"):
-            result, records, _ = self._host(FAKE_DF_AVAIL_KB=str(10 * GIB_KB))
+        # Orchestrator ruling 1 after CI run 39359710258 (docs/handoffs/platform-offline.md,
+        # 2026-10-20; log docs/evidence/platform-offline/ci-39359710258.log: the check
+        # refused with "need 10 GiB free on dist, found 9 GiB"): the floor is 7 GiB in
+        # offline_check.sh and bundle.sh alike (was 10 GiB).
+        for label, avail_kb, found in (
+                ("7 GiB less 1 KiB (above 7 GB decimal, below 7 GiB)", 7 * GIB_KB - 1, 6),
+                ("3 GiB", 3 * GIB_KB, 3)):
+            with self.subTest(free=label):
+                result, records, _ = self._host(FAKE_DF_AVAIL_KB=str(avail_kb))
+                out = self._out(result)
+                self.assertNotEqual(result.returncode, 0, "the check ran below the 7 GiB floor:\n" + out)
+                self.assertNotIn("bundle", self._events(records), "bundle.sh ran below the floor")
+                self.assertNotIn("up dind", self._events(records))
+                self.assertRegex(out, r"need 7 GiB free")
+                self.assertRegex(out, rf"found {found} GiB\b", "the figure found, rounded down")
+                self.assertIsNone(SKIP_RX.search(out), "below the floor is a failure, never a skip")
+                self.assertNotRegex(out, r"(?i)\bpass(?:ed)?\b")
+                self.assertTrue([r for r in records if r["argv"][:1] == ["DF"]], "df was not consulted")
+        with self.subTest(free="exactly 7 GiB (accepted)"):
+            result, records, _ = self._host(FAKE_DF_AVAIL_KB=str(7 * GIB_KB))
             self.assertEqual(result.returncode, 0, self._out(result))
             self.assertIn("bundle", self._events(records))
-        with self.subTest(free="11 GiB (control)"):
-            result, _, _ = self._host(FAKE_DF_AVAIL_KB=str(11 * GIB_KB))
+        with self.subTest(free="9 GiB (accepted: the CI runner's free space, run 39359710258)"):
+            result, records, _ = self._host(FAKE_DF_AVAIL_KB=str(9 * GIB_KB))
             self.assertEqual(result.returncode, 0, self._out(result))
-        with self.subTest(free="DockerRootDir on the host at 9 GiB"):
+            self.assertIn("bundle", self._events(records))
+        with self.subTest(free="DockerRootDir on the host at 7 GiB less 1 KiB"):
             root_dir = self.tmp / "docker-root"
             root_dir.mkdir(exist_ok=True)
             result, records, _ = self._host(FAKE_DOCKER_ROOT_DIR=str(root_dir),
-                                            FAKE_DF_AVAIL_BY_PATH=json.dumps({str(root_dir): 9 * GIB_KB}))
+                                            FAKE_DF_AVAIL_BY_PATH=json.dumps({str(root_dir): 7 * GIB_KB - 1}))
             out = self._out(result)
             self.assertNotEqual(result.returncode, 0, "DockerRootDir below the floor was accepted:\n" + out)
             self.assertNotIn("bundle", self._events(records))

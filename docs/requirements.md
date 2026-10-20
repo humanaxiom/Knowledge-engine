@@ -1278,11 +1278,12 @@ PS-3.1 additions (bundle and install):
   `[unit: test_install_fails_when_service_has_no_bundle_entry]` (fast; one
   case has `compose config --services` exit non-zero);
   launch from the bundle with no pull is proved by `ci/deployable-offline`.
-- *Free disk (R6).* `bundle.sh` checks for at least 10 GiB free before it
+- *Free disk (R6).* `bundle.sh` checks for at least 7 GiB free before it
   writes anything. Below that, it exits non-zero with a message giving the
-  required and available space in GiB ("need 10 GiB free ... found <n> GiB",
-  the figure found rounded down) and the path, and runs no `docker save`. 10 GiB is a
-  default until the first CI run measures it (PS-3.2 *Disk logging*).
+  required and available space in GiB ("need 7 GiB free ... found <n> GiB",
+  the figure found rounded down) and the path, and runs no `docker save`.
+  7 GiB is the measured floor (amended 2026-10-20 from a 10 GiB default;
+  PS-3.2 *Disk logging*).
   Control: with enough space it proceeds (same test).
   `[unit: test_bundle_fails_below_free_disk]` (fast, stubbed `df`)
 - *Tamper cases.* Given a bundle with (a) a changed file, (b) a listed file
@@ -1678,15 +1679,21 @@ PS-3.2 additions (`ci/deployable-offline`):
   (fast, stubbed docker; parametrised extra / extra `repository:<none>` /
   missing; control: equal sets pass, with or without a `<none>:<none>`
   entry), and `ci/deployable-offline` (full).
-- *Free disk (R6).* `offline_check.sh` checks for at least 10 GiB free before
-  its first stage. Below that it exits non-zero with a message giving the
-  required and available space; it is reported as a failure, never a skip
+- *Free disk (R6).* `offline_check.sh` checks for at least 7 GiB free before
+  its first stage (amended 2026-10-20 from 10 GiB). Below that it exits
+  non-zero with a message giving the required and available space; it is reported as a failure, never a skip
   or a pass. Control: with enough space it proceeds.
   `[unit: test_offline_check_fails_below_free_disk]` (fast, stubbed `df`)
 - *Disk logging (R6).* The check prints `df` output for the disk it uses
   before and after each offline stage, so the first CI run measures the
   real footprint. That measurement and the 10 GiB default are recorded in
-  `docs/evidence/platform-offline/`.
+  `docs/evidence/platform-offline/`. *Measured 2026-10-20 (CI run
+  39359710258, `ci-39359710258.log`):* the GitHub ubuntu-24.04 runner had
+  9.1 GiB free on `/` at the offline stage and failed the 10 GiB default.
+  The offline stages add the bundle (941 MiB amd64; 2.4 GiB arm64 on its
+  native build host) plus the `dind` store (about 3.3 GiB), about 4.3 GiB;
+  with about 60% headroom the floor is 7 GiB in both `bundle.sh` and
+  `offline_check.sh` (orchestrator ruling, architecture §2.5 R6).
   `[unit: test_offline_check_logs_disk_around_each_stage]` (fast, stubbed)
 - *Docs (amended 2026-10-19, "build it for both").* `docs/quickstart.md`
   gives two install paths, in this order:
@@ -1761,6 +1768,13 @@ commit on the branch, with the run's log and arithmetic saved in
 `docs/evidence/platform-offline/`. The local `full` elapsed time is also recorded. If it is over about 15
 minutes, that goes to the orchestrator (F5). `test_ci_job_has_timeout` (fast)
 is unchanged.
+
+*R5 amended 2026-10-20 (orchestrator, CI run 39359710258):* the first CI run
+with the offline stages reached them about 16 minutes in (unit tests 770 s on
+the 2-core runner, against about 280 s locally), so 20 minutes would not fit
+the run. `timeout-minutes` is 30 for the measurement run; the first green run
+then sets it to measured plus 50% as above. The slow CI unit tests are a
+follow-up outside this criterion (candidate: run test modules in parallel).
 
 - **PS-3.5 Gate services least privilege (security L-5).** Both gate
   services, `gates` and `gates-it`, run as a non-root user, see the

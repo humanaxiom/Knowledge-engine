@@ -1948,6 +1948,40 @@ exec REAL "$@"
         self.assertRegex(nxt[0], r"^next: cd .+\bbash scripts/launch\.sh\s*$",
                          "install.sh's next: line must run `bash scripts/launch.sh` (review N6)")
 
+    # ---- security L-OC1b-a (audit-oc1b.md): an exported CDPATH ---------------
+
+    def test_install_sh_ignores_exported_cdpath(self):
+        """Security L-OC1b-a: install.sh's `unset CDPATH` survived every test.
+        Run as `bash <relative>/install.sh` with `CDPATH=<decoy>:.` exported,
+        where the decoy holds a valid lookalike bundle under the same relative
+        name: the install passes and loads and copies its own bundle's bytes,
+        never the decoy's (a relative `cd` would otherwise search CDPATH and
+        print the directory it found)."""
+        bundle, target = self._fresh()
+        decoy_root = self.tmp / f"decoy{self.n}"
+        decoy = decoy_root / bundle.name
+        _make_fixture(decoy)
+        (decoy / "images" / "ke-app.tar").write_bytes(b"DECOY ke-app image tar\n")
+        (decoy / "app" / "scripts" / "launch.sh").write_text("#!/usr/bin/env bash\necho decoy\n",
+                                                            encoding="utf-8", newline="\n")
+        _write_manifest(decoy)
+        loaded_log = self.tmp / f"loaded{self.n}.log"
+        argv = ["bash", "-c", 'cd -- "$0" && exec bash "$@"', str(bundle.parent),
+                f"{bundle.name}/install.sh", str(target)]
+        result, calls, _ = self._install(bundle, target, argv=argv, CDPATH=f"{decoy_root}:.",
+                                         FAKE_DOCKER_LOADED_LOG=str(loaded_log))
+        out = self._out(result)
+        self.assertEqual(result.returncode, 0, "install.sh failed under an exported CDPATH:\n" + out)
+        loaded = sorted(ln.split() for ln in (loaded_log.read_text(encoding="utf-8").splitlines()
+                                              if loaded_log.exists() else []))
+        self.assertEqual(loaded, sorted([n, _sha256(bundle / "images" / n)] for n in ("ke-app.tar", "postgres.tar")),
+                         "install.sh loaded tars that are not its own bundle's")
+        copied = target / "scripts" / "launch.sh"
+        self.assertTrue(copied.is_file(), "the install copied no app/")
+        self.assertEqual(copied.read_bytes(), (bundle / "app" / "scripts" / "launch.sh").read_bytes(),
+                         "install.sh copied the decoy's app/, not its own")
+        self.assertNotIn(str(decoy_root), out, "install.sh entered the CDPATH decoy")
+
     # ---- review P2: a case collision is refused by the case rule ------------
 
     def test_install_sh_names_case_rule_for_present_case_variant(self):
@@ -2813,6 +2847,131 @@ _REPO_COPY = (".env.example", ".gitignore", ".dockerignore", "docker-compose.yml
               "uv.lock", "NOTICE.md", "config", "scripts", "licenses", "docs/quickstart.md")
 
 
+# ---- PS-3.8 licence notices: a stand-in for the ke-app image's venv --------
+#
+# The fake docker runs the real `engine/notices.py` against a site-packages
+# directory built here (tests/fake_docker.py, FAKE_NOTICES_SITE). It holds one
+# `*.dist-info` per runtime package of uv.lock, in the layouts the real
+# ke-app image has (docs/evidence/platform-offline/red-nt-ke-app-licence-probe.txt):
+#   modern  - `License-File: X` and `<dist-info>/licenses/X` (most packages);
+#   noheader- no License-File header, `<dist-info>/licenses/LICENSE.md` in
+#             RECORD, licence from a classifier only (httpx);
+#   legacy  - `License-File: LICENSE`, the file at `<dist-info>/LICENSE` (six);
+#   bare    - no header, `License:` field, file at `<dist-info>/LICENSE` (protobuf);
+# plus the project's own distribution (knowledge-engine), which has no licence
+# file in the real image and is not a third-party package.
+
+PROJECT_DIST = "knowledge-engine"
+# Distribution names as the real image spells them (PEP 503 normalises them to
+# the uv.lock names).
+DIST_SPELLING = {"pyyaml": "PyYAML", "typing-extensions": "typing_extensions", "pydantic-core": "pydantic_core"}
+NOTICE_LAYOUT = {"httpx": "noheader", "six": "legacy", "protobuf": "bare"}
+# package -> (metadata licence lines, licence the notices must show for it)
+NOTICE_LICENCE = {
+    "psycopg": (["License-Expression: LGPL-3.0-only"], "LGPL-3.0-only"),
+    "psycopg-binary": (["License-Expression: LGPL-3.0-only"], "LGPL-3.0-only"),
+    "httpx": (["Classifier: License :: OSI Approved :: BSD License"], "BSD"),
+    "six": (["License: MIT"], "MIT"),
+    "protobuf": (["License: 3-Clause BSD License"], "3-Clause BSD License"),
+}
+
+
+def _norm(name: str) -> str:
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def _runtime_packages() -> dict[str, str]:
+    """name -> version of every package uv.lock installs for the project
+    without the dev group (its dependencies and the extras they name,
+    transitively). Markers are ignored, so this is a superset on any one
+    platform."""
+    import tomllib
+    lock = tomllib.loads((ROOT / "uv.lock").read_text(encoding="utf-8"))
+    pkgs = {p["name"]: p for p in lock["package"]}
+    todo = list(pkgs[PROJECT_DIST].get("dependencies", []))
+    seen: dict[str, str] = {}
+    done: set[tuple[str, str]] = set()
+    while todo:
+        dep = todo.pop()
+        name = dep["name"]
+        for extra in [""] + list(dep.get("extra", [])):
+            if (name, extra) in done:
+                continue
+            done.add((name, extra))
+            pkg = pkgs[name]
+            seen[name] = pkg["version"]
+            todo += pkg.get("dependencies", []) if not extra else pkg.get("optional-dependencies", {}).get(extra, [])
+    seen.pop(PROJECT_DIST, None)
+    return seen
+
+
+def _notice_licence(name: str, i: int) -> tuple[list[str], str]:
+    return NOTICE_LICENCE.get(name) or ((["License-Expression: MIT"], "MIT") if i % 2 == 0
+                                        else (["License-Expression: Apache-2.0"], "Apache-2.0"))
+
+
+def _licence_file_rel(name: str, version: str) -> str:
+    """The site-relative path of the package's licence file in the fixture."""
+    dist = f"{DIST_SPELLING.get(name, name).replace('-', '_')}-{version}.dist-info"
+    layout = NOTICE_LAYOUT.get(name, "modern")
+    leaf = "LICENSE.txt" if name.startswith("psycopg") else "LICENSE.md" if layout == "noheader" else "LICENSE"
+    return f"{dist}/{leaf}" if layout in ("legacy", "bare") else f"{dist}/licenses/{leaf}"
+
+
+def _make_site(site: Path) -> dict[str, str]:
+    """Write the stand-in site-packages; returns the runtime packages."""
+    packages = _runtime_packages()
+    for name in NOTICE_LAYOUT:
+        assert name in packages, f"precondition: {name} is a runtime package in uv.lock"
+    entries = sorted(packages.items()) + [(PROJECT_DIST, "0.1.0")]
+    for i, (name, version) in enumerate(entries):
+        spelled = DIST_SPELLING.get(name, name)
+        dist = f"{spelled.replace('-', '_')}-{version}.dist-info"
+        (site / dist).mkdir(parents=True)
+        meta = [f"Metadata-Version: {'2.4' if NOTICE_LAYOUT.get(name, 'modern') == 'modern' else '2.1'}",
+                f"Name: {spelled}", f"Version: {version}"]
+        record = [f"{dist}/METADATA,,", f"{dist}/RECORD,,"]
+        if name != PROJECT_DIST:
+            lines, _ = _notice_licence(name, i)
+            meta += lines
+            rel = _licence_file_rel(name, version)
+            if NOTICE_LAYOUT.get(name) not in ("noheader", "bare"):
+                meta.append(f"License-File: {rel.rsplit('/', 1)[1]}")
+            (site / rel).parent.mkdir(parents=True, exist_ok=True)
+            (site / rel).write_text(f"{spelled} licence text (fixture)\n", encoding="utf-8")
+            record.insert(1, f"{rel},sha256=fixture,1")
+        (site / dist / "METADATA").write_text("\n".join(meta) + "\n\n", encoding="utf-8")
+        (site / dist / "RECORD").write_text("\n".join(record) + "\n", encoding="utf-8")
+    return packages
+
+
+def _md_tables(text: str) -> list[tuple[list[str], list[list[str]]]]:
+    """(header cells, body rows) of each Markdown table; cells stripped."""
+    tables: list[tuple[list[str], list[list[str]]]] = []
+    rows: list[list[str]] = []
+    for line in text.splitlines() + [""]:
+        s = line.strip()
+        if s.startswith("|"):
+            rows.append([c.strip() for c in s.strip("|").split("|")])
+            continue
+        if len(rows) >= 2 and all(re.fullmatch(r":?-{3,}:?", c) for c in rows[1]):
+            tables.append((rows[0], rows[2:]))
+        rows = []
+    return tables
+
+
+def _md_table(text: str, *needed: str) -> list[dict[str, str]]:
+    """The rows (header -> cell, headers lower-cased, `license` spelled
+    `licence`) of the one table whose header has every `needed` column."""
+    found = []
+    for header, body in _md_tables(text):
+        keys = [h.lower().replace("license", "licence") for h in header]
+        if all(n in keys for n in needed):
+            found.append([dict(zip(keys, row)) for row in body])
+    assert len(found) == 1, f"want one table with columns {needed}, found {len(found)}:\n{text}"
+    return found[0]
+
+
 class _BundleBase:
     """bundle.sh in a throwaway git repository holding the files it copies,
     with the fake docker and fake df first on PATH. The fake logs and the
@@ -2846,6 +3005,9 @@ class _BundleBase:
         self.path = f"{self.tmp / 'fakebin'}{os.pathsep}{os.environ.get('PATH', '/usr/bin:/bin')}"
         self.stack = _stack_images()
         self.n = 0
+        # PS-3.8: the ke-app image's venv as the notices generator sees it.
+        self.site = self.tmp / "site-packages"
+        self.packages = _make_site(self.site)
 
     def _git(self, *args: str) -> str:
         env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": str(self.tmp),
@@ -2886,6 +3048,9 @@ class _BundleBase:
             # way Compose 5.x does, with the depends_on services' images too, in
             # a shuffled order (tests/fake_docker.py, FAKE_COMPOSE_DEPENDS).
             "FAKE_COMPOSE_DEPENDS": json.dumps(_stack_depends()),
+            # PS-3.8: `docker run ... engine.notices` runs the real generator
+            # against self.site (tests/fake_docker.py).
+            "FAKE_NOTICES_SITE": str(self.site), "FAKE_NOTICES_APP_ROOT": str(ROOT),
         }
         run_env.update(env)
         result = subprocess.run(["bash", "scripts/bundle.sh", *args, "--out", str(out)], env=run_env,
@@ -3268,6 +3433,10 @@ class BundleScriptTest(_BundleBase, unittest.TestCase):
     # ---- PS-3.1 Free disk (R6) ----------------------------------------------
 
     def test_bundle_fails_below_free_disk(self):
+        # Orchestrator ruling 1 after CI run 39359710258 (docs/handoffs/platform-offline.md,
+        # 2026-10-20; log docs/evidence/platform-offline/ci-39359710258.log: 9.1 GiB free
+        # on / at the offline stage): the floor is 7 GiB, the same in bundle.sh and
+        # offline_check.sh (was 10 GiB). Measured need ~4.3 GiB (bundle 0.94 + dind 3.3).
         with self.subTest(free="3 GiB"):
             result, calls, out = self._bundle(FAKE_DF_AVAIL_KB=str(3 * GIB_KB))
             self.assertNotEqual(result.returncode, 0, "bundled with 3 GiB free:\n" + self._out(result))
@@ -3275,22 +3444,24 @@ class BundleScriptTest(_BundleBase, unittest.TestCase):
             self.assertFalse(out.exists() and any(out.iterdir()), "wrote into --out below the floor")
             msg = self._out(result)
             # Review N8 (ruling in docs/handoffs/platform-offline.md, rework round 1):
-            # the floor is 10 GiB, so the message says GiB (was "10 GB").
-            self.assertRegex(msg, r"need 10 GiB free", "names the required space in GiB")
+            # the message says GiB (was "10 GB"); the figure is 7 since ruling 1 above.
+            self.assertRegex(msg, r"need 7 GiB free", "names the required space in GiB")
             self.assertRegex(msg, r"found 3 GiB\b", "names the available space in GiB")
             self.assertTrue(str(out) in msg or str(out.parent) in msg, "names the path")
             self.assertTrue(self.df_log.read_text(encoding="utf-8").strip(), "df was not consulted")
-        with self.subTest(free="10 GiB less 1 KiB (rounds down)"):
-            result, calls, _ = self._bundle(FAKE_DF_AVAIL_KB=str(10 * GIB_KB - 1))
+        with self.subTest(free="7 GiB less 1 KiB (rounds down)"):
+            result, calls, out = self._bundle(FAKE_DF_AVAIL_KB=str(7 * GIB_KB - 1))
             self.assertNotEqual(result.returncode, 0, self._out(result))
             self.assertEqual(self._saves(calls), [])
-            self.assertRegex(self._out(result), r"found 9 GiB\b",
+            self.assertFalse(out.exists() and any(out.iterdir()), "wrote into --out below the floor")
+            self.assertRegex(self._out(result), r"need 7 GiB free")
+            self.assertRegex(self._out(result), r"found 6 GiB\b",
                              "the figure found is rounded down, never up to the floor (review N8)")
-        with self.subTest(free="exactly 10 GiB (accepted)"):
-            result, _, _ = self._bundle(FAKE_DF_AVAIL_KB=str(10 * GIB_KB))
+        with self.subTest(free="exactly 7 GiB (accepted)"):
+            result, _, _ = self._bundle(FAKE_DF_AVAIL_KB=str(7 * GIB_KB))
             self.assertEqual(result.returncode, 0, self._out(result))
-        with self.subTest(free="11 GiB (control)"):
-            result, _, _ = self._bundle(FAKE_DF_AVAIL_KB=str(11 * GIB_KB))
+        with self.subTest(free="9 GiB (accepted: the CI runner's free space, run 39359710258)"):
+            result, _, _ = self._bundle(FAKE_DF_AVAIL_KB=str(9 * GIB_KB))
             self.assertEqual(result.returncode, 0, self._out(result))
 
     def test_bundle_reads_available_column_when_filesystem_has_spaces(self):
@@ -3517,6 +3688,255 @@ class BundleScriptTest(_BundleBase, unittest.TestCase):
                                  "a release record was written after the refusal")
                 self.assertIn("usage", self._out(result).lower(),
                               "an --out basename not ending in -<arch> is a usage error (PS-3.1)")
+
+
+_PLACEHOLDER_LICENCE = re.compile(r"(?i)^(?:|unknown|n/?a|none|-+|\?+|todo|tbd|see .*)$")
+_NOT_SHIPPED = ("docker-compose.offline.yml", "docker-compose.override.yml", ".env", "image_tag.sh", "verify.sh",
+                "test.sh", "lint.sh", "build.sh", "build.ps1", "env_value.sh", "bundle.sh", "offline_check.sh",
+                "smoke_otlp.py")
+
+
+def _cell(value: str) -> str:
+    """A table cell without Markdown code ticks or link brackets."""
+    return value.strip().strip("`").strip()
+
+
+class BundleNoticesTest(_BundleBase, unittest.TestCase):
+    """PS-3.8 licence notices (rulings R4, R7, human Q43) and architecture
+    §2.5 Bundle root / §2.6 item 6. The notices generator runs inside the
+    ke-app image being bundled (`docker run ... <ke-app> -m engine.notices`);
+    the fake docker runs the real engine/notices.py against `self.site`."""
+
+    NOTICES = "THIRD_PARTY_NOTICES.md"
+
+    def _notices(self, out: Path) -> str:
+        path = out / self.NOTICES
+        self.assertTrue(path.is_file(), f"the bundle has no {self.NOTICES} at its root (PS-3.8, §2.5 Bundle root)")
+        return path.read_text(encoding="utf-8")
+
+    @staticmethod
+    def _notice_runs(calls: list[list[str]]) -> list[tuple[int, list[str]]]:
+        return [(i, c) for i, c in enumerate(calls)
+                if (c[:1] == ["run"] or c[:2] == ["container", "run"]) and "engine.notices" in c]
+
+    def _app_refs(self) -> set[str]:
+        refs = {r for r in self.stack.values() if _split_ref(r)[0] == "ke-app"}
+        self.assertEqual(len(refs), 1, f"precondition: one ke-app image in the stack: {self.stack}")
+        ref = next(iter(refs))
+        return {ref, _expected_as(ref, self.sha)[0]}
+
+    def _vendor(self) -> dict[str, str]:
+        """name (last path segment) -> pinned reference, of each third-party stack image."""
+        out = {}
+        for ref in sorted(set(self.stack.values())):
+            repo, digest = _split_ref(ref)
+            if digest:
+                out[repo.rsplit("/", 1)[-1]] = ref
+        return out
+
+    def _image_rows(self, text: str) -> dict[str, dict[str, str]]:
+        """reference -> row of the stack-image table."""
+        rows = _md_table(text, "image", "reference", "licence", "source")
+        by_ref: dict[str, dict[str, str]] = {}
+        for row in rows:
+            ref = _cell(row["reference"])
+            self.assertNotIn(ref, by_ref, f"the image {ref} is listed twice")
+            by_ref[ref] = row
+        return by_ref
+
+    def _assert_nothing_written(self, result: subprocess.CompletedProcess, calls: list[list[str]],
+                                out: Path, names: str) -> None:
+        self._assert_no_bundle(result, calls, out)
+        self.assertRegex(self._out(result), names, "the refusal must name the package or image")
+        left = sorted(_rel(p, out) for p in out.rglob("*") if p.is_file()) if out.exists() else []
+        self.assertEqual(left, [], "bundle.sh left files in --out after the notices refusal (no bundle)")
+        self.assertFalse(Path(str(out) + ".manifest.sha256").exists(), "a release record was written")
+
+    # ---- PS-3.8: every runtime package from uv.lock, with its licence -------
+
+    def test_bundle_has_third_party_notices(self):
+        _, calls, out, _ = self._ok()
+        text = self._notices(out)
+        with self.subTest(part="generated in the ke-app image, offline, before any save"):
+            runs = self._notice_runs(calls)
+            self.assertEqual(len(runs), 1, f"one `docker run ... engine.notices`: {[c for _, c in runs]}")
+            at, argv = runs[0] if runs else (0, [])
+            pairs = set(zip(argv, argv[1:])) | {tuple(a.split("=", 1)) for a in argv if a.startswith("--")
+                                                  and "=" in a}
+            self.assertIn("--rm", argv)
+            self.assertTrue({("--network", "none"), ("--net", "none")} & pairs, "the generator runs with no network")
+            self.assertIn(("--pull", "never"), pairs, "bundle.sh never pulls (§2.5 Bundle): --pull never")
+            self.assertTrue(self._app_refs() & set(argv),
+                            f"the generator runs in the ke-app image being bundled ({self._app_refs()}): {argv}")
+            saves = [i for i, c in enumerate(calls) if c in self._saves(calls)]
+            self.assertTrue(saves and at < min(saves), "the notices run before the first docker save")
+        rows = _md_table(text, "package", "version", "licence")
+        by_name = {_norm(_cell(r["package"])): r for r in rows}
+        for i, (name, version) in enumerate(sorted(self.packages.items())):
+            with self.subTest(package=name):
+                row = by_name.get(_norm(name))
+                self.assertIsNotNone(row, f"runtime package {name} from uv.lock is not in {self.NOTICES}")
+                assert row is not None
+                self.assertEqual(_cell(row["version"]), version)
+                self.assertIn(_notice_licence(name, i)[1], row["licence"],
+                              "the licence: License-Expression, else License, else the licence classifiers")
+                self.assertIn(_licence_file_rel(name, version), " | ".join(row.values()),
+                              "the row names the package's licence file(s) in the image")
+        listed = (out / "MANIFEST.sha256").read_text(encoding="utf-8")
+        self.assertIn(f"  {self.NOTICES}\n", listed, "THIRD_PARTY_NOTICES.md is listed in the manifest")
+
+    def test_notices_fail_when_package_licence_missing(self):
+        # R7: a runtime package whose licence file is not in the ke-app image
+        # fails bundle.sh, naming the package, and no bundle is written. Any
+        # runtime package (PS-3.8), not only (L)GPL ones; covers each licence
+        # layout of the real image. The project's own distribution has no
+        # licence file and is not a third-party package (control).
+        with self.subTest(case="control: the full set passes"):
+            _, calls, out, _ = self._ok()
+            self.assertIn("psycopg", self._notices(out))
+            self.assertEqual(len(self._notice_runs(calls)), 1)
+        cases = {"psycopg (LGPL, licenses/LICENSE.txt)": "psycopg",
+                 "psycopg-binary": "psycopg-binary",
+                 "six (legacy layout, MIT)": "six",
+                 "httpx (no License-File header)": "httpx"}
+        for case, name in cases.items():
+            with self.subTest(case=case):
+                site = self.tmp / f"site-{_norm(name)}"
+                shutil.copytree(self.site, site)
+                (site / _licence_file_rel(name, self.packages[name])).unlink()
+                result, calls, out = self._bundle(FAKE_NOTICES_SITE=str(site))
+                self.assertNotEqual(result.returncode, 0,
+                                    f"bundle.sh passed with {name}'s licence file missing from the image:\n"
+                                    + self._out(result))
+                self.assertTrue(self._notice_runs(calls), "the refusal did not come from the notices generator")
+                pat = name.replace("-", "[-_]")
+                self._assert_nothing_written(result, calls, out, rf"(?i)(?<![\w-]){pat}(?![\w-])")
+                self.assertRegex(self._out(result), r"(?i)licen[cs]e", "the refusal says a licence is missing")
+
+    # ---- PS-3.8 Third-party images (A43, R4) and the Phoenix exception (Q43) -
+
+    def test_notices_list_every_stack_image_with_licence(self):
+        vendor = self._vendor()
+        self.assertTrue(vendor, "precondition: the stack has third-party images")
+        _, _, out, data = self._ok()
+        rows = self._image_rows(self._notices(out))
+        bundled = {e["ref"] for e in data.get("images", [])}
+        for name, ref in vendor.items():
+            with self.subTest(image=name):
+                self.assertIn(ref, bundled, "precondition: the image is in bundle.json")
+                row = rows.get(ref)
+                self.assertIsNotNone(row, f"{ref} has no row (by its pinned reference) in {self.NOTICES}")
+                assert row is not None
+                self.assertIn(_cell(row["image"]), {name, _split_ref(ref)[0]},
+                              "the Image cell names the image (its name or repository)")
+                self.assertNotRegex(_cell(row["licence"]), _PLACEHOLDER_LICENCE, f"{name} has no licence")
+        with self.subTest(case="an image with no known licence fails the bundle"):
+            widget = f"example.org/acme/widget:1@sha256:{hashlib.sha256(b'widget').hexdigest()}"
+            stack = dict(self.stack, widget=widget)
+            result, calls, out2 = self._bundle(stack=stack, images=self._images_table(stack))
+            self.assertNotEqual(result.returncode, 0,
+                                "bundle.sh bundled a third-party image it has no licence for:\n" + self._out(result))
+            self._assert_nothing_written(result, calls, out2, r"widget")
+
+    def test_notices_neo4j_has_source_url(self):
+        neo4j = self._vendor().get("neo4j")
+        self.assertIsNotNone(neo4j, "precondition: neo4j is a stack image")
+        _, _, out, _ = self._ok()
+        row = self._image_rows(self._notices(out)).get(str(neo4j))
+        self.assertIsNotNone(row, f"neo4j ({neo4j}) has no row in {self.NOTICES}")
+        assert row is not None
+        self.assertRegex(_cell(row["licence"]), r"^GPL-3\.0(?:-only|-or-later)?$",
+                         "Neo4j Community is listed as GPL-3.0 (A43, R4)")
+        self.assertRegex(_cell(row["source"]), r"https://[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?:/\S*)?",
+                         "Neo4j's row gives an https source URL (R4)")
+        self.assertNotRegex(_cell(row["source"]), r"http://", "the source URL is https")
+
+    def test_notices_mark_phoenix_as_exception(self):
+        phoenix = self._vendor().get("phoenix")
+        self.assertIsNotNone(phoenix, "precondition: phoenix is a stack image")
+        _, _, out, _ = self._ok()
+        row = self._image_rows(self._notices(out)).get(str(phoenix))
+        self.assertIsNotNone(row, f"phoenix ({phoenix}) has no row in {self.NOTICES}")
+        assert row is not None
+        self.assertNotRegex(_cell(row["licence"]), _PLACEHOLDER_LICENCE, "Phoenix is listed with its licence")
+        text = " | ".join(row.values())
+        self.assertRegex(text, r"(?i)\bexception\b",
+                         "Phoenix is marked as the exception to `open-source components only` (human Q43)")
+        self.assertRegex(text, r"\bQ43\b", "the mark cites the human ruling (Q43)")
+        others = [r for ref, r in self._image_rows(self._notices(out)).items() if ref != phoenix]
+        self.assertFalse([r for r in others if re.search(r"\bQ43\b", " | ".join(r.values()))],
+                         "only Phoenix carries the Q43 exception")
+
+    # ---- architecture §2.5 Bundle root, §2.6 item 6 ---------------------------
+
+    def test_bundle_contents(self):
+        # Things the bundle must leave behind, present in the build tree.
+        shutil.copyfile(ROOT / "docker-compose.offline.yml", self.repo / "docker-compose.offline.yml")
+        (self.repo / "docker").mkdir()
+        shutil.copyfile(ROOT / "docker" / "app.Dockerfile", self.repo / "docker" / "app.Dockerfile")
+        self._git("add", "-A")
+        self._git("commit", "-q", "-m", "fixture: offline compose and docker/")
+        (self.repo / ".env").write_text("KE_STORES__POSTGRES__PASSWORD=local-secret\n", encoding="utf-8")
+        (self.repo / "docker-compose.override.yml").write_text("services: {}\n", encoding="utf-8")
+        tracked_config = sorted(self._git("ls-files", "config").split())
+        _, _, out, _ = self._ok()
+        with self.subTest(part="app/ is exact"):
+            expected = sorted({"docker-compose.yml", ".env.example", "docs/quickstart.md", *tracked_config,
+                               *(f"scripts/{s}" for s in ("launch.sh", "teardown.sh", "smoke.sh", "launch.ps1",
+                                                          "teardown.ps1", "net_isolated.sh"))},
+                              key=lambda s: s.encode("utf-8"))
+            self.assertEqual(_regular_files(out / "app"), expected, "app/ holds exactly §2.5 Bundle step 3")
+        with self.subTest(part="the root is exact"):
+            self.assertEqual(sorted(p.name for p in out.iterdir()),
+                             sorted(["MANIFEST.sha256", "bundle.json", "install.sh", "install.ps1", "NOTICE.md",
+                                     "licenses", self.NOTICES, "app", "images"]),
+                             "the bundle root holds §2.5 Bundle step 4 and the records")
+        with self.subTest(part="NOTICE.md and licenses/ are the committed files"):
+            self.assertTrue((ROOT / "NOTICE.md").is_file(), "NOTICE.md is not committed at the repository root")
+            for lic in ("LGPL-3.0.txt", "GPL-3.0.txt"):
+                self.assertTrue((ROOT / "licenses" / lic).is_file(), f"licenses/{lic} is not committed")
+            self.assertTrue((out / "NOTICE.md").is_file(), "the bundle has no NOTICE.md")
+            if (ROOT / "NOTICE.md").is_file() and (out / "NOTICE.md").is_file():
+                self.assertEqual(_sha256(out / "NOTICE.md"), _sha256(ROOT / "NOTICE.md"))
+            committed = _regular_files(ROOT / "licenses") if (ROOT / "licenses").is_dir() else []
+            shipped = _regular_files(out / "licenses") if (out / "licenses").is_dir() else []
+            self.assertTrue(committed, "licenses/ is empty or missing")
+            self.assertEqual(shipped, committed, "licenses/ ships as committed")
+            for rel in set(shipped) & set(committed):
+                self.assertEqual(_sha256(out / "licenses" / rel), _sha256(ROOT / "licenses" / rel))
+        with self.subTest(part="listed in the manifest"):
+            listed = {ln.split("  ", 1)[1] for ln in
+                      (out / "MANIFEST.sha256").read_text(encoding="utf-8").splitlines() if "  " in ln}
+            want = {"NOTICE.md", self.NOTICES} | {f"licenses/{r}" for r in
+                                                  (_regular_files(out / "licenses") if (out / "licenses").is_dir()
+                                                   else [])}
+            self.assertEqual(sorted(want - listed), [], "not in MANIFEST.sha256")
+            self.assertTrue(any(r.startswith("licenses/") for r in listed), "no licenses/ file in the manifest")
+        with self.subTest(part="never shipped"):
+            found = sorted(_rel(p, out) for p in out.rglob("*")
+                           if p.name in _NOT_SHIPPED or p.name.endswith("Dockerfile") or p.name == "docker")
+            self.assertEqual(found, [], "a verify-only, build-only or local file is in the bundle")
+        with self.subTest(part="static: NOTICE.md and licenses/ are copied with no exists-guard"):
+            body = "\n".join(l for l in (ROOT / "scripts" / "bundle.sh").read_text(encoding="utf-8")
+                             .splitlines() if not l.lstrip().startswith("#"))
+            self.assertNotRegex(body, r"\[\[?\s+-[efd]\s+\"?(?:NOTICE\.md|licenses)\b",
+                                "bundle.sh guards the NOTICE.md/licenses copy with an exists-test (§2.5: "
+                                "copied unconditionally)")
+        for rel in ("NOTICE.md", "licenses"):
+            with self.subTest(part=f"missing from the tree: {rel}"):
+                src = self.repo / rel
+                self.assertTrue(src.exists(), f"precondition: {rel} is committed (copied into the fixture)")
+                if not src.exists():
+                    continue
+                aside = self.tmp / f"aside-{rel}"
+                shutil.move(str(src), str(aside))
+                try:
+                    result, _, out2 = self._bundle()
+                finally:
+                    shutil.move(str(aside), str(src))
+                self.assertNotEqual(result.returncode, 0,
+                                    f"bundle.sh wrote a bundle without {rel}:\n" + self._out(result))
+                self.assertFalse((out2 / "MANIFEST.sha256").exists(), "a manifest was written regardless")
 
 
 class DistIgnoredTest(unittest.TestCase):
@@ -4348,6 +4768,28 @@ class QuickstartOfflineTest(unittest.TestCase):
         with self.subTest(item="F10: names KE_AUTH__ENABLED"):
             self.assertIn("KE_AUTH__ENABLED", flat,
                           "step 5 must name KE_AUTH__ENABLED (F10, orchestrator ruling 2026-10-19)")
+
+    def test_quickstart_project_name_advice_precedes_launch(self):
+        """Recorded run 3, finding Q1 (recorded3-runs.md): step 5's block ends
+        with `bash scripts/launch.sh` and the COMPOSE_PROJECT_NAME advice came
+        four paragraphs later, so an operator who copies the block launches
+        under the shared default project first. The advice (one install per
+        host, or a distinct COMPOSE_PROJECT_NAME) comes before the launch line,
+        or the block exports COMPOSE_PROJECT_NAME before it."""
+        step = self._offline_step5()
+        launch = re.search(r"(?m)^[ \t]*bash scripts/launch\.sh\b", step)
+        self.assertIsNotNone(launch, "step 5 has no `bash scripts/launch.sh` line")
+        assert launch is not None
+        before = step[:launch.start()]
+        exported = re.search(r"(?m)^[ \t]*export COMPOSE_PROJECT_NAME=\S+", before)
+        advice = [p for p in re.split(r"\n\s*\n", before) if "COMPOSE_PROJECT_NAME" in p
+                  and re.search(r"(?i)\bone install(?:ation)? per (?:host|machine)\b|\b(?:each|every|per|second|"
+                                r"another) install(?:ation)?\b|\bdistinct\b|\bdifferent\b|\bunique\b",
+                                re.sub(r"\s+", " ", p))]
+        self.assertTrue(exported or advice,
+                        "step 5 must give the COMPOSE_PROJECT_NAME advice (one install per host, or a distinct "
+                        "name per install) before `bash scripts/launch.sh`, or export it in the block before "
+                        "the launch line (Q1)")
 
     def test_quickstart_code_first_comes_first(self):
         text = self._text()

@@ -9,7 +9,7 @@
 #
 # Host half (no KE_OFFLINE_CLIENT): runs its own project ke-offline-<random>
 #   from the standalone docker-compose.offline.yml, and nothing else:
-#   disk floor (10 GiB) -> bundle.sh -> `dind` up -> net_isolated.sh on the
+#   disk floor (7 GiB) -> bundle.sh -> `dind` up -> net_isolated.sh on the
 #   offline network -> `run offline-client`. The EXIT trap always runs
 #   `teardown.sh --volumes --profile offline` and removes the bundle. `df` is
 #   logged around each stage.
@@ -185,8 +185,11 @@ at_least() { # at_least MINIMUM VERSION: dotted numbers, field by field
 
 df_log "start"
 
-# Free disk (R6): at least 10 GiB on each measurable path, before anything is saved.
-floor_kb=$((10 * 1024 * 1024))
+# Free disk (R6): at least 7 GiB on each measurable path, before anything is saved.
+# Basis (ruling 1, docs/evidence/platform-offline/ci-39359710258.log): the
+# measured need is the bundle (0.94 GiB) plus the dind image store (3.3 GiB),
+# about 4.3 GiB; 7 GiB leaves about 60% headroom.
+floor_kb=$((7 * 1024 * 1024))
 avail_kb() { # avail_kb PATH: the Available column, the number before the capacity %
   df -Pk -- "$1" | awk '
     NR > 1 && v == "" {
@@ -202,7 +205,7 @@ for path in "${df_paths[@]}"; do
     '' | *[!0-9]*) die "cannot read the free space on $path" ;;
   esac
   if [ "$free" -lt "$floor_kb" ]; then
-    die "need 10 GiB free on $path, found $((free / 1024 / 1024)) GiB"
+    die "need 7 GiB free on $path, found $((free / 1024 / 1024)) GiB"
   fi
 done
 if [ "${#df_paths[@]}" -eq 1 ]; then

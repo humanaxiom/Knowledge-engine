@@ -8,10 +8,12 @@
   names KE_MODEL_UPSTREAM and KE_EGRESS_ALLOWLIST as the only two keys a
   local `verify.sh full` takes from the caller's environment or the
   operator's `.env`, with the tests skipping by name when either is unset.
-- `test_ci_job_has_timeout` (PS-3.4): every CI job sets `timeout-minutes`.
-  Orchestrator ruling C1 (= Q36): the value stays 20 until 2b's first green
-  CI run is measured; a follow-up commit then sets measured + 50%. So this
-  test asserts the key, not the value.
+- `test_ci_job_has_timeout` (PS-3.4): every CI job sets `timeout-minutes`
+  to CI_TIMEOUT_MINUTES. Orchestrator ruling C1 (= Q36) kept 20 until a green
+  CI run is measured. CI run 39359710258 reached the offline stage at ~16 min
+  (docs/evidence/platform-offline/ci-39359710258.log), so orchestrator ruling 2
+  (docs/handoffs/platform-offline.md, 2026-10-20) sets 30 for the measurement
+  run; the follow-up commit changes CI_TIMEOUT_MINUTES to measured + 50%.
 """
 
 from __future__ import annotations
@@ -25,6 +27,9 @@ CLAUDE_MD = ROOT / "CLAUDE.md"
 CI = ROOT / ".github" / "workflows" / "ci.yml"
 VERIFY_ONLY = "What verify.sh runs that CI cannot"
 CI_ONLY = "What CI runs that verify.sh does not"
+# PS-3.4, orchestrator ruling 2 after CI run 39359710258: 30 min for the
+# measurement run. The next commit sets this to the measured run + 50%.
+CI_TIMEOUT_MINUTES = 30
 
 
 def _sections(text: str) -> list[tuple[str, str]]:
@@ -72,6 +77,9 @@ class CiTimeoutTest(unittest.TestCase):
                 value = job["timeout-minutes"]
                 self.assertIsInstance(value, int)
                 self.assertGreater(value, 0)
+                self.assertEqual(value, CI_TIMEOUT_MINUTES,
+                                 f"job {name}: timeout-minutes is {value}, the ruling is "
+                                 f"{CI_TIMEOUT_MINUTES} (PS-3.4, ruling 2, CI run 39359710258)")
 
 
 if __name__ == "__main__":

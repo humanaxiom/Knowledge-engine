@@ -183,11 +183,20 @@ own, and change the ports there if the defaults clash. If you skip this,
 `launch.sh` creates `.env` for you with `KE_ENV=dev` and the placeholder
 secrets, which is fine only for local development.
 
+Choose the compose project name before you launch. Every install on a host
+shares the compose project `knowledge-engine` and its volumes. Keep to one
+install per host, or give each install a distinct `COMPOSE_PROJECT_NAME` (for
+example `ke-site-b`), set the same way for `launch.sh`, `smoke.sh` and
+`teardown.sh`. Running `bash scripts/teardown.sh --volumes` deletes the data (the
+volumes) of whichever project it resolves to, so check the name first.
+
 ```bash
 cd ~/knowledge-engine
 cp .env.example .env
 chmod 600 .env
 # edit .env: set real passwords (and ports, if needed)
+# name this install's compose project; use a distinct name for a second install on this host
+export COMPOSE_PROJECT_NAME=ke-site-a
 bash scripts/launch.sh
 ```
 
@@ -213,12 +222,8 @@ engine refuses to start in prod until then. `.env.example` ships
 
 On Windows run `scripts\launch.ps1` in the target directory.
 
-Every install on a host shares the compose project `knowledge-engine` and its
-volumes. Keep to one install per host, or give each install a distinct
-`COMPOSE_PROJECT_NAME` (for example `export COMPOSE_PROJECT_NAME=ke-site-b`),
-set the same way for `launch.sh`, `smoke.sh` and `teardown.sh`. Running
-`bash scripts/teardown.sh --volumes` deletes the data (the volumes) of whichever
-project it resolves to, so check the name first.
+Keep the same `COMPOSE_PROJECT_NAME` exported in any new shell before you run
+`smoke.sh` or `teardown.sh`.
 
 Then run `bash scripts/smoke.sh` to check the stack. If the project is already
 running, smoke checks it and leaves it up; it skips the store-outage check, so it

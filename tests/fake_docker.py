@@ -197,6 +197,14 @@ never touches a real daemon. What it does:
     available figure for an exact path argument; FAKE_DF_JSON (a path, set to
     the FAKE_DOCKER_JSON file) appends one `{"argv": ["DF", ...]}` record per
     call so df calls sit in the same ordered call log.
+- platform-offline licence notices (PS-3.8, architecture §2.5 Licence
+  notices): `run ... engine.notices [args]` models the `ke-app` image. It runs
+  the real `engine/notices.py` from FAKE_NOTICES_APP_ROOT (a directory that
+  holds `engine/`) under this interpreter with `-S -E -B`, so the only
+  distributions importlib.metadata sees are those in FAKE_NOTICES_SITE (a
+  test-built site-packages directory standing in for the image's venv).
+  Arguments after `engine.notices` are passed on; stdout, stderr and the exit
+  status are the generator's. Either variable unset: exit 125 naming it.
 - Every other call exits 0.
 """
 
@@ -550,6 +558,21 @@ if argv[:1] == ["inspect"] or argv[:2] == ["container", "inspect"]:
         sys.exit(0)
 
 if argv[:1] == ["run"] or argv[:2] == ["container", "run"]:
+    if "engine.notices" in argv:
+        import subprocess as _subprocess
+        _site = os.environ.get("FAKE_NOTICES_SITE")
+        _app = os.environ.get("FAKE_NOTICES_APP_ROOT")
+        if not _site or not _app:
+            sys.stderr.write("fake docker: FAKE_NOTICES_SITE and FAKE_NOTICES_APP_ROOT must be set "
+                             "for `run ... engine.notices`\n")
+            sys.exit(125)
+        _boot = ("import runpy, sys; sys.path[:0] = [sys.argv[1], sys.argv[2]]; del sys.argv[1:3]; "
+                 "runpy.run_module('engine.notices', run_name='__main__', alter_sys=True)")
+        _extra = argv[argv.index("engine.notices") + 1:]
+        sys.stdout.flush()
+        _done = _subprocess.run([sys.executable, "-S", "-E", "-B", "-c", _boot, _site, _app, *_extra],
+                                cwd=_site)
+        sys.exit(_done.returncode)
     if "engine.netprobe" in joined:
         _netprobe_reply(os.environ.get("FAKE_NETPROBE_CONTROL", "connected"))
     sys.exit(0)
