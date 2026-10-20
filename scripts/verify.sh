@@ -13,7 +13,7 @@
 # Inside either container it only calls the real gate scripts; never list
 # their commands here.
 set -euo pipefail
-cd "$(dirname "$0")/.."
+CDPATH='' cd -- "$(dirname -- "$0")/.."
 
 mode="${1:-full}"
 case "$mode" in
@@ -22,6 +22,21 @@ case "$mode" in
 esac
 
 if [ "${KE_IN_GATES:-}" != "1" ]; then
+  # N6 (PS-3.9): every first-party image this run builds carries a tag derived
+  # from this checkout's real path (architecture section 2.1), so two worktrees
+  # (or this run and the live stack, which uses :local) never move each other's
+  # tags. Set before the fast/full branch and unconditionally: a caller's
+  # KE_IMAGE_TAG is ignored.
+  KE_IMAGE_TAG="$(bash scripts/image_tag.sh)"
+  # L-OC1a: refuse anything but the exact shape before any docker call, so a
+  # stray line or a hostile value never reaches a compose tag. `=~` anchors on
+  # the whole string (a second line fails); C locale keeps [a-f] to a-f.
+  tag_re='^wt-[0-9a-f]{12}$'
+  if ! (export LC_ALL=C; [[ "$KE_IMAGE_TAG" =~ $tag_re ]]); then
+    echo "verify: FAIL (the image tag from scripts/image_tag.sh is malformed, want wt-<12 hex>: $(printf '%q' "$KE_IMAGE_TAG"))" >&2
+    exit 1
+  fi
+  export KE_IMAGE_TAG
   # MSYS_NO_PATHCONV stops Git Bash on Windows rewriting the container path.
   export MSYS_NO_PATHCONV=1
   # PS-3.5: with a repo-root .env present, the gate services see an empty file
@@ -46,7 +61,7 @@ if [ "${KE_IN_GATES:-}" != "1" ]; then
   # placeholder values of .env.example, never real secrets (security L-11).
   while IFS= read -r name; do
     unset "$name"
-  done < <(compgen -e | grep '^KE_' || true)
+  done < <(compgen -e | grep '^KE_' | grep -vx 'KE_IMAGE_TAG' || true)
   started="$(date +%s)"
   export COMPOSE_PROJECT_NAME="ke-verify-${RANDOM}${RANDOM}"
   export COMPOSE_FILE="docker-compose.yml:docker-compose.verify.yml"
@@ -63,16 +78,23 @@ if [ "${KE_IN_GATES:-}" != "1" ]; then
     echo "verify full: KE_MODEL_UPSTREAM and KE_EGRESS_ALLOWLIST must both be set to reach the model host; running without it (model-calling tests skip)"
   fi
   echo "== verify full: project $COMPOSE_PROJECT_NAME =="
-  # Teardown runs once on every exit path. A failed teardown after a green
-  # run still fails verify (N7): a leaked project is not a pass.
+  # The verify project is torn down once, by teardown_verify: as the explicit
+  # stage after the smoke, or from the EXIT trap when an earlier stage failed
+  # or the run was interrupted. A failed teardown after a green run still fails
+  # verify (N7): a leaked project is not a pass.
+  torn_down=0
+  teardown_verify() {
+    torn_down=1
+    if scripts/teardown.sh --volumes; then return 0; fi
+    echo "verify full: FAIL (teardown of project $COMPOSE_PROJECT_NAME failed; remove it by hand: docker compose -p $COMPOSE_PROJECT_NAME down --volumes)" >&2
+    return 1
+  }
   # shellcheck disable=SC2317  # runs from the EXIT trap
   cleanup() {
     local rc=$?
     trap - EXIT
-    if ! scripts/teardown.sh --volumes; then
-      echo "verify full: FAIL (teardown of project $COMPOSE_PROJECT_NAME failed; remove it by hand: docker compose -p $COMPOSE_PROJECT_NAME down --volumes)" >&2
-      [ "$rc" -eq 0 ] && rc=1
-    elif [ "$rc" -eq 0 ]; then
+    if [ "$torn_down" -eq 0 ] && ! teardown_verify && [ "$rc" -eq 0 ]; then rc=1; fi
+    if [ "$rc" -eq 0 ]; then
       echo "== verify full: PASS ($(( $(date +%s) - started ))s) =="
     fi
     exit "$rc"
@@ -83,6 +105,12 @@ if [ "${KE_IN_GATES:-}" != "1" ]; then
   docker compose --env-file "$KE_ENV_FILE" --profile gates-it run --rm gates-it \
     scripts/verify.sh full
   scripts/smoke.sh
+  # The verify project goes first: the offline check needs the memory and the
+  # disk it held (architecture §2.5). A failed teardown stops here.
+  teardown_verify || exit 1
+  # PS-3.2: the bundle, installed and run inside a clean daemon. It has its
+  # own project, files and teardown, and never touches this one.
+  scripts/offline_check.sh
   exit 0
 fi
 

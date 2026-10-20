@@ -44,7 +44,7 @@ case "$asserted_arch" in
   *) echo "bundle: --arch must be amd64 or arm64" >&2; usage ;;
 esac
 
-cd "$(dirname "$0")/.."
+CDPATH='' cd -- "$(dirname -- "$0")/.."
 
 # jq reads each service's image from the resolved compose model (defect D1); it
 # is a build-host prerequisite, checked before anything else runs.
@@ -203,7 +203,7 @@ done < <(git ls-files -z -- config)
 for f in launch.sh teardown.sh smoke.sh launch.ps1 teardown.ps1; do
   cp -- "scripts/$f" "$app/scripts/$f"
 done
-if [ -f scripts/net_isolated.sh ]; then cp -- scripts/net_isolated.sh "$app/scripts/"; fi
+cp -- scripts/net_isolated.sh "$app/scripts/net_isolated.sh"
 cp -- docs/quickstart.md "$app/docs/quickstart.md"
 
 cp -- scripts/install.sh scripts/install.ps1 "$out/"
@@ -226,7 +226,7 @@ if [ -d licenses ]; then cp -R -- licenses "$out/licenses"; fi
 } > "$out/bundle.json"
 
 # --- manifest: every regular file except itself, LC_ALL=C order ------------
-cd "$out"
+CDPATH='' cd -- "$out"
 if [ -n "$(find . -mindepth 1 ! -type f ! -type d -print -quit)" ]; then
   die "the bundle holds an entry that is neither a file nor a directory (symlink?)"
 fi

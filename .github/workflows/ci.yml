@@ -14,7 +14,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10  # measured 389 s on 42547d0, x1.5 = 584 s; see docs/evidence/platform-stack-ready/ci-timeout.md
+    timeout-minutes: 20  # PS-3.4: raised from 10 for the offline check (R5); the measured first green run + 50% replaces it, see docs/evidence/platform-offline
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:

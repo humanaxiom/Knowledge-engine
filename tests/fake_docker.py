@@ -155,6 +155,48 @@ never touches a real daemon. What it does:
   - `config --format json [<svc>...]` gives every service its `image` and a
     long-form `depends_on`; with service names it holds those services and
     their dependencies only, as Compose does.
+- platform-offline offline check (PS-3.2, PS-3.3; architecture §2.5
+  `ci/offline` and `ci/deployable-offline`, §2.6 items 11 and 12). Inert for
+  the earlier tests unless noted:
+  - `compose ... config`: without FAKE_COMPOSE_IMAGES, gateway/api/worker
+    carry `image` `ke-gateway|ke-app:<KE_IMAGE_TAG or local>`; the gateway
+    environment carries KE_GATEWAY_API_LISTEN (resolved, default 8100), which
+    is also its first port's `target` (FAKE_COMPOSE_RESOLVED may override it).
+  - `compose ps -q|--quiet <svc>...` (a service named) prints that
+    service's container id: FAKE_DOCKER_SERVICE_IDS[svc] (JSON object), else
+    `fake<svc>000000`. Without a service name it is unchanged.
+  - `inspect` / `container inspect` of such an id gives a container record
+    whose NetworkSettings.Networks holds `<project>_backend` and, for the
+    gateway only, `<project>_edge` with IPAddress FAKE_GATEWAY_EDGE_IP
+    (default 172.30.0.2, printed verbatim). `--format` understands
+    `{{json .}}`, `{{json .NetworkSettings.Networks}}`,
+    `{{(index .NetworkSettings.Networks "NAME").IPAddress}}`,
+    `{{with index .NetworkSettings.Networks "NAME"}}{{.IPAddress}}{{end}}`
+    and plain `{{.A.B}}` paths; anything else exits 2 naming it.
+  - `run ... engine.netprobe ...` (the ci/offline control) prints
+    FAKE_NETPROBE_CONTROL (default `connected`); `compose ... exec ... <svc>
+    ... engine.netprobe ...` prints FAKE_NETPROBE[svc] (JSON object, default
+    `no_route`). Both exit 0 only for `connected`, as engine.netprobe does.
+  - `pull` / `image pull` FAILS by default (no egress: a registry DNS
+    error); FAKE_DOCKER_PULL_OK=1 makes it succeed.
+  - `images` / `image ls|list`: the daemon's `repository:tag` names are
+    FAKE_DOCKER_LS_BEFORE (JSON list, default empty) until the call log holds
+    a `STUB install.sh` record, then FAKE_DOCKER_LS_AFTER. `<none>:<none>` is
+    a dangling entry. `-q` prints one id per row; `--filter
+    dangling=true|false` (or `-f`) filters; `--format` renders
+    `{{.Repository}}`, `{{.Tag}}`, `{{.ID}}` and `{{json .}}`, anything else
+    exits 2 naming it.
+  - `info`: the record also has `Driver` (FAKE_DOCKER_STORAGE_DRIVER,
+    default `overlayfs`), `DriverStatus` (FAKE_DOCKER_DRIVER_STATUS, JSON list
+    of pairs, default the containerd store's `[["driver-type",
+    "io.containerd.snapshotter.v1"]]`) and `DockerRootDir`
+    (FAKE_DOCKER_ROOT_DIR, default /var/lib/docker). Lists render Go-style
+    (`[[a b] [c d]]`); plain `info` prints ` Storage Driver:` and the
+    DriverStatus pairs.
+  - Fake df: FAKE_DF_AVAIL_BY_PATH (JSON object, path -> KiB) overrides the
+    available figure for an exact path argument; FAKE_DF_JSON (a path, set to
+    the FAKE_DOCKER_JSON file) appends one `{"argv": ["DF", ...]}` record per
+    call so df calls sit in the same ordered call log.
 - Every other call exits 0.
 """
 
@@ -344,6 +386,37 @@ ISOLATED = {"com.docker.network.bridge.gateway_mode_ipv4": "isolated"}
 CLIENT_VERSION = "27.0.0"
 project = os.environ.get("COMPOSE_PROJECT_NAME") or "knowledge-engine"
 
+def _go(val):
+    # Go's default rendering of a template value: lists as [a b], nested.
+    if isinstance(val, list):
+        return "[" + " ".join(_go(v) for v in val) + "]"
+    if isinstance(val, bool):
+        return "true" if val else "false"
+    return str(val)
+
+# --- platform-offline: ci/offline target and probes (architecture §2.5) ----
+STACK_NAMES = ["gateway", "api", "worker", "postgres", "neo4j", "valkey", "phoenix"]
+
+def _service_ids():
+    ids = {s: "fake%s000000" % s for s in STACK_NAMES}
+    ids.update(json.loads(os.environ.get("FAKE_DOCKER_SERVICE_IDS") or "{}"))
+    return ids
+
+def _container(svc, cid):
+    nets = {project + "_backend": {"IPAddress": "172.31.0.%d" % (2 + STACK_NAMES.index(svc))
+                                   if svc in STACK_NAMES else "172.31.0.99"}}
+    if svc == "gateway":
+        nets[project + "_edge"] = {"IPAddress": os.environ.get("FAKE_GATEWAY_EDGE_IP", "172.30.0.2")}
+    return {"Id": cid, "Name": "/%s-%s-1" % (project, svc),
+            "Config": {"Labels": {"com.docker.compose.project": project,
+                                  "com.docker.compose.service": svc}},
+            "NetworkSettings": {"Networks": nets}}
+
+def _netprobe_reply(word):
+    if word:
+        print(word)
+    sys.exit(0 if word == "connected" else 1)
+
 def format_values():
     return opt_values("--format") + opt_values("-f")
 
@@ -407,20 +480,27 @@ def info_reply():
     arch = os.environ.get("FAKE_DOCKER_ARCH")
     arch = "x86_64" if arch is None else arch
     rec = {"ServerVersion": os.environ.get("FAKE_DOCKER_ENGINE", ""), "Architecture": arch,
-           "OSType": "linux"}
+           "OSType": "linux",
+           "Driver": os.environ.get("FAKE_DOCKER_STORAGE_DRIVER", "overlayfs"),
+           "DriverStatus": json.loads(os.environ.get("FAKE_DOCKER_DRIVER_STATUS")
+                                      or '[["driver-type", "io.containerd.snapshotter.v1"]]'),
+           "DockerRootDir": os.environ.get("FAKE_DOCKER_ROOT_DIR", "/var/lib/docker")}
     fmt = format_values()
     if fmt and "Client" not in fmt[-1]:
         def sub(m):
             if m.group(2) == "":
                 return json.dumps(rec) if m.group(1) else str(rec)
             val = rec.get(m.group(2), "")
-            return json.dumps(val) if m.group(1) else str(val)
+            return json.dumps(val) if m.group(1) else _go(val)
         print(_re.sub(r"\{\{\s*(json\s+)?\.([A-Za-z0-9_]*)\s*\}\}", sub, fmt[-1]))
     elif fmt:
         print(CLIENT_VERSION)
     else:
+        status = "".join("\n  %s: %s" % tuple(p) for p in rec["DriverStatus"])
         print("Client:\n Version:           %s\n\nServer:\n Engine:\n  Version:          %s\n"
-              " Architecture: %s" % (CLIENT_VERSION, rec["ServerVersion"], arch))
+              " Architecture: %s\n Storage Driver: %s%s\n Docker Root Dir: %s"
+              % (CLIENT_VERSION, rec["ServerVersion"], arch, rec["Driver"], status,
+                 rec["DockerRootDir"]))
     code = int(os.environ.get("FAKE_DOCKER_ENGINE_EXIT") or "0")
     if code:
         sys.stderr.write("Cannot connect to the Docker daemon at unix:///var/run/docker.sock. "
@@ -430,6 +510,99 @@ def info_reply():
 
 if argv[:1] == ["info"]:
     info_reply()
+
+if argv[:1] == ["inspect"] or argv[:2] == ["container", "inspect"]:
+    import re as _re
+    by_id = {v: k for k, v in _service_ids().items() if v}
+    rest = argv[1:] if argv[0] == "inspect" else argv[2:]
+    skip = set(format_values()) | set(opt_values("--type"))
+    names = [a for a in rest if not a.startswith("-") and a not in skip]
+    if names and all(n in by_id for n in names):
+        recs = [_container(by_id[n], n) for n in names]
+        fmt = format_values()
+        if not fmt:
+            print(json.dumps(recs, indent=4))
+            sys.exit(0)
+        t = fmt[-1].strip()
+        for rec in recs:
+            nets = rec["NetworkSettings"]["Networks"]
+            m1 = _re.fullmatch(r'\{\{\s*\(\s*index\s+\.NetworkSettings\.Networks\s+"([^"]+)"\s*\)'
+                               r'\.IPAddress\s*\}\}', t)
+            m2 = _re.fullmatch(r'\{\{\s*with\s+index\s+\.NetworkSettings\.Networks\s+"([^"]+)"\s*\}\}'
+                               r'\{\{\s*\.IPAddress\s*\}\}\{\{\s*end\s*\}\}', t)
+            if m1 or m2:
+                print((nets.get((m1 or m2).group(1)) or {}).get("IPAddress", ""))
+            elif _re.fullmatch(r"\{\{\s*json\s+\.\s*\}\}", t):
+                print(json.dumps(rec))
+            elif _re.fullmatch(r"\{\{\s*json\s+\.NetworkSettings\.Networks\s*\}\}", t):
+                print(json.dumps(nets))
+            elif _re.fullmatch(r"\{\{\s*(?:json\s+)?(?:\.[A-Za-z0-9_]+)+\s*\}\}", t):
+                cur = rec
+                for part in _re.findall(r"\.([A-Za-z0-9_]+)", t):
+                    if not isinstance(cur, dict) or part not in cur:
+                        sys.stderr.write("fake docker: template field %r not supported\n" % t)
+                        sys.exit(2)
+                    cur = cur[part]
+                print(json.dumps(cur) if "json" in t else _go(cur))
+            else:
+                sys.stderr.write("fake docker: unsupported container inspect --format %r\n" % t)
+                sys.exit(2)
+        sys.exit(0)
+
+if argv[:1] == ["run"] or argv[:2] == ["container", "run"]:
+    if "engine.netprobe" in joined:
+        _netprobe_reply(os.environ.get("FAKE_NETPROBE_CONTROL", "connected"))
+    sys.exit(0)
+
+if argv[:1] == ["pull"] or argv[:2] == ["image", "pull"]:
+    if os.environ.get("FAKE_DOCKER_PULL_OK") == "1":
+        print("Status: Downloaded newer image")
+        sys.exit(0)
+    sys.stderr.write('Error response from daemon: Get "https://registry-1.docker.io/v2/": dial tcp: '
+                     "lookup registry-1.docker.io: no such host\n")
+    sys.exit(1)
+
+if argv[:1] == ["images"] or argv[:2] in (["image", "ls"], ["image", "list"]):
+    import hashlib as _hashlib, re as _re
+    installed = False
+    if jlog and os.path.isfile(jlog):
+        with open(jlog, encoding="utf-8") as fh:
+            installed = any(json.loads(l).get("argv", [])[:2] == ["STUB", "install.sh"]
+                            for l in fh if l.strip())
+    names = json.loads(os.environ.get("FAKE_DOCKER_LS_AFTER" if installed else "FAKE_DOCKER_LS_BEFORE")
+                       or "[]")
+    rows = []
+    for i, n in enumerate(names):
+        last = n.rsplit("/", 1)[-1]
+        repo, tag = (n.rsplit(":", 1) if ":" in last else (n, "latest"))
+        rows.append({"Repository": repo, "Tag": tag,
+                     "ID": _hashlib.sha256(("%d %s" % (i, n)).encode()).hexdigest()[:12]})
+    for f in opt_values("--filter") + opt_values("-f"):
+        if f == "dangling=true":
+            rows = [r for r in rows if r["Repository"] == "<none>"]
+        elif f == "dangling=false":
+            rows = [r for r in rows if r["Repository"] != "<none>"]
+    fmt = opt_values("--format")
+    if "-q" in argv or "--quiet" in argv:
+        for r in rows:
+            print(r["ID"])
+        sys.exit(0)
+    if fmt:
+        t = fmt[-1]
+        for r in rows:
+            def sub(m):
+                if m.group(2) == "":
+                    return json.dumps(r)
+                if m.group(2) not in r:
+                    sys.stderr.write("fake docker: unsupported image ls field %r\n" % m.group(2))
+                    sys.exit(2)
+                return json.dumps(r[m.group(2)]) if m.group(1) else r[m.group(2)]
+            print(_re.sub(r"\{\{\s*(json\s+)?\.([A-Za-z0-9_]*)\s*\}\}", sub, t))
+        sys.exit(0)
+    print("REPOSITORY   TAG   IMAGE ID")
+    for r in rows:
+        print("%s   %s   %s" % (r["Repository"], r["Tag"], r["ID"]))
+    sys.exit(0)
 
 if argv[:2] == ["network", "inspect"]:
     import re
@@ -631,6 +804,8 @@ if "config" in argv:
         "KE_PHOENIX_PORT": env.get("KE_PHOENIX_PORT") or "47101",
         "KE_MODEL_UPSTREAM": env.get("KE_MODEL_UPSTREAM", ""),
         "KE_EGRESS_ALLOWLIST": env.get("KE_EGRESS_ALLOWLIST", ""),
+        "KE_GATEWAY_API_LISTEN": env.get("KE_GATEWAY_API_LISTEN") or "8100",
+        "KE_IMAGE_TAG": env.get("KE_IMAGE_TAG") or "local",
     }
     resolved.update(json.loads(os.environ.get("FAKE_COMPOSE_RESOLVED") or "{}"))
     stack_images = os.environ.get("FAKE_COMPOSE_IMAGES")
@@ -689,7 +864,9 @@ if "config" in argv:
         sys.exit(0)
     app_env = {"KE_ENV": resolved["KE_ENV"], "KE_BIND_ADDRESS": resolved["KE_BIND_ADDRESS"]}
     ports = [
-        {"mode": "ingress", "host_ip": resolved["KE_BIND_ADDRESS"], "target": 8100,
+        {"mode": "ingress", "host_ip": resolved["KE_BIND_ADDRESS"],
+         "target": int(resolved["KE_GATEWAY_API_LISTEN"])
+         if str(resolved["KE_GATEWAY_API_LISTEN"]).isdigit() else resolved["KE_GATEWAY_API_LISTEN"],
          "published": resolved["KE_API_PORT"], "protocol": "tcp"},
         {"mode": "ingress", "host_ip": resolved["KE_BIND_ADDRESS"], "target": 8101,
          "published": resolved["KE_PHOENIX_PORT"], "protocol": "tcp"},
@@ -698,7 +875,8 @@ if "config" in argv:
         ports = json.loads(os.environ["FAKE_COMPOSE_PORTS"])
     model = {"name": project, "services": {
         "gateway": {"environment": dict(app_env, KE_MODEL_UPSTREAM=resolved["KE_MODEL_UPSTREAM"],
-                                        KE_EGRESS_ALLOWLIST=resolved["KE_EGRESS_ALLOWLIST"]),
+                                        KE_EGRESS_ALLOWLIST=resolved["KE_EGRESS_ALLOWLIST"],
+                                        KE_GATEWAY_API_LISTEN=str(resolved["KE_GATEWAY_API_LISTEN"])),
                     "networks": {"backend": None, "edge": None},
                     "ports": ports},
         "api": {"environment": dict(app_env), "networks": {"backend": None}},
@@ -707,6 +885,11 @@ if "config" in argv:
     if images is None:
         for extra in names[3:]:
             model["services"][extra] = {"networks": {"backend": None}}
+        # platform-offline (ci/offline): the first-party images, as compose
+        # resolves ${KE_IMAGE_TAG:-local}.
+        model["services"]["gateway"]["image"] = "ke-gateway:" + resolved["KE_IMAGE_TAG"]
+        for svc in ("api", "worker"):
+            model["services"][svc]["image"] = "ke-app:" + resolved["KE_IMAGE_TAG"]
     else:
         for svc in list(model["services"]):
             if svc not in images:
@@ -758,6 +941,15 @@ if "config" in argv:
 
 if "ps" in argv:
     running = os.environ.get("FAKE_DOCKER_RUNNING", "")
+    _at = argv.index("ps")
+    _vals = set(opt_values("--format")) | set(opt_values("--filter")) | set(opt_values("--status"))
+    _named = [a for a in argv[_at + 1:] if not a.startswith("-") and a not in _vals]
+    if ("-q" in argv or "--quiet" in argv) and _named:
+        _ids = _service_ids()
+        for _svc in _named:
+            if _ids.get(_svc, "fake%s000000" % _svc):
+                print(_ids.get(_svc, "fake%s000000" % _svc))
+        sys.exit(0)
     if "-q" in argv or "--quiet" in argv:
         if running:
             print(running)
@@ -768,6 +960,21 @@ if "ps" in argv:
         sys.exit(0)
     print(os.environ.get("FAKE_DOCKER_HEALTH", "healthy"))
     sys.exit(0)
+
+if "exec" in argv and "engine.netprobe" in joined:
+    _at = argv.index("exec")
+    _takes = {"-e", "--env", "-u", "--user", "-w", "--workdir", "--index"}
+    _svc, _i = None, _at + 1
+    while _i < len(argv):
+        if argv[_i] in _takes:
+            _i += 2
+            continue
+        if argv[_i].startswith("-"):
+            _i += 1
+            continue
+        _svc = argv[_i]
+        break
+    _netprobe_reply(json.loads(os.environ.get("FAKE_NETPROBE") or "{}").get(_svc, "no_route"))
 
 if "exec" in argv and "KE_GATEWAY_API_LISTEN" in joined:
     print('{"status":"ok"}')
@@ -794,13 +1001,21 @@ log = os.environ.get("FAKE_DF_LOG")
 if log:
     with open(log, "a", encoding="utf-8") as fh:
         fh.write(" ".join(argv) + "\n")
-avail = int(os.environ.get("FAKE_DF_AVAIL_KB") or str(50 * 1024 * 1024))
-total = int(os.environ.get("FAKE_DF_TOTAL_KB") or str(max(avail * 2, 1)))
-used = total - avail
+import json
+jlog = os.environ.get("FAKE_DF_JSON")
+if jlog:
+    with open(jlog, "a", encoding="utf-8") as fh:
+        fh.write(json.dumps({"argv": ["DF"] + argv, "env": {}, "cwd": os.getcwd(),
+                             "project_dir": "", "dotenv_present": False}) + "\n")
+by_path = json.loads(os.environ.get("FAKE_DF_AVAIL_BY_PATH") or "{}")
+default_avail = int(os.environ.get("FAKE_DF_AVAIL_KB") or str(50 * 1024 * 1024))
 fs = os.environ.get("FAKE_DF_FILESYSTEM") or "/dev/fake"
 paths = [a for a in argv if not a.startswith("-")] or ["/"]
 print("Filesystem     1024-blocks      Used Available Capacity Mounted on")
-for _ in paths:
+for path in paths:
+    avail = int(by_path.get(path, default_avail))
+    total = int(os.environ.get("FAKE_DF_TOTAL_KB") or str(max(avail * 2, 1)))
+    used = total - avail
     print("%s %15d %9d %9d %7d%% /" % (fs, total, used, avail, used * 100 // total))
 '''
 

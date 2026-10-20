@@ -10,7 +10,7 @@
 # A package whose test*.py files define no tests fails closed (unittest exits
 # 5 on an empty discovery), so a helper package must not be named test*.py.
 set -euo pipefail
-cd "$(dirname "$0")/.."
+CDPATH='' cd -- "$(dirname -- "$0")/.."
 
 mode="${1:-full}"
 

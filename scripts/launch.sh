@@ -11,7 +11,7 @@
 # KE_ENV is not dev (fail closed).
 # Honors KE_ENV_FILE and COMPOSE_PROJECT_NAME.
 set -euo pipefail
-cd "$(dirname "$0")/.."
+CDPATH='' cd -- "$(dirname -- "$0")/.."
 
 env_file="${KE_ENV_FILE:-.env}"
 if [ ! -e "$env_file" ] && [ ! -L "$env_file" ]; then

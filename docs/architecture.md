@@ -159,9 +159,28 @@ are `ke-app:${KE_IMAGE_TAG:-local}`, `ke-gateway:${KE_IMAGE_TAG:-local}` and
 `ke-gates:${KE_IMAGE_TAG:-local}`; `.env.example` gains `KE_IMAGE_TAG=local`.
 As built they were bare names (implicitly `:latest`), so a verify run in one
 worktree retagged the image the live stack or another worktree's verify run
-would start next. `verify.sh` (host half, both modes, after the L-11 unset)
-exports `KE_IMAGE_TAG=wt-<first 12 hex of the SHA-256 of the checkout's
-absolute path>`. So:
+would start next. `verify.sh` (host half) exports
+`KE_IMAGE_TAG=wt-<first 12 hex of the SHA-256 of the checkout's real path>`.
+*(Amended, offline-check rework round 1: review N1/N7, security M-OCb and
+I-OC4.)*
+- **Input.** The real path is `pwd -P` after verify's `cd` to the
+  repository root, hashed as its bytes with no trailing newline. A symlinked
+  checkout therefore gets its target's tag.
+- **Hash.** SHA-256, not the two `cksum` values first built: CRC32 is
+  linear, so the second `cksum` added no entropy (N1). `verify.sh` may not
+  inline `sha256sum` (§2.6 item 10), so a host-side helper
+  `scripts/image_tag.sh`, called with `bash` the way `env_value.sh` is,
+  prints the tag. It uses `sha256sum`, else `shasum -a 256` (the
+  `install.sh` fallback), and reads no environment variable. Like
+  `env_value.sh`, it is a verify-only script and is not shipped in the
+  bundle.
+- **When.** It is computed and exported *before* the fast/full branch, so
+  `fast` builds `ke-gates:wt-<hash>` too and never moves `ke-gates:local`.
+- **Caller values are ignored.** The assignment is unconditional in both
+  modes. A caller `KE_IMAGE_TAG` (process environment or `.env`) never
+  reaches compose, because the exported value outranks `--env-file`.
+
+So:
 - verify never moves `:local`, which only an operator's own `build.sh` sets
   (`install.sh` tags `ke-<x>:bundle-<sha12>` and never touches `:local`,
   §2.5);
@@ -2301,7 +2320,9 @@ live smoke and inside `dind`.
   - `connected`, `timeout`, `refused` or anything else fails, naming the
     service. A timeout means packets left (§2.2).
 - **`engine/netprobe.py`.**
-  - It makes one TCP connect with a timeout.
+  - It makes one TCP connect with a timeout. Its entry point is
+    `main(argv: list[str]) -> int` (orchestrator ruling 4, 2026-10-19), so
+    tests call it with socket stubs and no subprocess.
   - It prints one word, and its exit code is 0 only for `connected`:
     - `ENETUNREACH` or `EHOSTUNREACH` → `no_route`;
     - `ECONNREFUSED` → `refused`;
@@ -2320,7 +2341,42 @@ live smoke and inside `dind`.
 
 **`ci/deployable-offline` (PS-3.2): `scripts/offline_check.sh`.** The
 script is two-sided, keyed on `KE_OFFLINE_CLIENT=1`.
-- **Compose additions (profile `offline`).**
+- **Compose additions: a separate file, `docker-compose.offline.yml`,
+  profile `offline` (amended 2026-10-19, orchestrator ruling 1).**
+  - *Why a separate file.* Compose interpolates every service, including
+    those of inactive profiles. A `${KE_OFFLINE_BUNDLE:?}` in
+    `docker-compose.yml` would make every stack call (`config`, `launch`,
+    `smoke`, `teardown`, `bundle.sh`, `install.sh`) fail whenever it is
+    unset (tester probe, Compose 5.1.4:
+    `docs/evidence/platform-offline/red-oc-compose-required-var.txt`), and
+    PS-2.2 *Resolves without .env* needs the stack file to resolve with no
+    environment. `docker-compose.yml` therefore holds no required variable
+    (`test_stack_compose_has_no_required_variable`), and the network,
+    volume and both services below live only in
+    `docker-compose.offline.yml`.
+  - *Standalone, not an overlay.* `offline_check.sh` loads it alone
+    (`COMPOSE_FILE=docker-compose.offline.yml`), never as
+    `-f docker-compose.yml -f docker-compose.offline.yml`:
+    - the outer project holds only `dind` and `offline-client`. The stack
+      runs *inside* `dind` from the installed bundle's own
+      `docker-compose.yml`, so the host never needs the stack model;
+    - an overlay would interpolate and validate the whole stack file (and
+      the checkout's `.env`) on every offline call, so an unrelated stack
+      problem would fail this gate, and top-level `networks:`/`volumes:`
+      merge by name, so a stack definition named `offline` or
+      `offline-certs` would silently change these;
+    - `down --volumes` on the standalone file removes exactly the offline
+      resources (container, `offline` network, `offline-certs` and `dind`'s
+      anonymous volume); teardown's label check reports anything else.
+    - The file sits at the repository root, so the project directory is the
+      checkout and `./scripts/offline_check.sh` resolves there. It
+      interpolates only `KE_OFFLINE_BUNDLE` and `KE_IMAGE_TAG`.
+  - It is not shipped: `bundle.sh` copies `docker-compose.yml` only, and
+    `test_bundle_contents` keeps the `app/` set exact. No other script and
+    no `COMPOSE_FILE` of `verify.sh` names it.
+  - Tests find the services in whichever compose file defines them
+    (`compose_support.compose_files()`), so the restart, socket and digest
+    checks cover `dind` here.
   - Network `offline`: `internal: true` and `gateway_mode_ipv4: isolated`.
   - `dind`:
     - the official `docker:<ver>-dind` image, digest pinned, Engine ≥ 28
@@ -2341,6 +2397,8 @@ script is two-sided, keyed on `KE_OFFLINE_CLIENT=1`.
   - `offline-client`:
     - `ke-gates:${KE_IMAGE_TAG:-local}`, on `offline` only, `user: "10001"`
       (S3: the client key is 0644 and readable by that uid);
+    - `pull_policy: never` (security I-OC5, defence in depth): a missing
+      `ke-gates` tag fails at `run` and is never fetched from `docker.io`;
     - environment `DOCKER_HOST=tcp://docker:2376`, `DOCKER_TLS_VERIFY=1`,
       `DOCKER_CERT_PATH=/certs/client`, `KE_IN_GATES=""` and
       `KE_OFFLINE_CLIENT=1`; no `COMPOSE_FILE`;
@@ -2350,8 +2408,10 @@ script is two-sided, keyed on `KE_OFFLINE_CLIENT=1`.
       `type: volume`, `source: offline-certs`, `target: /certs/client`,
       `read_only: true`, `volume: {subpath: client}`). `ca/` holds the CA
       private key and is **never** mounted. `offline_check.sh` refuses a
-      compose that cannot apply `volume.subpath` (the minimum version is
-      measured at implementation and named in the message);
+      compose older than 2.27 and names the minimum in the message. 2.27 is
+      a conservative bound, **not measured** against older releases (review
+      N4; Known limits below). The client's certs check (client half,
+      step 1) is the fail-closed backstop if a compose ignores the subpath;
     - `tmpfs` on `/install` and `/tmp` (`/tmp` with `exec,mode=1777`, as
       L-5);
     - **no checkout mount**, so the run tests the bundle and not the tree.
@@ -2359,10 +2419,25 @@ script is two-sided, keyed on `KE_OFFLINE_CLIENT=1`.
     `isolated` from the same compose file; S3 confirmed the option is
     honoured there.
 - **Host half.**
-  1. Project `ke-offline-<random>`. The `EXIT` trap removes the bundle
-     directory and runs `teardown.sh --volumes --profile offline`. Teardown
-     accepts exactly that one profile, and only for this caller; it keeps
-     F3 otherwise, and its label check reports leftovers.
+  1. Project `ke-offline-<random>`. Before the trap is set, the script
+     reads the daemon's arch (`docker info`, normalised as `bundle.sh`
+     does) and exports `COMPOSE_PROJECT_NAME`,
+     `COMPOSE_FILE=docker-compose.offline.yml` (replacing the
+     `docker-compose.yml:docker-compose.verify.yml` that `verify.sh`
+     exports) and `KE_OFFLINE_BUNDLE=dist/<project>-<arch>`, and unsets
+     `COMPOSE_PROFILES`. Every compose call it makes, and the trap's
+     teardown, therefore resolve the same file, project and bundle path,
+     and `${KE_OFFLINE_BUNDLE:?}` is set even when the run stops at the
+     disk check. The `EXIT` trap removes the bundle directory and runs
+     `teardown.sh --volumes --profile offline`, once. Teardown accepts
+     exactly that one profile, passes it to its `config` and `down`, and
+     takes the file from the inherited `COMPOSE_FILE` (it names no compose
+     file itself); it keeps F3 otherwise, and its label check reports
+     leftovers. Called without that `COMPOSE_FILE`, its `down` would miss
+     `dind` and the label check fails loudly, never silently. The script
+     does not pre-check that `docker-compose.offline.yml` exists: compose
+     fails on a missing `-f`/`COMPOSE_FILE` entry, and the fake-docker host
+     test copies only `docker-compose.yml` and `.env.example`.
   2. **Disk (R6).** At least 10 GiB free on the filesystem holding `dist/`,
      and on the daemon's `DockerRootDir` when that path exists on the host
      (on Docker Desktop it is inside the VM and is reported as not
@@ -2378,7 +2453,21 @@ script is two-sided, keyed on `KE_OFFLINE_CLIENT=1`.
     6, and after the trap's teardown. The first CI run's log is saved as
     evidence and replaces the 10 GiB default with a measured figure.
 - **Client half** (inside `offline-client`):
-  1. `docker image ls -q` must be empty, or the check fails with "daemon
+  - *Test seams (orchestrator ruling 3).* It reads the bundle from
+    `${KE_OFFLINE_BUNDLE_DIR:-/bundle}` and installs under
+    `${KE_OFFLINE_INSTALL_ROOT:-/install}`. The two overrides exist only so
+    `OfflineCheckScriptTest` can run the client half outside the container;
+    `offline-client` sets neither, the host half never reads them, and they
+    are not operator configuration (no doc, `.env.example` or quickstart
+    entry). Paths below are written with the defaults.
+  1. *Certs (security L-OCb, defence in depth).* If
+     `${DOCKER_CERT_PATH:-/certs/client}/ca` or `.../server` exists, the
+     check fails before any docker call and names the path. They appear
+     only when a compose mounted the whole certs volume instead of its
+     `client` subpath, which would expose the CA key. `DOCKER_CERT_PATH`
+     is Docker's own variable, which `offline-client` sets, so tests can
+     point it at a temporary directory without a new seam. Then
+     `docker image ls -q` must be empty, or the check fails with "daemon
      not clean". Then `docker pull` of the first vendor reference in
      `bundle.json`, bounded by `timeout`, must fail. If the pull succeeds,
      the gate fails as *inconclusive*, because the daemon has egress (PS-3.2
@@ -2395,14 +2484,42 @@ script is two-sided, keyed on `KE_OFFLINE_CLIENT=1`.
      store stop and start included, plus `ci/offline` inside `dind`.
   5. `scripts/teardown.sh --volumes`.
   6. **No pull happened.** The set of `repository:tag` names in `dind`
-     (`docker image ls --format`, dangling entries excluded) equals the set
+     (`docker image ls --format '{{.Repository}}:{{.Tag}}'`) equals the set
      of `as` values in `bundle.json`. Names, not IDs, are compared (IDs
      differ by store). A missing image would also have failed at `up`
      (`pull_policy: never`, and `dind` has no route out).
+     *(Amended, offline-check rework round 1: review B1, security M-OCa.)*
+     - Only fully dangling `<none>:<none>` rows are excluded.
+     - A `repository:<none>` row is kept, so it counts as an extra name and
+       fails the check, which names it. On the containerd store a
+       digest-pinned pull (`name:tag@sha256:…`, the form of every vendor
+       ref here) lists as `name:<none>`. Dropping those rows would hide the
+       very pull this step exists to catch.
+     - Install only loads and then tags to `as` (`install.sh` requires the
+       loaded name to equal `as`), so a clean run leaves no
+       `repository:<none>` row. If a real `full` run shows one after
+       install anyway, the developer records why here, and the check moves
+       to matching on digests. The exclusion is never widened.
 - *F5 ruling:* the check runs in every local `full`. A daemon that cannot
   run privileged containers, or a host below the disk floor, is a blocker
   and never a skip. Revisit if `full` exceeds about 15 minutes locally
   (time estimate below).
+- **Known limits (offline check, accepted for now).**
+  - *Shared bundle tags (security L-OCa).* `bundle.sh` on the host leaves
+    `ke-<x>:bundle-<sha12>` and `ke-vendor/*` tags behind. `<sha12>` comes
+    from HEAD, so every worktree at the same HEAD uses the same `as` tags.
+    Two offline checks running at once could retag between one run's
+    `docker tag` and its `docker save`, and one bundle could then carry
+    the other tree's image. Accepted because CI runs one check at a time
+    and local concurrent `full` runs at one HEAD are rare. Possible
+    follow-up: suffix the `as` tags with the offline project
+    (`ke-offline-<n>`) for the check's bundles only, or untag what the
+    check created.
+  - *Compose minimum for `volume.subpath` (review N4).* The 2.27 minimum
+    in `offline_check.sh` is a conservative bound that was not measured
+    against older Compose releases. The daemon API version is not checked
+    either. The client certs check (client half, step 1) fails closed
+    whatever the true minimum is.
 
 **Image scan: platform-supply-chain, not this branch (ruling R3).**
 ADR-KE-013's `scripts/scan.sh` becomes a stage of the host half of
@@ -2986,10 +3103,14 @@ Suggested first test per sub-item, followed by the order of the rest.
          the bundle read-only, mounts the certs volume only at
          `/certs/client` with `subpath: client` and read-only (no mount
          reaches `ca`), and empties `KE_IN_GATES`;
+       - `offline-client` has `pull_policy: never` (I-OC5);
        - neither service has a restart policy.
        Extend `test_compose_services_have_restart_policy`,
        `test_no_docker_socket_mounted` and `test_compose_images_pinned_by_digest`
-       to cover `dind`.
+       to cover `dind`. These find the services in any compose file (they
+       live in `docker-compose.offline.yml`, §2.5); the guard
+       `test_stack_compose_has_no_required_variable` keeps `${VAR:?}` out
+       of `docker-compose.yml`.
     8. *proposed* `test_gates_image_pins_docker_cli_by_hash`: the Docker CLI
        and compose plugin are version-pinned release binaries with a
        `sha256sum -c` (needed by `offline-client`).
@@ -2998,10 +3119,15 @@ Suggested first test per sub-item, followed by the order of the rest.
        and `.env.example` has `KE_IMAGE_TAG=local`. In the `verify.sh` B6
        harness, `KE_IMAGE_TAG` matches `wt-[0-9a-f]{12}`, is equal for two
        runs from the same directory, and differs for another directory.
+       *(Rework round 1.)* In both `fast` and `full` it equals `wt-` plus
+       the first 12 hex of `sha256(realpath(checkout))`, and a caller
+       `KE_IMAGE_TAG` (for example `local`) is ignored.
     10. The `verify.sh` B6 harness extended. The order is build, launch,
         `gates-it`, smoke, `teardown.sh --volumes`, `offline_check.sh`
         (**no `scan.sh`**, R3); each failing stage stops the later ones;
-        the trap still tears down. `test_verify_sh_has_no_inlined_commands`
+        teardown runs exactly once on every path: the explicit stage when
+        reached (a failing `offline_check.sh` is not followed by a second
+        teardown), otherwise the trap (ADR-KE-009 step 4). `test_verify_sh_has_no_inlined_commands`
         gains `docker save` and `sha256sum`.
     11. *proposed* `NetprobeTest` (`engine.netprobe`, with socket stubs):
         `ENETUNREACH`/`EHOSTUNREACH` → `no_route` with exit 1; refused,
@@ -3023,8 +3149,16 @@ Suggested first test per sub-item, followed by the order of the rest.
         - Client half: a non-empty image store fails before install; the
           order is install, launch, smoke (with `KE_SMOKE_OWNS_PROJECT=1`),
           teardown; a `repository:tag` set different from the `as` set in
-          `bundle.json` fails.
+          `bundle.json` fails. *(Rework round 1.)* The extra case includes
+          a `repository:<none>` row (for example `postgres:<none>`), which
+          fails and is named, while a `<none>:<none>` row alone still
+          passes. A `$DOCKER_CERT_PATH/ca` or `/server` directory fails
+          before any docker call.
         - Plus: `teardown.sh` refuses any profile but `offline`.
+        - Host-half compose calls and the trap's teardown share one
+          `ke-offline-<random>` project and `KE_OFFLINE_BUNDLE`; the
+          client half runs with the `KE_OFFLINE_BUNDLE_DIR` /
+          `KE_OFFLINE_INSTALL_ROOT` test seams (§2.5 client half).
     13. *proposed* `NoticesTest` (`engine.notices` on stubbed metadata:
         every distribution is listed with its licence; an LGPL distribution
         without a licence file exits non-zero). Then
@@ -3717,6 +3851,16 @@ asked for the hook design to be recorded in this ADR.
        (platform-offline) `teardown.sh --volumes` and `offline_check.sh`.
        (platform-supply-chain later inserts `scan.sh` between them,
        ADR-KE-013; not this branch.)
+       - *Teardown runs once (orchestrator ruling 2, 2026-10-19).* The
+         explicit stage is the verify project's one teardown. Once it has
+         started, the trap does not repeat it (the existing `cleanup` with
+         `trap - EXIT`, called as the stage); the trap tears down only on
+         paths that never reached it (a failed earlier stage, an
+         interrupt). A failed
+         teardown fails the run and stops before `offline_check.sh`, which
+         is accepted: the offline check is not run on a host still holding
+         the verify project. `offline_check.sh` then runs its own
+         `ke-offline-<random>` project with its own trap (§2.5).
   - The gate commands stay only in `lint.sh`, `test.sh`, `smoke.sh`,
     `bundle.sh`, `install.sh` and `offline_check.sh` (and later `scan.sh`).
     `verify.sh` calls scripts and `compose run`, nothing else.
@@ -3726,6 +3870,11 @@ asked for the hook design to be recorded in this ADR.
   - `offline_check.sh` starts the official Docker `dind` image (privileged,
     with a fresh anonymous `/var/lib/docker`) on an internal network,
     `offline`.
+  - Both services, the `offline` network and the `offline-certs` volume
+    are defined in `docker-compose.offline.yml`, which only
+    `offline_check.sh` loads, standalone (§2.5; amended 2026-10-19,
+    orchestrator ruling 1: a required variable in `docker-compose.yml`
+    breaks every stack compose call, profile or not).
   - It drives that daemon from `offline-client`, which uses the gates image
     as uid 10001, over TLS at `tcp://docker:2376` (`dind`'s network alias,
     which the server cert names), with only the certs volume's `client`

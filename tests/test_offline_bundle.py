@@ -3226,6 +3226,32 @@ class BundleScriptTest(_BundleBase, unittest.TestCase):
         _, _, out, _ = self._ok()
         self.assertEqual([_rel(p, out) for p in out.rglob("*.whl")], [])
 
+    def test_bundle_always_ships_net_isolated(self):
+        # Review N5 (platform-offline rework round 1): the bundled smoke.sh
+        # calls scripts/net_isolated.sh, so the bundle always carries it and
+        # bundle.sh copies it with no exists-guard: without it, no bundle.
+        with self.subTest(case="present (shipped, byte-equal)"):
+            _, _, out, _ = self._ok()
+            shipped = out / "app" / "scripts" / "net_isolated.sh"
+            self.assertTrue(shipped.is_file(), "app/scripts/net_isolated.sh is not in the bundle")
+            self.assertEqual(_sha256(shipped), _sha256(ROOT / "scripts" / "net_isolated.sh"))
+            listed = (out / "MANIFEST.sha256").read_text(encoding="utf-8")
+            self.assertIn("  app/scripts/net_isolated.sh", listed)
+            self.assertEqual([_rel(p, out) for p in out.rglob("image_tag.sh")], [],
+                             "image_tag.sh is verify-only and is not shipped (architecture §2.1)")
+        with self.subTest(case="static: no exists-guard"):
+            body = "\n".join(l for l in (ROOT / "scripts" / "bundle.sh").read_text(encoding="utf-8")
+                             .splitlines() if not l.lstrip().startswith("#"))
+            self.assertNotRegex(body, r"\[\[?\s+-[ef]\s+\"?scripts/net_isolated\.sh",
+                                "bundle.sh guards the net_isolated.sh copy with an exists-test")
+        with self.subTest(case="missing from the tree: bundle.sh fails"):
+            self._git("rm", "-q", "--", "scripts/net_isolated.sh")
+            self._git("commit", "-q", "-m", "fixture without net_isolated.sh")
+            result, calls, out = self._bundle()
+            self.assertNotEqual(result.returncode, 0,
+                                "bundle.sh wrote a bundle without net_isolated.sh:\n" + self._out(result))
+            self.assertFalse((out / "MANIFEST.sha256").exists(), "a manifest was written regardless")
+
     # ---- PS-3.1 Where written (A40): dirty tree -----------------------------
 
     def test_bundle_json_marks_dirty_tree(self):
@@ -3927,7 +3953,10 @@ class ExecBitTest(unittest.TestCase):
     (`git add --chmod=+x`)."""
 
     def test_operator_scripts_are_executable_in_git(self):
-        scripts = ("scripts/bundle.sh", "scripts/install.sh", "scripts/launch.sh", "scripts/teardown.sh")
+        # Review B2 (platform-offline rework round 1): verify.sh and smoke.sh
+        # call offline_check.sh and net_isolated.sh directly, not through bash.
+        scripts = ("scripts/bundle.sh", "scripts/install.sh", "scripts/launch.sh", "scripts/teardown.sh",
+                   "scripts/offline_check.sh", "scripts/net_isolated.sh")
         done = subprocess.run(["git", "-C", str(ROOT), "ls-files", "-s", "--", *scripts],
                               capture_output=True, text=True, timeout=60)
         self.assertEqual(done.returncode, 0, done.stderr)

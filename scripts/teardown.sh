@@ -9,17 +9,27 @@
 # itself, so it cannot touch another project or a profile's containers (F3,
 # security L-9).
 set -euo pipefail
-cd "$(dirname "$0")/.."
+CDPATH='' cd -- "$(dirname -- "$0")/.."
 
 args=()
 [ -n "${KE_ENV_FILE:-}" ] && args+=(--env-file "$KE_ENV_FILE")
 down=()
 volumes=0
-for arg in "$@"; do
-  case "$arg" in
+profile=()
+# The one profile this script accepts is `offline`, for scripts/offline_check.sh
+# (architecture §2.5): it names the compose file through COMPOSE_FILE, which
+# this script inherits. Any other profile, a repeat or an empty value is refused.
+while [ "$#" -gt 0 ]; do
+  if [ "$#" -ge 2 ] && [ "${#profile[@]}" -eq 0 ] && [ "$1 $2" = "--profile offline" ]; then
+    profile=(--profile offline)
+    shift 2
+    continue
+  fi
+  case "$1" in
     --volumes) down+=(--volumes); volumes=1 ;;
-    *) echo "usage: scripts/teardown.sh [--volumes]" >&2; exit 2 ;;
+    *) echo "usage: scripts/teardown.sh [--volumes] [--profile offline]" >&2; exit 2 ;;
   esac
+  shift
 done
 
 # The project name is the one compose resolves, not a guess; without it the
@@ -30,7 +40,7 @@ if [ -z "$project" ]; then
   exit 1
 fi
 
-docker compose ${args[@]+"${args[@]}"} down ${down[@]+"${down[@]}"}
+docker compose ${args[@]+"${args[@]}"} ${profile[@]+"${profile[@]}"} down ${down[@]+"${down[@]}"}
 
 filter="label=com.docker.compose.project=${project}"
 left_containers="$(docker ps -a --filter "$filter" --format '{{.Names}}')"

@@ -1666,14 +1666,18 @@ PS-3.2 additions (`ci/deployable-offline`):
   config)
 - *No pull happened (orchestrator ruling on the architect's spikes
   amendment, 2026-10-19).* After teardown, the check compares the set of
-  `repository:tag` names in the inner daemon (dangling entries excluded)
-  with the set of `as` values in `bundle.json`. Image IDs are never
-  compared (they differ by image store). Given the two sets differ (a name
-  missing, or an extra name), the gate fails and names the differing tags;
-  given they are equal, this step passes.
+  `repository:tag` names in the inner daemon (only fully dangling
+  `<none>:<none>` entries excluded) with the set of `as` values in
+  `bundle.json`. Image IDs are never compared (they differ by image
+  store). A `repository:<none>` entry counts as an extra name, because a
+  digest-pinned pull lists that way on the containerd store (architecture
+  §2.5 client step 6; review B1, security M-OCa). Given the two sets differ
+  (a name missing, or an extra name), the gate fails and names the
+  differing tags; given they are equal, this step passes.
   `[unit: test_offline_check_fails_when_tag_set_differs_from_as_set]`
-  (fast, stubbed docker; parametrised extra / missing; control: equal
-  sets pass), and `ci/deployable-offline` (full).
+  (fast, stubbed docker; parametrised extra / extra `repository:<none>` /
+  missing; control: equal sets pass, with or without a `<none>:<none>`
+  entry), and `ci/deployable-offline` (full).
 - *Free disk (R6).* `offline_check.sh` checks for at least 10 GiB free before
   its first stage. Below that it exits non-zero with a message giving the
   required and available space; it is reported as a failure, never a skip

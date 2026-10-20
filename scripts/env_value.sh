@@ -9,7 +9,7 @@
 # it can run. Any other name exits 2 before anything runs, so no secret in
 # .env can be read through this script.
 set -euo pipefail
-cd "$(dirname "$0")/.."
+CDPATH='' cd -- "$(dirname -- "$0")/.."
 
 if [ "$#" -ne 1 ]; then
   echo "usage: scripts/env_value.sh KE_MODEL_UPSTREAM|KE_EGRESS_ALLOWLIST" >&2

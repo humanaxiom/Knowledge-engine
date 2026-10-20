@@ -40,9 +40,11 @@ Rework round 2 (orchestrator "rework round 2 of 5"):
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
+import shlex
 import shutil
 import signal
 import stat
@@ -658,6 +660,11 @@ class _TeardownScopeBase:
         script = ROOT / self.command[-1]
         body = "\n".join(l for l in script.read_text(encoding="utf-8").splitlines()
                          if not l.lstrip().startswith("#"))
+        if script.suffix == ".sh":
+            # platform-offline (architecture §2.5 host step 1, §2.6 item 12):
+            # teardown.sh accepts exactly `--profile offline`, for
+            # offline_check.sh. That literal is the one exception to F3.
+            body = re.sub(r"""--profile[ =]["']?offline["']?(?![\w-])""", "", body)
         test.assertNotRegex(body, r"--profile|COMPOSE_PROFILES",
                             f"{script.name} activates profiles (F3)")
 
@@ -706,6 +713,26 @@ class _TeardownScopeBase:
 class TeardownShScopeTest(_TeardownScopeBase, unittest.TestCase):
     command = ["bash", "scripts/teardown.sh"]
     volumes_flag = "--volumes"
+
+    def test_teardown_accepts_only_the_offline_profile(self):  # §2.5 host step 1, §2.6 item 12
+        result, records = self._teardown("--volumes", "--profile", "offline")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        downs = [r["argv"] for r in records if r["argv"][:1] == ["compose"] and "down" in r["argv"]]
+        self.assertTrue(downs, "teardown --profile offline did not call compose down")
+        for argv in downs:
+            pairs = list(zip(argv, argv[1:]))
+            self.assertIn(("--profile", "offline"), pairs, f"down must activate `offline`: {argv}")
+            self.assertIn("--volumes", argv)
+            self.assertEqual([a for a in argv if a == "--profile"], ["--profile"], argv)
+        for args in (("--volumes", "--profile", "gates"), ("--volumes", "--profile", "gates-it"),
+                     ("--volumes", "--profile", "*"),
+                     ("--volumes", "--profile", "offline", "--profile", "gates"),
+                     ("--volumes", "--profile", "offline,gates"), ("--volumes", "--profile", "")):
+            with self.subTest(args=" ".join(args)):
+                result, records = self._teardown(*args)
+                self.assertNotEqual(result.returncode, 0, f"teardown accepted {args}")
+                self.assertFalse([r for r in records if r["argv"][:1] == ["compose"] and "down" in r["argv"]],
+                                 f"teardown ran down for {args}")
 
 
 class TeardownPs1ScopeTest(_TeardownScopeBase, unittest.TestCase):
@@ -897,14 +924,14 @@ class TeardownPs1LeftoversTest(_TeardownLeftoversBase, unittest.TestCase):
 
 STAGE_STUB = """#!/usr/bin/env bash
 name="{name}"
-echo "$name $* | project=${{COMPOSE_PROJECT_NAME:-}} | file=${{COMPOSE_FILE:-}} | owns=${{KE_SMOKE_OWNS_PROJECT-<unset>}}" >> "$STAGE_LOG"
+echo "$name $* | project=${{COMPOSE_PROJECT_NAME:-}} | file=${{COMPOSE_FILE:-}} | tag=${{KE_IMAGE_TAG-<unset>}} | owns=${{KE_SMOKE_OWNS_PROJECT-<unset>}}" >> "$STAGE_LOG"
 case "|${{HANG_STAGE:-}}|" in *"|$name|"*) exec sleep 60 ;; esac
 case "|${{FAIL_STAGE:-}}|" in *"|$name|"*) echo "stub $name: failing" >&2; exit 7 ;; esac
 exit 0
 """
 
 DOCKER_STUB = """#!/usr/bin/env bash
-echo "docker $* | project=${COMPOSE_PROJECT_NAME:-} | file=${COMPOSE_FILE:-} | sep=${COMPOSE_PATH_SEPARATOR:-}" >> "$STAGE_LOG"
+echo "docker $* | project=${COMPOSE_PROJECT_NAME:-} | file=${COMPOSE_FILE:-} | tag=${KE_IMAGE_TAG-<unset>} | sep=${COMPOSE_PATH_SEPARATOR:-}" >> "$STAGE_LOG"
 case "$*" in *gates-it*)
   case "|${FAIL_STAGE:-}|" in *"|gates-it|"*) echo "stub gates-it: failing" >&2; exit 7 ;; esac ;;
 esac
@@ -913,9 +940,21 @@ exit 0
 """
 
 
+# platform-offline (PS-3.2 *Wired into full*; architecture §2.6 item 10 and
+# ADR-KE-009 decision step 4): `full` runs, in order, build, launch, gates-it,
+# smoke, `teardown.sh --volumes`, then `offline_check.sh`; there is no scan
+# stage on this branch (ruling R3). The explicit teardown is the one teardown
+# of the verify project: it runs once on every exit path (the trap does not
+# repeat a teardown that already ran). This replaces the earlier
+# ["build", "launch", "gates-it", "smoke", "teardown"] order, whose teardown
+# came only from the trap.
+FULL_ORDER = ["build", "launch", "gates-it", "smoke", "teardown", "offline_check"]
+
+
 class VerifyHostHalfTest(unittest.TestCase):
     """B6, N7: the real scripts/verify.sh in a throwaway project, with
-    recording stubs for build/launch/smoke/teardown and a recording docker."""
+    recording stubs for build/launch/smoke/teardown/offline_check and a
+    recording docker."""
 
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp())
@@ -925,7 +964,7 @@ class VerifyHostHalfTest(unittest.TestCase):
         for rel in (".env.example", "docker-compose.yml", "docker-compose.verify.yml"):
             if (ROOT / rel).exists():
                 shutil.copy(ROOT / rel, self.tmp / rel)
-        for name in ("build", "launch", "smoke", "teardown", "lint", "test"):
+        for name in ("build", "launch", "smoke", "teardown", "lint", "test", "offline_check"):
             stub = self.tmp / "scripts" / f"{name}.sh"
             stub.write_text(STAGE_STUB.format(name=name), encoding="utf-8", newline="\n")
             _make_executable(stub)
@@ -939,6 +978,11 @@ class VerifyHostHalfTest(unittest.TestCase):
         env_value.write_text('#!/usr/bin/env bash\nprintf \'%s\' "${!1-}"\n',
                              encoding="utf-8", newline="\n")
         _make_executable(env_value)
+        # Rework round 1 (architecture §2.1, §2.6 item 9): verify gets its
+        # per-worktree tag from the real helper scripts/image_tag.sh (never a
+        # stub: the tests below check the real SHA-256), once it exists.
+        if (ROOT / "scripts" / "image_tag.sh").is_file():
+            shutil.copy(ROOT / "scripts" / "image_tag.sh", self.tmp / "scripts" / "image_tag.sh")
         (self.tmp / "bin").mkdir()
         docker = self.tmp / "bin" / "docker"
         docker.write_text(DOCKER_STUB, encoding="utf-8", newline="\n")
@@ -971,7 +1015,7 @@ class VerifyHostHalfTest(unittest.TestCase):
     def test_full_runs_stages_in_order_then_tears_down(self):
         result, lines = self._verify()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(self._stages(lines), ["build", "launch", "gates-it", "smoke", "teardown"])
+        self.assertEqual(self._stages(lines), FULL_ORDER)
         gates_it = [l for l in lines if self._stage(l) == "gates-it"]
         self.assertEqual(len(gates_it), 1)
         head = gates_it[0].split(" | ", 1)[0]
@@ -998,7 +1042,7 @@ class VerifyHostHalfTest(unittest.TestCase):
         self.assertNotRegex(mutant, r"(?m)^\s*scripts/verify\.sh\s+full", "mutant would recurse")
         (self.tmp / "scripts" / "verify.sh").write_text(mutant + "\n", encoding="utf-8", newline="\n")
         result, lines = self._verify()
-        self.assertNotEqual(self._stages(lines), ["build", "launch", "gates-it", "smoke", "teardown"])
+        self.assertNotEqual(self._stages(lines), FULL_ORDER)
 
     def test_each_failing_stage_fails_verify_and_still_tears_down(self):
         expected = ["build", "launch", "gates-it", "smoke"]
@@ -1010,6 +1054,12 @@ class VerifyHostHalfTest(unittest.TestCase):
                 stages = self._stages(lines)
                 self.assertEqual(stages, expected[: i + 1] + ["teardown"],
                                  "later stages ran after a failure, or teardown did not run once")
+        with self.subTest(failing="offline_check"):
+            result, lines = self._verify(FAIL_STAGE="offline_check")
+            self.assertNotEqual(result.returncode, 0, "offline_check failed but verify exited 0")
+            self.assertNotIn("verify full: PASS", result.stdout + result.stderr)
+            self.assertEqual(self._stages(lines), FULL_ORDER,
+                             "the verify project is torn down once, before offline_check")
 
     def test_teardown_runs_on_interrupt(self):
         for sig in (signal.SIGINT, signal.SIGTERM):
@@ -1039,14 +1089,18 @@ class VerifyHostHalfTest(unittest.TestCase):
                 self.assertEqual(stages.count("teardown"), 1, f"teardown on {sig.name}: {stages}")
                 self.assertNotIn("gates-it", stages)
                 self.assertNotIn("smoke", stages)
+                self.assertNotIn("offline_check", stages)
 
     def test_project_name_is_random_and_shared_by_every_stage(self):
         names = []
         for _ in range(2):
             result, lines = self._verify()
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            # offline_check.sh runs its own ke-offline-<random> project
+            # (§2.5 host step 1), so what it inherits is not checked here.
             projects = {l.split("project=", 1)[1].split(" | ", 1)[0]
-                        for l in lines if self._stage(l) != "docker" or "gates-it" in l}
+                        for l in lines if (self._stage(l) != "docker" or "gates-it" in l)
+                        and self._stage(l) != "offline_check"}
             self.assertEqual(len(projects), 1, f"stages used different projects: {projects}")
             name = projects.pop()
             self.assertRegex(name, r"^ke-verify-[a-z0-9]+$")
@@ -1058,6 +1112,8 @@ class VerifyHostHalfTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         for line in lines:
             head, _, rest = line.partition(" | ")
+            if self._stage(line) == "offline_check":
+                continue  # its own project and compose files (§2.5); dind publishes nothing
             with self.subTest(call=head):
                 overlay = "docker-compose.verify.yml" in rest or "docker-compose.verify.yml" in head
                 self.assertTrue(overlay, "a stage ran without the verify overlay (it would publish)")
@@ -1113,6 +1169,7 @@ class VerifyHostHalfTest(unittest.TestCase):
     def test_teardown_failure_after_green_run_is_reported(self):  # N7
         result, lines = self._verify(FAIL_STAGE="teardown")
         output = result.stdout + result.stderr
+        # A failed teardown stops verify before offline_check (FULL_ORDER note).
         self.assertEqual(self._stages(lines), ["build", "launch", "gates-it", "smoke", "teardown"])
         self.assertNotEqual(result.returncode, 0, "a failed teardown was swallowed (rc=0)")
         self.assertRegex(output, r"(?i)teardown", "verify must name the failed teardown")
@@ -1175,6 +1232,282 @@ class VerifyHostHalfTest(unittest.TestCase):
         self.assertEqual(len(calls), 1, calls)
         self.assertRegex(calls[0], r"\bcompose\b.*\brun\b.*\bgates\s+scripts/verify\.sh\s+fast\b")
         self.assertNotRegex(calls[0], r"(?:^|\s)(?:-p|--publish|--service-ports)(?:\s|=|$)")
+
+    # -- platform-offline -----------------------------------------------------
+
+    def test_verify_full_runs_offline_check(self):  # PS-3.2 *Wired into full*
+        result, lines = self._verify()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        stages = self._stages(lines)
+        self.assertEqual(stages.count("offline_check"), 1, stages)
+        self.assertEqual(stages[-2:], ["teardown", "offline_check"],
+                         "offline_check runs last, after the verify project is torn down")
+        teardown = [l for l in lines if self._stage(l) == "teardown"]
+        self.assertRegex(teardown[0].split(" | ", 1)[0], r"(?:^|\s)--volumes(?:\s|$)")
+        result, lines = self._verify(FAIL_STAGE="offline_check")
+        self.assertNotEqual(result.returncode, 0, "a failed offline check must fail verify full")
+        self.assertNotIn("verify full: PASS", result.stdout + result.stderr)
+        _, lines = self._verify("fast")
+        self.assertNotIn("offline_check", self._stages(lines), "the offline check runs in full only")
+        body = "\n".join(l for l in (ROOT / "scripts" / "verify.sh").read_text(encoding="utf-8").splitlines()
+                         if not l.lstrip().startswith("#"))
+        self.assertIn("scripts/offline_check.sh", body)
+        self.assertNotRegex(body, r"\bscan(?:\.sh)?\b", "no scan stage on this branch (ruling R3)")
+
+    def test_verify_full_uses_per_worktree_image_tag(self):  # PS-3.9 N6, §2.6 item 9
+        def tags(lines: list[str]) -> set[str]:
+            return {l.split("| tag=", 1)[1].split(" | ", 1)[0] for l in lines
+                    if "| tag=" in l and (self._stage(l) != "docker" or "gates-it" in l)}
+
+        result, first = self._verify(KE_IMAGE_TAG="local")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        result, second = self._verify()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        one, two = tags(first), tags(second)
+        self.assertEqual(len(one), 1, f"every stage sees one KE_IMAGE_TAG: {one}")
+        tag = next(iter(one))
+        self.assertRegex(tag, r"^wt-[0-9a-f]{12}$", "verify tags its images wt-<12 hex> (N6)")
+        self.assertEqual(two, one, "two runs from the same worktree use the same tag")
+        other = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, other, True)
+        shutil.copytree(self.tmp, other / "wt2", symlinks=True)
+        log = other / "stages.log"
+        log.write_text("", encoding="utf-8")
+        env = self._env()
+        env.update(STAGE_LOG=str(log),
+                   PATH=f"{other / 'wt2' / 'bin'}{os.pathsep}{os.environ.get('PATH', '')}")
+        result = subprocess.run(["bash", "scripts/verify.sh", "full"], cwd=other / "wt2", env=env,
+                                capture_output=True, text=True, timeout=60)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        elsewhere = tags(log.read_text(encoding="utf-8").splitlines())
+        self.assertEqual(len(elsewhere), 1, elsewhere)
+        self.assertRegex(next(iter(elsewhere)), r"^wt-[0-9a-f]{12}$")
+        self.assertNotEqual(elsewhere, one, "another worktree gets another tag")
+
+    # -- rework round 1: review N1/N7, security M-OCb/I-OC4 (§2.1, §2.6 item 9)
+
+    @staticmethod
+    def _expected_tag(checkout: Path) -> str:
+        real = os.path.realpath(checkout)
+        return "wt-" + hashlib.sha256(real.encode("utf-8")).hexdigest()[:12]
+
+    @staticmethod
+    def _all_tags(lines: list[str]) -> set[str]:
+        return {l.split("| tag=", 1)[1].split(" | ", 1)[0] for l in lines if "| tag=" in l}
+
+    def _run_in(self, checkout: Path, mode: str, **extra: str) -> tuple[subprocess.CompletedProcess, set[str]]:
+        log = checkout / "stages.log"
+        log.write_text("", encoding="utf-8")
+        env = self._env(**extra)
+        env.update(STAGE_LOG=str(log),
+                   PATH=f"{checkout / 'bin'}{os.pathsep}{os.environ.get('PATH', '')}")
+        result = subprocess.run(["bash", "scripts/verify.sh", mode], cwd=checkout, env=env,
+                                capture_output=True, text=True, timeout=60)
+        return result, self._all_tags(log.read_text(encoding="utf-8").splitlines())
+
+    def test_verify_image_tag_is_sha256_of_the_real_path_in_both_modes(self):
+        # Both modes export KE_IMAGE_TAG = wt- + the first 12 hex of
+        # sha256(pwd -P), before the fast/full branch, unconditionally: a
+        # caller's KE_IMAGE_TAG never reaches compose (M-OCb, N7).
+        want = self._expected_tag(self.tmp)
+        for mode in ("fast", "full"):
+            for caller in (None, "local", "attacker-tag"):
+                with self.subTest(mode=mode, caller_tag=caller):
+                    extra = {} if caller is None else {"KE_IMAGE_TAG": caller}
+                    result, tags = self._run_in(self.tmp, mode, **extra)
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertEqual(tags, {want},
+                                     f"verify {mode} must hand every stage KE_IMAGE_TAG={want} "
+                                     f"(sha256 of the real path), whatever the caller sets")
+
+    def test_verify_image_tag_uses_the_real_path_not_a_symlink(self):
+        link_dir = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, link_dir, True)
+        link = link_dir / "via-link"
+        try:
+            os.symlink(self.tmp, link, target_is_directory=True)
+        except OSError as exc:  # pragma: no cover - symlinks always work in the gates image
+            self.fail(f"cannot create a symlink here: {exc}")
+        want = self._expected_tag(self.tmp)
+        for mode in ("fast", "full"):
+            with self.subTest(mode=mode):
+                # PWD=<link> makes bash keep the logical (symlinked) path in $PWD.
+                result, tags = self._run_in(link, mode, PWD=str(link))
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(tags, {want}, "a symlinked checkout gets its target's tag (pwd -P)")
+
+    def test_verify_image_tag_separates_crc_colliding_paths(self):
+        # Review N1: CRC32 is linear, so under the two-cksum tag these
+        # equal-length paths collide, and keep colliding under any common
+        # prefix (both give wt-b2405df97d12 at /home/u/wt/...).
+        base = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, base, True)
+        tags: dict[str, set[str]] = {}
+        for leaf in ("14591828", "40040200"):
+            checkout = base / "home" / "u" / "wt" / leaf
+            shutil.copytree(self.tmp, checkout, symlinks=True)
+            result, found = self._run_in(checkout, "full")
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            tags[leaf] = found
+        self.assertNotEqual(tags["14591828"], tags["40040200"],
+                            "two worktrees whose paths collide under CRC share one image tag (N1)")
+        for leaf, found in tags.items():
+            with self.subTest(worktree=leaf):
+                self.assertEqual(found, {self._expected_tag(base / "home" / "u" / "wt" / leaf)})
+
+    # -- security L-OC1a (security-oc1.md): CDPATH and the tag format ----------
+
+    BAD_TAGS = {
+        "two lines (a CDPATH cd echo, then the tag)": "/elsewhere/checkout\nwt-0123456789ab\n",
+        "uppercase hex": "wt-0123456789AB\n",
+        "11 hex": "wt-0123456789a\n",
+        "13 hex": "wt-0123456789abc\n",
+        "no wt- prefix": "0123456789ab\n",
+        "local": "local\n",
+        "trailing space": "wt-0123456789ab \n",
+        "shell text": "wt-0123456789ab;id\n",
+        "empty": "",
+    }
+
+    def _stub_image_tag(self, output: str) -> None:
+        stub = self.tmp / "scripts" / "image_tag.sh"
+        stub.write_text("#!/usr/bin/env bash\nprintf '%s' " + shlex.quote(output) + "\n",
+                        encoding="utf-8", newline="\n")
+
+    def test_verify_runs_with_a_well_formed_stub_tag(self):  # control for the refusals below
+        self._stub_image_tag("wt-0123456789ab\n")
+        for mode in ("fast", "full"):
+            with self.subTest(mode=mode):
+                result, tags = self._run_in(self.tmp, mode)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(tags, {"wt-0123456789ab"})
+
+    def test_verify_refuses_a_malformed_image_tag_before_any_build(self):
+        # L-OC1a: verify checks `^wt-[0-9a-f]{12}$` on what image_tag.sh
+        # printed and fails, naming the tag, before any docker call or stage.
+        for case, output in self.BAD_TAGS.items():
+            self._stub_image_tag(output)
+            for mode in ("fast", "full"):
+                with self.subTest(tag=case, mode=mode):
+                    result, lines = self._verify(mode)
+                    out = result.stdout + result.stderr
+                    self.assertNotEqual(result.returncode, 0, f"verify {mode} accepted tag {output!r}:\n{out}")
+                    self.assertEqual(lines, [], f"verify {mode} built or ran something with tag {output!r}")
+                    self.assertNotIn("PASS", out)
+                    self.assertRegex(out, r"(?i)\btag\b|KE_IMAGE_TAG|image_tag",
+                                     "the refusal must say it is the image tag that is malformed")
+
+    def test_verify_is_cdpath_safe(self):
+        # L-OC1a: with CDPATH exported (`.` or a directory holding another
+        # tree with a `scripts/` dir), verify's own `cd` and image_tag.sh stay
+        # in this checkout: no directory line on stdout, every stage runs, and
+        # every stage sees this checkout's tag (never the decoy's).
+        other = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, other, True)
+        (other / "scripts").mkdir()
+        decoy = other / "scripts" / "image_tag.sh"
+        decoy.write_text("#!/usr/bin/env bash\necho wt-badbadbadbad\n", encoding="utf-8", newline="\n")
+        want = self._expected_tag(self.tmp)
+        for cdpath in (".", str(other), f"{other}:."):
+            for mode in ("fast", "full"):
+                with self.subTest(CDPATH=cdpath, mode=mode):
+                    self.log.write_text("", encoding="utf-8")
+                    result = subprocess.run(["bash", "scripts/verify.sh", mode], cwd=self.tmp,
+                                            env=self._env(CDPATH=cdpath), capture_output=True,
+                                            text=True, timeout=60)
+                    out = result.stdout + result.stderr
+                    self.assertEqual(result.returncode, 0, out)
+                    stray = [l for l in result.stdout.splitlines()
+                             if os.path.isabs(l.strip()) and os.path.isdir(l.strip())]
+                    self.assertEqual(stray, [], f"a CDPATH `cd` printed a directory:\n{out}")
+                    lines = self.log.read_text(encoding="utf-8").splitlines()
+                    if mode == "full":
+                        self.assertEqual(self._stages(lines), FULL_ORDER, out)
+                    else:
+                        self.assertEqual(len(lines), 1, lines)
+                    self.assertEqual(self._all_tags(lines), {want},
+                                     "every stage sees this checkout's own tag under CDPATH")
+
+
+class ImageTagHelperTest(unittest.TestCase):
+    """Rework round 1, architecture §2.1: scripts/image_tag.sh prints
+    `wt-<first 12 hex of sha256(pwd -P)>`, with sha256sum, else
+    `shasum -a 256`, and reads no environment variable. Run from the checkout
+    root, the way verify.sh calls it (`bash scripts/image_tag.sh`)."""
+
+    HELPER = ROOT / "scripts" / "image_tag.sh"
+
+    def setUp(self) -> None:
+        self.assertTrue(self.HELPER.is_file(), "scripts/image_tag.sh is missing (architecture §2.1)")
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        (self.tmp / "scripts").mkdir()
+        shutil.copy(self.HELPER, self.tmp / "scripts" / "image_tag.sh")
+        self.want = "wt-" + hashlib.sha256(os.path.realpath(self.tmp).encode("utf-8")).hexdigest()[:12]
+
+    def _run(self, path: str | None = None, **extra: str) -> subprocess.CompletedProcess:
+        env = _clean_env(**extra)
+        if path is not None:
+            env["PATH"] = path
+        return subprocess.run(["bash", "scripts/image_tag.sh"], cwd=self.tmp, env=env,
+                              capture_output=True, text=True, timeout=30)
+
+    def test_image_tag_prints_sha256_of_the_real_path(self):
+        result = self._run()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertRegex(result.stdout, r"^wt-[0-9a-f]{12}\n?$", "one line, the tag only")
+        self.assertEqual(result.stdout.strip(), self.want)
+
+    def test_image_tag_reads_no_environment(self):
+        result = self._run(KE_IMAGE_TAG="local", PWD="/elsewhere")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), self.want)
+
+    def test_image_tag_falls_back_to_shasum(self):
+        # A PATH with every tool on it except sha256sum, plus a recording shasum.
+        bin_dir = self.tmp / "bin"
+        bin_dir.mkdir()
+        for d in os.environ.get("PATH", "/usr/bin:/bin").split(os.pathsep):
+            if not d or not os.path.isdir(d):
+                continue
+            for name in sorted(os.listdir(d)):
+                src = os.path.join(d, name)
+                if name in ("sha256sum", "shasum") or os.path.lexists(bin_dir / name):
+                    continue
+                if os.path.isfile(src) and os.access(src, os.X_OK):
+                    os.symlink(src, bin_dir / name)
+        used = self.tmp / "shasum.used"
+        shim = bin_dir / "shasum"
+        shim.write_text(
+            "#!/usr/bin/env python3\n"
+            "import hashlib, sys\n"
+            f"open({str(used)!r}, 'a').write(' '.join(sys.argv[1:]) + '\\n')\n"
+            "args = sys.argv[1:]\n"
+            "if args[:2] != ['-a', '256']:\n"
+            "    sys.exit('shasum shim: expected -a 256, got %r' % (args,))\n"
+            "files = [a for a in args[2:] if a != '-']\n"
+            "data = open(files[0], 'rb').read() if files else sys.stdin.buffer.read()\n"
+            "print(hashlib.sha256(data).hexdigest() + '  ' + (files[0] if files else '-'))\n",
+            encoding="utf-8", newline="\n")
+        _make_executable(shim)
+        result = self._run(path=str(bin_dir))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), self.want)
+        self.assertTrue(used.exists(), "shasum -a 256 was not used when sha256sum is absent")
+
+    def test_image_tag_ignores_cdpath(self):
+        # Security L-OC1a: `cd "$(dirname "$0")/.."` with a relative $0 obeys
+        # an exported CDPATH and echoes the directory to stdout, so the tag
+        # became `<dir>\nwt-...` (even for CDPATH=.), or another tree's tag.
+        other = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, other, True)
+        (other / "scripts").mkdir()
+        for cdpath in (".", str(other), f"{other}:."):
+            with self.subTest(CDPATH=cdpath):
+                result = self._run(CDPATH=cdpath)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, self.want + "\n",
+                                 "exactly one line, this checkout's wt-<12 hex>, whatever CDPATH is")
 
 
 # --------------------------------------------------------------------------
@@ -1683,6 +2016,10 @@ class SmokeResolvesWithoutEnvTest(unittest.TestCase):
         rels = ["scripts/smoke.sh", ".env.example", "docker-compose.yml"]
         if (ROOT / "docker-compose.verify.yml").exists():
             rels.append("docker-compose.verify.yml")
+        # platform-offline (§2.5): smoke.sh calls scripts/net_isolated.sh for
+        # the backend check; copy it when it exists. Harness only.
+        if (ROOT / "scripts" / "net_isolated.sh").exists():
+            rels.append("scripts/net_isolated.sh")
         _copy_repo_files(self.tmp, rels)
         # A real .env with a non-loopback bind sits in the checkout: the
         # check must not read it.

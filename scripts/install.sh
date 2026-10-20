@@ -29,6 +29,9 @@
 # Compare the manifest hash it prints with your release record (the
 # `<out>.manifest.sha256` file bundle.sh wrote) or pass --expect-manifest.
 set -euo pipefail
+# A CDPATH from the caller would make every relative `cd` below print the
+# directory it found (corrupting `$(cd ... && pwd -P)`) or pick another tree.
+unset CDPATH
 export LC_ALL=C
 
 nl='

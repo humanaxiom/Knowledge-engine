@@ -4,7 +4,7 @@
 # PSScriptAnalyzer over every *.ps1 and *.psm1 (any case) under scripts/ at any depth. Any finding fails it. Both tools
 # live in the gates image, so this runs the same everywhere.
 set -euo pipefail
-cd "$(dirname "$0")/.."
+CDPATH='' cd -- "$(dirname -- "$0")/.."
 
 # A symlink could point a "script" outside the tree or at a file the gate does
 # not otherwise see. Refuse ANY symlink under scripts/ and docker/ (files,

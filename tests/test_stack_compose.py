@@ -22,6 +22,8 @@ PUBLISHED = re.compile(
     r"^\$\{KE_BIND_ADDRESS:-127\.0\.0\.1\}:\$\{(KE_[A-Z0-9_]+_PORT):-(\d+)\}:(?P<target>[^:]+)$")
 PUBLISHED_PORT = re.compile(r"^\$\{(KE_[A-Z0-9_]+_PORT):-(\d+)\}$")
 PORT_RANGE = range(47100, 47200)
+FIRST_PARTY_REPOS = {"ke-app", "ke-gateway", "ke-gates"}
+OFFLINE_SERVICES = ("dind", "offline-client")  # profile `offline` (architecture §2.5)
 
 
 def _network_defs() -> dict[str, dict[str, Any]]:
@@ -60,9 +62,19 @@ class ServicesTest(unittest.TestCase):
                 svc = _find_service(name)
                 self.assertIsNotNone(svc, f"{name} is not defined in any compose file")
                 self.assertTrue(svc.get("profiles"), f"{name} must be profile-only")
+        # §2.6 item 7: the offline check's services are profile-only and
+        # never restart, in whichever compose file defines them.
+        defined = {n: s for _, n, s in cs.all_services() if n in OFFLINE_SERVICES and s.get("image")}
+        for name in OFFLINE_SERVICES:
+            with self.subTest(offline=name):
+                self.assertIn(name, defined, f"{name} is not defined in any compose file (§2.5)")
+                self.assertTrue(defined.get(name, {}).get("profiles"), f"{name} must be profile-only")
+                self.assertIn(defined.get(name, {}).get("restart"), (None, "no"),
+                              f"{name} must not restart")
 
     def test_compose_images_pinned_by_digest(self):  # PS-2.1
         seen = 0
+        pulled_dind = False
         for file, name, svc in cs.all_services():
             image = svc.get("image")
             with self.subTest(file=file, service=name, image=image):
@@ -70,9 +82,20 @@ class ServicesTest(unittest.TestCase):
                     continue  # built locally; its Dockerfile's FROM lines are checked below
                 if image is None:
                     continue  # an overlay entry that only changes settings
+                # platform-offline (architecture §2.5 compose additions,
+                # §2.6 items 7 and 9): `offline-client` runs the locally built
+                # ke-gates image at ${KE_IMAGE_TAG:-local} without a `build:`
+                # of its own. First-party images are never pulled (their
+                # Dockerfile FROM lines are checked below); everything else is.
+                if str(image).split(":", 1)[0] in FIRST_PARTY_REPOS:
+                    continue
                 seen += 1
+                if name == "dind":
+                    pulled_dind = True
                 self.assertRegex(str(image), DIGEST, "image is not pinned by digest")
         self.assertGreater(seen, 0, "no pulled image found in any compose file")
+        # §2.6 item 7: the digest check covers the offline check's dind.
+        self.assertTrue(pulled_dind, "dind (profile offline) is not defined with a pulled image")
 
     def test_dockerfiles_pin_base_images_by_digest(self):  # PS-2.1, §2.4 Images
         for required in ("app.Dockerfile", "gateway.Dockerfile", "gates.Dockerfile"):
@@ -200,6 +223,10 @@ class NetworksTest(unittest.TestCase):
                                 f"gates-it shares no internal network with {peer}")
 
     def test_no_docker_socket_mounted(self):  # PS-2.11
+        names = {n for _, n, _ in cs.all_services()}
+        for name in OFFLINE_SERVICES:  # §2.6 item 7: the check covers dind and its client
+            with self.subTest(covers=name):
+                self.assertIn(name, names, f"{name} is not defined in any compose file (§2.5)")
         for file, name, svc in cs.all_services():
             for _, source in cs.volume_sources(svc):
                 with self.subTest(file=file, service=name, source=source):
