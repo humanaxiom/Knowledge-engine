@@ -1,0 +1,246 @@
+"""Scratch only (tester, platform-supply-chain unit 3 RED). Runs inside the gates
+image: /work is the real checkout (read-only), /scratch holds scan.green.sh and
+app.green.Dockerfile (scratch shapes, never production files).
+
+Phase A (guards): mutants on TODAY's tree against the guard tests only (the new
+tests that pass on today's code), plus one equivalence control that must pass.
+Phase B (satisfiability and RED-test strength): today's tree with scan.sh and
+app.Dockerfile replaced by the green shapes; all of tests.test_image_scan
+passes; then fix-revert and look-alike mutants per RED test, and the guards'
+mutants re-anchored on the green copy."""
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+SRC = Path("/work")
+BASE = Path("/tmp/u3-base")
+GREEN = Path("/tmp/u3-green")
+MUT = Path("/tmp/u3-mut")
+S = "scripts/scan.sh"
+C = "docker-compose.scan.yml"
+A = "docker/app.Dockerfile"
+G = "docker/gates.Dockerfile"
+M = "tests.test_image_scan."
+POLICY = M + "ScanComposeTest.test_scan_command_is_exactly_the_d5_policy"
+HIGH = M + "ScanScriptTest.test_scan_fails_on_fixed_high"
+LOWER = M + "ScanScriptTest.test_scan_reports_but_passes_unfixed_and_lower"
+PIN = M + "AppImageTest.test_uv_pin_matches_in_app_and_gates_images"
+GUARDS = [POLICY, HIGH, LOWER, PIN]
+R1A = M + "ScanScriptTest.test_scan_fails_when_container_listing_fails"
+R1B = M + "ScanScriptTest.test_scan_container_removal_failure_gives_working_hand_command"
+I4 = M + "ScanScriptTest.test_scan_cleanup_ignores_signals_before_clearing_exit_trap"
+I6 = M + "ScanScriptTest.test_scan_project_name_uses_srandom"
+NOUV = M + "AppImageTest.test_app_image_final_stage_has_no_uv"
+
+UV_OLD = "ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946"
+UV_DIG_MUT = UV_OLD[:-1] + "7"
+UV_VER_MUT = UV_OLD.replace("0.11.21", "0.11.22")
+UV_BUMP = "ghcr.io/astral-sh/uv:0.11.99@sha256:" + "a" * 64
+PY = "python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258"
+RUN_SCAN = 'docker compose --env-file "$KE_ENV_FILE" run --rm --pull never scan || rc=$?'
+
+# ---- Phase A: guards on TODAY's tree --------------------------------------
+TODAY = {
+    # review N1 (verbatim anchors from review-u2-mutants.py.txt) -> POLICY
+    "c_no_fail_on": ([(C, "      - --fail-on\n      - high\n", "")], [POLICY]),
+    "c_fail_on_critical": ([(C, "      - high\n", "      - critical\n")], [POLICY]),
+    "c_no_only_fixed": ([(C, "      - --only-fixed\n", "")], [POLICY]),
+    "c_no_config": ([(C, "      - --config\n      - /cfg/scan-ignore.yaml\n", "")], [POLICY]),
+    "c_no_show_suppressed": ([(C, "      - --show-suppressed\n", "")], [POLICY]),
+    "c_output_json": ([(C, "      - table\n", "      - json\n")], [POLICY]),
+    # more N1-shaped mutants -> POLICY
+    "c_no_output_flag": ([(C, "      - -o\n      - table\n", "")], [POLICY]),
+    "c_order_swapped": ([(C, "      - --only-fixed\n      - --fail-on\n      - high\n",
+                          "      - --fail-on\n      - high\n      - --only-fixed\n")], [POLICY]),
+    "c_fail_on_negligible_extra": ([(C, "      - table\n", "      - table\n      - --fail-on\n      - negligible\n")],
+                                   [POLICY]),
+    "c_entrypoint_override": ([(C, "    network_mode: none\n",
+                                "    network_mode: none\n    entrypoint: [\"/grype\", \"--fail-on\", \"critical\"]\n")],
+                              [POLICY]),
+    "c_env_fail_on": ([(C, '      GRYPE_DB_AUTO_UPDATE: "false"\n',
+                        '      GRYPE_DB_AUTO_UPDATE: "false"\n      GRYPE_FAIL_ON_SEVERITY: "critical"\n')], [POLICY]),
+    # PSC-4 outcome, fake grype -> HIGH / LOWER
+    "p_scan_failure_ignored": ([(S, RUN_SCAN, RUN_SCAN.replace("|| rc=$?", "|| true"))], [HIGH, LOWER]),
+    "p_table_hidden": ([(S, RUN_SCAN, RUN_SCAN.replace(" scan ||", " scan >/dev/null ||"))], [HIGH, LOWER]),
+    "p_exit_2_tolerated": ([(S, 'if [ "$rc" -ne 0 ]; then', 'if [ "$rc" -gt 2 ]; then')], [HIGH, LOWER]),
+    "p_always_fails": ([(S, 'if [ "$rc" -ne 0 ]; then', 'if [ "$rc" -ge 0 ]; then')], [HIGH, LOWER]),
+    "p_status_not_named": ([(S, "grype exited $rc: a fixed", "grype failed: a fixed")], [HIGH, LOWER]),
+    "p_run_env_override": ([(S, RUN_SCAN, RUN_SCAN.replace("--pull never scan", "--pull never "
+                                                           "-e GRYPE_FAIL_ON_SEVERITY=critical scan"))], [HIGH, LOWER]),
+    "p_second_report_run": ([(S, 'echo "scan: scan took',
+                              'docker compose --env-file "$KE_ENV_FILE" run --rm --pull never scan || true\n'
+                              'echo "scan: scan took')], [HIGH, LOWER]),
+    # D10 test 1b -> PIN
+    "u_app_digest_changed": ([(A, UV_OLD, UV_DIG_MUT)], [PIN]),
+    "u_gates_version_changed": ([(G, UV_OLD, UV_VER_MUT)], [PIN]),
+    "u_app_tag_only": ([(A, UV_OLD, UV_OLD.split("@")[0])], [PIN]),
+    "u_gates_second_uv_ref": ([(G, "COPY --from=uv /uv /usr/local/bin/uv\n",
+                                "COPY --from=uv /uv /usr/local/bin/uv\n"
+                                "COPY --from=ghcr.io/astral-sh/uv:0.9.0 /uvx /usr/local/bin/uvx\n")], [PIN]),
+    "u_app_copy_from_image": ([(A, f"FROM {UV_OLD} AS uv\n", ""),
+                               (A, "COPY --from=uv /uv", f"COPY --from={UV_OLD} /uv")], [PIN]),
+}
+# Must PASS (not a mutant): a uv bump in both files in one commit (D10 point 4).
+CONTROLS = {
+    "ctl_uv_bumped_in_both": ([(A, UV_OLD, UV_BUMP), (G, UV_OLD, UV_BUMP)], [PIN]),
+    "ctl_command_as_string": ([(C, "    command:\n      - docker-archive:/in/ke-app.tar\n      - --config\n"
+                                   "      - /cfg/scan-ignore.yaml\n      - --only-fixed\n      - --fail-on\n"
+                                   "      - high\n      - --show-suppressed\n      - -o\n      - table\n",
+                                "    command: docker-archive:/in/ke-app.tar --config /cfg/scan-ignore.yaml "
+                                "--only-fixed --fail-on high --show-suppressed -o table\n")], [POLICY]),
+}
+
+# ---- Phase B: the green copy ----------------------------------------------
+HAND = 'local hand_rm="docker rm -f \\$(docker ps -aq --filter label=com.docker.compose.project=$project)"'
+LIST_FAIL = ('    echo "scan: FAIL (could not list the containers of project $project; by hand: $hand_rm)" >&2\n'
+             '    status=1\n')
+GREEN_FINAL = (f"FROM {PY}\nENV PATH=/opt/venv/bin:$PATH \\\n    PYTHONUNBUFFERED=1\n"
+               "COPY --from=builder /opt/venv /opt/venv\nCOPY --from=builder /app /app\n")
+GREEN_MUT = {
+    # r1-a -> R1A
+    "ra_reverted_mapfile": ([(S, '  if ! listing="$(docker ps -aq --filter "label=com.docker.compose.project=$project")"; then\n',
+                              '  if mapfile -t ids < <(docker ps -aq --filter "label=com.docker.compose.project=$project"); then :; fi\n'
+                              '  listing="${ids[*]-}"\n  if false; then\n')], [R1A]),
+    "ra_no_status": ([(S, LIST_FAIL, LIST_FAIL.replace("    status=1\n", ""))], [R1A]),
+    "ra_no_fail_line": ([(S, LIST_FAIL, "    status=1\n")], [R1A]),
+    "ra_line_without_project": ([(S, "could not list the containers of project $project; by hand: $hand_rm",
+                                  "could not list the containers")], [R1A]),
+    # r1-b -> R1B
+    "rb_no_hand_command": ([(S, "could not remove the containers of project $project; by hand: $hand_rm",
+                             "could not remove the containers of project $project")], [R1B]),
+    "rb_hand_running_only": ([(S, HAND, HAND.replace("ps -aq", "ps -q"))], [R1B]),
+    "rb_hand_unscoped": ([(S, HAND, HAND.replace(" --filter label=com.docker.compose.project=$project", ""))], [R1B]),
+    "rb_hand_name_filter": ([(S, HAND, HAND.replace("label=com.docker.compose.project=$project", "name=$project"))],
+                            [R1B]),
+    "rb_hand_var_unexpanded": ([(S, HAND, HAND.replace("project=$project", "project=\\$project"))], [R1B]),
+    "rb_hand_without_force": ([(S, HAND, HAND.replace("docker rm -f", "docker rm"))], [R1B]),
+    # I-4 -> I4
+    "i4_exit_cleared_first": ([(S, "  trap '' INT TERM\n  trap - EXIT\n", "  trap - EXIT\n  trap '' INT TERM\n")], [I4]),
+    "i4_default_then_ignore": ([(S, "  trap '' INT TERM\n  trap - EXIT\n",
+                                 "  trap - EXIT INT TERM\n  trap '' INT TERM\n")], [I4]),
+    "i4_ignore_int_only": ([(S, "  trap '' INT TERM\n  trap - EXIT\n", "  trap '' INT\n  trap - EXIT\n  trap '' TERM\n")],
+                           [I4]),
+    # I-6 -> I6
+    "i6_random_back": ([(S, '"ke-scan-${SRANDOM}"', '"ke-scan-${RANDOM}${RANDOM}"')], [I6]),
+    "i6_mixed": ([(S, '"ke-scan-${SRANDOM}"', '"ke-scan-${SRANDOM}${RANDOM}"')], [I6]),
+    "i6_random_elsewhere": ([(S, '"ke-scan-${SRANDOM}"', '"ke-scan-${SRANDOM}"\n: "$RANDOM"')], [I6]),
+    # D10 test 1 -> NOUV
+    "g_uv_copied_into_final": ([(A, "COPY --from=builder /app /app\n",
+                                 "COPY --from=builder /app /app\nCOPY --from=uv /uv /usr/local/bin/uv\n")], [NOUV]),
+    "g_uv_from_image_in_final": ([(A, "COPY --from=builder /app /app\n",
+                                   f"COPY --from=builder /app /app\nCOPY --from={UV_OLD} /uv /bin/\n")], [NOUV]),
+    "g_uv_binary_from_builder": ([(A, "COPY --from=builder /app /app\n",
+                                   "COPY --from=builder /app /app\n"
+                                   "COPY --from=builder /usr/local/bin/uv /usr/local/bin/uv\n")], [NOUV]),
+    "g_pip_install_uv": ([(A, "RUN useradd", "RUN pip install --no-cache-dir uv && useradd")], [NOUV]),
+    "g_final_from_builder": ([(A, GREEN_FINAL, "FROM builder\n")], [NOUV]),
+    "g_final_base_differs": ([(A, f"FROM {PY}\nENV PATH", f"FROM {PY[:-1]}9\nENV PATH")], [NOUV]),
+    "g_single_stage_rm_uv": ([(A, GREEN_FINAL, "RUN rm /usr/local/bin/uv\n"),
+                              (A, "ENV UV_PROJECT_ENVIRONMENT=/opt/venv \\\n    UV_PYTHON_DOWNLOADS=never \\\n"
+                                  "    UV_LINK_MODE=copy\n",
+                               "ENV UV_PROJECT_ENVIRONMENT=/opt/venv \\\n    UV_PYTHON_DOWNLOADS=never \\\n"
+                               "    UV_LINK_MODE=copy \\\n    PATH=/opt/venv/bin:$PATH \\\n    PYTHONUNBUFFERED=1\n"),
+                              (A, " AS builder\n", "\n")], [NOUV]),
+    "g_copy_chown_ke": ([(A, "COPY --from=builder /opt/venv /opt/venv", "COPY --chown=ke --from=builder /opt/venv /opt/venv")],
+                        [NOUV]),
+    "g_extra_context_copy": ([(A, "COPY --from=builder /app /app\n", "COPY --from=builder /app /app\nCOPY engine ./engine\n")],
+                             [NOUV]),
+    "g_no_venv_copy": ([(A, "COPY --from=builder /opt/venv /opt/venv\n", "")], [NOUV]),
+    "g_path_not_venv_first": ([(A, "ENV PATH=/opt/venv/bin:$PATH", "ENV PATH=$PATH:/opt/venv/bin")], [NOUV]),
+    "g_uv_env_in_final": ([(A, "    PYTHONUNBUFFERED=1\nCOPY", "    PYTHONUNBUFFERED=1 \\\n    UV_LINK_MODE=copy\nCOPY")],
+                          [NOUV]),
+    "g_runs_as_root": ([(A, "USER ke\n", "")], [NOUV]),
+    "g_cmd_changed": ([(A, 'CMD ["python", "-m", "engine.api"]', 'CMD ["uvicorn", "engine.api:app"]')], [NOUV]),
+    "g_uid_changed": ([(A, "--uid 10001 ke", "--uid 1000 ke")], [NOUV]),
+    "g_builder_unlocked": ([(A, "RUN uv sync --locked --no-dev --no-editable", "RUN uv sync --no-dev --no-editable"),
+                            (A, "RUN uv sync --locked --no-dev --no-install-project",
+                             "RUN uv sync --no-dev --no-install-project")], [NOUV]),
+    "g_builder_with_dev": ([(A, "RUN uv sync --locked --no-dev --no-editable", "RUN uv sync --locked --no-editable"),
+                            (A, "RUN uv sync --locked --no-dev --no-install-project",
+                             "RUN uv sync --locked --no-install-project")], [NOUV]),
+    "g_lock_adds_uv_package": ([("uv.lock", '[[package]]\nname = "certifi"',
+                                 '[[package]]\nname = "uv"\nversion = "0.11.21"\n\n[[package]]\nname = "certifi"')],
+                               [NOUV]),
+}
+# The guards' mutants, re-anchored on the green copy (same intent).
+GREEN_GUARDS = dict(TODAY)
+
+
+def run(root: Path, tests: list[str]) -> tuple[int, str]:
+    d = subprocess.run([sys.executable, "-m", "unittest", *tests], cwd=root, capture_output=True, text=True,
+                       timeout=1800)
+    return d.returncode, d.stdout + d.stderr
+
+
+def killers(out: str) -> str:
+    names = sorted({m.group(1) for m in re.finditer(r"^(?:FAIL|ERROR): (\w+)", out, re.M)})
+    first = next((l.strip()[:160] for l in out.splitlines() if l.startswith("AssertionError")), "")
+    return f"by {', '.join(names)}  {first}" if names else ""
+
+
+def mutate(base: Path, edits) -> None:
+    shutil.rmtree(MUT, True)
+    shutil.copytree(base, MUT, symlinks=True)
+    for rel, old, new in edits:
+        p = MUT / rel
+        t = p.read_text(encoding="utf-8")
+        assert old in t, f"anchor missing in {rel}: {old!r}"
+        p.write_text(t.replace(old, new, 1), encoding="utf-8", newline="\n")
+
+
+def phase(title: str, base: Path, mutants: dict, controls: dict | None = None,
+          unmutated: list[str] | None = None) -> int:
+    print(f"\n## {title}", flush=True)
+    tests = sorted({t for _, ts in mutants.items() for t in ts[1]} | set(unmutated or []))
+    code, out = run(base, tests)
+    print(f"UNMUTATED ({len(tests)} tests): {'PASS' if code == 0 else 'FAIL'} ({out.strip().splitlines()[-1]})",
+          flush=True)
+    if code:
+        print(out[-6000:])
+        return 1
+    killed = 0
+    for name, (edits, targets) in mutants.items():
+        mutate(base, edits)
+        code, out = run(MUT, targets)
+        killed += bool(code)
+        print(f"{'KILLED' if code else 'SURVIVED':8} {name:30} {killers(out)}", flush=True)
+    print(f"{killed}/{len(mutants)} killed", flush=True)
+    rc = 0 if killed == len(mutants) else 1
+    for name, (edits, targets) in (controls or {}).items():
+        mutate(base, edits)
+        code, out = run(MUT, targets)
+        print(f"{'CONTROL-PASS' if code == 0 else 'CONTROL-FAIL'} {name:26} (must pass: an allowed change) "
+              f"{killers(out)}", flush=True)
+        rc |= bool(code)
+    return rc
+
+
+def main() -> int:
+    shutil.rmtree(BASE, True)
+    shutil.copytree(SRC, BASE, symlinks=True,
+                    ignore=shutil.ignore_patterns(".git", ".venv", "__pycache__", "dist", "node_modules",
+                                                  ".mypy_cache", ".coverage*"))
+    shutil.rmtree(GREEN, True)
+    shutil.copytree(BASE, GREEN, symlinks=True)
+    shutil.copyfile("/scratch/scan.green.sh", GREEN / S)
+    shutil.copyfile("/scratch/app.green.Dockerfile", GREEN / A)
+    print("## RED on today's tree (the 5 RED tests must fail):", flush=True)
+    for t in (R1A, R1B, I4, I6, NOUV):
+        code, out = run(BASE, [t])
+        print(f"{'RED' if code else 'NOT-RED'}  {t.rsplit('.', 1)[1]}  {killers(out)}", flush=True)
+    rc = phase("Phase A: guard mutants on TODAY's tree", BASE, TODAY, CONTROLS)
+    code, out = run(GREEN, ["tests.test_image_scan"])
+    print(f"\n## Phase B satisfiability: tests.test_image_scan on the green copy: "
+          f"{'PASS' if code == 0 else 'FAIL'} ({out.strip().splitlines()[-1]})", flush=True)
+    if code:
+        print(out[-8000:])
+        rc = 1
+    rc |= phase("Phase B: RED-test mutants on the green copy", GREEN, GREEN_MUT)
+    rc |= phase("Phase B': guard mutants re-run on the green copy", GREEN, GREEN_GUARDS, CONTROLS)
+    return rc
+
+
+if __name__ == "__main__":
+    sys.exit(main())

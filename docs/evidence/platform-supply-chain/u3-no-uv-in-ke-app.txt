@@ -1,0 +1,24 @@
+# ke-app (rebuilt, D10) run with --network none; image size before 423MB (disk) / 99099802 B (content), after 265MB / 60437108 B
+$ command -v uv; echo "uv exit=$?"
+uv exit=127
+(exit 0)
+$ command -v uvx; echo "uvx exit=$?"
+uvx exit=127
+(exit 0)
+$ python -m engine.notices | head -5
+| Package | Version | Licence | Licence files |
+|---|---|---|---|
+| annotated-doc | 0.0.5 | MIT | annotated_doc-0.0.5.dist-info/licenses/LICENSE |
+| annotated-types | 0.8.0 | MIT | annotated_types-0.8.0.dist-info/licenses/LICENSE |
+| anyio | 4.15.1 | MIT | anyio-4.15.1.dist-info/licenses/LICENSE |
+(exit 0)
+$ python -c 'import certifi; print(certifi.__version__)'
+2026.10.19
+(exit 0)
+$ id
+uid=10001(ke) gid=10001(ke) groups=10001(ke)
+(exit 0)
+$ ls /usr/local/bin | grep -c "^uv" ; env | grep -c "^UV_"
+0
+0
+(exit 1)

@@ -1,0 +1,197 @@
+# Unit 3 RED mutants (tester, 2026-10-21), driver u3-red-mutants.py.txt, run in the gates image ke-gates:wt-33a132fbfdd7 (--network none): /work = the real checkout read-only, /scratch = the scratchpad (scratch paths written as $SCRATCH). Exit 0.
+# RED = the 5 RED tests fail on today's tree. Phase A = guards (PSC-4 policy static, PSC-4 fixed-High / below-threshold, D10 1b uv pin) vs mutants of TODAY's files; reviewer N1 mutants c_no_fail_on..c_output_json verbatim from review-u2-mutants.py.txt. CONTROLs are allowed changes that must still pass.
+# Phase B = satisfiability: today's tree with scripts/scan.sh and docker/app.Dockerfile replaced by the scratch green shapes below (never production files); all of tests.test_image_scan passes; then fix-revert / look-alike mutants per RED test; Phase B' = the guard mutants again on the green copy.
+# certifi (PSC-17 bullet 3): D10/PSC-17 make it manual evidence (D10 test 2, u3-no-uv-in-ke-app.txt), no unit test. Pre-check today: uv.lock certifi version = version = "2026.7.22".
+
+=== scratch green: diff scripts/scan.sh $SCRATCH/scan.green.sh ===
+31c31
+< export COMPOSE_PROJECT_NAME="ke-scan-${RANDOM}${RANDOM}"
+---
+> export COMPOSE_PROJECT_NAME="ke-scan-${SRANDOM}"
+46,47c46,47
+<   trap - EXIT
+<   # A second signal must not cut teardown short.
+---
+>   # A second signal must not cut teardown short. INT and TERM are ignored
+>   # before the EXIT trap goes, so no signal lands between the two (I-4).
+48a49
+>   trap - EXIT
+51,54c52,60
+<   local ids=()
+<   if mapfile -t ids < <(docker ps -aq --filter "label=com.docker.compose.project=$project"); then
+<     if [ "${#ids[@]}" -gt 0 ] && ! docker rm -f "${ids[@]}" >/dev/null; then
+<       echo "scan: FAIL (could not remove the containers of project $project)" >&2
+---
+>   local hand_rm="docker rm -f \$(docker ps -aq --filter label=com.docker.compose.project=$project)"
+>   local listing ids=()
+>   if ! listing="$(docker ps -aq --filter "label=com.docker.compose.project=$project")"; then
+>     echo "scan: FAIL (could not list the containers of project $project; by hand: $hand_rm)" >&2
+>     status=1
+>   elif [ -n "$listing" ]; then
+>     mapfile -t ids <<<"$listing"
+>     if ! docker rm -f "${ids[@]}" >/dev/null; then
+>       echo "scan: FAIL (could not remove the containers of project $project; by hand: $hand_rm)" >&2
+
+=== scratch green: diff docker/app.Dockerfile $SCRATCH/app.green.Dockerfile ===
+2a3
+> # Scratch green shape for D10 (tester, unit 3 RED): never a production file.
+5c6
+< FROM python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+---
+> FROM python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258 AS builder
+7d7
+< 
+10,13c10
+<     UV_LINK_MODE=copy \
+<     PATH=/opt/venv/bin:$PATH \
+<     PYTHONUNBUFFERED=1
+< 
+---
+>     UV_LINK_MODE=copy
+15d11
+< # Dependencies first: a code change rebuilds only the layers below (N11).
+21,22c17
+< RUN uv sync --locked --no-dev --no-editable \
+<  && useradd --no-create-home --uid 10001 ke
+---
+> RUN uv sync --locked --no-dev --no-editable
+23a19,25
+> FROM python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+> ENV PATH=/opt/venv/bin:$PATH \
+>     PYTHONUNBUFFERED=1
+> COPY --from=builder /opt/venv /opt/venv
+> COPY --from=builder /app /app
+> WORKDIR /app
+> RUN useradd --no-create-home --uid 10001 ke
+
+=== driver output ===
+## RED on today's tree (the 5 RED tests must fail):
+RED  test_scan_fails_when_container_listing_fails  by test_scan_fails_when_container_listing_fails  AssertionError: 0 != 1 : a failed `docker ps` in cleanup was silent (review r1-a: the process substitution hides its status); exit 0:
+RED  test_scan_container_removal_failure_gives_working_hand_command  by test_scan_container_removal_failure_gives_working_hand_command  AssertionError: [] is not true : the removal failure gives no `docker rm` hand command (review r1-b):
+RED  test_scan_cleanup_ignores_signals_before_clearing_exit_trap  by test_scan_cleanup_ignores_signals_before_clearing_exit_trap  AssertionError: False is not true : the first trap in cleanup() is `trap - EXIT`: it must be `trap '' INT TERM` (or `trap '' INT TERM EXIT`), before `trap - EXI
+RED  test_scan_project_name_uses_srandom  by test_scan_project_name_uses_srandom  AssertionError: Regex didn't match: '^(?:export\\s+)?COMPOSE_PROJECT_NAME=(["\']?)ke-scan-(?:\\$\\{SRANDOM\\}|\\$SRANDOM)+\\1$' not found in 'export COMPOSE_PRO
+RED  test_app_image_final_stage_has_no_uv  by test_app_image_final_stage_has_no_uv  AssertionError: 'uv' == 'uv' : final stage: `COPY --from=uv /uv /usr/local/bin/uv` (D10: no uv)
+
+## Phase A: guard mutants on TODAY's tree
+UNMUTATED (4 tests): PASS (OK)
+KILLED   c_no_fail_on                   by test_scan_command_is_exactly_the_d5_policy  AssertionError: Lists differ: ['doc[75 chars]ixed', '--show-suppressed', '-o', 'table'] != ['doc[75 chars]ixed', '--fail-on', 'high', '--show-suppressed', '-o',
+KILLED   c_fail_on_critical             by test_scan_command_is_exactly_the_d5_policy  AssertionError: Lists differ: ['doc[79 chars]', '--fail-on', 'critical', '--show-suppressed', '-o', 'table'] != ['doc[79 chars]', '--fail-on', 'high', '--show-s
+KILLED   c_no_only_fixed                by test_scan_command_is_exactly_the_d5_policy  AssertionError: Lists differ: ['doc[64 chars], '--fail-on', 'high', '--show-suppressed', '-o', 'table'] != ['doc[64 chars], '--only-fixed', '--fail-on', 'high',
+KILLED   c_no_config                    by test_scan_command_is_exactly_the_d5_policy  AssertionError: Lists differ: ['doc[27 chars], '--only-fixed', '--fail-on', 'high', '--show[23 chars]ble'] != ['doc[27 chars], '--config', '/cfg/scan-ignore.yam
+KILLED   c_no_show_suppressed           by test_scan_command_is_exactly_the_d5_policy  AssertionError: Lists differ: ['doc[75 chars]ixed', '--fail-on', 'high', '-o', 'table'] != ['doc[75 chars]ixed', '--fail-on', 'high', '--show-suppressed', '-o',
+KILLED   c_output_json                  by test_scan_command_is_exactly_the_d5_policy  AssertionError: Lists differ: ['doc[75 chars]ixed', '--fail-on', 'high', '--show-suppressed', '-o', 'json'] != ['doc[75 chars]ixed', '--fail-on', 'high', '--sho
+KILLED   c_no_output_flag               by test_scan_command_is_exactly_the_d5_policy  AssertionError: Lists differ: ['doc[75 chars]ixed', '--fail-on', 'high', '--show-suppressed'] != ['doc[75 chars]ixed', '--fail-on', 'high', '--show-suppressed',
+KILLED   c_order_swapped                by test_scan_command_is_exactly_the_d5_policy  AssertionError: Lists differ: ['doc[64 chars], '--fail-on', 'high', '--only-fixed', '--show[23 chars]ble'] != ['doc[64 chars], '--only-fixed', '--fail-on', 'hig
+KILLED   c_fail_on_negligible_extra     by test_scan_command_is_exactly_the_d5_policy  AssertionError: Lists differ: ['doc[102 chars] '--show-suppressed', '-o', 'table', '--fail-on', 'negligible'] != ['doc[102 chars] '--show-suppressed', '-o', 'ta
+KILLED   c_entrypoint_override          by test_scan_command_is_exactly_the_d5_policy  AssertionError: 'entrypoint' unexpectedly found in {'image': 'anchore/grype:v0.120.1@sha256:e4a44ef45d285b829ce6efe2642980329661bd2d18eab5fc539138d4adaebbbe', '
+KILLED   c_env_fail_on                  by test_scan_command_is_exactly_the_d5_policy  AssertionError: Lists differ: ['GRY[34 chars]B_AUTO_UPDATE', 'GRYPE_DB_CACHE_DIR', 'GRYPE_FAIL_ON_SEVERITY'] != ['GRY[34 chars]B_AUTO_UPDATE', 'GRYPE_DB_CACHE_D
+KILLED   p_scan_failure_ignored         by test_scan_fails_on_fixed_high  AssertionError: 0 == 0 : a fixed High let the scan pass (PSC-4):
+KILLED   p_table_hidden                 by test_scan_fails_on_fixed_high, test_scan_reports_but_passes_unfixed_and_lower  AssertionError: 'NAME         INSTALLED  FIXED IN   TYPE        VULNERABILITY        SEVERITY' not found in '== scan: ignore entries (docker/scan-ignore.yaml) =
+KILLED   p_exit_2_tolerated             by test_scan_fails_on_fixed_high  AssertionError: 0 == 0 : a fixed High let the scan pass (PSC-4):
+KILLED   p_always_fails                 by test_scan_reports_but_passes_unfixed_and_lower  AssertionError: 1 != 0 : unfixed and lower matches failed the scan (PSC-4):
+KILLED   p_status_not_named             by test_scan_fails_on_fixed_high  AssertionError: Regex didn't match: 'scan: FAIL \\(stage scan: grype exited 2\\b' not found in '== scan: ignore entries (docker/scan-ignore.yaml) ==\nignore: []
+KILLED   p_run_env_override             by test_scan_fails_on_fixed_high, test_scan_reports_but_passes_unfixed_and_lower  AssertionError: Lists differ: ['--pull', '--rm', '-e'] != ['--pull', '--rm']
+KILLED   p_second_report_run            by test_scan_reports_but_passes_unfixed_and_lower  AssertionError: 2 != 1 : one grype run gates and reports (D5); no retry, no second run
+KILLED   u_app_digest_changed           by test_uv_pin_matches_in_app_and_gates_images  AssertionError: 2 != 1 : app.Dockerfile and gates.Dockerfile pin different uv images: {'app.Dockerfile': 'ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391
+KILLED   u_gates_version_changed        by test_uv_pin_matches_in_app_and_gates_images  AssertionError: 2 != 1 : app.Dockerfile and gates.Dockerfile pin different uv images: {'app.Dockerfile': 'ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391
+KILLED   u_app_tag_only                 by test_uv_pin_matches_in_app_and_gates_images  AssertionError: Regex didn't match: '^ghcr\\.io/astral-sh/uv:\\d+\\.\\d+\\.\\d+@sha256:[0-9a-f]{64}$' not found in 'ghcr.io/astral-sh/uv:0.11.21' : app.Dockerfi
+KILLED   u_gates_second_uv_ref          by test_uv_pin_matches_in_app_and_gates_images  AssertionError: 2 != 1 : gates.Dockerfile names the uv image once: [('FROM', 'ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae870
+KILLED   u_app_copy_from_image          by test_uv_pin_matches_in_app_and_gates_images  AssertionError: 'COPY' != 'FROM'
+23/23 killed
+CONTROL-PASS ctl_uv_bumped_in_both      (must pass: an allowed change) 
+CONTROL-PASS ctl_command_as_string      (must pass: an allowed change) 
+
+## Phase B satisfiability: tests.test_image_scan on the green copy: PASS (OK)
+
+## Phase B: RED-test mutants on the green copy
+UNMUTATED (5 tests): PASS (OK)
+KILLED   ra_reverted_mapfile            by test_scan_fails_when_container_listing_fails  AssertionError: 0 != 1 : a failed `docker ps` in cleanup was silent (review r1-a: the process substitution hides its status); exit 0:
+KILLED   ra_no_status                   by test_scan_fails_when_container_listing_fails  AssertionError: 0 != 1 : a failed `docker ps` in cleanup was silent (review r1-a: the process substitution hides its status); exit 0:
+KILLED   ra_no_fail_line                by test_scan_fails_when_container_listing_fails  AssertionError: [] is not true : no `scan: FAIL (...)` line names project ke-scan-2458362776 (review r1-a):
+KILLED   ra_line_without_project        by test_scan_fails_when_container_listing_fails  AssertionError: [] is not true : no `scan: FAIL (...)` line names project ke-scan-2025597254 (review r1-a):
+KILLED   rb_no_hand_command             by test_scan_container_removal_failure_gives_working_hand_command  AssertionError: [] is not true : the removal failure gives no `docker rm` hand command (review r1-b):
+KILLED   rb_hand_running_only           by test_scan_container_removal_failure_gives_working_hand_command  AssertionError: Lists differ: ["`docker rm -f $(docker ps -q --filter la[421 chars]]) "] != []
+KILLED   rb_hand_unscoped               by test_scan_container_removal_failure_gives_working_hand_command  AssertionError: Lists differ: ["`docker rm -f $(docker ps -aq)`: exit 0,[442 chars]]) "] != []
+KILLED   rb_hand_name_filter            by test_scan_container_removal_failure_gives_working_hand_command  AssertionError: Lists differ: ["`docker rm -f $(docker ps -aq --filter n[434 chars]]) "] != []
+KILLED   rb_hand_var_unexpanded         by test_scan_container_removal_failure_gives_working_hand_command  AssertionError: Lists differ: ['`docker rm -f $(docker ps -aq --filter l[455 chars]nt.'] != []
+KILLED   rb_hand_without_force          by test_scan_container_removal_failure_gives_working_hand_command  AssertionError: Lists differ: ['`docker rm $(docker ps -aq --filter labe[588 chars]ove'] != []
+KILLED   i4_exit_cleared_first          by test_scan_cleanup_ignores_signals_before_clearing_exit_trap  AssertionError: False is not true : the first trap in cleanup() is `trap - EXIT`: it must be `trap '' INT TERM` (or `trap '' INT TERM EXIT`), before `trap - EXI
+KILLED   i4_default_then_ignore         by test_scan_cleanup_ignores_signals_before_clearing_exit_trap  AssertionError: False is not true : the first trap in cleanup() is `trap - EXIT INT TERM`: it must be `trap '' INT TERM` (or `trap '' INT TERM EXIT`), before `t
+KILLED   i4_ignore_int_only             by test_scan_cleanup_ignores_signals_before_clearing_exit_trap  AssertionError: False is not true : the first trap in cleanup() is `trap  INT`: it must be `trap '' INT TERM` (or `trap '' INT TERM EXIT`), before `trap - EXIT`
+KILLED   i6_random_back                 by test_scan_project_name_uses_srandom  AssertionError: Regex didn't match: '^(?:export\\s+)?COMPOSE_PROJECT_NAME=(["\']?)ke-scan-(?:\\$\\{SRANDOM\\}|\\$SRANDOM)+\\1$' not found in 'export COMPOSE_PRO
+KILLED   i6_mixed                       by test_scan_project_name_uses_srandom  AssertionError: Regex didn't match: '^(?:export\\s+)?COMPOSE_PROJECT_NAME=(["\']?)ke-scan-(?:\\$\\{SRANDOM\\}|\\$SRANDOM)+\\1$' not found in 'export COMPOSE_PRO
+KILLED   i6_random_elsewhere            by test_scan_project_name_uses_srandom  AssertionError: Lists differ: [': "$RANDOM"'] != []
+KILLED   g_uv_copied_into_final         by test_app_image_final_stage_has_no_uv  AssertionError: 'uv' == 'uv' : final stage: `COPY --from=uv /uv /usr/local/bin/uv` (D10: no uv)
+KILLED   g_uv_from_image_in_final       by test_app_image_final_stage_has_no_uv  AssertionError: 'astral-sh/uv' unexpectedly found in 'ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946' : fi
+KILLED   g_uv_binary_from_builder       by test_app_image_final_stage_has_no_uv  AssertionError: Lists differ: ['COPY --from=builder /usr/local/bin/uv /usr/local/bin/uv'] != []
+KILLED   g_pip_install_uv               by test_app_image_final_stage_has_no_uv  AssertionError: Lists differ: ['RUN pip install --no-cache-dir uv && useradd --no-create-home --uid 10001 ke'] != []
+KILLED   g_final_from_builder           by test_app_image_final_stage_has_no_uv  AssertionError: Regex didn't match: '^python:3\\.12-slim-bookworm@sha256:[0-9a-f]{64}$' not found in 'builder' : the final FROM is the pinned python:3.12-slim-b
+KILLED   g_final_base_differs           by test_app_image_final_stage_has_no_uv  AssertionError: 'pyth[31 chars]386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07259' != 'pyth[31 chars]386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509ac
+KILLED   g_single_stage_rm_uv           by test_app_image_final_stage_has_no_uv  AssertionError: 'uv' == 'uv' : final stage: `COPY --from=uv /uv /usr/local/bin/uv` (D10: no uv)
+KILLED   g_copy_chown_ke                by test_app_image_final_stage_has_no_uv  AssertionError: Lists differ: [('COPY', '--chown=ke', '--from=builder', '/opt/venv',[53 chars]pp')] != [('COPY', '--from=builder', '/app', '/app'), ('COPY', [39
+KILLED   g_extra_context_copy           by test_app_image_final_stage_has_no_uv  AssertionError: Lists differ: [('CO[62 chars]er', '/opt/venv', '/opt/venv'), ('COPY', 'engine', './engine')] != [('CO[62 chars]er', '/opt/venv', '/opt/venv')]
+KILLED   g_no_venv_copy                 by test_app_image_final_stage_has_no_uv  AssertionError: Lists differ: [('CO[30 chars] '/app')] != [('CO[30 chars] '/app'), ('COPY', '--from=builder', '/opt/venv', '/opt/venv')]
+KILLED   g_path_not_venv_first          by test_app_image_final_stage_has_no_uv  AssertionError: False is not true : the final stage's PATH starts with /opt/venv/bin: (got '$PATH:/opt/venv/bin')
+KILLED   g_uv_env_in_final              by test_app_image_final_stage_has_no_uv  AssertionError: Lists differ: ['UV_LINK_MODE'] != []
+KILLED   g_runs_as_root                 by test_app_image_final_stage_has_no_uv  AssertionError: Lists differ: [] != ['ke']
+KILLED   g_cmd_changed                  by test_app_image_final_stage_has_no_uv  AssertionError: Lists differ: ['uvicorn', 'engine.api:app'] != ['python', '-m', 'engine.api']
+KILLED   g_uid_changed                  by test_app_image_final_stage_has_no_uv  AssertionError: Regex didn't match: '\\buseradd\\b[^;&|]*--uid[= ]10001\\b[^;&|]*\\bke\\b' not found in 'useradd --no-create-home --uid 1000 ke' : the final sta
+KILLED   g_builder_unlocked             by test_app_image_final_stage_has_no_uv  AssertionError: [] is not true : the builder runs `uv sync --locked --no-dev` (D10)
+KILLED   g_builder_with_dev             by test_app_image_final_stage_has_no_uv  AssertionError: [] is not true : the builder runs `uv sync --locked --no-dev` (D10)
+KILLED   g_lock_adds_uv_package         by test_app_image_final_stage_has_no_uv  AssertionError: <re.Match object; span=(14482, 14493), match='name = "uv"'> is not None : uv.lock installs a uv package into /opt/venv
+34/34 killed
+
+## Phase B': guard mutants re-run on the green copy
+UNMUTATED (4 tests): PASS (OK)
+KILLED   c_no_fail_on                   by test_scan_command_is_exactly_the_d5_policy  AssertionError: Lists differ: ['doc[75 chars]ixed', '--show-suppressed', '-o', 'table'] != ['doc[75 chars]ixed', '--fail-on', 'high', '--show-suppressed', '-o',
+KILLED   c_fail_on_critical             by test_scan_command_is_exactly_the_d5_policy  AssertionError: Lists differ: ['doc[79 chars]', '--fail-on', 'critical', '--show-suppressed', '-o', 'table'] != ['doc[79 chars]', '--fail-on', 'high', '--show-s
+KILLED   c_no_only_fixed                by test_scan_command_is_exactly_the_d5_policy  AssertionError: Lists differ: ['doc[64 chars], '--fail-on', 'high', '--show-suppressed', '-o', 'table'] != ['doc[64 chars], '--only-fixed', '--fail-on', 'high',
+KILLED   c_no_config                    by test_scan_command_is_exactly_the_d5_policy  AssertionError: Lists differ: ['doc[27 chars], '--only-fixed', '--fail-on', 'high', '--show[23 chars]ble'] != ['doc[27 chars], '--config', '/cfg/scan-ignore.yam
+KILLED   c_no_show_suppressed           by test_scan_command_is_exactly_the_d5_policy  AssertionError: Lists differ: ['doc[75 chars]ixed', '--fail-on', 'high', '-o', 'table'] != ['doc[75 chars]ixed', '--fail-on', 'high', '--show-suppressed', '-o',
+KILLED   c_output_json                  by test_scan_command_is_exactly_the_d5_policy  AssertionError: Lists differ: ['doc[75 chars]ixed', '--fail-on', 'high', '--show-suppressed', '-o', 'json'] != ['doc[75 chars]ixed', '--fail-on', 'high', '--sho
+KILLED   c_no_output_flag               by test_scan_command_is_exactly_the_d5_policy  AssertionError: Lists differ: ['doc[75 chars]ixed', '--fail-on', 'high', '--show-suppressed'] != ['doc[75 chars]ixed', '--fail-on', 'high', '--show-suppressed',
+KILLED   c_order_swapped                by test_scan_command_is_exactly_the_d5_policy  AssertionError: Lists differ: ['doc[64 chars], '--fail-on', 'high', '--only-fixed', '--show[23 chars]ble'] != ['doc[64 chars], '--only-fixed', '--fail-on', 'hig
+KILLED   c_fail_on_negligible_extra     by test_scan_command_is_exactly_the_d5_policy  AssertionError: Lists differ: ['doc[102 chars] '--show-suppressed', '-o', 'table', '--fail-on', 'negligible'] != ['doc[102 chars] '--show-suppressed', '-o', 'ta
+KILLED   c_entrypoint_override          by test_scan_command_is_exactly_the_d5_policy  AssertionError: 'entrypoint' unexpectedly found in {'image': 'anchore/grype:v0.120.1@sha256:e4a44ef45d285b829ce6efe2642980329661bd2d18eab5fc539138d4adaebbbe', '
+KILLED   c_env_fail_on                  by test_scan_command_is_exactly_the_d5_policy  AssertionError: Lists differ: ['GRY[34 chars]B_AUTO_UPDATE', 'GRYPE_DB_CACHE_DIR', 'GRYPE_FAIL_ON_SEVERITY'] != ['GRY[34 chars]B_AUTO_UPDATE', 'GRYPE_DB_CACHE_D
+KILLED   p_scan_failure_ignored         by test_scan_fails_on_fixed_high  AssertionError: 0 == 0 : a fixed High let the scan pass (PSC-4):
+KILLED   p_table_hidden                 by test_scan_fails_on_fixed_high, test_scan_reports_but_passes_unfixed_and_lower  AssertionError: 'NAME         INSTALLED  FIXED IN   TYPE        VULNERABILITY        SEVERITY' not found in '== scan: ignore entries (docker/scan-ignore.yaml) =
+KILLED   p_exit_2_tolerated             by test_scan_fails_on_fixed_high  AssertionError: 0 == 0 : a fixed High let the scan pass (PSC-4):
+KILLED   p_always_fails                 by test_scan_reports_but_passes_unfixed_and_lower  AssertionError: 1 != 0 : unfixed and lower matches failed the scan (PSC-4):
+KILLED   p_status_not_named             by test_scan_fails_on_fixed_high  AssertionError: Regex didn't match: 'scan: FAIL \\(stage scan: grype exited 2\\b' not found in '== scan: ignore entries (docker/scan-ignore.yaml) ==\nignore: []
+KILLED   p_run_env_override             by test_scan_fails_on_fixed_high, test_scan_reports_but_passes_unfixed_and_lower  AssertionError: Lists differ: ['--pull', '--rm', '-e'] != ['--pull', '--rm']
+KILLED   p_second_report_run            by test_scan_reports_but_passes_unfixed_and_lower  AssertionError: 2 != 1 : one grype run gates and reports (D5); no retry, no second run
+KILLED   u_app_digest_changed           by test_uv_pin_matches_in_app_and_gates_images  AssertionError: 2 != 1 : app.Dockerfile and gates.Dockerfile pin different uv images: {'app.Dockerfile': 'ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391
+KILLED   u_gates_version_changed        by test_uv_pin_matches_in_app_and_gates_images  AssertionError: 2 != 1 : app.Dockerfile and gates.Dockerfile pin different uv images: {'app.Dockerfile': 'ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391
+KILLED   u_app_tag_only                 by test_uv_pin_matches_in_app_and_gates_images  AssertionError: Regex didn't match: '^ghcr\\.io/astral-sh/uv:\\d+\\.\\d+\\.\\d+@sha256:[0-9a-f]{64}$' not found in 'ghcr.io/astral-sh/uv:0.11.21' : app.Dockerfi
+KILLED   u_gates_second_uv_ref          by test_uv_pin_matches_in_app_and_gates_images  AssertionError: 2 != 1 : gates.Dockerfile names the uv image once: [('FROM', 'ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae870
+KILLED   u_app_copy_from_image          by test_uv_pin_matches_in_app_and_gates_images  AssertionError: 'COPY' != 'FROM'
+23/23 killed
+CONTROL-PASS ctl_uv_bumped_in_both      (must pass: an allowed change) 
+CONTROL-PASS ctl_command_as_string      (must pass: an allowed change) 
+exit 0
+
+=== runtime satisfiability (host docker, not a gate): docker build -q -f $SCRATCH/app.green.Dockerfile -t ke-tester-u3-scratch:green . (repo root context), then checks; image removed after ===
+sha256:2b46efd0d3c6f284f543717fdeae2729fc211d2a581a84adee130f12bf567ceb
+
+real	0m8.275s
+user	0m0.000s
+sys	0m0.045s
+build exit 0
+$ docker run --rm --network none --entrypoint sh <img> -c "command -v uv || command -v uvx"
+exit 127
+$ ... --entrypoint python <img> -m engine.notices | head -3
+| Package | Version | Licence | Licence files |
+|---|---|---|---|
+| annotated-doc | 0.0.5 | MIT | annotated_doc-0.0.5.dist-info/licenses/LICENSE |
+exit 0
+$ ... python -c "import engine, harness_telemetry, certifi; print(certifi.__version__)"
+2026.07.22
+exit 0
+$ ... id; echo $PATH; ls -ld /opt/venv /app
+uid=10001(ke) gid=10001(ke) groups=10001(ke)
+/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+drwxr-xr-x 5 root root 4096 Oct 21 22:06 /app
+drwxr-xr-x 4 root root 4096 Oct 21 22:06 /opt/venv
+/app
+# Note for D10 test 2: the image's sh is dash; 'command -v uv || command -v uvx' exits 127 (not found), not 1 as D10 test 2 says. Output is empty as required.

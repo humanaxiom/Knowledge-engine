@@ -47,6 +47,26 @@ L-1..L-3, orchestrator rulings in the handoff):
 - INT/TERM exit 130/143 through the EXIT trap (D4); a failed teardown fails
   the run naming the project and `down --volumes` (N2).
 - Signal tests run scan.sh in its own process group and signal the group.
+
+Added by unit 3 (tester, 2026-10-21; PSC-4, PSC-17 / D10, and the carry-ins
+review N1, r1-a, r1-b, security I-4, I-6):
+- PSC-4: the `scan` command is exactly SCAN_POLICY_COMMAND (D1/D5, N1), with
+  no entrypoint and no GRYPE_* key beyond D1's three; `run scan` passes only
+  `--rm --pull never`. A fake grype (hook "stdout"/"exit") that exits 2 on a
+  fixed High fails the run naming `stage scan: grype exited 2`; one that exits
+  0 passes; either way every table row is in scan.sh's output.
+- r1-a: a failing container listing in cleanup prints `scan: FAIL (...)`
+  naming the project and the run exits 1. r1-b: a failing `docker rm -f`
+  prints a `docker rm ...` hand command that, run as is, removes exactly the
+  project's containers (running and created).
+- I-4: the first `trap` in the EXIT-trap function is `trap '' INT TERM`
+  (EXIT may be in the same command). I-6: `COMPOSE_PROJECT_NAME=ke-scan-${SRANDOM}`.
+- PSC-17 (D10 tests 1 and 1b): static checks of docker/app.Dockerfile and the
+  uv pin shared with docker/gates.Dockerfile. uv.lock's certifi version is
+  manual evidence (D10 test 2, u3-no-uv-in-ke-app.txt), not a unit test.
+- Not here: `test_verify_full_fails_when_image_scan_fails` (§2.6 item 4) needs
+  scan.sh wired into verify.sh, which D10 holds until the real scan is green;
+  it lands with the PSC-6 step.
 """
 
 from __future__ import annotations
@@ -90,6 +110,14 @@ IGNORE_MISSING = "docker/scan-ignore.yaml is missing (ADR-KE-013 amendment 1, D5
 # A placeholder pin for the harness when the compose file is absent; the
 # tests that need the real file fail before using it.
 PLACEHOLDER_REF = "anchore/grype:v0.0.0@sha256:" + "0" * 64
+
+# PSC-4 (D1 Command row, D5): the one gating and reporting grype run, word for
+# word and in order (review N1: an exact list, as scan-db's `db update` is).
+SCAN_POLICY_COMMAND = ["docker-archive:/in/ke-app.tar", "--config", "/cfg/scan-ignore.yaml", "--only-fixed",
+                       "--fail-on", "high", "--show-suppressed", "-o", "table"]
+# D1 Environment row for `scan`: the only GRYPE_* keys (a GRYPE_* key can set
+# a policy option, e.g. the fail-on severity or the ignore rules).
+SCAN_GRYPE_ENV = {"GRYPE_DB_CACHE_DIR", "GRYPE_DB_AUTO_UPDATE", "GRYPE_CHECK_FOR_APP_UPDATE"}
 
 
 # --------------------------------------------------------------------------
@@ -516,6 +544,25 @@ class ScanComposeTest(unittest.TestCase):
                     self.assertNotIn(key, svc, f"{name} sets {key}")
                 for key in ("pid", "ipc", "userns_mode", "uts", "cgroup"):
                     self.assertNotEqual(str(svc.get(key, "")), "host", f"{name}: {key}: host")
+
+    # ---- PSC-4 (unit 3; review N1) -------------------------------------------
+
+    def test_scan_command_is_exactly_the_d5_policy(self):
+        """PSC-4, D5 (Q42), review N1: the `scan` command is D1's list exactly,
+        in order. Without `--fail-on high` grype exits 0 on every finding;
+        without `--only-fixed` an unfixed High fails; without `--config` the
+        ignore file is not applied; without `--show-suppressed` or `-o table`
+        the CI log loses the suppressed rows or the table (PSC-7)."""
+        svc = self._services()["scan"]
+        with self.subTest(part="command, word for word (D1 Command row, D5)"):
+            self.assertEqual(_command_words(svc), SCAN_POLICY_COMMAND,
+                             "the scan command must be exactly `" + " ".join(SCAN_POLICY_COMMAND) + "` (PSC-4, D5; "
+                             "review N1)")
+        with self.subTest(part="no entrypoint override (the command is grype's arguments)"):
+            self.assertNotIn("entrypoint", svc, "scan overrides the scanner image's entrypoint")
+        with self.subTest(part="no GRYPE_* key but D1's three (no policy option through the environment)"):
+            keys = sorted(k for k, _ in _env_entries(svc) if k.upper().startswith("GRYPE"))
+            self.assertEqual(keys, sorted(SCAN_GRYPE_ENV), "scan sets a GRYPE_* key outside D1's Environment row")
 
 
 # --------------------------------------------------------------------------
@@ -1115,8 +1162,238 @@ class ScanScriptTest(unittest.TestCase):
             for key in ("COMPOSE_PROFILES", "COMPOSE_ENV_FILES"):
                 self.assertEqual(downs[0]["env"][key], "<unset>", f"teardown.sh inherited the caller's {key}")
 
+    # ---- PSC-4 (unit 3): the policy's outcome, against a fake scanner ---------
 
-_TAR_CHMOD = re.compile(r'\bchmod\s+(?:--\s+)?0?644\s+(?:--\s+)?"?\$(?:KE_SCAN_IN|\{KE_SCAN_IN\})/ke-app\.tar"?')
+    @staticmethod
+    def _scan_hook(table: str, code: int) -> str:
+        """The fake `compose run ... scan` prints `table` and exits `code`."""
+        return json.dumps([{"on": r"\brun\b.*\sscan$", "stdout": table, "exit": code}])
+
+    def _assert_one_gating_run(self, records: list[dict[str, Any]]) -> None:
+        runs = [r for r in records if _event(r, self.scanner) == "run scan"]
+        self.assertEqual(len(runs), 1, "one grype run gates and reports (D5); no retry, no second run")
+        if runs:
+            call = _compose_call(runs[0]["argv"])
+            assert call is not None
+            self.assertEqual(sorted(call["opts"]), ["--pull", "--rm"],
+                             f"`{' '.join(runs[0]['argv'])}`: run scan takes only --rm and --pull never; no -e, "
+                             "--entrypoint or other option can change the policy (D5)")
+            self.assertEqual(call["rest"], [], "nothing follows the service name: the policy is the compose "
+                             "command (D1)")
+
+    def test_scan_fails_on_fixed_high(self):
+        """PSC-4 (§2.6 item 4): grype finds a fixed High and exits non-zero
+        (2, as `--fail-on` does): scan.sh exits non-zero naming `stage scan`
+        and grype's status, after printing grype's whole table."""
+        repo = self._repo()
+        result, records = self._run(repo, FAKE_DOCKER_HOOKS=self._scan_hook(FIXED_HIGH_TABLE, 2))
+        out = self._out(result)
+        self.assertNotEqual(result.returncode, 0, f"a fixed High let the scan pass (PSC-4):\n{out}")
+        with self.subTest(part="names stage scan and grype's exit status (D4 step 5)"):
+            self.assertRegex(out, r"scan: FAIL \(stage scan: grype exited 2\b",
+                             "the failure reads `scan: FAIL (stage scan: grype exited <n>: ...)` (D4 step 5)")
+            self.assertNotIn("== scan: done ==", out, "the script went on to the end after a failed scan")
+        with self.subTest(part="the table is in scan.sh's output, every row (PSC-7: the CI log holds it)"):
+            for row in FIXED_HIGH_TABLE.splitlines():
+                self.assertIn(row, out, "a row of grype's table is missing from scan.sh's output")
+        self._assert_one_gating_run(records)
+        self._assert_torn_down(records, self._assert_one_scan_project(records), repo)
+
+    def test_scan_reports_but_passes_unfixed_and_lower(self):
+        """PSC-4: only suppressed (unfixed, ignored) rows and fixed rows below
+        High: grype exits 0, scan.sh exits 0 and prints every row."""
+        repo = self._repo()
+        result, records = self._run(repo, FAKE_DOCKER_HOOKS=self._scan_hook(BELOW_THRESHOLD_TABLE, 0))
+        out = self._out(result)
+        self.assertEqual(result.returncode, 0, f"unfixed and lower matches failed the scan (PSC-4):\n{out}")
+        with self.subTest(part="every row printed, the run reaches the end"):
+            for row in BELOW_THRESHOLD_TABLE.splitlines():
+                self.assertIn(row, out, "a row of grype's table is missing from scan.sh's output (PSC-4: "
+                              "every other match is printed)")
+            self.assertIn("== scan: done ==", out)
+            self.assertNotIn("scan: FAIL", out)
+        self._assert_one_gating_run(records)
+        self._assert_torn_down(records, self._assert_one_scan_project(records), repo)
+
+    # ---- unit 3 carry-ins (review r1-a, r1-b; security I-4, I-6) -------------
+
+    def test_scan_fails_when_container_listing_fails(self):
+        """Review r1-a: cleanup lists the project's containers with `docker ps`
+        (or `container ls`). If that listing fails, cleanup cannot know what
+        is left: it prints a `scan: FAIL (...)` line naming the project and
+        the run exits 1, even when everything else passed."""
+        repo = self._repo()
+        listing = "|".join(rx + "#1" for rx in (r"^ps\b", r"^container ls\b", r"^container list\b",
+                                                r"^container ps\b"))
+        result, records = self._run(repo, FAKE_DOCKER_FAIL_NTH=listing)
+        out = self._out(result)
+        project = self._assert_one_scan_project(records)
+        lists = [r for r in self._docker_records(records)
+                 if r["argv"][:1] == ["ps"] or r["argv"][:2] in (["container", "ls"], ["container", "list"],
+                                                                 ["container", "ps"])]
+        self.assertTrue(lists, "harness: cleanup made no container listing call")
+        self.assertEqual(result.returncode, 1, f"a failed `docker ps` in cleanup was silent (review r1-a: the "
+                         f"process substitution hides its status); exit {result.returncode}:\n{out}")
+        fails = [line for line in result.stderr.splitlines() if line.startswith("scan: FAIL (")]
+        self.assertTrue([line for line in fails if project in line],
+                        f"no `scan: FAIL (...)` line names project {project} (review r1-a):\n{out}")
+        self._assert_torn_down(records, project, repo)
+
+    def test_scan_container_removal_failure_gives_working_hand_command(self):
+        """Review r1-b: when `docker rm -f` fails, the message gives a hand
+        command that removes the project's containers, running or not, and
+        nothing else, e.g. `docker rm -f $(docker ps -aq --filter
+        label=com.docker.compose.project=<project>)`. The command is taken
+        from the output and run against a fresh fake daemon holding the same
+        containers."""
+        repo = self._repo()
+        containers = json.dumps([*OWN_CONTAINERS, *DECOY_CONTAINERS])
+        result, records = self._run(repo, FAKE_DOCKER_CONTAINERS=containers,
+                                    FAKE_DOCKER_FAIL_NTH=r"^rm\b#1|^container rm\b#1")
+        out = self._out(result)
+        project = self._assert_one_scan_project(records)
+        self.assertTrue([r for r in self._docker_records(records) if _is_rm(r["argv"])],
+                        "harness: cleanup made no `docker rm` call")
+        self.assertNotEqual(result.returncode, 0, f"a failed `docker rm -f` let the scan pass:\n{out}")
+        commands = _hand_rm_commands(out)
+        self.assertTrue(commands, f"the removal failure gives no `docker rm` hand command (review r1-b):\n{out}")
+        own = {c["ID"] for c in OWN_CONTAINERS} | {c["Names"].replace("{run_project}", project)
+                                                   for c in OWN_CONTAINERS}
+        decoys = ({d["ID"] for d in DECOY_CONTAINERS}
+                  | {d["Names"].replace("{run_project}", project) for d in DECOY_CONTAINERS})
+        seed = "".join(json.dumps(r) + "\n" for r in records
+                       if r["argv"][:1] == ["compose"] and "run" in r["argv"])
+        verdicts: list[str] = []
+        for cmd in commands:
+            hand_log = self.tmp / "hand.jsonl"
+            hand_log.write_text(seed, encoding="utf-8")
+            env = {"PATH": f"{self.tmp / 'fakebin'}{os.pathsep}{os.environ.get('PATH', '/usr/bin:/bin')}",
+                   "HOME": str(self.tmp), "FAKE_DOCKER_JSON": str(hand_log), "FAKE_DOCKER_CONTAINERS": containers}
+            ran = subprocess.run(["bash", "-c", cmd], cwd=self.tmp, env=env, capture_output=True, text=True,
+                                 timeout=60)
+            rms = [r for r in fake_docker.records(hand_log) if _is_rm(r["argv"]) and _rm_forced(r["argv"])]
+            targets = {t for r in rms for t in _rm_targets(r["argv"])}
+            removed = [spec for spec in OWN_CONTAINERS
+                       if {spec["ID"], spec["Names"].replace("{run_project}", project)} & targets]
+            if ran.returncode == 0 and len(removed) == len(OWN_CONTAINERS) and not targets & decoys \
+                    and not targets - own:
+                verdicts = []
+                break
+            verdicts.append(f"`{cmd}`: exit {ran.returncode}, forced rm of {sorted(targets)} "
+                            f"(own: {sorted(own)}; must not touch {sorted(decoys)}) {ran.stderr.strip()}")
+        self.assertEqual(verdicts, [], "no hand command in the output removes exactly the project's containers, "
+                         "running and created (review r1-b)")
+
+    def test_scan_cleanup_ignores_signals_before_clearing_exit_trap(self):
+        """Security I-4: in the EXIT-trap function, INT and TERM are ignored
+        before (or in the same `trap` as) the EXIT trap is cleared, so no
+        signal lands between the two and exits with no cleanup left."""
+        if not SCAN_SH.is_file():
+            self.fail(SCRIPT_MISSING)
+        lines = _script_lines()
+        handlers = [w[1] for w in (_trap_words(line) for line in lines if not line[:1].isspace())
+                    if w and len(w) >= 3 and "EXIT" in w[2:] and w[1] not in ("", "-")]
+        self.assertEqual(len(handlers), 1, "harness: scan.sh installs one EXIT trap function at top level")
+        body = _function_body(lines, handlers[0]) if handlers else []
+        self.assertTrue(body, f"harness: the body of the EXIT trap function {handlers[:1]} was not found")
+        traps = [w for w in (_trap_words(line) for line in body) if w]
+        self.assertTrue(traps, "the EXIT trap function sets no trap")
+        if traps:
+            first = traps[0]
+            self.assertTrue(first[1] == "" and {"INT", "TERM"} <= set(first[2:]),
+                            f"the first trap in {handlers[0]}() is `{' '.join(first)}`: it must be "
+                            "`trap '' INT TERM` (or `trap '' INT TERM EXIT`), before `trap - EXIT` (security I-4)")
+
+    def test_scan_project_name_uses_srandom(self):
+        """Security I-6: the project name is `ke-scan-${SRANDOM}` (32 bits
+        from the OS, bash >= 5.1), not the 15-bit `RANDOM` LCG. It still
+        matches ke-scan-<digits> (the run tests check that)."""
+        if not SCAN_SH.is_file():
+            self.fail(SCRIPT_MISSING)
+        lines = _script_lines()
+        sets = [line for line in lines if re.match(r"\s*(?:export\s+)?COMPOSE_PROJECT_NAME=", line)]
+        self.assertEqual(len(sets), 1, "scan.sh assigns COMPOSE_PROJECT_NAME once")
+        if sets:
+            self.assertRegex(sets[0].strip(),
+                             r"""^(?:export\s+)?COMPOSE_PROJECT_NAME=(["']?)ke-scan-(?:\$\{SRANDOM\}|\$SRANDOM)+\1$""",
+                             "the project is ke-scan-${SRANDOM} (security I-6)")
+        self.assertEqual([line.strip() for line in lines if re.search(r"(?<![A-Za-z_])RANDOM\b", line)], [],
+                         "scan.sh still uses bash's 15-bit RANDOM (security I-6)")
+        with self.subTest(part="harness: this bash has SRANDOM (5.1 or later)"):
+            v = subprocess.run(["bash", "-c", 'echo "${BASH_VERSINFO[0]} ${BASH_VERSINFO[1]}"'],
+                               capture_output=True, text=True, timeout=30).stdout.split()
+            self.assertGreaterEqual((int(v[0]), int(v[1])), (5, 1), "bash < 5.1 has no SRANDOM")
+
+
+# PSC-4 fake grype tables (`-o table` with `--show-suppressed`). Ids are made
+# up; only the shape matters.
+FIXED_HIGH_TABLE = (
+    "NAME         INSTALLED  FIXED IN   TYPE        VULNERABILITY        SEVERITY\n"
+    "quinn-proto  0.11.14    0.11.15    rust-crate  GHSA-aaaa-bbbb-cccc  High\n"
+    "pip          25.0.1     25.3       python      GHSA-dddd-eeee-ffff  Medium\n"
+    "libc6        2.36-9                deb         CVE-2099-0001        High (suppressed)\n"
+)
+BELOW_THRESHOLD_TABLE = (
+    "NAME         INSTALLED  FIXED IN   TYPE        VULNERABILITY        SEVERITY\n"
+    "pip          25.0.1     25.3       python      GHSA-dddd-eeee-ffff  Medium\n"
+    "libc6        2.36-9                deb         CVE-2099-0001        Critical (suppressed)\n"
+    "zlib1g       1.2.13                deb         CVE-2099-0002        High (suppressed)\n"
+)
+
+
+def _trap_words(line: str) -> list[str] | None:
+    """`trap ACTION SIG...` as words (SIG prefixes dropped), else None."""
+    import shlex
+
+    if not re.match(r"\s*trap\s", line):
+        return None
+    try:
+        words = shlex.split(line.strip(), comments=True)
+    except ValueError:
+        return None
+    if len(words) < 2:
+        return None
+    return words[:2] + [w.upper().removeprefix("SIG") for w in words[2:]]
+
+
+def _function_body(lines: list[str], name: str) -> list[str]:
+    """The lines of `name() {` ... the closing `}` at column 0."""
+    start = [i for i, line in enumerate(lines)
+             if re.match(rf"\s*(?:function\s+)?{re.escape(name)}\s*(?:\(\s*\))?\s*\{{\s*$", line)]
+    if not start:
+        return []
+    body: list[str] = []
+    for line in lines[start[0] + 1:]:
+        if line.rstrip() == "}":
+            return body
+        body.append(line)
+    return []
+
+
+_HAND_RM = re.compile(r"docker\s+(?:container\s+)?rm\b")
+
+
+def _hand_rm_commands(text: str) -> list[str]:
+    """Each `docker rm ...` in a message, up to the end of its line or an
+    unbalanced `)` (the message's own closing parenthesis)."""
+    found: list[str] = []
+    for m in _HAND_RM.finditer(text):
+        end = text.find("\n", m.start())
+        end = len(text) if end < 0 else end
+        depth, i = 0, m.start()
+        while i < end:
+            if text[i] == "(":
+                depth += 1
+            elif text[i] == ")":
+                if depth == 0:
+                    break
+                depth -= 1
+            i += 1
+        found.append(text[m.start():i].rstrip().rstrip(".,;").rstrip("'\"`").rstrip())
+    return found
+
+
+_TAR_CHMOD =re.compile(r'\bchmod\s+(?:--\s+)?0?644\s+(?:--\s+)?"?\$(?:KE_SCAN_IN|\{KE_SCAN_IN\})/ke-app\.tar"?')
 
 
 def _is_rm(argv: list[str]) -> bool:
@@ -1347,6 +1624,159 @@ class ScanBundleTest(_BundleBase, unittest.TestCase):
         with self.subTest(part="bundle.sh never names the scan compose file, scan.sh or grype"):
             text = _strip_shell_comments(BUNDLE_SH.read_text(encoding="utf-8"))
             self.assertIsNone(_SCAN_NAMES.search(text), "bundle.sh refers to the scanner")
+
+
+# --------------------------------------------------------------------------
+# PSC-17 (unit 3, D10): ke-app ships without uv
+# --------------------------------------------------------------------------
+
+APP_DOCKERFILE = ROOT / "docker" / "app.Dockerfile"
+GATES_DOCKERFILE = ROOT / "docker" / "gates.Dockerfile"
+UV_LOCK = ROOT / "uv.lock"
+PYTHON_BASE_RE = re.compile(r"^python:3\.12-slim-bookworm@sha256:[0-9a-f]{64}$")
+UV_PIN_RE = re.compile(r"^ghcr\.io/astral-sh/uv:\d+\.\d+\.\d+@sha256:[0-9a-f]{64}$")
+UV_REF_ANY = re.compile(r"(?i)(?:[\w.-]+/)*astral-sh/uv\b[^\s\"',\]]*")
+# A word that is the uv or uvx binary, or a path to it.
+UV_WORD = re.compile(r"(?:.*/)?uvx?")
+
+
+def _instructions(path: Path) -> list[tuple[str, str]]:
+    """Dockerfile instructions as (KEYWORD, rest): continuation lines joined,
+    comment lines dropped."""
+    out: list[tuple[str, str]] = []
+    current = ""
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        stripped = raw.strip()
+        if stripped.startswith("#") or (not current and not stripped):
+            continue
+        if stripped.endswith("\\"):
+            current += stripped[:-1] + " "
+            continue
+        current += stripped
+        keyword, _, rest = current.strip().partition(" ")
+        out.append((keyword.upper(), rest.strip()))
+        current = ""
+    if current.strip():
+        keyword, _, rest = current.strip().partition(" ")
+        out.append((keyword.upper(), rest.strip()))
+    return out
+
+
+def _stages(path: Path) -> list[dict[str, Any]]:
+    """[{"ref": FROM reference, "name": AS name or None, "body": [(KW, rest)]}]."""
+    stages: list[dict[str, Any]] = []
+    for keyword, rest in _instructions(path):
+        if keyword == "FROM":
+            words = [w for w in rest.split() if not w.startswith("--")]
+            name = words[2] if len(words) >= 3 and words[1].lower() == "as" else None
+            stages.append({"ref": words[0] if words else "", "name": name, "body": []})
+        elif stages:
+            stages[-1]["body"].append((keyword, rest))
+    return stages
+
+
+def _words(text: str) -> list[str]:
+    """Words of an instruction, split on blanks, shell operators, quotes and
+    `=` (so `--from=uv` and `KEY=/x/uv` expose their values)."""
+    return [w for w in re.split(r"[\s;&|()<>\"'`=,\[\]{}]+", text) if w]
+
+
+def _env_pairs(rest: str) -> list[tuple[str, str]]:
+    """ENV KEY=VALUE ... (or the legacy ENV KEY VALUE) as pairs."""
+    import shlex
+
+    words = shlex.split(rest, posix=True)
+    if words and "=" not in words[0]:
+        return [(words[0], " ".join(words[1:]))]
+    return [tuple(w.split("=", 1)) for w in words if "=" in w]  # type: ignore[misc]
+
+
+class AppImageTest(unittest.TestCase):
+    """PSC-17, ADR-KE-013 amendment 1 D10 first tests 1 and 1b (static)."""
+
+    def test_app_image_final_stage_has_no_uv(self):
+        """D10 test 1: the shipped (last) stage of docker/app.Dockerfile has no
+        uv: it copies only /opt/venv and /app from a `builder` stage on the
+        same pinned python base, and keeps the runtime contract. RED until
+        D10: today the final stage holds `COPY --from=uv /uv /usr/local/bin/uv`."""
+        stages = _stages(APP_DOCKERFILE)
+        self.assertTrue(stages, "docker/app.Dockerfile has no FROM")
+        final = stages[-1]
+        body = final["body"]
+        builders = [s for s in stages if (s["name"] or "").lower() == "builder"]
+        with self.subTest(part="final stage: no COPY/ADD --from the uv stage or the uv image"):
+            for keyword, rest in body:
+                if keyword not in ("COPY", "ADD"):
+                    continue
+                for src in re.findall(r"--from=(\S+)", rest):
+                    self.assertNotEqual(src.lower(), "uv", f"final stage: `{keyword} {rest}` (D10: no uv)")
+                    self.assertNotIn("astral-sh/uv", src.lower(), f"final stage: `{keyword} {rest}`")
+        with self.subTest(part="final stage: no uv or uvx path, and no uv command word in any RUN"):
+            hits = [f"{keyword} {rest}" for keyword, rest in body
+                    if any(UV_WORD.fullmatch(w) for w in _words(rest))]
+            self.assertEqual(hits, [], "the final stage names the uv binary (D10: the shipped stage has no uv)")
+        with self.subTest(part="one `builder` stage; the final stage is not it, and uses its python base"):
+            self.assertEqual(len(builders), 1, "app.Dockerfile has one stage `AS builder` (D10)")
+            self.assertNotEqual((final["name"] or "").lower(), "builder", "the last stage ships; it is not builder")
+            self.assertRegex(final["ref"], PYTHON_BASE_RE,
+                             "the final FROM is the pinned python:3.12-slim-bookworm@sha256 image (not `builder`)")
+            if builders:
+                self.assertEqual(final["ref"], builders[0]["ref"],
+                                 "the final FROM is byte for byte the builder's (venv interpreter paths, D10)")
+        with self.subTest(part="final stage copies only /opt/venv and /app from builder, no --chown/--chmod"):
+            copies = [(keyword, rest.split()) for keyword, rest in body if keyword in ("COPY", "ADD")]
+            got = sorted((keyword, *words) for keyword, words in copies)
+            self.assertEqual(got, [("COPY", "--from=builder", "/app", "/app"),
+                                   ("COPY", "--from=builder", "/opt/venv", "/opt/venv")],
+                             "the final stage's only COPYs are `COPY --from=builder /opt/venv /opt/venv` and "
+                             "`COPY --from=builder /app /app` (D10; root-owned, read-only to ke)")
+        env = dict(pair for keyword, rest in body if keyword == "ENV" for pair in _env_pairs(rest))
+        with self.subTest(part="final stage ENV: PATH starts /opt/venv/bin:, PYTHONUNBUFFERED=1, no UV_*"):
+            self.assertTrue(env.get("PATH", "").startswith("/opt/venv/bin:"),
+                            f"the final stage's PATH starts with /opt/venv/bin: (got {env.get('PATH')!r})")
+            self.assertEqual(env.get("PYTHONUNBUFFERED"), "1")
+            self.assertEqual(sorted(k for k in env if k.upper().startswith("UV_")), [],
+                             "the final stage sets a UV_* variable (D10: nothing reads them)")
+        with self.subTest(part="runtime contract: WORKDIR /app, user ke uid 10001, USER ke, CMD (PSC-17)"):
+            self.assertIn(("WORKDIR", "/app"), body)
+            runs = " && ".join(rest for keyword, rest in body if keyword == "RUN")
+            self.assertRegex(runs, r"\buseradd\b[^;&|]*--uid[= ]10001\b[^;&|]*\bke\b",
+                             "the final stage creates user ke with uid 10001")
+            users = [rest for keyword, rest in body if keyword == "USER"]
+            self.assertEqual(users[-1:], ["ke"], "the final stage ends as USER ke")
+            cmds = [rest for keyword, rest in body if keyword == "CMD"]
+            self.assertTrue(cmds, "the final stage has a CMD")
+            if cmds:
+                self.assertEqual(json.loads(cmds[-1]), ["python", "-m", "engine.api"])
+        with self.subTest(part="builder: uv sync --locked --no-dev into /opt/venv"):
+            if builders:
+                b = builders[0]["body"]
+                b_env = dict(pair for keyword, rest in b if keyword == "ENV" for pair in _env_pairs(rest))
+                self.assertEqual(b_env.get("UV_PROJECT_ENVIRONMENT"), "/opt/venv")
+                syncs = [rest for keyword, rest in b if keyword == "RUN" and re.search(r"\buv\s+sync\b", rest)]
+                self.assertTrue([s for s in syncs if "--locked" in s.split() and "--no-dev" in s.split()],
+                                "the builder runs `uv sync --locked --no-dev` (D10)")
+        with self.subTest(part="the venv copied from builder cannot carry uv: uv.lock has no uv package"):
+            self.assertIsNone(re.search(r'(?m)^name = "uvx?"$', UV_LOCK.read_text(encoding="utf-8")),
+                              "uv.lock installs a uv package into /opt/venv")
+
+    def test_uv_pin_matches_in_app_and_gates_images(self):
+        """D10 test 1b (guard): the ghcr.io/astral-sh/uv:<v>@sha256:<64 hex>
+        reference appears exactly once in each of app.Dockerfile and
+        gates.Dockerfile, as a FROM, and the two are identical (one version,
+        one digest; a uv bump changes both in one commit)."""
+        refs: dict[str, str] = {}
+        for path in (APP_DOCKERFILE, GATES_DOCKERFILE):
+            found = [(keyword, ref) for keyword, rest in _instructions(path) for ref in UV_REF_ANY.findall(rest)]
+            with self.subTest(file=path.name):
+                self.assertEqual(len(found), 1, f"{path.name} names the uv image once: {found}")
+                if found:
+                    keyword, ref = found[0]
+                    self.assertEqual(keyword, "FROM", f"{path.name}: the uv image is a FROM stage")
+                    self.assertRegex(ref, UV_PIN_RE, f"{path.name}: uv is pinned as ghcr.io/astral-sh/uv:<v>@sha256")
+                    refs[path.name] = ref
+        self.assertEqual(len(set(refs.values())), 1,
+                         f"app.Dockerfile and gates.Dockerfile pin different uv images: {refs} (D10 point 4)")
 
 
 if __name__ == "__main__":

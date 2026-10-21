@@ -4070,11 +4070,13 @@ Suggested first test per sub-item, followed by the order of the rest.
        (the fake prints suppressed rows and exits 0 → `scan.sh` exits 0 and
        the table is in its output); a static check that the `scan` command
        has `--only-fixed`, `--fail-on high`, `--show-suppressed` and
-       `--config /cfg/scan-ignore.yaml`; then
+       `--config /cfg/scan-ignore.yaml`.
+    5. Place (PSC-6, D4):
        `test_verify_full_fails_when_image_scan_fails` (B6 harness: a stub
        `scan.sh` exiting 1 makes `verify.sh full` exit non-zero, and
-       `offline_check.sh` never runs).
-    5. Place (PSC-6, D4):
+       `offline_check.sh` never runs; moved from item 4, 2026-10-21: it
+       can only go green once `scan.sh` is wired into `verify.sh`, and D10
+       holds that wiring until the real scan is green);
        `test_verify_full_runs_scan_between_teardown_and_offline_check`
        (B6: build, launch, `gates-it`, smoke, `teardown.sh --volumes`,
        `scan.sh`, `offline_check.sh`; `fast` never calls `scan.sh`; a
@@ -6322,8 +6324,8 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
      test goes red.
   2. Behaviour check (manual, recorded as evidence, not a new `full`
      test). On the rebuilt `ke-app:<tag>`, with `--rm --network none`:
-     - `--entrypoint sh ... -c 'command -v uv || command -v uvx'` exits 1
-       and prints nothing;
+     - `--entrypoint sh ... -c 'command -v uv || command -v uvx'` prints
+       nothing (non-zero exit; dash returns 127);
      - `--entrypoint python ... -m engine.notices` exits 0 and prints the
        `| Package | Version | Licence | Licence files |` header;
      - `--entrypoint python ... -c "import engine, harness_telemetry,

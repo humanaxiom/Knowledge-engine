@@ -225,6 +225,11 @@ never touches a real daemon. What it does:
     `container rm` of a running container needs `-f`/`--force`; an unknown
     target exits 1 "No such container"; no target exits 1. A container
     named (ID, ID prefix of 4+ or name) by an earlier forced `rm` is gone.
+- platform-supply-chain unit 3 (PSC-4). Inert unless a hook sets them:
+  - hook "stdout": text -- written to stdout after the other actions (a
+    fake `compose run ... scan` prints a grype-like table).
+  - hook "exit": n -- then exit n at once (grype's exit status), before
+    FAKE_DOCKER_FAIL / FAIL_NTH and any modelled reply.
 - Every other call exits 0.
 """
 
@@ -381,6 +386,11 @@ for hook in json.loads(os.environ.get("FAKE_DOCKER_HOOKS") or "[]"):
     if hook.get("sleep"):
         import time as _time
         _time.sleep(float(hook["sleep"]))
+    if hook.get("stdout") is not None:
+        sys.stdout.write(hook["stdout"])
+        sys.stdout.flush()
+    if hook.get("exit") is not None:
+        sys.exit(int(hook["exit"]))
 
 for needle in filter(None, os.environ.get("FAKE_DOCKER_EXIT_AFTER", "").split("|")):
     if needle in joined:

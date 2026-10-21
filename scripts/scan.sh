@@ -28,7 +28,7 @@ fi
 
 export COMPOSE_FILE=docker-compose.scan.yml
 export COMPOSE_PATH_SEPARATOR=":"
-export COMPOSE_PROJECT_NAME="ke-scan-${RANDOM}${RANDOM}"
+export COMPOSE_PROJECT_NAME="ke-scan-${SRANDOM}"
 export KE_ENV_FILE=.env.example
 export KE_SCAN_IN="./dist/${COMPOSE_PROJECT_NAME}"
 unset COMPOSE_PROFILES COMPOSE_ENV_FILES GRYPE_DB_UPDATE_URL DOCKER_DEFAULT_PLATFORM
@@ -43,15 +43,21 @@ fail() {
 
 cleanup() {
   local status=$?
-  trap - EXIT
-  # A second signal must not cut teardown short.
+  # A second signal must not cut teardown short. INT and TERM are ignored
+  # before the EXIT trap goes, so no signal lands between the two (I-4).
   trap '' INT TERM
+  trap - EXIT
   # Force-remove this project's own containers (running or not) first, so a
   # signal mid-run leaves nothing for teardown.sh, which only reports, to miss.
-  local ids=()
-  if mapfile -t ids < <(docker ps -aq --filter "label=com.docker.compose.project=$project"); then
-    if [ "${#ids[@]}" -gt 0 ] && ! docker rm -f "${ids[@]}" >/dev/null; then
-      echo "scan: FAIL (could not remove the containers of project $project)" >&2
+  local hand_rm="docker rm -f \$(docker ps -aq --filter label=com.docker.compose.project=$project)"
+  local listing ids=()
+  if ! listing="$(docker ps -aq --filter "label=com.docker.compose.project=$project")"; then
+    echo "scan: FAIL (could not list the containers of project $project; by hand: $hand_rm)" >&2
+    status=1
+  elif [ -n "$listing" ]; then
+    mapfile -t ids <<<"$listing"
+    if ! docker rm -f "${ids[@]}" >/dev/null; then
+      echo "scan: FAIL (could not remove the containers of project $project; by hand: $hand_rm)" >&2
       status=1
     fi
   fi
