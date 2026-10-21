@@ -9,16 +9,12 @@
   local `verify.sh full` takes from the caller's environment or the
   operator's `.env`, with the tests skipping by name when either is unset.
 - `test_ci_job_has_timeout` (PS-3.4): every CI job sets `timeout-minutes`
-  to CI_TIMEOUT_MINUTES. Orchestrator ruling C1 (= Q36) kept 20 until a green
-  CI run is measured. CI run 39359710258 reached the offline stage at ~16 min
-  (docs/evidence/platform-offline/ci-39359710258.log), so orchestrator ruling 2
-  (docs/handoffs/platform-offline.md, 2026-10-20) sets 30 for the measurement
-  run; the follow-up commit changes CI_TIMEOUT_MINUTES to measured + 50%.
-  Two green CI runs were measured: 39370927416 (c7b905f) took 994 s, about
-  16.6 min (docs/evidence/platform-offline/ci-39370927416.log, job 04:41:48
-  to 04:58:22), and 39465361808 took 19.0 min, unit tests 790 s
-  (docs/evidence/platform-offline/ci-39465361808.log). Ruling R5 uses the
-  slower run + 50%: 19.0 x 1.5 = 28.5, rounded up to 29.
+  to CI_TIMEOUT_MINUTES, which is the slower of the latest two green CI runs
+  + 50%, rounded up. CS-7 (ci-speed) re-measured on 24b6839: push run
+  39559700392 took 21.1 min (1266 s, 07:06:26 to 07:27:32) and pull_request
+  run 39559708963 took 20.3 min (1216 s); docs/evidence/ci-speed/ci/. The
+  slower run + 50% = 21.1 x 1.5 = 31.65, rounded up to 32. Earlier pin:
+  platform-offline ruling R5, 29 (runs 39370927416 16.6 min, 39465361808 19.0 min).
 """
 
 from __future__ import annotations
@@ -32,13 +28,12 @@ CLAUDE_MD = ROOT / "CLAUDE.md"
 CI = ROOT / ".github" / "workflows" / "ci.yml"
 VERIFY_ONLY = "What verify.sh runs that CI cannot"
 CI_ONLY = "What CI runs that verify.sh does not"
-# PS-3.4, ruling R5 (measured + 50%, using the slower green run): two green CI
-# runs, 39370927416 (c7b905f) at 16.6 min (docs/evidence/platform-offline/
-# ci-39370927416.log) and 39465361808 at 19.0 min, unit tests 790 s
-# (docs/evidence/platform-offline/ci-39465361808.log). The slower run sets
-# the bound: 19.0 x 1.5 = 28.5, rounded up to 29. Before them, ruling 2 set 30
-# for the measurement run (CI run 39359710258).
-CI_TIMEOUT_MINUTES = 29
+# PS-3.4, CS-7 ci-speed (measured + 50%, using the slower green run): runs
+# 39559700392 at 21.1 min and 39559708963 at 20.3 min
+# (docs/evidence/ci-speed/ci/ci-39559700392.log, ci-39559708963.log). The
+# slower run sets the bound: 21.1 x 1.5 = 31.65, rounded up to 32. Before it,
+# platform-offline ruling R5 set 29 (slower run 19.0 min + 50% = 28.5).
+CI_TIMEOUT_MINUTES = 32
 
 
 def _sections(text: str) -> list[tuple[str, str]]:
@@ -88,9 +83,9 @@ class CiTimeoutTest(unittest.TestCase):
                 self.assertGreater(value, 0)
                 self.assertEqual(value, CI_TIMEOUT_MINUTES,
                                  f"job {name}: timeout-minutes is {value}, the ruling is "
-                                 f"{CI_TIMEOUT_MINUTES} (PS-3.4, ruling R5: green CI runs "
-                                 f"39370927416 16.6 min and 39465361808 19.0 min; "
-                                 f"slower run + 50% = 29)")
+                                 f"{CI_TIMEOUT_MINUTES} (PS-3.4, CS-7 ci-speed: green CI runs "
+                                 f"39559700392 21.1 min and 39559708963 20.3 min; "
+                                 f"slower run + 50% = 31.65 -> 32)")
 
 
 if __name__ == "__main__":

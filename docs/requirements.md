@@ -2403,8 +2403,13 @@ another class is named.
   (same rule as the platform-offline re-measure), in a follow-up commit on
   the branch. Both run ids, their durations and the arithmetic are saved in
   `docs/evidence/ci-speed/`, and the ci.yml comment names them.
-  `test_ci_job_has_timeout` (fast) is unchanged; the reviewer checks the
-  value against the evidence.
+  `test_ci_job_has_timeout` (fast) pins the exact value, so its constant and
+  message change with this ruling (as at platform-offline); the reviewer
+  checks the value against the evidence.
+  **CS-7 MET (2026-10-21).** Green runs 39559700392 (21.1 min) and
+  39559708963 (20.3 min) on `24b6839`; slower 21.1 min + 50 % = 31.65, rounded
+  up: `timeout-minutes` 29 -> 32. Evidence:
+  `docs/evidence/ci-speed/cs7/ci-timeout.md`.
 - **CS-8 Hook header reflects Q18.** `scripts/hooks/block-main-commit.sh` no
   longer calls branch protection "the real control (Q18)". Its header says
   Q18 was skipped (human, 2026-10-20), merges to `main` are a manual human
@@ -2613,6 +2618,7 @@ it removes CPU work instead of spreading it out.
   (`tests/test_offline_bundle.py`) and `LintScriptTest`
   (`tests/test_stack_scripts.py`). Together they take about 51 % of the unit
   suite's time (`docs/evidence/ci-speed/profile.md`).
+  The `test_harness_followups` fixture cost (TD note below) is added to this scope.
 - Production scripts, `verify.sh`, `ci.yml`, the sentinel and
   `[tool.coverage]` are unchanged. Any production change needs an
   orchestrator ruling first.
@@ -2620,6 +2626,10 @@ it removes CPU work instead of spreading it out.
   - one fixture bundle built once per class instead of per test;
   - a lint fixture tree with fewer files;
   - merging cases that run the same script invocation.
+  - **TD note (from ci-speed CS-7):** the `test_harness_followups` fixture
+    cost, about +90 s per CI run (24 -> 41 tests, 16 s -> 106 s; evidence
+    `docs/evidence/ci-speed/cs7/ci-timeout.md`). It is the main part of this
+    item's own ~110 s and is in scope for the cuts above.
 
 Criteria:
 
