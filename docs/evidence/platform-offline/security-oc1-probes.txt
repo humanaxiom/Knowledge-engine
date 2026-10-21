@@ -1,0 +1,230 @@
+# security-oc1 probes, 2026-10-19 (scratch path redacted to <scratch>; own projects ke-sec-oc1-{pull,pp,cd} only, all torn down: 0 containers/networks/volumes left; HEAD and index untouched)
+
+## P1b same, no extra tag
+-- store emptied: []
+pull busybox:1.37@<digest> rc=0
+-- raw:
+busybox:<none>
+-- after the new filter:
+busybox:<none>
+-- (end)
+## P1c a pulled digest whose content is ALSO tagged to a bundle name (same image ID)
+-- raw (default):
+ke-vendor/busybox:as bdf57e528e45
+busybox:<none> bdf57e528e45
+-- raw (--all):
+ke-vendor/busybox:as bdf57e528e45
+busybox:<none> bdf57e528e45
+-- --digests:
+ke-vendor/busybox:as <none>
+busybox:<none> sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e
+-- containerd image list (ctr -n moby):
+ctr: cannot access socket /run/containerd/containerd.sock: stat /run/containerd/containerd.sock: no such file or directory
+
+## P1d reproduce P1: pull name:tag@digest, then tag the same ref
+-- empty: []
+pull rc=0
+-- raw: busybox:<none> 
+tag rc=0
+-- raw after tag: ke-app:bundle-x 
+-- --digests: ke-app:bundle-x@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e 
+## P1e pull, then tag via the bare digest ref
+-- raw after tag: ke-app:bundle-y 
+## P1f pull, then tag via image ID
+-- raw after tag: ke-app:bundle-z 
+
+## P2 M-OCa end to end: real client half (offline_check.sh, KE_OFFLINE_CLIENT=1), stub docker, test seams
+== control-exact rc=0 docker_calls=4
+offline-client: launch
+offline-client: smoke (ci/offline included)
+offline-client: teardown
+offline-client: image names equal the bundle's; nothing was pulled
+== control-dangling-none-none rc=0 docker_calls=4
+offline-client: launch
+offline-client: smoke (ci/offline included)
+offline-client: teardown
+offline-client: image names equal the bundle's; nothing was pulled
+== postgres-none rc=1 docker_calls=4
+offline-client: smoke (ci/offline included)
+offline-client: teardown
+offline_check: FAIL (the inner daemon's image names differ from the bundle's: an image was pulled or is missing)
+  not in the bundle: postgres:<none>
+== busybox-none rc=1 docker_calls=4
+offline-client: smoke (ci/offline included)
+offline-client: teardown
+offline_check: FAIL (the inner daemon's image names differ from the bundle's: an image was pulled or is missing)
+  not in the bundle: busybox:<none>
+== none-repo-with-tag rc=1 docker_calls=4
+offline-client: smoke (ci/offline included)
+offline-client: teardown
+offline_check: FAIL (the inner daemon's image names differ from the bundle's: an image was pulled or is missing)
+  not in the bundle: <none>:16-bookworm
+
+## P3 L-OCb: client refuses visible CA/server material (Linux, real symlinks)
+== control-clean-client-dir rc=0 docker_calls=4 | -rw-r--r-- ca.pem ;-rw-r--r-- cert.pem ;-rw-r--r-- key.pem ;
+offline-client: image names equal the bundle's; nothing was pulled
+== ca-as-dir rc=1 docker_calls=0 | drwxr-xr-x ca ;
+offline_check: FAIL (<certs>/ca exists: the client must hold only its own TLS files, never the CA or server material)
+== ca-as-empty-file rc=1 docker_calls=0 | -rw-r--r-- ca ;
+offline_check: FAIL (<certs>/ca exists: the client must hold only its own TLS files, never the CA or server material)
+== ca-dangling-link rc=1 docker_calls=0 | lrwxrwxrwx /nonexistent/ca ->;
+offline_check: FAIL (<certs>/ca exists: the client must hold only its own TLS files, never the CA or server material)
+== ca-link-to-dir rc=1 docker_calls=0 | lrwxrwxrwx /tmp ->;
+offline_check: FAIL (<certs>/ca exists: the client must hold only its own TLS files, never the CA or server material)
+== ca-link-to-file rc=1 docker_calls=0 | lrwxrwxrwx /etc/hostname ->;
+offline_check: FAIL (<certs>/ca exists: the client must hold only its own TLS files, never the CA or server material)
+== ca-self-loop-link rc=1 docker_calls=0 | lrwxrwxrwx ca ->;
+offline_check: FAIL (<certs>/ca exists: the client must hold only its own TLS files, never the CA or server material)
+== ca-unreadable-dir rc=1 docker_calls=0 | d--------- ca ;
+offline_check: FAIL (<certs>/ca exists: the client must hold only its own TLS files, never the CA or server material)
+== server-as-dir rc=1 docker_calls=0 | drwxr-xr-x server ;
+offline_check: FAIL (<certs>/server exists: the client must hold only its own TLS files, never the CA or server material)
+== server-as-empty-file rc=1 docker_calls=0 | -rw-r--r-- server ;
+offline_check: FAIL (<certs>/server exists: the client must hold only its own TLS files, never the CA or server material)
+== server-dangling-link rc=1 docker_calls=0 | lrwxrwxrwx /nonexistent/server ->;
+offline_check: FAIL (<certs>/server exists: the client must hold only its own TLS files, never the CA or server material)
+== server-link-to-dir rc=1 docker_calls=0 | lrwxrwxrwx /tmp ->;
+offline_check: FAIL (<certs>/server exists: the client must hold only its own TLS files, never the CA or server material)
+== server-link-to-file rc=1 docker_calls=0 | lrwxrwxrwx /etc/hostname ->;
+offline_check: FAIL (<certs>/server exists: the client must hold only its own TLS files, never the CA or server material)
+== server-self-loop-link rc=1 docker_calls=0 | lrwxrwxrwx server ->;
+offline_check: FAIL (<certs>/server exists: the client must hold only its own TLS files, never the CA or server material)
+== server-unreadable-dir rc=1 docker_calls=0 | d--------- server ;
+offline_check: FAIL (<certs>/server exists: the client must hold only its own TLS files, never the CA or server material)
+== both-ca-and-server rc=1 docker_calls=0 | drwxr-xr-x ca ;drwxr-xr-x server ;
+offline_check: FAIL (<certs>/ca exists: the client must hold only its own TLS files, never the CA or server material)
+== CA-uppercase-control rc=0 docker_calls=4 | drwxr-xr-x CA ;
+offline-client: image names equal the bundle's; nothing was pulled
+-- DOCKER_CERT_PATH unset/empty fall back to /certs/client:
+41:  certs_dir="${DOCKER_CERT_PATH:-/certs/client}"
+
+## P4 KE_IMAGE_TAG manipulation (scratch copy of verify.sh + image_tag.sh, stub docker and stages)
+expected (sha256 of pwd -P, 12 hex): wt-0d89dd773388
+image_tag.sh direct: wt-0d89dd773388
+== baseline (fast) rc=0 tags seen:  1 KE_IMAGE_TAG=[wt-0d89dd773388];
+== baseline (full) rc=0 tags seen:  6 KE_IMAGE_TAG=[wt-0d89dd773388];
+== caller-env (fast) rc=0 tags seen:  1 KE_IMAGE_TAG=[wt-0d89dd773388];
+== caller-env (full) rc=0 tags seen:  6 KE_IMAGE_TAG=[wt-0d89dd773388];
+== caller-env-evil (full) rc=0 tags seen:  6 KE_IMAGE_TAG=[wt-0d89dd773388];
+== caller-other-wt (fast) rc=0 tags seen:  1 KE_IMAGE_TAG=[wt-0d89dd773388];
+== dotenv (fast) rc=0 tags seen:  1 KE_IMAGE_TAG=[wt-0d89dd773388];
+== dotenv (full) rc=1 tags seen:  1 KE_IMAGE_TAG=[wt-0d89dd773388];
+## P4b real docker compose resolution in the scratch checkout, hostile .env (KE_IMAGE_TAG=from-dotenv) present
+-- fast's exact invocation, with verify's export: "image": "ke-app:wt-0d89dd773388" "image": "ke-gates:wt-0d89dd773388" "image": "ke-gateway:wt-0d89dd773388" 
+-- full's project files, with verify's export: "image": "ke-app:wt-0d89dd773388" "image": "ke-gates:wt-0d89dd773388" "image": "ke-gateway:wt-0d89dd773388" 
+-- control, no export (shows .env is not read, .env.example gives local): "image": "ke-app:local" "image": "ke-gates:local" "image": "ke-gateway:local" 
+-- offline compose in the repo, verify's export inherited: "image": "docker:29.9.1-dind@sha256:3e5756e2b6dad6a5f1f5deacf0a19f9eaa2581b76ae092b2d4a118162e1d4d4e" "image": "ke-gates:wt-0d89dd773388" "pull_policy": "never" 
+
+## P5 path resolution of scripts/image_tag.sh
+-- Git Bash (Windows host)
+wt1 direct: wt-0d89dd773388|
+wt1 via absolute path: wt-0d89dd773388|
+wt1 via ./scripts: wt-0d89dd773388|
+wt1 via junction, cd in: wt-a674c80b65e2|
+wt1 via junction, abs: wt-a674c80b65e2|
+wt2 (second worktree): wt-3d2963e14076|
+wt1, path with space/quote: wt-8e4cfe85b299|
+wt1 with KE_IMAGE_TAG/PWD/HOME set: wt-0d89dd773388|
+wt1 with CDPATH=wt2 (relative $0): <scratch>/wt2|wt-3d2963e14076|
+wt1 with CDPATH=wt2 (./ $0): wt-0d89dd773388|
+wt1 with CDPATH=:wt2: wt-0d89dd773388|
+
+## P5b junction: what pwd -P returns in Git Bash
+in jlink: pwd -P = <tmp-alias>/<scratch>/wt1   (junction IS resolved, to wt1, but spelled through the Git Bash /tmp mount alias; direct cd spells it the drive path; see P5d check line)
+## P5c CDPATH end to end through the scratch verify.sh (stub docker), run from wt1 with CDPATH=<scratch>/wt2 exported
+scripts/verify.sh fast rc=0: docker KE_IMAGE_TAG=[<scratch>/wt2|wt-3d2963e14076] compose --env-file .env.example --profile gates run --rm --build gates scripts/verify.sh fast|
+./scripts/verify.sh fast rc=0: docker KE_IMAGE_TAG=[<scratch>/wt2|wt-3d2963e14076] compose --env-file .env.example --profile gates run --rm --build gates scripts/verify.sh fast|
+-- real compose with that two-line KE_IMAGE_TAG value:
+      "image": "ke-app:<scratch>/wt2\nwt-3d2963e14076",
+      "image": "ke-gates:<scratch>/wt2\nwt-3d2963e14076",
+      "image": "ke-gateway:<scratch>/wt2\nwt-3d2963e14076",
+rc of config: 0
+wt-3d2963e14076 
+ Image gates Built 
+
+## P5d is the CDPATH-polluted tag a usable image reference? (no build, no pull)
+check: sha256('/tmp/.../wt1') tag = wt-a674c80b65e2 (equals the junction tag: same tree, second spelling)
+[]
+Error response from daemon: 404 page not found
+error parsing reference: "ke-gates:<scratch>/wt2\nwt-3d2963e14076" is not a valid repository/tag: invalid reference format: repository name (<scratch>/wt2
+-- verify.sh passes it through compose run --build: compose v5.1.4 validates the reference at build/tag time; config accepted it (rc 0)
+unknown flag: --no-build
+run --no-build rc=0
+0
+
+## P5e CDPATH=.:<elsewhere> (a common shell setup), run in wt1, no redirect intended
+out: <scratch>/wt1|wt-0d89dd773388|
+out (CDPATH set but not exported): wt-0d89dd773388|
+
+## P5f Linux (real symlinks; bash 5.3 in the own-project dind container)
+expected sha256(/p/wt)[:12]: wt-3e86325f2c9f
+real checkout:                               wt-3e86325f2c9f|
+symlinked checkout, cd in:                   wt-3e86325f2c9f|
+symlinked checkout, abs $0:                  wt-3e86325f2c9f|
+symlinked scripts/ dir (alt/scripts->wt/scripts): wt-9df6e6ac3352|
+second worktree wtB:                         wt-4e58bbe1f355|
+same link repointed to wtB:                  wt-4e58bbe1f355|
+env noise (KE_IMAGE_TAG,PWD,HOME,LC_ALL):    wt-3e86325f2c9f|
+no sha256sum on PATH (shasum fallback absent -> fails?): scripts/image_tag.sh: line 8: dirname: command not found|scripts/image_tag.sh: line 13: shasum: command not found|rc=127|
+
+## P6 netprobe argument validation under strace (Linux, python3 -I /p/netprobe.py, sha256 equal to engine/netprobe.py)
+-- hostnames (must be bad_arguments, no socket, no resolver files, no :53)
+localhost 80 --within 1            -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+example.com 443 --within 1         -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+nonexistent.invalid 9 --within 1   -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+docker 2376 --within 1             -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+::1 80 --within 1                  -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+127.1 80 --within 1                -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+0x7f.0.0.1 80 --within 1           -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+127.000.000.001 80 --within 1      -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+999.1.1.1 80 --within 1            -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+127.0.0.1\  80 --within 1          -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+'' 80 --within 1                   -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+-- ports
+127.0.0.1 0 --within 1             -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+127.0.0.1 65536 --within 1         -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+127.0.0.1 70000 --within 1         -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+127.0.0.1 -1 --within 1            -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+127.0.0.1 +80 --within 1           -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+127.0.0.1 \ 80 --within 1          -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+127.0.0.1 ٨٠ --within 1          -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+127.0.0.1 1e3 --within 1           -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+127.0.0.1 0x50 --within 1          -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+127.0.0.1 '' --within 1            -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+-- within
+127.0.0.1 80 --within 0            -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+127.0.0.1 80 --within -1           -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+127.0.0.1 80 --within nan          -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+127.0.0.1 80 --within inf          -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+127.0.0.1 80 --within -inf         -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+127.0.0.1 80 --within 1e309        -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+127.0.0.1 80 --within abc          -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+127.0.0.1 80 --within ''           -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+127.0.0.1 80 --within -0           -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+-- argument shape
+127.0.0.1 80                       -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+127.0.0.1 80 --within 1 extra      -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+127.0.0.1 80 --with 1              -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+-h                                 -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+--help                             -> bad_arguments    rc=1 stderr=0B socket()=0 dns_syscalls=0 connect=[]
+127.0.0.1 80 --within=1            -> refused          rc=1 stderr=0B socket()=1 dns_syscalls=0 connect=[sin_port=htons(80), sin_addr=inet_addr("127.0.0.1") ]
+-- valid controls (IPv4 literal: exactly one socket+connect, still no resolver files)
+127.0.0.1 1 --within 1             -> refused          rc=1 stderr=0B socket()=1 dns_syscalls=0 connect=[sin_port=htons(1), sin_addr=inet_addr("127.0.0.1") ]
+192.0.2.1 9 --within 1             -> timeout          rc=1 stderr=0B socket()=1 dns_syscalls=0 connect=[sin_port=htons(9), sin_addr=inet_addr("192.0.2.1") ]
+255.255.255.255 9 --within 1       -> no_route         rc=1 stderr=0B socket()=1 dns_syscalls=0 connect=[sin_port=htons(9), sin_addr=inet_addr("255.255.255.255") ]
+
+## P7 I-OC5 offline-client pull_policy: never (own project ke-sec-oc1-pp; missing tag; --no-deps so dind does not start)
+ Container ke-sec-oc1-pp-offline-client-run-47024d4022b7 Creating 
+ Container ke-sec-oc1-pp-offline-client-run-47024d4022b7 Error response from daemon: No such image: ke-gates:sec-oc1-absent 
+Error response from daemon: No such image: ke-gates:sec-oc1-absent
+rc=1 elapsed=1s
+-- host image list for that ref after the run (must be empty: nothing pulled):[] [a4afb74af104
+73095ae8ed5e
+c1eec38c8767
+5be632a9f1bb]
+error while interpolating services.offline-client.volumes.[].source: required variable KE_OFFLINE_BUNDLE is missing a value: set by scripts/offline_check.sh
+-- P7 teardown done
+## P7b rendered config: "pull_policy": "never" 
+
+## secret-pattern grep over git diff HEAD + new untracked files (image_tag.sh, offline_check.sh, net_isolated.sh, netprobe.py, offline compose, 2 test files, oc1 evidence): no match (only the existing changeme placeholders excluded)
+## identifier grep (profile paths, Windows temp dirs, domain SIDs, user and host names) over the same set: no match

@@ -1,0 +1,60 @@
+=== fx/pool/tests/test_ign.py
+import os, signal, subprocess, sys, time, unittest
+class Ign(unittest.TestCase):
+    def test_ign(self):
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+        # grandchild in the same process group, also ignoring TERM/INT
+        subprocess.Popen([sys.executable, '-c', 'import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(120)  # GRANDCHILD'])
+        time.sleep(120)
+=== fx/pool/tests/test_slow.py
+import time, unittest
+class S(unittest.TestCase):
+    def test_slow(self):
+        time.sleep(120)
+=== fx/pool/tests/test_z.py
+import unittest
+class Z(unittest.TestCase):
+    def test_z(self):
+        pass
+=== fx/step/tests/test_z.py
+import unittest
+class Z(unittest.TestCase):
+    def test_z(self):
+        pass
+=== fx/step/tests/sub/test_ign.py
+import os, signal, subprocess, sys, time, unittest
+class Ign(unittest.TestCase):
+    def test_ign(self):
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+        # grandchild in the same process group, also ignoring TERM/INT
+        subprocess.Popen([sys.executable, '-c', 'import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(120)  # GRANDCHILD'])
+        time.sleep(120)
+=== fx/red/tests/test_bad.py
+import unittest
+class B(unittest.TestCase):
+    def test_b(self):
+        self.fail("red")
+=== fx/red/tests/test_z.py
+import unittest
+class Z(unittest.TestCase):
+    def test_z(self):
+        pass
+=== fx/redign/tests/test_bad.py
+import unittest
+class B(unittest.TestCase):
+    def test_b(self):
+        self.fail("red")
+=== fx/redign/tests/test_ign.py
+import os, signal, subprocess, sys, time, unittest
+class Ign(unittest.TestCase):
+    def test_ign(self):
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+        # grandchild in the same process group, also ignoring TERM/INT
+        subprocess.Popen([sys.executable, '-c', 'import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(120)  # GRANDCHILD'])
+        time.sleep(120)
+(test_ign.py also carries 60 '# padding' comment lines so it is the largest module and starts first)
+=== fx/fullmut: scripts/test.sh line 92 replaced by ': TERM-only mutant'
+=== fx/*: tracked files minus tests/ and docs/, pyproject fail_under = 0; fx/full: tracked files minus docs/ (working tree)

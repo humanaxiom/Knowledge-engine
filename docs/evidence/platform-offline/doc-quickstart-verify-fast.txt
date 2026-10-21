@@ -1,0 +1,96 @@
+ Image ke-gates Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 516B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from gates.Dockerfile
+#2 transferring dockerfile: 3.64kB done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#3 DONE 0.0s
+
+#4 [internal] load metadata for ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#4 DONE 0.0s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 97B done
+#5 DONE 0.0s
+
+#6 [stage-1  1/10] FROM docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#6 resolve docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258 0.0s done
+#6 DONE 0.0s
+
+#7 [uv 1/1] FROM ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#7 resolve ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946 0.0s done
+#7 DONE 0.0s
+
+#8 [internal] load build context
+#8 transferring context: 2.23kB done
+#8 DONE 0.0s
+
+#9 [stage-1  9/10] COPY config ./config
+#9 CACHED
+
+#10 [stage-1  5/10] WORKDIR /work
+#10 CACHED
+
+#11 [stage-1  7/10] COPY harness_telemetry ./harness_telemetry
+#11 CACHED
+
+#12 [stage-1  4/10] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x64; sha="3fc5e1567c450bd7bd5ae69ebb0a9a4a4e0418bbc36b0232cf6dd547f0bfc0eb" ;;       arm64) arch=arm64; sha="d0c216cec4c6c866fc15a105f039740228b53206f8576d2ed0bcd656a35ed6f6" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     tarball="powershell-7.4.21-linux-${arch}.tar.gz";     curl -fsSL -o "/tmp/$tarball"       "https://github.com/PowerShell/PowerShell/releases/download/v7.4.21/$tarball";     echo "$sha  /tmp/$tarball" | sha256sum -c -;     mkdir -p /opt/microsoft/powershell;     tar -xzf "/tmp/$tarball" -C /opt/microsoft/powershell;     chmod +x /opt/microsoft/powershell/pwsh;     ln -s /opt/microsoft/powershell/pwsh /usr/local/bin/pwsh;     rm "/tmp/$tarball";     pwsh -NoProfile -NonInteractive -Command "       $ErrorActionPreference = 'Stop';       Set-PSRepository PSGallery -InstallationPolicy Trusted;       Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope AllUsers -Force"
+#12 CACHED
+
+#13 [stage-1  3/10] RUN apt-get update  && apt-get install -y --no-install-recommends git jq ca-certificates curl       shellcheck=0.9.0-1 libicu72 libssl3 zlib1g  && rm -rf /var/lib/apt/lists/*  && git config --system --add safe.directory /work  && git config --system core.autocrlf true
+#13 CACHED
+
+#14 [stage-1  8/10] COPY engine ./engine
+#14 CACHED
+
+#15 [stage-1  6/10] COPY pyproject.toml uv.lock ./
+#15 CACHED
+
+#16 [stage-1  2/10] COPY --from=uv /uv /usr/local/bin/uv
+#16 CACHED
+
+#17 [stage-1 10/10] RUN uv sync --locked  && chown -R 10001:10001 /opt/venv /opt/uv-cache
+#17 CACHED
+
+#18 exporting to image
+#18 exporting layers done
+#18 exporting manifest sha256:e6feaf26cca22215d3978893060fc7497496d3e4863fa9197b818a79fd7e7b7b done
+#18 exporting config sha256:c130559ee0975278e4872efae8b1fa8f9a9b52ebc36e17c85152c47ea6320da9 done
+#18 exporting attestation manifest sha256:41d1a0106fb2caf0cf9dfde698e6e1f5b0ad14a7e54ba1401804b160d941e4d9
+#18 exporting attestation manifest sha256:41d1a0106fb2caf0cf9dfde698e6e1f5b0ad14a7e54ba1401804b160d941e4d9 0.0s done
+#18 exporting manifest list sha256:708825bb2adb54c798e3fe14d89668c7ae16fe6be2297c6ead95ed89f0fc150a 0.0s done
+#18 naming to docker.io/library/ke-gates:latest done
+#18 unpacking to docker.io/library/ke-gates:latest done
+#18 DONE 0.1s
+
+#19 resolving provenance for metadata file
+#19 DONE 0.0s
+ Image ke-gates Built 
+ Container ke-doc-arch-gates-run-3403e689b9d2 Creating 
+ Container ke-doc-arch-gates-run-3403e689b9d2 Created 
+== verify fast: 1fe81dd+dirty ==
+lint: shellcheck on 14 files
+
+In scripts/install.sh line 49:
+lower() { printf '%s' "$1" | tr 'A-Z' 'a-z'; }
+                                ^---^ SC2019 (info): Use '[:upper:]' to support accents and foreign alphabets.
+                                      ^---^ SC2018 (info): Use '[:lower:]' to support accents and foreign alphabets.
+
+
+In scripts/install.sh line 50:
+upper() { printf '%s' "$1" | tr 'a-z' 'A-Z'; }
+                                ^---^ SC2018 (info): Use '[:lower:]' to support accents and foreign alphabets.
+                                      ^---^ SC2019 (info): Use '[:upper:]' to support accents and foreign alphabets.
+
+For more information:
+  https://www.shellcheck.net/wiki/SC2018 -- Use '[:lower:]' to support accent...
+  https://www.shellcheck.net/wiki/SC2019 -- Use '[:upper:]' to support accent...
+lint: PSScriptAnalyzer on 4 files
+
+lint: FAIL
+verify fast: FAIL (lint.sh exited non-zero)
+

@@ -1,0 +1,32 @@
+# Round-5 test classes run on scratch copies (tests/__init__.py, tests/test_resource_probe.py, tests/test_block_main_commit_hook.py, scripts/resource_probe.sh, scripts/hooks/block-main-commit.sh), repo mounted ro, then the process list and /tmp listing. Same container setup.
+0
+test_each_reader_caps_bytes_and_lines (tests.test_resource_probe.ResourceProbeTest.test_each_reader_caps_bytes_and_lines) ... ok
+test_fifo_or_device_source_gives_na_quickly (tests.test_resource_probe.ResourceProbeTest.test_fifo_or_device_source_gives_na_quickly) ... ok
+test_missing_sources_print_na_and_exit_0 (tests.test_resource_probe.ResourceProbeTest.test_missing_sources_print_na_and_exit_0) ... ok
+test_no_root_path_reads_no_env (tests.test_resource_probe.ResourceProbeTest.test_no_root_path_reads_no_env) ... ok
+test_nproc_ignores_openmp_env (tests.test_resource_probe.ResourceProbeTest.test_nproc_ignores_openmp_env) ... ok
+test_oversized_source_is_cut_off (tests.test_resource_probe.ResourceProbeTest.test_oversized_source_is_cut_off) ... ok
+test_prints_one_line_from_a_fake_root (tests.test_resource_probe.ResourceProbeTest.test_prints_one_line_from_a_fake_root) ... ok
+test_prints_only_numbers_never_file_text_or_env (tests.test_resource_probe.ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env) ... ok
+test_stat_fields_are_base_10_and_capped (tests.test_resource_probe.ResourceProbeTest.test_stat_fields_are_base_10_and_capped) ... ok
+test_detector_flags_each_construct_and_allows_plain_redirection (tests.test_block_main_commit_hook.HookLaunchesNoBackgroundWorkTest.test_detector_flags_each_construct_and_allows_plain_redirection) ... ok
+test_detector_splits_on_newline_only (tests.test_block_main_commit_hook.HookLaunchesNoBackgroundWorkTest.test_detector_splits_on_newline_only) ... ok
+test_full_check_rejects_hidden_separator_and_hash_line_mutants (tests.test_block_main_commit_hook.HookLaunchesNoBackgroundWorkTest.test_full_check_rejects_hidden_separator_and_hash_line_mutants) ... ok
+test_hook_launches_no_background_work (tests.test_block_main_commit_hook.HookLaunchesNoBackgroundWorkTest.test_hook_launches_no_background_work) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.937s
+
+OK
+--- processes after the run (expect only this shell, ps/ls):
+1 bash -c 
+ls /tmp | wc -l
+python3 -m unittest -v tests.test_resource_probe tests.test_block_main_commit_hook.HookLaunchesNoBackgroundWorkTest 2>&1 | tail -25
+echo "--- processes after the run (expect only this shell, ps/ls):"
+for p in /proc/[0-9]*; do printf "%s " "${p#/proc/}"; tr "\0" " " <$p/cmdline 2>/dev/null; echo; done
+echo "--- /tmp entries left:"; ls -la /tmp
+ 
+--- /tmp entries left:
+total 4
+drwxrwxrwt 2 root root   40 Oct 21 06:42 .
+drwxr-xr-x 1 root root 4096 Oct 21 06:42 ..

@@ -1,0 +1,31 @@
+--- before (test.sh pid 11)
+     1      1 S bash /h/sig.sh TERM pid 12  
+    10      1 S sleep 302 
+    11     11 S bash scripts/test.sh fast 
+     7      7 S sleep 300 
+     8      1 S sleep 300 
+    84     84 S uv run --locked python -m coverage run -p --data-file=/tmp/.coverage.tests.sub -m unittest
+    87     84 S /opt/venv/bin/python3 -m coverage run -p --data-file=/tmp/.coverage.tests.sub -m unittest 
+    88     84 S /opt/venv/bin/python3 -c import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN
+     9      9 S sleep 301 
+test.sh rc=143 elapsed=2.02s
+--- after
+     1      1 S bash /h/sig.sh TERM pid 12  
+    10      1 S sleep 302 
+     7      7 S sleep 300 
+     8      1 S sleep 300 
+     9      9 S sleep 301 
+leftover check done
+logdir removed
+OUT1 alive
+OUT2 alive
+OUT3 alive
+OUT4 alive
+--- test.sh output tail
+/opt/venv/lib/python3.12/site-packages/coverage/control.py:967: CoverageWarning: No data was collected. (no-data-collected); see https://coverage.readthedocs.io/en/7.16.2/messages.html#warning-no-data-collected
+  self._warn("No data was collected.", slug="no-data-collected")
+unit: 1s rc=0 tests.test_z
+test_ign (tests.sub.test_ign.Ign.test_ign) ... /usr/local/lib/python3.12/subprocess.py:1127: ResourceWarning: subprocess 88 is still running
+  _warn("subprocess %s is still running" % self.pid,
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+rc=0

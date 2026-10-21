@@ -1,0 +1,59 @@
+== mutation: egress runtime guard removed (engine/egress.py)
+sha256 before:  4e21f0d5d65dfdf82f9b96fcbfd8b28c415aaf01f448266abdac113aa54325cc
+sha256 mutated: ecbe3cb374e7224ab75bfe13145b94628f2137c9302e42abede6dd6907279b09
+unittest exit: 1 (expected non-zero = RED)
+ERROR: test_egress_guard_checks_every_redirect_hop (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_checks_every_redirect_hop)
+FAIL: test_egress_guard_runtime (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_runtime) (url='http://denied.example/v1/chat/completions')
+FAIL: test_egress_guard_runtime (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_runtime) (url='https://denied.example:8443/v1/models')
+FAIL: test_egress_guard_runtime (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_runtime) (url='http://203.0.113.7:9000/v1/models')
+FAIL: test_egress_guard_runtime (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_runtime) (url='http://model-host.internal.denied.example/v1/models')
+FAIL: test_egress_guard_runtime (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_runtime)
+FAIL: test_model_client_uses_guarded_transport (tests.test_engine_egress.EgressRuntimeTest.test_model_client_uses_guarded_transport)
+
+FAILED (failures=6, errors=1)
+
+sha256 restored: 4e21f0d5d65dfdf82f9b96fcbfd8b28c415aaf01f448266abdac113aa54325cc  MATCH
+
+== mutation: startup refusal (auth outside dev) disabled (engine/startup.py)
+sha256 before:  592d6ab21a2afe499e9ccf39bff78c17bd8887f8373b228d7cb682cfa006ca46
+sha256 mutated: e6a50650952d564d5e7cf79ed4228e02a4f6956fae1cbc56353007885ff8a2e4
+unittest exit: 1 (expected non-zero = RED)
+FAIL: test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='auth off', env='prod')
+FAIL: test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='auth off', env='ci')
+FAIL: test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='hide flag off', flag='OPENINFERENCE_HIDE_INPUTS', env='prod')
+FAIL: test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='hide flag off', flag='OPENINFERENCE_HIDE_INPUTS', env='ci')
+FAIL: test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='hide flag off', flag='OPENINFERENCE_HIDE_OUTPUTS', env='prod')
+FAIL: test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='hide flag off', flag='OPENINFERENCE_HIDE_OUTPUTS', env='ci')
+FAIL: test_refused_startup_marks_spans (tests.test_engine_startup.StartupTracingTest.test_refused_startup_marks_spans)
+
+FAILED (failures=7)
+
+sha256 restored: 592d6ab21a2afe499e9ccf39bff78c17bd8887f8373b228d7cb682cfa006ca46  MATCH
+
+== mutation: placeholder check disabled (engine/startup.py)
+sha256 before:  592d6ab21a2afe499e9ccf39bff78c17bd8887f8373b228d7cb682cfa006ca46
+sha256 mutated: 864f07a3e3b87c861948ebaba72896948bf8f6a1cc717bbbaf618c24e10e07ce
+unittest exit: 1 (expected non-zero = RED)
+FAIL: test_placeholder_check_reads_no_file (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_check_reads_no_file)
+FAIL: test_startup_refuses_placeholder_secrets (tests.test_engine_startup.PlaceholderSecretTest.test_startup_refuses_placeholder_secrets) (secret='KE_STORES__NEO4J__PASSWORD', value='changeme-stores-neo4j-password', env='prod')
+FAIL: test_startup_refuses_placeholder_secrets (tests.test_engine_startup.PlaceholderSecretTest.test_startup_refuses_placeholder_secrets) (secret='KE_STORES__NEO4J__PASSWORD', value='changeme-stores-neo4j-password', env='ci')
+FAIL: test_startup_refuses_placeholder_secrets (tests.test_engine_startup.PlaceholderSecretTest.test_startup_refuses_placeholder_secrets) (secret='KE_STORES__NEO4J__PASSWORD', value='changeme-something-else-entirely', env='prod')
+FAIL: test_startup_refuses_placeholder_secrets (tests.test_engine_startup.PlaceholderSecretTest.test_startup_refuses_placeholder_secrets) (secret='KE_STORES__NEO4J__PASSWORD', value='changeme-something-else-entirely', env='ci')
+FAIL: test_startup_refuses_placeholder_secrets (tests.test_engine_startup.PlaceholderSecretTest.test_startup_refuses_placeholder_secrets) (secret='KE_STORES__NEO4J__PASSWORD', value='changemeplease', env='prod')
+FAIL: test_startup_refuses_placeholder_secrets (tests.test_engine_startup.PlaceholderSecretTest.test_startup_refuses_placeholder_secrets) (secret='KE_STORES__NEO4J__PASSWORD', value='changemeplease', env='ci')
+FAIL: test_startup_refuses_placeholder_secrets (tests.test_engine_startup.PlaceholderSecretTest.test_startup_refuses_placeholder_secrets) (secret='KE_STORES__NEO4J__PASSWORD', value='CHANGEME-UPPER', env='prod')
+
+FAILED (failures=21)
+
+sha256 restored: 592d6ab21a2afe499e9ccf39bff78c17bd8887f8373b228d7cb682cfa006ca46  MATCH
+
+== mutation: hardcoded port planted in engine (engine/egress.py)
+sha256 before:  4e21f0d5d65dfdf82f9b96fcbfd8b28c415aaf01f448266abdac113aa54325cc
+sha256 mutated: ba99a106251155dfdfa9ceed48280a4c8fdfdc46a4a262ad47dc228486e50203
+unittest exit: 1 (expected non-zero = RED)
+FAIL: test_no_hardcoded_ports (tests.test_engine_hardcoded.RepositoryScanTest.test_no_hardcoded_ports)
+
+FAILED (failures=1)
+
+sha256 restored: 4e21f0d5d65dfdf82f9b96fcbfd8b28c415aaf01f448266abdac113aa54325cc  MATCH
+

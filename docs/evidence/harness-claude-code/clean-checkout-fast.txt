@@ -1,0 +1,170 @@
+# clean checkout: git clone -c core.autocrlf=false --branch agent/harness-claude-code https://github.com/humanaxiom/Knowledge-engine (remote clone succeeded)
+# command: scripts/verify.sh fast (Git Bash, in clean clone)
+# git rev-parse HEAD (before and after): 615adf8bc9c7827bb398b0f1f1fabf8c8b2aea9e
+# git status --short after both runs: '' (empty)
+
+ Image clean-checkout-gates Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 753B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from gates.Dockerfile
+#2 transferring dockerfile: 1.22kB done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#3 DONE 0.5s
+
+#4 [internal] load metadata for ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#4 DONE 0.6s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 91B done
+#5 DONE 0.0s
+
+#6 [uv 1/1] FROM ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#6 resolve ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946 0.0s done
+#6 DONE 0.0s
+
+#7 [stage-1 1/7] FROM docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#7 resolve docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258 0.0s done
+#7 DONE 0.0s
+
+#8 [internal] load build context
+#8 transferring context: 74.62kB 0.0s done
+#8 DONE 0.0s
+
+#9 [stage-1 2/7] COPY --from=uv /uv /usr/local/bin/uv
+#9 CACHED
+
+#10 [stage-1 3/7] RUN apt-get update  && apt-get install -y --no-install-recommends git jq  && rm -rf /var/lib/apt/lists/*  && git config --system --add safe.directory /work  && git config --system core.autocrlf true
+#10 CACHED
+
+#11 [stage-1 4/7] WORKDIR /work
+#11 CACHED
+
+#12 [stage-1 5/7] COPY pyproject.toml uv.lock ./
+#12 DONE 0.0s
+
+#13 [stage-1 6/7] COPY harness_telemetry ./harness_telemetry
+#13 DONE 0.0s
+
+#14 [stage-1 7/7] RUN uv sync --locked
+#14 0.370 Using CPython 3.12.15 interpreter at: /usr/local/bin/python3
+#14 0.370 Creating virtual environment at: /opt/venv
+#14 0.376 Resolved 18 packages in 1ms
+#14 0.381    Building monitored-harness @ file:///work
+#14 1.034       Built monitored-harness @ file:///work
+#14 1.036 Prepared 18 packages in 658ms
+#14 1.104 Installed 18 packages in 68ms
+#14 1.104  + certifi==2026.7.22
+#14 1.104  + charset-normalizer==3.5.2
+#14 1.104  + googleapis-common-protos==1.75.5
+#14 1.104  + idna==3.20
+#14 1.104  + monitored-harness==0.1.0 (from file:///work)
+#14 1.104  + openinference-semantic-conventions==0.1.41
+#14 1.104  + opentelemetry-api==1.45.1
+#14 1.104  + opentelemetry-exporter-http-transport==0.66b1
+#14 1.104  + opentelemetry-exporter-otlp-common==0.66b1
+#14 1.104  + opentelemetry-exporter-otlp-proto-common==1.45.1
+#14 1.104  + opentelemetry-exporter-otlp-proto-http==1.45.1
+#14 1.104  + opentelemetry-proto==1.45.1
+#14 1.104  + opentelemetry-sdk==1.45.1
+#14 1.104  + opentelemetry-semantic-conventions==0.66b1
+#14 1.104  + protobuf==7.36.2
+#14 1.104  + requests==2.34.2
+#14 1.104  + typing-extensions==4.16.0
+#14 1.104  + urllib3==2.8.0
+#14 DONE 1.1s
+
+#15 exporting to image
+#15 exporting layers
+#15 exporting layers 0.4s done
+#15 exporting manifest sha256:0d240f6857b0083247e69757e03a10f1412a55f87f5ea968012a423fa354f80c 0.0s done
+#15 exporting config sha256:91ac054021b7f956af3135288bd35fd6dabeaef0481acf2b06c1a55392eb62d8 0.0s done
+#15 exporting attestation manifest sha256:3db1e807c505635c754ed4a00ad9ad5a8767b333b4cf47e0a50e8359b845f6aa 0.0s done
+#15 exporting manifest list sha256:049aecd363ab59d920d8cb5dde6dd8a88f2379e8fa6f0dacd0f0fb90b3c47908 0.0s done
+#15 naming to docker.io/library/clean-checkout-gates:latest done
+#15 unpacking to docker.io/library/clean-checkout-gates:latest
+#15 unpacking to docker.io/library/clean-checkout-gates:latest 0.2s done
+#15 DONE 0.8s
+
+#16 resolving provenance for metadata file
+#16 DONE 0.0s
+ Image clean-checkout-gates Built 
+ Container clean-checkout-gates-run-f656dcdfa0e0 Creating 
+ Container clean-checkout-gates-run-f656dcdfa0e0 Created 
+== verify fast: 615adf8 ==
+   Building monitored-harness @ file:///work
+      Built monitored-harness @ file:///work
+Uninstalled 1 package in 0.77ms
+Installed 1 package in 1ms
+test_backslash_forms_deny_push_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_forms_deny_push_off_main) ... ok
+test_denies_commit_and_push_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_commit_and_push_on_main) ... ok
+test_denies_commit_creating_commands_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_commit_creating_commands_on_main) ... ok
+test_denies_git_first_word_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_git_first_word_on_main) ... ok
+test_denies_nested_git_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_nested_git_on_main) ... ok
+test_denies_nested_push_to_main_or_force_from_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_nested_push_to_main_or_force_from_plan_item_branch) ... ok
+test_denies_on_master (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_on_master) ... ok
+test_denies_push_on_master (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_on_master) ... ok
+test_denies_push_refspec_forms_from_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_refspec_forms_from_plan_item_branch) ... ok
+test_denies_push_to_main_or_force_push_from_any_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_to_main_or_force_push_from_any_branch) ... ok
+test_denies_push_with_c_global_option_from_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_with_c_global_option_from_plan_item_branch) ... ok
+test_description_with_forged_command_key_is_not_judged (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_description_with_forged_command_key_is_not_judged) ... ok
+test_escaped_quote_does_not_hide_following_push (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_escaped_quote_does_not_hide_following_push) ... ok
+test_grep_for_a_verb_on_main_is_accepted_false_positive (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_grep_for_a_verb_on_main_is_accepted_false_positive) ... ok
+test_judges_only_the_command_field (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_judges_only_the_command_field) ... ok
+test_long_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_long_command_finishes_quickly) ... ok
+test_one_line_mentions_are_accepted_false_positives_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_line_mentions_are_accepted_false_positives_off_main) ... ok
+test_one_megabyte_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_command_finishes_quickly) ... ok
+test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) ... ok
+test_payload_helper_is_compact_claude_code_shape (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_payload_helper_is_compact_claude_code_shape) ... ok
+test_prefixed_push_to_main_denied_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_prefixed_push_to_main_denied_off_main) ... ok
+test_shell_wrapped_commit_denied_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_shell_wrapped_commit_denied_on_main) ... ok
+test_silent_for_claude_code_heredoc_commit_on_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_claude_code_heredoc_commit_on_plan_item_branch) ... ok
+test_silent_for_everyday_commands_on_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_everyday_commands_on_plan_item_branch) ... ok
+test_silent_for_non_git_command (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_non_git_command) ... ok
+test_silent_for_plain_push_of_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_plain_push_of_plan_item_branch) ... ok
+test_silent_for_text_that_only_mentions_push_on_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_text_that_only_mentions_push_on_plan_item_branch) ... ok
+test_silent_on_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_on_plan_item_branch) ... ok
+test_split_or_cased_git_word_denied_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_split_or_cased_git_word_denied_on_main) ... ok
+test_works_without_jq_on_raw_input (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_works_without_jq_on_raw_input) ... ok
+test_gates_image_installs_jq (tests.test_block_main_commit_hook.GatesImageJqTest.test_gates_image_installs_jq) ... ok
+test_agent_model_tiers (tests.test_harness_port.AgentPortTest.test_agent_model_tiers) ... ok
+test_agent_port_preserves_constraints (tests.test_harness_port.AgentPortTest.test_agent_port_preserves_constraints) ... ok
+test_copilot_agents_kept (tests.test_harness_port.AgentPortTest.test_copilot_agents_kept) ... ok
+test_every_role_ported (tests.test_harness_port.AgentPortTest.test_every_role_ported) ... ok
+test_judges_cannot_edit (tests.test_harness_port.AgentPortTest.test_judges_cannot_edit) ... ok
+test_non_producer_body_identical_to_copilot (tests.test_harness_port.AgentPortTest.test_non_producer_body_identical_to_copilot) ... ok
+test_producer_sections_identical_except_verification_steps (tests.test_harness_port.AgentPortTest.test_producer_sections_identical_except_verification_steps) ... ok
+test_ci_only_and_generated_artifacts_listed (tests.test_harness_port.ClaudeMdTest.test_ci_only_and_generated_artifacts_listed) ... ok
+test_claude_md_imports_agents (tests.test_harness_port.ClaudeMdTest.test_claude_md_imports_agents) ... ok
+test_delivery_rules_present (tests.test_harness_port.ClaudeMdTest.test_delivery_rules_present) ... ok
+test_done_check_in_handoff_readme (tests.test_harness_port.HandoffCapTest.test_done_check_in_handoff_readme) ... ok
+test_handoff_line_cap (tests.test_harness_port.HandoffCapTest.test_handoff_line_cap) ... ok
+test_hook_wired_on_bash (tests.test_harness_port.SettingsTest.test_hook_wired_on_bash) ... ok
+test_ci_calls_verify_only (tests.test_harness_port.VerificationEntryPointTest.test_ci_calls_verify_only) ... ok
+test_depth_table_identical_everywhere (tests.test_harness_port.VerificationEntryPointTest.test_depth_table_identical_everywhere) ... ok
+test_evidence_contract_present (tests.test_harness_port.VerificationEntryPointTest.test_evidence_contract_present) ... ok
+test_gate_scripts_use_locked (tests.test_harness_port.VerificationEntryPointTest.test_gate_scripts_use_locked) ... ok
+test_no_stray_verification_commands (tests.test_harness_port.VerificationEntryPointTest.test_no_stray_verification_commands) ... ok
+test_tester_owns_contradictions (tests.test_harness_port.VerificationEntryPointTest.test_tester_owns_contradictions) ... ok
+test_verify_sh_has_no_inlined_commands (tests.test_harness_port.VerificationEntryPointTest.test_verify_sh_has_no_inlined_commands) ... ok
+test_appends_one_line_and_emits_session_span (tests.test_log_event.LogEventTest.test_appends_one_line_and_emits_session_span) ... ok
+test_failed_gate_marks_span_error (tests.test_log_event.LogEventTest.test_failed_gate_marks_span_error) ... ok
+test_format_line_keeps_one_line_per_entry (tests.test_log_event.LogEventTest.test_format_line_keeps_one_line_per_entry) ... ok
+test_rejects_unknown_role (tests.test_log_event.LogEventTest.test_rejects_unknown_role) ... ok
+test_agent_loop_renders_as_nested_tree (tests.test_tracing.TracingTest.test_agent_loop_renders_as_nested_tree) ... ok
+test_chain_span_kind (tests.test_tracing.TracingTest.test_chain_span_kind) ... ok
+test_exception_marks_span_error_and_propagates (tests.test_tracing.TracingTest.test_exception_marks_span_error_and_propagates) ... ok
+test_hide_inputs_and_outputs_redacts_values (tests.test_tracing.TracingTest.test_hide_inputs_and_outputs_redacts_values) ... ok
+test_llm_records_model_and_token_usage (tests.test_tracing.TracingTest.test_llm_records_model_and_token_usage) ... ok
+test_retriever_records_parameterised_query_and_documents (tests.test_tracing.TracingTest.test_retriever_records_parameterised_query_and_documents) ... ok
+test_setup_tracing_is_idempotent (tests.test_tracing.TracingTest.test_setup_tracing_is_idempotent) ... ok
+
+----------------------------------------------------------------------
+Ran 62 tests in 5.027s
+
+OK
+== verify fast: PASS ==
+exit=0

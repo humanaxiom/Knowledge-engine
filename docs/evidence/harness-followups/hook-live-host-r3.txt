@@ -1,0 +1,11 @@
+jq: absent
+main     c1   DENY
+main     c2   DENY
+main     c3   DENY
+agent/x  p1   DENY
+main     m1   DENY
+agent/x  o1   DENY
+agent/x  k1   silent
+main     k2   silent
+agent/x  k3   silent
+main     j1   DENY

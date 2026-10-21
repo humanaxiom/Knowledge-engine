@@ -1,0 +1,59 @@
+# security rework-2 re-audit: harness (<scratch>) run in ke-gates:latest, --network none, no compose project
+# expect column: FAIL = lint must refuse/flag; OK = matched expectation; BYPASS = did not
+OK      baseline                                           rc=0 lint=PASS :: lint: PASS 
+OK      dirlink-scripts-outside                            rc=1 lint=FAIL :: lint: FAIL (symlink refused: scripts/linkdir) 
+OK      dirlink-docker-outside                             rc=1 lint=FAIL :: lint: FAIL (symlink refused: docker/linkdir) 
+OK      dirlink-scripts-inside                             rc=1 lint=FAIL :: lint: FAIL (symlink refused: scripts/inl) 
+OK      dirlink-docker-inside                              rc=1 lint=FAIL :: lint: FAIL (symlink refused: docker/s) 
+OK      dirlink-nested                                     rc=1 lint=FAIL :: lint: FAIL (symlink refused: scripts/hooks/deep) 
+OK      filelink-clean-sh                                  rc=1 lint=FAIL :: lint: FAIL (symlink refused: scripts/alias.sh) 
+OK      filelink-outside-ps1                               rc=1 lint=FAIL :: lint: FAIL (symlink refused: scripts/o.ps1) 
+OK      filelink-nonscript-name                            rc=1 lint=FAIL :: lint: FAIL (symlink refused: scripts/README) 
+OK      filelink-noext-docker                              rc=1 lint=FAIL :: lint: FAIL (symlink refused: docker/gateway/entry) 
+OK      dangling                                           rc=1 lint=FAIL :: lint: FAIL (symlink refused: scripts/z.ps1) 
+OK      dangling-noname                                    rc=1 lint=FAIL :: lint: FAIL (symlink refused: docker/zz) 
+OK      link-loop                                          rc=1 lint=FAIL :: lint: FAIL (symlink refused: scripts/loop) 
+OK      nested-deep-link                                   rc=1 lint=FAIL :: lint: FAIL (symlink refused: scripts/a/b/c/x) 
+OK      root-scripts-symlink                               rc=1 lint=FAIL :: lint: FAIL (symlink refused: scripts) 
+OK      root-docker-symlink-outside                        rc=1 lint=FAIL :: lint: FAIL (symlink refused: docker) 
+OK      root-docker-symlink-inside                         rc=1 lint=FAIL :: lint: FAIL (symlink refused: docker) 
+OK      upper-SH                                           rc=1 lint=FAIL ::      ^-- SC2086 (info): Double quote to prevent globbing and word splitting.         ^--^ SC2046 (warning): Quote this to prevent word splitting.         ^--^ SC2006 (style): Use $(...) notation instead of legacy backticks `...`. 
+OK      mixed-Sh-docker                                    rc=1 lint=FAIL ::      ^-- SC2086 (info): Double quote to prevent globbing and word splitting.         ^--^ SC2046 (warning): Quote this to prevent word splitting.         ^--^ SC2006 (style): Use $(...) notation instead of legacy backticks `...`. 
+OK      upper-PS1                                          rc=1 lint=FAIL :: PSAvoidUsingInvokeExpression Warning  x.PS1      1    Invoke-Expression is used. Please remove Invoke-Expression from script and find other options instead. lint: FAIL 
+OK      lower-psm1                                         rc=1 lint=FAIL :: PSAvoidUsingInvokeExpression Warning  m.psm1     1    Invoke-Expression is used. Please remove Invoke-Expression from script and find other options instead. lint: FAIL 
+OK      upper-PSM1-nested                                  rc=1 lint=FAIL :: PSAvoidUsingInvokeExpression Warning  m.PSM1     1    Invoke-Expression is used. Please remove Invoke-Expression from script and find other options instead. lint: FAIL 
+OK      ps-semicolon-name                                  rc=1 lint=FAIL :: PSAvoidUsingInvokeExpression Warning  a;touch $HOME-pwn;.ps1 1    Invoke-Expression is used. Please remove Invoke-Expression from script and find other options instead. lint: FAIL 
+OK      ps-subexpr-name                                    rc=1 lint=FAIL :: PSAvoidUsingInvokeExpression Warning  $(touch $HOME-pwn2).ps1 1    Invoke-Expression is used. Please remove Invoke-Expression from script and find other options instead. lint: FAIL 
+BYPASS  ps-quote-name                                      rc=0 lint=PASS :: lint: PASS 
+OK      ps-backtick-name                                   rc=1 lint=FAIL :: PSAvoidUsingInvokeExpression Warning  a`$(whoami).ps1 1    Invoke-Expression is used. Please remove Invoke-Expression from script and find other options instead. lint: FAIL 
+OK      ps-wildcard-bracket                                rc=1 lint=FAIL :: lint: FAIL (a PowerShell script path contains a wildcard character [ ] * ?: refused: scripts/[a].ps1) 
+OK      ps-wildcard-star                                   rc=1 lint=FAIL :: lint: FAIL (a PowerShell script path contains a wildcard character [ ] * ?: refused: scripts/a*.ps1) 
+OK      ps-newline-name                                    rc=1 lint=FAIL :: lint: FAIL (a PowerShell script path contains a newline: refused) 
+OK      ps-dash-name                                       rc=1 lint=FAIL :: PSAvoidUsingInvokeExpression Warning  -Path.ps1  1    Invoke-Expression is used. Please remove Invoke-Expression from script and find other options instead. lint: FAIL 
+OK      sh-dash-name                                       rc=1 lint=FAIL ::      ^-- SC2086 (info): Double quote to prevent globbing and word splitting.         ^--^ SC2046 (warning): Quote this to prevent word splitting.         ^--^ SC2006 (style): Use $(...) notation instead of legacy backticks `...`. 
+OK      sh-newline-name                                    rc=1 lint=FAIL :: lint: FAIL 
+OK      sh-space-name                                      rc=1 lint=FAIL ::      ^-- SC2086 (info): Double quote to prevent globbing and word splitting.         ^--^ SC2046 (warning): Quote this to prevent word splitting.         ^--^ SC2006 (style): Use $(...) notation instead of legacy backticks `...`. 
+OK      hardlink-outside-ps1                               rc=1 lint=FAIL :: PSAvoidUsingInvokeExpression Warning  h.ps1      1    Invoke-Expression is used. Please remove Invoke-Expression from script and find other options instead. lint: FAIL 
+OK      hardlink-outside-sh                                rc=1 lint=FAIL ::      ^-- SC2086 (info): Double quote to prevent globbing and word splitting.         ^--^ SC2046 (warning): Quote this to prevent word splitting.         ^--^ SC2006 (style): Use $(...) notation instead of legacy backticks `...`. 
+BYPASS  hardlink-outside-noext                             rc=0 lint=PASS :: lint: PASS 
+OK      hardlink-clean-dup                                 rc=0 lint=PASS :: lint: PASS 
+OK      info-noext-shebang-sh                              rc=0 lint=PASS :: lint: PASS 
+OK      info-ps1-under-docker                              rc=0 lint=PASS :: lint: PASS 
+--- pwn markers:
+ls: cannot access '/root-pwn*': No such file or directory
+ls: cannot access '/tmp/pwn3': No such file or directory
+
+# ps-quote-name re-run (harness artifact: original name contained '/', so file was never created)
+a"; New-Item pwn4; ".ps1
+a'); New-Item pwn3; ('.ps1
+PSAvoidUsingInvokeExpression Warning  a"; New-Item pwn4; ".ps1   1    Invoke-Expression is used. Please remove Invoke-Expression from script and find other options instead.
+PSAvoidUsingInvokeExpression Warning  a'); New-Item pwn3; ('.ps1 1    Invoke-Expression is used. Please remove Invoke-Expression from script and find other options instead.
+
+
+[31;1mWrite-Error: [31;1mPSScriptAnalyzer findings in scripts/*.ps1[0m
+lint: FAIL
+rc=1
+ls: cannot access 'pwn3': No such file or directory
+ls: cannot access 'pwn4': No such file or directory
+ls: cannot access 'scripts/pwn3': No such file or directory
+ls: cannot access 'scripts/pwn4': No such file or directory

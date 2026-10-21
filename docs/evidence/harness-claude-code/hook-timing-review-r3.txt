@@ -1,0 +1,21 @@
+# reviewer: hook timing on 1 MB commands, agent/x, payload {"tool_input":{"command":...}} piped in.
+# gates image: knowledge-engine-gates:latest, awk -> /usr/bin/mawk (ls -l /etc/alternatives/awk), --network none
+# mode file out_len seconds
+jq   esc 1MB of \" inside echo "..."        0  1.82
+nojq esc                                     0  1.99
+jq   quotes 1MB of "a" tokens                0  0.19
+nojq quotes                                  0  0.35
+jq   git commit -m "<1 MB of a>"             0  8.06
+nojq git commit -m "<1 MB of a>"             0  7.77
+jq   cat <<'EOF' / <1 MB line> / EOF         0  7.81
+nojq heredoc line                            0  7.74
+jq   echo '<1 MB of a>'                      0  7.85
+nojq echo '<1 MB>'                           0  7.79
+jq   echo <1 MB of a>                        0  8.29
+nojq echo <1 MB>                             0  8.30
+# scaling, gates image, jq, git commit -m "<N x a>":
+# 125000 0.24 | 250000 0.81 | 500000 2.17 | 1000000 8.06  (about 4x per doubling = quadratic)
+# realistic 1 MB commit message ("word " x200 + \n, repeated) in one -m string: 8.03
+# host Git Bash (gawk 5.4, no jq): dq_token 0.68, sq_token 0.60, unquoted 0.89, heredoc_line 0.45, 1 MB of \" 4.19-4.33 (linear: 1.20/2.20/4.33 for 0.25/0.5/1 MB)
+# Cause: add() does cur = cur ch per character (hook line 61) and skip_heredocs does line = line ch (line 124);
+# mawk copies the string on every append, gawk appends in place. The suite's L9 test uses 100000 short tokens, so it never sees this.

@@ -1,0 +1,241 @@
+# Reviewer rework-3 raw output. Scratch copy of the repo (.venv excluded), image knowledge-engine-gates:latest, docker run --network none, verify.sh <mode> inside (KE_IN_GATES=1). Repo scripts never edited: sha256 test.sh 057e4682..., verify.sh fd067da3..., hook c7ec9af3... Copy deleted afterwards.
+
+## m0-m9 (verify.sh)
+=== m0-fast: Ran 89 tests, OK, == verify fast: PASS ==, rc=0
+=== m1-fast
+== verify fast: a11842d+dirty ==
+verify fast: FAIL (no Ran N tests line with N > 0 in the test output)
+rc=1
+=== m1-full
+== verify full: a11842d+dirty ==
+verify full: FAIL (no Ran N tests line with N > 0 in the test output)
+rc=1
+=== m2-fast
+== verify fast: a11842d+dirty ==
+FAIL: test_helper_package_without_tests_passes (tests.test_harness_followups.IntegrationRunsOnceTest.test_helper_package_without_tests_passes) (mode='fast')
+FAIL: test_helper_package_without_tests_passes (tests.test_harness_followups.IntegrationRunsOnceTest.test_helper_package_without_tests_passes) (mode='full')
+FAIL: test_package_with_only_nested_tests_runs_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_package_with_only_nested_tests_runs_once) (mode='fast')
+FAIL: test_package_with_only_nested_tests_runs_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_package_with_only_nested_tests_runs_once) (mode='full')
+FAIL: test_unit_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_tests_run_once) (mode='fast', label='sub')
+FAIL: test_unit_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_tests_run_once) (mode='fast', label='deep')
+FAIL: test_unit_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_tests_run_once) (mode='full', label='sub')
+FAIL: test_unit_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_tests_run_once) (mode='full', label='deep')
+Ran 89 tests in 8.406s
+FAILED (failures=8)
+verify fast: FAIL (test.sh exited non-zero)
+rc=1
+=== m3-fast
+== verify fast: a11842d+dirty ==
+FAIL: test_unit_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_tests_run_once) (mode='fast', label='testfoo')
+FAIL: test_unit_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_tests_run_once) (mode='full', label='testfoo')
+Ran 89 tests in 9.188s
+FAILED (failures=2)
+verify fast: FAIL (test.sh exited non-zero)
+rc=1
+=== m4-fast
+== verify fast: a11842d+dirty ==
+Ran 1 test in 0.000s
+OK
+verify fast: FAIL (sentinel test_top_level_unit_suite_ran did not report ok: the top-level unit suite did not run)
+rc=1
+=== m7-full
+== verify full: a11842d+dirty ==
+Ran 1 test in 0.000s
+OK
+verify full: FAIL (sentinel test_top_level_unit_suite_ran did not report ok: the top-level unit suite did not run)
+rc=1
+=== m7-fast
+== verify fast: a11842d+dirty ==
+verify fast: FAIL (no Ran N tests line with N > 0 in the test output)
+rc=1
+=== m5-fast
+== verify fast: a11842d+dirty ==
+FAIL: test_no_ran_line_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_no_ran_line_fails) (mode='fast')
+== verify fast: PASS ==
+FAIL: test_no_ran_line_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_no_ran_line_fails) (mode='full')
+== verify full: PASS ==
+FAIL: test_ran_zero_tests_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_ran_zero_tests_fails) (mode='fast')
+Ran 0 tests in 0.000s
+OK
+== verify fast: PASS ==
+FAIL: test_ran_zero_tests_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_ran_zero_tests_fails) (mode='full')
+Ran 0 tests in 0.000s
+OK
+== verify full: PASS ==
+Ran 89 tests in 9.788s
+FAILED (failures=4)
+verify fast: FAIL (test.sh exited non-zero)
+rc=1
+=== m6-fast
+== verify fast: a11842d+dirty ==
+FAIL: test_failing_test_sh_still_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_failing_test_sh_still_fails) (mode='fast')
+Ran 3 tests in 0.001s
+FAILED (failures=1)
+== verify fast: PASS ==
+FAIL: test_failing_test_sh_still_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_failing_test_sh_still_fails) (mode='full')
+Ran 3 tests in 0.001s
+FAILED (failures=1)
+== verify full: PASS ==
+Ran 89 tests in 9.828s
+FAILED (failures=2)
+== verify fast: PASS ==
+rc=0
+=== m8-full
+== verify full: a11842d+dirty ==
+Ran 89 tests in 9.807s
+OK
+rc=3
+=== m9-full
+== verify full: a11842d+dirty ==
+FAIL: test_f (tests.test_m9.F.test_f)
+Ran 90 tests in 10.199s
+FAILED (failures=1)
+verify full: FAIL (test.sh exited non-zero)
+rc=1
+
+## sentinel mutants s1-s9 (verify.sh fast)
+# s1 sentinel check deleted from verify.sh; s2 = m1 + tests/unit + sentinel moved into tests/unit; s3 sentinel @skip; s5 tests/test_sentinel.py deleted; s8 top-level glob narrowed to tests/test_sent*.py; s9 "${mods[@]}" -> "$mods"
+1
+=== s1-fast
+== verify fast: a11842d+dirty ==
+FAIL: test_ran_without_sentinel_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_ran_without_sentinel_fails) (mode='fast')
+Ran 1 test in 0.001s
+OK
+== verify fast: PASS ==
+FAIL: test_ran_without_sentinel_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_ran_without_sentinel_fails) (mode='full')
+Ran 1 test in 0.001s
+OK
+== verify full: PASS ==
+Ran 89 tests in 9.679s
+FAILED (failures=2)
+verify fast: FAIL (test.sh exited non-zero)
+rc=1
+=== s2-fast
+== verify fast: a11842d+dirty ==
+Ran 2 tests in 0.000s
+OK
+== verify fast: PASS ==
+rc=0
+=== s3-fast
+== verify fast: a11842d+dirty ==
+Ran 89 tests in 9.945s
+OK (skipped=1)
+verify fast: FAIL (sentinel test_top_level_unit_suite_ran did not report ok: the top-level unit suite did not run)
+rc=1
+=== s5-fast
+== verify fast: a11842d+dirty ==
+Ran 88 tests in 9.949s
+OK
+verify fast: FAIL (sentinel test_top_level_unit_suite_ran did not report ok: the top-level unit suite did not run)
+rc=1
+=== s8-fast
+== verify fast: a11842d+dirty ==
+Ran 1 test in 0.000s
+OK
+== verify fast: PASS ==
+rc=0
+36:uv run --locked python -m unittest -v "$mods"
+=== s9-fast
+== verify fast: a11842d+dirty ==
+Ran 40 tests in 8.774s
+OK
+verify fast: FAIL (sentinel test_top_level_unit_suite_ran did not report ok: the top-level unit suite did not run)
+rc=1
+
+## hook/ci mutants (unittest tests.test_block_main_commit_hook tests.test_harness_followups)
+# h1 loop judges text_a only; h2 text_b only; h3 break removed (equivalent mutant); l1 persist-credentials: true
+=== h1
+      1 FAIL: test_backslash_newline_after_comment_or_even_run_denies_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_off_main) (mode='jq', command='#x\\\ngit push -f')
+      1 FAIL: test_backslash_newline_after_comment_or_even_run_denies_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_off_main) (mode='jq', command='#x\\\ngit push origin HEAD:main')
+      1 FAIL: test_backslash_newline_after_comment_or_even_run_denies_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_off_main) (mode='jq', command='#x\\\ngit push origin main')
+      1 FAIL: test_backslash_newline_after_comment_or_even_run_denies_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_off_main) (mode='jq', command='echo a\\\\\ngit push origin main')
+      1 FAIL: test_backslash_newline_after_comment_or_even_run_denies_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_off_main) (mode='no-jq', command='#x\\\ngit push -f')
+      1 FAIL: test_backslash_newline_after_comment_or_even_run_denies_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_off_main) (mode='no-jq', command='#x\\\ngit push origin HEAD:main')
+      1 FAIL: test_backslash_newline_after_comment_or_even_run_denies_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_off_main) (mode='no-jq', command='#x\\\ngit push origin main')
+      1 FAIL: test_backslash_newline_after_comment_or_even_run_denies_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_off_main) (mode='no-jq', command='echo a\\\\\ngit push origin main')
+      1 FAIL: test_backslash_newline_after_comment_or_even_run_denies_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_on_main) (mode='jq', command='# copy to C:\\out\\\ngit commit -m x')
+      1 FAIL: test_backslash_newline_after_comment_or_even_run_denies_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_on_main) (mode='jq', command='#x\\\ngit commit -m x')
+      1 FAIL: test_backslash_newline_after_comment_or_even_run_denies_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_on_main) (mode='jq', command='#x\\\ngit push')
+      1 FAIL: test_backslash_newline_after_comment_or_even_run_denies_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_on_main) (mode='jq', command='echo a\\\\\\\\\ngit commit -m x')
+      1 FAIL: test_backslash_newline_after_comment_or_even_run_denies_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_on_main) (mode='jq', command='echo a\\\\\ngit commit -m x')
+      1 FAIL: test_backslash_newline_after_comment_or_even_run_denies_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_on_main) (mode='jq', command='ls #a\\\ngit commit -m x')
+      1 FAIL: test_backslash_newline_after_comment_or_even_run_denies_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_on_main) (mode='no-jq', command='# copy to C:\\out\\\ngit commit -m x')
+      1 FAIL: test_backslash_newline_after_comment_or_even_run_denies_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_on_main) (mode='no-jq', command='#x\\\ngit commit -m x')
+      1 FAIL: test_backslash_newline_after_comment_or_even_run_denies_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_on_main) (mode='no-jq', command='#x\\\ngit push')
+      1 FAIL: test_backslash_newline_after_comment_or_even_run_denies_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_on_main) (mode='no-jq', command='echo a\\\\\\\\\ngit commit -m x')
+      1 FAIL: test_backslash_newline_after_comment_or_even_run_denies_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_on_main) (mode='no-jq', command='echo a\\\\\ngit commit -m x')
+      1 FAIL: test_backslash_newline_after_comment_or_even_run_denies_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_on_main) (mode='no-jq', command='ls #a\\\ngit commit -m x')
+=== h2
+      1 FAIL: test_backslash_forms_deny_push_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_forms_deny_push_off_main) (mode='jq', command='git push \\\n-f origin agent/x')
+      1 FAIL: test_backslash_forms_deny_push_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_forms_deny_push_off_main) (mode='jq', command='git push \\\norigin main')
+      1 FAIL: test_backslash_forms_deny_push_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_forms_deny_push_off_main) (mode='no-jq', command='git push \\\n-f origin agent/x')
+      1 FAIL: test_backslash_forms_deny_push_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_forms_deny_push_off_main) (mode='no-jq', command='git push \\\norigin main')
+      1 FAIL: test_backslash_newline_joins_to_nothing_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_joins_to_nothing_off_main) (mode='jq', command='git pu\\\nsh origin main')
+      1 FAIL: test_backslash_newline_joins_to_nothing_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_joins_to_nothing_off_main) (mode='jq', command='git push origin ma\\\nin')
+      1 FAIL: test_backslash_newline_joins_to_nothing_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_joins_to_nothing_off_main) (mode='no-jq', command='git pu\\\nsh origin main')
+      1 FAIL: test_backslash_newline_joins_to_nothing_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_joins_to_nothing_off_main) (mode='no-jq', command='git push origin ma\\\nin')
+      1 FAIL: test_backslash_newline_joins_to_nothing_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_joins_to_nothing_on_main) (mode='jq', command='gi\\\nt commit -m x')
+      1 FAIL: test_backslash_newline_joins_to_nothing_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_joins_to_nothing_on_main) (mode='no-jq', command='gi\\\nt commit -m x')
+      1 FAILED (failures=10)
+      1 Ran 57 tests in 8.217s
+=== h3
+      1 OK
+      1 Ran 57 tests in 9.437s
+=== l1
+      1 FAIL: test_ci_checkout_does_not_persist_credentials (tests.test_harness_followups.CiWorkflowTest.test_ci_checkout_does_not_persist_credentials) (step='- uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0')
+      1 FAILED (failures=1)
+      1 Ran 57 tests in 9.273s
+
+## hook probes: base a11842d hook (old) vs working-tree hook (new), compact payload, jq and no-jq, gates image
+cont-push-main           main     | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+cont-push-main           agent/x  | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+cont-mid-word            main     | jq old=silent new=DENY   | nojq old=silent new=DENY  
+cont-mid-word            agent/x  | jq old=silent new=DENY   | nojq old=silent new=DENY  
+cont-originmain          main     | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+cont-originmain          agent/x  | jq old=DENY   new=silent | nojq old=DENY   new=silent
+cont-gitpush-glued       main     | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+cont-gitpush-glued       agent/x  | jq old=DENY   new=silent | nojq old=DENY   new=silent
+cont-space-before        main     | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+cont-space-before        agent/x  | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+comment-bs               main     | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+comment-bs               agent/x  | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+winpath-comment          main     | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+winpath-comment          agent/x  | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+even-run2                main     | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+even-run2                agent/x  | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+even-run4                main     | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+even-run4                agent/x  | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+odd-run3                 main     | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+odd-run3                 agent/x  | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+crlf-cont                main     | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+crlf-cont                agent/x  | jq old=silent new=DENY   | nojq old=silent new=DENY  
+cr-literal               main     | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+cr-literal               agent/x  | jq old=DENY   new=DENY   | nojq old=silent new=DENY  
+force-cont               main     | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+force-cont               agent/x  | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+forcef-cont              main     | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+forcef-cont              agent/x  | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+plus-cont                main     | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+plus-cont                agent/x  | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+refspec-head             main     | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+refspec-head             agent/x  | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+benign                   main     | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+benign                   agent/x  | jq old=silent new=silent | nojq old=silent new=silent
+benign-cont              main     | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+benign-cont              agent/x  | jq old=silent new=silent | nojq old=silent new=silent
+benign-ls                main     | jq old=silent new=silent | nojq old=silent new=silent
+benign-ls                agent/x  | jq old=silent new=silent | nojq old=silent new=silent
+sq-literal               main     | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+sq-literal               agent/x  | jq old=silent new=DENY   | nojq old=silent new=DENY  
+commit-cont              main     | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+commit-cont              agent/x  | jq old=silent new=silent | nojq old=silent new=silent
+commit-glued             main     | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+commit-glued             agent/x  | jq old=silent new=silent | nojq old=silent new=silent
+cont-gitword-split       main     | jq old=silent new=DENY   | nojq old=silent new=DENY  
+cont-gitword-split       agent/x  | jq old=silent new=DENY   | nojq old=silent new=DENY  
+fp-mai-n                 main     | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+fp-mai-n                 agent/x  | jq old=silent new=silent | nojq old=silent new=silent
+fp-ls-comment            main     | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+fp-ls-comment            agent/x  | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+feature-with-main-suffix main     | jq old=DENY   new=DENY   | nojq old=DENY   new=DENY  
+feature-with-main-suffix agent/x  | jq old=silent new=silent | nojq old=silent new=silent

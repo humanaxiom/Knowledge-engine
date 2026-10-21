@@ -1,0 +1,1142 @@
+Recorded run 3, amd64: dev host (Windows 11 + Docker Desktop), WSL Ubuntu as the Linux build host (jq installed; docker via the recorded docker.exe shim, WSL integration off). Real bundle.sh, no filter.
+
+=== STEP 0a-build-host-prereqs  start 2026-10-20T01:28:16Z  cwd <home>
+$ umask; uname -srm; bash --version | head -1; git --version; command -v jq; jq --version; command -v openssl; echo "docker on the default WSL PATH: $(PATH=${PATH#*:} command -v docker)"
+0022
+Linux 6.6.114.1-microsoft-standard-WSL2 x86_64
+GNU bash, version 5.3.9(1)-release (x86_64-pc-linux-gnu)
+git version 2.53.0
+/usr/bin/jq
+jq-1.8.1
+/usr/bin/openssl
+docker on the default WSL PATH: /mnt/c/Program Files/Docker/Docker/resources/bin/docker
+=== END 0a-build-host-prereqs  rc=0  elapsed=0s
+### NOTE: 0a: WSL integration is still off, so the docker on the default WSL PATH is Docker Desktop's stub. As in rounds 1-2, a recorded shim at ~/ke-proof3-tools/bin/docker forwards to the Windows docker.exe (same daemon). It has no D1 filter. Source follows.
+
+=== STEP 0b-shim-source  start 2026-10-20T01:28:16Z  cwd <home>
+$ cat ~/ke-proof3-tools/bin/docker
+#!/usr/bin/env bash
+# Recorded-run shim (tester, platform-offline, round 3). WSL Ubuntu on this dev
+# host has no Docker Desktop WSL integration, so the `docker` on its PATH is
+# Docker Desktop's stub that refuses. This forwards to the Windows docker.exe
+# (same daemon, desktop-linux context), translating an absolute Linux path
+# argument that exists (or whose directory exists) to its Windows form with
+# wslpath, and forwarding the COMPOSE_* / DOCKER_CONTEXT variables docker itself
+# reads (WSLENV /w: WSL -> Windows). No D1 filter: every call passes through.
+set -u
+args=()
+for a in "$@"; do
+  case "$a" in
+    /*)
+      if [ -e "$a" ] || [ -d "$(dirname -- "$a")" ]; then a="$(wslpath -w "$a")"; fi
+      ;;
+  esac
+  args+=("$a")
+done
+fwd=""
+for v in COMPOSE_PROJECT_NAME COMPOSE_PROFILES COMPOSE_FILE DOCKER_CONTEXT; do
+  if [ -n "${!v+x}" ]; then fwd="${fwd:+$fwd:}$v/w"; fi
+done
+export WSLENV="${WSLENV:+$WSLENV:}$fwd"
+exec "/mnt/c/Program Files/Docker/Docker/resources/bin/docker.exe" ${args[@]+"${args[@]}"}
+=== END 0b-shim-source  rc=0  elapsed=0s
+
+=== STEP 0c-docker-via-shim  start 2026-10-20T01:28:16Z  cwd <home>
+$ command -v docker; docker version --format "client {{.Client.Version}} {{.Client.Os}}/{{.Client.Arch}}  server {{.Server.Version}} {{.Server.Os}}/{{.Server.Arch}}"; docker compose version; docker info --format "{{.Architecture}} {{.OperatingSystem}} {{.Driver}}"; docker context show
+<home>/ke-proof3-tools/bin/docker
+client 29.5.2 windows/amd64  server 29.5.2 linux/amd64
+Docker Compose version v5.1.4
+x86_64 Docker Desktop overlayfs
+desktop-linux
+=== END 0c-docker-via-shim  rc=0  elapsed=1s
+
+=== STEP 0d-clash-check  start 2026-10-20T01:28:17Z  cwd <home>
+$ docker ps -a --filter label=com.docker.compose.project=ke-proof3-amd64 --format "{{.Names}}"; docker volume ls --format "{{.Name}}" | grep -E "ke-proof3|^knowledge-engine" || echo "no ke-proof3/knowledge-engine volume"; docker network ls --format "{{.Name}}" | grep -E "ke-proof3|^knowledge-engine" || echo "no ke-proof3/knowledge-engine network"; echo "--- pre-existing bundle/vendor tags (not created by this run):"; docker images --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep -E ":bundle-|^ke-vendor/" | sort; netstat.exe -ano | grep -E ":4718[01] " || echo "ports 47180/47181 free on the Windows host"; docker images --format "{{.Repository}}:{{.Tag}} {{.ID}}" | sort > ~/ke-proof3-logs/images-before.txt; echo "image list lines: $(wc -l < ~/ke-proof3-logs/images-before.txt)"
+no ke-proof3/knowledge-engine volume
+no ke-proof3/knowledge-engine network
+--- pre-existing bundle/vendor tags (not created by this run):
+ke-app:bundle-f7e9074f7462 9f95c596c30e
+ke-gateway:bundle-f7e9074f7462 33405f96e4cd
+ke-vendor/neo4j:0a6e7aedf54a 0a6e7aedf54a
+ke-vendor/phoenix:fa28e9cd96dd fa28e9cd96dd
+ke-vendor/postgres:0ea6700a3b4f 0ea6700a3b4f
+ke-vendor/valkey:081c2f5cb575 081c2f5cb575
+ports 47180/47181 free on the Windows host
+image list lines: 100
+=== END 0d-clash-check  rc=0  elapsed=1s
+### NOTE: 0d: ke-app/ke-gateway:bundle-f7e9074f7462 and the 4 ke-vendor/* tags existed before this run (earlier work, not this tester). They are left alone at cleanup; this run removes only the ke-*:bundle-e3d3fed80932 tags it creates. The ke-vendor/* image IDs are re-checked after the run.
+
+=== STEP 1-clean-checkout  start 2026-10-20T01:28:18Z  cwd <home>
+$ test ! -e ~/ke-proof3-src && git clone -q /mnt/c/repos/Knowledge-engine ~/ke-proof3-src && cd ~/ke-proof3-src && git checkout -q --detach "$HEADSHA" && git rev-parse HEAD && echo "porcelain lines: $(git status --porcelain | wc -l)" && du -sh ~/ke-proof3-src
+e3d3fed80932ce0624164407222948ba6323bc07
+porcelain lines: 0
+29M	<home>/ke-proof3-src
+=== END 1-clean-checkout  rc=0  elapsed=0s
+
+=== STEP 2-build  start 2026-10-20T01:28:18Z  cwd <home>/ke-proof3-src
+$ bash scripts/build.sh
+time="2026-10-19T18:28:18-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:18-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:18-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:18-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:18-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:18-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:18-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:18-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:18-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:18-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:18-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:18-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:18-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:18-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+ Image ke-gates:local Building 
+ Image ke-app:local Building 
+ Image ke-gateway:local Building 
+ Image ke-app:local Building 
+ Image ke-gates:local Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 2.54kB done
+#1 DONE 0.0s
+
+#2 [worker internal] load build definition from app.Dockerfile
+#2 transferring dockerfile: 984B done
+#2 DONE 0.0s
+
+#3 [gates-it internal] load build definition from gates.Dockerfile
+#3 transferring dockerfile: 6.15kB done
+#3 DONE 0.1s
+
+#4 [gateway internal] load build definition from gateway.Dockerfile
+#4 transferring dockerfile: 1.10kB done
+#4 DONE 0.1s
+
+#5 [gates internal] load metadata for ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#5 DONE 0.0s
+
+#6 [gateway internal] load metadata for docker.io/nginxinc/nginx-unprivileged:1.28-alpine@sha256:7377697a821c131a924a7105fafbe7414db4e9fcc77a6f08f776f33f141ec3f8
+#6 DONE 0.0s
+
+#7 [gates-it internal] load metadata for docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#7 ...
+
+#8 [gateway internal] load .dockerignore
+#8 transferring context: 97B done
+#8 DONE 0.0s
+
+#9 [gateway 1/7] FROM docker.io/nginxinc/nginx-unprivileged:1.28-alpine@sha256:7377697a821c131a924a7105fafbe7414db4e9fcc77a6f08f776f33f141ec3f8
+#9 resolve docker.io/nginxinc/nginx-unprivileged:1.28-alpine@sha256:7377697a821c131a924a7105fafbe7414db4e9fcc77a6f08f776f33f141ec3f8 0.0s done
+#9 DONE 0.0s
+
+#10 [gateway internal] load build context
+#10 transferring context: 7.25kB 0.0s done
+#10 DONE 0.0s
+
+#11 [gateway 2/7] COPY docker/gateway/nginx.conf /etc/nginx/nginx.conf
+#11 CACHED
+
+#12 [gateway 3/7] COPY docker/gateway/templates/ /etc/nginx/templates/
+#12 CACHED
+
+#13 [gateway 4/7] COPY --chmod=0755 docker/gateway/10-ke-bind-check.sh /docker-entrypoint.d/10-ke-bind-check.sh
+#13 CACHED
+
+#14 [gateway 5/7] COPY --chmod=0755 docker/gateway/11-ke-upstream-check.sh /docker-entrypoint.d/11-ke-upstream-check.sh
+#14 CACHED
+
+#15 [gateway 6/7] COPY --chmod=0755 docker/gateway/12-ke-port-check.sh /docker-entrypoint.d/12-ke-port-check.sh
+#15 CACHED
+
+#16 [gateway 7/7] RUN rm -f /etc/nginx/conf.d/default.conf  && mkdir -p /etc/nginx/stream-conf.d  && chown nginx:nginx /etc/nginx/conf.d /etc/nginx/stream-conf.d
+#16 CACHED
+
+#17 [gateway] exporting to image
+#17 exporting layers done
+#17 exporting manifest sha256:b2fff55f241ba80c082541f1b4a74ab9cec7c64b09058b37e894e5a62bdf2cee done
+#17 exporting config sha256:c44e5aaaf62a03d18e07969767a1405bb43fb9797fd44be66634f678b30dfccf done
+#17 exporting attestation manifest sha256:c2d1069e974ec705fc2aa6d95b06d5341cf09d4ead97d908890c1319d700a62c 0.0s done
+#17 exporting manifest list sha256:fb81deee818e9132d59094330e7f78f41e4eaf9263aa4039424aa83df52ad832 0.0s done
+#17 naming to docker.io/library/ke-gateway:local done
+#17 unpacking to docker.io/library/ke-gateway:local 0.0s done
+#17 DONE 0.1s
+
+#7 [gates-it internal] load metadata for docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#7 DONE 0.5s
+
+#18 [gateway] resolving provenance for metadata file
+#18 DONE 0.0s
+
+#8 [api internal] load .dockerignore
+#8 CACHED
+
+#19 [gates uv 1/1] FROM ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#19 resolve ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946 0.0s done
+#19 DONE 0.0s
+
+#20 [api stage-1  1/12] FROM docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#20 resolve docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258 0.0s done
+#20 DONE 0.0s
+
+#21 [api internal] load build context
+#21 transferring context: 146.92kB 0.1s done
+#21 transferring context: 146.92kB 0.1s done
+#21 DONE 0.1s
+
+#22 [gates-it stage-1  7/12] WORKDIR /work
+#22 CACHED
+
+#23 [gates-it stage-1  6/12] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x86_64; sha="40343e21ca777173e69cff5dbafeb37c6f81f3b0d57d9e597f036e95eb63e76a" ;;       arm64) arch=aarch64; sha="733ec76717ceb59052a9609b9dadfb523b2df8eab57a54212872d10a58078ea2" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose       "https://github.com/docker/compose/releases/download/v5.6.0/docker-compose-linux-$arch";     echo "$sha  /tmp/docker-compose" | sha256sum -c -;     mkdir -p /usr/local/lib/docker/cli-plugins;     install -m 0755 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose;     rm /tmp/docker-compose
+#23 CACHED
+
+#24 [gates-it stage-1  5/12] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x86_64; sha="c158ecc55adb3afb01bbd3539ed3b997d20c26dbdc418080506cc1bf5243ff57" ;;       arm64) arch=aarch64; sha="3e93cc6d1a686456a3b18eefdde26467a837a7a2b257af22e27cba1dbc1b2018" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker.tgz       "https://download.docker.com/linux/static/stable/$arch/docker-29.9.1.tgz";     echo "$sha  /tmp/docker.tgz" | sha256sum -c -;     tar -xzf /tmp/docker.tgz -C /usr/local/bin --strip-components=1       --no-same-owner docker/docker;     rm /tmp/docker.tgz
+#24 CACHED
+
+#25 [gates-it stage-1  4/12] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x64; sha="3fc5e1567c450bd7bd5ae69ebb0a9a4a4e0418bbc36b0232cf6dd547f0bfc0eb" ;;       arm64) arch=arm64; sha="d0c216cec4c6c866fc15a105f039740228b53206f8576d2ed0bcd656a35ed6f6" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     tarball="powershell-7.4.21-linux-${arch}.tar.gz";     curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball"       "https://github.com/PowerShell/PowerShell/releases/download/v7.4.21/$tarball";     echo "$sha  /tmp/$tarball" | sha256sum -c -;     mkdir -p /opt/microsoft/powershell;     tar -xzf "/tmp/$tarball" -C /opt/microsoft/powershell;     chmod +x /opt/microsoft/powershell/pwsh;     ln -s /opt/microsoft/powershell/pwsh /usr/local/bin/pwsh;     rm "/tmp/$tarball";     pwsh -NoProfile -NonInteractive -Command "       $ErrorActionPreference = 'Stop';       Set-PSRepository PSGallery -InstallationPolicy Trusted;       Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope AllUsers -Force"
+#25 CACHED
+
+#26 [gates-it stage-1  3/12] RUN apt-get update  && apt-get install -y --no-install-recommends git jq ca-certificates curl       shellcheck=0.9.0-1 libicu72 libssl3 zlib1g  && rm -rf /var/lib/apt/lists/*  && git config --system --add safe.directory /work  && git config --system core.autocrlf true
+#26 CACHED
+
+#27 [gates-it stage-1  8/12] COPY pyproject.toml uv.lock ./
+#27 CACHED
+
+#28 [worker stage-1  2/12] COPY --from=uv /uv /usr/local/bin/uv
+#28 CACHED
+
+#29 [worker stage-1 4/9] COPY pyproject.toml uv.lock ./
+#29 CACHED
+
+#30 [worker stage-1 3/9] WORKDIR /app
+#30 CACHED
+
+#31 [worker stage-1 5/9] RUN uv sync --locked --no-dev --no-install-project
+#31 CACHED
+
+#32 [gates-it stage-1  9/12] COPY harness_telemetry ./harness_telemetry
+#32 DONE 0.0s
+
+#33 [api stage-1 6/9] COPY harness_telemetry ./harness_telemetry
+#33 DONE 0.0s
+
+#34 [api stage-1 7/9] COPY engine ./engine
+#34 DONE 0.1s
+
+#35 [gates-it stage-1 10/12] COPY engine ./engine
+#35 DONE 0.1s
+
+#34 [worker stage-1 7/9] COPY engine ./engine
+#34 DONE 0.1s
+
+#36 [worker stage-1 8/9] COPY config ./config
+#36 DONE 0.0s
+
+#37 [gates-it stage-1 11/12] COPY config ./config
+#37 DONE 0.0s
+
+#38 [gates-it stage-1 12/12] RUN uv sync --locked  && chown -R 10001:10001 /opt/venv /opt/uv-cache
+#38 0.404 Using CPython 3.12.15 interpreter at: /usr/local/bin/python3
+#38 0.404 Creating virtual environment at: /opt/venv
+#38 0.408 Resolved 51 packages in 0.77ms
+#38 0.417    Building knowledge-engine @ file:///work
+#38 0.534 Downloading psycopg-binary (5.0MiB)
+#38 0.534 Downloading ast-serialize (1.3MiB)
+#38 0.535 Downloading pydantic-core (2.1MiB)
+#38 0.538 Downloading mypy (14.8MiB)
+#38 ...
+
+#39 [worker stage-1 9/9] RUN uv sync --locked --no-dev --no-editable  && useradd --no-create-home --uid 10001 ke
+#39 0.415 Resolved 51 packages in 0.68ms
+#39 0.419    Building knowledge-engine @ file:///app
+#39 1.319       Built knowledge-engine @ file:///app
+#39 1.321 Prepared 1 package in 903ms
+#39 1.325 Installed 1 package in 3ms
+#39 1.325  + knowledge-engine==0.1.0 (from file:///app)
+#39 DONE 1.4s
+
+#40 [api] exporting to image
+#40 exporting layers 0.2s done
+#40 exporting manifest sha256:80442e1f1540f5213c98697a14d4e6059888eee91af1bce1725f207bd886d16b 0.0s done
+#40 exporting config sha256:b48738a57eb4942b03eb2823afa0fccc6fba3b4fde6d2ab41aeb9ba282613bed 0.0s done
+#40 exporting attestation manifest sha256:6effcc11cb57aa65aa665981bdea1f246433e1a85ec04aa2b5a7c36c882dba86
+#40 exporting attestation manifest sha256:6effcc11cb57aa65aa665981bdea1f246433e1a85ec04aa2b5a7c36c882dba86 0.0s done
+#40 exporting manifest list sha256:c7d2756ea951a030541758068ab047cc74f19900af0694d23cab057ee0b6e423 0.0s done
+#40 naming to docker.io/library/ke-app:local done
+#40 unpacking to docker.io/library/ke-app:local
+#40 unpacking to docker.io/library/ke-app:local 0.1s done
+#40 DONE 0.5s
+
+#41 [worker] exporting to image
+#41 exporting layers 0.2s done
+#41 exporting manifest sha256:62dbd8c023bdd4332a43bb48cecd102dad1279e0e697f97826a67b64d0c1cc64 0.0s done
+#41 exporting config sha256:c8c9db10f616a08295399df4d92fbe153c5ee847abe6f34b53ae84e8ef3e6f73 0.0s done
+#41 exporting attestation manifest sha256:affd5d43d929464741e02347fd81ba74f19b665b5bb13ca13c2f4f902181d9b3 0.0s done
+#41 exporting manifest list sha256:f88d102d92e339347fa6be1f22c96dfe3e0acae3bcae16696c4b4e80c8ca4637 0.0s done
+#41 naming to docker.io/library/ke-app:local done
+#41 unpacking to docker.io/library/ke-app:local 0.1s done
+#41 DONE 0.5s
+
+#42 [worker] resolving provenance for metadata file
+#42 DONE 0.1s
+
+#43 [api] resolving provenance for metadata file
+#43 DONE 0.0s
+
+#38 [gates-it stage-1 12/12] RUN uv sync --locked  && chown -R 10001:10001 /opt/venv /opt/uv-cache
+#38 1.787  Downloaded ast-serialize
+#38 1.958  Downloaded pydantic-core
+#38 2.364       Built knowledge-engine @ file:///work
+#38 2.427  Downloaded psycopg-binary
+#38 3.298  Downloaded mypy
+#38 3.298 Prepared 50 packages in 2.88s
+#38 3.584 Installed 50 packages in 285ms
+#38 3.584  + annotated-doc==0.0.5
+#38 3.584  + annotated-types==0.8.0
+#38 3.584  + anyio==4.15.1
+#38 3.584  + ast-serialize==0.13.1
+#38 3.584  + certifi==2026.7.22
+#38 3.584  + charset-normalizer==3.5.2
+#38 3.584  + click==8.5.0
+#38 3.584  + coverage==7.16.2
+#38 3.584  + croniter==6.2.4
+#38 3.584  + fastapi==0.146.0
+#38 3.584  + googleapis-common-protos==1.75.5
+#38 3.584  + h11==0.16.0
+#38 3.584  + httpcore==1.0.9
+#38 3.584  + httpx==0.28.1
+#38 3.584  + idna==3.20
+#38 3.584  + knowledge-engine==0.1.0 (from file:///work)
+#38 3.584  + librt==0.16.0
+#38 3.584  + mypy==2.4.0
+#38 3.584  + mypy-extensions==1.1.0
+#38 3.584  + neo4j==6.4.1
+#38 3.584  + openinference-semantic-conventions==0.1.41
+#38 3.584  + opentelemetry-api==1.45.1
+#38 3.584  + opentelemetry-exporter-http-transport==0.66b1
+#38 3.584  + opentelemetry-exporter-otlp-common==0.66b1
+#38 3.584  + opentelemetry-exporter-otlp-proto-common==1.45.1
+#38 3.584  + opentelemetry-exporter-otlp-proto-http==1.45.1
+#38 3.584  + opentelemetry-proto==1.45.1
+#38 3.584  + opentelemetry-sdk==1.45.1
+#38 3.584  + opentelemetry-semantic-conventions==0.66b1
+#38 3.584  + pathspec==1.1.1
+#38 3.584  + protobuf==7.36.2
+#38 3.584  + psycopg==3.3.6
+#38 3.584  + psycopg-binary==3.3.6
+#38 3.584  + pydantic==2.14.1
+#38 3.584  + pydantic-core==2.50.1
+#38 3.584  + pydantic-settings==2.16.0
+#38 3.584  + python-dateutil==2.9.0.post0
+#38 3.584  + python-dotenv==1.2.4
+#38 3.584  + pytz==2026.5
+#38 3.584  + pyyaml==6.0.3
+#38 3.584  + redis==8.1.0
+#38 3.584  + requests==2.34.2
+#38 3.584  + rq==2.12.0
+#38 3.584  + six==1.17.0
+#38 3.584  + starlette==1.9.0
+#38 3.584  + types-pyyaml==6.0.12.20260906
+#38 3.584  + typing-extensions==4.16.0
+#38 3.584  + typing-inspection==0.4.4
+#38 3.584  + urllib3==2.8.0
+#38 3.584  + uvicorn==0.54.0
+#38 DONE 3.7s
+
+#38 [gates stage-1 12/12] RUN uv sync --locked  && chown -R 10001:10001 /opt/venv /opt/uv-cache
+#38 DONE 3.7s
+
+#44 [gates-it] exporting to image
+#44 exporting layers 4.1s done
+#44 exporting manifest sha256:b9ccf21a3b1d353c92721ed244e72edf67ef3a69ac2c811460e167d31892db13 0.0s done
+#44 exporting config sha256:8ad22aaaa7a295037ed9ebf92e7e059f69ae3506e33c8ebcfa7bc46c323fd67e 0.0s done
+#44 exporting attestation manifest sha256:f7649502c88911c28bc0c9d7e889b2ff8650972cf8ffbd1b3e95e496039075dd 0.0s done
+#44 exporting manifest list sha256:90f80d7fdf7d239a1d217d18c2458840b36790c1331ca18ad1f0acf51dd16fa8 0.0s done
+#44 naming to docker.io/library/ke-gates:local
+#44 naming to docker.io/library/ke-gates:local done
+#44 unpacking to docker.io/library/ke-gates:local
+#44 unpacking to docker.io/library/ke-gates:local 1.0s done
+#44 DONE 5.2s
+
+#45 [gates] exporting to image
+#45 exporting layers 4.1s done
+#45 exporting manifest sha256:76eee0067c0c9f1cbb28a0537ab2f6852feea25a09f674a0ee50a7f7125e25ec 0.0s done
+#45 exporting config sha256:a6f00d9251f82330ed64ac4ffa6eae24177b1a5225a53ca937d7569157a2bc27 0.0s done
+#45 exporting attestation manifest sha256:5194e41103e114e1410ef1a0fad7a0f55f7d42656732be25191dfa63ad00ac6e 0.0s done
+#45 exporting manifest list sha256:1caa2dec6f3b1beab1ff584e885822a35a61715d0d64b80e713899668271ca33 0.0s done
+#45 naming to docker.io/library/ke-gates:local done
+#45 unpacking to docker.io/library/ke-gates:local 1.0s done
+#45 DONE 5.3s
+
+#46 [gates-it] resolving provenance for metadata file
+#46 DONE 0.1s
+
+#47 [gates] resolving provenance for metadata file
+#47 DONE 0.0s
+ Image ke-app:local Built 
+ Image ke-gates:local Built 
+ Image ke-gateway:local Built 
+ Image ke-app:local Built 
+ Image ke-gates:local Built 
+time="2026-10-19T18:28:29-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:29-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:29-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:29-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:29-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:29-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:29-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:29-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:29-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:29-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:29-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:29-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:29-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:28:29-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+ Image ke-app:local Skipped Image can be built
+ Image ke-gates:local Skipped Image can be built
+ Image ke-gateway:local Skipped Image can be built
+ Image ke-gates:local Skipped Image can be built
+ Image ke-app:local Skipped Image can be built
+ Image neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b Pulling 
+ Image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 Pulling 
+ Image valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507 Pulling 
+ Image arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c Pulling 
+ Image valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507 Pulled 
+ Image neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b Pulled 
+ Image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 Pulled 
+ Image arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c Pulled 
+=== END 2-build  rc=0  elapsed=13s
+
+=== STEP 2b-built-images  start 2026-10-20T01:28:31Z  cwd <home>/ke-proof3-src
+$ for r in ke-app:latest ke-gateway:latest ke-gates:latest; do docker image inspect --format "$r {{.Id}} {{.Os}}/{{.Architecture}} {{.Created}}" "$r"; done
+ke-app:latest sha256:c5691148f140b7ab7a200eb56f2435bdc127b758387d3120aff802f06d01e863 linux/amd64 2026-10-19T20:52:30.196251608Z
+ke-gateway:latest sha256:2cf74558ac02f8004544f4ad6693f7b06a888a070e6a2da3853a05b377e9e53f linux/amd64 2026-10-19T04:13:41.827391046Z
+ke-gates:latest sha256:5be632a9f1bb569b47fbb2459246ef16c5a97c55321e347aad46b0a8f6ad7406 linux/amd64 2026-10-19T21:59:07.231805124Z
+=== END 2b-built-images  rc=0  elapsed=0s
+
+=== STEP 3-bundle  start 2026-10-20T01:28:31Z  cwd <home>/ke-proof3-src
+$ bash scripts/bundle.sh --out dist/bundle-amd64
+bundle written: <home>/ke-proof3-src/dist/bundle-amd64
+manifest sha256: 7a1086913d14e2e3bc7cd6310eb7fa0acf75dcba45337a44855c290fee0b20a2
+release record: <home>/ke-proof3-src/dist/bundle-amd64.manifest.sha256
+=== END 3-bundle  rc=0  elapsed=16s
+
+=== STEP 3e-bundle-facts  start 2026-10-20T01:28:47Z  cwd <home>/ke-proof3-src
+$ cat dist/bundle-amd64/bundle.json; echo; cat dist/bundle-amd64.manifest.sha256; du -sh dist/bundle-amd64; du -b -s dist/bundle-amd64; ls -l dist/bundle-amd64/images; echo "files: $(find dist/bundle-amd64 -type f | wc -l)"; for r in $(jq -r ".images[].as" dist/bundle-amd64/bundle.json); do docker image inspect --format "$r {{.Os}}/{{.Architecture}} {{.Id}}" "$r"; done
+{"format": 1, "git_sha": "e3d3fed80932ce0624164407222948ba6323bc07", "dirty": false, "created": "2026-10-20T01:28:45Z", "arch": "amd64", "images": [
+{"file": "images/ke-app.tar", "ref": "ke-app:local", "as": "ke-app:bundle-e3d3fed80932", "services": "api worker"},
+{"file": "images/ke-gateway.tar", "ref": "ke-gateway:local", "as": "ke-gateway:bundle-e3d3fed80932", "services": "gateway"},
+{"file": "images/neo4j.tar", "ref": "neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b", "as": "ke-vendor/neo4j:0a6e7aedf54a", "services": "neo4j"},
+{"file": "images/phoenix.tar", "ref": "arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c", "as": "ke-vendor/phoenix:fa28e9cd96dd", "services": "phoenix"},
+{"file": "images/postgres.tar", "ref": "postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4", "as": "ke-vendor/postgres:0ea6700a3b4f", "services": "postgres"},
+{"file": "images/valkey.tar", "ref": "valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507", "as": "ke-vendor/valkey:081c2f5cb575", "services": "valkey"}
+]}
+
+7a1086913d14e2e3bc7cd6310eb7fa0acf75dcba45337a44855c290fee0b20a2  bundle-amd64/MANIFEST.sha256
+941M	dist/bundle-amd64
+986150539	dist/bundle-amd64
+total 962932
+-rw-r--r-- 1 adam adam  99070464 Oct 19 18:28 ke-app.tar
+-rw-r--r-- 1 adam adam  23074304 Oct 19 18:28 ke-gateway.tar
+-rw-r--r-- 1 adam adam 356012032 Oct 19 18:28 neo4j.tar
+-rw-r--r-- 1 adam adam 326907904 Oct 19 18:28 phoenix.tar
+-rw-r--r-- 1 adam adam 163448832 Oct 19 18:28 postgres.tar
+-rw-r--r-- 1 adam adam  17510912 Oct 19 18:28 valkey.tar
+files: 20
+ke-app:bundle-e3d3fed80932 linux/amd64 sha256:c7d2756ea951a030541758068ab047cc74f19900af0694d23cab057ee0b6e423
+ke-gateway:bundle-e3d3fed80932 linux/amd64 sha256:fb81deee818e9132d59094330e7f78f41e4eaf9263aa4039424aa83df52ad832
+ke-vendor/neo4j:0a6e7aedf54a linux/amd64 sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+ke-vendor/phoenix:fa28e9cd96dd linux/amd64 sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c
+ke-vendor/postgres:0ea6700a3b4f linux/amd64 sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
+ke-vendor/valkey:081c2f5cb575 linux/amd64 sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507
+=== END 3e-bundle-facts  rc=0  elapsed=0s
+
+=== STEP 3f-build-host-modes  start 2026-10-20T01:28:47Z  cwd <home>/ke-proof3-src
+$ find dist -printf "%m %y %p\n" | sort -k3
+755 d dist
+755 d dist/bundle-amd64
+644 f dist/bundle-amd64.manifest.sha256
+644 f dist/bundle-amd64/MANIFEST.sha256
+755 d dist/bundle-amd64/app
+644 f dist/bundle-amd64/app/.env.example
+755 d dist/bundle-amd64/app/config
+644 f dist/bundle-amd64/app/config/defaults.yaml
+644 f dist/bundle-amd64/app/docker-compose.yml
+755 d dist/bundle-amd64/app/docs
+644 f dist/bundle-amd64/app/docs/quickstart.md
+755 d dist/bundle-amd64/app/scripts
+644 f dist/bundle-amd64/app/scripts/launch.ps1
+755 f dist/bundle-amd64/app/scripts/launch.sh
+755 f dist/bundle-amd64/app/scripts/net_isolated.sh
+755 f dist/bundle-amd64/app/scripts/smoke.sh
+644 f dist/bundle-amd64/app/scripts/teardown.ps1
+755 f dist/bundle-amd64/app/scripts/teardown.sh
+644 f dist/bundle-amd64/bundle.json
+755 d dist/bundle-amd64/images
+644 f dist/bundle-amd64/images/ke-app.tar
+644 f dist/bundle-amd64/images/ke-gateway.tar
+644 f dist/bundle-amd64/images/neo4j.tar
+644 f dist/bundle-amd64/images/phoenix.tar
+644 f dist/bundle-amd64/images/postgres.tar
+644 f dist/bundle-amd64/images/valkey.tar
+644 f dist/bundle-amd64/install.ps1
+755 f dist/bundle-amd64/install.sh
+=== END 3f-build-host-modes  rc=0  elapsed=0s
+
+=== STEP 4-carry-to-private-dir  start 2026-10-20T01:28:47Z  cwd <home>/ke-proof3-src
+$ test ! -e ~/ke-proof3 && mkdir -m 0700 ~/ke-proof3 && cp -R dist/bundle-amd64 ~/ke-proof3/bundle-amd64 && cp dist/bundle-amd64.manifest.sha256 ~/ke-proof3/ && ls -la ~/ke-proof3 && du -sh ~/ke-proof3/bundle-amd64
+total 16
+drwx------  3 adam adam 4096 Oct 19 18:28 .
+drwxr-x--- 10 adam adam 4096 Oct 19 18:28 ..
+drwxr-xr-x  4 adam adam 4096 Oct 19 18:28 bundle-amd64
+-rw-r--r--  1 adam adam   95 Oct 19 18:28 bundle-amd64.manifest.sha256
+941M	<home>/ke-proof3/bundle-amd64
+=== END 4-carry-to-private-dir  rc=0  elapsed=1s
+
+=== STEP 5a-check-record-from-parent  start 2026-10-20T01:28:48Z  cwd <home>/ke-proof3
+$ sha256sum -c bundle-amd64.manifest.sha256
+bundle-amd64/MANIFEST.sha256: OK
+=== END 5a-check-record-from-parent  rc=0  elapsed=0s
+
+=== STEP 5b-hash-vs-record  start 2026-10-20T01:28:48Z  cwd <home>/ke-proof3/bundle-amd64
+$ sha256sum MANIFEST.sha256; cat ../bundle-amd64.manifest.sha256; [ "$(sha256sum MANIFEST.sha256 | cut -c1-64)" = "$(cut -c1-64 ../bundle-amd64.manifest.sha256)" ] && echo "MATCH"
+7a1086913d14e2e3bc7cd6310eb7fa0acf75dcba45337a44855c290fee0b20a2  MANIFEST.sha256
+7a1086913d14e2e3bc7cd6310eb7fa0acf75dcba45337a44855c290fee0b20a2  bundle-amd64/MANIFEST.sha256
+MATCH
+=== END 5b-hash-vs-record  rc=0  elapsed=0s
+
+=== STEP 5c-check-every-file  start 2026-10-20T01:28:48Z  cwd <home>/ke-proof3/bundle-amd64
+$ sha256sum -c --strict MANIFEST.sha256
+app/.env.example: OK
+app/config/defaults.yaml: OK
+app/docker-compose.yml: OK
+app/docs/quickstart.md: OK
+app/scripts/launch.ps1: OK
+app/scripts/launch.sh: OK
+app/scripts/net_isolated.sh: OK
+app/scripts/smoke.sh: OK
+app/scripts/teardown.ps1: OK
+app/scripts/teardown.sh: OK
+bundle.json: OK
+images/ke-app.tar: OK
+images/ke-gateway.tar: OK
+images/neo4j.tar: OK
+images/phoenix.tar: OK
+images/postgres.tar: OK
+images/valkey.tar: OK
+install.ps1: OK
+install.sh: OK
+=== END 5c-check-every-file  rc=0  elapsed=1s
+
+=== STEP 6-install  start 2026-10-20T01:28:49Z  cwd <home>/ke-proof3/bundle-amd64
+$ env PATH=$HOME/ke-proof3-tools/bin:/usr/local/bin:/usr/bin:/bin bash ./install.sh --expect-manifest "$SHA" ~/ke-proof3/ke
+manifest sha256: 7a1086913d14e2e3bc7cd6310eb7fa0acf75dcba45337a44855c290fee0b20a2 (matches --expect-manifest)
+loaded ke-app.tar as ke-app:bundle-e3d3fed80932
+loaded ke-gateway.tar as ke-gateway:bundle-e3d3fed80932
+loaded neo4j.tar as ke-vendor/neo4j:0a6e7aedf54a
+loaded phoenix.tar as ke-vendor/phoenix:fa28e9cd96dd
+loaded postgres.tar as ke-vendor/postgres:0ea6700a3b4f
+loaded valkey.tar as ke-vendor/valkey:081c2f5cb575
+manifest sha256: 7a1086913d14e2e3bc7cd6310eb7fa0acf75dcba45337a44855c290fee0b20a2
+installed to <home>/ke-proof3/ke
+next: cd <home>/ke-proof3/ke && cp .env.example .env && chmod 600 .env (set real secrets in it), then bash scripts/launch.sh
+=== END 6-install  rc=0  elapsed=69s
+
+=== STEP 6b-installed-facts  start 2026-10-20T01:29:58Z  cwd <home>/ke-proof3/bundle-amd64
+$ ls -la ~/ke-proof3 ~/ke-proof3/ke; cat ~/ke-proof3/ke/docker-compose.override.yml; for r in $(jq -r ".images[].as" bundle.json); do docker image inspect --format "$r {{.Os}}/{{.Architecture}} {{.Id}}" "$r"; done
+<home>/ke-proof3:
+total 20
+drwx------  4 adam adam 4096 Oct 19 18:29 .
+drwxr-x--- 10 adam adam 4096 Oct 19 18:28 ..
+drwxr-xr-x  4 adam adam 4096 Oct 19 18:28 bundle-amd64
+-rw-r--r--  1 adam adam   95 Oct 19 18:28 bundle-amd64.manifest.sha256
+drwxr-xr-x  5 adam adam 4096 Oct 19 18:29 ke
+
+<home>/ke-proof3/ke:
+total 36
+drwxr-xr-x 5 adam adam 4096 Oct 19 18:29 .
+drwx------ 4 adam adam 4096 Oct 19 18:29 ..
+-rw-r--r-- 1 adam adam 1809 Oct 19 18:28 .env.example
+drwxr-xr-x 2 adam adam 4096 Oct 19 18:28 config
+-rw-r--r-- 1 adam adam  539 Oct 19 18:29 docker-compose.override.yml
+-rw-r--r-- 1 adam adam 7579 Oct 19 18:28 docker-compose.yml
+drwxr-xr-x 2 adam adam 4096 Oct 19 18:28 docs
+drwxr-xr-x 2 adam adam 4096 Oct 19 18:28 scripts
+services:
+  api:
+    image: "ke-app:bundle-e3d3fed80932"
+    pull_policy: never
+  worker:
+    image: "ke-app:bundle-e3d3fed80932"
+    pull_policy: never
+  gateway:
+    image: "ke-gateway:bundle-e3d3fed80932"
+    pull_policy: never
+  neo4j:
+    image: "ke-vendor/neo4j:0a6e7aedf54a"
+    pull_policy: never
+  phoenix:
+    image: "ke-vendor/phoenix:fa28e9cd96dd"
+    pull_policy: never
+  postgres:
+    image: "ke-vendor/postgres:0ea6700a3b4f"
+    pull_policy: never
+  valkey:
+    image: "ke-vendor/valkey:081c2f5cb575"
+    pull_policy: never
+ke-app:bundle-e3d3fed80932 linux/amd64 sha256:c7d2756ea951a030541758068ab047cc74f19900af0694d23cab057ee0b6e423
+ke-gateway:bundle-e3d3fed80932 linux/amd64 sha256:fb81deee818e9132d59094330e7f78f41e4eaf9263aa4039424aa83df52ad832
+ke-vendor/neo4j:0a6e7aedf54a linux/amd64 sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+ke-vendor/phoenix:fa28e9cd96dd linux/amd64 sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c
+ke-vendor/postgres:0ea6700a3b4f linux/amd64 sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
+ke-vendor/valkey:081c2f5cb575 linux/amd64 sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507
+=== END 6b-installed-facts  rc=0  elapsed=1s
+
+=== STEP 6c-installed-modes  start 2026-10-20T01:29:59Z  cwd <home>/ke-proof3/ke
+$ echo "install umask: $(umask)"; find . -printf "%m %y %p\n" | sort -k3; echo "--- violations of: dirs 0755, scripts/* 0755, other files 0644 (empty = none)"; find . \( -type d ! -perm 0755 -printf "DIR %m %p\n" \) -o \( -type f -path "./scripts/*" ! -perm 0755 -printf "SCRIPT %m %p\n" \) -o \( -type f ! -path "./scripts/*" ! -perm 0644 -printf "FILE %m %p\n" \) -o \( ! -type d ! -type f -printf "OTHER %y %p\n" \); echo "(end of violations)"; stat -c "%a %n" ~/ke-proof3
+install umask: 0022
+755 d .
+644 f ./.env.example
+755 d ./config
+644 f ./config/defaults.yaml
+644 f ./docker-compose.override.yml
+644 f ./docker-compose.yml
+755 d ./docs
+644 f ./docs/quickstart.md
+755 d ./scripts
+755 f ./scripts/launch.ps1
+755 f ./scripts/launch.sh
+755 f ./scripts/net_isolated.sh
+755 f ./scripts/smoke.sh
+755 f ./scripts/teardown.ps1
+755 f ./scripts/teardown.sh
+--- violations of: dirs 0755, scripts/* 0755, other files 0644 (empty = none)
+(end of violations)
+700 <home>/ke-proof3
+=== END 6c-installed-modes  rc=0  elapsed=0s
+### NOTE: operator env for steps 7-13: COMPOSE_PROJECT_NAME=ke-proof3-amd64 (exported, quickstart step 5); ports 47180/47181 set in .env
+
+=== STEP 7-env  start 2026-10-20T01:29:59Z  cwd <home>/ke-proof3/ke
+$ cp .env.example .env && chmod 600 .env && pg="$(openssl rand -hex 24)" && n4="$(openssl rand -hex 24)" && sed -i -e "s/^KE_STORES__POSTGRES__PASSWORD=.*/KE_STORES__POSTGRES__PASSWORD=$pg/" -e "s/^KE_STORES__NEO4J__PASSWORD=.*/KE_STORES__NEO4J__PASSWORD=$n4/" -e "s/^KE_API_PORT=.*/KE_API_PORT=47180/" -e "s/^KE_PHOENIX_PORT=.*/KE_PHOENIX_PORT=47181/" .env && unset pg n4 && for k in KE_STORES__POSTGRES__PASSWORD KE_STORES__NEO4J__PASSWORD; do v="$(sed -n "s/^$k=//p" .env)"; echo "$k: ${#v} chars, hex only: $([[ $v =~ ^[0-9a-f]+$ ]] && echo yes || echo no)"; done; echo "changeme in a value: $(grep -cE "^[A-Z_]+=changeme" .env)"; grep -nE "^(KE_ENV|KE_BIND_ADDRESS|KE_AUTH__ENABLED|KE_API_PORT|KE_PHOENIX_PORT|KE_MODEL_UPSTREAM|KE_EGRESS_ALLOWLIST)=" .env; stat -c "%a %n" .env; docker compose config | grep -E "^name:|pull_policy|image:"
+KE_STORES__POSTGRES__PASSWORD: 48 chars, hex only: yes
+KE_STORES__NEO4J__PASSWORD: 48 chars, hex only: yes
+changeme in a value: 0
+2:KE_ENV=dev
+3:KE_AUTH__ENABLED=false
+8:KE_BIND_ADDRESS=127.0.0.1
+12:KE_API_PORT=47180
+13:KE_PHOENIX_PORT=47181
+32:KE_MODEL_UPSTREAM=
+33:KE_EGRESS_ALLOWLIST=
+600 .env
+name: ke-proof3-amd64
+    image: ke-app:bundle-e3d3fed80932
+    pull_policy: never
+    image: ke-gateway:bundle-e3d3fed80932
+    pull_policy: never
+    image: ke-vendor/neo4j:0a6e7aedf54a
+    pull_policy: never
+    image: ke-vendor/phoenix:fa28e9cd96dd
+    pull_policy: never
+    image: ke-vendor/postgres:0ea6700a3b4f
+    pull_policy: never
+    image: ke-vendor/valkey:081c2f5cb575
+    pull_policy: never
+    image: ke-app:bundle-e3d3fed80932
+    pull_policy: never
+  image: ke-app:local
+  image: ke-gates:local
+=== END 7-env  rc=0  elapsed=0s
+
+=== STEP 8-launch  start 2026-10-20T01:29:59Z  cwd <home>/ke-proof3/ke
+$ bash scripts/launch.sh
+ Network ke-proof3-amd64_backend Creating 
+ Network ke-proof3-amd64_backend Created 
+ Network ke-proof3-amd64_edge Creating 
+ Network ke-proof3-amd64_edge Created 
+ Volume ke-proof3-amd64_valkey-data Creating 
+ Volume ke-proof3-amd64_valkey-data Created 
+ Volume ke-proof3-amd64_neo4j-data Creating 
+ Volume ke-proof3-amd64_neo4j-data Created 
+ Volume ke-proof3-amd64_phoenix-data Creating 
+ Volume ke-proof3-amd64_phoenix-data Created 
+ Volume ke-proof3-amd64_postgres-data Creating 
+ Volume ke-proof3-amd64_postgres-data Created 
+ Container ke-proof3-amd64-phoenix-1 Creating 
+ Container ke-proof3-amd64-valkey-1 Creating 
+ Container ke-proof3-amd64-postgres-1 Creating 
+ Container ke-proof3-amd64-neo4j-1 Creating 
+ Container ke-proof3-amd64-gateway-1 Creating 
+ Container ke-proof3-amd64-phoenix-1 Created 
+ Container ke-proof3-amd64-valkey-1 Created 
+ Container ke-proof3-amd64-worker-1 Creating 
+ Container ke-proof3-amd64-neo4j-1 Created 
+ Container ke-proof3-amd64-gateway-1 Created 
+ Container ke-proof3-amd64-postgres-1 Created 
+ Container ke-proof3-amd64-api-1 Creating 
+ Container ke-proof3-amd64-worker-1 Created 
+ Container ke-proof3-amd64-api-1 Created 
+ Container ke-proof3-amd64-valkey-1 Starting 
+ Container ke-proof3-amd64-postgres-1 Starting 
+ Container ke-proof3-amd64-neo4j-1 Starting 
+ Container ke-proof3-amd64-phoenix-1 Starting 
+ Container ke-proof3-amd64-gateway-1 Starting 
+ Container ke-proof3-amd64-phoenix-1 Started 
+ Container ke-proof3-amd64-valkey-1 Started 
+ Container ke-proof3-amd64-valkey-1 Waiting 
+ Container ke-proof3-amd64-postgres-1 Started 
+ Container ke-proof3-amd64-neo4j-1 Started 
+ Container ke-proof3-amd64-postgres-1 Waiting 
+ Container ke-proof3-amd64-neo4j-1 Waiting 
+ Container ke-proof3-amd64-valkey-1 Waiting 
+ Container ke-proof3-amd64-gateway-1 Started 
+ Container ke-proof3-amd64-valkey-1 Healthy 
+ Container ke-proof3-amd64-valkey-1 Healthy 
+ Container ke-proof3-amd64-worker-1 Starting 
+ Container ke-proof3-amd64-postgres-1 Healthy 
+ Container ke-proof3-amd64-worker-1 Started 
+ Container ke-proof3-amd64-neo4j-1 Healthy 
+ Container ke-proof3-amd64-api-1 Starting 
+ Container ke-proof3-amd64-api-1 Started 
+ Container ke-proof3-amd64-api-1 Waiting 
+ Container ke-proof3-amd64-valkey-1 Waiting 
+ Container ke-proof3-amd64-neo4j-1 Waiting 
+ Container ke-proof3-amd64-phoenix-1 Waiting 
+ Container ke-proof3-amd64-postgres-1 Waiting 
+ Container ke-proof3-amd64-worker-1 Waiting 
+ Container ke-proof3-amd64-gateway-1 Waiting 
+ Container ke-proof3-amd64-postgres-1 Healthy 
+ Container ke-proof3-amd64-gateway-1 Healthy 
+ Container ke-proof3-amd64-neo4j-1 Healthy 
+ Container ke-proof3-amd64-valkey-1 Healthy 
+ Container ke-proof3-amd64-api-1 Healthy 
+ Container ke-proof3-amd64-phoenix-1 Healthy 
+ Container ke-proof3-amd64-worker-1 Healthy 
+stack is up:
+  api:     http://127.0.0.1:47180
+  phoenix: http://127.0.0.1:47181
+=== END 8-launch  rc=0  elapsed=17s
+
+=== STEP 8b-endpoints  start 2026-10-20T01:30:16Z  cwd <home>/ke-proof3/ke
+$ docker compose ps --format "{{.Service}}\t{{.Image}}\t{{.Health}}"; curl.exe -s -w " HTTP %{http_code}\n" http://127.0.0.1:47180/healthz; curl.exe -s -w " HTTP %{http_code}\n" http://127.0.0.1:47180/readyz; curl.exe -s -o /dev/null -w "phoenix HTTP %{http_code}\n" http://127.0.0.1:47181/
+api	ke-app:bundle-e3d3fed80932	healthy
+gateway	ke-gateway:bundle-e3d3fed80932	healthy
+neo4j	ke-vendor/neo4j:0a6e7aedf54a	healthy
+phoenix	ke-vendor/phoenix:fa28e9cd96dd	healthy
+postgres	ke-vendor/postgres:0ea6700a3b4f	healthy
+valkey	ke-vendor/valkey:081c2f5cb575	healthy
+worker	ke-app:bundle-e3d3fed80932	healthy
+{"status":"ok"} HTTP 200
+{"ready":true,"checks":{"postgres":{"ok":true,"reason":null},"neo4j":{"ok":true,"reason":null},"valkey":{"ok":true,"reason":null},"model_host":{"ok":false,"reason":"not_configured","required":false}}} HTTP 200
+phoenix HTTP 200
+=== END 8b-endpoints  rc=0  elapsed=0s
+
+=== STEP 9-smoke-running  start 2026-10-20T01:30:16Z  cwd <home>/ke-proof3/ke
+$ bash scripts/smoke.sh
+time="2026-10-19T18:30:16-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:16-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:16-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:16-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:16-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:16-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:16-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:16-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:16-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:16-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:16-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:16-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:16-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:16-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+smoke: compose resolves with no .env; 2 ports, all on 127.0.0.1
+smoke: project ke-proof3-amd64 is already running
+net_isolated: ke-proof3-amd64_backend is internal with gateway_mode_ipv4=isolated
+smoke: ke-proof3-amd64_backend is internal with gateway_mode_ipv4=isolated
+smoke: gateway healthy
+smoke: api healthy
+smoke: worker healthy
+smoke: postgres healthy
+smoke: neo4j healthy
+smoke: valkey healthy
+smoke: phoenix healthy
+smoke: gateway proxies api /healthz
+smoke: gateway proxies phoenix /healthz
+smoke: /readyz ready
+smoke: ci/offline api has no route to 192.168.112.2:8100
+smoke: ci/offline worker has no route to 192.168.112.2:8100
+smoke: SKIPPED the postgres stop/start (project ke-proof3-amd64 was already running; smoke does not stop an operator's stores)
+smoke: gateway healthy
+smoke: api healthy
+smoke: worker healthy
+smoke: postgres healthy
+smoke: neo4j healthy
+smoke: valkey healthy
+smoke: phoenix healthy
+smoke: PASS
+=== END 9-smoke-running  rc=0  elapsed=7s
+
+=== STEP 9b-still-up  start 2026-10-20T01:30:23Z  cwd <home>/ke-proof3/ke
+$ docker compose ps --format "{{.Service}}\t{{.State}}\t{{.Health}}"
+api	running	healthy
+gateway	running	healthy
+neo4j	running	healthy
+phoenix	running	healthy
+postgres	running	healthy
+valkey	running	healthy
+worker	running	healthy
+=== END 9b-still-up  rc=0  elapsed=1s
+
+=== STEP 10-teardown  start 2026-10-20T01:30:24Z  cwd <home>/ke-proof3/ke
+$ bash scripts/teardown.sh
+ Container ke-proof3-amd64-worker-1 Stopping 
+ Container ke-proof3-amd64-gateway-1 Stopping 
+ Container ke-proof3-amd64-api-1 Stopping 
+ Container ke-proof3-amd64-phoenix-1 Stopping 
+ Container ke-proof3-amd64-worker-1 Stopped 
+ Container ke-proof3-amd64-worker-1 Removing 
+ Container ke-proof3-amd64-worker-1 Removed 
+ Container ke-proof3-amd64-gateway-1 Stopped 
+ Container ke-proof3-amd64-gateway-1 Removing 
+ Container ke-proof3-amd64-gateway-1 Removed 
+ Container ke-proof3-amd64-api-1 Stopped 
+ Container ke-proof3-amd64-api-1 Removing 
+ Container ke-proof3-amd64-api-1 Removed 
+ Container ke-proof3-amd64-postgres-1 Stopping 
+ Container ke-proof3-amd64-neo4j-1 Stopping 
+ Container ke-proof3-amd64-valkey-1 Stopping 
+ Container ke-proof3-amd64-phoenix-1 Stopped 
+ Container ke-proof3-amd64-phoenix-1 Removing 
+ Container ke-proof3-amd64-phoenix-1 Removed 
+ Container ke-proof3-amd64-postgres-1 Stopped 
+ Container ke-proof3-amd64-postgres-1 Removing 
+ Container ke-proof3-amd64-postgres-1 Removed 
+ Container ke-proof3-amd64-valkey-1 Stopped 
+ Container ke-proof3-amd64-valkey-1 Removing 
+ Container ke-proof3-amd64-valkey-1 Removed 
+ Container ke-proof3-amd64-neo4j-1 Stopped 
+ Container ke-proof3-amd64-neo4j-1 Removing 
+ Container ke-proof3-amd64-neo4j-1 Removed 
+ Network ke-proof3-amd64_backend Removing 
+ Network ke-proof3-amd64_edge Removing 
+ Network ke-proof3-amd64_backend Removed 
+ Network ke-proof3-amd64_edge Removed 
+=== END 10-teardown  rc=0  elapsed=3s
+
+=== STEP 11-smoke-stopped  start 2026-10-20T01:30:27Z  cwd <home>/ke-proof3/ke
+$ bash scripts/smoke.sh
+time="2026-10-19T18:30:27-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:27-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:27-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:27-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:27-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:27-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:27-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:27-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:27-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:27-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:27-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:27-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:27-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T18:30:27-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+smoke: compose resolves with no .env; 2 ports, all on 127.0.0.1
+ Network ke-proof3-amd64_backend Creating 
+ Network ke-proof3-amd64_backend Created 
+ Network ke-proof3-amd64_edge Creating 
+ Network ke-proof3-amd64_edge Created 
+ Container ke-proof3-amd64-postgres-1 Creating 
+ Container ke-proof3-amd64-phoenix-1 Creating 
+ Container ke-proof3-amd64-gateway-1 Creating 
+ Container ke-proof3-amd64-valkey-1 Creating 
+ Container ke-proof3-amd64-neo4j-1 Creating 
+ Container ke-proof3-amd64-valkey-1 Created 
+ Container ke-proof3-amd64-worker-1 Creating 
+ Container ke-proof3-amd64-neo4j-1 Created 
+ Container ke-proof3-amd64-postgres-1 Created 
+ Container ke-proof3-amd64-api-1 Creating 
+ Container ke-proof3-amd64-phoenix-1 Created 
+ Container ke-proof3-amd64-gateway-1 Created 
+ Container ke-proof3-amd64-worker-1 Created 
+ Container ke-proof3-amd64-api-1 Created 
+ Container ke-proof3-amd64-neo4j-1 Starting 
+ Container ke-proof3-amd64-valkey-1 Starting 
+ Container ke-proof3-amd64-gateway-1 Starting 
+ Container ke-proof3-amd64-phoenix-1 Starting 
+ Container ke-proof3-amd64-postgres-1 Starting 
+ Container ke-proof3-amd64-neo4j-1 Started 
+ Container ke-proof3-amd64-valkey-1 Started 
+ Container ke-proof3-amd64-valkey-1 Waiting 
+ Container ke-proof3-amd64-phoenix-1 Started 
+ Container ke-proof3-amd64-postgres-1 Started 
+ Container ke-proof3-amd64-postgres-1 Waiting 
+ Container ke-proof3-amd64-neo4j-1 Waiting 
+ Container ke-proof3-amd64-valkey-1 Waiting 
+ Container ke-proof3-amd64-gateway-1 Started 
+ Container ke-proof3-amd64-valkey-1 Healthy 
+ Container ke-proof3-amd64-worker-1 Starting 
+ Container ke-proof3-amd64-postgres-1 Healthy 
+ Container ke-proof3-amd64-valkey-1 Healthy 
+ Container ke-proof3-amd64-worker-1 Started 
+ Container ke-proof3-amd64-neo4j-1 Healthy 
+ Container ke-proof3-amd64-api-1 Starting 
+ Container ke-proof3-amd64-api-1 Started 
+ Container ke-proof3-amd64-worker-1 Waiting 
+ Container ke-proof3-amd64-api-1 Waiting 
+ Container ke-proof3-amd64-gateway-1 Waiting 
+ Container ke-proof3-amd64-postgres-1 Waiting 
+ Container ke-proof3-amd64-valkey-1 Waiting 
+ Container ke-proof3-amd64-neo4j-1 Waiting 
+ Container ke-proof3-amd64-phoenix-1 Waiting 
+ Container ke-proof3-amd64-gateway-1 Healthy 
+ Container ke-proof3-amd64-neo4j-1 Healthy 
+ Container ke-proof3-amd64-postgres-1 Healthy 
+ Container ke-proof3-amd64-valkey-1 Healthy 
+ Container ke-proof3-amd64-api-1 Healthy 
+ Container ke-proof3-amd64-phoenix-1 Healthy 
+ Container ke-proof3-amd64-worker-1 Healthy 
+stack is up:
+  api:     http://127.0.0.1:47180
+  phoenix: http://127.0.0.1:47181
+smoke: launched project ke-proof3-amd64
+net_isolated: ke-proof3-amd64_backend is internal with gateway_mode_ipv4=isolated
+smoke: ke-proof3-amd64_backend is internal with gateway_mode_ipv4=isolated
+smoke: gateway healthy
+smoke: api healthy
+smoke: worker healthy
+smoke: postgres healthy
+smoke: neo4j healthy
+smoke: valkey healthy
+smoke: phoenix healthy
+smoke: gateway proxies api /healthz
+smoke: gateway proxies phoenix /healthz
+smoke: /readyz ready
+smoke: ci/offline api has no route to 192.168.112.2:8100
+smoke: ci/offline worker has no route to 192.168.112.2:8100
+ Container ke-proof3-amd64-postgres-1 Stopping 
+ Container ke-proof3-amd64-postgres-1 Stopped 
+smoke: /readyz reports postgres down
+ Container ke-proof3-amd64-postgres-1 Starting 
+ Container ke-proof3-amd64-postgres-1 Started 
+ Container ke-proof3-amd64-postgres-1 Waiting 
+ Container ke-proof3-amd64-postgres-1 Healthy 
+smoke: /readyz ready again after postgres restart
+smoke: gateway healthy
+smoke: api healthy
+smoke: worker healthy
+smoke: postgres healthy
+smoke: neo4j healthy
+smoke: valkey healthy
+smoke: phoenix healthy
+smoke: PASS
+ Container ke-proof3-amd64-gateway-1 Stopping 
+ Container ke-proof3-amd64-phoenix-1 Stopping 
+ Container ke-proof3-amd64-worker-1 Stopping 
+ Container ke-proof3-amd64-api-1 Stopping 
+ Container ke-proof3-amd64-worker-1 Stopped 
+ Container ke-proof3-amd64-worker-1 Removing 
+ Container ke-proof3-amd64-worker-1 Removed 
+ Container ke-proof3-amd64-gateway-1 Stopped 
+ Container ke-proof3-amd64-gateway-1 Removing 
+ Container ke-proof3-amd64-gateway-1 Removed 
+ Container ke-proof3-amd64-api-1 Stopped 
+ Container ke-proof3-amd64-api-1 Removing 
+ Container ke-proof3-amd64-api-1 Removed 
+ Container ke-proof3-amd64-valkey-1 Stopping 
+ Container ke-proof3-amd64-postgres-1 Stopping 
+ Container ke-proof3-amd64-neo4j-1 Stopping 
+ Container ke-proof3-amd64-phoenix-1 Stopped 
+ Container ke-proof3-amd64-phoenix-1 Removing 
+ Container ke-proof3-amd64-phoenix-1 Removed 
+ Container ke-proof3-amd64-postgres-1 Stopped 
+ Container ke-proof3-amd64-postgres-1 Removing 
+ Container ke-proof3-amd64-postgres-1 Removed 
+ Container ke-proof3-amd64-valkey-1 Stopped 
+ Container ke-proof3-amd64-valkey-1 Removing 
+ Container ke-proof3-amd64-valkey-1 Removed 
+ Container ke-proof3-amd64-neo4j-1 Stopped 
+ Container ke-proof3-amd64-neo4j-1 Removing 
+ Container ke-proof3-amd64-neo4j-1 Removed 
+ Network ke-proof3-amd64_edge Removing 
+ Network ke-proof3-amd64_backend Removing 
+ Network ke-proof3-amd64_edge Removed 
+ Network ke-proof3-amd64_backend Removed 
+=== END 11-smoke-stopped  rc=0  elapsed=37s
+
+=== STEP 12-teardown-volumes  start 2026-10-20T01:31:04Z  cwd <home>/ke-proof3/ke
+$ bash scripts/teardown.sh --volumes
+ Volume ke-proof3-amd64_valkey-data Removing 
+ Volume ke-proof3-amd64_phoenix-data Removing 
+ Volume ke-proof3-amd64_postgres-data Removing 
+ Volume ke-proof3-amd64_valkey-data Removed 
+ Volume ke-proof3-amd64_neo4j-data Removing 
+ Volume ke-proof3-amd64_phoenix-data Removed 
+ Volume ke-proof3-amd64_postgres-data Removed 
+ Volume ke-proof3-amd64_neo4j-data Removed 
+=== END 12-teardown-volumes  rc=0  elapsed=1s
+
+=== STEP 13-leftovers  start 2026-10-20T01:31:05Z  cwd <home>/ke-proof3/ke
+$ docker ps -a --filter label=com.docker.compose.project=ke-proof3-amd64 --format "{{.Names}}"; docker network ls --filter label=com.docker.compose.project=ke-proof3-amd64 --format "{{.Name}}"; docker volume ls --filter label=com.docker.compose.project=ke-proof3-amd64 --format "{{.Name}}"; docker compose ls -a | grep -E "ke-proof3|knowledge-engine" || true; echo "(empty above = nothing left)"
+(empty above = nothing left)
+=== END 13-leftovers  rc=0  elapsed=0s
+
+=== STEP 14-installed-modes-after-run  start 2026-10-20T01:31:05Z  cwd <home>/ke-proof3/ke
+$ find . -printf "%m %y %p\n" | sort -k3; echo "--- violations (dirs 0755, scripts/* 0755, .env 0600, other files 0644; empty = none)"; find . \( -type d ! -perm 0755 -printf "DIR %m %p\n" \) -o \( -type f -path "./scripts/*" ! -perm 0755 -printf "SCRIPT %m %p\n" \) -o \( -type f -name .env ! -perm 0600 -printf "ENV %m %p\n" \) -o \( -type f ! -path "./scripts/*" ! -name .env ! -perm 0644 -printf "FILE %m %p\n" \) -o \( ! -type d ! -type f -printf "OTHER %y %p\n" \); echo "(end of violations)"
+755 d .
+600 f ./.env
+644 f ./.env.example
+755 d ./config
+644 f ./config/defaults.yaml
+644 f ./docker-compose.override.yml
+644 f ./docker-compose.yml
+755 d ./docs
+644 f ./docs/quickstart.md
+755 d ./scripts
+755 f ./scripts/launch.ps1
+755 f ./scripts/launch.sh
+755 f ./scripts/net_isolated.sh
+755 f ./scripts/smoke.sh
+755 f ./scripts/teardown.ps1
+755 f ./scripts/teardown.sh
+--- violations (dirs 0755, scripts/* 0755, .env 0600, other files 0644; empty = none)
+(end of violations)
+=== END 14-installed-modes-after-run  rc=0  elapsed=0s
+
+### NOTE: 2b inspected ke-*:latest by mistake (tester harness). The compose file now names ke-app/ke-gateway/ke-gates:${KE_IMAGE_TAG:-local}, so build.sh's outputs are the :local tags; 3e shows the bundled :local images (ke-app c7d2756e..., ke-gateway fb81deee...) and C0 below records the :local IDs. The :latest lines are stale, pre-existing images and are not part of the proof.
+### NOTE: 7: the two indented-2 'image: ke-app:local' / 'image: ke-gates:local' lines in 'docker compose config' are the x-app / x-gates extension fields, not services; every service maps to its bundle tag with pull_policy: never.
+
+================================================================
+Arch refusal: the amd64 bundle above, installed natively on aria-gb10 (arm64)
+
+=== STEP R0-carry-amd64-bundle-to-gb10 (run on the dev host, Git Bash)  start 2026-10-20T01:31:38Z
+$ ssh sync-aria-gb10_local "test ! -e ~/ke-proof3-refusal && mkdir -m 0700 ~/ke-proof3-refusal ~/ke-proof3-refusal-logs"
+$ tar -C //wsl.localhost/Ubuntu<home>/ke-proof3-src/dist -cf - bundle-amd64 bundle-amd64.manifest.sha256 | ssh sync-aria-gb10_local "tar -C ~/ke-proof3-refusal -xf - && ls -la ~/ke-proof3-refusal && du -sh ~/ke-proof3-refusal/bundle-amd64"
+total 16
+drwx------  3 admin admin 4096 Oct 19 18:33 .
+drwxr-x--- 56 admin admin 4096 Oct 19 18:31 ..
+drwxr-xr-x  4 admin admin 4096 Oct 19 18:28 bundle-amd64
+-rw-r--r--  1 admin admin   95 Oct 19 18:28 bundle-amd64.manifest.sha256
+941M	<home>/ke-proof3-refusal/bundle-amd64
+=== END R0-carry-amd64-bundle-to-gb10  rc=0  elapsed=87s
+Recorded run 3, arch refusal: the amd64 bundle from run 3 on aria-gb10 (arm64), native docker, umask 0002.
+
+=== STEP R0b-host  start 2026-10-20T01:33:09Z  cwd <home>/ke-proof3-refusal/bundle-amd64
+$ uname -srm; bash --version | head -1; jq --version; docker version --format "client {{.Client.Version}}  server {{.Server.Version}} {{.Server.Os}}/{{.Server.Arch}}"; docker info --format "{{.Architecture}} {{.Driver}}"
+Linux 7.0.0-1019-nvidia aarch64
+GNU bash, version 5.2.21(1)-release (aarch64-unknown-linux-gnu)
+jq-1.7
+client 29.6.2  server 29.6.2 linux/arm64
+aarch64 overlay2
+=== END R0b-host  rc=0  elapsed=1s
+
+=== STEP R1a-check-record-from-parent  start 2026-10-20T01:33:10Z  cwd <home>/ke-proof3-refusal/bundle-amd64
+$ ls -ld "$D"; cd "$D" && sha256sum -c bundle-amd64.manifest.sha256
+drwx------ 3 admin admin 4096 Oct 19 18:33 <home>/ke-proof3-refusal
+bundle-amd64/MANIFEST.sha256: OK
+=== END R1a-check-record-from-parent  rc=0  elapsed=0s
+
+=== STEP R1b-check-every-file  start 2026-10-20T01:33:10Z  cwd <home>/ke-proof3-refusal/bundle-amd64
+$ sha256sum -c --strict --quiet MANIFEST.sha256 && echo "all files OK"; jq -r ".arch" bundle.json
+all files OK
+amd64
+=== END R1b-check-every-file  rc=0  elapsed=0s
+
+=== STEP R2-images-before  start 2026-10-20T01:33:10Z  cwd <home>/ke-proof3-refusal/bundle-amd64
+$ docker images --format "{{.Repository}}:{{.Tag}} {{.ID}}" | sort > "$HOME/ke-proof3-refusal-logs/before.txt"; echo "image list lines: $(wc -l < "$HOME/ke-proof3-refusal-logs/before.txt")"; docker images --format "{{.Repository}}:{{.Tag}}" | grep -E ":bundle-|^ke-vendor/" || echo "no ke-*:bundle-* or ke-vendor/* tags present"
+image list lines: 8
+no ke-*:bundle-* or ke-vendor/* tags present
+=== END R2-images-before  rc=0  elapsed=0s
+
+=== STEP R3-install-amd64-on-arm64  start 2026-10-20T01:33:10Z  cwd <home>/ke-proof3-refusal/bundle-amd64
+$ env PATH=/usr/local/bin:/usr/bin:/bin bash ./install.sh --expect-manifest "$SHA" "$D/ke"
+manifest sha256: 7a1086913d14e2e3bc7cd6310eb7fa0acf75dcba45337a44855c290fee0b20a2 (matches --expect-manifest)
+install: arch mismatch: this bundle is amd64 but the Docker daemon is arm64 (reported as aarch64); use the arm64 bundle
+=== END R3-install-amd64-on-arm64  rc=1  elapsed=1s
+
+=== STEP R4-no-image-events  start 2026-10-20T01:33:11Z  cwd <home>/ke-proof3-refusal/bundle-amd64
+$ docker events --since "$T0" --until "$T1" --filter type=image --format "{{.Time}} {{.Action}} {{.Actor.Attributes.name}}"; echo "(image events between $T0 and $T1 listed above; empty = none)"
+(image events between 1792459990 and 1792459992 listed above; empty = none)
+=== END R4-no-image-events  rc=0  elapsed=1s
+
+=== STEP R5-images-after-and-target  start 2026-10-20T01:33:12Z  cwd <home>/ke-proof3-refusal/bundle-amd64
+$ docker images --format "{{.Repository}}:{{.Tag}} {{.ID}}" | sort > "$HOME/ke-proof3-refusal-logs/after.txt"; diff "$HOME/ke-proof3-refusal-logs/before.txt" "$HOME/ke-proof3-refusal-logs/after.txt" && echo "image list unchanged"; ls -la "$D"; test ! -e "$D/ke" && echo "no target left behind"
+image list unchanged
+total 16
+drwx------  3 admin admin 4096 Oct 19 18:33 .
+drwxr-x--- 56 admin admin 4096 Oct 19 18:31 ..
+drwxr-xr-x  4 admin admin 4096 Oct 19 18:28 bundle-amd64
+-rw-r--r--  1 admin admin   95 Oct 19 18:28 bundle-amd64.manifest.sha256
+no target left behind
+=== END R5-images-after-and-target  rc=0  elapsed=0s
+
+================================================================
+Cleanup (dev host): remove only what this run created (project resources, proof dirs, the 2 ke-*:bundle-e3d3fed80932 tags). Pre-existing ke-*:bundle-f7e9074f7462 and ke-vendor/* tags are left alone.
+
+=== STEP C0-build-outputs  start 2026-10-20T01:33:34Z  cwd <home>
+$ for r in ke-app:local ke-gateway:local ke-gates:local; do docker image inspect --format "$r {{.Id}} {{.Created}}" "$r"; done; grep -E "^ke-(app|gateway|gates):local " ~/ke-proof3-logs/images-before.txt || true; echo "(the lines just above are the :local tags that existed before this run)"
+ke-app:local sha256:c7d2756ea951a030541758068ab047cc74f19900af0694d23cab057ee0b6e423 2026-10-20T01:28:21.720074184Z
+ke-gateway:local sha256:fb81deee818e9132d59094330e7f78f41e4eaf9263aa4039424aa83df52ad832 2026-10-19T04:13:41.827391046Z
+ke-gates:local sha256:1caa2dec6f3b1beab1ff584e885822a35a61715d0d64b80e713899668271ca33 2026-10-20T01:28:24.014179361Z
+ke-gates:local 73095ae8ed5e
+(the lines just above are the :local tags that existed before this run)
+=== END C0-build-outputs  rc=0  elapsed=0s
+
+=== STEP C1-before  start 2026-10-20T01:33:34Z  cwd <home>
+$ for t in $MINE; do docker image inspect --format "$t id={{.Id}} tags={{.RepoTags}}" "$t"; done; for t in $MINE; do docker ps -a --filter ancestor="$t" --format "{{.Names}} uses $t"; done; echo "(no container listed above = none uses the bundle tags)"; echo "--- ke-vendor/* now vs before:"; docker images --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep -E "^ke-vendor/" | sort; grep -E "^ke-vendor/" ~/ke-proof3-logs/images-before.txt
+ke-app:bundle-e3d3fed80932 id=sha256:c7d2756ea951a030541758068ab047cc74f19900af0694d23cab057ee0b6e423 tags=[ke-app:bundle-e3d3fed80932 ke-app:local]
+ke-gateway:bundle-e3d3fed80932 id=sha256:fb81deee818e9132d59094330e7f78f41e4eaf9263aa4039424aa83df52ad832 tags=[ke-gateway:bundle-e3d3fed80932 ke-gateway:local]
+(no container listed above = none uses the bundle tags)
+--- ke-vendor/* now vs before:
+ke-vendor/neo4j:0a6e7aedf54a 0a6e7aedf54a
+ke-vendor/phoenix:fa28e9cd96dd fa28e9cd96dd
+ke-vendor/postgres:0ea6700a3b4f 0ea6700a3b4f
+ke-vendor/valkey:081c2f5cb575 081c2f5cb575
+ke-vendor/neo4j:0a6e7aedf54a 0a6e7aedf54a
+ke-vendor/phoenix:fa28e9cd96dd fa28e9cd96dd
+ke-vendor/postgres:0ea6700a3b4f 0ea6700a3b4f
+ke-vendor/valkey:081c2f5cb575 081c2f5cb575
+=== END C1-before  rc=0  elapsed=1s
+
+=== STEP C2-untag  start 2026-10-20T01:33:35Z  cwd <home>
+$ for t in $MINE; do docker rmi "$t"; done
+Untagged: ke-app:bundle-e3d3fed80932
+Untagged: moby-dangling@sha256:c7d2756ea951a030541758068ab047cc74f19900af0694d23cab057ee0b6e423
+Untagged: ke-gateway:bundle-e3d3fed80932
+Untagged: moby-dangling@sha256:fb81deee818e9132d59094330e7f78f41e4eaf9263aa4039424aa83df52ad832
+=== END C2-untag  rc=0  elapsed=0s
+
+=== STEP C3-after  start 2026-10-20T01:33:35Z  cwd <home>
+$ docker images --format "{{.Repository}}:{{.Tag}} {{.ID}}" | sort > ~/ke-proof3-logs/images-after.txt; echo "--- image list diff, before run vs after cleanup (< before, > after):"; diff ~/ke-proof3-logs/images-before.txt ~/ke-proof3-logs/images-after.txt; docker images --format "{{.Repository}}:{{.Tag}}" | grep -E ":bundle-e3d3fed80932" || echo "no ke-*:bundle-e3d3fed80932 tag left"
+--- image list diff, before run vs after cleanup (< before, > after):
+46a47
+> ke-app:local c7d2756ea951
+50c51
+< ke-gates:local 73095ae8ed5e
+---
+> ke-gates:local 1caa2dec6f3b
+54a56
+> ke-gateway:local fb81deee818e
+no ke-*:bundle-e3d3fed80932 tag left
+=== END C3-after  rc=0  elapsed=1s
+
+=== STEP C4-project-leftovers  start 2026-10-20T01:33:36Z  cwd <home>
+$ docker ps -a --format "{{.Names}}" | grep -E "ke-proof3|^knowledge-engine" || echo "no ke-proof3/knowledge-engine container"; docker volume ls -q | grep -E "ke-proof3|^knowledge-engine" || echo "no such volume"; docker network ls --format "{{.Name}}" | grep -E "ke-proof3|^knowledge-engine" || echo "no such network"
+no ke-proof3/knowledge-engine container
+no such volume
+no such network
+=== END C4-project-leftovers  rc=0  elapsed=0s
+
+=== STEP C5-remove-proof-dirs  start 2026-10-20T01:33:36Z  cwd <home>
+$ rm -rf ~/ke-proof3 ~/ke-proof3-src && ls -d ~/ke-proof3 ~/ke-proof3-src 2>&1; true
+ls: cannot access '<home>/ke-proof3': No such file or directory
+ls: cannot access '<home>/ke-proof3-src': No such file or directory
+=== END C5-remove-proof-dirs  rc=0  elapsed=0s
+
+### NOTE: C3: the only differences from the pre-run image list are build.sh's own outputs (step 2, sanctioned by the brief): ke-app:local and ke-gateway:local added, ke-gates:local moved from 73095ae8ed5e to 1caa2dec6f3b. They are left in place (not bundle/vendor tags). Pre-existing ke-*:bundle-f7e9074f7462 and ke-vendor/* tags are unchanged (same IDs as before).
+
+=== STEP RC-cleanup-gb10  start 2026-10-20T01:33:46Z
+$ rm -rf ~/ke-proof3-refusal ~/ke-proof3-refusal-logs; ls -d ~/ke-proof3*; docker images | grep -E ":bundle-|^ke-vendor/"; image count
+ls: cannot access '<home>/ke-proof3*': No such file or directory
+no ke-*:bundle-* or ke-vendor/* tags
+image list lines: 8
+no ke-proof3/knowledge-engine container
+=== END RC-cleanup-gb10  rc=0
+
+=== STEP C6-remove-tools-and-logs (WSL; the logs above were copied out first)
+$ rm -rf ~/ke-proof3-tools ~/ke-proof3-logs; ls -d ~/ke-proof3*
+ls: cannot access '<home>/ke-proof3*': No such file or directory
+=== END C6 rc=0

@@ -1,0 +1,68 @@
+GREEN hook sha256 before: 746f090b130fff0e6fc3538a2ecc8665d0d18d81a8ea7d4d17715b522963088f
+
+=== mutation a: drop lower-casing
+--- GREEN
++++ MUTANT
+@@ -34 +34 @@
+-text="$(printf '%s' "$text" | sed -z 's/\\\n/ /g' | tr -d "\"'\\\\" | tr '[:upper:]' '[:lower:]')"
++text="$(printf '%s' "$text" | sed -z 's/\\\n/ /g' | tr -d "\"'\\\\")"
+
+verify.sh fast exit=1 (RED)
+last lines:
+
+----------------------------------------------------------------------
+Ran 62 tests in 4.956s
+
+FAILED (failures=4)
+
+
+=== mutation b: drop backslash deletion
+--- GREEN
++++ MUTANT
+@@ -34 +34 @@
+-text="$(printf '%s' "$text" | sed -z 's/\\\n/ /g' | tr -d "\"'\\\\" | tr '[:upper:]' '[:lower:]')"
++text="$(printf '%s' "$text" | sed -z 's/\\\n/ /g' | tr -d "\"'" | tr '[:upper:]' '[:lower:]')"
+
+verify.sh fast exit=1 (RED)
+last lines:
+
+----------------------------------------------------------------------
+Ran 62 tests in 5.224s
+
+FAILED (failures=5)
+
+
+=== mutation c: drop off-main main|master alternative
+--- GREEN
++++ MUTANT
+@@ -48 +48 @@
+-  if grep -Eq "${PUSH}((.*$W)?((main|master)($W|\$)|--mirror|--all))" <<<"$text"; then
++  if grep -Eq "${PUSH}((.*$W)?(--mirror|--all))" <<<"$text"; then
+
+verify.sh fast exit=1 (RED)
+last lines:
+
+----------------------------------------------------------------------
+Ran 62 tests in 5.148s
+
+FAILED (failures=56)
+
+
+=== mutation d: drop on-main rule
+--- GREEN
++++ MUTANT
+@@ -41 +41 @@
+-if [ "$branch" = "main" ] || [ "$branch" = "master" ]; then
++if false; then
+
+verify.sh fast exit=1 (RED)
+last lines:
+
+----------------------------------------------------------------------
+Ran 62 tests in 5.045s
+
+FAILED (failures=66)
+
+
+GREEN hook sha256 after: 746f090b130fff0e6fc3538a2ecc8665d0d18d81a8ea7d4d17715b522963088f
+match: True

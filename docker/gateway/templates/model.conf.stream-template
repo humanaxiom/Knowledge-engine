@@ -1,0 +1,14 @@
+# One TCP forward to the model host, reachable on the backend network only
+# (never published). It is the stack's single upstream outside compose
+# (ADR-KE-009, F-A). The target is resolved per connection, so an empty or
+# unreachable KE_MODEL_UPSTREAM only fails that connection.
+map $server_port $ke_model_upstream {
+    default "${KE_MODEL_UPSTREAM}";
+}
+
+server {
+    listen ${KE_GATEWAY_MODEL_LISTEN};
+    resolver ${NGINX_LOCAL_RESOLVERS} valid=30s ipv6=off;
+    proxy_connect_timeout 5s;
+    proxy_pass $ke_model_upstream;
+}

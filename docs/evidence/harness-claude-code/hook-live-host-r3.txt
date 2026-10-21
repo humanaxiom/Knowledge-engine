@@ -1,0 +1,10 @@
+Git Bash host, no jq (fake jq exit 127), compact payloads, scratch repo
+[main] (git commit -m x) => DENY
+[main] git commit -m x => DENY
+[main] ls -la => silent
+[agent/x] (git push origin main) => DENY
+[agent/x] git commit -m "fix push to main docs" => silent
+[agent/x] echo "git push origin main is blocked" => silent
+[agent/x] git push origin agent/x => silent
+[agent/x] git commit -F - <<'EOF' note: git push to main EOF => silent
+[agent/x] git push --force origin agent/x => DENY

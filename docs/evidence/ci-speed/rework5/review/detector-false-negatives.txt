@@ -1,0 +1,39 @@
+# Reviewer rework 5: detector false negatives with real un-waited work. Scratch copy of tests/test_block_main_commit_hook.py; ke-gates:wt-33a132fbfdd7, --network none, uid 10001, ro mounts, label com.docker.compose.project=ke-reviewer-cs5. Script: semantics.py below.
+# wall < 1.5 s with rc 0 = bash returned while the sleep 3 it launched was still running.
+
+bash <bs><nl> -c             detector=MISSED  rc=0 wall=0.01s (sleep left running: un-waited work)
+pipe at line end, bash       detector=MISSED  rc=0 wall=0.00s (sleep left running: un-waited work)
+bash <<< (no -s)             detector=MISSED  rc=0 wall=0.00s (sleep left running: un-waited work)
+bash /dev/stdin <<<          detector=MISSED  rc=0 wall=0.00s (sleep left running: un-waited work)
+source -- /dev/stdin         detector=MISSED  rc=0 wall=0.00s (sleep left running: un-waited work)
+| nice -n 5 bash             detector=MISSED  rc=0 wall=0.01s (sleep left running: un-waited work)
+control: bash -c (flagged)   detector=FLAGGED rc=0 wall=0.00s (sleep left running: un-waited work)
+control: sleep 3 (waited)    detector=MISSED  rc=0 wall=3.02s 
+
+## semantics.py
+# Reviewer rework 5: for each spelling, (1) what background_constructs() (scratch copy of
+# tests/test_block_main_commit_hook.py) reports, (2) whether bash returns before a `sleep 3`
+# it launched (rc 0 and wall < 1.5 s = the sleep was left running = un-waited work).
+import subprocess, sys, time
+sys.path.insert(0, "/mod")
+import hookdet as h
+BS, LF = chr(92), chr(10)
+A = "a=$'" + BS + "x26'" + LF
+cases = {
+  "bash <bs><nl> -c":        "bash " + BS + LF + "  -c \"sleep 3 $a\"",
+  "pipe at line end, bash":  "printf 'sleep 3 %s' \"$a\" |" + LF + "  bash",
+  "bash <<< (no -s)":        "bash <<<\"sleep 3 $a\"",
+  "bash /dev/stdin <<<":     "bash /dev/stdin <<<\"sleep 3 $a\"",
+  "source -- /dev/stdin":    "source -- /dev/stdin <<<\"sleep 3 $a\"",
+  "| nice -n 5 bash":        "printf 'sleep 3 %s' \"$a\" | nice -n 5 bash",
+  "control: bash -c (flagged)": "bash -c \"sleep 3 $a\"",
+  "control: sleep 3 (waited)": "sleep 3",
+}
+for name, body in cases.items():
+    script = "#!/usr/bin/env bash" + LF + "set -euo pipefail" + LF + A + body + LF
+    found = h.background_constructs(script)
+    t = time.monotonic()
+    rc = subprocess.run(["bash", "-c", script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20)
+    wall = time.monotonic() - t
+    print(f"{name:28s} detector={'FLAGGED' if found else 'MISSED '} rc={rc.returncode} wall={wall:.2f}s "
+          f"{'(sleep left running: un-waited work)' if wall < 1.5 and rc.returncode == 0 else ''}")

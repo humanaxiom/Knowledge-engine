@@ -1,0 +1,7 @@
+## UV_OFFLINE=0 + --refresh (emulates stale cache, old behaviour)
+  ├─▶ Request failed after 3 retries in 27.5s
+  ├─▶ Failed to fetch: `https://pypi.org/simple/hatchling/`
+  ├─▶ error sending request for url (https://pypi.org/simple/hatchling/)
+  ├─▶ client error (Connect)
+  ├─▶ dns error
+  ╰─▶ failed to lookup address information: Try again

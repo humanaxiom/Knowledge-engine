@@ -1,0 +1,41 @@
+# Reviewer probe of scripts/hooks/block-main-commit.sh (rework 1), 2026-10-18
+# Scratch repo outside the project; host Git Bash, jq: absent
+# Payload shapes: compact JSON = what Claude Code sends (confirmed live, see review-rework1.md B5);
+# spaced JSON = what tests/test_block_main_commit_hook.py sends (json.dumps default separators).
+
+== on main, compact JSON, no jq
+[main] silent <- {"session_id":"x","tool_name":"Bash","tool_input":{"command":"git commit -m x","description":"Commit"}}
+[main] silent <- {"tool_input":{"command":"git push origin main"}}
+[main] silent <- {"tool_input":{"command":"git push --force origin main"}}
+[main] silent <- {"tool_input":{"command":"git merge x"}}
+[main] DENY: Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first. <- {"tool_input":{"command":"cd /x && git commit -m x"}}
+== on main, spaced JSON, no jq
+[main] DENY: Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first. <- {"tool_input": {"command": "git commit -m x"}}
+== on main, raw
+[main] DENY: Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first. <- git commit -m x
+== agent branch: false positives (commands that do not push)
+[agent/x] DENY: Pushing to main/master is not allowed. <- git commit -m "fix push to main docs"
+[agent/x] DENY: Pushing to main/master is not allowed. <- {"tool_input": {"command": "git commit -m \"fix push to main docs\""}}
+[agent/x] DENY: Force pushes are not allowed. <- git commit -m "docs: note push -f is denied"
+[agent/x] DENY: Pushing to main/master is not allowed. <- echo "git push origin main is blocked"
+[agent/x] DENY: Pushing to main/master is not allowed. <- git commit -m "$(cat <<'EOF'
+harness: hook
+
+The hook now denies git push to main from any branch.
+EOF
+)"
+== agent branch: intended behaviour
+[agent/x] silent <- git push origin agent/x
+[agent/x] silent <- git push -u origin agent/x
+[agent/x] silent <- git push origin feature-main
+[agent/x] silent <- git push origin agent/main-fix
+[agent/x] DENY: Pushing to main/master is not allowed. <- git push origin agent/x:main
+[agent/x] DENY: Pushing to main/master is not allowed. <- git push origin HEAD:refs/heads/main
+[agent/x] DENY: Force pushes are not allowed. <- git push origin +agent/x
+[agent/x] DENY: Force pushes are not allowed. <- git push --force-with-lease=agent/x origin agent/x
+[agent/x] DENY: Pushing to main/master is not allowed. <- git push origin --delete main
+[agent/x] DENY: Pushing to main/master is not allowed. <- git push origin :main
+== agent branch: misses
+[agent/x] silent <- git push --mirror origin
+[agent/x] silent <- git push --all origin
+[agent/x] silent <- git push -fu origin agent/x

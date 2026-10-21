@@ -1,0 +1,162 @@
+# security rework-1 raw scan output, 2026-10-19 (scratch project ke-sec-rw1, torn down with volumes; scratch dirs elided as <scratch>)
+
+## R1 M-1 attack battery (api container, scripts: attack.py)
+ENQUEUED {
+ "W2:'platform.node'": "d9d7d365-2fb6-4c10-9ec6-2b163a8c250d",
+ "W2:'os.getcwd'": "850ae8e7-e494-437f-bf0e-04bd70ccd003",
+ "W2:'builtins.print'": "8e493071-1fbf-4606-a237-6c4809d26039",
+ "W2:'this.s'": "6456663f-4b3b-4f2a-912a-847a133fd940",
+ "W2:'engine.jobsx.noop'": "bde51ff5-0243-4c15-942f-29f645aeaea3",
+ "W2:'engine.jobs.__init__'": "446a75d8-3bc3-4581-bb5c-814b0eae43b6",
+ "W2:'.noop'": "339514e1-e03b-434f-917d-3ab898ba9379",
+ "W2:'noop'": "07353789-1501-47e4-a711-26e830b7aa60",
+ "W2:'engine.jobs.traced_job'": "ead6b3de-0198-4dd3-a8db-a168d2070ae1",
+ "W2:'engine.jobs.get_current_job'": "b0a9c4cb-2a35-4756-a01f-e4dc25b8de6b",
+ "W2:'engine.jobs.noop.__wrapped__'": "cdd6ed6d-194b-4cb4-9cc3-44c438a78da6",
+ "W2:'engine.jobs.noop '": "0132c82e-d457-4a06-9be9-5cc2bf89366b",
+ "W2:'engine.jobs.noop\\x00'": "085f3624-a2e0-42c3-a357-7d2075f1fc4d",
+ "W2:'ENGINE.JOBS.NOOP'": "2da9857b-93e5-45e7-bbe7-2da52b5955e2",
+ "W2:'engine.jobs.chain_span'": "088c08bc-1541-46c8-95ed-a4fbcf9adb84",
+ "W2:'engine.jobs.functools.partial'": "0c74fecd-42ab-476a-903a-d97b3c67df75",
+ "W3-instance-str": "raw-W3-instance-str-e472f9",
+ "W3-instance-allowed-name": "raw-W3-instance-allowed-name-9027d1",
+ "W3-pyobject-args": "raw-W3-pyobject-args-13f578",
+ "W3-list-funcname": "raw-W3-list-funcname-87f678",
+ "W4-pickle-data": "raw-W4-pickle-data-2b4e35",
+ "W4-pickle-tuple": "raw-W4-pickle-tuple-32d7d4",
+ "W4-pickle-meta": "raw-W4-pickle-meta-4922f6",
+ "W4-pickle-exc": "raw-W4-pickle-exc-6cf1c7",
+ "W5-success-cb-print": "9d5475c7-d0c5-4f47-b167-f62d7854e366",
+ "W5-success-cb-this": "f837a970-cfe6-472a-9b11-e0ca0088009a",
+ "W5-failure-cb-print": "c2d29f81-ee01-44a2-be73-ace2c7e524ce",
+ "W6-refused-failure-cb": "2623cfd6-c563-476c-a610-170b9d4287c0",
+ "W6-refused-post-webhook": "58913d61-f2f4-4c47-a9a2-aece0374df8e",
+ "W6-allowed-success-webhook": "e8ef0eed-3f1a-449d-ba37-910957b5a10d",
+ "W7-abandoned-failure-cb": "abandoned-ea0936"
+}
+RESULT W2:'platform.node' => ('failed', ('FAILED', 'refused: job function is not in engine.jobs.__all__'))
+RESULT W2:'os.getcwd' => ('failed', ('FAILED', 'refused: job function is not in engine.jobs.__all__'))
+RESULT W2:'builtins.print' => ('failed', ('FAILED', 'refused: job function is not in engine.jobs.__all__'))
+RESULT W2:'this.s' => ('failed', ('FAILED', 'refused: job function is not in engine.jobs.__all__'))
+RESULT W2:'engine.jobsx.noop' => ('failed', ('FAILED', 'refused: job function is not in engine.jobs.__all__'))
+RESULT W2:'engine.jobs.__init__' => ('failed', ('FAILED', 'refused: job function is not in engine.jobs.__all__'))
+RESULT W2:'.noop' => ('failed', ('FAILED', 'refused: job function is not in engine.jobs.__all__'))
+RESULT W2:'noop' => ('failed', ('FAILED', 'refused: job function is not in engine.jobs.__all__'))
+RESULT W2:'engine.jobs.traced_job' => ('failed', ('FAILED', 'refused: job function is not in engine.jobs.__all__'))
+RESULT W2:'engine.jobs.get_current_job' => ('failed', ('FAILED', 'refused: job function is not in engine.jobs.__all__'))
+RESULT W2:'engine.jobs.noop.__wrapped__' => ('failed', ('FAILED', 'refused: job function is not in engine.jobs.__all__'))
+RESULT W2:'engine.jobs.noop ' => ('failed', ('FAILED', 'refused: job function is not in engine.jobs.__all__'))
+RESULT W2:'engine.jobs.noop\x00' => ('failed', ('FAILED', 'refused: job function is not in engine.jobs.__all__'))
+RESULT W2:'ENGINE.JOBS.NOOP' => ('failed', ('FAILED', 'refused: job function is not in engine.jobs.__all__'))
+RESULT W2:'engine.jobs.chain_span' => ('failed', ('FAILED', 'refused: job function is not in engine.jobs.__all__'))
+RESULT W2:'engine.jobs.functools.partial' => ('failed', ('FAILED', 'refused: job function is not in engine.jobs.__all__'))
+RESULT W3-instance-str => ('failed', ('FAILED', 'refused: job function is not in engine.jobs.__all__'))
+RESULT W3-instance-allowed-name => ('failed', ('FAILED', "func\n    return getattr(self.instance, func_name)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAttributeError: 'str' object has no attribute 'engine.jobs.noop'\n"))
+RESULT W3-pyobject-args => ('finished', ('SUCCESSFUL', 1))
+RESULT W3-list-funcname => ('queued', None)
+RESULT W4-pickle-data => ('queued', None)
+RESULT W4-pickle-tuple => ('queued', None)
+RESULT W4-pickle-meta => ('finished', ('SUCCESSFUL', 1))
+RESULT W4-pickle-exc => ('queued', 'fetch:UnicodeDecodeError')
+RESULT W5-success-cb-print => ('finished', ('SUCCESSFUL', 1))
+RESULT W5-success-cb-this => ('failed', ('FAILED', 'te-packages/rq/job.py", line 1532, in execute_success_callback\n    self.success_callback(self, self.connection, result)\nTypeError: \'str\' object is not callable\n'))
+RESULT W5-failure-cb-print => ('failed', ('FAILED', 'e/jobs.py", line 30, in wrapper\n    return fn(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^\nTypeError: noop() missing 1 required positional argument: \'token\'\n'))
+RESULT W6-refused-failure-cb => ('failed', ('FAILED', 'refused: job function is not in engine.jobs.__all__'))
+RESULT W6-refused-post-webhook => ('failed', ('FAILED', 'refused: job function is not in engine.jobs.__all__'))
+RESULT W6-allowed-success-webhook => ('finished', ('SUCCESSFUL', 1))
+RESULT W7-abandoned-failure-cb => ('failed', ('FAILED', 'Moved to FailedJobRegistry, due to AbandonedJobError, at 2026-10-19 07:15:16.762564+00:00'))
+WEBHOOK_HITS [('GET', '/refused'), ('POST', '/refused-post', b'{"job_id": "58913d61-f2f4-4c47-a9a2-aece0374df8e", "func_name": "os.getcwd", "status": "failed", "enqueued_at": "2026-10-19T07:15:15.527503+00:00", "ended_at": null, "exc_info": "refused: job function'), ('GET', '/allowed')]
+ke:noop keys ['ke:noop:cb1', 'ke:noop:cb2', 'ke:noop:meta', 'ke:noop:wh', "ke:noop:{'py/object': 'os.system', '__reduce__': 'x'}"]
+
+## R1b worker log excerpts (restarts=5 after the battery; one per malformed job)
+227:07:15:15 Worker 81571734729342bbb679fa03dc903b25: found an unhandled exception, quitting...
+234:TypeError: unhashable type: 'list'
+390:<Job abandoned-ea0936: None> <redis.client.Redis(<redis.connection.ConnectionPool(<redis.connection.Connection(db=0,username=<REDACTED>,password=<REDACTED>,socket_timeout=415,socket_read_size=32768,encoding=utf-8,enc
+391:StartedJobRegistry cleanup: abandoned-ea0936 Moved to FailedJobRegistry, due to AbandonedJobError, at 2026-10-19 07:15:16.762564+00:00
+393:07:15:16 Worker 6591264e562e4507afb2baa4c9c278a4: found an unhandled exception, quitting...
+415:rq.exceptions.DeserializationError
+572:07:15:18 Worker 3cc0c16c6f3648109ed27b553dd9973f: found an unhandled exception, quitting...
+594:rq.exceptions.DeserializationError
+787:07:15:19 Worker 2971b2945d9b455cb173e5e4769a6ff6: found an unhandled exception, quitting...
+974:07:15:21 Worker 52fbffcdbf994e5d8cd401e8ecf6d77e: found an unhandled exception, quitting...
+1195:<Job 9d5475c7-d0c5-4f47-b167-f62d7854e366: engine.jobs.noop('cb1')> <redis.client.Redis(<redis.connection.ConnectionPool(<redis.connection.Connection(db=0,username=<REDACTED>,password=<REDACTED>,socket_timeout=415,s
+1235:Beautiful is better than ugly.
+1308:<Job c2d29f81-ee01-44a2-be73-ace2c7e524ce: engine.jobs.noop()> <redis.client.Redis(<redis.connection.ConnectionPool(<redis.connection.Connection(db=0,username=<REDACTED>,password=<REDACTED>,socket_timeout=415,socket
+
+## R1c password markers in logs: api/worker/gateway = 0/0/0; valkey keys/values = 0; /tmp/PWNED_PICKLE absent in worker (ls /tmp shows only uv lock)
+
+## R2 F1 (in-process socket spy + 3 live /readyz; gateway log /v1|8102 hits = 0)
+model_upstream= None base_url= http://gateway:8102/v1
+model_host: {'ok': False, 'reason': 'not_configured', 'required': False}
+connects: [('192.168.112.2', 5432), ('192.168.112.1', 7687), ResolvedIPv4Address(('192.168.112.1', 7687)), ('192.168.112.3', 6379), ('192.168.112.3', 6379)]
+any to gateway model port: False gateway ip 192.168.112.4
+200 {"ready":true,"checks":{"postgres":{"ok":true,"reason":null},"neo4j":{"ok":true,"reason":null},"valkey":{"ok":true,"reason":null},"model_host":{"ok":false,"reason":"not_configured","required":false}}}
+200 {"ready":true,"checks":{"postgres":{"ok":true,"reason":null},"neo4j":{"ok":true,"reason":null},"valkey":{"ok":true,"reason":null},"model_host":{"ok":false,"reason":"not_configured","required":false}}}
+200 {"ready":true,"checks":{"postgres":{"ok":true,"reason":null},"neo4j":{"ok":true,"reason":null},"valkey":{"ok":true,"reason":null},"model_host":{"ok":false,"reason":"not_configured","required":false}}}
+
+## R3 L-13 wire (fake listener 127.0.0.1:55432 in api)
+settings pg host/port: 127.0.0.1 55432
+probe exc: OperationalError
+engine probe first packets: ['SSLRequest']
+psycopg/libpq: 3.3.6 180006 gss support: 180006
+control(require) exc: OperationalError connection is bad: GSSAPI encryption required but no credential cache
+control gssencmode=require first packets: []
+default exc: OperationalError
+default (prefer, no ccache) first packets: ['SSLRequest']
+
+## R4 L-11 verify host half, stubbed docker/build/launch/smoke/teardown, caller env with markers
+== build.sh
+COMPOSE_FILE=docker-compose.yml:docker-compose.verify.yml
+COMPOSE_PATH_SEPARATOR=:
+COMPOSE_PROJECT_NAME=ke-verify-2744629402
+KE_EGRESS_ALLOWLIST=modelhost.example
+KE_ENV_FILE=.env.example
+KE_MODEL_UPSTREAM=modelhost.example:11434
+KE_SMOKE_OWNS_PROJECT=1
+== launch.sh
+COMPOSE_FILE=docker-compose.yml:docker-compose.verify.yml
+COMPOSE_PATH_SEPARATOR=:
+COMPOSE_PROJECT_NAME=ke-verify-2744629402
+KE_EGRESS_ALLOWLIST=modelhost.example
+KE_ENV_FILE=.env.example
+KE_MODEL_UPSTREAM=modelhost.example:11434
+KE_SMOKE_OWNS_PROJECT=1
+config rc=0
+== smoke.sh
+COMPOSE_FILE=docker-compose.yml:docker-compose.verify.yml
+COMPOSE_PATH_SEPARATOR=:
+COMPOSE_PROJECT_NAME=ke-verify-2744629402
+KE_EGRESS_ALLOWLIST=modelhost.example
+KE_ENV_FILE=.env.example
+KE_MODEL_UPSTREAM=modelhost.example:11434
+KE_SMOKE_OWNS_PROJECT=1
+== teardown.sh
+COMPOSE_FILE=docker-compose.yml:docker-compose.verify.yml
+COMPOSE_PATH_SEPARATOR=:
+COMPOSE_PROJECT_NAME=ke-verify-2744629402
+KE_EGRESS_ALLOWLIST=modelhost.example
+KE_ENV_FILE=.env.example
+KE_MODEL_UPSTREAM=modelhost.example:11434
+KE_SMOKE_OWNS_PROJECT=1
+markers in resolved gates-it+gateway config: 0
+control (marker exported, no unset, direct compose config gates-it): 2 hits
+
+## R5 L-12 lint cases (ke-gates image, --network none, scratch copy of scripts/ docker/)
+### baseline rc=0 :: lint: shellcheck on 12 files lint: PSScriptAnalyzer on 3 files lint: PASS 
+### A_upper_PS1 rc=1 :: lint: shellcheck on 12 files lint: PSScriptAnalyzer on 4 files PSAvoidUsingInvokeExpression Warning  x.PS1      1    Invoke-Expression is used. Please remove Invoke-Expression from script and find other options instead. lint: FAIL 
+### B_psm1 rc=1 :: lint: shellcheck on 12 files lint: PSScriptAnalyzer on 4 files PSAvoidUsingInvokeExpression Warning  m.psm1     1    Invoke-Expression is used. Please remove Invoke-Expression from script and find other options instead. lint: FAIL 
+### B2_upper_PSM1 rc=1 :: lint: shellcheck on 12 files lint: PSScriptAnalyzer on 4 files PSAvoidUsingInvokeExpression Warning  m.PSM1     1    Invoke-Expression is used. Please remove Invoke-Expression from script and find other options instead. lint: FAIL 
+### C_nested_Ps1 rc=1 :: lint: shellcheck on 12 files lint: PSScriptAnalyzer on 4 files PSAvoidUsingInvokeExpression Warning  y.Ps1      1    Invoke-Expression is used. Please remove Invoke-Expression from script and find other options instead. lint: FAIL 
+### D_symlink_ps1_in_repo rc=1 :: lint: FAIL (a script is a symlink: refused: scripts/l.ps1) 
+### E_symlink_sh_outside rc=1 :: lint: FAIL (a script is a symlink: refused: scripts/p.sh) 
+### E2_symlink_ps1_outside rc=1 :: lint: FAIL (a script is a symlink: refused: scripts/o.ps1) 
+### E3_dangling_symlink_ps1 rc=1 :: lint: FAIL (a script is a symlink: refused: scripts/z.ps1) 
+### F_symlink_dir_outside rc=0 :: lint: shellcheck on 12 files lint: PSScriptAnalyzer on 3 files lint: PASS 
+### F2_symlink_dir_named_ps1 rc=1 :: lint: FAIL (a script is a symlink: refused: scripts/d.ps1) 
+### F3_symlink_dir_in_docker rc=0 :: lint: shellcheck on 12 files lint: PSScriptAnalyzer on 3 files lint: PASS 
+### G_upper_SH_unquoted rc=0 :: lint: shellcheck on 12 files lint: PSScriptAnalyzer on 3 files lint: PASS 
+### H_psd1 rc=0 :: lint: shellcheck on 12 files lint: PSScriptAnalyzer on 3 files lint: PASS 
+### I_symlinked_scripts_subdir_ps1 rc=0 :: lint: shellcheck on 12 files lint: PSScriptAnalyzer on 3 files lint: PASS 
+
+## R6 secrets/profile-path scan: git diff fe2f101 + untracked, 23235 lines
+credential patterns: hits only test fixtures (MARKER in test_stack_readiness) and the prior security.md summary line; key=value secrets: 0 outside tests/placeholders; profile paths: 0 (only the prior security.md pattern list)

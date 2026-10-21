@@ -1,0 +1,135 @@
+# cwd: scratchpad/r4; PYTHONPATH=C:\repos\Knowledge-engine HARNESS_TRACING=off uv run --project C:\repos\Knowledge-engine python -m unittest -v tests.test_offline_bundle.InstallPs1WindowsAclTest tests.test_offline_bundle.InstallPs1Test.test_install_ps1_never_casts_undefined_rights tests.test_offline_bundle.InstallPs1Test.test_install_ps1_acl_read_failure_is_not_silent tests.test_offline_bundle.InstallPs1Test.test_install_ps1_refuses_non_empty_staging  (Windows 11, pwsh 7)
+test_empty_path_entry_is_dropped_on_windows (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_empty_path_entry_is_dropped_on_windows)
+Review RB5a, security L-9: on Windows an empty PATH entry is a ... ok
+test_parent_granting_authenticated_users_modify_is_refused (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_parent_granting_authenticated_users_modify_is_refused)
+Round-4 ruling (orchestrator "unit-2 rework round 4/5", POLICY ... FAIL
+test_parent_others_can_create_in_is_refused (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_parent_others_can_create_in_is_refused)
+Security M-6 (probes W2, W3), behavioural: an Everyone ... 
+  test_parent_others_can_create_in_is_refused (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_parent_others_can_create_in_is_refused) (case='everyone_create_directories')
+Security M-6 (probes W2, W3), behavioural: an Everyone ... FAIL
+  test_parent_others_can_create_in_is_refused (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_parent_others_can_create_in_is_refused) (case='everyone_generic_write')
+Security M-6 (probes W2, W3), behavioural: an Everyone ... FAIL
+test_staging_junction_to_operator_dir_is_never_emptied (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_staging_junction_to_operator_dir_is_never_emptied)
+Security H-2 (probe W1) on Windows: right after staging is ... FAIL
+test_staging_never_inherits_an_ace (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_staging_never_inherits_an_ace)
+Security H-1: staging never carries an inherited ACE, under a ... ok
+test_install_ps1_never_casts_undefined_rights (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_never_casts_undefined_rights)
+Security M-6: `[FileSystemRights]0x40000000` (GenericWrite) and ... FAIL
+test_install_ps1_acl_read_failure_is_not_silent (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_acl_read_failure_is_not_silent)
+Security M-6, round-4 ruling (fail closed): a `try` that reads an ... 
+  test_install_ps1_acl_read_failure_is_not_silent (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_acl_read_failure_is_not_silent) (try_at_line=251)
+Security M-6, round-4 ruling (fail closed): a `try` that reads an ... FAIL
+test_install_ps1_refuses_non_empty_staging (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_refuses_non_empty_staging)
+Review N7 (parity with RB6/H-2): right after staging is created, a ... FAIL
+
+======================================================================
+FAIL: test_parent_granting_authenticated_users_modify_is_refused (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_parent_granting_authenticated_users_modify_is_refused)
+Round-4 ruling (orchestrator "unit-2 rework round 4/5", POLICY
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\repos\Knowledge-engine\tests\test_offline_bundle.py", line 2253, in test_parent_granting_authenticated_users_modify_is_refused
+    self._assert_parent_refused(parent, "Authenticated Users hold Modify")
+  File "C:\repos\Knowledge-engine\tests\test_offline_bundle.py", line 2232, in _assert_parent_refused
+    self.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : install.ps1 installed under a parent where Authenticated Users hold Modify; it must refuse it (round-4 ruling, orchestrator "unit-2 rework round 4/5"; security M-6):
+manifest sha256: ed43806099477b0a31a7e98e2e76994e5c13b1d7f667d517bf28c22be0585ae6 (not checked: compare it with the value from your release record)
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+manifest sha256: ed43806099477b0a31a7e98e2e76994e5c13b1d7f667d517bf28c22be0585ae6
+installed to <scratch>\tmp81oxq1w0\au-modify-parent\ke
+next: cd '<scratch>\tmp81oxq1w0\au-modify-parent\ke'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_parent_others_can_create_in_is_refused (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_parent_others_can_create_in_is_refused) (case='everyone_create_directories')
+Security M-6 (probes W2, W3), behavioural: an Everyone
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\repos\Knowledge-engine\tests\test_offline_bundle.py", line 2267, in test_parent_others_can_create_in_is_refused
+    self._assert_parent_refused(parent, f"Everyone holds {grant}")
+  File "C:\repos\Knowledge-engine\tests\test_offline_bundle.py", line 2232, in _assert_parent_refused
+    self.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : install.ps1 installed under a parent where Everyone holds *S-1-1-0:(AD); it must refuse it (round-4 ruling, orchestrator "unit-2 rework round 4/5"; security M-6):
+manifest sha256: ed43806099477b0a31a7e98e2e76994e5c13b1d7f667d517bf28c22be0585ae6 (not checked: compare it with the value from your release record)
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+manifest sha256: ed43806099477b0a31a7e98e2e76994e5c13b1d7f667d517bf28c22be0585ae6
+installed to <scratch>\tmpv__exac7\m6-everyone_create_directories\ke
+next: cd '<scratch>\tmpv__exac7\m6-everyone_create_directories\ke'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_parent_others_can_create_in_is_refused (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_parent_others_can_create_in_is_refused) (case='everyone_generic_write')
+Security M-6 (probes W2, W3), behavioural: an Everyone
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\repos\Knowledge-engine\tests\test_offline_bundle.py", line 2267, in test_parent_others_can_create_in_is_refused
+    self._assert_parent_refused(parent, f"Everyone holds {grant}")
+  File "C:\repos\Knowledge-engine\tests\test_offline_bundle.py", line 2232, in _assert_parent_refused
+    self.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : install.ps1 installed under a parent where Everyone holds *S-1-1-0:(GW); it must refuse it (round-4 ruling, orchestrator "unit-2 rework round 4/5"; security M-6):
+manifest sha256: ed43806099477b0a31a7e98e2e76994e5c13b1d7f667d517bf28c22be0585ae6 (not checked: compare it with the value from your release record)
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+manifest sha256: ed43806099477b0a31a7e98e2e76994e5c13b1d7f667d517bf28c22be0585ae6
+installed to <scratch>\tmpv__exac7\m6-everyone_generic_write\ke
+next: cd '<scratch>\tmpv__exac7\m6-everyone_generic_write\ke'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_staging_junction_to_operator_dir_is_never_emptied (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_staging_junction_to_operator_dir_is_never_emptied)
+Security H-2 (probe W1) on Windows: right after staging is
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\repos\Knowledge-engine\tests\test_offline_bundle.py", line 2301, in test_staging_junction_to_operator_dir_is_never_emptied
+    self.assertEqual(after, before,
+AssertionError: Lists differ: [] != ['keep1', 'sub', 'sub\\k']
+
+Second list contains 3 additional elements.
+First extra element 0:
+'keep1'
+
+- []
++ ['keep1', 'sub', 'sub\\k'] : install.ps1 emptied (or wrote into) the operator directory a junction swapped in for staging led to (security H-2 W1):
+install: . is not the private directory this install created
+
+
+======================================================================
+FAIL: test_install_ps1_never_casts_undefined_rights (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_never_casts_undefined_rights)
+Security M-6: `[FileSystemRights]0x40000000` (GenericWrite) and
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\repos\Knowledge-engine\tests\test_offline_bundle.py", line 1890, in test_install_ps1_never_casts_undefined_rights
+    self.assertEqual(bad, [], "install.ps1 casts an integer outside the defined FileSystemRights to "
+AssertionError: Lists differ: ['[System.Security.AccessControl.FileSyste[77 chars]000'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+'[System.Security.AccessControl.FileSystemRights]0x40000000'
+
++ []
+- ['[System.Security.AccessControl.FileSystemRights]0x40000000',
+-  '[System.Security.AccessControl.FileSystemRights]0x10000000'] : install.ps1 casts an integer outside the defined FileSystemRights to [FileSystemRights]; PowerShell throws on that cast (security M-6): use an integer mask
+
+======================================================================
+FAIL: test_install_ps1_acl_read_failure_is_not_silent (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_acl_read_failure_is_not_silent) (try_at_line=251)
+Security M-6, round-4 ruling (fail closed): a `try` that reads an
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\repos\Knowledge-engine\tests\test_offline_bundle.py", line 1910, in test_install_ps1_acl_read_failure_is_not_silent
+    self.assertRegex(catch, r"Exit-WithError|\bthrow\b",
+AssertionError: Regex didn't match: 'Exit-WithError|\\bthrow\\b' not found in '\n        return\n    ' : install.ps1:251: the catch after a try that reads an ACL/mode does not refuse ('return'); a failed read must refuse (round-4 ruling, security M-6)
+
+======================================================================
+FAIL: test_install_ps1_refuses_non_empty_staging (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_refuses_non_empty_staging)
+Review N7 (parity with RB6/H-2): right after staging is created, a
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\repos\Knowledge-engine\tests\test_offline_bundle.py", line 1934, in test_install_ps1_refuses_non_empty_staging
+    self.assertRegex(out.lower(), r"staging", "the refusal names staging (review N7)")
+AssertionError: Regex didn't match: 'staging' not found in 'install: manifest: file is not listed: planted-by-racer\n' : the refusal names staging (review N7)
+
+----------------------------------------------------------------------
+Ran 8 tests in 10.559s
+
+FAILED (failures=7)

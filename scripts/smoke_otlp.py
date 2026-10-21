@@ -35,12 +35,13 @@ def run(*args: str, env: dict[str, str]) -> None:
 
 
 def main() -> int:
-    server = HTTPServer(("127.0.0.1", 0), Collector)
+    host = "127.0.0.1"
+    server = HTTPServer((host, 0), Collector)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     env = {
         **os.environ,
         "HARNESS_TRACING": "otlp",
-        "PHOENIX_COLLECTOR_ENDPOINT": f"http://127.0.0.1:{server.server_port}",
+        "PHOENIX_COLLECTOR_ENDPOINT": f"http://{host}:{server.server_port}",
     }
     log = Path(tempfile.mkdtemp()) / "log.md"
     run("examples/custom_agent.py", env=env)

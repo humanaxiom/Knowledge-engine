@@ -1,0 +1,15 @@
+test_staging_never_inherits_an_ace (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_staging_never_inherits_an_ace) ... 
+  test_staging_never_inherits_an_ace (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_staging_never_inherits_an_ace) (staging='.ke-install.0e773c1f5169dbd1') ... FAIL
+
+======================================================================
+FAIL: test_staging_never_inherits_an_ace (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_staging_never_inherits_an_ace) (staging='.ke-install.0e773c1f5169dbd1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\repos\Knowledge-engine\tests\test_offline_bundle.py", line 1491, in test_staging_never_inherits_an_ace
+    self.assertTrue(dacl.startswith("D:P"), f"staging's DACL is not protected at birth: {sddl}")
+AssertionError: False is not true : staging's DACL is not protected at birth: O:<sid>D:AI(A;OICIID;0x1301bf;;;AU)(A;OICIID;FA;;;SY)(A;OICIID;FA;;;BA)(A;OICIID;FA;;;OW)
+
+----------------------------------------------------------------------
+Ran 1 test in 1.448s
+
+FAILED (failures=1)

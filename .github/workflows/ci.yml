@@ -12,18 +12,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 29  # PS-3.4/R5: green CI runs 39370927416 (16.6 min) and 39465361808 (19.0 min); slower run + 50% = 28.5 -> 29 min, see docs/evidence/platform-offline
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
-          python-version: "3.12"
+          persist-credentials: false
 
-      - name: Run tests
-        run: ./scripts/test.sh
-
-      - name: Run smoke test
-        run: ./scripts/smoke.sh
+      # The same entry point as local and agent runs: it builds the `gates`
+      # image. Unit tests run with no network; `full` also launches a throwaway
+      # stack on an internal-only network, and model tests skip on CI.
+      - name: Verify (full)
+        run: ./scripts/verify.sh full

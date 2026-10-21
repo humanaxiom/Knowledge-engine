@@ -1,0 +1,28 @@
+# reviewer: mutants of scripts/hooks/block-main-commit.sh (scratch copies), tests/test_block_main_commit_hook.py run in knowledge-engine-gates:latest (--network none)
+# a: drop -c skip; b: drop refs/heads/ strip (line 71); c: drop --force-with-lease; d: disable broad on-main rule;
+# redir: drop the two leading-redirection skips (lines 84-85); backtick: drop backtick segment break; bang: drop ! skip word; brace: drop { } breaks; amp: drop lone & break; cmdexec: drop command/exec skip words
+== base rc=0 OK fails=0 skipped=0
+== a rc=1 FAILED (failures=2) fails=2 skipped=0
+FAIL: test_denies_push_with_c_global_option_from_plan_item_branch  mode='jq', command='git -c x=y push origin main')
+FAIL: test_denies_push_with_c_global_option_from_plan_item_branch  mode='no-jq', command='git -c x=y push origin main')
+== b rc=1 FAILED (failures=2) fails=2 skipped=0
+FAIL: test_denies_push_refspec_forms_from_plan_item_branch  mode='jq', command='git push origin refs/heads/main')
+FAIL: test_denies_push_refspec_forms_from_plan_item_branch  mode='no-jq', command='git push origin refs/heads/main')
+== c rc=1 FAILED (failures=2) fails=2 skipped=0
+FAIL: test_denies_push_refspec_forms_from_plan_item_branch  mode='jq', command='git push --force-with-lease origin agent/x')
+FAIL: test_denies_push_refspec_forms_from_plan_item_branch  mode='no-jq', command='git push --force-with-lease origin agent/x')
+== d rc=1 FAILED (failures=50) fails=50 skipped=0
+FAIL: test_denies_commit_and_push_on_main  mode='jq', command='git commit -m "x"')
+FAIL: test_denies_commit_and_push_on_main  mode='jq', command='git add . && git commit -m x')
+FAIL: test_denies_commit_and_push_on_main  mode='jq', command='git -C . commit --amend')
+FAIL: test_denies_commit_and_push_on_main  mode='no-jq', command='git commit -m "x"')
+== redir rc=0 OK fails=0 skipped=0
+== backtick rc=0 OK fails=0 skipped=0
+== bang rc=0 OK fails=0 skipped=0
+== brace rc=1 FAILED (failures=2) fails=2 skipped=0
+FAIL: test_denies_nested_push_to_main_or_force_from_plan_item_branch  mode='jq', command='{ git push origin main; }')
+FAIL: test_denies_nested_push_to_main_or_force_from_plan_item_branch  mode='no-jq', command='{ git push origin main; }')
+== amp rc=1 FAILED (failures=2) fails=2 skipped=0
+FAIL: test_denies_nested_push_to_main_or_force_from_plan_item_branch  mode='jq', command='true & git push origin main')
+FAIL: test_denies_nested_push_to_main_or_force_from_plan_item_branch  mode='no-jq', command='true & git push origin main')
+== cmdexec rc=0 OK fails=0 skipped=0

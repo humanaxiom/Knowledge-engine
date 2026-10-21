@@ -1,0 +1,244 @@
+# reviewer re-review mutation run, platform-stack-up rework 1, 2026-10-19T04:00:18Z
+# Scratch copy of the working tree (base d26bec6 + uncommitted), run in ke-gates (image 139e7c8e7333) with --network none.
+# Driver: python /mut/mutants.py over /mut/mutants.json (generator below); each mutant restores its file after the run.
+# Suite per mutant: tests.test_stack_scripts test_stack_entrypoints test_stack_compose test_stack_bind_address test_stack_carry_ins test_engine_tracing_guard test_engine_telemetry test_engine_startup test_engine_hardcoded test_engine_deploy_files test_harness_followups test_harness_port
+# Baseline (unmutated): Ran 203 tests, OK (24 s).
+
+[KILLED] V1 verify.sh teardown trap removed (24s)
+    FAIL: test_each_failing_stage_fails_verify_and_still_tears_down (tests.test_stack_scripts.VerifyHostHalfTest.test_each_failing_stage_fails_verify_and_still_tears_down) (failing='build')
+    FAIL: test_each_failing_stage_fails_verify_and_still_tears_down (tests.test_stack_scripts.VerifyHostHalfTest.test_each_failing_stage_fails_verify_and_still_tears_down) (failing='gates-it')
+    FAIL: test_each_failing_stage_fails_verify_and_still_tears_down (tests.test_stack_scripts.VerifyHostHalfTest.test_each_failing_stage_fails_verify_and_still_tears_down) (failing='launch')
+    FAIL: test_each_failing_stage_fails_verify_and_still_tears_down (tests.test_stack_scripts.VerifyHostHalfTest.test_each_failing_stage_fails_verify_and_still_tears_down) (failing='smoke')
+    FAIL: test_full_runs_stages_in_order_then_tears_down (tests.test_stack_scripts.VerifyHostHalfTest.test_full_runs_stages_in_order_then_tears_down)
+[KILLED] V2 verify.sh host smoke removed (23s)
+    FAIL: test_each_failing_stage_fails_verify_and_still_tears_down (tests.test_stack_scripts.VerifyHostHalfTest.test_each_failing_stage_fails_verify_and_still_tears_down) (failing='smoke')
+    FAIL: test_full_runs_stages_in_order_then_tears_down (tests.test_stack_scripts.VerifyHostHalfTest.test_full_runs_stages_in_order_then_tears_down)
+    FAIL: test_teardown_failure_after_green_run_is_reported (tests.test_stack_scripts.VerifyHostHalfTest.test_teardown_failure_after_green_run_is_reported)
+[KILLED] V3 verify.sh fixed project name (23s)
+    FAIL: test_project_name_is_random_and_shared_by_every_stage (tests.test_stack_scripts.VerifyHostHalfTest.test_project_name_is_random_and_shared_by_every_stage)
+[KILLED] V4 verify.sh overlay dropped (23s)
+    FAIL: test_every_stage_sees_the_verify_overlay_and_nothing_publishes (tests.test_stack_scripts.VerifyHostHalfTest.test_every_stage_sees_the_verify_overlay_and_nothing_publishes) (call='build ')
+    FAIL: test_every_stage_sees_the_verify_overlay_and_nothing_publishes (tests.test_stack_scripts.VerifyHostHalfTest.test_every_stage_sees_the_verify_overlay_and_nothing_publishes) (call='docker compose --env-file .env.example --profile gates-it run --rm gates-it scripts/verify.sh full')
+    FAIL: test_every_stage_sees_the_verify_overlay_and_nothing_publishes (tests.test_stack_scripts.VerifyHostHalfTest.test_every_stage_sees_the_verify_overlay_and_nothing_publishes) (call='launch ')
+    FAIL: test_every_stage_sees_the_verify_overlay_and_nothing_publishes (tests.test_stack_scripts.VerifyHostHalfTest.test_every_stage_sees_the_verify_overlay_and_nothing_publishes) (call='smoke ')
+    FAIL: test_every_stage_sees_the_verify_overlay_and_nothing_publishes (tests.test_stack_scripts.VerifyHostHalfTest.test_every_stage_sees_the_verify_overlay_and_nothing_publishes) (call='teardown --volumes')
+[KILLED] V5 overlay reset removed (23s)
+    FAIL: test_verify_overlay_resets_every_published_port (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_overlay_resets_every_published_port) (service='gateway')
+[NOAPPLY] V7 verify.sh gates-it stage removed
+[KILLED] V8 verify.sh teardown failure masked (22s)
+    FAIL: test_teardown_failure_after_green_run_is_reported (tests.test_stack_scripts.VerifyHostHalfTest.test_teardown_failure_after_green_run_is_reported)
+[KILLED] V9 verify.sh teardown without --volumes (23s)
+    FAIL: test_full_runs_stages_in_order_then_tears_down (tests.test_stack_scripts.VerifyHostHalfTest.test_full_runs_stages_in_order_then_tears_down)
+[KILLED] V10 verify.sh launch failure ignored (22s)
+    FAIL: test_each_failing_stage_fails_verify_and_still_tears_down (tests.test_stack_scripts.VerifyHostHalfTest.test_each_failing_stage_fails_verify_and_still_tears_down) (failing='launch')
+[KILLED] W1 api skips startup (22s)
+    FAIL: test_api_main_refused_setting_never_serves (tests.test_stack_entrypoints.ApiEntrypointTest.test_api_main_refused_setting_never_serves)
+[KILLED] W2 worker skips startup (82s)
+    ERROR: test_worker_module_refuses_as_a_process (tests.test_stack_entrypoints.WorkerEntrypointTest.test_worker_module_refuses_as_a_process)
+    FAIL: test_worker_main_refused_setting_exits_before_idling (tests.test_stack_entrypoints.WorkerEntrypointTest.test_worker_main_refused_setting_exits_before_idling)
+[KILLED] W3 compose worker back to bare pause (23s)
+    FAIL: test_worker_command_runs_engine_startup (tests.test_stack_compose.Rework1ComposeTest.test_worker_command_runs_engine_startup)
+[KILLED] L1 launch.sh empty KE_ENV is dev (22s)
+    FAIL: test_launch_never_falls_back_to_env_example (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_never_falls_back_to_env_example)
+    FAIL: test_launch_refuses_when_env_file_lacks_ke_env (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_refuses_when_env_file_lacks_ke_env) (case='.env without KE_ENV')
+    FAIL: test_launch_refuses_when_env_file_lacks_ke_env (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_refuses_when_env_file_lacks_ke_env) (case='KE_ENV_FILE without KE_ENV')
+[KILLED] L2 launch.sh falls back to .env.example (24s)
+    FAIL: test_launch_never_falls_back_to_env_example (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_never_falls_back_to_env_example)
+    FAIL: test_launch_refuses_when_env_file_lacks_ke_env (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_refuses_when_env_file_lacks_ke_env) (case='.env without KE_ENV')
+    FAIL: test_launch_refuses_when_env_file_lacks_ke_env (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_refuses_when_env_file_lacks_ke_env) (case='KE_ENV_FILE without KE_ENV')
+[SURVIVED] L3 launch.sh engine version check removed (22s)
+[SURVIVED] L4 launch.sh port without host_ip is loopback (23s)
+[KILLED] L5 launch.ps1 empty KE_ENV is dev (22s)
+    FAIL: test_launch_never_falls_back_to_env_example (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_never_falls_back_to_env_example)
+    FAIL: test_launch_refuses_when_env_file_lacks_ke_env (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_refuses_when_env_file_lacks_ke_env) (case='.env without KE_ENV')
+    FAIL: test_launch_refuses_when_env_file_lacks_ke_env (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_refuses_when_env_file_lacks_ke_env) (case='KE_ENV_FILE without KE_ENV')
+[KILLED] L6 launch.ps1 engine version check removed (20s)
+    FAIL: test_lint_with_real_tools_fails_on_a_planted_finding (tests.test_stack_scripts.LintScriptTest.test_lint_with_real_tools_fails_on_a_planted_finding)
+[KILLED] L7 launch.ps1 refusal becomes warning (21s)
+    FAIL: test_launch_honours_every_dotenv_form_compose_honours (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_honours_every_dotenv_form_compose_honours) (form='KEY = value')
+    FAIL: test_launch_honours_every_dotenv_form_compose_honours (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_honours_every_dotenv_form_compose_honours) (form='KEY: value')
+    FAIL: test_launch_honours_every_dotenv_form_compose_honours (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_honours_every_dotenv_form_compose_honours) (form='export KEY=')
+    FAIL: test_launch_honours_every_dotenv_form_compose_honours (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_honours_every_dotenv_form_compose_honours) (form='only bind in export form, KE_ENV plain')
+    FAIL: test_launch_honours_every_dotenv_form_compose_honours (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_honours_every_dotenv_form_compose_honours) (form='quoted')
+[KILLED] SM1 smoke loopback check removed (24s)
+    FAIL: test_smoke_fails_when_a_port_is_not_loopback (tests.test_stack_scripts.SmokeResolvesWithoutEnvTest.test_smoke_fails_when_a_port_is_not_loopback)
+[KILLED] SM2 smoke reads .env (22s)
+    FAIL: test_smoke_resolves_compose_without_env_file (tests.test_stack_scripts.SmokeResolvesWithoutEnvTest.test_smoke_resolves_compose_without_env_file)
+[KILLED] SM3 smoke uses KE_ENV_FILE (23s)
+    FAIL: test_smoke_resolves_compose_without_env_file (tests.test_stack_scripts.SmokeResolvesWithoutEnvTest.test_smoke_resolves_compose_without_env_file)
+[KILLED] SM4 smoke no-.env resolution faked (23s)
+    FAIL: test_smoke_fails_when_a_port_is_not_loopback (tests.test_stack_scripts.SmokeResolvesWithoutEnvTest.test_smoke_fails_when_a_port_is_not_loopback)
+    FAIL: test_smoke_fails_when_resolution_fails (tests.test_stack_scripts.SmokeResolvesWithoutEnvTest.test_smoke_fails_when_resolution_fails)
+    FAIL: test_smoke_resolves_compose_without_env_file (tests.test_stack_scripts.SmokeResolvesWithoutEnvTest.test_smoke_resolves_compose_without_env_file)
+[KILLED] LN1 lint drops docker/ (21s)
+    FAIL: test_lint_covers_every_shell_and_powershell_script (tests.test_stack_scripts.LintScriptTest.test_lint_covers_every_shell_and_powershell_script) (sh='docker/gateway/10-ke-bind-check.sh')
+    FAIL: test_lint_covers_every_shell_and_powershell_script (tests.test_stack_scripts.LintScriptTest.test_lint_covers_every_shell_and_powershell_script) (sh='docker/gateway/11-ke-upstream-check.sh')
+    FAIL: test_lint_with_real_tools_fails_on_a_planted_finding (tests.test_stack_scripts.LintScriptTest.test_lint_with_real_tools_fails_on_a_planted_finding) (planted='docker/gateway/planted.sh')
+[SURVIVED] LN2 lint drops launch.ps1 (21s)
+[KILLED] LN3 lint ignores pwsh failure (21s)
+    FAIL: test_lint_fails_when_either_tool_fails (tests.test_stack_scripts.LintScriptTest.test_lint_fails_when_either_tool_fails) (failing='pwsh')
+    FAIL: test_lint_with_real_tools_fails_on_a_planted_finding (tests.test_stack_scripts.LintScriptTest.test_lint_with_real_tools_fails_on_a_planted_finding) (planted='scripts/planted.ps1')
+[SURVIVED] LN4 PSSA errors only (22s)
+[KILLED] LN5 shellcheck errors only (22s)
+    FAIL: test_lint_with_real_tools_fails_on_a_planted_finding (tests.test_stack_scripts.LintScriptTest.test_lint_with_real_tools_fails_on_a_planted_finding) (planted='docker/gateway/planted.sh')
+    FAIL: test_lint_with_real_tools_fails_on_a_planted_finding (tests.test_stack_scripts.LintScriptTest.test_lint_with_real_tools_fails_on_a_planted_finding) (planted='scripts/planted.sh')
+[KILLED] LN6 verify skips lint (22s)
+    FAIL: test_container_half_runs_lint_before_tests (tests.test_stack_scripts.VerifyCallsLintTest.test_container_half_runs_lint_before_tests) (mode='fast')
+    FAIL: test_container_half_runs_lint_before_tests (tests.test_stack_scripts.VerifyCallsLintTest.test_container_half_runs_lint_before_tests) (mode='full')
+    FAIL: test_lint_failure_fails_verify (tests.test_stack_scripts.VerifyCallsLintTest.test_lint_failure_fails_verify) (mode='fast')
+    FAIL: test_lint_failure_fails_verify (tests.test_stack_scripts.VerifyCallsLintTest.test_lint_failure_fails_verify) (mode='full')
+[KILLED] LN7 lint drops hooks/ (22s)
+    FAIL: test_lint_covers_every_shell_and_powershell_script (tests.test_stack_scripts.LintScriptTest.test_lint_covers_every_shell_and_powershell_script) (sh='scripts/hooks/block-main-commit.sh')
+[KILLED] C1 isolated dropped (22s)
+    FAIL: test_backend_bridge_gateway_is_isolated (tests.test_stack_compose.Rework1ComposeTest.test_backend_bridge_gateway_is_isolated)
+[KILLED] C2 gateway KE_ENV fail-open default (N2) (23s)
+    FAIL: test_no_ke_env_default_anywhere_in_compose (tests.test_stack_compose.Rework1ComposeTest.test_no_ke_env_default_anywhere_in_compose) (file='docker-compose.yml')
+    FAIL: test_no_ke_env_default_anywhere_in_compose (tests.test_stack_compose.Rework1ComposeTest.test_no_ke_env_default_anywhere_in_compose) (service='gateway')
+[SURVIVED] C3 ipam ip_range dropped (22s)
+[KILLED] T1 M-1 proxy subclass accepted (22s)
+    FAIL: test_provider_not_built_by_engine_is_refused (tests.test_engine_tracing_guard.ProviderIdentityTest.test_provider_not_built_by_engine_is_refused) (shape='ProxyTracerProvider subclass with its own sink', env='ci, passing')
+    FAIL: test_provider_not_built_by_engine_is_refused (tests.test_engine_tracing_guard.ProviderIdentityTest.test_provider_not_built_by_engine_is_refused) (shape='ProxyTracerProvider subclass with its own sink', env='console, passing')
+    FAIL: test_provider_not_built_by_engine_is_refused (tests.test_engine_tracing_guard.ProviderIdentityTest.test_provider_not_built_by_engine_is_refused) (shape='ProxyTracerProvider subclass with its own sink', env='dev, auth off (warns only)')
+[KILLED] T2 L-2 registry equality (22s)
+    FAIL: test_decoy_equal_to_an_engine_provider_is_refused (tests.test_engine_tracing_guard.ProviderIdentityTest.test_decoy_equal_to_an_engine_provider_is_refused)
+[KILLED] T3 M-1 post-install check removed (22s)
+    FAIL: test_configure_tracing_refuses_if_its_provider_is_not_the_global (tests.test_engine_tracing_guard.ProviderIdentityTest.test_configure_tracing_refuses_if_its_provider_is_not_the_global) (case='another provider won the race')
+    FAIL: test_configure_tracing_refuses_if_its_provider_is_not_the_global (tests.test_engine_tracing_guard.ProviderIdentityTest.test_configure_tracing_refuses_if_its_provider_is_not_the_global) (case='set ignored (global stays the proxy)')
+[KILLED] G1 upstream allowlist ignored (22s)
+    FAIL: test_gateway_refuses_upstream_not_on_allowlist_or_malformed (tests.test_stack_entrypoints.GatewayUpstreamCheckTest.test_gateway_refuses_upstream_not_on_allowlist_or_malformed) (case='allowlist empty')
+    FAIL: test_gateway_refuses_upstream_not_on_allowlist_or_malformed (tests.test_stack_entrypoints.GatewayUpstreamCheckTest.test_gateway_refuses_upstream_not_on_allowlist_or_malformed) (case='allowlist entry is a superstring')
+    FAIL: test_gateway_refuses_upstream_not_on_allowlist_or_malformed (tests.test_stack_entrypoints.GatewayUpstreamCheckTest.test_gateway_refuses_upstream_not_on_allowlist_or_malformed) (case='allowlist unset')
+    FAIL: test_gateway_refuses_upstream_not_on_allowlist_or_malformed (tests.test_stack_entrypoints.GatewayUpstreamCheckTest.test_gateway_refuses_upstream_not_on_allowlist_or_malformed) (case='security M-3 repro')
+    FAIL: test_gateway_refuses_upstream_not_on_allowlist_or_malformed (tests.test_stack_entrypoints.GatewayUpstreamCheckTest.test_gateway_refuses_upstream_not_on_allowlist_or_malformed) (case='subdomain of allowed host')
+[SURVIVED] G2 upstream charset check removed (22s)
+
+# V7 NOAPPLY in the driver is an escaping artefact (backslash-newline); applied with sed instead:
+#   sed -i '/--profile gates-it run --rm gates-it/{N;d}' scripts/verify.sh
+[KILLED] V7 verify.sh gates-it stage removed: VerifyHostHalfTest Ran 9, failures=5 (test_full_runs_stages_in_order_then_tears_down, test_each_failing_stage_... gates-it/smoke, test_teardown_failure_after_green_run_is_reported, test_removing_the_gates_it_stage_is_caught)
+# L6 is killed only by test_lint_with_real_tools_fails_on_a_planted_finding (PSScriptAnalyzer flags the mutant text), not by a behavioural launch test.
+
+## Backend subnet collision (decision a)
+docker network create --internal --subnet 198.18.81.0/24 --ip-range 198.18.81.128/25 rvw-a; then the same for rvw-b:
+  rvw-b -> Error response from daemon: invalid pool request: Pool overlaps with other one on this address space
+While the security agent had project ke-sec-r1-24255 up (its backend IPAM: [{Subnet:198.18.80.0/24, IPRange:198.18.80.128/25}]):
+  docker network create --internal --subnet 198.18.80.0/24 --ip-range 198.18.80.128/25 rvw-collide -> Pool overlaps with other one on this address space
+  => a verify.sh full (or a second launch) started while any other project of this compose file is up fails at network creation.
+
+## M-2 probe on this Docker (Desktop, server 29.5.2 linux), internal network, ip_range upper half, from ke-gates
+== internal, gateway_mode_ipv4=nat
+198.18.82.1:22 -> TimeoutError errno=None 2.01s
+198.18.82.1:80 -> OSError errno=113 1.07s
+198.18.82.1:6006 -> TimeoutError errno=None 2.00s
+192.0.2.1:22 -> OSError errno=101 0.00s
+192.0.2.1:80 -> OSError errno=101 0.00s
+192.0.2.1:6006 -> OSError errno=101 0.00s
+== internal, gateway_mode_ipv4=isolated
+198.18.82.1:22 -> TimeoutError errno=None 2.01s
+198.18.82.1:80 -> OSError errno=113 1.06s
+198.18.82.1:6006 -> TimeoutError errno=None 2.00s
+192.0.2.1:22 -> OSError errno=101 0.00s
+192.0.2.1:80 -> OSError errno=101 0.00s
+192.0.2.1:6006 -> OSError errno=101 0.00s
+=> identical with and without isolated here; the runtime probe cannot tell them apart on Docker Desktop. Linux (CI) not measured.
+
+## Mutant generator (gen.py)
+import json, sys
+Q = chr(39)
+M = [
+ ("V1 verify.sh teardown trap removed", "scripts/verify.sh", "  trap cleanup EXIT\n", ""),
+ ("V2 verify.sh host smoke removed", "scripts/verify.sh",
+  "    scripts/verify.sh full\n  scripts/smoke.sh\n", "    scripts/verify.sh full\n"),
+ ("V3 verify.sh fixed project name", "scripts/verify.sh", "ke-verify-${RANDOM}${RANDOM}", "ke-verify"),
+ ("V4 verify.sh overlay dropped", "scripts/verify.sh",
+  'export COMPOSE_FILE="docker-compose.yml:docker-compose.verify.yml"', 'export COMPOSE_FILE="docker-compose.yml"'),
+ ("V5 overlay reset removed", "docker-compose.verify.yml", "    ports: !reset []", "    environment: {}"),
+ ("V7 verify.sh gates-it stage removed", "scripts/verify.sh",
+  '  docker compose --env-file "$KE_ENV_FILE" --profile gates-it run --rm gates-it \\n    scripts/verify.sh full\n', ""),
+ ("V8 verify.sh teardown failure masked", "scripts/verify.sh", '[ "$rc" -eq 0 ] && rc=1', ":"),
+ ("V9 verify.sh teardown without --volumes", "scripts/verify.sh",
+  "if ! scripts/teardown.sh --volumes; then", "if ! scripts/teardown.sh; then"),
+ ("V10 verify.sh launch failure ignored", "scripts/verify.sh", "  scripts/launch.sh\n", "  scripts/launch.sh || true\n"),
+ ("W1 api skips startup", "engine/api.py", "    settings = startup()\n",
+  "    from engine.config import Settings\n    settings = Settings()\n"),
+ ("W2 worker skips startup", "engine/worker.py", "    startup()\n    if hasattr", "    if hasattr"),
+ ("W3 compose worker back to bare pause", "docker-compose.yml",
+  'command: ["python", "-m", "engine.worker"]', 'command: ["python", "-c", "import signal; signal.pause()"]'),
+ ("L1 launch.sh empty KE_ENV is dev", "scripts/launch.sh",
+  'if [ "$ke_env" = dev ]; then', 'if [ "$ke_env" = dev ] || [ -z "$ke_env" ]; then'),
+ ("L2 launch.sh falls back to .env.example", "scripts/launch.sh",
+  'ke_env="$(pick KE_ENV)"\n',
+  'ke_env="$(pick KE_ENV)"\n[ -n "$ke_env" ] || ke_env="$(sed -n ' + Q + 's/^KE_ENV=//p' + Q + ' .env.example)"\n'),
+ ("L3 launch.sh engine version check removed", "scripts/launch.sh",
+  'if [ -n "$engine" ] && ! at_least "$engine_minimum" "$engine"; then', "if false; then"),
+ ("L4 launch.sh port without host_ip is loopback", "scripts/launch.sh", 'hosts+=("0.0.0.0")', 'hosts+=("127.0.0.1")'),
+ ("L5 launch.ps1 empty KE_ENV is dev", "scripts/launch.ps1",
+  "if ($keEnv -ceq 'dev') {", "if ($keEnv -ceq 'dev' -or -not $keEnv) {"),
+ ("L6 launch.ps1 engine version check removed", "scripts/launch.ps1",
+  "if ($null -eq $engineVersion -or $engineVersion -lt $engineMinimum) {", "if ($false) {"),
+ ("L7 launch.ps1 refusal becomes warning", "scripts/launch.ps1",
+  "            Write-Error 'KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands)'\n            exit 1\n",
+  "            Write-Warning 'KE_BIND_ADDRESS warn'\n"),
+ ("SM1 smoke loopback check removed", "scripts/smoke.sh",
+  'if [ "$published" -lt 1 ] || [ "$published" != "$loopback" ]; then', "if false; then"),
+ ("SM2 smoke reads .env", "scripts/smoke.sh",
+  'docker compose -f docker-compose.yml --env-file "$empty_env" config', "docker compose -f docker-compose.yml config"),
+ ("SM3 smoke uses KE_ENV_FILE", "scripts/smoke.sh",
+  'docker compose -f docker-compose.yml --env-file "$empty_env" config', 'docker compose -f docker-compose.yml --env-file "$KE_ENV_FILE" config'),
+ ("SM4 smoke no-.env resolution faked", "scripts/smoke.sh",
+  'resolved="$(docker compose -f docker-compose.yml --env-file "$empty_env" config --format json)" || {',
+  'resolved=' + Q + '"published": "1", "host_ip": "127.0.0.1"' + Q + ' || {'),
+ ("LN1 lint drops docker/", "scripts/lint.sh", "find scripts docker -name '*.sh'", "find scripts -name '*.sh'"),
+ ("LN2 lint drops launch.ps1", "scripts/lint.sh", "-name '*.ps1' -type f", "-name '*.ps1' ! -name 'launch.ps1' -type f"),
+ ("LN3 lint ignores pwsh failure", "scripts/lint.sh", 'pwsh -NoProfile -NonInteractive -Command "$analyze" || status=1',
+  'pwsh -NoProfile -NonInteractive -Command "$analyze" || true'),
+ ("LN4 PSSA errors only", "scripts/lint.sh", "-Severity Error, Warning", "-Severity Error"),
+ ("LN5 shellcheck errors only", "scripts/lint.sh", "shellcheck -x ", "shellcheck -S error -x "),
+ ("LN6 verify skips lint", "scripts/verify.sh", "scripts/lint.sh || {", "true || {"),
+ ("LN7 lint drops hooks/", "scripts/lint.sh", "find scripts docker -name '*.sh' -type f", "find scripts docker -name '*.sh' -not -path '*/hooks/*' -type f"),
+ ("C1 isolated dropped", "docker-compose.yml",
+  "    driver_opts:\n      com.docker.network.bridge.gateway_mode_ipv4: isolated\n", ""),
+ ("C2 gateway KE_ENV fail-open default (N2)", "docker-compose.yml",
+  "    environment:\n      KE_ENV: ${KE_ENV}\n      KE_BIND_ADDRESS", "    environment:\n      KE_ENV: ${KE_ENV:-dev}\n      KE_BIND_ADDRESS"),
+ ("C3 ipam ip_range dropped", "docker-compose.yml", "          ip_range: 198.18.80.128/25\n", ""),
+ ("T1 M-1 proxy subclass accepted", "engine/telemetry.py",
+  "return type(provider) is ProxyTracerProvider", "return isinstance(provider, ProxyTracerProvider)"),
+ ("T2 L-2 registry equality", "engine/telemetry.py",
+  "return any(provider is built for built in list(_ENGINE_PROVIDERS))", "return any(provider == built for built in list(_ENGINE_PROVIDERS))"),
+ ("T3 M-1 post-install check removed", "engine/telemetry.py", "    if trace.get_tracer_provider() is not built:", "    if False:"),
+ ("G1 upstream allowlist ignored", "docker/gateway/11-ke-upstream-check.sh",
+  'refuse "host is not on KE_EGRESS_ALLOWLIST"', "exit 0"),
+ ("G2 upstream charset check removed", "docker/gateway/11-ke-upstream-check.sh",
+  '  *[!A-Za-z0-9.:-]*) refuse "is not a plain host:port" ;;\n', ""),
+]
+json.dump(M, open(sys.argv[1], "w"), indent=0)
+
+## Driver (mutants.py)
+"""Rework-1 mutation driver: run inside ke-gates, scratch copy at /work."""
+import subprocess, sys, pathlib, time, json
+W = pathlib.Path("/work")
+SUITE = ["tests.test_stack_scripts", "tests.test_stack_entrypoints", "tests.test_stack_compose",
+         "tests.test_stack_bind_address", "tests.test_stack_carry_ins", "tests.test_engine_tracing_guard",
+         "tests.test_engine_telemetry", "tests.test_engine_startup", "tests.test_engine_hardcoded",
+         "tests.test_engine_deploy_files", "tests.test_harness_followups", "tests.test_harness_port"]
+M = json.loads(pathlib.Path("/mut/mutants.json").read_text())
+only = sys.argv[1:]
+for mid, rel, old, new in M:
+    if only and mid.split(" ")[0] not in only:
+        continue
+    p = W / rel
+    orig = p.read_bytes()
+    text = orig.decode()
+    if old not in text:
+        print(f"[NOAPPLY] {mid}", flush=True); continue
+    p.write_bytes(text.replace(old, new, 1).encode())
+    t = time.time()
+    try:
+        r = subprocess.run(["uv", "run", "--locked", "python", "-m", "unittest", *SUITE], cwd=W,
+                           capture_output=True, text=True, timeout=1800)
+        fails = [l for l in r.stderr.splitlines() if l.startswith(("FAIL:", "ERROR:"))]
+        status = "KILLED" if r.returncode else "SURVIVED"
+        print(f"[{status}] {mid} ({time.time()-t:.0f}s)", flush=True)
+        for l in sorted(set(fails))[:5]:
+            print("    " + l, flush=True)
+    finally:
+        p.write_bytes(orig)

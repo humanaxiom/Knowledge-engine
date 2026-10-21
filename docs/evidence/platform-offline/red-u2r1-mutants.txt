@@ -1,0 +1,932 @@
+# platform-offline unit-2 rework 1: new tamper tests vs reviewer mutants m3/m4/p3 and current code
+# runner: ke-gates:latest --network none, python -m unittest <ids>; mutant trees in session scratch (m3, m4: install.sh; p3: install.ps1), tests copied from the working tree
+
+===== m3
+   Building knowledge-engine @ file:///tmp/w
+      Built knowledge-engine @ file:///tmp/w
+Uninstalled 1 package in 0.66ms
+Installed 1 package in 0.87ms
+FFFFFFFFFFFF
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='dotdot_path')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 230, in _assert_refused_before_docker
+    t.assertRegex(self._out(result).lower(), rule,
+AssertionError: Regex didn't match: "(?:'\\.'|'\\.\\.'|\\bdot(?:-dot)?) segment" not found in 'install: manifest: listed file is missing: ../outside.txt\n' : the refusal must name its rule (architecture §2.5 Install, review B1); a refusal by some other rule means the rule under test is not enforced
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='dot_path')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 230, in _assert_refused_before_docker
+    t.assertRegex(self._out(result).lower(), rule,
+AssertionError: Regex didn't match: "(?:'\\.'|'\\.\\.'|\\bdot(?:-dot)?) segment" not found in 'install: manifest: listed file is missing: app/./extra.txt\n' : the refusal must name its rule (architecture §2.5 Install, review B1); a refusal by some other rule means the rule under test is not enforced
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='reserved_name_con')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp2hcil7qp/target13
+next: cd /tmp/tmp2hcil7qp/target13 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='reserved_name_nul_ext')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp2hcil7qp/target14
+next: cd /tmp/tmp2hcil7qp/target14 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='reserved_name_com1_mixed_case')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp2hcil7qp/target15
+next: cd /tmp/tmp2hcil7qp/target15 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='reserved_name_lpt9')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp2hcil7qp/target16
+next: cd /tmp/tmp2hcil7qp/target16 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='trailing_dot')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp2hcil7qp/target17
+next: cd /tmp/tmp2hcil7qp/target17 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_con')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpdjgsx3y0/target13
+next: cd /tmp/tmpdjgsx3y0/target13 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_nul_ext')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpdjgsx3y0/target14
+next: cd /tmp/tmpdjgsx3y0/target14 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_com1_mixed_case')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpdjgsx3y0/target15
+next: cd /tmp/tmpdjgsx3y0/target15 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_lpt9')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpdjgsx3y0/target16
+next: cd /tmp/tmpdjgsx3y0/target16 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='trailing_dot')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpdjgsx3y0/target17
+next: cd /tmp/tmpdjgsx3y0/target17 && scripts/launch.sh
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 1.753s
+
+FAILED (failures=12)
+
+===== m4
+   Building knowledge-engine @ file:///tmp/w
+      Built knowledge-engine @ file:///tmp/w
+Uninstalled 1 package in 0.77ms
+Installed 1 package in 0.93ms
+FFFFFFFFFFFFFFFFF
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='symlink')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 230, in _assert_refused_before_docker
+    t.assertRegex(self._out(result).lower(), rule,
+AssertionError: Regex didn't match: '\\b(?:sym)?link\\b|reparse point|junction' not found in 'install: manifest: listed file is missing: app/alias.tar\n' : the refusal must name its rule (architecture §2.5 Install, review B1); a refusal by some other rule means the rule under test is not enforced
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='unlisted_dir_symlink')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp0ip9jdqv/target5
+next: cd /tmp/tmp0ip9jdqv/target5 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='unlisted_file_symlink')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp0ip9jdqv/target6
+next: cd /tmp/tmp0ip9jdqv/target6 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='reserved_name_con')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp0ip9jdqv/target13
+next: cd /tmp/tmp0ip9jdqv/target13 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='reserved_name_nul_ext')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp0ip9jdqv/target14
+next: cd /tmp/tmp0ip9jdqv/target14 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='reserved_name_com1_mixed_case')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp0ip9jdqv/target15
+next: cd /tmp/tmp0ip9jdqv/target15 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='reserved_name_lpt9')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp0ip9jdqv/target16
+next: cd /tmp/tmp0ip9jdqv/target16 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='trailing_dot')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp0ip9jdqv/target17
+next: cd /tmp/tmp0ip9jdqv/target17 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='unlisted_fifo')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp0ip9jdqv/target19
+next: cd /tmp/tmp0ip9jdqv/target19 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='unlisted_dir_symlink')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpeu2336ug/target5
+next: cd /tmp/tmpeu2336ug/target5 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='unlisted_file_symlink')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpeu2336ug/target6
+next: cd /tmp/tmpeu2336ug/target6 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_con')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpeu2336ug/target13
+next: cd /tmp/tmpeu2336ug/target13 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_nul_ext')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpeu2336ug/target14
+next: cd /tmp/tmpeu2336ug/target14 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_com1_mixed_case')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpeu2336ug/target15
+next: cd /tmp/tmpeu2336ug/target15 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_lpt9')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpeu2336ug/target16
+next: cd /tmp/tmpeu2336ug/target16 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='trailing_dot')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpeu2336ug/target17
+next: cd /tmp/tmpeu2336ug/target17 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='unlisted_fifo')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpeu2336ug/target19
+next: cd /tmp/tmpeu2336ug/target19 && scripts/launch.sh
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 2.525s
+
+FAILED (failures=17)
+
+===== p3
+   Building knowledge-engine @ file:///tmp/w
+      Built knowledge-engine @ file:///tmp/w
+Uninstalled 1 package in 0.74ms
+Installed 1 package in 0.94ms
+FFFFFFFFFFFFFFFF
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='symlink')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 228, in _assert_refused_before_docker
+    t.assertIn(name, self._out(result), "the refusal must name the bundle-relative path")
+AssertionError: 'app/alias.tar' not found in '\n\x1b[32;1mUnixMode  \x1b[0m\x1b[32;1m       User\x1b[0m\x1b[32;1m Group     \x1b[0m\x1b[32;1m    LastWriteTime\x1b[0m\x1b[32;1m         Size\x1b[0m\x1b[32;1m Name\x1b[0m\n\x1b[32;1m--------  \x1b[0m \x1b[32;1m      ----\x1b[0m \x1b[32;1m-----     \x1b[0m \x1b[32;1m   -------------\x1b[0m \x1b[32;1m        ----\x1b[0m \x1b[32;1m----\x1b[0m\n                                 10/19/2026 12:14              \x1b[33;1minstall.ps1\x1b[0m\n                                 10/19/2026 12:14              bundle.json\n                                 10/19/2026 12:14              install.sh\n                                 10/19/2026 12:14              \x1b[31;1mke-app.tar\x1b[0m\n                                 10/19/2026 12:14              \x1b[31;1mpostgres.tar\x1b[0m\n                                 10/19/2026 12:14              docker-compose.y\n                                                               ml\n                                 10/19/2026 12:14              launch.sh\ninstall: manifest: not a regular file or directory (link): alias.tar\n' : the refusal must name the bundle-relative path
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='unlisted_dir_symlink')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 228, in _assert_refused_before_docker
+    t.assertIn(name, self._out(result), "the refusal must name the bundle-relative path")
+AssertionError: 'app/evil' not found in '\n\x1b[32;1mUnixMode  \x1b[0m\x1b[32;1m       User\x1b[0m\x1b[32;1m Group     \x1b[0m\x1b[32;1m    LastWriteTime\x1b[0m\x1b[32;1m         Size\x1b[0m\x1b[32;1m Name\x1b[0m\n\x1b[32;1m--------  \x1b[0m \x1b[32;1m      ----\x1b[0m \x1b[32;1m-----     \x1b[0m \x1b[32;1m   -------------\x1b[0m \x1b[32;1m        ----\x1b[0m \x1b[32;1m----\x1b[0m\n                                 10/19/2026 12:14              \x1b[33;1minstall.ps1\x1b[0m\n                                 10/19/2026 12:14              bundle.json\n                                 10/19/2026 12:14              install.sh\n                                 10/19/2026 12:14              \x1b[31;1mke-app.tar\x1b[0m\n                                 10/19/2026 12:14              \x1b[31;1mpostgres.tar\x1b[0m\n                                 10/19/2026 12:14              docker-compose.y\n                                                               ml\n                                 10/19/2026 12:14              launch.sh\ninstall: manifest: not a regular file or directory (link): evil\n' : the refusal must name the bundle-relative path
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='unlisted_file_symlink')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 228, in _assert_refused_before_docker
+    t.assertIn(name, self._out(result), "the refusal must name the bundle-relative path")
+AssertionError: 'app/alias.sh' not found in '\n\x1b[32;1mUnixMode  \x1b[0m\x1b[32;1m       User\x1b[0m\x1b[32;1m Group     \x1b[0m\x1b[32;1m    LastWriteTime\x1b[0m\x1b[32;1m         Size\x1b[0m\x1b[32;1m Name\x1b[0m\n\x1b[32;1m--------  \x1b[0m \x1b[32;1m      ----\x1b[0m \x1b[32;1m-----     \x1b[0m \x1b[32;1m   -------------\x1b[0m \x1b[32;1m        ----\x1b[0m \x1b[32;1m----\x1b[0m\n                                 10/19/2026 12:14              \x1b[33;1minstall.ps1\x1b[0m\n                                 10/19/2026 12:14              bundle.json\n                                 10/19/2026 12:14              install.sh\n                                 10/19/2026 12:14              \x1b[31;1mke-app.tar\x1b[0m\n                                 10/19/2026 12:14              \x1b[31;1mpostgres.tar\x1b[0m\n                                 10/19/2026 12:14              docker-compose.y\n                                                               ml\n                                 10/19/2026 12:14              launch.sh\ninstall: manifest: not a regular file or directory (link): alias.sh\n' : the refusal must name the bundle-relative path
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='dotdot_path')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 230, in _assert_refused_before_docker
+    t.assertRegex(self._out(result).lower(), rule,
+AssertionError: Regex didn't match: "(?:'\\.'|'\\.\\.'|\\bdot(?:-dot)?) segment" not found in 'install: manifest: listed file is missing: ../outside.txt\n' : the refusal must name its rule (architecture §2.5 Install, review B1); a refusal by some other rule means the rule under test is not enforced
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='dot_path')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 230, in _assert_refused_before_docker
+    t.assertRegex(self._out(result).lower(), rule,
+AssertionError: Regex didn't match: "(?:'\\.'|'\\.\\.'|\\bdot(?:-dot)?) segment" not found in 'install: manifest: listed file is missing: app/./extra.txt\n' : the refusal must name its rule (architecture §2.5 Install, review B1); a refusal by some other rule means the rule under test is not enforced
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='reserved_name_con')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpenufwhnk/target13
+next: cd '/tmp/tmpenufwhnk/target13'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='reserved_name_nul_ext')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpenufwhnk/target14
+next: cd '/tmp/tmpenufwhnk/target14'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='reserved_name_com1_mixed_case')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpenufwhnk/target15
+next: cd '/tmp/tmpenufwhnk/target15'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='reserved_name_lpt9')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpenufwhnk/target16
+next: cd '/tmp/tmpenufwhnk/target16'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='trailing_dot')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpenufwhnk/target17
+next: cd '/tmp/tmpenufwhnk/target17'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='unlisted_fifo')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 230, in _assert_refused_before_docker
+    t.assertRegex(self._out(result).lower(), rule,
+AssertionError: Regex didn't match: '\\bfifo\\b|named pipe' not found in 'install: manifest: file is not listed: app/pipe\n' : the refusal must name its rule (architecture §2.5 Install, review B1); a refusal by some other rule means the rule under test is not enforced
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_con')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpyjipik64/target13
+next: cd '/tmp/tmpyjipik64/target13'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_nul_ext')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpyjipik64/target14
+next: cd '/tmp/tmpyjipik64/target14'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_com1_mixed_case')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpyjipik64/target15
+next: cd '/tmp/tmpyjipik64/target15'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_lpt9')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpyjipik64/target16
+next: cd '/tmp/tmpyjipik64/target16'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails) (case='trailing_dot')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpyjipik64/target17
+next: cd '/tmp/tmpyjipik64/target17'; scripts\launch.ps1
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 16.299s
+
+FAILED (failures=16)
+
+===== cur
+   Building knowledge-engine @ file:///tmp/w
+      Built knowledge-engine @ file:///tmp/w
+Uninstalled 1 package in 0.70ms
+Installed 1 package in 0.87ms
+FFFFFFFFFFFFFFFFFFFFFFFF
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='reserved_name_con')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp6gf0lo_4/target13
+next: cd /tmp/tmp6gf0lo_4/target13 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='reserved_name_nul_ext')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp6gf0lo_4/target14
+next: cd /tmp/tmp6gf0lo_4/target14 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='reserved_name_com1_mixed_case')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp6gf0lo_4/target15
+next: cd /tmp/tmp6gf0lo_4/target15 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='reserved_name_lpt9')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp6gf0lo_4/target16
+next: cd /tmp/tmp6gf0lo_4/target16 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='trailing_dot')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp6gf0lo_4/target17
+next: cd /tmp/tmp6gf0lo_4/target17 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_con')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpjq2vdcgz/target13
+next: cd /tmp/tmpjq2vdcgz/target13 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_nul_ext')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpjq2vdcgz/target14
+next: cd /tmp/tmpjq2vdcgz/target14 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_com1_mixed_case')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpjq2vdcgz/target15
+next: cd /tmp/tmpjq2vdcgz/target15 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_lpt9')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpjq2vdcgz/target16
+next: cd /tmp/tmpjq2vdcgz/target16 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='trailing_dot')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpjq2vdcgz/target17
+next: cd /tmp/tmpjq2vdcgz/target17 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='symlink')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 228, in _assert_refused_before_docker
+    t.assertIn(name, self._out(result), "the refusal must name the bundle-relative path")
+AssertionError: 'app/alias.tar' not found in '\n\x1b[32;1mUnixMode  \x1b[0m\x1b[32;1m       User\x1b[0m\x1b[32;1m Group     \x1b[0m\x1b[32;1m    LastWriteTime\x1b[0m\x1b[32;1m         Size\x1b[0m\x1b[32;1m Name\x1b[0m\n\x1b[32;1m--------  \x1b[0m \x1b[32;1m      ----\x1b[0m \x1b[32;1m-----     \x1b[0m \x1b[32;1m   -------------\x1b[0m \x1b[32;1m        ----\x1b[0m \x1b[32;1m----\x1b[0m\n                                 10/19/2026 12:15              \x1b[33;1minstall.ps1\x1b[0m\n                                 10/19/2026 12:15              bundle.json\n                                 10/19/2026 12:15              install.sh\n                                 10/19/2026 12:15              \x1b[31;1mke-app.tar\x1b[0m\n                                 10/19/2026 12:15              \x1b[31;1mpostgres.tar\x1b[0m\n                                 10/19/2026 12:15              docker-compose.y\n                                                               ml\n                                 10/19/2026 12:15              launch.sh\ninstall: manifest: not a regular file or directory (link): alias.tar\n' : the refusal must name the bundle-relative path
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='unlisted_dir_symlink')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 228, in _assert_refused_before_docker
+    t.assertIn(name, self._out(result), "the refusal must name the bundle-relative path")
+AssertionError: 'app/evil' not found in '\n\x1b[32;1mUnixMode  \x1b[0m\x1b[32;1m       User\x1b[0m\x1b[32;1m Group     \x1b[0m\x1b[32;1m    LastWriteTime\x1b[0m\x1b[32;1m         Size\x1b[0m\x1b[32;1m Name\x1b[0m\n\x1b[32;1m--------  \x1b[0m \x1b[32;1m      ----\x1b[0m \x1b[32;1m-----     \x1b[0m \x1b[32;1m   -------------\x1b[0m \x1b[32;1m        ----\x1b[0m \x1b[32;1m----\x1b[0m\n                                 10/19/2026 12:15              \x1b[33;1minstall.ps1\x1b[0m\n                                 10/19/2026 12:15              bundle.json\n                                 10/19/2026 12:15              install.sh\n                                 10/19/2026 12:15              \x1b[31;1mke-app.tar\x1b[0m\n                                 10/19/2026 12:15              \x1b[31;1mpostgres.tar\x1b[0m\n                                 10/19/2026 12:15              docker-compose.y\n                                                               ml\n                                 10/19/2026 12:15              launch.sh\ninstall: manifest: not a regular file or directory (link): evil\n' : the refusal must name the bundle-relative path
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='unlisted_file_symlink')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 228, in _assert_refused_before_docker
+    t.assertIn(name, self._out(result), "the refusal must name the bundle-relative path")
+AssertionError: 'app/alias.sh' not found in '\n\x1b[32;1mUnixMode  \x1b[0m\x1b[32;1m       User\x1b[0m\x1b[32;1m Group     \x1b[0m\x1b[32;1m    LastWriteTime\x1b[0m\x1b[32;1m         Size\x1b[0m\x1b[32;1m Name\x1b[0m\n\x1b[32;1m--------  \x1b[0m \x1b[32;1m      ----\x1b[0m \x1b[32;1m-----     \x1b[0m \x1b[32;1m   -------------\x1b[0m \x1b[32;1m        ----\x1b[0m \x1b[32;1m----\x1b[0m\n                                 10/19/2026 12:15              \x1b[33;1minstall.ps1\x1b[0m\n                                 10/19/2026 12:15              bundle.json\n                                 10/19/2026 12:15              install.sh\n                                 10/19/2026 12:15              \x1b[31;1mke-app.tar\x1b[0m\n                                 10/19/2026 12:15              \x1b[31;1mpostgres.tar\x1b[0m\n                                 10/19/2026 12:15              docker-compose.y\n                                                               ml\n                                 10/19/2026 12:15              launch.sh\ninstall: manifest: not a regular file or directory (link): alias.sh\n' : the refusal must name the bundle-relative path
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='reserved_name_con')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpcq7_mw9j/target13
+next: cd '/tmp/tmpcq7_mw9j/target13'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='reserved_name_nul_ext')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpcq7_mw9j/target14
+next: cd '/tmp/tmpcq7_mw9j/target14'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='reserved_name_com1_mixed_case')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpcq7_mw9j/target15
+next: cd '/tmp/tmpcq7_mw9j/target15'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='reserved_name_lpt9')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpcq7_mw9j/target16
+next: cd '/tmp/tmpcq7_mw9j/target16'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='trailing_dot')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 223, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpcq7_mw9j/target17
+next: cd '/tmp/tmpcq7_mw9j/target17'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='unlisted_fifo')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 336, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 230, in _assert_refused_before_docker
+    t.assertRegex(self._out(result).lower(), rule,
+AssertionError: Regex didn't match: '\\bfifo\\b|named pipe' not found in 'install: manifest: file is not listed: app/pipe\n' : the refusal must name its rule (architecture §2.5 Install, review B1); a refusal by some other rule means the rule under test is not enforced
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_con')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp1jmf9tp6/target13
+next: cd '/tmp/tmp1jmf9tp6/target13'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_nul_ext')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp1jmf9tp6/target14
+next: cd '/tmp/tmp1jmf9tp6/target14'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_com1_mixed_case')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp1jmf9tp6/target15
+next: cd '/tmp/tmp1jmf9tp6/target15'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_lpt9')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp1jmf9tp6/target16
+next: cd '/tmp/tmp1jmf9tp6/target16'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails) (case='trailing_dot')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 366, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp1jmf9tp6/target17
+next: cd '/tmp/tmp1jmf9tp6/target17'; scripts\launch.ps1
+
+
+----------------------------------------------------------------------
+Ran 4 tests in 18.268s
+
+FAILED (failures=24)

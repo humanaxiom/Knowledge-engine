@@ -1,0 +1,9 @@
+# Windows host (Windows 11, pwsh 7.6), .venv python: InstallPs1WindowsAclTest, 2026-10-19
+test_empty_path_entry_is_dropped_on_windows (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_empty_path_entry_is_dropped_on_windows)
+Review RB5a, security L-9: on Windows an empty PATH entry is a ... ok
+test_staging_never_inherits_an_ace (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_staging_never_inherits_an_ace) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 4.296s
+
+OK

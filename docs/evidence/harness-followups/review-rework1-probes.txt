@@ -1,0 +1,34 @@
+new-a [fast] rc=0 counts:{ 1 testfoo 1 top } last: Ran 2 tests in 0.015s|
+base-a [fast] rc=0 counts:{ 1 testfoo 1 top } last: Ran 2 tests in 0.004s|
+new-b [fast] rc=1 counts:{} last: error: tests/unit contains test*.py but has no __init__.py; its tests would be skipped|
+base-b [fast] rc=0 counts:{ 1 top } last: Ran 1 test in 0.004s|
+new-c [fast] rc=0 counts:{ 1 top } last: Ran 1 test in 0.004s|
+base-c [fast] rc=0 counts:{ 1 top } last: Ran 1 test in 0.004s|
+new-d [fast] rc=1 counts:{} last: Ran 1 test in 0.000s|FAILED (errors=1)|
+base-d [fast] rc=0 counts:{ 1 u } last: Ran 1 test in 0.003s|
+new-e [full] rc=1 counts:{ 1 top } last: AssertionError: None|Ran 1 test in 0.001s|
+base-e [full] rc=1 counts:{ 1 top } last: AssertionError: None|Ran 2 tests in 0.004s|
+new-e2 [fast] rc=0 counts:{ 1 top } last: Ran 1 test in 0.004s|
+base-e2 [fast] rc=1 counts:{ 1 top } last: AssertionError: None|Ran 2 tests in 0.004s|
+new-f [fast] rc=1 counts:{ 1 top } last: AssertionError: None|Ran 1 test in 0.000s|
+base-f [fast] rc=1 counts:{ 1 top } last: AssertionError: None|Ran 2 tests in 0.005s|
+new-g [fast] rc=0 counts:{ 1 ab 1 top } last: Ran 2 tests in 0.004s|
+base-g [fast] rc=0 counts:{ 1 top } last: Ran 1 test in 0.004s|
+new-h [full] rc=1 counts:{} last: error: tests/integration contains test*.py but has no __init__.py; its tests would be skipped|
+base-h [full] rc=1 counts:{ 1 top } last:     raise ImportError('Start directory is not importable: %r' % start_dir)|ImportError: Start directory is not importable: '<scratch>\\rw1\\p_base-h\\tests\\integration'|
+new-i [fast] rc=0 counts:{ 1 top } last: Ran 1 test in 0.004s|
+base-i [fast] rc=0 counts:{ 1 deep 1 top } last: Ran 2 tests in 0.004s|
+new-j [fast] rc=0 counts:{ 1 top 1 u } last: Ran 1 test in 0.004s|Ran 1 test in 0.004s|
+base-j [fast] rc=0 counts:{ 1 top 1 u } last: Ran 2 tests in 0.005s|
+new-k [fast] rc=5 counts:{ 1 top } last: Ran 0 tests in 0.000s|NO TESTS RAN|
+base-k [fast] rc=0 counts:{ 1 top } last: Ran 1 test in 0.004s|
+new-l [fast] rc=0 counts:{ 1 top 1 u } last: Ran 1 test in 0.004s|Ran 1 test in 0.005s|
+base-l [fast] rc=0 counts:{ 1 integ 1 top 1 u } last: Ran 3 tests in 0.004s|
+new-l2 [full] rc=0 counts:{ 1 integ 1 top 1 u } last: Ran 1 test in 0.003s|Ran 1 test in 0.003s|
+base-l2 [full] rc=0 counts:{ 2 integ 1 top 1 u } last: Ran 3 tests in 0.004s|Ran 1 test in 0.003s|
+new-m [full] rc=0 counts:{ 1 integdeep 1 top } last: Ran 1 test in 0.004s|Ran 1 test in 0.004s|
+base-m [full] rc=0 counts:{ 2 integdeep 1 top } last: Ran 2 tests in 0.004s|Ran 1 test in 0.004s|
+new-n [fast] rc=0 counts:{ 1 sp 1 top } last: Ran 1 test in 0.004s|Ran 1 test in 0.003s|
+base-n [fast] rc=0 counts:{ 1 sp 1 top } last: Ran 2 tests in 0.005s|
+new-o [fast] rc=1 counts:{} last: error: tests/integration contains test*.py but has no __init__.py; its tests would be skipped|
+base-o [fast] rc=0 counts:{ 1 top } last: Ran 1 test in 0.004s|

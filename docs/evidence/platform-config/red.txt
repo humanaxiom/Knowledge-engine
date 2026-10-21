@@ -1,0 +1,1258 @@
+ Image knowledge-engine-gates Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 535B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from gates.Dockerfile
+#2 transferring dockerfile: 1.22kB done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#3 DONE 0.0s
+
+#4 [internal] load metadata for docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#4 DONE 0.5s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 91B done
+#5 DONE 0.0s
+
+#6 [uv 1/1] FROM ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#6 resolve ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946 0.0s done
+#6 DONE 0.0s
+
+#7 [stage-1 1/7] FROM docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#7 resolve docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258 0.0s done
+#7 DONE 0.0s
+
+#8 [internal] load build context
+#8 transferring context: 519B done
+#8 DONE 0.0s
+
+#9 [stage-1 2/7] COPY --from=uv /uv /usr/local/bin/uv
+#9 CACHED
+
+#10 [stage-1 3/7] RUN apt-get update  && apt-get install -y --no-install-recommends git jq  && rm -rf /var/lib/apt/lists/*  && git config --system --add safe.directory /work  && git config --system core.autocrlf true
+#10 CACHED
+
+#11 [stage-1 4/7] WORKDIR /work
+#11 CACHED
+
+#12 [stage-1 6/7] COPY harness_telemetry ./harness_telemetry
+#12 CACHED
+
+#13 [stage-1 5/7] COPY pyproject.toml uv.lock ./
+#13 CACHED
+
+#14 [stage-1 7/7] RUN uv sync --locked
+#14 CACHED
+
+#15 exporting to image
+#15 exporting layers done
+#15 exporting manifest sha256:e7a2ae7d03859dfc226941bba538fe65aba8fea97bd3727fd5cb82f524943ee8 done
+#15 exporting config sha256:4ed1e2e0afabd9703b35490e89ec81b34274900b6d27cf8f9432b1cf3ff221e2 done
+#15 exporting attestation manifest sha256:425888fd044a779c53047ed32c54268c86501d3cde32ed867bfb5792d3fb5b53 0.0s done
+#15 exporting manifest list sha256:4b75a5716da8d79a633f25830d79d11a3895830f70e41c2623585d9402c2ff82 done
+#15 naming to docker.io/library/knowledge-engine-gates:latest done
+#15 unpacking to docker.io/library/knowledge-engine-gates:latest done
+#15 DONE 0.1s
+
+#16 resolving provenance for metadata file
+#16 DONE 0.0s
+ Image knowledge-engine-gates Built 
+ Container knowledge-engine-gates-run-bf4db1d3e4be Creating 
+ Container knowledge-engine-gates-run-bf4db1d3e4be Created 
+== verify fast: 40c0c75+dirty ==
+   Building monitored-harness @ file:///work
+      Built monitored-harness @ file:///work
+Uninstalled 1 package in 0.75ms
+Installed 1 package in 0.98ms
+test_backslash_forms_deny_push_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_forms_deny_push_off_main) ... ok
+test_backslash_newline_after_comment_or_even_run_denies_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_off_main) ... ok
+test_backslash_newline_after_comment_or_even_run_denies_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_on_main) ... ok
+test_backslash_newline_joins_to_nothing_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_joins_to_nothing_off_main) ... ok
+test_backslash_newline_joins_to_nothing_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_joins_to_nothing_on_main) ... ok
+test_carriage_return_denies_as_without_it_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_carriage_return_denies_as_without_it_off_main) ... ok
+test_carriage_return_denies_as_without_it_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_carriage_return_denies_as_without_it_on_main) ... ok
+test_carriage_return_stays_silent_as_without_it (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_carriage_return_stays_silent_as_without_it) ... ok
+test_comment_or_even_run_then_continued_push_denies_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_comment_or_even_run_then_continued_push_denies_off_main) ... ok
+test_comment_then_continued_commit_denies_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_comment_then_continued_commit_denies_on_main) ... ok
+test_denies_commit_and_push_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_commit_and_push_on_main) ... ok
+test_denies_commit_creating_commands_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_commit_creating_commands_on_main) ... ok
+test_denies_git_first_word_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_git_first_word_on_main) ... ok
+test_denies_nested_git_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_nested_git_on_main) ... ok
+test_denies_nested_push_to_main_or_force_from_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_nested_push_to_main_or_force_from_plan_item_branch) ... ok
+test_denies_on_master (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_on_master) ... ok
+test_denies_push_on_master (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_on_master) ... ok
+test_denies_push_refspec_forms_from_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_refspec_forms_from_plan_item_branch) ... ok
+test_denies_push_to_main_or_force_push_from_any_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_to_main_or_force_push_from_any_branch) ... ok
+test_denies_push_with_c_global_option_from_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_with_c_global_option_from_plan_item_branch) ... ok
+test_description_with_forged_command_key_is_not_judged (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_description_with_forged_command_key_is_not_judged) ... ok
+test_escaped_quote_does_not_hide_following_push (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_escaped_quote_does_not_hide_following_push) ... ok
+test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) ... ok
+test_grep_for_a_verb_on_main_is_accepted_false_positive (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_grep_for_a_verb_on_main_is_accepted_false_positive) ... ok
+test_json_without_command_field_is_silent (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_json_without_command_field_is_silent) ... ok
+test_judges_only_the_command_field (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_judges_only_the_command_field) ... ok
+test_long_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_long_command_finishes_quickly) ... ok
+test_multiline_without_backslash_newline_unchanged (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_multiline_without_backslash_newline_unchanged) ... ok
+test_one_line_mentions_are_accepted_false_positives_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_line_mentions_are_accepted_false_positives_off_main) ... ok
+test_one_megabyte_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_command_finishes_quickly) ... ok
+test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) ... ok
+test_only_first_command_value_is_judged (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_only_first_command_value_is_judged) ... ok
+test_payload_helper_is_compact_claude_code_shape (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_payload_helper_is_compact_claude_code_shape) ... ok
+test_prefixed_push_to_main_denied_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_prefixed_push_to_main_denied_off_main) ... ok
+test_real_continuation_of_plan_item_push_stays_silent (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_real_continuation_of_plan_item_push_stays_silent) ... ok
+test_shell_wrapped_commit_denied_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_shell_wrapped_commit_denied_on_main) ... ok
+test_silent_for_claude_code_heredoc_commit_on_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_claude_code_heredoc_commit_on_plan_item_branch) ... ok
+test_silent_for_everyday_commands_on_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_everyday_commands_on_plan_item_branch) ... ok
+test_silent_for_non_git_command (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_non_git_command) ... ok
+test_silent_for_plain_push_of_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_plain_push_of_plan_item_branch) ... ok
+test_silent_for_text_that_only_mentions_push_on_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_text_that_only_mentions_push_on_plan_item_branch) ... ok
+test_silent_on_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_on_plan_item_branch) ... ok
+test_split_or_cased_git_word_denied_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_split_or_cased_git_word_denied_on_main) ... ok
+test_works_without_jq_on_raw_input (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_works_without_jq_on_raw_input) ... ok
+test_gates_image_installs_jq (tests.test_block_main_commit_hook.GatesImageJqTest.test_gates_image_installs_jq) ... ok
+test_config_defaults_and_env_override (tests.test_engine_config.TypedConfigTest.test_config_defaults_and_env_override) ... ERROR
+test_config_ignores_unprefixed_names (tests.test_engine_config.TypedConfigTest.test_config_ignores_unprefixed_names) ... ERROR
+test_config_init_args_take_precedence (tests.test_engine_config.TypedConfigTest.test_config_init_args_take_precedence) ... ERROR
+test_config_missing_defaults_file_names_path (tests.test_engine_config.TypedConfigTest.test_config_missing_defaults_file_names_path) ... ERROR
+test_config_missing_secret_names_key (tests.test_engine_config.TypedConfigTest.test_config_missing_secret_names_key) ... ERROR
+test_config_rejects_bad_type (tests.test_engine_config.TypedConfigTest.test_config_rejects_bad_type) ... ERROR
+test_config_secrets_have_no_yaml_default (tests.test_engine_config.TypedConfigTest.test_config_secrets_have_no_yaml_default) ... ERROR
+test_every_non_secret_setting_has_a_yaml_default (tests.test_engine_config.TypedConfigTest.test_every_non_secret_setting_has_a_yaml_default) ... ERROR
+test_secret_values_are_not_in_repr (tests.test_engine_config.TypedConfigTest.test_secret_values_are_not_in_repr) ... ERROR
+test_egress_guard_allows_listed_host (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_allows_listed_host) ... ERROR
+test_egress_guard_checks_every_redirect_hop (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_checks_every_redirect_hop) ... ERROR
+test_egress_guard_mutant_goes_red (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_mutant_goes_red)
+DR38: the runtime assertion fails when the guard is removed. ... ERROR
+test_egress_guard_runtime (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_runtime) ... ERROR
+test_model_client_uses_guarded_transport (tests.test_engine_egress.EgressRuntimeTest.test_model_client_uses_guarded_transport) ... ERROR
+test_egress_guard_startup (tests.test_engine_egress.EgressStartupTest.test_egress_guard_startup) ... ERROR
+test_is_local_endpoint (tests.test_engine_egress.LocalEndpointTest.test_is_local_endpoint) ... ERROR
+test_declared_value_files_exist (tests.test_engine_hardcoded.RepositoryScanTest.test_declared_value_files_exist) ... FAIL
+test_model_host_name_only_in_allowed_locations (tests.test_engine_hardcoded.RepositoryScanTest.test_model_host_name_only_in_allowed_locations) ... ok
+test_no_hardcoded_hosts_or_models (tests.test_engine_hardcoded.RepositoryScanTest.test_no_hardcoded_hosts_or_models) ... ERROR
+test_no_hardcoded_ports (tests.test_engine_hardcoded.RepositoryScanTest.test_no_hardcoded_ports) ... ERROR
+test_allowed_locations_are_never_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_allowed_locations_are_never_flagged) ... 
+  test_allowed_locations_are_never_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_allowed_locations_are_never_flagged) (path='config/defaults.yaml') ... ERROR
+  test_allowed_locations_are_never_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_allowed_locations_are_never_flagged) (path='.env.example') ... ERROR
+  test_allowed_locations_are_never_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_allowed_locations_are_never_flagged) (path='config/verify.env') ... ERROR
+  test_allowed_locations_are_never_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_allowed_locations_are_never_flagged) (path='tests/test_x.py') ... ERROR
+  test_allowed_locations_are_never_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_allowed_locations_are_never_flagged) (path='docs/architecture.md') ... ERROR
+test_compose_variable_default_is_allowed (tests.test_engine_hardcoded.ScannerContractTest.test_compose_variable_default_is_allowed) ... ERROR
+test_exemption_covers_only_its_symbol_and_path (tests.test_engine_hardcoded.ScannerContractTest.test_exemption_covers_only_its_symbol_and_path) ... ERROR
+test_integer_port_assignment_in_python_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_integer_port_assignment_in_python_is_flagged) ... 
+  test_integer_port_assignment_in_python_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_integer_port_assignment_in_python_is_flagged) (source='port = 1234\n') ... ERROR
+  test_integer_port_assignment_in_python_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_integer_port_assignment_in_python_is_flagged) (source='listen_port: int = 8081\n') ... ERROR
+  test_integer_port_assignment_in_python_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_integer_port_assignment_in_python_is_flagged) (source='DB_PORT=15432\n') ... ERROR
+  test_integer_port_assignment_in_python_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_integer_port_assignment_in_python_is_flagged) (source='connect(port=2345)\n') ... ERROR
+test_planted_host_name_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_planted_host_name_is_flagged) ... ERROR
+test_planted_model_name_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_planted_model_name_is_flagged) ... ERROR
+test_planted_port_literal_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_planted_port_literal_is_flagged) ... ERROR
+test_port_token_boundaries (tests.test_engine_hardcoded.ScannerContractTest.test_port_token_boundaries) ... ERROR
+test_rule_two_is_python_only (tests.test_engine_hardcoded.ScannerContractTest.test_rule_two_is_python_only) ... ERROR
+test_url_literal_in_python_is_flagged_even_if_undeclared (tests.test_engine_hardcoded.ScannerContractTest.test_url_literal_in_python_is_flagged_even_if_undeclared) ... ERROR
+test_engine_dependencies_declared (tests.test_engine_quality.DependenciesTest.test_engine_dependencies_declared) ... 
+  test_engine_dependencies_declared (tests.test_engine_quality.DependenciesTest.test_engine_dependencies_declared) (runtime='pydantic-settings') ... FAIL
+  test_engine_dependencies_declared (tests.test_engine_quality.DependenciesTest.test_engine_dependencies_declared) (runtime='pyyaml') ... FAIL
+  test_engine_dependencies_declared (tests.test_engine_quality.DependenciesTest.test_engine_dependencies_declared) (runtime='httpx') ... FAIL
+  test_engine_dependencies_declared (tests.test_engine_quality.DependenciesTest.test_engine_dependencies_declared) (dev='coverage') ... FAIL
+  test_engine_dependencies_declared (tests.test_engine_quality.DependenciesTest.test_engine_dependencies_declared) (dev='mypy') ... FAIL
+  test_engine_dependencies_declared (tests.test_engine_quality.DependenciesTest.test_engine_dependencies_declared) (dev='types-pyyaml') ... FAIL
+  test_engine_dependencies_declared (tests.test_engine_quality.DependenciesTest.test_engine_dependencies_declared) (wheel='engine') ... FAIL
+test_python_pinned_to_312 (tests.test_engine_quality.PythonPinTest.test_python_pinned_to_312) ... FAIL
+test_test_sh_enforces_coverage_and_mypy (tests.test_engine_quality.QualityGateTest.test_test_sh_enforces_coverage_and_mypy) ... FAIL
+test_tests_excluded_from_measurement (tests.test_engine_quality.QualityGateTest.test_tests_excluded_from_measurement) ... ok
+test_env_example_secret_placeholders_are_changeme (tests.test_engine_startup.PlaceholderSecretTest.test_env_example_secret_placeholders_are_changeme) ... ERROR
+test_placeholder_check_is_prefix_only (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_check_is_prefix_only) ... ERROR
+test_placeholder_check_reads_no_file (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_check_reads_no_file) ... ERROR
+test_startup_refuses_placeholder_secrets (tests.test_engine_startup.PlaceholderSecretTest.test_startup_refuses_placeholder_secrets) ... ERROR
+test_dev_auth_off_warns (tests.test_engine_startup.StartupRefusalTest.test_dev_auth_off_warns) ... ERROR
+test_dev_hide_flag_off_warns_naming_flag (tests.test_engine_startup.StartupRefusalTest.test_dev_hide_flag_off_warns_naming_flag) ... 
+  test_dev_hide_flag_off_warns_naming_flag (tests.test_engine_startup.StartupRefusalTest.test_dev_hide_flag_off_warns_naming_flag) (flag='OPENINFERENCE_HIDE_INPUTS') ... ERROR
+  test_dev_hide_flag_off_warns_naming_flag (tests.test_engine_startup.StartupRefusalTest.test_dev_hide_flag_off_warns_naming_flag) (flag='OPENINFERENCE_HIDE_OUTPUTS') ... ERROR
+test_hide_flags_default_true_in_every_env (tests.test_engine_startup.StartupRefusalTest.test_hide_flags_default_true_in_every_env) ... 
+  test_hide_flags_default_true_in_every_env (tests.test_engine_startup.StartupRefusalTest.test_hide_flags_default_true_in_every_env) (env='dev') ... ERROR
+  test_hide_flags_default_true_in_every_env (tests.test_engine_startup.StartupRefusalTest.test_hide_flags_default_true_in_every_env) (env='ci') ... ERROR
+  test_hide_flags_default_true_in_every_env (tests.test_engine_startup.StartupRefusalTest.test_hide_flags_default_true_in_every_env) (env='prod') ... ERROR
+test_startup_accepts_local_collectors (tests.test_engine_startup.StartupRefusalTest.test_startup_accepts_local_collectors) ... 
+  test_startup_accepts_local_collectors (tests.test_engine_startup.StartupRefusalTest.test_startup_accepts_local_collectors) (endpoint='http://localhost:47101') ... ERROR
+  test_startup_accepts_local_collectors (tests.test_engine_startup.StartupRefusalTest.test_startup_accepts_local_collectors) (endpoint='http://127.0.0.1:6006') ... ERROR
+  test_startup_accepts_local_collectors (tests.test_engine_startup.StartupRefusalTest.test_startup_accepts_local_collectors) (endpoint='http://[::1]:6006') ... ERROR
+  test_startup_accepts_local_collectors (tests.test_engine_startup.StartupRefusalTest.test_startup_accepts_local_collectors) (endpoint='http://phoenix:6006') ... ERROR
+  test_startup_accepts_local_collectors (tests.test_engine_startup.StartupRefusalTest.test_startup_accepts_local_collectors) (case='no export, so any collector is accepted') ... ERROR
+test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) ... 
+  test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='auth off', env='prod') ... ERROR
+  test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='auth off', env='ci') ... ERROR
+  test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='non-local collector', endpoint='http://collector.example.com:6006') ... ERROR
+  test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='non-local collector refused in dev too', endpoint='http://collector.example.com:6006') ... ERROR
+  test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='non-local collector', endpoint='http://203.0.113.5:6006') ... ERROR
+  test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='non-local collector refused in dev too', endpoint='http://203.0.113.5:6006') ... ERROR
+  test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='hide flag off', flag='OPENINFERENCE_HIDE_INPUTS', env='prod') ... ERROR
+  test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='hide flag off', flag='OPENINFERENCE_HIDE_INPUTS', env='ci') ... ERROR
+  test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='hide flag off', flag='OPENINFERENCE_HIDE_OUTPUTS', env='prod') ... ERROR
+  test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='hide flag off', flag='OPENINFERENCE_HIDE_OUTPUTS', env='ci') ... ERROR
+test_startup_safe_defaults_pass (tests.test_engine_startup.StartupRefusalTest.test_startup_safe_defaults_pass) ... ERROR
+test_config_load_span_names_overridden_keys_not_values (tests.test_engine_startup.StartupTracingTest.test_config_load_span_names_overridden_keys_not_values) ... ERROR
+test_configure_tracing_attaches_nothing_for_non_local (tests.test_engine_startup.StartupTracingTest.test_configure_tracing_attaches_nothing_for_non_local) ... ERROR
+test_non_local_collector_gets_no_exporter (tests.test_engine_startup.StartupTracingTest.test_non_local_collector_gets_no_exporter) ... ERROR
+test_refused_startup_marks_spans (tests.test_engine_startup.StartupTracingTest.test_refused_startup_marks_spans) ... ERROR
+test_startup_is_traced (tests.test_engine_startup.StartupTracingTest.test_startup_is_traced) ... ERROR
+test_ci_actions_pinned_to_sha (tests.test_harness_followups.CiWorkflowTest.test_ci_actions_pinned_to_sha) ... ok
+test_ci_checkout_does_not_persist_credentials (tests.test_harness_followups.CiWorkflowTest.test_ci_checkout_does_not_persist_credentials) ... ok
+test_ci_runner_pinned (tests.test_harness_followups.CiWorkflowTest.test_ci_runner_pinned) ... ok
+test_helper_package_without_tests_passes (tests.test_harness_followups.IntegrationRunsOnceTest.test_helper_package_without_tests_passes) ... ok
+test_integration_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_integration_tests_run_once) ... ok
+test_nested_dir_without_init_fails_loudly (tests.test_harness_followups.IntegrationRunsOnceTest.test_nested_dir_without_init_fails_loudly) ... ok
+test_no_top_level_unit_tests_fails_clearly (tests.test_harness_followups.IntegrationRunsOnceTest.test_no_top_level_unit_tests_fails_clearly) ... ok
+test_package_with_only_nested_tests_runs_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_package_with_only_nested_tests_runs_once) ... ok
+test_test_dir_without_init_fails_loudly (tests.test_harness_followups.IntegrationRunsOnceTest.test_test_dir_without_init_fails_loudly) ... ok
+test_unit_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_tests_run_once) ... ok
+test_failing_smoke_fails_full (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_failing_smoke_fails_full) ... ok
+test_failing_test_sh_still_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_failing_test_sh_still_fails) ... ok
+test_no_ran_line_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_no_ran_line_fails) ... ok
+test_ran_some_tests_passes (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_ran_some_tests_passes) ... ok
+test_ran_without_sentinel_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_ran_without_sentinel_fails) ... ok
+test_ran_zero_tests_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_ran_zero_tests_fails) ... ok
+test_sentinel_followed_by_large_output_passes (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_followed_by_large_output_passes) ... ok
+test_sentinel_line_is_the_exact_full_line (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_line_is_the_exact_full_line) ... ok
+test_sentinel_name_in_other_module_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_name_in_other_module_fails) ... ok
+test_sentinel_text_in_skip_reason_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_text_in_skip_reason_fails) ... ok
+test_sentinel_with_ran_passes (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_with_ran_passes) ... ok
+test_agent_model_tiers (tests.test_harness_port.AgentPortTest.test_agent_model_tiers) ... ok
+test_agent_port_preserves_constraints (tests.test_harness_port.AgentPortTest.test_agent_port_preserves_constraints) ... ok
+test_copilot_agents_kept (tests.test_harness_port.AgentPortTest.test_copilot_agents_kept) ... ok
+test_every_role_ported (tests.test_harness_port.AgentPortTest.test_every_role_ported) ... ok
+test_judges_cannot_edit (tests.test_harness_port.AgentPortTest.test_judges_cannot_edit) ... ok
+test_non_producer_body_identical_to_copilot (tests.test_harness_port.AgentPortTest.test_non_producer_body_identical_to_copilot) ... ok
+test_producer_sections_identical_except_verification_steps (tests.test_harness_port.AgentPortTest.test_producer_sections_identical_except_verification_steps) ... ok
+test_ci_only_and_generated_artifacts_listed (tests.test_harness_port.ClaudeMdTest.test_ci_only_and_generated_artifacts_listed) ... ok
+test_claude_md_imports_agents (tests.test_harness_port.ClaudeMdTest.test_claude_md_imports_agents) ... ok
+test_delivery_rules_present (tests.test_harness_port.ClaudeMdTest.test_delivery_rules_present) ... ok
+test_done_check_in_handoff_readme (tests.test_harness_port.HandoffCapTest.test_done_check_in_handoff_readme) ... ok
+test_handoff_line_cap (tests.test_harness_port.HandoffCapTest.test_handoff_line_cap) ... ok
+test_hook_wired_on_bash (tests.test_harness_port.SettingsTest.test_hook_wired_on_bash) ... ok
+test_ci_calls_verify_only (tests.test_harness_port.VerificationEntryPointTest.test_ci_calls_verify_only) ... ok
+test_depth_table_identical_everywhere (tests.test_harness_port.VerificationEntryPointTest.test_depth_table_identical_everywhere) ... ok
+test_evidence_contract_present (tests.test_harness_port.VerificationEntryPointTest.test_evidence_contract_present) ... ok
+test_gate_scripts_use_locked (tests.test_harness_port.VerificationEntryPointTest.test_gate_scripts_use_locked) ... ok
+test_no_stray_verification_commands (tests.test_harness_port.VerificationEntryPointTest.test_no_stray_verification_commands) ... ok
+test_tester_owns_contradictions (tests.test_harness_port.VerificationEntryPointTest.test_tester_owns_contradictions) ... ok
+test_verify_sh_has_no_inlined_commands (tests.test_harness_port.VerificationEntryPointTest.test_verify_sh_has_no_inlined_commands) ... ok
+test_appends_one_line_and_emits_session_span (tests.test_log_event.LogEventTest.test_appends_one_line_and_emits_session_span) ... ok
+test_failed_gate_marks_span_error (tests.test_log_event.LogEventTest.test_failed_gate_marks_span_error) ... ok
+test_format_line_keeps_one_line_per_entry (tests.test_log_event.LogEventTest.test_format_line_keeps_one_line_per_entry) ... ok
+test_rejects_unknown_role (tests.test_log_event.LogEventTest.test_rejects_unknown_role) ... ok
+test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok
+test_agent_loop_renders_as_nested_tree (tests.test_tracing.TracingTest.test_agent_loop_renders_as_nested_tree) ... ok
+test_chain_span_kind (tests.test_tracing.TracingTest.test_chain_span_kind) ... ok
+test_exception_marks_span_error_and_propagates (tests.test_tracing.TracingTest.test_exception_marks_span_error_and_propagates) ... ok
+test_hide_inputs_and_outputs_redacts_values (tests.test_tracing.TracingTest.test_hide_inputs_and_outputs_redacts_values) ... ok
+test_llm_records_model_and_token_usage (tests.test_tracing.TracingTest.test_llm_records_model_and_token_usage) ... ok
+test_retriever_records_parameterised_query_and_documents (tests.test_tracing.TracingTest.test_retriever_records_parameterised_query_and_documents) ... ok
+test_setup_tracing_is_idempotent (tests.test_tracing.TracingTest.test_setup_tracing_is_idempotent) ... ok
+
+======================================================================
+ERROR: test_config_defaults_and_env_override (tests.test_engine_config.TypedConfigTest.test_config_defaults_and_env_override)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_config.py", line 62, in test_config_defaults_and_env_override
+    settings = load_settings()
+               ^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 85, in load_settings
+    with environ(base_env() if env is None else env):
+                 ^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_config_ignores_unprefixed_names (tests.test_engine_config.TypedConfigTest.test_config_ignores_unprefixed_names)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_config.py", line 184, in test_config_ignores_unprefixed_names
+    env = base_env(
+          ^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_config_init_args_take_precedence (tests.test_engine_config.TypedConfigTest.test_config_init_args_take_precedence)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_config.py", line 121, in test_config_init_args_take_precedence
+    settings = load_settings(base_env(KE_ENV="prod"), env="ci")
+                             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_config_missing_defaults_file_names_path (tests.test_engine_config.TypedConfigTest.test_config_missing_defaults_file_names_path)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_config.py", line 151, in test_config_missing_defaults_file_names_path
+    with self.assertRaises(config_error()) as ctx:
+                           ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 37, in config_error
+    from engine.config import ConfigError
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_config_missing_secret_names_key (tests.test_engine_config.TypedConfigTest.test_config_missing_secret_names_key)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_config.py", line 199, in test_config_missing_secret_names_key
+    names = secret_env_names()
+            ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_config_rejects_bad_type (tests.test_engine_config.TypedConfigTest.test_config_rejects_bad_type)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_config.py", line 158, in test_config_rejects_bad_type
+    with self.assertRaises(config_error()) as ctx:
+                           ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 37, in config_error
+    from engine.config import ConfigError
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_config_secrets_have_no_yaml_default (tests.test_engine_config.TypedConfigTest.test_config_secrets_have_no_yaml_default)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_config.py", line 216, in test_config_secrets_have_no_yaml_default
+    defaults = _yaml_defaults()
+               ^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_config.py", line 29, in _yaml_defaults
+    import yaml
+ModuleNotFoundError: No module named 'yaml'
+
+======================================================================
+ERROR: test_every_non_secret_setting_has_a_yaml_default (tests.test_engine_config.TypedConfigTest.test_every_non_secret_setting_has_a_yaml_default)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_config.py", line 125, in test_every_non_secret_setting_has_a_yaml_default
+    from pydantic import BaseModel
+ModuleNotFoundError: No module named 'pydantic'
+
+======================================================================
+ERROR: test_secret_values_are_not_in_repr (tests.test_engine_config.TypedConfigTest.test_secret_values_are_not_in_repr)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_config.py", line 226, in test_secret_values_are_not_in_repr
+    settings = load_settings()
+               ^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 85, in load_settings
+    with environ(base_env() if env is None else env):
+                 ^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_egress_guard_allows_listed_host (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_allows_listed_host)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_egress.py", line 129, in test_egress_guard_allows_listed_host
+    import httpx
+ModuleNotFoundError: No module named 'httpx'
+
+======================================================================
+ERROR: test_egress_guard_checks_every_redirect_hop (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_checks_every_redirect_hop)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_egress.py", line 146, in test_egress_guard_checks_every_redirect_hop
+    import httpx
+ModuleNotFoundError: No module named 'httpx'
+
+======================================================================
+ERROR: test_egress_guard_mutant_goes_red (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_mutant_goes_red)
+DR38: the runtime assertion fails when the guard is removed.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_egress.py", line 178, in test_egress_guard_mutant_goes_red
+    import httpx
+ModuleNotFoundError: No module named 'httpx'
+
+======================================================================
+ERROR: test_egress_guard_runtime (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_runtime)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_egress.py", line 117, in test_egress_guard_runtime
+    client = _guarded_client([ALLOWED])
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_egress.py", line 39, in _guarded_client
+    import httpx
+ModuleNotFoundError: No module named 'httpx'
+
+======================================================================
+ERROR: test_model_client_uses_guarded_transport (tests.test_engine_egress.EgressRuntimeTest.test_model_client_uses_guarded_transport)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_egress.py", line 164, in test_model_client_uses_guarded_transport
+    from engine.egress import GuardedTransport
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_egress_guard_startup (tests.test_engine_egress.EgressStartupTest.test_egress_guard_startup)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_egress.py", line 67, in test_egress_guard_startup
+    refused = _refused()
+              ^^^^^^^^^^
+  File "/work/tests/test_engine_egress.py", line 33, in _refused
+    from engine.startup import StartupRefused
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_is_local_endpoint (tests.test_engine_egress.LocalEndpointTest.test_is_local_endpoint)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_egress.py", line 196, in test_is_local_endpoint
+    from engine.egress import is_local_endpoint
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_no_hardcoded_hosts_or_models (tests.test_engine_hardcoded.RepositoryScanTest.test_no_hardcoded_hosts_or_models)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_hardcoded.py", line 213, in test_no_hardcoded_hosts_or_models
+    _, names = _declared()
+               ^^^^^^^^^^^
+  File "/work/tests/test_engine_hardcoded.py", line 146, in _declared
+    import yaml
+ModuleNotFoundError: No module named 'yaml'
+
+======================================================================
+ERROR: test_no_hardcoded_ports (tests.test_engine_hardcoded.RepositoryScanTest.test_no_hardcoded_ports)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_hardcoded.py", line 207, in test_no_hardcoded_ports
+    ports, _ = _declared()
+               ^^^^^^^^^^^
+  File "/work/tests/test_engine_hardcoded.py", line 146, in _declared
+    import yaml
+ModuleNotFoundError: No module named 'yaml'
+
+======================================================================
+ERROR: test_allowed_locations_are_never_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_allowed_locations_are_never_flagged) (path='config/defaults.yaml')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_hardcoded.py", line 125, in test_allowed_locations_are_never_flagged
+    self.assertEqual(_scan(files, ["5432", MODEL_HOST_NAME]), [])
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_hardcoded.py", line 59, in _scan
+    from tests.hardcoded_scan import find_hardcoded
+ModuleNotFoundError: No module named 'tests.hardcoded_scan'
+
+======================================================================
+ERROR: test_allowed_locations_are_never_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_allowed_locations_are_never_flagged) (path='.env.example')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_hardcoded.py", line 125, in test_allowed_locations_are_never_flagged
+    self.assertEqual(_scan(files, ["5432", MODEL_HOST_NAME]), [])
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_hardcoded.py", line 59, in _scan
+    from tests.hardcoded_scan import find_hardcoded
+ModuleNotFoundError: No module named 'tests.hardcoded_scan'
+
+======================================================================
+ERROR: test_allowed_locations_are_never_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_allowed_locations_are_never_flagged) (path='config/verify.env')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_hardcoded.py", line 125, in test_allowed_locations_are_never_flagged
+    self.assertEqual(_scan(files, ["5432", MODEL_HOST_NAME]), [])
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_hardcoded.py", line 59, in _scan
+    from tests.hardcoded_scan import find_hardcoded
+ModuleNotFoundError: No module named 'tests.hardcoded_scan'
+
+======================================================================
+ERROR: test_allowed_locations_are_never_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_allowed_locations_are_never_flagged) (path='tests/test_x.py')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_hardcoded.py", line 125, in test_allowed_locations_are_never_flagged
+    self.assertEqual(_scan(files, ["5432", MODEL_HOST_NAME]), [])
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_hardcoded.py", line 59, in _scan
+    from tests.hardcoded_scan import find_hardcoded
+ModuleNotFoundError: No module named 'tests.hardcoded_scan'
+
+======================================================================
+ERROR: test_allowed_locations_are_never_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_allowed_locations_are_never_flagged) (path='docs/architecture.md')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_hardcoded.py", line 125, in test_allowed_locations_are_never_flagged
+    self.assertEqual(_scan(files, ["5432", MODEL_HOST_NAME]), [])
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_hardcoded.py", line 59, in _scan
+    from tests.hardcoded_scan import find_hardcoded
+ModuleNotFoundError: No module named 'tests.hardcoded_scan'
+
+======================================================================
+ERROR: test_compose_variable_default_is_allowed (tests.test_engine_hardcoded.ScannerContractTest.test_compose_variable_default_is_allowed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_hardcoded.py", line 92, in test_compose_variable_default_is_allowed
+    findings = _scan(files, ["5432"])
+               ^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_hardcoded.py", line 59, in _scan
+    from tests.hardcoded_scan import find_hardcoded
+ModuleNotFoundError: No module named 'tests.hardcoded_scan'
+
+======================================================================
+ERROR: test_exemption_covers_only_its_symbol_and_path (tests.test_engine_hardcoded.ScannerContractTest.test_exemption_covers_only_its_symbol_and_path)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_hardcoded.py", line 115, in test_exemption_covers_only_its_symbol_and_path
+    self.assertEqual(_scan({"harness_telemetry/tracing.py": line}, ["47101"], EXEMPTIONS), [])
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_hardcoded.py", line 59, in _scan
+    from tests.hardcoded_scan import find_hardcoded
+ModuleNotFoundError: No module named 'tests.hardcoded_scan'
+
+======================================================================
+ERROR: test_integer_port_assignment_in_python_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_integer_port_assignment_in_python_is_flagged) (source='port = 1234\n')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_hardcoded.py", line 107, in test_integer_port_assignment_in_python_is_flagged
+    self.assertEqual(len(_scan({"engine/x.py": source}, [])), 1)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_hardcoded.py", line 59, in _scan
+    from tests.hardcoded_scan import find_hardcoded
+ModuleNotFoundError: No module named 'tests.hardcoded_scan'
+
+======================================================================
+ERROR: test_integer_port_assignment_in_python_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_integer_port_assignment_in_python_is_flagged) (source='listen_port: int = 8081\n')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_hardcoded.py", line 107, in test_integer_port_assignment_in_python_is_flagged
+    self.assertEqual(len(_scan({"engine/x.py": source}, [])), 1)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_hardcoded.py", line 59, in _scan
+    from tests.hardcoded_scan import find_hardcoded
+ModuleNotFoundError: No module named 'tests.hardcoded_scan'
+
+======================================================================
+ERROR: test_integer_port_assignment_in_python_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_integer_port_assignment_in_python_is_flagged) (source='DB_PORT=15432\n')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_hardcoded.py", line 107, in test_integer_port_assignment_in_python_is_flagged
+    self.assertEqual(len(_scan({"engine/x.py": source}, [])), 1)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_hardcoded.py", line 59, in _scan
+    from tests.hardcoded_scan import find_hardcoded
+ModuleNotFoundError: No module named 'tests.hardcoded_scan'
+
+======================================================================
+ERROR: test_integer_port_assignment_in_python_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_integer_port_assignment_in_python_is_flagged) (source='connect(port=2345)\n')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_hardcoded.py", line 107, in test_integer_port_assignment_in_python_is_flagged
+    self.assertEqual(len(_scan({"engine/x.py": source}, [])), 1)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_hardcoded.py", line 59, in _scan
+    from tests.hardcoded_scan import find_hardcoded
+ModuleNotFoundError: No module named 'tests.hardcoded_scan'
+
+======================================================================
+ERROR: test_planted_host_name_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_planted_host_name_is_flagged)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_hardcoded.py", line 88, in test_planted_host_name_is_flagged
+    self.assertIn(MODEL_HOST_NAME, _values(_scan(files, [MODEL_HOST_NAME])))
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_hardcoded.py", line 59, in _scan
+    from tests.hardcoded_scan import find_hardcoded
+ModuleNotFoundError: No module named 'tests.hardcoded_scan'
+
+======================================================================
+ERROR: test_planted_model_name_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_planted_model_name_is_flagged)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_hardcoded.py", line 84, in test_planted_model_name_is_flagged
+    self.assertIn("qwen2.5:14b-instruct", _values(_scan(files, ["qwen2.5:14b-instruct"])))
+                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_hardcoded.py", line 59, in _scan
+    from tests.hardcoded_scan import find_hardcoded
+ModuleNotFoundError: No module named 'tests.hardcoded_scan'
+
+======================================================================
+ERROR: test_planted_port_literal_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_planted_port_literal_is_flagged)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_hardcoded.py", line 73, in test_planted_port_literal_is_flagged
+    findings = _scan(files, ["5432"])
+               ^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_hardcoded.py", line 59, in _scan
+    from tests.hardcoded_scan import find_hardcoded
+ModuleNotFoundError: No module named 'tests.hardcoded_scan'
+
+======================================================================
+ERROR: test_port_token_boundaries (tests.test_engine_hardcoded.ScannerContractTest.test_port_token_boundaries)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_hardcoded.py", line 80, in test_port_token_boundaries
+    self.assertEqual(_scan(files, ["5432"]), [])
+                     ^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_hardcoded.py", line 59, in _scan
+    from tests.hardcoded_scan import find_hardcoded
+ModuleNotFoundError: No module named 'tests.hardcoded_scan'
+
+======================================================================
+ERROR: test_rule_two_is_python_only (tests.test_engine_hardcoded.ScannerContractTest.test_rule_two_is_python_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_hardcoded.py", line 111, in test_rule_two_is_python_only
+    self.assertEqual(_scan(files, []), [])
+                     ^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_hardcoded.py", line 59, in _scan
+    from tests.hardcoded_scan import find_hardcoded
+ModuleNotFoundError: No module named 'tests.hardcoded_scan'
+
+======================================================================
+ERROR: test_url_literal_in_python_is_flagged_even_if_undeclared (tests.test_engine_hardcoded.ScannerContractTest.test_url_literal_in_python_is_flagged_even_if_undeclared)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_hardcoded.py", line 101, in test_url_literal_in_python_is_flagged_even_if_undeclared
+    self.assertEqual(len(_scan(files, [])), 1)
+                         ^^^^^^^^^^^^^^^^
+  File "/work/tests/test_engine_hardcoded.py", line 59, in _scan
+    from tests.hardcoded_scan import find_hardcoded
+ModuleNotFoundError: No module named 'tests.hardcoded_scan'
+
+======================================================================
+ERROR: test_env_example_secret_placeholders_are_changeme (tests.test_engine_startup.PlaceholderSecretTest.test_env_example_secret_placeholders_are_changeme)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 177, in test_env_example_secret_placeholders_are_changeme
+    example = read_env_example()
+              ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 116, in read_env_example
+    for raw in ENV_EXAMPLE.read_text(encoding="utf-8").splitlines():
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/pathlib.py", line 1027, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/work/.env.example'
+
+======================================================================
+ERROR: test_placeholder_check_is_prefix_only (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_check_is_prefix_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 153, in test_placeholder_check_is_prefix_only
+    for name in secret_env_names():
+                ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_placeholder_check_reads_no_file (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_check_reads_no_file)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 162, in test_placeholder_check_reads_no_file
+    settings = load_settings(base_env(KE_ENV="prod",
+                             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_startup_refuses_placeholder_secrets (tests.test_engine_startup.PlaceholderSecretTest.test_startup_refuses_placeholder_secrets)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 128, in test_startup_refuses_placeholder_secrets
+    names = secret_env_names()
+            ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_dev_auth_off_warns (tests.test_engine_startup.StartupRefusalTest.test_dev_auth_off_warns)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 103, in test_dev_auth_off_warns
+    settings = load_settings(base_env(KE_ENV="dev", KE_AUTH__ENABLED="false"))
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_dev_hide_flag_off_warns_naming_flag (tests.test_engine_startup.StartupRefusalTest.test_dev_hide_flag_off_warns_naming_flag) (flag='OPENINFERENCE_HIDE_INPUTS')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 118, in test_dev_hide_flag_off_warns_naming_flag
+    settings = load_settings(base_env(KE_ENV="dev", **{flag: "false"}))
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_dev_hide_flag_off_warns_naming_flag (tests.test_engine_startup.StartupRefusalTest.test_dev_hide_flag_off_warns_naming_flag) (flag='OPENINFERENCE_HIDE_OUTPUTS')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 118, in test_dev_hide_flag_off_warns_naming_flag
+    settings = load_settings(base_env(KE_ENV="dev", **{flag: "false"}))
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_hide_flags_default_true_in_every_env (tests.test_engine_startup.StartupRefusalTest.test_hide_flags_default_true_in_every_env) (env='dev')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 111, in test_hide_flags_default_true_in_every_env
+    settings = load_settings(base_env(KE_ENV=env_name))
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_hide_flags_default_true_in_every_env (tests.test_engine_startup.StartupRefusalTest.test_hide_flags_default_true_in_every_env) (env='ci')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 111, in test_hide_flags_default_true_in_every_env
+    settings = load_settings(base_env(KE_ENV=env_name))
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_hide_flags_default_true_in_every_env (tests.test_engine_startup.StartupRefusalTest.test_hide_flags_default_true_in_every_env) (env='prod')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 111, in test_hide_flags_default_true_in_every_env
+    settings = load_settings(base_env(KE_ENV=env_name))
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_startup_accepts_local_collectors (tests.test_engine_startup.StartupRefusalTest.test_startup_accepts_local_collectors) (endpoint='http://localhost:47101')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 91, in test_startup_accepts_local_collectors
+    _check(load_settings(base_env(HARNESS_TRACING="otlp",
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_startup_accepts_local_collectors (tests.test_engine_startup.StartupRefusalTest.test_startup_accepts_local_collectors) (endpoint='http://127.0.0.1:6006')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 91, in test_startup_accepts_local_collectors
+    _check(load_settings(base_env(HARNESS_TRACING="otlp",
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_startup_accepts_local_collectors (tests.test_engine_startup.StartupRefusalTest.test_startup_accepts_local_collectors) (endpoint='http://[::1]:6006')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 91, in test_startup_accepts_local_collectors
+    _check(load_settings(base_env(HARNESS_TRACING="otlp",
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_startup_accepts_local_collectors (tests.test_engine_startup.StartupRefusalTest.test_startup_accepts_local_collectors) (endpoint='http://phoenix:6006')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 91, in test_startup_accepts_local_collectors
+    _check(load_settings(base_env(HARNESS_TRACING="otlp",
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_startup_accepts_local_collectors (tests.test_engine_startup.StartupRefusalTest.test_startup_accepts_local_collectors) (case='no export, so any collector is accepted')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 94, in test_startup_accepts_local_collectors
+    _check(load_settings(base_env(HARNESS_TRACING="off",
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='auth off', env='prod')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 62, in test_startup_refuses_unsafe
+    self.assertRefused(base_env(KE_ENV=env_name, KE_AUTH__ENABLED="false"),
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='auth off', env='ci')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 62, in test_startup_refuses_unsafe
+    self.assertRefused(base_env(KE_ENV=env_name, KE_AUTH__ENABLED="false"),
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='non-local collector', endpoint='http://collector.example.com:6006')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 70, in test_startup_refuses_unsafe
+    base_env(HARNESS_TRACING="otlp", PHOENIX_COLLECTOR_ENDPOINT=endpoint),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='non-local collector refused in dev too', endpoint='http://collector.example.com:6006')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 75, in test_startup_refuses_unsafe
+    base_env(KE_ENV="dev", HARNESS_TRACING="otlp",
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='non-local collector', endpoint='http://203.0.113.5:6006')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 70, in test_startup_refuses_unsafe
+    base_env(HARNESS_TRACING="otlp", PHOENIX_COLLECTOR_ENDPOINT=endpoint),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='non-local collector refused in dev too', endpoint='http://203.0.113.5:6006')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 75, in test_startup_refuses_unsafe
+    base_env(KE_ENV="dev", HARNESS_TRACING="otlp",
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='hide flag off', flag='OPENINFERENCE_HIDE_INPUTS', env='prod')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 84, in test_startup_refuses_unsafe
+    self.assertRefused(base_env(KE_ENV=env_name, **{flag: "false"}),
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='hide flag off', flag='OPENINFERENCE_HIDE_INPUTS', env='ci')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 84, in test_startup_refuses_unsafe
+    self.assertRefused(base_env(KE_ENV=env_name, **{flag: "false"}),
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='hide flag off', flag='OPENINFERENCE_HIDE_OUTPUTS', env='prod')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 84, in test_startup_refuses_unsafe
+    self.assertRefused(base_env(KE_ENV=env_name, **{flag: "false"}),
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='hide flag off', flag='OPENINFERENCE_HIDE_OUTPUTS', env='ci')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 84, in test_startup_refuses_unsafe
+    self.assertRefused(base_env(KE_ENV=env_name, **{flag: "false"}),
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_startup_safe_defaults_pass (tests.test_engine_startup.StartupRefusalTest.test_startup_safe_defaults_pass)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 98, in test_startup_safe_defaults_pass
+    settings = load_settings()
+               ^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 85, in load_settings
+    with environ(base_env() if env is None else env):
+                 ^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_config_load_span_names_overridden_keys_not_values (tests.test_engine_startup.StartupTracingTest.test_config_load_span_names_overridden_keys_not_values)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 243, in test_config_load_span_names_overridden_keys_not_values
+    self._run_startup(base_env(KE_ENV="prod", KE_STORES__POSTGRES__PORT="47123"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_configure_tracing_attaches_nothing_for_non_local (tests.test_engine_startup.StartupTracingTest.test_configure_tracing_attaches_nothing_for_non_local)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 265, in test_configure_tracing_attaches_nothing_for_non_local
+    from engine.telemetry import configure_tracing
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_non_local_collector_gets_no_exporter (tests.test_engine_startup.StartupTracingTest.test_non_local_collector_gets_no_exporter)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 253, in test_non_local_collector_gets_no_exporter
+    env = base_env(KE_ENV="prod", HARNESS_TRACING="otlp",
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_refused_startup_marks_spans (tests.test_engine_startup.StartupTracingTest.test_refused_startup_marks_spans)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 234, in test_refused_startup_marks_spans
+    _, error = self._run_startup(base_env(KE_ENV="prod", KE_AUTH__ENABLED="false"))
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+ERROR: test_startup_is_traced (tests.test_engine_startup.StartupTracingTest.test_startup_is_traced)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_startup.py", line 213, in test_startup_is_traced
+    settings, error = self._run_startup(base_env(KE_ENV="prod"))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 71, in base_env
+    for name in {*KNOWN_SECRETS, *secret_env_names()}:
+                                  ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 61, in secret_env_names
+    return sorted("KE_" + "__".join(p).upper() for p in _secret_paths(settings_cls(), ()))
+                                                                      ^^^^^^^^^^^^^^
+  File "/work/tests/engine_support.py", line 31, in settings_cls
+    from engine.config import Settings
+ModuleNotFoundError: No module named 'engine'
+
+======================================================================
+FAIL: test_declared_value_files_exist (tests.test_engine_hardcoded.RepositoryScanTest.test_declared_value_files_exist)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_hardcoded.py", line 203, in test_declared_value_files_exist
+    self.assertTrue(DEFAULTS.is_file(), "config/defaults.yaml is missing")
+AssertionError: False is not true : config/defaults.yaml is missing
+
+======================================================================
+FAIL: test_engine_dependencies_declared (tests.test_engine_quality.DependenciesTest.test_engine_dependencies_declared) (runtime='pydantic-settings')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_quality.py", line 49, in test_engine_dependencies_declared
+    self.assertIn(name, runtime)
+AssertionError: 'pydantic-settings' not found in {'opentelemetry-exporter-otlp-proto-http', 'openinference-semantic-conventions', 'opentelemetry-sdk'}
+
+======================================================================
+FAIL: test_engine_dependencies_declared (tests.test_engine_quality.DependenciesTest.test_engine_dependencies_declared) (runtime='pyyaml')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_quality.py", line 49, in test_engine_dependencies_declared
+    self.assertIn(name, runtime)
+AssertionError: 'pyyaml' not found in {'opentelemetry-exporter-otlp-proto-http', 'openinference-semantic-conventions', 'opentelemetry-sdk'}
+
+======================================================================
+FAIL: test_engine_dependencies_declared (tests.test_engine_quality.DependenciesTest.test_engine_dependencies_declared) (runtime='httpx')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_quality.py", line 49, in test_engine_dependencies_declared
+    self.assertIn(name, runtime)
+AssertionError: 'httpx' not found in {'opentelemetry-exporter-otlp-proto-http', 'openinference-semantic-conventions', 'opentelemetry-sdk'}
+
+======================================================================
+FAIL: test_engine_dependencies_declared (tests.test_engine_quality.DependenciesTest.test_engine_dependencies_declared) (dev='coverage')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_quality.py", line 53, in test_engine_dependencies_declared
+    self.assertIn(name, dev)
+AssertionError: 'coverage' not found in set()
+
+======================================================================
+FAIL: test_engine_dependencies_declared (tests.test_engine_quality.DependenciesTest.test_engine_dependencies_declared) (dev='mypy')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_quality.py", line 53, in test_engine_dependencies_declared
+    self.assertIn(name, dev)
+AssertionError: 'mypy' not found in set()
+
+======================================================================
+FAIL: test_engine_dependencies_declared (tests.test_engine_quality.DependenciesTest.test_engine_dependencies_declared) (dev='types-pyyaml')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_quality.py", line 53, in test_engine_dependencies_declared
+    self.assertIn(name, dev)
+AssertionError: 'types-pyyaml' not found in set()
+
+======================================================================
+FAIL: test_engine_dependencies_declared (tests.test_engine_quality.DependenciesTest.test_engine_dependencies_declared) (wheel='engine')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_quality.py", line 57, in test_engine_dependencies_declared
+    self.assertIn(pkg, packages)
+AssertionError: 'engine' not found in ['harness_telemetry']
+
+======================================================================
+FAIL: test_python_pinned_to_312 (tests.test_engine_quality.PythonPinTest.test_python_pinned_to_312)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_quality.py", line 34, in test_python_pinned_to_312
+    self.assertEqual(_pyproject()["project"]["requires-python"].replace(" ", ""),
+AssertionError: '>=3.11' != '>=3.12,<3.13'
+- >=3.11
++ >=3.12,<3.13
+
+
+======================================================================
+FAIL: test_test_sh_enforces_coverage_and_mypy (tests.test_engine_quality.QualityGateTest.test_test_sh_enforces_coverage_and_mypy)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_engine_quality.py", line 67, in test_test_sh_enforces_coverage_and_mypy
+    self.assertIs(run.get("branch"), True, "branch coverage must be on")
+AssertionError: None is not True : branch coverage must be on
+
+----------------------------------------------------------------------
+Ran 147 tests in 16.003s
+
+FAILED (failures=10, errors=66)
+verify fast: FAIL (test.sh exited non-zero)
+

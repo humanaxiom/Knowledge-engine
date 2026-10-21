@@ -1,0 +1,46 @@
+# platform-stack-up CI fix: mutation proof for test_second_text_built_and_judged_only_with_backslash_newline
+# 2026-10-19T05:24:25Z. Scratch copy: <scratch> (tests/ + scripts/hooks/ copied from the working tree), run in image ke-gates, --network none.
+
+## 1. Unmutated hook (expect OK)
+test_second_text_built_and_judged_only_with_backslash_newline (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_second_text_built_and_judged_only_with_backslash_newline) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.312s
+
+OK
+
+## 2. Mutation: L21 guard removed (case/esac dropped, its body kept verbatim), so text (b) is always built and judged. Expect FAIL on every no-backslash-newline shape: (2, 2) != (1, 1)
+$ diff original mutated
+47,49c47
+< case "$base" in
+<   *$'\\\n'*) texts+=("$(printf '%s' "$base" | sed -z 's/\\\n/ /g' | norm)") ;;
+< esac
+---
+> texts+=("$(printf '%s' "$base" | sed -z 's/\\\n/ /g' | norm)")
+$ bash -n mutated
+syntax ok
+
+FAIL: test_second_text_built_and_judged_only_with_backslash_newline (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_second_text_built_and_judged_only_with_backslash_newline) (mode='jq', shape='one line')
+AssertionError: Tuples differ: (2, 2) != (1, 1)
+FAIL: test_second_text_built_and_judged_only_with_backslash_newline (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_second_text_built_and_judged_only_with_backslash_newline) (mode='jq', shape='multi line')
+AssertionError: Tuples differ: (2, 2) != (1, 1)
+FAIL: test_second_text_built_and_judged_only_with_backslash_newline (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_second_text_built_and_judged_only_with_backslash_newline) (mode='jq', shape='heredoc')
+AssertionError: Tuples differ: (2, 2) != (1, 1)
+FAIL: test_second_text_built_and_judged_only_with_backslash_newline (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_second_text_built_and_judged_only_with_backslash_newline) (mode='jq', shape='windows paths')
+AssertionError: Tuples differ: (2, 2) != (1, 1)
+FAIL: test_second_text_built_and_judged_only_with_backslash_newline (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_second_text_built_and_judged_only_with_backslash_newline) (mode='jq', shape='backslash, space, newline')
+AssertionError: Tuples differ: (2, 2) != (1, 1)
+FAIL: test_second_text_built_and_judged_only_with_backslash_newline (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_second_text_built_and_judged_only_with_backslash_newline) (mode='no-jq', shape='one line')
+AssertionError: Tuples differ: (2, 2) != (1, 1)
+FAIL: test_second_text_built_and_judged_only_with_backslash_newline (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_second_text_built_and_judged_only_with_backslash_newline) (mode='no-jq', shape='multi line')
+AssertionError: Tuples differ: (2, 2) != (1, 1)
+FAIL: test_second_text_built_and_judged_only_with_backslash_newline (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_second_text_built_and_judged_only_with_backslash_newline) (mode='no-jq', shape='heredoc')
+AssertionError: Tuples differ: (2, 2) != (1, 1)
+FAIL: test_second_text_built_and_judged_only_with_backslash_newline (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_second_text_built_and_judged_only_with_backslash_newline) (mode='no-jq', shape='windows paths')
+AssertionError: Tuples differ: (2, 2) != (1, 1)
+FAIL: test_second_text_built_and_judged_only_with_backslash_newline (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_second_text_built_and_judged_only_with_backslash_newline) (mode='no-jq', shape='backslash, space, newline')
+AssertionError: Tuples differ: (2, 2) != (1, 1)
+Ran 1 test in 0.501s
+FAILED (failures=10)
+
+## 3. Scratch copy deleted (rm -r of the scratch mut/ directory, 2026-10-19T05:24:32Z); the real scripts/hooks/block-main-commit.sh is unchanged (git diff --stat scripts/ empty: "")

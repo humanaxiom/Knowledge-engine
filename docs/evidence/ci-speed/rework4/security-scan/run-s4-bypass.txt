@@ -1,0 +1,34 @@
+missed, but launches nothing   static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=False | control: hook unchanged
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | check: plain `sleep &` is caught
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | check: `&` inside $( ) on one line
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | check: exec with trailing &
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | check: {{ cmd; }} & across lines
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | check: function that backgrounds
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=False | check: \& escape (literal, launches nothing)
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=False | check: ${var:+&} (literal, launches nothing)
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | FF ^L before # hides the rest of the line
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | VT ^K before #
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | FS ^\ before #
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | U+0085 NEL before #
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | U+2028 LINE SEPARATOR before #
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | CR ^M before #
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | leading ^_ then #: a function named ^_#
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | #-line inside a multi-line double-quoted string
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | #-line inside an unquoted heredoc
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.06s unwaited_sleep_alive=True  | se''tsid -f (quote-split word)
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | ${c}sid -f (word built from a variable)
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | ev''al with & from a variable
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | source /dev/stdin <<<
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | . /dev/stdin <<<
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | bash -s <<< (no -c)
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | bash --norc -c
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | bash -o posix -c
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | $BASH -c
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | dash -c
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | trap string run at EXIT
+BYPASS                         static=MISSED bash-n=0 hook_rc=127 wall=0.00s unwaited_sleep_alive=True  | mapfile -C callback
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | ${x@P} prompt expansion
+missed, but launches nothing   static=MISSED bash-n=0 hook_rc=1 wall=0.00s unwaited_sleep_alive=False | arithmetic subscript re-evaluation
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.06s unwaited_sleep_alive=True  | python3 subprocess.Popen (program the hook calls)
+
+summary: 23 bypasses of 32 cases

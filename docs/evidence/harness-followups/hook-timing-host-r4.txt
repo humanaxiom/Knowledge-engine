@@ -1,0 +1,6 @@
+jq absent
+6111153 bytes p_plain
+p_plain output=[] elapsed=1792360515.859060400 1792360520.716361100
+6111163 bytes p_bsnl
+p_bsnl output=[] elapsed=1792360520.797887200 1792360527.561078000
+computed (end - start): p_plain 4.857 s, p_bsnl 6.763 s (host, Git Bash, no jq; target < 10 s)

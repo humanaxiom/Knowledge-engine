@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Runs inside the gates image; /mut is the scratch tree, /work the repo (ro).
+B=tests.test_block_main_commit_hook.BlockMainCommitHookTest
+FOUR="$B.test_one_megabyte_token_shapes_finish_quickly $B.test_one_megabyte_command_finishes_quickly $B.test_five_megabyte_command_without_backslash_newline_is_one_pass $B.test_long_command_finishes_quickly"
+for m in control burn_bash burn_child sleep12 sleep70; do
+  tests="$FOUR"
+  case "$m" in sleep12|sleep70) tests="$B.test_long_command_finishes_quickly" ;; esac
+  echo "===== mutant: $m ($(date -u +%H:%M:%S)) ====="
+  echo "hook diff vs repo:"; diff /work/scripts/hooks/block-main-commit.sh "/mut/$m/scripts/hooks/block-main-commit.sh"
+  ( cd "/mut/$m" && uv run --project /work --locked python -m unittest -v $tests 2>&1 ) | grep -E '\.\.\. |^(FAIL|ERROR):|Error: |^Ran |^OK|^FAILED'
+done

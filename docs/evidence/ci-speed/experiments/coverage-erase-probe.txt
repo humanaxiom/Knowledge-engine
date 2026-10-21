@@ -1,0 +1,7 @@
+before:
+.coverage.124512a74825.pid44.XZBdGydx.HNQIp837rWOh
+OK
+after test_coverage_erase_precedes_first_run_and_spares_checkout:
+.coverage.124512a74825.pid72.XxUy9CJx.HNQIp837rWOh
+.coverage.124512a74825.pid74.XdIiJm5x.HNQIp837rWOh
+.coverage.124512a74825.pid75.XupPdRVx.HNQIp837rWOh

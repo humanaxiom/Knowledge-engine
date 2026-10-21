@@ -1,0 +1,217 @@
+# audit-d1 probes and mutants (security, 2026-10-19). Scratch: <scratch>/final/d1
+# Runner: throwaway ke-gates container, --network none --read-only --user 10001:10001 --cap-drop ALL, scratch copy mounted ro at /work (run.sh).
+# Files under audit (sha256): bundle.sh 53c5e770...41be6, install.sh d14071df...cf74b, install.ps1 056afccd...71938 (index == worktree for bundle.sh/install.sh).
+# Round-5 baseline: scratchpad/base (install.sh 4bbd875b..., install.ps1 3c201955... = security-u2-r5.md hashes).
+
+## Delta vs round 5 (diff -u base -> current)
+--- <scratch>/base/scripts/bundle.sh	2026-10-19 07:22:40.000000000 -0700
++++ scripts/bundle.sh	2026-10-19 12:15:06.615029900 -0700
+@@ -46,6 +46,11 @@
+ 
+ cd "$(dirname "$0")/.."
+ 
++# jq reads each service's image from the resolved compose model (defect D1); it
++# is a build-host prerequisite, checked before anything else runs.
++command -v jq > /dev/null 2>&1 \
++  || die "jq is required on the build host (it reads the resolved compose model); install it first (for example apt-get install jq, brew install jq)"
++
+ # --- arch: the target daemon's, normalised (PS-3.1 Arch) -------------------
+ daemon_arch_raw="$(docker info --format '{{.Architecture}}')" || die "the Docker daemon does not answer (docker info failed)"
+ case "$daemon_arch_raw" in
+@@ -106,13 +111,23 @@
+ ref_re='^[a-z0-9._/-]+(:[A-Za-z0-9._-]+)?(@sha256:[0-9a-f]{64})?$'
+ services_out="$("${compose[@]}" config --services)" || die "docker compose config --services failed"
+ [ -n "$services_out" ] || die "compose config lists no services"
++# Sorted, so the bundle does not depend on Compose's service order (it is not
++# stable between runs).
++services_out="$(printf '%s\n' "$services_out" | sort)" || die "cannot sort the service list"
+ mapfile -t services <<< "$services_out"
+ 
+-refs=()                       # distinct references, in compose order
++# Each service's own image comes from the resolved model, `.services.<svc>.image`.
++# `config --images <svc>` is not used: Compose 5.x also prints the images of the
++# service's depends_on services, in a varying order (defect D1).
++model="$("${compose[@]}" config --format json)" || die "docker compose config --format json failed"
++[ -n "$model" ] || die "docker compose config --format json printed nothing"
++
++refs=()                       # distinct references, in sorted service order
+ declare -A ref_services=()    # ref -> space-separated service names
+ for svc in "${services[@]}"; do
+   [[ "$svc" =~ ^[a-z0-9_-]+$ ]] || die "service name fails its pattern: $svc"
+-  ref="$("${compose[@]}" config --images "$svc")" || die "docker compose config --images $svc failed"
++  ref="$(printf '%s' "$model" | jq -er --arg s "$svc" '.services[$s].image')" \
++    || die "service $svc has no image in the resolved compose model"
+   [ -n "$ref" ] || die "service $svc has no image"
+   [[ "$ref" != *$'\n'* ]] || die "service $svc resolves to more than one image"
+   [[ "$ref" =~ $ref_re ]] || die "image reference fails its pattern (service $svc)"
+--- <scratch>/base/scripts/install.sh	2026-10-19 11:23:47.000000000 -0700
++++ scripts/install.sh	2026-10-19 12:15:14.882136200 -0700
+@@ -632,6 +632,16 @@
+   } > "$override" || die "cannot write the compose override"
+   chmod 0644 -- "$override"
+ 
++  # F6: the published modes come from this installer, not from the build host
++  # or the umask. Relative paths inside the pinned staging only; -type f and
++  # -type d never match a link, so nothing is followed. Directories and
++  # everything under scripts/ are 0755, every other file 0644.
++  find app -type d -exec chmod 0755 {} + || die "cannot set the staged directory modes"
++  find app -type f -exec chmod 0644 {} + || die "cannot set the staged file modes"
++  if [ -d app/scripts ]; then
++    find app/scripts -type f -exec chmod 0755 {} + || die "cannot set the staged script modes"
++  fi
++
+   # --- 9. publish into the claim -------------------------------------------
+   publish_into_claim
+ 
+--- <scratch>/base/scripts/install.ps1	2026-10-19 11:23:51.000000000 -0700
++++ scripts/install.ps1	2026-10-19 12:15:08.708397600 -0700
+@@ -744,6 +744,24 @@
+         [System.IO.File]::SetUnixFileMode($overridePath,
+             [System.IO.UnixFileMode]::UserRead -bor [System.IO.UnixFileMode]::UserWrite -bor
+             [System.IO.UnixFileMode]::GroupRead -bor [System.IO.UnixFileMode]::OtherRead)
++
++        # F6: the published modes come from this installer, not from the build
++        # host or the umask. Relative paths inside the pinned staging only;
++        # Get-BundleEntry refuses links, so none is followed. Directories and
++        # everything under scripts/ are 0755, every other file 0644.
++        $exec755 = [System.IO.UnixFileMode]::UserRead -bor [System.IO.UnixFileMode]::UserWrite -bor [System.IO.UnixFileMode]::UserExecute -bor
++            [System.IO.UnixFileMode]::GroupRead -bor [System.IO.UnixFileMode]::GroupExecute -bor
++            [System.IO.UnixFileMode]::OtherRead -bor [System.IO.UnixFileMode]::OtherExecute
++        $plain644 = [System.IO.UnixFileMode]::UserRead -bor [System.IO.UnixFileMode]::UserWrite -bor
++            [System.IO.UnixFileMode]::GroupRead -bor [System.IO.UnixFileMode]::OtherRead
++        foreach ($modeEntry in @(Get-BundleEntry $appDir)) {
++            $modePath = "$appDir/$($modeEntry.Rel)"
++            if ($modeEntry.Kind -eq 'dir' -or $modeEntry.Rel.StartsWith('scripts/')) {
++                [System.IO.File]::SetUnixFileMode($modePath, $exec755)
++            } else {
++                [System.IO.File]::SetUnixFileMode($modePath, $plain644)
++            }
++        }
+     }
+ 
+     # --- 9. publish into the claim -----------------------------------------
+
+## Secret-pattern grep over the delta: no matches (grep rc=1)
+
+## Control (unmutated copy)
+### D1 + F6 sh + F6 ps1 targeted: Ran 3 tests ... OK
+### BundleScriptTest:
+Ran 24 tests in 22.105s
+
+OK
+
+## Mutant M1: bundle.sh line restored to round-5 'config --images "$svc"'
+129,130c129
+<   ref="$(printf '%s' "$model" | jq -er --arg s "$svc" '.services[$s].image')" \
+<     || die "service $svc has no image in the resolved compose model"
+---
+>   ref="$("${compose[@]}" config --images "$svc")" || die "docker compose config --images $svc failed"
+
+FAILED (failures=37)
+failures naming 'more than one image': 37
+FAIL: test_bundle_maps_each_service_to_own_image_despite_dependencies (tests.test_offline_bundle.BundleScriptTest.test_bundle_maps_each_service_to_own_image_despite_dependencies) (seed='1')
+FAIL: test_bundle_maps_each_service_to_own_image_despite_dependencies (tests.test_offline_bundle.BundleScriptTest.test_bundle_maps_each_service_to_own_image_despite_dependencies) (seed='2')
+FAIL: test_bundle_maps_each_service_to_own_image_despite_dependencies (tests.test_offline_bundle.BundleScriptTest.test_bundle_maps_each_service_to_own_image_despite_dependencies) (seed='3')
+FAIL: test_bundle_maps_each_service_to_own_image_despite_dependencies (tests.test_offline_bundle.BundleScriptTest.test_bundle_maps_each_service_to_own_image_despite_dependencies) (seed='4')
+FAIL: test_bundle_maps_each_service_to_own_image_despite_dependencies (tests.test_offline_bundle.BundleScriptTest.test_bundle_maps_each_service_to_own_image_despite_dependencies) (seed='5')
+FAIL: test_bundle_maps_each_service_to_own_image_despite_dependencies (tests.test_offline_bundle.BundleScriptTest.test_bundle_maps_each_service_to_own_image_despite_dependencies) (seed='6')
+
+## Mutant M2: install.sh all three find chmods replaced by ':'
+639,640c639,640
+<   find app -type d -exec chmod 0755 {} + || die "cannot set the staged directory modes"
+<   find app -type f -exec chmod 0644 {} + || die "cannot set the staged file modes"
+---
+>   : # mutant: find chmod dropped
+>   : # mutant: find chmod dropped
+642c642
+<     find app/scripts -type f -exec chmod 0755 {} + || die "cannot set the staged script modes"
+---
+>     : # mutant: find chmod dropped
+
+FAILED (failures=3)
+FAIL: test_install_target_modes_ignore_build_host_umask (tests.test_offline_bundle.InstallShTest.test_install_target_modes_ignore_build_host_umask) (bundle='umask0002', install_umask='0o2')
+FAIL: test_install_target_modes_ignore_build_host_umask (tests.test_offline_bundle.InstallShTest.test_install_target_modes_ignore_build_host_umask) (bundle='ntfs', install_umask='0o2')
+FAIL: test_install_target_modes_ignore_build_host_umask (tests.test_offline_bundle.InstallShTest.test_install_target_modes_ignore_build_host_umask) (bundle='ntfs', install_umask='0o22')
+AssertionError: Lists differ: ['.env.example: 0o664 (want 0o644)', 'conf[290 chars]55)'] != []
+
+First list contains 9 additional elements.
+First extra element 0:
+'.env.example: 0o664 (want 0o644)'
+
++ []
+
+## Mutant M2d: only the 'd' chmod line dropped (install.sh)
+FAILED (failures=1)
+FAIL: test_install_target_modes_ignore_build_host_umask (tests.test_offline_bundle.InstallShTest.test_install_target_modes_ignore_build_host_umask) (bundle='umask0002', install_umask='0o2')
+
+## Mutant M2f: only the 'f' chmod line dropped (install.sh)
+FAILED (failures=3)
+FAIL: test_install_target_modes_ignore_build_host_umask (tests.test_offline_bundle.InstallShTest.test_install_target_modes_ignore_build_host_umask) (bundle='umask0002', install_umask='0o2')
+FAIL: test_install_target_modes_ignore_build_host_umask (tests.test_offline_bundle.InstallShTest.test_install_target_modes_ignore_build_host_umask) (bundle='ntfs', install_umask='0o2')
+FAIL: test_install_target_modes_ignore_build_host_umask (tests.test_offline_bundle.InstallShTest.test_install_target_modes_ignore_build_host_umask) (bundle='ntfs', install_umask='0o22')
+
+## Mutant M2s: only the 's' chmod line dropped (install.sh)
+FAILED (failures=4)
+FAIL: test_install_target_modes_ignore_build_host_umask (tests.test_offline_bundle.InstallShTest.test_install_target_modes_ignore_build_host_umask) (bundle='umask0002', install_umask='0o2')
+FAIL: test_install_target_modes_ignore_build_host_umask (tests.test_offline_bundle.InstallShTest.test_install_target_modes_ignore_build_host_umask) (bundle='umask0002', install_umask='0o22')
+FAIL: test_install_target_modes_ignore_build_host_umask (tests.test_offline_bundle.InstallShTest.test_install_target_modes_ignore_build_host_umask) (bundle='ntfs', install_umask='0o2')
+FAIL: test_install_target_modes_ignore_build_host_umask (tests.test_offline_bundle.InstallShTest.test_install_target_modes_ignore_build_host_umask) (bundle='ntfs', install_umask='0o22')
+
+## Mutant M3: install.ps1 mode loop iterates nothing
+757c757
+<         foreach ($modeEntry in @(Get-BundleEntry $appDir)) {
+---
+>         foreach ($modeEntry in @()) {
+
+FAILED (failures=4)
+FAIL: test_install_target_modes_ignore_build_host_umask (tests.test_offline_bundle.InstallPs1Test.test_install_target_modes_ignore_build_host_umask) (bundle='umask0002', install_umask='0o2')
+FAIL: test_install_target_modes_ignore_build_host_umask (tests.test_offline_bundle.InstallPs1Test.test_install_target_modes_ignore_build_host_umask) (bundle='umask0002', install_umask='0o22')
+FAIL: test_install_target_modes_ignore_build_host_umask (tests.test_offline_bundle.InstallPs1Test.test_install_target_modes_ignore_build_host_umask) (bundle='ntfs', install_umask='0o2')
+FAIL: test_install_target_modes_ignore_build_host_umask (tests.test_offline_bundle.InstallPs1Test.test_install_target_modes_ignore_build_host_umask) (bundle='ntfs', install_umask='0o22')
+
+## Probes (probe/probe_d1.py, against the unmutated copy)
+[sh-hardlink] rc 0  release record) | loaded ke-app.tar as ke-app:bundle-0123456789ab | loaded postgres.tar as ke-vendor/postgres:053bbdccec5d | manifest sha256: a734ff6f49b4170d7146cdf4133d28a9318af27977000b0b930bbc69a1e8d1fa | installed to /tmp/tmp5qyzcm6x/target1 | next: cd /tmp/tmp5qyzcm6x/target1 && bash scripts/launch.sh | 
+[sh-hardlink] victim mode 0o600 nlink 3
+[sh-hardlink] hl.txt ino same as victim: False mode 0o644 nlink 1
+[sh-hardlink] scripts/hl.sh ino same as victim: False mode 0o755 nlink 1
+[sh-pair] rc 0 same inode in target: False modes 0o644 0o755 bundle source mode untouched: 0o644 0o644
+[ps1-hardlink] rc 0 your release record) | loaded ke-app.tar as ke-app:bundle-0123456789ab | loaded postgres.tar as ke-vendor/postgres:053bbdccec5d | manifest sha256: 9d9a752c37e5407be893a2b680ab5fbd5e65ea6deb2fed693ee842c91c933ab1 | installed to /tmp/tmpas952rtp/target1 | next: cd '/tmp/tmpas952rtp/target1'; scripts/launch.ps1 | 
+[ps1-hardlink] victim mode 0o600
+[ps1-hardlink] ino same: False mode 0o755
+[order] images equal across seeds: True ['ke-app', 'ke-gateway', 'neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b', 'arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c', 'postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4', 'valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507']
+[jq] svc='api'            rc=0 out='ke-app\n' err=''
+[jq] svc=') | env #'      rc=0 out='PWNED\n' err=''
+[jq] svc='$ENV'           rc=1 out='null\n' err=''
+[jq] svc='"api"'          rc=1 out='null\n' err=''
+[jq] svc='.services'      rc=1 out='null\n' err=''
+[jq] svc='api\n'          rc=1 out='null\n' err=''
+[jq] svc='../..'          rc=1 out='null\n' err=''
+[jq] svc=''               rc=1 out='null\n' err=''
+[jq] svc='x'              rc=1 out='null\n' err=''
+[jq] svc='o'              rc=0 out='{\n  "a": 1\n}\n' err=''
+[jq] svc='arr'            rc=0 out='[\n  "a",\n  "b"\n]\n' err=''
+[jq] svc='n'              rc=0 out='5\n' err=''
+[jq] svc='e'              rc=0 out='\n' err=''
+[jq] svc='nl'             rc=0 out='a\nb\n' err=''
+[jq] svc='missing'        rc=1 out='null\n' err=''
+[jq] svc='\\(env)'        rc=1 out='null\n' err=''
+[jq] svc='\' + "" + \''   rc=1 out='null\n' err=''
+[jq-model] model=''                     rc=0 out='' err=''
+[jq-model] model='not json'             rc=4 out='' err='parse error: Invalid numeric literal at line 1, column 4'
+[jq-model] model='[]'                   rc=5 out='' err='jq: error (at <stdin>:0): Cannot index array with string "services"'
+[jq-model] model='{"services": []}'     rc=5 out='' err='jq: error (at <stdin>:0): Cannot index array with string "api"'
+[jq-model] model='{"services": null}'   rc=1 out='null\n' err=''
+[jq-model] model='{"x":1}'              rc=1 out='null\n' err=''
+[jq-missing] rc 1 msg: bundle: jq is required on the build host (it reads the resolved compose model); install it first (for example apt-get install jq, brew install jq) | docker calls: [] | docker.log bytes: 0
+
+## Real Compose v5.1.4 on the dev host (config only, no project touched): config --images worker prints 2 images (D1 reproduced); jq lookup per sorted service:
+api -> ke-app
+gateway -> ke-gateway
+neo4j -> neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+phoenix -> arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c
+postgres -> postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
+valkey -> valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507
+worker -> ke-app
+### docker compose -f docker-compose.yml --env-file .env.example config --images worker (rerun):
+valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507
+ke-app

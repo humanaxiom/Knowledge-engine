@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# kill_jobs/on_signal copied verbatim from scripts/test.sh (lines 76-101); TERM while a foreground non-job command runs.
+set -euo pipefail
+set -m
+eval "$(sed -n '76,101p' /work/scripts/test.sh)"
+( sleep 0.3; kill -TERM $$ ) & disown
+sleep 1          # foreground: trap is deferred until it ends
+echo "UNREACHED"

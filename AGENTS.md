@@ -12,7 +12,7 @@ role-based agent team, coordinated by an **orchestrator**, following a strict
 | `analyst` | Clarifies requirements, writes acceptance criteria to `docs/requirements.md` | Subagent only | Reasoning |
 | `architect` | Designs technical approach, records decisions in `docs/architecture.md` (ADR style) | Subagent only | Reasoning |
 | `developer` | Implements code via TDD (red→green→refactor), stages and commits once gates pass | Subagent only | Trivial |
-| `tester` | Writes/runs unit tests and `scripts/smoke.sh`, judges pass/fail with evidence | Subagent only | Reasoning |
+| `tester` | Writes/runs unit tests and the smoke test via `scripts/verify.sh`, judges pass/fail with evidence | Subagent only | Reasoning |
 | `reviewer` | Reviews the diff for design conformance, code quality, and test adequacy; merge-blocking | Subagent only | Reasoning |
 | `security` | Audits the diff for injection, secrets, unsafe dependencies, and other OWASP Top 10 risks; merge-blocking | Subagent only | Reasoning |
 | `documenter` | Keeps `README.md` and in-repo docs in sync with shipped behavior | Subagent only | Trivial |
@@ -37,7 +37,7 @@ Work moves forward only when the current gate passes. No gate may be skipped.
 3. **Review & Security** — `reviewer` and `security` audit the integrated diff in
    parallel. Both are merge-blocking: any unresolved finding sends the change back
    to `developer`, capped at the iteration limit below.
-4. **Smoke Test** — `tester` runs `scripts/smoke.sh` against the integrated change.
+4. **Smoke Test** — `tester` runs `scripts/verify.sh full`, which includes the smoke test, against the integrated change.
    Must pass before merge/commit is approved.
 5. **CI** — `.github/workflows/ci.yml` must be green (or updated to cover the new
    surface) before the orchestrator approves a commit.
@@ -50,8 +50,7 @@ Work moves forward only when the current gate passes. No gate may be skipped.
 - `docs/requirements.md` — living acceptance criteria (analyst)
 - `docs/architecture.md` — design decisions / ADRs (architect)
 - `CHANGELOG.md` — user-facing change log (marketer)
-- `scripts/test.sh` — unit/integration test entrypoint (tester/developer)
-- `scripts/smoke.sh` — smoke test entrypoint, run after integration (tester)
+- `scripts/verify.sh` — the single verification entry point; it runs the unit/integration and smoke gate scripts in `scripts/` inside the `gates` container
 - `.github/workflows/ci.yml` — CI entrypoint, calls the scripts above
 - `docs/log.md` — append-only observability log, written only through
   `harness_telemetry.log_event`, which also traces each entry to Phoenix
@@ -70,9 +69,14 @@ Work moves forward only when the current gate passes. No gate may be skipped.
 - No one — human or agent — commits directly to `main`. Every plan item gets a
   branch: `agent/<plan-item-slug>` for agent-driven work, or `feat|fix|chore/<slug>`
   for human-driven work.
-- `developer` creates/checks out the branch before writing any code, and a
+- `developer` creates/checks out the branch before writing any code. A
   `PreToolUse` hook (`scripts/hooks/block-main-commit.sh`, wired in
-  `developer.agent.md`) denies any commit/push attempted while on `main`.
+  `developer.agent.md`) is a guardrail, not a guarantee: it denies the
+  commit/push shapes it recognises while on `main`, and a command that hides
+  the verb can get past it. Known bypasses: shell variables, `eval`, git
+  aliases, encoded or quoted command text, and `gh` (which can create commits
+  or push through the API). Branch discipline rests on the rules above and on
+  human review of every merge.
 - Merging `agent/*` branches to `main` is a human action (PR + review), same as
   pushing — never automated.
 
@@ -147,7 +151,7 @@ Rules:
   Phoenix is down the trace is dropped after a few seconds. Set
   `HARNESS_TRACING=off` to skip export, or `console` to print spans.
 
-Configuration: `PHOENIX_COLLECTOR_ENDPOINT` (default `http://localhost:6006`),
+Configuration: `PHOENIX_COLLECTOR_ENDPOINT` (default `http://localhost:47101`, the host port set by `KE_PHOENIX_PORT`),
 `HARNESS_TRACING` (`otlp` | `console` | `off`), and the two `OPENINFERENCE_HIDE_*`
 flags above.
 
@@ -181,5 +185,8 @@ agent's context window:
 - Do not skip a gate to save time; report a blocker to the orchestrator instead.
 - Do not commit or push without the orchestrator's explicit go-ahead.
 - Keep changes scoped to the current plan item.
+- Never rename, move or delete the top-level sentinel test
+  (`tests/test_sentinel.py`): `scripts/verify.sh` requires it to report ok,
+  so any change to its module, class or method names turns every verify red.
 - Do not act without first reading the plan item's handoff doc; do not finish
   without appending to it and to `docs/log.md`.

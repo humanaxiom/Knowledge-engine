@@ -1,0 +1,31 @@
+GREEN sha256: 422f0aa06ac53f97028164033e2b625f99f7144c21f6ef8e32064cae09c1999f
+== mutation a: drop -c from global-option skip ==
+rc=1
+FAIL: test_denies_push_with_c_global_option_from_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_with_c_global_option_from_plan_item_branch) (mode='jq', co
+FAIL: test_denies_push_with_c_global_option_from_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_with_c_global_option_from_plan_item_branch) (mode='no-jq',
+FAILED (failures=2)
+Ran 54 tests in 2.687s
+== mutation b: drop refs/heads/ handling (re-run; first attempt had a no-op sed) ==
+== mutation b: drop refs/heads/ handling ==
+rc=1
+FAIL: test_denies_push_refspec_forms_from_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_refspec_forms_from_plan_item_branch) (mode='jq', command='git pus
+FAIL: test_denies_push_refspec_forms_from_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_refspec_forms_from_plan_item_branch) (mode='no-jq', command='git 
+FAILED (failures=2)
+Ran 54 tests in 2.549s
+== mutation c: drop --force-with-lease check ==
+rc=1
+FAIL: test_denies_push_refspec_forms_from_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_refspec_forms_from_plan_item_branch) (mode='jq', command='git pus
+FAIL: test_denies_push_refspec_forms_from_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_refspec_forms_from_plan_item_branch) (mode='no-jq', command='git 
+FAILED (failures=2)
+Ran 54 tests in 2.624s
+== mutation d: disable broad on-main rule ==
+rc=1
+FAIL: test_denies_commit_and_push_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_commit_and_push_on_main) (mode='jq', command='git -C . commit --amend')
+FAIL: test_denies_commit_and_push_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_commit_and_push_on_main) (mode='jq', command='git add . && git commit -m x')
+FAIL: test_denies_commit_and_push_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_commit_and_push_on_main) (mode='jq', command='git commit -m "x"')
+FAIL: test_denies_commit_and_push_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_commit_and_push_on_main) (mode='no-jq', command='git -C . commit --amend')
+FAIL: test_denies_commit_and_push_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_commit_and_push_on_main) (mode='no-jq', command='git add . && git commit -m x')
+FAIL: test_denies_commit_and_push_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_commit_and_push_on_main) (mode='no-jq', command='git commit -m "x"')
+FAIL: test_denies_commit_creating_commands_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_commit_creating_commands_on_main) (mode='jq', command='git am p.patch')
+FAIL: test_denies_commit_creating_commands_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_commit_creating_commands_on_main) (mode='jq', command='git cherry-pick abc')
+AFTER sha256: 422f0aa06ac53f97028164033e2b625f99f7144c21f6ef8e32064cae09c1999f (identical: yes)

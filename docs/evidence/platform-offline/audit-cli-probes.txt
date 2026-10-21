@@ -1,0 +1,126 @@
+# audit-cli probes (security, PS-3.10, 2026-10-19). Scratch dirs: <scratch>/cli-sec (downloads), <scratch>/cli-sec-mut (build mutants), <scratch>/cli-sec-testmut (test mutants).
+
+## 1. Independent second fetch (curl --proto =https --tlsv1.2 -fsSL; Windows curl/schannel, cert verify ok)
+download.docker.com/linux/static/stable/{x86_64,aarch64}/docker-29.9.1.tgz: http=200 tls_verify=0 (served by CloudFront, no redirect)
+download.docker.com .../docker-29.9.1.tgz.sha256: 404 on both arches (no upstream checksum; listing has no checksum file)
+github.com/docker/compose/releases/download/v5.6.0/docker-compose-linux-{x86_64,aarch64}: http=200 via https redirect to release-assets.githubusercontent.com (signed URL redacted)
+$ sha256sum
+c158ecc55adb3afb01bbd3539ed3b997d20c26dbdc418080506cc1bf5243ff57 *docker-29.9.1-x86_64.tgz
+3e93cc6d1a686456a3b18eefdde26467a837a7a2b257af22e27cba1dbc1b2018 *docker-29.9.1-aarch64.tgz
+40343e21ca777173e69cff5dbafeb37c6f81f3b0d57d9e597f036e95eb63e76a *docker-compose-linux-x86_64
+733ec76717ceb59052a9609b9dadfb523b2df8eab57a54212872d10a58078ea2 *docker-compose-linux-aarch64
+$ cat upstream .sha256 assets
+40343e21ca777173e69cff5dbafeb37c6f81f3b0d57d9e597f036e95eb63e76a *docker-compose-linux-x86_64
+733ec76717ceb59052a9609b9dadfb523b2df8eab57a54212872d10a58078ea2 *docker-compose-linux-aarch64
+$ GitHub API releases/tags/v5.6.0 (asset digest field)
+tag=v5.6.0 prerelease=False draft=False published=2026-10-02T16:07:06Z
+checksums.txt sha256:40d09e5c4e2f2e24f99c0520cbd29c02d816b58800b4e11070318cffe03c6fbd uploader=github-actions[bot]
+docker-compose-linux-aarch64 sha256:733ec76717ceb59052a9609b9dadfb523b2df8eab57a54212872d10a58078ea2 uploader=github-actions[bot]
+docker-compose-linux-aarch64.sha256 sha256:78c485282215201c87442d0b7e54f7480328edcdd6c290c032b0929535c64b4d uploader=github-actions[bot]
+docker-compose-linux-x86_64 sha256:40343e21ca777173e69cff5dbafeb37c6f81f3b0d57d9e597f036e95eb63e76a uploader=github-actions[bot]
+docker-compose-linux-x86_64.sha256 sha256:8ce5dbd3a20471b33ecf073544e6ab8f9b5a86100c5578291e584e5cefa4eb65 uploader=github-actions[bot]
+releases/latest "tag_name": "v5.6.0"
+$ static listing, newest 3
+x86_64: docker-29.8.2.tgz docker-29.9.0.tgz docker-29.9.1.tgz 
+aarch64: docker-29.8.2.tgz docker-29.9.0.tgz docker-29.9.1.tgz 
+$ openssl s_client (OpenSSL 3.5.6)
+download.docker.com: subject=CN=*.docker.com issuer=Amazon RSA 2048 M04, TLSv1.3, Verify return code: 0 (ok)
+github.com: subject=CN=github.com issuer=Sectigo Public Server Authentication CA DV E36, TLSv1.3, Verify 0 (ok)
+release-assets.githubusercontent.com: subject=CN=*.github.io issuer=Let's Encrypt YR1, TLSv1.3, Verify 0 (ok)
+$ tar -tvzf (members)
+-- x86_64
+drwxr-xr-x runner/runner     0 2026-10-14 11:42 docker/
+-rwxr-xr-x runner/runner 39473314 2026-10-14 11:42 docker/containerd
+-rwxr-xr-x runner/runner 14131088 2026-10-14 11:42 docker/runc
+-rwxr-xr-x runner/runner  8138914 2026-10-14 11:42 docker/containerd-shim-runc-v2
+-rwxr-xr-x runner/runner 44345024 2026-10-14 11:42 docker/docker
+-rwxr-xr-x runner/runner  2696190 2026-10-14 11:42 docker/docker-proxy
+-rwxr-xr-x runner/runner 23195810 2026-10-14 11:42 docker/ctr
+-rwxr-xr-x runner/runner 102935568 2026-10-14 11:42 docker/dockerd
+-rwxr-xr-x runner/runner    743016 2026-10-14 11:42 docker/docker-init
+-- aarch64
+drwxr-xr-x runner/runner     0 2026-10-14 11:35 docker/
+-rwxr-xr-x runner/runner 7733410 2026-10-14 11:35 docker/containerd-shim-runc-v2
+-rwxr-xr-x runner/runner 96023696 2026-10-14 11:35 docker/dockerd
+-rwxr-xr-x runner/runner  2626672 2026-10-14 11:35 docker/docker-proxy
+-rwxr-xr-x runner/runner 13244936 2026-10-14 11:35 docker/runc
+-rwxr-xr-x runner/runner   664624 2026-10-14 11:35 docker/docker-init
+-rwxr-xr-x runner/runner 21561506 2026-10-14 11:35 docker/ctr
+-rwxr-xr-x runner/runner 36700322 2026-10-14 11:35 docker/containerd
+-rwxr-xr-x runner/runner 41635760 2026-10-14 11:35 docker/docker
+$ tar -xzOf docker-29.9.1-x86_64.tgz docker/docker | sha256sum
+3b4f13c1f02bc61131d8d1a13c70c56a18caf1518a692c7c5ad24a3203cc9292 *-
+
+## 2. Wrong-hash mutation builds (scratch Dockerfile copies, last hex digit +1; tags ke-sec-mut:mN never created)
+-- M1: > ARG DOCKER_SHA256_X64=c158ecc55adb3afb01bbd3539ed3b997d20c26dbdc418080506cc1bf5243ff58
+26:#7 CACHED
+29:#8 CACHED
+32:#9 CACHED
+39:#11 7.740 /tmp/docker.tgz: FAILED
+40:#11 7.740 sha256sum: WARNING: 1 computed checksum did NOT match
+ERROR: failed to build: failed to solve: process "/bin/sh -c set -eu;     case \"$(dpkg --print-architecture)\
+-- M2: > ARG COMPOSE_SHA256_X64=40343e21ca777173e69cff5dbafeb37c6f81f3b0d57d9e597f036e95eb63e76b
+26:#7 CACHED
+29:#8 CACHED
+32:#9 CACHED
+35:#10 CACHED
+42:#12 3.368 /tmp/docker-compose: FAILED
+43:#12 3.368 sha256sum: WARNING: 1 computed checksum did NOT match
+ERROR: failed to build: failed to solve: process "/bin/sh -c set -eu;     case \"$(dpkg --print-architecture)\
+-- M3: > ARG DOCKER_SHA256_ARM64=3e93cc6d1a686456a3b18eefdde26467a837a7a2b257af22e27cba1dbc1b2019
+26:#7 CACHED
+29:#8 CACHED
+32:#9 CACHED
+39:#11 1.904 /tmp/docker.tgz: FAILED
+40:#11 1.904 sha256sum: WARNING: 1 computed checksum did NOT match
+ERROR: failed to build: failed to solve: process "/bin/sh -c set -eu;     case \"$(dpkg --print-architecture)\
+-- M4: > ARG COMPOSE_SHA256_ARM64=733ec76717ceb59052a9609b9dadfb523b2df8eab57a54212872d10a58078ea3
+26:#7 CACHED
+29:#8 CACHED
+32:#9 CACHED
+35:#10 CACHED
+42:#12 0.743 sha256sum: WARNING: 1 computed checksum did NOT match
+43:#12 0.743 /tmp/docker-compose: FAILED
+ERROR: failed to build: failed to solve: process "/bin/sh -c set -eu;     case \"$(dpkg --print-architecture)\
+M1/M2: docker --context desktop-linux build --platform linux/amd64 ... rc=1 each
+M3/M4: local linux/arm64 emulation not registered (exec /bin/sh: exec format error at apt-get; not a valid result), re-run natively: docker --context aria-gb10 build ... rc=1 each
+aria-gb10 image list before == after (diff empty):
+ghcr.io/open-webui/open-webui:ollama 7b864460b522
+ke-app:probe-arm64 ed11a54b93b6
+ke-gates:probe-arm64 e578aff649eb
+ke-gateway:probe-arm64 1ef9c3fcdb3a
+nvidia/cuda:11.8.0-base-ubuntu22.04 9f124dadcd11
+openclaw:latest 36aa83b9b5eb
+portainer/portainer-ce:lts c0cff654719e
+vllm/vllm-openai:v0.28.0-aarch64 89154ef00dd1
+local: docker images | grep ke-sec-mut -> none; ke-gates:latest id 713633b5c7d7 untouched
+
+## 3. Install surface (ke-gates:latest, docker run --rm --network none, read-only probe)
+user=10001:10001; /usr/local/bin/docker 755 root:root; /usr/local/lib/docker/cli-plugins/docker-compose 755 root:root; dirs 755 root:root
+no dockerd/containerd/containerd-shim-runc-v2/runc/ctr/docker-proxy/docker-init anywhere on / (find -xdev) or PATH
+/tmp in image: .dotnet Microsoft.PackageManagement uv-*.lock (pwsh/uv, pre-existing); no docker.tgz / docker-compose
+nothing writable by the gate user; no DOCKER_* env; no ~/.docker; client 29.9.1, Docker Compose version v5.6.0
+3b4f13c1f02bc61131d8d1a13c70c56a18caf1518a692c7c5ad24a3203cc9292  /usr/local/bin/docker
+40343e21ca777173e69cff5dbafeb37c6f81f3b0d57d9e597f036e95eb63e76a  /usr/local/lib/docker/cli-plugins/docker-compose
+
+## 4. Test adequacy: tests/test_gates_docker_cli.py GatesImageDockerCliTest (4 tests) against scratch Dockerfile mutants
+T0-control                 SURVIVED (all green)
+T1-empty                   KILLED fail=4 err=0 ['test_gates_image_compose_plugin_at_least_2_24', 'test_gates_image_installs_docker_only_from_pinned_binaries', 'test_gates_image_pins_compose_plugin_by_hash', 'test_gates_image_pins_docker_cli_by_hash']
+T2-unpack-before-check     KILLED fail=1 err=0 ['test_gates_image_pins_docker_cli_by_hash']
+T3-or-true                 KILLED fail=1 err=0 ['test_gates_image_pins_docker_cli_by_hash']
+T4-swapped-branch          KILLED fail=1 err=0 ['test_gates_image_pins_docker_cli_by_hash']
+T5-direct-install          KILLED fail=1 err=0 ['test_gates_image_pins_compose_plugin_by_hash']
+T6-apt-docker              KILLED fail=1 err=0 ['test_gates_image_installs_docker_only_from_pinned_binaries']
+T7-old-compose             KILLED fail=1 err=0 ['test_gates_image_compose_plugin_at_least_2_24']
+T8-no-set-e                KILLED fail=1 err=0 ['test_gates_image_pins_docker_cli_by_hash']
+T9-ignore-missing          KILLED fail=1 err=0 ['test_gates_image_pins_docker_cli_by_hash']
+T10-extract-all-daemon     SURVIVED (all green)
+T11-latest                 KILLED fail=1 err=0 ['test_gates_image_pins_docker_cli_by_hash']
+T12-getdocker              KILLED fail=2 err=0 ['test_gates_image_installs_docker_only_from_pinned_binaries']
+T13-same-owner             SURVIVED (all green)
+T14-no-rm                  SURVIVED (all green)
+T15-http-url               KILLED fail=3 err=0 ['test_gates_image_installs_docker_only_from_pinned_binaries', 'test_gates_image_pins_docker_cli_by_hash']
+T16-compose-mode-4777      SURVIVED (all green)
+
+## 5. Secret scan of diff + new test + new evidence (AWS/GitHub/Slack/OpenAI keys, private keys, key=value secrets, creds in URLs, bearer/jwt/sig): 0 hits
+build-arg overrides of the pin ARGs in scripts/.github/compose: none

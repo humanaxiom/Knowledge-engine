@@ -1,0 +1,55 @@
+"""Security ci-speed rework 5: near misses of the widened nested-shell rule.
+For each payload: insert after `set -euo pipefail` in a scratch copy of the
+hook, run the round-5 full static check (HookLaunchesNoBackgroundWorkTest.
+check_hook via hook_findings + NOT_PRINTABLE), run the mutated hook, and check
+for an un-waited `sleep <marker>`. Gates image, scratch copies only."""
+import os, re, subprocess, sys, time
+sys.path.insert(0, "/w")
+import test_block_main_commit_hook as T
+NULL = ">/dev/null 2>&1"
+A = r"a=$'\x26'"
+M = [
+ ("bash <<< (stdin, no option)", f"{A}; bash <<<\"sleep 3060 {NULL} $a\""),
+ ("sh <<< (stdin, no option)", f"{A}; sh <<<\"sleep 3061 {NULL} $a\""),
+ ("bash /dev/stdin <<<", f"{A}; bash /dev/stdin <<<\"sleep 3062 {NULL} $a\""),
+ ("bash -i <<< (interactive reads stdin)", f"{A}; bash -i <<<\"sleep 3063 {NULL} $a\""),
+ ("bash - <<<", f"{A}; bash - <<<\"sleep 3064 {NULL} $a\""),
+ ("bash <<EOF heredoc, & from variable", f"{A}; bash <<EOF\nsleep 3065 {NULL} $a\nEOF"),
+ ("ba\"\"sh -c (quote-split shell word)", f"{A}; ba\"\"sh -c \"sleep 3066 {NULL} $a\""),
+ ("$(echo bash) -c (built word)", f"{A}; $(echo bash) -c \"sleep 3067 {NULL} $a\""),
+ ("control: exec -a x bash -c (should be caught)", f"{A}; exec -a x bash -c \"sleep 3068 {NULL} $a\""),
+ ("control: env bash -s <<< (should be caught)", f"{A}; env bash -s <<<\"sleep 3069 {NULL} $a\""),
+]
+def alive(marker):
+    for p in os.listdir("/proc"):
+        if p.isdigit():
+            try: cmd = open(f"/proc/{p}/cmdline", "rb").read().split(b"\0")
+            except OSError: continue
+            if cmd[:2] == [b"sleep", marker.encode()]: return True
+    return False
+hook = open("/w/block-main-commit.sh", "rb").read().decode("ascii")
+anchor = "set -euo pipefail\n"
+assert hook.count(anchor) == 1
+assert T.hook_findings(hook.encode()) == []
+n = 0
+for i, (name, payload) in enumerate(M):
+    text = hook.replace(anchor, anchor + payload + "\n", 1)
+    found = T.hook_findings(text.encode("utf-8"))
+    static = "caught" if found else "MISSED"
+    p = f"/tmp/x{i:02d}.sh"
+    open(p, "w", encoding="utf-8", newline="").write(text)
+    syn = subprocess.run(["bash", "-n", p], capture_output=True).returncode
+    s = time.monotonic()
+    h = subprocess.run(["bash", p], input=b'{"tool_input":{"command":"ls"}}', stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL, cwd="/tmp", timeout=20)
+    wall = time.monotonic() - s; time.sleep(0.3)
+    bg = alive(re.search(r"30\d\d", payload).group(0))
+    v = "BYPASS" if static == "MISSED" and bg else "caught" if found else "missed, launches nothing"
+    n += v == "BYPASS"
+    print(f"{v:26s} static={static} bash-n={syn} hook_rc={h.returncode} wall={wall:.2f}s unwaited_sleep_alive={bg!s:5s} | {name}", flush=True)
+for q in os.listdir("/proc"):
+    if q.isdigit():
+        try: c = open(f"/proc/{q}/cmdline", "rb").read().split(bytes([0]))
+        except OSError: continue
+        if c[0] == b"sleep" and len(c) > 1 and c[1].startswith(b"30"): os.kill(int(q), 9)
+print("summary:", n, "bypasses of", len(M))

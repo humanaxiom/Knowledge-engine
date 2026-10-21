@@ -1,0 +1,170 @@
+# security re-audit rework 2: raw output (2026-10-19, Docker Engine 29.5.2 linux / Docker Desktop, compose 5.1.4)
+# scratch: ke-sec-r2-m2, ke-sec-r2-other, ke-sec-r2-m2c-{noiso,nointernal}, ke-sec-r2-l3-*, ke-sec-r2-listener; all removed with volumes; scratch paths shown as <scratch>
+
+## S1 M-2/M-4 runtime (project ke-sec-r2-m2, verify overlay: no published ports)
+backend: opts={"com.docker.network.bridge.gateway_mode_ipv4":"isolated",...} internal=true ipam=[{"Subnet":"192.168.112.0/20"}] (no Gateway key)
+containers: worker .1, valkey .2, postgres .3, neo4j .4, phoenix .5, gateway .6, api .7
+host-net listener 0.0.0.0:47299 (ke-app, --network host); host netns holds no address in 192.168.112.0/20 (24 interfaces listed)
+api and worker (identical): every host netns address (lo excluded: ECONNREFUSED = own loopback), docker0 172.17.0.1, eth0 192.168.65.3,
+  services1 192.168.65.6, all 19 other br-* gateways, edge gw 192.168.128.1 -> ENETUNREACH
+  192.168.112.0 / .254 / 192.168.127.254 -> TIMEOUT; 192.168.127.255 ENETUNREACH; host/gateway.docker.internal NORESOLVE
+  route table: only 192.168.112.0/20 on eth0, no default
+control gateway (edge+backend): 192.168.128.1 HOSTNET-HIT, 192.168.65.3 HOSTNET-HIT
+smoke.sh vs ke-sec-r2-m2: "ke-sec-r2-m2_backend is internal with gateway_mode_ipv4=isolated" ... smoke: PASS rc=0
+control ke-sec-r2-m2c-noiso (override driver_opts: !reset {}): opts lack gateway_mode_ipv4, internal=true, Gateway 192.168.144.1
+  smoke: FAIL (network ke-sec-r2-m2c-noiso_backend is not isolated and internal: gateway_mode_ipv4='') rc=1
+  probe from backend: 192.168.144.1 OPEN HOSTNET-HIT (M-2 reproduced), 192.168.65.3 / 172.17.0.1 ENETUNREACH
+control ke-sec-r2-m2c-nointernal (internal false + no driver_opts): smoke FAIL rc=1; probe: gw, 192.168.65.3, 172.17.0.1 all OPEN HOSTNET-HIT
+
+## S2 L-3 gateway port check (standalone ke-gateway, --network none, KE_ENV=prod; image sha of 12-ke-port-check.sh and templates == working tree)
+KE_GATEWAY_API_LISTEN      inj-server     exited exit=1      error: KE_GATEWAY_API_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_API_LISTEN      inj-location   exited exit=1      error: KE_GATEWAY_API_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_API_LISTEN      inj-semicolon  exited exit=1      error: KE_GATEWAY_API_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_API_LISTEN      inj-newline    exited exit=1      error: KE_GATEWAY_API_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_API_LISTEN      inj-space      exited exit=1      error: KE_GATEWAY_API_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_API_LISTEN      lead-space     exited exit=1      error: KE_GATEWAY_API_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_API_LISTEN      plus           exited exit=1      error: KE_GATEWAY_API_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_API_LISTEN      minus          exited exit=1      error: KE_GATEWAY_API_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_API_LISTEN      lead-zero      exited exit=1      error: KE_GATEWAY_API_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_API_LISTEN      zero           exited exit=1      error: KE_GATEWAY_API_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_API_LISTEN      big            exited exit=1      error: KE_GATEWAY_API_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_API_LISTEN      huge           exited exit=1      error: KE_GATEWAY_API_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_API_LISTEN      empty          exited exit=1      error: KE_GATEWAY_API_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_API_LISTEN      hex            exited exit=1      error: KE_GATEWAY_API_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_API_LISTEN      unicode-digit  exited exit=1      error: KE_GATEWAY_API_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_API_LISTEN      valid-max      running exit=0     
+KE_GATEWAY_API_LISTEN      valid-1        running exit=0     
+KE_GATEWAY_PHOENIX_LISTEN  inj-server     exited exit=1      error: KE_GATEWAY_PHOENIX_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_PHOENIX_LISTEN  inj-location   exited exit=1      error: KE_GATEWAY_PHOENIX_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_PHOENIX_LISTEN  inj-semicolon  exited exit=1      error: KE_GATEWAY_PHOENIX_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_PHOENIX_LISTEN  inj-newline    exited exit=1      error: KE_GATEWAY_PHOENIX_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_PHOENIX_LISTEN  inj-space      exited exit=1      error: KE_GATEWAY_PHOENIX_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_PHOENIX_LISTEN  lead-space     exited exit=1      error: KE_GATEWAY_PHOENIX_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_PHOENIX_LISTEN  plus           exited exit=1      error: KE_GATEWAY_PHOENIX_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_PHOENIX_LISTEN  minus          exited exit=1      error: KE_GATEWAY_PHOENIX_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_PHOENIX_LISTEN  lead-zero      exited exit=1      error: KE_GATEWAY_PHOENIX_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_PHOENIX_LISTEN  zero           exited exit=1      error: KE_GATEWAY_PHOENIX_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_PHOENIX_LISTEN  big            exited exit=1      error: KE_GATEWAY_PHOENIX_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_PHOENIX_LISTEN  huge           exited exit=1      error: KE_GATEWAY_PHOENIX_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_PHOENIX_LISTEN  empty          exited exit=1      error: KE_GATEWAY_PHOENIX_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_PHOENIX_LISTEN  hex            exited exit=1      error: KE_GATEWAY_PHOENIX_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_PHOENIX_LISTEN  unicode-digit  exited exit=1      error: KE_GATEWAY_PHOENIX_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_PHOENIX_LISTEN  valid-max      running exit=0     
+KE_GATEWAY_PHOENIX_LISTEN  valid-1        running exit=0     
+KE_GATEWAY_MODEL_LISTEN    inj-server     exited exit=1      error: KE_GATEWAY_MODEL_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_MODEL_LISTEN    inj-location   exited exit=1      error: KE_GATEWAY_MODEL_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_MODEL_LISTEN    inj-semicolon  exited exit=1      error: KE_GATEWAY_MODEL_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_MODEL_LISTEN    inj-newline    exited exit=1      error: KE_GATEWAY_MODEL_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_MODEL_LISTEN    inj-space      exited exit=1      error: KE_GATEWAY_MODEL_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_MODEL_LISTEN    lead-space     exited exit=1      error: KE_GATEWAY_MODEL_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_MODEL_LISTEN    plus           exited exit=1      error: KE_GATEWAY_MODEL_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_MODEL_LISTEN    minus          exited exit=1      error: KE_GATEWAY_MODEL_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_MODEL_LISTEN    lead-zero      exited exit=1      error: KE_GATEWAY_MODEL_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_MODEL_LISTEN    zero           exited exit=1      error: KE_GATEWAY_MODEL_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_MODEL_LISTEN    big            exited exit=1      error: KE_GATEWAY_MODEL_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_MODEL_LISTEN    huge           exited exit=1      error: KE_GATEWAY_MODEL_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_MODEL_LISTEN    empty          exited exit=1      error: KE_GATEWAY_MODEL_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_MODEL_LISTEN    hex            exited exit=1      error: KE_GATEWAY_MODEL_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_MODEL_LISTEN    unicode-digit  exited exit=1      error: KE_GATEWAY_MODEL_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_MODEL_LISTEN    valid-max      running exit=0     
+KE_GATEWAY_MODEL_LISTEN    valid-1        running exit=0     
+KE_API__LISTEN_PORT        inj-server     exited exit=1      error: KE_API__LISTEN_PORT is not a port number (1-65535); refusing to start
+KE_API__LISTEN_PORT        inj-location   exited exit=1      error: KE_API__LISTEN_PORT is not a port number (1-65535); refusing to start
+KE_API__LISTEN_PORT        inj-semicolon  exited exit=1      error: KE_API__LISTEN_PORT is not a port number (1-65535); refusing to start
+KE_API__LISTEN_PORT        inj-newline    exited exit=1      error: KE_API__LISTEN_PORT is not a port number (1-65535); refusing to start
+KE_API__LISTEN_PORT        inj-space      exited exit=1      error: KE_API__LISTEN_PORT is not a port number (1-65535); refusing to start
+KE_API__LISTEN_PORT        lead-space     exited exit=1      error: KE_API__LISTEN_PORT is not a port number (1-65535); refusing to start
+KE_API__LISTEN_PORT        plus           exited exit=1      error: KE_API__LISTEN_PORT is not a port number (1-65535); refusing to start
+KE_API__LISTEN_PORT        minus          exited exit=1      error: KE_API__LISTEN_PORT is not a port number (1-65535); refusing to start
+KE_API__LISTEN_PORT        lead-zero      exited exit=1      error: KE_API__LISTEN_PORT is not a port number (1-65535); refusing to start
+KE_API__LISTEN_PORT        zero           exited exit=1      error: KE_API__LISTEN_PORT is not a port number (1-65535); refusing to start
+KE_API__LISTEN_PORT        big            exited exit=1      error: KE_API__LISTEN_PORT is not a port number (1-65535); refusing to start
+KE_API__LISTEN_PORT        huge           exited exit=1      error: KE_API__LISTEN_PORT is not a port number (1-65535); refusing to start
+KE_API__LISTEN_PORT        empty          exited exit=1      error: KE_API__LISTEN_PORT is not a port number (1-65535); refusing to start
+KE_API__LISTEN_PORT        hex            exited exit=1      error: KE_API__LISTEN_PORT is not a port number (1-65535); refusing to start
+KE_API__LISTEN_PORT        unicode-digit  exited exit=1      error: KE_API__LISTEN_PORT is not a port number (1-65535); refusing to start
+KE_API__LISTEN_PORT        valid-max      running exit=0     
+KE_API__LISTEN_PORT        valid-1        running exit=0     
+PHOENIX_PORT               inj-server     exited exit=1      error: PHOENIX_PORT is not a port number (1-65535); refusing to start
+PHOENIX_PORT               inj-location   exited exit=1      error: PHOENIX_PORT is not a port number (1-65535); refusing to start
+PHOENIX_PORT               inj-semicolon  exited exit=1      error: PHOENIX_PORT is not a port number (1-65535); refusing to start
+PHOENIX_PORT               inj-newline    exited exit=1      error: PHOENIX_PORT is not a port number (1-65535); refusing to start
+PHOENIX_PORT               inj-space      exited exit=1      error: PHOENIX_PORT is not a port number (1-65535); refusing to start
+PHOENIX_PORT               lead-space     exited exit=1      error: PHOENIX_PORT is not a port number (1-65535); refusing to start
+PHOENIX_PORT               plus           exited exit=1      error: PHOENIX_PORT is not a port number (1-65535); refusing to start
+PHOENIX_PORT               minus          exited exit=1      error: PHOENIX_PORT is not a port number (1-65535); refusing to start
+PHOENIX_PORT               lead-zero      exited exit=1      error: PHOENIX_PORT is not a port number (1-65535); refusing to start
+PHOENIX_PORT               zero           exited exit=1      error: PHOENIX_PORT is not a port number (1-65535); refusing to start
+PHOENIX_PORT               big            exited exit=1      error: PHOENIX_PORT is not a port number (1-65535); refusing to start
+PHOENIX_PORT               huge           exited exit=1      error: PHOENIX_PORT is not a port number (1-65535); refusing to start
+PHOENIX_PORT               empty          exited exit=1      error: PHOENIX_PORT is not a port number (1-65535); refusing to start
+PHOENIX_PORT               hex            exited exit=1      error: PHOENIX_PORT is not a port number (1-65535); refusing to start
+PHOENIX_PORT               unicode-digit  exited exit=1      error: PHOENIX_PORT is not a port number (1-65535); refusing to start
+PHOENIX_PORT               valid-max      running exit=0     
+PHOENIX_PORT               valid-1        running exit=0     
+KE_GATEWAY_API_LISTEN      unset          exited exit=1      error: KE_GATEWAY_API_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_PHOENIX_LISTEN  unset          exited exit=1      error: KE_GATEWAY_PHOENIX_LISTEN is not a port number (1-65535); refusing to start
+KE_GATEWAY_MODEL_LISTEN    unset          exited exit=1      error: KE_GATEWAY_MODEL_LISTEN is not a port number (1-65535); refusing to start
+KE_API__LISTEN_PORT        unset          exited exit=1      error: KE_API__LISTEN_PORT is not a port number (1-65535); refusing to start
+PHOENIX_PORT               unset          exited exit=1      error: PHOENIX_PORT is not a port number (1-65535); refusing to start
+NGINX_LOCAL_RESOLVERS override with injection payload: running, rendered 'resolver 192.168.65.7 ...', injected location count 0 (15-local-resolvers.envsh overwrites it)
+template variables (grep ${...} in docker/gateway/templates): KE_API__LISTEN_PORT KE_GATEWAY_API_LISTEN KE_GATEWAY_MODEL_LISTEN KE_GATEWAY_PHOENIX_LISTEN KE_MODEL_UPSTREAM NGINX_LOCAL_RESOLVERS PHOENIX_PORT
+
+## S3 L-6 launch.sh engine check (shim <scratch>/shim/docker verified as 'command -v docker'; shim never forwards 'up'; KE_ENV_FILE prod loopback; project ke-sec-r2-l6, never created)
+engine=''                           rc=1 error: Docker Engine >= 28 is required (found: none)
+engine=garbage                      rc=1 refused
+engine=' 27.1.1'                    rc=1 refused
+engine=' 29.5.2'                    rc=1 refused
+engine='29.5.2 '                    rc=1 refused
+engine=28.0.0-rc.1                  rc=1 refused
+engine=29.0.0-rc.1                  rc=1 refused
+engine=27.5.1                       rc=1 refused
+engine=27.99.99                     rc=1 refused
+engine=28.0                         rc=1 refused
+engine=28                           rc=1 refused
+engine=v29.5.2                      rc=1 refused
+engine='29.5.2\n27.0.0'             rc=1 refused
+engine='27.0.0\n29.5.2'             rc=1 refused
+engine='29.5.2\r'                   rc=1 refused
+engine=9223372036854775808.0.0      rc=1 refused
+engine=arabic-indic digits          rc=1 refused
+engine=28.0.0 / 29.5.2 / 100.0.0    rc=0 SHIM: WOULD-UP
+engine=029.0.0                      rc=0 SHIM: WOULD-UP (10# -> 29)
+engine=99999999999999999999.0.0     rc=0 SHIM: WOULD-UP (bash 64-bit wrap, positive)
+daemon-error (exit 1, no stdout)    rc=1 error: cannot read the Docker Engine version; is the daemon running?
+daemon-error with '29.5.2' stdout   rc=1 same
+launch.ps1: static review only (see findings file)
+
+## S4 L-7 lint.sh filename probes (ke-gates, --network none, repo mounted ro, scratch copy in /tmp/x; markers searched on whole fs)
+q-e28098       lint_rc=0 markers=[] lint: PASS
+q-e28099       lint_rc=0 markers=[] lint: PASS
+q-e2809a       lint_rc=0 markers=[] lint: PASS
+q-e2809b       lint_rc=0 markers=[] lint: PASS
+q-27           lint_rc=0 markers=[] lint: PASS
+dq-22          lint_rc=0 markers=[] lint: PASS
+dq-e2809c      lint_rc=0 markers=[] lint: PASS
+dq-e2809d      lint_rc=0 markers=[] lint: PASS
+dq-e2809e      lint_rc=0 markers=[] lint: PASS
+subexpr        lint_rc=0 markers=[] lint: PASS
+bash-subst     lint_rc=0 markers=[] lint: PASS
+backtick       lint_rc=0 markers=[] lint: PASS
+pwsh-bt        lint_rc=0 markers=[] lint: PASS
+newline        lint_rc=1 markers=[] lint: FAIL (a PowerShell script path contains a newline: refused)
+nl-only        lint_rc=1 markers=[] lint: FAIL (a PowerShell script path contains a newline: refused)
+env-ref        lint_rc=1 markers=[] lint: FAIL
+wildcard-name  lint_rc=0 lint: PASS 
+control-plain  lint_rc=1 PSAvoidUsingInvokeExpression Warning  plain.ps1  1    Invoke-Expression is used. Please remove Invoke-Expression from script and find other options instead. lint: FAIL 
+
+## S5 F3 teardown (project ke-sec-r2-m2 full stack + own gates/gates-it service containers + own gates-it one-off run; other project ke-sec-r2-other one-off run; override resets gates volumes so nothing mounts the repo)
+scripts/teardown.sh --volumes -> rc=0; output: "Network ke-sec-r2-m2_backend Resource is still in use"
+after: ke-sec-r2-m2-gates-1, ke-sec-r2-m2-gates-it-1, ke-sec-r2-m2-gates-it-run-<id> still running; network ke-sec-r2-m2_backend left; volumes removed
+other project: ke-sec-r2-other-gates-it-run-<id> untouched (F3 fixed)
+candidate 'down --volumes --profile gates --profile gates-it': removes gates-1, gates-it-1; run container + backend left; rc=0
+candidate 'down --volumes --remove-orphans' (project-scoped): run container + backend left; rc=0
+compose 5.1.4 exits 0 on "Resource is still in use"
+
+## S6 secret and profile-path scan (git diff d26bec6 + untracked, 26582 lines)
+secret patterns (AWS, GitHub, OpenAI/Anthropic sk-, Slack, Google, HF, GitLab, JWT, PEM private keys, credentialed URLs): none
+literal password/token assignments: none beyond .env.example changeme-* placeholders
+profile paths (C:\Users, C:/Users, /c/Users, AppData, /home/<u>, /Users/<u>): only the rework-1 report line stating none
+new evidence (architect-rework2*, red-rework2, green-rework2*, windows-proof-rework1, review-rework1*): no credentials; windows-proof uses <scratch>

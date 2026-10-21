@@ -3,7 +3,7 @@ renders a pure-Python agent loop as a nested AGENT/RETRIEVER/LLM/TOOL tree.
 
 Configuration (environment):
 - ``HARNESS_TRACING``: ``otlp`` (default), ``console``, or ``off``.
-- ``PHOENIX_COLLECTOR_ENDPOINT``: Phoenix base URL, default ``http://localhost:6006``.
+- ``PHOENIX_COLLECTOR_ENDPOINT``: Phoenix base URL, default ``DEFAULT_COLLECTOR``.
 - ``OPENINFERENCE_HIDE_INPUTS`` / ``OPENINFERENCE_HIDE_OUTPUTS``: ``true`` to
   redact input/output values (prompts, queries, documents) before export.
 """
@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import json
 import os
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager
 from typing import Any, Iterator, Mapping, Sequence
 
 from openinference.semconv.resource import ResourceAttributes
@@ -33,7 +33,7 @@ from opentelemetry.sdk.trace.export import (
 )
 from opentelemetry.trace import Span, Status, StatusCode
 
-DEFAULT_COLLECTOR = "http://localhost:6006"
+DEFAULT_COLLECTOR = "http://localhost:47101"
 REDACTED = "__REDACTED__"
 
 _tracer = trace.get_tracer("harness_telemetry")
@@ -145,7 +145,9 @@ def _span(
         if input is not None:
             set_input(span, input)
         yield span
-        if span.status.status_code is StatusCode.UNSET:
+        # A non-recording span (tracing off) has no status to read.
+        status = getattr(span, "status", None)
+        if status is not None and status.status_code is StatusCode.UNSET:
             span.set_status(Status(StatusCode.OK))
 
 
@@ -156,7 +158,7 @@ def agent_span(
     user_id: str | None = None,
     tags: Sequence[str] | None = None,
     metadata: Mapping[str, Any] | None = None,
-):
+) -> AbstractContextManager[Span]:
     """Root of an agent run. ``session_id`` groups runs in Phoenix's Sessions view."""
     return _span(name, OpenInferenceSpanKindValues.AGENT, input, {
         SpanAttributes.SESSION_ID: session_id,
@@ -166,24 +168,26 @@ def agent_span(
     })
 
 
-def chain_span(name: str, input: Any = None):
+def chain_span(name: str, input: Any = None) -> AbstractContextManager[Span]:
     """A deterministic step (routing, parsing, prompt assembly)."""
     return _span(name, OpenInferenceSpanKindValues.CHAIN, input)
 
 
-def retriever_span(name: str, input: Any = None):
+def retriever_span(name: str, input: Any = None) -> AbstractContextManager[Span]:
     """A lookup (graph/vector/keyword search); pair with ``record_documents``."""
     return _span(name, OpenInferenceSpanKindValues.RETRIEVER, input)
 
 
-def llm_span(name: str, input: Any = None, model: str | None = None):
+def llm_span(
+    name: str, input: Any = None, model: str | None = None
+) -> AbstractContextManager[Span]:
     """A model call; pair with ``record_token_usage``."""
     return _span(name, OpenInferenceSpanKindValues.LLM, input, {
         SpanAttributes.LLM_MODEL_NAME: model,
     })
 
 
-def tool_span(name: str, input: Any = None):
+def tool_span(name: str, input: Any = None) -> AbstractContextManager[Span]:
     """A tool invocation chosen by the agent."""
     return _span(name, OpenInferenceSpanKindValues.TOOL, input, {
         SpanAttributes.TOOL_NAME: name,

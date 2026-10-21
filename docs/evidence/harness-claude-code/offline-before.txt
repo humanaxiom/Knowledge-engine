@@ -1,0 +1,7 @@
+Sun Oct 18 18:40:01 UTC 2026
+2026-10-18T18:37:42.21627374Z
+   Building monitored-harness @ file:///work
+      Built monitored-harness @ file:///work
+Uninstalled 1 package in 0.80ms
+Installed 1 package in 0.99ms
+ok-old-image

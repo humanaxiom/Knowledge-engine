@@ -1,0 +1,46 @@
+Recorded run 2, amd64: dev host (Windows 11 + Docker Desktop), WSL Ubuntu as the Linux build host. No D1 filter: real bundle.sh only.
+
+=== STEP 0a-build-host-prereqs  start 2026-10-19T19:23:54Z  cwd <home>
+$ umask; uname -srm; bash --version | head -1; git --version; command -v jq || echo "jq: not on PATH"; jq --version; dpkg -s jq 2>&1 | head -1; command -v docker
+0022
+Linux 6.6.114.1-microsoft-standard-WSL2 x86_64
+GNU bash, version 5.3.9(1)-release (x86_64-pc-linux-gnu)
+git version 2.53.0
+jq: not on PATH
+bash: line 1: jq: command not found
+dpkg-query: package 'jq' is not installed and no information is available
+/mnt/c/Program Files/Docker/Docker/resources/bin/docker
+=== END 0a-build-host-prereqs  rc=0  elapsed=0s
+### NOTE: 0a: jq is not installed in this WSL distro (the docker on PATH is still Docker Desktop's stub; WSL integration is off). Per the run brief, jq is not installed here: the amd64 run is recorded up to bundle.sh's prerequisite check and stops there. No docker shim is needed for that: bundle.sh checks jq before its first docker call. build.sh is skipped (it would only rebuild ke-*:latest on the dev host; it does not affect the jq check).
+
+=== STEP 1-copy-tree  start 2026-10-19T19:23:54Z  cwd <home>
+$ test ! -e ~/ke-proof2-src && mkdir -p ~/ke-proof2-src && tar -C /mnt/c/repos/Knowledge-engine --exclude=./.venv --exclude=./dist -cf - . | tar -C ~/ke-proof2-src -xf - && cd ~/ke-proof2-src && git rev-parse HEAD && git status --porcelain | wc -l && grep -n "command -v jq" scripts/bundle.sh
+1fe81ddbfb603ec3b724ee58d71670b21799f7e3
+140
+51:command -v jq > /dev/null 2>&1 \
+=== END 1-copy-tree  rc=0  elapsed=4s
+
+=== STEP 3-bundle  start 2026-10-19T19:23:58Z  cwd <home>/ke-proof2-src
+$ bash scripts/bundle.sh --out dist/bundle-amd64
+bundle: jq is required on the build host (it reads the resolved compose model); install it first (for example apt-get install jq, brew install jq)
+=== END 3-bundle  rc=1  elapsed=0s
+
+=== STEP 3b-nothing-written  start 2026-10-19T19:23:58Z  cwd <home>/ke-proof2-src
+$ ls -la dist 2>&1; ls -d dist/bundle-amd64* 2>&1 || true
+ls: cannot access 'dist': No such file or directory
+ls: cannot access 'dist/bundle-amd64*': No such file or directory
+=== END 3b-nothing-written  rc=0  elapsed=0s
+
+### NOTE: the amd64 run stops here (jq missing on the WSL build host; not installed, per the run brief). No docker command ran in WSL, so the dev-host daemon gained no image, tag, container, volume or network from this run (checked in C2 below).
+
+=== STEP C1-remove-proof-dirs-tools-logs (WSL; the log above was copied out first)  2026-10-19T19:28:25Z
+$ rm -rf ~/ke-proof2-src ~/ke-proof2-tools ~/ke-proof2-logs; ls -d ~/ke-proof*
+ls: cannot access '<home>/ke-proof*': No such file or directory
+=== END C1 rc=0
+
+=== STEP C2-dev-host-daemon-check (Git Bash, Windows docker.exe)  2026-10-19T19:28:25Z
+$ docker images --format "{{.Repository}}:{{.Tag}}" | grep -E "bundle-|^ke-vendor/" || echo none; docker ps -a --filter name=ke-proof --format "{{.Names}}"; docker volume ls -q | grep ke-proof || echo none; docker network ls --format "{{.Name}}" | grep ke-proof || echo none
+no ke-*:bundle-* or ke-vendor/* tags
+no ke-proof volume
+no ke-proof network
+=== END C2 rc=0
