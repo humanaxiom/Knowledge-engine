@@ -1,0 +1,44 @@
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.75ms
+Installed 1 package in 1ms
+nproc=8 k=4 modules=32
+pool wall=217s
+ 217.3s rc=0 tests.test_offline_bundle
+ 100.6s rc=0 tests.test_stack_scripts
+  20.4s rc=0 tests.test_stack_readiness
+  20.0s rc=0 tests.test_block_main_commit_hook
+  18.3s rc=0 tests.test_offline_netprobe
+  13.7s rc=0 tests.test_harness_followups
+   8.4s rc=0 tests.test_offline_check
+   8.2s rc=0 tests.test_stack_entrypoints
+   4.1s rc=0 tests.test_engine_hardcoded
+   3.6s rc=0 tests.test_engine_startup
+   3.4s rc=0 tests.test_stack_bind_address
+   2.4s rc=0 tests.test_stack_model_skip
+   2.4s rc=0 tests.test_engine_tracing_guard
+   2.3s rc=0 tests.test_stack_compose
+   2.0s rc=0 tests.test_engine_telemetry
+   1.7s rc=0 tests.test_engine_config
+   1.6s rc=0 tests.test_stack_worker
+   1.6s rc=0 tests.test_stack_model_keys
+   1.5s rc=0 tests.test_engine_egress
+   1.4s rc=0 tests.test_gate_least_privilege
+   1.2s rc=0 tests.test_tracing
+   1.2s rc=0 tests.test_engine_llm
+   1.1s rc=0 tests.test_stack_carry_ins
+   1.1s rc=0 tests.test_log_event
+   0.8s rc=0 tests.test_stack_ready_compose
+   0.7s rc=0 tests.test_harness_port
+   0.7s rc=0 tests.test_gates_docker_cli
+   0.6s rc=0 tests.test_engine_notices
+   0.5s rc=0 tests.test_stack_ready_docs
+   0.5s rc=0 tests.test_engine_quality
+   0.5s rc=0 tests.test_engine_deploy_files
+   0.4s rc=0 tests.test_sentinel
+Ran-lines: 32 of 32 modules
+tests: 689
+test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok
+Combined 18 files, skipped 12
+TOTAL                              975    148    236     23    83%
+container total=219s

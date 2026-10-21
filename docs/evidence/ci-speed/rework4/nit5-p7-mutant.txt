@@ -1,0 +1,15 @@
+# nit 5 / P7: scratch copy of scripts/resource_probe.sh with one line changed (diff below); gates image ke-gates:wt-33a132fbfdd7, --network none, uid 10001, ro mounts, tmpfs /tmp:exec
+16c16
+< pr_root="${2:-/}"
+---
+> pr_root="${2:-${ROOT:-/}}"
+== control: repo probe ==
+Ran 1 test in 0.081s
+OK
+== P7 mutant ==
+FAIL: test_no_root_path_reads_no_env (tests.test_resource_probe.ResourceProbeTest.test_no_root_path_reads_no_env) (case='names -> planted tree')
+AssertionError: '772165771701493729' unexpectedly found in 'resources: phase=start nproc=24 cpu_max_quota=715275679408825585 cpu_max_period=747388741400633799 cg_cpu_usage_us=736282928586593016 cg_cpu
+FAIL: test_no_root_path_reads_no_env (tests.test_resource_probe.ResourceProbeTest.test_no_root_path_reads_no_env)
+AssertionError: False is not true : the probe opened or read a file in the planted tree (960 bytes of inotify events)
+Ran 1 test in 0.084s
+FAILED (failures=2)

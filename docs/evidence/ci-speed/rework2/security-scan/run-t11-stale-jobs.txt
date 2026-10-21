@@ -1,0 +1,12 @@
+pid_max=4194304
+GNU bash, version 5.2.15(1)-release (x86_64-pc-linux-gnu)
+pool job 13
+pool job 18
+pool job 26
+pool job 34
+pool job 39
+after bare wait, jobs -p: [39 ]
+after step 1, jobs -p (subshell): []
+in trap, jobs -p: [50 ]
+  50 alive? y
+rc=143

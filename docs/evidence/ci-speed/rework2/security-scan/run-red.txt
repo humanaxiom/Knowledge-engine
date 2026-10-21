@@ -1,0 +1,10 @@
+test.sh rc=1
+Ran 1 test in 0.000s
+
+OK
+/opt/venv/lib/python3.12/site-packages/coverage/control.py:967: CoverageWarning: No data was collected. (no-data-collected); see https://coverage.readthedocs.io/en/7.16.2/messages.html#warning-no-data-collected
+  self._warn("No data was collected.", slug="no-data-collected")
+unit: 0s rc=1 tests.test_bad
+error: tests.test_bad exited with status 1
+unit: 0s rc=0 tests.test_z
+rc=0

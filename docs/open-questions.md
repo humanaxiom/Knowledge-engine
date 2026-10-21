@@ -28,12 +28,18 @@ answer it. Answer by number; anything left unanswered stands as assumed.
   your machine, and the evidence files say which. Nothing is reported green here
   that ran outside Docker. If you can enable Docker for this environment, say so.
 - **Q4. Iteration cap.** **A4:** 5 per fix-and-retest loop, as in `AGENTS.md`.
-- **Q18. Branch protection on `main`.** Is branch protection enabled on `main` in
+- **Q18. Resolved 2026-10-20 (human ruling: SKIPPED, `docs/handoffs/ci-speed.md`).**
+  **A18:** branch protection is not enabled. Merges to `main` stay a manual
+  human action (PR + review); the local commit hook (`block-main-commit.sh`)
+  remains the only automated guard. This is an accepted risk: the hook's
+  known bypasses (harness-claude-code criterion 4e) are not backed by a
+  remote control. Original question, kept for the record: *Branch protection
+  on `main`.* Is branch protection enabled on `main` in
   `humanaxiom/Knowledge-engine`? The local hook (`block-main-commit.sh`,
   harness-claude-code criterion 4) is only a guard rail against agent mistakes
   and can be bypassed; branch protection is the real control (security M1).
-  **A18:** not verified from here. Recommend enabling it: require a PR to merge
-  into `main` and block force pushes.
+  The earlier assumption said: not verified from here. Recommend enabling it:
+  require a PR to merge into `main` and block force pushes.
 
 ## Deployment
 
@@ -90,10 +96,16 @@ answer it. Answer by number; anything left unanswered stands as assumed.
 - **Q13. Human corrections to records.** May reviewers correct extracted fields,
   as opposed to drafts? **A13:** yes, as `entered` revisions through the review
   queue. They survive re-parse, and any conflict goes to review (§R-REV-C.5).
-- **Q14. Ratification owners.** DR22 needs named people and dates per owner tier
-  (institutional policy, policy-informed, technical). **A14:** they appear as
-  marked placeholders (`OWNER-TBD`) in the plan. The milestone "Done" check
-  reports them as an external blocker until you name them.
+- **Q14. Resolved 2026-10-20 (human ruling, `docs/handoffs/ci-speed.md`).**
+  **A14:** the human (Adam Salah) acts as proxy ratifier for policy rules
+  until real owners are named. Ratification is therefore no
+  longer an external blocker in the milestone "Done" check; naming the real
+  owners later replaces the proxy. Original question, kept for the record:
+  *Ratification owners.* DR22 needs named people and dates per owner tier
+  (institutional policy, policy-informed, technical). The earlier assumption
+  said: they appear as marked placeholders (`OWNER-TBD`) in the plan. The
+  milestone "Done" check reports them as an external blocker until you name
+  them.
 
 ## Corpus
 
@@ -230,6 +242,40 @@ Resolved 2026-10-20 by the orchestrator for `model-roles`
   question, kept for the record: *Chat-role timeouts for the new models
   (orchestrator; does not block RED).* `gpt-oss:120b` on audit may need more
   than `timeout_s: 120`, counting the cold load and the reasoning time.
+
+Resolved 2026-10-20 by the orchestrator for `ci-speed`
+(`docs/handoffs/ci-speed.md`; raised by the analyst,
+`docs/requirements.md` § Item: ci-speed):
+
+- **Q-CS1. Resolved 2026-10-20 (orchestrator ruling: no percentage
+  tolerance).** **A-CS1:** pooled coverage is not judged against a band
+  around the one-process figure. Instead every top-level module's process
+  leaves its own coverage data file (`coverage run -p`), `coverage combine`
+  consumes one per module, and a missing data file fails the run, naming the
+  module (CS-4). The 80 % threshold is unchanged. Original question, kept
+  for the record: *Coverage tolerance for the pool.* CS-4 proposed that the
+  pooled coverage total may fall at most 1 point below the one-process
+  figure for the same tests; confirm or set another value.
+  - **Amended 2026-10-21 (rework 3, human ruling: pool withdrawn).** The rule
+    stands, applied per coverage run label instead of per pooled module.
+    The labels are `toplevel` (the one top-level run), `tests.<pkg>` and
+    `tests.integration`. Each run label must leave its own data file, and a
+    missing file or a file left after `combine` fails the run, naming the
+    label (CS-4, architecture §2.2.1-r3 decision 3). There is still no
+    percentage tolerance, and 80 % is unchanged.
+
+Resolved 2026-10-21 by the orchestrator for `ci-speed` (raised by the
+architect in rework 3):
+
+- **Q-CS2. Resolved 2026-10-21 (orchestrator ruling: A-CS2 accepted, as
+  covered by the human's CPU-time ruling).** **A-CS2:** the 400-segment L8
+  test moves to CPU time with the 3 s and 9 s tests, and its 5 s value is
+  unchanged (CS-12, architecture §2.2.1-r3 decision 6). Original question,
+  kept for the record: *Does the 5 s L8 hook test move to CPU time too?* The
+  human ruling moves the hook budget tests to CPU time, naming the 3 s and
+  9 s budgets. `test_long_command_finishes_quickly` (security L8: 400
+  segments under 5 s) is the same kind of wall-clock budget test. If it
+  stays on wall time, it can still flake on a loaded runner.
 
 Open, raised 2026-10-19 by the analyst (`platform-stack-ready` rework round 1):
 

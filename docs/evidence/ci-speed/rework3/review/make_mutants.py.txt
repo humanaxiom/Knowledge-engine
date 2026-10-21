@@ -1,0 +1,38 @@
+import shutil, sys
+from pathlib import Path
+S = Path(sys.argv[1]); base = S / "base"
+M = {
+ # test.sh mutants
+ "T1_no_end_on_fail": ("scripts/test.sh", "unit_rc=0\nunit_runs || unit_rc=$?\n", "unit_rc=0\nunit_runs || exit $?\n"),
+ "T2_fail_swallowed": ("scripts/test.sh", '[ "$unit_rc" -eq 0 ] || exit "$unit_rc"\n', "true\n"),
+ "T3_rc_check_late": ("scripts/test.sh", '[ "$unit_rc" -eq 0 ] || exit "$unit_rc"\n\nif [ "$mode" = "full" ] && [ -d tests/integration ]; then\n  cov_run tests.integration discover -s tests/integration -t . -v\nfi\n', '\nif [ "$mode" = "full" ] && [ -d tests/integration ]; then\n  cov_run tests.integration discover -s tests/integration -t . -v\nfi\n[ "$unit_rc" -eq 0 ] || exit "$unit_rc"\n'),
+ "T4_label_tests": ("scripts/test.sh", "cov_run toplevel -v", "cov_run tests -v"),
+ "T5_start_after_top": ("scripts/test.sh", '  bash scripts/resource_probe.sh start\n  cov_run toplevel -v --durations 10 "${mods[@]}" || return $?\n', '  cov_run toplevel -v --durations 10 "${mods[@]}" || return $?\n  bash scripts/resource_probe.sh start\n'),
+ "T6_sub_fail_ignored": ("scripts/test.sh", 'cov_run "$label" discover -s "$d" -t . -v || return $?', 'cov_run "$label" discover -s "$d" -t . -v || true'),
+ "T7_nodata_ignored": ("scripts/test.sh", 'collect_data "$label" || return 1', 'collect_data "$label" || true'),
+ "T8_combine_noargs": ("scripts/test.sh", 'coverage combine "${data_files[@]}"', 'coverage combine'),
+ "T9_durations_all": ("scripts/test.sh", 'discover -s "$d" -t . -v ||', 'discover -s "$d" -t . -v --durations 10 ||'),
+ "T10_top_two_procs": ("scripts/test.sh", 'cov_run toplevel -v --durations 10 "${mods[@]}" || return $?', 'cov_run toplevel -v --durations 10 "${mods[0]}" || return $?\n  if [ "${#mods[@]}" -gt 1 ]; then uv run --locked python -m coverage run -p --data-file="$cov_dir/$cov_name.toplevel" -m unittest -v "${mods[@]:1}" || return $?; fi'),
+ "T11_probe_root_passed": ("scripts/test.sh", "bash scripts/resource_probe.sh end", "bash scripts/resource_probe.sh end /"),
+ # probe mutants
+ "P1_raw_meminfo": ("scripts/resource_probe.sh", "printf ' mem_total_kib=%s' \"$(num \"$(field \"$pr_root/proc/meminfo\" MemTotal:)\")\"", "printf ' mem_total_kib=%s' \"$(field \"$pr_root/proc/meminfo\" MemTotal:)\""),
+ "P2_stderr_open": ("scripts/resource_probe.sh", "exec 2>/dev/null\n", "\n"),
+ "P3_exit1": ("scripts/resource_probe.sh", "\nexit 0\n", "\nexit 1\n"),
+ "P4_total_no_steal": ("scripts/resource_probe.sh", '"${pr_sirq:-}" "${pr_st:-}"; do', '"${pr_sirq:-}"; do'),
+ "P5_raw_phase": ("scripts/resource_probe.sh", 'case "$pr_phase" in start | end) ;; *) pr_phase="n/a" ;; esac', ':'),
+ "P6_peak_allows_max": ("scripts/resource_probe.sh", "\"$(num \"$(one \"$cg/memory.peak\")\")\"", "\"$(nummax \"$(one \"$cg/memory.peak\")\")\""),
+ "P7_env_root": ("scripts/resource_probe.sh", 'pr_root="${2:-/}"', 'pr_root="${2:-${ROOT:-/}}"'),
+ # hook helper mutants
+ "H1_rusage_self": ("tests/test_block_main_commit_hook.py", "resource.getrusage(resource.RUSAGE_CHILDREN)", "resource.getrusage(resource.RUSAGE_SELF)"),
+ "H2_no_timeout": ("tests/test_block_main_commit_hook.py", "subprocess.run(args, timeout=HANG_GUARD_S, **kwargs)", "subprocess.run(args, **kwargs)"),
+}
+for name, (rel, old, new) in M.items():
+    d = S / "mut" / name
+    if d.exists(): shutil.rmtree(d)
+    shutil.copytree(base, d)
+    p = d / rel
+    t = p.read_text(encoding="utf-8")
+    n = t.count(old)
+    assert n >= 1, (name, "pattern not found")
+    p.write_text(t.replace(old, new), encoding="utf-8", newline="\n")
+    print(name, "replaced", n)

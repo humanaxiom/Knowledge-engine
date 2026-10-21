@@ -1,0 +1,511 @@
+# ci-speed rework 2, tester: new/changed tests vs scratch mutants of scripts/test.sh (repo files untouched)
+# Each variant: scratch copy of scripts/{test,verify}.sh + tests/{__init__,test_harness_followups,test_sentinel}.py,
+# run in ke-gates:wt-33a132fbfdd7 (docker run --rm --label ke.tester.project=ke-tester-cs3 --user 10001:10001
+# --network none --cap-drop ALL --security-opt no-new-privileges:true, read-only /work, tmpfs /tmp):
+#   /opt/venv/bin/python -m unittest -v <test ids>
+# T = tests.test_harness_followups.IntegrationRunsOnceTest
+#   base : T.test_failing_subpackage_module_fails_run, T.test_failing_integration_module_fails_full_run (N1),
+#          T.test_signal_kills_pool_children_and_exits_nonzero (N3, S2), T.test_term_leaves_no_module_process_that_ignores_term (S1, RED),
+#          T.test_module_logs_and_summary_lines_print_in_glob_order (N2)
+#   mA   : the two N1 tests      mD: the signal test      m1/m5: the order guard
+#   fixS1: S1 test + signal test against a SCRATCH-ONLY kill_jobs (TERM, sleep 2, KILL) to show the RED test is passable;
+#          this is not production code and was not written to the repo.
+
+## diff scripts/test.sh -> mA
+103c103
+<   wait "$!"
+---
+>   wait "$!" || true
+
+## diff scripts/test.sh -> mD
+83c83
+< trap 'on_signal 130' INT
+---
+> trap 'on_signal 1' INT
+
+## diff scripts/test.sh -> m1
+117a118
+>   cat -- "$logs/$m.log"
+128c129
+<     cat -- "$logs/$m.log"
+---
+>     :
+
+## diff scripts/test.sh -> m5
+117a118
+>   echo "unit: $((SECONDS - start))s rc=$rc $m"
+141d141
+<   echo "unit: $(cat -- "$logs/$m.sec" 2>/dev/null || echo 0)s rc=$rc $m"
+
+## diff scripts/test.sh -> fixS1
+74c74,76
+<   for p in $(jobs -p); do
+---
+>   local ps
+>   ps="$(jobs -p)"
+>   for p in $ps; do
+75a78,81
+>   done
+>   sleep 2
+>   for p in $ps; do
+>     kill -KILL -- "-$p" 2>/dev/null || true
+
+===== base (full unittest output)
+test_failing_subpackage_module_fails_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_subpackage_module_fails_run) ... ok
+test_failing_integration_module_fails_full_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_integration_module_fails_full_run) ... ok
+test_signal_kills_pool_children_and_exits_nonzero (tests.test_harness_followups.IntegrationRunsOnceTest.test_signal_kills_pool_children_and_exits_nonzero) ... ok
+test_term_leaves_no_module_process_that_ignores_term (tests.test_harness_followups.IntegrationRunsOnceTest.test_term_leaves_no_module_process_that_ignores_term) ... FAIL
+test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order) ... ok
+
+======================================================================
+FAIL: test_term_leaves_no_module_process_that_ignores_term (tests.test_harness_followups.IntegrationRunsOnceTest.test_term_leaves_no_module_process_that_ignores_term)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 924, in test_term_leaves_no_module_process_that_ignores_term
+    self.assertEqual(alive, [], f"processes of {module}, which ignores SIGTERM, "
+AssertionError: Lists differ: [254] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+254
+
+- [254]
++ [] : processes of tests.test_ign_term, which ignores SIGTERM, outlived test.sh by 10 s (exit 143); seen before TERM: [254]
+
+----------------------------------------------------------------------
+Ran 5 tests in 14.815s
+
+FAILED (failures=1)
+rc=1
+
+===== mA (full unittest output)
+test_failing_subpackage_module_fails_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_subpackage_module_fails_run) ... 
+  test_failing_subpackage_module_fails_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_subpackage_module_fails_run) (mode='fast') ... FAIL
+  test_failing_subpackage_module_fails_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_subpackage_module_fails_run) (mode='full') ... FAIL
+test_failing_integration_module_fails_full_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_integration_module_fails_full_run) ... FAIL
+
+======================================================================
+FAIL: test_failing_subpackage_module_fails_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_subpackage_module_fails_run) (mode='fast')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 1023, in test_failing_subpackage_module_fails_run
+    self.assertNotEqual(code, 0, "a failing sub-package test, test.sh passed:\n"
+AssertionError: 0 == 0 : a failing sub-package test, test.sh passed:
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.test_x.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.testfoo.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+unit: 0s rc=0 tests.test_x
+unit: 0s rc=0 tests.testfoo
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_bad (tests.unit.test_bad.Bad.test_bad) ... FAIL
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+======================================================================
+FAIL: test_bad (tests.unit.test_bad.Bad.test_bad)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/tmp5rem3wlz/project/tests/unit/test_bad.py", line 4, in test_bad
+    self.fail('planted')
+AssertionError: planted
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.001s
+
+FAILED (failures=1)
+Combined 3 files
+
+
+======================================================================
+FAIL: test_failing_subpackage_module_fails_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_subpackage_module_fails_run) (mode='full')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 1023, in test_failing_subpackage_module_fails_run
+    self.assertNotEqual(code, 0, "a failing sub-package test, test.sh passed:\n"
+AssertionError: 0 == 0 : a failing sub-package test, test.sh passed:
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.test_x.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.testfoo.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+unit: 0s rc=0 tests.test_x
+unit: 0s rc=0 tests.testfoo
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_bad (tests.unit.test_bad.Bad.test_bad) ... FAIL
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+======================================================================
+FAIL: test_bad (tests.unit.test_bad.Bad.test_bad)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/tmp5rem3wlz/project/tests/unit/test_bad.py", line 4, in test_bad
+    self.fail('planted')
+AssertionError: planted
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.001s
+
+FAILED (failures=1)
+test_counted (tests.integration.test_counted.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+Combined 4 files
+
+
+======================================================================
+FAIL: test_failing_integration_module_fails_full_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_integration_module_fails_full_run)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 1033, in test_failing_integration_module_fails_full_run
+    self.assertNotEqual(code, 0, "a failing integration test, test.sh full passed:\n"
+AssertionError: 0 == 0 : a failing integration test, test.sh full passed:
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.test_x.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.testfoo.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+unit: 0s rc=0 tests.test_x
+unit: 0s rc=0 tests.testfoo
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+test_bad (tests.integration.test_bad.Bad.test_bad) ... FAIL
+test_counted (tests.integration.test_counted.Counted.test_counted) ... ok
+
+======================================================================
+FAIL: test_bad (tests.integration.test_bad.Bad.test_bad)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/tmp8zidiw16/project/tests/integration/test_bad.py", line 4, in test_bad
+    self.fail('planted')
+AssertionError: planted
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.001s
+
+FAILED (failures=1)
+Combined 4 files
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 3.121s
+
+FAILED (failures=3)
+rc=1
+
+===== mD (full unittest output)
+test_signal_kills_pool_children_and_exits_nonzero (tests.test_harness_followups.IntegrationRunsOnceTest.test_signal_kills_pool_children_and_exits_nonzero) ... 
+  test_signal_kills_pool_children_and_exits_nonzero (tests.test_harness_followups.IntegrationRunsOnceTest.test_signal_kills_pool_children_and_exits_nonzero) (signal='SIGINT') ... FAIL
+
+======================================================================
+FAIL: test_signal_kills_pool_children_and_exits_nonzero (tests.test_harness_followups.IntegrationRunsOnceTest.test_signal_kills_pool_children_and_exits_nonzero) (signal='SIGINT')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 804, in test_signal_kills_pool_children_and_exits_nonzero
+    self.assertEqual(code, 128 + int(sig),
+AssertionError: 1 != 130 : test.sh exit status after SIGINT:
+[3]-  Terminated              run_module "$m"
+[4]+  Terminated              run_module "$m"
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.121s
+
+FAILED (failures=1)
+rc=1
+
+===== m1 (full unittest output)
+test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order) ... 
+  test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order) (part='log blocks') ... FAIL
+
+======================================================================
+FAIL: test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order) (part='log blocks')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 1152, in test_module_logs_and_summary_lines_print_in_glob_order
+    self.assertLess(spans[earlier][1], spans[later][0],
+AssertionError: 52 not less than 26 : tests.test_oa's log is not wholly before tests.test_ob's:
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.testfoo.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_c0 (tests.test_oc.Chatty.test_c0) ... ok
+test_c1 (tests.test_oc.Chatty.test_c1) ... ok
+test_c2 (tests.test_oc.Chatty.test_c2) ... ok
+test_c3 (tests.test_oc.Chatty.test_c3) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_c0 (tests.test_oc.Chatty.test_c0)
+0.000s     test_c1 (tests.test_oc.Chatty.test_c1)
+0.000s     test_c2 (tests.test_oc.Chatty.test_c2)
+0.000s     test_c3 (tests.test_oc.Chatty.test_c3)
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.000s
+
+OK
+test_c0 (tests.test_ob.Chatty.test_c0) ... ok
+test_c1 (tests.test_ob.Chatty.test_c1) ... ok
+test_c2 (tests.test_ob.Chatty.test_c2) ... ok
+test_c3 (tests.test_ob.Chatty.test_c3) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_c0 (tests.test_ob.Chatty.test_c0)
+0.000s     test_c1 (tests.test_ob.Chatty.test_c1)
+0.000s     test_c2 (tests.test_ob.Chatty.test_c2)
+0.000s     test_c3 (tests.test_ob.Chatty.test_c3)
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.021s
+
+OK
+test_c0 (tests.test_oa.Chatty.test_c0) ... ok
+test_c1 (tests.test_oa.Chatty.test_c1) ... ok
+test_c2 (tests.test_oa.Chatty.test_c2) ... ok
+test_c3 (tests.test_oa.Chatty.test_c3) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_c0 (tests.test_oa.Chatty.test_c0)
+0.000s     test_c1 (tests.test_oa.Chatty.test_c1)
+0.000s     test_c2 (tests.test_oa.Chatty.test_c2)
+0.000s     test_c3 (tests.test_oa.Chatty.test_c3)
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.041s
+
+OK
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.test_x.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+unit: 0s rc=0 tests.test_oa
+unit: 0s rc=0 tests.test_ob
+unit: 0s rc=0 tests.test_oc
+unit: 0s rc=0 tests.test_x
+unit: 0s rc=0 tests.testfoo
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.001s
+
+OK
+Combined 6 files
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.036s
+
+FAILED (failures=1)
+rc=1
+
+===== m5 (full unittest output)
+test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order) ... 
+  test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order) (part='unit: lines') ... FAIL
+
+======================================================================
+FAIL: test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order) (part='unit: lines')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 1157, in test_module_logs_and_summary_lines_print_in_glob_order
+    self.assertEqual(summary, glob_order, output)
+AssertionError: Lists differ: ['tests.test_oc', 'tests.testfoo', 'tests.test_ob', 'te[24 chars]t_x'] != ['tests.test_oa', 'tests.test_ob', 'tests.test_oc', 'te[24 chars]foo']
+
+First differing element 0:
+'tests.test_oc'
+'tests.test_oa'
+
+- ['tests.test_oc',
+?               ^
+
++ ['tests.test_oa',
+?               ^
+
+-  'tests.testfoo',
+   'tests.test_ob',
+-  'tests.test_oa',
+?               ^
+
++  'tests.test_oc',
+?               ^
+
+-  'tests.test_x']
+?                ^
+
++  'tests.test_x',
+?                ^
+
++  'tests.testfoo'] : unit: 0s rc=0 tests.test_oc
+unit: 0s rc=0 tests.testfoo
+unit: 0s rc=0 tests.test_ob
+unit: 0s rc=0 tests.test_oa
+unit: 0s rc=0 tests.test_x
+test_c0 (tests.test_oa.Chatty.test_c0) ... ok
+test_c1 (tests.test_oa.Chatty.test_c1) ... ok
+test_c2 (tests.test_oa.Chatty.test_c2) ... ok
+test_c3 (tests.test_oa.Chatty.test_c3) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_c0 (tests.test_oa.Chatty.test_c0)
+0.000s     test_c1 (tests.test_oa.Chatty.test_c1)
+0.000s     test_c2 (tests.test_oa.Chatty.test_c2)
+0.000s     test_c3 (tests.test_oa.Chatty.test_c3)
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.041s
+
+OK
+test_c0 (tests.test_ob.Chatty.test_c0) ... ok
+test_c1 (tests.test_ob.Chatty.test_c1) ... ok
+test_c2 (tests.test_ob.Chatty.test_c2) ... ok
+test_c3 (tests.test_ob.Chatty.test_c3) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_c0 (tests.test_ob.Chatty.test_c0)
+0.000s     test_c1 (tests.test_ob.Chatty.test_c1)
+0.000s     test_c2 (tests.test_ob.Chatty.test_c2)
+0.000s     test_c3 (tests.test_ob.Chatty.test_c3)
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.021s
+
+OK
+test_c0 (tests.test_oc.Chatty.test_c0) ... ok
+test_c1 (tests.test_oc.Chatty.test_c1) ... ok
+test_c2 (tests.test_oc.Chatty.test_c2) ... ok
+test_c3 (tests.test_oc.Chatty.test_c3) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_c0 (tests.test_oc.Chatty.test_c0)
+0.000s     test_c1 (tests.test_oc.Chatty.test_c1)
+0.000s     test_c2 (tests.test_oc.Chatty.test_c2)
+0.000s     test_c3 (tests.test_oc.Chatty.test_c3)
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.000s
+
+OK
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.test_x.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.testfoo.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+Combined 6 files
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.013s
+
+FAILED (failures=1)
+rc=1
+
+===== fixS1 (full unittest output)
+test_term_leaves_no_module_process_that_ignores_term (tests.test_harness_followups.IntegrationRunsOnceTest.test_term_leaves_no_module_process_that_ignores_term) ... ok
+test_signal_kills_pool_children_and_exits_nonzero (tests.test_harness_followups.IntegrationRunsOnceTest.test_signal_kills_pool_children_and_exits_nonzero) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 7.671s
+
+OK
+rc=0
+
+## verdicts
+base : N1 x2 ok, signal ok, order ok, S1 FAIL (expected RED: TERM-ignoring python outlives test.sh)
+mA   : KILLED (subpackage fast+full and integration full: test.sh exited 0 with a FAIL in the log)
+mD   : KILLED (signal test: 1 != 130 after SIGINT)
+m1   : KILLED (order guard, part='log blocks')
+m5   : KILLED (order guard, part='unit: lines')
+fixS1: S1 test ok, signal test ok

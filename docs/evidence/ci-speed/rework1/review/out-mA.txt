@@ -1,0 +1,158 @@
+.............................FFF...
+======================================================================
+FAIL: test_probe_failing_subpackage_fails_run (tests.probe_review.Probe.test_probe_failing_subpackage_fails_run) (mode='fast')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/probe_review.py", line 21, in test_probe_failing_subpackage_fails_run
+    self.assertNotEqual(code, 0, output)
+AssertionError: 0 == 0 : test_counted (tests.test_x.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.test_x.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.testfoo.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+unit: 0s rc=0 tests.test_x
+unit: 0s rc=0 tests.testfoo
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_bad (tests.unit.test_bad.Bad.test_bad) ... FAIL
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+======================================================================
+FAIL: test_bad (tests.unit.test_bad.Bad.test_bad)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/tmpqtpirpzk/project/tests/unit/test_bad.py", line 4, in test_bad
+    self.fail('planted')
+AssertionError: planted
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.001s
+
+FAILED (failures=1)
+Combined 3 files
+
+
+======================================================================
+FAIL: test_probe_failing_subpackage_fails_run (tests.probe_review.Probe.test_probe_failing_subpackage_fails_run) (mode='full')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/probe_review.py", line 21, in test_probe_failing_subpackage_fails_run
+    self.assertNotEqual(code, 0, output)
+AssertionError: 0 == 0 : test_counted (tests.test_x.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.test_x.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.testfoo.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+unit: 0s rc=0 tests.test_x
+unit: 0s rc=0 tests.testfoo
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_bad (tests.unit.test_bad.Bad.test_bad) ... FAIL
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+======================================================================
+FAIL: test_bad (tests.unit.test_bad.Bad.test_bad)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/tmpqtpirpzk/project/tests/unit/test_bad.py", line 4, in test_bad
+    self.fail('planted')
+AssertionError: planted
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.002s
+
+FAILED (failures=1)
+test_counted (tests.integration.test_counted.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+Combined 4 files
+
+
+======================================================================
+FAIL: test_probe_failing_integration_fails_run (tests.probe_review.Probe.test_probe_failing_integration_fails_run)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/probe_review.py", line 28, in test_probe_failing_integration_fails_run
+    self.assertNotEqual(code, 0, output)
+AssertionError: 0 == 0 : test_counted (tests.test_x.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.test_x.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.testfoo.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+unit: 0s rc=0 tests.test_x
+unit: 0s rc=0 tests.testfoo
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+test_bad (tests.integration.test_bad.Bad.test_bad) ... FAIL
+test_counted (tests.integration.test_counted.Counted.test_counted) ... ok
+
+======================================================================
+FAIL: test_bad (tests.integration.test_bad.Bad.test_bad)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/tmpp8uvewbi/project/tests/integration/test_bad.py", line 4, in test_bad
+    self.fail('planted')
+AssertionError: planted
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.001s
+
+FAILED (failures=1)
+Combined 4 files
+
+
+----------------------------------------------------------------------
+Ran 34 tests in 58.874s
+
+FAILED (failures=3)

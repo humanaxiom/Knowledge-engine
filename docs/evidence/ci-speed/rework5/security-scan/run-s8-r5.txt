@@ -1,0 +1,6 @@
+# S8 wording check: bash 5.2.15 read -t behaviour (each case under timeout 8). rc 142 = read timed out, 124 = killed by timeout(1). Same container setup, uid 10001.
+rc=142 1.0s | read -t 1 -n 4096 from /dev/zero (char device, NUL stream)
+rc=0 0.0s | read -t 1 -n 4096 from /dev/urandom (char device, non-NUL)
+rc=1 2.52s | read -t 1 -n 4096 from a 1 GB sparse NUL regular file
+rc=124 8.0s | open of a FIFO with no writer (blocks in open, -t no effect)
+rc=142 1.01s | read -t 1 on an already-open FIFO with no data (-t applies)

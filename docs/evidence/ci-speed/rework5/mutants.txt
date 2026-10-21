@@ -1,0 +1,336 @@
+# ci-speed rework 5 (tester): mutant results. Scratch copies only, in ke-gates:wt-33a132fbfdd7, --network none, uid 10001, ro mounts, tmpfs /tmp:exec, label com.docker.compose.project=ke-tester-cs3. No repo file was mutated.
+
+## Summary
+| Mutant | Rework 4 | Rework 5 | Killed by |
+|---|---|---|---|
+| R6 one: no -n 4096 | survived | KILLED | test_each_reader_caps_bytes_and_lines (case 'cpu.max: period past byte 4096') |
+| R7 field: no -n 4096 | survived | KILLED | test_each_reader_caps_bytes_and_lines (case 'meminfo first line over 64 x 4096 bytes') |
+| R9 psi: no 64-line cap | survived | KILLED | test_each_reader_caps_bytes_and_lines (case 'pressure/io: 100 filler lines first') |
+| R18 cg from env | survived | KILLED | test_no_root_path_reads_no_env (case 'names -> planted/sys/fs/cgroup', plus the inotify check) |
+| R5 / R13 / R14 | survived | survived | accepted defence in depth (reviewer rework 4): a regular file cannot show them |
+| R1-R4, R8, R10-R12, R15-R17, R19, R20 | killed | killed | unchanged |
+| N5 inotify unavailable (test-side) | silent pass | visible skipped subtest | 'inotify unavailable (no inotify_init1 in libc: AttributeError); only the output check ran' |
+| S9 mutants (FF, VT, FS, NEL, U+2028, CR, \x1f function, #-line in string, #-line in heredoc) | 9 bypasses | 9 caught | security harness, below |
+| S10 nested-shell/stdin (source /dev/stdin, . /dev/stdin, bash -s, --norc -c, -o posix -c, $BASH -c, dash -c) | 7 bypasses | 7 caught | security harness, below |
+| S10 rest (se''tsid, ${c}sid, ev''al, trap string, mapfile -C, ${x@P}, python3 Popen) | bypass | bypass | accepted residual risk; the widened detector catches none of them |
+
+## 1. Probe mutants (reviewer mutate.py from rework4/review/probe-mutants.txt), tests.test_resource_probe
+== control 
+Ran 9 tests in 1.060s
+OK
+[1 s]
+== R6 R6 one: no -n 4096
+FAIL: test_each_reader_caps_bytes_and_lines (key='cpu_max_period', case='cpu.max: period past byte 4096')
+Ran 9 tests in 0.971s
+FAILED (failures=1)
+[2 s]
+== R7 R7 field: no -n 4096
+FAIL: test_each_reader_caps_bytes_and_lines (key='mem_total_kib', case='meminfo first line over 64 x 4096 bytes')
+FAIL: test_each_reader_caps_bytes_and_lines (key='mem_available_kib', case='meminfo first line over 64 x 4096 bytes')
+FAIL: test_each_reader_caps_bytes_and_lines (key='swap_total_kib', case='meminfo first line over 64 x 4096 bytes')
+FAIL: test_each_reader_caps_bytes_and_lines (key='swap_free_kib', case='meminfo first line over 64 x 4096 bytes')
+Ran 9 tests in 1.073s
+FAILED (failures=4)
+[2 s]
+== R9 R9 psi: no 64-line cap
+FAIL: test_each_reader_caps_bytes_and_lines (key='psi_io_some_us', case='pressure/io: 100 filler lines first')
+FAIL: test_each_reader_caps_bytes_and_lines (key='psi_io_full_us', case='pressure/io: 100 filler lines first')
+Ran 9 tests in 0.998s
+FAILED (failures=2)
+[1 s]
+== R18 R18 cg from env
+FAIL: test_no_root_path_reads_no_env (case='names -> planted/sys/fs/cgroup')
+FAIL: test_no_root_path_reads_no_env (check='no open or read under the planted tree (inotify)')
+Ran 9 tests in 0.935s
+FAILED (failures=2)
+[2 s]
+== R1 R1 field: no -f check
+FAIL: test_fifo_or_device_source_gives_na_quickly (case='every source a FIFO with no writer, no nproc')
+Ran 9 tests in 21.147s
+FAILED (failures=1)
+[22 s]
+== R2 R2 one: no -f check
+FAIL: test_fifo_or_device_source_gives_na_quickly (case='stat and cpu.max FIFOs, meminfo -> /dev/zero, rest good')
+FAIL: test_fifo_or_device_source_gives_na_quickly (case='every source a FIFO with no writer, no nproc')
+Ran 9 tests in 23.894s
+FAILED (failures=2)
+[24 s]
+== R3 R3 psi: -f -> -r
+FAIL: test_fifo_or_device_source_gives_na_quickly (case='every source a FIFO with no writer, no nproc')
+Ran 9 tests in 16.025s
+FAILED (failures=1)
+[17 s]
+== R4 R4 stat: no -f check
+FAIL: test_fifo_or_device_source_gives_na_quickly (case='stat and cpu.max FIFOs, meminfo -> /dev/zero, rest good')
+FAIL: test_fifo_or_device_source_gives_na_quickly (case='every source a FIFO with no writer, no nproc')
+Ran 9 tests in 22.104s
+FAILED (failures=2)
+[23 s]
+== R5 R5 all reads: no -t 1
+Ran 9 tests in 1.043s
+OK
+[1 s]
+== R8 R8 field: no 64-line cap
+FAIL: test_each_reader_caps_bytes_and_lines (key='mem_total_kib', case='meminfo first line over 64 x 4096 bytes')
+FAIL: test_each_reader_caps_bytes_and_lines (key='mem_available_kib', case='meminfo first line over 64 x 4096 bytes')
+FAIL: test_each_reader_caps_bytes_and_lines (key='swap_total_kib', case='meminfo first line over 64 x 4096 bytes')
+FAIL: test_each_reader_caps_bytes_and_lines (key='swap_free_kib', case='meminfo first line over 64 x 4096 bytes')
+FAIL: test_oversized_source_is_cut_off (key='mem_total_kib')
+FAIL: test_oversized_source_is_cut_off (key='mem_available_kib')
+FAIL: test_oversized_source_is_cut_off (key='swap_total_kib')
+FAIL: test_oversized_source_is_cut_off (key='swap_free_kib')
+Ran 9 tests in 1.175s
+FAILED (failures=8)
+[2 s]
+== R10 R10 num: unbounded digits
+FAIL: test_oversized_source_is_cut_off
+Ran 9 tests in 0.976s
+FAILED (failures=1)
+[2 s]
+== R11 R11 stat: 19-digit fields
+FAIL: test_stat_fields_are_base_10_and_capped (fields='1000000000000000000 0 0 0 0 0 0 5 0 0')
+FAIL: test_stat_fields_are_base_10_and_capped (fields='1 1 1 1 1 1 1 9223372036854775807 0 0')
+FAIL: test_stat_fields_are_base_10_and_capped (fields='9223372036854775807 1 0 0 0 0 0 0 0 0')
+FAIL: test_stat_fields_are_base_10_and_capped (fields='4611686018427387904 4611686018427387904 0 0 0 0 0 0 0 0')
+FAIL: test_stat_fields_are_base_10_and_capped (fields='0000000000000000001 0 0 0 0 0 0 0 0 0')
+Ran 9 tests in 1.026s
+FAILED (failures=5)
+[2 s]
+== R12 R12 stat: no 10#
+FAIL: test_stat_fields_are_base_10_and_capped (fields='010 020 030 040 050 060 070 001 0 0')
+FAIL: test_stat_fields_are_base_10_and_capped (fields='08 09 0 0 0 0 0 07 0 0')
+FAIL: test_stat_fields_are_base_10_and_capped (fields='0 0 0 0 0 0 0 0010 0 0')
+Ran 9 tests in 1.159s
+FAILED (failures=3)
+[1 s]
+== R13 R13 steal raw
+Ran 9 tests in 1.001s
+OK
+[2 s]
+== R14 R14 total not via num
+Ran 9 tests in 1.136s
+OK
+[2 s]
+== R15 R15 nproc OMP not cleared
+FAIL: test_nproc_ignores_openmp_env (case='both 424242')
+FAIL: test_nproc_ignores_openmp_env (case='OMP_NUM_THREADS only')
+FAIL: test_nproc_ignores_openmp_env (case='OMP_THREAD_LIMIT=1 only')
+FAIL: test_nproc_ignores_openmp_env (case='real nproc, both 424242')
+Ran 9 tests in 0.985s
+FAILED (failures=4)
+[1 s]
+== R16 R16 nproc THREAD_LIMIT kept
+FAIL: test_nproc_ignores_openmp_env (case='both 424242')
+FAIL: test_nproc_ignores_openmp_env (case='OMP_THREAD_LIMIT=1 only')
+Ran 9 tests in 0.993s
+FAILED (failures=2)
+[2 s]
+== R17 R17 root from env (P7)
+FAIL: test_no_root_path_reads_no_env (case='names -> planted tree')
+FAIL: test_no_root_path_reads_no_env (check='no open or read under the planted tree (inotify)')
+Ran 9 tests in 1.007s
+FAILED (failures=2)
+[2 s]
+== R19 R19 field: 64 -> 640
+FAIL: test_each_reader_caps_bytes_and_lines (key='mem_total_kib', case='meminfo first line over 64 x 4096 bytes')
+FAIL: test_each_reader_caps_bytes_and_lines (key='mem_available_kib', case='meminfo first line over 64 x 4096 bytes')
+FAIL: test_each_reader_caps_bytes_and_lines (key='swap_total_kib', case='meminfo first line over 64 x 4096 bytes')
+FAIL: test_each_reader_caps_bytes_and_lines (key='swap_free_kib', case='meminfo first line over 64 x 4096 bytes')
+FAIL: test_oversized_source_is_cut_off (key='mem_total_kib')
+FAIL: test_oversized_source_is_cut_off (key='mem_available_kib')
+FAIL: test_oversized_source_is_cut_off (key='swap_total_kib')
+FAIL: test_oversized_source_is_cut_off (key='swap_free_kib')
+Ran 9 tests in 1.232s
+FAILED (failures=8)
+[2 s]
+== R20 R20 stat: partial fields ok
+FAIL: test_stat_fields_are_base_10_and_capped (fields='1000000000000000000 0 0 0 0 0 0 5 0 0')
+FAIL: test_stat_fields_are_base_10_and_capped (fields='1 1 1 1 1 1 1 9223372036854775807 0 0')
+FAIL: test_stat_fields_are_base_10_and_capped (fields='9223372036854775807 1 0 0 0 0 0 0 0 0')
+FAIL: test_stat_fields_are_base_10_and_capped (fields='4611686018427387904 4611686018427387904 0 0 0 0 0 0 0 0')
+FAIL: test_stat_fields_are_base_10_and_capped (fields='18446744073709551616 0 0 0 0 0 0 0 0 0')
+FAIL: test_stat_fields_are_base_10_and_capped (fields='99999999999999999999999 0 0 0 0 0 0 0 0')
+FAIL: test_stat_fields_are_base_10_and_capped (fields='0000000000000000001 0 0 0 0 0 0 0 0 0')
+Ran 9 tests in 1.569s
+FAILED (failures=7)
+[2 s]
+== N5 N5 test: libc.inotify_init1 renamed (inotify unavailable)
+  test_no_root_path_reads_no_env (check='no open or read under the planted tree (inotify)') ... skipped 'inotify unavailable (no inotify_init1 in libc: AttributeError); only the output check ran'
+Ran 9 tests in 1.536s
+OK (skipped=1)
+[2 s]
+
+## 2. Security S4 bypass harness (rework4/security-scan/harness-s4-bypass.py.txt, unchanged) against the rework-5 test, then the reviewer detector probe (cat -v)
+/h/harness.py:20: SyntaxWarning: invalid escape sequence '\&'
+  ("check: \& escape (literal, launches nothing)", "_x=a\&b"),
+/h/harness.py:20: SyntaxWarning: invalid escape sequence '\&'
+  ("check: \& escape (literal, launches nothing)", "_x=a\&b"),
+/h/harness.py:48: SyntaxWarning: invalid escape sequence '\$'
+  ("${x@P} prompt expansion", f"{A}; _p=\"\$(sleep 3049 {NULL} $a)\"; : \"${{_p@P}}\""),
+/h/harness.py:49: SyntaxWarning: invalid escape sequence '\$'
+  ("arithmetic subscript re-evaluation", f"{A}; _q=\"_r[\$(sleep 3050 {NULL} $a)]\"; (( _q )) || :"),
+missed, but launches nothing   static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=False | control: hook unchanged
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | check: plain `sleep &` is caught
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | check: `&` inside $( ) on one line
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | check: exec with trailing &
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | check: {{ cmd; }} & across lines
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | check: function that backgrounds
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=False | check: \& escape (literal, launches nothing)
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=False | check: ${var:+&} (literal, launches nothing)
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.07s unwaited_sleep_alive=True  | FF ^L before # hides the rest of the line
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | VT ^K before #
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | FS ^\ before #
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | U+0085 NEL before #
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | U+2028 LINE SEPARATOR before #
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | CR ^M before #
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | leading ^_ then #: a function named ^_#
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | #-line inside a multi-line double-quoted string
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | #-line inside an unquoted heredoc
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | se''tsid -f (quote-split word)
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | ${c}sid -f (word built from a variable)
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | ev''al with & from a variable
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | source /dev/stdin <<<
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | . /dev/stdin <<<
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | bash -s <<< (no -c)
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | bash --norc -c
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | bash -o posix -c
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | $BASH -c
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | dash -c
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | trap string run at EXIT
+BYPASS                         static=MISSED bash-n=0 hook_rc=127 wall=0.00s unwaited_sleep_alive=True  | mapfile -C callback
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | ${x@P} prompt expansion
+missed, but launches nothing   static=MISSED bash-n=0 hook_rc=1 wall=0.00s unwaited_sleep_alive=False | arithmetic subscript re-evaluation
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.06s unwaited_sleep_alive=True  | python3 subprocess.Popen (program the hook calls)
+
+summary: 7 bypasses of 32 cases
+=== reviewer detector probe (rework 4 list) against the rework-5 detector
+today's hook: []
+FLAGGED bash -ce 'sleep 9 '
+FLAGGED bash --norc -c true
+FLAGGED bash -o pipefail -c true
+FLAGGED "bash" -c true
+FLAGGED "$BASH" -c true
+FLAGGED $SHELL -c true
+FLAGGED dash -c true
+FLAGGED zsh -c true
+FLAGGED env -i bash -c true
+FLAGGED command bash -c true
+FLAGGED exec bash -c true
+FLAGGED bash -s <<<true
+FLAGGED printf x | bash
+FLAGGED bash -x -c true
+FLAGGED bash -c"true"
+FLAGGED sh -euc true
+FLAGGED /usr/bin/env bash -c true
+FLAGGED true&
+FLAGGED true >&2&
+FLAGGED true 2>&1&
+FLAGGED true &>/dev/null&
+FLAGGED true |& cat &
+FLAGGED x=1 & y=2
+FLAGGED true >& /dev/null &
+FLAGGED true 1>&- &
+FLAGGED [[ a == b ]] & true
+FLAGGED builtin eval true
+FLAGGED command nohup true
+FLAGGED (setsid true)
+FLAGGED trap 'sleep 9 &' EXIT
+MISSED  timeout 5 true
+MISSED  xargs -P4 true
+FLAGGED exec 3> >(cat)
+
+## 3. Test-side mutants: each rework-5 guard reverted on a scratch copy of tests/test_block_main_commit_hook.py; HookLaunchesNoBackgroundWorkTest
+== T0 control (test as written): OK (0 failing subtests)
+== T1 splitlines() instead of split on newline: FAILED (failures=9) (9 failing subtests)
+    FAIL: test_detector_splits_on_newline_only (sep="'\\r'")
+    FAIL: test_detector_splits_on_newline_only (sep="'\\u2028'")
+    FAIL: test_detector_splits_on_newline_only (sep="'\\u2029'")
+    FAIL: test_detector_splits_on_newline_only (sep="'\\x0b'")
+    FAIL: test_detector_splits_on_newline_only (sep="'\\x0c'")
+    FAIL: test_detector_splits_on_newline_only (sep="'\\x1c'")
+    FAIL: test_detector_splits_on_newline_only (sep="'\\x1d'")
+    FAIL: test_detector_splits_on_newline_only (sep="'\\x1e'")
+    ... and 1 more
+== T2 comment lines skipped again: FAILED (failures=6) (6 failing subtests)
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (flagged='    # an indented comment: sleep 9 &')
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (flagged='#!/bin/sh -c true')
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (sleep 9 &)')
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (y)')
+    FAIL: test_full_check_rejects_hidden_separator_and_hash_line_mutants (mutant='#-line in a multi-line string')
+    FAIL: test_full_check_rejects_hidden_separator_and_hash_line_mutants (mutant='#-line in an unquoted heredoc')
+== T3 no printable-ASCII rule: FAILED (failures=4) (4 failing subtests)
+    FAIL: test_full_check_rejects_hidden_separator_and_hash_line_mutants (mutant='lone FF in a comment')
+    FAIL: test_full_check_rejects_hidden_separator_and_hash_line_mutants (mutant='lone NUL')
+    FAIL: test_full_check_rejects_hidden_separator_and_hash_line_mutants (mutant='lone U+2028 in a comment')
+    FAIL: test_full_check_rejects_hidden_separator_and_hash_line_mutants (mutant='lone \\x1f in a comment')
+== T4 all three S9 guards reverted: FAILED (failures=24) (24 failing subtests)
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (flagged='    # an indented comment: sleep 9 &')
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (flagged='#!/bin/sh -c true')
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (sleep 9 &)')
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (y)')
+    FAIL: test_detector_splits_on_newline_only (sep="'\\r'")
+    FAIL: test_detector_splits_on_newline_only (sep="'\\u2028'")
+    FAIL: test_detector_splits_on_newline_only (sep="'\\u2029'")
+    FAIL: test_detector_splits_on_newline_only (sep="'\\x0b'")
+    ... and 16 more
+== T5 rework-4 nested-shell rule (no pipe or source rules): FAILED (failures=40) (40 failing subtests)
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (flagged="'/bin/bash' -c true")
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (flagged="bash -ce 'sleep 9 '")
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (flagged="source '/dev/stdin' <<<x")
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (flagged='"$BASH" -c true')
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (flagged='"${SHELL}" -c true')
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (flagged='"/bin/sh" -ec true')
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (flagged='"bash" -c true')
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (flagged='$SHELL -c true')
+    ... and 32 more
+
+## tmut.py
+"""Tester rework 5: mutate the S4/S9 static test itself (scratch copies) and
+show that each rework-5 guard is pinned by a test of its own."""
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+BS = "\\"
+src = Path("/w/tests/test_block_main_commit_hook.py").read_text(encoding="utf-8")
+SPLIT = 'enumerate(text.split("' + BS + 'n"), 1):\n'
+SKIP = '        if line.lstrip().startswith("#"):\n            continue\n'
+CHARS = 'NOT_PRINTABLE = re.compile(rb"[^' + BS + 't' + BS + 'n' + BS + 'x20-' + BS + 'x7e]")'
+NOCHARS = 'NOT_PRINTABLE = re.compile(rb"(?!x)x")'
+M = {
+    "T0 control (test as written)": [],
+    "T1 splitlines() instead of split on newline": [(SPLIT, "enumerate(text.splitlines(), 1):\n")],
+    "T2 comment lines skipped again": [(SPLIT, SPLIT + SKIP)],
+    "T3 no printable-ASCII rule": [(CHARS, NOCHARS)],
+    "T4 all three S9 guards reverted": [(SPLIT, "enumerate(text.splitlines(), 1):\n" + SKIP),
+                                        (CHARS, NOCHARS)],
+    "T5 rework-4 nested-shell rule (no pipe or source rules)": "nested",
+}
+OLD_NESTED = ('NESTED_SHELL = re.compile(r"(?<![' + BS + 'w-])(?:bash|sh)' + BS + 's+(?:-[A-Za-z]+'
+              + BS + 's+)*-[A-Za-z]*c(?![' + BS + 'w-])")\n'
+              "PIPE_INTO_SHELL = re.compile(r'(?!x)x')\nSOURCE_STDIN = re.compile(r'(?!x)x')\n")
+for name, subs in M.items():
+    t = src
+    if subs == "nested":
+        i = t.index("NESTED_SHELL = re.compile(_SHELL_WORD")
+        j = t.index("PROCESS_SUBST = re.compile(")
+        t = t[:i] + OLD_NESTED + t[j:]
+    else:
+        for a, b in subs:
+            assert t.count(a) == 1, (name, a)
+            t = t.replace(a, b)
+    d = Path("/tmp/tm") / name.split()[0]
+    shutil.copytree("/w", d)
+    (d / "tests/test_block_main_commit_hook.py").write_text(t, encoding="utf-8")
+    r = subprocess.run([sys.executable, "-m", "unittest",
+                        "tests.test_block_main_commit_hook.HookLaunchesNoBackgroundWorkTest"],
+                       cwd=d, capture_output=True, text=True)
+    fails = sorted({ln.split(" (tests.")[0] + " " + ln[ln.rfind("("):]
+                    for ln in r.stderr.splitlines() if ln.startswith(("FAIL:", "ERROR:"))})
+    last = [ln for ln in r.stderr.splitlines() if ln.startswith(("OK", "FAILED"))]
+    print(f"== {name}: {last[-1] if last else r.stderr[-400:]} ({len(fails)} failing subtests)")
+    for f in fails[:8]:
+        print("   ", f)
+    if len(fails) > 8:
+        print(f"    ... and {len(fails) - 8} more")

@@ -1,0 +1,73 @@
+# ci-speed rework 2, tester: order guard (file handshake) under the reviewer's stress
+# docker run --rm --cpuset-cpus 0,1 (same flags as tester-mutants.txt) ke-gates:wt-33a132fbfdd7 bash stress-inner.sh <busy> <repeats> T.test_module_logs_and_summary_lines_print_in_glob_order
+# stress-inner.sh: starts <busy> '/opt/venv/bin/python -c "while 1: pass"' loops in the same container, then runs the test <repeats> times.
+# --- stress-inner.sh
+#!/usr/bin/env bash
+# stress-inner.sh <busy loops> <repeats> <test id>
+busy=$1; n=$2; t=$3
+for i in $(seq 1 "$busy"); do /opt/venv/bin/python -c 'while 1: pass' & done
+echo "nproc=$(nproc) busy=$busy repeats=$n"
+pass=0; fail=0
+for i in $(seq 1 "$n"); do
+  if out="$(/opt/venv/bin/python -m unittest "$t" 2>&1)"; then pass=$((pass+1)); else fail=$((fail+1)); echo "--- run $i failed"; echo "$out" | grep -E 'Error|FAIL' | head -5; fi
+done
+echo "result: pass=$pass fail=$fail"
+kill $(jobs -p) 2>/dev/null
+# --- output
+== base, 2 CPUs (cpuset 0,1), 6 busy loops, 12 runs
+nproc=2 busy=6 repeats=12
+result: pass=12 fail=0
+== m1 (cat on finish), same load, 6 runs (every run must FAIL)
+nproc=2 busy=6 repeats=6
+--- run 1 failed
+FAIL: test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order) (part='log blocks')
+AssertionError: 62 not less than 36 : tests.test_oa's log is not wholly before tests.test_ob's:
+FAILED (failures=1)
+--- run 2 failed
+FAIL: test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order) (part='log blocks')
+AssertionError: 52 not less than 26 : tests.test_oa's log is not wholly before tests.test_ob's:
+FAILED (failures=1)
+--- run 3 failed
+FAIL: test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order) (part='log blocks')
+AssertionError: 52 not less than 26 : tests.test_oa's log is not wholly before tests.test_ob's:
+FAILED (failures=1)
+--- run 4 failed
+FAIL: test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order) (part='log blocks')
+AssertionError: 52 not less than 26 : tests.test_oa's log is not wholly before tests.test_ob's:
+FAILED (failures=1)
+--- run 5 failed
+FAIL: test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order) (part='log blocks')
+AssertionError: 52 not less than 26 : tests.test_oa's log is not wholly before tests.test_ob's:
+FAILED (failures=1)
+--- run 6 failed
+FAIL: test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order) (part='log blocks')
+AssertionError: 42 not less than 16 : tests.test_oa's log is not wholly before tests.test_ob's:
+FAILED (failures=1)
+result: pass=0 fail=6
+== m5 (unit: line on finish), same load, 6 runs (every run must FAIL)
+nproc=2 busy=6 repeats=6
+--- run 1 failed
+FAIL: test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order) (part='unit: lines')
+AssertionError: Lists differ: ['tests.testfoo', 'tests.test_oc', 'tests.test_ob', '[26 chars]t_x'] != ['tests.test_oa', 'tests.test_ob', 'tests.test_oc', '[26 chars]foo']
+FAILED (failures=1)
+--- run 2 failed
+FAIL: test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order) (part='unit: lines')
+AssertionError: Lists differ: ['tests.testfoo', 'tests.test_oc', 'tests.test_ob', '[26 chars]t_x'] != ['tests.test_oa', 'tests.test_ob', 'tests.test_oc', '[26 chars]foo']
+FAILED (failures=1)
+--- run 3 failed
+FAIL: test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order) (part='unit: lines')
+AssertionError: Lists differ: ['tests.testfoo', 'tests.test_oc', 'tests.test_ob', '[26 chars]t_x'] != ['tests.test_oa', 'tests.test_ob', 'tests.test_oc', '[26 chars]foo']
+FAILED (failures=1)
+--- run 4 failed
+FAIL: test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order) (part='unit: lines')
+AssertionError: Lists differ: ['tests.testfoo', 'tests.test_oc', 'tests.test_ob', '[26 chars]t_x'] != ['tests.test_oa', 'tests.test_ob', 'tests.test_oc', '[26 chars]foo']
+FAILED (failures=1)
+--- run 5 failed
+FAIL: test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order) (part='unit: lines')
+AssertionError: Lists differ: ['tests.test_oc', 'tests.test_x', 'tests.test_ob', 'tes[24 chars]_oa'] != ['tests.test_oa', 'tests.test_ob', 'tests.test_oc', 'te[24 chars]foo']
+FAILED (failures=1)
+--- run 6 failed
+FAIL: test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order) (part='unit: lines')
+AssertionError: Lists differ: ['tests.test_oc', 'tests.test_ob', 'tests.test_oa', 'te[24 chars]t_x'] != ['tests.test_oa', 'tests.test_ob', 'tests.test_oc', 'te[24 chars]foo']
+FAILED (failures=1)
+result: pass=0 fail=6

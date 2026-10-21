@@ -1,0 +1,13 @@
+................................F.
+======================================================================
+FAIL: test_probe_signal_exit_codes (tests.probe_review.Probe.test_probe_signal_exit_codes) (signal='SIGINT')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/probe_review.py", line 59, in test_probe_signal_exit_codes
+    self.assertEqual(code, want)
+AssertionError: 1 != 130
+
+----------------------------------------------------------------------
+Ran 34 tests in 53.246s
+
+FAILED (failures=1)

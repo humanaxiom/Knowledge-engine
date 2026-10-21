@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Runs the two signal tests with decoys that must survive.
+cd /work
+mkdir -p /tmp/decoy && cd /tmp/decoy
+python3 -c 'import signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(600)' tests.test_ign_term & D1=$!   # argv names the module, other cwd
+setsid sleep 600 & D2=$!                                                          # other session
+bash -c 'trap "" TERM INT; exec sleep 601' & D3=$!                               # runner's group, ignores TERM
+cd /work
+/opt/venv/bin/python -m unittest -v \
+  tests.test_harness_followups.IntegrationRunsOnceTest.test_signal_kills_pool_children_and_exits_nonzero \
+  tests.test_harness_followups.IntegrationRunsOnceTest.test_term_leaves_no_module_process_that_ignores_term 2>&1 | tail -n 12
+echo "unittest rc=${PIPESTATUS[0]}"
+for v in D1 D2 D3; do kill -0 "${!v}" 2>/dev/null && echo "$v alive" || echo "$v DEAD"; done
+echo "--- processes left"; bash /h/pl.sh

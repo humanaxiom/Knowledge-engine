@@ -1,0 +1,296 @@
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.82ms
+Installed 1 package in 1ms
+FF.FF..........FF...F...FFFFFF..FF
+======================================================================
+FAIL: test_coverage_combine_gets_an_explicit_file_list (tests.test_harness_followups.IntegrationRunsOnceTest.test_coverage_combine_gets_an_explicit_file_list) (mode='fast')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 656, in test_coverage_combine_gets_an_explicit_file_list
+    self.assertTrue(files, f"coverage combine got no file list: {combine[0]}")
+AssertionError: [] is not true : coverage combine got no file list: python -m coverage combine
+
+======================================================================
+FAIL: test_coverage_combine_gets_an_explicit_file_list (tests.test_harness_followups.IntegrationRunsOnceTest.test_coverage_combine_gets_an_explicit_file_list) (mode='full')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 656, in test_coverage_combine_gets_an_explicit_file_list
+    self.assertTrue(files, f"coverage combine got no file list: {combine[0]}")
+AssertionError: [] is not true : coverage combine got no file list: python -m coverage combine
+
+======================================================================
+FAIL: test_data_file_lookup_empty_or_failed_fails_before_any_test (tests.test_harness_followups.IntegrationRunsOnceTest.test_data_file_lookup_empty_or_failed_fails_before_any_test) (lookup='empty', mode='fast')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 676, in test_data_file_lookup_empty_or_failed_fails_before_any_test
+    self.assertNotEqual(code, 0, f"data_file lookup {lookup}, test.sh passed:\n"
+AssertionError: 0 == 0 : data_file lookup empty, test.sh passed:
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+Combined 3 files
+
+
+======================================================================
+FAIL: test_data_file_lookup_empty_or_failed_fails_before_any_test (tests.test_harness_followups.IntegrationRunsOnceTest.test_data_file_lookup_empty_or_failed_fails_before_any_test) (lookup='empty', mode='full')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 676, in test_data_file_lookup_empty_or_failed_fails_before_any_test
+    self.assertNotEqual(code, 0, f"data_file lookup {lookup}, test.sh passed:\n"
+AssertionError: 0 == 0 : data_file lookup empty, test.sh passed:
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+test_counted (tests.integration.test_counted.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+Combined 4 files
+
+
+======================================================================
+FAIL: test_signal_kills_pool_children_and_exits_nonzero (tests.test_harness_followups.IntegrationRunsOnceTest.test_signal_kills_pool_children_and_exits_nonzero) (signal='SIGINT')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 808, in test_signal_kills_pool_children_and_exits_nonzero
+    self.assertEqual(alive, [], f"pool children outlived test.sh after "
+AssertionError: Lists differ: [1109, 1113] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+1109
+
+- [1109, 1113]
++ [] : pool children outlived test.sh after SIGINT (exit -2)
+
+======================================================================
+FAIL: test_signal_kills_pool_children_and_exits_nonzero (tests.test_harness_followups.IntegrationRunsOnceTest.test_signal_kills_pool_children_and_exits_nonzero) (signal='SIGTERM')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 808, in test_signal_kills_pool_children_and_exits_nonzero
+    self.assertEqual(alive, [], f"pool children outlived test.sh after "
+AssertionError: Lists differ: [1154, 1158] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+1154
+
+- [1154, 1158]
++ [] : pool children outlived test.sh after SIGTERM (exit -15)
+
+======================================================================
+FAIL: test_unit_pool_fails_naming_a_module_whose_log_is_missing (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_naming_a_module_whose_log_is_missing)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 737, in test_unit_pool_fails_naming_a_module_whose_log_is_missing
+    self.assertTrue(self.error_lines(output, module, "log"),
+AssertionError: [] is not true : no error line names the module and its log:
+cat: /tmp/tmp.85aC4y2Ea6/tests.test_x.log: No such file or directory
+
+
+======================================================================
+FAIL: test_unit_pool_fails_when_combine_leaves_a_module_data_file (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_combine_leaves_a_module_data_file) (mode='fast', run='unconsumed')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 636, in test_unit_pool_fails_when_combine_leaves_a_module_data_file
+    self.assertNotEqual(code, 0, f"combine left {module}'s data file unconsumed, "
+AssertionError: 0 == 0 : combine left tests.testfoo's data file unconsumed, test.sh passed:
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+/opt/venv/lib/python3.12/site-packages/coverage/data.py:211: CoverageWarning: Couldn't use data file '/tmp/tmpt0crqw0j/project/.coverage.tests.testfoo.83bee9c6f9dc.pid2071.XuGC1Sbx.HWMiI03QCgWh': file is not a database
+  data._warn(str(exc))
+Combined 2 files, 1 file errored
+
+
+======================================================================
+FAIL: test_unit_pool_fails_when_combine_leaves_a_module_data_file (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_combine_leaves_a_module_data_file) (mode='full', run='unconsumed')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 636, in test_unit_pool_fails_when_combine_leaves_a_module_data_file
+    self.assertNotEqual(code, 0, f"combine left {module}'s data file unconsumed, "
+AssertionError: 0 == 0 : combine left tests.testfoo's data file unconsumed, test.sh passed:
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+test_counted (tests.integration.test_counted.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+/opt/venv/lib/python3.12/site-packages/coverage/data.py:211: CoverageWarning: Couldn't use data file '/tmp/tmpt0crqw0j/project/.coverage.tests.testfoo.83bee9c6f9dc.pid2170.XrC1Ftgx.HWMiI03QCgWh': file is not a database
+  data._warn(str(exc))
+Combined 3 files, 1 file errored
+
+
+======================================================================
+FAIL: test_unit_pool_prints_a_summary_line_per_module (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_prints_a_summary_line_per_module) (run='all pass')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 713, in test_unit_pool_prints_a_summary_line_per_module
+    self.assertEqual(summary(output), {"tests.test_x": ["0"], "tests.testfoo": ["0"]},
+AssertionError: {} != {'tests.test_x': ['0'], 'tests.testfoo': ['0']}
+- {}
++ {'tests.test_x': ['0'], 'tests.testfoo': ['0']} : test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+Combined 3 files
+
+
+======================================================================
+FAIL: test_unit_pool_prints_a_summary_line_per_module (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_prints_a_summary_line_per_module) (run='one module fails')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 722, in test_unit_pool_prints_a_summary_line_per_module
+    self.assertEqual(summary(output), {"tests.test_x": ["0"], "tests.testfoo": ["0"],
+AssertionError: {} != {'tests.test_x': ['0'], 'tests.testfoo': ['0'], 'tests.test_fails': ['1']}
+- {}
++ {'tests.test_fails': ['1'], 'tests.test_x': ['0'], 'tests.testfoo': ['0']} : test_fails (tests.test_fails.Fails.test_fails) ... FAIL
+
+======================================================================
+FAIL: test_fails (tests.test_fails.Fails.test_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/tmpiz387tio/project/tests/test_fails.py", line 4, in test_fails
+    self.fail('planted failure')
+AssertionError: planted failure
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (failures=1)
+error: tests.test_fails exited with status 1
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+
+======================================================================
+FAIL: test_unit_pool_runs_each_module_with_durations_10 (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_runs_each_module_with_durations_10) (module='tests.test_x')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 694, in test_unit_pool_runs_each_module_with_durations_10
+    self.assertRegex(runs[0], r"-m unittest .*--durations[ =]10 ")
+AssertionError: Regex didn't match: '-m unittest .*--durations[ =]10 ' not found in 'python -m coverage run -p --data-file=./.coverage.tests.test_x -m unittest -v tests.test_x'
+
+======================================================================
+FAIL: test_unit_pool_runs_each_module_with_durations_10 (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_runs_each_module_with_durations_10) (module='tests.testfoo')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 694, in test_unit_pool_runs_each_module_with_durations_10
+    self.assertRegex(runs[0], r"-m unittest .*--durations[ =]10 ")
+AssertionError: Regex didn't match: '-m unittest .*--durations[ =]10 ' not found in 'python -m coverage run -p --data-file=./.coverage.tests.testfoo -m unittest -v tests.testfoo'
+
+======================================================================
+FAIL: test_data_file_comes_from_coverage_api_not_debug_config (tests.test_harness_followups.UnitPoolStaticTest.test_data_file_comes_from_coverage_api_not_debug_config)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 962, in test_data_file_comes_from_coverage_api_not_debug_config
+    self.assertNotIn("debug config", code)
+AssertionError: 'debug config' unexpectedly found in 'set -euo pipefail\nCDPATH=\'\' cd -- "$(dirname -- "$0")/.."\n\nmode="${1:-full}"\n\nuv run --locked python -m coverage erase\n\nwhile IFS= read -r d; do\n  if [ ! -f "$d/__init__.py" ]; then\n    echo "error: $d contains test*.py but has no __init__.py; its tests would be skipped" >&2\n    exit 1\n  fi\ndone < <(find tests -name __pycache__ -prune -o -name \'test*.py\' -print | sed \'s|/[^/]*$||\' | sort -u)\n\nshopt -s nullglob\nmods=()\nfor f in tests/test*.py; do\n  m="${f%.py}"\n  mods+=("${m//\\//.}")\ndone\nshopt -u nullglob\nif [ "${#mods[@]}" -eq 0 ]; then\n  echo "error: no top-level unit tests in tests/" >&2\n  exit 1\nfi\n\nk="$(nproc 2>/dev/null || echo 1)"\ncase "$k" in \'\' | *[!0-9]* | 0) k=1 ;; esac\n[ "$k" -le 4 ] || k=4\n\ncov_data="$(uv run --locked python -m coverage debug config | sed -n "s/^ *data_file *[:=] *\'*\\([^\' ]*\\)\'* *\\$/\\1/p" | head -n 1)"\ncov_dir="$(dirname -- "${cov_data:-.coverage}")"\ncov_name="$(basename -- "${cov_data:-.coverage}")"\n\nlogs="$(mktemp -d)"\ntrap \'rm -rf -- "$logs"\' EXIT\nmapfile -t order < <(\n  for m in "${mods[@]}"; do\n    printf \'%s %s\n\' "$(stat -c %s -- "${m//.//}.py")" "$m"\n  done | sort -k1,1nr -k2,2 | cut -d\' \' -f2\n)\nrun_module() {\n  local m="$1"\n  local rc=0\n  uv run --locked python -m coverage run -p --data-file="$cov_dir/$cov_name.$m" -m unittest -v "$m" >"$logs/$m.log" 2>&1 || rc=$?\n  echo "$rc" >"$logs/$m.rc"\n}\nfor m in "${order[@]}"; do\n  while [ "$(jobs -rp | wc -l)" -ge "$k" ]; do wait -n || true; done\n  run_module "$m" &\ndone\nwait\n\nfailed=0\nfor m in "${mods[@]}"; do\n  cat -- "$logs/$m.log"\n  rc="$(cat -- "$logs/$m.rc" 2>/dev/null || echo missing)"\n  if [ "$rc" != 0 ]; then\n    echo "error: $m exited with status $rc" >&2\n    failed=1\n  elif ! grep -Eq \'^Ran [1-9][0-9]* tests? in \' "$logs/$m.log"; then\n    echo "error: $m printed no \'Ran N tests\' line with N > 0" >&2\n    failed=1\n  fi\n  if ! compgen -G "$cov_dir/$cov_name.$m.*" >/dev/null; then\n    echo "error: $m left no coverage data file ($cov_dir/$cov_name.$m.*)" >&2\n    failed=1\n  fi\ndone\n[ "$failed" -eq 0 ] || exit 1\n\nfor d in tests/*/; do\n  d="${d%/}"\n  case "$d" in tests/integration|tests/__pycache__) continue ;; esac\n  [ -n "$(find "$d" -name __pycache__ -prune -o -name \'test*.py\' -print -quit)" ] || continue\n  uv run --locked python -m coverage run -p -m unittest discover -s "$d" -t . -v\ndone\n\nif [ "$mode" = "full" ] && [ -d tests/integration ]; then\n  uv run --locked python -m coverage run -p -m unittest discover -s tests/integration -t . -v\nfi\n\nuv run --locked python -m coverage combine\nuv run --locked python -m coverage report\nuv run --locked python -m mypy'
+
+======================================================================
+FAIL: test_printf_formats_hold_no_literal_newline (tests.test_harness_followups.UnitPoolStaticTest.test_printf_formats_hold_no_literal_newline) (format="'%s %s\n'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 971, in test_printf_formats_hold_no_literal_newline
+    self.assertNotIn("\n", fmt)
+AssertionError: '\n' unexpectedly found in "'%s %s\n'"
+
+----------------------------------------------------------------------
+Ran 28 tests in 77.004s
+
+FAILED (failures=15)

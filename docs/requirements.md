@@ -73,7 +73,10 @@ relies on. Done when the proof below exists, not when the files exist.
    `PreToolUse` hook on `Bash`. The hook is a **guard rail against agent
    mistakes, not a security boundary**: it is a simple, fail-safe text rule,
    not a shell parser, and any string-matching hook on a shell command can be
-   bypassed. The real control is branch protection on the remote (Q18).
+   bypassed. Branch protection on the remote (Q18) was skipped by decision.
+   *Q18 resolved 2026-10-20 (human, SKIPPED; `docs/open-questions.md`): branch
+   protection is not enabled, merges stay a manual human action, and this
+   hook is the only automated guard (accepted risk).*
    Decision record: ADR-KE-001 "Decision: commit hook is a simple fail-safe
    text rule (2026-10-18)" in `docs/architecture.md`; round-4 ruling on
    security H2/L13/M3 (`docs/evidence/harness-claude-code/security-rework3.md`)
@@ -104,15 +107,24 @@ relies on. Done when the proof below exists, not when the files exist.
       - **Accepted false positives (fail safe):** one-line commands that mention
         git, push and main (e.g. `git commit -m "fix push to main docs"` on a
         plan-item branch, or `echo "git push origin main"`).
-      - **Accepted bypasses off `main`/`master`** (silent by design; Q18 branch
-        protection is the real control): words hidden from the text (variables,
+      - **Accepted bypasses off `main`/`master`** (silent by design; accepted
+        risk per Q18, resolved 2026-10-20: branch protection SKIPPED, merges
+        stay a manual human action): words hidden from the text (variables,
         `eval`, aliases, encodings), `gh`, `git update-ref`, and a push split
         across lines without a line continuation.
    f. **Performance.** The hook's cost is linear in the command's length and it
       uses no `awk`. Given a 1 MB command, when the hook runs in the gates image
-      with `jq` present and with it absent, then it completes in under 3 s,
-      whatever the command's shape: many short tokens, one long token, or one
-      long heredoc line.
+      with `jq` present and with it absent, then it uses under 3 s of CPU time
+      (user + sys of the hook and the children it waits for, measured as the
+      `RUSAGE_CHILDREN` delta around the one hook call), whatever the
+      command's shape: many short tokens, one long token, or one long heredoc
+      line. The same call also finishes within a 60 s hang guard
+      (`subprocess.run` `timeout`), which catches a hook that blocks or
+      sleeps. *Reworded 2026-10-21 (human ruling, `ci-speed` rework 3;
+      architecture §2.2.1-r3 decision 6). The bound stays 3 s; only what is
+      measured changed, because wall time on a shared runner moves with
+      load (`docs/evidence/ci-speed/rework3/hook-cpu-vs-wall.txt`).
+      Original wording: "then it completes in under 3 s".*
    `[unit: tests/test_block_main_commit_hook.py]` feeds Claude Code's real
    compact payload (`{"tool_input":{"command":"…"}}`, no spaces after `:`) and
    tests every rule in a-f both with `jq` on `PATH` and with it absent,
@@ -2278,6 +2290,376 @@ orchestrator on 2026-10-20 (see `docs/open-questions.md`):
 
 ---
 
+## Item: ci-speed
+
+Outcome metric moved: neither directly. **The CI speed-up is withdrawn**
+(human ruling 2026-10-21). On the hosted runner the pool made the unit stage
+slower (806–848 s against 542–793 s for one process;
+`docs/evidence/ci-speed/rework3/diagnosis.md`), and this item makes no speed
+claim. What it delivers instead:
+- coverage that fails closed: every coverage run's data is accounted for, or
+  the run fails naming it;
+- CI diagnostics, through the resource probe and `--durations 10`, so the
+  next slow run can be classified from its log;
+- hook budget tests that no longer flake on a loaded runner;
+- the CS-5 nested-coverage fix and the CS-8 hook header.
+
+These keep the single CI gate trustworthy, so every later item can ship. The
+speed goal moves to plan item `test-diet`.
+
+- Source: `docs/handoffs/ci-speed.md` (orchestrator, accepted scope,
+  2026-10-20; human rulings, 2026-10-21).
+- Design: `docs/architecture.md` §2.2.1 (pool, withdrawn) and §2.2.1-r3 (in
+  force).
+- Profile: `docs/evidence/ci-speed/profile.md`.
+
+The integration suite is unchanged. Criteria are `CS-<n>`. Named tests live
+in `IntegrationRunsOnceTest` (`tests/test_harness_followups.py`) unless
+another class is named.
+
+- **CS-1 WITHDRAWN (human ruling 2026-10-21):** on CI the pool gave 0.78–1.18×
+  one process's throughput, so it was slower; replaced by CS-10. Original
+  text kept for the record: *One process per top-level module, bounded pool.* Given the
+  top-level unit modules (`tests/test*.py`, the same glob as unittest
+  discovery's default pattern `test*.py`, so the pool runs exactly the
+  modules discovery ran), when `test.sh` runs the unit
+  suite, then each module runs in its own process, exactly once, and which
+  modules share a process never depends on `nproc` or timing (none do). At
+  most `min(nproc, 4)` module processes run at once, with `nproc` read inside
+  the container (no new environment key; PS-2.21 stands).
+  `[unit: test_top_level_modules_run_in_separate_processes]` (distinct pids,
+  each module once) and
+  `[unit: test_unit_pool_concurrency_follows_nproc_capped_at_4]` (fake
+  `nproc`: 1 gives no overlap, 2 gives overlap of at least 2, 64 gives a
+  maximum overlap of at most 4).
+- **CS-2 WITHDRAWN (human ruling 2026-10-21):** one process streams its output,
+  so there are no per-module blocks to order. Original text kept for the
+  record: *Output printed whole, in module order.* Each module's output is
+  printed as one contiguous block, after the pool, in module (glob) order,
+  never interleaved with another module's. The sentinel line
+  `test_top_level_unit_suite_ran (…) ... ok` therefore still matches the
+  `verify.sh` check. `[unit: guard, contiguous output blocks]` (green today,
+  stays green).
+- **CS-3 WITHDRAWN (human ruling 2026-10-21):** per-module rc and `Ran` checks
+  exist only for the pool. With one process, `set -e` and `verify.sh`'s
+  existing `Ran N > 0` and sentinel checks fail closed (CS-10). Original text
+  kept for the record: *The run fails closed.* Given any module exits non-zero, or exits 0
+  but prints no `Ran N` line with N > 0, when the pool finishes, then
+  `test.sh` exits non-zero. When one module fails, the other modules still
+  run and their output is still printed.
+  `[unit: test_unit_pool_fails_when_a_module_prints_no_ran_line]` (fake `uv`
+  exits 0 silently for one named module) and the failing-module guard (green
+  today, stays green). The existing `test_no_ran_line_fails` stays green.
+- **CS-4 Coverage fails closed; threshold unchanged** (amended 2026-10-21:
+  per coverage run instead of per pooled module; §2.2.1-r3 decision 3).
+  - Every coverage run in `test.sh` (the top-level run, each sub-package run
+    and the integration run) runs under `coverage run -p` with
+    `uv run --locked`.
+  - `coverage erase` still runs before the first run. The report enforces
+    `fail_under = 80` from `pyproject.toml`, unchanged, and mypy is
+    unchanged.
+  - The coverage data path comes from coverage's Python API
+    (`coverage.Coverage().config.data_file`, through
+    `uv run --locked python -c`). A lookup that fails or prints nothing fails
+    the run before any test runs. There is no `.coverage` fallback.
+  - Each run writes `--data-file=<cov_dir>/<cov_name>.<label>`. The labels
+    are `toplevel` for the top-level run, `tests.<pkg>` for each sub-package
+    run and `tests.integration` for the integration run. No label is a
+    dot-prefix of another.
+  - Given a run that leaves no `<cov_name>.<label>.*` file, then `test.sh`
+    exits non-zero and names the label.
+  - `coverage combine` is given the explicit list of this run's data files,
+    never a directory and never no argument.
+  - Given any of those files is still on disk after `combine` (not
+    consumed), then `test.sh` exits non-zero and names its label.
+  - No percentage band against another figure is used (Q-CS1, resolved).
+
+  `[unit: test_data_file_lookup_empty_or_failed_fails_before_any_test]`,
+  `[unit: test_coverage_combine_gets_an_explicit_file_list]`, a run that leaves no
+  data, and a fixture test with a real `combine` that leaves one run's file
+  unconsumed. These are adapted to the labels; exact names are in the
+  tester's handoff section. `[unit: test_engine_quality static pins]` stays
+  green.
+- **CS-5 A nested `test.sh` never touches the gate's coverage data.** Given a
+  test that runs `test.sh` in a throwaway project (today
+  `test_coverage_erase_precedes_first_run_and_spares_checkout`), when it runs
+  inside the gate, then no file under the gate's coverage `data_file` path
+  (`/tmp/.coverage*`) is deleted or added by it. That test keeps its own
+  assertions (erase precedes the first run; the checkout is spared).
+  `[unit: test_nested_test_sh_leaves_gate_coverage_data_alone]` (a uniquely
+  named planted `/tmp/.coverage.<unique>` survives; removed in cleanup). RED
+  before the fix.
+- **CS-6 Gates unchanged.** `git diff` against the branch base shows no change
+  to `scripts/verify.sh`, `tests/test_sentinel.py` (module, class and method
+  names), or the `[tool.coverage]` settings in `pyproject.toml`. In
+  `.github/workflows/ci.yml` the only step stays `./scripts/verify.sh full`
+  (`test_harness_port` stays green); only the `timeout-minutes` value and its
+  comment may change, and only under CS-7. No gate is skipped, weakened or
+  moved out of `verify.sh`.
+- **CS-7 PS-3.4 re-measure.** After the first two green CI runs of
+  `verify.sh full` that include this item's final `test.sh` (one top-level
+  process; amended 2026-10-21, was "the pool"), `timeout-minutes` is set to the
+  slower run's measured duration plus 50 %, rounded up to a whole minute
+  (same rule as the platform-offline re-measure), in a follow-up commit on
+  the branch. Both run ids, their durations and the arithmetic are saved in
+  `docs/evidence/ci-speed/`, and the ci.yml comment names them.
+  `test_ci_job_has_timeout` (fast) is unchanged; the reviewer checks the
+  value against the evidence.
+- **CS-8 Hook header reflects Q18.** `scripts/hooks/block-main-commit.sh` no
+  longer calls branch protection "the real control (Q18)". Its header says
+  Q18 was skipped (human, 2026-10-20), merges to `main` are a manual human
+  action, and this hook is the only automated guard. Comment-only: the hook's
+  behaviour is unchanged, and the existing hook tests stay green (their
+  budget measurement changes only under CS-12).
+  `[unit: static test, "the hook header no longer calls branch protection
+  the real control"]` (tester adding; exact method name in the tester's
+  handoff section).
+- **CS-9 WITHDRAWN (human ruling 2026-10-21):** there is no speed claim. The
+  method was also wrong for its purpose: dedicated local cores with no stack
+  do not model the hosted runner's CPU (0.57× locally, 1.02–1.56× on CI;
+  diagnosis §6). Its corrected form, a CI A/B on the same commit, is TD-5 in
+  `test-diet`. Original text kept for the record: *Outcome target, measured.* On the gates image pinned to 2 CPUs
+  (`--cpuset-cpus`, as in profile.md §3), the pooled unit suite's wall time is
+  at most about 60 % of a one-process run of the same unit suite measured on
+  the SAME commit (the commit under test, not the branch base or an earlier
+  experiment), on the same host in the same conditions (modelled: 426 s →
+  about 260 s or less; review L1). Both figures, the commit and both
+  commands are saved in `docs/evidence/ci-speed/`.
+  The CI unit-suite time from the two CS-7 runs is recorded too (projected
+  310–450 s; informational, the runner is noisy). A miss goes to the
+  orchestrator with the evidence; the target is not adjusted to pass.
+- **CS-10 One top-level process** (added 2026-10-21; §2.2.1-r3 decisions 2
+  and 5).
+  - Given the top-level unit modules (`tests/test*.py`), when `test.sh` runs,
+    then they all run, each exactly once, in **one**
+    `uv run --locked python -m coverage run -p --data-file=<cov_dir>/<cov_name>.toplevel -m unittest -v --durations 10 <modules…>`
+    process, in glob order.
+  - Output streams as it did before the pool. The sub-package runs and then
+    the integration run (`full` only) follow in sequence.
+  - Given any run exits non-zero, then `test.sh` exits non-zero and no later
+    run starts. The one exception is the CS-11 end line.
+  - `verify.sh`'s existing `Ran N > 0` and sentinel checks are unchanged.
+  - Under CS-10 the pool's code is gone: no k, ordering, log directory,
+    per-module summary lines or INT/TERM trap.
+
+  `[unit: test_top_level_modules_run_in_one_process]` (counted modules
+  record one shared pid, each module once, label `toplevel`; replaces
+  `test_top_level_modules_run_in_separate_processes`), the `--durations 10`
+  test adapted to the single run, and guards that stay green:
+  - a failing top-level module fails the run;
+  - `test_failing_subpackage_module_fails_run`;
+  - `test_failing_integration_module_fails_full_run`.
+- **CS-11 Resource probe** (added 2026-10-21; human ruling e3; §2.2.1-r3
+  decision 4).
+  - `test.sh` prints one `resources: phase=start …` line immediately before
+    the top-level run.
+  - It prints one `resources: phase=end …` line after the last unit run
+    (before the integration run in `full`, before `combine` in `fast`), even
+    when a unit run failed. `test.sh` still exits non-zero in that case.
+  - The line has the exact keys, order and value pattern given in §2.2.1-r3:
+    nproc, the cgroup CPU quota and throttling, memory and swap, the cgroup
+    memory limit and peak, PSI totals for cpu, memory and io, and CPU steal
+    and total ticks. The sources are `/proc` and `/sys/fs/cgroup`.
+  - Given a missing or unreadable source, or a value that is not a number
+    (or `max` where allowed), that key prints `n/a`. The probe still exits
+    0, prints nothing to stderr and never fails the run.
+  - The line never contains an environment variable's value or any file
+    text other than digits or `max`.
+  - *Hardening (added 2026-10-21, rework 4; §2.2.1-r3 decision 4; security
+    S5–S7, review nits 5–6):*
+    - Given a source that is a FIFO, a device (for example `/dev/zero`) or
+      any other non-regular file, then that key prints `n/a`, and the probe
+      exits 0 quickly without hanging. Reads are bounded: each read of a
+      source has a timeout and a byte cap, and each source is read for at
+      most a fixed number of lines. An oversized or endless printable
+      regular file is cut off, and a key not found within the cap prints
+      `n/a`. (The here-string read of the in-memory `cpu.max` value is
+      uncapped by design.)
+    - Known limit (security S8, accepted low): a NUL-filled file, or a FIFO
+      swapped in after the regular-file check, is bounded only by the CI job
+      timeout (on a local run, until someone stops it). These are the
+      complete set of hang cases; `read -t` also fires on character devices
+      such as /dev/zero. A NUL-filled file costs several seconds per GB
+      (measured 2.5–11 s). It is reachable only through the test-only `root`
+      argument or control of `/proc` and `/sys`, and it fails red, never
+      green. The
+      `timeout 10` wrapper is a follow-up (below).
+    - A printed number has at most 20 digits; a longer one prints `n/a`.
+    - `/proc/stat` arithmetic is base-10 (a leading zero is decimal), with
+      each field capped at 18 digits so the sum cannot overflow. A field
+      over the cap, or any invalid field, gives `n/a` for both
+      `cpu_steal_ticks` and `cpu_total_ticks`. Both values are printed
+      through the same number check as every other key.
+    - `nproc` runs with `OMP_NUM_THREADS` and `OMP_THREAD_LIMIT` cleared, so
+      an OpenMP override never changes the reported count.
+    - The probe reads no environment variable: every variable is assigned
+      before use, and `root` defaults to `/`. This is tested on the path
+      `test.sh` uses (no `root` argument).
+
+  `[unit: ResourceProbeTest.test_prints_one_line_from_a_fake_root]`,
+  `[unit: ResourceProbeTest.test_missing_sources_print_na_and_exit_0]`,
+  `[unit: ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env]`,
+  `[unit: test_resource_lines_bracket_the_unit_stage]`, and for the
+  hardening (rework 4; exact names in the tester's handoff line):
+  `[unit: ResourceProbeTest.test_fifo_or_device_source_gives_na_quickly]`,
+  `[unit: ResourceProbeTest.test_oversized_source_is_cut_off]`,
+  `[unit: ResourceProbeTest.test_stat_fields_are_base_10_and_capped]`,
+  `[unit: ResourceProbeTest.test_nproc_ignores_openmp_env]`,
+  `[unit: ResourceProbeTest.test_no_root_path_reads_no_env]`,
+  `[unit: ResourceProbeTest.test_each_reader_caps_bytes_and_lines]`.
+- **CS-12 Hook budget tests measure CPU time** (added 2026-10-21; human
+  ruling; harness-claude-code requirement 4f as reworded; §2.2.1-r3
+  decision 6).
+  - Each wall-clock budget test in `tests/test_block_main_commit_hook.py`
+    measures the hook's CPU time instead. That is user + sys from the
+    `RUSAGE_CHILDREN` delta around the one `subprocess.run` of the hook.
+  - The budgets are unchanged: 3 s for the 1 MB tests, 9 s for the 5 MB test,
+    and 5 s for the 400-segment test (A-CS2, accepted 2026-10-21).
+  - The same call keeps a 60 s `timeout` as a hang guard.
+  - No budget is raised and no shape is dropped.
+  - *No background work (added 2026-10-21, rework 4; security S4;
+    §2.2.1-r3 decision 6).* The CPU budget does not count work the hook
+    does not wait for, and no wall-clock bound is added, because it would
+    bring back the load flake. Instead, a static test fails if the hook
+    source has any character other than printable ASCII, tab and newline
+    (security S9), or if any line, split on newline only and comment lines
+    included (amended rework 5), has the plain spelling of any of these
+    (forms that still pass are under Known limits below):
+    - an `&` that is not part of `&&`, `|&`, `>&`, `<&` or `&>` (`|&`, the
+      stderr pipe, is allowed);
+    - process substitution `<(` or `>(`;
+    - the words `setsid`, `nohup`, `disown`, `coproc`, `bg` or `eval`;
+    - a nested shell (widened rework 5, review nit 1): `bash`, `sh`, `dash`,
+      `zsh` or `ksh`, bare or quoted, or `$BASH`, `${BASH}` or `$SHELL`,
+      with any options before `-c`; `bash -s`; piping into a shell; or
+      `source` or `.` of `/dev/stdin`.
+
+    Residual risk (accepted, low; security S10): a deny-list cannot be
+    complete for bash, so a construct off the list (for example `se''tsid`
+    or a `trap` string) is not seen; work detached by a program the hook
+    calls is not seen; and a hook call over Claude Code's 10 s timeout
+    fails open for that call. The fix, an allow-list of the commands the
+    hook may call, is a follow-up (below).
+
+    Known limits (rework 5; `rework5/review.md` F1, `rework5/security.md`
+    S11): these nested-shell forms still pass the detector: `bash \<newline>
+    -c`; a line ending in `|` with `bash` on the next line; `bash <<<…`; a
+    heredoc fed to `bash`; `bash /dev/stdin`; `bash -`; `bash -i`;
+    `source -- /dev/stdin`; `| nice -n 5 bash`; `ba""sh -c`; `$(echo bash)
+    -c`. Each needs a deliberately hostile hook edit. The allow-list
+    follow-up closes them.
+
+  `[unit: a helper test: a sleeping child counts under 0.5 s of CPU and a
+  busy child counts about its wall time]`, plus the four converted tests
+  (names unchanged), and `[unit: test_hook_launches_no_background_work]`
+  (static; one mutant per listed construct, per nested-shell spelling, per
+  non-printable separator such as FF or `\x1f`, and per `#`-led line inside
+  a string must fail it; exact names in the tester's handoff line).
+
+Gates: the code and test changes touch `scripts/` and tests, so
+`scripts/verify.sh full` is required, and it runs before the commit
+regardless. TDD order (rework 3): CS-11 probe tests → CS-10 → CS-4 guards
+adapted to the labels → CS-12 → the pool-only tests removed (tester) → CS-5
+and CS-8 guards stay green → CS-7 (after the commit's CI runs).
+
+### Follow-ups (not in ci-speed)
+
+Recorded 2026-10-21 (orchestrator ruling, rework 5). None blocks this item.
+- **Probe `timeout 10` wrapper (security S8).** Wrap both probe calls in
+  `test.sh` so a NUL-filled source or a FIFO swapped in after `[ -f ]` fails
+  at 10 s instead of at the CI job timeout. Trade-off: that case then fails
+  the run instead of printing `n/a` (§2.2.1-r3, Alternatives considered).
+- **Hook command allow-list (security S10).** Replace the CS-12 deny-list
+  with an allow-list of the commands and builtins the hook may call. It also
+  closes the S11 nested-shell forms listed under CS-12 Known limits.
+- **Test nits from rework 5 review (F2, F3).** In
+  `tests/test_block_main_commit_hook.py`: F2, write the literal U+2028 and
+  U+2029 characters as `\u` escapes; F3, rewrite the "#-line in a quoted
+  heredoc fed to a shell" mutant (~:963), which is caught by the plain
+  `sleep 9 &` line and tests neither comment scanning nor a heredoc fed to
+  a shell.
+- **Speed goal: `test-diet`** (already a plan item, § Item: test-diet below;
+  TD-5 is the corrected CS-9 A/B).
+- **CS-7 PS-3.4 re-measure.** After the first two green CI runs that
+  include this item's final `test.sh`, set `timeout-minutes` from them
+  (CS-7 above; TD-6 re-measures again after `test-diet`).
+
+### Open questions for this item
+
+- **Q-CS1** was resolved by the orchestrator (A-CS1, 2026-10-20) and amended
+  2026-10-21 (see `docs/open-questions.md`). There is no percentage
+  tolerance. CS-4 requires each coverage run label to leave its own data
+  file, and a missing one fails the run naming the label. The 80 % threshold
+  is unchanged.
+- **Q-CS2** was resolved by the orchestrator (A-CS2 accepted, 2026-10-21,
+  as covered by the human's CPU-time ruling; see `docs/open-questions.md`).
+  The 400-segment L8 test (5 s) moves to CPU time with the 3 s and 9 s
+  tests, and its value is unchanged.
+
+---
+
+## Item: test-diet
+
+Outcome metric moved: neither directly. It keeps the single CI gate
+(`scripts/verify.sh full`) inside its timeout with margin. It is the only
+lever that helps a runner with about one core of parallel capacity, because
+it removes CPU work instead of spreading it out.
+
+- **Status: not started.** It was opened by the human ruling of 2026-10-21
+  (`docs/handoffs/ci-speed.md`; ci-speed diagnosis option e1).
+- It starts after `ci-speed` merges, because it needs the one-process unit
+  stage and the CS-11 resource lines.
+- **Scope:** tests and their fixtures only, in `InstallPs1Test`
+  (`tests/test_offline_bundle.py`) and `LintScriptTest`
+  (`tests/test_stack_scripts.py`). Together they take about 51 % of the unit
+  suite's time (`docs/evidence/ci-speed/profile.md`).
+- Production scripts, `verify.sh`, `ci.yml`, the sentinel and
+  `[tool.coverage]` are unchanged. Any production change needs an
+  orchestrator ruling first.
+- Criteria are `TD-<n>`. Candidate cuts, for the architect to confirm:
+  - one fixture bundle built once per class instead of per test;
+  - a lint fixture tree with fewer files;
+  - merging cases that run the same script invocation.
+
+Criteria:
+
+- **TD-1 Behaviour kept.** Every requirement and finding that a changed test
+  maps to keeps at least one named test that asserts it, in the same commit.
+  The traceability for each cut is listed in the handoff.
+- **TD-2 Each cut has a mutant.** For each cut, a scratch mutant of the
+  production script that the removed or merged test used to catch is still
+  caught (RED) by the remaining tests. Mutants and their results are saved
+  under `docs/evidence/test-diet/`.
+- **TD-3 Gates unchanged.** The coverage report still meets
+  `fail_under = 80`. No test is skipped, weakened or moved out of
+  `verify.sh`. The sentinel is untouched.
+- **TD-4 Tests stay deterministic and independent.** A shared per-class
+  fixture is created in `setUpClass` and is read-only to the tests that use
+  it. The changed classes pass in any test order, run alone or with the rest
+  of the suite.
+- **TD-5 Measured on CI, A/B on the same commit** (the corrected CS-9; ci-speed
+  diagnosis §6).
+  - Arm A is the candidate commit.
+  - Arm B is the same commit with only the two changed test modules (and
+    their fixtures) restored to the branch base. Arm B is on a scratch branch
+    that is never merged and is pushed only with the human's approval. No env
+    key is added (PS-2.21).
+  - Each arm runs twice on CI, interleaved in time, and both arms carry the
+    CS-11 resource lines.
+  - The metric is the unit stage measured from the runner's per-line
+    timestamps, from `lint: PASS` to the first line after the unit stage, as
+    parsed by `docs/evidence/ci-speed/experiments/parse_ci.py`.
+  - **Pass:** A's slower run is faster than B's faster run, **and** the
+    median A/B ratio is ≤ 0.85.
+  - Run ids, timestamps, the resource lines and the arithmetic are saved
+    under `docs/evidence/test-diet/`.
+  - A local measurement is informational only. A miss goes to the
+    orchestrator with the evidence, and the target is not adjusted to pass.
+- **TD-6 PS-3.4 re-measure.** After two green CI runs of the merged change,
+  `timeout-minutes` is re-measured under the same rule as CS-7.
+
+---
+
 ## Item: ingest-ledger
 
 Outcome metric moved: neither directly; without a complete ledger every later
@@ -2383,7 +2765,9 @@ Outcome metric moved: **ratified rules** (directly).
    field and lint rejects a knob referenced by two unrelated rules.
    `[unit: test_one_knob_one_question]` (DR21)
 8. Ratification sessions are planned objects with named owner and date; the
-   funnel shows ratified / proposed per tier. (DR22)
+   funnel shows ratified / proposed per tier. (DR22) Until real owners are
+   named, the owner is the human (Adam Salah) as proxy ratifier (Q14, resolved
+   2026-10-20), so ratification owners are not an external blocker.
 9. The LLM may only propose; only ratified rules execute; evaluation is
    deterministic with no model client importable from the evaluator package.
    `[unit: test_evaluator_imports_no_llm]` (import-graph check)

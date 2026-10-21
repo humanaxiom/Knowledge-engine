@@ -1,0 +1,55 @@
+
+PROBE normal: exit=143 term_to_exit=0.11s module_alive_after=[] bystander_alive=True
+--- output tail ---
+[3]-  Terminated              run_module "$m"
+[4]+  Terminated              run_module "$m"
+
+---
+.
+PROBE ignorer: exit=143 term_to_exit=2.07s module_alive_after=[] bystander_alive=True
+--- output tail ---
+[3]+  Terminated              run_module "$m"
+
+---
+.
+----------------------------------------------------------------------
+Ran 2 tests in 3.303s
+
+OK
+
+PROBE normal: exit=143 term_to_exit=0.11s module_alive_after=[] bystander_alive=True
+--- output tail ---
+[3]-  Terminated              run_module "$m"
+[4]+  Terminated              run_module "$m"
+
+---
+.
+PROBE ignorer: exit=143 term_to_exit=2.07s module_alive_after=[] bystander_alive=True
+--- output tail ---
+[3]+  Terminated              run_module "$m"
+
+---
+.
+----------------------------------------------------------------------
+Ran 2 tests in 3.403s
+
+OK
+
+PROBE normal: exit=143 term_to_exit=0.11s module_alive_after=[] bystander_alive=True
+--- output tail ---
+[3]-  Terminated              run_module "$m"
+[4]+  Terminated              run_module "$m"
+
+---
+.
+PROBE ignorer: exit=143 term_to_exit=2.07s module_alive_after=[] bystander_alive=True
+--- output tail ---
+[2]-  Terminated              run_module "$m"
+[3]+  Terminated              run_module "$m"
+
+---
+.
+----------------------------------------------------------------------
+Ran 2 tests in 3.201s
+
+OK

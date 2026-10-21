@@ -1,0 +1,10 @@
+test.sh rc=0
+engine/telemetry.py                 62     62     0%   9-116
+engine/worker.py                    22     22     0%   4-42
+harness_telemetry/__init__.py        2      2     0%   3-16
+harness_telemetry/log_event.py      45     45     0%   14-84
+harness_telemetry/tracing.py        86     86     0%   11-192
+--------------------------------------------------------------
+TOTAL                              975    975     0%
+Success: no issues found in 19 source files
+rc=0
