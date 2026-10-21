@@ -256,6 +256,26 @@ Resolved 2026-10-20 by the orchestrator for `ci-speed`
   for the record: *Coverage tolerance for the pool.* CS-4 proposed that the
   pooled coverage total may fall at most 1 point below the one-process
   figure for the same tests; confirm or set another value.
+  - **Amended 2026-10-21 (rework 3, human ruling: pool withdrawn).** The rule
+    stands, applied per coverage run label instead of per pooled module.
+    The labels are `toplevel` (the one top-level run), `tests.<pkg>` and
+    `tests.integration`. Each run label must leave its own data file, and a
+    missing file or a file left after `combine` fails the run, naming the
+    label (CS-4, architecture §2.2.1-r3 decision 3). There is still no
+    percentage tolerance, and 80 % is unchanged.
+
+Resolved 2026-10-21 by the orchestrator for `ci-speed` (raised by the
+architect in rework 3):
+
+- **Q-CS2. Resolved 2026-10-21 (orchestrator ruling: A-CS2 accepted, as
+  covered by the human's CPU-time ruling).** **A-CS2:** the 400-segment L8
+  test moves to CPU time with the 3 s and 9 s tests, and its 5 s value is
+  unchanged (CS-12, architecture §2.2.1-r3 decision 6). Original question,
+  kept for the record: *Does the 5 s L8 hook test move to CPU time too?* The
+  human ruling moves the hook budget tests to CPU time, naming the 3 s and
+  9 s budgets. `test_long_command_finishes_quickly` (security L8: 400
+  segments under 5 s) is the same kind of wall-clock budget test. If it
+  stays on wall time, it can still flake on a loaded runner.
 
 Open, raised 2026-10-19 by the analyst (`platform-stack-ready` rework round 1):
 

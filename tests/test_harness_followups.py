@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 CI = ROOT / ".github" / "workflows" / "ci.yml"
 TEST_SH = ROOT / "scripts" / "test.sh"
 VERIFY_SH = ROOT / "scripts" / "verify.sh"
+PROBE_SH = ROOT / "scripts" / "resource_probe.sh"
 
 # Orchestrator ruling PS-Q1 (docs/handoffs/platform-skeleton.md): pin the
 # image `ubuntu-latest` resolved to before the 2026-10-19 runner move.
@@ -108,34 +109,31 @@ class IntegrationRunsOnceTest(unittest.TestCase):
       deep:        tests/unit/deep/test_d.py (nested package, __init__ at each level)
       integration: tests/integration/test_counted.py
 
-    ci-speed (architecture §2.2.1): with $KE_TEST_PIDS set, a counted module
-    also writes `<label> <pid>` there. With $KE_TEST_SILENT_MODULE set
-    (dotted name), the fake uv exits 0 with no output for any python call
-    that names that module. With $KE_TEST_NODATA_MODULE set, a python call
-    naming that module drops `-m coverage run ...` and runs `-m unittest ...`
-    directly: its tests run and print `Ran`, but it leaves no coverage data.
-    A fake `nproc` (fake_nproc) pins the pool size.
+    ci-speed (architecture §2.2.1-r3; the §2.2.1 pool is withdrawn): with
+    $KE_TEST_PIDS set, a counted module also writes `<label> <pid>` there.
+    The real scripts/resource_probe.sh is copied in too, once it exists.
 
-    ci-speed rework round 1 (review R1-R3, L3; docs/evidence/ci-speed/audit.md):
-    - The silent module now still runs under `coverage run` (on a one-line
-      script, $KE_TEST_SILENT_SCRIPT), so it exits 0, prints nothing and
-      leaves a coverage data file: only the `Ran` check can stop it.
+    Coverage knobs of the fake uv. A coverage run's *label* is the suffix of
+    its `--data-file=<dir>/<name>.<label>`: `toplevel`, `tests.<pkg>` or
+    `tests.integration` (§2.2.1-r3 decision 3).
     - `coverage combine` is real (the fake logs `combine-dir <arg>` for any
       directory argument, then runs it), so a file combine does not consume
       stays on disk, as in the gate. `coverage report` and mypy stay no-ops.
+    - $KE_TEST_MARK_COMBINE=1: the fake prints `fake-uv: coverage combine` to
+      stderr just before combine, so its place shows in the merged output.
+    - $KE_TEST_NODATA_LABEL: the coverage run with that label drops
+      `-m coverage run ...` and runs `-m unittest ...` directly: its tests
+      run and print `Ran`, but it leaves no coverage data.
     - $KE_TEST_DATA_LOG=1: each `coverage run --data-file=X` runs to the end
       and the fake logs `data-written <file>` for every X.* it left.
-    - $KE_TEST_BADDATA_MODULE (dotted): after that module's coverage run its
+    - $KE_TEST_BADDATA_LABEL: after the coverage run with that label, its
       data file(s) X.* are overwritten with bytes that are not a coverage
       database (logged `data-corrupted <file>`). Real combine cannot read
       them and leaves them on disk, exit 0 (coverage 7.16).
     - $KE_TEST_LOOKUP=empty|fail: any python call that is not coverage
       erase/run/combine/report, mypy or unittest (that is, the data_file
       lookup) prints nothing and exits 0, or exits 1 (logged
-      `lookup-intercepted`).
-    - $KE_TEST_NOLOG_MODULE (dotted): that module's process deletes the file
-      its stdout is redirected to (its `.log`) before it runs (logged
-      `nolog-deleted <file>`; Linux /proc)."""
+      `lookup-intercepted`)."""
 
     COUNTED = (
         "import os\n"
@@ -148,20 +146,6 @@ class IntegrationRunsOnceTest(unittest.TestCase):
         "        if pids:\n"
         "            with open(pids, 'a', encoding='utf-8') as f:\n"
         "                f.write({label!r} + ' ' + str(os.getpid()) + '\\n')\n"
-    )
-    # ci-speed: a module whose one test records when it slept, to measure
-    # how many module processes ran at once.
-    SLEEPER = (
-        "import os\n"
-        "import time\n"
-        "import unittest\n"
-        "class Sleeper(unittest.TestCase):\n"
-        "    def test_sleep(self):\n"
-        "        start = time.time()\n"
-        "        time.sleep(float(os.environ.get('KE_TEST_SLEEP', '0')))\n"
-        "        end = time.time()\n"
-        "        with open(os.environ['KE_TEST_SPANS'], 'a', encoding='utf-8') as f:\n"
-        "            f.write(f'{label} {{start!r}} {{end!r}}\\n')\n"
     )
     UNIT_LABELS = ("top", "testfoo", "sub", "deep")
     # Rework 1 (review B6): the fake uv logs every python invocation to
@@ -196,57 +180,18 @@ class IntegrationRunsOnceTest(unittest.TestCase):
         "           exit 0 ;;\n"
         "      esac\n"
         "    fi\n"
-        "    if [ -n \"${KE_TEST_SILENT_MODULE:-}\" ]; then\n"
-        "      silent_path=\"$(printf '%s' \"$KE_TEST_SILENT_MODULE\" | tr . /).py\"\n"
-        "      silent=\n"
-        "      for a in \"$@\"; do\n"
-        "        case \"$a\" in \"$KE_TEST_SILENT_MODULE\"|\"$silent_path\") silent=1 ;; esac\n"
-        "      done\n"
-        "      if [ -n \"$silent\" ]; then\n"
-        "        # Keep `-m coverage run <options>`, drop `-m unittest ...`, and\n"
-        "        # run a one-line script instead: exit 0, no output, data saved.\n"
-        "        [ \"$1 $2 $3\" = '-m coverage run' ] || exit 0\n"
-        "        prev=; keep=0\n"
-        "        for b in \"$@\"; do\n"
-        "          if [ \"$prev\" = -m ] && [ \"$b\" = unittest ]; then break; fi\n"
-        "          keep=$((keep + 1)); prev=$b\n"
-        "        done\n"
-        "        keep=$((keep - 1)); i=0\n"
-        "        for b in \"$@\"; do\n"
-        "          shift; i=$((i + 1))\n"
-        "          if [ \"$i\" -le \"$keep\" ]; then set -- \"$@\" \"$b\"; fi\n"
-        "        done\n"
-        "        set -- \"$@\" \"$KE_TEST_SILENT_SCRIPT\"\n"
-        "      fi\n"
+        "    if [ -n \"${KE_TEST_NODATA_LABEL:-}\" ] && [ \"$1 $2 $3\" = '-m coverage run' ]; then\n"
+        "      case \"$(data_file_arg \"$@\")\" in *.\"$KE_TEST_NODATA_LABEL\")\n"
+        "        while [ $# -gt 1 ] && ! { [ \"$1\" = -m ] && [ \"$2\" = unittest ]; }; do shift; done\n"
+        "        echo \"nodata-run $KE_TEST_NODATA_LABEL\" >> \"$uvlog\"\n"
+        "        [ \"$1 $2\" = '-m unittest' ] && exec \"$KE_TEST_PYTHON\" \"$@\" ;;\n"
+        "      esac\n"
         "    fi\n"
-        "    if [ -n \"${KE_TEST_NODATA_MODULE:-}\" ]; then\n"
-        "      nodata_path=\"$(printf '%s' \"$KE_TEST_NODATA_MODULE\" | tr . /).py\"\n"
-        "      for a in \"$@\"; do\n"
-        "        case \"$a\" in \"$KE_TEST_NODATA_MODULE\"|\"$nodata_path\")\n"
-        "          while [ $# -gt 1 ] && ! { [ \"$1\" = -m ] && [ \"$2\" = unittest ]; }; do shift; done\n"
-        "          [ \"$1 $2\" = '-m unittest' ] && exec \"$KE_TEST_PYTHON\" \"$@\" ;;\n"
-        "        esac\n"
-        "      done\n"
-        "    fi\n"
-        "    if [ -n \"${KE_TEST_NOLOG_MODULE:-}\" ]; then\n"
-        "      for a in \"$@\"; do\n"
-        "        if [ \"$a\" = \"$KE_TEST_NOLOG_MODULE\" ]; then\n"
-        "          out=\"$(readlink \"/proc/$$/fd/1\" 2>/dev/null || true)\"\n"
-        "          case \"$out\" in *.log)\n"
-        "            [ -f \"$out\" ] && rm -f -- \"$out\" && echo \"nolog-deleted $out\" >> \"$uvlog\" ;;\n"
-        "          esac\n"
-        "        fi\n"
-        "      done\n"
-        "    fi\n"
-        "    if [ \"$1 $2 $3\" = '-m coverage run' ] && { [ -n \"${KE_TEST_DATA_LOG:-}\" ] || [ -n \"${KE_TEST_BADDATA_MODULE:-}\" ]; }; then\n"
-        "      bad=\n"
-        "      for a in \"$@\"; do\n"
-        "        [ -n \"${KE_TEST_BADDATA_MODULE:-}\" ] && [ \"$a\" = \"$KE_TEST_BADDATA_MODULE\" ] && bad=1\n"
-        "      done\n"
+        "    if [ \"$1 $2 $3\" = '-m coverage run' ] && { [ -n \"${KE_TEST_DATA_LOG:-}\" ] || [ -n \"${KE_TEST_BADDATA_LABEL:-}\" ]; }; then\n"
         "      df=\"$(data_file_arg \"$@\")\"\n"
-        "      if [ -z \"$df\" ]; then\n"
-        "        [ -z \"$bad\" ] || { echo 'fake uv: no --data-file for the bad-data module' >&2; exit 97; }\n"
-        "      else\n"
+        "      bad=\n"
+        "      case \"$df\" in *.\"${KE_TEST_BADDATA_LABEL:-//none//}\") bad=1 ;; esac\n"
+        "      if [ -n \"$df\" ]; then\n"
         "        \"$KE_TEST_PYTHON\" \"$@\"\n"
         "        rc=$?\n"
         "        for f in \"$df\".*; do\n"
@@ -262,6 +207,7 @@ class IntegrationRunsOnceTest(unittest.TestCase):
         "    fi\n"
         "    case \"$1 $2 $3\" in\n"
         "      '-m coverage combine'*)\n"
+        "        [ -n \"${KE_TEST_MARK_COMBINE:-}\" ] && echo 'fake-uv: coverage combine' >&2\n"
         "        for f in .coverage.stale*; do\n"
         "          [ -e \"$f\" ] && echo \"stale-present $f\" >> \"$KE_TEST_UV_LOG\"\n"
         "        done\n"
@@ -312,14 +258,10 @@ class IntegrationRunsOnceTest(unittest.TestCase):
         fake = self.bin_dir / "uv"
         fake.write_text(self.FAKE_UV, encoding="utf-8", newline="\n")
         fake.chmod(fake.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-        self.silent_script = self.root / "silent_module.py"
-        self.silent_script.write_text("silent = 1\n", encoding="utf-8", newline="\n")
-
-    def fake_nproc(self, n: int) -> None:
-        """ci-speed: a fake `nproc` first on PATH, so the pool size is pinned."""
-        path = self.bin_dir / "nproc"
-        path.write_text(f"#!/bin/sh\necho {n}\n", encoding="utf-8", newline="\n")
-        path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+        # ci-speed §2.2.1-r3 decision 4: test.sh runs the real probe by its
+        # repo path, so the copy carries it once it exists.
+        if PROBE_SH.is_file():
+            shutil.copyfile(PROBE_SH, self.project / "scripts" / "resource_probe.sh")
 
     def base_env(self, counter: Path, extra_env: dict | None = None) -> dict:
         env = dict(os.environ)
@@ -327,7 +269,6 @@ class IntegrationRunsOnceTest(unittest.TestCase):
         env["KE_TEST_PYTHON"] = sys.executable
         env["KE_TEST_COUNTER"] = str(counter)
         env["KE_TEST_UV_LOG"] = str(self.uv_log)
-        env["KE_TEST_SILENT_SCRIPT"] = str(self.silent_script)
         env.update(extra_env or {})
         return env
 
@@ -336,7 +277,7 @@ class IntegrationRunsOnceTest(unittest.TestCase):
         """Run scripts/<script> <mode>; return (returncode, output, {label: runs}).
 
         merged=True sends stderr into the stdout pipe, so the output keeps the
-        order in which lines were written (ci-speed contiguity guards)."""
+        order in which lines were written (ci-speed ordering checks)."""
         counter = self.root / f"counter-{mode}"
         if counter.exists():
             counter.unlink()
@@ -511,8 +452,9 @@ class IntegrationRunsOnceTest(unittest.TestCase):
         # a copy of the real pyproject.toml. Its `coverage erase` must not
         # delete the gate's own parallel data beside the real data_file
         # (experiments/coverage-erase-probe.txt: the gate's pid44 file went).
-        # Under the module pool that erase would drop the data of modules that
-        # already finished. A uniquely named file stands in for that data; the
+        # That erase would drop the gate's data of runs that already finished
+        # (kept under §2.2.1-r3 decision 7). A uniquely named file stands in
+        # for that data; the
         # test that runs the nested test.sh is run here as it is, so the guard
         # holds whatever shape its fix takes.
         import tomllib
@@ -531,12 +473,64 @@ class IntegrationRunsOnceTest(unittest.TestCase):
                         f"a nested test.sh deleted {planted}, a file beside the gate's "
                         f"data_file {data_file}")
 
-    def test_top_level_modules_run_in_separate_processes(self):
-        # §2.2.1 decision 1: one process per top-level module, each module once.
+    # ---- ci-speed rework 3 (architecture §2.2.1-r3; the §2.2.1 pool is
+    # withdrawn, human ruling 2026-10-21). One top-level coverage process
+    # (CS-10), fail-closed coverage per run label (CS-4), the resource probe
+    # lines (CS-11). ----------------------------------------------------------
+
+    def clear_coverage_data(self) -> None:
+        """Without a pyproject `parallel = true`, test.sh's `coverage erase`
+        keeps parallel files, so a failed earlier mode's data would carry
+        over into the next mode's run."""
+        for path in self.project.glob(".coverage*"):
+            path.unlink()
+
+    @staticmethod
+    def error_lines(output: str, *words: str) -> list[str]:
+        """test.sh's own failure lines (`error: ...`) that hold every word."""
+        return [line for line in output.splitlines()
+                if line.startswith("error:") and all(w in line for w in words)]
+
+    def coverage_runs(self) -> list[str]:
+        """The `python -m coverage run ...` calls of the last run, in order."""
+        return [c for c in self.uv_calls() if c.startswith("python -m coverage run")]
+
+    @staticmethod
+    def label_of(call: str) -> str | None:
+        """A coverage run's label: what follows `<name>.` in its
+        `--data-file=<dir>/<name>.<label>` (<name> is `.coverage` in every
+        throwaway project here)."""
+        match = re.search(r"--data-file[= ](\S+)", call)
+        if not match:
+            return None
+        name = match.group(1).replace("\\", "/").rsplit("/", 1)[-1]
+        return name[len(".coverage."):] if name.startswith(".coverage.") else None
+
+    def glob_order(self) -> list[str]:
+        """The top-level modules in the order test.sh's glob lists them: the
+        same bash glob, in the same environment."""
+        listing = subprocess.run(
+            ["bash", "-c", "shopt -s nullglob; for f in tests/test*.py; do m=\"${f%.py}\"; "
+                           "echo \"${m//\\//.}\"; done"],
+            cwd=self.project, env=self.base_env(self.root / "unused"), text=True,
+            stdout=subprocess.PIPE, check=True)
+        return listing.stdout.split()
+
+    # The labels of every coverage run in each mode, in run order.
+    LABELS = {"fast": ["toplevel", "tests.unit"],
+              "full": ["toplevel", "tests.unit", "tests.integration"]}
+
+    def test_top_level_modules_run_in_one_process(self):
+        # CS-10 / §2.2.1-r3 decision 2. Replaces
+        # test_top_level_modules_run_in_separate_processes (§2.2.1 decision 1,
+        # withdrawn): every top-level module runs, each exactly once, in ONE
+        # coverage process whose data file label is `toplevel`, with the
+        # modules in glob order. The sub-package and integration runs follow
+        # with their own labels.
         self.counted("tests/test_y.py", "top2")
         top_labels = ("top", "testfoo", "top2")
-        self.fake_nproc(4)
         for mode in ("fast", "full"):
+            self.clear_coverage_data()
             pids_file = self.root / f"pids-{mode}"
             code, output, counts = self.run_mode(mode, {"KE_TEST_PIDS": str(pids_file)})
             with self.subTest(mode=mode):
@@ -549,101 +543,144 @@ class IntegrationRunsOnceTest(unittest.TestCase):
                     self.assertEqual(counts.get(label, 0), 1, counts)
                     self.assertEqual(len(pids.get(label, [])), 1, pids)
                 top = {label: pids[label][0] for label in top_labels}
-                self.assertEqual(len(set(top.values())), len(top_labels),
-                                 f"top-level modules shared a process: {top}")
+                self.assertEqual(len(set(top.values())), 1,
+                                 f"top-level modules ran in more than one process: {top}")
+                runs = self.coverage_runs()
+                self.assertEqual([self.label_of(c) for c in runs], self.LABELS[mode], runs)
+                modules = [a for a in runs[0].split("-m unittest", 1)[-1].split()
+                           if a.startswith("tests.")]
+                self.assertEqual(modules, self.glob_order(), runs[0])
 
-    def test_unit_pool_fails_when_a_module_prints_no_ran_line(self):
-        # §2.2.1 decision 3: a module process that exits 0 but prints no
-        # `Ran N` line (N > 0) fails test.sh.
-        # Rework round 1 (review R1): the silent module still runs under
-        # `coverage run` and leaves its data file, so the coverage-data check
-        # cannot stand in for the Ran check (mutant M3 must die here).
-        self.fake_nproc(4)
+    def test_top_level_run_has_durations_10_and_no_other_run_does(self):
+        # CS-10 / §2.2.1-r3 decision 5 (adapted from
+        # test_unit_pool_runs_each_module_with_durations_10): the one
+        # top-level run is `unittest -v --durations 10`; the sub-package and
+        # integration runs do not get it.
         for mode in ("fast", "full"):
             self.clear_coverage_data()
-            code, output, _ = self.run_mode(mode, {"KE_TEST_SILENT_MODULE": "tests.testfoo",
-                                                   "KE_TEST_DATA_LOG": "1"})
+            code, output, _ = self.run_mode(mode)
             with self.subTest(mode=mode):
-                self.assert_left_data("tests.testfoo")
-                self.assertNotEqual(code, 0,
-                                    "tests.testfoo printed no Ran line, test.sh passed:\n" + output)
+                self.assertEqual(code, 0, output)
+                runs = self.coverage_runs()
+                top = [c for c in runs if self.label_of(c) == "toplevel"]
+                self.assertEqual(len(top), 1, runs)
+                self.assertRegex(top[0], r"-m unittest -v --durations[ =]10 ")
+                for call in runs:
+                    if call is not top[0]:
+                        self.assertNotIn("--durations", call)
 
-    # ---- ci-speed rework round 1 (review R1-R3, L2, L3) ----------------------
+    RESOURCES = re.compile(r"^resources: phase=(\S+) ")
 
-    def clear_coverage_data(self) -> None:
-        """Without a pyproject `parallel = true`, test.sh's `coverage erase`
-        keeps parallel files, so a failed earlier mode's data would carry
-        over into the next mode's run."""
-        for path in self.project.glob(".coverage*"):
-            path.unlink()
+    def resource_lines(self, lines: list[str]) -> list[tuple[int, str]]:
+        found = []
+        for i, line in enumerate(lines):
+            match = self.RESOURCES.match(line)
+            if match:
+                found.append((i, match.group(1)))
+        return found
 
-    def assert_left_data(self, module: str) -> None:
-        written = [c for c in self.uv_calls()
-                   if c.startswith("data-written ") and f".{module}." in c]
-        self.assertTrue(written, f"precondition: {module} left no coverage data file, so the "
-                                 f"coverage-data check, not this one, would stop it: "
-                                 f"{self.uv_calls()}")
+    def assert_probe_line(self, line: str) -> None:
+        from tests.test_resource_probe import KEYS, VALUE
 
-    @staticmethod
-    def error_lines(output: str, *words: str) -> list[str]:
-        """test.sh's own failure lines (`error: ...`) that hold every word."""
-        return [line for line in output.splitlines()
-                if line.startswith("error:") and all(w in line for w in words)]
+        pairs = [p.split("=", 1) for p in line[len("resources: "):].split(" ")]
+        self.assertEqual([p[0] for p in pairs], list(KEYS), line)
+        for _, value in pairs[1:]:
+            self.assertRegex(value, VALUE, line)
 
-    def test_unit_pool_fails_when_a_module_exits_zero_at_import(self):
-        # Review R1 (audit probe audit/probe_test_exit0.py.txt): a module that
-        # raises SystemExit(0) at import exits 0, saves its coverage data and
-        # prints no `Ran` line. Only the Ran check stops it (the other modules
-        # print `Ran`, so verify.sh's global grep does not), and the failure
-        # names the module.
-        module = "tests.test_exit0"
-        self.write("tests/test_exit0.py", "import sys\nsys.exit(0)\n")
-        self.fake_nproc(4)
+    def test_resource_lines_bracket_the_unit_stage(self):
+        # CS-11 / §2.2.1-r3 decision 4, first failing test 4. One
+        # `resources: phase=start` line comes before the first top-level
+        # output; one `phase=end` line comes after the last sub-package run,
+        # before the integration run in full and before combine in fast. When
+        # a unit run fails the end line still prints, test.sh exits non-zero
+        # and no later run starts (CS-10).
+        self.assertTrue(PROBE_SH.is_file(), "scripts/resource_probe.sh does not exist")
+        env = {"KE_TEST_MARK_COMBINE": "1"}
+        combine_mark = "fake-uv: coverage combine"
+        for mode in ("fast", "full"):
+            self.clear_coverage_data()
+            code, output, _ = self.run_mode(mode, env, merged=True)
+            with self.subTest(mode=mode, run="all pass"):
+                self.assertEqual(code, 0, output)
+                lines = output.splitlines()
+                found = self.resource_lines(lines)
+                self.assertEqual([phase for _, phase in found], ["start", "end"], output)
+                (start, _), (end, _) = found
+                for i, _ in found:
+                    self.assert_probe_line(lines[i])
+                first_top = min(i for i, line in enumerate(lines)
+                                if "(tests.test_x." in line or "(tests.testfoo." in line)
+                self.assertLess(start, first_top, "phase=start is not before the top-level run")
+                last_sub = max(i for i, line in enumerate(lines) if "(tests.unit." in line)
+                self.assertGreater(end, last_sub, "phase=end is not after the last sub-package run")
+                combine = [i for i, line in enumerate(lines) if line == combine_mark]
+                self.assertEqual(len(combine), 1, output)
+                self.assertLess(end, combine[0], "phase=end is not before combine")
+                if mode == "full":
+                    first_it = min(i for i, line in enumerate(lines)
+                                   if "(tests.integration." in line)
+                    self.assertLess(end, first_it, "phase=end is not before the integration run")
+        failing = {"top-level run fails": ("tests/test_bad.py", "tests.test_bad",
+                                           ("sub", "deep", "integration")),
+                   "sub-package run fails": ("tests/unit/test_bad.py", "tests.unit.test_bad",
+                                             ("integration",))}
+        for case, (rel, module, not_started) in failing.items():
+            self.write(rel, self.FAILING)
+            for mode in ("fast", "full"):
+                self.clear_coverage_data()
+                code, output, counts = self.run_mode(mode, env, merged=True)
+                with self.subTest(mode=mode, run=case):
+                    lines = output.splitlines()
+                    fail = f"FAIL: test_bad ({module}.Bad.test_bad)"
+                    self.assertIn(fail, lines, "precondition: the planted failure did not run")
+                    self.assertNotEqual(code, 0, output)
+                    found = self.resource_lines(lines)
+                    self.assertEqual([phase for _, phase in found], ["start", "end"], output)
+                    self.assertGreater(found[1][0], lines.index(fail),
+                                       "phase=end is not after the failed run")
+                    for label in not_started:
+                        self.assertEqual(counts.get(label, 0), 0,
+                                         f"{label} ran after a failed run: {counts}")
+                    self.assertNotIn(combine_mark, lines, "combine ran after a failed run")
+            (self.project / rel).unlink()
+
+    def test_combine_leaving_a_run_data_file_fails_naming_its_label(self):
+        # CS-4 / §2.2.1-r3 decision 3 (adapted from
+        # test_unit_pool_fails_when_combine_leaves_a_module_data_file, review
+        # R2): the data file of a run is at the expected path but real combine
+        # cannot read it, skips it, leaves it on disk and exits 0. test.sh must
+        # fail and name the run's label. The control run (nothing corrupted)
+        # passes and combine leaves no parallel data file behind.
         for mode in ("fast", "full"):
             self.clear_coverage_data()
             code, output, _ = self.run_mode(mode, {"KE_TEST_DATA_LOG": "1"}, merged=True)
-            with self.subTest(mode=mode):
-                self.assert_left_data(module)
-                self.assertNotEqual(code, 0, f"{module} exited 0 at import, test.sh passed:\n"
-                                    + output)
-                self.assertTrue(self.error_lines(output, module, "Ran"),
-                                "no error line names the module and the Ran line:\n" + output)
-
-    def test_unit_pool_fails_when_combine_leaves_a_module_data_file(self):
-        # Review R2 / CS-4 / §2.2.1 decision 5: the per-module existence check
-        # does not prove `coverage combine` consumed the file. Real combine
-        # (the fake runs it) is fed a module data file it cannot read: the
-        # file is at the expected path, so the existence check passes, and
-        # combine skips it, leaves it on disk and exits 0. test.sh must fail
-        # and name the module. The control run (nothing corrupted) passes and
-        # combine leaves no parallel data file behind.
-        module = "tests.testfoo"
-        self.fake_nproc(4)
-        for mode in ("fast", "full"):
-            self.clear_coverage_data()
-            code, output, _ = self.run_mode(mode, merged=True)
             with self.subTest(mode=mode, run="control"):
                 self.assertEqual(code, 0, output)
                 self.assertEqual(sorted(p.name for p in self.project.glob(".coverage.*")), [],
                                  "real combine left parallel data files in the control run")
-            self.clear_coverage_data()
-            code, output, _ = self.run_mode(mode, {"KE_TEST_BADDATA_MODULE": module}, merged=True)
-            with self.subTest(mode=mode, run="unconsumed"):
-                corrupted = [c for c in self.uv_calls()
-                             if c.startswith("data-corrupted ") and f".{module}." in c]
-                self.assertTrue(corrupted, f"precondition: no data file of {module} was "
-                                           f"corrupted: {self.uv_calls()}")
-                self.assertNotEqual(code, 0, f"combine left {module}'s data file unconsumed, "
-                                    "test.sh passed:\n" + output)
-                self.assertTrue(self.error_lines(output, module),
-                                "no error line names the module:\n" + output)
+                for label in self.LABELS[mode]:
+                    self.assertTrue([c for c in self.uv_calls() if c.startswith("data-written ")
+                                     and f".coverage.{label}." in c],
+                                    f"the {label} run left no data: {self.uv_calls()}")
+            for label in self.LABELS[mode]:
+                self.clear_coverage_data()
+                code, output, _ = self.run_mode(mode, {"KE_TEST_BADDATA_LABEL": label},
+                                                merged=True)
+                with self.subTest(mode=mode, run="unconsumed", label=label):
+                    corrupted = [c for c in self.uv_calls()
+                                 if c.startswith("data-corrupted ") and f".coverage.{label}." in c]
+                    self.assertTrue(corrupted, f"precondition: no data file labelled {label} was "
+                                               f"corrupted: {self.uv_calls()}")
+                    self.assertNotEqual(code, 0, f"combine left the {label} data file unconsumed, "
+                                        "test.sh passed:\n" + output)
+                    self.assertTrue(self.error_lines(output, label),
+                                    f"no error line names the label {label}:\n" + output)
 
     def test_coverage_combine_gets_an_explicit_file_list(self):
-        # CS-4 / §2.2.1 decision 5: `coverage combine` is given this run's data
-        # files, never a directory and never no argument (with none it searches
-        # the data directory and takes whatever is there). Each top-level
-        # module's file is in the list.
-        self.fake_nproc(4)
+        # CS-4 / §2.2.1-r3 decision 3: `coverage combine` is given exactly
+        # this run's data files, one per run label, never a directory and
+        # never no argument (with none it searches the data directory and
+        # takes whatever is there).
         for mode in ("fast", "full"):
             self.clear_coverage_data()
             code, output, _ = self.run_mode(mode)
@@ -656,15 +693,16 @@ class IntegrationRunsOnceTest(unittest.TestCase):
                 self.assertTrue(files, f"coverage combine got no file list: {combine[0]}")
                 self.assertEqual([c for c in calls if c.startswith("combine-dir ")], [],
                                  "coverage combine was given a directory")
-                for module in ("tests.test_x", "tests.testfoo"):
-                    self.assertTrue([f for f in files if f".{module}." in f],
-                                    f"{module}'s data file is not in the combine list: {files}")
+                self.assertEqual(len(files), len(self.LABELS[mode]), files)
+                for label in self.LABELS[mode]:
+                    self.assertEqual(len([f for f in files if f".coverage.{label}." in f]), 1,
+                                     f"the {label} data file is not in the combine list once: "
+                                     f"{files}")
 
     def test_data_file_lookup_empty_or_failed_fails_before_any_test(self):
-        # Review R2 / CS-4 / §2.2.1 decision 5: if the data_file lookup prints
-        # nothing or exits non-zero, test.sh fails before any test runs: no
-        # fallback to ./.coverage.
-        self.fake_nproc(4)
+        # Review R2 / CS-4 / §2.2.1-r3 decision 3: if the data_file lookup
+        # prints nothing or exits non-zero, test.sh fails before any test
+        # runs: no fallback to ./.coverage.
         for lookup in ("empty", "fail"):
             for mode in ("fast", "full"):
                 self.clear_coverage_data()
@@ -680,308 +718,32 @@ class IntegrationRunsOnceTest(unittest.TestCase):
                     self.assertEqual(ran, [], "tests ran after the data_file lookup failed")
                     self.assertEqual(counts, {}, output)
 
-    def test_unit_pool_runs_each_module_with_durations_10(self):
-        # Review R3a / §2.2.1 decision 1: every top-level module runs
-        # `unittest -v --durations 10`, the only per-test timing in CI logs.
-        self.fake_nproc(4)
-        code, output, _ = self.run_mode("fast")
-        self.assertEqual(code, 0, output)
-        calls = self.uv_calls()
-        for module in ("tests.test_x", "tests.testfoo"):
-            with self.subTest(module=module):
-                runs = [c for c in calls if "-m unittest" in c and c.split()[-1] == module]
-                self.assertEqual(len(runs), 1, calls)
-                self.assertRegex(runs[0], r"-m unittest .*--durations[ =]10 ")
-
-    def test_unit_pool_prints_a_summary_line_per_module(self):
-        # Review R3c / §2.2.1 decision 2: after the logs, one line per
-        # top-level module, `unit: <s>s rc=<rc> <module>` (whole seconds).
-        pattern = re.compile(r"^unit: \d+s rc=(\S+) (\S+)$")
-
-        def summary(output: str) -> dict:
-            found: dict[str, list[str]] = {}
-            for line in output.splitlines():
-                match = pattern.match(line)
-                if match:
-                    found.setdefault(match.group(2), []).append(match.group(1))
-            return found
-
-        self.fake_nproc(4)
-        code, output, _ = self.run_mode("fast", merged=True)
-        with self.subTest(run="all pass"):
-            self.assertEqual(code, 0, output)
-            self.assertEqual(summary(output), {"tests.test_x": ["0"], "tests.testfoo": ["0"]},
-                             output)
-        self.write("tests/test_fails.py",
-                   "import unittest\nclass Fails(unittest.TestCase):\n"
-                   "    def test_fails(self):\n        self.fail('planted failure')\n")
-        self.clear_coverage_data()
-        code, output, _ = self.run_mode("fast", merged=True)
-        with self.subTest(run="one module fails"):
-            self.assertNotEqual(code, 0, output)
-            self.assertEqual(summary(output), {"tests.test_x": ["0"], "tests.testfoo": ["0"],
-                                               "tests.test_fails": ["1"]}, output)
-
-    def test_unit_pool_fails_naming_a_module_whose_log_is_missing(self):
-        # Review L3 / §2.2.1 decision 2: a missing module log fails the run
-        # with test.sh's own message naming the module (not just cat's path),
-        # and the later modules' logs are still printed. tests/testzz.py
-        # sorts after tests/test_x.py in any collation.
-        module = "tests.test_x"
-        self.counted("tests/testzz.py", "zz")
-        self.fake_nproc(4)
-        code, output, _ = self.run_mode("fast", {"KE_TEST_NOLOG_MODULE": module}, merged=True)
-        self.assertTrue([c for c in self.uv_calls() if c.startswith("nolog-deleted ")],
-                        f"precondition: {module}'s log was not deleted: {self.uv_calls()}")
-        self.assertNotEqual(code, 0, f"{module}'s log is missing, test.sh passed:\n" + output)
-        self.assertTrue(self.error_lines(output, module, "log"),
-                        "no error line names the module and its log:\n" + output)
-        self.assertIn("test_counted (tests.testzz.Counted.test_counted) ... ok", output,
-                      "a later module's log was not printed")
-
-    LONG_SLEEPER = (
-        "import os\n"
-        "import time\n"
-        "import unittest\n"
-        "class LongSleep(unittest.TestCase):\n"
-        "    def test_long_sleep(self):\n"
-        "        with open(os.environ['KE_TEST_STARTED'], 'a', encoding='utf-8') as f:\n"
-        "            f.write(str(os.getpid()) + '\\n')\n"
-        "        time.sleep(120)\n"
-    )
-
-    @staticmethod
-    def proc_alive(pid: int) -> bool:
-        try:
-            stat_line = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8")
-        except OSError:
-            return False
-        return stat_line.rsplit(")", 1)[1].split()[0] not in ("Z", "X")
-
-    @unittest.skipUnless(sys.platform.startswith("linux") and Path("/proc/self/stat").exists(),
-                         "needs Linux /proc")
-    def test_signal_kills_pool_children_and_exits_nonzero(self):
-        # Review R3d / §2.2.1 decision 4: on INT or TERM, test.sh kills the
-        # pool's children (each job and the python it started), so no module
-        # process outlives it, and exits 128 + signal. test.sh runs in its own
-        # session so no kill it sends can reach this test process.
-        import signal
-        import time
-
-        for i in range(2):
-            self.write(f"tests/test_long{i}.py", self.LONG_SLEEPER)
-        self.fake_nproc(4)
-        for sig in (signal.SIGINT, signal.SIGTERM):
-            with self.subTest(signal=sig.name):
-                started = self.root / f"started-{sig.name}"
-                out_path = self.root / f"out-{sig.name}.txt"
-                self.uv_log = self.root / f"uv-{sig.name}.log"
-                env = self.base_env(self.root / f"counter-{sig.name}",
-                                    {"KE_TEST_STARTED": str(started)})
-
-                def pids() -> list[int]:
-                    if not started.exists():
-                        return []
-                    return [int(p) for p in started.read_text(encoding="utf-8").split()]
-
-                with open(out_path, "w", encoding="utf-8") as out:
-                    proc = subprocess.Popen(["bash", str(self.project / "scripts" / "test.sh"),
-                                             "fast"], cwd=self.project, env=env, stdout=out,
-                                            stderr=subprocess.STDOUT, start_new_session=True)
-                try:
-                    deadline = time.monotonic() + 60
-                    while len(pids()) < 2 and proc.poll() is None and time.monotonic() < deadline:
-                        time.sleep(0.1)
-                    self.assertEqual(len(pids()), 2, "precondition: the sleeping modules did not "
-                                     "start:\n" + out_path.read_text(encoding="utf-8"))
-                    proc.send_signal(sig)
-                    try:
-                        code = proc.wait(timeout=30)
-                    except subprocess.TimeoutExpired:
-                        self.fail(f"test.sh did not exit within 30 s of {sig.name}")
-                    # Review N3 (ci-speed rework 2; architecture 2.2.1): the
-                    # exit status is 128 + the signal, 130 for INT, 143 for TERM.
-                    self.assertEqual(code, 128 + int(sig),
-                                     f"test.sh exit status after {sig.name}:\n"
-                                     + out_path.read_text(encoding="utf-8"))
-                    deadline = time.monotonic() + 10
-                    alive = [p for p in pids() if self.proc_alive(p)]
-                    while alive and time.monotonic() < deadline:
-                        time.sleep(0.1)
-                        alive = [p for p in pids() if self.proc_alive(p)]
-                    self.assertEqual(alive, [], f"pool children outlived test.sh after "
-                                     f"{sig.name} (exit {code})")
-                finally:
-                    self.kill_leftovers(proc, pids())
-
-    def kill_leftovers(self, proc: subprocess.Popen, pids) -> None:
-        """Security S2 (ci-speed rework 2): SIGKILL only processes that are
-        still alive, and test.sh's group only while test.sh itself has not
-        been reaped, so a reused PID is never hit."""
-        import signal
-
-        for pid in pids:
-            if self.proc_alive(pid):
-                try:
-                    os.kill(pid, signal.SIGKILL)
-                except OSError:
-                    pass
-        if proc.poll() is None:
-            try:
-                os.killpg(proc.pid, signal.SIGKILL)
-            except OSError:
-                pass
-        try:
-            proc.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            pass
-
-    # Security S1 (ci-speed rework 2; audit probe
-    # docs/evidence/ci-speed/rework1/security-scan/run-t5-ign-term.txt): a
-    # module that ignores SIGTERM.
-    TERM_IGNORER = (
-        "import os\n"
-        "import signal\n"
-        "import time\n"
-        "import unittest\n"
-        "class IgnoresTerm(unittest.TestCase):\n"
-        "    def test_ignores_term(self):\n"
-        "        signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
-        "        with open(os.environ['KE_TEST_STARTED'], 'a', encoding='utf-8') as f:\n"
-        "            f.write(str(os.getpid()) + '\\n')\n"
-        "        time.sleep(120)\n"
-    )
-
-    def module_procs(self, module: str) -> list[int]:
-        """Live processes (uv or python) whose command line names `module`
-        and whose working directory is this throwaway project (Linux /proc)."""
-        found = []
-        for entry in Path("/proc").iterdir():
-            if not entry.name.isdigit():
-                continue
-            try:
-                argv = (entry / "cmdline").read_bytes().split(b"\0")
-                cwd = os.readlink(entry / "cwd")
-            except OSError:
-                continue
-            if (any(module.encode() in a for a in argv) and Path(cwd) == self.project.resolve()
-                    and self.proc_alive(int(entry.name))):
-                found.append(int(entry.name))
-        return found
-
-    @unittest.skipUnless(sys.platform.startswith("linux") and Path("/proc/self/stat").exists(),
-                         "needs Linux /proc")
-    def test_term_leaves_no_module_process_that_ignores_term(self):
-        # Security S1 / review N4 (orchestrator ruling, ci-speed rework 2):
-        # after TERM, test.sh exits 143 and, within 10 s, no process of a
-        # module that ignores SIGTERM (its uv or python) is left alive: kill
-        # must escalate past TERM. test.sh runs in its own session.
-        import signal
-        import time
-
-        module = "tests.test_ign_term"
-        self.write("tests/test_ign_term.py", self.TERM_IGNORER)
-        self.fake_nproc(4)
-        started = self.root / "started-ign"
-        out_path = self.root / "out-ign.txt"
-        self.uv_log = self.root / "uv-ign.log"
-        env = self.base_env(self.root / "counter-ign", {"KE_TEST_STARTED": str(started)})
-
-        def pids() -> list[int]:
-            if not started.exists():
-                return []
-            return [int(p) for p in started.read_text(encoding="utf-8").split()]
-
-        with open(out_path, "w", encoding="utf-8") as out:
-            proc = subprocess.Popen(["bash", str(self.project / "scripts" / "test.sh"), "fast"],
-                                    cwd=self.project, env=env, stdout=out,
-                                    stderr=subprocess.STDOUT, start_new_session=True)
-        seen: list[int] = []
-        try:
-            deadline = time.monotonic() + 60
-            while not pids() and proc.poll() is None and time.monotonic() < deadline:
-                time.sleep(0.1)
-            self.assertEqual(len(pids()), 1, "precondition: the TERM-ignoring module did not "
-                             "start:\n" + out_path.read_text(encoding="utf-8"))
-            seen = sorted(set(pids()) | set(self.module_procs(module)))
-            proc.send_signal(signal.SIGTERM)
-            try:
-                code = proc.wait(timeout=30)
-            except subprocess.TimeoutExpired:
-                self.fail("test.sh did not exit within 30 s of SIGTERM")
-            self.assertEqual(code, 143, "test.sh exit status after SIGTERM:\n"
-                             + out_path.read_text(encoding="utf-8"))
-            deadline = time.monotonic() + 10
-
-            def left() -> list[int]:
-                return sorted({p for p in pids() if self.proc_alive(p)}
-                              | set(self.module_procs(module)))
-
-            alive = left()
-            while alive and time.monotonic() < deadline:
-                time.sleep(0.1)
-                alive = left()
-            self.assertEqual(alive, [], f"processes of {module}, which ignores SIGTERM, "
-                             f"outlived test.sh by 10 s (exit {code}); seen before TERM: {seen}")
-        finally:
-            self.kill_leftovers(proc, sorted(set(pids()) | set(self.module_procs(module))))
-
-    def test_unit_pool_fails_when_a_module_leaves_no_coverage_data(self):
-        # Ruling Q-CS1 (orchestrator, ci-speed): no percentage tolerance; every
-        # top-level module's process must leave a coverage data file for
-        # `combine`. A module whose tests ran and printed `Ran 1 test` / OK but
-        # wrote no data fails test.sh, and the failure names the module. The
-        # unittest -v lines name every module anyway, so the naming check wants
-        # a line that names the module and says coverage.
-        self.fake_nproc(4)
-        module = "tests.testfoo"
+    def test_each_coverage_run_leaves_data_or_fails_naming_its_label(self):
+        # Ruling Q-CS1 / CS-4 / §2.2.1-r3 decision 3 (adapted from
+        # test_unit_pool_fails_when_a_module_leaves_no_coverage_data): no
+        # percentage tolerance; every coverage run must leave a data file for
+        # `combine`. A run whose tests ran and printed `Ran`/OK but wrote no
+        # data fails test.sh with an error line naming its label and coverage.
+        ran_label = {"toplevel": "testfoo", "tests.unit": "sub", "tests.integration": "integration"}
         for mode in ("fast", "full"):
-            code, output, counts = self.run_mode(mode, {"KE_TEST_NODATA_MODULE": module},
-                                                 merged=True)
-            with self.subTest(mode=mode):
-                self.assertEqual(counts.get("testfoo", 0), 1,
-                                 f"the no-data module's tests did not run: {counts}\n{output}")
-                self.assertNotEqual(code, 0,
-                                    f"{module} left no coverage data, test.sh passed:\n" + output)
-                named = [line for line in output.splitlines()
-                         if (module in line or "tests/testfoo.py" in line)
-                         and "coverage" in line.lower()]
-                self.assertTrue(named, "no failure line names the module and coverage:\n" + output)
+            for label in self.LABELS[mode]:
+                self.clear_coverage_data()
+                code, output, counts = self.run_mode(mode, {"KE_TEST_NODATA_LABEL": label},
+                                                     merged=True)
+                with self.subTest(mode=mode, label=label):
+                    self.assertIn(f"nodata-run {label}", self.uv_calls(),
+                                  f"precondition: no coverage run is labelled {label}: "
+                                  f"{self.coverage_runs()}")
+                    self.assertEqual(counts.get(ran_label[label], 0), 1,
+                                     f"the no-data run's tests did not run: {counts}\n{output}")
+                    self.assertNotEqual(code, 0,
+                                        f"the {label} run left no coverage data, test.sh "
+                                        "passed:\n" + output)
+                    named = [line for line in self.error_lines(output, label)
+                             if "coverage" in line.lower()]
+                    self.assertTrue(named, f"no error line names {label} and coverage:\n" + output)
 
-    @staticmethod
-    def max_overlap(spans) -> int:
-        events = sorted([(s, 1) for s, _ in spans] + [(e, -1) for _, e in spans])
-        best = running = 0
-        for _, step in events:
-            running += step
-            best = max(best, running)
-        return best
-
-    def test_unit_pool_concurrency_follows_nproc_capped_at_4(self):
-        # §2.2.1 decision 1: at most k = min(nproc, 4) module processes at
-        # once, nproc read inside the container (here a fake first on PATH).
-        # Five sleeping modules: more than the cap, so an uncapped pool shows.
-        labels = [f"sleep{i}" for i in range(5)]
-        for i, label in enumerate(labels):
-            self.write(f"tests/test_sleep{i}.py", self.SLEEPER.format(label=label))
-        for nproc, low, high in ((1, 1, 1), (2, 2, 2), (64, 2, 4)):
-            self.fake_nproc(nproc)
-            spans_file = self.root / f"spans-{nproc}"
-            code, output, _ = self.run_mode("fast", {"KE_TEST_SPANS": str(spans_file),
-                                                     "KE_TEST_SLEEP": "1.5"})
-            with self.subTest(nproc=nproc):
-                self.assertEqual(code, 0, output)
-                spans = {}
-                for line in spans_file.read_text(encoding="utf-8").splitlines():
-                    label, start, end = line.split()
-                    self.assertNotIn(label, spans, f"{label} ran twice")
-                    spans[label] = (float(start), float(end))
-                self.assertEqual(sorted(spans), labels)
-                overlap = self.max_overlap(spans.values())
-                self.assertGreaterEqual(overlap, low, f"nproc={nproc}: at most {overlap} at once")
-                self.assertLessEqual(overlap, high, f"nproc={nproc}: {overlap} at once")
-
-    # Guards, green before the pool and kept green by it.
+    # Guards, green before rework 3 and kept green by it.
 
     def chatty(self, name: str, tests: int = 4) -> None:
         body = "import time\nimport unittest\nclass Chatty(unittest.TestCase):\n"
@@ -989,13 +751,16 @@ class IntegrationRunsOnceTest(unittest.TestCase):
             body += f"    def test_c{i}(self):\n        time.sleep(0.1)\n"
         self.write(f"tests/{name}.py", body)
 
+    FAILING = ("import unittest\nclass Bad(unittest.TestCase):\n"
+               "    def test_bad(self):\n        self.fail('planted')\n")
+
     def test_failing_module_fails_run_and_other_modules_still_run(self):
-        # §2.2.1 decision 3: one failing module fails test.sh; the other
-        # modules still ran and their output is printed.
+        # CS-10 guard: one failing top-level module fails test.sh; the other
+        # top-level modules (same process) still ran and their output is
+        # printed; no later run starts.
         self.write("tests/test_fails.py",
                    "import unittest\nclass Fails(unittest.TestCase):\n"
                    "    def test_fails(self):\n        self.fail('planted failure')\n")
-        self.fake_nproc(4)
         code, output, counts = self.run_mode("fast")
         self.assertNotEqual(code, 0, output)
         self.assertIn("FAIL: test_fails (tests.test_fails.Fails.test_fails)", output)
@@ -1003,29 +768,27 @@ class IntegrationRunsOnceTest(unittest.TestCase):
             with self.subTest(module=module):
                 self.assertEqual(counts.get(label, 0), 1, counts)
                 self.assertIn(f"test_counted ({module}.Counted.test_counted) ... ok", output)
+        self.assertEqual(counts.get("sub", 0), 0, f"a later run started: {counts}")
 
-    # Review N1 (ci-speed rework 2; reviewer probes
-    # docs/evidence/ci-speed/rework1/review/probe_review.py.txt): the
-    # sub-package and integration runs go through `step`, so their exit
-    # status must still fail test.sh (mutant `wait "$!" || true`).
-    FAILING = ("import unittest\nclass Bad(unittest.TestCase):\n"
-               "    def test_bad(self):\n        self.fail('planted')\n")
+    # Review N1 (ci-speed rework 2): a failing sub-package or integration run
+    # must still fail test.sh; in full, a failing sub-package run stops the
+    # integration run from starting (CS-10).
 
     def test_failing_subpackage_module_fails_run(self):
         self.write("tests/unit/test_bad.py", self.FAILING)
-        self.fake_nproc(4)
         for mode in ("fast", "full"):
             self.clear_coverage_data()
-            code, output, _ = self.run_mode(mode, merged=True)
+            code, output, counts = self.run_mode(mode, merged=True)
             with self.subTest(mode=mode):
                 self.assertIn("FAIL: test_bad (tests.unit.test_bad.Bad.test_bad)", output,
                               "precondition: the planted sub-package test did not run")
                 self.assertNotEqual(code, 0, "a failing sub-package test, test.sh passed:\n"
                                     + output)
+                self.assertEqual(counts.get("integration", 0), 0,
+                                 f"the integration run started after a failed run: {counts}")
 
     def test_failing_integration_module_fails_full_run(self):
         self.write("tests/integration/test_bad.py", self.FAILING)
-        self.fake_nproc(4)
         self.clear_coverage_data()
         code, output, _ = self.run_mode("full", merged=True)
         self.assertIn("FAIL: test_bad (tests.integration.test_bad.Bad.test_bad)", output,
@@ -1033,133 +796,10 @@ class IntegrationRunsOnceTest(unittest.TestCase):
         self.assertNotEqual(code, 0, "a failing integration test, test.sh full passed:\n"
                             + output)
 
-    def test_each_module_output_block_is_contiguous(self):
-        # §2.2.1 decision 2: logs are printed whole, never interleaved, and
-        # every verbose result line stays one whole line.
-        names = ("test_ca", "test_cb", "test_cc")
-        for name in names:
-            self.chatty(name)
-        self.fake_nproc(4)
-        code, output, _ = self.run_mode("fast", merged=True)
-        self.assertEqual(code, 0, output)
-        # Orchestrator ruling, ci-speed rework 1 (docs/handoffs/ci-speed.md):
-        # `--durations 10` (architecture 2.2.1, CS-1) repeats each test name in
-        # a durations block, so the result lines and the module's whole block
-        # are checked separately.
-        lines = output.splitlines()
-        for name in names:
-            with self.subTest(module=name):
-                # (a) exactly 4 whole result lines, one after another.
-                result = re.compile(rf"^test_c\d \(tests\.{name}\.Chatty\.test_c\d\) \.\.\. ok$")
-                results = [i for i, line in enumerate(lines) if result.match(line)]
-                self.assertEqual(len(results), 4, output)
-                self.assertEqual(results[-1] - results[0] + 1, len(results),
-                                 f"tests.{name} result lines not contiguous:\n" + output)
-                # (b) every line naming the module (results and durations)
-                # lies in one block that no other chatty module breaks into.
-                own = [i for i, line in enumerate(lines) if f"(tests.{name}." in line]
-                others = [i for i, line in enumerate(lines)
-                          if any(f"(tests.{other}." in line for other in names if other != name)]
-                intruders = [lines[i] for i in others if own[0] < i < own[-1]]
-                self.assertEqual(intruders, [],
-                                 f"tests.{name} output interleaved with another module:\n" + output)
-
-    # Review N2 (ci-speed rework 2): the order guard's modules finish in a
-    # fixed order through a file handshake, not through sleeps. A module
-    # with a predecessor waits (60 s cap each) for the predecessor's
-    # `done-<name>` marker, which holds its pid, and then for that process to
-    # be gone (/proc; on a system without /proc the marker alone counts).
-    # Then it stamps its finish time and writes its own marker.
-    HANDSHAKE = (
-        "import os\n"
-        "import time\n"
-        "import unittest\n"
-        "from pathlib import Path\n"
-        "NAME = {name!r}\n"
-        "AFTER = {after!r}\n"
-        "def gone(pid):\n"
-        "    try:\n"
-        "        stat = Path('/proc/%d/stat' % pid).read_text(encoding='utf-8')\n"
-        "    except OSError:\n"
-        "        return True\n"
-        "    return stat.rsplit(')', 1)[1].split()[0] in ('Z', 'X')\n"
-        "class Chatty(unittest.TestCase):\n"
-        "    @classmethod\n"
-        "    def tearDownClass(cls):\n"
-        "        shake = Path(os.environ['KE_TEST_HANDSHAKE'])\n"
-        "        if AFTER:\n"
-        "            marker = shake / ('done-' + AFTER)\n"
-        "            deadline = time.monotonic() + 60\n"
-        "            while not marker.exists() and time.monotonic() < deadline:\n"
-        "                time.sleep(0.02)\n"
-        "            pid = int(marker.read_text(encoding='utf-8')) if marker.exists() else 0\n"
-        "            deadline = time.monotonic() + 60\n"
-        "            while pid and not gone(pid) and time.monotonic() < deadline:\n"
-        "                time.sleep(0.02)\n"
-        "        with open(os.environ['KE_TEST_SPANS'], 'a', encoding='utf-8') as f:\n"
-        "            f.write(NAME + ' ' + repr(time.time()) + '\\n')\n"
-        "        tmp = shake / ('tmp-' + NAME)\n"
-        "        tmp.write_text(str(os.getpid()), encoding='utf-8')\n"
-        "        os.replace(tmp, shake / ('done-' + NAME))\n"
-    )
-
-    def test_module_logs_and_summary_lines_print_in_glob_order(self):
-        # §2.2.1 decision 2 ("in module order"; orchestrator, ci-speed rework
-        # 1, mutant m1): the logs and then the `unit:` lines come out in the
-        # glob order of the modules, however the pool finishes them. Here the
-        # modules finish in reverse glob order through the HANDSHAKE above
-        # (review N2, rework 2): test_oc finishes first, test_ob waits for
-        # test_oc's process to end, test_oa for test_ob's. Padding makes
-        # earlier names larger, so the pool (largest first, k = 4) starts all
-        # three at once.
-        after = {"test_oa": "test_ob", "test_ob": "test_oc", "test_oc": ""}
-        finished = self.root / "finished"
-        shake = self.root / "handshake"
-        shake.mkdir()
-        for i, (name, predecessor) in enumerate(after.items()):
-            body = self.HANDSHAKE.format(name=name, after=predecessor)
-            for t in range(4):
-                body += f"    def test_c{t}(self):\n        pass\n"
-            body += "#" * (600 * (len(after) - i)) + "\n"
-            self.write(f"tests/{name}.py", body)
-        self.fake_nproc(4)
-        code, output, _ = self.run_mode("fast", {"KE_TEST_SPANS": str(finished),
-                                                 "KE_TEST_HANDSHAKE": str(shake)}, merged=True)
-        self.assertEqual(code, 0, output)
-        # Precondition: the fixture really finished in reverse glob order.
-        stamps = dict(line.split() for line in finished.read_text(encoding="utf-8").splitlines())
-        self.assertEqual(sorted(stamps, key=lambda m: float(stamps[m])),
-                         ["test_oc", "test_ob", "test_oa"], stamps)
-        # Glob order as test.sh sees it: the same bash glob, in the same env.
-        listing = subprocess.run(
-            ["bash", "-c", "shopt -s nullglob; for f in tests/test*.py; do m=\"${f%.py}\"; "
-                           "echo \"${m//\\//.}\"; done"],
-            cwd=self.project, env=self.base_env(self.root / "unused"), text=True,
-            stdout=subprocess.PIPE, check=True)
-        glob_order = listing.stdout.split()
-        self.assertEqual([m for m in glob_order if m.startswith("tests.test_o")],
-                         ["tests.test_oa", "tests.test_ob", "tests.test_oc"], glob_order)
-        lines = output.splitlines()
-        with self.subTest(part="log blocks"):
-            # Every line naming a module (results and durations) lies wholly
-            # before every line naming the next module in glob order.
-            spans = {}
-            for module in glob_order:
-                own = [i for i, line in enumerate(lines) if f"({module}." in line]
-                self.assertTrue(own, f"no output from {module}:\n" + output)
-                spans[module] = (own[0], own[-1])
-            for earlier, later in zip(glob_order, glob_order[1:]):
-                self.assertLess(spans[earlier][1], spans[later][0],
-                                f"{earlier}'s log is not wholly before {later}'s:\n" + output)
-        with self.subTest(part="unit: lines"):
-            summary = [line.split()[-1] for line in lines
-                       if re.match(r"^unit: \d+s rc=\S+ \S+$", line)]
-            self.assertEqual(summary, glob_order, output)
-
-    def test_verify_sees_sentinel_and_ran_lines_from_real_test_sh(self):
-        # §2.2.1 / §5 of profile.md: the real verify.sh, fed by the real
-        # test.sh (and the real sentinel module), still finds the whole
-        # sentinel line and a `Ran N > 0` line while modules run at once.
+    def install_real_verify(self) -> None:
+        """The real verify.sh and sentinel module in the throwaway project,
+        with passing lint and smoke stand-ins (KE_IN_GATES=1 keeps verify.sh
+        out of docker)."""
         shutil.copyfile(VERIFY_SH, self.project / "scripts" / "verify.sh")
         shutil.copyfile(ROOT / "tests" / "test_sentinel.py",
                         self.project / "tests" / "test_sentinel.py")
@@ -1170,10 +810,16 @@ class IntegrationRunsOnceTest(unittest.TestCase):
             path = self.project / "scripts" / name
             path.write_text("#!/usr/bin/env bash\n" + body, encoding="utf-8", newline="\n")
             path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+    def test_verify_sees_sentinel_and_ran_lines_from_real_test_sh(self):
+        # profile.md §5 / CS-10: the real verify.sh, fed by the real test.sh
+        # (and the real sentinel module), finds the whole sentinel line and a
+        # `Ran N > 0` line.
+        self.install_real_verify()
         for name in ("test_ca", "test_cb", "test_cc"):
             self.chatty(name)
-        self.fake_nproc(4)
         for mode in ("fast", "full"):
+            self.clear_coverage_data()
             code, output, _ = self.run_mode(mode, {"KE_IN_GATES": "1"}, merged=True,
                                             script="verify.sh")
             with self.subTest(mode=mode):
@@ -1182,9 +828,30 @@ class IntegrationRunsOnceTest(unittest.TestCase):
                 self.assertEqual(output.splitlines().count(VerifyRequiresTestsRunTest.SENTINEL), 1,
                                  output[-3000:])
 
+    def test_verify_fails_when_a_top_level_module_exits_zero_at_import(self):
+        # Review R1 (audit probe audit/probe_test_exit0.py.txt), adapted for
+        # §2.2.1-r3 decision 2: the per-module Ran check is withdrawn, and
+        # verify.sh's sentinel check catches this instead. A module raising
+        # SystemExit(0) at import stops loading before any top-level test
+        # runs, so the sentinel never reports ok and the real verify.sh fails
+        # whatever test.sh's exit status is.
+        self.install_real_verify()
+        self.write("tests/test_exit0.py", "import sys\nsys.exit(0)\n")
+        for mode in ("fast", "full"):
+            self.clear_coverage_data()
+            code, output, _ = self.run_mode(mode, {"KE_IN_GATES": "1"}, merged=True,
+                                            script="verify.sh")
+            with self.subTest(mode=mode):
+                # No precondition on the sentinel line: before rework 3 the
+                # pool ran test_sentinel in its own process, and test.sh's
+                # per-module Ran check failed the run instead.
+                self.assertNotEqual(code, 0, output[-3000:])
+                self.assertNotIn(": PASS ==", output)
 
-class UnitPoolStaticTest(unittest.TestCase):
-    """ci-speed rework round 1: static pins on scripts/test.sh."""
+
+class UnitStageStaticTest(unittest.TestCase):
+    """ci-speed: static pins on scripts/test.sh (rework 1; rework 3,
+    §2.2.1-r3)."""
 
     @staticmethod
     def code() -> str:
@@ -1192,7 +859,7 @@ class UnitPoolStaticTest(unittest.TestCase):
                          if not line.lstrip().startswith("#"))
 
     def test_data_file_comes_from_coverage_api_not_debug_config(self):
-        # Review R2 / CS-4 / §2.2.1 decision 5: the data path comes from
+        # Review R2 / CS-4 / §2.2.1-r3 decision 3: the data path comes from
         # coverage's Python API, not from parsing the text of
         # `coverage debug config` (not a stable interface).
         code = self.code()
@@ -1206,6 +873,31 @@ class UnitPoolStaticTest(unittest.TestCase):
         for fmt in formats:
             with self.subTest(format=fmt):
                 self.assertNotIn("\n", fmt)
+
+    def test_pool_machinery_is_gone(self):
+        # CS-10 last bullet / §2.2.1-r3 decision 1: no k from nproc, no job
+        # control or `wait -n` scheduling, no log directory, no size ordering
+        # and no INT/TERM trap are left in test.sh.
+        code = self.code()
+        for name, pattern in (("nproc", r"\bnproc\b"), ("wait -n", r"\bwait\s+-n\b"),
+                              ("set -m", r"\bset\s+-m\b"), ("mktemp", r"\bmktemp\b"),
+                              ("stat -c", r"\bstat\s+-c\b"),
+                              ("INT/TERM trap", r"\btrap\b[^\n]*\b(INT|TERM)\b")):
+            with self.subTest(left=name):
+                match = re.search(pattern, code)
+                self.assertIsNone(match, f"{name} is still in test.sh: "
+                                         f"{match.group(0) if match else ''!r}")
+
+    def test_probe_runs_with_a_phase_only(self):
+        # CS-11 / §2.2.1-r3 decision 4: test.sh runs
+        # `bash scripts/resource_probe.sh start` and `... end`; the root
+        # argument is a test seam that test.sh never passes.
+        calls = re.findall(r"\bbash\s+scripts/resource_probe\.sh([^\n;|&)]*)", self.code())
+        self.assertTrue(calls, "test.sh never runs scripts/resource_probe.sh")
+        for args in calls:
+            with self.subTest(args=args):
+                self.assertIn(args.split(), (["start"], ["end"]))
+        self.assertEqual({args.split()[0] for args in calls if args.split()}, {"start", "end"})
 
 
 @unittest.skipUnless(shutil.which("bash"), "needs bash")

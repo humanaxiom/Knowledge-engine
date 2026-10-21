@@ -1,0 +1,37 @@
+### fixture=redsub mode=fast
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 1ms
+Installed 1 package in 3ms
+resources: phase=start nproc=24 cpu_max_quota=max cpu_max_period=100000 cg_cpu_usage_us=1054860 cg_cpu_throttled_us=0 mem_total_kib=32583712 mem_available_kib=22357048 swap_total_kib=8388608 swap_free_kib=8132740 cg_mem_max=max cg_mem_peak=38506496 psi_cpu_some_us=6856039805 psi_memory_some_us=2365155 psi_memory_full_us=2156551 psi_io_some_us=300698313 psi_io_full_us=286419817 cpu_steal_ticks=0 cpu_total_ticks=2091193393
+test_z (tests.test_z.Z.test_z) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_z (tests.test_z.Z.test_z)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+/opt/venv/lib/python3.12/site-packages/coverage/control.py:967: CoverageWarning: No data was collected. (no-data-collected); see https://coverage.readthedocs.io/en/7.16.2/messages.html#warning-no-data-collected
+  self._warn("No data was collected.", slug="no-data-collected")
+test_b (tests.sub.test_bad.B.test_b) ... FAIL
+test_z (tests.sub.test_s.Z.test_z) ... ok
+
+======================================================================
+FAIL: test_b (tests.sub.test_bad.B.test_b)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/sub/test_bad.py", line 4, in test_b
+    self.fail("red")
+AssertionError: red
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.005s
+
+FAILED (failures=1)
+/opt/venv/lib/python3.12/site-packages/coverage/control.py:967: CoverageWarning: No data was collected. (no-data-collected); see https://coverage.readthedocs.io/en/7.16.2/messages.html#warning-no-data-collected
+  self._warn("No data was collected.", slug="no-data-collected")
+resources: phase=end nproc=24 cpu_max_quota=max cpu_max_period=100000 cg_cpu_usage_us=1727575 cg_cpu_throttled_us=0 mem_total_kib=32583712 mem_available_kib=22747600 swap_total_kib=8388608 swap_free_kib=8132740 cg_mem_max=max cg_mem_peak=38506496 psi_cpu_some_us=6856192663 psi_memory_some_us=2365155 psi_memory_full_us=2156551 psi_io_some_us=300701936 psi_io_full_us=286422242 cpu_steal_ticks=0 cpu_total_ticks=2091196227
+test.sh rc=1
