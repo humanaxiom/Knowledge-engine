@@ -1,0 +1,74 @@
+ Container ke-tester-psc-green-gates-run-7a2af6a746cb Creating 
+ Container ke-tester-psc-green-gates-run-7a2af6a746cb Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.71ms
+Installed 1 package in 1ms
+GREEN copy: PASS (OK)
+KILLED   p1_tag_only                    by test_image_scanner_is_pinned  AssertionError: unexpectedly None : the scanner is anchore/grype:v<X.Y.Z>@sha256:<64 hex>
+KILLED   p1_latest                      by test_image_scanner_is_pinned  AssertionError: unexpectedly None : the scanner is anchore/grype:v<X.Y.Z>@sha256:<64 hex>
+KILLED   p1_two_images                  by test_image_scanner_is_pinned  AssertionError: 2 != 1 : scan-db and scan use one image: {'scan-db': 'anchore/grype:v0.120.1@sha256:e4a44ef45d285b829ce6efe2642980329661bd2d18eab5fc53
+KILLED   p1_digest_not_recorded         by test_image_scanner_is_pinned  AssertionError: '2222222222222222222222222222222222222222222222222222222222222222' not found in '# grype provenance: platform-supply-chain unit 2 (PSC
+KILLED   p1_docker_io_prefix            by test_image_scanner_is_pinned  AssertionError: unexpectedly None : the scanner is anchore/grype:v<X.Y.Z>@sha256:<64 hex>
+KILLED   c_scan_db_rw_root              by test_compose_scan_db_has_only_db_volume  AssertionError: False is not True : scan-db: read_only: true
+KILLED   c_scan_db_checkout_bind        by test_compose_scan_db_has_only_db_volume  AssertionError: 2 != 1 : scan-db mounts exactly one volume: [{'type': 'volume', 'source': 'scan-db', 'target': '/db', 'read_only': False, 'extra': []}
+KILLED   c_scan_db_named_net            by test_compose_scan_db_has_only_db_volume  AssertionError: 'networks' unexpectedly found in {'image': 'anchore/grype:v0.120.1@sha256:e4a44ef45d285b829ce6efe2642980329661bd2d18eab5fc539138d4adae
+KILLED   c_scan_db_ro_volume            by test_compose_scan_db_has_only_db_volume  AssertionError: True is not false : scan-db writes the database (read-write)
+KILLED   c_scan_db_nnp_off              by test_compose_scan_db_has_only_db_volume  AssertionError: 'no-new-privileges:true' not found in [] : scan-db: security_opt no-new-privileges:true
+KILLED   c_scan_db_env_passthrough      by test_compose_scan_db_has_only_db_volume  AssertionError: unexpectedly None : scan-db: `GRYPE_DB_UPDATE_URL` is passed through from the host
+KILLED   c_scan_db_env_interpolated     by test_compose_scan_db_has_only_db_volume  AssertionError: '$' unexpectedly found in '${GRYPE_DIR:-/db}' : scan-db: `GRYPE_DB_CACHE_DIR` interpolates a host value
+KILLED   c_scan_db_profile              by test_compose_scan_db_has_only_db_volume  AssertionError: ['scan'] is not false : scan-db: no profiles (D1: only `compose run` starts it)
+KILLED   c_scan_db_command              by test_compose_scan_db_has_only_db_volume  AssertionError: Lists differ: ['db', 'status'] != ['db', 'update']
+KILLED   c_scan_network_bridge          by test_compose_scan_has_no_network  AssertionError: None != 'none' : scan has network_mode: none (Q56(a))
+KILLED   c_scan_in_rw                   by test_compose_scan_has_no_network, test_scan_input_is_read_only_ke_app_tar  AssertionError: False is not true : scan's /in mount is not read-only
+KILLED   c_scan_db_mount_rw             by test_compose_scan_has_no_network  AssertionError: False is not true : scan's /db mount is not read-only
+KILLED   c_scan_cap_drop_gone           by test_compose_scan_has_no_network  AssertionError: Lists differ: [] != ['ALL']
+KILLED   c_scan_auto_update_on          by test_compose_scan_has_no_network  AssertionError: 'true' != 'false'
+KILLED   c_scan_checkout_bind           by test_compose_scan_has_no_network  AssertionError: Lists differ: ['/cfg/scan-ignore.yaml', '/db', '/in', '/repo'] != ['/cfg/scan-ignore.yaml', '/db', '/in']
+KILLED   c_gates_it_gains_scan_volume   by test_compose_scan_has_no_network  AssertionError: 'scan-db' unexpectedly found in '{"image": "ke-gates:${KE_IMAGE_TAG:-local}", "build": {"context": ".", "dockerfile": "docker/gates.Do
+KILLED   c_gates_it_gains_grype_key     by test_compose_scan_has_no_network  AssertionError: 'GRYPE_' unexpectedly found in '{"image": "ke-gates:${KE_IMAGE_TAG:-local}", "build": {"context": ".", "dockerfile": "docker/gates.Doc
+KILLED   c_scan_service_in_main_file    by test_compose_scan_has_no_network  AssertionError: 'scan' unexpectedly found in {'scan', 'scan-db'} : docker-compose.yml defines scan; D1 keeps it standalone
+KILLED   c_volume_fixed_name            by test_scan_updates_db_every_run  AssertionError: 'name' unexpectedly found in {'name': 'grype-db'} : scan-db with a fixed `name:` is shared across projects
+KILLED   c_volume_external              by test_scan_updates_db_every_run  AssertionError: 'external' unexpectedly found in {'external': True} : an external scan-db volume outlives the project
+KILLED   c_top_level_name               by test_scan_updates_db_every_run  AssertionError: 'name' unexpectedly found in {'name': 'ke-scan', 'x-scanner': {'image': 'anchore/grype:v0.120.1@sha256:e4a44ef45d285b829ce6efe26429803
+KILLED   c_socket_mount                 by test_scan_services_have_no_docker_socket  AssertionError: True is not false : scan mounts the Docker socket: {'type': 'bind', 'source': '/var/run/docker.sock', 'target': '/var/run/docker.sock'
+KILLED   c_docker_host                  by test_scan_services_have_no_docker_socket  AssertionError: 'DOCKER_HOST' unexpectedly found in ['GRYPE_DB_CACHE_DIR', 'GRYPE_DB_AUTO_UPDATE', 'DOCKER_HOST', 'GRYPE_CHECK_FOR_APP_UPDATE'] : scan
+KILLED   c_privileged                   by test_scan_services_have_no_docker_socket  AssertionError: True unexpectedly found in (True, 'true') : scan is privileged
+KILLED   c_pid_host                     by test_scan_services_have_no_docker_socket  AssertionError: 'host' == 'host' : scan: pid: host
+KILLED   c_input_registry               by test_scan_input_is_read_only_ke_app_tar  AssertionError: 'docker-archive:/in/ke-app.tar' not found in ['registry:ke-app:latest', '--config', '/cfg/scan-ignore.yaml', '--only-fixed', '--fail-o
+KILLED   c_input_second_source          by test_scan_input_is_read_only_ke_app_tar  AssertionError: Lists differ: ['docker-archive:/in/ke-app.tar', 'docker:ke-gateway:local'] != ['docker-archive:/in/ke-app.tar']
+KILLED   s_platform                     by test_scan_input_is_read_only_ke_app_tar  AssertionError: ['--platform'] is not false : `save --platform linux/amd64 -o ./dist/ke-scan-1944525352/ke-app.tar ke-app:wt-0123456789ab` passes --pl
+KILLED   s_saves_gateway_too            by test_scan_input_is_read_only_ke_app_tar  AssertionError: Lists differ: ['ke-app:wt-0123456789ab', 'ke-gateway:wt-0123456789ab'] != ['ke-app:wt-0123456789ab']
+KILLED   s_tar_elsewhere                by test_scan_input_is_read_only_ke_app_tar  AssertionError: PosixPath('/tmp/tmp0nqtr3_r/repo/dist/ke-app.tar') != PosixPath('/tmp/tmp0nqtr3_r/repo/dist/ke-scan-1154132657/ke-app.tar') : the tar 
+KILLED   s_db_before_save               by test_scan_order_is_save_then_db_then_scan  AssertionError: Lists differ: ['pull', 'run scan-db', 'save', 'run scan'] != ['save', 'pull', 'run scan-db', 'run scan']
+KILLED   s_caller_project               by test_scan_order_is_save_then_db_then_scan, test_scan_updates_db_every_run  AssertionError: Regex didn't match: '^ke-scan-[0-9]+$' not found in 'ke-verify-1234' : the scan project is ke-scan-<digits> (D4 step 1)
+KILLED   s_caller_compose_file          by test_scan_order_is_save_then_db_then_scan  AssertionError: Lists differ: ['docker-compose.yml', 'docker-compose.verify.yml'] != ['docker-compose.scan.yml']
+KILLED   s_pull_allowed                 by test_scan_order_is_save_then_db_then_scan  AssertionError: None != ['never'] : compose run --pull never (D3)
+KILLED   s_command_override             by test_scan_order_is_save_then_db_then_scan  AssertionError: Lists differ: ['registry:ke-app'] != []
+KILLED   s_no_tag_check                 by test_scan_refuses_malformed_image_tag  AssertionError: 0 == 0 : unset: scan.sh accepted KE_IMAGE_TAG=None
+KILLED   s_tag_unanchored               by test_scan_refuses_malformed_image_tag  AssertionError: 0 == 0 : 13 hex: scan.sh accepted KE_IMAGE_TAG='wt-0123456789abc'
+KILLED   s_tag_glob                     by test_scan_refuses_malformed_image_tag  AssertionError: 0 == 0 : uppercase hex: scan.sh accepted KE_IMAGE_TAG='wt-0123456789AB'
+KILLED   s_tag_check_after_save         by test_scan_refuses_malformed_image_tag  AssertionError: Lists differ: [['info']] != []
+KILLED   s_url_from_env                 by test_scan_updates_db_every_run, test_scan_db_failure_fails_closed_naming_host_and_stage  AssertionError: unexpectedly None : scan.sh assigns SCAN_DB_URL=https://... exactly once, as a literal
+KILLED   s_no_url_passed                by test_scan_updates_db_every_run  AssertionError: 'GRYPE_DB_UPDATE_URL=https://grype.anchore.io/databases' not found in [] : run scan-db carries -e GRYPE_DB_UPDATE_URL=<the scan.sh con
+KILLED   s_url_from_grype_env           by test_scan_updates_db_every_run  AssertionError: 'GRYPE_DB_UPDATE_URL=https://grype.anchore.io/databases' not found in ['GRYPE_DB_UPDATE_URL=https://attacker.invalid/listing.json'] : 
+KILLED   s_fixed_project                by test_scan_updates_db_every_run  AssertionError: 1 != 2 : two runs, two projects (no database reused): ['ke-scan-1', 'ke-scan-1']
+KILLED   s_two_db_runs                  by test_scan_updates_db_every_run  AssertionError: 2 != 1 : exactly one `run scan-db` (db update) per invocation
+KILLED   s_fetch_retry                  by test_scan_db_failure_fails_closed_naming_host_and_stage  AssertionError: 0 == 0 : a failed fetch must fail the scan:
+KILLED   s_pull_retry                   by test_scan_db_failure_fails_closed_naming_host_and_stage  AssertionError: 0 == 0 : a failed pull must fail the scan:
+KILLED   s_fetch_failure_ignored        by test_scan_db_failure_fails_closed_naming_host_and_stage  AssertionError: 0 == 0 : a failed fetch must fail the scan:
+KILLED   s_fetch_msg_no_host            by test_scan_db_failure_fails_closed_naming_host_and_stage  AssertionError: 'grype.anchore.io' not found in "ignore: []\n== scan: save ==\n== scan: scan-db ==\nfake docker: failing call 1 matching '\\\\brun\\\\
+KILLED   s_pull_msg_no_ref              by test_scan_db_failure_fails_closed_naming_host_and_stage  AssertionError: 'anchore/grype:v0.120.1@sha256:e4a44ef45d285b829ce6efe2642980329661bd2d18eab5fc539138d4adaebbbe' not found in "ignore: []\n== scan: sa
+KILLED   s_msg_no_stage                 by test_scan_db_failure_fails_closed_naming_host_and_stage  AssertionError: Regex didn't match: '(?i)\\bstage\\s+scan-db\\b' not found in "ignore: []\n== scan: save ==\n== scan: scan-db ==\nfake docker: failing
+KILLED   s_skip_path                    by test_scan_db_failure_fails_closed_naming_host_and_stage  AssertionError: 0 == 0 : a failed fetch must fail the scan:
+KILLED   s_no_teardown_on_failure       by test_scan_db_failure_fails_closed_naming_host_and_stage  AssertionError: 0 != 1 : scripts/teardown.sh must run exactly once (D4 every exit path)
+KILLED   s_teardown_keeps_volume        by test_scan_db_failure_fails_closed_naming_host_and_stage  AssertionError: Lists differ: [] != ['--volumes']
+KILLED   s_tar_not_removed              by test_scan_db_failure_fails_closed_naming_host_and_stage  AssertionError: Lists differ: ['ke-scan-511922513'] != []
+KILLED   i_expired                      by test_scan_ignores_are_justified  AssertionError: Lists differ: ['ignore[0] until 2026-01-01 has passed (today 2026-10-21, UTC)'] != []
+KILLED   i_too_far                      by test_scan_ignores_are_justified  AssertionError: Lists differ: ['ignore[0] until 2099-01-01 is more than 90 days out (today 2026-10-21, UTC)'] != []
+KILLED   i_extra_top_key                by test_scan_ignores_are_justified  AssertionError: Lists differ: ["the top level must be exactly one key, `[34 chars]'])"] != []
+KILLED   i_file_deleted                 by test_scan_ignores_are_justified  AssertionError: config/scan-ignore.yaml is missing (ADR-KE-013 amendment 1, D5; it starts as `ignore: []`)
+KILLED   b_ships_ignore_file            by test_bundle_has_no_scanner_or_db  AssertionError: Lists differ: ['MANIFEST.sha256', 'app/config/scan-ignore.yaml'] != []
+KILLED   b_ships_scan_compose           by test_bundle_has_no_scanner_or_db  AssertionError: Lists differ: ['app/docker-compose.scan.yml'] != []
+KILLED   b_ships_scan_sh                by test_bundle_has_no_scanner_or_db  AssertionError: Lists differ: ['app/scripts/scan.sh'] != []
+66/66 mutants killed

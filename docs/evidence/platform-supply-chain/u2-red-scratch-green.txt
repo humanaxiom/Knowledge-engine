@@ -1,0 +1,95 @@
+# Scratch green copy used for the u2 RED satisfiability check (tester, 2026-10-21). Not production files.
+
+=== docker-compose.scan.yml ===
+# Scratch green copy (tester satisfiability check only).
+x-scanner: &scanner
+  image: anchore/grype:v0.120.1@sha256:e4a44ef45d285b829ce6efe2642980329661bd2d18eab5fc539138d4adaebbbe
+  read_only: true
+  tmpfs: ["/tmp"]
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+
+services:
+  scan-db:
+    <<: *scanner
+    command: ["db", "update"]
+    volumes:
+      - type: volume
+        source: scan-db
+        target: /db
+    environment:
+      GRYPE_DB_CACHE_DIR: /db
+      GRYPE_CHECK_FOR_APP_UPDATE: "false"
+
+  scan:
+    <<: *scanner
+    network_mode: none
+    command: ["docker-archive:/in/ke-app.tar", "--config", "/cfg/scan-ignore.yaml", "--only-fixed",
+              "--fail-on", "high", "--show-suppressed", "-o", "table"]
+    volumes:
+      - type: volume
+        source: scan-db
+        target: /db
+        read_only: true
+      - type: bind
+        source: ${KE_SCAN_IN:?set by scripts/scan.sh}
+        target: /in
+        read_only: true
+      - type: bind
+        source: ./config/scan-ignore.yaml
+        target: /cfg/scan-ignore.yaml
+        read_only: true
+    environment:
+      GRYPE_DB_CACHE_DIR: /db
+      GRYPE_DB_AUTO_UPDATE: "false"
+      GRYPE_CHECK_FOR_APP_UPDATE: "false"
+
+volumes:
+  scan-db:
+
+=== scripts/scan.sh ===
+#!/usr/bin/env bash
+# Scratch green copy (tester satisfiability check only).
+set -euo pipefail
+CDPATH='' cd -- "$(dirname -- "$0")/.."
+SCAN_DB_URL="https://grype.anchore.io/databases"
+tag="${KE_IMAGE_TAG-}"
+tag_re='^wt-[0-9a-f]{12}$'
+if ! (export LC_ALL=C; [[ "$tag" =~ $tag_re ]]); then
+  echo "scan: FAIL (KE_IMAGE_TAG is malformed, want wt-<12 hex>: $(printf '%q' "$tag"))" >&2
+  exit 1
+fi
+export COMPOSE_FILE=docker-compose.scan.yml COMPOSE_PATH_SEPARATOR=":"
+export COMPOSE_PROJECT_NAME="ke-scan-${RANDOM}${RANDOM}"
+export KE_ENV_FILE=.env.example
+export KE_SCAN_IN="./dist/$COMPOSE_PROJECT_NAME"
+ref="$(sed -n 's/^ *image: *//p' docker-compose.scan.yml | head -n 1)"
+mkdir -p -- "$KE_SCAN_IN"
+cleanup() {
+  status=$?
+  trap - EXIT INT TERM
+  scripts/teardown.sh --volumes || status=1
+  rm -rf -- "$KE_SCAN_IN"
+  exit "$status"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+cat config/scan-ignore.yaml
+echo "== scan: save =="
+docker save -o "$KE_SCAN_IN/ke-app.tar" "ke-app:$tag" || { echo "scan: FAIL (stage save)" >&2; exit 1; }
+echo "== scan: scan-db =="
+docker compose --env-file .env.example pull scan-db \
+  || { echo "scan: FAIL (stage scan-db: pulling the scanner image $ref failed; no retry)" >&2; exit 1; }
+docker compose --env-file .env.example run --rm --pull never -e "GRYPE_DB_UPDATE_URL=$SCAN_DB_URL" scan-db \
+  || { echo "scan: FAIL (stage scan-db: could not fetch the vulnerability database from grype.anchore.io; no retry)" >&2; exit 1; }
+echo "== scan: scan =="
+docker compose --env-file .env.example run --rm --pull never scan \
+  || { echo "scan: FAIL (stage scan: grype exited non-zero)" >&2; exit 1; }
+echo "== scan: done =="
+
+=== config/scan-ignore.yaml ===
+ignore: []
+
+=== scripts/bundle.sh (one line changed) ===
+294:done < <(git ls-files -z -- config ':!config/scan-ignore.yaml')

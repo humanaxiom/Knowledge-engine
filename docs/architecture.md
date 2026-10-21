@@ -2001,6 +2001,9 @@ seconds. The compose healthcheck of `api` uses it. *As built (2a):* the
 **Images.**
 - `docker/app.Dockerfile` reuses the pinned `python:3.12-slim-bookworm` and
   `uv` bases, runs `uv sync --locked --no-dev`, runs as a non-root user, and
+  (amended by ADR-KE-013 amendment 1, D10: the sync runs in a `builder`
+  stage, and the shipped final stage copies only `/opt/venv` and `/app`,
+  with no uv)
   copies `engine/` and `config/`. It does **not** copy `.env.example`
   (placeholder-secret ruling; the refusal checks the `changeme` prefix).
   - *Layer order (2b, review carry-in N11; 2b adds the store drivers, so the
@@ -3954,10 +3957,10 @@ Suggested first test per sub-item, followed by the order of the rest.
     full run (`model-run-aria-gb10-2.txt`, with `/api/tags` digests,
     `/api/ps` before and after, `ollama show --parameters` and per-role
     times).
-- **platform-supply-chain** (ADR-KE-013 amendment 1, D1–D9; D9 is a
+- **platform-supply-chain** (ADR-KE-013 amendment 1, D1–D10; D9 is a
   wording change with no test; added
   2026-10-21), in TDD order PSC-11 → PSC-10 → PSC-1/2/3/5/8 → PSC-4 →
-  PSC-6 → PSC-7 → PSC-9 → PSC-12. Static tests parse the YAML or the
+  PSC-17 (D10; its first tests are listed in D10) → PSC-6 → PSC-7 → PSC-9 → PSC-12. Static tests parse the YAML or the
   Dockerfile; behaviour tests reuse `tests/fake_docker.py` and the
   `verify.sh` B6 harness. Names marked *proposed* are new in this design;
   each is listed under the criterion named beside it in the requirements
@@ -4055,7 +4058,8 @@ Suggested first test per sub-item, followed by the order of the rest.
          an unset or malformed `KE_IMAGE_TAG` fails before any docker
          call.
        - `test_scan_ignores_are_justified` (PSC-5, D5): the repository
-         file plus the control subtests listed in D5.
+         file `docker/scan-ignore.yaml` plus the control subtests listed in
+         D5.
        - `test_bundle_has_no_scanner_or_db` (PSC-8, `BundleScriptTest`
          harness): no file in the stub bundle names `grype`, `scan-db`,
          `docker-compose.scan.yml`, `scan.sh` or `scan-ignore`, and no
@@ -5790,7 +5794,8 @@ asked for the hook design to be recorded in this ADR.
     - The scan fails on any match of severity **High or Critical that has
       a fix available** (`--only-fixed --fail-on high`).
     - Unfixed and lower-severity matches are printed and do not fail.
-    - Ignores live in `config/scan-ignore.yaml`. Every entry carries a
+    - Ignores live in `docker/scan-ignore.yaml` (path per amendment 1,
+      D5). Every entry carries a
       `reason` and an `until` date. `test_scan_ignores_are_justified` fails
       when an entry lacks either one or its date has passed.
   - **Scope:** `ke-app` only (the carry-in). Extending the scan to
@@ -5857,7 +5862,7 @@ services of `docker-compose.scan.yml`".
 | Image | the scanner (D2), digest pinned | the same reference (one YAML anchor) |
 | Command | `db update` | `docker-archive:/in/ke-app.tar --config /cfg/scan-ignore.yaml --only-fixed --fail-on high --show-suppressed -o table` |
 | Network | the project's `default` bridge, the only route out in this file (no `networks`, no `network_mode`) | `network_mode: none` |
-| Volumes | exactly one: named volume `scan-db` at `/db`, read-write | `scan-db` at `/db` **read-only**; bind `${KE_SCAN_IN:?}` at `/in` **read-only**; bind `./config/scan-ignore.yaml` at `/cfg/scan-ignore.yaml` **read-only** |
+| Volumes | exactly one: named volume `scan-db` at `/db`, read-write | `scan-db` at `/db` **read-only**; bind `${KE_SCAN_IN:?}` at `/in` **read-only**; bind `./docker/scan-ignore.yaml` at `/cfg/scan-ignore.yaml` **read-only** |
 | Checkout | none | only the one ignore file |
 | Root FS | `read_only: true`; tmpfs `/tmp` | `read_only: true`; tmpfs `/tmp` (the image is unpacked here) |
 | Hardening | `cap_drop: [ALL]`, `security_opt: [no-new-privileges:true]`; no socket, no `DOCKER_HOST`, no `ports`, not privileged | the same |
@@ -5882,6 +5887,12 @@ services of `docker-compose.scan.yml`".
   table above; `read_only` stays. Any other fallback goes back to the
   architect first.
 - `gates` and `gates-it` do not change: no new network, mount or key.
+- PS-2.12 carve-out (2026-10-21): `test_stack_services_have_no_bind_mounts`
+  treats profile-less services as stack services, so it skips exactly
+  `scan-db` and `scan` in `docker-compose.scan.yml`, citing this D1. They
+  are verify-only one-shots, never in the stack's `COMPOSE_FILE`, and the
+  `scan` binds above are by design; `tests/test_image_scan.py` pins their
+  mounts row by row. No other service or file is exempt.
 
 **D2. The scanner and its pin.** grype, the official `anchore/grype` image,
 referenced as `anchore/grype:v<X.Y.Z>@sha256:<64 hex>`, where the digest is
@@ -5951,7 +5962,7 @@ over HTTPS and each archive is checked against the checksum in the listing.
      `KE_SCAN_IN=./dist/<project>` (relative, so Git Bash and Docker
      Desktop resolve it as `offline_check.sh`'s bundle path does). It
      creates that directory and installs the trap.
-  2. *Ignore entries.* It prints `config/scan-ignore.yaml` (`cat`), so the
+  2. *Ignore entries.* It prints `docker/scan-ignore.yaml` (`cat`), so the
      log holds the entries in force (PSC-7).
   3. `== scan: save ==` — `docker save -o "$KE_SCAN_IN/ke-app.tar"
      "ke-app:$KE_IMAGE_TAG"`. Native platform only; no `--platform` (Q59;
@@ -5989,7 +6000,12 @@ over HTTPS and each archive is checked against the checksum in the listing.
     not, the fallback is a second, report-only `scan` run without
     `--only-fixed` and without `--fail-on`, after the gating run, and its
     time is part of the `scan` stage in D8.
-- `config/scan-ignore.yaml` is passed to grype as its config file, so no
+- *Location (2026-10-21 ruling):* `docker/`, not `config/`. It is
+  verify-time policy, not runtime config: `bundle.sh` ships every tracked
+  `config/` file (and `app.Dockerfile` copies `config/` into `ke-app`),
+  while neither takes anything from `docker/`, so no bundle exception is
+  needed and §2.6 item 3's "no bundled file names `scan-ignore`" holds.
+- `docker/scan-ignore.yaml` is passed to grype as its config file, so no
   translation step exists. Its schema (the id field is named
   `vulnerability` because that is grype's key):
   ```yaml
@@ -6166,6 +6182,161 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
   fresh on every run, and the scan itself runs with no network. A fixed
   High or Critical finding fails the run, and so does a database host that
   cannot be reached; there is no retry and no skip."
+
+**D10. `ke-app` ships without uv (PSC-17; architect, 2026-10-21, unit 3).**
+- **Context.** The first real scan of `ke-app`
+  (`docs/evidence/platform-supply-chain/u2-green-real-scan.txt`) fails on
+  two fixed findings at or above the threshold:
+  - certifi 2026.7.22: GHSA-6q48-6c7w-9gw2, Critical, fixed in 2026.10.19.
+    certifi is a transitive Python dependency (httpx, httpcore, requests in
+    `uv.lock`).
+  - quinn-proto 0.11.14: GHSA-4w2j-m93h-cj5j, High, fixed in 0.11.15.
+  - The same table also lists rustls 0.23.40 (GHSA-2mjx-qc3c-rqvc, Medium,
+    fixed in 0.23.45), below the threshold.
+  - quinn-proto and rustls are Rust crates. The only third-party Rust
+    binary in `ke-app` is uv, which `app.Dockerfile` copies into the final
+    stage (`COPY --from=uv /uv /usr/local/bin/uv`). Test 3 below confirms
+    this: the rows must be gone once uv is.
+  - uv is used only at build time in `ke-app`. At runtime nothing calls it:
+    compose runs `python -m engine.api` and `python -m engine.worker`, both
+    healthchecks run `python -c`, and `bundle.sh` runs the notices step
+    with `--entrypoint python ... -m engine.notices`. The `uv run` calls in
+    `smoke.sh` and `test.sh` run in the gates image, not in `ke-app`.
+- **Decision.**
+  1. **Build shape.** `docker/app.Dockerfile` has three stages:
+     - `uv`: unchanged, the pinned `ghcr.io/astral-sh/uv` image.
+     - `builder`: the same `python:3.12-slim-bookworm@sha256:...`
+       reference as today. It copies in the uv binary, sets the `UV_*`
+       variables (`UV_PROJECT_ENVIRONMENT=/opt/venv`,
+       `UV_PYTHON_DOWNLOADS=never`, `UV_LINK_MODE=copy`), and runs today's
+       N11 layer order in `/app`: `pyproject.toml` and `uv.lock`, then
+       `uv sync --locked --no-dev --no-install-project`, then
+       `harness_telemetry/`, `engine/` and `config/`, then
+       `uv sync --locked --no-dev --no-editable`.
+     - The final stage, which is the last stage in the file. Compose builds
+       with no `target:`, so the last stage is the one that ships. Its
+       `FROM` uses the same python reference, byte for byte. It sets
+       `PATH=/opt/venv/bin:$PATH` and `PYTHONUNBUFFERED=1`, and nothing
+       else: no `UV_*` variable, because nothing reads them. Then it runs
+       `COPY --from=builder /opt/venv /opt/venv` and
+       `COPY --from=builder /app /app`, so `/app` is the tree the image has
+       today. Then `WORKDIR /app`, `useradd --no-create-home --uid 10001
+       ke`, `USER ke`, and `CMD ["python", "-m", "engine.api"]`.
+     - The final stage has no uv binary, no `COPY --from=uv`, and no `uv`
+       command. The COPYs carry no `--chown`, so the venv and `/app` stay
+       owned by root and read-only to `ke`, as today.
+  2. **What must not break.**
+     - *Interpreter paths.* The venv's `pyvenv.cfg` `home` and its
+       `bin/python` link point at the base image's interpreter. The script
+       shebangs name `/opt/venv/bin/python`. Both stages use the same base
+       digest and the same `/opt/venv` path, so every path resolves in the
+       final stage. Test 1 checks that the two references are identical.
+     - *Runtime contract.* `PATH` starts with `/opt/venv/bin`, and the
+       uid-10001 user `ke`, `USER ke` and the `CMD` are unchanged. So the
+       compose commands and healthchecks work as they are.
+     - `test_dockerfiles_pin_base_images_by_digest` stays green. Every
+       `FROM` is either a digest-pinned image or a named earlier stage, and
+       the final stage's `FROM` is the pinned python image, not
+       `FROM builder`.
+     - `test_env_example_not_in_app_image` stays green. No `COPY` or `ADD`
+       line names `.env`, and there is no `COPY .`.
+     - *Licence notices (§2.4).* Each package's `*.dist-info/licenses/`
+       travels with the venv, and nothing in the file removes anything
+       under it. The `bundle.sh` notices run (`--network none --entrypoint
+       python <ke-app> -m engine.notices`) is unchanged. It already runs in
+       every `full`, through `offline_check.sh` and `bundle.sh`.
+     - *Layer order (N11).* The costly layer, which downloads and installs
+       the dependencies, stays cached in `builder`. A code change reruns
+       the final stage's venv `COPY`, which is a local copy with no
+       download. The reviewer judges this, as for N11.
+  3. **certifi.** Run `uv lock --upgrade-package certifi` to move to
+     2026.10.19, regenerating `uv.lock` as the CLAUDE.md "Generated
+     artifacts" row says. The lock diff may change only the certifi entry
+     (version, URLs, hashes, sizes, upload times). Any other package that
+     moves is a review finding.
+     - *Settle period.* 2026.10.19 is 2 days old on 2026-10-21, against the
+       usual settle period of at least 2 weeks. A fixed Critical overrides
+       the settle period (Q42: upgrade, do not ignore), and the human was
+       informed (handoff, orchestrator, 2026-10-21). This exception is for
+       Critical fixes only. It sets no precedent for other bumps.
+  4. **The gates image keeps uv.** `verify.sh` needs it there: `test.sh`
+     and `smoke.sh` run `uv run --locked`. Its uv `FROM` reference stays
+     identical to `ke-app`'s `uv` stage (one version, one digest), and
+     test 1b holds the two in step.
+     - *Is a uv upgrade needed?* Yes, as a follow-up, not in this unit. The
+       gates image and the `builder` stage still carry the uv binary with
+       quinn-proto 0.11.14 and rustls 0.23.40. The `builder` stage is where
+       uv's network code actually runs, fetching packages at build time.
+     - Neither image ships to an operator, and the gates image is not
+       scanned (PSC-2: `ke-app` only), so this does not block PSC-17.
+     - When a uv release carries quinn-proto 0.11.15 or later and rustls
+       0.23.45 or later, bump the one pin in both files in a single commit,
+       with the provenance check a new pin needs. Nobody has yet checked
+       whether such a release exists.
+- **Alternatives considered.**
+  - *Ignore entries for quinn-proto and rustls.* Rejected by Q42 (upgrade,
+    do not ignore). Removing uv also costs less than a dated decision every
+    90 days.
+  - *Upgrade uv and keep it in `ke-app`.* This depends on an upstream
+    release with the fixed crates. It also leaves a build tool in the
+    shipped image, so the next Rust advisory in uv would reopen the
+    finding.
+  - *`rm /usr/local/bin/uv` at the end of the single stage.* The binary
+    still ships in a lower layer of the image tar in the bundle.
+  - *Export requirements and `pip install` in one stage.* This loses
+    `uv sync --locked`, and a second installer would have to keep its
+    hashes in step with `uv.lock`.
+  - *Copying `/app` again from the build context.* It is equivalent, but
+    copying from `builder` gives exactly today's tree, with no second list
+    of paths to keep in step.
+- **Consequences.**
+  - The shipped `ke-app` no longer has uv, so `uv` cannot be used inside a
+    running container. Debugging uses `python`.
+  - pip 25.0.1 from the base image stays in `ke-app`. Its findings are
+    Medium or Low, below the threshold. Dropping pip from the final stage
+    is a follow-up candidate, not this unit.
+  - The diff touches `docker/app.Dockerfile` and `uv.lock`, so it needs
+    `verify.sh full` and a PSC-12 Windows run at the branch head.
+  - PSC-6 (wiring `scan.sh` into `full`) waits until test 3 is green.
+- **First tests (unit 3, before PSC-6).**
+  1. `test_app_image_final_stage_has_no_uv` (fast, static,
+     `tests/test_image_scan.py`). Join the continuation lines. The final
+     stage is the text after the last `FROM`. Assert all of the following:
+     - no `COPY` or `ADD` with `--from=uv`, and no `--from=` that names
+       `astral-sh/uv` (case-insensitive);
+     - no path whose last component is `uv` or `uvx`, and no `uv` command
+       word in any `RUN`;
+     - the final `FROM` reference equals the `builder` stage's, and is the
+       `python:3.12-slim-bookworm@sha256:` image;
+     - `COPY --from=builder /opt/venv /opt/venv` is present, and an `ENV`
+       sets a `PATH` that starts with `/opt/venv/bin:`;
+     - `USER ke` and `CMD ["python", "-m", "engine.api"]` are present;
+     - the `builder` stage runs `uv sync --locked --no-dev`.
+
+     It is RED today for the expected reason: the final (python) stage
+     holds `COPY --from=uv /uv /usr/local/bin/uv`.
+  1b. `test_uv_pin_matches_in_app_and_gates_images` (fast, static). The
+     `ghcr.io/astral-sh/uv:<v>@sha256:<64 hex>` `FROM` reference appears
+     exactly once in each file, and the two are identical. It is a guard,
+     green today. The proof is a recorded mutant: change one pin, and the
+     test goes red.
+  2. Behaviour check (manual, recorded as evidence, not a new `full`
+     test). On the rebuilt `ke-app:<tag>`, with `--rm --network none`:
+     - `--entrypoint sh ... -c 'command -v uv || command -v uvx'` exits 1
+       and prints nothing;
+     - `--entrypoint python ... -m engine.notices` exits 0 and prints the
+       `| Package | Version | Licence | Licence files |` header;
+     - `--entrypoint python ... -c "import engine, harness_telemetry,
+       certifi; print(certifi.__version__)"` prints `2026.10.19`.
+
+     Save it to
+     `docs/evidence/platform-supply-chain/u3-no-uv-in-ke-app.txt`. No new
+     `full` test is needed: `full` already runs the notices step (through
+     `offline_check.sh`) and the healthchecks (through smoke), and test 3
+     proves uv is gone from the scanner's catalogue.
+  3. The real scan. `scripts/scan.sh` on the rebuilt `ke-app` exits 0,
+     and the certifi, quinn-proto and rustls rows are gone. Save it to
+     `docs/evidence/platform-supply-chain/u3-real-scan.txt`. Then PSC-6.
 
 - **Alternatives considered (amendment):**
   - The scan services in `docker-compose.yml` under profile `scan`, in the

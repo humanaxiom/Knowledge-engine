@@ -1,0 +1,76 @@
+# U2 rework 1 RED mutants (tester, 2026-10-21), driver u2-rework1-mutants.py.txt, run in the gates image ke-gates:wt-33a132fbfdd7 (--network none): /work = the real checkout read-only, /scratch = the scratchpad (scratch paths written as $SCRATCH). Exit 0.
+# Phase A = guards: the reviewer's gap mutants (review-u2-mutants.py.txt anchors, verbatim) on TODAY's scripts/scan.sh, run against the 4 guard tests only (they pass unmutated).
+# Phase B = satisfiability + RED-test strength: today's tree with scripts/scan.sh replaced by the scratch green shape below (never a production file); all of tests.test_image_scan passes; fix-revert mutants per RED test and the reviewer mutants re-anchored.
+# Two earlier Phase B survivors were fixture gaps, fixed in the tests before this run: b1_ps_running_only (fixture now has a 'created' own container) and l2_rm_then_mkdir (the planter now plants as soon as KE_SCAN_IN is exported, not only on mkdir). An earlier green run also failed the M-1 static order check on a test bug (it matched 'docker compose' inside the cleanup's hand-command echo); now anchored to command lines.
+# shellcheck 0.9.0 on the scratch green scan.sh: exit 0.
+
+=== scratch green: diff scripts/scan.sh $SCRATCH/scan.green.sh ===
+34c34
+< unset COMPOSE_PROFILES COMPOSE_ENV_FILES GRYPE_DB_UPDATE_URL
+---
+> unset COMPOSE_PROFILES COMPOSE_ENV_FILES GRYPE_DB_UPDATE_URL DOCKER_DEFAULT_PLATFORM
+46c46,54
+<   trap - EXIT INT TERM
+---
+>   trap - EXIT
+>   trap '' INT TERM
+>   local ids=()
+>   if mapfile -t ids < <(docker ps -aq --filter "label=com.docker.compose.project=$project"); then
+>     if [ "${#ids[@]}" -gt 0 ] && ! docker rm -f "${ids[@]}" >/dev/null; then
+>       echo "scan: FAIL (could not remove the containers of project $project)" >&2
+>       status=1
+>     fi
+>   fi
+58c66,67
+< mkdir -p -- "$KE_SCAN_IN"
+---
+> mkdir -p dist
+> mkdir -m 0755 -- "$KE_SCAN_IN"
+67a77
+> chmod 0644 -- "$KE_SCAN_IN/ke-app.tar"
+
+=== driver output ===
+
+## Phase A: reviewer mutants on TODAY's scan.sh vs the rework-1 guard tests
+UNMUTATED: PASS (OK)
+KILLED   s_teardown_failure_ignored       by test_scan_fails_when_teardown_fails  AssertionError: 0 == 0 : a failed teardown.sh let the scan pass (review N2):
+KILLED   s_no_int_term_traps              by test_scan_removes_tar_on_every_exit  AssertionError: -2 != 130 : SIGINT: the INT/TERM traps `exit 130` so the EXIT trap runs (D4); exit -2:
+KILLED   s_save_failure_ignored           by test_scan_removes_tar_on_every_exit  AssertionError: 0 == 0 : save fails: the scan passed:
+KILLED   s_scan_failure_ignored           by test_scan_removes_tar_on_every_exit  AssertionError: 0 == 0 : scan fails: the scan passed:
+KILLED   s_trap_after_save                by test_scan_removes_tar_on_every_exit  AssertionError: 0 != 1 : scripts/teardown.sh must run exactly once (D4 every exit path)
+KILLED   s_caller_env_file_wins           by test_scan_ignores_caller_env_file_and_compose_settings  AssertionError: Lists differ: ['.env'] != ['.env.example']
+KILLED   s_no_env_file_flag               by test_scan_ignores_caller_env_file_and_compose_settings  AssertionError: None != ['.env.example'] : every compose call passes --env-file .env.example, never the caller's (N4)
+KILLED   s_no_unset                       by test_scan_ignores_caller_env_file_and_compose_settings  AssertionError: 'COMPOSE_PROFILES' unexpectedly found in {'COMPOSE_PROFILES': 'evil,gates', 'COMPOSE_PROJECT_NAME': 'ke-scan-3162519413', 'KE_SCAN_IN'
+8/8 killed
+
+## Phase B: green copy (scan.green.sh) vs tests.test_image_scan + the bind-mount carve-out
+UNMUTATED: PASS (OK)
+KILLED   b1_no_removal                    by test_scan_interrupt_removes_own_project_containers_before_teardown  AssertionError: [] is not true : cleanup left the scan's own running scan-db container: it must `docker rm -f` every container (running or not) labell
+KILLED   b1_removal_after_teardown        by test_scan_interrupt_removes_own_project_containers_before_teardown  AssertionError: 5 not less than 3 : the project's containers go before teardown.sh runs
+KILLED   b1_filter_by_name                by test_scan_interrupt_removes_own_project_containers_before_teardown  AssertionError: {'dec0a11ke0000001'} is not false : `rm -f f00d5ca7db000001 f00d5ca7db000002 dec0a11ke0000001` names another project's container
+KILLED   b1_filter_by_scan_prefix         by test_scan_interrupt_removes_own_project_containers_before_teardown  AssertionError: {'dec0a11ke0000001', 'dec05ca7000000001'} is not false : `rm -f f00d5ca7db000001 f00d5ca7db000002 dec05ca7000000001 dec0a11ke0000001` 
+KILLED   b1_no_filter                     by test_scan_interrupt_removes_own_project_containers_before_teardown  AssertionError: {'dec05ca7000000001', 'dec0ver1f1000001', 'dec0a11ke0000001'} is not false : `rm -f f00d5ca7db000001 f00d5ca7db000002 dec0ver1f1000001
+KILLED   b1_rm_without_force              by test_scan_interrupt_removes_own_project_containers_before_teardown  AssertionError: [] is not true : cleanup left the scan's own running scan-db container: it must `docker rm -f` every container (running or not) labell
+KILLED   b1_ps_running_only               by test_scan_interrupt_removes_own_project_containers_before_teardown  AssertionError: [] is not true : cleanup left the scan's own created scan-db container: it must `docker rm -f` every container (running or not) labell
+KILLED   m1_no_chmod                      by test_scan_tar_is_world_readable_before_any_compose_call  AssertionError: '0o600' != '0o644'
+KILLED   m1_chmod_after_pull              by test_scan_tar_is_world_readable_before_any_compose_call  AssertionError: '0o600' != '0o644'
+KILLED   m1_chmod_777                     by test_scan_does_not_widen_scanner_privileges, test_scan_tar_is_world_readable_before_any_compose_call  AssertionError: Regex didn't match: '\\bchmod\\s+(?:--\\s+)?0?644\\s' not found in 'chmod 777 -- "$KE_SCAN_IN/ke-app.tar"' : scan.sh: chmod 777 -- "$K
+KILLED   m1_chmod_a_plus_r                by test_scan_does_not_widen_scanner_privileges, test_scan_tar_is_world_readable_before_any_compose_call  AssertionError: Regex didn't match: '\\bchmod\\s+(?:--\\s+)?0?644\\s' not found in 'chmod a+r -- "$KE_SCAN_IN/ke-app.tar"' : scan.sh: chmod a+r -- "$K
+KILLED   m1_extra_dir_777                 by test_scan_does_not_widen_scanner_privileges  AssertionError: Regex didn't match: '\\bchmod\\s+(?:--\\s+)?0?644\\s' not found in 'chmod 777 -- "$KE_SCAN_IN"' : scan.sh: chmod 777 -- "$KE_SCAN_IN"
+KILLED   m1_cli_cap_add                   by test_scan_does_not_widen_scanner_privileges  AssertionError: <re.Match object; span=(2489, 2498), match='--cap-add'> is not None : scripts/scan.sh uses cap_add (security M-1: chmod 0644 only)
+KILLED   m1_compose_cap_add               by test_compose_scan_db_has_only_db_volume, test_compose_scan_has_no_network, test_scan_does_not_widen_scanner_privileges  AssertionError: 'cap_add' unexpectedly found in {'image': 'anchore/grype:v0.120.1@sha256:e4a44ef45d285b829ce6efe2642980329661bd2d18eab5fc539138d4adaeb
+KILLED   m1_compose_privileged            by test_compose_scan_db_has_only_db_volume, test_compose_scan_has_no_network, test_scan_does_not_widen_scanner_privileges, test_scan_services_have_no_docker_socket  AssertionError: True unexpectedly found in (True, 'true') : scan-db: not privileged
+KILLED   l1_default_traps_in_cleanup      by test_scan_second_signal_does_not_abort_cleanup  AssertionError: 'teardown-end' not found in ['save', 'pull', 'run scan-db', 'teardown.sh'] : a second SIGTERM during cleanup killed teardown.sh halfwa
+KILLED   l1_no_trap_reset                 by test_scan_second_signal_does_not_abort_cleanup  AssertionError: 'teardown-end' not found in ['save', 'pull', 'run scan-db', 'teardown.sh'] : a second SIGTERM during cleanup killed teardown.sh halfwa
+KILLED   l2_mkdir_p                       by test_scan_refuses_existing_scan_dir  AssertionError: 0 == 0 : scan.sh accepted a pre-existing dist/<project> (directory) (security L-2: `mkdir -m 0755 -- "$KE_SCAN_IN"`, no -p):
+KILLED   l2_rm_then_mkdir                 by test_scan_refuses_existing_scan_dir  AssertionError: 0 == 0 : scan.sh accepted a pre-existing dist/<project> (directory) (security L-2: `mkdir -m 0755 -- "$KE_SCAN_IN"`, no -p):
+KILLED   l3_no_unset_platform             by test_scan_clears_caller_docker_default_platform  AssertionError: Lists differ: ['save -o ./dist/ke-scan-1068520045/ke-app[328 chars]045'] != []
+KILLED   rv_s_teardown_failure_ignored    by test_scan_fails_when_teardown_fails  AssertionError: 0 == 0 : a failed teardown.sh let the scan pass (review N2):
+KILLED   rv_s_no_int_term_traps           by test_scan_removes_tar_on_every_exit  AssertionError: -2 != 130 : SIGINT: the INT/TERM traps `exit 130` so the EXIT trap runs (D4); exit -2:
+KILLED   rv_s_save_failure_ignored        by test_scan_removes_tar_on_every_exit  AssertionError: Regex didn't match: '(?i)\\bstage\\s+save(?![\\w-])' not found in "== scan: ignore entries (docker/scan-ignore.yaml) ==\nignore: []\n=
+KILLED   rv_s_scan_failure_ignored        by test_scan_removes_tar_on_every_exit  AssertionError: 0 == 0 : scan fails: the scan passed:
+KILLED   rv_s_trap_after_save             by test_scan_removes_tar_on_every_exit  AssertionError: 0 != 1 : scripts/teardown.sh must run exactly once (D4 every exit path)
+KILLED   rv_s_caller_env_file_wins        by test_scan_ignores_caller_env_file_and_compose_settings  AssertionError: Lists differ: ['.env'] != ['.env.example']
+KILLED   rv_s_no_env_file_flag            by test_scan_ignores_caller_env_file_and_compose_settings  AssertionError: None != ['.env.example'] : every compose call passes --env-file .env.example, never the caller's (N4)
+KILLED   rv_s_no_unset                    by test_scan_clears_caller_docker_default_platform, test_scan_ignores_caller_env_file_and_compose_settings  AssertionError: Lists differ: ['save -o ./dist/ke-scan-1397710828/ke-app[328 chars]828'] != []
+28/28 killed

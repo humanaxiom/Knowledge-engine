@@ -1,0 +1,30 @@
+== D3: effective config of the pinned image (db section; no env override) ==
+258-
+259-  # URL of the vulnerability database (env: GRYPE_DB_UPDATE_URL)
+260:  update-url: 'https://grype.anchore.io/databases'
+261-
+262-  # certificate to trust download the database and listing file (env: GRYPE_DB_CA_CERT)
+263-  ca-cert: ''
+264-
+265-  # check for database updates on execution (env: GRYPE_DB_AUTO_UPDATE)
+266-  auto-update: true
+267-
+268-  # validate the database matches the known hash each execution (env: GRYPE_DB_VALIDATE_BY_HASH_ON_START)
+269-  validate-by-hash-on-start: true
+270-
+271-  # ensure db build is no older than the max-allowed-built-age (env: GRYPE_DB_VALIDATE_AGE)
+272-  validate-age: true
+== D5: planted ignore with until ==
+ignore:
+  - vulnerability: GHSA-6q48-6c7w-9gw2
+    package:
+      name: certifi
+    reason: planted by the developer to confirm grype accepts the until key
+    until: 2027-01-15
+Vulnerability database updated to latest version!
+-- scan with planted ignore, network none --
+exit=2
+[0003] ERROR discovered vulnerabilities at or above the severity threshold
+quinn-proto         0.11.14                 0.11.15                        rust-crate  GHSA-4w2j-m93h-cj5j  High        N/A           N/A                  
+certifi             2026.7.22               2026.10.19                     python      GHSA-6q48-6c7w-9gw2  Critical    N/A           N/A    (suppressed)
+ke-psc-green-db

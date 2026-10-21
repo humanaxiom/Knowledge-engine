@@ -1,0 +1,150 @@
+"""Scratch only (tester, platform-supply-chain U2 rework 1 RED). Runs inside the
+gates image: /work is the real checkout (read-only), /scratch holds
+scan.green.sh (a scratch shape of the rulings, never a production file).
+
+Phase A: the reviewer's gap mutants (review-u2-mutants.py.txt), applied to
+today's real scan.sh, against the GUARD tests only (the new tests that pass on
+today's code). Phase B: the green copy (today's tree + scan.green.sh) passes the
+whole of tests.test_image_scan; then fix-revert mutants for each RED test, and
+the reviewer's mutants re-anchored on the green copy."""
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+SRC = Path("/work")
+GREEN_SH = Path("/scratch/scan.green.sh")
+BASE = Path("/tmp/r1-base")
+GREEN = Path("/tmp/r1-green")
+MUT = Path("/tmp/r1-mut")
+S = "scripts/scan.sh"
+C = "docker-compose.scan.yml"
+T = "tests.test_image_scan.ScanScriptTest."
+GUARDS = [T + n for n in ("test_scan_fails_when_teardown_fails", "test_scan_removes_tar_on_every_exit",
+                          "test_scan_ignores_caller_env_file_and_compose_settings",
+                          "test_scan_does_not_widen_scanner_privileges")]
+ALL = ["tests.test_image_scan", "tests.test_stack_compose.NetworksTest.test_stack_services_have_no_bind_mounts"]
+
+# Reviewer mutants (verbatim anchors from review-u2-mutants.py.txt) that the
+# rework-1 guards are meant to kill.
+REVIEWER_TODAY = {
+    "s_teardown_failure_ignored": [(S, "    status=1\n", "    :\n")],
+    "s_no_int_term_traps": [(S, "trap 'exit 130' INT\ntrap 'exit 143' TERM\n", "")],
+    "s_save_failure_ignored": [(S, '|| fail "stage save: could not save ke-app:$tag; no retry"', "|| true")],
+    "s_scan_failure_ignored": [(S, '  fail "stage scan: grype exited', '  echo "stage scan: grype exited')],
+    "s_trap_after_save": [(S, "trap cleanup EXIT\n", ""), (S, 'echo "scan: save took', 'trap cleanup EXIT\necho "scan: save took')],
+    "s_caller_env_file_wins": [(S, "export KE_ENV_FILE=.env.example", 'export KE_ENV_FILE="${KE_ENV_FILE:-.env.example}"')],
+    "s_no_env_file_flag": [(S, 'docker compose --env-file "$KE_ENV_FILE" ', "docker compose ")] * 3,
+    "s_no_unset": [(S, "unset COMPOSE_PROFILES COMPOSE_ENV_FILES GRYPE_DB_UPDATE_URL\n", "")],
+}
+
+TD_FAIL = ('    echo "scan: FAIL (teardown of project $project failed; by hand: COMPOSE_FILE=docker-compose.scan.yml '
+           'docker compose -p $project down --volumes)" >&2\n    status=1\n')
+RM_BLOCK = '''  local ids=()
+  if mapfile -t ids < <(docker ps -aq --filter "label=com.docker.compose.project=$project"); then
+    if [ "${#ids[@]}" -gt 0 ] && ! docker rm -f "${ids[@]}" >/dev/null; then
+      echo "scan: FAIL (could not remove the containers of project $project)" >&2
+      status=1
+    fi
+  fi
+'''
+PS = 'docker ps -aq --filter "label=com.docker.compose.project=$project"'
+CHMOD = 'chmod 0644 -- "$KE_SCAN_IN/ke-app.tar"\n'
+PULL = '''docker compose --env-file "$KE_ENV_FILE" pull scan-db \\
+  || fail "stage scan-db: pulling the scanner image $scanner failed; no retry"
+'''
+
+GREEN_MUTANTS = {
+    # B1: test_scan_interrupt_removes_own_project_containers_before_teardown
+    "b1_no_removal": [(S, RM_BLOCK, "")],
+    "b1_removal_after_teardown": [(S, RM_BLOCK, ""), (S, '  rm -rf -- "$KE_SCAN_IN"\n', RM_BLOCK + '  rm -rf -- "$KE_SCAN_IN"\n')],
+    "b1_filter_by_name": [(S, PS, 'docker ps -aq --filter "name=$project"')],
+    "b1_filter_by_scan_prefix": [(S, PS, 'docker ps -aq --filter "name=ke-scan-"')],
+    "b1_no_filter": [(S, PS, "docker ps -aq")],
+    "b1_rm_without_force": [(S, 'docker rm -f "${ids[@]}"', 'docker rm "${ids[@]}"')],
+    "b1_ps_running_only": [(S, PS, 'docker ps -q --filter "label=com.docker.compose.project=$project"')],
+    # M-1: test_scan_tar_is_world_readable_before_any_compose_call / ..._does_not_widen_scanner_privileges
+    "m1_no_chmod": [(S, CHMOD, "")],
+    "m1_chmod_after_pull": [(S, CHMOD, ""), (S, PULL, PULL + CHMOD)],
+    "m1_chmod_777": [(S, CHMOD, 'chmod 777 -- "$KE_SCAN_IN/ke-app.tar"\n')],
+    "m1_chmod_a_plus_r": [(S, CHMOD, 'chmod a+r -- "$KE_SCAN_IN/ke-app.tar"\n')],
+    "m1_extra_dir_777": [(S, CHMOD, CHMOD + 'chmod 777 -- "$KE_SCAN_IN"\n')],
+    "m1_cli_cap_add": [(S, 'run --rm --pull never scan ||', 'run --rm --pull never --cap-add DAC_READ_SEARCH scan ||')],
+    "m1_compose_cap_add": [(C, "  cap_drop:\n    - ALL\n", "  cap_drop:\n    - ALL\n  cap_add:\n    - DAC_OVERRIDE\n")],
+    "m1_compose_privileged": [(C, "  read_only: true\n", "  read_only: true\n  privileged: true\n")],
+    # L-1: test_scan_second_signal_does_not_abort_cleanup
+    "l1_default_traps_in_cleanup": [(S, "  trap - EXIT\n  trap '' INT TERM\n", "  trap - EXIT INT TERM\n")],
+    "l1_no_trap_reset": [(S, "  trap '' INT TERM\n", "")],
+    # L-2: test_scan_refuses_existing_scan_dir
+    "l2_mkdir_p": [(S, 'mkdir -m 0755 -- "$KE_SCAN_IN"', 'mkdir -p -m 0755 -- "$KE_SCAN_IN"')],
+    "l2_rm_then_mkdir": [(S, 'mkdir -m 0755 -- "$KE_SCAN_IN"', 'rm -rf -- "$KE_SCAN_IN"; mkdir -m 0755 -- "$KE_SCAN_IN"')],
+    # L-3: test_scan_clears_caller_docker_default_platform
+    "l3_no_unset_platform": [(S, " DOCKER_DEFAULT_PLATFORM\n", "\n")],
+    # reviewer mutants re-anchored on the green copy (same intent)
+    "rv_s_teardown_failure_ignored": [(S, TD_FAIL, TD_FAIL.replace("status=1", ":"))],
+    "rv_s_no_int_term_traps": [(S, "trap 'exit 130' INT\ntrap 'exit 143' TERM\n", "")],
+    "rv_s_save_failure_ignored": REVIEWER_TODAY["s_save_failure_ignored"],
+    "rv_s_scan_failure_ignored": REVIEWER_TODAY["s_scan_failure_ignored"],
+    "rv_s_trap_after_save": REVIEWER_TODAY["s_trap_after_save"],
+    "rv_s_caller_env_file_wins": REVIEWER_TODAY["s_caller_env_file_wins"],
+    "rv_s_no_env_file_flag": REVIEWER_TODAY["s_no_env_file_flag"],
+    "rv_s_no_unset": [(S, "unset COMPOSE_PROFILES COMPOSE_ENV_FILES GRYPE_DB_UPDATE_URL DOCKER_DEFAULT_PLATFORM\n", "")],
+}
+
+
+def run(root: Path, tests: list[str]) -> tuple[int, str]:
+    d = subprocess.run([sys.executable, "-m", "unittest", *tests], cwd=root, capture_output=True, text=True,
+                       timeout=1200)
+    return d.returncode, d.stdout + d.stderr
+
+
+def killers(out: str) -> str:
+    names = sorted({m.group(1) for m in re.finditer(r"^(?:FAIL|ERROR): (\w+)", out, re.M)})
+    first = next((l.strip()[:150] for l in out.splitlines() if l.startswith("AssertionError")), "")
+    return f"by {', '.join(names)}  {first}" if names else ""
+
+
+def mutate(base: Path, edits) -> None:
+    shutil.rmtree(MUT, True)
+    shutil.copytree(base, MUT, symlinks=True)
+    for rel, old, new in edits:
+        p = MUT / rel
+        t = p.read_text(encoding="utf-8")
+        assert old in t, f"anchor missing in {rel}: {old!r}"
+        p.write_text(t.replace(old, new, 1), encoding="utf-8", newline="\n")
+
+
+def phase(title: str, base: Path, mutants: dict, tests: list[str]) -> int:
+    print(f"\n## {title}", flush=True)
+    code, out = run(base, tests)
+    print(f"UNMUTATED: {'PASS' if code == 0 else 'FAIL'} ({out.strip().splitlines()[-1]})", flush=True)
+    if code:
+        print(out[-6000:])
+        return 1
+    killed = 0
+    for name, edits in mutants.items():
+        mutate(base, edits)
+        code, out = run(MUT, tests)
+        killed += bool(code)
+        print(f"{'KILLED' if code else 'SURVIVED':8} {name:32} {killers(out)}", flush=True)
+    print(f"{killed}/{len(mutants)} killed", flush=True)
+    return 0
+
+
+def main() -> int:
+    shutil.rmtree(BASE, True)
+    shutil.copytree(SRC, BASE, symlinks=True,
+                    ignore=shutil.ignore_patterns(".git", ".venv", "__pycache__", "dist", "node_modules"))
+    shutil.rmtree(GREEN, True)
+    shutil.copytree(BASE, GREEN, symlinks=True)
+    shutil.copyfile(GREEN_SH, GREEN / S)
+    rc = phase("Phase A: reviewer mutants on TODAY's scan.sh vs the rework-1 guard tests", BASE, REVIEWER_TODAY,
+               GUARDS)
+    rc |= phase("Phase B: green copy (scan.green.sh) vs tests.test_image_scan + the bind-mount carve-out",
+                GREEN, GREEN_MUTANTS, ALL)
+    return rc
+
+
+if __name__ == "__main__":
+    sys.exit(main())

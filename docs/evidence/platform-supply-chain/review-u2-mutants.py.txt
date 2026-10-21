@@ -1,0 +1,63 @@
+"""Reviewer scratch only (platform-supply-chain u2 review): mutants of the
+developer's real scan.sh / docker-compose.scan.yml against tests.test_image_scan.
+Runs inside the gates image with the scratch copy at /work (read-only); each
+mutant is a fresh copy under /tmp."""
+import shutil, subprocess, sys
+from pathlib import Path
+
+SRC = Path("/work"); BASE = Path("/tmp/rv-base"); MUT = Path("/tmp/rv-mut")
+ALL = ["tests.test_image_scan", "tests.test_stack_compose.NetworksTest.test_stack_services_have_no_bind_mounts"]
+S = "scripts/scan.sh"; C = "docker-compose.scan.yml"; T = "tests/test_stack_compose.py"
+
+MUTANTS = {
+    # controls (expected KILLED)
+    "ctl_cleanup_exit0": [(S, 'exit "$status"', "exit 0")],
+    "ctl_no_pull": [(S, 'docker compose --env-file "$KE_ENV_FILE" pull scan-db', "true")],
+    "ctl_scan_network_bridge": [(C, "    network_mode: none\n", "")],
+    # scan.sh gaps
+    "s_teardown_failure_ignored": [(S, "    status=1\n", "    :\n")],
+    "s_no_int_term_traps": [(S, "trap 'exit 130' INT\ntrap 'exit 143' TERM\n", "")],
+    "s_save_failure_ignored": [(S, '|| fail "stage save: could not save ke-app:$tag; no retry"', "|| true")],
+    "s_scan_failure_ignored": [(S, '  fail "stage scan: grype exited', '  echo "stage scan: grype exited')],
+    "s_trap_after_save": [(S, "trap cleanup EXIT\n", ""), (S, 'echo "scan: save took', 'trap cleanup EXIT\necho "scan: save took')],
+    "s_caller_env_file_wins": [(S, "export KE_ENV_FILE=.env.example", 'export KE_ENV_FILE="${KE_ENV_FILE:-.env.example}"')],
+    "s_no_env_file_flag": [(S, 'docker compose --env-file "$KE_ENV_FILE" ', "docker compose ")] * 3,
+    "s_no_unset": [(S, "unset COMPOSE_PROFILES COMPOSE_ENV_FILES GRYPE_DB_UPDATE_URL\n", "")],
+    "s_ignore_not_printed": [(S, "cat docker/scan-ignore.yaml\n", "")],
+    "s_tag_check_locale": [(S, "(export LC_ALL=C; [[", "([[")],
+    # compose: the scan Command row of D1
+    "c_no_fail_on": [(C, "      - --fail-on\n      - high\n", "")],
+    "c_fail_on_critical": [(C, "      - high\n", "      - critical\n")],
+    "c_no_only_fixed": [(C, "      - --only-fixed\n", "")],
+    "c_no_config": [(C, "      - --config\n      - /cfg/scan-ignore.yaml\n", "")],
+    "c_no_show_suppressed": [(C, "      - --show-suppressed\n", "")],
+    "c_output_json": [(C, "      - table\n", "      - json\n")],
+    "c_tmpfs_size_none_to_exec": [(C, "    - /tmp\n", "    - /tmp:exec\n")],
+    # carve-out widened
+    "t_carveout_whole_file": [(T, 'if file == "docker-compose.scan.yml" and name in ("scan-db", "scan"):', 'if file == "docker-compose.scan.yml":')],
+}
+
+def run(root, tests):
+    d = subprocess.run([sys.executable, "-m", "unittest", *tests], cwd=root, capture_output=True, text=True, timeout=900)
+    return d.returncode, d.stdout + d.stderr
+
+def main():
+    shutil.rmtree(BASE, True)
+    shutil.copytree(SRC, BASE, ignore=shutil.ignore_patterns(".git", ".venv", "__pycache__", "_review_mutants.py"))
+    code, out = run(BASE, ALL)
+    print(f"GREEN copy: {'PASS' if code == 0 else 'FAIL'} ({out.strip().splitlines()[-1]})", flush=True)
+    if code:
+        print(out[-4000:]); return 1
+    for name, edits in MUTANTS.items():
+        shutil.rmtree(MUT, True); shutil.copytree(BASE, MUT)
+        for rel, old, new in edits:
+            p = MUT / rel; t = p.read_text(encoding="utf-8")
+            assert old in t, f"{name}: anchor missing in {rel}: {old!r}"
+            p.write_text(t.replace(old, new, 1), encoding="utf-8", newline="\n")
+        code, out = run(MUT, ALL)
+        reason = next((l[:140] for l in out.splitlines() if l.startswith(("AssertionError", "FAIL:"))), "")
+        print(f"{'KILLED' if code else 'SURVIVED':8} {name:30} {reason}", flush=True)
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())

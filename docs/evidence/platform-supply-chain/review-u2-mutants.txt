@@ -1,0 +1,28 @@
+ Container ke-reviewer-psc-gates-run-7d530763a714 Creating 
+ Container ke-reviewer-psc-gates-run-7d530763a714 Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.71ms
+Installed 1 package in 1ms
+GREEN copy: PASS (OK)
+KILLED   ctl_cleanup_exit0              FAIL: test_scan_db_failure_fails_closed_naming_host_and_stage (tests.test_image_scan.ScanScriptTest.test_scan_db_failure_fails_closed_naming
+KILLED   ctl_no_pull                    FAIL: test_scan_db_failure_fails_closed_naming_host_and_stage (tests.test_image_scan.ScanScriptTest.test_scan_db_failure_fails_closed_naming
+KILLED   ctl_scan_network_bridge        FAIL: test_compose_scan_db_has_only_db_volume (tests.test_image_scan.ScanComposeTest.test_compose_scan_db_has_only_db_volume) (part="the onl
+SURVIVED s_teardown_failure_ignored     
+SURVIVED s_no_int_term_traps            
+SURVIVED s_save_failure_ignored         
+SURVIVED s_scan_failure_ignored         
+SURVIVED s_trap_after_save              
+SURVIVED s_caller_env_file_wins         
+SURVIVED s_no_env_file_flag             
+SURVIVED s_no_unset                     
+SURVIVED s_ignore_not_printed           
+SURVIVED s_tag_check_locale             
+SURVIVED c_no_fail_on                   
+SURVIVED c_fail_on_critical             
+SURVIVED c_no_only_fixed                
+SURVIVED c_no_config                    
+SURVIVED c_no_show_suppressed           
+SURVIVED c_output_json                  
+SURVIVED c_tmpfs_size_none_to_exec      
+SURVIVED t_carveout_whole_file          

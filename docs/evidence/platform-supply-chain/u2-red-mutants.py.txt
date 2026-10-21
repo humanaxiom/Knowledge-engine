@@ -1,0 +1,190 @@
+"""Scratch only (tester, platform-supply-chain unit 2 RED): run the new PSC-1/2/3/5/8
+tests against a D1/D3/D4/D5-shaped green copy and against one mutant per rule.
+Runs inside the gates image with the scratch copy at /work; each mutant is a
+fresh copy under /tmp."""
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+SRC = Path("/work")
+BASE = Path("/tmp/psc-base")
+MUT = Path("/tmp/psc-mut")
+M = "tests.test_image_scan."
+PIN = "tests.test_image_scan.ScanComposeTest.test_image_scanner_is_pinned"
+DBV = "tests.test_image_scan.ScanComposeTest.test_compose_scan_db_has_only_db_volume"
+NON = "tests.test_image_scan.ScanComposeTest.test_compose_scan_has_no_network"
+SOCK = "tests.test_image_scan.ScanComposeTest.test_scan_services_have_no_docker_socket"
+ORDER = "tests.test_image_scan.ScanScriptTest.test_scan_order_is_save_then_db_then_scan"
+INPUT = "tests.test_image_scan.ScanScriptTest.test_scan_input_is_read_only_ke_app_tar"
+TAG = "tests.test_image_scan.ScanScriptTest.test_scan_refuses_malformed_image_tag"
+FRESH = "tests.test_image_scan.ScanScriptTest.test_scan_updates_db_every_run"
+CLOSED = "tests.test_image_scan.ScanScriptTest.test_scan_db_failure_fails_closed_naming_host_and_stage"
+IGN = "tests.test_image_scan.ScanIgnoreTest.test_scan_ignores_are_justified"
+BUN = "tests.test_image_scan.ScanBundleTest.test_bundle_has_no_scanner_or_db"
+BIND = "tests.test_stack_compose.NetworksTest.test_stack_services_have_no_bind_mounts"
+
+C = "docker-compose.scan.yml"
+S = "scripts/scan.sh"
+DIGEST = "e4a44ef45d285b829ce6efe2642980329661bd2d18eab5fc539138d4adaebbbe"
+IMG = "anchore/grype:v0.120.1@sha256:" + DIGEST
+SCAN_DB_BLOCK = """  scan-db:
+    <<: *scanner
+    command: ["db", "update"]
+"""
+SCAN_BLOCK = """  scan:
+    <<: *scanner
+    network_mode: none
+"""
+DB_RO = """        source: scan-db
+        target: /db
+        read_only: true"""
+IN_RO = """        target: /in
+        read_only: true"""
+FETCH = '''docker compose --env-file .env.example run --rm --pull never -e "GRYPE_DB_UPDATE_URL=$SCAN_DB_URL" scan-db \\
+  || { echo "scan: FAIL (stage scan-db: could not fetch the vulnerability database from grype.anchore.io; no retry)" >&2; exit 1; }'''
+PULL = '''docker compose --env-file .env.example pull scan-db \\
+  || { echo "scan: FAIL (stage scan-db: pulling the scanner image $ref failed; no retry)" >&2; exit 1; }'''
+SAVE = 'docker save -o "$KE_SCAN_IN/ke-app.tar" "ke-app:$tag" || { echo "scan: FAIL (stage save)" >&2; exit 1; }'
+TAGCHK = "if ! (export LC_ALL=C; [[ \"$tag\" =~ $tag_re ]]); then"
+
+MUTANTS = {
+    # PSC-1
+    "p1_tag_only": ([PIN], [(C, "  image: " + IMG, "  image: anchore/grype:v0.120.1")]),
+    "p1_latest": ([PIN], [(C, "  image: " + IMG, "  image: anchore/grype:latest@sha256:" + DIGEST)]),
+    "p1_two_images": ([PIN], [(C, SCAN_BLOCK, SCAN_BLOCK + "    image: anchore/grype:v0.120.1@sha256:" + "1" * 64 + "\n")]),
+    "p1_digest_not_recorded": ([PIN], [(C, DIGEST, "2" * 64)]),
+    "p1_docker_io_prefix": ([PIN], [(C, "  image: anchore", "  image: docker.io/anchore")]),
+    # PSC-3 compose
+    "c_scan_db_rw_root": ([DBV], [(C, SCAN_DB_BLOCK, SCAN_DB_BLOCK + "    read_only: false\n")]),
+    "c_scan_db_checkout_bind": ([DBV], [(C, "        target: /db\n    environment:\n      GRYPE_DB_CACHE_DIR: /db\n      GRYPE_CHECK",
+                                         "        target: /db\n      - .:/work:ro\n    environment:\n      GRYPE_DB_CACHE_DIR: /db\n      GRYPE_CHECK")]),
+    "c_scan_db_named_net": ([DBV], [(C, SCAN_DB_BLOCK, SCAN_DB_BLOCK + "    networks: [egress]\n"),
+                                    (C, "volumes:\n  scan-db:\n", "networks:\n  egress: {}\nvolumes:\n  scan-db:\n")]),
+    "c_scan_db_ro_volume": ([DBV], [(C, "        target: /db\n    environment:\n      GRYPE_DB_CACHE_DIR: /db\n      GRYPE_CHECK",
+                                     "        target: /db\n        read_only: true\n    environment:\n      GRYPE_DB_CACHE_DIR: /db\n      GRYPE_CHECK")]),
+    "c_scan_db_nnp_off": ([DBV], [(C, SCAN_DB_BLOCK, SCAN_DB_BLOCK + "    security_opt: []\n")]),
+    "c_scan_db_env_passthrough": ([DBV], [(C, "      GRYPE_CHECK_FOR_APP_UPDATE: \"false\"\n\n  scan:",
+                                           "      GRYPE_CHECK_FOR_APP_UPDATE: \"false\"\n      GRYPE_DB_UPDATE_URL:\n\n  scan:")]),
+    "c_scan_db_env_interpolated": ([DBV], [(C, "      GRYPE_DB_CACHE_DIR: /db\n      GRYPE_CHECK_FOR_APP_UPDATE: \"false\"\n\n",
+                                            "      GRYPE_DB_CACHE_DIR: ${GRYPE_DIR:-/db}\n      GRYPE_CHECK_FOR_APP_UPDATE: \"false\"\n\n")]),
+    "c_scan_db_profile": ([DBV], [(C, SCAN_DB_BLOCK, SCAN_DB_BLOCK + "    profiles: [scan]\n")]),
+    "c_scan_db_command": ([DBV], [(C, 'command: ["db", "update"]', 'command: ["db", "status"]')]),
+    "c_scan_network_bridge": ([NON], [(C, SCAN_BLOCK, SCAN_BLOCK.replace("    network_mode: none\n", ""))]),
+    "c_scan_in_rw": ([NON, INPUT], [(C, IN_RO, "        target: /in")]),
+    "c_scan_db_mount_rw": ([NON], [(C, DB_RO, "        source: scan-db\n        target: /db")]),
+    "c_scan_cap_drop_gone": ([NON], [(C, SCAN_BLOCK, SCAN_BLOCK + "    cap_drop: []\n")]),
+    "c_scan_auto_update_on": ([NON], [(C, '      GRYPE_DB_AUTO_UPDATE: "false"', '      GRYPE_DB_AUTO_UPDATE: "true"')]),
+    "c_scan_checkout_bind": ([NON], [(C, IN_RO, IN_RO + "\n      - ./:/repo:ro")]),
+    # Earlier rounds of these two mutants were no-ops (driver bugs): a second
+    # `environment:` key that YAML drops, then anchors that matched api and
+    # gateway. The anchors below occur once, in gates-it.
+    "c_gates_it_gains_scan_volume": ([NON], [("docker-compose.yml", '    profiles: ["gates-it"]\n    networks: [backend]\n',
+                                              '    profiles: ["gates-it"]\n    networks: [backend]\n    volumes:\n      - scan-db:/db:ro\n')]),
+    "c_gates_it_gains_grype_key": ([NON], [("docker-compose.yml", "      <<: [*gates-env, *model-env]\n",
+                                            "      <<: [*gates-env, *model-env]\n      GRYPE_DB_CACHE_DIR: /db\n")]),
+    "c_scan_service_in_main_file": ([NON], [("docker-compose.yml", "  gates-it:\n",
+                                             "  scan:\n    image: " + IMG + "\n    profiles: [scan]\n    network_mode: none\n\n  gates-it:\n")]),
+    "c_volume_fixed_name": ([FRESH], [(C, "volumes:\n  scan-db:\n", "volumes:\n  scan-db:\n    name: grype-db\n")]),
+    "c_volume_external": ([FRESH], [(C, "volumes:\n  scan-db:\n", "volumes:\n  scan-db:\n    external: true\n")]),
+    "c_top_level_name": ([FRESH], [(C, "x-scanner:", "name: ke-scan\nx-scanner:")]),
+    # PSC-2 compose
+    "c_socket_mount": ([SOCK], [(C, IN_RO, IN_RO + "\n      - /var/run/docker.sock:/var/run/docker.sock:ro")]),
+    "c_docker_host": ([SOCK], [(C, '      GRYPE_DB_AUTO_UPDATE: "false"', '      GRYPE_DB_AUTO_UPDATE: "false"\n      DOCKER_HOST: tcp://dind:2376')]),
+    "c_privileged": ([SOCK], [(C, SCAN_BLOCK, SCAN_BLOCK + "    privileged: true\n")]),
+    "c_pid_host": ([SOCK], [(C, SCAN_BLOCK, SCAN_BLOCK + "    pid: host\n")]),
+    "c_input_registry": ([INPUT], [(C, '"docker-archive:/in/ke-app.tar"', '"registry:ke-app:latest"')]),
+    "c_input_second_source": ([INPUT], [(C, '"docker-archive:/in/ke-app.tar", ', '"docker-archive:/in/ke-app.tar", "docker:ke-gateway:local", ')]),
+    # PSC-2 script
+    "s_platform": ([INPUT], [(S, 'docker save -o', 'docker save --platform linux/amd64 -o')]),
+    "s_saves_gateway_too": ([INPUT], [(S, '"ke-app:$tag" ||', '"ke-app:$tag" "ke-gateway:$tag" ||')]),
+    "s_tar_elsewhere": ([INPUT], [(S, '"$KE_SCAN_IN/ke-app.tar"', '"$KE_SCAN_IN/../ke-app.tar"')]),
+    "s_db_before_save": ([ORDER], [(S, SAVE + "\n", ""), (S, 'echo "== scan: scan =="', SAVE + '\necho "== scan: scan =="')]),
+    "s_caller_project": ([ORDER, FRESH], [(S, 'export COMPOSE_PROJECT_NAME="ke-scan-${RANDOM}${RANDOM}"',
+                                          'export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-ke-scan-${RANDOM}}"')]),
+    "s_caller_compose_file": ([ORDER], [(S, "export COMPOSE_FILE=docker-compose.scan.yml",
+                                         'export COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.scan.yml}"')]),
+    "s_pull_allowed": ([ORDER], [(S, "run --rm --pull never scan \\", "run --rm scan \\")]),
+    "s_command_override": ([ORDER], [(S, "run --rm --pull never scan \\", "run --rm --pull never scan registry:ke-app \\")]),
+    "s_no_tag_check": ([TAG], [(S, TAGCHK, "if false; then")]),
+    "s_tag_unanchored": ([TAG], [(S, "tag_re='^wt-[0-9a-f]{12}$'", "tag_re='wt-[0-9a-f]{12}'")]),
+    "s_tag_glob": ([TAG], [(S, TAGCHK, 'if [[ "$tag" != wt-* ]]; then')]),
+    "s_tag_check_after_save": ([TAG], [(S, TAGCHK, 'docker info >/dev/null\n' + TAGCHK)]),
+    # PSC-3 script
+    "s_url_from_env": ([FRESH, CLOSED], [(S, 'SCAN_DB_URL="https://grype.anchore.io/databases"',
+                                          'SCAN_DB_URL="${SCAN_DB_URL:-https://grype.anchore.io/databases}"')]),
+    "s_no_url_passed": ([FRESH], [(S, ' -e "GRYPE_DB_UPDATE_URL=$SCAN_DB_URL"', "")]),
+    "s_url_from_grype_env": ([FRESH], [(S, '-e "GRYPE_DB_UPDATE_URL=$SCAN_DB_URL"', '-e "GRYPE_DB_UPDATE_URL=${GRYPE_DB_UPDATE_URL:-$SCAN_DB_URL}"')]),
+    "s_fixed_project": ([FRESH], [(S, '"ke-scan-${RANDOM}${RANDOM}"', '"ke-scan-1"')]),
+    "s_two_db_runs": ([FRESH], [(S, FETCH, FETCH + "\n" + FETCH)]),
+    "s_fetch_retry": ([CLOSED], [(S, FETCH, FETCH.replace("scan-db \\\n  ||", "scan-db \\\n  || docker compose --env-file .env.example run --rm --pull never -e \"GRYPE_DB_UPDATE_URL=$SCAN_DB_URL\" scan-db \\\n  ||"))]),
+    "s_pull_retry": ([CLOSED], [(S, PULL, PULL.replace("pull scan-db \\\n  ||", "pull scan-db || docker compose --env-file .env.example pull scan-db \\\n  ||"))]),
+    "s_fetch_failure_ignored": ([CLOSED], [(S, FETCH, FETCH.split(" \\\n")[0] + " || true")]),
+    "s_fetch_msg_no_host": ([CLOSED], [(S, "database from grype.anchore.io;", "database;")]),
+    "s_pull_msg_no_ref": ([CLOSED], [(S, "scanner image $ref failed", "scanner image failed")]),
+    "s_msg_no_stage": ([CLOSED], [(S, "(stage scan-db: could", "(could")]),
+    "s_skip_path": ([CLOSED], [(S, FETCH, FETCH.split(" \\\n")[0] + ' || { echo "scan: database unavailable, skipping scan"; exit 0; }')]),
+    "s_no_teardown_on_failure": ([CLOSED], [(S, "trap cleanup EXIT\n", ""), (S, 'echo "== scan: done =="', 'echo "== scan: done =="\ncleanup')]),
+    "s_teardown_keeps_volume": ([CLOSED], [(S, "scripts/teardown.sh --volumes", "scripts/teardown.sh")]),
+    "s_tar_not_removed": ([CLOSED], [(S, '  rm -rf -- "$KE_SCAN_IN"\n', "")]),
+    # PSC-5
+    "i_expired": ([IGN], [("config/scan-ignore.yaml", "ignore: []\n",
+                           "ignore:\n  - vulnerability: CVE-2024-12345\n    reason: x\n    until: 2026-01-01\n")]),
+    "i_too_far": ([IGN], [("config/scan-ignore.yaml", "ignore: []\n",
+                           "ignore:\n  - vulnerability: CVE-2024-12345\n    reason: x\n    until: 2099-01-01\n")]),
+    "i_extra_top_key": ([IGN], [("config/scan-ignore.yaml", "ignore: []\n", "ignore: []\nexclude: ['**/*.so']\n")]),
+    "i_file_deleted": ([IGN], [("config/scan-ignore.yaml", None, None)]),
+    # PSC-8
+    "b_ships_ignore_file": ([BUN], [("scripts/bundle.sh", " ':!config/scan-ignore.yaml'", "")]),
+    "b_ships_scan_compose": ([BUN], [("scripts/bundle.sh", 'cp -- docker-compose.yml .env.example "$app/"',
+                                      'cp -- docker-compose.yml .env.example docker-compose.scan.yml "$app/"')]),
+    "b_ships_scan_sh": ([BUN], [("scripts/bundle.sh", "for f in launch.sh teardown.sh", "for f in scan.sh launch.sh teardown.sh")]),
+}
+
+
+def run(root: Path, tests: list[str]) -> tuple[int, str]:
+    done = subprocess.run([sys.executable, "-m", "unittest", *tests], cwd=root, capture_output=True, text=True,
+                          timeout=600)
+    return done.returncode, done.stdout + done.stderr
+
+
+def main() -> int:
+    shutil.rmtree(BASE, True)
+    shutil.copytree(SRC, BASE, ignore=shutil.ignore_patterns(".git", ".venv", "__pycache__", "_mutants.py"))
+    all_tests = ["tests.test_image_scan", BIND]
+    code, out = run(BASE, all_tests)
+    print(f"GREEN copy: {'PASS' if code == 0 else 'FAIL'} ({out.strip().splitlines()[-1]})")
+    if code != 0:
+        print(out[-4000:])
+        return 1
+    killed = 0
+    only = set(sys.argv[1:])
+    for name, (tests, edits) in MUTANTS.items():
+        if only and name not in only:
+            continue
+        shutil.rmtree(MUT, True)
+        shutil.copytree(BASE, MUT)
+        for rel, old, new in edits:
+            path = MUT / rel
+            if old is None:
+                path.unlink()
+                continue
+            text = path.read_text(encoding="utf-8")
+            assert old in text, f"{name}: anchor missing in {rel}: {old!r}"
+            path.write_text(text.replace(old, new, 1), encoding="utf-8", newline="\n")
+        code, out = run(MUT, tests)
+        reason = ""
+        for line in out.splitlines():
+            if line.startswith("AssertionError"):
+                reason = line[:150]
+                break
+        verdict = "KILLED" if code != 0 else "SURVIVED"
+        killed += code != 0
+        print(f"{verdict:8} {name:30} by {', '.join(t.rsplit('.', 1)[1] for t in tests)}  {reason}")
+    total = len(only) if only else len(MUTANTS)
+    print(f"{killed}/{total} mutants killed")
+    return 0 if killed == total else 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

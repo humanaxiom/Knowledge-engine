@@ -205,6 +205,26 @@ never touches a real daemon. What it does:
   test-built site-packages directory standing in for the image's venv).
   Arguments after `engine.notices` are passed on; stdout, stderr and the exit
   status are the generator's. Either variable unset: exit 125 naming it.
+- platform-supply-chain U2 rework 1 (review B1, security M-1, L-3). Each is
+  inert unless its variable is set:
+  - FAKE_DOCKER_RECORD_ENV (comma-separated names): those variables are
+    also copied into each call record's `env` when set in the process.
+  - FAKE_DOCKER_SAVE_MODE (octal, e.g. `600`): `save -o` chmods the tar it
+    writes to that mode (docker/cli's atomicwriter writes 0600 on Linux).
+  - hook "stat": [glob, outfile] appends one JSON object {path: mode} of the
+    files matching glob (a script's file modes at the time of that call).
+  - FAKE_DOCKER_CONTAINERS (JSON list of {"ID", "Names", "Labels",
+    "State"}): the daemon's containers. `{run_project}` in any string is the
+    project of the first logged `compose ... run` call (`-p`, else its
+    COMPOSE_PROJECT_NAME); an entry naming it does not exist before that
+    call. `ps` / `container ls|list|ps` list them: running only unless
+    `-a`/`--all`; `--filter`/`-f` `label=K=V`, `label=K`, `name=RX`,
+    `status=S`, `id=PREFIX` (any other filter exits 2); `-q` prints IDs;
+    `--format` renders `{{.ID}}`, `{{.Names}}`, `{{.State}}`, `{{.Labels}}`,
+    `{{.Label "K"}}` and `{{json .}}` (anything else exits 2). `rm` /
+    `container rm` of a running container needs `-f`/`--force`; an unknown
+    target exits 1 "No such container"; no target exits 1. A container
+    named (ID, ID prefix of 4+ or name) by an earlier forced `rm` is gone.
 - Every other call exits 0.
 """
 
@@ -248,6 +268,9 @@ record = {
     "env": {k: v for k, v in os.environ.items()
             if k.startswith(("COMPOSE_", "KE_")) and k != "KE_FAKE"},
 }
+for _extra in filter(None, os.environ.get("FAKE_DOCKER_RECORD_ENV", "").split(",")):
+    if _extra in os.environ:
+        record["env"][_extra] = os.environ[_extra]
 log = os.environ.get("FAKE_DOCKER_LOG")
 if log:
     with open(log, "a", encoding="utf-8") as fh:
@@ -346,6 +369,12 @@ for hook in json.loads(os.environ.get("FAKE_DOCKER_HOOKS") or "[]"):
                               "dir": _stat.S_ISDIR(st.st_mode)})
         with open(snap[1], "a", encoding="utf-8") as fh:
             fh.write(json.dumps(found) + "\n")
+    st = hook.get("stat")
+    if st:
+        import glob as _glob, stat as _stat
+        modes = {p: _stat.S_IMODE(os.stat(p).st_mode) for p in sorted(_glob.glob(st[0]))}
+        with open(st[1], "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(modes) + "\n")
     if hook.get("touch"):
         with open(hook["touch"], "a", encoding="utf-8"):
             pass
@@ -470,6 +499,131 @@ def _listing(kind):
     out = _leftovers(kind)
     if out:
         print("\n".join(out))
+    sys.exit(0)
+
+_CT_LIST = argv[:1] == ["ps"] or argv[:2] in (["container", "ls"], ["container", "list"], ["container", "ps"])
+_CT_RM = argv[:1] == ["rm"] or argv[:2] == ["container", "rm"]
+if os.environ.get("FAKE_DOCKER_CONTAINERS") is not None and (_CT_LIST or _CT_RM):
+    import re as _re
+
+    def _short_flags(words):
+        found = set()
+        for w in words:
+            if w.startswith("-") and not w.startswith("--"):
+                found.update(w[1:])
+        return found
+
+    def _is_forced_rm(words):
+        return "--force" in words or "f" in _short_flags(words)
+
+    def _rm_targets(words):
+        start = 1 if words[:1] == ["rm"] else 2
+        return [w for w in words[start:] if not w.startswith("-")]
+
+    def _prior_records():
+        if not jlog or not os.path.isfile(jlog):
+            return []
+        with open(jlog, encoding="utf-8") as fh:
+            lines = [json.loads(l) for l in fh if l.strip()]
+        return lines[:-1]  # this call is the last record
+
+    def _run_project(prior):
+        for rec in prior:
+            a = rec.get("argv", [])
+            if a[:1] != ["compose"] or "run" not in a:
+                continue
+            for i, w in enumerate(a):
+                if w in ("-p", "--project-name") and i + 1 < len(a):
+                    return a[i + 1]
+                if w.startswith("--project-name="):
+                    return w.split("=", 1)[1]
+            return rec.get("env", {}).get("COMPOSE_PROJECT_NAME")
+        return None
+
+    def _matches(c, token):
+        return token == c["Names"] or token == c["ID"] or (len(token) >= 4 and c["ID"].startswith(token))
+
+    prior = _prior_records()
+    rp = _run_project(prior)
+    containers = []
+    for raw in json.loads(os.environ["FAKE_DOCKER_CONTAINERS"]):
+        text = json.dumps(raw)
+        if "{run_project}" in text:
+            if rp is None:
+                continue
+            text = text.replace("{run_project}", rp)
+        c = json.loads(text)
+        c.setdefault("State", "running")
+        c.setdefault("Labels", {})
+        containers.append(c)
+    gone = set()
+    for rec in prior:
+        a = rec.get("argv", [])
+        if (a[:1] == ["rm"] or a[:2] == ["container", "rm"]) and _is_forced_rm(a):
+            gone.update(_rm_targets(a))
+    containers = [c for c in containers if not any(_matches(c, t) for t in gone)]
+
+    if _CT_RM:
+        targets = _rm_targets(argv)
+        if not targets:
+            sys.stderr.write('"docker rm" requires at least 1 argument.\n')
+            sys.exit(1)
+        rc = 0
+        for t in targets:
+            hit = [c for c in containers if _matches(c, t)]
+            if not hit:
+                sys.stderr.write("Error response from daemon: No such container: %s\n" % t)
+                rc = 1
+            elif hit[0]["State"] == "running" and not _is_forced_rm(argv):
+                sys.stderr.write("Error response from daemon: cannot remove container \"/%s\": container is "
+                                 "running: stop the container before removing or force remove\n" % hit[0]["Names"])
+                rc = 1
+            else:
+                print(t)
+        sys.exit(rc)
+
+    flags = _short_flags([w for w in argv if w not in opt_values("--filter") + opt_values("-f")
+                          + opt_values("--format")])
+    show_all = "--all" in argv or "a" in flags
+    quiet = "--quiet" in argv or "q" in flags
+    rows = [c for c in containers if show_all or c["State"] == "running"]
+    for f in opt_values("--filter") + opt_values("-f"):
+        key, _, val = f.partition("=")
+        if key == "label":
+            k, sep, v = val.partition("=")
+            rows = [c for c in rows if (c["Labels"].get(k) == v if sep else k in c["Labels"])]
+        elif key == "name":
+            rows = [c for c in rows if _re.search(val, c["Names"])]
+        elif key == "status":
+            rows = [c for c in rows if c["State"] == val]
+        elif key == "id":
+            rows = [c for c in rows if c["ID"].startswith(val)]
+        else:
+            sys.stderr.write("fake docker: ps filter %r is not modelled\n" % f)
+            sys.exit(2)
+    fmt = opt_values("--format")
+    if fmt:
+        t = fmt[-1]
+        if t.startswith("table "):
+            t = t[len("table "):]
+        for c in rows:
+            line = t.replace("{{json .}}", json.dumps(c))
+            line = _re.sub(r'\{\{\s*\.Label\s+"([^"]*)"\s*\}\}', lambda m: c["Labels"].get(m.group(1), ""), line)
+            line = line.replace("{{.ID}}", c["ID"]).replace("{{.Names}}", c["Names"])
+            line = line.replace("{{.State}}", c["State"])
+            line = line.replace("{{.Labels}}", ",".join("%s=%s" % kv for kv in c["Labels"].items()))
+            if "{{" in line:
+                sys.stderr.write("fake docker: ps template %r is not modelled\n" % fmt[-1])
+                sys.exit(2)
+            print(line)
+        sys.exit(0)
+    if quiet:
+        for c in rows:
+            print(c["ID"])
+        sys.exit(0)
+    print("CONTAINER ID   NAMES")
+    for c in rows:
+        print("%s   %s" % (c["ID"], c["Names"]))
     sys.exit(0)
 
 if argv[:1] == ["ps"] or argv[:2] in (["container", "ls"], ["container", "list"], ["container", "ps"]):
@@ -743,6 +897,8 @@ if argv[:1] == ["save"] or argv[:2] == ["image", "save"]:
                 and a not in opt_values("--platform") and a != "save"]
         with open(target, "wb") as fh:
             fh.write(("fake image tar for %s\n" % " ".join(refs)).encode("utf-8"))
+        if os.environ.get("FAKE_DOCKER_SAVE_MODE"):
+            os.chmod(target, int(os.environ["FAKE_DOCKER_SAVE_MODE"], 8))
     sys.exit(0)
 
 if argv[:1] == ["load"] or argv[:2] == ["image", "load"]:

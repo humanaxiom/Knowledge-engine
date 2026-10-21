@@ -1,0 +1,22 @@
+$ (scratch copy; project prefix ke-reviewer-psc-) KE_IMAGE_TAG=wt-33a132fbfdd7 timeout -s INT 25 bash scripts/scan.sh
+== scan: ignore entries (docker/scan-ignore.yaml) ==
+ignore: []
+== scan: save ==
+scan: save took 1s
+== scan: scan-db ==
+ Image anchore/grype:v0.120.1@sha256:e4a44ef45d285b829ce6efe2642980329661bd2d18eab5fc539138d4adaebbbe Pulling 
+ Image anchore/grype:v0.120.1@sha256:e4a44ef45d285b829ce6efe2642980329661bd2d18eab5fc539138d4adaebbbe Pulled 
+ Network ke-reviewer-psc-1438817637_default Creating 
+ Network ke-reviewer-psc-1438817637_default Created 
+ Volume ke-reviewer-psc-1438817637_scan-db Creating 
+ Volume ke-reviewer-psc-1438817637_scan-db Created 
+ Container ke-reviewer-psc-1438817637-scan-db-run-fcd4410c5d94 Creating 
+ Container ke-reviewer-psc-1438817637-scan-db-run-fcd4410c5d94 Created 
+Vulnerability database updated to latest version!
+ Volume ke-reviewer-psc-1438817637_scan-db Removing 
+ Network ke-reviewer-psc-1438817637_default Removing 
+ Volume ke-reviewer-psc-1438817637_scan-db Removed 
+ Network ke-reviewer-psc-1438817637_default Removed 
+exit=124 after 68s
+-- leftovers (ke-reviewer-psc):
+-- dist/:

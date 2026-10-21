@@ -1,0 +1,33 @@
+-- project ke-reviewer-psc-1556126990 state:
+ke-reviewer-psc-1556126990-scan-db-run-1b3becfb12b4 Up 38 seconds oneoff=True
+-- 1. the printed hand command, verbatim:
+$ COMPOSE_FILE=docker-compose.scan.yml docker compose -p ke-reviewer-psc-1556126990 down --volumes
+ Volume ke-reviewer-psc-1556126990_scan-db Removing 
+ Network ke-reviewer-psc-1556126990_default Removing 
+ Volume ke-reviewer-psc-1556126990_scan-db Resource is still in use 
+ Network ke-reviewer-psc-1556126990_default Resource is still in use 
+exit=0
+-- 2. with --remove-orphans:
+$ COMPOSE_FILE=docker-compose.scan.yml docker compose -p ke-reviewer-psc-1556126990 down --volumes --remove-orphans
+ Volume ke-reviewer-psc-1556126990_scan-db Removing 
+ Network ke-reviewer-psc-1556126990_default Removing 
+ Volume ke-reviewer-psc-1556126990_scan-db Resource is still in use 
+ Network ke-reviewer-psc-1556126990_default Resource is still in use 
+exit=0
+-- leftovers:
+ke-reviewer-psc-1556126990-scan-db-run-1b3becfb12b4 Up 45 seconds
+ke-reviewer-psc-1556126990_scan-db
+ke-reviewer-psc-1556126990_default
+-- 3. docker wait on the orphaned one-off container (AutoRemove=true):
+Error response from daemon: No such container: ke-reviewer-psc-1556126990-scan-db-run-1b3becfb12b4
+-- after it exited, leftovers:
+ke-reviewer-psc-1556126990_scan-db
+ke-reviewer-psc-1556126990_default
+-- 4. the printed hand command again:
+ Volume ke-reviewer-psc-1556126990_scan-db Removing 
+ Network ke-reviewer-psc-1556126990_default Removing 
+ Volume ke-reviewer-psc-1556126990_scan-db Removed 
+ Network ke-reviewer-psc-1556126990_default Removed 
+exit=0
+-- leftovers:
+(none listed = clean)

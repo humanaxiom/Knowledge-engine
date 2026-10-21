@@ -1,0 +1,116 @@
+# security U2 rework 1 probes (2026-10-21). Gates image ke-gates:wt-f8924d658b0a (bash 5.2, docker CLI), --network none,
+# every container labelled com.docker.compose.project=ke-secu2r1-*; scratch copy of scan.sh with a fake docker and a stub teardown.sh.
+# teardown child=sleep: stub sleeps 3 s. child=go: stub runs the real docker CLI against a unix socket that never answers.
+# (old) = control: scratch copy with line 48 reverted to the pre-fix 'trap - INT TERM'.
+
+## L-1: second signal to the process group during cleanup
+=== second TERM, teardown child=sleep  ===
+scan.sh rc=143
+docker ps -aq --filter label=com.docker.compose.project=ke-scan-1335127505
+teardown start
+teardown end
+dist left: 0
+scan: save took 0s
+== scan: scan-db ==
+Terminated
+=== second TERM, teardown child=go  ===
+scan.sh rc=143
+docker ps -aq --filter label=com.docker.compose.project=ke-scan-2033510833
+teardown start
+teardown go-child rc=143
+teardown end
+dist left: 0
+scan: save took 0s
+== scan: scan-db ==
+Terminated
+=== second INT, teardown child=sleep  ===
+scan.sh rc=130
+docker ps -aq --filter label=com.docker.compose.project=ke-scan-2283022894
+teardown start
+teardown end
+dist left: 0
+== scan: save ==
+scan: save took 0s
+== scan: scan-db ==
+=== second INT, teardown child=go  ===
+scan.sh rc=130
+docker ps -aq --filter label=com.docker.compose.project=ke-scan-258858951
+teardown start
+teardown go-child rc=130
+teardown end
+dist left: 0
+== scan: save ==
+scan: save took 0s
+== scan: scan-db ==
+=== second TERM, teardown child=sleep (old) ===
+control: pre-fix trap
+scan.sh rc=143
+docker ps -aq --filter label=com.docker.compose.project=ke-scan-310219268
+teardown start
+dist left: 1
+scan: save took 0s
+== scan: scan-db ==
+Terminated
+=== second INT, teardown child=sleep (old) ===
+control: pre-fix trap
+scan.sh rc=130
+docker ps -aq --filter label=com.docker.compose.project=ke-scan-236792793
+teardown start
+dist left: 1
+== scan: save ==
+scan: save took 0s
+== scan: scan-db ==
+
+## L-2: dist/<project> planted (directory holding a fake tar; symlink to a dir holding 'sentinel') before scan.sh's mkdir
+=== planted directory ===
+scan.sh rc=1
+  save/compose calls: 0
+  out: /usr/bin/mkdir: cannot create directory ‘./dist/ke-scan-51232800’: File exists
+  dist now: 
+  symlink target intact: keep
+=== planted symlink ===
+scan.sh rc=1
+  save/compose calls: 0
+  out: /usr/bin/mkdir: cannot create directory ‘./dist/ke-scan-4683381’: File exists
+  dist now: 
+  symlink target intact: keep
+
+## M-1: named volume ke-secu2r1-m1-vol; dir /x/d 0755 uid 1000; file written by uid 1000 (umask 077) then chmod 0600, like docker save
+## reader: --user 0 --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges:true -v vol:/in:ro
+755 1000:1000 /x/d
+600 1000:1000 /x/d/ke-app.tar
+A 0600 uid1000, root cap-drop ALL:
+CapEff:	0000000000000000
+cat: /in/d/ke-app.tar: Permission denied
+rc=1
+644 1000:1000 /x/d/ke-app.tar          (after `chmod 0644 --` by the owner, uid 1000, as scan.sh:82)
+B 0644 uid1000 (after owner chmod), root cap-drop ALL:
+CapEff:	0000000000000000
+tar-bytes
+rc=0
+C 0644 file, dir 0700 (control: dir traversal also needs o+x; scan.sh:71 makes it 0755):
+cat: /in/d/ke-app.tar: Permission denied
+rc=1
+leftover containers 0, volumes 0
+
+## Cleanup filter: docker ps -aq --filter label=com.docker.compose.project=ke-secu2r1-12, then docker rm -f (as scan.sh:52-53)
+## created (never started): project label ke-secu2r1-12 | -123 | -1 | KE-SECU2R1-12 | "ke-secu2r1-12 " ; key variants <key>.x= and x<key>=
+filter label=com.docker.compose.project=ke-secu2r1-12 matches:
+secu2r1-exact
+ids: 1
+left after scan.sh-style cleanup:
+  secu2r1-keyprefix
+  secu2r1-keyvariant
+  secu2r1-longer
+  secu2r1-shorter
+  secu2r1-trailing-space
+  secu2r1-upper
+remaining probe containers (after removing them): 0
+
+## RANDOM import: RANDOM=7 in the environment, twice in Git Bash 5.3 and three ways in Linux bash 5.2
+git-bash: 293043526
+git-bash: 1899714675
+linux1: 939131598
+linux2: 300441184
+linux3: 477313234
+(different every time: bash does not seed RANDOM from the environment; the caller cannot fix the project name)

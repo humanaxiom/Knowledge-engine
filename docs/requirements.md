@@ -2704,7 +2704,7 @@ sequencing call for the orchestrator.
   - R4/A43: the Neo4j GPL-3.0 listing and the Phoenix exception;
   - Q48: the hash-provenance rule;
   - A34: the Windows-proof scope.
-- Criteria are `PSC-<n>`: PSC-1–PSC-12 here. Q42 and Q56–Q60 were ruled
+- Criteria are `PSC-<n>`: PSC-1–PSC-12 and PSC-17 here. Q42 and Q56–Q60 were ruled
   2026-10-21 (`docs/open-questions.md` § platform-supply-chain, and Q42 in
   § platform-skeleton), and the criteria below apply the rulings (edited
   by the architect, 2026-10-21): Q42 in PSC-4 and PSC-5, Q56 in PSC-3,
@@ -2786,7 +2786,7 @@ sequencing call for the orchestrator.
   - Evidence: a recorded red run of the real scan with a mutant policy
     (no `--only-fixed`, `--fail-on negligible`) fails on the real image.
 - **PSC-5 Justified exceptions.** Accepted findings are listed in one
-  committed ignore file (ADR-KE-013: `config/scan-ignore.yaml`; schema in
+  committed ignore file (ADR-KE-013: `docker/scan-ignore.yaml`; schema in
   amendment 1, D5).
   - Each entry has the vulnerability id (key `vulnerability`, a CVE or GHSA
     id), an optional `package` (`name` only; omitted means every package),
@@ -2923,14 +2923,44 @@ sequencing call for the orchestrator.
 - **PSC-12 Windows proof.** Under A34 this item changes Dockerfiles and
   compose files, so the recorded Windows run is needed. It must match the
   branch head, or the diff since must touch none of those files (PS-2.9).
+- **PSC-17 `ke-app` ships without uv, and its scan is clean (ADR-KE-013
+  amendment 1, D10; added by the architect, 2026-10-21, unit 3).** This
+  is a new number, not an extension of PSC-2. PSC-2 says what is scanned
+  and how; PSC-17 says what the scanned image contains. PSC-13–PSC-16
+  belong to platform-sbom.
+  - Given `docker/app.Dockerfile`, a `builder` stage on the pinned python
+    base runs `uv sync --locked --no-dev` into `/opt/venv`. The last
+    (shipped) stage uses the same base reference, byte for byte, and
+    copies only `/opt/venv` and `/app` from `builder`. It has no uv
+    binary, no `COPY --from=uv` and no `uv` command.
+  - `PATH` starts with `/opt/venv/bin`, and the user `ke` (uid 10001),
+    `USER ke` and the `CMD` are unchanged.
+  - `uv.lock` pins certifi 2026.10.19 or later (GHSA-6q48-6c7w-9gw2,
+    Critical). The lock diff changes only certifi. A fixed Critical
+    overrides the usual settle period, and that is recorded in D10.
+  - The gates image keeps uv, and its uv `FROM` reference is identical to
+    the one in `app.Dockerfile`.
+  - When the rebuilt `ke-app` is scanned, `scripts/scan.sh` exits 0. The
+    certifi, quinn-proto (GHSA-4w2j-m93h-cj5j, High) and rustls rows are
+    gone, with no new ignore entry. In the image, `command -v uv` finds
+    nothing, and `python -m engine.notices` still prints its package
+    table.
+  - `[unit: test_app_image_final_stage_has_no_uv]` (fast, static; RED
+    today)
+  - `[unit: test_uv_pin_matches_in_app_and_gates_images]` (fast, static;
+    a guard, proven by a recorded mutant)
+  - Manual evidence: `u3-no-uv-in-ke-app.txt` (no uv, notices runs,
+    certifi version) and `u3-real-scan.txt` (scan exits 0), both under
+    `docs/evidence/platform-supply-chain/`. Passing this gates PSC-6.
 
 **SBOM and the M-NT1 remainder: moved.** PSC-13–PSC-15 moved to § "Item:
 platform-sbom" (split accepted by the orchestrator, 2026-10-21), rewritten
 there for the Q57 and Q58 rulings.
 
 **Split (accepted 2026-10-21, orchestrator).** The analyst's proposal stood:
-1. `platform-supply-chain` (this branch): PSC-1–PSC-12. TDD order: PSC-11 →
-   PSC-10 → PSC-1, 2, 3, 5, 8 → PSC-4 → PSC-6 → PSC-7 → PSC-9 → PSC-12
+1. `platform-supply-chain` (this branch): PSC-1–PSC-12, plus PSC-17
+   (added 2026-10-21, unit 3). TDD order: PSC-11 → PSC-10 → PSC-1, 2, 3,
+   5, 8 → PSC-4 → PSC-17 → PSC-6 → PSC-7 → PSC-9 → PSC-12
    (first tests: `docs/architecture.md` §2.6 "platform-supply-chain").
 2. `platform-sbom`: PSC-13–PSC-16, opened right after this item.
 
@@ -2939,10 +2969,24 @@ Tags summary: fast covers every `unit:` test above; full covers
 `ci/deployable-offline`; manual covers security's scanner provenance note,
 the reviewer's wrong-hash mutation, the recorded red runs (mutant policy,
 unreachable database host, planted ignore), the PSC-7 L-13 record, the PSC-9
-CI measurement, the arm64 scan evidence when an arm64 run is recorded, and
-the Windows run. Gate: `scripts/verify.sh full`.
+CI measurement, the arm64 scan evidence when an arm64 run is recorded, the
+PSC-17 no-uv and real-scan evidence, and the Windows run. Gate:
+`scripts/verify.sh full`.
 
 ### Follow-ups (not in platform-supply-chain)
+
+Recorded 2026-10-21 (architect, unit 3, ADR-KE-013 amendment 1, D10).
+Neither blocks this item.
+- **uv upgrade for the gates image and the `ke-app` builder.** Both still carry the uv
+  binary with quinn-proto 0.11.14 and rustls 0.23.40. Neither image ships
+  or is scanned.
+  - When a uv release carries quinn-proto 0.11.15 or later and rustls
+    0.23.45 or later, bump the one pin in both Dockerfiles in a single
+    commit, with a provenance check.
+  - Nobody has yet checked whether such a release exists.
+- **pip in `ke-app`.** The base image's pip 25.0.1 has fixed findings, all
+  Medium or Low and below the threshold. Dropping pip from the final stage
+  is a candidate.
 
 Recorded 2026-10-21 (orchestrator ruling, u1 rework 1). None blocks this
 item.
