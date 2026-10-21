@@ -1,0 +1,20 @@
+platform-config rework 3: tester mutation proof for B-R2-1 (E1, W3) and R2-N2 (C4, C5) (2026-10-18)
+Scratch copy of engine/ tests/ harness_telemetry/ config/ pyproject.toml .env.example in <scratch>
+run with the repo venv (Windows host, python -m unittest, HARNESS_TRACING=off). Targets:
+tests.test_engine_tracing_guard test_engine_telemetry test_engine_startup test_engine_config test_engine_llm.
+Each mutant applied alone by exact single-occurrence string replace, then restored. KILLED = rc!=0.
+New tests: InstalledProviderGuardTest.test_custom_span_processor_is_refused (E1),
+  InstalledProviderGuardTest.test_local_otlp_with_unreachable_session_is_refused (W3),
+  StartupVerifiesProviderFirstTest.FOREIGN += 'sdk, custom span processor' (E1),
+  test_engine_startup L1B_HIDERS += U+2028, U+2029 (C4, C5).
+Mutants: E1 _verify_installed iterates [e for e in _exporters_of(provider) if e is not None];
+  W3 _ignores_proxy_env returns 'not sessions or all(...)'; C4 'Zl' removed from _STRIPPED_CATEGORIES; C5 'Zp' removed.
+
+BASELINE rc=0 Ran 65 tests in 1.120s OK
+E1 filter out None in _verify_installed: KILLED rc=1 FAILED (failures=15) :: test_custom_span_processor_is_refused test_foreign_provider_gets_no_span_with_refusing_settings test_foreign_provider_refused_before_any_span_passing_settings 
+W3 not sessions or all(...): KILLED rc=1 FAILED (failures=6) :: test_local_otlp_with_unreachable_session_is_refused 
+C4 drop Zl: KILLED rc=1 FAILED (failures=8) :: test_placeholder_hidden_by_invisible_characters_is_refused 
+C5 drop Zp: KILLED rc=1 FAILED (failures=8) :: test_placeholder_hidden_by_invisible_characters_is_refused 
+POST rc=0 Ran 65 tests in 1.157s OK
+scratch engine/ identical to real tree after restore
+Scratch copy deleted after the run.

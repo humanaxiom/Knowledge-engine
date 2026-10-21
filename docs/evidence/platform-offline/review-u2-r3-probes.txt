@@ -1,0 +1,358 @@
+# review-u2-r3 raw probes (reviewer, 2026-10-19). Scratch copies of the working tree in ke-gates:latest, --network none, --cap-drop ALL, uid 10001, /opt/venv python. Repo never modified.
+# Each mutant tree = probe tree (working tree + tests/scratch_r3.py); run: python -m unittest tests.test_offline_bundle tests.scratch_r3
+# ExecBitTest fails in every scratch run by design (no .git); it is filtered out below.
+
+## Mutant diffs
+### split
+600c600,601
+< main "$@"; exit
+---
+> main "$@"
+> exit
+### unwrap
+204d203
+< main() {
+212c211
+<   local expect="" have_expect=0 have_target=0
+---
+>   declare expect="" have_expect=0 have_target=0
+243c242
+<   local root parent_raw parent
+---
+>   declare root parent_raw parent
+274c273
+<   local claim_file
+---
+>   declare claim_file
+287c286
+<   local stmode
+---
+>   declare stmode
+298c297
+<   local need_bytes need_kb need_gib avail_kb
+---
+>   declare need_bytes need_kb need_gib avail_kb
+321c320
+<   local manifest_size sum manifest_sha
+---
+>   declare manifest_size sum manifest_sha
+334c333
+<   local manifest_re='^([0-9a-f]{64})  (.+)$'
+---
+>   declare manifest_re='^([0-9a-f]{64})  (.+)$'
+339,340c338,339
+<   local listed_order=() listed_hash=() n=0 line hash path segment stem
+<   local segments=()
+---
+>   declare listed_order=() listed_hash=() n=0 line hash path segment stem
+>   declare segments=()
+379c378
+<   local clash pair
+---
+>   declare clash pair
+403c402
+<   local unlisted
+---
+>   declare unlisted
+414c413
+<   local count idx
+---
+>   declare count idx
+436c435
+<   local daemon_arch_raw daemon_arch
+---
+>   declare daemon_arch_raw daemon_arch
+445c444
+<   local ref_re as_re header_re entry_re
+---
+>   declare ref_re as_re header_re entry_re
+451c450
+<   local files=() refs=() ases=() svcs=() commas=() git_sha="" state bundle_arch
+---
+>   declare files=() refs=() ases=() svcs=() commas=() git_sha="" state bundle_arch
+486,487c485,486
+<   local first_party_re='^ke-[a-z0-9._-]+:bundle-([0-9a-f]{12})$'
+<   local entry_file_nl="" entry_as_nl="" svc_nl="" svc_list=() i last s names=()
+---
+>   declare first_party_re='^ke-[a-z0-9._-]+:bundle-([0-9a-f]{12})$'
+>   declare entry_file_nl="" entry_as_nl="" svc_nl="" svc_list=() i last s names=()
+525c524
+<   local config_out stack_services=() stack_nl=""
+---
+>   declare config_out stack_services=() stack_nl=""
+547,549c546,548
+<   local loaded_name_re='^Loaded image: (.+)$'
+<   local loaded_id_re='^Loaded image ID: (sha256:[0-9a-f]{64})$'
+<   local file as output found=() named l
+---
+>   declare loaded_name_re='^Loaded image: (.+)$'
+>   declare loaded_id_re='^Loaded image ID: (sha256:[0-9a-f]{64})$'
+>   declare file as output found=() named l
+580c579
+<   local override=app/docker-compose.override.yml
+---
+>   declare override=app/docker-compose.override.yml
+598,600c597
+< }
+< 
+< main "$@"; exit
+---
+> exit
+### pspath
+362d361
+<     Assert-SafePath
+### atl
+26c26,27
+< at_least() { # at_least MINIMUM VERSION: dotted numbers, field by field (no sort -V: BSD sort lacks it)
+---
+> at_least() { return 0; }
+> at_least_orig() { # at_least MINIMUM VERSION: dotted numbers, field by field (no sort -V: BSD sort lacks it)
+### clshc
+96c96
+<     && [ ! -L "$target" ] && [ -d "$target" ] && [ -f "$target/$claim_marker" ]; then
+---
+>     && [ ! -L "$target" ] && [ -d "$target" ]; then
+### l11
+290,292d289
+<   if [ ! -O . ] || [ "${stmode:0:10}" != "drwx------" ]; then
+<     die "the staging directory is not private (owner or mode changed after creation): $staging"
+<   fi
+### i7
+89,91d88
+<   if [ "$pinned" -eq 1 ]; then
+<     rm -rf -- ./* ./.[!.]* ./..?* 2> /dev/null || true
+<   fi
+### i7ps
+771d770
+<             Get-ChildItem -LiteralPath $pin -Force | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+### l13
+269d268
+<     rmdir -- "$target" 2> /dev/null || true
+### chre
+199d198
+<   { [ -d "$target" ] && [ ! -L "$target" ]; } || die "the target is no longer a real directory (something replaced it during install): $target"
+### chreps
+743,745d742
+<     if ((Get-EntryKind $targetPath) -ne 'dir') {
+<         Exit-WithError "the target is no longer a real directory (something replaced it during install): $targetPath"
+<     }
+### fixempty
+292a293
+>   [ -z "$(ls -A -- .)" ] || die "the staging directory is not the empty directory this install created: $staging"
+
+## Results
+### probe
+Ran 109 tests in 140.510s
+FAILED (failures=1, skipped=2)
+### split
+FAIL: test_install_ignores_script_rewritten_in_place (tests.test_offline_bundle.InstallShTest.test_install_ignores_script_rewritten_in_place)
+FAIL: test_swap_to_link (tests.scratch_r3.SwapToLink.test_swap_to_link)
+Ran 110 tests in 141.496s
+FAILED (failures=3, skipped=2)
+racer: swapped /tmp/tmpzo2tu4ir/.ke-install.a94ZjxdM
+rc 1 docker calls: False
+victim after: []
+install: manifest: file is not listed: id_ed25519
+### unwrap
+FAIL: test_install_ignores_script_rewritten_in_place (tests.test_offline_bundle.InstallShTest.test_install_ignores_script_rewritten_in_place)
+FAIL: test_swap_to_link (tests.scratch_r3.SwapToLink.test_swap_to_link)
+Ran 110 tests in 141.129s
+FAILED (failures=3, skipped=2)
+racer: swapped /tmp/tmpi7dg426v/.ke-install.VHpYOR2j
+rc 1 docker calls: False
+victim after: []
+install: manifest: file is not listed: id_ed25519
+### pspath
+FAIL: test_install_ps1_refuses_relative_or_empty_path_entries (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_refuses_relative_or_empty_path_entries) (case='relative')
+FAIL: test_install_ps1_refuses_relative_or_empty_path_entries (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_refuses_relative_or_empty_path_entries) (case='dot')
+FAIL: test_install_ps1_refuses_relative_or_empty_path_entries (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_refuses_relative_or_empty_path_entries) (case='leading_empty')
+FAIL: test_install_ps1_refuses_relative_or_empty_path_entries (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_refuses_relative_or_empty_path_entries) (case='trailing_empty')
+FAIL: test_install_ps1_refuses_relative_or_empty_path_entries (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_refuses_relative_or_empty_path_entries) (case='middle_empty')
+FAIL: test_swap_to_link (tests.scratch_r3.SwapToLink.test_swap_to_link)
+Ran 110 tests in 140.819s
+FAILED (failures=7, skipped=2)
+install: cannot scan .
+install: cannot scan /tmp/tmpe9p8ri01/bundle2
+racer: swapped /tmp/tmpw72lc14m/.ke-install.HrezBlSM
+rc 1 docker calls: False
+victim after: []
+install: manifest: file is not listed: id_ed25519
+### atl
+FAIL: test_launch_enforces_compose_version_floor (tests.test_offline_bundle.InstallShPortableTest.test_launch_enforces_compose_version_floor) (shell='bash', compose='2.23.9')
+FAIL: test_launch_enforces_compose_version_floor (tests.test_offline_bundle.InstallShPortableTest.test_launch_enforces_compose_version_floor) (shell='bash', compose='2')
+FAIL: test_launch_enforces_compose_version_floor (tests.test_offline_bundle.InstallShPortableTest.test_launch_enforces_compose_version_floor) (shell='bash --posix + BSD shims', compose='2.23.9')
+FAIL: test_launch_enforces_compose_version_floor (tests.test_offline_bundle.InstallShPortableTest.test_launch_enforces_compose_version_floor) (shell='bash --posix + BSD shims', compose='2')
+FAIL: test_swap_to_link (tests.scratch_r3.SwapToLink.test_swap_to_link)
+Ran 110 tests in 141.327s
+FAILED (failures=6, skipped=2)
+racer: swapped /tmp/tmpxzs69mya/.ke-install.kmfn3lLU
+rc 1 docker calls: False
+victim after: []
+install: manifest: file is not listed: id_ed25519
+### clshc
+FAIL: test_install_refuses_target_replaced_during_load (tests.test_offline_bundle.InstallShTest.test_install_refuses_target_replaced_during_load) (planted='dir')
+FAIL: test_swap_to_link (tests.scratch_r3.SwapToLink.test_swap_to_link)
+Ran 110 tests in 140.713s
+FAILED (failures=3, skipped=2)
+install: the target is no longer the directory this install claimed (something replaced it during install): /tmp/tmpngoy4w7p/target1
+racer: swapped /tmp/tmptqnb9h_n/.ke-install.7909mL6F
+rc 1 docker calls: False
+victim after: []
+install: manifest: file is not listed: id_ed25519
+### l11
+FAIL: test_install_sh_refuses_staging_loosened_before_cd (tests.test_offline_bundle.InstallShTest.test_install_sh_refuses_staging_loosened_before_cd)
+FAIL: test_swap_to_link (tests.scratch_r3.SwapToLink.test_swap_to_link)
+Ran 110 tests in 135.634s
+FAILED (failures=3, skipped=2)
+racer: swapped /tmp/tmpm1zvabsj/.ke-install.LB0mLVzb
+rc 1 docker calls: False
+victim after: []
+install: manifest: file is not listed: id_ed25519
+### i7
+FAIL: test_install_empties_swapped_staging (tests.test_offline_bundle.InstallShTest.test_install_empties_swapped_staging)
+Ran 110 tests in 135.479s
+FAILED (failures=2, skipped=2)
+racer: swapped /tmp/tmptc2paxop/.ke-install.DXKnmeR4
+rc 1 docker calls: False
+victim after: ['MANIFEST.sha256', 'app', 'app/.env.example', 'app/docker-compose.yml', 'app/scripts', 'app/scripts/launch.sh', 'bundle.json', 'id_ed25519', 'images', 'images/ke-app.tar', 'images/postgres.tar', 'install.ps1', 'install.sh', 'sub', 'sub/keep']
+install: manifest: file is not listed: id_ed25519
+### i7ps
+FAIL: test_install_empties_swapped_staging (tests.test_offline_bundle.InstallPs1Test.test_install_empties_swapped_staging)
+FAIL: test_swap_to_link (tests.scratch_r3.SwapToLink.test_swap_to_link)
+Ran 110 tests in 135.115s
+FAILED (failures=3, skipped=2)
+racer: swapped /tmp/tmpwympz0in/.ke-install.J7QES0Cn
+rc 1 docker calls: False
+victim after: []
+install: manifest: file is not listed: id_ed25519
+### l13
+FAIL: test_install_sh_leaves_no_target_when_claim_mkdir_fails (tests.test_offline_bundle.InstallShTest.test_install_sh_leaves_no_target_when_claim_mkdir_fails)
+FAIL: test_swap_to_link (tests.scratch_r3.SwapToLink.test_swap_to_link)
+Ran 110 tests in 135.600s
+FAILED (failures=3, skipped=2)
+racer: swapped /tmp/tmppqg_81a6/.ke-install.e4ifMKkw
+rc 1 docker calls: False
+victim after: []
+install: manifest: file is not listed: id_ed25519
+### chre
+FAIL: test_install_sh_refuses_target_swapped_for_link_before_chmod (tests.test_offline_bundle.InstallShTest.test_install_sh_refuses_target_swapped_for_link_before_chmod)
+FAIL: test_swap_to_link (tests.scratch_r3.SwapToLink.test_swap_to_link)
+Ran 110 tests in 135.524s
+FAILED (failures=3, skipped=2)
+racer: swapped /tmp/tmpdnm3habk/.ke-install.tiVixJVj
+rc 1 docker calls: False
+victim after: []
+install: manifest: file is not listed: id_ed25519
+### chreps
+FAIL: test_install_ps1_rechecks_target_is_dir_right_before_chmod (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_rechecks_target_is_dir_right_before_chmod)
+FAIL: test_swap_to_link (tests.scratch_r3.SwapToLink.test_swap_to_link)
+Ran 110 tests in 126.427s
+FAILED (failures=3, skipped=2)
+racer: swapped /tmp/tmpekm5x43g/.ke-install.ulUOoWSB
+rc 1 docker calls: False
+victim after: []
+install: manifest: file is not listed: id_ed25519
+### fixempty
+Ran 110 tests in 126.443s
+FAILED (failures=1, skipped=2)
+racer: swapped /tmp/tmp7_og3blw/.ke-install.SyiRGIxQ
+rc 1 docker calls: False
+victim after: ['id_ed25519', 'sub', 'sub/keep']
+install: the staging directory is not the empty directory this install created: /tmp/tmp7_og3blw/.ke-install.SyiRGIxQ
+(probe = unmodified tree, test_offline_bundle only)
+
+## Destructive probe on the unmodified tree (tests/scratch_r3.py)
+F
+======================================================================
+FAIL: test_swap_to_link (tests.scratch_r3.SwapToLink.test_swap_to_link)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/scratch_r3.py", line 32, in test_swap_to_link
+    self.assertTrue((victim / "id_ed25519").exists(), "cleanup deleted the victim's files")
+AssertionError: False is not true : cleanup deleted the victim's files
+
+----------------------------------------------------------------------
+Ran 1 test in 0.033s
+
+FAILED (failures=1)
+racer: swapped /tmp/tmprga77wq_/.ke-install.rxEtt0IZ
+
+rc 1 docker calls: False
+victim after: []
+install: manifest: file is not listed: id_ed25519
+
+
+## tests/scratch_r3.py
+"""Reviewer r3 probe: staging name swapped for a symlink to an operator-owned
+0700 directory between `chmod 0700` and `cd` (the L-11 window)."""
+import os, unittest
+from pathlib import Path
+from tests.test_offline_bundle import InstallShTest, STAGING_PREFIX
+
+
+class SwapToLink(InstallShTest):
+    def test_swap_to_link(self):
+        bundle, target = self._fresh()
+        victim = self.tmp / "victim-home"
+        victim.mkdir()
+        victim.chmod(0o700)
+        (victim / "id_ed25519").write_text("SECRET KEY\n", encoding="utf-8")
+        (victim / "sub").mkdir()
+        (victim / "sub" / "keep").write_text("keep\n", encoding="utf-8")
+        racer = self.tmp / "racer.log"
+        shimdir = self._shim("chmod", f"""REAL "$@" || exit $?
+for a in "$@"; do
+  case "$a" in
+    */{STAGING_PREFIX}*)
+      if [ -d "$a" ] && [ ! -L "$a" ]; then mv -- "$a" "$a.away" && ln -s -- '{victim}' "$a" && echo "swapped $a" >> '{racer}'; fi ;;
+  esac
+done
+""")
+        result, _, log = self._install(bundle, target, PATH=f"{shimdir}{os.pathsep}{self.path}")
+        out = self._out(result)
+        print("racer:", racer.read_text() if racer.exists() else "(none)")
+        print("rc", result.returncode, "docker calls:", bool(log))
+        print("victim after:", sorted(str(p.relative_to(victim)) for p in victim.rglob("*")))
+        print(out[-600:])
+        self.assertTrue((victim / "id_ed25519").exists(), "cleanup deleted the victim's files")
+
+
+def load_tests(loader, tests, pattern):
+    s = unittest.TestSuite()
+    s.addTest(SwapToLink("test_swap_to_link"))
+    return s
+
+## EXIT trap / failed cd probe (trap.sh)
+set -euo pipefail
+pinned=0
+cleanup() { echo "cleanup pid=$BASHPID pinned=$pinned cwd=$(pwd)"; }
+die() { echo "die: $*" >&2; exit 1; }
+main() {
+  trap cleanup EXIT
+  pinned=1
+  x="$(cd / && exit 3)" || echo "cmdsub rc=$? (no cleanup line above means trap not inherited)"
+  printf 'a\n' | { while read -r l; do die "in pipe"; done; } || echo "pipe subshell rc=$?"
+  ( exit 4 ) || echo "subshell rc=$?"
+  pinned=0
+  case "${1-}" in failcd) cd -- /nonexistent ;; esac
+  echo "end main"
+}
+main "$@"; exit
+--- output
+GNU bash, version 5.2.15(1)-release (x86_64-pc-linux-gnu)
+--- normal
+cmdsub rc=3 (no cleanup line above means trap not inherited)
+die: in pipe
+pipe subshell rc=1
+subshell rc=4
+end main
+cleanup pid=9 pinned=0 cwd=/work
+rc=0
+--- failcd
+cmdsub rc=3 (no cleanup line above means trap not inherited)
+die: in pipe
+pipe subshell rc=1
+subshell rc=4
+/p/trap.sh: line 12: cd: /nonexistent: No such file or directory
+cleanup pid=15 pinned=0 cwd=/work
+rc=1

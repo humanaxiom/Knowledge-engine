@@ -67,6 +67,19 @@ Nothing. CI's only step is `./scripts/verify.sh full`
 (`.github/workflows/ci.yml`), and a test enforces that. If a CI-only step is
 ever added, list it here with the reason it cannot run locally.
 
+## What verify.sh runs that CI cannot
+
+Integration tests that call the model run only where the model host is
+reachable and both `KE_MODEL_UPSTREAM` and `KE_EGRESS_ALLOWLIST` are set. These
+are the only two keys a local `scripts/verify.sh full` takes from outside the
+repo, and no other key is taken. Each comes from the caller's environment if
+set there, otherwise from the repo-root `.env`; the caller's environment wins.
+If either key is unset or empty, or the host is not reachable, the tests skip
+with a named reason and never pass silently. The same happens on GitHub CI,
+where the model host is not reachable. A green CI run therefore says nothing
+about model behaviour; run `scripts/verify.sh full` on a machine that can reach
+the model host before approving a change that touches it.
+
 ## Generated artifacts
 
 Committed files generated from a source file, and how to regenerate them:
@@ -89,6 +102,14 @@ register, `docs/register.md`, arriving with `policy-book`).
 - **Deployable without the assistant.** Every feature ships through the
   build/launch/teardown scripts and the offline install bundle, and the
   "deployable offline" CI gate proves it.
+- **Verify has a sentinel.** `scripts/verify.sh` fails unless the test run
+  reports at least one test and includes the top-level sentinel test in
+  `tests/test_sentinel.py`. Its module, class and method names must stay
+  top-level and unchanged; renaming or moving any of them turns every verify
+  run red. A test enforces this. A test directory without `__init__.py` also
+  fails the run, and the integration suite runs only in `full`. CI is pinned
+  to `ubuntu-24.04`, with the checkout action pinned to a SHA and no
+  persisted credentials.
 - **Docs never restate live counts.** One live page computes counts from the
   database. Docs point to it, or to a dated findings file that names its query.
 - **Handoff docs stay under 200 lines** and forward-looking; history moves to

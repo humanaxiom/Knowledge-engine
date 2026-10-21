@@ -1,0 +1,19 @@
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 1ms
+Installed 1 package in 3ms
+est 271s
+est 271s
+shard 0: 58 names
+shard 1: 61 names
+all shards wall=238s
+shard 1 rc=0 wall=220s
+shard 0 rc=0 wall=238s
+Ran 320 tests in 236.999s
+Ran 369 tests in 218.971s
+OK (skipped=1)
+OK (skipped=7)
+/tmp/shard1.log:1
+Combined 3 files, skipped 2
+TOTAL                              975     81    236     15    90%
+container total=241s

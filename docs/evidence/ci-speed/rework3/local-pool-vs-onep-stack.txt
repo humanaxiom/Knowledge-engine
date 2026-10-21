@@ -1,0 +1,26 @@
+   pool    onep  ratio  test (tests in both --durations lists)
+   29.3    34.3   0.85  test_stack_scripts.LintScriptTest.test_lint_runs_no_code_from_a_powershell_filename
+   22.5    17.0   1.32  test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails
+   21.5    20.1   1.07  test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_concurrency_follows_nproc_capped_at_4
+   19.5    15.9   1.23  test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper
+   14.4    11.7   1.24  test_offline_bundle.InstallPs1Test.test_install_refuses_unfit_target_or_daemon
+   12.8    10.3   1.24  test_stack_scripts.LintScriptTest.test_lint_with_real_tools_fails_on_a_planted_finding
+   12.0    12.4   0.97  test_stack_scripts.LintScriptTest.test_lint_covers_upper_case_ps1_and_psm1
+    9.6     7.4   1.30  test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass
+    9.0     9.9   0.90  test_stack_scripts.LintScriptTest.test_lint_shellchecks_upper_case_sh
+    8.5     6.5   1.32  test_offline_bundle.InstallPs1Test.test_install_target_modes_ignore_build_host_umask
+    8.3     6.3   1.33  test_offline_bundle.InstallPs1Test.test_arch_normalisation
+    8.2     7.8   1.05  test_offline_bundle.InstallPs1Test.test_install_stops_on_signal_to_its_own_pid
+    8.0     5.8   1.37  test_offline_bundle.InstallPs1Test.test_install_removes_staging_on_every_exit
+    7.8     6.4   1.23  test_offline_bundle.InstallPs1Test.test_install_rejects_bundle_json_missing_field
+    7.5     6.6   1.14  test_offline_bundle.BundleNoticesTest.test_notices_vendor_row_parse_is_strict
+    7.4     4.7   1.59  test_offline_bundle.BundleScriptTest.test_bundle_maps_each_service_to_own_image_despite_dependencies
+    6.6     4.7   1.39  test_offline_netprobe.SmokeCiOfflineTest.test_ci_offline_fails_naming_the_service_that_gets_out
+    6.1     5.9   1.04  test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_never_met
+    6.0     4.8   1.24  test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_combine_leaves_a_module_data_file
+    5.4     3.9   1.38  test_harness_followups.IntegrationRunsOnceTest.test_verify_sees_sentinel_and_ran_lines_from_real_test_sh
+    5.2     3.6   1.45  test_stack_scripts.LaunchPs1ResolvedTest.test_launch_refuses_docker_engine_below_28_or_unreadable
+    4.9     4.9   1.01  test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_met
+    3.4     3.4   1.00  test_stack_scripts.LaunchPs1ResolvedTest.test_launch_treats_a_port_without_host_ip_as_all_interfaces
+    3.3     4.1   0.82  test_stack_scripts.LintScriptTest.test_lint_fails_on_warning_severity_finding
+  247.5   218.4   1.13  SUM over 24 tests

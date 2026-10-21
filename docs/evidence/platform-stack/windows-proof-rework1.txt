@@ -1,0 +1,1151 @@
+Windows proof, rework 1 (PS-2.9; Q31/Q34) -- platform-stack-up
+Supersedes nothing: the earlier windows-proof.txt is kept as history.
+Driver: <scratch>\winproof2.ps1, run in 4 phases (pre, up, gw, down) as
+  pwsh -NoProfile -File <scratch>\winproof2.ps1 -Phase <phase>
+with NO -ExecutionPolicy flag anywhere (Process scope = Undefined, machine default
+LocalMachine = RemoteSigned; see section 0). Each repo script ran as
+  pwsh -NoProfile -File scripts\<x>.ps1
+Phase output below is unedited except that the scratch directory path (under the
+user profile) is replaced with <scratch>. Separator lines "#### PHASE ..." and the
+annotations at the end were added by the tester.
+
+#### PHASE pre (sections 0-3) ##########################################
+NOTE: the driver's section-header function was named H, which is a built-in pwsh
+alias for Get-History, so in this phase each header printed a "Get-History: Cannot
+bind parameter 'Id'" error instead of the "==== N. ... ====" line. Only the headers
+were lost; every command below ran and its output is complete. The function was
+renamed before the next phases.
+
+Get-History: <scratch>\winproof2.ps1:43
+Line |
+  43 |      H '0. Run metadata'
+     |        ~~~~~~~~~~~~~~~~~
+     | Cannot bind parameter 'Id'. Cannot convert value "0. Run metadata" to type "System.Int64". Error: "The input
+     | string '0. Run metadata' was not in a correct format."
+date (UTC): 2026-10-19T03:43:03Z
+driver: <scratch>\winproof2.ps1, started as 'pwsh -NoProfile -File' with NO -ExecutionPolicy flag; each repo script runs as 'pwsh -NoProfile -File scripts\<x>.ps1' (no -ExecutionPolicy flag)
+
+PS> hostname; OSVersion; $PSVersionTable.PSVersion
+aria-alien1
+Microsoft Windows NT 10.0.26200.0
+7.6.7
+[exit code: 0]
+
+PS> Get-ExecutionPolicy -List
+
+        Scope ExecutionPolicy
+        ----- ---------------
+MachinePolicy       Undefined
+   UserPolicy       Undefined
+      Process       Undefined
+  CurrentUser       Undefined
+ LocalMachine    RemoteSigned
+
+
+[exit code: ]
+
+PS> docker version
+Client:
+ Version:           29.5.2
+ API version:       1.54
+ Go version:        go1.26.3
+ Git commit:        79eb04c
+ Built:             Wed May 20 14:40:41 2026
+ OS/Arch:           windows/amd64
+ Context:           desktop-linux
+
+Server: Docker Desktop 4.75.0 (227598)
+ Engine:
+  Version:          29.5.2
+  API version:      1.54 (minimum version 1.40)
+  Go version:       go1.26.3
+  Git commit:       568f755
+  Built:            Wed May 20 14:38:09 2026
+  OS/Arch:          linux/amd64
+  Experimental:     false
+ containerd:
+  Version:          v2.2.3
+  GitCommit:        77c84241c7cbdd9b4eca2591793e3d4f4317c590
+ runc:
+  Version:          1.3.5
+  GitCommit:        v1.3.5-0-g488fc13e
+ docker-init:
+  Version:          0.19.0
+  GitCommit:        de40ad0
+[exit code: 0]
+
+PS> docker version --format '{{.Server.Version}}' (>= 28 check)
+engine=29.5.2; >= 28: True
+[exit code: 0]
+
+PS> docker compose version
+Docker Compose version v5.1.4
+[exit code: 0]
+
+PS> git rev-parse HEAD; git branch --show-current
+d26bec65877813c8123655a88dfd36c26771cf92
+agent/platform-stack-up
+[exit code: 0]
+
+PS> git status --short
+ M .env.example
+ M AGENTS.md
+ M config/defaults.yaml
+ M docker-compose.yml
+ M docker/gates.Dockerfile
+ M docs/architecture.md
+ M docs/log.md
+ M docs/open-questions.md
+ M docs/requirements.md
+ M engine/config/settings.py
+ M engine/startup.py
+ M engine/telemetry.py
+ M pyproject.toml
+ M scripts/smoke.sh
+ M scripts/test.sh
+ M scripts/verify.sh
+ M tests/hardcoded_scan.py
+ M tests/support.py
+ M tests/test_engine_deploy_files.py
+ M tests/test_engine_hardcoded.py
+ M tests/test_engine_telemetry.py
+ M tests/test_engine_tracing_guard.py
+ M tests/test_harness_followups.py
+ M uv.lock
+?? docker-compose.verify.yml
+?? docker/app.Dockerfile
+?? docker/gateway.Dockerfile
+?? docker/gateway/
+?? docs/evidence/platform-stack/
+?? docs/handoffs/platform-stack.md
+?? docs/knowledge-engine-claude-code-prompt.md
+?? docs/quickstart.md
+?? engine/api.py
+?? engine/worker.py
+?? scripts/build.ps1
+?? scripts/build.sh
+?? scripts/launch.ps1
+?? scripts/launch.sh
+?? scripts/lint.sh
+?? scripts/teardown.ps1
+?? scripts/teardown.sh
+?? tests/compose_support.py
+?? tests/fake_docker.py
+?? tests/integration/
+?? tests/test_stack_bind_address.py
+?? tests/test_stack_carry_ins.py
+?? tests/test_stack_compose.py
+?? tests/test_stack_entrypoints.py
+?? tests/test_stack_scripts.py
+[exit code: 0]
+
+NOTE: working tree is uncommitted (rework-1 changes on disk); the run used HEAD + this diff.
+Get-History: <scratch>\winproof2.ps1:58
+Line |
+  58 |      H '1. Clear leftover knowledge-engine_* volumes from the previous .
+     |        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | Cannot bind parameter 'Id'. Cannot convert value "1. Clear leftover knowledge-engine_* volumes from the previous
+     | proof" to type "System.Int64". Error: "The input string '1. Clear leftover knowledge-engine_* volumes from the
+     | previous proof' was not in a correct format."
+PS> Test-Path .env (False: teardown runs with no .env)
+False
+[exit code: ]
+
+PS> docker volume ls --filter name=knowledge-engine_ (before)
+DRIVER    VOLUME NAME
+local     knowledge-engine_neo4j-data
+local     knowledge-engine_phoenix-data
+local     knowledge-engine_postgres-data
+local     knowledge-engine_valkey-data
+[exit code: 0]
+
+PS> pwsh -NoProfile -File scripts\teardown.ps1 -Volumes
+time="2026-10-18T20:43:04-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T20:43:04-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T20:43:04-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T20:43:04-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T20:43:04-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T20:43:04-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T20:43:04-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T20:43:04-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T20:43:04-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T20:43:04-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T20:43:04-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T20:43:04-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+ Volume knowledge-engine_postgres-data Removing 
+ Volume knowledge-engine_valkey-data Removing 
+ Volume knowledge-engine_neo4j-data Removing 
+ Volume knowledge-engine_phoenix-data Removing 
+ Volume knowledge-engine_postgres-data Removed 
+ Volume knowledge-engine_valkey-data Removed 
+ Volume knowledge-engine_neo4j-data Removed 
+ Volume knowledge-engine_phoenix-data Removed 
+[exit code: 0]
+
+PS> docker volume ls --filter name=knowledge-engine_ (after)
+DRIVER    VOLUME NAME
+[exit code: 0]
+
+PS> docker ps -a --filter label=com.docker.compose.project=knowledge-engine
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+[exit code: 0]
+
+Get-History: <scratch>\winproof2.ps1:65
+Line |
+  65 |      H '2. Temporary .env'
+     |        ~~~~~~~~~~~~~~~~~~~
+     | Cannot bind parameter 'Id'. Cannot convert value "2. Temporary .env" to type "System.Int64". Error: "The input
+     | string '2. Temporary .env' was not in a correct format."
+Copied .env.example to .env; replaced the two changeme store passwords with random 48-hex-char throwaway secrets (values not recorded). KE_MODEL_UPSTREAM left empty. Backup kept at <scratch>\env.bak for restores (deleted in step 8).
+
+PS> diff .env.example .env (values redacted)
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (=>)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (=>)
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (<=)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (<=)
+[exit code: ]
+
+PS> Select-String .env KE_ENV / KE_BIND_ADDRESS / KE_MODEL_UPSTREAM / KE_EGRESS_ALLOWLIST
+KE_ENV=dev
+KE_BIND_ADDRESS=127.0.0.1
+KE_MODEL_UPSTREAM=
+KE_EGRESS_ALLOWLIST=
+[exit code: ]
+
+Get-History: <scratch>\winproof2.ps1:77
+Line |
+  77 |      H '3. scripts\build.ps1'
+     |        ~~~~~~~~~~~~~~~~~~~~~~
+     | Cannot bind parameter 'Id'. Cannot convert value "3. scripts\build.ps1" to type "System.Int64". Error: "The
+     | input string '3. scripts\build.ps1' was not in a correct format."
+PS> pwsh -NoProfile -File scripts\build.ps1
+ Image ke-gateway Building 
+ Image ke-gates Building 
+ Image ke-gates Building 
+ Image ke-app Building 
+ Image ke-app Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 2.27kB done
+#1 DONE 0.0s
+
+#2 [gates internal] load build definition from gates.Dockerfile
+#2 transferring dockerfile: 2.96kB done
+#2 DONE 0.0s
+
+#3 [gateway internal] load build definition from gateway.Dockerfile
+#3 transferring dockerfile: 1.00kB done
+#3 DONE 0.0s
+
+#4 [api internal] load build definition from app.Dockerfile
+#4 transferring dockerfile: 859B done
+#4 DONE 0.0s
+
+#5 [gates internal] load metadata for ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#5 DONE 0.0s
+
+#6 [gateway internal] load metadata for docker.io/nginxinc/nginx-unprivileged:1.28-alpine@sha256:7377697a821c131a924a7105fafbe7414db4e9fcc77a6f08f776f33f141ec3f8
+#6 DONE 0.1s
+
+#7 [api internal] load metadata for docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#7 ...
+
+#8 [gateway internal] load .dockerignore
+#8 transferring context: 91B done
+#8 DONE 0.0s
+
+#9 [gateway 1/6] FROM docker.io/nginxinc/nginx-unprivileged:1.28-alpine@sha256:7377697a821c131a924a7105fafbe7414db4e9fcc77a6f08f776f33f141ec3f8
+#9 resolve docker.io/nginxinc/nginx-unprivileged:1.28-alpine@sha256:7377697a821c131a924a7105fafbe7414db4e9fcc77a6f08f776f33f141ec3f8 0.0s done
+#9 DONE 0.0s
+
+#10 [gateway internal] load build context
+#10 transferring context: 6.22kB done
+#10 DONE 0.0s
+
+#11 [gateway 4/6] COPY --chmod=0755 docker/gateway/10-ke-bind-check.sh /docker-entrypoint.d/10-ke-bind-check.sh
+#11 CACHED
+
+#12 [gateway 5/6] COPY --chmod=0755 docker/gateway/11-ke-upstream-check.sh /docker-entrypoint.d/11-ke-upstream-check.sh
+#12 CACHED
+
+#13 [gateway 2/6] COPY docker/gateway/nginx.conf /etc/nginx/nginx.conf
+#13 CACHED
+
+#14 [gateway 3/6] COPY docker/gateway/templates/ /etc/nginx/templates/
+#14 CACHED
+
+#15 [gateway 6/6] RUN rm -f /etc/nginx/conf.d/default.conf  && mkdir -p /etc/nginx/stream-conf.d  && chown nginx:nginx /etc/nginx/conf.d /etc/nginx/stream-conf.d
+#15 CACHED
+
+#16 [gateway] exporting to image
+#16 exporting layers done
+#16 exporting manifest sha256:ade9162edb56e8444526b404f377ad9749c61e407c76501c227d05f1bdf8d550 0.0s done
+#16 exporting config sha256:2a40498ed34ab475b9898de134135e67cd2c37055371a1d215e53f9aa548d60c 0.0s done
+#16 exporting attestation manifest sha256:42f82eeb751a5a2ab886393ab7cf84750eb8df34a074979d78db1430e91f3bb7 0.0s done
+#16 exporting manifest list sha256:b024044c163985fa16f8acdcc3dc6d67c9a4b29a109ef56ace5a054f6b5626fb 0.0s done
+#16 naming to docker.io/library/ke-gateway:latest done
+#16 unpacking to docker.io/library/ke-gateway:latest 0.0s done
+#16 DONE 0.1s
+
+#17 [gateway] resolving provenance for metadata file
+#17 DONE 0.0s
+
+#7 [api internal] load metadata for docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#7 DONE 0.5s
+
+#8 [gates-it internal] load .dockerignore
+#8 CACHED
+
+#18 [worker stage-1 1/8] FROM docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#18 resolve docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258 0.0s done
+#18 DONE 0.0s
+
+#19 [api uv 1/1] FROM ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#19 resolve ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946 0.0s done
+#19 DONE 0.0s
+
+#20 [worker internal] load build context
+#20 transferring context: 180.74kB 0.0s done
+#20 DONE 0.0s
+
+#21 [gates-it stage-1  5/10] WORKDIR /work
+#21 CACHED
+
+#22 [gates-it stage-1  3/10] RUN apt-get update  && apt-get install -y --no-install-recommends git jq ca-certificates curl       shellcheck=0.9.0-1 libicu72 libssl3 zlib1g  && rm -rf /var/lib/apt/lists/*  && git config --system --add safe.directory /work  && git config --system core.autocrlf true
+#22 CACHED
+
+#23 [gates-it stage-1  8/10] COPY engine ./engine
+#23 CACHED
+
+#24 [gates-it stage-1  9/10] COPY config ./config
+#24 CACHED
+
+#25 [gates-it stage-1  7/10] COPY harness_telemetry ./harness_telemetry
+#25 CACHED
+
+#26 [gates-it stage-1  6/10] COPY pyproject.toml uv.lock ./
+#26 CACHED
+
+#27 [gates-it stage-1  4/10] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x64; sha="3fc5e1567c450bd7bd5ae69ebb0a9a4a4e0418bbc36b0232cf6dd547f0bfc0eb" ;;       arm64) arch=arm64; sha="d0c216cec4c6c866fc15a105f039740228b53206f8576d2ed0bcd656a35ed6f6" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     tarball="powershell-7.4.21-linux-${arch}.tar.gz";     curl -fsSL -o "/tmp/$tarball"       "https://github.com/PowerShell/PowerShell/releases/download/v7.4.21/$tarball";     echo "$sha  /tmp/$tarball" | sha256sum -c -;     mkdir -p /opt/microsoft/powershell;     tar -xzf "/tmp/$tarball" -C /opt/microsoft/powershell;     chmod +x /opt/microsoft/powershell/pwsh;     ln -s /opt/microsoft/powershell/pwsh /usr/local/bin/pwsh;     rm "/tmp/$tarball";     pwsh -NoProfile -NonInteractive -Command "       $ErrorActionPreference = 'Stop';       Set-PSRepository PSGallery -InstallationPolicy Trusted;       Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope AllUsers -Force"
+#27 CACHED
+
+#28 [gates-it stage-1 10/10] RUN uv sync --locked
+#28 CACHED
+
+#29 [api stage-1 4/8] COPY pyproject.toml uv.lock ./
+#29 CACHED
+
+#30 [api stage-1 6/8] COPY engine ./engine
+#30 CACHED
+
+#31 [api stage-1 5/8] COPY harness_telemetry ./harness_telemetry
+#31 CACHED
+
+#32 [api stage-1 7/8] COPY config ./config
+#32 CACHED
+
+#33 [api stage-1 2/8] COPY --from=uv /uv /usr/local/bin/uv
+#33 CACHED
+
+#34 [api stage-1 3/8] WORKDIR /app
+#34 CACHED
+
+#35 [api stage-1 8/8] RUN uv sync --locked --no-dev --no-editable  && useradd --no-create-home --uid 10001 ke
+#35 CACHED
+
+#36 [gates] exporting to image
+#36 exporting layers done
+#36 exporting manifest sha256:fdf507f6925485d08f9089c3b2acff9d4e6060fbcc79f899534d6104036ad043 0.0s done
+#36 exporting config sha256:07fb755afbd92a536242402241a9fabf017573ae1287cac12b55a88d4b0115f5
+#36 exporting config sha256:07fb755afbd92a536242402241a9fabf017573ae1287cac12b55a88d4b0115f5 0.0s done
+#36 exporting attestation manifest sha256:5ec4f166359ab8d0ff08c62ba7a5aa948df024be790f7b111e5c269c59bc05e1 0.1s done
+#36 exporting manifest list sha256:3e20dcdc46782a166f0e79edff4eab2dac748a8747c991ff3013ae82eea2ef3e
+#36 exporting manifest list sha256:3e20dcdc46782a166f0e79edff4eab2dac748a8747c991ff3013ae82eea2ef3e 0.0s done
+#36 naming to docker.io/library/ke-gates:latest 0.0s done
+#36 unpacking to docker.io/library/ke-gates:latest 0.0s done
+#36 DONE 0.3s
+
+#37 [worker] exporting to image
+#37 exporting layers done
+#37 exporting manifest sha256:df6d71e4e3d865aab289811dae43968184551e065478e3a9c2932291de17490b 0.0s done
+#37 exporting config sha256:c8f7cf4d1d84cd94447344ac137dc1f5997e21b90f011fc26c497dff310c21a5 0.1s done
+#37 exporting attestation manifest sha256:6112c4f7d90e517a148eb9e74a817106646c2d2f074861e4e32548e09073d07c 0.1s done
+#37 exporting manifest list sha256:6fc30fa1ea2057a3ee3f9148645b0039a9da9f694f6240ef9fb938433fdb9ada 0.0s done
+#37 naming to docker.io/library/ke-app:latest 0.0s done
+#37 unpacking to docker.io/library/ke-app:latest 0.0s done
+#37 DONE 0.3s
+
+#38 [gates-it] exporting to image
+#38 exporting layers done
+#38 exporting manifest sha256:b2ae1321e36304d33bead70bf4cf8b71efe754ed3f6dbd25e885f447b867ff62 0.0s done
+#38 exporting config sha256:05cd5f42c0c01ad1e3bea052a87fc004ddf63b3b084c3c5181c5b4cebc2a21db 0.1s done
+#38 exporting attestation manifest sha256:83daabba6981873e363e06d9da4a561e08fa8bda8b6c60af02f6ac289e34569b 0.1s done
+#38 exporting manifest list sha256:88973e5b0c853dfb8aa6976c2fe8b0ab8b3e8e0cef75e0b5880ad768793330e7 0.0s done
+#38 naming to docker.io/library/ke-gates:latest done
+#38 unpacking to docker.io/library/ke-gates:latest 0.0s done
+#38 DONE 0.4s
+
+#39 [api] exporting to image
+#39 exporting layers done
+#39 exporting manifest sha256:5c245cc6771a85756ea2fb1bb3c10f7ffe155f3a799e144970dc001407c5d1af 0.0s done
+#39 exporting config sha256:32ef27cf9d5cc83a69d49db202d09d7db363acb4083b6eee796f1d763ccda6c1 0.1s done
+#39 exporting attestation manifest sha256:8a9c72c703f847a6308a98cda3edde3c868b409ac40e5387238a2454c7323bc3 0.1s done
+#39 exporting manifest list sha256:d94ead5bc7ded15658c0d1b484456a5bf983e4026506446c98896f5cf75f7f78 0.0s done
+#39 naming to docker.io/library/ke-app:latest done
+#39 unpacking to docker.io/library/ke-app:latest 0.0s done
+#39 DONE 0.4s
+
+#40 [gates] resolving provenance for metadata file
+#40 DONE 0.1s
+
+#41 [worker] resolving provenance for metadata file
+#41 DONE 0.1s
+
+#42 [api] resolving provenance for metadata file
+#42 DONE 0.1s
+
+#43 [gates-it] resolving provenance for metadata file
+#43 DONE 0.0s
+ Image ke-gateway Built 
+ Image ke-gates Built 
+ Image ke-gates Built 
+ Image ke-app Built 
+ Image ke-app Built 
+ Image ke-gates Skipped Image can be built
+ Image ke-app Skipped Image can be built
+ Image ke-gateway Skipped Image can be built
+ Image ke-gates Skipped Image can be built
+ Image ke-app Skipped Image can be built
+ Image valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507 Pulling 
+ Image arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c Pulling 
+ Image neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b Pulling 
+ Image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 Pulling 
+ Image valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507 Pulled 
+ Image neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b Pulled 
+ Image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 Pulled 
+ Image arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c Pulled 
+[exit code: 0]
+
+
+#### PHASE up, attempt 1 (sections 4-5c-dev) -- launch FAILED (finding F1) ####
+
+==================== 4. scripts\launch.ps1 ====================
+
+PS> pwsh -NoProfile -File scripts\launch.ps1
+ Network knowledge-engine_backend Creating 
+ Network knowledge-engine_backend Error Error response from daemon: invalid pool request: Pool overlaps with other one on this address space
+failed to create network knowledge-engine_backend: Error response from daemon: invalid pool request: Pool overlaps with other one on this address space
+[exit code: 1]
+
+PS> docker compose ps
+NAME      IMAGE     COMMAND   SERVICE   CREATED   STATUS    PORTS
+[exit code: 0]
+
+PS> docker compose ps --format json (service/state/health)
+[exit code: 0]
+
+PS> Invoke-WebRequest http://127.0.0.1:47100/healthz
+No connection could be made because the target machine actively refused it.
+HTTP 
+
+[exit code: ]
+
+PS> Invoke-WebRequest http://127.0.0.1:47101/healthz
+No connection could be made because the target machine actively refused it.
+HTTP 
+
+[exit code: ]
+
+PS> Invoke-WebRequest http://127.0.0.1:47101/ (Phoenix UI title)
+No connection could be made because the target machine actively refused it.
+HTTP 
+
+[exit code: ]
+
+PS> docker port knowledge-engine-gateway-1
+Error response from daemon: No such container: knowledge-engine-gateway-1
+[exit code: 1]
+
+PS> project containers and published ports
+[exit code: 0]
+
+PS> Get-NetTCPConnection -State Listen -LocalPort 47100,47101 (host listeners)
+[exit code: ]
+
+PS> Test-NetConnection <this host non-loopback IPv4, not recorded> -Port 47100 (must be False)
+TcpTestSucceeded=False
+[exit code: ]
+
+
+==================== 5a. Refusal: KE_BIND_ADDRESS=0.0.0.0 and KE_ENV=prod in .env ====================
+
+Shim for 5a-5c-dev: <scratch>\shim\docker.ps1 is prepended to PATH; it forwards every docker call to docker.exe except 'docker compose ... up', which it prints and refuses (exit 99). In 5a-5c a 'SHIM: intercepted' line would mean the refusal FAILED; it exists only so a failed refusal can never publish on 0.0.0.0.
+
+PS> .env changes vs .env.example
+KE_ENV=prod  (=>)
+KE_BIND_ADDRESS=0.0.0.0  (=>)
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (=>)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (=>)
+KE_ENV=dev  (<=)
+KE_BIND_ADDRESS=127.0.0.1  (<=)
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (<=)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (<=)
+[exit code: ]
+
+PS> pwsh -NoProfile -File scripts\launch.ps1
+Write-Error: C:\repos\Knowledge-engine\scripts\launch.ps1:93
+Line |
+  93 |              Write-Error 'KE_BIND_ADDRESS is not loopback and KE_ENV i .
+     |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands)
+[exit code: 1]
+
+PS> project ports (unchanged, 127.0.0.1 only)
+objective_yonath  Up 1 second  
+[exit code: 0]
+
+PS> Restore .env
+restored .env from backup; diff vs .env.example now:
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (=>)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (=>)
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (<=)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (<=)
+[exit code: ]
+
+
+==================== 5b. Refusal: KE_BIND_ADDRESS=0.0.0.0 in .env, KE_ENV line removed (missing KE_ENV = non-dev) ====================
+
+PS> .env changes vs .env.example
+KE_BIND_ADDRESS=0.0.0.0  (=>)
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (=>)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (=>)
+KE_ENV=dev  (<=)
+KE_BIND_ADDRESS=127.0.0.1  (<=)
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (<=)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (<=)
+[exit code: ]
+
+PS> Test-Path env:KE_ENV (process env does not supply it)
+False
+[exit code: ]
+
+PS> pwsh -NoProfile -File scripts\launch.ps1
+time="2026-10-18T20:43:46-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T20:43:46-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T20:43:46-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T20:43:46-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+Write-Error: C:\repos\Knowledge-engine\scripts\launch.ps1:93
+Line |
+  93 |              Write-Error 'KE_BIND_ADDRESS is not loopback and KE_ENV i .
+     |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands)
+[exit code: 1]
+
+PS> project ports (unchanged, 127.0.0.1 only)
+objective_yonath  Up 2 seconds  
+[exit code: 0]
+
+PS> Restore .env
+restored .env from backup; diff vs .env.example now:
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (=>)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (=>)
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (<=)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (<=)
+[exit code: ]
+
+
+==================== 5c. Refusal: process env KE_BIND_ADDRESS=0.0.0.0 (.env keeps KE_BIND_ADDRESS=127.0.0.1, KE_ENV=prod) ====================
+
+The .env bind line stays 127.0.0.1, so a refusal proves the script reads the value compose resolves (process env wins over .env). KE_ENV=prod is set in .env because in dev the script warns and proceeds by design (see the 5c-dev control).
+
+PS> .env changes vs .env.example
+KE_ENV=prod  (=>)
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (=>)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (=>)
+KE_ENV=dev  (<=)
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (<=)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (<=)
+[exit code: ]
+
+PS> $env:KE_BIND_ADDRESS='0.0.0.0'; pwsh -NoProfile -File scripts\launch.ps1
+Write-Error: C:\repos\Knowledge-engine\scripts\launch.ps1:93
+Line |
+  93 |              Write-Error 'KE_BIND_ADDRESS is not loopback and KE_ENV i .
+     |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands)
+[exit code: 1]
+
+PS> project ports (unchanged, 127.0.0.1 only)
+[exit code: 0]
+
+PS> Restore .env
+restored .env from backup; diff vs .env.example now:
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (=>)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (=>)
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (<=)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (<=)
+[exit code: ]
+
+
+==================== 5c-dev control: process env KE_BIND_ADDRESS=0.0.0.0, .env KE_ENV=dev (expected: warning, then compose up, intercepted by the shim) ====================
+
+PS> $env:KE_BIND_ADDRESS='0.0.0.0'; pwsh -NoProfile -File scripts\launch.ps1
+WARNING: KE_BIND_ADDRESS is not loopback; the stack will be published beyond this host without authentication (dev only)
+WARNING: KE_BIND_ADDRESS is not loopback; the stack will be published beyond this host without authentication (dev only)
+SHIM: intercepted 'docker compose up -d --no-build --wait' with KE_BIND_ADDRESS=0.0.0.0; not executed
+[exit code: 99]
+
+PS> project ports (unchanged, 127.0.0.1 only)
+determined_roentgen  Up Less than a second  
+[exit code: 0]
+
+PS> Test-Path env:KE_BIND_ADDRESS
+False
+[exit code: ]
+
+
+#### Between attempts (tester, Git Bash) ###############################
+Cause of the attempt-1 launch failure, read with docker network inspect:
+  ke-sec-r1-24255_backend 198.18.80.0/24  (a concurrent security-agent stack of this repo)
+docker-compose.yml pins networks.backend ipam subnet 198.18.80.0/24, so a second
+project of the same compose file on the same daemon cannot create its backend
+network. The ke-sec project was not touched; the tester polled until its network
+was gone ("gone after 49x10s") and re-ran the whole phase. The refusals in attempt 1
+ran with no stack up and already refused; attempt 2 repeats them with the stack up.
+(The containers objective_yonath / determined_roentgen listed in attempt 1 under the
+knowledge-engine project label were short-lived ke-gates runs by another agent; see
+annotation A4.)
+
+#### PHASE up, attempt 2 (sections 4-5c-dev) ##########################
+
+==================== 4. scripts\launch.ps1 ====================
+
+PS> pwsh -NoProfile -File scripts\launch.ps1
+ Network knowledge-engine_backend Creating 
+ Network knowledge-engine_backend Created 
+ Network knowledge-engine_edge Creating 
+ Network knowledge-engine_edge Created 
+ Volume knowledge-engine_postgres-data Creating 
+ Volume knowledge-engine_postgres-data Created 
+ Volume knowledge-engine_valkey-data Creating 
+ Volume knowledge-engine_valkey-data Created 
+ Volume knowledge-engine_neo4j-data Creating 
+ Volume knowledge-engine_neo4j-data Created 
+ Volume knowledge-engine_phoenix-data Creating 
+ Volume knowledge-engine_phoenix-data Created 
+ Container knowledge-engine-postgres-1 Creating 
+ Container knowledge-engine-neo4j-1 Creating 
+ Container knowledge-engine-gateway-1 Creating 
+ Container knowledge-engine-valkey-1 Creating 
+ Container knowledge-engine-phoenix-1 Creating 
+ Container knowledge-engine-worker-1 Creating 
+ Container knowledge-engine-valkey-1 Created 
+ Container knowledge-engine-postgres-1 Created 
+ Container knowledge-engine-phoenix-1 Created 
+ Container knowledge-engine-gateway-1 Created 
+ Container knowledge-engine-worker-1 Created 
+ Container knowledge-engine-neo4j-1 Created 
+ Container knowledge-engine-api-1 Creating 
+ Container knowledge-engine-api-1 Created 
+ Container knowledge-engine-valkey-1 Starting 
+ Container knowledge-engine-worker-1 Starting 
+ Container knowledge-engine-gateway-1 Starting 
+ Container knowledge-engine-neo4j-1 Starting 
+ Container knowledge-engine-phoenix-1 Starting 
+ Container knowledge-engine-postgres-1 Starting 
+ Container knowledge-engine-valkey-1 Started 
+ Container knowledge-engine-postgres-1 Started 
+ Container knowledge-engine-phoenix-1 Started 
+ Container knowledge-engine-worker-1 Started 
+ Container knowledge-engine-neo4j-1 Started 
+ Container knowledge-engine-valkey-1 Waiting 
+ Container knowledge-engine-postgres-1 Waiting 
+ Container knowledge-engine-neo4j-1 Waiting 
+ Container knowledge-engine-gateway-1 Started 
+ Container knowledge-engine-valkey-1 Healthy 
+ Container knowledge-engine-postgres-1 Healthy 
+ Container knowledge-engine-neo4j-1 Healthy 
+ Container knowledge-engine-api-1 Starting 
+ Container knowledge-engine-api-1 Started 
+ Container knowledge-engine-postgres-1 Waiting 
+ Container knowledge-engine-valkey-1 Waiting 
+ Container knowledge-engine-api-1 Waiting 
+ Container knowledge-engine-worker-1 Waiting 
+ Container knowledge-engine-gateway-1 Waiting 
+ Container knowledge-engine-neo4j-1 Waiting 
+ Container knowledge-engine-phoenix-1 Waiting 
+ Container knowledge-engine-valkey-1 Healthy 
+ Container knowledge-engine-gateway-1 Healthy 
+ Container knowledge-engine-neo4j-1 Healthy 
+ Container knowledge-engine-postgres-1 Healthy 
+ Container knowledge-engine-worker-1 Healthy 
+ Container knowledge-engine-api-1 Healthy 
+ Container knowledge-engine-phoenix-1 Healthy 
+stack is up:
+  api:     http://127.0.0.1:47100
+  phoenix: http://127.0.0.1:47101
+[exit code: 0]
+
+PS> docker compose ps
+NAME                          IMAGE                                                                                                          COMMAND                  SERVICE    CREATED          STATUS                    PORTS
+knowledge-engine-api-1        ke-app                                                                                                         "python -m engine.api"   api        16 seconds ago   Up 7 seconds (healthy)    
+knowledge-engine-gateway-1    ke-gateway                                                                                                     "/docker-entrypoint.…"   gateway    16 seconds ago   Up 15 seconds (healthy)   127.0.0.1:47100->8100/tcp, 127.0.0.1:47101->8101/tcp
+knowledge-engine-neo4j-1      neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b                      "tini -g -- /startup…"   neo4j      16 seconds ago   Up 15 seconds (healthy)   7473-7474/tcp, 7687/tcp
+knowledge-engine-phoenix-1    arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c   "/usr/bin/python3.13…"   phoenix    16 seconds ago   Up 15 seconds (healthy)   4317/tcp, 6006/tcp, 9090/tcp
+knowledge-engine-postgres-1   postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4                   "docker-entrypoint.s…"   postgres   16 seconds ago   Up 15 seconds (healthy)   5432/tcp
+knowledge-engine-valkey-1     valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507                 "tini -- docker-entr…"   valkey     16 seconds ago   Up 15 seconds (healthy)   6379/tcp
+knowledge-engine-worker-1     ke-app                                                                                                         "python -m engine.wo…"   worker     16 seconds ago   Up 15 seconds (healthy)   
+[exit code: 0]
+
+PS> docker compose ps --format json (service/state/health)
+api: state=running health=healthy
+gateway: state=running health=healthy
+neo4j: state=running health=healthy
+phoenix: state=running health=healthy
+postgres: state=running health=healthy
+valkey: state=running health=healthy
+worker: state=running health=healthy
+[exit code: 0]
+
+PS> Invoke-WebRequest http://127.0.0.1:47100/healthz
+HTTP 200
+{"status":"ok"}
+[exit code: ]
+
+PS> Invoke-WebRequest http://127.0.0.1:47101/healthz
+HTTP 200
+OK
+[exit code: ]
+
+PS> Invoke-WebRequest http://127.0.0.1:47101/ (Phoenix UI title)
+HTTP 200
+<title>Phoenix</title>
+[exit code: ]
+
+PS> docker port knowledge-engine-gateway-1
+8100/tcp -> 127.0.0.1:47100
+8101/tcp -> 127.0.0.1:47101
+[exit code: 0]
+
+PS> project containers and published ports
+knowledge-engine-api-1  Up 8 seconds (healthy)  
+knowledge-engine-neo4j-1  Up 16 seconds (healthy)  7473-7474/tcp, 7687/tcp
+knowledge-engine-worker-1  Up 16 seconds (healthy)  
+knowledge-engine-gateway-1  Up 16 seconds (healthy)  127.0.0.1:47100->8100/tcp, 127.0.0.1:47101->8101/tcp
+knowledge-engine-phoenix-1  Up 16 seconds (healthy)  4317/tcp, 6006/tcp, 9090/tcp
+knowledge-engine-postgres-1  Up 16 seconds (healthy)  5432/tcp
+knowledge-engine-valkey-1  Up 16 seconds (healthy)  6379/tcp
+kind_albattani  Up 8 minutes  
+[exit code: 0]
+
+PS> Get-NetTCPConnection -State Listen -LocalPort 47100,47101 (host listeners)
+127.0.0.1:47100 pid=26372 (com.docker.backend)
+127.0.0.1:47101 pid=26372 (com.docker.backend)
+[exit code: ]
+
+PS> Test-NetConnection <this host non-loopback IPv4, not recorded> -Port 47100 (must be False)
+TcpTestSucceeded=False
+[exit code: ]
+
+
+==================== 5a. Refusal: KE_BIND_ADDRESS=0.0.0.0 and KE_ENV=prod in .env ====================
+
+Shim for 5a-5c-dev: <scratch>\shim\docker.ps1 is prepended to PATH; it forwards every docker call to docker.exe except 'docker compose ... up', which it prints and refuses (exit 99). In 5a-5c a 'SHIM: intercepted' line would mean the refusal FAILED; it exists only so a failed refusal can never publish on 0.0.0.0.
+
+PS> .env changes vs .env.example
+KE_ENV=prod  (=>)
+KE_BIND_ADDRESS=0.0.0.0  (=>)
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (=>)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (=>)
+KE_ENV=dev  (<=)
+KE_BIND_ADDRESS=127.0.0.1  (<=)
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (<=)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (<=)
+[exit code: ]
+
+PS> pwsh -NoProfile -File scripts\launch.ps1
+Write-Error: C:\repos\Knowledge-engine\scripts\launch.ps1:93
+Line |
+  93 |              Write-Error 'KE_BIND_ADDRESS is not loopback and KE_ENV i .
+     |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands)
+[exit code: 1]
+
+PS> project ports (unchanged, 127.0.0.1 only)
+knowledge-engine-api-1  Up 22 seconds (healthy)  
+knowledge-engine-neo4j-1  Up 30 seconds (healthy)  7473-7474/tcp, 7687/tcp
+knowledge-engine-worker-1  Up 30 seconds (healthy)  
+knowledge-engine-gateway-1  Up 30 seconds (healthy)  127.0.0.1:47100->8100/tcp, 127.0.0.1:47101->8101/tcp
+knowledge-engine-phoenix-1  Up 30 seconds (healthy)  4317/tcp, 6006/tcp, 9090/tcp
+knowledge-engine-postgres-1  Up 30 seconds (healthy)  5432/tcp
+knowledge-engine-valkey-1  Up 30 seconds (healthy)  6379/tcp
+kind_albattani  Up 8 minutes  
+[exit code: 0]
+
+PS> Restore .env
+restored .env from backup; diff vs .env.example now:
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (=>)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (=>)
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (<=)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (<=)
+[exit code: ]
+
+
+==================== 5b. Refusal: KE_BIND_ADDRESS=0.0.0.0 in .env, KE_ENV line removed (missing KE_ENV = non-dev) ====================
+
+PS> .env changes vs .env.example
+KE_BIND_ADDRESS=0.0.0.0  (=>)
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (=>)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (=>)
+KE_ENV=dev  (<=)
+KE_BIND_ADDRESS=127.0.0.1  (<=)
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (<=)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (<=)
+[exit code: ]
+
+PS> Test-Path env:KE_ENV (process env does not supply it)
+False
+[exit code: ]
+
+PS> pwsh -NoProfile -File scripts\launch.ps1
+time="2026-10-18T20:53:08-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T20:53:08-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T20:53:08-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T20:53:08-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+Write-Error: C:\repos\Knowledge-engine\scripts\launch.ps1:93
+Line |
+  93 |              Write-Error 'KE_BIND_ADDRESS is not loopback and KE_ENV i .
+     |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands)
+[exit code: 1]
+
+PS> project ports (unchanged, 127.0.0.1 only)
+knowledge-engine-api-1  Up 23 seconds (healthy)  
+knowledge-engine-neo4j-1  Up 31 seconds (healthy)  7473-7474/tcp, 7687/tcp
+knowledge-engine-worker-1  Up 31 seconds (healthy)  
+knowledge-engine-gateway-1  Up 31 seconds (healthy)  127.0.0.1:47100->8100/tcp, 127.0.0.1:47101->8101/tcp
+knowledge-engine-phoenix-1  Up 31 seconds (healthy)  4317/tcp, 6006/tcp, 9090/tcp
+knowledge-engine-postgres-1  Up 31 seconds (healthy)  5432/tcp
+knowledge-engine-valkey-1  Up 31 seconds (healthy)  6379/tcp
+kind_albattani  Up 8 minutes  
+[exit code: 0]
+
+PS> Restore .env
+restored .env from backup; diff vs .env.example now:
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (=>)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (=>)
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (<=)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (<=)
+[exit code: ]
+
+
+==================== 5c. Refusal: process env KE_BIND_ADDRESS=0.0.0.0 (.env keeps KE_BIND_ADDRESS=127.0.0.1, KE_ENV=prod) ====================
+
+The .env bind line stays 127.0.0.1, so a refusal proves the script reads the value compose resolves (process env wins over .env). KE_ENV=prod is set in .env because in dev the script warns and proceeds by design (see the 5c-dev control).
+
+PS> .env changes vs .env.example
+KE_ENV=prod  (=>)
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (=>)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (=>)
+KE_ENV=dev  (<=)
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (<=)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (<=)
+[exit code: ]
+
+PS> $env:KE_BIND_ADDRESS='0.0.0.0'; pwsh -NoProfile -File scripts\launch.ps1
+Write-Error: C:\repos\Knowledge-engine\scripts\launch.ps1:93
+Line |
+  93 |              Write-Error 'KE_BIND_ADDRESS is not loopback and KE_ENV i .
+     |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands)
+[exit code: 1]
+
+PS> project ports (unchanged, 127.0.0.1 only)
+knowledge-engine-api-1  Up 24 seconds (healthy)  
+knowledge-engine-neo4j-1  Up 32 seconds (healthy)  7473-7474/tcp, 7687/tcp
+knowledge-engine-worker-1  Up 32 seconds (healthy)  
+knowledge-engine-gateway-1  Up 32 seconds (healthy)  127.0.0.1:47100->8100/tcp, 127.0.0.1:47101->8101/tcp
+knowledge-engine-phoenix-1  Up 32 seconds (healthy)  4317/tcp, 6006/tcp, 9090/tcp
+knowledge-engine-postgres-1  Up 32 seconds (healthy)  5432/tcp
+knowledge-engine-valkey-1  Up 32 seconds (healthy)  6379/tcp
+kind_albattani  Up 8 minutes  
+[exit code: 0]
+
+PS> Restore .env
+restored .env from backup; diff vs .env.example now:
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (=>)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (=>)
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (<=)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (<=)
+[exit code: ]
+
+
+==================== 5c-dev control: process env KE_BIND_ADDRESS=0.0.0.0, .env KE_ENV=dev (expected: warning, then compose up, intercepted by the shim) ====================
+
+PS> $env:KE_BIND_ADDRESS='0.0.0.0'; pwsh -NoProfile -File scripts\launch.ps1
+WARNING: KE_BIND_ADDRESS is not loopback; the stack will be published beyond this host without authentication (dev only)
+WARNING: KE_BIND_ADDRESS is not loopback; the stack will be published beyond this host without authentication (dev only)
+SHIM: intercepted 'docker compose up -d --no-build --wait' with KE_BIND_ADDRESS=0.0.0.0; not executed
+[exit code: 99]
+
+PS> project ports (unchanged, 127.0.0.1 only)
+knowledge-engine-api-1  Up 25 seconds (healthy)  
+knowledge-engine-neo4j-1  Up 33 seconds (healthy)  7473-7474/tcp, 7687/tcp
+knowledge-engine-worker-1  Up 33 seconds (healthy)  
+knowledge-engine-gateway-1  Up 33 seconds (healthy)  127.0.0.1:47100->8100/tcp, 127.0.0.1:47101->8101/tcp
+knowledge-engine-phoenix-1  Up 33 seconds (healthy)  4317/tcp, 6006/tcp, 9090/tcp
+knowledge-engine-postgres-1  Up 33 seconds (healthy)  5432/tcp
+knowledge-engine-valkey-1  Up 33 seconds (healthy)  6379/tcp
+kind_albattani  Up 8 minutes  
+[exit code: 0]
+
+PS> Test-Path env:KE_BIND_ADDRESS
+False
+[exit code: ]
+
+
+#### PHASE gw (section 6) ############################################
+
+==================== 6. Gateway upstream check: KE_MODEL_UPSTREAM=example.com:80, KE_EGRESS_ALLOWLIST empty (real compose up, no shim) ====================
+
+PS> .env changes vs .env.example
+KE_MODEL_UPSTREAM=example.com:80  (=>)
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (=>)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (=>)
+KE_MODEL_UPSTREAM=  (<=)
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (<=)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (<=)
+[exit code: ]
+
+PS> pwsh -NoProfile -File scripts\launch.ps1 (driver kills it if still running after 300 s)
+ Container knowledge-engine-valkey-1 Running 
+ Container knowledge-engine-phoenix-1 Running 
+ Container knowledge-engine-neo4j-1 Running 
+ Container knowledge-engine-postgres-1 Running 
+ Container knowledge-engine-gateway-1 Recreate 
+ Container knowledge-engine-worker-1 Recreate 
+ Container knowledge-engine-api-1 Recreate 
+ Container knowledge-engine-api-1 Recreated 
+ Container knowledge-engine-gateway-1 Recreated 
+ Container knowledge-engine-worker-1 Recreated 
+ Container knowledge-engine-gateway-1 Starting 
+ Container knowledge-engine-worker-1 Starting 
+ Container knowledge-engine-neo4j-1 Waiting 
+ Container knowledge-engine-valkey-1 Waiting 
+ Container knowledge-engine-postgres-1 Waiting 
+ Container knowledge-engine-worker-1 Started 
+ Container knowledge-engine-gateway-1 Started 
+ Container knowledge-engine-valkey-1 Healthy 
+ Container knowledge-engine-neo4j-1 Healthy 
+ Container knowledge-engine-postgres-1 Healthy 
+ Container knowledge-engine-api-1 Starting 
+ Container knowledge-engine-api-1 Started 
+ Container knowledge-engine-phoenix-1 Waiting 
+ Container knowledge-engine-valkey-1 Waiting 
+ Container knowledge-engine-worker-1 Waiting 
+ Container knowledge-engine-postgres-1 Waiting 
+ Container knowledge-engine-api-1 Waiting 
+ Container knowledge-engine-gateway-1 Waiting 
+ Container knowledge-engine-neo4j-1 Waiting 
+ Container knowledge-engine-neo4j-1 Healthy 
+ Container knowledge-engine-phoenix-1 Healthy 
+ Container knowledge-engine-valkey-1 Healthy 
+ Container knowledge-engine-postgres-1 Healthy 
+container knowledge-engine-gateway-1 is unhealthy
+launch.ps1 exit code: 1
+[exit code: 1]
+
+PS> docker inspect knowledge-engine-gateway-1 (state)
+status=running exit=0 restarts=2 health=starting
+[exit code: 0]
+
+PS> docker logs --tail 30 knowledge-engine-gateway-1
+/docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+error: KE_MODEL_UPSTREAM host is not on KE_EGRESS_ALLOWLIST; refusing to start
+error: KE_MODEL_UPSTREAM host is not on KE_EGRESS_ALLOWLIST; refusing to start
+error: KE_MODEL_UPSTREAM host is not on KE_EGRESS_ALLOWLIST; refusing to start
+error: KE_MODEL_UPSTREAM host is not on KE_EGRESS_ALLOWLIST; refusing to start
+/docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/10-ke-bind-check.sh
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+10-listen-on-ipv6-by-default.sh: info: /etc/nginx/conf.d/default.conf is not a file or does not exist
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh
+/docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+/docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/10-ke-bind-check.sh
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+10-listen-on-ipv6-by-default.sh: info: /etc/nginx/conf.d/default.conf is not a file or does not exist
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh
+/docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+/docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/10-ke-bind-check.sh
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+10-listen-on-ipv6-by-default.sh: info: /etc/nginx/conf.d/default.conf is not a file or does not exist
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh
+/docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+/docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/10-ke-bind-check.sh
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+10-listen-on-ipv6-by-default.sh: info: /etc/nginx/conf.d/default.conf is not a file or does not exist
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh
+[exit code: 0]
+
+PS> docker logs knowledge-engine-gateway-1 | Select-String KE_MODEL_UPSTREAM (last 3)
+error: KE_MODEL_UPSTREAM host is not on KE_EGRESS_ALLOWLIST; refusing to start
+error: KE_MODEL_UPSTREAM host is not on KE_EGRESS_ALLOWLIST; refusing to start
+error: KE_MODEL_UPSTREAM host is not on KE_EGRESS_ALLOWLIST; refusing to start
+[exit code: 0]
+
+PS> value example.com echoed in gateway logs? (must be False)
+False
+[exit code: 0]
+
+PS> Test-NetConnection 127.0.0.1 -Port 47100 (gateway down)
+TcpTestSucceeded=True
+[exit code: ]
+
+PS> Restore .env
+restored .env from backup; diff vs .env.example now:
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (=>)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (=>)
+KE_STORES__POSTGRES__PASSWORD=<redacted>  (<=)
+KE_STORES__NEO4J__PASSWORD=<redacted>  (<=)
+[exit code: ]
+
+
+#### After section 6 (tester, Git Bash, stack still in the section-6 state) ####
+$ curl -s -m 5 -o /dev/null -w "http_code=%{http_code} err=%{errormsg}\n" http://127.0.0.1:47100/healthz
+http_code=000 err=Failed to connect to 127.0.0.1 port 47100 after 2048 ms: Could not connect to server
+$ docker inspect -f 'status={{.State.Status}} restarts={{.RestartCount}}' knowledge-engine-gateway-1
+status=restarting restarts=8
+$ docker ps -a --filter label=com.docker.compose.project=knowledge-engine --format '{{.Names}} {{.Status}}'   (just before phase down)
+knowledge-engine-gateway-1 Restarting (1) 23 seconds ago
+knowledge-engine-worker-1 Restarting (1) 16 seconds ago
+knowledge-engine-api-1 Restarting (1) 11 seconds ago
+knowledge-engine-neo4j-1 Up 6 minutes (healthy)
+knowledge-engine-phoenix-1 Up 6 minutes (healthy)
+knowledge-engine-postgres-1 Up 6 minutes (healthy)
+knowledge-engine-valkey-1 Up 6 minutes (healthy)
+Teardown was held until another agent's gates-it container (kind_albattani, image
+ke-gates, cmd "python /mut/mutants.py", label project=knowledge-engine,
+service=gates-it) had exited ("gone after 34x10s"), because teardown.ps1 runs
+`down --profile '*' --remove-orphans` on the same project and would have removed it.
+
+#### PHASE down (sections 7-8) ########################################
+
+==================== 7. scripts\teardown.ps1 -Volumes ====================
+
+PS> pwsh -NoProfile -File scripts\teardown.ps1 -Volumes
+ Container knowledge-engine-gateway-1 Stopping 
+ Container knowledge-engine-api-1 Stopping 
+ Container knowledge-engine-worker-1 Stopping 
+ Container knowledge-engine-phoenix-1 Stopping 
+ Container knowledge-engine-api-1 Stopped 
+ Container knowledge-engine-api-1 Removing 
+ Container knowledge-engine-gateway-1 Stopped 
+ Container knowledge-engine-gateway-1 Removing 
+ Container knowledge-engine-worker-1 Stopped 
+ Container knowledge-engine-worker-1 Removing 
+ Container knowledge-engine-api-1 Removed 
+ Container knowledge-engine-postgres-1 Stopping 
+ Container knowledge-engine-neo4j-1 Stopping 
+ Container knowledge-engine-valkey-1 Stopping 
+ Container knowledge-engine-gateway-1 Removed 
+ Container knowledge-engine-worker-1 Removed 
+ Container knowledge-engine-postgres-1 Stopped 
+ Container knowledge-engine-postgres-1 Removing 
+ Container knowledge-engine-postgres-1 Removed 
+ Container knowledge-engine-valkey-1 Stopped 
+ Container knowledge-engine-valkey-1 Removing 
+ Container knowledge-engine-valkey-1 Removed 
+ Container knowledge-engine-phoenix-1 Stopped 
+ Container knowledge-engine-phoenix-1 Removing 
+ Container knowledge-engine-neo4j-1 Stopped 
+ Container knowledge-engine-neo4j-1 Removing 
+ Container knowledge-engine-phoenix-1 Removed 
+ Container knowledge-engine-neo4j-1 Removed 
+ Volume knowledge-engine_neo4j-data Removing 
+ Volume knowledge-engine_postgres-data Removing 
+ Volume knowledge-engine_valkey-data Removing 
+ Volume knowledge-engine_phoenix-data Removing 
+ Network knowledge-engine_backend Removing 
+ Network knowledge-engine_edge Removing 
+ Volume knowledge-engine_neo4j-data Removed 
+ Volume knowledge-engine_postgres-data Removed 
+ Volume knowledge-engine_valkey-data Removed 
+ Volume knowledge-engine_phoenix-data Removed 
+ Network knowledge-engine_edge Removed 
+ Network knowledge-engine_backend Removed 
+[exit code: 0]
+
+PS> docker ps -a --filter label=com.docker.compose.project=knowledge-engine
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+[exit code: 0]
+
+PS> docker volume ls --filter label=com.docker.compose.project=knowledge-engine
+DRIVER    VOLUME NAME
+[exit code: 0]
+
+PS> docker volume ls --filter name=knowledge-engine_
+DRIVER    VOLUME NAME
+[exit code: 0]
+
+PS> docker network ls --filter label=com.docker.compose.project=knowledge-engine
+NETWORK ID   NAME      DRIVER    SCOPE
+[exit code: 0]
+
+PS> docker compose ls -a --filter name=knowledge-engine
+NAME                STATUS              CONFIG FILES
+[exit code: 0]
+
+
+==================== 8. Remove temporary .env ====================
+
+PS> Test-Path .env; Test-Path <scratch>\env.bak
+False
+False
+[exit code: ]
+
+PS> git status --short --ignored .env
+[exit code: 0]
+
+
+==================== Verdict: PASS (with findings F1-F3) ====================
+1 leftovers: 4 knowledge-engine_* volumes removed by teardown.ps1 -Volumes; volume ls empty after.
+2 env: aria-alien1, Windows 10.0.26200, pwsh 7.6.7, Docker Engine 29.5.2 (>= 28: True), Compose v5.1.4, HEAD d26bec6 + dirty tree.
+3 .env: none existed; created from .env.example with random secrets, KE_MODEL_UPSTREAM empty.
+4 build.ps1 exit 0; launch.ps1 exit 0 on attempt 2 (attempt 1 failed, F1); 7/7 services healthy;
+  :47100/healthz 200 {"status":"ok"}; :47101 Phoenix 200; ports 127.0.0.1:47100/47101 only
+  (docker port, host listeners 127.0.0.1 only, non-loopback IPv4 connect False).
+5 refusals, each exit 1 before compose up (no SHIM line), ports unchanged:
+  (a) .env 0.0.0.0 + KE_ENV=prod; (b) .env 0.0.0.0 + KE_ENV removed (compose warns KE_ENV unset, script refuses);
+  (c) process env KE_BIND_ADDRESS=0.0.0.0 with .env bind 127.0.0.1 + KE_ENV=prod. Control 5c-dev: warns, reaches up (shim).
+6 KE_MODEL_UPSTREAM=example.com:80, allowlist empty: gateway logs
+  "error: KE_MODEL_UPSTREAM host is not on KE_EGRESS_ALLOWLIST; refusing to start", value not echoed,
+  container restart-loops, launch.ps1 exits 1 ("container knowledge-engine-gateway-1 is unhealthy"), :47100 not served.
+7 teardown.ps1 -Volumes exit 0; no containers, volumes, networks or compose project remain.
+8 .env and the scratch backup deleted; Test-Path False.
+
+==================== Tester annotations ====================
+F1 (finding, for developer/architect): the fixed backend subnet 198.18.80.0/24 (rework-1
+   decision) makes any two projects of this compose file on one daemon collide: the
+   second `compose up` fails with "invalid pool request: Pool overlaps with other one on
+   this address space". Seen here against ke-sec-r1-24255. The same applies to
+   verify.sh full's ke-verify-* project while a stack (or another verify run) is up.
+F2 (execution policy): no script was blocked. Machine default LocalMachine=RemoteSigned,
+   Process=Undefined; build/launch/teardown ran unsigned from the local clone. A clone
+   from a ZIP download (Mark of the Web) was not tested and would be blocked under
+   RemoteSigned until unblocked.
+F3 (teardown scope): teardown.ps1 runs down with --profile '*' --remove-orphans on the
+   default project name, so it also removes gates-it containers other runs start under
+   the knowledge-engine project label (kind_albattani above). Not triggered here; noted.
+A4 api and worker also restart-looped in section 6 (KE_MODEL_UPSTREAM reaches them via the
+   shared environment); expected from the engine's egress guard, but their logs were not
+   captured in this proof.
+A5 "[exit code: ]" after cmdlet-only steps is blank because no native command ran; it is
+   not a failure. In 5c-dev the WARNING line appears twice because the child pwsh writes
+   it to both the warning and the merged stream; launch.ps1 has one Write-Warning.
+A6 In section 6 Test-NetConnection 127.0.0.1:47100 reported True while the gateway was
+   restarting: Docker Desktop's com.docker.backend keeps the published listener between
+   restarts. The curl probe above shows nothing is served (connect fails).
+A7 The shim (<scratch>\shim\docker.ps1) was used only in 5a-5c-dev. It forwards all docker
+   calls to docker.exe except `compose ... up`, which it refuses with exit 99.

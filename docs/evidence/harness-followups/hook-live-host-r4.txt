@@ -1,0 +1,20 @@
+jq absent
+agent/x  m1         DENY
+agent/x  m2         DENY
+agent/x  m3         DENY
+agent/x  m4         DENY
+agent/x  m5         DENY
+agent/x  m6         DENY
+agent/x  m7         DENY
+agent/x  m8         DENY
+agent/x  m9         DENY
+agent/x  m10        DENY
+agent/x  m11        DENY
+agent/x  q1         DENY
+agent/x  q2         DENY
+agent/x  m12-silent silent
+agent/x  k-silent   silent
+main     m13        DENY
+main     m16        DENY
+main     c1         DENY
+main     k-silent   silent

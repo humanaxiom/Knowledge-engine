@@ -1,0 +1,100 @@
+"""Security audit ci-speed rework 4: try to beat
+HookLaunchesNoBackgroundWorkTest.test_hook_launches_no_background_work.
+For each mutant: insert payload after `set -euo pipefail` in a scratch copy of
+the hook, run the real static test against it (unittest, scratch layout), then
+run the mutated hook and check whether un-waited work (a `sleep <marker>`) is
+still alive after the hook has returned. Runs in the gates image only."""
+import os, shutil, subprocess, sys, time
+SRC = "/w"
+D = "/tmp/s4"
+NULL = ">/dev/null 2>&1"
+A = r"a=$'\x26'"   # bash ANSI-C quote: a='&' with no literal & on the line
+
+M = [  # (name, payload text; markers are 30NN)
+ ("control: hook unchanged", None),
+ ("check: plain `sleep &` is caught", f"sleep 3000 {NULL} &"),
+ ("check: `&` inside $( ) on one line", f"_x=\"$(sleep 3001 {NULL} &)\""),
+ ("check: exec with trailing &", f"exec sleep 3002 {NULL} &"),
+ ("check: {{ cmd; }} & across lines", f"{{ sleep 3003 {NULL}\n}} &"),
+ ("check: function that backgrounds", f"_f() {{ sleep 3004 {NULL} & }}\n_f"),
+ ("check: \& escape (literal, launches nothing)", "_x=a\&b"),
+ ("check: ${var:+&} (literal, launches nothing)", "_v=1; _x=${_v:+&}"),
+ # --- line-splitting mismatch: Python str.splitlines() splits on characters bash treats as word characters
+ ("FF \x0c before # hides the rest of the line", f"_x=\x0c#; sleep 3010 {NULL} &"),
+ ("VT \x0b before #", f"_x=\x0b#; sleep 3011 {NULL} &"),
+ ("FS \x1c before #", f"_x=\x1c#; sleep 3012 {NULL} &"),
+ ("U+0085 NEL before #", f"_x=\u0085#; sleep 3013 {NULL} &"),
+ ("U+2028 LINE SEPARATOR before #", f"_x=\u2028#; sleep 3014 {NULL} &"),
+ ("CR \r before #", f"_x=\r#; sleep 3015 {NULL} &"),
+ # --- str.lstrip() strips characters bash does not treat as blanks
+ ("leading \x1f then #: a function named \x1f#", f"\x1f#() {{ sleep 3016 {NULL} & }}\n\x1f#"),
+ # --- a line that starts with # but is not a comment
+ ("#-line inside a multi-line double-quoted string", f"_x=\"\n#$(sleep 3020 {NULL} &)\""),
+ ("#-line inside an unquoted heredoc", f": <<EOF\n#$(sleep 3021 {NULL} &)\nEOF"),
+ # --- listed words, obfuscated
+ ("se''tsid -f (quote-split word)", f"se''tsid -f sleep 3030 {NULL}"),
+ ("${c}sid -f (word built from a variable)", f"_c=set; ${{_c}}sid -f sleep 3031 {NULL}"),
+ ("ev''al with & from a variable", f"{A}; ev''al \"sleep 3032 {NULL} $a\""),
+ # --- eval-equivalents and shells not on the list
+ ("source /dev/stdin <<<", f"{A}; source /dev/stdin <<<\"sleep 3040 {NULL} $a\""),
+ (". /dev/stdin <<<", f"{A}; . /dev/stdin <<<\"sleep 3041 {NULL} $a\""),
+ ("bash -s <<< (no -c)", f"{A}; bash -s <<<\"sleep 3042 {NULL} $a\""),
+ ("bash --norc -c", f"{A}; bash --norc -c \"sleep 3043 {NULL} $a\""),
+ ("bash -o posix -c", f"{A}; bash -o posix -c \"sleep 3044 {NULL} $a\""),
+ ("$BASH -c", f"{A}; $BASH -c \"sleep 3045 {NULL} $a\""),
+ ("dash -c", f"{A}; dash -c \"sleep 3046 {NULL} $a\""),
+ ("trap string run at EXIT", f"{A}; trap \"sleep 3047 {NULL} $a\" EXIT"),
+ ("mapfile -C callback", f"{A}; mapfile -C \"sleep 3048 {NULL} $a\" -c 1 _y <<<z"),
+ ("${x@P} prompt expansion", f"{A}; _p=\"\$(sleep 3049 {NULL} $a)\"; : \"${{_p@P}}\""),
+ ("arithmetic subscript re-evaluation", f"{A}; _q=\"_r[\$(sleep 3050 {NULL} $a)]\"; (( _q )) || :"),
+ ("python3 subprocess.Popen (program the hook calls)",
+  "python3 -I -c 'import subprocess as s; s.Popen([\"sleep\",\"3051\"],stdout=s.DEVNULL,stderr=s.DEVNULL,start_new_session=True)'"),
+]
+
+def alive(marker):
+    for p in os.listdir("/proc"):
+        if p.isdigit():
+            try:
+                cmd = open(f"/proc/{p}/cmdline", "rb").read().split(b"\0")
+            except OSError:
+                continue
+            if cmd[:2] == [b"sleep", marker.encode()]:
+                return True
+    return False
+
+hook = open(f"{SRC}/block-main-commit.sh", "rb").read().decode("utf-8")
+anchor = "set -euo pipefail\n"
+assert anchor in hook
+rows = []
+for i, (name, payload) in enumerate(M):
+    root = f"{D}/{i:02d}"
+    os.makedirs(f"{root}/scripts/hooks"); os.makedirs(f"{root}/tests")
+    shutil.copy(f"{SRC}/test_block_main_commit_hook.py", f"{root}/tests/")
+    open(f"{root}/tests/__init__.py", "w").close()
+    text = hook if payload is None else hook.replace(anchor, anchor + payload + "\n", 1)
+    with open(f"{root}/scripts/hooks/block-main-commit.sh", "w", encoding="utf-8", newline="") as f:
+        f.write(text)
+    os.chmod(f"{root}/scripts/hooks/block-main-commit.sh", 0o755)
+    t = subprocess.run([sys.executable, "-m", "unittest",
+        "tests.test_block_main_commit_hook.HookLaunchesNoBackgroundWorkTest.test_hook_launches_no_background_work"],
+        cwd=root, capture_output=True, text=True)
+    static = "caught" if t.returncode else "MISSED"
+    syn = subprocess.run(["bash", "-n", f"{root}/scripts/hooks/block-main-commit.sh"], capture_output=True)
+    marker = None
+    import re
+    m = re.search(r"30\d\d", payload or "")
+    marker = m.group(0) if m else None
+    s = time.monotonic()
+    h = subprocess.run(["bash", f"{root}/scripts/hooks/block-main-commit.sh"], input=b'{"tool_input":{"command":"ls"}}',
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd="/tmp", timeout=20)
+    wall = time.monotonic() - s
+    time.sleep(0.3)
+    bg = (alive(marker) if marker else False)
+    verdict = ("BYPASS" if static == "MISSED" and bg else
+               "caught" if static == "caught" else
+               "missed, but launches nothing" if not bg else "?")
+    rows.append((name, static, syn.returncode, h.returncode, f"{wall:.2f}", bg, verdict))
+    print(f"{verdict:30s} static={static:6s} bash-n={syn.returncode} hook_rc={h.returncode} wall={wall:.2f}s "
+          f"unwaited_sleep_alive={bg!s:5s} | {name}", flush=True)
+os.system("for p in /proc/[0-9]*; do tr \"\\0\" \" \" <$p/cmdline 2>/dev/null | grep -q \"^sleep 30\" && kill ${p#/proc/}; done")
+print("\nsummary:", sum(r[6] == "BYPASS" for r in rows), "bypasses of", len(rows), "cases")

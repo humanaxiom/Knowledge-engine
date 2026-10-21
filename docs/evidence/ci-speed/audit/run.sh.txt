@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# run.sh <name> <test.sh file to overlay or "-"> <cmd...>
+S="<scratch>"
+name=$1; ts=$2; shift 2
+extra=()
+[ "$ts" != - ] && extra=(-v "$(cygpath -w "$ts"):/work/scripts/test.sh:ro")
+MSYS_NO_PATHCONV=1 docker run --rm --name "ke-sec-cs-$name" --user 10001:10001 --network none \
+  --cap-drop ALL --security-opt no-new-privileges:true --tmpfs /tmp:exec,mode=1777 \
+  -e MYPY_CACHE_DIR=/tmp/mypy -e PYTHONDONTWRITEBYTECODE=1 -e GIT_OPTIONAL_LOCKS=0 \
+  -v "$(cygpath -w "$S/${BASE:-base}"):/work:ro" "${extra[@]}" -w /work \
+  ke-gates:latest "$@" > "$S/out/$name.txt" 2>&1
+echo "rc=$?" >> "$S/out/$name.txt"
+tail -n 25 "$S/out/$name.txt"

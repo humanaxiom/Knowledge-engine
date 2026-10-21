@@ -1,0 +1,619 @@
+# Raw output: security-probe.py (regression 1-7) + security-probe-rework2.py, then security-probe-rework2b.py. gates image, network_mode none (only lo).
+ Image knowledge-engine-gates Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 535B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from gates.Dockerfile
+#2 transferring dockerfile: 1.26kB done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#3 DONE 0.0s
+
+#4 [internal] load metadata for docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#4 DONE 0.5s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 91B done
+#5 DONE 0.0s
+
+#6 [stage-1 1/9] FROM docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#6 resolve docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258 0.0s done
+#6 DONE 0.0s
+
+#7 [uv 1/1] FROM ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#7 resolve ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946 0.0s done
+#7 DONE 0.0s
+
+#8 [internal] load build context
+#8 transferring context: 15.83kB done
+#8 DONE 0.0s
+
+#9 [stage-1 2/9] COPY --from=uv /uv /usr/local/bin/uv
+#9 CACHED
+
+#10 [stage-1 5/9] COPY pyproject.toml uv.lock ./
+#10 CACHED
+
+#11 [stage-1 3/9] RUN apt-get update  && apt-get install -y --no-install-recommends git jq  && rm -rf /var/lib/apt/lists/*  && git config --system --add safe.directory /work  && git config --system core.autocrlf true
+#11 CACHED
+
+#12 [stage-1 4/9] WORKDIR /work
+#12 CACHED
+
+#13 [stage-1 6/9] COPY harness_telemetry ./harness_telemetry
+#13 CACHED
+
+#14 [stage-1 7/9] COPY engine ./engine
+#14 DONE 0.0s
+
+#15 [stage-1 8/9] COPY config ./config
+#15 DONE 0.0s
+
+#16 [stage-1 9/9] RUN uv sync --locked
+#16 0.250 Using CPython 3.12.15 interpreter at: /usr/local/bin/python3
+#16 0.250 Creating virtual environment at: /opt/venv
+#16 0.253 Resolved 36 packages in 0.61ms
+#16 0.257    Building monitored-harness @ file:///work
+#16 0.381 Downloading pydantic-core (2.1MiB)
+#16 0.382 Downloading ast-serialize (1.3MiB)
+#16 0.383 Downloading mypy (14.8MiB)
+#16 1.102  Downloaded ast-serialize
+#16 1.330  Downloaded pydantic-core
+#16 1.686       Built monitored-harness @ file:///work
+#16 2.556  Downloaded mypy
+#16 2.556 Prepared 36 packages in 2.30s
+#16 2.823 Installed 36 packages in 266ms
+#16 2.823  + annotated-types==0.8.0
+#16 2.823  + anyio==4.15.1
+#16 2.823  + ast-serialize==0.13.1
+#16 2.823  + certifi==2026.7.22
+#16 2.823  + charset-normalizer==3.5.2
+#16 2.823  + coverage==7.16.2
+#16 2.823  + googleapis-common-protos==1.75.5
+#16 2.823  + h11==0.16.0
+#16 2.823  + httpcore==1.0.9
+#16 2.823  + httpx==0.28.1
+#16 2.823  + idna==3.20
+#16 2.823  + librt==0.16.0
+#16 2.823  + monitored-harness==0.1.0 (from file:///work)
+#16 2.823  + mypy==2.4.0
+#16 2.823  + mypy-extensions==1.1.0
+#16 2.823  + openinference-semantic-conventions==0.1.41
+#16 2.823  + opentelemetry-api==1.45.1
+#16 2.823  + opentelemetry-exporter-http-transport==0.66b1
+#16 2.823  + opentelemetry-exporter-otlp-common==0.66b1
+#16 2.823  + opentelemetry-exporter-otlp-proto-common==1.45.1
+#16 2.823  + opentelemetry-exporter-otlp-proto-http==1.45.1
+#16 2.823  + opentelemetry-proto==1.45.1
+#16 2.823  + opentelemetry-sdk==1.45.1
+#16 2.823  + opentelemetry-semantic-conventions==0.66b1
+#16 2.823  + pathspec==1.1.1
+#16 2.823  + protobuf==7.36.2
+#16 2.823  + pydantic==2.14.1
+#16 2.823  + pydantic-core==2.50.1
+#16 2.823  + pydantic-settings==2.16.0
+#16 2.823  + python-dotenv==1.2.4
+#16 2.823  + pyyaml==6.0.3
+#16 2.823  + requests==2.34.2
+#16 2.823  + types-pyyaml==6.0.12.20260906
+#16 2.823  + typing-extensions==4.16.0
+#16 2.823  + typing-inspection==0.4.4
+#16 2.823  + urllib3==2.8.0
+#16 DONE 2.9s
+
+#17 exporting to image
+#17 exporting layers
+#17 exporting layers 3.4s done
+#17 exporting manifest sha256:0053ebde5d541a5a462aeb5daf1304f514f4e76a22ecdfb204e78132da1d67b2 done
+#17 exporting config sha256:7e9d8c05e0443f596028828cbbb394be80ede59b340811b1bbacc4995c6ea4a6 0.0s done
+#17 exporting attestation manifest sha256:b67b5899ea2546c407ed7fe9371eda9cb61e73e3547a7fc8d0e5e6e80d718adc 0.0s done
+#17 exporting manifest list sha256:306f52e3012ba529357156062a70bf99f731b4bf8035820e4986c5e356a0afb8 0.0s done
+#17 naming to docker.io/library/knowledge-engine-gates:latest done
+#17 unpacking to docker.io/library/knowledge-engine-gates:latest
+#17 unpacking to docker.io/library/knowledge-engine-gates:latest 0.7s done
+#17 DONE 4.2s
+
+#18 resolving provenance for metadata file
+#18 DONE 0.0s
+ Image knowledge-engine-gates Built 
+ Container knowledge-engine-gates-run-7a7689e8b1a4 Creating 
+ Container knowledge-engine-gates-run-7a7689e8b1a4 Created 
+net ifaces:
+lo
+== original probe (regression, sections 1-7) ==
+   Building monitored-harness @ file:///work
+      Built monitored-harness @ file:///work
+Uninstalled 1 package in 0.97ms
+Installed 1 package in 1ms
+
+### 1. GuardedTransport host matching (allow = allowed.example, 10.0.0.5)
+'http://allowed.example/'                          ALLOWED -> inner saw ['http://allowed.example/']
+'http://ALLOWED.EXAMPLE./'                         ALLOWED -> inner saw ['http://allowed.example./']
+'http://allowed.example:1/'                        ALLOWED -> inner saw ['http://allowed.example:1/']
+'https://allowed.example:65535/x'                  ALLOWED -> inner saw ['https://allowed.example:65535/x']
+'http://allowed.example@evil.example/'             denied host='evil.example'
+'http://allowed.example:pw@evil.example/'          denied host='evil.example'
+'http://evil.example#@allowed.example/'            denied host='evil.example'
+'http://evil.example?@allowed.example/'            denied host='evil.example'
+'http://evil.example\\@allowed.example/'           ALLOWED -> inner saw ['http://evil.example%5C@allowed.example/']
+'http://allowed.example.evil.example/'             denied host='allowed.example.evil.example'
+'http://evil.example/allowed.example'              denied host='evil.example'
+'http://2130706433/'                               denied host='2130706433'
+'http://0x7f.0.0.1/'                               denied host='0x7f.0.0.1'
+'http://0177.0.0.1/'                               error InvalidURL: Invalid IPv4 address: '0177.0.0.1'
+'http://127.1/'                                    denied host='127.1'
+'http://[::1]/'                                    denied host='::1'
+'http://[::ffff:10.0.0.5]/'                        denied host='::ffff:10.0.0.5'
+'http://10.0.0.5/'                                 ALLOWED -> inner saw ['http://10.0.0.5/']
+'http://012.0.0.5/'                                error InvalidURL: Invalid IPv4 address: '012.0.0.5'
+'http://0xa.0.0.5/'                                denied host='0xa.0.0.5'
+'http://167772165/'                                denied host='167772165'
+'http://allowed%2eexample/'                        denied host='allowed%2eexample'
+'http://allowed.exаmple/'                          denied host='allowed.xn--exmple-4nf'
+'http://allowed.example../'                        ALLOWED -> inner saw ['http://allowed.example../']
+'http://%61llowed.example/'                        denied host='%61llowed.example'
+
+### 2. Redirects to other hosts (follow_redirects=True)
+redirect->'http://evil.example/'                   denied host='evil.example', inner saw ['http://allowed.example/']
+redirect->'http://allowed.example@evil.example/'   denied host='evil.example', inner saw ['http://allowed.example/']
+redirect->'//evil.example/'                        denied host='evil.example', inner saw ['http://allowed.example/']
+redirect->'http://127.0.0.1/'                      denied host='127.0.0.1', inner saw ['http://allowed.example/']
+redirect->'http://allowed.example/ok'              status 200, inner saw ['http://allowed.example/', 'http://allowed.example/ok']
+
+### 3. Socket/DNS spy with real ModelClient (denied host), proxy env set
+trust_env: False mounts: {} transport: GuardedTransport
+http://evil.example/                     denied; socket/DNS calls before deny: []
+http://allowed.example@evil.example/     denied; socket/DNS calls before deny: []
+http://[::2]/                            denied; socket/DNS calls before deny: []
+http://2130706433/                       denied; socket/DNS calls before deny: []
+allowed host goes direct (no proxy): ConnectError; calls: [('create_connection', ('allowed.example', 80))]
+
+### 4. An httpx client built without the guarded transport
+raw client mounts from env proxies: {}
+raw client to evil.example: ConnectError; socket calls reached: [('create_connection', ('evil.example', 80))]
+
+### 5. is_local_endpoint (service names = defaults) via str(AnyHttpUrl) like startup
+'http://localhost:6006'                  -> 'http://localhost:6006/'                 host='localhost'            local=True
+'http://localhost.evil.com'              -> 'http://localhost.evil.com/'             host='localhost.evil.com'   local=False
+'http://127.0.0.1.nip.io'                -> 'http://127.0.0.1.nip.io/'               host='127.0.0.1.nip.io'     local=False
+'http://0.0.0.0:6006'                    -> 'http://0.0.0.0:6006/'                   host='0.0.0.0'              local=False
+'http://[::ffff:127.0.0.1]:6006'         -> 'http://[::ffff:7f00:1]:6006/'           host='::ffff:7f00:1'        local=True
+'http://[::1]:6006'                      -> 'http://[::1]:6006/'                     host='::1'                  local=True
+'http://phoenix.evil.com'                -> 'http://phoenix.evil.com/'               host='phoenix.evil.com'     local=False
+'http://phoenix.'                        -> 'http://phoenix./'                       host='phoenix.'             local=True
+'http://PHOENIX:6006'                    -> 'http://phoenix:6006/'                   host='phoenix'              local=True
+'http://phoenix-evil'                    -> 'http://phoenix-evil/'                   host='phoenix-evil'         local=False
+'http://localhost@evil.com'              -> 'http://localhost@evil.com/'             host='evil.com'             local=False
+'http://evil.com\\@localhost'            -> 'http://evil.com/@localhost'             host='evil.com'             local=False
+'http://evil.com#@localhost'             -> 'http://evil.com/#@localhost'            host='evil.com'             local=False
+'http://2130706433'                      -> 'http://127.0.0.1/'                      host='127.0.0.1'            local=True
+'http://0x7f000001'                      -> 'http://127.0.0.1/'                      host='127.0.0.1'            local=True
+'http://127.1'                           -> 'http://127.0.0.1/'                      host='127.0.0.1'            local=True
+'http://[::]:6006'                       -> 'http://[::]:6006/'                      host='::'                   local=False
+'http://127.255.255.254'                 -> 'http://127.255.255.254/'                host='127.255.255.254'      local=True
+'http://localhost%2eevil.com'            -> 'http://localhost.evil.com/'             host='localhost.evil.com'   local=False
+'http://evil.com:80@localhost'           -> 'http://evil.com:80@localhost/'          host='localhost'            local=True
+'http://localhost:6006@evil.com'         -> 'http://localhost:6006@evil.com/'        host='evil.com'             local=False
+'http://evil.com%00.localhost'           pydantic rejects (ValidationError)
+'http://ph%6fenix'                       -> 'http://phoenix/'                        host='phoenix'              local=True
+'http://localhost./'                     -> 'http://localhost./'                     host='localhost.'           local=True
+'http://api.:1'                          -> 'http://api.:1/'                         host='api.'                 local=True
+raw (no pydantic) 'http://localhost\\@evil.com' False evil.com
+
+### 6. startup.check refusals
+ci auth='false'                                         refused: startup refused: auth.enabled: authentication is disabled (env=ci)
+ci auth='False'                                         refused: startup refused: auth.enabled: authentication is disabled (env=ci)
+ci auth='FALSE'                                         refused: startup refused: auth.enabled: authentication is disabled (env=ci)
+ci auth='0'                                             refused: startup refused: auth.enabled: authentication is disabled (env=ci)
+ci auth='off'                                           refused: startup refused: auth.enabled: authentication is disabled (env=ci)
+ci auth='no'                                            refused: startup refused: auth.enabled: authentication is disabled (env=ci)
+ci auth='f'                                             refused: startup refused: auth.enabled: authentication is disabled (env=ci)
+ci auth='n'                                             refused: startup refused: auth.enabled: authentication is disabled (env=ci)
+ci auth=' false'                                        ConfigError: invalid configuration: KE_AUTH__ENABLED (auth.enabled): Input should be a valid boolean, unable to interpret input
+ci auth='false '                                        ConfigError: invalid configuration: KE_AUTH__ENABLED (auth.enabled): Input should be a valid boolean, unable to interpret input
+ci auth=''                                              STARTS
+env='dev' auth=false                                    STARTS (warn: 'auth.enabled: authentication is disabled')
+env='DEV' auth=false                                    ConfigError: invalid configuration: KE_ENV (env): Input should be 'dev', 'ci' or 'prod'
+env='Dev' auth=false                                    ConfigError: invalid configuration: KE_ENV (env): Input should be 'dev', 'ci' or 'prod'
+env=' dev' auth=false                                   ConfigError: invalid configuration: KE_ENV (env): Input should be 'dev', 'ci' or 'prod'
+env='dev ' auth=false                                   ConfigError: invalid configuration: KE_ENV (env): Input should be 'dev', 'ci' or 'prod'
+env='prod' auth=false                                   refused: startup refused: auth.enabled: authentication is disabled (env=prod)
+env='' auth=false                                       refused: startup refused: auth.enabled: authentication is disabled (env=prod)
+env='development' auth=false                            ConfigError: invalid configuration: KE_ENV (env): Input should be 'dev', 'ci' or 'prod'
+ci KE hide_inputs='false'                               refused: startup refused: OPENINFERENCE_HIDE_INPUTS: span values are not hidden (env=ci)
+ci OPENINFERENCE_HIDE_OUTPUTS='false'                   refused: startup refused: OPENINFERENCE_HIDE_OUTPUTS: span values are not hidden (env=ci)
+ci KE hide_inputs='0'                                   refused: startup refused: OPENINFERENCE_HIDE_INPUTS: span values are not hidden (env=ci)
+ci OPENINFERENCE_HIDE_OUTPUTS='0'                       refused: startup refused: OPENINFERENCE_HIDE_OUTPUTS: span values are not hidden (env=ci)
+ci KE hide_inputs='False'                               refused: startup refused: OPENINFERENCE_HIDE_INPUTS: span values are not hidden (env=ci)
+ci OPENINFERENCE_HIDE_OUTPUTS='False'                   refused: startup refused: OPENINFERENCE_HIDE_OUTPUTS: span values are not hidden (env=ci)
+ci KE hide_inputs='no'                                  refused: startup refused: OPENINFERENCE_HIDE_INPUTS: span values are not hidden (env=ci)
+ci OPENINFERENCE_HIDE_OUTPUTS='no'                      refused: startup refused: OPENINFERENCE_HIDE_OUTPUTS: span values are not hidden (env=ci)
+ci KE hide_inputs=' false'                              ConfigError: invalid configuration: KE_TELEMETRY__HIDE_INPUTS (telemetry.hide_inputs): Input should be a valid boolean, unable to interpret input
+ci OPENINFERENCE_HIDE_OUTPUTS=' false'                  ConfigError: invalid configuration: OPENINFERENCE_HIDE_OUTPUTS (telemetry.hide_outputs): Input should be a valid boolean, unable to interpret input
+ci KE hide_inputs=''                                    STARTS
+ci OPENINFERENCE_HIDE_OUTPUTS=''                        STARTS
+ci hide KE=true but OI env=false (precedence)           STARTS
+ci postgres pw='changeme-x'                             refused: startup refused: KE_STORES__POSTGRES__PASSWORD: secret still has the placeholder prefix; set a real value
+ci postgres pw='CHANGEME'                               refused: startup refused: KE_STORES__POSTGRES__PASSWORD: secret still has the placeholder prefix; set a real value
+ci postgres pw='ChangeMe-x'                             refused: startup refused: KE_STORES__POSTGRES__PASSWORD: secret still has the placeholder prefix; set a real value
+ci postgres pw=' changeme-x'                            refused: startup refused: KE_STORES__POSTGRES__PASSWORD: secret still has the placeholder prefix; set a real value
+ci postgres pw='changeme'                               refused: startup refused: KE_STORES__POSTGRES__PASSWORD: secret still has the placeholder prefix; set a real value
+ci postgres pw='\tchangeme'                             refused: startup refused: KE_STORES__POSTGRES__PASSWORD: secret still has the placeholder prefix; set a real value
+ci postgres pw='\u200bchangeme-x'                       refused: startup refused: KE_STORES__POSTGRES__PASSWORD: secret still has the placeholder prefix; set a real value
+ci postgres pw='chаngeme'                               STARTS
+ci postgres pw=' '                                      STARTS
+ci postgres pw='x'                                      STARTS
+ci postgres pw empty                                    ConfigError: invalid configuration: KE_STORES__POSTGRES__PASSWORD (stores.postgres.password): Field required
+dev tracing=otlp KE endpoint=http://evil.example:6006   refused: startup refused: telemetry.collector_endpoint: traces would be exported to non-local host 'evil.example'
+dev tracing=OTLP KE endpoint=http://evil.example        ConfigError: invalid configuration: HARNESS_TRACING (telemetry.tracing): Input should be 'otlp', 'console' or 'off'
+dev tracing=otlp KE endpoint=http://localhost.evil.com  refused: startup refused: telemetry.collector_endpoint: traces would be exported to non-local host 'localhost.evil.com'
+dev tracing=otlp KE endpoint=http://0.0.0.0:6006        refused: startup refused: telemetry.collector_endpoint: traces would be exported to non-local host '0.0.0.0'
+dev tracing=console KE endpoint=http://evil.example     STARTS
+dev tracing=off KE endpoint=http://evil.example         STARTS
+ci KE tracing=otlp, PHOENIX endpoint evil               refused: startup refused: telemetry.collector_endpoint: traces would be exported to non-local host 'evil.example'
+ci service_names override adds evil                     STARTS
+ci service_names non-JSON (unwrapped?)                  ConfigError: invalid configuration: KE_STACK__SERVICE_NAMES (stack): value could not be parsed
+ci model upstream not allowlisted                       refused: startup refused: egress_allowlist: host 'evil.example' is not on the allowlist
+ci model upstream userinfo trick                        ConfigError: invalid configuration: KE_MODEL_UPSTREAM (models.model_upstream): Value error, must not contain credentials (user:password@)
+ci model upstream http://allowed@evil                   ConfigError: invalid configuration: KE_MODEL_UPSTREAM (models.model_upstream): Value error, must not contain credentials (user:password@)
+ci model upstream garbage :::                           refused: startup refused: egress_allowlist: host '' is not on the allowlist
+ci model upstream [::1 (unbalanced)                     ConfigError: invalid configuration: KE_MODEL_UPSTREAM (models.model_upstream): Value error, not a valid host or URL
+ci base_url userinfo                                    ConfigError: invalid configuration: KE_MODELS__AUDIT__BASE_URL (models.audit.base_url): Value error, must not contain credentials (user:password@)
+
+### 7. configure_tracing: settings say console, harness env decides exporter
+KE_TELEMETRY__TRACING=console, PHOENIX endpoint evil, HARNESS_TRACING unset
+   settings.tracing=console endpoint=http://evil.example:4318/; check passes; installed=True; exporters=[('ConsoleSpanExporter', None)]
+KE_TELEMETRY__TRACING=console, KE endpoint local, PHOENIX evil, HARNESS_TRACING=otlp
+   settings.tracing=console endpoint=http://localhost:6006/; check passes; installed=True; exporters=[('ConsoleSpanExporter', None)]
+== rework2 probe ==
+/work/docs/evidence/platform-config/security-probe-rework2.py:268: SyntaxWarning: invalid escape sequence '\@'
+  ("backslash before @", "http://allowed.example\@evil.example/v1"),
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch code: None, reason: 'CustomTransport' object has no attribute 'request'
+
+### 0. Exporter structure (where the session lives)
+  exporter._endpoint: 'http://localhost:6006/v1/traces'
+  exporter._client: _OTLPHTTPClient
+  exporter._client._transport: RequestsHTTPTransport
+  exporter._client._transport._session: Session
+  exporter._client._endpoint: 'http://localhost:6006/v1/traces'
+  sessions found by engine walk: [('Session', False, {})]
+
+### 1. H2 proxy matrix: engine startup + one span + flush; hosts dialled
+phoenix default  none                                           OK; exporter=[('OTLPSpanExporter', 'http://phoenix:6006/v1/traces')]; dialled=['phoenix']
+phoenix default  HTTP_PROXY                                     OK; exporter=[('OTLPSpanExporter', 'http://phoenix:6006/v1/traces')]; dialled=['phoenix']
+phoenix default  http_proxy                                     OK; exporter=[('OTLPSpanExporter', 'http://phoenix:6006/v1/traces')]; dialled=['phoenix']
+phoenix default  ALL_PROXY                                      OK; exporter=[('OTLPSpanExporter', 'http://phoenix:6006/v1/traces')]; dialled=['phoenix']
+phoenix default  all_proxy                                      OK; exporter=[('OTLPSpanExporter', 'http://phoenix:6006/v1/traces')]; dialled=['phoenix']
+phoenix default  HTTPS_PROXY                                    OK; exporter=[('OTLPSpanExporter', 'http://phoenix:6006/v1/traces')]; dialled=['phoenix']
+phoenix default  all upper+lower                                OK; exporter=[('OTLPSpanExporter', 'http://phoenix:6006/v1/traces')]; dialled=['phoenix']
+phoenix default  HTTP_PROXY + NO_PROXY=localhost,127.0.0.1      OK; exporter=[('OTLPSpanExporter', 'http://phoenix:6006/v1/traces')]; dialled=['phoenix']
+phoenix default  http_proxy + no_proxy empty                    OK; exporter=[('OTLPSpanExporter', 'http://phoenix:6006/v1/traces')]; dialled=['phoenix']
+phoenix default  HTTP_PROXY + NO_PROXY=*                        OK; exporter=[('OTLPSpanExporter', 'http://phoenix:6006/v1/traces')]; dialled=['phoenix']
+phoenix default  HTTP_PROXY + REQUESTS_CA_BUNDLE/CURL_CA_BUNDLE OK; exporter=[('OTLPSpanExporter', 'http://phoenix:6006/v1/traces')]; dialled=['phoenix']
+localhost        none                                           OK; exporter=[('OTLPSpanExporter', 'http://localhost:6006/v1/traces')]; dialled=['localhost']
+localhost        HTTP_PROXY                                     OK; exporter=[('OTLPSpanExporter', 'http://localhost:6006/v1/traces')]; dialled=['localhost']
+localhost        http_proxy                                     OK; exporter=[('OTLPSpanExporter', 'http://localhost:6006/v1/traces')]; dialled=['localhost']
+localhost        ALL_PROXY                                      OK; exporter=[('OTLPSpanExporter', 'http://localhost:6006/v1/traces')]; dialled=['localhost']
+localhost        all_proxy                                      OK; exporter=[('OTLPSpanExporter', 'http://localhost:6006/v1/traces')]; dialled=['localhost']
+localhost        HTTPS_PROXY                                    OK; exporter=[('OTLPSpanExporter', 'http://localhost:6006/v1/traces')]; dialled=['localhost']
+localhost        all upper+lower                                OK; exporter=[('OTLPSpanExporter', 'http://localhost:6006/v1/traces')]; dialled=['localhost']
+localhost        HTTP_PROXY + NO_PROXY=localhost,127.0.0.1      OK; exporter=[('OTLPSpanExporter', 'http://localhost:6006/v1/traces')]; dialled=['localhost']
+localhost        http_proxy + no_proxy empty                    OK; exporter=[('OTLPSpanExporter', 'http://localhost:6006/v1/traces')]; dialled=['localhost']
+localhost        HTTP_PROXY + NO_PROXY=*                        OK; exporter=[('OTLPSpanExporter', 'http://localhost:6006/v1/traces')]; dialled=['localhost']
+localhost        HTTP_PROXY + REQUESTS_CA_BUNDLE/CURL_CA_BUNDLE OK; exporter=[('OTLPSpanExporter', 'http://localhost:6006/v1/traces')]; dialled=['localhost']
+127.0.0.1        none                                           OK; exporter=[('OTLPSpanExporter', 'http://127.0.0.1:6006/v1/traces')]; dialled=['127.0.0.1']
+127.0.0.1        HTTP_PROXY                                     OK; exporter=[('OTLPSpanExporter', 'http://127.0.0.1:6006/v1/traces')]; dialled=['127.0.0.1']
+127.0.0.1        http_proxy                                     OK; exporter=[('OTLPSpanExporter', 'http://127.0.0.1:6006/v1/traces')]; dialled=['127.0.0.1']
+127.0.0.1        ALL_PROXY                                      OK; exporter=[('OTLPSpanExporter', 'http://127.0.0.1:6006/v1/traces')]; dialled=['127.0.0.1']
+127.0.0.1        all_proxy                                      OK; exporter=[('OTLPSpanExporter', 'http://127.0.0.1:6006/v1/traces')]; dialled=['127.0.0.1']
+127.0.0.1        HTTPS_PROXY                                    OK; exporter=[('OTLPSpanExporter', 'http://127.0.0.1:6006/v1/traces')]; dialled=['127.0.0.1']
+127.0.0.1        all upper+lower                                OK; exporter=[('OTLPSpanExporter', 'http://127.0.0.1:6006/v1/traces')]; dialled=['127.0.0.1']
+127.0.0.1        HTTP_PROXY + NO_PROXY=localhost,127.0.0.1      OK; exporter=[('OTLPSpanExporter', 'http://127.0.0.1:6006/v1/traces')]; dialled=['127.0.0.1']
+127.0.0.1        http_proxy + no_proxy empty                    OK; exporter=[('OTLPSpanExporter', 'http://127.0.0.1:6006/v1/traces')]; dialled=['127.0.0.1']
+127.0.0.1        HTTP_PROXY + NO_PROXY=*                        OK; exporter=[('OTLPSpanExporter', 'http://127.0.0.1:6006/v1/traces')]; dialled=['127.0.0.1']
+127.0.0.1        HTTP_PROXY + REQUESTS_CA_BUNDLE/CURL_CA_BUNDLE OK; exporter=[('OTLPSpanExporter', 'http://127.0.0.1:6006/v1/traces')]; dialled=['127.0.0.1']
+[::1]            none                                           OK; exporter=[('OTLPSpanExporter', 'http://[::1]:6006/v1/traces')]; dialled=['::1']
+[::1]            HTTP_PROXY                                     OK; exporter=[('OTLPSpanExporter', 'http://[::1]:6006/v1/traces')]; dialled=['::1']
+[::1]            http_proxy                                     OK; exporter=[('OTLPSpanExporter', 'http://[::1]:6006/v1/traces')]; dialled=['::1']
+[::1]            ALL_PROXY                                      OK; exporter=[('OTLPSpanExporter', 'http://[::1]:6006/v1/traces')]; dialled=['::1']
+[::1]            all_proxy                                      OK; exporter=[('OTLPSpanExporter', 'http://[::1]:6006/v1/traces')]; dialled=['::1']
+[::1]            HTTPS_PROXY                                    OK; exporter=[('OTLPSpanExporter', 'http://[::1]:6006/v1/traces')]; dialled=['::1']
+[::1]            all upper+lower                                OK; exporter=[('OTLPSpanExporter', 'http://[::1]:6006/v1/traces')]; dialled=['::1']
+[::1]            HTTP_PROXY + NO_PROXY=localhost,127.0.0.1      OK; exporter=[('OTLPSpanExporter', 'http://[::1]:6006/v1/traces')]; dialled=['::1']
+[::1]            http_proxy + no_proxy empty                    OK; exporter=[('OTLPSpanExporter', 'http://[::1]:6006/v1/traces')]; dialled=['::1']
+[::1]            HTTP_PROXY + NO_PROXY=*                        OK; exporter=[('OTLPSpanExporter', 'http://[::1]:6006/v1/traces')]; dialled=['::1']
+[::1]            HTTP_PROXY + REQUESTS_CA_BUNDLE/CURL_CA_BUNDLE OK; exporter=[('OTLPSpanExporter', 'http://[::1]:6006/v1/traces')]; dialled=['::1']
+cases dialling evil.example: 0
+
+### 2. H2 installed-provider variants: verify_provider([]) and real dial with HTTP_PROXY set
+engine-built shape (trust_env False)                           verify=ACCEPTED                           dialled=['localhost']
+default session (trust_env True)                               verify=refused (telemetry.tracing)        dialled=['evil.example']
+trust_env False + session.proxies http=evil                    verify=ACCEPTED                           dialled=['evil.example']
+trust_env False + session.proxies all=evil                     verify=ACCEPTED                           dialled=['evil.example']
+trust_env False + mounted rerouting adapter                    verify=ACCEPTED                           dialled=['evil.example']
+Session subclass (trust_env False) rewriting URL               verify=ACCEPTED                           dialled=['evil.example']
+session replaced by custom non-Session object                  verify=refused (telemetry.tracing)        dialled=[]Failed to export spans batch code: None, reason: 'CustomTransport' object has no attribute 'request'
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+
+custom transport + decoy trust_env False Session attr          verify=ACCEPTED                           dialled=[]
+session swapped for trust_env True Session                     verify=refused (telemetry.tracing)        dialled=['evil.example']
+trust_env flipped True after build                             verify=refused (telemetry.tracing)        dialled=['evil.example']
+built for evil, exporter._endpoint rewritten to localhost      verify=ACCEPTED                           dialled=['evil.example']
+OTLPSpanExporter subclass overriding export()                  verify=refused (telemetry.tracing)        dialled=['evil.example']
+non-requests transport exporter (raw socket)                   verify=refused (telemetry.tracing)        dialled=['evil.example']
+gRPC OTLP exporter: not installed
+
+### 3. M3/R1 foreign provider installed before startup(): outcome and spans received
+passing ci           SDK: unknown exporter                          refused StartupRefused telemetry.tracing       spans received=[]
+passing ci           SDK: OTLP evil                                 refused StartupRefused telemetry.tracing       spans received=[]
+passing ci           SDK: OTLP local, trust_env True                refused StartupRefused telemetry.tracing       spans received=[]
+passing ci           SDK: OTLP local, trust_env False + proxies     refused StartupRefused telemetry.tracing       spans received=[]
+passing ci           non-SDK API provider                           refused StartupRefused telemetry.tracing       spans received=[]
+passing ci           SDK: SimpleSpanProcessor subclass on_end sink  startup OK                                     spans received=['engine.egress.startup_check', 'engine.config.load', 'engine.egress.startup_check', 'engine.startup.refusals', 'engine.startup']
+passing dev          SDK: unknown exporter                          refused StartupRefused telemetry.tracing       spans received=[]
+passing dev          SDK: OTLP evil                                 refused StartupRefused telemetry.tracing       spans received=[]
+passing dev          SDK: OTLP local, trust_env True                refused StartupRefused telemetry.tracing       spans received=[]
+passing dev          SDK: OTLP local, trust_env False + proxies     refused StartupRefused telemetry.tracing       spans received=[]
+passing dev          non-SDK API provider                           refused StartupRefused telemetry.tracing       spans received=[]
+passing dev          SDK: SimpleSpanProcessor subclass on_end sink  startup OK                                     spans received=['engine.egress.startup_check', 'engine.config.load', 'engine.egress.startup_check', 'engine.startup.refusals', 'engine.startup']
+auth off ci          SDK: unknown exporter                          refused StartupRefused telemetry.tracing       spans received=[]
+auth off ci          SDK: OTLP evil                                 refused StartupRefused telemetry.tracing       spans received=[]
+auth off ci          SDK: OTLP local, trust_env True                refused StartupRefused telemetry.tracing       spans received=[]
+auth off ci          SDK: OTLP local, trust_env False + proxies     refused StartupRefused telemetry.tracing       spans received=[]
+auth off ci          non-SDK API provider                           refused StartupRefused telemetry.tracing       spans received=[]
+auth off ci          SDK: SimpleSpanProcessor subclass on_end sink  refused StartupRefused auth.enabled            spans received=['engine.config.load', 'engine.startup.refusals', 'engine.startup']
+placeholder ci       SDK: unknown exporter                          refused StartupRefused telemetry.tracing       spans received=[]
+placeholder ci       SDK: OTLP evil                                 refused StartupRefused telemetry.tracing       spans received=[]
+placeholder ci       SDK: OTLP local, trust_env True                refused StartupRefused telemetry.tracing       spans received=[]
+placeholder ci       SDK: OTLP local, trust_env False + proxies     refused StartupRefused telemetry.tracing       spans received=[]
+placeholder ci       non-SDK API provider                           refused StartupRefused telemetry.tracing       spans received=[]
+placeholder ci       SDK: SimpleSpanProcessor subclass on_end sink  refused StartupRefused KE_STORES__POSTGRES__PASSWORD spans received=['engine.egress.startup_check', 'engine.config.load', 'engine.egress.startup_check', 'engine.startup.refusals', 'engine.startup']
+non-local collector  SDK: unknown exporter                          refused StartupRefused telemetry.tracing       spans received=[]
+non-local collector  SDK: OTLP evil                                 refused StartupRefused telemetry.tracing       spans received=[]
+non-local collector  SDK: OTLP local, trust_env True                refused StartupRefused telemetry.tracing       spans received=[]
+non-local collector  SDK: OTLP local, trust_env False + proxies     refused StartupRefused telemetry.tracing       spans received=[]
+non-local collector  non-SDK API provider                           refused StartupRefused telemetry.tracing       spans received=[]
+non-local collector  SDK: SimpleSpanProcessor subclass on_end sink  refused StartupRefused telemetry.collector_endpoint spans received=['engine.config.load', 'engine.startup.refusals', 'engine.startup']
+ConfigError          SDK: unknown exporter                          refused StartupRefused telemetry.tracing       spans received=[]
+ConfigError          SDK: OTLP evil                                 refused StartupRefused telemetry.tracing       spans received=[]
+ConfigError          SDK: OTLP local, trust_env True                refused StartupRefused telemetry.tracing       spans received=[]
+ConfigError          SDK: OTLP local, trust_env False + proxies     refused StartupRefused telemetry.tracing       spans received=[]
+ConfigError          non-SDK API provider                           refused StartupRefused telemetry.tracing       spans received=[]
+ConfigError          SDK: SimpleSpanProcessor subclass on_end sink  refused ConfigError                            spans received=['engine.config.load', 'engine.startup']
+service_names=[evil.example], installed OTLP evil (trust_env False): refused StartupRefused; spans=[]
+OTEL_PYTHON_TRACER_PROVIDER=sdk_tracer_provider: startup OK; provider=TracerProvider exporters=[]
+order passing      ['verify_provider', 'span:engine.egress.startup_check', 'span:engine.startup', 'span:engine.config.load', 'span:engine.startup.refusals', 'span:engine.egress.startup_check']
+order auth off     ['verify_provider', 'span:engine.startup', 'span:engine.config.load', 'span:engine.startup.refusals']
+order ConfigError  ['verify_provider', 'span:engine.startup', 'span:engine.config.load']
+span helpers referenced in startup/config/egress modules: ['chain_span']
+
+### 4. M4 userinfo variants (ConfigError expected unless marked allowed)
+u:pw@host                                KE_MODELS__COMPOSE__BASE_URL ConfigError (pw leaked=False)
+u:pw@host                                KE_MODELS__EMBED__BASE_URL   ConfigError (pw leaked=False)
+u:pw@host                                KE_MODEL_UPSTREAM            ConfigError (pw leaked=False)
+empty password u@host                    KE_MODELS__COMPOSE__BASE_URL ConfigError (pw leaked=False)
+empty password u@host                    KE_MODELS__EMBED__BASE_URL   ConfigError (pw leaked=False)
+empty password u@host                    KE_MODEL_UPSTREAM            ConfigError (pw leaked=False)
+empty user :pw@host                      KE_MODELS__COMPOSE__BASE_URL ConfigError (pw leaked=False)
+empty user :pw@host                      KE_MODELS__EMBED__BASE_URL   ConfigError (pw leaked=False)
+empty user :pw@host                      KE_MODEL_UPSTREAM            ConfigError (pw leaked=False)
+bare @host                               KE_MODELS__COMPOSE__BASE_URL ConfigError (pw leaked=False)
+bare @host                               KE_MODELS__EMBED__BASE_URL   ConfigError (pw leaked=False)
+bare @host                               KE_MODEL_UPSTREAM            ConfigError (pw leaked=False)
+pct-encoded @ in user + real @           KE_MODELS__COMPOSE__BASE_URL ConfigError (pw leaked=False)
+pct-encoded @ in user + real @           KE_MODELS__EMBED__BASE_URL   ConfigError (pw leaked=False)
+pct-encoded @ in user + real @           KE_MODEL_UPSTREAM            ConfigError (pw leaked=False)
+pct-encoded @ only u%40allowed.example   KE_MODELS__COMPOSE__BASE_URL ConfigError (pw leaked=False)
+pct-encoded @ only u%40allowed.example   KE_MODELS__EMBED__BASE_URL   ConfigError (pw leaked=False)
+pct-encoded @ only u%40allowed.example   KE_MODEL_UPSTREAM            LOADED -> 'http://u%40allowed.example/v1' (userinfo in authority=False)
+pct u%3Apw%40allowed.example             KE_MODELS__COMPOSE__BASE_URL ConfigError (pw leaked=False)
+pct u%3Apw%40allowed.example             KE_MODELS__EMBED__BASE_URL   ConfigError (pw leaked=False)
+pct u%3Apw%40allowed.example             KE_MODEL_UPSTREAM            LOADED -> 'http://u%3Ahunter2%40allowed.example/v1' (userinfo in authority=False)
+IPv6 with userinfo                       KE_MODELS__COMPOSE__BASE_URL ConfigError (pw leaked=False)
+IPv6 with userinfo                       KE_MODELS__EMBED__BASE_URL   ConfigError (pw leaked=False)
+IPv6 with userinfo                       KE_MODEL_UPSTREAM            ConfigError (pw leaked=False)
+IPv6 no userinfo (allowed)               KE_MODELS__COMPOSE__BASE_URL LOADED -> 'http://[::1]:8080/v1' (userinfo in authority=False)
+IPv6 no userinfo (allowed)               KE_MODELS__EMBED__BASE_URL   LOADED -> 'http://[::1]:8080/v1' (userinfo in authority=False)
+IPv6 no userinfo (allowed)               KE_MODEL_UPSTREAM            LOADED -> 'http://[::1]:8080/v1' (userinfo in authority=False)
+backslash before @                       KE_MODELS__COMPOSE__BASE_URL ConfigError (pw leaked=False)
+backslash before @                       KE_MODELS__EMBED__BASE_URL   ConfigError (pw leaked=False)
+backslash before @                       KE_MODEL_UPSTREAM            ConfigError (pw leaked=False)
+tab inside userinfo                      KE_MODELS__COMPOSE__BASE_URL ConfigError (pw leaked=False)
+tab inside userinfo                      KE_MODELS__EMBED__BASE_URL   ConfigError (pw leaked=False)
+tab inside userinfo                      KE_MODEL_UPSTREAM            ConfigError (pw leaked=False)
+newline before @                         KE_MODELS__COMPOSE__BASE_URL ConfigError (pw leaked=False)
+newline before @                         KE_MODELS__EMBED__BASE_URL   ConfigError (pw leaked=False)
+newline before @                         KE_MODEL_UPSTREAM            ConfigError (pw leaked=False)
+uppercase scheme                         KE_MODELS__COMPOSE__BASE_URL ConfigError (pw leaked=False)
+uppercase scheme                         KE_MODELS__EMBED__BASE_URL   ConfigError (pw leaked=False)
+uppercase scheme                         KE_MODEL_UPSTREAM            ConfigError (pw leaked=False)
+no scheme u:pw@host                      KE_MODELS__COMPOSE__BASE_URL ConfigError (pw leaked=False)
+no scheme u:pw@host                      KE_MODELS__EMBED__BASE_URL   ConfigError (pw leaked=False)
+no scheme u:pw@host                      KE_MODEL_UPSTREAM            ConfigError (pw leaked=False)
+leading space                            KE_MODELS__COMPOSE__BASE_URL ConfigError (pw leaked=False)
+leading space                            KE_MODELS__EMBED__BASE_URL   ConfigError (pw leaked=False)
+leading space                            KE_MODEL_UPSTREAM            ConfigError (pw leaked=False)
+@ in path (allowed)                      KE_MODELS__COMPOSE__BASE_URL LOADED -> 'http://allowed.example/v1/@user' (userinfo in authority=False)
+@ in path (allowed)                      KE_MODELS__EMBED__BASE_URL   LOADED -> 'http://allowed.example/v1/@user' (userinfo in authority=False)
+@ in path (allowed)                      KE_MODEL_UPSTREAM            LOADED -> 'http://allowed.example/v1/@user' (userinfo in authority=False)
+@ in query (allowed)                     KE_MODELS__COMPOSE__BASE_URL LOADED -> 'http://allowed.example/v1?who=a@b' (userinfo in authority=False)
+@ in query (allowed)                     KE_MODELS__EMBED__BASE_URL   LOADED -> 'http://allowed.example/v1?who=a@b' (userinfo in authority=False)
+@ in query (allowed)                     KE_MODEL_UPSTREAM            LOADED -> 'http://allowed.example/v1?who=a@b' (userinfo in authority=False)
+@ in fragment (allowed)                  KE_MODELS__COMPOSE__BASE_URL LOADED -> 'http://allowed.example/v1#a@b' (userinfo in authority=False)
+@ in fragment (allowed)                  KE_MODELS__EMBED__BASE_URL   LOADED -> 'http://allowed.example/v1#a@b' (userinfo in authority=False)
+@ in fragment (allowed)                  KE_MODEL_UPSTREAM            LOADED -> 'http://allowed.example/v1#a@b' (userinfo in authority=False)
+pw in query (allowed by design)          KE_MODELS__COMPOSE__BASE_URL LOADED -> 'http://allowed.example/v1?key=x' (userinfo in authority=False)
+pw in query (allowed by design)          KE_MODELS__EMBED__BASE_URL   LOADED -> 'http://allowed.example/v1?key=x' (userinfo in authority=False)
+pw in query (allowed by design)          KE_MODEL_UPSTREAM            LOADED -> 'http://allowed.example/v1?key=x' (userinfo in authority=False)
+loader config-file source: ['CONFIG_FILE_VAR', 'DEFAULT_CONFIG_FILE', 'Path', 'YamlDefaultsSource', '__file__', 'config_path', 'yaml']
+
+### 5. L1b placeholder bypass (ci)
+NBSP                   cat=Zs  before=refused  inside=refused  after-c=refused
+FEFF                   cat=Cf  before=refused  inside=refused  after-c=refused
+2060                   cat=Cf  before=refused  inside=refused  after-c=refused
+200B                   cat=Cf  before=refused  inside=refused  after-c=refused
+200C                   cat=Cf  before=refused  inside=refused  after-c=refused
+200D                   cat=Cf  before=refused  inside=refused  after-c=refused
+TAB                    cat=Cc  before=refused  inside=refused  after-c=refused
+180E                   cat=Cf  before=refused  inside=refused  after-c=refused
+00AD                   cat=Cf  before=refused  inside=refused  after-c=refused
+2061                   cat=Cf  before=refused  inside=refused  after-c=refused
+2062                   cat=Cf  before=refused  inside=refused  after-c=refused
+2063                   cat=Cf  before=refused  inside=refused  after-c=refused
+2064                   cat=Cf  before=refused  inside=refused  after-c=refused
+034F                   cat=Mn  before=refused  inside=refused  after-c=refused
+3164                   cat=Lo  before=refused  inside=refused  after-c=refused
+115F                   cat=Lo  before=refused  inside=refused  after-c=refused
+1160                   cat=Lo  before=refused  inside=refused  after-c=refused
+FFA0                   cat=Lo  before=refused  inside=refused  after-c=refused
+202E                   cat=Cf  before=refused  inside=refused  after-c=refused
+202A                   cat=Cf  before=refused  inside=refused  after-c=refused
+2066                   cat=Cf  before=refused  inside=refused  after-c=refused
+2069                   cat=Cf  before=refused  inside=refused  after-c=refused
+200E LRM               cat=Cf  before=refused  inside=refused  after-c=refused
+061C ALM               cat=Cf  before=refused  inside=refused  after-c=refused
+E0020 tag              cat=Cf  before=refused  inside=refused  after-c=refused
+E0001 tag              cat=Cf  before=refused  inside=refused  after-c=refused
+3000                   cat=Zs  before=refused  inside=refused  after-c=refused
+2028 LS                cat=Zl  before=refused  inside=refused  after-c=refused
+2029 PS                cat=Zp  before=refused  inside=refused  after-c=refused
+000B VT                cat=Cc  before=refused  inside=refused  after-c=refused
+001F                   cat=Cc  before=refused  inside=refused  after-c=refused
+0085 NEL               cat=Cc  before=refused  inside=refused  after-c=refused
+FE0F VS16              cat=Mn  before=STARTS   inside=STARTS   after-c=STARTS
+FE00 VS1               cat=Mn  before=STARTS   inside=STARTS   after-c=STARTS
+E0100 VS17             cat=Mn  before=STARTS   inside=STARTS   after-c=STARTS
+1D173 musical          cat=Cf  before=refused  inside=refused  after-c=refused
+2800 braille blank     cat=So  before=STARTS   inside=STARTS   after-c=STARTS
+1D159 null notehead    cat=So  before=STARTS   inside=STARTS   after-c=STARTS
+FFFC obj               cat=So  before=STARTS   inside=STARTS   after-c=STARTS
+17B4 khmer             cat=Mn  before=STARTS   inside=STARTS   after-c=STARTS
+17B5                   cat=Mn  before=STARTS   inside=STARTS   after-c=STARTS
+NBSP+FEFF+2060         cat=Zs  before=refused  inside=refused  after-c=refused
+fullwidth                                refused
+math bold                                STARTS
+double-struck C                          refused
+circled letters                          refused
+UPPER                                    refused
+superscript h U+02B0                     refused
+combining acute on a (U+0301)            STARTS
+combining acute on c                     STARTS
+combining long stroke U+0336 on c        STARTS
+combining grave after final e            STARTS
+combining acute on m                     STARTS
+ligature U+FB00 prefix (control)         STARTS
+ligature U+FB06 st (NFKC) inside         STARTS
+Cyrillic с homoglyph                     STARTS
+Cyrillic а,е homoglyphs                  STARTS
+Latin alpha U+0251                       STARTS
+real secret                              STARTS
+single space                             STARTS
+x                                        STARTS
+Exporter already shutdown, ignoring call
+Exporter already shutdown, ignoring call
+
+== rework2b supplementary probe ==
+ Container knowledge-engine-gates-run-d5324bbb1faf Creating 
+ Container knowledge-engine-gates-run-d5324bbb1faf Created 
+lo
+   Building monitored-harness @ file:///work
+      Built monitored-harness @ file:///work
+Uninstalled 1 package in 0.76ms
+Installed 1 package in 0.86ms
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+### 3b. Installed provider = [shape, InMemory spy]; full startup(); hosts dialled by the shape
+passing ci   OTLP local trust_env False (control, accepted)   startup OK                   spans=5 dialled=['localhost']
+passing ci   OTLP local trust_env False + session.proxies     startup OK                   spans=5 dialled=['evil.example']
+passing ci   OTLP local trust_env False + rerouting adapter   startup OK                   spans=5 dialled=['evil.example']
+passing ci   OTLP evil, _endpoint rewritten to localhost      startup OK                   spans=5 dialled=['evil.example']
+auth off ci  OTLP local trust_env False (control, accepted)   refused auth.enabled         spans=3 dialled=['localhost']
+auth off ci  OTLP local trust_env False + session.proxies     refused auth.enabled         spans=3 dialled=['evil.example']
+auth off ci  OTLP local trust_env False + rerouting adapter   refused auth.enabled         spans=3 dialled=['evil.example']
+auth off ci  OTLP evil, _endpoint rewritten to localhost      refused auth.enabled         spans=3 dialled=['evil.example']
+### 5b. corrected math bold
+math bold changeme: refused

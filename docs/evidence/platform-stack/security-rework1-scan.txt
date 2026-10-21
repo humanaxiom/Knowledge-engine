@@ -1,0 +1,166 @@
+# security re-audit rework 1: raw output (scratch project ke-sec-r1-24255, torn down with volumes)
+
+## R1 M5 forgery shapes (ke-gates, network none)
+control                      off   STARTED                                foreign_spans=0 installed=ProxyTracerProvider
+proxy_subclass               off   REFUSED(telemetry.tracing)             foreign_spans=0 installed=P
+proxy_subclass_installed     off   REFUSED(telemetry.tracing)             foreign_spans=0 installed=P
+decoy_eq_hash                off   REFUSED(telemetry.tracing)             foreign_spans=0 installed=D
+ignored_set                  off   STARTED                                foreign_spans=0 installed=ProxyTracerProvider
+ignored_set_foreign_get      off   REFUSED(telemetry.tracing)             foreign_spans=0 installed=TracerProvider
+dunder_class                 off   REFUSED(telemetry.tracing)             foreign_spans=0 installed=C
+late_swap                    off   STARTED                                foreign_spans=1 installed=TracerProvider
+Failed to export spans batch due to timeout, max retries or shutdown.
+proxy_subclass               otlp  REFUSED(telemetry.tracing)             foreign_spans=0 installed=P
+proxy_subclass_installed     otlp  REFUSED(telemetry.tracing)             foreign_spans=0 installed=P
+decoy_eq_hash                otlp  REFUSED(telemetry.tracing)             foreign_spans=0 installed=D
+ignored_set                  otlp  REFUSED(telemetry.tracing)             foreign_spans=0 installed=ProxyTracerProvider
+ignored_set_foreign_get      otlp  REFUSED(telemetry.tracing)             foreign_spans=0 installed=TracerProvider
+dunder_class                 otlp  REFUSED(telemetry.tracing)             foreign_spans=0 installed=C
+Failed to export spans batch due to timeout, max retries or shutdown.
+control                      otlp  STARTED                                foreign_spans=0 installed=TracerProvider
+late_swap                    otlp  STARTED                                foreign_spans=1 installed=TracerProvider
+
+## R2 M-2 host-network listener 0.0.0.0:47199, probes from backend containers
+backend network: Options gateway_mode_ipv4=isolated, internal=true, IPAM 198.18.80.0/24 ip_range 198.18.80.128/25, no Gateway key
+containers .128-.134; host netns: no interface address in 198.18.80.0/24
+api and worker (identical):
+  198.18.80.1 TIMEOUT | 198.18.80.0 TIMEOUT | 198.18.80.127 TIMEOUT | 198.18.80.255 ENETUNREACH
+  172.17.0.1 / 192.168.65.3 / 192.168.65.6 / 192.168.65.254 / 192.168.80.1 (edge gw) ENETUNREACH
+  host.docker.internal: no resolve; route table: only 198.18.80.0/24 on eth0, no default
+gateway (edge+backend, control): 172.17.0.1, 192.168.65.3, 192.168.80.1 -> HOSTNET-HIT; 198.18.80.1 fail
+controls (scratch networks ke-sec-r1-ctl*, removed):
+  internal, auto pool (gw 192.168.96.1)                -> gw OPEN HOSTNET-HIT   (M-2 reproduced)
+  internal, subnet + explicit gateway .1               -> .1 OPEN HOSTNET-HIT
+  internal, subnet + ip_range .128/25, no isolated     -> gw placed at .128; .1 TIMEOUT, .128 OPEN HOSTNET-HIT
+  internal + isolated, subnet + ip_range               -> .1 TIMEOUT, nothing host-side
+  isolated on non-internal network                     -> daemon error: isolated only for internal
+  second network on 198.18.80.0/24 while stack up      -> "Pool overlaps with other one on this address space"
+
+## R3 gateway upstream check (standalone ke-gateway, network none, KE_ENV=prod)
+control-empty                      running exit=0   /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh      default "";     listen 8102; 0.0.0.0:8100 0.0.0.0:8101 0.0.0.0:8102 
+off-allowlist                      exited exit=1    /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh error: KE_MODEL_UPSTREAM host is not on KE_EGRESS_ALLOWLIST; refusing to start  
+on-allowlist                       running exit=0   /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh      default "one.one.one.one:80";     listen 8102; 0.0.0.0:8102 0.0.0.0:8100 0.0.0.0:8101 
+case-upper-up                      running exit=0   /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh      default "ONE.one.one.one:80";     listen 8102; 0.0.0.0:8101 0.0.0.0:8100 0.0.0.0:8102 
+case-upper-allow                   running exit=0   /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh      default "one.one.one.one:80";     listen 8102; 0.0.0.0:8102 0.0.0.0:8101 0.0.0.0:8100 
+trailing-dot-up                    exited exit=1    /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh error: KE_MODEL_UPSTREAM has a malformed host; refusing to start  
+trailing-dot-allow                 exited exit=1    /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh error: KE_MODEL_UPSTREAM host is not on KE_EGRESS_ALLOWLIST; refusing to start  
+ip-vs-name                         exited exit=1    /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh error: KE_MODEL_UPSTREAM host is not on KE_EGRESS_ALLOWLIST; refusing to start  
+ip-on-list                         running exit=0   /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh      default "1.1.1.1:80";     listen 8102; 0.0.0.0:8102 0.0.0.0:8100 0.0.0.0:8101 
+decimal-ip                         running exit=0   /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh      default "16843009:80";     listen 8102; 0.0.0.0:8102 0.0.0.0:8100 0.0.0.0:8101 
+hex-ip                             running exit=0   /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh      default "0x01010101:80";     listen 8102; 0.0.0.0:8102 0.0.0.0:8101 0.0.0.0:8100 
+short-ip                           running exit=0   /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh      default "1.1:80";     listen 8102; 0.0.0.0:8102 0.0.0.0:8100 0.0.0.0:8101 
+allow-space                        running exit=0   /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh      default "one.one.one.one:80";     listen 8102; 0.0.0.0:8101 0.0.0.0:8100 0.0.0.0:8102 
+allow-wildcard                     exited exit=1    /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh error: KE_MODEL_UPSTREAM host is not on KE_EGRESS_ALLOWLIST; refusing to start  
+allow-suffix                       exited exit=1    /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh error: KE_MODEL_UPSTREAM host is not on KE_EGRESS_ALLOWLIST; refusing to start  
+ipv6                               exited exit=1    /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh error: KE_MODEL_UPSTREAM is not a plain host:port; refusing to start  
+inject-quote                       exited exit=1    /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh error: KE_MODEL_UPSTREAM is not a plain host:port; refusing to start  
+inject-newline-semicolon           exited exit=1    /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh error: KE_MODEL_UPSTREAM is not a plain host:port; refusing to start  
+port-zero                          exited exit=1    /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh error: KE_MODEL_UPSTREAM has an invalid port; refusing to start  
+port-big                           exited exit=1    /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh error: KE_MODEL_UPSTREAM has an invalid port; refusing to start  
+port-leading-zero                  exited exit=1    /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh error: KE_MODEL_UPSTREAM has an invalid port; refusing to start  
+no-port                            exited exit=1    /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh error: KE_MODEL_UPSTREAM has no port; refusing to start  
+two-ports                          exited exit=1    /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh error: KE_MODEL_UPSTREAM has more than one port; refusing to start  
+model-listen-inject                exited exit=1    /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh error: KE_MODEL_UPSTREAM is not a plain host:port; refusing to start  
+api-port-inject                    exited exit=1    /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh error: KE_MODEL_UPSTREAM is not a plain host:port; refusing to start  
+phoenix-port-inject                exited exit=1    /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh error: KE_MODEL_UPSTREAM is not a plain host:port; refusing to start  
+api-listen-inject                  exited exit=1    /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh error: KE_MODEL_UPSTREAM is not a plain host:port; refusing to start  
+model-listen-inject|||KE_GATEWAY_MODEL_LISTEN|8102; } server { listen 9999; proxy_pass 1.1.1.1:80; } server { listen 9998 running exit=0   /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh      default "";     listen 8102; 0.0.0.0:8101 0.0.0.0:8100 0.0.0.0:8102 
+model-listen-inject-w-allowed|one.one.one.one:80|one.one.one.one|KE_GATEWAY_MODEL_LISTEN|8102; } server { listen 9999; proxy_pass 1.1.1.1:80; } server { listen 9998 running exit=0   /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh      default "";     listen 8102; 0.0.0.0:8102 0.0.0.0:8100 0.0.0.0:8101 
+api-port-inject|||KE_API__LISTEN_PORT|8080; } location /x { proxy_pass http://1.1.1.1:80; } location /y { set $a 1 running exit=0   /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh      default "";     listen 8102; 0.0.0.0:8102 0.0.0.0:8100 0.0.0.0:8101 
+phoenix-port-inject|||PHOENIX_PORT|6006; } location /x { proxy_pass http://1.1.1.1:80; } location /y { set $a 1 running exit=0   /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh      default "";     listen 8102; 0.0.0.0:8101 0.0.0.0:8100 0.0.0.0:8102 
+api-listen-inject|||KE_GATEWAY_API_LISTEN|8100; location /x { proxy_pass http://1.1.1.1:80; } running exit=0   /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh      default "";     listen 8102; 0.0.0.0:8102 0.0.0.0:8101 0.0.0.0:8100 
+phoenix-listen-inject|||KE_GATEWAY_PHOENIX_LISTEN|8101; location /x { proxy_pass http://1.1.1.1:80; } running exit=0   /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh      default "";     listen 8102; 0.0.0.0:8102 0.0.0.0:8101 0.0.0.0:8100 
+control-empty                      running exit=0   /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh      default "";     listen 8102; 0.0.0.0:8102 0.0.0.0:8101 0.0.0.0:8100 
+model-listen-inject                running exit=0   /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh      default "";     listen 8102; } server { listen 9999; proxy_pass 1.1.1.1:80; } server { listen 9998; 0.0.0.0:8101 0.0.0.0:8100 0.0.0.0:8102 0.0.0.0:9999 0.0.0.0:9998 
+model-listen-inject-w-allowed      running exit=0   /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh      default "one.one.one.one:80";     listen 8102; } server { listen 9999; proxy_pass 1.1.1.1:80; } server { listen 9998; 0.0.0.0:9999 0.0.0.0:9998 0.0.0.0:8102 0.0.0.0:8101 0.0.0.0:8100 
+api-port-inject                    running exit=0   /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh      default "";     listen 8102; 0.0.0.0:8102 0.0.0.0:8101 0.0.0.0:8100 
+phoenix-port-inject                running exit=0   /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh      default "";     listen 8102; 0.0.0.0:8102 0.0.0.0:8101 0.0.0.0:8100 
+api-listen-inject                  exited exit=1    /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh 2026/10/19 03:47:13 [emerg] 1#1: unexpected ";" in /etc/nginx/conf.d/api.conf:4 nginx: [emerg] unexpected ";" in /etc/nginx/conf.d/api.conf:4  
+phoenix-listen-inject              exited exit=1    /docker-entrypoint.sh: Launching /docker-entrypoint.d/11-ke-upstream-check.sh 2026/10/19 03:47:15 [emerg] 1#1: unexpected ";" in /etc/nginx/conf.d/phoenix.conf:9 nginx: [emerg] unexpected ";" in /etc/nginx/conf.d/phoenix.conf:9  
+
+## R3b injection demo (scratch network ke-sec-r1-net, removed)
+KE_GATEWAY_MODEL_LISTEN + KE_API__LISTEN_PORT payloads, KE_MODEL_UPSTREAM empty: gateway running; api.conf line 14 carries injected 'location /x { proxy_pass http://1.1.1.1:80; }'; GET :8100/x -> HTTP/1.1 301 from 1.1.1.1
+
+## R4 launch.sh vs real compose config (docker shim intercepts only 'up' and faked 'version')
+colon_bind       rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) 
+comment_dev      rc=0 SHIM: WOULD-UP  warning: KE_BIND_ADDRESS is not loopback; the stack will be published beyond this host without authentication (dev only) 
+crlf             rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) 
+dev_lan          rc=0 SHIM: WOULD-UP  warning: KE_BIND_ADDRESS is not loopback; the stack will be published beyond this host without authentication (dev only) 
+dup_last         rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) 
+empty_bind_prod  rc=0 SHIM: WOULD-UP  
+empty_env        rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) 
+export_bind      rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) 
+export_env       rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) 
+missing_env      rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) 
+prod_ipv6        rc=1 error: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) 
+prod_lan_ip      rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) 
+prod_lo          rc=0 SHIM: WOULD-UP  
+prod_lo2         rc=0 SHIM: WOULD-UP  
+quoted_dev       rc=0 SHIM: WOULD-UP  warning: KE_BIND_ADDRESS is not loopback; the stack will be published beyond this host without authentication (dev only) 
+spaced_bind      rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) 
+spaced_dev       rc=0 SHIM: WOULD-UP  warning: KE_BIND_ADDRESS is not loopback; the stack will be published beyond this host without authentication (dev only) 
+upper_dev        rc=1 error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) 
+--- process env override
+error: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands)
+SHIM: WOULD-UP (compose --env-file <scratch>
+warning: KE_BIND_ADDRESS is not loopback; the stack will be published beyond thi
+--- engine versions
+engine='27.5.1'       error: Docker Engine >= 28 is required (found: 27.5.1)
+
+engine='27.99.99'     error: Docker Engine >= 28 is required (found: 27.99.99)
+
+engine='28.0.0'       SHIM: WOULD-UP (compose --env-file <scratch>
+
+engine='28.0.0-rc.1'  SHIM: WOULD-UP (compose --env-file <scratch>
+
+engine='29.5.2'       SHIM: WOULD-UP (compose --env-file <scratch>
+
+engine=''             SHIM: WOULD-UP (compose --env-file <scratch>
+
+engine='9.9'          error: Docker Engine >= 28 is required (found: 9.9)
+
+engine='100.0'        SHIM: WOULD-UP (compose --env-file <scratch>
+
+engine='garbage'      SHIM: WOULD-UP (compose --env-file <scratch>
+
+engine=' 27.1.1'      SHIM: WOULD-UP (compose --env-file <scratch>
+
+## R4b launch.ps1 (host pwsh 7.6.7, docker function shim; EXC = terminating Write-Error, up not reached; rc=0 is the harness catch)
+colon_bind       EXC: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) rc=0 
+comment_dev      WARNING: KE_BIND_ADDRESS is not loopback; the stack will be published beyond this host without authentication (dev only) SHIM: WOULD-UP rc=0 
+crlf             EXC: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) rc=0 
+dev_lan          WARNING: KE_BIND_ADDRESS is not loopback; the stack will be published beyond this host without authentication (dev only) SHIM: WOULD-UP rc=0 
+dup_last         EXC: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) rc=0 
+empty_bind_prod  SHIM: WOULD-UP rc=0 
+empty_env        EXC: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) rc=0 
+export_bind      EXC: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) rc=0 
+export_env       EXC: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) rc=0 
+missing_env      EXC: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) rc=0 
+prod_ipv6        EXC: KE_BIND_ADDRESS is not an IPv4 address (IPv6 is not supported) rc=0 
+prod_lan_ip      EXC: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) rc=0 
+prod_lo          SHIM: WOULD-UP rc=0 
+prod_lo2         SHIM: WOULD-UP rc=0 
+quoted_dev       WARNING: KE_BIND_ADDRESS is not loopback; the stack will be published beyond this host without authentication (dev only) SHIM: WOULD-UP rc=0 
+spaced_bind      EXC: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) rc=0 
+spaced_dev       WARNING: KE_BIND_ADDRESS is not loopback; the stack will be published beyond this host without authentication (dev only) SHIM: WOULD-UP rc=0 
+upper_dev        EXC: KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands) rc=0 
+engine='27.5.1'   EXC: Docker Engine >= 28 is required (found: 27.5.1) rc=0 
+engine='28.0.0'   SHIM: WOULD-UP rc=0 
+engine=''         SHIM: WOULD-UP rc=0 
+engine='garbage'  EXC: Docker Engine >= 28 is required (found: garbage) rc=0 
+
+## R5 gates image tools
+GitHub API v7.4.21 asset digests: linux-x64 sha256:3fc5e156...c0eb, linux-arm64 sha256:d0c216ce...d6f6, both equal the Dockerfile ARGs; uploader jshigetomi (PowerShell team), published 2026-10-13
+in image: shellcheck 0.9.0-1 (Debian apt), PSScriptAnalyzer 1.25.0 at /usr/local/share/powershell/Modules, runs as uid 0
+
+## R5b lint.sh filename probe (scratch copy in container tmp, repo mounted ro)
+a.ps1
+lint.sh
+x’; New-Item -Path PWNED-smartquote -ItemType File | Out-Null; ’.ps1
+y'; New-Item -Path PWNED-ascii -ItemType File | Out-Null; '.ps1
+lint rc=1
+<tmpdir>/PWNED-smartquote
+
+## R6 secret and profile-path scan over git diff d26bec6 + untracked (18752 lines)
+secret patterns: only windows-proof.txt lines with <redacted> placeholders; no keys, tokens, private keys or credentialed URLs
+profile paths (C:\Users, /c/Users, AppData, /home/<user>): none (L-4 closed)

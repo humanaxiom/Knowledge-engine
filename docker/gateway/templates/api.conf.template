@@ -1,0 +1,19 @@
+# Published as KE_API_PORT. Proxies the api service; the gateway's own
+# /_gateway/healthz answers without it.
+server {
+    listen ${KE_GATEWAY_API_LISTEN};
+    resolver ${NGINX_LOCAL_RESOLVERS} valid=10s ipv6=off;
+
+    location = /_gateway/healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    location / {
+        set $ke_api_upstream http://api:${KE_API__LISTEN_PORT};
+        proxy_pass $ke_api_upstream;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+    }
+}

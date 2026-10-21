@@ -1,0 +1,52 @@
+# review-rework5 raw output (reviewer, 2026-10-18)
+Image: knowledge-engine-gates:latest, --network none, KE_IN_GATES=1. Scratch copy of the repo (.venv, .git, __pycache__ excluded); repo scripts never edited.
+
+## 1. N19 pipeline reproduction (fake test.sh: sentinel, Ran 1 test, OK, then KB of output; 10 runs each)
+new = working-tree verify.sh (grep -Pq on the file); old = same file with the rework-4 tr|grep -Eq pipeline restored
+new 60KB fails=0/10
+new 70KB fails=0/10
+new 100KB fails=0/10
+new 200KB fails=0/10
+new 1024KB fails=0/10
+old 60KB fails=0/10
+old 70KB fails=0/10
+old 100KB fails=2/10
+old 200KB fails=10/10
+old 1024KB fails=10/10
+grep (GNU grep) 3.8, LANG=C.UTF-8 (image)
+
+## 2. Sentinel pattern probes (pattern extracted from verify.sh)
+image grep 3.8          | host Git Bash grep 3.0
+plain: MATCH            | MATCH
+crlf: MATCH             | MATCH
+prefix: nomatch rc=1    | nomatch rc=1
+suffix: nomatch rc=1    | nomatch rc=1
+suffix_cr_cr: nomatch   | MATCH   (host grep 3.0 text-mode CR handling; outside the image, fails open only by one extra CR)
+literal_r: nomatch rc=1 | nomatch rc=1
+invalid_utf8 before: MATCH | MATCH
+nul before: MATCH       | MATCH
+latin1 after: MATCH     | MATCH
+
+## 3. Mutants (python -m unittest tests.test_harness_followups.VerifyRequiresTestsRunTest, 11 tests)
+k0 baseline: rc=0, Ran 11, OK
+k1 class renamed in tests/test_sentinel.py only: rc=1, ERROR test_sentinel_line_is_the_exact_full_line; verify fast on the copy: FAIL (test.sh exited non-zero)
+k2 class renamed in module AND verify.sh pattern: rc=1, failures=15 errors=1 (N21 ERROR + every fake-sentinel test)
+k3 verify.sh pattern class name changed only: rc=1, failures=16
+k4 method renamed in module only: rc=1, ERROR test_sentinel_line_is_the_exact_full_line
+k5 end anchor and \r? dropped: rc=1, FAIL test_sentinel_line_is_the_exact_full_line
+k5b only $ dropped: rc=1, FAIL test_sentinel_line_is_the_exact_full_line
+k6 start anchor dropped: rc=1, FAIL test_sentinel_line_is_the_exact_full_line
+k7 sentinel module moved to tests/sub/: rc=1, ERROR test_sentinel_line_is_the_exact_full_line
+k8 rework-4 tr|grep -Eq pipeline restored: rc=1, failures=10 (all test_sentinel_followed_by_large_output_passes subtests)
+k9 grep -Pq -> grep -Eq (same pattern): rc=0, OK  <- survives (N22: the \r? CRLF branch is untested)
+
+## 4. Reviewer's own scripts/verify.sh full (host, re-execs into gates), tail
+
+----------------------------------------------------------------------
+Ran 98 tests in 16.133s
+
+OK
+Based on the graph, Project X needs Component Y.
+smoke: pass (4 spans exported)
+== verify full: PASS ==
+rc=0; 98 lines ending ' ... ok'; no skipped / expected failure lines

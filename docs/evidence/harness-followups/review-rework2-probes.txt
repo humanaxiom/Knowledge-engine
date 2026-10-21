@@ -1,0 +1,47 @@
+# Reviewer rework-2 edge-case probes of scripts/test.sh (sha256 057e4682...), run in the gates image with a fake uv. counts = label: times run.
+a
+  fast: rc=0 counts=[ 1 foo, 1 top,] 
+b
+  fast: rc=1 counts=[] error: tests/unit contains test*.py but has no __init__.py; its tests would be skipped
+c
+  fast: rc=0 counts=[ 1 top,] 
+d
+  fast: rc=1 counts=[] error: no top-level unit tests in tests/
+e
+  full: rc=1 counts=[ 1 top,] 
+  fast: rc=0 counts=[ 1 top,] 
+f
+  fast: rc=1 counts=[ 1 top,] 
+g
+  fast: rc=0 counts=[ 1 ab, 1 top,] 
+h
+  full: rc=1 counts=[] error: tests/integration contains test*.py but has no __init__.py; its tests would be skipped
+i
+  fast: rc=0 counts=[ 1 deep, 1 top,] 
+  full: rc=0 counts=[ 1 deep, 1 top,] 
+j
+  fast: rc=1 counts=[] error: tests/unit/loose contains test*.py but has no __init__.py; its tests would be skipped
+k
+  fast: rc=5 counts=[ 1 top,] NO TESTS RAN
+l
+  fast: rc=0 counts=[ 1 top, 1 u,] 
+  full: rc=0 counts=[ 1 integ, 1 top, 1 u,] 
+m
+  full: rc=0 counts=[ 1 integdeep, 1 top,] 
+  fast: rc=0 counts=[ 1 top,] 
+n
+  fast: rc=0 counts=[ 1 sp, 1 top,] 
+o
+  fast: rc=1 counts=[] error: tests/integration contains test*.py but has no __init__.py; its tests would be skipped
+p_initmissing_in_integration_nested
+  fast: rc=1 counts=[] error: tests/integration/sub contains test*.py but has no __init__.py; its tests would be skipped
+q_pycache_testfile
+  fast: rc=0 counts=[ 1 top,] 
+r_dir_named_test_py
+  fast: rc=0 counts=[ 1 top, 1 u,] 
+s_hidden_dir
+  fast: rc=1 counts=[] error: tests/.cache contains test*.py but has no __init__.py; its tests would be skipped
+t_symlink_pkg
+  fast: rc=0 counts=[ 1 top,] 
+u_toplevel_sub_shadow
+  fast: rc=0 counts=[ 1 top, 1 usame,] 

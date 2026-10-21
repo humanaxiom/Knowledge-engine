@@ -1,0 +1,189 @@
+# pins-d1b mutants (tester, 2026-10-19): security L-D1b pins + audit I-1 F6 variant
+# Scratch copy of the working tree: <scratch>/pins-d1b/base; each mutant = base + one script edit; scripts/ in the repo untouched.
+# Runner (run.sh): throwaway ke-gates container, --network none --read-only --user 10001:10001 --cap-drop ALL, copy mounted ro, python -m unittest <ids>.
+# Bundle mutants run the 4 new BundleScriptTest tests; install mutants run InstallShTest+InstallPs1Test test_install_target_modes_ignore_build_host_umask.
+
+## base
+(control, unmutated)
+--- result:
+Ran 4 tests in 2.049s
+OK
+
+## J1
+51,52d50
+< command -v jq > /dev/null 2>&1 \
+<   || die "jq is required on the build host (it reads the resolved compose model); install it first (for example apt-get install jq, brew install jq)"
+--- result:
+Ran 4 tests in 2.357s
+FAILED (failures=1)
+FAIL: test_bundle_refuses_without_jq_before_any_docker_call
+AssertionError: Lists differ: [['info', '--format', '{{.Architecture}}'][192 chars]on']] != []
+
+## J2
+51,52d50
+< command -v jq > /dev/null 2>&1 \
+<   || die "jq is required on the build host (it reads the resolved compose model); install it first (for example apt-get install jq, brew install jq)"
+105a104
+> command -v jq > /dev/null 2>&1 || die "jq is required on the build host"
+--- result:
+Ran 4 tests in 2.061s
+FAILED (failures=1)
+FAIL: test_bundle_refuses_without_jq_before_any_docker_call
+AssertionError: Lists differ: [['info', '--format', '{{.Architecture}}']] != []
+
+## C1
+122c122
+< model="$("${compose[@]}" config --format json)" || die "docker compose config --format json failed"
+---
+> model="$("${compose[@]}" config --format json)" || true
+--- result:
+Ran 4 tests in 2.454s
+FAILED (failures=1)
+FAIL: test_bundle_refuses_when_compose_json_model_fails (case='prints a model, then exits 3')
+AssertionError: 0 == 0 : bundle.sh passed:
+
+## C2
+122,123c122
+< model="$("${compose[@]}" config --format json)" || die "docker compose config --format json failed"
+< [ -n "$model" ] || die "docker compose config --format json printed nothing"
+---
+> model="$("${compose[@]}" config --format json)" || true
+--- result:
+Ran 4 tests in 2.516s
+FAILED (failures=2)
+FAIL: test_bundle_refuses_when_compose_json_model_fails (case='prints a model, then exits 3')
+FAIL: test_bundle_refuses_empty_json_model (model='no output')
+AssertionError: 0 == 0 : bundle.sh passed:
+AssertionError: 'config --format json printed nothing' not found in 'bundle: service api has no image\n'
+
+## N1
+129c129
+<   ref="$(printf '%s' "$model" | jq -er --arg s "$svc" '.services[$s].image')" \
+---
+>   ref="$(printf '%s' "$model" | jq -r --arg s "$svc" '.services[$s].image')" \
+--- result:
+Ran 4 tests in 2.540s
+FAILED (failures=5)
+FAIL: test_bundle_refuses_service_without_image_in_model (image='absent', service='worker')
+FAIL: test_bundle_refuses_service_without_image_in_model (image='null', service='valkey')
+FAIL: test_bundle_refuses_empty_json_model (model='{}')
+FAIL: test_bundle_refuses_empty_json_model (model='no services')
+FAIL: test_bundle_refuses_empty_json_model (model='null')
+AssertionError: 'service worker has no image' not found in 'bundle: image null has no digest pin and is not a first-party ke-* image\n' : the refusal must name the service with no image
+AssertionError: 'service valkey has no image' not found in 'bundle: image null has no digest pin and is not a first-party ke-* image\n' : the refusal must name the service with no image
+AssertionError: 'service api has no image' not found in 'bundle: image null has no digest pin and is not a first-party ke-* image\n'
+AssertionError: 'service api has no image' not found in 'bundle: image null has no digest pin and is not a first-party ke-* image\n'
+AssertionError: 'service api has no image' not found in 'bundle: image null has no digest pin and is not a first-party ke-* image\n'
+
+## N2
+130c130
+<     || die "service $svc has no image in the resolved compose model"
+---
+>     || true
+--- result:
+Ran 4 tests in 2.248s
+FAILED (failures=5)
+FAIL: test_bundle_refuses_service_without_image_in_model (image='absent', service='worker')
+FAIL: test_bundle_refuses_service_without_image_in_model (image='null', service='valkey')
+FAIL: test_bundle_refuses_empty_json_model (model='{}')
+FAIL: test_bundle_refuses_empty_json_model (model='no services')
+FAIL: test_bundle_refuses_empty_json_model (model='null')
+AssertionError: 'service worker has no image' not found in 'bundle: image null has no digest pin and is not a first-party ke-* image\n' : the refusal must name the service with no image
+AssertionError: 'service valkey has no image' not found in 'bundle: image null has no digest pin and is not a first-party ke-* image\n' : the refusal must name the service with no image
+AssertionError: 'service api has no image' not found in 'bundle: image null has no digest pin and is not a first-party ke-* image\n'
+AssertionError: 'service api has no image' not found in 'bundle: image null has no digest pin and is not a first-party ke-* image\n'
+AssertionError: 'service api has no image' not found in 'bundle: image null has no digest pin and is not a first-party ke-* image\n'
+
+## N3
+131d130
+<   [ -n "$ref" ] || die "service $svc has no image"
+--- result:
+Ran 4 tests in 2.066s
+FAILED (failures=1)
+FAIL: test_bundle_refuses_service_without_image_in_model (image='empty', service='gateway')
+AssertionError: 'service gateway has no image' not found in 'bundle: image reference fails its pattern (service gateway)\n' : the refusal must name the service with no image
+
+## E1
+123d122
+< [ -n "$model" ] || die "docker compose config --format json printed nothing"
+--- result:
+Ran 4 tests in 2.139s
+FAILED (failures=1)
+FAIL: test_bundle_refuses_empty_json_model (model='no output')
+AssertionError: 'config --format json printed nothing' not found in 'bundle: service api has no image\n'
+
+## M2d
+639c639
+<   find app -type d -exec chmod 0755 {} + || die "cannot set the staged directory modes"
+---
+>   : # mutant
+--- result:
+Ran 2 tests in 7.282s
+FAILED (failures=3)
+FAIL: test_install_target_modes_ignore_build_host_umask (bundle='umask0002', install_umask='0o2')
+FAIL: test_install_target_modes_ignore_build_host_umask (bundle='umask0077', install_umask='0o2')
+FAIL: test_install_target_modes_ignore_build_host_umask (bundle='umask0077', install_umask='0o22')
+AssertionError: Lists differ: ['config: 0o775 (want 0o755)', 'docs: 0o77[42 chars]55)'] != []
+AssertionError: Lists differ: ['config: 0o700 (want 0o755)', 'docs: 0o70[42 chars]55)'] != []
+AssertionError: Lists differ: ['config: 0o700 (want 0o755)', 'docs: 0o70[42 chars]55)'] != []
+
+## M2f
+640c640
+<   find app -type f -exec chmod 0644 {} + || die "cannot set the staged file modes"
+---
+>   : # mutant
+--- result:
+Ran 2 tests in 7.269s
+FAILED (failures=5)
+FAIL: test_install_target_modes_ignore_build_host_umask (bundle='umask0002', install_umask='0o2')
+FAIL: test_install_target_modes_ignore_build_host_umask (bundle='ntfs', install_umask='0o2')
+FAIL: test_install_target_modes_ignore_build_host_umask (bundle='ntfs', install_umask='0o22')
+FAIL: test_install_target_modes_ignore_build_host_umask (bundle='umask0077', install_umask='0o2')
+FAIL: test_install_target_modes_ignore_build_host_umask (bundle='umask0077', install_umask='0o22')
+AssertionError: Lists differ: ['.env.example: 0o664 (want 0o644)', 'conf[117 chars]44)'] != []
+AssertionError: Lists differ: ['.env.example: 0o755 (want 0o644)', 'conf[117 chars]44)'] != []
+AssertionError: Lists differ: ['.env.example: 0o755 (want 0o644)', 'conf[117 chars]44)'] != []
+AssertionError: Lists differ: ['.env.example: 0o600 (want 0o644)', 'conf[117 chars]44)'] != []
+AssertionError: Lists differ: ['.env.example: 0o600 (want 0o644)', 'conf[117 chars]44)'] != []
+
+## M2s
+642c642
+<     find app/scripts -type f -exec chmod 0755 {} + || die "cannot set the staged script modes"
+---
+>     : # mutant
+--- result:
+Ran 2 tests in 7.321s
+FAILED (failures=6)
+FAIL: test_install_target_modes_ignore_build_host_umask (bundle='umask0002', install_umask='0o2')
+FAIL: test_install_target_modes_ignore_build_host_umask (bundle='umask0002', install_umask='0o22')
+FAIL: test_install_target_modes_ignore_build_host_umask (bundle='ntfs', install_umask='0o2')
+FAIL: test_install_target_modes_ignore_build_host_umask (bundle='ntfs', install_umask='0o22')
+FAIL: test_install_target_modes_ignore_build_host_umask (bundle='umask0077', install_umask='0o2')
+FAIL: test_install_target_modes_ignore_build_host_umask (bundle='umask0077', install_umask='0o22')
+AssertionError: Lists differ: ['scripts/launch.sh: 0o644 (want 0o755)', [37 chars]55)'] != []
+AssertionError: Lists differ: ['scripts/launch.sh: 0o644 (want 0o755)', [37 chars]55)'] != []
+AssertionError: Lists differ: ['scripts/launch.sh: 0o644 (want 0o755)', [37 chars]55)'] != []
+AssertionError: Lists differ: ['scripts/launch.sh: 0o644 (want 0o755)', [37 chars]55)'] != []
+AssertionError: Lists differ: ['scripts/launch.sh: 0o644 (want 0o755)', [37 chars]55)'] != []
+AssertionError: Lists differ: ['scripts/launch.sh: 0o644 (want 0o755)', [37 chars]55)'] != []
+
+## M3
+757c757
+<         foreach ($modeEntry in @(Get-BundleEntry $appDir)) {
+---
+>         foreach ($modeEntry in @()) {
+--- result:
+Ran 2 tests in 7.133s
+FAILED (failures=6)
+FAIL: test_install_target_modes_ignore_build_host_umask (bundle='umask0002', install_umask='0o2')
+FAIL: test_install_target_modes_ignore_build_host_umask (bundle='umask0002', install_umask='0o22')
+FAIL: test_install_target_modes_ignore_build_host_umask (bundle='ntfs', install_umask='0o2')
+FAIL: test_install_target_modes_ignore_build_host_umask (bundle='ntfs', install_umask='0o22')
+FAIL: test_install_target_modes_ignore_build_host_umask (bundle='umask0077', install_umask='0o2')
+FAIL: test_install_target_modes_ignore_build_host_umask (bundle='umask0077', install_umask='0o22')
+AssertionError: Lists differ: ['.env.example: 0o664 (want 0o644)', 'conf[290 chars]55)'] != []
+AssertionError: Lists differ: ['.env.example: 0o664 (want 0o644)', 'conf[201 chars]55)'] != []
+AssertionError: Lists differ: ['.env.example: 0o755 (want 0o644)', 'conf[206 chars]55)'] != []
+AssertionError: Lists differ: ['.env.example: 0o755 (want 0o644)', 'conf[117 chars]44)'] != []
+AssertionError: Lists differ: ['.env.example: 0o600 (want 0o644)', 'conf[290 chars]55)'] != []
+AssertionError: Lists differ: ['.env.example: 0o600 (want 0o644)', 'conf[201 chars]55)'] != []

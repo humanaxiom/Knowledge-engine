@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# Security audit (ci-speed rework 4): round-3 adversarial fixtures plus new
+# bypass attempts against the hardened resource_probe.sh. Gates image, scratch
+# copy at /w, fake roots under /tmp.
+P=/w/resource_probe.sh
+T=/tmp/pe; rm -rf "$T"; mkdir -p "$T"
+bash --version | head -1; id
+SHAPE='^resources: phase=(start|end|n/a)( [a-z_]+=([0-9]+|max|n/a))+$'
+mk() { local r="$T/$1"; mkdir -p "$r/sys/fs/cgroup" "$r/proc/pressure"
+  printf '200000 100000\n' >"$r/sys/fs/cgroup/cpu.max"
+  printf 'usage_usec 1\nthrottled_usec 2\n' >"$r/sys/fs/cgroup/cpu.stat"
+  printf 'MemTotal: 3 kB\nMemAvailable: 4 kB\nSwapTotal: 5 kB\nSwapFree: 6 kB\n' >"$r/proc/meminfo"
+  printf 'max\n' >"$r/sys/fs/cgroup/memory.max"; printf '7\n' >"$r/sys/fs/cgroup/memory.peak"
+  for f in cpu memory io; do printf 'some avg10=0 total=8\nfull avg10=0 total=9\n' >"$r/proc/pressure/$f"; done
+  printf 'cpu  1 2 3 4 5 6 7 8 9 10\n' >"$r/proc/stat"; echo "$r"; }
+SRCS="sys/fs/cgroup/cpu.max sys/fs/cgroup/cpu.stat proc/meminfo sys/fs/cgroup/memory.max sys/fs/cgroup/memory.peak proc/pressure/cpu proc/pressure/memory proc/pressure/io proc/stat"
+run() { local label="$1" to="$2"; shift 2; local out rc s e
+  s=$(date +%s.%N); out="$(timeout "$to" bash "$P" "$@" 2>&1)"; rc=$?; e=$(date +%s.%N)
+  printf '== %s: rc=%s wall=%.2fs\n%s\n' "$label" "$rc" "$(echo "$e - $s" | bc 2>/dev/null || python3 -c "print($e-$s)")" "$out"
+  if [ "$rc" -eq 0 ] && ! grep -Eq "$SHAPE" <<<"$out"; then echo "!! SHAPE VIOLATION"; fi; }
+echo "### S5: FIFO, device, huge"
+r=$(mk real); run "control" 10 start "$r"
+r=$(mk fifo); rm "$r/sys/fs/cgroup/cpu.max"; mkfifo "$r/sys/fs/cgroup/cpu.max"; run "FIFO cpu.max" 10 start "$r"
+r=$(mk fifoall); for f in $SRCS; do rm "$r/$f"; mkfifo "$r/$f"; done; run "FIFO every source" 10 start "$r"
+r=$(mk zero); ln -sf /dev/zero "$r/proc/stat"; run "/dev/zero symlink proc/stat" 10 start "$r"
+r=$(mk urand); ln -sf /dev/urandom "$r/proc/meminfo"; run "/dev/urandom symlink meminfo" 10 start "$r"
+r=$(mk dir); rm "$r/proc/meminfo"; mkdir "$r/proc/meminfo"; run "directory meminfo" 10 start "$r"
+r=$(mk huge); head -c 200000000 /dev/zero | tr '\0' 'a' >"$r/proc/meminfo"; run "200 MB single line meminfo (round 3: 7 s)" 120 start "$r"
+r=$(mk huge2); yes 'Zzz: 1 kB' | head -c 200000000 >"$r/proc/meminfo"; run "200 MB many short lines, key absent" 120 start "$r"
+r=$(mk wc); for f in $SRCS; do head -c 300000 /dev/zero | tr '\0' 'a' >"$r/$f"; done; run "worst case, printable: every source 300 KB one line" 120 start "$r"
+r=$(mk wc2); for f in $SRCS; do yes "$(head -c 4095 /dev/zero | tr '\0' 'a')" | head -c 300000000 >"$r/$f"; done; run "worst case, printable: every source 64+ lines of 4095 chars" 120 start "$r"
+echo "### S5 new: NUL bytes (read drops NULs; -t has no effect on regular files)"
+r=$(mk nul1); rm "$r/proc/meminfo"; truncate -s 100M "$r/proc/meminfo"; run "sparse 100 MB NUL meminfo" 120 start "$r"
+r=$(mk nul2); rm "$r/proc/meminfo"; truncate -s 1G "$r/proc/meminfo"; run "sparse 1 GB NUL meminfo" 120 start "$r"
+r=$(mk nul3); rm "$r/proc/meminfo"; truncate -s 1T "$r/proc/meminfo"; run "sparse 1 TB NUL meminfo (timeout 60)" 60 start "$r"
+r=$(mk nul4); truncate -s 1T "$T/bigsparse"; for f in $SRCS; do ln -sf "$T/bigsparse" "$r/$f"; done; run "symlink every source to one 1 TB sparse file (timeout 30)" 30 start "$r"
+echo "### -t on a regular file: bash ignores it (read.c fstat S_ISREG)"
+truncate -s 1G "$T/z1g"; s=$SECONDS; read -r -t 1 -n 4096 x <"$T/z1g"; echo "read -t 1 -n 4096 on 1 GB NUL file: rc=$? len=${#x} took $((SECONDS-s)) s"
+echo "### /proc/kmsg (a blocking regular file)"
+[ -f /proc/kmsg ] && echo "/proc/kmsg is -f"; r=$(mk kmsg); ln -sf /proc/kmsg "$r/sys/fs/cgroup/cpu.max"; run "symlink cpu.max -> /proc/kmsg" 10 start "$r"
+echo "### TOCTOU: regular file swapped for a FIFO between [ -f ] and open (rename race)"
+r=$(mk race); mkfifo "$T/fifo"; printf '200000 100000\n' >"$T/reg"
+( while :; do ln -f "$T/reg" "$T/a" 2>/dev/null; mv -f "$T/a" "$r/sys/fs/cgroup/cpu.max"; mkfifo "$T/b" 2>/dev/null; mv -f "$T/b" "$r/sys/fs/cgroup/cpu.max"; done ) &
+racer=$!; hang=0; na=0; ok=0
+for i in $(seq 1 200); do out="$(timeout 2 bash "$P" start "$r")"; rc=$?
+  if [ $rc -eq 124 ]; then hang=$((hang+1)); elif grep -q 'cpu_max_quota=200000' <<<"$out"; then ok=$((ok+1)); else na=$((na+1)); fi; done
+kill $racer; wait $racer 2>/dev/null
+echo "200 runs: hung(killed by timeout 2)=$hang read-regular=$ok n/a=$na"
+echo "### S6: arithmetic"
+r=$(mk ovf); printf 'cpu  9223372036854775807 1 0 0 0 0 0 0\n' >"$r/proc/stat"; run "sum overflow 2^63-1 (19 digits)" 10 start "$r"
+r=$(mk max18); printf 'cpu  999999999999999999 999999999999999999 999999999999999999 999999999999999999 999999999999999999 999999999999999999 999999999999999999 999999999999999999\n' >"$r/proc/stat"; run "8 x 18-digit max" 10 start "$r"
+r=$(mk oct); printf 'cpu  010 0 0 0 0 0 0 010\n' >"$r/proc/stat"; run "010 (was octal 8)" 10 start "$r"
+r=$(mk lead0); printf 'cpu  08 2 3 4 5 6 7 09 9 10\n' >"$r/proc/stat"; run "08/09" 10 start "$r"
+r=$(mk z18); printf 'cpu  000000000000000000 0 0 0 0 0 0 000000000000000007\n' >"$r/proc/stat"; run "18 leading zeros" 10 start "$r"
+r=$(mk big); printf 'cpu  99999999999999999999999 0 0 0 0 0 0 0\n' >"$r/proc/stat"; run "23-digit field" 10 start "$r"
+r=$(mk sign); printf 'cpu  -5 +5 0 0 0 0 0 0\n' >"$r/proc/stat"; run "signed fields" 10 start "$r"
+r=$(mk short); printf 'cpu  1 2 3\n' >"$r/proc/stat"; run "short cpu line" 10 start "$r"
+r=$(mk arith); printf 'cpu  a[$(touch /tmp/pe/PWNED)] 0 0 0 0 0 0 0\n' >"$r/proc/stat"; run "arithmetic injection" 10 start "$r"; [ -e /tmp/pe/PWNED ] && echo "!! INJECTION RAN" || echo "no injection"
+r=$(mk num21); printf '123456789012345678901\n' >"$r/sys/fs/cgroup/memory.peak"; printf 'usage_usec 18446744073709551615\n' >"$r/sys/fs/cgroup/cpu.stat"; run "21-digit peak (n/a) and 2^64-1 usage (printed)" 10 start "$r"
+for loc in C C.UTF-8; do r=$(mk "uni-$loc"); printf 'MemTotal: \xd9\xa3\xd9\xa4 kB\nMemAvailable: \xef\xbc\x95 kB\n' >"$r/proc/meminfo"; LC_ALL=$loc run "unicode digits LC_ALL=$loc" 10 start "$r"; done
+r=$(mk ctl); printf 'usage_usec 1\x1b[2J\nthrottled_usec 12\r\n' >"$r/sys/fs/cgroup/cpu.stat"; run "control chars / CR" 10 start "$r" | cat -A | head -3
+r=$(mk link); ln -sf /etc/hostname "$r/sys/fs/cgroup/memory.peak"; ln -sf /proc/self/environ "$r/sys/fs/cgroup/cpu.max"; run "symlinks to hostname/environ" 10 start "$r"
+r=$(mk ok2); run "phase injection" 10 '$(id)' "$r"; run "root with metachars" 10 start "$T/no such;\$(id)"
+echo "### S7: env"
+r=$(mk env); OMP_NUM_THREADS=424242 run "OMP_NUM_THREADS=424242" 10 start "$r"
+OMP_THREAD_LIMIT=3 run "OMP_THREAD_LIMIT=3" 10 start "$r"
+OMP_NUM_THREADS=7,8 OMP_THREAD_LIMIT=2 run "both" 10 start "$r"
+ROOT="$T/env" pr_root="$T/env" run "ROOT/pr_root in env, no root arg" 10 start
+echo "real nproc: $(nproc)"
+run "real /proc and cgroup" 10 start
+run "real, end" 10 end

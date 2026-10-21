@@ -13,12 +13,15 @@ concurrency:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    runs-on: ubuntu-24.04
+    timeout-minutes: 29  # PS-3.4/R5: green CI runs 39370927416 (16.6 min) and 39465361808 (19.0 min); slower run + 50% = 28.5 -> 29 min, see docs/evidence/platform-offline
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
 
       # The same entry point as local and agent runs: it builds the `gates`
-      # image and runs every gate inside it with networking disabled.
+      # image. Unit tests run with no network; `full` also launches a throwaway
+      # stack on an internal-only network, and model tests skip on CI.
       - name: Verify (full)
         run: ./scripts/verify.sh full

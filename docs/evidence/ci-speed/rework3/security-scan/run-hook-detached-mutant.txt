@@ -1,0 +1,17 @@
+_: line 1: ps: command not found
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 1ms
+Installed 1 package in 1ms
+test_long_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_long_command_finishes_quickly) ... ok
+test_one_megabyte_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_command_finishes_quickly) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 48.084s
+
+OK
+rc=0
+
+real	0m49.163s
+user	0m0.075s
+sys	0m0.060s

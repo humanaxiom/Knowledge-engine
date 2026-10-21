@@ -1,0 +1,3 @@
+nproc=2 busy=6 tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order: pass=12 fail=0 max_wall=6s
+nproc=2 busy=6 tests.test_harness_followups.IntegrationRunsOnceTest.test_term_leaves_no_module_process_that_ignores_term: pass=12 fail=0 max_wall=6s
+nproc=2 busy=6 tests.test_harness_followups.IntegrationRunsOnceTest.test_signal_kills_pool_children_and_exits_nonzero: pass=12 fail=0 max_wall=7s

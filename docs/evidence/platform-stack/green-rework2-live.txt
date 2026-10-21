@@ -1,0 +1,356 @@
+== manual live sequence (unit step skipped: stale test blocks) project ke-verify-1840024884 ==
+ Image ke-gates Building 
+ Image ke-gateway Building 
+ Image ke-gates Building 
+ Image ke-app Building 
+ Image ke-app Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 2.29kB done
+#1 DONE 0.0s
+
+#2 [gates-it internal] load build definition from gates.Dockerfile
+#2 transferring dockerfile: 2.96kB done
+#2 DONE 0.0s
+
+#3 [worker internal] load build definition from app.Dockerfile
+#3 transferring dockerfile: 859B done
+#3 DONE 0.0s
+
+#4 [gateway internal] load build definition from gateway.Dockerfile
+#4 transferring dockerfile: 1.10kB done
+#4 DONE 0.0s
+
+#5 [worker internal] load metadata for ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#5 DONE 0.0s
+
+#6 [worker internal] load metadata for docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#6 DONE 0.0s
+
+#7 [gateway internal] load metadata for docker.io/nginxinc/nginx-unprivileged:1.28-alpine@sha256:7377697a821c131a924a7105fafbe7414db4e9fcc77a6f08f776f33f141ec3f8
+#7 DONE 0.0s
+
+#8 [gateway internal] load .dockerignore
+#8 transferring context: 91B done
+#8 DONE 0.0s
+
+#9 [gates internal] load build context
+#9 DONE 0.0s
+
+#10 [gateway internal] load build context
+#10 DONE 0.0s
+
+#11 [gates stage-1 1/8] FROM docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#11 resolve docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258 0.0s done
+#11 resolve docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258 0.0s done
+#11 DONE 0.0s
+
+#12 [api uv 1/1] FROM ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#12 resolve ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946 0.0s done
+#12 DONE 0.0s
+
+#13 [gateway 1/7] FROM docker.io/nginxinc/nginx-unprivileged:1.28-alpine@sha256:7377697a821c131a924a7105fafbe7414db4e9fcc77a6f08f776f33f141ec3f8
+#13 resolve docker.io/nginxinc/nginx-unprivileged:1.28-alpine@sha256:7377697a821c131a924a7105fafbe7414db4e9fcc77a6f08f776f33f141ec3f8 0.0s done
+#13 DONE 0.0s
+
+#9 [api internal] load build context
+#9 transferring context: 2.04kB done
+#9 DONE 0.0s
+
+#10 [gateway internal] load build context
+#10 transferring context: 516B done
+#10 DONE 0.0s
+
+#14 [gates-it stage-1  9/10] COPY config ./config
+#14 CACHED
+
+#15 [gates-it stage-1  7/10] COPY harness_telemetry ./harness_telemetry
+#15 CACHED
+
+#16 [gates-it stage-1  6/10] COPY pyproject.toml uv.lock ./
+#16 CACHED
+
+#17 [gates-it stage-1  8/10] COPY engine ./engine
+#17 CACHED
+
+#18 [gates-it stage-1  5/10] WORKDIR /work
+#18 CACHED
+
+#19 [gates-it stage-1  3/10] RUN apt-get update  && apt-get install -y --no-install-recommends git jq ca-certificates curl       shellcheck=0.9.0-1 libicu72 libssl3 zlib1g  && rm -rf /var/lib/apt/lists/*  && git config --system --add safe.directory /work  && git config --system core.autocrlf true
+#19 CACHED
+
+#20 [gates-it stage-1  4/10] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x64; sha="3fc5e1567c450bd7bd5ae69ebb0a9a4a4e0418bbc36b0232cf6dd547f0bfc0eb" ;;       arm64) arch=arm64; sha="d0c216cec4c6c866fc15a105f039740228b53206f8576d2ed0bcd656a35ed6f6" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     tarball="powershell-7.4.21-linux-${arch}.tar.gz";     curl -fsSL -o "/tmp/$tarball"       "https://github.com/PowerShell/PowerShell/releases/download/v7.4.21/$tarball";     echo "$sha  /tmp/$tarball" | sha256sum -c -;     mkdir -p /opt/microsoft/powershell;     tar -xzf "/tmp/$tarball" -C /opt/microsoft/powershell;     chmod +x /opt/microsoft/powershell/pwsh;     ln -s /opt/microsoft/powershell/pwsh /usr/local/bin/pwsh;     rm "/tmp/$tarball";     pwsh -NoProfile -NonInteractive -Command "       $ErrorActionPreference = 'Stop';       Set-PSRepository PSGallery -InstallationPolicy Trusted;       Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope AllUsers -Force"
+#20 CACHED
+
+#21 [worker stage-1 5/8] COPY harness_telemetry ./harness_telemetry
+#21 CACHED
+
+#22 [gates-it stage-1 2/8] COPY --from=uv /uv /usr/local/bin/uv
+#22 CACHED
+
+#23 [worker stage-1 3/8] WORKDIR /app
+#23 CACHED
+
+#24 [worker stage-1 7/8] COPY config ./config
+#24 CACHED
+
+#25 [worker stage-1 4/8] COPY pyproject.toml uv.lock ./
+#25 CACHED
+
+#26 [worker stage-1 6/8] COPY engine ./engine
+#26 CACHED
+
+#27 [worker stage-1 8/8] RUN uv sync --locked --no-dev --no-editable  && useradd --no-create-home --uid 10001 ke
+#27 CACHED
+
+#28 [gates stage-1 10/10] RUN uv sync --locked
+#28 CACHED
+
+#29 [gateway 6/7] COPY --chmod=0755 docker/gateway/12-ke-port-check.sh /docker-entrypoint.d/12-ke-port-check.sh
+#29 CACHED
+
+#30 [gateway 4/7] COPY --chmod=0755 docker/gateway/10-ke-bind-check.sh /docker-entrypoint.d/10-ke-bind-check.sh
+#30 CACHED
+
+#31 [gateway 5/7] COPY --chmod=0755 docker/gateway/11-ke-upstream-check.sh /docker-entrypoint.d/11-ke-upstream-check.sh
+#31 CACHED
+
+#32 [gateway 3/7] COPY docker/gateway/templates/ /etc/nginx/templates/
+#32 CACHED
+
+#33 [gateway 2/7] COPY docker/gateway/nginx.conf /etc/nginx/nginx.conf
+#33 CACHED
+
+#34 [gateway 7/7] RUN rm -f /etc/nginx/conf.d/default.conf  && mkdir -p /etc/nginx/stream-conf.d  && chown nginx:nginx /etc/nginx/conf.d /etc/nginx/stream-conf.d
+#34 CACHED
+
+#35 [api] exporting to image
+#35 exporting layers done
+#35 exporting manifest sha256:b0dd2cbc42654466fd24c181d91340f68fca7ce0c105859e9ff6e0fd5dd5c64b 0.0s done
+#35 exporting config sha256:5794efd35898524fdbf87e654afaf3b2325ace4cc04ac1544cb5591e1884638f 0.1s done
+#35 exporting attestation manifest sha256:0523217f787fe71adf703c033eadc4e74610ee37d55eacf4f5a0033e5b09207f
+#35 ...
+
+#36 [worker] exporting to image
+#36 exporting layers done
+#36 exporting manifest sha256:0b5d16b471ca66251078c22c4c0be739dd2e3fb438da9e16164b97eb633b0914 0.0s done
+#36 exporting config sha256:1affc7b42181998121f5e51e1d6601e9333892040ab8f53dc6de4783b334d400 0.1s done
+#36 exporting attestation manifest sha256:3f8404ca6da13dec6e52bb9520277fb69cc1b930aa809efa93fee3c3e9863b9b 0.1s done
+#36 exporting manifest list sha256:1ed13d02e0b01492b695de6b246f7f10833d48e77066a41c8d2f7e4386374256 0.0s done
+#36 naming to docker.io/library/ke-app:latest 0.0s done
+#36 unpacking to docker.io/library/ke-app:latest 0.0s done
+#36 DONE 0.3s
+
+#35 [api] exporting to image
+#35 exporting attestation manifest sha256:0523217f787fe71adf703c033eadc4e74610ee37d55eacf4f5a0033e5b09207f 0.1s done
+#35 exporting manifest list sha256:e56258bd4c006de89f2e3dedd3a04107e8e4ffecc0ce3d7972025a1093e7093d 0.0s done
+#35 naming to docker.io/library/ke-app:latest 0.0s done
+#35 unpacking to docker.io/library/ke-app:latest 0.0s done
+#35 DONE 0.4s
+
+#37 [gates] exporting to image
+#37 exporting layers done
+#37 exporting manifest sha256:3fcb6022efa3d7c2d70e28549dd143b2e248bda68f1ecbcd1032f0acb6c36c39 0.0s done
+#37 exporting config sha256:38788316368010e0fe72f9df0b197f0ea37dc6f245bc16211f86040a549adab3 0.1s done
+#37 exporting attestation manifest sha256:4e997db9cdfbc73192ce5701b81267a40206b6d820712935d21f54c46fbadbfd 0.1s done
+#37 exporting manifest list sha256:4fe14fbb559368fdfe4c626a4db9c318d2e020ceca6aadbb8a4d4dbc22e67703 0.0s done
+#37 naming to docker.io/library/ke-gates:latest 0.0s done
+#37 unpacking to docker.io/library/ke-gates:latest 0.0s done
+#37 DONE 0.3s
+
+#38 [gates-it] exporting to image
+#38 exporting layers done
+#38 exporting manifest sha256:9bfcafadcc0acc11086387cfd9e122b8056bd26c939207f26c7208a71b4a20dc 0.1s done
+#38 exporting config sha256:3c479b84847512731f84d66a2ebfa0c7ed3b9378d2b3415c76c4478f6e088c03 0.1s done
+#38 exporting attestation manifest sha256:6b56364340d71b13d20aa999fea11648d6889f89f6c4dcfdd5b08e56a746c9eb 0.1s done
+#38 exporting manifest list sha256:cdee9eeaedb7c478eea353d98875d85ba65c13b4afcb62e2d650d069e6ec86f0 0.0s done
+#38 naming to docker.io/library/ke-gates:latest done
+#38 unpacking to docker.io/library/ke-gates:latest 0.0s done
+#38 DONE 0.4s
+
+#39 [gateway] exporting to image
+#39 exporting layers done
+#39 exporting manifest sha256:d556b6d326a7d38a652d747f6c948c1717cbeb3647c69595196fd4af7ce71477 0.0s done
+#39 exporting config sha256:8fb71908f486478b5fee4795d222057d3bf471eca596fd2dd38bbb2083c2f4df 0.1s done
+#39 exporting attestation manifest sha256:49ee7468137ad546bcb92460ca98b55715a16b0e444c3c6f92230a7d42f62e87 0.1s done
+#39 exporting manifest list sha256:dca79bfbb5a79e7822022e2dc9330ad1a928806e70c8119a99776bb5f0912109 0.0s done
+#39 naming to docker.io/library/ke-gateway:latest 0.0s done
+#39 unpacking to docker.io/library/ke-gateway:latest 0.0s done
+#39 DONE 0.4s
+
+#40 [worker] resolving provenance for metadata file
+#40 DONE 0.1s
+
+#41 [api] resolving provenance for metadata file
+#41 DONE 0.0s
+
+#42 [gates-it] resolving provenance for metadata file
+#42 DONE 0.1s
+
+#43 [gates] resolving provenance for metadata file
+#43 DONE 0.1s
+
+#44 [gateway] resolving provenance for metadata file
+#44 DONE 0.0s
+ Image ke-app Built 
+ Image ke-app Built 
+ Image ke-gates Built 
+ Image ke-gates Built 
+ Image ke-gateway Built 
+ Image ke-gates Skipped Image can be built
+ Image ke-app Skipped Image can be built
+ Image ke-gates Skipped Image can be built
+ Image ke-app Skipped Image can be built
+ Image ke-gateway Skipped Image can be built
+ Image arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c Pulling 
+ Image valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507 Pulling 
+ Image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 Pulling 
+ Image neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b Pulling 
+ Image valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507 Pulled 
+ Image neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b Pulled 
+ Image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 Pulled 
+ Image arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c Pulled 
+ Network ke-verify-1840024884_backend Creating 
+ Network ke-verify-1840024884_backend Created 
+ Network ke-verify-1840024884_edge Creating 
+ Network ke-verify-1840024884_edge Created 
+ Volume ke-verify-1840024884_valkey-data Creating 
+ Volume ke-verify-1840024884_valkey-data Created 
+ Volume ke-verify-1840024884_neo4j-data Creating 
+ Volume ke-verify-1840024884_neo4j-data Created 
+ Volume ke-verify-1840024884_postgres-data Creating 
+ Volume ke-verify-1840024884_postgres-data Created 
+ Volume ke-verify-1840024884_phoenix-data Creating 
+ Volume ke-verify-1840024884_phoenix-data Created 
+ Container ke-verify-1840024884-neo4j-1 Creating 
+ Container ke-verify-1840024884-gateway-1 Creating 
+ Container ke-verify-1840024884-worker-1 Creating 
+ Container ke-verify-1840024884-phoenix-1 Creating 
+ Container ke-verify-1840024884-valkey-1 Creating 
+ Container ke-verify-1840024884-postgres-1 Creating 
+ Container ke-verify-1840024884-neo4j-1 Created 
+ Container ke-verify-1840024884-valkey-1 Created 
+ Container ke-verify-1840024884-gateway-1 Created 
+ Container ke-verify-1840024884-worker-1 Created 
+ Container ke-verify-1840024884-postgres-1 Created 
+ Container ke-verify-1840024884-api-1 Creating 
+ Container ke-verify-1840024884-phoenix-1 Created 
+ Container ke-verify-1840024884-api-1 Created 
+ Container ke-verify-1840024884-neo4j-1 Starting 
+ Container ke-verify-1840024884-worker-1 Starting 
+ Container ke-verify-1840024884-valkey-1 Starting 
+ Container ke-verify-1840024884-gateway-1 Starting 
+ Container ke-verify-1840024884-postgres-1 Starting 
+ Container ke-verify-1840024884-phoenix-1 Starting 
+ Container ke-verify-1840024884-worker-1 Started 
+ Container ke-verify-1840024884-neo4j-1 Started 
+ Container ke-verify-1840024884-valkey-1 Started 
+ Container ke-verify-1840024884-postgres-1 Started 
+ Container ke-verify-1840024884-valkey-1 Waiting 
+ Container ke-verify-1840024884-postgres-1 Waiting 
+ Container ke-verify-1840024884-neo4j-1 Waiting 
+ Container ke-verify-1840024884-phoenix-1 Started 
+ Container ke-verify-1840024884-gateway-1 Started 
+ Container ke-verify-1840024884-valkey-1 Healthy 
+ Container ke-verify-1840024884-postgres-1 Healthy 
+ Container ke-verify-1840024884-neo4j-1 Healthy 
+ Container ke-verify-1840024884-api-1 Starting 
+ Container ke-verify-1840024884-api-1 Started 
+ Container ke-verify-1840024884-gateway-1 Waiting 
+ Container ke-verify-1840024884-postgres-1 Waiting 
+ Container ke-verify-1840024884-api-1 Waiting 
+ Container ke-verify-1840024884-phoenix-1 Waiting 
+ Container ke-verify-1840024884-valkey-1 Waiting 
+ Container ke-verify-1840024884-worker-1 Waiting 
+ Container ke-verify-1840024884-neo4j-1 Waiting 
+ Container ke-verify-1840024884-valkey-1 Healthy 
+ Container ke-verify-1840024884-postgres-1 Healthy 
+ Container ke-verify-1840024884-neo4j-1 Healthy 
+ Container ke-verify-1840024884-gateway-1 Healthy 
+ Container ke-verify-1840024884-worker-1 Healthy 
+ Container ke-verify-1840024884-api-1 Healthy 
+ Container ke-verify-1840024884-phoenix-1 Healthy 
+stack is up:
+  api:     http://127.0.0.1:
+  phoenix: http://127.0.0.1:
+ Container ke-verify-1840024884-gates-it-run-c463549800e8 Creating 
+ Container ke-verify-1840024884-gates-it-run-c463549800e8 Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 1ms
+Installed 1 package in 0.96ms
+test_egress_allowlist_holds_with_network_access (tests.integration.test_stack_up.EgressWithNetworkAccessTest.test_egress_allowlist_holds_with_network_access) ... ok
+test_healthz (tests.integration.test_stack_up.HealthzTest.test_healthz) ... ok
+test_gates_it_has_no_route_out (tests.integration.test_stack_up.NoRouteOutTest.test_gates_it_has_no_route_out) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.494s
+
+OK
+integration rc=0
+time="2026-10-18T21:17:17-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T21:17:17-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T21:17:17-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T21:17:17-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T21:17:17-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T21:17:17-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T21:17:17-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T21:17:17-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T21:17:17-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T21:17:17-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T21:17:17-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-18T21:17:17-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+smoke: compose resolves with no .env; 2 ports, all on 127.0.0.1
+smoke: ke-verify-1840024884_backend is internal with gateway_mode_ipv4=isolated
+smoke: gateway healthy
+smoke: api healthy
+smoke: worker healthy
+smoke: postgres healthy
+smoke: neo4j healthy
+smoke: valkey healthy
+smoke: phoenix healthy
+smoke: gateway proxies api /healthz
+smoke: gateway proxies phoenix /healthz
+smoke: PASS
+smoke rc=0
+ Container ke-verify-1840024884-worker-1 Stopping 
+ Container ke-verify-1840024884-phoenix-1 Stopping 
+ Container ke-verify-1840024884-gateway-1 Stopping 
+ Container ke-verify-1840024884-api-1 Stopping 
+ Container ke-verify-1840024884-api-1 Stopped 
+ Container ke-verify-1840024884-api-1 Removing 
+ Container ke-verify-1840024884-api-1 Removed 
+ Container ke-verify-1840024884-postgres-1 Stopping 
+ Container ke-verify-1840024884-neo4j-1 Stopping 
+ Container ke-verify-1840024884-valkey-1 Stopping 
+ Container ke-verify-1840024884-gateway-1 Stopped 
+ Container ke-verify-1840024884-gateway-1 Removing 
+ Container ke-verify-1840024884-gateway-1 Removed 
+ Container ke-verify-1840024884-postgres-1 Stopped 
+ Container ke-verify-1840024884-postgres-1 Removing 
+ Container ke-verify-1840024884-postgres-1 Removed 
+ Container ke-verify-1840024884-valkey-1 Stopped 
+ Container ke-verify-1840024884-valkey-1 Removing 
+ Container ke-verify-1840024884-valkey-1 Removed 
+ Container ke-verify-1840024884-worker-1 Stopped 
+ Container ke-verify-1840024884-worker-1 Removing 
+ Container ke-verify-1840024884-worker-1 Removed 
+ Container ke-verify-1840024884-phoenix-1 Stopped 
+ Container ke-verify-1840024884-phoenix-1 Removing 
+ Container ke-verify-1840024884-phoenix-1 Removed 
+ Container ke-verify-1840024884-neo4j-1 Stopped 
+ Container ke-verify-1840024884-neo4j-1 Removing 
+ Container ke-verify-1840024884-neo4j-1 Removed 
+ Volume ke-verify-1840024884_phoenix-data Removing 
+ Volume ke-verify-1840024884_valkey-data Removing 
+ Volume ke-verify-1840024884_neo4j-data Removing 
+ Volume ke-verify-1840024884_postgres-data Removing 
+ Network ke-verify-1840024884_backend Removing 
+ Network ke-verify-1840024884_edge Removing 
+ Volume ke-verify-1840024884_phoenix-data Removed 
+ Volume ke-verify-1840024884_valkey-data Removed 
+ Volume ke-verify-1840024884_postgres-data Removed 
+ Volume ke-verify-1840024884_neo4j-data Removed 
+ Network ke-verify-1840024884_edge Removed 
+ Network ke-verify-1840024884_backend Removed 
+teardown rc=0
+duration=29s

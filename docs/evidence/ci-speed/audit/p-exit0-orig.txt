@@ -1,0 +1,11 @@
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.74ms
+Installed 1 package in 1ms
+test_module_exiting_zero_at_import_fails_run (test_probe_exit0.ExitZeroProbe.test_module_exiting_zero_at_import_fails_run) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.126s
+
+OK
+rc=0

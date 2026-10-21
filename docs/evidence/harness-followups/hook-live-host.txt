@@ -1,0 +1,13 @@
+jq: none; bash 5.3.9(1)-release
+== off main (branch work)
+[PS-0.4 json r-escape: ... ma<CR>in] -> DENY{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Pushing to main/master is not allowed."}}
+[PS-0.4 json r-escape: ... main<CR>] -> DENY{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Pushing to main/master is not allowed."}}
+[PS-0.4 json r-escape: git pu<CR>sh --force] -> DENY{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Force pushes are not allowed."}}
+[PS-0.5 N16 ma\<NL>in] -> DENY{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Pushing to main/master is not allowed."}}
+[PS-0.5 N16 pu\<NL>sh main] -> DENY{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Pushing to main/master is not allowed."}}
+[control: git status] -> silent
+[N17 no command field] -> silent
+== on main
+[PS-0.4 json r-escape: gi<CR>t commit] -> DENY{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first."}}
+[PS-0.5 N16 gi\<NL>t commit] -> DENY{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Commits/pushes are not allowed directly on main/master. Create an agent/<slug> or feat|fix|chore/<slug> branch first."}}
+[control: ls] -> silent

@@ -1,0 +1,25 @@
+--- before (test.sh pid 9)
+     1      1 S bash sig.sh TERM pid 8 
+     7      7 S sleep 300 
+    73     73 S bash scripts/test.sh fast 
+    75     73 S uv run --locked python -m coverage run -p --data-file=/tmp/.coverage.tests.test_ign -m uni
+     8      1 S sleep 300 
+    80     73 S /opt/venv/bin/python3 -m coverage run -p --data-file=/tmp/.coverage.tests.test_ign -m unit
+     9      9 S bash scripts/test.sh fast 
+test.sh rc=143
+--- after
+     1      1 S bash sig.sh TERM pid 8 
+     7      7 S sleep 300 
+    75     73 S uv run --locked python -m coverage run -p --data-file=/tmp/.coverage.tests.test_ign -m uni
+     8      1 S sleep 300 
+    80     73 S /opt/venv/bin/python3 -m coverage run -p --data-file=/tmp/.coverage.tests.test_ign -m unit
+logdir removed
+OUT1 (other session) alive
+OUT2 (wrapper group) alive
+--- test.sh output tail
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.88ms
+Installed 1 package in 2ms
+[1]+  Terminated              run_module "$m"
+rc=0

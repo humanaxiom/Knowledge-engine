@@ -1,0 +1,9 @@
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.74ms
+Installed 1 package in 1ms
+15:                      data_file: /tmp/.coverage
+38:                       parallel: True
+24
+GNU bash, version 5.2.15(1)-release (x86_64-pc-linux-gnu)
+rc=0

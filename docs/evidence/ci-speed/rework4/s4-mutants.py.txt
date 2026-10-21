@@ -1,0 +1,52 @@
+# S4 static-test mutants (tester, rework 4). Scratch copies only.
+# usage: python s4-mutants.py <repo> <scratch>
+# For each mutant: a scratch tree holding tests/__init__.py, the real
+# tests/test_block_main_commit_hook.py and a hook with one line inserted after
+# `set -euo pipefail` runs HookLaunchesNoBackgroundWorkTest.test_hook_launches_no_background_work.
+import shutil, subprocess, sys
+from pathlib import Path
+
+repo, scratch = Path(sys.argv[1]), Path(sys.argv[2])
+hook = (repo / "scripts/hooks/block-main-commit.sh").read_text(encoding="utf-8")
+anchor = "set -euo pipefail\n"
+assert hook.count(anchor) == 1
+MUTANTS = {
+    "control (hook as it is today)": None,
+    "amp: sleep 30 &": "sleep 30 &",
+    "amp: subshell ( ... ) &": "( true ) &",
+    "amp: no space { :; }&": "{ :; }&",
+    "amp: after 2>&1": "true >/dev/null 2>&1 &",
+    "amp: mid-line true & wait": "true & wait",
+    "amp: in a command substitution": 'x="$(true &)"',
+    "setsid": "setsid true",
+    "nohup": "nohup true >/dev/null",
+    "disown": "disown -a",
+    "coproc": "coproc true",
+    "bg": "bg",
+    "eval": 'eval "true"',
+    "process substitution <(": "cat <(true) >/dev/null",
+    "process substitution >(": "true > >(cat)",
+    "nested shell bash -c": "bash -c 'true'",
+    "nested shell sh -c": "sh -c true",
+    "nested shell bash -lc": "bash -lc true",
+    "trailing comment with &": "true  # later in the background &",
+    "security S4 mutant line (setsid + &)": "out=\"$( ( setsid bash -c 'true' & ) )\"",
+    "allowed: && only": "true && true",
+    "allowed: 2>&1, >&2, &>, |&": "true 2>&1 >&2; true &>/dev/null; true |& cat",
+    "allowed: whole-line comment": "  # setsid nohup disown coproc bg eval bash -c & <(x) >(y)",
+}
+for name, line in MUTANTS.items():
+    d = scratch / "".join(c if c.isalnum() else "_" for c in name)[:60]
+    shutil.rmtree(d, ignore_errors=True)
+    (d / "tests").mkdir(parents=True)
+    (d / "scripts/hooks").mkdir(parents=True)
+    (d / "tests/__init__.py").write_text("")
+    shutil.copyfile(repo / "tests/test_block_main_commit_hook.py", d / "tests/test_block_main_commit_hook.py")
+    text = hook if line is None else hook.replace(anchor, anchor + line + "\n")
+    (d / "scripts/hooks/block-main-commit.sh").write_text(text, encoding="utf-8", newline="\n")
+    r = subprocess.run([sys.executable, "-m", "unittest",
+                        "tests.test_block_main_commit_hook.HookLaunchesNoBackgroundWorkTest.test_hook_launches_no_background_work"],
+                       cwd=d, capture_output=True, text=True)
+    last = [l for l in r.stderr.splitlines() if l.startswith(("OK", "FAILED"))]
+    why = [l for l in r.stderr.splitlines() if l.startswith(("AssertionError", "First list", "First extra", "'line"))]
+    print(f"{name!r:52} inserted={line!r}\n    -> {last[-1] if last else r.stderr[-200:]}  {' | '.join(why)[:160]}")
