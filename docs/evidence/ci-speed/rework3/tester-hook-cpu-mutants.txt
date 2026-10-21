@@ -1,0 +1,161 @@
+# ci-speed rework 3, tester: hook CPU-budget mutants (CS-12). Scratch copies only; repo hook untouched.
+# Run in ke-gates:wt-33a132fbfdd7 (network none, uid 10001) by tester-hook-cpu-mutants-run.sh.txt; each mutant inserts the shown lines after 'set -euo pipefail' in a copy of scripts/hooks/block-main-commit.sh.
+# Output filter: '... ', FAIL/ERROR headers, 'Error: ' lines, Ran/OK/FAILED. sleep70: the two ERRORs are the 60 s hang guard (120.1 s for two calls; exception text filtered out).
+===== mutant: control (04:32:24) =====
+hook diff vs repo:
+test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) ... ok
+test_one_megabyte_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_command_finishes_quickly) ... ok
+test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) ... ok
+test_long_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_long_command_finishes_quickly) ... ok
+Ran 4 tests in 9.541s
+OK
+===== mutant: burn_bash (04:32:34) =====
+hook diff vs repo:
+21a22,23
+> # MUTANT: catastrophic CPU in the hook itself (~12 s)
+> mut_end=$((SECONDS + 12)); while [ "$SECONDS" -lt "$mut_end" ]; do :; done
+test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) ... 
+  test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='jq', shape='unquoted token') ... FAIL
+  test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='jq', shape='-m message') ... FAIL
+  test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='jq', shape='heredoc line') ... FAIL
+  test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='jq', shape='heredoc lines') ... FAIL
+  test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='no-jq', shape='unquoted token') ... FAIL
+  test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='no-jq', shape='-m message') ... FAIL
+  test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='no-jq', shape='heredoc line') ... FAIL
+  test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='no-jq', shape='heredoc lines') ... FAIL
+test_one_megabyte_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_command_finishes_quickly) ... 
+  test_one_megabyte_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_command_finishes_quickly) (mode='jq') ... FAIL
+  test_one_megabyte_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_command_finishes_quickly) (mode='no-jq') ... FAIL
+test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) ... 
+  test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='jq', shape='heredoc lines') ... FAIL
+  test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='jq', shape='one token') ... FAIL
+  test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='jq', shape='windows paths') ... FAIL
+  test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='no-jq', shape='heredoc lines') ... FAIL
+  test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='no-jq', shape='one token') ... FAIL
+  test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='no-jq', shape='windows paths') ... FAIL
+test_long_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_long_command_finishes_quickly) ... 
+  test_long_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_long_command_finishes_quickly) (mode='jq') ... FAIL
+  test_long_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_long_command_finishes_quickly) (mode='no-jq') ... FAIL
+FAIL: test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='jq', shape='unquoted token')
+AssertionError: 11.709186 not less than 3.0 : 11.71 s of CPU
+FAIL: test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='jq', shape='-m message')
+AssertionError: 11.973434 not less than 3.0 : 11.97 s of CPU
+FAIL: test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='jq', shape='heredoc line')
+AssertionError: 11.980439999999998 not less than 3.0 : 11.98 s of CPU
+FAIL: test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='jq', shape='heredoc lines')
+AssertionError: 12.004551 not less than 3.0 : 12.00 s of CPU
+FAIL: test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='no-jq', shape='unquoted token')
+AssertionError: 12.235611000000002 not less than 3.0 : 12.24 s of CPU
+FAIL: test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='no-jq', shape='-m message')
+AssertionError: 12.014877999999998 not less than 3.0 : 12.01 s of CPU
+FAIL: test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='no-jq', shape='heredoc line')
+AssertionError: 11.997442000000005 not less than 3.0 : 12.00 s of CPU
+FAIL: test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='no-jq', shape='heredoc lines')
+AssertionError: 12.019252000000003 not less than 3.0 : 12.02 s of CPU
+FAIL: test_one_megabyte_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_command_finishes_quickly) (mode='jq')
+AssertionError: 11.767332999999992 not less than 3.0 : 11.77 s of CPU
+FAIL: test_one_megabyte_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_command_finishes_quickly) (mode='no-jq')
+AssertionError: 12.210611000000007 not less than 3.0 : 12.21 s of CPU
+FAIL: test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='jq', shape='heredoc lines')
+AssertionError: 12.138024000000017 not less than 9.0 : 12.14 s of CPU
+FAIL: test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='jq', shape='one token')
+AssertionError: 12.073123999999988 not less than 9.0 : 12.07 s of CPU
+FAIL: test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='jq', shape='windows paths')
+AssertionError: 12.005683999999999 not less than 9.0 : 12.01 s of CPU
+FAIL: test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='no-jq', shape='heredoc lines')
+AssertionError: 13.388697000000004 not less than 9.0 : 13.39 s of CPU
+FAIL: test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='no-jq', shape='one token')
+AssertionError: 12.874780999999984 not less than 9.0 : 12.87 s of CPU
+FAIL: test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='no-jq', shape='windows paths')
+AssertionError: 13.169834000000009 not less than 9.0 : 13.17 s of CPU
+FAIL: test_long_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_long_command_finishes_quickly) (mode='jq')
+AssertionError: 11.205995000000005 not less than 5.0 : 11.21 s of CPU
+FAIL: test_long_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_long_command_finishes_quickly) (mode='no-jq')
+AssertionError: 11.987866999999993 not less than 5.0 : 11.99 s of CPU
+Ran 4 tests in 218.569s
+FAILED (failures=18)
+===== mutant: burn_child (04:36:13) =====
+hook diff vs repo:
+21a22,23
+> # MUTANT: catastrophic CPU in a child the hook waits for (~12 s)
+> timeout 12 sh -c 'while :; do :; done' || true
+test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) ... 
+  test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='jq', shape='unquoted token') ... FAIL
+  test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='jq', shape='-m message') ... FAIL
+  test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='jq', shape='heredoc line') ... FAIL
+  test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='jq', shape='heredoc lines') ... FAIL
+  test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='no-jq', shape='unquoted token') ... FAIL
+  test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='no-jq', shape='-m message') ... FAIL
+  test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='no-jq', shape='heredoc line') ... FAIL
+  test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='no-jq', shape='heredoc lines') ... FAIL
+test_one_megabyte_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_command_finishes_quickly) ... 
+  test_one_megabyte_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_command_finishes_quickly) (mode='jq') ... FAIL
+  test_one_megabyte_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_command_finishes_quickly) (mode='no-jq') ... FAIL
+test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) ... 
+  test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='jq', shape='heredoc lines') ... FAIL
+  test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='jq', shape='one token') ... FAIL
+  test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='jq', shape='windows paths') ... FAIL
+  test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='no-jq', shape='heredoc lines') ... FAIL
+  test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='no-jq', shape='one token') ... FAIL
+  test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='no-jq', shape='windows paths') ... FAIL
+test_long_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_long_command_finishes_quickly) ... 
+  test_long_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_long_command_finishes_quickly) (mode='jq') ... FAIL
+  test_long_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_long_command_finishes_quickly) (mode='no-jq') ... FAIL
+FAIL: test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='jq', shape='unquoted token')
+AssertionError: 12.131179 not less than 3.0 : 12.13 s of CPU
+FAIL: test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='jq', shape='-m message')
+AssertionError: 12.109485999999999 not less than 3.0 : 12.11 s of CPU
+FAIL: test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='jq', shape='heredoc line')
+AssertionError: 12.112429000000002 not less than 3.0 : 12.11 s of CPU
+FAIL: test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='jq', shape='heredoc lines')
+AssertionError: 12.107422999999999 not less than 3.0 : 12.11 s of CPU
+FAIL: test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='no-jq', shape='unquoted token')
+AssertionError: 12.312265999999996 not less than 3.0 : 12.31 s of CPU
+FAIL: test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='no-jq', shape='-m message')
+AssertionError: 12.315635999999998 not less than 3.0 : 12.32 s of CPU
+FAIL: test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='no-jq', shape='heredoc line')
+AssertionError: 12.310526 not less than 3.0 : 12.31 s of CPU
+FAIL: test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) (mode='no-jq', shape='heredoc lines')
+AssertionError: 12.470749000000009 not less than 3.0 : 12.47 s of CPU
+FAIL: test_one_megabyte_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_command_finishes_quickly) (mode='jq')
+AssertionError: 12.118734000000003 not less than 3.0 : 12.12 s of CPU
+FAIL: test_one_megabyte_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_command_finishes_quickly) (mode='no-jq')
+AssertionError: 12.327678999999993 not less than 3.0 : 12.33 s of CPU
+FAIL: test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='jq', shape='heredoc lines')
+AssertionError: 12.585874000000002 not less than 9.0 : 12.59 s of CPU
+FAIL: test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='jq', shape='one token')
+AssertionError: 12.500781000000014 not less than 9.0 : 12.50 s of CPU
+FAIL: test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='jq', shape='windows paths')
+AssertionError: 12.526840999999987 not less than 9.0 : 12.53 s of CPU
+FAIL: test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='no-jq', shape='heredoc lines')
+AssertionError: 13.723293000000007 not less than 9.0 : 13.72 s of CPU
+FAIL: test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='no-jq', shape='one token')
+AssertionError: 13.678638999999992 not less than 9.0 : 13.68 s of CPU
+FAIL: test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) (mode='no-jq', shape='windows paths')
+AssertionError: 14.036431 not less than 9.0 : 14.04 s of CPU
+FAIL: test_long_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_long_command_finishes_quickly) (mode='jq')
+AssertionError: 12.023499 not less than 5.0 : 12.02 s of CPU
+FAIL: test_long_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_long_command_finishes_quickly) (mode='no-jq')
+AssertionError: 12.016514 not less than 5.0 : 12.02 s of CPU
+Ran 4 tests in 225.231s
+FAILED (failures=18)
+===== mutant: sleep12 (04:39:58) =====
+hook diff vs repo:
+21a22,23
+> # MUTANT: the hook waits 12 s without using CPU
+> sleep 12
+test_long_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_long_command_finishes_quickly) ... ok
+Ran 1 test in 24.045s
+OK
+===== mutant: sleep70 (04:40:22) =====
+hook diff vs repo:
+21a22,23
+> # MUTANT: the hook hangs past the 60 s guard
+> sleep 70
+test_long_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_long_command_finishes_quickly) ... 
+  test_long_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_long_command_finishes_quickly) (mode='jq') ... ERROR
+  test_long_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_long_command_finishes_quickly) (mode='no-jq') ... ERROR
+ERROR: test_long_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_long_command_finishes_quickly) (mode='jq')
+ERROR: test_long_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_long_command_finishes_quickly) (mode='no-jq')
+Ran 1 test in 120.129s
+FAILED (errors=2)

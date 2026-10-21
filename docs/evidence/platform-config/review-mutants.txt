@@ -1,0 +1,148 @@
+Reviewer mutation/plant runs, platform-config, 2026-10-18.
+Scratch copy of the working tree (no .git/.venv), run in knowledge-engine-gates:latest with --network none; every mutant restored before the next. Working tree untouched.
+First pass: M1-M4 below are valid (they ran before M6). Its M6-M13 were invalid (stale .pyc kept the same-size M6 mutant alive) and were rerun with PYTHONDONTWRITEBYTECODE=1 and __pycache__ removed (second block).
+
+### engine mutants, first pass (suite: test_engine_* + test_tracing)
+== M1 configure_tracing: local-collector check removed
+OK
+rc=0 => SURVIVED
+== M2 configure_tracing: hide flags not exported to env
+OK
+rc=0 => SURVIVED
+== M3 configure_tracing: hide_inputs exported inverted
+FAIL: test_startup_is_traced (tests.test_engine_startup.StartupTracingTest.test_startup_is_traced)
+FAILED (failures=1)
+rc=1 => KILLED
+== M4 placeholder check case-sensitive
+FAIL: test_startup_refuses_placeholder_secrets (tests.test_engine_startup.PlaceholderSecretTest.test_startup_refuses_placeholder_secrets) (secret='KE_STORES__NEO4J__PASSWORD', value='CHANGEME-UPPER', env='prod')
+FAIL: test_startup_refuses_placeholder_secrets (tests.test_engine_startup.PlaceholderSecretTest.test_startup_refuses_placeholder_secrets) (secret='KE_STORES__NEO4J__PASSWORD', value='CHANGEME-UPPER', env='ci')
+FAIL: test_startup_refuses_placeholder_secrets (tests.test_engine_startup.PlaceholderSecretTest.test_startup_refuses_placeholder_secrets) (secret='KE_STORES__NEO4J__PASSWORD', value='ChangeMe-Mixed', env='prod')
+
+### engine mutants, second pass
+== M0 baseline (no-op)
+OK
+rc=0 => SURVIVED
+== M5 StandardVars above KE_ env (precedence swap)
+OK
+rc=0 => SURVIVED
+== M6 env source below YAML (precedence)
+ERROR: test_egress_guard_startup (tests.test_engine_egress.EgressStartupTest.test_egress_guard_startup) (case='every host on the list')
+ERROR: test_startup_refuses_placeholder_secrets (tests.test_engine_startup.PlaceholderSecretTest.test_startup_refuses_placeholder_secrets) (secret='KE_STORES__NEO4J__PASSWORD', value='changeme-stores-neo4j-password', env='dev')
+ERROR: test_startup_refuses_placeholder_secrets (tests.test_engine_startup.PlaceholderSecretTest.test_startup_refuses_placeholder_secrets) (secret='KE_STORES__NEO4J__PASSWORD', value='changeme-something-else-entirely', env='dev')
+FAILED (failures=10, errors=13)
+rc=1 => KILLED
+== M7 refusal 2 only outside dev
+FAIL: test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='non-local collector refused in dev too', endpoint='http://collector.example.com:6006')
+FAIL: test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='non-local collector refused in dev too', endpoint='http://203.0.113.5:6006')
+FAILED (failures=2)
+rc=1 => KILLED
+== M8 egress startup check skips model_upstream
+FAIL: test_egress_guard_startup (tests.test_engine_egress.EgressStartupTest.test_egress_guard_startup) (case='model upstream, empty allowlist')
+FAIL: test_egress_guard_startup (tests.test_engine_egress.EgressStartupTest.test_egress_guard_startup) (case='model upstream off-list')
+FAILED (failures=2)
+rc=1 => KILLED
+== M9 is_local: private ranges accepted
+FAIL: test_is_local_endpoint (tests.test_engine_egress.LocalEndpointTest.test_is_local_endpoint) (remote='http://203.0.113.5:6006')
+FAIL: test_is_local_endpoint (tests.test_engine_egress.LocalEndpointTest.test_is_local_endpoint) (remote='http://10.0.0.5:6006')
+FAIL: test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) (case='non-local collector', endpoint='http://203.0.113.5:6006')
+FAILED (failures=4)
+rc=1 => KILLED
+== M10 ModelClient trust_env True
+FAIL: test_model_client_uses_guarded_transport (tests.test_engine_egress.EgressRuntimeTest.test_model_client_uses_guarded_transport)
+FAILED (failures=1)
+rc=1 => KILLED
+== M11 startup(): configure_tracing not called
+OK
+rc=0 => SURVIVED
+== M12 load span records values
+FAIL: test_config_load_span_names_overridden_keys_not_values (tests.test_engine_startup.StartupTracingTest.test_config_load_span_names_overridden_keys_not_values)
+FAIL: test_startup_is_traced (tests.test_engine_startup.StartupTracingTest.test_startup_is_traced)
+FAILED (failures=2)
+rc=1 => KILLED
+== M13 egress allowlist suffix match
+FAIL: test_egress_guard_startup (tests.test_engine_egress.EgressStartupTest.test_egress_guard_startup) (case='allowlist is exact, no suffix match')
+FAILED (failures=1)
+rc=1 => KILLED
+== M14 egress check after inner transport
+FAIL: test_egress_guard_checks_every_redirect_hop (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_checks_every_redirect_hop)
+FAIL: test_egress_guard_runtime (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_runtime) (url='http://denied.example/v1/chat/completions')
+FAIL: test_egress_guard_runtime (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_runtime) (url='https://denied.example:8443/v1/models')
+FAILED (failures=7)
+rc=1 => KILLED
+== M15 dev allows placeholder AND skips egress check
+OK
+rc=0 => SURVIVED
+== M16 describe() includes input value
+OK
+rc=0 => SURVIVED
+== M17 ConfigError chained (from exc)
+OK
+rc=0 => SURVIVED
+
+### describe(), test.sh guard, scanner plants
+== M16b describe() puts the input value in the message
+FAIL: test_config_rejects_bad_type (tests.test_engine_config.TypedConfigTest.test_config_rejects_bad_type)
+FAILED (failures=1)
+rc=1 => KILLED
+== T1 test.sh quality guard never true
+OK
+rc=0 => SURVIVED
+== S1 shell parameter default hides declared port
+OK
+rc=0 => MISSED
+== S2 model host name upper-case
+OK
+rc=0 => MISSED
+== S3 undeclared port in a bind tuple (python)
+OK
+rc=0 => MISSED
+== S4 undeclared port in a dict literal (python)
+OK
+rc=0 => MISSED
+== S5 compose override with .yaml suffix
+OK
+rc=0 => MISSED
+== S6 declared port in a .conf under scripts
+OK
+rc=0 => MISSED
+== S7 control: declared port in scripts/*.sh
+FAIL: test_no_hardcoded_ports (tests.test_engine_hardcoded.RepositoryScanTest.test_no_hardcoded_ports)
+FAILED (failures=1)
+rc=1 => CAUGHT
+== S8 model host in a shell parameter default
+FAIL: test_model_host_name_only_in_allowed_locations (tests.test_engine_hardcoded.RepositoryScanTest.test_model_host_name_only_in_allowed_locations)
+FAILED (failures=1)
+rc=1 => CAUGHT
+
+### PS-1.6 threshold RED runs (scripts/test.sh fast)
+== Q1 coverage below 80 (engine/_dead.py, 400 uncovered statements)
+Ran 149 tests in 22.795s
+OK
+TOTAL                              841    432     94     11    52%
+Coverage failure: total of 52 is less than fail-under=80
+test.sh rc=2
+== Q2 mypy --strict error (untyped def in engine/egress.py)
+Ran 149 tests in 22.548s
+OK
+TOTAL                              441     31     94     11    91%
+engine/egress.py:20: error: Function is missing a type annotation  [no-untyped-def]
+Found 1 error in 1 file (checked 12 source files)
+test.sh rc=1
+== Q3 guard mutant + same coverage hole as Q1
+Ran 149 tests in 22.364s
+OK
+test.sh rc=0
+== Q4 control: unmodified scratch copy
+Ran 149 tests in 22.333s
+OK
+test.sh rc=1
+Q4 failed only because Q3 left an uncombined .coverage.* file that coverage erase does not remove (review B5). Clean control rerun: rc=0, Ran 149, OK, TOTAL 92%, mypy Success.
+
+### coverage erase vs parallel files
+coverage run -p x.py -> .coverage.<host>.pid46.<rand>; coverage erase -> file still present; coverage combine -> consumed.
+
+### console-mode probe (B1)
+env: KE_ENV=prod, KE_TELEMETRY__TRACING=console, PHOENIX_COLLECTOR_ENDPOINT=http://collector.example.com:6006, non-placeholder secrets, OTLPSpanExporter mocked
+startup ok; settings.telemetry.tracing = console
+provider: TracerProvider
+OTLPSpanExporter calls: [call('http://collector.example.com:6006/v1/traces', timeout=5)]

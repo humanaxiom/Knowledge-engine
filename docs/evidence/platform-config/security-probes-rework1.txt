@@ -1,0 +1,876 @@
+ Container knowledge-engine-gates-run-09bc3611c154 Creating 
+ Container knowledge-engine-gates-run-09bc3611c154 Created 
+net ifaces:
+lo
+== original probe (regression, sections 1-7) ==
+   Building monitored-harness @ file:///work
+      Built monitored-harness @ file:///work
+Uninstalled 1 package in 0.94ms
+Installed 1 package in 1ms
+
+### 1. GuardedTransport host matching (allow = allowed.example, 10.0.0.5)
+'http://allowed.example/'                          ALLOWED -> inner saw ['http://allowed.example/']
+'http://ALLOWED.EXAMPLE./'                         ALLOWED -> inner saw ['http://allowed.example./']
+'http://allowed.example:1/'                        ALLOWED -> inner saw ['http://allowed.example:1/']
+'https://allowed.example:65535/x'                  ALLOWED -> inner saw ['https://allowed.example:65535/x']
+'http://allowed.example@evil.example/'             denied host='evil.example'
+'http://allowed.example:pw@evil.example/'          denied host='evil.example'
+'http://evil.example#@allowed.example/'            denied host='evil.example'
+'http://evil.example?@allowed.example/'            denied host='evil.example'
+'http://evil.example\\@allowed.example/'           ALLOWED -> inner saw ['http://evil.example%5C@allowed.example/']
+'http://allowed.example.evil.example/'             denied host='allowed.example.evil.example'
+'http://evil.example/allowed.example'              denied host='evil.example'
+'http://2130706433/'                               denied host='2130706433'
+'http://0x7f.0.0.1/'                               denied host='0x7f.0.0.1'
+'http://0177.0.0.1/'                               error InvalidURL: Invalid IPv4 address: '0177.0.0.1'
+'http://127.1/'                                    denied host='127.1'
+'http://[::1]/'                                    denied host='::1'
+'http://[::ffff:10.0.0.5]/'                        denied host='::ffff:10.0.0.5'
+'http://10.0.0.5/'                                 ALLOWED -> inner saw ['http://10.0.0.5/']
+'http://012.0.0.5/'                                error InvalidURL: Invalid IPv4 address: '012.0.0.5'
+'http://0xa.0.0.5/'                                denied host='0xa.0.0.5'
+'http://167772165/'                                denied host='167772165'
+'http://allowed%2eexample/'                        denied host='allowed%2eexample'
+'http://allowed.exаmple/'                          denied host='allowed.xn--exmple-4nf'
+'http://allowed.example../'                        ALLOWED -> inner saw ['http://allowed.example../']
+'http://%61llowed.example/'                        denied host='%61llowed.example'
+
+### 2. Redirects to other hosts (follow_redirects=True)
+redirect->'http://evil.example/'                   denied host='evil.example', inner saw ['http://allowed.example/']
+redirect->'http://allowed.example@evil.example/'   denied host='evil.example', inner saw ['http://allowed.example/']
+redirect->'//evil.example/'                        denied host='evil.example', inner saw ['http://allowed.example/']
+redirect->'http://127.0.0.1/'                      denied host='127.0.0.1', inner saw ['http://allowed.example/']
+redirect->'http://allowed.example/ok'              status 200, inner saw ['http://allowed.example/', 'http://allowed.example/ok']
+
+### 3. Socket/DNS spy with real ModelClient (denied host), proxy env set
+trust_env: False mounts: {} transport: GuardedTransport
+http://evil.example/                     denied; socket/DNS calls before deny: []
+http://allowed.example@evil.example/     denied; socket/DNS calls before deny: []
+http://[::2]/                            denied; socket/DNS calls before deny: []
+http://2130706433/                       denied; socket/DNS calls before deny: []
+allowed host goes direct (no proxy): ConnectError; calls: [('create_connection', ('allowed.example', 80))]
+
+### 4. An httpx client built without the guarded transport
+raw client mounts from env proxies: {}
+raw client to evil.example: ConnectError; socket calls reached: [('create_connection', ('evil.example', 80))]
+
+### 5. is_local_endpoint (service names = defaults) via str(AnyHttpUrl) like startup
+'http://localhost:6006'                  -> 'http://localhost:6006/'                 host='localhost'            local=True
+'http://localhost.evil.com'              -> 'http://localhost.evil.com/'             host='localhost.evil.com'   local=False
+'http://127.0.0.1.nip.io'                -> 'http://127.0.0.1.nip.io/'               host='127.0.0.1.nip.io'     local=False
+'http://0.0.0.0:6006'                    -> 'http://0.0.0.0:6006/'                   host='0.0.0.0'              local=False
+'http://[::ffff:127.0.0.1]:6006'         -> 'http://[::ffff:7f00:1]:6006/'           host='::ffff:7f00:1'        local=True
+'http://[::1]:6006'                      -> 'http://[::1]:6006/'                     host='::1'                  local=True
+'http://phoenix.evil.com'                -> 'http://phoenix.evil.com/'               host='phoenix.evil.com'     local=False
+'http://phoenix.'                        -> 'http://phoenix./'                       host='phoenix.'             local=True
+'http://PHOENIX:6006'                    -> 'http://phoenix:6006/'                   host='phoenix'              local=True
+'http://phoenix-evil'                    -> 'http://phoenix-evil/'                   host='phoenix-evil'         local=False
+'http://localhost@evil.com'              -> 'http://localhost@evil.com/'             host='evil.com'             local=False
+'http://evil.com\\@localhost'            -> 'http://evil.com/@localhost'             host='evil.com'             local=False
+'http://evil.com#@localhost'             -> 'http://evil.com/#@localhost'            host='evil.com'             local=False
+'http://2130706433'                      -> 'http://127.0.0.1/'                      host='127.0.0.1'            local=True
+'http://0x7f000001'                      -> 'http://127.0.0.1/'                      host='127.0.0.1'            local=True
+'http://127.1'                           -> 'http://127.0.0.1/'                      host='127.0.0.1'            local=True
+'http://[::]:6006'                       -> 'http://[::]:6006/'                      host='::'                   local=False
+'http://127.255.255.254'                 -> 'http://127.255.255.254/'                host='127.255.255.254'      local=True
+'http://localhost%2eevil.com'            -> 'http://localhost.evil.com/'             host='localhost.evil.com'   local=False
+'http://evil.com:80@localhost'           -> 'http://evil.com:80@localhost/'          host='localhost'            local=True
+'http://localhost:6006@evil.com'         -> 'http://localhost:6006@evil.com/'        host='evil.com'             local=False
+'http://evil.com%00.localhost'           pydantic rejects (ValidationError)
+'http://ph%6fenix'                       -> 'http://phoenix/'                        host='phoenix'              local=True
+'http://localhost./'                     -> 'http://localhost./'                     host='localhost.'           local=True
+'http://api.:1'                          -> 'http://api.:1/'                         host='api.'                 local=True
+raw (no pydantic) 'http://localhost\\@evil.com' False evil.com
+
+### 6. startup.check refusals
+ci auth='false'                                         refused: startup refused: auth.enabled: authentication is disabled (env=ci)
+ci auth='False'                                         refused: startup refused: auth.enabled: authentication is disabled (env=ci)
+ci auth='FALSE'                                         refused: startup refused: auth.enabled: authentication is disabled (env=ci)
+ci auth='0'                                             refused: startup refused: auth.enabled: authentication is disabled (env=ci)
+ci auth='off'                                           refused: startup refused: auth.enabled: authentication is disabled (env=ci)
+ci auth='no'                                            refused: startup refused: auth.enabled: authentication is disabled (env=ci)
+ci auth='f'                                             refused: startup refused: auth.enabled: authentication is disabled (env=ci)
+ci auth='n'                                             refused: startup refused: auth.enabled: authentication is disabled (env=ci)
+ci auth=' false'                                        ConfigError: invalid configuration: KE_AUTH__ENABLED (auth.enabled): Input should be a valid boolean, unable to interpret input
+ci auth='false '                                        ConfigError: invalid configuration: KE_AUTH__ENABLED (auth.enabled): Input should be a valid boolean, unable to interpret input
+ci auth=''                                              STARTS
+env='dev' auth=false                                    STARTS (warn: 'auth.enabled: authentication is disabled')
+env='DEV' auth=false                                    ConfigError: invalid configuration: KE_ENV (env): Input should be 'dev', 'ci' or 'prod'
+env='Dev' auth=false                                    ConfigError: invalid configuration: KE_ENV (env): Input should be 'dev', 'ci' or 'prod'
+env=' dev' auth=false                                   ConfigError: invalid configuration: KE_ENV (env): Input should be 'dev', 'ci' or 'prod'
+env='dev ' auth=false                                   ConfigError: invalid configuration: KE_ENV (env): Input should be 'dev', 'ci' or 'prod'
+env='prod' auth=false                                   refused: startup refused: auth.enabled: authentication is disabled (env=prod)
+env='' auth=false                                       refused: startup refused: auth.enabled: authentication is disabled (env=prod)
+env='development' auth=false                            ConfigError: invalid configuration: KE_ENV (env): Input should be 'dev', 'ci' or 'prod'
+ci KE hide_inputs='false'                               refused: startup refused: OPENINFERENCE_HIDE_INPUTS: span values are not hidden (env=ci)
+ci OPENINFERENCE_HIDE_OUTPUTS='false'                   refused: startup refused: OPENINFERENCE_HIDE_OUTPUTS: span values are not hidden (env=ci)
+ci KE hide_inputs='0'                                   refused: startup refused: OPENINFERENCE_HIDE_INPUTS: span values are not hidden (env=ci)
+ci OPENINFERENCE_HIDE_OUTPUTS='0'                       refused: startup refused: OPENINFERENCE_HIDE_OUTPUTS: span values are not hidden (env=ci)
+ci KE hide_inputs='False'                               refused: startup refused: OPENINFERENCE_HIDE_INPUTS: span values are not hidden (env=ci)
+ci OPENINFERENCE_HIDE_OUTPUTS='False'                   refused: startup refused: OPENINFERENCE_HIDE_OUTPUTS: span values are not hidden (env=ci)
+ci KE hide_inputs='no'                                  refused: startup refused: OPENINFERENCE_HIDE_INPUTS: span values are not hidden (env=ci)
+ci OPENINFERENCE_HIDE_OUTPUTS='no'                      refused: startup refused: OPENINFERENCE_HIDE_OUTPUTS: span values are not hidden (env=ci)
+ci KE hide_inputs=' false'                              ConfigError: invalid configuration: KE_TELEMETRY__HIDE_INPUTS (telemetry.hide_inputs): Input should be a valid boolean, unable to interpret input
+ci OPENINFERENCE_HIDE_OUTPUTS=' false'                  ConfigError: invalid configuration: OPENINFERENCE_HIDE_OUTPUTS (telemetry.hide_outputs): Input should be a valid boolean, unable to interpret input
+ci KE hide_inputs=''                                    STARTS
+ci OPENINFERENCE_HIDE_OUTPUTS=''                        STARTS
+ci hide KE=true but OI env=false (precedence)           STARTS
+ci postgres pw='changeme-x'                             refused: startup refused: KE_STORES__POSTGRES__PASSWORD: secret still has the placeholder prefix; set a real value
+ci postgres pw='CHANGEME'                               refused: startup refused: KE_STORES__POSTGRES__PASSWORD: secret still has the placeholder prefix; set a real value
+ci postgres pw='ChangeMe-x'                             refused: startup refused: KE_STORES__POSTGRES__PASSWORD: secret still has the placeholder prefix; set a real value
+ci postgres pw=' changeme-x'                            refused: startup refused: KE_STORES__POSTGRES__PASSWORD: secret still has the placeholder prefix; set a real value
+ci postgres pw='changeme'                               refused: startup refused: KE_STORES__POSTGRES__PASSWORD: secret still has the placeholder prefix; set a real value
+ci postgres pw='\tchangeme'                             refused: startup refused: KE_STORES__POSTGRES__PASSWORD: secret still has the placeholder prefix; set a real value
+ci postgres pw='\u200bchangeme-x'                       refused: startup refused: KE_STORES__POSTGRES__PASSWORD: secret still has the placeholder prefix; set a real value
+ci postgres pw='chаngeme'                               STARTS
+ci postgres pw=' '                                      STARTS
+ci postgres pw='x'                                      STARTS
+ci postgres pw empty                                    ConfigError: invalid configuration: KE_STORES__POSTGRES__PASSWORD (stores.postgres.password): Field required
+dev tracing=otlp KE endpoint=http://evil.example:6006   refused: startup refused: telemetry.collector_endpoint: traces would be exported to non-local host 'evil.example'
+dev tracing=OTLP KE endpoint=http://evil.example        ConfigError: invalid configuration: HARNESS_TRACING (telemetry.tracing): Input should be 'otlp', 'console' or 'off'
+dev tracing=otlp KE endpoint=http://localhost.evil.com  refused: startup refused: telemetry.collector_endpoint: traces would be exported to non-local host 'localhost.evil.com'
+dev tracing=otlp KE endpoint=http://0.0.0.0:6006        refused: startup refused: telemetry.collector_endpoint: traces would be exported to non-local host '0.0.0.0'
+dev tracing=console KE endpoint=http://evil.example     STARTS
+dev tracing=off KE endpoint=http://evil.example         STARTS
+ci KE tracing=otlp, PHOENIX endpoint evil               refused: startup refused: telemetry.collector_endpoint: traces would be exported to non-local host 'evil.example'
+ci service_names override adds evil                     STARTS
+ci service_names non-JSON (unwrapped?)                  ConfigError: invalid configuration: KE_STACK__SERVICE_NAMES (stack): value could not be parsed
+ci model upstream not allowlisted                       refused: startup refused: egress_allowlist: host 'evil.example' is not on the allowlist
+ci model upstream userinfo trick                        refused: startup refused: egress_allowlist: host 'evil.example' is not on the allowlist
+ci model upstream http://allowed@evil                   refused: startup refused: egress_allowlist: host 'evil.example' is not on the allowlist
+ci model upstream garbage :::                           refused: startup refused: egress_allowlist: host '' is not on the allowlist
+ci model upstream [::1 (unbalanced)                     ConfigError: invalid configuration: KE_MODEL_UPSTREAM (models.model_upstream): Value error, not a valid host or URL
+ci base_url userinfo                                    refused: startup refused: egress_allowlist: host 'evil.example' is not on the allowlist
+
+### 7. configure_tracing: settings say console, harness env decides exporter
+KE_TELEMETRY__TRACING=console, PHOENIX endpoint evil, HARNESS_TRACING unset
+   settings.tracing=console endpoint=http://evil.example:4318/; check passes; installed=True; exporters=[('ConsoleSpanExporter', None)]
+KE_TELEMETRY__TRACING=console, KE endpoint local, PHOENIX evil, HARNESS_TRACING=otlp
+   settings.tracing=console endpoint=http://localhost:6006/; check passes; installed=True; exporters=[('ConsoleSpanExporter', None)]
+== rework1 probe (sections 8-11) ==
+
+### 8a. H1 console mode: exporter chosen from settings only
+{
+    "name": "engine.config.load",
+    "context": {
+        "trace_id": "0x0d1b463bf5be5ac60393bedd95156895",
+        "span_id": "0xb79c6d29395d6b9b",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": "0x0276125bef861f8b",
+    "start_time": "2026-10-19T01:01:37.758769Z",
+    "end_time": "2026-10-19T01:01:37.761635Z",
+    "status": {
+        "status_code": "OK"
+    },
+    "attributes": {
+        "openinference.span.kind": "CHAIN",
+        "ke.overridden_env": [
+            "KE_CONFIG_FILE",
+            "KE_ENV",
+            "KE_STORES__NEO4J__PASSWORD",
+            "KE_STORES__POSTGRES__PASSWORD",
+            "KE_TELEMETRY__TRACING",
+            "OPENINFERENCE_HIDE_INPUTS",
+            "OPENINFERENCE_HIDE_OUTPUTS",
+            "PHOENIX_COLLECTOR_ENDPOINT"
+        ]
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.45.1",
+            "service.instance.id": "921562b5-980f-4da2-89c3-e50ed0d33719",
+            "service.name": "knowledge-engine"
+        },
+        "schema_url": ""
+    }
+}
+{
+    "name": "engine.egress.startup_check",
+    "context": {
+        "trace_id": "0x0d1b463bf5be5ac60393bedd95156895",
+        "span_id": "0x396a478b073a498e",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": "0x824e6a21c7af3085",
+    "start_time": "2026-10-19T01:01:37.761817Z",
+    "end_time": "2026-10-19T01:01:37.761829Z",
+    "status": {
+        "status_code": "OK"
+    },
+    "attributes": {
+        "openinference.span.kind": "CHAIN",
+        "ke.hosts_checked": []
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.45.1",
+            "service.instance.id": "921562b5-980f-4da2-89c3-e50ed0d33719",
+            "service.name": "knowledge-engine"
+        },
+        "schema_url": ""
+    }
+}
+{
+    "name": "engine.startup.refusals",
+    "context": {
+        "trace_id": "0x0d1b463bf5be5ac60393bedd95156895",
+        "span_id": "0x824e6a21c7af3085",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": "0x0276125bef861f8b",
+    "start_time": "2026-10-19T01:01:37.761792Z",
+    "end_time": "2026-10-19T01:01:37.761917Z",
+    "status": {
+        "status_code": "OK"
+    },
+    "attributes": {
+        "openinference.span.kind": "CHAIN"
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.45.1",
+            "service.instance.id": "921562b5-980f-4da2-89c3-e50ed0d33719",
+            "service.name": "knowledge-engine"
+        },
+        "schema_url": ""
+    }
+}
+{
+    "name": "engine.startup",
+    "context": {
+        "trace_id": "0x0d1b463bf5be5ac60393bedd95156895",
+        "span_id": "0x0276125bef861f8b",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": null,
+    "start_time": "2026-10-19T01:01:37.758735Z",
+    "end_time": "2026-10-19T01:01:37.761969Z",
+    "status": {
+        "status_code": "OK"
+    },
+    "attributes": {
+        "openinference.span.kind": "CHAIN",
+        "ke.env": "ci"
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.45.1",
+            "service.instance.id": "921562b5-980f-4da2-89c3-e50ed0d33719",
+            "service.name": "knowledge-engine"
+        },
+        "schema_url": ""
+    }
+}
+console, PHOENIX evil, HARNESS_TRACING unset               choose=ConsoleSpanExporter; startup OK; provider=('TracerProvider', [('SimpleSpanProcessor', 'ConsoleSpanExporter', None)])
+{
+    "name": "engine.config.load",
+    "context": {
+        "trace_id": "0x95655eaf3cc546f42e7b26d19e2329ff",
+        "span_id": "0x6fb1c764cb805732",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": "0x5bc4ca110b895d1d",
+    "start_time": "2026-10-19T01:01:37.767839Z",
+    "end_time": "2026-10-19T01:01:37.770592Z",
+    "status": {
+        "status_code": "OK"
+    },
+    "attributes": {
+        "openinference.span.kind": "CHAIN",
+        "ke.overridden_env": [
+            "HARNESS_TRACING",
+            "KE_CONFIG_FILE",
+            "KE_ENV",
+            "KE_STORES__NEO4J__PASSWORD",
+            "KE_STORES__POSTGRES__PASSWORD",
+            "KE_TELEMETRY__TRACING",
+            "OPENINFERENCE_HIDE_INPUTS",
+            "OPENINFERENCE_HIDE_OUTPUTS",
+            "PHOENIX_COLLECTOR_ENDPOINT"
+        ]
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.45.1",
+            "service.instance.id": "921562b5-980f-4da2-89c3-e50ed0d33719",
+            "service.name": "knowledge-engine"
+        },
+        "schema_url": ""
+    }
+}
+{
+    "name": "engine.egress.startup_check",
+    "context": {
+        "trace_id": "0x95655eaf3cc546f42e7b26d19e2329ff",
+        "span_id": "0x38db25ddf84eca9f",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": "0xf8df2bf9d47adf3a",
+    "start_time": "2026-10-19T01:01:37.770723Z",
+    "end_time": "2026-10-19T01:01:37.770733Z",
+    "status": {
+        "status_code": "OK"
+    },
+    "attributes": {
+        "openinference.span.kind": "CHAIN",
+        "ke.hosts_checked": []
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.45.1",
+            "service.instance.id": "921562b5-980f-4da2-89c3-e50ed0d33719",
+            "service.name": "knowledge-engine"
+        },
+        "schema_url": ""
+    }
+}
+{
+    "name": "engine.startup.refusals",
+    "context": {
+        "trace_id": "0x95655eaf3cc546f42e7b26d19e2329ff",
+        "span_id": "0xf8df2bf9d47adf3a",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": "0x5bc4ca110b895d1d",
+    "start_time": "2026-10-19T01:01:37.770702Z",
+    "end_time": "2026-10-19T01:01:37.770808Z",
+    "status": {
+        "status_code": "OK"
+    },
+    "attributes": {
+        "openinference.span.kind": "CHAIN"
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.45.1",
+            "service.instance.id": "921562b5-980f-4da2-89c3-e50ed0d33719",
+            "service.name": "knowledge-engine"
+        },
+        "schema_url": ""
+    }
+}
+{
+    "name": "engine.startup",
+    "context": {
+        "trace_id": "0x95655eaf3cc546f42e7b26d19e2329ff",
+        "span_id": "0x5bc4ca110b895d1d",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": null,
+    "start_time": "2026-10-19T01:01:37.767816Z",
+    "end_time": "2026-10-19T01:01:37.770854Z",
+    "status": {
+        "status_code": "OK"
+    },
+    "attributes": {
+        "openinference.span.kind": "CHAIN",
+        "ke.env": "ci"
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.45.1",
+            "service.instance.id": "921562b5-980f-4da2-89c3-e50ed0d33719",
+            "service.name": "knowledge-engine"
+        },
+        "schema_url": ""
+    }
+}
+console, PHOENIX evil, HARNESS_TRACING=otlp                choose=ConsoleSpanExporter; startup OK; provider=('TracerProvider', [('SimpleSpanProcessor', 'ConsoleSpanExporter', None)])
+{
+    "name": "engine.config.load",
+    "context": {
+        "trace_id": "0x55903cfdc16c5aa963e020fee3601dc8",
+        "span_id": "0xbdae517f02eedd34",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": "0x734e8e354b8cc2ca",
+    "start_time": "2026-10-19T01:01:37.777049Z",
+    "end_time": "2026-10-19T01:01:37.779950Z",
+    "status": {
+        "status_code": "OK"
+    },
+    "attributes": {
+        "openinference.span.kind": "CHAIN",
+        "ke.overridden_env": [
+            "HARNESS_TRACING",
+            "KE_CONFIG_FILE",
+            "KE_ENV",
+            "KE_STORES__NEO4J__PASSWORD",
+            "KE_STORES__POSTGRES__PASSWORD",
+            "OPENINFERENCE_HIDE_INPUTS",
+            "OPENINFERENCE_HIDE_OUTPUTS",
+            "PHOENIX_COLLECTOR_ENDPOINT"
+        ]
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.45.1",
+            "service.instance.id": "921562b5-980f-4da2-89c3-e50ed0d33719",
+            "service.name": "knowledge-engine"
+        },
+        "schema_url": ""
+    }
+}
+{
+    "name": "engine.egress.startup_check",
+    "context": {
+        "trace_id": "0x55903cfdc16c5aa963e020fee3601dc8",
+        "span_id": "0x4ffef5928264c631",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": "0xc92d1ceffccc3ad4",
+    "start_time": "2026-10-19T01:01:37.780095Z",
+    "end_time": "2026-10-19T01:01:37.780106Z",
+    "status": {
+        "status_code": "OK"
+    },
+    "attributes": {
+        "openinference.span.kind": "CHAIN",
+        "ke.hosts_checked": []
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.45.1",
+            "service.instance.id": "921562b5-980f-4da2-89c3-e50ed0d33719",
+            "service.name": "knowledge-engine"
+        },
+        "schema_url": ""
+    }
+}
+{
+    "name": "engine.startup.refusals",
+    "context": {
+        "trace_id": "0x55903cfdc16c5aa963e020fee3601dc8",
+        "span_id": "0xc92d1ceffccc3ad4",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": "0x734e8e354b8cc2ca",
+    "start_time": "2026-10-19T01:01:37.780072Z",
+    "end_time": "2026-10-19T01:01:37.780185Z",
+    "status": {
+        "status_code": "OK"
+    },
+    "attributes": {
+        "openinference.span.kind": "CHAIN"
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.45.1",
+            "service.instance.id": "921562b5-980f-4da2-89c3-e50ed0d33719",
+            "service.name": "knowledge-engine"
+        },
+        "schema_url": ""
+    }
+}
+{
+    "name": "engine.startup",
+    "context": {
+        "trace_id": "0x55903cfdc16c5aa963e020fee3601dc8",
+        "span_id": "0x734e8e354b8cc2ca",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": null,
+    "start_time": "2026-10-19T01:01:37.777030Z",
+    "end_time": "2026-10-19T01:01:37.780239Z",
+    "status": {
+        "status_code": "OK"
+    },
+    "attributes": {
+        "openinference.span.kind": "CHAIN",
+        "ke.env": "ci"
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.45.1",
+            "service.instance.id": "921562b5-980f-4da2-89c3-e50ed0d33719",
+            "service.name": "knowledge-engine"
+        },
+        "schema_url": ""
+    }
+}
+HARNESS_TRACING=console, PHOENIX evil                      choose=ConsoleSpanExporter; startup OK; provider=('TracerProvider', [('SimpleSpanProcessor', 'ConsoleSpanExporter', None)])
+{
+    "name": "engine.config.load",
+    "context": {
+        "trace_id": "0x77a418a7d77716b2fade750072ae0553",
+        "span_id": "0xd42c99948e34e95c",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": "0xad3afa40389c2c26",
+    "start_time": "2026-10-19T01:01:37.786621Z",
+    "end_time": "2026-10-19T01:01:37.789392Z",
+    "status": {
+        "status_code": "OK"
+    },
+    "attributes": {
+        "openinference.span.kind": "CHAIN",
+        "ke.overridden_env": [
+            "HARNESS_TRACING",
+            "KE_CONFIG_FILE",
+            "KE_ENV",
+            "KE_STORES__NEO4J__PASSWORD",
+            "KE_STORES__POSTGRES__PASSWORD",
+            "KE_TELEMETRY__COLLECTOR_ENDPOINT",
+            "KE_TELEMETRY__TRACING",
+            "OPENINFERENCE_HIDE_INPUTS",
+            "OPENINFERENCE_HIDE_OUTPUTS",
+            "PHOENIX_COLLECTOR_ENDPOINT"
+        ]
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.45.1",
+            "service.instance.id": "921562b5-980f-4da2-89c3-e50ed0d33719",
+            "service.name": "knowledge-engine"
+        },
+        "schema_url": ""
+    }
+}
+{
+    "name": "engine.egress.startup_check",
+    "context": {
+        "trace_id": "0x77a418a7d77716b2fade750072ae0553",
+        "span_id": "0x552fa50a07ec6d1c",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": "0x4dc936d1f2093d48",
+    "start_time": "2026-10-19T01:01:37.789526Z",
+    "end_time": "2026-10-19T01:01:37.789536Z",
+    "status": {
+        "status_code": "OK"
+    },
+    "attributes": {
+        "openinference.span.kind": "CHAIN",
+        "ke.hosts_checked": []
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.45.1",
+            "service.instance.id": "921562b5-980f-4da2-89c3-e50ed0d33719",
+            "service.name": "knowledge-engine"
+        },
+        "schema_url": ""
+    }
+}
+{
+    "name": "engine.startup.refusals",
+    "context": {
+        "trace_id": "0x77a418a7d77716b2fade750072ae0553",
+        "span_id": "0x4dc936d1f2093d48",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": "0xad3afa40389c2c26",
+    "start_time": "2026-10-19T01:01:37.789505Z",
+    "end_time": "2026-10-19T01:01:37.789612Z",
+    "status": {
+        "status_code": "OK"
+    },
+    "attributes": {
+        "openinference.span.kind": "CHAIN"
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.45.1",
+            "service.instance.id": "921562b5-980f-4da2-89c3-e50ed0d33719",
+            "service.name": "knowledge-engine"
+        },
+        "schema_url": ""
+    }
+}
+{
+    "name": "engine.startup",
+    "context": {
+        "trace_id": "0x77a418a7d77716b2fade750072ae0553",
+        "span_id": "0xad3afa40389c2c26",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": null,
+    "start_time": "2026-10-19T01:01:37.786600Z",
+    "end_time": "2026-10-19T01:01:37.789662Z",
+    "status": {
+        "status_code": "OK"
+    },
+    "attributes": {
+        "openinference.span.kind": "CHAIN",
+        "ke.env": "ci"
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.45.1",
+            "service.instance.id": "921562b5-980f-4da2-89c3-e50ed0d33719",
+            "service.name": "knowledge-engine"
+        },
+        "schema_url": ""
+    }
+}
+console, KE endpoint local, PHOENIX evil, HARNESS otlp     choose=ConsoleSpanExporter; startup OK; provider=('TracerProvider', [('SimpleSpanProcessor', 'ConsoleSpanExporter', None)])
+
+### 8b. H1 otlp with non-local / mixed endpoints
+HARNESS otlp, PHOENIX evil                    choose=NoneType ; startup refused: startup refused: telemetry.collector_endpoint: traces would be exported to non-local host 'evil.example'; provider=('ProxyTracerProvider', [])
+KE tracing otlp, PHOENIX evil                 choose=NoneType ; startup refused: startup refused: telemetry.collector_endpoint: traces would be exported to non-local host 'evil.example'; provider=('ProxyTracerProvider', [])
+KE otlp, KE endpoint local, PHOENIX evil      choose=OTLPSpanExporter http://localhost:6006/v1/traces; startup OK; provider=('TracerProvider', [('BatchSpanProcessor', 'OTLPSpanExporter', 'http://localhost:6006/v1/traces')])
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 0.94s.
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 2.03s.
+Failed to export spans batch due to timeout, max retries or shutdown.
+KE otlp, KE endpoint evil, PHOENIX local      choose=NoneType ; startup refused: startup refused: telemetry.collector_endpoint: traces would be exported to non-local host 'evil.example'; provider=('ProxyTracerProvider', [])
+dev otlp evil                                 choose=NoneType ; startup refused: startup refused: telemetry.collector_endpoint: traces would be exported to non-local host 'evil.example'; provider=('ProxyTracerProvider', [])
+otlp localhost.evil.com                       choose=NoneType ; startup refused: startup refused: telemetry.collector_endpoint: traces would be exported to non-local host 'localhost.evil.com'; provider=('ProxyTracerProvider', [])
+otlp localhost@evil.com                       choose=NoneType ; startup refused: startup refused: telemetry.collector_endpoint: traces would be exported to non-local host 'evil.com'; provider=('ProxyTracerProvider', [])
+otlp phoenix (default) ok                     choose=OTLPSpanExporter http://phoenix:6006/v1/traces; startup OK; provider=('TracerProvider', [('BatchSpanProcessor', 'OTLPSpanExporter', 'http://phoenix:6006/v1/traces')])
+
+### 8c. Provider already installed (passing env and refusing env)
+Transient error HTTPConnectionPool(host='phoenix', port=6006): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='phoenix', port=6006): Failed to resolve 'phoenix' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 1.16s.
+Transient error HTTPConnectionPool(host='phoenix', port=6006): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='phoenix', port=6006): Failed to resolve 'phoenix' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 2.31s.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Transient error HTTPConnectionPool(host='evil.example', port=4318): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='evil.example', port=4318): Failed to resolve 'evil.example' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 1.18s.
+Transient error HTTPConnectionPool(host='evil.example', port=4318): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='evil.example', port=4318): Failed to resolve 'evil.example' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 2.33s.
+Transient error HTTPConnectionPool(host='evil.example', port=4318): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='evil.example', port=4318): Failed to resolve 'evil.example' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 4.59s.
+Failed to export spans batch due to timeout, max retries or shutdown.
+passing ci               Simple(OTLP evil)          refused: startup refused: telemetry.tracing: an installed tracer provider has an exporter that is not known to be local | spans the installed provider received: ['engine.egress.startup_check']
+passing ci               Batch(OTLP evil)           refused: startup refused: telemetry.tracing: an installed tracer provider has an exporter that is not known to be local | spans the installed provider received: ['engine.egress.startup_check']
+Transient error HTTPConnectionPool(host='evil.example', port=4318): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='evil.example', port=4318): Failed to resolve 'evil.example' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 0.83s.
+Transient error HTTPConnectionPool(host='evil.example', port=4318): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='evil.example', port=4318): Failed to resolve 'evil.example' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 1.87s.
+Transient error HTTPConnectionPool(host='evil.example', port=4318): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='evil.example', port=4318): Failed to resolve 'evil.example' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 4.27s.
+Failed to export spans batch due to timeout, max retries or shutdown.
+passing ci               Batch(OTLP localhost@evil) refused: startup refused: telemetry.tracing: an installed tracer provider has an exporter that is not known to be local | spans the installed provider received: ['engine.egress.startup_check']
+Transient error HTTPConnectionPool(host='evil.example', port=80): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='evil.example', port=80): Failed to resolve 'evil.example' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 1.19s.
+Transient error HTTPConnectionPool(host='evil.example', port=80): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='evil.example', port=80): Failed to resolve 'evil.example' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 2.00s.
+Transient error HTTPConnectionPool(host='evil.example', port=80): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='evil.example', port=80): Failed to resolve 'evil.example' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 3.80s.
+Failed to export spans batch due to timeout, max retries or shutdown.
+passing ci               Simple(Foreign)            refused: startup refused: telemetry.tracing: an installed tracer provider has an exporter that is not known to be local | spans the installed provider received: ['engine.egress.startup_check']
+passing ci               Batch(Foreign)             refused: startup refused: telemetry.tracing: an installed tracer provider has an exporter that is not known to be local | spans the installed provider received: ['engine.egress.startup_check']
+passing ci               ConcurrentMulti(Foreign)   refused: startup refused: telemetry.tracing: an installed tracer provider has an exporter that is not known to be local | spans the installed provider received: ['engine.egress.startup_check']
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 0.85s.
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 1.69s.
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 4.20s.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 1.09s.
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 1.96s.
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 4.09s.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 1.03s.
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 1.83s.
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 4.29s.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 1.11s.
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 1.63s.
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 4.07s.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 1.07s.
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 1.92s.
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 4.01s.
+Failed to export spans batch due to timeout, max retries or shutdown.
+passing ci               Simple(OTLP localhost)     startup OK | spans the installed provider received: ['engine.egress.startup_check', 'engine.config.load', 'engine.egress.startup_check', 'engine.startup.refusals', 'engine.startup']
+passing ci               Simple(InMemory)           startup OK | spans the installed provider received: ['engine.egress.startup_check', 'engine.config.load', 'engine.egress.startup_check', 'engine.startup.refusals', 'engine.startup']
+Transient error HTTPConnectionPool(host='evil.example', port=4318): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='evil.example', port=4318): Failed to resolve 'evil.example' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 0.98s.
+Transient error HTTPConnectionPool(host='evil.example', port=4318): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='evil.example', port=4318): Failed to resolve 'evil.example' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 1.67s.
+Transient error HTTPConnectionPool(host='evil.example', port=4318): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='evil.example', port=4318): Failed to resolve 'evil.example' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 3.58s.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Transient error HTTPConnectionPool(host='evil.example', port=4318): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='evil.example', port=4318): Failed to resolve 'evil.example' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 1.03s.
+Transient error HTTPConnectionPool(host='evil.example', port=4318): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='evil.example', port=4318): Failed to resolve 'evil.example' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 2.22s.
+Transient error HTTPConnectionPool(host='evil.example', port=4318): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='evil.example', port=4318): Failed to resolve 'evil.example' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 4.66s.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Transient error HTTPConnectionPool(host='evil.example', port=4318): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='evil.example', port=4318): Failed to resolve 'evil.example' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 0.84s.
+Transient error HTTPConnectionPool(host='evil.example', port=4318): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='evil.example', port=4318): Failed to resolve 'evil.example' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 2.20s.
+Transient error HTTPConnectionPool(host='evil.example', port=4318): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='evil.example', port=4318): Failed to resolve 'evil.example' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 4.44s.
+Failed to export spans batch due to timeout, max retries or shutdown.
+refusing ci (auth off)   Simple(OTLP evil)          refused: startup refused: auth.enabled: authentication is disabled (env=ci) | spans the installed provider received: ['engine.config.load', 'engine.startup.refusals', 'engine.startup']
+refusing ci (auth off)   Batch(OTLP evil)           refused: startup refused: auth.enabled: authentication is disabled (env=ci) | spans the installed provider received: ['engine.config.load', 'engine.startup.refusals', 'engine.startup']
+Transient error HTTPConnectionPool(host='evil.example', port=4318): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='evil.example', port=4318): Failed to resolve 'evil.example' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 0.86s.
+Transient error HTTPConnectionPool(host='evil.example', port=4318): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='evil.example', port=4318): Failed to resolve 'evil.example' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 2.13s.
+Transient error HTTPConnectionPool(host='evil.example', port=4318): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='evil.example', port=4318): Failed to resolve 'evil.example' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 3.67s.
+Failed to export spans batch due to timeout, max retries or shutdown.
+refusing ci (auth off)   Batch(OTLP localhost@evil) refused: startup refused: auth.enabled: authentication is disabled (env=ci) | spans the installed provider received: ['engine.config.load', 'engine.startup.refusals', 'engine.startup']
+Transient error HTTPConnectionPool(host='evil.example', port=80): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='evil.example', port=80): Failed to resolve 'evil.example' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 0.93s.
+Transient error HTTPConnectionPool(host='evil.example', port=80): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='evil.example', port=80): Failed to resolve 'evil.example' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 1.64s.
+Transient error HTTPConnectionPool(host='evil.example', port=80): Max retries exceeded with url: /v1/traces (Caused by NameResolutionError("HTTPConnection(host='evil.example', port=80): Failed to resolve 'evil.example' ([Errno -3] Temporary failure in name resolution)")) encountered while exporting spans batch, retrying in 4.51s.
+Failed to export spans batch due to timeout, max retries or shutdown.
+refusing ci (auth off)   Simple(Foreign)            refused: startup refused: auth.enabled: authentication is disabled (env=ci) | spans the installed provider received: ['engine.config.load', 'engine.startup.refusals', 'engine.startup']
+refusing ci (auth off)   Batch(Foreign)             refused: startup refused: auth.enabled: authentication is disabled (env=ci) | spans the installed provider received: ['engine.config.load', 'engine.startup.refusals', 'engine.startup']
+refusing ci (auth off)   ConcurrentMulti(Foreign)   refused: startup refused: auth.enabled: authentication is disabled (env=ci) | spans the installed provider received: ['engine.config.load', 'engine.startup.refusals', 'engine.startup']
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 0.82s.
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 2.03s.
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 3.46s.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 1.02s.
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 1.63s.
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 4.73s.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 1.00s.
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 1.63s.
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: [Errno 111] Connection refused")) encountered while exporting spans batch, retrying in 4.09s.
+Failed to export spans batch due to timeout, max retries or shutdown.
+refusing ci (auth off)   Simple(OTLP localhost)     refused: startup refused: auth.enabled: authentication is disabled (env=ci) | spans the installed provider received: ['engine.config.load', 'engine.startup.refusals', 'engine.startup']
+refusing ci (auth off)   Simple(InMemory)           refused: startup refused: auth.enabled: authentication is disabled (env=ci) | spans the installed provider received: ['engine.config.load', 'engine.startup.refusals', 'engine.startup']
+
+### 8d. Refused startup, nothing installed: provider and hide env
+auth off ci                refused: StartupRefused; provider=('ProxyTracerProvider', []); HIDE env={'OPENINFERENCE_HIDE_INPUTS': '1', 'OPENINFERENCE_HIDE_OUTPUTS': None}
+otlp evil                  refused: StartupRefused; provider=('ProxyTracerProvider', []); HIDE env={'OPENINFERENCE_HIDE_INPUTS': '1', 'OPENINFERENCE_HIDE_OUTPUTS': None}
+console + hide false ci    refused: StartupRefused; provider=('ProxyTracerProvider', []); HIDE env={'OPENINFERENCE_HIDE_INPUTS': '1', 'OPENINFERENCE_HIDE_OUTPUTS': None}
+placeholder secret ci      refused: StartupRefused; provider=('ProxyTracerProvider', []); HIDE env={'OPENINFERENCE_HIDE_INPUTS': '1', 'OPENINFERENCE_HIDE_OUTPUTS': None}
+config error               refused: ConfigError; provider=('ProxyTracerProvider', []); HIDE env={'OPENINFERENCE_HIDE_INPUTS': '1', 'OPENINFERENCE_HIDE_OUTPUTS': None}
+
+### 8e. Local OTLP endpoint with proxy env set: where does the exporter's socket go?
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: spy")) encountered while exporting spans batch, retrying in 1.18s.
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError("HTTPConnection(host='localhost', port=6006): Failed to establish a new connection: spy")) encountered while exporting spans batch, retrying in 2.01s.
+Failed to export spans batch due to timeout, max retries or shutdown.
+localhost, no proxy env                        startup OK; exporter=[('BatchSpanProcessor', 'OTLPSpanExporter', 'http://localhost:6006/v1/traces')]; hosts dialled: ['localhost']
+Transient error HTTPConnectionPool(host='evil.example', port=3128): Max retries exceeded with url: http://localhost:6006/v1/traces (Caused by ProxyError('Unable to connect to proxy', NewConnectionError("HTTPConnection(host='evil.example', port=3128): Failed to establish a new connection: spy"))) encountered while exporting spans batch, retrying in 1.16s.
+Transient error HTTPConnectionPool(host='evil.example', port=3128): Max retries exceeded with url: http://localhost:6006/v1/traces (Caused by ProxyError('Unable to connect to proxy', NewConnectionError("HTTPConnection(host='evil.example', port=3128): Failed to establish a new connection: spy"))) encountered while exporting spans batch, retrying in 2.20s.
+Failed to export spans batch due to timeout, max retries or shutdown.
+localhost, HTTP_PROXY evil                     startup OK; exporter=[('BatchSpanProcessor', 'OTLPSpanExporter', 'http://localhost:6006/v1/traces')]; hosts dialled: ['evil.example']
+Transient error HTTPConnectionPool(host='evil.example', port=3128): Max retries exceeded with url: http://phoenix:6006/v1/traces (Caused by ProxyError('Unable to connect to proxy', NewConnectionError("HTTPConnection(host='evil.example', port=3128): Failed to establish a new connection: spy"))) encountered while exporting spans batch, retrying in 0.93s.
+Transient error HTTPConnectionPool(host='evil.example', port=3128): Max retries exceeded with url: http://phoenix:6006/v1/traces (Caused by ProxyError('Unable to connect to proxy', NewConnectionError("HTTPConnection(host='evil.example', port=3128): Failed to establish a new connection: spy"))) encountered while exporting spans batch, retrying in 2.38s.
+Failed to export spans batch due to timeout, max retries or shutdown.
+phoenix, HTTP_PROXY evil                       startup OK; exporter=[('BatchSpanProcessor', 'OTLPSpanExporter', 'http://phoenix:6006/v1/traces')]; hosts dialled: ['evil.example']
+Transient error HTTPConnectionPool(host='evil.example', port=3128): Max retries exceeded with url: http://phoenix:6006/v1/traces (Caused by ProxyError('Unable to connect to proxy', NewConnectionError("HTTPConnection(host='evil.example', port=3128): Failed to establish a new connection: spy"))) encountered while exporting spans batch, retrying in 1.10s.
+Transient error HTTPConnectionPool(host='evil.example', port=3128): Max retries exceeded with url: http://phoenix:6006/v1/traces (Caused by ProxyError('Unable to connect to proxy', NewConnectionError("HTTPConnection(host='evil.example', port=3128): Failed to establish a new connection: spy"))) encountered while exporting spans batch, retrying in 1.99s.
+Failed to export spans batch due to timeout, max retries or shutdown.
+phoenix, http_proxy evil, NO_PROXY=localhost   startup OK; exporter=[('BatchSpanProcessor', 'OTLPSpanExporter', 'http://phoenix:6006/v1/traces')]; hosts dialled: ['evil.example']
+Transient error HTTPConnectionPool(host='evil.example', port=3128): Max retries exceeded with url: http://127.0.0.1:6006/v1/traces (Caused by ProxyError('Unable to connect to proxy', NewConnectionError("HTTPConnection(host='evil.example', port=3128): Failed to establish a new connection: spy"))) encountered while exporting spans batch, retrying in 1.20s.
+Transient error HTTPConnectionPool(host='evil.example', port=3128): Max retries exceeded with url: http://127.0.0.1:6006/v1/traces (Caused by ProxyError('Unable to connect to proxy', NewConnectionError("HTTPConnection(host='evil.example', port=3128): Failed to establish a new connection: spy"))) encountered while exporting spans batch, retrying in 2.01s.
+Failed to export spans batch due to timeout, max retries or shutdown.
+127.0.0.1, ALL_PROXY evil                      startup OK; exporter=[('BatchSpanProcessor', 'OTLPSpanExporter', 'http://127.0.0.1:6006/v1/traces')]; hosts dialled: ['evil.example']
+
+### 9. L1 placeholder behind invisible / look-alike characters (ci)
+NBSP                   refused
+FEFF                   refused
+2060                   refused
+200B                   refused
+200D                   refused
+TAB                    refused
+180E                   STARTS (bypass)
+00AD soft hyphen       STARTS (bypass)
+2061                   STARTS (bypass)
+2062                   STARTS (bypass)
+034F                   STARTS (bypass)
+3164                   STARTS (bypass)
+115F                   STARTS (bypass)
+FFA0                   STARTS (bypass)
+202E RLO               STARTS (bypass)
+2066                   STARTS (bypass)
+E0020 tag              STARTS (bypass)
+NBSP+FEFF+2060         refused
+3000 ideographic sp    refused
+trailing FEFF          refused
+fullwidth              STARTS
+inner ZW               STARTS
+single space           STARTS
+x                      STARTS
+
+### 10. L4 / N7 malformed values: wrapped, and no value in message
+service_names non-JSON         ConfigError (value leaked=False, cause=None): invalid configuration: KE_STACK__SERVICE_NAMES (stack): value could not be parsed
+KE_STACK json broken           ConfigError (value leaked=False, cause=None): invalid configuration: KE_STACK (stack): value could not be parsed
+KE_STORES json broken          ConfigError (value leaked=False, cause=None): invalid configuration: KE_STORES, KE_STORES__NEO4J__PASSWORD, KE_STORES__POSTGRES__PASSWORD (stores): value could not be parsed
+model upstream [::1            ConfigError (value leaked=False, cause=None): invalid configuration: KE_MODEL_UPSTREAM (models.model_upstream): Value error, not a valid host or URL
+model upstream http://[x       ConfigError (value leaked=False, cause=None): invalid configuration: KE_MODEL_UPSTREAM (models.model_upstream): Value error, not a valid host or URL
+port not int                   ConfigError (value leaked=False, cause=None): invalid configuration: KE_API__LISTEN_PORT (api.listen_port): Input should be a valid integer, unable to parse string as an integer
+collector bad URL              ConfigError (value leaked=False, cause=None): invalid configuration: KE_TELEMETRY__COLLECTOR_ENDPOINT (telemetry.collector_endpoint): Input should be a valid URL, relative URL without a base
+PHOENIX bad URL                ConfigError (value leaked=False, cause=None): invalid configuration: PHOENIX_COLLECTOR_ENDPOINT (telemetry.collector_endpoint): Input should be a valid URL, relative URL without a base
+base_url bad                   ConfigError (value leaked=False, cause=None): invalid configuration: KE_MODELS__COMPOSE__BASE_URL (models.compose.base_url): Input should be a valid URL, invalid IPv6 address
+password as JSON obj           ConfigError (value leaked=False, cause=None): invalid configuration: KE_STORES__POSTGRES__PASSWORD (stores.postgres.password): Input should be a valid string
+extra key                      ConfigError (value leaked=False, cause=None): invalid configuration: KE_STORES__POSTGRES__PASSWORDX (stores.postgres.passwordx): Extra inputs are not permitted
+nested model upstream ignored  loaded; model_upstream=None
+KE_MODELS json with upstream   loaded; model_upstream=None
+lowercase nested upstream      loaded; model_upstream=None
+env bad: ConfigError (value leaked=False): invalid configuration: KE_ENV (env): Input should be 'dev', 'ci' or 'prod'
+
+### 11. ModelClient.complete(): transport, span content, EgressDenied, errors
+ok, hide=true                      returned keys ['choices', 'usage']
+    span=model.compose kind=LLM status=OK input.value='__REDACTED__' output.value=None secret-in-span=False pw-in-span=False events=[]
+ok, hide=false (dev-like)          returned keys ['choices', 'usage']
+    span=model.compose kind=LLM status=OK input.value='[{"role": "user", "content": "PROMPT-s3cr3t-VALUE-' output.value=None secret-in-span=True pw-in-span=False events=[]
+ok, hide env unset (no startup)    returned keys ['choices', 'usage']
+    span=model.compose kind=LLM status=OK input.value='[{"role": "user", "content": "PROMPT-s3cr3t-VALUE-' output.value=None secret-in-span=True pw-in-span=False events=[]
+denied base_url host               raised EgressDenied: egress denied: host 'evil.example' is not on the egress allowlist
+    span=model.compose kind=LLM status=ERROR input.value='__REDACTED__' output.value=None secret-in-span=False pw-in-span=False events=[('exception', "egress denied: host 'evil.example' is not on the egress allowlist")]
+redirect to evil                   raised EgressDenied: egress denied: host 'evil.example' is not on the egress allowlist
+    span=model.compose kind=LLM status=ERROR input.value='__REDACTED__' output.value=None secret-in-span=False pw-in-span=False events=[('exception', "egress denied: host 'evil.example' is not on the egress allowlist")]
+401 with body                      raised HTTPStatusError: Client error '401 Unauthorized' for url 'http://allowed.example/v1/chat/completions'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
+    span=model.compose kind=LLM status=ERROR input.value='__REDACTED__' output.value=None secret-in-span=False pw-in-span=False events=[('exception', "Client error '401 Unauthorized' for url 'http://allowed.example/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401")]
+userinfo in base_url, 401          raised HTTPStatusError: Client error '401 Unauthorized' for url 'http://u:hunter2@allowed.example/v1/chat/completions'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
+    span=model.compose kind=LLM status=ERROR input.value='__REDACTED__' output.value=None secret-in-span=False pw-in-span=True events=[('exception', "Client error '401 Unauthorized' for url 'http://u:hunter2@allowed.example/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401")]
+real transport, denied host: EgressDenied; DNS lookups before deny: []

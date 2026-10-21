@@ -1,0 +1,16 @@
+F
+======================================================================
+FAIL: test_signal_kills_pool_children_and_exits_nonzero (tests.test_harness_followups.IntegrationRunsOnceTest.test_signal_kills_pool_children_and_exits_nonzero) (signal='SIGINT')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 804, in test_signal_kills_pool_children_and_exits_nonzero
+    self.assertEqual(code, 128 + int(sig),
+AssertionError: 1 != 130 : test.sh exit status after SIGINT:
+[3]-  Terminated              run_module "$m"
+[4]+  Terminated              run_module "$m"
+
+
+----------------------------------------------------------------------
+Ran 1 test in 5.353s
+
+FAILED (failures=1)

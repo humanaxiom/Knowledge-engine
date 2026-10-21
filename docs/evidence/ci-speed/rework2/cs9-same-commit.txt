@@ -1,0 +1,49 @@
+# CS-9 same-commit measure (green tree of agent/ci-speed, rework 2), 2026-10-20
+# HEAD: 0b874c26b9259ff4c956d70b0aa51a9bcf524c3b (working tree uncommitted)
+warning: in the working copy of 'tests/test_block_main_commit_hook.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/test_harness_followups.py', LF will be replaced by CRLF the next time Git touches it
+# sha256 of 'git diff 0b874c2 -- scripts tests': 0d3e44c56ce7eb0c6be440932a6cfa67250a3d389a45913b9dfc6238db3a3b22
+# gates image ke-gates:wt-33a132fbfdd7, --cpuset-cpus 0,1, --network none, repo read-only, run back to back
+## Pool
+2
+unit: 19s rc=0 tests.test_block_main_commit_hook
+unit: 2s rc=0 tests.test_engine_config
+unit: 0s rc=0 tests.test_engine_deploy_files
+unit: 2s rc=0 tests.test_engine_egress
+unit: 4s rc=0 tests.test_engine_hardcoded
+unit: 1s rc=0 tests.test_engine_llm
+unit: 0s rc=0 tests.test_engine_notices
+unit: 0s rc=0 tests.test_engine_quality
+unit: 3s rc=0 tests.test_engine_startup
+unit: 2s rc=0 tests.test_engine_telemetry
+unit: 3s rc=0 tests.test_engine_tracing_guard
+unit: 1s rc=0 tests.test_gate_least_privilege
+unit: 0s rc=0 tests.test_gates_docker_cli
+unit: 77s rc=0 tests.test_harness_followups
+unit: 1s rc=0 tests.test_harness_port
+unit: 1s rc=0 tests.test_log_event
+unit: 233s rc=0 tests.test_offline_bundle
+unit: 8s rc=0 tests.test_offline_check
+unit: 15s rc=0 tests.test_offline_netprobe
+unit: 1s rc=0 tests.test_sentinel
+unit: 2s rc=0 tests.test_stack_bind_address
+unit: 0s rc=0 tests.test_stack_carry_ins
+unit: 2s rc=0 tests.test_stack_compose
+unit: 7s rc=0 tests.test_stack_entrypoints
+unit: 2s rc=0 tests.test_stack_model_keys
+unit: 2s rc=0 tests.test_stack_model_skip
+unit: 18s rc=0 tests.test_stack_readiness
+unit: 1s rc=0 tests.test_stack_ready_compose
+unit: 1s rc=0 tests.test_stack_ready_docs
+unit: 121s rc=0 tests.test_stack_scripts
+unit: 1s rc=0 tests.test_stack_worker
+unit: 1s rc=0 tests.test_tracing
+test.sh rc=0
+pool wall=271s
+## One process
+2
+one-process rc=0
+Ran 712 tests in 461.760s
+OK (skipped=8)
+one-process wall=464s
+## Result: pool 271 s vs one process 464 s = 0.58x on the same tree (both exit 0)

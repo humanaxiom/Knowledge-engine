@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# run-ts.sh <fixture> <mode>: scripts/test.sh in the gates image on a scratch fixture (read-only bind, /tmp tmpfs).
+S="$(cd "$(dirname "$0")" && pwd)"
+fx=$1; mode=$2
+MSYS_NO_PATHCONV=1 docker run --rm --name "ke-security-cs3-$fx-$mode" --label com.docker.compose.project=ke-security-cs3 \
+  --user 10001:10001 --network none --cap-drop ALL --security-opt no-new-privileges:true \
+  --tmpfs /tmp:exec,mode=1777 -e MYPY_CACHE_DIR=/tmp/mypy -e PYTHONDONTWRITEBYTECODE=1 -e GIT_OPTIONAL_LOCKS=0 \
+  -v "$(cygpath -w "$S/fx/$fx"):/work:ro" -w /work ke-gates:wt-33a132fbfdd7 bash scripts/test.sh "$mode" 2>&1
+echo "test.sh rc=$?"

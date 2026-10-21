@@ -1,0 +1,68 @@
+# Reviewer mutants of scripts/test.sh, ci-speed rework 2 (scratch copies only; repo untouched).
+# Image ke-gates:wt-33a132fbfdd7, docker run --rm --label ke.reviewer.project=ke-reviewer-cs2 --network none
+# --user 10001:10001 --cap-drop ALL --security-opt no-new-privileges:true --read-only, tmpfs /tmp, ro /work.
+# Scratch tree: working-tree copies of scripts/{test,verify}.sh, tests/{__init__,test_harness_followups,test_sentinel}.py, pyproject.toml.
+# Tree under review: sha256(git diff 0b874c2 -- scripts tests) = 0d3e44c56ce7eb0c6be440932a6cfa67250a3d389a45913b9dfc6238db3a3b22
+# T = tests.test_harness_followups.IntegrationRunsOnceTest
+#   base: T + UnitPoolStaticTest (32 tests)   mA: two N1 tests   mD: signal test   mDt/K1/K2/K3: signal test + S1 test   m1/m5: order guard
+
+## mA
+120c120
+<   wait "$!"
+---
+>   wait "$!" || true
+
+## mD
+100c100
+< trap 'on_signal 130' INT
+---
+> trap 'on_signal 1' INT
+
+## mDt
+101c101
+< trap 'on_signal 143' TERM
+---
+> trap 'on_signal 1' TERM
+
+## K1
+92c92
+<     kill -KILL -- "-$p" 2>/dev/null || kill -KILL "$p" 2>/dev/null || true
+---
+>     :
+
+## K2
+92c92
+<     kill -KILL -- "-$p" 2>/dev/null || kill -KILL "$p" 2>/dev/null || true
+---
+>     kill -KILL "$p" 2>/dev/null || true
+
+## K3
+81c81
+<     kill -TERM -- "-$p" 2>/dev/null || kill -TERM "$p" 2>/dev/null || true
+---
+>     :
+
+## m1
+134a135
+>   cat -- "$logs/$m.log"
+145c146
+<     cat -- "$logs/$m.log"
+---
+>     :
+
+## m5
+134a135
+>   echo "unit: $((SECONDS - start))s rc=$rc $m"
+158d158
+<   echo "unit: $(cat -- "$logs/$m.sec" 2>/dev/null || echo 0)s rc=$rc $m"
+
+## result per variant (unittest rc; reason)
+base: OK | 
+mA: FAILED (failures=3) | AssertionError: 0 == 0 : a failing sub-package test, test.sh passed:
+mD: FAILED (failures=1) | AssertionError: 1 != 130 : test.sh exit status after SIGINT:
+mDt: FAILED (failures=2) | AssertionError: 1 != 143 : test.sh exit status after SIGTERM:
+K1: FAILED (failures=1) | AssertionError: Lists differ: [167] != []
+K2: FAILED (failures=1) | AssertionError: Lists differ: [167] != []
+K3: OK | 
+m1: FAILED (failures=1) | AssertionError: 52 not less than 26 : tests.test_oa's log is not wholly before tests.test_ob's:
+m5: FAILED (failures=1) | AssertionError: Lists differ: ['tests.test_oc', 'tests.testfoo', 'tests.test_ob', 'te[24 chars]t_x'] != ['tests.test_oa'

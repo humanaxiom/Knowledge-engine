@@ -1,0 +1,118 @@
+# security-u2-r3 raw probe output (redacted: <scratch> = session scratch dir r3, <wsltmp> = WSL ext4 fixture dir <wsltmp>, removed after the run, <me-sid> = operator SID)
+# Fake docker only (DOCKER_HOST=tcp://127.0.0.1:1); no daemon, image, HEAD, index or tracked file touched. Every probe ran with cwd in <scratch>.
+# Scripts: <scratch>/wsl-r3.sh, wsl-a5.sh, gb-r3.sh, ps-r3.ps1, mkfix.sh, bin/docker, winbin/docker.cmd, shims/{chmod-stage-before,chmod-stage-after,chmod-stage-file,chmod-target,id}, swap-junction.ps1,
+#   install-hooked.ps1 (= scripts/install.ps1 plus ONE probe line after line 236: 'if ($env:PROBE_SWAP) { & $env:PROBE_SWAP $path }', standing in for a racer between Create and Set-Location)
+
+== A. install.sh, WSL Ubuntu ext4, bash 5.3.9 (authoritative POSIX run) ==
+### A0 baseline
+installed to <wsltmp>/A0/par/t
+next: cd <wsltmp>/A0/par/t && scripts/launch.sh
+exit=0
+t
+755 <wsltmp>/A0/par/t
+### A1 M-4b in-place rewrite at the 'exit' offset and after the last line
+next: cd <wsltmp>/A1/par/t && scripts/launch.sh
+exit=0
+no INJ marker
+### A2 staging swapped for a symlink to an operator-owned 0755 dir BEFORE chmod 0700 (L-11 + I-7 cleanup)
+victim <wsltmp>/A2/victim: mode 755 entries=[.hidden keep1 sub ]
+install: manifest: file is not listed: .hidden
+exit=1
+victim <wsltmp>/A2/victim: mode 700 entries=[]
+.ke-install.uZqaj3nl.moved
+docker calls: 0
+### A3 staging swapped for a symlink to an operator-owned 0700 dir AFTER chmod, before cd
+victim <wsltmp>/A3/victim: mode 700 entries=[.hidden keep1 sub ]
+install: manifest: file is not listed: .hidden
+exit=1
+victim <wsltmp>/A3/victim: mode 700 entries=[]
+.ke-install.YWX0twSH.moved
+### A4 staging swapped for a symlink to an attacker-style dir not owned / 0755 (L-11 refusal path)
+install: the staging directory is not private (owner or mode changed after creation): <wsltmp>/A4/par/.ke-install.esAmyuzL
+exit=1
+victim <wsltmp>/A4/victim: mode 755 entries=[.hidden keep1 sub ]
+### A5 failed cd (staging became a regular file); bait in the process cwd must survive
+<wsltmp>/A5/b/install.sh: line 284: cd: <wsltmp>/A5/par/.ke-install.e8JNldL9: Not a directory
+exit=0
+bait: keep
+.ke-install.e8JNldL9.moved
+### A6 target window: target swapped for a symlink between the real-dir re-check and chmod 0755
+installed to <wsltmp>/A6/par/t
+next: cd <wsltmp>/A6/par/t && scripts/launch.sh
+exit=0
+victim <wsltmp>/A6/victim: mode 755 entries=[.hidden keep1 sub ]
+t
+t.moved
+.env.example docker-compose.override.yml docker-compose.yml scripts 
+### A7 I-7: staging renamed at load, load fails
+install: docker load failed for web.tar
+exit=1
+.ke-install.dPPOE1pJ.moved: entries=[]
+.ke-install.dPPOE1pJ.moved
+### A7b I-7: staging renamed at load, install succeeds
+next: cd <wsltmp>/A7b/par/t && scripts/launch.sh
+exit=0
+.ke-install.D7WtJXmN.moved: entries=[]
+.ke-install.D7WtJXmN.moved
+t
+### A8 PATH: absolute attacker-writable entry with an id shim hides the parent-owner warning
+(parent owner check reads uid 1000; shim answers 4242 -> owner != me and != 0 -> warn; shim answering parent uid suppresses)
+install: warning: the target's parent <wsltmp>/A8/par is owned by another user (uid 1000); its owner can replace the installed target afterwards; use a directory you own
+exit=0
+exit=0
+### A9 does an inherited EXIT trap fire in $(...) / pipeline subshells (bash 5.3.9(1)-release)?
+cmdsub done
+pipe done
+paren done
+end
+TRAP-in-1393
+
+== A5 re-run (exit code without the tail pipe) ==
+<wsltmp>/A5x/b/install.sh: line 284: cd: <wsltmp>/A5x/par/.ke-install.uWGASzvv: Not a directory
+exit=1
+bait: keep
+par: .ke-install.uWGASzvv.moved 
+cleaned <wsltmp>: ls: cannot access '<wsltmp>': No such file or directory
+
+== B. install.sh, Git Bash on NTFS ==
+### G1 L-13 baseline: new target
+exit=1
+mkdir: cannot change permissions of '<scratch>/gb/G1/par/t': Permission denied
+install: cannot claim the target (something appeared there): <scratch>/gb/G1/par/t
+par: []
+docker calls: 0
+### G2 L-13: pre-existing empty target is put back
+exit=1
+mkdir: cannot change permissions of '<scratch>/gb/G2/par/t': Permission denied
+install: cannot claim the target (something appeared there): <scratch>/gb/G2/par/t
+par: [t ] t-entries=[]
+### G3 M-4b tail line
+0000000  \n   }  \n  \n   m   a   i   n       "   $   @   "   ;       e
+0000020   x   i   t  \n
+0000024
+### G4 failed cd keeps the cwd bait (WSL A5 re-run for the exit code)
+
+== C. install.ps1, pwsh 7.6.7 on Windows 11 NTFS ==
+### W0 baseline (genuine install.ps1)
+manifest sha256: 970163efb0105709d6debdbbbb30ad61608a76b83041783ca56cf91a0963f828
+installed to <scratch>\ps\W0\par\t
+next: cd '<scratch>\ps\W0\par\t'; scripts\launch.ps1
+exit=0
+par: [t]
+### W1 staging swapped for a junction to an operator dir between Create and Set-Location (hooked copy)
+victim entries=[sub keep1]
+install: . is not the private directory this install created
+exit=1
+victim entries=[]
+par: [.ke-install.c9e654b8c36bc17b.moved]
+### W2 parent ACL grants Everyone CreateDirectories only (AppendData)
+
+installed to <scratch>(wrapped)
+\ps\W2\par\t
+exit=0
+### W3 parent ACL: Everyone GW via SDDL
+stored: O:<me-sid>G:<me-sid>D:AI(A;;FW;;;WD)(A;OICIID;FA;;;SY)(A;OICIID;FA;;;BA)(A;OICIID;FA;;;<me-sid>)
+installed to <scratch>(wrapped)
+\ps\W3\par\t
+exit=0
+

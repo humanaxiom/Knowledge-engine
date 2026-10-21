@@ -1,0 +1,13 @@
+# tester 2026-10-19: mutant i1 ([KeInterrupt]::Install() removed) vs the new pid-only signal test.
+# Ran in the ke-gates image on a /tmp copy of the tree (sed removed the Install() line); script:
+#   pwsh -Command 'Start-Sleep 60' & ; kill -TERM  -> premise for the dispose check
+#   uv run python -m unittest tests.test_offline_bundle.InstallPs1Test.test_install_stops_on_signal_to_its_own_pid
+plain pwsh SIGTERM rc=143 after 0s
+1
+FAIL: test_install_stops_on_signal_to_its_own_pid (tests.test_offline_bundle.InstallPs1Test.test_install_stops_on_signal_to_its_own_pid) (signal='SIGTERM')
+AssertionError: Lists differ: ['.ke-install.e0e68b1f7acf8dd2'] != []
+FAIL: test_install_stops_on_signal_to_its_own_pid (tests.test_offline_bundle.InstallPs1Test.test_install_stops_on_signal_to_its_own_pid) (signal='SIGHUP')
+AssertionError: Lists differ: ['.ke-install.cdb4f928ad7d2917', '.ke-install.e0e68b1f7acf8dd2'] != []
+Ran 1 test in 7.393s
+FAILED (failures=2)
+# Verdict: i1 is caught (staging left behind on SIGTERM and SIGHUP to the pid).

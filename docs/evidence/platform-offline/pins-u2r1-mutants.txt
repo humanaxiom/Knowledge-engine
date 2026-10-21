@@ -1,0 +1,608 @@
+# platform-offline unit-2 rework 1: pins for the five untested behaviours (architect-u2r1-names.md)
+# runner: ke-gates:latest --network none, python -m unittest <id>; each mutant is a scratch copy of the working tree with one sed edit (diff shown), never the repo
+
+===== current code (pins, both classes)
+   Building knowledge-engine @ file:///tmp/w
+      Built knowledge-engine @ file:///tmp/w
+Uninstalled 1 package in 0.80ms
+Installed 1 package in 0.90ms
+.....FF...
+======================================================================
+FAIL: test_install_removes_staging_on_every_exit (tests.test_offline_bundle.InstallPs1Test.test_install_removes_staging_on_every_exit) (case='interrupted_by_SIGINT_during_load')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 891, in test_install_removes_staging_on_every_exit
+    t.assertNotEqual(proc.returncode, 0, out + err)
+AssertionError: 0 == 0 : manifest sha256: 394d8a2d7988b7e606ad7bd3a4b852bff48e2860e104d6c96d520cf572420b03 (not checked: compare it with the value from your release record)
+Traceback (most recent call last):
+  File "/tmp/tmpm3jvzya7/fakebin/docker", line 71, in <module>
+    _time.sleep(float(hook["sleep"]))
+KeyboardInterrupt
+
+
+======================================================================
+FAIL: test_install_removes_staging_on_every_exit (tests.test_offline_bundle.InstallPs1Test.test_install_removes_staging_on_every_exit) (case='interrupted_by_SIGTERM_during_load')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 892, in test_install_removes_staging_on_every_exit
+    t.assertEqual(self._staging_left(target.parent), [],
+AssertionError: Lists differ: ['.ke-install.7089c2ff3b481381'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'.ke-install.7089c2ff3b481381'
+
+- ['.ke-install.7089c2ff3b481381']
++ [] : a .ke-install.* directory was left behind after SIGTERM:
+manifest sha256: 394d8a2d7988b7e606ad7bd3a4b852bff48e2860e104d6c96d520cf572420b03 (not checked: compare it with the value from your release record)
+
+
+----------------------------------------------------------------------
+Ran 9 tests in 15.912s
+
+FAILED (failures=2)
+
+===== current code, staging cleanup re-run after assertion reorder
+   Building knowledge-engine @ file:///tmp/w
+      Built knowledge-engine @ file:///tmp/w
+Uninstalled 1 package in 0.73ms
+Installed 1 package in 0.89ms
+FF.
+======================================================================
+FAIL: test_install_removes_staging_on_every_exit (tests.test_offline_bundle.InstallPs1Test.test_install_removes_staging_on_every_exit) (case='interrupted_by_SIGINT_during_load')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 894, in test_install_removes_staging_on_every_exit
+    t.assertNotEqual(proc.returncode, 0,
+AssertionError: 0 == 0 : an install interrupted by SIGINT exited 0 (success):
+manifest sha256: 394d8a2d7988b7e606ad7bd3a4b852bff48e2860e104d6c96d520cf572420b03 (not checked: compare it with the value from your release record)
+Traceback (most recent call last):
+  File "/tmp/tmp8wgd7a4p/fakebin/docker", line 71, in <module>
+    _time.sleep(float(hook["sleep"]))
+KeyboardInterrupt
+
+
+======================================================================
+FAIL: test_install_removes_staging_on_every_exit (tests.test_offline_bundle.InstallPs1Test.test_install_removes_staging_on_every_exit) (case='interrupted_by_SIGTERM_during_load')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 891, in test_install_removes_staging_on_every_exit
+    t.assertEqual(self._staging_left(target.parent), [],
+AssertionError: Lists differ: ['.ke-install.7394727ee06ce4af'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'.ke-install.7394727ee06ce4af'
+
+- ['.ke-install.7394727ee06ce4af']
++ [] : a .ke-install.* directory was left behind after SIGTERM:
+manifest sha256: 394d8a2d7988b7e606ad7bd3a4b852bff48e2860e104d6c96d520cf572420b03 (not checked: compare it with the value from your release record)
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 3.564s
+
+FAILED (failures=2)
+
+===== mutant s1_staging_not_in_parent -> InstallShTest.test_install_stages_privately_in_target_parent
+131c131
+< staging="$(mktemp -d -- "$parent/.ke-install.XXXXXXXX")" || die "cannot create a staging directory in $parent"
+---
+> staging="$(mktemp -d -- "${TMPDIR:-/tmp}/.ke-install.XXXXXXXX")" || die "cannot create a staging directory in $parent"
+   Building knowledge-engine @ file:///tmp/w
+      Built knowledge-engine @ file:///tmp/w
+Uninstalled 1 package in 0.68ms
+Installed 1 package in 0.88ms
+F
+======================================================================
+FAIL: test_install_stages_privately_in_target_parent (tests.test_offline_bundle.InstallShTest.test_install_stages_privately_in_target_parent)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 840, in test_install_stages_privately_in_target_parent
+    t.assertEqual(len(seen[0]), 1,
+AssertionError: 0 != 1 : exactly one .ke-install.* directory sits in the target's parent while docker runs (architecture §2.5 Install); found []
+
+----------------------------------------------------------------------
+Ran 1 test in 0.145s
+
+FAILED (failures=1)
+
+===== mutant s2_staging_mode_0755 -> InstallShTest.test_install_stages_privately_in_target_parent
+132c132
+< chmod 0700 -- "$staging"
+---
+> chmod 0755 -- "$staging"
+   Building knowledge-engine @ file:///tmp/w
+      Built knowledge-engine @ file:///tmp/w
+Uninstalled 1 package in 0.72ms
+Installed 1 package in 0.90ms
+F
+======================================================================
+FAIL: test_install_stages_privately_in_target_parent (tests.test_offline_bundle.InstallShTest.test_install_stages_privately_in_target_parent)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 845, in test_install_stages_privately_in_target_parent
+    t.assertEqual(oct(entry["mode"]), oct(0o700), f"the staging directory is 0700: {entry}")
+AssertionError: '0o755' != '0o700'
+- 0o755
++ 0o700
+ : the staging directory is 0700: {'name': '.ke-install.Al8xXd8K', 'mode': 493, 'dir': True}
+
+----------------------------------------------------------------------
+Ran 1 test in 0.146s
+
+FAILED (failures=1)
+
+===== mutant p1_staging_not_in_parent -> InstallPs1Test.test_install_stages_privately_in_target_parent
+139c139
+<         $path = Join-Path $Parent ".ke-install.$hex"
+---
+>         $path = Join-Path ([System.IO.Path]::GetTempPath()) ".ke-install.$hex"
+   Building knowledge-engine @ file:///tmp/w
+      Built knowledge-engine @ file:///tmp/w
+Uninstalled 1 package in 0.72ms
+Installed 1 package in 0.89ms
+F
+======================================================================
+FAIL: test_install_stages_privately_in_target_parent (tests.test_offline_bundle.InstallPs1Test.test_install_stages_privately_in_target_parent)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 840, in test_install_stages_privately_in_target_parent
+    t.assertEqual(len(seen[0]), 1,
+AssertionError: 0 != 1 : exactly one .ke-install.* directory sits in the target's parent while docker runs (architecture §2.5 Install); found []
+
+----------------------------------------------------------------------
+Ran 1 test in 0.622s
+
+FAILED (failures=1)
+
+===== mutant p2_staging_mode_default -> InstallPs1Test.test_install_stages_privately_in_target_parent
+153c153
+<             [void][System.IO.Directory]::CreateDirectory($path, $mode)
+---
+>             [void][System.IO.Directory]::CreateDirectory($path)
+   Building knowledge-engine @ file:///tmp/w
+      Built knowledge-engine @ file:///tmp/w
+Uninstalled 1 package in 0.74ms
+Installed 1 package in 0.89ms
+F
+======================================================================
+FAIL: test_install_stages_privately_in_target_parent (tests.test_offline_bundle.InstallPs1Test.test_install_stages_privately_in_target_parent)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 845, in test_install_stages_privately_in_target_parent
+    t.assertEqual(oct(entry["mode"]), oct(0o700), f"the staging directory is 0700: {entry}")
+AssertionError: '0o755' != '0o700'
+- 0o755
++ 0o700
+ : the staging directory is 0700: {'name': '.ke-install.539b146631ee9e85', 'mode': 493, 'dir': True}
+
+----------------------------------------------------------------------
+Ran 1 test in 0.629s
+
+FAILED (failures=1)
+
+===== mutant s3_no_cleanup_trap -> InstallShTest.test_install_removes_staging_on_every_exit
+96c96
+< trap cleanup EXIT
+---
+> : no cleanup trap
+   Building knowledge-engine @ file:///tmp/w
+      Built knowledge-engine @ file:///tmp/w
+Uninstalled 1 package in 0.79ms
+Installed 1 package in 0.85ms
+FFFFFF
+======================================================================
+FAIL: test_install_removes_staging_on_every_exit (tests.test_offline_bundle.InstallShTest.test_install_removes_staging_on_every_exit) (case='success')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 862, in test_install_removes_staging_on_every_exit
+    t.assertEqual(self._staging_left(target.parent), [],
+AssertionError: Lists differ: ['.ke-install.5Hz7sS60'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'.ke-install.5Hz7sS60'
+
+- ['.ke-install.5Hz7sS60']
++ [] : a .ke-install.* directory was left behind after success
+
+======================================================================
+FAIL: test_install_removes_staging_on_every_exit (tests.test_offline_bundle.InstallShTest.test_install_removes_staging_on_every_exit) (case='manifest_refusal')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 862, in test_install_removes_staging_on_every_exit
+    t.assertEqual(self._staging_left(target.parent), [],
+AssertionError: Lists differ: ['.ke-install.5Hz7sS60', '.ke-install.xYY3wMKf'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+'.ke-install.5Hz7sS60'
+
+- ['.ke-install.5Hz7sS60', '.ke-install.xYY3wMKf']
++ [] : a .ke-install.* directory was left behind after manifest_refusal
+
+======================================================================
+FAIL: test_install_removes_staging_on_every_exit (tests.test_offline_bundle.InstallShTest.test_install_removes_staging_on_every_exit) (case='failed_load')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 862, in test_install_removes_staging_on_every_exit
+    t.assertEqual(self._staging_left(target.parent), [],
+AssertionError: Lists differ: ['.ke-install.5Hz7sS60', '.ke-install.6D7nZLwV', '.ke-install.xYY3wMKf'] != []
+
+First list contains 3 additional elements.
+First extra element 0:
+'.ke-install.5Hz7sS60'
+
+- ['.ke-install.5Hz7sS60', '.ke-install.6D7nZLwV', '.ke-install.xYY3wMKf']
++ [] : a .ke-install.* directory was left behind after failed_load
+
+======================================================================
+FAIL: test_install_removes_staging_on_every_exit (tests.test_offline_bundle.InstallShTest.test_install_removes_staging_on_every_exit) (case='failed_info')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 862, in test_install_removes_staging_on_every_exit
+    t.assertEqual(self._staging_left(target.parent), [],
+AssertionError: Lists differ: ['.ke-install.5Hz7sS60', '.ke-install.6D7n[49 chars]MKf'] != []
+
+First list contains 4 additional elements.
+First extra element 0:
+'.ke-install.5Hz7sS60'
+
++ []
+- ['.ke-install.5Hz7sS60',
+-  '.ke-install.6D7nZLwV',
+-  '.ke-install.d3ADqpzd',
+-  '.ke-install.xYY3wMKf'] : a .ke-install.* directory was left behind after failed_info
+
+======================================================================
+FAIL: test_install_removes_staging_on_every_exit (tests.test_offline_bundle.InstallShTest.test_install_removes_staging_on_every_exit) (case='interrupted_by_SIGINT_during_load')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 891, in test_install_removes_staging_on_every_exit
+    t.assertEqual(self._staging_left(target.parent), [],
+AssertionError: Lists differ: ['.ke-install.5Hz7sS60', '.ke-install.6D7n[73 chars]MKf'] != []
+
+First list contains 5 additional elements.
+First extra element 0:
+'.ke-install.5Hz7sS60'
+
++ []
+- ['.ke-install.5Hz7sS60',
+-  '.ke-install.6D7nZLwV',
+-  '.ke-install.R403tPpQ',
+-  '.ke-install.d3ADqpzd',
+-  '.ke-install.xYY3wMKf'] : a .ke-install.* directory was left behind after SIGINT:
+manifest sha256: 788b9193d650791913454534c3a23041a45793c2b728c23cd7c37772d27b713c (not checked: compare it with the value from your release record)
+Traceback (most recent call last):
+  File "/tmp/tmp4an9ye1j/fakebin/docker", line 71, in <module>
+    _time.sleep(float(hook["sleep"]))
+KeyboardInterrupt
+
+
+======================================================================
+FAIL: test_install_removes_staging_on_every_exit (tests.test_offline_bundle.InstallShTest.test_install_removes_staging_on_every_exit) (case='interrupted_by_SIGTERM_during_load')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 891, in test_install_removes_staging_on_every_exit
+    t.assertEqual(self._staging_left(target.parent), [],
+AssertionError: Lists differ: ['.ke-install.5Hz7sS60', '.ke-install.6D7n[97 chars]MKf'] != []
+
+First list contains 6 additional elements.
+First extra element 0:
+'.ke-install.5Hz7sS60'
+
++ []
+- ['.ke-install.5Hz7sS60',
+-  '.ke-install.6D7nZLwV',
+-  '.ke-install.GzLfkys5',
+-  '.ke-install.R403tPpQ',
+-  '.ke-install.d3ADqpzd',
+-  '.ke-install.xYY3wMKf'] : a .ke-install.* directory was left behind after SIGTERM:
+manifest sha256: 788b9193d650791913454534c3a23041a45793c2b728c23cd7c37772d27b713c (not checked: compare it with the value from your release record)
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.505s
+
+FAILED (failures=6)
+
+===== mutant p3_no_cleanup_finally -> InstallPs1Test.test_install_removes_staging_on_every_exit
+491c491
+<         Remove-Item -LiteralPath $script:Staging -Recurse -Force -ErrorAction SilentlyContinue
+---
+>         $null = 0
+   Building knowledge-engine @ file:///tmp/w
+      Built knowledge-engine @ file:///tmp/w
+Uninstalled 1 package in 0.70ms
+Installed 1 package in 0.92ms
+FFFFFF
+======================================================================
+FAIL: test_install_removes_staging_on_every_exit (tests.test_offline_bundle.InstallPs1Test.test_install_removes_staging_on_every_exit) (case='success')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 862, in test_install_removes_staging_on_every_exit
+    t.assertEqual(self._staging_left(target.parent), [],
+AssertionError: Lists differ: ['.ke-install.0073b4de8f9a4da9'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'.ke-install.0073b4de8f9a4da9'
+
+- ['.ke-install.0073b4de8f9a4da9']
++ [] : a .ke-install.* directory was left behind after success
+
+======================================================================
+FAIL: test_install_removes_staging_on_every_exit (tests.test_offline_bundle.InstallPs1Test.test_install_removes_staging_on_every_exit) (case='manifest_refusal')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 862, in test_install_removes_staging_on_every_exit
+    t.assertEqual(self._staging_left(target.parent), [],
+AssertionError: Lists differ: ['.ke-install.0073b4de8f9a4da9', '.ke-install.a9a9b00ff3008687'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+'.ke-install.0073b4de8f9a4da9'
+
+- ['.ke-install.0073b4de8f9a4da9', '.ke-install.a9a9b00ff3008687']
++ [] : a .ke-install.* directory was left behind after manifest_refusal
+
+======================================================================
+FAIL: test_install_removes_staging_on_every_exit (tests.test_offline_bundle.InstallPs1Test.test_install_removes_staging_on_every_exit) (case='failed_load')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 862, in test_install_removes_staging_on_every_exit
+    t.assertEqual(self._staging_left(target.parent), [],
+AssertionError: Lists differ: ['.ke-install.0073b4de8f9a4da9', '.ke-inst[49 chars]687'] != []
+
+First list contains 3 additional elements.
+First extra element 0:
+'.ke-install.0073b4de8f9a4da9'
+
++ []
+- ['.ke-install.0073b4de8f9a4da9',
+-  '.ke-install.20fc39d68339235e',
+-  '.ke-install.a9a9b00ff3008687'] : a .ke-install.* directory was left behind after failed_load
+
+======================================================================
+FAIL: test_install_removes_staging_on_every_exit (tests.test_offline_bundle.InstallPs1Test.test_install_removes_staging_on_every_exit) (case='failed_info')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 862, in test_install_removes_staging_on_every_exit
+    t.assertEqual(self._staging_left(target.parent), [],
+AssertionError: Lists differ: ['.ke-install.0073b4de8f9a4da9', '.ke-inst[81 chars]687'] != []
+
+First list contains 4 additional elements.
+First extra element 0:
+'.ke-install.0073b4de8f9a4da9'
+
++ []
+- ['.ke-install.0073b4de8f9a4da9',
+-  '.ke-install.20fc39d68339235e',
+-  '.ke-install.5791ed69f47cdf57',
+-  '.ke-install.a9a9b00ff3008687'] : a .ke-install.* directory was left behind after failed_info
+
+======================================================================
+FAIL: test_install_removes_staging_on_every_exit (tests.test_offline_bundle.InstallPs1Test.test_install_removes_staging_on_every_exit) (case='interrupted_by_SIGINT_during_load')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 891, in test_install_removes_staging_on_every_exit
+    t.assertEqual(self._staging_left(target.parent), [],
+AssertionError: Lists differ: ['.ke-install.0073b4de8f9a4da9', '.ke-inst[113 chars]687'] != []
+
+First list contains 5 additional elements.
+First extra element 0:
+'.ke-install.0073b4de8f9a4da9'
+
++ []
+- ['.ke-install.0073b4de8f9a4da9',
+-  '.ke-install.20fc39d68339235e',
+-  '.ke-install.5791ed69f47cdf57',
+-  '.ke-install.7cce30f84bb1c82e',
+-  '.ke-install.a9a9b00ff3008687'] : a .ke-install.* directory was left behind after SIGINT:
+manifest sha256: e5875692cc8c4496efc19a8adec10e2d605ae2a8edd036accdb9445089dd5676 (not checked: compare it with the value from your release record)
+Traceback (most recent call last):
+  File "/tmp/tmpm0n2lwq4/fakebin/docker", line 71, in <module>
+    _time.sleep(float(hook["sleep"]))
+KeyboardInterrupt
+
+
+======================================================================
+FAIL: test_install_removes_staging_on_every_exit (tests.test_offline_bundle.InstallPs1Test.test_install_removes_staging_on_every_exit) (case='interrupted_by_SIGTERM_during_load')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 891, in test_install_removes_staging_on_every_exit
+    t.assertEqual(self._staging_left(target.parent), [],
+AssertionError: Lists differ: ['.ke-install.0073b4de8f9a4da9', '.ke-inst[145 chars]8f4'] != []
+
+First list contains 6 additional elements.
+First extra element 0:
+'.ke-install.0073b4de8f9a4da9'
+
++ []
+- ['.ke-install.0073b4de8f9a4da9',
+-  '.ke-install.20fc39d68339235e',
+-  '.ke-install.5791ed69f47cdf57',
+-  '.ke-install.7cce30f84bb1c82e',
+-  '.ke-install.a9a9b00ff3008687',
+-  '.ke-install.d260ef5f7a8c08f4'] : a .ke-install.* directory was left behind after SIGTERM:
+manifest sha256: e5875692cc8c4496efc19a8adec10e2d605ae2a8edd036accdb9445089dd5676 (not checked: compare it with the value from your release record)
+
+
+----------------------------------------------------------------------
+Ran 1 test in 3.100s
+
+FAILED (failures=6)
+
+===== mutant b1_record_not_refused -> BundleScriptTest.test_bundle_refuses_existing_manifest_record
+50c50
+<   die "the manifest record already exists: $record"
+---
+>   :
+   Building knowledge-engine @ file:///tmp/w
+      Built knowledge-engine @ file:///tmp/w
+Uninstalled 1 package in 0.71ms
+Installed 1 package in 0.83ms
+F
+======================================================================
+FAIL: test_bundle_refuses_existing_manifest_record (tests.test_offline_bundle.BundleScriptTest.test_bundle_refuses_existing_manifest_record)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 1292, in test_bundle_refuses_existing_manifest_record
+    self._assert_no_bundle(result, calls, out, str(record))
+  File "/tmp/w/tests/test_offline_bundle.py", line 1069, in _assert_no_bundle
+    t.assertNotEqual(result.returncode, 0, "bundle.sh passed:\n" + self._out(result))
+AssertionError: 0 == 0 : bundle.sh passed:
+bundle written: /tmp/tmpwb6g_kcd/rec/bundle
+manifest sha256: 12381ed23d492cf85f7bef1c1e6672d7bcd30c0ca61ee275afbe9e6ffa0d8512
+release record: /tmp/tmpwb6g_kcd/rec/bundle.manifest.sha256
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.478s
+
+FAILED (failures=1)
+
+===== mutant s4_mismatch_without_expected -> InstallShTest.test_install_prints_and_checks_manifest_hash
+166c166
+<   die "manifest: the manifest sha256 is $manifest_sha, not the value given to --expect-manifest ($expect)"
+---
+>   die "manifest: the manifest sha256 is $manifest_sha, not the value given to --expect-manifest"
+   Building knowledge-engine @ file:///tmp/w
+      Built knowledge-engine @ file:///tmp/w
+Uninstalled 1 package in 0.80ms
+Installed 1 package in 1ms
+F
+======================================================================
+FAIL: test_install_prints_and_checks_manifest_hash (tests.test_offline_bundle.InstallShTest.test_install_prints_and_checks_manifest_hash) (case='expect_manifest_mismatch')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 802, in test_install_prints_and_checks_manifest_hash
+    t.assertIn(wrong, self._out(result),
+AssertionError: '086171ecb80cb32d941deb9e3af5ae0736ccbb291d266a17f3c1260b787e4f4f' not found in 'install: manifest: the manifest sha256 is f86171ecb80cb32d941deb9e3af5ae0736ccbb291d266a17f3c1260b787e4f4f, not the value given to --expect-manifest\n' : the refusal prints the expected value too (architecture §2.5 Install)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.297s
+
+FAILED (failures=1)
+
+===== mutant p4_mismatch_without_expected -> InstallPs1Test.test_install_prints_and_checks_manifest_hash
+243c243
+<         Exit-WithError "manifest: the manifest sha256 is $manifestSha, not the value given to -ExpectManifest ($expect)"
+---
+>         Exit-WithError "manifest: the manifest sha256 is $manifestSha, not the value given to -ExpectManifest"
+   Building knowledge-engine @ file:///tmp/w
+      Built knowledge-engine @ file:///tmp/w
+Uninstalled 1 package in 0.73ms
+Installed 1 package in 1ms
+F
+======================================================================
+FAIL: test_install_prints_and_checks_manifest_hash (tests.test_offline_bundle.InstallPs1Test.test_install_prints_and_checks_manifest_hash) (case='expect_manifest_mismatch')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 802, in test_install_prints_and_checks_manifest_hash
+    t.assertIn(wrong, self._out(result),
+AssertionError: '0f1b117b37a10c68927e61cb2bedc1f001e59234b2696a7beeb1cb34d41b65c2' not found in 'install: manifest: the manifest sha256 is cf1b117b37a10c68927e61cb2bedc1f001e59234b2696a7beeb1cb34d41b65c2, not the value given to -ExpectManifest\n' : the refusal prints the expected value too (architecture §2.5 Install)
+
+----------------------------------------------------------------------
+Ran 1 test in 1.788s
+
+FAILED (failures=1)
+
+===== mutant s5_no_character_rule -> InstallShTest.test_bundle_manifest_rejects_tamper
+187c187
+<     die "manifest: line $n: path has a character outside [A-Za-z0-9._/-]: $shown"
+---
+>     true
+   Building knowledge-engine @ file:///tmp/w
+      Built knowledge-engine @ file:///tmp/w
+Uninstalled 1 package in 0.72ms
+Installed 1 package in 0.89ms
+FF
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='colon')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 370, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 255, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+manifest sha256: ddd526efb276fd213ed8ebf11cdcb96615d0b3a38ffb278857f7753a8dff253b (not checked: compare it with the value from your release record)
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+manifest sha256: ddd526efb276fd213ed8ebf11cdcb96615d0b3a38ffb278857f7753a8dff253b
+installed to /tmp/tmp0rkp1_5b/target18
+next: cd /tmp/tmp0rkp1_5b/target18 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='trailing_space')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 370, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 255, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+manifest sha256: fd7053a0bdde4efd4215c6a901c9b6502145959732e8d404f421714adcf3c603 (not checked: compare it with the value from your release record)
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+manifest sha256: fd7053a0bdde4efd4215c6a901c9b6502145959732e8d404f421714adcf3c603
+installed to /tmp/tmp0rkp1_5b/target19
+next: cd /tmp/tmp0rkp1_5b/target19 && scripts/launch.sh
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.699s
+
+FAILED (failures=2)
+
+===== mutant p5_no_character_rule -> InstallPs1Test.test_bundle_manifest_rejects_tamper
+267c267
+<             Exit-WithError "manifest: line ${n}: path has a character outside [A-Za-z0-9._/-]: $shown"
+---
+>             $null = 0
+   Building knowledge-engine @ file:///tmp/w
+      Built knowledge-engine @ file:///tmp/w
+Uninstalled 1 package in 0.74ms
+Installed 1 package in 0.95ms
+FF
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='colon')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 370, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 255, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+manifest sha256: 1ba32f7e8dec3932cf889481092f806215f7020c699f34689657f3f9dc8d79f2 (not checked: compare it with the value from your release record)
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+manifest sha256: 1ba32f7e8dec3932cf889481092f806215f7020c699f34689657f3f9dc8d79f2
+installed to /tmp/tmp72py3kco/target18
+next: cd '/tmp/tmp72py3kco/target18'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='trailing_space')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 370, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/tmp/w/tests/test_offline_bundle.py", line 255, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+manifest sha256: 1f873179c5f73d0900035e98ace2a48527e2d3382695aa79f11da750d8427d70 (not checked: compare it with the value from your release record)
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+manifest sha256: 1f873179c5f73d0900035e98ace2a48527e2d3382695aa79f11da750d8427d70
+installed to /tmp/tmp72py3kco/target19
+next: cd '/tmp/tmp72py3kco/target19'; scripts\launch.ps1
+
+
+----------------------------------------------------------------------
+Ran 1 test in 9.123s
+
+FAILED (failures=2)

@@ -1,0 +1,29 @@
+# Every non-secret setting's default (ADR-KE-010). Secrets have no default and
+# come from the environment only. Override any key with a KE_ variable, using
+# __ for nesting (KE_STORES__POSTGRES__PORT).
+env: prod                  # dev | ci | prod; fail-closed default
+bind_address: 127.0.0.1    # IPv4 only; non-loopback is refused outside dev (PS-2.14)
+auth:
+  enabled: true
+egress_allowlist: []       # hosts; exact, case-folded, no wildcards
+stack:
+  service_names: [gateway, api, worker, postgres, neo4j, valkey, phoenix]
+api:
+  listen_port: 8080
+stores:
+  postgres: {host: postgres, port: 5432, database: engine, user: engine}
+  neo4j: {host: neo4j, port: 7687, user: neo4j}
+  valkey: {host: valkey, port: 6379}
+models:                    # one block per pass (DR29); no inheritance between passes
+  model_upstream: null     # host:port of the model host; set per deployment in .env
+  compose: {base_url: null, model: "qwen3.5:latest", fallback_model: "gpt-oss:20b", timeout_s: 120}
+  rewrite: {base_url: null, model: "qwen3.5:latest", fallback_model: "gpt-oss:20b", timeout_s: 120}
+  audit: {base_url: null, model: "gpt-oss:120b", fallback_model: "gpt-oss:20b", timeout_s: 120}
+  embed: {base_url: null, model: "nomic-embed-text", dim: 768, timeout_s: 60}
+telemetry:
+  tracing: "off"           # otlp | console | off; the stack's .env turns otlp on
+  collector_endpoint: "http://phoenix:6006"
+  hide_inputs: true
+  hide_outputs: true
+readiness:
+  timeout_s: 2

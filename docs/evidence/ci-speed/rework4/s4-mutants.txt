@@ -1,0 +1,46 @@
+'control (hook as it is today)'                      inserted=None
+    -> OK  
+'amp: sleep 30 &'                                    inserted='sleep 30 &'
+    -> FAILED (failures=1)  AssertionError: Lists differ: ['line 22: & (background)'] != [] | First list contains 1 additional elements. | First extra element 0: | 'line 22: & (background)
+'amp: subshell ( ... ) &'                            inserted='( true ) &'
+    -> FAILED (failures=1)  AssertionError: Lists differ: ['line 22: & (background)'] != [] | First list contains 1 additional elements. | First extra element 0: | 'line 22: & (background)
+'amp: no space { :; }&'                              inserted='{ :; }&'
+    -> FAILED (failures=1)  AssertionError: Lists differ: ['line 22: & (background)'] != [] | First list contains 1 additional elements. | First extra element 0: | 'line 22: & (background)
+'amp: after 2>&1'                                    inserted='true >/dev/null 2>&1 &'
+    -> FAILED (failures=1)  AssertionError: Lists differ: ['line 22: & (background)'] != [] | First list contains 1 additional elements. | First extra element 0: | 'line 22: & (background)
+'amp: mid-line true & wait'                          inserted='true & wait'
+    -> FAILED (failures=1)  AssertionError: Lists differ: ['line 22: & (background)'] != [] | First list contains 1 additional elements. | First extra element 0: | 'line 22: & (background)
+'amp: in a command substitution'                     inserted='x="$(true &)"'
+    -> FAILED (failures=1)  AssertionError: Lists differ: ['line 22: & (background)'] != [] | First list contains 1 additional elements. | First extra element 0: | 'line 22: & (background)
+'setsid'                                             inserted='setsid true'
+    -> FAILED (failures=1)  AssertionError: Lists differ: ['line 22: setsid'] != [] | First list contains 1 additional elements. | First extra element 0: | 'line 22: setsid'
+'nohup'                                              inserted='nohup true >/dev/null'
+    -> FAILED (failures=1)  AssertionError: Lists differ: ['line 22: nohup'] != [] | First list contains 1 additional elements. | First extra element 0: | 'line 22: nohup'
+'disown'                                             inserted='disown -a'
+    -> FAILED (failures=1)  AssertionError: Lists differ: ['line 22: disown'] != [] | First list contains 1 additional elements. | First extra element 0: | 'line 22: disown'
+'coproc'                                             inserted='coproc true'
+    -> FAILED (failures=1)  AssertionError: Lists differ: ['line 22: coproc'] != [] | First list contains 1 additional elements. | First extra element 0: | 'line 22: coproc'
+'bg'                                                 inserted='bg'
+    -> FAILED (failures=1)  AssertionError: Lists differ: ['line 22: bg'] != [] | First list contains 1 additional elements. | First extra element 0: | 'line 22: bg'
+'eval'                                               inserted='eval "true"'
+    -> FAILED (failures=1)  AssertionError: Lists differ: ['line 22: eval'] != [] | First list contains 1 additional elements. | First extra element 0: | 'line 22: eval'
+'process substitution <('                            inserted='cat <(true) >/dev/null'
+    -> FAILED (failures=1)  AssertionError: Lists differ: ['line 22: process substitution <('] != [] | First list contains 1 additional elements. | First extra element 0: | 'line 22: proce
+'process substitution >('                            inserted='true > >(cat)'
+    -> FAILED (failures=1)  AssertionError: Lists differ: ['line 22: process substitution >('] != [] | First list contains 1 additional elements. | First extra element 0: | 'line 22: proce
+'nested shell bash -c'                               inserted="bash -c 'true'"
+    -> FAILED (failures=1)  AssertionError: Lists differ: ["line 22: nested shell 'bash -c'"] != [] | First list contains 1 additional elements. | First extra element 0:
+'nested shell sh -c'                                 inserted='sh -c true'
+    -> FAILED (failures=1)  AssertionError: Lists differ: ["line 22: nested shell 'sh -c'"] != [] | First list contains 1 additional elements. | First extra element 0:
+'nested shell bash -lc'                              inserted='bash -lc true'
+    -> FAILED (failures=1)  AssertionError: Lists differ: ["line 22: nested shell 'bash -lc'"] != [] | First list contains 1 additional elements. | First extra element 0:
+'trailing comment with &'                            inserted='true  # later in the background &'
+    -> FAILED (failures=1)  AssertionError: Lists differ: ['line 22: & (background)'] != [] | First list contains 1 additional elements. | First extra element 0: | 'line 22: & (background)
+'security S4 mutant line (setsid + &)'               inserted='out="$( ( setsid bash -c \'true\' & ) )"'
+    -> FAILED (failures=1)  AssertionError: Lists differ: ['line 22: setsid', "line 22: nested shell[34 chars]nd)'] != [] | First list contains 3 additional elements. | First extra element
+'allowed: && only'                                   inserted='true && true'
+    -> OK  
+'allowed: 2>&1, >&2, &>, |&'                         inserted='true 2>&1 >&2; true &>/dev/null; true |& cat'
+    -> OK  
+'allowed: whole-line comment'                        inserted='  # setsid nohup disown coproc bg eval bash -c & <(x) >(y)'
+    -> OK  

@@ -1,0 +1,14 @@
+# Overlay added by the host half of `scripts/verify.sh` only when a repo-root
+# `.env` exists (PS-3.5): the gate services then see an empty file where the
+# secrets would be. With no `.env` there is nothing to read and no overlay,
+# because a mount point cannot be created inside the read-only checkout.
+# It holds only the mask volume; everything else about the gate services
+# (profiles, networks, network_mode) is defined once, in docker-compose.yml,
+# and tests/test_gate_least_privilege.py pins this file's exact content.
+services:
+  gates:
+    volumes:
+      - ./docker/empty:/work/.env:ro
+  gates-it:
+    volumes:
+      - ./docker/empty:/work/.env:ro

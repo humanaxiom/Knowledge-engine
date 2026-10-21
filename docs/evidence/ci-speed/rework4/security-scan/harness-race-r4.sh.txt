@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# TOCTOU: swap cpu.max between a regular file and a FIFO as fast as possible
+# (python os.rename loop), while the probe runs repeatedly via the root seam.
+P=/w/resource_probe.sh; T=/tmp/race; rm -rf "$T"; mkdir -p "$T/root/sys/fs/cgroup" "$T/root/proc"
+printf '200000 100000\n' >"$T/reg"
+cat >"$T/racer.py" <<'PY'
+import os, sys
+t, d, n = sys.argv[1], sys.argv[2], sys.argv[3]
+a, b = f"{d}/a{n}", f"{d}/b{n}"
+while True:
+    try:
+        os.link(f"{d}/reg", a); os.rename(a, t)
+        os.mkfifo(b); os.rename(b, t)
+    except FileExistsError:
+        for p in (a, b):
+            try: os.unlink(p)
+            except OSError: pass
+PY
+pids=""; for n in 1 2 3 4; do python3 -I "$T/racer.py" "$T/root/sys/fs/cgroup/cpu.max" "$T" $n & pids="$pids $!"; done
+sleep 1
+hang=0; ok=0; na=0; N=${1:-3000}
+for i in $(seq 1 "$N"); do out="$(timeout 1 bash "$P" start "$T/root")"; rc=$?
+  if [ $rc -eq 124 ]; then hang=$((hang+1)); elif grep -q 'cpu_max_quota=200000' <<<"$out"; then ok=$((ok+1)); else na=$((na+1)); fi; done
+kill $pids; wait 2>/dev/null
+echo "$N probe runs under 4 rename racers: hung (killed by timeout 1 s)=$hang read-regular=$ok n/a=$na"

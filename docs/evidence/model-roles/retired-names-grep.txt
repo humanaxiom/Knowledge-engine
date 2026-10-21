@@ -1,0 +1,14 @@
+# MR-4 retired model names in living files (re-recorded 2026-10-20T20:52:05Z by the orchestrator after the MR-4/A7 edits)
+# command: grep -rnI -F -e qwen2.5:14b-instruct -e llama3.1:8b . excluding .git .venv node_modules docs/handoffs docs/evidence docs/log.md docs/knowledge-engine-claude-code-prompt.md
+./docs/architecture.md:5118:  - The defaults named `qwen2.5:14b-instruct` and `llama3.1:8b`. The
+./docs/open-questions.md:58:  for the record:* "Model defaults are `qwen2.5:14b-instruct` (fallback
+./docs/open-questions.md:59:  `llama3.1:8b`) and `nomic-embed-text` (768-dim)." Its port, URL scheme and URL are set per deployment in `.env`,
+./docs/open-questions.md:196:  default models `qwen2.5:14b-instruct` and `llama3.1:8b` are not installed
+./docs/open-questions.md:215:  and `llama3.1:8b` leaves the living files (MR-4). Original question,
+./docs/open-questions.md:219:  required string in the settings, it is `llama3.1:8b` today, and that model
+./docs/requirements.md:305:  (`qwen2.5:14b-instruct`, fallback `llama3.1:8b`, `nomic-embed-text` 768-dim,
+./docs/requirements.md:2160:  searched for `qwen2.5:14b-instruct` and `llama3.1:8b`, then the only hits are
+./docs/requirements.md:2174:  last two are done in this item's analyst step. `llama3.1:8b` does not stay:
+./docs/requirements.md:2175:  Q54 ruled the fallback `gpt-oss:20b` (A54), so `llama3.1:8b` is a retired
+./docs/requirements.md:2176:  name like `qwen2.5:14b-instruct`. `README.md` and the quickstart name no model
+./docs/requirements.md:2275:  removes `llama3.1:8b` from living files.

@@ -1,0 +1,41 @@
+platform-config rework 2: reviewer mutants (2026-10-19)
+Scratch copy of the working tree (base 40c0c75 + uncommitted), run in knowledge-engine-gates:latest with
+--network none. Targets: tests.test_engine_tracing_guard, test_engine_telemetry, test_engine_startup,
+test_engine_config, test_engine_llm (63 tests). Each mutant applied alone, then restored; scratch deleted after.
+Tree under test: engine/telemetry.py sha256 f9bd5b33...79a9bd (matches mutation-rework2.txt restore).
+
+BASELINE rc=0 Ran 63 tests OK
+V1 verify_provider accepts non-SDK providers: KILLED (9) test_foreign_provider_gets_no_span_with_refusing_settings, test_foreign_provider_refused_before_any_span_passing_settings, test_non_sdk_provider_is_refused
+V2 configure_tracing skips verify for non-SDK (old fall-through): KILLED (3) test_non_sdk_provider_is_refused
+V3 startup verify_provider call deleted: KILLED (24) test_foreign_provider_gets_no_span_with_refusing_settings, test_foreign_provider_refused_before_any_span_passing_settings
+V4 startup verifies only when settings load: KILLED (4) test_foreign_provider_gets_no_span_with_refusing_settings
+W1 session walk stops after the first session found (early return): SURVIVED (equivalent today: one session per exporter)
+W2 session walk depth 4 -> 2: KILLED (9) test_accepted_shapes, test_local_otlp_that_ignores_proxy_env_is_accepted
+W3 no reachable session counts as ignoring proxy env (`not sessions or all(...)`): SURVIVED
+W4 any() instead of all() over sessions: SURVIVED (equivalent today: one session per exporter)
+W5 walk returns before descending: KILLED (9) test_accepted_shapes, test_local_otlp_that_ignores_proxy_env_is_accepted
+W6 `session.trust_env = False` removed (session still passed): KILLED (12) ExporterIgnoresProxyEnvTest x3
+W7 installed OTLP accepted without the session check: KILLED (12) test_local_otlp_that_trusts_proxy_env_is_refused, StartupVerifiesProviderFirstTest x2
+U1 _no_userinfo is a no-op: KILLED (18) ModelUrlUserinfoTest x3
+U2 model_upstream userinfo call removed: KILLED (5) test_model_upstream_with_userinfo_is_refused, test_startup_refuses_userinfo_without_the_password
+U3 EmbedPass validator mode before -> after: SURVIVED (equivalent: the parsed URL still has '@' in netloc)
+C1 Cf dropped: KILLED (60)
+C2 Cc dropped: KILLED (8)
+C3 Zs dropped: KILLED (12)
+C4 Zl dropped: SURVIVED (no U+2028 case)
+C5 Zp dropped: SURVIVED (no U+2029 case)
+C6 hangul fillers dropped: KILLED (8)
+C7 CGJ dropped: KILLED (8)
+C8 NFKC dropped: KILLED (8)
+C9 hangul set reduced to U+3164: KILLED (8)
+P1 openinference.project.name removed from resource: KILLED (2) test_provider_resource_carries_openinference_project_name
+E1 unreadable processor (None exporter) accepted in _verify_installed: SURVIVED
+E2 startup without settings trusts "phoenix" as local: SURVIVED (design choice, pinned "either error type")
+POST rc=0 Ran 63 tests OK
+
+uv.lock (same image, offline):
+  uv lock --check --offline  -> "Resolved 36 packages", rc 0
+  fresh offline relock       -> not possible (no registry cache in the image); not claimed
+  lock diff for requests this round: two lines only (project dependency entry and metadata specifier ">=2.34.2");
+  the requests 2.34.2 package entry and hashes are unchanged from base 40c0c75 (already transitive via
+  opentelemetry-exporter-otlp-proto-http). Image build `uv sync --locked` verified all artifact hashes.

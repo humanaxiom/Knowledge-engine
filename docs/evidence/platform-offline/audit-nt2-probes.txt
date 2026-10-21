@@ -1,0 +1,333 @@
+# audit-nt2 raw probe output (security, 2026-10-20). Scope: HEAD bed6eca + working tree (staged LICENSE, licenses/BSD-3-Clause-valkey.txt; unstaged NOTICE.md, engine/notices.py, scripts/bundle.sh, scripts/offline_check.sh, docs/quickstart.md, tests).
+# Every docker run: --rm --network none --pull never --label com.docker.compose.project=ke-sec-nt2-*; none left behind.
+
+######## Q1a L-NT2 path containment (verbatim copy of engine/notices.py, crafted dist-infos, ke-app:local python -I)
+## build_and_run.py (audit-nt P7 cases)
+ROW c_control_missing -> <none>
+ROW c_control_ok -> c_control_ok-1.0.dist-info/licenses/LICENSE
+ROW c_hdr_abs -> <none>
+ROW c_hdr_dotdot -> <none>
+ROW c_hdr_licenses_dotdot -> <none>
+ROW c_rec_abs -> <none>
+ROW c_rec_licenses_dotdot -> <none>
+ROW c_rec_metadata_out -> <none>
+ROW c_rec_named_abs_parent -> <none>
+ROW c_symlink_licence -> <none>
+MISSING ['c_control_missing', 'c_hdr_abs', 'c_hdr_dotdot', 'c_hdr_licenses_dotdot', 'c_rec_abs', 'c_rec_licenses_dotdot', 'c_rec_metadata_out', 'c_rec_named_abs_parent', 'c_symlink_licence']
+## probe2.py (audit-nt d1/d2)
+d2 files= [] info= None licence_files= []
+d1 files= ['d1-1.0.dist-info/METADATA', 'd1-1.0.dist-info/licenses/../../../outside/NOT_A_LICENCE'] info= d1-1.0.dist-info licence_files= []
+## probe3.py (nt2 extra)
+python 3.12.15
+CASE control_named -> ['control_named-1.0.dist-info/LICENSE.txt']
+CASE control_ok -> ['control_ok-1.0.dist-info/licenses/LICENSE']
+CASE hdr_abs -> <none>
+CASE hdr_dotdot_inside -> <none>
+CASE hdr_licenses_dotdot -> <none>
+CASE link_dangling -> <none>
+CASE link_dir_far -> <none>
+CASE link_file_far -> <none>
+CASE link_file_far_hdr -> <none>
+CASE link_file_inside -> ['link_file_inside-1.0.dist-info/licenses/LICENSE']
+CASE link_loop -> <none>
+CASE link_named_far -> <none>
+CASE link_relative_far -> <none>
+CASE rec_abs -> <none>
+CASE rec_dotdot_far -> <none>
+CASE rec_dotdot_inside -> <none>
+VIA-SYMLINKED-SITE control_ok -> ['control_ok-1.0.dist-info/licenses/LICENSE']
+VIA-SYMLINKED-SITE link_file_far -> <none>
+DISTINFO-SYMLINK evil -> <none>
+
+######## Q1b L-NT3 vendor-row parse (bundle.sh lines 193-250 verbatim + render 325-328; bash 5.2, gates image)
+bash: 5.2.15(1)-release; awk: /usr/bin/mawk
+### 00-control rc=0
+| postgres | `postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4` | PostgreSQL | s | n |
+### 01-missing-neo4j rc=1
+bundle: no licence entry in NOTICE.md for the stack image(s): neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+### 02-empty-licence rc=1
+bundle: NOTICE.md vendor row for the image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 is malformed: its Licence cell is not an SPDX id or expression
+### 03-placeholder rc=1
+bundle: no licence entry in NOTICE.md for the stack image(s): postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+### 04-see-licence rc=1
+bundle: NOTICE.md vendor row for the image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 is malformed: its Licence cell is not an SPDX id or expression
+### 05-shell-meta rc=1
+bundle: NOTICE.md vendor row for the image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 is malformed: its Licence cell is not an SPDX id or expression
+### 06-pipe-in-cell rc=1
+bundle: NOTICE.md vendor row for the image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 is malformed: the row has 6 cells, not 5 (a pipe inside a cell?)
+### 07-us-in-image-shifts-licence rc=1
+bundle: NOTICE.md vendor row for the image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 is malformed: the row holds a control byte
+### 08-us-in-ref-cell rc=1
+bundle: NOTICE.md vendor row for the image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 is malformed: the row holds a control byte
+### 09-duplicate rc=1
+bundle: NOTICE.md lists postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 twice
+### 10-crlf rc=0
+| postgres | `postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4` | PostgreSQL | s | n |
+### 11-indented-row rc=1
+bundle: no licence entry in NOTICE.md for the stack image(s): postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
+### 12-short-row rc=1
+bundle: NOTICE.md vendor row for the image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 is malformed: the row has 4 cells, not 5 (a pipe inside a cell?)
+### 13-ref-prefix-or-suffix rc=1
+bundle: no licence entry in NOTICE.md for the stack image(s): postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+### 14-row-in-prose-section rc=1
+bundle: no licence entry in NOTICE.md for the stack image(s): postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
+### 15-row-for-other-ref-sets-nothing rc=1
+bundle: no licence entry in NOTICE.md for the stack image(s): postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
+### 16-tab-cell-licence rc=1
+bundle: NOTICE.md vendor row for the image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 is malformed: the row holds a control byte
+### 17-nbsp-licence rc=1
+bundle: NOTICE.md vendor row for the image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 is malformed: its Licence cell is not an SPDX id or expression
+### 18-us-in-licence-extra-field rc=1
+bundle: NOTICE.md vendor row for the image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 is malformed: the row holds a control byte
+### 19-no-notice rc=1
+cat: NOTICE.md: No such file or directory
+bundle: NOTICE.md is missing or unreadable; it carries the vendor image licences
+### 20-empty-lgpl rc=1
+bundle: licenses/LGPL-3.0.txt is missing or empty (the full licence texts are committed and ship with the bundle)
+### 21-no-LICENSE rc=1
+bundle: LICENSE is missing or empty (the project MIT licence is committed and ships at the bundle root)
+### 22-empty-LICENSE rc=1
+bundle: LICENSE is missing or empty (the project MIT licence is committed and ships at the bundle root)
+### 23-del-byte-in-note rc=1
+bundle: NOTICE.md vendor row for the image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 is malformed: the row holds a control byte
+### 24-tab-inside-licence rc=1
+bundle: NOTICE.md vendor row for the image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 is malformed: the row holds a control byte
+### 25-cr-mid-row rc=1
+bundle: NOTICE.md vendor row for the image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 is malformed: the row holds a control byte
+### 26-spdx-expression-ok rc=0
+| postgres | `postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4` | BSD-3-Clause AND MIT | s | n |
+### 27-spdx-with-ok rc=0
+| postgres | `postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4` | GPL-2.0-only WITH Classpath-exception-2.0 | s | n |
+### 28-dangling-operator rc=1
+bundle: NOTICE.md vendor row for the image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 is malformed: its Licence cell is not an SPDX id or expression
+### 29-double-space rc=0
+| postgres | `postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4` | MIT  OR Apache-2.0 | s | n |
+### 30-parenthesised rc=1
+bundle: NOTICE.md vendor row for the image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 is malformed: its Licence cell is not an SPDX id or expression
+### 31-unknown-spdxlike rc=1
+bundle: no licence entry in NOTICE.md for the stack image(s): postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
+### 32-lowercase-or rc=1
+bundle: NOTICE.md vendor row for the image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 is malformed: its Licence cell is not an SPDX id or expression
+### 33-ref-cell-is-ERR rc=1
+bundle: NOTICE.md vendor row for the image MIT^_x@sha256:abc^_n is malformed: postgres
+### 34-ref-cell-shell-in-bad-row rc=1
+bundle: NOTICE.md vendor row for the image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 is malformed: its Licence cell is not an SPDX id or expression
+### 35-leading-operator rc=1
+bundle: NOTICE.md vendor row for the image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 is malformed: its Licence cell is not an SPDX id or expression
+### 36-crlf-file rc=0
+| postgres | `postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4` | PostgreSQL | s | n |
+### 37-sha-row-elsewhere-malformed rc=1
+bundle: NOTICE.md vendor row for the image nginxinc/nginx-unprivileged@sha256:aa is malformed: the row has 6 cells, not 5 (a pipe inside a cell?)
+### 38-licenceref-ok rc=0
+| postgres | `postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4` | LicenseRef-Foo.1+ | s | n |
+### 39-fullwidth-pipe rc=0
+| postgres | `postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4` | PostgreSQL | aM-oM-=M-^\b | n |
+### 40-esc-sequence rc=1
+bundle: NOTICE.md vendor row for the image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 is malformed: the row holds a control byte
+ls: cannot access '/tmp/pwned*': No such file or directory
+
+######## Q1c awk portability: the awk program alone over all 40 NOTICE.md cases, LC_ALL=C
+mawk (ke-gates:local) vs busybox awk (valkey/valkey:8-alpine): identical output digests on all 40 cases; gawk: not present in any local image, not tested
+
+######## Q1d mutants (scratch copies of the working tree, gates image /opt/venv/bin/python -m unittest, ro mount)
+targeted set: tests.test_engine_notices tests.test_offline_bundle.{BundleScriptTest,BundleNoticesTest,ProjectLicenceTextTest} tests.test_offline_check.OfflineCheckScriptTest (63 tests); base: Ran 63 OK
+c1 rc=1 Ran 63 tests in 58.363s FAILED (failures=22) 
+c2 rc=1 Ran 63 tests in 116.743s FAILED (failures=29) 
+c3 rc=1 Ran 63 tests in 54.686s FAILED (failures=12) 
+m6 rc=1 Ran 63 tests in 59.160s FAILED (failures=4) 
+m6both rc=1 Ran 63 tests in 58.709s FAILED (failures=5) 
+m6r rc=1 Ran 63 tests in 59.173s FAILED (failures=1) 
+m6rr rc=1 Ran 63 tests in 59.183s FAILED (failures=1) 
+m6s rc=1 Ran 63 tests in 59.181s FAILED (failures=2) 
+m6z rc=1 Ran 63 tests in 58.638s FAILED (failures=2) 
+n1 rc=1 Ran 63 tests in 59.859s FAILED (failures=3) 
+n10 rc=0 Ran 63 tests in 59.083s OK 
+n11 rc=0 Ran 63 tests in 58.598s OK 
+n12 rc=0 Ran 63 tests in 58.506s OK 
+n2 rc=1 Ran 63 tests in 59.651s FAILED (failures=2) 
+n3 rc=1 Ran 63 tests in 60.305s FAILED (failures=3) 
+n4 rc=0 Ran 63 tests in 58.819s OK 
+n5 rc=0 Ran 63 tests in 58.908s OK 
+n6 rc=0 Ran 63 tests in 59.270s OK 
+n7 rc=1 Ran 63 tests in 59.118s FAILED (failures=3) 
+n8 rc=1 Ran 63 tests in 59.005s FAILED (failures=1) 
+n9 rc=1 Ran 63 tests in 59.041s FAILED (failures=1) 
+survivors re-run on the full top-level suite (679 tests; base fails the same 7 env-only tests: no .git in the copy, gates-image probe):
+base: Ran 679 tests in 353.359s FAILED (failures=4, errors=3, skipped=8)  | extra vs base: 
+n4: Ran 679 tests in 353.346s FAILED (failures=4, errors=3, skipped=8)  | extra vs base: 
+n5: Ran 679 tests in 353.350s FAILED (failures=4, errors=3, skipped=8)  | extra vs base: 
+n6: Ran 679 tests in 353.298s FAILED (failures=4, errors=3, skipped=8)  | extra vs base: 
+n10: Ran 679 tests in 342.247s FAILED (failures=4, errors=3, skipped=8)  | extra vs base: 
+n11: Ran 679 tests in 342.619s FAILED (failures=4, errors=3, skipped=8)  | extra vs base: 
+n12: Ran 679 tests in 342.587s FAILED (failures=4, errors=3, skipped=8)  | extra vs base: 
+mutant diffs:
+-- m6
+91c91
+<         if not rel.parts or rel.is_absolute() or ".." in rel.parts:
+---
+>         if not rel.parts or rel.is_absolute():
+-- m6r
+108c108
+<         if path.is_absolute() or ".." in path.parts:
+---
+>         if path.is_absolute():
+-- m6rr
+108c108
+<         if path.is_absolute() or ".." in path.parts:
+---
+>         if False:
+-- m6s
+116c116
+<         if real.is_file() and real.is_relative_to(site):
+---
+>         if real.is_file():
+-- m6z
+115c115
+<         real = Path(str(dist.locate_file(path.as_posix()))).resolve()
+---
+>         real = Path(str(dist.locate_file(path.as_posix())))
+-- m6both
+91c91
+<         if not rel.parts or rel.is_absolute() or ".." in rel.parts:
+---
+>         if not rel.parts or rel.is_absolute():
+-- m6both
+91c91
+<         if not rel.parts or rel.is_absolute() or ".." in rel.parts:
+---
+>         if not rel.parts or rel.is_absolute():
+108c108
+<         if path.is_absolute() or ".." in path.parts:
+---
+>         if path.is_absolute():
+-- n2
+231c231
+<     if (NF != 7) { bad("the row has " (NF - 2) " cells, not 5 (a pipe inside a cell?)"); next }
+---
+>     if (NF < 7) { bad("the row has " (NF - 2) " cells, not 5 (a pipe inside a cell?)"); next }
+-- n3
+232c232
+<     if (!spdx_like(trim($4))) { bad("its Licence cell is not an SPDX id or expression"); next }
+---
+>     if (trim($4) == "") { bad("its Licence cell is not an SPDX id or expression"); next }
+-- n4
+204,207d203
+<   if [ "$nref" = ERR ]; then
+<     IFS="$sep" read -r why bad_ref <<< "$nrest"
+<     die "NOTICE.md vendor row for the image $bad_ref is malformed: $why"
+<   fi
+-- n5
+210c210
+< done < <(printf '%s\n' "$notice_src" | LC_ALL=C awk -F'|' '
+---
+> done < <(printf '%s\n' "$notice_src" | awk -F'|' '
+-- n6
+194d193
+< [ -s LICENSE ] || die "LICENSE is missing or empty (the project MIT licence is committed and ships at the bundle root)"
+-- n7
+307d306
+< cp -- LICENSE "$out/LICENSE"
+-- n8
+314c314
+< done < <(git ls-files -z -- licenses)
+---
+> done < <(git ls-files -z -co -- licenses)
+-- n9
+314c314
+< done < <(git ls-files -z -- licenses)
+---
+> done < <(find licenses -type f -print0)
+-- n10
+218c218
+<       else if (parts[i] !~ /^[A-Za-z0-9][A-Za-z0-9.+-]*$/ || parts[i] ~ /^(AND|OR|WITH)$/) return 0
+---
+>       else if (parts[i] !~ /./ || parts[i] ~ /^(AND|OR|WITH)$/) return 0
+-- n12
+217c217
+<       if (i % 2 == 0) { if (parts[i] != "AND" && parts[i] != "OR" && parts[i] != "WITH") return 0 }
+---
+>       if (i % 2 == 0) { }
+-- c1
+225d224
+< chmod -R a+rX -- "$bundle_rel"
+-- c2
+225c225
+< chmod -R a+rX -- "$bundle_rel"
+---
+> chmod -R a+rX -- "$bundle_rel/images"
+-- c3
+225c225
+< chmod -R a+rX -- "$bundle_rel"
+---
+> chmod -R a+r -- "$bundle_rel"
+-- n1
+-- n11
+-- n1
+230c230
+<     if ($0 ~ /[\001-\037\177]/) { bad("the row holds a control byte"); next }
+---
+>     if (0) { bad("the row holds a control byte"); next }
+-- n11
+228d227
+<   { sub(/\r$/, "") }
+
+######## Q2 valkey COPYING (curl --proto =https --tlsv1.2, 2026-10-20)
+1a53dca3aab7ce048e91e77b03c0342f3075366f9dede8ec4d19d0cf229e12a0 *valkey-COPYING-8.1.10
+1a53dca3aab7ce048e91e77b03c0342f3075366f9dede8ec4d19d0cf229e12a0 */c/repos/Knowledge-engine/licenses/BSD-3-Clause-valkey.txt
+3091
+cmp: IDENTICAL
+index blob sha256: 1a53dca3aab7ce048e91e77b03c0342f3075366f9dede8ec4d19d0cf229e12a0
+  "ref": "refs/tags/8.1.10",
+    "sha": "55a542671762eaddff979f78dc6a3d1414ce1d75",
+    "type": "commit",
+
+######## Q3 LICENSE vs MIT (choosealicense mit.txt and SPDX MIT.txt, fetched over HTTPS)
+byte-identical to choosealicense MIT with [year]=2026 [fullname]=Humanaxiom
+word-identical to SPDX MIT.txt with the copyright line filled
+LICENSE sha256 (worktree = index): 03971a4523189e2c453cf22716cde4457c97779bd2906adf491728ed41d7b703 / 03971a4523189e2c453cf22716cde4457c97779bd2906adf491728ed41d7b703
+
+######## Q4 chmod -R a+rX semantics (GNU coreutils in ke-gates:local, uid 10001, umask 077 tree with embedded symlinks)
+chmod (GNU coreutils) 9.1
+uid=10001 gid=10001 groups=10001
+before:
+700 d dist
+700 d dist/b
+600 f dist/b.manifest.sha256
+700 d dist/b/app
+700 d dist/b/app/scripts
+777 l dist/b/dirlink
+700 d dist/b/images
+600 f dist/b/images/a.tar
+700 f dist/b/install.sh
+777 l dist/b/link
+700 d dist/other
+600 f dist/other/secret
+600 f target
+rc=0
+after:
+700 d dist
+755 d dist/b
+600 f dist/b.manifest.sha256
+755 d dist/b/app
+755 d dist/b/app/scripts
+777 l dist/b/dirlink
+755 d dist/b/images
+644 f dist/b/images/a.tar
+755 f dist/b/install.sh
+777 l dist/b/link
+700 d dist/other
+600 f dist/other/secret
+600 f target
+
+######## secrets grep: git diff HEAD + the 8 new evidence files (13431 lines)
+pattern hits: 178; after removing test names and compose 'variable is not set' warnings:
+878:+verify	Set up job	2026-10-20T03:25:24.0853090Z ##[group]GITHUB_TOKEN Permissions
+882:+verify	Set up job	2026-10-20T03:25:24.0879341Z Secret source: Actions
+893:+verify	Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09	2026-10-20T03:25:24.6461777Z   token: ***
+994:+verify	Verify (full)	2026-10-20T03:25:29.8862139Z #5 [auth] nginxinc/nginx-unprivileged:pull token for registry-1.docker.io
+997:+verify	Verify (full)	2026-10-20T03:25:30.0549127Z #6 [auth] library/python:pull token for registry-1.docker.io
+8686:+next: cd /install/op/ke && cp .env.example .env && chmod 600 .env (set real secrets in it), then bash scripts/launch.sh
+8688:+created .env from .env.example (placeholder secrets; edit it before any use beyond local development)
+10371:+next: cd /install/op/ke && cp .env.example .env && chmod 600 .env (set real secrets in it), then bash scripts/launch.sh
+10373:+created .env from .env.example (placeholder secrets; edit it before any use beyond local development)
+Windows profile paths and domain SIDs in the scanned text: 0

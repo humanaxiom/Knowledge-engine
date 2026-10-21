@@ -1,0 +1,175 @@
+# PS-2.24 mutant run (tester, platform-stack-ready RED), 2026-10-19T06:09:31Z
+# Scratch copy of the working tree (git index re-created), ke-gates image, docker run --network none.
+# Each mutant is one the reviewer recorded as SURVIVING (review-rework2-mutants.txt, review-mutants.txt P5, review-ci-fix.md N2); each new case must go RED.
+
+# Baseline (unmutated working tree): rc=0 ['Ran 10 tests in 5.013s', 'OK'] (6s)
+[RED (mutant KILLED)] T3 teardown.sh adds --remove-orphans (1s)
+    FAIL: test_teardown_does_not_remove_orphans (tests.test_stack_scripts.TeardownShScopeTest.test_teardown_does_not_remove_orphans) (args='(none)')
+    AssertionError: '--remove-orphans' unexpectedly found in ['compose', 'down', '--remove-orphans'] : teardown passes --remove-orphans (F3): ['compose', 'down', '--remove-orphans']
+    FAIL: test_teardown_does_not_remove_orphans (tests.test_stack_scripts.TeardownShScopeTest.test_teardown_does_not_remove_orphans) (args='--volumes')
+    AssertionError: '--remove-orphans' unexpectedly found in ['compose', 'down', '--remove-orphans', '--volumes'] : teardown passes --remove-orphans (F3): ['compose', 'down', '--remove-orphans', '--volumes']
+    Ran 1 test in 0.087s
+    FAILED (failures=2)
+[RED (mutant KILLED)] T4 teardown.ps1 adds --remove-orphans (2s)
+    FAIL: test_teardown_does_not_remove_orphans (tests.test_stack_scripts.TeardownPs1ScopeTest.test_teardown_does_not_remove_orphans) (args='(none)')
+    AssertionError: '--remove-orphans' unexpectedly found in ['compose', 'down', '--remove-orphans'] : teardown passes --remove-orphans (F3): ['compose', 'down', '--remove-orphans']
+    FAIL: test_teardown_does_not_remove_orphans (tests.test_stack_scripts.TeardownPs1ScopeTest.test_teardown_does_not_remove_orphans) (args='-Volumes')
+    AssertionError: '--remove-orphans' unexpectedly found in ['compose', 'down', '--remove-orphans', '--volumes'] : teardown passes --remove-orphans (F3): ['compose', 'down', '--remove-orphans', '--volumes']
+    Ran 1 test in 0.793s
+    FAILED (failures=2)
+[RED (mutant KILLED)] T5 teardown.sh drops KE_ENV_FILE (1s)
+    FAIL: test_teardown_carries_project_and_env_file (tests.test_stack_scripts.TeardownShScopeTest.test_teardown_carries_project_and_env_file)
+    AssertionError: False is not true : down does not carry KE_ENV_FILE as --env-file: ['compose', 'down']
+    Ran 1 test in 0.063s
+    FAILED (failures=1)
+[RED (mutant KILLED)] T8 teardown.ps1 drops KE_ENV_FILE (1s)
+    FAIL: test_teardown_carries_project_and_env_file (tests.test_stack_scripts.TeardownPs1ScopeTest.test_teardown_carries_project_and_env_file)
+    AssertionError: False is not true : down does not carry KE_ENV_FILE as --env-file: ['compose', 'down']
+    Ran 1 test in 0.414s
+    FAILED (failures=1)
+[RED (mutant KILLED)] L3-anchor launch.sh version regex unanchored at end (1s)
+    FAIL: test_launch_refuses_docker_engine_below_28_or_unreadable (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_refuses_docker_engine_below_28_or_unreadable) (engine='28.0.1-rc.1 (suffixed build, R2-N3)')
+    AssertionError: 0 == 0 : launch accepted Docker Engine '28.0.1-rc.1':
+    Ran 1 test in 0.366s
+    FAILED (failures=1)
+[RED (mutant KILLED)] L6-anchor launch.ps1 version regex unanchored at end (4s)
+    FAIL: test_launch_refuses_docker_engine_below_28_or_unreadable (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_refuses_docker_engine_below_28_or_unreadable) (engine='28.0.1-rc.1 (suffixed build, R2-N3)')
+    AssertionError: 0 == 0 : launch accepted Docker Engine '28.0.1-rc.1':
+    Ran 1 test in 3.148s
+    FAILED (failures=1)
+[RED (mutant KILLED)] SM-I3 smoke Internal check loosened (matches Internal false) (1s)
+    FAIL: test_smoke_fails_when_backend_is_not_internal (tests.test_stack_scripts.SmokeBackendIsolatedTest.test_smoke_fails_when_backend_is_not_internal)
+    AssertionError: 0 == 0 : smoke passed although the backend network is not internal:
+    Ran 1 test in 0.214s
+    FAILED (failures=1)
+[RED (mutant KILLED)] GP-order port check installed after envsubst (30-) (1s)
+    FAIL: test_gateway_checks_run_before_envsubst (tests.test_stack_entrypoints.GatewayUpstreamCheckTest.test_gateway_checks_run_before_envsubst) (script='12-ke-port-check.sh')
+    AssertionError: '30-ke-port-check.sh' not less than '20-envsubst-on-templates.sh' : 12-ke-port-check.sh is installed as 30-ke-port-check.sh, which runs after 20-envsubst-on-templates.sh
+    Ran 1 test in 0.008s
+    FAILED (failures=1)
+[RED (mutant KILLED)] ci-fix N2 trace helper inherits the caller's PS4 (pin removed) (1s)
+    FAIL: test_trace_count_independent_of_caller_ps4 (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_trace_count_independent_of_caller_ps4) (mode='jq', caller='PS4 from BASH_ENV', command='echo hello')
+    AssertionError: Tuples differ: (0, 0) != (1, 1)
+    FAIL: test_trace_count_independent_of_caller_ps4 (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_trace_count_independent_of_caller_ps4) (mode='jq', caller='PS4 from BASH_ENV', command='echo a\\\nb')
+    AssertionError: Tuples differ: (0, 0) != (2, 2)
+    FAIL: test_trace_count_independent_of_caller_ps4 (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_trace_count_independent_of_caller_ps4) (mode='no-jq', caller='PS4 from BASH_ENV', command='echo hello')
+    AssertionError: Tuples differ: (0, 0) != (1, 1)
+    FAIL: test_trace_count_independent_of_caller_ps4 (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_trace_count_independent_of_caller_ps4) (mode='no-jq', caller='PS4 from BASH_ENV', command='echo a\\\nb')
+    AssertionError: Tuples differ: (0, 0) != (2, 2)
+    Ran 1 test in 0.176s
+    FAILED (failures=4)
+[RED (mutant KILLED)] P5 gateway target literal (round-0 N3) (1s)
+    FAIL: test_no_hardcoded_ports (tests.test_engine_hardcoded.RepositoryScanTest.test_no_hardcoded_ports)
+    AssertionError: Lists differ: [Finding(path='docker-compose.yml', line=45, value='8100')] != []
+    Ran 1 test in 0.288s
+    FAILED (failures=1)
+
+## Driver
+"""PS-2.24 mutant driver (tester, platform-stack-ready RED).
+
+Copies the working tree to a scratch dir, applies one mutant (exact-once
+string replace), runs the named tests in the ke-gates image with no network,
+and records whether each new case goes RED. Baseline (no mutant) first.
+"""
+import pathlib
+import shutil
+import subprocess
+import sys
+import time
+
+REPO = pathlib.Path(r"C:\repos\Knowledge-engine")
+SCRATCH = pathlib.Path(sys.argv[1])
+
+M = [
+    ("T3 teardown.sh adds --remove-orphans", "scripts/teardown.sh",
+     'down "${down[@]}"', 'down --remove-orphans "${down[@]}"',
+     ["tests.test_stack_scripts.TeardownShScopeTest.test_teardown_does_not_remove_orphans"]),
+    ("T4 teardown.ps1 adds --remove-orphans", "scripts/teardown.ps1",
+     "docker compose @composeArgs down @down", "docker compose @composeArgs down --remove-orphans @down",
+     ["tests.test_stack_scripts.TeardownPs1ScopeTest.test_teardown_does_not_remove_orphans"]),
+    ("T5 teardown.sh drops KE_ENV_FILE", "scripts/teardown.sh",
+     '[ -n "${KE_ENV_FILE:-}" ] && args+=(--env-file "$KE_ENV_FILE")', ':',
+     ["tests.test_stack_scripts.TeardownShScopeTest.test_teardown_carries_project_and_env_file"]),
+    ("T8 teardown.ps1 drops KE_ENV_FILE", "scripts/teardown.ps1",
+     "if ($env:KE_ENV_FILE) { $composeArgs += @('--env-file', $env:KE_ENV_FILE) }", "",
+     ["tests.test_stack_scripts.TeardownPs1ScopeTest.test_teardown_carries_project_and_env_file"]),
+    ("L3-anchor launch.sh version regex unanchored at end", "scripts/launch.sh",
+     r'^[0-9]+\.[0-9]+\.[0-9]+$ ]]', r'^[0-9]+\.[0-9]+\.[0-9]+ ]]',
+     ["tests.test_stack_scripts.LaunchShResolvedTest.test_launch_refuses_docker_engine_below_28_or_unreadable"]),
+    ("L6-anchor launch.ps1 version regex unanchored at end", "scripts/launch.ps1",
+     r"'^[0-9]+\.[0-9]+\.[0-9]+\z'", r"'^[0-9]+\.[0-9]+\.[0-9]+'",
+     ["tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_refuses_docker_engine_below_28_or_unreadable"]),
+    ("SM-I3 smoke Internal check loosened (matches Internal false)", "scripts/smoke.sh",
+     """grep -Eq '"Internal": *true'""", """grep -Eq '"Internal": *(true|false)'""",
+     ["tests.test_stack_scripts.SmokeBackendIsolatedTest.test_smoke_fails_when_backend_is_not_internal"]),
+    ("GP-order port check installed after envsubst (30-)", "docker/gateway.Dockerfile",
+     "/docker-entrypoint.d/12-ke-port-check.sh", "/docker-entrypoint.d/30-ke-port-check.sh",
+     ["tests.test_stack_entrypoints.GatewayUpstreamCheckTest.test_gateway_checks_run_before_envsubst"]),
+    ("ci-fix N2 trace helper inherits the caller's PS4 (pin removed)",
+     "tests/test_block_main_commit_hook.py",
+     '        env["PS4"] = "+ "\n        for name in ("BASH_ENV", "ENV"):\n            env.pop(name, None)\n',
+     "",
+     ["tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_trace_count_independent_of_caller_ps4"]),
+    ("P5 gateway target literal (round-0 N3)", "docker-compose.yml",
+     "      - target: ${KE_GATEWAY_API_LISTEN:-8100}\n", "      - target: 8100\n",
+     ["tests.test_engine_hardcoded.RepositoryScanTest.test_no_hardcoded_ports"]),
+]
+
+
+def fresh_copy() -> None:
+    if SCRATCH.exists():
+        import os
+        import stat
+
+        def unlock(func, p, _exc):  # git objects are read-only on Windows
+            os.chmod(p, stat.S_IWRITE)
+            func(p)
+
+        shutil.rmtree(SCRATCH, onerror=unlock)
+    shutil.copytree(REPO, SCRATCH, ignore=shutil.ignore_patterns(
+        ".git", ".venv", "__pycache__", "docs", "*.pyc"))
+    # The repository scan lists files with git: give the copy a repository
+    # (index only, the same tracked + untracked set as the working tree).
+    subprocess.run(["git", "init", "-q"], cwd=SCRATCH, check=True)
+    subprocess.run(["git", "-c", "core.autocrlf=false", "add", "-A"], cwd=SCRATCH, check=True)
+    subprocess.run(["git", "config", "--global", "--get", "safe.directory"], capture_output=True)
+
+
+def run(tests: list[str]) -> tuple[int, str]:
+    cmd = ["docker", "run", "--rm", "--network", "none", "-v", f"{SCRATCH}:/work", "-w", "/work",
+           "ke-gates", "uv", "run", "--locked", "python", "-m", "unittest", "-v", *tests]
+    p = subprocess.run(cmd, capture_output=True, text=True, env={**__import__("os").environ,
+                                                                  "MSYS_NO_PATHCONV": "1"})
+    return p.returncode, p.stdout + p.stderr
+
+
+def main() -> None:
+    only = sys.argv[2:]
+    all_tests = sorted({t for *_, ts in M for t in ts})
+    fresh_copy()
+    t0 = time.time()
+    rc, out = run(all_tests)
+    tail = [l for l in out.splitlines() if l.startswith(("Ran ", "OK", "FAILED"))]
+    print(f"# Baseline (unmutated working tree): rc={rc} {tail} ({time.time() - t0:.0f}s)")
+    if rc != 0:
+        print(out)
+    for mid, rel, old, new, tests in M:
+        if only and not any(o in mid for o in only):
+            continue
+        fresh_copy()
+        path = SCRATCH / rel
+        text = path.read_text(encoding="utf-8")
+        if text.count(old) != 1:
+            print(f"[NOT-APPLIED] {mid}: pattern found {text.count(old)} times in {rel}")
+            continue
+        path.write_text(text.replace(old, new), encoding="utf-8", newline="\n")
+        t0 = time.time()
+        rc, out = run(tests)
+        verdict = "RED (mutant KILLED)" if rc != 0 else "GREEN (mutant SURVIVED)"
+        print(f"[{verdict}] {mid} ({time.time() - t0:.0f}s)")
+        for line in out.splitlines():
+            if line.startswith(("FAIL:", "ERROR:", "AssertionError", "Ran ", "FAILED", "OK")):
+                print("    " + line)
+
+
+main()

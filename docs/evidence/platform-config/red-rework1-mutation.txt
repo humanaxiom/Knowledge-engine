@@ -1,0 +1,62 @@
+### baseline: every target test on the unmutated tree
+Ran 8 tests in 1.341s
+
+OK
+== M1 local-collector check removed  [target: test_engine_telemetry.ConfigureTracingTest.test_non_local_collector_gets_no_exporter]
+FAIL: test_non_local_collector_gets_no_exporter
+AssertionError: Expected 'OTLPSpanExporter' to not have been called. Called 1 times.
+FAILED (failures=1)
+rc=1 => KILLED
+== M2 hide flags not exported  [target: test_engine_telemetry.ConfigureTracingTest.test_hide_defaults_apply_before_any_span]
+FAIL: test_hide_defaults_apply_before_any_span
+AssertionError: 'visible-input-value' != '__REDACTED__'
+FAILED (failures=1)
+rc=1 => KILLED
+== M11 startup does not call configure_tracing  [target: test_engine_telemetry.StartupWiringTest.test_startup_installs_the_exporter]
+FAIL: test_startup_installs_the_exporter
+AssertionError: Lists differ: [] != ['http://localhost:47101/v1/traces']
+FAILED (failures=1)
+rc=1 => KILLED
+== M15 egress check skipped in dev  [target: test_engine_egress.EgressStartupTest.test_egress_startup_check_refuses_in_every_env]
+FAIL: test_egress_startup_check_refuses_in_every_env (env='dev', case='model upstream off-list')
+FAIL: test_egress_startup_check_refuses_in_every_env (env='dev', case='pass base_url off-list')
+FAIL: test_egress_startup_check_refuses_in_every_env (env='dev', case='pass base_url, empty allowlist')
+AssertionError: StartupRefused not raised
+AssertionError: StartupRefused not raised
+FAILED (failures=3)
+rc=1 => KILLED
+== M5 standard names above KE_ env  [target: test_engine_config.PrecedenceTest.test_ke_names_outrank_standard_names]
+FAIL: test_ke_names_outrank_standard_names (overrides={'KE_MODELS__MODEL_UPSTREAM': 'nested.internal:9001', 'KE_MODEL_UPSTREAM': 'flat.internal:9002'})
+FAIL: test_ke_names_outrank_standard_names (overrides={'KE_TELEMETRY__COLLECTOR_ENDPOINT': 'http://localhost:47101', 'PHOENIX_COLLECTOR_ENDPOINT': 'http://collector.example.com:6006'})
+FAIL: test_ke_names_outrank_standard_names (overrides={'KE_TELEMETRY__HIDE_INPUTS': 'true', 'OPENINFERENCE_HIDE_INPUTS': 'false'})
+FAIL: test_ke_names_outrank_standard_names (overrides={'KE_TELEMETRY__HIDE_OUTPUTS': 'false', 'OPENINFERENCE_HIDE_OUTPUTS': 'true'})
+AssertionError: 'otlp' != 'console'
+AssertionError: 'console' != 'off'
+FAILED (failures=6)
+rc=1 => KILLED
+== M17 ConfigError chained  [target: test_engine_config.ConfigErrorNeverCarriesValueTest]
+FAIL: test_config_error_has_no_value_anywhere (variable='KE_AUTH__ENABLED')
+FAIL: test_config_error_has_no_value_anywhere (variable='KE_ENV')
+FAIL: test_config_error_has_no_value_anywhere (variable='KE_MODELS__COMPOSE__BASE_URL')
+FAIL: test_config_error_has_no_value_anywhere (variable='KE_MODELS__EMBED__DIM')
+AssertionError: 'N7SENTINELVALUE' unexpectedly found in 'Traceback (most recent call last):\n  File "/work/engine/config/settings.py", line 130, in __init__\n    super().__init__(**values)\n  File "/opt/venv/lib/python3.
+AssertionError: 'N7SENTINELVALUE' unexpectedly found in 'Traceback (most recent call last):\n  File "/work/engine/config/settings.py", line 130, in __init__\n    super().__init__(**values)\n  File "/opt/venv/lib/python3.
+FAILED (failures=5)
+rc=1 => KILLED
+== T1 test.sh guard pyproject.tom  [target: test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_run_with_pyproject]
+FAIL: test_quality_gates_run_with_pyproject (mode='fast')
+FAIL: test_quality_gates_run_with_pyproject (mode='full')
+AssertionError: 0 != 1 : -m coverage combine ran 0 times: ['python -m coverage erase', 'python -m coverage run -p -m unittest -v tests.test_x tests.testfoo', 'python -m coverage run -p -m unittest discover -s tests/unit 
+AssertionError: 0 != 1 : -m coverage combine ran 0 times: ['python -m coverage erase', 'python -m coverage run -p -m unittest -v tests.test_x tests.testfoo', 'python -m coverage run -p -m unittest discover -s tests/unit 
+FAILED (failures=2)
+rc=1 => KILLED
+== D1 compose container port drifts  [target: test_engine_deploy_files.PhoenixDriftTest.test_compose_phoenix_defaults_match_config]
+FAIL: test_compose_phoenix_defaults_match_config
+AssertionError: '6007' != '6006'
+FAILED (failures=1)
+rc=1 => KILLED
+== D2 compose host port drifts from .env.example  [target: test_engine_deploy_files.PhoenixDriftTest.test_compose_phoenix_defaults_match_config]
+FAIL: test_compose_phoenix_defaults_match_config
+AssertionError: '47102' != '47101'
+FAILED (failures=1)
+rc=1 => KILLED

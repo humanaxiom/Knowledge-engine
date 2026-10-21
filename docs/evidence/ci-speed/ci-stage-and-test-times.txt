@@ -1,0 +1,324 @@
+== docs/evidence/platform-offline/ci-39370927416.log
+job total (set-up to cleanup)          991.2 s
+pre-verify (set-up, checkout)            4.0
+build.sh (images)                       50.8
+launch.sh (pull stores, up --wait)      81.7
+gates-it start + lint                    7.0
+  (gates-it container start -> lint)     6.2
+unit suite (lint PASS -> Ran #1)       597.1   [Ran 679 tests in 594.802s]
+integration suite                        5.1   [Ran 11 tests in 4.475s]
+coverage combine/report + mypy           8.2
+container OTLP smoke                     1.3
+host smoke                              16.8
+teardown (verify project)               10.7
+offline_check total                    207.5
+  bundle.sh (save)                      37.8
+  dind pull + up                        17.7
+  client install (load)                 68.6
+  client launch                         49.0
+  client smoke                          16.5
+  client teardown                        8.9
+  dind teardown                          7.6
+verify.sh total                        986.2
+
+per-test timings: 690 tests, 599.1 s summed
+by module:
+    297.0 s  49.6%  n=159  tests.test_offline_bundle
+    180.0 s  30.0%  n=113  tests.test_stack_scripts
+     27.0 s   4.5%  n= 47  tests.test_block_main_commit_hook
+     20.8 s   3.5%  n= 19  tests.test_offline_netprobe
+     18.9 s   3.1%  n= 24  tests.test_harness_followups
+     17.5 s   2.9%  n= 19  tests.test_stack_readiness
+     10.4 s   1.7%  n= 23  tests.test_offline_check
+      9.0 s   1.5%  n= 16  tests.test_stack_entrypoints
+      4.2 s   0.7%  n=  5  tests.integration.test_stack_ready
+      3.1 s   0.5%  n= 24  tests.test_stack_compose
+      2.3 s   0.4%  n= 16  tests.test_stack_bind_address
+      2.3 s   0.4%  n= 22  tests.test_engine_startup
+      1.4 s   0.2%  n= 22  tests.test_engine_tracing_guard
+      1.2 s   0.2%  n= 12  tests.test_stack_model_keys
+      0.8 s   0.1%  n= 14  tests.test_gate_least_privilege
+      0.5 s   0.1%  n= 14  tests.test_engine_telemetry
+      0.5 s   0.1%  n=  5  tests.test_stack_model_skip
+      0.5 s   0.1%  n= 19  tests.test_engine_config
+      0.5 s   0.1%  n=  8  tests.test_engine_egress
+      0.2 s   0.0%  n= 21  tests.test_engine_hardcoded
+by class (top 20):
+    181.5 s  tests.test_offline_bundle.InstallPs1Test
+    120.2 s  tests.test_stack_scripts.LintScriptTest
+     54.9 s  tests.test_offline_bundle.BundleScriptTest
+     29.2 s  tests.test_offline_bundle.InstallShTest
+     28.5 s  tests.test_offline_bundle.BundleNoticesTest
+     27.0 s  tests.test_block_main_commit_hook.BlockMainCommitHookTest
+     23.1 s  tests.test_stack_scripts.LaunchPs1ResolvedTest
+     20.0 s  tests.test_offline_netprobe.SmokeCiOfflineTest
+     17.9 s  tests.test_harness_followups.IntegrationRunsOnceTest
+     16.4 s  tests.test_stack_readiness.ReadinessCliTest
+     12.1 s  tests.test_stack_scripts.SmokeStoreStopStartTest
+      9.3 s  tests.test_offline_check.OfflineCheckScriptTest
+      6.1 s  tests.test_stack_scripts.TeardownPs1LeftoversTest
+      4.6 s  tests.test_stack_scripts.SmokeBackendIsolatedTest
+      4.0 s  tests.test_stack_scripts.LaunchShResolvedTest
+      3.8 s  tests.test_stack_scripts.TeardownPs1ScopeTest
+      3.7 s  tests.test_stack_entrypoints.GatewayPortCheckTest
+      3.1 s  tests.test_stack_entrypoints.ApiEntrypointTest
+      2.7 s  tests.test_offline_bundle.InstallShPortableTest
+      2.5 s  tests.test_stack_compose.NetworksTest
+slowest 40 tests:
+    56.4 s  test_stack_scripts.LintScriptTest.test_lint_runs_no_code_from_a_powershell_filename
+    23.5 s  test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper
+    21.6 s  test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails
+    21.4 s  test_stack_scripts.LintScriptTest.test_lint_with_real_tools_fails_on_a_planted_finding
+    20.5 s  test_stack_scripts.LintScriptTest.test_lint_covers_upper_case_ps1_and_psm1
+    15.7 s  test_stack_scripts.LintScriptTest.test_lint_shellchecks_upper_case_sh
+    15.3 s  test_offline_bundle.InstallPs1Test.test_install_refuses_unfit_target_or_daemon
+    12.6 s  test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass
+    10.4 s  test_offline_bundle.BundleNoticesTest.test_notices_vendor_row_parse_is_strict
+    10.2 s  test_offline_bundle.InstallPs1Test.test_install_rejects_bundle_json_missing_field
+     9.0 s  test_offline_bundle.InstallPs1Test.test_install_target_modes_ignore_build_host_umask
+     8.4 s  test_offline_bundle.InstallPs1Test.test_install_stops_on_signal_to_its_own_pid
+     7.6 s  test_offline_bundle.InstallPs1Test.test_arch_normalisation
+     7.6 s  test_offline_bundle.InstallPs1Test.test_install_tags_loaded_image_as_bundle_name
+     7.4 s  test_offline_bundle.InstallPs1Test.test_install_removes_staging_on_every_exit
+     7.1 s  test_offline_bundle.BundleScriptTest.test_bundle_maps_each_service_to_own_image_despite_dependencies
+     6.6 s  test_offline_netprobe.SmokeCiOfflineTest.test_ci_offline_fails_naming_the_service_that_gets_out
+     6.6 s  test_offline_bundle.InstallShTest.test_install_stops_on_signal_to_its_own_pid
+     6.6 s  test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_never_met
+     6.0 s  test_offline_bundle.InstallPs1Test.test_install_ps1_refuses_relative_or_empty_path_entries
+     5.4 s  test_offline_bundle.InstallPs1Test.test_install_flags_target_parent_others_can_write
+     5.4 s  test_offline_bundle.InstallPs1Test.test_install_refuses_manifest_link_or_fifo
+     5.4 s  test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_met
+     5.1 s  test_offline_bundle.InstallPs1Test.test_install_ps1_session_recovers_after_signal
+     5.0 s  test_stack_scripts.LintScriptTest.test_lint_fails_on_warning_severity_finding
+     5.0 s  test_offline_bundle.BundleScriptTest.test_bundle_arch_comes_from_daemon
+     4.7 s  test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly
+     4.5 s  test_offline_bundle.InstallPs1Test.test_install_prints_and_checks_manifest_hash
+     4.5 s  test_offline_bundle.BundleScriptTest.test_arch_normalisation
+     4.4 s  test_offline_bundle.InstallPs1Test.test_install_loads_and_copies_verified_bytes_only
+     4.2 s  test_offline_bundle.BundleScriptTest.test_bundle_out_name_carries_arch
+     4.2 s  test_offline_bundle.InstallPs1Test.test_install_refuses_case_variant_paths
+     4.2 s  test_stack_scripts.LaunchPs1ResolvedTest.test_launch_refuses_docker_engine_below_28_or_unreadable
+     4.1 s  test_stack_scripts.LaunchPs1ResolvedTest.test_launch_honours_every_dotenv_form_compose_honours
+     4.0 s  test_stack_scripts.SmokeStoreStopStartTest.test_smoke_fails_when_each_store_step_fails
+     3.8 s  test_offline_bundle.BundleNoticesTest.test_notices_fail_when_package_licence_missing
+     3.7 s  test_offline_netprobe.SmokeCiOfflineTest.test_ci_offline_probes_api_and_worker_after_a_connected_control
+     3.4 s  test_stack_scripts.LaunchPs1ResolvedTest.test_launch_treats_a_port_without_host_ip_as_all_interfaces
+     3.3 s  test_offline_bundle.InstallPs1Test.test_install_refuses_arch_mismatch
+     3.2 s  test_harness_followups.IntegrationRunsOnceTest.test_helper_package_without_tests_passes
+
+== docs/evidence/platform-offline/ci-39465361808.log
+job total (set-up to cleanup)         1135.0 s
+pre-verify (set-up, checkout)            2.2
+build.sh (images)                       37.5
+launch.sh (pull stores, up --wait)      79.5
+gates-it start + lint                    8.0
+  (gates-it container start -> lint)     7.5
+unit suite (lint PASS -> Ran #1)       793.3   [Ran 685 tests in 790.069s]
+integration suite                        8.7   [Ran 11 tests in 7.302s]
+coverage combine/report + mypy           9.4
+container OTLP smoke                     2.3
+host smoke                              16.3
+teardown (verify project)                7.1
+offline_check total                    170.3
+  bundle.sh (save)                      29.1
+  dind pull + up                        12.2
+  client install (load)                 43.1
+  client launch                         52.6
+  client smoke                          19.2
+  client teardown                        8.2
+  dind teardown                          5.0
+verify.sh total                       1132.2
+
+per-test timings: 696 tests, 797.1 s summed
+by module:
+    410.0 s  51.4%  n=165  tests.test_offline_bundle
+    224.9 s  28.2%  n=113  tests.test_stack_scripts
+     35.5 s   4.5%  n= 47  tests.test_block_main_commit_hook
+     28.8 s   3.6%  n= 19  tests.test_offline_netprobe
+     25.0 s   3.1%  n= 24  tests.test_harness_followups
+     20.6 s   2.6%  n= 19  tests.test_stack_readiness
+     13.7 s   1.7%  n= 16  tests.test_stack_entrypoints
+     12.2 s   1.5%  n= 23  tests.test_offline_check
+      6.9 s   0.9%  n=  5  tests.integration.test_stack_ready
+      6.2 s   0.8%  n= 22  tests.test_engine_startup
+      3.0 s   0.4%  n= 16  tests.test_stack_bind_address
+      2.3 s   0.3%  n= 24  tests.test_stack_compose
+      1.6 s   0.2%  n= 22  tests.test_engine_tracing_guard
+      1.3 s   0.2%  n= 14  tests.test_gate_least_privilege
+      1.0 s   0.1%  n= 12  tests.test_stack_model_keys
+      0.7 s   0.1%  n= 14  tests.test_engine_telemetry
+      0.6 s   0.1%  n= 19  tests.test_engine_config
+      0.5 s   0.1%  n=  7  tests.test_stack_ready_compose
+      0.5 s   0.1%  n=  8  tests.test_engine_egress
+      0.3 s   0.0%  n= 21  tests.test_engine_hardcoded
+by class (top 20):
+    245.0 s  tests.test_offline_bundle.InstallPs1Test
+    148.0 s  tests.test_stack_scripts.LintScriptTest
+     74.4 s  tests.test_offline_bundle.BundleScriptTest
+     48.3 s  tests.test_offline_bundle.BundleNoticesTest
+     38.3 s  tests.test_offline_bundle.InstallShTest
+     35.5 s  tests.test_block_main_commit_hook.BlockMainCommitHookTest
+     32.2 s  tests.test_stack_scripts.LaunchPs1ResolvedTest
+     28.0 s  tests.test_offline_netprobe.SmokeCiOfflineTest
+     23.5 s  tests.test_harness_followups.IntegrationRunsOnceTest
+     19.0 s  tests.test_stack_readiness.ReadinessCliTest
+     14.9 s  tests.test_stack_scripts.SmokeStoreStopStartTest
+     11.2 s  tests.test_offline_check.OfflineCheckScriptTest
+     10.0 s  tests.test_stack_scripts.TeardownPs1LeftoversTest
+      7.8 s  tests.test_stack_entrypoints.GatewayPortCheckTest
+      5.5 s  tests.test_engine_startup.PlaceholderSecretTest
+      5.0 s  tests.test_stack_scripts.SmokeBackendIsolatedTest
+      5.0 s  tests.test_stack_scripts.LaunchShResolvedTest
+      4.8 s  tests.integration.test_stack_ready.ReadyzIntegrationTest
+      3.8 s  tests.test_offline_bundle.InstallShPortableTest
+      3.3 s  tests.test_stack_scripts.TeardownPs1ScopeTest
+slowest 40 tests:
+    67.1 s  test_stack_scripts.LintScriptTest.test_lint_runs_no_code_from_a_powershell_filename
+    32.7 s  test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper
+    30.9 s  test_stack_scripts.LintScriptTest.test_lint_covers_upper_case_ps1_and_psm1
+    30.8 s  test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails
+    24.3 s  test_stack_scripts.LintScriptTest.test_lint_with_real_tools_fails_on_a_planted_finding
+    22.4 s  test_offline_bundle.InstallPs1Test.test_install_refuses_unfit_target_or_daemon
+    18.3 s  test_stack_scripts.LintScriptTest.test_lint_shellchecks_upper_case_sh
+    17.7 s  test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass
+    13.8 s  test_offline_bundle.BundleNoticesTest.test_notices_vendor_row_parse_is_strict
+    13.4 s  test_offline_bundle.InstallPs1Test.test_install_rejects_bundle_json_missing_field
+    12.9 s  test_offline_bundle.InstallPs1Test.test_install_target_modes_ignore_build_host_umask
+    11.5 s  test_offline_bundle.BundleScriptTest.test_bundle_maps_each_service_to_own_image_despite_dependencies
+    10.4 s  test_offline_bundle.InstallPs1Test.test_install_tags_loaded_image_as_bundle_name
+     9.6 s  test_offline_bundle.InstallPs1Test.test_install_removes_staging_on_every_exit
+     9.6 s  test_offline_bundle.InstallPs1Test.test_install_stops_on_signal_to_its_own_pid
+     9.6 s  test_offline_bundle.InstallPs1Test.test_install_flags_target_parent_others_can_write
+     9.6 s  test_offline_netprobe.SmokeCiOfflineTest.test_ci_offline_fails_naming_the_service_that_gets_out
+     9.1 s  test_offline_bundle.InstallPs1Test.test_arch_normalisation
+     7.8 s  test_offline_bundle.InstallPs1Test.test_install_prints_and_checks_manifest_hash
+     7.5 s  test_offline_bundle.BundleNoticesTest.test_notices_fail_when_package_licence_missing
+     7.4 s  test_offline_bundle.InstallPs1Test.test_install_refuses_manifest_link_or_fifo
+     7.2 s  test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_never_met
+     7.1 s  test_stack_scripts.LaunchPs1ResolvedTest.test_launch_refuses_docker_engine_below_28_or_unreadable
+     7.0 s  test_offline_bundle.InstallPs1Test.test_install_ps1_session_recovers_after_signal
+     6.8 s  test_stack_entrypoints.GatewayPortCheckTest.test_gateway_refuses_every_bad_or_injected_port
+     6.6 s  test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_met
+     6.4 s  test_offline_bundle.InstallShTest.test_install_stops_on_signal_to_its_own_pid
+     6.3 s  test_offline_bundle.InstallPs1Test.test_install_ps1_refuses_relative_or_empty_path_entries
+     6.2 s  test_offline_bundle.BundleScriptTest.test_arch_normalisation
+     6.1 s  test_offline_bundle.InstallPs1Test.test_install_refuses_case_variant_paths
+     5.9 s  test_offline_bundle.BundleScriptTest.test_bundle_arch_comes_from_daemon
+     5.3 s  test_offline_netprobe.SmokeCiOfflineTest.test_offline_probe_fails_when_control_fails
+     5.2 s  test_offline_bundle.InstallPs1Test.test_install_loads_and_copies_verified_bytes_only
+     5.2 s  test_stack_scripts.LaunchPs1ResolvedTest.test_launch_treats_a_port_without_host_ip_as_all_interfaces
+     5.1 s  test_stack_scripts.LintScriptTest.test_lint_fails_on_warning_severity_finding
+     4.8 s  test_offline_netprobe.SmokeCiOfflineTest.test_ci_offline_probes_api_and_worker_after_a_connected_control
+     4.7 s  test_offline_bundle.BundleScriptTest.test_bundle_json_marks_dirty_tree
+     4.6 s  integration.test_stack_ready.ReadyzIntegrationTest.test_readyz_fails_when_store_down
+     4.6 s  test_stack_scripts.LaunchPs1ResolvedTest.test_launch_honours_every_dotenv_form_compose_honours
+     4.5 s  test_offline_bundle.InstallPs1Test.test_install_refuses_arch_mismatch
+
+== docs/evidence/ci-speed/ci-39499437202.log
+job total (set-up to cleanup)          905.6 s
+pre-verify (set-up, checkout)            2.3
+build.sh (images)                       48.4
+launch.sh (pull stores, up --wait)      78.5
+gates-it start + lint                    6.3
+  (gates-it container start -> lint)     5.7
+unit suite (lint PASS -> Ran #1)       542.0   [Ran 689 tests in 539.584s]
+integration suite                        4.7   [Ran 15 tests in 4.104s]
+coverage combine/report + mypy           5.9
+container OTLP smoke                     1.7
+host smoke                              13.5
+teardown (verify project)                9.9
+offline_check total                    191.9
+  bundle.sh (save)                      36.1
+  dind pull + up                        17.1
+  client install (load)                 60.4
+  client launch                         48.7
+  client smoke                          14.3
+  client teardown                        7.0
+  dind teardown                          7.4
+verify.sh total                        902.8
+
+per-test timings: 704 tests, 543.5 s summed
+by module:
+    279.7 s  51.5%  n=165  tests.test_offline_bundle
+    159.7 s  29.4%  n=113  tests.test_stack_scripts
+     21.9 s   4.0%  n= 47  tests.test_block_main_commit_hook
+     19.2 s   3.5%  n= 19  tests.test_offline_netprobe
+     16.9 s   3.1%  n= 19  tests.test_stack_readiness
+     15.9 s   2.9%  n= 24  tests.test_harness_followups
+      7.9 s   1.5%  n= 23  tests.test_offline_check
+      6.4 s   1.2%  n= 16  tests.test_stack_entrypoints
+      3.9 s   0.7%  n=  5  tests.integration.test_stack_ready
+      3.0 s   0.6%  n= 22  tests.test_engine_startup
+      2.0 s   0.4%  n= 16  tests.test_stack_bind_address
+      1.3 s   0.2%  n= 24  tests.test_stack_compose
+      1.0 s   0.2%  n= 12  tests.test_stack_model_keys
+      0.7 s   0.1%  n= 14  tests.test_gate_least_privilege
+      0.7 s   0.1%  n= 22  tests.test_engine_tracing_guard
+      0.7 s   0.1%  n= 20  tests.test_engine_config
+      0.5 s   0.1%  n=  8  tests.test_engine_egress
+      0.5 s   0.1%  n= 14  tests.test_engine_telemetry
+      0.4 s   0.1%  n=  8  tests.test_stack_model_skip
+      0.3 s   0.1%  n= 21  tests.test_engine_hardcoded
+by class (top 20):
+    166.9 s  tests.test_offline_bundle.InstallPs1Test
+    107.9 s  tests.test_stack_scripts.LintScriptTest
+     50.5 s  tests.test_offline_bundle.BundleScriptTest
+     31.5 s  tests.test_offline_bundle.BundleNoticesTest
+     28.1 s  tests.test_offline_bundle.InstallShTest
+     21.9 s  tests.test_block_main_commit_hook.BlockMainCommitHookTest
+     20.1 s  tests.test_stack_scripts.LaunchPs1ResolvedTest
+     18.6 s  tests.test_offline_netprobe.SmokeCiOfflineTest
+     16.4 s  tests.test_stack_readiness.ReadinessCliTest
+     15.4 s  tests.test_harness_followups.IntegrationRunsOnceTest
+     10.1 s  tests.test_stack_scripts.SmokeStoreStopStartTest
+      6.9 s  tests.test_offline_check.OfflineCheckScriptTest
+      5.4 s  tests.test_stack_scripts.TeardownPs1LeftoversTest
+      4.0 s  tests.test_stack_scripts.LaunchShResolvedTest
+      3.3 s  tests.test_stack_scripts.SmokeBackendIsolatedTest
+      2.6 s  tests.test_engine_startup.PlaceholderSecretTest
+      2.6 s  tests.test_stack_entrypoints.GatewayPortCheckTest
+      2.5 s  tests.test_offline_bundle.InstallShPortableTest
+      2.4 s  tests.test_stack_scripts.TeardownPs1ScopeTest
+      2.1 s  tests.test_stack_scripts.TeardownShLeftoversTest
+slowest 40 tests:
+    45.8 s  test_stack_scripts.LintScriptTest.test_lint_runs_no_code_from_a_powershell_filename
+    21.8 s  test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper
+    20.2 s  test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails
+    19.8 s  test_stack_scripts.LintScriptTest.test_lint_with_real_tools_fails_on_a_planted_finding
+    19.3 s  test_stack_scripts.LintScriptTest.test_lint_covers_upper_case_ps1_and_psm1
+    15.7 s  test_stack_scripts.LintScriptTest.test_lint_shellchecks_upper_case_sh
+    14.3 s  test_offline_bundle.InstallPs1Test.test_install_refuses_unfit_target_or_daemon
+    10.4 s  test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass
+     9.3 s  test_offline_bundle.InstallPs1Test.test_install_rejects_bundle_json_missing_field
+     8.3 s  test_offline_bundle.InstallPs1Test.test_arch_normalisation
+     8.2 s  test_offline_bundle.BundleScriptTest.test_bundle_maps_each_service_to_own_image_despite_dependencies
+     8.1 s  test_offline_bundle.BundleNoticesTest.test_notices_vendor_row_parse_is_strict
+     8.0 s  test_offline_bundle.InstallPs1Test.test_install_stops_on_signal_to_its_own_pid
+     7.3 s  test_offline_bundle.InstallPs1Test.test_install_target_modes_ignore_build_host_umask
+     6.8 s  test_offline_bundle.InstallPs1Test.test_install_tags_loaded_image_as_bundle_name
+     6.7 s  test_offline_netprobe.SmokeCiOfflineTest.test_ci_offline_fails_naming_the_service_that_gets_out
+     6.3 s  test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_never_met
+     6.3 s  test_offline_bundle.InstallShTest.test_install_stops_on_signal_to_its_own_pid
+     6.2 s  test_offline_bundle.InstallPs1Test.test_install_removes_staging_on_every_exit
+     6.2 s  test_offline_bundle.BundleScriptTest.test_arch_normalisation
+     5.9 s  test_stack_scripts.LintScriptTest.test_lint_fails_on_warning_severity_finding
+     5.5 s  test_offline_bundle.InstallPs1Test.test_install_ps1_refuses_relative_or_empty_path_entries
+     5.3 s  test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_met
+     5.2 s  test_offline_bundle.InstallPs1Test.test_install_flags_target_parent_others_can_write
+     5.1 s  test_stack_scripts.LaunchPs1ResolvedTest.test_launch_refuses_docker_engine_below_28_or_unreadable
+     5.0 s  test_offline_bundle.InstallPs1Test.test_install_ps1_session_recovers_after_signal
+     4.5 s  test_offline_bundle.InstallPs1Test.test_install_refuses_manifest_link_or_fifo
+     4.4 s  test_offline_bundle.BundleNoticesTest.test_notices_fail_when_package_licence_missing
+     4.2 s  test_offline_bundle.InstallPs1Test.test_install_prints_and_checks_manifest_hash
+     3.6 s  test_offline_bundle.BundleNoticesTest.test_notices_refuse_output_without_package_table
+     3.5 s  test_offline_bundle.BundleScriptTest.test_bundle_arch_comes_from_daemon
+     3.4 s  test_stack_scripts.LaunchPs1ResolvedTest.test_launch_treats_a_port_without_host_ip_as_all_interfaces
+     3.4 s  test_offline_bundle.InstallPs1Test.test_install_refuses_case_variant_paths
+     3.4 s  test_harness_followups.IntegrationRunsOnceTest.test_package_with_only_nested_tests_runs_once
+     3.4 s  test_offline_netprobe.SmokeCiOfflineTest.test_offline_probe_fails_when_control_fails
+     3.4 s  test_stack_scripts.SmokeStoreStopStartTest.test_smoke_fails_when_each_store_step_fails
+     3.3 s  test_offline_netprobe.SmokeCiOfflineTest.test_ci_offline_probes_api_and_worker_after_a_connected_control
+     3.2 s  test_stack_scripts.LaunchPs1ResolvedTest.test_launch_honours_every_dotenv_form_compose_honours
+     3.1 s  test_offline_bundle.InstallPs1Test.test_install_refuses_arch_mismatch
+     2.9 s  test_offline_bundle.InstallPs1Test.test_install_empties_swapped_staging
+

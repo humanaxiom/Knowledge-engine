@@ -1,0 +1,10 @@
+== run 39530356210
+k=1: replayed pool wall   1693 s (module sum 1693 s); measured 847.6 s
+k=2: replayed pool wall    847 s (module sum 1693 s); measured 847.6 s
+k=3: replayed pool wall    753 s (module sum 1693 s); measured 847.6 s
+k=4: replayed pool wall    753 s (module sum 1693 s); measured 847.6 s
+== run 39530367383
+k=1: replayed pool wall   1611 s (module sum 1611 s); measured 806.4 s
+k=2: replayed pool wall    806 s (module sum 1611 s); measured 806.4 s
+k=3: replayed pool wall    715 s (module sum 1611 s); measured 806.4 s
+k=4: replayed pool wall    715 s (module sum 1611 s); measured 806.4 s

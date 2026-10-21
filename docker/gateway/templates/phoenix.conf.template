@@ -1,0 +1,21 @@
+# Published as KE_PHOENIX_PORT: the Phoenix UI and OTLP/HTTP for the product
+# and the harness's log_event.
+map $http_upgrade $ke_connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen ${KE_GATEWAY_PHOENIX_LISTEN};
+    resolver ${NGINX_LOCAL_RESOLVERS} valid=10s ipv6=off;
+    client_max_body_size 32m;
+
+    location / {
+        set $ke_phoenix_upstream http://phoenix:${PHOENIX_PORT};
+        proxy_pass $ke_phoenix_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $ke_connection_upgrade;
+    }
+}

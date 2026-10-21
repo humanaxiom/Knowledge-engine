@@ -1,0 +1,83 @@
+"""Reviewer probes (scratch only, ci-speed rework 1 re-review)."""
+import signal
+import subprocess
+import time
+import unittest
+
+from tests.test_harness_followups import IntegrationRunsOnceTest
+
+
+class Probe(IntegrationRunsOnceTest):
+    FAIL = ("import unittest\nclass Bad(unittest.TestCase):\n"
+            "    def test_bad(self):\n        self.fail('planted')\n")
+
+    def test_probe_failing_subpackage_fails_run(self):
+        self.write("tests/unit/test_bad.py", self.FAIL)
+        self.fake_nproc(4)
+        for mode in ("fast", "full"):
+            self.clear_coverage_data()
+            code, output, _ = self.run_mode(mode, merged=True)
+            with self.subTest(mode=mode):
+                self.assertNotEqual(code, 0, output)
+
+    def test_probe_failing_integration_fails_run(self):
+        self.write("tests/integration/test_bad.py", self.FAIL)
+        self.fake_nproc(4)
+        self.clear_coverage_data()
+        code, output, _ = self.run_mode("full", merged=True)
+        self.assertNotEqual(code, 0, output)
+
+    def test_probe_combine_list_has_subpackage_and_integration(self):
+        self.fake_nproc(4)
+        self.clear_coverage_data()
+        code, output, _ = self.run_mode("full", merged=True)
+        self.assertEqual(code, 0, output)
+        combine = [c for c in self.uv_calls() if c.startswith("python -m coverage combine")]
+        self.assertEqual(len(combine), 1)
+        for label in (".tests.unit.", ".tests.integration.", ".tests.test_x.", ".tests.testfoo."):
+            with self.subTest(label=label):
+                self.assertIn(label, combine[0])
+        self.assertEqual(sorted(p.name for p in self.project.glob(".coverage.*")), [])
+
+    def test_probe_signal_exit_codes(self):
+        for i in range(2):
+            self.write(f"tests/test_long{i}.py", self.LONG_SLEEPER)
+        self.fake_nproc(4)
+        for sig, want in ((signal.SIGINT, 130), (signal.SIGTERM, 143)):
+            with self.subTest(signal=sig.name):
+                started = self.root / f"started-{sig.name}"
+                self.uv_log = self.root / f"uv-{sig.name}.log"
+                env = self.base_env(self.root / f"c-{sig.name}", {"KE_TEST_STARTED": str(started)})
+                proc = subprocess.Popen(["bash", str(self.project / "scripts" / "test.sh"), "fast"],
+                                        cwd=self.project, env=env, stdout=subprocess.DEVNULL,
+                                        stderr=subprocess.DEVNULL, start_new_session=True)
+                deadline = time.monotonic() + 60
+                while (not started.exists() or len(started.read_text().split()) < 2) and time.monotonic() < deadline:
+                    time.sleep(0.1)
+                proc.send_signal(sig)
+                code = proc.wait(timeout=30)
+                self.assertEqual(code, want)
+
+    def test_probe_signal_during_subpackage_step(self):
+        # Signal while the sequential sub-package step runs: its python must die.
+        self.write("tests/unit/test_long_sub.py", self.LONG_SLEEPER)
+        self.fake_nproc(4)
+        started = self.root / "started-sub"
+        self.uv_log = self.root / "uv-sub.log"
+        env = self.base_env(self.root / "c-sub", {"KE_TEST_STARTED": str(started)})
+        proc = subprocess.Popen(["bash", str(self.project / "scripts" / "test.sh"), "fast"],
+                                cwd=self.project, env=env, stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL, start_new_session=True)
+        deadline = time.monotonic() + 60
+        while not started.exists() and time.monotonic() < deadline:
+            time.sleep(0.1)
+        pid = int(started.read_text().split()[0])
+        proc.send_signal(signal.SIGTERM)
+        code = proc.wait(timeout=30)
+        time.sleep(1)
+        alive = self.proc_alive(pid)
+        if alive:
+            import os
+            os.kill(pid, signal.SIGKILL)
+        self.assertEqual(code, 143)
+        self.assertFalse(alive)

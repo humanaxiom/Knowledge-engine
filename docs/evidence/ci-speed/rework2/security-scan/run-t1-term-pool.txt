@@ -1,0 +1,35 @@
+--- before (test.sh pid 11)
+     1      1 S bash /h/sig.sh TERM pid 10 
+    10      1 S sleep 302 
+    11     11 S bash scripts/test.sh fast 
+     7      7 S sleep 300 
+    76     76 S bash scripts/test.sh fast 
+    78     76 S uv run --locked python -m coverage run -p --data-file=/tmp/.coverage.tests.test_ign -m uni
+     8      1 S sleep 300 
+    81     81 S bash scripts/test.sh fast 
+    83     81 S uv run --locked python -m coverage run -p --data-file=/tmp/.coverage.tests.test_slow -m un
+     9      9 S sleep 301 
+    94     76 S /opt/venv/bin/python3 -m coverage run -p --data-file=/tmp/.coverage.tests.test_ign -m unit
+    95     81 S /opt/venv/bin/python3 -m coverage run -p --data-file=/tmp/.coverage.tests.test_slow -m uni
+    97     76 S /opt/venv/bin/python3 -c import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN
+test.sh rc=143 elapsed=2.03s
+--- after
+     1      1 S bash /h/sig.sh TERM pid 10 
+    10      1 S sleep 302 
+     7      7 S sleep 300 
+     8      1 S sleep 300 
+     9      9 S sleep 301 
+leftover check done
+logdir removed
+OUT1 alive
+OUT2 alive
+OUT3 alive
+OUT4 alive
+--- test.sh output tail
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.88ms
+Installed 1 package in 1ms
+[1]   Terminated              run_module "$m"
+[2]-  Terminated              run_module "$m"
+rc=0

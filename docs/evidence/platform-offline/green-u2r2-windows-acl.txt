@@ -1,0 +1,6 @@
+test_staging_never_inherits_an_ace (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_staging_never_inherits_an_ace) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.349s
+
+OK

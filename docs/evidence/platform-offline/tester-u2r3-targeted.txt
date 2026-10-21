@@ -1,0 +1,186 @@
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.76ms
+Installed 1 package in 1ms
+test_install_ignores_script_rewritten_in_place (tests.test_offline_bundle.InstallShTest.test_install_ignores_script_rewritten_in_place)
+Review RB3, security M-4b: at `docker info` the bundle's installer ... FAIL
+test_install_ignores_script_rewritten_in_place (tests.test_offline_bundle.InstallPs1Test.test_install_ignores_script_rewritten_in_place)
+Review RB3, security M-4b: at `docker info` the bundle's installer ... ok
+test_install_refuses_target_replaced_during_load (tests.test_offline_bundle.InstallShTest.test_install_refuses_target_replaced_during_load)
+Security L-8: a directory or symlink planted at the target during ... ok
+test_install_refuses_target_replaced_during_load (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_target_replaced_during_load)
+Security L-8: a directory or symlink planted at the target during ... ok
+test_install_flags_target_parent_others_can_write (tests.test_offline_bundle.InstallShTest.test_install_flags_target_parent_others_can_write)
+Security H-1 fix 3: a target parent that others can write (world- ... ok
+test_install_flags_target_parent_others_can_write (tests.test_offline_bundle.InstallPs1Test.test_install_flags_target_parent_others_can_write)
+Security H-1 fix 3: a target parent that others can write (world- ... 
+  test_install_flags_target_parent_others_can_write (tests.test_offline_bundle.InstallPs1Test.test_install_flags_target_parent_others_can_write) (parent='0o777')
+Security H-1 fix 3: a target parent that others can write (world- ... FAIL
+  test_install_flags_target_parent_others_can_write (tests.test_offline_bundle.InstallPs1Test.test_install_flags_target_parent_others_can_write) (parent='0o775')
+Security H-1 fix 3: a target parent that others can write (world- ... FAIL
+test_install_empties_swapped_staging (tests.test_offline_bundle.InstallShTest.test_install_empties_swapped_staging)
+Security I-7: after staging is renamed away and a lookalike planted ... FAIL
+test_install_empties_swapped_staging (tests.test_offline_bundle.InstallPs1Test.test_install_empties_swapped_staging)
+Security I-7: after staging is renamed away and a lookalike planted ... FAIL
+test_install_fails_when_claim_marker_deleted_before_publish (tests.test_offline_bundle.InstallShTest.test_install_fails_when_claim_marker_deleted_before_publish)
+Security L-12: the claim marker deleted after the last docker call ... ok
+test_install_fails_when_claim_marker_deleted_before_publish (tests.test_offline_bundle.InstallPs1Test.test_install_fails_when_claim_marker_deleted_before_publish)
+Security L-12: the claim marker deleted after the last docker call ... ok
+test_install_sh_refuses_staging_loosened_before_cd (tests.test_offline_bundle.InstallShTest.test_install_sh_refuses_staging_loosened_before_cd)
+Security L-11: between `chmod 0700` of staging (by name) and the ... FAIL
+test_install_sh_leaves_no_target_when_claim_mkdir_fails (tests.test_offline_bundle.InstallShTest.test_install_sh_leaves_no_target_when_claim_mkdir_fails)
+Security L-13: under Git Bash on NTFS, `mkdir -m 0700` creates the ... FAIL
+test_install_sh_flags_parent_owned_by_another_user (tests.test_offline_bundle.InstallShTest.test_install_sh_flags_parent_owned_by_another_user)
+Review N1, architecture §2.5: install.sh also warns when the ... 
+  test_install_sh_flags_parent_owned_by_another_user (tests.test_offline_bundle.InstallShTest.test_install_sh_flags_parent_owned_by_another_user) (parent='owned by uid != operator, != root, mode 0755')
+Review N1, architecture §2.5: install.sh also warns when the ... FAIL
+test_install_ps1_refuses_relative_or_empty_path_entries (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_refuses_relative_or_empty_path_entries)
+Review RB5a, security L-9 (twin of the sh test; kills mutant ... ok
+test_launch_enforces_compose_version_floor (tests.test_offline_bundle.InstallShPortableTest.test_launch_enforces_compose_version_floor)
+Review RB5b (kills mutant atl, `at_least` always true): launch.sh ... ok
+
+======================================================================
+FAIL: test_install_ignores_script_rewritten_in_place (tests.test_offline_bundle.InstallShTest.test_install_ignores_script_rewritten_in_place)
+Review RB3, security M-4b: at `docker info` the bundle's installer
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 1060, in test_install_ignores_script_rewritten_in_place
+    t.assertFalse(injected.exists(),
+AssertionError: True is not false : a command written in place into the last line of install.sh during the run executed (last line was 'exit'; review RB3, security M-4b: put `main "$@"; exit` on one line)
+manifest sha256: 223bcb5ff2b307ce24598073d7c89995dbb27fa827739af9bda4594fa4810203 (not checked: compare it with the value from your release record)
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+manifest sha256: 223bcb5ff2b307ce24598073d7c89995dbb27fa827739af9bda4594fa4810203
+installed to /tmp/tmpo6h5fv1r/target1
+next: cd /tmp/tmpo6h5fv1r/target1 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_flags_target_parent_others_can_write (tests.test_offline_bundle.InstallPs1Test.test_install_flags_target_parent_others_can_write) (parent='0o777')
+Security H-1 fix 3: a target parent that others can write (world-
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 1157, in test_install_flags_target_parent_others_can_write
+    t.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : install.ps1 off Windows installed under a parent with mode 0o777; it must refuse it (security L-12, round-3 ruling):
+manifest sha256: 223bcb5ff2b307ce24598073d7c89995dbb27fa827739af9bda4594fa4810203 (not checked: compare it with the value from your release record)
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+manifest sha256: 223bcb5ff2b307ce24598073d7c89995dbb27fa827739af9bda4594fa4810203
+installed to /tmp/tmp_6wsxmol/shared1/ke
+next: cd '/tmp/tmp_6wsxmol/shared1/ke'; scripts/launch.ps1
+install: warning: the target's parent /tmp/tmp_6wsxmol/shared1 is writable by others (group, world or another account); anyone who can write it can replace the installed target afterwards; use a directory only you can write
+
+
+======================================================================
+FAIL: test_install_flags_target_parent_others_can_write (tests.test_offline_bundle.InstallPs1Test.test_install_flags_target_parent_others_can_write) (parent='0o775')
+Security H-1 fix 3: a target parent that others can write (world-
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 1157, in test_install_flags_target_parent_others_can_write
+    t.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : install.ps1 off Windows installed under a parent with mode 0o775; it must refuse it (security L-12, round-3 ruling):
+manifest sha256: 223bcb5ff2b307ce24598073d7c89995dbb27fa827739af9bda4594fa4810203 (not checked: compare it with the value from your release record)
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+manifest sha256: 223bcb5ff2b307ce24598073d7c89995dbb27fa827739af9bda4594fa4810203
+installed to /tmp/tmp_6wsxmol/shared2/ke
+next: cd '/tmp/tmp_6wsxmol/shared2/ke'; scripts/launch.ps1
+install: warning: the target's parent /tmp/tmp_6wsxmol/shared2 is writable by others (group, world or another account); anyone who can write it can replace the installed target afterwards; use a directory only you can write
+
+
+======================================================================
+FAIL: test_install_empties_swapped_staging (tests.test_offline_bundle.InstallShTest.test_install_empties_swapped_staging)
+Security I-7: after staging is renamed away and a lookalike planted
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 1199, in test_install_empties_swapped_staging
+    t.assertEqual({k: v for k, v in left.items() if v}, {},
+AssertionError: {'.ke-install.j7LIfuve.swapped': ['MANIFES[111 chars]sh']} != {}
++ {}
+- {'.ke-install.j7LIfuve.swapped': ['MANIFEST.sha256',
+-                                   'app',
+-                                   'bundle.json',
+-                                   'images',
+-                                   'images/ke-app.tar',
+-                                   'images/postgres.tar',
+-                                   'install.ps1',
+-                                   'install.sh']} : the renamed original staging still holds the bundle (image tars, app/) after the run: empty it from inside while it is still pinned (security I-7):
+manifest sha256: 223bcb5ff2b307ce24598073d7c89995dbb27fa827739af9bda4594fa4810203 (not checked: compare it with the value from your release record)
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+manifest sha256: 223bcb5ff2b307ce24598073d7c89995dbb27fa827739af9bda4594fa4810203
+installed to /tmp/tmpi5ilanaj/target1
+next: cd /tmp/tmpi5ilanaj/target1 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_empties_swapped_staging (tests.test_offline_bundle.InstallPs1Test.test_install_empties_swapped_staging)
+Security I-7: after staging is renamed away and a lookalike planted
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 1199, in test_install_empties_swapped_staging
+    t.assertEqual({k: v for k, v in left.items() if v}, {},
+AssertionError: {'.ke-install.9722a7da123eb622.swapped': [[119 chars]sh']} != {}
++ {}
+- {'.ke-install.9722a7da123eb622.swapped': ['MANIFEST.sha256',
+-                                           'app',
+-                                           'bundle.json',
+-                                           'images',
+-                                           'images/ke-app.tar',
+-                                           'images/postgres.tar',
+-                                           'install.ps1',
+-                                           'install.sh']} : the renamed original staging still holds the bundle (image tars, app/) after the run: empty it from inside while it is still pinned (security I-7):
+manifest sha256: 223bcb5ff2b307ce24598073d7c89995dbb27fa827739af9bda4594fa4810203 (not checked: compare it with the value from your release record)
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+manifest sha256: 223bcb5ff2b307ce24598073d7c89995dbb27fa827739af9bda4594fa4810203
+installed to /tmp/tmpceujyy6_/target1
+next: cd '/tmp/tmpceujyy6_/target1'; scripts/launch.ps1
+
+
+======================================================================
+FAIL: test_install_sh_refuses_staging_loosened_before_cd (tests.test_offline_bundle.InstallShTest.test_install_sh_refuses_staging_loosened_before_cd)
+Security L-11: between `chmod 0700` of staging (by name) and the
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 1339, in test_install_sh_refuses_staging_loosened_before_cd
+    self.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : the installer worked inside a staging directory whose mode was 0755 after the cd: check `[ -O . ]` and mode 0700 right after `cd` (security L-11):
+manifest sha256: 223bcb5ff2b307ce24598073d7c89995dbb27fa827739af9bda4594fa4810203 (not checked: compare it with the value from your release record)
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+manifest sha256: 223bcb5ff2b307ce24598073d7c89995dbb27fa827739af9bda4594fa4810203
+installed to /tmp/tmpq_3rh3j_/target1
+next: cd /tmp/tmpq_3rh3j_/target1 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_sh_leaves_no_target_when_claim_mkdir_fails (tests.test_offline_bundle.InstallShTest.test_install_sh_leaves_no_target_when_claim_mkdir_fails)
+Security L-13: under Git Bash on NTFS, `mkdir -m 0700` creates the
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 1374, in test_install_sh_leaves_no_target_when_claim_mkdir_fails
+    self.assertFalse(target.exists(),
+AssertionError: True is not false : a failed claim (`mkdir -m` created the directory, then failed) left an empty target behind (security L-13)
+
+======================================================================
+FAIL: test_install_sh_flags_parent_owned_by_another_user (tests.test_offline_bundle.InstallShTest.test_install_sh_flags_parent_owned_by_another_user) (parent='owned by uid != operator, != root, mode 0755')
+Review N1, architecture §2.5: install.sh also warns when the
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 1408, in test_install_sh_flags_parent_owned_by_another_user
+    self.assertTrue(asked.exists(), "install.sh never ran `id -u` for the operator's uid (§2.5):\n" + out)
+AssertionError: False is not true : install.sh never ran `id -u` for the operator's uid (§2.5):
+manifest sha256: 223bcb5ff2b307ce24598073d7c89995dbb27fa827739af9bda4594fa4810203 (not checked: compare it with the value from your release record)
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+manifest sha256: 223bcb5ff2b307ce24598073d7c89995dbb27fa827739af9bda4594fa4810203
+installed to /tmp/tmp3_0w_qw5/foreign1/ke
+next: cd /tmp/tmp3_0w_qw5/foreign1/ke && scripts/launch.sh
+
+
+----------------------------------------------------------------------
+Ran 15 tests in 12.169s
+
+FAILED (failures=8)
