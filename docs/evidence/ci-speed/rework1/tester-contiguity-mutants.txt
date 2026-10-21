@@ -1,0 +1,128 @@
+# ci-speed rework 1, tester: contiguity test vs scratch mutants of scripts/test.sh
+# Each variant: scratch copy of scripts/test.sh + tests/test_harness_followups.py (reworked test), run in ke-gates:wt-33a132fbfdd7
+# (--network none, uid 10001, read-only /work, tmpfs /tmp):
+#   /opt/venv/bin/python -m unittest -v tests.test_harness_followups.IntegrationRunsOnceTest.test_each_module_output_block_is_contiguous
+# Output filtered (chatty result/durations/OK lines dropped) for brevity. Repo files were not mutated.
+
+## diff scripts/test.sh -> m1_cat_on_finish
+117a118
+>   cat -- "$logs/$m.log"
+128c129
+<     cat -- "$logs/$m.log"
+---
+>     :
+
+## diff scripts/test.sh -> m2_unbuffered_tee
+115c115
+<   uv run --locked python -m coverage run -p --data-file="$cov_dir/$cov_name.$m" -m unittest -v --durations 10 "$m" >"$logs/$m.log" 2>&1 || rc=$?
+---
+>   PYTHONUNBUFFERED=1 uv run --locked python -m coverage run -p --data-file="$cov_dir/$cov_name.$m" -m unittest -v --durations 10 "$m" 2>&1 | tee "$logs/$m.log" || rc=$?
+128c128
+<     cat -- "$logs/$m.log"
+---
+>     :
+
+## diff scripts/test.sh -> m3_paste_lines
+125a126,127
+> paste -d"
+> " "$logs"/*.log | grep -v "^$" || true
+128c130
+<     cat -- "$logs/$m.log"
+---
+>     :
+
+## diff scripts/test.sh -> m4_defer_durations
+128c128
+<     cat -- "$logs/$m.log"
+---
+>     grep -Ev "^[0-9.]+s +test" -- "$logs/$m.log" || true
+133a134
+> cat -- "$logs"/*.log | grep -E "^[0-9.]+s +test" || true
+
+## results
+===== m0_baseline
+test_each_module_output_block_is_contiguous (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_module_output_block_is_contiguous) ... ok
+----------------------------------------------------------------------
+Ran 1 test in 1.709s
+===== m1_cat_on_finish
+test_each_module_output_block_is_contiguous (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_module_output_block_is_contiguous) ... ok
+----------------------------------------------------------------------
+Ran 1 test in 1.488s
+===== m2_unbuffered_tee
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 922, in test_each_module_output_block_is_contiguous
+    self.assertEqual(len(results), 4, output)
+AssertionError: 3 != 4 : test_c0 (tests.test_ca.Chatty.test_c0) ... test_counted (tests.testfoo.Counted.test_counted) ... test_counted (tests.test_x.Counted.test_counted) ... ok
+ok
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+ok
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+ok
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+Combined 6 files
+----------------------------------------------------------------------
+Ran 1 test in 1.499s
+FAILED (failures=3)
+===== m3_paste_lines
+======================================================================
+FAIL: test_each_module_output_block_is_contiguous (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_module_output_block_is_contiguous) (module='test_cc')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 923, in test_each_module_output_block_is_contiguous
+    self.assertEqual(results[-1] - results[0] + 1, len(results),
+AssertionError: 14 != 4 : tests.test_cc result lines not contiguous:
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+Ran 1 test in 0.000s
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+Combined 6 files
+----------------------------------------------------------------------
+Ran 1 test in 1.455s
+FAILED (failures=3)
+===== m4_defer_durations
+-  '0.100s     test_c2 (tests.test_ca.Chatty.test_c2)',
+-  '0.100s     test_c3 (tests.test_ca.Chatty.test_c3)',
+-  '0.100s     test_c1 (tests.test_ca.Chatty.test_c1)',
+-  '0.100s     test_c2 (tests.test_cb.Chatty.test_c2)',
+-  '0.100s     test_c1 (tests.test_cb.Chatty.test_c1)',
+-  '0.100s     test_c0 (tests.test_cb.Chatty.test_c0)',
+-  '0.100s     test_c3 (tests.test_cb.Chatty.test_c3)'] : tests.test_cc output interleaved with another module:
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+Combined 6 files
+----------------------------------------------------------------------
+Ran 1 test in 1.511s
+FAILED (failures=3)

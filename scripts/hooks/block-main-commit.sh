@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # PreToolUse hook: a guard rail against accidents, not a security boundary.
-# The real control is branch protection on the remote (Q18). Design and the
+# Q18 (branch protection) was skipped (human, 2026-10-20): merges are a manual
+# human action and this hook is the only automated guard. Design and the
 # accepted false positives and bypasses: ADR-KE-001, "Decision: commit hook
 # is a simple fail-safe text rule (2026-10-18)" in docs/architecture.md.
 #   - on main/master: any text with the word `git` and one of commit, push,
@@ -41,6 +42,7 @@ fi
 # 2. Normalise: delete CR, delete quotes and backslashes, lower-case. Text (a)
 #    joins backslash-newline to nothing (M5). Text (b), built only when the
 #    command contains a backslash-newline (L21), turns it into a space (M6).
+# NOTE: a test (L21) counts the `tr '[:upper:]'` call and the `for text in` loop; update it if you change them.
 norm() { tr -d "\"'\\\\" | tr '[:upper:]' '[:lower:]'; }
 base="$(printf '%s' "$text" | tr -d '\r')"
 texts=("$(printf '%s' "$base" | sed -z 's/\\\n//g' | norm)")

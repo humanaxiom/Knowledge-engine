@@ -1,0 +1,53 @@
+### fixture=green mode=full
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 2ms
+Installed 1 package in 2ms
+resources: phase=start nproc=24 cpu_max_quota=max cpu_max_period=100000 cg_cpu_usage_us=1081819 cg_cpu_throttled_us=0 mem_total_kib=32583712 mem_available_kib=22333732 swap_total_kib=8388608 swap_free_kib=8132740 cg_mem_max=max cg_mem_peak=38330368 psi_cpu_some_us=6856041315 psi_memory_some_us=2365155 psi_memory_full_us=2156551 psi_io_some_us=300698313 psi_io_full_us=286419817 cpu_steal_ticks=0 cpu_total_ticks=2091193433
+test_z (tests.test_z.Z.test_z) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_z (tests.test_z.Z.test_z)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+/opt/venv/lib/python3.12/site-packages/coverage/control.py:967: CoverageWarning: No data was collected. (no-data-collected); see https://coverage.readthedocs.io/en/7.16.2/messages.html#warning-no-data-collected
+  self._warn("No data was collected.", slug="no-data-collected")
+test_z (tests.sub.test_s.Z.test_z) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+/opt/venv/lib/python3.12/site-packages/coverage/control.py:967: CoverageWarning: No data was collected. (no-data-collected); see https://coverage.readthedocs.io/en/7.16.2/messages.html#warning-no-data-collected
+  self._warn("No data was collected.", slug="no-data-collected")
+resources: phase=end nproc=24 cpu_max_quota=max cpu_max_period=100000 cg_cpu_usage_us=1738508 cg_cpu_throttled_us=0 mem_total_kib=32583712 mem_available_kib=22432804 swap_total_kib=8388608 swap_free_kib=8132740 cg_mem_max=max cg_mem_peak=38330368 psi_cpu_some_us=6856180831 psi_memory_some_us=2365155 psi_memory_full_us=2156551 psi_io_some_us=300701104 psi_io_full_us=286421673 cpu_steal_ticks=0 cpu_total_ticks=2091195946
+Combined 1 file, skipped 1
+Name                             Stmts   Miss  Cover   Missing
+--------------------------------------------------------------
+engine/__init__.py                   0      0   100%
+engine/api.py                       27     27     0%   3-49
+engine/config/__init__.py            3      3     0%   3-6
+engine/config/loader.py             77     77     0%   8-132
+engine/config/settings.py          123    123     0%   3-198
+engine/egress.py                    41     41     0%   3-70
+engine/errors.py                     6      6     0%   3-12
+engine/jobs.py                      23     23     0%   4-40
+engine/llm/__init__.py               0      0   100%
+engine/llm/client.py                34     34     0%   3-62
+engine/netprobe.py                  64     64     0%   15-97
+engine/notices.py                   94     94     0%   31-159
+engine/readiness.py                165    165     0%   11-231
+engine/startup.py                  101    101     0%   3-166
+engine/telemetry.py                 62     62     0%   9-116
+engine/worker.py                    22     22     0%   4-42
+harness_telemetry/__init__.py        2      2     0%   3-16
+harness_telemetry/log_event.py      45     45     0%   14-84
+harness_telemetry/tracing.py        86     86     0%   11-192
+--------------------------------------------------------------
+TOTAL                              975    975     0%
+Success: no issues found in 19 source files
+test.sh rc=0

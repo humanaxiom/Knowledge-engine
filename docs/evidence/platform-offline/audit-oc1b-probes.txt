@@ -1,0 +1,188 @@
+# audit-oc1b probes (security, 2026-10-20). Scratch paths shown as <scratch>. Repo HEAD/index/status hash unchanged before and after.
+
+######## p1 (P1: CDPATH matrix for scripts/image_tag.sh (current) and a pre-fix control.)
+8:cd "$(dirname "$0")/.."
+-- current image_tag.sh
+no CDPATH                                    rc=0 lines=1 out=wt-91a48df1163e
+CDPATH=.                                     rc=0 lines=1 out=wt-91a48df1163e
+CDPATH=wt2                                   rc=0 lines=1 out=wt-91a48df1163e
+CDPATH=:wt2                                  rc=0 lines=1 out=wt-91a48df1163e
+CDPATH=wt2:.                                 rc=0 lines=1 out=wt-91a48df1163e
+CDPATH=.:wt2                                 rc=0 lines=1 out=wt-91a48df1163e
+CDPATH=wt2, ./scripts                        rc=0 lines=1 out=wt-91a48df1163e
+CDPATH=wt2, abs $0                           rc=0 lines=1 out=wt-91a48df1163e
+CDPATH=wt2, from parent wt1/scripts          rc=0 lines=1 out=wt-91a48df1163e
+-- control: pre-fix cd line (must show the bug, else the probe is blind)
+no CDPATH                                    rc=0 lines=1 out=wt-688665f61b90
+CDPATH=.                                     rc=0 lines=2 out=<scratch>/p1/ctl/wt1|wt-688665f61b90
+CDPATH=wt2                                   rc=0 lines=2 out=<scratch>/p1/ctl/wt2|wt-170bfb279aa9
+CDPATH=:wt2                                  rc=0 lines=1 out=wt-688665f61b90
+CDPATH=wt2:.                                 rc=0 lines=2 out=<scratch>/p1/ctl/wt2|wt-170bfb279aa9
+CDPATH=.:wt2                                 rc=0 lines=2 out=<scratch>/p1/ctl/wt1|wt-688665f61b90
+CDPATH=wt2, ./scripts                        rc=0 lines=1 out=wt-688665f61b90
+CDPATH=wt2, abs $0                           rc=0 lines=1 out=wt-688665f61b90
+CDPATH=wt2, from parent wt1/scripts          rc=0 lines=2 out=<scratch>/p1/ctl/wt1|wt-688665f61b90
+-- expected wt1 tag: wt-91a48df1163e
+-- expected wt2 tag: wt-2dfda253a548
+
+######## p2 (P2: verify.sh (host half) under CDPATH, stub docker + stub stages; P3: tag regex.)
+want (wt1) = wt-79047970f4b3
+## P2 verify.sh under CDPATH (wt2 = decoy tree with scripts/ and a wt-badbadbadbad image_tag.sh)
+CDPATH=.                      fast rc=0 calls=1 tags=tag=[wt-79047970f4b3]  dirs=pwd=<scratch>/p2/wt1  decoy_stages=0 stray_dir_lines=0
+CDPATH=.                      full rc=0 calls=6 tags=tag=[wt-79047970f4b3]  dirs=pwd=<scratch>/p2/wt1  decoy_stages=0 stray_dir_lines=0
+CDPATH=<scratch>/p2/wt2 fast rc=0 calls=1 tags=tag=[wt-79047970f4b3]  dirs=pwd=<scratch>/p2/wt1  decoy_stages=0 stray_dir_lines=0
+CDPATH=<scratch>/p2/wt2 full rc=0 calls=6 tags=tag=[wt-79047970f4b3]  dirs=pwd=<scratch>/p2/wt1  decoy_stages=0 stray_dir_lines=0
+CDPATH=:<scratch>/p2/wt2 fast rc=0 calls=1 tags=tag=[wt-79047970f4b3]  dirs=pwd=<scratch>/p2/wt1  decoy_stages=0 stray_dir_lines=0
+CDPATH=:<scratch>/p2/wt2 full rc=0 calls=6 tags=tag=[wt-79047970f4b3]  dirs=pwd=<scratch>/p2/wt1  decoy_stages=0 stray_dir_lines=0
+CDPATH=<scratch>/p2/wt2:. fast rc=0 calls=1 tags=tag=[wt-79047970f4b3]  dirs=pwd=<scratch>/p2/wt1  decoy_stages=0 stray_dir_lines=0
+CDPATH=<scratch>/p2/wt2:. full rc=0 calls=6 tags=tag=[wt-79047970f4b3]  dirs=pwd=<scratch>/p2/wt1  decoy_stages=0 stray_dir_lines=0
+CDPATH=.:<scratch>/p2/wt2 fast rc=0 calls=1 tags=tag=[wt-79047970f4b3]  dirs=pwd=<scratch>/p2/wt1  decoy_stages=0 stray_dir_lines=0
+CDPATH=.:<scratch>/p2/wt2 full rc=0 calls=6 tags=tag=[wt-79047970f4b3]  dirs=pwd=<scratch>/p2/wt1  decoy_stages=0 stray_dir_lines=0
+## P3 tag regex: stub image_tag.sh output -> verify rc, docker calls, message
+good wt-0123456789ab               rc=0 docker_calls=1 msg=
+good, no trailing newline          rc=0 docker_calls=1 msg=
+two lines dir then tag             rc=1 docker_calls=0 msg=verify: FAIL (the image tag from scripts/image_tag.sh is malformed, want wt-<12 hex>: $'/elsewhere\nwt-0123456789ab')
+tag then extra line                rc=1 docker_calls=0 msg=verify: FAIL (the image tag from scripts/image_tag.sh is malformed, want wt-<12 hex>: $'wt-0123456789ab\nx')
+CR (CRLF tool)                     rc=0 docker_calls=1 msg=
+uppercase                          rc=1 docker_calls=0 msg=verify: FAIL (the image tag from scripts/image_tag.sh is malformed, want wt-<12 hex>: wt-0123456789AB)
+11 hex                             rc=1 docker_calls=0 msg=verify: FAIL (the image tag from scripts/image_tag.sh is malformed, want wt-<12 hex>: wt-0123456789a)
+13 hex                             rc=1 docker_calls=0 msg=verify: FAIL (the image tag from scripts/image_tag.sh is malformed, want wt-<12 hex>: wt-0123456789abc)
+leading space                      rc=1 docker_calls=0 msg=verify: FAIL (the image tag from scripts/image_tag.sh is malformed, want wt-<12 hex>: \ wt-0123456789ab)
+trailing tab                       rc=1 docker_calls=0 msg=verify: FAIL (the image tag from scripts/image_tag.sh is malformed, want wt-<12 hex>: $'wt-0123456789ab\t')
+shell text                         rc=1 docker_calls=0 msg=verify: FAIL (the image tag from scripts/image_tag.sh is malformed, want wt-<12 hex>: wt-0123456789ab\;id)
+cmd subst text                     rc=1 docker_calls=0 msg=verify: FAIL (the image tag from scripts/image_tag.sh is malformed, want wt-<12 hex>: wt-\$\(id\)012345)
+colon/slash ref                    rc=1 docker_calls=0 msg=verify: FAIL (the image tag from scripts/image_tag.sh is malformed, want wt-<12 hex>: wt-0123456789ab:x/y)
+Arabic-Indic digits                rc=1 docker_calls=0 msg=verify: FAIL (the image tag from scripts/image_tag.sh is malformed, want wt-<12 hex>: $'wt-\331\240\331\241\331\242\331\243\331\244\331\245\331\246\331\247\331\
+fullwidth a                        rc=1 docker_calls=0 msg=verify: FAIL (the image tag from scripts/image_tag.sh is malformed, want wt-<12 hex>: $'wt-0123456789a\357\275\201')
+local                              rc=1 docker_calls=0 msg=verify: FAIL (the image tag from scripts/image_tag.sh is malformed, want wt-<12 hex>: local)
+empty                              rc=1 docker_calls=0 msg=verify: FAIL (the image tag from scripts/image_tag.sh is malformed, want wt-<12 hex>: '')
+image_tag.sh exits 3               rc=3 docker_calls=0 msg=
+## P3b caller locale noise with the good tag
+LC_ALL=C.UTF-8      rc=0 docker_calls=1 tag=tag=[wt-0123456789ab]
+LC_ALL=en_US.UTF-8  rc=0 docker_calls=1 tag=tag=[wt-0123456789ab]
+LC_ALL=tr_TR.UTF-8  rc=0 docker_calls=1 tag=tag=[wt-0123456789ab]
+## P3c ordering: line numbers in verify.sh
+30:  KE_IMAGE_TAG="$(bash scripts/image_tag.sh)"
+31:  # L-OC1a: refuse anything but the exact shape before any docker call, so a
+34:  tag_re='^wt-[0-9a-f]{12}$'
+35:  if ! (export LC_ALL=C; [[ "$KE_IMAGE_TAG" =~ $tag_re ]]); then
+36:    echo "verify: FAIL (the image tag from scripts/image_tag.sh is malformed, want wt-<12 hex>: $(printf '%q' "$KE_IMAGE_TAG"))" >&2
+37:    exit 1
+46:  if [ -e .env ]; then gates_mask="docker-compose.gates-mask.yml"; fi
+49:    # docker-compose.override.yml must not be able to replace `.:/work:ro`.
+linux-bash: CR refused
+GNU bash, version 5.2.15(1)-release (x86_64-pc-linux-gnu)
+
+######## p4 (P4: every changed script's own entry cd, truncated right after that line, under CDPATH=decoy and CDPATH=.)
+build.sh       line 6    CDPATH=<scratch>/p4/decoy rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=<scratch>/p4/decoy
+build.sh       line 6    CDPATH=.                    rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=.
+build.sh       line 6    CDPATH=<scratch>/p4/decoy:. rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=<scratch>/p4/decoy:.
+bundle.sh      line 47   CDPATH=<scratch>/p4/decoy rc=2 lines=1 usage: scripts/bundle.sh --out <dir>-<arch> [--arch amd64|arm64]
+bundle.sh      line 47   CDPATH=.                    rc=2 lines=1 usage: scripts/bundle.sh --out <dir>-<arch> [--arch amd64|arm64]
+bundle.sh      line 47   CDPATH=<scratch>/p4/decoy:. rc=2 lines=1 usage: scripts/bundle.sh --out <dir>-<arch> [--arch amd64|arm64]
+env_value.sh   line 12   CDPATH=<scratch>/p4/decoy rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=<scratch>/p4/decoy
+env_value.sh   line 12   CDPATH=.                    rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=.
+env_value.sh   line 12   CDPATH=<scratch>/p4/decoy:. rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=<scratch>/p4/decoy:.
+image_tag.sh   line 8    CDPATH=<scratch>/p4/decoy rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=<scratch>/p4/decoy
+image_tag.sh   line 8    CDPATH=.                    rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=.
+image_tag.sh   line 8    CDPATH=<scratch>/p4/decoy:. rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=<scratch>/p4/decoy:.
+launch.sh      line 14   CDPATH=<scratch>/p4/decoy rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=<scratch>/p4/decoy
+launch.sh      line 14   CDPATH=.                    rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=.
+launch.sh      line 14   CDPATH=<scratch>/p4/decoy:. rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=<scratch>/p4/decoy:.
+lint.sh        line 7    CDPATH=<scratch>/p4/decoy rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=<scratch>/p4/decoy
+lint.sh        line 7    CDPATH=.                    rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=.
+lint.sh        line 7    CDPATH=<scratch>/p4/decoy:. rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=<scratch>/p4/decoy:.
+offline_check.sh line 113  CDPATH=<scratch>/p4/decoy rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=<scratch>/p4/decoy
+offline_check.sh line 113  CDPATH=.                    rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=.
+offline_check.sh line 113  CDPATH=<scratch>/p4/decoy:. rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=<scratch>/p4/decoy:.
+smoke.sh       line 22   CDPATH=<scratch>/p4/decoy rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=<scratch>/p4/decoy
+smoke.sh       line 22   CDPATH=.                    rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=.
+smoke.sh       line 22   CDPATH=<scratch>/p4/decoy:. rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=<scratch>/p4/decoy:.
+teardown.sh    line 12   CDPATH=<scratch>/p4/decoy rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=<scratch>/p4/decoy
+teardown.sh    line 12   CDPATH=.                    rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=.
+teardown.sh    line 12   CDPATH=<scratch>/p4/decoy:. rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=<scratch>/p4/decoy:.
+test.sh        line 13   CDPATH=<scratch>/p4/decoy rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=<scratch>/p4/decoy
+test.sh        line 13   CDPATH=.                    rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=.
+test.sh        line 13   CDPATH=<scratch>/p4/decoy:. rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=<scratch>/p4/decoy:.
+verify.sh      line 16   CDPATH=<scratch>/p4/decoy rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=<scratch>/p4/decoy
+verify.sh      line 16   CDPATH=.                    rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=.
+verify.sh      line 16   CDPATH=<scratch>/p4/decoy:. rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=<scratch>/p4/decoy:.
+## P4b variable cds (bundle.sh cd -- "$out", offline_check.sh cd -- "$target") as written, relative operand, CDPATH=decoy holding the same name
+cd -- "$out"                 -> <scratch>/p4/decoy/dist/x|<scratch>/p4/decoy/dist/x
+CDPATH='' cd -- "$out"       -> <scratch>/p4/run/dist/x
+bundle.sh (--out dist/x-amd64) CDPATH=<scratch>/p4/decoy rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=<scratch>/p4/decoy
+bundle.sh (--out dist/x-amd64) CDPATH=. rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=.
+bundle.sh (--out dist/x-amd64) CDPATH=<scratch>/p4/decoy:. rc=0 lines=1 PWD=<scratch>/p4/wt1 CDPATH_after=<scratch>/p4/decoy:.
+
+######## p5 (P5: install.sh `unset CDPATH` - placement, and the mutant (removed) on the root-resolution line.)
+-- first lines of install.sh that execute (non-comment, non-blank) up to the first cd:
+1:set -euo pipefail
+2:unset CDPATH
+3:export LC_ALL=C
+19:check_path
+46:  cd / || true
+33:# directory it found (corrupting `$(cd ... && pwd -P)`) or pick another tree.
+34:unset CDPATH
+57:check_path
+95:  cd / || true
+133:  clash="$(cd -- "$1" && find . -mindepth 1 -print | awk '
+211:  expected="$(cd -- "$(dirname -- "$target")" && pwd -P)/${target##*/}" || die "cannot resolve the target: $target"
+230:  cd -- "$target" || die "cannot enter the target (something replaced it during install): $target"
+236:  { [ "$(cd -- "$target" 2> /dev/null && pwd -P)" = "$expected" ] && [ "$target" -ef . ]; } \
+238:  cd / || die "cannot leave the target"
+282:  root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+287:  parent="$(cd -- "$parent_raw" && pwd -P)"
+326:  cd -- "$staging" || die "cannot enter the staging directory: $staging"
+-- harness: install.sh lines up to and incl. LC_ALL, then line 282 (root) verbatim
+root line: root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+                   bash bundle/install.sh         CDPATH=<unset>                  rc=0 root=<scratch>/p5/run/bundle
+                   bash bundle/install.sh         CDPATH=.                        rc=0 root=<scratch>/p5/run/bundle
+                   bash bundle/install.sh         CDPATH=<scratch>/p5/decoy rc=0 root=<scratch>/p5/run/bundle
+                   bash bundle/install.sh         CDPATH=<scratch>/p5/decoy:. rc=0 root=<scratch>/p5/run/bundle
+documented form    (cd bundle; bash install.sh) CDPATH=decoy -> root=<scratch>/p5/run/bundle
+                   bash bundle/install-mutant.sh  CDPATH=<unset>                  rc=0 root=<scratch>/p5/run/bundle
+                   bash bundle/install-mutant.sh  CDPATH=.                        rc=0 root=<scratch>/p5/run/bundle|<scratch>/p5/run/bundle
+                   bash bundle/install-mutant.sh  CDPATH=<scratch>/p5/decoy rc=0 root=<scratch>/p5/decoy/bundle|<scratch>/p5/decoy/bundle
+                   bash bundle/install-mutant.sh  CDPATH=<scratch>/p5/decoy:. rc=0 root=<scratch>/p5/decoy/bundle|<scratch>/p5/decoy/bundle
+documented form    (cd bundle; bash install-mutant.sh) CDPATH=decoy -> root=<scratch>/p5/run/bundle
+-- unset under set -u when CDPATH was never set:
+ok rc=0
+
+######## p6 (netprobe --within bound, python -I on a copy of engine/netprobe.py in the gates image, --network none, own labels ke-sec-oc1b-np; 127.0.0.1:9 refuses)
+within=0.001      -> refused rc=1 stderr=0B
+within=3599.999   -> refused rc=1 stderr=0B
+within=3600       -> refused rc=1 stderr=0B
+within=3600.0     -> refused rc=1 stderr=0B
+within=3600.0001  -> bad_arguments rc=1 stderr=0B
+within=3601       -> bad_arguments rc=1 stderr=0B
+within=1e4        -> bad_arguments rc=1 stderr=0B
+within=1e300      -> bad_arguments rc=1 stderr=0B
+within=1e309      -> bad_arguments rc=1 stderr=0B
+within=inf        -> bad_arguments rc=1 stderr=0B
+
+######## p2 addendum: CR handling. Git Bash 5.3 (cygwin) strips the CR in $(...), so the tag reaching docker is clean wt-0123456789ab; Linux bash (above, last line pair) refuses it.
+
+######## M1 mutant: install.sh without 'unset CDPATH' (diff base->mut: 34d33 < unset CDPATH)
+Whole top-level unit suite (tests/test*.py, 651 tests) in the gates image, --network none, ro checkout copy, run twice.
+suite-base: Ran 651 tests in 305.683s | FAILED (failures=3, errors=3, skipped=8) | rc=1
+suite-mut: Ran 651 tests in 305.675s | FAILED (failures=3, errors=3, skipped=8) | rc=1
+suite2-base: Ran 651 tests in 301.486s | FAILED (failures=3, errors=3, skipped=8) | rc=1
+suite2-mut: Ran 651 tests in 300.400s | FAILED (failures=3, errors=3, skipped=8) | rc=1
+failure set (identical in base and mutant, both runs; all six need a .git, absent in the scratch copy):
+ERROR: test_model_host_name_only_in_allowed_locations (tests.test_engine_hardcoded.RepositoryScanTest.test_model_host_name_only_in_allowed_locations)
+ERROR: test_no_hardcoded_hosts_or_models (tests.test_engine_hardcoded.RepositoryScanTest.test_no_hardcoded_hosts_or_models)
+ERROR: test_no_hardcoded_ports (tests.test_engine_hardcoded.RepositoryScanTest.test_no_hardcoded_ports)
+FAIL: test_env_example_is_not_ignored (tests.test_engine_deploy_files.GitIgnoreTest.test_env_example_is_not_ignored)
+FAIL: test_env_file_is_ignored (tests.test_engine_deploy_files.GitIgnoreTest.test_env_file_is_ignored)
+FAIL: test_operator_scripts_are_executable_in_git (tests.test_offline_bundle.ExecBitTest.test_operator_scripts_are_executable_in_git)
+=> mutant SURVIVES: no test fails because 'unset CDPATH' is gone. Static: grep -l CDPATH tests/*.py -> tests/test_stack_scripts.py only (image_tag.sh, verify.sh).
+
+######## container labels on the re-run (own project names)
+ke-sec-oc1b-mut project=ke-sec-oc1b-mut service=sec-probe
+ke-sec-oc1b-base project=ke-sec-oc1b-base service=sec-probe
+
+######## secrets/identifier grep over git diff HEAD -- scripts engine + image_tag.sh + netprobe.py (721 lines)
+HIT 50: # it can run. Any other name exits 2 before anything runs, so no secret in
+HIT 174:+  # Fail closed (security L-OCb): the CA private key stays out of this
+HIT 559:   # placeholder values of .env.example, never real secrets (security L-11).
+(3 hits, all prose comments: no key, token, credential URL, profile path or SID)

@@ -1,0 +1,20 @@
+ Container ke-tester-perm-gates-run-5f5abdf28358 Creating 
+ Container ke-tester-perm-gates-run-5f5abdf28358 Created 
+=== mutant: intended fix: chmod -R a+rX -- $bundle_rel after bundle.sh
+224:chmod -R a+rX -- "$bundle_rel"
+OK
+=== mutant: too broad: chmod -R a+rX dist
+224:chmod -R a+rX dist
+FAILED (failures=7)
+=== mutant: adds write: chmod -R a+rwX $bundle_rel
+224:chmod -R a+rwX -- "$bundle_rel"
+FAILED (failures=22)
+=== mutant: manifest hash too: chmod a+r $bundle_rel.manifest.sha256
+224:chmod -R a+rX -- "$bundle_rel" "$bundle_rel.manifest.sha256"
+FAILED (failures=6)
+=== mutant: too late: chmod in the cleanup trap
+156:  chmod -R a+rX -- "$bundle_rel" 2>/dev/null || true
+FAILED (failures=11)
+=== mutant: after the client run
+236:chmod -R a+rX -- "$bundle_rel"
+FAILED (failures=11)

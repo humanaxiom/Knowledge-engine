@@ -1,0 +1,72 @@
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.78ms
+Installed 1 package in 1ms
+..............FF...................
+======================================================================
+FAIL: test_unit_pool_fails_when_a_module_leaves_no_coverage_data (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_a_module_leaves_no_coverage_data) (mode='fast')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 478, in test_unit_pool_fails_when_a_module_leaves_no_coverage_data
+    self.assertNotEqual(code, 0,
+AssertionError: 0 == 0 : tests.testfoo left no coverage data, test.sh passed:
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+
+
+======================================================================
+FAIL: test_unit_pool_fails_when_a_module_leaves_no_coverage_data (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_a_module_leaves_no_coverage_data) (mode='full')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 478, in test_unit_pool_fails_when_a_module_leaves_no_coverage_data
+    self.assertNotEqual(code, 0,
+AssertionError: 0 == 0 : tests.testfoo left no coverage data, test.sh passed:
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+test_counted (tests.integration.test_counted.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+
+----------------------------------------------------------------------
+Ran 34 tests in 45.509s
+
+FAILED (failures=2)
+rc=1

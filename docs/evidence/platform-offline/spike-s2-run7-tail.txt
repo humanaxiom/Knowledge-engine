@@ -1,0 +1,40 @@
+test_failing_job_marks_its_span (tests.test_stack_worker.WorkerJobTracingTest.test_failing_job_marks_its_span) ... ok
+test_worker_job_is_traced (tests.test_stack_worker.WorkerJobTracingTest.test_worker_job_is_traced) ... ok
+test_agent_loop_renders_as_nested_tree (tests.test_tracing.TracingTest.test_agent_loop_renders_as_nested_tree) ... ok
+test_chain_span_kind (tests.test_tracing.TracingTest.test_chain_span_kind) ... ok
+test_exception_marks_span_error_and_propagates (tests.test_tracing.TracingTest.test_exception_marks_span_error_and_propagates) ... ok
+test_hide_inputs_and_outputs_redacts_values (tests.test_tracing.TracingTest.test_hide_inputs_and_outputs_redacts_values) ... ok
+test_llm_records_model_and_token_usage (tests.test_tracing.TracingTest.test_llm_records_model_and_token_usage) ... ok
+test_retriever_records_parameterised_query_and_documents (tests.test_tracing.TracingTest.test_retriever_records_parameterised_query_and_documents) ... ok
+test_setup_tracing_is_idempotent (tests.test_tracing.TracingTest.test_setup_tracing_is_idempotent) ... ok
+test_spans_tolerate_non_recording_span (tests.test_tracing.TracingTest.test_spans_tolerate_non_recording_span)
+Regression (platform-config): with tracing off and no provider ... ok
+
+----------------------------------------------------------------------
+Ran 419 tests in 107.247s
+
+OK
+Combined 2 files, skipped 4
+Name                             Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------
+engine/__init__.py                   0      0      0      0   100%
+engine/api.py                       27      3      2      0    90%   20, 25-26
+engine/config/__init__.py            3      0      0      0   100%
+engine/config/loader.py             77      6     24      2    92%   74, 95, 110, 120-121, 123
+engine/config/settings.py          123      0     12      0   100%
+engine/egress.py                    41      1      6      1    96%   64
+engine/errors.py                     6      0      0      0   100%
+engine/jobs.py                      23      0      2      1    96%   27->30
+engine/llm/__init__.py               0      0      0      0   100%
+engine/llm/client.py                34      2      6      3    88%   39, 48->50, 57
+engine/readiness.py                165     48     46      1    70%   78-81, 176-182, 186, 191-198, 202-231
+engine/startup.py                   97      0     34      0   100%
+engine/telemetry.py                 62      0     16      0   100%
+engine/worker.py                    22      0      2      0   100%
+harness_telemetry/__init__.py        2      0      0      0   100%
+harness_telemetry/log_event.py      45      4      6      2    88%   45, 78-79, 84
+harness_telemetry/tracing.py        86     14     28      4    79%   49-70, 111->113, 113->115, 118
+----------------------------------------------------------------------------
+TOTAL                              813     78    184     14    89%
+Success: no issues found in 17 source files
+exit=0

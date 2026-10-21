@@ -1,0 +1,156 @@
+FAIL: test_coverage_combine_gets_an_explicit_file_list (tests.test_harness_followups.IntegrationRunsOnceTest.test_coverage_combine_gets_an_explicit_file_list) (mode='fast')
+OK
+OK
+OK
+FAIL: test_coverage_combine_gets_an_explicit_file_list (tests.test_harness_followups.IntegrationRunsOnceTest.test_coverage_combine_gets_an_explicit_file_list) (mode='full')
+OK
+OK
+OK
+OK
+FAIL: test_coverage_erase_precedes_first_run_and_spares_checkout (tests.test_harness_followups.IntegrationRunsOnceTest.test_coverage_erase_precedes_first_run_and_spares_checkout) (mode='fast')
+OK
+OK
+OK
+FAIL: test_coverage_erase_precedes_first_run_and_spares_checkout (tests.test_harness_followups.IntegrationRunsOnceTest.test_coverage_erase_precedes_first_run_and_spares_checkout) (mode='full')
+OK
+OK
+OK
+OK
+FAIL: test_each_module_output_block_is_contiguous (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_module_output_block_is_contiguous)
+OK
+OK
+OK
+OK
+OK
+OK
+FAIL: test_helper_package_without_tests_passes (tests.test_harness_followups.IntegrationRunsOnceTest.test_helper_package_without_tests_passes) (mode='fast')
+OK
+OK
+OK
+FAIL: test_helper_package_without_tests_passes (tests.test_harness_followups.IntegrationRunsOnceTest.test_helper_package_without_tests_passes) (mode='full')
+OK
+OK
+OK
+OK
+FAIL: test_integration_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_integration_tests_run_once) (mode='full')
+OK
+OK
+OK
+OK
+FAIL: test_integration_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_integration_tests_run_once) (mode='fast')
+OK
+OK
+OK
+FAIL: test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order)
+OK
+OK
+OK
+OK
+OK
+OK
+FAIL: test_nested_test_sh_leaves_gate_coverage_data_alone (tests.test_harness_followups.IntegrationRunsOnceTest.test_nested_test_sh_leaves_gate_coverage_data_alone)
+FAIL: test_package_with_only_nested_tests_runs_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_package_with_only_nested_tests_runs_once)
+OK
+OK
+OK
+OK
+FAIL: test_quality_gates_always_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_always_run) (mode='fast')
+OK
+OK
+OK
+FAIL: test_quality_gates_always_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_always_run) (mode='full')
+OK
+OK
+OK
+OK
+FAIL: test_quality_gates_run_with_pyproject (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_run_with_pyproject) (mode='fast')
+OK
+OK
+OK
+FAIL: test_quality_gates_run_with_pyproject (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_run_with_pyproject) (mode='full')
+OK
+OK
+OK
+OK
+FAIL: test_top_level_modules_run_in_separate_processes (tests.test_harness_followups.IntegrationRunsOnceTest.test_top_level_modules_run_in_separate_processes) (mode='fast')
+OK
+OK
+OK
+OK
+FAIL: test_top_level_modules_run_in_separate_processes (tests.test_harness_followups.IntegrationRunsOnceTest.test_top_level_modules_run_in_separate_processes) (mode='full')
+OK
+OK
+OK
+OK
+OK
+FAIL: test_unit_pool_concurrency_follows_nproc_capped_at_4 (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_concurrency_follows_nproc_capped_at_4) (nproc=1)
+OK
+OK
+OK
+OK
+OK
+OK
+OK
+OK
+FAIL: test_unit_pool_concurrency_follows_nproc_capped_at_4 (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_concurrency_follows_nproc_capped_at_4) (nproc=2)
+OK
+OK
+OK
+OK
+OK
+OK
+OK
+OK
+FAIL: test_unit_pool_concurrency_follows_nproc_capped_at_4 (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_concurrency_follows_nproc_capped_at_4) (nproc=64)
+OK
+OK
+OK
+OK
+OK
+OK
+OK
+OK
+FAIL: test_unit_pool_fails_when_combine_leaves_a_module_data_file (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_combine_leaves_a_module_data_file) (mode='fast', run='control')
+OK
+OK
+OK
+FAIL: test_unit_pool_fails_when_combine_leaves_a_module_data_file (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_combine_leaves_a_module_data_file) (mode='full', run='control')
+OK
+OK
+OK
+OK
+FAIL: test_unit_pool_prints_a_summary_line_per_module (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_prints_a_summary_line_per_module) (run='all pass')
+OK
+OK
+OK
+FAIL: test_unit_pool_runs_each_module_with_durations_10 (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_runs_each_module_with_durations_10)
+OK
+OK
+OK
+FAIL: test_unit_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_tests_run_once)
+OK
+OK
+OK
+FAIL: test_verify_sees_sentinel_and_ran_lines_from_real_test_sh (tests.test_harness_followups.IntegrationRunsOnceTest.test_verify_sees_sentinel_and_ran_lines_from_real_test_sh) (mode='fast')
+OK
+OK
+OK
+OK
+OK
+OK
+OK
+FAIL: test_verify_sees_sentinel_and_ran_lines_from_real_test_sh (tests.test_harness_followups.IntegrationRunsOnceTest.test_verify_sees_sentinel_and_ran_lines_from_real_test_sh) (mode='full')
+OK
+OK
+OK
+OK
+OK
+OK
+OK
+FAIL: test_probe_combine_list_has_subpackage_and_integration (tests.probe_review.Probe.test_probe_combine_list_has_subpackage_and_integration)
+OK
+OK
+OK
+OK
+Ran 34 tests in 52.134s
+FAILED (failures=29)

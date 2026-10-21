@@ -1,0 +1,66 @@
+# DR38 run 3  2026-10-20T00:28:30Z
+# copy: <scratch>/copy3 (scratch copy of the working tree at f7e9074+dirty)
+# defect (diff against the repo working tree; none = clean control):
+#   diff -r '--exclude=.git' /c/repos/Knowledge-engine/scripts/offline_check.sh <scratch>/copy3/scripts/offline_check.sh
+#   220a221
+#   > rm -f -- "$bundle_rel/images/valkey.tar"  # DR38 run 3 defect: one image tar removed after bundling
+# jq: jq-1.7.1 (sha256 checked against upstream sha256sum.txt)
+# command: cd <copy> && env -u MSYS_NO_PATHCONV COMPOSE_PROJECT_NAME=ke-dr38-3 KE_IMAGE_TAG=wt-33a132fbfdd7 PATH=<scratch>/bin:$PATH bash scripts/offline_check.sh
+# ---- output ----
+offline: df start
+Filesystem     1024-blocks      Used  Available Capacity Mounted on
+C:              3967116284 607929640 3359186644      16% /c
+offline: the daemon's DockerRootDir (/var/lib/docker) is not on this host (Docker Desktop keeps it in a VM): not measurable, only dist/ is checked
+bundle written: <scratch>/copy3/dist/ke-offline-316161814-amd64
+manifest sha256: d149b38168495bafd6be9cd208d3789e712b3cb40e544055ed96ff5525a0c4bd
+release record: <scratch>/copy3/dist/ke-offline-316161814-amd64.manifest.sha256
+offline: df after bundle
+Filesystem     1024-blocks      Used  Available Capacity Mounted on
+C:              3967116284 608877804 3358238480      16% /c
+offline: starting dind (privileged) in project ke-offline-316161814
+ Network ke-offline-316161814_offline Creating 
+ Network ke-offline-316161814_offline Created 
+ Volume ke-offline-316161814_offline-certs Creating 
+ Volume ke-offline-316161814_offline-certs Created 
+ Container ke-offline-316161814-dind-1 Creating 
+ Container ke-offline-316161814-dind-1 Created 
+ Container ke-offline-316161814-dind-1 Starting 
+ Container ke-offline-316161814-dind-1 Started 
+ Container ke-offline-316161814-dind-1 Waiting 
+ Container ke-offline-316161814-dind-1 Healthy 
+offline: df after dind up
+Filesystem     1024-blocks      Used  Available Capacity Mounted on
+C:              3967116284 608878612 3358237672      16% /c
+net_isolated: ke-offline-316161814_offline is internal with gateway_mode_ipv4=isolated
+offline: running the offline client
+ Container ke-offline-316161814-dind-1 Running 
+ Container ke-offline-316161814-dind-1 Waiting 
+ Container ke-offline-316161814-dind-1 Healthy 
+ Container ke-offline-316161814-offline-client-run-715fe2a68441 Creating 
+ Container ke-offline-316161814-offline-client-run-715fe2a68441 Created 
+offline-client: inner daemon uses the containerd image store
+offline-client: a registry pull fails, as expected with no route out
+offline-client: install
+install: manifest: listed file is missing: images/valkey.tar
+
+offline_check: FAIL (the offline client failed (see its output above))
+offline: df before teardown
+Filesystem     1024-blocks      Used  Available Capacity Mounted on
+C:              3967116284 608879376 3358236908      16% /c
+ Container ke-offline-316161814-dind-1 Stopping 
+ Container ke-offline-316161814-dind-1 Stopped 
+ Container ke-offline-316161814-dind-1 Removing 
+ Container ke-offline-316161814-dind-1 Removed 
+ Network ke-offline-316161814_offline Removing 
+ Volume ke-offline-316161814_offline-certs Removing 
+ Volume ke-offline-316161814_offline-certs Removed 
+ Network ke-offline-316161814_offline Removed 
+offline: df after teardown
+Filesystem     1024-blocks      Used  Available Capacity Mounted on
+C:              3967116284 607933428 3359182856      16% /c
+# ---- end ----
+# rc=1  elapsed=36s
+# this run's project: ke-offline-316161814
+# left over from ke-offline-316161814: containers=[] networks=[] volumes=[]
+# ke-dr38-* resources: []
+# dist/ in copy after run: []

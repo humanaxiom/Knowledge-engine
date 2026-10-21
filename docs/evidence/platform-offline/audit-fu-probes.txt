@@ -1,0 +1,538 @@
+# audit-fu raw output (security, 2026-10-19). Scratch: <scratch>/final/fu. Redacted: <sid>, <machine-sid>, <host>, <user>, <scratch>.
+## hashes of the audited worktree files
+72e173df4ecb4fe9a81bfbac8ffc4930cc41b41cac131df4cd1f156a4cad2f84 *engine/startup.py
+d815b7ae4617f4075e7a407d3fc000991c4d97cb68b52eb693f92d53572e02e2 *scripts/launch.sh
+768fd837368584c7fadb855d523f86b832d396d1eddc75ebd7b56d1c70a78224 *scripts/launch.ps1
+7438fe1a8fde5638f91b337469ac734645fbfbe03dbbc53ec216f82a0e77c883 *scripts/install.ps1
+d9cec5c091513af88f420c4e0d3fbe0c0efb2c688778a441ec48f3b185d20756 *docs/quickstart.md
+95e3368b8dcdc744eb423748494aaf4b923c9222714a5e04f9c0b93bc755fbe4 *docs/architecture.md
+883ff40ff97870753904e6dc1a2b6afe99b52d9492ef4d3b193c42ac167486b7 *docs/requirements.md
+d03ee051d6a116b62995931ca416e3a95ac0a7cd6fbf14962e7e2b0780d19b29 *tests/test_stack_scripts.py
+1e7bb044bc5244da3a9e4fa6d46960de7f29bac7aec7a62176d0f64d4d4a4d99 *tests/test_engine_startup.py
+75620f37cead1a4e607f195fcf1ed181d22d0e49e0bd775c4249e95ff143f88f *tests/test_offline_bundle.py
+
+## runner (gates image ke-gates, --network none, uid 10001, cap-drop ALL, read-only copy)
+#!/usr/bin/env bash
+# run.sh <copy> <test ids...>: unittest in the gates image, no network, uid 10001, read-only copy
+S=<scratch>/final/fu
+copy="$1"; shift
+w="$(cygpath -w "$S/$copy")"
+MSYS_NO_PATHCONV=1 docker run --rm --network none --user 10001:10001 --cap-drop ALL \
+  --security-opt no-new-privileges:true -v "$w:/work:ro" --tmpfs /tmp:exec,mode=1777 \
+  -w /work -e UV_PROJECT_ENVIRONMENT=/opt/venv -e PYTHONDONTWRITEBYTECODE=1 -e GIT_OPTIONAL_LOCKS=0 \
+  ke-gates uv run --locked python -m unittest "$@" 2>&1
+
+## mutant diffs (scratch copies of the worktree)
+== ma
+--- <scratch>/final/fu/base/scripts/launch.sh	2026-10-19 13:45:47.000000000 -0700
++++ <scratch>/final/fu/ma/scripts/launch.sh	2026-10-19 14:00:40.118154100 -0700
+@@ -22,7 +22,7 @@
+   # .env holds the stack's secrets: private (0600) whatever the caller's umask (F12).
+   # A redirect, not cp: cp would carry over the example's own mode bits. set -C
+   # (noclobber) opens with O_EXCL, so a dangling .env symlink is never followed.
+-  (umask 077; set -C; cat .env.example > .env)
++  (umask 077; cat .env.example > .env)
+   echo "created .env from .env.example (placeholder secrets; edit it before any use beyond local development)"
+ fi
+ 
+== mg
+--- <scratch>/final/fu/base/scripts/launch.sh	2026-10-19 13:45:47.000000000 -0700
++++ <scratch>/final/fu/mg/scripts/launch.sh	2026-10-19 14:00:40.145319600 -0700
+@@ -14,7 +14,7 @@
+ cd "$(dirname "$0")/.."
+ 
+ env_file="${KE_ENV_FILE:-.env}"
+-if [ ! -e "$env_file" ] && [ ! -L "$env_file" ]; then
++if [ ! -f "$env_file" ]; then
+   if [ -n "${KE_ENV_FILE:-}" ]; then
+     echo "error: KE_ENV_FILE does not exist: $env_file" >&2
+     exit 1
+== mc
+--- <scratch>/final/fu/base/scripts/launch.ps1	2026-10-19 13:46:48.000000000 -0700
++++ <scratch>/final/fu/mc/scripts/launch.ps1	2026-10-19 14:00:40.173453600 -0700
+@@ -29,7 +29,7 @@
+         try {
+             $acl = & {
+                 $ErrorActionPreference = 'Continue'
+-                & icacls.exe '.env' '/inheritance:r' '/grant:r' "*$([System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value):(F)" 2>&1 | ForEach-Object { "$_" }
++                & icacls.exe '.env' '/inheritance:r' '/grant:r' "$($env:USERNAME):(F)" 2>&1 | ForEach-Object { "$_" }
+                 $script:restricted = ($LASTEXITCODE -eq 0)
+             }
+         } catch {
+
+## tests in the gates image: LaunchEnvCreationStaticTest + LaunchShResolvedTest + LaunchPs1ResolvedTest
+== base
+Ran 29 tests in 18.831s
+
+OK
+== ma
+FAIL: test_launch_sh_creates_env_with_noclobber (tests.test_stack_scripts.LaunchEnvCreationStaticTest.test_launch_sh_creates_env_with_noclobber) (line='(umask 077; cat .env.example > .env)')
+Ran 29 tests in 18.993s
+
+FAILED (failures=1)
+== mg
+Ran 29 tests in 18.624s
+
+OK
+== mc
+FAIL: test_launch_ps1_icacls_grants_current_user_sid (tests.test_stack_scripts.LaunchEnvCreationStaticTest.test_launch_ps1_icacls_grants_current_user_sid)
+Ran 29 tests in 19.263s
+
+FAILED (failures=1)
+
+## tests on the Windows host (repo .venv python, scratch copy): LaunchEnvCreationStaticTest + LaunchPs1WindowsEnvTest + quickstart SID test
+== base
+Ran 8 tests in 1.480s
+
+OK
+== mc
+FAIL: test_launch_ps1_icacls_grants_current_user_sid (tests.test_stack_scripts.LaunchEnvCreationStaticTest.test_launch_ps1_icacls_grants_current_user_sid)
+Ran 8 tests in 1.375s
+
+FAILED (failures=1)
+
+## probe: launch.sh (real script, Linux, bash 5.2)
+#!/usr/bin/env bash
+# probe-sh.sh: launch.sh .env creation probes for each copy under /src (read-only), run in /tmp.
+set -u
+umask 022
+fresh() { rm -rf /tmp/w; mkdir -p /tmp/w/scripts; cp /src/$1/scripts/launch.sh /tmp/w/scripts/; printf 'KE_ENV=dev\nKE_X=changeme-x\n' > /tmp/w/.env.example; }
+run() { (cd /tmp/w && env -i PATH=/usr/bin:/bin HOME=/tmp "$@" bash scripts/launch.sh 2>&1; echo "rc=$?") | sed 's/^/  /'; }
+for c in base ma mg; do
+  echo "=== copy $c"
+  echo "[dangling .env symlink -> ./victim.env (dir exists)]"
+  fresh $c; ln -s /tmp/w/victim.env /tmp/w/.env
+  run
+  if [ -e /tmp/w/victim.env ]; then echo "  victim CREATED: $(stat -c %a /tmp/w/victim.env)"; else echo "  victim not created"; fi
+  echo "  link -> $(readlink /tmp/w/.env)"
+  echo "[race: racer creates .env (0644, 'racer') right after 'umask 077', i.e. between the guard and the create]"
+  fresh $c
+  cat > /tmp/racer.sh <<'R'
+trap '[ "$BASH_COMMAND" = "umask 077" ] && { printf "racer-content\n" > /tmp/w/.env; chmod 644 /tmp/w/.env; } || true' DEBUG
+R
+  (cd /tmp/w && env -i PATH=/usr/bin:/bin HOME=/tmp BASH_ENV=/tmp/racer.sh bash -T scripts/launch.sh 2>&1; echo "rc=$?") | sed 's/^/  /'
+  echo "  .env now: mode $(stat -c %a /tmp/w/.env) content: $(head -c 40 /tmp/w/.env | tr '\n' '|')"
+  echo "[control: no .env, umask 022 and 000]"
+  for u in 022 000; do fresh $c; (cd /tmp/w && umask $u && env -i PATH=/usr/bin:/bin HOME=/tmp bash scripts/launch.sh >/dev/null 2>&1); echo "  umask $u -> .env $(stat -c %a /tmp/w/.env) same=$(cmp -s /tmp/w/.env /tmp/w/.env.example && echo yes || echo no)"; done
+  echo "[existing regular .env kept]"
+  fresh $c; printf 'SECRET=real\n' > /tmp/w/.env; chmod 640 /tmp/w/.env; run >/dev/null; echo "  $(cat /tmp/w/.env) $(stat -c %a /tmp/w/.env)"
+done
+-- output
+=== copy base
+[dangling .env symlink -> ./victim.env (dir exists)]
+  error: Docker Compose >= 2.24 is required (found: none)
+  rc=1
+  victim not created
+  link -> /tmp/w/victim.env
+[race: racer creates .env (0644, 'racer') right after 'umask 077', i.e. between the guard and the create]
+  scripts/launch.sh: line 25: .env: cannot overwrite existing file
+  rc=1
+  .env now: mode 644 content: racer-content|
+[control: no .env, umask 022 and 000]
+  umask 022 -> .env 600 same=yes
+  umask 000 -> .env 600 same=yes
+[existing regular .env kept]
+  SECRET=real 640
+=== copy ma
+[dangling .env symlink -> ./victim.env (dir exists)]
+  error: Docker Compose >= 2.24 is required (found: none)
+  rc=1
+  victim not created
+  link -> /tmp/w/victim.env
+[race: racer creates .env (0644, 'racer') right after 'umask 077', i.e. between the guard and the create]
+  created .env from .env.example (placeholder secrets; edit it before any use beyond local development)
+  error: Docker Compose >= 2.24 is required (found: none)
+  rc=1
+  .env now: mode 644 content: KE_ENV=dev|KE_X=changeme-x|
+[control: no .env, umask 022 and 000]
+  umask 022 -> .env 600 same=yes
+  umask 000 -> .env 600 same=yes
+[existing regular .env kept]
+  SECRET=real 640
+=== copy mg
+[dangling .env symlink -> ./victim.env (dir exists)]
+  scripts/launch.sh: line 25: .env: cannot overwrite existing file
+  rc=1
+  victim not created
+  link -> /tmp/w/victim.env
+[race: racer creates .env (0644, 'racer') right after 'umask 077', i.e. between the guard and the create]
+  scripts/launch.sh: line 25: .env: cannot overwrite existing file
+  rc=1
+  .env now: mode 644 content: racer-content|
+[control: no .env, umask 022 and 000]
+  umask 022 -> .env 600 same=yes
+  umask 000 -> .env 600 same=yes
+[existing regular .env kept]
+  SECRET=real 640
+=== copy base [race: racer plants .env -> /tmp/victim2.env (dangling) after 'umask 077']
+  scripts/launch.sh: line 25: .env: cannot overwrite existing file
+  rc=1
+  victim not created
+=== copy ma [race: racer plants .env -> /tmp/victim2.env (dangling) after 'umask 077']
+  created .env from .env.example (placeholder secrets; edit it before any use beyond local development)
+  error: Docker Compose >= 2.24 is required (found: none)
+  rc=1
+  victim CREATED through the link: mode 600
+-- symlink-planting racer
+#!/usr/bin/env bash
+# racer plants a dangling .env symlink between the guard and the create
+set -u; umask 022
+for c in base ma; do
+  echo "=== copy $c [race: racer plants .env -> /tmp/victim2.env (dangling) after 'umask 077']"
+  rm -rf /tmp/w /tmp/victim2.env; mkdir -p /tmp/w/scripts; cp /src/$c/scripts/launch.sh /tmp/w/scripts/; printf 'KE_ENV=dev\nKE_X=changeme-x\n' > /tmp/w/.env.example
+  echo "trap '[ \"\$BASH_COMMAND\" = \"umask 077\" ] && ln -s /tmp/victim2.env /tmp/w/.env || true' DEBUG" > /tmp/racer2.sh
+  (cd /tmp/w && env -i PATH=/usr/bin:/bin HOME=/tmp BASH_ENV=/tmp/racer2.sh bash -T scripts/launch.sh 2>&1; echo "rc=$?") | sed 's/^/  /'
+  if [ -e /tmp/victim2.env ]; then echo "  victim CREATED through the link: mode $(stat -c %a /tmp/victim2.env)"; else echo "  victim not created"; fi
+done
+
+## probe: launch.ps1 off Windows (pwsh in the gates image)
+#!/usr/bin/env bash
+# launch.ps1 off Windows (pwsh in the gates image): real script + the create block instrumented
+set -u
+fresh() { rm -rf /tmp/w /tmp/victim.env; mkdir -p /tmp/w/scripts; cp /src/base/scripts/launch.ps1 /tmp/w/scripts/; printf 'KE_ENV=dev\nKE_X=changeme-x\n' > /tmp/w/.env.example; chmod 644 /tmp/w/.env.example; }
+echo "pwsh $(pwsh -v)"
+for u in 022 002 000; do
+  fresh; (cd /tmp/w && umask $u && env -i PATH=/usr/bin:/bin:/usr/local/bin HOME=/tmp pwsh -NoProfile -File scripts/launch.ps1 >/tmp/o 2>&1); echo "[real launch.ps1, umask $u] .env $(stat -c %a /tmp/w/.env) same=$(cmp -s /tmp/w/.env /tmp/w/.env.example && echo yes || echo no) created-msg=$(grep -c 'created .env' /tmp/o)"
+done
+echo "[real launch.ps1, dangling .env -> /tmp/victim.env]"
+fresh; ln -s /tmp/victim.env /tmp/w/.env; (cd /tmp/w && env -i PATH=/usr/bin:/bin:/usr/local/bin HOME=/tmp pwsh -NoProfile -File scripts/launch.ps1 >/tmp/o 2>&1); echo "  victim: $([ -e /tmp/victim.env ] && echo CREATED || echo not created); link -> $(readlink /tmp/w/.env); created-msg=$(grep -c 'created .env' /tmp/o)"
+# Block extracted verbatim from launch.ps1 (the else branch), with a stat after the open and before the write.
+cat > /tmp/block.ps1 <<'P'
+param([string]$Dir)
+$ErrorActionPreference = 'Stop'
+Set-Location $Dir
+$envPath = Join-Path (Get-Location).Path '.env'
+$options = [System.IO.FileStreamOptions]::new()
+$options.Mode = [System.IO.FileMode]::CreateNew
+$options.Access = [System.IO.FileAccess]::Write
+$options.UnixCreateMode = [System.IO.UnixFileMode]::UserRead -bor [System.IO.UnixFileMode]::UserWrite
+$bytes = [System.IO.File]::ReadAllBytes((Join-Path (Get-Location).Path '.env.example'))
+try {
+  $stream = [System.IO.FileStream]::new($envPath, $options)
+} catch { "open refused: $($_.Exception.GetType().Name): $($_.Exception.Message)"; exit 3 }
+"after open, before write: $(& stat -c '%a size=%s' $envPath)"
+try { $stream.Write($bytes, 0, $bytes.Length) } finally { $stream.Dispose() }
+"after write: $(& stat -c '%a size=%s' $envPath)"
+P
+for u in 022 000; do fresh; (cd /tmp/w && umask $u && pwsh -NoProfile -File /tmp/block.ps1 /tmp/w) | sed "s/^/  [block umask $u] /"; done
+echo "[block: dangling .env link, bypassing Test-Path (CreateNew must refuse)]"
+fresh; ln -s /tmp/victim.env /tmp/w/.env; (pwsh -NoProfile -File /tmp/block.ps1 /tmp/w; echo "rc=$?") | sed 's/^/  /'; echo "  victim: $([ -e /tmp/victim.env ] && echo CREATED || echo not created)"
+echo "[block: .env created by a racer before the open (CreateNew must refuse, content kept)]"
+fresh; printf 'racer\n' > /tmp/w/.env; (pwsh -NoProfile -File /tmp/block.ps1 /tmp/w; echo "rc=$?") | sed 's/^/  /'; echo "  .env: $(cat /tmp/w/.env)"
+-- output
+pwsh PowerShell 7.4.21
+[real launch.ps1, umask 022] .env 600 same=yes created-msg=1
+[real launch.ps1, umask 002] .env 600 same=yes created-msg=1
+[real launch.ps1, umask 000] .env 600 same=yes created-msg=1
+[real launch.ps1, dangling .env -> /tmp/victim.env]
+  victim: not created; link -> /tmp/victim.env; created-msg=0
+  [block umask 022] after open, before write: 600 size=0
+  [block umask 022] after write: 600 size=27
+  [block umask 000] after open, before write: 600 size=0
+  [block umask 000] after write: 600 size=27
+[block: dangling .env link, bypassing Test-Path (CreateNew must refuse)]
+  open refused: MethodInvocationException: Exception calling ".ctor" with "2" argument(s): "The file '/tmp/w/.env' already exists."
+  rc=3
+  victim: not created
+[block: .env created by a racer before the open (CreateNew must refuse, content kept)]
+  open refused: MethodInvocationException: Exception calling ".ctor" with "2" argument(s): "The file '/tmp/w/.env' already exists."
+  rc=3
+  .env: racer
+
+## probe: launch.ps1 Windows branch on this host (base and mc; Windows PowerShell 5.1 and pwsh 7; ok / failing icacls stand-in (whoami.exe copy) / icacls absent from PATH). .env.example carries KE_CANARY_SECRET=canary-7f3a9c-do-not-print; 'canary lines in output' counts it in the launch output.
+=== copy=base shell=ps51 case=ok
+created .env from .env.example (placeholder secrets; edit it before any use beyond local development)
+docker : The term 'docker' is not recognized as the name of a cmdlet, function, script file, or operable program. 
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At <scratch>\fi
+nal\fu\win\base-ps51-ok\scripts\launch.ps1:65 char:11
++ $found = (docker compose version --short 2>$null | Out-String).Trim() ...
++           ~~~~~~
+    + CategoryInfo          : ObjectNotFound: (docker:String) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+rc=1
+-- .env exists: yes; canary lines in output: 0
+-- ACL:
+<scratch>\final\fu\win\base-ps51-ok\.env <host>\<user>:(F)
+
+Successfully processed 1 files; Failed processing 0 files
+=== copy=base shell=ps51 case=fail
+WARNING: could not restrict .env to the current user; restrict .env before adding secrets to it: ERROR: Invalid 
+argument/option - '.env'. Type "WHOAMI /?" for usage.
+created .env from .env.example (placeholder secrets; edit it before any use beyond local development)
+docker : The term 'docker' is not recognized as the name of a cmdlet, function, script file, or operable program. 
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At <scratch>\fi
+nal\fu\win\base-ps51-fail\scripts\launch.ps1:65 char:11
++ $found = (docker compose version --short 2>$null | Out-String).Trim() ...
++           ~~~~~~
+    + CategoryInfo          : ObjectNotFound: (docker:String) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+rc=1
+-- .env exists: yes; canary lines in output: 0
+-- ACL:
+<scratch>\final\fu\win\base-ps51-fail\.env NT AUTHORITY\SYSTEM:(I)(F)
+                                                                                                                                                   BUILTIN\Administrators:(I)(F)
+                                                                                                                                                   <host>\<user>:(I)(F)
+
+=== copy=base shell=ps51 case=missing
+WARNING: could not restrict .env to the current user; restrict .env before adding secrets to it: The term 'icacls.exe' 
+is not recognized as the name of a cmdlet, function, script file, or operable program. Check the spelling of the name, 
+or if a path was included, verify that the path is correct and try again.
+created .env from .env.example (placeholder secrets; edit it before any use beyond local development)
+docker : The term 'docker' is not recognized as the name of a cmdlet, function, script file, or operable program. 
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At <scratch>\fi
+nal\fu\win\base-ps51-missing\scripts\launch.ps1:65 char:11
++ $found = (docker compose version --short 2>$null | Out-String).Trim() ...
++           ~~~~~~
+    + CategoryInfo          : ObjectNotFound: (docker:String) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+rc=1
+-- .env exists: yes; canary lines in output: 0
+-- ACL:
+<scratch>\final\fu\win\base-ps51-missing\.env NT AUTHORITY\SYSTEM:(I)(F)
+                                                                                                                                                      BUILTIN\Administrators:(I)(F)
+                                                                                                                                                      <host>\<user>:(I)(F)
+
+=== copy=base shell=pwsh case=ok
+created .env from .env.example (placeholder secrets; edit it before any use beyond local development)
+docker: <scratch>\final\fu\win\base-pwsh-ok\scripts\launch.ps1:65
+Line |
+  65 |  $found = (docker compose version --short 2>$null | Out-String).Trim() .
+     |            ~~~~~~
+     | The term 'docker' is not recognized as a name of a cmdlet, function, script file, or executable program. Check
+     | the spelling of the name, or if a path was included, verify that the path is correct and try again.
+rc=1
+-- .env exists: yes; canary lines in output: 0
+-- ACL:
+<scratch>\final\fu\win\base-pwsh-ok\.env <host>\<user>:(F)
+
+Successfully processed 1 files; Failed processing 0 files
+=== copy=base shell=pwsh case=fail
+WARNING: could not restrict .env to the current user; restrict .env before adding secrets to it: ERROR: Invalid argument/option - '.env'. Type "WHOAMI /?" for usage.
+created .env from .env.example (placeholder secrets; edit it before any use beyond local development)
+docker: <scratch>\final\fu\win\base-pwsh-fail\scripts\launch.ps1:65
+Line |
+  65 |  $found = (docker compose version --short 2>$null | Out-String).Trim() .
+     |            ~~~~~~
+     | The term 'docker' is not recognized as a name of a cmdlet, function, script file, or executable program. Check
+     | the spelling of the name, or if a path was included, verify that the path is correct and try again.
+rc=1
+-- .env exists: yes; canary lines in output: 0
+-- ACL:
+<scratch>\final\fu\win\base-pwsh-fail\.env NT AUTHORITY\SYSTEM:(I)(F)
+                                                                                                                                                   BUILTIN\Administrators:(I)(F)
+                                                                                                                                                   <host>\<user>:(I)(F)
+
+=== copy=base shell=pwsh case=missing
+WARNING: could not restrict .env to the current user; restrict .env before adding secrets to it: The term 'icacls.exe' is not recognized as a name of a cmdlet, function, script file, or executable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+created .env from .env.example (placeholder secrets; edit it before any use beyond local development)
+docker: <scratch>\final\fu\win\base-pwsh-missing\scripts\launch.ps1:65
+Line |
+  65 |  $found = (docker compose version --short 2>$null | Out-String).Trim() .
+     |            ~~~~~~
+     | The term 'docker' is not recognized as a name of a cmdlet, function, script file, or executable program. Check
+     | the spelling of the name, or if a path was included, verify that the path is correct and try again.
+rc=1
+-- .env exists: yes; canary lines in output: 0
+-- ACL:
+<scratch>\final\fu\win\base-pwsh-missing\.env NT AUTHORITY\SYSTEM:(I)(F)
+                                                                                                                                                      BUILTIN\Administrators:(I)(F)
+                                                                                                                                                      <host>\<user>:(I)(F)
+
+=== copy=mc shell=ps51 case=ok
+created .env from .env.example (placeholder secrets; edit it before any use beyond local development)
+docker : The term 'docker' is not recognized as the name of a cmdlet, function, script file, or operable program. 
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At <scratch>\fi
+nal\fu\win\mc-ps51-ok\scripts\launch.ps1:65 char:11
++ $found = (docker compose version --short 2>$null | Out-String).Trim() ...
++           ~~~~~~
+    + CategoryInfo          : ObjectNotFound: (docker:String) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+rc=1
+-- .env exists: yes; canary lines in output: 0
+-- ACL:
+<scratch>\final\fu\win\mc-ps51-ok\.env <host>\<user>:(F)
+
+Successfully processed 1 files; Failed processing 0 files
+=== copy=mc shell=ps51 case=fail
+WARNING: could not restrict .env to the current user; restrict .env before adding secrets to it: ERROR: Invalid 
+argument/option - '.env'. Type "WHOAMI /?" for usage.
+created .env from .env.example (placeholder secrets; edit it before any use beyond local development)
+docker : The term 'docker' is not recognized as the name of a cmdlet, function, script file, or operable program. 
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At <scratch>\fi
+nal\fu\win\mc-ps51-fail\scripts\launch.ps1:65 char:11
++ $found = (docker compose version --short 2>$null | Out-String).Trim() ...
++           ~~~~~~
+    + CategoryInfo          : ObjectNotFound: (docker:String) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+rc=1
+-- .env exists: yes; canary lines in output: 0
+-- ACL:
+<scratch>\final\fu\win\mc-ps51-fail\.env NT AUTHORITY\SYSTEM:(I)(F)
+                                                                                                                                                 BUILTIN\Administrators:(I)(F)
+                                                                                                                                                 <host>\<user>:(I)(F)
+
+=== copy=mc shell=ps51 case=missing
+WARNING: could not restrict .env to the current user; restrict .env before adding secrets to it: The term 'icacls.exe' 
+is not recognized as the name of a cmdlet, function, script file, or operable program. Check the spelling of the name, 
+or if a path was included, verify that the path is correct and try again.
+created .env from .env.example (placeholder secrets; edit it before any use beyond local development)
+docker : The term 'docker' is not recognized as the name of a cmdlet, function, script file, or operable program. 
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At <scratch>\fi
+nal\fu\win\mc-ps51-missing\scripts\launch.ps1:65 char:11
++ $found = (docker compose version --short 2>$null | Out-String).Trim() ...
++           ~~~~~~
+    + CategoryInfo          : ObjectNotFound: (docker:String) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+rc=1
+-- .env exists: yes; canary lines in output: 0
+-- ACL:
+<scratch>\final\fu\win\mc-ps51-missing\.env NT AUTHORITY\SYSTEM:(I)(F)
+                                                                                                                                                    BUILTIN\Administrators:(I)(F)
+                                                                                                                                                    <host>\<user>:(I)(F)
+
+=== copy=mc shell=pwsh case=ok
+created .env from .env.example (placeholder secrets; edit it before any use beyond local development)
+docker: <scratch>\final\fu\win\mc-pwsh-ok\scripts\launch.ps1:65
+Line |
+  65 |  $found = (docker compose version --short 2>$null | Out-String).Trim() .
+     |            ~~~~~~
+     | The term 'docker' is not recognized as a name of a cmdlet, function, script file, or executable program. Check
+     | the spelling of the name, or if a path was included, verify that the path is correct and try again.
+rc=1
+-- .env exists: yes; canary lines in output: 0
+-- ACL:
+<scratch>\final\fu\win\mc-pwsh-ok\.env <host>\<user>:(F)
+
+Successfully processed 1 files; Failed processing 0 files
+=== copy=mc shell=pwsh case=fail
+WARNING: could not restrict .env to the current user; restrict .env before adding secrets to it: ERROR: Invalid argument/option - '.env'. Type "WHOAMI /?" for usage.
+created .env from .env.example (placeholder secrets; edit it before any use beyond local development)
+docker: <scratch>\final\fu\win\mc-pwsh-fail\scripts\launch.ps1:65
+Line |
+  65 |  $found = (docker compose version --short 2>$null | Out-String).Trim() .
+     |            ~~~~~~
+     | The term 'docker' is not recognized as a name of a cmdlet, function, script file, or executable program. Check
+     | the spelling of the name, or if a path was included, verify that the path is correct and try again.
+rc=1
+-- .env exists: yes; canary lines in output: 0
+-- ACL:
+<scratch>\final\fu\win\mc-pwsh-fail\.env NT AUTHORITY\SYSTEM:(I)(F)
+                                                                                                                                                 BUILTIN\Administrators:(I)(F)
+                                                                                                                                                 <host>\<user>:(I)(F)
+
+=== copy=mc shell=pwsh case=missing
+WARNING: could not restrict .env to the current user; restrict .env before adding secrets to it: The term 'icacls.exe' is not recognized as a name of a cmdlet, function, script file, or executable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+created .env from .env.example (placeholder secrets; edit it before any use beyond local development)
+docker: <scratch>\final\fu\win\mc-pwsh-missing\scripts\launch.ps1:65
+Line |
+  65 |  $found = (docker compose version --short 2>$null | Out-String).Trim() .
+     |            ~~~~~~
+     | The term 'docker' is not recognized as a name of a cmdlet, function, script file, or executable program. Check
+     | the spelling of the name, or if a path was included, verify that the path is correct and try again.
+rc=1
+-- .env exists: yes; canary lines in output: 0
+-- ACL:
+<scratch>\final\fu\win\mc-pwsh-missing\.env NT AUTHORITY\SYSTEM:(I)(F)
+                                                                                                                                                    BUILTIN\Administrators:(I)(F)
+                                                                                                                                                    <host>\<user>:(I)(F)
+
+
+## probe: quickstart step 5 one-liner, verbatim from docs/quickstart.md, on a scratch .env
+=== ps51
+processed file: .env
+Successfully processed 1 files; Failed processing 0 files
+exit=0
+O:<sid>G:<machine-sid>D:PAI(A;;0x12019f;;;<sid>)
+KE_X=canary
+write ok
+=== pwsh
+processed file: .env
+Successfully processed 1 files; Failed processing 0 files
+exit=0
+O:<sid>G:<machine-sid>D:PAI(A;;0x12019f;;;<sid>)
+KE_X=canary
+write ok
+
+## probe: startup env x auth x bind matrix (check() only), gates image
+"""env x auth x bind: what check() does after the M-L2a fix (check() only)."""
+import logging, os, sys
+logging.basicConfig(level=logging.WARNING, format="  log %(levelname)s %(name)s %(message)s", stream=sys.stdout)
+from engine.config import Settings
+from engine.startup import check, StartupRefused
+base = {"KE_STORES__POSTGRES__PASSWORD": "Real-Secret-Canary-1", "KE_STORES__NEO4J__PASSWORD": "Real-Secret-Canary-2",
+        "HARNESS_TRACING": "off"}
+def run(**kv):
+    for k in [k for k in os.environ if k.startswith("KE_")]: del os.environ[k]
+    os.environ.update(base, **kv)
+    print(" ".join(f"{k}={v}" for k, v in kv.items()) or "shipped defaults (no KE_ENV)")
+    try:
+        check(Settings()); print("  STARTS")
+    except StartupRefused as e:
+        print(f"  REFUSED {e}")
+    except Exception as e:
+        print(f"  ERROR {type(e).__name__}: {str(e).splitlines()[0]}")
+for env in ("dev", "ci", "prod"):
+    for auth in ("false", "true"):
+        for bind in ("127.0.0.1", "0.0.0.0"):
+            run(KE_ENV=env, KE_AUTH__ENABLED=auth, KE_BIND_ADDRESS=bind)
+run()
+run(KE_ENV="staging", KE_AUTH__ENABLED="true")
+-- output
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.85ms
+Installed 1 package in 1ms
+KE_ENV=dev KE_AUTH__ENABLED=false KE_BIND_ADDRESS=127.0.0.1
+  log WARNING engine.startup auth.enabled: authentication is disabled
+  STARTS
+KE_ENV=dev KE_AUTH__ENABLED=false KE_BIND_ADDRESS=0.0.0.0
+  log WARNING engine.startup auth.enabled: authentication is disabled
+  log WARNING engine.startup KE_BIND_ADDRESS: services would be published beyond this host (not 127.0.0.0/8)
+  STARTS
+KE_ENV=dev KE_AUTH__ENABLED=true KE_BIND_ADDRESS=127.0.0.1
+  log WARNING engine.startup auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+  STARTS
+KE_ENV=dev KE_AUTH__ENABLED=true KE_BIND_ADDRESS=0.0.0.0
+  log WARNING engine.startup auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+  log WARNING engine.startup KE_BIND_ADDRESS: services would be published beyond this host (not 127.0.0.0/8)
+  STARTS
+KE_ENV=ci KE_AUTH__ENABLED=false KE_BIND_ADDRESS=127.0.0.1
+  REFUSED startup refused: auth.enabled: authentication is disabled (env=ci)
+KE_ENV=ci KE_AUTH__ENABLED=false KE_BIND_ADDRESS=0.0.0.0
+  REFUSED startup refused: auth.enabled: authentication is disabled (env=ci)
+KE_ENV=ci KE_AUTH__ENABLED=true KE_BIND_ADDRESS=127.0.0.1
+  log WARNING engine.startup auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+  STARTS
+KE_ENV=ci KE_AUTH__ENABLED=true KE_BIND_ADDRESS=0.0.0.0
+  log WARNING engine.startup auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+  REFUSED startup refused: KE_BIND_ADDRESS: services would be published beyond this host (not 127.0.0.0/8) (env=ci)
+KE_ENV=prod KE_AUTH__ENABLED=false KE_BIND_ADDRESS=127.0.0.1
+  REFUSED startup refused: auth.enabled: authentication is disabled (env=prod)
+KE_ENV=prod KE_AUTH__ENABLED=false KE_BIND_ADDRESS=0.0.0.0
+  REFUSED startup refused: auth.enabled: authentication is disabled (env=prod)
+KE_ENV=prod KE_AUTH__ENABLED=true KE_BIND_ADDRESS=127.0.0.1
+  REFUSED startup refused: auth.enabled: KE_ENV=prod with auth.enabled=true (KE_AUTH__ENABLED): authentication is not implemented until auth-audit, so prod is refused until then
+KE_ENV=prod KE_AUTH__ENABLED=true KE_BIND_ADDRESS=0.0.0.0
+  REFUSED startup refused: KE_BIND_ADDRESS: services would be published beyond this host (not 127.0.0.0/8) (env=prod)
+shipped defaults (no KE_ENV)
+  REFUSED startup refused: auth.enabled: KE_ENV=prod with auth.enabled=true (KE_AUTH__ENABLED): authentication is not implemented until auth-audit, so prod is refused until then
+KE_ENV=staging KE_AUTH__ENABLED=true
+  ERROR ConfigError: invalid configuration: KE_ENV (env): Input should be 'dev', 'ci' or 'prod'
+
+## secret-pattern grep over the added lines of the scoped diff (+ the three test files): 616 diff lines
+patterns: AKIA keys, gh*_ tokens, sk- keys, xox tokens, PRIVATE KEY blocks, credentialed URLs, password/secret/token/api_key assignments, S-1-5-21 SIDs, host and profile paths
+matches: 0

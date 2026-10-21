@@ -1,0 +1,277 @@
+# reviewer mutation run, platform-stack-up 2a, 2026-10-19T03:11:42Z
+# Scratch copy of the working tree, run in ke-gates (--network none):
+#   uv run --locked python /mut/mutants.py  (driver below; restores each file after its run)
+# Suite per mutant: tests.test_stack_compose test_stack_bind_address test_stack_carry_ins test_engine_tracing_guard test_engine_telemetry test_engine_hardcoded test_engine_startup test_engine_deploy_files test_harness_followups
+
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.75ms
+Installed 1 package in 1ms
+/mut/mutants.py:89: SyntaxWarning: invalid escape sequence '\w'
+  "(?![\w-]|\.\w)\", re.I)", "(?![\w-]|\.\w)\")"),
+/mut/mutants.py:89: SyntaxWarning: invalid escape sequence '\w'
+  "(?![\w-]|\.\w)\", re.I)", "(?![\w-]|\.\w)\")"),
+[KILLED] M5a verify_provider accepts any SDK provider
+    FAIL: test_custom_span_processor_is_refused (tests.test_engine_tracing_guard.InstalledProviderGuardTest.test_custom_span_processor_is_refused) (mode='console')
+    FAIL: test_custom_span_processor_is_refused (tests.test_engine_tracing_guard.InstalledProviderGuardTest.test_custom_span_processor_is_refused) (mode='off')
+    FAIL: test_custom_span_processor_is_refused (tests.test_engine_tracing_guard.InstalledProviderGuardTest.test_custom_span_processor_is_refused) (mode='otlp local')
+    FAIL: test_foreign_provider_gets_no_span_with_refusing_settings (tests.test_engine_tracing_guard.StartupVerifiesProviderFirstTest.test_foreign_provider_gets_no_span_with_refusing_settings)
+    FAIL: test_foreign_provider_gets_no_span_with_refusing_settings (tests.test_engine_tracing_guard.StartupVerifiesProviderFirstTest.test_foreign_provider_gets_no_span_with_refusing_settings) (provider='sdk, custom span processor', env='ci, auth off')
+    FAIL: test_foreign_provider_gets_no_span_with_refusing_settings (tests.test_engine_tracing_guard.StartupVerifiesProviderFirstTest.test_foreign_provider_gets_no_span_with_refusing_settings) (provider='sdk, custom span processor', env='ci, otlp to a non-local collector')
+[KILLED] M5b verify_provider accepts anything
+    FAIL: test_custom_span_processor_is_refused (tests.test_engine_tracing_guard.InstalledProviderGuardTest.test_custom_span_processor_is_refused) (mode='console')
+    FAIL: test_custom_span_processor_is_refused (tests.test_engine_tracing_guard.InstalledProviderGuardTest.test_custom_span_processor_is_refused) (mode='off')
+    FAIL: test_custom_span_processor_is_refused (tests.test_engine_tracing_guard.InstalledProviderGuardTest.test_custom_span_processor_is_refused) (mode='otlp local')
+    FAIL: test_foreign_provider_gets_no_span_with_refusing_settings (tests.test_engine_tracing_guard.StartupVerifiesProviderFirstTest.test_foreign_provider_gets_no_span_with_refusing_settings)
+    FAIL: test_foreign_provider_gets_no_span_with_refusing_settings (tests.test_engine_tracing_guard.StartupVerifiesProviderFirstTest.test_foreign_provider_gets_no_span_with_refusing_settings) (provider='non-sdk vendor provider', env='ci, auth off')
+    FAIL: test_foreign_provider_gets_no_span_with_refusing_settings (tests.test_engine_tracing_guard.StartupVerifiesProviderFirstTest.test_foreign_provider_gets_no_span_with_refusing_settings) (provider='non-sdk vendor provider', env='ci, otlp to a non-local collector')
+[KILLED] M5c build_provider does not register
+    ERROR: test_config_load_span_names_overridden_keys_not_values (tests.test_engine_startup.StartupTracingTest.test_config_load_span_names_overridden_keys_not_values)
+    ERROR: test_configure_tracing_attaches_nothing_for_non_local (tests.test_engine_startup.StartupTracingTest.test_configure_tracing_attaches_nothing_for_non_local)
+    ERROR: test_configure_tracing_installs_an_engine_built_provider (tests.test_engine_tracing_guard.ProviderIdentityTest.test_configure_tracing_installs_an_engine_built_provider)
+    ERROR: test_hide_defaults_apply_before_any_span (tests.test_engine_telemetry.ConfigureTracingTest.test_hide_defaults_apply_before_any_span)
+    ERROR: test_refused_startup_marks_spans (tests.test_engine_startup.StartupTracingTest.test_refused_startup_marks_spans)
+    ERROR: test_support_provider_is_engine_built (tests.test_engine_tracing_guard.ProviderIdentityTest.test_support_provider_is_engine_built)
+[KILLED] P1 api publishes a port
+    FAIL: test_compose_defaults_match_env_example (tests.test_stack_compose.PortsTest.test_compose_defaults_match_env_example) (file='docker-compose.yml', var='KE_X_PORT')
+    FAIL: test_compose_defaults_match_env_example (tests.test_stack_compose.PortsTest.test_compose_defaults_match_env_example) (published='KE_X_PORT')
+    FAIL: test_no_hardcoded_ports (tests.test_engine_hardcoded.RepositoryScanTest.test_no_hardcoded_ports)
+    FAIL: test_published_ports_use_bind_address (tests.test_stack_compose.PortsTest.test_published_ports_use_bind_address)
+[KILLED] P2 phoenix publishes long-syntax
+    FAIL: test_compose_phoenix_listen_port_matches_config (tests.test_stack_compose.PhoenixPortTest.test_compose_phoenix_listen_port_matches_config)
+    FAIL: test_no_hardcoded_ports (tests.test_engine_hardcoded.RepositoryScanTest.test_no_hardcoded_ports)
+    FAIL: test_published_ports_use_bind_address (tests.test_stack_compose.PortsTest.test_published_ports_use_bind_address)
+[KILLED] P3 gateway host_ip literal 0.0.0.0
+    FAIL: test_published_ports_use_bind_address (tests.test_stack_compose.PortsTest.test_published_ports_use_bind_address)
+    FAIL: test_published_ports_use_bind_address (tests.test_stack_compose.PortsTest.test_published_ports_use_bind_address) (file='docker-compose.yml', service='gateway', entry={'target': '${KE_GATEWAY_API_LISTEN:-8100}', 'host_ip': '0.0.0.0', 'published': '${KE_API_PORT:-47100}', 'protocol': 'tcp'})
+[KILLED] P4 gateway host_ip omitted
+    FAIL: test_published_ports_use_bind_address (tests.test_stack_compose.PortsTest.test_published_ports_use_bind_address)
+    FAIL: test_published_ports_use_bind_address (tests.test_stack_compose.PortsTest.test_published_ports_use_bind_address) (file='docker-compose.yml', service='gateway', entry={'target': '${KE_GATEWAY_API_LISTEN:-8100}', 'published': '${KE_API_PORT:-47100}', 'protocol': 'tcp'})
+[SURVIVED] P5 gateway target literal
+[KILLED] B1 engine: 0.0.0.0 accepted outside dev
+    FAIL: test_dev_non_loopback_bind_address_warns (tests.test_stack_bind_address.EngineRefusalTest.test_dev_non_loopback_bind_address_warns) (bind='0.0.0.0')
+    FAIL: test_startup_refusal_is_recorded_on_the_span (tests.test_stack_bind_address.EngineRefusalTest.test_startup_refusal_is_recorded_on_the_span)
+    FAIL: test_startup_refuses_non_loopback_bind_address (tests.test_stack_bind_address.EngineRefusalTest.test_startup_refuses_non_loopback_bind_address) (env='ci', bind='0.0.0.0')
+    FAIL: test_startup_refuses_non_loopback_bind_address (tests.test_stack_bind_address.EngineRefusalTest.test_startup_refuses_non_loopback_bind_address) (env='prod', bind='0.0.0.0')
+[KILLED] B1b engine: refusal removed
+    FAIL: test_dev_non_loopback_bind_address_warns (tests.test_stack_bind_address.EngineRefusalTest.test_dev_non_loopback_bind_address_warns) (bind='0.0.0.0')
+    FAIL: test_dev_non_loopback_bind_address_warns (tests.test_stack_bind_address.EngineRefusalTest.test_dev_non_loopback_bind_address_warns) (bind='10.0.0.5')
+    FAIL: test_dev_non_loopback_bind_address_warns (tests.test_stack_bind_address.EngineRefusalTest.test_dev_non_loopback_bind_address_warns) (bind='192.168.1.10')
+    FAIL: test_startup_refusal_is_recorded_on_the_span (tests.test_stack_bind_address.EngineRefusalTest.test_startup_refusal_is_recorded_on_the_span)
+    FAIL: test_startup_refuses_non_loopback_bind_address (tests.test_stack_bind_address.EngineRefusalTest.test_startup_refuses_non_loopback_bind_address) (env='ci', bind='0.0.0.0')
+    FAIL: test_startup_refuses_non_loopback_bind_address (tests.test_stack_bind_address.EngineRefusalTest.test_startup_refuses_non_loopback_bind_address) (env='ci', bind='10.0.0.5')
+[KILLED] B2 gateway: 0.0.0.0 accepted
+    FAIL: test_gateway_bind_check_allows_loopback_and_warns_in_dev (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_bind_check_allows_loopback_and_warns_in_dev) (env='dev', bind='0.0.0.0')
+    FAIL: test_gateway_bind_check_refuses_non_loopback (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_bind_check_refuses_non_loopback) (env='ci', bind='0.0.0.0')
+    FAIL: test_gateway_bind_check_refuses_non_loopback (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_bind_check_refuses_non_loopback) (env='prod', bind='0.0.0.0')
+    FAIL: test_gateway_bind_check_refuses_non_loopback (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_bind_check_refuses_non_loopback) (env=None, bind='0.0.0.0')
+[KILLED] B2b gateway: KE_ENV unset treated as dev
+    FAIL: test_gateway_bind_check_refuses_non_loopback (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_bind_check_refuses_non_loopback) (env=None, bind='0.0.0.0')
+    FAIL: test_gateway_bind_check_refuses_non_loopback (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_bind_check_refuses_non_loopback) (env=None, bind='10.0.0.5')
+    FAIL: test_gateway_bind_check_refuses_non_loopback (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_bind_check_refuses_non_loopback) (env=None, bind='128.0.0.1')
+    FAIL: test_gateway_bind_check_refuses_non_loopback (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_bind_check_refuses_non_loopback) (env=None, bind='192.168.1.10')
+[KILLED] B3 launch.sh: 0.0.0.0 accepted
+    FAIL: test_launch_sh_allows_loopback_and_warns_in_dev (tests.test_stack_bind_address.LaunchScriptTest.test_launch_sh_allows_loopback_and_warns_in_dev) (case='dev, 0.0.0.0 (warning)')
+    FAIL: test_launch_sh_refuses_non_loopback_bind_address (tests.test_stack_bind_address.LaunchScriptTest.test_launch_sh_refuses_non_loopback_bind_address) (case='.env, prod, 0.0.0.0')
+    FAIL: test_launch_sh_refuses_non_loopback_bind_address (tests.test_stack_bind_address.LaunchScriptTest.test_launch_sh_refuses_non_loopback_bind_address) (case='KE_ENV_FILE, prod, 0.0.0.0')
+[KILLED] B3b launch.sh: refusal becomes warning
+    FAIL: test_launch_sh_refuses_non_loopback_bind_address (tests.test_stack_bind_address.LaunchScriptTest.test_launch_sh_refuses_non_loopback_bind_address) (case='.env, ci, LAN address')
+    FAIL: test_launch_sh_refuses_non_loopback_bind_address (tests.test_stack_bind_address.LaunchScriptTest.test_launch_sh_refuses_non_loopback_bind_address) (case='.env, prod, 0.0.0.0')
+    FAIL: test_launch_sh_refuses_non_loopback_bind_address (tests.test_stack_bind_address.LaunchScriptTest.test_launch_sh_refuses_non_loopback_bind_address) (case='KE_ENV_FILE, prod, 0.0.0.0')
+    FAIL: test_launch_sh_refuses_non_loopback_bind_address (tests.test_stack_bind_address.LaunchScriptTest.test_launch_sh_refuses_non_loopback_bind_address) (case='process env overrides .env')
+[KILLED] B4 compose: api gets literal KE_BIND_ADDRESS
+    FAIL: test_compose_passes_bind_address_to_app (tests.test_stack_compose.PortsTest.test_compose_passes_bind_address_to_app) (service='api')
+    FAIL: test_compose_passes_bind_address_to_app (tests.test_stack_compose.PortsTest.test_compose_passes_bind_address_to_app) (service='worker')
+[SURVIVED] B5 compose: gateway KE_ENV fail-open default
+[KILLED] V6a engine: IPv6 accepted
+    ERROR: test_bind_address_setting_defaults_to_loopback (tests.test_stack_bind_address.EngineRefusalTest.test_bind_address_setting_defaults_to_loopback)
+    ERROR: test_bind_address_that_is_not_an_address_is_a_config_error (tests.test_stack_bind_address.EngineRefusalTest.test_bind_address_that_is_not_an_address_is_a_config_error) (env='ci', bind='127.0.0.1.example.com')
+    ERROR: test_bind_address_that_is_not_an_address_is_a_config_error (tests.test_stack_bind_address.EngineRefusalTest.test_bind_address_that_is_not_an_address_is_a_config_error) (env='ci', bind='999.1.1.1')
+    ERROR: test_bind_address_that_is_not_an_address_is_a_config_error (tests.test_stack_bind_address.EngineRefusalTest.test_bind_address_that_is_not_an_address_is_a_config_error) (env='ci', bind='not-an-address')
+    ERROR: test_bind_address_that_is_not_an_address_is_a_config_error (tests.test_stack_bind_address.EngineRefusalTest.test_bind_address_that_is_not_an_address_is_a_config_error) (env='dev', bind='127.0.0.1.example.com')
+    ERROR: test_bind_address_that_is_not_an_address_is_a_config_error (tests.test_stack_bind_address.EngineRefusalTest.test_bind_address_that_is_not_an_address_is_a_config_error) (env='dev', bind='999.1.1.1')
+[KILLED] V6b gateway: IPv6 ::1 accepted
+    FAIL: test_gateway_bind_check_rejects_non_ipv4_in_every_env (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_bind_check_rejects_non_ipv4_in_every_env) (env='ci', bind='::1')
+    FAIL: test_gateway_bind_check_rejects_non_ipv4_in_every_env (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_bind_check_rejects_non_ipv4_in_every_env) (env='dev', bind='::1')
+    FAIL: test_gateway_bind_check_rejects_non_ipv4_in_every_env (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_bind_check_rejects_non_ipv4_in_every_env) (env='prod', bind='::1')
+    FAIL: test_gateway_bind_check_rejects_non_ipv4_in_every_env (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_bind_check_rejects_non_ipv4_in_every_env) (env=None, bind='::1')
+[KILLED] V6c launch.sh: IPv6 accepted
+    FAIL: test_launch_sh_refuses_non_loopback_bind_address (tests.test_stack_bind_address.LaunchScriptTest.test_launch_sh_refuses_non_loopback_bind_address) (case='.env, dev, ::')
+    FAIL: test_launch_sh_refuses_non_loopback_bind_address (tests.test_stack_bind_address.LaunchScriptTest.test_launch_sh_refuses_non_loopback_bind_address) (case='.env, dev, ::1')
+[KILLED] G1 gates-it on edge
+    FAIL: test_gates_it_internal_only_and_no_socket (tests.test_stack_compose.NetworksTest.test_gates_it_internal_only_and_no_socket) (network='edge')
+[KILLED] G2 backend not internal
+    FAIL: test_gates_it_internal_only_and_no_socket (tests.test_stack_compose.NetworksTest.test_gates_it_internal_only_and_no_socket) (network='backend')
+    FAIL: test_gates_it_internal_only_and_no_socket (tests.test_stack_compose.NetworksTest.test_gates_it_internal_only_and_no_socket) (shares_internal_with='api')
+    FAIL: test_gates_it_internal_only_and_no_socket (tests.test_stack_compose.NetworksTest.test_gates_it_internal_only_and_no_socket) (shares_internal_with='gateway')
+    FAIL: test_gates_it_internal_only_and_no_socket (tests.test_stack_compose.NetworksTest.test_gates_it_internal_only_and_no_socket) (shares_internal_with='worker')
+    FAIL: test_only_gateway_on_edge_network (tests.test_stack_compose.NetworksTest.test_only_gateway_on_edge_network)
+[KILLED] G3 gates-it docker socket
+    FAIL: test_gates_it_internal_only_and_no_socket (tests.test_stack_compose.NetworksTest.test_gates_it_internal_only_and_no_socket) (volume='/var/run/docker.sock')
+    FAIL: test_no_docker_socket_mounted (tests.test_stack_compose.NetworksTest.test_no_docker_socket_mounted) (file='docker-compose.yml', service='gates-it', source='/var/run/docker.sock')
+[KILLED] R1 restart removed from postgres
+    FAIL: test_compose_services_have_restart_policy (tests.test_stack_compose.ServicesTest.test_compose_services_have_restart_policy) (service='postgres')
+[KILLED] R2 restart removed from x-app anchor
+    FAIL: test_compose_services_have_restart_policy (tests.test_stack_compose.ServicesTest.test_compose_services_have_restart_policy) (service='api')
+    FAIL: test_compose_services_have_restart_policy (tests.test_stack_compose.ServicesTest.test_compose_services_have_restart_policy) (service='worker')
+[KILLED] R3 restart on gates
+    FAIL: test_compose_services_have_restart_policy (tests.test_stack_compose.ServicesTest.test_compose_services_have_restart_policy) (service='gates')
+[KILLED] D1 valkey image tag only
+    FAIL: test_compose_images_pinned_by_digest (tests.test_stack_compose.ServicesTest.test_compose_images_pinned_by_digest) (file='docker-compose.yml', service='valkey', image='valkey/valkey:8-alpine')
+[KILLED] D2 gateway Dockerfile FROM tag only
+    FAIL: test_dockerfiles_pin_base_images_by_digest (tests.test_stack_compose.ServicesTest.test_dockerfiles_pin_base_images_by_digest) (dockerfile='gateway.Dockerfile', image='nginxinc/nginx-unprivileged:1.28-alpine')
+[KILLED] D3 app Dockerfile uv stage tag only
+    FAIL: test_dockerfiles_pin_base_images_by_digest (tests.test_stack_compose.ServicesTest.test_dockerfiles_pin_base_images_by_digest) (dockerfile='app.Dockerfile', image='ghcr.io/astral-sh/uv:0.11.21')
+[SURVIVED] V1 verify.sh teardown trap removed
+[SURVIVED] V2 verify.sh host smoke removed
+[SURVIVED] V3 verify.sh fixed project name
+[SURVIVED] V4 verify.sh overlay dropped
+[SURVIVED] V5 overlay reset removed
+[NOAPPLY] V7 verify.sh gates-it stage removed
+[SURVIVED] W1 api skips startup
+[KILLED] S1 scanner case-sensitive again
+    FAIL: test_n1_host_names_match_case_insensitively (tests.test_engine_hardcoded.ScannerWideningTest.test_n1_host_names_match_case_insensitively) (text='host: Aria-Gb10-2\n')
+    FAIL: test_n1_host_names_match_case_insensitively (tests.test_engine_hardcoded.ScannerWideningTest.test_n1_host_names_match_case_insensitively) (text='ssh ARIA-GB10-2\n')
+[KILLED] E1 .env.example bind 0.0.0.0
+    FAIL: test_compose_defaults_match_env_example (tests.test_stack_compose.PortsTest.test_compose_defaults_match_env_example) (file='docker-compose.yml', var='KE_BIND_ADDRESS')
+    FAIL: test_env_example_bind_address_is_loopback (tests.test_stack_compose.PortsTest.test_env_example_bind_address_is_loopback)
+[SURVIVED] CI1 ci.yml runs verify fast
+
+# M5a against the criterion test alone: tests.test_engine_tracing_guard.ProviderIdentityTest.test_provider_not_built_by_engine_is_refused -> FAILED (failures=8), all 4 shapes x 2 envs. KILLED.
+# V7 (verify.sh host half: drop the gates-it run line): scripts/verify.sh fast on the mutant -> '== verify fast: PASS =='; with a fake docker the host half prints '== verify full: PASS' and never runs gates-it. SURVIVED.
+# CI1 survives this module list only; tests/test_harness_port.py test_ci_calls_verify_only covers it (not in the list).
+# NOAPPLY V7 in the driver = string escape bug in the driver; V7 was applied by sed instead (above).
+
+## Host orchestration of scripts/verify.sh full with a fake docker (PATH shim, scratch copy)
+all stages pass           -> rc=0, teardown --volumes called once, 'verify full: PASS'
+build fails               -> rc=3, teardown called once
+launch (up) fails         -> rc=3, teardown called once
+gates-it run fails        -> rc=3, teardown called once
+host smoke fails          -> rc=3, teardown called once
+teardown fails after pass -> rc=0 (masked by '|| true')
+SIGINT to process group   -> rc=130, teardown called once
+SIGTERM to process group  -> rc=143, teardown called once
+SIGTERM to verify.sh only -> rc=143, teardown called once
+
+## launch.sh, KE_ENV_FILE without KE_ENV, KE_BIND_ADDRESS=0.0.0.0 (fake docker)
+warning: KE_BIND_ADDRESS is not loopback; ... (dev only)   rc=0, ran: docker compose --env-file custom.env up -d --no-build --wait
+gateway check, same inputs (env -i KE_BIND_ADDRESS=0.0.0.0 sh docker/gateway/10-ke-bind-check.sh): error ... refusing to start, rc=1
+
+## TEST-NET-1 connect from ke-gates (test_gates_it_has_no_route_out premise)
+default bridge network (has a route out): 80 TimeoutError timed out 5.01 s; 443 TimeoutError timed out 5.01 s   (TimeoutError is an OSError: the test passes)
+internal network:                         OSError [Errno 101] Network is unreachable 0.01 s
+
+## Driver
+"""Mutation driver: run inside ke-gates with the scratch copy at /work."""
+import subprocess, sys, pathlib
+W = pathlib.Path("/work")
+Q = "\x27"
+FAST = ["tests.test_stack_compose", "tests.test_stack_bind_address", "tests.test_stack_carry_ins",
+        "tests.test_engine_tracing_guard", "tests.test_engine_telemetry", "tests.test_engine_hardcoded",
+        "tests.test_engine_startup", "tests.test_engine_deploy_files", "tests.test_harness_followups"]
+M = [
+ ("M5a verify_provider accepts any SDK provider", "engine/telemetry.py",
+  "if isinstance(provider, TracerProvider) and provider in _ENGINE_PROVIDERS:",
+  "if isinstance(provider, TracerProvider):"),
+ ("M5b verify_provider accepts anything", "engine/telemetry.py",
+  "    raise StartupRefused(\n        \"telemetry.tracing\", \"an installed tracer provider was not built by the engine\")",
+  "    return"),
+ ("M5c build_provider does not register", "engine/telemetry.py",
+  "    _ENGINE_PROVIDERS.add(provider)\n", ""),
+ ("P1 api publishes a port", "docker-compose.yml",
+  "  api:\n    <<: *app\n",
+  "  api:\n    <<: *app\n    ports:\n      - \"${KE_BIND_ADDRESS:-127.0.0.1}:${KE_X_PORT:-47102}:8080\"\n"),
+ ("P2 phoenix publishes long-syntax", "docker-compose.yml",
+  "    networks: [backend]\n    environment:\n      PHOENIX_WORKING_DIR",
+  "    networks: [backend]\n    ports:\n      - target: 6006\n        host_ip: ${KE_BIND_ADDRESS:-127.0.0.1}\n        published: ${KE_PHOENIX_PORT:-47101}\n    environment:\n      PHOENIX_WORKING_DIR"),
+ ("P3 gateway host_ip literal 0.0.0.0", "docker-compose.yml",
+  "        host_ip: ${KE_BIND_ADDRESS:-127.0.0.1}\n        published: ${KE_API_PORT:-47100}",
+  "        host_ip: 0.0.0.0\n        published: ${KE_API_PORT:-47100}"),
+ ("P4 gateway host_ip omitted", "docker-compose.yml",
+  "        host_ip: ${KE_BIND_ADDRESS:-127.0.0.1}\n        published: ${KE_API_PORT:-47100}\n",
+  "        published: ${KE_API_PORT:-47100}\n"),
+ ("P5 gateway target literal", "docker-compose.yml",
+  "      - target: ${KE_GATEWAY_API_LISTEN:-8100}\n", "      - target: 8100\n"),
+ ("B1 engine: 0.0.0.0 accepted outside dev", "engine/startup.py",
+  "if not settings.bind_address.is_loopback:",
+  "if not (settings.bind_address.is_loopback or settings.bind_address.is_unspecified):"),
+ ("B1b engine: refusal removed", "engine/startup.py",
+  "    if not settings.bind_address.is_loopback:\n", "    if False:\n"),
+ ("B2 gateway: 0.0.0.0 accepted", "docker/gateway/10-ke-bind-check.sh",
+  "if [ \"$1\" = 127 ]; then", "if [ \"$1\" = 127 ] || [ \"$1\" = 0 ]; then"),
+ ("B2b gateway: KE_ENV unset treated as dev", "docker/gateway/10-ke-bind-check.sh",
+  "if [ \"${KE_ENV:-}\" = dev ]; then", "if [ \"${KE_ENV:-dev}\" = dev ]; then"),
+ ("B3 launch.sh: 0.0.0.0 accepted", "scripts/launch.sh",
+  "if [ \"${bind%%.*}\" != 127 ]; then", "if [ \"${bind%%.*}\" != 127 ] && [ \"$bind\" != 0.0.0.0 ]; then"),
+ ("B3b launch.sh: refusal becomes warning", "scripts/launch.sh",
+  "  if [ \"$ke_env\" = dev ]; then\n    echo \"warning",
+  "  if true; then\n    echo \"warning"),
+ ("B4 compose: api gets literal KE_BIND_ADDRESS", "docker-compose.yml",
+  "    KE_BIND_ADDRESS: ${KE_BIND_ADDRESS:-127.0.0.1}\n    KE_AUTH", "    KE_BIND_ADDRESS: 127.0.0.1\n    KE_AUTH"),
+ ("B5 compose: gateway KE_ENV fail-open default", "docker-compose.yml",
+  "    environment:\n      KE_ENV: ${KE_ENV}\n      KE_BIND_ADDRESS",
+  "    environment:\n      KE_ENV: ${KE_ENV:-dev}\n      KE_BIND_ADDRESS"),
+ ("V6a engine: IPv6 accepted", "engine/config/settings.py",
+  "    bind_address: IPv4Address", "    bind_address: IPvAnyAddress"),
+ ("V6b gateway: IPv6 ::1 accepted", "docker/gateway/10-ke-bind-check.sh",
+  "set -eu\n", "set -eu\n[ \"${KE_BIND_ADDRESS:-}\" = ::1 ] && exit 0\n"),
+ ("V6c launch.sh: IPv6 accepted", "scripts/launch.sh",
+  "if [ \"$valid\" = 0 ]; then", "case \"$bind\" in *:*) valid=1; bind=127.0.0.1 ;; esac\nif [ \"$valid\" = 0 ]; then"),
+ ("G1 gates-it on edge", "docker-compose.yml",
+  "    profiles: [\"gates-it\"]\n    networks: [backend]", "    profiles: [\"gates-it\"]\n    networks: [backend, edge]"),
+ ("G2 backend not internal", "docker-compose.yml",
+  "  backend:\n    internal: true", "  backend:\n    internal: false"),
+ ("G3 gates-it docker socket", "docker-compose.yml",
+  "    profiles: [\"gates-it\"]\n", "    profiles: [\"gates-it\"]\n    volumes:\n      - .:/work\n      - /var/run/docker.sock:/var/run/docker.sock\n"),
+ ("R1 restart removed from postgres", "docker-compose.yml",
+  "c4\n    restart: unless-stopped\n", "c4\n"),
+ ("R2 restart removed from x-app anchor", "docker-compose.yml",
+  "    dockerfile: docker/app.Dockerfile\n  restart: unless-stopped\n", "    dockerfile: docker/app.Dockerfile\n"),
+ ("R3 restart on gates", "docker-compose.yml",
+  "    profiles: [\"gates\"]\n", "    profiles: [\"gates\"]\n    restart: unless-stopped\n"),
+ ("D1 valkey image tag only", "docker-compose.yml",
+  "valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507", "valkey/valkey:8-alpine"),
+ ("D2 gateway Dockerfile FROM tag only", "docker/gateway.Dockerfile",
+  "nginx-unprivileged:1.28-alpine@sha256:7377697a821c131a924a7105fafbe7414db4e9fcc77a6f08f776f33f141ec3f8", "nginx-unprivileged:1.28-alpine"),
+ ("D3 app Dockerfile uv stage tag only", "docker/app.Dockerfile",
+  "uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946", "uv:0.11.21"),
+ ("V1 verify.sh teardown trap removed", "scripts/verify.sh",
+  "  trap " + Q + "scripts/teardown.sh --volumes || true" + Q + " EXIT\n", ""),
+ ("V2 verify.sh host smoke removed", "scripts/verify.sh",
+  "    scripts/verify.sh full\n  scripts/smoke.sh\n", "    scripts/verify.sh full\n"),
+ ("V3 verify.sh fixed project name", "scripts/verify.sh",
+  "ke-verify-${RANDOM}${RANDOM}", "ke-verify"),
+ ("V4 verify.sh overlay dropped", "scripts/verify.sh",
+  "export COMPOSE_FILE=\"docker-compose.yml:docker-compose.verify.yml\"", "export COMPOSE_FILE=\"docker-compose.yml\""),
+ ("V5 overlay reset removed", "docker-compose.verify.yml",
+  "    ports: !reset []", "    environment: {}"),
+ ("V7 verify.sh gates-it stage removed", "scripts/verify.sh",
+  "  docker compose --env-file \"$KE_ENV_FILE\" --profile gates-it run --rm gates-it \\n    scripts/verify.sh full\n", ""),
+ ("W1 api skips startup", "engine/api.py",
+  "    settings = startup()\n", "    from engine.config import Settings\n    settings = Settings()\n"),
+ ("S1 scanner case-sensitive again", "tests/hardcoded_scan.py",
+  "(?![\w-]|\.\w)\", re.I)", "(?![\w-]|\.\w)\")"),
+ ("E1 .env.example bind 0.0.0.0", ".env.example",
+  "KE_BIND_ADDRESS=127.0.0.1", "KE_BIND_ADDRESS=0.0.0.0"),
+ ("CI1 ci.yml runs verify fast", ".github/workflows/ci.yml",
+  "./scripts/verify.sh full", "./scripts/verify.sh fast"),
+]
+only = sys.argv[1:]
+for mid, rel, old, new in M:
+    if only and not any(mid.startswith(o) for o in only):
+        continue
+    p = W / rel
+    orig = p.read_bytes()
+    text = orig.decode()
+    if old not in text:
+        print(f"[NOAPPLY] {mid}", flush=True); continue
+    p.write_bytes(text.replace(old, new, 1).encode())
+    try:
+        r = subprocess.run(["python", "-m", "unittest", *FAST], cwd=W, capture_output=True, text=True, timeout=900)
+        fails = [l for l in r.stderr.splitlines() if l.startswith(("FAIL:", "ERROR:"))]
+        status = "KILLED" if r.returncode else "SURVIVED"
+        print(f"[{status}] {mid}", flush=True)
+        for l in sorted(set(fails))[:6]:
+            print("    " + l, flush=True)
+    finally:
+        p.write_bytes(orig)

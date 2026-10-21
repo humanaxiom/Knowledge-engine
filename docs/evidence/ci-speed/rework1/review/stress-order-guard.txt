@@ -1,0 +1,6 @@
+# Order guard (test_module_logs_and_summary_lines_print_in_glob_order) x12 per load level, --cpuset-cpus 0,1, busy loops = python "while 1: pass" in the same container
+AssertionError: Lists differ: ['test_ob', 'test_oc', 'test_oa'] != ['test_oc', 'test_ob', 'test_oa']
+AssertionError: Lists differ: ['test_oc', 'test_oa', 'test_ob'] != ['test_oc', 'test_ob', 'test_oa']
+order guard under 2 CPUs + 6 busy loops: pass=10 fail=2
+order guard, 2 CPUs + 0 busy loops: pass=12 fail=0
+order guard, 2 CPUs + 2 busy loops: pass=12 fail=0

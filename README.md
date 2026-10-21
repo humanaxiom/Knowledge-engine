@@ -13,6 +13,34 @@ as a nested AGENT → RETRIEVER / LLM / TOOL tree.
 
 See [AGENTS.md](AGENTS.md) for the full workflow and role/file conventions.
 
+## Licence
+
+The project is licensed under the MIT licence: see [LICENSE](LICENSE). Notices
+for the third-party software the stack images carry are in
+[NOTICE.md](NOTICE.md) (vendor images, with licence texts under `licenses/`).
+An offline bundle ships `LICENSE`, `NOTICE.md`, `licenses/` and a generated
+`THIRD_PARTY_NOTICES.md` (the packages inside the images, from that build) at
+its root, all listed in the bundle's `MANIFEST.sha256`.
+
+## Install paths
+
+Two ways to get the stack running; both are written out step by step in
+[docs/quickstart.md](docs/quickstart.md).
+
+- **Code-first (primary).** Clone the repository, then `scripts/build.sh` and
+  `scripts/launch.sh` (PowerShell: `scripts\build.ps1`, `scripts\launch.ps1`).
+  Builds the images natively on the target, x86 or ARM, and needs the network
+  at build time. Hosts: Linux (bash) and Windows (PowerShell).
+- **Offline bundle (air-gap).** Build and bundle on a connected Linux host with
+  `scripts/bundle.sh`, carry the bundle across, verify its manifest hash and
+  run `install.sh` (Linux, macOS) or `install.ps1` (Windows) on the target. A
+  bundle holds one architecture, `amd64` or `arm64`, so build one per target
+  architecture.
+
+Current limit: this release runs in dev mode only (`KE_ENV=dev`, loopback
+binding). `KE_ENV=prod` is refused until the stack has authentication, which
+arrives with `auth-audit`. Set real secrets in `.env` regardless.
+
 ## Getting Started
 
 1. Use this repo as a GitHub template for a new project.
@@ -21,12 +49,12 @@ See [AGENTS.md](AGENTS.md) for the full workflow and role/file conventions.
    ```bash
    uv sync
    cp .env.example .env           # .env is gitignored
-   docker compose up -d phoenix   # UI at http://localhost:47101
+   scripts/build.sh && scripts/launch.sh   # Phoenix UI at http://localhost:47101
    ```
 
-   Phoenix is published on loopback only (`127.0.0.1`); the host port is
-   `KE_PHOENIX_PORT` in `.env` (47101 if unset). The OTLP/gRPC port is not
-   published.
+   See [Running the stack](#running-the-stack). Phoenix is reached through the
+   gateway, on loopback only (`127.0.0.1`); the host port is `KE_PHOENIX_PORT`
+   in `.env` (47101 if unset). The OTLP/gRPC port is not published.
 
 3. Open the repo in [Claude Code](https://claude.com/claude-code) (the
    primary runner). The session is the orchestrator
@@ -46,6 +74,76 @@ See [AGENTS.md](AGENTS.md) for the full workflow and role/file conventions.
    [.github/pull_request_template.md](.github/pull_request_template.md)'s
    checklist.
 
+## Running the stack
+
+Prerequisites: Git, and Docker Engine 28 or later with Compose 2.24 or later.
+Linux (bash) and Windows (PowerShell) are supported for the code-first install;
+macOS only through the offline bundle. A host that builds an offline bundle also
+needs `jq` and at least 7 GiB free on the disk that holds the output directory
+(`bundle.sh` refuses otherwise). See [docs/quickstart.md](docs/quickstart.md).
+
+1. Copy `.env.example` to `.env` and set the secrets
+   (`KE_STORES__POSTGRES__PASSWORD`, `KE_STORES__NEO4J__PASSWORD`). The
+   placeholders are accepted only with `KE_ENV=dev`.
+2. Build, launch, tear down:
+
+   ```bash
+   scripts/build.sh       # PowerShell: scripts\build.ps1
+   scripts/launch.sh      # PowerShell: scripts\launch.ps1
+   scripts/teardown.sh    # PowerShell: scripts\teardown.ps1
+   scripts/teardown.sh --volumes   # also removes the data (PowerShell: -Volumes)
+   ```
+
+   `launch` creates `.env` from `.env.example` if it is missing and waits until
+   every service is healthy.
+3. The API is at http://localhost:47100 (`/healthz`, `/readyz`) and Phoenix at
+   http://localhost:47101. Both go through the gateway, the only service that
+   publishes ports, and are bound to loopback.
+
+`teardown` removes the project's containers and networks (and volumes with
+`--volumes`), then lists anything of the same project that is still there. If
+something is left it prints each resource, exits non-zero and tells you to
+remove it by hand; it never removes a leftover itself.
+
+### Readiness
+
+`GET http://localhost:47100/readyz` returns 200 when postgres, neo4j and valkey
+all answer, and 503 otherwise. The body lists each check as
+`{"ok": bool, "reason": ...}`; `reason` is null when ok, else one word:
+
+| Reason | Meaning |
+|---|---|
+| `refused` | the connection was refused |
+| `timeout` | no answer in time |
+| `unreachable` | the host could not be reached |
+| `auth_failed` | credentials were rejected |
+| `egress_denied` | the egress allowlist refused the host (model host) |
+| `not_configured` | not set up (model host only) |
+| `error:<ExceptionClass>` | anything else, by exception class only |
+
+Reasons never carry credentials, hosts or exception text. The model host is
+reported as `model_host` with `"required": false`: it never makes `/readyz`
+return 503, and it shows `not_configured` until `KE_MODEL_UPSTREAM` is set.
+
+### Worker
+
+The `worker` service consumes one RQ queue (`default`) on Valkey. Job data is
+JSON, not pickle, and the worker runs only the functions listed in
+`engine.jobs.__all__`; any other job is failed without being resolved or run.
+
+Exposing the ports on the LAN by setting `KE_BIND_ADDRESS` to a non-loopback
+IPv4 address is refused outside `KE_ENV=dev` (by the launch scripts, the
+gateway and the engine) until the stack has authentication.
+
+Model host: set `KE_MODEL_UPSTREAM` to `host:port` and add the host to
+`KE_EGRESS_ALLOWLIST`. The gateway refuses an upstream that is not on the
+allowlist. For this deployment, put these in `.env`:
+
+```
+KE_MODEL_UPSTREAM=aria-gb10-2:11434
+KE_EGRESS_ALLOWLIST=aria-gb10-2
+```
+
 ## Verification
 
 `scripts/verify.sh` is the one verification command, locally, for agents, and
@@ -58,7 +156,33 @@ scripts/verify.sh full   # everything else, and always before a commit
 
 It needs Docker (on Windows, run it from Git Bash). It builds the `gates`
 image from `docker/gates.Dockerfile` and runs the gate scripts inside it with
-networking disabled. See [CLAUDE.md](CLAUDE.md) for which run a change needs.
+networking disabled. `full` also builds and launches a throwaway stack under a
+random project name with nothing published, runs lint, the unit tests, the
+integration tests (in the isolated `gates-it` container) and the smoke test,
+then tears the stack down. Several runs can go in parallel. See
+[CLAUDE.md](CLAUDE.md) for which run a change needs.
+
+`full` also runs the offline check (`scripts/offline_check.sh`): it builds a
+throwaway bundle for the local architecture and installs it from a client
+container with no network, against a Docker-in-Docker daemon that holds only
+the bundle's images. That daemon runs privileged, so a host or CI runner that
+refuses privileged containers cannot run `full`; there is no way around it. It
+also needs the 7 GiB of free disk that `bundle.sh` requires.
+
+The model-calling checks in `full` run only when `KE_MODEL_UPSTREAM` and
+`KE_EGRESS_ALLOWLIST` are both set and the host is reachable. Each is taken
+from the caller's environment first, else from the repo-root `.env`; these are
+the only two `KE_*` values `verify.sh` passes on (the rest of the run uses the
+`.env.example` placeholders). Otherwise those checks skip with a named reason
+(`not configured` or `model host unreachable`), as on GitHub runners.
+
+`scripts/smoke.sh` is meant to be run through `verify.sh`. Run by hand against
+a stack that is already up, it checks that stack, skips the postgres
+stop/restart and never tears it down; it tears down only a stack it launched
+itself.
+
+`scripts/lint.sh` (part of `full`) refuses any symlink under `scripts/` and
+`docker/`.
 
 Guards that make a green run mean something:
 
@@ -116,8 +240,8 @@ in an image.
 - Tracing is off by default in `config/defaults.yaml`. `.env.example` sets
   `HARNESS_TRACING=otlp` to send traces to the local Phoenix.
 - The model host is set per deployment as `host:port` in `KE_MODEL_UPSTREAM`
-  (this deployment: `aria-gb10-2`, OpenAI-compatible; scheme and port are
-  chosen in `.env`). It must be on `KE_EGRESS_ALLOWLIST`.
+  (this deployment: `aria-gb10-2:11434`, OpenAI-compatible). It must be on
+  `KE_EGRESS_ALLOWLIST` (this deployment: `aria-gb10-2`).
 
 The engine refuses to start when: auth is off outside dev; the trace collector
 is not local; the hide-inputs/outputs flags are off outside dev; a secret is a
@@ -134,15 +258,19 @@ credentials (`user:pass@`). The error names the setting, never its value.
 - `.github/pull_request_template.md` — gate checklist for PR descriptions
 - `harness_telemetry/` — OpenInference span helpers and the `log_event` CLI
 - `examples/custom_agent.py` — traced pure-Python agent loop (stubbed services)
-- `docker-compose.yml` — local Phoenix and the one-shot `gates` service
-- `docker/gates.Dockerfile` — the image `verify.sh` runs the gates in
+- `docker-compose.yml` — the stack (gateway, api, worker, postgres, neo4j,
+  valkey, Phoenix) and the one-shot `gates` and `gates-it` services;
+  `docker-compose.verify.yml` is the overlay `verify.sh` uses (nothing published)
+- `docker/` — the gates, app and gateway images
+- `scripts/{build,launch,teardown}.{sh,ps1}` — run the stack
 - `.gitattributes` — forces LF line endings for shell scripts
 - `scripts/verify.sh` — the single verification entrypoint (`fast|full`)
 - `scripts/hooks/block-main-commit.sh` — `PreToolUse` hook for the branch
   policy (wired in `.claude/settings.json` and `developer.agent.md`). It is a
   guard rail, not a security boundary (see ADR-KE-001 in
-  [docs/architecture.md](docs/architecture.md)); branch protection on `main`
-  is the real control.
+  [docs/architecture.md](docs/architecture.md)). Branch protection (Q18) was
+  skipped by decision: merges to `main` are a manual human action, and this
+  hook is the only automated guard.
 - `scripts/test.sh`, `scripts/smoke.sh` — gate scripts called by
   `verify.sh`; the smoke test exports real OTLP traces to a stub collector
 - `docs/requirements.md`, `docs/architecture.md` — living plan artifacts

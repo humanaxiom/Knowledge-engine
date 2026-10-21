@@ -1,0 +1,91 @@
+# The offline check's services (PS-3.2, architecture §2.5): a clean Docker
+# daemon (`dind`) on an internal network and the client that installs the
+# bundle into it. STANDALONE: only scripts/offline_check.sh loads this file,
+# with COMPOSE_FILE=docker-compose.offline.yml and a variable it exports.
+# It is not an overlay on docker-compose.yml (which must resolve with no
+# variables set) and it is not shipped in the bundle.
+#
+# dind image provenance (2026-10-19): the official docker:29.9.1-dind index
+# digest, read with `docker buildx imagetools inspect` and again from the
+# registry's Docker-Content-Digest header (both
+# sha256:3e5756e2b6dad6a5f1f5deacf0a19f9eaa2581b76ae092b2d4a118162e1d4d4e).
+# Engine 29 is the line whose default image store is containerd (spike S1) and
+# matches the pinned CLI in docker/gates.Dockerfile. To bump: change the tag
+# and the digest together and re-read the digest from the registry.
+name: knowledge-engine-offline
+
+services:
+  dind:
+    image: docker:29.9.1-dind@sha256:3e5756e2b6dad6a5f1f5deacf0a19f9eaa2581b76ae092b2d4a118162e1d4d4e
+    profiles: [offline]
+    privileged: true
+    environment:
+      DOCKER_TLS_CERTDIR: /certs
+    volumes:
+      # Only the certs are named; /var/lib/docker stays the image's anonymous
+      # volume, so every run starts with an empty store and `down -v` removes it.
+      - type: volume
+        source: offline-certs
+        target: /certs
+    networks:
+      offline:
+        # The generated server certificate names the container id, `docker`
+        # and `localhost` only (spike S3).
+        aliases: [docker]
+    healthcheck:
+      test: ["CMD-SHELL", "docker info > /dev/null 2>&1"]
+      interval: 3s
+      timeout: 10s
+      retries: 40
+      start_period: 5s
+
+  offline-client:
+    image: ke-gates:${KE_IMAGE_TAG:-local}
+    # The client image is always the local build (security I-OC5): a missing
+    # tag must fail, never reach for docker.io.
+    pull_policy: never
+    profiles: [offline]
+    user: "10001:10001"
+    working_dir: /tmp
+    command: ["bash", "/opt/ke/offline_check.sh"]
+    depends_on:
+      dind:
+        condition: service_healthy
+    networks: [offline]
+    environment:
+      DOCKER_HOST: tcp://docker:2376
+      DOCKER_TLS_VERIFY: "1"
+      DOCKER_CERT_PATH: /certs/client
+      KE_IN_GATES: ""
+      KE_OFFLINE_CLIENT: "1"
+    volumes:
+      # The bundle just written, read-only; the check script itself. No
+      # checkout is mounted: the run tests the bundle, not the tree.
+      - type: bind
+        source: ${KE_OFFLINE_BUNDLE:?set by scripts/offline_check.sh}
+        target: /bundle
+        read_only: true
+      - type: bind
+        source: ./scripts/offline_check.sh
+        target: /opt/ke/offline_check.sh
+        read_only: true
+      # Only the client credentials, read-only. ca/ holds the CA private key
+      # and is never mounted.
+      - type: volume
+        source: offline-certs
+        target: /certs/client
+        read_only: true
+        volume:
+          subpath: client
+    tmpfs:
+      - /install:exec,mode=1777
+      - /tmp:exec,mode=1777
+
+networks:
+  offline:
+    internal: true
+    driver_opts:
+      com.docker.network.bridge.gateway_mode_ipv4: isolated
+
+volumes:
+  offline-certs: {}

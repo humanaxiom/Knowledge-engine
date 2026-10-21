@@ -1,0 +1,1455 @@
+ Image ke-gates Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 519B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from gates.Dockerfile
+#2 transferring dockerfile: 3.64kB done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#3 ...
+
+#4 [internal] load metadata for docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#4 DONE 0.5s
+
+#3 [internal] load metadata for ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#3 DONE 0.6s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 97B done
+#5 DONE 0.0s
+
+#6 [uv 1/1] FROM ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#6 resolve ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946 0.0s done
+#6 DONE 0.0s
+
+#7 [stage-1  1/10] FROM docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#7 resolve docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258 0.0s done
+#7 DONE 0.0s
+
+#8 [internal] load build context
+#8 transferring context: 2.23kB done
+#8 DONE 0.0s
+
+#9 [stage-1  5/10] WORKDIR /work
+#9 CACHED
+
+#10 [stage-1  9/10] COPY config ./config
+#10 CACHED
+
+#11 [stage-1  6/10] COPY pyproject.toml uv.lock ./
+#11 CACHED
+
+#12 [stage-1  2/10] COPY --from=uv /uv /usr/local/bin/uv
+#12 CACHED
+
+#13 [stage-1  7/10] COPY harness_telemetry ./harness_telemetry
+#13 CACHED
+
+#14 [stage-1  3/10] RUN apt-get update  && apt-get install -y --no-install-recommends git jq ca-certificates curl       shellcheck=0.9.0-1 libicu72 libssl3 zlib1g  && rm -rf /var/lib/apt/lists/*  && git config --system --add safe.directory /work  && git config --system core.autocrlf true
+#14 CACHED
+
+#15 [stage-1  4/10] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x64; sha="3fc5e1567c450bd7bd5ae69ebb0a9a4a4e0418bbc36b0232cf6dd547f0bfc0eb" ;;       arm64) arch=arm64; sha="d0c216cec4c6c866fc15a105f039740228b53206f8576d2ed0bcd656a35ed6f6" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     tarball="powershell-7.4.21-linux-${arch}.tar.gz";     curl -fsSL -o "/tmp/$tarball"       "https://github.com/PowerShell/PowerShell/releases/download/v7.4.21/$tarball";     echo "$sha  /tmp/$tarball" | sha256sum -c -;     mkdir -p /opt/microsoft/powershell;     tar -xzf "/tmp/$tarball" -C /opt/microsoft/powershell;     chmod +x /opt/microsoft/powershell/pwsh;     ln -s /opt/microsoft/powershell/pwsh /usr/local/bin/pwsh;     rm "/tmp/$tarball";     pwsh -NoProfile -NonInteractive -Command "       $ErrorActionPreference = 'Stop';       Set-PSRepository PSGallery -InstallationPolicy Trusted;       Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope AllUsers -Force"
+#15 CACHED
+
+#16 [stage-1  8/10] COPY engine ./engine
+#16 CACHED
+
+#17 [stage-1 10/10] RUN uv sync --locked  && chown -R 10001:10001 /opt/venv /opt/uv-cache
+#17 CACHED
+
+#18 exporting to image
+#18 exporting layers done
+#18 exporting manifest sha256:b806cc527172d5179a68c336e39276b269bf117619bc2b96604460f2792f7da5 done
+#18 exporting config sha256:1f0873e43212eb7910c5ea977b830fb8c89f0a57eed786081a0e803e7812c50f done
+#18 exporting attestation manifest sha256:167664ff2c01f0d75c0bf7578e48bd45e108eeda74a8a6f9b55f310242fdbcf1 0.0s done
+#18 exporting manifest list sha256:8bc5477004e93637044e33ba9e1a43c1526fbd47fa1ada5ae386a7aa8a634a1e 0.0s done
+#18 naming to docker.io/library/ke-gates:latest
+#18 naming to docker.io/library/ke-gates:latest done
+#18 unpacking to docker.io/library/ke-gates:latest done
+#18 DONE 0.1s
+
+#19 resolving provenance for metadata file
+#19 DONE 0.0s
+ Image ke-gates Built 
+ Container ke-tester-u2r1-gates-run-31f88f2a432c Creating 
+ Container ke-tester-u2r1-gates-run-31f88f2a432c Created 
+== verify fast: 1fe81dd+dirty ==
+lint: shellcheck on 14 files
+lint: PSScriptAnalyzer on 4 files
+
+lint: PASS
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.67ms
+Installed 1 package in 1ms
+test_backslash_forms_deny_push_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_forms_deny_push_off_main) ... ok
+test_backslash_newline_after_comment_or_even_run_denies_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_off_main) ... ok
+test_backslash_newline_after_comment_or_even_run_denies_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_on_main) ... ok
+test_backslash_newline_joins_to_nothing_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_joins_to_nothing_off_main) ... ok
+test_backslash_newline_joins_to_nothing_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_joins_to_nothing_on_main) ... ok
+test_carriage_return_denies_as_without_it_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_carriage_return_denies_as_without_it_off_main) ... ok
+test_carriage_return_denies_as_without_it_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_carriage_return_denies_as_without_it_on_main) ... ok
+test_carriage_return_stays_silent_as_without_it (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_carriage_return_stays_silent_as_without_it) ... ok
+test_comment_or_even_run_then_continued_push_denies_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_comment_or_even_run_then_continued_push_denies_off_main) ... ok
+test_comment_then_continued_commit_denies_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_comment_then_continued_commit_denies_on_main) ... ok
+test_denies_commit_and_push_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_commit_and_push_on_main) ... ok
+test_denies_commit_creating_commands_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_commit_creating_commands_on_main) ... ok
+test_denies_git_first_word_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_git_first_word_on_main) ... ok
+test_denies_nested_git_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_nested_git_on_main) ... ok
+test_denies_nested_push_to_main_or_force_from_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_nested_push_to_main_or_force_from_plan_item_branch) ... ok
+test_denies_on_master (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_on_master) ... ok
+test_denies_push_on_master (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_on_master) ... ok
+test_denies_push_refspec_forms_from_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_refspec_forms_from_plan_item_branch) ... ok
+test_denies_push_to_main_or_force_push_from_any_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_to_main_or_force_push_from_any_branch) ... ok
+test_denies_push_with_c_global_option_from_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_with_c_global_option_from_plan_item_branch) ... ok
+test_description_with_forged_command_key_is_not_judged (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_description_with_forged_command_key_is_not_judged) ... ok
+test_escaped_quote_does_not_hide_following_push (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_escaped_quote_does_not_hide_following_push) ... ok
+test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) ... ok
+test_grep_for_a_verb_on_main_is_accepted_false_positive (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_grep_for_a_verb_on_main_is_accepted_false_positive) ... ok
+test_json_without_command_field_is_silent (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_json_without_command_field_is_silent) ... ok
+test_judges_only_the_command_field (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_judges_only_the_command_field) ... ok
+test_long_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_long_command_finishes_quickly) ... ok
+test_multiline_without_backslash_newline_unchanged (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_multiline_without_backslash_newline_unchanged) ... ok
+test_one_line_mentions_are_accepted_false_positives_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_line_mentions_are_accepted_false_positives_off_main) ... ok
+test_one_megabyte_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_command_finishes_quickly) ... ok
+test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) ... ok
+test_only_first_command_value_is_judged (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_only_first_command_value_is_judged) ... ok
+test_payload_helper_is_compact_claude_code_shape (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_payload_helper_is_compact_claude_code_shape) ... ok
+test_prefixed_push_to_main_denied_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_prefixed_push_to_main_denied_off_main) ... ok
+test_real_continuation_of_plan_item_push_stays_silent (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_real_continuation_of_plan_item_push_stays_silent) ... ok
+test_second_text_built_and_judged_only_with_backslash_newline (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_second_text_built_and_judged_only_with_backslash_newline) ... ok
+test_shell_wrapped_commit_denied_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_shell_wrapped_commit_denied_on_main) ... ok
+test_silent_for_claude_code_heredoc_commit_on_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_claude_code_heredoc_commit_on_plan_item_branch) ... ok
+test_silent_for_everyday_commands_on_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_everyday_commands_on_plan_item_branch) ... ok
+test_silent_for_non_git_command (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_non_git_command) ... ok
+test_silent_for_plain_push_of_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_plain_push_of_plan_item_branch) ... ok
+test_silent_for_text_that_only_mentions_push_on_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_text_that_only_mentions_push_on_plan_item_branch) ... ok
+test_silent_on_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_on_plan_item_branch) ... ok
+test_split_or_cased_git_word_denied_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_split_or_cased_git_word_denied_on_main) ... ok
+test_trace_count_independent_of_caller_ps4 (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_trace_count_independent_of_caller_ps4) ... ok
+test_works_without_jq_on_raw_input (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_works_without_jq_on_raw_input) ... ok
+test_gates_image_installs_jq (tests.test_block_main_commit_hook.GatesImageJqTest.test_gates_image_installs_jq) ... ok
+test_malformed_values_raise_config_error (tests.test_engine_config.ConfigErrorContractTest.test_malformed_values_raise_config_error) ... ok
+test_config_error_has_no_value_anywhere (tests.test_engine_config.ConfigErrorNeverCarriesValueTest.test_config_error_has_no_value_anywhere) ... ok
+test_base_url_with_userinfo_is_refused (tests.test_engine_config.ModelUrlUserinfoTest.test_base_url_with_userinfo_is_refused) ... ok
+test_model_upstream_with_userinfo_is_refused (tests.test_engine_config.ModelUrlUserinfoTest.test_model_upstream_with_userinfo_is_refused) ... ok
+test_startup_refuses_userinfo_without_the_password (tests.test_engine_config.ModelUrlUserinfoTest.test_startup_refuses_userinfo_without_the_password) ... ok
+test_urls_without_userinfo_still_load (tests.test_engine_config.ModelUrlUserinfoTest.test_urls_without_userinfo_still_load) ... ok
+test_error_names_the_variable_the_user_set (tests.test_engine_config.PrecedenceTest.test_error_names_the_variable_the_user_set) ... ok
+test_ke_names_outrank_standard_names (tests.test_engine_config.PrecedenceTest.test_ke_names_outrank_standard_names) ... ok
+test_model_upstream_has_one_name (tests.test_engine_config.PrecedenceTest.test_model_upstream_has_one_name) ... ok
+test_standard_name_used_when_ke_name_unset (tests.test_engine_config.PrecedenceTest.test_standard_name_used_when_ke_name_unset) ... ok
+test_config_defaults_and_env_override (tests.test_engine_config.TypedConfigTest.test_config_defaults_and_env_override) ... ok
+test_config_ignores_unprefixed_names (tests.test_engine_config.TypedConfigTest.test_config_ignores_unprefixed_names) ... ok
+test_config_init_args_take_precedence (tests.test_engine_config.TypedConfigTest.test_config_init_args_take_precedence) ... ok
+test_config_missing_defaults_file_names_path (tests.test_engine_config.TypedConfigTest.test_config_missing_defaults_file_names_path) ... ok
+test_config_missing_secret_names_key (tests.test_engine_config.TypedConfigTest.test_config_missing_secret_names_key) ... ok
+test_config_rejects_bad_type (tests.test_engine_config.TypedConfigTest.test_config_rejects_bad_type) ... ok
+test_config_secrets_have_no_yaml_default (tests.test_engine_config.TypedConfigTest.test_config_secrets_have_no_yaml_default) ... ok
+test_every_non_secret_setting_has_a_yaml_default (tests.test_engine_config.TypedConfigTest.test_every_non_secret_setting_has_a_yaml_default) ... ok
+test_secret_values_are_not_in_repr (tests.test_engine_config.TypedConfigTest.test_secret_values_are_not_in_repr) ... ok
+test_env_example_is_not_ignored (tests.test_engine_deploy_files.GitIgnoreTest.test_env_example_is_not_ignored) ... ok
+test_env_file_is_ignored (tests.test_engine_deploy_files.GitIgnoreTest.test_env_file_is_ignored) ... ok
+test_egress_guard_allows_listed_host (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_allows_listed_host) ... ok
+test_egress_guard_checks_every_redirect_hop (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_checks_every_redirect_hop) ... ok
+test_egress_guard_mutant_goes_red (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_mutant_goes_red)
+DR38: the runtime assertion fails when the guard is removed. ... ok
+test_egress_guard_runtime (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_runtime) ... ok
+test_model_client_uses_guarded_transport (tests.test_engine_egress.EgressRuntimeTest.test_model_client_uses_guarded_transport) ... ok
+test_egress_guard_startup (tests.test_engine_egress.EgressStartupTest.test_egress_guard_startup) ... ok
+test_egress_startup_check_refuses_in_every_env (tests.test_engine_egress.EgressStartupTest.test_egress_startup_check_refuses_in_every_env) ... ok
+test_is_local_endpoint (tests.test_engine_egress.LocalEndpointTest.test_is_local_endpoint) ... ok
+test_declared_value_files_exist (tests.test_engine_hardcoded.RepositoryScanTest.test_declared_value_files_exist) ... ok
+test_model_host_name_only_in_allowed_locations (tests.test_engine_hardcoded.RepositoryScanTest.test_model_host_name_only_in_allowed_locations) ... ok
+test_no_hardcoded_hosts_or_models (tests.test_engine_hardcoded.RepositoryScanTest.test_no_hardcoded_hosts_or_models) ... ok
+test_no_hardcoded_ports (tests.test_engine_hardcoded.RepositoryScanTest.test_no_hardcoded_ports) ... ok
+test_allowed_locations_are_never_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_allowed_locations_are_never_flagged) ... ok
+test_compose_variable_default_is_allowed (tests.test_engine_hardcoded.ScannerContractTest.test_compose_variable_default_is_allowed) ... ok
+test_exemption_covers_only_its_symbol_and_path (tests.test_engine_hardcoded.ScannerContractTest.test_exemption_covers_only_its_symbol_and_path) ... ok
+test_integer_port_assignment_in_python_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_integer_port_assignment_in_python_is_flagged) ... ok
+test_planted_host_name_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_planted_host_name_is_flagged) ... ok
+test_planted_model_name_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_planted_model_name_is_flagged) ... ok
+test_planted_port_literal_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_planted_port_literal_is_flagged) ... ok
+test_port_token_boundaries (tests.test_engine_hardcoded.ScannerContractTest.test_port_token_boundaries) ... ok
+test_rule_two_is_python_only (tests.test_engine_hardcoded.ScannerContractTest.test_rule_two_is_python_only) ... ok
+test_shell_parameter_default_is_flagged_outside_compose (tests.test_engine_hardcoded.ScannerContractTest.test_shell_parameter_default_is_flagged_outside_compose) ... ok
+test_url_literal_in_python_is_flagged_even_if_undeclared (tests.test_engine_hardcoded.ScannerContractTest.test_url_literal_in_python_is_flagged_even_if_undeclared) ... ok
+test_hardcoded_scan_covers_every_text_file (tests.test_engine_hardcoded.ScannerWideningTest.test_hardcoded_scan_covers_every_text_file) ... ok
+test_n1_host_names_match_case_insensitively (tests.test_engine_hardcoded.ScannerWideningTest.test_n1_host_names_match_case_insensitively) ... ok
+test_n2_compose_files_of_any_name_keep_their_defaults (tests.test_engine_hardcoded.ScannerWideningTest.test_n2_compose_files_of_any_name_keep_their_defaults) ... ok
+test_n3_tuple_and_dict_ports_are_flagged (tests.test_engine_hardcoded.ScannerWideningTest.test_n3_tuple_and_dict_ports_are_flagged) ... ok
+test_n4_exemption_covers_only_the_assignment_line (tests.test_engine_hardcoded.ScannerWideningTest.test_n4_exemption_covers_only_the_assignment_line) ... ok
+test_n5_no_loopback_definition_includes_unspecified_address (tests.test_engine_hardcoded.ScannerWideningTest.test_n5_no_loopback_definition_includes_unspecified_address) ... ok
+test_complete_emits_llm_span_with_model_name (tests.test_engine_llm.ModelClientTracingTest.test_complete_emits_llm_span_with_model_name) ... ok
+test_denied_host_marks_llm_span_error (tests.test_engine_llm.ModelClientTracingTest.test_denied_host_marks_llm_span_error) ... ok
+test_engine_dependencies_declared (tests.test_engine_quality.DependenciesTest.test_engine_dependencies_declared) ... ok
+test_pin_equivalence_check_accepts_uv_forms_and_rejects_others (tests.test_engine_quality.PythonPinTest.test_pin_equivalence_check_accepts_uv_forms_and_rejects_others)
+Guards the checker above: uv's forms pass, looser/other pins fail. ... ok
+test_python_pinned_to_312 (tests.test_engine_quality.PythonPinTest.test_python_pinned_to_312) ... ok
+test_test_sh_enforces_coverage_and_mypy (tests.test_engine_quality.QualityGateTest.test_test_sh_enforces_coverage_and_mypy) ... ok
+test_tests_excluded_from_measurement (tests.test_engine_quality.QualityGateTest.test_tests_excluded_from_measurement) ... ok
+test_env_example_secret_placeholders_are_changeme (tests.test_engine_startup.PlaceholderSecretTest.test_env_example_secret_placeholders_are_changeme) ... ok
+test_placeholder_check_is_prefix_only (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_check_is_prefix_only) ... ok
+test_placeholder_check_reads_no_file (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_check_reads_no_file) ... ok
+test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) ... ok
+test_placeholder_hidden_by_invisible_characters_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_by_invisible_characters_is_refused) ... ok
+test_real_secrets_with_ordinary_characters_are_accepted (tests.test_engine_startup.PlaceholderSecretTest.test_real_secrets_with_ordinary_characters_are_accepted) ... ok
+test_startup_refuses_placeholder_secrets (tests.test_engine_startup.PlaceholderSecretTest.test_startup_refuses_placeholder_secrets) ... ok
+test_installed_provider_refusal_is_logged (tests.test_engine_startup.StartupCarryInTest.test_installed_provider_refusal_is_logged) ... ok
+test_startup_loads_settings_once (tests.test_engine_startup.StartupCarryInTest.test_startup_loads_settings_once) ... ok
+test_dev_auth_off_warns (tests.test_engine_startup.StartupRefusalTest.test_dev_auth_off_warns) ... ok
+test_dev_hide_flag_off_warns_naming_flag (tests.test_engine_startup.StartupRefusalTest.test_dev_hide_flag_off_warns_naming_flag) ... ok
+test_hide_flags_default_true_in_every_env (tests.test_engine_startup.StartupRefusalTest.test_hide_flags_default_true_in_every_env) ... ok
+test_startup_accepts_local_collectors (tests.test_engine_startup.StartupRefusalTest.test_startup_accepts_local_collectors) ... ok
+test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) ... ok
+test_startup_safe_defaults_pass (tests.test_engine_startup.StartupRefusalTest.test_startup_safe_defaults_pass) ... ok
+test_config_load_span_names_overridden_keys_not_values (tests.test_engine_startup.StartupTracingTest.test_config_load_span_names_overridden_keys_not_values) ... ok
+test_configure_tracing_attaches_nothing_for_non_local (tests.test_engine_startup.StartupTracingTest.test_configure_tracing_attaches_nothing_for_non_local) ... ok
+test_non_local_collector_gets_no_exporter (tests.test_engine_startup.StartupTracingTest.test_non_local_collector_gets_no_exporter) ... ok
+test_refused_startup_marks_spans (tests.test_engine_startup.StartupTracingTest.test_refused_startup_marks_spans) ... ok
+test_startup_is_traced (tests.test_engine_startup.StartupTracingTest.test_startup_is_traced) ... ok
+test_console_mode_never_builds_otlp (tests.test_engine_telemetry.ChooseExporterTest.test_console_mode_never_builds_otlp) ... ok
+test_off_gives_no_exporter (tests.test_engine_telemetry.ChooseExporterTest.test_off_gives_no_exporter) ... ok
+test_otlp_to_local_collector_builds_traces_url (tests.test_engine_telemetry.ChooseExporterTest.test_otlp_to_local_collector_builds_traces_url) ... ok
+test_otlp_to_non_local_collector_gives_none (tests.test_engine_telemetry.ChooseExporterTest.test_otlp_to_non_local_collector_gives_none) ... ok
+test_console_mode_installs_console_exporter_only (tests.test_engine_telemetry.ConfigureTracingTest.test_console_mode_installs_console_exporter_only) ... ok
+test_hide_defaults_apply_before_any_span (tests.test_engine_telemetry.ConfigureTracingTest.test_hide_defaults_apply_before_any_span)
+The YAML hide defaults (true) redact span values even when the ... ok
+test_local_collector_gets_an_otlp_exporter (tests.test_engine_telemetry.ConfigureTracingTest.test_local_collector_gets_an_otlp_exporter) ... ok
+test_non_local_collector_gets_no_exporter (tests.test_engine_telemetry.ConfigureTracingTest.test_non_local_collector_gets_no_exporter) ... ok
+test_engine_built_shapes_are_accepted (tests.test_engine_telemetry.InstalledProviderTest.test_engine_built_shapes_are_accepted) ... ok
+test_formerly_accepted_foreign_shapes_are_refused (tests.test_engine_telemetry.InstalledProviderTest.test_formerly_accepted_foreign_shapes_are_refused) ... ok
+test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) ... ok
+test_refused_startup_installs_nothing (tests.test_engine_telemetry.StartupWiringTest.test_refused_startup_installs_nothing) ... ok
+test_refused_startup_leaves_hide_env_untouched (tests.test_engine_telemetry.StartupWiringTest.test_refused_startup_leaves_hide_env_untouched) ... ok
+test_startup_installs_the_exporter (tests.test_engine_telemetry.StartupWiringTest.test_startup_installs_the_exporter) ... ok
+test_chosen_exporter_dials_only_the_collector (tests.test_engine_tracing_guard.ExporterIgnoresProxyEnvTest.test_chosen_exporter_dials_only_the_collector) ... Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+ok
+test_chosen_exporter_session_does_not_trust_env (tests.test_engine_tracing_guard.ExporterIgnoresProxyEnvTest.test_chosen_exporter_session_does_not_trust_env) ... ok
+test_configured_exporter_dials_only_the_collector (tests.test_engine_tracing_guard.ExporterIgnoresProxyEnvTest.test_configured_exporter_dials_only_the_collector) ... Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+ok
+test_custom_span_processor_is_refused (tests.test_engine_tracing_guard.InstalledProviderGuardTest.test_custom_span_processor_is_refused) ... ok
+test_local_otlp_that_ignores_proxy_env_is_refused_unless_engine_built (tests.test_engine_tracing_guard.InstalledProviderGuardTest.test_local_otlp_that_ignores_proxy_env_is_refused_unless_engine_built) ... ok
+test_local_otlp_that_trusts_proxy_env_is_refused (tests.test_engine_tracing_guard.InstalledProviderGuardTest.test_local_otlp_that_trusts_proxy_env_is_refused) ... ok
+test_local_otlp_with_unreachable_session_is_refused (tests.test_engine_tracing_guard.InstalledProviderGuardTest.test_local_otlp_with_unreachable_session_is_refused) ... ok
+test_non_sdk_provider_is_refused (tests.test_engine_tracing_guard.InstalledProviderGuardTest.test_non_sdk_provider_is_refused) ... ok
+test_proxy_provider_is_accepted (tests.test_engine_tracing_guard.InstalledProviderGuardTest.test_proxy_provider_is_accepted) ... ok
+test_build_provider_does_not_install_globally (tests.test_engine_tracing_guard.ProviderIdentityTest.test_build_provider_does_not_install_globally) ... ok
+test_build_provider_resource_and_processors (tests.test_engine_tracing_guard.ProviderIdentityTest.test_build_provider_resource_and_processors) ... ok
+test_configure_tracing_installs_an_engine_built_provider (tests.test_engine_tracing_guard.ProviderIdentityTest.test_configure_tracing_installs_an_engine_built_provider) ... ok
+test_configure_tracing_refuses_if_its_provider_is_not_the_global (tests.test_engine_tracing_guard.ProviderIdentityTest.test_configure_tracing_refuses_if_its_provider_is_not_the_global) ... ok
+test_decoy_equal_to_an_engine_provider_is_refused (tests.test_engine_tracing_guard.ProviderIdentityTest.test_decoy_equal_to_an_engine_provider_is_refused) ... telemetry.tracing: an installed tracer provider was not built by the engine
+ok
+test_engine_built_provider_is_accepted (tests.test_engine_tracing_guard.ProviderIdentityTest.test_engine_built_provider_is_accepted) ... auth.enabled: authentication is disabled
+auth.enabled: authentication is disabled
+ok
+test_private_attribute_inspection_removed (tests.test_engine_tracing_guard.ProviderIdentityTest.test_private_attribute_inspection_removed) ... ok
+test_provider_not_built_by_engine_is_refused (tests.test_engine_tracing_guard.ProviderIdentityTest.test_provider_not_built_by_engine_is_refused) ... telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+ok
+test_support_provider_is_engine_built (tests.test_engine_tracing_guard.ProviderIdentityTest.test_support_provider_is_engine_built) ... ok
+test_provider_resource_carries_openinference_project_name (tests.test_engine_tracing_guard.ResourceProjectNameTest.test_provider_resource_carries_openinference_project_name) ... ok
+test_control_spans_do_reach_an_accepted_provider (tests.test_engine_tracing_guard.StartupVerifiesProviderFirstTest.test_control_spans_do_reach_an_accepted_provider) ... ok
+test_foreign_provider_gets_no_span_with_refusing_settings (tests.test_engine_tracing_guard.StartupVerifiesProviderFirstTest.test_foreign_provider_gets_no_span_with_refusing_settings) ... telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+ok
+test_foreign_provider_refused_before_any_span_passing_settings (tests.test_engine_tracing_guard.StartupVerifiesProviderFirstTest.test_foreign_provider_refused_before_any_span_passing_settings) ... telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+ok
+test_coverage_data_file_is_under_tmp (tests.test_gate_least_privilege.CoverageAndUvEnvTest.test_coverage_data_file_is_under_tmp) ... ok
+test_coverage_erase_removes_stale_parallel_data (tests.test_gate_least_privilege.CoverageAndUvEnvTest.test_coverage_erase_removes_stale_parallel_data) ... ok
+test_coverage_file_env_is_never_set (tests.test_gate_least_privilege.CoverageAndUvEnvTest.test_coverage_file_env_is_never_set) ... ok
+test_uv_no_sync_is_never_set (tests.test_gate_least_privilege.CoverageAndUvEnvTest.test_uv_no_sync_is_never_set) ... ok
+test_gate_services_drop_capabilities_and_new_privileges (tests.test_gate_least_privilege.GateServicesComposeTest.test_gate_services_drop_capabilities_and_new_privileges) ... ok
+test_gate_services_env_for_read_only_repo (tests.test_gate_least_privilege.GateServicesComposeTest.test_gate_services_env_for_read_only_repo) ... ok
+test_gate_services_mount_repo_read_only (tests.test_gate_least_privilege.GateServicesComposeTest.test_gate_services_mount_repo_read_only) ... ok
+test_gate_services_run_as_uid_10001 (tests.test_gate_least_privilege.GateServicesComposeTest.test_gate_services_run_as_uid_10001) ... ok
+test_gate_services_run_as_uid_and_gid_10001 (tests.test_gate_least_privilege.GateServicesComposeTest.test_gate_services_run_as_uid_and_gid_10001) ... ok
+test_gate_services_tmp_is_exec_tmpfs (tests.test_gate_least_privilege.GateServicesComposeTest.test_gate_services_tmp_is_exec_tmpfs) ... ok
+test_gate_services_use_long_syntax_read_only_checkout (tests.test_gate_least_privilege.GateServicesComposeTest.test_gate_services_use_long_syntax_read_only_checkout) ... ok
+test_gates_it_is_non_root_with_read_only_repo (tests.test_gate_least_privilege.GateServicesComposeTest.test_gates_it_is_non_root_with_read_only_repo) ... ok
+test_gates_mask_overlay_holds_only_the_env_mask (tests.test_gate_least_privilege.GateServicesComposeTest.test_gates_mask_overlay_holds_only_the_env_mask) ... ok
+test_gates_image_venv_and_uv_cache_owned_by_gate_user (tests.test_gate_least_privilege.GatesImageOwnershipTest.test_gates_image_venv_and_uv_cache_owned_by_gate_user) ... ok
+test_ci_actions_pinned_to_sha (tests.test_harness_followups.CiWorkflowTest.test_ci_actions_pinned_to_sha) ... ok
+test_ci_checkout_does_not_persist_credentials (tests.test_harness_followups.CiWorkflowTest.test_ci_checkout_does_not_persist_credentials) ... ok
+test_ci_runner_pinned (tests.test_harness_followups.CiWorkflowTest.test_ci_runner_pinned) ... ok
+test_coverage_erase_precedes_first_run_and_spares_checkout (tests.test_harness_followups.IntegrationRunsOnceTest.test_coverage_erase_precedes_first_run_and_spares_checkout) ... ok
+test_helper_package_without_tests_passes (tests.test_harness_followups.IntegrationRunsOnceTest.test_helper_package_without_tests_passes) ... ok
+test_integration_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_integration_tests_run_once) ... ok
+test_nested_dir_without_init_fails_loudly (tests.test_harness_followups.IntegrationRunsOnceTest.test_nested_dir_without_init_fails_loudly) ... ok
+test_no_top_level_unit_tests_fails_clearly (tests.test_harness_followups.IntegrationRunsOnceTest.test_no_top_level_unit_tests_fails_clearly) ... ok
+test_package_with_only_nested_tests_runs_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_package_with_only_nested_tests_runs_once) ... ok
+test_quality_gates_always_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_always_run) ... ok
+test_quality_gates_run_with_pyproject (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_run_with_pyproject) ... ok
+test_test_dir_without_init_fails_loudly (tests.test_harness_followups.IntegrationRunsOnceTest.test_test_dir_without_init_fails_loudly) ... ok
+test_unit_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_tests_run_once) ... ok
+test_failing_smoke_fails_full (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_failing_smoke_fails_full) ... ok
+test_failing_test_sh_still_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_failing_test_sh_still_fails) ... ok
+test_no_ran_line_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_no_ran_line_fails) ... ok
+test_ran_some_tests_passes (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_ran_some_tests_passes) ... ok
+test_ran_without_sentinel_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_ran_without_sentinel_fails) ... ok
+test_ran_zero_tests_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_ran_zero_tests_fails) ... ok
+test_sentinel_followed_by_large_output_passes (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_followed_by_large_output_passes) ... ok
+test_sentinel_line_is_the_exact_full_line (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_line_is_the_exact_full_line) ... ok
+test_sentinel_name_in_other_module_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_name_in_other_module_fails) ... ok
+test_sentinel_text_in_skip_reason_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_text_in_skip_reason_fails) ... ok
+test_sentinel_with_ran_passes (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_with_ran_passes) ... ok
+test_agent_model_tiers (tests.test_harness_port.AgentPortTest.test_agent_model_tiers) ... ok
+test_agent_port_preserves_constraints (tests.test_harness_port.AgentPortTest.test_agent_port_preserves_constraints) ... ok
+test_copilot_agents_kept (tests.test_harness_port.AgentPortTest.test_copilot_agents_kept) ... ok
+test_every_role_ported (tests.test_harness_port.AgentPortTest.test_every_role_ported) ... ok
+test_judges_cannot_edit (tests.test_harness_port.AgentPortTest.test_judges_cannot_edit) ... ok
+test_non_producer_body_identical_to_copilot (tests.test_harness_port.AgentPortTest.test_non_producer_body_identical_to_copilot) ... ok
+test_producer_sections_identical_except_verification_steps (tests.test_harness_port.AgentPortTest.test_producer_sections_identical_except_verification_steps) ... ok
+test_ci_only_and_generated_artifacts_listed (tests.test_harness_port.ClaudeMdTest.test_ci_only_and_generated_artifacts_listed) ... ok
+test_claude_md_imports_agents (tests.test_harness_port.ClaudeMdTest.test_claude_md_imports_agents) ... ok
+test_delivery_rules_present (tests.test_harness_port.ClaudeMdTest.test_delivery_rules_present) ... ok
+test_done_check_in_handoff_readme (tests.test_harness_port.HandoffCapTest.test_done_check_in_handoff_readme) ... ok
+test_handoff_line_cap (tests.test_harness_port.HandoffCapTest.test_handoff_line_cap) ... ok
+test_hook_wired_on_bash (tests.test_harness_port.SettingsTest.test_hook_wired_on_bash) ... ok
+test_ci_calls_verify_only (tests.test_harness_port.VerificationEntryPointTest.test_ci_calls_verify_only) ... ok
+test_depth_table_identical_everywhere (tests.test_harness_port.VerificationEntryPointTest.test_depth_table_identical_everywhere) ... ok
+test_evidence_contract_present (tests.test_harness_port.VerificationEntryPointTest.test_evidence_contract_present) ... ok
+test_gate_scripts_use_locked (tests.test_harness_port.VerificationEntryPointTest.test_gate_scripts_use_locked) ... ok
+test_no_stray_verification_commands (tests.test_harness_port.VerificationEntryPointTest.test_no_stray_verification_commands) ... ok
+test_tester_owns_contradictions (tests.test_harness_port.VerificationEntryPointTest.test_tester_owns_contradictions) ... ok
+test_verify_sh_has_no_inlined_commands (tests.test_harness_port.VerificationEntryPointTest.test_verify_sh_has_no_inlined_commands) ... ok
+test_appends_one_line_and_emits_session_span (tests.test_log_event.LogEventTest.test_appends_one_line_and_emits_session_span) ... ok
+test_failed_gate_marks_span_error (tests.test_log_event.LogEventTest.test_failed_gate_marks_span_error) ... ok
+test_format_line_keeps_one_line_per_entry (tests.test_log_event.LogEventTest.test_format_line_keeps_one_line_per_entry) ... ok
+test_rejects_unknown_role (tests.test_log_event.LogEventTest.test_rejects_unknown_role) ... ok
+test_bundle_fails_below_free_disk (tests.test_offline_bundle.BundleScriptTest.test_bundle_fails_below_free_disk) ... 
+  test_bundle_fails_below_free_disk (tests.test_offline_bundle.BundleScriptTest.test_bundle_fails_below_free_disk) (free='3 GiB') ... FAIL
+  test_bundle_fails_below_free_disk (tests.test_offline_bundle.BundleScriptTest.test_bundle_fails_below_free_disk) (free='10 GiB less 1 KiB (rounds down)') ... FAIL
+test_bundle_fails_when_compose_config_fails (tests.test_offline_bundle.BundleScriptTest.test_bundle_fails_when_compose_config_fails) ... FAIL
+test_bundle_fails_when_pinned_digest_unresolved (tests.test_offline_bundle.BundleScriptTest.test_bundle_fails_when_pinned_digest_unresolved) ... ok
+test_bundle_has_no_wheels (tests.test_offline_bundle.BundleScriptTest.test_bundle_has_no_wheels) ... ok
+test_bundle_holds_stack_images_only (tests.test_offline_bundle.BundleScriptTest.test_bundle_holds_stack_images_only) ... ok
+test_bundle_json_marks_dirty_tree (tests.test_offline_bundle.BundleScriptTest.test_bundle_json_marks_dirty_tree) ... ok
+test_bundle_json_names_every_image (tests.test_offline_bundle.BundleScriptTest.test_bundle_json_names_every_image) ... ok
+test_bundle_json_records_file_ref_as (tests.test_offline_bundle.BundleScriptTest.test_bundle_json_records_file_ref_as) ... ok
+test_bundle_lists_every_compose_image (tests.test_offline_bundle.BundleScriptTest.test_bundle_lists_every_compose_image) ... ok
+test_bundle_manifest_covers_every_file (tests.test_offline_bundle.BundleScriptTest.test_bundle_manifest_covers_every_file) ... ok
+test_bundle_prints_manifest_hash (tests.test_offline_bundle.BundleScriptTest.test_bundle_prints_manifest_hash) ... ok
+test_bundle_reads_available_column_when_filesystem_has_spaces (tests.test_offline_bundle.BundleScriptTest.test_bundle_reads_available_column_when_filesystem_has_spaces) ... 
+  test_bundle_reads_available_column_when_filesystem_has_spaces (tests.test_offline_bundle.BundleScriptTest.test_bundle_reads_available_column_when_filesystem_has_spaces) (free="3 GiB on '/dev/my disk', 97 GiB used") ... FAIL
+test_bundle_refuses_unfit_image_or_out (tests.test_offline_bundle.BundleScriptTest.test_bundle_refuses_unfit_image_or_out) ... ok
+test_bundle_refuses_unpinned_third_party_image (tests.test_offline_bundle.BundleScriptTest.test_bundle_refuses_unpinned_third_party_image) ... ok
+test_bundle_saves_one_tar_per_image_without_platform (tests.test_offline_bundle.BundleScriptTest.test_bundle_saves_one_tar_per_image_without_platform) ... ok
+test_bundle_ships_tracked_config_only (tests.test_offline_bundle.BundleScriptTest.test_bundle_ships_tracked_config_only) ... FAIL
+test_bundle_writes_manifest_hash_beside_bundle (tests.test_offline_bundle.BundleScriptTest.test_bundle_writes_manifest_hash_beside_bundle) ... FAIL
+test_dist_is_gitignored (tests.test_offline_bundle.DistIgnoredTest.test_dist_is_gitignored) ... ok
+test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) ... 
+  test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='symlink') ... FAIL
+  test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='unlisted_dir_symlink') ... FAIL
+  test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='unlisted_file_symlink') ... FAIL
+  test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='reserved_name_con') ... FAIL
+  test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='reserved_name_nul_ext') ... FAIL
+  test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='reserved_name_com1_mixed_case') ... FAIL
+  test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='reserved_name_lpt9') ... FAIL
+  test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='trailing_dot') ... FAIL
+  test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='unlisted_fifo') ... FAIL
+test_install_does_not_follow_target_planted_during_load (tests.test_offline_bundle.InstallPs1Test.test_install_does_not_follow_target_planted_during_load) ... FAIL
+test_install_fails_when_compose_config_fails (tests.test_offline_bundle.InstallPs1Test.test_install_fails_when_compose_config_fails) ... ok
+test_install_fails_when_service_has_no_bundle_entry (tests.test_offline_bundle.InstallPs1Test.test_install_fails_when_service_has_no_bundle_entry) ... ok
+test_install_leaves_no_partial_target (tests.test_offline_bundle.InstallPs1Test.test_install_leaves_no_partial_target) ... FAIL
+test_install_loads_and_copies_verified_bytes_only (tests.test_offline_bundle.InstallPs1Test.test_install_loads_and_copies_verified_bytes_only) ... 
+  test_install_loads_and_copies_verified_bytes_only (tests.test_offline_bundle.InstallPs1Test.test_install_loads_and_copies_verified_bytes_only) (case='bundle_changed_after_info') ... FAIL
+  test_install_loads_and_copies_verified_bytes_only (tests.test_offline_bundle.InstallPs1Test.test_install_loads_and_copies_verified_bytes_only) (case='hardlink_partner_changed_after_info') ... FAIL
+test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails) ... 
+  test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_con') ... FAIL
+  test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_nul_ext') ... FAIL
+  test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_com1_mixed_case') ... FAIL
+  test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_lpt9') ... FAIL
+  test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails) (case='trailing_dot') ... FAIL
+test_install_override_maps_every_service_to_as_tag (tests.test_offline_bundle.InstallPs1Test.test_install_override_maps_every_service_to_as_tag) ... ok
+test_install_prints_and_checks_manifest_hash (tests.test_offline_bundle.InstallPs1Test.test_install_prints_and_checks_manifest_hash) ... 
+  test_install_prints_and_checks_manifest_hash (tests.test_offline_bundle.InstallPs1Test.test_install_prints_and_checks_manifest_hash) (case='prints_accepted_hash') ... FAIL
+  test_install_prints_and_checks_manifest_hash (tests.test_offline_bundle.InstallPs1Test.test_install_prints_and_checks_manifest_hash) (case='expect_manifest_matches') ... FAIL
+  test_install_prints_and_checks_manifest_hash (tests.test_offline_bundle.InstallPs1Test.test_install_prints_and_checks_manifest_hash) (case='expect_manifest_mismatch') ... FAIL
+test_install_refuses_case_variant_paths (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_case_variant_paths) ... 
+  test_install_refuses_case_variant_paths (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_case_variant_paths) (case='unlisted_case_variant_of_listed_file') ... FAIL
+  test_install_refuses_case_variant_paths (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_case_variant_paths) (case='manifest_lists_case_variant_of_present_file') ... FAIL
+  test_install_refuses_case_variant_paths (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_case_variant_paths) (case='two_listed_paths_equal_ignoring_case') ... FAIL
+test_install_refuses_manifest_link_or_fifo (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_manifest_link_or_fifo) ... 
+  test_install_refuses_manifest_link_or_fifo (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_manifest_link_or_fifo) (case='manifest_over_1_mib') ... FAIL
+  test_install_refuses_manifest_link_or_fifo (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_manifest_link_or_fifo) (case='manifest_is_fifo') ... FAIL
+test_install_refuses_unfit_target_or_daemon (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_unfit_target_or_daemon) ... 
+  test_install_refuses_unfit_target_or_daemon (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_unfit_target_or_daemon) (case='target_is_link_to_empty_dir') ... FAIL
+  test_install_refuses_unfit_target_or_daemon (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_unfit_target_or_daemon) (case='first_party_as_not_from_git_sha') ... FAIL
+test_install_rejects_bundle_json_missing_field (tests.test_offline_bundle.InstallPs1Test.test_install_rejects_bundle_json_missing_field) ... ok
+test_install_tags_loaded_image_as_bundle_name (tests.test_offline_bundle.InstallPs1Test.test_install_tags_loaded_image_as_bundle_name) ... 
+  test_install_tags_loaded_image_as_bundle_name (tests.test_offline_bundle.InstallPs1Test.test_install_tags_loaded_image_as_bundle_name) (load='name_line_is_not_as') ... FAIL
+test_install_writes_override_0644 (tests.test_offline_bundle.InstallPs1Test.test_install_writes_override_0644) ... FAIL
+test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) ... 
+  test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='reserved_name_con') ... FAIL
+  test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='reserved_name_nul_ext') ... FAIL
+  test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='reserved_name_com1_mixed_case') ... FAIL
+  test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='reserved_name_lpt9') ... FAIL
+  test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='trailing_dot') ... FAIL
+test_install_does_not_follow_target_planted_during_load (tests.test_offline_bundle.InstallShTest.test_install_does_not_follow_target_planted_during_load) ... FAIL
+test_install_fails_when_compose_config_fails (tests.test_offline_bundle.InstallShTest.test_install_fails_when_compose_config_fails) ... FAIL
+test_install_fails_when_service_has_no_bundle_entry (tests.test_offline_bundle.InstallShTest.test_install_fails_when_service_has_no_bundle_entry) ... ok
+test_install_leaves_no_partial_target (tests.test_offline_bundle.InstallShTest.test_install_leaves_no_partial_target) ... FAIL
+test_install_loads_and_copies_verified_bytes_only (tests.test_offline_bundle.InstallShTest.test_install_loads_and_copies_verified_bytes_only) ... 
+  test_install_loads_and_copies_verified_bytes_only (tests.test_offline_bundle.InstallShTest.test_install_loads_and_copies_verified_bytes_only) (case='bundle_changed_after_info') ... FAIL
+  test_install_loads_and_copies_verified_bytes_only (tests.test_offline_bundle.InstallShTest.test_install_loads_and_copies_verified_bytes_only) (case='hardlink_partner_changed_after_info') ... FAIL
+test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) ... 
+  test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_con') ... FAIL
+  test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_nul_ext') ... FAIL
+  test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_com1_mixed_case') ... FAIL
+  test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_lpt9') ... FAIL
+  test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='trailing_dot') ... FAIL
+test_install_override_maps_every_service_to_as_tag (tests.test_offline_bundle.InstallShTest.test_install_override_maps_every_service_to_as_tag) ... ok
+test_install_prints_and_checks_manifest_hash (tests.test_offline_bundle.InstallShTest.test_install_prints_and_checks_manifest_hash) ... 
+  test_install_prints_and_checks_manifest_hash (tests.test_offline_bundle.InstallShTest.test_install_prints_and_checks_manifest_hash) (case='prints_accepted_hash') ... FAIL
+  test_install_prints_and_checks_manifest_hash (tests.test_offline_bundle.InstallShTest.test_install_prints_and_checks_manifest_hash) (case='expect_manifest_matches') ... FAIL
+  test_install_prints_and_checks_manifest_hash (tests.test_offline_bundle.InstallShTest.test_install_prints_and_checks_manifest_hash) (case='expect_manifest_mismatch') ... FAIL
+test_install_refuses_case_variant_paths (tests.test_offline_bundle.InstallShTest.test_install_refuses_case_variant_paths) ... ok
+test_install_refuses_manifest_link_or_fifo (tests.test_offline_bundle.InstallShTest.test_install_refuses_manifest_link_or_fifo) ... 
+  test_install_refuses_manifest_link_or_fifo (tests.test_offline_bundle.InstallShTest.test_install_refuses_manifest_link_or_fifo) (case='manifest_is_symlink') ... FAIL
+  test_install_refuses_manifest_link_or_fifo (tests.test_offline_bundle.InstallShTest.test_install_refuses_manifest_link_or_fifo) (case='manifest_over_1_mib') ... FAIL
+  test_install_refuses_manifest_link_or_fifo (tests.test_offline_bundle.InstallShTest.test_install_refuses_manifest_link_or_fifo) (case='manifest_is_fifo') ... FAIL
+test_install_refuses_unfit_target_or_daemon (tests.test_offline_bundle.InstallShTest.test_install_refuses_unfit_target_or_daemon) ... 
+  test_install_refuses_unfit_target_or_daemon (tests.test_offline_bundle.InstallShTest.test_install_refuses_unfit_target_or_daemon) (case='first_party_as_not_from_git_sha') ... FAIL
+test_install_rejects_bundle_json_missing_field (tests.test_offline_bundle.InstallShTest.test_install_rejects_bundle_json_missing_field) ... ok
+test_install_tags_loaded_image_as_bundle_name (tests.test_offline_bundle.InstallShTest.test_install_tags_loaded_image_as_bundle_name) ... 
+  test_install_tags_loaded_image_as_bundle_name (tests.test_offline_bundle.InstallShTest.test_install_tags_loaded_image_as_bundle_name) (load='name_line_is_not_as') ... FAIL
+test_install_writes_override_0644 (tests.test_offline_bundle.InstallShTest.test_install_writes_override_0644) ... FAIL
+test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok
+test_bind_address_setting_defaults_to_loopback (tests.test_stack_bind_address.EngineRefusalTest.test_bind_address_setting_defaults_to_loopback) ... ok
+test_bind_address_that_is_not_an_address_is_a_config_error (tests.test_stack_bind_address.EngineRefusalTest.test_bind_address_that_is_not_an_address_is_a_config_error) ... ok
+test_dev_non_loopback_bind_address_warns (tests.test_stack_bind_address.EngineRefusalTest.test_dev_non_loopback_bind_address_warns) ... ok
+test_ipv6_bind_address_is_a_config_error_in_every_env (tests.test_stack_bind_address.EngineRefusalTest.test_ipv6_bind_address_is_a_config_error_in_every_env) ... ok
+test_loopback_or_unset_bind_address_passes_everywhere (tests.test_stack_bind_address.EngineRefusalTest.test_loopback_or_unset_bind_address_passes_everywhere) ... ok
+test_startup_refusal_is_recorded_on_the_span (tests.test_stack_bind_address.EngineRefusalTest.test_startup_refusal_is_recorded_on_the_span) ... ok
+test_startup_refuses_non_loopback_bind_address (tests.test_stack_bind_address.EngineRefusalTest.test_startup_refuses_non_loopback_bind_address) ... ok
+test_gateway_bind_check_allows_loopback_and_warns_in_dev (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_bind_check_allows_loopback_and_warns_in_dev) ... ok
+test_gateway_bind_check_refuses_non_loopback (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_bind_check_refuses_non_loopback) ... ok
+test_gateway_bind_check_rejects_non_ipv4_in_every_env (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_bind_check_rejects_non_ipv4_in_every_env) ... ok
+test_gateway_image_runs_bind_check (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_image_runs_bind_check) ... ok
+test_launch_ps1_checks_bind_address (tests.test_stack_bind_address.LaunchScriptTest.test_launch_ps1_checks_bind_address) ... ok
+test_launch_sh_allows_loopback_and_warns_in_dev (tests.test_stack_bind_address.LaunchScriptTest.test_launch_sh_allows_loopback_and_warns_in_dev) ... ok
+test_launch_sh_creates_env_from_example (tests.test_stack_bind_address.LaunchScriptTest.test_launch_sh_creates_env_from_example) ... ok
+test_launch_sh_refuses_non_loopback_bind_address (tests.test_stack_bind_address.LaunchScriptTest.test_launch_sh_refuses_non_loopback_bind_address) ... ok
+test_teardown_keeps_volumes_unless_asked (tests.test_stack_bind_address.TeardownScriptTest.test_teardown_keeps_volumes_unless_asked) ... ok
+test_agents_md_hook_wording_not_absolute (tests.test_stack_carry_ins.AgentsHookWordingTest.test_agents_md_hook_wording_not_absolute) ... ok
+test_pyproject_name_matches_project_name (tests.test_stack_carry_ins.ProjectNameTest.test_pyproject_name_matches_project_name) ... ok
+test_quickstart_names_existing_scripts (tests.test_stack_carry_ins.QuickstartTest.test_quickstart_names_existing_scripts) ... ok
+test_test_sh_header_matches_integration_mechanism (tests.test_stack_carry_ins.TestShHeaderTest.test_test_sh_header_matches_integration_mechanism) ... ok
+test_env_example_not_in_app_image (tests.test_stack_compose.ImageContentsTest.test_env_example_not_in_app_image) ... ok
+test_gates_it_internal_only_and_no_socket (tests.test_stack_compose.NetworksTest.test_gates_it_internal_only_and_no_socket) ... ok
+test_no_docker_socket_mounted (tests.test_stack_compose.NetworksTest.test_no_docker_socket_mounted) ... ok
+test_only_gateway_on_edge_network (tests.test_stack_compose.NetworksTest.test_only_gateway_on_edge_network) ... ok
+test_stack_services_have_no_bind_mounts (tests.test_stack_compose.NetworksTest.test_stack_services_have_no_bind_mounts) ... ok
+test_compose_phoenix_listen_port_matches_config (tests.test_stack_compose.PhoenixPortTest.test_compose_phoenix_listen_port_matches_config) ... ok
+test_docs_name_current_phoenix_port (tests.test_stack_compose.PhoenixPortTest.test_docs_name_current_phoenix_port) ... ok
+test_harness_default_collector_matches_env_example (tests.test_stack_compose.PhoenixPortTest.test_harness_default_collector_matches_env_example) ... ok
+test_compose_defaults_match_env_example (tests.test_stack_compose.PortsTest.test_compose_defaults_match_env_example) ... ok
+test_compose_passes_bind_address_to_app (tests.test_stack_compose.PortsTest.test_compose_passes_bind_address_to_app) ... ok
+test_env_example_bind_address_is_loopback (tests.test_stack_compose.PortsTest.test_env_example_bind_address_is_loopback) ... ok
+test_env_example_ports_in_range_and_unique (tests.test_stack_compose.PortsTest.test_env_example_ports_in_range_and_unique) ... ok
+test_published_ports_use_bind_address (tests.test_stack_compose.PortsTest.test_published_ports_use_bind_address) ... ok
+test_backend_bridge_gateway_is_isolated (tests.test_stack_compose.Rework1ComposeTest.test_backend_bridge_gateway_is_isolated) ... ok
+test_gateway_gets_the_egress_allowlist (tests.test_stack_compose.Rework1ComposeTest.test_gateway_gets_the_egress_allowlist) ... ok
+test_no_ke_env_default_anywhere_in_compose (tests.test_stack_compose.Rework1ComposeTest.test_no_ke_env_default_anywhere_in_compose) ... ok
+test_quickstart_requires_docker_engine_28 (tests.test_stack_compose.Rework1ComposeTest.test_quickstart_requires_docker_engine_28) ... ok
+test_worker_command_runs_engine_startup (tests.test_stack_compose.Rework1ComposeTest.test_worker_command_runs_engine_startup) ... ok
+test_backend_has_no_ipam_subnet_or_ip_range (tests.test_stack_compose.Rework2ComposeTest.test_backend_has_no_ipam_subnet_or_ip_range) ... ok
+test_no_fixed_address_pool_anywhere (tests.test_stack_compose.Rework2ComposeTest.test_no_fixed_address_pool_anywhere) ... ok
+test_scripts_create_no_fixed_subnet (tests.test_stack_compose.Rework2ComposeTest.test_scripts_create_no_fixed_subnet) ... ok
+test_compose_images_pinned_by_digest (tests.test_stack_compose.ServicesTest.test_compose_images_pinned_by_digest) ... ok
+test_compose_services_have_restart_policy (tests.test_stack_compose.ServicesTest.test_compose_services_have_restart_policy) ... ok
+test_dockerfiles_pin_base_images_by_digest (tests.test_stack_compose.ServicesTest.test_dockerfiles_pin_base_images_by_digest) ... ok
+test_api_main_is_not_exempt_from_coverage (tests.test_stack_entrypoints.ApiEntrypointTest.test_api_main_is_not_exempt_from_coverage) ... ok
+test_api_main_refused_setting_never_serves (tests.test_stack_entrypoints.ApiEntrypointTest.test_api_main_refused_setting_never_serves) ... ok
+test_api_main_runs_startup_before_serving (tests.test_stack_entrypoints.ApiEntrypointTest.test_api_main_runs_startup_before_serving) ... ok
+test_every_substituted_variable_refuses_an_injection (tests.test_stack_entrypoints.GatewayPortCheckTest.test_every_substituted_variable_refuses_an_injection) ... ok
+test_gateway_accepts_valid_ports (tests.test_stack_entrypoints.GatewayPortCheckTest.test_gateway_accepts_valid_ports) ... ok
+test_gateway_refuses_every_bad_or_injected_port (tests.test_stack_entrypoints.GatewayPortCheckTest.test_gateway_refuses_every_bad_or_injected_port) ... ok
+test_local_resolvers_is_overwritten_by_the_image (tests.test_stack_entrypoints.GatewayPortCheckTest.test_local_resolvers_is_overwritten_by_the_image) ... ok
+test_template_variables_are_known (tests.test_stack_entrypoints.GatewayPortCheckTest.test_template_variables_are_known) ... ok
+test_every_gateway_check_is_installed_as_an_entrypoint_script (tests.test_stack_entrypoints.GatewayUpstreamCheckTest.test_every_gateway_check_is_installed_as_an_entrypoint_script) ... ok
+test_gateway_accepts_empty_or_allowlisted_upstream (tests.test_stack_entrypoints.GatewayUpstreamCheckTest.test_gateway_accepts_empty_or_allowlisted_upstream) ... ok
+test_gateway_checks_run_before_envsubst (tests.test_stack_entrypoints.GatewayUpstreamCheckTest.test_gateway_checks_run_before_envsubst) ... ok
+test_gateway_refuses_upstream_not_on_allowlist_or_malformed (tests.test_stack_entrypoints.GatewayUpstreamCheckTest.test_gateway_refuses_upstream_not_on_allowlist_or_malformed) ... ok
+test_worker_main_idles_after_a_passing_startup (tests.test_stack_entrypoints.WorkerEntrypointTest.test_worker_main_idles_after_a_passing_startup) ... ok
+test_worker_main_is_not_exempt_from_coverage (tests.test_stack_entrypoints.WorkerEntrypointTest.test_worker_main_is_not_exempt_from_coverage) ... ok
+test_worker_main_refused_setting_exits_before_idling (tests.test_stack_entrypoints.WorkerEntrypointTest.test_worker_main_refused_setting_exits_before_idling) ... ok
+test_worker_module_refuses_as_a_process (tests.test_stack_entrypoints.WorkerEntrypointTest.test_worker_module_refuses_as_a_process) ... ok
+test_env_value_caller_env_wins_even_when_empty (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_caller_env_wins_even_when_empty) ... ok
+test_env_value_config_failure_is_reported_without_content (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_config_failure_is_reported_without_content) ... ok
+test_env_value_reads_dotenv_only_through_compose_config (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_reads_dotenv_only_through_compose_config) ... ok
+test_env_value_refuses_a_json_escaped_value (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_refuses_a_json_escaped_value) ... ok
+test_env_value_refuses_any_other_name (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_refuses_any_other_name) ... ok
+test_env_value_trusts_compose_resolution (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_trusts_compose_resolution) ... ok
+test_env_value_without_dotenv_is_empty (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_without_dotenv_is_empty) ... ok
+test_verify_full_model_keys_both_or_neither (tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_model_keys_both_or_neither) ... ok
+test_verify_full_passes_model_upstream_keys (tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_passes_model_upstream_keys) ... ok
+test_verify_full_stops_before_build_when_the_helper_fails (tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_stops_before_build_when_the_helper_fails) ... ok
+test_verify_full_takes_no_caller_ke_key_but_the_model_keys (tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_takes_no_caller_ke_key_but_the_model_keys) ... ok
+test_verify_full_takes_no_other_env_key (tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_takes_no_other_env_key) ... ok
+test_model_tests_skip_not_configured (tests.test_stack_model_skip.ModelSkipHelperTest.test_model_tests_skip_not_configured) ... ok
+test_model_tests_skip_with_named_reason (tests.test_stack_model_skip.ModelSkipHelperTest.test_model_tests_skip_with_named_reason) ... ok
+test_real_probe_of_a_closed_port_skips_as_refused (tests.test_stack_model_skip.ModelSkipHelperTest.test_real_probe_of_a_closed_port_skips_as_refused) ... ok
+test_unmarked_test_fails_rather_than_skips (tests.test_stack_model_skip.ModelSkipHelperTest.test_unmarked_test_fails_rather_than_skips) ... ok
+test_no_model_calls_in_unit_suite (tests.test_stack_model_skip.UnitSuiteModelTest.test_no_model_calls_in_unit_suite) ... ok
+test_readyz_model_host_not_configured_without_base_url (tests.test_stack_readiness.ModelHostNotConfiguredTest.test_readyz_model_host_not_configured_without_base_url) ... ok
+test_readyz_model_host_not_configured_without_upstream (tests.test_stack_readiness.ModelHostNotConfiguredTest.test_readyz_model_host_not_configured_without_upstream) ... ok
+test_readyz_model_host_probed_when_upstream_set (tests.test_stack_readiness.ModelHostNotConfiguredTest.test_readyz_model_host_probed_when_upstream_set) ... ok
+test_model_probe_http_errors_are_raised_and_classified (tests.test_stack_readiness.ModelProbeTest.test_model_probe_http_errors_are_raised_and_classified) ... ok
+test_model_probe_off_list_host_is_denied_before_any_socket (tests.test_stack_readiness.ModelProbeTest.test_model_probe_off_list_host_is_denied_before_any_socket) ... ok
+test_model_probe_passes_its_timeout (tests.test_stack_readiness.ModelProbeTest.test_model_probe_passes_its_timeout) ... ok
+test_readyz_reports_egress_denied_through_the_real_probe (tests.test_stack_readiness.ModelProbeTest.test_readyz_reports_egress_denied_through_the_real_probe) ... ok
+test_every_postgres_connect_in_engine_disables_gss_encryption (tests.test_stack_readiness.PostgresGssencTest.test_every_postgres_connect_in_engine_disables_gss_encryption) ... ok
+test_postgres_probe_disables_gss_encryption (tests.test_stack_readiness.PostgresGssencTest.test_postgres_probe_disables_gss_encryption) ... ok
+test_readiness_cli_api_unreachable (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_api_unreachable) ... ok
+test_readiness_cli_condition_met (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_met) ... ok
+test_readiness_cli_condition_never_met (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_never_met) ... ok
+test_readiness_cli_unknown_dependency_is_a_usage_error (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_unknown_dependency_is_a_usage_error) ... ok
+test_readyz_body_never_carries_error_text (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_body_never_carries_error_text) ... /opt/venv/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+ok
+test_readyz_is_traced (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_is_traced) ... ok
+test_readyz_ready_excludes_model_host (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_ready_excludes_model_host) ... ok
+test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) ... ok
+test_readyz_reason_vocabulary_for_store_drivers (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary_for_store_drivers) ... ok
+test_store_probe_classifies_closed_port (tests.test_stack_readiness.StoreProbeTest.test_store_probe_classifies_closed_port) ... ok
+test_gateway_only_external_upstream_is_model_upstream (tests.test_stack_ready_compose.GatewayUpstreamTest.test_gateway_only_external_upstream_is_model_upstream) ... ok
+test_gateway_upstream_scan_sees_a_planted_host (tests.test_stack_ready_compose.GatewayUpstreamTest.test_gateway_upstream_scan_sees_a_planted_host) ... ok
+test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) ... ok
+test_defaults_keep_null_base_urls (tests.test_stack_ready_compose.ModelWiringTest.test_defaults_keep_null_base_urls) ... ok
+test_gates_it_gets_model_upstream_and_store_passwords (tests.test_stack_ready_compose.ModelWiringTest.test_gates_it_gets_model_upstream_and_store_passwords) ... ok
+test_model_base_urls_come_from_one_anchor (tests.test_stack_ready_compose.ModelWiringTest.test_model_base_urls_come_from_one_anchor) ... ok
+test_compose_postgres_identity_matches_defaults (tests.test_stack_ready_compose.StoreIdentityTest.test_compose_postgres_identity_matches_defaults) ... ok
+test_ci_job_has_timeout (tests.test_stack_ready_docs.CiTimeoutTest.test_ci_job_has_timeout) ... ok
+test_claude_md_lists_verify_only_checks (tests.test_stack_ready_docs.ClaudeMdVerifyOnlyTest.test_claude_md_lists_verify_only_checks) ... ok
+test_launch_accepts_docker_engine_28_or_later (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_accepts_docker_engine_28_or_later) ... ok
+test_launch_accepts_loopback_and_warns_for_dev (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_accepts_loopback_and_warns_for_dev) ... ok
+test_launch_honours_every_dotenv_form_compose_honours (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_honours_every_dotenv_form_compose_honours) ... ok
+test_launch_never_falls_back_to_env_example (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_never_falls_back_to_env_example) ... ok
+test_launch_port_without_host_ip_warns_in_dev (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_port_without_host_ip_warns_in_dev) ... ok
+test_launch_refuses_docker_engine_below_28_or_unreadable (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_refuses_docker_engine_below_28_or_unreadable) ... ok
+test_launch_refuses_when_env_file_lacks_ke_env (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_refuses_when_env_file_lacks_ke_env) ... ok
+test_launch_resolves_with_the_env_file_compose_will_use (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_resolves_with_the_env_file_compose_will_use) ... ok
+test_launch_treats_a_port_without_host_ip_as_all_interfaces (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_treats_a_port_without_host_ip_as_all_interfaces) ... ok
+test_launch_trusts_compose_config_not_its_own_parser (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_trusts_compose_config_not_its_own_parser) ... ok
+test_launch_accepts_docker_engine_28_or_later (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_accepts_docker_engine_28_or_later) ... ok
+test_launch_accepts_loopback_and_warns_for_dev (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_accepts_loopback_and_warns_for_dev) ... ok
+test_launch_honours_every_dotenv_form_compose_honours (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_honours_every_dotenv_form_compose_honours) ... ok
+test_launch_never_falls_back_to_env_example (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_never_falls_back_to_env_example) ... ok
+test_launch_port_without_host_ip_warns_in_dev (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_port_without_host_ip_warns_in_dev) ... ok
+test_launch_refuses_docker_engine_below_28_or_unreadable (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_refuses_docker_engine_below_28_or_unreadable) ... ok
+test_launch_refuses_when_env_file_lacks_ke_env (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_refuses_when_env_file_lacks_ke_env) ... ok
+test_launch_resolves_with_the_env_file_compose_will_use (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_resolves_with_the_env_file_compose_will_use) ... ok
+test_launch_treats_a_port_without_host_ip_as_all_interfaces (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_treats_a_port_without_host_ip_as_all_interfaces) ... ok
+test_launch_trusts_compose_config_not_its_own_parser (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_trusts_compose_config_not_its_own_parser) ... ok
+test_gates_image_has_shellcheck_and_psscriptanalyzer (tests.test_stack_scripts.LintScriptTest.test_gates_image_has_shellcheck_and_psscriptanalyzer) ... ok
+test_lint_covers_every_shell_and_powershell_script (tests.test_stack_scripts.LintScriptTest.test_lint_covers_every_shell_and_powershell_script) ... ok
+test_lint_covers_upper_case_ps1_and_psm1 (tests.test_stack_scripts.LintScriptTest.test_lint_covers_upper_case_ps1_and_psm1) ... ok
+test_lint_fails_on_a_directory_symlink_holding_a_finding (tests.test_stack_scripts.LintScriptTest.test_lint_fails_on_a_directory_symlink_holding_a_finding) ... ok
+test_lint_fails_on_a_symlinked_script (tests.test_stack_scripts.LintScriptTest.test_lint_fails_on_a_symlinked_script) ... ok
+test_lint_fails_on_warning_severity_finding (tests.test_stack_scripts.LintScriptTest.test_lint_fails_on_warning_severity_finding) ... ok
+test_lint_fails_when_either_tool_fails (tests.test_stack_scripts.LintScriptTest.test_lint_fails_when_either_tool_fails) ... ok
+test_lint_powershell_command_text_is_fixed (tests.test_stack_scripts.LintScriptTest.test_lint_powershell_command_text_is_fixed) ... ok
+test_lint_ps1_lone_open_bracket_is_refused_before_pwsh (tests.test_stack_scripts.LintScriptTest.test_lint_ps1_lone_open_bracket_is_refused_before_pwsh) ... ok
+test_lint_ps1_wildcard_name_cannot_escape (tests.test_stack_scripts.LintScriptTest.test_lint_ps1_wildcard_name_cannot_escape) ... ok
+test_lint_refuses_a_symlink_to_a_clean_script (tests.test_stack_scripts.LintScriptTest.test_lint_refuses_a_symlink_to_a_clean_script) ... ok
+test_lint_refuses_any_symlink_under_scripts_and_docker (tests.test_stack_scripts.LintScriptTest.test_lint_refuses_any_symlink_under_scripts_and_docker) ... ok
+test_lint_runs_no_code_from_a_powershell_filename (tests.test_stack_scripts.LintScriptTest.test_lint_runs_no_code_from_a_powershell_filename) ... ok
+test_lint_shellchecks_upper_case_sh (tests.test_stack_scripts.LintScriptTest.test_lint_shellchecks_upper_case_sh) ... ok
+test_lint_with_real_tools_fails_on_a_planted_finding (tests.test_stack_scripts.LintScriptTest.test_lint_with_real_tools_fails_on_a_planted_finding) ... ok
+test_smoke_fails_when_backend_is_not_internal (tests.test_stack_scripts.SmokeBackendIsolatedTest.test_smoke_fails_when_backend_is_not_internal) ... ok
+test_smoke_fails_when_backend_is_not_isolated (tests.test_stack_scripts.SmokeBackendIsolatedTest.test_smoke_fails_when_backend_is_not_isolated) ... ok
+test_smoke_fails_when_backend_network_is_missing (tests.test_stack_scripts.SmokeBackendIsolatedTest.test_smoke_fails_when_backend_network_is_missing) ... ok
+test_smoke_inspects_its_own_backend_network (tests.test_stack_scripts.SmokeBackendIsolatedTest.test_smoke_inspects_its_own_backend_network) ... ok
+test_smoke_fails_when_a_port_is_not_loopback (tests.test_stack_scripts.SmokeResolvesWithoutEnvTest.test_smoke_fails_when_a_port_is_not_loopback) ... ok
+test_smoke_fails_when_resolution_fails (tests.test_stack_scripts.SmokeResolvesWithoutEnvTest.test_smoke_fails_when_resolution_fails) ... ok
+test_smoke_resolves_compose_without_env_file (tests.test_stack_scripts.SmokeResolvesWithoutEnvTest.test_smoke_resolves_compose_without_env_file) ... ok
+test_smoke_sh_contains_the_check (tests.test_stack_scripts.SmokeResolvesWithoutEnvTest.test_smoke_sh_contains_the_check) ... ok
+test_smoke_checks_every_service_healthy_after_the_store_is_back (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_checks_every_service_healthy_after_the_store_is_back) ... ok
+test_smoke_decides_it_launched_before_launching (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_decides_it_launched_before_launching) ... ok
+test_smoke_fails_naming_the_store_when_readiness_never_recovers (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_fails_naming_the_store_when_readiness_never_recovers) ... ok
+test_smoke_fails_when_a_service_is_unhealthy_after_the_restart (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_fails_when_a_service_is_unhealthy_after_the_restart) ... ok
+test_smoke_fails_when_each_store_step_fails (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_fails_when_each_store_step_fails) ... ok
+test_smoke_flag_without_a_running_project_fails_loudly (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_flag_without_a_running_project_fails_loudly) ... ok
+test_smoke_leaves_a_project_it_did_not_launch (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_leaves_a_project_it_did_not_launch) ... ok
+test_smoke_owned_by_verify_stops_and_restarts_without_teardown (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_owned_by_verify_stops_and_restarts_without_teardown) ... ok
+test_smoke_stops_and_restarts_a_store (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_stops_and_restarts_a_store) ... ok
+test_teardown_fails_when_a_listing_fails (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_fails_when_a_listing_fails) ... ok
+test_teardown_fails_without_a_resolved_project (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_fails_without_a_resolved_project) ... ok
+test_teardown_kept_volume_is_not_a_leftover_without_volumes (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_kept_volume_is_not_a_leftover_without_volumes) ... ok
+test_teardown_leaves_other_projects_alone (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_leaves_other_projects_alone) ... ok
+test_teardown_lists_with_the_project_compose_resolves (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_lists_with_the_project_compose_resolves) ... ok
+test_teardown_removes_or_reports_project_leftovers (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_removes_or_reports_project_leftovers) ... ok
+test_teardown_with_nothing_left_passes (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_with_nothing_left_passes) ... ok
+test_teardown_activates_no_profile (tests.test_stack_scripts.TeardownPs1ScopeTest.test_teardown_activates_no_profile) ... ok
+test_teardown_carries_project_and_env_file (tests.test_stack_scripts.TeardownPs1ScopeTest.test_teardown_carries_project_and_env_file) ... ok
+test_teardown_does_not_remove_orphans (tests.test_stack_scripts.TeardownPs1ScopeTest.test_teardown_does_not_remove_orphans) ... ok
+test_teardown_script_has_no_profile_wildcard (tests.test_stack_scripts.TeardownPs1ScopeTest.test_teardown_script_has_no_profile_wildcard) ... ok
+test_teardown_fails_when_a_listing_fails (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_fails_when_a_listing_fails) ... ok
+test_teardown_fails_without_a_resolved_project (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_fails_without_a_resolved_project) ... ok
+test_teardown_kept_volume_is_not_a_leftover_without_volumes (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_kept_volume_is_not_a_leftover_without_volumes) ... ok
+test_teardown_leaves_other_projects_alone (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_leaves_other_projects_alone) ... ok
+test_teardown_lists_with_the_project_compose_resolves (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_lists_with_the_project_compose_resolves) ... ok
+test_teardown_removes_or_reports_project_leftovers (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_removes_or_reports_project_leftovers) ... ok
+test_teardown_with_nothing_left_passes (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_with_nothing_left_passes) ... ok
+test_teardown_activates_no_profile (tests.test_stack_scripts.TeardownShScopeTest.test_teardown_activates_no_profile) ... ok
+test_teardown_carries_project_and_env_file (tests.test_stack_scripts.TeardownShScopeTest.test_teardown_carries_project_and_env_file) ... ok
+test_teardown_does_not_remove_orphans (tests.test_stack_scripts.TeardownShScopeTest.test_teardown_does_not_remove_orphans) ... ok
+test_teardown_script_has_no_profile_wildcard (tests.test_stack_scripts.TeardownShScopeTest.test_teardown_script_has_no_profile_wildcard) ... ok
+test_container_half_runs_lint_before_tests (tests.test_stack_scripts.VerifyCallsLintTest.test_container_half_runs_lint_before_tests) ... ok
+test_lint_failure_fails_verify (tests.test_stack_scripts.VerifyCallsLintTest.test_lint_failure_fails_verify) ... ok
+test_each_failing_stage_fails_verify_and_still_tears_down (tests.test_stack_scripts.VerifyHostHalfTest.test_each_failing_stage_fails_verify_and_still_tears_down) ... ok
+test_every_stage_sees_the_verify_overlay_and_nothing_publishes (tests.test_stack_scripts.VerifyHostHalfTest.test_every_stage_sees_the_verify_overlay_and_nothing_publishes) ... ok
+test_fast_runs_gates_without_publishing (tests.test_stack_scripts.VerifyHostHalfTest.test_fast_runs_gates_without_publishing) ... ok
+test_full_runs_stages_in_order_then_tears_down (tests.test_stack_scripts.VerifyHostHalfTest.test_full_runs_stages_in_order_then_tears_down) ... ok
+test_gates_compose_files_are_pinned_whatever_the_caller_sets (tests.test_stack_scripts.VerifyHostHalfTest.test_gates_compose_files_are_pinned_whatever_the_caller_sets) ... ok
+test_gates_mask_overlay_only_when_env_exists (tests.test_stack_scripts.VerifyHostHalfTest.test_gates_mask_overlay_only_when_env_exists) ... ok
+test_project_name_is_random_and_shared_by_every_stage (tests.test_stack_scripts.VerifyHostHalfTest.test_project_name_is_random_and_shared_by_every_stage) ... ok
+test_removing_the_gates_it_stage_is_caught (tests.test_stack_scripts.VerifyHostHalfTest.test_removing_the_gates_it_stage_is_caught) ... ok
+test_teardown_failure_after_green_run_is_reported (tests.test_stack_scripts.VerifyHostHalfTest.test_teardown_failure_after_green_run_is_reported) ... ok
+test_teardown_runs_on_interrupt (tests.test_stack_scripts.VerifyHostHalfTest.test_teardown_runs_on_interrupt) ... ok
+test_verify_fast_does_not_set_the_smoke_flag (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_fast_does_not_set_the_smoke_flag) ... ok
+test_verify_full_marks_its_own_project_for_smoke (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_marks_its_own_project_for_smoke) ... ok
+test_verify_overlay_resets_every_published_port (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_overlay_resets_every_published_port) ... ok
+test_compose_worker_waits_for_valkey (tests.test_stack_worker.WorkerComposeTest.test_compose_worker_waits_for_valkey) ... ok
+test_worker_command_unchanged (tests.test_stack_worker.WorkerComposeTest.test_worker_command_unchanged) ... ok
+test_worker_is_a_simple_worker (tests.test_stack_worker.WorkerJobAllowlistTest.test_worker_is_a_simple_worker) ... /opt/venv/lib/python3.12/site-packages/rq/worker/base.py:270: Warning: CLIENT LIST command not supported, setting ip_address to unknown
+  warnings.warn('CLIENT LIST command not supported, setting ip_address to unknown', Warning)
+ok
+test_worker_never_resolves_a_refused_jobs_function (tests.test_stack_worker.WorkerJobAllowlistTest.test_worker_never_resolves_a_refused_jobs_function) ... ok
+test_worker_refuses_a_job_outside_engine_jobs (tests.test_stack_worker.WorkerJobAllowlistTest.test_worker_refuses_a_job_outside_engine_jobs) ... ok
+test_worker_runs_a_job_in_engine_jobs (tests.test_stack_worker.WorkerJobAllowlistTest.test_worker_runs_a_job_in_engine_jobs) ... ok
+test_worker_uses_json_serializer (tests.test_stack_worker.WorkerJobAllowlistTest.test_worker_uses_json_serializer) ... ok
+test_every_job_is_traced (tests.test_stack_worker.WorkerJobTracingTest.test_every_job_is_traced) ... ok
+test_failing_job_marks_its_span (tests.test_stack_worker.WorkerJobTracingTest.test_failing_job_marks_its_span) ... ok
+test_worker_job_is_traced (tests.test_stack_worker.WorkerJobTracingTest.test_worker_job_is_traced) ... ok
+test_agent_loop_renders_as_nested_tree (tests.test_tracing.TracingTest.test_agent_loop_renders_as_nested_tree) ... ok
+test_chain_span_kind (tests.test_tracing.TracingTest.test_chain_span_kind) ... ok
+test_exception_marks_span_error_and_propagates (tests.test_tracing.TracingTest.test_exception_marks_span_error_and_propagates) ... ok
+test_hide_inputs_and_outputs_redacts_values (tests.test_tracing.TracingTest.test_hide_inputs_and_outputs_redacts_values) ... ok
+test_llm_records_model_and_token_usage (tests.test_tracing.TracingTest.test_llm_records_model_and_token_usage) ... ok
+test_retriever_records_parameterised_query_and_documents (tests.test_tracing.TracingTest.test_retriever_records_parameterised_query_and_documents) ... ok
+test_setup_tracing_is_idempotent (tests.test_tracing.TracingTest.test_setup_tracing_is_idempotent) ... ok
+test_spans_tolerate_non_recording_span (tests.test_tracing.TracingTest.test_spans_tolerate_non_recording_span)
+Regression (platform-config): with tracing off and no provider ... ok
+
+======================================================================
+FAIL: test_bundle_fails_below_free_disk (tests.test_offline_bundle.BundleScriptTest.test_bundle_fails_below_free_disk) (free='3 GiB')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 1155, in test_bundle_fails_below_free_disk
+    self.assertRegex(msg, r"need 10 GiB free", "names the required space in GiB")
+AssertionError: Regex didn't match: 'need 10 GiB free' not found in 'bundle: need 10 GB free on /tmp/tmpod11pddm/out1/bundle, found 3 GB\n' : names the required space in GiB
+
+======================================================================
+FAIL: test_bundle_fails_below_free_disk (tests.test_offline_bundle.BundleScriptTest.test_bundle_fails_below_free_disk) (free='10 GiB less 1 KiB (rounds down)')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 1163, in test_bundle_fails_below_free_disk
+    self.assertRegex(self._out(result), r"found 9 GiB\b",
+AssertionError: Regex didn't match: 'found 9 GiB\\b' not found in 'bundle: need 10 GB free on /tmp/tmpod11pddm/out2/bundle, found 9 GB\n' : the figure found is rounded down, never up to the floor (review N8)
+
+======================================================================
+FAIL: test_bundle_fails_when_compose_config_fails (tests.test_offline_bundle.BundleScriptTest.test_bundle_fails_when_compose_config_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 1226, in test_bundle_fails_when_compose_config_fails
+    self._assert_no_bundle(result, calls, out)
+  File "/work/tests/test_offline_bundle.py", line 984, in _assert_no_bundle
+    t.assertNotEqual(result.returncode, 0, "bundle.sh passed:\n" + self._out(result))
+AssertionError: 0 == 0 : bundle.sh passed:
+bundle written: /tmp/tmpw_gl2xg_/out1/bundle
+MANIFEST.sha256 sha256: 9f4ea4f827968b3877a8f178ac3de96e5f3270ac8968a48befbabdc98f1c34f5
+
+
+======================================================================
+FAIL: test_bundle_reads_available_column_when_filesystem_has_spaces (tests.test_offline_bundle.BundleScriptTest.test_bundle_reads_available_column_when_filesystem_has_spaces) (free="3 GiB on '/dev/my disk', 97 GiB used")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 1179, in test_bundle_reads_available_column_when_filesystem_has_spaces
+    self.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : bundled with 3 GiB free (read the Used column):
+bundle written: /tmp/tmp1gpsv0sg/out1/bundle
+MANIFEST.sha256 sha256: 142d61527a1d0fbfa021ca9f39c2726ca071128968d6f5e5f9d775ca7df2b1fc
+
+
+======================================================================
+FAIL: test_bundle_ships_tracked_config_only (tests.test_offline_bundle.BundleScriptTest.test_bundle_ships_tracked_config_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 1212, in test_bundle_ships_tracked_config_only
+    self.assertEqual(shipped, tracked, "app/config holds exactly `git ls-files config` (security L-7)")
+AssertionError: Lists differ: ['config/.env.local', 'config/defaults.yaml', 'config/stray.txt'] != ['config/defaults.yaml']
+
+First differing element 0:
+'config/.env.local'
+'config/defaults.yaml'
+
+First list contains 2 additional elements.
+First extra element 1:
+'config/defaults.yaml'
+
+- ['config/.env.local', 'config/defaults.yaml', 'config/stray.txt']
++ ['config/defaults.yaml'] : app/config holds exactly `git ls-files config` (security L-7)
+
+======================================================================
+FAIL: test_bundle_writes_manifest_hash_beside_bundle (tests.test_offline_bundle.BundleScriptTest.test_bundle_writes_manifest_hash_beside_bundle)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 1194, in test_bundle_writes_manifest_hash_beside_bundle
+    self.assertTrue(record.is_file(), f"bundle.sh writes {record.name} beside (not inside) the bundle")
+AssertionError: False is not true : bundle.sh writes bundle.manifest.sha256 beside (not inside) the bundle
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='symlink')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 361, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/work/tests/test_offline_bundle.py", line 253, in _assert_refused_before_docker
+    t.assertIn(name, self._out(result), "the refusal must name the bundle-relative path")
+AssertionError: 'app/alias.tar' not found in '\n\x1b[32;1mUnixMode  \x1b[0m\x1b[32;1m       User\x1b[0m\x1b[32;1m Group     \x1b[0m\x1b[32;1m    LastWriteTime\x1b[0m\x1b[32;1m         Size\x1b[0m\x1b[32;1m Name\x1b[0m\n\x1b[32;1m--------  \x1b[0m \x1b[32;1m      ----\x1b[0m \x1b[32;1m-----     \x1b[0m \x1b[32;1m   -------------\x1b[0m \x1b[32;1m        ----\x1b[0m \x1b[32;1m----\x1b[0m\n                                 10/19/2026 12:22              MANIFEST.sha256\n                                 10/19/2026 12:22              bundle.json\ninstall: manifest: not a regular file or directory (link): alias.tar\n' : the refusal must name the bundle-relative path
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='unlisted_dir_symlink')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 361, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/work/tests/test_offline_bundle.py", line 253, in _assert_refused_before_docker
+    t.assertIn(name, self._out(result), "the refusal must name the bundle-relative path")
+AssertionError: 'app/evil' not found in '\n\x1b[32;1mUnixMode  \x1b[0m\x1b[32;1m       User\x1b[0m\x1b[32;1m Group     \x1b[0m\x1b[32;1m    LastWriteTime\x1b[0m\x1b[32;1m         Size\x1b[0m\x1b[32;1m Name\x1b[0m\n\x1b[32;1m--------  \x1b[0m \x1b[32;1m      ----\x1b[0m \x1b[32;1m-----     \x1b[0m \x1b[32;1m   -------------\x1b[0m \x1b[32;1m        ----\x1b[0m \x1b[32;1m----\x1b[0m\n                                 10/19/2026 12:22              MANIFEST.sha256\n                                 10/19/2026 12:22              bundle.json\ninstall: manifest: not a regular file or directory (link): evil\n' : the refusal must name the bundle-relative path
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='unlisted_file_symlink')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 361, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/work/tests/test_offline_bundle.py", line 253, in _assert_refused_before_docker
+    t.assertIn(name, self._out(result), "the refusal must name the bundle-relative path")
+AssertionError: 'app/alias.sh' not found in '\n\x1b[32;1mUnixMode  \x1b[0m\x1b[32;1m       User\x1b[0m\x1b[32;1m Group     \x1b[0m\x1b[32;1m    LastWriteTime\x1b[0m\x1b[32;1m         Size\x1b[0m\x1b[32;1m Name\x1b[0m\n\x1b[32;1m--------  \x1b[0m \x1b[32;1m      ----\x1b[0m \x1b[32;1m-----     \x1b[0m \x1b[32;1m   -------------\x1b[0m \x1b[32;1m        ----\x1b[0m \x1b[32;1m----\x1b[0m\n                                 10/19/2026 12:22              MANIFEST.sha256\n                                 10/19/2026 12:22              bundle.json\ninstall: manifest: not a regular file or directory (link): alias.sh\n' : the refusal must name the bundle-relative path
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='reserved_name_con')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 361, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/work/tests/test_offline_bundle.py", line 248, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpwkmahe00/target13
+next: cd '/tmp/tmpwkmahe00/target13'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='reserved_name_nul_ext')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 361, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/work/tests/test_offline_bundle.py", line 248, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpwkmahe00/target14
+next: cd '/tmp/tmpwkmahe00/target14'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='reserved_name_com1_mixed_case')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 361, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/work/tests/test_offline_bundle.py", line 248, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpwkmahe00/target15
+next: cd '/tmp/tmpwkmahe00/target15'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='reserved_name_lpt9')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 361, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/work/tests/test_offline_bundle.py", line 248, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpwkmahe00/target16
+next: cd '/tmp/tmpwkmahe00/target16'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='trailing_dot')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 361, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/work/tests/test_offline_bundle.py", line 248, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpwkmahe00/target17
+next: cd '/tmp/tmpwkmahe00/target17'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) (case='unlisted_fifo')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 361, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/work/tests/test_offline_bundle.py", line 255, in _assert_refused_before_docker
+    t.assertRegex(self._out(result).lower(), rule,
+AssertionError: Regex didn't match: '\\bfifo\\b|named pipe' not found in 'install: manifest: file is not listed: app/pipe\n' : the refusal must name its rule (architecture §2.5 Install, review B1); a refusal by some other rule means the rule under test is not enforced
+
+======================================================================
+FAIL: test_install_does_not_follow_target_planted_during_load (tests.test_offline_bundle.InstallPs1Test.test_install_does_not_follow_target_planted_during_load)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 743, in test_install_does_not_follow_target_planted_during_load
+    t.assertEqual(list(elsewhere.iterdir()), [],
+AssertionError: Lists differ: [PosixPath('/tmp/tmpfql522j7/outside1/dock[181 chars]ts')] != []
+
+First list contains 4 additional elements.
+First extra element 0:
+PosixPath('/tmp/tmpfql522j7/outside1/docker-compose.override.yml')
+
++ []
+- [PosixPath('/tmp/tmpfql522j7/outside1/docker-compose.override.yml'),
+-  PosixPath('/tmp/tmpfql522j7/outside1/docker-compose.yml'),
+-  PosixPath('/tmp/tmpfql522j7/outside1/.env.example'),
+-  PosixPath('/tmp/tmpfql522j7/outside1/scripts')] : the installer followed a link planted at the target after its check:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpfql522j7/target1
+next: cd '/tmp/tmpfql522j7/target1'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_install_leaves_no_partial_target (tests.test_offline_bundle.InstallPs1Test.test_install_leaves_no_partial_target)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 765, in test_install_leaves_no_partial_target
+    t.assertFalse(target.exists() and any(target.iterdir()),
+AssertionError: True is not false : a failed install left a target with app/ but no override (security L-6): ['.env.example', 'docker-compose.override.yml', 'docker-compose.yml', 'scripts']
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+[31;1minstall.ps1: [31;1mException calling "WriteAllText" with "3" argument(s): "Access to the path '/tmp/tmp4h3t9jyy/target1/docker-compose.override.yml' is denied."[0m
+
+
+======================================================================
+FAIL: test_install_loads_and_copies_verified_bytes_only (tests.test_offline_bundle.InstallPs1Test.test_install_loads_and_copies_verified_bytes_only) (case='bundle_changed_after_info')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 723, in test_install_loads_and_copies_verified_bytes_only
+    self._assert_verified_bytes_only(bundle, target, hooks, evil)
+  File "/work/tests/test_offline_bundle.py", line 704, in _assert_verified_bytes_only
+    t.assertFalse([b for b, h in loaded if h == evil_sha],
+AssertionError: ['ke-app.tar'] is not false : docker load read bytes changed after the manifest check (security M-1):
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpxl5zbmhe/target1
+next: cd '/tmp/tmpxl5zbmhe/target1'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_install_loads_and_copies_verified_bytes_only (tests.test_offline_bundle.InstallPs1Test.test_install_loads_and_copies_verified_bytes_only) (case='hardlink_partner_changed_after_info')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 733, in test_install_loads_and_copies_verified_bytes_only
+    self._assert_verified_bytes_only(bundle, target, hooks, evil)
+  File "/work/tests/test_offline_bundle.py", line 704, in _assert_verified_bytes_only
+    t.assertFalse([b for b, h in loaded if h == evil_sha],
+AssertionError: ['ke-app.tar'] is not false : docker load read bytes changed after the manifest check (security M-1):
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpxl5zbmhe/target2
+next: cd '/tmp/tmpxl5zbmhe/target2'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_con')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 391, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpmcw3c7e5/target13
+next: cd '/tmp/tmpmcw3c7e5/target13'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_nul_ext')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 391, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpmcw3c7e5/target14
+next: cd '/tmp/tmpmcw3c7e5/target14'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_com1_mixed_case')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 391, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpmcw3c7e5/target15
+next: cd '/tmp/tmpmcw3c7e5/target15'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_lpt9')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 391, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpmcw3c7e5/target16
+next: cd '/tmp/tmpmcw3c7e5/target16'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails) (case='trailing_dot')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 391, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpmcw3c7e5/target17
+next: cd '/tmp/tmpmcw3c7e5/target17'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_install_prints_and_checks_manifest_hash (tests.test_offline_bundle.InstallPs1Test.test_install_prints_and_checks_manifest_hash) (case='prints_accepted_hash')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 778, in test_install_prints_and_checks_manifest_hash
+    t.assertIn(_sha256(bundle / "MANIFEST.sha256"), result.stdout,
+AssertionError: '8838602b2cecd402ec2122b2511e3de386a4ffceec40309746a745e3d23f9cd6' not found in "loaded ke-app.tar as ke-app:bundle-0123456789ab\nloaded postgres.tar as ke-vendor/postgres:053bbdccec5d\ninstalled to /tmp/tmp0ym7iqxf/target1\nnext: cd '/tmp/tmp0ym7iqxf/target1'; scripts\\launch.ps1\n" : the installer prints the sha256 of the manifest it accepted
+
+======================================================================
+FAIL: test_install_prints_and_checks_manifest_hash (tests.test_offline_bundle.InstallPs1Test.test_install_prints_and_checks_manifest_hash) (case='expect_manifest_matches')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 784, in test_install_prints_and_checks_manifest_hash
+    t.assertEqual(result.returncode, 0, self._out(result))
+AssertionError: 1 != 0 : [31;1minstall.ps1: [31;1mA parameter cannot be found that matches parameter name 'ExpectManifest'.[0m
+
+
+======================================================================
+FAIL: test_install_prints_and_checks_manifest_hash (tests.test_offline_bundle.InstallPs1Test.test_install_prints_and_checks_manifest_hash) (case='expect_manifest_mismatch')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 792, in test_install_prints_and_checks_manifest_hash
+    t.assertIn(sha, self._out(result), "the refusal prints the actual manifest hash")
+AssertionError: '8838602b2cecd402ec2122b2511e3de386a4ffceec40309746a745e3d23f9cd6' not found in "\x1b[31;1minstall.ps1: \x1b[31;1mA parameter cannot be found that matches parameter name 'ExpectManifest'.\x1b[0m\n" : the refusal prints the actual manifest hash
+
+======================================================================
+FAIL: test_install_refuses_case_variant_paths (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_case_variant_paths) (case='unlisted_case_variant_of_listed_file')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 668, in test_install_refuses_case_variant_paths
+    self._assert_refused_before_docker(result, log, target, "app/scripts/LAUNCH.sh", RULE_UNLISTED)
+  File "/work/tests/test_offline_bundle.py", line 248, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpnwj1o4pz/target1
+next: cd '/tmp/tmpnwj1o4pz/target1'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_install_refuses_case_variant_paths (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_case_variant_paths) (case='manifest_lists_case_variant_of_present_file')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 676, in test_install_refuses_case_variant_paths
+    self._assert_refused_before_docker(result, log, target, None,
+  File "/work/tests/test_offline_bundle.py", line 255, in _assert_refused_before_docker
+    t.assertRegex(self._out(result).lower(), rule,
+AssertionError: Regex didn't match: 'not listed|listed file is missing' not found in "\x1b[31;1mget-filehash: \x1b[0m/tmp/tmpnwj1o4pz/bundle2/install.ps1:113\x1b[0m\n\x1b[31;1m\x1b[0m\x1b[36;1mline |\x1b[0m\n\x1b[31;1m\x1b[0m\x1b[36;1m\x1b[36;1m 113 | \x1b[0m …  $actual = (\x1b[36;1mget-filehash -literalpath (join-path $root $path) -algori\x1b[0m …\x1b[0m\n\x1b[31;1m\x1b[0m\x1b[36;1m\x1b[36;1m\x1b[0m\x1b[36;1m\x1b[0m\x1b[36;1m     | \x1b[31;1m               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\x1b[0m\n\x1b[31;1m\x1b[0m\x1b[36;1m\x1b[36;1m\x1b[0m\x1b[36;1m\x1b[0m\x1b[36;1m\x1b[31;1m\x1b[31;1m\x1b[36;1m     | \x1b[31;1mcould not find a part of the path\x1b[0m\n\x1b[31;1m\x1b[0m\x1b[36;1m\x1b[36;1m\x1b[0m\x1b[36;1m\x1b[0m\x1b[36;1m\x1b[31;1m\x1b[31;1m\x1b[36;1m\x1b[31;1m\x1b[36;1m     | \x1b[31;1m'/tmp/tmpnwj1o4pz/bundle2/app/docker-compose.yml'.\x1b[0m\n" : the refusal must name its rule (architecture §2.5 Install, review B1); a refusal by some other rule means the rule under test is not enforced
+
+======================================================================
+FAIL: test_install_refuses_case_variant_paths (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_case_variant_paths) (case='two_listed_paths_equal_ignoring_case')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 686, in test_install_refuses_case_variant_paths
+    self._assert_refused_before_docker(result, log, target, None, RULE_CASE)
+  File "/work/tests/test_offline_bundle.py", line 255, in _assert_refused_before_docker
+    t.assertRegex(self._out(result).lower(), rule,
+AssertionError: Regex didn't match: '\\bcase\\b' not found in 'install: manifest: duplicate path: app/scripts/launch.sh\n' : the refusal must name its rule (architecture §2.5 Install, review B1); a refusal by some other rule means the rule under test is not enforced
+
+======================================================================
+FAIL: test_install_refuses_manifest_link_or_fifo (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_manifest_link_or_fifo) (case='manifest_over_1_mib')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 636, in test_install_refuses_manifest_link_or_fifo
+    self._assert_refused_before_docker(result, log, target, "MANIFEST.sha256", RULE_SIZE)
+  File "/work/tests/test_offline_bundle.py", line 253, in _assert_refused_before_docker
+    t.assertIn(name, self._out(result), "the refusal must name the bundle-relative path")
+AssertionError: 'MANIFEST.sha256' not found in 'install: manifest: listed file is missing: app/pad/00000000.txt\n' : the refusal must name the bundle-relative path
+
+======================================================================
+FAIL: test_install_refuses_manifest_link_or_fifo (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_manifest_link_or_fifo) (case='manifest_is_fifo')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 231, in _install
+    result = subprocess.run(cmd, env=run_env, cwd=bundle,
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/subprocess.py", line 550, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/subprocess.py", line 1209, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/subprocess.py", line 2116, in _communicate
+    self._check_timeout(endtime, orig_timeout, stdout, stderr)
+  File "/usr/local/lib/python3.12/subprocess.py", line 1253, in _check_timeout
+    raise TimeoutExpired(
+subprocess.TimeoutExpired: Command '['pwsh', '-NoProfile', '-NonInteractive', '-File', '/tmp/tmpby91w__n/bundle4/install.ps1', '-Target', '/tmp/tmpby91w__n/target4']' timed out after 30 seconds
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 652, in test_install_refuses_manifest_link_or_fifo
+    result, _, log = self._install(bundle, target, timeout=30)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_offline_bundle.py", line 235, in _install
+    t.fail(f"the installer hung for {timeout}s (it read something it should have refused "
+AssertionError: the installer hung for 30s (it read something it should have refused first, e.g. a fifo): Command '['pwsh', '-NoProfile', '-NonInteractive', '-File', '/tmp/tmpby91w__n/bundle4/install.ps1', '-Target', '/tmp/tmpby91w__n/target4']' timed out after 30 seconds
+
+======================================================================
+FAIL: test_install_refuses_unfit_target_or_daemon (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_unfit_target_or_daemon) (case='target_is_link_to_empty_dir')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 447, in test_install_refuses_unfit_target_or_daemon
+    t.assertNotEqual(result.returncode, 0, "installed through a linked target:\n" + self._out(result))
+AssertionError: 0 == 0 : installed through a linked target:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpr60bqv_2/target3
+next: cd '/tmp/tmpr60bqv_2/target3'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_install_refuses_unfit_target_or_daemon (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_unfit_target_or_daemon) (case='first_party_as_not_from_git_sha')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 464, in test_install_refuses_unfit_target_or_daemon
+    t.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : accepted a first-party `as` whose sha12 is not the header git_sha:
+loaded ke-app.tar as ke-app:bundle-ffffffffffff
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpr60bqv_2/target5
+next: cd '/tmp/tmpr60bqv_2/target5'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_install_tags_loaded_image_as_bundle_name (tests.test_offline_bundle.InstallPs1Test.test_install_tags_loaded_image_as_bundle_name) (load='name_line_is_not_as')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 561, in test_install_tags_loaded_image_as_bundle_name
+    t.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : accepted a tar that loaded as ke-app:loaded-by-fake, not ke-app:bundle-0123456789ab:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp_3mc_4dg/target4
+next: cd '/tmp/tmp_3mc_4dg/target4'; scripts\launch.ps1
+
+
+======================================================================
+FAIL: test_install_writes_override_0644 (tests.test_offline_bundle.InstallPs1Test.test_install_writes_override_0644)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 809, in test_install_writes_override_0644
+    t.assertEqual(oct(mode), oct(0o644),
+AssertionError: '0o600' != '0o644'
+- 0o600
++ 0o644
+ : docker-compose.override.yml is written 0644 explicitly (security I-2)
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='reserved_name_con')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 361, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/work/tests/test_offline_bundle.py", line 248, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpc33xwhz_/target13
+next: cd /tmp/tmpc33xwhz_/target13 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='reserved_name_nul_ext')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 361, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/work/tests/test_offline_bundle.py", line 248, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpc33xwhz_/target14
+next: cd /tmp/tmpc33xwhz_/target14 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='reserved_name_com1_mixed_case')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 361, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/work/tests/test_offline_bundle.py", line 248, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpc33xwhz_/target15
+next: cd /tmp/tmpc33xwhz_/target15 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='reserved_name_lpt9')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 361, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/work/tests/test_offline_bundle.py", line 248, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpc33xwhz_/target16
+next: cd /tmp/tmpc33xwhz_/target16 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) (case='trailing_dot')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 361, in test_bundle_manifest_rejects_tamper
+    self._assert_refused_before_docker(result, log, target, name, rule)
+  File "/work/tests/test_offline_bundle.py", line 248, in _assert_refused_before_docker
+    t.assertNotEqual(result.returncode, 0, "the installer accepted a tampered bundle:\n"
+AssertionError: 0 == 0 : the installer accepted a tampered bundle:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpc33xwhz_/target17
+next: cd /tmp/tmpc33xwhz_/target17 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_does_not_follow_target_planted_during_load (tests.test_offline_bundle.InstallShTest.test_install_does_not_follow_target_planted_during_load)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 743, in test_install_does_not_follow_target_planted_during_load
+    t.assertEqual(list(elsewhere.iterdir()), [],
+AssertionError: Lists differ: [PosixPath('/tmp/tmpyz1kuv3l/outside1/dock[181 chars]ts')] != []
+
+First list contains 4 additional elements.
+First extra element 0:
+PosixPath('/tmp/tmpyz1kuv3l/outside1/docker-compose.override.yml')
+
++ []
+- [PosixPath('/tmp/tmpyz1kuv3l/outside1/docker-compose.override.yml'),
+-  PosixPath('/tmp/tmpyz1kuv3l/outside1/.env.example'),
+-  PosixPath('/tmp/tmpyz1kuv3l/outside1/docker-compose.yml'),
+-  PosixPath('/tmp/tmpyz1kuv3l/outside1/scripts')] : the installer followed a link planted at the target after its check:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpyz1kuv3l/target1
+next: cd /tmp/tmpyz1kuv3l/target1 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_fails_when_compose_config_fails (tests.test_offline_bundle.InstallShTest.test_install_fails_when_compose_config_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 613, in test_install_fails_when_compose_config_fails
+    t.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : `compose config --services` printed the services and exited 3, and the installer carried on:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp_zhvsvt9/target1
+next: cd /tmp/tmp_zhvsvt9/target1 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_leaves_no_partial_target (tests.test_offline_bundle.InstallShTest.test_install_leaves_no_partial_target)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 765, in test_install_leaves_no_partial_target
+    t.assertFalse(target.exists() and any(target.iterdir()),
+AssertionError: True is not false : a failed install left a target with app/ but no override (security L-6): ['.env.example', 'docker-compose.override.yml', 'docker-compose.yml', 'scripts']
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+/tmp/tmp2fq9wvtk/bundle1/install.sh: line 228: /tmp/tmp2fq9wvtk/target1/docker-compose.override.yml: Is a directory
+
+
+======================================================================
+FAIL: test_install_loads_and_copies_verified_bytes_only (tests.test_offline_bundle.InstallShTest.test_install_loads_and_copies_verified_bytes_only) (case='bundle_changed_after_info')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 723, in test_install_loads_and_copies_verified_bytes_only
+    self._assert_verified_bytes_only(bundle, target, hooks, evil)
+  File "/work/tests/test_offline_bundle.py", line 704, in _assert_verified_bytes_only
+    t.assertFalse([b for b, h in loaded if h == evil_sha],
+AssertionError: ['ke-app.tar'] is not false : docker load read bytes changed after the manifest check (security M-1):
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp663x3ihu/target1
+next: cd /tmp/tmp663x3ihu/target1 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_loads_and_copies_verified_bytes_only (tests.test_offline_bundle.InstallShTest.test_install_loads_and_copies_verified_bytes_only) (case='hardlink_partner_changed_after_info')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 733, in test_install_loads_and_copies_verified_bytes_only
+    self._assert_verified_bytes_only(bundle, target, hooks, evil)
+  File "/work/tests/test_offline_bundle.py", line 704, in _assert_verified_bytes_only
+    t.assertFalse([b for b, h in loaded if h == evil_sha],
+AssertionError: ['ke-app.tar'] is not false : docker load read bytes changed after the manifest check (security M-1):
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp663x3ihu/target2
+next: cd /tmp/tmp663x3ihu/target2 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_con')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 391, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpb6k77gl3/target13
+next: cd /tmp/tmpb6k77gl3/target13 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_nul_ext')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 391, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpb6k77gl3/target14
+next: cd /tmp/tmpb6k77gl3/target14 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_com1_mixed_case')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 391, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpb6k77gl3/target15
+next: cd /tmp/tmpb6k77gl3/target15 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='reserved_name_lpt9')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 391, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpb6k77gl3/target16
+next: cd /tmp/tmpb6k77gl3/target16 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) (case='trailing_dot')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 391, in test_install_loads_nothing_when_manifest_fails
+    t.assertNotEqual(result.returncode, 0, self._out(result))
+AssertionError: 0 == 0 : loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpb6k77gl3/target17
+next: cd /tmp/tmpb6k77gl3/target17 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_prints_and_checks_manifest_hash (tests.test_offline_bundle.InstallShTest.test_install_prints_and_checks_manifest_hash) (case='prints_accepted_hash')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 778, in test_install_prints_and_checks_manifest_hash
+    t.assertIn(_sha256(bundle / "MANIFEST.sha256"), result.stdout,
+AssertionError: '8838602b2cecd402ec2122b2511e3de386a4ffceec40309746a745e3d23f9cd6' not found in 'loaded ke-app.tar as ke-app:bundle-0123456789ab\nloaded postgres.tar as ke-vendor/postgres:053bbdccec5d\ninstalled to /tmp/tmp013wz9m5/target1\nnext: cd /tmp/tmp013wz9m5/target1 && scripts/launch.sh\n' : the installer prints the sha256 of the manifest it accepted
+
+======================================================================
+FAIL: test_install_prints_and_checks_manifest_hash (tests.test_offline_bundle.InstallShTest.test_install_prints_and_checks_manifest_hash) (case='expect_manifest_matches')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 784, in test_install_prints_and_checks_manifest_hash
+    t.assertEqual(result.returncode, 0, self._out(result))
+AssertionError: 2 != 0 : usage: bash install.sh <target>
+
+
+======================================================================
+FAIL: test_install_prints_and_checks_manifest_hash (tests.test_offline_bundle.InstallShTest.test_install_prints_and_checks_manifest_hash) (case='expect_manifest_mismatch')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 791, in test_install_prints_and_checks_manifest_hash
+    self._assert_refused_before_docker(result, log, target, None, r"expect")
+  File "/work/tests/test_offline_bundle.py", line 255, in _assert_refused_before_docker
+    t.assertRegex(self._out(result).lower(), rule,
+AssertionError: Regex didn't match: 'expect' not found in 'usage: bash install.sh <target>\n' : the refusal must name its rule (architecture §2.5 Install, review B1); a refusal by some other rule means the rule under test is not enforced
+
+======================================================================
+FAIL: test_install_refuses_manifest_link_or_fifo (tests.test_offline_bundle.InstallShTest.test_install_refuses_manifest_link_or_fifo) (case='manifest_is_symlink')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 629, in test_install_refuses_manifest_link_or_fifo
+    self._assert_refused_before_docker(result, log, target, "MANIFEST.sha256", RULE_LINK)
+  File "/work/tests/test_offline_bundle.py", line 255, in _assert_refused_before_docker
+    t.assertRegex(self._out(result).lower(), rule,
+AssertionError: Regex didn't match: '\\b(?:sym)?link\\b|reparse point|junction' not found in 'install: manifest: manifest.sha256 is missing\n' : the refusal must name its rule (architecture §2.5 Install, review B1); a refusal by some other rule means the rule under test is not enforced
+
+======================================================================
+FAIL: test_install_refuses_manifest_link_or_fifo (tests.test_offline_bundle.InstallShTest.test_install_refuses_manifest_link_or_fifo) (case='manifest_over_1_mib')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 636, in test_install_refuses_manifest_link_or_fifo
+    self._assert_refused_before_docker(result, log, target, "MANIFEST.sha256", RULE_SIZE)
+  File "/work/tests/test_offline_bundle.py", line 253, in _assert_refused_before_docker
+    t.assertIn(name, self._out(result), "the refusal must name the bundle-relative path")
+AssertionError: 'MANIFEST.sha256' not found in 'install: manifest: listed file is missing: app/pad/00000000.txt\n' : the refusal must name the bundle-relative path
+
+======================================================================
+FAIL: test_install_refuses_manifest_link_or_fifo (tests.test_offline_bundle.InstallShTest.test_install_refuses_manifest_link_or_fifo) (case='manifest_is_fifo')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 653, in test_install_refuses_manifest_link_or_fifo
+    self._assert_refused_before_docker(result, log, target, "MANIFEST.sha256", RULE_FIFO)
+  File "/work/tests/test_offline_bundle.py", line 255, in _assert_refused_before_docker
+    t.assertRegex(self._out(result).lower(), rule,
+AssertionError: Regex didn't match: '\\bfifo\\b|named pipe' not found in 'install: manifest: manifest.sha256 is missing\n' : the refusal must name its rule (architecture §2.5 Install, review B1); a refusal by some other rule means the rule under test is not enforced
+
+======================================================================
+FAIL: test_install_refuses_unfit_target_or_daemon (tests.test_offline_bundle.InstallShTest.test_install_refuses_unfit_target_or_daemon) (case='first_party_as_not_from_git_sha')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 464, in test_install_refuses_unfit_target_or_daemon
+    t.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : accepted a first-party `as` whose sha12 is not the header git_sha:
+loaded ke-app.tar as ke-app:bundle-ffffffffffff
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmp1myp4im6/target5
+next: cd /tmp/tmp1myp4im6/target5 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_tags_loaded_image_as_bundle_name (tests.test_offline_bundle.InstallShTest.test_install_tags_loaded_image_as_bundle_name) (load='name_line_is_not_as')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 561, in test_install_tags_loaded_image_as_bundle_name
+    t.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : accepted a tar that loaded as ke-app:loaded-by-fake, not ke-app:bundle-0123456789ab:
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+installed to /tmp/tmpzeo9rhmq/target4
+next: cd /tmp/tmpzeo9rhmq/target4 && scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_writes_override_0644 (tests.test_offline_bundle.InstallShTest.test_install_writes_override_0644)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_offline_bundle.py", line 809, in test_install_writes_override_0644
+    t.assertEqual(oct(mode), oct(0o644),
+AssertionError: '0o600' != '0o644'
+- 0o600
++ 0o644
+ : docker-compose.override.yml is written 0644 explicitly (security I-2)
+
+----------------------------------------------------------------------
+Ran 483 tests in 199.882s
+
+FAILED (failures=60)
+verify fast: FAIL (test.sh exited non-zero)
+

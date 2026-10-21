@@ -1,0 +1,51 @@
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.86ms
+Installed 1 package in 1ms
+..F...............................
+======================================================================
+FAIL: test_failing_module_fails_run_and_other_modules_still_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_module_fails_run_and_other_modules_still_run)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 534, in test_failing_module_fails_run_and_other_modules_still_run
+    self.assertNotEqual(code, 0, output)
+AssertionError: 0 == 0 : test_fails (tests.test_fails.Fails.test_fails) ... FAIL
+
+======================================================================
+FAIL: test_fails (tests.test_fails.Fails.test_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/tmpz1t7tamn/project/tests/test_fails.py", line 4, in test_fails
+    self.fail('planted failure')
+AssertionError: planted failure
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (failures=1)
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+
+
+----------------------------------------------------------------------
+Ran 34 tests in 45.157s
+
+FAILED (failures=1)
+rc=1

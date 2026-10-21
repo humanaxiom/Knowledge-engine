@@ -1,0 +1,19 @@
+# tester, unit-2 rework 3 (2026-10-19): can a Windows parent carry a GenericWrite/GenericAll ACE
+# that applies to the directory itself? Host: Windows 11, NTFS, pwsh 7.6, scratch dirs only.
+
+## 1. icacls /grant *S-1-5-11:(GW) on a fresh dir
+NT AUTHORITY\Authenticated Users:(W,Rc)
+FileSystemRights read back by .NET: S-1-5-11 0x120116 (WriteData|AppendData|WriteEA|WriteAttributes|ReadControl|Synchronize), IsInherited False
+
+## 2. DirectorySecurity SDDL 'D:(A;;GW;;;AU)' + FileSystemAclExtensions.SetAccessControl
+read back: D:AI(A;;FW;;;AU)(A;OICIID;FA;;;SY)(A;OICIID;FA;;;BA)(A;OICIID;FA;;;<me>)
+S-1-5-11 0x120116 False
+
+## 3. advapi32 SetFileSecurityW with 'D:(A;;GW;;;AU)(A;;GA;;;WD)(A;OICI;FA;;;OW)'
+SetFileSecurity 1 0
+icacls: NT AUTHORITY\Authenticated Users:(W,Rc)   Everyone:(F)   OWNER RIGHTS:(OI)(CI)(F)
+
+Conclusion: NTFS maps generic rights to specific rights on every ACE that applies to the object
+itself; a raw GENERIC_* bit survives only on an inherit-only ACE, which Write-SharedParentWarning
+skips by design. A behavioural Windows test cannot build the N1 case, so
+test_install_ps1_counts_generic_write_rights pins architecture §2.5's rule on the source.

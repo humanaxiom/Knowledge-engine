@@ -1,0 +1,18 @@
+== mutant
+install: cannot scan /tmp/tmp3lu2mb0f/decoy1/bundle1
+/tmp/tmp3lu2mb0f/decoy1/bundle1
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.033s
+
+FAILED (failures=1)
+== original
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.72ms
+Installed 1 package in 1ms
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.224s
+
+OK

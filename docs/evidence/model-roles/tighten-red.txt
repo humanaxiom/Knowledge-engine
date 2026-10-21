@@ -1,0 +1,47 @@
+# model-roles tighten RED (tester, 2026-10-20): tightened ModelRolesSuiteTest vs. unchanged tests/integration/test_model_roles.py
+# Command (host venv, Windows): PYTHONDONTWRITEBYTECODE=1 .venv/Scripts/python.exe -m unittest tests.test_stack_model_skip.ModelRolesSuiteTest
+FFFFF..
+======================================================================
+FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (test='test_compose_role_answers', case='response names another model')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\repos\Knowledge-engine\tests\test_stack_model_skip.py", line 322, in _checked
+    self.assertNotIn(OTHER_MODEL, text, "a failure message echoes the response model")
+AssertionError: 'other-model-value-5e1a' unexpectedly found in 'Traceback (most recent call last):\n  File "C:\\repos\\Knowledge-engine\\tests\\integration\\test_model_roles.py", line 109, in test_compose_role_answers\n    self._chat_role_answers("compose")\n  File "C:\\repos\\Knowledge-engine\\tests\\integration\\test_model_roles.py", line 73, in _chat_role_answers\n    self.assertEqual(result.get("model"), client.model,\nAssertionError: \'other-model-value-5e1a\' != \'qwen3.5:latest\'\n- other-model-value-5e1a\n+ qwen3.5:latest\n : compose: the response names a different model\n' : a failure message echoes the response model
+
+======================================================================
+FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (test='test_rewrite_role_answers', case='response names another model')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\repos\Knowledge-engine\tests\test_stack_model_skip.py", line 322, in _checked
+    self.assertNotIn(OTHER_MODEL, text, "a failure message echoes the response model")
+AssertionError: 'other-model-value-5e1a' unexpectedly found in 'Traceback (most recent call last):\n  File "C:\\repos\\Knowledge-engine\\tests\\integration\\test_model_roles.py", line 114, in test_rewrite_role_answers\n    self._chat_role_answers("rewrite")\n  File "C:\\repos\\Knowledge-engine\\tests\\integration\\test_model_roles.py", line 73, in _chat_role_answers\n    self.assertEqual(result.get("model"), client.model,\nAssertionError: \'other-model-value-5e1a\' != \'qwen3.5:latest\'\n- other-model-value-5e1a\n+ qwen3.5:latest\n : rewrite: the response names a different model\n' : a failure message echoes the response model
+
+======================================================================
+FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (test='test_audit_role_answers', case='response names another model')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\repos\Knowledge-engine\tests\test_stack_model_skip.py", line 322, in _checked
+    self.assertNotIn(OTHER_MODEL, text, "a failure message echoes the response model")
+AssertionError: 'other-model-value-5e1a' unexpectedly found in 'Traceback (most recent call last):\n  File "C:\\repos\\Knowledge-engine\\tests\\integration\\test_model_roles.py", line 119, in test_audit_role_answers\n    self._chat_role_answers("audit")\n  File "C:\\repos\\Knowledge-engine\\tests\\integration\\test_model_roles.py", line 73, in _chat_role_answers\n    self.assertEqual(result.get("model"), client.model,\nAssertionError: \'other-model-value-5e1a\' != \'gpt-oss:120b\'\n- other-model-value-5e1a\n+ gpt-oss:120b\n : audit: the response names a different model\n' : a failure message echoes the response model
+
+======================================================================
+FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (test='test_embed_role_answers', case='embed endpoint answers non-200')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\repos\Knowledge-engine\tests\test_stack_model_skip.py", line 321, in _checked
+    self.assertNotIn(HIDDEN, text, "a failure message echoes a response value")
+AssertionError: 'hidden-reasoning-value-3b8d' unexpectedly found in 'Traceback (most recent call last):\n  File "C:\\repos\\Knowledge-engine\\tests\\integration\\test_model_roles.py", line 97, in test_embed_role_answers\n    self.assertEqual(response.status_code, 200,\nAssertionError: 500 != 200 : embed (nomic-embed-text): <html>hidden-reasoning-value-3b8d</html>\n' : a failure message echoes a response value
+
+======================================================================
+FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='embed endpoint answers non-200')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\repos\Knowledge-engine\tests\test_stack_model_skip.py", line 383, in test_model_role_assertions_on_a_stub_host
+    self.assertIn("text/html", text)
+AssertionError: 'text/html' not found in 'Traceback (most recent call last):\n  File "C:\\repos\\Knowledge-engine\\tests\\integration\\test_model_roles.py", line 97, in test_embed_role_answers\n    self.assertEqual(response.status_code, 200,\nAssertionError: 500 != 200 : embed (nomic-embed-text): <html>hidden-reasoning-value-3b8d</html>\n'
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.233s
+
+FAILED (failures=5)

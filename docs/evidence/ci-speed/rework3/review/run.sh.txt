@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Reviewer rework-3 mutants; runs inside ke-gates image; /rv is the scratch tree (ro).
+F=tests.test_harness_followups
+T_TESTS="$F.IntegrationRunsOnceTest $F.UnitStageStaticTest"
+P_TESTS="tests.test_resource_probe $F.IntegrationRunsOnceTest.test_resource_lines_bracket_the_unit_stage"
+H_TESTS="tests.test_block_main_commit_hook.ChildCpuHelperTest"
+run() { # dir tests...
+  local d="$1"; shift
+  ( cd "$d" && /opt/venv/bin/python -m unittest "$@" 2>&1 ) | grep -E '^(FAIL|ERROR):|^Ran |^OK|^FAILED' 
+}
+for name in "$@"; do
+  echo "===== $name ($(date -u +%H:%M:%S)) ====="
+  case "$name" in
+    control) run /rv/base $T_TESTS $P_TESTS $H_TESTS ;;
+    T*) diff /rv/base/scripts/test.sh /rv/mut/$name/scripts/test.sh; run /rv/mut/$name $T_TESTS ;;
+    P*) diff /rv/base/scripts/resource_probe.sh /rv/mut/$name/scripts/resource_probe.sh; run /rv/mut/$name $P_TESTS ;;
+    H*) diff /rv/base/tests/test_block_main_commit_hook.py /rv/mut/$name/tests/test_block_main_commit_hook.py; run /rv/mut/$name $H_TESTS ;;
+  esac
+done

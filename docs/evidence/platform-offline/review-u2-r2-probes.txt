@@ -1,0 +1,178 @@
+# review-u2-r2 raw probes (reviewer, 2026-10-19). Scratch copies of the working tree in ke-gates:latest, --network none, --cap-drop ALL, uid 10001. Repo never modified.
+
+## Baseline (scratch, no .git so ExecBitTest fails there by design)
+tests.test_offline_bundle: Ran 91, failures=1 (ExecBitTest: not a git repository), skipped=1 (Windows ACL)
+
+## Mutant diffs
+### i1
+352d351
+< [KeInterrupt]::Install()
+### ani
+331c331
+<     if ([KeInterrupt]::Fired) { throw [System.InvalidOperationException]::new('install: interrupted') }
+---
+>     $null = 0
+### sync
+327c327
+<     Set-Location -LiteralPath ([System.Environment]::CurrentDirectory)
+---
+>     $null = 0
+### clsha
+172c172
+<   if [ -L "$target" ] || [ ! -d "$target" ] || [ ! -f "$target/$claim_marker" ]; then
+---
+>   if [ -L "$target" ] || [ ! -d "$target" ]; then
+### clshb
+176,178d175
+<   if [ "$held" != "$claim_marker" ]; then
+<     die "the claimed target holds something besides the install's marker: $target"
+<   fi
+### clshc
+90c90
+<     && [ ! -L "$target" ] && [ -d "$target" ] && [ -f "$target/$claim_marker" ]; then
+---
+>     && [ ! -L "$target" ] && [ -d "$target" ]; then
+### clpsa
+706c706
+<     if ((Get-EntryKind $targetPath) -ne 'dir' -or (Get-EntryKind $markerPath) -ne 'file') {
+---
+>     if ((Get-EntryKind $targetPath) -ne 'dir') {
+### clpsb
+710,712d709
+<     if ($held.Count -ne 1) {
+<         Exit-WithError "the claimed target holds something besides the install's marker: $targetPath"
+<     }
+### clshab
+172c172
+<   if [ -L "$target" ] || [ ! -d "$target" ] || [ ! -f "$target/$claim_marker" ]; then
+---
+>   if [ -L "$target" ] || [ ! -d "$target" ]; then
+176,178d175
+<   if [ "$held" != "$claim_marker" ]; then
+<     die "the claimed target holds something besides the install's marker: $target"
+<   fi
+### clpsab
+706c706
+<     if ((Get-EntryKind $targetPath) -ne 'dir' -or (Get-EntryKind $markerPath) -ne 'file') {
+---
+>     if ((Get-EntryKind $targetPath) -ne 'dir') {
+710,712d709
+<     if ($held.Count -ne 1) {
+<         Exit-WithError "the claimed target holds something besides the install's marker: $targetPath"
+<     }
+### chkp
+54d53
+< check_path
+### pspath
+357d356
+<     Assert-SafePath
+### atl
+26c26,27
+< at_least() { # at_least MINIMUM VERSION: dotted numbers, field by field (no sort -V: BSD sort lacks it)
+---
+> at_least() { return 0; } # orig
+> at_least_orig() { #: dotted numbers, field by field (no sort -V: BSD sort lacks it)
+### fix1
+569,570c569
+< main "$@"
+< exit
+---
+> main "$@"; exit
+### unwrap / unwrap2: main() body made top-level (local->declare); unwrap keeps a trailing exit, unwrap2 does not (perl script unwrap.pl)
+
+## Mutant results
+### i1: Ran 56 tests in 107.239s FAILED (failures=3)
+FAIL: test_install_stops_on_signal_to_its_own_pid (tests.test_offline_bundle.InstallPs1Test.test_install_stops_on_signal_to_its_own_pid) (signal='SIGHUP')
+FAIL: test_install_stops_on_signal_to_its_own_pid (tests.test_offline_bundle.InstallPs1Test.test_install_stops_on_signal_to_its_own_pid) (signal='SIGTERM')
+### ani: Ran 56 tests in 117.323s FAILED (failures=3)
+FAIL: test_install_stops_on_signal_to_its_own_pid (tests.test_offline_bundle.InstallPs1Test.test_install_stops_on_signal_to_its_own_pid) (signal='SIGHUP')
+FAIL: test_install_stops_on_signal_to_its_own_pid (tests.test_offline_bundle.InstallPs1Test.test_install_stops_on_signal_to_its_own_pid) (signal='SIGTERM')
+### sync: Ran 56 tests in 108.055s FAILED (failures=1)
+FAIL: test_install_survives_staging_swap_after_verification (tests.test_offline_bundle.InstallPs1Test.test_install_survives_staging_swap_after_verification)
+### clsha: Ran 56 tests in 108.766s OK
+### clshb: Ran 56 tests in 107.799s OK
+### clshc: Ran 56 tests in 107.770s OK
+### clpsa: Ran 56 tests in 107.559s OK
+### clpsb: Ran 56 tests in 107.329s OK
+### clshab: Ran 28 tests in 15.228s FAILED (failures=1)
+FAIL: test_install_refuses_target_replaced_during_load (tests.test_offline_bundle.InstallShTest.test_install_refuses_target_replaced_during_load) (planted='dir')
+### clpsab: Ran 28 tests in 87.267s FAILED (failures=1)
+FAIL: test_install_refuses_target_replaced_during_load (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_target_replaced_during_load) (planted='dir')
+### chkp: Ran 56 tests in 104.239s FAILED (failures=5)
+FAIL: test_install_sh_refuses_relative_or_empty_path_entries (tests.test_offline_bundle.InstallShTest.test_install_sh_refuses_relative_or_empty_path_entries) (case='dot')
+FAIL: test_install_sh_refuses_relative_or_empty_path_entries (tests.test_offline_bundle.InstallShTest.test_install_sh_refuses_relative_or_empty_path_entries) (case='middle_empty')
+FAIL: test_install_sh_refuses_relative_or_empty_path_entries (tests.test_offline_bundle.InstallShTest.test_install_sh_refuses_relative_or_empty_path_entries) (case='relative')
+### pspath: Ran 56 tests in 103.599s OK
+### unwrap: Ran 30 tests in 16.882s FAILED (failures=1)
+FAIL: test_rewrite_in_place (tests.scratch_m4.M4Rewrite.test_rewrite_in_place)
+rc 0 injected True
+rc 0 injected False
+### unwrap2: Ran 28 tests in 15.474s FAILED (failures=1)
+FAIL: test_install_ignores_script_changed_during_run (tests.test_offline_bundle.InstallShTest.test_install_ignores_script_changed_during_run)
+### atl: Ran 97 tests in 60.619s OK
+### fix1: Ran 30 tests in 16.027s OK
+rc 0 injected False
+rc 0 injected False
+
+## M-4 in-place rewrite probe (tests/scratch_m4.py in scratch only)
+import json, unittest
+from pathlib import Path
+from tests.test_offline_bundle import InstallShTest, InstallPs1Test
+
+class M4Rewrite(InstallShTest):
+    """In-place rewrite (same inode, truncate) of the bundle's install.sh at docker info."""
+    def test_rewrite_in_place(self):
+        bundle, target = self._fresh()
+        injected = self.tmp / "INJECTED"
+        src = (bundle / "install.sh").read_text(encoding="utf-8")
+        assert src.endswith(chr(101) + "xit" + chr(10)), src[-40:]
+        evil = src[: -len("exit\n")] + f"touch '{injected}'; exit\n"
+        hooks = [{"on": r"^info\b", "write": {str(bundle / "install.sh"): evil}}]
+        result, calls, _ = self._install(bundle, target, FAKE_DOCKER_HOOKS=json.dumps(hooks))
+        print("rc", result.returncode, "injected", injected.exists())
+        self.assertFalse(injected.exists(), "M-4: in-place rewrite executed\n" + self._out(result))
+
+class M4RewritePs1(InstallPs1Test):
+    def test_rewrite_in_place(self):
+        bundle, target = self._fresh()
+        injected = self.tmp / "INJECTED"
+        p = bundle / "install.ps1"
+        src = p.read_text(encoding="utf-8")
+        evil = src + f"\nNew-Item -ItemType File -Path '{injected}' | Out-Null\n"
+        hooks = [{"on": r"^info\b", "write": {str(p): evil}}]
+        result, calls, _ = self._install(bundle, target, FAKE_DOCKER_HOOKS=json.dumps(hooks))
+        print("rc", result.returncode, "injected", injected.exists())
+        self.assertFalse(injected.exists(), self._out(result))
+
+def load_tests(loader, tests, pattern):
+    s = unittest.TestSuite()
+    s.addTest(M4Rewrite("test_rewrite_in_place"))
+    s.addTest(M4RewritePs1("test_rewrite_in_place"))
+    return s
+
+Result on the working tree's install.sh: rc 0 injected True (sh); ps1 rc 0 injected False. fix1 (main "$@"; exit on one line): injected False.
+
+## Synthetic bash probe (gates bash 5.2.15): two-line main/exit tail, rewrite in place during main
+b.sh (tail at an 8 KiB boundary) pwned=YES; o.sh (not at a boundary) pwned=YES; one-line variant pwned=no
+
+## launch.sh old vs new (eq.sh)
+'2.24'             old=T new=T 
+'2.24.0'           old=T new=T 
+'2.23.9'           old=F new=F 
+'2.24.0-desktop.1' old=T new=T 
+'2.100.1'          old=T new=T 
+'3'                old=T new=T 
+'2'                old=F new=F 
+'2.29.7'           old=T new=T 
+'10.0'             old=T new=T 
+'2.3'              old=F new=F 
+'dev'              old=T new=F DIFF
+'2.24-rc1'         old=T new=T 
+'2.024'            old=F new=T DIFF
+''                 old=F new=F 
+''                                            old=0| new=0| 
+\{\"host_ip\":\ \"127.0.0.1\"\}               old=1|127.0.0.1| new=1|127.0.0.1| 
+\{\"host_ip\":\ \"\"\}                        old=1|| new=1|| 
+$'{"host_ip": "", "x": 1}\n{"host_ip": "0.0.0.0"}' old=2||0.0.0.0| new=2||0.0.0.0| 
+\{\"host_ip\":\"1.2.3.4\"\,\"host_ip\":\ \"=5\"\} old=2|1.2.3.4|=5| new=2|1.2.3.4|=5| 
+\{\"a\":\"b\"\}                               old=0| new=0| 

@@ -1,0 +1,16 @@
+ci exit=0
+0f2821c0394de8466bbfbfe0aec39c5de9dc4644
+verify	Verify (full)	2026-10-19T05:30:23.2614668Z == verify full: 0f2821c ==
+verify	Verify (full)	2026-10-19T05:31:34.4819953Z test_backend_bridge_gateway_is_isolated (tests.test_stack_compose.Rework1ComposeTest.test_backend_bridge_gateway_is_isolated) ... ok
+verify	Verify (full)	2026-10-19T05:32:34.1580124Z test_smoke_fails_when_backend_is_not_isolated (tests.test_stack_scripts.SmokeBackendIsolatedTest.test_smoke_fails_when_backend_is_not_isolated) ... ok
+verify	Verify (full)	2026-10-19T05:32:38.4036598Z Ran 320 tests in 125.712s
+verify	Verify (full)	2026-10-19T05:32:38.4037730Z OK
+verify	Verify (full)	2026-10-19T05:32:39.3662833Z Ran 3 tests in 0.621s
+verify	Verify (full)	2026-10-19T05:32:39.3664042Z OK
+verify	Verify (full)	2026-10-19T05:32:39.7099104Z TOTAL                              584     27    128     11    94%
+verify	Verify (full)	2026-10-19T05:32:48.7981607Z == verify full: PASS ==
+verify	Verify (full)	2026-10-19T05:32:49.4284066Z smoke: ke-verify-93734027_backend is internal with gateway_mode_ipv4=isolated
+verify	Verify (full)	2026-10-19T05:32:50.5134634Z smoke: PASS
+verify	Verify (full)	2026-10-19T05:33:00.8930640Z == verify full: PASS (274s) ==
+
+[exited with code 0]

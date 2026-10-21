@@ -1,0 +1,9 @@
+### fixture=nodata mode=fast
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 4ms
+Installed 1 package in 2ms
+resources: phase=start nproc=24 cpu_max_quota=max cpu_max_period=100000 cg_cpu_usage_us=1077215 cg_cpu_throttled_us=0 mem_total_kib=32583712 mem_available_kib=22337192 swap_total_kib=8388608 swap_free_kib=8132740 cg_mem_max=max cg_mem_peak=38793216 psi_cpu_some_us=6856039805 psi_memory_some_us=2365155 psi_memory_full_us=2156551 psi_io_some_us=300698313 psi_io_full_us=286419817 cpu_steal_ticks=0 cpu_total_ticks=2091193357
+test_e (tests.test_exit.E.test_e) ... error: toplevel left no coverage data file (/tmp/.coverage.toplevel.*)
+resources: phase=end nproc=24 cpu_max_quota=max cpu_max_period=100000 cg_cpu_usage_us=1396927 cg_cpu_throttled_us=0 mem_total_kib=32583712 mem_available_kib=22232668 swap_total_kib=8388608 swap_free_kib=8132740 cg_mem_max=max cg_mem_peak=38793216 psi_cpu_some_us=6856113708 psi_memory_some_us=2365155 psi_memory_full_us=2156551 psi_io_some_us=300698321 psi_io_full_us=286419825 cpu_steal_ticks=0 cpu_total_ticks=2091194486
+test.sh rc=1

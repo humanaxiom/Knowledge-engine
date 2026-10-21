@@ -1,0 +1,35 @@
+..............FF...................
+======================================================================
+FAIL: test_signal_kills_pool_children_and_exits_nonzero (tests.test_harness_followups.IntegrationRunsOnceTest.test_signal_kills_pool_children_and_exits_nonzero) (signal='SIGINT')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 808, in test_signal_kills_pool_children_and_exits_nonzero
+    self.assertEqual(alive, [], f"pool children outlived test.sh after "
+AssertionError: Lists differ: [1058, 1062] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+1058
+
+- [1058, 1062]
++ [] : pool children outlived test.sh after SIGINT (exit 130)
+
+======================================================================
+FAIL: test_signal_kills_pool_children_and_exits_nonzero (tests.test_harness_followups.IntegrationRunsOnceTest.test_signal_kills_pool_children_and_exits_nonzero) (signal='SIGTERM')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 808, in test_signal_kills_pool_children_and_exits_nonzero
+    self.assertEqual(alive, [], f"pool children outlived test.sh after "
+AssertionError: Lists differ: [1101, 1105] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+1101
+
+- [1101, 1105]
++ [] : pool children outlived test.sh after SIGTERM (exit 143)
+
+----------------------------------------------------------------------
+Ran 34 tests in 73.738s
+
+FAILED (failures=2)

@@ -1,0 +1,475 @@
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.99ms
+Installed 1 package in 1ms
+FFFFFFFF.F.FFFFF.FFFFF..FFF................
+======================================================================
+FAIL: test_coverage_erase_precedes_first_run_and_spares_checkout (tests.test_harness_followups.IntegrationRunsOnceTest.test_coverage_erase_precedes_first_run_and_spares_checkout) (mode='fast')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 398, in test_coverage_erase_precedes_first_run_and_spares_checkout
+    calls = self.assert_quality_gates_ran(mode)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_harness_followups.py", line 337, in assert_quality_gates_ran
+    self.assertEqual(code, 0, output)
+AssertionError: 1 != 0 : error: tests.test_x exited with status missing
+error: tests.test_x left no coverage data file (/tmp/tmpb993_5i_/.coverage.tests.test_x.*)
+error: tests.testfoo exited with status missing
+error: tests.testfoo left no coverage data file (/tmp/tmpb993_5i_/.coverage.tests.testfoo.*)
+/tmp/tmpb993_5i_/project/scripts/test.sh: line 70: /tmp/tmp.2QAdRMdxcC/tests.test_x.rc: No such file or directory
+/tmp/tmpb993_5i_/project/scripts/test.sh: line 70: /tmp/tmp.2QAdRMdxcC/tests.testfoo.rc: No such file or directory
+
+
+======================================================================
+FAIL: test_coverage_erase_precedes_first_run_and_spares_checkout (tests.test_harness_followups.IntegrationRunsOnceTest.test_coverage_erase_precedes_first_run_and_spares_checkout) (mode='full')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 398, in test_coverage_erase_precedes_first_run_and_spares_checkout
+    calls = self.assert_quality_gates_ran(mode)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_harness_followups.py", line 337, in assert_quality_gates_ran
+    self.assertEqual(code, 0, output)
+AssertionError: 1 != 0 : error: tests.test_x exited with status missing
+error: tests.test_x left no coverage data file (/tmp/tmpb993_5i_/.coverage.tests.test_x.*)
+error: tests.testfoo exited with status missing
+error: tests.testfoo left no coverage data file (/tmp/tmpb993_5i_/.coverage.tests.testfoo.*)
+/tmp/tmpb993_5i_/project/scripts/test.sh: line 70: /tmp/tmp.iiQqexXfqm/tests.test_x.rc: No such file or directory
+/tmp/tmpb993_5i_/project/scripts/test.sh: line 70: /tmp/tmp.iiQqexXfqm/tests.testfoo.rc: No such file or directory
+
+
+======================================================================
+FAIL: test_each_module_output_block_is_contiguous (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_module_output_block_is_contiguous)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 549, in test_each_module_output_block_is_contiguous
+    self.assertEqual(code, 0, output)
+AssertionError: 1 != 0 : test_c0 (tests.test_ca.Chatty.test_c0) ... error: tests.test_ca exited with status missing
+error: tests.test_ca left no coverage data file (./.coverage.tests.test_ca.*)
+test_c0 (tests.test_cb.Chatty.test_c0) ... error: tests.test_cb exited with status missing
+error: tests.test_cb left no coverage data file (./.coverage.tests.test_cb.*)
+error: tests.test_cc exited with status missing
+error: tests.test_cc left no coverage data file (./.coverage.tests.test_cc.*)
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+/tmp/tmp5ve53gy8/project/scripts/test.sh: line 70: /tmp/tmp.ujLzti710Z/tests.test_ca.rc: No such file or directory
+/tmp/tmp5ve53gy8/project/scripts/test.sh: line 70: /tmp/tmp.ujLzti710Z/tests.test_cb.rc: No such file or directory
+/tmp/tmp5ve53gy8/project/scripts/test.sh: line 70: /tmp/tmp.ujLzti710Z/tests.test_cc.rc: No such file or directory
+
+
+======================================================================
+FAIL: test_failing_module_fails_run_and_other_modules_still_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_module_fails_run_and_other_modules_still_run)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 535, in test_failing_module_fails_run_and_other_modules_still_run
+    self.assertIn("FAIL: test_fails (tests.test_fails.Fails.test_fails)", output)
+AssertionError: 'FAIL: test_fails (tests.test_fails.Fails.test_fails)' not found in 'error: tests.test_fails exited with status missing\nerror: tests.test_fails left no coverage data file (./.coverage.tests.test_fails.*)\nerror: tests.test_x exited with status missing\nerror: tests.test_x left no coverage data file (./.coverage.tests.test_x.*)\nerror: tests.testfoo exited with status missing\nerror: tests.testfoo left no coverage data file (./.coverage.tests.testfoo.*)\n/tmp/tmpf6c9a317/project/scripts/test.sh: line 70: /tmp/tmp.JseDfWQBOO/tests.testfoo.rc: No such file or directory\n/tmp/tmpf6c9a317/project/scripts/test.sh: line 70: /tmp/tmp.JseDfWQBOO/tests.test_fails.rc: No such file or directory\n/tmp/tmpf6c9a317/project/scripts/test.sh: line 70: /tmp/tmp.JseDfWQBOO/tests.test_x.rc: No such file or directory\n'
+
+======================================================================
+FAIL: test_helper_package_without_tests_passes (tests.test_harness_followups.IntegrationRunsOnceTest.test_helper_package_without_tests_passes) (mode='fast')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 281, in test_helper_package_without_tests_passes
+    self.assertEqual(code, 0, output)
+AssertionError: 1 != 0 : error: tests.test_x exited with status missing
+error: tests.test_x left no coverage data file (./.coverage.tests.test_x.*)
+error: tests.testfoo exited with status missing
+error: tests.testfoo left no coverage data file (./.coverage.tests.testfoo.*)
+/tmp/tmpkvb_tvdp/project/scripts/test.sh: line 70: /tmp/tmp.IU4mwos3jN/tests.testfoo.rc: No such file or directory
+/tmp/tmpkvb_tvdp/project/scripts/test.sh: line 70: /tmp/tmp.IU4mwos3jN/tests.test_x.rc: No such file or directory
+
+
+======================================================================
+FAIL: test_helper_package_without_tests_passes (tests.test_harness_followups.IntegrationRunsOnceTest.test_helper_package_without_tests_passes) (mode='full')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 281, in test_helper_package_without_tests_passes
+    self.assertEqual(code, 0, output)
+AssertionError: 1 != 0 : error: tests.test_x exited with status missing
+error: tests.testfoo exited with status missing
+/tmp/tmpkvb_tvdp/project/scripts/test.sh: line 70: /tmp/tmp.E6zrrbqRZl/tests.testfoo.rc: No such file or directory
+/tmp/tmpkvb_tvdp/project/scripts/test.sh: line 70: /tmp/tmp.E6zrrbqRZl/tests.test_x.rc: No such file or directory
+
+
+======================================================================
+FAIL: test_integration_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_integration_tests_run_once) (mode='full')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 261, in test_integration_tests_run_once
+    self.assertEqual(self.runs("full").get("integration", 0), 1)
+                     ^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_harness_followups.py", line 256, in runs
+    self.assertEqual(code, 0, output)
+AssertionError: 1 != 0 : error: tests.test_x exited with status missing
+error: tests.test_x left no coverage data file (./.coverage.tests.test_x.*)
+error: tests.testfoo exited with status missing
+error: tests.testfoo left no coverage data file (./.coverage.tests.testfoo.*)
+/tmp/tmpd1zc96p_/project/scripts/test.sh: line 70: /tmp/tmp.broSKSfjhA/tests.test_x.rc: No such file or directory
+/tmp/tmpd1zc96p_/project/scripts/test.sh: line 70: /tmp/tmp.broSKSfjhA/tests.testfoo.rc: No such file or directory
+
+
+======================================================================
+FAIL: test_integration_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_integration_tests_run_once) (mode='fast')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 263, in test_integration_tests_run_once
+    self.assertEqual(self.runs("fast").get("integration", 0), 0)
+                     ^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_harness_followups.py", line 256, in runs
+    self.assertEqual(code, 0, output)
+AssertionError: 1 != 0 : cat: /tmp/tmp.cwYCodSdYN/tests.test_x.log: No such file or directory
+/tmp/tmpd1zc96p_/project/scripts/test.sh: line 70: /tmp/tmp.cwYCodSdYN/tests.testfoo.rc: No such file or directory
+/tmp/tmpd1zc96p_/project/scripts/test.sh: line 70: /tmp/tmp.cwYCodSdYN/tests.test_x.rc: No such file or directory
+
+
+======================================================================
+FAIL: test_nested_test_sh_leaves_gate_coverage_data_alone (tests.test_harness_followups.IntegrationRunsOnceTest.test_nested_test_sh_leaves_gate_coverage_data_alone)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 427, in test_nested_test_sh_leaves_gate_coverage_data_alone
+    self.assertTrue(nested.wasSuccessful(), nested.failures + nested.errors)
+AssertionError: False is not true : [(<unittest.case._SubTest testMethod=runTest>, 'Traceback (most recent call last):\n  File "/work/tests/test_harness_followups.py", line 398, in test_coverage_erase_precedes_first_run_and_spares_checkout\n    calls = self.assert_quality_gates_ran(mode)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "/work/tests/test_harness_followups.py", line 337, in assert_quality_gates_ran\n    self.assertEqual(code, 0, output)\nAssertionError: 1 != 0 : error: tests.test_x exited with status missing\nerror: tests.test_x left no coverage data file (/tmp/tmp80sl_x7z/.coverage.tests.test_x.*)\nerror: tests.testfoo exited with status missing\nerror: tests.testfoo left no coverage data file (/tmp/tmp80sl_x7z/.coverage.tests.testfoo.*)\n/tmp/tmp80sl_x7z/project/scripts/test.sh: line 70: /tmp/tmp.3wnquojPsb/tests.testfoo.rc: No such file or directory\n/tmp/tmp80sl_x7z/project/scripts/test.sh: line 70: /tmp/tmp.3wnquojPsb/tests.test_x.rc: No such file or directory\n\n'), (<unittest.case._SubTest testMethod=runTest>, 'Traceback (most recent call last):\n  File "/work/tests/test_harness_followups.py", line 398, in test_coverage_erase_precedes_first_run_and_spares_checkout\n    calls = self.assert_quality_gates_ran(mode)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "/work/tests/test_harness_followups.py", line 337, in assert_quality_gates_ran\n    self.assertEqual(code, 0, output)\nAssertionError: 1 != 0 : error: tests.test_x exited with status missing\nerror: tests.test_x left no coverage data file (/tmp/tmp80sl_x7z/.coverage.tests.test_x.*)\nerror: tests.testfoo exited with status missing\nerror: tests.testfoo left no coverage data file (/tmp/tmp80sl_x7z/.coverage.tests.testfoo.*)\n/tmp/tmp80sl_x7z/project/scripts/test.sh: line 70: /tmp/tmp.h5xnQkJiNZ/tests.testfoo.rc: No such file or directory\n/tmp/tmp80sl_x7z/project/scripts/test.sh: line 70: /tmp/tmp.h5xnQkJiNZ/tests.test_x.rc: No such file or directory\n\n')]
+
+======================================================================
+FAIL: test_package_with_only_nested_tests_runs_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_package_with_only_nested_tests_runs_once)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 302, in test_package_with_only_nested_tests_runs_once
+    counts = self.runs(mode)
+             ^^^^^^^^^^^^^^^
+  File "/work/tests/test_harness_followups.py", line 256, in runs
+    self.assertEqual(code, 0, output)
+AssertionError: 1 != 0 : error: tests.test_x exited with status missing
+error: tests.test_x left no coverage data file (./.coverage.tests.test_x.*)
+error: tests.testfoo exited with status missing
+error: tests.testfoo left no coverage data file (./.coverage.tests.testfoo.*)
+/tmp/tmpwz9iigp_/project/scripts/test.sh: line 70: /tmp/tmp.exJ0wXLY6d/tests.test_x.rc: No such file or directory
+/tmp/tmpwz9iigp_/project/scripts/test.sh: line 70: /tmp/tmp.exJ0wXLY6d/tests.testfoo.rc: No such file or directory
+
+
+======================================================================
+FAIL: test_quality_gates_always_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_always_run) (mode='fast')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 352, in test_quality_gates_always_run
+    self.assert_quality_gates_ran(mode)
+  File "/work/tests/test_harness_followups.py", line 337, in assert_quality_gates_ran
+    self.assertEqual(code, 0, output)
+AssertionError: 1 != 0 : error: tests.test_x exited with status missing
+error: tests.test_x left no coverage data file (./.coverage.tests.test_x.*)
+error: tests.testfoo exited with status missing
+error: tests.testfoo left no coverage data file (./.coverage.tests.testfoo.*)
+/tmp/tmpobrz3w06/project/scripts/test.sh: line 70: /tmp/tmp.x6VuUkhGU1/tests.testfoo.rc: No such file or directory
+/tmp/tmpobrz3w06/project/scripts/test.sh: line 70: /tmp/tmp.x6VuUkhGU1/tests.test_x.rc: No such file or directory
+
+
+======================================================================
+FAIL: test_quality_gates_always_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_always_run) (mode='full')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 352, in test_quality_gates_always_run
+    self.assert_quality_gates_ran(mode)
+  File "/work/tests/test_harness_followups.py", line 337, in assert_quality_gates_ran
+    self.assertEqual(code, 0, output)
+AssertionError: 1 != 0 : error: tests.test_x exited with status missing
+error: tests.testfoo exited with status missing
+/tmp/tmpobrz3w06/project/scripts/test.sh: line 70: /tmp/tmp.Z2B6jthbq3/tests.test_x.rc: No such file or directory
+/tmp/tmpobrz3w06/project/scripts/test.sh: line 70: /tmp/tmp.Z2B6jthbq3/tests.testfoo.rc: No such file or directory
+
+
+======================================================================
+FAIL: test_quality_gates_run_with_pyproject (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_run_with_pyproject) (mode='fast')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 360, in test_quality_gates_run_with_pyproject
+    self.assert_quality_gates_ran(mode)
+  File "/work/tests/test_harness_followups.py", line 337, in assert_quality_gates_ran
+    self.assertEqual(code, 0, output)
+AssertionError: 1 != 0 : error: tests.test_x exited with status missing
+error: tests.test_x left no coverage data file (./.coverage.tests.test_x.*)
+error: tests.testfoo exited with status missing
+error: tests.testfoo left no coverage data file (./.coverage.tests.testfoo.*)
+/tmp/tmpm_eacuky/project/scripts/test.sh: line 70: /tmp/tmp.ioi7nkj09X/tests.test_x.rc: No such file or directory
+/tmp/tmpm_eacuky/project/scripts/test.sh: line 70: /tmp/tmp.ioi7nkj09X/tests.testfoo.rc: No such file or directory
+
+
+======================================================================
+FAIL: test_quality_gates_run_with_pyproject (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_run_with_pyproject) (mode='full')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 360, in test_quality_gates_run_with_pyproject
+    self.assert_quality_gates_ran(mode)
+  File "/work/tests/test_harness_followups.py", line 337, in assert_quality_gates_ran
+    self.assertEqual(code, 0, output)
+AssertionError: 1 != 0 : error: tests.test_x exited with status missing
+error: tests.testfoo exited with status missing
+/tmp/tmpm_eacuky/project/scripts/test.sh: line 70: /tmp/tmp.VEqS8adDYA/tests.testfoo.rc: No such file or directory
+/tmp/tmpm_eacuky/project/scripts/test.sh: line 70: /tmp/tmp.VEqS8adDYA/tests.test_x.rc: No such file or directory
+
+
+======================================================================
+FAIL: test_top_level_modules_run_in_separate_processes (tests.test_harness_followups.IntegrationRunsOnceTest.test_top_level_modules_run_in_separate_processes) (mode='fast')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 441, in test_top_level_modules_run_in_separate_processes
+    self.assertEqual(code, 0, output)
+AssertionError: 1 != 0 : error: tests.test_x exited with status missing
+error: tests.test_x left no coverage data file (./.coverage.tests.test_x.*)
+error: tests.test_y exited with status missing
+error: tests.test_y left no coverage data file (./.coverage.tests.test_y.*)
+error: tests.testfoo exited with status missing
+error: tests.testfoo left no coverage data file (./.coverage.tests.testfoo.*)
+/tmp/tmpvrvah1iq/project/scripts/test.sh: line 70: /tmp/tmp.SBCSApXxG8/tests.test_y.rc: No such file or directory
+/tmp/tmpvrvah1iq/project/scripts/test.sh: line 70: /tmp/tmp.SBCSApXxG8/tests.testfoo.rc: No such file or directory
+/tmp/tmpvrvah1iq/project/scripts/test.sh: line 70: /tmp/tmp.SBCSApXxG8/tests.test_x.rc: No such file or directory
+
+
+======================================================================
+FAIL: test_top_level_modules_run_in_separate_processes (tests.test_harness_followups.IntegrationRunsOnceTest.test_top_level_modules_run_in_separate_processes) (mode='full')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 441, in test_top_level_modules_run_in_separate_processes
+    self.assertEqual(code, 0, output)
+AssertionError: 1 != 0 : error: tests.test_x exited with status missing
+error: tests.test_y exited with status missing
+error: tests.testfoo exited with status missing
+/tmp/tmpvrvah1iq/project/scripts/test.sh: line 70: /tmp/tmp.HUL9dbm4O1/tests.test_y.rc: No such file or directory
+/tmp/tmpvrvah1iq/project/scripts/test.sh: line 70: /tmp/tmp.HUL9dbm4O1/tests.testfoo.rc: No such file or directory
+/tmp/tmpvrvah1iq/project/scripts/test.sh: line 70: /tmp/tmp.HUL9dbm4O1/tests.test_x.rc: No such file or directory
+
+
+======================================================================
+FAIL: test_unit_pool_concurrency_follows_nproc_capped_at_4 (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_concurrency_follows_nproc_capped_at_4) (nproc=1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 507, in test_unit_pool_concurrency_follows_nproc_capped_at_4
+    self.assertEqual(code, 0, output)
+AssertionError: 1 != 0 : test_sleep (tests.test_sleep0.Sleeper.test_sleep) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.500s
+
+OK
+test_sleep (tests.test_sleep1.Sleeper.test_sleep) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.500s
+
+OK
+test_sleep (tests.test_sleep2.Sleeper.test_sleep) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.501s
+
+OK
+test_sleep (tests.test_sleep3.Sleeper.test_sleep) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.500s
+
+OK
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+error: tests.test_sleep4 exited with status missing
+error: tests.test_sleep4 left no coverage data file (./.coverage.tests.test_sleep4.*)
+/tmp/tmp98frnftg/project/scripts/test.sh: line 70: /tmp/tmp.vfO5SRlYPH/tests.test_sleep4.rc: No such file or directory
+
+
+======================================================================
+FAIL: test_unit_pool_concurrency_follows_nproc_capped_at_4 (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_concurrency_follows_nproc_capped_at_4) (nproc=2)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 507, in test_unit_pool_concurrency_follows_nproc_capped_at_4
+    self.assertEqual(code, 0, output)
+AssertionError: 1 != 0 : test_sleep (tests.test_sleep0.Sleeper.test_sleep) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.500s
+
+OK
+test_sleep (tests.test_sleep1.Sleeper.test_sleep) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.500s
+
+OK
+test_sleep (tests.test_sleep2.Sleeper.test_sleep) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.500s
+
+OK
+test_sleep (tests.test_sleep3.Sleeper.test_sleep) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.500s
+
+OK
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+error: tests.test_sleep4 exited with status missing
+/tmp/tmp98frnftg/project/scripts/test.sh: line 70: /tmp/tmp.t1a7z7LzGW/tests.test_sleep4.rc: No such file or directory
+
+
+======================================================================
+FAIL: test_unit_pool_concurrency_follows_nproc_capped_at_4 (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_concurrency_follows_nproc_capped_at_4) (nproc=64)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 507, in test_unit_pool_concurrency_follows_nproc_capped_at_4
+    self.assertEqual(code, 0, output)
+AssertionError: 1 != 0 : test_sleep (tests.test_sleep0.Sleeper.test_sleep) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.500s
+
+OK
+test_sleep (tests.test_sleep1.Sleeper.test_sleep) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.500s
+
+OK
+test_sleep (tests.test_sleep2.Sleeper.test_sleep) ... test_sleep (tests.test_sleep3.Sleeper.test_sleep) ... test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+error: tests.test_sleep2 exited with status missing
+error: tests.test_sleep3 exited with status missing
+error: tests.test_sleep4 exited with status missing
+/tmp/tmp98frnftg/project/scripts/test.sh: line 70: /tmp/tmp.ef1DbvZhkN/tests.test_sleep2.rc: No such file or directory
+/tmp/tmp98frnftg/project/scripts/test.sh: line 70: /tmp/tmp.ef1DbvZhkN/tests.test_sleep3.rc: No such file or directory
+/tmp/tmp98frnftg/project/scripts/test.sh: line 70: /tmp/tmp.ef1DbvZhkN/tests.test_sleep4.rc: No such file or directory
+
+
+======================================================================
+FAIL: test_unit_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_tests_run_once)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 269, in test_unit_tests_run_once
+    counts = self.runs(mode)
+             ^^^^^^^^^^^^^^^
+  File "/work/tests/test_harness_followups.py", line 256, in runs
+    self.assertEqual(code, 0, output)
+AssertionError: 1 != 0 : error: tests.test_x exited with status missing
+error: tests.test_x left no coverage data file (./.coverage.tests.test_x.*)
+error: tests.testfoo exited with status missing
+error: tests.testfoo left no coverage data file (./.coverage.tests.testfoo.*)
+/tmp/tmpzaq_p798/project/scripts/test.sh: line 70: /tmp/tmp.38QiAwPrmm/tests.testfoo.rc: No such file or directory
+/tmp/tmpzaq_p798/project/scripts/test.sh: line 70: /tmp/tmp.38QiAwPrmm/tests.test_x.rc: No such file or directory
+
+
+======================================================================
+FAIL: test_verify_sees_sentinel_and_ran_lines_from_real_test_sh (tests.test_harness_followups.IntegrationRunsOnceTest.test_verify_sees_sentinel_and_ran_lines_from_real_test_sh) (mode='fast')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 581, in test_verify_sees_sentinel_and_ran_lines_from_real_test_sh
+    self.assertEqual(code, 0, output[-3000:])
+AssertionError: 1 != 0 : == verify fast: no-git+dirty ==
+fake lint: ok
+test_c0 (tests.test_ca.Chatty.test_c0) ... error: tests.test_ca exited with status missing
+error: tests.test_ca left no coverage data file (./.coverage.tests.test_ca.*)
+error: tests.test_cb exited with status missing
+error: tests.test_cb left no coverage data file (./.coverage.tests.test_cb.*)
+error: tests.test_cc exited with status missing
+error: tests.test_cc left no coverage data file (./.coverage.tests.test_cc.*)
+test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+scripts/test.sh: line 70: /tmp/tmp.ULUhoiMzur/tests.test_ca.rc: No such file or directory
+scripts/test.sh: line 70: /tmp/tmp.ULUhoiMzur/tests.test_cc.rc: No such file or directory
+scripts/test.sh: line 70: /tmp/tmp.ULUhoiMzur/tests.test_cb.rc: No such file or directory
+verify fast: FAIL (test.sh exited non-zero)
+
+
+======================================================================
+FAIL: test_verify_sees_sentinel_and_ran_lines_from_real_test_sh (tests.test_harness_followups.IntegrationRunsOnceTest.test_verify_sees_sentinel_and_ran_lines_from_real_test_sh) (mode='full')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 581, in test_verify_sees_sentinel_and_ran_lines_from_real_test_sh
+    self.assertEqual(code, 0, output[-3000:])
+AssertionError: 1 != 0 : == verify full: no-git+dirty ==
+fake lint: ok
+test_c0 (tests.test_ca.Chatty.test_c0) ... error: tests.test_ca exited with status missing
+error: tests.test_cb exited with status missing
+error: tests.test_cc exited with status missing
+test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+scripts/test.sh: line 70: /tmp/tmp.f1scfzbdA8/tests.test_ca.rc: No such file or directory
+scripts/test.sh: line 70: /tmp/tmp.f1scfzbdA8/tests.test_cb.rc: No such file or directory
+scripts/test.sh: line 70: /tmp/tmp.f1scfzbdA8/tests.test_cc.rc: No such file or directory
+verify full: FAIL (test.sh exited non-zero)
+
+
+----------------------------------------------------------------------
+Ran 34 tests in 34.842s
+
+FAILED (failures=22)
+rc=1

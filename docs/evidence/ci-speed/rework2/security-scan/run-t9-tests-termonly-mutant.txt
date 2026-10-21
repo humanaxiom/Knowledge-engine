@@ -1,0 +1,22 @@
+
+First list contains 1 additional elements.
+First extra element 0:
+135
+
+- [135]
++ [] : processes of tests.test_ign_term, which ignores SIGTERM, outlived test.sh by 10 s (exit 143); seen before TERM: [135]
+
+----------------------------------------------------------------------
+Ran 2 tests in 13.984s
+
+FAILED (failures=1)
+unittest rc=1
+D1 alive
+D2 alive
+D3 alive
+--- processes left
+     1      1 S bash /h/tsig.sh 
+    10      1 S sleep 601 
+     8      1 S python3 -c import signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(6
+     9      9 S sleep 600 
+rc=0

@@ -1,0 +1,33 @@
+# Reviewer rework 5: flakiness. tests.test_resource_probe + HookLaunchesNoBackgroundWorkTest, 10 idle + 10 with 6 busy loops, container --cpus 2. Same image/label; repo mounted ro; python -B.
+
+idle  1: Ran 13 tests in 1.360s OK 
+idle  2: Ran 13 tests in 0.957s OK 
+idle  3: Ran 13 tests in 0.903s OK 
+idle  4: Ran 13 tests in 0.827s OK 
+idle  5: Ran 13 tests in 0.866s OK 
+idle  6: Ran 13 tests in 0.860s OK 
+idle  7: Ran 13 tests in 0.865s OK 
+idle  8: Ran 13 tests in 1.055s OK 
+idle  9: Ran 13 tests in 0.920s OK 
+idle 10: Ran 13 tests in 1.068s OK 
+load  1: Ran 13 tests in 3.990s OK 
+load  2: Ran 13 tests in 4.009s OK 
+load  3: Ran 13 tests in 3.881s OK 
+load  4: Ran 13 tests in 3.692s OK 
+load  5: Ran 13 tests in 4.088s OK 
+load  6: Ran 13 tests in 4.091s OK 
+load  7: Ran 13 tests in 4.085s OK 
+load  8: Ran 13 tests in 3.897s OK 
+load  9: Ran 13 tests in 3.714s OK 
+load 10: Ran 13 tests in 3.797s OK 
+
+## stress.sh
+#!/usr/bin/env bash
+# Reviewer rework 5 flakiness run: 10 repeats idle, then 10 under 6 busy loops (container capped at 2 CPUs).
+cd /repo
+run() { python3 -B -m unittest tests.test_resource_probe tests.test_block_main_commit_hook.HookLaunchesNoBackgroundWorkTest 2>&1 | grep -E '^(Ran|OK|FAILED)' | tr '\n' ' '; echo; }
+for i in $(seq 1 10); do printf 'idle %2d: ' "$i"; run; done
+pids=(); for j in 1 2 3 4 5 6; do ( while :; do :; done ) & pids+=($!); done
+for i in $(seq 1 10); do printf 'load %2d: ' "$i"; run; done
+kill "${pids[@]}"
+python3 -B -m unittest -v tests.test_resource_probe 2>&1 | grep -iE 'skip|inotify' | head

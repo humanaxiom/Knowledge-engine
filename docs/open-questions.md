@@ -28,12 +28,18 @@ answer it. Answer by number; anything left unanswered stands as assumed.
   your machine, and the evidence files say which. Nothing is reported green here
   that ran outside Docker. If you can enable Docker for this environment, say so.
 - **Q4. Iteration cap.** **A4:** 5 per fix-and-retest loop, as in `AGENTS.md`.
-- **Q18. Branch protection on `main`.** Is branch protection enabled on `main` in
+- **Q18. Resolved 2026-10-20 (human ruling: SKIPPED, `docs/handoffs/ci-speed.md`).**
+  **A18:** branch protection is not enabled. Merges to `main` stay a manual
+  human action (PR + review); the local commit hook (`block-main-commit.sh`)
+  remains the only automated guard. This is an accepted risk: the hook's
+  known bypasses (harness-claude-code criterion 4e) are not backed by a
+  remote control. Original question, kept for the record: *Branch protection
+  on `main`.* Is branch protection enabled on `main` in
   `humanaxiom/Knowledge-engine`? The local hook (`block-main-commit.sh`,
   harness-claude-code criterion 4) is only a guard rail against agent mistakes
   and can be bypassed; branch protection is the real control (security M1).
-  **A18:** not verified from here. Recommend enabling it: require a PR to merge
-  into `main` and block force pushes.
+  The earlier assumption said: not verified from here. Recommend enabling it:
+  require a PR to merge into `main` and block force pushes.
 
 ## Deployment
 
@@ -50,8 +56,13 @@ answer it. Answer by number; anything left unanswered stands as assumed.
   2026-10-18). GitHub runners cannot reach it, so model-calling integration
   and live golden tests skip there with a named reason and run where it is
   reachable through the stack gateway (Q30, narrowed by F-A). Model defaults
-  are `qwen2.5:14b-instruct` (fallback `llama3.1:8b`) and `nomic-embed-text`
-  (768-dim). Its port, URL scheme and URL are set per deployment in `.env`,
+  are set by the Q38 ruling of 2026-10-20: compose and rewrite use
+  `qwen3.5:latest`, audit uses `gpt-oss:120b`, and embed uses
+  `nomic-embed-text` (768-dim); the fallback is `gpt-oss:20b` (A54). These
+  config names are tags, not pins: the `/api/tags` digests recorded by the
+  MR-5 run are the record of what was tested (see ADR-KE-014). *Superseded, kept
+  for the record:* "Model defaults are `qwen2.5:14b-instruct` (fallback
+  `llama3.1:8b`) and `nomic-embed-text` (768-dim)." Its port, URL scheme and URL are set per deployment in `.env`,
   with no default in `config/defaults.yaml` (Q32, resolved). Original question, kept for the
   record: *What is the model host's address, and is it reachable from where
   the gates run?* The earlier assumption said "CI never calls it".
@@ -85,10 +96,16 @@ answer it. Answer by number; anything left unanswered stands as assumed.
 - **Q13. Human corrections to records.** May reviewers correct extracted fields,
   as opposed to drafts? **A13:** yes, as `entered` revisions through the review
   queue. They survive re-parse, and any conflict goes to review (§R-REV-C.5).
-- **Q14. Ratification owners.** DR22 needs named people and dates per owner tier
-  (institutional policy, policy-informed, technical). **A14:** they appear as
-  marked placeholders (`OWNER-TBD`) in the plan. The milestone "Done" check
-  reports them as an external blocker until you name them.
+- **Q14. Resolved 2026-10-20 (human ruling, `docs/handoffs/ci-speed.md`).**
+  **A14:** the human (Adam Salah) acts as proxy ratifier for policy rules
+  until real owners are named. Ratification is therefore no
+  longer an external blocker in the milestone "Done" check; naming the real
+  owners later replaces the proxy. Original question, kept for the record:
+  *Ratification owners.* DR22 needs named people and dates per owner tier
+  (institutional policy, policy-informed, technical). The earlier assumption
+  said: they appear as marked placeholders (`OWNER-TBD`) in the plan. The
+  milestone "Done" check reports them as an external blocker until you name
+  them.
 
 ## Corpus
 
@@ -114,7 +131,324 @@ PS-Q1–PS-Q11 (`docs/requirements.md` § "Item: platform-skeleton"); the
 orchestrator ruled the same day (`docs/handoffs/platform-skeleton.md`,
 "orchestrator: split accepted, rulings"). The ones still open come first.
 
-Open: none.
+Open, raised 2026-10-19 by the analyst for `platform-offline`
+(`docs/requirements.md` § PS-3). Moved with PS-3.6 to `platform-supply-chain`
+by the split ruling (`docs/handoffs/platform-offline.md`, "rulings on
+analyst plan") and decided when that item opens. It does not block
+`platform-offline`, which has no scan stage.
+
+- **Q42. Scan threshold and the vendored libraries.** **A42 (assumed):**
+  - the run fails on any CRITICAL or HIGH finding that has a fixed version
+    available;
+  - other findings are reported in the evidence only;
+  - exceptions go in a committed file, each with a reason, and security
+    reviews them.
+
+  Not settled: psycopg-binary vendors old native libraries (krb5 1.15.1,
+  cyrus-sasl 2.1.26, pcre 8.32; L-13). If the scanner flags them, should they
+  be accepted as exceptions (gssencmode is already disabled), or should the
+  image switch to psycopg built against the base image's libpq? That
+  switch changes the app image and the licence picture. Orchestrator or
+  security.
+
+Open, raised 2026-10-19 by the analyst for `platform-offline` (reconciling
+R2 with spike S1). Does not block RED.
+
+- **Q47. No gate covers a classic-store install.** R2 makes the install
+  store-independent so operators need no containerd store. But the CI
+  `dind` uses the containerd store (by ruling) and the human's Windows host
+  does too (spike S1), so no recorded run installs the bundle on a
+  classic-store (`overlay2`) daemon, where spike S1 showed `ref@digest`
+  never resolves. **A47 (assumed):** the stubbed installer tests
+  (`test_install_tags_loaded_image_as_bundle_name`,
+  `test_install_override_maps_every_service_to_as_tag`) plus spike S1's
+  manual classic-store run are enough for this item; no classic-store gate
+  is added. Orchestrator: accept, or ask for a one-off recorded
+  classic-store install in the evidence.
+
+Raised and mostly settled 2026-10-19 for `platform-offline` (handoff
+orchestrator sections "Q49 resolved", "build it for both", and later
+rulings). Design: `docs/architecture.md` §2.5 *Arch*; criteria: PS-3.1
+"per-arch bundles".
+
+- **Q49. Resolved (human).** Per-arch bundles: linux/amd64 and
+  linux/arm64, one bundle each. Built natively on a daemon of that arch
+  (arm64 on `aria-gb10` through a docker context); no `--platform`; the
+  installer refuses an arch mismatch before any load.
+- **Q50. Resolved: in scope (human, "a path for mlx").** `install.sh` must
+  run on macOS (bash 3.2, BSD tools) as well as Linux. Proven by a static
+  forbid-list test, a shimmed-PATH test, and a recorded install on the
+  Apple-silicon Mac when it arrives (not CI).
+- **Q51. Resolved (orchestrator, 2026-10-19).** arm64 proof is a recorded
+  build, bundle, install, launch and smoke on `aria-gb10` (aarch64,
+  Ubuntu 24.04, Docker 29.6.2), reached through a docker context over SSH.
+  An `ubuntu-24.04-arm` CI runner stays a later option; whether the repo
+  can use one is unconfirmed.
+- **Q52. Open, not this item.** Model serving with MLX on the Mac belongs
+  to a later `model-hosts` plan item.
+- **Q53. Resolved: extended (orchestrator, unit-2 rework round 2,
+  2026-10-19; review RB2a).** The bash 3.2 and BSD rule now covers
+  `install.sh`, `launch.sh` and `teardown.sh`, and the static forbid list
+  runs over all three. `smoke.sh`, `net_isolated.sh` and `verify.sh` stay
+  Linux and dev only. The Mac's recorded proof is install, launch and
+  teardown, not smoke. A53 (install only) is withdrawn. Design:
+  `docs/architecture.md` §2.5 *`install.sh` portability*.
+
+Open, raised 2026-10-19 (orchestrator note in `docs/handoffs/platform-skeleton.md`,
+"human rulings: model endpoint; orchestrator note Q38"; recorded by the analyst
+in `platform-stack-ready` rework round 1):
+
+- **Q38. Resolved 2026-10-20 (human ruling, `docs/handoffs/model-roles.md`).**
+  **A38:** compose and rewrite use `qwen3.5:latest`, audit uses
+  `gpt-oss:120b`, and embed uses `nomic-embed-text`. All three are installed
+  on `aria-gb10-2` (`GET /api/tags`), so nothing needs pulling. This is a
+  config change only, delivered by item model-roles (MR-1 to MR-7). The
+  ruling does not name a fallback model; Q54 (A54) sets it to `gpt-oss:20b`. Original question, kept for
+  the record: *Default models missing on the model host (human).* The prompt's
+  default models `qwen2.5:14b-instruct` and `llama3.1:8b` are not installed
+  on `aria-gb10-2`; `nomic-embed-text` is. Either pull the two models on
+  `aria-gb10-2`, or name installed models as the defaults (a config change
+  only). Must be settled before the first item that composes a draft; does
+  not block the platform items. **Ruled alongside (human, 2026-10-19):**
+  this deployment's `KE_MODEL_UPSTREAM` is `aria-gb10-2:11434` (Ollama,
+  OpenAI-compatible `/v1`), with allowlist host `aria-gb10-2`; checked with
+  `GET /v1/models` answering 200 from the dev host. This is the endpoint the
+  PS-2.21 recorded run uses. No assumption is taken for the model names.
+
+Resolved 2026-10-20 by the orchestrator for `model-roles`
+(`docs/handoffs/model-roles.md`, rulings Q54, Q55; raised by the analyst,
+`docs/requirements.md` § Item: model-roles):
+
+- **Q54. Resolved 2026-10-20 (orchestrator ruling; the human may change
+  it).** **A54:** `fallback_model` for compose, rewrite and audit is
+  `gpt-oss:20b`. It is installed on `aria-gb10-2`, faster than the
+  primaries and distinct from each of them. The key stays a required
+  string (no schema change); no product code reads it. This unblocks MR-2,
+  and `llama3.1:8b` leaves the living files (MR-4). Original question,
+  kept for the record: *Fallback model for the chat roles (orchestrator or
+  human; blocks MR-2).* The Q38 ruling names each role's `model` but not the
+  `fallback_model` that compose, rewrite and audit each carry. That key is a
+  required string in the settings, it is `llama3.1:8b` today, and that model
+  is not installed on `aria-gb10-2`. No product code reads it yet (grep,
+  2026-10-20). The options are: (a) each role's own model; (b) another model
+  that is installed on `aria-gb10-2`, named by the human; (c) make the key
+  optional and set it to null, which changes the settings schema. No
+  assumption is taken.
+- **Q55. Resolved 2026-10-20 (orchestrator ruling: A55 accepted).**
+  **A55:** the timeouts stay as they are (120 s for the chat roles, 60 s for
+  embed) unless the MR-5 recorded run measures a call that exceeds its
+  role's `timeout_s`. In that case the architect proposes a value derived
+  from that measurement and the orchestrator rules on it. Original
+  question, kept for the record: *Chat-role timeouts for the new models
+  (orchestrator; does not block RED).* `gpt-oss:120b` on audit may need more
+  than `timeout_s: 120`, counting the cold load and the reasoning time.
+
+Resolved 2026-10-20 by the orchestrator for `ci-speed`
+(`docs/handoffs/ci-speed.md`; raised by the analyst,
+`docs/requirements.md` § Item: ci-speed):
+
+- **Q-CS1. Resolved 2026-10-20 (orchestrator ruling: no percentage
+  tolerance).** **A-CS1:** pooled coverage is not judged against a band
+  around the one-process figure. Instead every top-level module's process
+  leaves its own coverage data file (`coverage run -p`), `coverage combine`
+  consumes one per module, and a missing data file fails the run, naming the
+  module (CS-4). The 80 % threshold is unchanged. Original question, kept
+  for the record: *Coverage tolerance for the pool.* CS-4 proposed that the
+  pooled coverage total may fall at most 1 point below the one-process
+  figure for the same tests; confirm or set another value.
+  - **Amended 2026-10-21 (rework 3, human ruling: pool withdrawn).** The rule
+    stands, applied per coverage run label instead of per pooled module.
+    The labels are `toplevel` (the one top-level run), `tests.<pkg>` and
+    `tests.integration`. Each run label must leave its own data file, and a
+    missing file or a file left after `combine` fails the run, naming the
+    label (CS-4, architecture §2.2.1-r3 decision 3). There is still no
+    percentage tolerance, and 80 % is unchanged.
+
+Resolved 2026-10-21 by the orchestrator for `ci-speed` (raised by the
+architect in rework 3):
+
+- **Q-CS2. Resolved 2026-10-21 (orchestrator ruling: A-CS2 accepted, as
+  covered by the human's CPU-time ruling).** **A-CS2:** the 400-segment L8
+  test moves to CPU time with the 3 s and 9 s tests, and its 5 s value is
+  unchanged (CS-12, architecture §2.2.1-r3 decision 6). Original question,
+  kept for the record: *Does the 5 s L8 hook test move to CPU time too?* The
+  human ruling moves the hook budget tests to CPU time, naming the 3 s and
+  9 s budgets. `test_long_command_finishes_quickly` (security L8: 400
+  segments under 5 s) is the same kind of wall-clock budget test. If it
+  stays on wall time, it can still flake on a loaded runner.
+
+Open, raised 2026-10-19 by the analyst (`platform-stack-ready` rework round 1):
+
+- **Q39. When the Valkey network/auth carry-in lands.** The orchestrator
+  placed security M-1's network side (Valkey on its own network, password or
+  ACL) in auth-audit as carry-in 7, "to be done before any ingest exposure".
+  `docs/requirements.md` lists ingest-ledger before auth-audit, and
+  ingest-ledger criterion 5 puts files on the job queue. Is carry-in 7 built
+  at the start of ingest-ledger (or a small item before it), or does
+  auth-audit move ahead of ingest-ledger? **A39 (assumed):** carry-in 7 is
+  done as the first unit of whichever item first feeds untrusted input to
+  the queue (today ingest-ledger), and is tracked in auth-audit until then.
+  Does not block `platform-stack-ready`.
+
+Open, raised 2026-10-19 for `platform-stack-ready` (analyst, after ruling S1):
+
+- **Q37. Store stop/start against a pre-existing project.** Ruling S1 says
+  the PS-2.8 smoke tears down only a project it launched and "never stops an
+  operator's live stack". Not settled: given smoke run by hand against an
+  already-running project, does it still stop and restart one store (a
+  brief outage of the operator's postgres), or does it skip the store
+  stop/start and say so? Inside `verify.sh full` and CI the project is
+  always smoke-launched, so the gate is unaffected. **A37 (assumed):** the
+  smoke skips the store stop/start against a pre-existing project and
+  prints that it skipped it (never reports it as passed), reading "never
+  stops an operator's live stack" as covering a single store. Does not
+  block RED; the tester writes the pre-existing case to that assumption.
+
+Resolved 2026-10-19 for `platform-offline` (`docs/handoffs/platform-offline.md`,
+"rulings on analyst plan", "rulings on architect R1–R7", "rulings from
+spikes (R2, R6)"; Q43 by the human). Criteria: `docs/requirements.md` § PS-3,
+"Reconciled with the rulings".
+
+- **Q40. Resolved (orchestrator ruling).** **A40:** as assumed: `dist/` is gitignored, a verify run removes its own
+  bundle, there is no size cap (sizes are recorded in the evidence), and a
+  dirty-tree bundle is allowed and marked in `bundle.json`. Amended by R2
+  (per-image tars, no single `.tar` of the directory) and R6 (a 10 GB
+  free-disk check; PS-3.1, PS-3.2).
+  Original question, kept for the record: Bundle location, size and dirty trees. §2.5 writes
+  `dist/knowledge-engine-<git sha>/` plus a `.tar` of it, but `dist/` is
+  not gitignored. Bundle and tar on disk, plus the images loaded into DinD,
+  roughly triple the image footprint, and CI runner disk is finite. A sha
+  does not identify an uncommitted tree. **A40 (assumed):**
+  - `dist/` is gitignored;
+  - a verify run removes its own bundle when the check ends;
+  - there is no size cap, but the size of the bundle and the tar is
+    recorded in the evidence;
+  - a bundle built from a dirty tree is allowed (verify tests the working
+    tree), and `bundle.json` marks it as dirty.
+- **Q41. Resolved (orchestrator ruling).** **A41:** as assumed. It applies to `platform-supply-chain`, which now holds
+  the scan (R3); this branch has no scan stage.
+  Original question, kept for the record: Scanner vulnerability DB: offline or build-time. The deployed
+  product has no runtime internet, but builds may fetch. **A41 (assumed):**
+  - the scanner and its DB are build and verify tools, fetched in the
+    `verify.sh full` host half alongside the image builds, in CI and
+    locally;
+  - they are not in the bundle, and a deployed box never scans;
+  - a newly published CVE can turn `full` red with no code change, and
+    that is the gate working, not a flake.
+- **Q43. Resolved (human ruling on Phoenix; orchestrator R4, R7).** **A43:** the bundle holds the stack images only (R7), so `ke-gates` and
+  `dind` are not redistributed. Only `ke-app` is scanned, in
+  `platform-supply-chain`. The notices list `ke-app`'s Python packages and
+  every third-party stack image by name and licence. Neo4j Community is
+  listed as GPL-3.0 with a source URL (R4). Arize Phoenix is kept as a
+  documented exception to "open-source components only" (human, 2026-10-19):
+  likely Elastic License 2.0, internal on-prem use allowed, listed in the
+  notices; security confirms the licence text at the pinned digest
+  (PS-3.8).
+  Original question, kept for the record: Scan and licence scope beyond `ke-app`. The ruling names the
+  `ke-app` scan and psycopg notices only. The bundle also redistributes
+  `ke-gateway`, `ke-gates`, `dind` and the third-party images (postgres,
+  neo4j, valkey, phoenix). Neo4j Community is GPLv3. Phoenix's licence
+  (Elastic License 2.0 as I understand it) should be confirmed by security at
+  the pinned version against the prompt's "open-source components only".
+  **A43 (assumed):**
+  - only `ke-app` is scanned;
+  - notices cover `ke-app`'s Python packages;
+  - the third-party images are listed in the notices by name and licence,
+    with no further obligation work in this item;
+  - Phoenix's licence goes to the human.
+- **Q44. Resolved (orchestrator ruling).** **A44:** as assumed (R5): 20 minutes when the offline stages land, then
+  measured + 50% from the first green CI run (PS-3.4).
+  Original question, kept for the record: CI timeout before the first measured run. The offline check may
+  push `full` past today's 10 minutes, and a cancelled run costs a round.
+  **A44 (assumed):** as C1 did for 2b, the commit that wires in the offline
+  check raises `timeout-minutes` to 20. The first green CI run then sets
+  measured + 50% in a follow-up commit on the branch.
+- **Q45. Resolved (orchestrator ruling).** **A45:** as assumed. With no `bundle.ps1` (R1), the Windows run proves the
+  PowerShell installer and `launch.ps1`; the bundle is built on a Linux
+  build host.
+  Original question, kept for the record: Windows proof of the PowerShell installer. **A45 (assumed):** a
+  recorded run on the human's Windows host (Q31) does three things: it
+  rejects a tampered bundle, installs the untouched bundle, and launches
+  with `launch.ps1`. The host's network is not disabled, because the
+  offline property is proven by DinD on Linux and the Windows run proves
+  the scripts.
+- **Q46. Resolved (orchestrator ruling).** **A46:** as assumed.
+  Original question, kept for the record: `ci/offline` probe target. §2.5 leaves it to implementation.
+  **A46 (assumed):** the target is neither the model host nor any
+  allowlisted host. The gate's verdict does not depend on a public
+  third-party host being up, so the control has to succeed in CI and on a
+  dev box alike. The target is recorded in the handoff.
+
+Resolved by the orchestrator 2026-10-19 (`docs/handoffs/platform-stack-ready.md`,
+"orchestrator: rulings on analyst plan"; C1 in "rulings on architect plan"):
+
+- **Q35. Resolved (orchestrator ruling).** **A35:** as assumed: (a) the
+  caller's environment wins, even when set empty; (b) only the repo-root
+  `.env` counts; (c) until platform-offline (L-5), "no other key" covers the
+  verify project's environment and compose arguments only. Settled in
+  PS-2.21 *Precedence*. Original question, kept for the record:
+  Model upstream keys in local verify: source and precedence. The
+  umbrella ruling passes `KE_MODEL_UPSTREAM` and `KE_EGRESS_ALLOWLIST` "from
+  the caller's environment or the operator's `.env`". Not settled: (a) when
+  both set a key, which wins; (b) whether "the operator's `.env`" is only the
+  repo-root `.env` or also a file named by `KE_ENV_FILE` (the launch scripts
+  read both); (c) security L-5 (deferred) leaves `gates-it` able to read the
+  whole `.env` through its read-write repo mount, so "no other `.env` value
+  is read" holds for the verify project's environment and compose arguments,
+  not for the filesystem. Is that acceptable until `platform-offline`?
+  **A35 (assumed):** (a) the caller's environment wins, as compose does;
+  (b) the repo-root `.env` only; (c) acceptable, with PS-2.21 testing the
+  environment and arguments only.
+- **Q36. Resolved (orchestrator ruling; reaffirmed as C1 against the
+  architect's "7 min now").** **A36:** as assumed: CI stays at 20 minutes
+  until 2b's first green CI run, then that run's duration plus 50%, rounded
+  up, in a follow-up commit before close. Settled in PS-3.4 in 2b. Original
+  question, kept for the record: Which CI run sets the PS-3.4 timeout. The 274 s baseline
+  (0f2821c) predates 2b's store stop/start and worker, so 2b's `full` will be
+  slower. **A36 (assumed):** the timeout stays 20 minutes until the first
+  green CI run of the 2b branch; the value is then set to that run's
+  duration plus 50%, rounded up, in a follow-up commit on the same branch
+  before the item closes, and the reviewer checks it against that run's log.
+
+Resolved by the orchestrator 2026-10-19 (`docs/handoffs/platform-stack.md`,
+"orchestrator: split + rulings Q33, Q34" and "rulings on architect R1–R4"):
+
+- **Q33. Resolved (orchestrator ruling).** **A33:** (a) the build/launch
+  scripts (bash and PowerShell) also refuse a non-loopback `KE_BIND_ADDRESS`
+  outside `dev` before `docker compose up`, in addition to the engine's
+  startup refusal; the gateway image's entrypoint bind check refuses under
+  the same rule (ruling R4), and is the check that stops the publish;
+  (b) loopback means any address in `127.0.0.0/8`, plus `::1`;
+  `KE_BIND_ADDRESS` itself is IPv4 only (architect, §2.4), so IPv6 binding is
+  out of scope and an IPv6 value is rejected as not IPv4; (c) in `dev` each
+  check warns naming `KE_BIND_ADDRESS` and continues. Settled in PS-2.14.
+  Original question, kept for the record: The port
+  ruling (umbrella, 2026-10-19) says a non-loopback `KE_BIND_ADDRESS` is
+  refused at startup outside `dev`. Not settled:
+  (a) *Where.* The engine's startup check runs in `api` and `worker`, but
+  `gateway` publishes the ports whether or not `api` starts, so a refused
+  `api` still leaves the gateway (and Phoenix behind it) on the LAN. Should
+  the launch scripts (bash and PowerShell) also refuse before
+  `docker compose up`, or is the `api` refusal enough until auth-audit?
+  (b) *Loopback set.* Is it exactly `127.0.0.1` and `::1` (the addresses
+  Docker accepts as a bind host), or the whole `127.0.0.0/8`? PS-Q3's list
+  also has `localhost`, which Docker does not accept as a bind address.
+  (c) *Dev warning.* Should `KE_ENV=dev` with a non-loopback value log a
+  warning naming `KE_BIND_ADDRESS`, as PS-1.5 does for auth off and hidden
+  trace content?
+- **Q34. Resolved (orchestrator ruling).** **A34:** accepted as the analyst
+  proposed: the recorded Windows run must use the branch head, or the diff
+  since must change no script, compose file or Dockerfile; otherwise it is
+  repeated before commit. Settled in PS-2.9. **Scope ruling (orchestrator,
+  2026-10-19, `platform-stack-ready` rework round 1):** "script" means the
+  PowerShell launch, build and teardown path; gate-only bash scripts and
+  engine code do not make the Windows proof stale, while the PowerShell
+  launch/build/teardown scripts, compose files and Dockerfiles do. Original question, kept for the
+  record: Q31 accepts a
+  recorded run on the human's Windows host. If scripts, compose files or
+  Dockerfiles change after the run, must it be repeated before commit? PS-2.9
+  currently requires it to match the branch head, or the diff since to touch
+  none of those files.
 
 Resolved by the orchestrator 2026-10-18 (`docs/handoffs/platform-config.md`,
 "orchestrator: rulings on analyst Q31, Q32 and casing"):
@@ -176,8 +510,10 @@ Resolved by the human 2026-10-18 (`docs/handoffs/platform-skeleton.md`,
   testcontainers? **A30 (before the ruling):** none; asked of you.
 - **Q20. Resolved (human ruling).** No macOS for now: Windows (PowerShell) and
   Linux only; Apple silicon is out of scope. Settles PS-2.9 and the PS-3.1
-  platform note. The proof sub-question is carried as Q31. Original question,
-  kept for the record:
+  platform note. The proof sub-question is carried as Q31. *Narrowed
+  2026-10-19 by Q49 and Q50:* arm64 bundles and `install.sh` on an
+  Apple-silicon Mac are now in scope. Original question, kept for the
+  record:
 - *(original)* **Q20 (PS-Q10). macOS and Windows proof (human).** CI runs Linux only. Is a
   recorded run on your Windows machine enough proof for the PowerShell build,
   launch and teardown scripts, and who proves macOS (no macOS machine is

@@ -1,16 +1,23 @@
 [project]
-name = "monitored-harness"
+name = "knowledge-engine"
 version = "0.1.0"
 description = "Multi-agent development harness with OpenInference tracing for Arize Phoenix"
+license = "MIT"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "fastapi>=0.146.0",
     "httpx>=0.28.1",
+    "neo4j>=6.4.1",
     "openinference-semantic-conventions>=0.1.41",
     "opentelemetry-exporter-otlp-proto-http>=1.45.1",
     "opentelemetry-sdk>=1.45.1",
+    "psycopg[binary]>=3.3.6",
     "pydantic-settings>=2.16.0",
     "pyyaml>=6.0.3",
+    "redis>=8.1.0",
     "requests>=2.34.2",
+    "rq>=2.12.0",
+    "uvicorn>=0.54.0",
 ]
 
 [build-system]
@@ -30,6 +37,12 @@ dev = [
 [tool.coverage.run]
 branch = true
 source = ["engine", "harness_telemetry"]
+# The checkout is read-only in the gates (PS-3.5), so the data lives in /tmp.
+# `parallel = true` is what makes `coverage erase` also remove stale
+# `/tmp/.coverage.*` files (without it erase deletes only the main data file);
+# `combine` reads them. Not the COVERAGE_FILE env var (leaks into nested runs).
+data_file = "/tmp/.coverage"
+parallel = true
 
 [tool.coverage.report]
 fail_under = 80

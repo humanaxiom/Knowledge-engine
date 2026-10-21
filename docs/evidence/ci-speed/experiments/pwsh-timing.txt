@@ -1,0 +1,7 @@
+nproc=24
+pwsh exit, HOME=/ x5:            0.13 0.13 0.12 0.13 0.13 
+pwsh exit, HOME=/tmp/h x5:       0.13 0.14 0.12 0.12 0.12 
+pwsh Import PSSA, HOME=/ x3:     0.25 0.27 0.26 
+pwsh Import PSSA, HOME=/tmp/h x3: 0.25 0.29 0.29 
+bash scripts/lint.sh x2:         1.69 1.61 
+python startup (uv run) x3:      0.28 0.03 0.03 

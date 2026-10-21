@@ -1,0 +1,22 @@
+--- before (test.sh pid 9)
+     1      1 S bash sig.sh TERM pid 14 
+   111    111 S uv run --locked python -m coverage run -p --data-file=/tmp/.coverage.tests.pkg -m unittest
+   114    111 S /opt/venv/bin/python3 -m coverage run -p --data-file=/tmp/.coverage.tests.pkg -m unittest 
+     7      7 S sleep 300 
+     8      1 S sleep 300 
+     9      9 S bash scripts/test.sh fast 
+test.sh rc=143
+--- after
+     1      1 S bash sig.sh TERM pid 14 
+     7      7 S sleep 300 
+     8      1 S sleep 300 
+logdir removed
+OUT1 (other session) alive
+OUT2 (wrapper group) alive
+--- test.sh output tail
+  self._warn("No data was collected.", slug="no-data-collected")
+unit: 0s rc=0 tests.test_a
+unit: 1s rc=0 tests.test_ign
+unit: 0s rc=0 tests.test_slow
+unit: 0s rc=0 tests.test_z
+test_p (tests.pkg.test_p.P.test_p) ... rc=0

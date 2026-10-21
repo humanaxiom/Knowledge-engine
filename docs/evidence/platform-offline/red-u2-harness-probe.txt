@@ -1,0 +1,25 @@
+ Container ke-tester-u2red-gates-run-f5300a9d0fe3 Creating 
+ Container ke-tester-u2red-gates-run-f5300a9d0fe3 Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.70ms
+Installed 1 package in 0.99ms
+----------------------------------------------------------------------
+Ran 1 test in 0.152s
+
+OK
+fixture files: ['MANIFEST.sha256', 'app/.env.example', 'app/docker-compose.yml', 'app/scripts/launch.sh', 'bundle.json', 'images/ke-app.tar', 'images/postgres.tar']
+{"format": 1, "git_sha": "0123456789abcdef0123456789abcdef01234567", "dirty": false, "created": "2026-10-19T00:00:00Z", "platform": "linux/amd64", "images": [
+{"file": "images/ke-app.tar", "ref": "ke-app:local", "as": "ke-app:bundle-0123456789ab", "services": "api worker"},
+{"file": "images/postgres.tar", "ref": "postgres:16-bookworm@sha256:053bbdccec5dfedb2139185d4078ded23c0a5d8350ffa734241909291f1b54d5", "as": "ke-vendor/postgres:053bbdccec5d", "services": "postgres"}
+]}
+
+tamper cases built ok
+sha256sum -c on control fixture: 0  
+git sha: 596e48ad7be05904addfbb44a76cae688b4121d7
+status clean: '' 
+fake images: ['ke-gateway', 'ke-app', 'postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4', 'neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b', 'valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507', 'arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c']
+Filesystem     1024-blocks      Used Available Capacity Mounted on
+/dev/fake       104857600  52428800  52428800      50% /
+
+probe ok

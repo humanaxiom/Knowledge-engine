@@ -1,0 +1,2131 @@
+Recorded run 2: arm64, natively on aria-gb10 (docker context aria-gb10 / ssh sync-aria-gb10_local)
+
+=== STEP 1-copy-tree (run on the dev host, Git Bash)  start 2026-10-19T18:48:28Z
+$ ssh sync-aria-gb10_local "test ! -e ~/ke-proof-20261019 && mkdir ~/ke-proof-20261019"
+$ tar -C /c/repos/Knowledge-engine --exclude=./.venv --exclude=./dist -cf - . | ssh sync-aria-gb10_local "tar -C ~/ke-proof-20261019 -xf - && cd ~/ke-proof-20261019 && git rev-parse HEAD && git status --porcelain | wc -l && du -sh ."
+1fe81ddbfb603ec3b724ee58d71670b21799f7e3
+133
+66M	.
+=== END 1-copy-tree  rc=0  elapsed=9s
+
+=== STEP 0a-docker-version  start 2026-10-19T18:50:48Z  cwd <home>
+$ umask; uname -srm; command -v docker; docker version; docker compose version; docker info --format "{{.Architecture}} {{.OperatingSystem}} {{.Driver}}"; df -h ~
+0002
+Linux 7.0.0-1019-nvidia aarch64
+/usr/bin/docker
+Client: Docker Engine - Community
+ Version:           29.6.2
+ API version:       1.55
+ Go version:        go1.26.5
+ Git commit:        dfc4efb
+ Built:             Thu Jul 16 16:13:09 2026
+ OS/Arch:           linux/arm64
+ Context:           default
+
+Server: Docker Engine - Community
+ Engine:
+  Version:          29.6.2
+  API version:      1.55 (minimum version 1.40)
+  Go version:       go1.26.5
+  Git commit:       3d80467
+  Built:            Thu Jul 16 16:13:09 2026
+  OS/Arch:          linux/arm64
+  Experimental:     false
+ containerd:
+  Version:          v2.2.5
+  GitCommit:        e53c7c1516c3b2bff98eb76f1f4117477e6f4e66
+ runc:
+  Version:          1.3.6
+  GitCommit:        v1.3.6-0-g491b69ba
+ docker-init:
+  Version:          0.19.0
+  GitCommit:        de40ad0
+Docker Compose version v5.2.0
+aarch64 Ubuntu 24.04.5 LTS overlay2
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme0n1p3  3.6T  570G  2.9T  17% /
+=== END 0a-docker-version  rc=0  elapsed=0s
+
+=== STEP 0b-docker-ps  start 2026-10-19T18:50:48Z  cwd <home>
+$ docker ps --format "{{.Names}}\t{{.Ports}}"
+portainer	0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp, 0.0.0.0:9443->9443/tcp, [::]:9443->9443/tcp, 9000/tcp
+open-webui	0.0.0.0:12000->8080/tcp, [::]:12000->8080/tcp
+openclaw	
+=== END 0b-docker-ps  rc=0  elapsed=0s
+
+=== STEP 0c-ports-and-clash  start 2026-10-19T18:50:48Z  cwd <home>
+$ ss -ltn | grep -E ":4718[01] " || echo "ports 47180/47181 free"; docker ps -a --filter label=com.docker.compose.project=ke-proof-arm64 --format "{{.Names}}"; docker network ls --filter name=ke-proof --format "{{.Name}}"; docker volume ls --filter name=ke-proof --format "{{.Name}}"; docker images --format "{{.Repository}}:{{.Tag}}" | grep -E "bundle-|^ke-vendor/|^ke-" || true
+ports 47180/47181 free
+ke-gates:probe-arm64
+ke-gateway:probe-arm64
+ke-app:probe-arm64
+=== END 0c-ports-and-clash  rc=0  elapsed=0s
+### NOTE: the docker shim at ~/ke-proof-tools/bin/docker is a pass-through to /usr/bin/docker unless KE_PROOF_D1=1 (bundle step only; defect D1). Source:
+
+=== STEP 0d-shim-source  start 2026-10-19T18:50:48Z  cwd <home>
+$ cat ~/ke-proof-tools/bin/docker; cat ~/ke-proof-tools/d1-filter.inc
+#!/usr/bin/env bash
+# Recorded-run shim on aria-gb10 (tester, platform-offline): a pass-through to
+# /usr/bin/docker, except that with KE_PROOF_D1=1 (set only for the bundle
+# step) the defect-D1 filter answers `compose ... config --images <svc>`.
+set -u
+if [ "${KE_PROOF_D1:-}" = 1 ]; then
+  # shellcheck source=/dev/null
+  . "$HOME/ke-proof-tools/d1-filter.inc"
+  d1_filter /usr/bin/docker "$@"
+  exit
+fi
+exec /usr/bin/docker "$@"
+# DEVIATION (defect D1, recorded): `docker compose config --images <svc>` prints
+# the images of <svc> AND of its depends_on services (Compose 5.1.4 and 5.2.0
+# both do; the order varies), so bundle.sh stops with "service worker resolves
+# to more than one image". To exercise the steps after the bundle, this filter
+# answers exactly that call shape with the service's own image, read from
+# `docker compose ... config --format json`. Every other call passes through.
+d1_filter() { # d1_filter REAL_DOCKER ARGS...
+  local real="$1"; shift
+  local n=$#
+  if [ "$n" -ge 4 ] && [ "$1" = compose ] && [ "${@: -3:1}" = config ] && [ "${@: -2:1}" = --images ]; then
+    local svc="${!n}"
+    case "$svc" in -*) ;; *)
+      echo "d1-filter: compose config --images $svc -> own image only (recorded deviation)" >&2
+      "$real" "${@:1:n-3}" config --format json \
+        | python3 -I -c 'import json,sys; print(json.load(sys.stdin)["services"][sys.argv[1]]["image"])' "$svc"
+      return
+    esac
+  fi
+  "$real" "$@"
+}
+=== END 0d-shim-source  rc=0  elapsed=0s
+
+=== STEP 2-build  start 2026-10-19T18:50:48Z  cwd <home>/ke-proof-20261019
+$ bash scripts/build.sh
+time="2026-10-19T11:50:48-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:48-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:48-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:48-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:48-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:48-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:48-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:48-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:48-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:48-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:48-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:48-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:48-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:48-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+ Image ke-gateway Building 
+ Image ke-gates Building 
+ Image ke-gates Building 
+ Image ke-app Building 
+ Image ke-app Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 2.27kB done
+#1 DONE 0.0s
+
+#2 [gates-it internal] load build definition from gates.Dockerfile
+#2 transferring dockerfile: 3.64kB done
+#2 DONE 0.0s
+
+#3 [gateway internal] load build definition from gateway.Dockerfile
+#3 transferring dockerfile: 1.10kB done
+#3 DONE 0.0s
+
+#4 [api internal] load build definition from app.Dockerfile
+#4 transferring dockerfile: 984B done
+#4 DONE 0.0s
+
+#5 [api internal] load metadata for ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#5 ...
+
+#6 [gateway internal] load metadata for docker.io/nginxinc/nginx-unprivileged:1.28-alpine@sha256:7377697a821c131a924a7105fafbe7414db4e9fcc77a6f08f776f33f141ec3f8
+#6 DONE 0.4s
+
+#7 [gates-it internal] load metadata for docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#7 DONE 0.4s
+
+#8 [api internal] load .dockerignore
+#8 transferring context: 97B done
+#8 DONE 0.0s
+
+#9 [gateway internal] load build context
+#9 transferring context: 7.25kB done
+#9 DONE 0.0s
+
+#10 [gateway 1/7] FROM docker.io/nginxinc/nginx-unprivileged:1.28-alpine@sha256:7377697a821c131a924a7105fafbe7414db4e9fcc77a6f08f776f33f141ec3f8
+#10 CACHED
+
+#11 [gateway 2/7] COPY docker/gateway/nginx.conf /etc/nginx/nginx.conf
+#11 DONE 0.0s
+
+#12 [gateway 3/7] COPY docker/gateway/templates/ /etc/nginx/templates/
+#12 DONE 0.0s
+
+#13 [gateway 4/7] COPY --chmod=0755 docker/gateway/10-ke-bind-check.sh /docker-entrypoint.d/10-ke-bind-check.sh
+#13 DONE 0.0s
+
+#14 [gateway 5/7] COPY --chmod=0755 docker/gateway/11-ke-upstream-check.sh /docker-entrypoint.d/11-ke-upstream-check.sh
+#14 DONE 0.0s
+
+#15 [gateway 6/7] COPY --chmod=0755 docker/gateway/12-ke-port-check.sh /docker-entrypoint.d/12-ke-port-check.sh
+#15 DONE 0.0s
+
+#5 [gates-it internal] load metadata for ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#5 DONE 0.5s
+
+#16 [worker uv 1/1] FROM ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#16 DONE 0.0s
+
+#17 [worker stage-1 1/9] FROM docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#17 DONE 0.0s
+
+#18 [gates internal] load build context
+#18 transferring context: 225.91kB done
+#18 transferring context: 225.91kB done
+#18 DONE 0.0s
+
+#19 [gates stage-1  4/10] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x64; sha="3fc5e1567c450bd7bd5ae69ebb0a9a4a4e0418bbc36b0232cf6dd547f0bfc0eb" ;;       arm64) arch=arm64; sha="d0c216cec4c6c866fc15a105f039740228b53206f8576d2ed0bcd656a35ed6f6" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     tarball="powershell-7.4.21-linux-${arch}.tar.gz";     curl -fsSL -o "/tmp/$tarball"       "https://github.com/PowerShell/PowerShell/releases/download/v7.4.21/$tarball";     echo "$sha  /tmp/$tarball" | sha256sum -c -;     mkdir -p /opt/microsoft/powershell;     tar -xzf "/tmp/$tarball" -C /opt/microsoft/powershell;     chmod +x /opt/microsoft/powershell/pwsh;     ln -s /opt/microsoft/powershell/pwsh /usr/local/bin/pwsh;     rm "/tmp/$tarball";     pwsh -NoProfile -NonInteractive -Command "       $ErrorActionPreference = 'Stop';       Set-PSRepository PSGallery -InstallationPolicy Trusted;       Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope AllUsers -Force"
+#19 CACHED
+
+#20 [gates stage-1  3/10] RUN apt-get update  && apt-get install -y --no-install-recommends git jq ca-certificates curl       shellcheck=0.9.0-1 libicu72 libssl3 zlib1g  && rm -rf /var/lib/apt/lists/*  && git config --system --add safe.directory /work  && git config --system core.autocrlf true
+#20 CACHED
+
+#21 [gates stage-1  5/10] WORKDIR /work
+#21 CACHED
+
+#22 [worker stage-1 2/9] COPY --from=uv /uv /usr/local/bin/uv
+#22 CACHED
+
+#23 [worker stage-1 3/9] WORKDIR /app
+#23 CACHED
+
+#24 [gates stage-1  6/10] COPY pyproject.toml uv.lock ./
+#24 DONE 0.0s
+
+#25 [worker stage-1 4/9] COPY pyproject.toml uv.lock ./
+#25 DONE 0.0s
+
+#26 [gates-it stage-1  7/10] COPY harness_telemetry ./harness_telemetry
+#26 DONE 0.0s
+
+#27 [gates-it stage-1  8/10] COPY engine ./engine
+#27 DONE 0.0s
+
+#28 [gates-it stage-1  9/10] COPY config ./config
+#28 DONE 0.0s
+
+#29 [gateway 7/7] RUN rm -f /etc/nginx/conf.d/default.conf  && mkdir -p /etc/nginx/stream-conf.d  && chown nginx:nginx /etc/nginx/conf.d /etc/nginx/stream-conf.d
+#29 DONE 0.1s
+
+#30 [gateway] exporting to image
+#30 exporting layers 0.0s done
+#30 writing image sha256:3f668e4d6d7cb3859d672e9a3d9de0aa3d0af26c2d3ad78d62574f74094a88dd done
+#30 naming to docker.io/library/ke-gateway done
+#30 DONE 0.0s
+
+#31 [gateway] resolving provenance for metadata file
+#31 DONE 0.0s
+
+#32 [api stage-1 5/9] RUN uv sync --locked --no-dev --no-install-project
+#32 0.195 Using CPython 3.12.15 interpreter at: /usr/local/bin/python3
+#32 0.195 Creating virtual environment at: /opt/venv
+#32 0.199 Resolved 51 packages in 0.85ms
+#32 0.391 Downloading psycopg-binary (6.5MiB)
+#32 0.393 Downloading pydantic-core (2.0MiB)
+#32 0.801  Downloaded pydantic-core
+#32 0.876  Downloaded psycopg-binary
+#32 0.876 Prepared 42 packages in 676ms
+#32 0.958 Installed 42 packages in 81ms
+#32 0.958  + annotated-doc==0.0.5
+#32 0.958  + annotated-types==0.8.0
+#32 0.958  + anyio==4.15.1
+#32 0.958  + certifi==2026.7.22
+#32 0.958  + charset-normalizer==3.5.2
+#32 0.958  + click==8.5.0
+#32 0.958  + croniter==6.2.4
+#32 0.958  + fastapi==0.146.0
+#32 0.958  + googleapis-common-protos==1.75.5
+#32 0.958  + h11==0.16.0
+#32 0.958  + httpcore==1.0.9
+#32 0.958  + httpx==0.28.1
+#32 0.958  + idna==3.20
+#32 0.958  + neo4j==6.4.1
+#32 0.958  + openinference-semantic-conventions==0.1.41
+#32 0.958  + opentelemetry-api==1.45.1
+#32 0.958  + opentelemetry-exporter-http-transport==0.66b1
+#32 0.958  + opentelemetry-exporter-otlp-common==0.66b1
+#32 0.958  + opentelemetry-exporter-otlp-proto-common==1.45.1
+#32 0.958  + opentelemetry-exporter-otlp-proto-http==1.45.1
+#32 0.958  + opentelemetry-proto==1.45.1
+#32 0.958  + opentelemetry-sdk==1.45.1
+#32 0.958  + opentelemetry-semantic-conventions==0.66b1
+#32 0.958  + protobuf==7.36.2
+#32 0.958  + psycopg==3.3.6
+#32 0.958  + psycopg-binary==3.3.6
+#32 0.958  + pydantic==2.14.1
+#32 0.958  + pydantic-core==2.50.1
+#32 0.958  + pydantic-settings==2.16.0
+#32 0.958  + python-dateutil==2.9.0.post0
+#32 0.959  + python-dotenv==1.2.4
+#32 0.959  + pytz==2026.5
+#32 0.959  + pyyaml==6.0.3
+#32 0.959  + redis==8.1.0
+#32 0.959  + requests==2.34.2
+#32 0.959  + rq==2.12.0
+#32 0.959  + six==1.17.0
+#32 0.959  + starlette==1.9.0
+#32 0.959  + typing-extensions==4.16.0
+#32 0.959  + typing-inspection==0.4.4
+#32 0.959  + urllib3==2.8.0
+#32 0.959  + uvicorn==0.54.0
+#32 DONE 1.1s
+
+#33 [worker stage-1 6/9] COPY harness_telemetry ./harness_telemetry
+#33 DONE 0.0s
+
+#34 [worker stage-1 7/9] COPY engine ./engine
+#34 DONE 0.0s
+
+#35 [worker stage-1 8/9] COPY config ./config
+#35 DONE 0.0s
+
+#36 [gates stage-1 10/10] RUN uv sync --locked  && chown -R 10001:10001 /opt/venv /opt/uv-cache
+#36 0.222 Using CPython 3.12.15 interpreter at: /usr/local/bin/python3
+#36 0.222 Creating virtual environment at: /opt/venv
+#36 0.225 Resolved 51 packages in 0.56ms
+#36 0.229    Building knowledge-engine @ file:///work
+#36 0.356 Downloading mypy (13.8MiB)
+#36 0.359 Downloading pydantic-core (2.0MiB)
+#36 0.362 Downloading ast-serialize (1.2MiB)
+#36 0.363 Downloading psycopg-binary (6.5MiB)
+#36 0.495  Downloaded ast-serialize
+#36 0.515  Downloaded pydantic-core
+#36 0.622  Downloaded psycopg-binary
+#36 0.859       Built knowledge-engine @ file:///work
+#36 0.865  Downloaded mypy
+#36 0.866 Prepared 50 packages in 640ms
+#36 1.012 Installed 50 packages in 146ms
+#36 1.012  + annotated-doc==0.0.5
+#36 1.012  + annotated-types==0.8.0
+#36 1.012  + anyio==4.15.1
+#36 1.012  + ast-serialize==0.13.1
+#36 1.012  + certifi==2026.7.22
+#36 1.012  + charset-normalizer==3.5.2
+#36 1.012  + click==8.5.0
+#36 1.012  + coverage==7.16.2
+#36 1.012  + croniter==6.2.4
+#36 1.012  + fastapi==0.146.0
+#36 1.012  + googleapis-common-protos==1.75.5
+#36 1.012  + h11==0.16.0
+#36 1.012  + httpcore==1.0.9
+#36 1.012  + httpx==0.28.1
+#36 1.012  + idna==3.20
+#36 1.012  + knowledge-engine==0.1.0 (from file:///work)
+#36 1.012  + librt==0.16.0
+#36 1.012  + mypy==2.4.0
+#36 1.012  + mypy-extensions==1.1.0
+#36 1.012  + neo4j==6.4.1
+#36 1.012  + openinference-semantic-conventions==0.1.41
+#36 1.012  + opentelemetry-api==1.45.1
+#36 1.012  + opentelemetry-exporter-http-transport==0.66b1
+#36 1.012  + opentelemetry-exporter-otlp-common==0.66b1
+#36 1.012  + opentelemetry-exporter-otlp-proto-common==1.45.1
+#36 1.012  + opentelemetry-exporter-otlp-proto-http==1.45.1
+#36 1.013  + opentelemetry-proto==1.45.1
+#36 1.013  + opentelemetry-sdk==1.45.1
+#36 1.013  + opentelemetry-semantic-conventions==0.66b1
+#36 1.013  + pathspec==1.1.1
+#36 1.013  + protobuf==7.36.2
+#36 1.013  + psycopg==3.3.6
+#36 1.013  + psycopg-binary==3.3.6
+#36 1.013  + pydantic==2.14.1
+#36 1.013  + pydantic-core==2.50.1
+#36 1.013  + pydantic-settings==2.16.0
+#36 1.013  + python-dateutil==2.9.0.post0
+#36 1.013  + python-dotenv==1.2.4
+#36 1.013  + pytz==2026.5
+#36 1.013  + pyyaml==6.0.3
+#36 1.013  + redis==8.1.0
+#36 1.013  + requests==2.34.2
+#36 1.013  + rq==2.12.0
+#36 1.013  + six==1.17.0
+#36 1.013  + starlette==1.9.0
+#36 1.013  + types-pyyaml==6.0.12.20260906
+#36 1.013  + typing-extensions==4.16.0
+#36 1.013  + typing-inspection==0.4.4
+#36 1.013  + urllib3==2.8.0
+#36 1.013  + uvicorn==0.54.0
+#36 DONE 1.1s
+
+#37 [gates] exporting to image
+#37 ...
+
+#38 [api stage-1 9/9] RUN uv sync --locked --no-dev --no-editable  && useradd --no-create-home --uid 10001 ke
+#38 0.182 Resolved 51 packages in 0.95ms
+#38 0.186    Building knowledge-engine @ file:///app
+#38 0.636       Built knowledge-engine @ file:///app
+#38 0.638 Prepared 1 package in 453ms
+#38 0.642 Installed 1 package in 4ms
+#38 0.642  + knowledge-engine==0.1.0 (from file:///app)
+#38 DONE 0.7s
+
+#39 [worker] exporting to image
+#39 ...
+
+#40 [gates-it] exporting to image
+#40 exporting layers 1.0s done
+#40 writing image sha256:d2b5d0043397aae7316305298cf1847e3440ba9406973ec9c285f1d8ae7f6bd4 done
+#40 naming to docker.io/library/ke-gates done
+#40 DONE 1.0s
+
+#37 [gates] exporting to image
+#37 exporting layers 1.0s done
+#37 writing image sha256:ccb03b3ff5dbf002f20b2b99d1f7834337c35699d16332b8ff099cc9d47d328f done
+#37 naming to docker.io/library/ke-gates done
+#37 DONE 1.0s
+
+#41 [gates-it] resolving provenance for metadata file
+#41 DONE 0.0s
+
+#42 [gates] resolving provenance for metadata file
+#42 DONE 0.0s
+
+#43 [api] exporting to image
+#43 exporting layers 0.5s done
+#43 writing image sha256:5b5c95a16d15ae7d3f71a7536789f8dcd01a492fe908274cde7e7ed7b71960bf done
+#43 naming to docker.io/library/ke-app done
+#43 DONE 0.5s
+
+#39 [worker] exporting to image
+#39 exporting layers 0.5s done
+#39 writing image sha256:64676a69ba9d917f153da8f9d64353fae10e33e61c1ba75958071003de21d205 done
+#39 naming to docker.io/library/ke-app done
+#39 DONE 0.5s
+
+#44 [api] resolving provenance for metadata file
+#44 DONE 0.0s
+
+#45 [worker] resolving provenance for metadata file
+#45 DONE 0.0s
+ Image ke-app Built 
+ Image ke-gates Built 
+ Image ke-gates Built 
+ Image ke-gateway Built 
+ Image ke-app Built 
+time="2026-10-19T11:50:51-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:51-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:51-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:51-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:51-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:51-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:51-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:51-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:51-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:51-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:51-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:51-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:51-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:50:51-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+ Image ke-app Skipped Image can be built
+ Image ke-gateway Skipped Image can be built
+ Image ke-app Skipped Image can be built
+ Image ke-gates Skipped Image can be built
+ Image ke-gates Skipped Image can be built
+ Image arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c Pulling 
+ Image valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507 Pulling 
+ Image neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b Pulling 
+ Image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 Pulling 
+ bbeda6b4abb7 Pulling fs layer 0B
+ 3e291509ba3e Pulling fs layer 0B
+ 48f234d8916f Pulling fs layer 0B
+ 6871bebe6000 Pulling fs layer 0B
+ 4f4fb700ef54 Pulling fs layer 0B
+ 6871bebe6000 Waiting 0B
+ 4f4fb700ef54 Waiting 0B
+ a9986cd6f37d Pulling fs layer 0B
+ 4cfe312fbe3c Pulling fs layer 0B
+ f59a1153282d Pulling fs layer 0B
+ 03f2482d9960 Pulling fs layer 0B
+ 1a8024b938c1 Pulling fs layer 0B
+ 4f4fb700ef54 Pulling fs layer 0B
+ 3f23fa14f3fa Pulling fs layer 0B
+ a9986cd6f37d Waiting 0B
+ 4cfe312fbe3c Waiting 0B
+ f59a1153282d Waiting 0B
+ 03f2482d9960 Waiting 0B
+ 1a8024b938c1 Waiting 0B
+ 4f4fb700ef54 Waiting 0B
+ 3f23fa14f3fa Waiting 0B
+ c75f989a229d Already exists 0B
+ 9396282c53ac Pulling fs layer 0B
+ ba3861024b98 Pulling fs layer 0B
+ 7ed1d2401fd7 Pulling fs layer 0B
+ 3bef1916b2a9 Pulling fs layer 0B
+ e7b5d3a11922 Pulling fs layer 0B
+ 09ca2402aa67 Pulling fs layer 0B
+ ea8542a01142 Pulling fs layer 0B
+ 65910113e686 Pulling fs layer 0B
+ 173902aa982e Pulling fs layer 0B
+ 34f46e883a68 Pulling fs layer 0B
+ 4bd7825e361d Pulling fs layer 0B
+ 719dd1b28b47 Pulling fs layer 0B
+ e4325ecc19ef Pulling fs layer 0B
+ 9396282c53ac Waiting 0B
+ ba3861024b98 Waiting 0B
+ 7ed1d2401fd7 Waiting 0B
+ 3bef1916b2a9 Waiting 0B
+ e7b5d3a11922 Waiting 0B
+ 09ca2402aa67 Waiting 0B
+ ea8542a01142 Waiting 0B
+ 65910113e686 Waiting 0B
+ 173902aa982e Waiting 0B
+ 34f46e883a68 Waiting 0B
+ 4bd7825e361d Waiting 0B
+ 719dd1b28b47 Waiting 0B
+ e4325ecc19ef Waiting 0B
+ 401d177fd1e8 Pulling fs layer 0B
+ c172f21841df Pulling fs layer 0B
+ 218cf840d0d9 Pulling fs layer 0B
+ f6069939f718 Pulling fs layer 0B
+ d6b1b89eccac Pulling fs layer 0B
+ 2780920e5dbf Pulling fs layer 0B
+ 7c12895b777b Pulling fs layer 0B
+ 3214acf345c0 Pulling fs layer 0B
+ 52630fc75a18 Pulling fs layer 0B
+ dd64bf2dd177 Pulling fs layer 0B
+ b839dfae01f6 Pulling fs layer 0B
+ ebddc55facdc Pulling fs layer 0B
+ 6ed1ef0cb115 Pulling fs layer 0B
+ 2ee8cec66b40 Pulling fs layer 0B
+ 9e203bbce348 Pulling fs layer 0B
+ 52b2cf548ae5 Pulling fs layer 0B
+ 8072b5a0f795 Pulling fs layer 0B
+ 77d3479ca1b9 Pulling fs layer 0B
+ 35d8e5f294cf Pulling fs layer 0B
+ ff43311d121d Pulling fs layer 0B
+ 278aecde295e Pulling fs layer 0B
+ 8d067b931f77 Pulling fs layer 0B
+ c7e3cc7aebd5 Pulling fs layer 0B
+ 10d1f2144d7f Pulling fs layer 0B
+ ef8c80d78f0d Pulling fs layer 0B
+ 0f64107bbbca Pulling fs layer 0B
+ c64517c59c6a Pulling fs layer 0B
+ ae7f690deb2b Pulling fs layer 0B
+ 169a2a5c9ddf Pulling fs layer 0B
+ 96c72713a085 Pulling fs layer 0B
+ 26c7f95a81c6 Pulling fs layer 0B
+ 215af81a1153 Pulling fs layer 0B
+ 423763e140dc Pulling fs layer 0B
+ cb05175cd26a Pulling fs layer 0B
+ f963afa78aca Pulling fs layer 0B
+ 433713a654de Pulling fs layer 0B
+ e25be22ad4e8 Pulling fs layer 0B
+ 0daf9e0f2a7d Pulling fs layer 0B
+ 2c819b88df1d Pulling fs layer 0B
+ ce9b043f6cfc Pulling fs layer 0B
+ 49971ddb5914 Pulling fs layer 0B
+ 541af3ac8bbd Pulling fs layer 0B
+ c78e5a882452 Pulling fs layer 0B
+ 2850e137067b Pulling fs layer 0B
+ 7e2149dd690c Pulling fs layer 0B
+ 345d82d2f3e7 Pulling fs layer 0B
+ 219d166edffc Pulling fs layer 0B
+ 7fa4c91daf61 Pulling fs layer 0B
+ 7fb5d6b2f562 Pulling fs layer 0B
+ c6a199f94a0d Pulling fs layer 0B
+ 274b085ed8bc Pulling fs layer 0B
+ 35d8e5f294cf Waiting 0B
+ ff43311d121d Waiting 0B
+ dd64bf2dd177 Waiting 0B
+ b839dfae01f6 Waiting 0B
+ 278aecde295e Waiting 0B
+ ebddc55facdc Waiting 0B
+ 6ed1ef0cb115 Waiting 0B
+ 8d067b931f77 Waiting 0B
+ 2ee8cec66b40 Waiting 0B
+ c7e3cc7aebd5 Waiting 0B
+ 9e203bbce348 Waiting 0B
+ 10d1f2144d7f Waiting 0B
+ 52b2cf548ae5 Waiting 0B
+ 8072b5a0f795 Waiting 0B
+ ef8c80d78f0d Waiting 0B
+ 77d3479ca1b9 Waiting 0B
+ 0f64107bbbca Waiting 0B
+ 401d177fd1e8 Waiting 0B
+ c172f21841df Waiting 0B
+ c64517c59c6a Waiting 0B
+ 218cf840d0d9 Waiting 0B
+ f6069939f718 Waiting 0B
+ ae7f690deb2b Waiting 0B
+ d6b1b89eccac Waiting 0B
+ 49971ddb5914 Waiting 0B
+ 169a2a5c9ddf Waiting 0B
+ 2780920e5dbf Waiting 0B
+ 541af3ac8bbd Waiting 0B
+ c78e5a882452 Waiting 0B
+ 7fb5d6b2f562 Waiting 0B
+ 2850e137067b Waiting 0B
+ c6a199f94a0d Waiting 0B
+ 7e2149dd690c Waiting 0B
+ 96c72713a085 Waiting 0B
+ 274b085ed8bc Waiting 0B
+ 345d82d2f3e7 Waiting 0B
+ 26c7f95a81c6 Waiting 0B
+ 219d166edffc Waiting 0B
+ 7fa4c91daf61 Waiting 0B
+ e25be22ad4e8 Waiting 0B
+ 215af81a1153 Waiting 0B
+ 0daf9e0f2a7d Waiting 0B
+ ce9b043f6cfc Waiting 0B
+ 2c819b88df1d Waiting 0B
+ 423763e140dc Waiting 0B
+ 7c12895b777b Waiting 0B
+ cb05175cd26a Waiting 0B
+ 433713a654de Waiting 0B
+ 3214acf345c0 Waiting 0B
+ f963afa78aca Waiting 0B
+ 52630fc75a18 Waiting 0B
+ bbeda6b4abb7 Downloading 310.7kB
+ 48f234d8916f Downloading 10.06kB
+ 48f234d8916f Verifying Checksum 0B
+ 48f234d8916f Download complete 0B
+ bbeda6b4abb7 Downloading 11.83MB
+ 3e291509ba3e Downloading 536.2kB
+ bbeda6b4abb7 Downloading 18.68MB
+ 6871bebe6000 Downloading 539.4kB
+ 3e291509ba3e Downloading 5.364MB
+ bbeda6b4abb7 Downloading 22.41MB
+ 6871bebe6000 Downloading 3.234MB
+ 3e291509ba3e Downloading 11.24MB
+ bbeda6b4abb7 Downloading 24.9MB
+ 6871bebe6000 Downloading 6.974MB
+ 3e291509ba3e Downloading 17.63MB
+ 6871bebe6000 Downloading 10.71MB
+ 3e291509ba3e Downloading 23.46MB
+ bbeda6b4abb7 Downloading 26.77MB
+ 3e291509ba3e Downloading 29.9MB
+ 6871bebe6000 Downloading 14.99MB
+ bbeda6b4abb7 Downloading 28.02MB
+ 3e291509ba3e Downloading 36.87MB
+ 6871bebe6000 Downloading 19.27MB
+ bbeda6b4abb7 Downloading 28.95MB
+ 3e291509ba3e Downloading 43.27MB
+ 6871bebe6000 Downloading 24.58MB
+ bbeda6b4abb7 Downloading 29.57MB
+ 3e291509ba3e Downloading 49.68MB
+ 6871bebe6000 Downloading 29.39MB
+ 3e291509ba3e Downloading 56.08MB
+ 6871bebe6000 Downloading 34.2MB
+ bbeda6b4abb7 Downloading 30.2MB
+ bbeda6b4abb7 Verifying Checksum 0B
+ bbeda6b4abb7 Download complete 0B
+ bbeda6b4abb7 Extracting 327.7kB
+ 3e291509ba3e Downloading 62.49MB
+ 4f4fb700ef54 Downloading 32B
+ 4f4fb700ef54 Verifying Checksum 0B
+ 4f4fb700ef54 Download complete 0B
+ 6871bebe6000 Downloading 39.53MB
+ bbeda6b4abb7 Extracting 2.949MB
+ 3e291509ba3e Downloading 68.35MB
+ a9986cd6f37d Downloading 48.51kB
+ 6871bebe6000 Downloading 45.92MB
+ bbeda6b4abb7 Extracting 5.571MB
+ 3e291509ba3e Downloading 74.23MB
+ a9986cd6f37d Downloading 441.7kB
+ 6871bebe6000 Downloading 51.28MB
+ bbeda6b4abb7 Extracting 8.847MB
+ 3e291509ba3e Downloading 80.69MB
+ a9986cd6f37d Downloading 1.13MB
+ 6871bebe6000 Downloading 58.25MB
+ bbeda6b4abb7 Extracting 10.49MB
+ 3e291509ba3e Downloading 86MB
+ a9986cd6f37d Downloading 1.671MB
+ 6871bebe6000 Downloading 64.1MB
+ bbeda6b4abb7 Extracting 12.45MB
+ 3e291509ba3e Downloading 91.33MB
+ a9986cd6f37d Downloading 2.309MB
+ 6871bebe6000 Downloading 71.57MB
+ bbeda6b4abb7 Extracting 16.06MB
+ 3e291509ba3e Downloading 95.59MB
+ a9986cd6f37d Downloading 3.194MB
+ 6871bebe6000 Downloading 77.97MB
+ bbeda6b4abb7 Extracting 19.66MB
+ 3e291509ba3e Downloading 99.89MB
+ a9986cd6f37d Downloading 4.03MB
+ a9986cd6f37d Verifying Checksum 0B
+ a9986cd6f37d Download complete 0B
+ a9986cd6f37d Extracting 65.54kB
+ bbeda6b4abb7 Extracting 22.61MB
+ 6871bebe6000 Downloading 84.89MB
+ 3e291509ba3e Downloading 104.2MB
+ 4cfe312fbe3c Downloading 953B
+ 4cfe312fbe3c Verifying Checksum 0B
+ 4cfe312fbe3c Download complete 0B
+ a9986cd6f37d Extracting 3.08MB
+ bbeda6b4abb7 Extracting 25.56MB
+ 6871bebe6000 Downloading 91.3MB
+ a9986cd6f37d Extracting 4.188MB
+ a9986cd6f37d Extracting 4.188MB
+ a9986cd6f37d Pull complete 0B
+ 4cfe312fbe3c Extracting 953B
+ 4cfe312fbe3c Extracting 953B
+ 4cfe312fbe3c Pull complete 0B
+ 3e291509ba3e Downloading 109.5MB
+ f59a1153282d Downloading 16.38kB
+ 6871bebe6000 Downloading 97.71MB
+ f59a1153282d Downloading 651kB
+ f59a1153282d Verifying Checksum 0B
+ f59a1153282d Download complete 0B
+ f59a1153282d Extracting 32.77kB
+ bbeda6b4abb7 Extracting 26.21MB
+ 3e291509ba3e Downloading 114.4MB
+ f59a1153282d Extracting 651kB
+ f59a1153282d Extracting 651kB
+ f59a1153282d Pull complete 0B
+ 6871bebe6000 Downloading 104.1MB
+ 03f2482d9960 Downloading 146.2kB
+ bbeda6b4abb7 Extracting 28.51MB
+ 3e291509ba3e Downloading 119.7MB
+ 6871bebe6000 Downloading 110MB
+ 03f2482d9960 Downloading 1.21MB
+ 3e291509ba3e Downloading 124.5MB
+ bbeda6b4abb7 Extracting 29.49MB
+ 6871bebe6000 Downloading 115.3MB
+ 3e291509ba3e Downloading 129.8MB
+ 03f2482d9960 Downloading 2.258MB
+ bbeda6b4abb7 Extracting 30.2MB
+ bbeda6b4abb7 Pull complete 0B
+ 6871bebe6000 Downloading 120.7MB
+ 3e291509ba3e Downloading 135.2MB
+ 03f2482d9960 Downloading 3.57MB
+ 6871bebe6000 Downloading 126MB
+ 3e291509ba3e Downloading 141MB
+ 03f2482d9960 Downloading 4.763MB
+ 6871bebe6000 Downloading 130.8MB
+ 03f2482d9960 Downloading 6.219MB
+ 3e291509ba3e Downloading 146.9MB
+ 6871bebe6000 Downloading 135.6MB
+ 03f2482d9960 Downloading 7.797MB
+ 3e291509ba3e Downloading 152.8MB
+ 3e291509ba3e Download complete 0B
+ 6871bebe6000 Downloading 140.9MB
+ 3e291509ba3e Extracting 557.1kB
+ 03f2482d9960 Downloading 10.32MB
+ 1a8024b938c1 Downloading 141B
+ 1a8024b938c1 Verifying Checksum 0B
+ 1a8024b938c1 Download complete 0B
+ 03f2482d9960 Verifying Checksum 0B
+ 03f2482d9960 Download complete 0B
+ 6871bebe6000 Downloading 149.5MB
+ 03f2482d9960 Extracting 131.1kB
+ 3e291509ba3e Extracting 8.356MB
+ 4f4fb700ef54 Downloading 32B
+ 4f4fb700ef54 Verifying Checksum 0B
+ 4f4fb700ef54 Download complete 0B
+ 03f2482d9960 Extracting 4.194MB
+ 6871bebe6000 Downloading 161.2MB
+ 3e291509ba3e Extracting 16.15MB
+ 6871bebe6000 Verifying Checksum 0B
+ 6871bebe6000 Download complete 0B
+ 3f23fa14f3fa Downloading 671B
+ 3f23fa14f3fa Verifying Checksum 0B
+ 3f23fa14f3fa Download complete 0B
+ 9396282c53ac Downloading 1.168kB
+ 9396282c53ac Verifying Checksum 0B
+ 9396282c53ac Extracting 1.168kB
+ 9396282c53ac Extracting 1.168kB
+ 9396282c53ac Pull complete 0B
+ ba3861024b98 Downloading 49.15kB
+ 03f2482d9960 Extracting 7.864MB
+ 3e291509ba3e Extracting 25.62MB
+ ba3861024b98 Verifying Checksum 0B
+ ba3861024b98 Download complete 0B
+ ba3861024b98 Extracting 65.54kB
+ 7ed1d2401fd7 Downloading 16.38kB
+ 7ed1d2401fd7 Verifying Checksum 0B
+ 7ed1d2401fd7 Download complete 0B
+ 03f2482d9960 Extracting 12.06MB
+ 3bef1916b2a9 Downloading 96.73kB
+ 3e291509ba3e Extracting 33.98MB
+ 03f2482d9960 Extracting 13.09MB
+ 03f2482d9960 Pull complete 0B
+ 1a8024b938c1 Extracting 141B
+ 1a8024b938c1 Extracting 141B
+ ba3861024b98 Extracting 3.736MB
+ 1a8024b938c1 Pull complete 0B
+ 4f4fb700ef54 Extracting 32B
+ 4f4fb700ef54 Extracting 32B
+ 4f4fb700ef54 Pull complete 0B
+ 3f23fa14f3fa Extracting 671B
+ 3f23fa14f3fa Extracting 671B
+ 3f23fa14f3fa Pull complete 0B
+ Image valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507 Pulled 
+ 3bef1916b2a9 Verifying Checksum 0B
+ 3bef1916b2a9 Download complete 0B
+ ba3861024b98 Extracting 4.52MB
+ 09ca2402aa67 Downloading 116B
+ 09ca2402aa67 Verifying Checksum 0B
+ 09ca2402aa67 Download complete 0B
+ e7b5d3a11922 Downloading 16.38kB
+ ba3861024b98 Extracting 4.52MB
+ ba3861024b98 Pull complete 0B
+ 7ed1d2401fd7 Extracting 32.77kB
+ e7b5d3a11922 Downloading 1.109MB
+ e7b5d3a11922 Verifying Checksum 0B
+ e7b5d3a11922 Download complete 0B
+ 3e291509ba3e Extracting 42.34MB
+ 7ed1d2401fd7 Extracting 1.204MB
+ 7ed1d2401fd7 Extracting 1.204MB
+ 7ed1d2401fd7 Pull complete 0B
+ 3bef1916b2a9 Extracting 98.3kB
+ ea8542a01142 Downloading 3.144kB
+ ea8542a01142 Verifying Checksum 0B
+ ea8542a01142 Download complete 0B
+ 65910113e686 Downloading 526.3kB
+ 3e291509ba3e Extracting 49.58MB
+ 34f46e883a68 Downloading 128B
+ 34f46e883a68 Verifying Checksum 0B
+ 34f46e883a68 Download complete 0B
+ 3bef1916b2a9 Extracting 3.736MB
+ 65910113e686 Downloading 12.16MB
+ 3e291509ba3e Extracting 62.39MB
+ 4bd7825e361d Downloading 168B
+ 4bd7825e361d Verifying Checksum 0B
+ 4bd7825e361d Download complete 0B
+ 3bef1916b2a9 Extracting 5.702MB
+ 65910113e686 Downloading 23.78MB
+ 719dd1b28b47 Downloading 3.496kB
+ 719dd1b28b47 Downloading 6.109kB
+ 719dd1b28b47 Download complete 0B
+ 3e291509ba3e Extracting 69.63MB
+ 173902aa982e Downloading 10.01kB
+ 173902aa982e Verifying Checksum 0B
+ 173902aa982e Download complete 0B
+ 65910113e686 Downloading 34.96MB
+ 3bef1916b2a9 Extracting 7.569MB
+ e4325ecc19ef Download complete 0B
+ 3bef1916b2a9 Extracting 8.067MB
+ 3bef1916b2a9 Pull complete 0B
+ e7b5d3a11922 Extracting 32.77kB
+ 3e291509ba3e Extracting 76.87MB
+ 401d177fd1e8 Downloading 16.38kB
+ 401d177fd1e8 Downloading 124.5kB
+ 401d177fd1e8 Verifying Checksum 0B
+ 401d177fd1e8 Download complete 0B
+ 401d177fd1e8 Extracting 32.77kB
+ 401d177fd1e8 Extracting 124.5kB
+ 401d177fd1e8 Extracting 124.5kB
+ e7b5d3a11922 Extracting 1.109MB
+ 401d177fd1e8 Pull complete 0B
+ e7b5d3a11922 Extracting 1.109MB
+ e7b5d3a11922 Pull complete 0B
+ 09ca2402aa67 Extracting 116B
+ 09ca2402aa67 Extracting 116B
+ 65910113e686 Downloading 46.74MB
+ 09ca2402aa67 Pull complete 0B
+ ea8542a01142 Extracting 3.144kB
+ ea8542a01142 Extracting 3.144kB
+ ea8542a01142 Pull complete 0B
+ c172f21841df Downloading 3.472kB
+ c172f21841df Downloading 12.68kB
+ c172f21841df Verifying Checksum 0B
+ c172f21841df Download complete 0B
+ c172f21841df Extracting 12.68kB
+ c172f21841df Extracting 12.68kB
+ c172f21841df Pull complete 0B
+ 3e291509ba3e Extracting 82.44MB
+ 218cf840d0d9 Downloading 3.453kB
+ 65910113e686 Downloading 57.96MB
+ 218cf840d0d9 Downloading 288.1kB
+ 218cf840d0d9 Verifying Checksum 0B
+ 218cf840d0d9 Download complete 0B
+ 218cf840d0d9 Extracting 32.77kB
+ 218cf840d0d9 Extracting 288.1kB
+ 218cf840d0d9 Extracting 288.1kB
+ 3e291509ba3e Extracting 88.57MB
+ 218cf840d0d9 Pull complete 0B
+ 65910113e686 Downloading 69.17MB
+ f6069939f718 Downloading 16.38kB
+ f6069939f718 Downloading 254.7kB
+ f6069939f718 Verifying Checksum 0B
+ f6069939f718 Download complete 0B
+ f6069939f718 Extracting 32.77kB
+ 3e291509ba3e Extracting 92.47MB
+ f6069939f718 Extracting 254.7kB
+ f6069939f718 Extracting 254.7kB
+ 65910113e686 Downloading 80.95MB
+ f6069939f718 Pull complete 0B
+ 2780920e5dbf Downloading 67B
+ 2780920e5dbf Download complete 0B
+ 3e291509ba3e Extracting 96.37MB
+ 7c12895b777b Downloading 188B
+ 7c12895b777b Verifying Checksum 0B
+ 7c12895b777b Download complete 0B
+ 65910113e686 Downloading 92.72MB
+ 3214acf345c0 Downloading 123B
+ 3214acf345c0 Verifying Checksum 0B
+ 3214acf345c0 Download complete 0B
+ 3e291509ba3e Extracting 99.71MB
+ 65910113e686 Downloading 104.5MB
+ d6b1b89eccac Downloading 3.495kB
+ d6b1b89eccac Downloading 32.09kB
+ d6b1b89eccac Verifying Checksum 0B
+ d6b1b89eccac Download complete 0B
+ d6b1b89eccac Extracting 32.09kB
+ 52630fc75a18 Downloading 162B
+ 52630fc75a18 Verifying Checksum 0B
+ 52630fc75a18 Download complete 0B
+ d6b1b89eccac Extracting 32.09kB
+ d6b1b89eccac Pull complete 0B
+ 2780920e5dbf Extracting 67B
+ 2780920e5dbf Extracting 67B
+ 2780920e5dbf Pull complete 0B
+ 7c12895b777b Extracting 188B
+ 65910113e686 Verifying Checksum 0B
+ 65910113e686 Download complete 0B
+ 7c12895b777b Extracting 188B
+ 7c12895b777b Pull complete 0B
+ 3214acf345c0 Extracting 123B
+ 3214acf345c0 Extracting 123B
+ 3214acf345c0 Pull complete 0B
+ 52630fc75a18 Extracting 162B
+ 3e291509ba3e Extracting 103.6MB
+ 52630fc75a18 Extracting 162B
+ 52630fc75a18 Pull complete 0B
+ 65910113e686 Extracting 557.1kB
+ dd64bf2dd177 Downloading 80B
+ dd64bf2dd177 Download complete 0B
+ dd64bf2dd177 Extracting 80B
+ dd64bf2dd177 Extracting 80B
+ dd64bf2dd177 Pull complete 0B
+ b839dfae01f6 Downloading 351B
+ b839dfae01f6 Verifying Checksum 0B
+ b839dfae01f6 Download complete 0B
+ b839dfae01f6 Extracting 351B
+ b839dfae01f6 Extracting 351B
+ b839dfae01f6 Pull complete 0B
+ ebddc55facdc Downloading 311B
+ ebddc55facdc Download complete 0B
+ ebddc55facdc Extracting 311B
+ ebddc55facdc Extracting 311B
+ ebddc55facdc Pull complete 0B
+ 3e291509ba3e Extracting 108.1MB
+ 6ed1ef0cb115 Downloading 16.38kB
+ 6ed1ef0cb115 Downloading 143.3kB
+ 6ed1ef0cb115 Verifying Checksum 0B
+ 6ed1ef0cb115 Download complete 0B
+ 6ed1ef0cb115 Extracting 32.77kB
+ 6ed1ef0cb115 Extracting 143.3kB
+ 6ed1ef0cb115 Extracting 143.3kB
+ 2ee8cec66b40 Downloading 65.54kB
+ 6ed1ef0cb115 Pull complete 0B
+ 65910113e686 Extracting 4.456MB
+ 9e203bbce348 Downloading 49.15kB
+ 2ee8cec66b40 Verifying Checksum 0B
+ 2ee8cec66b40 Download complete 0B
+ 2ee8cec66b40 Extracting 65.54kB
+ 52b2cf548ae5 Downloading 15.74kB
+ 9e203bbce348 Download complete 0B
+ 52b2cf548ae5 Downloading 347kB
+ 52b2cf548ae5 Verifying Checksum 0B
+ 52b2cf548ae5 Download complete 0B
+ 3e291509ba3e Extracting 112MB
+ 8072b5a0f795 Downloading 16.38kB
+ 8072b5a0f795 Downloading 95.47kB
+ 8072b5a0f795 Verifying Checksum 0B
+ 8072b5a0f795 Download complete 0B
+ 65910113e686 Extracting 8.913MB
+ 77d3479ca1b9 Downloading 16.38kB
+ 77d3479ca1b9 Downloading 153.8kB
+ 77d3479ca1b9 Verifying Checksum 0B
+ 77d3479ca1b9 Download complete 0B
+ 35d8e5f294cf Downloading 16.38kB
+ 2ee8cec66b40 Extracting 2.425MB
+ 35d8e5f294cf Verifying Checksum 0B
+ 35d8e5f294cf Download complete 0B
+ ff43311d121d Downloading 16.38kB
+ ff43311d121d Verifying Checksum 0B
+ ff43311d121d Download complete 0B
+ 3e291509ba3e Extracting 116.4MB
+ 278aecde295e Downloading 16.38kB
+ 278aecde295e Downloading 51.55kB
+ 278aecde295e Verifying Checksum 0B
+ 278aecde295e Download complete 0B
+ 65910113e686 Extracting 13.37MB
+ 8d067b931f77 Downloading 3.497kB
+ 8d067b931f77 Downloading 44.19kB
+ 8d067b931f77 Verifying Checksum 0B
+ 8d067b931f77 Download complete 0B
+ 2ee8cec66b40 Extracting 5.133MB
+ 2ee8cec66b40 Pull complete 0B
+ 9e203bbce348 Extracting 65.54kB
+ 3e291509ba3e Extracting 120.3MB
+ 10d1f2144d7f Downloading 16.38kB
+ 10d1f2144d7f Downloading 175.5kB
+ 10d1f2144d7f Verifying Checksum 0B
+ 10d1f2144d7f Download complete 0B
+ 65910113e686 Extracting 17.83MB
+ 9e203bbce348 Extracting 3.423MB
+ 9e203bbce348 Pull complete 0B
+ 52b2cf548ae5 Extracting 32.77kB
+ 52b2cf548ae5 Extracting 347kB
+ 52b2cf548ae5 Extracting 347kB
+ 52b2cf548ae5 Pull complete 0B
+ 8072b5a0f795 Extracting 32.77kB
+ 8072b5a0f795 Extracting 95.47kB
+ 8072b5a0f795 Extracting 95.47kB
+ 8072b5a0f795 Pull complete 0B
+ 77d3479ca1b9 Extracting 32.77kB
+ 77d3479ca1b9 Extracting 153.8kB
+ 77d3479ca1b9 Extracting 153.8kB
+ 77d3479ca1b9 Pull complete 0B
+ 35d8e5f294cf Extracting 32.77kB
+ 0f64107bbbca Downloading 16.38kB
+ 35d8e5f294cf Extracting 846.5kB
+ 35d8e5f294cf Extracting 846.5kB
+ 3e291509ba3e Extracting 124.2MB
+ 35d8e5f294cf Pull complete 0B
+ ff43311d121d Extracting 32.77kB
+ 0f64107bbbca Verifying Checksum 0B
+ 0f64107bbbca Download complete 0B
+ ff43311d121d Extracting 66.14kB
+ ff43311d121d Pull complete 0B
+ 278aecde295e Extracting 32.77kB
+ 278aecde295e Extracting 51.55kB
+ 278aecde295e Extracting 51.55kB
+ 278aecde295e Pull complete 0B
+ 65910113e686 Extracting 22.28MB
+ 8d067b931f77 Extracting 32.77kB
+ 8d067b931f77 Extracting 44.19kB
+ 8d067b931f77 Extracting 44.19kB
+ 8d067b931f77 Pull complete 0B
+ c64517c59c6a Downloading 3.497kB
+ c64517c59c6a Downloading 41.72kB
+ c64517c59c6a Verifying Checksum 0B
+ c64517c59c6a Download complete 0B
+ 3e291509ba3e Extracting 127.6MB
+ 65910113e686 Extracting 26.74MB
+ ef8c80d78f0d Downloading 3.465kB
+ c7e3cc7aebd5 Downloading 8.949kB
+ 3e291509ba3e Extracting 131.5MB
+ 65910113e686 Extracting 31.2MB
+ ef8c80d78f0d Downloading 75.52kB
+ 3e291509ba3e Extracting 135.4MB
+ c7e3cc7aebd5 Downloading 81.92kB
+ 65910113e686 Extracting 33.98MB
+ ef8c80d78f0d Verifying Checksum 0B
+ ef8c80d78f0d Download complete 0B
+ ae7f690deb2b Downloading 3.465kB
+ 3e291509ba3e Extracting 138.7MB
+ c7e3cc7aebd5 Downloading 381.4kB
+ 65910113e686 Extracting 37.32MB
+ c7e3cc7aebd5 Downloading 830.9kB
+ c7e3cc7aebd5 Verifying Checksum 0B
+ c7e3cc7aebd5 Download complete 0B
+ c7e3cc7aebd5 Extracting 32.77kB
+ 3e291509ba3e Extracting 142MB
+ ae7f690deb2b Downloading 77.6kB
+ ae7f690deb2b Downloading 162.7kB
+ ae7f690deb2b Verifying Checksum 0B
+ ae7f690deb2b Download complete 0B
+ c7e3cc7aebd5 Extracting 830.9kB
+ c7e3cc7aebd5 Extracting 830.9kB
+ c7e3cc7aebd5 Pull complete 0B
+ 10d1f2144d7f Extracting 32.77kB
+ 65910113e686 Extracting 41.22MB
+ 10d1f2144d7f Extracting 175.5kB
+ 10d1f2144d7f Extracting 175.5kB
+ 10d1f2144d7f Pull complete 0B
+ ef8c80d78f0d Extracting 32.77kB
+ ef8c80d78f0d Extracting 318.6kB
+ ef8c80d78f0d Extracting 318.6kB
+ ef8c80d78f0d Pull complete 0B
+ 0f64107bbbca Extracting 32.77kB
+ 96c72713a085 Downloading 16.38kB
+ 96c72713a085 Downloading 26.37kB
+ 96c72713a085 Verifying Checksum 0B
+ 96c72713a085 Download complete 0B
+ 0f64107bbbca Extracting 1.02MB
+ 0f64107bbbca Pull complete 0B
+ c64517c59c6a Extracting 32.77kB
+ 26c7f95a81c6 Downloading 3.494kB
+ 26c7f95a81c6 Downloading 107kB
+ 26c7f95a81c6 Download complete 0B
+ c64517c59c6a Extracting 41.72kB
+ c64517c59c6a Extracting 41.72kB
+ c64517c59c6a Pull complete 0B
+ ae7f690deb2b Extracting 32.77kB
+ 3e291509ba3e Extracting 145.9MB
+ ae7f690deb2b Extracting 162.7kB
+ ae7f690deb2b Extracting 162.7kB
+ ae7f690deb2b Pull complete 0B
+ 65910113e686 Extracting 45.68MB
+ 215af81a1153 Downloading 16.38kB
+ 215af81a1153 Verifying Checksum 0B
+ 215af81a1153 Download complete 0B
+ 169a2a5c9ddf Downloading 16.38kB
+ 3e291509ba3e Extracting 149.8MB
+ 65910113e686 Extracting 49.58MB
+ 3e291509ba3e Extracting 153.7MB
+ 169a2a5c9ddf Downloading 85.51kB
+ 65910113e686 Extracting 53.48MB
+ 423763e140dc Downloading 3.465kB
+ 169a2a5c9ddf Downloading 372.6kB
+ 169a2a5c9ddf Verifying Checksum 0B
+ 169a2a5c9ddf Download complete 0B
+ 169a2a5c9ddf Extracting 32.77kB
+ 169a2a5c9ddf Extracting 372.6kB
+ 169a2a5c9ddf Extracting 372.6kB
+ 169a2a5c9ddf Pull complete 0B
+ 3e291509ba3e Extracting 156.4MB
+ 3e291509ba3e Pull complete 0B
+ 48f234d8916f Extracting 10.06kB
+ 96c72713a085 Extracting 26.37kB
+ 48f234d8916f Extracting 10.06kB
+ 48f234d8916f Pull complete 0B
+ 65910113e686 Extracting 56.82MB
+ 96c72713a085 Extracting 26.37kB
+ 96c72713a085 Pull complete 0B
+ 26c7f95a81c6 Extracting 32.77kB
+ 26c7f95a81c6 Extracting 107kB
+ 26c7f95a81c6 Extracting 107kB
+ 26c7f95a81c6 Pull complete 0B
+ 215af81a1153 Extracting 32.77kB
+ 215af81a1153 Extracting 768.9kB
+ 6871bebe6000 Extracting 557.1kB
+ 215af81a1153 Extracting 768.9kB
+ 215af81a1153 Pull complete 0B
+ cb05175cd26a Downloading 3.507kB
+ 423763e140dc Downloading 85.49kB
+ 423763e140dc Downloading 161.7kB
+ 423763e140dc Verifying Checksum 0B
+ 423763e140dc Download complete 0B
+ 423763e140dc Extracting 32.77kB
+ 423763e140dc Extracting 161.7kB
+ 423763e140dc Extracting 161.7kB
+ 423763e140dc Pull complete 0B
+ 65910113e686 Extracting 61.28MB
+ cb05175cd26a Downloading 85.53kB
+ cb05175cd26a Downloading 103.8kB
+ cb05175cd26a Verifying Checksum 0B
+ cb05175cd26a Download complete 0B
+ cb05175cd26a Extracting 32.77kB
+ cb05175cd26a Extracting 103.8kB
+ cb05175cd26a Extracting 103.8kB
+ 6871bebe6000 Extracting 2.228MB
+ cb05175cd26a Pull complete 0B
+ 65910113e686 Extracting 65.73MB
+ f963afa78aca Downloading 3.508kB
+ f963afa78aca Downloading 10.45kB
+ f963afa78aca Verifying Checksum 0B
+ f963afa78aca Download complete 0B
+ f963afa78aca Extracting 10.45kB
+ f963afa78aca Extracting 10.45kB
+ f963afa78aca Pull complete 0B
+ 6871bebe6000 Extracting 3.342MB
+ 65910113e686 Extracting 70.19MB
+ 433713a654de Downloading 8.949kB
+ 6871bebe6000 Extracting 4.456MB
+ 65910113e686 Extracting 73.53MB
+ e25be22ad4e8 Downloading 3.508kB
+ 6871bebe6000 Extracting 7.799MB
+ 433713a654de Downloading 87.17kB
+ 65910113e686 Extracting 75.2MB
+ e25be22ad4e8 Download complete 0B
+ 0daf9e0f2a7d Downloading 16.38kB
+ 6871bebe6000 Extracting 9.47MB
+ 433713a654de Downloading 383.1kB
+ 65910113e686 Extracting 77.99MB
+ 0daf9e0f2a7d Downloading 46.11kB
+ 0daf9e0f2a7d Verifying Checksum 0B
+ 0daf9e0f2a7d Download complete 0B
+ 433713a654de Downloading 426.2kB
+ 433713a654de Verifying Checksum 0B
+ 433713a654de Download complete 0B
+ 433713a654de Extracting 32.77kB
+ 433713a654de Extracting 426.2kB
+ 433713a654de Pull complete 0B
+ e25be22ad4e8 Extracting 32.77kB
+ e25be22ad4e8 Extracting 37.47kB
+ e25be22ad4e8 Extracting 37.47kB
+ e25be22ad4e8 Pull complete 0B
+ 0daf9e0f2a7d Extracting 32.77kB
+ 0daf9e0f2a7d Extracting 46.11kB
+ 0daf9e0f2a7d Extracting 46.11kB
+ 0daf9e0f2a7d Pull complete 0B
+ 6871bebe6000 Extracting 15.04MB
+ 65910113e686 Extracting 79.66MB
+ 6871bebe6000 Extracting 22.84MB
+ 65910113e686 Extracting 83.56MB
+ 2c819b88df1d Downloading 3.465kB
+ 6871bebe6000 Extracting 31.2MB
+ 65910113e686 Extracting 86.34MB
+ ce9b043f6cfc Downloading 16.38kB
+ 2c819b88df1d Downloading 85.51kB
+ 6871bebe6000 Extracting 38.99MB
+ 2c819b88df1d Downloading 205.1kB
+ 2c819b88df1d Download complete 0B
+ 2c819b88df1d Extracting 32.77kB
+ 2c819b88df1d Extracting 205.1kB
+ 2c819b88df1d Extracting 205.1kB
+ 65910113e686 Extracting 89.13MB
+ 2c819b88df1d Pull complete 0B
+ ce9b043f6cfc Downloading 85.53kB
+ ce9b043f6cfc Downloading 96.6kB
+ ce9b043f6cfc Download complete 0B
+ ce9b043f6cfc Extracting 32.77kB
+ ce9b043f6cfc Extracting 96.6kB
+ ce9b043f6cfc Extracting 96.6kB
+ ce9b043f6cfc Pull complete 0B
+ 6871bebe6000 Extracting 47.91MB
+ 65910113e686 Extracting 92.47MB
+ c78e5a882452 Downloading 32.77kB
+ c78e5a882452 Verifying Checksum 0B
+ c78e5a882452 Download complete 0B
+ 6871bebe6000 Extracting 56.26MB
+ 49971ddb5914 Downloading 3.508kB
+ 65910113e686 Extracting 95.26MB
+ 2850e137067b Downloading 32.12kB
+ 2850e137067b Verifying Checksum 0B
+ 2850e137067b Download complete 0B
+ 49971ddb5914 Downloading 24.47kB
+ 49971ddb5914 Verifying Checksum 0B
+ 49971ddb5914 Download complete 0B
+ 49971ddb5914 Extracting 24.47kB
+ 49971ddb5914 Extracting 24.47kB
+ 49971ddb5914 Pull complete 0B
+ 6871bebe6000 Extracting 64.62MB
+ 65910113e686 Extracting 98.6MB
+ 345d82d2f3e7 Downloading 190B
+ 345d82d2f3e7 Verifying Checksum 0B
+ 345d82d2f3e7 Download complete 0B
+ 7e2149dd690c Downloading 3.496kB
+ 7e2149dd690c Downloading 4.494kB
+ 7e2149dd690c Verifying Checksum 0B
+ 7e2149dd690c Download complete 0B
+ 541af3ac8bbd Downloading 16.38kB
+ 6871bebe6000 Extracting 72.97MB
+ 219d166edffc Downloading 891B
+ 219d166edffc Verifying Checksum 0B
+ 219d166edffc Download complete 0B
+ 65910113e686 Extracting 101.4MB
+ 541af3ac8bbd Downloading 87.17kB
+ 6871bebe6000 Extracting 80.77MB
+ 65910113e686 Extracting 103.6MB
+ 541af3ac8bbd Downloading 383.1kB
+ 6871bebe6000 Extracting 88.01MB
+ 7fa4c91daf61 Downloading 97B
+ 7fa4c91daf61 Verifying Checksum 0B
+ 7fa4c91daf61 Download complete 0B
+ 65910113e686 Extracting 106.4MB
+ 541af3ac8bbd Downloading 1.225MB
+ 541af3ac8bbd Verifying Checksum 0B
+ 541af3ac8bbd Download complete 0B
+ 541af3ac8bbd Extracting 32.77kB
+ 6871bebe6000 Extracting 95.26MB
+ 541af3ac8bbd Extracting 1.225MB
+ 541af3ac8bbd Extracting 1.225MB
+ 541af3ac8bbd Pull complete 0B
+ c78e5a882452 Extracting 32.77kB
+ 65910113e686 Extracting 108.1MB
+ 6871bebe6000 Extracting 103.1MB
+ c78e5a882452 Extracting 1.966MB
+ 65910113e686 Extracting 109.7MB
+ 6871bebe6000 Extracting 110.9MB
+ c78e5a882452 Extracting 2.621MB
+ c78e5a882452 Extracting 2.621MB
+ c78e5a882452 Pull complete 0B
+ 2850e137067b Extracting 32.77kB
+ 6871bebe6000 Extracting 119.2MB
+ 2850e137067b Extracting 2.718MB
+ 2850e137067b Extracting 2.718MB
+ 2850e137067b Pull complete 0B
+ 7e2149dd690c Extracting 4.494kB
+ 7e2149dd690c Extracting 4.494kB
+ 7e2149dd690c Pull complete 0B
+ 345d82d2f3e7 Extracting 190B
+ 345d82d2f3e7 Extracting 190B
+ 345d82d2f3e7 Pull complete 0B
+ 219d166edffc Extracting 891B
+ 219d166edffc Extracting 891B
+ 219d166edffc Pull complete 0B
+ 7fa4c91daf61 Extracting 97B
+ 7fa4c91daf61 Extracting 97B
+ 7fa4c91daf61 Pull complete 0B
+ 65910113e686 Extracting 110.9MB
+ 6871bebe6000 Extracting 129.8MB
+ 65910113e686 Extracting 112.3MB
+ 7fb5d6b2f562 Downloading 532.4kB
+ 65910113e686 Pull complete 0B
+ 6871bebe6000 Extracting 148.2MB
+ 173902aa982e Extracting 10.01kB
+ 173902aa982e Extracting 10.01kB
+ 173902aa982e Pull complete 0B
+ 34f46e883a68 Extracting 128B
+ 34f46e883a68 Extracting 128B
+ 34f46e883a68 Pull complete 0B
+ 4bd7825e361d Extracting 168B
+ 4bd7825e361d Extracting 168B
+ 4bd7825e361d Pull complete 0B
+ 719dd1b28b47 Extracting 6.109kB
+ 719dd1b28b47 Extracting 6.109kB
+ 274b085ed8bc Downloading 130.2kB
+ 719dd1b28b47 Pull complete 0B
+ e4325ecc19ef Extracting 184B
+ e4325ecc19ef Extracting 184B
+ e4325ecc19ef Pull complete 0B
+ Image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 Pulled 
+ 6871bebe6000 Extracting 162.7MB
+ 6871bebe6000 Extracting 162.8MB
+ 7fb5d6b2f562 Downloading 1.606MB
+ 6871bebe6000 Pull complete 0B
+ 4f4fb700ef54 Extracting 32B
+ 4f4fb700ef54 Extracting 32B
+ 4f4fb700ef54 Pull complete 0B
+ Image neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b Pulled 
+ 274b085ed8bc Downloading 381.4kB
+ c6a199f94a0d Downloading 531kB
+ 7fb5d6b2f562 Downloading 4.81MB
+ 274b085ed8bc Downloading 1.158MB
+ c6a199f94a0d Downloading 1.593MB
+ 7fb5d6b2f562 Downloading 10.69MB
+ 274b085ed8bc Downloading 2.93MB
+ c6a199f94a0d Downloading 3.748MB
+ 7fb5d6b2f562 Downloading 17.62MB
+ 274b085ed8bc Downloading 5.779MB
+ c6a199f94a0d Downloading 7.994MB
+ 274b085ed8bc Downloading 8.922MB
+ 7fb5d6b2f562 Downloading 21.88MB
+ c6a199f94a0d Downloading 12.8MB
+ 274b085ed8bc Verifying Checksum 0B
+ 274b085ed8bc Download complete 0B
+ 7fb5d6b2f562 Downloading 26.69MB
+ c6a199f94a0d Downloading 17.63MB
+ 7fb5d6b2f562 Downloading 32.58MB
+ c6a199f94a0d Downloading 24.03MB
+ 7fb5d6b2f562 Downloading 37.37MB
+ c6a199f94a0d Downloading 31MB
+ 7fb5d6b2f562 Downloading 43.24MB
+ c6a199f94a0d Downloading 33.67MB
+ c6a199f94a0d Downloading 39.54MB
+ 7fb5d6b2f562 Downloading 46.98MB
+ 7fb5d6b2f562 Downloading 53.91MB
+ c6a199f94a0d Downloading 44.87MB
+ c6a199f94a0d Downloading 50.2MB
+ 7fb5d6b2f562 Downloading 59.27MB
+ c6a199f94a0d Verifying Checksum 0B
+ c6a199f94a0d Download complete 0B
+ 7fb5d6b2f562 Downloading 66.24MB
+ 7fb5d6b2f562 Downloading 69.97MB
+ 7fb5d6b2f562 Downloading 75.3MB
+ 7fb5d6b2f562 Downloading 82.25MB
+ 7fb5d6b2f562 Downloading 84.91MB
+ 7fb5d6b2f562 Downloading 91.85MB
+ 7fb5d6b2f562 Downloading 96.65MB
+ 7fb5d6b2f562 Downloading 100.9MB
+ 7fb5d6b2f562 Downloading 107.3MB
+ 7fb5d6b2f562 Downloading 113.2MB
+ 7fb5d6b2f562 Downloading 118.5MB
+ 7fb5d6b2f562 Downloading 126MB
+ 7fb5d6b2f562 Downloading 130.8MB
+ 7fb5d6b2f562 Downloading 134.6MB
+ 7fb5d6b2f562 Downloading 142MB
+ 7fb5d6b2f562 Downloading 146.8MB
+ 7fb5d6b2f562 Downloading 149MB
+ 7fb5d6b2f562 Downloading 157MB
+ 7fb5d6b2f562 Downloading 164.5MB
+ 7fb5d6b2f562 Downloading 168.2MB
+ 7fb5d6b2f562 Downloading 175.2MB
+ 7fb5d6b2f562 Downloading 179.9MB
+ 7fb5d6b2f562 Downloading 185.8MB
+ 7fb5d6b2f562 Downloading 191.1MB
+ 7fb5d6b2f562 Downloading 198MB
+ 7fb5d6b2f562 Downloading 201.8MB
+ 7fb5d6b2f562 Downloading 207.1MB
+ 7fb5d6b2f562 Downloading 211.9MB
+ 7fb5d6b2f562 Downloading 216.2MB
+ 7fb5d6b2f562 Downloading 222.1MB
+ 7fb5d6b2f562 Downloading 227.4MB
+ 7fb5d6b2f562 Verifying Checksum 0B
+ 7fb5d6b2f562 Download complete 0B
+ 7fb5d6b2f562 Extracting 557.1kB
+ 7fb5d6b2f562 Extracting 5.014MB
+ 7fb5d6b2f562 Extracting 9.47MB
+ 7fb5d6b2f562 Extracting 13.37MB
+ 7fb5d6b2f562 Extracting 16.15MB
+ 7fb5d6b2f562 Extracting 17.27MB
+ 7fb5d6b2f562 Extracting 17.83MB
+ 7fb5d6b2f562 Extracting 20.05MB
+ 7fb5d6b2f562 Extracting 22.28MB
+ 7fb5d6b2f562 Extracting 24.51MB
+ 7fb5d6b2f562 Extracting 28.41MB
+ 7fb5d6b2f562 Extracting 31.75MB
+ 7fb5d6b2f562 Extracting 35.65MB
+ 7fb5d6b2f562 Extracting 37.32MB
+ 7fb5d6b2f562 Extracting 39.55MB
+ 7fb5d6b2f562 Extracting 42.34MB
+ 7fb5d6b2f562 Extracting 46.24MB
+ 7fb5d6b2f562 Extracting 49.02MB
+ 7fb5d6b2f562 Extracting 52.36MB
+ 7fb5d6b2f562 Extracting 54.03MB
+ 7fb5d6b2f562 Extracting 56.26MB
+ 7fb5d6b2f562 Extracting 59.6MB
+ 7fb5d6b2f562 Extracting 60.72MB
+ 7fb5d6b2f562 Extracting 61.28MB
+ 7fb5d6b2f562 Extracting 62.95MB
+ 7fb5d6b2f562 Extracting 64.06MB
+ 7fb5d6b2f562 Extracting 65.18MB
+ 7fb5d6b2f562 Extracting 68.52MB
+ 7fb5d6b2f562 Extracting 71.86MB
+ 7fb5d6b2f562 Extracting 72.97MB
+ 7fb5d6b2f562 Extracting 74.09MB
+ 7fb5d6b2f562 Extracting 75.2MB
+ 7fb5d6b2f562 Extracting 76.87MB
+ 7fb5d6b2f562 Extracting 79.66MB
+ 7fb5d6b2f562 Extracting 80.77MB
+ 7fb5d6b2f562 Extracting 81.89MB
+ 7fb5d6b2f562 Extracting 83MB
+ 7fb5d6b2f562 Extracting 85.23MB
+ 7fb5d6b2f562 Extracting 87.46MB
+ 7fb5d6b2f562 Extracting 90.8MB
+ 7fb5d6b2f562 Extracting 93.59MB
+ 7fb5d6b2f562 Extracting 98.04MB
+ 7fb5d6b2f562 Extracting 98.6MB
+ 7fb5d6b2f562 Extracting 99.16MB
+ 7fb5d6b2f562 Extracting 100.3MB
+ 7fb5d6b2f562 Extracting 103.1MB
+ 7fb5d6b2f562 Extracting 105.8MB
+ 7fb5d6b2f562 Extracting 108.1MB
+ 7fb5d6b2f562 Extracting 109.2MB
+ 7fb5d6b2f562 Extracting 110.3MB
+ 7fb5d6b2f562 Extracting 111.4MB
+ 7fb5d6b2f562 Extracting 112.5MB
+ 7fb5d6b2f562 Extracting 114.2MB
+ 7fb5d6b2f562 Extracting 116.4MB
+ 7fb5d6b2f562 Extracting 118.1MB
+ 7fb5d6b2f562 Extracting 120.9MB
+ 7fb5d6b2f562 Extracting 123.7MB
+ 7fb5d6b2f562 Extracting 127MB
+ 7fb5d6b2f562 Extracting 129.8MB
+ 7fb5d6b2f562 Extracting 132.6MB
+ 7fb5d6b2f562 Extracting 134.8MB
+ 7fb5d6b2f562 Extracting 137MB
+ 7fb5d6b2f562 Extracting 139.3MB
+ 7fb5d6b2f562 Extracting 143.7MB
+ 7fb5d6b2f562 Extracting 147.6MB
+ 7fb5d6b2f562 Extracting 152.6MB
+ 7fb5d6b2f562 Extracting 156.5MB
+ 7fb5d6b2f562 Extracting 159.9MB
+ 7fb5d6b2f562 Extracting 164.3MB
+ 7fb5d6b2f562 Extracting 168.2MB
+ 7fb5d6b2f562 Extracting 171MB
+ 7fb5d6b2f562 Extracting 173.8MB
+ 7fb5d6b2f562 Extracting 178.3MB
+ 7fb5d6b2f562 Extracting 181.6MB
+ 7fb5d6b2f562 Extracting 184.9MB
+ 7fb5d6b2f562 Extracting 186.6MB
+ 7fb5d6b2f562 Extracting 188.3MB
+ 7fb5d6b2f562 Extracting 191.6MB
+ 7fb5d6b2f562 Extracting 194.4MB
+ 7fb5d6b2f562 Extracting 195.5MB
+ 7fb5d6b2f562 Extracting 198.9MB
+ 7fb5d6b2f562 Extracting 201.7MB
+ 7fb5d6b2f562 Extracting 203.3MB
+ 7fb5d6b2f562 Extracting 204.4MB
+ 7fb5d6b2f562 Extracting 206.7MB
+ 7fb5d6b2f562 Extracting 208.3MB
+ 7fb5d6b2f562 Extracting 211.1MB
+ 7fb5d6b2f562 Extracting 212.8MB
+ 7fb5d6b2f562 Extracting 213.4MB
+ 7fb5d6b2f562 Extracting 215MB
+ 7fb5d6b2f562 Extracting 218.4MB
+ 7fb5d6b2f562 Extracting 220MB
+ 7fb5d6b2f562 Extracting 222.8MB
+ 7fb5d6b2f562 Extracting 226.2MB
+ 7fb5d6b2f562 Extracting 229MB
+ 7fb5d6b2f562 Extracting 230.6MB
+ 7fb5d6b2f562 Pull complete 0B
+ c6a199f94a0d Extracting 557.1kB
+ c6a199f94a0d Extracting 3.342MB
+ c6a199f94a0d Extracting 10.03MB
+ c6a199f94a0d Extracting 13.37MB
+ c6a199f94a0d Extracting 17.27MB
+ c6a199f94a0d Extracting 20.61MB
+ c6a199f94a0d Extracting 23.4MB
+ c6a199f94a0d Extracting 26.74MB
+ c6a199f94a0d Extracting 30.08MB
+ c6a199f94a0d Extracting 34.54MB
+ c6a199f94a0d Extracting 38.99MB
+ c6a199f94a0d Extracting 43.45MB
+ c6a199f94a0d Extracting 47.35MB
+ c6a199f94a0d Extracting 50.14MB
+ c6a199f94a0d Extracting 52.36MB
+ c6a199f94a0d Extracting 53.62MB
+ c6a199f94a0d Pull complete 0B
+ 274b085ed8bc Extracting 131.1kB
+ 274b085ed8bc Extracting 6.554MB
+ 274b085ed8bc Extracting 10.22MB
+ 274b085ed8bc Extracting 12.04MB
+ 274b085ed8bc Pull complete 0B
+ Image arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c Pulled 
+=== END 2-build  rc=0  elapsed=31s
+
+=== STEP 3-bundle  start 2026-10-19T18:51:19Z  cwd <home>/ke-proof-20261019
+$ bash scripts/bundle.sh --out dist/bundle-arm64
+bundle: service worker resolves to more than one image
+=== END 3-bundle  rc=1  elapsed=1s
+
+=== STEP 3a-d1-repro  start 2026-10-19T18:51:20Z  cwd <home>/ke-proof-20261019
+$ ls dist 2>&1; for s in worker api; do echo "== config --images $s"; docker compose -f docker-compose.yml --env-file .env.example config --images "$s"; done
+ls: cannot access 'dist': No such file or directory
+== config --images worker
+ke-app
+valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507
+== config --images api
+neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+ke-app
+postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
+valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507
+=== END 3a-d1-repro  rc=0  elapsed=0s
+
+=== STEP 3d-bundle-with-d1-filter  start 2026-10-19T18:51:20Z  cwd <home>/ke-proof-20261019
+$ KE_PROOF_D1=1 bash scripts/bundle.sh --out dist/bundle-arm64
+d1-filter: compose config --images valkey -> own image only (recorded deviation)
+d1-filter: compose config --images worker -> own image only (recorded deviation)
+d1-filter: compose config --images neo4j -> own image only (recorded deviation)
+d1-filter: compose config --images postgres -> own image only (recorded deviation)
+d1-filter: compose config --images api -> own image only (recorded deviation)
+d1-filter: compose config --images gateway -> own image only (recorded deviation)
+d1-filter: compose config --images phoenix -> own image only (recorded deviation)
+bundle written: <home>/ke-proof-20261019/dist/bundle-arm64
+manifest sha256: cab1be8083fdd65d8fceffab2db667ac610d60dbe186cbc934d9217bcb9655c4
+release record: <home>/ke-proof-20261019/dist/bundle-arm64.manifest.sha256
+=== END 3d-bundle-with-d1-filter  rc=0  elapsed=12s
+
+=== STEP 3e-bundle-facts  start 2026-10-19T18:51:32Z  cwd <home>/ke-proof-20261019
+$ cat dist/bundle-arm64/bundle.json; echo; cat dist/bundle-arm64.manifest.sha256; du -sh dist/bundle-arm64; du -b -s dist/bundle-arm64; ls -l dist/bundle-arm64 dist/bundle-arm64/images; find dist/bundle-arm64 -type f | wc -l; for t in dist/bundle-arm64/images/*.tar; do printf "%s " "$t"; tar -xOf "$t" index.json | head -c 400; echo; done; for r in $(sed -n "s/.*\"as\": \"\\([^\"]*\\)\".*/\\1/p" dist/bundle-arm64/bundle.json); do docker image inspect --format "$r {{.Os}}/{{.Architecture}}" "$r"; done
+{"format": 1, "git_sha": "1fe81ddbfb603ec3b724ee58d71670b21799f7e3", "dirty": true, "created": "2026-10-19T18:51:31Z", "arch": "arm64", "images": [
+{"file": "images/valkey.tar", "ref": "valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507", "as": "ke-vendor/valkey:081c2f5cb575", "services": "valkey"},
+{"file": "images/ke-app.tar", "ref": "ke-app", "as": "ke-app:bundle-1fe81ddbfb60", "services": "worker api"},
+{"file": "images/neo4j.tar", "ref": "neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b", "as": "ke-vendor/neo4j:0a6e7aedf54a", "services": "neo4j"},
+{"file": "images/postgres.tar", "ref": "postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4", "as": "ke-vendor/postgres:0ea6700a3b4f", "services": "postgres"},
+{"file": "images/ke-gateway.tar", "ref": "ke-gateway", "as": "ke-gateway:bundle-1fe81ddbfb60", "services": "gateway"},
+{"file": "images/phoenix.tar", "ref": "arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c", "as": "ke-vendor/phoenix:fa28e9cd96dd", "services": "phoenix"}
+]}
+
+cab1be8083fdd65d8fceffab2db667ac610d60dbe186cbc934d9217bcb9655c4  bundle-arm64/MANIFEST.sha256
+2.4G	dist/bundle-arm64
+2538493615	dist/bundle-arm64
+dist/bundle-arm64:
+total 88
+drwxrwxr-x 5 admin admin  4096 Oct 19 11:51 app
+-rw-rw-r-- 1 admin admin  1180 Oct 19 11:51 bundle.json
+drwxrwxr-x 2 admin admin  4096 Oct 19 11:51 images
+-rw-r--r-- 1 admin admin 43479 Oct 19 11:51 install.ps1
+-rwxr-xr-x 1 admin admin 27917 Oct 19 11:51 install.sh
+-rw-rw-r-- 1 admin admin  1540 Oct 19 11:51 MANIFEST.sha256
+
+dist/bundle-arm64/images:
+total 2478904
+-rw------- 1 admin admin  325377536 Oct 19 11:51 ke-app.tar
+-rw------- 1 admin admin   55294976 Oct 19 11:51 ke-gateway.tar
+-rw------- 1 admin admin  613846528 Oct 19 11:51 neo4j.tar
+-rw------- 1 admin admin 1028783616 Oct 19 11:51 phoenix.tar
+-rw------- 1 admin admin  472081408 Oct 19 11:51 postgres.tar
+-rw------- 1 admin admin   42995712 Oct 19 11:51 valkey.tar
+19
+dist/bundle-arm64/images/ke-app.tar {"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json","manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:eb9cec969e253c25ae87d6581110d0764c9e0a29975808729558972080bc12fc","size":2076,"annotations":{"io.containerd.image.name":"docker.io/library/ke-app:bundle-1fe81ddbfb60","org.opencontainers.image.ref.name":"bundle-1fe81ddbfb60"}}]}
+dist/bundle-arm64/images/ke-gateway.tar {"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json","manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:6d71a88f32af17c409c06799cff1cc3edb6d24a87a84da5c272eb40ecef9be53","size":2510,"annotations":{"io.containerd.image.name":"docker.io/library/ke-gateway:bundle-1fe81ddbfb60","org.opencontainers.image.ref.name":"bundle-1fe81ddbfb60"}}]}
+dist/bundle-arm64/images/neo4j.tar {"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json","manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:18dfd2b5dc61d7265b77e6b364ce2954bde7fe8cc306fe7fee11516243bbe53d","size":1014,"annotations":{"io.containerd.image.name":"docker.io/ke-vendor/neo4j:0a6e7aedf54a","org.opencontainers.image.ref.name":"0a6e7aedf54a"}}]}
+dist/bundle-arm64/images/phoenix.tar {"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json","manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:d96140324ce08c16edecc74f64c245f20e408476d64cc72482152effc5ea4da0","size":8151,"annotations":{"io.containerd.image.name":"docker.io/ke-vendor/phoenix:fa28e9cd96dd","org.opencontainers.image.ref.name":"fa28e9cd96dd"}}]}
+dist/bundle-arm64/images/postgres.tar {"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json","manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:19ac0d9fbb73ca43551240d131b07bc673fef6f0ef1a30b2a72f7706b3e6960c","size":2376,"annotations":{"io.containerd.image.name":"docker.io/ke-vendor/postgres:0ea6700a3b4f","org.opencontainers.image.ref.name":"0ea6700a3b4f"}}]}
+dist/bundle-arm64/images/valkey.tar {"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json","manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:0b6574b7b1c3dde8c395c7115eb644e7d04c8dc31175b55028a61e0d1119e0f7","size":1309,"annotations":{"io.containerd.image.name":"docker.io/ke-vendor/valkey:081c2f5cb575","org.opencontainers.image.ref.name":"081c2f5cb575"}}]}
+ke-vendor/valkey:081c2f5cb575 linux/arm64
+ke-app:bundle-1fe81ddbfb60 linux/arm64
+ke-vendor/neo4j:0a6e7aedf54a linux/arm64
+ke-vendor/postgres:0ea6700a3b4f linux/arm64
+ke-gateway:bundle-1fe81ddbfb60 linux/arm64
+ke-vendor/phoenix:fa28e9cd96dd linux/arm64
+=== END 3e-bundle-facts  rc=0  elapsed=0s
+
+=== STEP 4-carry-to-private-dir  start 2026-10-19T18:51:50Z  cwd <home>
+$ test ! -e ~/ke-proof-install && mkdir -m 0700 ~/ke-proof-install && cp -R ~/ke-proof-20261019/dist/bundle-arm64 ~/ke-proof-install/bundle-arm64 && cp ~/ke-proof-20261019/dist/bundle-arm64.manifest.sha256 ~/ke-proof-install/bundle-arm64.manifest.sha256 && ls -ld ~/ke-proof-install ~/ke-proof-install/* && du -sh ~/ke-proof-install/bundle-arm64
+drwx------ 3 admin admin 4096 Oct 19 11:51 <home>/ke-proof-install
+drwxrwxr-x 4 admin admin 4096 Oct 19 11:51 <home>/ke-proof-install/bundle-arm64
+-rw-r--r-- 1 admin admin   95 Oct 19 11:51 <home>/ke-proof-install/bundle-arm64.manifest.sha256
+2.4G	<home>/ke-proof-install/bundle-arm64
+=== END 4-carry-to-private-dir  rc=0  elapsed=0s
+
+=== STEP 5a-verify-manifest-hash  start 2026-10-19T18:51:50Z  cwd <home>/ke-proof-install/bundle-arm64
+$ sha256sum MANIFEST.sha256; cat ../bundle-arm64.manifest.sha256; [ "$(sha256sum MANIFEST.sha256 | cut -c1-64)" = "$(cut -c1-64 ../bundle-arm64.manifest.sha256)" ] && echo "MATCH: MANIFEST.sha256 hash equals the out-of-band record"
+cab1be8083fdd65d8fceffab2db667ac610d60dbe186cbc934d9217bcb9655c4  MANIFEST.sha256
+cab1be8083fdd65d8fceffab2db667ac610d60dbe186cbc934d9217bcb9655c4  bundle-arm64/MANIFEST.sha256
+MATCH: MANIFEST.sha256 hash equals the out-of-band record
+=== END 5a-verify-manifest-hash  rc=0  elapsed=0s
+
+=== STEP 5b-verify-every-file  start 2026-10-19T18:51:50Z  cwd <home>/ke-proof-install/bundle-arm64
+$ sha256sum -c --strict MANIFEST.sha256
+app/.env.example: OK
+app/config/defaults.yaml: OK
+app/docker-compose.yml: OK
+app/docs/quickstart.md: OK
+app/scripts/launch.ps1: OK
+app/scripts/launch.sh: OK
+app/scripts/smoke.sh: OK
+app/scripts/teardown.ps1: OK
+app/scripts/teardown.sh: OK
+bundle.json: OK
+images/ke-app.tar: OK
+images/ke-gateway.tar: OK
+images/neo4j.tar: OK
+images/phoenix.tar: OK
+images/postgres.tar: OK
+images/valkey.tar: OK
+install.ps1: OK
+install.sh: OK
+=== END 5b-verify-every-file  rc=0  elapsed=1s
+
+=== STEP 6-install  start 2026-10-19T18:51:51Z  cwd <home>/ke-proof-install/bundle-arm64
+$ env PATH=<home>/ke-proof-tools/bin:/usr/local/bin:/usr/bin:/bin bash ./install.sh --expect-manifest cab1be8083fdd65d8fceffab2db667ac610d60dbe186cbc934d9217bcb9655c4 ~/ke-proof-install/ke
+manifest sha256: cab1be8083fdd65d8fceffab2db667ac610d60dbe186cbc934d9217bcb9655c4 (matches --expect-manifest)
+loaded valkey.tar as ke-vendor/valkey:081c2f5cb575
+loaded ke-app.tar as ke-app:bundle-1fe81ddbfb60
+loaded neo4j.tar as ke-vendor/neo4j:0a6e7aedf54a
+loaded postgres.tar as ke-vendor/postgres:0ea6700a3b4f
+loaded ke-gateway.tar as ke-gateway:bundle-1fe81ddbfb60
+loaded phoenix.tar as ke-vendor/phoenix:fa28e9cd96dd
+manifest sha256: cab1be8083fdd65d8fceffab2db667ac610d60dbe186cbc934d9217bcb9655c4
+installed to <home>/ke-proof-install/ke
+next: cd <home>/ke-proof-install/ke && bash scripts/launch.sh
+=== END 6-install  rc=0  elapsed=4s
+
+=== STEP 6b-installed-facts  start 2026-10-19T18:51:55Z  cwd <home>/ke-proof-install/bundle-arm64
+$ ls -la ~/ke-proof-install ~/ke-proof-install/ke; cat ~/ke-proof-install/ke/docker-compose.override.yml; docker images --format "{{.Repository}}:{{.Tag}}\t{{.ID}}" | grep -E "bundle-|^ke-vendor/"; for r in ke-app:bundle-1fe81ddbfb60 ke-gateway:bundle-1fe81ddbfb60 ke-vendor/neo4j:0a6e7aedf54a ke-vendor/phoenix:fa28e9cd96dd ke-vendor/postgres:0ea6700a3b4f ke-vendor/valkey:081c2f5cb575; do docker image inspect --format "$r {{.Os}}/{{.Architecture}}" "$r"; done
+<home>/ke-proof-install:
+total 20
+drwx------  4 admin admin 4096 Oct 19 11:51 .
+drwxr-x--- 58 admin admin 4096 Oct 19 11:51 ..
+drwxrwxr-x  4 admin admin 4096 Oct 19 11:51 bundle-arm64
+-rw-r--r--  1 admin admin   95 Oct 19 11:51 bundle-arm64.manifest.sha256
+drwxr-xr-x  5 admin admin 4096 Oct 19 11:51 ke
+
+<home>/ke-proof-install/ke:
+total 36
+drwxr-xr-x 5 admin admin 4096 Oct 19 11:51 .
+drwx------ 4 admin admin 4096 Oct 19 11:51 ..
+drwxrwxr-x 2 admin admin 4096 Oct 19 11:51 config
+-rw-r--r-- 1 admin admin  539 Oct 19 11:51 docker-compose.override.yml
+-rw-r--r-- 1 admin admin 7510 Oct 19 11:51 docker-compose.yml
+drwxrwxr-x 2 admin admin 4096 Oct 19 11:51 docs
+-rw-r--r-- 1 admin admin 1574 Oct 19 11:51 .env.example
+drwxrwxr-x 2 admin admin 4096 Oct 19 11:51 scripts
+services:
+  valkey:
+    image: "ke-vendor/valkey:081c2f5cb575"
+    pull_policy: never
+  worker:
+    image: "ke-app:bundle-1fe81ddbfb60"
+    pull_policy: never
+  api:
+    image: "ke-app:bundle-1fe81ddbfb60"
+    pull_policy: never
+  neo4j:
+    image: "ke-vendor/neo4j:0a6e7aedf54a"
+    pull_policy: never
+  postgres:
+    image: "ke-vendor/postgres:0ea6700a3b4f"
+    pull_policy: never
+  gateway:
+    image: "ke-gateway:bundle-1fe81ddbfb60"
+    pull_policy: never
+  phoenix:
+    image: "ke-vendor/phoenix:fa28e9cd96dd"
+    pull_policy: never
+ke-app:bundle-1fe81ddbfb60	64676a69ba9d
+ke-gateway:bundle-1fe81ddbfb60	3f668e4d6d7c
+ke-vendor/neo4j:0a6e7aedf54a	36afb703eee6
+ke-vendor/phoenix:fa28e9cd96dd	8f5b2a1ef1df
+ke-vendor/postgres:0ea6700a3b4f	4b5d4fd438e2
+ke-vendor/valkey:081c2f5cb575	1090d9113780
+ke-app:bundle-1fe81ddbfb60 linux/arm64
+ke-gateway:bundle-1fe81ddbfb60 linux/arm64
+ke-vendor/neo4j:0a6e7aedf54a linux/arm64
+ke-vendor/phoenix:fa28e9cd96dd linux/arm64
+ke-vendor/postgres:0ea6700a3b4f linux/arm64
+ke-vendor/valkey:081c2f5cb575 linux/arm64
+=== END 6b-installed-facts  rc=0  elapsed=0s
+### NOTE: operator env for steps 7-12: COMPOSE_PROJECT_NAME=ke-proof-arm64 (exported); ports set in .env
+
+=== STEP 7-env  start 2026-10-19T18:51:55Z  cwd <home>/ke-proof-install/ke
+$ cp .env.example .env && sed -i -e "s/^KE_API_PORT=.*/KE_API_PORT=47180/" -e "s/^KE_PHOENIX_PORT=.*/KE_PHOENIX_PORT=47181/" .env && grep -nE "^(KE_ENV|KE_BIND_ADDRESS|KE_API_PORT|KE_PHOENIX_PORT|KE_MODEL_UPSTREAM|KE_EGRESS_ALLOWLIST)=" .env && ls -l .env && docker compose config --images && docker compose config | grep -E "^name:|pull_policy|image:"
+2:KE_ENV=dev
+8:KE_BIND_ADDRESS=127.0.0.1
+12:KE_API_PORT=47180
+13:KE_PHOENIX_PORT=47181
+32:KE_MODEL_UPSTREAM=
+33:KE_EGRESS_ALLOWLIST=
+-rw-r--r-- 1 admin admin 1574 Oct 19 11:51 .env
+ke-vendor/valkey:081c2f5cb575
+ke-gateway:bundle-1fe81ddbfb60
+ke-vendor/postgres:0ea6700a3b4f
+ke-app:bundle-1fe81ddbfb60
+ke-app:bundle-1fe81ddbfb60
+ke-vendor/phoenix:fa28e9cd96dd
+ke-vendor/neo4j:0a6e7aedf54a
+name: ke-proof-arm64
+    image: ke-app:bundle-1fe81ddbfb60
+    pull_policy: never
+    image: ke-gateway:bundle-1fe81ddbfb60
+    pull_policy: never
+    image: ke-vendor/neo4j:0a6e7aedf54a
+    pull_policy: never
+    image: ke-vendor/phoenix:fa28e9cd96dd
+    pull_policy: never
+    image: ke-vendor/postgres:0ea6700a3b4f
+    pull_policy: never
+    image: ke-vendor/valkey:081c2f5cb575
+    pull_policy: never
+    image: ke-app:bundle-1fe81ddbfb60
+    pull_policy: never
+  image: ke-app
+  image: ke-gates
+=== END 7-env  rc=0  elapsed=0s
+
+=== STEP 8-launch  start 2026-10-19T18:51:55Z  cwd <home>/ke-proof-install/ke
+$ bash scripts/launch.sh
+ Network ke-proof-arm64_backend Creating 
+ Network ke-proof-arm64_backend Created 
+ Network ke-proof-arm64_edge Creating 
+ Network ke-proof-arm64_edge Created 
+ Volume ke-proof-arm64_neo4j-data Creating 
+ Volume ke-proof-arm64_neo4j-data Created 
+ Volume ke-proof-arm64_phoenix-data Creating 
+ Volume ke-proof-arm64_phoenix-data Created 
+ Volume ke-proof-arm64_valkey-data Creating 
+ Volume ke-proof-arm64_valkey-data Created 
+ Volume ke-proof-arm64_postgres-data Creating 
+ Volume ke-proof-arm64_postgres-data Created 
+ Container ke-proof-arm64-gateway-1 Creating 
+ Container ke-proof-arm64-postgres-1 Creating 
+ Container ke-proof-arm64-neo4j-1 Creating 
+ Container ke-proof-arm64-valkey-1 Creating 
+ Container ke-proof-arm64-phoenix-1 Creating 
+ Container ke-proof-arm64-postgres-1 Created 
+ Container ke-proof-arm64-gateway-1 Created 
+ Container ke-proof-arm64-phoenix-1 Created 
+ Container ke-proof-arm64-valkey-1 Created 
+ Container ke-proof-arm64-worker-1 Creating 
+ Container ke-proof-arm64-neo4j-1 Created 
+ Container ke-proof-arm64-api-1 Creating 
+ Container ke-proof-arm64-worker-1 Created 
+ Container ke-proof-arm64-api-1 Created 
+ Container ke-proof-arm64-postgres-1 Starting 
+ Container ke-proof-arm64-neo4j-1 Starting 
+ Container ke-proof-arm64-valkey-1 Starting 
+ Container ke-proof-arm64-gateway-1 Starting 
+ Container ke-proof-arm64-phoenix-1 Starting 
+ Container ke-proof-arm64-postgres-1 Started 
+ Container ke-proof-arm64-valkey-1 Started 
+ Container ke-proof-arm64-valkey-1 Waiting 
+ Container ke-proof-arm64-neo4j-1 Started 
+ Container ke-proof-arm64-neo4j-1 Waiting 
+ Container ke-proof-arm64-valkey-1 Waiting 
+ Container ke-proof-arm64-postgres-1 Waiting 
+ Container ke-proof-arm64-phoenix-1 Started 
+ Container ke-proof-arm64-gateway-1 Started 
+ Container ke-proof-arm64-valkey-1 Healthy 
+ Container ke-proof-arm64-valkey-1 Healthy 
+ Container ke-proof-arm64-worker-1 Starting 
+ Container ke-proof-arm64-postgres-1 Healthy 
+ Container ke-proof-arm64-worker-1 Started 
+ Container ke-proof-arm64-neo4j-1 Healthy 
+ Container ke-proof-arm64-api-1 Starting 
+ Container ke-proof-arm64-api-1 Started 
+ Container ke-proof-arm64-postgres-1 Waiting 
+ Container ke-proof-arm64-worker-1 Waiting 
+ Container ke-proof-arm64-neo4j-1 Waiting 
+ Container ke-proof-arm64-api-1 Waiting 
+ Container ke-proof-arm64-phoenix-1 Waiting 
+ Container ke-proof-arm64-gateway-1 Waiting 
+ Container ke-proof-arm64-valkey-1 Waiting 
+ Container ke-proof-arm64-gateway-1 Healthy 
+ Container ke-proof-arm64-neo4j-1 Healthy 
+ Container ke-proof-arm64-postgres-1 Healthy 
+ Container ke-proof-arm64-valkey-1 Healthy 
+ Container ke-proof-arm64-phoenix-1 Healthy 
+ Container ke-proof-arm64-api-1 Healthy 
+ Container ke-proof-arm64-worker-1 Healthy 
+stack is up:
+  api:     http://127.0.0.1:47180
+  phoenix: http://127.0.0.1:47181
+=== END 8-launch  rc=0  elapsed=17s
+
+=== STEP 8b-host-endpoints  start 2026-10-19T18:52:12Z  cwd <home>/ke-proof-install/ke
+$ docker compose ps --format "{{.Service}}\t{{.Image}}\t{{.Health}}"; curl -s -w " HTTP %{http_code}\n" http://127.0.0.1:47180/healthz; curl -s -w " HTTP %{http_code}\n" http://127.0.0.1:47180/readyz; curl -s -o /dev/null -w "phoenix HTTP %{http_code}\n" http://127.0.0.1:47181/
+api	ke-app:bundle-1fe81ddbfb60	healthy
+gateway	ke-gateway:bundle-1fe81ddbfb60	healthy
+neo4j	ke-vendor/neo4j:0a6e7aedf54a	healthy
+phoenix	ke-vendor/phoenix:fa28e9cd96dd	healthy
+postgres	ke-vendor/postgres:0ea6700a3b4f	healthy
+valkey	ke-vendor/valkey:081c2f5cb575	healthy
+worker	ke-app:bundle-1fe81ddbfb60	healthy
+{"status":"ok"} HTTP 200
+{"ready":true,"checks":{"postgres":{"ok":true,"reason":null},"neo4j":{"ok":true,"reason":null},"valkey":{"ok":true,"reason":null},"model_host":{"ok":false,"reason":"not_configured","required":false}}} HTTP 200
+phoenix HTTP 200
+=== END 8b-host-endpoints  rc=0  elapsed=0s
+
+=== STEP 9-smoke-on-running-stack  start 2026-10-19T18:52:12Z  cwd <home>/ke-proof-install/ke
+$ bash scripts/smoke.sh
+time="2026-10-19T11:52:12-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:12-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:12-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:12-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:12-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:12-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:12-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:12-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:12-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:12-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:12-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:12-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:12-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:12-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+smoke: compose resolves with no .env; 2 ports, all on 127.0.0.1
+smoke: project ke-proof-arm64 is already running
+smoke: ke-proof-arm64_backend is internal with gateway_mode_ipv4=isolated
+smoke: gateway healthy
+smoke: api healthy
+smoke: worker healthy
+smoke: postgres healthy
+smoke: neo4j healthy
+smoke: valkey healthy
+smoke: phoenix healthy
+smoke: gateway proxies api /healthz
+smoke: gateway proxies phoenix /healthz
+smoke: /readyz ready
+smoke: SKIPPED the postgres stop/start (project ke-proof-arm64 was already running; smoke does not stop an operator's stores)
+smoke: gateway healthy
+smoke: api healthy
+smoke: worker healthy
+smoke: postgres healthy
+smoke: neo4j healthy
+smoke: valkey healthy
+smoke: phoenix healthy
+smoke: PASS
+=== END 9-smoke-on-running-stack  rc=0  elapsed=2s
+
+=== STEP 10-teardown  start 2026-10-19T18:52:14Z  cwd <home>/ke-proof-install/ke
+$ bash scripts/teardown.sh
+ Container ke-proof-arm64-gateway-1 Stopping 
+ Container ke-proof-arm64-phoenix-1 Stopping 
+ Container ke-proof-arm64-worker-1 Stopping 
+ Container ke-proof-arm64-api-1 Stopping 
+ Container ke-proof-arm64-worker-1 Stopped 
+ Container ke-proof-arm64-worker-1 Removing 
+ Container ke-proof-arm64-worker-1 Removed 
+ Container ke-proof-arm64-gateway-1 Stopped 
+ Container ke-proof-arm64-gateway-1 Removing 
+ Container ke-proof-arm64-gateway-1 Removed 
+ Container ke-proof-arm64-api-1 Stopped 
+ Container ke-proof-arm64-api-1 Removing 
+ Container ke-proof-arm64-api-1 Removed 
+ Container ke-proof-arm64-neo4j-1 Stopping 
+ Container ke-proof-arm64-valkey-1 Stopping 
+ Container ke-proof-arm64-postgres-1 Stopping 
+ Container ke-proof-arm64-postgres-1 Stopped 
+ Container ke-proof-arm64-postgres-1 Removing 
+ Container ke-proof-arm64-postgres-1 Removed 
+ Container ke-proof-arm64-valkey-1 Stopped 
+ Container ke-proof-arm64-valkey-1 Removing 
+ Container ke-proof-arm64-valkey-1 Removed 
+ Container ke-proof-arm64-phoenix-1 Stopped 
+ Container ke-proof-arm64-phoenix-1 Removing 
+ Container ke-proof-arm64-phoenix-1 Removed 
+ Container ke-proof-arm64-neo4j-1 Stopped 
+ Container ke-proof-arm64-neo4j-1 Removing 
+ Container ke-proof-arm64-neo4j-1 Removed 
+ Network ke-proof-arm64_edge Removing 
+ Network ke-proof-arm64_backend Removing 
+ Network ke-proof-arm64_edge Removed 
+ Network ke-proof-arm64_backend Removed 
+=== END 10-teardown  rc=0  elapsed=11s
+
+=== STEP 11-smoke-owns-project  start 2026-10-19T18:52:25Z  cwd <home>/ke-proof-install/ke
+$ bash scripts/smoke.sh
+time="2026-10-19T11:52:25-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:25-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:25-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:25-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:25-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:25-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:25-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:25-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:25-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:25-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:25-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:25-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:25-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-19T11:52:25-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+smoke: compose resolves with no .env; 2 ports, all on 127.0.0.1
+ Network ke-proof-arm64_edge Creating 
+ Network ke-proof-arm64_edge Created 
+ Network ke-proof-arm64_backend Creating 
+ Network ke-proof-arm64_backend Created 
+ Container ke-proof-arm64-gateway-1 Creating 
+ Container ke-proof-arm64-valkey-1 Creating 
+ Container ke-proof-arm64-neo4j-1 Creating 
+ Container ke-proof-arm64-postgres-1 Creating 
+ Container ke-proof-arm64-phoenix-1 Creating 
+ Container ke-proof-arm64-gateway-1 Created 
+ Container ke-proof-arm64-valkey-1 Created 
+ Container ke-proof-arm64-worker-1 Creating 
+ Container ke-proof-arm64-phoenix-1 Created 
+ Container ke-proof-arm64-postgres-1 Created 
+ Container ke-proof-arm64-neo4j-1 Created 
+ Container ke-proof-arm64-api-1 Creating 
+ Container ke-proof-arm64-api-1 Created 
+ Container ke-proof-arm64-worker-1 Created 
+ Container ke-proof-arm64-postgres-1 Starting 
+ Container ke-proof-arm64-phoenix-1 Starting 
+ Container ke-proof-arm64-neo4j-1 Starting 
+ Container ke-proof-arm64-gateway-1 Starting 
+ Container ke-proof-arm64-valkey-1 Starting 
+ Container ke-proof-arm64-postgres-1 Started 
+ Container ke-proof-arm64-valkey-1 Started 
+ Container ke-proof-arm64-valkey-1 Waiting 
+ Container ke-proof-arm64-neo4j-1 Started 
+ Container ke-proof-arm64-valkey-1 Waiting 
+ Container ke-proof-arm64-postgres-1 Waiting 
+ Container ke-proof-arm64-neo4j-1 Waiting 
+ Container ke-proof-arm64-phoenix-1 Started 
+ Container ke-proof-arm64-gateway-1 Started 
+ Container ke-proof-arm64-valkey-1 Healthy 
+ Container ke-proof-arm64-worker-1 Starting 
+ Container ke-proof-arm64-valkey-1 Healthy 
+ Container ke-proof-arm64-postgres-1 Healthy 
+ Container ke-proof-arm64-worker-1 Started 
+ Container ke-proof-arm64-neo4j-1 Healthy 
+ Container ke-proof-arm64-api-1 Starting 
+ Container ke-proof-arm64-api-1 Started 
+ Container ke-proof-arm64-api-1 Waiting 
+ Container ke-proof-arm64-gateway-1 Waiting 
+ Container ke-proof-arm64-postgres-1 Waiting 
+ Container ke-proof-arm64-worker-1 Waiting 
+ Container ke-proof-arm64-phoenix-1 Waiting 
+ Container ke-proof-arm64-valkey-1 Waiting 
+ Container ke-proof-arm64-neo4j-1 Waiting 
+ Container ke-proof-arm64-valkey-1 Healthy 
+ Container ke-proof-arm64-gateway-1 Healthy 
+ Container ke-proof-arm64-neo4j-1 Healthy 
+ Container ke-proof-arm64-postgres-1 Healthy 
+ Container ke-proof-arm64-phoenix-1 Healthy 
+ Container ke-proof-arm64-api-1 Healthy 
+ Container ke-proof-arm64-worker-1 Healthy 
+stack is up:
+  api:     http://127.0.0.1:47180
+  phoenix: http://127.0.0.1:47181
+smoke: launched project ke-proof-arm64
+smoke: ke-proof-arm64_backend is internal with gateway_mode_ipv4=isolated
+smoke: gateway healthy
+smoke: api healthy
+smoke: worker healthy
+smoke: postgres healthy
+smoke: neo4j healthy
+smoke: valkey healthy
+smoke: phoenix healthy
+smoke: gateway proxies api /healthz
+smoke: gateway proxies phoenix /healthz
+smoke: /readyz ready
+ Container ke-proof-arm64-postgres-1 Stopping 
+ Container ke-proof-arm64-postgres-1 Stopped 
+smoke: /readyz reports postgres down
+ Container ke-proof-arm64-phoenix-1 Running 
+ Container ke-proof-arm64-neo4j-1 Running 
+ Container ke-proof-arm64-gateway-1 Running 
+ Container ke-proof-arm64-valkey-1 Running 
+ Container ke-proof-arm64-api-1 Running 
+ Container ke-proof-arm64-worker-1 Running 
+ Container ke-proof-arm64-postgres-1 Starting 
+ Container ke-proof-arm64-postgres-1 Started 
+ Container ke-proof-arm64-postgres-1 Waiting 
+ Container ke-proof-arm64-postgres-1 Healthy 
+smoke: /readyz ready again after postgres restart
+smoke: gateway healthy
+smoke: api healthy
+smoke: worker healthy
+smoke: postgres healthy
+smoke: neo4j healthy
+smoke: valkey healthy
+smoke: phoenix healthy
+smoke: PASS
+ Container ke-proof-arm64-worker-1 Stopping 
+ Container ke-proof-arm64-gateway-1 Stopping 
+ Container ke-proof-arm64-api-1 Stopping 
+ Container ke-proof-arm64-phoenix-1 Stopping 
+ Container ke-proof-arm64-worker-1 Stopped 
+ Container ke-proof-arm64-worker-1 Removing 
+ Container ke-proof-arm64-worker-1 Removed 
+ Container ke-proof-arm64-gateway-1 Stopped 
+ Container ke-proof-arm64-gateway-1 Removing 
+ Container ke-proof-arm64-gateway-1 Removed 
+ Container ke-proof-arm64-phoenix-1 Stopped 
+ Container ke-proof-arm64-phoenix-1 Removing 
+ Container ke-proof-arm64-phoenix-1 Removed 
+ Container ke-proof-arm64-api-1 Stopped 
+ Container ke-proof-arm64-api-1 Removing 
+ Container ke-proof-arm64-api-1 Removed 
+ Container ke-proof-arm64-neo4j-1 Stopping 
+ Container ke-proof-arm64-postgres-1 Stopping 
+ Container ke-proof-arm64-valkey-1 Stopping 
+ Container ke-proof-arm64-postgres-1 Stopped 
+ Container ke-proof-arm64-postgres-1 Removing 
+ Container ke-proof-arm64-postgres-1 Removed 
+ Container ke-proof-arm64-valkey-1 Stopped 
+ Container ke-proof-arm64-valkey-1 Removing 
+ Container ke-proof-arm64-valkey-1 Removed 
+ Container ke-proof-arm64-neo4j-1 Stopped 
+ Container ke-proof-arm64-neo4j-1 Removing 
+ Container ke-proof-arm64-neo4j-1 Removed 
+ Network ke-proof-arm64_edge Removing 
+ Network ke-proof-arm64_backend Removing 
+ Network ke-proof-arm64_backend Removed 
+ Network ke-proof-arm64_edge Removed 
+=== END 11-smoke-owns-project  rc=0  elapsed=40s
+
+=== STEP 12-teardown-volumes  start 2026-10-19T18:53:05Z  cwd <home>/ke-proof-install/ke
+$ bash scripts/teardown.sh --volumes
+ Volume ke-proof-arm64_neo4j-data Removing 
+ Volume ke-proof-arm64_valkey-data Removing 
+ Volume ke-proof-arm64_postgres-data Removing 
+ Volume ke-proof-arm64_phoenix-data Removing 
+ Volume ke-proof-arm64_valkey-data Removed 
+ Volume ke-proof-arm64_neo4j-data Removed 
+ Volume ke-proof-arm64_postgres-data Removed 
+ Volume ke-proof-arm64_phoenix-data Removed 
+=== END 12-teardown-volumes  rc=0  elapsed=1s
+
+=== STEP 13-leftovers  start 2026-10-19T18:53:06Z  cwd <home>/ke-proof-install/ke
+$ docker ps -a --filter label=com.docker.compose.project=ke-proof-arm64 --format "{{.Names}}"; docker network ls --filter label=com.docker.compose.project=ke-proof-arm64 --format "{{.Name}}"; docker volume ls --filter label=com.docker.compose.project=ke-proof-arm64 --format "{{.Name}}"; echo "(empty above = nothing left)"
+(empty above = nothing left)
+=== END 13-leftovers  rc=0  elapsed=0s
+
+=== STEP R0-carry-amd64-bundle-to-gb10 (run on the dev host, Git Bash)  start 2026-10-19T18:54:03Z
+$ ssh sync-aria-gb10_local "test ! -e ~/ke-proof-refusal-20261019 && mkdir -m 0700 ~/ke-proof-refusal-20261019"
+$ tar -C //wsl.localhost/Ubuntu<home>/ke-proof-src/dist -cf - bundle-amd64 bundle-amd64.manifest.sha256 | ssh sync-aria-gb10_local "tar -C ~/ke-proof-refusal-20261019 -xf - && ls -la ~/ke-proof-refusal-20261019 && du -sh ~/ke-proof-refusal-20261019/bundle-amd64"
+total 16
+drwx------  3 admin admin 4096 Oct 19 11:55 .
+drwxr-x--- 59 admin admin 4096 Oct 19 11:54 ..
+drwxr-xr-x  4 admin admin 4096 Oct 19 11:50 bundle-amd64
+-rw-r--r--  1 admin admin   95 Oct 19 11:50 bundle-amd64.manifest.sha256
+941M	<home>/ke-proof-refusal-20261019/bundle-amd64
+=== END R0-carry-amd64-bundle-to-gb10  rc=0  elapsed=86s
+### NOTE: Refusal proof: the amd64 bundle from run 1 (manifest fdcf80b6...) was carried to aria-gb10 (arm64) into <home>/ke-proof-refusal-20261019 (0700). Expected: the manifest passes, then install refuses on arch before any docker load/tag; docker image events are recorded around it.
+
+=== STEP R1-verify-amd64-bundle  start 2026-10-19T18:55:35Z  cwd <home>/ke-proof-refusal-20261019/bundle-amd64
+$ ls -ld ..; [ "$(sha256sum MANIFEST.sha256 | cut -c1-64)" = "$(cut -c1-64 ../bundle-amd64.manifest.sha256)" ] && echo MATCH; sha256sum -c --strict --quiet MANIFEST.sha256 && echo "all files OK"; grep -o "\"arch\": \"[a-z0-9]*\"" bundle.json
+drwx------ 3 admin admin 4096 Oct 19 11:55 ..
+MATCH
+all files OK
+"arch": "amd64"
+=== END R1-verify-amd64-bundle  rc=0  elapsed=0s
+
+=== STEP R2-images-before  start 2026-10-19T18:55:35Z  cwd <home>/ke-proof-refusal-20261019/bundle-amd64
+$ docker images --format "{{.Repository}}:{{.Tag}} {{.ID}}" | sort > /tmp/ke-proof-images-before.txt; wc -l < /tmp/ke-proof-images-before.txt; docker images --format "{{.Repository}}:{{.Tag}}" | grep -E "bundle-|^ke-vendor/" || echo "no ke-*:bundle-* or ke-vendor/* tags present"
+21
+ke-app:bundle-1fe81ddbfb60
+ke-gateway:bundle-1fe81ddbfb60
+ke-vendor/neo4j:0a6e7aedf54a
+ke-vendor/phoenix:fa28e9cd96dd
+ke-vendor/postgres:0ea6700a3b4f
+ke-vendor/valkey:081c2f5cb575
+=== END R2-images-before  rc=0  elapsed=0s
+
+=== STEP R3-install-amd64-on-arm64  start 2026-10-19T18:55:35Z  cwd <home>/ke-proof-refusal-20261019/bundle-amd64
+$ env PATH=<home>/ke-proof-tools/bin:/usr/local/bin:/usr/bin:/bin bash ./install.sh --expect-manifest fdcf80b6f3df9beb3004c32afc27d42d10e7b55b49d3f0db181f278a4ab0436c <home>/ke-proof-refusal-20261019/ke
+manifest sha256: fdcf80b6f3df9beb3004c32afc27d42d10e7b55b49d3f0db181f278a4ab0436c (matches --expect-manifest)
+install: arch mismatch: this bundle is amd64 but the Docker daemon is arm64 (reported as aarch64); use the arm64 bundle
+=== END R3-install-amd64-on-arm64  rc=1  elapsed=1s
+R3 rc above should be non-zero
+
+=== STEP R4-no-image-events  start 2026-10-19T18:55:36Z  cwd <home>/ke-proof-refusal-20261019/bundle-amd64
+$ docker events --since 1792436135 --until 1792436137 --filter type=image --format '{{.Time}} {{.Action}} {{.Actor.ID}}'; echo "(image events between 1792436135 and 1792436137 listed above; empty = none)"
+(image events between 1792436135 and 1792436137 listed above; empty = none)
+=== END R4-no-image-events  rc=0  elapsed=1s
+
+=== STEP R5-images-after-and-target  start 2026-10-19T18:55:37Z  cwd <home>/ke-proof-refusal-20261019/bundle-amd64
+$ docker images --format "{{.Repository}}:{{.Tag}} {{.ID}}" | sort > /tmp/ke-proof-images-after.txt; diff /tmp/ke-proof-images-before.txt /tmp/ke-proof-images-after.txt && echo "image list unchanged"; rm -f /tmp/ke-proof-images-before.txt /tmp/ke-proof-images-after.txt; ls -la ~/ke-proof-refusal-20261019; test ! -e ~/ke-proof-refusal-20261019/ke && echo "no target left behind"
+image list unchanged
+total 16
+drwx------  3 admin admin 4096 Oct 19 11:55 .
+drwxr-x--- 59 admin admin 4096 Oct 19 11:54 ..
+drwxr-xr-x  4 admin admin 4096 Oct 19 11:50 bundle-amd64
+-rw-r--r--  1 admin admin   95 Oct 19 11:50 bundle-amd64.manifest.sha256
+no target left behind
+=== END R5-images-after-and-target  rc=0  elapsed=0s
+
+=== STEP R6-control-events-during-step-6  start 2026-10-19T18:55:43Z  cwd <home>
+$ docker events --since 2026-10-19T18:51:51Z --until 2026-10-19T18:51:56Z --filter type=image --format "{{.Time}} {{.Action}} {{.Actor.Attributes.name}}" | head -20; echo "(positive control: the same query over the window of step 6, the arm64 install, lists its load/tag events)"
+(positive control: the same query over the window of step 6, the arm64 install, lists its load/tag events)
+=== END R6-control-events-during-step-6  rc=0  elapsed=0s
+R6 above is void: the daemon keeps only a short in-memory event buffer and the launch/smoke container events had pushed step 6 out of it. R7 is a live positive control instead.
+
+=== STEP R7-positive-control-events  start 2026-10-19T18:55:52Z  cwd <home>
+$ docker tag ke-app:bundle-1fe81ddbfb60 ke-proof-control:tmp && docker rmi ke-proof-control:tmp; docker events --since 1792436152 --until $(($(date +%s) + 1)) --filter type=image --format "{{.Time}} {{.Action}} {{.Actor.Attributes.name}}"; echo "(same query shape as R4: a tag and an untag of a throwaway name are listed, so R4 empty means no image event)"
+Untagged: ke-proof-control:tmp
+1792436152 tag ke-proof-control:tmp
+1792436152 untag sha256:64676a69ba9d917f153da8f9d64353fae10e33e61c1ba75958071003de21d205
+(same query shape as R4: a tag and an untag of a throwaway name are listed, so R4 empty means no image event)
+=== END R7-positive-control-events  rc=0  elapsed=1s
+Cleanup: remove only what this run created (proof dirs, project resources, the ke-*:bundle-* / ke-vendor/* tags); *:probe-arm64 left alone.
+
+=== STEP C1-before  start 2026-10-19T18:57:23Z  cwd <home>
+$ for t in $TAGS; do docker image inspect --format "$t id={{.Id}} tags={{.RepoTags}} digests={{.RepoDigests}}" "$t"; done; for p in $PINNED; do docker image inspect --format "$p id={{.Id}}" "$p"; done
+ke-app:bundle-1fe81ddbfb60 id=sha256:64676a69ba9d917f153da8f9d64353fae10e33e61c1ba75958071003de21d205 tags=[ke-app:bundle-1fe81ddbfb60 ke-app:latest] digests=[]
+ke-gateway:bundle-1fe81ddbfb60 id=sha256:3f668e4d6d7cb3859d672e9a3d9de0aa3d0af26c2d3ad78d62574f74094a88dd tags=[ke-gateway:bundle-1fe81ddbfb60 ke-gateway:latest] digests=[]
+ke-vendor/neo4j:0a6e7aedf54a id=sha256:36afb703eee6e2059cb53806959a9b9ef5710c918cb877e5ac70d5f94e45e02d tags=[ke-vendor/neo4j:0a6e7aedf54a] digests=[neo4j@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b]
+ke-vendor/phoenix:fa28e9cd96dd id=sha256:8f5b2a1ef1df3971bb5af56165cbe5413894b86a19e4c69080a25a5b71db41bc tags=[ke-vendor/phoenix:fa28e9cd96dd] digests=[arizephoenix/phoenix@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c]
+ke-vendor/postgres:0ea6700a3b4f id=sha256:4b5d4fd438e2c1ce13106e4996fc604f0a1cff39cde48b546fcac3cf1a233c3a tags=[ke-vendor/postgres:0ea6700a3b4f] digests=[postgres@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4]
+ke-vendor/valkey:081c2f5cb575 id=sha256:1090d9113780a6c818824835da50ad4ae9445283710722fcd4ad13cd9cab59a4 tags=[ke-vendor/valkey:081c2f5cb575] digests=[valkey/valkey@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507]
+neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b id=sha256:36afb703eee6e2059cb53806959a9b9ef5710c918cb877e5ac70d5f94e45e02d
+arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c id=sha256:8f5b2a1ef1df3971bb5af56165cbe5413894b86a19e4c69080a25a5b71db41bc
+postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 id=sha256:4b5d4fd438e2c1ce13106e4996fc604f0a1cff39cde48b546fcac3cf1a233c3a
+valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507 id=sha256:1090d9113780a6c818824835da50ad4ae9445283710722fcd4ad13cd9cab59a4
+ke-app:latest id=sha256:64676a69ba9d917f153da8f9d64353fae10e33e61c1ba75958071003de21d205
+ke-gateway:latest id=sha256:3f668e4d6d7cb3859d672e9a3d9de0aa3d0af26c2d3ad78d62574f74094a88dd
+=== END C1-before  rc=0  elapsed=0s
+
+=== STEP C2-untag  start 2026-10-19T18:57:23Z  cwd <home>
+$ for t in $TAGS; do docker rmi "$t"; done
+Untagged: ke-app:bundle-1fe81ddbfb60
+Untagged: ke-gateway:bundle-1fe81ddbfb60
+Untagged: ke-vendor/neo4j:0a6e7aedf54a
+Untagged: ke-vendor/phoenix:fa28e9cd96dd
+Untagged: ke-vendor/postgres:0ea6700a3b4f
+Untagged: ke-vendor/valkey:081c2f5cb575
+=== END C2-untag  rc=0  elapsed=0s
+
+=== STEP C3-after  start 2026-10-19T18:57:23Z  cwd <home>
+$ docker images --format "{{.Repository}}:{{.Tag}}" | grep -E "bundle-|^ke-vendor/" || echo "no ke-*:bundle-* or ke-vendor/* tags left"; for p in $PINNED; do docker image inspect --format "$p still present id={{.Id}}" "$p"; done; docker images --format "{{.Repository}}:{{.Tag}}" | grep -E "probe-arm64" || true
+no ke-*:bundle-* or ke-vendor/* tags left
+neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b still present id=sha256:36afb703eee6e2059cb53806959a9b9ef5710c918cb877e5ac70d5f94e45e02d
+arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c still present id=sha256:8f5b2a1ef1df3971bb5af56165cbe5413894b86a19e4c69080a25a5b71db41bc
+postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 still present id=sha256:4b5d4fd438e2c1ce13106e4996fc604f0a1cff39cde48b546fcac3cf1a233c3a
+valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507 still present id=sha256:1090d9113780a6c818824835da50ad4ae9445283710722fcd4ad13cd9cab59a4
+ke-app:latest still present id=sha256:64676a69ba9d917f153da8f9d64353fae10e33e61c1ba75958071003de21d205
+ke-gateway:latest still present id=sha256:3f668e4d6d7cb3859d672e9a3d9de0aa3d0af26c2d3ad78d62574f74094a88dd
+ke-gates:probe-arm64
+ke-gateway:probe-arm64
+ke-app:probe-arm64
+=== END C3-after  rc=0  elapsed=0s
+
+=== STEP C4-remove-proof-dirs (gb10, via ssh)  2026-10-19T18:57:48Z
+$ rm -rf ~/ke-proof-20261019 ~/ke-proof-install ~/ke-proof-refusal-20261019 ~/ke-proof-tools ~/ke-proof-logs-20261019; ls -d ~/ke-proof*; (leftover containers/volumes/networks/tags check); docker ps --format "{{.Names}}"
+ls: cannot access '<home>/ke-proof*': No such file or directory
+no ke-proof container
+no ke-proof volume
+no ke-proof network
+no bundle/ke-vendor/ke-proof tags
+portainer
+open-webui
+openclaw
+=== END C4 rc=0 (the log above was copied out first)

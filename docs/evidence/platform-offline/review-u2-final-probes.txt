@@ -1,0 +1,204 @@
+# reviewer: platform-offline unit 2 final re-review, raw probe output (2026-10-19)
+# All runs on scratch copies of the working tree (never the repo), in ke-gates:latest, --network none, uid 10001, cap-drop ALL.
+# Runner: cp -r /src /tmp/w && uv run --locked python -m unittest <ids>. Baseline tests.test_offline_bundle: Ran 66 tests, OK.
+
+## Mutant diffs
+===== m3 (scripts/install.sh)
+220,222d219
+<     if [ "$segment" = "." ] || [ "$segment" = ".." ]; then
+<       die "manifest: line $n: path has a '.' or '..' segment: $(printf '%q' "$path")"
+<     fi
+===== m4 (scripts/install.sh)
+125a126
+>   return 0
+===== p3 (scripts/install.ps1)
+298,300d297
+<             if ($segment -ceq '.' -or $segment -ceq '..') {
+<                 Exit-WithError "manifest: line ${n}: path has a '.' or '..' segment: $shown"
+<             }
+===== a1 (scripts/install.sh)
+317,319d316
+<       if [ "$bundle_arch" != "$daemon_arch" ]; then
+<         die "arch mismatch: this bundle is $bundle_arch but the Docker daemon is $daemon_arch (reported as $daemon_arch_raw); use the $daemon_arch bundle"
+<       fi
+===== a2 (scripts/install.ps1)
+377,379d376
+<             if ($bundleArch -cne $daemonArch) {
+<                 Exit-WithError "arch mismatch: this bundle is $bundleArch but the Docker daemon is $daemonArch (reported as $daemonArchRaw); use the $daemonArch bundle"
+<             }
+===== a3 (scripts/bundle.sh)
+162d161
+<   [ "$platform" = "linux/$arch" ] || die "image $ref is $platform, not linux/$arch"
+===== a4 (scripts/bundle.sh)
+56,58d55
+< if [ -n "$asserted_arch" ] && [ "$asserted_arch" != "$arch" ]; then
+<   die "--arch $asserted_arch does not match the Docker daemon ($arch, reported as $daemon_arch_raw); this script builds for the daemon's arch"
+< fi
+===== c1 (scripts/install.sh)
+182,184d181
+< if [ "$manifest_size" -gt 1048576 ]; then
+<   die "manifest: MANIFEST.sha256 is too large ($manifest_size bytes; the size cap is 1 MiB)"
+< fi
+===== c2 (scripts/install.ps1)
+263,265d262
+<     if ($manifestSize -gt 1048576) {
+<         Exit-WithError "manifest: MANIFEST.sha256 is too large ($manifestSize bytes; the size cap is 1 MiB)"
+<     }
+===== st1 (scripts/install.sh)
+411c411
+<   output="$(docker load -i "$staging/$file")" || die "docker load failed for ${file##*/}"
+---
+>   output="$(docker load -i "$root/$file")" || die "docker load failed for ${file##*/}"
+===== st2 (scripts/install.sh)
+436a437
+> cp -R -- "$root/app/." "$staging/app/"
+===== st3 (scripts/install.ps1)
+453c453
+<         $output = @(& docker load -i (Join-Path $staging $e.file.Replace('/', [string]$sep)))
+---
+>         $output = @(& docker load -i (Join-Path $root $e.file.Replace('/', [string]$sep)))
+===== st4 (scripts/install.sh)
+173d172
+< refuse_odd "$staging"
+===== mv1 (scripts/install.sh)
+461,463d460
+< if [ -L "$target" ] || [ ! -d "$target" ] || [ -e "$staging/app" ] || [ -e "$target/app" ]; then
+<   die "the publish did not land at the target (something appeared there during install): $target"
+< fi
+===== mv2 (scripts/install.sh)
+451d450
+< if [ -L "$target" ]; then die "the target became a link during install: $target"; fi
+===== mv3 (scripts/install.sh)
+451d450
+< if [ -L "$target" ]; then die "the target became a link during install: $target"; fi
+459d457
+< if [ -e "$target" ] || [ -L "$target" ]; then die "something appeared at the target: $target"; fi
+===== mv4 (scripts/install.sh)
+451d450
+< if [ -L "$target" ]; then die "the target became a link during install: $target"; fi
+459d457
+< if [ -e "$target" ] || [ -L "$target" ]; then die "something appeared at the target: $target"; fi
+461,463d458
+< if [ -L "$target" ] || [ ! -d "$target" ] || [ -e "$staging/app" ] || [ -e "$target/app" ]; then
+<   die "the publish did not land at the target (something appeared there during install): $target"
+< fi
+===== i1 (scripts/install.ps1)
+183d182
+< [KeInterrupt]::Install()
+===== i2 (scripts/install.ps1)
+534d533
+<     if (-not $finished) { [System.Environment]::Exit(1) }
+===== sh1 (scripts/install.sh)
+37c37
+<     shasum -a 256 -- "$1"
+---
+>     sha256sum -- "$1"
+
+## Mutant results (class run: sh = InstallShTest+InstallShPortableTest, ps1 = InstallPs1Test, bundle = BundleScriptTest)
+== a1: FAILED (failures=3)
+FAIL: test_install_refuses_arch_mismatch  (case='amd64_bundle_on_aarch64')
+FAIL: test_install_refuses_arch_mismatch  (case='arm64_bundle_on_x86_64')
+FAIL: test_install_sh_runs_with_bsd_tool_shims  (case='arch_mismatch')
+== a2: FAILED (failures=2)
+FAIL: test_install_refuses_arch_mismatch  (case='amd64_bundle_on_aarch64')
+FAIL: test_install_refuses_arch_mismatch  (case='arm64_bundle_on_x86_64')
+== a3: FAILED (failures=4)
+FAIL: test_bundle_refuses_image_of_other_arch  (daemon='x86_64', case='mixed')
+FAIL: test_bundle_refuses_image_of_other_arch  (daemon='x86_64', case='all_foreign')
+FAIL: test_bundle_refuses_image_of_other_arch  (daemon='aarch64', case='mixed')
+FAIL: test_bundle_refuses_image_of_other_arch  (daemon='aarch64', case='all_foreign')
+== a4: FAILED (failures=1)
+FAIL: test_bundle_arch_comes_from_daemon  (case='mismatched_arch_flag_refused')
+== c1: FAILED (failures=1)
+FAIL: test_install_refuses_manifest_link_or_fifo  (case='manifest_over_1_mib')
+== c2: FAILED (failures=1)
+FAIL: test_install_refuses_manifest_link_or_fifo  (case='manifest_over_1_mib')
+== i1: OK
+== i2: FAILED (failures=1)
+FAIL: test_install_removes_staging_on_every_exit  (case='interrupted_by_SIGINT_during_load')
+== m3: FAILED (failures=2)
+FAIL: test_bundle_manifest_rejects_tamper  (case='dotdot_path')
+FAIL: test_bundle_manifest_rejects_tamper  (case='dot_path')
+== m4: FAILED (failures=9)
+FAIL: test_bundle_manifest_rejects_tamper  (case='symlink')
+FAIL: test_bundle_manifest_rejects_tamper  (case='unlisted_dir_symlink')
+FAIL: test_bundle_manifest_rejects_tamper  (case='unlisted_file_symlink')
+FAIL: test_bundle_manifest_rejects_tamper  (case='unlisted_fifo')
+FAIL: test_install_loads_nothing_when_manifest_fails  (case='unlisted_dir_symlink')
+FAIL: test_install_loads_nothing_when_manifest_fails  (case='unlisted_file_symlink')
+FAIL: test_install_loads_nothing_when_manifest_fails  (case='unlisted_fifo')
+FAIL: test_install_refuses_manifest_link_or_fifo  (case='manifest_is_symlink')
+FAIL: test_install_refuses_manifest_link_or_fifo  (case='manifest_is_fifo')
+== mv1: OK
+== mv2: OK
+== mv3: OK
+== mv4: OK
+== p3: FAILED (failures=2)
+FAIL: test_bundle_manifest_rejects_tamper  (case='dotdot_path')
+FAIL: test_bundle_manifest_rejects_tamper  (case='dot_path')
+== sh1: FAILED (failures=4)
+FAIL: test_install_sh_runs_with_bsd_tool_shims  (case='clean_install')
+FAIL: test_install_sh_runs_with_bsd_tool_shims  (case='tamper_changed_file')
+FAIL: test_install_sh_runs_with_bsd_tool_shims  (case='arch_mismatch')
+FAIL: test_install_sh_uses_no_gnu_or_bash4_constructs 
+== st1: FAILED (failures=2)
+FAIL: test_install_loads_and_copies_verified_bytes_only  (case='bundle_changed_after_info')
+FAIL: test_install_loads_and_copies_verified_bytes_only  (case='hardlink_partner_changed_after_info')
+== st2: FAILED (failures=2)
+FAIL: test_install_loads_and_copies_verified_bytes_only  (case='bundle_changed_after_info')
+FAIL: test_install_loads_and_copies_verified_bytes_only  (case='hardlink_partner_changed_after_info')
+== st3: FAILED (failures=2)
+FAIL: test_install_loads_and_copies_verified_bytes_only  (case='bundle_changed_after_info')
+FAIL: test_install_loads_and_copies_verified_bytes_only  (case='hardlink_partner_changed_after_info')
+== st4: OK
+
+## Signal probe (tools/sigprobe.py): fixture bundle, fake docker sleeping 4 s in `load`; signal to the process group or to the installer pid only
+## base (working tree)
+sh SIGTERM pgrp rc=143 secs=0.0 staging_left=False published=False err=''
+sh SIGTERM pid  rc=143 secs=4.0 staging_left=False published=False err=''
+sh SIGINT  pgrp rc=130 secs=0.0 staging_left=False published=False err='KeyboardInterrupt'
+sh SIGINT  pid  rc=130 secs=4.0 staging_left=False published=False err=''
+sh SIGHUP  pgrp rc=-1 secs=0.0 staging_left=False published=False err=''
+sh SIGHUP  pid  rc=-1 secs=4.0 staging_left=False published=False err='open /tmp/tmpcgsjcuh0/.ke-install.hfU0FemO/images/ke-app.tar: no such file or directory'
+ps1 SIGTERM pgrp rc=1 secs=0.0 staging_left=False published=False err='install: interrupted'
+ps1 SIGTERM pid  rc=1 secs=8.1 staging_left=False published=True err=''        <-- install ran to completion, published, then exit 1, no message
+ps1 SIGINT  pgrp rc=1 secs=0.0 staging_left=False published=False err='KeyboardInterrupt'
+ps1 SIGINT  pid  rc=1 secs=0.0 staging_left=False published=False err=''
+ps1 SIGHUP  pgrp rc=1 secs=0.0 staging_left=False published=False err='install: interrupted'
+ps1 SIGHUP  pid  rc=1 secs=8.1 staging_left=False published=True err=''        <-- same
+## mutant i1 (no [KeInterrupt]::Install(); survives the suite)
+ps1 SIGTERM pgrp rc=1 secs=0.0 staging_left=False published=False err='install: docker load failed for ke-app.tar'
+ps1 SIGTERM pid  rc=143 secs=4.0 staging_left=True published=False err='BrokenPipeError: [Errno 32] Broken pipe'
+ps1 SIGINT  pgrp rc=1 secs=0.0 staging_left=False published=False err='KeyboardInterrupt'
+ps1 SIGINT  pid  rc=1 secs=0.0 staging_left=False published=False err=''
+ps1 SIGHUP  pgrp rc=-1 secs=0.0 staging_left=True published=False err=''
+ps1 SIGHUP  pid  rc=-1 secs=4.0 staging_left=True published=False err='BrokenPipeError: [Errno 32] Broken pipe'
+
+## Session probe (tools/sessionprobe.py): two `& install.ps1` runs in one pwsh -Command session (what `.\install.ps1` in an open prompt does)
+first run exit=0
+(bash -c "kill -TERM $PID" sent to the pwsh session after the script returned)
+session survived SIGTERM after the script returned; Fired=True
+second (clean) run exit=1; t2 published=True
+
+## Case-insensitive staging (tools/caseprobe.py): target parent on a Docker Desktop bind mount of NTFS (case-insensitive, as macOS APFS by default); bundle carries app/scripts/LAUNCH.sh beside launch.sh
+cp version: cp (GNU coreutils) 9.1
+bind mount case-insensitive: True
+case listed=False sh: rc=1 launch.sh=None msg="cp: cannot create regular file '/ci/p0/.ke-install.rAqjxdgA/./app/scripts/LAUNCH.sh': File exists" left=[]
+case listed=False ps1: rc=1 launch.sh=None msg='install: paths differ only by case: app/scripts/launch.sh' left=[]
+case listed=True sh: rc=1 launch.sh=None msg="cp: cannot create regular file '/ci/p2/.ke-install.LVHccMAN/./app/scripts/LAUNCH.sh': File exists" left=[]
+case listed=True ps1: rc=1 launch.sh=None msg='install: paths differ only by case: app/scripts/launch.sh' left=[]
+
+## Forbid list applied to the other shipped scripts (tools/portprobe.py, _portability_findings)
+== launch.sh: 3 findings
+line 61: mapfile / readarray: mapfile -t hosts < <(...)
+line 63: mapfile / readarray: mapfile -t published < <(...)
+line 27: sort -z / sort -V: [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n 1)" = "$1" ]
+== teardown.sh: 0 findings
+== smoke.sh: 0 findings
+== install.sh: 0 findings
+
+## install.ps1 where Add-Type is unavailable (Windows 11 host, scratch bundle holding only install.ps1, so it can never reach docker)
+pwsh 7.6.7 normal:            "install: manifest: MANIFEST.sha256 is missing or not a regular file" rc=1
+powershell.exe 5.1 -File:     Add-Type : ...(5) : The type or namespace name 'PosixSignalRegistration' could not be found ... install.ps1:167  rc=1; no staging dir created
+pwsh, session ConstrainedLanguage, & install.ps1:  Add-Type: ... Cannot add type. Definition of new types is not supported in this language mode.  no staging dir created
+pwsh, __PSLockdownPolicy=4:   no effect on pwsh 7.6 (ran in FullLanguage)

@@ -1,0 +1,123 @@
+# model-roles security/review mutant run, 2026-10-20 (security auditor)
+# Base: working tree of agent/model-roles (HEAD 8b7425c + uncommitted model-roles change), copied to a scratch dir; tracked files untouched.
+# Command (scratch copy, host venv, Windows): python mutants.py <scratch-copy> <python>; each mutant edits tests/integration/test_model_roles.py then runs
+#   python -m unittest tests.test_stack_model_skip.ModelRolesSuiteTest
+# Baseline (no mutant): Ran 3 tests ... OK
+# ---- results ----
+KILLED    | M1a embed posts to model host (settings.models.model_upstream) via guarded client | FAILED (failures=2)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='answers')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='embedding of the wrong length')
+KILLED    | M1b embed posts to base_url with host swapped to modelhost via guarded client | FAILED (failures=2)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='answers')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='embedding of the wrong length')
+KILLED    | M1c embed via unguarded httpx.post to gateway url | FAILED (failures=2)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='answers')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='embedding of the wrong length')
+KILLED    | M1d embed via unguarded httpx.post directly to modelhost | FAILED (failures=2)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='answers')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='embedding of the wrong length')
+KILLED    | M1e embed direct to modelhost via guarded client, status hook still fed (allowlist-dependent) | FAILED (failures=2)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='answers')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='embedding of the wrong length')
+KILLED    | M2a drop gateway-host assertion (all roles) | FAILED (failures=1)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway')
+SURVIVED  | M2b drop gateway-host assertion for embed only | OK
+KILLED    | M3a failure message prints message values | FAILED (failures=3)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (test='test_compose_role_answers', case='reasoning only, no content')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (test='test_rewrite_role_answers', case='reasoning only, no content')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (test='test_audit_role_answers', case='reasoning only, no content')
+SURVIVED  | M3b failure message prints content repr | OK
+SURVIVED  | M3c model-mismatch message prints content | OK
+SURVIVED  | M4a chat prints content to stderr on success | OK
+SURVIVED  | M4b embed prints prompt+vector to stderr | OK
+KILLED    | M4c chat prints prompt in timing line | FAILED (failures=2)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='answers')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='reasoning only, no content')
+KILLED    | M5 drop require_model_host in audit | FAILED (failures=3)
+            FAIL: test_model_role_tests_run_in_order (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_tests_run_in_order) (test='test_audit_role_answers')
+            FAIL: test_model_role_tests_skip_not_configured (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_tests_skip_not_configured) (case='keys unset')
+            FAIL: test_model_role_tests_skip_not_configured (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_tests_skip_not_configured) (case='operator allowlist empty')
+KILLED    | M6 reorder (audit first) | FAILED (failures=4)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='answers')
+            FAIL: test_model_role_tests_run_in_order (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_tests_run_in_order)
+            FAIL: test_model_role_tests_skip_not_configured (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_tests_skip_not_configured) (case='keys unset')
+            FAIL: test_model_role_tests_skip_not_configured (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_tests_skip_not_configured) (case='operator allowlist empty')
+KILLED    | M7 drop model echo assertion | FAILED (failures=1)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='response names another model')
+KILLED    | M8 drop dim assertion | FAILED (failures=1)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='embedding of the wrong length')
+KILLED    | M9 accept reasoning as answer | FAILED (failures=1)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='reasoning only, no content')
+
+# Note: M1e as run is the same edit as M1b (its allowlist-dependent variant is the separate check below).
+
+# ---- environment-dependence check for M1 (direct-host embed) ----
+# ROLES_ENV changed (scratch only) to the real-run shape: KE_EGRESS_ALLOWLIST=gateway,modelhost, KE_MODEL_UPSTREAM=modelhost:8000
+# baseline with realistic allowlist: OK
+# M1b (embed URL host swapped gateway:8102 -> modelhost:8000, guarded client) with realistic allowlist: OK  => SURVIVED
+# i.e. M1a-M1e are killed only because the stub env's allowlist omits the model host (EgressDenied) or the status hook sees no request;
+# the stub handler does not check request.url.host. In the real run gates-it sits on the internal 'backend' network (docker-compose.yml
+# networks.backend internal: true), so a direct request has no route out: defence in depth holds.
+
+# ---- note: host-only failures (not caused by this change) ----
+# Running tests.test_stack_model_skip on the Windows host venv also fails 3 pre-existing ModelSkipHelperTest cases with
+# ssl.SSLError [SSL] unknown error, because environ() clears the whole Windows environment before httpx builds an SSL context.
+# They are ok inside the gates container (docs/evidence/model-roles/green-verify-full.txt). ModelRolesSuiteTest is unaffected (transport mocked).
+
+# ---- mutant script ----
+import pathlib, subprocess, sys
+root = pathlib.Path(sys.argv[1]); py = sys.argv[2]
+target = root / "tests/integration/test_model_roles.py"
+orig = target.read_text()
+E_URL = "url = f\"{client.base_url.rstrip('/')}/embeddings\""
+E_POST = "response = client.http_client.post(\n                url, json={\"model\": client.model, \"input\": EMBED_INPUT})"
+HOSTCHK = """        self.assertEqual(host, STACK_FORWARD,
+                         f"models.{role}.base_url must go through the stack's gateway "
+                         f"forward, not host {host!r}")"""
+FAILMSG = 'f"message keys={sorted(message)}")'
+TIMING = "_timing_line(role, client.model, time.monotonic() - started)"
+M = {
+ "M1a embed posts to model host (settings.models.model_upstream) via guarded client":
+   [(E_URL, "url = f\"http://{settings.models.model_upstream}/v1/embeddings\"")],
+ "M1b embed posts to base_url with host swapped to modelhost via guarded client":
+   [(E_URL, "url = f\"{client.base_url.rstrip('/')}/embeddings\".replace('gateway:8102', 'modelhost:8000')")],
+ "M1c embed via unguarded httpx.post to gateway url":
+   [(E_POST, "import httpx; response = httpx.post(\n                url, json={\"model\": client.model, \"input\": EMBED_INPUT})")],
+ "M1d embed via unguarded httpx.post directly to modelhost":
+   [(E_POST, "import httpx; response = httpx.post(\n                url.replace('gateway:8102', 'modelhost:8000'), json={\"model\": client.model, \"input\": EMBED_INPUT})")],
+ "M1e embed direct to modelhost via guarded client, status hook still fed (allowlist-dependent)":
+   [(E_URL, "url = f\"{client.base_url.rstrip('/')}/embeddings\".replace('gateway:8102', 'modelhost:8000')")],
+ "M2a drop gateway-host assertion (all roles)": [(HOSTCHK, "        pass")],
+ "M2b drop gateway-host assertion for embed only": [(HOSTCHK, "        if role != 'embed':\n" + HOSTCHK.replace("        ", "            ", 1).replace("\n                         ", "\n                             "))],
+ "M3a failure message prints message values": [(FAILMSG, 'f"message={message!r}")')],
+ "M3b failure message prints content repr": [(FAILMSG, 'f"message keys={sorted(message)} content={content!r}")')],
+ "M3c model-mismatch message prints content": [('f"{role}: the response names a different model")', 'f"{role}: the response names a different model: {result}")')],
+ "M4a chat prints content to stderr on success": [(TIMING, TIMING + "\n            print(result, file=sys.stderr)")],
+ "M4b embed prints prompt+vector to stderr": [('_timing_line("embed", client.model, time.monotonic() - started)', '_timing_line("embed", client.model, time.monotonic() - started); print(EMBED_INPUT, response.text, file=sys.stderr)')],
+ "M4c chat prints prompt in timing line": [('print(f"model-role {role} {model} {seconds:.1f}s"', 'print(f"model-role {role} {model} {seconds:.1f}s"); print(PROMPT')],
+ "M5 drop require_model_host in audit": [('    def test_audit_role_answers(self):\n        require_model_host(self)\n', '    def test_audit_role_answers(self):\n')],
+ "M6 reorder (audit first)": [('ROLES_IN_ORDER = ("embed", "compose", "rewrite", "audit")', 'ROLES_IN_ORDER = ("audit", "embed", "compose", "rewrite")')],
+ "M7 drop model echo assertion": [('self.assertEqual(result.get("model"), client.model,', 'self.assertEqual(client.model, client.model,')],
+ "M8 drop dim assertion": [('self.assertEqual(len(vector), settings.models.embed.dim,', 'self.assertEqual(len(vector), len(vector),')],
+ "M9 accept reasoning as answer": [('content = message.get("content")', 'content = message.get("content") or message.get("reasoning")')],
+}
+env_variants = {"M1e embed direct to modelhost via guarded client, status hook still fed (allowlist-dependent)": "allowlist"}
+results = []
+for name, edits in M.items():
+    text = orig
+    for a, b in edits:
+        assert a in text, (name, a)
+        text = text.replace(a, b, 1)
+    target.write_text(text)
+    try:
+        r = subprocess.run([py, "-m", "unittest", "tests.test_stack_model_skip.ModelRolesSuiteTest"],
+                           cwd=root, capture_output=True, text=True, env={**__import__("os").environ, "PYTHONDONTWRITEBYTECODE": "1"})
+        tail = (r.stderr.strip().splitlines() or [""])[-1]
+        verdict = "KILLED" if r.returncode else "SURVIVED"
+        results.append((name, verdict, tail))
+        print(f"{verdict:9} | {name} | {tail}", flush=True)
+        if verdict == "KILLED":
+            fails = [l for l in r.stderr.splitlines() if l.startswith(("FAIL:", "ERROR:"))]
+            for l in fails: print("           ", l)
+    finally:
+        target.write_text(orig)

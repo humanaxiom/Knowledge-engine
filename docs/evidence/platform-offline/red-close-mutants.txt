@@ -1,0 +1,152 @@
+# red-close mutants (audit-nt2 L-NT6: n4, n6, n10, n11, n12), 2026-10-20, tester
+# Scratch copies of the working tree (git ls-files -co --exclude-standard, minus docs/evidence), scripts/bundle.sh mutated,
+# run in ke-gates:wt-33a132fbfdd7 (--network none, uid 10001, checkout ro): /opt/venv/bin/python -m unittest <6 tests>
+# tests: BundleNoticesTest.{test_bundle_contents, test_notices_licence_tokens_are_spdx_characters,
+#        test_notices_licence_operators_sit_between_ids, test_notices_accept_crlf_notice_md,
+#        test_notices_malformed_row_refusal_names_row_and_reason, test_notices_vendor_row_parse_is_strict}
+# Runner: mutants.sh (below). The first n11 sed did not apply (escaping); n11 was re-run with an awk delete.
+
+-- base diff:
+base rc=0 Ran 6 tests in 11.234s OK 
+-- n4 diff:
+204,207d203
+<   if [ "$nref" = ERR ]; then
+<     IFS="$sep" read -r why bad_ref <<< "$nrest"
+<     die "NOTICE.md vendor row for the image $bad_ref is malformed: $why"
+<   fi
+n4 rc=1 Ran 6 tests in 11.153s FAILED (failures=8) 
+      1 FAIL: test_notices_licence_operators_sit_between_ids (tests.test_offline_bundle.BundleNoticesTest.test_notices_licence_operators_sit_between_ids) (licence='MIT Apache-2.0 BSD')
+      1 FAIL: test_notices_licence_operators_sit_between_ids (tests.test_offline_bundle.BundleNoticesTest.test_notices_licence_operators_sit_between_ids) (licence='see the COPYING')
+      1 FAIL: test_notices_licence_tokens_are_spdx_characters (tests.test_offline_bundle.BundleNoticesTest.test_notices_licence_tokens_are_spdx_characters) (licence='BSD;3-Clause')
+      1 FAIL: test_notices_licence_tokens_are_spdx_characters (tests.test_offline_bundle.BundleNoticesTest.test_notices_licence_tokens_are_spdx_characters) (licence='GPL/MIT')
+      1 FAIL: test_notices_licence_tokens_are_spdx_characters (tests.test_offline_bundle.BundleNoticesTest.test_notices_licence_tokens_are_spdx_characters) (licence='MIT,')
+      1 FAIL: test_notices_malformed_row_refusal_names_row_and_reason (tests.test_offline_bundle.BundleNoticesTest.test_notices_malformed_row_refusal_names_row_and_reason) (case='cell count')
+      1 FAIL: test_notices_malformed_row_refusal_names_row_and_reason (tests.test_offline_bundle.BundleNoticesTest.test_notices_malformed_row_refusal_names_row_and_reason) (case='control byte')
+      1 FAIL: test_notices_malformed_row_refusal_names_row_and_reason (tests.test_offline_bundle.BundleNoticesTest.test_notices_malformed_row_refusal_names_row_and_reason) (case='licence')
+-- n6 diff:
+194d193
+< [ -s LICENSE ] || die "LICENSE is missing or empty (the project MIT licence is committed and ships at the bundle root)"
+n6 rc=1 Ran 6 tests in 11.837s FAILED (failures=2) 
+      1 FAIL: test_bundle_contents (tests.test_offline_bundle.BundleNoticesTest.test_bundle_contents) (part='empty in the tree: LICENSE')
+      1 FAIL: test_bundle_contents (tests.test_offline_bundle.BundleNoticesTest.test_bundle_contents) (part='missing from the tree: LICENSE')
+-- n10 diff:
+218c218
+<       else if (parts[i] !~ /^[A-Za-z0-9][A-Za-z0-9.+-]*$/ || parts[i] ~ /^(AND|OR|WITH)$/) return 0
+---
+>       else if (parts[i] !~ /./ || parts[i] ~ /^(AND|OR|WITH)$/) return 0
+n10 rc=1 Ran 6 tests in 12.263s FAILED (failures=3) 
+      1 FAIL: test_notices_licence_tokens_are_spdx_characters (tests.test_offline_bundle.BundleNoticesTest.test_notices_licence_tokens_are_spdx_characters) (licence='BSD;3-Clause')
+      1 FAIL: test_notices_licence_tokens_are_spdx_characters (tests.test_offline_bundle.BundleNoticesTest.test_notices_licence_tokens_are_spdx_characters) (licence='GPL/MIT')
+      1 FAIL: test_notices_licence_tokens_are_spdx_characters (tests.test_offline_bundle.BundleNoticesTest.test_notices_licence_tokens_are_spdx_characters) (licence='MIT,')
+-- n12 diff:
+217c217
+<       if (i % 2 == 0) { if (parts[i] != "AND" && parts[i] != "OR" && parts[i] != "WITH") return 0 }
+---
+>       if (i % 2 == 0) { }
+n12 rc=1 Ran 6 tests in 12.311s FAILED (failures=3) 
+      1 FAIL: test_notices_licence_operators_sit_between_ids (tests.test_offline_bundle.BundleNoticesTest.test_notices_licence_operators_sit_between_ids) (licence='MIT Apache-2.0 BSD')
+      1 FAIL: test_notices_licence_operators_sit_between_ids (tests.test_offline_bundle.BundleNoticesTest.test_notices_licence_operators_sit_between_ids) (licence='see the COPYING')
+      1 FAIL: test_notices_malformed_row_refusal_names_row_and_reason (tests.test_offline_bundle.BundleNoticesTest.test_notices_malformed_row_refusal_names_row_and_reason) (case='licence')
+-- n11 diff:
+228d227
+<   { sub(/\r$/, "") }
+n11 rc=1 Ran 6 tests in 10.877s FAILED (failures=1) 
+      1 FAIL: test_notices_accept_crlf_notice_md (tests.test_offline_bundle.BundleNoticesTest.test_notices_accept_crlf_notice_md)
+
+## failure reasons (AssertionError lines per mutant)
+-- n4
+AssertionError: 'its Licence cell is not an SPDX id or expression' not found in 'bundle: no licence entry in NOTICE.md for the stack image(s): valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507\n' : the refusal gives the Licence-cell reason
+
+AssertionError: 'its Licence cell is not an SPDX id or expression' not found in 'bundle: no licence entry in NOTICE.md for the stack image(s): valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507\n' : the refusal gives the Licence-cell reason
+
+AssertionError: 'its Licence cell is not an SPDX id or expression' not found in 'bundle: no licence entry in NOTICE.md for the stack image(s): valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507\n' : the refusal gives the Licence-cell reason
+
+AssertionError: 'its Licence cell is not an SPDX id or expression' not found in 'bundle: no licence entry in NOTICE.md for the stack image(s): valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507\n' : the refusal gives the Licence-cell reason
+
+AssertionError: 'its Licence cell is not an SPDX id or expression' not found in 'bundle: no licence entry in NOTICE.md for the stack image(s): valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507\n' : the refusal gives the Licence-cell reason
+
+AssertionError: 'NOTICE.md vendor row for the image valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507 is malformed: the row holds a control byte' not found in 'bundle: no licence entry in NOTICE.md for the stack image(s): valkey/valkey:8-alpine@sha256:081
+
+AssertionError: 'NOTICE.md vendor row for the image valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507 is malformed: the row has 6 cells, not 5 (a pipe inside a cell?)' not found in 'bundle: no licence entry in NOTICE.md for the stack image(s): valkey/valk
+
+AssertionError: 'NOTICE.md vendor row for the image valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507 is malformed: its Licence cell is not an SPDX id or expression' not found in 'bundle: no licence entry in NOTICE.md for the stack image(s): valkey/valkey
+
+-- n6
+AssertionError: Lists differ: [['save', '-o', '/tmp/tmpit5b2i5p/out2/bun[589 chars]75']] != []
+
+AssertionError: 0 == 0 : bundle.sh wrote a bundle with an empty LICENSE:
+bundle written: /tmp/tmpit5b2i5p/out5/bundle-amd64
+-- n10
+AssertionError: 0 == 0 : bundle.sh accepted a malformed valkey row in NOTICE.md (BSD;3-Clause):
+bundle written: /tmp/tmpbac9n5ln/out1/bundle-amd64
+AssertionError: 0 == 0 : bundle.sh accepted a malformed valkey row in NOTICE.md (MIT,):
+bundle written: /tmp/tmpbac9n5ln/out2/bundle-amd64
+AssertionError: 0 == 0 : bundle.sh accepted a malformed valkey row in NOTICE.md (GPL/MIT):
+bundle written: /tmp/tmpbac9n5ln/out3/bundle-amd64
+-- n11
+AssertionError: 1 != 0 : bundle.sh refused a CRLF NOTICE.md:
+bundle: NOTICE.md vendor row for the image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 is malformed: the row holds a control byte
+-- n12
+AssertionError: 0 == 0 : bundle.sh accepted a malformed valkey row in NOTICE.md (see the COPYING):
+bundle written: /tmp/tmpwbr6a0le/out1/bundle-amd64
+AssertionError: 0 == 0 : bundle.sh accepted a malformed valkey row in NOTICE.md (MIT Apache-2.0 BSD):
+bundle written: /tmp/tmpwbr6a0le/out2/bundle-amd64
+AssertionError: 0 == 0 : bundle.sh accepted a malformed valkey row in NOTICE.md (licence):
+bundle written: /tmp/tmp2r0jl3p5/out3/bundle-amd64
+
+## I-NT7 probe: hatchling (uv cache in the gates image) builds PEP 639 metadata from license = "MIT" (scratch pyproject copy)
+PYTHONPATH=/opt/uv-cache/archive-v0/DnRBSbcxEkun7CuV:/opt/uv-cache/archive-v0/k0unoYUxBsVho2ee:/opt/uv-cache/archive-v0/uaMhj8tNbVJPB57Y:/opt/uv-cache/archive-v0/wcV8accSEVoFz6Bx:/opt/uv-cache/archive-v0/wcd7lql4JnDJzph3
+hatchling ?
+Metadata-Version: 2.5
+Name: knowledge-engine
+Version: 0.1.0
+Summary: Multi-agent development harness with OpenInference tracing for Arize Phoenix
+License-Expression: MIT
+License-File: LICENSE
+Requires-Python: <3.13,>=3.12
+
+['METADATA'] 
+Resolved 51 packages in 0.85ms
+uv lock --locked rc=0
+
+## mutants.sh
+#!/usr/bin/env bash
+# Scratch-copy mutants for audit-nt2 L-NT6 (n4, n6, n10, n11, n12).
+set -u
+repo=/c/repos/Knowledge-engine
+sp="$1"; image="$2"
+tests=(
+  tests.test_offline_bundle.BundleNoticesTest.test_bundle_contents
+  tests.test_offline_bundle.BundleNoticesTest.test_notices_licence_tokens_are_spdx_characters
+  tests.test_offline_bundle.BundleNoticesTest.test_notices_licence_operators_sit_between_ids
+  tests.test_offline_bundle.BundleNoticesTest.test_notices_accept_crlf_notice_md
+  tests.test_offline_bundle.BundleNoticesTest.test_notices_malformed_row_refusal_names_row_and_reason
+  tests.test_offline_bundle.BundleNoticesTest.test_notices_vendor_row_parse_is_strict
+)
+mutate() {
+  local f="$1/scripts/bundle.sh"
+  case "$2" in
+    base) ;;
+    n4)  sed -i '/if \[ "\$nref" = ERR \]; then/,/^  fi$/d' "$f" ;;
+    n6)  sed -i '/\[ -s LICENSE \] || die/d' "$f" ;;
+    n10) sed -i 's|parts\[i\] !~ /^\[A-Za-z0-9\]\[A-Za-z0-9.+-\]\*\$/|parts[i] !~ /./|' "$f" ;;
+    n11) awk -f "<scratchpad>/n11.awk" "$f" > "$f.tmp" && mv "$f.tmp" "$f" ;;
+    n12) sed -i 's|if (i % 2 == 0) { if (parts\[i\] != "AND" && parts\[i\] != "OR" && parts\[i\] != "WITH") return 0 }|if (i % 2 == 0) { }|' "$f" ;;
+  esac
+}
+for m in ${MUTANTS:-base n4 n6 n10 n11 n12}; do
+  d="$sp/mut-$m"; rm -rf "$d"; mkdir -p "$d"
+  (cd "$repo" && git ls-files -z --cached --others --exclude-standard | grep -zv '^docs/evidence/' | tar --null -T - -cf -) | tar -xf - -C "$d"
+  mutate "$d" "$m"
+  echo "-- $m diff:"
+  diff "$repo/scripts/bundle.sh" "$d/scripts/bundle.sh"
+  [ "$m" = base ] || ! cmp -s "$repo/scripts/bundle.sh" "$d/scripts/bundle.sh" || { echo "MUTANT $m DID NOT APPLY"; continue; }
+  win="$(cygpath -w "$d")"
+  MSYS_NO_PATHCONV=1 docker run --rm --network none --user 10001:10001 --tmpfs /tmp:exec,mode=1777 \
+    -v "$win:/work:ro" -w /work --entrypoint /opt/venv/bin/python "$image" -m unittest "${tests[@]}" > "$sp/mut-$m.log" 2>&1
+  rc=$?
+  echo "$m rc=$rc $(grep -E '^(Ran|OK|FAILED)' "$sp/mut-$m.log" | tr '\n' ' ')"
+  grep -E '^(FAIL|ERROR):' "$sp/mut-$m.log" | sort | uniq -c
+done
+## n11.awk
+{ if (index($0, "{ sub(/") == 3 && index($0, "$/, \"\") }") > 0) next; print }

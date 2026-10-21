@@ -1,0 +1,27 @@
+### I1 data_file=/tmp/x $(touch /tmp/PWNED1);`touch /tmp/PWNED2`;$IFS"q'r/.cov
+test.sh rc=0
+no PWNED file
+unit: 1s rc=0 tests.test_a
+unit: 1s rc=0 tests.test_ign
+unit: 1s rc=0 tests.test_slow
+unit: 1s rc=0 tests.test_z
+Combined 2 files, skipped 3
+.cov
+### I2 glob chars: data_file=/tmp/d[1]/*.cov, decoys in /tmp/d1
+test.sh rc=0
+unit: 0s rc=0 tests.test_a
+unit: 0s rc=0 tests.test_ign
+unit: 0s rc=0 tests.test_slow
+unit: 0s rc=0 tests.test_z
+Combined 2 files, skipped 3
+remaining:
+/tmp/d1:
+a.cov.tests.test_z.decoy
+
+/tmp/d[1]:
+*.cov
+zz.cov.tests.test_z.decoy
+### I3 empty-ish: data_file whitespace-only via COVERAGE_FILE=' '
+test.sh rc=1
+OSError: [Errno 30] Read-only file system: '/work/ '
+rc=0
