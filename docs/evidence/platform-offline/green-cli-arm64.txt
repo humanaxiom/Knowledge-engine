@@ -1,0 +1,106 @@
+$ docker --context aria-gb10 build -f docker/gates.Dockerfile -t ke-gates:pin-check-arm64 .
+#18 0.322 Downloading psycopg-binary (6.5MiB)
+#18 0.323 Downloading pydantic-core (2.0MiB)
+#18 0.324 Downloading mypy (13.8MiB)
+#18 0.475  Downloaded ast-serialize
+#18 0.499  Downloaded pydantic-core
+#18 0.582  Downloaded psycopg-binary
+#18 0.819       Built knowledge-engine @ file:///work
+#18 0.852  Downloaded mypy
+#18 0.853 Prepared 50 packages in 672ms
+#18 0.991 Installed 50 packages in 137ms
+#18 0.991  + annotated-doc==0.0.5
+#18 0.991  + annotated-types==0.8.0
+#18 0.991  + anyio==4.15.1
+#18 0.991  + ast-serialize==0.13.1
+#18 0.991  + certifi==2026.7.22
+#18 0.991  + charset-normalizer==3.5.2
+#18 0.991  + click==8.5.0
+#18 0.991  + coverage==7.16.2
+#18 0.991  + croniter==6.2.4
+#18 0.991  + fastapi==0.146.0
+#18 0.991  + googleapis-common-protos==1.75.5
+#18 0.991  + h11==0.16.0
+#18 0.991  + httpcore==1.0.9
+#18 0.991  + httpx==0.28.1
+#18 0.991  + idna==3.20
+#18 0.991  + knowledge-engine==0.1.0 (from file:///work)
+#18 0.991  + librt==0.16.0
+#18 0.991  + mypy==2.4.0
+#18 0.991  + mypy-extensions==1.1.0
+#18 0.991  + neo4j==6.4.1
+#18 0.991  + openinference-semantic-conventions==0.1.41
+#18 0.991  + opentelemetry-api==1.45.1
+#18 0.991  + opentelemetry-exporter-http-transport==0.66b1
+#18 0.991  + opentelemetry-exporter-otlp-common==0.66b1
+#18 0.991  + opentelemetry-exporter-otlp-proto-common==1.45.1
+#18 0.991  + opentelemetry-exporter-otlp-proto-http==1.45.1
+#18 0.991  + opentelemetry-proto==1.45.1
+#18 0.991  + opentelemetry-sdk==1.45.1
+#18 0.991  + opentelemetry-semantic-conventions==0.66b1
+#18 0.991  + pathspec==1.1.1
+#18 0.991  + protobuf==7.36.2
+#18 0.991  + psycopg==3.3.6
+#18 0.991  + psycopg-binary==3.3.6
+#18 0.991  + pydantic==2.14.1
+#18 0.991  + pydantic-core==2.50.1
+#18 0.991  + pydantic-settings==2.16.0
+#18 0.991  + python-dateutil==2.9.0.post0
+#18 0.991  + python-dotenv==1.2.4
+#18 0.991  + pytz==2026.5
+#18 0.991  + pyyaml==6.0.3
+#18 0.991  + redis==8.1.0
+#18 0.991  + requests==2.34.2
+#18 0.991  + rq==2.12.0
+#18 0.991  + six==1.17.0
+#18 0.991  + starlette==1.9.0
+#18 0.991  + types-pyyaml==6.0.12.20260906
+#18 0.991  + typing-extensions==4.16.0
+#18 0.991  + typing-inspection==0.4.4
+#18 0.991  + urllib3==2.8.0
+#18 0.991  + uvicorn==0.54.0
+#18 DONE 1.1s
+
+#19 exporting to image
+#19 exporting layers
+#19 exporting layers 1.0s done
+#19 writing image sha256:47591671ec41d60ca79ecee500092e1058f1425f7f8dc72d4641fa7576f0ef64 done
+#19 naming to docker.io/library/ke-gates:pin-check-arm64 done
+#19 DONE 1.0s
+
+View build details: docker-desktop://dashboard/build/aria-gb10/aria-gb10/r0y3nq3z3nnw2uu5w2zskistk
+build rc=0
+$ docker --context aria-gb10 run --rm --network none ke-gates:pin-check-arm64 docker version --format {{.Client.Version}}   (rc 1 is the expected "no daemon" error after the client version line)
+failed to connect to the docker API at unix:///var/run/docker.sock; check if the path is correct and if the daemon is running: dial unix /var/run/docker.sock: connect: no such file or directory
+29.9.1
+rc=1
+$ ... docker compose version
+Docker Compose version v5.6.0
+rc=0
+$ ... uname -m; ls -l docker, plugin; daemon binaries
+aarch64
+-rwxr-xr-x 1 root root 41635760 Oct 14 18:35 /usr/local/bin/docker
+
+/usr/local/lib/docker/cli-plugins/:
+total 29824
+-rwxr-xr-x 1 root root 30538254 Oct 19 21:39 docker-compose
+no daemon binaries
+Untagged: ke-gates:pin-check-arm64
+Deleted: sha256:47591671ec41d60ca79ecee500092e1058f1425f7f8dc72d4641fa7576f0ef64
+rmi rc=0
+IMAGE                  ID             DISK USAGE   CONTENT SIZE   EXTRA
+ke-gates:probe-arm64   e578aff649eb       1.13GB             0B        
+
+$ docker --context aria-gb10 build --no-cache --progress=plain -f docker/gates.Dockerfile -t ke-gates:pin-check-arm64 .   (full log filtered to the Docker CLI / compose steps)
+build rc=0
+31:#9 [stage-1  3/12] RUN apt-get update  && apt-get install -y --no-install-recommends git jq ca-certificates curl       shellcheck=0.9.0-1 libicu72 libssl3 zlib1g  && rm -rf /var/lib/apt/lists/*  && git config --system
+192:#10 [stage-1  4/12] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x64; sha="3fc5e1567c450bd7bd5ae69ebb0a9a4a4e0418bbc36b0232cf6dd547f0bfc0eb" ;;       arm64) arch=arm64; sha="d0c216cec4c6c
+196:#11 [stage-1  5/12] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x86_64; sha="c158ecc55adb3afb01bbd3539ed3b997d20c26dbdc418080506cc1bf5243ff57" ;;       arm64) arch=aarch64; sha="3e93cc6d
+197:#11 1.013 /tmp/docker.tgz: OK
+200:#12 [stage-1  6/12] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x86_64; sha="40343e21ca777173e69cff5dbafeb37c6f81f3b0d57d9e597f036e95eb63e76a" ;;       arm64) arch=aarch64; sha="733ec767
+201:#12 0.689 /tmp/docker-compose: OK
+Docker Compose version v5.6.0
+Untagged: ke-gates:pin-check-arm64
+Deleted: sha256:2353ee1c615d50b5ad54f3b2c8b91b284f39e9164d66f29044de2555daba7508
+IMAGE                  ID             DISK USAGE   CONTENT SIZE   EXTRA
+ke-gates:probe-arm64   e578aff649eb       1.13GB             0B        

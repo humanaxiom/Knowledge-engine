@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# run.sh <name> <base dir> <cmd...>
+S="$(cd "$(dirname "$0")" && pwd)"
+name=$1; base=$2; shift 2
+MSYS_NO_PATHCONV=1 docker run --rm $DOCKER_EXTRA --name "ke-sec-r1-$name" --label ke.project=ke-sec-r1 \
+  --user 10001:10001 --network none --cap-drop ALL --security-opt no-new-privileges:true \
+  --tmpfs /tmp:exec,mode=1777 -e MYPY_CACHE_DIR=/tmp/mypy -e PYTHONDONTWRITEBYTECODE=1 \
+  -e GIT_OPTIONAL_LOCKS=0 -v "$(cygpath -w "$S/$base"):/work:ro" -w /work \
+  ke-gates:wt-33a132fbfdd7 "$@" > "$S/out/$name.txt" 2>&1
+echo "rc=$?" >> "$S/out/$name.txt"
+tail -n 30 "$S/out/$name.txt"

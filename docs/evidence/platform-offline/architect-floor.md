@@ -1,0 +1,4 @@
+- 2026-10-20 architect: disk floor 10 -> 7 GiB (R6 amended). Need = bundle (941 MiB amd64 / 2.4 GiB arm64, recorded-runs.md L24) + dind store (~3.3 GiB, S4) ~ 4.3 GiB, +~60% headroom; install staging is on the client /install tmpfs (memory, not disk).
+- CI run 39359710258 (ci-39359710258.log L2872-2875): ubuntu-24.04 runner had 9,552,372 KiB (9.1 GiB) free on / at the offline stage; 10 GiB floor failed, 7 GiB passes with ~2 GiB spare.
+- CI timeout 20 -> 30 min for the measurement run, then measured + 50% (R5 amended): job start 02:35:10, offline stage 02:51:07 (~16 min); unit tests 651 in 770.7 s (L2737) vs ~280 s locally.
+- Follow-up (separate plan item): CI unit-test time on the 2-core runner; candidate fix is running test modules in parallel. Docs updated: architecture.md §2.5 (Disk R6, time cost, R5/R6), §2.6, ADR-KE-009, ADR-KE-012; requirements.md PS-3.1/PS-3.2 free disk, PS-3.4 addition; quickstart.md has no 10 GiB text (unchanged).

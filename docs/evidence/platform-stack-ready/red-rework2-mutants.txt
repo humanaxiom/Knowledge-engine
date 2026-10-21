@@ -1,0 +1,121 @@
+=== mutant L12b: tests.test_stack_scripts.LintScriptTest.test_lint_refuses_a_symlink_to_a_clean_script tests.test_stack_scripts.LintScriptTest.test_lint_fails_on_a_symlinked_script ===
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.77ms
+Installed 1 package in 0.90ms
+FFFF.
+======================================================================
+FAIL: test_lint_refuses_a_symlink_to_a_clean_script (tests.test_stack_scripts.LintScriptTest.test_lint_refuses_a_symlink_to_a_clean_script) (case='sh link to a clean file outside scripts/')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 1195, in test_lint_refuses_a_symlink_to_a_clean_script
+    self.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : lint.sh passed with a symlink to a clean target (sh link to a clean file outside scripts/):
+lint: shellcheck on 13 files
+lint: PSScriptAnalyzer on 3 files
+lint: PASS
+
+
+======================================================================
+FAIL: test_lint_refuses_a_symlink_to_a_clean_script (tests.test_stack_scripts.LintScriptTest.test_lint_refuses_a_symlink_to_a_clean_script) (case='sh link to a clean file inside scripts/')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 1195, in test_lint_refuses_a_symlink_to_a_clean_script
+    self.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : lint.sh passed with a symlink to a clean target (sh link to a clean file inside scripts/):
+lint: shellcheck on 13 files
+lint: PSScriptAnalyzer on 3 files
+lint: PASS
+
+
+======================================================================
+FAIL: test_lint_refuses_a_symlink_to_a_clean_script (tests.test_stack_scripts.LintScriptTest.test_lint_refuses_a_symlink_to_a_clean_script) (case='ps1 link to a clean file outside scripts/')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 1195, in test_lint_refuses_a_symlink_to_a_clean_script
+    self.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : lint.sh passed with a symlink to a clean target (ps1 link to a clean file outside scripts/):
+lint: shellcheck on 12 files
+lint: PSScriptAnalyzer on 4 files
+lint: PASS
+
+
+======================================================================
+FAIL: test_lint_refuses_a_symlink_to_a_clean_script (tests.test_stack_scripts.LintScriptTest.test_lint_refuses_a_symlink_to_a_clean_script) (case='ps1 link to a clean file inside scripts/')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_scripts.py", line 1195, in test_lint_refuses_a_symlink_to_a_clean_script
+    self.assertNotEqual(result.returncode, 0,
+AssertionError: 0 == 0 : lint.sh passed with a symlink to a clean target (ps1 link to a clean file inside scripts/):
+lint: shellcheck on 12 files
+lint: PSScriptAnalyzer on 4 files
+lint: PASS
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 2.615s
+
+FAILED (failures=4)
+rc=1
+=== mutant WK5: tests.test_stack_worker.WorkerJobAllowlistTest ===
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.72ms
+Installed 1 package in 1ms
+/opt/venv/lib/python3.12/site-packages/rq/worker/base.py:270: Warning: CLIENT LIST command not supported, setting ip_address to unknown
+  warnings.warn('CLIENT LIST command not supported, setting ip_address to unknown', Warning)
+.FFF...
+======================================================================
+FAIL: test_worker_never_resolves_a_refused_jobs_function (tests.test_stack_worker.WorkerJobAllowlistTest.test_worker_never_resolves_a_refused_jobs_function) (job='platform.node')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_worker.py", line 192, in test_worker_never_resolves_a_refused_jobs_function
+    self.assertEqual(func_prop.call_count, 0,
+AssertionError: 1 != 0 : the refused job's Job.func was read (platform.node): its module would be imported
+
+======================================================================
+FAIL: test_worker_never_resolves_a_refused_jobs_function (tests.test_stack_worker.WorkerJobAllowlistTest.test_worker_never_resolves_a_refused_jobs_function) (job='os.getcwd')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_worker.py", line 192, in test_worker_never_resolves_a_refused_jobs_function
+    self.assertEqual(func_prop.call_count, 0,
+AssertionError: 1 != 0 : the refused job's Job.func was read (os.getcwd): its module would be imported
+
+======================================================================
+FAIL: test_worker_never_resolves_a_refused_jobs_function (tests.test_stack_worker.WorkerJobAllowlistTest.test_worker_never_resolves_a_refused_jobs_function) (job='engine.jobs.traced_job')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_worker.py", line 192, in test_worker_never_resolves_a_refused_jobs_function
+    self.assertEqual(func_prop.call_count, 0,
+AssertionError: 1 != 0 : the refused job's Job.func was read (engine.jobs.traced_job): its module would be imported
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.876s
+
+FAILED (failures=3)
+rc=1
+=== mutant F1b: tests.test_stack_readiness.ModelHostNotConfiguredTest ===
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.74ms
+Installed 1 package in 0.92ms
+F..
+======================================================================
+FAIL: test_readyz_model_host_not_configured_without_base_url (tests.test_stack_readiness.ModelHostNotConfiguredTest.test_readyz_model_host_not_configured_without_base_url)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_stack_readiness.py", line 565, in test_readyz_model_host_not_configured_without_base_url
+    self.assertEqual(result["checks"]["model_host"],
+AssertionError: {'ok': False, 'reason': 'error:ValueError', 'required': False} != {'ok': False, 'reason': 'not_configured', 'required': False}
+- {'ok': False, 'reason': 'error:ValueError', 'required': False}
+?                           ^^^^^^^^^^^^^^^
+
++ {'ok': False, 'reason': 'not_configured', 'required': False}
+?                          ++++++++++++ ^
+ : a null base URL must read as not_configured even with an upstream set
+
+----------------------------------------------------------------------
+Ran 3 tests in 1.030s
+
+FAILED (failures=1)
+rc=1

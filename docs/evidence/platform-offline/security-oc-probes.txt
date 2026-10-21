@@ -1,0 +1,197 @@
+# security-oc probes, 2026-10-19 (scratch path redacted to <scratch>; own projects ke-sec-oc-* only, all torn down)
+
+## P1 dind digest
+HTTP/1.1 200 OK
+Content-Type: application/vnd.oci.image.index.v1+json
+docker-content-digest: sha256:3e5756e2b6dad6a5f1f5deacf0a19f9eaa2581b76ae092b2d4a118162e1d4d4e
+3e5756e2b6dad6a5f1f5deacf0a19f9eaa2581b76ae092b2d4a118162e1d4d4e
+Name:      docker.io/library/docker:29.9.1-dind
+MediaType: application/vnd.oci.image.index.v1+json
+Digest:    sha256:3e5756e2b6dad6a5f1f5deacf0a19f9eaa2581b76ae092b2d4a118162e1d4d4e
+
+## P2 rendered config (project ke-sec-oc-cfg)
+name: ke-sec-oc-cfg
+services:
+  dind:
+    profiles:
+      - offline
+    environment:
+      DOCKER_TLS_CERTDIR: /certs
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - docker info > /dev/null 2>&1
+      timeout: 10s
+      interval: 3s
+      retries: 40
+      start_period: 5s
+    image: docker:29.9.1-dind@sha256:3e5756e2b6dad6a5f1f5deacf0a19f9eaa2581b76ae092b2d4a118162e1d4d4e
+    networks:
+      offline:
+        aliases:
+          - docker
+    privileged: true
+    volumes:
+      - type: volume
+        source: offline-certs
+        target: /certs
+  offline-client:
+    profiles:
+      - offline
+    command:
+      - bash
+      - /opt/ke/offline_check.sh
+    depends_on:
+      dind:
+        condition: service_healthy
+        required: true
+    environment:
+      DOCKER_CERT_PATH: /certs/client
+      DOCKER_HOST: tcp://docker:2376
+      DOCKER_TLS_VERIFY: "1"
+      KE_IN_GATES: ""
+      KE_OFFLINE_CLIENT: "1"
+    image: ke-gates:wt-a292aa7482b0
+    networks:
+      offline: null
+    tmpfs:
+      - /install:exec,mode=1777
+      - /tmp:exec,mode=1777
+    user: 10001:10001
+    volumes:
+      - type: bind
+        source: <scratch>/emptybundle
+        target: /bundle
+        read_only: true
+      - type: bind
+        source: C:\repos\Knowledge-engine\scripts\offline_check.sh
+        target: /opt/ke/offline_check.sh
+        read_only: true
+      - type: volume
+        source: offline-certs
+        target: /certs/client
+        read_only: true
+        volume:
+          subpath: client
+    working_dir: /tmp
+networks:
+  offline:
+    name: ke-sec-oc-cfg_offline
+    driver_opts:
+      com.docker.network.bridge.gateway_mode_ipv4: isolated
+    internal: true
+volumes:
+  offline-certs:
+    name: ke-sec-oc-cfg_offline-certs
+
+## P3 live dind (project ke-sec-oc-live, COMPOSE_FILE=docker-compose.offline.yml, up -d --wait dind)
+docker inspect dind:
+priv=true netmode=ke-sec-oc-live_offline ports={} publishall=false binds=["ke-sec-oc-live_offline-certs:/certs:rw"] pid= ipc=private
+net=ke-sec-oc-live_offline ip=192.168.96.1 gw=invalid IP ipv6=invalid IP
+mount type=volume name=417247c64c69... dst=/var/lib/docker rw=true      (anonymous)
+mount type=volume name=ke-sec-oc-live_offline-certs dst=/certs rw=true
+docker port: (empty)
+inside dind: ip route
+172.17.0.0/16 dev docker0 scope link  src 172.17.0.1
+192.168.96.0/20 dev eth0 scope link  src 192.168.96.1        (no default route)
+nc -z: 1.1.1.1:443 no | 8.8.8.8:53 no | 192.168.65.254:80 no | 192.168.65.1:22 no | 172.17.0.1:2375 no
+nslookup registry-1.docker.io -> SERVFAIL ; nslookup host.docker.internal -> SERVFAIL
+timeout 60 docker pull busybox:1.37 -> "lookup registry-1.docker.io on 127.0.0.11:53: server misbehaving", rc 1, 0.02 s
+privileged escape attempt at the network layer: ip route add default dev eth0, then
+1.1.1.1:443 no | 192.168.96.0:80 no | 192.168.65.254:80 no ; ip neigh: all FAILED/INCOMPLETE (no L2 peer, isolated bridge has no host address)
+
+## P4 offline-client (compose run --rm, custom command), same project
+uid=10001 gid=10001
+/certs contains only client/ ; /certs/ca and /certs/server: No such file or directory
+/certs/client: ca.pem cert.pem csr.pem key.pem openssl.cnf (0644, dir 1777 as created by the dind entrypoint)
+/proc/mounts: /certs/client ext4 ro ; /bundle 9p ro ; /opt/ke/offline_check.sh 9p ro ; /tmp, /install tmpfs rw,nosuid,nodev (exec)
+touch /certs/client/x -> Read-only file system ; touch /bundle/x -> Read-only file system
+docker version (TLS, docker:2376) -> server=29.9.1 ; DriverStatus io.containerd.snapshotter.v1
+/var/run/docker.sock: No such file ; env: only DOCKER_CERT_PATH, DOCKER_HOST, DOCKER_TLS_VERIFY, KE_IN_GATES=, KE_OFFLINE_CLIENT=1
+/dev/tcp/1.1.1.1/443 -> Network is unreachable
+plaintext tcp://docker:2375 -> Cannot connect ; tcp://docker:2376 without TLS -> "Client sent an HTTP request to an HTTPS server" ; curl -k https://docker:2376 without client cert -> rc 55 (handshake refused)
+
+## P4b teardown (KE_ENV_FILE=.env.example scripts/teardown.sh --volumes --profile offline)
+Volume ke-sec-oc-live_offline-certs Removed ; Network ke-sec-oc-live_offline Removed ; rc=0
+afterwards: volumes matching project or the anonymous /var/lib/docker volume: 0 ; containers: 0 ; networks: 0
+
+## P5 digest-pinned pull in an egress-capable dind (own project ke-sec-oc-pull, docker pull busybox:1.37@sha256:bdf57e52...)
+[[driver-type io.containerd.snapshotter.v1]]
+pull-rc=0
+-- image ls repo:tag
+busybox:<none>
+-- after offline_check filter
+-- (end)
+1
+
+## P6 netprobe argument handling (host uv python)
+localhost 9 --within 1 => timeout
+ rc=1
+127.0.0.1 9 --within 1 => timeout
+ rc=1
+999.1.1.1 9 --within 1 => error:gaierror
+ rc=1
+127.0.0.1 70000 --within 1 => OverflowError: connect(): port must be 0-65535.
+ rc=1
+127.0.0.1 9 --within -1 => ValueError: Timeout value out of range
+ rc=1
+::1 9 --within 1 => error:gaierror
+ rc=1
+nonexistent.invalid 9 --within 2 => error:gaierror
+ rc=1
+
+## secret-pattern grep: diff
+(no match)
+## secret-pattern grep: untracked
+(no match)
+## personal identifiers in untracked + diff
+(identifier grep: no match in untracked files or the diff)
+
+## P8 verify fast resolves the gates image tag (fast path exports no KE_IMAGE_TAG; caller env honoured)
+  if [ "$mode" = fast ]; then
+    # Always pinned (security M-1): a caller COMPOSE_FILE or an auto-loaded
+    # docker-compose.override.yml must not be able to replace `.:/work:ro`.
+    export COMPOSE_FILE="docker-compose.yml${gates_mask:+:$gates_mask}" COMPOSE_PATH_SEPARATOR=":"
+    exec docker compose --env-file .env.example --profile gates run --rm --build gates \
+      scripts/verify.sh fast
+  fi
+57:  KE_IMAGE_TAG="$(printf 'wt-%08x%04x' "$wt_a" "$((wt_b % 65536))")"
+-- as verify fast resolves it (no caller KE_IMAGE_TAG):
+"image": "ke-gates:local"
+-- with caller KE_IMAGE_TAG=local (e.g. exported from an operator shell):
+"image": "ke-gates:local"
+-- host tags (ids only):
+ke-gates:wt-a292aa7482b0 c1eec38c8767
+ke-gates:local 21490891705f
+ke-gates:latest 5be632a9f1bb
+
+## P9 offline_check trap probe (Git Bash, real offline_check.sh, stub docker/bundle/teardown)
+== case bundle rc=1
+BUNDLE out=dist/ke-offline-731014644-amd64
+TEARDOWN args=--volumes --profile offline project=ke-offline-731014644 file=docker-compose.offline.yml envfile=.env.example
+dist left: ke-offline-userown-amd64 knowledge-engine-amd64 
+== case client rc=1
+BUNDLE out=dist/ke-offline-797318382-amd64
+DOCKER compose --env-file .env.example --profile offline up -d --wait dind
+DOCKER compose --env-file .env.example --profile offline run --rm offline-client
+TEARDOWN args=--volumes --profile offline project=ke-offline-797318382 file=docker-compose.offline.yml envfile=.env.example
+dist left: ke-offline-userown-amd64 knowledge-engine-amd64 
+== case none rc=0
+BUNDLE out=dist/ke-offline-168508970-amd64
+DOCKER compose --env-file .env.example --profile offline up -d --wait dind
+DOCKER compose --env-file .env.example --profile offline run --rm offline-client
+TEARDOWN args=--volumes --profile offline project=ke-offline-168508970 file=docker-compose.offline.yml envfile=.env.example
+dist left: ke-offline-userown-amd64 knowledge-engine-amd64 
+== offline_check: PASS (1s) ==
+== signal INT rc=124
+BUNDLE out=dist/ke-offline-2434316179-amd64
+DOCKER compose --env-file .env.example --profile offline run --rm offline-client
+TEARDOWN args=--volumes --profile offline project=ke-offline-2434316179 file=docker-compose.offline.yml envfile=.env.example
+dist left: ke-offline-userown-amd64 knowledge-engine-amd64 
+PASS lines: 0
+== signal TERM rc=124
+BUNDLE out=dist/ke-offline-320753905-amd64
+DOCKER compose --env-file .env.example --profile offline run --rm offline-client
+TEARDOWN args=--volumes --profile offline project=ke-offline-320753905 file=docker-compose.offline.yml envfile=.env.example
+dist left: ke-offline-userown-amd64 knowledge-engine-amd64 
+PASS lines: 0

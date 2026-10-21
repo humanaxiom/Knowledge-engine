@@ -1,0 +1,120 @@
+F
+======================================================================
+FAIL: test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order) (part='unit: lines')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 1157, in test_module_logs_and_summary_lines_print_in_glob_order
+    self.assertEqual(summary, glob_order, output)
+AssertionError: Lists differ: ['tests.test_oc', 'tests.testfoo', 'tests.test_ob', 'te[24 chars]t_x'] != ['tests.test_oa', 'tests.test_ob', 'tests.test_oc', 'te[24 chars]foo']
+
+First differing element 0:
+'tests.test_oc'
+'tests.test_oa'
+
+- ['tests.test_oc',
+?               ^
+
++ ['tests.test_oa',
+?               ^
+
+-  'tests.testfoo',
+   'tests.test_ob',
+-  'tests.test_oa',
+?               ^
+
++  'tests.test_oc',
+?               ^
+
+-  'tests.test_x']
+?                ^
+
++  'tests.test_x',
+?                ^
+
++  'tests.testfoo'] : unit: 1s rc=0 tests.test_oc
+unit: 1s rc=0 tests.testfoo
+unit: 1s rc=0 tests.test_ob
+unit: 1s rc=0 tests.test_oa
+unit: 0s rc=0 tests.test_x
+test_c0 (tests.test_oa.Chatty.test_c0) ... ok
+test_c1 (tests.test_oa.Chatty.test_c1) ... ok
+test_c2 (tests.test_oa.Chatty.test_c2) ... ok
+test_c3 (tests.test_oa.Chatty.test_c3) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_c0 (tests.test_oa.Chatty.test_c0)
+0.000s     test_c1 (tests.test_oa.Chatty.test_c1)
+0.000s     test_c3 (tests.test_oa.Chatty.test_c3)
+0.000s     test_c2 (tests.test_oa.Chatty.test_c2)
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.041s
+
+OK
+test_c0 (tests.test_ob.Chatty.test_c0) ... ok
+test_c1 (tests.test_ob.Chatty.test_c1) ... ok
+test_c2 (tests.test_ob.Chatty.test_c2) ... ok
+test_c3 (tests.test_ob.Chatty.test_c3) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_c0 (tests.test_ob.Chatty.test_c0)
+0.000s     test_c1 (tests.test_ob.Chatty.test_c1)
+0.000s     test_c2 (tests.test_ob.Chatty.test_c2)
+0.000s     test_c3 (tests.test_ob.Chatty.test_c3)
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.021s
+
+OK
+test_c0 (tests.test_oc.Chatty.test_c0) ... ok
+test_c1 (tests.test_oc.Chatty.test_c1) ... ok
+test_c2 (tests.test_oc.Chatty.test_c2) ... ok
+test_c3 (tests.test_oc.Chatty.test_c3) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_c0 (tests.test_oc.Chatty.test_c0)
+0.000s     test_c1 (tests.test_oc.Chatty.test_c1)
+0.000s     test_c2 (tests.test_oc.Chatty.test_c2)
+0.000s     test_c3 (tests.test_oc.Chatty.test_c3)
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.000s
+
+OK
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.test_x.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.testfoo.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+Combined 6 files
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.133s
+
+FAILED (failures=1)

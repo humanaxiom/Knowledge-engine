@@ -1,0 +1,117 @@
+######## p1-fast-mask.txt
+ Container ke-sec-l5-a-gates-run-8ae2241c0ca1 Creating 
+ Container ke-sec-l5-a-gates-run-8ae2241c0ca1 Created 
+id: uid=10001 gid=0(root) groups=0(root)  HOME=/
+CapInh:	0000000000000000
+CapPrm:	0000000000000000
+CapEff:	0000000000000000
+CapBnd:	00000000a80425fb
+CapAmb:	0000000000000000
+NoNewPrivs:	0
+--- mounts
+tmpfs /tmp tmpfs rw,nosuid,nodev,relatime 0 0
+C:\134 /work 9p ro,noatime,aname=drvfs;path=C:\;uid=0;gid=0;metadata;symlinkroot=/mnt/host/,cache=5,access=client,msize=65536,trans=fd,rfd=5,wfd=5 0 0
+C:\134 /work/.env 9p ro,noatime,aname=drvfs;path=C:\;uid=0;gid=0;metadata;symlinkroot=/mnt/host/,cache=5,access=client,msize=65536,trans=fd,rfd=5,wfd=5 0 0
+--- write probes
+denied  /work/x
+denied  /work/.git/hooks/pre-commit
+denied  /work/.git/config
+denied  /work/.git/objects/x
+denied  /work/docker/x
+denied  /work/.env
+--- .env
+-rwxrwxrwx 1 root root 0 Oct 19 10:58 /work/.env
+bytes=0
+
+--- tmp exec
+tmp-exec-ok
+--- setuid
+/usr/bin/umount
+/usr/bin/newgrp
+/usr/bin/mount
+/usr/bin/chfn
+/usr/bin/su
+/usr/bin/gpasswd
+/usr/bin/passwd
+/usr/bin/chsh
+--- writable dirs outside /proc /sys /tmp /dev
+/run/lock
+/usr/share/man/man1
+/usr/share/man/man5
+/usr/share/man/man7
+/usr/share/man/man8
+/opt/uv-cache
+/opt/venv
+/opt/microsoft/powershell/tr
+/opt/microsoft/powershell/cs
+/opt/microsoft/powershell/ref
+/opt/microsoft/powershell/ru
+/opt/microsoft/powershell/pt-BR
+/opt/microsoft/powershell/zh-Hant
+/opt/microsoft/powershell/Schemas
+/opt/microsoft/powershell/Schemas/PSMaml
+/opt/microsoft/powershell/ja
+/opt/microsoft/powershell/Modules
+/opt/microsoft/powershell/Modules/PSReadLine
+/opt/microsoft/powershell/Modules/PSReadLine/net462
+/opt/microsoft/powershell/Modules/PSReadLine/net6plus
+/opt/microsoft/powershell/Modules/Microsoft.PowerShell.Management
+/opt/microsoft/powershell/Modules/PowerShellGet
+/opt/microsoft/powershell/Modules/PowerShellGet/DscResources
+/opt/microsoft/powershell/Modules/PowerShellGet/DscResources/MSFT_PSRepository
+/opt/microsoft/powershell/Modules/PowerShellGet/DscResources/MSFT_PSRepository/en-US
+/opt/microsoft/powershell/Modules/PowerShellGet/DscResources/MSFT_PSModule
+/opt/microsoft/powershell/Modules/PowerShellGet/DscResources/MSFT_PSModule/en-US
+/opt/microsoft/powershell/Modules/PowerShellGet/Modules
+/opt/microsoft/powershell/Modules/PowerShellGet/Modules/PowerShellGet.ResourceHelper
+/opt/microsoft/powershell/Modules/PowerShellGet/Modules/PowerShellGet.ResourceHelper/en-US
+--- venv
+drwxr-xr-x 1 10001 root 4096 Oct 19 10:59 /opt/uv-cache
+drwxr-xr-x 1 10001 root 4096 Oct 19 10:58 /opt/venv
+venv-writable
+--- git
+file:/etc/gitconfig	/work
+4b19971
+fatal: unable to read config file '//.gitconfig': No such file or directory
+drwxr-xr-x 1 root root 4096 Oct 19 11:10 /
+error: could not lock config file //.gitconfig: Permission denied
+own repo in tmp ok: .git
+--- sudo/su
+ls: cannot access '/usr/bin/sudo': No such file or directory
+-rwsr-xr-x 1 root root 72000 Nov 21  2024 /usr/bin/su
+
+######## p2-edge.txt
+== P1b baseline: .env present, NO mask (COMPOSE_FILE unset)
+KE_STORES__POSTGRES__PASSWORD=REALSECRET
+== P4 venv persistence: marker from previous container?
+ls: cannot access '/opt/venv/ke-sec-marker': No such file or directory
+touched
+ls: cannot access '/opt/venv/bin/python-tamper': No such file or directory
+
+== P2 .env is a directory, mask on
+Error response from daemon: failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: error mounting "<scratch>/repo copy/docker/empty" to rootfs at "/work/.env": mount src=<scratch>/repo copy/docker/empty, dst=/work/.env, dstFd=/proc/thread-self/fd/11, flags=MS_BIND|MS_REC: not a directory: Are you trying to mount a directory onto a file (or vice-versa)? Check if the specified host path exists and is the expected type
+rc=0
+== P3 .env native symlink -> secret file outside repo copy, mask on
+ln: failed to create symbolic link '.env': Operation not permitted
+ls: cannot access '.env': No such file or directory
+Error response from daemon: failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: error mounting "<scratch>/repo copy/docker/empty" to rootfs at "/work/.env": create mountpoint for /work/.env mount: make mountpoint "/work/.env": read-only file system
+== P3b symlink, NO mask
+ls: cannot access '/work/.env': No such file or directory
+cat: /work/.env: No such file or directory
+[end]
+== P3c in-repo symlink .env -> config/real.env, mask on
+ln: failed to create symbolic link '.env': Operation not permitted
+Error response from daemon: failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: error mounting "<scratch>/repo copy/docker/empty" to rootfs at "/work/.env": create mountpoint for /work/.env mount: make mountpoint "/work/.env": read-only file system
+######## p4-config.txt
+== C1 full-mode file set (verify + mask), gates-it
+{"user": "10001", "tmpfs": ["/tmp:exec,mode=1777"], "net": ["backend"], "vols": [[["<scratch>\\repo copy"], "/work", true], [["<scratch>\\repo copy\\docker\\empty"], "/work/.env", true]], "env": ["GIT_OPTIONAL_LOCKS", "KE_API__LISTEN_PORT", "KE_EGRESS_ALLOWLIST", "KE_GATEWAY_MODEL_LISTEN", "KE_MODELS__AUDIT__BASE_URL", "KE_MODELS__COMPOSE__BASE_URL", "KE_MODELS__EMBED__BASE_URL", "KE_MODELS__REWRITE__BASE_URL", "KE_MODEL_UPSTREAM", "KE_STORES__NEO4J__PASSWORD", "KE_STORES__POSTGRES__PASSWORD", "MYPY_CACHE_DIR", "PYTHONDONTWRITEBYTECODE"]}
+== C2 fast-mode file set, gates
+{"user": "10001", "tmpfs": ["/tmp:exec,mode=1777"], "net": "none", "vols": [[["<scratch>\\repo copy"], "/work", true], [["<scratch>\\repo copy\\docker\\empty"], "/work/.env", true]], "env": ["GIT_OPTIONAL_LOCKS", "MYPY_CACHE_DIR", "PYTHONDONTWRITEBYTECODE"]}
+== C3 caller COMPOSE_PATH_SEPARATOR=';', verify re-exports ':'
+{"user": "10001", "tmpfs": ["/tmp:exec,mode=1777"], "net": "none", "vols": [[["<scratch>\\repo copy"], "/work", true], [["<scratch>\\repo copy\\docker\\empty"], "/work/.env", true]], "env": ["GIT_OPTIONAL_LOCKS", "MYPY_CACHE_DIR", "PYTHONDONTWRITEBYTECODE"]}
+== C4 fast, no .env, caller COMPOSE_FILE adds a rw overlay (inherited)
+{"user": "10001", "tmpfs": ["/tmp:exec,mode=1777"], "net": "none", "vols": [[["<scratch>\\repo copy"], "/work", null]], "env": ["GIT_OPTIONAL_LOCKS", "MYPY_CACHE_DIR", "PYTHONDONTWRITEBYTECODE"]}
+== C5 fast, no .env, COMPOSE_FILE unset, docker-compose.override.yml present
+{"user": "10001", "tmpfs": ["/tmp:exec,mode=1777"], "net": "none", "vols": [[["<scratch>\\repo copy"], "/work", null]], "env": ["GIT_OPTIONAL_LOCKS", "MYPY_CACHE_DIR", "PYTHONDONTWRITEBYTECODE"]}
+== C6 same override present, .env present -> verify sets COMPOSE_FILE
+{"user": "10001", "tmpfs": ["/tmp:exec,mode=1777"], "net": "none", "vols": [[["<scratch>\\repo copy"], "/work", true], [["<scratch>\\repo copy\\docker\\empty"], "/work/.env", true]], "env": ["GIT_OPTIONAL_LOCKS", "MYPY_CACHE_DIR", "PYTHONDONTWRITEBYTECODE"]}

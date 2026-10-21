@@ -10,17 +10,24 @@ Contract used here (docs/architecture.md §2.3, ADR-KE-010):
 
 Orchestrator ruling (2026-10-18, platform-config handoff): the `changeme`
 placeholder prefix check is case-insensitive.
+
+Orchestrator ruling (2026-10-19, platform-offline smoke loop 2, on F10):
+`KE_ENV=prod` is refused until auth-audit, even with `auth.enabled=true`
+(docs/architecture.md line 3900, ADR-KE-010: "Default `env=prod` with
+`auth.enabled=true` refuses to start until auth-audit exists"). Tests whose
+point is a passing startup in a non-dev env therefore use `ci`, or accept in
+`prod` only that one refusal (`_check_passes`); each such change cites this.
 """
 
 from __future__ import annotations
 
+import re
 import unittest
 from typing import Any
 from unittest import mock
 
 from tests.engine_support import (
     SAFE_SECRET,
-    SocketSpy,
     base_env,
     environ,
     load_settings,
@@ -43,6 +50,31 @@ def _refused() -> type[Exception]:
 
 def _names_any(message: str, *names: str) -> bool:
     return any(n.lower() in message.lower() for n in names)
+
+
+AUTH_NAMES = ("auth.enabled", "KE_AUTH__ENABLED")
+# The prod refusal's message says authentication is not implemented until
+# auth-audit (orchestrator ruling 2026-10-19, see the module docstring).
+AUTH_AUDIT_RX = r"(?i)\bnot (?:yet )?(?:implemented|built|available)\b[\s\S]*\bauth-audit\b"
+# Security M-L2a: outside prod, auth.enabled=true is accepted with a warning
+# that it has no effect until auth-audit.
+NO_EFFECT_RX = (r"(?i)(?:\bno effect\b|\bdoes nothing\b|\bnot (?:yet )?(?:implemented|enforced|built|active)\b)"
+                r"[\s\S]*\bauth-audit\b")
+
+
+def _check_passes(test: unittest.TestCase, settings: Any) -> None:
+    """`check(settings)` passes. In `prod` the one refusal it may raise is the
+    auth-audit one, which must not hide another refusal (ruling 2026-10-19,
+    module docstring)."""
+    if settings.env != "prod":
+        _check(settings)
+        return
+    with test.assertRaises(_refused()) as ctx:
+        _check(settings)
+    exc: Any = ctx.exception
+    test.assertTrue(_names_any(exc.setting, *AUTH_NAMES),
+                    f"prod refused for something other than the auth-audit rule: {exc}")
+    test.assertRegex(str(exc), AUTH_AUDIT_RX)
 
 
 class StartupRefusalTest(unittest.TestCase):
@@ -84,26 +116,105 @@ class StartupRefusalTest(unittest.TestCase):
                     self.assertRefused(base_env(KE_ENV=env_name, **{flag: "false"}),
                                        flag, dotted)
 
+    def test_startup_refuses_prod_until_auth_audit(self):
+        """Orchestrator ruling 2026-10-19 (platform-offline smoke loop 2, F10),
+        matching docs/architecture.md line 3900 (ADR-KE-010): `KE_ENV=prod`
+        with `auth.enabled=true` refuses to start until auth-audit exists,
+        and says so: authentication is not implemented until auth-audit.
+        Auth is not built, so `true` would only claim a protection the API
+        does not have. The existing refusal of prod with auth off stays
+        (test_startup_refuses_unsafe). Other prod refusals keep naming their
+        own setting (the placeholder, hide-flag and collector cases in this
+        module), so this rule must not mask them."""
+        cases = {
+            "prod, auth enabled by the defaults": base_env(KE_ENV="prod"),
+            "prod, KE_AUTH__ENABLED=true": base_env(KE_ENV="prod", KE_AUTH__ENABLED="true"),
+        }
+        for case, env in cases.items():
+            with self.subTest(case=case):
+                settings = load_settings(env)
+                self.assertIs(settings.auth.enabled, True, "precondition: auth is enabled")
+                message = self.assertRefused(env, *AUTH_NAMES)
+                self.assertRegex(message, AUTH_AUDIT_RX,
+                                 "the refusal must say authentication is not implemented until auth-audit")
+        with self.subTest(case="startup() refuses it too, before the app could serve"):
+            from engine.startup import startup
+
+            with environ(base_env(KE_ENV="prod")):
+                with self.assertRaises(_refused()) as ctx:
+                    startup()
+            self.assertRegex(str(ctx.exception), AUTH_AUDIT_RX)
+        with self.subTest(case="control: ci with auth enabled still starts"):
+            _check(load_settings(base_env(KE_ENV="ci", KE_AUTH__ENABLED="true")))
+
     def test_startup_accepts_local_collectors(self):
+        # KE_ENV=ci, not the defaults' prod: prod is refused until auth-audit
+        # (ruling 2026-10-19, module docstring); the collector rule is the same.
         for endpoint in ("http://localhost:47101", "http://127.0.0.1:6006",
                          "http://[::1]:6006", "http://phoenix:6006"):
             with self.subTest(endpoint=endpoint):
-                _check(load_settings(base_env(HARNESS_TRACING="otlp",
+                _check(load_settings(base_env(KE_ENV="ci", HARNESS_TRACING="otlp",
                                               PHOENIX_COLLECTOR_ENDPOINT=endpoint)))
         with self.subTest(case="no export, so any collector is accepted"):
-            _check(load_settings(base_env(HARNESS_TRACING="off",
+            _check(load_settings(base_env(KE_ENV="ci", HARNESS_TRACING="off",
                                           PHOENIX_COLLECTOR_ENDPOINT="http://collector.example.com")))
 
     def test_startup_safe_defaults_pass(self):
+        # The shipped defaults are prod, which is refused until auth-audit
+        # (ruling 2026-10-19, architecture line 3900): they pass every other
+        # rule, so the auth-audit refusal is the only one, and in ci they start.
         settings = load_settings()
         self.assertEqual(settings.env, "prod")
-        _check(settings)  # the shipped defaults start without refusal
+        _check_passes(self, settings)
+        _check(load_settings(base_env(KE_ENV="ci")))
 
     def test_dev_auth_off_warns(self):
         settings = load_settings(base_env(KE_ENV="dev", KE_AUTH__ENABLED="false"))
         with self.assertLogs("engine", level="WARNING") as logs:
             _check(settings)
         self.assertTrue(any("auth" in line.lower() for line in logs.output), logs.output)
+
+    def test_auth_enabled_outside_prod_warns_no_effect_until_auth_audit(self):
+        """Security M-L2a (docs/evidence/platform-offline/audit-l2.md, routed
+        as an orchestrator follow-up 2026-10-19): `auth.enabled=true` was
+        accepted silently in dev and ci. In dev it removed the only
+        "authentication is disabled" warning, so `KE_ENV=dev
+        KE_AUTH__ENABLED=true KE_BIND_ADDRESS=0.0.0.0` published an
+        unauthenticated API while the operator believed auth was on. Auth is
+        not built until auth-audit, so outside prod (where it is refused,
+        test_startup_refuses_prod_until_auth_audit) startup still starts but
+        logs a WARNING (logger namespace `engine`, as the other dev warnings)
+        that names the setting and says it has no effect until auth-audit.
+        It warns, it does not refuse: the ci path needs auth=true."""
+        for env_name in ("dev", "ci"):
+            with self.subTest(env=env_name):
+                settings = load_settings(base_env(KE_ENV=env_name, KE_AUTH__ENABLED="true"))
+                self.assertIs(settings.auth.enabled, True, "precondition: auth is enabled")
+                with self.assertLogs("engine", level="WARNING") as logs:
+                    _check(settings)  # starts: a warning, never a refusal
+                hits = [line for line in logs.output
+                        if _names_any(line, *AUTH_NAMES) and re.search(NO_EFFECT_RX, line)]
+                self.assertTrue(hits, f"KE_ENV={env_name} with auth.enabled=true must log a WARNING naming "
+                                      "auth.enabled (or KE_AUTH__ENABLED) that says it has no effect until "
+                                      f"auth-audit (security M-L2a); logged: {logs.output}")
+        with self.subTest(case="dev, auth on, non-loopback bind: both warnings, still starts"):
+            settings = load_settings(base_env(KE_ENV="dev", KE_AUTH__ENABLED="true",
+                                              KE_BIND_ADDRESS="0.0.0.0"))
+            with self.assertLogs("engine", level="WARNING") as logs:
+                _check(settings)
+            self.assertTrue([l for l in logs.output if _names_any(l, *AUTH_NAMES) and re.search(NO_EFFECT_RX, l)],
+                            f"the auth warning must not vanish when the API is published (M-L2a): {logs.output}")
+            self.assertTrue([l for l in logs.output if "KE_BIND_ADDRESS" in l],
+                            f"control: the bind warning is still logged: {logs.output}")
+        with self.subTest(case="startup() in ci with auth on starts and warns"):
+            from engine.startup import startup
+
+            with environ(base_env(KE_ENV="ci", KE_AUTH__ENABLED="true")):
+                with self.assertLogs("engine", level="WARNING") as logs:
+                    settings = startup()
+            self.assertEqual(settings.env, "ci")
+            self.assertTrue([l for l in logs.output if _names_any(l, *AUTH_NAMES) and re.search(NO_EFFECT_RX, l)],
+                            f"startup() in ci must log the auth no-effect warning (M-L2a): {logs.output}")
 
     def test_hide_flags_default_true_in_every_env(self):
         for env_name in ("dev", "ci", "prod"):
@@ -206,13 +317,15 @@ class PlaceholderSecretTest(unittest.TestCase):
                           "x-changeme", "change-me-later-9f3a"):
                 for env_name in ("prod", "ci"):
                     with self.subTest(secret=name, value=value, env=env_name):
-                        _check(load_settings(base_env(KE_ENV=env_name, **{name: value})))
+                        # prod: only the auth-audit refusal (ruling 2026-10-19).
+                        _check_passes(self, load_settings(base_env(KE_ENV=env_name, **{name: value})))
 
     def test_placeholder_check_is_prefix_only(self):
         for name in secret_env_names():
             for value in ("not-changeme", "xchangeme", SAFE_SECRET):
                 with self.subTest(secret=name, value=value):
-                    _check(load_settings(base_env(KE_ENV="prod", **{name: value})))
+                    # prod: only the auth-audit refusal (ruling 2026-10-19).
+                    _check_passes(self, load_settings(base_env(KE_ENV="prod", **{name: value})))
 
     def test_placeholder_check_reads_no_file(self):
         import builtins
@@ -269,9 +382,10 @@ class StartupTracingTest(unittest.TestCase):
         return result, error
 
     def test_startup_is_traced(self):
-        settings, error = self._run_startup(base_env(KE_ENV="prod"))
+        # ci, not prod: prod is refused until auth-audit (ruling 2026-10-19).
+        settings, error = self._run_startup(base_env(KE_ENV="ci"))
         self.assertIsNone(error)
-        self.assertEqual(settings.env, "prod")
+        self.assertEqual(settings.env, "ci")
         spans = self.support.finished_spans()
         for name in ("engine.startup", "engine.config.load", "engine.startup.refusals",
                      "engine.egress.startup_check"):
@@ -279,7 +393,7 @@ class StartupTracingTest(unittest.TestCase):
                 self.assertIn(name, spans)
                 self.assertEqual(spans[name].attributes.get("openinference.span.kind"), "CHAIN")
         root = spans["engine.startup"]
-        self.assertEqual(root.attributes.get("ke.env"), "prod")
+        self.assertEqual(root.attributes.get("ke.env"), "ci")
         for child in ("engine.config.load", "engine.startup.refusals"):
             self.assertEqual(spans[child].context.trace_id, root.context.trace_id)
         # No secret value in any span attribute.
@@ -306,29 +420,110 @@ class StartupTracingTest(unittest.TestCase):
         self.assertNotIn("47123", rendered)
         self.assertNotIn(SAFE_SECRET, rendered)
 
-    def test_non_local_collector_gets_no_exporter(self):
-        import opentelemetry.exporter.otlp.proto.http.trace_exporter as otlp
+    # Review R6 (platform-config), carried into platform-stack-ready rework 1
+    # (R-B4): the old versions of the two tests below ran against the suite's
+    # global provider (tests/support.py), so configure_tracing never reached
+    # the exporter path and they passed whatever the code did. They now run
+    # with nothing installed (`isolated()` from tests/test_engine_telemetry.py)
+    # and each has a local-collector control that must build an exporter, so
+    # a broken isolation or a skipped exporter path fails them.
 
-        env = base_env(KE_ENV="prod", HARNESS_TRACING="otlp",
-                       PHOENIX_COLLECTOR_ENDPOINT="http://collector.example.com:6006")
-        spy = SocketSpy()
-        with mock.patch.object(otlp, "OTLPSpanExporter") as exporter, spy.active():
-            _, error = self._run_startup(env)
+    def _startup_isolated(self, env: dict[str, str]) -> tuple[Any, BaseException | None, Any]:
+        from tests.test_engine_telemetry import isolated
+
+        with isolated() as iso:
+            result, error = self._run_startup(env)
+        return result, error, iso
+
+    def test_non_local_collector_gets_no_exporter(self):
+        remote = base_env(KE_ENV="prod", HARNESS_TRACING="otlp",
+                          PHOENIX_COLLECTOR_ENDPOINT="http://collector.example.com:6006")
+        _, error, iso = self._startup_isolated(remote)
         self.assertIsInstance(error, _refused())
-        exporter.assert_not_called()
-        self.assertEqual(spy.attempts, [])
+        iso.otlp.assert_not_called()
+        self.assertEqual(iso.spy.attempts, [])
+        self.assertEqual(iso.installed, [], "a refused startup installs no provider")
+
+        # Control: the same startup with a local collector does build and
+        # install an OTLP exporter, so the path above was really reachable.
+        local = base_env(KE_ENV="dev", HARNESS_TRACING="otlp",
+                         PHOENIX_COLLECTOR_ENDPOINT="http://localhost:47101")
+        _, error, iso = self._startup_isolated(local)
+        self.assertIsNone(error)
+        self.assertEqual(iso.otlp_urls(), ["http://localhost:47101/v1/traces"])
+        self.assertIn(iso.otlp.return_value, iso.installed_exporters())
 
     def test_configure_tracing_attaches_nothing_for_non_local(self):
-        import opentelemetry.exporter.otlp.proto.http.trace_exporter as otlp
-
         from engine.telemetry import configure_tracing
+        from tests.test_engine_telemetry import isolated
 
-        env = base_env(KE_ENV="dev", HARNESS_TRACING="otlp",
-                       PHOENIX_COLLECTOR_ENDPOINT="http://203.0.113.5:6006")
-        settings = load_settings(env)
-        with mock.patch.object(otlp, "OTLPSpanExporter") as exporter, environ(env):
-            configure_tracing(settings)
-        exporter.assert_not_called()
+        def configure(endpoint: str) -> Any:
+            env = base_env(KE_ENV="dev", HARNESS_TRACING="otlp", PHOENIX_COLLECTOR_ENDPOINT=endpoint)
+            settings = load_settings(env)
+            with isolated() as iso, environ(env):
+                installed = configure_tracing(settings)
+            return installed, iso
+
+        installed, iso = configure("http://203.0.113.5:6006")
+        self.assertIs(installed, False)
+        iso.otlp.assert_not_called()
+        self.assertEqual([e for e in iso.installed_exporters() if e is not None], [])
+        self.assertEqual(iso.spy.attempts, [])
+
+        # Control: a local collector is attached, so the assertions above
+        # are not met merely because nothing was ever attempted.
+        installed, iso = configure("http://localhost:47101")
+        self.assertIs(installed, True)
+        self.assertEqual(iso.otlp_urls(), ["http://localhost:47101/v1/traces"])
+        self.assertIn(iso.otlp.return_value, iso.installed_exporters())
+
+
+class StartupCarryInTest(unittest.TestCase):
+    """platform-stack-ready (2b), PS-2.18 (carry-in, review R3, R4)."""
+
+    def test_startup_loads_settings_once(self):  # R3
+        import engine.startup as startup_module
+
+        real = startup_module.Settings
+        built: list[Any] = []
+
+        def counting(*args: Any, **kwargs: Any) -> Any:
+            settings = real(*args, **kwargs)
+            built.append(settings)
+            return settings
+
+        # ci, not prod: prod is refused until auth-audit (ruling 2026-10-19).
+        for env_name in ("ci", "dev"):
+            with self.subTest(env=env_name):
+                built.clear()
+                with environ(base_env(KE_ENV=env_name)), \
+                        mock.patch.object(startup_module, "Settings", counting):
+                    result = startup_module.startup()
+                self.assertEqual(len(built), 1,
+                                 f"one startup() built Settings {len(built)} times")
+                self.assertIs(result, built[0], "startup() returns the one Settings it built")
+
+    def test_installed_provider_refusal_is_logged(self):  # R4
+        from opentelemetry import trace
+        from opentelemetry.sdk.trace import TracerProvider
+
+        from engine.startup import startup
+
+        foreign = TracerProvider()
+        self.addCleanup(foreign.shutdown)
+        env = base_env(KE_ENV="prod")
+        with environ(env), mock.patch.object(trace, "get_tracer_provider", lambda: foreign), \
+                self.assertLogs("engine", level="WARNING") as logs:
+            with self.assertRaises(_refused()):
+                startup()
+        records = [r for r in logs.records if "telemetry.tracing" in r.getMessage()]
+        self.assertTrue(records, f"no log record names telemetry.tracing: {logs.output}")
+        message = records[0].getMessage()
+        self.assertRegex(message, r"(?i)not built by the engine|provider",
+                         "the record must give the reason")
+        for output in logs.output:
+            self.assertNotIn(SAFE_SECRET, output, "a setting value reached the log")
+        self.assertGreaterEqual(records[0].levelno, 30)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,5 @@
+# ci-speed rework 3: architect docs amendment (2026-10-21)
+- docs/architecture.md: §2.2.1 heading and status note now say the pool is WITHDRAWN, with the original text kept. New §2.2.1-r3 covers one top-level process (label `toplevel`, not `tests`, which would glob-collide with `tests.<pkg>`), fail-closed coverage, `--durations 10` on the top-level run, `scripts/resource_probe.sh` (exact 19-key line; sources /proc and /sys/fs/cgroup; n/a on a missing source, always exit 0, numbers only), and hook budgets as RUSAGE_CHILDREN CPU time with a 60 s hang guard.
+- docs/requirements.md: CS-1/2/3/9 WITHDRAWN (text kept); CS-4 and CS-7 amended; CS-10 (one process), CS-11 (probe) and CS-12 (hook CPU) added; 4f reworded to CPU time; outcome line says the speed-up is withdrawn; new item `test-diet` TD-1..TD-6 (not started; CI A/B on the same commit, pass = no overlap and median <= 0.85).
+- docs/open-questions.md: Q-CS1 amended (per run label). Q-CS2 opened: does the 5 s L8 test move to CPU time too? A-CS2 assumes yes, value unchanged.
+- Inputs: rework3/diagnosis.md, hook-cpu-vs-wall.txt, the handoff line "HUMAN RULINGS". Docs only; verify not run.

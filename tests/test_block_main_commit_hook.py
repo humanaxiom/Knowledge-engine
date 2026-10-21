@@ -20,14 +20,85 @@ import re
 import shutil
 import stat
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
+
+try:
+    import resource
+except ImportError:  # not POSIX (a bare Windows python): the CPU tests skip
+    resource = None  # type: ignore[assignment]
 
 HOOK = Path(__file__).resolve().parent.parent / "scripts" / "hooks" / "block-main-commit.sh"
 
 MODES = ("jq", "no-jq")
+
+# ci-speed CS-12 / requirement 4f (architecture §2.2.1-r3 decision 6): the
+# hook's budget tests measure CPU time, because wall time on a shared runner
+# moves with load. The subprocess timeout is a hang guard, not a budget: a
+# hook that blocks or sleeps fails with TimeoutExpired.
+HANG_GUARD_S = 60
+
+
+def run_with_child_cpu(args, **kwargs) -> tuple[subprocess.CompletedProcess, float]:
+    """Run one child with `subprocess.run` (timeout = the hang guard) and
+    return (result, cpu): cpu is user + sys seconds from the RUSAGE_CHILDREN
+    delta around the call, that is the child's CPU and that of every
+    descendant it waited for (jq, tr, sed, ...)."""
+    if resource is None:
+        raise unittest.SkipTest("needs the POSIX resource module")
+    before = resource.getrusage(resource.RUSAGE_CHILDREN)
+    result = subprocess.run(args, timeout=HANG_GUARD_S, **kwargs)
+    after = resource.getrusage(resource.RUSAGE_CHILDREN)
+    cpu = (after.ru_utime - before.ru_utime) + (after.ru_stime - before.ru_stime)
+    return result, cpu
+
+
+# One second of CPU, however loaded the machine is.
+BUSY_ONE_SECOND = ("import time\n"
+                   "end = time.process_time() + 1.0\n"
+                   "while time.process_time() < end:\n"
+                   "    pass\n")
+
+
+@unittest.skipIf(resource is None, "needs the POSIX resource module")
+class ChildCpuHelperTest(unittest.TestCase):
+    """CS-12 helper test (§2.2.1-r3 first failing test 6): the measurement
+    the hook budget tests rely on counts CPU, not waiting."""
+
+    def test_sleeping_child_counts_under_half_a_second(self):
+        start = time.monotonic()
+        result, cpu = run_with_child_cpu([sys.executable, "-c", "import time; time.sleep(1)"])
+        wall = time.monotonic() - start
+        self.assertEqual(result.returncode, 0)
+        self.assertGreaterEqual(wall, 1.0, "precondition: the child did not sleep")
+        self.assertLess(cpu, 0.5, f"a 1 s sleep counted {cpu:.3f} s of CPU")
+
+    def test_busy_child_counts_about_its_wall_time(self):
+        start = time.monotonic()
+        result, cpu = run_with_child_cpu([sys.executable, "-c", BUSY_ONE_SECOND])
+        wall = time.monotonic() - start
+        self.assertEqual(result.returncode, 0)
+        self.assertGreaterEqual(cpu, 0.95, f"1 s of busy work counted {cpu:.3f} s")
+        # One thread cannot use more CPU than wall time (+ rusage rounding).
+        self.assertLessEqual(cpu, wall * 1.05 + 0.05, f"cpu {cpu:.3f} s, wall {wall:.3f} s")
+
+    def test_busy_grandchild_is_counted(self):
+        # The hook's work is mostly in its children (jq, tr, sed, grep): a
+        # descendant the child waits for counts too.
+        result, cpu = run_with_child_cpu(["sh", "-c", '"$0" -c "$1"', sys.executable,
+                                          BUSY_ONE_SECOND])
+        self.assertEqual(result.returncode, 0)
+        self.assertGreaterEqual(cpu, 0.95, f"a busy grandchild counted {cpu:.3f} s")
+
+    def test_hang_guard_is_a_60_s_timeout(self):
+        with mock.patch.object(subprocess, "run", wraps=subprocess.run) as run:
+            run_with_child_cpu([sys.executable, "-c", "pass"])
+        self.assertEqual(run.call_count, 1)
+        self.assertEqual(run.call_args.kwargs.get("timeout"), 60)
 
 
 def claude_code_payload(command: str, cwd: str, description: str = "Run command") -> str:
@@ -79,6 +150,15 @@ class BlockMainCommitHookTest(unittest.TestCase):
 
     def run_hook(self, command: str, mode: str, description: str = "Run command") -> str:
         return self.run_raw(claude_code_payload(command, self.repo, description), mode)
+
+    def run_hook_cpu(self, command: str, mode: str) -> tuple[str, float]:
+        """CS-12: one hook call; return its stdout and the CPU seconds it and
+        its children used (run_with_child_cpu, 60 s hang guard)."""
+        result, cpu = run_with_child_cpu(["bash", str(HOOK)],
+                                         input=claude_code_payload(command, self.repo),
+                                         cwd=self.repo, env=self.env(mode),
+                                         capture_output=True, text=True, check=True)
+        return result.stdout.strip(), cpu
 
     def decision(self, command: str, mode: str) -> str | None:
         out = self.run_hook(command, mode)
@@ -234,7 +314,8 @@ class BlockMainCommitHookTest(unittest.TestCase):
     def test_one_megabyte_token_shapes_finish_quickly(self):
         # Review B10 / security M3 (criterion 4f): 1 MB as one token, one
         # quoted -m message, one heredoc line, and many heredoc lines, each
-        # under 3 s in both modes, off main where the whole rule runs.
+        # under 3 s of CPU in both modes, off main where the whole rule runs
+        # (CS-12: CPU time, budget unchanged; 60 s hang guard).
         mb = 1_000_000
         cases = {
             "unquoted token": "echo " + "a" * mb,
@@ -248,11 +329,9 @@ class BlockMainCommitHookTest(unittest.TestCase):
                 with self.subTest(mode=mode, shape=name):
                     self.require_mode(mode)
                     self.assertGreaterEqual(len(command), mb)
-                    start = time.monotonic()
-                    out = self.run_hook(command, mode)
-                    elapsed = time.monotonic() - start
+                    out, cpu = self.run_hook_cpu(command, mode)
                     self.assertEqual(out, "")
-                    self.assertLess(elapsed, 3.0)
+                    self.assertLess(cpu, 3.0, f"{cpu:.2f} s of CPU")
 
     def test_denies_commit_creating_commands_on_main(self):
         # Security M1: these create or rewrite commits on the current branch.
@@ -269,17 +348,16 @@ class BlockMainCommitHookTest(unittest.TestCase):
                 self.assertEqual(self.decision('git commit -m "x"', mode), "deny")
 
     def test_long_command_finishes_quickly(self):
-        # Security L8: the hook timeout is 10 s; 400 segments must take < 5 s.
+        # Security L8: the hook timeout is 10 s; 400 segments must take < 5 s
+        # of CPU (CS-12 and A-CS2: CPU time, budget unchanged; 60 s hang guard).
         self.switch("agent/x")
         command = " && ".join(f"echo {i}" for i in range(400))
         for mode in MODES:
             with self.subTest(mode=mode):
                 self.require_mode(mode)
-                start = time.monotonic()
-                out = self.run_hook(command, mode)
-                elapsed = time.monotonic() - start
+                out, cpu = self.run_hook_cpu(command, mode)
                 self.assertEqual(out, "")
-                self.assertLess(elapsed, 5.0)
+                self.assertLess(cpu, 5.0, f"{cpu:.2f} s of CPU")
 
     # --- Rework 3: review B8/B9, security M1/L9/L10, orchestrator ruling. ---
     # On main/master the rule is broad and fail-safe: any command text that
@@ -371,18 +449,17 @@ class BlockMainCommitHookTest(unittest.TestCase):
 
     def test_one_megabyte_command_finishes_quickly(self):
         # Security L9: the hook was quadratic (1 MB took 3-12 s; the Claude
-        # Code timeout is 10 s). ~1 MB of `echo x &&` segments must take < 3 s.
+        # Code timeout is 10 s). ~1 MB of `echo x &&` segments must take < 3 s
+        # of CPU (CS-12: CPU time, budget unchanged; 60 s hang guard).
         body = "echo x && " * 100_000 + "echo x"
         self.assertGreaterEqual(len(body), 1_000_000)
         self.switch("agent/x")
         for mode in MODES:
             with self.subTest(mode=mode):
                 self.require_mode(mode)
-                start = time.monotonic()
-                out = self.run_hook(body, mode)
-                elapsed = time.monotonic() - start
+                out, cpu = self.run_hook_cpu(body, mode)
                 self.assertEqual(out, "")
-                self.assertLess(elapsed, 3.0)
+                self.assertLess(cpu, 3.0, f"{cpu:.2f} s of CPU")
 
     # --- harness-followups: PS-0.4 (security M4) and PS-0.5 (review N16,
     # N17), docs/requirements.md § platform-skeleton. ---
@@ -540,7 +617,9 @@ class BlockMainCommitHookTest(unittest.TestCase):
     # 5 MB run keeps only a loose sanity bound well under the 10 s hook
     # timeout. The binding timing spec, requirement 4f (1 MB under 3 s in
     # both modes), is unchanged in test_one_megabyte_token_shapes_finish_quickly
-    # and test_one_megabyte_command_finishes_quickly. ---
+    # and test_one_megabyte_command_finishes_quickly. Since ci-speed CS-12
+    # (requirement 4f reworded 2026-10-21) every budget is CPU time, measured
+    # by run_with_child_cpu. ---
 
     # Under `bash -x` each built text is one call of norm's
     # `tr '[:upper:]' '[:lower:]'`, and each judged text is one iteration of
@@ -550,9 +629,16 @@ class BlockMainCommitHookTest(unittest.TestCase):
 
     def trace_passes(self, command: str, mode: str) -> tuple[int, int, str]:
         """Run the hook under bash -x; return (texts built, texts judged, stdout)."""
+        # review-ci-fix N2 (platform-stack-ready, PS-2.24): the trace prefix is
+        # pinned, so a caller's PS4 (or a BASH_ENV/ENV file that sets one)
+        # cannot change the `+` the anchored regexes count.
+        env = self.env(mode)
+        env["PS4"] = "+ "
+        for name in ("BASH_ENV", "ENV"):
+            env.pop(name, None)
         result = subprocess.run(["bash", "-x", str(HOOK)],
                                 input=claude_code_payload(command, self.repo),
-                                cwd=self.repo, env=self.env(mode),
+                                cwd=self.repo, env=env,
                                 capture_output=True, text=True, check=True)
         return (len(self.TRACE_BUILT.findall(result.stderr)),
                 len(self.TRACE_JUDGED.findall(result.stderr)),
@@ -592,11 +678,31 @@ class BlockMainCommitHookTest(unittest.TestCase):
                     self.assertEqual(out, "")
                     self.assertEqual((built, judged), (2, 2))
 
+    def test_trace_count_independent_of_caller_ps4(self):  # PS-2.24, review-ci-fix N2
+        # A caller's PS4 changes the xtrace prefix. Bash ignores PS4 from the
+        # environment when it runs as root (as in the gates image), so the
+        # BASH_ENV case sets it from a startup file, which bash reads as root
+        # too. Either way the structural counts must not change.
+        self.switch("agent/x")
+        rc = Path(self.repo) / "ps4.rc"
+        rc.write_text("PS4='>>> '\n", encoding="utf-8")
+        callers = {"PS4 in the environment": {"PS4": ">>> "},
+                   "PS4 from BASH_ENV": {"BASH_ENV": str(rc)}}
+        for mode in MODES:
+            for caller, extra in callers.items():
+                for command, expected in (("echo hello", (1, 1)), ("echo a\\\nb", (2, 2))):
+                    with self.subTest(mode=mode, caller=caller, command=command):
+                        self.require_mode(mode)
+                        with mock.patch.dict(os.environ, extra):
+                            built, judged, out = self.trace_passes(command, mode)
+                        self.assertEqual(out, "")
+                        self.assertEqual((built, judged), expected)
+
     def test_five_megabyte_command_without_backslash_newline_is_one_pass(self):
         # Security L21 sanity bound only (see the ruling note above): a 5 MB
-        # command without a backslash-newline stays silent and finishes well
-        # inside the 10 s hook timeout (< 9 s, loose on purpose: shared-runner
-        # timing variance). The one-pass property itself is asserted by
+        # command without a backslash-newline stays silent and uses under 9 s
+        # of CPU (CS-12: CPU time, budget unchanged; 60 s hang guard). The
+        # one-pass property itself is asserted by
         # test_second_text_built_and_judged_only_with_backslash_newline.
         mb5 = 5_000_000
         cases = {
@@ -611,11 +717,9 @@ class BlockMainCommitHookTest(unittest.TestCase):
                     self.require_mode(mode)
                     self.assertGreaterEqual(len(command), mb5)
                     self.assertNotIn("\\\n", command)
-                    start = time.monotonic()
-                    out = self.run_hook(command, mode)
-                    elapsed = time.monotonic() - start
+                    out, cpu = self.run_hook_cpu(command, mode)
                     self.assertEqual(out, "")
-                    self.assertLess(elapsed, 9.0)
+                    self.assertLess(cpu, 9.0, f"{cpu:.2f} s of CPU")
 
     def test_json_without_command_field_is_silent(self):
         # PS-0.5 / review N17: no command field means nothing to judge, even
@@ -666,6 +770,208 @@ class GatesImageJqTest(unittest.TestCase):
         install = re.search(r"apt-get install[^\n]*(?:\\\n[^\n]*)*", dockerfile)
         self.assertIsNotNone(install, "no apt-get install in gates.Dockerfile")
         self.assertRegex(install.group(0), r"\bjq\b")
+
+
+class HookHeaderTest(unittest.TestCase):
+    """Human ruling Q18, 2026-10-20 (docs/open-questions.md A18, handoff
+    ci-speed): branch protection was SKIPPED. The hook's header must not call
+    branch protection the real control; it says Q18 was skipped and that this
+    hook is the only automated guard."""
+
+    def header(self) -> str:
+        lines = HOOK.read_text(encoding="utf-8").splitlines()[1:]  # after the shebang
+        comment = []
+        for line in lines:
+            if not line.startswith("#"):
+                break
+            comment.append(line.lstrip("#").strip())
+        return " ".join(comment)
+
+    def test_header_says_q18_skipped_and_hook_is_only_automated_guard(self):
+        header = self.header()
+        self.assertNotRegex(header, r"(?i)real control", header)
+        self.assertRegex(header, r"\bQ18\b", header)
+        self.assertRegex(header, r"(?i)\bskipped\b", header)
+        self.assertRegex(header, r"(?i)\bonly automated guard\b", header)
+
+
+# ci-speed rework 4, security S4 (orchestrator ruling, handoff ci-speed;
+# architecture §2.2.1-r3 decision 6, "The hook launches no background work"):
+# RUSAGE_CHILDREN misses work the hook does not wait for, and no wall-clock
+# bound is added, so the hook may not launch such work at all.
+# Rework 5 (security S9, review nit 1; decision 6 as amended in rework 5):
+# only printable ASCII, tab and newline; split on "\n" only; comment lines are
+# scanned too; the nested-shell spellings are widened.
+NOT_PRINTABLE = re.compile(rb"[^\t\n\x20-\x7e]")
+BACKGROUND_WORDS = re.compile(r"(?<![\w-])(setsid|nohup|disown|coproc|bg|eval)(?![\w-])")
+# A shell word: bash, sh, dash, zsh, ksh (also ash, mksh), bare, by path or
+# quoted; or $BASH, ${BASH}, $SHELL, ${SHELL}, quoted or not. The rest of the
+# word (a closing quote, `:-sh}`) is part of it.
+_SHELL_WORD = (r"(?:(?<![\w.$/{}'\"-])[\"']?(?:[\w.-]*/)*(?:bash|dash|zsh|ksh|mksh|ash|sh)(?![\w.-])"
+               r"|(?<![\w$])[\"']?\$\{?(?:BASH|SHELL)\}?(?!\w))[^ \t;&|()<>]*")
+# The shell word, any words of the same simple command, then a short-option
+# cluster holding `c` (a command string) or `s` (commands from stdin).
+NESTED_SHELL = re.compile(_SHELL_WORD
+                          + r"(?:[ \t]+[^ \t;&|()]+)*?[ \t]+-[A-Za-z]*[cs][A-Za-z]*(?![\w-])")
+# A pipe (not `||`) into a shell, through optional wrapper commands.
+PIPE_INTO_SHELL = re.compile(
+    r"(?<!\|)\|(?!\|)&?[ \t]*(?:(?:[\w./-]*/)?(?:env|command|exec|builtin|nice|stdbuf|time|sudo)"
+    r"(?:[ \t]+(?:-[^ \t;&|()]*|\w+=[^ \t;&|()]*))*[ \t]+)*" + _SHELL_WORD)
+# `source` or `.` of the script's own stdin or an fd.
+SOURCE_STDIN = re.compile(
+    r"(?<![\w.$/-])(?:source|\.)[ \t]+[\"']?/(?:dev/stdin|dev/fd/|proc/[^/ \t]+/fd/)")
+PROCESS_SUBST = re.compile(r"[<>]\(")
+# `&` forms that launch nothing: the && list operator, fd duplication
+# (`2>&1`, `>&2`, `<&3`), `&>`/`&>>` redirection and the `|&` pipe.
+NON_BACKGROUND_AMP = re.compile(r"&&|\|&|[0-9]*[<>]&[0-9-]*|&>>?")
+
+
+def background_constructs(text: str) -> list[str]:
+    """Each construct in a shell script that can launch work the script does
+    not wait for, as `line N: <what>`. The text is split on "\\n" only, as
+    bash splits it, and every line is scanned, comment lines included: a
+    `#`-led line can sit inside a string or here-document (errs strict)."""
+    found = []
+    for n, line in enumerate(text.split("\n"), 1):
+        for m in BACKGROUND_WORDS.finditer(line):
+            found.append(f"line {n}: {m.group(1)}")
+        for m in NESTED_SHELL.finditer(line):
+            found.append(f"line {n}: nested shell {m.group(0)!r}")
+        for m in PIPE_INTO_SHELL.finditer(line):
+            found.append(f"line {n}: pipe into a shell {m.group(0)!r}")
+        for m in SOURCE_STDIN.finditer(line):
+            found.append(f"line {n}: source of stdin or an fd {m.group(0)!r}")
+        for m in PROCESS_SUBST.finditer(line):
+            found.append(f"line {n}: process substitution {m.group(0)}")
+        if "&" in NON_BACKGROUND_AMP.sub("", line):
+            found.append(f"line {n}: & (background)")
+    return found
+
+
+def hook_findings(data: bytes) -> list[str]:
+    """Everything the static check rejects in the hook's bytes: each byte
+    that is not printable ASCII, tab or newline (security S9), then
+    background_constructs() of the text."""
+    found = [f"byte {m.start()}: {m.group(0)!r} is not printable ASCII, tab or newline"
+             for m in NOT_PRINTABLE.finditer(data)]
+    return found + background_constructs(data.decode("ascii", errors="replace"))
+
+
+# `&` for the security S10 payloads below, with no literal `&` on the line.
+_AMP = r"a=$'\x26'"
+_NULL = ">/dev/null 2>&1"
+
+
+class HookLaunchesNoBackgroundWorkTest(unittest.TestCase):
+    """Static and deterministic: no timing (security S4, rework 4; S9 and
+    review nit 1, rework 5)."""
+
+    def check_hook(self, data: bytes) -> None:
+        bad = NOT_PRINTABLE.search(data)
+        self.assertIsNone(bad, "the hook has a byte other than printable ASCII, tab or newline"
+                          + (f" at offset {bad.start()}: {bad.group(0)!r}" if bad else ""))
+        found = hook_findings(data)
+        self.assertEqual(found, [], "the hook can launch work it does not wait for")
+
+    def test_hook_launches_no_background_work(self):
+        self.check_hook(HOOK.read_bytes())
+
+    def test_detector_flags_each_construct_and_allows_plain_redirection(self):
+        flagged = (
+            "sleep 9 &", "{ :; }&", "true >/dev/null 2>&1 &", "true & wait", "(true) &",
+            "true &>/dev/null &", "x=$(true &)", "setsid true", "nohup true", "disown -a",
+            "coproc true", "bg", "bg %1", "eval \"$cmd\"", "cat <(true)", "true > >(cat)",
+            "bash -c 'true'", "sh -c true", "bash -lc true", "bash -e -c true",
+            "/bin/sh -c true", "true  # trailing comment: runs in the background &",
+            # Rework 5 (S9 (c)): comment lines are scanned too.
+            "# setsid nohup disown coproc bg eval bash -c & <(x) >(y)",
+            "    # an indented comment: sleep 9 &", "#$(sleep 9 &)", "#!/bin/sh -c true",
+            # Rework 5, review nit 1: the reviewer's spellings
+            # (docs/evidence/ci-speed/rework4/review/s4-detector-probe.txt).
+            "bash -ce 'sleep 9 '", "bash --norc -c true", "bash -o pipefail -c true",
+            '"bash" -c true', '"$BASH" -c true', "$SHELL -c true", "dash -c true", "zsh -c true",
+            "env -i bash -c true", "command bash -c true", "exec bash -c true", "bash -s <<<true",
+            "printf x | bash", "bash -x -c true", 'bash -c"true"', "sh -euc true",
+            "/usr/bin/env bash -c true",
+            # ... and the security agent's nested-shell and stdin spellings
+            # (docs/evidence/ci-speed/rework4/security-scan/harness-s4-bypass.py.txt, S10).
+            f"{_AMP}; source /dev/stdin <<<\"sleep 3040 {_NULL} $a\"",
+            f"{_AMP}; . /dev/stdin <<<\"sleep 3041 {_NULL} $a\"",
+            f"{_AMP}; bash -s <<<\"sleep 3042 {_NULL} $a\"",
+            f"{_AMP}; bash --norc -c \"sleep 3043 {_NULL} $a\"",
+            f"{_AMP}; bash -o posix -c \"sleep 3044 {_NULL} $a\"",
+            f"{_AMP}; $BASH -c \"sleep 3045 {_NULL} $a\"",
+            f"{_AMP}; dash -c \"sleep 3046 {_NULL} $a\"",
+            # ... and the rest of the widened list.
+            "ksh -c true", "mksh -c true", "${BASH} -c true", "${SHELL} -c true",
+            '"${SHELL}" -c true', "'/bin/bash' -c true", '"/bin/sh" -ec true', "sh -s",
+            "bash -xs <<<true", "${SHELL:-sh} -c true", "bash --rcfile /dev/null -ic true",
+            "printf x | sh", "printf x |sh", "printf x |& bash", "printf x | /bin/bash -s",
+            "printf x | env -i PATH=/bin bash", "printf x | command sh", "printf x | \"$SHELL\"",
+            "source /proc/self/fd/0 <<<x", ". /dev/fd/0 <<<x", "source '/dev/stdin' <<<x",
+            '. "/dev/stdin" <<<x', "source /proc/$$/fd/0 <<<x",
+        )
+        for line in flagged:
+            with self.subTest(flagged=line):
+                self.assertNotEqual(background_constructs("#!/usr/bin/env bash\n" + line), [])
+        allowed = (
+            "true && true", "true 2>&1", "true >&2", "true 2>/dev/null", "true &>/dev/null",
+            "true &>>log", "true |& cat", "exec 3<&0", 'grep -q x <<<"$t"', "bash script.sh",
+            "# a comment with no listed construct", "    # an indented comment: true && true",
+            'printf "%s" "$x" | sed -e "s/b/c/"', "evaluate=1", "bgcolor=1", "nohup_x=1",
+            # Rework 5: near misses of the widened nested-shell forms.
+            "bash -n script.sh", "bash -x script.sh", "sh scripts/x.sh", "x=/bin/sh",
+            'echo "$BASH_VERSION"', "bash scripts/hooks/block-main-commit.sh", "git push",
+            "printf x | grep -q bash", "true || bash script.sh", "true | push -c",
+            "source ./lib.sh", '. "$HOME/env"', "cat /dev/stdin", "grep -c sh file",
+            "#!/usr/bin/env bash",
+        )
+        for line in allowed:
+            with self.subTest(allowed=line):
+                self.assertEqual(background_constructs("#!/usr/bin/env bash\n" + line), [])
+
+    def test_detector_splits_on_newline_only(self):
+        # Rework 5 (security S9 (a)): FF, VT, CR, FS, GS, RS, NEL, U+2028 and
+        # U+2029 are word characters to bash, so they split no line: the `&`
+        # is on line 3, not later.
+        for sep in ("\x0c", "\x0b", "\r", "\x1c", "\x1d", "\x1e", "\x85", " ", " "):
+            with self.subTest(sep=repr(sep)):
+                text = f"#!/usr/bin/env bash\n_x={sep}y\nsleep 9 &"
+                self.assertEqual(background_constructs(text), ["line 3: & (background)"])
+                self.assertEqual(background_constructs(f"_x={sep}#; sleep 9 &"),
+                                 ["line 1: & (background)"])
+
+    def test_full_check_rejects_hidden_separator_and_hash_line_mutants(self):
+        # Rework 5 (security S9): each mutant from
+        # docs/evidence/ci-speed/rework4/security-scan/harness-s4-bypass.py.txt
+        # passed the rework-4 test; inserted after `set -euo pipefail` in
+        # today's hook, each must now fail check_hook (the full test).
+        hook = HOOK.read_bytes().decode("ascii")
+        anchor = "set -euo pipefail\n"
+        self.assertEqual(hook.count(anchor), 1)
+        self.check_hook(hook.encode("ascii"))  # control: today's hook passes
+        mutants = {
+            "FF before #": f"_x=\x0c#; sleep 3010 {_NULL} &",
+            "VT before #": f"_x=\x0b#; sleep 3011 {_NULL} &",
+            "FS before #": f"_x=\x1c#; sleep 3012 {_NULL} &",
+            "U+0085 NEL before #": f"_x=\u0085#; sleep 3013 {_NULL} &",
+            "U+2028 before #": f"_x= #; sleep 3014 {_NULL} &",
+            "CR before #": f"_x=\r#; sleep 3015 {_NULL} &",
+            "function named \\x1f#": f"\x1f#() {{ sleep 3016 {_NULL} & }}\n\x1f#",
+            "#-line in a multi-line string": f"_x=\"\n#$(sleep 3020 {_NULL} &)\"",
+            "#-line in an unquoted heredoc": f": <<EOF\n#$(sleep 3021 {_NULL} &)\nEOF",
+            "#-line in a quoted heredoc fed to a shell": "bash <<'EOF'\n#\nsleep 9 &\nEOF",
+            # The character rule on its own: a lone separator in a comment.
+            "lone FF in a comment": "# note\x0c",
+            "lone \\x1f in a comment": "# note\x1f",
+            "lone U+2028 in a comment": "# note ",
+            "lone NUL": "# note\x00",
+        }
+        for name, payload in mutants.items():
+            with self.subTest(mutant=name):
+                data = hook.replace(anchor, anchor + payload + "\n", 1).encode("utf-8")
+                with self.assertRaises(AssertionError):
+                    self.check_hook(data)
 
 
 if __name__ == "__main__":

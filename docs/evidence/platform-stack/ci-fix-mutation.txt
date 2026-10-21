@@ -1,5 +1,5 @@
 # platform-stack-up CI fix: mutation proof for test_second_text_built_and_judged_only_with_backslash_newline
-# 2026-10-19T05:24:25Z. Scratch copy: C:/Users/adam/AppData/Local/Temp/claude/c--repos-Knowledge-engine/0aee27cd-ffd2-4522-8421-7e0b64c2b0b5/scratchpad/mut (tests/ + scripts/hooks/ copied from the working tree), run in image ke-gates, --network none.
+# 2026-10-19T05:24:25Z. Scratch copy: <scratch> (tests/ + scripts/hooks/ copied from the working tree), run in image ke-gates, --network none.
 
 ## 1. Unmutated hook (expect OK)
 test_second_text_built_and_judged_only_with_backslash_newline (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_second_text_built_and_judged_only_with_backslash_newline) ... ok

@@ -1,0 +1,106 @@
+# security-u2-r5 raw probe output (redacted: <scratch> = session scratch dir final/r5, <wsltmp> = WSL ext4 fixture dir <wsltmp>, removed after the run)
+# Fake docker only (DOCKER_HOST=tcp://127.0.0.1:1); no daemon image, HEAD, index or tracked file touched. Probe cwd: <scratch>. Installers probed are byte copies of the working tree:
+#   install.sh sha256 4bbd875b328b3fcbb4d729daa365acbc00fa42e319cc1163531b31a27aa9676d, install.ps1 sha256 3c201955a0ac4fad1bbf51873be3286d347bd6cd388024205d53b489faaee891
+# Scripts in <scratch>: wsl-r5.sh, ps-r5.ps1, ps-r5c.ps1, rb7.sh, mkfix.sh, bin/docker, winbin/docker.cmd, hooks/w11.sh, shims/mktemp-rename, swap-rename.ps1, swap-junction.ps1,
+#   install-hooked.ps1 (= install.ps1 + PROBE_SWAP_A after '$script:Staging = $path', PROBE_SWAP_B before Set-Location), install-hooked-c.ps1 (+ PROBE_SWAP_C in finally, right after Close-Claim, before the staging Delete).
+# A shim/hook stands in for a racer. A2r/W1r need rename rights in the parent (refused by the parent rule); A10/W11 are the ancestor racer the rule does not see.
+
+== A. install.sh, WSL Ubuntu ext4 ==
+install.sh sha256: 4bbd875b328b3fcbb4d729daa365acbc00fa42e319cc1163531b31a27aa9676d
+### A0 baseline (parent 0755, owned by me)
+next: cd <wsltmp>/A0/par/t && bash scripts/launch.sh
+exit=0
+par: t 
+755 <wsltmp>/A0/par/t
+### A2r M-7: a non-empty operator-owned SIBLING dir in the parent renamed into the staging name right after mktemp -d
+victim <wsltmp>/A2r/par/sibling: mode 700 entries=[.hidden keep1 sub ] sub=[k ]
+install: the staging directory is not empty (something replaced it after creation): <wsltmp>/A2r/par/.ke-install.H5iBc4ba
+exit=1
+after: par: .ke-install.H5iBc4ba .ke-install.H5iBc4ba.moved 
+.ke-install.H5iBc4ba: mode 700 entries=[.hidden keep1 sub ] sub=[k ]
+.ke-install.H5iBc4ba.moved: mode 700 entries=[] sub=[]
+### A2r-0755 same, sibling 0755
+install: the staging directory is not empty (something replaced it after creation): <wsltmp>/A2r5/par/.ke-install.nLULI4gl
+exit=1
+.ke-install.nLULI4gl: mode 755 entries=[.hidden keep1 sub ]
+.ke-install.nLULI4gl.moved: mode 700 entries=[]
+### A2r-empty observation: an EMPTY operator sibling renamed into the staging name
+next: cd <wsltmp>/A2re/par/t && bash scripts/launch.sh
+exit=0
+after: par: .ke-install.zYxBOaKW.moved t 
+### A10 M-7 ancestor: grandparent G 0777 non-sticky, parent G/adam 0755 operator-owned; at docker load the racer renames adam away, symlinks adam -> G, renames the real adam to G/<staging name>
+before: . ./adam ./adam/notes ./adam/notes/keep 
+install: the target is no longer the directory this install claimed (something replaced it during install): <wsltmp>/A10/G/adam/t
+installer exit=1
+racer: moved adam to G/.ke-install.2Fbt4cdP
+after: . ./.ke-install.2Fbt4cdP ./.ke-install.2Fbt4cdP/.ke-install.2Fbt4cdP ./.ke-install.2Fbt4cdP/notes ./.ke-install.2Fbt4cdP/notes/keep ./.ke-install.2Fbt4cdP/t ./.ke-install.2Fbt4cdP/t/.ke-claim.9ItgXye5 ./adam 
+operator's adam/notes/keep SURVIVES at G/.ke-install.2Fbt4cdP/notes/keep: precious
+### A10b same layout, no racer: install still proceeds under an others-writable ancestor (advice only, by design)
+next: cd <wsltmp>/A10b/G/adam/t && bash scripts/launch.sh
+installer exit=0
+cleaned: ls: cannot access '<wsltmp>': No such file or directory
+
+== C. install.ps1, pwsh on Windows 11 NTFS ==
+pwsh 7.6.7; install.ps1 sha256 3c201955a0ac4fad1bbf51873be3286d347bd6cd388024205d53b489faaee891
+### W0 baseline (genuine install.ps1, parent under the profile)
+installed to <scratch>\ps\W0\par\t
+next: cd '<scratch>\ps\W0\par\t'; scripts\launch.ps1
+exit=0
+par: [t]
+### W1r-A M-7: a non-empty operator-owned sibling in the parent renamed into the staging name (hook A : A = before the kind check, B = after it, before Set-Location)
+victim entries=[sub keep1] sub=[k]
+install: . does not have the private ACL this install gave it (something else created it first)
+exit=1
+par: [.ke-install.78f07f2f8cea3fd8 .ke-install.78f07f2f8cea3fd8.moved]
+.ke-install.78f07f2f8cea3fd8 (was sibling): victim entries=[sub keep1] sub=[k]
+### W1r-B M-7: a non-empty operator-owned sibling in the parent renamed into the staging name (hook B : A = before the kind check, B = after it, before Set-Location)
+victim entries=[sub keep1] sub=[k]
+install: . does not have the private ACL this install gave it (something else created it first)
+exit=1
+par: [.ke-install.d478143afaa01da5 .ke-install.d478143afaa01da5.moved]
+.ke-install.d478143afaa01da5 (was sibling): victim entries=[sub keep1] sub=[k]
+### W1j H-2 regression: junction to a non-empty operator dir under the staging name (hook B); link removed as a link only
+install: . is not the private directory this install created
+exit=1
+victim entries=[sub keep1] sub=[k]
+par: [.ke-install.4a35f23d63e202d0.moved]
+### W11 M-7 ancestor: G grants Everyone Modify (not inherited), parent G\adam operator-only; a racer renames adam at docker load
+installed to <scratch>\ps\W11\G\adam\t
+next: cd '<scratch>\ps\W11\G\adam\t'; scripts\launch.ps1
+exit=0
+hook.log: mv: cannot move '<scratch>/ps/W11/G/adam' to '<scratch>/ps/W11/G/zzz': Permission denied | rename adam during run: rc=1
+G: [adam]  adam: [notes t]  notes/keep: precious
+### W1c M-7 finally window: pinned run fails at docker load (FAIL_LOAD); in finally, after the cwd is released and Close-Claim, the racer renames staging away and a non-empty operator sibling into the staging name, right before Directory.Delete(staging, $false)
+victim before: entries=[sub keep1] sub=[k]
+exit=1
+manifest sha256: 3e5cf2cc2a80d5d5c125e267791a62600be5c709cf2b8cf9e568a801c8aa249a (not checked: compare it with the value from your release record)
+install: docker load failed for web.tar
+docker calls: docker info --format .Architecture | docker compose --project-directory app -f app\docker-compose.yml --env-file app\.env.example config --services | docker load -i images\web.tar | loaded-bytes content=tar-genuine
+par: [.ke-install.83a196a087a6f9bf .ke-install.83a196a087a6f9bf.moved]
+.ke-install.83a196a087a6f9bf: entries=[sub keep1] sub=[k]
+.ke-install.83a196a087a6f9bf.moved: entries=[] sub=[]
+
+== D. RB7/L-18: install.ps1 and install.sh off Windows (throwaway 'docker run --rm --network none --read-only' of the existing ke-gates image, uid 10001, fixtures on tmpfs; no image built or changed) ==
+pwsh 7.4.21; uid 10001; install.ps1 3c201955a0ac4fad1bbf51873be3286d347bd6cd388024205d53b489faaee891; install.sh 4bbd875b328b3fcbb4d729daa365acbc00fa42e319cc1163531b31a27aa9676d
+ps1 mode 1757 -> exit=1 target=none staging=0 docker=0 | install: refused (rule: the target's parent must not be writable by others): /tmp/rb7/ps1-1757/par is writable by others (group or world); anyone who 
+sh mode 1757 -> exit=1 target=none staging=0 docker=0 | install: refused (rule: the target's parent must be writable only by you or root): /tmp/rb7/sh-1757/par is writable by others (group or world, mode dr
+ps1 mode 1703 -> exit=1 target=none staging=0 docker=0 | install: refused (rule: the target's parent must not be writable by others): /tmp/rb7/ps1-1703/par is writable by others (group or world); anyone who 
+sh mode 1703 -> exit=1 target=none staging=0 docker=0 | install: refused (rule: the target's parent must be writable only by you or root): /tmp/rb7/sh-1703/par is writable by others (group or world, mode dr
+ps1 mode 1777 -> exit=1 target=none staging=0 docker=0 | install: refused (rule: the target's parent must not be writable by others): /tmp/rb7/ps1-1777/par is writable by others (group or world); anyone who 
+sh mode 1777 -> exit=1 target=none staging=0 docker=0 | install: refused (rule: the target's parent must be writable only by you or root): /tmp/rb7/sh-1777/par is writable by others (group or world, mode dr
+ps1 mode 0757 -> exit=1 target=none staging=0 docker=0 | install: refused (rule: the target's parent must not be writable by others): /tmp/rb7/ps1-0757/par is writable by others (group or world); anyone who 
+sh mode 0757 -> exit=1 target=none staging=0 docker=0 | install: refused (rule: the target's parent must be writable only by you or root): /tmp/rb7/sh-0757/par is writable by others (group or world, mode dr
+ps1 mode 0703 -> exit=1 target=none staging=0 docker=0 | install: refused (rule: the target's parent must not be writable by others): /tmp/rb7/ps1-0703/par is writable by others (group or world); anyone who 
+sh mode 0703 -> exit=1 target=none staging=0 docker=0 | install: refused (rule: the target's parent must be writable only by you or root): /tmp/rb7/sh-0703/par is writable by others (group or world, mode dr
+ps1 mode 1775 -> exit=1 target=none staging=0 docker=0 | install: refused (rule: the target's parent must not be writable by others): /tmp/rb7/ps1-1775/par is writable by others (group or world); anyone who 
+sh mode 1775 -> exit=1 target=none staging=0 docker=0 | install: refused (rule: the target's parent must be writable only by you or root): /tmp/rb7/sh-1775/par is writable by others (group or world, mode dr
+ps1 mode 0775 -> exit=1 target=none staging=0 docker=0 | install: refused (rule: the target's parent must not be writable by others): /tmp/rb7/ps1-0775/par is writable by others (group or world); anyone who 
+sh mode 0775 -> exit=1 target=none staging=0 docker=0 | install: refused (rule: the target's parent must be writable only by you or root): /tmp/rb7/sh-0775/par is writable by others (group or world, mode dr
+ps1 mode 0755 -> exit=0 target=present staging=0 docker=5 | next: cd '/tmp/rb7/ps1-0755/par/t'; scripts/launch.ps1
+sh mode 0755 -> exit=0 target=present staging=0 docker=5 | next: cd /tmp/rb7/sh-0755/par/t && bash scripts/launch.sh
+ps1 mode 1755 -> exit=0 target=present staging=0 docker=5 | next: cd '/tmp/rb7/ps1-1755/par/t'; scripts/launch.ps1
+sh mode 1755 -> exit=0 target=present staging=0 docker=5 | next: cd /tmp/rb7/sh-1755/par/t && bash scripts/launch.sh
+ps1 mode 0750 -> exit=0 target=present staging=0 docker=5 | next: cd '/tmp/rb7/ps1-0750/par/t'; scripts/launch.ps1
+sh mode 0750 -> exit=0 target=present staging=0 docker=5 | next: cd /tmp/rb7/sh-0750/par/t && bash scripts/launch.sh
+ps1 mode 0700 -> exit=0 target=present staging=0 docker=5 | next: cd '/tmp/rb7/ps1-0700/par/t'; scripts/launch.ps1
+sh mode 0700 -> exit=0 target=present staging=0 docker=5 | next: cd /tmp/rb7/sh-0700/par/t && bash scripts/launch.sh

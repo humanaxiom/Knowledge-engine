@@ -1,0 +1,58 @@
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 1ms
+Installed 1 package in 3ms
+test_a (tests.test_a.A.test_a) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.013s     test_a (tests.test_a.A.test_a)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.013s
+
+OK
+LOGDIR /tmp/tmp.IB4MsEt9v1 0o700 10001
+test_slow (tests.test_slow.S.test_slow) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+1.000s     test_slow (tests.test_slow.S.test_slow)
+
+----------------------------------------------------------------------
+Ran 1 test in 1.000s
+
+OK
+/opt/venv/lib/python3.12/site-packages/coverage/control.py:967: CoverageWarning: No data was collected. (no-data-collected); see https://coverage.readthedocs.io/en/7.16.2/messages.html#warning-no-data-collected
+  self._warn("No data was collected.", slug="no-data-collected")
+unit: 1s rc=0 tests.test_a
+unit: 2s rc=0 tests.test_slow
+find: ‘tests/*’: No such file or directory
+Combined 2 files
+Name                             Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------
+engine/__init__.py                   0      0      0      0   100%
+engine/api.py                       27     27      2      0     0%   3-49
+engine/config/__init__.py            3      3      0      0     0%   3-6
+engine/config/loader.py             77     77     24      0     0%   8-132
+engine/config/settings.py          123    123     12      0     0%   3-198
+engine/egress.py                    41     41      6      0     0%   3-70
+engine/errors.py                     6      6      0      0     0%   3-12
+engine/jobs.py                      23     23      2      0     0%   4-40
+engine/llm/__init__.py               0      0      0      0   100%
+engine/llm/client.py                34     34      6      0     0%   3-62
+engine/netprobe.py                  64     64     10      0     0%   15-97
+engine/notices.py                   94     94     38      0     0%   31-159
+engine/readiness.py                165    165     46      0     0%   11-231
+engine/startup.py                  101    101     38      0     0%   3-166
+engine/telemetry.py                 62     62     16      0     0%   9-116
+engine/worker.py                    22     22      2      0     0%   4-42
+harness_telemetry/__init__.py        2      2      0      0     0%   3-16
+harness_telemetry/log_event.py      45     45      6      0     0%   14-84
+harness_telemetry/tracing.py        86     86     28      0     0%   11-192
+----------------------------------------------------------------------------
+TOTAL                              975    975    236      0     0%
+Success: no issues found in 19 source files
+test.sh rc=0
+no tmp.* left
+rc=0

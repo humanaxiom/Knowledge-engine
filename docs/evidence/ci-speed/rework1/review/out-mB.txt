@@ -1,0 +1,58 @@
+......................FF........FF..
+======================================================================
+FAIL: test_unit_pool_fails_when_combine_leaves_a_module_data_file (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_combine_leaves_a_module_data_file) (mode='fast', run='control')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 627, in test_unit_pool_fails_when_combine_leaves_a_module_data_file
+    self.assertEqual(sorted(p.name for p in self.project.glob(".coverage.*")), [],
+AssertionError: Lists differ: ['.coverage.tests.unit.c789255445f0.pid1999.X26rCP5x.Hj6S91Ktxa2h'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'.coverage.tests.unit.c789255445f0.pid1999.X26rCP5x.Hj6S91Ktxa2h'
+
+- ['.coverage.tests.unit.c789255445f0.pid1999.X26rCP5x.Hj6S91Ktxa2h']
++ [] : real combine left parallel data files in the control run
+
+======================================================================
+FAIL: test_unit_pool_fails_when_combine_leaves_a_module_data_file (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_combine_leaves_a_module_data_file) (mode='full', run='control')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 627, in test_unit_pool_fails_when_combine_leaves_a_module_data_file
+    self.assertEqual(sorted(p.name for p in self.project.glob(".coverage.*")), [],
+AssertionError: Lists differ: ['.coverage.tests.unit.c789255445f0.pid2093.XhaNgT4x.Hj6S91Ktxa2h'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'.coverage.tests.unit.c789255445f0.pid2093.XhaNgT4x.Hj6S91Ktxa2h'
+
+- ['.coverage.tests.unit.c789255445f0.pid2093.XhaNgT4x.Hj6S91Ktxa2h']
++ [] : real combine left parallel data files in the control run
+
+======================================================================
+FAIL: test_probe_combine_list_has_subpackage_and_integration (tests.probe_review.Probe.test_probe_combine_list_has_subpackage_and_integration) (label='.tests.unit.')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/probe_review.py", line 39, in test_probe_combine_list_has_subpackage_and_integration
+    self.assertIn(label, combine[0])
+AssertionError: '.tests.unit.' not found in 'python -m coverage combine ./.coverage.tests.test_x.c789255445f0.pid2750.XQF2Z9Nx.HZDn0rr34wNh ./.coverage.tests.testfoo.c789255445f0.pid2746.X8NyeTnx.HD27KjAKOo1h ./.coverage.tests.integration.c789255445f0.pid2763.XasjF6Lx.HhuoYRT4Egwh'
+
+======================================================================
+FAIL: test_probe_combine_list_has_subpackage_and_integration (tests.probe_review.Probe.test_probe_combine_list_has_subpackage_and_integration)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/probe_review.py", line 40, in test_probe_combine_list_has_subpackage_and_integration
+    self.assertEqual(sorted(p.name for p in self.project.glob(".coverage.*")), [])
+AssertionError: Lists differ: ['.coverage.tests.unit.c789255445f0.pid2762.XP0r9CWx.HXJtGF237Peh'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'.coverage.tests.unit.c789255445f0.pid2762.XP0r9CWx.HXJtGF237Peh'
+
+- ['.coverage.tests.unit.c789255445f0.pid2762.XP0r9CWx.HXJtGF237Peh']
++ []
+
+----------------------------------------------------------------------
+Ran 34 tests in 53.895s
+
+FAILED (failures=4)

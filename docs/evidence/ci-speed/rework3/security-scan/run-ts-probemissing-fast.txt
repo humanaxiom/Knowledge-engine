@@ -1,0 +1,28 @@
+### fixture=probemissing mode=fast
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 1ms
+Installed 1 package in 2ms
+bash: scripts/resource_probe.sh: No such file or directory
+test_z (tests.test_z.Z.test_z) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_z (tests.test_z.Z.test_z)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+/opt/venv/lib/python3.12/site-packages/coverage/control.py:967: CoverageWarning: No data was collected. (no-data-collected); see https://coverage.readthedocs.io/en/7.16.2/messages.html#warning-no-data-collected
+  self._warn("No data was collected.", slug="no-data-collected")
+test_z (tests.sub.test_s.Z.test_z) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+/opt/venv/lib/python3.12/site-packages/coverage/control.py:967: CoverageWarning: No data was collected. (no-data-collected); see https://coverage.readthedocs.io/en/7.16.2/messages.html#warning-no-data-collected
+  self._warn("No data was collected.", slug="no-data-collected")
+bash: scripts/resource_probe.sh: No such file or directory
+test.sh rc=127

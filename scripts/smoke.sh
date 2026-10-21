@@ -4,14 +4,22 @@
 # In the gates container: exports real OTLP traces to a stub collector and
 # checks they arrive, proving the Phoenix export path works end to end.
 #
-# On the host: the live-stack smoke against the running project (PS-2.1,
-# PS-2.4). It checks that every stack service reports healthy and that the
-# gateway proxies /healthz to api. It neither launches nor tears down; the
-# caller (verify.sh) owns the project. Honors KE_ENV_FILE and
-# COMPOSE_PROJECT_NAME. Readiness, the store stop/start and the standalone
-# launch-and-teardown arrive with platform-stack-ready (PS-2.8).
+# On the host: the live-stack smoke (PS-2.1, PS-2.4, PS-2.8). It checks that
+# every stack service reports healthy, that the gateway proxies /healthz to
+# api, that /readyz turns ready, and that stopping and restarting postgres is
+# seen by /readyz. Honors KE_ENV_FILE and COMPOSE_PROJECT_NAME.
+#
+# Who owns the project (rulings S1, Q37):
+# - Nothing of the project is running: smoke launches it through launch.sh and
+#   tears it down (without --volumes) when it ends, pass or fail. Run by hand
+#   against a project of your own that is stopped, it takes that project down.
+# - A project is already running (the operator's live stack): smoke checks it
+#   and leaves it up. It does NOT stop postgres there, and says so.
+# - KE_SMOKE_OWNS_PROJECT=1 (set only by verify.sh, for its own throwaway
+#   project): the project must be running; smoke stops and restarts postgres in
+#   it and leaves the teardown to verify.sh. With nothing running it fails.
 set -euo pipefail
-cd "$(dirname "$0")/.."
+CDPATH='' cd -- "$(dirname -- "$0")/.."
 
 if [ "${KE_IN_GATES:-}" = "1" ]; then
   uv run --locked python scripts/smoke_otlp.py
@@ -28,7 +36,22 @@ compose() { docker compose ${args[@]+"${args[@]}"} "$@"; }
 # An empty env file stands in for "no .env" (not /dev/null, which Windows docker
 # cannot open). Relative, so Git Bash path conversion does not matter.
 empty_env="$(mktemp ./.env.smoke.XXXXXX)"
-trap 'rm -f "$empty_env"' EXIT
+launched=0
+project=""
+# Runs once on every exit path. A project smoke launched is torn down even
+# when a check failed; a failed teardown fails smoke, naming the project.
+# shellcheck disable=SC2317  # runs from the EXIT trap
+cleanup() {
+  local rc=$?
+  trap - EXIT
+  rm -f "$empty_env"
+  if [ "$launched" -eq 1 ] && ! scripts/teardown.sh; then
+    echo "smoke: FAIL (teardown of project $project failed; remove it by hand: docker compose -p $project down)" >&2
+    [ "$rc" -eq 0 ] && rc=1
+  fi
+  exit "$rc"
+}
+trap cleanup EXIT
 resolved="$(docker compose -f docker-compose.yml --env-file "$empty_env" config --format json)" || {
   echo "smoke: FAIL (docker compose config does not resolve with no .env)" >&2
   exit 1
@@ -49,29 +72,40 @@ if [ -z "$project" ]; then
   echo "smoke: FAIL (cannot read the compose project name)" >&2
   exit 1
 fi
+
+# Ruling S1: decide before launching whether this project is already running.
+running="$(compose ps -q)"
+if [ -z "$running" ]; then
+  if [ "${KE_SMOKE_OWNS_PROJECT:-}" = 1 ]; then
+    echo "smoke: FAIL (KE_SMOKE_OWNS_PROJECT=1 says verify.sh launched project $project, but nothing of it is running)" >&2
+    exit 1
+  fi
+  launched=1
+  scripts/launch.sh
+  echo "smoke: launched project $project"
+else
+  echo "smoke: project $project is already running"
+fi
+
 backend="${project}_backend"
-mode="$(docker network inspect --format '{{index .Options "com.docker.network.bridge.gateway_mode_ipv4"}}' "$backend")" || {
-  echo "smoke: FAIL (cannot inspect network $backend)" >&2
-  exit 1
-}
-network_json="$(docker network inspect --format '{{json .}}' "$backend")" || {
-  echo "smoke: FAIL (cannot inspect network $backend)" >&2
-  exit 1
-}
-if [ "$mode" != isolated ] || ! printf '%s\n' "$network_json" | grep -Eq '"Internal": *true'; then
-  echo "smoke: FAIL (network $backend is not isolated and internal: gateway_mode_ipv4='$mode')" >&2
+if ! scripts/net_isolated.sh "$backend"; then
+  echo "smoke: FAIL (network $backend is not internal and isolated: see the line above)" >&2
   exit 1
 fi
 echo "smoke: $backend is internal with gateway_mode_ipv4=isolated"
 
-for service in gateway api worker postgres neo4j valkey phoenix; do
-  health="$(compose ps --format '{{.Health}}' "$service")"
-  if [ "$health" != healthy ]; then
-    echo "smoke: FAIL ($service is '${health:-not running}', want healthy)" >&2
-    exit 1
-  fi
-  echo "smoke: $service healthy"
-done
+# Run before the proxy checks and again after the final ready.
+check_healthy() {
+  for service in gateway api worker postgres neo4j valkey phoenix; do
+    health="$(compose ps --format '{{.Health}}' "$service")"
+    if [ "$health" != healthy ]; then
+      echo "smoke: FAIL ($service is '${health:-not running}', want healthy)" >&2
+      exit 1
+    fi
+    echo "smoke: $service healthy"
+  done
+}
+check_healthy
 
 # From inside the gateway: its own listen ports come from its environment.
 # shellcheck disable=SC2016  # expanded by the container's shell, not ours
@@ -84,4 +118,90 @@ echo "smoke: gateway proxies api /healthz"
 # shellcheck disable=SC2016
 compose exec -T gateway sh -c 'wget -q -O /dev/null "http://127.0.0.1:${KE_GATEWAY_PHOENIX_LISTEN}/healthz"'
 echo "smoke: gateway proxies phoenix /healthz"
+
+# Readiness, then a real store outage (PS-2.8). The CLI runs inside api: the
+# verify project publishes nothing and api already has the settings.
+readiness() { compose exec -T api python -m engine.readiness "$@"; }
+if ! readiness --wait-for ready --within 60; then
+  echo "smoke: FAIL (/readyz never became ready)" >&2
+  exit 1
+fi
+echo "smoke: /readyz ready"
+
+# ci/offline (PS-3.3, architecture §2.5): api and worker have no route to
+# anything off the backend network. The target is the gateway's own address on
+# <project>_edge: live and routable from anything on that network, and it needs
+# no internet, so the result is the same in CI, on a locked-down network and
+# inside the offline check's dind. The control must connect first, otherwise
+# the probe proves nothing and the check is inconclusive (never a pass).
+edge_ip="$(docker inspect --format "{{(index .NetworkSettings.Networks \"${project}_edge\").IPAddress}}" "$(compose ps -q gateway)")" || {
+  echo "smoke: FAIL (ci/offline: cannot read the gateway's address on ${project}_edge)" >&2
+  exit 1
+}
+is_ipv4() { # is_ipv4 VALUE: four dotted decimal octets, 0-255, nothing else
+  local IFS=. octet count=0
+  [[ "$1" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || return 1
+  for octet in $1; do
+    [ "$((10#$octet))" -le 255 ] || return 1
+    count=$((count + 1))
+  done
+  [ "$count" -eq 4 ]
+}
+if ! is_ipv4 "$edge_ip"; then
+  echo "smoke: FAIL (ci/offline: the gateway's address on ${project}_edge is not an IPv4 address: '$edge_ip')" >&2
+  exit 1
+fi
+config_json="$(compose config --format json)" || {
+  echo "smoke: FAIL (ci/offline: docker compose config failed)" >&2
+  exit 1
+}
+probe_port="$(printf '%s\n' "$config_json" | grep -m 1 -o '"KE_GATEWAY_API_LISTEN": *"[0-9]*"' | sed -e 's/^[^:]*: *"//' -e 's/"$//' || true)"
+if [ -z "$probe_port" ]; then
+  echo "smoke: FAIL (ci/offline: cannot read the gateway's API listen port from the compose config)" >&2
+  exit 1
+fi
+app_image="$(compose config | awk '/^  [A-Za-z0-9_-]+:$/ { svc = $1; sub(/:$/, "", svc) } svc == "api" && /^    image: / { print $2; exit }')"
+if [ -z "$app_image" ]; then
+  echo "smoke: FAIL (ci/offline: cannot read the api image from the compose config)" >&2
+  exit 1
+fi
+# The control probes the port the gateway listens on; it has its own variable so
+# the message below names exactly what it probed. ke-app carries compose project
+# labels, so a plain `docker run` of it would look like part of this project and
+# trip the project's teardown label check; the control is labelled as its own
+# project instead (security I-OC1b-2).
+control_port="$probe_port"
+control="$(docker run --rm --pull never --label "com.docker.compose.project=${project}-probe" --network "${project}_edge" --entrypoint python "$app_image" -m engine.netprobe "$edge_ip" "$control_port" --within 5)" || true
+if [ "$control" != connected ]; then
+  echo "smoke: FAIL (ci/offline inconclusive: the control probe from ${project}_edge to $edge_ip:$control_port printed '${control:-nothing}', want connected)" >&2
+  exit 1
+fi
+for service in api worker; do
+  result="$(compose exec -T "$service" python -m engine.netprobe "$edge_ip" "$probe_port" --within 2)" || true
+  if [ "$result" != no_route ]; then
+    echo "smoke: FAIL (ci/offline: $service printed '${result:-nothing}' for $edge_ip:$probe_port, want no_route; it can leave the backend network)" >&2
+    exit 1
+  fi
+  echo "smoke: ci/offline $service has no route to $edge_ip:$probe_port ($service cannot reach outside the stack)"
+done
+
+if [ "$launched" -eq 1 ] || [ "${KE_SMOKE_OWNS_PROJECT:-}" = 1 ]; then
+  compose stop postgres
+  if ! readiness --wait-for not-ready:postgres --within 30; then
+    echo "smoke: FAIL (/readyz did not report postgres down after it was stopped)" >&2
+    exit 1
+  fi
+  echo "smoke: /readyz reports postgres down"
+  compose up -d --no-build --wait postgres
+  if ! readiness --wait-for ready --within 60; then
+    echo "smoke: FAIL (/readyz did not recover after postgres was started again)" >&2
+    exit 1
+  fi
+  echo "smoke: /readyz ready again after postgres restart"
+else
+  echo "smoke: SKIPPED the postgres stop/start (project $project was already running; smoke does not stop an operator's stores)"
+fi
+# Every service healthy again, checked after the final ready (PS-2.8): a store
+# the restart left unhealthy must fail here.
+check_healthy
 echo "smoke: PASS"

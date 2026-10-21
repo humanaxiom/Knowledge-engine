@@ -1,0 +1,415 @@
+# security-u2-final raw probe output (2026-10-19). Paths redacted to <scratch>; user SID to <user-sid>.
+# Fake docker first on PATH, DOCKER_HOST=tcp://127.0.0.1:1; no host daemon, image, HEAD or tracked file touched.
+
+## A. install.sh, Git Bash 5.3 (Windows/NTFS; no symlink privilege, path-tracked cwd)
+### M1-swap-after-info
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3
+installed to <scratch>/tM1
+next: cd <scratch>/tM1 && scripts/launch.sh
+exit=0 docker-calls=5
+loaded-bytes content=tar-genuine
+target launch.sh: echo GENUINE
+bundle launch.sh now: echo EVIL
+### M3-wrong-expect
+install: manifest: the manifest sha256 is 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3, not the value given to --expect-manifest (0000000000000000000000000000000000000000000000000000000000000000)
+exit=1 docker-calls=0
+### M3-bad-expect
+install: --expect-manifest must be 64 hex characters
+exit=2 docker-calls=0
+### M3-right-expect-upper
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3
+installed to <scratch>/tE
+next: cd <scratch>/tE && scripts/launch.sh
+exit=0 docker-calls=5
+### L2-symlink-planted-during-load
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3
+installed to <scratch>/tL2
+next: cd <scratch>/tL2 && scripts/launch.sh
+exit=0 docker-calls=5
+drwxr-xr-x 1 <user> <gid> 0 Oct 19 06:47 .
+drwxr-xr-x 1 <user> <gid> 0 Oct 19 06:47 ..
+drwxr-xr-x 1 <user> <gid> 0 Oct 19 06:47 <scratch>/tL2
+### L5-loaded-other-name
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3 (not checked: compare it with the value from your release record)
+install: docker load of web.tar named an image other than its as (ke-web:bundle-0123456789ab)
+exit=1 docker-calls=3
+### L6-failed-load
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3 (not checked: compare it with the value from your release record)
+install: docker load failed for web.tar
+exit=1 docker-calls=3
+ls: cannot access '<scratch>/tL6': No such file or directory
+ls: cannot access '<scratch>/.ke-install.*': No such file or directory
+### I1-listed[app/nul.txt]
+install: manifest: line 9: path has a Windows reserved name: app/nul.txt
+exit=1 docker-calls=0
+### I1-listed[app/Com1]
+install: manifest: line 9: path has a Windows reserved name: app/Com1
+exit=1 docker-calls=0
+### I1-listed[app/x.]
+install: manifest: line 9: path has a segment with a trailing dot: app/x.
+exit=1 docker-calls=0
+### I1-listed[app/a:b]
+install: manifest: line 9: path has a character outside [A-Za-z0-9._/-]: app/a:b
+exit=1 docker-calls=0
+### I1-listed[app/x ]
+install: manifest: line 9: path has a character outside [A-Za-z0-9._/-]: app/x\ 
+exit=1 docker-calls=0
+### hostile-unlisted[app/\$\(touch\ PWNED\)]
+install: manifest: file is not listed: app/\$\(touch\ PWNED\)
+exit=1 docker-calls=0
+<scratch>/probes-sh.sh: line 42: H/app/a\nb: No such file or directory
+### skip app/a\nb (fs)
+### hostile-unlisted[app/x\"y]
+install: manifest: file is not listed: app/x\"y
+exit=1 docker-calls=0
+### hostile-unlisted[app/a\]b]
+install: manifest: file is not listed: app/a\]b
+exit=1 docker-calls=0
+<scratch>/probes-sh.sh: line 42: H/app/nl
+app/.env.example: No such file or directory
+### skip app/nl
+app/.env.example (fs)
+### hostile-unlisted[app/.env.Example]
+install: manifest: hash mismatch: app/.env.example
+exit=1 docker-calls=0
+### hostile-unlisted[app/scripts/LAUNCH.sh]
+install: manifest: hash mismatch: app/scripts/launch.sh
+exit=1 docker-calls=0
+ls: cannot access '<scratch>/PWNED': No such file or directory
+ls: cannot access '<scratch>/H/app/PWNED': No such file or directory
+### arch[aarch64]
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3 (not checked: compare it with the value from your release record)
+install: arch mismatch: this bundle is amd64 but the Docker daemon is arm64 (reported as aarch64); use the arm64 bundle
+exit=1 docker-calls=1
+### arch[$'x86_64\nevil']
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3 (not checked: compare it with the value from your release record)
+install: the Docker daemon reports an unsupported architecture: $'x86_64\nevil' (supported: amd64, arm64)
+exit=1 docker-calls=1
+### arch[$'\E[2Jx']
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3 (not checked: compare it with the value from your release record)
+install: the Docker daemon reports an unsupported architecture: $'\E[2Jx' (supported: amd64, arm64)
+exit=1 docker-calls=1
+### arch[amd64\ ]
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3 (not checked: compare it with the value from your release record)
+install: the Docker daemon reports an unsupported architecture: amd64\  (supported: amd64, arm64)
+exit=1 docker-calls=1
+### arch['']
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3
+installed to <scratch>/tAR
+next: cd <scratch>/tAR && scripts/launch.sh
+exit=0 docker-calls=5
+### arch-bundle-arm64-daemon-x86
+manifest sha256: a682409990bc89cf6b15470b9b8bc84d12bb42107eb87a5eca968c29b0984dfd (not checked: compare it with the value from your release record)
+install: arch mismatch: this bundle is arm64 but the Docker daemon is amd64 (reported as x86_64); use the amd64 bundle
+exit=1 docker-calls=1
+### staging-swap-at-info
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3 (not checked: compare it with the value from your release record)
+install: bundle.json is missing
+exit=1 docker-calls=1
+published launch.sh: cat: <scratch>/par/tSS/scripts/launch.sh: No such file or directory
+grep: <scratch>/par/tSS/docker-compose.yml: No such file or directory
+### mvwin-planted-dir
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3 (not checked: compare it with the value from your release record)
+loaded web.tar as ke-web:bundle-0123456789ab
+install: the publish did not land at the target (something appeared there during install): <scratch>/tMV
+exit=1 docker-calls=5
+<scratch>/tMV:
+app
+
+<scratch>/tMV/app:
+docker-compose.override.yml
+docker-compose.yml
+### mvwin-planted-symlink
+ln: failed to create symbolic link '<scratch>/tMV': Operation not permitted
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3
+installed to <scratch>/tMV
+next: cd <scratch>/tMV && scripts/launch.sh
+exit=0 docker-calls=5
+victimdir:
+<scratch>/victimdir:
+ls: cannot access '<scratch>/.ke-install.*': No such file or directory
+
+## B. install.sh, WSL Ubuntu ext4, awk=mawk, umask 022 (real Linux semantics)
+### M1-swap-after-info
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3
+installed to <scratch>/tM1
+next: cd <scratch>/tM1 && scripts/launch.sh
+exit=0 docker-calls=5
+loaded-bytes content=tar-genuine
+target launch.sh: echo GENUINE
+bundle launch.sh now: echo EVIL
+### M3-wrong-expect
+cp: warning: behavior of -n is non-portable and may change in future; use --update=none instead
+install: manifest: the manifest sha256 is 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3, not the value given to --expect-manifest (0000000000000000000000000000000000000000000000000000000000000000)
+exit=1 docker-calls=0
+### M3-bad-expect
+install: --expect-manifest must be 64 hex characters
+exit=2 docker-calls=0
+### M3-right-expect-upper
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3
+installed to <scratch>/tE
+next: cd <scratch>/tE && scripts/launch.sh
+exit=0 docker-calls=5
+### L2-symlink-planted-during-load
+cp: warning: behavior of -n is non-portable and may change in future; use --update=none instead
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3 (not checked: compare it with the value from your release record)
+loaded web.tar as ke-web:bundle-0123456789ab
+install: the target became a link during install: <scratch>/tL2
+exit=1 docker-calls=5
+drwxr-xr-x  2 <user> <user> 4096 Oct 19 06:48 .
+drwxr-xr-x 11 <user> <user> 4096 Oct 19 06:48 ..
+lrwxrwxrwx 1 <user> <user> 33 Oct 19 06:48 <scratch>/tL2 -> <scratch>/elsewhere
+### L5-loaded-other-name
+cp: warning: behavior of -n is non-portable and may change in future; use --update=none instead
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3 (not checked: compare it with the value from your release record)
+install: docker load of web.tar named an image other than its as (ke-web:bundle-0123456789ab)
+exit=1 docker-calls=3
+### L6-failed-load
+cp: warning: behavior of -n is non-portable and may change in future; use --update=none instead
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3 (not checked: compare it with the value from your release record)
+install: docker load failed for web.tar
+exit=1 docker-calls=3
+ls: cannot access '<scratch>/tL6': No such file or directory
+ls: cannot access '<scratch>/.ke-install.*': No such file or directory
+### I1-listed[app/nul.txt]
+cp: warning: behavior of -n is non-portable and may change in future; use --update=none instead
+install: manifest: line 9: path has a Windows reserved name: app/nul.txt
+exit=1 docker-calls=0
+### I1-listed[app/Com1]
+cp: warning: behavior of -n is non-portable and may change in future; use --update=none instead
+install: manifest: line 9: path has a Windows reserved name: app/Com1
+exit=1 docker-calls=0
+### I1-listed[app/x.]
+cp: warning: behavior of -n is non-portable and may change in future; use --update=none instead
+install: manifest: line 9: path has a segment with a trailing dot: app/x.
+exit=1 docker-calls=0
+### I1-listed[app/a:b]
+cp: warning: behavior of -n is non-portable and may change in future; use --update=none instead
+install: manifest: line 9: path has a character outside [A-Za-z0-9._/-]: app/a:b
+exit=1 docker-calls=0
+### I1-listed[app/x ]
+cp: warning: behavior of -n is non-portable and may change in future; use --update=none instead
+install: manifest: line 9: path has a character outside [A-Za-z0-9._/-]: app/x\ 
+exit=1 docker-calls=0
+### hostile-unlisted[app/\$\(touch\ PWNED\)]
+cp: warning: behavior of -n is non-portable and may change in future; use --update=none instead
+install: manifest: file is not listed: app/\$\(touch\ PWNED\)
+exit=1 docker-calls=0
+### hostile-unlisted[app/a\\nb]
+cp: warning: behavior of -n is non-portable and may change in future; use --update=none instead
+install: manifest: file is not listed: app/a\\nb
+exit=1 docker-calls=0
+### hostile-unlisted[app/x\"y]
+cp: warning: behavior of -n is non-portable and may change in future; use --update=none instead
+install: manifest: file is not listed: app/x\"y
+exit=1 docker-calls=0
+### hostile-unlisted[app/a\]b]
+cp: warning: behavior of -n is non-portable and may change in future; use --update=none instead
+install: manifest: file is not listed: app/a\]b
+exit=1 docker-calls=0
+probes-sh.sh: line 42: H/app/nl
+app/.env.example: No such file or directory
+### skip app/nl
+app/.env.example (fs)
+### hostile-unlisted[app/.env.Example]
+cp: warning: behavior of -n is non-portable and may change in future; use --update=none instead
+install: manifest: file is not listed: app/.env.Example
+exit=1 docker-calls=0
+### hostile-unlisted[app/scripts/LAUNCH.sh]
+cp: warning: behavior of -n is non-portable and may change in future; use --update=none instead
+install: manifest: file is not listed: app/scripts/LAUNCH.sh
+exit=1 docker-calls=0
+ls: cannot access '<scratch>/PWNED': No such file or directory
+ls: cannot access '<scratch>/H/app/PWNED': No such file or directory
+### arch[aarch64]
+cp: warning: behavior of -n is non-portable and may change in future; use --update=none instead
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3 (not checked: compare it with the value from your release record)
+install: arch mismatch: this bundle is amd64 but the Docker daemon is arm64 (reported as aarch64); use the arm64 bundle
+exit=1 docker-calls=1
+### arch[$'x86_64\nevil']
+cp: warning: behavior of -n is non-portable and may change in future; use --update=none instead
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3 (not checked: compare it with the value from your release record)
+install: the Docker daemon reports an unsupported architecture: $'x86_64\nevil' (supported: amd64, arm64)
+exit=1 docker-calls=1
+### arch[$'\E[2Jx']
+cp: warning: behavior of -n is non-portable and may change in future; use --update=none instead
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3 (not checked: compare it with the value from your release record)
+install: the Docker daemon reports an unsupported architecture: $'\E[2Jx' (supported: amd64, arm64)
+exit=1 docker-calls=1
+### arch[amd64\ ]
+cp: warning: behavior of -n is non-portable and may change in future; use --update=none instead
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3 (not checked: compare it with the value from your release record)
+install: the Docker daemon reports an unsupported architecture: amd64\  (supported: amd64, arm64)
+exit=1 docker-calls=1
+### arch['']
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3
+installed to <scratch>/tAR
+next: cd <scratch>/tAR && scripts/launch.sh
+exit=0 docker-calls=5
+### arch-bundle-arm64-daemon-x86
+cp: warning: behavior of -n is non-portable and may change in future; use --update=none instead
+manifest sha256: a682409990bc89cf6b15470b9b8bc84d12bb42107eb87a5eca968c29b0984dfd (not checked: compare it with the value from your release record)
+install: arch mismatch: this bundle is arm64 but the Docker daemon is amd64 (reported as x86_64); use the amd64 bundle
+exit=1 docker-calls=1
+### staging-swap-at-info
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3
+installed to <scratch>/par/tSS
+next: cd <scratch>/par/tSS && scripts/launch.sh
+exit=0 docker-calls=5
+loaded-bytes content=tar-EVIL
+published launch.sh: echo EVIL
+    privileged: true
+### mvwin-planted-dir
+cp: warning: behavior of -n is non-portable and may change in future; use --update=none instead
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3 (not checked: compare it with the value from your release record)
+loaded web.tar as ke-web:bundle-0123456789ab
+install: the publish did not land at the target (something appeared there during install): <scratch>/tMV
+exit=1 docker-calls=5
+<scratch>/tMV:
+app
+
+<scratch>/tMV/app:
+docker-compose.override.yml
+docker-compose.yml
+### mvwin-planted-symlink
+cp: warning: behavior of -n is non-portable and may change in future; use --update=none instead
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3 (not checked: compare it with the value from your release record)
+loaded web.tar as ke-web:bundle-0123456789ab
+install: the publish did not land at the target (something appeared there during install): <scratch>/tMV
+exit=1 docker-calls=5
+victimdir:
+<scratch>/victimdir:
+app
+
+<scratch>/victimdir/app:
+docker-compose.override.yml
+ls: cannot access '<scratch>/.ke-install.*': No such file or directory
+
+## C. install.sh, WSL: self-modification mid-run, PATH empty entry, NUL in manifest
+### selfmod: bundle-dir writer appends to install.sh while it runs (hook at docker info)
+installed to <scratch>/tSM
+next: cd <scratch>/tSM && scripts/launch.sh
+<scratch>/INJECTED
+### path: PATH with an empty entry, bundle root holds an executable 'mktemp'
+install: manifest: file is not listed: mktemp
+<scratch>/PWNED_PATH
+### NUL in manifest path (bash vs awk view), no expect-manifest
+install: manifest: file is not listed: app/xy
+
+## D. install.ps1, pwsh 7.6.7 on Windows 11 (battery 1; the I-1 and M-2 rows here are probe-construction errors, superseded by E)
+### ps-control
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3
+installed to <scratch>\tWA
+next: cd '<scratch>\tWA'; scripts\launch.ps1
+exit=0 docker-calls=5
+### ps-M1-swap-after-info
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3
+installed to <scratch>\tWM1
+next: cd '<scratch>\tWM1'; scripts\launch.ps1
+exit=0 docker-calls=5
+loaded content: tar-genuine
+target launch.ps1: Write-Host GENUINE
+### ps-M3-wrong-expect
+install: manifest: the manifest sha256 is 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3, not the value given to -ExpectManifest (0000000000000000000000000000000000000000000000000000000000000000)
+exit=1 docker-calls=0
+### ps-M3-bad-expect
+install: -ExpectManifest must be 64 hex characters
+exit=1 docker-calls=0
+### ps-L1-junction-target
+install: the target is a link: <scratch>\tWJ
+exit=1 docker-calls=0
+jelsewhere entries: 0
+### ps-L1-junction-parent
+install: the target's parent is a link: <scratch>\jpar
+exit=1 docker-calls=0
+### ps-L4-manifest-junction
+install: refused (rule: a symlink, junction or reparse point is not allowed): MANIFEST.sha256
+exit=1 docker-calls=0
+### ps-L5-loaded-other
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3 (not checked: compare it with the value from your release record)
+install: docker load of web.tar named an image other than its as (ke-web:bundle-0123456789ab)
+exit=1 docker-calls=3
+### ps-I1[app/NUL.txt]
+install: manifest: line 9: path has a character outside [A-Za-z0-9._/-]: app/NUL.txt?
+exit=1 docker-calls=0
+### ps-I1[app/lpt9]
+install: manifest: line 9: path has a character outside [A-Za-z0-9._/-]: app/lpt9?
+exit=1 docker-calls=0
+### ps-I1[app/y.]
+install: manifest: line 9: path has a character outside [A-Za-z0-9._/-]: app/y.?
+exit=1 docker-calls=0
+### ps-I1[app/a:b]
+install: manifest: line 9: path has a character outside [A-Za-z0-9._/-]: app/a?b?
+exit=1 docker-calls=0
+### ps-arch[aarch64]
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3 (not checked: compare it with the value from your release record)
+install: arch mismatch: this bundle is amd64 but the Docker daemon is arm64 (reported as aarch64); use the arm64 bundle
+exit=1 docker-calls=1
+### ps-arch[x86_64 junk]
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3 (not checked: compare it with the value from your release record)
+install: the Docker daemon reports an unsupported architecture: x86_64?junk (supported: amd64, arm64)
+exit=1 docker-calls=1
+fsutil: Failed to set case sensitive attribute information for file <scratch>\WCS\app\scripts, error: 0x00000091 The directory is not empty.
+dir: launch.ps1,launch.sh
+### ps-M2-case-variant
+install: manifest: hash mismatch: app/scripts/launch.ps1
+exit=1 docker-calls=0
+
+## E. install.ps1: I-1 (LF), M-2 (case-sensitive dir), ACL window and staging swap (parent carries C:\'s Authenticated Users ACEs)
+### ps-I1[app/NUL.txt]
+install: manifest: line 9: path has a Windows reserved name: app/NUL.txt
+exit=1 docker-calls=0
+### ps-I1[app/lpt9]
+install: manifest: line 9: path has a Windows reserved name: app/lpt9
+exit=1 docker-calls=0
+### ps-I1[app/Com3.x]
+install: manifest: line 9: path has a Windows reserved name: app/Com3.x
+exit=1 docker-calls=0
+### ps-I1[app/y.]
+install: manifest: line 9: path has a segment with a trailing dot: app/y.
+exit=1 docker-calls=0
+### ps-I1[app/a:b]
+install: manifest: line 9: path has a character outside [A-Za-z0-9._/-]: app/a?b
+exit=1 docker-calls=0
+fsutil: Case sensitive attribute on directory <scratch>\WCS\app\scripts is enabled.
+dir: LAUNCH.ps1,launch.ps1,launch.sh
+### ps-M2-case-variant-unlisted
+install: paths differ only by case: app/scripts/launch.ps1
+exit=1 docker-calls=0
+parent ACL: <scratch>\winpar NT AUTHORITY\Authenticated Users:(AD) | NT AUTHORITY\Authenticated Users:(OI)(CI)(IO)(M) | NT AUTHORITY\SYSTEM:(I)(OI)(CI)(F) | BUILTIN\Administrators:(I)(OI)(CI)(F) | <host><user>:(I)(OI)(CI)(F) |  | Successfully processed 1 files; Failed processing 0 files
+### ps-staging-swap-at-info
+loaded web.tar as ke-web:bundle-0123456789ab
+manifest sha256: 1e19d9dd6a1c025549053cabbb9693656a5a9725b1250c62dfcdae83a470cdd3
+installed to <scratch>\winpar\tWSS
+next: cd '<scratch>\winpar\tWSS'; scripts\launch.ps1
+exit=0 docker-calls=5
+loaded content: tar-EVIL
+swap.log: swap: done
+published launch.ps1: Write-Host EVIL
+published compose: services: /   web: /     image: alpine /     privileged: true
+acl-window: first-seen: D:AI(A;OICIID;0x1301bf;;;AU)(A;OICIID;FA;;;SY)(A;OICIID;FA;;;BA)(A;OICIID;FA;;;<user-sid>) 
+after-1.5s: gone: Exception calling "GetAccessControl" with "1" argument(s): "<scratch>\winpar\.ke-install.39db77651a2d00b9"
+
+
+## F. install.ps1 under ConstrainedLanguage
+Add-Type at install.ps1:167 -> 'Cannot add type. Definition of new types is not supported in this language mode.'; target parent has 0 entries afterwards (no staging created).
+
+## G. icacls C:\ (host)
+C:\ BUILTIN\Administrators:(OI)(CI)(F)
+    NT AUTHORITY\SYSTEM:(OI)(CI)(F)
+    BUILTIN\Users:(OI)(CI)(RX)
+    NT AUTHORITY\Authenticated Users:(OI)(CI)(IO)(M)
+    NT AUTHORITY\Authenticated Users:(AD)
+    S-1-15-3-65536-1888954469-739942743-1668119174-2468466756-4239452838-1296943325-355587736-700089176:(S,RD,X,RA)
+    Mandatory Label\High Mandatory Level:(OI)(NP)(IO)(NW)
+

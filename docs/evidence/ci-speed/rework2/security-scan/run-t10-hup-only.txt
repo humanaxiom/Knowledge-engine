@@ -1,0 +1,44 @@
+--- before (test.sh pid 11)
+     1      1 S bash /h/sig.sh HUP pid 10 
+    10      1 S sleep 302 
+    11     11 S bash scripts/test.sh fast 
+     7      7 S sleep 300 
+    75     75 S bash scripts/test.sh fast 
+    77     75 S uv run --locked python -m coverage run -p --data-file=/tmp/.coverage.tests.test_ign -m uni
+     8      1 S sleep 300 
+    80     80 S bash scripts/test.sh fast 
+    82     80 S uv run --locked python -m coverage run -p --data-file=/tmp/.coverage.tests.test_slow -m un
+     9      9 S sleep 301 
+    93     80 S /opt/venv/bin/python3 -m coverage run -p --data-file=/tmp/.coverage.tests.test_slow -m uni
+    94     75 S /opt/venv/bin/python3 -m coverage run -p --data-file=/tmp/.coverage.tests.test_ign -m unit
+    96     75 S /opt/venv/bin/python3 -c import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN
+/h/sig.sh: line 17:    11 Hangup                  bash scripts/test.sh fast > /tmp/t.out 2>&1
+test.sh rc=129 elapsed=0.00s
+--- after
+     1      1 S bash /h/sig.sh HUP pid 10 
+    10      1 S sleep 302 
+     7      7 S sleep 300 
+    75     75 S bash scripts/test.sh fast 
+    77     75 S uv run --locked python -m coverage run -p --data-file=/tmp/.coverage.tests.test_ign -m uni
+     8      1 S sleep 300 
+    80     80 S bash scripts/test.sh fast 
+    82     80 S uv run --locked python -m coverage run -p --data-file=/tmp/.coverage.tests.test_slow -m un
+     9      9 S sleep 301 
+    93     80 S /opt/venv/bin/python3 -m coverage run -p --data-file=/tmp/.coverage.tests.test_slow -m uni
+    94     75 S /opt/venv/bin/python3 -m coverage run -p --data-file=/tmp/.coverage.tests.test_ign -m unit
+    96     75 S /opt/venv/bin/python3 -c import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN
+LEFTOVER 77 uv run --locked python -m coverage run -p --data-file=/tmp/.coverage.tests.test_ign -m unittest -v --durations 10 tests.test_ign 
+LEFTOVER 94 /opt/venv/bin/python3 -m coverage run -p --data-file=/tmp/.coverage.tests.test_ign -m unittest -v --durations 10 tests.test_ign 
+LEFTOVER 96 /opt/venv/bin/python3 -c import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(120)  # GRANDCHILD 
+leftover check done
+logdir removed
+OUT1 alive
+OUT2 alive
+OUT3 alive
+OUT4 alive
+--- test.sh output tail
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 1ms
+Installed 1 package in 1ms
+rc=0

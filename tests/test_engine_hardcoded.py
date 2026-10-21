@@ -77,8 +77,9 @@ class ScannerContractTest(unittest.TestCase):
         self.assertEqual(_scan(files, ["5432"]), [])
 
     def test_planted_model_name_is_flagged(self):
-        files = {"scripts/pull.sh": "ollama pull qwen2.5:14b-instruct\n"}
-        self.assertIn("qwen2.5:14b-instruct", _values(_scan(files, ["qwen2.5:14b-instruct"])))
+        # model-roles MR-3: a current role name (ADR-KE-014).
+        files = {"scripts/pull.sh": "ollama pull gpt-oss:120b\n"}
+        self.assertIn("gpt-oss:120b", _values(_scan(files, ["gpt-oss:120b"])))
 
     def test_planted_host_name_is_flagged(self):
         files = {"docker-compose.yml": f"    extra_hosts: ['{MODEL_HOST_NAME}:10.0.0.9']\n"}
@@ -199,7 +200,9 @@ def _declared() -> tuple[set[str], set[str]]:
         upper = key.upper()
         if not value or value.startswith("changeme"):
             continue
-        if "PORT" in upper and value.isdigit():
+        # Review round-0 N3 (platform-stack-ready, PS-2.24): `*_LISTEN` keys
+        # are container listen ports, so their values count as ports too.
+        if ("PORT" in upper or upper.endswith("_LISTEN")) and value.isdigit():
             ports.add(value)
         elif "MODEL" in upper and "UPSTREAM" not in upper and "URL" not in upper:
             names.add(value)
@@ -225,12 +228,27 @@ class RepositoryScanTest(unittest.TestCase):
     def test_no_hardcoded_ports(self):
         ports, _ = _declared()
         self.assertTrue(ports, "no ports declared in defaults.yaml/.env.example")
+        # Review round-0 N3 (PS-2.24, mutant P5): every *_LISTEN value is a
+        # declared port, and a literal compose `target:` port is flagged.
+        listens = {k: v for k, v in read_env_example().items() if k.endswith("_LISTEN")}
+        self.assertTrue(listens, "precondition: .env.example declares *_LISTEN ports")
+        for key, value in listens.items():
+            with self.subTest(listen=key):
+                self.assertIn(value, ports, f"{key}={value} is not treated as a port")
+        api_listen = listens["KE_GATEWAY_API_LISTEN"]
+        literal = {"docker-compose.yml": f"    ports:\n      - target: {api_listen}\n"}
+        with self.subTest(case="literal compose target"):
+            self.assertTrue(_scan(literal, sorted(ports)), "a literal `target:` port is not flagged")
+        variable = {"docker-compose.yml": f"      - target: ${{KE_GATEWAY_API_LISTEN:-{api_listen}}}\n"}
+        with self.subTest(case="compose target variable (control)"):
+            self.assertEqual(_scan(variable, sorted(ports)), [])
         findings = _scan(_collect_repo_files(), sorted(ports), EXEMPTIONS)
         self.assertEqual(findings, [], "hardcoded ports:\n" + self._report(findings))
 
     def test_no_hardcoded_hosts_or_models(self):
         _, names = _declared()
-        for model in ("qwen2.5:14b-instruct", "llama3.1:8b", "nomic-embed-text"):
+        # model-roles MR-3 (ADR-KE-014): the role and fallback names now declared.
+        for model in ("qwen3.5:latest", "gpt-oss:120b", "gpt-oss:20b", "nomic-embed-text"):
             self.assertIn(model, names, f"{model} is not declared in config")
         self.assertIn(MODEL_HOST_NAME, names)
         findings = _scan(_collect_repo_files(), sorted(names), EXEMPTIONS)

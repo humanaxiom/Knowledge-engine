@@ -1,0 +1,46 @@
+import os, signal, subprocess, sys, time, unittest
+from tests.test_harness_followups import IntegrationRunsOnceTest as Base
+
+class Probe(Base):
+    def _run(self, files, label):
+        for name, body in files:
+            self.write(f"tests/{name}.py", body)
+        self.fake_nproc(4)
+        started = self.root / f"started-{label}"
+        out_path = self.root / f"out-{label}.txt"
+        self.uv_log = self.root / f"uv-{label}.log"
+        env = self.base_env(self.root / f"counter-{label}", {"KE_TEST_STARTED": str(started)})
+        # an unrelated process: same cwd, own session, not a job of test.sh
+        bystander = subprocess.Popen(["sleep", "300"], cwd=self.project, start_new_session=True)
+        with open(out_path, "w") as out:
+            proc = subprocess.Popen(["bash", str(self.project / "scripts" / "test.sh"), "fast"],
+                                    cwd=self.project, env=env, stdout=out, stderr=subprocess.STDOUT,
+                                    start_new_session=True)
+        want = len(files)
+        deadline = time.monotonic() + 60
+        while (not started.exists() or len(started.read_text().split()) < want) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        pids = [int(p) for p in started.read_text().split()]
+        t0 = time.monotonic()
+        proc.send_signal(signal.SIGTERM)
+        code = proc.wait(timeout=30)
+        dt = time.monotonic() - t0
+        alive_after = [p for p in pids if self.proc_alive(p)]
+        by_alive = bystander.poll() is None
+        bystander.kill(); bystander.wait()
+        self.kill_leftovers(proc, pids)
+        tail = out_path.read_text()[-600:]
+        print(f"\nPROBE {label}: exit={code} term_to_exit={dt:.2f}s module_alive_after={alive_after} "
+              f"bystander_alive={by_alive}\n--- output tail ---\n{tail}\n---", file=sys.stderr)
+        return code, dt, alive_after, by_alive
+
+    def test_probe_latency_normal(self):
+        code, dt, alive, by = self._run([("test_long0", self.LONG_SLEEPER), ("test_long1", self.LONG_SLEEPER)], "normal")
+        self.assertEqual(code, 143); self.assertEqual(alive, []); self.assertTrue(by)
+        self.assertLess(dt, 4.0)
+
+    def test_probe_latency_ignorer(self):
+        code, dt, alive, by = self._run([("test_ign", self.TERM_IGNORER)], "ignorer")
+        self.assertEqual(code, 143); self.assertEqual(alive, []); self.assertTrue(by)
+        self.assertLess(dt, 5.0)
+        self.assertGreater(dt, 1.5)

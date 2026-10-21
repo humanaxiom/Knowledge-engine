@@ -83,10 +83,9 @@ def _built_by_engine(provider: object) -> bool:
     return any(provider is built for built in list(_ENGINE_PROVIDERS))
 
 
-def verify_provider(service_names: list[str]) -> None:
+def verify_provider() -> None:
     """Accept nothing installed, or a provider built by `build_provider`;
     refuse any other (identity, not inspection)."""
-    del service_names  # identity needs no host list; kept for the callers
     provider = trace.get_tracer_provider()
     if _nothing_installed(provider) or _built_by_engine(provider):
         return
@@ -103,7 +102,7 @@ def configure_tracing(settings: Settings) -> bool:
     os.environ["OPENINFERENCE_HIDE_OUTPUTS"] = str(telemetry.hide_outputs).lower()
     current = trace.get_tracer_provider()
     if not _nothing_installed(current):
-        verify_provider(settings.stack.service_names)
+        verify_provider()
         return False
     exporter = choose_exporter(settings)
     if exporter is None:

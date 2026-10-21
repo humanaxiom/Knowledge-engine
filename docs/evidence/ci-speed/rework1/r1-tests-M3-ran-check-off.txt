@@ -1,0 +1,132 @@
+  elif false; then
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.86ms
+Installed 1 package in 1ms
+test_unit_pool_fails_when_a_module_exits_zero_at_import (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_a_module_exits_zero_at_import) ... 
+  test_unit_pool_fails_when_a_module_exits_zero_at_import (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_a_module_exits_zero_at_import) (mode='fast') ... FAIL
+  test_unit_pool_fails_when_a_module_exits_zero_at_import (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_a_module_exits_zero_at_import) (mode='full') ... FAIL
+test_unit_pool_fails_when_a_module_prints_no_ran_line (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_a_module_prints_no_ran_line) ... 
+  test_unit_pool_fails_when_a_module_prints_no_ran_line (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_a_module_prints_no_ran_line) (mode='fast') ... FAIL
+  test_unit_pool_fails_when_a_module_prints_no_ran_line (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_a_module_prints_no_ran_line) (mode='full') ... FAIL
+
+======================================================================
+FAIL: test_unit_pool_fails_when_a_module_exits_zero_at_import (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_a_module_exits_zero_at_import) (mode='fast')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 607, in test_unit_pool_fails_when_a_module_exits_zero_at_import
+    self.assertNotEqual(code, 0, f"{module} exited 0 at import, test.sh passed:\n"
+AssertionError: 0 == 0 : tests.test_exit0 exited 0 at import, test.sh passed:
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+Combined 4 files
+
+
+======================================================================
+FAIL: test_unit_pool_fails_when_a_module_exits_zero_at_import (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_a_module_exits_zero_at_import) (mode='full')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 607, in test_unit_pool_fails_when_a_module_exits_zero_at_import
+    self.assertNotEqual(code, 0, f"{module} exited 0 at import, test.sh passed:\n"
+AssertionError: 0 == 0 : tests.test_exit0 exited 0 at import, test.sh passed:
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+test_counted (tests.integration.test_counted.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+Combined 5 files
+
+
+======================================================================
+FAIL: test_unit_pool_fails_when_a_module_prints_no_ran_line (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_a_module_prints_no_ran_line) (mode='fast')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 568, in test_unit_pool_fails_when_a_module_prints_no_ran_line
+    self.assertNotEqual(code, 0,
+AssertionError: 0 == 0 : tests.testfoo printed no Ran line, test.sh passed:
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+Combined 3 files
+
+
+======================================================================
+FAIL: test_unit_pool_fails_when_a_module_prints_no_ran_line (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_a_module_prints_no_ran_line) (mode='full')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 568, in test_unit_pool_fails_when_a_module_prints_no_ran_line
+    self.assertNotEqual(code, 0,
+AssertionError: 0 == 0 : tests.testfoo printed no Ran line, test.sh passed:
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+test_counted (tests.integration.test_counted.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+Combined 4 files
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 4.256s
+
+FAILED (failures=4)

@@ -1,0 +1,61 @@
+# Reviewer mutants of scripts/test.sh (scratch copies only; repo untouched). Image ke-gates:wt-33a132fbfdd7,
+# --network none --user 10001:10001 --cap-drop ALL, ro /work, tmpfs /tmp, label ke.reviewer.project=ke-reviewer-cs.
+# Command per variant: /opt/venv/bin/python -m unittest tests.test_harness_followups.IntegrationRunsOnceTest \
+#   tests.test_harness_followups.UnitPoolStaticTest tests.probe_review.Probe.test_probe_<5 probes>
+
+## mA
+103c103
+<   wait "$!"
+---
+>   wait "$!" || true
+
+## mB
+164c164
+<   collect_data "$label" || { echo "error: $label left no coverage data file" >&2; exit 1; }
+---
+>   true || { echo "error: $label left no coverage data file" >&2; exit 1; }
+
+## mC
+169c169
+<   collect_data tests.integration || { echo "error: tests.integration left no coverage data file" >&2; exit 1; }
+---
+>   true || { echo "error: tests.integration left no coverage data file" >&2; exit 1; }
+
+## mD
+83c83
+< trap 'on_signal 130' INT
+---
+> trap 'on_signal 1' INT
+
+## mE
+71c71
+< set -m
+---
+> 
+
+## mF
+80d79
+<   kill_jobs
+
+## mG
+59c59
+< cov_data="$(uv run --locked python -c 'import coverage; print(coverage.Coverage().config.data_file)')" || cov_data=""
+---
+> cov_data="$(uv run --locked python -c 'import coverage; print(coverage.Coverage().config.data_file)')" || cov_data=".coverage"; [ -n "$cov_data" ] || cov_data=.coverage
+
+## mH
+176c176
+< uv run --locked python -m coverage combine "${data_files[@]}"
+---
+> uv run --locked python -m coverage combine "${data_files[@]:0:${#mods[@]}}"
+
+## rc per variant
+base rc=0
+mA rc=1
+mB rc=1
+mC rc=1
+mD rc=1
+mE rc=1
+mF rc=1
+mG rc=1
+mH rc=1

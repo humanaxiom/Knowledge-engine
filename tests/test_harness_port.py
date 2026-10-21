@@ -186,7 +186,10 @@ class VerificationEntryPointTest(unittest.TestCase):
         text = read(ROOT / "scripts" / "verify.sh")
         body = "\n".join(line for line in text.splitlines()
                          if not line.lstrip().startswith("#"))
-        for forbidden in ("pytest", "unittest", "mypy", "ruff", "uv run", "smoke_otlp"):
+        # platform-offline (architecture §2.6 item 10): the bundle and the
+        # offline check keep their commands in bundle.sh / offline_check.sh.
+        for forbidden in ("pytest", "unittest", "mypy", "ruff", "uv run", "smoke_otlp",
+                          "docker save", "sha256sum"):
             self.assertNotIn(forbidden, body, forbidden)
         self.assertIn("scripts/test.sh", body)
         self.assertIn("scripts/smoke.sh", body)

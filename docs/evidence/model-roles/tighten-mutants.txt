@@ -1,0 +1,213 @@
+# model-roles tighten (L-MR1..L-MR5) mutant re-run, 2026-10-20 (tester)
+# Base: working tree of agent/model-roles with the tightened tests/test_stack_model_skip.py (ModelRolesSuiteTest)
+# and tests/integration/test_model_roles.py, copied to a scratch dir (tracked files untouched).
+# Mutant table and driver: the audit's script from docs/evidence/model-roles/audit-mutants.txt, unchanged except
+#   M7's anchor, because the model-echo check is now `self.assertTrue(result.get("model") == client.model, ...)`
+#   (L-MR3: assertEqual's diff printed the response's model). M7 mutation: that line -> `self.assertTrue(client.model == client.model,`.
+# Stub env is now the real-run shape for every case: KE_EGRESS_ALLOWLIST=gateway,modelhost, KE_MODEL_UPSTREAM=modelhost:8000
+#   (the audit's separate "environment-dependence check" is now the default).
+# Each mutant runs: python -m unittest tests.test_stack_model_skip.ModelRolesSuiteTest   (host venv, Windows)
+# RED step before the integration-test fix (tightened stub test vs. old messages): docs/evidence/model-roles/tighten-red.txt
+#
+# ---- requested targets (all KILLED) ----
+#   M1b (direct-host embed, real allowlist)   KILLED by the stub host record: set(stub.hosts) == {"gateway"} fails, 'modelhost' extra (L-MR1)
+#   M2b (host check skipped for embed)         KILLED in case='base_url not through the gateway', role='embed': host set has 'modelhost' (L-MR4)
+#   M3c (mismatch message prints result)       KILLED: HIDDEN (response content) found in the compose/rewrite/audit failure texts (L-MR3)
+#   M4a (chat prints result to stderr)         KILLED: a stderr line does not match TIMING (L-MR2)
+#   M4b (embed prints input + body to stderr)  KILLED: a stderr line does not match TIMING (L-MR2)
+#
+# ---- full table ----
+BASELINE: OK
+KILLED    | M1a embed posts to model host (settings.models.model_upstream) via guarded client | FAILED (failures=9)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='answers')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='reasoning only, no content')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='whitespace content')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='response names another model')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='embedding of the wrong length')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='embed endpoint answers non-200')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='compose')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='rewrite')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='audit')
+KILLED    | M1b embed posts to base_url with host swapped to modelhost via guarded client | FAILED (failures=9)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='answers')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='reasoning only, no content')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='whitespace content')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='response names another model')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='embedding of the wrong length')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='embed endpoint answers non-200')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='compose')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='rewrite')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='audit')
+KILLED    | M1c embed via unguarded httpx.post to gateway url | FAILED (failures=9)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='answers')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='reasoning only, no content')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='whitespace content')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='response names another model')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='embedding of the wrong length')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='embed endpoint answers non-200')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='compose')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='rewrite')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='audit')
+KILLED    | M1d embed via unguarded httpx.post directly to modelhost | FAILED (failures=9)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='answers')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='reasoning only, no content')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='whitespace content')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='response names another model')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='embedding of the wrong length')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='embed endpoint answers non-200')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='compose')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='rewrite')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='audit')
+KILLED    | M1e embed direct to modelhost via guarded client, status hook still fed (allowlist-dependent) | FAILED (failures=9)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='answers')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='reasoning only, no content')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='whitespace content')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='response names another model')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='embedding of the wrong length')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='embed endpoint answers non-200')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='compose')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='rewrite')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='audit')
+KILLED    | M2a drop gateway-host assertion (all roles) | FAILED (failures=4)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='embed')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='compose')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='rewrite')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='audit')
+KILLED    | M2b drop gateway-host assertion for embed only | FAILED (failures=1)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='embed')
+KILLED    | M3a failure message prints message values | FAILED (failures=6)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (test='test_compose_role_answers', case='reasoning only, no content')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (test='test_rewrite_role_answers', case='reasoning only, no content')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (test='test_audit_role_answers', case='reasoning only, no content')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (test='test_compose_role_answers', case='whitespace content')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (test='test_rewrite_role_answers', case='whitespace content')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (test='test_audit_role_answers', case='whitespace content')
+SURVIVED  | M3b failure message prints content repr | OK
+KILLED    | M3c model-mismatch message prints content | FAILED (failures=3)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (test='test_compose_role_answers', case='response names another model')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (test='test_rewrite_role_answers', case='response names another model')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (test='test_audit_role_answers', case='response names another model')
+KILLED    | M4a chat prints content to stderr on success | FAILED (failures=10)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='answers')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='reasoning only, no content')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='whitespace content')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='response names another model')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='embedding of the wrong length')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='embed endpoint answers non-200')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='embed')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='compose')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='rewrite')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='audit')
+KILLED    | M4b embed prints prompt+vector to stderr | FAILED (failures=9)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='answers')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='reasoning only, no content')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='whitespace content')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='response names another model')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='embedding of the wrong length')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='embed endpoint answers non-200')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='compose')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='rewrite')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='audit')
+KILLED    | M4c chat prints prompt in timing line | FAILED (failures=10)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='answers')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='reasoning only, no content')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='whitespace content')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='response names another model')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='embedding of the wrong length')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='embed endpoint answers non-200')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='embed')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='compose')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='rewrite')
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='base_url not through the gateway', role='audit')
+KILLED    | M5 drop require_model_host in audit | FAILED (failures=3)
+            FAIL: test_model_role_tests_run_in_order (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_tests_run_in_order) (test='test_audit_role_answers')
+            FAIL: test_model_role_tests_skip_not_configured (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_tests_skip_not_configured) (case='keys unset')
+            FAIL: test_model_role_tests_skip_not_configured (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_tests_skip_not_configured) (case='operator allowlist empty')
+KILLED    | M6 reorder (audit first) | FAILED (failures=4)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='answers')
+            FAIL: test_model_role_tests_run_in_order (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_tests_run_in_order)
+            FAIL: test_model_role_tests_skip_not_configured (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_tests_skip_not_configured) (case='keys unset')
+            FAIL: test_model_role_tests_skip_not_configured (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_tests_skip_not_configured) (case='operator allowlist empty')
+KILLED    | M7 drop model echo assertion | FAILED (failures=1)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='response names another model')
+KILLED    | M8 drop dim assertion | FAILED (failures=1)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='embedding of the wrong length')
+KILLED    | M9 accept reasoning as answer | FAILED (failures=1)
+            FAIL: test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) (case='reasoning only, no content')
+
+# M3b SURVIVED as in the audit: it prints content repr on the no-content path, where content is '' or whitespace; harmless (audit L-MR3 note).
+
+# ---- kill reasons for the five targets (first AssertionError line per failing subtest; why.py) ----
+== M1b embed posts to base_url with host swapped to modelhost via guarded client: KILLED (FAILED (failures=9))
+   (case='answers')
+      -> AssertionError: Items in the first set but not the second:
+   (case='reasoning only, no content')
+      -> AssertionError: Items in the first set but not the second:
+   (case='whitespace content')
+      -> AssertionError: Items in the first set but not the second:
+   (case='response names another model')
+      -> AssertionError: Items in the first set but not the second:
+   (case='embedding of the wrong length')
+      -> AssertionError: Items in the first set but not the second:
+   (case='embed endpoint answers non-200')
+      -> AssertionError: Items in the first set but not the second:
+   (case='base_url not through the gateway', role='compose')
+      -> AssertionError: Items in the first set but not the second:
+   (case='base_url not through the gateway', role='rewrite')
+      -> AssertionError: Items in the first set but not the second:
+   (case='base_url not through the gateway', role='audit')
+      -> AssertionError: Items in the first set but not the second:
+== M2b drop gateway-host assertion for embed only: KILLED (FAILED (failures=1))
+   (case='base_url not through the gateway', role='embed')
+      -> AssertionError: Items in the first set but not the second:
+== M3c model-mismatch message prints content: KILLED (FAILED (failures=3))
+   (test='test_compose_role_answers', case='response names another model')
+      -> AssertionError: 'hidden-reasoning-value-3b8d' unexpectedly found in 'Traceback (most recent call last):\n  File "<scratch>\\copy\\tests\\integratio
+   (test='test_rewrite_role_answers', case='response names another model')
+      -> AssertionError: 'hidden-reasoning-value-3b8d' unexpectedly found in 'Traceback (most recent call last):\n  File "<scratch>\\copy\\tests\\integratio
+   (test='test_audit_role_answers', case='response names another model')
+      -> AssertionError: 'hidden-reasoning-value-3b8d' unexpectedly found in 'Traceback (most recent call last):\n  File "<scratch>\\copy\\tests\\integratio
+== M4a chat prints content to stderr on success: KILLED (FAILED (failures=10))
+   (case='answers')
+      -> AssertionError: Regex didn't match: '^model-role (embed|compose|rewrite|audit) (\\S+) (\\d+\\.\\d)s$' not found in "{'model': 'qwen3.5:latest', 'id': 'hidden-reasoning-value-3b8d', 'choices': [{'index': 0, 'message': {'role': 'assistant', 'content': 'ready'}, 
+   (case='reasoning only, no content')
+      -> AssertionError: Regex didn't match: '^model-role (embed|compose|rewrite|audit) (\\S+) (\\d+\\.\\d)s$' not found in "{'model': 'qwen3.5:latest', 'id': 'hidden-reasoning-value-3b8d', 'choices': [{'index': 0, 'message': {'role': 'assistant', 'content': '', 'reaso
+   (case='whitespace content')
+      -> AssertionError: Regex didn't match: '^model-role (embed|compose|rewrite|audit) (\\S+) (\\d+\\.\\d)s$' not found in "{'model': 'qwen3.5:latest', 'id': 'hidden-reasoning-value-3b8d', 'choices': [{'index': 0, 'message': {'role': 'assistant', 'content': '  \\n', '
+   (case='response names another model')
+      -> AssertionError: Regex didn't match: '^model-role (embed|compose|rewrite|audit) (\\S+) (\\d+\\.\\d)s$' not found in "{'model': 'other-model-value-5e1a', 'id': 'hidden-reasoning-value-3b8d', 'choices': [{'index': 0, 'message': {'role': 'assistant', 'content': 'h
+   (case='embedding of the wrong length')
+      -> AssertionError: Regex didn't match: '^model-role (embed|compose|rewrite|audit) (\\S+) (\\d+\\.\\d)s$' not found in "{'model': 'qwen3.5:latest', 'id': 'hidden-reasoning-value-3b8d', 'choices': [{'index': 0, 'message': {'role': 'assistant', 'content': 'ready'}, 
+   (case='embed endpoint answers non-200')
+      -> AssertionError: Regex didn't match: '^model-role (embed|compose|rewrite|audit) (\\S+) (\\d+\\.\\d)s$' not found in "{'model': 'qwen3.5:latest', 'id': 'hidden-reasoning-value-3b8d', 'choices': [{'index': 0, 'message': {'role': 'assistant', 'content': 'ready'}, 
+   (case='base_url not through the gateway', role='embed')
+      -> AssertionError: Regex didn't match: '^model-role (embed|compose|rewrite|audit) (\\S+) (\\d+\\.\\d)s$' not found in "{'model': 'qwen3.5:latest', 'id': 'hidden-reasoning-value-3b8d', 'choices': [{'index': 0, 'message': {'role': 'assistant', 'content': 'ready'}, 
+   (case='base_url not through the gateway', role='compose')
+      -> AssertionError: Regex didn't match: '^model-role (embed|compose|rewrite|audit) (\\S+) (\\d+\\.\\d)s$' not found in "{'model': 'qwen3.5:latest', 'id': 'hidden-reasoning-value-3b8d', 'choices': [{'index': 0, 'message': {'role': 'assistant', 'content': 'ready'}, 
+   (case='base_url not through the gateway', role='rewrite')
+      -> AssertionError: Regex didn't match: '^model-role (embed|compose|rewrite|audit) (\\S+) (\\d+\\.\\d)s$' not found in "{'model': 'qwen3.5:latest', 'id': 'hidden-reasoning-value-3b8d', 'choices': [{'index': 0, 'message': {'role': 'assistant', 'content': 'ready'}, 
+   (case='base_url not through the gateway', role='audit')
+      -> AssertionError: Regex didn't match: '^model-role (embed|compose|rewrite|audit) (\\S+) (\\d+\\.\\d)s$' not found in "{'model': 'qwen3.5:latest', 'id': 'hidden-reasoning-value-3b8d', 'choices': [{'index': 0, 'message': {'role': 'assistant', 'content': 'ready'}, 
+== M4b embed prints prompt+vector to stderr: KILLED (FAILED (failures=9))
+   (case='answers')
+      -> AssertionError: Regex didn't match: '^model-role (embed|compose|rewrite|audit) (\\S+) (\\d+\\.\\d)s$' not found in 'ready {"model":"nomic-embed-text","id":"hidden-reasoning-value-3b8d","data":[{"embedding":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0
+   (case='reasoning only, no content')
+      -> AssertionError: Regex didn't match: '^model-role (embed|compose|rewrite|audit) (\\S+) (\\d+\\.\\d)s$' not found in 'ready {"model":"nomic-embed-text","id":"hidden-reasoning-value-3b8d","data":[{"embedding":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0
+   (case='whitespace content')
+      -> AssertionError: Regex didn't match: '^model-role (embed|compose|rewrite|audit) (\\S+) (\\d+\\.\\d)s$' not found in 'ready {"model":"nomic-embed-text","id":"hidden-reasoning-value-3b8d","data":[{"embedding":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0
+   (case='response names another model')
+      -> AssertionError: Regex didn't match: '^model-role (embed|compose|rewrite|audit) (\\S+) (\\d+\\.\\d)s$' not found in 'ready {"model":"other-model-value-5e1a","id":"hidden-reasoning-value-3b8d","data":[{"embedding":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+   (case='embedding of the wrong length')
+      -> AssertionError: Regex didn't match: '^model-role (embed|compose|rewrite|audit) (\\S+) (\\d+\\.\\d)s$' not found in 'ready {"model":"nomic-embed-text","id":"hidden-reasoning-value-3b8d","data":[{"embedding":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0
+   (case='embed endpoint answers non-200')
+      -> AssertionError: Regex didn't match: '^model-role (embed|compose|rewrite|audit) (\\S+) (\\d+\\.\\d)s$' not found in 'ready <html>hidden-reasoning-value-3b8d</html>' : stderr carries only timing lines; stderr='model-role embed nomic-embed-text 0.0s\nready <html>
+   (case='base_url not through the gateway', role='compose')
+      -> AssertionError: Regex didn't match: '^model-role (embed|compose|rewrite|audit) (\\S+) (\\d+\\.\\d)s$' not found in 'ready {"model":"nomic-embed-text","id":"hidden-reasoning-value-3b8d","data":[{"embedding":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0
+   (case='base_url not through the gateway', role='rewrite')
+      -> AssertionError: Regex didn't match: '^model-role (embed|compose|rewrite|audit) (\\S+) (\\d+\\.\\d)s$' not found in 'ready {"model":"nomic-embed-text","id":"hidden-reasoning-value-3b8d","data":[{"embedding":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0
+   (case='base_url not through the gateway', role='audit')
+      -> AssertionError: Regex didn't match: '^model-role (embed|compose|rewrite|audit) (\\S+) (\\d+\\.\\d)s$' not found in 'ready {"model":"nomic-embed-text","id":"hidden-reasoning-value-3b8d","data":[{"embedding":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0
+
+# Manual M1b confirmation (sed edit in scratch copy, then restored):
+#   AssertionError: Items in the first set but not the second:
+#   'modelhost' : every request reaches the model through the stack's gateway

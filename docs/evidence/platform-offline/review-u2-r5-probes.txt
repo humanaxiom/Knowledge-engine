@@ -1,0 +1,169 @@
+# review-u2-r5 raw probes (reviewer, 2026-10-19). Scratch copies of the working tree (git ls-files -co --exclude-standard, no docs/evidence, no .env) in ke-gates:latest, --network none, --cap-drop ALL, no-new-privileges, uid 10001, /opt/venv python. Repo never modified.
+# ExecBitTest fails in every scratch run by design (no .git). scratch_r5 imports InstallShTest/InstallPs1Test, so unittest runs them under both module names (duplicate failures in the mutant run).
+
+## Base tree: RB7 parent modes (python -m unittest tests.scratch_r5 -v)
+PROBE OddPs1.parent_0o1757: rc=1 docker_ran=False installed=False
+  out: ''
+  err: "install: refused (rule: the target's parent must not be writable by others): /tmp/tmp6l4ljmot/odd1 is writable by others (group or world); anyone who can write it can replace the installed target; use a directory only you can write\n"
+--
+PROBE OddPs1.parent_0o1703: rc=1 docker_ran=False installed=False
+  out: ''
+  err: "install: refused (rule: the target's parent must not be writable by others): /tmp/tmp6l4ljmot/odd2 is writable by others (group or world); anyone who can write it can replace the installed target; use a directory only you can write\n"
+--
+PROBE OddPs1.parent_0o1777: rc=1 docker_ran=False installed=False
+  out: ''
+  err: "install: refused (rule: the target's parent must not be writable by others): /tmp/tmp6l4ljmot/odd3 is writable by others (group or world); anyone who can write it can replace the installed target; use a directory only you can write\n"
+--
+PROBE OddPs1.parent_0o757: rc=1 docker_ran=False installed=False
+  out: ''
+  err: "install: refused (rule: the target's parent must not be writable by others): /tmp/tmp6l4ljmot/odd4 is writable by others (group or world); anyone who can write it can replace the installed target; use a directory only you can write\n"
+--
+PROBE OddPs1.parent_0o755: rc=0 docker_ran=True installed=True
+  out: "your release record)\nloaded ke-app.tar as ke-app:bundle-0123456789ab\nloaded postgres.tar as ke-vendor/postgres:053bbdccec5d\nmanifest sha256: 8e3efc8481c92387f581ec433380f85149f8a252840024ffa4c50707785b4257\ninstalled to /tmp/tmp6l4ljmot/odd5/ke\nnext: cd '/tmp/tmp6l4ljmot/odd5/ke'; scripts/launch.ps1\n"
+  err: ''
+--
+PROBE OddSh.parent_0o1757: rc=1 docker_ran=False installed=False
+  out: ''
+  err: "install: refused (rule: the target's parent must be writable only by you or root): /tmp/tmpv9jffz5s/odd1 is writable by others (group or world, mode drwxr-xrwt); anyone who can write it can replace the installed target; use a directory only you can write\n"
+--
+PROBE OddSh.parent_0o1703: rc=1 docker_ran=False installed=False
+  out: ''
+  err: "install: refused (rule: the target's parent must be writable only by you or root): /tmp/tmpv9jffz5s/odd2 is writable by others (group or world, mode drwx----wt); anyone who can write it can replace the installed target; use a directory only you can write\n"
+--
+PROBE OddSh.parent_0o1777: rc=1 docker_ran=False installed=False
+  out: ''
+  err: "install: refused (rule: the target's parent must be writable only by you or root): /tmp/tmpv9jffz5s/odd3 is writable by others (group or world, mode drwxrwxrwt); anyone who can write it can replace the installed target; use a directory only you can write\n"
+--
+PROBE OddSh.parent_0o757: rc=1 docker_ran=False installed=False
+  out: ''
+  err: "install: refused (rule: the target's parent must be writable only by you or root): /tmp/tmpv9jffz5s/odd4 is writable by others (group or world, mode drwxr-xrwx); anyone who can write it can replace the installed target; use a directory only you can write\n"
+--
+PROBE OddSh.parent_0o755: rc=0 docker_ran=True installed=True
+  out: ' release record)\nloaded ke-app.tar as ke-app:bundle-0123456789ab\nloaded postgres.tar as ke-vendor/postgres:053bbdccec5d\nmanifest sha256: 8e3efc8481c92387f581ec433380f85149f8a252840024ffa4c50707785b4257\ninstalled to /tmp/tmpv9jffz5s/odd5/ke\nnext: cd /tmp/tmpv9jffz5s/odd5/ke && bash scripts/launch.sh\n'
+  err: ''
+Ran 170 tests in 247.354s
+OK (skipped=2)
+
+## M-7 mutant diff (scratch copy only)
+diff -r base/scripts/install.ps1 mut/scripts/install.ps1
+847c847
+<             try { [System.IO.Directory]::Delete($script:Staging, $false) } catch { $null = $_ }
+---
+>             try { [System.IO.Directory]::Delete($script:Staging, $true) } catch { $null = $_ }
+diff -r base/scripts/install.sh mut/scripts/install.sh
+105c105
+<       */.ke-install.*) rmdir -- "$staging" 2> /dev/null || true ;;
+---
+>       */.ke-install.*) rm -rf -- "$staging" || true ;;
+
+## M-7 mutant results: python -m unittest tests.test_offline_bundle tests.scratch_r5
+FAIL: test_operator_scripts_are_executable_in_git (tests.test_offline_bundle.ExecBitTest.test_operator_scripts_are_executable_in_git)
+FAIL: test_install_never_removes_dir_renamed_into_staging_name (tests.test_offline_bundle.InstallPs1Test.test_install_never_removes_dir_renamed_into_staging_name)
+FAIL: test_install_ps1_never_removes_staging_recursively_by_name (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_never_removes_staging_recursively_by_name)
+FAIL: test_install_never_removes_dir_renamed_into_staging_name (tests.test_offline_bundle.InstallShTest.test_install_never_removes_dir_renamed_into_staging_name)
+FAIL: test_install_sh_never_removes_staging_recursively_by_name (tests.test_offline_bundle.InstallShTest.test_install_sh_never_removes_staging_recursively_by_name)
+FAIL: test_install_never_removes_dir_renamed_into_staging_name (tests.test_offline_bundle.InstallPs1Test.test_install_never_removes_dir_renamed_into_staging_name)
+FAIL: test_install_ps1_never_removes_staging_recursively_by_name (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_never_removes_staging_recursively_by_name)
+FAIL: test_install_never_removes_dir_renamed_into_staging_name (tests.test_offline_bundle.InstallShTest.test_install_never_removes_dir_renamed_into_staging_name)
+FAIL: test_install_sh_never_removes_staging_recursively_by_name (tests.test_offline_bundle.InstallShTest.test_install_sh_never_removes_staging_recursively_by_name)
+FAIL: test_install_never_removes_dir_renamed_into_staging_name (tests.scratch_r5.OddPs1.test_install_never_removes_dir_renamed_into_staging_name)
+FAIL: test_install_ps1_never_removes_staging_recursively_by_name (tests.scratch_r5.OddPs1.test_install_ps1_never_removes_staging_recursively_by_name)
+FAIL: test_install_never_removes_dir_renamed_into_staging_name (tests.scratch_r5.OddSh.test_install_never_removes_dir_renamed_into_staging_name)
+FAIL: test_install_sh_never_removes_staging_recursively_by_name (tests.scratch_r5.OddSh.test_install_sh_never_removes_staging_recursively_by_name)
+Ran 297 tests in 361.887s
+FAILED (failures=13, skipped=8)
+
+## Mutant failure detail (first occurrence of each)
+FAIL: test_install_never_removes_dir_renamed_into_staging_name (tests.test_offline_bundle.InstallPs1Test.test_install_never_removes_dir_renamed_into_staging_name)
+Security M-7 (probes A2r/A10, W1r): at `docker info`, after the
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 1250, in test_install_never_removes_dir_renamed_into_staging_name
+    t.assertTrue(landed.is_dir() and not landed.is_symlink(),
+AssertionError: False is not true : scripts/install.ps1 deleted the operator directory renamed into the staging name .ke-install.27208d49a34d0e05: the cleanup removes staging recursively by name (security M-7; use rmdir / Directory.Delete(path, $false)):
+manifest sha256: f5130405d68b661f95c5bb37200cccaf1e34dcc054cd3f81196b60166efdb9fe (not checked: compare it with the value from your release record)
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+manifest sha256: f5130405d68b661f95c5bb37200cccaf1e34dcc054cd3f81196b60166efdb9fe
+installed to /tmp/tmph9i9s24b/target1
+next: cd '/tmp/tmph9i9s24b/target1'; scripts/launch.ps1
+
+
+======================================================================
+FAIL: test_install_ps1_never_removes_staging_recursively_by_name (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_never_removes_staging_recursively_by_name)
+Security M-7: `Remove-Item -LiteralPath $script:Staging -Recurse`
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 2143, in test_install_ps1_never_removes_staging_recursively_by_name
+    self.assertEqual(bad, [], "install.ps1 removes staging recursively by its name (security M-7): empty the "
+AssertionError: Lists differ: ['install.ps1:847: try { [System.IO.Direct[56 chars]_ }'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'install.ps1:847: try { [System.IO.Directory]::Delete($script:Staging, $true) } catch { $null = $_ }'
+
++ []
+- ['install.ps1:847: try { [System.IO.Directory]::Delete($script:Staging, $true) '
+-  '} catch { $null = $_ }'] : install.ps1 removes staging recursively by its name (security M-7): empty the pinned staging from inside, then [System.IO.Directory]::Delete($script:Staging, $false)
+
+======================================================================
+FAIL: test_install_never_removes_dir_renamed_into_staging_name (tests.test_offline_bundle.InstallShTest.test_install_never_removes_dir_renamed_into_staging_name)
+Security M-7 (probes A2r/A10, W1r): at `docker info`, after the
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 1250, in test_install_never_removes_dir_renamed_into_staging_name
+    t.assertTrue(landed.is_dir() and not landed.is_symlink(),
+AssertionError: False is not true : scripts/install.sh deleted the operator directory renamed into the staging name .ke-install.kv68JvfD: the cleanup removes staging recursively by name (security M-7; use rmdir / Directory.Delete(path, $false)):
+manifest sha256: f5130405d68b661f95c5bb37200cccaf1e34dcc054cd3f81196b60166efdb9fe (not checked: compare it with the value from your release record)
+loaded ke-app.tar as ke-app:bundle-0123456789ab
+loaded postgres.tar as ke-vendor/postgres:053bbdccec5d
+manifest sha256: f5130405d68b661f95c5bb37200cccaf1e34dcc054cd3f81196b60166efdb9fe
+installed to /tmp/tmpef2rjkof/target1
+next: cd /tmp/tmpef2rjkof/target1 && bash scripts/launch.sh
+
+
+======================================================================
+FAIL: test_install_sh_never_removes_staging_recursively_by_name (tests.test_offline_bundle.InstallShTest.test_install_sh_never_removes_staging_recursively_by_name)
+Security M-7: `rm -rf -- "$staging"` deletes whatever directory sits
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/w/tests/test_offline_bundle.py", line 1767, in test_install_sh_never_removes_staging_recursively_by_name
+    self.assertEqual(bad, [], "install.sh removes staging recursively by its name (security M-7): empty the "
+AssertionError: Lists differ: ['install.sh:105: */.ke-install.*) rm -rf -- "$staging" || true ;;'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'install.sh:105: */.ke-install.*) rm -rf -- "$staging" || true ;;'
+
+- ['install.sh:105: */.ke-install.*) rm -rf -- "$staging" || true ;;']
++ [] : install.sh removes staging recursively by its name (security M-7): empty the pinned staging from inside, then `rmdir -- "$staging"`
+
+
+## tests/scratch_r5.py
+"""Reviewer r5 probes (scratch only; never in the repo)."""
+from tests.test_offline_bundle import InstallPs1Test, InstallShTest
+
+
+def _report(name, result, extra=""):
+    print(f"\nPROBE {name}: rc={result.returncode} {extra}\n  out: {(result.stdout or '')[-300:]!r}\n  err: {(result.stderr or '')[-400:]!r}")
+
+
+class _OddSticky:
+    def test_probe_sticky_other_write_only(self):
+        for mode in (0o1757, 0o1703, 0o1777, 0o757, 0o755):
+            bundle, _ = self._fresh()
+            parent = self.tmp / f"odd{self.n}"
+            parent.mkdir()
+            parent.chmod(mode)
+            target = parent / "ke"
+            result, _, log = self._install(bundle, target, argv=self.argv(bundle, target))
+            _report(f"{type(self).__name__}.parent_{oct(mode)}", result,
+                    f"docker_ran={bool(log)} installed={(target / 'docker-compose.yml').exists()}")
+
+
+class OddSh(_OddSticky, InstallShTest):
+    pass
+
+
+class OddPs1(_OddSticky, InstallPs1Test):
+    pass

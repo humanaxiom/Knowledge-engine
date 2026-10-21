@@ -1,0 +1,403 @@
+# ci-speed rework 3, reviewer mutants. Scratch copies only (repo files untouched). Image ke-gates:wt-33a132fbfdd7, --network none, uid 10001, cap-drop ALL, scratch tree mounted read-only at /rv; containers ke-reviewer-cs3-* (label com.docker.compose.project=ke-reviewer-cs3).
+# control: Ran 35 tests, OK (IntegrationRunsOnceTest, UnitStageStaticTest, ResourceProbeTest, bracket test, ChildCpuHelperTest).
+# grandchild check: sh -c in the image is dash; the busy 'grandchild' in test_busy_grandchild_is_counted has ppid != test pid (a real grandchild).
+===== T1_no_end_on_fail (05:06:16) =====
+110c110
+< unit_runs || unit_rc=$?
+---
+> unit_runs || exit $?
+FAIL: test_resource_lines_bracket_the_unit_stage (tests.test_harness_followups.IntegrationRunsOnceTest.test_resource_lines_bracket_the_unit_stage) (mode='fast', run='top-level run fails')
+FAIL: test_bad (tests.test_bad.Bad.test_bad)
+Ran 3 tests in 0.001s
+FAILED (failures=1)
+FAIL: test_resource_lines_bracket_the_unit_stage (tests.test_harness_followups.IntegrationRunsOnceTest.test_resource_lines_bracket_the_unit_stage) (mode='full', run='top-level run fails')
+FAIL: test_bad (tests.test_bad.Bad.test_bad)
+Ran 3 tests in 0.001s
+FAILED (failures=1)
+FAIL: test_resource_lines_bracket_the_unit_stage (tests.test_harness_followups.IntegrationRunsOnceTest.test_resource_lines_bracket_the_unit_stage) (mode='fast', run='sub-package run fails')
+Ran 2 tests in 0.000s
+OK
+FAIL: test_bad (tests.unit.test_bad.Bad.test_bad)
+Ran 3 tests in 0.001s
+FAILED (failures=1)
+FAIL: test_resource_lines_bracket_the_unit_stage (tests.test_harness_followups.IntegrationRunsOnceTest.test_resource_lines_bracket_the_unit_stage) (mode='full', run='sub-package run fails')
+Ran 2 tests in 0.000s
+OK
+FAIL: test_bad (tests.unit.test_bad.Bad.test_bad)
+Ran 3 tests in 0.001s
+FAILED (failures=1)
+Ran 27 tests in 49.349s
+FAILED (failures=4)
+===== T2_fail_swallowed (05:07:06) =====
+112c112
+< [ "$unit_rc" -eq 0 ] || exit "$unit_rc"
+---
+> true
+FAIL: test_each_coverage_run_leaves_data_or_fails_naming_its_label (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_coverage_run_leaves_data_or_fails_naming_its_label) (mode='fast', label='tests.unit')
+Ran 2 tests in 0.000s
+OK
+Ran 2 tests in 0.000s
+OK
+FAIL: test_each_coverage_run_leaves_data_or_fails_naming_its_label (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_coverage_run_leaves_data_or_fails_naming_its_label) (mode='full', label='toplevel')
+Ran 2 tests in 0.000s
+OK
+Ran 1 test in 0.000s
+OK
+FAIL: test_each_coverage_run_leaves_data_or_fails_naming_its_label (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_coverage_run_leaves_data_or_fails_naming_its_label) (mode='full', label='tests.unit')
+Ran 2 tests in 0.000s
+OK
+Ran 2 tests in 0.000s
+OK
+Ran 1 test in 0.000s
+OK
+FAIL: test_failing_module_fails_run_and_other_modules_still_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_module_fails_run_and_other_modules_still_run)
+FAIL: test_fails (tests.test_fails.Fails.test_fails)
+Ran 3 tests in 0.001s
+FAILED (failures=1)
+FAIL: test_failing_subpackage_module_fails_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_subpackage_module_fails_run) (mode='fast')
+Ran 2 tests in 0.001s
+OK
+FAIL: test_bad (tests.unit.test_bad.Bad.test_bad)
+Ran 3 tests in 0.001s
+FAILED (failures=1)
+FAIL: test_failing_subpackage_module_fails_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_subpackage_module_fails_run) (mode='full')
+Ran 2 tests in 0.000s
+OK
+FAIL: test_bad (tests.unit.test_bad.Bad.test_bad)
+Ran 3 tests in 0.001s
+FAILED (failures=1)
+Ran 1 test in 0.000s
+OK
+FAIL: test_resource_lines_bracket_the_unit_stage (tests.test_harness_followups.IntegrationRunsOnceTest.test_resource_lines_bracket_the_unit_stage) (mode='fast', run='top-level run fails')
+FAIL: test_bad (tests.test_bad.Bad.test_bad)
+Ran 3 tests in 0.001s
+FAILED (failures=1)
+FAIL: test_resource_lines_bracket_the_unit_stage (tests.test_harness_followups.IntegrationRunsOnceTest.test_resource_lines_bracket_the_unit_stage) (mode='full', run='top-level run fails')
+FAIL: test_bad (tests.test_bad.Bad.test_bad)
+Ran 3 tests in 0.001s
+FAILED (failures=1)
+Ran 1 test in 0.000s
+OK
+FAIL: test_resource_lines_bracket_the_unit_stage (tests.test_harness_followups.IntegrationRunsOnceTest.test_resource_lines_bracket_the_unit_stage) (mode='fast', run='sub-package run fails')
+Ran 2 tests in 0.000s
+OK
+FAIL: test_bad (tests.unit.test_bad.Bad.test_bad)
+Ran 3 tests in 0.001s
+FAILED (failures=1)
+FAIL: test_resource_lines_bracket_the_unit_stage (tests.test_harness_followups.IntegrationRunsOnceTest.test_resource_lines_bracket_the_unit_stage) (mode='full', run='sub-package run fails')
+Ran 2 tests in 0.000s
+OK
+FAIL: test_bad (tests.unit.test_bad.Bad.test_bad)
+Ran 3 tests in 0.001s
+FAILED (failures=1)
+Ran 1 test in 0.000s
+OK
+Ran 27 tests in 51.867s
+FAILED (failures=10)
+===== T3_rc_check_late (05:07:58) =====
+112d111
+< [ "$unit_rc" -eq 0 ] || exit "$unit_rc"
+116a116
+> [ "$unit_rc" -eq 0 ] || exit "$unit_rc"
+FAIL: test_failing_subpackage_module_fails_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_subpackage_module_fails_run) (mode='full')
+FAIL: test_resource_lines_bracket_the_unit_stage (tests.test_harness_followups.IntegrationRunsOnceTest.test_resource_lines_bracket_the_unit_stage) (mode='full', run='top-level run fails')
+FAIL: test_resource_lines_bracket_the_unit_stage (tests.test_harness_followups.IntegrationRunsOnceTest.test_resource_lines_bracket_the_unit_stage) (mode='full', run='sub-package run fails')
+Ran 27 tests in 49.952s
+FAILED (failures=3)
+===== T4_label_tests (05:08:48) =====
+94c94
+<   cov_run toplevel -v --durations 10 "${mods[@]}" || return $?
+---
+>   cov_run tests -v --durations 10 "${mods[@]}" || return $?
+FAIL: test_combine_leaving_a_run_data_file_fails_naming_its_label (tests.test_harness_followups.IntegrationRunsOnceTest.test_combine_leaving_a_run_data_file_fails_naming_its_label) (mode='fast', run='control')
+FAIL: test_combine_leaving_a_run_data_file_fails_naming_its_label (tests.test_harness_followups.IntegrationRunsOnceTest.test_combine_leaving_a_run_data_file_fails_naming_its_label) (mode='fast', run='unconsumed', label='toplevel')
+FAIL: test_combine_leaving_a_run_data_file_fails_naming_its_label (tests.test_harness_followups.IntegrationRunsOnceTest.test_combine_leaving_a_run_data_file_fails_naming_its_label) (mode='full', run='control')
+FAIL: test_combine_leaving_a_run_data_file_fails_naming_its_label (tests.test_harness_followups.IntegrationRunsOnceTest.test_combine_leaving_a_run_data_file_fails_naming_its_label) (mode='full', run='unconsumed', label='toplevel')
+FAIL: test_coverage_combine_gets_an_explicit_file_list (tests.test_harness_followups.IntegrationRunsOnceTest.test_coverage_combine_gets_an_explicit_file_list) (mode='fast')
+FAIL: test_coverage_combine_gets_an_explicit_file_list (tests.test_harness_followups.IntegrationRunsOnceTest.test_coverage_combine_gets_an_explicit_file_list) (mode='full')
+FAIL: test_each_coverage_run_leaves_data_or_fails_naming_its_label (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_coverage_run_leaves_data_or_fails_naming_its_label) (mode='fast', label='toplevel')
+FAIL: test_each_coverage_run_leaves_data_or_fails_naming_its_label (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_coverage_run_leaves_data_or_fails_naming_its_label) (mode='full', label='toplevel')
+FAIL: test_top_level_modules_run_in_one_process (tests.test_harness_followups.IntegrationRunsOnceTest.test_top_level_modules_run_in_one_process) (mode='fast')
+FAIL: test_top_level_modules_run_in_one_process (tests.test_harness_followups.IntegrationRunsOnceTest.test_top_level_modules_run_in_one_process) (mode='full')
+FAIL: test_top_level_run_has_durations_10_and_no_other_run_does (tests.test_harness_followups.IntegrationRunsOnceTest.test_top_level_run_has_durations_10_and_no_other_run_does) (mode='fast')
+FAIL: test_top_level_run_has_durations_10_and_no_other_run_does (tests.test_harness_followups.IntegrationRunsOnceTest.test_top_level_run_has_durations_10_and_no_other_run_does) (mode='full')
+Ran 27 tests in 47.954s
+FAILED (failures=12)
+===== T5_start_after_top (05:09:36) =====
+93d92
+<   bash scripts/resource_probe.sh start
+94a94
+>   bash scripts/resource_probe.sh start
+FAIL: test_resource_lines_bracket_the_unit_stage (tests.test_harness_followups.IntegrationRunsOnceTest.test_resource_lines_bracket_the_unit_stage) (mode='fast', run='all pass')
+FAIL: test_resource_lines_bracket_the_unit_stage (tests.test_harness_followups.IntegrationRunsOnceTest.test_resource_lines_bracket_the_unit_stage) (mode='full', run='all pass')
+FAIL: test_resource_lines_bracket_the_unit_stage (tests.test_harness_followups.IntegrationRunsOnceTest.test_resource_lines_bracket_the_unit_stage) (mode='fast', run='top-level run fails')
+FAIL: test_bad (tests.test_bad.Bad.test_bad)
+Ran 3 tests in 0.001s
+FAILED (failures=1)
+FAIL: test_resource_lines_bracket_the_unit_stage (tests.test_harness_followups.IntegrationRunsOnceTest.test_resource_lines_bracket_the_unit_stage) (mode='full', run='top-level run fails')
+FAIL: test_bad (tests.test_bad.Bad.test_bad)
+Ran 3 tests in 0.001s
+FAILED (failures=1)
+Ran 27 tests in 47.151s
+FAILED (failures=4)
+===== T6_sub_fail_ignored (05:10:23) =====
+104c104
+<     cov_run "$label" discover -s "$d" -t . -v || return $?
+---
+>     cov_run "$label" discover -s "$d" -t . -v || true
+FAIL: test_each_coverage_run_leaves_data_or_fails_naming_its_label (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_coverage_run_leaves_data_or_fails_naming_its_label) (mode='fast', label='tests.unit')
+Ran 2 tests in 0.001s
+OK
+Ran 2 tests in 0.000s
+OK
+FAIL: test_each_coverage_run_leaves_data_or_fails_naming_its_label (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_coverage_run_leaves_data_or_fails_naming_its_label) (mode='full', label='tests.unit')
+Ran 2 tests in 0.000s
+OK
+Ran 2 tests in 0.000s
+OK
+Ran 1 test in 0.000s
+OK
+FAIL: test_failing_subpackage_module_fails_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_subpackage_module_fails_run) (mode='fast')
+Ran 2 tests in 0.000s
+OK
+FAIL: test_bad (tests.unit.test_bad.Bad.test_bad)
+Ran 3 tests in 0.001s
+FAILED (failures=1)
+FAIL: test_failing_subpackage_module_fails_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_subpackage_module_fails_run) (mode='full')
+Ran 2 tests in 0.000s
+OK
+FAIL: test_bad (tests.unit.test_bad.Bad.test_bad)
+Ran 3 tests in 0.001s
+FAILED (failures=1)
+Ran 1 test in 0.000s
+OK
+FAIL: test_resource_lines_bracket_the_unit_stage (tests.test_harness_followups.IntegrationRunsOnceTest.test_resource_lines_bracket_the_unit_stage) (mode='fast', run='sub-package run fails')
+Ran 2 tests in 0.000s
+OK
+FAIL: test_bad (tests.unit.test_bad.Bad.test_bad)
+Ran 3 tests in 0.001s
+FAILED (failures=1)
+FAIL: test_resource_lines_bracket_the_unit_stage (tests.test_harness_followups.IntegrationRunsOnceTest.test_resource_lines_bracket_the_unit_stage) (mode='full', run='sub-package run fails')
+Ran 2 tests in 0.000s
+OK
+FAIL: test_bad (tests.unit.test_bad.Bad.test_bad)
+Ran 3 tests in 0.001s
+FAILED (failures=1)
+Ran 1 test in 0.000s
+OK
+Ran 27 tests in 48.686s
+FAILED (failures=6)
+===== T7_nodata_ignored (05:11:12) =====
+89c89
+<   collect_data "$label" || return 1
+---
+>   collect_data "$label" || true
+FAIL: test_each_coverage_run_leaves_data_or_fails_naming_its_label (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_coverage_run_leaves_data_or_fails_naming_its_label) (mode='fast', label='toplevel')
+Ran 2 tests in 0.000s
+OK
+Ran 2 tests in 0.000s
+OK
+FAIL: test_each_coverage_run_leaves_data_or_fails_naming_its_label (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_coverage_run_leaves_data_or_fails_naming_its_label) (mode='fast', label='tests.unit')
+Ran 2 tests in 0.000s
+OK
+Ran 2 tests in 0.000s
+OK
+FAIL: test_each_coverage_run_leaves_data_or_fails_naming_its_label (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_coverage_run_leaves_data_or_fails_naming_its_label) (mode='full', label='toplevel')
+Ran 2 tests in 0.000s
+OK
+Ran 2 tests in 0.000s
+OK
+Ran 1 test in 0.000s
+OK
+FAIL: test_each_coverage_run_leaves_data_or_fails_naming_its_label (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_coverage_run_leaves_data_or_fails_naming_its_label) (mode='full', label='tests.unit')
+Ran 2 tests in 0.000s
+OK
+Ran 2 tests in 0.000s
+OK
+Ran 1 test in 0.000s
+OK
+FAIL: test_each_coverage_run_leaves_data_or_fails_naming_its_label (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_coverage_run_leaves_data_or_fails_naming_its_label) (mode='full', label='tests.integration')
+Ran 2 tests in 0.000s
+OK
+Ran 2 tests in 0.000s
+OK
+Ran 1 test in 0.000s
+OK
+Ran 27 tests in 47.214s
+FAILED (failures=5)
+===== T8_combine_noargs (05:11:59) =====
+122c122
+< uv run --locked python -m coverage combine "${data_files[@]}"
+---
+> uv run --locked python -m coverage combine
+FAIL: test_coverage_combine_gets_an_explicit_file_list (tests.test_harness_followups.IntegrationRunsOnceTest.test_coverage_combine_gets_an_explicit_file_list) (mode='fast')
+FAIL: test_coverage_combine_gets_an_explicit_file_list (tests.test_harness_followups.IntegrationRunsOnceTest.test_coverage_combine_gets_an_explicit_file_list) (mode='full')
+Ran 27 tests in 45.603s
+FAILED (failures=2)
+===== T9_durations_all (05:12:45) =====
+104c104
+<     cov_run "$label" discover -s "$d" -t . -v || return $?
+---
+>     cov_run "$label" discover -s "$d" -t . -v --durations 10 || return $?
+FAIL: test_top_level_run_has_durations_10_and_no_other_run_does (tests.test_harness_followups.IntegrationRunsOnceTest.test_top_level_run_has_durations_10_and_no_other_run_does) (mode='fast')
+FAIL: test_top_level_run_has_durations_10_and_no_other_run_does (tests.test_harness_followups.IntegrationRunsOnceTest.test_top_level_run_has_durations_10_and_no_other_run_does) (mode='full')
+Ran 27 tests in 45.755s
+FAILED (failures=2)
+===== T10_top_two_procs (05:13:31) =====
+94c94,95
+<   cov_run toplevel -v --durations 10 "${mods[@]}" || return $?
+---
+>   cov_run toplevel -v --durations 10 "${mods[0]}" || return $?
+>   if [ "${#mods[@]}" -gt 1 ]; then uv run --locked python -m coverage run -p --data-file="$cov_dir/$cov_name.toplevel" -m unittest -v "${mods[@]:1}" || return $?; fi
+FAIL: test_combine_leaving_a_run_data_file_fails_naming_its_label (tests.test_harness_followups.IntegrationRunsOnceTest.test_combine_leaving_a_run_data_file_fails_naming_its_label) (mode='fast', run='control')
+FAIL: test_combine_leaving_a_run_data_file_fails_naming_its_label (tests.test_harness_followups.IntegrationRunsOnceTest.test_combine_leaving_a_run_data_file_fails_naming_its_label) (mode='full', run='control')
+FAIL: test_each_coverage_run_leaves_data_or_fails_naming_its_label (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_coverage_run_leaves_data_or_fails_naming_its_label) (mode='fast', label='toplevel')
+Ran 1 test in 0.000s
+OK
+FAIL: test_each_coverage_run_leaves_data_or_fails_naming_its_label (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_coverage_run_leaves_data_or_fails_naming_its_label) (mode='full', label='toplevel')
+Ran 1 test in 0.000s
+OK
+FAIL: test_failing_module_fails_run_and_other_modules_still_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_module_fails_run_and_other_modules_still_run) (module='tests.test_x')
+FAIL: test_failing_module_fails_run_and_other_modules_still_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_module_fails_run_and_other_modules_still_run) (module='tests.testfoo')
+FAIL: test_top_level_modules_run_in_one_process (tests.test_harness_followups.IntegrationRunsOnceTest.test_top_level_modules_run_in_one_process) (mode='fast')
+FAIL: test_top_level_modules_run_in_one_process (tests.test_harness_followups.IntegrationRunsOnceTest.test_top_level_modules_run_in_one_process) (mode='full')
+FAIL: test_top_level_run_has_durations_10_and_no_other_run_does (tests.test_harness_followups.IntegrationRunsOnceTest.test_top_level_run_has_durations_10_and_no_other_run_does) (mode='fast')
+FAIL: test_top_level_run_has_durations_10_and_no_other_run_does (tests.test_harness_followups.IntegrationRunsOnceTest.test_top_level_run_has_durations_10_and_no_other_run_does) (mode='full')
+FAIL: test_verify_fails_when_a_top_level_module_exits_zero_at_import (tests.test_harness_followups.IntegrationRunsOnceTest.test_verify_fails_when_a_top_level_module_exits_zero_at_import) (mode='fast')
+Ran 3 tests in 0.000s
+OK
+Ran 2 tests in 0.000s
+OK
+FAIL: test_verify_fails_when_a_top_level_module_exits_zero_at_import (tests.test_harness_followups.IntegrationRunsOnceTest.test_verify_fails_when_a_top_level_module_exits_zero_at_import) (mode='full')
+Ran 3 tests in 0.000s
+OK
+Ran 2 tests in 0.000s
+OK
+Ran 1 test in 0.000s
+OK
+Ran 27 tests in 54.285s
+FAILED (failures=12)
+===== T11_probe_root_passed (05:14:25) =====
+111c111
+< bash scripts/resource_probe.sh end
+---
+> bash scripts/resource_probe.sh end /
+FAIL: test_probe_runs_with_a_phase_only (tests.test_harness_followups.UnitStageStaticTest.test_probe_runs_with_a_phase_only) (args=' end /')
+Ran 27 tests in 45.599s
+FAILED (failures=1)
+===== P1_raw_meminfo (05:15:11) =====
+88c88
+< printf ' mem_total_kib=%s' "$(num "$(field "$pr_root/proc/meminfo" MemTotal:)")"
+---
+> printf ' mem_total_kib=%s' "$(field "$pr_root/proc/meminfo" MemTotal:)"
+FAIL: test_missing_sources_print_na_and_exit_0 (tests.test_resource_probe.ResourceProbeTest.test_missing_sources_print_na_and_exit_0) (case='empty root, no nproc')
+FAIL: test_missing_sources_print_na_and_exit_0 (tests.test_resource_probe.ResourceProbeTest.test_missing_sources_print_na_and_exit_0) (case='every source a directory, nproc fails')
+FAIL: test_missing_sources_print_na_and_exit_0 (tests.test_resource_probe.ResourceProbeTest.test_missing_sources_print_na_and_exit_0) (case='every source chmod 000')
+FAIL: test_prints_only_numbers_never_file_text_or_env (tests.test_resource_probe.ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env) (leak='SECRET')
+FAIL: test_prints_only_numbers_never_file_text_or_env (tests.test_resource_probe.ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env) (case='file text in every source')
+FAIL: test_prints_only_numbers_never_file_text_or_env (tests.test_resource_probe.ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env) (case='env set, sources missing, no nproc')
+Ran 4 tests in 4.468s
+FAILED (failures=6)
+===== P2_stderr_open (05:15:16) =====
+11c11
+< exec 2>/dev/null
+---
+> 
+FAIL: test_missing_sources_print_na_and_exit_0 (tests.test_resource_probe.ResourceProbeTest.test_missing_sources_print_na_and_exit_0) (case='empty root, no nproc')
+FAIL: test_missing_sources_print_na_and_exit_0 (tests.test_resource_probe.ResourceProbeTest.test_missing_sources_print_na_and_exit_0) (case='every source a directory, nproc fails')
+FAIL: test_missing_sources_print_na_and_exit_0 (tests.test_resource_probe.ResourceProbeTest.test_missing_sources_print_na_and_exit_0) (case='every source chmod 000')
+FAIL: test_prints_only_numbers_never_file_text_or_env (tests.test_resource_probe.ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env) (case='env set, sources missing, no nproc')
+Ran 4 tests in 4.583s
+FAILED (failures=4)
+===== P3_exit1 (05:15:20) =====
+101c101
+< exit 0
+---
+> exit 1
+FAIL: test_missing_sources_print_na_and_exit_0 (tests.test_resource_probe.ResourceProbeTest.test_missing_sources_print_na_and_exit_0) (case='empty root, no nproc')
+FAIL: test_missing_sources_print_na_and_exit_0 (tests.test_resource_probe.ResourceProbeTest.test_missing_sources_print_na_and_exit_0) (case='every source a directory, nproc fails')
+FAIL: test_missing_sources_print_na_and_exit_0 (tests.test_resource_probe.ResourceProbeTest.test_missing_sources_print_na_and_exit_0) (case='every source chmod 000')
+FAIL: test_prints_one_line_from_a_fake_root (tests.test_resource_probe.ResourceProbeTest.test_prints_one_line_from_a_fake_root) (phase='start')
+FAIL: test_prints_one_line_from_a_fake_root (tests.test_resource_probe.ResourceProbeTest.test_prints_one_line_from_a_fake_root) (phase='end')
+FAIL: test_prints_one_line_from_a_fake_root (tests.test_resource_probe.ResourceProbeTest.test_prints_one_line_from_a_fake_root) (case='cpu.max max, numeric memory.max')
+FAIL: test_prints_only_numbers_never_file_text_or_env (tests.test_resource_probe.ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env) (case='file text in every source')
+FAIL: test_prints_only_numbers_never_file_text_or_env (tests.test_resource_probe.ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env) (case='env set, sources missing, no nproc')
+FAIL: test_prints_only_numbers_never_file_text_or_env (tests.test_resource_probe.ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env) (phase='SECRET=x')
+FAIL: test_prints_only_numbers_never_file_text_or_env (tests.test_resource_probe.ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env) (phase='')
+FAIL: test_prints_only_numbers_never_file_text_or_env (tests.test_resource_probe.ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env) (phase='start end')
+FAIL: test_prints_only_numbers_never_file_text_or_env (tests.test_resource_probe.ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env) (phase='ke-canary-b5109f994473411cb862cb4756ca3f85')
+FAIL: test_resource_lines_bracket_the_unit_stage (tests.test_harness_followups.IntegrationRunsOnceTest.test_resource_lines_bracket_the_unit_stage) (mode='fast', run='all pass')
+Ran 2 tests in 0.000s
+OK
+Ran 2 tests in 0.000s
+OK
+FAIL: test_resource_lines_bracket_the_unit_stage (tests.test_harness_followups.IntegrationRunsOnceTest.test_resource_lines_bracket_the_unit_stage) (mode='full', run='all pass')
+Ran 2 tests in 0.001s
+OK
+Ran 2 tests in 0.000s
+OK
+Ran 4 tests in 4.302s
+FAILED (failures=14)
+===== P4_total_no_steal (05:15:25) =====
+73c73
+<   for pr_v in "${pr_u:-}" "${pr_n:-}" "${pr_s:-}" "${pr_i:-}" "${pr_w:-}" "${pr_irq:-}" "${pr_sirq:-}" "${pr_st:-}"; do
+---
+>   for pr_v in "${pr_u:-}" "${pr_n:-}" "${pr_s:-}" "${pr_i:-}" "${pr_w:-}" "${pr_irq:-}" "${pr_sirq:-}"; do
+FAIL: test_prints_one_line_from_a_fake_root (tests.test_resource_probe.ResourceProbeTest.test_prints_one_line_from_a_fake_root) (phase='start')
+FAIL: test_prints_one_line_from_a_fake_root (tests.test_resource_probe.ResourceProbeTest.test_prints_one_line_from_a_fake_root) (phase='end')
+FAIL: test_prints_one_line_from_a_fake_root (tests.test_resource_probe.ResourceProbeTest.test_prints_one_line_from_a_fake_root) (case='cpu.max max, numeric memory.max')
+FAIL: test_prints_only_numbers_never_file_text_or_env (tests.test_resource_probe.ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env) (leak='SECRET')
+FAIL: test_prints_only_numbers_never_file_text_or_env (tests.test_resource_probe.ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env) (case='file text in every source')
+FAIL: test_prints_only_numbers_never_file_text_or_env (tests.test_resource_probe.ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env) (phase='SECRET=x')
+FAIL: test_prints_only_numbers_never_file_text_or_env (tests.test_resource_probe.ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env) (phase='')
+FAIL: test_prints_only_numbers_never_file_text_or_env (tests.test_resource_probe.ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env) (phase='start end')
+FAIL: test_prints_only_numbers_never_file_text_or_env (tests.test_resource_probe.ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env) (phase='ke-canary-43e01517760b4cef9ad7542ebe017c02')
+Ran 4 tests in 4.576s
+FAILED (failures=9)
+===== P5_raw_phase (05:15:29) =====
+15c15
+< case "$pr_phase" in start | end) ;; *) pr_phase="n/a" ;; esac
+---
+> :
+FAIL: test_prints_only_numbers_never_file_text_or_env (tests.test_resource_probe.ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env) (phase='SECRET=x')
+FAIL: test_prints_only_numbers_never_file_text_or_env (tests.test_resource_probe.ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env) (phase='')
+FAIL: test_prints_only_numbers_never_file_text_or_env (tests.test_resource_probe.ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env) (phase='start end')
+FAIL: test_prints_only_numbers_never_file_text_or_env (tests.test_resource_probe.ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env) (phase='ke-canary-1ca301d4c8f44186aad3afa2cd5e631f')
+Ran 4 tests in 4.561s
+FAILED (failures=4)
+===== P6_peak_allows_max (05:15:34) =====
+93c93
+< printf ' cg_mem_peak=%s' "$(num "$(one "$cg/memory.peak")")"
+---
+> printf ' cg_mem_peak=%s' "$(nummax "$(one "$cg/memory.peak")")"
+FAIL: test_prints_only_numbers_never_file_text_or_env (tests.test_resource_probe.ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env) (case='file text in every source')
+Ran 4 tests in 4.366s
+FAILED (failures=1)
+===== P7_env_root (05:15:39) =====
+16c16
+< pr_root="${2:-/}"
+---
+> pr_root="${2:-${ROOT:-/}}"
+Ran 4 tests in 4.657s
+OK
+===== H1_rusage_self (05:15:43) =====
+53c53
+<     before = resource.getrusage(resource.RUSAGE_CHILDREN)
+---
+>     before = resource.getrusage(resource.RUSAGE_SELF)
+55c55
+<     after = resource.getrusage(resource.RUSAGE_CHILDREN)
+---
+>     after = resource.getrusage(resource.RUSAGE_SELF)
+FAIL: test_busy_child_counts_about_its_wall_time (tests.test_block_main_commit_hook.ChildCpuHelperTest.test_busy_child_counts_about_its_wall_time)
+FAIL: test_busy_grandchild_is_counted (tests.test_block_main_commit_hook.ChildCpuHelperTest.test_busy_grandchild_is_counted)
+Ran 4 tests in 3.068s
+FAILED (failures=2)
+===== H2_no_timeout (05:15:47) =====
+54c54
+<     result = subprocess.run(args, timeout=HANG_GUARD_S, **kwargs)
+---
+>     result = subprocess.run(args, **kwargs)
+FAIL: test_hang_guard_is_a_60_s_timeout (tests.test_block_main_commit_hook.ChildCpuHelperTest.test_hang_guard_is_a_60_s_timeout)
+Ran 4 tests in 3.046s
+FAILED (failures=1)

@@ -63,10 +63,9 @@ class TypedConfigTest(unittest.TestCase):
         self.assertEqual(settings.env, "prod")
         self.assertIs(settings.auth.enabled, True)
         self.assertEqual(list(settings.egress_allowlist), [])
-        self.assertEqual(settings.models.compose.model, "qwen2.5:14b-instruct")
-        self.assertEqual(settings.models.compose.fallback_model, "llama3.1:8b")
-        self.assertEqual(settings.models.embed.model, "nomic-embed-text")
-        self.assertEqual(settings.models.embed.dim, 768)
+        # Model names and role keys: test_model_role_defaults (model-roles
+        # MR-1, MR-2, MR-6; ADR-KE-014 replaced the A7 model names, and §2.6
+        # *model-roles* step 1 moves these pins there for all four roles).
         self.assertIsNone(_upstream(settings))
         self.assertIs(settings.telemetry.hide_inputs, True)
         self.assertIs(settings.telemetry.hide_outputs, True)
@@ -116,6 +115,51 @@ class TypedConfigTest(unittest.TestCase):
         self.assertEqual(tools.telemetry.tracing, "console")
         self.assertIs(tools.telemetry.hide_inputs, False)
         self.assertIs(tools.telemetry.hide_outputs, False)
+
+    def test_model_role_defaults(self):
+        """model-roles MR-1, MR-2, MR-6 (ADR-KE-014, §2.4 *Model roles*): every
+        role's block from defaults.yaml, and no inheritance between roles."""
+        expected = {
+            "compose": {"model": "qwen3.5:latest", "fallback_model": "gpt-oss:20b", "timeout_s": 120},
+            "rewrite": {"model": "qwen3.5:latest", "fallback_model": "gpt-oss:20b", "timeout_s": 120},
+            "audit": {"model": "gpt-oss:120b", "fallback_model": "gpt-oss:20b", "timeout_s": 120},
+            "embed": {"model": "nomic-embed-text", "dim": 768, "timeout_s": 60},
+        }
+        settings = load_settings()
+        for role, keys in expected.items():
+            block = getattr(settings.models, role)
+            with self.subTest(role=role, key="base_url"):
+                self.assertIsNone(block.base_url, f"models.{role}.base_url")
+            for key, value in keys.items():
+                with self.subTest(role=role, key=key):
+                    self.assertEqual(getattr(block, key), value, f"models.{role}.{key}")
+
+        # MR-2: the fallback is distinct from every primary, and embed has no
+        # fallback_model key (in the file or the schema).
+        primaries = {keys["model"] for keys in expected.values()}
+        for role in ("compose", "rewrite", "audit"):
+            with self.subTest(role=role, check="fallback distinct from primaries"):
+                self.assertNotIn(getattr(settings.models, role).fallback_model, primaries)
+        with self.subTest(role="embed", check="no fallback_model"):
+            self.assertNotIn("fallback_model", _yaml_defaults()["models"]["embed"])
+            self.assertNotIn("fallback_model", type(settings.models.embed).model_fields)
+
+        # MR-6: readiness keeps its own timeout.
+        with self.subTest(key="readiness.timeout_s"):
+            self.assertEqual(settings.readiness.timeout_s, 2)
+
+        # MR-1 / DR29: an override touches only its own role.
+        for override_role in ("audit", "compose"):
+            marker = f"marker-{override_role}-model-7c3e"
+            overridden = load_settings(base_env(
+                **{f"KE_MODELS__{override_role.upper()}__MODEL": marker}))
+            for role, keys in expected.items():
+                with self.subTest(override=override_role, role=role):
+                    block = getattr(overridden.models, role)
+                    want = marker if role == override_role else keys["model"]
+                    self.assertEqual(block.model, want, f"models.{role}.model")
+                    if "fallback_model" in keys:
+                        self.assertEqual(block.fallback_model, keys["fallback_model"])
 
     def test_config_init_args_take_precedence(self):
         settings = load_settings(base_env(KE_ENV="prod"), env="ci")

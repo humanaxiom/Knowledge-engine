@@ -701,7 +701,7 @@ class ProviderIdentityTest(unittest.TestCase):
         self.addCleanup(decoy.shutdown)
         with globals_patched(decoy):
             with self.assertRaises(_refused()) as ctx:
-                verify_provider([])
+                verify_provider()
         self.assertEqual(ctx.exception.setting, "telemetry.tracing")
         error, attempts = _run_startup(PASSING["ci, passing"], decoy)
         self.assertIsInstance(error, _refused(), "a decoy equal to an engine provider was trusted")
@@ -826,7 +826,7 @@ class ProviderIdentityTest(unittest.TestCase):
             configure_tracing(settings)
         self.assertEqual(len(installed), 1)
         with globals_patched(installed[0]):
-            verify_provider([])  # must not raise
+            verify_provider()  # must not raise
 
     def test_support_provider_is_engine_built(self):
         # tests/support.py builds the suite's provider with build_provider (ruling R3).
@@ -835,10 +835,11 @@ class ProviderIdentityTest(unittest.TestCase):
         from engine.telemetry import verify_provider
         from tests import support
 
-        self.assertIsNone(support.BUILD_PROVIDER_ERROR,
-                          f"tests/support.py fell back to setup_tracing: {support.BUILD_PROVIDER_ERROR!r}")
+        # support.py no longer has a setup_tracing fallback (dead since
+        # build_provider landed in platform-stack-up); an import failure now
+        # errors the module. Identity plus verify_provider() still prove R3.
         self.assertIs(trace.get_tracer_provider(), support.PROVIDER)
-        verify_provider([])  # the real global, unpatched: must not raise
+        verify_provider()  # the real global, unpatched: must not raise
 
 
 def _proxy_subclass(test: unittest.TestCase) -> tuple[Any, Any]:

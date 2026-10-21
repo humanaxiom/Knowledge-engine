@@ -11,20 +11,36 @@
 # KE_ENV is not dev (fail closed).
 # Honors KE_ENV_FILE and COMPOSE_PROJECT_NAME.
 set -euo pipefail
-cd "$(dirname "$0")/.."
+CDPATH='' cd -- "$(dirname -- "$0")/.."
 
 env_file="${KE_ENV_FILE:-.env}"
-if [ ! -f "$env_file" ]; then
+if [ ! -e "$env_file" ] && [ ! -L "$env_file" ]; then
   if [ -n "${KE_ENV_FILE:-}" ]; then
     echo "error: KE_ENV_FILE does not exist: $env_file" >&2
     exit 1
   fi
-  cp .env.example .env
+  # .env holds the stack's secrets: private (0600) whatever the caller's umask (F12).
+  # A redirect, not cp: cp would carry over the example's own mode bits. set -C
+  # (noclobber) opens with O_EXCL, so a dangling .env symlink is never followed.
+  (umask 077; set -C; cat .env.example > .env)
   echo "created .env from .env.example (placeholder secrets; edit it before any use beyond local development)"
 fi
 
-at_least() { # at_least MINIMUM VERSION
-  [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n 1)" = "$1" ]
+at_least() { # at_least MINIMUM VERSION: dotted numbers, field by field (no sort -V: BSD sort lacks it)
+  local IFS=. i have want
+  local min=() ver=()
+  read -r -a min <<< "$1"
+  read -r -a ver <<< "$2"
+  for i in "${!min[@]}"; do
+    want="${min[$i]%%[!0-9]*}"
+    have="${ver[$i]-0}"
+    have="${have%%[!0-9]*}"
+    want="${want:-0}"
+    have="${have:-0}"
+    if [ "$((10#$have))" -gt "$((10#$want))" ]; then return 0; fi
+    if [ "$((10#$have))" -lt "$((10#$want))" ]; then return 1; fi
+  done
+  return 0
 }
 
 minimum=2.24
@@ -58,9 +74,22 @@ pick() { # pick KEY: the first "KEY": "value" in the resolved model
   printf '%s\n' "$resolved" | grep -m 1 -o "\"$1\": *\"[^\"]*\"" | sed -e 's/^[^:]*: *"//' -e 's/"$//' || true
 }
 ke_env="$(pick KE_ENV)"
-mapfile -t hosts < <(printf '%s\n' "$resolved" | grep -o '"host_ip": *"[^"]*"' | sed -e 's/^[^:]*: *"//' -e 's/"$//' || true)
+# One array element per match (bash 3.2 has no mapfile). The sed prefixes each
+# value with "=" so an empty value is still a line.
+collect() { # collect KEY: prints "=value" for each "KEY": "value" in the model
+  printf '%s\n' "$resolved" | grep -o "\"$1\": *\"[^\"]*\"" | sed -e 's/^[^:]*: *"/=/' -e 's/"$//' || true
+}
+hosts=()
+host_lines="$(collect host_ip)"
+while IFS= read -r line; do
+  case "$line" in =*) hosts+=("${line#=}") ;; esac
+done <<< "$host_lines"
 published_count="$(printf '%s\n' "$resolved" | grep -c '"published"' || true)"
-mapfile -t published < <(printf '%s\n' "$resolved" | grep -o '"published": *"[^"]*"' | sed -e 's/^[^:]*: *"//' -e 's/"$//' || true)
+published=()
+published_lines="$(collect published)"
+while IFS= read -r line; do
+  case "$line" in =*) published+=("${line#=}") ;; esac
+done <<< "$published_lines"
 
 # IPv4 only; IPv6 is refused in every env. Same rule as the engine's startup
 # refusal and docker/gateway/10-ke-bind-check.sh. A published port with no

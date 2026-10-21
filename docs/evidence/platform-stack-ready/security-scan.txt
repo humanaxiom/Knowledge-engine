@@ -1,0 +1,132 @@
+# security scan: platform-stack-ready, 2026-10-19 (base fe2f101, uncommitted tree)
+# Docker Engine 29.5.2; docker = /c/Program Files/Docker/Docker/resources/bin/docker (real binary, no shim). Scratch projects ke-sec-ready-a/-b, decoys ke-sec-decoy-*; all removed with volumes.
+# Image check: ke-app files (readiness, jobs, worker, api, llm/client, startup, uv.lock) sha256-match the working tree.
+
+## S1 /readyz, logs, spans, model probe, RQ/Valkey, teardown (live)
+== R1 readyz healthy (loopback)
+{"ready":true,"checks":{"postgres":{"ok":true,"reason":null},"neo4j":{"ok":true,"reason":null},"valkey":{"ok":true,"reason":null},"model_host":{"ok":false,"reason":"error:ReadError","required":false}}}
+HTTP 200 0.070105s
+== R2 LAN address 100.75.144.77
+HTTP 000
+curl rc=7 (not reachable)
+100.75.144.77 000
+rc=7
+192.168.1.80 000
+rc=7
+172.22.16.1 000
+rc=7
+172.19.32.1 000
+rc=7
+== R3 direct api port 8080 on host
+000
+rc=7
+== R4 postgres stopped
+ Container ke-sec-ready-a-postgres-1 Stopped 
+{"ready":false,"checks":{"postgres":{"ok":false,"reason":"unreachable"},"neo4j":{"ok":true,"reason":null},"valkey":{"ok":true,"reason":null},"model_host":{"ok":false,"reason":"error:ReadError","required":false}}} HTTP 503 0.050262s
+ Container ke-sec-ready-a-postgres-1 Started 
+== R5 neo4j stopped
+ Container ke-sec-ready-a-neo4j-1 Stopped 
+{"ready":false,"checks":{"postgres":{"ok":true,"reason":null},"neo4j":{"ok":false,"reason":"unreachable"},"valkey":{"ok":true,"reason":null},"model_host":{"ok":false,"reason":"error:ReadError","required":false}}} HTTP 503 0.036296s
+== R6 valkey stopped too
+ Container ke-sec-ready-a-valkey-1 Stopped 
+{"ready":false,"checks":{"postgres":{"ok":true,"reason":null},"neo4j":{"ok":false,"reason":"unreachable"},"valkey":{"ok":false,"reason":"unreachable"},"model_host":{"ok":false,"reason":"error:ReadError","required":false}}} HTTP 503 0.033430s
+ Container ke-sec-ready-a-valkey-1 Started 
+== R7 recovered
+{"ready":true,"checks":{"postgres":{"ok":true,"reason":null},"neo4j":{"ok":true,"reason":null},"valkey":{"ok":true,"reason":null},"model_host":{"ok":false,"reason":"error:ReadError","required":false}}} HTTP 200 0.043931s
+== R8 api with wrong store passwords
+ Container ke-sec-ready-a-postgres-1 Healthy 
+ Container ke-sec-ready-a-api-1 Healthy 
+{"ready":false,"checks":{"postgres":{"ok":false,"reason":"error:OperationalError"},"neo4j":{"ok":false,"reason":"auth_failed"},"valkey":{"ok":true,"reason":null},"model_host":{"ok":false,"reason":"error:ReadError","required":false}}} HTTP 503 0.078564s
+{"ready":false,"checks":{"postgres":{"ok":false,"reason":"error:OperationalError"},"neo4j":{"ok":false,"reason":"auth_failed"},"valkey":{"ok":true,"reason":null},"model_host":{"ok":false,"reason":"error:ReadError","required":false}}} HTTP 503 0.033748s
+{"ready":false,"checks":{"postgres":{"ok":false,"reason":"error:OperationalError"},"neo4j":{"ok":false,"reason":"auth_failed"},"valkey":{"ok":true,"reason":null},"model_host":{"ok":false,"reason":"error:ReadError","required":false}}} HTTP 503 0.056118s
+== R9 marker/host/DSN grep over all container logs (api log has console spans)
+PGMARKER app+gateway-logs=0
+N4MARKER app+gateway-logs=0
+WRONGPG app+gateway-logs=0
+WRONGN4 app+gateway-logs=0
+7731secret app+gateway-logs=0
+5511 app+gateway-logs=0
+postgresql:// app+gateway-logs=0
+bolt:// app+gateway-logs=0
+redis:// app+gateway-logs=0
+password app+gateway-logs=0
+modelhost.invalid app+gateway-logs=10
+postgres:5432 app+gateway-logs=0
+P1 base_url phoenix, not on allowlist -> egress_denied
+P2 allowlisted 127.0.0.1 redirecting to phoenix -> egress_denied
+stub hits: ['/v1/models']
+sockets opened via create_connection: [('127.0.0.1', 18999)]
+== W1 enqueue an arbitrary importable callable (not in engine.jobs) from api; worker runs it
+Traceback (most recent call last):
+  File "<string>", line 11, in <module>
+AttributeError: 'functools.partial' object has no attribute '__qualname__'
+func=platform.node status JobStatus.FINISHED result c10f8a69dc39
+== W2 TCP reach to valkey:6379 from other backend containers
+gateway: OPEN
+phoenix: b'+PONG\r\n'
+== T1 teardown scoping: decoys labelled ke-sec-ready-a-x, ke-sec-ready, KE-SEC-READY-A; own leftover labelled ke-sec-ready-a
+ke-sec-decoy-ke-sec-ready-a-20919 ke-sec-ready-a
+ke-sec-decoy-ke-sec-ready-a-10258 KE-SEC-READY-A
+ke-sec-decoy-ke-sec-ready-6092 ke-sec-ready
+ke-sec-decoy-ke-sec-ready-a-x-1277 ke-sec-ready-a-x
+teardown: FAIL (project ke-sec-ready-a still has resources after down; remove them by hand):
+  container ke-sec-decoy-ke-sec-ready-a-20919
+teardown rc=1
+after:
+ke-sec-decoy-ke-sec-ready-a-20919 Up 3 seconds
+ke-sec-decoy-ke-sec-ready-a-10258 Up 4 seconds
+ke-sec-decoy-ke-sec-ready-6092 Up 4 seconds
+ke-sec-decoy-ke-sec-ready-a-x-1277 Up 5 seconds
+== T2 teardown.ps1 scoping (pwsh on host), project ke-sec-ready-b
+teardown: FAIL (project ke-sec-ready-b still has resources after down; remove them by hand):
+  container ke-sec-decoy-ke-sec-ready-b-9304
+teardown.ps1 rc=1
+ke-sec-decoy-ke-sec-ready-b-9304 Up 1 second
+ke-sec-decoy-ke-sec-ready-9618 Up 1 second
+ke-sec-decoy-ke-sec-ready-b-x-19152 Up 1 second
+left: 0
+
+## S2 env_value.sh (scratch copy of compose file + script; %q-quoted output)
+E1 other name refused | rc=2 | out=env_value:\ refused\ \(only\ KE_MODEL_UPSTREAM\ and\ KE_EGRESS_ALLOWLIST\ can\ be\ read\)
+E2 two args | rc=2 | out=usage:\ scripts/env_value.sh\ KE_MODEL_UPSTREAM\|KE_EGRESS_ALLOWLIST
+E3 KE_MODEL_UPSTREAM[0] | rc=2 | out=env_value:\ refused\ \(only\ KE_MODEL_UPSTREAM\ and\ KE_EGRESS_ALLOWLIST\ can\ be\ read\)
+E4 caller env newline | rc=0 | out=$'a\nb'
+E5 caller env $() and backticks | rc=0 | out=\$\(touch\ PWNED\)\`touch\ PWNED2\`
+E6 .env plain upstream | rc=0 | out=host.example:8000
+E7 .env plain allowlist | rc=0 | out=host.example
+E8 .env $() value | rc=0 | out=\$\$\(touch\ PWNED3\)
+E9 .env escaped quote | rc=1 | out=env_value:\ FAIL\ \(KE_MODEL_UPSTREAM\ in\ .env\ is\ missing\ or\ not\ a\ plain\ value\)
+E10 .env dq newline | rc=1 | out=env_value:\ FAIL\ \(KE_MODEL_UPSTREAM\ in\ .env\ is\ missing\ or\ not\ a\ plain\ value\)
+E11 .env JSON key injection | rc=0 | out=''
+E12 .env \u escape | rc=1 | out=env_value:\ FAIL\ \(KE_MODEL_UPSTREAM\ in\ .env\ is\ missing\ or\ not\ a\ plain\ value\)
+E13 .env value referencing another key | rc=0 | out=MARKERPG
+E14 .env unparseable other line | rc=1 | out=env_value:\ FAIL\ \(docker\ compose\ could\ not\ resolve\ .env\,\ so\ KE_MODEL_UPSTREAM\ is\ unknown\)
+PWNED files: 0
+compose interpolation: caller KE_EGRESS_ALLOWLIST with newline+YAML -> api env KE_AUTH__ENABLED stays "false"; value carried literally. Caller KE_STORES__POSTGRES__PASSWORD=CALLERMARK991 with --env-file .env.example reaches gates-it config: 2 matches.
+
+## S3 lint (lint.sh from the tree, run in ke-gates, --network none, one bad file per case containing Invoke-Expression)
+C0 control scripts/plain.ps1 | rc=1 | lint: FAIL | IEX-flagged=1
+C1 scripts/b[1].ps1 | rc=1 | lint: FAIL (a PowerShell script path contains a wildcard character [ ] * ?: refused: scripts/b[1].ps1) | IEX-flagged=0
+C2 scripts/a*b.ps1 | rc=1 | lint: FAIL (a PowerShell script path contains a wildcard character [ ] * ?: refused: scripts/a*b.ps1) | IEX-flagged=0
+C3 scripts/a?b.ps1 | rc=1 | lint: FAIL (a PowerShell script path contains a wildcard character [ ] * ?: refused: scripts/a?b.ps1) | IEX-flagged=0
+C4 scripts/d[1]/x.ps1 (bracket in dir) | rc=1 | lint: FAIL (a PowerShell script path contains a wildcard character [ ] * ?: refused: scripts/d[1]/x.ps1) | IEX-flagged=0
+C5 backtick scripts/a`b.ps1, ab.ps1 absent | rc=1 | lint: FAIL | IEX-flagged=1
+C6 backtick scripts/a`b.ps1, clean ab.ps1 present | rc=1 | lint: FAIL | IEX-flagged=1
+C7 uppercase extension scripts/x.PS1 | rc=0 | lint: PASS | IEX-flagged=0
+C8 symlinked scripts/l.ps1 -> ../notscripts/payload.txt | rc=0 | lint: PASS | IEX-flagged=0
+C9 subst name scripts/a$(touch pwn).ps1 | rc=1 | lint: FAIL | IEX-flagged=1
+C10 quotes scripts/a';x".ps1 | rc=1 | lint: FAIL | IEX-flagged=1
+C11 pwsh subexpr scripts/$(New-Item pwn2).ps1 | rc=1 | lint: FAIL | IEX-flagged=1
+C12 .psm1 module scripts/m.psm1 | rc=0 | lint: PASS | IEX-flagged=0
+C13 trailing space name 'scripts/t.ps1 ' | rc=0 | lint: PASS | IEX-flagged=0
+C14 escaped-bracket via backtick scripts/a`[1`].ps1 | rc=1 | lint: FAIL (a PowerShell script path contains a wildcard character [ ] * ?: refused: scripts/a`[1`].ps1) | IEX-flagged=0
+
+## S4 dependencies
+pip-audit 2.10.1 -r (uv export --frozen --no-dev) --require-hashes --disable-pip:
+uv.lock: all new packages from https://pypi.org/simple with sha256 for sdist and every wheel (37 new hash lines).
+Licences (dist metadata in ke-app; tzdata from the win32 .venv): psycopg 3.3.6 LGPL-3.0-only; psycopg-binary 3.3.6 LGPL-3.0-only; neo4j 6.4.1 Apache-2.0 AND Python-2.0; redis 8.1.0 MIT; rq 2.12.0 BSD-2-Clause; croniter 6.2.4 MIT; pytz 2026.5 MIT; python-dateutil 2.9.0.post0 Apache-2.0 / BSD dual; six 1.17.0 MIT; tzdata 2026.5 Apache-2.0 (marker sys_platform == 'win32', not in the image).
+psycopg-binary auditwheel SBOM (vendored, invisible to pip-audit): cyrus-sasl-lib 2.1.26-24.el7_9, libselinux 2.5-15.el7, krb5-libs 1.15.1-55.el7_9, pcre 8.32-17.el7, keyutils-libs 1.5.8-3.el7, libcom_err 1.42.9-19.el7; plus libpq 18.6, libssl/libcrypto 3.
+
+## S5 secrets and profile paths
+Scanned git diff fe2f101 + 26 untracked files (15926 lines) for AWS/GitHub/OpenAI/Anthropic/Slack/Google keys, PEM private keys, JWTs, credentialed URLs, key=value secrets; and for C:\Users, /c/Users, /home, /Users, AppData, user names.
+Hits: tests only (s3cret-marker-never-printed; MARK-secret-pg/neo; postgresql://engine:{MARKER}@... in test_stack_readiness fixtures). No profile paths.

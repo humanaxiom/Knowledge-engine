@@ -80,13 +80,23 @@ class EngineRefusalTest(unittest.TestCase):
                 self.assertTrue(any(VAR in line for line in logs.output), logs.output)
 
     def test_loopback_or_unset_bind_address_passes_everywhere(self):
+        # Orchestrator ruling 2026-10-19 (platform-offline smoke loop 2;
+        # docs/architecture.md line 3900, ADR-KE-010): prod is refused until
+        # auth-audit whatever the bind address. In prod the only refusal
+        # allowed here is that one; the bind address is never the reason.
         for ke_env in ("dev", *NON_DEV):
             for bind in LOOPBACK:
                 with self.subTest(env=ke_env, bind=bind):
                     logger = logging.getLogger("engine")
                     with self.assertLogs(logger, logging.DEBUG) as logs:
                         logger.debug("probe")  # assertLogs needs one record
-                        _check(_env(ke_env, bind))
+                        if ke_env == "prod":
+                            with self.assertRaises(_refused()) as ctx:
+                                _check(_env(ke_env, bind))
+                            self.assertNotIn(VAR, str(ctx.exception))
+                            self.assertRegex(str(ctx.exception), r"(?i)\bauth\b[\s\S]*\bauth-audit\b")
+                        else:
+                            _check(_env(ke_env, bind))
                     self.assertFalse([l for l in logs.output if VAR in l], logs.output)
 
     def test_bind_address_setting_defaults_to_loopback(self):
@@ -316,10 +326,14 @@ class TeardownScriptTest(unittest.TestCase):
             shutil.copy(extra, tmp / "scripts" / extra.name)
         for rel in (".env.example", "docker-compose.yml"):
             shutil.copy(ROOT / rel, tmp / rel)
-        (tmp / "fakebin").mkdir()
-        fake = tmp / "fakebin" / "docker"
-        fake.write_text(FAKE_DOCKER, encoding="utf-8", newline="\n")
-        fake.chmod(0o755)
+        # platform-stack-ready (PS-2.22, security L-9; §2.4 Teardown leftovers):
+        # teardown now resolves the project with `docker compose config` and
+        # lists leftovers, so it needs the fake that answers like compose
+        # (tests/fake_docker.py, same one-line FAKE_DOCKER_LOG format). Fixture
+        # change only; the assertions below are unchanged.
+        from tests import fake_docker
+
+        fake_docker.install(tmp / "fakebin")
         log = tmp / "docker.log"
         env = _clean_env(PATH=f"{tmp / 'fakebin'}{os.pathsep}{os.environ.get('PATH', '')}",
                          FAKE_DOCKER_LOG=str(log))
