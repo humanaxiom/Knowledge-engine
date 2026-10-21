@@ -4,6 +4,20 @@ Maintained by the `marketer` agent. Follows a Keep a Changelog style.
 
 ## [Unreleased]
 
+### 2026-10-20 (ci-speed)
+
+**Changed:**
+- Branch protection (Q18) was skipped by decision; merges are manual and the
+  local commit hook is the only automated guard. This supersedes the earlier
+  entry below that calls branch protection the real control.
+- The unit suite in `scripts/test.sh` runs as one process per top-level test
+  module, at most four at a time, largest module first. Each module's output
+  prints as one block, in module order, followed by a
+  `unit: <s>s rc=<rc> <module>` summary line per module.
+- The run fails closed. It fails if a module exits non-zero, prints no
+  `Ran N` line with N above zero, leaves no log, or leaves coverage data that
+  was not combined. The coverage threshold (80%) is unchanged.
+
 ### 2026-10-19 (platform-offline)
 
 **Added:**

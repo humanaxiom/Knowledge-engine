@@ -73,7 +73,10 @@ relies on. Done when the proof below exists, not when the files exist.
    `PreToolUse` hook on `Bash`. The hook is a **guard rail against agent
    mistakes, not a security boundary**: it is a simple, fail-safe text rule,
    not a shell parser, and any string-matching hook on a shell command can be
-   bypassed. The real control is branch protection on the remote (Q18).
+   bypassed. Branch protection on the remote (Q18) was skipped by decision.
+   *Q18 resolved 2026-10-20 (human, SKIPPED; `docs/open-questions.md`): branch
+   protection is not enabled, merges stay a manual human action, and this
+   hook is the only automated guard (accepted risk).*
    Decision record: ADR-KE-001 "Decision: commit hook is a simple fail-safe
    text rule (2026-10-18)" in `docs/architecture.md`; round-4 ruling on
    security H2/L13/M3 (`docs/evidence/harness-claude-code/security-rework3.md`)
@@ -104,8 +107,9 @@ relies on. Done when the proof below exists, not when the files exist.
       - **Accepted false positives (fail safe):** one-line commands that mention
         git, push and main (e.g. `git commit -m "fix push to main docs"` on a
         plan-item branch, or `echo "git push origin main"`).
-      - **Accepted bypasses off `main`/`master`** (silent by design; Q18 branch
-        protection is the real control): words hidden from the text (variables,
+      - **Accepted bypasses off `main`/`master`** (silent by design; accepted
+        risk per Q18, resolved 2026-10-20: branch protection SKIPPED, merges
+        stay a manual human action): words hidden from the text (variables,
         `eval`, aliases, encodings), `gh`, `git update-ref`, and a push split
         across lines without a line continuation.
    f. **Performance.** The hook's cost is linear in the command's length and it
@@ -2278,6 +2282,120 @@ orchestrator on 2026-10-20 (see `docs/open-questions.md`):
 
 ---
 
+## Item: ci-speed
+
+Outcome metric moved: neither directly. It keeps the single CI gate
+(`scripts/verify.sh full`) inside its timeout with margin, so every later
+item can ship. Source: `docs/handoffs/ci-speed.md` (orchestrator, accepted
+scope, 2026-10-20). Design: `docs/architecture.md` §2.2.1 (accepted). Profile:
+`docs/evidence/ci-speed/profile.md`. Scope is architect step 1 (the unit
+pool in `scripts/test.sh`), the nested-coverage test fix, and the hook
+comment. Step 2 (splitting `test_offline_bundle.py`) and option (b) speed-ups
+are out of scope. The integration suite is unchanged. Criteria are `CS-<n>`;
+named tests live in `IntegrationRunsOnceTest` (`tests/test_harness_followups.py`).
+
+- **CS-1 One process per top-level module, bounded pool.** Given the
+  top-level unit modules (`tests/test*.py`, the same glob as unittest
+  discovery's default pattern `test*.py`, so the pool runs exactly the
+  modules discovery ran), when `test.sh` runs the unit
+  suite, then each module runs in its own process, exactly once, and which
+  modules share a process never depends on `nproc` or timing (none do). At
+  most `min(nproc, 4)` module processes run at once, with `nproc` read inside
+  the container (no new environment key; PS-2.21 stands).
+  `[unit: test_top_level_modules_run_in_separate_processes]` (distinct pids,
+  each module once) and
+  `[unit: test_unit_pool_concurrency_follows_nproc_capped_at_4]` (fake
+  `nproc`: 1 gives no overlap, 2 gives overlap of at least 2, 64 gives a
+  maximum overlap of at most 4).
+- **CS-2 Output printed whole, in module order.** Each module's output is
+  printed as one contiguous block, after the pool, in module (glob) order,
+  never interleaved with another module's. The sentinel line
+  `test_top_level_unit_suite_ran (…) ... ok` therefore still matches the
+  `verify.sh` check. `[unit: guard, contiguous output blocks]` (green today,
+  stays green).
+- **CS-3 The run fails closed.** Given any module exits non-zero, or exits 0
+  but prints no `Ran N` line with N > 0, when the pool finishes, then
+  `test.sh` exits non-zero. When one module fails, the other modules still
+  run and their output is still printed.
+  `[unit: test_unit_pool_fails_when_a_module_prints_no_ran_line]` (fake `uv`
+  exits 0 silently for one named module) and the failing-module guard (green
+  today, stays green). The existing `test_no_ran_line_fails` stays green.
+- **CS-4 Coverage combines; threshold unchanged.** Every module process runs
+  under `coverage run -p` with `uv run --locked`; `coverage erase` still runs
+  before the first module; the report enforces `fail_under = 80` from
+  `pyproject.toml`, unchanged; mypy is unchanged. The coverage data path
+  comes from coverage's Python API (`coverage.Coverage().config.data_file`,
+  via `uv run --locked python -c`); a lookup that fails or prints nothing
+  fails the run before any test runs (no `.coverage` fallback). Every
+  top-level module's process leaves its own coverage data file; given a
+  module whose process leaves none, when the pool finishes, then `test.sh`
+  exits non-zero and names that module. `coverage combine` is given the
+  explicit list of this run's data files (each module's, plus the
+  sub-package and integration runs'), never a directory or no argument.
+  Given any of those files is still on disk after `combine` (not consumed),
+  then `test.sh` exits non-zero and names its module. No percentage band
+  against the one-process figure is used (Q-CS1, resolved).
+  `[unit: test_unit_pool_fails_when_a_module_leaves_no_coverage_data]`,
+  a fixture test with a real `combine` that leaves one module's file
+  unconsumed (exact name in the tester's handoff section), and
+  `[unit: test_engine_quality static pins]` (stay green).
+- **CS-5 A nested `test.sh` never touches the gate's coverage data.** Given a
+  test that runs `test.sh` in a throwaway project (today
+  `test_coverage_erase_precedes_first_run_and_spares_checkout`), when it runs
+  inside the gate, then no file under the gate's coverage `data_file` path
+  (`/tmp/.coverage*`) is deleted or added by it. That test keeps its own
+  assertions (erase precedes the first run; the checkout is spared).
+  `[unit: test_nested_test_sh_leaves_gate_coverage_data_alone]` (a uniquely
+  named planted `/tmp/.coverage.<unique>` survives; removed in cleanup). RED
+  before the fix.
+- **CS-6 Gates unchanged.** `git diff` against the branch base shows no change
+  to `scripts/verify.sh`, `tests/test_sentinel.py` (module, class and method
+  names), or the `[tool.coverage]` settings in `pyproject.toml`. In
+  `.github/workflows/ci.yml` the only step stays `./scripts/verify.sh full`
+  (`test_harness_port` stays green); only the `timeout-minutes` value and its
+  comment may change, and only under CS-7. No gate is skipped, weakened or
+  moved out of `verify.sh`.
+- **CS-7 PS-3.4 re-measure.** After the first two green CI runs of
+  `verify.sh full` that include the pool, `timeout-minutes` is set to the
+  slower run's measured duration plus 50 %, rounded up to a whole minute
+  (same rule as the platform-offline re-measure), in a follow-up commit on
+  the branch. Both run ids, their durations and the arithmetic are saved in
+  `docs/evidence/ci-speed/`, and the ci.yml comment names them.
+  `test_ci_job_has_timeout` (fast) is unchanged; the reviewer checks the
+  value against the evidence.
+- **CS-8 Hook header reflects Q18.** `scripts/hooks/block-main-commit.sh` no
+  longer calls branch protection "the real control (Q18)". Its header says
+  Q18 was skipped (human, 2026-10-20), merges to `main` are a manual human
+  action, and this hook is the only automated guard. Comment-only: the hook's
+  behaviour and the existing hook tests are unchanged and green.
+  `[unit: static test, "the hook header no longer calls branch protection
+  the real control"]` (tester adding; exact method name in the tester's
+  handoff section).
+- **CS-9 Outcome target, measured.** On the gates image pinned to 2 CPUs
+  (`--cpuset-cpus`, as in profile.md §3), the pooled unit suite's wall time is
+  at most about 60 % of a one-process run of the same unit suite measured on
+  the SAME commit (the commit under test, not the branch base or an earlier
+  experiment), on the same host in the same conditions (modelled: 426 s →
+  about 260 s or less; review L1). Both figures, the commit and both
+  commands are saved in `docs/evidence/ci-speed/`.
+  The CI unit-suite time from the two CS-7 runs is recorded too (projected
+  310–450 s; informational, the runner is noisy). A miss goes to the
+  orchestrator with the evidence; the target is not adjusted to pass.
+
+Gates: the code and test changes touch `scripts/` and tests, so
+`scripts/verify.sh full`; it runs before the commit regardless. TDD order:
+CS-5 (prerequisite) → CS-1 → CS-3 → CS-2/CS-4 guards → CS-8 → CS-9 → CS-7
+(after the commit's CI runs).
+
+### Open questions for this item
+
+None open. **Q-CS1 resolved (A-CS1, orchestrator, 2026-10-20; see
+`docs/open-questions.md`):** no percentage tolerance; CS-4 instead requires
+one coverage data file per module, and a missing one fails the run naming the
+module. The 80 % threshold is unchanged.
+
+---
+
 ## Item: ingest-ledger
 
 Outcome metric moved: neither directly; without a complete ledger every later
@@ -2383,7 +2501,9 @@ Outcome metric moved: **ratified rules** (directly).
    field and lint rejects a knob referenced by two unrelated rules.
    `[unit: test_one_knob_one_question]` (DR21)
 8. Ratification sessions are planned objects with named owner and date; the
-   funnel shows ratified / proposed per tier. (DR22)
+   funnel shows ratified / proposed per tier. (DR22) Until real owners are
+   named, the owner is the human (Adam Salah) as proxy ratifier (Q14, resolved
+   2026-10-20), so ratification owners are not an external blocker.
 9. The LLM may only propose; only ratified rules execute; evaluation is
    deterministic with no model client importable from the evaluator package.
    `[unit: test_evaluator_imports_no_llm]` (import-graph check)

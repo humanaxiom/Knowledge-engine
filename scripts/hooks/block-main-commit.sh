@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # PreToolUse hook: a guard rail against accidents, not a security boundary.
-# The real control is branch protection on the remote (Q18). Design and the
+# Q18 (branch protection) was skipped (human, 2026-10-20): merges are a manual
+# human action and this hook is the only automated guard. Design and the
 # accepted false positives and bypasses: ADR-KE-001, "Decision: commit hook
 # is a simple fail-safe text rule (2026-10-18)" in docs/architecture.md.
 #   - on main/master: any text with the word `git` and one of commit, push,

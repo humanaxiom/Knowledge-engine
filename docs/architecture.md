@@ -627,6 +627,137 @@ the scanner's name to the forbidden list; this branch has no scan stage (R3).
   hiding it behind `|| true`. The exit code of the run is unchanged, because
   the gates have already passed or failed. The B6 test covers the warning.
 
+#### 2.2.1 Amendment (ci-speed): unit modules in a process pool — **accepted, 2026-10-20**
+
+Amends ADR-KE-009 / §2.2 `test.sh`. Profile and experiments:
+`docs/evidence/ci-speed/profile.md`.
+
+- **Context.**
+  - On the 2-vCPU `ubuntu-24.04` runner the top-level unit suite, run as one
+    `unittest` process, takes 542–793 s. That is 60–70 % of a 15–19 min job
+    with a 29 min timeout. Every other stage adds up to about 340–390 s.
+  - `test_offline_bundle` takes 52 % of the suite and `test_stack_scripts`
+    29 %. The cost is many real `pwsh`/`bash` script runs against fake docker.
+    pwsh start-up itself is about 0.2 s.
+  - Local experiment D (2 CPUs pinned): one process per module, 2 at a time,
+    takes 0.57× the time of one process (242 s vs 426 s).
+- **Decision.**
+  1. The top-level run in `test.sh` (`tests/test*.py`) becomes **one
+     `uv run --locked python -m coverage run -p -m unittest -v --durations 10
+     <module>` process per module**.
+     - The glob is `tests/test*.py`, unittest discovery's default pattern
+       (`test*.py`), so the pool runs the same modules discovery did.
+     - `--durations 10` stays (kept in rework round 1): it is the only
+       per-test timing in CI logs once output is buffered.
+     - At most `k = min(nproc, 4)` processes run at once (bash `wait -n`).
+       `nproc` is read inside the container. No env key is added (PS-2.21).
+     - Modules start in descending file-size order, so the critical path
+       (`test_offline_bundle`) starts first. That order is the only heuristic,
+       and no weights table is kept.
+     - Each module always gets its own process, so the process each test runs
+       in is the same on every machine. Only the concurrency varies.
+  2. **Logs (amended 2026-10-20, rework round 1).** Logs live in one
+     `mktemp -d` directory, created before the pool and removed by an EXIT
+     trap (`rm -rf --`, quoted), replacing the earlier `/tmp/ke-unit/`.
+     Each process writes `<dir>/<module>.log`, `.rc` and its wall seconds.
+     After the pool, `test.sh` prints every log whole, in glob order, then
+     one summary line per module, also in glob order:
+     `unit: <s>s rc=<rc> <module>` (whole seconds; the line never starts
+     with `Ran`). Output is never interleaved, so the sentinel line and each
+     `Ran N` line stay whole. A missing log or `.rc` file fails the run with
+     a message naming the module.
+  3. `test.sh` fails unless every module exited 0 **and** every module log
+     has a `^Ran [1-9]` line. This is stricter than today, where one process
+     implied that all modules ran.
+  4. On INT/TERM, a `trap` kills the pool's children: each running job and
+     the `uv run`/`python` process it started, so none outlives `test.sh`.
+     It then exits 130 (INT) or 143 (TERM); the EXIT trap still removes the
+     log directory. Bash builtins and tools already in the gates image only.
+  5. **Coverage data, and what is unchanged (amended 2026-10-20, rework
+     round 1; answers review R2).**
+     - *Where.* The data path comes from coverage's Python API, not from
+       parsing the text of `coverage debug config` (not a stable
+       interface): `uv run --locked python -c` printing
+       `coverage.Coverage().config.data_file`. Its directory and base name
+       give `<cov_dir>/<cov_name>`. If the lookup exits non-zero or prints
+       nothing, `test.sh` fails before any test runs. There is no `.coverage`
+       fallback.
+     - *Labels.* Every coverage run in `test.sh` writes under
+       `--data-file=<cov_dir>/<cov_name>.<label>` with `-p`. The label is the
+       dotted module name for a top-level module (as today), and the dotted
+       directory for a sub-package or the integration run
+       (`tests.<pkg>`, `tests.integration`). No `COVERAGE_FILE` env var is
+       used, so nested runs never inherit it.
+     - *Each module leaves data.* After the pool, a top-level module with no
+       `<cov_dir>/<cov_name>.<module>.*` file fails the run, naming the
+       module (Q-CS1, as built).
+     - *Combine gets an explicit list.* `coverage combine` is passed the
+       explicit list of data files from this run's labels, never a
+       directory and never no argument at all (with no argument it searches
+       the data directory and would take whatever is there). The list is
+       never empty, because every top-level module must leave a file.
+     - *Nothing left over.* `combine` deletes each file it consumes (and
+       skips duplicates, deleting them too); a file it cannot read stays on
+       disk. After `combine`, any `<cov_dir>/<cov_name>.<label>.*` that
+       remains fails the run, naming its label. This proves that combine
+       consumed one file per module, which the existence check alone does
+       not.
+     - *Unchanged:* sub-package and integration runs (sequential, after the
+       pool; only their `--data-file` label is new), `coverage erase` first,
+       `report`, `fail_under`, mypy, `verify.sh`, `ci.yml`, `[tool.coverage]`
+       in `pyproject.toml`, and the sentinel test.
+  6. **Precondition (a test defect the pool exposes).**
+     `IntegrationRunsOnceTest.test_coverage_erase_precedes_first_run_and_spares_checkout`
+     copies the real `pyproject.toml` (`data_file = "/tmp/.coverage"`,
+     `parallel = true`) into its throwaway project. Its nested `coverage
+     erase` then deletes the gate's own `/tmp/.coverage.*` files, and its
+     nested runs add files to them (`experiments/coverage-erase-probe.txt`).
+     - With one process this is harmless only because of timing.
+     - Under the pool it erases the data of modules that already finished.
+       Coverage fell to 62–83 % in the experiments (fail-closed, but it
+       depends on scheduling).
+     - The fix is in the test: the copied `pyproject.toml` gets `data_file`
+       inside the throwaway project, and a test proves that a nested
+       `test.sh` leaves a planted gate data file alone.
+  7. **Step 2 (tests only, optional): split `test_offline_bundle.py`** into
+     the bundle side, `InstallPs1Test`, and the `install.sh` side. Classes move
+     unchanged. On 2 CPUs the critical path then drops to about total/2, and
+     locally the suite goes from about 340 s to about 100 s.
+- **Alternatives considered.**
+  - `pytest-xdist` or `unittest-parallel`: a new dependency and a different
+    output format.
+  - Fixed N shards by file size (experiment B: 267/187 s, unbalanced) or by
+    recorded class times (C: balanced, but needs a weights table). In both,
+    which modules share a process depends on N.
+  - An in-process multiprocessing runner: more code, plus coverage
+    `concurrency` config.
+  - (Rework round 1) Keep parsing `coverage debug config` and let `combine`
+    search the data directory: the text format is not a stable interface,
+    an empty parse fell back to `./.coverage`, and a directory search takes
+    stale files, so a module's data could go unconsumed with the run still
+    green (review R2). The API lookup, explicit list and leftover check
+    close that at the cost of a few lines of bash.
+  - A buildx cache inside `verify.sh`. `type=gha` needs runtime variables
+    that only an action step gets, `type=local` needs `actions/cache`, and
+    `type=registry` needs `packages: write` and a login. Each breaks the
+    one-step CI rule or adds a credential, for at most about 35 s.
+  - Overlapping the unit suite with `launch.sh`: coverage would span two
+    containers, against PS-3.5.
+- **Consequences.**
+  - Projected CI job about 11–14 min, against 15–19 min today.
+  - Local `full` is about 2 min faster, and more after step 2.
+  - Output arrives per module after the pool rather than streaming.
+    `--durations` keeps per-test timings in CI logs, because the runner's
+    line timestamps no longer time individual tests.
+  - Hidden coupling between modules would surface as failures. None did in
+    5 runs × 689 tests. Timing-bound tests (hook 3/5/9 s, readiness `--within`)
+    passed under 2-CPU contention (run D).
+  - PS-3.4: the first two green CI runs after the change re-measure the
+    timeout (measured + 50 %). Whether to lower it from 29 min is for the
+    orchestrator and analyst.
+- **Paths:** `scripts/test.sh` and tests only, so `scripts/verify.sh full`
+  (scripts). The first failing tests are in the `ci-speed` handoff.
+
 ### 2.3 platform-config (ADR-KE-010)
 
 **Package.** First-party code lives in one new package, `engine/`, next to
@@ -3767,8 +3898,9 @@ ADR-KE-009). ADR-KE-002 to ADR-KE-012 are **proposed**. ADR-KE-014
     that hides the words from the text: a git alias verb (`git ci -m x`),
     variables, `eval`, and base64 or other encodings. It is also silent for
     `gh` (`gh pr merge`), as off main. The hook is a guard rail that denies
-    most commits and pushes on main, not all; branch protection (Q18) is the
-    control. AGENTS.md's "denies any commit/push" wording overclaims; that
+    most commits and pushes on main, not all; branch protection (Q18) was
+    skipped by decision (2026-10-20), so merges are manual and this hook is
+    the only automated guard. AGENTS.md's "denies any commit/push" wording overclaims; that
     edit is the documenter's (L24 ask).
 
 #### Decision: commit hook is a simple fail-safe text rule (2026-10-18)
@@ -3783,7 +3915,8 @@ asked for the hook design to be recorded in this ADR.
   - Each round also produced timing failures (L9, B10): the lexer was
     quadratic under mawk and went past the 10 s hook timeout.
   - Off-main push protection was a medium, non-blocking finding (security
-    M1). Branch protection is the real control (Q18).
+    M1). Branch protection (Q18) was later skipped by decision (2026-10-20);
+    merges are manual and the hook is the only automated guard.
 - **Decision:**
   - Extract the `command` field: jq if it works, else a single sed on the
     first `"command":"…"` value, else the raw input.
@@ -3834,7 +3967,7 @@ asked for the hook design to be recorded in this ADR.
       as bash reads it
   - Accepted bypasses on main: Table M rows 14 and 15, where after a comment
     or even backslash run a continuation splits the `git` or `commit` word.
-    These shapes are contrived; branch protection (Q18) is the control. Also
+    These shapes are contrived; branch protection (Q18) was skipped by decision, so merges are manual. Also
     anything that hides the words, and `gh` (security L24; see "Further
     consequences" above).
   - Cost: host timing for 5 MB-plus commands (Git Bash, no jq) is 4.9 s with

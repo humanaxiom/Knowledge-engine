@@ -1,0 +1,17 @@
+test_signal_kills_pool_children_and_exits_nonzero (tests.test_harness_followups.IntegrationRunsOnceTest.test_signal_kills_pool_children_and_exits_nonzero) ... ok
+test_term_leaves_no_module_process_that_ignores_term (tests.test_harness_followups.IntegrationRunsOnceTest.test_term_leaves_no_module_process_that_ignores_term) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 3.915s
+
+OK
+unittest rc=0
+D1 alive
+D2 alive
+D3 alive
+--- processes left
+     1      1 S bash /h/tsig.sh 
+    10      1 S sleep 601 
+     8      1 S python3 -c import signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(6
+     9      9 S sleep 600 
+rc=0

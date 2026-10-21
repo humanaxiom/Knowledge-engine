@@ -1,0 +1,43 @@
+......................F........FF..
+======================================================================
+FAIL: test_unit_pool_fails_when_combine_leaves_a_module_data_file (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_combine_leaves_a_module_data_file) (mode='full', run='control')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 627, in test_unit_pool_fails_when_combine_leaves_a_module_data_file
+    self.assertEqual(sorted(p.name for p in self.project.glob(".coverage.*")), [],
+AssertionError: Lists differ: ['.coverage.tests.integration.ae46210a407b.pid2094.XxUzE6Ox.HF9Ux5ruoQOh'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'.coverage.tests.integration.ae46210a407b.pid2094.XxUzE6Ox.HF9Ux5ruoQOh'
+
+- ['.coverage.tests.integration.ae46210a407b.pid2094.XxUzE6Ox.HF9Ux5ruoQOh']
++ [] : real combine left parallel data files in the control run
+
+======================================================================
+FAIL: test_probe_combine_list_has_subpackage_and_integration (tests.probe_review.Probe.test_probe_combine_list_has_subpackage_and_integration) (label='.tests.integration.')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/probe_review.py", line 39, in test_probe_combine_list_has_subpackage_and_integration
+    self.assertIn(label, combine[0])
+AssertionError: '.tests.integration.' not found in 'python -m coverage combine ./.coverage.tests.test_x.ae46210a407b.pid2750.Xhf60r0x.HnuyVSzfDwkh ./.coverage.tests.testfoo.ae46210a407b.pid2746.XZ6Q01sx.HSL0C0140Hch ./.coverage.tests.unit.ae46210a407b.pid2762.XXi4zGyx.HmeOWEh7EU5h'
+
+======================================================================
+FAIL: test_probe_combine_list_has_subpackage_and_integration (tests.probe_review.Probe.test_probe_combine_list_has_subpackage_and_integration)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/probe_review.py", line 40, in test_probe_combine_list_has_subpackage_and_integration
+    self.assertEqual(sorted(p.name for p in self.project.glob(".coverage.*")), [])
+AssertionError: Lists differ: ['.coverage.tests.integration.ae46210a407b.pid2763.XxilXFqx.H1w2jecjwVoh'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'.coverage.tests.integration.ae46210a407b.pid2763.XxilXFqx.H1w2jecjwVoh'
+
+- ['.coverage.tests.integration.ae46210a407b.pid2763.XxilXFqx.H1w2jecjwVoh']
++ []
+
+----------------------------------------------------------------------
+Ran 34 tests in 52.617s
+
+FAILED (failures=3)

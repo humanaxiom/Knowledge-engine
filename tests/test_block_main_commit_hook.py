@@ -696,5 +696,28 @@ class GatesImageJqTest(unittest.TestCase):
         self.assertRegex(install.group(0), r"\bjq\b")
 
 
+class HookHeaderTest(unittest.TestCase):
+    """Human ruling Q18, 2026-10-20 (docs/open-questions.md A18, handoff
+    ci-speed): branch protection was SKIPPED. The hook's header must not call
+    branch protection the real control; it says Q18 was skipped and that this
+    hook is the only automated guard."""
+
+    def header(self) -> str:
+        lines = HOOK.read_text(encoding="utf-8").splitlines()[1:]  # after the shebang
+        comment = []
+        for line in lines:
+            if not line.startswith("#"):
+                break
+            comment.append(line.lstrip("#").strip())
+        return " ".join(comment)
+
+    def test_header_says_q18_skipped_and_hook_is_only_automated_guard(self):
+        header = self.header()
+        self.assertNotRegex(header, r"(?i)real control", header)
+        self.assertRegex(header, r"\bQ18\b", header)
+        self.assertRegex(header, r"(?i)\bskipped\b", header)
+        self.assertRegex(header, r"(?i)\bonly automated guard\b", header)
+
+
 if __name__ == "__main__":
     unittest.main()

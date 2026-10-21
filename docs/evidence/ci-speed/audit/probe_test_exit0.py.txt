@@ -1,0 +1,19 @@
+"""Scratch probe (security audit ci-speed): a module that exits 0 at import
+prints no Ran line but still saves coverage data; only the Ran check stops it."""
+import unittest
+from tests.test_harness_followups import IntegrationRunsOnceTest
+
+
+class ExitZeroProbe(IntegrationRunsOnceTest):
+    def test_module_exiting_zero_at_import_fails_run(self):
+        self.write("tests/test_exit0.py", "import sys\nsys.exit(0)\n")
+        self.fake_nproc(4)
+        for mode in ("fast", "full"):
+            code, output, _ = self.run_mode(mode)
+            with self.subTest(mode=mode):
+                self.assertNotEqual(code, 0, output)
+                self.assertIn("tests.test_exit0 printed no 'Ran N tests' line", output)
+
+
+def load_tests(loader, tests, pattern):
+    return loader.loadTestsFromName("test_probe_exit0.ExitZeroProbe.test_module_exiting_zero_at_import_fails_run")
