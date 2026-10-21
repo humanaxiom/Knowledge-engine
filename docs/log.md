@@ -352,3 +352,11 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-21T06:53:52Z | documenter | ci-speed | docs-only fix: S11/F1 known limits, F4, I1 wording, F2/F3 follow-ups | verify fast: pass
 2026-10-21T07:03:48Z | orchestrator | ci-speed | final verify full + diff read; commit approved (revert + coverage hardening + probe + hook CPU budgets) | verify full: pass
 2026-10-21T07:03:55Z | developer | ci-speed | commit ci-speed rework rounds 3-5 locally | commit: approved
+2026-10-21T07:30:54Z | documenter | ci-speed | CS-7 close-out docs: cs7/ci-timeout.md, requirements CS-7 MET + TD note, Done check | verify fast: see evidence
+2026-10-21T07:37:02Z | tester | ci-speed | CS-7 RED: CI_TIMEOUT_MINUTES 29->32 (runs 39559700392 21.1 min, 39559708963 20.3 min; +50% = 31.65 -> 32); verify fast fails only test_ci_job_has_timeout | TDD red: fail (expected)
+2026-10-21T07:37:49Z | tester | ci-speed | CS-7: test_stack_ready_docs.py docstring/comment updated to the 32 pin (CS-7 runs), R5 kept as history; comments only | TDD red: unchanged (comment-only, not re-run)
+2026-10-21T07:54:24Z | developer | ci-speed | CS-7 GREEN: ci.yml timeout-minutes 32 | verify full: pass
+2026-10-21T07:55:57Z | security | ci-speed | CS-7 close-out audit: ci.yml timeout 29->32 only, posture unchanged; cs7/ and ci/ evidence 0 secrets/profile paths/SIDs; info I-CS7-1 | security: pass
+2026-10-21T07:57:02Z | reviewer | ci-speed | CS-7 close-out review: timeout 32 recomputed and agreed across ci.yml/test/requirements/evidence; 0 blocking, 6 nits | review: approved
+2026-10-21T08:04:18Z | orchestrator | ci-speed | CS-7 close-out: verify full + diff read; commit approved; item closed | verify full: pass
+2026-10-21T08:04:28Z | developer | ci-speed | CS-7 close-out commit; handoff archived | commit: approved

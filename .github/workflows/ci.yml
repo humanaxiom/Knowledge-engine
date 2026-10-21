@@ -14,7 +14,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-24.04
-    timeout-minutes: 29  # PS-3.4/R5: green CI runs 39370927416 (16.6 min) and 39465361808 (19.0 min); slower run + 50% = 28.5 -> 29 min, see docs/evidence/platform-offline
+    timeout-minutes: 32  # PS-3.4/CS-7 (ci-speed): green CI runs 39559700392 (21.1 min) and 39559708963 (20.3 min); slower run + 50% = 31.65 -> 32 min, see docs/evidence/ci-speed
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
