@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# inj.sh: data_file values with shell metacharacters and glob characters
+check() { ls /tmp/PWNED* 2>/dev/null && echo "INJECTION: PWNED file exists" || echo "no PWNED file"; }
+d1='/tmp/x $(touch /tmp/PWNED1);`touch /tmp/PWNED2`;$IFS"q'\''r'
+mkdir -p "$d1"
+echo "### I1 data_file=$d1/.cov"
+COVERAGE_FILE="$d1/.cov" bash scripts/test.sh fast >/tmp/i1.out 2>&1; echo "test.sh rc=$?"; check
+grep -E '^unit:|Combined|^error' /tmp/i1.out; ls -A "$d1"
+echo "### I2 glob chars: data_file=/tmp/d[1]/*.cov, decoys in /tmp/d1"
+mkdir -p '/tmp/d[1]' /tmp/d1
+printf 'not a data file' > '/tmp/d1/a.cov.tests.test_z.decoy'
+printf 'not a data file' > '/tmp/d[1]/zz.cov.tests.test_z.decoy'
+COVERAGE_FILE='/tmp/d[1]/*.cov' bash scripts/test.sh fast >/tmp/i2.out 2>&1; echo "test.sh rc=$?"
+grep -E '^unit:|Combined|^error|Couldn|decoy' /tmp/i2.out
+echo "remaining:"; ls -A /tmp/d1 '/tmp/d[1]'
+echo "### I3 empty-ish: data_file whitespace-only via COVERAGE_FILE=' '"
+COVERAGE_FILE=' ' bash scripts/test.sh fast >/tmp/i3.out 2>&1; echo "test.sh rc=$?"; grep -E '^error|Errno|Read-only' /tmp/i3.out | head -3

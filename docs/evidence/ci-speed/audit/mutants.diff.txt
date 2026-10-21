@@ -1,0 +1,93 @@
+# Mutants of scripts/test.sh (scratch copies only; diff against the working-tree test.sh)
+
+## M1a-rc-ignored
+69c69
+<   uv run --locked python -m coverage run -p --data-file="$cov_dir/$cov_name.$m" -m unittest -v "$m" >"$logs/$m.log" 2>&1 || rc=$?
+---
+>   uv run --locked python -m coverage run -p --data-file="$cov_dir/$cov_name.$m" -m unittest -v "$m" >"$logs/$m.log" 2>&1 || true
+
+## M1b-rc-always0
+70c70
+<   echo "$rc" >"$logs/$m.rc"
+---
+>   echo 0 >"$logs/$m.rc"
+
+## M1c-rc-check-off
+82c82
+<   if [ "$rc" != 0 ]; then
+---
+>   if false; then
+
+## M2-cov-check-off
+89c89
+<   if ! compgen -G "$cov_dir/$cov_name.$m.*" >/dev/null; then
+---
+>   if false; then
+
+## M3-ran-check-off
+85c85
+<   elif ! grep -Eq '^Ran [1-9][0-9]* tests? in ' "$logs/$m.log"; then
+---
+>   elif false; then
+
+## M4a-k1
+52c52
+< [ "$k" -le 4 ] || k=4
+---
+> k=1
+
+## M4b-nocap
+52c52
+< [ "$k" -le 4 ] || k=4
+---
+> :
+
+## M4c-k4-fixed
+52c52
+< [ "$k" -le 4 ] || k=4
+---
+> k=4
+
+## M5a-parse-empty
+54c54
+< cov_data="$(uv run --locked python -m coverage debug config | sed -n "s/^ *data_file *[:=] *'*\([^' ]*\)'* *\$/\1/p" | head -n 1)"
+---
+> cov_data="$(uv run --locked python -m coverage debug config | sed -n "s/^ *data_file *[#] *'*\([^' ]*\)'* *\$/\1/p" | head -n 1)"
+
+## M5b-parse-garbage-name
+55,56c55,56
+< cov_dir="$(dirname -- "${cov_data:-.coverage}")"
+< cov_name="$(basename -- "${cov_data:-.coverage}")"
+---
+> cov_data=/tmp/garbage; cov_dir=/tmp
+> cov_name=garbage
+
+## M5b2-parse-garbage-name
+54c54
+< cov_data="$(uv run --locked python -m coverage debug config | sed -n "s/^ *data_file *[:=] *'*\([^' ]*\)'* *\$/\1/p" | head -n 1)"
+---
+> cov_data=/tmp/garbage
+
+## M5c-parse-garbage-dir
+55c55
+< cov_dir="$(dirname -- "${cov_data:-.coverage}")"
+---
+> cov_dir=/tmp/ke-garbage; mkdir -p /tmp/ke-garbage
+
+## M6-no-final-wait
+76c76
+< wait
+---
+> :
+
+## M7-stream-logs
+69c69
+<   uv run --locked python -m coverage run -p --data-file="$cov_dir/$cov_name.$m" -m unittest -v "$m" >"$logs/$m.log" 2>&1 || rc=$?
+---
+>   uv run --locked python -m coverage run -p --data-file="$cov_dir/$cov_name.$m" -m unittest -v "$m" > >(tee "$logs/$m.log") 2>&1 || rc=$?
+
+## M8-no-wait-n
+73c73
+<   while [ "$(jobs -rp | wc -l)" -ge "$k" ]; do wait -n || true; done
+---
+>   :

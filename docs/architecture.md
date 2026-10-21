@@ -627,6 +627,556 @@ the scanner's name to the forbidden list; this branch has no scan stage (R3).
   hiding it behind `|| true`. The exit code of the run is unchanged, because
   the gates have already passed or failed. The B6 test covers the warning.
 
+#### 2.2.1 Amendment (ci-speed): unit modules in a process pool — accepted 2026-10-20; **pool WITHDRAWN 2026-10-21** (human ruling)
+
+Amends ADR-KE-009 / §2.2 `test.sh`. Profile and experiments:
+`docs/evidence/ci-speed/profile.md`.
+
+> **Status, 2026-10-21 (rework 3, human ruling on
+> `docs/evidence/ci-speed/rework3/diagnosis.md`):** decisions 1–4 and 7 and
+> the projected consequences below are **withdrawn**. Decision 5 is kept,
+> with the labels changed to fit one top-level run, and decision 6 is kept.
+> The decision in force is **§2.2.1-r3** below. The text that follows is kept
+> unchanged as history.
+
+- **Context.**
+  - On the 2-vCPU `ubuntu-24.04` runner the top-level unit suite, run as one
+    `unittest` process, takes 542–793 s. That is 60–70 % of a 15–19 min job
+    with a 29 min timeout. Every other stage adds up to about 340–390 s.
+  - `test_offline_bundle` takes 52 % of the suite and `test_stack_scripts`
+    29 %. The cost is many real `pwsh`/`bash` script runs against fake docker.
+    pwsh start-up itself is about 0.2 s.
+  - Local experiment D (2 CPUs pinned): one process per module, 2 at a time,
+    takes 0.57× the time of one process (242 s vs 426 s).
+- **Decision.**
+  1. The top-level run in `test.sh` (`tests/test*.py`) becomes **one
+     `uv run --locked python -m coverage run -p -m unittest -v --durations 10
+     <module>` process per module**.
+     - The glob is `tests/test*.py`, unittest discovery's default pattern
+       (`test*.py`), so the pool runs the same modules discovery did.
+     - `--durations 10` stays (kept in rework round 1): it is the only
+       per-test timing in CI logs once output is buffered.
+     - At most `k = min(nproc, 4)` processes run at once (bash `wait -n`).
+       `nproc` is read inside the container. No env key is added (PS-2.21).
+     - Modules start in descending file-size order, so the critical path
+       (`test_offline_bundle`) starts first. That order is the only heuristic,
+       and no weights table is kept.
+     - Each module always gets its own process, so the process each test runs
+       in is the same on every machine. Only the concurrency varies.
+  2. **Logs (amended 2026-10-20, rework round 1).** Logs live in one
+     `mktemp -d` directory, created before the pool and removed by an EXIT
+     trap (`rm -rf --`, quoted), replacing the earlier `/tmp/ke-unit/`.
+     Each process writes `<dir>/<module>.log`, `.rc` and its wall seconds.
+     After the pool, `test.sh` prints every log whole, in glob order, then
+     one summary line per module, also in glob order:
+     `unit: <s>s rc=<rc> <module>` (whole seconds; the line never starts
+     with `Ran`). Output is never interleaved, so the sentinel line and each
+     `Ran N` line stay whole. A missing log or `.rc` file fails the run with
+     a message naming the module.
+  3. `test.sh` fails unless every module exited 0 **and** every module log
+     has a `^Ran [1-9]` line. This is stricter than today, where one process
+     implied that all modules ran.
+  4. On INT/TERM, a `trap` kills the pool's children: each running job and
+     the `uv run`/`python` process it started, so none outlives `test.sh`.
+     It then exits 130 (INT) or 143 (TERM); the EXIT trap still removes the
+     log directory. Bash builtins and tools already in the gates image only.
+  5. **Coverage data, and what is unchanged (amended 2026-10-20, rework
+     round 1; answers review R2).**
+     - *Where.* The data path comes from coverage's Python API, not from
+       parsing the text of `coverage debug config` (not a stable
+       interface): `uv run --locked python -c` printing
+       `coverage.Coverage().config.data_file`. Its directory and base name
+       give `<cov_dir>/<cov_name>`. If the lookup exits non-zero or prints
+       nothing, `test.sh` fails before any test runs. There is no `.coverage`
+       fallback.
+     - *Labels.* Every coverage run in `test.sh` writes under
+       `--data-file=<cov_dir>/<cov_name>.<label>` with `-p`. The label is the
+       dotted module name for a top-level module (as today), and the dotted
+       directory for a sub-package or the integration run
+       (`tests.<pkg>`, `tests.integration`). No `COVERAGE_FILE` env var is
+       used, so nested runs never inherit it.
+     - *Each module leaves data.* After the pool, a top-level module with no
+       `<cov_dir>/<cov_name>.<module>.*` file fails the run, naming the
+       module (Q-CS1, as built).
+     - *Combine gets an explicit list.* `coverage combine` is passed the
+       explicit list of data files from this run's labels, never a
+       directory and never no argument at all (with no argument it searches
+       the data directory and would take whatever is there). The list is
+       never empty, because every top-level module must leave a file.
+     - *Nothing left over.* `combine` deletes each file it consumes (and
+       skips duplicates, deleting them too); a file it cannot read stays on
+       disk. After `combine`, any `<cov_dir>/<cov_name>.<label>.*` that
+       remains fails the run, naming its label. This proves that combine
+       consumed one file per module, which the existence check alone does
+       not.
+     - *Unchanged:* sub-package and integration runs (sequential, after the
+       pool; only their `--data-file` label is new), `coverage erase` first,
+       `report`, `fail_under`, mypy, `verify.sh`, `ci.yml`, `[tool.coverage]`
+       in `pyproject.toml`, and the sentinel test.
+  6. **Precondition (a test defect the pool exposes).**
+     `IntegrationRunsOnceTest.test_coverage_erase_precedes_first_run_and_spares_checkout`
+     copies the real `pyproject.toml` (`data_file = "/tmp/.coverage"`,
+     `parallel = true`) into its throwaway project. Its nested `coverage
+     erase` then deletes the gate's own `/tmp/.coverage.*` files, and its
+     nested runs add files to them (`experiments/coverage-erase-probe.txt`).
+     - With one process this is harmless only because of timing.
+     - Under the pool it erases the data of modules that already finished.
+       Coverage fell to 62–83 % in the experiments (fail-closed, but it
+       depends on scheduling).
+     - The fix is in the test: the copied `pyproject.toml` gets `data_file`
+       inside the throwaway project, and a test proves that a nested
+       `test.sh` leaves a planted gate data file alone.
+  7. **Step 2 (tests only, optional): split `test_offline_bundle.py`** into
+     the bundle side, `InstallPs1Test`, and the `install.sh` side. Classes move
+     unchanged. On 2 CPUs the critical path then drops to about total/2, and
+     locally the suite goes from about 340 s to about 100 s.
+- **Alternatives considered.**
+  - `pytest-xdist` or `unittest-parallel`: a new dependency and a different
+    output format.
+  - Fixed N shards by file size (experiment B: 267/187 s, unbalanced) or by
+    recorded class times (C: balanced, but needs a weights table). In both,
+    which modules share a process depends on N.
+  - An in-process multiprocessing runner: more code, plus coverage
+    `concurrency` config.
+  - (Rework round 1) Keep parsing `coverage debug config` and let `combine`
+    search the data directory: the text format is not a stable interface,
+    an empty parse fell back to `./.coverage`, and a directory search takes
+    stale files, so a module's data could go unconsumed with the run still
+    green (review R2). The API lookup, explicit list and leftover check
+    close that at the cost of a few lines of bash.
+  - A buildx cache inside `verify.sh`. `type=gha` needs runtime variables
+    that only an action step gets, `type=local` needs `actions/cache`, and
+    `type=registry` needs `packages: write` and a login. Each breaks the
+    one-step CI rule or adds a credential, for at most about 35 s.
+  - Overlapping the unit suite with `launch.sh`: coverage would span two
+    containers, against PS-3.5.
+- **Consequences.**
+  - Projected CI job about 11–14 min, against 15–19 min today.
+  - Local `full` is about 2 min faster, and more after step 2.
+  - Output arrives per module after the pool rather than streaming.
+    `--durations` keeps per-test timings in CI logs, because the runner's
+    line timestamps no longer time individual tests.
+  - Hidden coupling between modules would surface as failures. None did in
+    5 runs × 689 tests. Timing-bound tests (hook 3/5/9 s, readiness `--within`)
+    passed under 2-CPU contention (run D).
+  - PS-3.4: the first two green CI runs after the change re-measure the
+    timeout (measured + 50 %). Whether to lower it from 29 min is for the
+    orchestrator and analyst.
+- **Paths:** `scripts/test.sh` and tests only, so `scripts/verify.sh full`
+  (scripts). The first failing tests are in the `ci-speed` handoff.
+
+#### 2.2.1-r3 Amendment (ci-speed rework 3): one top-level process, fail-closed coverage, resource probe, hook CPU budgets — **accepted, confirmed by the orchestrator 2026-10-21** (implements the human ruling of 2026-10-21; rework 4 additions marked below)
+
+Amends §2.2.1 above, which amended ADR-KE-009 / §2.2. This is an
+orchestration change (the shape of the unit stage), and decision 4 is
+security-relevant (what a CI log may print). Evidence:
+`docs/evidence/ci-speed/rework3/diagnosis.md`.
+
+- **Context.**
+  - On CI (PR #8, runs 39530356210 and 39530367383) the pooled unit stage
+    took **847.6 s and 806.4 s**. The one-process baselines are **542, 597
+    and 793 s** (runs 39499437202, 39370927416 and 39465361808).
+  - Replaying the schedule gives exactly k = 2 (`rework3/infer-k.txt`). The
+    six unchanged heavy modules ran 1.70–2.57× slower pooled, so two
+    concurrent modules delivered **0.78–1.18×** the throughput of one
+    process (`rework3/per-test-compare-ci.txt`).
+  - Memory and I/O are ruled out on a CI-like box (2 CPUs, 7 GiB + 4 GiB
+    swap, stack up). Anon peaked at 1.43 GiB, swap stayed at 0, memory PSI
+    was ≤ 0.03 % and io PSI ≤ 0.1 % (`rework3/box/`).
+  - The same pool ranges from 0.62× (2 dedicated cores) to 0.94× (a 1-core
+    quota) of one process, and to 1.02–1.56× on CI. Every one of those
+    machines reports `nproc = 2`, so `nproc` cannot choose k.
+  - CS-9 measured on dedicated cores with no stack, so it could not model the
+    runner. The root cause is CPU capacity.
+  - The hook's wall-clock budget tests failed under the pool's contention:
+    9.43 s and 10.44 s against 9 s, and 3.33 s against 3 s.
+- **Decision.**
+  1. **Withdrawn:** the per-module pool, which covers:
+     - k = min(nproc, 4), `wait -n` scheduling and the largest-first order;
+     - the buffered per-module logs, their `mktemp -d` directory and the
+       EXIT trap that removes it;
+     - the per-module `unit: <s>s rc=<rc> <module>` summary lines;
+     - the per-module `Ran N > 0` check;
+     - the INT/TERM trap, `set -m`, `kill_jobs` and the `step` wrapper;
+     - step 2 (splitting `test_offline_bundle.py`).
+
+     The tester removes the tests that exist only for these: concurrency,
+     ordering, contiguity, the order guard, the summary lines, the missing
+     log or `.rc` file, the signal and TERM-ignorer tests, and the
+     per-module `Ran` test. Reason: on the hosted runner the pool is slower
+     than one process (Context), and no `nproc`-based rule can tell the
+     machines apart.
+  2. **Kept: one top-level process.** The top-level modules (`tests/test*.py`,
+     in glob order) run in one process:
+     `uv run --locked python -m coverage run -p --data-file="$cov_dir/$cov_name.toplevel" -m unittest -v --durations 10 <modules…>`.
+     - Output streams as it did before the pool.
+     - Sub-package runs (one per `tests/<pkg>/`) and the integration run
+       (`full` only) follow in sequence, as before.
+     - `set -e` semantics are restored: the first failing run stops
+       `test.sh`, and no later run starts. The one exception is the probe's
+       end line (decision 4).
+     - The `Ran N > 0` check and the sentinel check stay where they always
+       were, in `verify.sh`. They also catch a module that calls
+       `SystemExit(0)` at import, because loading then stops before any test
+       runs and the sentinel never reports `ok`.
+  3. **Kept: fail-closed coverage (from §2.2.1 decision 5, with new labels).**
+     - *Where.* `data_file` comes from the API
+       (`coverage.Coverage().config.data_file`, through
+       `uv run --locked python -c`). A lookup that fails, or prints nothing,
+       fails before any test runs. There is no `.coverage` fallback.
+     - *Labels.* Every run writes
+       `--data-file=<cov_dir>/<cov_name>.<label>` with `-p`:
+       - **`toplevel`** for the single top-level run;
+       - **`tests.<pkg>`** for each sub-package run;
+       - **`tests.integration`** for the integration run.
+
+       The label is **not** `tests`. The data-file glob
+       `<cov_name>.<label>.*` would then also match `tests.<pkg>.*` and
+       `tests.integration.*`, because `-p` appends `.<host>.<pid>.X<rand>`.
+       Those files would be listed twice and blamed on the wrong run. The rule
+       is that no label is a dot-prefix of another. `COVERAGE_FILE` is not
+       used.
+     - *Each run leaves data.* After each run, no
+       `<cov_dir>/<cov_name>.<label>.*` file fails the run with an `error:`
+       line naming the label.
+     - *Explicit combine.* `coverage combine` gets exactly the files collected
+       from this run's labels, never a directory and never no argument.
+     - *Nothing left over.* Any collected file still on disk after `combine`
+       fails the run, naming its label.
+     - `coverage erase` still runs first, then `report` (`fail_under = 80`)
+       and mypy, all unchanged.
+  4. **Added: the resource probe (e3).** This is a new script,
+     `scripts/resource_probe.sh <phase> [root]`.
+     - `test.sh` runs `bash scripts/resource_probe.sh start` immediately
+       before the top-level run.
+     - It runs `bash scripts/resource_probe.sh end` after the last unit run:
+       the last sub-package run, before the integration run in `full` and
+       before `combine` in `fast`.
+     - The end line is printed even when a unit run failed. `test.sh` then
+       exits with that run's non-zero status.
+     - `root` (default `/`) exists only as a test seam, and `test.sh` never
+       passes it.
+     - *Exact line* (one line, single spaces, keys always present in this
+       order):
+
+       ```
+       resources: phase=<start|end> nproc=<v> cpu_max_quota=<v> cpu_max_period=<v> cg_cpu_usage_us=<v> cg_cpu_throttled_us=<v> mem_total_kib=<v> mem_available_kib=<v> swap_total_kib=<v> swap_free_kib=<v> cg_mem_max=<v> cg_mem_peak=<v> psi_cpu_some_us=<v> psi_memory_some_us=<v> psi_memory_full_us=<v> psi_io_some_us=<v> psi_io_full_us=<v> cpu_steal_ticks=<v> cpu_total_ticks=<v>
+       ```
+
+       Each `<v>` matches `^([0-9]+|max|n/a)$`. The value `max` is allowed
+       only for `cpu_max_quota` and `cg_mem_max`. A phase other than `start`
+       or `end` prints `phase=n/a`.
+     - *Sources* (paths relative to `root`):
+
+       | Keys | Source |
+       |---|---|
+       | `nproc` | `nproc` on `PATH` (affinity-aware; not a file) |
+       | `cpu_max_quota`, `cpu_max_period` | `sys/fs/cgroup/cpu.max`, fields 1 and 2 |
+       | `cg_cpu_usage_us`, `cg_cpu_throttled_us` | `sys/fs/cgroup/cpu.stat`: `usage_usec`, `throttled_usec` |
+       | `mem_total_kib`, `mem_available_kib`, `swap_total_kib`, `swap_free_kib` | `proc/meminfo`: `MemTotal`, `MemAvailable`, `SwapTotal`, `SwapFree` (kB) |
+       | `cg_mem_max`, `cg_mem_peak` | `sys/fs/cgroup/memory.max`, `memory.peak` (bytes) |
+       | `psi_*_us` | `proc/pressure/{cpu,memory,io}`: `total=` on the `some` or `full` line (µs since boot) |
+       | `cpu_steal_ticks`, `cpu_total_ticks` | `proc/stat`, first `cpu ` line: field 8 (steal) and the sum of fields 1–8 (user…steal), in USER_HZ ticks |
+
+       Scope: the `cg_*` and `cpu_max_*` keys describe the gates container's
+       own cgroup (cgroup v2, private namespace). `meminfo`, `pressure` and
+       `stat` describe the whole runner VM, because containers see the
+       host's values there. End minus start gives the stage's figures, and
+       the runner's line timestamps give its wall time.
+     - *Rules.*
+       - It writes exactly one line to stdout, nothing to stderr, and always
+         exits 0.
+       - A missing or unreadable source, or a value that does not match the
+         pattern, gives `n/a` for that key alone, never a failure.
+       - It prints no file content other than digits or `max`. It reads no
+         environment variable and prints none.
+       - It uses bash builtins and `nproc` only (no awk, sed or python, and
+         no new package in the gates image).
+     - *Hardening (added 2026-10-21, rework 4; security S5–S7, review nits
+       5–6).*
+       - **Bounded reads.** A source is opened only if `[ -f ]` holds (a
+         regular file; symlinks are followed). A FIFO, a device such as
+         `/dev/zero`, a socket or a directory gives `n/a` without being
+         opened. The check is needed because opening a FIFO that has no
+         writer blocks in open(2), and `read -t` cannot interrupt that.
+         `/proc`, `/sys/fs/cgroup` and the test fixtures are regular files.
+         - Every read of a source has a timeout and a byte cap:
+           `-t 1 -n 4096`. The one other read, the here-string at
+           `resource_probe.sh:71`, reads the in-memory `pr_cpu_max` (already
+           capped at 4096 bytes by `one`) and is uncapped by design.
+         - One source is read for at most 64 lines. Reading stops at end of
+           file or at the line cap.
+         - So a source of printable text costs at most 64 reads of 4096
+           bytes, and an oversized or endless printable regular file is cut
+           off. A key that is not found within the cap gives `n/a`.
+       - **Limits of these bounds (corrected 2026-10-21, rework 5;
+         security S8).** The bounds above do not hold in two cases:
+         - Bash `read` drops NUL bytes without counting them toward `-n`, and
+           ignores `-t` on a regular file (`-t` applies to pipes, terminals
+           and character devices such as /dev/zero). A NUL-filled or sparse
+           file therefore defeats both caps: 1 GB costs several seconds
+           (measured 2.5–11 s), and 1 TB is unbounded.
+         - A regular file swapped for a FIFO between `[ -f ]` and the open
+           (a TOCTOU race) blocks in open(2), which `-t` cannot interrupt.
+
+         These two are the complete set of hang cases. In both the probe is
+         bounded only by the CI job timeout; on a local run with no CI
+         timeout it hangs until someone stops it, and is still never green.
+         Both need the test-only `root` argument or control of `/proc` and
+         `/sys` (in production `root` is `/`, and those trees are
+         kernel-owned). Both fail red, never green, and nothing leaks.
+         Accepted as low. The fix, a `timeout 10` wrapper in `test.sh`, is
+         DEFERRED to a follow-up (see Alternatives considered).
+       - **Digit cap on printed values.** `num` accepts 1–20 digits (2^64 − 1
+         has 20 digits, so every kernel counter fits). A longer run of
+         digits, for example a value cut off by the byte cap, gives `n/a`.
+       - **Base-10 arithmetic with a digit cap.** Each of the 8 `/proc/stat`
+         fields must match `^[0-9]{1,18}$`, and it is added as `$((10#v))`,
+         so a leading zero is read as decimal and `08` is no longer an error.
+         The sum cannot overflow, because 8 × (10^18 − 1) < 2^63 − 1. A field
+         that fails the check (non-digit, empty, or over 18 digits) gives
+         `n/a` for both `cpu_steal_ticks` and `cpu_total_ticks`. Both values
+         are printed through `num` (nit 6), so a negative or otherwise
+         invalid result also prints `n/a`.
+       - **`nproc` without OpenMP overrides.** The probe runs
+         `OMP_NUM_THREADS='' OMP_THREAD_LIMIT='' nproc`, using prefix
+         assignments with quoted empty values; GNU `nproc` ignores an empty
+         value. The quotes are needed because shellcheck SC1007 rejects the
+         bare `VAR= cmd` form; the effect is the same. The count is the
+         affinity-aware CPU count, never an `OMP_*` override (S7).
+       - **No environment input.** Every variable the probe reads is assigned
+         in the script before its first read, and no default comes from the
+         environment: `root` defaults to the literal `/`, never to `$ROOT`.
+         `PATH` is used only to find `nproc`, as before. This is tested on
+         the path `test.sh` actually uses, with no `root` argument (nit 5,
+         reviewer mutant P7).
+  5. **`--durations 10` stays**, on the top-level run only. It costs about
+     12 lines of log, and the per-test CI timings it gave were a key input to
+     this diagnosis. The sub-package and integration runs do not get it.
+  6. **Hook budget tests measure CPU time.** This covers the four wall-clock
+     budget tests in `tests/test_block_main_commit_hook.py`:
+     - the 1 MB tests `test_one_megabyte_token_shapes_finish_quickly` and
+       `test_one_megabyte_command_finishes_quickly` (3 s);
+     - the 5 MB test
+       `test_five_megabyte_command_without_backslash_newline_is_one_pass`
+       (9 s);
+     - the 400-segment L8 test `test_long_command_finishes_quickly` (5 s;
+       Q-CS2 resolved 2026-10-21, A-CS2 accepted).
+
+     How:
+     - One helper wraps the single `subprocess.run` of the hook. It takes
+       `resource.getrusage(RUSAGE_CHILDREN)` before and after, and the cost
+       is Δ(`ru_utime` + `ru_stime`): the CPU of the hook and of every child
+       it waits for (`jq`, `tr`, …).
+     - The budgets are unchanged: 3 s, 5 s and 9 s.
+     - The same call keeps `timeout=60` as a hang guard, not a budget. A
+       hook that blocks or sleeps fails with `TimeoutExpired`.
+     - Untimed hook calls are unchanged.
+
+     Evidence (`rework3/hook-cpu-vs-wall.txt`): on one CPU with 0, 1 or 2
+     busy loops, the 5 MB no-jq "windows paths" case took 2.26, 5.03 and
+     7.61 s of wall time but only 2.25, 2.51 and 2.53 s of CPU. The worst CPU
+     is 0.37 s against the 3 s budget and 2.53 s against 9 s. CI cores are
+     about 1.2–1.5× slower, which leaves about 3× headroom. The property under
+     test (linear cost, no catastrophic backtracking; security L9, L21 and
+     M3) is a CPU property, so the intent holds.
+
+     *The hook launches no background work (added 2026-10-21, rework 4;
+     security S4, orchestrator ruling).*
+     - `RUSAGE_CHILDREN` counts only children that are waited for. Work that
+       the hook does not wait for, such as a detached or double-forked
+       grandchild, is not in the CPU budget. Security showed that a mutant
+       of this kind passes the budget tests at about 12 s per call.
+     - **No wall-clock bound is added.** It would bring back the flake that
+       the human ruled out. The configured hook timeout is 10 s
+       (`.claude/settings.json`), and the 5 MB case measured 9.4–10.4 s of
+       wall time on CI.
+     - **Instead, a deterministic static test** reads
+       `scripts/hooks/block-main-commit.sh` and fails if the hook can launch
+       work it does not wait for. As amended in rework 5 (security S9,
+       review nit 1):
+       - The hook must contain only printable ASCII plus tab and newline.
+         Python's `splitlines()` and `lstrip()` split and strip characters
+         that bash treats as word characters (FF, VT, CR, `\x1f`, U+2028 and
+         others), which hid on-list constructs (S9).
+       - The text is split on newline only, and every line is scanned,
+         comment lines included: a line starting with `#` can sit inside a
+         string or here-document and still run. This errs strict.
+
+       The test fails on the plain spelling of each of these (the forms
+       that still pass are under Known limits below):
+       - an `&` left over once every `&&`, `|&`, `>&`, `<&` and `&>` is
+         removed (that is, `&` backgrounding; `|&` is the stderr pipe);
+       - process substitution `<(` or `>(`;
+       - the words `setsid`, `nohup`, `disown`, `coproc`, `bg` or `eval`;
+       - a nested shell (widened in rework 5): `bash`, `sh`, `dash`, `zsh`
+         or `ksh`, bare or quoted, or `$BASH`, `${BASH}` or `$SHELL`, with
+         any options before a `-…c…` cluster; `bash -s`; piping into a
+         shell; and `source` or `.` of `/dev/stdin`.
+
+       `eval` and a nested shell are on the list because they can hide the
+       other constructs inside a string. Today the hook has none of them;
+       its only `&` is part of an `&&` (grep, 2026-10-21).
+     - **Residual risk (accepted, low; security S10).**
+       - A deny-list cannot be complete for bash. Security found 13
+         off-list mutants that launch un-waited work with no literal `&`,
+         for example `se''tsid`, `${c}sid`, a `trap` string run at EXIT,
+         `mapfile -C`, `${x@P}`, or a `python3` call that detaches
+         (`docs/evidence/ci-speed/rework4/security.md`, S10). The rework-5
+         widening closes the nested-shell spellings among them, not the
+         rest.
+       - **Known limits (rework 5; `rework5/review.md` F1,
+         `rework5/security.md` S11).** These nested-shell forms still pass
+         the detector and launch un-waited work:
+         - `bash \<newline> -c` (the scan is per physical line);
+         - a line ending in `|` with `bash` on the next line;
+         - `bash <<<…`, and a heredoc fed to `bash`;
+         - `bash /dev/stdin`, `bash -` and `bash -i`;
+         - `source -- /dev/stdin`;
+         - `| nice -n 5 bash`;
+         - `ba""sh -c` and `$(echo bash) -c`.
+
+         Each needs a deliberately hostile hook edit. The allow-list
+         follow-up below closes them.
+       - Follow-up (DEFERRED, not in ci-speed): replace the deny-list with
+         an allow-list of the commands and builtins the hook may call. The
+         static test would then fail on any command word not on the list.
+       - The scan reads only the hook file. It does not see a program the
+         hook calls (today `jq`, `grep`, `tr`, `sed`) or a new helper script
+         that detaches work.
+       - Work that escapes in this way is not in the budget. Only the 60 s
+         guard bounds the part the hook waits for.
+       - A hook call over Claude Code's 10 s timeout fails open for
+         PreToolUse, so the commit guard is skipped for that call. The gate
+         suite is not affected.
+       - This hook is a guardrail, not a guarantee (AGENTS.md, Branch
+         Policy), and a human reviews every change to it.
+  7. **Unchanged:** the CS-5 fixture fix and its test, the CS-8 hook header,
+     `verify.sh`, `ci.yml`, the sentinel, and `[tool.coverage]`.
+- **Alternatives considered.**
+  - (c) Keep the pool with k = 1 when nproc < 4. That is 1.08× one process
+    (32 more start-ups), and it keeps all the pool code for no CI gain.
+    Rejected by the ruling.
+  - Keep the pool behind a CI-measured A/B. The ruling withdrew the speed
+    claim, and no option has a measured CI gain.
+  - (a) Size k by memory. Memory is not binding, so this is rejected.
+  - (b) Run the unit stage before `launch.sh`. It saves about 1 min, but
+    it changes `verify.sh` and splits coverage across two containers. That
+    needs its own ADR.
+  - (e2) A larger runner. That is a human cost decision.
+  - Probe as Python through `uv run`. It adds start-up cost, and the fake-uv
+    harness treats any other python call as the `data_file` lookup. Rejected.
+  - Probe as a function inside `test.sh`. It has no seam for the
+    missing-source test without a new env key (PS-2.21). Rejected.
+  - Label the top-level run `tests` (see decision 3). Rejected.
+  - Hook budgets: loosen the wall budgets (gaming a gate), or serialise the
+    hook tests (an exception list in `test.sh`, still exposed to the stack's
+    load). Both rejected.
+  - (Rework 4) Add a 10 s wall bound beside the CPU budget (security S4's
+    suggestion). Rejected by the orchestrator: it brings the load-dependent
+    flake back (decision 6, rework 4).
+  - (Rework 4) Wrap the probe in `timeout 10` in `test.sh` (security S5's
+    alternative). Rejected: a stuck source would then fail the whole run,
+    when the rule is `n/a`, and the FIFO case would still wait 10 s. The
+    bounds sit in the probe instead.
+    *Revisited in rework 5 (security S8): DEFERRED to a follow-up, not
+    rejected.* The in-probe bounds do not cover a NUL-filled file or the
+    `[ -f ]`→open race (decision 4, "Limits of these bounds"). The wrapper
+    covers both. Trade-off: it bounds a stuck probe at 10 s instead of the
+    CI job timeout, but the run then fails at 10 s (red) instead of printing
+    `n/a`, and it adds one more process per probe call. `timeout` is
+    coreutils, already needed for `nproc`, so it adds no package.
+- **Consequences.**
+  - On CI the unit stage returns to the one-process figure (542–793 s) plus
+    this item's remaining tests. There is **no speed claim**: CS-9 is
+    withdrawn, and the speed goal moves to plan item `test-diet`.
+  - Every CI log carries two `resources:` lines, so the next slow run can be
+    classified without inference:
+    - quota by `cpu_max_*` and `cg_cpu_throttled_us`;
+    - steal by `cpu_steal_ticks / cpu_total_ticks`;
+    - CPU starvation by `psi_cpu_some_us`;
+    - memory by `mem_available_kib`, `cg_mem_peak` and `psi_memory_*`.
+  - The hook tests no longer depend on runner load. A hook that blocks
+    without using CPU is caught only at 60 s, not at Claude Code's 10 s hook
+    timeout. This is accepted: no wall bound is reliable on a shared runner,
+    and the security findings concern the algorithm. Work the hook does not
+    wait for is excluded by the static test, not measured. Its residual risk
+    is in decision 6.
+  - The probe is bounded for the real sources. A FIFO, a device, or an
+    oversized or endless printable source gives `n/a` quickly. A NUL-filled
+    file or a FIFO swapped in after `[ -f ]`, reachable only through the
+    test-only `root` argument or control of `/proc` and `/sys`, can hang
+    `test.sh` until the CI job timeout, or until stopped on a local run
+    (red, never green; S8, decision 4).
+  - The hook's static test is a deny-list. Several nested-shell spellings
+    still pass it (decision 6, Known limits); the allow-list follow-up
+    closes them.
+  - The one-process `test.sh` is simpler than the pool. The bash floor is
+    4.4 (arrays under `set -u`), and GNU `stat` is no longer needed.
+  - CS-7 (PS-3.4 re-measure after two green CI runs) still applies.
+- **Paths:** `scripts/test.sh`, the new `scripts/resource_probe.sh` (linted by
+  `lint.sh`'s glob) and tests, so `scripts/verify.sh full`.
+- **First failing tests (tester):**
+  1. `ResourceProbeTest.test_prints_one_line_from_a_fake_root`. A fake root
+     with known `cpu.max`, `cpu.stat`, `meminfo`, `memory.max`,
+     `memory.peak`, `pressure/*` and `stat`, plus a fake `nproc` on `PATH`,
+     gives the exact expected line. RED: no script yet.
+  2. `ResourceProbeTest.test_missing_sources_print_na_and_exit_0`. With an
+     empty root and no `nproc` on `PATH`, every key is `n/a`, the exit code
+     is 0 and stderr is empty.
+  3. `ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env`:
+     - sources hold `SECRET=x` or a path, and those keys show `n/a`;
+     - a canary env var never appears in the output;
+     - the key list matches the fixed order exactly.
+  4. `IntegrationRunsOnceTest.test_resource_lines_bracket_the_unit_stage`:
+     - `phase=start` comes before the first top-level output;
+     - `phase=end` comes after the last sub-package run and before the
+       integration run;
+     - when the top-level run fails, the end line still prints and `test.sh`
+       exits non-zero.
+  5. `IntegrationRunsOnceTest.test_top_level_modules_run_in_one_process`.
+     The counted modules all record the same pid, each one once, and the
+     data file label is `toplevel`. This replaces
+     `test_top_level_modules_run_in_separate_processes`.
+  6. A unit test of the hook CPU helper. A child that sleeps 1 s counts
+     under 0.5 s of CPU, and a busy child counts about its wall time. Then
+     convert the four budget tests to the helper.
+  7. Guards, adapted to the `toplevel` label, that stay green:
+     - the data_file lookup (empty or failed lookup);
+     - the explicit combine list;
+     - the leftover run label;
+     - a run that leaves no data;
+     - the N1 failing sub-package and integration runs;
+     - CS-5 (nested `test.sh`);
+     - CS-8 (hook header);
+     - `--durations 10` on the top-level run.
+- **First failing tests, rework 4 (tester; exact names may differ, and they
+  are recorded in the handoff):**
+  1. `ResourceProbeTest.test_fifo_or_device_source_gives_na_quickly`. In a
+     fake root, `proc/stat` and `sys/fs/cgroup/cpu.max` are FIFOs with no
+     writer, and `proc/meminfo` is a symlink to `/dev/zero`. The probe exits
+     0 well inside a subprocess guard of about 10 s, those keys print `n/a`,
+     and the other keys are unaffected. RED today: the probe hangs.
+  2. `ResourceProbeTest.test_oversized_source_is_cut_off`. A 1 MB
+     single-line `memory.peak` of digits, and a `meminfo` of more than 64
+     filler lines before `MemTotal:`, both give `n/a` quickly.
+  3. `ResourceProbeTest.test_stat_fields_are_base_10_and_capped`:
+     - fields with leading zeros (`010`, `08`) are summed as decimal;
+     - eight 18-digit fields give their exact sum;
+     - a 19-digit field gives `n/a` for both steal and total.
+  4. `ResourceProbeTest.test_nproc_ignores_openmp_env`. A fake `nproc` on
+     `PATH` prints `7` only when `OMP_NUM_THREADS` and `OMP_THREAD_LIMIT`
+     are empty or unset. With both set to `424242`, the line shows
+     `nproc=7`.
+  5. `ResourceProbeTest.test_no_root_path_reads_no_env` (nit 5). This runs
+     with no `root` argument. A canary environment value is set for `ROOT`,
+     `root`, `cg` and every variable name the script uses (parsed from the
+     script), and it points at a planted canary tree. No canary number
+     appears, and the line matches the pattern. Mutant P7 must fail it.
+  6. `test_hook_launches_no_background_work` (static, decision 6). It is
+     green on today's hook and is a guard, not a RED test. The tester shows
+     it discriminates with one mutant per listed construct.
+
 ### 2.3 platform-config (ADR-KE-010)
 
 **Package.** First-party code lives in one new package, `engine/`, next to
@@ -669,7 +1219,9 @@ Environment variables:
   code path lets `harness_telemetry` read them again (B1, rework 1).
 - **Lists:** comma-separated in the environment.
 
-`defaults.yaml` layout. The values shown are the A7 defaults:
+`defaults.yaml` layout. The values shown are the A7 defaults, with the model
+names as amended by the Q38 and Q54 rulings (model-roles, §2.4 *Model
+roles*, ADR-KE-014):
 
 ```yaml
 env: prod                    # dev | ci | prod; fail-closed default
@@ -684,9 +1236,9 @@ stores:
   valkey:   {host: valkey, port: 6379}
 models:                      # one block per pass (DR29); no inheritance between passes
   model_upstream: null       # gateway's upstream host:port, checked against the allowlist
-  compose: {base_url: null, model: qwen2.5:14b-instruct, fallback_model: llama3.1:8b, timeout_s: 120}
-  rewrite: {base_url: null, model: qwen2.5:14b-instruct, fallback_model: llama3.1:8b, timeout_s: 120}
-  audit:   {base_url: null, model: qwen2.5:14b-instruct, fallback_model: llama3.1:8b, timeout_s: 120}
+  compose: {base_url: null, model: "qwen3.5:latest", fallback_model: "gpt-oss:20b", timeout_s: 120}
+  rewrite: {base_url: null, model: "qwen3.5:latest", fallback_model: "gpt-oss:20b", timeout_s: 120}
+  audit:   {base_url: null, model: "gpt-oss:120b",   fallback_model: "gpt-oss:20b", timeout_s: 120}
   embed:   {base_url: null, model: nomic-embed-text, dim: 768, timeout_s: 60}
 telemetry: {tracing: "off", collector_endpoint: "http://phoenix:6006", hide_inputs: true, hide_outputs: true}  # B7b: off by default; .env.example sets HARNESS_TRACING=otlp
 readiness: {timeout_s: 2}
@@ -1144,6 +1696,148 @@ dial `http://gateway:<KE_GATEWAY_MODEL_LISTEN>/v1`. That port is reachable on
   model keys are taken from `.env`).
 - `.env.example` is unchanged (both model keys empty). Its comment above
   `KE_EGRESS_ALLOWLIST` says to list the model host only.
+
+**Model roles (model-roles, ADR-KE-014; MR-1 to MR-6).** Config only; the
+wiring above, the egress guard, the gateway forward and `ModelClient` do not
+change.
+- **Roles and models** (Q38 ruling and Q54 ruling, 2026-10-20). All five
+  names are installed on `aria-gb10-2` (`GET /api/tags`); nothing is pulled.
+
+  | Role | `model` | `fallback_model` | `timeout_s` |
+  |---|---|---|---|
+  | compose | `qwen3.5:latest` | `gpt-oss:20b` | 120 |
+  | rewrite | `qwen3.5:latest` | `gpt-oss:20b` | 120 |
+  | audit | `gpt-oss:120b` | `gpt-oss:20b` | 120 |
+  | embed | `nomic-embed-text` (`dim: 768`) | none (no key) | 60 |
+
+  - Each block still sets every key itself (DR29, no inheritance).
+  - `fallback_model` stays a required `str`, so there is no schema change.
+    No code reads it (any fallback mechanism is out of scope).
+  - Values stay quoted in `defaults.yaml`, as today, because each contains
+    a `:` inside a YAML flow mapping.
+  - All five names are declared model values, so the hardcoded scan (MR-3)
+    flags each of them, `gpt-oss:20b` included, outside the PS-1.2
+    locations.
+- **No new client method.** `ModelClient` keeps `complete()` and `probe()`.
+  `test_embed_role_answers` builds `ModelClient(settings, "embed")` and
+  POSTs `{base_url}/embeddings` with `{"model": client.model, "input":
+  <short text>}` through `client.http_client`. That path has the guarded
+  transport, `trust_env=False` and the embed role's 60 s timeout. The test
+  asserts that the `base_url` host is `gateway`, HTTP 200, exactly one
+  `data` item, and `len(data[0].embedding) == settings.models.embed.dim`.
+  This call lives in test code, not product code, so it needs no span.
+  MR-5's "Traced" clause applies only to product paths. The product
+  `embed()` method, with its `llm_span` (or an EMBEDDING-kind span) and unit
+  test, arrives with knowledge-plane. The chat tests call `complete()`,
+  which already emits `model.<role>` (LLM). **No new spans** in this item.
+- **Chat assertions and `max_tokens`.** Both `qwen3.5` and `gpt-oss` reason
+  before they answer. Requests capped below what the reasoning needs end
+  with `finish_reason: "length"` and an empty `content`. The design:
+  - **Send no `max_tokens`.** `complete()` sends none today. Adding a
+    parameter would change the client interface, which this item does not
+    do. With no cap, an OpenAI-compatible server generates until the
+    model's stop token. It stops early only on a server-side limit: an
+    Ollama Modelfile `num_predict`, or the context length. The tester
+    records `ollama show <model> --parameters` for `qwen3.5:latest` and
+    `gpt-oss:120b` in the evidence (or the `/api/show` equivalent), so a
+    server-side cap is visible.
+  - **Prompt:** one user message asking for one word (for example, "Reply
+    with the single word: ready"). It keeps reasoning, and so latency,
+    short. The test does no prompt tuning, sends no reasoning-effort hint
+    and no system prompt.
+  - **Assert `content`, not "content OR reasoning".** Assert HTTP 200,
+    `result["model"] == client.model`, and
+    `choices[0].message.content.strip()` non-empty, as MR-5 states. A
+    reply that holds only reasoning is not an answer: product code calls
+    `complete()` the same way and needs `content`. A test that accepted
+    reasoning alone would pass a role that never answers.
+  - **Failure message:** on failure, report `choices[0].finish_reason` and
+    the key names of `choices[0].message`, never their values. The
+    reasoning field is `reasoning` on Ollama and `reasoning_content` on
+    vLLM; the test does not depend on either name. `"length"` with empty
+    content is a real finding for the orchestrator. It is not fixed by
+    loosening the assertion.
+- **Run order and cold loads.** `gpt-oss:120b` is about 65 GB. Ollama
+  unloads a model after its keep-alive (5 min by default) or when another
+  model needs the memory. Whether `qwen3.5:latest` and `gpt-oss:120b` fit
+  together depends on the host, so the design does not assume either
+  outcome.
+  - The four tests live in one module,
+    `tests/integration/test_model_roles.py`, in the order **embed,
+    compose, rewrite, audit**:
+    - embed is the smallest load;
+    - compose and rewrite share one `qwen3.5:latest` load;
+    - audit (the largest) runs last, so nothing after it needs a model it
+      may have evicted.
+  - unittest sorts methods by name, which would give audit first. The
+    module therefore defines `load_tests(loader, tests, pattern)` and
+    returns a suite in that explicit order. `discover` honours it.
+    `test_model_roles.py` sorts after `test_gate_least_privilege.py` and
+    before `test_stack_ready.py`. The readiness test and the shared probe
+    only `GET /models`, which loads no model.
+  - **Timing:** each test reads `time.monotonic()` around the one model
+    call and writes one line to stderr: `model-role <role> <model>
+    <seconds>s`. The tester copies these into the evidence as MR-5's
+    per-role times.
+  - **Warm-up:** none in the tests or in `verify.sh`. A hidden warm-up
+    would hide the cold-load time that MR-6 is about. Before the run, the
+    tester records `GET /api/ps` (the models already loaded) from the dev
+    host, and records it again after the run. A role time is then read as
+    cold or warm against that list. If audit fails with
+    `httpx.ReadTimeout`, that is the MR-6 measurement, not a flake. A
+    warm-up may be used only as a separate, timed, recorded step after
+    that failure is saved: Ollama `POST /api/generate` with `{"model":
+    "gpt-oss:120b", "keep_alive": "10m"}` and no prompt loads the model,
+    and its time is the cold-load measurement.
+- **Timeouts (Q55, A55 accepted).** They stay 120 s for chat and 60 s for
+  embed. `httpx` applies `timeout_s` to each of connect, write, read and
+  pool. For a non-streamed completion the read wait spans everything from
+  the request being sent to the first response byte: model load, then
+  reasoning, then the answer. So the 120 s bounds the cold load plus
+  generation. If the MR-5 run shows a role's call exceeding its
+  `timeout_s`:
+  1. Measure the call's full time once, recorded, with no client timeout
+     (the timed warm-up above, plus one timed completion).
+  2. Proposed `timeout_s` = ⌈1.5 × measured, rounded up to the next
+     30 s⌉. This is the same ×1.5 margin as the CI timeout (ADR-KE-011,
+     platform-offline).
+  3. The orchestrator rules on it. MR-1's test pins it.
+  4. If the result exceeds 570 s, it is too close to the gateway's 10 min
+     idle timeout. Escalate instead, because changing the gateway is out of
+     scope.
+  - **Measured (MR-5 run, 2026-10-20,
+    `docs/evidence/model-roles/model-run-aria-gb10-2.txt`):** the longest
+    call was the cold `qwen3.5:latest` compose at 32.6 s, about 27% of
+    120 s. Every role finished inside its `timeout_s`, so the Q55 procedure
+    above was not triggered and the timeouts stay as they are.
+- **Gateway forward timeouts do not bind.** The model forward is an nginx
+  `stream` (TCP) proxy, so HTTP read timeouts do not apply to it.
+  - `proxy_connect_timeout 5s` covers only the TCP connect from `gateway`
+    to `aria-gb10-2:11434`. Ollama accepts connections while a model
+    loads, so load time is never inside it.
+  - `proxy_timeout` (unset, so nginx's default of 10 min) is the longest
+    gap between two successive reads or writes on either side. A
+    non-streamed completion is silent for its whole load and generation
+    time, so this is the bound that applies. At 600 s it is five times
+    the 120 s client timeout, so `httpx` always gives up first.
+  - Neither changes in this item.
+- **Tags, not pins (audit §4, `docs/evidence/model-roles/audit.md`).**
+  - The config values are Ollama tags, not pins. `qwen3.5:latest` and
+    `nomic-embed-text` (implicitly `:latest`) are moving tags, and the
+    other tags (`gpt-oss:*`) can change too. Only a digest is immutable,
+    so any `ollama pull` on the model host can swap the weights behind an
+    unchanged config value, and for `:latest` the parameter size, memory
+    and cold-load time with them.
+  - MR-5 records the `/api/tags` digest of each model it tested; that
+    evidence is the record of what was verified. Re-run the recorded
+    model run (MR-5) after any pull on the model host.
+  - When knowledge-plane stores embeddings, it records the embed model's
+    digest with each vector set, so a silent swap (which needs a
+    re-embed) is detectable.
+  - A later item may have readiness compare the live digests with the
+    recorded ones. Not in this item.
+  - Keeping Ollama on the model host patched is the host owner's job,
+    outside this repo.
 
 **`/healthz` (PS-2.4).** Returns `200 {"status":"ok"}` from process state only,
 with no I/O. It is untraced, because it is liveness and is called every few
@@ -3220,6 +3914,33 @@ Suggested first test per sub-item, followed by the order of the rest.
     `test_scan_ignores_are_justified`, the scan's recorded red runs, the
     `scan-db`/`scan` compose checks (ADR-KE-013), and
     `test_gates_image_pins_psscriptanalyzer_by_hash` (L-8, N-7).
+- **model-roles** (ADR-KE-014; design in §2.4 *Model roles*), in TDD order:
+  - **Fast:**
+    1. `test_model_role_defaults` (MR-1, MR-2, MR-6), in
+       `tests/test_engine_config.py`. It may replace the model lines of
+       `test_config_defaults_and_env_override`. All four blocks: `model`
+       per the table, `fallback_model == "gpt-oss:20b"` for the three chat
+       roles, `embed.dim == 768`, `timeout_s` 120/120/120/60, `base_url`
+       None. With `KE_MODELS__AUDIT__MODEL` set to a marker, only
+       `audit.model` changes. It is RED against today's `defaults.yaml`.
+    2. `test_no_hardcoded_hosts_or_models` (MR-3): the required declared
+       set becomes `qwen3.5:latest`, `gpt-oss:120b`, `gpt-oss:20b`,
+       `nomic-embed-text`. It is RED until `defaults.yaml` changes.
+    3. `test_planted_model_name_is_flagged` (MR-3): plant `ollama pull
+       gpt-oss:120b` in `scripts/pull.sh`. This one stays green (the
+       scanner is name-agnostic); it is an update, not a RED step.
+  - **Integration** (model-calling, `full`, new module
+    `tests/integration/test_model_roles.py`, order fixed by `load_tests`):
+    `test_embed_role_answers`, `test_compose_role_answers`,
+    `test_rewrite_role_answers`, `test_audit_role_answers`. Each is
+    `@model_calling` and calls `require_model_host(self)` first. The RED
+    for these is the recorded run itself. Without the keys they skip by
+    name (PS-2.7), and `test_stack_model_skip` stays unchanged.
+  - **Gates:** MR-4 recorded grep
+    (`docs/evidence/model-roles/retired-names-grep.txt`); MR-5 recorded
+    full run (`model-run-aria-gb10-2.txt`, with `/api/tags` digests,
+    `/api/ps` before and after, `ollama show --parameters` and per-role
+    times).
 
 ## 3. The three planes (proposed)
 
@@ -3506,7 +4227,8 @@ the last published version). These gaps are what §4 and ADR-KE-007 address.
 
 The template's existing ADR (OpenInference tracing to Arize Phoenix) stays in
 force, and its text is kept below unchanged. ADR-KE-001 is built (amended by
-ADR-KE-009). ADR-KE-002 to ADR-KE-012 are **proposed**.
+ADR-KE-009). ADR-KE-002 to ADR-KE-012 are **proposed**. ADR-KE-014
+(model roles) is **accepted** by the 2026-10-20 rulings.
 
 ### ADR: OpenInference tracing to Arize Phoenix
 - Context: `docs/log.md` records what each role did, but not how agent code
@@ -3595,8 +4317,9 @@ ADR-KE-009). ADR-KE-002 to ADR-KE-012 are **proposed**.
     that hides the words from the text: a git alias verb (`git ci -m x`),
     variables, `eval`, and base64 or other encodings. It is also silent for
     `gh` (`gh pr merge`), as off main. The hook is a guard rail that denies
-    most commits and pushes on main, not all; branch protection (Q18) is the
-    control. AGENTS.md's "denies any commit/push" wording overclaims; that
+    most commits and pushes on main, not all; branch protection (Q18) was
+    skipped by decision (2026-10-20), so merges are manual and this hook is
+    the only automated guard. AGENTS.md's "denies any commit/push" wording overclaims; that
     edit is the documenter's (L24 ask).
 
 #### Decision: commit hook is a simple fail-safe text rule (2026-10-18)
@@ -3611,7 +4334,8 @@ asked for the hook design to be recorded in this ADR.
   - Each round also produced timing failures (L9, B10): the lexer was
     quadratic under mawk and went past the 10 s hook timeout.
   - Off-main push protection was a medium, non-blocking finding (security
-    M1). Branch protection is the real control (Q18).
+    M1). Branch protection (Q18) was later skipped by decision (2026-10-20);
+    merges are manual and the hook is the only automated guard.
 - **Decision:**
   - Extract the `command` field: jq if it works, else a single sed on the
     first `"command":"…"` value, else the raw input.
@@ -3662,7 +4386,7 @@ asked for the hook design to be recorded in this ADR.
       as bash reads it
   - Accepted bypasses on main: Table M rows 14 and 15, where after a comment
     or even backslash run a continuation splits the `git` or `commit` word.
-    These shapes are contrived; branch protection (Q18) is the control. Also
+    These shapes are contrived; branch protection (Q18) was skipped by decision, so merges are manual. Also
     anything that hides the words, and `gh` (security L24; see "Further
     consequences" above).
   - Cost: host timing for 5 MB-plus commands (Git Bash, no jq) is 4.9 s with
@@ -4937,3 +5661,65 @@ asked for the hook design to be recorded in this ADR.
   - the tar is removed on every exit path.
   Static compose checks: `scan-db` has only the database volume, and
   `scan` has no network. Then `test_scan_ignores_are_justified`.
+
+### ADR-KE-014: Model roles on the installed models (model-roles)
+- **Status:** accepted (Q38 ruling, human, 2026-10-20; Q54 and Q55 rulings,
+  orchestrator, 2026-10-20). It amends the model values in A7 and in the
+  ADR-KE-010 layout (§2.3).
+- **Context:**
+  - The defaults named `qwen2.5:14b-instruct` and `llama3.1:8b`. The
+    second is not installed on the model host `aria-gb10-2`.
+  - The new chat models reason before answering, and `gpt-oss:120b` is
+    about 65 GB, so cold loads and reasoning press on the 120 s client
+    timeout.
+  - `ModelClient` has no embedding call.
+- **Decision:**
+  - **Models:** compose and rewrite use `qwen3.5:latest`, audit uses
+    `gpt-oss:120b`, and embed uses `nomic-embed-text` (768). The fallback
+    for the three chat roles is `gpt-oss:20b`.
+  - **Config only:** no schema change, no client change and no gateway
+    change.
+  - **Embedding proof:** the embedding test posts `/embeddings` through
+    `ModelClient.http_client`, so it uses the guarded transport and the
+    gateway forward.
+  - **Chat tests:** they call `complete()` unchanged, with no
+    `max_tokens`, and assert non-empty `content`.
+  - **Test order:** embed, compose, rewrite, audit, fixed by `load_tests`.
+  - **Timeouts:** they change only from a recorded measurement, by the
+    rule in §2.4 *Model roles*.
+- **Alternatives considered:**
+  - **`ModelClient.embed()` now:** rejected. It is a product feature with
+    its own span and test, and knowledge-plane needs it, not this item.
+  - **`max_tokens` on `complete()` or a raw POST in the test:** rejected.
+    The first is an interface change. The second bypasses the `model.<role>`
+    span and the path product code uses.
+  - **Asserting content or reasoning:** rejected. It passes a role that
+    never answers.
+  - **Fallback as each role's own model, or a nullable key:** the human
+    and orchestrator chose (b) in Q54. A nullable key would be a schema
+    change.
+  - **Raising timeouts pre-emptively:** rejected by Q55. Only a measured
+    number may change them.
+  - **Warm-up inside `verify.sh`:** rejected. It hides the cold load that
+    a production call would meet.
+- **Consequences:**
+  - **Tags, not pins.** The config names are Ollama tags.
+    `qwen3.5:latest` and `nomic-embed-text` (implicitly `:latest`) move,
+    and other tags can change too. MR-5 records the digests of what was
+    tested, so the recorded model run is re-run after any pull on the
+    model host. When knowledge-plane stores embeddings, it records the
+    embed model's digest with each vector set. A later item may have
+    readiness compare live digests with the recorded ones. Keeping Ollama
+    on the model host patched is the host owner's job, outside this repo.
+    Detail in §2.4 *Model roles*.
+  - The first call to audit after an eviction pays the full cold load, and
+    MR-5 measures it. Measured on 2026-10-20: the cold `qwen3.5:latest`
+    compose took 32.6 s, the longest call, at about 27% of 120 s, so Q55
+    was not triggered.
+  - The readiness probe still checks only compose `/models`, not
+    per-model presence. MR-5 is the per-role proof.
+  - Nothing exercises `fallback_model` until a fallback mechanism is
+    specified.
+- **First tests:** `test_model_role_defaults` (RED on today's
+  `defaults.yaml`), then `test_no_hardcoded_hosts_or_models` with the new
+  declared set. The integration list is in §2.6 *model-roles*.

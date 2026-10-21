@@ -1,0 +1,36 @@
+ke-verify-r3-gates-it-run-368a848208ac 182.29% 111MiB / 31.07GiB
+ke-verify-r3-api-1 0.12% 103.6MiB / 31.07GiB
+ke-verify-r3-worker-1 0.00% 52.02MiB / 31.07GiB
+ke-verify-r3-phoenix-1 0.37% 485MiB / 31.07GiB
+ke-verify-r3-postgres-1 0.01% 46.91MiB / 31.07GiB
+ke-verify-r3-gateway-1 0.00% 10.72MiB / 31.07GiB
+ke-verify-r3-valkey-1 0.12% 14.11MiB / 31.07GiB
+ke-verify-r3-neo4j-1 0.52% 424.3MiB / 31.07GiB
+--
+ke-verify-r3-gates-it-run-368a848208ac 147.99% 207.1MiB / 31.07GiB
+ke-verify-r3-api-1 0.25% 104.1MiB / 31.07GiB
+ke-verify-r3-worker-1 0.00% 52.02MiB / 31.07GiB
+ke-verify-r3-phoenix-1 1.76% 485MiB / 31.07GiB
+ke-verify-r3-postgres-1 0.00% 46.95MiB / 31.07GiB
+ke-verify-r3-gateway-1 0.00% 10.72MiB / 31.07GiB
+ke-verify-r3-valkey-1 0.13% 14.11MiB / 31.07GiB
+ke-verify-r3-neo4j-1 0.62% 426.1MiB / 31.07GiB
+--
+ke-verify-r3-gates-it-run-368a848208ac 111.67% 182.4MiB / 31.07GiB
+ke-verify-r3-api-1 0.14% 104.6MiB / 31.07GiB
+ke-verify-r3-worker-1 0.00% 52.02MiB / 31.07GiB
+ke-verify-r3-phoenix-1 0.44% 485MiB / 31.07GiB
+ke-verify-r3-postgres-1 0.00% 47.1MiB / 31.07GiB
+ke-verify-r3-gateway-1 1.29% 10.72MiB / 31.07GiB
+ke-verify-r3-valkey-1 0.11% 14.12MiB / 31.07GiB
+ke-verify-r3-neo4j-1 0.45% 427.1MiB / 31.07GiB
+--
+ke-verify-r3-gates-it-run-368a848208ac 160.16% 229.7MiB / 31.07GiB
+ke-verify-r3-api-1 0.13% 105.1MiB / 31.07GiB
+ke-verify-r3-worker-1 0.00% 52.02MiB / 31.07GiB
+ke-verify-r3-phoenix-1 0.41% 485MiB / 31.07GiB
+ke-verify-r3-postgres-1 2.91% 47.1MiB / 31.07GiB
+ke-verify-r3-gateway-1 0.00% 10.72MiB / 31.07GiB
+ke-verify-r3-valkey-1 0.11% 14.13MiB / 31.07GiB
+ke-verify-r3-neo4j-1 0.65% 427.9MiB / 31.07GiB
+--

@@ -268,8 +268,9 @@ credentials (`user:pass@`). The error names the setting, never its value.
 - `scripts/hooks/block-main-commit.sh` — `PreToolUse` hook for the branch
   policy (wired in `.claude/settings.json` and `developer.agent.md`). It is a
   guard rail, not a security boundary (see ADR-KE-001 in
-  [docs/architecture.md](docs/architecture.md)); branch protection on `main`
-  is the real control.
+  [docs/architecture.md](docs/architecture.md)). Branch protection (Q18) was
+  skipped by decision: merges to `main` are a manual human action, and this
+  hook is the only automated guard.
 - `scripts/test.sh`, `scripts/smoke.sh` — gate scripts called by
   `verify.sh`; the smoke test exports real OTLP traces to a stub collector
 - `docs/requirements.md`, `docs/architecture.md` — living plan artifacts

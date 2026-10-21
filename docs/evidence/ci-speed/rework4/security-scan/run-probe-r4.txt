@@ -1,0 +1,89 @@
+GNU bash, version 5.2.15(1)-release (x86_64-pc-linux-gnu)
+uid=0(root) gid=0(root) groups=0(root)
+### S5: FIFO, device, huge
+== control: rc=0 wall=0.02s
+resources: phase=start nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=3 mem_available_kib=4 swap_total_kib=5 swap_free_kib=6 cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=8 cpu_total_ticks=36
+== FIFO cpu.max: rc=0 wall=0.02s
+resources: phase=start nproc=24 cpu_max_quota=n/a cpu_max_period=n/a cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=3 mem_available_kib=4 swap_total_kib=5 swap_free_kib=6 cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=8 cpu_total_ticks=36
+== FIFO every source: rc=0 wall=0.03s
+resources: phase=start nproc=24 cpu_max_quota=n/a cpu_max_period=n/a cg_cpu_usage_us=n/a cg_cpu_throttled_us=n/a mem_total_kib=n/a mem_available_kib=n/a swap_total_kib=n/a swap_free_kib=n/a cg_mem_max=n/a cg_mem_peak=n/a psi_cpu_some_us=n/a psi_memory_some_us=n/a psi_memory_full_us=n/a psi_io_some_us=n/a psi_io_full_us=n/a cpu_steal_ticks=n/a cpu_total_ticks=n/a
+== /dev/zero symlink proc/stat: rc=0 wall=0.03s
+resources: phase=start nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=3 mem_available_kib=4 swap_total_kib=5 swap_free_kib=6 cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=n/a cpu_total_ticks=n/a
+== /dev/urandom symlink meminfo: rc=0 wall=0.03s
+resources: phase=start nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=n/a mem_available_kib=n/a swap_total_kib=n/a swap_free_kib=n/a cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=8 cpu_total_ticks=36
+== directory meminfo: rc=0 wall=0.03s
+resources: phase=start nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=n/a mem_available_kib=n/a swap_total_kib=n/a swap_free_kib=n/a cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=8 cpu_total_ticks=36
+== 200 MB single line meminfo (round 3: 7 s): rc=0 wall=0.04s
+resources: phase=start nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=n/a mem_available_kib=n/a swap_total_kib=n/a swap_free_kib=n/a cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=8 cpu_total_ticks=36
+== 200 MB many short lines, key absent: rc=0 wall=0.04s
+resources: phase=start nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=n/a mem_available_kib=n/a swap_total_kib=n/a swap_free_kib=n/a cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=8 cpu_total_ticks=36
+== worst case, printable: every source 300 KB one line: rc=0 wall=0.06s
+resources: phase=start nproc=24 cpu_max_quota=n/a cpu_max_period=n/a cg_cpu_usage_us=n/a cg_cpu_throttled_us=n/a mem_total_kib=n/a mem_available_kib=n/a swap_total_kib=n/a swap_free_kib=n/a cg_mem_max=n/a cg_mem_peak=n/a psi_cpu_some_us=n/a psi_memory_some_us=n/a psi_memory_full_us=n/a psi_io_some_us=n/a psi_io_full_us=n/a cpu_steal_ticks=n/a cpu_total_ticks=n/a
+== worst case, printable: every source 64+ lines of 4095 chars: rc=0 wall=0.08s
+resources: phase=start nproc=24 cpu_max_quota=n/a cpu_max_period=n/a cg_cpu_usage_us=n/a cg_cpu_throttled_us=n/a mem_total_kib=n/a mem_available_kib=n/a swap_total_kib=n/a swap_free_kib=n/a cg_mem_max=n/a cg_mem_peak=n/a psi_cpu_some_us=n/a psi_memory_some_us=n/a psi_memory_full_us=n/a psi_io_some_us=n/a psi_io_full_us=n/a cpu_steal_ticks=n/a cpu_total_ticks=n/a
+### S5 new: NUL bytes (read drops NULs; -t has no effect on regular files)
+== sparse 100 MB NUL meminfo: rc=0 wall=1.20s
+resources: phase=start nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=n/a mem_available_kib=n/a swap_total_kib=n/a swap_free_kib=n/a cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=8 cpu_total_ticks=36
+== sparse 1 GB NUL meminfo: rc=0 wall=10.89s
+resources: phase=start nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=n/a mem_available_kib=n/a swap_total_kib=n/a swap_free_kib=n/a cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=8 cpu_total_ticks=36
+== sparse 1 TB NUL meminfo (timeout 60): rc=124 wall=60.00s
+resources: phase=start nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=1 cg_cpu_throttled_us=2
+== symlink every source to one 1 TB sparse file (timeout 30): rc=124 wall=30.00s
+
+### -t on a regular file: bash ignores it (read.c fstat S_ISREG)
+read -t 1 -n 4096 on 1 GB NUL file: rc=1 len=0 took 4 s
+### /proc/kmsg (a blocking regular file)
+/proc/kmsg is -f
+== symlink cpu.max -> /proc/kmsg: rc=0 wall=0.02s
+resources: phase=start nproc=24 cpu_max_quota=n/a cpu_max_period=n/a cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=3 mem_available_kib=4 swap_total_kib=5 swap_free_kib=6 cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=8 cpu_total_ticks=36
+### TOCTOU: regular file swapped for a FIFO between [ -f ] and open (rename race)
+mkfifo: cannot create fifo '/tmp/pe/fifo': File exists
+200 runs: hung(killed by timeout 2)=0 read-regular=109 n/a=91
+### S6: arithmetic
+== sum overflow 2^63-1 (19 digits): rc=0 wall=0.02s
+resources: phase=start nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=3 mem_available_kib=4 swap_total_kib=5 swap_free_kib=6 cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=n/a cpu_total_ticks=n/a
+== 8 x 18-digit max: rc=0 wall=0.02s
+resources: phase=start nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=3 mem_available_kib=4 swap_total_kib=5 swap_free_kib=6 cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=999999999999999999 cpu_total_ticks=7999999999999999992
+== 010 (was octal 8): rc=0 wall=0.02s
+resources: phase=start nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=3 mem_available_kib=4 swap_total_kib=5 swap_free_kib=6 cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=10 cpu_total_ticks=20
+== 08/09: rc=0 wall=0.02s
+resources: phase=start nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=3 mem_available_kib=4 swap_total_kib=5 swap_free_kib=6 cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=9 cpu_total_ticks=44
+== 18 leading zeros: rc=0 wall=0.02s
+resources: phase=start nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=3 mem_available_kib=4 swap_total_kib=5 swap_free_kib=6 cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=7 cpu_total_ticks=7
+== 23-digit field: rc=0 wall=0.02s
+resources: phase=start nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=3 mem_available_kib=4 swap_total_kib=5 swap_free_kib=6 cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=n/a cpu_total_ticks=n/a
+== signed fields: rc=0 wall=0.02s
+resources: phase=start nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=3 mem_available_kib=4 swap_total_kib=5 swap_free_kib=6 cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=n/a cpu_total_ticks=n/a
+== short cpu line: rc=0 wall=0.02s
+resources: phase=start nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=3 mem_available_kib=4 swap_total_kib=5 swap_free_kib=6 cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=n/a cpu_total_ticks=n/a
+== arithmetic injection: rc=0 wall=0.02s
+resources: phase=start nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=3 mem_available_kib=4 swap_total_kib=5 swap_free_kib=6 cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=n/a cpu_total_ticks=n/a
+no injection
+== 21-digit peak (n/a) and 2^64-1 usage (printed): rc=0 wall=0.02s
+resources: phase=start nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=18446744073709551615 cg_cpu_throttled_us=n/a mem_total_kib=3 mem_available_kib=4 swap_total_kib=5 swap_free_kib=6 cg_mem_max=max cg_mem_peak=n/a psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=8 cpu_total_ticks=36
+== unicode digits LC_ALL=C: rc=0 wall=0.02s
+resources: phase=start nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=n/a mem_available_kib=n/a swap_total_kib=n/a swap_free_kib=n/a cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=8 cpu_total_ticks=36
+== unicode digits LC_ALL=C.UTF-8: rc=0 wall=0.02s
+resources: phase=start nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=n/a mem_available_kib=n/a swap_total_kib=n/a swap_free_kib=n/a cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=8 cpu_total_ticks=36
+== control chars / CR: rc=0 wall=0.02s$
+resources: phase=start nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=n/a cg_cpu_throttled_us=n/a mem_total_kib=3 mem_available_kib=4 swap_total_kib=5 swap_free_kib=6 cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=8 cpu_total_ticks=36$
+== symlinks to hostname/environ: rc=0 wall=0.03s
+resources: phase=start nproc=24 cpu_max_quota=n/a cpu_max_period=n/a cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=3 mem_available_kib=4 swap_total_kib=5 swap_free_kib=6 cg_mem_max=max cg_mem_peak=n/a psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=8 cpu_total_ticks=36
+== phase injection: rc=0 wall=0.02s
+resources: phase=n/a nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=3 mem_available_kib=4 swap_total_kib=5 swap_free_kib=6 cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=8 cpu_total_ticks=36
+== root with metachars: rc=0 wall=0.02s
+resources: phase=start nproc=24 cpu_max_quota=n/a cpu_max_period=n/a cg_cpu_usage_us=n/a cg_cpu_throttled_us=n/a mem_total_kib=n/a mem_available_kib=n/a swap_total_kib=n/a swap_free_kib=n/a cg_mem_max=n/a cg_mem_peak=n/a psi_cpu_some_us=n/a psi_memory_some_us=n/a psi_memory_full_us=n/a psi_io_some_us=n/a psi_io_full_us=n/a cpu_steal_ticks=n/a cpu_total_ticks=n/a
+### S7: env
+== OMP_NUM_THREADS=424242: rc=0 wall=0.02s
+resources: phase=start nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=3 mem_available_kib=4 swap_total_kib=5 swap_free_kib=6 cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=8 cpu_total_ticks=36
+== OMP_THREAD_LIMIT=3: rc=0 wall=0.04s
+resources: phase=start nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=3 mem_available_kib=4 swap_total_kib=5 swap_free_kib=6 cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=8 cpu_total_ticks=36
+== both: rc=0 wall=0.03s
+resources: phase=start nproc=24 cpu_max_quota=200000 cpu_max_period=100000 cg_cpu_usage_us=1 cg_cpu_throttled_us=2 mem_total_kib=3 mem_available_kib=4 swap_total_kib=5 swap_free_kib=6 cg_mem_max=max cg_mem_peak=7 psi_cpu_some_us=8 psi_memory_some_us=8 psi_memory_full_us=9 psi_io_some_us=8 psi_io_full_us=9 cpu_steal_ticks=8 cpu_total_ticks=36
+== ROOT/pr_root in env, no root arg: rc=0 wall=0.02s
+resources: phase=start nproc=24 cpu_max_quota=max cpu_max_period=100000 cg_cpu_usage_us=120828007 cg_cpu_throttled_us=0 mem_total_kib=32583712 mem_available_kib=24950756 swap_total_kib=8388608 swap_free_kib=7922004 cg_mem_max=max cg_mem_peak=14853578752 psi_cpu_some_us=6879487381 psi_memory_some_us=2628399 psi_memory_full_us=2417396 psi_io_some_us=305642604 psi_io_full_us=291104184 cpu_steal_ticks=0 cpu_total_ticks=2098895821
+real nproc: 24
+== real /proc and cgroup: rc=0 wall=0.02s
+resources: phase=start nproc=24 cpu_max_quota=max cpu_max_period=100000 cg_cpu_usage_us=120858830 cg_cpu_throttled_us=0 mem_total_kib=32583712 mem_available_kib=24950908 swap_total_kib=8388608 swap_free_kib=7922004 cg_mem_max=max cg_mem_peak=14853578752 psi_cpu_some_us=6879487625 psi_memory_some_us=2628399 psi_memory_full_us=2417396 psi_io_some_us=305642604 psi_io_full_us=291104184 cpu_steal_ticks=0 cpu_total_ticks=2098895905
+== real, end: rc=0 wall=0.02s
+resources: phase=end nproc=24 cpu_max_quota=max cpu_max_period=100000 cg_cpu_usage_us=120888068 cg_cpu_throttled_us=0 mem_total_kib=32583712 mem_available_kib=24950184 swap_total_kib=8388608 swap_free_kib=7922004 cg_mem_max=max cg_mem_peak=14853578752 psi_cpu_some_us=6879487971 psi_memory_some_us=2628399 psi_memory_full_us=2417396 psi_io_some_us=305642604 psi_io_full_us=291104184 cpu_steal_ticks=0 cpu_total_ticks=2098895987

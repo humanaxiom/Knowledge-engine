@@ -1,0 +1,71 @@
+=== tests/test_a.py
+import glob, os, stat, unittest
+class A(unittest.TestCase):
+    def test_a(self):
+        for d in glob.glob('/tmp/tmp.*'):
+            st = os.stat(d)
+            print('LOGDIR', d, oct(stat.S_IMODE(st.st_mode)), st.st_uid)
+        import engine  # noqa
+=== tests/test_slow.py
+import os, time, unittest
+class S(unittest.TestCase):
+    def test_slow(self):
+        time.sleep(float(os.environ.get('SLOW', '1')))
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+# padding so this module is the largest and starts first
+=== tests/test_z.py
+import unittest
+class Z(unittest.TestCase):
+    def test_z(self):
+        pass
+=== tests/test_ign.py
+import os, signal, time, unittest
+class I(unittest.TestCase):
+    def test_ign(self):
+        if os.environ.get('IGN'):
+            signal.signal(signal.SIGTERM, signal.SIG_IGN)
+            time.sleep(40)
+=== tests/pkg/test_p.py
+import os, time, unittest
+class P(unittest.TestCase):
+    def test_p(self):
+        time.sleep(float(os.environ.get('PSLOW', '0')))
+=== scratch pyproject change: fail_under = 80 -> 0 (scratch only)

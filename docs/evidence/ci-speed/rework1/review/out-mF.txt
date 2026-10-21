@@ -1,0 +1,43 @@
+..............FF..................F
+======================================================================
+FAIL: test_signal_kills_pool_children_and_exits_nonzero (tests.test_harness_followups.IntegrationRunsOnceTest.test_signal_kills_pool_children_and_exits_nonzero) (signal='SIGINT')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 808, in test_signal_kills_pool_children_and_exits_nonzero
+    self.assertEqual(alive, [], f"pool children outlived test.sh after "
+AssertionError: Lists differ: [1062, 1058] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+1062
+
+- [1062, 1058]
++ [] : pool children outlived test.sh after SIGINT (exit 130)
+
+======================================================================
+FAIL: test_signal_kills_pool_children_and_exits_nonzero (tests.test_harness_followups.IntegrationRunsOnceTest.test_signal_kills_pool_children_and_exits_nonzero) (signal='SIGTERM')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 808, in test_signal_kills_pool_children_and_exits_nonzero
+    self.assertEqual(alive, [], f"pool children outlived test.sh after "
+AssertionError: Lists differ: [1100, 1104] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+1100
+
+- [1100, 1104]
++ [] : pool children outlived test.sh after SIGTERM (exit 143)
+
+======================================================================
+FAIL: test_probe_signal_during_subpackage_step (tests.probe_review.Probe.test_probe_signal_during_subpackage_step)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/probe_review.py", line 83, in test_probe_signal_during_subpackage_step
+    self.assertFalse(alive)
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 34 tests in 75.452s
+
+FAILED (failures=3)

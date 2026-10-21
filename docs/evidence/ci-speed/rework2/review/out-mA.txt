@@ -1,0 +1,161 @@
+FFF
+======================================================================
+FAIL: test_failing_subpackage_module_fails_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_subpackage_module_fails_run) (mode='fast')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 1023, in test_failing_subpackage_module_fails_run
+    self.assertNotEqual(code, 0, "a failing sub-package test, test.sh passed:\n"
+AssertionError: 0 == 0 : a failing sub-package test, test.sh passed:
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.test_x.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.testfoo.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+unit: 1s rc=0 tests.test_x
+unit: 1s rc=0 tests.testfoo
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_bad (tests.unit.test_bad.Bad.test_bad) ... FAIL
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+======================================================================
+FAIL: test_bad (tests.unit.test_bad.Bad.test_bad)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/tmp7zlk0afg/project/tests/unit/test_bad.py", line 4, in test_bad
+    self.fail('planted')
+AssertionError: planted
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.001s
+
+FAILED (failures=1)
+Combined 3 files
+
+
+======================================================================
+FAIL: test_failing_subpackage_module_fails_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_subpackage_module_fails_run) (mode='full')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 1023, in test_failing_subpackage_module_fails_run
+    self.assertNotEqual(code, 0, "a failing sub-package test, test.sh passed:\n"
+AssertionError: 0 == 0 : a failing sub-package test, test.sh passed:
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.test_x.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.testfoo.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+unit: 0s rc=0 tests.test_x
+unit: 0s rc=0 tests.testfoo
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_bad (tests.unit.test_bad.Bad.test_bad) ... FAIL
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+======================================================================
+FAIL: test_bad (tests.unit.test_bad.Bad.test_bad)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/tmp7zlk0afg/project/tests/unit/test_bad.py", line 4, in test_bad
+    self.fail('planted')
+AssertionError: planted
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.001s
+
+FAILED (failures=1)
+test_counted (tests.integration.test_counted.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+Combined 4 files
+
+
+======================================================================
+FAIL: test_failing_integration_module_fails_full_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_integration_module_fails_full_run)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 1033, in test_failing_integration_module_fails_full_run
+    self.assertNotEqual(code, 0, "a failing integration test, test.sh full passed:\n"
+AssertionError: 0 == 0 : a failing integration test, test.sh full passed:
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.test_x.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.testfoo.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+unit: 1s rc=0 tests.test_x
+unit: 1s rc=0 tests.testfoo
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+test_bad (tests.integration.test_bad.Bad.test_bad) ... FAIL
+test_counted (tests.integration.test_counted.Counted.test_counted) ... ok
+
+======================================================================
+FAIL: test_bad (tests.integration.test_bad.Bad.test_bad)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/tmpf8i86wft/project/tests/integration/test_bad.py", line 4, in test_bad
+    self.fail('planted')
+AssertionError: planted
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.001s
+
+FAILED (failures=1)
+Combined 4 files
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 3.142s
+
+FAILED (failures=3)

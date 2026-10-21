@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# sig.sh <signal|none> <how: pid|group> <delay> [extra signals sent 0.5 s after the first, e.g. "TERM INT"]
+sig=$1; how=$2; delay=$3; extra=${4:-}
+cd /work
+setsid sleep 300 & OUT1=$!                                   # other session/group
+sleep 300 & OUT2=$!                                          # wrapper's own group
+setsid bash -c 'trap "" TERM INT; exec sleep 301' & OUT3=$!  # other group, ignores TERM (only KILL would end it)
+bash -c 'trap "" TERM INT; exec sleep 302' & OUT4=$!         # wrapper group, ignores TERM
+set -m
+bash scripts/test.sh fast > /tmp/t.out 2>&1 & T=$!
+if [ "$sig" = none ]; then wait "$T"; echo "test.sh rc=$?"; tail -n 8 /tmp/t.out; exit 0; fi
+sleep "$delay"
+echo "--- before (test.sh pid $T)"; bash /h/pl.sh
+t0=$(date +%s.%N)
+if [ "$how" = group ]; then kill -s "$sig" -- "-$T"; else kill -s "$sig" "$T"; fi
+if [ -n "$extra" ]; then sleep 0.5; for x in $extra; do kill -s "$x" "$T" 2>/dev/null && echo "sent extra $x"; done; fi
+wait "$T"; rc=$?; t1=$(date +%s.%N)
+echo "test.sh rc=$rc elapsed=$(awk "BEGIN{printf \"%.2f\", $t1-$t0}")s"
+sleep 1
+echo "--- after"; bash /h/pl.sh
+for d in /proc/[0-9]*; do c="$(tr '\0' ' ' < "$d/cmdline" 2>/dev/null)"; case "$c" in *GRANDCHILD*|*test_ign*) [ "$(cut -d' ' -f3 "$d/stat")" != Z ] && echo "LEFTOVER ${d#/proc/} $c" ;; esac; done
+echo "leftover check done"
+ls -d /tmp/tmp.* 2>/dev/null && echo "logdir LEFT" || echo "logdir removed"
+for v in OUT1 OUT2 OUT3 OUT4; do kill -0 "${!v}" 2>/dev/null && echo "$v alive" || echo "$v DEAD"; done
+echo "--- test.sh output tail"; tail -n 6 /tmp/t.out

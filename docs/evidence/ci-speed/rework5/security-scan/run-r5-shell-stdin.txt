@@ -1,0 +1,15 @@
+# Near misses of the round-5 widened nested-shell rule (harness-r5-shell-stdin.py.txt). Same container setup as run-s9-r5.txt. Output through cat -v.
+BYPASS                     static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | bash <<< (stdin, no option)
+BYPASS                     static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | sh <<< (stdin, no option)
+BYPASS                     static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | bash /dev/stdin <<<
+BYPASS                     static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | bash -i <<< (interactive reads stdin)
+BYPASS                     static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | bash - <<<
+BYPASS                     static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | bash <<EOF heredoc, & from variable
+BYPASS                     static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | ba""sh -c (quote-split shell word)
+BYPASS                     static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | $(echo bash) -c (built word)
+caught                     static=caught bash-n=0 hook_rc=0 wall=0.00s unwaited_sleep_alive=True  | control: exec -a x bash -c (should be caught)
+caught                     static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | control: env bash -s <<< (should be caught)
+summary: 8 bypasses of 10
+rc=0
+leftover sleeps:
+end

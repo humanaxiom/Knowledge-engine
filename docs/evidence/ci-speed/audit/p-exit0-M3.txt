@@ -1,0 +1,73 @@
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.76ms
+Installed 1 package in 1ms
+test_module_exiting_zero_at_import_fails_run (test_probe_exit0.ExitZeroProbe.test_module_exiting_zero_at_import_fails_run) ... 
+  test_module_exiting_zero_at_import_fails_run (test_probe_exit0.ExitZeroProbe.test_module_exiting_zero_at_import_fails_run) (mode='fast') ... FAIL
+  test_module_exiting_zero_at_import_fails_run (test_probe_exit0.ExitZeroProbe.test_module_exiting_zero_at_import_fails_run) (mode='full') ... FAIL
+
+======================================================================
+FAIL: test_module_exiting_zero_at_import_fails_run (test_probe_exit0.ExitZeroProbe.test_module_exiting_zero_at_import_fails_run) (mode='fast')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/probe/test_probe_exit0.py", line 14, in test_module_exiting_zero_at_import_fails_run
+    self.assertNotEqual(code, 0, output)
+AssertionError: 0 == 0 : test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+
+
+======================================================================
+FAIL: test_module_exiting_zero_at_import_fails_run (test_probe_exit0.ExitZeroProbe.test_module_exiting_zero_at_import_fails_run) (mode='full')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/probe/test_probe_exit0.py", line 14, in test_module_exiting_zero_at_import_fails_run
+    self.assertNotEqual(code, 0, output)
+AssertionError: 0 == 0 : test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+test_counted (tests.integration.test_counted.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.708s
+
+FAILED (failures=2)
+rc=1

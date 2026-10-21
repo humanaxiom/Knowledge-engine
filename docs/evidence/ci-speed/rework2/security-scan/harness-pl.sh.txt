@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# list processes: pid pgid state cmdline (no ps in the image)
+for d in /proc/[0-9]*; do
+  [ -r "$d/stat" ] || continue
+  read -r -a st < "$d/stat" 2>/dev/null || continue
+  cmd="$(tr '\0' ' ' < "$d/cmdline" 2>/dev/null | cut -c1-90)"
+  [ -n "$cmd" ] || continue
+  case "$cmd" in *pl.sh*|"tr "*|"cut "*) continue ;; esac
+  printf '%6s %6s %s %s\n' "${st[0]}" "${st[4]}" "${st[2]}" "$cmd"
+done

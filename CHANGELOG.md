@@ -4,6 +4,26 @@ Maintained by the `marketer` agent. Follows a Keep a Changelog style.
 
 ## [Unreleased]
 
+### 2026-10-21 (ci-speed)
+
+**Changed:**
+- Branch protection (Q18) was skipped by decision; merges are manual and the
+  local commit hook is the only automated guard. This supersedes the earlier
+  entry below that calls branch protection the real control.
+- The unit suite in `scripts/test.sh` stays one process. A parallel runner
+  (one process per module) was tried and withdrawn, because it made CI slower
+  on the 2-vCPU runner. This change makes no speed claim.
+- Coverage fails closed. The data file path comes from coverage's own API.
+  Each run writes its own labelled data file, and `combine` gets the explicit
+  list of those files. The run fails if any run leaves no data, or if any data
+  file is not combined. The coverage threshold (80%) is unchanged.
+- The unit stage prints a resource line before and after the unit tests, in
+  every run: CPU count, CPU quota, memory, pressure and CPU steal. A value that
+  cannot be read shows as `n/a`.
+- The commit hook's speed tests measure the hook's CPU time instead of wall
+  time, with the same budgets. They measure the hook's own work, not the load
+  on the machine.
+
 ### 2026-10-19 (platform-offline)
 
 **Added:**

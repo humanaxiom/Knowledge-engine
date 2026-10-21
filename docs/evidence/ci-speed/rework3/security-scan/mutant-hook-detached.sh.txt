@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# AUDIT MUTANT (scratch only): the real hook runs in a double-forked, detached
+# grandchild after 12 s of busy CPU; the parent reads its stdout through the
+# command-substitution pipe, so the caller still gets the real decision.
+input="$(cat)"
+f="$(mktemp)"; printf '%s' "$input" >"$f"
+out="$( ( setsid bash -c 'end=$((SECONDS+12)); while [ $SECONDS -lt $end ]; do :; done; bash "$0" <"$1"' "$(dirname "$0")/real-hook.sh" "$f" & ) )"
+rm -f "$f"
+printf '%s' "$out"
