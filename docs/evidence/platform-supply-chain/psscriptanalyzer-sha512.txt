@@ -1,0 +1,10 @@
+# Step 1: gallery OData PackageHash (base64 SHA512) converted to hex
+$ curl -fsSL "https://www.powershellgallery.com/api/v2/Packages(Id='PSScriptAnalyzer',Version='1.25.0')"
+<d:PackageHash>5/tXMmLmBLqymRSuYpIdJLl8L4i1GbQSd7QD72zhY/FLfRs23HNEmmjlrlqNlQKJGxDCZBMf0YE63ym/ExwWYw==<
+<d:PackageHashAlgorithm>SHA512<
+base64=5/tXMmLmBLqymRSuYpIdJLl8L4i1GbQSd7QD72zhY/FLfRs23HNEmmjlrlqNlQKJGxDCZBMf0YE63ym/ExwWYw==
+gallery_hex=e7fb573262e604bab29914ae62921d24b97c2f88b519b41277b403ef6ce163f14b7d1b36dc73449a68e5ae5a8d9502891b10c264131fd1813adf29bf131c1663
+# Step 2: download nupkg and hash it
+$ curl --proto =https --proto-redir =https --tlsv1.2 -fsSL -o psa.nupkg https://www.powershellgallery.com/api/v2/package/PSScriptAnalyzer/1.25.0 ; sha512sum psa.nupkg
+local_sha512=e7fb573262e604bab29914ae62921d24b97c2f88b519b41277b403ef6ce163f14b7d1b36dc73449a68e5ae5a8d9502891b10c264131fd1813adf29bf131c1663
+MATCH

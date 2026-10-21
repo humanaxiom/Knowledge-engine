@@ -1,0 +1,132 @@
+"""Tester rework-2 scratch mutants (security M-U1R1-1): copies of docker/gates.Dockerfile
+only; the repo file is never written. Each mutant runs the full tests.test_gates_docker_cli
+and tests.test_gate_least_privilege modules with GATES_DOCKERFILE patched to the copy.
+"before" = the round-1 test module (snapshot passed as argv[2]), loaded under another name;
+"after" = the repo's tests/test_gates_docker_cli.py. Usage: python -I <this> <out-dir> <before.py>"""
+import importlib.util, io, sys, unittest
+from pathlib import Path
+REPO = Path(r"C:\repos\Knowledge-engine")
+OUT = Path(sys.argv[1]); OUT.mkdir(parents=True, exist_ok=True)
+sys.path.insert(0, str(REPO))
+import tests.test_gates_docker_cli as after  # noqa: E402
+import tests.test_gate_least_privilege as glp  # noqa: E402
+spec = importlib.util.spec_from_file_location("before_cli", sys.argv[2])
+before = importlib.util.module_from_spec(spec); sys.modules["before_cli"] = before; spec.loader.exec_module(before)
+src = (REPO / "docker" / "gates.Dockerfile").read_text(encoding="utf-8")
+
+def rep(t, old, new):
+    assert old in t, old
+    return t.replace(old, new, 1)
+
+E = "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e"  # sha512 of empty input
+CHECK = 'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c -; \\\n'
+C = 'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c -'
+UNPACK = '    python3 -I -m zipfile -e /tmp/psa.nupkg'
+DIR = '    dir="/usr/local/share/powershell/Modules/PSScriptAnalyzer/${PSSCRIPTANALYZER_VERSION}"; \\\n'
+FETCH_HEAD = "RUN set -eu; \\\n    curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL -o /tmp/psa.nupkg"
+REFETCH = "    curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL -o /tmp/psa.nupkg \"https://example.invalid/x.nupkg\"; \\\n"
+IMPORT = '    pwsh -NoProfile -NonInteractive -Command "Import-Module PSScriptAnalyzer -ErrorAction Stop"\n'
+def set_(extra): return rep(src, FETCH_HEAD, FETCH_HEAD.replace("RUN set -eu; \\\n", f"RUN set -eu; {extra}; \\\n"))
+def between(step): return rep(src, DIR, DIR + f"    {step}; \\\n")
+
+# the repo file already has L-U1-1 fixed, so round-1 mutants apply to it directly
+round1 = {
+  "R1 check_piped_to_cat": rep(src, CHECK, C + ' | cat; \\\n'),
+  "R2 check_inside_if": rep(src, CHECK, f'if {C}; then :; fi; \\\n'),
+  "R3 check_negated": rep(src, CHECK, f'! {C}; \\\n'),
+  "R4 check_backgrounded": rep(src, CHECK, C + ' & \\\n'),
+  "R5 set_plus_e_before_check": set_("set +e"),
+  "R6 refetch_after_check": rep(src, UNPACK, REFETCH + UNPACK),
+  "X1 check_piped_to_tee": rep(src, CHECK, C + ' | tee /tmp/psa.log; \\\n'),
+  "X2 subshell_or_true": rep(src, CHECK, f'( {C} || true ); \\\n'),
+  "X3 brace_group_or_colon": rep(src, CHECK, f'{{ {C}; }} || :; \\\n'),
+  "X4 check_and_colon": rep(src, CHECK, C + ' && :; \\\n'),
+  "X5 true_or_check": rep(src, CHECK, f'true || {C}; \\\n'),
+  "X6 check_in_until": rep(src, CHECK, f'until {C}; do break; done; \\\n'),
+  "X7 check_in_elif": rep(src, CHECK, f'if false; then :; elif {C}; then :; fi; \\\n'),
+  "X8 check_in_if_body": rep(src, CHECK, f'if [ -n "${{SKIP:-}}" ]; then :; else {C}; fi; \\\n'),
+  "X9 check_in_export_substitution": rep(src, CHECK, f'export r="$({C})"; \\\n'),
+  "X10 set_plus_o_errexit": set_("set +o errexit"),
+  "X11 set_plus_u": set_("set +u"),
+  "X12 set_plus_eu": set_("set +eu"),
+  "X13 cp_over_download": between("cp /etc/hostname /tmp/psa.nupkg"),
+  "X14 mv_over_download": between("mv /tmp/other.nupkg /tmp/psa.nupkg"),
+  "X15 redirect_over_download": between("printf x > /tmp/psa.nupkg"),
+  "X16 tee_over_download": between("tee /tmp/psa.nupkg < /dev/null"),
+  "X17 cd_tmp_refetch_by_basename": between("cd /tmp; curl --proto '=https' --tlsv1.2 -fsSL -o psa.nupkg \"https://example.invalid/x\""),
+  "X18 background_writer_before_check": rep(src, CHECK, '( sleep 1; cp /etc/hostname /tmp/psa.nupkg ) & ' + CHECK),
+  "X19 unpack_piped_from_refetch": rep(src, UNPACK, "    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/psa.nupkg \"https://example.invalid/x\" |" + UNPACK.lstrip()),
+  "X20 rm_without_signature (L-U1-1)": rep(src, ' "$dir/.signature.p7s"', ""),
+}
+# rework 2 (security M-U1R1-1 and the orchestrator's cases)
+new = {
+  "M1 M-U1R1-1 second `| echo E /dev/null | sha512sum -c -` stage (security S1, verbatim)": rep(src, C + ";", C + f' | echo "{E}  /dev/null" | sha512sum -c -;'),
+  "M2 three stages, tee in the middle": rep(src, CHECK, C.replace(" | ", " | tee /tmp/psa.feed | ", 1) + '; \\\n'),
+  "M3 second separate check after the check": between(f'echo "{E}  /dev/null" | sha512sum -c -'),
+  "M4 second separate check before the download": set_(f'echo "{E}  /dev/null" | sha512sum -c -'),
+  "M5 second separate check at the end of the RUN": rep(src, IMPORT, IMPORT.rstrip("\n") + f'; \\\n    echo "{E}  /dev/null" | sha512sum -c -\n'),
+  "M6 feed is cat of a checksum file": rep(src, CHECK, 'cat /tmp/psa.sha512 | sha512sum -c -; \\\n'),
+}
+# security round-1 attempts, for the record (L-U1R1-2 / I-U1R1-3 are N7 follow-ups, not this rework)
+sec = {
+  "S2 printf %.0s drops the pinned line": rep(src, C, f'printf "%.0s%s\\n" "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" "{E}  /dev/null" | sha512sum -c -'),
+  "S2b printf %.0s without newline": rep(src, C, f'printf "%.0s%s" "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" "{E}  /dev/null" | sha512sum -c -'),
+  "S3 quoted $(sha512sum ...) self-hash": rep(src, C, 'echo "${PSSCRIPTANALYZER_SHA512:+$(sha512sum /tmp/psa.nupkg | cut -c1-128)}  /tmp/psa.nupkg" | sha512sum -c -'),
+  "S4 pin reassigned on its own line": rep(src, "    " + C, '    PSSCRIPTANALYZER_SHA512=$(sha512sum /tmp/psa.nupk? | cut -c1-128); \\\n    ' + C),
+  "S4b pin reassigned inline": rep(src, C, "PSSCRIPTANALYZER_SHA512=$(sha512sum /tmp/psa.nupk? | cut -c1-128); " + C),
+  "S5 sed rewrites the feed": rep(src, C, f'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sed "s#.*#{E}  /dev/null#" | sha512sum -c -'),
+  "S6 later COPY over the module dir": rep(src, IMPORT, IMPORT + '\nCOPY vendor/psa/ /usr/local/share/powershell/Modules/PSScriptAnalyzer/${PSSCRIPTANALYZER_VERSION}/\n'),
+  "S7 later RUN re-unpacks an unpinned download": rep(src, IMPORT, IMPORT + "\nRUN set -eu; curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/x.zip \"https://example.invalid/x.zip\"; python3 -I -m zipfile -e /tmp/x.zip /usr/local/share/powershell/Modules/PSScriptAnalyzer/${PSSCRIPTANALYZER_VERSION}; rm /tmp/x.zip\n"),
+}
+
+def run(mod, text, tag):
+    p = OUT / (tag.split()[0] + ".Dockerfile"); p.write_text(text, encoding="utf-8")
+    mod.GATES_DOCKERFILE = p; glp.GATES_DOCKERFILE = p
+    suite = unittest.TestSuite([unittest.defaultTestLoader.loadTestsFromModule(mod),
+                                unittest.defaultTestLoader.loadTestsFromModule(glp)])
+    res = unittest.TextTestResult(io.StringIO(), False, 0); suite.run(res)
+    fails = []
+    for t, _ in res.failures + res.errors:
+        s = str(t); i = s.find("check=")
+        fails.append(s[i:].rstrip(")") if i >= 0 else s.split(" ")[0])
+    return res.testsRun, fails
+
+def verdict(fails): return f"KILLED ({len(fails)})" if fails else "SURVIVED"
+n, f = run(after, src, "S0_control")
+print(f"control (repo docker/gates.Dockerfile, after): {'PASS' if not f else 'FAIL'} (tests run {n}) {f}")
+n, f = run(before, src, "S0_control_before")
+print(f"control (repo docker/gates.Dockerfile, before): {'PASS' if not f else 'FAIL'} (tests run {n}) {f}")
+print()
+print("| set | mutant | before (round-1 test) | after (rework-2 test) | killed by (after) |")
+print("|---|---|---|---|---|")
+tally = {}
+for setname, group in (("round-1", round1), ("rework-2", new), ("security-r1", sec)):
+    for tag, text in group.items():
+        _, fb = run(before, text, tag)
+        _, fa = run(after, text, tag)
+        tally.setdefault(setname, [0, 0])[0] += 1
+        if not fa: tally[setname][1] += 1
+        print(f"| {setname} | {tag} | {verdict(fb)} | {verdict(fa)} | {'; '.join(fa) or '-'} |")
+print()
+for k, (tot, surv) in tally.items(): print(f"{k}: {tot} mutants, {surv} survived (after)")
+
+# detector self-check samples added in rework 2: the round-1 helper vs the rework-2 helper
+good = ('RUN set -eu; curl -o /tmp/psa.nupkg "u"; '
+        'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c -; dir="/m"; '
+        'python3 -I -m zipfile -e /tmp/psa.nupkg "/m"; rm -rf /tmp/psa.nupkg')
+chk = 'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c -;'
+samples = ((chk, chk[:-1] + ' | echo "$E  /dev/null" | sha512sum -c -;'),
+           (chk, chk.replace(" | ", " | tee /dev/stderr | ", 1)),
+           ('dir="/m";', 'echo "$E  /dev/null" | sha512sum -c -; dir="/m";'),
+           ("set -eu;", 'set -eu; echo "$E  /dev/null" | sha512sum -c -;'),
+           (chk, 'cat /tmp/psa.sha512 | sha512sum -c -;'),
+           (chk, 'sha512sum -c - < /tmp/psa.sha512;'))
+print()
+print("self-check samples (findings: before -> after)")
+for old, nw in samples:
+    bad = good.replace(old, nw, 1)
+    print(f"  {len(before._psa_check_masking(bad, {}, '/tmp/psa.nupkg'))} -> "
+          f"{len(after._psa_check_masking(bad, {}, '/tmp/psa.nupkg'))}: {nw}")
+for g in (good, good.replace("echo ", "printf '%s\\n' ", 1)):
+    print(f"  good: {len(before._psa_check_masking(g, {}, '/tmp/psa.nupkg'))} -> "
+          f"{len(after._psa_check_masking(g, {}, '/tmp/psa.nupkg'))}: {g[:60]}...")

@@ -1,0 +1,7 @@
+# guard-psa-version mutants, 2026-10-21T17:25:13Z. Driver: guard-psa-version-mutants.py.txt. Scratch copies only; docker/gates.Dockerfile untouched.
+$ python -I mutants.py <repo> <scratch>/gates.Dockerfile
+baseline (current Dockerfile, unchanged copy): PASS; drift=[]
+comment says 1.24.0: FAIL (1 failure(s)); drift=["comment: PSScriptAnalyzer ... 1.24.0 (near 'PSScriptAnalyzer 1.24.0')"]
+unpack path says 1.24.0: FAIL (1 failure(s)); drift=['module path: /Modules/PSScriptAnalyzer/1.24.0']
+dir= (rm path) says 1.24.0: FAIL (1 failure(s)); drift=['module path: /Modules/PSScriptAnalyzer/1.24.0']
+ARG bumped to 1.26.0, comment left at 1.25.0: FAIL (1 failure(s)); drift=["comment: PSScriptAnalyzer ... 1.25.0 (near 'PSScriptAnalyzer 1.25.0')"]

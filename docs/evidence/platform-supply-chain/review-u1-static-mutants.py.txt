@@ -1,0 +1,37 @@
+"""Reviewer scratch mutants: copies of docker/gates.Dockerfile only; the repo
+file is never written. Patches GATES_DOCKERFILE in the test module."""
+import io, sys, unittest
+from pathlib import Path
+REPO = Path(r"C:\repos\Knowledge-engine")
+OUT = Path(sys.argv[1]); OUT.mkdir(parents=True, exist_ok=True)
+sys.path.insert(0, str(REPO))
+import tests.test_gates_docker_cli as cli  # noqa: E402
+src = (REPO / "docker" / "gates.Dockerfile").read_text(encoding="utf-8")
+CHECK = 'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c -; \\\n'
+UNPACK = '    python3 -I -m zipfile -e /tmp/psa.nupkg'
+FETCH_HEAD = "RUN set -eu; \\\n    curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL -o /tmp/psa.nupkg"
+def rep(t, old, new):
+    assert old in t, old
+    return t.replace(old, new, 1)
+mutants = {
+  "baseline_unchanged": src,
+  "check_piped_to_cat (exit status masked)": rep(src, CHECK, 'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c - | cat; \\\n'),
+  "check_inside_if (set -e off in condition)": rep(src, CHECK, 'if echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c -; then :; fi; \\\n'),
+  "check_negated (!)": rep(src, CHECK, '! echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c -; \\\n'),
+  "check_backgrounded (&)": rep(src, CHECK, 'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c - & \\\n'),
+  "set_plus_e_before_check": rep(src, FETCH_HEAD, FETCH_HEAD.replace("RUN set -eu; \\\n", "RUN set -eu; set +e; \\\n")),
+  "refetch_after_check": rep(src, UNPACK, '    curl --proto \'=https\' --proto-redir \'=https\' --tlsv1.2 -fsSL -o /tmp/psa.nupkg "https://example.invalid/x.nupkg"; \\\n' + UNPACK),
+}
+names = ["test_gates_image_sets_telemetry_optout_before_pwsh", "test_gates_image_verifies_psscriptanalyzer_hash", "test_gates_image_psscriptanalyzer_version_agrees"]
+survived = 0
+for name, text in mutants.items():
+    p = OUT / (name.split()[0] + ".Dockerfile"); p.write_text(text, encoding="utf-8")
+    cli.GATES_DOCKERFILE = p
+    suite = unittest.TestSuite(cli.GatesImagePowerShellSupplyChainTest(n) for n in names)
+    r = unittest.TextTestRunner(stream=io.StringIO(), verbosity=0).run(suite)
+    bad = len(r.failures) + len(r.errors)
+    verdict = ("PASS" if bad == 0 else f"FAIL ({bad})") if name.startswith("baseline") else ("SURVIVED" if bad == 0 else f"KILLED ({bad})")
+    if name != "baseline_unchanged" and bad == 0: survived += 1
+    print(f"{name}: {verdict}")
+    for t, _ in r.failures + r.errors: print("    ", t)
+print(f"mutants: {len(mutants)-1}, survived: {survived}")

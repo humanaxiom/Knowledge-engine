@@ -1,0 +1,133 @@
+"""Scratch only: build a D7-shaped gates.Dockerfile and its mutants, then run
+the PSC-10/11 tests (and, for the green copy, every gates.Dockerfile test in
+the two static modules) against each by patching GATES_DOCKERFILE."""
+import io
+import sys
+import unittest
+from pathlib import Path
+
+REPO = Path(r"C:\repos\Knowledge-engine")
+OUT = Path(sys.argv[1])
+sys.path.insert(0, str(REPO))
+import tests.test_gates_docker_cli as cli  # noqa: E402
+import tests.test_gate_least_privilege as lp  # noqa: E402
+
+src = (REPO / "docker" / "gates.Dockerfile").read_text(encoding="utf-8")
+
+
+def rep(text, old, new):
+    assert old in text, f"anchor missing: {old!r}"
+    return text.replace(old, new, 1)
+
+
+FINAL_FROM = ("FROM python:3.12-slim-bookworm@sha256:"
+              "34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258\n")
+ENV_EARLY = "ENV POWERSHELL_TELEMETRY_OPTOUT=1 \\\n    POWERSHELL_UPDATECHECK=Off\n"
+TRAILING_PWSH = ('    rm "/tmp/$tarball"; \\\n'
+                 '    pwsh -NoProfile -NonInteractive -Command " \\\n'
+                 "      \\$ErrorActionPreference = 'Stop'; \\\n"
+                 "      Set-PSRepository PSGallery -InstallationPolicy Trusted; \\\n"
+                 '      Install-Module PSScriptAnalyzer -RequiredVersion ${PSSCRIPTANALYZER_VERSION} '
+                 '-Scope AllUsers -Force"\n')
+H = "ab" * 64
+FETCH = ("    curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL -o /tmp/psa.nupkg \\\n"
+         '      "https://www.powershellgallery.com/api/v2/package/PSScriptAnalyzer/${PSSCRIPTANALYZER_VERSION}"; \\\n')
+CHECK = '    echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c -; \\\n'
+DIR = '    dir="/usr/local/share/powershell/Modules/PSScriptAnalyzer/${PSSCRIPTANALYZER_VERSION}"; \\\n'
+UNPACK = ('    python3 -I -m zipfile -e /tmp/psa.nupkg '
+          '"/usr/local/share/powershell/Modules/PSScriptAnalyzer/${PSSCRIPTANALYZER_VERSION}"; \\\n')
+CLEAN = ('    rm -rf "$dir/_rels" "$dir/package" "$dir/[Content_Types].xml" "$dir/PSScriptAnalyzer.nuspec" '
+         '/tmp/psa.nupkg; \\\n')
+IMPORT = "    pwsh -NoProfile -NonInteractive -Command 'Import-Module PSScriptAnalyzer -ErrorAction Stop'\n"
+MODULE_RUN = f"ARG PSSCRIPTANALYZER_SHA512={H}\nRUN set -eu; \\\n" + FETCH + CHECK + DIR + UNPACK + CLEAN + IMPORT
+
+green = rep(src, FINAL_FROM, FINAL_FROM + ENV_EARLY)
+green = rep(green, TRAILING_PWSH, '    rm "/tmp/$tarball"\n\n' + MODULE_RUN)
+green = rep(green, "    POWERSHELL_TELEMETRY_OPTOUT=1 \\\n    POWERSHELL_UPDATECHECK=Off \\\n", "")
+
+LATE = "    KE_IN_GATES=1 \\\n"
+LATE_KEYS = LATE + "    POWERSHELL_TELEMETRY_OPTOUT=1 \\\n    POWERSHELL_UPDATECHECK=Off \\\n"
+CLEAN_LAST = CLEAN.replace("; \\\n", "; \\\n")
+mutants = {
+    # PSC-11
+    "m11a_env_after_pwsh_run": rep(rep(green, ENV_EARLY, ""), LATE, LATE_KEYS),
+    "m11b_env_in_uv_stage": rep(rep(green, FINAL_FROM + ENV_EARLY, FINAL_FROM), "AS uv\n", "AS uv\n" + ENV_EARLY),
+    "m11c_env_duplicated_late": rep(green, LATE, LATE_KEYS),
+    "m11d_updatecheck_on": rep(green, "POWERSHELL_UPDATECHECK=Off\n", "POWERSHELL_UPDATECHECK=On\n"),
+    "m11e_pwsh_in_tarball_run_before_env": rep(
+        rep(green, FINAL_FROM + ENV_EARLY, FINAL_FROM),
+        '    rm "/tmp/$tarball"\n\n',
+        '    rm "/tmp/$tarball"; \\\n    pwsh -NoProfile -Command \'$PSVersionTable\'\n\n' + ENV_EARLY),
+    # PSC-10
+    "m10a_hash_check_after_unpack": rep(rep(green, CHECK, ""), UNPACK, UNPACK + CHECK),
+    "m10b_install_module_kept": rep(green, '    rm "/tmp/$tarball"\n\n',
+                                    '    rm "/tmp/$tarball"; \\\n    pwsh -NoProfile -NonInteractive -Command '
+                                    '"Install-Module PSScriptAnalyzer -RequiredVersion ${PSSCRIPTANALYZER_VERSION} '
+                                    '-Scope AllUsers -Force"\n\n'),
+    "m10c_set_psrepository_kept": rep(green, "'Import-Module PSScriptAnalyzer -ErrorAction Stop'",
+                                      "'Set-PSRepository PSGallery -InstallationPolicy Trusted; "
+                                      "Import-Module PSScriptAnalyzer -ErrorAction Stop'"),
+    "m10d_check_swallowed": rep(green, "sha512sum -c -; ", "sha512sum -c - || true; "),
+    "m10e_sha256sum_instead": rep(green, "sha512sum -c -", "sha256sum -c -"),
+    "m10f_no_proto_redir": rep(green, "--proto-redir '=https' ", ""),
+    "m10g_no_import": rep(green, CLEAN + IMPORT, CLEAN.replace("; \\\n", "\n")),
+    "m10h_import_before_unpack": rep(rep(green, CLEAN + IMPORT, CLEAN.replace("; \\\n", "\n")),
+                                     UNPACK, IMPORT.replace("\n", "; \\\n") + UNPACK),
+    "m10i_no_set_eu": rep(green, "RUN set -eu; \\\n" + FETCH, "RUN " + FETCH.lstrip()),
+    "m10j_sha256_arg_kept": rep(green, f"ARG PSSCRIPTANALYZER_SHA512={H}\n",
+                                f"ARG PSSCRIPTANALYZER_SHA512={H}\nARG PSSCRIPTANALYZER_SHA256={'cd' * 32}\n"),
+    "m10k_64hex_in_sha512_arg": rep(green, f"ARG PSSCRIPTANALYZER_SHA512={H}\n",
+                                    f"ARG PSSCRIPTANALYZER_SHA512={'cd' * 32}\n"),
+    "m10l_unpack_without_isolation": rep(green, "python3 -I -m zipfile", "python3 -m zipfile"),
+    "m10m_read_before_check": rep(green, CHECK, "    ls -l /tmp/psa.nupkg; \\\n" + CHECK),
+    "m10n_check_ignore_missing": rep(green, "sha512sum -c -", "sha512sum -c --ignore-missing -"),
+    "m10o_nupkg_left_in_layer": rep(green, '"$dir/PSScriptAnalyzer.nuspec" /tmp/psa.nupkg;',
+                                    '"$dir/PSScriptAnalyzer.nuspec";'),
+    "m10p_check_not_fed_the_arg": rep(green, 'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg"',
+                                      f'echo "{H}  /tmp/psa.nupkg"'),
+    "m10q_http_url": rep(green, "https://www.powershellgallery.com/api", "http://www.powershellgallery.com/api"),
+}
+
+NEW = ["tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest."
+       "test_gates_image_sets_telemetry_optout_before_pwsh",
+       "tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest."
+       "test_gates_image_verifies_psscriptanalyzer_hash"]
+
+
+def run(path, names):
+    cli.GATES_DOCKERFILE = path
+    lp.GATES_DOCKERFILE = path
+    suite = unittest.TestSuite()
+    for n in names:
+        suite.addTests(unittest.TestLoader().loadTestsFromName(n))
+    buf = io.StringIO()
+    res = unittest.TextTestRunner(stream=buf, verbosity=0).run(suite)
+    return res, buf.getvalue()
+
+
+def desc(t):
+    case = getattr(t, "test_case", t)
+    sub = t._subDescription() if hasattr(t, "_subDescription") else ""
+    return f"{case._testMethodName} {sub}".strip()
+
+
+OUT.mkdir(parents=True, exist_ok=True)
+g = OUT / "green.Dockerfile"
+g.write_text(green, encoding="utf-8", newline="\n")
+res, text = run(g, ["tests.test_gates_docker_cli", "tests.test_gate_least_privilege"])
+print(f"GREEN (D7 shape, SHA-512): tests.test_gates_docker_cli + tests.test_gate_least_privilege "
+      f"ran={res.testsRun} failures={len(res.failures)} errors={len(res.errors)} skipped={len(res.skipped)}")
+if res.failures or res.errors:
+    print(text)
+survived = 0
+for name, body in mutants.items():
+    assert body != green, name
+    p = OUT / f"{name}.Dockerfile"
+    p.write_text(body, encoding="utf-8", newline="\n")
+    res, text = run(p, NEW)
+    failed = sorted({desc(t) for t, _ in res.failures + res.errors})
+    survived += not failed
+    print(f"{name}: {'KILLED' if failed else 'SURVIVED'}")
+    for f in failed:
+        print(f"    {f}")
+print(f"mutants: {len(mutants)}, survived: {survived}")

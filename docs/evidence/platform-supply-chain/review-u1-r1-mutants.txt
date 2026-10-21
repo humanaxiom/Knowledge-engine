@@ -1,0 +1,42 @@
+# Reviewer re-review (review-u1-r1) static mutants. Command: .venv/Scripts/python -I <scratch>/drive.py <scratch>/out (from C:\repos\Knowledge-engine; driver = review-u1-r1-mutants.py.txt, '@@' = newline). Scratch copies only; docker/gates.Dockerfile untouched (git diff --stat unchanged: 27 +-).
+# R1-R6 = review-u1 B1 mutants verbatim; N1-N7 = new masking/substitution attempts; B1-B7 = plausible benign edits (false-positive probe).
+baseline_unchanged: PASS
+R1 check_piped_to_cat: KILLED (1)
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='the check cannot be masked and the download is not replaced after it')
+R2 check_inside_if: KILLED (1)
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='the check cannot be masked and the download is not replaced after it')
+R3 check_negated: KILLED (1)
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='the check cannot be masked and the download is not replaced after it')
+R4 check_backgrounded: KILLED (1)
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='the check cannot be masked and the download is not replaced after it')
+R5 set_plus_e_before_check: KILLED (1)
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='the check cannot be masked and the download is not replaced after it')
+R6 refetch_after_check: KILLED (1)
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='the check cannot be masked and the download is not replaced after it')
+N1 check_names_prefix_twin (good file fetched first as /tmp/psa.nupkg.ok, check reads it): SURVIVED
+N2 check_via_function_or_true: KILLED (1)
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='the check cannot be masked and the download is not replaced after it')
+N3 check_in_sh_c_or_true: KILLED (2)
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='sha512sum -c fed the pinned hash and the download')
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='the check cannot be masked and the download is not replaced after it')
+N4 set_minus_u_plus_e (combined word): KILLED (1)
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='the check cannot be masked and the download is not replaced after it')
+N5 env_prefixed_check_or_colon: KILLED (2)
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='sha512sum -c fed the pinned hash and the download')
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='the check cannot be masked and the download is not replaced after it')
+N6 symlink_swap_after_check: KILLED (1)
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='the check cannot be masked and the download is not replaced after it')
+N7 later_RUN_overwrites_module_dir_unchecked: SURVIVED
+mutants: 13, survived: 2
+--- benign edits (false-positive probe) ---
+B1 check --strict --quiet: ACCEPTED
+B2 printf instead of echo: ACCEPTED
+B3 mkdir -p module dir between check and unpack: ACCEPTED
+B4 2>&1 on curl: ACCEPTED
+B5 arch case before the fetch: ACCEPTED
+B6 check output to /dev/null: REJECTED (1)
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='the check cannot be masked and the download is not replaced after it') | -  '/tmp/psa.nupkg" | sha512sum -c - >/dev/null'] : under `set -eu` a failing `... | sha512sum -c -` must stop the RUN: last in its pipeline, not negated, conditional, grouped or backgrounded, no `set +e`, and nothing re
+B7 checksum file instead of stdin: REJECTED (3)
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='sha512sum -c fed the pinned hash and the download') | AssertionError: False is not true : the check is not fed $PSSCRIPTANALYZER_SHA512: sha512sum -c /tmp/psa.sha512
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='the check is the first step that reads the download') | AssertionError: 2 != 3 : the download is read or unpacked before `sha512sum -c`: echo "e7fb573262e604bab29914ae62921d24b97c2f88b519b41277b403ef6ce163f14b7d1b36dc73449a68e5ae5a8d9502891b10c264131fd1813adf29bf131c1663  /tm
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='the check cannot be masked and the download is not replaced after it') | -  'later `| cat` or `| tee` hides a mismatch): sha512sum -c /tmp/psa.sha512'] : under `set -eu` a failing `... | sha512sum -c -` must stop the RUN: last in its pipeline, not negated, conditional, grouped or backgrounded

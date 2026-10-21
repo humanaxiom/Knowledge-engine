@@ -1,0 +1,9 @@
+# Reviewer static mutants (review-u1). Command: .venv/Scripts/python -I <scratch>/drive.py <scratch>/out (from C:\repos\Knowledge-engine). Scratch copies only; docker/gates.Dockerfile untouched.
+baseline_unchanged: PASS
+check_piped_to_cat (exit status masked): SURVIVED
+check_inside_if (set -e off in condition): SURVIVED
+check_negated (!): SURVIVED
+check_backgrounded (&): SURVIVED
+set_plus_e_before_check: SURVIVED
+refetch_after_check: SURVIVED
+mutants: 6, survived: 6

@@ -27,14 +27,24 @@ Static and fast: nothing here builds the image or runs docker. The real
 hashes are proven by the image build in `verify.sh full`, the binaries by
 `ci/deployable-offline`, and a wrong hash failing the build by the
 reviewer's mutation check (PS-3.10 *Mismatch fails the build*).
+
+platform-supply-chain, PS-3.7 (security L-8, review N-7): PSC-11 (pwsh
+telemetry and update check off by an ENV before the first RUN that starts
+pwsh) and PSC-10 (PSScriptAnalyzer fetched over HTTPS and checked by hash
+before it is unpacked; no gallery install). Design: architecture ADR-KE-013
+amendment 1, D7, with the orchestrator ruling of 2026-10-21
+(docs/handoffs/platform-supply-chain.md): the pin is the gallery's SHA-512,
+`ARG PSSCRIPTANALYZER_SHA512`, checked with `sha512sum -c`.
 """
 
 from __future__ import annotations
 
 import re
 import shlex
+import tempfile
 import unittest
 from dataclasses import dataclass
+from pathlib import Path
 
 from tests import compose_support as cs
 from tests.engine_support import ROOT
@@ -616,6 +626,405 @@ class GateServicesNoDockerHostTest(unittest.TestCase):
                                  f"the gates image sets {var}; offline-client sets it in compose")
         with self.subTest(check="no gate run passes DOCKER_HOST or a socket"):
             self.assertEqual(_gate_run_leaks(), [])
+
+
+# --- PS-3.7: pwsh telemetry off (PSC-11) and PSScriptAnalyzer by hash (PSC-10) ---
+
+PWSH_TELEMETRY_ENV = {"POWERSHELL_TELEMETRY_OPTOUT": "1", "POWERSHELL_UPDATECHECK": "Off"}
+# pwsh started as a command, shell form `pwsh -...` (also by path) or exec form
+# `["pwsh", "-..."]`. `ln -s /opt/microsoft/powershell/pwsh /usr/local/bin/pwsh`
+# and `chmod +x .../pwsh` do not start it (architecture §2.6, PSC-11).
+PWSH_START = re.compile(r"(?<![\w.-])pwsh(?:\s+|[\"']\s*,\s*[\"'])-")
+PSA_VERSION_ARG = "PSSCRIPTANALYZER_VERSION"
+PSA_HASH_ARG = "PSSCRIPTANALYZER_SHA512"  # orchestrator ruling 2026-10-21: the gallery's SHA-512
+HEX128 = re.compile(r"^[0-9a-f]{128}$")
+PSA_URL = "https://www.powershellgallery.com/api/v2/package/PSScriptAnalyzer/{v}"
+PSA_MODULE_DIR = "/usr/local/share/powershell/Modules/PSScriptAnalyzer/{v}"
+# Repository installs and trust changes: no hash check on what they fetch (D7).
+GALLERY_INSTALL = re.compile(
+    r"(?<![\w-])(?:Install-Module|Install-PSResource|Save-Module|Save-PSResource|Set-PSRepository"
+    r"|Register-PSRepository|Set-PSResourceRepository|Register-PSResourceRepository|inmo)(?![\w-])",
+    re.IGNORECASE)
+# A step that unpacks an archive (the first one after the download must follow the check).
+UNPACK = re.compile(r"\bzipfile\b|\bunzip\b|(?<![\w.-])b?sdtar(?![\w.-])|(?<![\w./-])tar(?![\w.-])"
+                    r"|(?<![\w.-])7za?(?![\w.-])|Expand-Archive", re.IGNORECASE)
+
+
+def _final_stage(lines: list[str]) -> int:
+    """Index of the first instruction after the last FROM (ENV does not cross stages)."""
+    froms = [i for i, ln in enumerate(lines) if re.match(r"^FROM\s", ln, re.IGNORECASE)]
+    return froms[-1] + 1 if froms else 0
+
+
+def _starts_pwsh(line: str) -> bool:
+    if re.match(r"^RUN\s", line, re.IGNORECASE):
+        return PWSH_START.search(line) is not None
+    # SHELL ["pwsh", ...] makes every later RUN a pwsh run.
+    return re.match(r"^SHELL\s", line, re.IGNORECASE) is not None and re.search(r"\bpwsh\b", line) is not None
+
+
+def _env_pairs(line: str) -> list[tuple[str, str]]:
+    """(key, value) set by one ENV instruction, `KEY=VALUE ...` or legacy `KEY VALUE`."""
+    m = re.match(r"^ENV\s+(.*)$", line, re.IGNORECASE)
+    if not m:
+        return []
+    words = _words(m.group(1))
+    if words and "=" not in words[0]:
+        return [(words[0], " ".join(words[1:]))]
+    return [(k, v) for k, v in (w.split("=", 1) for w in words if "=" in w)]
+
+
+def _is_sha512_check(cmd: str) -> bool:
+    return re.search(r"\bsha512sum\b[^|]*?(?:\s-c\b|\s--check\b|\s-[a-z]*c[a-z]*\b)", cmd) is not None
+
+
+# --- PSC-10: the hash check cannot be masked (review-u1 B1) ---
+# dash has no pipefail, and `set -e` is off for a negated pipeline, an
+# if/elif/while/until condition, any AND-OR member but the last, and a
+# background job. A check in any of those, or a download replaced after the
+# check, lets a wrong package through: the reviewer's `| cat` mutant built OK
+# with a wrong hash (docs/evidence/platform-supply-chain/review-u1.md).
+_QUOTED = re.compile(r"\"(?:[^\"\\]|\\.)*\"|'[^']*'")
+_CHECK_LEAD = {"if", "elif", "then", "else", "while", "until", "do", "for", "case", "!", "time",
+               "exec", "eval", "export", "local", "readonly"}
+_REWRITER = re.compile(r"(?<![\w.-])(?:curl|wget|cp|mv|ln|install|dd|tee|rsync|scp|cat|truncate"
+                       r"|python3?|perl|pwsh|sh|bash|dash|eval|exec)(?![\w.-])")
+
+
+def _unquoted(text: str) -> str:
+    """`text` with every quoted string emptied: quoted `;`, `&`, `|` or `>` are not shell syntax."""
+    return _QUOTED.sub('""', text)
+
+
+def _errexit_off(run: str) -> list[str]:
+    """Each `set` in the RUN that clears -e or -u (`set +e`, `set +eu`, `set +o errexit|nounset`)."""
+    found: list[str] = []
+    for m in re.finditer(r"(?<![\w$./-])set((?:[ \t]+[^\s;&|)}]+)+)", _unquoted(run)):
+        words = m.group(1).split()
+        if any(re.match(r"^\+[A-Za-z]*[eu]", w)
+               or (w == "+o" and i + 1 < len(words) and words[i + 1] in ("errexit", "nounset"))
+               for i, w in enumerate(words)):
+            found.append("set" + m.group(1))
+    return found
+
+
+def _psa_check_masking(run: str, args: dict[str, str], path: str) -> list[str]:
+    """Ways the module RUN's `sha512sum -c` can fail without failing the RUN,
+    or the download can change between the check and the unpack (B1)."""
+    segs = _segments(run)
+    exp = [_expand(c, args) for c, _ in segs]
+    check = next((i for i, c in enumerate(exp) if _is_sha512_check(c)), None)
+    if check is None:
+        return []  # reported by the "sha512sum -c fed ..." subtest
+    findings: list[str] = []
+    if re.search(r"(?<![&>|<])&(?![&>])", _unquoted(run)):
+        findings.append("a background job (`&`) in the module RUN: a backgrounded check never fails "
+                        "the RUN, and a background writer can race it")
+    findings.extend(f"`{s}` clears set -eu in the module RUN" for s in _errexit_off(run))
+    cmd, sep = segs[check]
+    bare = _unquoted(re.sub(r"^RUN\s+", "", cmd))
+    words = bare.split()
+    if words and (words[0] in _CHECK_LEAD or "=" in words[0]):
+        findings.append(f"the check starts with `{words[0]}`: negated, conditional, looped or "
+                        f"substituted, it runs with set -e off: {cmd}")
+    if "!" in words or re.search(r"[(){}`]", bare):
+        findings.append(f"the check is negated, grouped or substituted: {cmd}")
+    stages = bare.split("|")
+    last = stages[-1].split()
+    if not (len(last) >= 3 and re.match(r"^(?:\S*/)?sha512sum$", last[0]) and last[-1] == "-"
+            and all(w.startswith("-") for w in last[1:])
+            and any(re.match(r"^(?:--check|-[a-z]*c[a-z]*)$", w) for w in last[1:-1])):
+        findings.append(f"the check's pipeline must end in `sha512sum -c -` (dash has no "
+                        f"pipefail: a later `| cat` or `| tee` hides a mismatch): {cmd}")
+    feed = stages[0].split()
+    if len(stages) != 2 or not feed or feed[0] not in ("echo", "printf"):
+        findings.append(f"the check must be exactly two stages, an `echo`/`printf` feed piped to "
+                        f"`sha512sum -c -` (found {len(stages)}; dash has no pipefail, so a second "
+                        f"`| ... | sha512sum -c -` or a middle `| tee` stage hides or alters the "
+                        f"check, security M-U1R1-1): {cmd}")
+    n_sha = len(re.findall(r"(?<![\w.-])sha512sum(?![\w.-])", _expand(run, args)))
+    if n_sha != 1:
+        findings.append(f"the module RUN names `sha512sum` {n_sha} times: exactly one, the check "
+                        f"(a second check of a known-good input can mask it, security M-U1R1-1)")
+    if sep not in (";", ""):
+        findings.append(f"`{sep}` after the check: set -e ignores a failing AND-OR member that is "
+                        f"not the last, and `||` swallows it: {cmd}")
+    if check > 0 and segs[check - 1][1] != ";":
+        findings.append(f"`{segs[check - 1][1]}` before the check: it can be skipped, or run as a "
+                        f"non-last AND-OR member: {segs[check - 1][0]}")
+    before = re.sub(r"\$\{[^}]*\}", "", " ; ".join(_unquoted(c) for c, _ in segs[:check]))
+    before = re.sub(r"(?<![\w-])case(?![\w-]).*?(?<![\w-])esac(?![\w-])", " ", before)
+
+    def count(pattern: str) -> int:
+        return len(re.findall(pattern, before))
+
+    if (count(r"(?<![\w$-])if(?![\w-])") > count(r"(?<![\w$-])fi(?![\w-])")
+            or count(r"(?<![\w$-])(?:while|until|for)(?![\w-])") > count(r"(?<![\w$-])done(?![\w-])")
+            or before.count("{") > before.count("}") or before.count("(") > before.count(")")):
+        findings.append("the check sits inside an if/while/until/for, a `{ }` group or a subshell")
+    unpack = next((i for i in range(check + 1, len(exp))
+                   if UNPACK.search(exp[i]) and not _is_sha512_check(exp[i])), None)
+    base = path.rsplit("/", 1)[-1]
+    for i in range(check + 1, len(exp) if unpack is None else unpack):
+        between = exp[i]
+        if path in between or base in between:
+            findings.append(f"the download is touched between the check and the unpack: {between}")
+        if _REWRITER.search(between):
+            findings.append(f"a step that can fetch, copy, move or write runs between the check and "
+                            f"the unpack: {between}")
+        if re.search(r"(?<![<&])>(?!&|\s*/dev/null)", _unquoted(between)):
+            findings.append(f"a redirect writes a file between the check and the unpack: {between}")
+    if unpack is not None and "|" in _unquoted(exp[unpack]):
+        findings.append(f"the unpack is in a pipeline (another part can replace the download): {exp[unpack]}")
+    return findings
+
+
+XYZ = re.compile(r"(?<![\d.])\d+\.\d+\.\d+(?!\.?\d)")  # also inside "v1.24.0"
+# The window test_stack_scripts' `test_gates_image_has_shellcheck_and_psscriptanalyzer`
+# reads a version from: up to 200 characters after "PSScriptAnalyzer".
+PSA_COMMENT_WINDOW = 200
+PSA_MODULE_PATH = re.compile(r"/Modules/PSScriptAnalyzer/([^\s\"'/;]*)")
+
+
+def _comment_blocks(text: str) -> list[str]:
+    """Runs of consecutive `#` lines, `#` stripped, joined with spaces."""
+    blocks: list[str] = []
+    current: list[str] = []
+    for raw in text.splitlines():
+        stripped = raw.strip()
+        if stripped.startswith("#"):
+            current.append(stripped.lstrip("#").strip())
+            continue
+        if current:
+            blocks.append(" ".join(current))
+            current = []
+    if current:
+        blocks.append(" ".join(current))
+    return blocks
+
+
+def _psa_version_drift(path: Path) -> list[str]:
+    """Every x.y.z a comment puts after "PSScriptAnalyzer", and the version
+    directory of every module path, that differs from ARG PSSCRIPTANALYZER_VERSION."""
+    text = path.read_text(encoding="utf-8")
+    instructions = _logical_lines(path)
+    args = _args(instructions)
+    version = args.get(PSA_VERSION_ARG, "")
+    if not FIXED_VERSION.match(version):
+        return [f"ARG {PSA_VERSION_ARG}={version!r} is not a fixed x.y.z"]
+    drift: list[str] = []
+    for block in _comment_blocks(text):
+        for mention in re.finditer(r"PSScriptAnalyzer", block, re.IGNORECASE):
+            window = block[mention.end():mention.end() + PSA_COMMENT_WINDOW]
+            for found in XYZ.finditer(window):
+                if found.group(0) != version:
+                    drift.append(f"comment: PSScriptAnalyzer ... {found.group(0)} "
+                                 f"(near {block[mention.start():mention.end() + found.end()][:120]!r})")
+    paths = [m.group(1) for ln in instructions for m in PSA_MODULE_PATH.finditer(_expand(ln, args))]
+    if not paths:
+        drift.append("no /Modules/PSScriptAnalyzer/<version> path in any instruction")
+    drift.extend(f"module path: /Modules/PSScriptAnalyzer/{p}" for p in paths if p != version)
+    return drift
+
+
+class GatesImagePowerShellSupplyChainTest(unittest.TestCase):
+    """PS-3.7 (security L-8, review N-7): PSC-11 and PSC-10, static,
+    docker/gates.Dockerfile; ADR-KE-013 amendment 1, D7."""
+
+    def test_gates_image_sets_telemetry_optout_before_pwsh(self):  # PSC-11
+        with self.subTest(check="the pwsh-start detector (self-check)"):
+            for sample in ("RUN pwsh -NoProfile -NonInteractive -Command 'Import-Module X'",
+                           "RUN set -eu; /opt/microsoft/powershell/pwsh -c 'x'",
+                           'RUN ["pwsh", "-NoProfile", "-Command", "x"]',
+                           'SHELL ["pwsh", "-Command"]'):
+                self.assertTrue(_starts_pwsh(sample), f"detector missed: {sample}")
+            for sample in ("RUN set -eu; ln -s /opt/microsoft/powershell/pwsh /usr/local/bin/pwsh",
+                           "RUN chmod +x /opt/microsoft/powershell/pwsh; rm /tmp/x",
+                           "ENV POWERSHELL_TELEMETRY_OPTOUT=1"):
+                self.assertFalse(_starts_pwsh(sample), sample)
+        lines = _logical_lines(GATES_DOCKERFILE)
+        final = _final_stage(lines)
+        start = next((i for i in range(final, len(lines)) if _starts_pwsh(lines[i])), None)
+        with self.subTest(check="a RUN after the final FROM starts pwsh (not vacuous)"):
+            self.assertIsNotNone(start, "no RUN after the final FROM starts pwsh; D7's build-time "
+                                        "`pwsh ... Import-Module PSScriptAnalyzer` is the one PSC-11 "
+                                        "orders the ENV against")
+        if start is None:
+            return
+        for key, value in PWSH_TELEMETRY_ENV.items():
+            sets = [(i, v) for i, ln in enumerate(lines) for k, v in _env_pairs(ln) if k == key]
+            with self.subTest(key=key, check="set once in the file (moved, not duplicated)"):
+                self.assertEqual(len(sets), 1, f"{key} is set by {len(sets)} ENV instructions: "
+                                               f"{[lines[i] for i, _ in sets]}")
+            with self.subTest(key=key, check="set by an ENV after the final FROM, before pwsh first runs"):
+                early = [i for i, v in sets if final <= i < start and v == value]
+                self.assertTrue(early,
+                                f"`ENV {key}={value}` must come after the final FROM and before the "
+                                f"first RUN that starts pwsh ({lines[start][:120]}...); found it at "
+                                f"{[(i, v) for i, v in sets]} with that RUN at {start} (PSC-11, N-7: "
+                                "otherwise the first pwsh run phones home)")
+
+    def test_gates_image_verifies_psscriptanalyzer_hash(self):  # PSC-10
+        with self.subTest(check="the detectors (self-check)"):
+            for sample in ("Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0",
+                           "install-module PSScriptAnalyzer", "Set-PSRepository PSGallery -InstallationPolicy Trusted",
+                           "Install-PSResource PSScriptAnalyzer", "Save-Module X -Path /tmp",
+                           "Register-PSRepository -Name x -SourceLocation y"):
+                self.assertTrue(GALLERY_INSTALL.search(sample), f"detector missed: {sample}")
+            self.assertTrue(_is_sha512_check('echo "$H  /tmp/psa.nupkg" | sha512sum -c -'))
+            self.assertTrue(_is_sha512_check("sha512sum --check --strict /tmp/psa.sha512"))
+            self.assertFalse(_is_sha512_check('echo "$H  /tmp/psa.nupkg" | sha256sum -c -'))
+            self.assertFalse(_is_sha512_check("sha512sum /tmp/psa.nupkg"))
+            good = ('RUN set -eu; curl -o /tmp/psa.nupkg "u"; '
+                    'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c -; dir="/m"; '
+                    'python3 -I -m zipfile -e /tmp/psa.nupkg "/m"; rm -rf /tmp/psa.nupkg')
+            self.assertEqual(_psa_check_masking(good, {}, "/tmp/psa.nupkg"), [])
+            self.assertEqual(_psa_check_masking(good.replace("echo ", "printf '%s\\n' ", 1), {},
+                                                "/tmp/psa.nupkg"), [])
+            chk = 'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c -;'
+            for old, new in ((chk, chk[:-1] + " | cat;"), (chk, "if " + chk + " then :; fi;"),
+                             (chk, "! " + chk), (chk, chk[:-1] + " &"), ("set -eu;", "set -eu; set +e;"),
+                             ("set -eu;", "set -eu; set +o errexit;"), ("set -eu;", "set -eu; set +u;"),
+                             ('dir="/m";', 'cp /tmp/x /tmp/psa.nupkg;'),
+                             # security M-U1R1-1: a second check stage of a known-good input
+                             (chk, chk[:-1] + ' | echo "$E  /dev/null" | sha512sum -c -;'),
+                             (chk, chk.replace(" | ", " | tee /dev/stderr | ", 1)),
+                             ('dir="/m";', 'echo "$E  /dev/null" | sha512sum -c -; dir="/m";'),
+                             ("set -eu;", 'set -eu; echo "$E  /dev/null" | sha512sum -c -;'),
+                             (chk, 'cat /tmp/psa.sha512 | sha512sum -c -;'),
+                             (chk, 'sha512sum -c - < /tmp/psa.sha512;')):
+                bad = good.replace(old, new, 1)
+                self.assertNotEqual(bad, good)
+                self.assertTrue(_psa_check_masking(bad, {}, "/tmp/psa.nupkg"), f"detector missed: {bad}")
+        lines = _logical_lines(GATES_DOCKERFILE)
+        args = _args(lines)
+        with self.subTest(check="no Install-Module, Set-PSRepository or other gallery install"):
+            self.assertEqual([ln[max(0, m.start() - 60):m.end() + 60] for ln in lines
+                              for m in GALLERY_INSTALL.finditer(ln)], [],
+                             "a gallery install has no hash check (security L-8): fetch the .nupkg "
+                             "with curl and check it with sha512sum -c instead (PSC-10, D7)")
+        version = args.get(PSA_VERSION_ARG, "")
+        with self.subTest(check="the version is fixed"):
+            self.assertRegex(version, FIXED_VERSION, f"ARG {PSA_VERSION_ARG}={version!r}: a fixed X.Y.Z")
+        with self.subTest(check="one committed SHA-512, for both architectures"):
+            self.assertEqual(sorted(n for n in args if n.startswith("PSSCRIPTANALYZER_SHA")), [PSA_HASH_ARG],
+                             "exactly one hash ARG, the gallery's SHA-512 (ruling 2026-10-21; the "
+                             "package does not depend on the architecture)")
+            self.assertRegex(args.get(PSA_HASH_ARG, ""), HEX128,
+                             f"ARG {PSA_HASH_ARG} must be 128 lowercase hex (SHA-512)")
+        if not FIXED_VERSION.match(version):
+            self.fail(f"no fixed ARG {PSA_VERSION_ARG}; cannot locate the download")
+        url = PSA_URL.format(v=version)
+        hits = [i for i, ln in enumerate(lines)
+                if re.match(r"^RUN\s", ln, re.IGNORECASE) and url in _expand(ln, args)]
+        with self.subTest(check="one RUN downloads the pinned .nupkg from the gallery package endpoint"):
+            self.assertEqual(len(hits), 1, f"expected one RUN that fetches {url} (found {len(hits)})")
+        if len(hits) != 1:
+            return
+        run_at = hits[0]
+        segs = _segments(lines[run_at])
+        exp = [_expand(c, args) for c, _ in segs]
+        fetch = next(i for i, c in enumerate(exp) if url in c)
+        with self.subTest(check="the RUN is fail-fast: it starts with `set -eu`"):
+            self.assertRegex(segs[0][0], r"^RUN\s+set\s+-(?=[A-Za-z]*e)(?=[A-Za-z]*u)[A-Za-z]+$",
+                             f"the module RUN must start with `set -eu;`: {segs[0][0]}")
+            self.assertLess(0, fetch, "`set -eu` must come before the download")
+        curl = next((p for p in exp[fetch].split("|") if _runs_tool(p, "curl") and url in p), "")
+        with self.subTest(check="the download is curl over HTTPS only, redirects included, TLS >= 1.2"):
+            self.assertTrue(curl, f"the .nupkg is not fetched by curl: {exp[fetch]}")
+            q = r"(?:'=https'|\"=https\"|=https)(?=\s|$)"
+            self.assertRegex(curl, rf"\s--proto\s+{q}", "curl needs `--proto '=https'`")
+            self.assertRegex(curl, rf"\s--proto-redir\s+{q}",
+                             "curl -L follows the gallery's redirect: add `--proto-redir '=https'` (D7)")
+            self.assertRegex(curl, r"\s--tlsv1\.[23](?=\s|$)", "curl needs `--tlsv1.2`")
+            self.assertNotRegex(curl, r"(?<!\S)(?:--insecure|-[A-Za-z]*k[A-Za-z]*)(?!\S)", "curl skips TLS checks")
+        path = _download_path(exp[fetch])
+        with self.subTest(check="downloaded to /tmp"):
+            self.assertIsNotNone(path, f"download the .nupkg to /tmp and check it there: {exp[fetch]}")
+        if path is None:
+            return
+        after = range(fetch + 1, len(exp))
+        check = next((i for i in after if _is_sha512_check(exp[i])), None)
+        unpack = next((i for i in after if UNPACK.search(exp[i]) and not _is_sha512_check(exp[i])), None)
+        touch = next((i for i in after if path in exp[i] or UNPACK.search(exp[i])), None)
+        with self.subTest(check="sha512sum -c fed the pinned hash and the download"):
+            self.assertIsNotNone(check, "no `sha512sum -c` after the download in the same RUN (ruling "
+                                        "2026-10-21: pin the gallery's SHA-512)")
+            if check is not None:
+                self.assertTrue(_refs(segs[check][0], PSA_HASH_ARG),
+                                f"the check is not fed ${PSA_HASH_ARG}: {segs[check][0]}")
+                self.assertIn(path, exp[check], f"the check does not name the download {path}")
+                self.assertNotIn("--ignore-missing", exp[check], "`--ignore-missing` passes a file it never read")
+                self.assertNotEqual(segs[check][1], "||", f"`... ||` swallows a mismatch: {segs[check][0]}")
+        with self.subTest(check="the check is the first step that reads the download"):
+            self.assertIsNotNone(check)
+            self.assertEqual(touch, check, f"the download is read or unpacked before `sha512sum -c`: "
+                                           f"{exp[touch] if touch is not None else None}")
+        with self.subTest(check="the check cannot be masked and the download is not replaced after it"):
+            self.assertEqual(_psa_check_masking(lines[run_at], args, path), [],
+                             "under `set -eu` a failing `... | sha512sum -c -` must stop the RUN: exactly "
+                             "`echo|printf ... | sha512sum -c -`, the RUN's only sha512sum, not negated, "
+                             "conditional, grouped or backgrounded, no `set +e`, and nothing rewrites the "
+                             "download before the unpack (review-u1 B1, security M-U1R1-1, D7)")
+        module_dir = PSA_MODULE_DIR.format(v=version)
+        with self.subTest(check="unpacked after the check with `python3 -I -m zipfile -e` into the module path"):
+            self.assertIsNotNone(unpack, "no unpack step after the download")
+            if unpack is not None:
+                if check is not None:
+                    self.assertLess(check, unpack, f"unpacked before the hash check: {exp[unpack]}")
+                bare = re.sub(r"[\"']", "", exp[unpack])
+                self.assertRegex(bare, rf"\bpython3\s+(?:-[A-Za-z]+\s+)*?-I\s+(?:-[A-Za-z]+\s+)*-m\s+zipfile"
+                                       rf"\s+-e\s+{re.escape(path)}\s+{re.escape(module_dir)}/?(?:\s|$)",
+                                 f"unpack with `python3 -I -m zipfile -e {path} {module_dir}` (D7)")
+        if unpack is None:
+            return
+        rest = exp[unpack + 1:]
+        with self.subTest(check="the .nupkg and the NuGet packaging files are removed in the same RUN"):
+            self.assertTrue(any(_removes(c, path) for c in rest), f"`rm {path}` after the unpack")
+            removed = " ".join(re.sub(r"[\"']", "", c) for c in rest if re.match(r"^\s*rm\b", c))
+            for name, pattern in (("_rels", r"(?:^|[\s/])_rels(?:/|\s|$)"),
+                                  ("package", r"(?:^|[\s/])package(?:/|\s|$)"),
+                                  ("[Content_Types].xml", r"Content_Types\]?\.xml"),
+                                  ("PSScriptAnalyzer.nuspec", r"\.nuspec\b"),
+                                  # security L-U1-1: the NuGet signature is packaging, not module content
+                                  (".signature.p7s", r"(?:^|[\s/])\.signature\.p7s(?:\s|$)")):
+                self.assertRegex(removed, pattern, f"remove {name} from {module_dir} (D7)")
+        with self.subTest(check="a build-time Import-Module after the unpack proves it"):
+            tail = " ; ".join(rest)
+            self.assertRegex(tail, r"(?<![\w.-])pwsh\s+-.*?\bImport-Module\s+(?:-Name\s+)?[\"']?PSScriptAnalyzer\b",
+                             "run `pwsh -NoProfile -NonInteractive -Command 'Import-Module "
+                             "PSScriptAnalyzer -ErrorAction Stop'` after the unpack, in the same RUN (D7)")
+            self.assertRegex(tail, r"-ErrorAction\s+Stop|\$ErrorActionPreference\s*=\s*[\"']?Stop",
+                             "a failed import must fail the build: `-ErrorAction Stop`")
+        with self.subTest(check="no pwsh runs before the module RUN"):
+            self.assertEqual([ln[:120] for ln in lines[_final_stage(lines):run_at] if _starts_pwsh(ln)], [],
+                             "the module RUN's Import-Module is the first RUN that starts pwsh (D7); "
+                             "drop the trailing `pwsh -Command` from the tarball RUN")
+
+    def test_gates_image_psscriptanalyzer_version_agrees(self):  # PSC-10 guard
+        # The comment "PSScriptAnalyzer 1.25.0 (ARG below)" exists so
+        # test_stack_scripts' version-pinned regex matches; it duplicates
+        # ARG PSSCRIPTANALYZER_VERSION, and the module directory carries it too.
+        with self.subTest(check="the detector (self-check)"), tempfile.TemporaryDirectory() as tmp:
+            sample = Path(tmp) / "Dockerfile"
+
+            def drift(text: str) -> list[str]:
+                sample.write_text(text, encoding="utf-8")
+                return _psa_version_drift(sample)
+
+            arg = ("ARG PSSCRIPTANALYZER_VERSION=1.25.0\n"
+                   "RUN x /usr/local/share/powershell/Modules/PSScriptAnalyzer/")
+            self.assertEqual(drift(f"# PSScriptAnalyzer 1.25.0 (ARG below)\n{arg}${{PSSCRIPTANALYZER_VERSION}}\n"), [])
+            for bad in (f"# PSScriptAnalyzer v1.24.0\n{arg}$PSSCRIPTANALYZER_VERSION\n",
+                        f"# pinned: PSScriptAnalyzer\n# at 1.24.0\n{arg}$PSSCRIPTANALYZER_VERSION\n",
+                        f"# PSScriptAnalyzer 1.25.0\n{arg}1.24.0\n",
+                        f"# PSScriptAnalyzer 1.25.0\n{arg}\"$V\"\n",
+                        "# PSScriptAnalyzer 1.25.0\nARG PSSCRIPTANALYZER_VERSION=1.25.0\n"):
+                self.assertTrue(drift(bad), f"detector missed: {bad!r}")
+        self.assertEqual(_psa_version_drift(GATES_DOCKERFILE), [],
+                         f"every x.y.z a comment gives for PSScriptAnalyzer, and the version directory "
+                         f"in /Modules/PSScriptAnalyzer/<v>, must equal ARG {PSA_VERSION_ARG}; "
+                         "bump them together")
 
 
 def _gate_run_leaks() -> list[str]:

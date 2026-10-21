@@ -124,6 +124,167 @@ answer it. Answer by number; anything left unanswered stands as assumed.
   explorer, all assets vendored. React + TypeScript stays the fallback if the
   graph explorer outgrows the island.
 
+## platform-supply-chain
+
+Raised 2026-10-21 by the analyst (`docs/requirements.md` § "Item:
+platform-supply-chain"; handoff `docs/handoffs/platform-supply-chain.md`).
+**All ruled 2026-10-21** (handoff, "HUMAN RULINGS" and "ORCHESTRATOR
+RULINGS"; recorded here by the architect). Q42 (§ platform-skeleton below)
+also belongs to this item and is ruled too. Each answer below is the ruling
+as written in the handoff; the original question follows it, kept for the
+record.
+
+- **Q56. Resolved 2026-10-21 (human ruling).** **A56:**
+  - (a) YES: the scan DB is fetched by a host-half one-shot `scan-db` (the
+    only service with a route out); gates, gates-it and scan stay offline.
+    CLAUDE.md and README "networking disabled" wording is updated to say the
+    rule covers the gate services; the human approved the CLAUDE.md change,
+    and it lands in the same commit as scan-db.
+  - (b) FAIL CLOSED, naming the host and the stage.
+  - Not ruled, carried as a design note: the database host the dev host
+    and CI must reach is the one named in `scripts/scan.sh`
+    (`docs/architecture.md` ADR-KE-013, amendment 1); the developer records
+    it in the handoff. If SFU's network restricts egress, that host is the
+    one to allow.
+
+  Original question, kept for the record:
+  *Q56. The scan database fetch, the only network step.*
+  - Settled by Q41: the database is fetched fresh in the `verify.sh full`
+    host half, in CI and locally.
+  - ADR-KE-013 puts the fetch in a host-half one-shot (`scan-db`, on the
+    default bridge). It is not in `gates` or `gates-it`, which keep no route
+    out.
+  - Not settled:
+    - (a) Does this fit "networking disabled in gates" as you mean it?
+      CLAUDE.md says verify runs "inside the one-shot `gates` compose
+      service … with networking disabled". With `scan-db`, a second
+      container in a verify run has a route out. `build.sh`'s pulls already
+      use the network, but they run on the host, not in a container.
+    - (b) When the database host cannot be reached or the fetch fails, does
+      the run fail, or skip the scan with a named reason?
+  - **Recommended default:**
+    - (a) Yes. The rule applies to the gate services, and they stay
+      offline. `scan-db` is a host-half fetch like `build.sh`'s pulls and
+      mounts only its own volume. The CLAUDE.md and README wording is
+      updated to say so, with your approval, since CLAUDE.md is yours.
+    - (b) Fail closed, naming the host and the stage.
+  - Trade-off for (b):
+    - Failing closed means an outage or rate limit at the database host
+      turns every `full` red, in CI and locally, even for changes that do
+      not touch `ke-app`.
+    - Skipping with a reason, as the model tests do, keeps unrelated work
+      moving. But a green CI run could then carry no scan, which is what
+      the scan exists to prevent.
+    - A middle option is a bounded retry before failing. It adds CI time,
+      which PSC-9 would have to measure.
+  - Also needed: the dev host and CI must be able to reach the scanner's
+    database host. If SFU's network restricts egress, you name the
+    allowed host.
+
+- **Q57. Resolved 2026-10-21 (human ruling).** **A57:** SPDX 2.3 JSON, one
+  per bundled image, generated offline at bundle time and shipped in the
+  bundle. Built in the new item `platform-sbom` (split accepted by the
+  orchestrator, 2026-10-21).
+
+  Original question, kept for the record: *Q57. SBOM format and scope.*
+  - **Recommended default:**
+    - SPDX 2.3 JSON;
+    - one SBOM for each image in `bundle.json`: `ke-app`, `ke-gateway` and
+      the third-party stack images;
+    - generated offline at bundle time, and shipped in the bundle next to
+      `THIRD_PARTY_NOTICES.md`.
+  - Trade-offs:
+    - *Format.* SPDX is an ISO standard (ISO/IEC 5962) aimed at licence
+      compliance, which is what M-NT1 asks for. It also matches the SPDX
+      identifiers `NOTICE.md` already requires. CycloneDX is aimed at
+      security tooling and vulnerability exchange (VEX), and many scanners
+      consume it. Producing both adds little generator time, but doubles
+      the files to test and ship.
+    - *Scope.* SBOMs for every bundled image cover M-NT1's Alpine and
+      Debian layers in valkey, ke-gateway, postgres and neo4j. They add one
+      generator run per image to `bundle.sh` on CI, about six; the cost is
+      measured on CI, as in PSC-9. `ke-app` alone is cheaper, but leaves the
+      third-party layers unlisted.
+    - *Placement.* Shipping the SBOM in the bundle gives the operator the
+      inventory. Keeping it as evidence only keeps the bundle smaller, but
+      the operator does not get it.
+
+- **Q58. Resolved 2026-10-21 (human ruling).** **A58:** BUILD SOURCE OFFERS
+  NOW (not deferred to SFU advice). Built in `platform-sbom`
+  (`docs/requirements.md` § "Item: platform-sbom"). Not ruled, and not
+  blocking that item: who asks SFU legal/IP, and whether distribution
+  outside SFU is planned.
+
+  Original question, kept for the record: *Q58. GPL source offers: now, or
+  after SFU legal/IP advice?*
+  - What ships today (M-NT1), with no written source offer:
+    - GPL-2.0 Alpine packages (busybox, apk-tools, ssl_client) in valkey
+      and in ke-gateway's base;
+    - Debian GPL packages in the postgres, neo4j and ke-app bases.
+
+    Neo4j's GPL-3.0 has an upstream URL only (R4, L-NT1).
+  - **Recommended default:** defer source offers until SFU legal/IP advice
+    says whether and how they apply, for example whether installing the
+    bundle within SFU counts as distribution. Until then, this item:
+    - lists the components with their upstream source (PSC-15), in wording
+      that claims no compliance;
+    - records a known limit: the bundle goes to no one outside SFU until
+      the ruling.
+  - Trade-offs:
+    - Deferring builds no mechanism that the advice could make unnecessary
+      or shape differently. Until the advice comes, the bundle cannot go to
+      a third party. If it does, the GPL-2.0 §3 and GPL-3.0 §6 obligations
+      are unmet.
+    - Building offers now (a source archive, or a written offer valid for
+      three years) costs disk, bundle time and an archive to maintain. It
+      may also not match the advice.
+  - Also needed:
+    - who asks SFU legal/IP;
+    - whether any distribution outside SFU is planned, which would set a
+      date.
+
+- **Q59. Resolved 2026-10-21 (orchestrator ruling).** **A59:** scan the
+  native arch in verify full; the arm64 scan comes with recorded arm64 runs
+  (output saved as evidence).
+
+  Original question, kept for the record: *Q59. Which architecture's
+  `ke-app` is scanned.*
+  - `verify.sh full` builds and scans the native architecture: amd64 on CI
+    and on the dev host.
+  - The arm64 `ke-app` in the aria-gb10 bundle is scanned only when `full`
+    runs on an arm64 host. psycopg-binary's aarch64 wheel vendors its own
+    copies of the native libraries, which may differ.
+  - **Recommended default:** scan the native architecture in
+    `verify.sh full`. When an arm64 bundle is produced, its recorded arm64
+    run (the Q51 form) includes the scan, and the scan output is saved as
+    evidence.
+  - Trade-off: this adds no CI time and needs no emulation. But between
+    recorded arm64 runs, the arm64 image can carry a fixed High that nobody
+    sees. Scanning both architectures on every CI run needs either a
+    cross-architecture build, emulated and slow on the 2-vCPU runner, or an
+    arm64 runner.
+
+- **Q60. Resolved 2026-10-21 (orchestrator ruling).** **A60:** trigger at
+  > 3 min added to the slower CI run; the orchestrator decides before the
+  timeout is raised.
+
+  Original question, kept for the record: *Q60. When the scan's CI cost
+  needs a decision (orchestrator or human).*
+  - Context:
+    - the CI job takes 20.3–21.1 min against a 32-min timeout (once PR #9
+      lands);
+    - ADR-KE-013 estimates 40–80 s for the scan, which is not a CI
+      measurement (PSC-9);
+    - PS-3.4 lets the timeout follow the measured time with no cap.
+  - **Recommended default:** no hard cap, but a trigger. If the save,
+    `scan-db` and `scan` stages together add more than 3 min to the slower
+    CI run, the orchestrator decides before the timeout is raised: accept
+    and re-measure, or ask the architect to cut the cost (for example by
+    reusing the bundle's `ke-app` tar).
+  - Trade-off: a trigger keeps the margin for later items in view. No
+    trigger keeps the rule simple, but the job grows by the scan's cost
+    with no one deciding it.
+
 ## platform-skeleton
 
 Raised in the analyst review of the platform-skeleton criteria (2026-10-18) as
@@ -137,7 +298,17 @@ by the split ruling (`docs/handoffs/platform-offline.md`, "rulings on
 analyst plan") and decided when that item opens. It does not block
 `platform-offline`, which has no scan stage.
 
-- **Q42. Scan threshold and the vendored libraries.** **A42 (assumed):**
+- **Q42. Resolved 2026-10-21 (orchestrator ruling,
+  `docs/handoffs/platform-supply-chain.md`).** **A42 (ruled):** keep A42
+  (fail on fixed High/Critical); each ignore entry needs a reason plus
+  `until` ≤ 90 days; psycopg-binary per the analyst default (upgrade if a
+  fix exists, else a time-limited ignore stating why the path is
+  unreachable, confirmed by security, plus a follow-up on Debian libpq).
+  Built as PSC-4 and PSC-5 (`docs/requirements.md` § "Item:
+  platform-supply-chain"). Original question and the analyst's default,
+  kept for the record:
+
+  *Q42. Scan threshold and the vendored libraries.* **A42 (assumed):**
   - the run fails on any CRITICAL or HIGH finding that has a fixed version
     available;
   - other findings are reported in the evidence only;
@@ -150,6 +321,33 @@ analyst plan") and decided when that item opens. It does not block
   image switch to psycopg built against the base image's libpq? That
   switch changes the app image and the licence picture. Orchestrator or
   security.
+
+  **Recommended default (analyst, 2026-10-21, `platform-supply-chain`
+  PSC-4, PSC-5; not a ruling).**
+  - *Threshold.* Keep A42 and cap each ignore entry's `until` at 90 days.
+    - Trade-off: an unfixed Critical never fails the run and is visible
+      only in the log.
+    - Failing on unfixed Criticals as well would catch them, but could hold
+      `full` red for weeks with nothing to upgrade to. Those findings would
+      then end up in the ignore file anyway.
+  - *psycopg-binary libraries.* If a newer psycopg-binary wheel fixes a
+    flagged library, upgrade the lock. If none does, accept the finding as a
+    time-limited ignore entry and open a follow-up item to evaluate psycopg
+    on Debian's libpq. The entry's reason states why the code path is not
+    reached (for krb5, `gssencmode=disable`, L-13), and security confirms
+    it.
+    - Trade-off: exceptions leave `ke-app` and the notices unchanged, but
+      `ke-app` keeps shipping old native code.
+    - The switch removes the vendored libraries (and part of M-NT1's list)
+      and hands their CVEs to Debian's security updates. But it changes
+      `ke-app` and needs apt pinning. It changes `NOTICE.md`: psycopg stays
+      LGPL-3.0, and libpq comes under the PostgreSQL licence. It also needs
+      a new Windows run and a CI re-measure.
+  - If the scanner does not see `psycopg_binary.libs` at all (PSC-7), the
+    second half of Q42 is moot for the scan, and L-13 stays a documented
+    residual.
+  - Who rules: the orchestrator or security, as before. The 90-day cap is
+    the orchestrator's or the human's call.
 
 Open, raised 2026-10-19 by the analyst for `platform-offline` (reconciling
 R2 with spike S1). Does not block RED.

@@ -1,0 +1,57 @@
+"""Reviewer re-review (review-u1-r2) scratch probes: copies of docker/gates.Dockerfile
+only; the repo file is never written. Patches GATES_DOCKERFILE in the test module.
+Run: uv run python -I <this> <out-dir>"""
+import io, sys, unittest
+from pathlib import Path
+REPO = Path(r"C:\repos\Knowledge-engine")
+OUT = Path(sys.argv[1]); OUT.mkdir(parents=True, exist_ok=True)
+sys.path.insert(0, str(REPO))
+import tests.test_gates_docker_cli as cli  # noqa: E402
+src = (REPO / "docker" / "gates.Dockerfile").read_text(encoding="utf-8")
+FEED = 'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg"'
+CHECK = FEED + ' | sha512sum -c -; \\@@'
+HEAD = "RUN set -eu; \\@@"
+E = "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e"
+GOOD = f'    echo "{E}  /dev/null" > /tmp/good; \\@@'
+def rep(t, old, new):
+    old = old.replace('@@', chr(10)); new = new.replace('@@', chr(10))
+    assert old in t, old
+    return t.replace(old, new, 1)
+mutants = {
+  "baseline_unchanged": src,
+  "P1 stdin redirect glued to a flag (--strict</tmp/good)":
+      rep(rep(src, CHECK, FEED + ' | sha512sum -c --strict</tmp/good -; \\@@'), HEAD, HEAD + GOOD),
+  "P2 stdin redirect glued to -c (-c --quiet<&3 with fd 3 opened earlier)":
+      rep(rep(src, CHECK, FEED + ' | sha512sum -c --quiet<&3 -; \\@@'), HEAD, HEAD + GOOD + '    exec 3</tmp/good; \\@@'),
+  "P3 second check stage via shasum": rep(src, CHECK, FEED + f' | sha512sum -c - | echo "{E}  /dev/null" | shasum -a 512 -c -; \\@@'),
+  "P4 3 stages, cat in the middle": rep(src, CHECK, FEED + ' | cat | sha512sum -c -; \\@@'),
+  "P5 feed is sed of a file": rep(src, CHECK, "sed -n 1p /tmp/good | sha512sum -c -; \\@@"),
+  "P6 second sha512sum by path, separate": rep(src, CHECK, CHECK + f'    echo "{E}  /dev/null" | /usr/bin/sha512sum -c -; \\@@'),
+}
+benign = {
+  "B8 feed and pipe split over a continuation": rep(src, CHECK, FEED + ' \\@@      | sha512sum -c -; \\@@'),
+  "B9 sha512sum by absolute path": rep(src, CHECK, FEED + ' | /usr/bin/sha512sum -c -; \\@@'),
+  "B10 --check --strict -": rep(src, CHECK, FEED + ' | sha512sum --check --strict -; \\@@'),
+  "B11 feed stderr to /dev/null": rep(src, CHECK, FEED + ' 2>/dev/null | sha512sum -c -; \\@@'),
+}
+names = ["test_gates_image_sets_telemetry_optout_before_pwsh", "test_gates_image_verifies_psscriptanalyzer_hash", "test_gates_image_psscriptanalyzer_version_agrees"]
+def run(name, text):
+    p = OUT / (name.split()[0] + ".Dockerfile"); p.write_text(text, encoding="utf-8")
+    cli.GATES_DOCKERFILE = p
+    suite = unittest.TestSuite(cli.GatesImagePowerShellSupplyChainTest(n) for n in names)
+    return unittest.TextTestRunner(stream=io.StringIO(), verbosity=0).run(suite)
+survived = 0
+for name, text in mutants.items():
+    r = run(name, text); bad = len(r.failures) + len(r.errors)
+    if name.startswith("baseline"):
+        print(f"{name}: {'PASS' if bad == 0 else f'FAIL ({bad})'}")
+    else:
+        survived += bad == 0
+        print(f"{name}: {'SURVIVED' if bad == 0 else f'KILLED ({bad})'}")
+    for t, tb in r.failures + r.errors: print("    ", str(t).split(") (")[-1][:90], "|", tb.strip().splitlines()[-1][-160:])
+print(f"mutants: {len(mutants)-1}, survived: {survived}")
+print("--- benign edits (false-positive probe) ---")
+for name, text in benign.items():
+    r = run(name, text); bad = len(r.failures) + len(r.errors)
+    print(f"{name}: {'ACCEPTED' if bad == 0 else f'REJECTED ({bad})'}")
+    for t, tb in r.failures + r.errors: print("    ", tb.strip().splitlines()[-1][-200:])
