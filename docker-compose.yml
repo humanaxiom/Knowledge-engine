@@ -17,7 +17,7 @@ x-model-env: &model-env
   KE_EGRESS_ALLOWLIST: gateway,${KE_EGRESS_ALLOWLIST:-}
 
 x-app: &app
-  image: ke-app
+  image: ke-app:${KE_IMAGE_TAG:-local}
   build:
     context: .
     dockerfile: docker/app.Dockerfile
@@ -35,17 +35,29 @@ x-app: &app
     HARNESS_TRACING: ${HARNESS_TRACING:-otlp}
 
 x-gates: &gates
-  image: ke-gates
+  image: ke-gates:${KE_IMAGE_TAG:-local}
   build:
     context: .
     dockerfile: docker/gates.Dockerfile
   working_dir: /work
+  # L-5 (PS-3.5): uid 10001, a read-only checkout, /tmp the only writable path.
+  user: "10001:10001"
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
   volumes:
-    - .:/work
+    - type: bind
+      source: .
+      target: /work
+      read_only: true
+  tmpfs: ["/tmp:exec,mode=1777"]
+  environment: &gates-env
+    MYPY_CACHE_DIR: /tmp/mypy
+    PYTHONDONTWRITEBYTECODE: "1"
+    GIT_OPTIONAL_LOCKS: "0"
 
 services:
   gateway:
-    image: ke-gateway
+    image: ke-gateway:${KE_IMAGE_TAG:-local}
     build:
       context: .
       dockerfile: docker/gateway.Dockerfile
@@ -179,7 +191,7 @@ services:
     profiles: ["gates-it"]
     networks: [backend]
     environment:
-      <<: *model-env
+      <<: [*gates-env, *model-env]
       KE_GATEWAY_MODEL_LISTEN: ${KE_GATEWAY_MODEL_LISTEN:-8102}
       KE_API__LISTEN_PORT: ${KE_API_LISTEN:-8080}
       KE_MODEL_UPSTREAM: ${KE_MODEL_UPSTREAM:-}

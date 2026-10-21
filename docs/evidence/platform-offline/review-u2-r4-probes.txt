@@ -1,0 +1,494 @@
+# review-u2-r4 raw probes (reviewer, 2026-10-19). Scratch copies of the working tree (git ls-files -co, no docs/evidence) in ke-gates:latest, --network none, --cap-drop ALL, no-new-privileges, uid 10001, /opt/venv python. Repo never modified.
+# Probe module: tests/scratch_r4.py (scratch only; reproduced at the end). ExecBitTest fails in every scratch run by design (no .git).
+
+## Base tree (working tree as-is): probes
+PROBE ProbeSh.sticky_1777: rc=1 docker_ran=False target_exists=False
+  out: ''
+  err: "install: refused (rule: the target's parent must be writable only by you or root): /tmp/tmpt0j461j9/sticky1 is writable by others (group or world, mode drwxrwxrwt); anyone who can write it can replace the installed target; use a directory only you can write\n"
+--
+PROBE rb6_ssh_symlink: rc=1 victim before=['id_ed25519', 'sub', 'sub/keep'] after=['id_ed25519', 'sub', 'sub/keep'] mode=0o700 docker_ran=False
+  out: ''
+  err: 'install: the staging directory is not the one this install created (its name leads elsewhere): /tmp/tmp60b0edj1/.ke-install.1MVwfGtJ\n'
+--
+PROBE rb6_empty_victim: rc=1 victim after=[] docker_ran=False installed=False
+  out: ''
+  err: 'install: the staging directory is not the one this install created (its name leads elsewhere): /tmp/tmp6sj55c6m/.ke-install.jWjoLZAe\n'
+--
+PROBE planted_in_staging: rc=1 docker_ran=False installed=False
+  out: ''
+  err: 'install: the staging directory is not empty (something replaced it after creation): /tmp/tmpln3b43_v/.ke-install.mpKeyZ2e\n'
+--
+PROBE dir_swap_at_publish: rc=1 racer=True 'installed to' printed=False
+  out: 'manifest sha256: 05a85892e34979ea55f5e1c84790d7a9aa209cf3a86c85e7768aa846a1a6540a (not checked: compare it with the value from your release record)\nloaded ke-app.tar as ke-app:bundle-0123456789ab\nloaded postgres.tar as ke-vendor/postgres:053bbdccec5d\n'
+  err: "install: the target's name no longer leads to the directory this install published (something replaced it during install): /tmp/tmp5m_561mr/target1\n"
+--
+PROBE ProbePs1.sticky_1777: rc=1 docker_ran=False target_exists=False
+  out: ''
+  err: "install: refused (rule: the target's parent must not be writable by others): /tmp/tmp20go7qwc/sticky1 is writable by others (group or world); anyone who can write it can replace the installed target; use a directory only you can write\n"
+
+## Base tree: sticky / odd parent modes
+PROBE OddSh.parent_0o1757: rc=1 docker_ran=False installed=False
+  out: ''
+  err: "install: refused (rule: the target's parent must be writable only by you or root): /tmp/tmp_d1u0h8_/odd1 is writable by others (group or world, mode drwxr-xrwt); anyone who can write it can replace the installed target; use a directory only you can write\n"
+--
+PROBE OddSh.parent_0o1703: rc=1 docker_ran=False installed=False
+  out: ''
+  err: "install: refused (rule: the target's parent must be writable only by you or root): /tmp/tmp_d1u0h8_/odd2 is writable by others (group or world, mode drwx----wt); anyone who can write it can replace the installed target; use a directory only you can write\n"
+--
+PROBE OddSh.parent_0o757: rc=1 docker_ran=False installed=False
+  out: ''
+  err: "install: refused (rule: the target's parent must be writable only by you or root): /tmp/tmp_d1u0h8_/odd3 is writable by others (group or world, mode drwxr-xrwx); anyone who can write it can replace the installed target; use a directory only you can write\n"
+--
+PROBE OddPs1.parent_0o1757: rc=0 docker_ran=True installed=True
+  out: "your release record)\nloaded ke-app.tar as ke-app:bundle-0123456789ab\nloaded postgres.tar as ke-vendor/postgres:053bbdccec5d\nmanifest sha256: 05a85892e34979ea55f5e1c84790d7a9aa209cf3a86c85e7768aa846a1a6540a\ninstalled to /tmp/tmptkvjjjyy/odd1/ke\nnext: cd '/tmp/tmptkvjjjyy/odd1/ke'; scripts/launch.ps1\n"
+  err: ''
+--
+PROBE OddPs1.parent_0o1703: rc=0 docker_ran=True installed=True
+  out: "your release record)\nloaded ke-app.tar as ke-app:bundle-0123456789ab\nloaded postgres.tar as ke-vendor/postgres:053bbdccec5d\nmanifest sha256: 05a85892e34979ea55f5e1c84790d7a9aa209cf3a86c85e7768aa846a1a6540a\ninstalled to /tmp/tmptkvjjjyy/odd2/ke\nnext: cd '/tmp/tmptkvjjjyy/odd2/ke'; scripts/launch.ps1\n"
+  err: ''
+--
+PROBE OddPs1.parent_0o757: rc=1 docker_ran=False installed=False
+  out: ''
+  err: "install: refused (rule: the target's parent must not be writable by others): /tmp/tmptkvjjjyy/odd3 is writable by others (group or world); anyone who can write it can replace the installed target; use a directory only you can write\n"
+
+## Mutant diffs
+### m_nopolicy
+286d285
+<   refuse_unsafe_parent "$parent"
+### m_nopwdp
+325,327d324
+<   if [ "$(pwd -P)" != "$staging" ]; then
+<     die "the staging directory is not the one this install created (its name leads elsewhere): $staging"
+<   fi
+### m_noempty
+328,330d327
+<   if [ -n "$(ls -A)" ]; then
+<     die "the staging directory is not empty (something replaced it after creation): $staging"
+<   fi
+### m_noowner
+331,333d330
+<   if [ ! -O . ] || [ "${stmode:0:10}" != "drwx------" ]; then
+<     die "the staging directory is not private (owner or mode is wrong): $staging"
+<   fi
+### m_noef
+230c230
+<   { [ "$(cd -- "$target" 2> /dev/null && pwd -P)" = "$expected" ] && [ "$target" -ef . ]; } \
+---
+>   { [ "$(cd -- "$target" 2> /dev/null && pwd -P)" = "$expected" ]; } \
+232d231
+<   [ "$target" -ef . ] || die "the target's name no longer leads to the directory this install published (something replaced it during install): $target"
+### m_nopwdp_noempty
+325,330d324
+<   if [ "$(pwd -P)" != "$staging" ]; then
+<     die "the staging directory is not the one this install created (its name leads elsewhere): $staging"
+<   fi
+<   if [ -n "$(ls -A)" ]; then
+<     die "the staging directory is not empty (something replaced it after creation): $staging"
+<   fi
+### p_nopolicy
+436d435
+<     Write-SharedParentWarning $parent
+### p_aclcatch
+304c304
+<             Exit-WithError "cannot check the target's parent $Parent (reading its ACL failed); use a directory only you can write"
+---
+>             return
+### p_modecatch
+321c321
+<             Exit-WithError "cannot check the target's parent $Parent (reading its mode failed); use a directory only you can write"
+---
+>             return
+### p_noempty
+266,268d265
+<         if ($null -ne ([System.IO.Directory]::EnumerateFileSystemEntries('.') | Select-Object -First 1)) {
+<             Exit-WithError "the staging directory is not empty (something was put there after creation): $path"
+<         }
+### p_noowner
+269,271d268
+<         if (-not $windows -and (Get-OwnerUid '.') -ne (Get-OperatorUid)) {
+<             Exit-WithError "the staging directory is not owned by you: $path"
+<         }
+
+## Mutant results: python -m unittest tests.test_offline_bundle + 4 sh probes
+### m_noef
+Ran 124 tests in 150.935s
+FAILED (failures=1, skipped=6)
+PROBE rb6_ssh_symlink: rc=1 victim before=['id_ed25519', 'sub', 'sub/keep'] after=['id_ed25519', 'sub', 'sub/keep'] mode=0o700 docker_ran=False
+  out: ''
+  err: 'install: the staging directory is not the one this install created (its name leads elsewhere): /tmp/tmpjutx2trj/.ke-install.VVxdyRZY\n'
+--
+PROBE rb6_empty_victim: rc=1 victim after=[] docker_ran=False installed=False
+  out: ''
+  err: 'install: the staging directory is not the one this install created (its name leads elsewhere): /tmp/tmpeuiildby/.ke-install.Z3A8jLGw\n'
+--
+PROBE planted_in_staging: rc=1 docker_ran=False installed=False
+  out: ''
+  err: 'install: the staging directory is not empty (something replaced it after creation): /tmp/tmpi7v_tdyh/.ke-install.7vVgfjab\n'
+--
+PROBE dir_swap_at_publish: rc=0 racer=True 'installed to' printed=True
+  out: ' release record)\nloaded ke-app.tar as ke-app:bundle-0123456789ab\nloaded postgres.tar as ke-vendor/postgres:053bbdccec5d\nmanifest sha256: 5096e0c3720e5a437731660ceb611f1f2b42aa4d406303a0404ab28958b61ab0\ninstalled to /tmp/tmpf1b61811/target1\nnext: cd /tmp/tmpf1b61811/target1 && bash scripts/launch.sh\n'
+  err: ''
+### m_noempty
+Ran 124 tests in 147.881s
+FAILED (failures=1, skipped=6)
+PROBE rb6_ssh_symlink: rc=1 victim before=['id_ed25519', 'sub', 'sub/keep'] after=['id_ed25519', 'sub', 'sub/keep'] mode=0o700 docker_ran=False
+  out: ''
+  err: 'install: the staging directory is not the one this install created (its name leads elsewhere): /tmp/tmp80shn0ra/.ke-install.5sEA7LAT\n'
+--
+PROBE rb6_empty_victim: rc=1 victim after=[] docker_ran=False installed=False
+  out: ''
+  err: 'install: the staging directory is not the one this install created (its name leads elsewhere): /tmp/tmpqgqpr6ba/.ke-install.XJNJbrE5\n'
+--
+PROBE planted_in_staging: rc=1 docker_ran=False installed=False
+  out: ''
+  err: 'install: manifest: file is not listed: planted\n'
+--
+PROBE dir_swap_at_publish: rc=1 racer=True 'installed to' printed=False
+  out: 'manifest sha256: 3a9a04d6fb2f077e9d896dbeb60d5782d31fa270dff73f975a0748f2281d4373 (not checked: compare it with the value from your release record)\nloaded ke-app.tar as ke-app:bundle-0123456789ab\nloaded postgres.tar as ke-vendor/postgres:053bbdccec5d\n'
+  err: "install: the target's name no longer leads to the directory this install published (something replaced it during install): /tmp/tmpagudft2v/target1\n"
+### m_noowner
+FAIL: test_install_sh_refuses_staging_loosened_before_cd (tests.test_offline_bundle.InstallShTest.test_install_sh_refuses_staging_loosened_before_cd) (staging_mode='0755')
+FAIL: test_install_sh_refuses_staging_loosened_before_cd (tests.test_offline_bundle.InstallShTest.test_install_sh_refuses_staging_loosened_before_cd) (staging_mode='0750')
+FAIL: test_install_sh_refuses_staging_loosened_before_cd (tests.test_offline_bundle.InstallShTest.test_install_sh_refuses_staging_loosened_before_cd) (staging_mode='0701')
+Ran 124 tests in 148.196s
+FAILED (failures=4, skipped=6)
+PROBE rb6_ssh_symlink: rc=1 victim before=['id_ed25519', 'sub', 'sub/keep'] after=['id_ed25519', 'sub', 'sub/keep'] mode=0o700 docker_ran=False
+  out: ''
+  err: 'install: the staging directory is not the one this install created (its name leads elsewhere): /tmp/tmp1a4s08ug/.ke-install.pneYhQjI\n'
+--
+PROBE rb6_empty_victim: rc=1 victim after=[] docker_ran=False installed=False
+  out: ''
+  err: 'install: the staging directory is not the one this install created (its name leads elsewhere): /tmp/tmpj721czll/.ke-install.uQx1an0y\n'
+--
+PROBE planted_in_staging: rc=1 docker_ran=False installed=False
+  out: ''
+  err: 'install: the staging directory is not empty (something replaced it after creation): /tmp/tmpvkv9q6p_/.ke-install.P5FnWhEc\n'
+--
+PROBE dir_swap_at_publish: rc=1 racer=True 'installed to' printed=False
+  out: 'manifest sha256: f5a3ee06d9610662684d57049748a269356155b09f67f3c5824ed5c6642f0c80 (not checked: compare it with the value from your release record)\nloaded ke-app.tar as ke-app:bundle-0123456789ab\nloaded postgres.tar as ke-vendor/postgres:053bbdccec5d\n'
+  err: "install: the target's name no longer leads to the directory this install published (something replaced it during install): /tmp/tmpo5nqpu_s/target1\n"
+### m_nopolicy
+FAIL: test_install_flags_target_parent_others_can_write (tests.test_offline_bundle.InstallShTest.test_install_flags_target_parent_others_can_write) (parent='0o777')
+FAIL: test_install_flags_target_parent_others_can_write (tests.test_offline_bundle.InstallShTest.test_install_flags_target_parent_others_can_write) (parent='0o775')
+FAIL: test_install_flags_target_parent_others_can_write (tests.test_offline_bundle.InstallShTest.test_install_flags_target_parent_others_can_write) (parent='0o770')
+FAIL: test_install_sh_flags_parent_owned_by_another_user (tests.test_offline_bundle.InstallShTest.test_install_sh_flags_parent_owned_by_another_user) (parent='owned by uid != operator, != root, mode 0755')
+FAIL: test_install_sh_refuses_parent_it_cannot_check (tests.test_offline_bundle.InstallShTest.test_install_sh_refuses_parent_it_cannot_check) (case='owner_or_mode_unreadable')
+FAIL: test_install_sh_refuses_parent_it_cannot_check (tests.test_offline_bundle.InstallShTest.test_install_sh_refuses_parent_it_cannot_check) (case='operator_uid_unreadable')
+Ran 124 tests in 147.759s
+FAILED (failures=7, skipped=6)
+PROBE rb6_ssh_symlink: rc=1 victim before=['id_ed25519', 'sub', 'sub/keep'] after=['id_ed25519', 'sub', 'sub/keep'] mode=0o700 docker_ran=False
+  out: ''
+  err: 'install: the staging directory is not the one this install created (its name leads elsewhere): /tmp/tmp0_1zqtud/.ke-install.cUrCu2ju\n'
+--
+PROBE rb6_empty_victim: rc=1 victim after=[] docker_ran=False installed=False
+  out: ''
+  err: 'install: the staging directory is not the one this install created (its name leads elsewhere): /tmp/tmph2qpvsl2/.ke-install.PnUkC3Me\n'
+--
+PROBE planted_in_staging: rc=1 docker_ran=False installed=False
+  out: ''
+  err: 'install: the staging directory is not empty (something replaced it after creation): /tmp/tmpsg12kcum/.ke-install.mshRW6md\n'
+--
+PROBE dir_swap_at_publish: rc=1 racer=True 'installed to' printed=False
+  out: 'manifest sha256: 1c05a828559a058c6a37061e45f0b5038bb6dafcff6299721903b289709f9590 (not checked: compare it with the value from your release record)\nloaded ke-app.tar as ke-app:bundle-0123456789ab\nloaded postgres.tar as ke-vendor/postgres:053bbdccec5d\n'
+  err: "install: the target's name no longer leads to the directory this install published (something replaced it during install): /tmp/tmprelqds5n/target1\n"
+### m_nopwdp
+Ran 124 tests in 147.354s
+FAILED (failures=1, skipped=6)
+PROBE rb6_ssh_symlink: rc=1 victim before=['id_ed25519', 'sub', 'sub/keep'] after=['id_ed25519', 'sub', 'sub/keep'] mode=0o700 docker_ran=False
+  out: ''
+  err: 'install: the staging directory is not empty (something replaced it after creation): /tmp/tmp9pjn8lts/.ke-install.gsXNtuPz\n'
+--
+PROBE rb6_empty_victim: rc=0 victim after=[] docker_ran=True installed=True
+  out: ' release record)\nloaded ke-app.tar as ke-app:bundle-0123456789ab\nloaded postgres.tar as ke-vendor/postgres:053bbdccec5d\nmanifest sha256: 6fecb6fe53af559e3237915cc31d7882ee7a74bbeba5c28c52ed1394d1ae394f\ninstalled to /tmp/tmptkul5umj/target1\nnext: cd /tmp/tmptkul5umj/target1 && bash scripts/launch.sh\n'
+  err: ''
+--
+PROBE planted_in_staging: rc=1 docker_ran=False installed=False
+  out: ''
+  err: 'install: the staging directory is not empty (something replaced it after creation): /tmp/tmp_vw10_0e/.ke-install.M7eOZkdD\n'
+--
+PROBE dir_swap_at_publish: rc=1 racer=True 'installed to' printed=False
+  out: 'manifest sha256: 6fecb6fe53af559e3237915cc31d7882ee7a74bbeba5c28c52ed1394d1ae394f (not checked: compare it with the value from your release record)\nloaded ke-app.tar as ke-app:bundle-0123456789ab\nloaded postgres.tar as ke-vendor/postgres:053bbdccec5d\n'
+  err: "install: the target's name no longer leads to the directory this install published (something replaced it during install): /tmp/tmpvqnz9i5c/target1\n"
+### m_nopwdp_noempty
+FAIL: test_install_sh_never_empties_dir_swapped_in_for_staging (tests.test_offline_bundle.InstallShTest.test_install_sh_never_empties_dir_swapped_in_for_staging) (victim='0o700')
+Ran 124 tests in 151.256s
+FAILED (failures=2, skipped=6)
+PROBE rb6_ssh_symlink: rc=1 victim before=['id_ed25519', 'sub', 'sub/keep'] after=[] mode=0o700 docker_ran=False
+  out: ''
+  err: 'install: manifest: file is not listed: id_ed25519\n'
+--
+PROBE rb6_empty_victim: rc=0 victim after=[] docker_ran=True installed=True
+  out: ' release record)\nloaded ke-app.tar as ke-app:bundle-0123456789ab\nloaded postgres.tar as ke-vendor/postgres:053bbdccec5d\nmanifest sha256: ec30eba943556af701206cac4a866a7d2d410de8e6fc2ffc70d88ff42d10fe2d\ninstalled to /tmp/tmpyb22qg9e/target1\nnext: cd /tmp/tmpyb22qg9e/target1 && bash scripts/launch.sh\n'
+  err: ''
+--
+PROBE planted_in_staging: rc=1 docker_ran=False installed=False
+  out: ''
+  err: 'install: manifest: file is not listed: planted\n'
+--
+PROBE dir_swap_at_publish: rc=1 racer=True 'installed to' printed=False
+  out: 'manifest sha256: ec30eba943556af701206cac4a866a7d2d410de8e6fc2ffc70d88ff42d10fe2d (not checked: compare it with the value from your release record)\nloaded ke-app.tar as ke-app:bundle-0123456789ab\nloaded postgres.tar as ke-vendor/postgres:053bbdccec5d\n'
+  err: "install: the target's name no longer leads to the directory this install published (something replaced it during install): /tmp/tmph3mhac2v/target1\n"
+### p_aclcatch
+FAIL: test_install_ps1_acl_read_failure_is_not_silent (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_acl_read_failure_is_not_silent) (try_at_line=299)
+Ran 124 tests in 151.181s
+FAILED (failures=2, skipped=6)
+PROBE rb6_ssh_symlink: rc=1 victim before=['id_ed25519', 'sub', 'sub/keep'] after=['id_ed25519', 'sub', 'sub/keep'] mode=0o700 docker_ran=False
+  out: ''
+  err: 'install: the staging directory is not the one this install created (its name leads elsewhere): /tmp/tmpuq89v8oq/.ke-install.w3K7TQif\n'
+--
+PROBE rb6_empty_victim: rc=1 victim after=[] docker_ran=False installed=False
+  out: ''
+  err: 'install: the staging directory is not the one this install created (its name leads elsewhere): /tmp/tmp45zd7o8v/.ke-install.fxYUjM11\n'
+--
+PROBE planted_in_staging: rc=1 docker_ran=False installed=False
+  out: ''
+  err: 'install: the staging directory is not empty (something replaced it after creation): /tmp/tmp9ppnwlly/.ke-install.UGXvBNtW\n'
+--
+PROBE dir_swap_at_publish: rc=1 racer=True 'installed to' printed=False
+  out: 'manifest sha256: def96f1cd42ce832880161ed860f8b35a8e653ca02a3c52becb1f3bf35fa5f5b (not checked: compare it with the value from your release record)\nloaded ke-app.tar as ke-app:bundle-0123456789ab\nloaded postgres.tar as ke-vendor/postgres:053bbdccec5d\n'
+  err: "install: the target's name no longer leads to the directory this install published (something replaced it during install): /tmp/tmpj6nstbsb/target1\n"
+### p_modecatch
+FAIL: test_install_ps1_acl_read_failure_is_not_silent (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_acl_read_failure_is_not_silent) (try_at_line=318)
+Ran 124 tests in 149.404s
+FAILED (failures=2, skipped=6)
+PROBE rb6_ssh_symlink: rc=1 victim before=['id_ed25519', 'sub', 'sub/keep'] after=['id_ed25519', 'sub', 'sub/keep'] mode=0o700 docker_ran=False
+  out: ''
+  err: 'install: the staging directory is not the one this install created (its name leads elsewhere): /tmp/tmpbagl21ke/.ke-install.QHBKqNbM\n'
+--
+PROBE rb6_empty_victim: rc=1 victim after=[] docker_ran=False installed=False
+  out: ''
+  err: 'install: the staging directory is not the one this install created (its name leads elsewhere): /tmp/tmpejoimcpg/.ke-install.4ZGTEKtQ\n'
+--
+PROBE planted_in_staging: rc=1 docker_ran=False installed=False
+  out: ''
+  err: 'install: the staging directory is not empty (something replaced it after creation): /tmp/tmp_auhxnwt/.ke-install.lnRUu5wb\n'
+--
+PROBE dir_swap_at_publish: rc=1 racer=True 'installed to' printed=False
+  out: 'manifest sha256: 14029922027889aa6306dedb1aaaa3886601fef1f29b95ffd1e22027c9b3c996 (not checked: compare it with the value from your release record)\nloaded ke-app.tar as ke-app:bundle-0123456789ab\nloaded postgres.tar as ke-vendor/postgres:053bbdccec5d\n'
+  err: "install: the target's name no longer leads to the directory this install published (something replaced it during install): /tmp/tmp03fwtab0/target1\n"
+### p_noempty
+FAIL: test_install_ps1_refuses_non_empty_staging (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_refuses_non_empty_staging)
+Ran 124 tests in 149.721s
+FAILED (failures=2, skipped=6)
+PROBE rb6_ssh_symlink: rc=1 victim before=['id_ed25519', 'sub', 'sub/keep'] after=['id_ed25519', 'sub', 'sub/keep'] mode=0o700 docker_ran=False
+  out: ''
+  err: 'install: the staging directory is not the one this install created (its name leads elsewhere): /tmp/tmpaa6qdg2d/.ke-install.ZDGJvz5c\n'
+--
+PROBE rb6_empty_victim: rc=1 victim after=[] docker_ran=False installed=False
+  out: ''
+  err: 'install: the staging directory is not the one this install created (its name leads elsewhere): /tmp/tmp6rwwg005/.ke-install.veyL4xme\n'
+--
+PROBE planted_in_staging: rc=1 docker_ran=False installed=False
+  out: ''
+  err: 'install: the staging directory is not empty (something replaced it after creation): /tmp/tmpm7d9j0wk/.ke-install.hMBti3GD\n'
+--
+PROBE dir_swap_at_publish: rc=1 racer=True 'installed to' printed=False
+  out: 'manifest sha256: 8331ee5f6094cfbd23eee7784cd636a7afafb070ab69c802ecc723b3f405af20 (not checked: compare it with the value from your release record)\nloaded ke-app.tar as ke-app:bundle-0123456789ab\nloaded postgres.tar as ke-vendor/postgres:053bbdccec5d\n'
+  err: "install: the target's name no longer leads to the directory this install published (something replaced it during install): /tmp/tmpwzig065o/target1\n"
+### p_noowner
+Ran 124 tests in 148.935s
+FAILED (failures=1, skipped=6)
+PROBE rb6_ssh_symlink: rc=1 victim before=['id_ed25519', 'sub', 'sub/keep'] after=['id_ed25519', 'sub', 'sub/keep'] mode=0o700 docker_ran=False
+  out: ''
+  err: 'install: the staging directory is not the one this install created (its name leads elsewhere): /tmp/tmptw3n6s3h/.ke-install.xb1kNjZJ\n'
+--
+PROBE rb6_empty_victim: rc=1 victim after=[] docker_ran=False installed=False
+  out: ''
+  err: 'install: the staging directory is not the one this install created (its name leads elsewhere): /tmp/tmpnyhctbh8/.ke-install.g0MNZASN\n'
+--
+PROBE planted_in_staging: rc=1 docker_ran=False installed=False
+  out: ''
+  err: 'install: the staging directory is not empty (something replaced it after creation): /tmp/tmpv_vy9com/.ke-install.O6NHBTIs\n'
+--
+PROBE dir_swap_at_publish: rc=1 racer=True 'installed to' printed=False
+  out: 'manifest sha256: 9be448805b8b4087cc447d76d13a2581e0257452803278df698f74119b375427 (not checked: compare it with the value from your release record)\nloaded ke-app.tar as ke-app:bundle-0123456789ab\nloaded postgres.tar as ke-vendor/postgres:053bbdccec5d\n'
+  err: "install: the target's name no longer leads to the directory this install published (something replaced it during install): /tmp/tmpn8sie4ah/target1\n"
+### p_nopolicy
+FAIL: test_install_flags_target_parent_others_can_write (tests.test_offline_bundle.InstallPs1Test.test_install_flags_target_parent_others_can_write) (parent='0o777')
+FAIL: test_install_flags_target_parent_others_can_write (tests.test_offline_bundle.InstallPs1Test.test_install_flags_target_parent_others_can_write) (parent='0o775')
+FAIL: test_install_flags_target_parent_others_can_write (tests.test_offline_bundle.InstallPs1Test.test_install_flags_target_parent_others_can_write) (parent='0o770')
+Ran 124 tests in 150.341s
+FAILED (failures=4, skipped=6)
+PROBE rb6_ssh_symlink: rc=1 victim before=['id_ed25519', 'sub', 'sub/keep'] after=['id_ed25519', 'sub', 'sub/keep'] mode=0o700 docker_ran=False
+  out: ''
+  err: 'install: the staging directory is not the one this install created (its name leads elsewhere): /tmp/tmpofvnr2s2/.ke-install.nj8I5gtg\n'
+--
+PROBE rb6_empty_victim: rc=1 victim after=[] docker_ran=False installed=False
+  out: ''
+  err: 'install: the staging directory is not the one this install created (its name leads elsewhere): /tmp/tmprrwbfstw/.ke-install.saqlG8NY\n'
+--
+PROBE planted_in_staging: rc=1 docker_ran=False installed=False
+  out: ''
+  err: 'install: the staging directory is not empty (something replaced it after creation): /tmp/tmpcg0fh73d/.ke-install.hEEVVUAh\n'
+--
+PROBE dir_swap_at_publish: rc=1 racer=True 'installed to' printed=False
+  out: 'manifest sha256: 05a24ccbc038a8ef61bd986c883a4ed742e55eb66407c7d25327930fb03cce5b (not checked: compare it with the value from your release record)\nloaded ke-app.tar as ke-app:bundle-0123456789ab\nloaded postgres.tar as ke-vendor/postgres:053bbdccec5d\n'
+  err: "install: the target's name no longer leads to the directory this install published (something replaced it during install): /tmp/tmpu74ugecq/target1\n"
+
+## Windows host (pwsh 7): Write-SharedParentWarning extracted by AST, called on parents with one extra ACE (owner = me, protected DACL)
+only_me                            accepted
+owner_rights_modify                accepted
+creator_owner_full_effective       accepted
+creator_owner_full_inherit_only    accepted
+creator_group_modify               REFUSED: install: refused (rule: the target's parent must not be writable by others): <scratch>\r4\win\work\creator_group_modify is writable by another account (S-1-3-1); anyone who can write it can replace the installed target; use a directory only you can write
+everyone_append                    REFUSED: install: refused (rule: the target's parent must not be writable by others): <scratch>\r4\win\work\everyone_append is writable by another account (S-1-1-0); anyone who can write it can replace the installed target; use a directory only you can write
+users_read                         accepted
+<scratch>        accepted
+C:\                  REFUSED: install: refused (rule: the target's parent must not be writable by others): C:\ is writable by another account (S-1-5-11); anyone who can write it can replace the installed target; use a directory only you can write
+
+## tests/scratch_r4.py
+"""Reviewer r4 probes (scratch only; never in the repo)."""
+import os
+import stat
+import unittest
+
+from tests.test_offline_bundle import InstallPs1Test, InstallShTest, STAGING_PREFIX
+
+
+def _report(name, result, extra=""):
+    print(f"\nPROBE {name}: rc={result.returncode} {extra}\n  out: {(result.stdout or '')[-300:]!r}\n  err: {(result.stderr or '')[-400:]!r}")
+
+
+class _Probes:
+    def _sticky(self):
+        bundle, _ = self._fresh()
+        parent = self.tmp / f"sticky{self.n}"
+        parent.mkdir()
+        parent.chmod(0o1777)
+        target = parent / "ke"
+        result, _, log = self._install(bundle, target, argv=self.argv(bundle, target))
+        _report(f"{type(self).__name__}.sticky_1777", result, f"docker_ran={bool(log)} target_exists={target.exists()}")
+        return result
+
+    def test_probe_sticky_parent(self):
+        self._sticky()
+
+
+class ProbeSh(_Probes, InstallShTest):
+    def _mktemp_shim(self, body):
+        return self._shim("mktemp", f"""case " $* " in
+  *" -d "*{STAGING_PREFIX}*)
+    out="$(REAL "$@")" || exit $?
+{body}
+    printf '%s\n' "$out"
+    exit 0 ;;
+esac
+exec REAL "$@"
+""")
+
+    def _victim(self, files):
+        v = self.tmp / f"home{self.n}" / ".ssh"
+        v.mkdir(parents=True)
+        if files:
+            (v / "id_ed25519").write_text("PRIVATE KEY\n", encoding="utf-8")
+            (v / "sub").mkdir()
+            (v / "sub" / "keep").write_text("keep\n", encoding="utf-8")
+        v.chmod(0o700)
+        return v
+
+    def _listing(self, v):
+        return sorted(str(p.relative_to(v)) for p in v.rglob("*"))
+
+    def test_probe_rb6_ssh_symlink(self):
+        """RB6 re-run: staging name swapped for a link to a non-empty 0700 ~/.ssh."""
+        bundle, target = self._fresh()
+        v = self._victim(True)
+        before = self._listing(v)
+        shim = self._mktemp_shim(f"""    mv -- "$out" "$out.moved" && ln -s -- '{v}' "$out\"""")
+        result, _, log = self._install(bundle, target, PATH=f"{shim}{os.pathsep}{self.path}")
+        _report("rb6_ssh_symlink", result, f"victim before={before} after={self._listing(v)} mode={oct(stat.S_IMODE(v.stat().st_mode))} docker_ran={bool(log)}")
+
+    def test_probe_rb6_empty_victim(self):
+        """Staging name swapped for a link to an EMPTY operator-owned 0700 dir: only pwd -P refuses."""
+        bundle, target = self._fresh()
+        v = self._victim(False)
+        shim = self._mktemp_shim(f"""    mv -- "$out" "$out.moved" && ln -s -- '{v}' "$out\"""")
+        result, _, log = self._install(bundle, target, PATH=f"{shim}{os.pathsep}{self.path}")
+        _report("rb6_empty_victim", result, f"victim after={self._listing(v)} docker_ran={bool(log)} installed={(target / 'docker-compose.yml').exists()}")
+
+    def test_probe_planted_in_staging(self):
+        """A file appears in the real staging right after mktemp (no swap): only the emptiness check refuses."""
+        bundle, target = self._fresh()
+        shim = self._mktemp_shim("""    echo planted > "$out/planted\"""")
+        result, _, log = self._install(bundle, target, PATH=f"{shim}{os.pathsep}{self.path}")
+        _report("planted_in_staging", result, f"docker_ran={bool(log)} installed={(target / 'docker-compose.yml').exists()}")
+
+    def test_probe_dir_swap_at_publish(self):
+        """At chmod 0755 ., rename the target away and mkdir a fresh REAL dir under its name: only -ef refuses."""
+        bundle, target = self._fresh()
+        racer = self.tmp / "dirswap.log"
+        shim = self._shim("chmod", f"""case "$*" in
+  "0755 ."|"0755 -- .")
+    if [ "$(pwd -P)" = '{target}' ] && [ ! -e '{racer}' ]; then
+      mv -- '{target}' '{target}.away' && mkdir -- '{target}' && echo swapped >> '{racer}'
+    fi ;;
+esac
+exec REAL "$@"
+""")
+        result, _, log = self._install(bundle, target, PATH=f"{shim}{os.pathsep}{self.path}")
+        _report("dir_swap_at_publish", result, f"racer={racer.exists()} 'installed to' printed={'installed to' in (result.stdout or '')}")
+
+
+class ProbePs1(_Probes, InstallPs1Test):
+    pass
+
+
+if False:
+    unittest.main()
+
+
+class _OddSticky:
+    def test_probe_sticky_other_write_only(self):
+        for mode in (0o1757, 0o1703, 0o757):
+            bundle, _ = self._fresh()
+            parent = self.tmp / f"odd{self.n}"
+            parent.mkdir()
+            parent.chmod(mode)
+            target = parent / "ke"
+            result, _, log = self._install(bundle, target, argv=self.argv(bundle, target))
+            _report(f"{type(self).__name__}.parent_{oct(mode)}", result,
+                    f"docker_ran={bool(log)} installed={(target / 'docker-compose.yml').exists()}")
+
+
+class OddSh(_OddSticky, InstallShTest):
+    pass
+
+
+class OddPs1(_OddSticky, InstallPs1Test):
+    pass
+
+## win/acl_probe.ps1
+param([string]$Script, [string]$Work)
+$ErrorActionPreference = 'Stop'
+$ast = [System.Management.Automation.Language.Parser]::ParseFile($Script, [ref]$null, [ref]$null)
+$want = 'Exit-WithError', 'Get-MeSid', 'Write-SharedParentWarning'
+$defs = $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $want -contains $n.Name }, $false)
+$windows = $true
+foreach ($d in $defs) { . ([scriptblock]::Create($d.Extent.Text)) }
+$me = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+function New-Parent([string]$Name, [object[]]$Extra) {
+    $p = Join-Path $Work $Name
+    $sec = [System.Security.AccessControl.DirectorySecurity]::new()
+    $sec.SetOwner($me)
+    $sec.SetAccessRuleProtection($true, $false)
+    $sec.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new($me, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow'))
+    foreach ($e in $Extra) { $sec.AddAccessRule($e) }
+    [void][System.IO.FileSystemAclExtensions]::Create([System.IO.DirectoryInfo]::new($p), $sec)
+    return $p
+}
+function Rule($sid, $rights, $inh = 'None', $prop = 'None') {
+    [System.Security.AccessControl.FileSystemAccessRule]::new([System.Security.Principal.SecurityIdentifier]::new($sid), $rights, $inh, $prop, 'Allow')
+}
+$cases = [ordered]@{
+    'only_me'                         = @()
+    'owner_rights_modify'             = @(Rule 'S-1-3-4' 'Modify')
+    'creator_owner_full_effective'    = @(Rule 'S-1-3-0' 'FullControl' 'ContainerInherit,ObjectInherit' 'None')
+    'creator_owner_full_inherit_only' = @(Rule 'S-1-3-0' 'FullControl' 'ContainerInherit,ObjectInherit' 'InheritOnly')
+    'creator_group_modify'            = @(Rule 'S-1-3-1' 'Modify')
+    'everyone_append'                 = @(Rule 'S-1-1-0' 'AppendData')
+    'users_read'                      = @(Rule 'S-1-5-32-545' 'ReadAndExecute')
+}
+foreach ($k in $cases.Keys) {
+    $p = New-Parent $k $cases[$k]
+    try { Write-SharedParentWarning $p; "{0,-34} accepted" -f $k } catch { "{0,-34} REFUSED: {1}" -f $k, $_.Exception.Message }
+}

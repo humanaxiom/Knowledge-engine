@@ -1,0 +1,27 @@
+FF
+======================================================================
+FAIL: test_signal_kills_pool_children_and_exits_nonzero (tests.test_harness_followups.IntegrationRunsOnceTest.test_signal_kills_pool_children_and_exits_nonzero) (signal='SIGTERM')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 804, in test_signal_kills_pool_children_and_exits_nonzero
+    self.assertEqual(code, 128 + int(sig),
+AssertionError: 1 != 143 : test.sh exit status after SIGTERM:
+[1]   Terminated              run_module "$m"
+[3]-  Terminated              run_module "$m"
+[4]+  Terminated              run_module "$m"
+
+
+======================================================================
+FAIL: test_term_leaves_no_module_process_that_ignores_term (tests.test_harness_followups.IntegrationRunsOnceTest.test_term_leaves_no_module_process_that_ignores_term)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 912, in test_term_leaves_no_module_process_that_ignores_term
+    self.assertEqual(code, 143, "test.sh exit status after SIGTERM:\n"
+AssertionError: 1 != 143 : test.sh exit status after SIGTERM:
+[3]+  Terminated              run_module "$m"
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 8.232s
+
+FAILED (failures=2)

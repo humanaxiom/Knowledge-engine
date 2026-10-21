@@ -1,0 +1,397 @@
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.81ms
+Installed 1 package in 1ms
+.FFF...............F................
+======================================================================
+FAIL: test_each_module_output_block_is_contiguous (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_module_output_block_is_contiguous) (module='test_ca')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 554, in test_each_module_output_block_is_contiguous
+    self.assertEqual(len(at), 4, output)
+AssertionError: 8 != 4 : test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_c0 (tests.test_ca.Chatty.test_c0) ... test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_c0 (tests.test_cb.Chatty.test_c0) ... ok
+test_c1 (tests.test_ca.Chatty.test_c1) ... ok
+test_c1 (tests.test_cb.Chatty.test_c1) ... test_c0 (tests.test_cc.Chatty.test_c0) ... ok
+test_c2 (tests.test_ca.Chatty.test_c2) ... ok
+test_c2 (tests.test_cb.Chatty.test_c2) ... ok
+test_c1 (tests.test_cc.Chatty.test_c1) ... ok
+test_c3 (tests.test_ca.Chatty.test_c3) ... ok
+test_c3 (tests.test_cb.Chatty.test_c3) ... ok
+test_c2 (tests.test_cc.Chatty.test_c2) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.401s
+
+OK
+ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.401s
+
+OK
+ok
+test_c3 (tests.test_cc.Chatty.test_c3) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.401s
+
+OK
+test_c0 (tests.test_ca.Chatty.test_c0) ... ok
+test_c1 (tests.test_ca.Chatty.test_c1) ... ok
+test_c2 (tests.test_ca.Chatty.test_c2) ... ok
+test_c3 (tests.test_ca.Chatty.test_c3) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.401s
+
+OK
+test_c0 (tests.test_cb.Chatty.test_c0) ... ok
+test_c1 (tests.test_cb.Chatty.test_c1) ... ok
+test_c2 (tests.test_cb.Chatty.test_c2) ... ok
+test_c3 (tests.test_cb.Chatty.test_c3) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.401s
+
+OK
+test_c0 (tests.test_cc.Chatty.test_c0) ... ok
+test_c1 (tests.test_cc.Chatty.test_c1) ... ok
+test_c2 (tests.test_cc.Chatty.test_c2) ... ok
+test_c3 (tests.test_cc.Chatty.test_c3) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.401s
+
+OK
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.001s
+
+OK
+
+
+======================================================================
+FAIL: test_each_module_output_block_is_contiguous (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_module_output_block_is_contiguous) (module='test_cb')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 554, in test_each_module_output_block_is_contiguous
+    self.assertEqual(len(at), 4, output)
+AssertionError: 8 != 4 : test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_c0 (tests.test_ca.Chatty.test_c0) ... test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_c0 (tests.test_cb.Chatty.test_c0) ... ok
+test_c1 (tests.test_ca.Chatty.test_c1) ... ok
+test_c1 (tests.test_cb.Chatty.test_c1) ... test_c0 (tests.test_cc.Chatty.test_c0) ... ok
+test_c2 (tests.test_ca.Chatty.test_c2) ... ok
+test_c2 (tests.test_cb.Chatty.test_c2) ... ok
+test_c1 (tests.test_cc.Chatty.test_c1) ... ok
+test_c3 (tests.test_ca.Chatty.test_c3) ... ok
+test_c3 (tests.test_cb.Chatty.test_c3) ... ok
+test_c2 (tests.test_cc.Chatty.test_c2) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.401s
+
+OK
+ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.401s
+
+OK
+ok
+test_c3 (tests.test_cc.Chatty.test_c3) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.401s
+
+OK
+test_c0 (tests.test_ca.Chatty.test_c0) ... ok
+test_c1 (tests.test_ca.Chatty.test_c1) ... ok
+test_c2 (tests.test_ca.Chatty.test_c2) ... ok
+test_c3 (tests.test_ca.Chatty.test_c3) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.401s
+
+OK
+test_c0 (tests.test_cb.Chatty.test_c0) ... ok
+test_c1 (tests.test_cb.Chatty.test_c1) ... ok
+test_c2 (tests.test_cb.Chatty.test_c2) ... ok
+test_c3 (tests.test_cb.Chatty.test_c3) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.401s
+
+OK
+test_c0 (tests.test_cc.Chatty.test_c0) ... ok
+test_c1 (tests.test_cc.Chatty.test_c1) ... ok
+test_c2 (tests.test_cc.Chatty.test_c2) ... ok
+test_c3 (tests.test_cc.Chatty.test_c3) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.401s
+
+OK
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.001s
+
+OK
+
+
+======================================================================
+FAIL: test_each_module_output_block_is_contiguous (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_module_output_block_is_contiguous) (module='test_cc')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 554, in test_each_module_output_block_is_contiguous
+    self.assertEqual(len(at), 4, output)
+AssertionError: 8 != 4 : test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_c0 (tests.test_ca.Chatty.test_c0) ... test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_c0 (tests.test_cb.Chatty.test_c0) ... ok
+test_c1 (tests.test_ca.Chatty.test_c1) ... ok
+test_c1 (tests.test_cb.Chatty.test_c1) ... test_c0 (tests.test_cc.Chatty.test_c0) ... ok
+test_c2 (tests.test_ca.Chatty.test_c2) ... ok
+test_c2 (tests.test_cb.Chatty.test_c2) ... ok
+test_c1 (tests.test_cc.Chatty.test_c1) ... ok
+test_c3 (tests.test_ca.Chatty.test_c3) ... ok
+test_c3 (tests.test_cb.Chatty.test_c3) ... ok
+test_c2 (tests.test_cc.Chatty.test_c2) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.401s
+
+OK
+ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.401s
+
+OK
+ok
+test_c3 (tests.test_cc.Chatty.test_c3) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.401s
+
+OK
+test_c0 (tests.test_ca.Chatty.test_c0) ... ok
+test_c1 (tests.test_ca.Chatty.test_c1) ... ok
+test_c2 (tests.test_ca.Chatty.test_c2) ... ok
+test_c3 (tests.test_ca.Chatty.test_c3) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.401s
+
+OK
+test_c0 (tests.test_cb.Chatty.test_c0) ... ok
+test_c1 (tests.test_cb.Chatty.test_c1) ... ok
+test_c2 (tests.test_cb.Chatty.test_c2) ... ok
+test_c3 (tests.test_cb.Chatty.test_c3) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.401s
+
+OK
+test_c0 (tests.test_cc.Chatty.test_c0) ... ok
+test_c1 (tests.test_cc.Chatty.test_c1) ... ok
+test_c2 (tests.test_cc.Chatty.test_c2) ... ok
+test_c3 (tests.test_cc.Chatty.test_c3) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.401s
+
+OK
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.001s
+
+OK
+
+
+======================================================================
+FAIL: test_verify_sees_sentinel_and_ran_lines_from_real_test_sh (tests.test_harness_followups.IntegrationRunsOnceTest.test_verify_sees_sentinel_and_ran_lines_from_real_test_sh) (mode='fast')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 583, in test_verify_sees_sentinel_and_ran_lines_from_real_test_sh
+    self.assertEqual(output.splitlines().count(VerifyRequiresTestsRunTest.SENTINEL), 1,
+AssertionError: 2 != 1 : y ==
+fake lint: ok
+test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_c0 (tests.test_ca.Chatty.test_c0) ... ok
+test_c1 (tests.test_ca.Chatty.test_c1) ... test_c0 (tests.test_cb.Chatty.test_c0) ... test_c0 (tests.test_cc.Chatty.test_c0) ... ok
+test_c2 (tests.test_ca.Chatty.test_c2) ... ok
+test_c1 (tests.test_cb.Chatty.test_c1) ... ok
+test_c1 (tests.test_cc.Chatty.test_c1) ... ok
+test_c3 (tests.test_ca.Chatty.test_c3) ... ok
+test_c2 (tests.test_cb.Chatty.test_c2) ... ok
+test_c2 (tests.test_cc.Chatty.test_c2) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.401s
+
+OK
+ok
+test_c3 (tests.test_cb.Chatty.test_c3) ... ok
+test_c3 (tests.test_cc.Chatty.test_c3) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.401s
+
+OK
+ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.401s
+
+OK
+test_c0 (tests.test_ca.Chatty.test_c0) ... ok
+test_c1 (tests.test_ca.Chatty.test_c1) ... ok
+test_c2 (tests.test_ca.Chatty.test_c2) ... ok
+test_c3 (tests.test_ca.Chatty.test_c3) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.401s
+
+OK
+test_c0 (tests.test_cb.Chatty.test_c0) ... ok
+test_c1 (tests.test_cb.Chatty.test_c1) ... ok
+test_c2 (tests.test_cb.Chatty.test_c2) ... ok
+test_c3 (tests.test_cb.Chatty.test_c3) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.401s
+
+OK
+test_c0 (tests.test_cc.Chatty.test_c0) ... ok
+test_c1 (tests.test_cc.Chatty.test_c1) ... ok
+test_c2 (tests.test_cc.Chatty.test_c2) ... ok
+test_c3 (tests.test_cc.Chatty.test_c3) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.401s
+
+OK
+test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+== verify fast: PASS ==
+
+
+----------------------------------------------------------------------
+Ran 34 tests in 43.261s
+
+FAILED (failures=4)
+rc=1

@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# sig.sh <signal> <how: pid|group> <delay>   (env SLOW/PSLOW/IGN select the phase)
+sig=$1; how=$2; delay=$3
+setsid sleep 300 & OUT1=$!          # unrelated session/group
+sleep 300 & OUT2=$!                 # same group as this wrapper
+set -m
+bash scripts/test.sh fast > /tmp/t.out 2>&1 & T=$!
+sleep "$delay"
+echo "--- before (test.sh pid $T)"; bash pl.sh
+if [ "$how" = group ]; then kill -s "$sig" -- "-$T"; else kill -s "$sig" "$T"; fi
+wait "$T"; echo "test.sh rc=$?"
+sleep 4
+echo "--- after"; bash pl.sh
+ls -d /tmp/tmp.* 2>/dev/null && echo "logdir LEFT" || echo "logdir removed"
+kill -0 "$OUT1" 2>/dev/null && echo "OUT1 (other session) alive" || echo "OUT1 DEAD"
+kill -0 "$OUT2" 2>/dev/null && echo "OUT2 (wrapper group) alive" || echo "OUT2 DEAD"
+echo "--- test.sh output tail"; tail -n 6 /tmp/t.out

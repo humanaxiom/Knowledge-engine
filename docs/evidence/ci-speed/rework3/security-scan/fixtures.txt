@@ -1,0 +1,9 @@
+Fixtures (scratch copies; tracked files minus tests/ and docs/, fail_under = 0, working-tree scripts/test.sh + scripts/resource_probe.sh):
+green: tests/test_z.py pass, tests/sub/test_s.py pass
+redtop: + tests/test_bad.py fails
+redsub: + tests/sub/test_bad.py fails, + tests/zsub/test_later.py pass (must not run)
+nodata: + tests/test_exit.py calls os._exit(0) (no coverage data)
+probefail: resource_probe.sh replaced by 'echo; exit 3'
+probemissing: resource_probe.sh deleted
+intred: + tests/integration/test_i.py fails (full mode)
+hookdet: tests/test_block_main_commit_hook.py with the hook replaced by mutant-hook-detached.sh.txt (real hook as real-hook.sh)

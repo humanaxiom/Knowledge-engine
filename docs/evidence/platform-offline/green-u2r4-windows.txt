@@ -1,0 +1,28 @@
+# cwd: scratchpad/r4; PYTHONPATH=C:\repos\Knowledge-engine HARNESS_TRACING=off uv run --project C:\repos\Knowledge-engine python -m unittest -v tests.test_offline_bundle.InstallPs1WindowsAclTest + InstallPs1Test.{test_install_ps1_never_casts_undefined_rights,test_install_ps1_acl_read_failure_is_not_silent,test_install_ps1_refuses_non_empty_staging,test_install_ps1_counts_generic_write_rights,test_install_ps1_checks_marker_exists_right_before_delete,test_install_ps1_rechecks_target_is_dir_right_before_chmod}  (Windows 11, pwsh 7)
+test_empty_path_entry_is_dropped_on_windows (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_empty_path_entry_is_dropped_on_windows)
+Review RB5a, security L-9: on Windows an empty PATH entry is a ... ok
+test_parent_granting_authenticated_users_modify_is_refused (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_parent_granting_authenticated_users_modify_is_refused)
+Round-4 ruling (orchestrator "unit-2 rework round 4/5", POLICY ... ok
+test_parent_others_can_create_in_is_refused (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_parent_others_can_create_in_is_refused)
+Security M-6 (probes W2, W3), behavioural: an Everyone ... ok
+test_staging_junction_to_operator_dir_is_never_emptied (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_staging_junction_to_operator_dir_is_never_emptied)
+Security H-2 (probe W1) on Windows: right after staging is ... ok
+test_staging_never_inherits_an_ace (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_staging_never_inherits_an_ace)
+Security H-1: staging never carries an inherited ACE, under a ... ok
+test_install_ps1_never_casts_undefined_rights (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_never_casts_undefined_rights)
+Security M-6: `[FileSystemRights]0x40000000` (GenericWrite) and ... ok
+test_install_ps1_acl_read_failure_is_not_silent (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_acl_read_failure_is_not_silent)
+Security M-6, round-4 ruling (fail closed): a `try` that reads an ... ok
+test_install_ps1_refuses_non_empty_staging (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_refuses_non_empty_staging)
+Review N7 (parity with RB6/H-2): right after staging is created, a ... ok
+test_install_ps1_counts_generic_write_rights (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_counts_generic_write_rights)
+Review N1, architecture §2.5: the Windows parent check counts ... ok
+test_install_ps1_checks_marker_exists_right_before_delete (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_checks_marker_exists_right_before_delete)
+Security L-12: `[IO.File]::Delete` is silent when the file is ... ok
+test_install_ps1_rechecks_target_is_dir_right_before_chmod (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_rechecks_target_is_dir_right_before_chmod)
+Security L-12: `[IO.File]::SetUnixFileMode($targetPath, ...)` ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 7.426s
+
+OK

@@ -145,3 +145,5 @@ Base: `agent/harness-claude-code` @ a11842d (the remote has no `main`).
 ## 2026-10-19 — orchestrator: rulings Q39 and image scan
 - Q39 accepted as A39: the M-1 network side (valkey on its own network plus password/ACL) is the FIRST unit of the first item that puts untrusted input on the job queue (today ingest-ledger). Tracked under auth-audit until then.
 - Security L-13's ke-app image scan (trivy or grype, pinned) goes into platform-offline. The analyst adds the criterion when that item opens.
+- 2026-10-20 orchestrator: platform-offline CLOSED (Done check in archive/platform-offline.md; branch agent/platform-offline pushed, CI green). Next: model-roles unit (human mapping), then platform-supply-chain; CI unit-test speed is the top follow-up.
+- 2026-10-20 orchestrator: model-roles CLOSED (archive/model-roles.md); roles = qwen3.5:latest / gpt-oss:120b (fallback gpt-oss:20b) / nomic-embed-text, proven on aria-gb10-2.

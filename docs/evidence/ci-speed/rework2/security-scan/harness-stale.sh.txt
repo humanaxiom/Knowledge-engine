@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Mirrors test.sh's job shape: set -m, pool with wait -n, bare wait, then step().
+set -euo pipefail
+set -m
+run() { sleep "$1"; echo done >/dev/null; }
+k=2
+for s in 0.2 0.3 0.1 0.4 0.2; do
+  while [ "$(jobs -rp | wc -l)" -ge "$k" ]; do wait -n || true; done
+  run "$s" &
+  echo "pool job $!"
+done
+wait
+echo "after bare wait, jobs -p: [$(jobs -p | tr '\n' ' ')]"
+step() { "$@" & wait "$!"; }
+step sleep 0.2
+echo "after step 1, jobs -p (subshell): [$(jobs -p | tr '\n' ' ')]"
+probe() { echo "in trap, jobs -p: [$(jobs -p | tr '\n' ' ')]"; local p; for p in $(jobs -p); do echo "  $p alive? $(kill -0 "$p" 2>/dev/null && echo y || echo n)"; done; exit 143; }
+trap probe TERM
+( sleep 0.5; kill -TERM $$ ) &
+disown
+step sleep 5

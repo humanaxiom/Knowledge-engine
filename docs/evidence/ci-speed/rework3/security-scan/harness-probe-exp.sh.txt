@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Security audit (ci-speed rework 3): adversarial inputs to resource_probe.sh.
+# Runs inside the gates image on a scratch copy; fake roots under /tmp.
+P=/w/resource_probe.sh
+T=/tmp/pe; rm -rf "$T"; mkdir -p "$T"
+bash --version | head -1
+mk() { # mk <name> : fake root with GOOD sources
+  local r="$T/$1"; mkdir -p "$r/sys/fs/cgroup" "$r/proc/pressure"
+  printf '200000 100000\n' >"$r/sys/fs/cgroup/cpu.max"
+  printf 'usage_usec 1\nthrottled_usec 2\n' >"$r/sys/fs/cgroup/cpu.stat"
+  printf 'MemTotal: 3 kB\nMemAvailable: 4 kB\nSwapTotal: 5 kB\nSwapFree: 6 kB\n' >"$r/proc/meminfo"
+  printf 'max\n' >"$r/sys/fs/cgroup/memory.max"; printf '7\n' >"$r/sys/fs/cgroup/memory.peak"
+  for f in cpu memory io; do printf 'some avg10=0 total=8\nfull avg10=0 total=9\n' >"$r/proc/pressure/$f"; done
+  printf 'cpu  1 2 3 4 5 6 7 8 9 10\n' >"$r/proc/stat"
+  echo "$r"
+}
+run() { # run <label> <timeout> <args...>
+  local label="$1" to="$2"; shift 2
+  local out rc
+  out="$(timeout "$to" bash "$P" "$@" 2>&1)"; rc=$?
+  printf '== %s: rc=%s\n%s\n' "$label" "$rc" "$out"
+  if [ "$rc" -eq 0 ] && ! grep -Eq '^resources: phase=(start|end|n/a)( [a-z_]+=([0-9]+|max|n/a))+$' <<<"$out"; then echo "!! SHAPE VIOLATION"; fi
+}
+r=$(mk real); run "control" 10 start "$r"
+r=$(mk lead0); printf 'cpu  08 2 3 4 5 6 7 09 9 10\n' >"$r/proc/stat"; run "proc/stat leading zero 08/09 (octal)" 10 start "$r"
+r=$(mk oct); printf 'cpu  010 0 0 0 0 0 0 010\n' >"$r/proc/stat"; run "proc/stat 010 (octal 8 in sum)" 10 start "$r"
+r=$(mk ovf); printf 'cpu  9223372036854775807 1 0 0 0 0 0 0\n' >"$r/proc/stat"; run "proc/stat sum overflow" 10 start "$r"
+r=$(mk big); printf 'cpu  99999999999999999999999 0 0 0 0 0 0 0\n' >"$r/proc/stat"; run "proc/stat 23-digit field" 10 start "$r"
+r=$(mk arith); printf 'cpu  a[$(touch /tmp/pe/PWNED)] 0 0 0 0 0 0 0\n' >"$r/proc/stat"; run "proc/stat arithmetic injection" 10 start "$r"; [ -e /tmp/pe/PWNED ] && echo "!! INJECTION RAN" || echo "no injection"
+for loc in C C.UTF-8 en_US.UTF-8; do
+  r=$(mk "uni-$loc"); printf 'MemTotal: \xd9\xa3\xd9\xa4 kB\nMemAvailable: \xef\xbc\x95 kB\nSwapTotal: \xe2\x91\xa0 kB\n' >"$r/proc/meminfo"; LC_ALL=$loc run "unicode digits LC_ALL=$loc" 10 start "$r"
+done
+r=$(mk ctl); printf 'usage_usec 1\x1b[2J\nthrottled_usec 12\r\n' >"$r/sys/fs/cgroup/cpu.stat"; run "control chars / CR" 10 start "$r" | cat -A | head -3
+r=$(mk link); ln -sf /etc/hostname "$r/sys/fs/cgroup/memory.peak"; ln -sf /proc/self/environ "$r/sys/fs/cgroup/cpu.max"; run "symlinks to hostname/environ" 10 start "$r"
+r=$(mk fifo); rm "$r/sys/fs/cgroup/cpu.max"; mkfifo "$r/sys/fs/cgroup/cpu.max"; run "FIFO (blocking read)" 5 start "$r"
+r=$(mk zero); ln -sf /dev/zero "$r/proc/stat"; run "/dev/zero symlink (endless, no newline)" 5 start "$r"
+r=$(mk huge); head -c 200000000 /dev/zero | tr '\0' 'a' >"$r/proc/meminfo"; s=$SECONDS; run "200 MB single line meminfo" 120 start "$r"; echo "took $((SECONDS-s)) s"
+r=$(mk ok2); run "phase injection" 10 '$(id)' "$r"; run "root with spaces/metachars" 10 start "$T/no such;\$(id)"
+mkdir -p /tmp/pe/fb; printf '#!/bin/sh\necho 987654321\n' >/tmp/pe/fb/nproc; chmod +x /tmp/pe/fb/nproc
+r=$(mk env); OMP_NUM_THREADS=424242 run "OMP_NUM_THREADS=424242 (real nproc)" 10 start "$r"
+r=$(mk env2); env 'BASH_FUNC_printf%%=() { builtin echo LEAK-$HOSTNAME; }' bash "$P" start "$r" 2>&1 | head -2; echo "(exported-function shadowing above)"
+r=$(mk ifs); IFS=0 bash "$P" start "$r"; echo "(IFS from env above)"
+# real container run, as in CI
+run "real /proc and cgroup" 10 start
+run "real, end" 10 end
+echo "exit status of a real run: $(bash "$P" end >/dev/null 2>&1; echo $?)"

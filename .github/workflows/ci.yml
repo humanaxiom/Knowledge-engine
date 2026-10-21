@@ -14,7 +14,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10  # measured 389 s on 42547d0, x1.5 = 584 s; see docs/evidence/platform-stack-ready/ci-timeout.md
+    timeout-minutes: 29  # PS-3.4/R5: green CI runs 39370927416 (16.6 min) and 39465361808 (19.0 min); slower run + 50% = 28.5 -> 29 min, see docs/evidence/platform-offline
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:

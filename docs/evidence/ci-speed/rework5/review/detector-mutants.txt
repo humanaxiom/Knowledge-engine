@@ -1,0 +1,67 @@
+# Reviewer rework 5: detector mutants on a scratch copy (/tmp/w in the container; repo mounted ro). Same image/label as above.
+
+== control: SURVIVED ['OK']
+== M1 skip comment lines (round-4 behaviour): KILLED ['FAILED (failures=6)']
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (tests.test_h.HookLaunchesNoBackgroundWorkTest.test_detector_flags_each_construc
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (tests.test_h.HookLaunchesNoBackgroundWorkTest.test_detector_flags_each_construc
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (tests.test_h.HookLaunchesNoBackgroundWorkTest.test_detector_flags_each_construc
+== M2 splitlines(): KILLED ['FAILED (failures=9)']
+    FAIL: test_detector_splits_on_newline_only (tests.test_h.HookLaunchesNoBackgroundWorkTest.test_detector_splits_on_newline_only) (sep="'\\r'")
+    FAIL: test_detector_splits_on_newline_only (tests.test_h.HookLaunchesNoBackgroundWorkTest.test_detector_splits_on_newline_only) (sep="'\\u2028'")
+    FAIL: test_detector_splits_on_newline_only (tests.test_h.HookLaunchesNoBackgroundWorkTest.test_detector_splits_on_newline_only) (sep="'\\u2029'")
+== M3 no printable check: KILLED ['FAILED (failures=4)']
+    FAIL: test_full_check_rejects_hidden_separator_and_hash_line_mutants (tests.test_h.HookLaunchesNoBackgroundWorkTest.test_full_check_rejects_hidden_sep
+    FAIL: test_full_check_rejects_hidden_separator_and_hash_line_mutants (tests.test_h.HookLaunchesNoBackgroundWorkTest.test_full_check_rejects_hidden_sep
+    FAIL: test_full_check_rejects_hidden_separator_and_hash_line_mutants (tests.test_h.HookLaunchesNoBackgroundWorkTest.test_full_check_rejects_hidden_sep
+== M4 no SOURCE_STDIN: KILLED ['FAILED (failures=7)']
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (tests.test_h.HookLaunchesNoBackgroundWorkTest.test_detector_flags_each_construc
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (tests.test_h.HookLaunchesNoBackgroundWorkTest.test_detector_flags_each_construc
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (tests.test_h.HookLaunchesNoBackgroundWorkTest.test_detector_flags_each_construc
+== M5 no PIPE_INTO_SHELL: KILLED ['FAILED (failures=7)']
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (tests.test_h.HookLaunchesNoBackgroundWorkTest.test_detector_flags_each_construc
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (tests.test_h.HookLaunchesNoBackgroundWorkTest.test_detector_flags_each_construc
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (tests.test_h.HookLaunchesNoBackgroundWorkTest.test_detector_flags_each_construc
+== M6 NESTED_SHELL c only: KILLED ['FAILED (failures=4)']
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (tests.test_h.HookLaunchesNoBackgroundWorkTest.test_detector_flags_each_construc
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (tests.test_h.HookLaunchesNoBackgroundWorkTest.test_detector_flags_each_construc
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (tests.test_h.HookLaunchesNoBackgroundWorkTest.test_detector_flags_each_construc
+== M7 no $BASH/$SHELL: KILLED ['FAILED (failures=8)']
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (tests.test_h.HookLaunchesNoBackgroundWorkTest.test_detector_flags_each_construc
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (tests.test_h.HookLaunchesNoBackgroundWorkTest.test_detector_flags_each_construc
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (tests.test_h.HookLaunchesNoBackgroundWorkTest.test_detector_flags_each_construc
+== M8 shell list bash|sh only: KILLED ['FAILED (failures=5)']
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (tests.test_h.HookLaunchesNoBackgroundWorkTest.test_detector_flags_each_construc
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (tests.test_h.HookLaunchesNoBackgroundWorkTest.test_detector_flags_each_construc
+    FAIL: test_detector_flags_each_construct_and_allows_plain_redirection (tests.test_h.HookLaunchesNoBackgroundWorkTest.test_detector_flags_each_construc
+
+## detmut.py
+# Reviewer rework 5: detector mutants on a scratch copy (/tmp/w); repo mounted ro.
+import pathlib, shutil, subprocess
+B, N = chr(92), chr(10)
+src = pathlib.Path("/repo/tests/test_block_main_commit_hook.py").read_text()
+loop = '    for n, line in enumerate(text.split("' + B + 'n"), 1):' + N
+M = {
+ "control": [],
+ "M1 skip comment lines (round-4 behaviour)": [(loop, loop + '        if line.lstrip().startswith("#"):' + N + '            continue' + N)],
+ "M2 splitlines()": [('enumerate(text.split("' + B + 'n"), 1)', 'enumerate(text.splitlines(), 1)')],
+ "M3 no printable check": [('    found = [f"byte {m.start()}', '    found = [] and [f"byte {m.start()}'),
+                           ('        bad = NOT_PRINTABLE.search(data)', '        bad = None')],
+ "M4 no SOURCE_STDIN": [('        for m in SOURCE_STDIN.finditer(line):', '        for m in SOURCE_STDIN.finditer(""):')],
+ "M5 no PIPE_INTO_SHELL": [('        for m in PIPE_INTO_SHELL.finditer(line):', '        for m in PIPE_INTO_SHELL.finditer(""):')],
+ "M6 NESTED_SHELL c only": [('-[A-Za-z]*[cs][A-Za-z]*(?![', '-[A-Za-z]*c[A-Za-z]*(?![')],
+ "M7 no $BASH/$SHELL": [('(?:BASH|SHELL)', '(?:BASH_NOPE)')],
+ "M8 shell list bash|sh only": [('(?:bash|dash|zsh|ksh|mksh|ash|sh)', '(?:bash|sh)')],
+}
+for name, subs in M.items():
+    w = pathlib.Path("/tmp/w"); shutil.rmtree(w, True); (w / "tests").mkdir(parents=True); (w / "scripts/hooks").mkdir(parents=True)
+    shutil.copy("/repo/scripts/hooks/block-main-commit.sh", w / "scripts/hooks/")
+    t = src
+    for a, b in subs:
+        assert t.count(a) == 1, (name, a, t.count(a)); t = t.replace(a, b)
+    (w / "tests/__init__.py").write_text(""); (w / "tests/test_h.py").write_text(t)
+    r = subprocess.run(["python3", "-B", "-m", "unittest", "tests.test_h.HookLaunchesNoBackgroundWorkTest"],
+                       cwd=w, capture_output=True, text=True)
+    fails = sorted({l for l in r.stderr.splitlines() if l.startswith(("FAIL:", "ERROR:"))})
+    last = [l for l in r.stderr.splitlines() if l.startswith(("OK", "FAILED"))]
+    print(f"== {name}: {'KILLED' if r.returncode else 'SURVIVED'} {last}")
+    for f in fails[:3]: print("   ", f[:150])

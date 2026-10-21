@@ -4,6 +4,62 @@ Maintained by the `marketer` agent. Follows a Keep a Changelog style.
 
 ## [Unreleased]
 
+### 2026-10-21 (ci-speed)
+
+**Changed:**
+- Branch protection (Q18) was skipped by decision; merges are manual and the
+  local commit hook is the only automated guard. This supersedes the earlier
+  entry below that calls branch protection the real control.
+- The unit suite in `scripts/test.sh` stays one process. A parallel runner
+  (one process per module) was tried and withdrawn, because it made CI slower
+  on the 2-vCPU runner. This change makes no speed claim.
+- Coverage fails closed. The data file path comes from coverage's own API.
+  Each run writes its own labelled data file, and `combine` gets the explicit
+  list of those files. The run fails if any run leaves no data, or if any data
+  file is not combined. The coverage threshold (80%) is unchanged.
+- The unit stage prints a resource line before and after the unit tests, in
+  every run: CPU count, CPU quota, memory, pressure and CPU steal. A value that
+  cannot be read shows as `n/a`.
+- The commit hook's speed tests measure the hook's CPU time instead of wall
+  time, with the same budgets. They measure the hook's own work, not the load
+  on the machine.
+
+### 2026-10-19 (platform-offline)
+
+**Added:**
+- An offline install bundle for machines with no internet access.
+  `scripts/bundle.sh` writes one bundle per architecture (amd64 or arm64). It
+  builds against whatever Docker daemon it talks to, including a remote ARM
+  host. Each bundle holds the stack images, the app files, both installers,
+  a manifest and the licence notices.
+- `scripts/install.sh` (Linux and macOS) and `scripts/install.ps1` (Windows)
+  install a bundle without the network. Before any `docker` command runs, the
+  installer checks the bundle's manifest. Compare its hash with the value
+  `bundle.sh` writes alongside the bundle, or pass `--expect-manifest <sha256>`.
+- Licence notices in every bundle: `THIRD_PARTY_NOTICES.md`, `NOTICE.md`, and
+  the licence texts they cite.
+- An offline check in CI. It runs a clean Docker-in-Docker with networking
+  disabled, installs the bundle, launches the stack and smoke-tests it. It
+  fails if any image is pulled or if outbound traffic gets through.
+
+**Changed:**
+- The project is MIT-licensed. See `LICENSE`.
+- The install target's parent directory must be owned by the operator (or
+  root). The installer refuses one owned by another user.
+- Build host requirements: `bundle.sh` needs `jq` and at least 7 GiB free on
+  its output disk. Docker Engine 28 or later is required, as before.
+- The code-first install is still the primary path. See `docs/quickstart.md`
+  for both paths.
+
+**Security:**
+- Test containers run with least privilege.
+- The Docker CLI and compose plugin in the gates image are pinned by version.
+- `.env` is created private (0600), whatever the caller's umask.
+- The bundle installer does not run `docker` until the manifest passes, and
+  it installs only the staged copy it has verified.
+- Production mode is refused. Authentication is not built yet, so this
+  release is not for production use.
+
 ### 2026-10-19 (platform-stack-ready)
 
 **Added:**

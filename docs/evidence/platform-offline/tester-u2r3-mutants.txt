@@ -1,0 +1,91 @@
+# tester unit-2 rework 3 mutants (2026-10-19). Scratch copies of the working tree in ke-gates:latest, --network none, --cap-drop ALL, uid 10001, read-only mount. Generator: make_mutants.py (below).
+# fix1 = one-line 'main "$@"; exit' (expected fix: must pass). unwrap = main wrapper removed, trailing exit kept. clshc = marker check removed from sh cleanup. pspath = Assert-SafePath no-op. atl = at_least always true.
+# NOTE: the first 'unwrap' block is an invalid mutant (bash syntax error from dropping 'local'); the valid re-run (local -> declare, bash -n ok, 3 tests) is the LAST block.
+### fix1: tests.test_offline_bundle.InstallShTest.test_install_ignores_script_rewritten_in_place tests.test_offline_bundle.InstallShTest.test_install_ignores_script_changed_during_run
+Ran 2 tests in 0.387s
+OK
+### unwrap: tests.test_offline_bundle.InstallShTest.test_install_ignores_script_rewritten_in_place
+FAIL: test_install_ignores_script_rewritten_in_place (tests.test_offline_bundle.InstallShTest.test_install_ignores_script_rewritten_in_place)
+AssertionError: [] is not true : the run never reached docker info: []
+Ran 1 test in 0.035s
+FAILED (failures=1)
+### clshc: tests.test_offline_bundle.InstallShTest.test_install_refuses_target_replaced_during_load
+FAIL: test_install_refuses_target_replaced_during_load (tests.test_offline_bundle.InstallShTest.test_install_refuses_target_replaced_during_load) (planted='dir')
+AssertionError: False is not true : the cleanup removed a directory planted at the target, with its owner's file: only the run's own claim (holding its marker) may be removed (review N2):
+Ran 1 test in 0.425s
+FAILED (failures=1)
+### pspath: tests.test_offline_bundle.InstallPs1Test.test_install_ps1_refuses_relative_or_empty_path_entries
+FAIL: test_install_ps1_refuses_relative_or_empty_path_entries (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_refuses_relative_or_empty_path_entries) (case='relative')
+AssertionError: True is not false : a tool shipped in the bundle ran through PATH='bin:/tmp/tmpjcpuxl8r/fakebin:/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' (security L-9):
+FAIL: test_install_ps1_refuses_relative_or_empty_path_entries (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_refuses_relative_or_empty_path_entries) (case='dot')
+AssertionError: True is not false : a tool shipped in the bundle ran through PATH='.:/tmp/tmpjcpuxl8r/fakebin:/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' (security L-9):
+FAIL: test_install_ps1_refuses_relative_or_empty_path_entries (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_refuses_relative_or_empty_path_entries) (case='leading_empty')
+AssertionError: 'PATH' not found in 'install: manifest: file is not listed: bin/find\n' : the refusal names PATH (security L-9)
+FAIL: test_install_ps1_refuses_relative_or_empty_path_entries (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_refuses_relative_or_empty_path_entries) (case='trailing_empty')
+AssertionError: 'PATH' not found in 'install: manifest: file is not listed: bin/find\n' : the refusal names PATH (security L-9)
+FAIL: test_install_ps1_refuses_relative_or_empty_path_entries (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_refuses_relative_or_empty_path_entries) (case='middle_empty')
+AssertionError: 'PATH' not found in 'install: manifest: file is not listed: bin/find\n' : the refusal names PATH (security L-9)
+Ran 1 test in 2.889s
+FAILED (failures=5)
+### atl: tests.test_offline_bundle.InstallShPortableTest.test_launch_enforces_compose_version_floor
+FAIL: test_launch_enforces_compose_version_floor (tests.test_offline_bundle.InstallShPortableTest.test_launch_enforces_compose_version_floor) (shell='bash', compose='2.23.9')
+AssertionError: 0 == 0 : launch.sh accepted Compose 2.23.9 (< 2.24; review RB5b):
+FAIL: test_launch_enforces_compose_version_floor (tests.test_offline_bundle.InstallShPortableTest.test_launch_enforces_compose_version_floor) (shell='bash', compose='2')
+AssertionError: 0 == 0 : launch.sh accepted Compose 2 (< 2.24; review RB5b):
+FAIL: test_launch_enforces_compose_version_floor (tests.test_offline_bundle.InstallShPortableTest.test_launch_enforces_compose_version_floor) (shell='bash --posix + BSD shims', compose='2.23.9')
+AssertionError: 0 == 0 : launch.sh accepted Compose 2.23.9 (< 2.24; review RB5b):
+FAIL: test_launch_enforces_compose_version_floor (tests.test_offline_bundle.InstallShPortableTest.test_launch_enforces_compose_version_floor) (shell='bash --posix + BSD shims', compose='2')
+AssertionError: 0 == 0 : launch.sh accepted Compose 2 (< 2.24; review RB5b):
+Ran 1 test in 0.924s
+FAILED (failures=4)
+syntax-ok
+FAIL: test_install_ignores_script_rewritten_in_place (tests.test_offline_bundle.InstallShTest.test_install_ignores_script_rewritten_in_place)
+AssertionError: True is not false : a command written in place into the last line of install.sh during the run executed (last line was 'exit'; review RB3, security M-4b: put `main "$@"; exit` on one line)
+Ran 3 tests in 1.024s
+FAILED (failures=1)
+
+## make_mutants.py
+"""Apply one mutant per scratch copy (tester, unit-2 rework 3)."""
+import re
+from pathlib import Path
+
+M = Path(r"<scratch>\mut")
+
+
+def edit(name, rel, fn):
+    p = M / name / rel
+    s = p.read_bytes().decode("utf-8")
+    t = fn(s)
+    assert t != s, (name, rel)
+    p.write_bytes(t.encode("utf-8"))
+
+
+# fix1: the developer's expected fix, `main "$@"; exit` on one line.
+edit("fix1", "scripts/install.sh", lambda s: s.replace('main "$@"\nexit\n', 'main "$@"; exit\n'))
+
+
+# unwrap: the main wrapper removed, the trailing exit kept (body runs at top level).
+def unwrap(s):
+    head, _, rest = s.partition("main() {\n")
+    body, _, tail = rest.partition('\n}\n\nmain "$@"\nexit\n')
+    assert tail == "" and body, "unexpected install.sh shape"
+    body = re.sub(r"(?m)^(\s*)local ", r"\1declare ", body)
+    return head + body + "\nexit\n"
+
+
+edit("unwrap", "scripts/install.sh", unwrap)
+if __import__("sys").argv[1:] == ["unwrap"]:
+    raise SystemExit(0)
+
+# clshc: the marker check removed from the sh cleanup.
+edit("clshc", "scripts/install.sh",
+     lambda s: s.replace(' && [ -f "$target/$claim_marker" ]; then\n    rm -rf', '; then\n    rm -rf'))
+
+# pspath: Assert-SafePath made a no-op.
+edit("pspath", "scripts/install.ps1",
+     lambda s: s.replace("function Assert-SafePath {\n", "function Assert-SafePath {\n    return\n"))
+
+# atl: at_least always true.
+edit("atl", "scripts/launch.sh",
+     lambda s: s.replace("at_least() { # at_least MINIMUM VERSION", "at_least() { return 0; # at_least MINIMUM VERSION"))
+print("ok")

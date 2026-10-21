@@ -1,0 +1,12 @@
+  elif ! grep -Eq '^Ran [1-9][0-9]* tests? in ' "$logs/$m.log"; then
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.73ms
+Installed 1 package in 1ms
+test_unit_pool_fails_when_a_module_exits_zero_at_import (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_a_module_exits_zero_at_import) ... ok
+test_unit_pool_fails_when_a_module_prints_no_ran_line (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_a_module_prints_no_ran_line) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 2.054s
+
+OK

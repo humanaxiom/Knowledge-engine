@@ -1,0 +1,75 @@
+# Unit-level mutant runs: uv run --locked python -m unittest tests.test_harness_followups.IntegrationRunsOnceTest tests.test_harness_followups.VerifyRequiresTestsRunTest tests.test_engine_quality (ke-gates:latest, --network none, ro /work, fresh tmpfs /tmp)
+
+== u-M1a-rc-ignored: FAILED (failures=1) rc=1
+FAIL: test_failing_module_fails_run_and_other_modules_still_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_module_fails_run_and_other_modules_still_run)
+FAIL: test_fails (tests.test_fails.Fails.test_fails)
+
+== u-M1b-rc-always0: FAILED (failures=1) rc=1
+FAIL: test_failing_module_fails_run_and_other_modules_still_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_module_fails_run_and_other_modules_still_run)
+FAIL: test_fails (tests.test_fails.Fails.test_fails)
+
+== u-M1c-rc-check-off: FAILED (failures=1) rc=1
+FAIL: test_failing_module_fails_run_and_other_modules_still_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_module_fails_run_and_other_modules_still_run)
+FAIL: test_fails (tests.test_fails.Fails.test_fails)
+
+== u-M2-cov-check-off: FAILED (failures=2) rc=1
+FAIL: test_unit_pool_fails_when_a_module_leaves_no_coverage_data (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_a_module_leaves_no_coverage_data) (mode='fast')
+FAIL: test_unit_pool_fails_when_a_module_leaves_no_coverage_data (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_a_module_leaves_no_coverage_data) (mode='full')
+
+== u-M3-ran-check-off: OK rc=0
+
+== u-M4a-k1: FAILED (failures=2) rc=1
+FAIL: test_unit_pool_concurrency_follows_nproc_capped_at_4 (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_concurrency_follows_nproc_capped_at_4) (nproc=2)
+FAIL: test_unit_pool_concurrency_follows_nproc_capped_at_4 (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_concurrency_follows_nproc_capped_at_4) (nproc=64)
+
+== u-M4b-nocap: FAILED (failures=1) rc=1
+FAIL: test_unit_pool_concurrency_follows_nproc_capped_at_4 (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_concurrency_follows_nproc_capped_at_4) (nproc=64)
+
+== u-M4c-k4-fixed: FAILED (failures=2) rc=1
+FAIL: test_unit_pool_concurrency_follows_nproc_capped_at_4 (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_concurrency_follows_nproc_capped_at_4) (nproc=1)
+FAIL: test_unit_pool_concurrency_follows_nproc_capped_at_4 (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_concurrency_follows_nproc_capped_at_4) (nproc=2)
+
+== u-M5a-parse-empty: OK rc=0
+
+== u-M5b-parse-garbage-name: FAILED (failures=2) rc=1
+FAIL: test_unit_pool_fails_when_a_module_leaves_no_coverage_data (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_a_module_leaves_no_coverage_data) (mode='fast')
+FAIL: test_unit_pool_fails_when_a_module_leaves_no_coverage_data (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_a_module_leaves_no_coverage_data) (mode='full')
+
+== u-M5c-parse-garbage-dir: FAILED (failures=2) rc=1
+FAIL: test_unit_pool_fails_when_a_module_leaves_no_coverage_data (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_a_module_leaves_no_coverage_data) (mode='fast')
+FAIL: test_unit_pool_fails_when_a_module_leaves_no_coverage_data (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_fails_when_a_module_leaves_no_coverage_data) (mode='full')
+
+== u-M6-no-final-wait: FAILED (failures=22) rc=1
+FAIL: test_coverage_erase_precedes_first_run_and_spares_checkout (tests.test_harness_followups.IntegrationRunsOnceTest.test_coverage_erase_precedes_first_run_and_spares_checkout) (mode='fast')
+FAIL: test_coverage_erase_precedes_first_run_and_spares_checkout (tests.test_harness_followups.IntegrationRunsOnceTest.test_coverage_erase_precedes_first_run_and_spares_checkout) (mode='full')
+FAIL: test_each_module_output_block_is_contiguous (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_module_output_block_is_contiguous)
+FAIL: test_failing_module_fails_run_and_other_modules_still_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_module_fails_run_and_other_modules_still_run)
+FAIL: test_helper_package_without_tests_passes (tests.test_harness_followups.IntegrationRunsOnceTest.test_helper_package_without_tests_passes) (mode='fast')
+FAIL: test_helper_package_without_tests_passes (tests.test_harness_followups.IntegrationRunsOnceTest.test_helper_package_without_tests_passes) (mode='full')
+FAIL: test_integration_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_integration_tests_run_once) (mode='fast')
+FAIL: test_integration_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_integration_tests_run_once) (mode='full')
+FAIL: test_nested_test_sh_leaves_gate_coverage_data_alone (tests.test_harness_followups.IntegrationRunsOnceTest.test_nested_test_sh_leaves_gate_coverage_data_alone)
+FAIL: test_package_with_only_nested_tests_runs_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_package_with_only_nested_tests_runs_once)
+FAIL: test_quality_gates_always_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_always_run) (mode='fast')
+FAIL: test_quality_gates_always_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_always_run) (mode='full')
+FAIL: test_quality_gates_run_with_pyproject (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_run_with_pyproject) (mode='fast')
+FAIL: test_quality_gates_run_with_pyproject (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_run_with_pyproject) (mode='full')
+FAIL: test_top_level_modules_run_in_separate_processes (tests.test_harness_followups.IntegrationRunsOnceTest.test_top_level_modules_run_in_separate_processes) (mode='fast')
+FAIL: test_top_level_modules_run_in_separate_processes (tests.test_harness_followups.IntegrationRunsOnceTest.test_top_level_modules_run_in_separate_processes) (mode='full')
+FAIL: test_unit_pool_concurrency_follows_nproc_capped_at_4 (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_concurrency_follows_nproc_capped_at_4) (nproc=1)
+FAIL: test_unit_pool_concurrency_follows_nproc_capped_at_4 (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_concurrency_follows_nproc_capped_at_4) (nproc=2)
+FAIL: test_unit_pool_concurrency_follows_nproc_capped_at_4 (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_concurrency_follows_nproc_capped_at_4) (nproc=64)
+FAIL: test_unit_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_tests_run_once)
+FAIL: test_verify_sees_sentinel_and_ran_lines_from_real_test_sh (tests.test_harness_followups.IntegrationRunsOnceTest.test_verify_sees_sentinel_and_ran_lines_from_real_test_sh) (mode='fast')
+FAIL: test_verify_sees_sentinel_and_ran_lines_from_real_test_sh (tests.test_harness_followups.IntegrationRunsOnceTest.test_verify_sees_sentinel_and_ran_lines_from_real_test_sh) (mode='full')
+
+== u-M7-stream-logs: FAILED (failures=4) rc=1
+FAIL: test_each_module_output_block_is_contiguous (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_module_output_block_is_contiguous) (module='test_ca')
+FAIL: test_each_module_output_block_is_contiguous (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_module_output_block_is_contiguous) (module='test_cb')
+FAIL: test_each_module_output_block_is_contiguous (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_module_output_block_is_contiguous) (module='test_cc')
+FAIL: test_verify_sees_sentinel_and_ran_lines_from_real_test_sh (tests.test_harness_followups.IntegrationRunsOnceTest.test_verify_sees_sentinel_and_ran_lines_from_real_test_sh) (mode='fast')
+
+== u-M8-no-wait-n: FAILED (failures=3) rc=1
+FAIL: test_unit_pool_concurrency_follows_nproc_capped_at_4 (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_concurrency_follows_nproc_capped_at_4) (nproc=1)
+FAIL: test_unit_pool_concurrency_follows_nproc_capped_at_4 (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_concurrency_follows_nproc_capped_at_4) (nproc=2)
+FAIL: test_unit_pool_concurrency_follows_nproc_capped_at_4 (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_concurrency_follows_nproc_capped_at_4) (nproc=64)

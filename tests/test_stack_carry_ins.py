@@ -36,11 +36,16 @@ class QuickstartTest(unittest.TestCase):
         for prerequisite in ("Git", "Docker", "2.24"):
             with self.subTest(prerequisite=prerequisite):
                 self.assertIn(prerequisite, text)
+        # Q20, narrowed 2026-10-19 (docs/requirements.md PS-2.9 *Supported host
+        # OS* and PS-3.1 per-arch bundles, Q50): the quickstart may name macOS
+        # for the offline install with install.sh (the arm64 bundle), and for
+        # nothing else.
         for line in text.splitlines():
             if re.search(r"(?i)mac\s?os|os x|apple silicon", line):
                 with self.subTest(macos_line=line):
-                    self.assertRegex(line, r"(?i)not supported|unsupported|out of scope",
-                                     "the quickstart must not offer a macOS path (Q20)")
+                    self.assertRegex(line, r"(?i)not supported|unsupported|out of scope|install\.sh"
+                                           r"|offline|bundle|arm64",
+                                     "the quickstart offers macOS only for the offline install (Q20, Q50)")
 
 
 class TestShHeaderTest(unittest.TestCase):

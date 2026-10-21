@@ -1,0 +1,26 @@
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 1ms
+Installed 1 package in 1ms
+.............FF....................
+======================================================================
+FAIL: test_unit_pool_concurrency_follows_nproc_capped_at_4 (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_concurrency_follows_nproc_capped_at_4) (nproc=2)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 515, in test_unit_pool_concurrency_follows_nproc_capped_at_4
+    self.assertGreaterEqual(overlap, low, f"nproc={nproc}: at most {overlap} at once")
+AssertionError: 1 not greater than or equal to 2 : nproc=2: at most 1 at once
+
+======================================================================
+FAIL: test_unit_pool_concurrency_follows_nproc_capped_at_4 (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_pool_concurrency_follows_nproc_capped_at_4) (nproc=64)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 515, in test_unit_pool_concurrency_follows_nproc_capped_at_4
+    self.assertGreaterEqual(overlap, low, f"nproc={nproc}: at most {overlap} at once")
+AssertionError: 1 not greater than or equal to 2 : nproc=64: at most 1 at once
+
+----------------------------------------------------------------------
+Ran 34 tests in 62.735s
+
+FAILED (failures=2)
+rc=1

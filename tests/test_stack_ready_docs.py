@@ -8,10 +8,17 @@
   names KE_MODEL_UPSTREAM and KE_EGRESS_ALLOWLIST as the only two keys a
   local `verify.sh full` takes from the caller's environment or the
   operator's `.env`, with the tests skipping by name when either is unset.
-- `test_ci_job_has_timeout` (PS-3.4): every CI job sets `timeout-minutes`.
-  Orchestrator ruling C1 (= Q36): the value stays 20 until 2b's first green
-  CI run is measured; a follow-up commit then sets measured + 50%. So this
-  test asserts the key, not the value.
+- `test_ci_job_has_timeout` (PS-3.4): every CI job sets `timeout-minutes`
+  to CI_TIMEOUT_MINUTES. Orchestrator ruling C1 (= Q36) kept 20 until a green
+  CI run is measured. CI run 39359710258 reached the offline stage at ~16 min
+  (docs/evidence/platform-offline/ci-39359710258.log), so orchestrator ruling 2
+  (docs/handoffs/platform-offline.md, 2026-10-20) sets 30 for the measurement
+  run; the follow-up commit changes CI_TIMEOUT_MINUTES to measured + 50%.
+  Two green CI runs were measured: 39370927416 (c7b905f) took 994 s, about
+  16.6 min (docs/evidence/platform-offline/ci-39370927416.log, job 04:41:48
+  to 04:58:22), and 39465361808 took 19.0 min, unit tests 790 s
+  (docs/evidence/platform-offline/ci-39465361808.log). Ruling R5 uses the
+  slower run + 50%: 19.0 x 1.5 = 28.5, rounded up to 29.
 """
 
 from __future__ import annotations
@@ -25,6 +32,13 @@ CLAUDE_MD = ROOT / "CLAUDE.md"
 CI = ROOT / ".github" / "workflows" / "ci.yml"
 VERIFY_ONLY = "What verify.sh runs that CI cannot"
 CI_ONLY = "What CI runs that verify.sh does not"
+# PS-3.4, ruling R5 (measured + 50%, using the slower green run): two green CI
+# runs, 39370927416 (c7b905f) at 16.6 min (docs/evidence/platform-offline/
+# ci-39370927416.log) and 39465361808 at 19.0 min, unit tests 790 s
+# (docs/evidence/platform-offline/ci-39465361808.log). The slower run sets
+# the bound: 19.0 x 1.5 = 28.5, rounded up to 29. Before them, ruling 2 set 30
+# for the measurement run (CI run 39359710258).
+CI_TIMEOUT_MINUTES = 29
 
 
 def _sections(text: str) -> list[tuple[str, str]]:
@@ -72,6 +86,11 @@ class CiTimeoutTest(unittest.TestCase):
                 value = job["timeout-minutes"]
                 self.assertIsInstance(value, int)
                 self.assertGreater(value, 0)
+                self.assertEqual(value, CI_TIMEOUT_MINUTES,
+                                 f"job {name}: timeout-minutes is {value}, the ruling is "
+                                 f"{CI_TIMEOUT_MINUTES} (PS-3.4, ruling R5: green CI runs "
+                                 f"39370927416 16.6 min and 39465361808 19.0 min; "
+                                 f"slower run + 50% = 29)")
 
 
 if __name__ == "__main__":

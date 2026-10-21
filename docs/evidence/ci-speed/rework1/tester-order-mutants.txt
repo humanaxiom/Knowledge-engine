@@ -1,0 +1,102 @@
+# ci-speed rework 1, tester: order guard (§2.2.1 decision 2, "in module order") vs scratch mutants of scripts/test.sh
+# New test: tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order
+# Fixture: tests/test_oa (sleeps 1.2 s), test_ob (0.6 s), test_oc (0 s), padded so oa > ob > oc in size; fake nproc 4.
+# The test checks its precondition (finish order oc, ob, oa from tearDownClass stamps), takes glob order from the same
+# bash glob test.sh uses, then asserts (log blocks) every line naming a module lies before every line naming the next
+# module in glob order, and (unit: lines) the unit: summary modules equal glob order exactly.
+# Each variant: scratch copy of scripts/test.sh, scripts/verify.sh, tests/{__init__,test_harness_followups,test_sentinel}.py,
+# run in ke-gates:wt-33a132fbfdd7 (docker run --rm --label ke.tester.project=ke-tester-cs3 --network none --user 10001:10001
+# --cap-drop ALL, read-only /work, tmpfs /tmp):
+#   /opt/venv/bin/python -m unittest -v tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order \
+#     tests.test_harness_followups.IntegrationRunsOnceTest.test_each_module_output_block_is_contiguous
+# Repo files were not mutated. Glob order in the gates image: tests.test_oa, test_ob, test_oc, test_x, testfoo.
+
+## diff scripts/test.sh -> m1_cat_on_finish (same mutant as tester-contiguity-mutants.txt)
+117a118
+>   cat -- "$logs/$m.log"
+128c129
+<     cat -- "$logs/$m.log"
+---
+>     :
+
+## diff scripts/test.sh -> m5_summary_on_finish (extra: unit: line printed as each module finishes)
+117a118
+>   echo "unit: $((SECONDS - start))s rc=$rc $m"
+141d141
+<   echo "unit: $(cat -- "$logs/$m.sec" 2>/dev/null || echo 0)s rc=$rc $m"
+
+## results (m0 full tail; m1/m5 filtered to result, FAIL and assertion lines)
+===== m0_baseline
+test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order) ... ok
+test_each_module_output_block_is_contiguous (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_module_output_block_is_contiguous) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 3.713s
+
+OK
+===== m1_cat_on_finish
+test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order) ... 
+test_each_module_output_block_is_contiguous (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_module_output_block_is_contiguous) ... ok
+FAIL: test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order) (part='log blocks')
+  File "/work/tests/test_harness_followups.py", line 980, in test_module_logs_and_summary_lines_print_in_glob_order
+AssertionError: 62 not less than 36 : tests.test_oa's log is not wholly before tests.test_ob's:
+Ran 4 tests in 0.001s
+OK
+Ran 1 test in 0.000s
+OK
+Ran 1 test in 0.000s
+OK
+Ran 4 tests in 0.601s
+OK
+Ran 4 tests in 1.201s
+OK
+Ran 2 tests in 0.000s
+OK
+Ran 2 tests in 3.616s
+FAILED (failures=1)
+===== m5_summary_on_finish
+test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order) ... 
+test_each_module_output_block_is_contiguous (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_module_output_block_is_contiguous) ... ok
+FAIL: test_module_logs_and_summary_lines_print_in_glob_order (tests.test_harness_followups.IntegrationRunsOnceTest.test_module_logs_and_summary_lines_print_in_glob_order) (part='unit: lines')
+  File "/work/tests/test_harness_followups.py", line 985, in test_module_logs_and_summary_lines_print_in_glob_order
+AssertionError: Lists differ: ['tests.test_oc', 'tests.testfoo', 'tests.test_x', 'tes[24 chars]_oa'] != ['tests.test_oa', 'tests.test_ob', 'tests.test_oc', 'te[24 chars]foo']
+- ['tests.test_oc',
+?               ^
++ ['tests.test_oa',
+?               ^
+-  'tests.testfoo',
+?             ^ ^
++  'tests.test_ob',
+?             ^ ^
++  'tests.test_oc',
+-  'tests.test_ob',
+-  'tests.test_oa']
+?             ^ ^
++  'tests.testfoo']
+?             ^ ^
+Ran 4 tests in 1.201s
+OK
+Ran 4 tests in 0.601s
+OK
+Ran 4 tests in 0.001s
+OK
+Ran 1 test in 0.000s
+OK
+Ran 1 test in 0.000s
+OK
+Ran 2 tests in 0.000s
+OK
+Ran 2 tests in 3.653s
+FAILED (failures=1)
+
+## baseline stability: new test alone, 5 repeats on m0_baseline
+rep 1: OK
+rep 2: OK
+rep 3: OK
+rep 4: OK
+rep 5: OK
+
+## verdict
+m0_baseline: new test ok, contiguity test ok
+m1_cat_on_finish: KILLED by the new test (subTest part='log blocks'); contiguity test still ok, as before
+m5_summary_on_finish: KILLED by the new test (subTest part='unit: lines')

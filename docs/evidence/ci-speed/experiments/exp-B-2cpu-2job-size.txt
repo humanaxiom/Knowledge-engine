@@ -1,0 +1,19 @@
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.87ms
+Installed 1 package in 1ms
+est 497563s
+est 497772s
+shard 0: 14 names
+shard 1: 18 names
+all shards wall=267s
+shard 1 rc=0 wall=187s
+shard 0 rc=0 wall=267s
+Ran 325 tests in 265.889s
+Ran 364 tests in 185.606s
+OK (skipped=6)
+OK (skipped=2)
+/tmp/shard0.log:1
+Combined 2 files, skipped 2
+Coverage failure: total of 62 is less than fail-under=80
+container total=269s

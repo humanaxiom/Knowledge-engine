@@ -176,10 +176,10 @@ class VerifyModelKeysTest(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.tmp, True)
         (self.tmp / "scripts").mkdir()
-        for rel in ("scripts/verify.sh", "scripts/env_value.sh", ".env.example",
+        for rel in ("scripts/verify.sh", "scripts/env_value.sh", "scripts/image_tag.sh", ".env.example",
                     "docker-compose.yml", "docker-compose.verify.yml"):
             shutil.copy(ROOT / rel, self.tmp / rel)
-        for name in ("build", "launch", "smoke", "teardown"):
+        for name in ("build", "launch", "smoke", "teardown", "offline_check"):
             stub = self.tmp / "scripts" / f"{name}.sh"
             stub.write_text(STAGE.format(name=name), encoding="utf-8", newline="\n")
             _make_executable(stub)

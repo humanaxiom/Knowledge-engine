@@ -1,0 +1,35 @@
+# S4 detector probe (reviewer, rework 4): background_constructs() from tests/test_block_main_commit_hook.py on a scratch copy; gates image ke-gates:wt-33a132fbfdd7, --network none, uid 10001, ro mount
+today's hook: []
+MISSED  bash -ce 'sleep 9 '
+MISSED  bash --norc -c true
+MISSED  bash -o pipefail -c true
+MISSED  "bash" -c true
+MISSED  "$BASH" -c true
+MISSED  $SHELL -c true
+MISSED  dash -c true
+MISSED  zsh -c true
+FLAGGED env -i bash -c true
+FLAGGED command bash -c true
+FLAGGED exec bash -c true
+MISSED  bash -s <<<true
+MISSED  printf x | bash
+FLAGGED bash -x -c true
+FLAGGED bash -c"true"
+FLAGGED sh -euc true
+FLAGGED /usr/bin/env bash -c true
+FLAGGED true&
+FLAGGED true >&2&
+FLAGGED true 2>&1&
+FLAGGED true &>/dev/null&
+FLAGGED true |& cat &
+FLAGGED x=1 & y=2
+FLAGGED true >& /dev/null &
+FLAGGED true 1>&- &
+FLAGGED [[ a == b ]] & true
+FLAGGED builtin eval true
+FLAGGED command nohup true
+FLAGGED (setsid true)
+FLAGGED trap 'sleep 9 &' EXIT
+MISSED  timeout 5 true
+MISSED  xargs -P4 true
+FLAGGED exec 3> >(cat)

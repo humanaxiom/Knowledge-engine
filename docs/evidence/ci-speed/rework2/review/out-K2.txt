@@ -1,0 +1,20 @@
+.F
+======================================================================
+FAIL: test_term_leaves_no_module_process_that_ignores_term (tests.test_harness_followups.IntegrationRunsOnceTest.test_term_leaves_no_module_process_that_ignores_term)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 924, in test_term_leaves_no_module_process_that_ignores_term
+    self.assertEqual(alive, [], f"processes of {module}, which ignores SIGTERM, "
+AssertionError: Lists differ: [167] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+167
+
+- [167]
++ [] : processes of tests.test_ign_term, which ignores SIGTERM, outlived test.sh by 10 s (exit 143); seen before TERM: [167]
+
+----------------------------------------------------------------------
+Ran 2 tests in 18.290s
+
+FAILED (failures=1)

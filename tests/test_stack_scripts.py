@@ -40,9 +40,11 @@ Rework round 2 (orchestrator "rework round 2 of 5"):
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
+import shlex
 import shutil
 import signal
 import stat
@@ -149,6 +151,59 @@ class _LaunchResolvedBase:
                             f"launch did not refuse:\n{result.stdout}{result.stderr}")
         test.assertIn(VAR, result.stdout + result.stderr)
         test.assertEqual(self._ups(records), [], "compose up ran despite the refusal")
+
+    def test_launch_creates_env_private_whatever_the_umask(self):
+        """Smoke-gate loop 2, F12 (docs/evidence/platform-offline/recorded2-runs.md):
+        `.env` holds the stack's secrets, and a copy made under the caller's
+        umask is 0644 (umask 022) or 0664 (umask 002), readable by every local
+        user. When launch creates `.env` itself it must be 0600 whatever the
+        umask, and still a copy of `.env.example`."""
+        test: Any = self
+        if os.name == "nt":
+            test.skipTest("POSIX file modes: the gates image is Linux")
+        example = (self.tmp / ".env.example").read_bytes()
+        for umask in (0o022, 0o002):
+            with test.subTest(umask=oct(umask)):
+                env_file = self.tmp / ".env"
+                env_file.unlink(missing_ok=True)
+                saved = self.command
+                self.command = ["bash", "-c", f"umask {umask:03o}; exec \"$@\"", "umask", *saved]
+                try:
+                    result, _ = self._launch()
+                finally:
+                    self.command = saved
+                out = result.stdout + result.stderr
+                test.assertTrue(env_file.is_file(), f"launch did not create .env:\n{out}")
+                test.assertEqual(env_file.read_bytes(), example,
+                                 "the created .env must be a copy of .env.example")
+                mode = stat.S_IMODE(env_file.stat().st_mode)
+                test.assertEqual(mode, 0o600,
+                                 f"launch created .env with mode {oct(mode)} under umask {umask:03o}; the "
+                                 "secrets file must be 0600 (owner only) whatever the umask (F12)")
+
+    def test_launch_leaves_dangling_env_symlink_alone(self):
+        """Security L-L2a (docs/evidence/platform-offline/audit-l2.md): a
+        `.env` that is a symlink to a missing path made launch.sh's
+        `cat .env.example > .env` follow the link and create its target
+        (placeholder secrets wherever the link points). Launch either refuses
+        or leaves the link alone; it never creates the target, never replaces
+        the link, and never says it created .env. (`set -C` gives this: the
+        create opens with O_EXCL, which fails on any existing name.)"""
+        test: Any = self
+        if os.name == "nt":
+            test.skipTest("POSIX symlinks: the gates image is Linux")
+        env_file = self.tmp / ".env"
+        env_file.unlink(missing_ok=True)
+        target = self.tmp / "victim.env"  # its directory exists, so a followed link succeeds
+        os.symlink(target, env_file)
+        result, _ = self._launch()
+        out = result.stdout + result.stderr
+        test.assertFalse(target.exists() or target.is_symlink(),
+                         f"launch followed the dangling .env symlink and created {target.name} (L-L2a):\n{out}")
+        test.assertTrue(env_file.is_symlink(), f"launch replaced the .env symlink (L-L2a):\n{out}")
+        test.assertEqual(os.readlink(env_file), str(target), "the .env symlink was retargeted (L-L2a)")
+        test.assertNotIn("created .env", out,
+                         f"launch claims it created .env, but nothing may be created through the link:\n{out}")
 
     def test_launch_refuses_when_env_file_lacks_ke_env(self):  # B3
         test: Any = self
@@ -337,6 +392,220 @@ class LaunchPs1ResolvedTest(_LaunchResolvedBase, unittest.TestCase):
 
 
 # --------------------------------------------------------------------------
+# Security L-L2a/b/c (docs/evidence/platform-offline/audit-l2.md): how launch
+# creates .env. Static, so the Linux gates image checks the Windows branch too;
+# LaunchPs1WindowsEnvTest below runs the Windows branch on a Windows host.
+# --------------------------------------------------------------------------
+
+# A restriction warning that tells the operator to restrict .env before adding
+# secrets (L-L2c iii), in any order of the words on one line.
+RESTRICT_BEFORE_SECRETS_RX = (r"(?i)^(?=.*\b(?:restrict|lock|private|owner[- ]only)\w*)(?=.*\.env\b)"
+                              r"(?=.*\bbefore\b)(?=.*\bsecrets?\b)")
+
+
+def _code_only(text: str) -> str:
+    """Drop full-line comments (`#` in sh and ps1), so prose cannot satisfy a code check."""
+    return re.sub(r"(?m)^\s*#.*$", "", text)
+
+
+def _ps1_env_block(test: unittest.TestCase) -> str:
+    """launch.ps1's .env creation block: from the `Test-Path` on the env file
+    to the `created .env` message, comments dropped."""
+    text = (ROOT / "scripts" / "launch.ps1").read_text(encoding="utf-8")
+    start = re.search(r"Test-Path\b[^\n]*\$envFile", text)
+    test.assertIsNotNone(start, "launch.ps1 has no `Test-Path ... $envFile` before creating .env")
+    assert start is not None
+    end = text.find("created .env", start.end())
+    test.assertNotEqual(end, -1, "launch.ps1 no longer says `created .env` after creating it")
+    return _code_only(text[start.start():end])
+
+
+class LaunchEnvCreationStaticTest(unittest.TestCase):
+    def test_launch_sh_creates_env_with_noclobber(self):
+        """L-L2a: the check-then-create `[ ! -f .env ]` + `> .env` follows a
+        dangling symlink and truncates a `.env` another process created in
+        between. The redirect that creates `.env` runs under `set -C`
+        (noclobber; bash then opens with O_EXCL), and never with `>|`, which
+        overrides it. The dangling-link behaviour itself is
+        LaunchShResolvedTest.test_launch_leaves_dangling_env_symlink_alone."""
+        code = _code_only((ROOT / "scripts" / "launch.sh").read_text(encoding="utf-8"))
+        lines = code.splitlines()
+        rx = re.compile(r"(>\|?)\s*[\"']?\.env[\"']?(?![\w.])")
+        hits = [(i, m) for i, line in enumerate(lines) for m in rx.finditer(line)]
+        self.assertTrue(hits, "launch.sh no longer redirects into .env; update this test with the new create")
+        for i, m in hits:
+            line = lines[i]
+            with self.subTest(line=line.strip()):
+                self.assertNotEqual(m.group(1), ">|", "`>|` overrides noclobber (L-L2a)")
+                before = "\n".join(lines[max(0, i - 3):i] + [line[:m.start()]])
+                self.assertRegex(before, r"\bset\s+(?:-C|-o\s+noclobber)\b",
+                                 "the redirect that creates .env must run under `set -C` (noclobber), for "
+                                 "example `(umask 077; set -C; cat .env.example > .env)`, so it never follows "
+                                 "a dangling symlink or truncates an existing .env (security L-L2a)")
+
+    def test_launch_ps1_creates_env_with_mode_at_open(self):
+        """L-L2b: off Windows, launch.ps1 created `.env` empty at the umask's
+        mode (0644/0664), then set 0600, then wrote. A reader that opened it
+        in that window keeps an fd that reads the secrets written later. The
+        file is created 0600 at open: FileStreamOptions with Mode CreateNew
+        (which also refuses links and clobbering) and UnixCreateMode
+        UserRead|UserWrite, never WriteAllBytes then SetUnixFileMode."""
+        block = _ps1_env_block(self)
+        self.assertTrue(re.search(r"\bFileStreamOptions\b", block),
+                        "create .env through a FileStream with FileStreamOptions (L-L2b)")
+        self.assertTrue(re.search(r"\bCreateNew\b", block), "open .env with FileMode CreateNew (L-L2b)")
+        modes = re.findall(r"UnixCreateMode\b[^\n]*", block)
+        self.assertTrue(modes, "set UnixCreateMode on the FileStreamOptions so .env is 0600 at creation (L-L2b)")
+        self.assertTrue([m for m in modes if "UserRead" in m and "UserWrite" in m
+                         and not re.search(r"Group|Other|Execute", m)],
+                        f"UnixCreateMode must be UserRead|UserWrite only (0600) (L-L2b): {modes}")
+        for call in ("SetUnixFileMode", r"WriteAll(?:Bytes|Text|Lines)\s*\(", r"\]::Create\s*\(",
+                     r"\bNew-Item\b", r"\bSet-Content\b", r"\bOut-File\b", r"\bAdd-Content\b"):
+            with self.subTest(call=call):
+                found = re.search(call, block)
+                self.assertIsNone(found, f"the .env create uses {found.group(0) if found else ''!r}: it must not "
+                                         "make the file at a wider mode and narrow it afterwards; write through "
+                                         "the CreateNew stream (L-L2b)")
+
+    def test_launch_ps1_icacls_grants_current_user_sid(self):
+        """L-L2c (ii): `$env:USERNAME` is resolved by name, and a local account
+        with the same name can shadow the domain user. The grant names the
+        current user's SID (`*S-1-...` syntax), taken from
+        `[Security.Principal.WindowsIdentity]::GetCurrent().User`."""
+        text = _code_only((ROOT / "scripts" / "launch.ps1").read_text(encoding="utf-8"))
+        block = _ps1_env_block(self)
+        calls = [ln.strip() for ln in block.splitlines() if re.search(r"(?i)\bicacls\b", ln)]
+        self.assertTrue(calls, "launch.ps1 no longer restricts .env with icacls on Windows")
+        self.assertTrue(re.search(r"WindowsIdentity\]::GetCurrent\(\)\.User\b", text),
+                        "take the SID from [Security.Principal.WindowsIdentity]::GetCurrent().User (L-L2c)")
+        for call in calls:
+            with self.subTest(call=call):
+                self.assertNotIn("USERNAME", call.upper(), "grant by SID, not by user name (L-L2c)")
+                self.assertRegex(call, r"/grant:r\b[\s\S]*['\"]\*(?:\$|S-1-|['\"]\s*\+)",
+                                 "the /grant:r argument must be the `*<SID>` form (L-L2c)")
+
+    def test_launch_ps1_icacls_failure_only_warns(self):
+        """L-L2c (i): under Windows PowerShell 5.1 (the code-first
+        `scripts\\launch.ps1` has no `#Requires`), `& icacls ... 2>&1` with
+        `$ErrorActionPreference = 'Stop'` turns icacls's stderr into a
+        terminating NativeCommandError, so a failed restriction stops launch
+        instead of warning. The call runs inside `try { } catch {
+        Write-Warning }`, or in a scriptblock with a local
+        `$ErrorActionPreference = 'Continue'`. Proven on a Windows host by
+        LaunchPs1WindowsEnvTest."""
+        block = _ps1_env_block(self)
+        guarded = (re.search(r"(?s)\btry\s*\{(?:(?!\bcatch\b).)*\bicacls\b.*?\bcatch\b[^{]*\{[^}]*Write-Warning",
+                             block)
+                   or re.search(r"(?is)&\s*\{[^{}]*\$ErrorActionPreference\s*=\s*['\"](?:Silently)?Continue['\"]"
+                                r"[^{}]*\bicacls\b", block))
+        self.assertTrue(guarded, "the icacls call must not be able to terminate launch under Windows PowerShell "
+                                 "5.1: wrap it in try/catch with Write-Warning, or run it in `& { }` with a "
+                                 "local $ErrorActionPreference = 'Continue' (security L-L2c)")
+
+    def test_launch_ps1_icacls_warning_says_restrict_before_secrets(self):
+        """L-L2c (iii): when the restriction fails, `.env` keeps the inherited
+        ACL and the next run skips creation silently. The warning tells the
+        operator to restrict `.env` before adding secrets to it."""
+        block = _ps1_env_block(self)
+        warnings = re.findall(r"Write-Warning\b[^\n]*", block)
+        self.assertTrue(warnings, "launch.ps1 warns when it cannot restrict .env")
+        self.assertTrue([w for w in warnings if re.search(RESTRICT_BEFORE_SECRETS_RX, w)],
+                        f"the warning must tell the operator to restrict .env before adding secrets "
+                        f"(L-L2c): {warnings}")
+
+
+class LaunchPs1WindowsEnvTest(unittest.TestCase):
+    """L-L2c on a Windows host, under pwsh and Windows PowerShell 5.1: launch
+    creates `.env` granted only to the current user's SID with inheritance
+    removed, and an icacls failure warns and carries on. Windows only: the
+    gates image is Linux, so `scripts/verify.sh` skips it; run it on a Windows
+    host. No Docker is reachable: PATH holds only the Windows system
+    directories (plus the failing icacls), so launch stops at the Docker step,
+    after `.env`.
+
+    Failure injection: a copy of System32 whoami.exe (and its MUI) named
+    `icacls.exe`, first on PATH, which exits 1 with an error on stderr, as a
+    real icacls failure does. This relies on launch.ps1 resolving `icacls.exe`
+    through PATH, as it does today."""
+
+    def setUp(self) -> None:
+        if os.name != "nt":
+            self.skipTest("Windows ACLs and Windows PowerShell 5.1: runs only on a Windows host; the gates "
+                          "image is Linux, so verify.sh skips it (security L-L2c)")
+        pwsh = shutil.which("pwsh")
+        if pwsh is None:
+            self.fail(PWSH_MISSING)
+        root = os.environ.get("SystemRoot", r"C:\Windows")
+        self.system = [os.path.join(root, "System32"), root, os.path.join(root, "System32", "Wbem"),
+                       os.path.join(root, "System32", "WindowsPowerShell", "v1.0")]
+        self.shells = {"pwsh": pwsh, "Windows PowerShell 5.1": os.path.join(self.system[3], "powershell.exe")}
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def _run(self, shell: str, prefix: list[str]) -> tuple[Path, str]:
+        work = self.tmp / re.sub(r"\W+", "-", shell)
+        shutil.rmtree(work, ignore_errors=True)
+        _copy_repo_files(work, [".env.example", "scripts/launch.ps1"])
+        env = {k: v for k, v in os.environ.items()
+               if not k.upper().startswith(("KE_", "COMPOSE_", "DOCKER_")) and k.upper() != "PATH"}
+        env["PATH"] = os.pathsep.join([*prefix, *self.system])
+        result = subprocess.run([self.shells[shell], "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+                                 "-File", str(work / "scripts" / "launch.ps1")],
+                                cwd=work, env=env, capture_output=True, text=True, timeout=120)
+        return work / ".env", result.stdout + result.stderr
+
+    @staticmethod
+    def _current_sid() -> str:
+        out = subprocess.run(["whoami", "/user", "/fo", "csv", "/nh"], capture_output=True, text=True,
+                             check=True).stdout
+        return out.strip().split(",")[-1].strip('"')
+
+    def test_launch_ps1_restricts_env_to_current_user_sid(self):
+        from tests import test_offline_bundle
+
+        sid = self._current_sid()
+        for shell in self.shells:
+            with self.subTest(shell=shell):
+                env_file, out = self._run(shell, [])
+                self.assertTrue(env_file.is_file(), f"launch did not create .env under {shell}:\n{out}")
+                self.assertIn("created .env", out)
+                sddl = test_offline_bundle.InstallPs1WindowsAclTest._sddl(str(env_file))
+                self.assertIsNotNone(sddl, "could not read the .env security descriptor")
+                assert sddl is not None
+                dacl = sddl.split("D:", 1)[1] if "D:" in sddl else ""
+                self.assertTrue(dacl.startswith("P"), f"inheritance is not removed from .env: {sddl}")
+                aces = re.findall(r"\(([^)]*)\)", dacl)
+                self.assertEqual(len(aces), 1, f".env must have exactly one ACE, the current user's: {sddl}")
+                parts = aces[0].split(";")
+                self.assertEqual((parts[0], parts[-1]), ("A", sid),
+                                 f"the one ACE must allow the current user's SID {sid}: {sddl}")
+
+    def test_launch_ps1_icacls_failure_warns_and_continues(self):
+        system32 = Path(self.system[0])
+        fake = self.tmp / "failing-icacls"
+        fake.mkdir()
+        shutil.copy(system32 / "whoami.exe", fake / "icacls.exe")
+        muis = sorted(system32.glob("*/whoami.exe.mui"))
+        if not muis:
+            self.skipTest("no whoami.exe.mui under System32: the stand-in icacls would fail without stderr")
+        for mui in muis:
+            (fake / mui.parent.name).mkdir(exist_ok=True)
+            shutil.copy(mui, fake / mui.parent.name / "icacls.exe.mui")
+        for shell in self.shells:
+            with self.subTest(shell=shell):
+                env_file, out = self._run(shell, [str(fake)])
+                self.assertNotIn("NativeCommandError", out,
+                                 f"a failed icacls terminated launch under {shell}; it must only warn "
+                                 f"(security L-L2c):\n{out}")
+                self.assertIn("created .env", out,
+                              f"launch stopped at the failed icacls under {shell} instead of carrying on:\n{out}")
+                self.assertTrue(env_file.is_file())
+                self.assertTrue([ln for ln in out.splitlines() if re.search(RESTRICT_BEFORE_SECRETS_RX, ln)],
+                                f"under {shell} the warning must tell the operator to restrict .env before "
+                                f"adding secrets (L-L2c):\n{out}")
+
+
+# --------------------------------------------------------------------------
 # Rework 2, Windows proof F3: teardown touches only its own default services
 # --------------------------------------------------------------------------
 
@@ -391,6 +660,11 @@ class _TeardownScopeBase:
         script = ROOT / self.command[-1]
         body = "\n".join(l for l in script.read_text(encoding="utf-8").splitlines()
                          if not l.lstrip().startswith("#"))
+        if script.suffix == ".sh":
+            # platform-offline (architecture §2.5 host step 1, §2.6 item 12):
+            # teardown.sh accepts exactly `--profile offline`, for
+            # offline_check.sh. That literal is the one exception to F3.
+            body = re.sub(r"""--profile[ =]["']?offline["']?(?![\w-])""", "", body)
         test.assertNotRegex(body, r"--profile|COMPOSE_PROFILES",
                             f"{script.name} activates profiles (F3)")
 
@@ -439,6 +713,26 @@ class _TeardownScopeBase:
 class TeardownShScopeTest(_TeardownScopeBase, unittest.TestCase):
     command = ["bash", "scripts/teardown.sh"]
     volumes_flag = "--volumes"
+
+    def test_teardown_accepts_only_the_offline_profile(self):  # §2.5 host step 1, §2.6 item 12
+        result, records = self._teardown("--volumes", "--profile", "offline")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        downs = [r["argv"] for r in records if r["argv"][:1] == ["compose"] and "down" in r["argv"]]
+        self.assertTrue(downs, "teardown --profile offline did not call compose down")
+        for argv in downs:
+            pairs = list(zip(argv, argv[1:]))
+            self.assertIn(("--profile", "offline"), pairs, f"down must activate `offline`: {argv}")
+            self.assertIn("--volumes", argv)
+            self.assertEqual([a for a in argv if a == "--profile"], ["--profile"], argv)
+        for args in (("--volumes", "--profile", "gates"), ("--volumes", "--profile", "gates-it"),
+                     ("--volumes", "--profile", "*"),
+                     ("--volumes", "--profile", "offline", "--profile", "gates"),
+                     ("--volumes", "--profile", "offline,gates"), ("--volumes", "--profile", "")):
+            with self.subTest(args=" ".join(args)):
+                result, records = self._teardown(*args)
+                self.assertNotEqual(result.returncode, 0, f"teardown accepted {args}")
+                self.assertFalse([r for r in records if r["argv"][:1] == ["compose"] and "down" in r["argv"]],
+                                 f"teardown ran down for {args}")
 
 
 class TeardownPs1ScopeTest(_TeardownScopeBase, unittest.TestCase):
@@ -630,14 +924,14 @@ class TeardownPs1LeftoversTest(_TeardownLeftoversBase, unittest.TestCase):
 
 STAGE_STUB = """#!/usr/bin/env bash
 name="{name}"
-echo "$name $* | project=${{COMPOSE_PROJECT_NAME:-}} | file=${{COMPOSE_FILE:-}} | owns=${{KE_SMOKE_OWNS_PROJECT-<unset>}}" >> "$STAGE_LOG"
+echo "$name $* | project=${{COMPOSE_PROJECT_NAME:-}} | file=${{COMPOSE_FILE:-}} | tag=${{KE_IMAGE_TAG-<unset>}} | owns=${{KE_SMOKE_OWNS_PROJECT-<unset>}}" >> "$STAGE_LOG"
 case "|${{HANG_STAGE:-}}|" in *"|$name|"*) exec sleep 60 ;; esac
 case "|${{FAIL_STAGE:-}}|" in *"|$name|"*) echo "stub $name: failing" >&2; exit 7 ;; esac
 exit 0
 """
 
 DOCKER_STUB = """#!/usr/bin/env bash
-echo "docker $* | project=${COMPOSE_PROJECT_NAME:-} | file=${COMPOSE_FILE:-}" >> "$STAGE_LOG"
+echo "docker $* | project=${COMPOSE_PROJECT_NAME:-} | file=${COMPOSE_FILE:-} | tag=${KE_IMAGE_TAG-<unset>} | sep=${COMPOSE_PATH_SEPARATOR:-}" >> "$STAGE_LOG"
 case "$*" in *gates-it*)
   case "|${FAIL_STAGE:-}|" in *"|gates-it|"*) echo "stub gates-it: failing" >&2; exit 7 ;; esac ;;
 esac
@@ -646,9 +940,21 @@ exit 0
 """
 
 
+# platform-offline (PS-3.2 *Wired into full*; architecture §2.6 item 10 and
+# ADR-KE-009 decision step 4): `full` runs, in order, build, launch, gates-it,
+# smoke, `teardown.sh --volumes`, then `offline_check.sh`; there is no scan
+# stage on this branch (ruling R3). The explicit teardown is the one teardown
+# of the verify project: it runs once on every exit path (the trap does not
+# repeat a teardown that already ran). This replaces the earlier
+# ["build", "launch", "gates-it", "smoke", "teardown"] order, whose teardown
+# came only from the trap.
+FULL_ORDER = ["build", "launch", "gates-it", "smoke", "teardown", "offline_check"]
+
+
 class VerifyHostHalfTest(unittest.TestCase):
     """B6, N7: the real scripts/verify.sh in a throwaway project, with
-    recording stubs for build/launch/smoke/teardown and a recording docker."""
+    recording stubs for build/launch/smoke/teardown/offline_check and a
+    recording docker."""
 
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp())
@@ -658,7 +964,7 @@ class VerifyHostHalfTest(unittest.TestCase):
         for rel in (".env.example", "docker-compose.yml", "docker-compose.verify.yml"):
             if (ROOT / rel).exists():
                 shutil.copy(ROOT / rel, self.tmp / rel)
-        for name in ("build", "launch", "smoke", "teardown", "lint", "test"):
+        for name in ("build", "launch", "smoke", "teardown", "lint", "test", "offline_check"):
             stub = self.tmp / "scripts" / f"{name}.sh"
             stub.write_text(STAGE_STUB.format(name=name), encoding="utf-8", newline="\n")
             _make_executable(stub)
@@ -672,6 +978,11 @@ class VerifyHostHalfTest(unittest.TestCase):
         env_value.write_text('#!/usr/bin/env bash\nprintf \'%s\' "${!1-}"\n',
                              encoding="utf-8", newline="\n")
         _make_executable(env_value)
+        # Rework round 1 (architecture §2.1, §2.6 item 9): verify gets its
+        # per-worktree tag from the real helper scripts/image_tag.sh (never a
+        # stub: the tests below check the real SHA-256), once it exists.
+        if (ROOT / "scripts" / "image_tag.sh").is_file():
+            shutil.copy(ROOT / "scripts" / "image_tag.sh", self.tmp / "scripts" / "image_tag.sh")
         (self.tmp / "bin").mkdir()
         docker = self.tmp / "bin" / "docker"
         docker.write_text(DOCKER_STUB, encoding="utf-8", newline="\n")
@@ -704,7 +1015,7 @@ class VerifyHostHalfTest(unittest.TestCase):
     def test_full_runs_stages_in_order_then_tears_down(self):
         result, lines = self._verify()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(self._stages(lines), ["build", "launch", "gates-it", "smoke", "teardown"])
+        self.assertEqual(self._stages(lines), FULL_ORDER)
         gates_it = [l for l in lines if self._stage(l) == "gates-it"]
         self.assertEqual(len(gates_it), 1)
         head = gates_it[0].split(" | ", 1)[0]
@@ -731,7 +1042,7 @@ class VerifyHostHalfTest(unittest.TestCase):
         self.assertNotRegex(mutant, r"(?m)^\s*scripts/verify\.sh\s+full", "mutant would recurse")
         (self.tmp / "scripts" / "verify.sh").write_text(mutant + "\n", encoding="utf-8", newline="\n")
         result, lines = self._verify()
-        self.assertNotEqual(self._stages(lines), ["build", "launch", "gates-it", "smoke", "teardown"])
+        self.assertNotEqual(self._stages(lines), FULL_ORDER)
 
     def test_each_failing_stage_fails_verify_and_still_tears_down(self):
         expected = ["build", "launch", "gates-it", "smoke"]
@@ -743,6 +1054,12 @@ class VerifyHostHalfTest(unittest.TestCase):
                 stages = self._stages(lines)
                 self.assertEqual(stages, expected[: i + 1] + ["teardown"],
                                  "later stages ran after a failure, or teardown did not run once")
+        with self.subTest(failing="offline_check"):
+            result, lines = self._verify(FAIL_STAGE="offline_check")
+            self.assertNotEqual(result.returncode, 0, "offline_check failed but verify exited 0")
+            self.assertNotIn("verify full: PASS", result.stdout + result.stderr)
+            self.assertEqual(self._stages(lines), FULL_ORDER,
+                             "the verify project is torn down once, before offline_check")
 
     def test_teardown_runs_on_interrupt(self):
         for sig in (signal.SIGINT, signal.SIGTERM):
@@ -772,14 +1089,18 @@ class VerifyHostHalfTest(unittest.TestCase):
                 self.assertEqual(stages.count("teardown"), 1, f"teardown on {sig.name}: {stages}")
                 self.assertNotIn("gates-it", stages)
                 self.assertNotIn("smoke", stages)
+                self.assertNotIn("offline_check", stages)
 
     def test_project_name_is_random_and_shared_by_every_stage(self):
         names = []
         for _ in range(2):
             result, lines = self._verify()
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            # offline_check.sh runs its own ke-offline-<random> project
+            # (§2.5 host step 1), so what it inherits is not checked here.
             projects = {l.split("project=", 1)[1].split(" | ", 1)[0]
-                        for l in lines if self._stage(l) != "docker" or "gates-it" in l}
+                        for l in lines if (self._stage(l) != "docker" or "gates-it" in l)
+                        and self._stage(l) != "offline_check"}
             self.assertEqual(len(projects), 1, f"stages used different projects: {projects}")
             name = projects.pop()
             self.assertRegex(name, r"^ke-verify-[a-z0-9]+$")
@@ -791,6 +1112,8 @@ class VerifyHostHalfTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         for line in lines:
             head, _, rest = line.partition(" | ")
+            if self._stage(line) == "offline_check":
+                continue  # its own project and compose files (§2.5); dind publishes nothing
             with self.subTest(call=head):
                 overlay = "docker-compose.verify.yml" in rest or "docker-compose.verify.yml" in head
                 self.assertTrue(overlay, "a stage ran without the verify overlay (it would publish)")
@@ -846,9 +1169,61 @@ class VerifyHostHalfTest(unittest.TestCase):
     def test_teardown_failure_after_green_run_is_reported(self):  # N7
         result, lines = self._verify(FAIL_STAGE="teardown")
         output = result.stdout + result.stderr
+        # A failed teardown stops verify before offline_check (FULL_ORDER note).
         self.assertEqual(self._stages(lines), ["build", "launch", "gates-it", "smoke", "teardown"])
         self.assertNotEqual(result.returncode, 0, "a failed teardown was swallowed (rc=0)")
         self.assertRegex(output, r"(?i)teardown", "verify must name the failed teardown")
+
+    def test_gates_mask_overlay_only_when_env_exists(self):  # PS-3.5
+        # With a repo-root .env, both modes add the overlay that masks it for
+        # the gate services; without one, no overlay (a mount point cannot be
+        # created in the read-only checkout).
+        for mode in ("fast", "full"):
+            for has_env in (False, True):
+                with self.subTest(mode=mode, env=has_env):
+                    env_file = self.tmp / ".env"
+                    env_file.unlink(missing_ok=True)
+                    if has_env:
+                        env_file.write_text("KE_STORES__POSTGRES__PASSWORD=secret\n", encoding="utf-8")
+                    result, lines = self._verify(mode)
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    gates = [l for l in lines if re.search(r"\b(gates|gates-it)\s+scripts/verify\.sh", l)]
+                    self.assertEqual(len(gates), 1, lines)
+                    masked = "docker-compose.gates-mask.yml" in gates[0]
+                    self.assertEqual(masked, has_env, gates[0])
+        env_file.unlink(missing_ok=True)
+
+    def test_gates_compose_files_are_pinned_whatever_the_caller_sets(self):  # security M-1
+        # A caller COMPOSE_FILE, or an auto-loaded docker-compose.override.yml,
+        # could replace `.:/work:ro`. Both modes pin COMPOSE_FILE to the repo's
+        # own files, with a ":" separator, with and without a repo-root .env.
+        # The fake docker never reads the planted override: that it is not
+        # loaded rests on compose's own rule that a set COMPOSE_FILE disables
+        # the override auto-load, so this test asserts COMPOSE_FILE is pinned
+        # (review-l5-r1 n2).
+        (self.tmp / "docker-compose.override.yml").write_text(
+            "services:\n  gates:\n    volumes:\n      - .:/work\n", encoding="utf-8")
+        env_file = self.tmp / ".env"
+        for mode in ("fast", "full"):
+            for has_env in (False, True):
+                with self.subTest(mode=mode, env=has_env):
+                    env_file.unlink(missing_ok=True)
+                    if has_env:
+                        env_file.write_text("KE_X=1\n", encoding="utf-8")
+                    result, lines = self._verify(mode, COMPOSE_FILE="evil.yml;rw-overlay.yml",
+                                                 COMPOSE_PATH_SEPARATOR=";")
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    gates = [l for l in lines if re.search(r"\b(gates|gates-it)\s+scripts/verify\.sh", l)]
+                    self.assertEqual(len(gates), 1, lines)
+                    files = re.search(r"\| file=(\S*)", gates[0])
+                    self.assertIsNotNone(files, gates[0])
+                    assert files is not None
+                    base = ("docker-compose.yml:docker-compose.verify.yml" if mode == "full"
+                            else "docker-compose.yml")
+                    expected = base + (":docker-compose.gates-mask.yml" if has_env else "")
+                    self.assertEqual(files.group(1), expected, gates[0])
+                    self.assertTrue(gates[0].endswith("| sep=:"), gates[0])
+        env_file.unlink(missing_ok=True)
 
     def test_fast_runs_gates_without_publishing(self):
         result, lines = self._verify("fast")
@@ -857,6 +1232,282 @@ class VerifyHostHalfTest(unittest.TestCase):
         self.assertEqual(len(calls), 1, calls)
         self.assertRegex(calls[0], r"\bcompose\b.*\brun\b.*\bgates\s+scripts/verify\.sh\s+fast\b")
         self.assertNotRegex(calls[0], r"(?:^|\s)(?:-p|--publish|--service-ports)(?:\s|=|$)")
+
+    # -- platform-offline -----------------------------------------------------
+
+    def test_verify_full_runs_offline_check(self):  # PS-3.2 *Wired into full*
+        result, lines = self._verify()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        stages = self._stages(lines)
+        self.assertEqual(stages.count("offline_check"), 1, stages)
+        self.assertEqual(stages[-2:], ["teardown", "offline_check"],
+                         "offline_check runs last, after the verify project is torn down")
+        teardown = [l for l in lines if self._stage(l) == "teardown"]
+        self.assertRegex(teardown[0].split(" | ", 1)[0], r"(?:^|\s)--volumes(?:\s|$)")
+        result, lines = self._verify(FAIL_STAGE="offline_check")
+        self.assertNotEqual(result.returncode, 0, "a failed offline check must fail verify full")
+        self.assertNotIn("verify full: PASS", result.stdout + result.stderr)
+        _, lines = self._verify("fast")
+        self.assertNotIn("offline_check", self._stages(lines), "the offline check runs in full only")
+        body = "\n".join(l for l in (ROOT / "scripts" / "verify.sh").read_text(encoding="utf-8").splitlines()
+                         if not l.lstrip().startswith("#"))
+        self.assertIn("scripts/offline_check.sh", body)
+        self.assertNotRegex(body, r"\bscan(?:\.sh)?\b", "no scan stage on this branch (ruling R3)")
+
+    def test_verify_full_uses_per_worktree_image_tag(self):  # PS-3.9 N6, §2.6 item 9
+        def tags(lines: list[str]) -> set[str]:
+            return {l.split("| tag=", 1)[1].split(" | ", 1)[0] for l in lines
+                    if "| tag=" in l and (self._stage(l) != "docker" or "gates-it" in l)}
+
+        result, first = self._verify(KE_IMAGE_TAG="local")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        result, second = self._verify()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        one, two = tags(first), tags(second)
+        self.assertEqual(len(one), 1, f"every stage sees one KE_IMAGE_TAG: {one}")
+        tag = next(iter(one))
+        self.assertRegex(tag, r"^wt-[0-9a-f]{12}$", "verify tags its images wt-<12 hex> (N6)")
+        self.assertEqual(two, one, "two runs from the same worktree use the same tag")
+        other = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, other, True)
+        shutil.copytree(self.tmp, other / "wt2", symlinks=True)
+        log = other / "stages.log"
+        log.write_text("", encoding="utf-8")
+        env = self._env()
+        env.update(STAGE_LOG=str(log),
+                   PATH=f"{other / 'wt2' / 'bin'}{os.pathsep}{os.environ.get('PATH', '')}")
+        result = subprocess.run(["bash", "scripts/verify.sh", "full"], cwd=other / "wt2", env=env,
+                                capture_output=True, text=True, timeout=60)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        elsewhere = tags(log.read_text(encoding="utf-8").splitlines())
+        self.assertEqual(len(elsewhere), 1, elsewhere)
+        self.assertRegex(next(iter(elsewhere)), r"^wt-[0-9a-f]{12}$")
+        self.assertNotEqual(elsewhere, one, "another worktree gets another tag")
+
+    # -- rework round 1: review N1/N7, security M-OCb/I-OC4 (§2.1, §2.6 item 9)
+
+    @staticmethod
+    def _expected_tag(checkout: Path) -> str:
+        real = os.path.realpath(checkout)
+        return "wt-" + hashlib.sha256(real.encode("utf-8")).hexdigest()[:12]
+
+    @staticmethod
+    def _all_tags(lines: list[str]) -> set[str]:
+        return {l.split("| tag=", 1)[1].split(" | ", 1)[0] for l in lines if "| tag=" in l}
+
+    def _run_in(self, checkout: Path, mode: str, **extra: str) -> tuple[subprocess.CompletedProcess, set[str]]:
+        log = checkout / "stages.log"
+        log.write_text("", encoding="utf-8")
+        env = self._env(**extra)
+        env.update(STAGE_LOG=str(log),
+                   PATH=f"{checkout / 'bin'}{os.pathsep}{os.environ.get('PATH', '')}")
+        result = subprocess.run(["bash", "scripts/verify.sh", mode], cwd=checkout, env=env,
+                                capture_output=True, text=True, timeout=60)
+        return result, self._all_tags(log.read_text(encoding="utf-8").splitlines())
+
+    def test_verify_image_tag_is_sha256_of_the_real_path_in_both_modes(self):
+        # Both modes export KE_IMAGE_TAG = wt- + the first 12 hex of
+        # sha256(pwd -P), before the fast/full branch, unconditionally: a
+        # caller's KE_IMAGE_TAG never reaches compose (M-OCb, N7).
+        want = self._expected_tag(self.tmp)
+        for mode in ("fast", "full"):
+            for caller in (None, "local", "attacker-tag"):
+                with self.subTest(mode=mode, caller_tag=caller):
+                    extra = {} if caller is None else {"KE_IMAGE_TAG": caller}
+                    result, tags = self._run_in(self.tmp, mode, **extra)
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertEqual(tags, {want},
+                                     f"verify {mode} must hand every stage KE_IMAGE_TAG={want} "
+                                     f"(sha256 of the real path), whatever the caller sets")
+
+    def test_verify_image_tag_uses_the_real_path_not_a_symlink(self):
+        link_dir = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, link_dir, True)
+        link = link_dir / "via-link"
+        try:
+            os.symlink(self.tmp, link, target_is_directory=True)
+        except OSError as exc:  # pragma: no cover - symlinks always work in the gates image
+            self.fail(f"cannot create a symlink here: {exc}")
+        want = self._expected_tag(self.tmp)
+        for mode in ("fast", "full"):
+            with self.subTest(mode=mode):
+                # PWD=<link> makes bash keep the logical (symlinked) path in $PWD.
+                result, tags = self._run_in(link, mode, PWD=str(link))
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(tags, {want}, "a symlinked checkout gets its target's tag (pwd -P)")
+
+    def test_verify_image_tag_separates_crc_colliding_paths(self):
+        # Review N1: CRC32 is linear, so under the two-cksum tag these
+        # equal-length paths collide, and keep colliding under any common
+        # prefix (both give wt-b2405df97d12 at /home/u/wt/...).
+        base = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, base, True)
+        tags: dict[str, set[str]] = {}
+        for leaf in ("14591828", "40040200"):
+            checkout = base / "home" / "u" / "wt" / leaf
+            shutil.copytree(self.tmp, checkout, symlinks=True)
+            result, found = self._run_in(checkout, "full")
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            tags[leaf] = found
+        self.assertNotEqual(tags["14591828"], tags["40040200"],
+                            "two worktrees whose paths collide under CRC share one image tag (N1)")
+        for leaf, found in tags.items():
+            with self.subTest(worktree=leaf):
+                self.assertEqual(found, {self._expected_tag(base / "home" / "u" / "wt" / leaf)})
+
+    # -- security L-OC1a (security-oc1.md): CDPATH and the tag format ----------
+
+    BAD_TAGS = {
+        "two lines (a CDPATH cd echo, then the tag)": "/elsewhere/checkout\nwt-0123456789ab\n",
+        "uppercase hex": "wt-0123456789AB\n",
+        "11 hex": "wt-0123456789a\n",
+        "13 hex": "wt-0123456789abc\n",
+        "no wt- prefix": "0123456789ab\n",
+        "local": "local\n",
+        "trailing space": "wt-0123456789ab \n",
+        "shell text": "wt-0123456789ab;id\n",
+        "empty": "",
+    }
+
+    def _stub_image_tag(self, output: str) -> None:
+        stub = self.tmp / "scripts" / "image_tag.sh"
+        stub.write_text("#!/usr/bin/env bash\nprintf '%s' " + shlex.quote(output) + "\n",
+                        encoding="utf-8", newline="\n")
+
+    def test_verify_runs_with_a_well_formed_stub_tag(self):  # control for the refusals below
+        self._stub_image_tag("wt-0123456789ab\n")
+        for mode in ("fast", "full"):
+            with self.subTest(mode=mode):
+                result, tags = self._run_in(self.tmp, mode)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(tags, {"wt-0123456789ab"})
+
+    def test_verify_refuses_a_malformed_image_tag_before_any_build(self):
+        # L-OC1a: verify checks `^wt-[0-9a-f]{12}$` on what image_tag.sh
+        # printed and fails, naming the tag, before any docker call or stage.
+        for case, output in self.BAD_TAGS.items():
+            self._stub_image_tag(output)
+            for mode in ("fast", "full"):
+                with self.subTest(tag=case, mode=mode):
+                    result, lines = self._verify(mode)
+                    out = result.stdout + result.stderr
+                    self.assertNotEqual(result.returncode, 0, f"verify {mode} accepted tag {output!r}:\n{out}")
+                    self.assertEqual(lines, [], f"verify {mode} built or ran something with tag {output!r}")
+                    self.assertNotIn("PASS", out)
+                    self.assertRegex(out, r"(?i)\btag\b|KE_IMAGE_TAG|image_tag",
+                                     "the refusal must say it is the image tag that is malformed")
+
+    def test_verify_is_cdpath_safe(self):
+        # L-OC1a: with CDPATH exported (`.` or a directory holding another
+        # tree with a `scripts/` dir), verify's own `cd` and image_tag.sh stay
+        # in this checkout: no directory line on stdout, every stage runs, and
+        # every stage sees this checkout's tag (never the decoy's).
+        other = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, other, True)
+        (other / "scripts").mkdir()
+        decoy = other / "scripts" / "image_tag.sh"
+        decoy.write_text("#!/usr/bin/env bash\necho wt-badbadbadbad\n", encoding="utf-8", newline="\n")
+        want = self._expected_tag(self.tmp)
+        for cdpath in (".", str(other), f"{other}:."):
+            for mode in ("fast", "full"):
+                with self.subTest(CDPATH=cdpath, mode=mode):
+                    self.log.write_text("", encoding="utf-8")
+                    result = subprocess.run(["bash", "scripts/verify.sh", mode], cwd=self.tmp,
+                                            env=self._env(CDPATH=cdpath), capture_output=True,
+                                            text=True, timeout=60)
+                    out = result.stdout + result.stderr
+                    self.assertEqual(result.returncode, 0, out)
+                    stray = [l for l in result.stdout.splitlines()
+                             if os.path.isabs(l.strip()) and os.path.isdir(l.strip())]
+                    self.assertEqual(stray, [], f"a CDPATH `cd` printed a directory:\n{out}")
+                    lines = self.log.read_text(encoding="utf-8").splitlines()
+                    if mode == "full":
+                        self.assertEqual(self._stages(lines), FULL_ORDER, out)
+                    else:
+                        self.assertEqual(len(lines), 1, lines)
+                    self.assertEqual(self._all_tags(lines), {want},
+                                     "every stage sees this checkout's own tag under CDPATH")
+
+
+class ImageTagHelperTest(unittest.TestCase):
+    """Rework round 1, architecture §2.1: scripts/image_tag.sh prints
+    `wt-<first 12 hex of sha256(pwd -P)>`, with sha256sum, else
+    `shasum -a 256`, and reads no environment variable. Run from the checkout
+    root, the way verify.sh calls it (`bash scripts/image_tag.sh`)."""
+
+    HELPER = ROOT / "scripts" / "image_tag.sh"
+
+    def setUp(self) -> None:
+        self.assertTrue(self.HELPER.is_file(), "scripts/image_tag.sh is missing (architecture §2.1)")
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        (self.tmp / "scripts").mkdir()
+        shutil.copy(self.HELPER, self.tmp / "scripts" / "image_tag.sh")
+        self.want = "wt-" + hashlib.sha256(os.path.realpath(self.tmp).encode("utf-8")).hexdigest()[:12]
+
+    def _run(self, path: str | None = None, **extra: str) -> subprocess.CompletedProcess:
+        env = _clean_env(**extra)
+        if path is not None:
+            env["PATH"] = path
+        return subprocess.run(["bash", "scripts/image_tag.sh"], cwd=self.tmp, env=env,
+                              capture_output=True, text=True, timeout=30)
+
+    def test_image_tag_prints_sha256_of_the_real_path(self):
+        result = self._run()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertRegex(result.stdout, r"^wt-[0-9a-f]{12}\n?$", "one line, the tag only")
+        self.assertEqual(result.stdout.strip(), self.want)
+
+    def test_image_tag_reads_no_environment(self):
+        result = self._run(KE_IMAGE_TAG="local", PWD="/elsewhere")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), self.want)
+
+    def test_image_tag_falls_back_to_shasum(self):
+        # A PATH with every tool on it except sha256sum, plus a recording shasum.
+        bin_dir = self.tmp / "bin"
+        bin_dir.mkdir()
+        for d in os.environ.get("PATH", "/usr/bin:/bin").split(os.pathsep):
+            if not d or not os.path.isdir(d):
+                continue
+            for name in sorted(os.listdir(d)):
+                src = os.path.join(d, name)
+                if name in ("sha256sum", "shasum") or os.path.lexists(bin_dir / name):
+                    continue
+                if os.path.isfile(src) and os.access(src, os.X_OK):
+                    os.symlink(src, bin_dir / name)
+        used = self.tmp / "shasum.used"
+        shim = bin_dir / "shasum"
+        shim.write_text(
+            "#!/usr/bin/env python3\n"
+            "import hashlib, sys\n"
+            f"open({str(used)!r}, 'a').write(' '.join(sys.argv[1:]) + '\\n')\n"
+            "args = sys.argv[1:]\n"
+            "if args[:2] != ['-a', '256']:\n"
+            "    sys.exit('shasum shim: expected -a 256, got %r' % (args,))\n"
+            "files = [a for a in args[2:] if a != '-']\n"
+            "data = open(files[0], 'rb').read() if files else sys.stdin.buffer.read()\n"
+            "print(hashlib.sha256(data).hexdigest() + '  ' + (files[0] if files else '-'))\n",
+            encoding="utf-8", newline="\n")
+        _make_executable(shim)
+        result = self._run(path=str(bin_dir))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), self.want)
+        self.assertTrue(used.exists(), "shasum -a 256 was not used when sha256sum is absent")
+
+    def test_image_tag_ignores_cdpath(self):
+        # Security L-OC1a: `cd "$(dirname "$0")/.."` with a relative $0 obeys
+        # an exported CDPATH and echoes the directory to stdout, so the tag
+        # became `<dir>\nwt-...` (even for CDPATH=.), or another tree's tag.
+        other = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, other, True)
+        (other / "scripts").mkdir()
+        for cdpath in (".", str(other), f"{other}:."):
+            with self.subTest(CDPATH=cdpath):
+                result = self._run(CDPATH=cdpath)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, self.want + "\n",
+                                 "exactly one line, this checkout's wt-<12 hex>, whatever CDPATH is")
 
 
 # --------------------------------------------------------------------------
@@ -1365,6 +2016,10 @@ class SmokeResolvesWithoutEnvTest(unittest.TestCase):
         rels = ["scripts/smoke.sh", ".env.example", "docker-compose.yml"]
         if (ROOT / "docker-compose.verify.yml").exists():
             rels.append("docker-compose.verify.yml")
+        # platform-offline (§2.5): smoke.sh calls scripts/net_isolated.sh for
+        # the backend check; copy it when it exists. Harness only.
+        if (ROOT / "scripts" / "net_isolated.sh").exists():
+            rels.append("scripts/net_isolated.sh")
         _copy_repo_files(self.tmp, rels)
         # A real .env with a non-loopback bind sits in the checkout: the
         # check must not read it.

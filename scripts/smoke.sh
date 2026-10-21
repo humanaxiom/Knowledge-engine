@@ -19,7 +19,7 @@
 #   project): the project must be running; smoke stops and restarts postgres in
 #   it and leaves the teardown to verify.sh. With nothing running it fails.
 set -euo pipefail
-cd "$(dirname "$0")/.."
+CDPATH='' cd -- "$(dirname -- "$0")/.."
 
 if [ "${KE_IN_GATES:-}" = "1" ]; then
   uv run --locked python scripts/smoke_otlp.py
@@ -88,16 +88,8 @@ else
 fi
 
 backend="${project}_backend"
-mode="$(docker network inspect --format '{{index .Options "com.docker.network.bridge.gateway_mode_ipv4"}}' "$backend")" || {
-  echo "smoke: FAIL (cannot inspect network $backend)" >&2
-  exit 1
-}
-network_json="$(docker network inspect --format '{{json .}}' "$backend")" || {
-  echo "smoke: FAIL (cannot inspect network $backend)" >&2
-  exit 1
-}
-if [ "$mode" != isolated ] || ! printf '%s\n' "$network_json" | grep -Eq '"Internal": *true'; then
-  echo "smoke: FAIL (network $backend is not isolated and internal: gateway_mode_ipv4='$mode')" >&2
+if ! scripts/net_isolated.sh "$backend"; then
+  echo "smoke: FAIL (network $backend is not internal and isolated: see the line above)" >&2
   exit 1
 fi
 echo "smoke: $backend is internal with gateway_mode_ipv4=isolated"
@@ -135,6 +127,63 @@ if ! readiness --wait-for ready --within 60; then
   exit 1
 fi
 echo "smoke: /readyz ready"
+
+# ci/offline (PS-3.3, architecture §2.5): api and worker have no route to
+# anything off the backend network. The target is the gateway's own address on
+# <project>_edge: live and routable from anything on that network, and it needs
+# no internet, so the result is the same in CI, on a locked-down network and
+# inside the offline check's dind. The control must connect first, otherwise
+# the probe proves nothing and the check is inconclusive (never a pass).
+edge_ip="$(docker inspect --format "{{(index .NetworkSettings.Networks \"${project}_edge\").IPAddress}}" "$(compose ps -q gateway)")" || {
+  echo "smoke: FAIL (ci/offline: cannot read the gateway's address on ${project}_edge)" >&2
+  exit 1
+}
+is_ipv4() { # is_ipv4 VALUE: four dotted decimal octets, 0-255, nothing else
+  local IFS=. octet count=0
+  [[ "$1" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || return 1
+  for octet in $1; do
+    [ "$((10#$octet))" -le 255 ] || return 1
+    count=$((count + 1))
+  done
+  [ "$count" -eq 4 ]
+}
+if ! is_ipv4 "$edge_ip"; then
+  echo "smoke: FAIL (ci/offline: the gateway's address on ${project}_edge is not an IPv4 address: '$edge_ip')" >&2
+  exit 1
+fi
+config_json="$(compose config --format json)" || {
+  echo "smoke: FAIL (ci/offline: docker compose config failed)" >&2
+  exit 1
+}
+probe_port="$(printf '%s\n' "$config_json" | grep -m 1 -o '"KE_GATEWAY_API_LISTEN": *"[0-9]*"' | sed -e 's/^[^:]*: *"//' -e 's/"$//' || true)"
+if [ -z "$probe_port" ]; then
+  echo "smoke: FAIL (ci/offline: cannot read the gateway's API listen port from the compose config)" >&2
+  exit 1
+fi
+app_image="$(compose config | awk '/^  [A-Za-z0-9_-]+:$/ { svc = $1; sub(/:$/, "", svc) } svc == "api" && /^    image: / { print $2; exit }')"
+if [ -z "$app_image" ]; then
+  echo "smoke: FAIL (ci/offline: cannot read the api image from the compose config)" >&2
+  exit 1
+fi
+# The control probes the port the gateway listens on; it has its own variable so
+# the message below names exactly what it probed. ke-app carries compose project
+# labels, so a plain `docker run` of it would look like part of this project and
+# trip the project's teardown label check; the control is labelled as its own
+# project instead (security I-OC1b-2).
+control_port="$probe_port"
+control="$(docker run --rm --pull never --label "com.docker.compose.project=${project}-probe" --network "${project}_edge" --entrypoint python "$app_image" -m engine.netprobe "$edge_ip" "$control_port" --within 5)" || true
+if [ "$control" != connected ]; then
+  echo "smoke: FAIL (ci/offline inconclusive: the control probe from ${project}_edge to $edge_ip:$control_port printed '${control:-nothing}', want connected)" >&2
+  exit 1
+fi
+for service in api worker; do
+  result="$(compose exec -T "$service" python -m engine.netprobe "$edge_ip" "$probe_port" --within 2)" || true
+  if [ "$result" != no_route ]; then
+    echo "smoke: FAIL (ci/offline: $service printed '${result:-nothing}' for $edge_ip:$probe_port, want no_route; it can leave the backend network)" >&2
+    exit 1
+  fi
+  echo "smoke: ci/offline $service has no route to $edge_ip:$probe_port ($service cannot reach outside the stack)"
+done
 
 if [ "$launched" -eq 1 ] || [ "${KE_SMOKE_OWNS_PROJECT:-}" = 1 ]; then
   compose stop postgres

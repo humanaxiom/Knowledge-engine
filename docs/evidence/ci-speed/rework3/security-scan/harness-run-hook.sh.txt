@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+S="$(cd "$(dirname "$0")" && pwd)"
+fx=$1; shift
+MSYS_NO_PATHCONV=1 docker run --rm --name "ke-security-cs3-$fx" --label com.docker.compose.project=ke-security-cs3 \
+  --user 10001:10001 --network none --cap-drop ALL --security-opt no-new-privileges:true \
+  --tmpfs /tmp:exec,mode=1777 -e PYTHONDONTWRITEBYTECODE=1 -e GIT_OPTIONAL_LOCKS=0 \
+  -v "$(cygpath -w "$S/fx/$fx"):/work:ro" -w /work ke-gates:wt-33a132fbfdd7 \
+  bash -c 'ps -o pid,comm -p 1 | tail -1; uv run --locked python -m unittest -v "$@"' _ "$@" 2>&1
+echo "rc=$?"

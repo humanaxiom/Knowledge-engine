@@ -26,7 +26,7 @@ RUN set -eu; \
       *) echo "unsupported architecture" >&2; exit 1 ;; \
     esac; \
     tarball="powershell-${POWERSHELL_VERSION}-linux-${arch}.tar.gz"; \
-    curl -fsSL -o "/tmp/$tarball" \
+    curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball" \
       "https://github.com/PowerShell/PowerShell/releases/download/v${POWERSHELL_VERSION}/$tarball"; \
     echo "$sha  /tmp/$tarball" | sha256sum -c -; \
     mkdir -p /opt/microsoft/powershell; \
@@ -38,6 +38,50 @@ RUN set -eu; \
       \$ErrorActionPreference = 'Stop'; \
       Set-PSRepository PSGallery -InstallationPolicy Trusted; \
       Install-Module PSScriptAnalyzer -RequiredVersion ${PSSCRIPTANALYZER_VERSION} -Scope AllUsers -Force"
+
+# Docker client for the offline check (PS-3.10, architecture §2.2): the static
+# `docker` client binary and the compose plugin, each pinned by version and
+# SHA-256 and checked before it is installed. No daemon (dockerd, containerd,
+# runc, ctr) and no package repository; the gate services get no socket and no
+# DOCKER_HOST. Hash provenance (ruling Q48), recorded in
+# docs/handoffs/platform-offline.md:
+#   - Docker CLI: download.docker.com publishes no checksum for the static
+#     tarball, so these hashes are trust-on-first-use over HTTPS (computed from
+#     a fresh download on 2026-10-19; security re-fetches them).
+#   - compose plugin: each value EQUALS the upstream
+#     docker-compose-linux-<arch>.sha256 asset of the v5.6.0 release.
+# To bump: change the version and both hashes together; a mismatch fails the build.
+ARG DOCKER_VERSION=29.9.1
+ARG DOCKER_SHA256_X64=c158ecc55adb3afb01bbd3539ed3b997d20c26dbdc418080506cc1bf5243ff57
+ARG DOCKER_SHA256_ARM64=3e93cc6d1a686456a3b18eefdde26467a837a7a2b257af22e27cba1dbc1b2018
+RUN set -eu; \
+    case "$(dpkg --print-architecture)" in \
+      amd64) arch=x86_64; sha="$DOCKER_SHA256_X64" ;; \
+      arm64) arch=aarch64; sha="$DOCKER_SHA256_ARM64" ;; \
+      *) echo "unsupported architecture" >&2; exit 1 ;; \
+    esac; \
+    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker.tgz \
+      "https://download.docker.com/linux/static/stable/$arch/docker-${DOCKER_VERSION}.tgz"; \
+    echo "$sha  /tmp/docker.tgz" | sha256sum -c -; \
+    tar -xzf /tmp/docker.tgz -C /usr/local/bin --strip-components=1 \
+      --no-same-owner docker/docker; \
+    rm /tmp/docker.tgz
+
+ARG COMPOSE_VERSION=5.6.0
+ARG COMPOSE_SHA256_X64=40343e21ca777173e69cff5dbafeb37c6f81f3b0d57d9e597f036e95eb63e76a
+ARG COMPOSE_SHA256_ARM64=733ec76717ceb59052a9609b9dadfb523b2df8eab57a54212872d10a58078ea2
+RUN set -eu; \
+    case "$(dpkg --print-architecture)" in \
+      amd64) arch=x86_64; sha="$COMPOSE_SHA256_X64" ;; \
+      arm64) arch=aarch64; sha="$COMPOSE_SHA256_ARM64" ;; \
+      *) echo "unsupported architecture" >&2; exit 1 ;; \
+    esac; \
+    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose \
+      "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-$arch"; \
+    echo "$sha  /tmp/docker-compose" | sha256sum -c -; \
+    mkdir -p /usr/local/lib/docker/cli-plugins; \
+    install -m 0755 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose; \
+    rm /tmp/docker-compose
 
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
     UV_PYTHON_DOWNLOADS=never \
@@ -54,7 +98,20 @@ COPY pyproject.toml uv.lock ./
 COPY harness_telemetry ./harness_telemetry
 COPY engine ./engine
 COPY config ./config
-RUN uv sync --locked
+# The uv cache lives in the image, owned by the gate user, not in root's 0700
+# home: `uv run --locked` re-installs the editable project on every run and
+# needs both the cache and a writable venv (L-5; never set the no-sync env
+# var, it hides lock drift).
+ENV UV_CACHE_DIR=/opt/uv-cache
+# Ownership is set in the same layer as the sync so the venv and cache are not
+# stored twice (L-5): the gate user (10001:10001) owns both, nothing else in
+# the image is writable by it.
+RUN uv sync --locked \
+ && chown -R 10001:10001 /opt/venv /opt/uv-cache
 # Gates have no network. After the build-time sync, never let uv reach PyPI
 # (a stale build cache otherwise sends `uv run` to the index and it fails).
 ENV UV_OFFLINE=1
+
+# Least privilege (security L-5, PS-3.5): the gate services run as 10001:10001
+# on a read-only checkout; only /tmp (tmpfs) is writable.
+USER 10001:10001

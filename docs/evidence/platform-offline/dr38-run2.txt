@@ -1,0 +1,186 @@
+# DR38 run 2  2026-10-20T00:27:11Z
+# copy: <scratch>/copy2 (scratch copy of the working tree at f7e9074+dirty)
+# defect (diff against the repo working tree; none = clean control):
+#   diff -r '--exclude=.git' /c/repos/Knowledge-engine/scripts/smoke.sh <scratch>/copy2/scripts/smoke.sh
+#   168c168
+#   < control="$(docker run --rm --pull never --network "${project}_edge" --entrypoint python "$app_image" -m engine.netprobe "$edge_ip" "$probe_port" --within 5)" || true
+#   ---
+#   > control="$(docker run --rm --pull never --network "${project}_edge" --entrypoint python "$app_image" -m engine.netprobe "$edge_ip" 1 --within 5)" || true
+# jq: jq-1.7.1 (sha256 checked against upstream sha256sum.txt)
+# command: cd <copy> && env -u MSYS_NO_PATHCONV COMPOSE_PROJECT_NAME=ke-dr38-2 KE_IMAGE_TAG=wt-33a132fbfdd7 PATH=<scratch>/bin:$PATH bash scripts/offline_check.sh
+# ---- output ----
+offline: df start
+Filesystem     1024-blocks      Used  Available Capacity Mounted on
+C:              3967116284 607920748 3359195536      16% /c
+offline: the daemon's DockerRootDir (/var/lib/docker) is not on this host (Docker Desktop keeps it in a VM): not measurable, only dist/ is checked
+bundle written: <scratch>/copy2/dist/ke-offline-1193289-amd64
+manifest sha256: 09526931801afa67cfa32dff363462dad72a8db4bd6413edc44294e0aaa2099d
+release record: <scratch>/copy2/dist/ke-offline-1193289-amd64.manifest.sha256
+offline: df after bundle
+Filesystem     1024-blocks      Used  Available Capacity Mounted on
+C:              3967116284 608886648 3358229636      16% /c
+offline: starting dind (privileged) in project ke-offline-1193289
+ Network ke-offline-1193289_offline Creating 
+ Network ke-offline-1193289_offline Created 
+ Volume ke-offline-1193289_offline-certs Creating 
+ Volume ke-offline-1193289_offline-certs Created 
+ Container ke-offline-1193289-dind-1 Creating 
+ Container ke-offline-1193289-dind-1 Created 
+ Container ke-offline-1193289-dind-1 Starting 
+ Container ke-offline-1193289-dind-1 Started 
+ Container ke-offline-1193289-dind-1 Waiting 
+ Container ke-offline-1193289-dind-1 Healthy 
+offline: df after dind up
+Filesystem     1024-blocks      Used  Available Capacity Mounted on
+C:              3967116284 608886692 3358229592      16% /c
+net_isolated: ke-offline-1193289_offline is internal with gateway_mode_ipv4=isolated
+offline: running the offline client
+ Container ke-offline-1193289-dind-1 Running 
+ Container ke-offline-1193289-dind-1 Waiting 
+ Container ke-offline-1193289-dind-1 Healthy 
+ Container ke-offline-1193289-offline-client-run-720c31458db5 Creating 
+ Container ke-offline-1193289-offline-client-run-720c31458db5 Created 
+offline-client: inner daemon uses the containerd image store
+offline-client: a registry pull fails, as expected with no route out
+offline-client: install
+manifest sha256: 09526931801afa67cfa32dff363462dad72a8db4bd6413edc44294e0aaa2099d (not checked: compare it with the value from your release record)
+loaded ke-app.tar as ke-app:bundle-f7e9074f7462
+loaded ke-gateway.tar as ke-gateway:bundle-f7e9074f7462
+loaded neo4j.tar as ke-vendor/neo4j:0a6e7aedf54a
+loaded phoenix.tar as ke-vendor/phoenix:fa28e9cd96dd
+loaded postgres.tar as ke-vendor/postgres:0ea6700a3b4f
+loaded valkey.tar as ke-vendor/valkey:081c2f5cb575
+manifest sha256: 09526931801afa67cfa32dff363462dad72a8db4bd6413edc44294e0aaa2099d
+installed to /install/op/ke
+next: cd /install/op/ke && cp .env.example .env && chmod 600 .env (set real secrets in it), then bash scripts/launch.sh
+offline-client: launch
+created .env from .env.example (placeholder secrets; edit it before any use beyond local development)
+ Network knowledge-engine_backend Creating 
+ Network knowledge-engine_backend Creating 
+ Volume knowledge-engine_phoenix-data Creating 
+ Volume knowledge-engine_phoenix-data Creating 
+ Network knowledge-engine_edge Creating 
+ Network knowledge-engine_edge Creating 
+ Volume knowledge-engine_postgres-data Creating 
+ Volume knowledge-engine_postgres-data Creating 
+ Volume knowledge-engine_neo4j-data Creating 
+ Volume knowledge-engine_neo4j-data Creating 
+ Volume knowledge-engine_valkey-data Creating 
+ Volume knowledge-engine_valkey-data Creating 
+ Volume knowledge-engine_phoenix-data Created 
+ Volume knowledge-engine_phoenix-data Created 
+ Volume knowledge-engine_postgres-data Created 
+ Volume knowledge-engine_postgres-data Created 
+ Volume knowledge-engine_neo4j-data Created 
+ Volume knowledge-engine_neo4j-data Created 
+ Network knowledge-engine_backend Created 
+ Network knowledge-engine_backend Created 
+ Container knowledge-engine-phoenix-1 Creating 
+ Container knowledge-engine-postgres-1 Creating 
+ Container knowledge-engine-neo4j-1 Creating 
+ Volume knowledge-engine_valkey-data Created 
+ Volume knowledge-engine_valkey-data Created 
+ Container knowledge-engine-valkey-1 Creating 
+ Network knowledge-engine_edge Created 
+ Network knowledge-engine_edge Created 
+ Container knowledge-engine-gateway-1 Creating 
+ Container knowledge-engine-phoenix-1 Created 
+ Container knowledge-engine-gateway-1 Created 
+ Container knowledge-engine-valkey-1 Created 
+ Container knowledge-engine-worker-1 Creating 
+ Container knowledge-engine-postgres-1 Created 
+ Container knowledge-engine-neo4j-1 Created 
+ Container knowledge-engine-api-1 Creating 
+ Container knowledge-engine-worker-1 Created 
+ Container knowledge-engine-api-1 Created 
+ Container knowledge-engine-gateway-1 Starting 
+ Container knowledge-engine-phoenix-1 Starting 
+ Container knowledge-engine-neo4j-1 Starting 
+ Container knowledge-engine-valkey-1 Starting 
+ Container knowledge-engine-postgres-1 Starting 
+ Container knowledge-engine-gateway-1 Started 
+ Container knowledge-engine-phoenix-1 Started 
+ Container knowledge-engine-neo4j-1 Started 
+ Container knowledge-engine-valkey-1 Started 
+ Container knowledge-engine-valkey-1 Waiting 
+ Container knowledge-engine-postgres-1 Started 
+ Container knowledge-engine-postgres-1 Waiting 
+ Container knowledge-engine-neo4j-1 Waiting 
+ Container knowledge-engine-valkey-1 Waiting 
+ Container knowledge-engine-valkey-1 Healthy 
+ Container knowledge-engine-valkey-1 Healthy 
+ Container knowledge-engine-worker-1 Starting 
+ Container knowledge-engine-worker-1 Started 
+ Container knowledge-engine-postgres-1 Healthy 
+ Container knowledge-engine-neo4j-1 Healthy 
+ Container knowledge-engine-api-1 Starting 
+ Container knowledge-engine-api-1 Started 
+ Container knowledge-engine-postgres-1 Waiting 
+ Container knowledge-engine-phoenix-1 Waiting 
+ Container knowledge-engine-neo4j-1 Waiting 
+ Container knowledge-engine-valkey-1 Waiting 
+ Container knowledge-engine-gateway-1 Waiting 
+ Container knowledge-engine-api-1 Waiting 
+ Container knowledge-engine-worker-1 Waiting 
+ Container knowledge-engine-valkey-1 Healthy 
+ Container knowledge-engine-gateway-1 Healthy 
+ Container knowledge-engine-postgres-1 Healthy 
+ Container knowledge-engine-neo4j-1 Healthy 
+ Container knowledge-engine-api-1 Healthy 
+ Container knowledge-engine-phoenix-1 Healthy 
+ Container knowledge-engine-worker-1 Healthy 
+stack is up:
+  api:     http://127.0.0.1:47100
+  phoenix: http://127.0.0.1:47101
+offline-client: smoke (ci/offline included)
+time="2026-10-20T00:28:16Z" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T00:28:16Z" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T00:28:16Z" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T00:28:16Z" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T00:28:16Z" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T00:28:16Z" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T00:28:16Z" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T00:28:16Z" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T00:28:16Z" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T00:28:16Z" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T00:28:16Z" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T00:28:16Z" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T00:28:16Z" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T00:28:16Z" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+smoke: compose resolves with no .env; 2 ports, all on 127.0.0.1
+smoke: project knowledge-engine is already running
+net_isolated: knowledge-engine_backend is internal with gateway_mode_ipv4=isolated
+smoke: knowledge-engine_backend is internal with gateway_mode_ipv4=isolated
+smoke: gateway healthy
+smoke: api healthy
+smoke: worker healthy
+smoke: postgres healthy
+smoke: neo4j healthy
+smoke: valkey healthy
+smoke: phoenix healthy
+smoke: gateway proxies api /healthz
+smoke: gateway proxies phoenix /healthz
+smoke: /readyz ready
+smoke: FAIL (ci/offline inconclusive: the control probe from knowledge-engine_edge to 172.19.0.2:8100 printed 'refused', want connected)
+
+offline_check: FAIL (the offline client failed (see its output above))
+offline: df before teardown
+Filesystem     1024-blocks      Used  Available Capacity Mounted on
+C:              3967116284 608890856 3358225428      16% /c
+ Container ke-offline-1193289-dind-1 Stopping 
+ Container ke-offline-1193289-dind-1 Stopped 
+ Container ke-offline-1193289-dind-1 Removing 
+ Container ke-offline-1193289-dind-1 Removed 
+ Network ke-offline-1193289_offline Removing 
+ Volume ke-offline-1193289_offline-certs Removing 
+ Volume ke-offline-1193289_offline-certs Removed 
+ Network ke-offline-1193289_offline Removed 
+offline: df after teardown
+Filesystem     1024-blocks      Used  Available Capacity Mounted on
+C:              3967116284 607928184 3359188100      16% /c
+# ---- end ----
+# rc=1  elapsed=73s
+# this run's project: ke-offline-1193289
+# left over from ke-offline-1193289: containers=[] networks=[] volumes=[]
+# ke-dr38-* resources: []
+# dist/ in copy after run: []

@@ -1,0 +1,49 @@
+# Probe (tester, 2026-10-19): does a required variable in a profile-only service break compose calls that do not activate the profile?
+# Host: Windows dev host, Docker Desktop. Scratch compose file:
+services:
+  a:
+    image: alpine
+  b:
+    image: alpine
+    profiles: ["offline"]
+    volumes:
+      - ${KE_OFFLINE_BUNDLE:?}:/bundle:ro
+      - type: volume
+        source: certs
+        target: /certs/client
+        read_only: true
+        volume: {subpath: client}
+volumes:
+  certs:
+
+$ docker compose version
+Docker Compose version v5.1.4
+
+$ docker compose config   # KE_OFFLINE_BUNDLE unset, no profile
+  error while interpolating services.b.volumes.[]: required variable KE_OFFLINE_BUNDLE is missing a value
+  rc=1
+
+$ docker compose --profile offline config   # unset
+  error while interpolating services.b.volumes.[]: required variable KE_OFFLINE_BUNDLE is missing a value
+
+$ KE_OFFLINE_BUNDLE=/x docker compose --profile offline config --format json | (services.b.volumes)
+      "volumes": [
+        {
+          "type": "bind",
+          "source": "X:/",
+          "target": "/bundle",
+          "read_only": true,
+          "bind": {}
+        },
+        {
+          "type": "volume",
+          "source": "certs",
+          "target": "/certs/client",
+          "read_only": true,
+          "volume": {
+            "subpath": "client"
+          }
+        }
+      ]
+
+Conclusion: compose interpolates every service, profile or not, so ${KE_OFFLINE_BUNDLE:?} in docker-compose.yml fails every stack command (config, up, down) when it is unset. volume.subpath is honoured by Compose 5.1.4 config.

@@ -1,0 +1,10 @@
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.68ms
+Installed 1 package in 1ms
+...................................
+----------------------------------------------------------------------
+Ran 35 tests in 40.816s
+
+OK
+rc=0

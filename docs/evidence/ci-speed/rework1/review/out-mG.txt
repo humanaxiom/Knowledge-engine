@@ -1,0 +1,173 @@
+..FFFF...............................
+======================================================================
+FAIL: test_data_file_lookup_empty_or_failed_fails_before_any_test (tests.test_harness_followups.IntegrationRunsOnceTest.test_data_file_lookup_empty_or_failed_fails_before_any_test) (lookup='empty', mode='fast')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 676, in test_data_file_lookup_empty_or_failed_fails_before_any_test
+    self.assertNotEqual(code, 0, f"data_file lookup {lookup}, test.sh passed:\n"
+AssertionError: 0 == 0 : data_file lookup empty, test.sh passed:
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.test_x.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.testfoo.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+unit: 0s rc=0 tests.test_x
+unit: 0s rc=0 tests.testfoo
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+Combined 3 files
+
+
+======================================================================
+FAIL: test_data_file_lookup_empty_or_failed_fails_before_any_test (tests.test_harness_followups.IntegrationRunsOnceTest.test_data_file_lookup_empty_or_failed_fails_before_any_test) (lookup='empty', mode='full')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 676, in test_data_file_lookup_empty_or_failed_fails_before_any_test
+    self.assertNotEqual(code, 0, f"data_file lookup {lookup}, test.sh passed:\n"
+AssertionError: 0 == 0 : data_file lookup empty, test.sh passed:
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.test_x.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.testfoo.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+unit: 0s rc=0 tests.test_x
+unit: 0s rc=0 tests.testfoo
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+test_counted (tests.integration.test_counted.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+Combined 4 files
+
+
+======================================================================
+FAIL: test_data_file_lookup_empty_or_failed_fails_before_any_test (tests.test_harness_followups.IntegrationRunsOnceTest.test_data_file_lookup_empty_or_failed_fails_before_any_test) (lookup='fail', mode='fast')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 676, in test_data_file_lookup_empty_or_failed_fails_before_any_test
+    self.assertNotEqual(code, 0, f"data_file lookup {lookup}, test.sh passed:\n"
+AssertionError: 0 == 0 : data_file lookup fail, test.sh passed:
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.test_x.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.testfoo.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+OK
+unit: 0s rc=0 tests.test_x
+unit: 0s rc=0 tests.testfoo
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+Combined 3 files
+
+
+======================================================================
+FAIL: test_data_file_lookup_empty_or_failed_fails_before_any_test (tests.test_harness_followups.IntegrationRunsOnceTest.test_data_file_lookup_empty_or_failed_fails_before_any_test) (lookup='fail', mode='full')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 676, in test_data_file_lookup_empty_or_failed_fails_before_any_test
+    self.assertNotEqual(code, 0, f"data_file lookup {lookup}, test.sh passed:\n"
+AssertionError: 0 == 0 : data_file lookup fail, test.sh passed:
+test_counted (tests.test_x.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.test_x.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+test_counted (tests.testfoo.Counted.test_counted) ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+0.000s     test_counted (tests.testfoo.Counted.test_counted)
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+unit: 1s rc=0 tests.test_x
+unit: 1s rc=0 tests.testfoo
+test_counted (tests.unit.deep.test_d.Counted.test_counted) ... ok
+test_counted (tests.unit.test_sub.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+test_counted (tests.integration.test_counted.Counted.test_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+Combined 4 files
+
+
+----------------------------------------------------------------------
+Ran 34 tests in 57.377s
+
+FAILED (failures=4)

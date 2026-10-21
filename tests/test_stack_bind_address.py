@@ -80,13 +80,23 @@ class EngineRefusalTest(unittest.TestCase):
                 self.assertTrue(any(VAR in line for line in logs.output), logs.output)
 
     def test_loopback_or_unset_bind_address_passes_everywhere(self):
+        # Orchestrator ruling 2026-10-19 (platform-offline smoke loop 2;
+        # docs/architecture.md line 3900, ADR-KE-010): prod is refused until
+        # auth-audit whatever the bind address. In prod the only refusal
+        # allowed here is that one; the bind address is never the reason.
         for ke_env in ("dev", *NON_DEV):
             for bind in LOOPBACK:
                 with self.subTest(env=ke_env, bind=bind):
                     logger = logging.getLogger("engine")
                     with self.assertLogs(logger, logging.DEBUG) as logs:
                         logger.debug("probe")  # assertLogs needs one record
-                        _check(_env(ke_env, bind))
+                        if ke_env == "prod":
+                            with self.assertRaises(_refused()) as ctx:
+                                _check(_env(ke_env, bind))
+                            self.assertNotIn(VAR, str(ctx.exception))
+                            self.assertRegex(str(ctx.exception), r"(?i)\bauth\b[\s\S]*\bauth-audit\b")
+                        else:
+                            _check(_env(ke_env, bind))
                     self.assertFalse([l for l in logs.output if VAR in l], logs.output)
 
     def test_bind_address_setting_defaults_to_loopback(self):

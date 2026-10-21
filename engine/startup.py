@@ -75,6 +75,12 @@ def check(settings: Settings) -> None:
     for auth and the hide flags."""
     if not settings.auth.enabled:
         _refuse_or_warn(settings, "auth.enabled", "authentication is disabled")
+    elif settings.env != "prod":
+        # Accepted so ci can start, but it must not silence the dev warning
+        # above (security M-L2a): auth is not built until auth-audit.
+        log.warning(
+            "auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, "
+            "so the API is not authenticated (env=%s)", settings.env)
 
     telemetry = settings.telemetry
     endpoint = str(telemetry.collector_endpoint)
@@ -100,6 +106,15 @@ def check(settings: Settings) -> None:
             if _visible(secret.get_secret_value()).lower().startswith(PLACEHOLDER_PREFIX):
                 raise StartupRefused(
                     env_name(path), "secret still has the placeholder prefix; set a real value")
+
+    # Last, so every other prod refusal still names its own setting. Auth is
+    # not built: `enabled=true` would claim a protection the API lacks
+    # (architecture ADR-KE-010).
+    if settings.env == "prod" and settings.auth.enabled:
+        raise StartupRefused(
+            "auth.enabled",
+            "KE_ENV=prod with auth.enabled=true (KE_AUTH__ENABLED): authentication is not "
+            "implemented until auth-audit, so prod is refused until then")
 
 
 def _overridden_env_names() -> list[str]:

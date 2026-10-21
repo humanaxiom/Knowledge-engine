@@ -1,0 +1,414 @@
+# red-cli2 mutants (tester, 2026-10-19): security audit-cli.md L-CLIb (T10, T13, T14, T16 + variants) and L-CLIa (F0 candidate, A1-A4)
+# Runner: <scratch>/cli2/run_mutants.py in a throwaway ke-gates:latest container (--network none --read-only --tmpfs /tmp --user 10001:10001 --cap-drop ALL), repo mounted ro at /work.
+# Each mutant = docker/gates.Dockerfile with the shown edit, written to /tmp; tests.test_gates_docker_cli.GATES_DOCKERFILE patched to it; runs GatesImageInstallSurfaceTest (5 new) + GatesImageDockerCliTest (4). The repo Dockerfile is untouched.
+# base: only the L-CLIa test fails (expected RED). Tn+F0 = the same L-CLIb mutant applied on top of the F0 candidate, so the L-CLIa RED cannot mask the kill.
+
+## base: control: the working-tree Dockerfile
+(no edit)
+--- result: ran=9 failures=1 errors=0 -> KILLED ['test_gates_image_curl_downloads_are_https_only_tls12']
+
+## T10: extract the whole tarball (dockerd, containerd, runc, ctr ...)
+--- gates.Dockerfile
++++ gates-T10.Dockerfile
+@@ -67 +67 @@
+-      --no-same-owner docker/docker; \
++      --no-same-owner; \
+--- result: ran=9 failures=2 errors=0 -> KILLED ['test_gates_image_curl_downloads_are_https_only_tls12', 'test_gates_image_extracts_only_the_docker_client']
+
+## T10b: wildcard member docker/*
+--- gates.Dockerfile
++++ gates-T10b.Dockerfile
+@@ -67 +67 @@
+-      --no-same-owner docker/docker; \
++      --no-same-owner --wildcards 'docker/*'; \
+--- result: ran=9 failures=2 errors=0 -> KILLED ['test_gates_image_curl_downloads_are_https_only_tls12', 'test_gates_image_extracts_only_the_docker_client']
+
+## T10c: daemon members named explicitly
+--- gates.Dockerfile
++++ gates-T10c.Dockerfile
+@@ -67 +67 @@
+-      --no-same-owner docker/docker; \
++      --no-same-owner docker/docker docker/dockerd docker/containerd docker/runc docker/ctr; \
+--- result: ran=9 failures=3 errors=0 -> KILLED ['test_gates_image_curl_downloads_are_https_only_tls12', 'test_gates_image_extracts_only_the_docker_client']
+
+## T10d: extract all to /tmp, then mv everything into PATH
+--- gates.Dockerfile
++++ gates-T10d.Dockerfile
+@@ -66,2 +66 @@
+-    tar -xzf /tmp/docker.tgz -C /usr/local/bin --strip-components=1 \
+-      --no-same-owner docker/docker; \
++    tar -xzf /tmp/docker.tgz -C /tmp --no-same-owner; mv /tmp/docker/* /usr/local/bin/; \
+--- result: ran=9 failures=2 errors=0 -> KILLED ['test_gates_image_curl_downloads_are_https_only_tls12', 'test_gates_image_extracts_only_the_docker_client']
+
+## T13: drop --no-same-owner
+--- gates.Dockerfile
++++ gates-T13.Dockerfile
+@@ -67 +67 @@
+-      --no-same-owner docker/docker; \
++      docker/docker; \
+--- result: ran=9 failures=2 errors=0 -> KILLED ['test_gates_image_curl_downloads_are_https_only_tls12', 'test_gates_image_docker_client_extracted_with_no_same_owner']
+
+## T13b: --same-owner instead
+--- gates.Dockerfile
++++ gates-T13b.Dockerfile
+@@ -67 +67 @@
+-      --no-same-owner docker/docker; \
++      --same-owner docker/docker; \
+--- result: ran=9 failures=2 errors=0 -> KILLED ['test_gates_image_curl_downloads_are_https_only_tls12', 'test_gates_image_docker_client_extracted_with_no_same_owner']
+
+## T14: Docker CLI download not removed
+--- gates.Dockerfile
++++ gates-T14.Dockerfile
+@@ -67,2 +67 @@
+-      --no-same-owner docker/docker; \
+-    rm /tmp/docker.tgz
++      --no-same-owner docker/docker
+--- result: ran=9 failures=2 errors=0 -> KILLED ['test_gates_image_curl_downloads_are_https_only_tls12', 'test_gates_image_removes_docker_downloads_in_the_same_run']
+
+## T14b: compose download not removed
+--- gates.Dockerfile
++++ gates-T14b.Dockerfile
+@@ -83,2 +83 @@
+-    install -m 0755 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose; \
+-    rm /tmp/docker-compose
++    install -m 0755 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose
+--- result: ran=9 failures=2 errors=0 -> KILLED ['test_gates_image_curl_downloads_are_https_only_tls12', 'test_gates_image_removes_docker_downloads_in_the_same_run']
+
+## T14c: Docker CLI download removed in a later RUN (stays in the layer)
+--- gates.Dockerfile
++++ gates-T14c.Dockerfile
+@@ -67,2 +67,2 @@
+-      --no-same-owner docker/docker; \
+-    rm /tmp/docker.tgz
++      --no-same-owner docker/docker
++RUN rm -f /tmp/docker.tgz
+--- result: ran=9 failures=2 errors=0 -> KILLED ['test_gates_image_curl_downloads_are_https_only_tls12', 'test_gates_image_removes_docker_downloads_in_the_same_run']
+
+## T16: plugin mode 4777
+--- gates.Dockerfile
++++ gates-T16.Dockerfile
+@@ -83 +83 @@
+-    install -m 0755 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose; \
++    install -m 4777 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose; \
+--- result: ran=9 failures=3 errors=0 -> KILLED ['test_gates_image_compose_plugin_mode_0755', 'test_gates_image_curl_downloads_are_https_only_tls12']
+
+## T16b: chmod u+s after install
+--- gates.Dockerfile
++++ gates-T16b.Dockerfile
+@@ -84 +84,2 @@
+-    rm /tmp/docker-compose
++    rm /tmp/docker-compose; \
++    chmod u+s /usr/local/lib/docker/cli-plugins/docker-compose
+--- result: ran=9 failures=2 errors=0 -> KILLED ['test_gates_image_compose_plugin_mode_0755', 'test_gates_image_curl_downloads_are_https_only_tls12']
+
+## T16c: plugin mode 0777
+--- gates.Dockerfile
++++ gates-T16c.Dockerfile
+@@ -83 +83 @@
+-    install -m 0755 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose; \
++    install -m 0777 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose; \
+--- result: ran=9 failures=3 errors=0 -> KILLED ['test_gates_image_compose_plugin_mode_0755', 'test_gates_image_curl_downloads_are_https_only_tls12']
+
+## T16d: plugin dir world-writable
+--- gates.Dockerfile
++++ gates-T16d.Dockerfile
+@@ -82 +82 @@
+-    mkdir -p /usr/local/lib/docker/cli-plugins; \
++    mkdir -p -m 0777 /usr/local/lib/docker/cli-plugins; \
+--- result: ran=9 failures=2 errors=0 -> KILLED ['test_gates_image_compose_plugin_mode_0755', 'test_gates_image_curl_downloads_are_https_only_tls12']
+
+## F0: candidate L-CLIa fix: --proto '=https' --tlsv1.2 on all three curls
+--- gates.Dockerfile
++++ gates-F0.Dockerfile
+@@ -29 +29 @@
+-    curl -fsSL -o "/tmp/$tarball" \
++    curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball" \
+@@ -63 +63 @@
+-    curl -fsSL -o /tmp/docker.tgz \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker.tgz \
+@@ -79 +79 @@
+-    curl -fsSL -o /tmp/docker-compose \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose \
+--- result: ran=9 failures=0 errors=0 -> SURVIVED (all green) []
+
+## A1: F0, but the pwsh curl unfixed
+--- gates.Dockerfile
++++ gates-A1.Dockerfile
+@@ -63 +63 @@
+-    curl -fsSL -o /tmp/docker.tgz \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker.tgz \
+@@ -79 +79 @@
+-    curl -fsSL -o /tmp/docker-compose \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose \
+--- result: ran=9 failures=1 errors=0 -> KILLED ['test_gates_image_curl_downloads_are_https_only_tls12']
+
+## A2: F0, compose curl --proto '=http,https'
+--- gates.Dockerfile
++++ gates-A2.Dockerfile
+@@ -29 +29 @@
+-    curl -fsSL -o "/tmp/$tarball" \
++    curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball" \
+@@ -63 +63 @@
+-    curl -fsSL -o /tmp/docker.tgz \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker.tgz \
+@@ -79 +79 @@
+-    curl -fsSL -o /tmp/docker-compose \
++    curl --proto '=http,https' --tlsv1.2 -fsSL -o /tmp/docker-compose \
+--- result: ran=9 failures=1 errors=0 -> KILLED ['test_gates_image_curl_downloads_are_https_only_tls12']
+
+## A3: F0, Docker CLI curl without --tlsv1.2
+--- gates.Dockerfile
++++ gates-A3.Dockerfile
+@@ -29 +29 @@
+-    curl -fsSL -o "/tmp/$tarball" \
++    curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball" \
+@@ -63 +63 @@
+-    curl -fsSL -o /tmp/docker.tgz \
++    curl --proto '=https' -fsSL -o /tmp/docker.tgz \
+@@ -79 +79 @@
+-    curl -fsSL -o /tmp/docker-compose \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose \
+--- result: ran=9 failures=1 errors=0 -> KILLED ['test_gates_image_curl_downloads_are_https_only_tls12']
+
+## A4: F0, Docker CLI curl -k (no TLS verification)
+--- gates.Dockerfile
++++ gates-A4.Dockerfile
+@@ -29 +29 @@
+-    curl -fsSL -o "/tmp/$tarball" \
++    curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball" \
+@@ -63 +63 @@
+-    curl -fsSL -o /tmp/docker.tgz \
++    curl --proto '=https' --tlsv1.2 -fsSLk -o /tmp/docker.tgz \
+@@ -79 +79 @@
+-    curl -fsSL -o /tmp/docker-compose \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose \
+--- result: ran=9 failures=1 errors=0 -> KILLED ['test_gates_image_curl_downloads_are_https_only_tls12']
+
+## T10+F0: extract the whole tarball (dockerd, containerd, runc, ctr ...) (on F0)
+--- gates.Dockerfile
++++ gates-T10+F0.Dockerfile
+@@ -29 +29 @@
+-    curl -fsSL -o "/tmp/$tarball" \
++    curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball" \
+@@ -63 +63 @@
+-    curl -fsSL -o /tmp/docker.tgz \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker.tgz \
+@@ -67 +67 @@
+-      --no-same-owner docker/docker; \
++      --no-same-owner; \
+@@ -79 +79 @@
+-    curl -fsSL -o /tmp/docker-compose \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose \
+--- result: ran=9 failures=1 errors=0 -> KILLED ['test_gates_image_extracts_only_the_docker_client']
+
+## T10b+F0: wildcard member docker/* (on F0)
+--- gates.Dockerfile
++++ gates-T10b+F0.Dockerfile
+@@ -29 +29 @@
+-    curl -fsSL -o "/tmp/$tarball" \
++    curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball" \
+@@ -63 +63 @@
+-    curl -fsSL -o /tmp/docker.tgz \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker.tgz \
+@@ -67 +67 @@
+-      --no-same-owner docker/docker; \
++      --no-same-owner --wildcards 'docker/*'; \
+@@ -79 +79 @@
+-    curl -fsSL -o /tmp/docker-compose \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose \
+--- result: ran=9 failures=1 errors=0 -> KILLED ['test_gates_image_extracts_only_the_docker_client']
+
+## T10c+F0: daemon members named explicitly (on F0)
+--- gates.Dockerfile
++++ gates-T10c+F0.Dockerfile
+@@ -29 +29 @@
+-    curl -fsSL -o "/tmp/$tarball" \
++    curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball" \
+@@ -63 +63 @@
+-    curl -fsSL -o /tmp/docker.tgz \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker.tgz \
+@@ -67 +67 @@
+-      --no-same-owner docker/docker; \
++      --no-same-owner docker/docker docker/dockerd docker/containerd docker/runc docker/ctr; \
+@@ -79 +79 @@
+-    curl -fsSL -o /tmp/docker-compose \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose \
+--- result: ran=9 failures=2 errors=0 -> KILLED ['test_gates_image_extracts_only_the_docker_client']
+
+## T10d+F0: extract all to /tmp, then mv everything into PATH (on F0)
+--- gates.Dockerfile
++++ gates-T10d+F0.Dockerfile
+@@ -29 +29 @@
+-    curl -fsSL -o "/tmp/$tarball" \
++    curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball" \
+@@ -63 +63 @@
+-    curl -fsSL -o /tmp/docker.tgz \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker.tgz \
+@@ -66,2 +66 @@
+-    tar -xzf /tmp/docker.tgz -C /usr/local/bin --strip-components=1 \
+-      --no-same-owner docker/docker; \
++    tar -xzf /tmp/docker.tgz -C /tmp --no-same-owner; mv /tmp/docker/* /usr/local/bin/; \
+@@ -79 +78 @@
+-    curl -fsSL -o /tmp/docker-compose \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose \
+--- result: ran=9 failures=1 errors=0 -> KILLED ['test_gates_image_extracts_only_the_docker_client']
+
+## T13+F0: drop --no-same-owner (on F0)
+--- gates.Dockerfile
++++ gates-T13+F0.Dockerfile
+@@ -29 +29 @@
+-    curl -fsSL -o "/tmp/$tarball" \
++    curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball" \
+@@ -63 +63 @@
+-    curl -fsSL -o /tmp/docker.tgz \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker.tgz \
+@@ -67 +67 @@
+-      --no-same-owner docker/docker; \
++      docker/docker; \
+@@ -79 +79 @@
+-    curl -fsSL -o /tmp/docker-compose \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose \
+--- result: ran=9 failures=1 errors=0 -> KILLED ['test_gates_image_docker_client_extracted_with_no_same_owner']
+
+## T13b+F0: --same-owner instead (on F0)
+--- gates.Dockerfile
++++ gates-T13b+F0.Dockerfile
+@@ -29 +29 @@
+-    curl -fsSL -o "/tmp/$tarball" \
++    curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball" \
+@@ -63 +63 @@
+-    curl -fsSL -o /tmp/docker.tgz \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker.tgz \
+@@ -67 +67 @@
+-      --no-same-owner docker/docker; \
++      --same-owner docker/docker; \
+@@ -79 +79 @@
+-    curl -fsSL -o /tmp/docker-compose \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose \
+--- result: ran=9 failures=1 errors=0 -> KILLED ['test_gates_image_docker_client_extracted_with_no_same_owner']
+
+## T14+F0: Docker CLI download not removed (on F0)
+--- gates.Dockerfile
++++ gates-T14+F0.Dockerfile
+@@ -29 +29 @@
+-    curl -fsSL -o "/tmp/$tarball" \
++    curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball" \
+@@ -63 +63 @@
+-    curl -fsSL -o /tmp/docker.tgz \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker.tgz \
+@@ -67,2 +67 @@
+-      --no-same-owner docker/docker; \
+-    rm /tmp/docker.tgz
++      --no-same-owner docker/docker
+@@ -79 +78 @@
+-    curl -fsSL -o /tmp/docker-compose \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose \
+--- result: ran=9 failures=1 errors=0 -> KILLED ['test_gates_image_removes_docker_downloads_in_the_same_run']
+
+## T14b+F0: compose download not removed (on F0)
+--- gates.Dockerfile
++++ gates-T14b+F0.Dockerfile
+@@ -29 +29 @@
+-    curl -fsSL -o "/tmp/$tarball" \
++    curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball" \
+@@ -63 +63 @@
+-    curl -fsSL -o /tmp/docker.tgz \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker.tgz \
+@@ -79 +79 @@
+-    curl -fsSL -o /tmp/docker-compose \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose \
+@@ -83,2 +83 @@
+-    install -m 0755 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose; \
+-    rm /tmp/docker-compose
++    install -m 0755 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose
+--- result: ran=9 failures=1 errors=0 -> KILLED ['test_gates_image_removes_docker_downloads_in_the_same_run']
+
+## T14c+F0: Docker CLI download removed in a later RUN (stays in the layer) (on F0)
+--- gates.Dockerfile
++++ gates-T14c+F0.Dockerfile
+@@ -29 +29 @@
+-    curl -fsSL -o "/tmp/$tarball" \
++    curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball" \
+@@ -63 +63 @@
+-    curl -fsSL -o /tmp/docker.tgz \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker.tgz \
+@@ -67,2 +67,2 @@
+-      --no-same-owner docker/docker; \
+-    rm /tmp/docker.tgz
++      --no-same-owner docker/docker
++RUN rm -f /tmp/docker.tgz
+@@ -79 +79 @@
+-    curl -fsSL -o /tmp/docker-compose \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose \
+--- result: ran=9 failures=1 errors=0 -> KILLED ['test_gates_image_removes_docker_downloads_in_the_same_run']
+
+## T16+F0: plugin mode 4777 (on F0)
+--- gates.Dockerfile
++++ gates-T16+F0.Dockerfile
+@@ -29 +29 @@
+-    curl -fsSL -o "/tmp/$tarball" \
++    curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball" \
+@@ -63 +63 @@
+-    curl -fsSL -o /tmp/docker.tgz \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker.tgz \
+@@ -79 +79 @@
+-    curl -fsSL -o /tmp/docker-compose \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose \
+@@ -83 +83 @@
+-    install -m 0755 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose; \
++    install -m 4777 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose; \
+--- result: ran=9 failures=2 errors=0 -> KILLED ['test_gates_image_compose_plugin_mode_0755']
+
+## T16b+F0: chmod u+s after install (on F0)
+--- gates.Dockerfile
++++ gates-T16b+F0.Dockerfile
+@@ -29 +29 @@
+-    curl -fsSL -o "/tmp/$tarball" \
++    curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball" \
+@@ -63 +63 @@
+-    curl -fsSL -o /tmp/docker.tgz \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker.tgz \
+@@ -79 +79 @@
+-    curl -fsSL -o /tmp/docker-compose \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose \
+@@ -84 +84,2 @@
+-    rm /tmp/docker-compose
++    rm /tmp/docker-compose; \
++    chmod u+s /usr/local/lib/docker/cli-plugins/docker-compose
+--- result: ran=9 failures=1 errors=0 -> KILLED ['test_gates_image_compose_plugin_mode_0755']
+
+## T16c+F0: plugin mode 0777 (on F0)
+--- gates.Dockerfile
++++ gates-T16c+F0.Dockerfile
+@@ -29 +29 @@
+-    curl -fsSL -o "/tmp/$tarball" \
++    curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball" \
+@@ -63 +63 @@
+-    curl -fsSL -o /tmp/docker.tgz \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker.tgz \
+@@ -79 +79 @@
+-    curl -fsSL -o /tmp/docker-compose \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose \
+@@ -83 +83 @@
+-    install -m 0755 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose; \
++    install -m 0777 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose; \
+--- result: ran=9 failures=2 errors=0 -> KILLED ['test_gates_image_compose_plugin_mode_0755']
+
+## T16d+F0: plugin dir world-writable (on F0)
+--- gates.Dockerfile
++++ gates-T16d+F0.Dockerfile
+@@ -29 +29 @@
+-    curl -fsSL -o "/tmp/$tarball" \
++    curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball" \
+@@ -63 +63 @@
+-    curl -fsSL -o /tmp/docker.tgz \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker.tgz \
+@@ -79 +79 @@
+-    curl -fsSL -o /tmp/docker-compose \
++    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose \
+@@ -82 +82 @@
+-    mkdir -p /usr/local/lib/docker/cli-plugins; \
++    mkdir -p -m 0777 /usr/local/lib/docker/cli-plugins; \
+--- result: ran=9 failures=1 errors=0 -> KILLED ['test_gates_image_compose_plugin_mode_0755']
+
+# Summary: 30 mutants (T*, T*+F0, A*) all KILLED, each by its targeted test; F0 (candidate fix) all 9 green; base fails only test_gates_image_curl_downloads_are_https_only_tls12.

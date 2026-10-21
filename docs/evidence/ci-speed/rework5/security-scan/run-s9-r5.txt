@@ -1,0 +1,43 @@
+# S9 harness re-run: docs/evidence/ci-speed/rework4/security-scan/harness-s4-bypass.py.txt, unchanged, against the round-5 tests/test_block_main_commit_hook.py (sha256 below). ke-gates:wt-33a132fbfdd7, --rm --network none, uid 10001, tmpfs /tmp, scratch copies mounted ro, label com.docker.compose.project=ke-security-cs5. Output through cat -v. Run 2026-10-21.
+GNU bash, version 5.2.15(1)-release (x86_64-pc-linux-gnu)
+Python 3.12.15
+9bbcfc6eb67d90e7d29f0e713254c670858317ebbf695ecb0dbecf2583107acd  /w/block-main-commit.sh
+2abf94b12b08dbfb44c8f5a01fdac84766a7a203814e3d5bc37bad4228f5f837  /w/test_block_main_commit_hook.py
+missed, but launches nothing   static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=False | control: hook unchanged
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | check: plain `sleep &` is caught
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | check: `&` inside $( ) on one line
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | check: exec with trailing &
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | check: {{ cmd; }} & across lines
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | check: function that backgrounds
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=False | check: \& escape (literal, launches nothing)
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=False | check: ${var:+&} (literal, launches nothing)
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | FF ^L before # hides the rest of the line
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | VT ^K before #
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | FS ^\ before #
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | U+0085 NEL before #
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | U+2028 LINE SEPARATOR before #
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | CR ^M before #
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | leading ^_ then #: a function named ^_#
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | #-line inside a multi-line double-quoted string
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | #-line inside an unquoted heredoc
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | se''tsid -f (quote-split word)
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | ${c}sid -f (word built from a variable)
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | ev''al with & from a variable
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | source /dev/stdin <<<
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | . /dev/stdin <<<
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | bash -s <<< (no -c)
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | bash --norc -c
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | bash -o posix -c
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | $BASH -c
+caught                         static=caught bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | dash -c
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | trap string run at EXIT
+BYPASS                         static=MISSED bash-n=0 hook_rc=127 wall=0.00s unwaited_sleep_alive=True  | mapfile -C callback
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.03s unwaited_sleep_alive=True  | ${x@P} prompt expansion
+missed, but launches nothing   static=MISSED bash-n=0 hook_rc=1 wall=0.00s unwaited_sleep_alive=False | arithmetic subscript re-evaluation
+BYPASS                         static=MISSED bash-n=0 hook_rc=0 wall=0.06s unwaited_sleep_alive=True  | python3 subprocess.Popen (program the hook calls)
+sh: 1: cannot open /proc/98/cmdline: No such file
+
+summary: 7 bypasses of 32 cases
+rc=0
+leftover sleeps:
+end

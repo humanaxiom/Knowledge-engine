@@ -13,6 +13,34 @@ as a nested AGENT → RETRIEVER / LLM / TOOL tree.
 
 See [AGENTS.md](AGENTS.md) for the full workflow and role/file conventions.
 
+## Licence
+
+The project is licensed under the MIT licence: see [LICENSE](LICENSE). Notices
+for the third-party software the stack images carry are in
+[NOTICE.md](NOTICE.md) (vendor images, with licence texts under `licenses/`).
+An offline bundle ships `LICENSE`, `NOTICE.md`, `licenses/` and a generated
+`THIRD_PARTY_NOTICES.md` (the packages inside the images, from that build) at
+its root, all listed in the bundle's `MANIFEST.sha256`.
+
+## Install paths
+
+Two ways to get the stack running; both are written out step by step in
+[docs/quickstart.md](docs/quickstart.md).
+
+- **Code-first (primary).** Clone the repository, then `scripts/build.sh` and
+  `scripts/launch.sh` (PowerShell: `scripts\build.ps1`, `scripts\launch.ps1`).
+  Builds the images natively on the target, x86 or ARM, and needs the network
+  at build time. Hosts: Linux (bash) and Windows (PowerShell).
+- **Offline bundle (air-gap).** Build and bundle on a connected Linux host with
+  `scripts/bundle.sh`, carry the bundle across, verify its manifest hash and
+  run `install.sh` (Linux, macOS) or `install.ps1` (Windows) on the target. A
+  bundle holds one architecture, `amd64` or `arm64`, so build one per target
+  architecture.
+
+Current limit: this release runs in dev mode only (`KE_ENV=dev`, loopback
+binding). `KE_ENV=prod` is refused until the stack has authentication, which
+arrives with `auth-audit`. Set real secrets in `.env` regardless.
+
 ## Getting Started
 
 1. Use this repo as a GitHub template for a new project.
@@ -49,8 +77,10 @@ See [AGENTS.md](AGENTS.md) for the full workflow and role/file conventions.
 ## Running the stack
 
 Prerequisites: Git, and Docker Engine 28 or later with Compose 2.24 or later.
-Linux (bash) and Windows (PowerShell) are supported; macOS is not. See
-[docs/quickstart.md](docs/quickstart.md).
+Linux (bash) and Windows (PowerShell) are supported for the code-first install;
+macOS only through the offline bundle. A host that builds an offline bundle also
+needs `jq` and at least 7 GiB free on the disk that holds the output directory
+(`bundle.sh` refuses otherwise). See [docs/quickstart.md](docs/quickstart.md).
 
 1. Copy `.env.example` to `.env` and set the secrets
    (`KE_STORES__POSTGRES__PASSWORD`, `KE_STORES__NEO4J__PASSWORD`). The
@@ -131,6 +161,13 @@ random project name with nothing published, runs lint, the unit tests, the
 integration tests (in the isolated `gates-it` container) and the smoke test,
 then tears the stack down. Several runs can go in parallel. See
 [CLAUDE.md](CLAUDE.md) for which run a change needs.
+
+`full` also runs the offline check (`scripts/offline_check.sh`): it builds a
+throwaway bundle for the local architecture and installs it from a client
+container with no network, against a Docker-in-Docker daemon that holds only
+the bundle's images. That daemon runs privileged, so a host or CI runner that
+refuses privileged containers cannot run `full`; there is no way around it. It
+also needs the 7 GiB of free disk that `bundle.sh` requires.
 
 The model-calling checks in `full` run only when `KE_MODEL_UPSTREAM` and
 `KE_EGRESS_ALLOWLIST` are both set and the host is reachable. Each is taken
@@ -231,8 +268,9 @@ credentials (`user:pass@`). The error names the setting, never its value.
 - `scripts/hooks/block-main-commit.sh` — `PreToolUse` hook for the branch
   policy (wired in `.claude/settings.json` and `developer.agent.md`). It is a
   guard rail, not a security boundary (see ADR-KE-001 in
-  [docs/architecture.md](docs/architecture.md)); branch protection on `main`
-  is the real control.
+  [docs/architecture.md](docs/architecture.md)). Branch protection (Q18) was
+  skipped by decision: merges to `main` are a manual human action, and this
+  hook is the only automated guard.
 - `scripts/test.sh`, `scripts/smoke.sh` — gate scripts called by
   `verify.sh`; the smoke test exports real OTLP traces to a stub collector
 - `docs/requirements.md`, `docs/architecture.md` — living plan artifacts

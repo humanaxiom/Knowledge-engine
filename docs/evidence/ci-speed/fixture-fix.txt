@@ -1,0 +1,73 @@
+=== GREEN: fixture fix applied (2026-10-20T22:36:23Z) ===
+$ COMPOSE_PROJECT_NAME=ke-tester-cs2 docker compose --profile gates run --rm gates uv run --locked python -m unittest -v tests.test_harness_followups.IntegrationRunsOnceTest.test_nested_test_sh_leaves_gate_coverage_data_alone tests.test_harness_followups.IntegrationRunsOnceTest.test_coverage_erase_precedes_first_run_and_spares_checkout
+time="2026-10-20T15:36:23-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T15:36:23-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T15:36:23-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T15:36:23-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T15:36:23-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T15:36:23-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T15:36:23-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T15:36:23-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T15:36:23-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T15:36:23-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T15:36:23-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T15:36:23-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T15:36:23-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-20T15:36:23-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+ Container ke-tester-cs2-gates-run-320c48064c2d Creating 
+ Container ke-tester-cs2-gates-run-320c48064c2d Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 1ms
+Installed 1 package in 1ms
+test_nested_test_sh_leaves_gate_coverage_data_alone (tests.test_harness_followups.IntegrationRunsOnceTest.test_nested_test_sh_leaves_gate_coverage_data_alone) ... ok
+test_coverage_erase_precedes_first_run_and_spares_checkout (tests.test_harness_followups.IntegrationRunsOnceTest.test_coverage_erase_precedes_first_run_and_spares_checkout) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 2.565s
+
+OK
+exit=0
+
+=== MUTANT: fixture fix reverted to shutil.copyfile of the real pyproject (2026-10-20T22:36:40Z) ===
+$ (same command)
+ Container ke-tester-cs2-gates-run-ba24fa560920 Creating 
+ Container ke-tester-cs2-gates-run-ba24fa560920 Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.72ms
+Installed 1 package in 1ms
+test_nested_test_sh_leaves_gate_coverage_data_alone (tests.test_harness_followups.IntegrationRunsOnceTest.test_nested_test_sh_leaves_gate_coverage_data_alone) ... FAIL
+test_coverage_erase_precedes_first_run_and_spares_checkout (tests.test_harness_followups.IntegrationRunsOnceTest.test_coverage_erase_precedes_first_run_and_spares_checkout) ... ok
+
+======================================================================
+FAIL: test_nested_test_sh_leaves_gate_coverage_data_alone (tests.test_harness_followups.IntegrationRunsOnceTest.test_nested_test_sh_leaves_gate_coverage_data_alone)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_harness_followups.py", line 416, in test_nested_test_sh_leaves_gate_coverage_data_alone
+    self.assertTrue(planted.exists(),
+AssertionError: False is not true : a nested test.sh deleted /tmp/.coverage.ke-ci-speed-planted.3bf53d43a65a42eea8eb137a7fc5246d, a file beside the gate's data_file /tmp/.coverage
+
+----------------------------------------------------------------------
+Ran 2 tests in 2.571s
+
+FAILED (failures=1)
+
+exit=1
+
+=== GREEN again after restoring the fix (2026-10-20T22:36:50Z) ===
+$ (same command)
+ Container ke-tester-cs2-gates-run-1fa006849175 Creating 
+ Container ke-tester-cs2-gates-run-1fa006849175 Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.78ms
+Installed 1 package in 1ms
+test_nested_test_sh_leaves_gate_coverage_data_alone (tests.test_harness_followups.IntegrationRunsOnceTest.test_nested_test_sh_leaves_gate_coverage_data_alone) ... ok
+test_coverage_erase_precedes_first_run_and_spares_checkout (tests.test_harness_followups.IntegrationRunsOnceTest.test_coverage_erase_precedes_first_run_and_spares_checkout) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 3.279s
+
+OK
+exit=0
