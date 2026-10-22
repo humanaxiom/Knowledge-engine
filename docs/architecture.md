@@ -335,6 +335,7 @@ sequenceDiagram
   participant W as gateway (backend + edge)
   participant M as model host (KE_MODEL_UPSTREAM)
   participant S as smoke.sh (host)
+  participant C as scan.sh (host)
   participant O as offline_check.sh (host)
   H->>H: trap → teardown.sh --volumes (this project)
   H->>H: env_value.sh KE_MODEL_UPSTREAM / KE_EGRESS_ALLOWLIST (caller env, else .env via compose config; both or neither)
@@ -355,7 +356,8 @@ sequenceDiagram
   S->>D: stop postgres, exec api readyz not-ready:postgres, up --wait postgres, exec api readyz ready
   S->>D: ci/offline: control from a throwaway api-image container on edge, then api and worker must get no_route (§2.5)
   Note over H,G: the OTLP check runs in the container half (gates-it), as in 2a
-  H->>D: teardown.sh --volumes (stage: frees memory and disk before DinD; the trap repeats it)
+  H->>D: teardown.sh --volumes (stage: frees memory and disk before DinD; the trap skips it once done)
+  H->>C: scan.sh (own project ke-scan-N: docker save ke-app:<tag>, scan-db fetches the grype DB, scan with no network; fails closed; ADR-KE-013)
   H->>O: offline_check.sh (disk check, bundle.sh, dind, offline-client: install, launch, smoke, teardown; df logged per stage; §2.5)
 ```
 
@@ -365,10 +367,11 @@ Q37); the container half also runs `smoke.sh`, which in the gates image is
 the OTLP check. platform-offline appends the last two stages above. Each is
 one script call; `verify.sh` gains no command of its own (F5,
 `test_verify_sh_has_no_inlined_commands`, whose forbidden list gains
-`docker save` and `sha256sum`). *platform-supply-chain* later inserts
-`scan.sh` (ADR-KE-013) between the teardown and `offline_check.sh`, and adds
-the scanner's name to the forbidden list; this branch has no scan stage (R3).
-*(Design 2026-10-21: ADR-KE-013 amendment 1, D4.)*
+`docker save` and `sha256sum`). *As built (platform-supply-chain, unit 4,
+2026-10-21):* `scan.sh` (ADR-KE-013) runs between the teardown and
+`offline_check.sh`, in the host half of `full` only; a failing scan stops
+the run before the offline check, and the forbidden list includes
+`grype`. *(Design: ADR-KE-013 amendment 1, D4.)*
 
 - **Two-sided scripts.** `smoke.sh` has the same two-sided shape as
   `verify.sh`, keyed on `KE_IN_GATES`.
@@ -4090,7 +4093,7 @@ Suggested first test per sub-item, followed by the order of the rest.
        test stay green unchanged.
   - **Gates and evidence** (`docs/evidence/platform-supply-chain/`):
     - `[gate: image-scan]`: the real `verify.sh full`, its scan output
-      saved as `scan-full.txt` (PSC-7).
+      saved in `u4-green-verify-full.txt`, lines 1601–1914 (PSC-7).
     - Recorded red runs (DR38): a mutant `scan` command without
       `--only-fixed` and with `--fail-on negligible` must fail on the real
       image; a planted ignore of one real match must suppress it (D5
@@ -4100,7 +4103,7 @@ Suggested first test per sub-item, followed by the order of the rest.
     - PSC-10 `psscriptanalyzer-sha512.txt` (D7), the wrong-hash mutation,
       and the recorded mutant run with the reviewer's six masking mutants
       killed.
-    - PSC-7 `l13-psycopg-libs.md` (D6).
+    - PSC-7 `u4-psc7-psycopg-libs.txt` (D6).
     - PSC-9 two green CI runs under `ci/` (D8), and the Q60 trigger
       outcome.
     - PSC-12 the recorded Windows run (A34).
@@ -5822,6 +5825,14 @@ asked for the hook design to be recorded in this ADR.
   - Whether grype sees the libraries vendored in `psycopg_binary.libs`
     (krb5, cyrus-sasl, pcre) is recorded at implementation. If it does
     not, the L-13 residual stays documented and is not claimed covered.
+    *Recorded 2026-10-21 (amendment 1, D6):* grype v0.120.1 catalogues
+    none of the 15 files (OpenSSL 3.5.8, libpq 18.0.6, pcre 8.32,
+    cyrus-sasl 2.1.26, the el7 krb5, ...), so the scan does not cover
+    them. L-13 is an accepted residual, rated low by security; the
+    compensating control is tracking psycopg-binary releases (the
+    libraries move with the wheel), `gssencmode=disable` is today's
+    mitigation, and the structural fix stays Q42's switch to Debian's
+    libpq.
 - **First tests:** `ScanScriptTest` (fake docker):
   - the order is save, `scan-db`, then `scan`;
   - `scan` runs with `network_mode: none` and a read-only input;
@@ -6053,16 +6064,21 @@ over HTTPS and each archive is checked against the checksum in the listing.
 - Security reviews every entry a diff adds (PSC-5). psycopg-binary (Q42):
   upgrade the lock if a wheel fixes the flagged library; otherwise an entry
   whose reason states why the path is not reached, confirmed by security,
-  and a follow-up item on psycopg over Debian's libpq.
+  and a follow-up item on psycopg over Debian's libpq. *MOOT for the scan
+  (2026-10-21, D6 result):* grype catalogues none of the vendored
+  libraries, so it can never flag one and this rule never triggers from
+  the scan; a krb5 or OpenSSL CVE in the wheel does not turn `full` red.
+  The libraries are the L-13 accepted residual (D6).
 - An expired entry fails the unit test, so it turns `fast` red as well as
   `full`. That is intended: the date forces the decision.
 
 **D6. Report and the L-13 record (PSC-7).**
 - The CI log holds the ignore file (D4 step 2) and the full table (D5).
   One real `full` run's scan output is saved by the implementation commit
-  as `docs/evidence/platform-supply-chain/scan-full.txt`.
+  in `docs/evidence/platform-supply-chain/u4-green-verify-full.txt`, lines
+  1601–1914.
 - *grype's view of `psycopg_binary.libs`*, recorded once in
-  `docs/evidence/platform-supply-chain/l13-psycopg-libs.md` by the
+  `docs/evidence/platform-supply-chain/u4-psc7-psycopg-libs.txt` by the
   developer, offline, with the same pinned image:
   1. the files in `psycopg_binary.libs` in `ke-app:<tag>`, listed with
      `docker run --rm --network none --entrypoint ls` on the image;
@@ -6073,6 +6089,20 @@ over HTTPS and each archive is checked against the checksum in the listing.
      version), any match against it.
   If no component is found, the evidence says so, L-13 stays a documented
   residual, and no doc claims the scan covers those libraries.
+- *Result (2026-10-21).* grype v0.120.1 catalogues none of the 15 files in
+  `psycopg_binary.libs` (OpenSSL 3.5.8, libpq 18.0.6, pcre 8.32,
+  cyrus-sasl 2.1.26, the el7 krb5, ldap, keyutils, selinux, ...); it
+  lists only psycopg-binary 3.3.6 from PyPI and the image's own Debian
+  copies. The scan does not cover the vendored libraries.
+  - L-13 is an **accepted residual**, rated low by security
+    (`security-u4.md`, "PSC-7 / L-13 residual").
+  - Compensating control: track psycopg-binary releases, since the
+    vendored libraries move with the wheel.
+  - Mitigation today: `gssencmode=disable` (PS-2.5).
+  - Structural fix: Q42's switch to psycopg on Debian's libpq.
+  - Hardening follow-up (with `auth-audit`): `require_auth="scram-sha-256"`
+    on every libpq connection shuts the remaining krb5 path
+    (`docs/requirements.md`, "Follow-ups (not in platform-supply-chain)").
 
 **D7. PS-3.7: PSScriptAnalyzer by hash, and N-7 (PSC-10, PSC-11).**
 `docker/gates.Dockerfile` changes as follows (amends §2.2 *PSScriptAnalyzer

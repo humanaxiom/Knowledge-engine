@@ -28,9 +28,16 @@ fi
 
 export COMPOSE_FILE=docker-compose.scan.yml
 export COMPOSE_PATH_SEPARATOR=":"
-export COMPOSE_PROJECT_NAME="ke-scan-${SRANDOM}"
+export COMPOSE_PROJECT_NAME="ke-scan-${SRANDOM-}"
 export KE_ENV_FILE=.env.example
 export KE_SCAN_IN="./dist/${COMPOSE_PROJECT_NAME}"
+# SRANDOM needs bash >= 5.1: older bash leaves it unset, so the name is checked
+# before it reaches docker, mkdir or rm (L-1).
+project_re='^ke-scan-[0123456789]+$'
+if ! [[ "$COMPOSE_PROJECT_NAME" =~ $project_re ]]; then
+  echo "scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: $(printf '%q' "$COMPOSE_PROJECT_NAME"))" >&2
+  exit 1
+fi
 unset COMPOSE_PROFILES COMPOSE_ENV_FILES GRYPE_DB_UPDATE_URL DOCKER_DEFAULT_PLATFORM
 
 scanner="$(sed -n 's/^ *image: *//p' docker-compose.scan.yml | head -n 1)"

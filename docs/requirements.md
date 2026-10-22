@@ -2802,6 +2802,12 @@ sequencing call for the orchestrator.
     code path is not reached (for krb5, `gssencmode=disable`, L-13),
     confirmed by security, and the orchestrator opens a follow-up item to
     evaluate psycopg on Debian's libpq.
+    - *MOOT for the scan (2026-10-21, PSC-7 result).* grype v0.120.1
+      catalogues none of the 15 files in `psycopg_binary.libs`, so the scan
+      can never flag a vendored library and this branch never triggers
+      from it. A krb5 or OpenSSL CVE in the wheel does not turn `full` red.
+      The libraries are an accepted residual (L-13, PSC-7); the switch to
+      Debian's libpq stays Q42's structural fix.
   - Security reviews every entry added in a diff.
   - `[unit: test_scan_ignores_are_justified]` (fast; controls: a valid
     entry passes; an entry missing `reason`, with a blank `reason`, missing
@@ -2828,13 +2834,23 @@ sequencing call for the orchestrator.
   - The scan prints its matches by severity, and the ignore entries it
     applied, to the verify output, so a CI log holds the full result.
   - The implementation commit saves one real `full` run's scan output under
-    `docs/evidence/platform-supply-chain/`.
+    `docs/evidence/platform-supply-chain/` (saved in
+    `u4-green-verify-full.txt`, lines 1601–1914).
   - That evidence states whether the scanner reported any package from
-    `psycopg_binary.libs` (krb5, cyrus-sasl, pcre and others; L-13). If it
-    reported none, L-13 stays a documented residual, and no doc claims the
-    scan covers it. The method (the libraries in the image against the
-    scanner's own package catalog) is ADR-KE-013 amendment 1, D6, recorded
-    in `docs/evidence/platform-supply-chain/l13-psycopg-libs.md`.
+    `psycopg_binary.libs` (krb5, cyrus-sasl, pcre and others; L-13), and
+    no doc claims the scan covers libraries it did not report. The method
+    (the libraries in the image against the scanner's own package catalog)
+    is ADR-KE-013 amendment 1, D6, recorded in
+    `docs/evidence/platform-supply-chain/u4-psc7-psycopg-libs.txt`.
+  - *Result (2026-10-21).* grype v0.120.1 catalogues none of the 15 files
+    in `psycopg_binary.libs` (among them OpenSSL 3.5.8, libpq 18.0.6, pcre
+    8.32, cyrus-sasl 2.1.26 and the el7 krb5), so the scan does not cover
+    them. L-13 is an **accepted residual**, rated low by security
+    (`security-u4.md`, "PSC-7 / L-13 residual").
+    - Compensating control: track psycopg-binary releases, since the
+      vendored libraries move with the wheel.
+    - Mitigation today: `gssencmode=disable` (PS-2.5).
+    - Structural fix: Q42's switch to psycopg on Debian's libpq.
   - Evidence, checked by the reviewer and security; no unit test.
 - **PSC-8 Not in the bundle.** The deployed product never scans: no bundle
   manifest entry names the scanner image or its database.
@@ -2974,6 +2990,24 @@ PSC-17 no-uv and real-scan evidence, and the Windows run. Gate:
 `scripts/verify.sh full`.
 
 ### Follow-ups (not in platform-supply-chain)
+
+Recorded 2026-10-21 (architect, unit 4 rework 1; security-u4.md). Neither
+blocks this item.
+- **`require_auth="scram-sha-256"` on every libpq connection (L-13
+  hardening; goes with `auth-audit`).** Today the one site is
+  `engine/readiness.py:89`; any later connection site gets it too. libpq
+  18 then refuses GSS, SSPI, md5 and cleartext before any krb5 call, which
+  shuts the last server-reachable path into the vendored krb5 (a
+  compromised postgres answering `AuthenticationGSS`). It is engine code
+  and needs its own TDD: extend the PS-2.5 pair
+  (`test_postgres_probe_disables_gss_encryption`,
+  `test_every_postgres_connect_in_engine_disables_gss_encryption`) to
+  require it, and confirm the stack postgres uses SCRAM (a live readyz in
+  `full`).
+- **Security I-2: `scan.sh` saves by tag, not image ID**
+  (`scripts/scan.sh:92`). A second `full` from the same checkout (same
+  `wt-` tag) that rebuilds between build and scan could swap the image
+  scanned. Candidate fix: pass the image ID recorded after build.
 
 Recorded 2026-10-21 (architect, unit 3, ADR-KE-013 amendment 1, D10).
 Neither blocks this item.

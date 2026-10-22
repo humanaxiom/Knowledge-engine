@@ -942,18 +942,22 @@ exit 0
 
 # platform-offline (PS-3.2 *Wired into full*; architecture §2.6 item 10 and
 # ADR-KE-009 decision step 4): `full` runs, in order, build, launch, gates-it,
-# smoke, `teardown.sh --volumes`, then `offline_check.sh`; there is no scan
-# stage on this branch (ruling R3). The explicit teardown is the one teardown
-# of the verify project: it runs once on every exit path (the trap does not
-# repeat a teardown that already ran). This replaces the earlier
-# ["build", "launch", "gates-it", "smoke", "teardown"] order, whose teardown
-# came only from the trap.
-FULL_ORDER = ["build", "launch", "gates-it", "smoke", "teardown", "offline_check"]
+# smoke, `teardown.sh --volumes`, then `offline_check.sh`. The explicit
+# teardown is the one teardown of the verify project: it runs once on every
+# exit path (the trap does not repeat a teardown that already ran). This
+# replaced the earlier ["build", "launch", "gates-it", "smoke", "teardown"]
+# order, whose teardown came only from the trap.
+# platform-supply-chain PSC-6 (docs/requirements.md; ADR-KE-013 amendment 1,
+# D4; §2.6 item 5), tester 2026-10-21: `scripts/scan.sh` is one stage between
+# the verify teardown and `offline_check.sh`, in `full` only. This supersedes
+# the platform-offline note "no scan stage on this branch (ruling R3)": R3
+# moved the scan to platform-supply-chain, and PSC-6 now places it here.
+FULL_ORDER = ["build", "launch", "gates-it", "smoke", "teardown", "scan", "offline_check"]
 
 
 class VerifyHostHalfTest(unittest.TestCase):
     """B6, N7: the real scripts/verify.sh in a throwaway project, with
-    recording stubs for build/launch/smoke/teardown/offline_check and a
+    recording stubs for build/launch/smoke/teardown/scan/offline_check and a
     recording docker."""
 
     def setUp(self) -> None:
@@ -964,7 +968,9 @@ class VerifyHostHalfTest(unittest.TestCase):
         for rel in (".env.example", "docker-compose.yml", "docker-compose.verify.yml"):
             if (ROOT / rel).exists():
                 shutil.copy(ROOT / rel, self.tmp / rel)
-        for name in ("build", "launch", "smoke", "teardown", "lint", "test", "offline_check"):
+        # PSC-6: scan.sh is a stub stage here like the others; the real script
+        # is tested against the fake docker in tests/test_image_scan.py.
+        for name in ("build", "launch", "smoke", "teardown", "scan", "lint", "test", "offline_check"):
             stub = self.tmp / "scripts" / f"{name}.sh"
             stub.write_text(STAGE_STUB.format(name=name), encoding="utf-8", newline="\n")
             _make_executable(stub)
@@ -1089,6 +1095,7 @@ class VerifyHostHalfTest(unittest.TestCase):
                 self.assertEqual(stages.count("teardown"), 1, f"teardown on {sig.name}: {stages}")
                 self.assertNotIn("gates-it", stages)
                 self.assertNotIn("smoke", stages)
+                self.assertNotIn("scan", stages)
                 self.assertNotIn("offline_check", stages)
 
     def test_project_name_is_random_and_shared_by_every_stage(self):
@@ -1097,10 +1104,12 @@ class VerifyHostHalfTest(unittest.TestCase):
             result, lines = self._verify()
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             # offline_check.sh runs its own ke-offline-<random> project
-            # (§2.5 host step 1), so what it inherits is not checked here.
+            # (§2.5 host step 1), and scan.sh its own ke-scan-<random> one
+            # (ADR-KE-013 amendment 1, D4), so what they inherit is not
+            # checked here.
             projects = {l.split("project=", 1)[1].split(" | ", 1)[0]
                         for l in lines if (self._stage(l) != "docker" or "gates-it" in l)
-                        and self._stage(l) != "offline_check"}
+                        and self._stage(l) not in ("offline_check", "scan")}
             self.assertEqual(len(projects), 1, f"stages used different projects: {projects}")
             name = projects.pop()
             self.assertRegex(name, r"^ke-verify-[a-z0-9]+$")
@@ -1112,8 +1121,10 @@ class VerifyHostHalfTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         for line in lines:
             head, _, rest = line.partition(" | ")
-            if self._stage(line) == "offline_check":
-                continue  # its own project and compose files (§2.5); dind publishes nothing
+            if self._stage(line) in ("offline_check", "scan"):
+                # Their own projects and compose files (§2.5; ADR-KE-013
+                # amendment 1, D1/D4); dind and the scanner publish nothing.
+                continue
             with self.subTest(call=head):
                 overlay = "docker-compose.verify.yml" in rest or "docker-compose.verify.yml" in head
                 self.assertTrue(overlay, "a stage ran without the verify overlay (it would publish)")
@@ -1240,8 +1251,13 @@ class VerifyHostHalfTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         stages = self._stages(lines)
         self.assertEqual(stages.count("offline_check"), 1, stages)
-        self.assertEqual(stages[-2:], ["teardown", "offline_check"],
-                         "offline_check runs last, after the verify project is torn down")
+        # PSC-6 (ADR-KE-013 amendment 1, D4) puts scan.sh between the teardown
+        # and offline_check; that order is pinned by
+        # test_verify_full_runs_scan_between_teardown_and_offline_check.
+        self.assertEqual(stages[-1:], ["offline_check"], "offline_check runs last")
+        self.assertIn("teardown", stages)
+        self.assertLess(stages.index("teardown"), stages.index("offline_check"),
+                        "offline_check runs after the verify project is torn down")
         teardown = [l for l in lines if self._stage(l) == "teardown"]
         self.assertRegex(teardown[0].split(" | ", 1)[0], r"(?:^|\s)--volumes(?:\s|$)")
         result, lines = self._verify(FAIL_STAGE="offline_check")
@@ -1252,7 +1268,119 @@ class VerifyHostHalfTest(unittest.TestCase):
         body = "\n".join(l for l in (ROOT / "scripts" / "verify.sh").read_text(encoding="utf-8").splitlines()
                          if not l.lstrip().startswith("#"))
         self.assertIn("scripts/offline_check.sh", body)
-        self.assertNotRegex(body, r"\bscan(?:\.sh)?\b", "no scan stage on this branch (ruling R3)")
+        # The platform-offline assertion "no scan stage on this branch (ruling
+        # R3)" was removed here by the tester (2026-10-21): PSC-6 and
+        # ADR-KE-013 amendment 1, D4 now require that stage.
+
+    # -- platform-supply-chain PSC-6 (ADR-KE-013 amendment 1, D4; §2.6 item 5) --
+
+    def test_verify_full_runs_scan_between_teardown_and_offline_check(self):
+        """PSC-6: `full` runs scripts/scan.sh exactly once, after the verify
+        project's `teardown.sh --volumes` and before offline_check.sh, with the
+        tag verify exported (scan.sh saves ke-app:<KE_IMAGE_TAG>). `fast`
+        never scans."""
+        result, lines = self._verify()
+        out = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 0, out)
+        stages = self._stages(lines)
+        self.assertEqual(stages.count("scan"), 1,
+                         f"verify full must run scripts/scan.sh exactly once (PSC-6, D4): {stages}")
+        self.assertEqual(stages, FULL_ORDER,
+                         "full runs build, launch, gates-it, smoke, teardown, scan, offline_check (PSC-6, D4)")
+        self.assertEqual(stages.count("teardown"), 1, "the verify project is torn down once, before the scan")
+        scan = [l for l in lines if self._stage(l) == "scan"]
+        if scan:
+            head, _, rest = scan[0].partition(" | ")
+            self.assertEqual(head.strip(), "scan", f"scan.sh takes no arguments (D4): `{head}`")
+            tags = {l.split("| tag=", 1)[1].split(" | ", 1)[0] for l in lines
+                    if "| tag=" in l and self._stage(l) in ("build", "scan")}
+            self.assertEqual(len(tags), 1, f"scan.sh sees the tag build.sh built: {tags}")
+            self.assertRegex(next(iter(tags)), r"^wt-[0-9a-f]{12}$")
+        with self.subTest(mode="fast"):
+            result, lines = self._verify("fast")
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertNotIn("scan", self._stages(lines), "verify fast never scans (PSC-6)")
+
+    def test_verify_full_fails_when_image_scan_fails(self):
+        """PSC-4/PSC-6 (§2.6 item 5): a failing scan.sh makes verify full exit
+        non-zero without PASS; offline_check.sh never runs, and the verify
+        project is not torn down a second time (it went before the scan). An
+        interrupt during the scan ends the same way."""
+        result, lines = self._verify(FAIL_STAGE="scan")
+        out = result.stdout + result.stderr
+        stages = self._stages(lines)
+        self.assertIn("scan", stages, f"harness: verify full never ran scan.sh (PSC-6): {stages}")
+        self.assertNotEqual(result.returncode, 0, f"a failing image scan let verify full pass:\n{out}")
+        self.assertNotIn("verify full: PASS", out)
+        self.assertNotIn("offline_check", stages, "offline_check.sh ran after the scan failed (PSC-4, PSC-6)")
+        self.assertEqual(stages, FULL_ORDER[:FULL_ORDER.index("scan") + 1],
+                         "a failing scan stops the run, and the trap does not tear down again (D4)")
+        if not hasattr(os, "killpg"):  # pragma: no cover - the gates image is Linux
+            return
+        # Security M-1 (docs/evidence/platform-supply-chain/security-u4.md),
+        # rework round 1, tester 2026-10-22: a signal during the scan exits with
+        # that signal's status (128 + n) and never prints PASS. Before this, a
+        # TERM or HUP ran the EXIT trap with $? = 0 and printed
+        # "== verify full: PASS ==" while the run exited 143/129. HUP added.
+        for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+            with self.subTest(interrupt=sig.name):
+                status, out, stages = self._interrupt_full_in("scan", sig)
+                self.assertEqual(status, 128 + sig.value,
+                                 f"verify full on {sig.name} during the scan must exit {128 + sig.value} (M-1):\n{out}")
+                self.assertNotIn("verify full: PASS", out,
+                                 f"verify full printed PASS after {sig.name} during the scan (security M-1)")
+                self.assertEqual(stages.count("teardown"), 1, f"teardown on {sig.name} during the scan: {stages}")
+                self.assertNotIn("offline_check", stages)
+
+    def _interrupt_full_in(self, stage: str, sig: signal.Signals) -> tuple[int, str, list[str]]:
+        """Run the host half of `verify.sh full` in its own session, wait until
+        the stub for `stage` hangs, send `sig` to the whole process group (as a
+        terminal or a CI runner does), and return the exit status a shell sees
+        (a death by signal n reads 128 + n, as `$?` reports it), the combined
+        output, and the stages that ran."""
+        self.log.write_text("", encoding="utf-8")
+        proc = subprocess.Popen(["bash", "scripts/verify.sh", "full"], cwd=self.tmp,
+                                env=self._env(HANG_STAGE=stage), stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, text=True, start_new_session=True)
+        out = ""
+        try:
+            deadline = time.monotonic() + 20
+            while time.monotonic() < deadline and proc.poll() is None:
+                if any(l.startswith(stage) for l in self.log.read_text().splitlines()):
+                    break
+                time.sleep(0.1)
+            else:
+                proc.kill()
+                proc.communicate(timeout=30)
+                self.fail(f"verify full never reached the {stage} stage")
+            time.sleep(0.3)
+            os.killpg(proc.pid, sig)
+            stdout, stderr = proc.communicate(timeout=30)
+            out = stdout + stderr
+        finally:
+            if proc.poll() is None:
+                os.killpg(proc.pid, signal.SIGKILL)
+                proc.wait()
+        rc = proc.returncode
+        status = 128 - rc if rc < 0 else rc
+        return status, out, self._stages(self.log.read_text(encoding="utf-8").splitlines())
+
+    def test_verify_full_signal_during_smoke_exits_with_its_status_and_no_pass(self):
+        """Security M-1 (predates U4; security-u4.md P2 run B, last row): INT,
+        TERM or HUP during smoke make verify full exit 130/143/129, print no
+        PASS, tear the verify project down once (from the trap), and run
+        neither the scan nor the offline check."""
+        if not hasattr(os, "killpg"):  # pragma: no cover - the gates image is Linux
+            self.skipTest("os.killpg is POSIX only")
+        for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+            with self.subTest(interrupt=sig.name):
+                status, out, stages = self._interrupt_full_in("smoke", sig)
+                self.assertEqual(status, 128 + sig.value,
+                                 f"verify full on {sig.name} during smoke must exit {128 + sig.value} (M-1):\n{out}")
+                self.assertNotIn("verify full: PASS", out,
+                                 f"verify full printed PASS after {sig.name} during smoke (security M-1)")
+                self.assertEqual(stages, FULL_ORDER[:FULL_ORDER.index("smoke") + 1] + ["teardown"],
+                                 f"on {sig.name} during smoke the trap tears down once; nothing later runs")
 
     def test_verify_full_uses_per_worktree_image_tag(self):  # PS-3.9 N6, §2.6 item 9
         def tags(lines: list[str]) -> set[str]:

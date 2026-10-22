@@ -1,0 +1,243 @@
+"""Scratch only (tester, platform-supply-chain unit 4 RED: PSC-6 + carry-ins r3-1,
+r3-2, r3-3, L-1, I-1). Runs inside the gates image with --network none:
+/work is the real checkout (read-only), /scratch holds verify.green.sh,
+scan.green.sh and app.green.Dockerfile (scratch shapes, never production files).
+
+RED: the new/updated RED tests fail on today's tree.
+Phase A (guards): mutants of TODAY's files against the guard tests only, plus
+allowed-change controls that must still pass.
+Phase B (satisfiability and RED-test strength): today's tree with verify.sh,
+scan.sh and app.Dockerfile replaced by the green shapes; the four touched test
+modules pass and shellcheck is clean; then fix-revert and look-alike mutants
+per RED test, with controls. Phase B': the guard mutants on the green copy."""
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+SRC = Path("/work")
+BASE = Path("/tmp/u4-base")
+GREEN = Path("/tmp/u4-green")
+MUT = Path("/tmp/u4-mut")
+V = "scripts/verify.sh"
+S = "scripts/scan.sh"
+A = "docker/app.Dockerfile"
+M = "tests.test_image_scan."
+SS = "tests.test_stack_scripts.VerifyHostHalfTest."
+RUNS_SCAN = SS + "test_verify_full_runs_scan_between_teardown_and_offline_check"
+FAILS_SCAN = SS + "test_verify_full_fails_when_image_scan_fails"
+FULL = SS + "test_full_runs_stages_in_order_then_tears_down"
+EACH = SS + "test_each_failing_stage_fails_verify_and_still_tears_down"
+CDPATH = SS + "test_verify_is_cdpath_safe"
+OFFLINE = SS + "test_verify_full_runs_offline_check"
+INTERRUPT = SS + "test_teardown_runs_on_interrupt"
+INLINE = "tests.test_harness_port.VerificationEntryPointTest.test_verify_sh_has_no_inlined_commands"
+KEYS = "tests.test_stack_model_keys.VerifyModelKeysTest"
+R31 = M + "ScanScriptTest.test_scan_cleanup_with_only_other_projects_containers_removes_nothing"
+L1 = M + "ScanScriptTest.test_scan_refuses_a_project_name_that_is_not_ke_scan_digits"
+I6 = M + "ScanScriptTest.test_scan_project_name_uses_srandom"
+TAR = M + "ScanScriptTest.test_scan_removes_tar_on_every_exit"
+R32 = M + "AppImageTest.test_app_image_builder_puts_no_uv_under_shipped_paths"
+I1 = M + "AppImageTest.test_app_image_builder_drops_world_writable_venv_lock"
+NOUV = M + "AppImageTest.test_app_image_final_stage_has_no_uv"
+PIN = M + "AppImageTest.test_uv_pin_matches_in_app_and_gates_images"
+PSC6_RED = [FULL, EACH, CDPATH, RUNS_SCAN, FAILS_SCAN]
+RED = PSC6_RED + [L1, I1]
+
+UV_IMG = "ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946"
+SYNC1 = "RUN uv sync --locked --no-dev --no-install-project\n"
+SYNC2 = "RUN uv sync --locked --no-dev --no-editable\n"
+SYNC2_GREEN = "RUN uv sync --locked --no-dev --no-editable \\\n    && rm -f /opt/venv/.lock\n"
+COPY_UV = "COPY --from=uv /uv /usr/local/bin/uv\n"
+UV_ENV_END = "    UV_LINK_MODE=copy\n"
+TEARDOWN = "  teardown_verify || exit 1\n"
+SCAN_LINE = "  # PSC-6: the ke-app image scan, in its own project (ADR-KE-013 amendment 1, D4).\n  scripts/scan.sh\n"
+OFFLINE_LINE = "  scripts/offline_check.sh\n"
+ELIF = '  elif [ -n "$listing" ]; then\n'
+ASSIGN_GREEN = 'export COMPOSE_PROJECT_NAME="ke-scan-${SRANDOM-}"\n'
+ASSIGN_TODAY = 'export COMPOSE_PROJECT_NAME="ke-scan-${SRANDOM}"\n'
+CHECK = (
+    "# SRANDOM needs bash >= 5.1: older bash leaves it unset or takes a caller's\n"
+    "# value verbatim, so the name is checked before it reaches docker, mkdir or rm.\n"
+    "project_re='^ke-scan-[0-9]+$'\n"
+    "if ! [[ \"$COMPOSE_PROJECT_NAME\" =~ $project_re ]]; then\n"
+    "  echo \"scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: "
+    "$(printf '%q' \"$COMPOSE_PROJECT_NAME\"))\" >&2\n"
+    "  exit 1\n"
+    "fi\n"
+)
+MKDIR = 'mkdir -m 0755 -- "$KE_SCAN_IN"\n'
+TRAP_TERM = "trap 'exit 143' TERM\n"
+
+# ---- Phase A: guards on TODAY's tree --------------------------------------
+DF_EXTRA = {
+    # review r3-2 look-alikes, anchored on the first sync (present in both trees)
+    "m9b_copy_uv_relative_into_app": ([(A, COPY_UV, COPY_UV + "COPY --from=uv /uv ./bin/uv\n")], [R32]),
+    "m9c_copy_uv_image_into_venv": ([(A, COPY_UV, COPY_UV + f"COPY --from={UV_IMG} /uv /opt/venv/bin/uv\n")], [R32]),
+    "m8b_cp_command_v_uv_into_venv": ([(A, SYNC1, SYNC1.rstrip("\n") + ' && cp "$(command -v uv)" /opt/venv/bin/\n')], [R32]),
+    "m8c_hardlink_uv_into_venv": ([(A, SYNC1, SYNC1.rstrip("\n") + " && ln /usr/local/bin/uv /opt/venv/bin/uv\n")], [R32]),
+    "m8d_cp_whole_bin_dir_into_venv": ([(A, SYNC1, SYNC1.rstrip("\n") + " && cp -r /usr/local/bin/. /opt/venv/bin/\n")], [R32]),
+    "m8e_install_uv_into_app": ([(A, SYNC1, SYNC1.rstrip("\n") + " && install -m 0755 /usr/local/bin/uv /app/uv\n")], [R32]),
+    "m8f_uv_pip_install_uv": ([(A, SYNC1, SYNC1.rstrip("\n") + " && uv pip install uv\n")], [R32]),
+    "m8g_uv_tool_bin_in_venv": ([(A, UV_ENV_END, "    UV_LINK_MODE=copy \\\n    UV_TOOL_BIN_DIR=/opt/venv/bin\n"),
+                                 (A, SYNC1, SYNC1.rstrip("\n") + " && uv tool install ruff\n")], [R32]),
+    "m8h_uv_cache_under_app": ([(A, UV_ENV_END, "    UV_LINK_MODE=copy \\\n    UV_CACHE_DIR=/app/.uv-cache\n")], [R32]),
+    "m8i_mv_uv_into_venv": ([(A, SYNC1, SYNC1.rstrip("\n") + " && mv /usr/local/bin/uv /opt/venv/bin/\n")], [R32]),
+}
+TODAY = {
+    # PSC-6 / D4: grype in verify.sh's forbidden list
+    "g_grype_inline_docker_run": ([(V, TEARDOWN, TEARDOWN + '  docker run --rm --network none -v "$PWD/dist:/in:ro" '
+                                    'anchore/grype:v0.120.1 docker-archive:/in/ke-app.tar --fail-on high\n')], [INLINE]),
+    "g_grype_binary": ([(V, TEARDOWN, TEARDOWN + '  grype "ke-app:$KE_IMAGE_TAG" --fail-on high\n')], [INLINE]),
+    # review r3-1 (m1 verbatim from review-u3-mutants.py.txt)
+    "m1_rm_on_empty_listing": ([(S, ELIF, "  else\n")], [R31]),
+    "m1b_always_true_guard": ([(S, ELIF, '  elif [ -n "${listing}x" ]; then\n')], [R31]),
+    # review r3-2 (m8, m9 verbatim from review-u3-mutants.py.txt)
+    "m8_builder_puts_uv_in_venv": ([(A, SYNC2, "RUN uv sync --locked --no-dev --no-editable && cp /usr/local/bin/uv /opt/venv/bin/uv\n")], [R32]),
+    "m9_builder_copies_uv_into_app": ([(A, COPY_UV, COPY_UV + "COPY --from=uv /uv /app/bin/uv\n")], [R32]),
+    **DF_EXTRA,
+}
+CONTROLS = {
+    "c_cache_mount_on_sync": ([(A, SYNC1, "RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --no-dev --no-install-project\n")],
+                              [R32, NOUV]),
+    "c_uv_compile_bytecode_env": ([(A, UV_ENV_END, "    UV_LINK_MODE=copy \\\n    UV_COMPILE_BYTECODE=1\n")], [R32, NOUV]),
+}
+GREEN_GUARDS = {k: v for k, v in TODAY.items() if k != "m8_builder_puts_uv_in_venv"}
+GREEN_GUARDS["m8_builder_puts_uv_in_venv (re-anchored)"] = (
+    [(A, SYNC2_GREEN, SYNC2_GREEN.rstrip("\n") + " && cp /usr/local/bin/uv /opt/venv/bin/uv\n")], [R32])
+
+# ---- Phase B: RED-test mutants on the green copy ---------------------------
+GREEN_MUT = {
+    # PSC-6
+    "v_fix_revert_no_scan": ([(V, SCAN_LINE, "")], PSC6_RED),
+    "v_scan_before_teardown": ([(V, SCAN_LINE, ""), (V, TEARDOWN, "  scripts/scan.sh\n" + TEARDOWN)], PSC6_RED),
+    "v_scan_after_offline_check": ([(V, SCAN_LINE, ""), (V, OFFLINE_LINE, OFFLINE_LINE + "  scripts/scan.sh\n")], PSC6_RED),
+    "v_scan_or_true": ([(V, "  scripts/scan.sh\n", "  scripts/scan.sh || true\n")], [FAILS_SCAN]),
+    "v_scan_failure_only_warns": ([(V, "  scripts/scan.sh\n", '  if ! scripts/scan.sh; then echo "scan failed" >&2; fi\n')], [FAILS_SCAN]),
+    "v_scan_backgrounded": ([(V, "  scripts/scan.sh\n", "  scripts/scan.sh &\n")], [FAILS_SCAN]),
+    "v_scan_twice": ([(V, "  scripts/scan.sh\n", "  scripts/scan.sh\n  scripts/scan.sh\n")], [RUNS_SCAN]),
+    "v_scan_in_fast_too": ([(V, '  if [ "$mode" = fast ]; then\n', '  if [ "$mode" = fast ]; then\n    scripts/scan.sh\n')], [RUNS_SCAN]),
+    "v_failed_scan_tears_down_again": ([(V, "  scripts/scan.sh\n", "  scripts/scan.sh || { teardown_verify; exit 1; }\n")], [FAILS_SCAN]),
+    "v_scan_given_an_argument": ([(V, "  scripts/scan.sh\n", "  scripts/scan.sh full\n")], [RUNS_SCAN]),
+    "v_scan_without_verify_tag": ([(V, "  scripts/scan.sh\n", "  KE_IMAGE_TAG=local scripts/scan.sh\n")], [RUNS_SCAN]),
+    # L-1
+    "l1_fix_revert": ([(S, CHECK, ""), (S, ASSIGN_GREEN, ASSIGN_TODAY)], [L1]),
+    "l1_bash_versinfo_only": ([(S, CHECK, 'if (( BASH_VERSINFO[0] < 5 || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] < 1) )); '
+                                'then echo "scan: FAIL (bash >= 5.1 is needed for SRANDOM)" >&2; exit 1; fi\n'),
+                               (S, ASSIGN_GREEN, ASSIGN_TODAY)], [L1]),
+    "l1_unanchored_regex": ([(S, "project_re='^ke-scan-[0-9]+$'", "project_re='ke-scan-[0-9]+'")], [L1]),
+    "l1_digits_optional": ([(S, "project_re='^ke-scan-[0-9]+$'", "project_re='^ke-scan-[0-9]*$'")], [L1]),
+    "l1_check_after_mkdir": ([(S, CHECK, ""), (S, MKDIR, MKDIR + CHECK)], [L1]),
+    "l1_check_after_trap": ([(S, CHECK, ""), (S, TRAP_TERM, TRAP_TERM + CHECK)], [L1]),
+    "l1_warns_but_goes_on": ([(S, CHECK, CHECK.replace("  exit 1\n", ""))], [L1]),
+    "l1_set_u_kept_on_srandom": ([(S, ASSIGN_GREEN, ASSIGN_TODAY)], [L1]),
+    "l1_vague_message": ([(S, CHECK, CHECK.replace('echo "scan: FAIL (the scan project name is malformed',
+                                                   'echo "error (bad name'))], [L1]),
+    # I-1
+    "i1_fix_revert": ([(A, SYNC2_GREEN, SYNC2)], [I1]),
+    "i1_rm_before_last_sync": ([(A, SYNC2_GREEN, "RUN rm -f /opt/venv/.lock \\\n    && uv sync --locked --no-dev --no-editable\n")], [I1]),
+    "i1_rm_after_first_sync_only": ([(A, SYNC2_GREEN, SYNC2), (A, SYNC1, SYNC1.rstrip("\n") + " && rm -f /opt/venv/.lock\n")], [I1]),
+    "i1_rm_in_final_stage": ([(A, SYNC2_GREEN, SYNC2), (A, "COPY --from=builder /app /app\n",
+                                                        "COPY --from=builder /app /app\nRUN rm -f /opt/venv/.lock\n")], [I1]),
+    "i1_wrong_path_no_dot": ([(A, "rm -f /opt/venv/.lock", "rm -f /opt/venv/lock")], [I1]),
+    "i1_wrong_path_app": ([(A, "rm -f /opt/venv/.lock", "rm -f /app/.lock")], [I1]),
+    "i1_chmod_instead": ([(A, "rm -f /opt/venv/.lock", "chmod 0644 /opt/venv/.lock")], [I1]),
+    "i1_echo_rm": ([(A, "rm -f /opt/venv/.lock", "echo rm -f /opt/venv/.lock")], [I1]),
+}
+GREEN_CONTROLS = {
+    "c_l1_srandom_precheck_keeps_braces": ([(S, CHECK, ""), (S, ASSIGN_GREEN,
+        'if ! [[ "${SRANDOM-}" =~ ^[0-9]+$ ]]; then echo "scan: FAIL (SRANDOM is not a number; bash >= 5.1 is needed)" >&2; exit 1; fi\n'
+        + ASSIGN_TODAY)], [L1, I6, TAR]),
+    "c_i1_separate_run": ([(A, SYNC2_GREEN, SYNC2 + "RUN rm -f /opt/venv/.lock\n")], [I1, R32, NOUV]),
+    "c_i1_rm_without_f": ([(A, "rm -f /opt/venv/.lock", "rm /opt/venv/.lock")], [I1, R32, NOUV]),
+    "c_v_scan_comment_only_differs": ([(V, SCAN_LINE, "  scripts/scan.sh\n")], PSC6_RED + [INLINE]),
+}
+
+
+def run(root: Path, tests: list[str]) -> tuple[int, str]:
+    d = subprocess.run([sys.executable, "-m", "unittest", *tests], cwd=root, capture_output=True, text=True,
+                       timeout=1800)
+    return d.returncode, d.stdout + d.stderr
+
+
+def killers(out: str) -> str:
+    names = sorted({m.group(1) for m in re.finditer(r"^(?:FAIL|ERROR): (\w+)", out, re.M)})
+    first = next((l.strip()[:150] for l in out.splitlines() if l.startswith("AssertionError")), "")
+    return f"by {', '.join(names)}  {first}" if names else ""
+
+
+def mutate(base: Path, edits) -> None:
+    shutil.rmtree(MUT, True)
+    shutil.copytree(base, MUT, symlinks=True)
+    for rel, old, new in edits:
+        p = MUT / rel
+        t = p.read_text(encoding="utf-8")
+        assert old in t, f"anchor missing in {rel}: {old!r}"
+        p.write_text(t.replace(old, new, 1), encoding="utf-8", newline="\n")
+        if rel.endswith(".sh"):
+            p.chmod(0o755)
+
+
+def phase(title: str, base: Path, mutants: dict, controls: dict | None = None) -> int:
+    print(f"\n## {title}", flush=True)
+    tests = sorted({t for _, ts in mutants.values() for t in ts})
+    code, out = run(base, tests)
+    print(f"UNMUTATED ({len(tests)} tests): {'PASS' if code == 0 else 'FAIL'} ({out.strip().splitlines()[-1]})",
+          flush=True)
+    if code:
+        print(out[-6000:])
+        return 1
+    killed = 0
+    for name, (edits, targets) in mutants.items():
+        mutate(base, edits)
+        code, out = run(MUT, targets)
+        killed += bool(code)
+        print(f"{'KILLED' if code else 'SURVIVED':8} {name:40} {killers(out)}", flush=True)
+    print(f"{killed}/{len(mutants)} killed", flush=True)
+    rc = 0 if killed == len(mutants) else 1
+    for name, (edits, targets) in (controls or {}).items():
+        mutate(base, edits)
+        code, out = run(MUT, targets)
+        print(f"{'CONTROL-PASS' if code == 0 else 'CONTROL-FAIL'} {name:36} (must pass: an allowed change) "
+              f"{killers(out)}", flush=True)
+        rc |= bool(code)
+    return rc
+
+
+def main() -> int:
+    shutil.rmtree(BASE, True)
+    shutil.copytree(SRC, BASE, symlinks=True,
+                    ignore=shutil.ignore_patterns(".git", ".venv", "__pycache__", "dist", "node_modules",
+                                                  ".mypy_cache", ".coverage*"))
+    shutil.rmtree(GREEN, True)
+    shutil.copytree(BASE, GREEN, symlinks=True)
+    for rel, src in ((V, "verify.green.sh"), (S, "scan.green.sh"), (A, "app.green.Dockerfile")):
+        shutil.copyfile(f"/scratch/{src}", GREEN / rel)
+        if rel.endswith(".sh"):
+            (GREEN / rel).chmod(0o755)
+    print("## RED on today's tree (each must fail):", flush=True)
+    for t in RED:
+        code, out = run(BASE, [t])
+        print(f"{'RED' if code else 'NOT-RED'}  {t.rsplit('.', 1)[1]}  {killers(out)}", flush=True)
+    rc = phase("Phase A: guard mutants on TODAY's tree", BASE, TODAY, CONTROLS)
+    sc = subprocess.run(["shellcheck", "-x", V, S], cwd=GREEN, capture_output=True, text=True)
+    print(f"\n## Phase B shellcheck -x on the green verify.sh + scan.sh: exit {sc.returncode} "
+          f"{(sc.stdout + sc.stderr).strip() or '(no output)'}", flush=True)
+    rc |= bool(sc.returncode)
+    mods = ["tests.test_image_scan", "tests.test_stack_scripts", "tests.test_stack_model_keys",
+            "tests.test_harness_port"]
+    code, out = run(GREEN, mods)
+    print(f"## Phase B satisfiability: {' '.join(mods)} on the green copy: "
+          f"{'PASS' if code == 0 else 'FAIL'} ({out.strip().splitlines()[-1]}; "
+          f"{[l for l in out.splitlines() if l.startswith('Ran ')]})", flush=True)
+    if code:
+        print(out[-8000:])
+        rc = 1
+    rc |= phase("Phase B: RED-test mutants on the green copy", GREEN, GREEN_MUT, GREEN_CONTROLS)
+    rc |= phase("Phase B': guard mutants re-run on the green copy", GREEN, GREEN_GUARDS, CONTROLS)
+    return rc
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -18,7 +18,9 @@ RUN uv sync --locked --no-dev --no-install-project
 COPY harness_telemetry ./harness_telemetry
 COPY engine ./engine
 COPY config ./config
-RUN uv sync --locked --no-dev --no-editable
+# uv leaves an empty 0666 lock file in the venv; it must not ship (I-1).
+RUN uv sync --locked --no-dev --no-editable \
+    && rm -f /opt/venv/.lock
 
 FROM python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
 ENV PATH=/opt/venv/bin:$PATH \

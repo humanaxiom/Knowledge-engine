@@ -1,0 +1,56 @@
+PSC-7 / D6 (developer, unit 4, 2026-10-21): grype's view of psycopg_binary.libs in ke-app:wt-33a132fbfdd7
+Method: docker save -> grype v0.120.1 (pinned digest), fresh DB, --network none, -o cyclonedx-json (every component, not only matches); jq on the result.
+
+== 1. files in psycopg_binary.libs (docker run --rm --network none --entrypoint ls -1) ==
+libcom_err-2abe824b.so.2.1
+libcrypt-bc2db45e.so.1
+libcrypto-2d1629ee.so.3
+libgssapi_krb5-497db0c6.so.2.2
+libk5crypto-b1f99d5c.so.3.1
+libkeyutils-dfe70bd6.so.1.5
+libkrb5-fcafa220.so.3.3
+libkrb5support-d0bcff84.so.0.1
+liblber-a44a5afb.so.2.0.200
+libldap-7c3a4b12.so.2.0.200
+libpcre-9513aab5.so.1.2.0
+libpq-e9b5c9ac.so.5.18
+libsasl2-84219a89.so.3.0.0
+libselinux-0922c95c.so.1
+libssl-8bd944e8.so.3
+
+== 2. catalogue ==
+components: 3493
+components whose JSON mentions the directory psycopg_binary.libs: 0
+python psycopg components:
+  psycopg 3.3.6 pkg:pypi/psycopg@3.3.6
+  psycopg-binary 3.3.6 pkg:pypi/psycopg-binary@3.3.6
+distinct Debian system-library components (dpkg copies, paths under /usr/lib, not the wheel's):
+  libcom-err2 1.47.0-2+b2
+  libcrypt1 1:4.4.33-2
+  libgssapi-krb5-2 1.20.1-2+deb12u5
+  libk5crypto3 1.20.1-2+deb12u5
+  libkeyutils1 1.6.3-2
+  libkrb5-3 1.20.1-2+deb12u5
+  libkrb5support0 1.20.1-2+deb12u5
+  libpcre2-8-0 10.42-1+deb12u2
+  libselinux1 3.4-1+b6
+  libssl3 3.0.22-1~deb12u1
+
+== 3. per-library table (file | any component/file entry naming it | grype match) ==
+libcom_err-2abe824b.so.2.1 | no | none
+libcrypt-bc2db45e.so.1 | no | none
+libcrypto-2d1629ee.so.3 | no | none
+libgssapi_krb5-497db0c6.so.2.2 | no | none
+libk5crypto-b1f99d5c.so.3.1 | no | none
+libkeyutils-dfe70bd6.so.1.5 | no | none
+libkrb5-fcafa220.so.3.3 | no | none
+libkrb5support-d0bcff84.so.0.1 | no | none
+liblber-a44a5afb.so.2.0.200 | no | none
+libldap-7c3a4b12.so.2.0.200 | no | none
+libpcre-9513aab5.so.1.2.0 | no | none
+libpq-e9b5c9ac.so.5.18 | no | none
+libsasl2-84219a89.so.3.0.0 | no | none
+libselinux-0922c95c.so.1 | no | none
+libssl-8bd944e8.so.3 | no | none
+
+RESULT: grype's catalogue has no component or file entry for any of the 15 files in psycopg_binary.libs. It lists psycopg 3.3.6 and psycopg-binary 3.3.6 (PyPI) and the image's Debian system copies of the libraries; the wheel's own hash-renamed copies (libpq 5.18, OpenSSL libcrypto/libssl 3, krb5, ldap, sasl, ...) are not scanned, so no match can be reported against them. L-13 stays a documented residual (PSC-7); no doc may claim the scan covers them.

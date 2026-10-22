@@ -188,8 +188,10 @@ class VerificationEntryPointTest(unittest.TestCase):
                          if not line.lstrip().startswith("#"))
         # platform-offline (architecture §2.6 item 10): the bundle and the
         # offline check keep their commands in bundle.sh / offline_check.sh.
+        # platform-supply-chain PSC-6 (ADR-KE-013 amendment 1, D4): the image
+        # scan keeps its scanner in scan.sh and docker-compose.scan.yml.
         for forbidden in ("pytest", "unittest", "mypy", "ruff", "uv run", "smoke_otlp",
-                          "docker save", "sha256sum"):
+                          "docker save", "sha256sum", "grype"):
             self.assertNotIn(forbidden, body, forbidden)
         self.assertIn("scripts/test.sh", body)
         self.assertIn("scripts/smoke.sh", body)

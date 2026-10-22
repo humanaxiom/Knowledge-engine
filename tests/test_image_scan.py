@@ -64,9 +64,22 @@ review N1, r1-a, r1-b, security I-4, I-6):
 - PSC-17 (D10 tests 1 and 1b): static checks of docker/app.Dockerfile and the
   uv pin shared with docker/gates.Dockerfile. uv.lock's certifi version is
   manual evidence (D10 test 2, u3-no-uv-in-ke-app.txt), not a unit test.
-- Not here: `test_verify_full_fails_when_image_scan_fails` (§2.6 item 4) needs
-  scan.sh wired into verify.sh, which D10 holds until the real scan is green;
-  it lands with the PSC-6 step.
+- `test_verify_full_fails_when_image_scan_fails` (§2.6 item 5) needs scan.sh
+  wired into verify.sh; it is in tests/test_stack_scripts.py (PSC-6, unit 4).
+
+Added by unit 4 (tester, 2026-10-21; PSC-6 carry-ins review r3-1, r3-2, r3-3,
+security L-1, I-1; the verify.sh wiring itself is tested in
+tests/test_stack_scripts.py `VerifyHostHalfTest`):
+- r3-1: with only other projects' containers in the daemon, cleanup's listing
+  is empty, so it makes no `docker rm` call and a passing scan exits 0.
+- L-1: before any docker call, `mkdir` or trap, scan.sh checks the project
+  against `^ke-scan-[0-9]+$` and otherwise prints `scan: FAIL (...)` and
+  exits non-zero. Older bash is simulated with BASH_ENV (see the test). The
+  I-6 assignment may read `${SRANDOM-}` or `${SRANDOM:-}` so the check, not
+  `set -u`, reports an unset SRANDOM.
+- r3-2: the `builder` stage puts no uv under /opt/venv or /app (the final
+  stage copies both whole). I-1: the builder removes /opt/venv/.lock after
+  its last uv command.
 """
 
 from __future__ import annotations
@@ -1315,7 +1328,10 @@ class ScanScriptTest(unittest.TestCase):
         self.assertEqual(len(sets), 1, "scan.sh assigns COMPOSE_PROJECT_NAME once")
         if sets:
             self.assertRegex(sets[0].strip(),
-                             r"""^(?:export\s+)?COMPOSE_PROJECT_NAME=(["']?)ke-scan-(?:\$\{SRANDOM\}|\$SRANDOM)+\1$""",
+                             # `${SRANDOM-}` / `${SRANDOM:-}` allowed since unit 4: the L-1
+                             # check (orchestrator ruling, handoff 2026-10-21 "U3 review
+                             # APPROVED") then reports an unset SRANDOM, not `set -u`.
+                             r"""^(?:export\s+)?COMPOSE_PROJECT_NAME=(["']?)ke-scan-(?:\$\{SRANDOM(?::?-)?\}|\$SRANDOM)+\1$""",
                              "the project is ke-scan-${SRANDOM} (security I-6)")
         self.assertEqual([line.strip() for line in lines if re.search(r"(?<![A-Za-z_])RANDOM\b", line)], [],
                          "scan.sh still uses bash's 15-bit RANDOM (security I-6)")
@@ -1323,6 +1339,92 @@ class ScanScriptTest(unittest.TestCase):
             v = subprocess.run(["bash", "-c", 'echo "${BASH_VERSINFO[0]} ${BASH_VERSINFO[1]}"'],
                                capture_output=True, text=True, timeout=30).stdout.split()
             self.assertGreaterEqual((int(v[0]), int(v[1])), (5, 1), "bash < 5.1 has no SRANDOM")
+
+    # ---- unit 4 carry-ins (review r3-1; security L-1, review r3-5) ----------
+
+    def test_scan_cleanup_with_only_other_projects_containers_removes_nothing(self):
+        """Review r3-1: the daemon holds only other projects' containers (one
+        under a look-alike name), so cleanup's own-label listing is empty. It
+        then makes no `docker rm` call at all (a real `docker rm -f ""` exits
+        1: "container name cannot be empty"), prints no `scan: FAIL` line, and
+        the passing scan exits 0. Kills the reviewer's m1 (`elif` -> `else`)."""
+        repo = self._repo()
+        result, records = self._run(repo, FAKE_DOCKER_CONTAINERS=json.dumps(DECOY_CONTAINERS))
+        out = self._out(result)
+        project = self._assert_one_scan_project(records)
+        lists = [r for r in self._docker_records(records)
+                 if r["argv"][:1] == ["ps"] or r["argv"][:2] in (["container", "ls"], ["container", "list"],
+                                                                 ["container", "ps"])]
+        self.assertTrue(lists, "harness: cleanup made no container listing call")
+        rms = [" ".join(r["argv"]) for r in self._docker_records(records) if _is_rm(r["argv"])]
+        self.assertEqual(rms, [], "cleanup ran `docker rm` with no container of its own project to remove "
+                         "(review r3-1: an empty listing must make no rm call)")
+        self.assertNotIn("scan: FAIL", out, "a clean scan with only other projects' containers printed a FAIL line")
+        self.assertEqual(result.returncode, 0, out)
+        self._assert_torn_down(records, project, repo)
+
+    # Older bash, simulated under the gates image's bash 5.2 by BASH_ENV (read
+    # before the script runs): `unset SRANDOM` drops bash's special variable,
+    # as on bash < 5.1; assigning it afterwards makes it a plain variable that
+    # holds the caller's value, as bash 5.0 does with SRANDOM in the
+    # environment (security L-1 probe: `SRANDOM=evil/../..` gives
+    # `ke-scan-evil/../..`).
+    _OLD_BASH_ENV = 'unset SRANDOM\nif [ "${SIM_SRANDOM+x}" = x ]; then SRANDOM="$SIM_SRANDOM"; fi\n'
+    _BAD_SRANDOM = {
+        "bash < 5.1: SRANDOM unset": None,
+        "bash 5.0: SRANDOM empty": "",
+        "bash 5.0: SRANDOM a path": "evil/../..",
+        "bash 5.0: SRANDOM a command separator": "1;id",
+        "bash 5.0: SRANDOM a substitution": "$(id)",
+        "bash 5.0: SRANDOM with a space": "1 2",
+        "bash 5.0: SRANDOM with a newline": "1\n2",
+        "bash 5.0: SRANDOM digits then letters": "12ab",
+        "bash 5.0: SRANDOM negative": "-1",
+    }
+
+    def _old_bash_env(self, value: str | None) -> dict[str, str]:
+        env_file = self.tmp / "old-bash-env.sh"
+        env_file.write_text(self._OLD_BASH_ENV, encoding="utf-8", newline="\n")
+        extra = {"BASH_ENV": str(env_file)}
+        if value is not None:
+            extra["SIM_SRANDOM"] = value
+        return extra
+
+    def test_scan_refuses_a_project_name_that_is_not_ke_scan_digits(self):
+        """Security L-1 (review r3-5): `${SRANDOM}` exists only in bash >= 5.1.
+        On an older bash it is unset (`set -u` stops with a bare "unbound
+        variable") or a caller's SRANDOM is used verbatim in
+        COMPOSE_PROJECT_NAME, KE_SCAN_IN (`mkdir`, `rm -rf`) and the hand
+        commands. Orchestrator ruling: scan.sh fails with a clear
+        `scan: FAIL (...)` line unless the project matches ^ke-scan-[0-9]+$,
+        before any docker call (so before the cleanup trap, which lists and
+        tears down the project) and before creating dist/."""
+        with self.subTest(case="control: bash 5.0 with SRANDOM=4242 in the environment runs as ke-scan-4242"):
+            repo = self._repo()
+            result, records = self._run(repo, **self._old_bash_env("4242"))
+            self.assertEqual(result.returncode, 0, self._out(result))
+            self.assertEqual(self._assert_one_scan_project(records), "ke-scan-4242",
+                             "harness: the BASH_ENV simulation did not set the project")
+        for case, value in self._BAD_SRANDOM.items():
+            with self.subTest(case=case):
+                repo = self._repo()
+                # The raw call log, not fake_docker.records(): a project with a
+                # newline in it would break the log's JSON lines.
+                result = subprocess.run(["bash", "scripts/scan.sh"], cwd=repo,
+                                        env=self._env(WT_TAG, **self._old_bash_env(value)),
+                                        capture_output=True, text=True, timeout=120)
+                out = self._out(result)
+                calls = self.json.read_text(encoding="utf-8").strip()
+                self.assertNotEqual(result.returncode, 0, f"{case}: scan.sh ran with a malformed project:\n{out}")
+                self.assertEqual(calls, "",
+                                 f"{case}: docker (or teardown.sh) was called with a project that is not "
+                                 f"ke-scan-<digits> (security L-1):\n{out}")
+                self.assertFalse((repo / "dist").exists(),
+                                 f"{case}: dist/ was created before the project name was checked (L-1)")
+                fails = [line for line in result.stderr.splitlines() if line.startswith("scan: FAIL (")]
+                self.assertTrue([line for line in fails if re.search(r"(?i)project|ke-scan|SRANDOM|bash", line)],
+                                f"{case}: no `scan: FAIL (...)` line names the malformed project or the bash "
+                                f"version (security L-1: a clear message, not a bare unbound variable):\n{out}")
 
 
 # PSC-4 fake grype tables (`-o table` with `--show-suppressed`). Ids are made
@@ -1393,7 +1495,7 @@ def _hand_rm_commands(text: str) -> list[str]:
     return found
 
 
-_TAR_CHMOD =re.compile(r'\bchmod\s+(?:--\s+)?0?644\s+(?:--\s+)?"?\$(?:KE_SCAN_IN|\{KE_SCAN_IN\})/ke-app\.tar"?')
+_TAR_CHMOD = re.compile(r'\bchmod\s+(?:--\s+)?0?644\s+(?:--\s+)?"?\$(?:KE_SCAN_IN|\{KE_SCAN_IN\})/ke-app\.tar"?')
 
 
 def _is_rm(argv: list[str]) -> bool:
@@ -1777,6 +1879,123 @@ class AppImageTest(unittest.TestCase):
                     refs[path.name] = ref
         self.assertEqual(len(set(refs.values())), 1,
                          f"app.Dockerfile and gates.Dockerfile pin different uv images: {refs} (D10 point 4)")
+
+    # ---- unit 4 carry-ins (review r3-2; security I-1) ------------------------
+
+    def _builder(self) -> tuple[list[dict[str, Any]], list[tuple[str, str]]]:
+        stages = _stages(APP_DOCKERFILE)
+        builders = [s for s in stages if (s["name"] or "").lower() == "builder"]
+        self.assertEqual(len(builders), 1, "app.Dockerfile has one stage `AS builder` (D10)")
+        return stages, (builders[0]["body"] if builders else [])
+
+    def test_app_image_builder_puts_no_uv_under_shipped_paths(self):
+        """Review r3-2 (guard; kills the reviewer's m8 and m9): the final stage
+        copies /opt/venv and /app from `builder` whole, so the builder must
+        not put uv under either. In `builder`:
+        - the one COPY from the uv stage (or the uv image) is
+          `/uv /usr/local/bin/uv`, and no other COPY/ADD names a uv binary;
+        - no COPY/ADD writes an absolute path under /opt/venv (only `uv sync`
+          fills the venv);
+        - every uv word in a RUN is the `uv sync` command (no cp, mv, ln or
+          install of the binary, no `uv pip`/`uv tool`), and no cp, mv, ln,
+          install, rsync or tar writes under /opt/venv or /app;
+        - no UV_* ENV but UV_PROJECT_ENVIRONMENT points under /opt/venv or /app
+          (a tool bin or cache dir there would ship).
+        A `--mount=...` cache option on a RUN is allowed."""
+        stages, body = self._builder()
+        uv_stages = {"uv"} | {(s["name"] or "").lower() for s in stages
+                              if "astral-sh/uv" in s["ref"].lower() and s["name"]}
+        with self.subTest(part="the one COPY from uv is `/uv /usr/local/bin/uv`; no other COPY/ADD names uv"):
+            from_uv, other = [], []
+            for keyword, rest in body:
+                if keyword not in ("COPY", "ADD"):
+                    continue
+                words = rest.split()
+                srcs = [w.split("=", 1)[1].lower() for w in words if w.startswith("--from=")]
+                operands = [w for w in words if not w.startswith("--")]
+                if any(s in uv_stages or "astral-sh/uv" in s for s in srcs):
+                    from_uv.append((f"{keyword} {rest}", operands))
+                elif any(UV_WORD.fullmatch(w) for w in _words(" ".join(operands))):
+                    other.append(f"{keyword} {rest}")
+            self.assertEqual([ops for _, ops in from_uv], [["/uv", "/usr/local/bin/uv"]],
+                             f"builder: the uv binary may only be copied to /usr/local/bin/uv, once "
+                             f"(review r3-2): {[line for line, _ in from_uv]}")
+            self.assertEqual(other, [], "builder: a COPY/ADD names a uv binary (review r3-2)")
+        with self.subTest(part="no COPY/ADD into an absolute path under /opt/venv"):
+            into_venv = [f"{keyword} {rest}" for keyword, rest in body if keyword in ("COPY", "ADD")
+                         and _under_shipped([w for w in rest.split() if not w.startswith("--")][-1:], ("/opt/venv",))]
+            self.assertEqual(into_venv, [], "builder: only `uv sync` fills /opt/venv (review r3-2)")
+        commands = _run_commands(body)
+        with self.subTest(part="every uv word in a RUN is the `uv sync` command"):
+            bad = []
+            for cmd in commands:
+                words = _words(cmd)
+                for i, w in enumerate(words):
+                    if UV_WORD.fullmatch(w) and words[i + 1:i + 2] != ["sync"]:
+                        bad.append(cmd)
+                        break
+            self.assertEqual(bad, [], "builder: a RUN uses uv other than as `uv sync` (it could copy, link or "
+                             "install uv into /opt/venv or /app; review r3-2)")
+        with self.subTest(part="no cp/mv/ln/install/rsync/tar writes under /opt/venv or /app"):
+            writers = [cmd for cmd in commands if _words(cmd)[:1] and _words(cmd)[0] in _COPIERS
+                       and _under_shipped(_words(cmd)[1:], ("/opt/venv", "/app"))]
+            self.assertEqual(writers, [], "builder: a RUN copies files into /opt/venv or /app (review r3-2)")
+        with self.subTest(part="no UV_* ENV but UV_PROJECT_ENVIRONMENT points under /opt/venv or /app"):
+            env = [pair for keyword, rest in body if keyword == "ENV" for pair in _env_pairs(rest)]
+            bad_env = [f"{k}={v}" for k, v in env if k.upper().startswith("UV_") and k != "UV_PROJECT_ENVIRONMENT"
+                       and _under_shipped([v], ("/opt/venv", "/app"))]
+            self.assertEqual(bad_env, [], "builder: a uv directory under /opt/venv or /app would ship (review r3-2)")
+
+    def test_app_image_builder_drops_world_writable_venv_lock(self):
+        """Security I-1: uv leaves an empty `/opt/venv/.lock`, mode 0666, the one
+        path outside tmp the runtime user (uid 10001) can write. D10 keeps the
+        final stage to its two COPYs, and a `rm` there would leave the file in
+        the COPY layer of the image tar anyway, so the builder removes it: a
+        `rm` naming /opt/venv/.lock in the builder, after its last uv command
+        (each uv run recreates the file). Confirm at GREEN: the built ke-app has
+        no /opt/venv/.lock (evidence)."""
+        stages, body = self._builder()
+        commands = _run_commands(body)
+        uv_at = [i for i, cmd in enumerate(commands) if any(UV_WORD.fullmatch(w) for w in _words(cmd))]
+        self.assertTrue(uv_at, "harness: the builder runs no uv command")
+        rm_at = [i for i, cmd in enumerate(commands)
+                 if _words(cmd)[:1] == ["rm"] and "/opt/venv/.lock" in _words(cmd)]
+        self.assertTrue(rm_at, "the builder never removes /opt/venv/.lock (security I-1: mode 0666, writable by "
+                        "the runtime user); add `rm -f /opt/venv/.lock` after the last `uv sync`")
+        if uv_at and rm_at:
+            self.assertGreater(max(rm_at), max(uv_at),
+                               "the builder removes /opt/venv/.lock before its last uv command, which "
+                               "recreates it (security I-1)")
+        with self.subTest(part="the final stage still copies the venv from builder (the removal ships)"):
+            final = stages[-1]["body"]
+            self.assertIn(("COPY", "--from=builder /opt/venv /opt/venv"), final)
+
+
+# RUN flags that come before the command (BuildKit).
+_RUN_FLAG = re.compile(r"^--(?:mount|network|security)=\S+$")
+# Commands that copy or unpack files to a destination.
+_COPIERS = {"cp", "mv", "ln", "install", "rsync", "tar"}
+
+
+def _run_commands(body: list[tuple[str, str]]) -> list[str]:
+    """The builder's RUN instructions, in order, split into simple commands on
+    `&&`, `||`, `;`, `|` and newlines, with leading BuildKit flags dropped."""
+    out: list[str] = []
+    for keyword, rest in body:
+        if keyword != "RUN":
+            continue
+        words = rest.split()
+        while words and _RUN_FLAG.match(words[0]):
+            words.pop(0)
+        for cmd in re.split(r"&&|\|\||;|\||\n", " ".join(words)):
+            if cmd.strip():
+                out.append(cmd.strip())
+    return out
+
+
+def _under_shipped(words: list[str], roots: tuple[str, ...]) -> bool:
+    """True if a word is one of the roots or a path below one."""
+    return any(w.rstrip("/") == r or w.startswith(r + "/") for w in words for r in roots)
 
 
 if __name__ == "__main__":

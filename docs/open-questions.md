@@ -305,8 +305,9 @@ analyst plan") and decided when that item opens. It does not block
   fix exists, else a time-limited ignore stating why the path is
   unreachable, confirmed by security, plus a follow-up on Debian libpq).
   Built as PSC-4 and PSC-5 (`docs/requirements.md` § "Item:
-  platform-supply-chain"). Original question and the analyst's default,
-  kept for the record:
+  platform-supply-chain"). The psycopg-binary half is moot for the scan
+  (2026-10-21, PSC-7 outcome below). Original question and the analyst's
+  default, kept for the record:
 
   *Q42. Scan threshold and the vendored libraries.* **A42 (assumed):**
   - the run fails on any CRITICAL or HIGH finding that has a fixed version
@@ -346,6 +347,17 @@ analyst plan") and decided when that item opens. It does not block
   - If the scanner does not see `psycopg_binary.libs` at all (PSC-7), the
     second half of Q42 is moot for the scan, and L-13 stays a documented
     residual.
+    - *Outcome 2026-10-21 (PSC-7, ADR-KE-013 amendment 1, D6;
+      `docs/evidence/platform-supply-chain/u4-psc7-psycopg-libs.txt`):*
+      grype v0.120.1 catalogues none of the 15 files in
+      `psycopg_binary.libs` (OpenSSL 3.5.8, libpq 18.0.6, pcre 8.32,
+      cyrus-sasl 2.1.26, the el7 krb5, ...). The psycopg-binary half of
+      Q42 is therefore **MOOT for the scan**: it can never flag a vendored
+      library. L-13 is an accepted residual, rated low by security. The
+      compensating control is tracking psycopg-binary releases (the
+      libraries move with the wheel); `gssencmode=disable` is today's
+      mitigation; the structural fix stays the switch to psycopg on
+      Debian's libpq.
   - Who rules: the orchestrator or security, as before. The 90-day cap is
     the orchestrator's or the human's call.
 

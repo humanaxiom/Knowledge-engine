@@ -9,7 +9,9 @@
 #   full: builds, launches a `ke-verify-<suffix>` project that publishes
 #         nothing, re-runs itself in the one-shot `gates-it` service on the
 #         internal backend network, then runs the live smoke, and always tears
-#         the project down with its volumes.
+#         the project down with its volumes. After the teardown it runs the
+#         ke-app image scan (scan.sh, its own project) and then the offline
+#         install check (offline_check.sh, its own project).
 # Inside either container it only calls the real gate scripts; never list
 # their commands here.
 set -euo pipefail
@@ -83,6 +85,7 @@ if [ "${KE_IN_GATES:-}" != "1" ]; then
   # or the run was interrupted. A failed teardown after a green run still fails
   # verify (N7): a leaked project is not a pass.
   torn_down=0
+  finished=0
   teardown_verify() {
     torn_down=1
     if scripts/teardown.sh --volumes; then return 0; fi
@@ -94,12 +97,22 @@ if [ "${KE_IN_GATES:-}" != "1" ]; then
     local rc=$?
     trap - EXIT
     if [ "$torn_down" -eq 0 ] && ! teardown_verify && [ "$rc" -eq 0 ]; then rc=1; fi
-    if [ "$rc" -eq 0 ]; then
+    if [ "$rc" -eq 0 ] && [ "$finished" -eq 1 ]; then
       echo "== verify full: PASS ($(( $(date +%s) - started ))s) =="
+    elif [ "$rc" -eq 0 ]; then
+      echo "== verify full: FAIL (stopped before the last stage; no PASS) ==" >&2
+      rc=1
+    else
+      echo "== verify full: FAIL (exit $rc) ==" >&2
     fi
     exit "$rc"
   }
   trap cleanup EXIT
+  # M-1: bash runs the EXIT trap for an untrapped fatal signal with $? still 0,
+  # so name each signal's status (128+n) and let cleanup see it.
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  trap 'exit 129' HUP
   scripts/build.sh
   scripts/launch.sh
   docker compose --env-file "$KE_ENV_FILE" --profile gates-it run --rm gates-it \
@@ -108,9 +121,13 @@ if [ "${KE_IN_GATES:-}" != "1" ]; then
   # The verify project goes first: the offline check needs the memory and the
   # disk it held (architecture §2.5). A failed teardown stops here.
   teardown_verify || exit 1
+  # PSC-6: the ke-app image scan, in its own project (ADR-KE-013 amendment 1,
+  # D4). A non-zero exit fails verify here; the offline check is not reached.
+  scripts/scan.sh
   # PS-3.2: the bundle, installed and run inside a clean daemon. It has its
   # own project, files and teardown, and never touches this one.
   scripts/offline_check.sh
+  finished=1
   exit 0
 fi
 
