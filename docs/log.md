@@ -437,3 +437,14 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-22T04:02:41Z | reviewer | platform-supply-chain | close-out re-check: B1 closed (psc4 mutant-policy red run verified), nits 1-5 addressed | review: pass
 2026-10-22T04:12:52Z | orchestrator | platform-supply-chain | close-out verify full + Done check confirmed; commit approved; item closed | verify full: pass
 2026-10-22T04:12:55Z | developer | platform-supply-chain | close-out commit; handoff archived | commit: approved
+2026-10-22T04:49:43Z | analyst | ci-triggers | wrote Item: ci-triggers CT-1..CT-7 + Q-CT1..Q-CT5 in docs/requirements.md (lines 2606-2686) | plan: criteria drafted
+2026-10-22T04:50:24Z | orchestrator | ci-triggers | ruled Q-CT1..Q-CT5 (all per analyst recommendation); criteria CT-1..CT-7 accepted | plan: criteria accepted
+2026-10-22T04:52:56Z | architect | ci-triggers | ADR-KE-015 (CI triggers) in docs/architecture.md: on-block, CiTriggersTest plan, CT-6 phrases, PS-3.4 pointer, evidence list | plan: design recorded
+2026-10-22T05:02:53Z | tester | ci-triggers | RED: CiTriggersTest added (CT-1 + CT-6 fail as expected, CT-3 pin green); verify fast 770 tests failures=6 all new; 11 ci.yml mutants, 0 unexpected | tdd red: 2 failing as expected
+2026-10-22T05:29:11Z | developer | ci-triggers | GREEN: ci.yml on: block per ADR-KE-015, AGENTS.md Branch Policy bullet, README CI sentence | tdd green: verify fast + full PASS
+2026-10-22T05:30:32Z | documenter | ci-triggers | PS-3.4 pointer, CT status table, ct7-cost.md before half, README re-wrap, handoff split to archive part1 | docs: updated
+2026-10-22T05:32:37Z | marketer | ci-triggers | CHANGELOG entry for ci-triggers | docs: changelog
+2026-10-22T05:36:08Z | reviewer | ci-triggers | review of ci-triggers diff: on-block per ADR-KE-015, CiTriggersTest CT-1/3/6, evidence re-checked; 0 blocking, 7 nits | review: APPROVED
+2026-10-22T05:36:45Z | security | ci-triggers | audit: push limited to default branch, pull_request unfiltered; private repo, no forking, fork-PR workflows off, read token; hung-job cost 74->37 min per PR push; evidence sweep clean; pins intact; 3 low, 4 info | security: PASS
+2026-10-22T05:37:39Z | documenter | ci-triggers | review nits N3/N5/N6, follow-ups recorded | docs: updated
+2026-10-22T05:49:08Z | orchestrator | ci-triggers | review APPROVED + security PASS judged; orchestrator verify full PASS 629 s; commit approved | smoke: PASS

@@ -1211,7 +1211,7 @@ orchestrator.
   in `platform-offline`, which makes `full` slower.
   `[unit: test_ci_job_has_timeout]` (fast) asserts the job declares
   `timeout-minutes`; the value is checked by the reviewer against the
-  recorded measurement.
+  recorded measurement. From `ci-triggers` on, the two green runs are a PR's `pull_request` run and its manual re-run (attempt 2) on the same head commit (CT-5).
 
 **Analyst review for `platform-offline` (2026-10-19).** PS-3.1–PS-3.4 above
 stand as written; the sub-bullets below make each one testable case by case,
@@ -2600,6 +2600,115 @@ Recorded 2026-10-21 (orchestrator ruling, rework 5). None blocks this item.
   as covered by the human's CPU-time ruling; see `docs/open-questions.md`).
   The 400-segment L8 test (5 s) moves to CPU time with the 3 s and 9 s
   tests, and its value is unchanged.
+
+---
+
+## Item: ci-triggers
+
+Outcome metric moved: neither. This is CI infrastructure. It moves neither
+*drafts a human reviewer has acted on* nor *ratified rules*; it halves the
+billed CI minutes per PR push, so the private repo's monthly minutes last
+about twice as many pushes. Source: `docs/handoffs/ci-triggers.md`
+(orchestrator, 2026-10-22); the platform-supply-chain close-out security note
+(`docs/handoffs/archive/platform-supply-chain.md`). Default branch:
+`ccr-19465ed4-j1u0m5` (written `<default>` below).
+
+- **CT-1 Trigger shape.** In `.github/workflows/ci.yml` the `on:` mapping has
+  exactly two keys, `push` and `pull_request`. `push` has exactly one key,
+  `branches`, whose value is the list `[<default>]` (no `tags`, `paths`,
+  `paths-ignore` or `branches-ignore`). `pull_request` has no filter (null or
+  empty) unless Q-CT1 rules otherwise. No `pull_request_target`,
+  `workflow_dispatch` or `schedule`. `[unit]` (fast) loads ci.yml with
+  `yaml.safe_load` and asserts these; PyYAML reads the bare key `on` as the
+  boolean `True`, so the test reads `workflow.get("on", workflow.get(True))`
+  and fails if neither is present.
+- **CT-2 One run per event.** After the change lands: a push to a branch
+  with an open PR targeting `<default>` gives exactly one run, event
+  `pull_request`; a merge to `<default>` gives exactly one run, event
+  `push`. Evidence: `gh run list --commit <sha>` output for the ci-triggers
+  PR head and for its merge commit, with the run ids, saved under
+  `docs/evidence/ci-triggers/` and named in the handoff.
+- **CT-3 Concurrency.** The group stays `ci-${{ github.ref }}` with
+  `cancel-in-progress: true` (unless Q-CT2 rules otherwise). `github.ref` is
+  `refs/pull/<n>/merge` for a `pull_request` run and `refs/heads/<default>`
+  for a `push` run, so a newer push to a PR cancels that PR's older run, and
+  a PR run and a default-branch run never share a group. `[unit]` (fast)
+  asserts the group string and `cancel-in-progress`.
+- **CT-4 Existing pins unchanged.** One `run:` step, `./scripts/verify.sh
+  full` (`test_ci_calls_verify_only`); `runs-on: ubuntu-24.04`; checkout at
+  the same 40-hex SHA with `persist-credentials: false`; `timeout-minutes: 37`
+  (`test_ci_job_has_timeout`); `permissions: contents: read`. CLAUDE.md
+  "What CI runs that verify.sh does not: Nothing" stays true and unedited.
+  The ci.yml diff touches only the `on:` block (and a comment, if any).
+- **CT-5 PS-3.4 two green runs, restated.** Push and pull_request no longer
+  both fire on one commit. From this item on, the two green runs for a
+  PS-3.4 re-measure are the PR's `pull_request` run and a manual re-run of
+  that same run (`gh run rerun <id>`, attempt 2) on the same head commit.
+  Reason: same commit and tree, both before merge, so the timeout commit
+  stays on the PR branch as CS-7 and PSC-9 did; no new trigger. Evidence
+  names run id plus attempt number and each attempt's duration. Once ruled,
+  PS-3.4 gets a one-line pointer here; the 37 min pin is not changed.
+- **CT-6 Documented behaviour.** AGENTS.md "Branch Policy" (which CLAUDE.md
+  imports, so one copy serves both) says: CI runs only on pushes to `<default>`
+  and on pull requests; a branch pushed with no open PR gets no CI, so the
+  developer (with the human's approval) or the human opens a PR, draft is
+  fine; a PR with a merge conflict gets no `pull_request` run until the
+  conflict is resolved. The README "CI runs on `ubuntu-24.04`" bullet gets
+  one sentence saying the same. `[unit]` (fast) asserts a phrase in each.
+- **CT-7 Cost measured on CI.** After landing, the evidence records, for one
+  PR push before (PR #11: runs 39723927881 push, 39724208839 pull_request)
+  and one after: the run count per head commit and each run's job minutes
+  from `gh`. Pass: one run per PR push after, against two before. The
+  billed-minutes claim is taken from these numbers, not estimated.
+
+
+Status (documenter, 2026-10-21):
+
+| Criterion | Status | Evidence |
+|---|---|---|
+| CT-1 | MET | `docs/evidence/ci-triggers/green-verify-fast.txt`, `green-verify-full.txt` |
+| CT-2 | PENDING push, PR and merge | will fill `ct2-pr-head.txt`, `ct2-merge-commit.txt` |
+| CT-3 | MET (pin, passed on arrival) | `test_ci_concurrency_per_ref` |
+| CT-4 | MET | ci.yml diff is the `on:` block and its comment only (handoff, developer GREEN section) |
+| CT-5 | MET | pointer added to the PS-3.4 bullet |
+| CT-6 | MET | `test_docs_say_ci_needs_a_pull_request` |
+| CT-7 | PENDING push, PR and merge | before half done; will fill `ct7-cost.md` |
+
+Follow-ups (not in ci-triggers):
+- `test-diet` TD-5 runs Arm B "on a scratch branch that is never merged".
+  Under CT-1 that branch gets no CI; TD-5 needs amending to a draft PR that
+  is never merged (Q-CT4).
+- N1 (review): a workflow with both a quoted `"on"` key and a bare `on` key
+  is an unhandled edge case in the CT-1 test.
+- L-3 (security): `cancel-in-progress` applies only to `pull_request`; this
+  needs a ruling and a CT-3 pin change.
+- I-4 (security): pin `permissions: contents: read` in a test.
+- N4 (review): the "about 48 billed minutes" figure in the ADR-KE-015
+  context and the handoff is replaced by the measured 44 at close-out.
+
+### Open questions for this item
+
+- **Q-CT1 Filter `pull_request` to `<default>`?** Recommend no filter:
+  stacked PRs (this branch was cut from a close-out branch) still get CI,
+  and the cost per push is one run either way.
+  **Ruled 2026-10-22 (orchestrator):** no `pull_request` filter.
+- **Q-CT2 Cancel superseded default-branch runs?** Recommend keep
+  `cancel-in-progress: true` for both: merges are human and rare, the PR
+  head was already green, and the newest default-branch commit always gets
+  a run. The alternative is not cancelling `push` runs.
+  **Ruled 2026-10-22 (orchestrator):** keep `cancel-in-progress: true` for both events, group unchanged.
+- **Q-CT3 Who triggers the CT-5 re-run?** It spends billed minutes like a
+  push. Recommend the human approves it, as for a push.
+  **Ruled 2026-10-22 (orchestrator):** the human approves the CT-5 re-run, as for a push.
+- **Q-CT4 TD-5 amendment.** Recommend a draft PR for Arm B, opened and
+  closed unmerged with the human's approval, over adding
+  `workflow_dispatch` (keeps CT-1's two triggers).
+  **Ruled 2026-10-22 (orchestrator):** TD-5 Arm B becomes a draft PR, never merged; recorded as a test-diet follow-up, not done here.
+- **Q-CT5 Default branch rename.** The literal `<default>` in CT-1 stops all
+  default-branch CI silently if the branch is renamed (`$default-branch`
+  works only in workflow templates). Recommend pinning the literal in the
+  test with a comment that a rename must update both.
+  **Ruled 2026-10-22 (orchestrator):** pin the literal default-branch name in the test with a rename note.
 
 ---
 

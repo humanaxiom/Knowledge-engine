@@ -79,6 +79,11 @@ Work moves forward only when the current gate passes. No gate may be skipped.
   human review of every merge.
 - Merging `agent/*` branches to `main` is a human action (PR + review), same as
   pushing — never automated.
+- CI runs only on pushes to the default branch and on pull requests. A
+  branch pushed with no open PR gets no CI, so the developer (with the
+  human's approval) or the human opens a PR for it; a draft PR is fine. A
+  PR with a merge conflict gets no `pull_request` run until the conflict
+  is resolved.
 
 ## Escalation & Anti-Gaming Rules
 
