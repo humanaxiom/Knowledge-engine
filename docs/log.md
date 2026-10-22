@@ -448,3 +448,12 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-22T05:36:45Z | security | ci-triggers | audit: push limited to default branch, pull_request unfiltered; private repo, no forking, fork-PR workflows off, read token; hung-job cost 74->37 min per PR push; evidence sweep clean; pins intact; 3 low, 4 info | security: PASS
 2026-10-22T05:37:39Z | documenter | ci-triggers | review nits N3/N5/N6, follow-ups recorded | docs: updated
 2026-10-22T05:49:08Z | orchestrator | ci-triggers | review APPROVED + security PASS judged; orchestrator verify full PASS 629 s; commit approved | smoke: PASS
+2026-10-22T05:49:34Z | developer | ci-triggers | committed ci-triggers on agent/ci-triggers | commit: done
+2026-10-22T19:12:17Z | documenter | ci-triggers | close-out docs: CT-7 after-half, CT-2 PR half, N4, status table, platform-skeleton line, Done check draft | docs: updated
+2026-10-22T19:36:31Z | tester | ci-triggers | CT-2 evidence: one pull_request run on PR head, one push run on merge commit | ct-2: PASS
+2026-10-22T19:37:49Z | security | ci-triggers | close-out sweep | security: PASS
+2026-10-22T19:38:33Z | reviewer | ci-triggers | close-out review | review: APPROVED
+2026-10-22T19:39:36Z | documenter | ci-triggers | close-out review nits N1/N2/N3/N5 | docs: updated
+2026-10-22T19:39:44Z | documenter | ci-triggers | close-out review nits N1/N2/N3/N5 | docs: updated
+2026-10-22T19:39:51Z | documenter | ci-triggers | close-out review nits N1/N2/N3/N5 | docs: updated
+2026-10-22T19:59:55Z | orchestrator | ci-triggers | Done check confirmed; close-out review APPROVED + security PASS; verify full PASS 667 s; commit approved; item closed | done check: confirmed

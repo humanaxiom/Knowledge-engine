@@ -2662,17 +2662,17 @@ about twice as many pushes. Source: `docs/handoffs/ci-triggers.md`
   billed-minutes claim is taken from these numbers, not estimated.
 
 
-Status (documenter, 2026-10-21):
+Status (documenter, 2026-10-22, close-out):
 
 | Criterion | Status | Evidence |
 |---|---|---|
 | CT-1 | MET | `docs/evidence/ci-triggers/green-verify-fast.txt`, `green-verify-full.txt` |
-| CT-2 | PENDING push, PR and merge | will fill `ct2-pr-head.txt`, `ct2-merge-commit.txt` |
+| CT-2 | MET | PR #12 head `3c3382a`: one run, 39832485123, event `pull_request`, success (`docs/evidence/ci-triggers/ct2-pr-head.txt`); merge `d6b7035`: one run, 39837794999, event `push`, success (`docs/evidence/ci-triggers/ct2-merge-commit.txt`) |
 | CT-3 | MET (pin, passed on arrival) | `test_ci_concurrency_per_ref` |
 | CT-4 | MET | ci.yml diff is the `on:` block and its comment only (handoff, developer GREEN section) |
 | CT-5 | MET | pointer added to the PS-3.4 bullet |
 | CT-6 | MET | `test_docs_say_ci_needs_a_pull_request` |
-| CT-7 | PENDING push, PR and merge | before half done; will fill `ct7-cost.md` |
+| CT-7 | MET | `docs/evidence/ci-triggers/ct7-cost.md`: runs per PR push 2 -> 1, job minutes 43.4 -> 16.7 (billed 44 -> 17) |
 
 Follow-ups (not in ci-triggers):
 - `test-diet` TD-5 runs Arm B "on a scratch branch that is never merged".
@@ -2683,8 +2683,6 @@ Follow-ups (not in ci-triggers):
 - L-3 (security): `cancel-in-progress` applies only to `pull_request`; this
   needs a ruling and a CT-3 pin change.
 - I-4 (security): pin `permissions: contents: read` in a test.
-- N4 (review): the "about 48 billed minutes" figure in the ADR-KE-015
-  context and the handoff is replaced by the measured 44 at close-out.
 
 ### Open questions for this item
 
