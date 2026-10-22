@@ -1,0 +1,51 @@
+# security-u1-r2-mutants: security, 2026-10-21, re-check after u1 rework round 2/5. Scratch copies only (<scratch>/r2/df); the repo files were hashed before and after (sha256sum -c: OK for docker/gates.Dockerfile, tests/test_gates_docker_cli.py, tests/test_gate_least_privilege.py).
+# Driver: docs/evidence/platform-supply-chain/security-u1-r2-mutants.py.txt, run as: uv run python -I <driver> <scratch>/r2/df  (from C:\repos\Knowledge-engine)
+# Each row runs all of test_gates_docker_cli + test_gate_least_privilege (27 tests) against the current working tree.
+# <LN> in a tag = a literal backslash-n in the Dockerfile text; <dq> = a double quote.
+
+== regression: good feeds must PASS ==
+G0 control (repo file unchanged): PASS (tests run 27, failures 0)
+G1 printf '%s  %s<LN>' pin path: PASS (tests run 27, failures 0)
+G2 printf <dq>%s  %s<LN><dq> pin path (double quotes): PASS (tests run 27, failures 0)
+G3 printf '%s  /tmp/psa.nupkg<LN>' pin: PASS (tests run 27, failures 0)
+G4 printf '%s<LN>' <dq>pin  path<dq> (tester's good case): PASS (tests run 27, failures 0)
+G5 echo, sha512sum --strict -c -: PASS (tests run 27, failures 0)
+G6 echo, ${PSSCRIPTANALYZER_SHA512} braces: PASS (tests run 27, failures 0)
+== mutants: must be KILLED ==
+S1 second sha512sum -c of /dev/null ends the pipeline: KILLED (tests run 27, failures 1)
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='the check cannot be masked and the download is not replaced after it') (check='the check c
+S2 printf %.0s drops the pinned line, feeds /dev/null (intended: literal <LN>): SURVIVED (tests run 27, failures 0)
+S2-r1 the r1 driver's S2 as written (real newline, breaks the RUN): KILLED (tests run 27, failures 4)
+     test_gates_image_sets_telemetry_optout_before_pwsh (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_sets_telemetry_optout_before_pwsh) (check='a RUN after the final FROM starts pwsh (not vacuous)') (check='a RUN after the final
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='sha512sum -c fed the pinned hash and the download') (check='sha512sum -c fed the pinned ha
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='the check is the first step that reads the download') (check='the check is the first step 
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='unpacked after the check with `python3 -I -m zipfile -e` into the module path') (check='un
+S2b printf %.0s without newline escape: SURVIVED (tests run 27, failures 0)
+S3 quoted command substitution self-hashes the download: KILLED (tests run 27, failures 1)
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='the check cannot be masked and the download is not replaced after it') (check='the check c
+S4 pin variable reassigned from the download before the check: KILLED (tests run 27, failures 1)
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='the check cannot be masked and the download is not replaced after it') (check='the check c
+S4b pin reassigned inline, same line as the check: KILLED (tests run 27, failures 1)
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='the check cannot be masked and the download is not replaced after it') (check='the check c
+S5 sed rewrites the feed line: KILLED (tests run 27, failures 1)
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='the check cannot be masked and the download is not replaced after it') (check='the check c
+S6 later COPY over the module dir: SURVIVED (tests run 27, failures 0)
+S7 later RUN re-unpacks an unpinned download: SURVIVED (tests run 27, failures 0)
+S8 parameter-expansion feed: pin and path swallowed by ${:+}, /dev/null checked: SURVIVED (tests run 27, failures 0)
+S3c quoted $(...) self-hash with python3 hashlib (killed only because _segments splits on the ; inside the quotes): KILLED (tests run 27, failures 2)
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='sha512sum -c fed the pinned hash and the download') (check='sha512sum -c fed the pinned ha
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='the check cannot be masked and the download is not replaced after it') (check='the check c
+S3d quoted $(cksum -a sha512 ...) self-hash (no sha512sum word, no ; in quotes): SURVIVED (tests run 27, failures 0)
+S4c pin reassigned from python3 hashlib before the check: SURVIVED (tests run 27, failures 0)
+S4d export of the pin from python3 hashlib before the check: SURVIVED (tests run 27, failures 0)
+S9 sha512sum redefined as a shell function in the RUN: KILLED (tests run 27, failures 1)
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='the check cannot be masked and the download is not replaced after it') (check='the check c
+S10 PATH shadow from an earlier layer (ENV PATH + COPY fake sha512sum): SURVIVED (tests run 27, failures 0)
+good: 7, rejected: 0; mutants: 17, survived: 9
+
+== runtime check (dash, python:3.12-slim-bookworm@sha256:34386ef0..., --network none, random 100-byte /tmp/psa.nupkg, WRONG pin) ==
+S8 feed:  echo "${PSSCRIPTANALYZER_SHA512:+<sha512-of-empty>}  /dev/null${PSA_UNSET:+/tmp/psa.nupkg}" | sha512sum -c -   -> /dev/null: OK (RUN continues)
+S2 feed:  printf "%.0s%s\n" "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" "<sha512-of-empty>  /dev/null" | sha512sum -c -   -> /dev/null: OK (RUN continues)
+G1 feed:  printf '%s  %s\n' "$PSSCRIPTANALYZER_SHA512" /tmp/psa.nupkg | sha512sum -c -   -> /tmp/psa.nupkg: FAILED, exit=1 (set -eu stops)
+S3d:      echo "${PSSCRIPTANALYZER_SHA512:+$(cksum -a sha512 --untagged /tmp/psa.nupk? | cut -c1-128)}  /tmp/psa.nupkg" | sha512sum -c -   -> /tmp/psa.nupkg: OK with pin 00f
+S4d:      export PSSCRIPTANALYZER_SHA512="$(python3 -I -c "...hashlib.sha512..." /tmp/psa.nupk?)"; echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c -   -> /tmp/psa.nupkg: OK with pin 00f

@@ -1,0 +1,47 @@
+"""security-u1-r1: static mutants vs the hardened PSC-10 test. Scratch copies of
+docker/gates.Dockerfile only; the repo file is never written. Patches GATES_DOCKERFILE
+in tests.test_gates_docker_cli and tests.test_gate_least_privilege."""
+import io, sys, unittest
+from pathlib import Path
+REPO = Path(r"C:\repos\Knowledge-engine")
+OUT = Path(sys.argv[1]); OUT.mkdir(parents=True, exist_ok=True)
+sys.path.insert(0, str(REPO))
+import tests.test_gates_docker_cli as cli
+import tests.test_gate_least_privilege as glp
+src = (REPO / "docker" / "gates.Dockerfile").read_text(encoding="utf-8")
+def rep(t, old, new):
+    assert old in t, old
+    return t.replace(old, new, 1)
+E = "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e"  # sha512 of empty input
+C = 'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c -;'
+DIRL = '    dir="/usr/local/share/powershell/Modules/PSScriptAnalyzer/${PSSCRIPTANALYZER_VERSION}"; \\n'
+IMPORT = '    pwsh -NoProfile -NonInteractive -Command "Import-Module PSScriptAnalyzer -ErrorAction Stop"\n'
+mutants = {
+  "S0 control (repo file unchanged)": src,
+  "S1 second sha512sum -c of /dev/null ends the pipeline": rep(src, C, C[:-1] + f' | echo "{E}  /dev/null" | sha512sum -c -;'),
+  "S2 printf %.0s drops the pinned line, feeds /dev/null": rep(src, C, f'printf "%.0s%s\n" "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" "{E}  /dev/null" | sha512sum -c -;'),
+  "S3 quoted command substitution self-hashes the download": rep(src, C, 'echo "${PSSCRIPTANALYZER_SHA512:+$(sha512sum /tmp/psa.nupkg | cut -c1-128)}  /tmp/psa.nupkg" | sha512sum -c -;'),
+  "S4 pin variable reassigned from the download before the check": rep(src, "    " + C, '    PSSCRIPTANALYZER_SHA512=$(sha512sum /tmp/psa.nupk? | cut -c1-128); \\n    ' + C),
+  "S2b printf %.0s without newline escape": rep(src, C, f'printf "%.0s%s" "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" "{E}  /dev/null" | sha512sum -c -;'),
+  "S4b pin reassigned inline, same line as the check (as built)": rep(src, C, "PSSCRIPTANALYZER_SHA512=$(sha512sum /tmp/psa.nupk? | cut -c1-128); " + C),
+  "S5 sed rewrites the feed line": rep(src, C, f'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sed "s#.*#{E}  /dev/null#" | sha512sum -c -;'),
+  "S6 later COPY over the module dir": rep(src, IMPORT, IMPORT + '\nCOPY vendor/psa/ /usr/local/share/powershell/Modules/PSScriptAnalyzer/${PSSCRIPTANALYZER_VERSION}/\n'),
+  "S7 later RUN re-unpacks an unpinned download": rep(src, IMPORT, IMPORT + "\nRUN set -eu; curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/x.zip \"https://example.invalid/x.zip\"; python3 -I -m zipfile -e /tmp/x.zip /usr/local/share/powershell/Modules/PSScriptAnalyzer/${PSSCRIPTANALYZER_VERSION}; rm /tmp/x.zip\n"),
+}
+def run(text, tag):
+    p = OUT / (tag.split()[0] + ".Dockerfile"); p.write_text(text, encoding="utf-8")
+    cli.GATES_DOCKERFILE = p; glp.GATES_DOCKERFILE = p
+    suite = unittest.TestSuite([unittest.defaultTestLoader.loadTestsFromModule(cli),
+                                unittest.defaultTestLoader.loadTestsFromModule(glp)])
+    res = unittest.TextTestResult(io.StringIO(), False, 0); suite.run(res)
+    fails = [str(t) for t, _ in res.failures + res.errors]
+    return res.testsRun, fails
+survived = 0
+for tag, text in mutants.items():
+    n, fails = run(text, tag)
+    ctrl = tag.startswith("S0")
+    verdict = ("PASS" if not fails else "FAIL") if ctrl else ("KILLED" if fails else "SURVIVED")
+    if not ctrl and not fails: survived += 1
+    print(f"{tag}: {verdict} (tests run {n}, failures {len(fails)})")
+    for f in fails: print("     " + f[:220])
+print(f"mutants: {len(mutants)-1}, survived: {survived}")

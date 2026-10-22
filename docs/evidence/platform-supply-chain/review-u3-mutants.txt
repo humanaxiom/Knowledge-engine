@@ -1,0 +1,16 @@
+# Reviewer U3 mutants, 2026-10-21, gates image ke-gates:wt-33a132fbfdd7, --network none, project label ke-reviewer-psc-u3. Driver: review-u3-mutants.py.txt.
+# shellcheck 0.9.0 (gates image) on scripts/scan.sh copy: shellcheck -x scripts/scan.sh -> no output, exit 0.
+# Real docker: 'docker rm -f ""' -> 'container name cannot be empty', exit 1; bash: mapfile -t ids <<<"" -> 1 element (so the elif -n guard at scan.sh:57 is load-bearing).
+UNMUTATED rc=0 ['OK']
+SURVIVED m1_rm_on_empty_listing  
+KILLED   m2_no_signal_ignore  FAIL: test_scan_cleanup_ignores_signals_before_clearing_exit_trap; FAIL: test_scan_second_signal_does_not_abort_cleanup; FAIL: test_scan_second_signal_does_not_abort_cleanup
+KILLED   m3_hand_rm_running_only  FAIL: test_scan_container_removal_failure_gives_working_hand_command
+KILLED   m4_extra_scan_flag  FAIL: test_scan_command_is_exactly_the_d5_policy
+KILLED   m5b_other_config  FAIL: test_scan_command_is_exactly_the_d5_policy
+KILLED   m6_env_file_on_scan  FAIL: test_compose_scan_has_no_network
+KILLED   m7_final_copies_usr_local_bin  FAIL: test_app_image_final_stage_has_no_uv
+SURVIVED m8_builder_puts_uv_in_venv  
+SURVIVED m9_builder_copies_uv_into_app  
+KILLED   m10_final_no_workdir  FAIL: test_app_image_final_stage_has_no_uv
+KILLED   m11_final_from_tag_only  FAIL: test_app_image_final_stage_has_no_uv
+KILLED   m12_cleanup_list_fail_silent  FAIL: test_scan_fails_when_container_listing_fails

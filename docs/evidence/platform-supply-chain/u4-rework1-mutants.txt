@@ -1,0 +1,48 @@
+# Unit 4 rework 1 RED mutants (tester, 2026-10-22): security M-1 + review N4. Driver u4-rework1-mutants.py.txt, run in the gates image ke-gates:wt-33a132fbfdd7 (--network none, uid 10001, label com.docker.compose.project=ke-tester-psc): /work = the real checkout read-only, /scratch = the scratchpad read-only; all copies under /tmp. Driver exit 0.
+# Command: docker run --rm --network none --label com.docker.compose.project=ke-tester-psc --user 10001:10001 --tmpfs /tmp:exec,mode=1777 -v <checkout>:/work:ro -v <scratchpad>:/scratch:ro -w /work ke-gates:wt-33a132fbfdd7 uv run --locked python /scratch/rw1_mutants.py
+
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.81ms
+Installed 1 package in 1ms
+## RED on today's tree
+FAIL  test_verify_full_fails_when_image_scan_fails  FAIL: test_verify_full_fails_when_image_scan_fails (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_fails_when_image_scan_fails) (interrupt='SIGINT') | AssertionError: 'verify full: PASS' unexpectedly found in 'verify full: KE_MODEL_UPSTREAM and KE_EGRESS_ALLOWLIST must both be set to reach the model host; running without it (model-calling tests skip)\n== verify full: project ke-verify-2261830884 ==\n== verify full: PASS (0s) ==\n' : verify full printed PASS after SIGINT during the scan (security M-1) | FAIL: test_verify_full_fails_when_image_scan_fails (tests.test_stack_scripts.V
+FAIL  test_verify_full_signal_during_smoke_exits_with_its_status_and_no_pass  FAIL: test_verify_full_signal_during_smoke_exits_with_its_status_and_no_pass (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_signal_during_smoke_exits_with_its_status_and_no_pass) (interrupt='SIGINT') | AssertionError: 'verify full: PASS' unexpectedly found in 'verify full: KE_MODEL_UPSTREAM and KE_EGRESS_ALLOWLIST must both be set to reach the model host; running without it (model-calling tests skip)\n== verify full: project ke-verify-486513451 ==\n== verify full: PASS (0s) ==\n' : verify full printed PASS after SIGINT during smoke (security M-1) | FAIL: test_verify_full_signal_
+pass  test_verify_full_takes_no_caller_ke_key_but_the_model_keys  
+pass  test_teardown_runs_on_interrupt  
+
+## Satisfiability: scratch green shapes (must pass M-1 + launch interrupt + N4; shellcheck clean)
+GREEN  green_a_traps  M1+launch+N4=ok  both modules=ok  shellcheck rc=0  
+GREEN  green_b_finished_flag  M1+launch+N4=ok  both modules=ok  shellcheck rc=0  
+GREEN  green_ab_both  M1+launch+N4=ok  both modules=ok  shellcheck rc=0  
+--- diff today -> green_ab_both ---
+85a86
+>   finished=0
+97c98
+<     if [ "$rc" -eq 0 ]; then
+---
+>     if [ "$rc" -eq 0 ] && [ "$finished" -eq 1 ]; then
+102a104,106
+>   trap 'exit 130' INT
+>   trap 'exit 143' TERM
+>   trap 'exit 129' HUP
+116a121
+>   finished=1
+
+## M-1 mutants of the green shape (each must be KILLED by the M-1 tests)
+KILLED  m_no_hup_trap_no_flag  FAIL: test_verify_full_fails_when_image_scan_fails (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_fails_when_image_scan_fails) (interrupt='SIGHUP') | AssertionError: 'verify full: PASS' unexpectedly found in 'verify full: KE_MODEL_UPSTREAM and KE_EGRESS_ALLOWLIST must both be set to r
+KILLED  m_term_trap_exits_1  FAIL: test_verify_full_fails_when_image_scan_fails (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_fails_when_image_scan_fails) (interrupt='SIGTERM') | AssertionError: 1 != 143 : verify full on SIGTERM during the scan must exit 143 (M-1): | FAIL: test_verify_full_signal_during_smoke_ex
+KILLED  m_int_trap_exits_0  FAIL: test_verify_full_fails_when_image_scan_fails (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_fails_when_image_scan_fails) (interrupt='SIGINT') | AssertionError: 0 != 130 : verify full on SIGINT during the scan must exit 130 (M-1): | FAIL: test_verify_full_signal_during_smoke_exit
+KILLED  m_hup_trap_exits_143  FAIL: test_verify_full_fails_when_image_scan_fails (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_fails_when_image_scan_fails) (interrupt='SIGHUP') | AssertionError: 143 != 129 : verify full on SIGHUP during the scan must exit 129 (M-1): | FAIL: test_verify_full_signal_during_smoke_ex
+KILLED  m_pass_regardless_of_rc  FAIL: test_verify_full_fails_when_image_scan_fails (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_fails_when_image_scan_fails) | AssertionError: 'verify full: PASS' unexpectedly found in 'verify full: KE_MODEL_UPSTREAM and KE_EGRESS_ALLOWLIST must both be set to reach the model host; 
+KILLED  m_flag_set_before_scan  FAIL: test_verify_full_fails_when_image_scan_fails (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_fails_when_image_scan_fails) (interrupt='SIGINT') | AssertionError: 'verify full: PASS' unexpectedly found in 'verify full: KE_MODEL_UPSTREAM and KE_EGRESS_ALLOWLIST must both be set to r
+KILLED  m_flag_set_at_start  FAIL: test_verify_full_fails_when_image_scan_fails (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_fails_when_image_scan_fails) (interrupt='SIGINT') | AssertionError: 'verify full: PASS' unexpectedly found in 'verify full: KE_MODEL_UPSTREAM and KE_EGRESS_ALLOWLIST must both be set to r
+KILLED  m_signals_ignored  ERROR: test_verify_full_fails_when_image_scan_fails (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_fails_when_image_scan_fails) (interrupt='SIGINT') | ERROR: test_verify_full_fails_when_image_scan_fails (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_fails_when_image_sca
+8/8 killed
+
+## N4 guard: mutants of TODAY's verify.sh (new subset must KILL; pre-N4 subset shown for contrast)
+KILLED  n4_no_scan_stage  (pre-N4 assertion: passes = gap)  FAIL: test_verify_full_takes_no_caller_ke_key_but_the_model_keys (tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_takes_no_caller_ke_key_but_the_model_keys) | AssertionError: False is not true : ['build', 'launch', 'offline_check', 'smoke', 'teardown']
+KILLED  n4_no_offline_check_stage  (pre-N4 assertion: passes = gap)  FAIL: test_verify_full_takes_no_caller_ke_key_but_the_model_keys (tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_takes_no_caller_ke_key_but_the_model_keys) | AssertionError: False is not true : ['build', 'launch', 'scan', 'smoke', 'teardown']
+CONTROL-PASS  n4 unmutated today's verify.sh
+
+driver verdict: OK

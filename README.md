@@ -155,19 +155,34 @@ scripts/verify.sh full   # everything else, and always before a commit
 ```
 
 It needs Docker (on Windows, run it from Git Bash). It builds the `gates`
-image from `docker/gates.Dockerfile` and runs the gate scripts inside it with
-networking disabled. `full` also builds and launches a throwaway stack under a
+image from `docker/gates.Dockerfile` and runs the gate scripts inside it.
+The gate services have networking disabled: `gates` has no network, and
+`gates-it` reaches only the throwaway stack, and the model host through
+its gateway. `full` also builds and launches a throwaway stack under a
 random project name with nothing published, runs lint, the unit tests, the
 integration tests (in the isolated `gates-it` container) and the smoke test,
-then tears the stack down. Several runs can go in parallel. See
+then tears the stack down, scans the `ke-app` image, and finally runs the
+offline check. Several runs can go in parallel. See
 [CLAUDE.md](CLAUDE.md) for which run a change needs.
 
-`full` also runs the offline check (`scripts/offline_check.sh`): it builds a
+The offline check (`scripts/offline_check.sh`) builds a
 throwaway bundle for the local architecture and installs it from a client
 container with no network, against a Docker-in-Docker daemon that holds only
 the bundle's images. That daemon runs privileged, so a host or CI runner that
 refuses privileged containers cannot run `full`; there is no way around it. It
 also needs the 7 GiB of free disk that `bundle.sh` requires.
+
+The scan (`scripts/scan.sh`) looks for known vulnerabilities in the
+`ke-app` image. A one-shot `scan-db` container fetches the scanner's
+database fresh on every run, and the scan itself runs with no network.
+`scan-db` is not the only container with a route out: the smoke check's
+network-control probe runs on the stack's `edge` network. The scan does not
+see the native libraries vendored inside the psycopg-binary wheel
+(`psycopg_binary.libs`); this is a documented residual (L-13), see
+`docs/requirements.md` PSC-7. A fixed High or Critical finding fails the
+run, and so does a database host that cannot be reached; there is no retry
+and no skip. `full` therefore needs
+outbound HTTPS to `grype.anchore.io` for the vulnerability database.
 
 The model-calling checks in `full` run only when `KE_MODEL_UPSTREAM` and
 `KE_EGRESS_ALLOWLIST` are both set and the host is reachable. Each is taken

@@ -1856,8 +1856,8 @@ follow-up outside this criterion (candidate: run test modules in parallel).
     never scans.
 - **PS-3.7 Gates image supply chain (security L-8, review rework-1 N-7).**
   *Moved to `platform-supply-chain` (split ruling, 2026-10-19).*
-  PSScriptAnalyzer is installed from a package whose sha256 is pinned and
-  checked before install (no install from a trusted PSGallery by version
+  PSScriptAnalyzer is installed from a package whose hash is pinned and
+  checked before install (SHA-512 by the 2026-10-21 ruling; see PSC-10) (no install from a trusted PSGallery by version
   alone). `POWERSHELL_TELEMETRY_OPTOUT` is set before the first instruction
   that runs pwsh. `[unit: test_gates_image_verifies_psscriptanalyzer_hash]`,
   `[unit: test_gates_image_sets_telemetry_optout_before_pwsh]` (fast). The
@@ -2667,6 +2667,628 @@ Criteria:
     orchestrator with the evidence, and the target is not adjusted to pass.
 - **TD-6 PS-3.4 re-measure.** After two green CI runs of the merged change,
   `timeout-minutes` is re-measured under the same rule as CS-7.
+
+---
+
+## Item: platform-supply-chain
+
+Outcome metric moved: **neither.** No draft is reviewed and no rule is
+ratified because of this item, and none becomes possible because of it. What
+it changes:
+- a `ke-app` image with a known, fixed High or Critical vulnerability stops
+  passing `verify.sh full`;
+- the gates image stops trusting the PowerShell Gallery by version alone.
+
+*(Split accepted 2026-10-21, orchestrator: "the bundle says what it contains
+(SBOM) and which licence obligations come with it" moved with PSC-13–PSC-15
+to § "Item: platform-sbom".)*
+
+It closes security carry-ins on a bundle that already ships (L-13, L-8,
+N-7). It does not unblock `ingest-ledger`; whether it goes first is a
+sequencing call for the orchestrator.
+
+- Source: `docs/handoffs/platform-supply-chain.md` (orchestrator, opened
+  2026-10-21). Carried from `platform-offline` by the split ruling and R3
+  (2026-10-19; `docs/handoffs/archive/platform-offline-part1.md`) and the
+  close-out (`docs/handoffs/archive/platform-offline.md`).
+- Supersedes the text of PS-3.6 and PS-3.7 (§ PS-3) for building. Those
+  entries stay as the record. Their test names are kept below.
+- Design: ADR-KE-013 and its amendment 1 (D1–D9, 2026-10-21), which also
+  makes §2.2 "PSScriptAnalyzer by hash" concrete (D7, PS-3.7). First tests:
+  `docs/architecture.md` §2.6 "platform-supply-chain".
+- Settled, not re-opened here:
+  - Q41: the scanner and its database are build and verify tools, fetched in
+    the `verify.sh full` host half in CI and locally, never in the bundle, and
+    a newly published CVE turning `full` red is the gate working;
+  - Q43/R3: only `ke-app` is scanned;
+  - R4/A43: the Neo4j GPL-3.0 listing and the Phoenix exception;
+  - Q48: the hash-provenance rule;
+  - A34: the Windows-proof scope.
+- Criteria are `PSC-<n>`: PSC-1–PSC-12 and PSC-17 here. Q42 and Q56–Q60 were ruled
+  2026-10-21 (`docs/open-questions.md` § platform-supply-chain, and Q42 in
+  § platform-skeleton), and the criteria below apply the rulings (edited
+  by the architect, 2026-10-21): Q42 in PSC-4 and PSC-5, Q56 in PSC-3,
+  Q59 in PSC-2, Q60 in PSC-9.
+
+**PS-3.6 Image scan (ADR-KE-013; security L-13).**
+
+- **PSC-1 Pinned, reviewed scanner.** Given `docker-compose.scan.yml` (a
+  standalone file, ADR-KE-013 amendment 1, D1), the `scan-db` and `scan`
+  services use one scanner image referenced by digest (`@sha256:` + 64
+  hex), with no `latest` tag and no tag-only reference. The digest is the
+  multi-arch index digest, so the same pin runs on amd64 and arm64.
+  Before the pin is committed, security records the release's provenance
+  check (signature or attestation; the steps and the fallback are D2) in
+  the handoff.
+  - `[unit: test_image_scanner_is_pinned]` (fast, compose config)
+  - Evidence: security's provenance note,
+    `docs/evidence/platform-supply-chain/scanner-provenance.md`.
+- **PSC-2 `ke-app` only, native architecture, from an image tar, no
+  socket.** When `scripts/scan.sh` runs, then the steps run in this order:
+  1. `ke-app:${KE_IMAGE_TAG}` is saved to a tar under `dist/<scan
+     project>/`;
+  2. `scan-db` runs;
+  3. `scan` reads that tar, mounted read-only.
+
+  No other image is scanned. No service in `docker-compose.scan.yml` mounts
+  a Docker socket or sets `DOCKER_HOST` (ADR-KE-009).
+  - *Native architecture (Q59 ruling).* `verify.sh full` scans the image of
+    the host it runs on, with no `--platform` and no emulation: amd64 on CI
+    and the dev host. The arm64 `ke-app` is scanned in recorded arm64 runs
+    (the Q51 form), and each such run's scan output is saved as evidence
+    under `docs/evidence/platform-supply-chain/arm64/`.
+  - `[unit: test_scan_order_is_save_then_db_then_scan]` (fast, fake docker)
+  - `[unit: test_scan_input_is_read_only_ke_app_tar]` (fast, fake docker)
+  - `[unit: test_scan_services_have_no_docker_socket]` (fast, compose config)
+  - `[unit: test_scan_refuses_malformed_image_tag]` (fast, fake docker: an
+    unset or malformed `KE_IMAGE_TAG` fails before any docker call)
+- **PSC-3 Fresh database, one network step, fail closed.**
+  - Given the compose config, then `scan-db` mounts only the `scan-db` named
+    volume. It has no checkout mount and a read-only root filesystem, and
+    it is the only service in `docker-compose.scan.yml` with a route out
+    (its project's default bridge).
+  - `scan` has `network_mode: none` and mounts the `scan-db` volume
+    read-only, with the database auto-update and update check turned off.
+  - `gates` and `gates-it` are unchanged: no new network, mount or key.
+    They, and `scan`, stay offline (Q56(a) ruling).
+  - When `scan.sh` runs, the database update runs on every invocation, in
+    CI and locally. No database from an earlier run is reused: each run
+    has its own `ke-scan-<random>` project, so its volume starts empty, and
+    `scan.sh`'s own `teardown.sh --volumes` removes it on every exit path.
+    *(Amended 2026-10-21: the verify teardown runs before the scan, so it
+    cannot remove the scan's volume.)*
+  - *Fail closed (Q56(b) ruling).* When the scanner image pull or the
+    database fetch fails, `scan.sh` exits non-zero with a message naming
+    the stage (`scan-db`) and the host (the registry reference for the
+    pull; the database host for the fetch). The call is made once, with no
+    retry, and there is no skip path: `scan` does not run, and
+    `verify.sh full` fails.
+  - `[unit: test_compose_scan_db_has_only_db_volume]`,
+    `[unit: test_compose_scan_has_no_network]` (fast, compose config);
+    `[unit: test_scan_updates_db_every_run]`,
+    `[unit: test_scan_db_failure_fails_closed_naming_host_and_stage]`
+    (fast, fake docker); existing `test_gate_services_have_no_docker_host`
+    stays green.
+  - Evidence: a recorded red run with the database URL pointed at an
+    unresolvable host fails naming it.
+- **PSC-4 Threshold.** Q42 ruling (2026-10-21): keep A42. Fail on any High
+  or Critical match that has a fixed version, after the ignore entries.
+  Every other match is printed and does not fail.
+  - Given a stubbed scanner result with one fixed High, then `scan.sh` exits
+    non-zero and `verify.sh full` stops before `offline_check.sh` and exits
+    non-zero.
+  - Given only unfixed or lower-severity matches, then `scan.sh` exits 0 and
+    prints them.
+  - `[unit: test_verify_full_fails_when_image_scan_fails]`,
+    `[unit: test_scan_fails_on_fixed_high]`,
+    `[unit: test_scan_reports_but_passes_unfixed_and_lower]` (fast, stubbed
+    scanner exit and output).
+  - Evidence: a recorded red run of the real scan with a mutant policy
+    (no `--only-fixed`, `--fail-on negligible`) fails on the real image.
+- **PSC-5 Justified exceptions.** Accepted findings are listed in one
+  committed ignore file (ADR-KE-013: `docker/scan-ignore.yaml`; schema in
+  amendment 1, D5).
+  - Each entry has the vulnerability id (key `vulnerability`, a CVE or GHSA
+    id), an optional `package` (`name` only; omitted means every package),
+    a non-blank `reason` and an `until` date.
+  - *90-day cap (Q42 ruling).* `until` is a date with `today ≤ until ≤
+    today + 90 days` (UTC). An entry is valid through its `until` day. An
+    `until` that has passed, or one more than 90 days out, fails the test.
+  - The file holds nothing but the `ignore` list, and no entry has a key
+    outside the four above.
+  - *psycopg-binary (Q42 ruling).* If a newer psycopg-binary wheel fixes a
+    flagged vendored library, the lock is upgraded. If none does, the
+    finding becomes a time-limited entry whose `reason` states why the
+    code path is not reached (for krb5, `gssencmode=disable`, L-13),
+    confirmed by security, and the orchestrator opens a follow-up item to
+    evaluate psycopg on Debian's libpq.
+    - *MOOT for the scan (2026-10-21, PSC-7 result).* grype v0.120.1
+      catalogues none of the 15 files in `psycopg_binary.libs`, so the scan
+      can never flag a vendored library and this branch never triggers
+      from it. A krb5 or OpenSSL CVE in the wheel does not turn `full` red.
+      The libraries are an accepted residual (L-13, PSC-7); the switch to
+      Debian's libpq stays Q42's structural fix.
+  - Security reviews every entry added in a diff.
+  - `[unit: test_scan_ignores_are_justified]` (fast; controls: a valid
+    entry passes; an entry missing `reason`, with a blank `reason`, missing
+    `until`, with a past `until`, with an `until` 91 days out, with an
+    `until` given as a string, with an unknown key, a malformed id, a
+    duplicate, or a second top-level key each fail)
+  - Evidence: a recorded run in which a planted entry for one real match
+    suppresses it (the control that grype applies the file).
+- **PSC-6 Place in `verify.sh`.**
+  - `scan.sh` is a stage of the host half of `verify.sh full`, after the
+    stack teardown and before `offline_check.sh`. `verify.sh fast` never
+    scans.
+  - A failing scan stops the later stages.
+  - The tar, and the scan project with its database volume, are removed on
+    every exit path: pass, fail, and interrupt.
+  - The scan takes no key from the caller's environment or `.env`; the two
+    model keys stay the only ones.
+  - CI's only step stays `./scripts/verify.sh full`.
+  - `[unit: test_verify_full_runs_scan_between_teardown_and_offline_check]`,
+    `[unit: test_scan_removes_tar_on_every_exit]` (fast, fake docker); the
+    existing `test_verify_full_takes_no_caller_ke_key_but_the_model_keys` and
+    the CI single-step test stay green; `[gate: image-scan]` (full).
+- **PSC-7 Report and the L-13 record.**
+  - The scan prints its matches by severity, and the ignore entries it
+    applied, to the verify output, so a CI log holds the full result.
+  - The implementation commit saves one real `full` run's scan output under
+    `docs/evidence/platform-supply-chain/` (saved in
+    `u4-green-verify-full.txt`, lines 1601–1914).
+  - That evidence states whether the scanner reported any package from
+    `psycopg_binary.libs` (krb5, cyrus-sasl, pcre and others; L-13), and
+    no doc claims the scan covers libraries it did not report. The method
+    (the libraries in the image against the scanner's own package catalog)
+    is ADR-KE-013 amendment 1, D6, recorded in
+    `docs/evidence/platform-supply-chain/u4-psc7-psycopg-libs.txt`.
+  - *Result (2026-10-21).* grype v0.120.1 catalogues none of the 15 files
+    in `psycopg_binary.libs` (among them OpenSSL 3.5.8, libpq 18.0.6, pcre
+    8.32, cyrus-sasl 2.1.26 and the el7 krb5), so the scan does not cover
+    them. L-13 is an **accepted residual**, rated low by security
+    (`security-u4.md`, "PSC-7 / L-13 residual").
+    - Compensating control: track psycopg-binary releases, since the
+      vendored libraries move with the wheel.
+    - Mitigation today: `gssencmode=disable` (PS-2.5).
+    - Structural fix: Q42's switch to psycopg on Debian's libpq.
+  - Evidence, checked by the reviewer and security; no unit test.
+- **PSC-8 Not in the bundle.** The deployed product never scans: no bundle
+  manifest entry names the scanner image or its database.
+  `[unit: test_bundle_has_no_scanner_or_db]` (fast); `ci/deployable-offline`
+  (full) stays green.
+- **PSC-9 CI cost is measured on CI.**
+  - Local timings do not predict CI. On the 2-vCPU runner, ci-speed's local
+    benchmark (CS-9) missed the CI result (`docs/handoffs/archive/ci-speed.md`,
+    2026-10-21 entries). Any local timing of the scan is informational only.
+  - After the scan stage is wired in, two green CI runs of the branch record
+    these from the runner's per-line timestamps:
+    - the `ke-app` save, the `scan-db` fetch and the `scan` stage, each
+      separately;
+    - the whole job.
+
+    They are saved under `docs/evidence/platform-supply-chain/ci/`, with the
+    run ids.
+  - If the slower run's job time plus 50%, rounded up, exceeds the
+    `timeout-minutes` in force (32 once PR #9 lands), the timeout is
+    re-measured under PS-3.4, as CS-7 was. It is not raised before two green
+    runs exist.
+  - *Trigger (Q60 ruling).* If the `save`, `scan-db` and `scan` stages
+    together add more than 3 min (180 s) to the slower CI run, the
+    orchestrator decides before the timeout is raised. Each stage is timed
+    from its marker line to the next (ADR-KE-013 amendment 1, D8).
+  - A run that times out is reported as red. It is never retried until it
+    passes. `test_ci_job_has_timeout` pins the value.
+
+**PS-3.7 Gates image supply chain (security L-8, review rework-1 N-7).**
+
+- **PSC-10 PSScriptAnalyzer by hash.** Given `docker/gates.Dockerfile`:
+  - the PSScriptAnalyzer package (`.nupkg`) for the pinned version is
+    downloaded with `curl --proto '=https' --proto-redir '=https' --tlsv1.2`
+    from the gallery's package endpoint to `/tmp`, and checked with
+    `sha512sum -c` against `ARG PSSCRIPTANALYZER_SHA512` (one committed
+    SHA-512, 128 lowercase hex; orchestrator ruling 2026-10-21, Q48). The
+    check is the first step that reads the download, in the same fail-fast
+    (`set -eu`) step, with no SHA-256 pin or cross-step;
+  - after the check, it is unpacked with `python3 -I -m zipfile -e` into
+    `/usr/local/share/powershell/Modules/PSScriptAnalyzer/<version>`, and
+    the `.nupkg` and the NuGet packaging files (`_rels`, `package`,
+    `[Content_Types].xml`, `*.nuspec`, `.signature.p7s`; security
+    L-U1-1) are removed;
+  - the check cannot be masked (u1 review B1; dash has no `pipefail`): it
+    is a pipeline whose last command is `sha512sum`;
+    it is not negated (`!`), not a condition (`if`, `elif`, `while`,
+    `until`) and not backgrounded (`&`); the `RUN` has no `set +e` and no
+    `set +o errexit`; and nothing writes the download path (`curl`/`wget`
+    `-o`/`-O`, `cp`, `mv`, `>`, `tee`) between the check and the unpack;
+    the check's pipeline is exactly two stages (an `echo` or `printf`
+    feed, then `sha512sum -c -`), and the module `RUN` contains exactly one
+    `sha512sum` (a second `sha512sum -c` stage would hide a failing first
+    one; security M-U1R1-1, recorded as a killed mutant);
+  - no gallery install command remains anywhere (`Install-Module`,
+    `Install-PSResource`, `Save-Module`, `Save-PSResource`,
+    `Set-`/`Register-PSRepository`, `Set-`/`Register-PSResourceRepository`);
+  - the version is a fixed value. The package does not depend on the
+    architecture, so one hash serves amd64 and arm64.
+  - Hash provenance (Q48 form): the pinned SHA-512 equals the gallery's
+    published `PackageHash` (base64 SHA512, converted to hex); the
+    developer records both the API value and a local sha512 of the
+    downloaded file; security re-checks them (ADR-KE-013 amendment 1, D7).
+  - A build-time `pwsh … Import-Module PSScriptAnalyzer -ErrorAction Stop`,
+    in the same `RUN` after the unpack, proves it; it is the first `RUN` in
+    the final stage that starts pwsh.
+  - With a wrong committed hash, the gates image build exits non-zero. The
+    reviewer checks this by mutation, and the output is saved under
+    `docs/evidence/platform-supply-chain/`.
+  - `[unit: test_gates_image_verifies_psscriptanalyzer_hash]` (fast,
+    Dockerfile; the one name, orchestrator ruling 2026-10-21; the earlier
+    `test_gates_image_pins_psscriptanalyzer_by_hash` in architecture §2.6
+    is retired; its mutant run records the reviewer's six masking mutants
+    as killed, and M-U1R1-1, the second `sha512sum -c` stage);
+    `[unit: test_gates_image_psscriptanalyzer_version_agrees]`
+    (fast, Dockerfile: every PSScriptAnalyzer version a comment gives, and
+    the module directory's version, equal `ARG PSSCRIPTANALYZER_VERSION`);
+    `scripts/lint.sh` still runs PSScriptAnalyzer under `verify.sh full`
+    (the real hash is proven by the build).
+  - Evidence: `docs/evidence/platform-supply-chain/psscriptanalyzer-sha512.txt`
+    (the gallery `PackageHash`, the local sha512 and the pin).
+- **PSC-11 Telemetry off before pwsh (N-7).** `POWERSHELL_TELEMETRY_OPTOUT`
+  and `POWERSHELL_UPDATECHECK` are set (each once in the file) by an `ENV`
+  between the final `FROM` and the first `RUN` that starts `pwsh`.
+  `[unit: test_gates_image_sets_telemetry_optout_before_pwsh]`
+  (fast)
+- **PSC-12 Windows proof.** Under A34 this item changes Dockerfiles and
+  compose files, so the recorded Windows run is needed. It must match the
+  branch head, or the diff since must touch none of those files (PS-2.9).
+- **PSC-17 `ke-app` ships without uv, and its scan is clean (ADR-KE-013
+  amendment 1, D10; added by the architect, 2026-10-21, unit 3).** This
+  is a new number, not an extension of PSC-2. PSC-2 says what is scanned
+  and how; PSC-17 says what the scanned image contains. PSC-13–PSC-16
+  belong to platform-sbom.
+  - Given `docker/app.Dockerfile`, a `builder` stage on the pinned python
+    base runs `uv sync --locked --no-dev` into `/opt/venv`. The last
+    (shipped) stage uses the same base reference, byte for byte, and
+    copies only `/opt/venv` and `/app` from `builder`. It has no uv
+    binary, no `COPY --from=uv` and no `uv` command.
+  - `PATH` starts with `/opt/venv/bin`, and the user `ke` (uid 10001),
+    `USER ke` and the `CMD` are unchanged.
+  - `uv.lock` pins certifi 2026.10.19 or later (GHSA-6q48-6c7w-9gw2,
+    Critical). The lock diff changes only certifi. A fixed Critical
+    overrides the usual settle period, and that is recorded in D10.
+  - The gates image keeps uv, and its uv `FROM` reference is identical to
+    the one in `app.Dockerfile`.
+  - When the rebuilt `ke-app` is scanned, `scripts/scan.sh` exits 0. The
+    certifi, quinn-proto (GHSA-4w2j-m93h-cj5j, High) and rustls rows are
+    gone, with no new ignore entry. In the image, `command -v uv` finds
+    nothing, and `python -m engine.notices` still prints its package
+    table.
+  - `[unit: test_app_image_final_stage_has_no_uv]` (fast, static; RED
+    today)
+  - `[unit: test_uv_pin_matches_in_app_and_gates_images]` (fast, static;
+    a guard, proven by a recorded mutant)
+  - Manual evidence: `u3-no-uv-in-ke-app.txt` (no uv, notices runs,
+    certifi version) and `u3-real-scan.txt` (scan exits 0), both under
+    `docs/evidence/platform-supply-chain/`. Passing this gates PSC-6.
+- **PSC-18 Only a finished `full` says PASS (added by the architect,
+  2026-10-22, unit 5; security u4-r1 L-3, L-4, review r1-n3).** A new
+  number, not a PSC-6 sub-bullet: PSC-6 places the scan, PSC-18 is about
+  what every `full` run prints at its end, whatever the stage. Design:
+  ADR-KE-013 amendment 1, D4.
+  - `verify.sh full` prints `== verify full: PASS (Ns) ==` exactly once,
+    as its last stdout line, and only when every stage finished with rc
+    0. A failing stage prints no such line.
+  - The `gates-it` half of `full` prints `== gates-it: PASS ==`, never
+    a `verify full: PASS` line. `fast` keeps `== verify fast: PASS ==`.
+  - INT, TERM and HUP to a `full` run give exit 130, 143 and 129, with a
+    `== verify full: FAIL (exit N) ==` line last and no PASS line.
+  - An untrapped fatal signal (USR1 in the tests) gives
+    `FAIL (stopped before the last stage; no PASS)`.
+  - `offline_check.sh` never prints its PASS line on a signal: INT, TERM
+    and HUP give 130, 143 and 129 with no `offline_check: PASS`.
+  - `[unit: test_verify_full_only_the_outer_line_says_pass]`,
+    `[unit: test_gates_it_half_prints_its_own_success_line]`,
+    `[unit: test_verify_full_untrapped_signal_says_stopped_before_the_last_stage]`
+    (`tests/test_stack_scripts.py`),
+    `[unit: test_offline_check_signal_exits_with_its_status_and_no_pass]`
+    (`tests/test_offline_check.py`), all fast with fake docker; the unit 4
+    signal tests (for example
+    `test_verify_full_signal_during_smoke_exits_with_its_status_and_no_pass`)
+    stay green.
+
+**SBOM and the M-NT1 remainder: moved.** PSC-13–PSC-15 moved to § "Item:
+platform-sbom" (split accepted by the orchestrator, 2026-10-21), rewritten
+there for the Q57 and Q58 rulings.
+
+**Split (accepted 2026-10-21, orchestrator).** The analyst's proposal stood:
+1. `platform-supply-chain` (this branch): PSC-1–PSC-12, plus PSC-17
+   (added 2026-10-21, unit 3) and PSC-18 (added 2026-10-22, unit 5,
+   after PSC-6). TDD order: PSC-11 → PSC-10 → PSC-1, 2, 3,
+   5, 8 → PSC-4 → PSC-17 → PSC-6 → PSC-7 → PSC-9 → PSC-12
+   (first tests: `docs/architecture.md` §2.6 "platform-supply-chain").
+2. `platform-sbom`: PSC-13–PSC-16, opened right after this item.
+
+Tags summary: fast covers every `unit:` test above; full covers
+`[gate: image-scan]`, the PSScriptAnalyzer image build and
+`ci/deployable-offline`; manual covers security's scanner provenance note,
+the reviewer's wrong-hash mutation, the recorded red runs (mutant policy,
+unreachable database host, planted ignore), the PSC-7 L-13 record, the PSC-9
+CI measurement, the arm64 scan evidence when an arm64 run is recorded, the
+PSC-17 no-uv and real-scan evidence, and the Windows run. Gate:
+`scripts/verify.sh full`.
+
+### Follow-ups (not in platform-supply-chain)
+
+Recorded 2026-10-22 (architect, unit 5; security-u4-r1.md, review-u4-r1.md,
+orchestrator ruling). None blocks this item; none can print a false PASS.
+- **USR1 pin for `offline_check.sh`.** PSC-18 tests INT, TERM and HUP
+  there. A USR1 subtest (an untrapped fatal signal) would pin its finished
+  flag, as this test does for `verify.sh`:
+  `test_verify_full_untrapped_signal_says_stopped_before_the_last_stage`.
+- **r1-n4: a second signal during cleanup's teardown.** Inside verify's
+  cleanup, INT, TERM and HUP still exit at once, so a second signal during
+  the trap's teardown skips the FAIL line. It never prints PASS. Candidate
+  fix: `trap '' INT TERM HUP` inside cleanup, as `scan.sh` does.
+- **I-8: SIGKILL to `verify.sh` leaves the project behind.** The verify
+  project and the orphaned stage keep running; an untrapped USR1 to verify
+  alone tears down while the orphaned smoke stage runs on. Both fail closed
+  (no PASS), and nothing more is possible for KILL; the project is removed
+  by hand (`docker compose -p <project> down --volumes`).
+- **I-9: no false PASS rests on every stage reporting a signal as
+  non-zero.** All four real stages do today (security I-9). Any new stage
+  script must turn a signal into a non-zero exit, and should get a signal
+  test like PSC-18's.
+
+Recorded 2026-10-21 (architect, unit 4 rework 1; security-u4.md). Neither
+blocks this item.
+- **`require_auth="scram-sha-256"` on every libpq connection (L-13
+  hardening; goes with `auth-audit`).** Today the one site is
+  `engine/readiness.py:89`; any later connection site gets it too. libpq
+  18 then refuses GSS, SSPI, md5 and cleartext before any krb5 call, which
+  shuts the last server-reachable path into the vendored krb5 (a
+  compromised postgres answering `AuthenticationGSS`). It is engine code
+  and needs its own TDD: extend the PS-2.5 pair
+  (`test_postgres_probe_disables_gss_encryption`,
+  `test_every_postgres_connect_in_engine_disables_gss_encryption`) to
+  require it, and confirm the stack postgres uses SCRAM (a live readyz in
+  `full`).
+- **Security I-2: `scan.sh` saves by tag, not image ID**
+  (`scripts/scan.sh:92`). A second `full` from the same checkout (same
+  `wt-` tag) that rebuilds between build and scan could swap the image
+  scanned. Candidate fix: pass the image ID recorded after build.
+
+Recorded 2026-10-21 (architect, unit 3, ADR-KE-013 amendment 1, D10).
+Neither blocks this item.
+- **uv upgrade for the gates image and the `ke-app` builder.** Both still carry the uv
+  binary with quinn-proto 0.11.14 and rustls 0.23.40. Neither image ships
+  or is scanned.
+  - When a uv release carries quinn-proto 0.11.15 or later and rustls
+    0.23.45 or later, bump the one pin in both Dockerfiles in a single
+    commit, with a provenance check.
+  - Nobody has yet checked whether such a release exists.
+- **pip in `ke-app`.** The base image's pip 25.0.1 has fixed findings, all
+  Medium or Low and below the threshold. Dropping pip from the final stage
+  is a candidate.
+
+Recorded 2026-10-21 (orchestrator ruling, u1 rework 1). None blocks this
+item.
+- **N3: compare the reported version with the ARG.** In
+  `tests/test_stack_scripts.py`, compare `(Get-Module PSScriptAnalyzer).Version`
+  (which the test already reads) with `ARG PSSCRIPTANALYZER_VERSION`,
+  instead of matching the `# PSScriptAnalyzer x.y.z (ARG below)` comment.
+  The comment, and the comment half of
+  `test_gates_image_psscriptanalyzer_version_agrees`, can then go.
+- **N7: the same masking gap in the other pins.** Harden `_is_sha_check`
+  and `_assert_pinned` (`tests/test_gates_docker_cli.py`) for the pwsh,
+  Docker CLI and compose pins with the PSC-10 rules: the pipeline ends in
+  the sha checker; not negated, conditional or backgrounded; no `set +e`
+  or `set +o errexit` in the `RUN`; nothing writes the download path
+  between the check and its use. Also cover these (PSC-10 survivors, u1
+  re-review and re-check, 2026-10-21):
+  - R1-N1: match the download path as a whole word, so a prefix twin such
+    as `/tmp/psa.nupkg.ok` cannot satisfy the check's path match;
+  - R1-N3 and L-U1R1-2 (this list is not exhaustive). PSC-10 now kills
+    these variants: a function or alias for `sha512sum` inside the
+    `RUN`, the `$(sha512sum ...)` self-hash, the `sed` stage, and any
+    extra pipeline stage. These survive and need N7 rules:
+    - a `PATH` shadow of `sha512sum` from an earlier layer (S10);
+    - a self-hash or pin overwrite with a hasher other than `sha512sum`
+      (S3d; assignment or `export` of the pin, S4c/S4d);
+    - feed tampering: `/dev/null` as the checked file via `printf %.0s`
+      (S2/S2b) or a parameter-expansion feed (S8);
+    - a redirect attached to a flag (review R2-N1);
+    - a later-layer overwrite of the module directory (S6/S7, already
+      its own item below).
+  - Also port two PSC-10 rules: exactly two stages (an `echo`/`printf`
+    feed, then the checker) with exactly one checker word in the `RUN`
+    ("exactly two stages, exactly one checker"; security M-U1R1-1).
+  - Optional hardening, which would kill S2/S2b/S8/S3d: the feed's only
+    argument is `"$PSSCRIPTANALYZER_SHA512  <path>"`, with no `$(` or
+    backtick inside the quotes. Add "no assignment, read or export of
+    the pin in the `RUN`" (S4c/S4d) and "no `PATH` change in an earlier
+    layer" (S10).
+- **RECOMMENDED: a behavioural check of the pin.** A `full`-mode test
+  builds the gates image's module stage with a deliberately wrong
+  `PSSCRIPTANALYZER_SHA512` and requires the build to fail at the check.
+  Unlike the static detectors it catches every masking class at once,
+  and it generalises to the pwsh, Docker CLI and compose pins (N7). Its
+  CI cost and network use are not yet known and must be measured on CI.
+- **R1-N2 / I-U1R1-3: the module path is owned by one `RUN`.** Only the
+  module `RUN` may name `/Modules/PSScriptAnalyzer`, and no later `COPY`
+  or `RUN` may overwrite it (an unpinned second download unpacked into
+  the module directory passes today). This is an image-wide check, outside
+  PSC-10; an image-wide "every fetch is hash-checked" invariant could
+  join it.
+
+---
+
+## Item: platform-sbom
+
+Status: **not started.** Opens right after `platform-supply-chain` (split
+accepted by the orchestrator, 2026-10-21), on `agent/platform-sbom`.
+PSC-13–PSC-15 moved here from `platform-supply-chain` and were rewritten on
+2026-10-21 (architect) for the Q57 and Q58 rulings; PSC-16 is new. The
+analyst confirms the criteria when the item opens. No mechanism is designed
+yet: the item's architect writes an ADR for the SBOM generator (a new pinned
+dependency) and the source archive.
+
+Outcome metric moved: **neither.** No draft is reviewed and no rule is
+ratified because of this item. It closes the M-NT1 remainder
+(`docs/evidence/platform-offline/audit-nt.md`, `audit-nt2.md`): the bundle
+redistributes GPL-family binaries with no source offer, and does not say in
+full what it contains.
+
+- Source: `docs/handoffs/platform-supply-chain.md` (human rulings Q57 and
+  Q58; orchestrator split ruling).
+- Settled, not re-opened here:
+  - Q57: SPDX 2.3 JSON, one per bundled image, generated offline at bundle
+    time and shipped in the bundle;
+  - Q58: source offers are built now, not deferred to SFU legal/IP advice;
+  - R4/A43: the Neo4j GPL-3.0 listing and the Phoenix exception;
+  - R7: the bundle holds the stack images only, so `ke-gates` and `dind`
+    need no SBOM and no source;
+  - Q48: the hash-provenance rule, for any new pinned tool or fetched
+    source.
+- Not ruled and not blocking (Q58): who asks SFU legal/IP, and whether
+  distribution outside SFU is planned.
+- For the orchestrator when the item opens (not yet questions in
+  `docs/open-questions.md`):
+  - whether a failed source fetch fails closed, as Q56(b) ruled for the
+    scan database;
+  - whether Q60's 3-min trigger also applies to this item's CI cost;
+  - whether `verify.sh full` builds the whole source set, given the disk
+    floor (PSC-16).
+
+- **PSC-13 SBOM per bundled image (Q57).**
+  - When `bundle.sh` builds a bundle, it writes one SPDX 2.3 JSON document
+    for each image in `bundle.json`: `ke-app`, `ke-gateway` and every
+    third-party stack image (postgres, neo4j, valkey, phoenix).
+  - Each is generated offline, at bundle time, from the image tar the bundle
+    ships: no network, no pull and no Docker socket in the generator
+    container. The generator image is pinned by digest, with its provenance
+    recorded as in PSC-1, and is not in the bundle.
+  - Each document is listed in the bundle manifest with its hash, and names
+    the image it describes by the `ref` in `bundle.json` and the image's
+    digest or ID.
+  - Each has the SPDX 2.3 required fields: `spdxVersion: "SPDX-2.3"`,
+    `dataLicense: "CC0-1.0"`, a `documentNamespace` unique to the bundle,
+    and `creationInfo` naming the generator and its version.
+  - `ke-app`'s document lists every runtime package in `uv.lock` with its
+    locked version. Every document lists the image's OS packages (dpkg or
+    apk) with their versions and declared licences, as the generator
+    reports them.
+  - `[unit: test_bundle_has_sbom_per_image]`,
+    `[unit: test_sbom_is_spdx_2_3]`,
+    `[unit: test_sbom_lists_every_locked_runtime_package]` (fast, stubbed);
+    `ci/deployable-offline` (full) generates the documents from the real
+    images, and install checks them through the manifest.
+- **PSC-14 Notices complete for `ke-app` (M-NT1).**
+  - `NOTICE.md` has a paragraph for `ke-app`'s base: CPython, the Debian
+    layers and the `uv` binary, each with its licence.
+  - It lists the native libraries vendored in `psycopg_binary.libs` (libpq,
+    OpenSSL, krb5, libsasl2, libldap, libcrypt, libkeyutils and any others
+    present at the locked version), each with its licence.
+  - A drift check fails when a library in the image's `psycopg_binary.libs`
+    is not listed.
+  - `[unit: test_notice_has_ke_app_base_paragraph]`,
+    `[unit: test_notice_lists_psycopg_binary_vendored_libs]` (fast, stubbed);
+    the drift check against the real image runs in `ci/deployable-offline`
+    (full).
+- **PSC-15 GPL source offers, built now (Q58).**
+  - *Obligations to meet.*
+    - **GPL-2.0 §3.** Whoever distributes the object code must do one of:
+      (a) accompany it with the complete corresponding machine-readable
+      source; (b) accompany it with a written offer, valid for at least
+      three years, to give any third party that source for no more than
+      the cost of physically distributing it; (c) pass on such an offer,
+      only for non-commercial distribution of object code received with
+      one. In this bundle: busybox, apk-tools and ssl_client (Alpine, in
+      valkey and ke-gateway's base), the GPL-2.0 Debian packages in the
+      postgres, neo4j, phoenix and ke-app bases, and the Temurin OpenJDK
+      in the neo4j image (GPL-2.0 with the Classpath Exception; L-NT1).
+    - **GPL-3.0 §6.** Whoever conveys the object code must provide the
+      Corresponding Source by one of: (a) in a physical product,
+      accompanied by the source on a durable physical medium; (b) in a
+      physical product, a written offer valid for at least three years;
+      (c) passing on such an offer, occasionally and non-commercially;
+      (d) when the object code is offered from a designated place,
+      equivalent access to the source from the same place, for as long as
+      the object code is offered, with the distributor still obligated
+      when a third party hosts the source; (e) peer-to-peer, by saying
+      where the source is. In this bundle: Neo4j Community (GPL-3.0) and
+      the GPL-3.0 Debian packages.
+    - The LGPL components carry equivalent source terms: psycopg's
+      compiled extension (LGPL-3.0, which applies GPL-3.0 §6 to conveying
+      the library's object code), the LGPL-2.1 libraries vendored in
+      `psycopg_binary.libs` (LGPL-2.1 §4, which allows only the accompanying
+      source or equal access from the same place, with no written-offer
+      option) and glibc. The mechanism covers
+      them too.
+  - *Options.*
+    1. **A source archive in the bundle** (GPL-2.0 §3(a); for GPL-3.0 the
+       source travels with the object code by the same means). The bundle
+       carries `sources/`: the exact-version source of every GPL-family
+       component the SBOMs list, each file hashed in the manifest, and an
+       index mapping each SBOM package to its source file.
+    2. **A written offer** (GPL-2.0 §3(b); GPL-3.0 §6(b)). An offer text in
+       the bundle, valid for at least three years, naming who supplies the
+       source. It needs a named contact and an SFU commitment, and the exact
+       sources must still be archived for three years so that the offer can
+       be met. GPL-3.0 §6(b) covers physical products only, so for a bundle
+       handed over as files it does not cover Neo4j or the other GPL-3.0
+       components.
+  - **Recommended: option 1, the source archive in the bundle.** The
+    written offer still needs the same archive, kept for three years, plus
+    a contact and an organisational commitment, and it does not cover
+    GPL-3.0 for a bundle of files. The archive also keeps each bundle
+    self-sufficient offline, which is how the product is deployed.
+    - Sources are fetched at bundle time on the build host, which already
+      has the network for builds, by exact version: the Debian source
+      packages matching each image's dpkg versions; the Alpine aports and
+      upstream tarballs for each image's release; Neo4j's source at its
+      tag; the source of the exact Temurin build; psycopg's sdist from
+      `uv.lock`. Each is checked against the upstream checksum where one
+      is published (Debian `.dsc`, Alpine `APKBUILD` sha512sums, the
+      `uv.lock` hash), in the Q48 form. The SBOMs stay offline (Q57).
+    - Source does not depend on the architecture. Whether amd64 and arm64
+      bundles share one source set, where the package versions match, is a
+      design choice.
+    - *Cost (estimate, not a measurement):* about 1–2.5 GB of disk per
+      bundle (today's bundle is 941 MiB amd64, 2.4 GiB arm64), dominated by
+      OpenJDK, the Debian runtime and toolchain sources across four
+      Debian-based images (glibc, the gcc runtime, coreutils, util-linux,
+      perl, systemd's libraries and others) and Neo4j. Bundle time is
+      dominated by the fetch, likely minutes on CI. Both are measured on
+      CI (PSC-16).
+  - Criteria:
+    - Given a bundle, every package that an SBOM lists under a GPL-family
+      licence (GPL-2.0, GPL-3.0, LGPL-2.1, LGPL-3.0, in any `-only`,
+      `-or-later` or `WITH`-exception form) has an entry in the `sources/`
+      index, or a recorded exemption whose reason security has reviewed. A
+      drift check fails otherwise.
+    - Every source file is in the bundle manifest with its SHA-256, and
+      matches the upstream checksum recorded when it was fetched.
+    - The notices point to `sources/`. They claim that a source obligation
+      is met only for components whose source is in the bundle, and keep
+      the L-NT1 wording ("Upstream source: <url>") for anything else.
+      Security reviews the wording.
+    - `[unit: test_every_gpl_package_has_source]`,
+      `[unit: test_source_archive_hashes_in_manifest]` (fast, stubbed SBOM
+      and index); the same checks run on the real bundle in
+      `ci/deployable-offline` (full).
+- **PSC-16 CI cost and disk measured on CI.**
+  - Two green CI runs record, from the runner's per-line timestamps: the
+    SBOM generation per image, the source fetch, and the whole job; plus
+    the bundle size with and without `sources/` and the free disk at the
+    offline stage. Saved under `docs/evidence/platform-sbom/ci/` with the
+    run ids. Local timings are informational only.
+  - The CI runner had 9.1 GiB free at the offline stage against the 7 GiB
+    floor (R6). A source set of 1–2.5 GB in the verify bundle can break the
+    floor, so the floor is re-derived from the measurement (as R6 was) in
+    the same item. The floor is never lowered to pass.
+  - The item re-measures PS-3.4 if it adds a minute or more on CI.
+
+TDD order: PSC-14 → PSC-13 → PSC-15 → PSC-16. Gate: `scripts/verify.sh
+full`; a recorded Windows run under A34 if the item changes Dockerfiles or
+compose files.
 
 ---
 

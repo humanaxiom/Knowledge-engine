@@ -1,0 +1,58 @@
+# Command: .venv/Scripts/python -I <scratchpad>/psc/mutants.py <scratchpad>/psc/out  (run 2026-10-21 from C:\repos\Knowledge-engine)
+# Scratch copies of docker/gates.Dockerfile only; the production file is untouched. Driver patches GATES_DOCKERFILE in tests.test_gates_docker_cli and tests.test_gate_least_privilege.
+# green = current file + D7 shape with the orchestrator's SHA-512 ruling (ENV after final FROM, tarball RUN without trailing pwsh, ARG PSSCRIPTANALYZER_SHA512 + one module RUN).
+GREEN (D7 shape, SHA-512): tests.test_gates_docker_cli + tests.test_gate_least_privilege ran=26 failures=0 errors=0 skipped=0
+m11a_env_after_pwsh_run: KILLED
+    test_gates_image_sets_telemetry_optout_before_pwsh (key='POWERSHELL_TELEMETRY_OPTOUT', check='set by an ENV after the final FROM, before pwsh first runs')
+    test_gates_image_sets_telemetry_optout_before_pwsh (key='POWERSHELL_UPDATECHECK', check='set by an ENV after the final FROM, before pwsh first runs')
+m11b_env_in_uv_stage: KILLED
+    test_gates_image_sets_telemetry_optout_before_pwsh (key='POWERSHELL_TELEMETRY_OPTOUT', check='set by an ENV after the final FROM, before pwsh first runs')
+    test_gates_image_sets_telemetry_optout_before_pwsh (key='POWERSHELL_UPDATECHECK', check='set by an ENV after the final FROM, before pwsh first runs')
+m11c_env_duplicated_late: KILLED
+    test_gates_image_sets_telemetry_optout_before_pwsh (key='POWERSHELL_TELEMETRY_OPTOUT', check='set once in the file (moved, not duplicated)')
+    test_gates_image_sets_telemetry_optout_before_pwsh (key='POWERSHELL_UPDATECHECK', check='set once in the file (moved, not duplicated)')
+m11d_updatecheck_on: KILLED
+    test_gates_image_sets_telemetry_optout_before_pwsh (key='POWERSHELL_UPDATECHECK', check='set by an ENV after the final FROM, before pwsh first runs')
+m11e_pwsh_in_tarball_run_before_env: KILLED
+    test_gates_image_sets_telemetry_optout_before_pwsh (key='POWERSHELL_TELEMETRY_OPTOUT', check='set by an ENV after the final FROM, before pwsh first runs')
+    test_gates_image_sets_telemetry_optout_before_pwsh (key='POWERSHELL_UPDATECHECK', check='set by an ENV after the final FROM, before pwsh first runs')
+    test_gates_image_verifies_psscriptanalyzer_hash (check='no pwsh runs before the module RUN')
+m10a_hash_check_after_unpack: KILLED
+    test_gates_image_verifies_psscriptanalyzer_hash (check='the check is the first step that reads the download')
+    test_gates_image_verifies_psscriptanalyzer_hash (check='unpacked after the check with `python3 -I -m zipfile -e` into the module path')
+m10b_install_module_kept: KILLED
+    test_gates_image_verifies_psscriptanalyzer_hash (check='no Install-Module, Set-PSRepository or other gallery install')
+    test_gates_image_verifies_psscriptanalyzer_hash (check='no pwsh runs before the module RUN')
+m10c_set_psrepository_kept: KILLED
+    test_gates_image_verifies_psscriptanalyzer_hash (check='no Install-Module, Set-PSRepository or other gallery install')
+m10d_check_swallowed: KILLED
+    test_gates_image_verifies_psscriptanalyzer_hash (check='sha512sum -c fed the pinned hash and the download')
+m10e_sha256sum_instead: KILLED
+    test_gates_image_verifies_psscriptanalyzer_hash (check='sha512sum -c fed the pinned hash and the download')
+    test_gates_image_verifies_psscriptanalyzer_hash (check='the check is the first step that reads the download')
+m10f_no_proto_redir: KILLED
+    test_gates_image_verifies_psscriptanalyzer_hash (check='the download is curl over HTTPS only, redirects included, TLS >= 1.2')
+m10g_no_import: KILLED
+    test_gates_image_sets_telemetry_optout_before_pwsh (check='a RUN after the final FROM starts pwsh (not vacuous)')
+    test_gates_image_verifies_psscriptanalyzer_hash (check='a build-time Import-Module after the unpack proves it')
+m10h_import_before_unpack: KILLED
+    test_gates_image_verifies_psscriptanalyzer_hash (check='a build-time Import-Module after the unpack proves it')
+m10i_no_set_eu: KILLED
+    test_gates_image_verifies_psscriptanalyzer_hash (check='the RUN is fail-fast: it starts with `set -eu`')
+m10j_sha256_arg_kept: KILLED
+    test_gates_image_verifies_psscriptanalyzer_hash (check='one committed SHA-512, for both architectures')
+m10k_64hex_in_sha512_arg: KILLED
+    test_gates_image_verifies_psscriptanalyzer_hash (check='one committed SHA-512, for both architectures')
+m10l_unpack_without_isolation: KILLED
+    test_gates_image_verifies_psscriptanalyzer_hash (check='unpacked after the check with `python3 -I -m zipfile -e` into the module path')
+m10m_read_before_check: KILLED
+    test_gates_image_verifies_psscriptanalyzer_hash (check='the check is the first step that reads the download')
+m10n_check_ignore_missing: KILLED
+    test_gates_image_verifies_psscriptanalyzer_hash (check='sha512sum -c fed the pinned hash and the download')
+m10o_nupkg_left_in_layer: KILLED
+    test_gates_image_verifies_psscriptanalyzer_hash (check='the .nupkg and the NuGet packaging files are removed in the same RUN')
+m10p_check_not_fed_the_arg: KILLED
+    test_gates_image_verifies_psscriptanalyzer_hash (check='sha512sum -c fed the pinned hash and the download')
+m10q_http_url: KILLED
+    test_gates_image_verifies_psscriptanalyzer_hash (check='one RUN downloads the pinned .nupkg from the gallery package endpoint')
+mutants: 22, survived: 0

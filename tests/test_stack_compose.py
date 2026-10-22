@@ -240,6 +240,13 @@ class NetworksTest(unittest.TestCase):
         for file, name, svc in cs.all_services():
             if not cs.is_stack_service(cs.services().get(name, svc)):
                 continue
+            # ADR-KE-013 amendment 1, D1 (platform-supply-chain): scan-db and
+            # scan have no profile but are verify-only one-shots, never in the
+            # stack's COMPOSE_FILE; `scan` binds the image tar dir and the
+            # ignore file read-only by design. tests/test_image_scan.py pins
+            # their mounts row by row and that the file holds only these two.
+            if file == "docker-compose.scan.yml" and name in ("scan-db", "scan"):
+                continue
             for kind, source in cs.volume_sources(svc):
                 with self.subTest(file=file, service=name, source=source):
                     self.assertEqual(kind, "volume", "stack services use named volumes only")

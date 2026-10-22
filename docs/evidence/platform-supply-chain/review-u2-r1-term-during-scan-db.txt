@@ -1,0 +1,34 @@
+$ (scratch copy; project prefix ke-reviewer-psc-) KE_IMAGE_TAG=wt-33a132fbfdd7 timeout --preserve-status -s TERM 25 bash scripts/scan.sh
+== scan: ignore entries (docker/scan-ignore.yaml) ==
+ignore: []
+== scan: save ==
+scan: save took 2s
+== scan: scan-db ==
+ Image anchore/grype:v0.120.1@sha256:e4a44ef45d285b829ce6efe2642980329661bd2d18eab5fc539138d4adaebbbe Pulling 
+ Image anchore/grype:v0.120.1@sha256:e4a44ef45d285b829ce6efe2642980329661bd2d18eab5fc539138d4adaebbbe Pulled 
+ Network ke-reviewer-psc-157529546_default Creating 
+ Network ke-reviewer-psc-157529546_default Created 
+ Volume ke-reviewer-psc-157529546_scan-db Creating 
+ Volume ke-reviewer-psc-157529546_scan-db Created 
+ Container ke-reviewer-psc-157529546-scan-db-run-d30f5e07e094 Creating 
+ Container ke-reviewer-psc-157529546-scan-db-run-d30f5e07e094 Created 
+Terminated                 docker compose --env-file "$KE_ENV_FILE" run --rm --pull never -e "GRYPE_DB_UPDATE_URL=$SCAN_DB_URL" scan-db
+ Volume ke-reviewer-psc-157529546_scan-db Removing 
+ Network ke-reviewer-psc-157529546_default Removing 
+ Volume ke-reviewer-psc-157529546_scan-db Removed 
+ Network ke-reviewer-psc-157529546_default Removed 
+exit=143 after 27s
+-- container states polled during the run (own project only):
+first running: 1:[poll t=4s] ke-reviewer-psc-157529546-scan-db-run-d30f5e07e094=running 
+[poll t=18s] ke-reviewer-psc-157529546-scan-db-run-d30f5e07e094=running 
+[poll t=19s] ke-reviewer-psc-157529546-scan-db-run-d30f5e07e094=running 
+[poll t=20s] ke-reviewer-psc-157529546-scan-db-run-d30f5e07e094=running 
+-- leftovers of ke-reviewer-psc-<digits> projects:
+containers: 
+volumes:    
+networks:   
+dist/:      
+-- decoy containers of other projects (must still be running):
+ke-reviewer-psc-decoy-other running project=ke-reviewer-psc-other
+ke-reviewer-psc-decoy-prefix running project=ke-reviewer-psc-1
+-- after decoy removal: reviewer containers/volumes/networks left: 0

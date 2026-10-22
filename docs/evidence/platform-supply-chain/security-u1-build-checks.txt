@@ -1,0 +1,109 @@
+# security-u1: build-behaviour checks for docker/gates.Dockerfile:40-49 (PSC-10) and :6-7 (PSC-11)
+# Scratch build context <scratch>/build (profile path redacted): Dockerfile = repo docker/gates.Dockerfile lines 1-49 + 'USER 10001:10001'.
+# All containers/images labelled ke.audit=security-u1; image tags ke-sec-u1-psa:*; repo files untouched.
+
+## 1. Wrong hash (last hex digit 3->4) via --build-arg: build must stop at sha512sum, before unzip/pwsh
+$ docker build --progress=plain --label ke.audit=security-u1 --build-arg PSSCRIPTANALYZER_SHA512=<pin with last digit 4> -t ke-sec-u1-psa:wronghash .
+#10 1.893 sha512sum: WARNING: 1 computed checksum did NOT match
+#10 1.893 /tmp/psa.nupkg: FAILED
+1.893 sha512sum: WARNING: 1 computed checksum did NOT match
+1.893 /tmp/psa.nupkg: FAILED
+------
+Dockerfile:42
+--------------------
+  41 |     ARG PSSCRIPTANALYZER_SHA512=e7fb573262e604bab29914ae62921d24b97c2f88b519b41277b403ef6ce163f14b7d1b36dc73449a68e5ae5a8d9502891b10c264131fd1813adf29bf131c1663
+  42 | >>> RUN set -eu; \
+exit=1 (no 'zipfile', 'Import-Module' output; RUN aborted at the check)
+
+## 2. Real pin, --no-cache build
+$ docker build --no-cache --progress=plain --label ke.audit=security-u1 -t ke-sec-u1-psa:scratch .
+#9 6.919 /tmp/powershell-7.4.21-linux-x64.tar.gz: OK
+#10 1.996 /tmp/psa.nupkg: OK
+#10 DONE 2.8s
+#11 naming to docker.io/library/ke-sec-u1-psa:scratch done
+exit=0
+
+## 3. Built image as uid 10001, --network none: env, module tree, leftovers, perms, module resolution
+uid=10001 gid=10001 groups=10001
+HOME=/
+POWERSHELL_TELEMETRY_OPTOUT=1
+POWERSHELL_UPDATECHECK=Off
+--- module dir
+total 1644
+drwxr-xr-x 6 root root   4096 Oct 21 17:33 .
+drwxr-xr-x 3 root root   4096 Oct 21 17:33 ..
+-rw-r--r-- 1 root root  12873 Oct 21 17:33 .signature.p7s
+-rw-r--r-- 1 root root   1073 Oct 21 17:33 LICENSE
+-rw-r--r-- 1 root root 143392 Oct 21 17:33 Microsoft.PowerShell.CrossCompatibility.dll
+-rw-r--r-- 1 root root 419872 Oct 21 17:33 Microsoft.Windows.PowerShell.ScriptAnalyzer.BuiltinRules.dll
+-rw-r--r-- 1 root root 227360 Oct 21 17:33 Microsoft.Windows.PowerShell.ScriptAnalyzer.dll
+-rw-r--r-- 1 root root 731640 Oct 21 17:33 Newtonsoft.Json.dll
+-rw-r--r-- 1 root root  17822 Oct 21 17:33 PSScriptAnalyzer.psd1
+-rw-r--r-- 1 root root  17647 Oct 21 17:33 PSScriptAnalyzer.psm1
+drwxr-xr-x 2 root root   4096 Oct 21 17:33 PSv7
+-rw-r--r-- 1 root root   8629 Oct 21 17:33 README.md
+-rw-r--r-- 1 root root   2701 Oct 21 17:33 SECURITY.md
+-rw-r--r-- 1 root root  20940 Oct 21 17:33 ScriptAnalyzer.format.ps1xml
+-rw-r--r-- 1 root root  18802 Oct 21 17:33 ScriptAnalyzer.types.ps1xml
+drwxr-xr-x 2 root root   4096 Oct 21 17:33 Settings
+-rw-r--r-- 1 root root   1732 Oct 21 17:33 ThirdPartyNotices.txt
+drwxr-xr-x 2 root root   4096 Oct 21 17:33 compatibility_profiles
+drwxr-xr-x 2 root root   4096 Oct 21 17:33 en-US
+--- /tmp after build
+(end /tmp)
+--- paths under module roots writable by 10001
+(none above = none)
+--- non-root-owned files under /usr/local/share/powershell
+(none above = none)
+--- / writable by 10001 (user-scope module path is $HOME/.local/share/powershell/Modules = /.local/...)
+no
+PSModulePath:
+/usr/local/share/powershell/Modules
+/opt/microsoft/powershell/Modules
+
+Name             Version Path
+----             ------- ----
+PSScriptAnalyzer 1.25.0  /usr/local/share/powershell/Modules/PSScriptAnalyzer/1.25.0/PSScriptAnalyzer.psd1
+
+
+loaded: /usr/local/share/powershell/Modules/PSScriptAnalyzer/1.25.0/PSScriptAnalyzer.psm1
+
+## 4. Zip-slip: python3 -I -m zipfile -e on crafted archives, same pinned base image, --network none
+# generator: <scripts>/mkslip.py (mode paths: '../../../../../../tmp/escaped_dotdot.txt', '/tmp/escaped_abs.txt', 'sub/../../escaped_sibling.txt'; mode symlink: S_IFLNK entry 'link_to_tmp' -> /tmp, then 'link_to_tmp/through_link.txt')
+Python 3.12.15
+paths ['ok.txt', '../../../../../../tmp/escaped_dotdot.txt', '/tmp/escaped_abs.txt', 'sub/../../escaped_sibling.txt']
+[paths] unzip exit=0
+[paths] extracted:
+/usr/local/share/powershell/Modules/X-paths/1.0.0/tmp/escaped_abs.txt
+/usr/local/share/powershell/Modules/X-paths/1.0.0/tmp/escaped_dotdot.txt
+/usr/local/share/powershell/Modules/X-paths/1.0.0/ok.txt
+/usr/local/share/powershell/Modules/X-paths/1.0.0/sub/escaped_sibling.txt
+symlink ['ok.txt', 'link_to_tmp', 'link_to_tmp/through_link.txt']
+[symlink] unzip exit=1
+NotADirectoryError: [Errno 20] Not a directory: '/usr/local/share/powershell/Modules/X-symlink/1.0.0/link_to_tmp/through_link.txt'
+[symlink] extracted:
+/usr/local/share/powershell/Modules/X-symlink/1.0.0/link_to_tmp
+/usr/local/share/powershell/Modules/X-symlink/1.0.0/ok.txt
+--- files named escaped_*/through_link.txt anywhere on rootfs:
+/usr/local/share/powershell/Modules/X-paths/1.0.0/tmp/escaped_abs.txt
+/usr/local/share/powershell/Modules/X-paths/1.0.0/tmp/escaped_dotdot.txt
+/usr/local/share/powershell/Modules/X-paths/1.0.0/sub/escaped_sibling.txt
+(end)
+
+## 5. dash (/bin/sh) 'set -eu; echo "$h  file" | sha512sum -c -' semantics (no pipefail needed: the pipeline status is sha512sum's)
+/usr/bin/dash
+empty: subshell exit=1
+  reached-next-step
+good: subshell exit=0
+bad: subshell exit=1
+garbage: subshell exit=1
+missing-file: exit=1
+
+## 5. dash (/bin/sh) semantics of: set -eu; echo "$h  file" | sha512sum -c -   (pipeline status is sha512sum's, so pipefail is not needed)
+/usr/bin/dash
+empty: subshell exit=1
+  reached-next-step
+good: subshell exit=0
+bad: subshell exit=1
+garbage: subshell exit=1
+missing-file: exit=1

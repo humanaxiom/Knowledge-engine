@@ -1,0 +1,28 @@
+# Ignore-path mutants on the scratch green copy (driver u2-red2-mutants.py.txt), in the gates image ke-gates:wt-f8924d658b0a (tester, 2026-10-21).
+# 16 of 17 are genuine kills. b_ignore_renamed_into_config is NOT counted: the _BundleBase fixture has no docker/, so the mutant's cp failed and bundle.sh aborted; the kill comes from that, not from the shipped file. Residual: the PSC-8 subtest matches the name/content 'scan-ignore', so a renamed copy of an 'ignore: []' file would escape it.
+ Container ke-tester-psc-green2-gates-run-1705621d6d69 Creating 
+ Container ke-tester-psc-green2-gates-run-1705621d6d69 Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.82ms
+Installed 1 package in 1ms
+GREEN copy (test_image_scan, test_stack_services_have_no_bind_mounts, test_bundle_ships_tracked_config_only, test_bundle_contents): PASS (OK)
+KILLED   i_expired                      by test_scan_ignores_are_justified  AssertionError: Lists differ: ['ignore[0] until 2026-01-01 has passed (today 2026-10-21, UTC)'] != []
+KILLED   i_too_far                      by test_scan_ignores_are_justified  AssertionError: Lists differ: ['ignore[0] until 2099-01-01 is more than 90 days out (today 2026-10-21, UTC)'] != []
+KILLED   i_extra_top_key                by test_scan_ignores_are_justified  AssertionError: Lists differ: ["the top level must be exactly one key, `[34 chars]'])"] != []
+KILLED   i_empty_file                   by test_scan_ignores_are_justified  AssertionError: Lists differ: ['the top level must be exactly one key, `ignore` (found NoneType)'] != []
+KILLED   i_file_deleted                 by test_scan_ignores_are_justified  AssertionError: docker/scan-ignore.yaml is missing (ADR-KE-013 amendment 1, D5; it starts as `ignore: []`)
+KILLED   i_file_left_in_config          by test_scan_ignores_are_justified, test_compose_scan_has_no_network  AssertionError: docker/scan-ignore.yaml is missing (ADR-KE-013 amendment 1, D5; it starts as `ignore: []`)
+KILLED   c_ignore_old_source            by test_compose_scan_has_no_network  AssertionError: Tuples differ: ('bind', 'config/scan-ignore.yaml') != ('bind', 'docker/scan-ignore.yaml')
+KILLED   c_ignore_rw                    by test_compose_scan_has_no_network  AssertionError: False is not true : scan's /cfg/scan-ignore.yaml mount is not read-only
+KILLED   c_ignore_ro_false              by test_compose_scan_has_no_network  AssertionError: False is not true : scan's /cfg/scan-ignore.yaml mount is not read-only
+KILLED   c_ignore_whole_docker_dir      by test_compose_scan_has_no_network  AssertionError: Lists differ: ['/cfg', '/db', '/in'] != ['/cfg/scan-ignore.yaml', '/db', '/in']
+KILLED   c_ignore_dir_at_file_target    by test_compose_scan_has_no_network  AssertionError: Tuples differ: ('bind', 'docker') != ('bind', 'docker/scan-ignore.yaml')
+KILLED   c_ignore_short_syntax_rw       by test_compose_scan_has_no_network  AssertionError: False is not true : scan's /cfg/scan-ignore.yaml mount is not read-only
+KILLED   c_ignore_absolute_source       by test_compose_scan_has_no_network  AssertionError: Tuples differ: ('bind', '/etc/scan-ignore.yaml') != ('bind', 'docker/scan-ignore.yaml')
+KILLED   b_ls_files_adds_ignore         by test_bundle_has_no_scanner_or_db  AssertionError: Lists differ: ['MANIFEST.sha256', 'app/docker/scan-ignore.yaml'] != []
+KILLED   b_cp_ignore_file               by test_bundle_has_no_scanner_or_db  AssertionError: Lists differ: ['MANIFEST.sha256', 'app/scan-ignore.yaml'] != []
+KILLED   b_cp_docker_dir                by test_bundle_has_no_scanner_or_db  AssertionError: Lists differ: ['MANIFEST.sha256', 'app/docker/scan-ignore.yaml'] != []
+KILLED   b_ignore_renamed_into_config   by test_bundle_ships_tracked_config_only  AssertionError: Lists differ: [['save', '-o', '/tmp/tmpgdl1iw82/out1/bun[589 chars]75']] != []
+17/17 mutants killed
+exit 0

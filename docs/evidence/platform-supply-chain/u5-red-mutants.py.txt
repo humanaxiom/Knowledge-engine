@@ -1,0 +1,161 @@
+"""Scratch only (tester, platform-supply-chain unit 5 RED, "verify output
+hygiene": security L-3, L-4; review r1-n3). Runs inside the gates image with
+--network none: /work is the real checkout (read-only); every copy and mutant
+lives under /tmp. No production file is touched.
+
+RED: the L-3 / L-4 tests fail on today's tree for the expected reason.
+Satisfiability: today's tree with scratch green scripts (verify.sh: the inner
+full line says "== gates-it: PASS =="; offline_check.sh: shape A traps HUP to
+exit 129, shape B a finished flag) passes the touched modules and shellcheck.
+Mutants of the green shapes must be killed by the new tests."""
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+SRC = Path("/work")
+BASE = Path("/tmp/u5-base")
+V = "scripts/verify.sh"
+OC = "scripts/offline_check.sh"
+SS = "tests.test_stack_scripts.VerifyHostHalfTest."
+L3_HOST = SS + "test_verify_full_only_the_outer_line_says_pass"
+L3_INNER = "tests.test_stack_scripts.VerifyCallsLintTest.test_gates_it_half_prints_its_own_success_line"
+SCAN_SIG = SS + "test_verify_full_fails_when_image_scan_fails"
+SMOKE_SIG = SS + "test_verify_full_signal_during_smoke_exits_with_its_status_and_no_pass"
+N3 = SS + "test_verify_full_untrapped_signal_says_stopped_before_the_last_stage"
+L4 = "tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_signal_exits_with_its_status_and_no_pass"
+HF = "tests.test_harness_followups"
+MODULES = ["tests.test_stack_scripts", "tests.test_offline_check", HF]
+
+INNER_OLD = 'echo "== verify $mode: PASS =="\n'
+INNER_NEW = ('if [ "$mode" = full ]; then\n  echo "== gates-it: PASS =="\n'
+             'else\n  echo "== verify $mode: PASS =="\nfi\n')
+PASS_IF_B = '    if [ "$rc" -eq 0 ] && [ "$finished" -eq 1 ]; then\n'
+OUTER_PASS = '      echo "== verify full: PASS ($(( $(date +%s) - started ))s) =="\n'
+
+OC_TERM = "trap 'exit 143' TERM\n"
+OC_RESET = "  trap - EXIT INT TERM\n"
+OC_PASS = '  if [ "$rc" -eq 0 ]; then echo "== offline_check: PASS ($(( $(date +%s) - started ))s) =="; fi\n'
+OC_TRAP = "trap cleanup EXIT\n"
+OC_EXIT0 = 'df_log "after client run"\nexit 0\n'
+
+
+def sub(text: str, old: str, new: str) -> str:
+    assert text.count(old) == 1, (old, text.count(old))
+    return text.replace(old, new)
+
+
+def run(root: Path, tests: list[str]) -> tuple[bool, str]:
+    d = subprocess.run([sys.executable, "-m", "unittest", *tests], cwd=root, capture_output=True,
+                       text=True, timeout=900)
+    out = d.stdout + d.stderr
+    fails = [l for l in out.splitlines() if l.startswith(("FAIL:", "ERROR:", "AssertionError"))]
+    return d.returncode == 0, " | ".join(fails)[:700]
+
+
+def tree(name: str, verify: str | None = None, offline: str | None = None) -> Path:
+    dst = Path("/tmp") / name
+    shutil.rmtree(dst, ignore_errors=True)
+    shutil.copytree(BASE, dst, symlinks=True)
+    for rel, text in ((V, verify), (OC, offline)):
+        if text is not None:
+            (dst / rel).write_text(text, encoding="utf-8", newline="\n")
+    return dst
+
+
+def main() -> int:
+    shutil.rmtree(BASE, ignore_errors=True)
+    shutil.copytree(SRC, BASE, symlinks=True,
+                    ignore=shutil.ignore_patterns(".git", ".venv", "__pycache__", "dist", "node_modules",
+                                                  ".mypy_cache", ".ruff_cache"))
+    v_today = (BASE / V).read_text(encoding="utf-8")
+    o_today = (BASE / OC).read_text(encoding="utf-8")
+    ok = True
+
+    print("## RED on today's tree (each new or re-checked test, alone)")
+    for t in (L3_HOST, L3_INNER, SCAN_SIG, SMOKE_SIG, N3, L4, HF):
+        passed, why = run(BASE, [t])
+        print(f"{'pass' if passed else 'FAIL'}  {t.rsplit('.', 1)[1]}  {why}")
+    print("-- r1-n3 per stage on today's tree (launch is before gates-it, so L-3 cannot reach it):")
+    launch_only = BASE / "tests" / "_u5_launch_only.py"
+    launch_only.write_text(
+        "import signal, unittest\n"
+        "from tests.test_stack_scripts import VerifyHostHalfTest as B\n"
+        "class T(B):\n"
+        "    def test_usr1_launch(self):\n"
+        "        status, out, stages = self._interrupt_full_in('launch', signal.SIGUSR1)\n"
+        "        self.assertNotEqual(status, 0, out)\n"
+        "        self.assertIn('stopped before the last stage', out)\n"
+        "        self.assertEqual(self._pass_lines(out), [], out)\n"
+        "        self.assertEqual(stages.count('teardown'), 1, stages)\n"
+        "del B\n", encoding="utf-8")
+    passed, why = run(BASE, ["tests._u5_launch_only.T.test_usr1_launch"])
+    print(f"{'pass' if passed else 'FAIL'}  N3[launch] on today (guard)  {why}")
+
+    v_green = sub(v_today, INNER_OLD, INNER_NEW)
+    o_green_a = sub(sub(o_today, OC_TERM, OC_TERM + "trap 'exit 129' HUP\n"), OC_RESET, "  trap - EXIT INT TERM HUP\n")
+    o_green_b = sub(sub(sub(o_today, OC_TRAP, "finished=0\n" + OC_TRAP),
+                        OC_PASS, '  if [ "$rc" -eq 0 ] && [ "$finished" -eq 1 ]; then echo "== offline_check: PASS'
+                                 ' ($(( $(date +%s) - started ))s) =="; fi\n'),
+                    OC_EXIT0, 'df_log "after client run"\nfinished=1\nexit 0\n')
+    print("\n## Satisfiability: scratch green shapes (touched modules + shellcheck)")
+    for name, o_text in (("green_oc_a_hup_trap", o_green_a), ("green_oc_b_finished_flag", o_green_b)):
+        root = tree(name, v_green, o_text)
+        sc = subprocess.run(["shellcheck", "-x", V, OC], cwd=root, capture_output=True, text=True)
+        mods, why = run(root, MODULES)
+        good = mods and sc.returncode == 0
+        ok &= good
+        print(f"{'GREEN' if good else 'NOT-GREEN'}  {name}  modules={'ok' if mods else 'FAIL'}"
+              f"  shellcheck rc={sc.returncode} {sc.stdout.strip()[:300]} {why}")
+    for rel, a, b in ((V, BASE / V, Path("/tmp/green_oc_a_hup_trap") / V),
+                      (OC, BASE / OC, Path("/tmp/green_oc_a_hup_trap") / OC),
+                      (OC + " (shape B)", BASE / OC, Path("/tmp/green_oc_b_finished_flag") / OC)):
+        d = subprocess.run(["diff", str(a), str(b)], capture_output=True, text=True)
+        print(f"--- diff today -> green: {rel} ---\n{d.stdout}")
+
+    print("## Mutants of the green shapes (each must be KILLED by the named tests)")
+    v_mutants = {
+        "v_inner_old_wording (= today)": (v_today, [L3_HOST, L3_INNER]),
+        "v_inner_prints_both_lines": (sub(v_green, '  echo "== gates-it: PASS =="\n',
+                                          '  echo "== gates-it: PASS =="\n  echo "== verify full: PASS =="\n'),
+                                      [L3_HOST]),
+        "v_inner_wording_keeps_verify_full_pass": (sub(v_green, '"== gates-it: PASS =="',
+                                                       '"== verify full: PASS (gates-it) =="'), [L3_HOST]),
+        "v_inner_silent_in_full": (sub(v_green, '  echo "== gates-it: PASS =="\n', "  :\n"), [L3_HOST, L3_INNER]),
+        "v_text_after_outer_pass": (sub(v_green, OUTER_PASS, OUTER_PASS + '      echo "verify: done"\n'),
+                                    [L3_HOST]),
+        "v_outer_pass_on_stderr": (sub(v_green, OUTER_PASS, OUTER_PASS[:-1] + " >&2\n"), [L3_HOST]),
+        "v_drop_finished_flag (r1-n3)": (sub(v_green, PASS_IF_B, '    if [ "$rc" -eq 0 ]; then\n'), [N3]),
+        "v_finished_set_before_scan (r1-n3)": (sub(v_green, "  teardown_verify || exit 1\n",
+                                                   "  teardown_verify || exit 1\n  finished=1\n"), [N3]),
+    }
+    o_mutants = {
+        "o_no_hup_trap (= today)": (o_today, [L4]),
+        "o_hup_exits_0": (sub(o_green_a, "trap 'exit 129' HUP", "trap 'exit 0' HUP"), [L4]),
+        "o_hup_exits_143": (sub(o_green_a, "trap 'exit 129' HUP", "trap 'exit 143' HUP"), [L4]),
+        "o_hup_exits_1": (sub(o_green_a, "trap 'exit 129' HUP", "trap 'exit 1' HUP"), [L4]),
+        "o_pass_whatever_rc": (sub(o_green_a, OC_PASS, OC_PASS.replace('[ "$rc" -eq 0 ]', "true")), [L4]),
+        "o_no_int_trap": (sub(o_green_a, "trap 'exit 130' INT\n", ""), [L4]),
+        "o_term_exits_1": (sub(o_green_a, "trap 'exit 143' TERM\n", "trap 'exit 1' TERM\n"), [L4]),
+        "o_flag_set_at_start (shape B)": (sub(o_green_b, "finished=0\n" + OC_TRAP, "finished=1\n" + OC_TRAP), [L4]),
+    }
+    killed = total = 0
+    for name, (text, tests) in v_mutants.items():
+        passed, why = run(tree("mut", text, o_green_a), tests)
+        total += 1
+        killed += not passed
+        ok &= not passed
+        print(f"{'KILLED' if not passed else 'SURVIVED'}  {name}  {why[:400]}")
+    for name, (text, tests) in o_mutants.items():
+        passed, why = run(tree("mut", v_green, text), tests)
+        total += 1
+        killed += not passed
+        ok &= not passed
+        print(f"{'KILLED' if not passed else 'SURVIVED'}  {name}  {why[:400]}")
+    print(f"{killed}/{total} killed")
+    print(f"\ndriver verdict: {'OK' if ok else 'UNEXPECTED'}")
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

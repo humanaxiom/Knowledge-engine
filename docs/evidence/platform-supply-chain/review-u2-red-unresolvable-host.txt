@@ -1,0 +1,25 @@
+$ (scratch copy; SCAN_DB_URL -> https://scan-db.invalid/databases; project prefix ke-reviewer-psc-) KE_IMAGE_TAG=wt-33a132fbfdd7 bash scripts/scan.sh
+== scan: ignore entries (docker/scan-ignore.yaml) ==
+ignore: []
+== scan: save ==
+scan: save took 1s
+== scan: scan-db ==
+ Image anchore/grype:v0.120.1@sha256:e4a44ef45d285b829ce6efe2642980329661bd2d18eab5fc539138d4adaebbbe Pulling 
+ Image anchore/grype:v0.120.1@sha256:e4a44ef45d285b829ce6efe2642980329661bd2d18eab5fc539138d4adaebbbe Pulled 
+ Network ke-reviewer-psc-2323014380_default Creating 
+ Network ke-reviewer-psc-2323014380_default Created 
+ Volume ke-reviewer-psc-2323014380_scan-db Creating 
+ Volume ke-reviewer-psc-2323014380_scan-db Created 
+ Container ke-reviewer-psc-2323014380-scan-db-run-5a4b0df5e3d5 Creating 
+ Container ke-reviewer-psc-2323014380-scan-db-run-5a4b0df5e3d5 Created 
+[0000]  WARN unable to check for vulnerability database update
+[0000] ERROR unable to update vulnerability database: check for vulnerability database update failed: unable to download listing: Get "https://scan-db.invalid/databases/v6/latest.json": dial tcp: lookup scan-db.invalid on 127.0.0.11:53: no such host
+
+scan: FAIL (stage scan-db: could not fetch the vulnerability database from scan-db.invalid; no retry)
+ Volume ke-reviewer-psc-2323014380_scan-db Removing 
+ Network ke-reviewer-psc-2323014380_default Removing 
+ Volume ke-reviewer-psc-2323014380_scan-db Removed 
+ Network ke-reviewer-psc-2323014380_default Removed 
+exit=1
+-- leftovers (label prefix ke-reviewer-psc):
+-- dist/:

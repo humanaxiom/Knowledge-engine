@@ -1,0 +1,34 @@
+# Reviewer mutation builds, 2026-10-21 (review-u1). Real docker builds of the unchanged docker/gates.Dockerfile with build-arg overrides (no file edited);
+# image tag ke-reviewer-psc-mut:<name>, label com.docker.compose.project=ke-reviewer-psc; no image was produced by the failing builds.
+# Command form: docker build --progress=plain --label com.docker.compose.project=ke-reviewer-psc -t ke-reviewer-psc-mut:<name> -f docker/gates.Dockerfile <build-arg> .
+
+== wronghash: --build-arg PSSCRIPTANALYZER_SHA512=<pin with last hex digit 3->4> ==
+exit=1 (docker build failed)
+#11 2.061 /tmp/psa.nupkg: FAILED
+#11 2.061 sha512sum: WARNING: 1 computed checksum did NOT match
+2.061 /tmp/psa.nupkg: FAILED
+2.061 sha512sum: WARNING: 1 computed checksum did NOT match
+ERROR: failed to build: failed to solve: process "<module RUN>" did not complete successfully: exit code: 1
+zipfile/Import-Module reached: no (the failing step is the sha512sum line; the RUN stops there under set -eu)
+
+== versiononly: --build-arg PSSCRIPTANALYZER_VERSION=1.24.0 (hash left at the 1.25.0 pin) ==
+exit=1 (docker build failed)
+#11 1.923 /tmp/psa.nupkg: FAILED
+#11 1.923 sha512sum: WARNING: 1 computed checksum did NOT match
+1.923 /tmp/psa.nupkg: FAILED
+1.923 sha512sum: WARNING: 1 computed checksum did NOT match
+ERROR: failed to build: failed to solve: process "<module RUN>" did not complete successfully: exit code: 1
+zipfile/Import-Module reached: no (the failing step is the sha512sum line; the RUN stops there under set -eu)
+
+== emptyhash: --build-arg PSSCRIPTANALYZER_SHA512= (empty) ==
+exit=1 (docker build failed)
+#11 1.930 sha512sum: 'standard input': no properly formatted checksum lines found
+1.930 sha512sum: 'standard input': no properly formatted checksum lines found
+ERROR: failed to build: failed to solve: process "<module RUN>" did not complete successfully: exit code: 1
+zipfile/Import-Module reached: no (the failing step is the sha512sum line; the RUN stops there under set -eu)
+
+== control: test-passing mutant (sha512sum -c - | cat) + wrong hash, truncated scratch copy up to the module RUN ==
+docker build ... -t ke-reviewer-psc-mut:pipecat -f <scratch>/trunc.Dockerfile --build-arg PSSCRIPTANALYZER_SHA512=<wrong> <scratch ctx>
+exit=0 (build SUCCEEDED: the unverified package was unpacked and imported); image removed afterwards
+#10 1.985 /tmp/psa.nupkg: FAILED
+#10 1.985 sha512sum: WARNING: 1 computed checksum did NOT match

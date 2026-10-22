@@ -1,0 +1,407 @@
+# security u3 probes, 2026-10-21. Image ke-app:wt-5ec5ec5ec5ec built from a scratch copy of the working tree (8b20fa5 + uncommitted unit 3), label ke.audit=security-u3; builder stage built with --target builder as ke-audit-builder:security-u3. All runs: docker run --rm --network none --label ke.audit=security-u3.
+
+######## 1. final image probes
+$ --entrypoint id ke-app:wt-5ec5ec5ec5ec
+uid=10001(ke) gid=10001(ke) groups=10001(ke)
+(exit 0)
+$ --entrypoint sh ke-app:wt-5ec5ec5ec5ec -c command -v uv || command -v uvx
+(exit 127)
+$ --user 0 --entrypoint sh ke-app:wt-5ec5ec5ec5ec -c find / -xdev \( -path /proc -o -path /sys \) -prune -o \( -name "uv" -o -name "uvx" -o -name "uv-*" -o -name "uv.exe" \) -print 2>/dev/null; echo "--- files named uv*:"; find / -xdev \( -path /proc -o -path /sys \) -prune -o -type f -name "uv*" -print 2>/dev/null
+--- files named uv*:
+/opt/venv/lib/python3.12/site-packages/uvicorn/loops/uvloop.py
+/opt/venv/lib/python3.12/site-packages/knowledge_engine-0.1.0.dist-info/uv_cache.json
+/opt/venv/lib/python3.12/site-packages/knowledge_engine-0.1.0.dist-info/uv_build.json
+/opt/venv/bin/uvicorn
+/app/uv.lock
+(exit 0)
+$ --user 0 --entrypoint sh ke-app:wt-5ec5ec5ec5ec -c ls -ld /app /opt/venv /opt/venv/bin /opt/venv/lib/python3.12/site-packages; echo "--- non-root-owned under /app /opt/venv:"; find /app /opt/venv \( ! -user 0 -o ! -group 0 \) -print | head; echo "--- world/group-writable under /app /opt/venv:"; find /app /opt/venv \( -perm -o+w -o -perm -g+w \) ! -type l -print | head
+drwxr-xr-x  5 root root 4096 Oct 21 22:32 /app
+drwxr-xr-x  4 root root 4096 Oct 21 22:13 /opt/venv
+drwxr-xr-x  2 root root 4096 Oct 21 22:13 /opt/venv/bin
+drwxr-xr-x 81 root root 4096 Oct 21 22:13 /opt/venv/lib/python3.12/site-packages
+--- non-root-owned under /app /opt/venv:
+--- world/group-writable under /app /opt/venv:
+/opt/venv/.lock
+(exit 0)
+$ --entrypoint sh ke-app:wt-5ec5ec5ec5ec -c for d in /app /opt/venv /opt/venv/bin /opt/venv/lib/python3.12/site-packages /app/engine; do if touch "$d/.w" 2>/dev/null; then echo "WRITABLE $d"; rm -f "$d/.w"; else echo "not writable $d"; fi; done; f=$(python -c "import engine,os;print(engine.__file__)"); echo "engine from $f"; if [ -w "$f" ]; then echo "WRITABLE $f"; else echo "not writable $f"; fi; echo "--- files writable by uid 10001 outside /proc /sys /dev /tmp /var/tmp:"; find / -xdev \( -path /proc -o -path /sys -o -path /dev -o -path /tmp -o -path /var/tmp -o -path /run/lock -o -path /dev/shm \) -prune -o -writable ! -type l -print 2>/dev/null | head -20
+not writable /app
+not writable /opt/venv
+not writable /opt/venv/bin
+not writable /opt/venv/lib/python3.12/site-packages
+not writable /app/engine
+engine from /app/engine/__init__.py
+not writable /app/engine/__init__.py
+--- files writable by uid 10001 outside /proc /sys /dev /tmp /var/tmp:
+/opt/venv/.lock
+(exit 0)
+$ --user 0 --entrypoint sh ke-app:wt-5ec5ec5ec5ec -c echo "--- caches/secrets:"; ls -la /root 2>&1; ls -la /root/.cache 2>&1; find / -xdev \( -path /proc -o -path /sys \) -prune -o \( -name ".cache" -o -name "*.netrc" -o -name ".netrc" -o -name ".pypirc" -o -name "pip.conf" -o -name "uv.toml" -o -name ".env" -o -name ".env.*" -o -name "id_rsa*" -o -name "*.pem" -o -name "*.key" \) -print 2>/dev/null | grep -v "/site-packages/certifi/cacert.pem" ; echo "--- /run/secrets:"; ls -la /run/secrets 2>&1; echo "--- env:"; env | sort
+--- caches/secrets:
+total 20
+drwx------ 1 root root 4096 Oct  6 01:56 .
+drwxr-xr-x 1 root root 4096 Oct 21 22:33 ..
+-rw-r--r-- 1 root root  571 Apr 10  2021 .bashrc
+-rw-r--r-- 1 root root  161 Jul  9  2019 .profile
+-rw-r--r-- 1 root root  169 Oct  6 01:56 .wget-hsts
+ls: cannot access '/root/.cache': No such file or directory
+/usr/lib/ssl/cert.pem
+/usr/local/lib/python3.12/site-packages/pip/_vendor/certifi/cacert.pem
+--- /run/secrets:
+ls: cannot access '/run/secrets': No such file or directory
+--- env:
+GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305
+HOME=/root
+HOSTNAME=5d3b0b715bd4
+LANG=C.UTF-8
+PATH=/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PWD=/app
+PYTHONUNBUFFERED=1
+PYTHON_SHA256=c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a
+PYTHON_VERSION=3.12.15
+(exit 0)
+$ --user 0 --entrypoint sh ke-app:wt-5ec5ec5ec5ec -c ls -la /app; echo "---"; find /app -maxdepth 2 | sort | head -60; echo "--- venv bin:"; ls -la /opt/venv/bin; echo "--- pyvenv.cfg:"; cat /opt/venv/pyvenv.cfg
+total 112
+drwxr-xr-x 5 root root  4096 Oct 21 22:32 .
+drwxr-xr-x 1 root root  4096 Oct 21 22:33 ..
+drwxr-xr-x 2 root root  4096 Oct 21 22:32 config
+drwxr-xr-x 4 root root  4096 Oct 21 22:32 engine
+drwxr-xr-x 2 root root  4096 Oct 21 22:32 harness_telemetry
+-rwxr-xr-x 1 root root  1431 Oct 20 05:17 pyproject.toml
+-rwxr-xr-x 1 root root 87748 Oct 21 22:13 uv.lock
+---
+/app
+/app/config
+/app/config/defaults.yaml
+/app/engine
+/app/engine/__init__.py
+/app/engine/api.py
+/app/engine/config
+/app/engine/egress.py
+/app/engine/errors.py
+/app/engine/jobs.py
+/app/engine/llm
+/app/engine/netprobe.py
+/app/engine/notices.py
+/app/engine/readiness.py
+/app/engine/startup.py
+/app/engine/telemetry.py
+/app/engine/worker.py
+/app/harness_telemetry
+/app/harness_telemetry/__init__.py
+/app/harness_telemetry/log_event.py
+/app/harness_telemetry/tracing.py
+/app/pyproject.toml
+/app/uv.lock
+--- venv bin:
+total 84
+drwxr-xr-x 2 root root 4096 Oct 21 22:13 .
+drwxr-xr-x 4 root root 4096 Oct 21 22:13 ..
+-rw-r--r-- 1 root root 4094 Oct 21 22:13 activate
+-rw-r--r-- 1 root root 2658 Oct 21 22:13 activate.bat
+-rw-r--r-- 1 root root 2624 Oct 21 22:13 activate.csh
+-rw-r--r-- 1 root root 4335 Oct 21 22:13 activate.fish
+-rw-r--r-- 1 root root 3950 Oct 21 22:13 activate.nu
+-rw-r--r-- 1 root root 2796 Oct 21 22:13 activate.ps1
+-rw-r--r-- 1 root root 2399 Oct 21 22:13 activate_this.py
+-rw-r--r-- 1 root root 1730 Oct 21 22:13 deactivate.bat
+-rwxr-xr-x 1 root root  299 Oct 21 22:13 dotenv
+-rwxr-xr-x 1 root root  297 Oct 21 22:13 fastapi
+-rwxr-xr-x 1 root root  291 Oct 21 22:13 httpx
+-rwxr-xr-x 1 root root  294 Oct 21 22:13 idna
+-rwxr-xr-x 1 root root  320 Oct 21 22:13 normalizer
+-rw-r--r-- 1 root root 1219 Oct 21 22:13 pydoc.bat
+lrwxrwxrwx 1 root root   22 Oct 21 22:13 python -> /usr/local/bin/python3
+lrwxrwxrwx 1 root root    6 Oct 21 22:13 python3 -> python
+lrwxrwxrwx 1 root root    6 Oct 21 22:13 python3.12 -> python
+-rwxr-xr-x 1 root root  292 Oct 21 22:13 rq
+-rwxr-xr-x 1 root root  292 Oct 21 22:13 rqinfo
+-rwxr-xr-x 1 root root  296 Oct 21 22:13 rqworker
+-rwxr-xr-x 1 root root  298 Oct 21 22:13 uvicorn
+--- pyvenv.cfg:
+home = /usr/local/bin
+implementation = CPython
+uv = 0.11.21
+version_info = 3.12.15
+include-system-site-packages = false
+prompt = knowledge-engine
+(exit 0)
+$ --entrypoint python ke-app:wt-5ec5ec5ec5ec -m engine.notices
+| Package | Version | Licence | Licence files |
+|---|---|---|---|
+| annotated-doc | 0.0.5 | MIT | annotated_doc-0.0.5.dist-info/licenses/LICENSE |
+| annotated-types | 0.8.0 | MIT | annotated_types-0.8.0.dist-info/licenses/LICENSE |
+| anyio | 4.15.1 | MIT | anyio-4.15.1.dist-info/licenses/LICENSE |
+| certifi | 2026.10.19 | MPL-2.0 | certifi-2026.10.19.dist-info/licenses/LICENSE |
+| charset-normalizer | 3.5.2 | MIT | charset_normalizer-3.5.2.dist-info/licenses/LICENSE |
+| click | 8.5.0 | BSD-3-Clause | click-8.5.0.dist-info/licenses/LICENSE.txt |
+| croniter | 6.2.4 | MIT | croniter-6.2.4.dist-info/licenses/LICENSE |
+| fastapi | 0.146.0 | MIT | fastapi-0.146.0.dist-info/licenses/LICENSE |
+| googleapis-common-protos | 1.75.5 | Apache-2.0 | googleapis_common_protos-1.75.5.dist-info/licenses/LICENSE |
+| h11 | 0.16.0 | MIT | h11-0.16.0.dist-info/licenses/LICENSE.txt |
+| httpcore | 1.0.9 | BSD-3-Clause | httpcore-1.0.9.dist-info/licenses/LICENSE.md |
+| httpx | 0.28.1 | BSD-3-Clause | httpx-0.28.1.dist-info/licenses/LICENSE.md |
+| idna | 3.20 | BSD-3-Clause | idna-3.20.dist-info/licenses/LICENSE.md |
+| neo4j | 6.4.1 | Apache-2.0 AND Python-2.0 | neo4j-6.4.1.dist-info/licenses/LICENSE.APACHE2.txt, neo4j-6.4.1.dist-info/licenses/LICENSE.PYTHON.txt, neo4j-6.4.1.dist-info/licenses/LICENSE.txt, neo4j-6.4.1.dist-info/licenses/NOTICE.txt |
+| openinference-semantic-conventions | 0.1.41 | Apache-2.0 | openinference_semantic_conventions-0.1.41.dist-info/licenses/LICENSE |
+| opentelemetry-api | 1.45.1 | Apache-2.0 | opentelemetry_api-1.45.1.dist-info/licenses/LICENSE |
+| opentelemetry-exporter-http-transport | 0.66b1 | Apache-2.0 | opentelemetry_exporter_http_transport-0.66b1.dist-info/licenses/LICENSE |
+| opentelemetry-exporter-otlp-common | 0.66b1 | Apache-2.0 | opentelemetry_exporter_otlp_common-0.66b1.dist-info/licenses/LICENSE |
+| opentelemetry-exporter-otlp-proto-common | 1.45.1 | Apache-2.0 | opentelemetry_exporter_otlp_proto_common-1.45.1.dist-info/licenses/LICENSE |
+| opentelemetry-exporter-otlp-proto-http | 1.45.1 | Apache-2.0 | opentelemetry_exporter_otlp_proto_http-1.45.1.dist-info/licenses/LICENSE |
+| opentelemetry-proto | 1.45.1 | Apache-2.0 | opentelemetry_proto-1.45.1.dist-info/licenses/LICENSE |
+| opentelemetry-sdk | 1.45.1 | Apache-2.0 | opentelemetry_sdk-1.45.1.dist-info/licenses/LICENSE |
+| opentelemetry-semantic-conventions | 0.66b1 | Apache-2.0 | opentelemetry_semantic_conventions-0.66b1.dist-info/licenses/LICENSE |
+| protobuf | 7.36.2 | 3-Clause BSD License | protobuf-7.36.2.dist-info/LICENSE |
+| psycopg | 3.3.6 | LGPL-3.0-only | psycopg-3.3.6.dist-info/licenses/LICENSE.txt |
+| psycopg-binary | 3.3.6 | LGPL-3.0-only | psycopg_binary-3.3.6.dist-info/licenses/LICENSE.txt |
+| pydantic | 2.14.1 | MIT | pydantic-2.14.1.dist-info/licenses/LICENSE |
+| pydantic_core | 2.50.1 | MIT | pydantic_core-2.50.1.dist-info/licenses/LICENSE |
+| pydantic-settings | 2.16.0 | MIT | pydantic_settings-2.16.0.dist-info/licenses/LICENSE |
+| python-dateutil | 2.9.0.post0 | Dual License | python_dateutil-2.9.0.post0.dist-info/LICENSE |
+| python-dotenv | 1.2.4 | BSD-3-Clause | python_dotenv-1.2.4.dist-info/licenses/LICENSE |
+| pytz | 2026.5 | MIT | pytz-2026.5.dist-info/LICENSE.txt |
+| PyYAML | 6.0.3 | MIT | pyyaml-6.0.3.dist-info/licenses/LICENSE |
+| redis | 8.1.0 | MIT | redis-8.1.0.dist-info/licenses/LICENSE |
+| requests | 2.34.2 | Apache-2.0 | requests-2.34.2.dist-info/licenses/LICENSE, requests-2.34.2.dist-info/licenses/NOTICE |
+| rq | 2.12.0 | BSD-2-Clause | rq-2.12.0.dist-info/licenses/LICENSE |
+| six | 1.17.0 | MIT | six-1.17.0.dist-info/LICENSE |
+| starlette | 1.9.0 | BSD-3-Clause | starlette-1.9.0.dist-info/licenses/LICENSE.md |
+| typing_extensions | 4.16.0 | PSF-2.0 | typing_extensions-4.16.0.dist-info/licenses/LICENSE |
+| typing-inspection | 0.4.4 | MIT | typing_inspection-0.4.4.dist-info/licenses/LICENSE |
+| urllib3 | 2.8.0 | MIT | urllib3-2.8.0.dist-info/licenses/LICENSE.txt |
+| uvicorn | 0.54.0 | BSD-3-Clause | uvicorn-0.54.0.dist-info/licenses/LICENSE.md |
+(exit 0)
+$ --entrypoint python ke-app:wt-5ec5ec5ec5ec -c import engine, harness_telemetry, certifi; print(certifi.__version__, certifi.where())
+2026.10.19 /opt/venv/lib/python3.12/site-packages/certifi/cacert.pem
+(exit 0)
+
+######## 1b. base digest / layers / config
+base layers: 4 | builder starts with base layers: True | final starts with base layers: True | final extra layers: 4
+== Dockerfile FROM lines (final and builder share one base reference)
+5:FROM ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946 AS uv
+7:FROM python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258 AS builder
+23:FROM python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+== base image layers
+["sha256:e58989146fcec76699871403b9897b5c014af1ccd85f5a9300a215e7975525d7","sha256:916eda96356f5280ba200349e111e70c46d7ec98a4a3dd2c38e88f7b133c17ba","sha256:694fd645f7c3f2166f87f2929facc4eccb7e1cfda9bfb5d1373f77e6c9c57ea6","sha256:742affd58633b3e2b85ef86583f2775486468b1317f7214d12e193d948421098"]
+== builder layers
+["sha256:e58989146fcec76699871403b9897b5c014af1ccd85f5a9300a215e7975525d7","sha256:916eda96356f5280ba200349e111e70c46d7ec98a4a3dd2c38e88f7b133c17ba","sha256:694fd645f7c3f2166f87f2929facc4eccb7e1cfda9bfb5d1373f77e6c9c57ea6","sha256:742affd58633b3e2b85ef86583f2775486468b1317f7214d12e193d948421098","sha256:aa80d4028f83e77c90ff840e60b459d6f964db1ed2aaeec0ddf0c87d96d92811","sha256:37638a076864469084b86082a819516fd5fe727548136049b956a18b752bcb42","sha256:ed669997817fbeddc4482de48a9cdb56a3f36579af5972daeb2745928cdb8b6a","sha256:60089143a762c27b5feea1f586f4f83c6a697e9bad8bdc33312602c9bad6bbe6","sha256:552d18308bd56e8ae697908fa9b5b64e122cc70ff840e40676addc5c991481df","sha256:99865ad1f0003d931ba54d21a691381fb2cabe9405ab974bb9c97c0cd962a995","sha256:0923ae407ea4afe08196ca6f4348f90fb472d24233fe28e566c93b1dcdee882d","sha256:6c28c287c4af1834f0613553c0aa405e6591811d6f04139f1fe7104c4b6f5f6b"]
+== final layers
+["sha256:e58989146fcec76699871403b9897b5c014af1ccd85f5a9300a215e7975525d7","sha256:916eda96356f5280ba200349e111e70c46d7ec98a4a3dd2c38e88f7b133c17ba","sha256:694fd645f7c3f2166f87f2929facc4eccb7e1cfda9bfb5d1373f77e6c9c57ea6","sha256:742affd58633b3e2b85ef86583f2775486468b1317f7214d12e193d948421098","sha256:e502bd008187cee6ea007a7c6b3f16d9f34349a81c5a2beb662e1fd2a30b18ee","sha256:3df9139089fc30542127a854b0a6fe74bd7f0889ef7318b6ef29dd7c13a8aea7","sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef","sha256:4aa100d350b81e5070d1d06e0425474269144117273d3a97e41bdce6b37fa471"]
+== final config: User / Env / Cmd / Entrypoint / Labels
+User=ke Cmd=["python","-m","engine.api"] Entrypoint=null
+["PATH=/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin","LANG=C.UTF-8","GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305","PYTHON_VERSION=3.12.15","PYTHON_SHA256=c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a","PYTHONUNBUFFERED=1"]
+{"ke.audit":"security-u3"}
+== final history
+CMD ["python" "-m" "engine.api"] | 0B
+USER ke | 0B
+RUN /bin/sh -c useradd --no-create-home --uid 10001 ke # buildkit | 49.2kB
+WORKDIR /app | 4.1kB
+COPY /app /app # buildkit | 238kB
+COPY /opt/venv /opt/venv # buildkit | 54.6MB
+ENV PATH=/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin PYTHONUNBUFFERED=1 | 0B
+CMD ["python3"] | 0B
+RUN /bin/sh -c set -eux;  for src in idle3 pip3 pydoc3 python3 python3-config; do   dst="$(echo "$src" | tr -d 3)";   [ -s "/usr/local/bin/$src" ];   [ ! -e "/usr/local/bin/$dst" ];   ln -svT "$src" "/usr/local/bin/$dst";  done # buildkit | 16.4kB
+ENV PYTHON_SHA256=c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a | 0B
+ENV PYTHON_VERSION=3.12.15 | 0B
+ENV GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305 | 0B
+RUN /bin/sh -c set -eux;  apt-get update;  apt-get install -y --no-install-recommends   ca-certificates   netbase   tzdata  ;  rm -rf /var/lib/apt/lists/* # buildkit | 9.7MB
+ENV LANG=C.UTF-8 | 0B
+ENV PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin | 0B
+# debian.sh --arch 'amd64' out/ 'bookworm' '@1791158400' | 85.3MB
+
+######## 1c. venv lock, uv metadata, builder-only content, builder-vs-final tree
+== /opt/venv/.lock
+-rw-rw-rw- 1 root root 0 Oct 21 22:13 /opt/venv/.lock
+0 /opt/venv/.lock
+total 28
+drwxr-xr-x 4 root root 4096 Oct 21 22:13 .
+drwxr-xr-x 1 root root 4096 Oct 21 22:13 ..
+-rw-r--r-- 1 root root    1 Oct 21 22:13 .gitignore
+-rw-rw-rw- 1 root root    0 Oct 21 22:13 .lock
+-rw-r--r-- 1 root root   43 Oct 21 22:13 CACHEDIR.TAG
+drwxr-xr-x 2 root root 4096 Oct 21 22:13 bin
+drwxr-xr-x 3 root root 4096 Oct 21 22:13 lib
+lrwxrwxrwx 1 root root    3 Oct 21 22:13 lib64 -> lib
+-rw-r--r-- 1 root root  146 Oct 21 22:13 pyvenv.cfg
+== uv_cache.json / uv_build.json
+total 36
+drwxr-xr-x  2 root root 4096 Oct 21 22:13 .
+drwxr-xr-x 81 root root 4096 Oct 21 22:13 ..
+-rw-r--r--  1 root root    2 Oct 21 22:13 INSTALLER
+-rw-r--r--  1 root root  675 Oct 21 22:13 METADATA
+-rw-r--r--  1 root root 2190 Oct 21 22:13 RECORD
+-rw-r--r--  1 root root    0 Oct 21 22:13 REQUESTED
+-rw-r--r--  1 root root   87 Oct 21 22:13 WHEEL
+-rw-r--r--  1 root root   51 Oct 21 22:13 direct_url.json
+-rw-r--r--  1 root root    2 Oct 21 22:13 uv_build.json
+-rw-r--r--  1 root root  137 Oct 21 22:13 uv_cache.json
+-- uv_cache.json
+{"timestamp":{"secs_since_epoch":1792620812,"nanos_since_epoch":294572944},"commit":null,"tags":null,"env":{},"directories":{"src":null}}
+-- uv_build.json
+{}
+-- direct_url.json
+{"url":"file:///app","dir_info":{"editable":false}}
+-- INSTALLER
+uv
+== builder-only: uv binary, uv cache
+-rwxr-xr-x 1 root root 58551408 Jun 11 17:37 /usr/local/bin/uv
+55M	/root/.cache/uv
+UV_PYTHON_DOWNLOADS=never
+UV_LINK_MODE=copy
+UV_PROJECT_ENVIRONMENT=/opt/venv
+== diff of /opt/venv and /app (sha256 + mode/owner) builder vs final:
+identical (5411 lines)
+
+######## 2. certifi PyPI metadata, hashes, provenance (fetched to an isolated dir, parsed with python -I)
+== 2026.7.22: author='Kenneth Reitz' author_email='me@kennethreitz.com' maintainer=None maintainer_email=None
+   home='https://github.com/certifi/python-certifi' project_urls={'Homepage': 'https://github.com/certifi/python-certifi', 'Source': 'https://github.com/certifi/python-certifi'}
+   license='MPL-2.0' requires_python='>=3.7' yanked=False summary="Python package for providing Mozilla's CA Bundle."
+   bdist_wheel certifi-2026.7.22-py3-none-any.whl size=136983 upload=2026-07-22T03:35:11.276376Z sha256=62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775
+     url=https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl
+   sdist certifi-2026.7.22.tar.gz size=138112 upload=2026-07-22T03:35:12.644458Z sha256=741e2c3b351ddf169a738da9f2c048608ff7f2c5cc02f1ebc6b118bb090d5d55
+     url=https://files.pythonhosted.org/packages/a3/c2/24167ea9858356b47a87a50d39908bfdb72ceeefe0041586e704e5376b3a/certifi-2026.7.22.tar.gz
+== 2026.10.19: author='Kenneth Reitz' author_email='me@kennethreitz.com' maintainer=None maintainer_email=None
+   home='https://github.com/certifi/python-certifi' project_urls={'Homepage': 'https://github.com/certifi/python-certifi', 'Source': 'https://github.com/certifi/python-certifi'}
+   license='MPL-2.0' requires_python='>=3.7' yanked=False summary="Python package for providing Mozilla's CA Bundle."
+   bdist_wheel certifi-2026.10.19-py3-none-any.whl size=136464 upload=2026-10-20T02:24:15.072385Z sha256=42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b
+     url=https://files.pythonhosted.org/packages/c4/51/29046e48f693c54e5b7412216d447a1d8362c9653148d98c02cdf65fa733/certifi-2026.10.19-py3-none-any.whl
+   sdist certifi-2026.10.19.tar.gz size=137598 upload=2026-10-20T02:24:16.604828Z sha256=035c1e85572b141bf1c3a3eff0e33a8eb74917522f2559075ff8d2fea780a1ae
+     url=https://files.pythonhosted.org/packages/a6/bd/1436c50cc46699de0230fbaacc1d1de7bfec413176099949e9d5112e88f2/certifi-2026.10.19.tar.gz
+== simple API entries for these versions (provenance/core-metadata/yanked):
+   certifi-2026.7.22-py3-none-any.whl sha256= 62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775 provenance= https://pypi.org/integrity/certifi/2026.7.22/certifi-2026.7.22-py3-none-any.whl/provenance yanked= False
+   certifi-2026.7.22.tar.gz sha256= 741e2c3b351ddf169a738da9f2c048608ff7f2c5cc02f1ebc6b118bb090d5d55 provenance= https://pypi.org/integrity/certifi/2026.7.22/certifi-2026.7.22.tar.gz/provenance yanked= False
+   certifi-2026.10.19-py3-none-any.whl sha256= 42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b provenance= https://pypi.org/integrity/certifi/2026.10.19/certifi-2026.10.19-py3-none-any.whl/provenance yanked= False
+   certifi-2026.10.19.tar.gz sha256= 035c1e85572b141bf1c3a3eff0e33a8eb74917522f2559075ff8d2fea780a1ae provenance= https://pypi.org/integrity/certifi/2026.10.19/certifi-2026.10.19.tar.gz/provenance yanked= False
+== last 6 versions: ['2026.4.22', '2026.5.20', '2026.6.17', '2026.7.22', '2026.10.18', '2026.10.19']
+== prov-certifi-2026.10.19-py3-none-any.whl.json
+   publisher: {"environment": "release", "kind": "GitHub", "repository": "certifi/python-certifi", "workflow": "release.yml"}
+   predicateType: https://docs.pypi.org/attestations/publish/v1 subject: [('certifi-2026.10.19-py3-none-any.whl', '42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b')]
+== prov-certifi-2026.10.19.tar.gz.json
+   publisher: {"environment": "release", "kind": "GitHub", "repository": "certifi/python-certifi", "workflow": "release.yml"}
+   predicateType: https://docs.pypi.org/attestations/publish/v1 subject: [('certifi-2026.10.19.tar.gz', '035c1e85572b141bf1c3a3eff0e33a8eb74917522f2559075ff8d2fea780a1ae')]
+== prov-certifi-2026.7.22-py3-none-any.whl.json
+   publisher: {"environment": "release", "kind": "GitHub", "repository": "certifi/python-certifi", "workflow": "release.yml"}
+   predicateType: https://docs.pypi.org/attestations/publish/v1 subject: [('certifi-2026.7.22-py3-none-any.whl', '62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775')]
+== prov-certifi-2026.7.22.tar.gz.json
+   publisher: {"environment": "release", "kind": "GitHub", "repository": "certifi/python-certifi", "workflow": "release.yml"}
+   predicateType: https://docs.pypi.org/attestations/publish/v1 subject: [('certifi-2026.7.22.tar.gz', '741e2c3b351ddf169a738da9f2c048608ff7f2c5cc02f1ebc6b118bb090d5d55')]
+== 2026.10.18: [('certifi-2026.10.18-py3-none-any.whl', '2026-10-18T16:21:06.276884Z', False, None), ('certifi-2026.10.18.tar.gz', '2026-10-18T16:21:07.655710Z', False, None)]
+-- downloaded artefacts, sha256:
+42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b *certifi-2026.10.19-py3-none-any.whl
+62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775 *certifi-2026.7.22-py3-none-any.whl
+035c1e85572b141bf1c3a3eff0e33a8eb74917522f2559075ff8d2fea780a1ae *certifi-2026.10.19.tar.gz
+-- wheel diff 2026.7.22 -> 2026.10.19:
+old files: ['certifi-2026.7.22.dist-info/METADATA', 'certifi-2026.7.22.dist-info/RECORD', 'certifi-2026.7.22.dist-info/WHEEL', 'certifi-2026.7.22.dist-info/licenses/LICENSE', 'certifi-2026.7.22.dist-info/top_level.txt', 'certifi/__init__.py', 'certifi/__main__.py', 'certifi/cacert.pem', 'certifi/core.py', 'certifi/py.typed', 'certifi/tests/__init__.py', 'certifi/tests/test_certify.py']
+new files: ['certifi-2026.10.19.dist-info/METADATA', 'certifi-2026.10.19.dist-info/RECORD', 'certifi-2026.10.19.dist-info/WHEEL', 'certifi-2026.10.19.dist-info/licenses/LICENSE', 'certifi-2026.10.19.dist-info/top_level.txt', 'certifi/__init__.py', 'certifi/__main__.py', 'certifi/cacert.pem', 'certifi/core.py', 'certifi/py.typed', 'certifi/tests/__init__.py', 'certifi/tests/test_certify.py']
+set of names (version-normalised) equal: True
+---- diff certifi-2026.10.19.dist-info/METADATA
+--- certifi-2026.7.22.dist-info/METADATA
++++ certifi-2026.10.19.dist-info/METADATA
+@@ -3 +3 @@
+-Version: 2026.7.22
++Version: 2026.10.19
+@@ -24,0 +25 @@
++Classifier: Programming Language :: Python :: 3.15
+---- diff certifi-2026.10.19.dist-info/RECORD
+--- certifi-2026.7.22.dist-info/RECORD
++++ certifi-2026.10.19.dist-info/RECORD
+@@ -1 +1 @@
+-certifi/__init__.py,sha256=elLl9CBfmz0SoxiYzqp-P2g30ZzCMHALyuGp2R0UhsE,94
++certifi/__init__.py,sha256=-Mz8ECNZmMft00Dy8wW189ca7ZeK6oKgKvMNeHe-6QI,94
+@@ -3 +3 @@
+-certifi/cacert.pem,sha256=nMKndLUZjc_xTZvh5mCR9TiXXYZ84Cmpa84VpV39cw8,240216
++certifi/cacert.pem,sha256=UPefmNrBkrINv3PzXFbwsMVXqyZ_9RmdERfMEYC3B4U,238856
+@@ -8,5 +8,5 @@
+-certifi-2026.7.22.dist-info/licenses/LICENSE,sha256=6TcW2mucDVpKHfYP5pWzcPBpVgPSH2-D8FPkLPwQyvc,989
+-certifi-2026.7.22.dist-info/METADATA,sha256=71rxY4-7I2dqw8V3ffz8LNnDSP5Bcu1bo9J3ZVskgJA,2474
+-certifi-2026.7.22.dist-info/WHEEL,sha256=K260EYznzXsJYBQGqmI8VTxEdiZYNvDZwW9cBh9-_MA,91
+-certifi-2026.7.22.dist-info/top_level.txt,sha256=KMu4vUCfsjLrkPbSNdgdekS-pVJzBAJFO__nI8NF6-U,8
+-certifi-2026.7.22.dist-info/RECORD,,
++certifi-2026.10.19.dist-info/licenses/LICENSE,sha256=6TcW2mucDVpKHfYP5pWzcPBpVgPSH2-D8FPkLPwQyvc,989
++certifi-2026.10.19.dist-info/METADATA,sha256=pcC-OkLa7vDt-vWObqW3VQ8-To6zVCD3LpAt-bzwD1w,2526
++certifi-2026.10.19.dist-info/WHEEL,sha256=a-udL2m4V_6Yn8b-uKzWb12RjRxwwMo6ohYFM24tpaY,91
++certifi-2026.10.19.dist-info/top_level.txt,sha256=KMu4vUCfsjLrkPbSNdgdekS-pVJzBAJFO__nI8NF6-U,8
++certifi-2026.10.19.dist-info/RECORD,,
+---- diff certifi-2026.10.19.dist-info/WHEEL
+--- certifi-2026.7.22.dist-info/WHEEL
++++ certifi-2026.10.19.dist-info/WHEEL
+@@ -2 +2 @@
+-Generator: setuptools (83.0.0)
++Generator: setuptools (84.2.0)
+---- diff certifi/__init__.py
+--- certifi/__init__.py
++++ certifi/__init__.py
+@@ -4 +4 @@
+-__version__ = "2026.07.22"
++__version__ = "2026.10.19"
+changed certifi/cacert.pem: 240216 -> 238856 bytes; certs 121 -> 120
+   removed labels: ['# Label: "emSign ECC Root CA - G3"']
+   added labels: []
+-- installed in image vs wheel:
+f8ccfc10235998c7edd340f2f305b5f3d71aed978aea82a02af30d7877bee902  __init__.py
+5c55f2727746e697f7edac9e17c377d8752e0da7ecca191531b3b80403d61dad  core.py
+50f79f98dac192b20dbf73f35c56f0b0c557ab267ff5199d1117cc1180b70785  cacert.pem
+c410688fdd394d45812d118034e71fee88ba7beddd30fe1c1281bd3b232cd758  __main__.py
+f8ccfc10235998c7edd340f2f305b5f3d71aed978aea82a02af30d7877bee902 certifi/__init__.py
+5c55f2727746e697f7edac9e17c377d8752e0da7ecca191531b3b80403d61dad certifi/core.py
+50f79f98dac192b20dbf73f35c56f0b0c557ab267ff5199d1117cc1180b70785 certifi/cacert.pem
+c410688fdd394d45812d118034e71fee88ba7beddd30fe1c1281bd3b232cd758 certifi/__main__.py
+
+######## 3. SRANDOM behaviour
+== host Git Bash, SRANDOM unset in env
+bash=5.3.9(1)-release
+ke-scan-1426198333
+ke-scan-487620512
+ke-scan-949826701
+== host Git Bash, env SRANDOM='a;touch /tmp/x $(id)'
+bash=5.3.9(1)-release
+ke-scan-423469593
+ke-scan-762593496
+ke-scan-2543550236
+== host Git Bash, SRANDOM assigned inside script then read
+bash: line 1: evil: unbound variable
+== debian bookworm bash (CI-class Linux), env SRANDOM=evil
+bash=5.2.15(1)-release
+ke-scan-358615412
+ke-scan-3704605851
+ke-scan-1477791074
+== bash 5.0 (pre-SRANDOM), SRANDOM unset
+bash=5.0.18(1)-release
+bash: SRANDOM: unbound variable
+(exit 127)
+== bash 5.0 (pre-SRANDOM), env SRANDOM=evil/../..
+bash=5.0.18(1)-release
+ke-scan-evil/../..
+ke-scan-evil/../..
+ke-scan-evil/../..
+(exit 0)
+
+######## 4. real scan summary (full output: security-u3-real-scan.txt)
+total rows: 289
+  severity=Critical suppressed=True: 3
+  severity=High suppressed=True: 79
+  severity=Low suppressed=False: 1
+  severity=Low suppressed=True: 17
+  severity=Medium suppressed=False: 11
+  severity=Medium suppressed=True: 91
+  severity=Negligible suppressed=False: 1
+  severity=Negligible suppressed=True: 86
+High/Critical rows: 82  suppressed: 82  with a FIXED IN value: 30
+   ('High', '(none)', True) 52
+   ('High', "(won't fix)", True) 27
+   ('Critical', "(won't fix)", True) 3
+Critical rows:
+   libsqlite3-0 3.40.1-2+deb12u2 CVE-2025-7458 fixed= (won't fix) EPSS= 0.3% (15th) supp= True
+   libc-bin 2.36-9+deb12u14 CVE-2026-5450 fixed= (won't fix) EPSS= 0.7% (53rd) supp= True
+   libc6 2.36-9+deb12u14 CVE-2026-5450 fixed= (won't fix) EPSS= 0.7% (53rd) supp= True
+High/Critical by package: [('bsdutils', 6), ('libblkid1', 6), ('libmount1', 6), ('libsmartcols1', 6), ('libuuid1', 6), ('mount', 6), ('util-linux', 6), ('util-linux-extra', 6), ('libc-bin', 4), ('libc6', 4), ('libsqlite3-0', 3), ('gcc-12-base', 2)]
+High/Critical by CVE (top): [('CVE-2026-53613', 8), ('CVE-2026-53615', 8), ('CVE-2026-76642', 8), ('CVE-2026-78408', 8), ('CVE-2026-78409', 8), ('CVE-2026-78410', 8), ('CVE-2025-69720', 4), ('CVE-2026-107778', 4)]
+High/Critical by type: Counter({'deb': 82})
+Top EPSS among High/Critical:
+   libtasn1-6 CVE-2025-13151 High 1.2% (67th) fixed= (won't fix)
+   libc-bin CVE-2026-5450 Critical 0.7% (53rd) fixed= (won't fix)
+   libc6 CVE-2026-5450 Critical 0.7% (53rd) fixed= (won't fix)
+   gzip CVE-2026-41992 High 0.6% (48th) fixed= (won't fix)
+   perl-base CVE-2026-82560 High 0.6% (49th) fixed= -
+   libncursesw6 CVE-2025-69720 High 0.5% (38th) fixed= (won't fix)
+non-suppressed rows: 13 Counter({('Medium', 'binary'): 6, ('Medium', 'python'): 5, ('Low', 'python'): 1, ('Negligible', 'binary'): 1})
+python-type rows: [('pip', '25.0.1', 'GHSA-wf93-45jw-7689', 'Medium', '26.1.2'), ('pip', '25.0.1', 'GHSA-4xh5-x5gv-qwph', 'Medium', '25.3'), ('pip', '25.0.1', 'GHSA-qwm4-qh6w-59xr', 'Medium', '26.2.0'), ('pip', '25.0.1', 'GHSA-6vgw-5pg2-w6jp', 'Low', '26.0'), ('pip', '25.0.1', 'GHSA-jp4c-xjxw-mgf9', 'Medium', '26.1'), ('pip', '25.0.1', 'GHSA-58qw-9mgm-455v', 'Medium', '26.1')]

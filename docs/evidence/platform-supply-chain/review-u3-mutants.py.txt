@@ -1,0 +1,37 @@
+# Reviewer U3 mutant driver. Run: docker run --rm --network none --label com.docker.compose.project=ke-reviewer-psc-u3 -v $SCRATCH:/s:ro --entrypoint bash ke-gates:wt-33a132fbfdd7 -c '/opt/venv/bin/python /s/drv/mut.py'
+# /s/tree = copy of the working tree (git ls-files -co --exclude-standard, minus docs/evidence, plus scanner-provenance.md). Repo files never modified.
+import pathlib, shutil, subprocess, sys
+SRC = pathlib.Path("/s/tree")
+WORK = pathlib.Path("/tmp/work")
+SC, DF, CY = "scripts/scan.sh", "docker/app.Dockerfile", "docker-compose.scan.yml"
+M = {
+ "m1_rm_on_empty_listing": [(SC, '  elif [ -n "$listing" ]; then\n', '  else\n')],
+ "m2_no_signal_ignore": [(SC, "  trap '' INT TERM\n", "")],
+ "m3_hand_rm_running_only": [(SC, r'local hand_rm="docker rm -f \$(docker ps -aq', 'local hand_rm="docker rm -f \$(docker ps -q')],
+ "m4_extra_scan_flag": [(CY, "      - table\n", "      - table\n      - --add-cpes-if-none\n")],
+ "m5b_other_config": [(CY, "      - --config\n      - /cfg/scan-ignore.yaml\n", "      - --config\n      - /cfg/other.yaml\n")],
+ "m6_env_file_on_scan": [(CY, "  scan:\n    <<: *scanner\n", "  scan:\n    <<: *scanner\n    env_file: .env.example\n")],
+ "m7_final_copies_usr_local_bin": [(DF, "COPY --from=builder /app /app\n", "COPY --from=builder /app /app\nCOPY --from=builder /usr/local/bin /usr/local/bin\n")],
+ "m8_builder_puts_uv_in_venv": [(DF, "RUN uv sync --locked --no-dev --no-editable\n", "RUN uv sync --locked --no-dev --no-editable && cp /usr/local/bin/uv /opt/venv/bin/uv\n")],
+ "m9_builder_copies_uv_into_app": [(DF, "COPY --from=uv /uv /usr/local/bin/uv\n", "COPY --from=uv /uv /usr/local/bin/uv\nCOPY --from=uv /uv /app/bin/uv\n")],
+ "m10_final_no_workdir": [(DF, "WORKDIR /app\nRUN useradd", "RUN useradd")],
+ "m11_final_from_tag_only": [(DF, "\nFROM python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258\nENV", "\nFROM python:3.12-slim-bookworm\nENV")],
+ "m12_cleanup_list_fail_silent": [(SC, '    echo "scan: FAIL (could not list the containers of project $project; by hand: $hand_rm)" >&2\n    status=1\n', '    :\n')],
+}
+def run(label):
+    r = subprocess.run([sys.executable, "-m", "unittest", "-q", "tests.test_image_scan"], cwd=WORK, capture_output=True, text=True, timeout=1200)
+    tail = [l for l in r.stderr.splitlines() if l.startswith(("FAIL:", "ERROR:"))]
+    return r.returncode, tail, r.stderr.splitlines()[-1:] 
+def fresh():
+    if WORK.exists(): shutil.rmtree(WORK)
+    shutil.copytree(SRC, WORK, symlinks=True)
+fresh(); rc, t, last = run("base"); print("UNMUTATED rc=%d %s" % (rc, last), flush=True)
+for name, edits in M.items():
+    fresh(); ok = True
+    for f, a, b in edits:
+        p = WORK / f; s = p.read_text()
+        if a not in s: ok = False; break
+        p.write_text(s.replace(a, b, 1))
+    if not ok: print("NOAPPLY  ", name, flush=True); continue
+    rc, t, last = run(name)
+    print(("KILLED   " if rc else "SURVIVED ") + name + "  " + "; ".join(x.split(" (")[0] for x in t), flush=True)

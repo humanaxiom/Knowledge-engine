@@ -1,0 +1,35 @@
+$ COMPOSE_PROJECT_NAME=ke-reviewer-psc KE_IMAGE_TAG=wt-33a132fbfdd7 docker compose --env-file .env.example --profile gates run --rm --no-deps gates sh -c "uv run --locked python -m unittest -v tests.test_image_scan.ScanScriptTest 2>&1 | tail -n 40"
+ Container ke-reviewer-psc-gates-run-7ee5c89e46c8 Creating 
+ Container ke-reviewer-psc-gates-run-7ee5c89e46c8 Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.82ms
+Installed 1 package in 1ms
+test_scan_clears_caller_docker_default_platform (tests.test_image_scan.ScanScriptTest.test_scan_clears_caller_docker_default_platform)
+L-3: a caller DOCKER_DEFAULT_PLATFORM (an unverified architecture ... ok
+test_scan_db_failure_fails_closed_naming_host_and_stage (tests.test_image_scan.ScanScriptTest.test_scan_db_failure_fails_closed_naming_host_and_stage) ... ok
+test_scan_does_not_widen_scanner_privileges (tests.test_image_scan.ScanScriptTest.test_scan_does_not_widen_scanner_privileges)
+M-1 guard: the fix is the tar's mode, never more privilege: no ... ok
+test_scan_fails_when_teardown_fails (tests.test_image_scan.ScanScriptTest.test_scan_fails_when_teardown_fails)
+N2 (D4): a failed teardown fails an otherwise passing scan, naming ... ok
+test_scan_ignores_caller_env_file_and_compose_settings (tests.test_image_scan.ScanScriptTest.test_scan_ignores_caller_env_file_and_compose_settings)
+N4 (D4: no caller value reaches the scan): a hostile KE_ENV_FILE, ... ok
+test_scan_input_is_read_only_ke_app_tar (tests.test_image_scan.ScanScriptTest.test_scan_input_is_read_only_ke_app_tar) ... ok
+test_scan_interrupt_removes_own_project_containers_before_teardown (tests.test_image_scan.ScanScriptTest.test_scan_interrupt_removes_own_project_containers_before_teardown)
+B1 (PSC-3, D4): a signal during scan-db kills the compose client but ... ok
+test_scan_order_is_save_then_db_then_scan (tests.test_image_scan.ScanScriptTest.test_scan_order_is_save_then_db_then_scan) ... ok
+test_scan_refuses_existing_scan_dir (tests.test_image_scan.ScanScriptTest.test_scan_refuses_existing_scan_dir)
+L-2: dist/<project> must be new. A path already there (a planted ... ok
+test_scan_refuses_malformed_image_tag (tests.test_image_scan.ScanScriptTest.test_scan_refuses_malformed_image_tag) ... ok
+test_scan_removes_tar_on_every_exit (tests.test_image_scan.ScanScriptTest.test_scan_removes_tar_on_every_exit)
+N3, PSC-6 (§2.6 item 5): pass, a failure at each stage, INT and ... ok
+test_scan_second_signal_does_not_abort_cleanup (tests.test_image_scan.ScanScriptTest.test_scan_second_signal_does_not_abort_cleanup)
+L-1: once cleanup starts it ignores INT and TERM, so a second ... ok
+test_scan_tar_is_world_readable_before_any_compose_call (tests.test_image_scan.ScanScriptTest.test_scan_tar_is_world_readable_before_any_compose_call)
+M-1: on a Linux engine `docker save -o` writes the tar 0600 and the ... ok
+test_scan_updates_db_every_run (tests.test_image_scan.ScanScriptTest.test_scan_updates_db_every_run) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 9.588s
+
+OK

@@ -21,8 +21,14 @@ Two different things are called agents here. Do not confuse them:
 ## Verification: one entry point
 
 `scripts/verify.sh [fast|full]` is the only verification command. It re-runs
-itself inside the one-shot `gates` compose service (same image locally, for
-agents and in CI, with networking disabled) and calls the real gate scripts.
+itself inside a one-shot gate service (same image locally, for agents and in
+CI) and calls the real gate scripts. Networking is disabled for the gate
+services: `gates` (`fast`) has no network, and `gates-it` (`full`) sits on the
+internal `backend` network, whose only way out is the stack gateway's forward
+to the model host. In `full` the host half also builds and pulls images, runs
+the smoke check's network-control probe on the stack's `edge` network, and
+runs `scan-db`, a one-shot that fetches the image scanner's vulnerability
+database. The scan itself runs with no network.
 If it cannot run where you are, report that as a blocker. Never substitute a
 narrower check and call the gate passed. On Windows run it from Git Bash
 (Claude Code's Bash tool already is).

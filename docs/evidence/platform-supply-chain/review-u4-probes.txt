@@ -1,0 +1,30 @@
+# Reviewer probes, unit 4 (2026-10-21). Read-only; no repo file modified; container labelled ke-reviewer=psc-u4.
+
+## 1. I-1: the built ke-app has no /opt/venv/.lock, and no other world-writable regular file
+$ tag=$(bash scripts/image_tag.sh); echo $tag
+wt-33a132fbfdd7
+$ docker image inspect ke-app:wt-33a132fbfdd7 --format '{{.Id}} {{.Created}}'
+sha256:9eb199cdf1c1d099b48a37b4b361daa23e2f6c71baf6f5624247973d2d4fa9c7 2026-10-21T23:16:29.452497233Z
+$ docker run --rm --network none --label ke-reviewer=psc-u4 --entrypoint sh ke-app:wt-33a132fbfdd7 -c \
+    'ls -la /opt/venv/.lock; echo rc=$?; find / -xdev -perm -0002 -type f 2>/dev/null | grep -v "^/proc\|^/sys\|^/tmp\|^/dev" | head'
+ls: cannot access '/opt/venv/.lock': No such file or directory
+rc=2
+(find: no output)
+
+## 2. D9 verbatim check (python, whitespace-normalised)
+CLAUDE.md "Verification: one entry point" paragraph == "`scripts/verify.sh [fast|full]` is the only verification command. " + D9 blockquote (architecture.md D9): True
+README.md contains D9 replacement sentence: True
+README.md contains D9 added paragraph: True
+git diff 769b507 -- CLAUDE.md: one hunk only (lines 24-25 -> 24).
+
+## 3. PSC-9 stage markers in u4-green-verify-full.txt
+1601 == scan: ignore entries (docker/scan-ignore.yaml) ==
+1603 == scan: save ==
+1604 scan: save took 1s
+1605 == scan: scan-db ==      (1606-1607 grype image Pulling/Pulled; 1608 "Network ke-scan-... Creating" = start of DB fetch)
+1615 scan: scan-db took 64s
+1616 == scan: scan ==
+1909 scan: scan took 4s
+1910 == scan: done ==
+1911-1914 scan project teardown (volume, network removed)
+1915 offline: df start   (first offline_check line)

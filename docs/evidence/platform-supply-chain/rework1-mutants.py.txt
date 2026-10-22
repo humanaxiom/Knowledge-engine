@@ -1,0 +1,82 @@
+"""Tester rework-1 scratch mutants (B1 + L-U1-1): copies of docker/gates.Dockerfile
+only; the repo file is never written. Patches GATES_DOCKERFILE in the test module.
+Mutants are applied to a scratch GREEN copy (the repo file + `.signature.p7s` in
+the rm, i.e. L-U1-1 fixed) so a kill is never the L-U1-1 RED subtest."""
+import io, sys, unittest
+from pathlib import Path
+REPO = Path(r"C:\repos\Knowledge-engine")
+OUT = Path(sys.argv[1]); OUT.mkdir(parents=True, exist_ok=True)
+sys.path.insert(0, str(REPO))
+import tests.test_gates_docker_cli as cli  # noqa: E402
+src = (REPO / "docker" / "gates.Dockerfile").read_text(encoding="utf-8")
+
+def rep(t, old, new):
+    assert old in t, old
+    return t.replace(old, new, 1)
+
+RM = '"$dir/PSScriptAnalyzer.nuspec" /tmp/psa.nupkg'
+green = rep(src, RM, '"$dir/PSScriptAnalyzer.nuspec" "$dir/.signature.p7s" /tmp/psa.nupkg')
+CHECK = 'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c -; \\\n'
+C = 'echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c -'
+UNPACK = '    python3 -I -m zipfile -e /tmp/psa.nupkg'
+DIR = '    dir="/usr/local/share/powershell/Modules/PSScriptAnalyzer/${PSSCRIPTANALYZER_VERSION}"; \\\n'
+FETCH_HEAD = "RUN set -eu; \\\n    curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL -o /tmp/psa.nupkg"
+REFETCH = "    curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL -o /tmp/psa.nupkg \"https://example.invalid/x.nupkg\"; \\\n"
+def set_(extra): return rep(green, FETCH_HEAD, FETCH_HEAD.replace("RUN set -eu; \\\n", f"RUN set -eu; {extra}; \\\n"))
+def between(step): return rep(green, DIR, DIR + f"    {step}; \\\n")
+
+mutants = {
+  # the reviewer's six (review-u1-static-mutants.py.txt), same replacements
+  "R1 check_piped_to_cat": rep(green, CHECK, C + ' | cat; \\\n'),
+  "R2 check_inside_if": rep(green, CHECK, f'if {C}; then :; fi; \\\n'),
+  "R3 check_negated": rep(green, CHECK, f'! {C}; \\\n'),
+  "R4 check_backgrounded": rep(green, CHECK, C + ' & \\\n'),
+  "R5 set_plus_e_before_check": set_("set +e"),
+  "R6 refetch_after_check": rep(green, UNPACK, REFETCH + UNPACK),
+  # extras
+  "X1 check_piped_to_tee": rep(green, CHECK, C + ' | tee /tmp/psa.log; \\\n'),
+  "X2 subshell_or_true": rep(green, CHECK, f'( {C} || true ); \\\n'),
+  "X3 brace_group_or_colon": rep(green, CHECK, f'{{ {C}; }} || :; \\\n'),
+  "X4 check_and_colon (non-last AND-OR member)": rep(green, CHECK, C + ' && :; \\\n'),
+  "X5 true_or_check (check skipped)": rep(green, CHECK, f'true || {C}; \\\n'),
+  "X6 check_in_until": rep(green, CHECK, f'until {C}; do break; done; \\\n'),
+  "X7 check_in_elif": rep(green, CHECK, f'if false; then :; elif {C}; then :; fi; \\\n'),
+  "X8 check_in_if_body": rep(green, CHECK, f'if [ -n "${{SKIP:-}}" ]; then :; else {C}; fi; \\\n'),
+  "X9 check_in_export_substitution": rep(green, CHECK, f'export r="$({C})"; \\\n'),
+  "X10 set_plus_o_errexit": set_("set +o errexit"),
+  "X11 set_plus_u": set_("set +u"),
+  "X12 set_plus_eu": set_("set +eu"),
+  "X13 cp_over_download": between("cp /etc/hostname /tmp/psa.nupkg"),
+  "X14 mv_over_download": between("mv /tmp/other.nupkg /tmp/psa.nupkg"),
+  "X15 redirect_over_download": between("printf x > /tmp/psa.nupkg"),
+  "X16 tee_over_download": between("tee /tmp/psa.nupkg < /dev/null"),
+  "X17 cd_tmp_refetch_by_basename": between("cd /tmp; curl --proto '=https' --tlsv1.2 -fsSL -o psa.nupkg \"https://example.invalid/x\""),
+  "X18 background_writer_before_check": rep(green, CHECK, '( sleep 1; cp /etc/hostname /tmp/psa.nupkg ) & ' + CHECK),
+  "X19 unpack_piped_from_refetch": rep(green, UNPACK, "    curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/psa.nupkg \"https://example.invalid/x\" |" + UNPACK.lstrip()),
+  "X20 rm_without_signature (L-U1-1)": src,
+}
+names = ["test_gates_image_sets_telemetry_optout_before_pwsh", "test_gates_image_verifies_psscriptanalyzer_hash",
+         "test_gates_image_psscriptanalyzer_version_agrees"]
+def run(text, tag):
+    p = OUT / (tag.split()[0] + ".Dockerfile"); p.write_text(text, encoding="utf-8")
+    cli.GATES_DOCKERFILE = p
+    suite = unittest.TestSuite(cli.GatesImagePowerShellSupplyChainTest(n) for n in names)
+    return unittest.TextTestRunner(stream=io.StringIO(), verbosity=0).run(suite)
+def killers(r):
+    out = []
+    for t, _ in r.failures + r.errors:
+        s = str(t); i = s.find("check=")
+        out.append(s[i:].rstrip(")") if i >= 0 else s.split(" ")[0])
+    return out
+r = run(green, "baseline_green"); bad = len(r.failures) + len(r.errors)
+print(f"baseline_green (repo file + .signature.p7s in rm): {'PASS' if bad == 0 else f'FAIL ({bad})'} {killers(r)}")
+r = run(src, "baseline_repo"); 
+print(f"baseline_repo (unchanged docker/gates.Dockerfile): FAIL ({len(r.failures) + len(r.errors)}) {killers(r)}")
+survived = 0
+for name, text in mutants.items():
+    r = run(text, name)
+    bad = len(r.failures) + len(r.errors)
+    if bad == 0: survived += 1
+    print(f"{name}: {'SURVIVED' if bad == 0 else f'KILLED ({bad})'}")
+    for k in killers(r): print("    ", k)
+print(f"mutants: {len(mutants)}, survived: {survived}")

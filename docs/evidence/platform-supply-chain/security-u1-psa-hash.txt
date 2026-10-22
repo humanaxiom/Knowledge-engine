@@ -1,0 +1,32 @@
+# security-u1: independent Q48 provenance re-check, PSScriptAnalyzer 1.25.0 (ADR-KE-013 am.1 D7)
+# run by: security, host shell (Git Bash), fresh empty download dir <scratch>/dl2 (profile path redacted)
+# date: 2026-10-21T17:35:49Z
+
+$ curl --proto =https --tlsv1.2 -fsS -o odata.xml "https://www.powershellgallery.com/api/v2/Packages(Id='PSScriptAnalyzer',Version='1.25.0')"
+exit=0
+$ grep -o "<d:(Id|Version|PackageHash|PackageHashAlgorithm)>..." odata.xml
+<d:Id>PSScriptAnalyzer</d:Id>
+<d:Version>1.25.0</d:Version>
+<d:PackageHash>5/tXMmLmBLqymRSuYpIdJLl8L4i1GbQSd7QD72zhY/FLfRs23HNEmmjlrlqNlQKJGxDCZBMf0YE63ym/ExwWYw==</d:PackageHash>
+<d:PackageHashAlgorithm>SHA512</d:PackageHashAlgorithm>
+$ printf %s "$B64" | base64 -d | od -An -tx1 -v | tr -d " \n"
+gallery_hex=e7fb573262e604bab29914ae62921d24b97c2f88b519b41277b403ef6ce163f14b7d1b36dc73449a68e5ae5a8d9502891b10c264131fd1813adf29bf131c1663
+
+$ curl --proto =https --proto-redir =https --tlsv1.2 -fsSL -w "final_url=%{url_effective} http=%{http_code} redirects=%{num_redirects}\n" -o psa.nupkg https://www.powershellgallery.com/api/v2/package/PSScriptAnalyzer/1.25.0
+final_url=https://cdn.powershellgallery.com/packages/psscriptanalyzer.1.25.0.nupkg http=200 redirects=1
+exit=0
+$ sha512sum psa.nupkg; wc -c psa.nupkg
+e7fb573262e604bab29914ae62921d24b97c2f88b519b41277b403ef6ce163f14b7d1b36dc73449a68e5ae5a8d9502891b10c264131fd1813adf29bf131c1663 *psa.nupkg
+14658674 psa.nupkg
+
+$ sed -n "s/^ARG PSSCRIPTANALYZER_SHA512=//p" docker/gates.Dockerfile
+pinned=e7fb573262e604bab29914ae62921d24b97c2f88b519b41277b403ef6ce163f14b7d1b36dc73449a68e5ae5a8d9502891b10c264131fd1813adf29bf131c1663
+
+gallery_hex == pinned: MATCH
+local_sha512 == pinned: MATCH
+
+$ python -I <scripts>/members.py psa.nupkg   # member scan: absolute, .., drive, backslash, symlink entries
+members: 53
+suspicious (abs/../drive/backslash): []
+top-level entries: ['.signature.p7s', 'LICENSE', 'Microsoft.PowerShell.CrossCompatibility.dll', 'Microsoft.Windows.PowerShell.ScriptAnalyzer.BuiltinRules.dll', 'Microsoft.Windows.PowerShell.ScriptAnalyzer.dll', 'Newtonsoft.Json.dll', 'PSScriptAnalyzer.nuspec', 'PSScriptAnalyzer.psd1', 'PSScriptAnalyzer.psm1', 'PSv7', 'README.md', 'SECURITY.md', 'ScriptAnalyzer.format.ps1xml', 'ScriptAnalyzer.types.ps1xml', 'Settings', 'ThirdPartyNotices.txt', '[Content_Types].xml', '_rels', 'compatibility_profiles', 'en-US', 'package']
+symlink entries: []

@@ -1,0 +1,63 @@
+# The ke-app image scan (ADR-KE-013 amendment 1, D1): used only by
+# scripts/scan.sh, which runs it in its own ke-scan-<random> project. No
+# profiles: only `compose run` starts these services, and the stack, the
+# bundle and the gates services never see this file.
+#
+# scan-db has the only route out (the project's default bridge) and fetches
+# the vulnerability database into the scan-db volume. scan has no network:
+# it reads that volume, the saved image tar and the ignore file, read-only.
+x-scanner: &scanner
+  image: anchore/grype:v0.120.1@sha256:e4a44ef45d285b829ce6efe2642980329661bd2d18eab5fc539138d4adaebbbe
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  scan-db:
+    <<: *scanner
+    command: ["db", "update"]
+    volumes:
+      - type: volume
+        source: scan-db
+        target: /db
+    environment:
+      GRYPE_DB_CACHE_DIR: /db
+      GRYPE_CHECK_FOR_APP_UPDATE: "false"
+
+  scan:
+    <<: *scanner
+    network_mode: none
+    command:
+      - docker-archive:/in/ke-app.tar
+      - --config
+      - /cfg/scan-ignore.yaml
+      - --only-fixed
+      - --fail-on
+      - high
+      - --show-suppressed
+      - -o
+      - table
+    volumes:
+      - type: volume
+        source: scan-db
+        target: /db
+        read_only: true
+      - type: bind
+        source: ${KE_SCAN_IN:?set by scripts/scan.sh}
+        target: /in
+        read_only: true
+      - type: bind
+        source: ./docker/scan-ignore.yaml
+        target: /cfg/scan-ignore.yaml
+        read_only: true
+    environment:
+      GRYPE_DB_CACHE_DIR: /db
+      GRYPE_DB_AUTO_UPDATE: "false"
+      GRYPE_CHECK_FOR_APP_UPDATE: "false"
+
+volumes:
+  scan-db:

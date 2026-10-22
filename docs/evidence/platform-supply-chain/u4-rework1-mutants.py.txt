@@ -1,0 +1,134 @@
+"""Scratch only (tester, platform-supply-chain unit 4 rework round 1 RED: security
+M-1 and review N4). Runs inside the gates image with --network none: /work is the
+real checkout (read-only); every copy and mutant lives under /tmp. No production
+file is touched.
+
+RED: the M-1 tests fail on today's tree; the N4 test passes (a guard).
+Satisfiability: today's tree with scripts/verify.sh replaced by scratch green
+shapes (option a: INT/TERM/HUP traps; option b: PASS only when finished; both)
+passes the touched modules and shellcheck. Mutants of the green shape must be
+killed by the M-1 tests; mutants of today's verify.sh by the N4 guard (and the
+pre-N4 subset assertion is shown NOT to kill them)."""
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+SRC = Path("/work")
+BASE = Path("/tmp/rw1-base")
+V = "scripts/verify.sh"
+SS = "tests.test_stack_scripts.VerifyHostHalfTest."
+SCAN_SIG = SS + "test_verify_full_fails_when_image_scan_fails"
+SMOKE_SIG = SS + "test_verify_full_signal_during_smoke_exits_with_its_status_and_no_pass"
+LAUNCH_SIG = SS + "test_teardown_runs_on_interrupt"
+N4 = "tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_takes_no_caller_ke_key_but_the_model_keys"
+M1 = [SCAN_SIG, SMOKE_SIG]
+
+TRAP = "  trap cleanup EXIT\n"
+TRAPS_A = TRAP + "  trap 'exit 130' INT\n  trap 'exit 143' TERM\n  trap 'exit 129' HUP\n"
+PASS_IF = '    if [ "$rc" -eq 0 ]; then\n      echo "== verify full: PASS'
+PASS_IF_B = '    if [ "$rc" -eq 0 ] && [ "$finished" -eq 1 ]; then\n      echo "== verify full: PASS'
+TORN = "  torn_down=0\n"
+TORN_B = "  torn_down=0\n  finished=0\n"
+EXIT0 = "  scripts/offline_check.sh\n  exit 0\n"
+EXIT0_B = "  scripts/offline_check.sh\n  finished=1\n  exit 0\n"
+SCAN_LINE = "  scripts/scan.sh\n"
+OFFLINE_LINE = "  scripts/offline_check.sh\n"
+N4_NEW = '{"build", "launch", "smoke", "teardown", "scan", "offline_check"} <= set(stage_envs)'
+N4_OLD = '{"build", "launch", "smoke", "teardown"} <= set(stage_envs)'
+
+
+def sub(text: str, old: str, new: str) -> str:
+    assert text.count(old) == 1, (old, text.count(old))
+    return text.replace(old, new)
+
+
+def run(root: Path, tests: list[str]) -> tuple[bool, str]:
+    d = subprocess.run([sys.executable, "-m", "unittest", *tests], cwd=root, capture_output=True,
+                       text=True, timeout=600)
+    out = d.stdout + d.stderr
+    fails = [l for l in out.splitlines() if l.startswith(("FAIL:", "ERROR:", "AssertionError"))]
+    return d.returncode == 0, " | ".join(fails)[:600]
+
+
+def tree(name: str, verify: str | None = None, keys_test: str | None = None) -> Path:
+    dst = Path("/tmp") / name
+    shutil.rmtree(dst, ignore_errors=True)
+    shutil.copytree(BASE, dst, symlinks=True)
+    if verify is not None:
+        (dst / V).write_text(verify, encoding="utf-8", newline="\n")
+    if keys_test is not None:
+        (dst / "tests/test_stack_model_keys.py").write_text(keys_test, encoding="utf-8", newline="\n")
+    return dst
+
+
+def main() -> int:
+    shutil.rmtree(BASE, ignore_errors=True)
+    shutil.copytree(SRC, BASE, symlinks=True,
+                    ignore=shutil.ignore_patterns(".git", ".venv", "__pycache__", "dist", "node_modules",
+                                                  ".mypy_cache", ".ruff_cache"))
+    today = (BASE / V).read_text(encoding="utf-8")
+    keys_new = (BASE / "tests/test_stack_model_keys.py").read_text(encoding="utf-8")
+    keys_old = sub(keys_new, N4_NEW, N4_OLD)
+    ok = True
+
+    print("## RED on today's tree")
+    for t in M1 + [N4, LAUNCH_SIG]:
+        passed, why = run(BASE, [t])
+        print(f"{'pass' if passed else 'FAIL'}  {t.rsplit('.', 1)[1]}  {why}")
+
+    green_a = sub(today, TRAP, TRAPS_A)
+    green_b = sub(sub(sub(today, TORN, TORN_B), PASS_IF, PASS_IF_B), EXIT0, EXIT0_B)
+    green_ab = sub(sub(sub(green_a, TORN, TORN_B), PASS_IF, PASS_IF_B), EXIT0, EXIT0_B)
+    print("\n## Satisfiability: scratch green shapes (must pass M-1 + launch interrupt + N4; shellcheck clean)")
+    for name, text in (("green_a_traps", green_a), ("green_b_finished_flag", green_b), ("green_ab_both", green_ab)):
+        root = tree(name, text)
+        sc = subprocess.run(["shellcheck", "-x", V], cwd=root, capture_output=True, text=True)
+        passed, why = run(root, M1 + [LAUNCH_SIG, N4])
+        mods, _ = run(root, ["tests.test_stack_scripts", "tests.test_stack_model_keys"])
+        good = passed and mods and sc.returncode == 0
+        ok &= good
+        print(f"{'GREEN' if good else 'NOT-GREEN'}  {name}  M1+launch+N4={'ok' if passed else 'FAIL'}"
+              f"  both modules={'ok' if mods else 'FAIL'}  shellcheck rc={sc.returncode} {sc.stdout.strip()[:200]} {why}")
+    print("--- diff today -> green_ab_both ---")
+    d = subprocess.run(["diff", str(BASE / V), str(Path('/tmp/green_ab_both') / V)], capture_output=True, text=True)
+    print(d.stdout)
+
+    print("## M-1 mutants of the green shape (each must be KILLED by the M-1 tests)")
+    mutants = {
+        "m_no_hup_trap_no_flag": sub(green_a, "  trap 'exit 129' HUP\n", ""),
+        "m_term_trap_exits_1": sub(green_a, "trap 'exit 143' TERM", "trap 'exit 1' TERM"),
+        "m_int_trap_exits_0": sub(green_a, "trap 'exit 130' INT", "trap 'exit 0' INT"),
+        "m_hup_trap_exits_143": sub(green_a, "trap 'exit 129' HUP", "trap 'exit 143' HUP"),
+        "m_pass_regardless_of_rc": sub(green_a, PASS_IF, '    if true; then\n      echo "== verify full: PASS'),
+        "m_flag_set_before_scan": sub(sub(sub(today, TORN, TORN_B), PASS_IF, PASS_IF_B),
+                                      "  teardown_verify || exit 1\n", "  teardown_verify || exit 1\n  finished=1\n"),
+        "m_flag_set_at_start": sub(sub(sub(today, TORN, "  torn_down=0\n  finished=1\n"), PASS_IF, PASS_IF_B),
+                                   EXIT0, EXIT0),
+        "m_signals_ignored": sub(today, TRAP, TRAP + "  trap '' INT TERM HUP\n"),
+    }
+    killed = 0
+    for name, text in mutants.items():
+        passed, why = run(tree("mut", text), M1)
+        killed += not passed
+        ok &= not passed
+        print(f"{'KILLED' if not passed else 'SURVIVED'}  {name}  {why[:300]}")
+    print(f"{killed}/{len(mutants)} killed")
+
+    print("\n## N4 guard: mutants of TODAY's verify.sh (new subset must KILL; pre-N4 subset shown for contrast)")
+    n4_mutants = {"n4_no_scan_stage": sub(today, SCAN_LINE, ""),
+                  "n4_no_offline_check_stage": sub(today, OFFLINE_LINE, "")}
+    for name, text in n4_mutants.items():
+        new_pass, why = run(tree("n4new", text), [N4])
+        old_pass, _ = run(tree("n4old", text, keys_old), [N4])
+        ok &= (not new_pass) and old_pass
+        print(f"{'KILLED' if not new_pass else 'SURVIVED'}  {name}  (pre-N4 assertion: {'passes = gap' if old_pass else 'also fails'})  {why[:300]}")
+    passed, _ = run(tree("n4ctl", today), [N4])
+    ok &= passed
+    print(f"CONTROL-{'PASS' if passed else 'FAIL'}  n4 unmutated today's verify.sh")
+    print(f"\ndriver verdict: {'OK' if ok else 'UNEXPECTED'}")
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

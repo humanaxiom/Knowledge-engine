@@ -1,0 +1,367 @@
+security-u4 probes (2026-10-21). Scratch copies only; every probe container labelled ke.audit=security-u4, --network none.
+Images: bash:5.0@sha256:da2abb57e018d94f508c3df51651a509d048536a62993dabb0601db1a161aecc, bash:5.2@sha256:a88c98779fb40bee9c86bd172241d604e9c05ae236ba0dbf375d8cdc2670f3d0, ubuntu:20.04@sha256:8feb4d8ca5354def3d8fce243717141ce31e2c428701f6682bd2fafe15388214 (bash 5.0.17 + glibc), ke-app:wt-33a132fbfdd7 (id 9eb199cdf1c1).
+
+################ P1. L-1: scan.sh (working-tree copy) with absent/hostile SRANDOM; stub docker logs calls
+=== image bash:5.0 locale default
+bash 5.0.18(1)-release, LC_ALL=
+SRANDOM unset                rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-)
+SRANDOM empty                rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-)
+path ../../etc               rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-../../etc)
+1/../../x                    rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-1/../../x)
+space+flag '1 -v'            rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-1\ -v)
+newline 1\n2                 rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: $'ke-scan-1\n2')
+trailing newline 7\n         rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: $'ke-scan-7\n')
+cmd '1;touch /tmp/pwn'       rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-1\;touch\ /tmp/pwn)
+dash -1                      rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan--1)
+12abc                        rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-12abc)
+arabic-indic digits          rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-١٢٣)
+superscript digits           rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-¹²³)
+fullwidth digits             rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-１２３)
+glob 1*                      rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-1\*)
+digits 424242 (control)      rc=0 docker_calls=10 dist=[]
+    first: docker save -o ./dist/ke-scan-424242/ke-app.tar ke-app:wt-0123456789ab | COMPOSE_PROJECT_NAME=ke-scan-424242 KE_SCAN_IN=./dist/ke-scan-424242
+no /tmp/pwn
+=== image ubuntu:20.04 locale C.UTF-8
+bash 5.0.17(1)-release, LC_ALL=C.UTF-8
+SRANDOM unset                rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-)
+SRANDOM empty                rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-)
+path ../../etc               rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-../../etc)
+1/../../x                    rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-1/../../x)
+space+flag '1 -v'            rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-1\ -v)
+newline 1\n2                 rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: $'ke-scan-1\n2')
+trailing newline 7\n         rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: $'ke-scan-7\n')
+cmd '1;touch /tmp/pwn'       rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-1\;touch\ /tmp/pwn)
+dash -1                      rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan--1)
+12abc                        rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-12abc)
+arabic-indic digits          rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-١٢٣)
+superscript digits           rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-¹²³)
+fullwidth digits             rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-１２３)
+glob 1*                      rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-1\*)
+digits 424242 (control)      rc=0 docker_calls=10 dist=[]
+    first: docker save -o ./dist/ke-scan-424242/ke-app.tar ke-app:wt-0123456789ab | COMPOSE_PROJECT_NAME=ke-scan-424242 KE_SCAN_IN=./dist/ke-scan-424242
+no /tmp/pwn
+=== image ubuntu:20.04 locale C
+bash 5.0.17(1)-release, LC_ALL=C
+SRANDOM unset                rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-)
+SRANDOM empty                rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-)
+path ../../etc               rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-../../etc)
+1/../../x                    rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-1/../../x)
+space+flag '1 -v'            rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-1\ -v)
+newline 1\n2                 rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: $'ke-scan-1\n2')
+trailing newline 7\n         rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: $'ke-scan-7\n')
+cmd '1;touch /tmp/pwn'       rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-1\;touch\ /tmp/pwn)
+dash -1                      rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan--1)
+12abc                        rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-12abc)
+arabic-indic digits          rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: $'ke-scan-\331\241\331\242\331\243')
+superscript digits           rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: $'ke-scan-\302\271\302\262\302\263')
+fullwidth digits             rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: $'ke-scan-\357\274\221\357\274\222\357\274\223')
+glob 1*                      rc=1 docker_calls=0 dist=[]
+    scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: ke-scan-1\*)
+digits 424242 (control)      rc=0 docker_calls=10 dist=[]
+    first: docker save -o ./dist/ke-scan-424242/ke-app.tar ke-app:wt-0123456789ab | COMPOSE_PROJECT_NAME=ke-scan-424242 KE_SCAN_IN=./dist/ke-scan-424242
+no /tmp/pwn
+=== image bash:5.2 locale default
+bash 5.2.37(1)-release, LC_ALL=
+SRANDOM unset                rc=0 docker_calls=10 dist=[]
+    first: docker save -o ./dist/ke-scan-1905211892/ke-app.tar ke-app:wt-0123456789ab | COMPOSE_PROJECT_NAME=ke-scan-1905211892 KE_SCAN_IN=./dist/ke-scan-1905211892
+SRANDOM empty                rc=0 docker_calls=10 dist=[]
+    first: docker save -o ./dist/ke-scan-1684631587/ke-app.tar ke-app:wt-0123456789ab | COMPOSE_PROJECT_NAME=ke-scan-1684631587 KE_SCAN_IN=./dist/ke-scan-1684631587
+path ../../etc               rc=0 docker_calls=10 dist=[]
+    first: docker save -o ./dist/ke-scan-3495928652/ke-app.tar ke-app:wt-0123456789ab | COMPOSE_PROJECT_NAME=ke-scan-3495928652 KE_SCAN_IN=./dist/ke-scan-3495928652
+1/../../x                    rc=0 docker_calls=10 dist=[]
+    first: docker save -o ./dist/ke-scan-2272791749/ke-app.tar ke-app:wt-0123456789ab | COMPOSE_PROJECT_NAME=ke-scan-2272791749 KE_SCAN_IN=./dist/ke-scan-2272791749
+space+flag '1 -v'            rc=0 docker_calls=10 dist=[]
+    first: docker save -o ./dist/ke-scan-3340717249/ke-app.tar ke-app:wt-0123456789ab | COMPOSE_PROJECT_NAME=ke-scan-3340717249 KE_SCAN_IN=./dist/ke-scan-3340717249
+newline 1\n2                 rc=0 docker_calls=10 dist=[]
+    first: docker save -o ./dist/ke-scan-3235885368/ke-app.tar ke-app:wt-0123456789ab | COMPOSE_PROJECT_NAME=ke-scan-3235885368 KE_SCAN_IN=./dist/ke-scan-3235885368
+trailing newline 7\n         rc=0 docker_calls=10 dist=[]
+    first: docker save -o ./dist/ke-scan-3702581576/ke-app.tar ke-app:wt-0123456789ab | COMPOSE_PROJECT_NAME=ke-scan-3702581576 KE_SCAN_IN=./dist/ke-scan-3702581576
+cmd '1;touch /tmp/pwn'       rc=0 docker_calls=10 dist=[]
+    first: docker save -o ./dist/ke-scan-809683245/ke-app.tar ke-app:wt-0123456789ab | COMPOSE_PROJECT_NAME=ke-scan-809683245 KE_SCAN_IN=./dist/ke-scan-809683245
+dash -1                      rc=0 docker_calls=10 dist=[]
+    first: docker save -o ./dist/ke-scan-2479787185/ke-app.tar ke-app:wt-0123456789ab | COMPOSE_PROJECT_NAME=ke-scan-2479787185 KE_SCAN_IN=./dist/ke-scan-2479787185
+12abc                        rc=0 docker_calls=10 dist=[]
+    first: docker save -o ./dist/ke-scan-3772123276/ke-app.tar ke-app:wt-0123456789ab | COMPOSE_PROJECT_NAME=ke-scan-3772123276 KE_SCAN_IN=./dist/ke-scan-3772123276
+arabic-indic digits          rc=0 docker_calls=10 dist=[]
+    first: docker save -o ./dist/ke-scan-2800478120/ke-app.tar ke-app:wt-0123456789ab | COMPOSE_PROJECT_NAME=ke-scan-2800478120 KE_SCAN_IN=./dist/ke-scan-2800478120
+superscript digits           rc=0 docker_calls=10 dist=[]
+    first: docker save -o ./dist/ke-scan-1202501126/ke-app.tar ke-app:wt-0123456789ab | COMPOSE_PROJECT_NAME=ke-scan-1202501126 KE_SCAN_IN=./dist/ke-scan-1202501126
+fullwidth digits             rc=0 docker_calls=10 dist=[]
+    first: docker save -o ./dist/ke-scan-2111056996/ke-app.tar ke-app:wt-0123456789ab | COMPOSE_PROJECT_NAME=ke-scan-2111056996 KE_SCAN_IN=./dist/ke-scan-2111056996
+glob 1*                      rc=0 docker_calls=10 dist=[]
+    first: docker save -o ./dist/ke-scan-2832576128/ke-app.tar ke-app:wt-0123456789ab | COMPOSE_PROJECT_NAME=ke-scan-2832576128 KE_SCAN_IN=./dist/ke-scan-2832576128
+digits 424242 (control)      rc=0 docker_calls=10 dist=[]
+    first: docker save -o ./dist/ke-scan-2312007643/ke-app.tar ke-app:wt-0123456789ab | COMPOSE_PROJECT_NAME=ke-scan-2312007643 KE_SCAN_IN=./dist/ke-scan-2312007643
+no /tmp/pwn
+
+################ P2. Red-as-green: verify.sh (working-tree copy), host half, stubbed stages; scan stub hangs or fails
+## run A (setsid, no job control: the SIGINT rows are INVALID, bash starts & jobs with SIGINT ignored; kept for the record)
+bash 5.2.37(1)-release
+control: scan ok, offline ok       rc=0   PASS_lines=1 stages=build,launch,smoke,teardown,scan,offline_check,
+scan exits 1                       rc=1   PASS_lines=0 stages=build,launch,smoke,teardown,scan,
+scan killed by SIGKILL             rc=137 PASS_lines=0 stages=build,launch,smoke,teardown,scan,
+scan not executable                rc=126 PASS_lines=0 stages=build,launch,smoke,teardown,
+scan ok, offline exits 1           rc=1   PASS_lines=0 stages=build,launch,smoke,teardown,scan,offline_check,
+SIGINT to process group in scan    rc=0   PASS_lines=1 stages=build,launch,smoke,teardown,scan,scan finished sleep,offline_check,
+SIGTERM to process group in scan   rc=143 PASS_lines=1 stages=build,launch,smoke,teardown,scan,scan got TERM,
+SIGTERM to scan only               rc=143 PASS_lines=0 stages=build,launch,smoke,teardown,scan,scan got TERM,
+SIGINT to scan only                rc=0   PASS_lines=1 stages=build,launch,smoke,teardown,scan,scan finished sleep,offline_check,
+SIGTERM to verify only             rc=143 PASS_lines=1 stages=build,launch,smoke,teardown,scan,
+SIGINT to verify only              rc=0   PASS_lines=1 stages=build,launch,smoke,teardown,scan,scan finished sleep,scan finished sleep,offline_check,
+/drive.sh: line 18:   333 Hangup                  PATH="/stub:$PATH" setsid bash /w/scripts/verify.sh full > /tmp/out 2>&1
+SIGHUP to process group in scan    rc=129 PASS_lines=1 stages=build,launch,smoke,teardown,scan,
+stage scan pid=351 KE_IMAGE_TAG=wt-0123456789ab
+## run B (set -m job control: valid SIGINT rows; last row is a pre-U4 control with TERM during smoke)
+bash 5.2.37(1)-release (job control on)
+SIGINT to process group in scan      rc=130 PASS_lines=0 stages=build,launch,smoke,teardown,scan,scan got INT,
+SIGINT to scan only                  rc=130 PASS_lines=0 stages=build,launch,smoke,teardown,scan,scan got INT,
+SIGINT to verify only                rc=0   PASS_lines=1 stages=build,launch,smoke,teardown,scan,scan finished sleep,offline_check,
+SIGTERM to process group in scan     rc=143 PASS_lines=1 stages=build,launch,smoke,teardown,scan,scan got TERM,
+    out: == verify full: project ke-verify-162873876 ==
+    out: == verify full: PASS (0s) ==
+SIGTERM to verify only in scan       rc=143 PASS_lines=1 stages=build,launch,smoke,teardown,scan,
+    out: == verify full: project ke-verify-2170110393 ==
+    out: == verify full: PASS (0s) ==
+/drive2.sh: line 16:   179 Hangup                  PATH="/stub:$PATH" bash /w/scripts/verify.sh full > /tmp/out 2>&1
+SIGHUP to process group in scan      rc=129 PASS_lines=1 stages=build,launch,smoke,teardown,scan,
+    out: == verify full: project ke-verify-322330250 ==
+    out: == verify full: PASS (0s) ==
+SIGTERM to verify only in SMOKE (pre-U4) rc=143 PASS_lines=1 stages=build,launch,smoke,teardown,
+    out: == verify full: project ke-verify-268541332 ==
+    out: == verify full: PASS (1s) ==
+
+################ P3. Caller environment into scan.sh (hostile COMPOSE_*/KE_*/GRYPE_*/SCAN_DB_URL/DOCKER_DEFAULT_PLATFORM)
+## note: the 'rc=' on the bad-tag rows is an artefact ($? read after a command substitution); docker_calls=0 is the result
+rc=0
+docker save -o ./dist/ke-scan-1068057959/ke-app.tar ke-app:wt-0123456789ab
+    env COMPOSE_FILE=docker-compose.scan.yml
+    env COMPOSE_PATH_SEPARATOR=:
+    env COMPOSE_PROJECT_NAME=ke-scan-1068057959
+    env GRYPE_FAIL_ON_SEVERITY=critical
+    env GRYPE_ONLY_FIXED=false
+    env KE_ENV_FILE=.env.example
+    env KE_IMAGE_TAG=wt-0123456789ab
+    env KE_SCAN_IN=./dist/ke-scan-1068057959
+    env KE_SMOKE_OWNS_PROJECT=1
+    env SCAN_DB_URL=https://grype.anchore.io/databases
+docker compose --env-file .env.example pull scan-db
+    env COMPOSE_FILE=docker-compose.scan.yml
+    env COMPOSE_PATH_SEPARATOR=:
+    env COMPOSE_PROJECT_NAME=ke-scan-1068057959
+    env GRYPE_FAIL_ON_SEVERITY=critical
+    env GRYPE_ONLY_FIXED=false
+    env KE_ENV_FILE=.env.example
+    env KE_IMAGE_TAG=wt-0123456789ab
+    env KE_SCAN_IN=./dist/ke-scan-1068057959
+    env KE_SMOKE_OWNS_PROJECT=1
+    env SCAN_DB_URL=https://grype.anchore.io/databases
+docker compose --env-file .env.example run --rm --pull never -e GRYPE_DB_UPDATE_URL=https://grype.anchore.io/databases scan-db
+    env COMPOSE_FILE=docker-compose.scan.yml
+    env COMPOSE_PATH_SEPARATOR=:
+    env COMPOSE_PROJECT_NAME=ke-scan-1068057959
+    env GRYPE_FAIL_ON_SEVERITY=critical
+    env GRYPE_ONLY_FIXED=false
+    env KE_ENV_FILE=.env.example
+    env KE_IMAGE_TAG=wt-0123456789ab
+    env KE_SCAN_IN=./dist/ke-scan-1068057959
+    env KE_SMOKE_OWNS_PROJECT=1
+    env SCAN_DB_URL=https://grype.anchore.io/databases
+docker compose --env-file .env.example run --rm --pull never scan
+    env COMPOSE_FILE=docker-compose.scan.yml
+    env COMPOSE_PATH_SEPARATOR=:
+    env COMPOSE_PROJECT_NAME=ke-scan-1068057959
+    env GRYPE_FAIL_ON_SEVERITY=critical
+    env GRYPE_ONLY_FIXED=false
+    env KE_ENV_FILE=.env.example
+    env KE_IMAGE_TAG=wt-0123456789ab
+    env KE_SCAN_IN=./dist/ke-scan-1068057959
+    env KE_SMOKE_OWNS_PROJECT=1
+    env SCAN_DB_URL=https://grype.anchore.io/databases
+docker ps -aq --filter label=com.docker.compose.project=ke-scan-1068057959
+    env COMPOSE_FILE=docker-compose.scan.yml
+    env COMPOSE_PATH_SEPARATOR=:
+    env COMPOSE_PROJECT_NAME=ke-scan-1068057959
+    env GRYPE_FAIL_ON_SEVERITY=critical
+    env GRYPE_ONLY_FIXED=false
+    env KE_ENV_FILE=.env.example
+    env KE_IMAGE_TAG=wt-0123456789ab
+    env KE_SCAN_IN=./dist/ke-scan-1068057959
+    env KE_SMOKE_OWNS_PROJECT=1
+    env SCAN_DB_URL=https://grype.anchore.io/databases
+docker compose --env-file .env.example config
+    env COMPOSE_FILE=docker-compose.scan.yml
+    env COMPOSE_PATH_SEPARATOR=:
+    env COMPOSE_PROJECT_NAME=ke-scan-1068057959
+    env GRYPE_FAIL_ON_SEVERITY=critical
+    env GRYPE_ONLY_FIXED=false
+    env KE_ENV_FILE=.env.example
+    env KE_IMAGE_TAG=wt-0123456789ab
+    env KE_SCAN_IN=./dist/ke-scan-1068057959
+    env KE_SMOKE_OWNS_PROJECT=1
+    env SCAN_DB_URL=https://grype.anchore.io/databases
+docker compose --env-file .env.example down --volumes
+    env COMPOSE_FILE=docker-compose.scan.yml
+    env COMPOSE_PATH_SEPARATOR=:
+    env COMPOSE_PROJECT_NAME=ke-scan-1068057959
+    env GRYPE_FAIL_ON_SEVERITY=critical
+    env GRYPE_ONLY_FIXED=false
+    env KE_ENV_FILE=.env.example
+    env KE_IMAGE_TAG=wt-0123456789ab
+    env KE_SCAN_IN=./dist/ke-scan-1068057959
+    env KE_SMOKE_OWNS_PROJECT=1
+    env SCAN_DB_URL=https://grype.anchore.io/databases
+docker ps -a --filter label=com.docker.compose.project=ke-scan-1068057959 --format {{.Names}}
+    env COMPOSE_FILE=docker-compose.scan.yml
+    env COMPOSE_PATH_SEPARATOR=:
+    env COMPOSE_PROJECT_NAME=ke-scan-1068057959
+    env GRYPE_FAIL_ON_SEVERITY=critical
+    env GRYPE_ONLY_FIXED=false
+    env KE_ENV_FILE=.env.example
+    env KE_IMAGE_TAG=wt-0123456789ab
+    env KE_SCAN_IN=./dist/ke-scan-1068057959
+    env KE_SMOKE_OWNS_PROJECT=1
+    env SCAN_DB_URL=https://grype.anchore.io/databases
+docker network ls --filter label=com.docker.compose.project=ke-scan-1068057959 --format {{.Name}}
+    env COMPOSE_FILE=docker-compose.scan.yml
+    env COMPOSE_PATH_SEPARATOR=:
+    env COMPOSE_PROJECT_NAME=ke-scan-1068057959
+    env GRYPE_FAIL_ON_SEVERITY=critical
+    env GRYPE_ONLY_FIXED=false
+    env KE_ENV_FILE=.env.example
+    env KE_IMAGE_TAG=wt-0123456789ab
+    env KE_SCAN_IN=./dist/ke-scan-1068057959
+    env KE_SMOKE_OWNS_PROJECT=1
+    env SCAN_DB_URL=https://grype.anchore.io/databases
+docker volume ls --filter label=com.docker.compose.project=ke-scan-1068057959 --format {{.Name}}
+    env COMPOSE_FILE=docker-compose.scan.yml
+    env COMPOSE_PATH_SEPARATOR=:
+    env COMPOSE_PROJECT_NAME=ke-scan-1068057959
+    env GRYPE_FAIL_ON_SEVERITY=critical
+    env GRYPE_ONLY_FIXED=false
+    env KE_ENV_FILE=.env.example
+    env KE_IMAGE_TAG=wt-0123456789ab
+    env KE_SCAN_IN=./dist/ke-scan-1068057959
+    env KE_SMOKE_OWNS_PROJECT=1
+    env SCAN_DB_URL=https://grype.anchore.io/databases
+--- bad tag cases
+tag='' rc=0 docker_calls=0
+tag=local rc=0 docker_calls=0
+tag=$'wt-0123456789ab\nx' rc=0 docker_calls=0
+tag=wt-0123456789AB rc=0 docker_calls=0
+tag=../wt-0123456789ab rc=0 docker_calls=0
+## real 'docker compose config' of docker-compose.scan.yml with GRYPE_FAIL_ON_SEVERITY/GRYPE_ONLY_FIXED/GRYPE_DB_UPDATE_URL/GRYPE_CONFIG set on the host:
+   container environment = only GRYPE_CHECK_FOR_APP_UPDATE, GRYPE_DB_AUTO_UPDATE (scan), GRYPE_DB_CACHE_DIR; scan network_mode none; --only-fixed --fail-on high in command
+
+################ P4. I-1: ke-app:wt-33a132fbfdd7 filesystem (built 23:16:29Z, after the app.Dockerfile edit)
+image: ke-app:wt-33a132fbfdd7 id=sha256:9eb199cdf1c1d099b48a37b4b361daa23e2f6c71baf6f5624247973d2d4fa9c7 created=2026-10-21T23:16:29.452497233Z
+--- history (rm of .lock in builder layer):
+0
+--- probe (uid 0 to see everything; --network none, read-only):
+lock: ls: cannot access '/opt/venv/.lock': No such file or directory
+world-writable files (-xdev, excl /proc /sys /tmp /var/tmp /dev):
+  (end files)
+world-writable dirs without sticky bit:
+  (end dirs)
+world-writable sticky dirs:
+  S /tmp
+  S /run/lock
+  S /var/tmp
+files under /opt/venv or /app not owned by root:
+  (end)
+group-writable under /opt/venv /app:
+  (end)
+setuid/setgid:
+/usr/sbin/unix_chkpwd
+/usr/bin/umount
+/usr/bin/chage
+/usr/bin/expiry
+/usr/bin/newgrp
+/usr/bin/mount
+/usr/bin/chfn
+/usr/bin/su
+/usr/bin/gpasswd
+/usr/bin/passwd
+/usr/bin/chsh
+uv anywhere:
+  none
+--- default user: ke
+entries in /tmp /var/tmp /run/lock:
+(end)
+
+################ P5. PSC-7: versions inside psycopg_binary.libs (python -I, byte search for version strings)
+libcom_err-2abe824b.so.2.1 []
+libcrypt-bc2db45e.so.1 []
+libcrypto-2d1629ee.so.3 ['openssl:OpenSSL 3.5.8 25 Aug 2026']
+libgssapi_krb5-497db0c6.so.2.2 []
+libk5crypto-b1f99d5c.so.3.1 []
+libkeyutils-dfe70bd6.so.1.5 []
+libkrb5-fcafa220.so.3.3 []
+libkrb5support-d0bcff84.so.0.1 []
+liblber-a44a5afb.so.2.0.200 []
+libldap-7c3a4b12.so.2.0.200 ['ldap:OpenLDAP']
+libpcre-9513aab5.so.1.2.0 ['pcre:8.32 2012-11-30']
+libpq-e9b5c9ac.so.5.18 []
+libsasl2-84219a89.so.3.0.0 ['sasl:2.1.26', 'sasl:Cyrus SASL']
+libselinux-0922c95c.so.1 []
+libssl-8bd944e8.so.3 []
+psycopg 3.3.6 libpq 180006 binary
+
+################ P6. Evidence sweep of docs/evidence/platform-supply-chain/u4-*.txt
+== profile paths
+== SIDs
+== key/token patterns
+== connection strings / credentials
+u4-green-verify-full.txt:1635:passwd              1:4.13+dfsg1-1+deb12u2                                 deb     CVE-2007-5686        Negligible  0.9% (60th)   < 0.1  (suppressed)  
+u4-green-verify-full.txt:1701:passwd              1:4.13+dfsg1-1+deb12u2  (won't fix)                    deb     CVE-2024-56433       Low         0.4% (35th)   0.1    (suppressed)  
+== KE_MODEL_UPSTREAM / allowlist values
+u4-green-verify-full.txt:304:  api:     http://127.0.0.1:
+u4-green-verify-full.txt:305:  phoenix: http://127.0.0.1:
+u4-green-verify-full.txt:2036:  api:     http://127.0.0.1:47100
+u4-green-verify-full.txt:2037:  phoenix: http://127.0.0.1:47101
+== private IPs / hostnames
+u4-green-verify-full.txt:1543:192.168.160.2
+u4-green-verify-full.txt:1544:192.168.160.2
+u4-green-verify-full.txt:2067:172.19.0.2
+u4-green-verify-full.txt:2068:172.19.0.2
+## also: secret patterns over 'git diff 769b507' added lines: no match

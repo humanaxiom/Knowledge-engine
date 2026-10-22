@@ -1,0 +1,22 @@
+# Reviewer U5 scratch mutants (2026-10-22). Image ke-gates:wt-33a132fbfdd7, --network none, --user 10001:10001, label com.docker.compose.project=ke-reviewer-psc-u5; /work = checkout read-only, copies under /tmp only. Driver: review-u5-mutants.py.txt. Container exit 0.
+# Command: docker run --rm --network none --label com.docker.compose.project=ke-reviewer-psc-u5 --user 10001:10001 --tmpfs /tmp:exec,mode=1777 -v <checkout>:/work:ro -v <scratchpad>:/scratch:ro -w /work ke-gates:wt-33a132fbfdd7 /opt/venv/bin/python /scratch/mut.py
+
+baseline  baseline rc=0 Ran 143 tests in 87.160s OK (skipped=2)
+SURVIVED  oc_drop_finished_set rc=0 Ran 143 tests in 87.784s OK (skipped=2)
+SURVIVED  oc_finished_at_start rc=0 Ran 24 tests in 7.684s OK
+SURVIVED  oc_drop_hup_trap_keep_flag rc=0 Ran 24 tests in 7.452s OK
+SURVIVED  oc_hup_not_in_reset rc=0 Ran 24 tests in 7.650s OK
+KILLED    v_inner_full_fails_before_pass rc=1 Ran 1 test in 0.001s Ran 1 test in 0.001s Ran 1 test in 0.001s Ran 1 test in 0.001s Ran 1 test in 0.001s Ran 1 test in 0.001s Ran 1 test in 0.001s Ran 1 test in 0.001s Ran 1 test in 0.001s Ran 1 test in 0.001s Ran 1 test in 0.001s Ran 1 test in 0.001s Ran 1 test in 0.001s Ran 1 test in 0.001s Ran 1 test in 0.001s Ran 1 test in 0.001s Ran 1 test in 0.001s Ran 1 test in 0.001s Ran 1 test in 0.001s Ran 1 test in 0.001s Ran 1 test in 0.001s Ran 26 tests in 2.630s FAILED (failures=30)
+     FAIL: test_each_failing_stage_fails_verify_and_still_tears_down (tests.test_stack_scripts.VerifyHostHalfTest.test_each_failing_stage_fails_verify_and_still_tears_down) (failing='smoke')
+     FAIL: test_each_failing_stage_fails_verify_and_still_tears_down (tests.test_stack_scripts.VerifyHostHalfTest.test_each_failing_stage_fails_verify_and_still_tears_down) (failing='offline_check')
+     FAIL: test_every_stage_sees_the_verify_overlay_and_nothing_publishes (tests.test_stack_scripts.VerifyHostHalfTest.test_every_stage_sees_the_verify_overlay_and_nothing_publishes)
+     FAIL: test_full_runs_stages_in_order_then_tears_down (tests.test_stack_scripts.VerifyHostHalfTest.test_full_runs_stages_in_order_then_tears_down)
+     FAIL: test_gates_compose_files_are_pinned_whatever_the_caller_sets (tests.test_stack_scripts.VerifyHostHalfTest.test_gates_compose_files_are_pinned_whatever_the_caller_sets) (mode='full', env=False)
+     FAIL: test_gates_compose_files_are_pinned_whatever_the_caller_sets (tests.test_stack_scripts.VerifyHostHalfTest.test_gates_compose_files_are_pinned_whatever_the_caller_sets) (mode='full', env=True)
+KILLED    v_inner_full_pass_line_dropped_but_rc0 rc=1 Ran 3 tests Ran 1 test in 0.001s Ran 160 tests in 114.291s FAILED (failures=10, skipped=2)
+     FAIL: test_gates_it_half_prints_its_own_success_line (tests.test_stack_scripts.VerifyCallsLintTest.test_gates_it_half_prints_its_own_success_line)
+     FAIL: test_verify_full_only_the_outer_line_says_pass (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_only_the_outer_line_says_pass)
+     FAIL: test_verify_sees_sentinel_and_ran_lines_from_real_test_sh (tests.test_harness_followups.IntegrationRunsOnceTest.test_verify_sees_sentinel_and_ran_lines_from_real_test_sh) (mode='full')
+     FAIL: test_ran_some_tests_passes (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_ran_some_tests_passes) (mode='full')
+     FAIL: test_sentinel_followed_by_large_output_passes (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_followed_by_large_output_passes) (attempt=0, mode='full')
+     FAIL: test_sentinel_followed_by_large_output_passes (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_followed_by_large_output_passes) (attempt=1, mode='full')

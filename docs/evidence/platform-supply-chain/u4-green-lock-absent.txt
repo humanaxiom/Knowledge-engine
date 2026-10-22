@@ -1,0 +1,10 @@
+ls: cannot access '/opt/venv/.lock': No such file or directory
+rc=2
+.
+..
+.gitignore
+CACHEDIR.TAG
+bin
+lib
+lib64
+pyvenv.cfg

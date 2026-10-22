@@ -1,0 +1,59 @@
+# security-u1-r1: re-check of unit 1 after rework round 1/5 (L-U1-1 + hardened PSC-10 test)
+# Scratch only: build contexts and driver output under <scratch> (session scratch dir, profile path redacted). Images tagged ke-sec-u1r1-psa:*, all builds and containers labelled ke.audit=security-u1-r1. Repo files untouched.
+# Head context = repo docker/gates.Dockerfile lines 1-49 + 'USER 10001:10001'.
+
+## 1. L-U1-1: no-cache build of the current Dockerfile head
+$ docker build --no-cache --progress=plain --label ke.audit=security-u1-r1 -t ke-sec-u1r1-psa:head .
+#9 6.938 /tmp/powershell-7.4.21-linux-x64.tar.gz: OK
+#10 2.124 /tmp/psa.nupkg: OK
+exit=0
+
+## 2. Built head image, uid 10001, --network none
+$ docker run --rm --network none --label ke.audit=security-u1-r1 --entrypoint sh ke-sec-u1r1-psa:head -c "id; ls -la <moddir> | grep -c .; ls -la <moddir>/.signature.p7s; find / -xdev -name *.p7s -path *owershell*; find / -xdev ( -name *.nuspec -o -name *.nupkg -o -name _rels -o -name [Content_Types].xml ); ls -A /tmp; pwsh: Get-Module -ListAvailable; Import-Module; (Get-Module).Path"
+uid=10001 gid=10001 groups=10001
+19
+ls: cannot access '/usr/local/share/powershell/Modules/PSScriptAnalyzer/1.25.0/.signature.p7s': No such file or directory
+tmp:
+1.25.0 /usr/local/share/powershell/Modules/PSScriptAnalyzer/1.25.0
+/usr/local/share/powershell/Modules/PSScriptAnalyzer/1.25.0/PSScriptAnalyzer.psm1
+(ls line count 19 = 16 entries + total/./..; round 0 had 17 entries incl. .signature.p7s; both find commands printed nothing; /tmp empty)
+
+## 3. Existing verify image ke-gates:wt-33a132fbfdd7 (created 2026-10-21T17:52:05Z, compose project ke-verify-10620335), uid 10001, --network none
+Module dir lists LICENSE, 4 dlls, psd1, psm1, PSv7/, README.md, SECURITY.md, 2 ps1xml, Settings/, ThirdPartyNotices.txt, compatibility_profiles/, en-US/: no .signature.p7s, _rels, package, [Content_Types].xml or .nuspec. /tmp holds only uv's build-time lock file (0 B).
+
+## 4. Static mutants vs tests.test_gates_docker_cli + tests.test_gate_least_privilege (all 27 tests, GATES_DOCKERFILE patched to a scratch copy)
+$ .venv/Scripts/python -I <scratch>/drv/static_mutants.py <scratch>/out/static   (driver: security-u1-r1-mutants.py.txt)
+S0 control (repo file unchanged): PASS (tests run 27, failures 0)
+S1 second sha512sum -c of /dev/null ends the pipeline: SURVIVED (tests run 27, failures 0)
+S2 printf %.0s drops the pinned line, feeds /dev/null: KILLED (tests run 27, failures 4)
+     test_gates_image_sets_telemetry_optout_before_pwsh (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_sets_telemetry_optout_before_pwsh) (check='a RUN after the final FROM starts pwsh (not 
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='sha512sum -c fed the pinned hash and the download'
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='the check is the first step that reads the downloa
+     test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) (check='unpacked after the check with `python3 -I -m zipfi
+S3 quoted command substitution self-hashes the download: SURVIVED (tests run 27, failures 0)
+S4 pin variable reassigned from the download before the check: SURVIVED (tests run 27, failures 0)
+S2b printf %.0s without newline escape: SURVIVED (tests run 27, failures 0)
+S4b pin reassigned inline, same line as the check (as built): SURVIVED (tests run 27, failures 0)
+S5 sed rewrites the feed line: SURVIVED (tests run 27, failures 0)
+S6 later COPY over the module dir: SURVIVED (tests run 27, failures 0)
+S7 later RUN re-unpacks an unpinned download: SURVIVED (tests run 27, failures 0)
+mutants: 9, survived: 8
+(S2 is a driver artifact: the f-string wrote a real newline into the RUN, which broke the instruction; S2b is the intended mutant.)
+
+## 5. Real builds of surviving mutants with a WRONG pin (--build-arg PSSCRIPTANALYZER_SHA512=<pin with last hex digit 3->4>)
+### s1
+  #10 2.017 /dev/null: OK
+### s2b
+  #10 1.894 /dev/null: OK
+### s3
+  #10 1.903 /tmp/psa.nupkg: OK
+### s4
+  #10 1.991 /tmp/psa.nupkg: OK
+  s1 exit=0, s2b exit=0, s3 exit=0, s4 exit=0 (s4 = inline form, S4b; a first attempt with an inserted continuation line failed on CRLF and is not counted)
+  Each wrong-pin image contains /usr/local/share/powershell/Modules/PSScriptAnalyzer/1.25.0/PSScriptAnalyzer.psd1 and the build-time Import-Module succeeded.
+  S1 RUN text: echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c - | echo "<sha512 of empty input>  /dev/null" | sha512sum -c -;
+
+## 6. Evidence scan (rework1-*, review-u1*, incl. review-u1-r1*)
+profile paths: 0; SIDs: 0; key/token/password assignments, private keys, AWS/GitHub/OpenAI/Slack/Google/JWT shapes, credentialed URLs: 0.
+KE_MODEL_UPSTREAM/KE_EGRESS_ALLOWLIST appear only as names in skip messages (no values). 64/128-hex strings are image digests, build ids and public pins.
+Drivers (rework1-mutants.py.txt, review-u1-static-mutants.py.txt, review-u1-r1-mutants.py.txt): write only scratch Dockerfiles under argv[1]; no subprocess/exec/eval; URLs only https://example.invalid (RFC 2606); .py.txt is not collected by unittest.

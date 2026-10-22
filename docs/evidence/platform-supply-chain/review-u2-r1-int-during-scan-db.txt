@@ -1,0 +1,34 @@
+$ (scratch copy; project prefix ke-reviewer-psc-) KE_IMAGE_TAG=wt-33a132fbfdd7 timeout --preserve-status -s INT 25 bash scripts/scan.sh
+== scan: ignore entries (docker/scan-ignore.yaml) ==
+ignore: []
+== scan: save ==
+scan: save took 2s
+== scan: scan-db ==
+ Image anchore/grype:v0.120.1@sha256:e4a44ef45d285b829ce6efe2642980329661bd2d18eab5fc539138d4adaebbbe Pulling 
+ Image anchore/grype:v0.120.1@sha256:e4a44ef45d285b829ce6efe2642980329661bd2d18eab5fc539138d4adaebbbe Pulled 
+ Network ke-reviewer-psc-1707728504_default Creating 
+ Network ke-reviewer-psc-1707728504_default Created 
+ Volume ke-reviewer-psc-1707728504_scan-db Creating 
+ Volume ke-reviewer-psc-1707728504_scan-db Created 
+ Container ke-reviewer-psc-1707728504-scan-db-run-47ab57ea1643 Creating 
+ Container ke-reviewer-psc-1707728504-scan-db-run-47ab57ea1643 Created 
+Vulnerability database updated to latest version!
+ Volume ke-reviewer-psc-1707728504_scan-db Removing 
+ Network ke-reviewer-psc-1707728504_default Removing 
+ Volume ke-reviewer-psc-1707728504_scan-db Removed 
+ Network ke-reviewer-psc-1707728504_default Removed 
+exit=130 after 73s
+-- container states polled during the run (own project only):
+first running: 1:[poll t=4s] ke-reviewer-psc-1707728504-scan-db-run-47ab57ea1643=running 
+[poll t=51s] ke-reviewer-psc-1707728504-scan-db-run-47ab57ea1643=running 
+[poll t=52s] ke-reviewer-psc-1707728504-scan-db-run-47ab57ea1643=running 
+[poll t=53s] ke-reviewer-psc-1707728504-scan-db-run-47ab57ea1643=running 
+-- leftovers of ke-reviewer-psc-<digits> projects:
+containers: 
+volumes:    
+networks:   
+dist/:      
+-- decoy containers of other projects (must still be running):
+ke-reviewer-psc-decoy-other running project=ke-reviewer-psc-other
+ke-reviewer-psc-decoy-prefix running project=ke-reviewer-psc-1
+-- after decoy removal: reviewer containers/volumes/networks left: 0

@@ -1,0 +1,48 @@
+# reviewer U4 rework-1 probes (2026-10-22). Real working-tree scripts/verify.sh (host half, KE_IN_GATES unset), stub stages + fake docker,
+# run in ke-gates:wt-33a132fbfdd7 with --network none, label ke-reviewer=psc-u4-r1. HANG_STAGE stub sleeps 20 s.
+# command: MSYS_NO_PATHCONV=1 docker run --rm --network none --label ke-reviewer=psc-u4-r1 -v <scratch>:/probe:ro --entrypoint bash ke-gates:wt-33a132fbfdd7 /probe/probe.sh
+
+## probe.sh
+#!/usr/bin/env bash
+export PATH=/probe/bin:$PATH; unset KE_IN_GATES
+run() { # label hang sig target
+  rm -f /tmp/stages.log; cp -r /probe/repo /tmp/r; cd /tmp/r
+  HANG_STAGE=$2 setsid bash scripts/verify.sh full >/tmp/out 2>&1 & pid=$!
+  n=0; until grep -q "^$2" /tmp/stages.log 2>/dev/null; do sleep 0.1; n=$((n+1)); [ $n -gt 100 ] && { echo "never reached $2"; cat /tmp/out; break; }; done; sleep 0.3
+  t0=$(date +%s)
+  if [ "$4" = group ]; then kill -s $3 -- -$pid; else kill -s $3 $pid; fi
+  wait $pid; rc=$?; t1=$(date +%s)
+  echo "== $1: rc=$rc elapsed_after_signal=$((t1-t0))s stages=$(cut -d' ' -f1 /tmp/stages.log | grep -v docker | tr '\n' ,)"
+  tail -n 2 /tmp/out; cd /; rm -rf /tmp/r
+}
+rm -f /tmp/stages.log; cp -r /probe/repo /tmp/r; cd /tmp/r; bash scripts/verify.sh full >/tmp/out 2>&1; echo "== normal: rc=$?"; tail -n1 /tmp/out; cd /; rm -rf /tmp/r
+run "TERM group during scan" scan TERM group
+run "TERM verify-only during scan" scan TERM self
+run "USR1 group during scan" scan USR1 group
+run "USR1 verify-only during scan" scan USR1 self
+run "HUP group during smoke" smoke HUP group
+run "TERM group during offline_check" offline_check TERM group
+
+## output
+== normal: rc=0
+== verify full: PASS (0s) ==
+== TERM group during scan: rc=143 elapsed_after_signal=0s stages=build,launch,smoke,teardown,scan,
+Terminated
+== verify full: FAIL (exit 143) ==
+== TERM verify-only during scan: rc=143 elapsed_after_signal=19s stages=build,launch,smoke,teardown,scan,
+== verify full: project ke-verify-2406914014 ==
+== verify full: FAIL (exit 143) ==
+/probe/probe.sh: line 9:    97 User defined signal 1   HANG_STAGE=$2 setsid bash scripts/verify.sh full > /tmp/out 2>&1
+== USR1 group during scan: rc=138 elapsed_after_signal=0s stages=build,launch,smoke,teardown,scan,
+== verify full: project ke-verify-196002869 ==
+== verify full: FAIL (stopped before the last stage; no PASS) ==
+/probe/probe.sh: line 9:   129 User defined signal 1   HANG_STAGE=$2 setsid bash scripts/verify.sh full > /tmp/out 2>&1
+== USR1 verify-only during scan: rc=138 elapsed_after_signal=0s stages=build,launch,smoke,teardown,scan,
+== verify full: project ke-verify-47105331 ==
+== verify full: FAIL (stopped before the last stage; no PASS) ==
+== HUP group during smoke: rc=129 elapsed_after_signal=0s stages=build,launch,smoke,teardown,
+Hangup
+== verify full: FAIL (exit 129) ==
+== TERM group during offline_check: rc=143 elapsed_after_signal=0s stages=build,launch,smoke,teardown,scan,offline_check,
+Terminated
+== verify full: FAIL (exit 143) ==

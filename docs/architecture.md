@@ -146,13 +146,15 @@ option and `internal: true`, and the offline check asserts both at runtime
 | `probe` | — | — | — | **Dropped (platform-offline plan).** Never built. The live smoke runs its in-stack checks with `compose exec`, and the `ci/offline` control runs as a throwaway `docker run` of the api image on `<project>_edge` (§2.5), so no compose service other than `gateway` joins `edge` |
 | `dind` | official `docker` image, `dind` variant, digest pinned, Engine ≥ 28, its default (containerd) image store; privileged | `offline` (internal, isolated), network alias `docker` (the TLS server cert's SAN; spike S3) | none | profile `offline`: clean daemon for the offline check (ADR-KE-009, ADR-KE-012) |
 | `offline-client` | `ke-gates` (not the `x-gates` anchor: no repo mount); uid 10001 | `offline` (internal, isolated) | none | profile `offline`: installs the bundle into `dind`, launches, smokes, tears down (§2.5) |
-| `scan-db`, `scan` | **platform-supply-chain, not this branch.** The scanner image (ADR-KE-013), digest pinned | `scan-db`: default bridge; `scan`: `network_mode: none` | none | profile `scan`: fetch the vulnerability database, then scan the `ke-app` image tar offline |
+| `scan-db`, `scan` | **platform-supply-chain.** The scanner image (ADR-KE-013), digest pinned | `scan-db`: its project's default bridge; `scan`: `network_mode: none` | none | standalone `docker-compose.scan.yml`, own `ke-scan-<random>` project, no profile (ADR-KE-013 amendment 1, D1): fetch the vulnerability database, then scan the `ke-app` image tar offline |
 | model host | external, OpenAI-compatible | — | — | The deployment's model host is `aria-gb10-2` (Q7 ruling). Ollama now, vLLM later. The app reaches it only through `gateway`. Config carries it in `KE_MODEL_UPSTREAM`; no code names it |
 
-`gates`, `gates-it`, `dind` and `offline-client` (and, from
-platform-supply-chain, `scan-db` and `scan`) are behind compose profiles
-(`gates`, `gates-it`, `offline`; later `scan`; as built, `gates-it` has its
-own profile), so `up` never starts them.
+`gates`, `gates-it`, `dind` and `offline-client` are behind compose profiles
+(`gates`, `gates-it`, `offline`; as built, `gates-it` has its own profile),
+so `up` never starts them. *(Amended 2026-10-21, platform-supply-chain:)*
+`scan-db` and `scan` have no profile; they live in the standalone
+`docker-compose.scan.yml`, which neither the stack nor the bundle uses
+(ADR-KE-013 amendment 1, D1).
 
 **Image tags (platform-offline, review N6).** The three first-party images
 are `ke-app:${KE_IMAGE_TAG:-local}`, `ke-gateway:${KE_IMAGE_TAG:-local}` and
@@ -333,6 +335,7 @@ sequenceDiagram
   participant W as gateway (backend + edge)
   participant M as model host (KE_MODEL_UPSTREAM)
   participant S as smoke.sh (host)
+  participant C as scan.sh (host)
   participant O as offline_check.sh (host)
   H->>H: trap → teardown.sh --volumes (this project)
   H->>H: env_value.sh KE_MODEL_UPSTREAM / KE_EGRESS_ALLOWLIST (caller env, else .env via compose config; both or neither)
@@ -353,7 +356,8 @@ sequenceDiagram
   S->>D: stop postgres, exec api readyz not-ready:postgres, up --wait postgres, exec api readyz ready
   S->>D: ci/offline: control from a throwaway api-image container on edge, then api and worker must get no_route (§2.5)
   Note over H,G: the OTLP check runs in the container half (gates-it), as in 2a
-  H->>D: teardown.sh --volumes (stage: frees memory and disk before DinD; the trap repeats it)
+  H->>D: teardown.sh --volumes (stage: frees memory and disk before DinD; the trap skips it once done)
+  H->>C: scan.sh (own project ke-scan-N: docker save ke-app:<tag>, scan-db fetches the grype DB, scan with no network; fails closed; ADR-KE-013)
   H->>O: offline_check.sh (disk check, bundle.sh, dind, offline-client: install, launch, smoke, teardown; df logged per stage; §2.5)
 ```
 
@@ -363,9 +367,11 @@ Q37); the container half also runs `smoke.sh`, which in the gates image is
 the OTLP check. platform-offline appends the last two stages above. Each is
 one script call; `verify.sh` gains no command of its own (F5,
 `test_verify_sh_has_no_inlined_commands`, whose forbidden list gains
-`docker save` and `sha256sum`). *platform-supply-chain* later inserts
-`scan.sh` (ADR-KE-013) between the teardown and `offline_check.sh`, and adds
-the scanner's name to the forbidden list; this branch has no scan stage (R3).
+`docker save` and `sha256sum`). *As built (platform-supply-chain, unit 4,
+2026-10-21):* `scan.sh` (ADR-KE-013) runs between the teardown and
+`offline_check.sh`, in the host half of `full` only; a failing scan stops
+the run before the offline check, and the forbidden list includes
+`grype`. *(Design: ADR-KE-013 amendment 1, D4.)*
 
 - **Two-sided scripts.** `smoke.sh` has the same two-sided shape as
   `verify.sh`, keyed on `KE_IN_GATES`.
@@ -548,20 +554,26 @@ the scanner's name to the forbidden list; this branch has no scan stage (R3).
     pinned version, fetched at **build** time. With `UV_OFFLINE=1` and
     `network_mode: none`, nothing is fetched at gate time.
   - **PSScriptAnalyzer by hash (platform-supply-chain, PS-3.7, security
-    L-8; review N-7; not this branch).** As built it is `Install-Module -RequiredVersion` from a gallery
-    set `Trusted`, with no hash or signature check. Instead the Dockerfile
+    L-8; review N-7; built under ADR-KE-013 amendment 1, D7).** The
+    gallery install (`Install-Module -RequiredVersion` from a gallery set
+    `Trusted`, with no hash or signature check) is gone. The Dockerfile
     downloads the package (`.nupkg`) for the pinned version from the
     PowerShell Gallery's package endpoint with `curl`, checks it with
-    `sha256sum -c` against `ARG PSSCRIPTANALYZER_SHA256` (the same control
-    as the pwsh tarball), and unpacks it with Python's `zipfile` into the
-    AllUsers module path for that version, dropping the NuGet packaging
-    files. No `Install-Module` and no `Set-PSRepository`. The hash is
-    computed at implementation from the downloaded file, cross-checked
-    against the hash the gallery publishes for that version, and both are
-    recorded in the handoff. `Get-AuthenticodeSignature` was not chosen: it
-    does not verify signatures on Linux. `POWERSHELL_TELEMETRY_OPTOUT` and
-    `POWERSHELL_UPDATECHECK` move to an `ENV` **before** the first `RUN`
-    that starts pwsh (N-7).
+    `sha512sum -c` against `ARG PSSCRIPTANALYZER_SHA512` (the gallery's
+    published SHA-512; ruling 2026-10-21, Q48), and unpacks it with
+    Python's `zipfile` into the AllUsers module path for that version,
+    dropping the NuGet packaging files (and `.signature.p7s`). No
+    `Install-Module` and no `Set-PSRepository`. The pinned SHA-512 equals
+    the gallery's published `PackageHash`, recorded with a local sha512 of
+    the downloaded file in
+    `docs/evidence/platform-supply-chain/psscriptanalyzer-sha512.txt`.
+    `Get-AuthenticodeSignature` was not chosen: it does not verify
+    signatures on Linux. `POWERSHELL_TELEMETRY_OPTOUT` and
+    `POWERSHELL_UPDATECHECK` are set by an `ENV` between the final `FROM`
+    and the first `RUN` that starts pwsh (N-7). *Made concrete 2026-10-21 (curl flags, unpack
+    command, build-time import check, Q48 provenance through the
+    gallery's SHA-512, ENV position): ADR-KE-013 amendment 1, D7, which
+    wins where the two differ.*
   - The gates image also gains the Docker CLI and the compose plugin
     (static release binaries, version pinned and SHA-256 checked, compose
     ≥ 2.24) for `offline-client` (§2.5; platform-offline). The gates
@@ -1992,6 +2004,9 @@ seconds. The compose healthcheck of `api` uses it. *As built (2a):* the
 **Images.**
 - `docker/app.Dockerfile` reuses the pinned `python:3.12-slim-bookworm` and
   `uv` bases, runs `uv sync --locked --no-dev`, runs as a non-root user, and
+  (amended by ADR-KE-013 amendment 1, D10: the sync runs in a `builder`
+  stage, and the shipped final stage copies only `/opt/venv` and `/app`,
+  with no uv)
   copies `engine/` and `config/`. It does **not** copy `.env.example`
   (placeholder-secret ruling; the refusal checks the `changeme` prefix).
   - *Layer order (2b, review carry-in N11; 2b adds the store drivers, so the
@@ -3219,6 +3234,7 @@ script is two-sided, keyed on `KE_OFFLINE_CLIENT=1`.
 **Image scan: platform-supply-chain, not this branch (ruling R3).**
 ADR-KE-013's `scripts/scan.sh` becomes a stage of the host half of
 `verify.sh full` when that item lands; this branch's stage order has no scan.
+*(Design 2026-10-21: ADR-KE-013 amendment 1.)*
 
 **Licence notices (security 2b audit, PS-3.8, A43).**
 - `ke-app` keeps each package's `*.dist-info/licenses/`. uv installs them,
@@ -3913,7 +3929,10 @@ Suggested first test per sub-item, followed by the order of the rest.
   - **Out of scope here (platform-supply-chain):** `ScanScriptTest`,
     `test_scan_ignores_are_justified`, the scan's recorded red runs, the
     `scan-db`/`scan` compose checks (ADR-KE-013), and
-    `test_gates_image_pins_psscriptanalyzer_by_hash` (L-8, N-7).
+    `test_gates_image_pins_psscriptanalyzer_by_hash` (L-8, N-7). *(Renamed
+    2026-10-21, orchestrator ruling: the one name is
+    `test_gates_image_verifies_psscriptanalyzer_hash`; see
+    "platform-supply-chain" below.)*
 - **model-roles** (ADR-KE-014; design in §2.4 *Model roles*), in TDD order:
   - **Fast:**
     1. `test_model_role_defaults` (MR-1, MR-2, MR-6), in
@@ -3941,6 +3960,153 @@ Suggested first test per sub-item, followed by the order of the rest.
     full run (`model-run-aria-gb10-2.txt`, with `/api/tags` digests,
     `/api/ps` before and after, `ollama show --parameters` and per-role
     times).
+- **platform-supply-chain** (ADR-KE-013 amendment 1, D1–D10; D9 is a
+  wording change with no test; added
+  2026-10-21), in TDD order PSC-11 → PSC-10 → PSC-1/2/3/5/8 → PSC-4 →
+  PSC-17 (D10; its first tests are listed in D10) → PSC-6 → PSC-7 → PSC-9 → PSC-12. Static tests parse the YAML or the
+  Dockerfile; behaviour tests reuse `tests/fake_docker.py` and the
+  `verify.sh` B6 harness. Names marked *proposed* are new in this design;
+  each is listed under the criterion named beside it in the requirements
+  (`test_scan_db_failure_fails_closed_naming_host_and_stage` under PSC-3,
+  `test_scan_refuses_malformed_image_tag` under PSC-2).
+  - **Fast:**
+    1. **First:** `test_gates_image_sets_telemetry_optout_before_pwsh`
+       (PSC-11, D7). Join continuation lines; look only after the last
+       `FROM`; find the first `RUN` that starts pwsh (`pwsh` as a command
+       word followed by an option, `\bpwsh\s+-`; the `ln -s …/pwsh` line
+       does not count); assert one exists, and that an earlier `ENV` sets
+       `POWERSHELL_TELEMETRY_OPTOUT=1` and `POWERSHELL_UPDATECHECK=Off`;
+       each key is set once in the file. RED today for the expected
+       reason: the only `ENV` with them comes after the `Install-Module`
+       `RUN`.
+    2. `test_gates_image_verifies_psscriptanalyzer_hash` (PSC-10, D7; the
+       one name, ruling 2026-10-21). `ARG PSSCRIPTANALYZER_VERSION` is
+       `\d+\.\d+\.\d+`; the only `PSSCRIPTANALYZER_SHA*` ARG is
+       `ARG PSSCRIPTANALYZER_SHA512`, 128 lowercase hex (ruling
+       2026-10-21, Q48); no gallery install command anywhere
+       (`Install-Module`, `Install-PSResource`, `Save-Module`,
+       `Save-PSResource`, `Set-`/`Register-PSRepository`,
+       `Set-`/`Register-PSResourceRepository`); one `RUN` holds, in this
+       order: `set -eu`, a `curl` with `--proto '=https'`,
+       `--proto-redir '=https'` and `--tlsv1.2` (no `-k`) from the
+       gallery's `/api/v2/package/PSScriptAnalyzer/${PSSCRIPTANALYZER_VERSION}`
+       to `/tmp`, `sha512sum -c` fed `$PSSCRIPTANALYZER_SHA512` as the
+       first step that reads the download (no `||`, no
+       `--ignore-missing`), `python3 -I -m zipfile -e` into
+       `/usr/local/share/powershell/Modules/PSScriptAnalyzer/<v>`, an
+       `rm` of the `.nupkg` and the packaging files (`_rels`, `package`,
+       `[Content_Types].xml`, `*.nuspec`, `.signature.p7s`; security
+       L-U1-1), then
+       `pwsh … Import-Module PSScriptAnalyzer -ErrorAction Stop`; no pwsh
+       `RUN` in the final stage comes before it. RED today:
+       `Install-Module` is there and there is no hash `ARG`. Manual: the
+       reviewer's wrong-hash mutation build exits non-zero (evidence).
+       *Hardening (u1 rework 1, review B1; dash has no `pipefail`, so
+       these keep the check's exit status the one `set -e` sees):*
+       - the check is a pipeline whose last command is `sha512sum`
+         (nothing piped after it);
+       - it is not negated (`!`), not a condition (`if`, `elif`,
+         `while`, `until`) and not backgrounded (`&`);
+       - no `set +e` and no `set +o errexit` anywhere in the `RUN`;
+       - between the check and the unpack, nothing writes the download
+         path (`curl`/`wget` `-o`/`-O`, `cp`, `mv`, `>`, `tee`);
+       - the check's pipeline is exactly two stages (an `echo` or
+         `printf` feed, then `sha512sum -c -`), and the module `RUN`
+         contains exactly one `sha512sum` word (u1 rework 2; a second
+         `sha512sum -c` stage masks the first, security M-U1R1-1).
+
+       The recorded mutant run includes the reviewer's six masking mutants
+       (`| cat`, `if`, `!`, `&`, `set +e`, a re-fetch after the check)
+       and M-U1R1-1 (`... | sha512sum -c - | echo "<empty-hash>  /dev/null"
+       | sha512sum -c -`), each killed.
+       Version guard (PSC-10, fast, Dockerfile):
+       `test_gates_image_psscriptanalyzer_version_agrees`
+       (`tests/test_gates_docker_cli.py`): every x.y.z a comment gives for
+       PSScriptAnalyzer, and the `/Modules/PSScriptAnalyzer/<v>`
+       directory, equal `ARG PSSCRIPTANALYZER_VERSION` (with detector
+       self-check subtests). Follow-up N3 would retire the comment it
+       guards.
+    3. Scan compose and script, in this order:
+       - `test_image_scanner_is_pinned` (PSC-1): `docker-compose.scan.yml`
+         exists; `scan-db` and `scan` use one image matching
+         `^anchore/grype:v\d+\.\d+\.\d+@sha256:[0-9a-f]{64}$`. The existing
+         `test_compose_images_pinned_by_digest` and
+         `test_no_docker_socket_mounted` must find the new file's services
+         (they read every compose file).
+       - `test_compose_scan_db_has_only_db_volume`,
+         `test_compose_scan_has_no_network` (PSC-3, D1): the table in D1,
+         row by row, including no `profiles`, `read_only: true`,
+         `cap_drop: [ALL]`, the `scan` mounts all `read_only`, and every
+         `environment` entry a literal `KEY=value` (no pass-through).
+       - `test_scan_services_have_no_docker_socket` (PSC-2): no socket
+         mount, no `DOCKER_HOST`, not privileged, no `ports`.
+       - `test_scan_order_is_save_then_db_then_scan` (PSC-2, fake docker):
+         `save` of `ke-app:<KE_IMAGE_TAG>`, `compose pull scan-db`,
+         `compose run … scan-db`, `compose run … scan`, all with
+         `COMPOSE_FILE=docker-compose.scan.yml` and one
+         `ke-scan-<digits>` project.
+       - `test_scan_input_is_read_only_ke_app_tar` (PSC-2): the one image
+         saved is `ke-app:<tag>`, into `dist/<project>/ke-app.tar`, and
+         `KE_SCAN_IN` points there; the `/in` mount is read-only.
+       - `test_scan_updates_db_every_run` (PSC-3): two runs use two
+         projects, each with exactly one `run scan-db` carrying
+         `-e GRYPE_DB_UPDATE_URL=<the scan.sh constant>`.
+       - *proposed* `test_scan_db_failure_fails_closed_naming_host_and_stage`
+         (PSC-3, Q56(b), D3): subtests for the pull and the fetch failing.
+         Each exits non-zero; stderr names `stage scan-db` and, for the
+         fetch, the host of the constant; that call is made once (no
+         retry); `scan` never runs; teardown and tar removal still run.
+       - *proposed* `test_scan_refuses_malformed_image_tag` (PSC-2, D4
+         step 1):
+         an unset or malformed `KE_IMAGE_TAG` fails before any docker
+         call.
+       - `test_scan_ignores_are_justified` (PSC-5, D5): the repository
+         file `docker/scan-ignore.yaml` plus the control subtests listed in
+         D5.
+       - `test_bundle_has_no_scanner_or_db` (PSC-8, `BundleScriptTest`
+         harness): no file in the stub bundle names `grype`, `scan-db`,
+         `docker-compose.scan.yml`, `scan.sh` or `scan-ignore`, and no
+         manifest entry is the scanner image.
+    4. Policy (PSC-4, D5): `test_scan_fails_on_fixed_high` (the fake `run
+       scan` prints a table and exits 1 → `scan.sh` exits non-zero naming
+       `stage scan`); `test_scan_reports_but_passes_unfixed_and_lower`
+       (the fake prints suppressed rows and exits 0 → `scan.sh` exits 0 and
+       the table is in its output); a static check that the `scan` command
+       has `--only-fixed`, `--fail-on high`, `--show-suppressed` and
+       `--config /cfg/scan-ignore.yaml`.
+    5. Place (PSC-6, D4):
+       `test_verify_full_fails_when_image_scan_fails` (B6 harness: a stub
+       `scan.sh` exiting 1 makes `verify.sh full` exit non-zero, and
+       `offline_check.sh` never runs; moved from item 4, 2026-10-21: it
+       can only go green once `scan.sh` is wired into `verify.sh`, and D10
+       holds that wiring until the real scan is green);
+       `test_verify_full_runs_scan_between_teardown_and_offline_check`
+       (B6: build, launch, `gates-it`, smoke, `teardown.sh --volumes`,
+       `scan.sh`, `offline_check.sh`; `fast` never calls `scan.sh`; a
+       failing scan is not followed by a second verify teardown);
+       `test_scan_removes_tar_on_every_exit` (pass, a failure at each
+       stage, `INT`, `TERM`: `dist/<project>` is gone and `teardown.sh
+       --volumes` ran once under the scan project's `COMPOSE_FILE`);
+       `test_verify_sh_has_no_inlined_commands` gains `grype`.
+       `test_verify_full_takes_no_caller_ke_key_but_the_model_keys`,
+       `test_gate_services_have_no_docker_host` and the CI single-step
+       test stay green unchanged.
+  - **Gates and evidence** (`docs/evidence/platform-supply-chain/`):
+    - `[gate: image-scan]`: the real `verify.sh full`, its scan output
+      saved in `u4-green-verify-full.txt`, lines 1601–1914 (PSC-7).
+    - Recorded red runs (DR38): a mutant `scan` command without
+      `--only-fixed` and with `--fail-on negligible` must fail on the real
+      image; a planted ignore of one real match must suppress it (D5
+      control); a `SCAN_DB_URL` mutant pointing at an unresolvable host
+      must fail naming it.
+    - PSC-1 security's `scanner-provenance.md` (D2), before the pin.
+    - PSC-10 `psscriptanalyzer-sha512.txt` (D7), the wrong-hash mutation,
+      and the recorded mutant run with the reviewer's six masking mutants
+      killed.
+    - PSC-7 `u4-psc7-psycopg-libs.txt` (D6).
+    - PSC-9 two green CI runs under `ci/` (D8), and the Q60 trigger
+      outcome.
+    - PSC-12 the recorded Windows run (A34).
 
 ## 3. The three planes (proposed)
 
@@ -5597,6 +5763,10 @@ asked for the hook design to be recorded in this ADR.
   pinned". **Moved to platform-supply-chain (ruling R3, 2026-10-19):** the
   platform-offline branch has no scan stage, no `scan`/`scan-db` services
   and no scan tests. The design below is kept for that item.
+  **Amended 2026-10-21 for platform-supply-chain (amendment 1, at the end
+  of this ADR), after the rulings on Q42 and Q56–Q60.** Where amendment 1
+  and the text above differ, amendment 1 wins; the text above stays as the
+  record.
 - **Context:**
   - `ke-app` ships `psycopg-binary`, which vendors old native libraries
     that pip-audit cannot see (L-13). Nothing scans the images today.
@@ -5629,7 +5799,8 @@ asked for the hook design to be recorded in this ADR.
     - The scan fails on any match of severity **High or Critical that has
       a fix available** (`--only-fixed --fail-on high`).
     - Unfixed and lower-severity matches are printed and do not fail.
-    - Ignores live in `config/scan-ignore.yaml`. Every entry carries a
+    - Ignores live in `docker/scan-ignore.yaml` (path per amendment 1,
+      D5). Every entry carries a
       `reason` and an `until` date. `test_scan_ignores_are_justified` fails
       when an entry lacks either one or its date has passed.
   - **Scope:** `ke-app` only (the carry-in). Extending the scan to
@@ -5654,6 +5825,14 @@ asked for the hook design to be recorded in this ADR.
   - Whether grype sees the libraries vendored in `psycopg_binary.libs`
     (krb5, cyrus-sasl, pcre) is recorded at implementation. If it does
     not, the L-13 residual stays documented and is not claimed covered.
+    *Recorded 2026-10-21 (amendment 1, D6):* grype v0.120.1 catalogues
+    none of the 15 files (OpenSSL 3.5.8, libpq 18.0.6, pcre 8.32,
+    cyrus-sasl 2.1.26, the el7 krb5, ...), so the scan does not cover
+    them. L-13 is an accepted residual, rated low by security; the
+    compensating control is tracking psycopg-binary releases (the
+    libraries move with the wheel), `gssencmode=disable` is today's
+    mitigation, and the structural fix stays Q42's switch to Debian's
+    libpq.
 - **First tests:** `ScanScriptTest` (fake docker):
   - the order is save, `scan-db`, then `scan`;
   - `scan` runs with `network_mode: none` and a read-only input;
@@ -5661,6 +5840,575 @@ asked for the hook design to be recorded in this ADR.
   - the tar is removed on every exit path.
   Static compose checks: `scan-db` has only the database volume, and
   `scan` has no network. Then `test_scan_ignores_are_justified`.
+
+#### ADR-KE-013 amendment 1: the platform-supply-chain design (architect, 2026-10-21)
+
+- **Status:** accepted (Plan gate, orchestrator, 2026-10-21). Criteria:
+  `docs/requirements.md` § "Item: platform-supply-chain", PSC-1–PSC-12.
+  Rulings applied: Q42, Q56(a)(b), Q59, Q60 and the split
+  (`docs/handoffs/platform-supply-chain.md`; answers in
+  `docs/open-questions.md`). SBOM and source offers are `platform-sbom`,
+  not this amendment.
+- **Context (what changed since the ADR):**
+  - PSC-6 puts the scan *after* `teardown_verify`. The verify project and
+    its volumes are already gone by then, so the ADR's "the verify
+    teardown's `--volumes` removes the database" cannot hold.
+  - `bundle.sh` copies `docker-compose.yml` into the bundle. A scanner
+    service in that file, even behind a profile, would ship the scanner's
+    name to operators (PSC-8).
+  - `teardown.sh` accepts exactly one profile, `offline` (F3, with a test
+    that pins the one exception). A second exception is a change to F3.
+  - Q56(b): a failed fetch fails the run, naming the host and the stage,
+    with no retry. Q42: the 90-day `until` cap.
+
+**D1. Compose: a standalone `docker-compose.scan.yml`, its own project.**
+Both services live in a new standalone file, used only by `scripts/scan.sh`,
+the way `docker-compose.offline.yml` is used only by `offline_check.sh`. The
+file has **no profiles**: it is never in `COMPOSE_FILE` for the stack, never
+copied by `bundle.sh`, and only `compose run` starts its services. So
+`teardown.sh --volumes` takes it down unchanged (no new profile exception
+to F3). The `scan` profile named in §2.1 and PSC-2/PSC-3 becomes "the
+services of `docker-compose.scan.yml`".
+
+| | `scan-db` | `scan` |
+|---|---|---|
+| Image | the scanner (D2), digest pinned | the same reference (one YAML anchor) |
+| Command | `db update` | `docker-archive:/in/ke-app.tar --config /cfg/scan-ignore.yaml --only-fixed --fail-on high --show-suppressed -o table` |
+| Network | the project's `default` bridge, the only route out in this file (no `networks`, no `network_mode`) | `network_mode: none` |
+| Volumes | exactly one: named volume `scan-db` at `/db`, read-write | `scan-db` at `/db` **read-only**; bind `${KE_SCAN_IN:?}` at `/in` **read-only**; bind `./docker/scan-ignore.yaml` at `/cfg/scan-ignore.yaml` **read-only** |
+| Checkout | none | only the one ignore file |
+| Root FS | `read_only: true`; tmpfs `/tmp` | `read_only: true`; tmpfs `/tmp` (the image is unpacked here) |
+| Hardening | `cap_drop: [ALL]`, `security_opt: [no-new-privileges:true]`; no socket, no `DOCKER_HOST`, no `ports`, not privileged | the same |
+| Environment (literals only) | `GRYPE_DB_CACHE_DIR=/db`, `GRYPE_CHECK_FOR_APP_UPDATE=false` | `GRYPE_DB_CACHE_DIR=/db`, `GRYPE_DB_AUTO_UPDATE=false`, `GRYPE_CHECK_FOR_APP_UPDATE=false` |
+| Restart | none (one-shot) | none |
+
+- `GRYPE_CHECK_FOR_APP_UPDATE=false` on `scan-db` too, so its only
+  outbound call is the database fetch.
+- No `environment:` entry is passed through from the host (no bare key
+  names), so a caller's `GRYPE_*` never reaches either container. The only
+  interpolated variable is `KE_SCAN_IN`, which `scan.sh` sets.
+- The user is the image's default. A non-root `user:` is a hardening the
+  developer may apply if the database files the image writes stay readable;
+  it is not required (the named volume is created root-owned).
+- *Confirm at GREEN (developer, against the pinned image; u1 review carry
+  (a)):* under the `read_only` root, `scan-db` and `scan` write nowhere but
+  `/db` and `/tmp` (grype's HOME/XDG cache and its config lookup
+  included); the recorded `full` run shows both services exit 0 with no
+  read-only-filesystem error. If the pinned version writes elsewhere, the
+  fallback is a literal environment entry pointing that path under `/tmp`
+  (for example `XDG_CACHE_HOME=/tmp/cache`, `HOME=/tmp`), added to the
+  table above; `read_only` stays. Any other fallback goes back to the
+  architect first.
+- `gates` and `gates-it` do not change: no new network, mount or key.
+- PS-2.12 carve-out (2026-10-21): `test_stack_services_have_no_bind_mounts`
+  treats profile-less services as stack services, so it skips exactly
+  `scan-db` and `scan` in `docker-compose.scan.yml`, citing this D1. They
+  are verify-only one-shots, never in the stack's `COMPOSE_FILE`, and the
+  `scan` binds above are by design; `tests/test_image_scan.py` pins their
+  mounts row by row. No other service or file is exempt.
+
+**D2. The scanner and its pin.** grype, the official `anchore/grype` image,
+referenced as `anchore/grype:v<X.Y.Z>@sha256:<64 hex>`, where the digest is
+the **multi-arch index** digest, so the same pin runs on amd64 and on the
+arm64 host (Q59). The version is the latest release at implementation; the
+developer records it.
+
+*Provenance check that security records before the pin is committed*
+(`docs/evidence/platform-supply-chain/scanner-provenance.md`; PSC-1):
+1. The release tag, its date, and the index digest, read from the registry
+   with `docker buildx imagetools inspect` (no pull and no run), plus the
+   per-platform digests for linux/amd64 and linux/arm64.
+2. A signature check of that digest: `cosign verify` with the certificate
+   identity of anchore/grype's GitHub release workflow for that tag and the
+   GitHub Actions OIDC issuer. The command and its output are recorded.
+3. If the image carries no verifiable signature or attestation, the
+   fallback is the release's signed `checksums.txt`: verify its cosign
+   signature, then copy `/grype` out of the image for each platform with
+   `docker create` and `docker cp` (never `run`), and its SHA-256 must equal
+   the `checksums.txt` entry for the matching release archive's binary.
+   Security says which path was used and why.
+4. A pin with neither 2 nor 3 is not committed; that goes back to the
+   orchestrator.
+
+The database itself is trusted as grype trusts it: the listing is fetched
+over HTTPS and each archive is checked against the checksum in the listing.
+
+**D3. The database fetch: fresh every run, fail closed, no retry.**
+- Fresh by construction: `scan.sh` runs a new project
+  (`ke-scan-<random>`), so `<project>_scan-db` is a new, empty volume on
+  every run, and `scan-db` runs `db update` into it every time. No
+  database from an earlier run can be reused, and `scan.sh`'s own teardown
+  (D4) removes the volume.
+- `scan.sh` holds the database URL as one constant (`SCAN_DB_URL`, equal to
+  the pinned grype version's default `db.update-url`, which the developer
+  reads from that version's `grype config` output and records in the
+  handoff). It is assigned unconditionally, never read from the
+  environment, and passed as `-e GRYPE_DB_UPDATE_URL=<constant>` on the
+  `compose run` of `scan-db`. The compose file does not set it. It is the
+  host the run needs to reach (Q56 "also needed").
+- The scanner image is pulled in the same stage, before the fetch, by
+  `docker compose pull scan-db`; both runs then use `--pull never`.
+- Each call is made **once**. A non-zero exit fails `scan.sh` at once with
+  a message naming the stage and the host, and nothing later runs:
+  - pull: `scan: FAIL (stage scan-db: pulling the scanner image <ref> failed; no retry)`;
+  - fetch: `scan: FAIL (stage scan-db: could not fetch the vulnerability database from <host of SCAN_DB_URL>; no retry)`.
+- No skip path exists. An outage at the database host turns every `full`
+  red, in CI and locally, as Q56(b) accepts.
+
+**D4. `scripts/scan.sh` and its place in `verify.sh full`.**
+- `verify.sh` host half, `full` only: `scripts/scan.sh` is one new line
+  between `teardown_verify || exit 1` and `scripts/offline_check.sh`. With
+  `set -e`, a failing scan stops the run before `offline_check.sh`, and
+  verify's trap does not tear down again (`torn_down=1`). `fast` is
+  unchanged and never scans. `test_verify_sh_has_no_inlined_commands`
+  gains `grype` in its forbidden list (it already has `docker save`).
+- `scan.sh` is a verify-only host script: Linux and dev (Git Bash) only
+  like `smoke.sh`, not held to the bash 3.2 rule, never in the bundle. It
+  uses bash, coreutils and `docker` only, and needs no `jq` or YAML
+  parser on the host.
+- Steps, each printed as a stage marker line for the CI timing (D8):
+  1. *Inputs.* `KE_IMAGE_TAG` must match `^wt-[0-9a-f]{12}$` (verify
+     exports it) or the script fails before any docker call. It sets,
+     unconditionally: `COMPOSE_FILE=docker-compose.scan.yml`,
+     `COMPOSE_PROJECT_NAME=ke-scan-${RANDOM}${RANDOM}`,
+     `KE_ENV_FILE=.env.example`, and
+     `KE_SCAN_IN=./dist/<project>` (relative, so Git Bash and Docker
+     Desktop resolve it as `offline_check.sh`'s bundle path does). It
+     creates that directory and installs the trap.
+  2. *Ignore entries.* It prints `docker/scan-ignore.yaml` (`cat`), so the
+     log holds the entries in force (PSC-7).
+  3. `== scan: save ==` — `docker save -o "$KE_SCAN_IN/ke-app.tar"
+     "ke-app:$KE_IMAGE_TAG"`. Native platform only; no `--platform` (Q59;
+     spike S1). Failure: `scan: FAIL (stage save: ...)`.
+  4. `== scan: scan-db ==` — pull, then `run --rm --pull never -e
+     GRYPE_DB_UPDATE_URL=... scan-db` (D3).
+  5. `== scan: scan ==` — `run --rm --pull never scan`. Any non-zero exit
+     fails: `scan: FAIL (stage scan: grype exited <n>: a fixed High or
+     Critical match, or a scanner error; see the table above)`. Both are
+     failures; the script does not try to tell them apart.
+  6. `== scan: done ==`, with the seconds per stage (informational; CI
+     timestamps are the measurement, D8).
+- *Every exit path* (pass, fail, `INT`, `TERM`; `INT`/`TERM` traps `exit`
+  so the `EXIT` trap runs, as in `offline_check.sh`):
+  `scripts/teardown.sh --volumes` for the scan project (it inherits
+  `COMPOSE_FILE`, `COMPOSE_PROJECT_NAME`, `KE_ENV_FILE` and `KE_SCAN_IN`;
+  its leftover check covers the volume and the default network), then
+  `rm -rf -- "$KE_SCAN_IN"`. A failed teardown fails the script, naming the
+  project and the hand command (`COMPOSE_FILE=docker-compose.scan.yml
+  docker compose -p <project> down --volumes`), as `offline_check.sh` does.
+- The tar is gone before `offline_check.sh` starts, so the 7 GiB disk
+  floor (R6) is unchanged.
+- Keys: only the variables above. The two model keys stay the only keys a
+  `full` run takes from outside the repo (PSC-6), and no caller value
+  reaches the scan.
+- *Only a finished run says PASS (2026-10-22, unit 5; PSC-18; security
+  u4-r1 L-3, L-4).*
+  - Verify's host half prints `== verify full: PASS (Ns) ==` once, last,
+    and only when `rc` is 0 and the `finished` flag (set just before
+    `exit 0`) is 1.
+  - INT, TERM and HUP trap to `exit` 130/143/129, so cleanup prints
+    `FAIL (exit N)`. An untrapped fatal signal leaves `finished=0`, and
+    cleanup prints `FAIL (stopped before the last stage; no PASS)`.
+  - The `gates-it` half prints `== gates-it: PASS ==`, so no inner line
+    reads as the run's verdict. `fast` keeps `== verify fast: PASS ==`.
+  - `offline_check.sh` uses the same shape (orchestrator ruling: both,
+    not one): a HUP trap (`exit 129`, HUP in the trap reset) and a
+    finished flag guarding its PASS line. The traps give the exit
+    status; the flag catches every signal bash does not trap.
+  - Residuals (a second signal during cleanup, SIGKILL, a stage that
+    swallows a signal) are follow-ups in `docs/requirements.md`.
+
+**D5. Policy and the ignore file (Q42 ruling).**
+- One grype run gates and reports: `--only-fixed --fail-on high` fails on a
+  High or Critical match with a fix, after the ignore rules; unfixed
+  matches are suppressed by `--only-fixed`, and `--show-suppressed` prints
+  them (and the ignored ones) in the same table, marked suppressed. So the
+  CI log holds every match.
+  - *Confirm at GREEN (developer, against the real image):* the table
+    shows unfixed matches as suppressed rows. If the pinned version does
+    not, the fallback is a second, report-only `scan` run without
+    `--only-fixed` and without `--fail-on`, after the gating run, and its
+    time is part of the `scan` stage in D8.
+- *Location (2026-10-21 ruling):* `docker/`, not `config/`. It is
+  verify-time policy, not runtime config: `bundle.sh` ships every tracked
+  `config/` file (and `app.Dockerfile` copies `config/` into `ke-app`),
+  while neither takes anything from `docker/`, so no bundle exception is
+  needed and §2.6 item 3's "no bundled file names `scan-ignore`" holds.
+- `docker/scan-ignore.yaml` is passed to grype as its config file, so no
+  translation step exists. Its schema (the id field is named
+  `vulnerability` because that is grype's key):
+  ```yaml
+  ignore:
+    - vulnerability: CVE-2024-12345   # the id: CVE-YYYY-N… or GHSA-xxxx-xxxx-xxxx
+      package:                        # optional; omitted = every package
+        name: krb5
+      reason: >-                      # required, non-empty
+        why it is accepted; for psycopg-binary, why the code path is not
+        reached (L-13), confirmed by security
+      until: 2027-01-15               # required, a YAML date
+  ```
+  The committed file starts as `ignore: []`.
+- `test_scan_ignores_are_justified` (fast; PSC-5) parses the file with
+  PyYAML `safe_load` (already a dependency) and checks, with today taken
+  as the UTC date:
+  - the top level has exactly one key, `ignore`, a list (so the file can
+    never set another grype option, such as an exclude or a match setting);
+  - each entry's keys are a subset of `vulnerability`, `package`, `reason`,
+    `until`, with `vulnerability`, `reason` and `until` present; `package`,
+    if present, has exactly one key, `name`, a non-empty string;
+  - `vulnerability` matches `^CVE-\d{4}-\d{4,}$` or
+    `^GHSA(-[0-9a-z]{4}){3}$`;
+  - `reason` is a string that is not blank;
+  - `until` is a date (not a string or a datetime), and
+    `today <= until <= today + 90 days`. An entry is valid through its
+    `until` day and fails the day after. An entry written more than 90 days
+    out fails at once. Because the bound is checked against today, the cap
+    holds at every run, not only when the entry is added;
+  - no two entries share `vulnerability` and `package.name`.
+
+  The checker is a function in the test module, run on the repository
+  file and on controls (subtests, fixed `today`): a valid entry passes;
+  each of these fails: no `reason`, blank `reason`, no `until`, a past
+  `until`, an `until` 91 days out, an `until` given as a string, an unknown
+  entry key, a second top-level key, a malformed id, a duplicate.
+  - *Confirm at GREEN:* the pinned grype loads the file with the extra
+    `until` key and applies the rule (a planted ignore of a real match
+    suppresses it in a recorded run). If that version rejects unknown
+    keys, the fallback is to carry the date in the reason
+    (`reason: "until 2027-01-15: ..."`), parsed by the same test; this goes
+    back to the architect first.
+- Security reviews every entry a diff adds (PSC-5). psycopg-binary (Q42):
+  upgrade the lock if a wheel fixes the flagged library; otherwise an entry
+  whose reason states why the path is not reached, confirmed by security,
+  and a follow-up item on psycopg over Debian's libpq. *MOOT for the scan
+  (2026-10-21, D6 result):* grype catalogues none of the vendored
+  libraries, so it can never flag one and this rule never triggers from
+  the scan; a krb5 or OpenSSL CVE in the wheel does not turn `full` red.
+  The libraries are the L-13 accepted residual (D6).
+- An expired entry fails the unit test, so it turns `fast` red as well as
+  `full`. That is intended: the date forces the decision.
+
+**D6. Report and the L-13 record (PSC-7).**
+- The CI log holds the ignore file (D4 step 2) and the full table (D5).
+  One real `full` run's scan output is saved by the implementation commit
+  in `docs/evidence/platform-supply-chain/u4-green-verify-full.txt`, lines
+  1601–1914.
+- *grype's view of `psycopg_binary.libs`*, recorded once in
+  `docs/evidence/platform-supply-chain/u4-psc7-psycopg-libs.txt` by the
+  developer, offline, with the same pinned image:
+  1. the files in `psycopg_binary.libs` in `ke-app:<tag>`, listed with
+     `docker run --rm --network none --entrypoint ls` on the image;
+  2. grype's package catalog for the same tar (`-o cyclonedx-json`, which
+     lists every component, not only matches), searched for components
+     whose location is under `psycopg_binary.libs`;
+  3. a row per library: file, a component found (yes/no, with its name and
+     version), any match against it.
+  If no component is found, the evidence says so, L-13 stays a documented
+  residual, and no doc claims the scan covers those libraries.
+- *Result (2026-10-21).* grype v0.120.1 catalogues none of the 15 files in
+  `psycopg_binary.libs` (OpenSSL 3.5.8, libpq 18.0.6, pcre 8.32,
+  cyrus-sasl 2.1.26, the el7 krb5, ldap, keyutils, selinux, ...); it
+  lists only psycopg-binary 3.3.6 from PyPI and the image's own Debian
+  copies. The scan does not cover the vendored libraries.
+  - L-13 is an **accepted residual**, rated low by security
+    (`security-u4.md`, "PSC-7 / L-13 residual").
+  - Compensating control: track psycopg-binary releases, since the
+    vendored libraries move with the wheel.
+  - Mitigation today: `gssencmode=disable` (PS-2.5).
+  - Structural fix: Q42's switch to psycopg on Debian's libpq.
+  - Hardening follow-up (with `auth-audit`): `require_auth="scram-sha-256"`
+    on every libpq connection shuts the remaining krb5 path
+    (`docs/requirements.md`, "Follow-ups (not in platform-supply-chain)").
+
+**D7. PS-3.7: PSScriptAnalyzer by hash, and N-7 (PSC-10, PSC-11).**
+`docker/gates.Dockerfile` changes as follows (amends §2.2 *PSScriptAnalyzer
+by hash*):
+- **ENV first (N-7).** `ENV POWERSHELL_TELEMETRY_OPTOUT=1
+  POWERSHELL_UPDATECHECK=Off` sits between the final `FROM` and the first
+  `RUN` that starts pwsh (PSC-11; right after the `FROM` is the simplest
+  place). The two keys leave the late `ENV` block (moved, not duplicated:
+  each is set once in the file).
+- **The pwsh tarball `RUN`** stays as built, minus its trailing `pwsh
+  -Command` (no `Set-PSRepository`, no `Install-Module`).
+- **A new `RUN` for the module**, one fail-fast step (`set -eu`):
+  1. `curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL -o
+     /tmp/psa.nupkg
+     "https://www.powershellgallery.com/api/v2/package/PSScriptAnalyzer/${PSSCRIPTANALYZER_VERSION}"`
+     (`-L` follows the gallery's redirect to its CDN, HTTPS only);
+  2. `echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c -`,
+     **before** anything reads the file (no `||`, no `--ignore-missing`).
+     Its exit status must reach `set -e` (dash has no `pipefail`;
+     u1 review B1): the pipeline ends in `sha512sum`; it is not negated,
+     conditional or backgrounded; the `RUN` has no `set +e` or
+     `set +o errexit`; nothing writes `/tmp/psa.nupkg` between the
+     check and step 3; and the pipeline is exactly two stages (the feed,
+     then `sha512sum -c -`) with exactly one `sha512sum` in the `RUN`
+     (M-U1R1-1: a second `sha512sum -c` stage would mask the first). The
+     PSC-10 test enforces each rule;
+  3. `python3 -I -m zipfile -e /tmp/psa.nupkg
+     /usr/local/share/powershell/Modules/PSScriptAnalyzer/${PSSCRIPTANALYZER_VERSION}`
+     (CPython's `extractall` drops absolute and `..` member paths), then
+     remove the NuGet packaging files from that directory (`_rels`,
+     `package`, `[Content_Types].xml`, `PSScriptAnalyzer.nuspec`,
+     `.signature.p7s`; security L-U1-1) and the `.nupkg`;
+  4. `pwsh -NoProfile -NonInteractive -Command 'Import-Module
+     PSScriptAnalyzer -ErrorAction Stop'`, a fixed single-quoted literal:
+     a broken unpack fails the build, not the first lint. It is the first
+     `RUN` that starts pwsh, which is what PSC-11 orders the `ENV` against.
+- `ARG PSSCRIPTANALYZER_VERSION` stays a fixed version;
+  `ARG PSSCRIPTANALYZER_SHA512` is one 128-lowercase-hex value and the
+  only `PSSCRIPTANALYZER_SHA*` ARG (ruling 2026-10-21, Q48: no SHA-256
+  pin or cross-step). The package does not depend on the architecture, so
+  one hash serves amd64 and arm64.
+- No gallery install command (`Install-Module`, `Install-PSResource`,
+  `Save-Module`, `Save-PSResource`, `Set-`/`Register-PSRepository`,
+  `Set-`/`Register-PSResourceRepository`) remains anywhere in the
+  Dockerfile. The comment that says the gallery publishes no checksum is
+  replaced by the provenance below.
+- **Hash provenance (Q48 form; ruling 2026-10-21).** The pinned SHA-512
+  equals the gallery's published `PackageHash` (base64 SHA512, converted
+  to hex); the developer records both the API value and a local sha512 of
+  the downloaded file; security re-checks them. The API value is the v2
+  feed entry for that version
+  (`/api/v2/Packages(Id='PSScriptAnalyzer',Version='<v>')`, `PackageHash`
+  with `PackageHashAlgorithm` = `SHA512`); the record goes in the handoff
+  and in `docs/evidence/platform-supply-chain/psscriptanalyzer-sha512.txt`.
+  `Get-AuthenticodeSignature` stays rejected (it does not verify on
+  Linux), and so does NuGet signature verification (no tool in the image).
+- The wrong-hash mutation (reviewer) and the real build under `verify.sh
+  full` are the runtime proof; `lint.sh` is unchanged.
+
+**D8. CI cost: how it is measured, and the Q60 trigger (PSC-9).**
+- After the scan stage is wired in, two green CI runs of the branch. From
+  the runner's per-line timestamps (GitHub log lines carry them), each
+  stage runs from its marker to the next marker: `save` (to `== scan:
+  scan-db ==`), `scan-db` (pull plus fetch, to `== scan: scan ==`), `scan`
+  (to `== scan: done ==`). Plus the whole job. Run ids, the marker lines,
+  the arithmetic and the slower run are saved under
+  `docs/evidence/platform-supply-chain/ci/`. Local timings are
+  informational only (ci-speed lesson, `docs/handoffs/archive/ci-speed.md`).
+- **Q60 trigger:** if `save + scan-db + scan` in the slower run (by job
+  time) exceeds 180 s, the orchestrator decides before the timeout is
+  raised (accept and re-measure, or ask the architect to cut the cost, for
+  example by scanning the bundle's own `ke-app` tar).
+- **Timeout (PS-3.4):** if the slower run's job time × 1.5, rounded up to
+  a whole minute, exceeds the 32 min in force, `timeout-minutes` is
+  re-measured as CS-7 was, after the trigger decision, never before two
+  green runs. A timed-out run is red and is not retried until green.
+- The ADR's 40–80 s estimate stays an estimate. It now also includes the
+  scanner image pull on a fresh runner.
+
+**D9. The "networking disabled" wording (Q56(a); human-approved).** The
+gate services keep no route out; the wording says so and names `scan-db`.
+Proposed text; the orchestrator applies the CLAUDE.md change in the
+`scan-db` commit, and the README change lands in the same commit
+(documenter):
+- *CLAUDE.md*, § "Verification: one entry point", the sentence "It re-runs
+  itself inside the one-shot `gates` compose service (same image locally,
+  for agents and in CI, with networking disabled) and calls the real gate
+  scripts." becomes:
+
+  > It re-runs itself inside a one-shot gate service (same image locally,
+  > for agents and in CI) and calls the real gate scripts. Networking is
+  > disabled for the gate services: `gates` (`fast`) has no network, and
+  > `gates-it` (`full`) sits on the internal `backend` network, whose only
+  > way out is the stack gateway's forward to the model host. In `full`
+  > the host half also builds and pulls images and runs one more one-shot,
+  > `scan-db`, outside the gate services: it fetches the image scanner's
+  > vulnerability database and is the only verify-only container with a
+  > route out. The scan itself runs with no network.
+- *README.md*, the sentence "It builds the `gates` image from
+  `docker/gates.Dockerfile` and runs the gate scripts inside it with
+  networking disabled." becomes "It builds the `gates` image from
+  `docker/gates.Dockerfile` and runs the gate scripts inside it. The gate
+  services have networking disabled: `gates` has no network, and
+  `gates-it` reaches only the throwaway stack, and the model host through
+  its gateway." After the paragraph on the offline check, add: "`full`
+  also scans the `ke-app` image for known vulnerabilities
+  (`scripts/scan.sh`). A one-shot `scan-db` container, the only
+  verify-only container with a route out, fetches the scanner's database
+  fresh on every run, and the scan itself runs with no network. A fixed
+  High or Critical finding fails the run, and so does a database host that
+  cannot be reached; there is no retry and no skip."
+
+**D10. `ke-app` ships without uv (PSC-17; architect, 2026-10-21, unit 3).**
+- **Context.** The first real scan of `ke-app`
+  (`docs/evidence/platform-supply-chain/u2-green-real-scan.txt`) fails on
+  two fixed findings at or above the threshold:
+  - certifi 2026.7.22: GHSA-6q48-6c7w-9gw2, Critical, fixed in 2026.10.19.
+    certifi is a transitive Python dependency (httpx, httpcore, requests in
+    `uv.lock`).
+  - quinn-proto 0.11.14: GHSA-4w2j-m93h-cj5j, High, fixed in 0.11.15.
+  - The same table also lists rustls 0.23.40 (GHSA-2mjx-qc3c-rqvc, Medium,
+    fixed in 0.23.45), below the threshold.
+  - quinn-proto and rustls are Rust crates. The only third-party Rust
+    binary in `ke-app` is uv, which `app.Dockerfile` copies into the final
+    stage (`COPY --from=uv /uv /usr/local/bin/uv`). Test 3 below confirms
+    this: the rows must be gone once uv is.
+  - uv is used only at build time in `ke-app`. At runtime nothing calls it:
+    compose runs `python -m engine.api` and `python -m engine.worker`, both
+    healthchecks run `python -c`, and `bundle.sh` runs the notices step
+    with `--entrypoint python ... -m engine.notices`. The `uv run` calls in
+    `smoke.sh` and `test.sh` run in the gates image, not in `ke-app`.
+- **Decision.**
+  1. **Build shape.** `docker/app.Dockerfile` has three stages:
+     - `uv`: unchanged, the pinned `ghcr.io/astral-sh/uv` image.
+     - `builder`: the same `python:3.12-slim-bookworm@sha256:...`
+       reference as today. It copies in the uv binary, sets the `UV_*`
+       variables (`UV_PROJECT_ENVIRONMENT=/opt/venv`,
+       `UV_PYTHON_DOWNLOADS=never`, `UV_LINK_MODE=copy`), and runs today's
+       N11 layer order in `/app`: `pyproject.toml` and `uv.lock`, then
+       `uv sync --locked --no-dev --no-install-project`, then
+       `harness_telemetry/`, `engine/` and `config/`, then
+       `uv sync --locked --no-dev --no-editable`.
+     - The final stage, which is the last stage in the file. Compose builds
+       with no `target:`, so the last stage is the one that ships. Its
+       `FROM` uses the same python reference, byte for byte. It sets
+       `PATH=/opt/venv/bin:$PATH` and `PYTHONUNBUFFERED=1`, and nothing
+       else: no `UV_*` variable, because nothing reads them. Then it runs
+       `COPY --from=builder /opt/venv /opt/venv` and
+       `COPY --from=builder /app /app`, so `/app` is the tree the image has
+       today. Then `WORKDIR /app`, `useradd --no-create-home --uid 10001
+       ke`, `USER ke`, and `CMD ["python", "-m", "engine.api"]`.
+     - The final stage has no uv binary, no `COPY --from=uv`, and no `uv`
+       command. The COPYs carry no `--chown`, so the venv and `/app` stay
+       owned by root and read-only to `ke`, as today.
+  2. **What must not break.**
+     - *Interpreter paths.* The venv's `pyvenv.cfg` `home` and its
+       `bin/python` link point at the base image's interpreter. The script
+       shebangs name `/opt/venv/bin/python`. Both stages use the same base
+       digest and the same `/opt/venv` path, so every path resolves in the
+       final stage. Test 1 checks that the two references are identical.
+     - *Runtime contract.* `PATH` starts with `/opt/venv/bin`, and the
+       uid-10001 user `ke`, `USER ke` and the `CMD` are unchanged. So the
+       compose commands and healthchecks work as they are.
+     - `test_dockerfiles_pin_base_images_by_digest` stays green. Every
+       `FROM` is either a digest-pinned image or a named earlier stage, and
+       the final stage's `FROM` is the pinned python image, not
+       `FROM builder`.
+     - `test_env_example_not_in_app_image` stays green. No `COPY` or `ADD`
+       line names `.env`, and there is no `COPY .`.
+     - *Licence notices (§2.4).* Each package's `*.dist-info/licenses/`
+       travels with the venv, and nothing in the file removes anything
+       under it. The `bundle.sh` notices run (`--network none --entrypoint
+       python <ke-app> -m engine.notices`) is unchanged. It already runs in
+       every `full`, through `offline_check.sh` and `bundle.sh`.
+     - *Layer order (N11).* The costly layer, which downloads and installs
+       the dependencies, stays cached in `builder`. A code change reruns
+       the final stage's venv `COPY`, which is a local copy with no
+       download. The reviewer judges this, as for N11.
+  3. **certifi.** Run `uv lock --upgrade-package certifi` to move to
+     2026.10.19, regenerating `uv.lock` as the CLAUDE.md "Generated
+     artifacts" row says. The lock diff may change only the certifi entry
+     (version, URLs, hashes, sizes, upload times). Any other package that
+     moves is a review finding.
+     - *Settle period.* 2026.10.19 is 2 days old on 2026-10-21, against the
+       usual settle period of at least 2 weeks. A fixed Critical overrides
+       the settle period (Q42: upgrade, do not ignore), and the human was
+       informed (handoff, orchestrator, 2026-10-21). This exception is for
+       Critical fixes only. It sets no precedent for other bumps.
+  4. **The gates image keeps uv.** `verify.sh` needs it there: `test.sh`
+     and `smoke.sh` run `uv run --locked`. Its uv `FROM` reference stays
+     identical to `ke-app`'s `uv` stage (one version, one digest), and
+     test 1b holds the two in step.
+     - *Is a uv upgrade needed?* Yes, as a follow-up, not in this unit. The
+       gates image and the `builder` stage still carry the uv binary with
+       quinn-proto 0.11.14 and rustls 0.23.40. The `builder` stage is where
+       uv's network code actually runs, fetching packages at build time.
+     - Neither image ships to an operator, and the gates image is not
+       scanned (PSC-2: `ke-app` only), so this does not block PSC-17.
+     - When a uv release carries quinn-proto 0.11.15 or later and rustls
+       0.23.45 or later, bump the one pin in both files in a single commit,
+       with the provenance check a new pin needs. Nobody has yet checked
+       whether such a release exists.
+- **Alternatives considered.**
+  - *Ignore entries for quinn-proto and rustls.* Rejected by Q42 (upgrade,
+    do not ignore). Removing uv also costs less than a dated decision every
+    90 days.
+  - *Upgrade uv and keep it in `ke-app`.* This depends on an upstream
+    release with the fixed crates. It also leaves a build tool in the
+    shipped image, so the next Rust advisory in uv would reopen the
+    finding.
+  - *`rm /usr/local/bin/uv` at the end of the single stage.* The binary
+    still ships in a lower layer of the image tar in the bundle.
+  - *Export requirements and `pip install` in one stage.* This loses
+    `uv sync --locked`, and a second installer would have to keep its
+    hashes in step with `uv.lock`.
+  - *Copying `/app` again from the build context.* It is equivalent, but
+    copying from `builder` gives exactly today's tree, with no second list
+    of paths to keep in step.
+- **Consequences.**
+  - The shipped `ke-app` no longer has uv, so `uv` cannot be used inside a
+    running container. Debugging uses `python`.
+  - pip 25.0.1 from the base image stays in `ke-app`. Its findings are
+    Medium or Low, below the threshold. Dropping pip from the final stage
+    is a follow-up candidate, not this unit.
+  - The diff touches `docker/app.Dockerfile` and `uv.lock`, so it needs
+    `verify.sh full` and a PSC-12 Windows run at the branch head.
+  - PSC-6 (wiring `scan.sh` into `full`) waits until test 3 is green.
+- **First tests (unit 3, before PSC-6).**
+  1. `test_app_image_final_stage_has_no_uv` (fast, static,
+     `tests/test_image_scan.py`). Join the continuation lines. The final
+     stage is the text after the last `FROM`. Assert all of the following:
+     - no `COPY` or `ADD` with `--from=uv`, and no `--from=` that names
+       `astral-sh/uv` (case-insensitive);
+     - no path whose last component is `uv` or `uvx`, and no `uv` command
+       word in any `RUN`;
+     - the final `FROM` reference equals the `builder` stage's, and is the
+       `python:3.12-slim-bookworm@sha256:` image;
+     - `COPY --from=builder /opt/venv /opt/venv` is present, and an `ENV`
+       sets a `PATH` that starts with `/opt/venv/bin:`;
+     - `USER ke` and `CMD ["python", "-m", "engine.api"]` are present;
+     - the `builder` stage runs `uv sync --locked --no-dev`.
+
+     It is RED today for the expected reason: the final (python) stage
+     holds `COPY --from=uv /uv /usr/local/bin/uv`.
+  1b. `test_uv_pin_matches_in_app_and_gates_images` (fast, static). The
+     `ghcr.io/astral-sh/uv:<v>@sha256:<64 hex>` `FROM` reference appears
+     exactly once in each file, and the two are identical. It is a guard,
+     green today. The proof is a recorded mutant: change one pin, and the
+     test goes red.
+  2. Behaviour check (manual, recorded as evidence, not a new `full`
+     test). On the rebuilt `ke-app:<tag>`, with `--rm --network none`:
+     - `--entrypoint sh ... -c 'command -v uv || command -v uvx'` prints
+       nothing (non-zero exit; dash returns 127);
+     - `--entrypoint python ... -m engine.notices` exits 0 and prints the
+       `| Package | Version | Licence | Licence files |` header;
+     - `--entrypoint python ... -c "import engine, harness_telemetry,
+       certifi; print(certifi.__version__)"` prints `2026.10.19`.
+
+     Save it to
+     `docs/evidence/platform-supply-chain/u3-no-uv-in-ke-app.txt`. No new
+     `full` test is needed: `full` already runs the notices step (through
+     `offline_check.sh`) and the healthchecks (through smoke), and test 3
+     proves uv is gone from the scanner's catalogue.
+  3. The real scan. `scripts/scan.sh` on the rebuilt `ke-app` exits 0,
+     and the certifi, quinn-proto and rustls rows are gone. Save it to
+     `docs/evidence/platform-supply-chain/u3-real-scan.txt`. Then PSC-6.
+
+- **Alternatives considered (amendment):**
+  - The scan services in `docker-compose.yml` under profile `scan`, in the
+    verify project: the bundle would carry the scanner's name, and the
+    volume would outlive the verify teardown, which has already run.
+  - `teardown.sh --profile scan`: a second F3 exception for no gain, since
+    a profile-free standalone file needs none.
+  - A bounded retry of the fetch: Q56(b) rules fail closed, and a retry
+    adds CI time.
+  - Two grype runs (report, then gate) as the default: twice the
+    cataloguing time on the 2-vCPU runner; kept only as the D5 fallback.
+  - Our own ignore schema translated to grype's: needs a parser on the
+    host, which has only Git and Docker.
+  - A non-root `scan-db`: the named volume is root-owned when created, so
+    it needs an image-side directory or an init step; deferred.
+- **Consequences (amendment):**
+  - One new pinned dependency (the grype image), verify and CI only.
+  - `full` needs the database host as well as the registries. An outage
+    there is a red run with a named host, never a silent pass.
+  - An ignore entry costs a dated decision at most every 90 days.
+  - The arm64 `ke-app` is scanned only in recorded arm64 runs (Q59); a
+    fixed High in the arm64 image can go unseen between them.
+  - CLAUDE.md and README wording change in the `scan-db` commit.
+- **First tests:** §2.6, "platform-supply-chain".
 
 ### ADR-KE-014: Model roles on the installed models (model-roles)
 - **Status:** accepted (Q38 ruling, human, 2026-10-20; Q54 and Q55 rulings,

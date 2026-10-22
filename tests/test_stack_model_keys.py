@@ -179,7 +179,10 @@ class VerifyModelKeysTest(unittest.TestCase):
         for rel in ("scripts/verify.sh", "scripts/env_value.sh", "scripts/image_tag.sh", ".env.example",
                     "docker-compose.yml", "docker-compose.verify.yml"):
             shutil.copy(ROOT / rel, self.tmp / rel)
-        for name in ("build", "launch", "smoke", "teardown", "offline_check"):
+        # PSC-6 (ADR-KE-013 amendment 1, D4): verify full also runs scan.sh;
+        # its stub records its environment like the others, so the caller-key
+        # checks below cover it too once it runs.
+        for name in ("build", "launch", "smoke", "teardown", "scan", "offline_check"):
             stub = self.tmp / "scripts" / f"{name}.sh"
             stub.write_text(STAGE.format(name=name), encoding="utf-8", newline="\n")
             _make_executable(stub)
@@ -313,7 +316,10 @@ class VerifyModelKeysTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, output)
         self._assert_keys(lines, records, "modelhost:8000", "modelhost")
         stage_envs = {p.stem: p.read_text(encoding="utf-8") for p in self.env_dir.glob("*.env")}
-        self.assertTrue({"build", "launch", "smoke", "teardown"} <= set(stage_envs), sorted(stage_envs))
+        # Review U4 N4: scan and offline_check are named, so PSC-6 "the scan
+        # takes no key from the caller's environment" is pinned, not incidental.
+        self.assertTrue({"build", "launch", "smoke", "teardown", "scan", "offline_check"} <= set(stage_envs),
+                        sorted(stage_envs))
         for key, value in markers.items():
             with self.subTest(key=key):
                 for record in records:

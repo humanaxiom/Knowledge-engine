@@ -1,0 +1,22 @@
+# Whole top-level unit suite on the scratch green copy, in the gates image (filtered FAIL/ERROR lines). Run BEFORE the test_stack_compose amendment and without .git in the copy: the git-repo failures and test_engine_hardcoded errors are harness artifacts (re-run with git init: hardcoded + deploy-files pass; ExecBit fails only on the Windows-made scratch index modes).
+ Container ke-tester-psc-green-gates-run-985162a941c0 Creating 
+ Container ke-tester-psc-green-gates-run-985162a941c0 Created 
+ERROR: test_model_host_name_only_in_allowed_locations (tests.test_engine_hardcoded.RepositoryScanTest.test_model_host_name_only_in_allowed_locations)
+ERROR: test_no_hardcoded_hosts_or_models (tests.test_engine_hardcoded.RepositoryScanTest.test_no_hardcoded_hosts_or_models)
+ERROR: test_no_hardcoded_ports (tests.test_engine_hardcoded.RepositoryScanTest.test_no_hardcoded_ports)
+FAIL: test_env_example_is_not_ignored (tests.test_engine_deploy_files.GitIgnoreTest.test_env_example_is_not_ignored)
+AssertionError: 128 not found in (0, 1) : fatal: not a git repository (or any parent up to mount point /)
+FAIL: test_env_file_is_ignored (tests.test_engine_deploy_files.GitIgnoreTest.test_env_file_is_ignored)
+AssertionError: 128 not found in (0, 1) : fatal: not a git repository (or any parent up to mount point /)
+FAIL: test_bundle_contents (tests.test_offline_bundle.BundleNoticesTest.test_bundle_contents) (part='app/ is exact')
+AssertionError: Lists differ: ['.en[32 chars]l', 'docker-compose.yml', 'docs/quickstart.md'[133 chars].sh'] != ['.en[32 chars]l', 'config/scan-ignore.yaml', 'docker-compose[160 chars].sh']
+FAIL: test_bundle_ships_tracked_config_only (tests.test_offline_bundle.BundleScriptTest.test_bundle_ships_tracked_config_only)
+AssertionError: Lists differ: ['config/defaults.yaml'] != ['config/defaults.yaml', 'config/scan-ignore.yaml']
+FAIL: test_operator_scripts_are_executable_in_git (tests.test_offline_bundle.ExecBitTest.test_operator_scripts_are_executable_in_git)
+AssertionError: 128 != 0 : fatal: not a git repository (or any parent up to mount point /)
+FAIL: test_stack_services_have_no_bind_mounts (tests.test_stack_compose.NetworksTest.test_stack_services_have_no_bind_mounts) (file='docker-compose.scan.yml', service='scan', source='${KE_SCAN_IN:?set by scripts/scan.sh}')
+AssertionError: 'bind' != 'volume'
+FAIL: test_stack_services_have_no_bind_mounts (tests.test_stack_compose.NetworksTest.test_stack_services_have_no_bind_mounts) (file='docker-compose.scan.yml', service='scan', source='./config/scan-ignore.yaml')
+AssertionError: 'bind' != 'volume'
+Ran 738 tests in 373.302s
+FAILED (failures=7, errors=3, skipped=8)

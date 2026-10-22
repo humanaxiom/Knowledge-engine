@@ -1,0 +1,129 @@
+# Unit 4 RED mutants (tester, 2026-10-21): PSC-6 + carry-ins r3-1, r3-2, r3-3, L-1, I-1. Driver u4-red-mutants.py.txt, run in the gates image ke-gates:wt-33a132fbfdd7 (--network none, label com.docker.compose.project=ke-tester-psc): /work = the real checkout read-only, /scratch = the scratchpad (written $SCRATCH). Driver exit 0.
+# RED = the RED tests fail on today's tree. Phase A = guards vs mutants of TODAY's files (m1, m8, m9 verbatim from review-u3-mutants.py.txt); CONTROLs are allowed changes that must pass.
+# Phase B = satisfiability: today's tree with scripts/verify.sh, scripts/scan.sh, docker/app.Dockerfile replaced by the scratch green shapes below (never production files); shellcheck -x clean; the 4 touched test modules pass; then fix-revert / look-alike mutants per RED test. Phase B' = the guard mutants on the green copy.
+# First driver run: the green scan.sh used a second '(export LC_ALL=C; [[ ... ]])' subshell and failed shellcheck SC2030/SC2031 (green-shape bug, not a test bug); the green check was changed to a plain [[ =~ ]] and everything re-run. Results below are the second run.
+
+=== scratch green: diff scripts/verify.sh $SCRATCH/verify.green.sh ===
+110a111,112
+>   # PSC-6: the ke-app image scan, in its own project (ADR-KE-013 amendment 1, D4).
+>   scripts/scan.sh
+
+=== scratch green: diff scripts/scan.sh $SCRATCH/scan.green.sh ===
+31c31
+< export COMPOSE_PROJECT_NAME="ke-scan-${SRANDOM}"
+---
+> export COMPOSE_PROJECT_NAME="ke-scan-${SRANDOM-}"
+34a35,41
+> # SRANDOM needs bash >= 5.1: older bash leaves it unset or takes a caller's
+> # value verbatim, so the name is checked before it reaches docker, mkdir or rm.
+> project_re='^ke-scan-[0-9]+$'
+> if ! [[ "$COMPOSE_PROJECT_NAME" =~ $project_re ]]; then
+>   echo "scan: FAIL (the scan project name is malformed, want ke-scan-<digits>; SRANDOM needs bash >= 5.1: $(printf '%q' "$COMPOSE_PROJECT_NAME"))" >&2
+>   exit 1
+> fi
+
+=== scratch green: diff docker/app.Dockerfile $SCRATCH/app.green.Dockerfile ===
+21c21,23
+< RUN uv sync --locked --no-dev --no-editable
+---
+> # uv leaves an empty 0666 lock file in the venv; it must not ship (I-1).
+> RUN uv sync --locked --no-dev --no-editable \
+>     && rm -f /opt/venv/.lock
+
+=== I-1 probe of today's image (RED evidence) ===
+$ docker run --rm --network none --entrypoint sh ke-app:wt-33a132fbfdd7 -c 'stat -c "%a %U:%G %s %n" /opt/venv/.lock'
+666 root:root 0 /opt/venv/.lock
+# I-1 behavioural satisfiability NOT shown: a scratch build (docker build --network none, separate 'RUN rm -f /opt/venv/.lock' after the last sync) missed the layer cache and failed at 'uv sync --no-install-project' (Failed to download pydantic==2.14.1; no network). Left for GREEN: the developer shows the rebuilt ke-app has no /opt/venv/.lock. The static test's satisfiability is Phase B below.
+
+=== driver output ===
+## RED on today's tree (each must fail):
+RED  test_full_runs_stages_in_order_then_tears_down  by test_full_runs_stages_in_order_then_tears_down  AssertionError: Lists differ: ['build', 'launch', 'gates-it', 'smoke', 'teardown', 'offline_check'] != ['build', 'launch', 'gates-it', 'smoke', 'teard
+RED  test_each_failing_stage_fails_verify_and_still_tears_down  by test_each_failing_stage_fails_verify_and_still_tears_down  AssertionError: Lists differ: ['build', 'launch', 'gates-it', 'smoke', 'teardown', 'offline_check'] != ['build', 'launch', 'gates-it', 'smoke', 'teard
+RED  test_verify_is_cdpath_safe  by test_verify_is_cdpath_safe  AssertionError: Lists differ: ['build', 'launch', 'gates-it', 'smoke', 'teardown', 'offline_check'] != ['build', 'launch', 'gates-it', 'smoke', 'teard
+RED  test_verify_full_runs_scan_between_teardown_and_offline_check  by test_verify_full_runs_scan_between_teardown_and_offline_check  AssertionError: 0 != 1 : verify full must run scripts/scan.sh exactly once (PSC-6, D4): ['build', 'launch', 'gates-it', 'smoke', 'teardown', 'offline_
+RED  test_verify_full_fails_when_image_scan_fails  by test_verify_full_fails_when_image_scan_fails  AssertionError: 'scan' not found in ['build', 'launch', 'gates-it', 'smoke', 'teardown', 'offline_check'] : harness: verify full never ran scan.sh (PS
+RED  test_scan_refuses_a_project_name_that_is_not_ke_scan_digits  by test_scan_refuses_a_project_name_that_is_not_ke_scan_digits  AssertionError: [] is not true : bash < 5.1: SRANDOM unset: no `scan: FAIL (...)` line names the malformed project or the bash version (security L-1: 
+RED  test_app_image_builder_drops_world_writable_venv_lock  by test_app_image_builder_drops_world_writable_venv_lock  AssertionError: [] is not true : the builder never removes /opt/venv/.lock (security I-1: mode 0666, writable by the runtime user); add `rm -f /opt/ve
+
+## Phase A: guard mutants on TODAY's tree
+UNMUTATED (3 tests): PASS (OK)
+KILLED   g_grype_inline_docker_run                by test_verify_sh_has_no_inlined_commands  AssertionError: 'grype' unexpectedly found in 'set -euo pipefail\nCDPATH=\'\' cd -- "$(dirname -- "$0")/.."\n\nmode="${1:-full}"\ncase "$mode" in\n  f
+KILLED   g_grype_binary                           by test_verify_sh_has_no_inlined_commands  AssertionError: 'grype' unexpectedly found in 'set -euo pipefail\nCDPATH=\'\' cd -- "$(dirname -- "$0")/.."\n\nmode="${1:-full}"\ncase "$mode" in\n  f
+KILLED   m1_rm_on_empty_listing                   by test_scan_cleanup_with_only_other_projects_containers_removes_nothing  AssertionError: Lists differ: ['rm -f '] != []
+KILLED   m1b_always_true_guard                    by test_scan_cleanup_with_only_other_projects_containers_removes_nothing  AssertionError: Lists differ: ['rm -f '] != []
+KILLED   m8_builder_puts_uv_in_venv               by test_app_image_builder_puts_no_uv_under_shipped_paths  AssertionError: Lists differ: ['cp /usr/local/bin/uv /opt/venv/bin/uv'] != []
+KILLED   m9_builder_copies_uv_into_app            by test_app_image_builder_puts_no_uv_under_shipped_paths  AssertionError: Lists differ: [['/uv', '/usr/local/bin/uv'], ['/uv', '/app/bin/uv']] != [['/uv', '/usr/local/bin/uv']]
+KILLED   m9b_copy_uv_relative_into_app            by test_app_image_builder_puts_no_uv_under_shipped_paths  AssertionError: Lists differ: [['/uv', '/usr/local/bin/uv'], ['/uv', './bin/uv']] != [['/uv', '/usr/local/bin/uv']]
+KILLED   m9c_copy_uv_image_into_venv              by test_app_image_builder_puts_no_uv_under_shipped_paths  AssertionError: Lists differ: [['/uv', '/usr/local/bin/uv'], ['/uv', '/opt/venv/bin/uv']] != [['/uv', '/usr/local/bin/uv']]
+KILLED   m8b_cp_command_v_uv_into_venv            by test_app_image_builder_puts_no_uv_under_shipped_paths  AssertionError: Lists differ: ['cp "$(command -v uv)" /opt/venv/bin/'] != []
+KILLED   m8c_hardlink_uv_into_venv                by test_app_image_builder_puts_no_uv_under_shipped_paths  AssertionError: Lists differ: ['ln /usr/local/bin/uv /opt/venv/bin/uv'] != []
+KILLED   m8d_cp_whole_bin_dir_into_venv           by test_app_image_builder_puts_no_uv_under_shipped_paths  AssertionError: Lists differ: ['cp -r /usr/local/bin/. /opt/venv/bin/'] != []
+KILLED   m8e_install_uv_into_app                  by test_app_image_builder_puts_no_uv_under_shipped_paths  AssertionError: Lists differ: ['install -m 0755 /usr/local/bin/uv /app/uv'] != []
+KILLED   m8f_uv_pip_install_uv                    by test_app_image_builder_puts_no_uv_under_shipped_paths  AssertionError: Lists differ: ['uv pip install uv'] != []
+KILLED   m8g_uv_tool_bin_in_venv                  by test_app_image_builder_puts_no_uv_under_shipped_paths  AssertionError: Lists differ: ['uv tool install ruff'] != []
+KILLED   m8h_uv_cache_under_app                   by test_app_image_builder_puts_no_uv_under_shipped_paths  AssertionError: Lists differ: ['UV_CACHE_DIR=/app/.uv-cache'] != []
+KILLED   m8i_mv_uv_into_venv                      by test_app_image_builder_puts_no_uv_under_shipped_paths  AssertionError: Lists differ: ['mv /usr/local/bin/uv /opt/venv/bin/'] != []
+16/16 killed
+CONTROL-PASS c_cache_mount_on_sync                (must pass: an allowed change) 
+CONTROL-PASS c_uv_compile_bytecode_env            (must pass: an allowed change) 
+
+## Phase B shellcheck -x on the green verify.sh + scan.sh: exit 0 (no output)
+## Phase B satisfiability: tests.test_image_scan tests.test_stack_scripts tests.test_stack_model_keys tests.test_harness_port on the green copy: PASS (OK (skipped=2); ['Ran 180 tests in 86.707s'])
+
+## Phase B: RED-test mutants on the green copy
+UNMUTATED (7 tests): PASS (OK)
+KILLED   v_fix_revert_no_scan                     by test_each_failing_stage_fails_verify_and_still_tears_down, test_full_runs_stages_in_order_then_tears_down, test_verify_full_fails_when_image_scan_fails, test_verify_full_runs_scan_between_teardown_and_offline_check, test_verify_is_cdpath_safe  AssertionError: Lists differ: ['build', 'launch', 'gates-it', 'smoke', 'teardown', 'offline_check'] != ['build', 'launch', 'gates-it', 'smoke', 'teard
+KILLED   v_scan_before_teardown                   by test_each_failing_stage_fails_verify_and_still_tears_down, test_full_runs_stages_in_order_then_tears_down, test_verify_full_fails_when_image_scan_fails, test_verify_full_runs_scan_between_teardown_and_offline_check, test_verify_is_cdpath_safe  AssertionError: Lists differ: ['build', 'launch', 'gates-it', 'smoke', 'scan', 'teardown', 'offline_check'] != ['build', 'launch', 'gates-it', 'smoke'
+KILLED   v_scan_after_offline_check               by test_each_failing_stage_fails_verify_and_still_tears_down, test_full_runs_stages_in_order_then_tears_down, test_verify_full_fails_when_image_scan_fails, test_verify_full_runs_scan_between_teardown_and_offline_check, test_verify_is_cdpath_safe  AssertionError: Lists differ: ['build', 'launch', 'gates-it', 'smoke', 'teardown', 'offline_check', 'scan'] != ['build', 'launch', 'gates-it', 'smoke'
+KILLED   v_scan_or_true                           by test_verify_full_fails_when_image_scan_fails  AssertionError: 0 == 0 : a failing image scan let verify full pass:
+KILLED   v_scan_failure_only_warns                by test_verify_full_fails_when_image_scan_fails  AssertionError: 0 == 0 : a failing image scan let verify full pass:
+KILLED   v_scan_backgrounded                      by test_verify_full_fails_when_image_scan_fails  AssertionError: 0 == 0 : a failing image scan let verify full pass:
+KILLED   v_scan_twice                             by test_verify_full_runs_scan_between_teardown_and_offline_check  AssertionError: 2 != 1 : verify full must run scripts/scan.sh exactly once (PSC-6, D4): ['build', 'launch', 'gates-it', 'smoke', 'teardown', 'scan', '
+KILLED   v_scan_in_fast_too                       by test_verify_full_runs_scan_between_teardown_and_offline_check  AssertionError: 'scan' unexpectedly found in ['scan'] : verify fast never scans (PSC-6)
+KILLED   v_failed_scan_tears_down_again           by test_verify_full_fails_when_image_scan_fails  AssertionError: Lists differ: ['build', 'launch', 'gates-it', 'smoke', 'teardown', 'scan', 'teardown'] != ['build', 'launch', 'gates-it', 'smoke', 'te
+KILLED   v_scan_given_an_argument                 by test_verify_full_runs_scan_between_teardown_and_offline_check  AssertionError: 'scan full' != 'scan'
+KILLED   v_scan_without_verify_tag                by test_verify_full_runs_scan_between_teardown_and_offline_check  AssertionError: 2 != 1 : scan.sh sees the tag build.sh built: {'wt-29f9cbe2acfd', 'local'}
+KILLED   l1_fix_revert                            by test_scan_refuses_a_project_name_that_is_not_ke_scan_digits  AssertionError: [] is not true : bash < 5.1: SRANDOM unset: no `scan: FAIL (...)` line names the malformed project or the bash version (security L-1: 
+KILLED   l1_bash_versinfo_only                    by test_scan_refuses_a_project_name_that_is_not_ke_scan_digits  AssertionError: [] is not true : bash < 5.1: SRANDOM unset: no `scan: FAIL (...)` line names the malformed project or the bash version (security L-1: 
+KILLED   l1_unanchored_regex                      by test_scan_refuses_a_project_name_that_is_not_ke_scan_digits  AssertionError: 0 == 0 : bash 5.0: SRANDOM a command separator: scan.sh ran with a malformed project:
+KILLED   l1_digits_optional                       by test_scan_refuses_a_project_name_that_is_not_ke_scan_digits  AssertionError: 0 == 0 : bash < 5.1: SRANDOM unset: scan.sh ran with a malformed project:
+KILLED   l1_check_after_mkdir                     by test_scan_refuses_a_project_name_that_is_not_ke_scan_digits  AssertionError: '{"argv": ["ps", "-aq", "--filter", "label[727 chars]lse}' != ''
+KILLED   l1_check_after_trap                      by test_scan_refuses_a_project_name_that_is_not_ke_scan_digits  AssertionError: '{"argv": ["ps", "-aq", "--filter", "label[727 chars]lse}' != ''
+KILLED   l1_warns_but_goes_on                     by test_scan_refuses_a_project_name_that_is_not_ke_scan_digits  AssertionError: 0 == 0 : bash < 5.1: SRANDOM unset: scan.sh ran with a malformed project:
+KILLED   l1_set_u_kept_on_srandom                 by test_scan_refuses_a_project_name_that_is_not_ke_scan_digits  AssertionError: [] is not true : bash < 5.1: SRANDOM unset: no `scan: FAIL (...)` line names the malformed project or the bash version (security L-1: 
+KILLED   l1_vague_message                         by test_scan_refuses_a_project_name_that_is_not_ke_scan_digits  AssertionError: [] is not true : bash < 5.1: SRANDOM unset: no `scan: FAIL (...)` line names the malformed project or the bash version (security L-1: 
+KILLED   i1_fix_revert                            by test_app_image_builder_drops_world_writable_venv_lock  AssertionError: [] is not true : the builder never removes /opt/venv/.lock (security I-1: mode 0666, writable by the runtime user); add `rm -f /opt/ve
+KILLED   i1_rm_before_last_sync                   by test_app_image_builder_drops_world_writable_venv_lock  AssertionError: 1 not greater than 2 : the builder removes /opt/venv/.lock before its last uv command, which recreates it (security I-1)
+KILLED   i1_rm_after_first_sync_only              by test_app_image_builder_drops_world_writable_venv_lock  AssertionError: 1 not greater than 2 : the builder removes /opt/venv/.lock before its last uv command, which recreates it (security I-1)
+KILLED   i1_rm_in_final_stage                     by test_app_image_builder_drops_world_writable_venv_lock  AssertionError: [] is not true : the builder never removes /opt/venv/.lock (security I-1: mode 0666, writable by the runtime user); add `rm -f /opt/ve
+KILLED   i1_wrong_path_no_dot                     by test_app_image_builder_drops_world_writable_venv_lock  AssertionError: [] is not true : the builder never removes /opt/venv/.lock (security I-1: mode 0666, writable by the runtime user); add `rm -f /opt/ve
+KILLED   i1_wrong_path_app                        by test_app_image_builder_drops_world_writable_venv_lock  AssertionError: [] is not true : the builder never removes /opt/venv/.lock (security I-1: mode 0666, writable by the runtime user); add `rm -f /opt/ve
+KILLED   i1_chmod_instead                         by test_app_image_builder_drops_world_writable_venv_lock  AssertionError: [] is not true : the builder never removes /opt/venv/.lock (security I-1: mode 0666, writable by the runtime user); add `rm -f /opt/ve
+KILLED   i1_echo_rm                               by test_app_image_builder_drops_world_writable_venv_lock  AssertionError: [] is not true : the builder never removes /opt/venv/.lock (security I-1: mode 0666, writable by the runtime user); add `rm -f /opt/ve
+28/28 killed
+CONTROL-PASS c_l1_srandom_precheck_keeps_braces   (must pass: an allowed change) 
+CONTROL-PASS c_i1_separate_run                    (must pass: an allowed change) 
+CONTROL-PASS c_i1_rm_without_f                    (must pass: an allowed change) 
+CONTROL-PASS c_v_scan_comment_only_differs        (must pass: an allowed change) 
+
+## Phase B': guard mutants re-run on the green copy
+UNMUTATED (3 tests): PASS (OK)
+KILLED   g_grype_inline_docker_run                by test_verify_sh_has_no_inlined_commands  AssertionError: 'grype' unexpectedly found in 'set -euo pipefail\nCDPATH=\'\' cd -- "$(dirname -- "$0")/.."\n\nmode="${1:-full}"\ncase "$mode" in\n  f
+KILLED   g_grype_binary                           by test_verify_sh_has_no_inlined_commands  AssertionError: 'grype' unexpectedly found in 'set -euo pipefail\nCDPATH=\'\' cd -- "$(dirname -- "$0")/.."\n\nmode="${1:-full}"\ncase "$mode" in\n  f
+KILLED   m1_rm_on_empty_listing                   by test_scan_cleanup_with_only_other_projects_containers_removes_nothing  AssertionError: Lists differ: ['rm -f '] != []
+KILLED   m1b_always_true_guard                    by test_scan_cleanup_with_only_other_projects_containers_removes_nothing  AssertionError: Lists differ: ['rm -f '] != []
+KILLED   m9_builder_copies_uv_into_app            by test_app_image_builder_puts_no_uv_under_shipped_paths  AssertionError: Lists differ: [['/uv', '/usr/local/bin/uv'], ['/uv', '/app/bin/uv']] != [['/uv', '/usr/local/bin/uv']]
+KILLED   m9b_copy_uv_relative_into_app            by test_app_image_builder_puts_no_uv_under_shipped_paths  AssertionError: Lists differ: [['/uv', '/usr/local/bin/uv'], ['/uv', './bin/uv']] != [['/uv', '/usr/local/bin/uv']]
+KILLED   m9c_copy_uv_image_into_venv              by test_app_image_builder_puts_no_uv_under_shipped_paths  AssertionError: Lists differ: [['/uv', '/usr/local/bin/uv'], ['/uv', '/opt/venv/bin/uv']] != [['/uv', '/usr/local/bin/uv']]
+KILLED   m8b_cp_command_v_uv_into_venv            by test_app_image_builder_puts_no_uv_under_shipped_paths  AssertionError: Lists differ: ['cp "$(command -v uv)" /opt/venv/bin/'] != []
+KILLED   m8c_hardlink_uv_into_venv                by test_app_image_builder_puts_no_uv_under_shipped_paths  AssertionError: Lists differ: ['ln /usr/local/bin/uv /opt/venv/bin/uv'] != []
+KILLED   m8d_cp_whole_bin_dir_into_venv           by test_app_image_builder_puts_no_uv_under_shipped_paths  AssertionError: Lists differ: ['cp -r /usr/local/bin/. /opt/venv/bin/'] != []
+KILLED   m8e_install_uv_into_app                  by test_app_image_builder_puts_no_uv_under_shipped_paths  AssertionError: Lists differ: ['install -m 0755 /usr/local/bin/uv /app/uv'] != []
+KILLED   m8f_uv_pip_install_uv                    by test_app_image_builder_puts_no_uv_under_shipped_paths  AssertionError: Lists differ: ['uv pip install uv'] != []
+KILLED   m8g_uv_tool_bin_in_venv                  by test_app_image_builder_puts_no_uv_under_shipped_paths  AssertionError: Lists differ: ['uv tool install ruff'] != []
+KILLED   m8h_uv_cache_under_app                   by test_app_image_builder_puts_no_uv_under_shipped_paths  AssertionError: Lists differ: ['UV_CACHE_DIR=/app/.uv-cache'] != []
+KILLED   m8i_mv_uv_into_venv                      by test_app_image_builder_puts_no_uv_under_shipped_paths  AssertionError: Lists differ: ['mv /usr/local/bin/uv /opt/venv/bin/'] != []
+KILLED   m8_builder_puts_uv_in_venv (re-anchored) by test_app_image_builder_puts_no_uv_under_shipped_paths  AssertionError: Lists differ: ['cp /usr/local/bin/uv /opt/venv/bin/uv'] != []
+16/16 killed
+CONTROL-PASS c_cache_mount_on_sync                (must pass: an allowed change) 
+CONTROL-PASS c_uv_compile_bytecode_env            (must pass: an allowed change) 

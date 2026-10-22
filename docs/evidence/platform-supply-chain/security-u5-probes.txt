@@ -1,0 +1,1130 @@
+security-u5 probes (2026-10-22). Unit 5 re-check of security-u4-r1 L-3 and L-4. Scratch copies only; no repo file modified.
+Containers: label ke.audit=security-u5, --network none, scratch tree bind-mounted read-only and copied inside. 0 left after the runs.
+Images: ke-gates:wt-33a132fbfdd7 (bash 5.2.15, GNU grep 3.8; run with KE_IN_GATES= cleared, the image sets it), ubuntu:20.04@sha256:8feb4d8ca5354def3d8fce243717141ce31e2c428701f6682bd2fafe15388214 (bash 5.0.17). Host: Git Bash 5.3.9 (MINGW64), scratch copy, reduced matrix.
+(bash:5.2/5.0 alpine images from security-u4-r1 not used: busybox grep has no -P, so the real inner half cannot run there.)
+Copied under test (working tree, unchanged at the end of the audit):
+    50fe24b84187ad7488249581ddd6ac5d931e4dc2afd556d3476a55b9922149ab *scripts/verify.sh
+    2abbcc1610c20909a6cbef3a52931bf322217e5fb5b3622adf4992c6b7452fdc *scripts/offline_check.sh
+    9db38a1d460c43e65f8c8aa0afb88f896daf9a39695668c74f0b2ac0d6b77db0 *scripts/image_tag.sh
+
+################ Q1. L-3: verify.sh host half; every outer stage stubbed; the fake docker runs the REAL inner half (KE_IN_GATES=1) of the copied verify.sh
+Stage stub template (__STAGE__ replaced per stage; only HANG_STAGE hangs):
+    #!/usr/bin/env bash
+    # stage stub: STAGE set by the copy; mode applies only to HANG_STAGE
+    set -euo pipefail
+    stage=__STAGE__
+    log() { printf '%s,' "$1" >> "$STAGE_LOG"; }
+    log "$stage"
+    [ "${HANG_STAGE:-}" = "$stage" ] || { echo "stub $stage: done"; exit 0; }
+    case "${STUB_MODE:-}" in
+      scanlike)
+        cleanup() { local status=$?; trap '' INT TERM; trap - EXIT; log "$stage-cleanup($status)"; exit "$status"; }
+        trap cleanup EXIT; trap 'exit 130' INT; trap 'exit 143' TERM ;;
+      smokelike)
+        cleanup() { local rc=$?; trap - EXIT; log "$stage-cleanup($rc)"; exit "$rc"; }
+        trap cleanup EXIT ;;
+      swallow0)
+        trap 'log "$stage-swallowed"; exit 0' INT TERM HUP QUIT USR1 ;;
+    esac
+    echo $$ > "$PIDDIR/stage.pid"
+    sleep 3
+    log "$stage-finished-sleep"
+    echo "stub $stage: done"
+    exit 0
+Fake docker (gates-it = real inner half of the copy; HANG_STAGE=gates-it hangs its smoke stand-in):
+    #!/usr/bin/env bash
+    case "$*" in *gates-it*)
+      printf 'gates-it,' >> "$STAGE_LOG"
+      inner="$(mktemp -d)"; trap 'rm -rf "$inner"' EXIT
+      mkdir "$inner/scripts"; cp scripts/verify.sh "$inner/scripts/verify.sh"
+      printf '#!/usr/bin/env bash\necho "inner lint: ok"\n' > "$inner/scripts/lint.sh"
+      printf '#!/usr/bin/env bash\necho "Ran 1 test in 0.001s" >&2\necho "%s" >&2\n' \
+        'test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok' > "$inner/scripts/test.sh"
+      cat > "$inner/scripts/smoke.sh" <<'EOS'
+    #!/usr/bin/env bash
+    if [ "${HANG_STAGE:-}" = gates-it ]; then
+      if [ "${STUB_MODE:-}" = swallow0 ]; then trap 'printf "gates-it-swallowed," >> "$STAGE_LOG"; exit 0' INT TERM HUP QUIT USR1; fi
+      echo $$ > "$PIDDIR/stage.pid"; sleep 3; printf 'gates-it-finished-sleep,' >> "$STAGE_LOG"
+    fi
+    echo "inner smoke: ok"
+    EOS
+      chmod +x "$inner/scripts/"*.sh
+      KE_IN_GATES=1 bash "$inner/scripts/verify.sh" "${@: -1}"; rc=$?
+      printf 'gates-it-rc(%s),' "$rc" >> "$STAGE_LOG"
+      exit $rc ;;
+    esac
+    exit 0
+Driver:
+    #!/usr/bin/env bash
+    # L-3 re-check driver (security-u5). Runs in a labelled --network none container (or Git Bash on scratch).
+    # usage: drive-verify.sh SRC WORK [reduced]
+    set -u
+    set -m   # each background job is its own process group (as a terminal / CI runner)
+    SRC=${1:?} WORK=${2:?} REDUCED=${3:-}
+    T=$(mktemp -d); export STAGE_LOG=$T/stages PIDDIR=$T/pids
+    echo "bash $BASH_VERSION"
+    viol=0
+    run_case() { # label phase sig target stagemode
+      local label=$1 phase=$2 sig=$3 target=$4 mode=$5
+      rm -rf -- "${WORK:?}"; cp -r "$SRC/tree" "$WORK"; chmod +x "$WORK"/scripts/*.sh
+      : > "$STAGE_LOG"; rm -rf -- "${PIDDIR:?}"; mkdir -p "$PIDDIR"
+      HANG_STAGE=$phase STUB_MODE=$mode PATH="$SRC/stub:$PATH" bash "$WORK/scripts/verify.sh" full > "$T/out" 2>&1 &
+      local vpid=$!
+      if [ "$sig" != none ]; then
+        local i; for i in $(seq 200); do [ -s "$PIDDIR/stage.pid" ] && break; sleep 0.05; done
+        local spid; spid=$(cat "$PIDDIR/stage.pid" 2>/dev/null || echo none)
+        sleep 0.3
+        case $target in
+          group)  kill -s "$sig" -- "-$vpid" ;;
+          verify) kill -s "$sig" "$vpid" ;;
+          stage)  kill -s "$sig" "$spid" ;;
+        esac
+      fi
+      wait "$vpid" 2>/dev/null; local rc=$?
+      sleep 3.5  # let any orphan (stage or inner gates-it half) finish and print
+      local outer anyv inner last inv=ok
+      outer=$(grep -cE '^== verify full: PASS \([0-9]+s\) ==$' "$T/out")
+      anyv=$(grep -c 'verify full: PASS' "$T/out")
+      inner=$(grep -cx '== gates-it: PASS ==' "$T/out")
+      last=$(grep -v '^$' "$T/out" | tail -n 1)
+      if [ "$anyv" -gt 0 ]; then
+        { [ "$anyv" -eq 1 ] && [ "$outer" -eq 1 ] && [ "$rc" -eq 0 ] && [[ $last =~ ^==\ verify\ full:\ PASS\ \([0-9]+s\)\ ==$ ]] \
+          && grep -q 'offline_check,' "$STAGE_LOG" && grep -q 'gates-it-rc(0),' "$STAGE_LOG"; } || inv=VIOLATION
+      fi
+      if [ "$rc" -eq 0 ] && [ "$outer" -ne 1 ]; then inv=VIOLATION; fi
+      if [ "$sig" = KILL ] && [ "$target" != stage ] && [[ $last == *"verify full: PASS"* ]]; then inv=VIOLATION; fi
+      [ "$inv" = ok ] || viol=$((viol+1))
+      printf '%-40s rc=%-3s outerPASS=%s anyVerifyFullPASS=%s gatesitPASS=%s inv=%s last=[%s]\n      stages=%s\n' \
+        "$label" "$rc" "$outer" "$anyv" "$inner" "$inv" "$last" "$(cat "$STAGE_LOG")"
+    }
+    echo "## control"
+    run_case "no signal" none none none scanlike
+    if [ -n "$REDUCED" ]; then
+      for phase in gates-it smoke scan; do
+        mode=scanlike; [ "$phase" = scan ] || mode=smokelike
+        echo "## during $phase (reduced)"
+        for sig in INT TERM HUP USR1; do for target in group verify; do run_case "$sig to $target in $phase" "$phase" "$sig" "$target" "$mode"; done; done
+        for target in verify stage group; do run_case "KILL to $target in $phase" "$phase" KILL "$target" "$mode"; done
+      done
+    else
+      for phase in gates-it smoke scan offline_check; do
+        mode=scanlike; case $phase in gates-it|smoke) mode=smokelike ;; esac
+        echo "## during $phase (stage stub mode: $mode)"
+        for sig in INT TERM HUP QUIT USR1 KILL; do
+          for target in group verify stage; do run_case "$sig to $target in $phase" "$phase" "$sig" "$target" "$mode"; done
+        done
+        echo "## during $phase, hostile stage that swallows the signal and exits 0"
+        for sig in INT TERM HUP; do
+          run_case "$sig to group in $phase (swallow0)" "$phase" "$sig" group swallow0
+          run_case "$sig to stage in $phase (swallow0)" "$phase" "$sig" stage swallow0
+        done
+      done
+    fi
+    echo "## invariant violations: $viol"
+    rm -rf -- "${T:?}" "${WORK:?}"
+Columns: outerPASS = '^== verify full: PASS (Ns) ==$'; anyVerifyFullPASS = any line containing 'verify full: PASS'; gatesitPASS = '== gates-it: PASS =='.
+inv = ok when: any 'verify full: PASS' line => exactly one, rc 0, it is the last line, gates-it-rc(0) and offline_check ran; rc 0 => one outer PASS; KILL to verify/group => last line never 'verify full: PASS'.
+
+## Q1a gates image
+bash 5.2.15(1)-release
+## control
+no signal                                rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (0s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,
+## during gates-it (stage stub mode: smokelike)
+INT to group in gates-it                 rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,teardown,
+INT to verify in gates-it                rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-finished-sleep,gates-it-rc(0),teardown,
+INT to stage in gates-it                 rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-finished-sleep,gates-it-rc(0),smoke,teardown,scan,offline_check,
+TERM to group in gates-it                rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,teardown,
+TERM to verify in gates-it               rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-finished-sleep,gates-it-rc(0),teardown,
+TERM to stage in gates-it                rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(143),teardown,
+HUP to group in gates-it                 rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,teardown,
+HUP to verify in gates-it                rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-finished-sleep,gates-it-rc(0),teardown,
+HUP to stage in gates-it                 rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(129),teardown,
+QUIT to group in gates-it                rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (1s) ==]
+      stages=build,launch,gates-it,gates-it-finished-sleep,gates-it-rc(0),smoke,teardown,scan,offline_check,
+QUIT to verify in gates-it               rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-finished-sleep,gates-it-rc(0),smoke,teardown,scan,offline_check,
+QUIT to stage in gates-it                rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-finished-sleep,gates-it-rc(0),smoke,teardown,scan,offline_check,
+USR1 to group in gates-it                rc=138 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[== verify full: FAIL (stopped before the last stage; no PASS) ==]
+      stages=build,launch,gates-it,teardown,
+USR1 to verify in gates-it               rc=138 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== gates-it: PASS ==]
+      stages=build,launch,gates-it,teardown,gates-it-finished-sleep,gates-it-rc(0),
+USR1 to stage in gates-it                rc=138 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[== verify full: FAIL (exit 138) ==]
+      stages=build,launch,gates-it,gates-it-rc(138),teardown,
+KILL to group in gates-it                rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok]
+      stages=build,launch,gates-it,
+KILL to verify in gates-it               rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== gates-it: PASS ==]
+      stages=build,launch,gates-it,gates-it-finished-sleep,gates-it-rc(0),
+KILL to stage in gates-it                rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[== verify full: FAIL (exit 137) ==]
+      stages=build,launch,gates-it,gates-it-rc(137),teardown,
+## during gates-it, hostile stage that swallows the signal and exits 0
+INT to group in gates-it (swallow0)      rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-swallowed,gates-it-rc(0),teardown,
+INT to stage in gates-it (swallow0)      rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-swallowed,gates-it-rc(0),smoke,teardown,scan,offline_check,
+TERM to group in gates-it (swallow0)     rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-swallowed,teardown,
+TERM to stage in gates-it (swallow0)     rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-swallowed,gates-it-rc(0),smoke,teardown,scan,offline_check,
+HUP to group in gates-it (swallow0)      rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-swallowed,teardown,
+HUP to stage in gates-it (swallow0)      rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-swallowed,gates-it-rc(0),smoke,teardown,scan,offline_check,
+## during smoke (stage stub mode: smokelike)
+INT to group in smoke                    rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-cleanup(0),teardown,
+INT to verify in smoke                   rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,
+INT to stage in smoke                    rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,scan,offline_check,
+TERM to group in smoke                   rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-cleanup(0),teardown,
+TERM to verify in smoke                  rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,
+TERM to stage in smoke                   rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-cleanup(0),teardown,
+HUP to group in smoke                    rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-cleanup(0),teardown,
+HUP to verify in smoke                   rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,
+HUP to stage in smoke                    rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-cleanup(0),teardown,
+QUIT to group in smoke                   rc=131 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 131) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-cleanup(131),teardown,
+QUIT to verify in smoke                  rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,scan,offline_check,
+QUIT to stage in smoke                   rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,scan,offline_check,
+USR1 to group in smoke                   rc=138 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (stopped before the last stage; no PASS) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-cleanup(0),teardown,
+USR1 to verify in smoke                  rc=138 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[stub smoke: done]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,smoke-finished-sleep,smoke-cleanup(0),
+USR1 to stage in smoke                   rc=138 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 138) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-cleanup(0),teardown,
+KILL to group in smoke                   rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== gates-it: PASS ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,
+KILL to verify in smoke                  rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[stub smoke: done]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-finished-sleep,smoke-cleanup(0),
+KILL to stage in smoke                   rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 137) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,
+## during smoke, hostile stage that swallows the signal and exits 0
+INT to group in smoke (swallow0)         rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-swallowed,teardown,
+INT to stage in smoke (swallow0)         rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-swallowed,teardown,scan,offline_check,
+TERM to group in smoke (swallow0)        rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-swallowed,teardown,
+TERM to stage in smoke (swallow0)        rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-swallowed,teardown,scan,offline_check,
+HUP to group in smoke (swallow0)         rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-swallowed,teardown,
+HUP to stage in smoke (swallow0)         rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-swallowed,teardown,scan,offline_check,
+## during scan (stage stub mode: scanlike)
+INT to group in scan                     rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-cleanup(130),
+INT to verify in scan                    rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+INT to stage in scan                     rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-cleanup(130),
+TERM to group in scan                    rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-cleanup(143),
+TERM to verify in scan                   rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+TERM to stage in scan                    rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-cleanup(143),
+HUP to group in scan                     rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-cleanup(0),
+HUP to verify in scan                    rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+HUP to stage in scan                     rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-cleanup(0),
+QUIT to group in scan                    rc=131 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 131) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-cleanup(131),
+QUIT to verify in scan                   rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),offline_check,
+QUIT to stage in scan                    rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (4s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),offline_check,
+USR1 to group in scan                    rc=138 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (stopped before the last stage; no PASS) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-cleanup(0),
+USR1 to verify in scan                   rc=138 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[stub scan: done]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+USR1 to stage in scan                    rc=138 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 138) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-cleanup(0),
+KILL to group in scan                    rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[stub teardown: done]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,
+KILL to verify in scan                   rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[stub scan: done]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+KILL to stage in scan                    rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 137) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,
+## during scan, hostile stage that swallows the signal and exits 0
+INT to group in scan (swallow0)          rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-swallowed,
+INT to stage in scan (swallow0)          rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-swallowed,offline_check,
+TERM to group in scan (swallow0)         rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-swallowed,
+TERM to stage in scan (swallow0)         rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-swallowed,offline_check,
+HUP to group in scan (swallow0)          rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-swallowed,
+HUP to stage in scan (swallow0)          rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-swallowed,offline_check,
+## during offline_check (stage stub mode: scanlike)
+INT to group in offline_check            rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-cleanup(130),
+INT to verify in offline_check           rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-finished-sleep,offline_check-cleanup(0),
+INT to stage in offline_check            rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-cleanup(130),
+TERM to group in offline_check           rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-cleanup(143),
+TERM to verify in offline_check          rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-finished-sleep,offline_check-cleanup(0),
+TERM to stage in offline_check           rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-cleanup(143),
+HUP to group in offline_check            rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-cleanup(0),
+HUP to verify in offline_check           rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-finished-sleep,offline_check-cleanup(0),
+HUP to stage in offline_check            rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-cleanup(0),
+QUIT to group in offline_check           rc=131 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 131) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-cleanup(131),
+QUIT to verify in offline_check          rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-finished-sleep,offline_check-cleanup(0),
+QUIT to stage in offline_check           rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-finished-sleep,offline_check-cleanup(0),
+USR1 to group in offline_check           rc=138 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (stopped before the last stage; no PASS) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-cleanup(0),
+USR1 to verify in offline_check          rc=138 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[stub offline_check: done]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-finished-sleep,offline_check-cleanup(0),
+USR1 to stage in offline_check           rc=138 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 138) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-cleanup(0),
+KILL to group in offline_check           rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[stub scan: done]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,
+KILL to verify in offline_check          rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[stub offline_check: done]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-finished-sleep,offline_check-cleanup(0),
+KILL to stage in offline_check           rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 137) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,
+## during offline_check, hostile stage that swallows the signal and exits 0
+INT to group in offline_check (swallow0) rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-swallowed,
+INT to stage in offline_check (swallow0) rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-swallowed,
+TERM to group in offline_check (swallow0) rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-swallowed,
+TERM to stage in offline_check (swallow0) rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-swallowed,
+HUP to group in offline_check (swallow0) rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-swallowed,
+HUP to stage in offline_check (swallow0) rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-swallowed,
+## invariant violations: 0
+
+## Q1b ubuntu:20.04 (label|rc|outer|any|gatesit|inv columns identical to Q1a, diff empty)
+bash 5.0.17(1)-release
+## control
+no signal                                rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (0s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,
+## during gates-it (stage stub mode: smokelike)
+INT to group in gates-it                 rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,teardown,
+INT to verify in gates-it                rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-finished-sleep,gates-it-rc(0),teardown,
+INT to stage in gates-it                 rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-finished-sleep,gates-it-rc(0),smoke,teardown,scan,offline_check,
+TERM to group in gates-it                rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,teardown,
+TERM to verify in gates-it               rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-finished-sleep,gates-it-rc(0),teardown,
+TERM to stage in gates-it                rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(143),teardown,
+HUP to group in gates-it                 rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,teardown,
+HUP to verify in gates-it                rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-finished-sleep,gates-it-rc(0),teardown,
+HUP to stage in gates-it                 rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(129),teardown,
+QUIT to group in gates-it                rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (0s) ==]
+      stages=build,launch,gates-it,gates-it-finished-sleep,gates-it-rc(0),smoke,teardown,scan,offline_check,
+QUIT to verify in gates-it               rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-finished-sleep,gates-it-rc(0),smoke,teardown,scan,offline_check,
+QUIT to stage in gates-it                rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-finished-sleep,gates-it-rc(0),smoke,teardown,scan,offline_check,
+USR1 to group in gates-it                rc=138 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[== verify full: FAIL (stopped before the last stage; no PASS) ==]
+      stages=build,launch,gates-it,teardown,
+USR1 to verify in gates-it               rc=138 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== gates-it: PASS ==]
+      stages=build,launch,gates-it,teardown,gates-it-finished-sleep,gates-it-rc(0),
+USR1 to stage in gates-it                rc=138 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[== verify full: FAIL (exit 138) ==]
+      stages=build,launch,gates-it,gates-it-rc(138),teardown,
+KILL to group in gates-it                rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok]
+      stages=build,launch,gates-it,
+KILL to verify in gates-it               rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== gates-it: PASS ==]
+      stages=build,launch,gates-it,gates-it-finished-sleep,gates-it-rc(0),
+KILL to stage in gates-it                rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[== verify full: FAIL (exit 137) ==]
+      stages=build,launch,gates-it,gates-it-rc(137),teardown,
+## during gates-it, hostile stage that swallows the signal and exits 0
+INT to group in gates-it (swallow0)      rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-swallowed,gates-it-rc(0),teardown,
+INT to stage in gates-it (swallow0)      rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-swallowed,gates-it-rc(0),smoke,teardown,scan,offline_check,
+TERM to group in gates-it (swallow0)     rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-swallowed,teardown,
+TERM to stage in gates-it (swallow0)     rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-swallowed,gates-it-rc(0),smoke,teardown,scan,offline_check,
+HUP to group in gates-it (swallow0)      rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-swallowed,teardown,
+HUP to stage in gates-it (swallow0)      rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-swallowed,gates-it-rc(0),smoke,teardown,scan,offline_check,
+## during smoke (stage stub mode: smokelike)
+INT to group in smoke                    rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-cleanup(0),teardown,
+INT to verify in smoke                   rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,
+INT to stage in smoke                    rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,scan,offline_check,
+TERM to group in smoke                   rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-cleanup(0),teardown,
+TERM to verify in smoke                  rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,
+TERM to stage in smoke                   rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-cleanup(0),teardown,
+HUP to group in smoke                    rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-cleanup(0),teardown,
+HUP to verify in smoke                   rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,
+HUP to stage in smoke                    rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-cleanup(0),teardown,
+QUIT to group in smoke                   rc=131 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 131) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-cleanup(131),teardown,
+QUIT to verify in smoke                  rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,scan,offline_check,
+QUIT to stage in smoke                   rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,scan,offline_check,
+USR1 to group in smoke                   rc=138 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (stopped before the last stage; no PASS) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-cleanup(0),teardown,
+USR1 to verify in smoke                  rc=138 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[stub smoke: done]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,smoke-finished-sleep,smoke-cleanup(0),
+USR1 to stage in smoke                   rc=138 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 138) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-cleanup(0),teardown,
+KILL to group in smoke                   rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== gates-it: PASS ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,
+KILL to verify in smoke                  rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[stub smoke: done]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-finished-sleep,smoke-cleanup(0),
+KILL to stage in smoke                   rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 137) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,
+## during smoke, hostile stage that swallows the signal and exits 0
+INT to group in smoke (swallow0)         rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-swallowed,teardown,
+INT to stage in smoke (swallow0)         rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-swallowed,teardown,scan,offline_check,
+TERM to group in smoke (swallow0)        rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-swallowed,teardown,
+TERM to stage in smoke (swallow0)        rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-swallowed,teardown,scan,offline_check,
+HUP to group in smoke (swallow0)         rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-swallowed,teardown,
+HUP to stage in smoke (swallow0)         rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-swallowed,teardown,scan,offline_check,
+## during scan (stage stub mode: scanlike)
+INT to group in scan                     rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-cleanup(130),
+INT to verify in scan                    rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+INT to stage in scan                     rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-cleanup(130),
+TERM to group in scan                    rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-cleanup(143),
+TERM to verify in scan                   rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+TERM to stage in scan                    rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-cleanup(143),
+HUP to group in scan                     rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-cleanup(0),
+HUP to verify in scan                    rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+HUP to stage in scan                     rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-cleanup(0),
+QUIT to group in scan                    rc=131 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 131) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-cleanup(131),
+QUIT to verify in scan                   rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),offline_check,
+QUIT to stage in scan                    rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),offline_check,
+USR1 to group in scan                    rc=138 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (stopped before the last stage; no PASS) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-cleanup(0),
+USR1 to verify in scan                   rc=138 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[stub scan: done]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+USR1 to stage in scan                    rc=138 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 138) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-cleanup(0),
+KILL to group in scan                    rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[stub teardown: done]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,
+KILL to verify in scan                   rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[stub scan: done]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+KILL to stage in scan                    rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 137) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,
+## during scan, hostile stage that swallows the signal and exits 0
+INT to group in scan (swallow0)          rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-swallowed,
+INT to stage in scan (swallow0)          rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-swallowed,offline_check,
+TERM to group in scan (swallow0)         rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-swallowed,
+TERM to stage in scan (swallow0)         rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-swallowed,offline_check,
+HUP to group in scan (swallow0)          rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-swallowed,
+HUP to stage in scan (swallow0)          rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-swallowed,offline_check,
+## during offline_check (stage stub mode: scanlike)
+INT to group in offline_check            rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-cleanup(130),
+INT to verify in offline_check           rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-finished-sleep,offline_check-cleanup(0),
+INT to stage in offline_check            rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-cleanup(130),
+TERM to group in offline_check           rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-cleanup(143),
+TERM to verify in offline_check          rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-finished-sleep,offline_check-cleanup(0),
+TERM to stage in offline_check           rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-cleanup(143),
+HUP to group in offline_check            rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-cleanup(0),
+HUP to verify in offline_check           rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-finished-sleep,offline_check-cleanup(0),
+HUP to stage in offline_check            rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-cleanup(0),
+QUIT to group in offline_check           rc=131 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 131) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-cleanup(131),
+QUIT to verify in offline_check          rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-finished-sleep,offline_check-cleanup(0),
+QUIT to stage in offline_check           rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-finished-sleep,offline_check-cleanup(0),
+USR1 to group in offline_check           rc=138 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (stopped before the last stage; no PASS) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-cleanup(0),
+USR1 to verify in offline_check          rc=138 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[stub offline_check: done]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-finished-sleep,offline_check-cleanup(0),
+USR1 to stage in offline_check           rc=138 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 138) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-cleanup(0),
+KILL to group in offline_check           rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[stub scan: done]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,
+KILL to verify in offline_check          rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[stub offline_check: done]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-finished-sleep,offline_check-cleanup(0),
+KILL to stage in offline_check           rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 137) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,
+## during offline_check, hostile stage that swallows the signal and exits 0
+INT to group in offline_check (swallow0) rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-swallowed,
+INT to stage in offline_check (swallow0) rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-swallowed,
+TERM to group in offline_check (swallow0) rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-swallowed,
+TERM to stage in offline_check (swallow0) rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-swallowed,
+HUP to group in offline_check (swallow0) rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-swallowed,
+HUP to stage in offline_check (swallow0) rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,offline_check-swallowed,
+## invariant violations: 0
+
+## Q1c host Git Bash (reduced; USR1 is signal 30 on MSYS, so 158)
+bash 5.3.9(1)-release
+## control
+no signal                                rc=0   outerPASS=1 anyVerifyFullPASS=1 gatesitPASS=1 inv=ok last=[== verify full: PASS (0s) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,offline_check,
+## during gates-it (reduced)
+INT to group in gates-it                 rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,teardown,
+INT to verify in gates-it                rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-finished-sleep,gates-it-rc(0),teardown,
+TERM to group in gates-it                rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,teardown,
+TERM to verify in gates-it               rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-finished-sleep,gates-it-rc(0),teardown,
+HUP to group in gates-it                 rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,teardown,
+HUP to verify in gates-it                rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-finished-sleep,gates-it-rc(0),teardown,
+USR1 to group in gates-it                rc=158 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[== verify full: FAIL (stopped before the last stage; no PASS) ==]
+      stages=build,launch,gates-it,teardown,
+USR1 to verify in gates-it               rc=158 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== gates-it: PASS ==]
+      stages=build,launch,gates-it,teardown,gates-it-finished-sleep,gates-it-rc(0),
+KILL to verify in gates-it               rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== gates-it: PASS ==]
+      stages=build,launch,gates-it,gates-it-finished-sleep,gates-it-rc(0),
+KILL to stage in gates-it                rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[== verify full: FAIL (exit 137) ==]
+      stages=build,launch,gates-it,gates-it-rc(137),teardown,
+KILL to group in gates-it                rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=0 inv=ok last=[test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok]
+      stages=build,launch,gates-it,
+## during smoke (reduced)
+INT to group in smoke                    rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-cleanup(0),teardown,
+INT to verify in smoke                   rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,
+TERM to group in smoke                   rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-cleanup(0),teardown,
+TERM to verify in smoke                  rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,
+HUP to group in smoke                    rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-cleanup(0),teardown,
+HUP to verify in smoke                   rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,
+USR1 to group in smoke                   rc=158 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (stopped before the last stage; no PASS) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-cleanup(0),teardown,
+USR1 to verify in smoke                  rc=158 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[stub smoke: done]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,smoke-finished-sleep,smoke-cleanup(0),
+KILL to verify in smoke                  rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[stub smoke: done]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,smoke-finished-sleep,smoke-cleanup(0),
+KILL to stage in smoke                   rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 137) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,
+KILL to group in smoke                   rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== gates-it: PASS ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,
+## during scan (reduced)
+INT to group in scan                     rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-cleanup(130),
+INT to verify in scan                    rc=130 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+TERM to group in scan                    rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-cleanup(143),
+TERM to verify in scan                   rc=143 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+HUP to group in scan                     rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-cleanup(0),
+HUP to verify in scan                    rc=129 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+USR1 to group in scan                    rc=158 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (stopped before the last stage; no PASS) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-cleanup(0),
+USR1 to verify in scan                   rc=158 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[stub scan: done]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+KILL to verify in scan                   rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[stub scan: done]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+KILL to stage in scan                    rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[== verify full: FAIL (exit 137) ==]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,
+KILL to group in scan                    rc=137 outerPASS=0 anyVerifyFullPASS=0 gatesitPASS=1 inv=ok last=[stub teardown: done]
+      stages=build,launch,gates-it,gates-it-rc(0),smoke,teardown,scan,
+## invariant violations: 0
+
+################ Q2. L-4: real scripts/offline_check.sh copy (host half); fake docker + df on PATH; bundle/net_isolated/teardown stubbed
+Fake docker:
+    #!/usr/bin/env bash
+    # fake docker for offline_check.sh host half (security-u5 L-4 probe)
+    log() { printf '%s,' "$1" >> "$OC_LOG"; }
+    case "$*" in
+      *"{{.Architecture}}"*) echo x86_64 ;;
+      *"{{.DockerRootDir}}"*) echo /nonexistent-docker-root ;;
+      *"compose version --short"*) echo 2.29.7 ;;
+      *"up -d --wait dind"*) log dind-up ;;
+      *"run --rm offline-client"*)
+        log client
+        if [ "${HANG:-}" = client ]; then
+          [ "${STUB_MODE:-}" = swallow0 ] && trap 'log client-swallowed; exit 0' INT TERM HUP QUIT USR1
+          echo $$ > "$PIDDIR/stage.pid"; sleep 3; log client-finished-sleep
+        fi
+        echo "fake offline-client: ok" ;;
+      *) log "docker-other" ;;
+    esac
+    exit 0
+Fake df:
+    #!/usr/bin/env bash
+    echo "Filesystem 1024-blocks Used Available Capacity Mounted on"
+    echo "fake 900000000 1000 899999000 1% /"
+scripts/bundle.sh stub:
+    #!/usr/bin/env bash
+    set -eu
+    printf 'bundle,' >> "$OC_LOG"
+    out=$2; mkdir -p "$out"; echo x > "$out/f"; echo y > "$out.manifest.sha256"
+    if [ "${HANG:-}" = bundle ]; then echo $$ > "$PIDDIR/stage.pid"; sleep 3; printf 'bundle-finished-sleep,' >> "$OC_LOG"; fi
+scripts/net_isolated.sh stub:
+    #!/usr/bin/env bash
+    printf 'net_isolated,' >> "$OC_LOG"
+scripts/teardown.sh stub:
+    #!/usr/bin/env bash
+    printf 'teardown,' >> "$OC_LOG"
+    if [ "${HANG:-}" = teardown ]; then echo $$ > "$PIDDIR/stage.pid"; sleep 3; printf 'teardown-finished-sleep,' >> "$OC_LOG"; fi
+Driver:
+    #!/usr/bin/env bash
+    # L-4 re-check driver (security-u5): real scripts/offline_check.sh copy, host half, fake docker/df, stub bundle/net/teardown.
+    set -u
+    set -m
+    SRC=${1:?} WORK=${2:?}
+    T=$(mktemp -d); export OC_LOG=$T/log PIDDIR=$T/pids
+    echo "bash $BASH_VERSION"
+    viol=0
+    run_case() { # label hang sig target mode
+      local label=$1 hang=$2 sig=$3 target=$4 mode=$5
+      rm -rf -- "${WORK:?}"; cp -r "$SRC/oc/tree" "$WORK"; chmod +x "$WORK"/scripts/*.sh
+      : > "$OC_LOG"; rm -rf -- "${PIDDIR:?}"; mkdir -p "$PIDDIR"
+      HANG=$hang STUB_MODE=$mode PATH="$SRC/oc/stub:$PATH" bash "$WORK/scripts/offline_check.sh" > "$T/out" 2>&1 &
+      local pid=$!
+      if [ "$sig" != none ]; then
+        local i; for i in $(seq 200); do [ -s "$PIDDIR/stage.pid" ] && break; sleep 0.05; done
+        local spid; spid=$(cat "$PIDDIR/stage.pid" 2>/dev/null || echo none)
+        sleep 0.3
+        case $target in
+          group)  kill -s "$sig" -- "-$pid" ;;
+          script) kill -s "$sig" "$pid" ;;
+          stage)  kill -s "$sig" "$spid" ;;
+        esac
+      fi
+      wait "$pid" 2>/dev/null; local rc=$?
+      sleep 3.5
+      local pass td left inv=ok
+      pass=$(grep -c 'offline_check: PASS' "$T/out")
+      td=$(grep -o 'teardown,' "$OC_LOG" | wc -l | tr -d ' ')
+      left=$(ls -A "$WORK/dist" 2>/dev/null | tr '\n' ' ')
+      if [ "$pass" -gt 0 ]; then { [ "$rc" -eq 0 ] && grep -q 'client' "$OC_LOG" && [ "$pass" -eq 1 ]; } || inv=VIOLATION; fi
+      if [ "$rc" -eq 0 ] && [ "$pass" -ne 1 ]; then inv=VIOLATION; fi
+      if [ "$hang" = teardown ] && [ "$sig" != none ]; then [ "$pass" -eq 0 ] || inv=VIOLATION; fi
+      [ "$hang" = teardown ] || case $sig in INT|TERM|HUP) [ "$target" = stage ] || { [ "$pass" -eq 0 ] && [ "$td" -eq 1 ] && [ -z "$left" ]; } || inv=VIOLATION ;; esac
+      [ "$inv" = ok ] || viol=$((viol+1))
+      printf '%-38s rc=%-3s PASSlines=%s teardowns=%s dist_left=[%s] inv=%s\n      log=%s\n      tail=[%s]\n' \
+        "$label" "$rc" "$pass" "$td" "$left" "$inv" "$(cat "$OC_LOG")" "$(grep -v '^$' "$T/out" | grep -v '^Filesystem\|^fake ' | tail -n 2 | tr '\n' '|')"
+    }
+    echo "## control"; run_case "no signal" none none none plain
+    for hang in client bundle; do
+      echo "## during $hang"
+      for sig in INT TERM HUP USR1 QUIT KILL; do
+        for target in group script stage; do run_case "$sig to $target in $hang" "$hang" "$sig" "$target" plain; done
+      done
+    done
+    echo "## during client, stage swallows the signal and exits 0"
+    for sig in INT TERM HUP; do
+      run_case "$sig to group in client (swallow0)" client "$sig" group swallow0
+      run_case "$sig to stage in client (swallow0)" client "$sig" stage swallow0
+    done
+    echo "## during the trap's teardown (rc 0 run or not; teardown stub hangs)"
+    for sig in INT TERM HUP USR1; do run_case "$sig to group in teardown" teardown "$sig" group plain; run_case "$sig to script in teardown" teardown "$sig" script plain; done
+    echo "## invariant violations: $viol"
+    rm -rf -- "${T:?}" "${WORK:?}"
+Note on the one inv=VIOLATION row (INT to script in teardown): the driver's teardown-phase rule (no PASS on any signal) was stricter than the requirement. The run had finished (finished=1, client ok) and teardown completed; INT to the script alone while it waits on a foreground child is absorbed by bash (wait-and-cooperative-exit) once cleanup has reset the trap. Truthful PASS; see security-u5.md I-2.
+
+## Q2a gates image
+bash 5.2.15(1)-release
+## control
+no signal                              rc=0   PASSlines=1 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[offline: df after teardown|== offline_check: PASS (0s) ==|]
+## during client
+INT to group in client                 rc=130 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+INT to script in client                rc=130 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-finished-sleep,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+INT to stage in client                 rc=0   PASSlines=1 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-finished-sleep,teardown,
+      tail=[offline: df after teardown|== offline_check: PASS (3s) ==|]
+TERM to group in client                rc=143 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+TERM to script in client               rc=143 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-finished-sleep,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+TERM to stage in client                rc=1   PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+HUP to group in client                 rc=129 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+HUP to script in client                rc=129 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-finished-sleep,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+HUP to stage in client                 rc=1   PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+USR1 to group in client                rc=138 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[/tmp/w/scripts/offline_check.sh: line 147:   556 User defined signal 1   docker compose --env-file .env.example --profile offline "$@"|offline: df after teardown|]
+USR1 to script in client               rc=138 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,client-finished-sleep,
+      tail=[offline: df before teardown|offline: df after teardown|]
+USR1 to stage in client                rc=1   PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+QUIT to group in client                rc=0   PASSlines=1 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-finished-sleep,teardown,
+      tail=[offline: df after teardown|== offline_check: PASS (1s) ==|]
+QUIT to script in client               rc=0   PASSlines=1 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-finished-sleep,teardown,
+      tail=[offline: df after teardown|== offline_check: PASS (3s) ==|]
+QUIT to stage in client                rc=0   PASSlines=1 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-finished-sleep,teardown,
+      tail=[offline: df after teardown|== offline_check: PASS (3s) ==|]
+KILL to group in client                rc=137 PASSlines=0 teardowns=0 dist_left=[ke-offline-1138616108-amd64 ke-offline-1138616108-amd64.manifest.sha256 ] inv=ok
+      log=bundle,dind-up,net_isolated,client,
+      tail=[offline: df after dind up|offline: running the offline client|]
+KILL to script in client               rc=137 PASSlines=0 teardowns=0 dist_left=[ke-offline-35030385-amd64 ke-offline-35030385-amd64.manifest.sha256 ] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-finished-sleep,
+      tail=[offline: df after dind up|offline: running the offline client|]
+KILL to stage in client                rc=1   PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+## during bundle
+INT to group in bundle                 rc=130 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+INT to script in bundle                rc=130 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,bundle-finished-sleep,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+INT to stage in bundle                 rc=0   PASSlines=1 teardowns=1 dist_left=[] inv=ok
+      log=bundle,bundle-finished-sleep,dind-up,net_isolated,client,teardown,
+      tail=[offline: df after teardown|== offline_check: PASS (3s) ==|]
+TERM to group in bundle                rc=143 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+TERM to script in bundle               rc=143 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,bundle-finished-sleep,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+TERM to stage in bundle                rc=1   PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+HUP to group in bundle                 rc=129 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+HUP to script in bundle                rc=129 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,bundle-finished-sleep,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+HUP to stage in bundle                 rc=1   PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+USR1 to group in bundle                rc=138 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,teardown,
+      tail=[/tmp/w/scripts/offline_check.sh: line 147:  1442 User defined signal 1   bash scripts/bundle.sh --out "$bundle_rel"|offline: df after teardown|]
+USR1 to script in bundle               rc=138 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,teardown,bundle-finished-sleep,
+      tail=[offline: df before teardown|offline: df after teardown|]
+USR1 to stage in bundle                rc=1   PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+QUIT to group in bundle                rc=1   PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+QUIT to script in bundle               rc=0   PASSlines=1 teardowns=1 dist_left=[] inv=ok
+      log=bundle,bundle-finished-sleep,dind-up,net_isolated,client,teardown,
+      tail=[offline: df after teardown|== offline_check: PASS (3s) ==|]
+QUIT to stage in bundle                rc=0   PASSlines=1 teardowns=1 dist_left=[] inv=ok
+      log=bundle,bundle-finished-sleep,dind-up,net_isolated,client,teardown,
+      tail=[offline: df after teardown|== offline_check: PASS (3s) ==|]
+KILL to group in bundle                rc=137 PASSlines=0 teardowns=0 dist_left=[ke-offline-1745720414-amd64 ke-offline-1745720414-amd64.manifest.sha256 ] inv=ok
+      log=bundle,
+      tail=[offline: df start|offline: the daemon's DockerRootDir (/nonexistent-docker-root) is not on this host (Docker Desktop keeps it in a VM): not measurable, only dist/ is checked|]
+KILL to script in bundle               rc=137 PASSlines=0 teardowns=0 dist_left=[ke-offline-209853836-amd64 ke-offline-209853836-amd64.manifest.sha256 ] inv=ok
+      log=bundle,bundle-finished-sleep,
+      tail=[offline: df start|offline: the daemon's DockerRootDir (/nonexistent-docker-root) is not on this host (Docker Desktop keeps it in a VM): not measurable, only dist/ is checked|]
+KILL to stage in bundle                rc=1   PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+## during client, stage swallows the signal and exits 0
+INT to group in client (swallow0)      rc=130 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-swallowed,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+INT to stage in client (swallow0)      rc=0   PASSlines=1 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-swallowed,teardown,
+      tail=[offline: df after teardown|== offline_check: PASS (3s) ==|]
+TERM to group in client (swallow0)     rc=143 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-swallowed,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+TERM to stage in client (swallow0)     rc=0   PASSlines=1 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-swallowed,teardown,
+      tail=[offline: df after teardown|== offline_check: PASS (3s) ==|]
+HUP to group in client (swallow0)      rc=129 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-swallowed,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+HUP to stage in client (swallow0)      rc=0   PASSlines=1 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-swallowed,teardown,
+      tail=[offline: df after teardown|== offline_check: PASS (3s) ==|]
+## during the trap's teardown (rc 0 run or not; teardown stub hangs)
+INT to group in teardown               rc=130 PASSlines=0 teardowns=1 dist_left=[ke-offline-1198716877-amd64 ke-offline-1198716877-amd64.manifest.sha256 ] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[offline: df after client run|offline: df before teardown|]
+INT to script in teardown              rc=0   PASSlines=1 teardowns=1 dist_left=[] inv=VIOLATION
+      log=bundle,dind-up,net_isolated,client,teardown,teardown-finished-sleep,
+      tail=[offline: df after teardown|== offline_check: PASS (3s) ==|]
+TERM to group in teardown              rc=143 PASSlines=0 teardowns=1 dist_left=[ke-offline-321609498-amd64 ke-offline-321609498-amd64.manifest.sha256 ] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[offline: df after client run|offline: df before teardown|]
+TERM to script in teardown             rc=143 PASSlines=0 teardowns=1 dist_left=[ke-offline-549424760-amd64 ke-offline-549424760-amd64.manifest.sha256 ] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,teardown-finished-sleep,
+      tail=[offline: df after client run|offline: df before teardown|]
+HUP to group in teardown               rc=129 PASSlines=0 teardowns=1 dist_left=[ke-offline-1933828319-amd64 ke-offline-1933828319-amd64.manifest.sha256 ] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[offline: df after client run|offline: df before teardown|]
+HUP to script in teardown              rc=129 PASSlines=0 teardowns=1 dist_left=[ke-offline-2035031763-amd64 ke-offline-2035031763-amd64.manifest.sha256 ] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,teardown-finished-sleep,
+      tail=[offline: df after client run|offline: df before teardown|]
+USR1 to group in teardown              rc=138 PASSlines=0 teardowns=1 dist_left=[ke-offline-278801480-amd64 ke-offline-278801480-amd64.manifest.sha256 ] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[offline: df after client run|offline: df before teardown|]
+USR1 to script in teardown             rc=138 PASSlines=0 teardowns=1 dist_left=[ke-offline-693120416-amd64 ke-offline-693120416-amd64.manifest.sha256 ] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,teardown-finished-sleep,
+      tail=[offline: df after client run|offline: df before teardown|]
+## invariant violations: 1
+
+## Q2b ubuntu:20.04 (columns identical to Q2a except random project names)
+bash 5.0.17(1)-release
+## control
+no signal                              rc=0   PASSlines=1 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[offline: df after teardown|== offline_check: PASS (0s) ==|]
+## during client
+INT to group in client                 rc=130 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+INT to script in client                rc=130 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-finished-sleep,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+INT to stage in client                 rc=0   PASSlines=1 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-finished-sleep,teardown,
+      tail=[offline: df after teardown|== offline_check: PASS (3s) ==|]
+TERM to group in client                rc=143 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+TERM to script in client               rc=143 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-finished-sleep,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+TERM to stage in client                rc=1   PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+HUP to group in client                 rc=129 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+HUP to script in client                rc=129 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-finished-sleep,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+HUP to stage in client                 rc=1   PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+USR1 to group in client                rc=138 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[/tmp/w/scripts/offline_check.sh: line 147:   557 User defined signal 1   docker compose --env-file .env.example --profile offline "$@"|offline: df after teardown|]
+USR1 to script in client               rc=138 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,client-finished-sleep,
+      tail=[offline: df before teardown|offline: df after teardown|]
+USR1 to stage in client                rc=1   PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+QUIT to group in client                rc=0   PASSlines=1 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-finished-sleep,teardown,
+      tail=[offline: df after teardown|== offline_check: PASS (1s) ==|]
+QUIT to script in client               rc=0   PASSlines=1 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-finished-sleep,teardown,
+      tail=[offline: df after teardown|== offline_check: PASS (3s) ==|]
+QUIT to stage in client                rc=0   PASSlines=1 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-finished-sleep,teardown,
+      tail=[offline: df after teardown|== offline_check: PASS (3s) ==|]
+KILL to group in client                rc=137 PASSlines=0 teardowns=0 dist_left=[ke-offline-3197427710-amd64 ke-offline-3197427710-amd64.manifest.sha256 ] inv=ok
+      log=bundle,dind-up,net_isolated,client,
+      tail=[offline: df after dind up|offline: running the offline client|]
+KILL to script in client               rc=137 PASSlines=0 teardowns=0 dist_left=[ke-offline-1013629491-amd64 ke-offline-1013629491-amd64.manifest.sha256 ] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-finished-sleep,
+      tail=[offline: df after dind up|offline: running the offline client|]
+KILL to stage in client                rc=1   PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+## during bundle
+INT to group in bundle                 rc=130 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+INT to script in bundle                rc=130 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,bundle-finished-sleep,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+INT to stage in bundle                 rc=0   PASSlines=1 teardowns=1 dist_left=[] inv=ok
+      log=bundle,bundle-finished-sleep,dind-up,net_isolated,client,teardown,
+      tail=[offline: df after teardown|== offline_check: PASS (3s) ==|]
+TERM to group in bundle                rc=143 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+TERM to script in bundle               rc=143 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,bundle-finished-sleep,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+TERM to stage in bundle                rc=1   PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+HUP to group in bundle                 rc=129 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+HUP to script in bundle                rc=129 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,bundle-finished-sleep,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+HUP to stage in bundle                 rc=1   PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+USR1 to group in bundle                rc=138 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,teardown,
+      tail=[/tmp/w/scripts/offline_check.sh: line 147:  1445 User defined signal 1   bash scripts/bundle.sh --out "$bundle_rel"|offline: df after teardown|]
+USR1 to script in bundle               rc=138 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,teardown,bundle-finished-sleep,
+      tail=[offline: df before teardown|offline: df after teardown|]
+USR1 to stage in bundle                rc=1   PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+QUIT to group in bundle                rc=1   PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+QUIT to script in bundle               rc=0   PASSlines=1 teardowns=1 dist_left=[] inv=ok
+      log=bundle,bundle-finished-sleep,dind-up,net_isolated,client,teardown,
+      tail=[offline: df after teardown|== offline_check: PASS (3s) ==|]
+QUIT to stage in bundle                rc=0   PASSlines=1 teardowns=1 dist_left=[] inv=ok
+      log=bundle,bundle-finished-sleep,dind-up,net_isolated,client,teardown,
+      tail=[offline: df after teardown|== offline_check: PASS (3s) ==|]
+KILL to group in bundle                rc=137 PASSlines=0 teardowns=0 dist_left=[ke-offline-265485926-amd64 ke-offline-265485926-amd64.manifest.sha256 ] inv=ok
+      log=bundle,
+      tail=[offline: df start|offline: the daemon's DockerRootDir (/nonexistent-docker-root) is not on this host (Docker Desktop keeps it in a VM): not measurable, only dist/ is checked|]
+KILL to script in bundle               rc=137 PASSlines=0 teardowns=0 dist_left=[ke-offline-1225622933-amd64 ke-offline-1225622933-amd64.manifest.sha256 ] inv=ok
+      log=bundle,bundle-finished-sleep,
+      tail=[offline: df start|offline: the daemon's DockerRootDir (/nonexistent-docker-root) is not on this host (Docker Desktop keeps it in a VM): not measurable, only dist/ is checked|]
+KILL to stage in bundle                rc=1   PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+## during client, stage swallows the signal and exits 0
+INT to group in client (swallow0)      rc=130 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-swallowed,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+INT to stage in client (swallow0)      rc=0   PASSlines=1 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-swallowed,teardown,
+      tail=[offline: df after teardown|== offline_check: PASS (3s) ==|]
+TERM to group in client (swallow0)     rc=143 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-swallowed,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+TERM to stage in client (swallow0)     rc=0   PASSlines=1 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-swallowed,teardown,
+      tail=[offline: df after teardown|== offline_check: PASS (3s) ==|]
+HUP to group in client (swallow0)      rc=129 PASSlines=0 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-swallowed,teardown,
+      tail=[offline: df before teardown|offline: df after teardown|]
+HUP to stage in client (swallow0)      rc=0   PASSlines=1 teardowns=1 dist_left=[] inv=ok
+      log=bundle,dind-up,net_isolated,client,client-swallowed,teardown,
+      tail=[offline: df after teardown|== offline_check: PASS (3s) ==|]
+## during the trap's teardown (rc 0 run or not; teardown stub hangs)
+INT to group in teardown               rc=130 PASSlines=0 teardowns=1 dist_left=[ke-offline-2981010502-amd64 ke-offline-2981010502-amd64.manifest.sha256 ] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[offline: df after client run|offline: df before teardown|]
+INT to script in teardown              rc=0   PASSlines=1 teardowns=1 dist_left=[] inv=VIOLATION
+      log=bundle,dind-up,net_isolated,client,teardown,teardown-finished-sleep,
+      tail=[offline: df after teardown|== offline_check: PASS (4s) ==|]
+TERM to group in teardown              rc=143 PASSlines=0 teardowns=1 dist_left=[ke-offline-22426524-amd64 ke-offline-22426524-amd64.manifest.sha256 ] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[offline: df after client run|offline: df before teardown|]
+TERM to script in teardown             rc=143 PASSlines=0 teardowns=1 dist_left=[ke-offline-2580523957-amd64 ke-offline-2580523957-amd64.manifest.sha256 ] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,teardown-finished-sleep,
+      tail=[offline: df after client run|offline: df before teardown|]
+HUP to group in teardown               rc=129 PASSlines=0 teardowns=1 dist_left=[ke-offline-2096024095-amd64 ke-offline-2096024095-amd64.manifest.sha256 ] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[offline: df after client run|offline: df before teardown|]
+HUP to script in teardown              rc=129 PASSlines=0 teardowns=1 dist_left=[ke-offline-274429289-amd64 ke-offline-274429289-amd64.manifest.sha256 ] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,teardown-finished-sleep,
+      tail=[offline: df after client run|offline: df before teardown|]
+USR1 to group in teardown              rc=138 PASSlines=0 teardowns=1 dist_left=[ke-offline-2568625079-amd64 ke-offline-2568625079-amd64.manifest.sha256 ] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,
+      tail=[offline: df after client run|offline: df before teardown|]
+USR1 to script in teardown             rc=138 PASSlines=0 teardowns=1 dist_left=[ke-offline-238408329-amd64 ke-offline-238408329-amd64.manifest.sha256 ] inv=ok
+      log=bundle,dind-up,net_isolated,client,teardown,teardown-finished-sleep,
+      tail=[offline: df after client run|offline: df before teardown|]
+## invariant violations: 1
+
+################ Q3. Fake gates-it sandbox (tests/test_stack_scripts.py DOCKER_STUB)
+Q3a: VerifyHostHalfTest + VerifyCallsLintTest run as ROOT (a write anywhere would succeed), --network none, no docker socket, repo :ro; then find / -xdev -newer marker.
+Script:
+    #!/usr/bin/env bash
+    # security-u5: only the tests that drive the fake gates-it (VerifyHostHalfTest / VerifyCallsLintTest), as root, --network none, repo ro.
+    set -u
+    export PYTHONDONTWRITEBYTECODE=1
+    touch /marker; sleep 1.1
+    cd /work
+    /opt/venv/bin/python -B -m unittest tests.test_stack_scripts.VerifyHostHalfTest tests.test_stack_scripts.VerifyCallsLintTest 2>&1 | tail -n 4
+    echo "## files/dirs changed after the marker (outside /proc /sys /dev), incl. /tmp:"
+    find / -xdev \( -path /proc -o -path /sys -o -path /dev \) -prune -o -newer /marker -print 2>/dev/null | grep -v '^/marker$' | sort
+    echo "## /tmp now:"; ls -A /tmp
+Output:
+    ----------------------------------------------------------------------
+    Ran 29 tests in 6.308s
+    
+    OK
+    ## files/dirs changed after the marker (outside /proc /sys /dev), incl. /tmp:
+    /tmp
+    ## /tmp now:
+    uv-11f10ca80ebbd2bb.lock
+Q3b: the 5 unit-5 tests incl. the L-4 offline test, same setup. The /opt/venv pyc is written by the offline test's Python fake docker (#!sys.executable, clean env), not by the fake gates-it (Q3a has none).
+Script:
+    #!/usr/bin/env bash
+    # security-u5: run the unit-5 tests that use the fake gates-it, as root (so a write anywhere would succeed),
+    # --network none, repo mounted read-only; then list every file changed outside /proc,/sys,/dev.
+    set -u
+    export PYTHONDONTWRITEBYTECODE=1
+    touch /marker; sleep 1.1
+    cd /work
+    /opt/venv/bin/python -m unittest -v \
+      tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_only_the_outer_line_says_pass \
+      tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_untrapped_signal_says_stopped_before_the_last_stage \
+      tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_signal_during_smoke_exits_with_its_status_and_no_pass \
+      tests.test_stack_scripts.VerifyCallsLintTest.test_gates_it_half_prints_its_own_success_line \
+      tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_signal_exits_with_its_status_and_no_pass 2>&1 | tail -n 12
+    echo "## files/dirs changed after the marker (outside /proc /sys /dev), incl. /tmp:"
+    find / -xdev \( -path /proc -o -path /sys -o -path /dev \) -prune -o -newer /marker -print 2>/dev/null | grep -v '^/marker$' | sort
+    echo "## /tmp now:"; ls -A /tmp
+Output:
+    Review r1-n3 (review-u4-r1.md): USR1, a fatal signal verify.sh does ... ok
+    test_verify_full_signal_during_smoke_exits_with_its_status_and_no_pass (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_signal_during_smoke_exits_with_its_status_and_no_pass)
+    Security M-1 (predates U4; security-u4.md P2 run B, last row): INT, ... ok
+    test_gates_it_half_prints_its_own_success_line (tests.test_stack_scripts.VerifyCallsLintTest.test_gates_it_half_prints_its_own_success_line)
+    Security L-3 (security-u4-r1.md; orchestrator unit-5 ruling ... ok
+    test_offline_check_signal_exits_with_its_status_and_no_pass (tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_signal_exits_with_its_status_and_no_pass)
+    Security L-4 (docs/evidence/platform-supply-chain/security-u4-r1.md; ... ok
+    
+    ----------------------------------------------------------------------
+    Ran 5 tests in 4.272s
+    
+    OK
+    ## files/dirs changed after the marker (outside /proc /sys /dev), incl. /tmp:
+    /opt/venv/lib/python3.12/site-packages
+    /opt/venv/lib/python3.12/site-packages/__pycache__
+    /opt/venv/lib/python3.12/site-packages/__pycache__/_virtualenv.cpython-312.pyc
+    /tmp
+    ## /tmp now:
+    uv-11f10ca80ebbd2bb.lock
+Q3c: DOCKER_STUB extracted from the test file by ast, run as root with /tmp read-only (mktemp fails), / writable.
+Script:
+    #!/usr/bin/env bash
+    # security-u5: what the fake gates-it does when mktemp -d fails (/tmp read-only), run as root on a writable /.
+    set -u
+    command -v docker || echo "docker: not in the gates image"
+    mkdir -p /case/scripts /case/bin; cp /work/scripts/verify.sh /case/scripts/
+    /opt/venv/bin/python -I -c 'import ast,sys; t=open("/work/tests/test_stack_scripts.py").read(); m=ast.parse(t)
+    for n in m.body:
+        if isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "")=="DOCKER_STUB": open("/case/bin/docker","w").write(ast.literal_eval(n.value))'
+    chmod +x /case/bin/docker; cd /case
+    STAGE_LOG=/case/log PATH=/case/bin:$PATH docker compose --profile gates-it run --rm gates-it scripts/verify.sh full; echo "stub rc=$?"
+    echo "## /scripts after:"; ls -la /scripts 2>&1
+Output:
+    /usr/local/bin/docker
+    mktemp: failed to create directory via template ‘/tmp/tmp.XXXXXXXXXX’: Read-only file system
+    == verify full: no-git+dirty ==
+    fake gates-it lint: ok
+    mktemp: failed to create file via template ‘/tmp/tmp.XXXXXXXXXX’: Read-only file system
+    stub rc=1
+    ## /scripts after:
+    total 28
+    drwxr-xr-x 2 root root 4096 Oct 22 01:51 .
+    drwxr-xr-x 1 root root 4096 Oct 22 01:51 ..
+    -rwxr-xr-x 1 root root   50 Oct 22 01:51 lint.sh
+    -rwxr-xr-x 1 root root   51 Oct 22 01:51 smoke.sh
+    -rwxr-xr-x 1 root root  178 Oct 22 01:51 test.sh
+    -rwxr-xr-x 1 root root 8007 Oct 22 01:51 verify.sh
+
+################ Q4. Evidence and diff sweep
+Files: u5-green-verify-fast.txt, u5-green-verify-full.txt, u5-red-mutants.py.txt, u5-red-mutants.txt, u5-red-verify-fast.txt (5168 lines).
+profile paths (X:\Users, /c/Users, /home/, AppData): none. SIDs (S-1-5-...): none. Keys/tokens (AKIA, gh*_, github_pat_, sk-, xox, PRIVATE KEY, JWT, AIza, glpat-): none.
+Secret assignments, URLs with credentials, e-mail addresses: none. Addresses: 127.0.0.1, docker bridge 172.18.0.2 / 192.168.160.2 only. Model keys unset (u5-green-verify-full.txt:1; model tests skip :1471-1472).
+u5-green-verify-full.txt: '== gates-it: PASS ==' at :1517, the only 'verify full: PASS' line is the last one, :2148 '== verify full: PASS (632s) =='. u5-green-verify-fast.txt:1276 '== verify fast: PASS =='.
+Diff added lines vs e6e1d28 -- scripts tests (same patterns + password|secret|token|Users|S-1-5-): none.

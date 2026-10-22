@@ -1,0 +1,108 @@
+"""Scratch only (tester, platform-supply-chain unit 2 RED, path update): the
+ignore file is docker/scan-ignore.yaml (orchestrator ruling, option (b)).
+Re-runs the mutants that involve the ignore path against a green copy with
+bundle.sh unchanged. Runs inside the gates image with the scratch copy at
+/work; each mutant is a fresh copy under /tmp."""
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+SRC = Path("/work")
+BASE = Path("/tmp/psc-base")
+MUT = Path("/tmp/psc-mut")
+NON = "tests.test_image_scan.ScanComposeTest.test_compose_scan_has_no_network"
+IGN = "tests.test_image_scan.ScanIgnoreTest.test_scan_ignores_are_justified"
+BUN = "tests.test_image_scan.ScanBundleTest.test_bundle_has_no_scanner_or_db"
+BIND = "tests.test_stack_compose.NetworksTest.test_stack_services_have_no_bind_mounts"
+CFG_TRACKED = "tests.test_offline_bundle.BundleScriptTest.test_bundle_ships_tracked_config_only"
+CONTENTS = "tests.test_offline_bundle.BundleNoticesTest.test_bundle_contents"
+
+C = "docker-compose.scan.yml"
+B = "scripts/bundle.sh"
+I = "docker/scan-ignore.yaml"
+OLD = "config/scan-ignore.yaml"
+IGN_BIND = """      - type: bind
+        source: ./docker/scan-ignore.yaml
+        target: /cfg/scan-ignore.yaml
+        read_only: true"""
+CP = 'cp -- docker-compose.yml .env.example "$app/"'
+LS = "done < <(git ls-files -z -- config)"
+
+# (tests, edits); an edit is (path, old, new): old None + new None deletes,
+# old None + new text creates.
+MUTANTS = {
+    # PSC-5 on the new path
+    "i_expired": ([IGN], [(I, "ignore: []\n", "ignore:\n  - vulnerability: CVE-2024-12345\n    reason: x\n    until: 2026-01-01\n")]),
+    "i_too_far": ([IGN], [(I, "ignore: []\n", "ignore:\n  - vulnerability: CVE-2024-12345\n    reason: x\n    until: 2099-01-01\n")]),
+    "i_extra_top_key": ([IGN], [(I, "ignore: []\n", "ignore: []\nexclude: ['**/*.so']\n")]),
+    "i_empty_file": ([IGN], [(I, "ignore: []\n", "")]),
+    "i_file_deleted": ([IGN], [(I, None, None)]),
+    "i_file_left_in_config": ([IGN, NON], [(I, None, None), (OLD, None, "ignore: []\n"),
+                                           (C, "./docker/scan-ignore.yaml", "./config/scan-ignore.yaml")]),
+    # D1: the read-only bind of the ignore file into `scan`
+    "c_ignore_old_source": ([NON], [(C, "./docker/scan-ignore.yaml", "./config/scan-ignore.yaml")]),
+    "c_ignore_rw": ([NON], [(C, IGN_BIND, IGN_BIND.replace("\n        read_only: true", ""))]),
+    "c_ignore_ro_false": ([NON], [(C, IGN_BIND, IGN_BIND.replace("read_only: true", "read_only: false"))]),
+    "c_ignore_whole_docker_dir": ([NON], [(C, IGN_BIND, IGN_BIND.replace("./docker/scan-ignore.yaml", "./docker")
+                                           .replace("target: /cfg/scan-ignore.yaml", "target: /cfg"))]),
+    "c_ignore_dir_at_file_target": ([NON], [(C, "./docker/scan-ignore.yaml", "./docker")]),
+    "c_ignore_short_syntax_rw": ([NON], [(C, IGN_BIND, "      - ./docker/scan-ignore.yaml:/cfg/scan-ignore.yaml")]),
+    "c_ignore_absolute_source": ([NON], [(C, "./docker/scan-ignore.yaml", "/etc/scan-ignore.yaml")]),
+    # PSC-8 / §2.6: bundle.sh ships the ignore file (no bundle.sh exception exists any more)
+    "b_ls_files_adds_ignore": ([BUN], [(B, LS, "done < <(git ls-files -z -- config docker/scan-ignore.yaml)")]),
+    "b_cp_ignore_file": ([BUN], [(B, CP, 'cp -- docker-compose.yml .env.example docker/scan-ignore.yaml "$app/"')]),
+    "b_cp_docker_dir": ([BUN], [(B, CP, CP + '\ncp -R -- docker "$app/docker"')]),
+    # A renamed copy (no "scan-ignore" in its name or content) is outside the
+    # PSC-8 name/content check; the existing tracked-config test catches it.
+    "b_ignore_renamed_into_config": ([CFG_TRACKED], [(B, CP, CP + '\nmkdir -p -- "$app/config"\ncp -- docker/scan-ignore.yaml "$app/config/policy.yaml"')]),
+}
+
+
+def run(root: Path, tests: list[str]) -> tuple[int, str]:
+    done = subprocess.run([sys.executable, "-m", "unittest", *tests], cwd=root, capture_output=True, text=True,
+                          timeout=900)
+    return done.returncode, done.stdout + done.stderr
+
+
+def main() -> int:
+    shutil.rmtree(BASE, True)
+    shutil.copytree(SRC, BASE, ignore=shutil.ignore_patterns(".git", ".venv", "__pycache__", "_mutants.py"))
+    base_tests = ["tests.test_image_scan", BIND, CFG_TRACKED, CONTENTS]
+    code, out = run(BASE, base_tests)
+    print(f"GREEN copy ({', '.join(t.rsplit('.', 1)[-1] for t in base_tests)}): "
+          f"{'PASS' if code == 0 else 'FAIL'} ({out.strip().splitlines()[-1]})")
+    if code != 0:
+        print(out[-4000:])
+        return 1
+    killed = 0
+    for name, (tests, edits) in MUTANTS.items():
+        shutil.rmtree(MUT, True)
+        shutil.copytree(BASE, MUT)
+        for rel, old, new in edits:
+            path = MUT / rel
+            if old is None:
+                if new is None:
+                    path.unlink()
+                else:
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text(new, encoding="utf-8", newline="\n")
+                continue
+            text = path.read_text(encoding="utf-8")
+            assert old in text, f"{name}: anchor missing in {rel}: {old!r}"
+            path.write_text(text.replace(old, new, 1), encoding="utf-8", newline="\n")
+        code, out = run(MUT, tests)
+        reason = ""
+        for line in out.splitlines():
+            if line.startswith("AssertionError"):
+                reason = line[:150]
+                break
+        verdict = "KILLED" if code != 0 else "SURVIVED"
+        killed += code != 0
+        print(f"{verdict:8} {name:30} by {', '.join(t.rsplit('.', 1)[1] for t in tests)}  {reason}", flush=True)
+    print(f"{killed}/{len(MUTANTS)} mutants killed")
+    return 0 if killed == len(MUTANTS) else 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

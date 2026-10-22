@@ -730,6 +730,57 @@ class OfflineCheckScriptTest(_OfflineBase):
                 self.assertEqual(self._bundle_dirs(repo), [])
                 shutil.rmtree(repo, True)
 
+    def test_offline_check_signal_exits_with_its_status_and_no_pass(self):
+        """Security L-4 (docs/evidence/platform-supply-chain/security-u4-r1.md;
+        orchestrator unit-5 ruling 2026-10-22): INT, TERM or HUP to the process
+        group during the client run make the check exit 130/143/129 (a death
+        by signal n reads 128 + n, as `$?` reports it), tear its project down
+        once, remove the bundle, and never print "== offline_check: PASS".
+        Before unit 5 a HUP ran the EXIT trap with $? = 0, and the trap printed
+        PASS before the script died 129."""
+        if not hasattr(os, "killpg"):  # pragma: no cover - the gates image is Linux
+            self.skipTest("os.killpg is POSIX only")
+        for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+            with self.subTest(signal=sig.name):
+                repo = self._host_setup()
+                self.json.write_text("", encoding="utf-8")
+                hooks = json.dumps([{"on": "offline-client", "sleep": 60}])
+                env = self._base_env(FAKE_DOCKER_HOOKS=hooks,
+                                     FAKE_DOCKER_ROOT_DIR=str(self.tmp / "no-such-docker-root"))
+                proc = subprocess.Popen(["bash", "scripts/offline_check.sh"], cwd=repo, env=env,
+                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                                        start_new_session=True)
+                out = ""
+                try:
+                    deadline = time.monotonic() + 30
+                    while time.monotonic() < deadline and proc.poll() is None:
+                        if any(self._event(r) == "run client" for r in fake_docker.records(self.json)):
+                            break
+                        time.sleep(0.1)
+                    else:
+                        proc.kill()
+                        proc.communicate(timeout=30)
+                        self.fail("the check never reached `run offline-client`")
+                    time.sleep(0.3)
+                    os.killpg(proc.pid, sig)
+                    stdout, stderr = proc.communicate(timeout=30)
+                    out = stdout + stderr
+                finally:
+                    if proc.poll() is None:
+                        os.killpg(proc.pid, signal.SIGKILL)
+                        proc.wait()
+                rc = proc.returncode
+                status = 128 - rc if rc < 0 else rc
+                self.assertEqual(status, 128 + sig.value,
+                                 f"offline_check on {sig.name} must exit {128 + sig.value} (L-4):\n{out}")
+                self.assertNotIn("offline_check: PASS", out,
+                                 f"offline_check printed PASS after {sig.name} during the client run "
+                                 f"(security L-4):\n{out}")
+                self.assertEqual(self._events(fake_docker.records(self.json)).count("teardown"), 1,
+                                 f"teardown on {sig.name}")
+                self.assertEqual(self._bundle_dirs(repo), [], "the bundle directory was left behind")
+                shutil.rmtree(repo, True)
+
     def test_offline_check_fails_without_privileged_daemon(self):
         result, records, _ = self._host(FAKE_DOCKER_FAIL="dind")
         out = self._out(result)

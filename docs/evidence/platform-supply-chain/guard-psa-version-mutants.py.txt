@@ -1,0 +1,33 @@
+"""Guard-test mutants: scratch copies of docker/gates.Dockerfile only."""
+import sys
+from pathlib import Path
+from unittest import mock
+
+sys.path.insert(0, sys.argv[1])
+import tests.test_gates_docker_cli as m  # noqa: E402
+import unittest  # noqa: E402
+
+scratch = Path(sys.argv[2])
+orig = m.GATES_DOCKERFILE.read_text(encoding="utf-8")
+cases = {
+    "baseline (current Dockerfile, unchanged copy)": (None, None),
+    "comment says 1.24.0": ("PSScriptAnalyzer 1.25.0 (ARG below)", "PSScriptAnalyzer 1.24.0 (ARG below)"),
+    "unpack path says 1.24.0": (
+        'python3 -I -m zipfile -e /tmp/psa.nupkg "/usr/local/share/powershell/Modules/PSScriptAnalyzer/${PSSCRIPTANALYZER_VERSION}"',
+        'python3 -I -m zipfile -e /tmp/psa.nupkg "/usr/local/share/powershell/Modules/PSScriptAnalyzer/1.24.0"'),
+    "dir= (rm path) says 1.24.0": (
+        'dir="/usr/local/share/powershell/Modules/PSScriptAnalyzer/${PSSCRIPTANALYZER_VERSION}"',
+        'dir="/usr/local/share/powershell/Modules/PSScriptAnalyzer/1.24.0"'),
+    "ARG bumped to 1.26.0, comment left at 1.25.0": (
+        "ARG PSSCRIPTANALYZER_VERSION=1.25.0", "ARG PSSCRIPTANALYZER_VERSION=1.26.0"),
+}
+for name, (old, new) in cases.items():
+    text = orig if old is None else orig.replace(old, new)
+    assert old is None or (orig.count(old) == 1 and text != orig), name
+    scratch.write_text(text, encoding="utf-8", newline="\n")
+    with mock.patch.object(m, "GATES_DOCKERFILE", scratch):
+        suite = unittest.TestSuite([m.GatesImagePowerShellSupplyChainTest("test_gates_image_psscriptanalyzer_version_agrees")])
+        r = unittest.TextTestRunner(stream=open("nul" if sys.platform == "win32" else "/dev/null", "w")).run(suite)
+        drift = m._psa_version_drift(scratch)
+    verdict = "PASS" if r.wasSuccessful() else f"FAIL ({len(r.failures)} failure(s))"
+    print(f"{name}: {verdict}; drift={drift}")

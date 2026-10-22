@@ -1,0 +1,535 @@
+security-u4-r1 probes (2026-10-22). U4 rework round 1 re-check. Scratch copies only; no repo file modified.
+Containers: label ke.audit=security-u4-r1, --network none, scratch tree bind-mounted read-only and copied inside. 0 left after the runs.
+Images: bash:5.2@sha256:a88c98779fb40bee9c86bd172241d604e9c05ae236ba0dbf375d8cdc2670f3d0, bash:5.0@sha256:da2abb57e018d94f508c3df51651a509d048536a62993dabb0601db1a161aecc, ubuntu:20.04@sha256:8feb4d8ca5354def3d8fce243717141ce31e2c428701f6682bd2fafe15388214. Host: Git Bash 5.3.9 (MINGW64), scratch copy, docker stubbed on PATH.
+Copied under test: scripts/verify.sh sha256 73044268cf4f2572528f6433b6aa7e2fa1468bfbd839a8be7068f4821247645a; scripts/scan.sh sha256 440fe306632a33f606435b952f5cc0456abf32fe341eb29f9ffd961daa69c293 (working tree at audit time).
+
+################ Q1. M-1: verify.sh (working-tree copy), host half, every stage stubbed
+Stage stub (copied per stage; only HANG_STAGE hangs, on a foreground sleep under set -e, like the docker CLI in the real stages):
+    #!/usr/bin/env bash
+    # stage stub: STAGE set by the copy; mode applies only to HANG_STAGE
+    set -euo pipefail
+    stage=__STAGE__
+    log() { printf '%s,' "$1" >> "$STAGE_LOG"; }
+    log "$stage"
+    [ "${HANG_STAGE:-}" = "$stage" ] || exit 0
+    case "${STUB_MODE:-}" in
+      scanlike)   # scan.sh / offline_check.sh shape: EXIT trap + INT/TERM traps, HUP untrapped
+        cleanup() { local status=$?; trap '' INT TERM; trap - EXIT; log "$stage-cleanup($status)"; exit "$status"; }
+        trap cleanup EXIT; trap 'exit 130' INT; trap 'exit 143' TERM ;;
+      smokelike)  # smoke.sh shape: EXIT trap only
+        cleanup() { local rc=$?; trap - EXIT; log "$stage-cleanup($rc)"; exit "$rc"; }
+        trap cleanup EXIT ;;
+      swallow0)   # hostile/buggy stage: swallows the signal and reports success
+        trap 'log "$stage-swallowed"; exit 0' INT TERM HUP QUIT USR1 ;;
+    esac
+    echo $$ > "$PIDDIR/stage.pid"
+    sleep 3   # foreground, like the docker CLI in the real stages
+    log "$stage-finished-sleep"
+    exit 0
+Fake docker (the gates-it half) appends 'gates-it,' and prints the line the real inner run prints (verify.sh:156): == verify full: PASS ==
+Modes: scanlike = scan.sh/offline_check.sh trap shape (EXIT + INT/TERM, HUP untrapped); smokelike = smoke.sh shape (EXIT only); swallow0 = hostile stage that exits 0 on the signal.
+Columns: rc = status the shell sees (128+n for death by signal n); outerPASS = lines 'verify full: PASS (' (the outer, verify.sh:101); innerPASS = '== verify full: PASS ==' (inner half); last = last non-empty output line.
+Driver (container):
+    #!/usr/bin/env bash
+    # M-1 re-check driver (security-u4-r1). Runs inside a labelled, --network none container.
+    set -u
+    set -m   # job control: each background job is its own process group (as a terminal / CI runner)
+    export STAGE_LOG=/tmp/stages PIDDIR=/tmp/pids
+    echo "bash $BASH_VERSION"
+    run_case() { # label phase sig target stagemode
+      local label=$1 phase=$2 sig=$3 target=$4 mode=$5
+      rm -rf /w; cp -r /src/tree /w; chmod +x /w/scripts/*.sh
+      : > "$STAGE_LOG"; rm -rf "$PIDDIR"; mkdir -p "$PIDDIR"
+      HANG_STAGE=$phase STUB_MODE=$mode PATH="/stub:$PATH" bash /w/scripts/verify.sh full > /tmp/out 2>&1 &
+      local vpid=$!
+      if [ "$sig" != none ]; then
+        local i; for i in $(seq 200); do [ -s "$PIDDIR/stage.pid" ] && break; sleep 0.05; done
+        local spid; spid=$(cat "$PIDDIR/stage.pid" 2>/dev/null || echo none)
+        sleep 0.3
+        case $target in
+          group)  kill -s "$sig" -- "-$vpid" ;;
+          verify) kill -s "$sig" "$vpid" ;;
+          stage)  kill -s "$sig" "$spid" ;;
+        esac
+      fi
+      wait "$vpid" 2>/dev/null; local rc=$?
+      sleep 3.5  # let any orphaned stage finish its log line
+      local outer_pass inner_pass last
+      outer_pass=$(grep -c 'verify full: PASS (' /tmp/out)
+      inner_pass=$(grep -c '^== verify full: PASS ==$' /tmp/out)
+      last=$(grep -v '^$' /tmp/out | tail -n 1)
+      printf '%-44s rc=%-3s outerPASS=%s innerPASS=%s last=[%s]\n      stages=%s\n' "$label" "$rc" "$outer_pass" "$inner_pass" "$last" "$(cat "$STAGE_LOG")"
+    }
+    echo "## control"
+    run_case "no signal"                              none none  none   scanlike
+    for phase in scan smoke; do
+      mode=scanlike; [ "$phase" = smoke ] && mode=smokelike
+      echo "## during $phase (stage stub mode: $mode)"
+      for sig in INT TERM HUP QUIT USR1; do
+        for target in group verify stage; do
+          run_case "$sig to $target in $phase" "$phase" "$sig" "$target" "$mode"
+        done
+      done
+      run_case "KILL to stage in $phase"  "$phase" KILL stage  "$mode"
+      run_case "KILL to verify in $phase" "$phase" KILL verify "$mode"
+      echo "## during $phase, hostile stage that swallows the signal and exits 0"
+      for sig in INT TERM HUP; do
+        run_case "$sig to group in $phase (swallow0)" "$phase" "$sig" group swallow0
+        run_case "$sig to stage in $phase (swallow0)" "$phase" "$sig" stage swallow0
+      done
+    done
+
+## Q1a bash 5.2 (musl)
+bash 5.2.37(1)-release
+## control
+no signal                                    rc=0   outerPASS=1 innerPASS=1 last=[== verify full: PASS (0s) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,offline_check,
+## during scan (stage stub mode: scanlike)
+INT to group in scan                         rc=130 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-cleanup(130),
+INT to verify in scan                        rc=130 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+INT to stage in scan                         rc=130 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-cleanup(130),
+TERM to group in scan                        rc=143 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-cleanup(143),
+TERM to verify in scan                       rc=143 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+TERM to stage in scan                        rc=143 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-cleanup(143),
+HUP to group in scan                         rc=129 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-cleanup(0),
+HUP to verify in scan                        rc=129 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+HUP to stage in scan                         rc=129 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-cleanup(0),
+QUIT to group in scan                        rc=131 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 131) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-cleanup(131),
+QUIT to verify in scan                       rc=0   outerPASS=1 innerPASS=1 last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),offline_check,
+QUIT to stage in scan                        rc=0   outerPASS=1 innerPASS=1 last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),offline_check,
+USR1 to group in scan                        rc=138 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (stopped before the last stage; no PASS) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-cleanup(0),
+USR1 to verify in scan                       rc=138 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (stopped before the last stage; no PASS) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+USR1 to stage in scan                        rc=138 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 138) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-cleanup(0),
+KILL to stage in scan                        rc=137 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 137) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,
+KILL to verify in scan                       rc=137 outerPASS=0 innerPASS=1 last=[== verify full: PASS ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+## during scan, hostile stage that swallows the signal and exits 0
+INT to group in scan (swallow0)              rc=130 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-swallowed,
+INT to stage in scan (swallow0)              rc=0   outerPASS=1 innerPASS=1 last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-swallowed,offline_check,
+TERM to group in scan (swallow0)             rc=143 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-swallowed,
+TERM to stage in scan (swallow0)             rc=0   outerPASS=1 innerPASS=1 last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-swallowed,offline_check,
+HUP to group in scan (swallow0)              rc=129 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-swallowed,
+HUP to stage in scan (swallow0)              rc=0   outerPASS=1 innerPASS=1 last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-swallowed,offline_check,
+## during smoke (stage stub mode: smokelike)
+INT to group in smoke                        rc=130 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,smoke,smoke-cleanup(0),teardown,
+INT to verify in smoke                       rc=130 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,
+INT to stage in smoke                        rc=0   outerPASS=1 innerPASS=1 last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,scan,offline_check,
+TERM to group in smoke                       rc=143 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,smoke,smoke-cleanup(0),teardown,
+TERM to verify in smoke                      rc=143 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,
+TERM to stage in smoke                       rc=143 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,smoke,smoke-cleanup(0),teardown,
+HUP to group in smoke                        rc=129 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,smoke,smoke-cleanup(0),teardown,
+HUP to verify in smoke                       rc=129 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,
+HUP to stage in smoke                        rc=129 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,smoke,smoke-cleanup(0),teardown,
+QUIT to group in smoke                       rc=131 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 131) ==]
+      stages=build,launch,gates-it,smoke,smoke-cleanup(131),teardown,
+QUIT to verify in smoke                      rc=0   outerPASS=1 innerPASS=1 last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,scan,offline_check,
+QUIT to stage in smoke                       rc=0   outerPASS=1 innerPASS=1 last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,scan,offline_check,
+USR1 to group in smoke                       rc=138 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (stopped before the last stage; no PASS) ==]
+      stages=build,launch,gates-it,smoke,smoke-cleanup(0),teardown,
+USR1 to verify in smoke                      rc=138 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (stopped before the last stage; no PASS) ==]
+      stages=build,launch,gates-it,smoke,teardown,smoke-finished-sleep,smoke-cleanup(0),
+USR1 to stage in smoke                       rc=138 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 138) ==]
+      stages=build,launch,gates-it,smoke,smoke-cleanup(0),teardown,
+KILL to stage in smoke                       rc=137 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 137) ==]
+      stages=build,launch,gates-it,smoke,teardown,
+KILL to verify in smoke                      rc=137 outerPASS=0 innerPASS=1 last=[== verify full: PASS ==]
+      stages=build,launch,gates-it,smoke,smoke-finished-sleep,smoke-cleanup(0),
+## during smoke, hostile stage that swallows the signal and exits 0
+INT to group in smoke (swallow0)             rc=130 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,smoke,smoke-swallowed,teardown,
+INT to stage in smoke (swallow0)             rc=0   outerPASS=1 innerPASS=1 last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,smoke,smoke-swallowed,teardown,scan,offline_check,
+TERM to group in smoke (swallow0)            rc=143 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,smoke,smoke-swallowed,teardown,
+TERM to stage in smoke (swallow0)            rc=0   outerPASS=1 innerPASS=1 last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,smoke,smoke-swallowed,teardown,scan,offline_check,
+HUP to group in smoke (swallow0)             rc=129 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,smoke,smoke-swallowed,teardown,
+HUP to stage in smoke (swallow0)             rc=0   outerPASS=1 innerPASS=1 last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,smoke,smoke-swallowed,teardown,scan,offline_check,
+
+## Q1b bash 5.0 (musl): rc/outerPASS/innerPASS columns identical to Q1a (diff empty); full output:
+bash 5.0.18(1)-release
+## control
+no signal                                    rc=0   outerPASS=1 innerPASS=1 last=[== verify full: PASS (0s) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,offline_check,
+## during scan (stage stub mode: scanlike)
+INT to group in scan                         rc=130 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-cleanup(130),
+INT to verify in scan                        rc=130 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+INT to stage in scan                         rc=130 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-cleanup(130),
+TERM to group in scan                        rc=143 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-cleanup(143),
+TERM to verify in scan                       rc=143 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+TERM to stage in scan                        rc=143 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-cleanup(143),
+HUP to group in scan                         rc=129 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-cleanup(0),
+HUP to verify in scan                        rc=129 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+HUP to stage in scan                         rc=129 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-cleanup(0),
+QUIT to group in scan                        rc=131 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 131) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-cleanup(131),
+QUIT to verify in scan                       rc=0   outerPASS=1 innerPASS=1 last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),offline_check,
+QUIT to stage in scan                        rc=0   outerPASS=1 innerPASS=1 last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),offline_check,
+USR1 to group in scan                        rc=138 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (stopped before the last stage; no PASS) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-cleanup(0),
+USR1 to verify in scan                       rc=138 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (stopped before the last stage; no PASS) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+USR1 to stage in scan                        rc=138 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 138) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-cleanup(0),
+KILL to stage in scan                        rc=137 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 137) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,
+KILL to verify in scan                       rc=137 outerPASS=0 innerPASS=1 last=[== verify full: PASS ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+## during scan, hostile stage that swallows the signal and exits 0
+INT to group in scan (swallow0)              rc=130 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-swallowed,
+INT to stage in scan (swallow0)              rc=0   outerPASS=1 innerPASS=1 last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-swallowed,offline_check,
+TERM to group in scan (swallow0)             rc=143 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-swallowed,
+TERM to stage in scan (swallow0)             rc=0   outerPASS=1 innerPASS=1 last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-swallowed,offline_check,
+HUP to group in scan (swallow0)              rc=129 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-swallowed,
+HUP to stage in scan (swallow0)              rc=0   outerPASS=1 innerPASS=1 last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-swallowed,offline_check,
+## during smoke (stage stub mode: smokelike)
+INT to group in smoke                        rc=130 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,smoke,smoke-cleanup(0),teardown,
+INT to verify in smoke                       rc=130 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,
+INT to stage in smoke                        rc=0   outerPASS=1 innerPASS=1 last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,scan,offline_check,
+TERM to group in smoke                       rc=143 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,smoke,smoke-cleanup(0),teardown,
+TERM to verify in smoke                      rc=143 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,
+TERM to stage in smoke                       rc=143 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,smoke,smoke-cleanup(0),teardown,
+HUP to group in smoke                        rc=129 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,smoke,smoke-cleanup(0),teardown,
+HUP to verify in smoke                       rc=129 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,
+HUP to stage in smoke                        rc=129 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,smoke,smoke-cleanup(0),teardown,
+QUIT to group in smoke                       rc=131 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 131) ==]
+      stages=build,launch,gates-it,smoke,smoke-cleanup(131),teardown,
+QUIT to verify in smoke                      rc=0   outerPASS=1 innerPASS=1 last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,scan,offline_check,
+QUIT to stage in smoke                       rc=0   outerPASS=1 innerPASS=1 last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,scan,offline_check,
+USR1 to group in smoke                       rc=138 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (stopped before the last stage; no PASS) ==]
+      stages=build,launch,gates-it,smoke,smoke-cleanup(0),teardown,
+USR1 to verify in smoke                      rc=138 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (stopped before the last stage; no PASS) ==]
+      stages=build,launch,gates-it,smoke,teardown,smoke-finished-sleep,smoke-cleanup(0),
+USR1 to stage in smoke                       rc=138 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 138) ==]
+      stages=build,launch,gates-it,smoke,smoke-cleanup(0),teardown,
+KILL to stage in smoke                       rc=137 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 137) ==]
+      stages=build,launch,gates-it,smoke,teardown,
+KILL to verify in smoke                      rc=137 outerPASS=0 innerPASS=1 last=[== verify full: PASS ==]
+      stages=build,launch,gates-it,smoke,smoke-finished-sleep,smoke-cleanup(0),
+## during smoke, hostile stage that swallows the signal and exits 0
+INT to group in smoke (swallow0)             rc=130 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,smoke,smoke-swallowed,teardown,
+INT to stage in smoke (swallow0)             rc=0   outerPASS=1 innerPASS=1 last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,smoke,smoke-swallowed,teardown,scan,offline_check,
+TERM to group in smoke (swallow0)            rc=143 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,smoke,smoke-swallowed,teardown,
+TERM to stage in smoke (swallow0)            rc=0   outerPASS=1 innerPASS=1 last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,smoke,smoke-swallowed,teardown,scan,offline_check,
+HUP to group in smoke (swallow0)             rc=129 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,smoke,smoke-swallowed,teardown,
+HUP to stage in smoke (swallow0)             rc=0   outerPASS=1 innerPASS=1 last=[== verify full: PASS (3s) ==]
+      stages=build,launch,gates-it,smoke,smoke-swallowed,teardown,scan,offline_check,
+
+## Q1c host Git Bash (same driver, paths under the session scratchpad; reduced matrix)
+bash 5.3.9(1)-release (MINGW64_NT)
+no signal                      rc=0   outerPASS=1 innerPASS=1 last=[== verify full: PASS (0s) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,offline_check,
+INT to group in scan           rc=130 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-cleanup(130),
+INT to verify in scan          rc=130 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+TERM to group in scan          rc=143 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-cleanup(143),
+TERM to verify in scan         rc=143 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+HUP to group in scan           rc=129 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-cleanup(0),
+HUP to verify in scan          rc=129 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,scan-finished-sleep,scan-cleanup(0),
+KILL to stage in scan          rc=137 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 137) ==]
+      stages=build,launch,gates-it,smoke,teardown,scan,
+INT to group in smoke          rc=130 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,smoke,smoke-cleanup(0),teardown,
+INT to verify in smoke         rc=130 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 130) ==]
+      stages=build,launch,gates-it,smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,
+TERM to group in smoke         rc=143 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,smoke,smoke-cleanup(0),teardown,
+TERM to verify in smoke        rc=143 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 143) ==]
+      stages=build,launch,gates-it,smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,
+HUP to group in smoke          rc=129 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,smoke,smoke-cleanup(0),teardown,
+HUP to verify in smoke         rc=129 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 129) ==]
+      stages=build,launch,gates-it,smoke,smoke-finished-sleep,smoke-cleanup(0),teardown,
+KILL to stage in smoke         rc=137 outerPASS=0 innerPASS=1 last=[== verify full: FAIL (exit 137) ==]
+      stages=build,launch,gates-it,smoke,teardown,
+
+################ Q2. offline_check.sh cleanup shape (lines 151-167 extracted verbatim; df_log and teardown stubbed), bash 5.2
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd /oc
+    started=$(date +%s); project=ke-offline-1; bundle_rel=dist/x
+    df_log() { :; }
+    # shellcheck disable=SC2317  # runs from the EXIT trap
+    cleanup() {
+      local rc=$?
+      trap - EXIT INT TERM
+      df_log "before teardown"
+      if ! bash scripts/teardown.sh --volumes --profile offline; then
+        echo "offline_check: FAIL (teardown of project $project failed; remove it by hand: COMPOSE_FILE=docker-compose.offline.yml KE_OFFLINE_BUNDLE=$bundle_rel docker compose -p $project --profile offline down --volumes)" >&2
+        if [ "$rc" -eq 0 ]; then rc=1; fi
+      fi
+      rm -rf -- "$bundle_rel" "$bundle_rel.manifest.sha256"
+      df_log "after teardown"
+      if [ "$rc" -eq 0 ]; then echo "== offline_check: PASS ($(( $(date +%s) - started ))s) =="; fi
+      exit "$rc"
+    }
+    trap cleanup EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+    sleep 3
+    echo "offline_check body done"
+bash 5.2.37(1)-release
+/src/oc/drive.sh: line 8:    10 Hangup                  bash /oc/offline_check_shape.sh > /tmp/o 2>&1
+HUP   to self  rc=129 output=[== offline_check: PASS (1s) ==|]
+/src/oc/drive.sh: line 8:    23 Hangup                  bash /oc/offline_check_shape.sh > /tmp/o 2>&1
+HUP   to group rc=129 output=[/oc/offline_check_shape.sh: line 7:    26 Hangup                  sleep 3|== offline_check: PASS (0s) ==|]
+TERM  to self  rc=143 output=[]
+TERM  to group rc=143 output=[Terminated|]
+INT   to self  rc=130 output=[]
+INT   to group rc=130 output=[]
+/src/oc/drive.sh: line 8:    80 User defined signal 1   bash /oc/offline_check_shape.sh > /tmp/o 2>&1
+USR1  to self  rc=138 output=[== offline_check: PASS (1s) ==|]
+/src/oc/drive.sh: line 8:    93 User defined signal 1   bash /oc/offline_check_shape.sh > /tmp/o 2>&1
+USR1  to group rc=138 output=[/oc/offline_check_shape.sh: line 7:    96 User defined signal 1   sleep 3|== offline_check: PASS (0s) ==|]
+
+################ Q3. N5: scripts/scan.sh copy, project_re '^ke-scan-[0123456789]+$', no LC_ALL in the script; caller-set SRANDOM (bash 5.0 imports it; bash 5.2 ignores it)
+verdict column: rejected = 'project name is malformed' printed. docker stub logs calls; dist = what remains under dist/.
+Note: in the 'ubuntu LC_ALL=C' block the driver itself ran in C, so $'\u...' did not expand (rows show backslash text); the last block re-runs it with real UTF-8 bytes (driver C.UTF-8, scan.sh LC_ALL=C). Its 'unset' row rc=127 is a driver artefact (GNU env reads -u after an assignment as the command); 'unset' is covered in the other five blocks.
+=== bash:5.0 (musl) default
+bash 5.0.18(1)-release; LC_ALL=<unset>; LANG=<unset>; locales: 
+unset                  rc=1 rejected docker_calls=0 dist=[]
+''                     rc=1 rejected docker_calls=0 dist=[]
+123                    rc=0 ACCEPTED docker_calls=5 dist=[]
+١٢٣                 rc=1 rejected docker_calls=0 dist=[]
+१२                 rc=1 rejected docker_calls=0 dist=[]
+¹²³                 rc=1 rejected docker_calls=0 dist=[]
+１２３              rc=1 rejected docker_calls=0 dist=[]
+𝟏𝟐               rc=1 rejected docker_calls=0 dist=[]
+๑๒                 rc=1 rejected docker_calls=0 dist=[]
+1٣                    rc=1 rejected docker_calls=0 dist=[]
+$'12\n'                rc=1 rejected docker_calls=0 dist=[]
+$'1\n2'                rc=1 rejected docker_calls=0 dist=[]
+1\ 2                   rc=1 rejected docker_calls=0 dist=[]
+-1                     rc=1 rejected docker_calls=0 dist=[]
++1                     rc=1 rejected docker_calls=0 dist=[]
+1a                     rc=1 rejected docker_calls=0 dist=[]
+../1                   rc=1 rejected docker_calls=0 dist=[]
+1\;id                  rc=1 rejected docker_calls=0 dist=[]
+1\*                    rc=1 rejected docker_calls=0 dist=[]
+٠                     rc=1 rejected docker_calls=0 dist=[]
+0                      rc=0 ACCEPTED docker_calls=5 dist=[]
+4294967295             rc=0 ACCEPTED docker_calls=5 dist=[]
+=== bash:5.0 (musl) LC_ALL=C.UTF-8
+bash 5.0.18(1)-release; LC_ALL=C.UTF-8; LANG=<unset>; locales: 
+unset                  rc=1 rejected docker_calls=0 dist=[]
+''                     rc=1 rejected docker_calls=0 dist=[]
+123                    rc=0 ACCEPTED docker_calls=5 dist=[]
+١٢٣                 rc=1 rejected docker_calls=0 dist=[]
+१२                 rc=1 rejected docker_calls=0 dist=[]
+¹²³                 rc=1 rejected docker_calls=0 dist=[]
+１２３              rc=1 rejected docker_calls=0 dist=[]
+𝟏𝟐               rc=1 rejected docker_calls=0 dist=[]
+๑๒                 rc=1 rejected docker_calls=0 dist=[]
+1٣                    rc=1 rejected docker_calls=0 dist=[]
+$'12\n'                rc=1 rejected docker_calls=0 dist=[]
+$'1\n2'                rc=1 rejected docker_calls=0 dist=[]
+1\ 2                   rc=1 rejected docker_calls=0 dist=[]
+-1                     rc=1 rejected docker_calls=0 dist=[]
++1                     rc=1 rejected docker_calls=0 dist=[]
+1a                     rc=1 rejected docker_calls=0 dist=[]
+../1                   rc=1 rejected docker_calls=0 dist=[]
+1\;id                  rc=1 rejected docker_calls=0 dist=[]
+1\*                    rc=1 rejected docker_calls=0 dist=[]
+٠                     rc=1 rejected docker_calls=0 dist=[]
+0                      rc=0 ACCEPTED docker_calls=5 dist=[]
+4294967295             rc=0 ACCEPTED docker_calls=5 dist=[]
+=== ubuntu:20.04 (glibc) LC_ALL=C.UTF-8
+bash 5.0.17(1)-release; LC_ALL=C.UTF-8; LANG=<unset>; locales: C C.UTF-8 POSIX 
+unset                  rc=1 rejected docker_calls=0 dist=[]
+''                     rc=1 rejected docker_calls=0 dist=[]
+123                    rc=0 ACCEPTED docker_calls=5 dist=[]
+١٢٣                 rc=1 rejected docker_calls=0 dist=[]
+१२                 rc=1 rejected docker_calls=0 dist=[]
+¹²³                 rc=1 rejected docker_calls=0 dist=[]
+１２３              rc=1 rejected docker_calls=0 dist=[]
+𝟏𝟐               rc=1 rejected docker_calls=0 dist=[]
+๑๒                 rc=1 rejected docker_calls=0 dist=[]
+1٣                    rc=1 rejected docker_calls=0 dist=[]
+$'12\n'                rc=1 rejected docker_calls=0 dist=[]
+$'1\n2'                rc=1 rejected docker_calls=0 dist=[]
+1\ 2                   rc=1 rejected docker_calls=0 dist=[]
+-1                     rc=1 rejected docker_calls=0 dist=[]
++1                     rc=1 rejected docker_calls=0 dist=[]
+1a                     rc=1 rejected docker_calls=0 dist=[]
+../1                   rc=1 rejected docker_calls=0 dist=[]
+1\;id                  rc=1 rejected docker_calls=0 dist=[]
+1\*                    rc=1 rejected docker_calls=0 dist=[]
+٠                     rc=1 rejected docker_calls=0 dist=[]
+0                      rc=0 ACCEPTED docker_calls=5 dist=[]
+4294967295             rc=0 ACCEPTED docker_calls=5 dist=[]
+=== ubuntu:20.04 (glibc) LC_ALL=C
+bash 5.0.17(1)-release; LC_ALL=C; LANG=<unset>; locales: C C.UTF-8 POSIX 
+unset                  rc=1 rejected docker_calls=0 dist=[]
+''                     rc=1 rejected docker_calls=0 dist=[]
+123                    rc=0 ACCEPTED docker_calls=5 dist=[]
+\\u0661\\u0662\\u0663  rc=1 rejected docker_calls=0 dist=[]
+\\u0967\\u0968         rc=1 rejected docker_calls=0 dist=[]
+\\u00B9\\u00B2\\u00B3  rc=1 rejected docker_calls=0 dist=[]
+\\uFF11\\uFF12\\uFF13  rc=1 rejected docker_calls=0 dist=[]
+\\u0001D7CF\\u0001D7D0 rc=1 rejected docker_calls=0 dist=[]
+\\u0E51\\u0E52         rc=1 rejected docker_calls=0 dist=[]
+1\\u0663               rc=1 rejected docker_calls=0 dist=[]
+$'12\n'                rc=1 rejected docker_calls=0 dist=[]
+$'1\n2'                rc=1 rejected docker_calls=0 dist=[]
+1\ 2                   rc=1 rejected docker_calls=0 dist=[]
+-1                     rc=1 rejected docker_calls=0 dist=[]
++1                     rc=1 rejected docker_calls=0 dist=[]
+1a                     rc=1 rejected docker_calls=0 dist=[]
+../1                   rc=1 rejected docker_calls=0 dist=[]
+1\;id                  rc=1 rejected docker_calls=0 dist=[]
+1\*                    rc=1 rejected docker_calls=0 dist=[]
+$'\331\240'            rc=1 rejected docker_calls=0 dist=[]
+0                      rc=0 ACCEPTED docker_calls=5 dist=[]
+4294967295             rc=0 ACCEPTED docker_calls=5 dist=[]
+=== ubuntu:20.04 (glibc) LANG=C.UTF-8 LC_COLLATE=C.UTF-8 LC_CTYPE=C.UTF-8
+bash 5.0.17(1)-release; LC_ALL=<unset>; LANG=C.UTF-8; locales: C C.UTF-8 POSIX 
+unset                  rc=1 rejected docker_calls=0 dist=[]
+''                     rc=1 rejected docker_calls=0 dist=[]
+123                    rc=0 ACCEPTED docker_calls=5 dist=[]
+١٢٣                 rc=1 rejected docker_calls=0 dist=[]
+१२                 rc=1 rejected docker_calls=0 dist=[]
+¹²³                 rc=1 rejected docker_calls=0 dist=[]
+１２３              rc=1 rejected docker_calls=0 dist=[]
+𝟏𝟐               rc=1 rejected docker_calls=0 dist=[]
+๑๒                 rc=1 rejected docker_calls=0 dist=[]
+1٣                    rc=1 rejected docker_calls=0 dist=[]
+$'12\n'                rc=1 rejected docker_calls=0 dist=[]
+$'1\n2'                rc=1 rejected docker_calls=0 dist=[]
+1\ 2                   rc=1 rejected docker_calls=0 dist=[]
+-1                     rc=1 rejected docker_calls=0 dist=[]
++1                     rc=1 rejected docker_calls=0 dist=[]
+1a                     rc=1 rejected docker_calls=0 dist=[]
+../1                   rc=1 rejected docker_calls=0 dist=[]
+1\;id                  rc=1 rejected docker_calls=0 dist=[]
+1\*                    rc=1 rejected docker_calls=0 dist=[]
+٠                     rc=1 rejected docker_calls=0 dist=[]
+0                      rc=0 ACCEPTED docker_calls=5 dist=[]
+4294967295             rc=0 ACCEPTED docker_calls=5 dist=[]
+=== bash:5.2 control (SRANDOM from env ignored)
+bash 5.2.37(1)-release; LC_ALL=<unset>; LANG=<unset>; locales: 
+unset                  rc=0 ACCEPTED docker_calls=5 dist=[]
+''                     rc=0 ACCEPTED docker_calls=5 dist=[]
+123                    rc=0 ACCEPTED docker_calls=5 dist=[]
+١٢٣                 rc=0 ACCEPTED docker_calls=5 dist=[]
+१२                 rc=0 ACCEPTED docker_calls=5 dist=[]
+¹²³                 rc=0 ACCEPTED docker_calls=5 dist=[]
+１２３              rc=0 ACCEPTED docker_calls=5 dist=[]
+𝟏𝟐               rc=0 ACCEPTED docker_calls=5 dist=[]
+๑๒                 rc=0 ACCEPTED docker_calls=5 dist=[]
+1٣                    rc=0 ACCEPTED docker_calls=5 dist=[]
+$'12\n'                rc=0 ACCEPTED docker_calls=5 dist=[]
+$'1\n2'                rc=0 ACCEPTED docker_calls=5 dist=[]
+1\ 2                   rc=0 ACCEPTED docker_calls=5 dist=[]
+-1                     rc=0 ACCEPTED docker_calls=5 dist=[]
++1                     rc=0 ACCEPTED docker_calls=5 dist=[]
+1a                     rc=0 ACCEPTED docker_calls=5 dist=[]
+../1                   rc=0 ACCEPTED docker_calls=5 dist=[]
+1\;id                  rc=0 ACCEPTED docker_calls=5 dist=[]
+1\*                    rc=0 ACCEPTED docker_calls=5 dist=[]
+٠                     rc=0 ACCEPTED docker_calls=5 dist=[]
+0                      rc=0 ACCEPTED docker_calls=5 dist=[]
+4294967295             rc=0 ACCEPTED docker_calls=5 dist=[]
+=== ubuntu:20.04 (glibc): driver C.UTF-8, scan.sh LC_ALL=C (real UTF-8 bytes)
+(scan.sh run with LC_ALL=C) bash 5.0.17(1)-release; LC_ALL=C.UTF-8; LANG=<unset>; locales: C C.UTF-8 POSIX 
+unset                  rc=127 ACCEPTED docker_calls=0 dist=[]
+''                     rc=1 rejected docker_calls=0 dist=[]
+123                    rc=0 ACCEPTED docker_calls=5 dist=[]
+١٢٣                 rc=1 rejected docker_calls=0 dist=[]
+१२                 rc=1 rejected docker_calls=0 dist=[]
+¹²³                 rc=1 rejected docker_calls=0 dist=[]
+１２３              rc=1 rejected docker_calls=0 dist=[]
+𝟏𝟐               rc=1 rejected docker_calls=0 dist=[]
+๑๒                 rc=1 rejected docker_calls=0 dist=[]
+1٣                    rc=1 rejected docker_calls=0 dist=[]
+$'12\n'                rc=1 rejected docker_calls=0 dist=[]
+$'1\n2'                rc=1 rejected docker_calls=0 dist=[]
+1\ 2                   rc=1 rejected docker_calls=0 dist=[]
+-1                     rc=1 rejected docker_calls=0 dist=[]
++1                     rc=1 rejected docker_calls=0 dist=[]
+1a                     rc=1 rejected docker_calls=0 dist=[]
+../1                   rc=1 rejected docker_calls=0 dist=[]
+1\;id                  rc=1 rejected docker_calls=0 dist=[]
+1\*                    rc=1 rejected docker_calls=0 dist=[]
+٠                     rc=1 rejected docker_calls=0 dist=[]
+0                      rc=0 ACCEPTED docker_calls=5 dist=[]
+4294967295             rc=0 ACCEPTED docker_calls=5 dist=[]
+
+################ Q4. Evidence and diff sweep
+Files: every untracked file under docs/evidence/platform-supply-chain/ (19 files incl. u4-rework1-*, review-u4*, security-u4*).
+profile paths (X:\Users, /c/Users, /home/, AppData): none. SIDs (S-1-5-...): none. Keys/tokens (AKIA, gh*_, github_pat_, sk-, xox, PRIVATE KEY, JWT, AIza, glpat-): none.
+Secret assignments, connection strings with credentials, e-mail addresses: none. Diff added lines vs 769b507 (same patterns): none.
+u4-rework1-green-verify-full.txt: model keys unset (line 1, model tests skip); addresses only docker bridge 172.19.0.2 / 192.168.160.2 and loopback.
+u4-rework1-green-verify-full.txt:1513 holds the inner '== verify full: PASS ==' of a run whose outer line is '== verify full: PASS (625s) ==' (last line).

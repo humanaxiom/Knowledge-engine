@@ -1,0 +1,58 @@
+# Tester rework-1 static mutants (B1 + L-U1-1), 2026-10-21. Command: .venv/Scripts/python -I <scratch>/drive.py <scratch>/out (from C:\repos\Knowledge-engine). Driver: rework1-mutants.py.txt. Scratch copies only; docker/gates.Dockerfile untouched.
+# Mutants apply to a scratch GREEN copy (repo file + "$dir/.signature.p7s" in the rm) so no kill comes from the L-U1-1 RED subtest; each kill names the failing subtest. R1-R6 = the reviewer's six (review-u1-static-mutants.py.txt), X1-X20 = extras.
+baseline_green (repo file + .signature.p7s in rm): PASS []
+baseline_repo (unchanged docker/gates.Dockerfile): FAIL (1) ["check='the .nupkg and the NuGet packaging files are removed in the same RUN'"]
+R1 check_piped_to_cat: KILLED (1)
+     check='the check cannot be masked and the download is not replaced after it'
+R2 check_inside_if: KILLED (1)
+     check='the check cannot be masked and the download is not replaced after it'
+R3 check_negated: KILLED (1)
+     check='the check cannot be masked and the download is not replaced after it'
+R4 check_backgrounded: KILLED (1)
+     check='the check cannot be masked and the download is not replaced after it'
+R5 set_plus_e_before_check: KILLED (1)
+     check='the check cannot be masked and the download is not replaced after it'
+R6 refetch_after_check: KILLED (1)
+     check='the check cannot be masked and the download is not replaced after it'
+X1 check_piped_to_tee: KILLED (1)
+     check='the check cannot be masked and the download is not replaced after it'
+X2 subshell_or_true: KILLED (2)
+     check='sha512sum -c fed the pinned hash and the download'
+     check='the check cannot be masked and the download is not replaced after it'
+X3 brace_group_or_colon: KILLED (1)
+     check='the check cannot be masked and the download is not replaced after it'
+X4 check_and_colon (non-last AND-OR member): KILLED (1)
+     check='the check cannot be masked and the download is not replaced after it'
+X5 true_or_check (check skipped): KILLED (1)
+     check='the check cannot be masked and the download is not replaced after it'
+X6 check_in_until: KILLED (1)
+     check='the check cannot be masked and the download is not replaced after it'
+X7 check_in_elif: KILLED (1)
+     check='the check cannot be masked and the download is not replaced after it'
+X8 check_in_if_body: KILLED (1)
+     check='the check cannot be masked and the download is not replaced after it'
+X9 check_in_export_substitution: KILLED (1)
+     check='the check cannot be masked and the download is not replaced after it'
+X10 set_plus_o_errexit: KILLED (1)
+     check='the check cannot be masked and the download is not replaced after it'
+X11 set_plus_u: KILLED (1)
+     check='the check cannot be masked and the download is not replaced after it'
+X12 set_plus_eu: KILLED (1)
+     check='the check cannot be masked and the download is not replaced after it'
+X13 cp_over_download: KILLED (1)
+     check='the check cannot be masked and the download is not replaced after it'
+X14 mv_over_download: KILLED (1)
+     check='the check cannot be masked and the download is not replaced after it'
+X15 redirect_over_download: KILLED (1)
+     check='the check cannot be masked and the download is not replaced after it'
+X16 tee_over_download: KILLED (1)
+     check='the check cannot be masked and the download is not replaced after it'
+X17 cd_tmp_refetch_by_basename: KILLED (1)
+     check='the check cannot be masked and the download is not replaced after it'
+X18 background_writer_before_check: KILLED (1)
+     check='the check cannot be masked and the download is not replaced after it'
+X19 unpack_piped_from_refetch: KILLED (1)
+     check='the check cannot be masked and the download is not replaced after it'
+X20 rm_without_signature (L-U1-1): KILLED (1)
+     check='the .nupkg and the NuGet packaging files are removed in the same RUN'
+mutants: 26, survived: 0

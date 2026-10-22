@@ -3,6 +3,8 @@
 FROM ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946 AS uv
 
 FROM python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+ENV POWERSHELL_TELEMETRY_OPTOUT=1 \
+    POWERSHELL_UPDATECHECK=Off
 COPY --from=uv /uv /usr/local/bin/uv
 RUN apt-get update \
  && apt-get install -y --no-install-recommends git jq ca-certificates curl \
@@ -13,12 +15,12 @@ RUN apt-get update \
 
 # Lint tools (scripts/lint.sh, architecture §2.2): PowerShell from the vendor
 # tarball, verified against the sha256 in the release's hashes.sha256 asset,
-# and PSScriptAnalyzer at a pinned version from the PowerShell Gallery (the
-# gallery publishes no checksum, so the version pin is the control).
+# and PSScriptAnalyzer 1.25.0 (ARG below) from the PowerShell Gallery, checked
+# against the gallery's published SHA-512 PackageHash (ruling Q48: the pin
+# EQUALS the OData PackageHash, base64 converted to hex) before it is unpacked.
 ARG POWERSHELL_VERSION=7.4.21
 ARG POWERSHELL_SHA256_X64=3fc5e1567c450bd7bd5ae69ebb0a9a4a4e0418bbc36b0232cf6dd547f0bfc0eb
 ARG POWERSHELL_SHA256_ARM64=d0c216cec4c6c866fc15a105f039740228b53206f8576d2ed0bcd656a35ed6f6
-ARG PSSCRIPTANALYZER_VERSION=1.25.0
 RUN set -eu; \
     case "$(dpkg --print-architecture)" in \
       amd64) arch=x64; sha="$POWERSHELL_SHA256_X64" ;; \
@@ -33,11 +35,18 @@ RUN set -eu; \
     tar -xzf "/tmp/$tarball" -C /opt/microsoft/powershell; \
     chmod +x /opt/microsoft/powershell/pwsh; \
     ln -s /opt/microsoft/powershell/pwsh /usr/local/bin/pwsh; \
-    rm "/tmp/$tarball"; \
-    pwsh -NoProfile -NonInteractive -Command " \
-      \$ErrorActionPreference = 'Stop'; \
-      Set-PSRepository PSGallery -InstallationPolicy Trusted; \
-      Install-Module PSScriptAnalyzer -RequiredVersion ${PSSCRIPTANALYZER_VERSION} -Scope AllUsers -Force"
+    rm "/tmp/$tarball"
+
+ARG PSSCRIPTANALYZER_VERSION=1.25.0
+ARG PSSCRIPTANALYZER_SHA512=e7fb573262e604bab29914ae62921d24b97c2f88b519b41277b403ef6ce163f14b7d1b36dc73449a68e5ae5a8d9502891b10c264131fd1813adf29bf131c1663
+RUN set -eu; \
+    curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL -o /tmp/psa.nupkg \
+      "https://www.powershellgallery.com/api/v2/package/PSScriptAnalyzer/${PSSCRIPTANALYZER_VERSION}"; \
+    echo "$PSSCRIPTANALYZER_SHA512  /tmp/psa.nupkg" | sha512sum -c -; \
+    dir="/usr/local/share/powershell/Modules/PSScriptAnalyzer/${PSSCRIPTANALYZER_VERSION}"; \
+    python3 -I -m zipfile -e /tmp/psa.nupkg "/usr/local/share/powershell/Modules/PSScriptAnalyzer/${PSSCRIPTANALYZER_VERSION}"; \
+    rm -rf "$dir/_rels" "$dir/package" "$dir/[Content_Types].xml" "$dir/PSScriptAnalyzer.nuspec" "$dir/.signature.p7s" /tmp/psa.nupkg; \
+    pwsh -NoProfile -NonInteractive -Command "Import-Module PSScriptAnalyzer -ErrorAction Stop"
 
 # Docker client for the offline check (PS-3.10, architecture §2.2): the static
 # `docker` client binary and the compose plugin, each pinned by version and
@@ -87,8 +96,6 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
     UV_PYTHON_DOWNLOADS=never \
     UV_LINK_MODE=copy \
     KE_IN_GATES=1 \
-    POWERSHELL_TELEMETRY_OPTOUT=1 \
-    POWERSHELL_UPDATECHECK=Off \
     HARNESS_TRACING=off
 
 WORKDIR /work
