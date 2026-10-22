@@ -425,3 +425,15 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-22T01:53:38Z | security | platform-supply-chain | U5 re-check: L-3 (real inner half x INT/TERM/HUP/QUIT/USR1/KILL x group/verify/stage, bash 5.2/5.0/Git Bash), L-4 offline_check signals incl. USR1, fake gates-it sandbox trace, evidence sweep | security: pass (0 critical/high; L-3, L-4 closed; new lows L-5 fake gates-it mktemp unguarded, L-6 pre-existing teardown-interrupt leftovers)
 2026-10-22T02:04:52Z | orchestrator | platform-supply-chain | U5 verify full + diff read; commit approved | verify full: pass
 2026-10-22T02:04:59Z | developer | platform-supply-chain | unit 5 commit (PSC-18) staged by explicit paths | commit: approved
+2026-10-22T03:23:36Z | tester | platform-supply-chain | PSC-9 RED: CI_TIMEOUT_MINUTES 32 -> 37 (runs 39713504156 24.5 min, 39713519072 23.0 min; 36.75 -> 37); verify fast fails only on test_ci_job_has_timeout | TDD red: expected fail (ci.yml still 32)
+2026-10-22T03:28:29Z | tester | platform-supply-chain | PSC-12 Windows run at 34fc0c1: build/launch/refusal/teardown ps1 + 7 Windows-only tests; verify fast | windows proof: pass
+2026-10-22T03:42:12Z | developer | platform-supply-chain | PSC-9 GREEN: ci.yml timeout-minutes 37 | verify fast+full: pass
+2026-10-22T03:43:44Z | documenter | platform-supply-chain | close-out docs: psc9/ci-timeout.md, requirements PSC-9/PSC-12 MET + status table, Done check drafted | docs: written, verify not run (per request)
+2026-10-22T03:46:12Z | security | platform-supply-chain | close-out audit: ci.yml timeout-only diff (32->37), CI/psc9/psc12 evidence sweep, Windows .env check; nothing to redact | security: pass
+2026-10-22T03:47:31Z | reviewer | platform-supply-chain | close-out review: PSC-9 timeout 37 (gh recompute OK), PSC-12 Windows run OK, status table, Done check; B1 PSC-4 mutant-policy red run missing | review: changes requested (1 blocking, 8 nits)
+2026-10-22T03:48:10Z | orchestrator | platform-supply-chain | PR #10 CI green x2 on 34fc0c1 (job 24.4/22.9 min; scan +88-98 s < Q60 180 s); PS-3.4 timeout 37 | ci: pass
+2026-10-22T03:48:24Z | documenter | platform-supply-chain | close-out status table fixed (B1 cite, nits 1-5) | docs: updated, verify not run
+2026-10-22T04:01:23Z | tester | platform-supply-chain | PSC-4 mutant-policy red run on real ke-app (scratch): no --only-fixed exit 1/grype 2, fail-on negligible exit 1/grype 2, control exit 0 | verify fast: pass; psc4 mutant red: recorded
+2026-10-22T04:02:41Z | reviewer | platform-supply-chain | close-out re-check: B1 closed (psc4 mutant-policy red run verified), nits 1-5 addressed | review: pass
+2026-10-22T04:12:52Z | orchestrator | platform-supply-chain | close-out verify full + Done check confirmed; commit approved; item closed | verify full: pass
+2026-10-22T04:12:55Z | developer | platform-supply-chain | close-out commit; handoff archived | commit: approved

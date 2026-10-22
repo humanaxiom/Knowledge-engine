@@ -10,11 +10,11 @@
   operator's `.env`, with the tests skipping by name when either is unset.
 - `test_ci_job_has_timeout` (PS-3.4): every CI job sets `timeout-minutes`
   to CI_TIMEOUT_MINUTES, which is the slower of the latest two green CI runs
-  + 50%, rounded up. CS-7 (ci-speed) re-measured on 24b6839: push run
-  39559700392 took 21.1 min (1266 s, 07:06:26 to 07:27:32) and pull_request
-  run 39559708963 took 20.3 min (1216 s); docs/evidence/ci-speed/ci/. The
-  slower run + 50% = 21.1 x 1.5 = 31.65, rounded up to 32. Earlier pin:
-  platform-offline ruling R5, 29 (runs 39370927416 16.6 min, 39465361808 19.0 min).
+  + 50%, rounded up. PSC-9 (platform-supply-chain) re-measured on 34fc0c1:
+  push run 39713504156 took 24.5 min (1469 s, 02:49:44 to 03:14:13) and
+  pull_request run 39713519072 took 23.0 min (1380 s, 02:49:55 to 03:12:55);
+  docs/evidence/platform-supply-chain/ci/. The slower run + 50% =
+  24.5 x 1.5 = 36.75, rounded up to 37. Earlier pin: ci-speed CS-7, 32.
 """
 
 from __future__ import annotations
@@ -28,12 +28,12 @@ CLAUDE_MD = ROOT / "CLAUDE.md"
 CI = ROOT / ".github" / "workflows" / "ci.yml"
 VERIFY_ONLY = "What verify.sh runs that CI cannot"
 CI_ONLY = "What CI runs that verify.sh does not"
-# PS-3.4, CS-7 ci-speed (measured + 50%, using the slower green run): runs
-# 39559700392 at 21.1 min and 39559708963 at 20.3 min
-# (docs/evidence/ci-speed/ci/ci-39559700392.log, ci-39559708963.log). The
-# slower run sets the bound: 21.1 x 1.5 = 31.65, rounded up to 32. Before it,
-# platform-offline ruling R5 set 29 (slower run 19.0 min + 50% = 28.5).
-CI_TIMEOUT_MINUTES = 32
+# PS-3.4, PSC-9 platform-supply-chain (measured + 50%, using the slower green
+# run): runs 39713504156 at 24.5 min and 39713519072 at 23.0 min
+# (docs/evidence/platform-supply-chain/ci/ci-39713504156.log,
+# ci-39713519072.log). The slower run sets the bound: 24.5 x 1.5 = 36.75,
+# rounded up to 37. Before it, ci-speed CS-7 set 32.
+CI_TIMEOUT_MINUTES = 37
 
 
 def _sections(text: str) -> list[tuple[str, str]]:
@@ -83,9 +83,10 @@ class CiTimeoutTest(unittest.TestCase):
                 self.assertGreater(value, 0)
                 self.assertEqual(value, CI_TIMEOUT_MINUTES,
                                  f"job {name}: timeout-minutes is {value}, the ruling is "
-                                 f"{CI_TIMEOUT_MINUTES} (PS-3.4, CS-7 ci-speed: green CI runs "
-                                 f"39559700392 21.1 min and 39559708963 20.3 min; "
-                                 f"slower run + 50% = 31.65 -> 32)")
+                                 f"{CI_TIMEOUT_MINUTES} (PS-3.4, PSC-9 platform-supply-chain: "
+                                 f"green CI runs 39713504156 24.5 min and "
+                                 f"39713519072 23.0 min; slower run + 50% = "
+                                 f"36.75 -> 37)")
 
 
 if __name__ == "__main__":

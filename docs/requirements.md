@@ -2878,6 +2878,17 @@ sequencing call for the orchestrator.
     from its marker line to the next (ADR-KE-013 amendment 1, D8).
   - A run that times out is reported as red. It is never retried until it
     passes. `test_ci_job_has_timeout` pins the value.
+  - **PSC-9 MET (2026-10-22).** Green runs on `34fc0c1`: push 39713504156
+    (24.5 min; verify 1461 s; unit 1002 s; scan save 2 s, scan-db 90 s, scan
+    6 s) and pull_request 39713519072 (23.0 min; verify 1372 s; unit 935 s;
+    scan 2 s, 81 s, 5 s). The scan adds 88-98 s, under the Q60 trigger of
+    180 s, so no decision is needed. Slower run 24.5 min x 1.5 = 36.75, rounded
+    up: `timeout-minutes` 32 -> 37 (`CI_TIMEOUT_MINUTES` pinned by
+    `test_ci_job_has_timeout`, red then green). The unit stage also grew
+    (1002 s vs 893.6 s at ci-speed; 767 tests vs 724), so part of the job
+    growth is new tests and runner variance, not the scan. Evidence:
+    `docs/evidence/platform-supply-chain/psc9/ci-timeout.md`, logs in
+    `docs/evidence/platform-supply-chain/ci/`.
 
 **PS-3.7 Gates image supply chain (security L-8, review rework-1 N-7).**
 
@@ -2939,6 +2950,16 @@ sequencing call for the orchestrator.
 - **PSC-12 Windows proof.** Under A34 this item changes Dockerfiles and
   compose files, so the recorded Windows run is needed. It must match the
   branch head, or the diff since must touch none of those files (PS-2.9).
+  **PSC-12 MET (2026-10-22).** The Windows run is at HEAD `34fc0c1`
+  (PowerShell 7.6.7, Docker 29.5.2, Compose v5.1.4, project `ke-psc12-win`):
+  `build.ps1`, `launch.ps1` (7/7 healthy, `/healthz` and `/readyz` 200,
+  127.0.0.1 only), the refused `0.0.0.0` + prod case, and `teardown.ps1` (with
+  and without `-Volumes`) all pass, the Windows-only tests pass, and
+  `scripts/verify.sh fast` passes (767 tests). Evidence:
+  `docs/evidence/platform-supply-chain/psc12-windows-run.txt` and
+  `psc12-verify-fast.txt`. The close-out diff since `34fc0c1` (`ci.yml`
+  timeout, `tests/test_stack_ready_docs.py`, docs) touches no PowerShell script,
+  compose file or Dockerfile, so the proof stays current under A34.
 - **PSC-17 `ke-app` ships without uv, and its scan is clean (ADR-KE-013
   amendment 1, D10; added by the architect, 2026-10-21, unit 3).** This
   is a new number, not an extension of PSC-2. PSC-2 says what is scanned
@@ -3014,6 +3035,24 @@ unreachable database host, planted ignore), the PSC-7 L-13 record, the PSC-9
 CI measurement, the arm64 scan evidence when an arm64 run is recorded, the
 PSC-17 no-uv and real-scan evidence, and the Windows run. Gate:
 `scripts/verify.sh full`.
+
+**Status at close-out (2026-10-22, documenter).** PSC-9 and PSC-12 are MET
+above. The other criteria shipped in units 1-5 (commits `8900766`, `8b20fa5`,
+`769b507`, `e6e1d28`, `34fc0c1`). Criteria with unit or integration tests have
+them in `scripts/verify.sh full` (last unit-5 run PASS, 767 unit + 15
+integration tests,
+`docs/evidence/platform-supply-chain/orchestrator-u5-verify-full.txt`).
+PSC-7 is evidence-only by design (checked by the reviewer and security; no
+unit test). The arm64 scan evidence (PSC-2, Q59) is deferred to the next
+recorded arm64 bundle run and is not in this table:
+
+| Criteria | Unit | Evidence (under `docs/evidence/platform-supply-chain/`) |
+|---|---|---|
+| PSC-10, PSC-11 | 1 | `green-psc10-11-verify-full.txt`, `psscriptanalyzer-sha512.txt`, `review-u1*.md`, `review-u1-mutation-builds.txt` (PSC-10 wrong-hash mutation), `security-u1*.md` |
+| PSC-1, PSC-2, PSC-3, PSC-5, PSC-8 | 2 | `u2-green-verify-full.txt`, `u2-green-real-scan.txt`, `scanner-provenance.md`, `review-u2*.md`, `review-u2-red-unresolvable-host.txt` (PSC-3), `u2-green-confirm-d3-d5.txt` (PSC-5 planted ignore), `security-u2*.md` |
+| PSC-4 (units 3 and 4), PSC-17 | 3 (PSC-4 also 4) | `u3-green-verify-full.txt`, `u3-real-scan.txt`, `psc4-mutant-policy-red.txt` (PSC-4 mutant-policy red run), `u3-no-uv-in-ke-app.txt`, `review-u3.md`, `security-u3.md`; `test_verify_full_fails_when_image_scan_fails` landed in `e6e1d28` (unit 4) |
+| PSC-6, PSC-7 (L-13 accepted residual) | 4 | `u4-green-verify-full.txt` (PSC-7 output at lines 1601-1914), `u4-psc7-psycopg-libs.txt`, `review-u4*.md`, `security-u4*.md` |
+| PSC-18 | 5 | `u5-green-verify-full.txt`, `review-u5.md`, `security-u5.md` |
 
 ### Follow-ups (not in platform-supply-chain)
 

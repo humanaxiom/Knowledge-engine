@@ -1,0 +1,945 @@
+Windows proof (PSC-12; PS-2.9, Q31/A34) -- platform-supply-chain
+HEAD: 34fc0c10a498f16535b14f9079cd56d2ad9b7497 (agent/platform-supply-chain), host aria-alien1,
+Windows 11 Pro 10.0.26200, PowerShell 7.6.7 (Core; Windows PowerShell 5.1.26100.8655 also present),
+Docker Desktop 4.75.0, Engine 29.5.2 (linux/amd64), Compose v5.1.4. Date 2026-10-22 (UTC), tester.
+Why: this branch changed docker/app.Dockerfile, docker/gates.Dockerfile and added
+docker-compose.scan.yml; under A34 (scope ruling 2026-10-19) compose files and Dockerfiles make
+the Windows proof stale, so it is repeated at the branch head. No PowerShell script changed.
+Template: docs/evidence/platform-stack-ready/windows-proof.txt (same driver structure: metadata,
+leftovers, temp .env, build.ps1, launch.ps1 + health/ports, safety shim, one refused non-dev
+case, teardown.ps1, cleanup) plus the Windows-only test classes the Linux gates skip, as in
+docs/evidence/platform-offline/green-u2r5-windows.txt and green-fu-windows-host.txt.
+Differences from the template, on purpose:
+  - own project COMPOSE_PROJECT_NAME=ke-psc12-win and own image tag KE_IMAGE_TAG=psc12-34fc0c1,
+    both set in the driver's process environment, so the default 'knowledge-engine' project and
+    the 'local' tags were never touched; the tester's three image tags were removed at the end;
+  - .env = .env.example plus one comment marker line (no real keys; KE_MODEL_UPSTREAM empty);
+  - only the refusal case PS-2.9 names (KE_BIND_ADDRESS=0.0.0.0 with KE_ENV=prod), under the
+    safety shim; the gateway-upstream / bad-port / L-9 cases of the 2b template were about
+    2b changes and are not in scope here (no gateway, launch or teardown script changed);
+  - teardown.ps1 runs twice: without -Volumes (named volumes kept) and then with -Volumes.
+Driver: <scratch>\winproof-psc12.ps1 (copied at the end of this file), run from Git Bash in five
+phases as
+  pwsh -NoProfile -File <scratch>\winproof-psc12.ps1 -Phase <pre|build|up|down|tests>
+with NO -ExecutionPolicy flag; each repo script ran as  pwsh -NoProfile -File scripts\<x>.ps1
+Safety shim: <scratch>\shim\docker.cmd -> shim.ps1 (logs each call, exits 99 on any
+`docker compose ... up`, passes everything else to the real docker.exe).
+Output below is unedited except: profile and scratch paths -> <scratch>, SIDs -> <sid>; the
+"#### PHASE" separators, the final Git Bash check and the verdict were added by the tester.
+Working tree during the run: HEAD 34fc0c1 plus the handoff doc and tests/test_stack_ready_docs.py
+(another tester, concurrent) modified, and untracked evidence; no PowerShell script, compose file
+or Dockerfile differs from HEAD (see the final check).
+
+
+#### PHASE pre ##########################################
+
+==================== 0. Run metadata ====================
+
+date (UTC): 2026-10-22T03:19:01Z
+driver: <scratch>\winproof-psc12.ps1, run as 'pwsh -NoProfile -File <scratch>\winproof-psc12.ps1 -Phase <phase>' with NO -ExecutionPolicy flag; each repo script runs as 'pwsh -NoProfile -File scripts\<x>.ps1'
+COMPOSE_PROJECT_NAME=ke-psc12-win (tester-owned); KE_IMAGE_TAG=psc12-34fc0c1 (tester-owned, so the 'local' tag the live stack runs is never moved)
+
+PS> hostname; OSVersion; $PSVersionTable.PSVersion; PSEdition
+aria-alien1
+Microsoft Windows NT 10.0.26200.0
+7.6.7
+Core
+[exit code: 0]
+
+PS> powershell.exe -NoProfile -Command $PSVersionTable.PSVersion (Windows PowerShell 5.1, used by the Windows-only tests)
+5.1.26100.8655
+[exit code: 0]
+
+PS> Get-ExecutionPolicy -List
+
+        Scope ExecutionPolicy
+        ----- ---------------
+MachinePolicy       Undefined
+   UserPolicy       Undefined
+      Process       Undefined
+  CurrentUser       Undefined
+ LocalMachine    RemoteSigned
+
+
+[exit code: ]
+
+PS> docker version
+Client:
+ Version:           29.5.2
+ API version:       1.54
+ Go version:        go1.26.3
+ Git commit:        79eb04c
+ Built:             Wed May 20 14:40:41 2026
+ OS/Arch:           windows/amd64
+ Context:           desktop-linux
+
+Server: Docker Desktop 4.75.0 (227598)
+ Engine:
+  Version:          29.5.2
+  API version:      1.54 (minimum version 1.40)
+  Go version:       go1.26.3
+  Git commit:       568f755
+  Built:            Wed May 20 14:38:09 2026
+  OS/Arch:          linux/amd64
+  Experimental:     false
+ containerd:
+  Version:          v2.2.3
+  GitCommit:        77c84241c7cbdd9b4eca2591793e3d4f4317c590
+ runc:
+  Version:          1.3.5
+  GitCommit:        v1.3.5-0-g488fc13e
+ docker-init:
+  Version:          0.19.0
+  GitCommit:        de40ad0
+[exit code: 0]
+
+PS> docker version --format '{{.Server.Version}}' (>= 28 check)
+engine=29.5.2; >= 28: True
+[exit code: 0]
+
+PS> docker compose version
+Docker Compose version v5.1.4
+[exit code: 0]
+
+PS> git rev-parse HEAD; git branch --show-current
+34fc0c10a498f16535b14f9079cd56d2ad9b7497
+agent/platform-supply-chain
+[exit code: 0]
+
+PS> git status --short
+ M docs/handoffs/platform-supply-chain.md
+ M tests/test_stack_ready_docs.py
+?? docs/evidence/platform-supply-chain/ci/
+?? docs/evidence/platform-supply-chain/psc9/
+?? docs/knowledge-engine-claude-code-prompt.md
+[exit code: 0]
+
+PS> KE_* / COMPOSE_* variables in the process environment (names only)
+COMPOSE_PROJECT_NAME
+KE_IMAGE_TAG
+[exit code: ]
+
+
+==================== 1. Leftovers from earlier runs (project ke-psc12-win) ====================
+
+PS> Test-Path .env
+False
+[exit code: ]
+
+PS> docker ps -a --filter label=com.docker.compose.project=ke-psc12-win
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+[exit code: 0]
+
+PS> docker volume ls --filter label=com.docker.compose.project=ke-psc12-win
+DRIVER    VOLUME NAME
+[exit code: 0]
+
+PS> docker network ls --filter label=com.docker.compose.project=ke-psc12-win
+NETWORK ID   NAME      DRIVER    SCOPE
+[exit code: 0]
+
+PS> docker image ls --filter reference=ke-*:psc12-34fc0c1
+IMAGE   ID             DISK USAGE   CONTENT SIZE   EXTRA
+[exit code: 0]
+
+
+==================== 2. Temporary .env (throwaway copy of .env.example plus a marker line; no real keys) ====================
+
+PS> Copy-Item .env.example .env; Add-Content .env <marker>; keep a backup in <scratch>\env.bak
+ok
+[exit code: ]
+
+PS> diff .env.example .env
++ .env         # PSC12-THROWAWAY: tester copy of .env.example for the PSC-12 Windows run; remove after the run
+[exit code: ]
+
+
+#### PHASE build ##########################################
+
+==================== 3. scripts\build.ps1 ====================
+
+PS> pwsh -NoProfile -File scripts\build.ps1
+ Image ke-gates:psc12-34fc0c1 Building 
+ Image ke-gateway:psc12-34fc0c1 Building 
+ Image ke-app:psc12-34fc0c1 Building 
+ Image ke-app:psc12-34fc0c1 Building 
+ Image ke-gates:psc12-34fc0c1 Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 2.31kB done
+#1 DONE 0.0s
+
+#2 [gates-it internal] load build definition from gates.Dockerfile
+#2 transferring dockerfile: 6.86kB done
+#2 DONE 0.0s
+
+#3 [api internal] load build definition from app.Dockerfile
+#3 transferring dockerfile: 1.40kB done
+#3 DONE 0.0s
+
+#4 [gateway internal] load build definition from gateway.Dockerfile
+#4 transferring dockerfile: 1.10kB done
+#4 DONE 0.0s
+
+#5 [gates internal] load metadata for ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#5 DONE 0.0s
+
+#6 [gates internal] load metadata for docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#6 DONE 0.0s
+
+#7 [worker internal] load .dockerignore
+#7 transferring context: 97B done
+#7 DONE 0.0s
+
+#8 [gates-it internal] load build context
+#8 DONE 0.0s
+
+#9 [gates builder 1/9] FROM docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#9 resolve docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258 0.0s done
+#9 DONE 0.0s
+
+#10 [gates uv 1/1] FROM ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#10 resolve ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946 0.0s done
+#10 resolve ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946 0.0s done
+#10 DONE 0.0s
+
+#7 [gateway internal] load .dockerignore
+#7 transferring context: 97B done
+#7 DONE 0.0s
+
+#11 [gateway internal] load metadata for docker.io/nginxinc/nginx-unprivileged:1.28-alpine@sha256:7377697a821c131a924a7105fafbe7414db4e9fcc77a6f08f776f33f141ec3f8
+#11 DONE 0.1s
+
+#8 [api internal] load build context
+#8 transferring context: 2.37kB done
+#8 DONE 0.0s
+
+#12 [gates-it stage-1  5/13] RUN set -eu;     curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL -o /tmp/psa.nupkg       "https://www.powershellgallery.com/api/v2/package/PSScriptAnalyzer/1.25.0";     echo "e7fb573262e604bab29914ae62921d24b97c2f88b519b41277b403ef6ce163f14b7d1b36dc73449a68e5ae5a8d9502891b10c264131fd1813adf29bf131c1663  /tmp/psa.nupkg" | sha512sum -c -;     dir="/usr/local/share/powershell/Modules/PSScriptAnalyzer/1.25.0";     python3 -I -m zipfile -e /tmp/psa.nupkg "/usr/local/share/powershell/Modules/PSScriptAnalyzer/1.25.0";     rm -rf "$dir/_rels" "$dir/package" "$dir/[Content_Types].xml" "$dir/PSScriptAnalyzer.nuspec" "$dir/.signature.p7s" /tmp/psa.nupkg;     pwsh -NoProfile -NonInteractive -Command "Import-Module PSScriptAnalyzer -ErrorAction Stop"
+#12 CACHED
+
+#13 [gates-it stage-1 11/13] COPY engine ./engine
+#13 CACHED
+
+#14 [gates-it stage-1  6/13] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x86_64; sha="c158ecc55adb3afb01bbd3539ed3b997d20c26dbdc418080506cc1bf5243ff57" ;;       arm64) arch=aarch64; sha="3e93cc6d1a686456a3b18eefdde26467a837a7a2b257af22e27cba1dbc1b2018" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker.tgz       "https://download.docker.com/linux/static/stable/$arch/docker-29.9.1.tgz";     echo "$sha  /tmp/docker.tgz" | sha256sum -c -;     tar -xzf /tmp/docker.tgz -C /usr/local/bin --strip-components=1       --no-same-owner docker/docker;     rm /tmp/docker.tgz
+#14 CACHED
+
+#15 [gates-it stage-1  4/13] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x64; sha="3fc5e1567c450bd7bd5ae69ebb0a9a4a4e0418bbc36b0232cf6dd547f0bfc0eb" ;;       arm64) arch=arm64; sha="d0c216cec4c6c866fc15a105f039740228b53206f8576d2ed0bcd656a35ed6f6" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     tarball="powershell-7.4.21-linux-${arch}.tar.gz";     curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball"       "https://github.com/PowerShell/PowerShell/releases/download/v7.4.21/$tarball";     echo "$sha  /tmp/$tarball" | sha256sum -c -;     mkdir -p /opt/microsoft/powershell;     tar -xzf "/tmp/$tarball" -C /opt/microsoft/powershell;     chmod +x /opt/microsoft/powershell/pwsh;     ln -s /opt/microsoft/powershell/pwsh /usr/local/bin/pwsh;     rm "/tmp/$tarball"
+#15 CACHED
+
+#16 [gates-it stage-1  8/13] WORKDIR /work
+#16 CACHED
+
+#17 [gates-it stage-1  7/13] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x86_64; sha="40343e21ca777173e69cff5dbafeb37c6f81f3b0d57d9e597f036e95eb63e76a" ;;       arm64) arch=aarch64; sha="733ec76717ceb59052a9609b9dadfb523b2df8eab57a54212872d10a58078ea2" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose       "https://github.com/docker/compose/releases/download/v5.6.0/docker-compose-linux-$arch";     echo "$sha  /tmp/docker-compose" | sha256sum -c -;     mkdir -p /usr/local/lib/docker/cli-plugins;     install -m 0755 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose;     rm /tmp/docker-compose
+#17 CACHED
+
+#18 [gates-it stage-1  9/13] COPY pyproject.toml uv.lock ./
+#18 CACHED
+
+#19 [gates-it stage-1 10/13] COPY harness_telemetry ./harness_telemetry
+#19 CACHED
+
+#20 [gates-it stage-1 12/13] COPY config ./config
+#20 CACHED
+
+#21 [gates-it stage-1  3/13] RUN apt-get update  && apt-get install -y --no-install-recommends git jq ca-certificates curl       shellcheck=0.9.0-1 libicu72 libssl3 zlib1g  && rm -rf /var/lib/apt/lists/*  && git config --system --add safe.directory /work  && git config --system core.autocrlf true
+#21 CACHED
+
+#22 [gates stage-1 13/13] RUN uv sync --locked  && chown -R 10001:10001 /opt/venv /opt/uv-cache
+#22 CACHED
+
+#23 [worker stage-2 4/5] WORKDIR /app
+#23 CACHED
+
+#24 [worker builder 7/9] COPY engine ./engine
+#24 CACHED
+
+#25 [worker builder 5/9] RUN uv sync --locked --no-dev --no-install-project
+#25 CACHED
+
+#26 [worker builder 6/9] COPY harness_telemetry ./harness_telemetry
+#26 CACHED
+
+#27 [worker builder 8/9] COPY config ./config
+#27 CACHED
+
+#28 [worker stage-2 3/5] COPY --from=builder /app /app
+#28 CACHED
+
+#29 [worker builder 9/9] RUN uv sync --locked --no-dev --no-editable     && rm -f /opt/venv/.lock
+#29 CACHED
+
+#30 [worker builder 3/9] WORKDIR /app
+#30 CACHED
+
+#31 [worker builder 4/9] COPY pyproject.toml uv.lock ./
+#31 CACHED
+
+#32 [worker builder 2/9] COPY --from=uv /uv /usr/local/bin/uv
+#32 CACHED
+
+#33 [worker stage-2 2/5] COPY --from=builder /opt/venv /opt/venv
+#33 CACHED
+
+#34 [worker stage-2 5/5] RUN useradd --no-create-home --uid 10001 ke
+#34 CACHED
+
+#35 [gateway 1/7] FROM docker.io/nginxinc/nginx-unprivileged:1.28-alpine@sha256:7377697a821c131a924a7105fafbe7414db4e9fcc77a6f08f776f33f141ec3f8
+#35 resolve docker.io/nginxinc/nginx-unprivileged:1.28-alpine@sha256:7377697a821c131a924a7105fafbe7414db4e9fcc77a6f08f776f33f141ec3f8 0.0s done
+#35 DONE 0.0s
+
+#36 [gateway internal] load build context
+#36 transferring context: 516B done
+#36 DONE 0.0s
+
+#37 [gateway 3/7] COPY docker/gateway/templates/ /etc/nginx/templates/
+#37 CACHED
+
+#38 [gateway 6/7] COPY --chmod=0755 docker/gateway/12-ke-port-check.sh /docker-entrypoint.d/12-ke-port-check.sh
+#38 CACHED
+
+#39 [gateway 5/7] COPY --chmod=0755 docker/gateway/11-ke-upstream-check.sh /docker-entrypoint.d/11-ke-upstream-check.sh
+#39 CACHED
+
+#40 [gateway 2/7] COPY docker/gateway/nginx.conf /etc/nginx/nginx.conf
+#40 CACHED
+
+#41 [gateway 4/7] COPY --chmod=0755 docker/gateway/10-ke-bind-check.sh /docker-entrypoint.d/10-ke-bind-check.sh
+#41 CACHED
+
+#42 [gateway 7/7] RUN rm -f /etc/nginx/conf.d/default.conf  && mkdir -p /etc/nginx/stream-conf.d  && chown nginx:nginx /etc/nginx/conf.d /etc/nginx/stream-conf.d
+#42 CACHED
+
+#43 [gateway] exporting to image
+#43 exporting layers done
+#43 exporting manifest sha256:ee54c09f79e895a6b131730ff856b8abdea0ad82f5a86b90a2be91ee2a7f398f 0.0s done
+#43 exporting config sha256:3589583a5c788368f225e846a4c5a57fff92c5d8a4c0384d8858b5793cc9f7d8 0.1s done
+#43 exporting attestation manifest sha256:4b248dbf9c31529d6381fa5b3e44aa4727973fe055bdcd7754a416bc597fca56
+#43 exporting attestation manifest sha256:4b248dbf9c31529d6381fa5b3e44aa4727973fe055bdcd7754a416bc597fca56 0.1s done
+#43 exporting manifest list sha256:5ec36bb9a34ed685b41450e653005da20d835918d52fe21f61f1cb8d575492c9
+#43 exporting manifest list sha256:5ec36bb9a34ed685b41450e653005da20d835918d52fe21f61f1cb8d575492c9 0.0s done
+#43 naming to docker.io/library/ke-gateway:psc12-34fc0c1 0.0s done
+#43 unpacking to docker.io/library/ke-gateway:psc12-34fc0c1 0.0s done
+#43 DONE 0.4s
+
+#44 [gates-it] exporting to image
+#44 exporting layers done
+#44 exporting manifest sha256:c5fd0ee78c032427a7022ce79e55c5685bcfa053071f3ca65607f2000ec6fdfb 0.0s done
+#44 exporting config sha256:38cb652b4bea2b7bbf0001f14a10e739d12d5f1c5eec2d92bb168932e755a8b4 0.0s done
+#44 exporting attestation manifest sha256:4ac2cb03e038e0e8ac5d61ba989bcb9b5ad7631e9aa8a28c97df44334212dc00 0.1s done
+#44 exporting manifest list sha256:b9b98a9776cf3278be3bf672f27c0d29b28748b48814f8dea2f6babe380850b8 0.1s done
+#44 naming to docker.io/library/ke-gates:psc12-34fc0c1 0.0s done
+#44 unpacking to docker.io/library/ke-gates:psc12-34fc0c1 0.0s done
+#44 DONE 0.4s
+
+#45 [api] exporting to image
+#45 exporting layers done
+#45 exporting manifest sha256:ea9d54a22cdd236095bba791b75294af3187140c90d5e79883a9ff85ee05c2ce 0.0s done
+#45 exporting config sha256:126b362e04f077b4ff2ee67f93ed750462eedddb84329eacc19419a300f3b7a7 0.0s done
+#45 exporting attestation manifest sha256:4dece749c6bca1e3612829fb916f367be8c5a5a92e26f374933d287201bf67d4 0.1s done
+#45 exporting manifest list sha256:3777a62efe2aa7bca7a83456f29ba8c7321326712fe7c645283a298a4e71c0aa 0.1s done
+#45 naming to docker.io/library/ke-app:psc12-34fc0c1 0.0s done
+#45 unpacking to docker.io/library/ke-app:psc12-34fc0c1 0.0s done
+#45 DONE 0.4s
+
+#46 [worker] exporting to image
+#46 exporting layers done
+#46 exporting manifest sha256:1fe6de656002dee0f957bcf75af09b7b1d03f23532d84426a3955e659cb71482 0.0s done
+#46 exporting config sha256:6dbc720a6dd552b0f1953514c0104689aa0ce02637074ae54f7f3dbe54143093 0.0s done
+#46 exporting attestation manifest sha256:d98cfaf4e30f896202b2244cba0719ea4ccb27a73d426202a12f015312ccb339 0.1s done
+#46 exporting manifest list sha256:54b0f6e81d6bc156b8b98c3de3590df00aa20d9c306a3af04102f21eb00883b2 0.1s done
+#46 naming to docker.io/library/ke-app:psc12-34fc0c1 done
+#46 unpacking to docker.io/library/ke-app:psc12-34fc0c1 0.0s done
+#46 DONE 0.4s
+
+#47 [gates] exporting to image
+#47 exporting layers done
+#47 exporting manifest sha256:4dd38e2d226930da99d9a1f33a9e94c1b55718a782273d20ff3af788d1a7e107 0.0s done
+#47 exporting config sha256:915fafd3f88d8f44002108fdbe002cbac5c5fcdd8af1e103639aa1dcea8f0dc2 0.0s done
+#47 exporting attestation manifest sha256:46471010b9a09853921acae1874b506d3e3a19f0ddfea211982658a3b3f8074b 0.1s done
+#47 exporting manifest list sha256:fbed40d0b8471dd8a57c6fb4a0ae06afc5ddc86f0429f1497093c8b83bcf8400 0.1s done
+#47 naming to docker.io/library/ke-gates:psc12-34fc0c1 0.0s done
+#47 unpacking to docker.io/library/ke-gates:psc12-34fc0c1 0.0s done
+#47 DONE 0.4s
+
+#48 [api] resolving provenance for metadata file
+#48 ...
+
+#49 [gateway] resolving provenance for metadata file
+#49 DONE 0.0s
+
+#50 [gates] resolving provenance for metadata file
+#50 DONE 0.1s
+
+#48 [api] resolving provenance for metadata file
+#48 DONE 0.1s
+
+#51 [gates-it] resolving provenance for metadata file
+#51 DONE 0.1s
+
+#52 [worker] resolving provenance for metadata file
+#52 DONE 0.0s
+ Image ke-gateway:psc12-34fc0c1 Built 
+ Image ke-app:psc12-34fc0c1 Built 
+ Image ke-gates:psc12-34fc0c1 Built 
+ Image ke-gates:psc12-34fc0c1 Built 
+ Image ke-app:psc12-34fc0c1 Built 
+ Image ke-app:psc12-34fc0c1 Skipped Image can be built
+ Image ke-gates:psc12-34fc0c1 Skipped Image can be built
+ Image ke-gates:psc12-34fc0c1 Skipped Image can be built
+ Image ke-gateway:psc12-34fc0c1 Skipped Image can be built
+ Image ke-app:psc12-34fc0c1 Skipped Image can be built
+ Image arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c Pulling 
+ Image neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b Pulling 
+ Image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 Pulling 
+ Image valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507 Pulling 
+ Image valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507 Pulled 
+ Image neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b Pulled 
+ Image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 Pulled 
+ Image arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c Pulled 
+[exit code: 0]
+
+PS> docker image ls --filter reference=ke-*:psc12-34fc0c1
+IMAGE                      ID             DISK USAGE   CONTENT SIZE   EXTRA
+ke-app:psc12-34fc0c1       54b0f6e81d6b        265MB         60.4MB        
+ke-gates:psc12-34fc0c1     fbed40d0b847       1.46GB          305MB        
+ke-gateway:psc12-34fc0c1   5ec36bb9a34e       81.5MB         23.1MB        
+[exit code: 0]
+
+
+#### PHASE up ##########################################
+
+==================== 4. scripts\launch.ps1 ====================
+
+PS> diff .env.example .env
++ .env         # PSC12-THROWAWAY: tester copy of .env.example for the PSC-12 Windows run; remove after the run
+[exit code: ]
+
+PS> pwsh -NoProfile -File scripts\launch.ps1
+ Network ke-psc12-win_backend Creating 
+ Network ke-psc12-win_backend Created 
+ Network ke-psc12-win_edge Creating 
+ Network ke-psc12-win_edge Created 
+ Volume ke-psc12-win_postgres-data Creating 
+ Volume ke-psc12-win_postgres-data Created 
+ Volume ke-psc12-win_neo4j-data Creating 
+ Volume ke-psc12-win_neo4j-data Created 
+ Volume ke-psc12-win_valkey-data Creating 
+ Volume ke-psc12-win_valkey-data Created 
+ Volume ke-psc12-win_phoenix-data Creating 
+ Volume ke-psc12-win_phoenix-data Created 
+ Container ke-psc12-win-gateway-1 Creating 
+ Container ke-psc12-win-valkey-1 Creating 
+ Container ke-psc12-win-phoenix-1 Creating 
+ Container ke-psc12-win-postgres-1 Creating 
+ Container ke-psc12-win-neo4j-1 Creating 
+ Container ke-psc12-win-neo4j-1 Created 
+ Container ke-psc12-win-postgres-1 Created 
+ Container ke-psc12-win-valkey-1 Created 
+ Container ke-psc12-win-worker-1 Creating 
+ Container ke-psc12-win-api-1 Creating 
+ Container ke-psc12-win-phoenix-1 Created 
+ Container ke-psc12-win-gateway-1 Created 
+ Container ke-psc12-win-worker-1 Created 
+ Container ke-psc12-win-api-1 Created 
+ Container ke-psc12-win-valkey-1 Starting 
+ Container ke-psc12-win-neo4j-1 Starting 
+ Container ke-psc12-win-gateway-1 Starting 
+ Container ke-psc12-win-postgres-1 Starting 
+ Container ke-psc12-win-phoenix-1 Starting 
+ Container ke-psc12-win-postgres-1 Started 
+ Container ke-psc12-win-valkey-1 Started 
+ Container ke-psc12-win-valkey-1 Waiting 
+ Container ke-psc12-win-neo4j-1 Started 
+ Container ke-psc12-win-valkey-1 Waiting 
+ Container ke-psc12-win-postgres-1 Waiting 
+ Container ke-psc12-win-neo4j-1 Waiting 
+ Container ke-psc12-win-phoenix-1 Started 
+ Container ke-psc12-win-gateway-1 Started 
+ Container ke-psc12-win-valkey-1 Healthy 
+ Container ke-psc12-win-worker-1 Starting 
+ Container ke-psc12-win-valkey-1 Healthy 
+ Container ke-psc12-win-postgres-1 Healthy 
+ Container ke-psc12-win-worker-1 Started 
+ Container ke-psc12-win-neo4j-1 Healthy 
+ Container ke-psc12-win-api-1 Starting 
+ Container ke-psc12-win-api-1 Started 
+ Container ke-psc12-win-gateway-1 Waiting 
+ Container ke-psc12-win-neo4j-1 Waiting 
+ Container ke-psc12-win-valkey-1 Waiting 
+ Container ke-psc12-win-phoenix-1 Waiting 
+ Container ke-psc12-win-postgres-1 Waiting 
+ Container ke-psc12-win-api-1 Waiting 
+ Container ke-psc12-win-worker-1 Waiting 
+ Container ke-psc12-win-gateway-1 Healthy 
+ Container ke-psc12-win-postgres-1 Healthy 
+ Container ke-psc12-win-neo4j-1 Healthy 
+ Container ke-psc12-win-valkey-1 Healthy 
+ Container ke-psc12-win-phoenix-1 Healthy 
+ Container ke-psc12-win-worker-1 Healthy 
+ Container ke-psc12-win-api-1 Healthy 
+stack is up:
+  api:     http://127.0.0.1:47100
+  phoenix: http://127.0.0.1:47101
+[exit code: 0]
+
+PS> docker compose ps
+NAME                      IMAGE                                                                                                          COMMAND                  SERVICE    CREATED          STATUS                    PORTS
+ke-psc12-win-api-1        ke-app:psc12-34fc0c1                                                                                           "python -m engine.api"   api        21 seconds ago   Up 6 seconds (healthy)    
+ke-psc12-win-gateway-1    ke-gateway:psc12-34fc0c1                                                                                       "/docker-entrypoint.…"   gateway    21 seconds ago   Up 20 seconds (healthy)   127.0.0.1:47100->8100/tcp, 127.0.0.1:47101->8101/tcp
+ke-psc12-win-neo4j-1      neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b                      "tini -g -- /startup…"   neo4j      21 seconds ago   Up 20 seconds (healthy)   7473-7474/tcp, 7687/tcp
+ke-psc12-win-phoenix-1    arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c   "/usr/bin/python3.13…"   phoenix    21 seconds ago   Up 20 seconds (healthy)   4317/tcp, 6006/tcp, 9090/tcp
+ke-psc12-win-postgres-1   postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4                   "docker-entrypoint.s…"   postgres   21 seconds ago   Up 20 seconds (healthy)   5432/tcp
+ke-psc12-win-valkey-1     valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507                 "tini -- docker-entr…"   valkey     21 seconds ago   Up 20 seconds (healthy)   6379/tcp
+ke-psc12-win-worker-1     ke-app:psc12-34fc0c1                                                                                           "python -m engine.wo…"   worker     21 seconds ago   Up 14 seconds (healthy)   
+[exit code: 0]
+
+PS> docker compose ps --format json (service/state/health)
+api        running  healthy
+gateway    running  healthy
+neo4j      running  healthy
+phoenix    running  healthy
+postgres   running  healthy
+valkey     running  healthy
+worker     running  healthy
+[exit code: 0]
+
+PS> Invoke-WebRequest http://127.0.0.1:47100/healthz
+200 {"status":"ok"}
+[exit code: ]
+
+PS> curl.exe -sS -i http://127.0.0.1:47100/readyz
+HTTP/1.1 200 OK
+Server: nginx/1.28.2
+Date: Thu, 22 Oct 2026 03:19:46 GMT
+Content-Type: application/json
+Content-Length: 200
+Connection: keep-alive
+
+{"ready":true,"checks":{"postgres":{"ok":true,"reason":null},"neo4j":{"ok":true,"reason":null},"valkey":{"ok":true,"reason":null},"model_host":{"ok":false,"reason":"not_configured","required":false}}}
+[exit code: 0]
+
+PS> Invoke-WebRequest http://127.0.0.1:47101/ (Phoenix UI title)
+200 <title>Phoenix</title>
+[exit code: ]
+
+PS> docker port ke-psc12-win-gateway-1
+8100/tcp -> 127.0.0.1:47100
+8101/tcp -> 127.0.0.1:47101
+[exit code: 0]
+
+PS> project containers and published ports
+ke-psc12-win-api-1  
+ke-psc12-win-worker-1  
+ke-psc12-win-gateway-1  127.0.0.1:47100->8100/tcp, 127.0.0.1:47101->8101/tcp
+ke-psc12-win-phoenix-1  4317/tcp, 6006/tcp, 9090/tcp
+ke-psc12-win-valkey-1  6379/tcp
+ke-psc12-win-postgres-1  5432/tcp
+ke-psc12-win-neo4j-1  7473-7474/tcp, 7687/tcp
+[exit code: 0]
+
+PS> Get-NetTCPConnection -State Listen -LocalPort 47100,47101 (host listeners)
+127.0.0.1:47100
+127.0.0.1:47101
+[exit code: ]
+
+PS> TCP connect <this host non-loopback IPv4, not recorded>:47100 within 3 s (must be False)
+connected: False
+[exit code: ]
+
+
+==================== 5. Safety shim verification (before the refusal case) ====================
+
+PS> shim: Get-Command docker (resolves to the shim)
+<scratch>\shim\docker.cmd
+[exit code: ]
+
+PS> shim: docker version --format '{{.Server.Version}}' (passes through)
+29.5.2
+[exit code: 0]
+
+PS> shim: docker compose up --help (must be intercepted, exit 99; harmless if not)
+shim: intercepted docker compose up (exit 99)
+[exit code: 99]
+
+PS> shim call log
+version --format {{.Server.Version}}
+compose up --help
+[exit code: ]
+
+
+==================== 5a. Refusal: KE_BIND_ADDRESS=0.0.0.0 and KE_ENV=prod in .env (launch.ps1 under the shim) ====================
+
+PS> diff .env.example .env
++ .env         KE_ENV=prod
++ .env         KE_BIND_ADDRESS=0.0.0.0
++ .env         # PSC12-THROWAWAY: tester copy of .env.example for the PSC-12 Windows run; remove after the run
+- .env.example KE_ENV=dev
+- .env.example KE_BIND_ADDRESS=127.0.0.1
+[exit code: ]
+
+PS> pwsh -NoProfile -File scripts\launch.ps1 (under the shim)
+Write-Error: C:\repos\Knowledge-engine\scripts\launch.ps1:123
+Line |
+ 123 |              Write-Error 'KE_BIND_ADDRESS is not loopback and KE_ENV i .
+     |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | KE_BIND_ADDRESS is not loopback and KE_ENV is not dev; refusing to launch (until auth-audit lands)
+[exit code: 1]
+
+PS> shim call log (no compose up)
+compose version --short
+version --format {{.Server.Version}}
+compose config --format json
+
+compose up reached: False
+[exit code: ]
+
+PS> project ports (unchanged, 127.0.0.1 only)
+ke-psc12-win-api-1  
+ke-psc12-win-worker-1  
+ke-psc12-win-gateway-1  127.0.0.1:47100->8100/tcp, 127.0.0.1:47101->8101/tcp
+ke-psc12-win-phoenix-1  4317/tcp, 6006/tcp, 9090/tcp
+ke-psc12-win-valkey-1  6379/tcp
+ke-psc12-win-postgres-1  5432/tcp
+ke-psc12-win-neo4j-1  7473-7474/tcp, 7687/tcp
+[exit code: 0]
+
+PS> Restore .env from <scratch>\env.bak; diff .env.example .env
++ .env         # PSC12-THROWAWAY: tester copy of .env.example for the PSC-12 Windows run; remove after the run
+[exit code: ]
+
+
+#### PHASE down ##########################################
+
+==================== 6. scripts\teardown.ps1 (no -Volumes: containers and networks go, named volumes stay) ====================
+
+PS> volumes before: docker volume ls --filter label=com.docker.compose.project=ke-psc12-win
+DRIVER    VOLUME NAME
+local     ke-psc12-win_neo4j-data
+local     ke-psc12-win_phoenix-data
+local     ke-psc12-win_postgres-data
+local     ke-psc12-win_valkey-data
+[exit code: 0]
+
+PS> pwsh -NoProfile -File scripts\teardown.ps1
+ Container ke-psc12-win-gateway-1 Stopping 
+ Container ke-psc12-win-worker-1 Stopping 
+ Container ke-psc12-win-phoenix-1 Stopping 
+ Container ke-psc12-win-api-1 Stopping 
+ Container ke-psc12-win-worker-1 Stopped 
+ Container ke-psc12-win-worker-1 Removing 
+ Container ke-psc12-win-worker-1 Removed 
+ Container ke-psc12-win-gateway-1 Stopped 
+ Container ke-psc12-win-gateway-1 Removing 
+ Container ke-psc12-win-gateway-1 Removed 
+ Container ke-psc12-win-api-1 Stopped 
+ Container ke-psc12-win-api-1 Removing 
+ Container ke-psc12-win-api-1 Removed 
+ Container ke-psc12-win-neo4j-1 Stopping 
+ Container ke-psc12-win-postgres-1 Stopping 
+ Container ke-psc12-win-valkey-1 Stopping 
+ Container ke-psc12-win-phoenix-1 Stopped 
+ Container ke-psc12-win-phoenix-1 Removing 
+ Container ke-psc12-win-phoenix-1 Removed 
+ Container ke-psc12-win-valkey-1 Stopped 
+ Container ke-psc12-win-valkey-1 Removing 
+ Container ke-psc12-win-valkey-1 Removed 
+ Container ke-psc12-win-postgres-1 Stopped 
+ Container ke-psc12-win-postgres-1 Removing 
+ Container ke-psc12-win-postgres-1 Removed 
+ Container ke-psc12-win-neo4j-1 Stopped 
+ Container ke-psc12-win-neo4j-1 Removing 
+ Container ke-psc12-win-neo4j-1 Removed 
+ Network ke-psc12-win_backend Removing 
+ Network ke-psc12-win_edge Removing 
+ Network ke-psc12-win_backend Removed 
+ Network ke-psc12-win_edge Removed 
+[exit code: 0]
+
+PS> docker ps -a --filter label=com.docker.compose.project=ke-psc12-win
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+[exit code: 0]
+
+PS> docker network ls --filter label=com.docker.compose.project=ke-psc12-win
+NETWORK ID   NAME      DRIVER    SCOPE
+[exit code: 0]
+
+PS> docker volume ls --filter label=com.docker.compose.project=ke-psc12-win (kept)
+DRIVER    VOLUME NAME
+local     ke-psc12-win_neo4j-data
+local     ke-psc12-win_phoenix-data
+local     ke-psc12-win_postgres-data
+local     ke-psc12-win_valkey-data
+[exit code: 0]
+
+
+==================== 7. scripts\teardown.ps1 -Volumes (the tester removes its own project volumes) ====================
+
+PS> pwsh -NoProfile -File scripts\teardown.ps1 -Volumes
+ Volume ke-psc12-win_postgres-data Removing 
+ Volume ke-psc12-win_neo4j-data Removing 
+ Volume ke-psc12-win_valkey-data Removing 
+ Volume ke-psc12-win_postgres-data Removed 
+ Volume ke-psc12-win_phoenix-data Removing 
+ Volume ke-psc12-win_valkey-data Removed 
+ Volume ke-psc12-win_neo4j-data Removed 
+ Volume ke-psc12-win_phoenix-data Removed 
+[exit code: 0]
+
+PS> docker ps -a --filter label=com.docker.compose.project=ke-psc12-win
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+[exit code: 0]
+
+PS> docker network ls --filter label=com.docker.compose.project=ke-psc12-win
+NETWORK ID   NAME      DRIVER    SCOPE
+[exit code: 0]
+
+PS> docker volume ls --filter label=com.docker.compose.project=ke-psc12-win
+DRIVER    VOLUME NAME
+[exit code: 0]
+
+PS> docker volume ls --filter name=ke-psc12-win_
+DRIVER    VOLUME NAME
+[exit code: 0]
+
+PS> docker compose ls -a --filter name=ke-psc12-win
+NAME                STATUS              CONFIG FILES
+[exit code: 0]
+
+
+==================== 8. Remove temporary .env and the tester-owned image tags ====================
+
+PS> Remove-Item .env, <scratch>\env.bak; Test-Path .env
+False
+[exit code: ]
+
+PS> docker image rm ke-app:psc12-34fc0c1 ke-gateway:psc12-34fc0c1 ke-gates:psc12-34fc0c1 (untag only; tester-owned tags)
+Untagged: ke-app:psc12-34fc0c1
+Deleted: sha256:54b0f6e81d6bc156b8b98c3de3590df00aa20d9c306a3af04102f21eb00883b2
+Untagged: ke-gateway:psc12-34fc0c1
+Deleted: sha256:5ec36bb9a34ed685b41450e653005da20d835918d52fe21f61f1cb8d575492c9
+Untagged: ke-gates:psc12-34fc0c1
+Deleted: sha256:fbed40d0b8471dd8a57c6fb4a0ae06afc5ddc86f0429f1497093c8b83bcf8400
+[exit code: 0]
+
+PS> docker image ls --filter reference=ke-*:psc12-34fc0c1
+IMAGE   ID             DISK USAGE   CONTENT SIZE   EXTRA
+[exit code: 0]
+
+PS> git status --short
+ M docs/handoffs/platform-supply-chain.md
+ M tests/test_stack_ready_docs.py
+?? docs/evidence/platform-supply-chain/ci/
+?? docs/evidence/platform-supply-chain/psc9/
+?? docs/knowledge-engine-claude-code-prompt.md
+[exit code: 0]
+
+
+#### PHASE tests ##########################################
+
+==================== 9. Windows-only tests (skipped in the Linux gates image; run on this host) ====================
+
+PS> .venv\Scripts\python.exe -m unittest -v tests.test_offline_bundle.InstallPs1WindowsAclTest tests.test_stack_scripts.LaunchPs1WindowsEnvTest
+test_empty_path_entry_is_dropped_on_windows (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_empty_path_entry_is_dropped_on_windows)
+Review RB5a, security L-9: on Windows an empty PATH entry is a ... ok
+test_parent_granting_authenticated_users_modify_is_refused (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_parent_granting_authenticated_users_modify_is_refused)
+Round-4 ruling (orchestrator "unit-2 rework round 4/5", POLICY ... ok
+test_parent_others_can_create_in_is_refused (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_parent_others_can_create_in_is_refused)
+Security M-6 (probes W2, W3), behavioural: an Everyone ... ok
+test_staging_junction_to_operator_dir_is_never_emptied (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_staging_junction_to_operator_dir_is_never_emptied)
+Security H-2 (probe W1) on Windows: right after staging is ... ok
+test_staging_never_inherits_an_ace (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_staging_never_inherits_an_ace)
+Security H-1: staging never carries an inherited ACE, under a ... ok
+test_launch_ps1_icacls_failure_warns_and_continues (tests.test_stack_scripts.LaunchPs1WindowsEnvTest.test_launch_ps1_icacls_failure_warns_and_continues) ... ok
+test_launch_ps1_restricts_env_to_current_user_sid (tests.test_stack_scripts.LaunchPs1WindowsEnvTest.test_launch_ps1_restricts_env_to_current_user_sid) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 10.022s
+
+OK
+[exit code: 0]
+
+
+#### Final check (tester, Git Bash, after all phases) ######################
+$ docker ps -a --filter label=com.docker.compose.project=ke-psc12-win
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+[exit code: 0]
+$ docker ps -a --format "{{.Names}}" | grep -c "^ke-psc12-win" (count of project containers, any state)
+0
+$ docker network ls --filter name=ke-psc12-win; docker volume ls --filter name=ke-psc12-win
+NETWORK ID   NAME      DRIVER    SCOPE
+DRIVER    VOLUME NAME
+$ ls -a .env (repo root)
+ls: cannot access '/c/repos/Knowledge-engine/.env': No such file or directory
+$ git rev-parse HEAD
+34fc0c10a498f16535b14f9079cd56d2ad9b7497
+$ git diff --stat 34fc0c1 -- scripts/*.ps1 docker-compose*.yml docker/ (working-tree changes to A34-scoped files; empty = none)
+[end]
+
+==================== Verdict: PASS ====================
+
+  0-2 metadata, no leftovers, temp .env ............ PASS (HEAD 34fc0c1; .env = example + marker)
+  3   scripts\build.ps1 ............................ PASS exit 0 (3 images built from cache,
+                                                     4 digest-pinned images pulled; ke-app 265 MB)
+  4   scripts\launch.ps1 ........................... PASS exit 0; 7/7 services running+healthy;
+                                                     /healthz 200, /readyz 200 ready:true
+                                                     (model_host not_configured, required:false),
+                                                     Phoenix UI 200; only the gateway publishes, on
+                                                     127.0.0.1:47100/47101; non-loopback connect False
+  5   safety shim self-check ....................... PASS (resolves to shim, passes through,
+                                                     intercepts compose up with 99)
+  5a  refusal KE_BIND_ADDRESS=0.0.0.0 + KE_ENV=prod  PASS exit 1, names KE_BIND_ADDRESS,
+                                                     compose up never reached, ports unchanged
+  6   scripts\teardown.ps1 ......................... PASS exit 0; no containers, no networks,
+                                                     4 named volumes kept
+  7   scripts\teardown.ps1 -Volumes ................ PASS exit 0; no containers/networks/volumes,
+                                                     no compose project
+  8   cleanup ...................................... PASS (.env removed, tester tags removed)
+  9   Windows-only tests ........................... PASS Ran 7 tests, OK
+                                                     (InstallPs1WindowsAclTest x5,
+                                                     LaunchPs1WindowsEnvTest x2)
+  final: 0 ke-psc12-win containers, networks, volumes; no .env; HEAD 34fc0c1; no diff from HEAD
+  in scripts/*.ps1, docker-compose*.yml or docker/.
+
+==================== Driver: <scratch>\winproof-psc12.ps1 ====================
+# PSC-12 Windows proof driver (tester). Template: docs/evidence/platform-stack-ready/windows-proof.txt
+# Own project and image tag so no other project or image is touched.
+param([Parameter(Mandatory)][ValidateSet('pre', 'build', 'up', 'down', 'tests')][string]$Phase)
+$ErrorActionPreference = 'Continue'
+$PSStyle.OutputRendering = 'PlainText'
+$repo = 'C:\repos\Knowledge-engine'
+$scratch = Split-Path -Parent $PSCommandPath
+$shimDir = Join-Path $scratch 'shim'
+$envBak = Join-Path $scratch 'env.bak'
+$project = 'ke-psc12-win'
+$tag = 'psc12-34fc0c1'
+Set-Location $repo
+$env:COMPOSE_PROJECT_NAME = $project
+$env:KE_IMAGE_TAG = $tag
+$filter = "label=com.docker.compose.project=$project"
+
+function Section([string]$t) { ''; "==================== $t ===================="; '' }
+function Step([string]$label, [scriptblock]$sb) {
+    "PS> $label"
+    $global:LASTEXITCODE = $null
+    & $sb 2>&1 | ForEach-Object { "$_" }
+    "[exit code: $global:LASTEXITCODE]"
+    ''
+}
+function EnvDiff {
+    Compare-Object (Get-Content .env.example) (Get-Content .env) |
+        ForEach-Object { '{0} {1}' -f $(if ($_.SideIndicator -eq '=>') { '+ .env        ' } else { '- .env.example' }), $_.InputObject }
+}
+function ProjectPorts {
+    docker ps --filter $filter --format '{{.Names}}  {{.Ports}}'
+}
+
+switch ($Phase) {
+'pre' {
+    Section '0. Run metadata'
+    "date (UTC): $([DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'))"
+    "driver: <scratch>\winproof-psc12.ps1, run as 'pwsh -NoProfile -File <scratch>\winproof-psc12.ps1 -Phase <phase>' with NO -ExecutionPolicy flag; each repo script runs as 'pwsh -NoProfile -File scripts\<x>.ps1'"
+    "COMPOSE_PROJECT_NAME=$env:COMPOSE_PROJECT_NAME (tester-owned); KE_IMAGE_TAG=$env:KE_IMAGE_TAG (tester-owned, so the 'local' tag the live stack runs is never moved)"
+    ''
+    Step 'hostname; OSVersion; $PSVersionTable.PSVersion; PSEdition' { hostname; [Environment]::OSVersion.VersionString; $PSVersionTable.PSVersion.ToString(); $PSVersionTable.PSEdition }
+    Step 'powershell.exe -NoProfile -Command $PSVersionTable.PSVersion (Windows PowerShell 5.1, used by the Windows-only tests)' { powershell.exe -NoProfile -Command '$PSVersionTable.PSVersion.ToString()' }
+    Step 'Get-ExecutionPolicy -List' { Get-ExecutionPolicy -List | Format-Table -AutoSize | Out-String }
+    Step 'docker version' { docker version }
+    Step "docker version --format '{{.Server.Version}}' (>= 28 check)" { $v = docker version --format '{{.Server.Version}}'; "engine=$v; >= 28: $([int]($v.Split('.')[0]) -ge 28)" }
+    Step 'docker compose version' { docker compose version }
+    Step 'git rev-parse HEAD; git branch --show-current' { git rev-parse HEAD; git branch --show-current }
+    Step 'git status --short' { git status --short }
+    Step 'KE_* / COMPOSE_* variables in the process environment (names only)' { Get-ChildItem env: | Where-Object { $_.Name -like 'KE_*' -or $_.Name -like 'COMPOSE_*' } | ForEach-Object Name }
+
+    Section "1. Leftovers from earlier runs (project $project)"
+    Step 'Test-Path .env' { Test-Path .env }
+    Step "docker ps -a --filter $filter" { docker ps -a --filter $filter }
+    Step "docker volume ls --filter $filter" { docker volume ls --filter $filter }
+    Step "docker network ls --filter $filter" { docker network ls --filter $filter }
+    Step "docker image ls --filter reference=ke-*:$tag" { docker image ls --filter "reference=ke-*:$tag" }
+
+    Section '2. Temporary .env (throwaway copy of .env.example plus a marker line; no real keys)'
+    Step 'Copy-Item .env.example .env; Add-Content .env <marker>; keep a backup in <scratch>\env.bak' {
+        Copy-Item .env.example .env
+        Add-Content .env '# PSC12-THROWAWAY: tester copy of .env.example for the PSC-12 Windows run; remove after the run'
+        Copy-Item .env $envBak -Force
+        'ok'
+    }
+    Step 'diff .env.example .env' { EnvDiff }
+}
+'build' {
+    Section '3. scripts\build.ps1'
+    Step 'pwsh -NoProfile -File scripts\build.ps1' { pwsh -NoProfile -File scripts\build.ps1 }
+    Step "docker image ls --filter reference=ke-*:$tag" { docker image ls --filter "reference=ke-*:$tag" }
+}
+'up' {
+    Section '4. scripts\launch.ps1'
+    Step 'diff .env.example .env' { EnvDiff }
+    Step 'pwsh -NoProfile -File scripts\launch.ps1' { pwsh -NoProfile -File scripts\launch.ps1 }
+    Step 'docker compose ps' { docker compose ps }
+    Step 'docker compose ps --format json (service/state/health)' { docker compose ps --format json | ForEach-Object { $o = $_ | ConvertFrom-Json; '{0,-10} {1,-8} {2}' -f $o.Service, $o.State, $o.Health } }
+    Step 'Invoke-WebRequest http://127.0.0.1:47100/healthz' { $r = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:47100/healthz; "$($r.StatusCode) $($r.Content)" }
+    Step 'curl.exe -sS -i http://127.0.0.1:47100/readyz' { curl.exe -sS -i http://127.0.0.1:47100/readyz }
+    Step 'Invoke-WebRequest http://127.0.0.1:47101/ (Phoenix UI title)' { $r = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:47101/; "$($r.StatusCode) " + ([regex]::Match($r.Content, '<title>[^<]*</title>').Value) }
+    Step "docker port $project-gateway-1" { docker port "$project-gateway-1" }
+    Step 'project containers and published ports' { ProjectPorts }
+    Step 'Get-NetTCPConnection -State Listen -LocalPort 47100,47101 (host listeners)' { Get-NetTCPConnection -State Listen -LocalPort 47100, 47101 -ErrorAction SilentlyContinue | ForEach-Object { '{0}:{1}' -f $_.LocalAddress, $_.LocalPort } | Sort-Object -Unique }
+    Step 'TCP connect <this host non-loopback IPv4, not recorded>:47100 within 3 s (must be False)' {
+        $ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '127.*' -and $_.IPAddress -notlike '169.254.*' -and $_.InterfaceAlias -notlike 'vEthernet*' } | Select-Object -First 1).IPAddress
+        $c = [Net.Sockets.TcpClient]::new()
+        $ok = $false
+        try { $ok = $c.ConnectAsync($ip, 47100).Wait(3000) -and $c.Connected } catch { $ok = $false } finally { $c.Dispose() }
+        "connected: $ok"
+    }
+
+    Section '5. Safety shim verification (before the refusal case)'
+    $shimLog = Join-Path $scratch 'shim.log'
+    if (Test-Path $shimLog) { Remove-Item $shimLog }
+    $env:KE_SHIM_LOG = $shimLog
+    $realPath = $env:PATH
+    $env:PATH = "$shimDir;$realPath"
+    Step 'shim: Get-Command docker (resolves to the shim)' { (Get-Command docker).Source -replace [regex]::Escape($scratch), '<scratch>' }
+    Step "shim: docker version --format '{{.Server.Version}}' (passes through)" { docker version --format '{{.Server.Version}}' }
+    Step 'shim: docker compose up --help (must be intercepted, exit 99; harmless if not)' { docker compose up --help | Select-Object -First 2 }
+    Step 'shim call log' { Get-Content $shimLog }
+    Remove-Item $shimLog
+
+    Section '5a. Refusal: KE_BIND_ADDRESS=0.0.0.0 and KE_ENV=prod in .env (launch.ps1 under the shim)'
+    (Get-Content .env) -replace '^KE_BIND_ADDRESS=.*$', 'KE_BIND_ADDRESS=0.0.0.0' -replace '^KE_ENV=.*$', 'KE_ENV=prod' | Set-Content .env
+    Step 'diff .env.example .env' { EnvDiff }
+    Step 'pwsh -NoProfile -File scripts\launch.ps1 (under the shim)' { pwsh -NoProfile -File scripts\launch.ps1 }
+    Step 'shim call log (no compose up)' { Get-Content $shimLog; ''; "compose up reached: $([bool](Get-Content $shimLog | Where-Object { $_ -match '\bcompose\b' -and $_ -match '\bup\b' }))" }
+    $env:PATH = $realPath
+    Remove-Item Env:KE_SHIM_LOG
+    Step 'project ports (unchanged, 127.0.0.1 only)' { ProjectPorts }
+    Step 'Restore .env from <scratch>\env.bak; diff .env.example .env' { Copy-Item $envBak .env -Force; EnvDiff }
+}
+'down' {
+    Section '6. scripts\teardown.ps1 (no -Volumes: containers and networks go, named volumes stay)'
+    Step "volumes before: docker volume ls --filter $filter" { docker volume ls --filter $filter }
+    Step 'pwsh -NoProfile -File scripts\teardown.ps1' { pwsh -NoProfile -File scripts\teardown.ps1 }
+    Step "docker ps -a --filter $filter" { docker ps -a --filter $filter }
+    Step "docker network ls --filter $filter" { docker network ls --filter $filter }
+    Step "docker volume ls --filter $filter (kept)" { docker volume ls --filter $filter }
+
+    Section '7. scripts\teardown.ps1 -Volumes (the tester removes its own project volumes)'
+    Step 'pwsh -NoProfile -File scripts\teardown.ps1 -Volumes' { pwsh -NoProfile -File scripts\teardown.ps1 -Volumes }
+    Step "docker ps -a --filter $filter" { docker ps -a --filter $filter }
+    Step "docker network ls --filter $filter" { docker network ls --filter $filter }
+    Step "docker volume ls --filter $filter" { docker volume ls --filter $filter }
+    Step "docker volume ls --filter name=${project}_" { docker volume ls --filter "name=${project}_" }
+    Step "docker compose ls -a --filter name=$project" { docker compose ls -a --filter "name=$project" }
+
+    Section '8. Remove temporary .env and the tester-owned image tags'
+    Step 'Remove-Item .env, <scratch>\env.bak; Test-Path .env' { Remove-Item .env, $envBak; Test-Path .env }
+    Step "docker image rm ke-app:$tag ke-gateway:$tag ke-gates:$tag (untag only; tester-owned tags)" { docker image rm "ke-app:$tag" "ke-gateway:$tag" "ke-gates:$tag" }
+    Step "docker image ls --filter reference=ke-*:$tag" { docker image ls --filter "reference=ke-*:$tag" }
+    Step 'git status --short' { git status --short }
+}
+'tests' {
+    Section '9. Windows-only tests (skipped in the Linux gates image; run on this host)'
+    $env:HARNESS_TRACING = 'off'
+    Remove-Item Env:COMPOSE_PROJECT_NAME, Env:KE_IMAGE_TAG
+    Step '.venv\Scripts\python.exe -m unittest -v tests.test_offline_bundle.InstallPs1WindowsAclTest tests.test_stack_scripts.LaunchPs1WindowsEnvTest' {
+        & .venv\Scripts\python.exe -m unittest -v tests.test_offline_bundle.InstallPs1WindowsAclTest tests.test_stack_scripts.LaunchPs1WindowsEnvTest
+    }
+}
+}
