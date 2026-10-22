@@ -6480,7 +6480,8 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
   full`) and the PS-3.4 timeout rule (§2.5) stand unchanged.
 - **Context:** `on: {push, pull_request}` runs `verify.sh full` twice for
   every push to a PR branch (PR #11: runs 39723927881 and 39724208839 on
-  one commit), about 48 billed minutes per push on a private repo.
+  one commit): measured 44 billed (43.4 job) minutes per PR push on a
+  private repo, 17 billed (16.7 job) after (PR #12).
 - **Decision:**
   - **ci.yml `on:` block (the only ci.yml change):**
 
