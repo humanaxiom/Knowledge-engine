@@ -4394,7 +4394,8 @@ the last published version). These gaps are what §4 and ADR-KE-007 address.
 The template's existing ADR (OpenInference tracing to Arize Phoenix) stays in
 force, and its text is kept below unchanged. ADR-KE-001 is built (amended by
 ADR-KE-009). ADR-KE-002 to ADR-KE-012 are **proposed**. ADR-KE-014
-(model roles) is **accepted** by the 2026-10-20 rulings.
+(model roles) is **accepted** by the 2026-10-20 rulings. ADR-KE-015
+(CI triggers) is **accepted** by the 2026-10-22 rulings.
 
 ### ADR: OpenInference tracing to Arize Phoenix
 - Context: `docs/log.md` records what each role did, but not how agent code
@@ -6471,3 +6472,60 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
 - **First tests:** `test_model_role_defaults` (RED on today's
   `defaults.yaml`), then `test_no_hardcoded_hosts_or_models` with the new
   declared set. The integration list is in §2.6 *model-roles*.
+
+### ADR-KE-015: CI triggers, one run per event (ci-triggers)
+- **Status:** accepted (Q-CT1..Q-CT5 rulings, orchestrator, 2026-10-22).
+  Criteria CT-1..CT-7 in `docs/requirements.md` `## Item: ci-triggers`. No
+  earlier ADR covers triggers; ADR-KE-001 (CI's only step is `verify.sh
+  full`) and the PS-3.4 timeout rule (§2.5) stand unchanged.
+- **Context:** `on: {push, pull_request}` runs `verify.sh full` twice for
+  every push to a PR branch (PR #11: runs 39723927881 and 39724208839 on
+  one commit), about 48 billed minutes per push on a private repo.
+- **Decision:**
+  - **ci.yml `on:` block (the only ci.yml change):**
+
+    ```yaml
+    on:
+      # ci-triggers (ADR-KE-015): push runs only for the default branch, and
+      # every pull request gets one run, so a PR push is verified once. A
+      # branch with no open PR gets no CI. Renaming the default branch must
+      # update this list and DEFAULT_BRANCH in tests/test_stack_ready_docs.py.
+      push:
+        branches: [ccr-19465ed4-j1u0m5]
+      pull_request:
+    ```
+  - **Concurrency unchanged** (`ci-${{ github.ref }}`, cancel true; Q-CT2):
+    PR runs use `refs/pull/<n>/merge`, push runs `refs/heads/<default>`.
+  - **Tests:** one new class `CiTriggersTest` in
+    `tests/test_stack_ready_docs.py`, next to `CiTimeoutTest` (same `CI`
+    path, same `yaml.safe_load`; PyYAML is a runtime dependency in
+    `pyproject.toml`, locked at 6.0.3, so it is in the gates image).
+    Constant `DEFAULT_BRANCH = "ccr-19465ed4-j1u0m5"` with the rename note
+    (Q-CT5). Docs phrases are matched lowercased, whitespace-normalised.
+  - **Docs (CT-6):** a Branch Policy bullet in AGENTS.md and one sentence on
+    the README CI bullet; both say "the default branch", not its literal
+    name, so a rename touches only ci.yml and the test constant.
+  - **PS-3.4 (CT-5):** two green runs are a PR's `pull_request` run and its
+    manual re-run (attempt 2) on the same head commit; the 37 pin stays.
+- **Alternatives considered:**
+  - **`paths`/`paths-ignore`:** rejected; docs-only pushes would skip the
+    only gate, and a skipped required check leaves the PR pending.
+  - **`workflow_dispatch`:** rejected; a third trigger (CT-1), and the
+    re-run (CT-5) and draft PR (Q-CT4) cover its uses.
+  - **`pull_request_target`:** rejected; it runs PR code with the base
+    repo's token and secrets context, a security risk with no gain here.
+  - **Dropping `push`:** rejected; the merge commit on the default branch
+    would never be verified.
+  - **Job-level `if:` dedupe:** rejected; still queues skipped runs and
+    puts logic in the job instead of the trigger.
+- **Consequences:**
+  - A branch with no open PR, or a PR with a merge conflict, gets no CI;
+    written into AGENTS.md and README (CT-6).
+  - Renaming the default branch silently stops push CI until ci.yml and
+    the test constant are updated together.
+  - The diff touches ci.yml, so the item needs `verify.sh full`.
+  - No agent loop, model call, retrieval or tool call: no spans.
+- **First tests:** `test_ci_triggers_push_default_branch_and_pull_request`
+  (CT-1, RED today: `push` is null); `test_docs_say_ci_needs_a_pull_request`
+  (CT-6, RED today); `test_ci_concurrency_per_ref` (CT-3, passes on arrival
+  as a pin, not a RED).

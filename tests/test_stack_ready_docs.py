@@ -15,6 +15,13 @@
   pull_request run 39713519072 took 23.0 min (1380 s, 02:49:55 to 03:12:55);
   docs/evidence/platform-supply-chain/ci/. The slower run + 50% =
   24.5 x 1.5 = 36.75, rounded up to 37. Earlier pin: ci-speed CS-7, 32.
+- `CiTriggersTest` (ci-triggers, ADR-KE-015): ci.yml's `on:` has exactly
+  `push` (only `branches: [DEFAULT_BRANCH]`) and an unfiltered
+  `pull_request` (CT-1, Q-CT1); concurrency stays `ci-${{ github.ref }}` with
+  `cancel-in-progress: true` (CT-3, Q-CT2, a pin); AGENTS.md Branch Policy and
+  README say CI runs only on default-branch pushes and pull requests, that a
+  branch pushed with no open PR gets no CI, and (AGENTS.md) that a PR with a
+  merge conflict gets no run (CT-6).
 """
 
 from __future__ import annotations
@@ -34,6 +41,17 @@ CI_ONLY = "What CI runs that verify.sh does not"
 # ci-39713519072.log). The slower run sets the bound: 24.5 x 1.5 = 36.75,
 # rounded up to 37. Before it, ci-speed CS-7 set 32.
 CI_TIMEOUT_MINUTES = 37
+# ci-triggers CT-1, Q-CT5: the repo's default branch, pinned literally because
+# `$default-branch` works only in workflow templates. Renaming the default
+# branch must update this constant and the `push: branches:` list in ci.yml
+# together, or push CI on the default branch stops silently.
+DEFAULT_BRANCH = "ccr-19465ed4-j1u0m5"
+AGENTS_MD = ROOT / "AGENTS.md"
+README_MD = ROOT / "README.md"
+# CT-6 phrases, matched lowercased and whitespace-normalised.
+CI_TRIGGER_PHRASE = "ci runs only on pushes to the default branch and on pull requests"
+NO_PR_NO_CI_PHRASE = "a branch pushed with no open pr gets no ci"
+MERGE_CONFLICT_PHRASE = "merge conflict"
 
 
 def _sections(text: str) -> list[tuple[str, str]]:
@@ -87,6 +105,64 @@ class CiTimeoutTest(unittest.TestCase):
                                  f"green CI runs 39713504156 24.5 min and "
                                  f"39713519072 23.0 min; slower run + 50% = "
                                  f"36.75 -> 37)")
+
+
+def _flat(text: str) -> str:
+    """Lowercased, whitespace-normalised text (CT-6 phrase matching)."""
+    return " ".join(text.lower().split())
+
+
+class CiTriggersTest(unittest.TestCase):
+    """ci-triggers CT-1, CT-3, CT-6 (ADR-KE-015)."""
+
+    def _load(self, path=CI):
+        import yaml
+
+        workflow = yaml.safe_load(path.read_text(encoding="utf-8"))
+        self.assertIsInstance(workflow, dict, f"{path} is not a YAML mapping")
+        return workflow
+
+    def assert_triggers(self, path=CI):
+        """CT-1 on the workflow at `path` (a path so mutants can be checked)."""
+        workflow = self._load(path)
+        # PyYAML reads the bare key `on` as the boolean True.
+        on = workflow.get("on", workflow.get(True))
+        self.assertIsNotNone(on, "ci.yml has no `on:` block (CT-1)")
+        self.assertIsInstance(on, dict, "`on:` must be a mapping of events (CT-1)")
+        self.assertEqual(set(on), {"push", "pull_request"},
+                         "`on:` must have exactly push and pull_request; no "
+                         "workflow_dispatch, schedule or pull_request_target (CT-1)")
+        self.assertEqual(on["push"], {"branches": [DEFAULT_BRANCH]},
+                         f"push must have only `branches: [{DEFAULT_BRANCH}]`; no tags, "
+                         f"paths, paths-ignore or branches-ignore (CT-1, Q-CT5)")
+        self.assertIn(on["pull_request"], (None, {}),
+                      "pull_request must have no filter (CT-1, Q-CT1)")
+
+    def test_ci_triggers_push_default_branch_and_pull_request(self):  # CT-1
+        self.assert_triggers(CI)
+
+    def test_ci_concurrency_per_ref(self):  # CT-3, Q-CT2 (a pin)
+        concurrency = self._load().get("concurrency")
+        self.assertIsInstance(concurrency, dict, "ci.yml has no concurrency mapping (CT-3)")
+        self.assertEqual(concurrency.get("group"), "ci-${{ github.ref }}",
+                         "concurrency group must stay per ref (CT-3)")
+        self.assertIs(concurrency.get("cancel-in-progress"), True,
+                      "cancel-in-progress must stay true for both events (CT-3, Q-CT2)")
+
+    def test_docs_say_ci_needs_a_pull_request(self):  # CT-6
+        text = AGENTS_MD.read_text(encoding="utf-8")
+        match = re.search(r"^## Branch Policy\r?\n(.*?)(?=^## )", text, re.M | re.S)
+        self.assertIsNotNone(match, "AGENTS.md has no Branch Policy section")
+        section = _flat(match.group(1))
+        for phrase in (CI_TRIGGER_PHRASE, NO_PR_NO_CI_PHRASE, MERGE_CONFLICT_PHRASE):
+            with self.subTest(doc="AGENTS.md Branch Policy", phrase=phrase):
+                self.assertIn(phrase, section,
+                              f"AGENTS.md Branch Policy does not say {phrase!r} (CT-6)")
+        readme = _flat(README_MD.read_text(encoding="utf-8"))
+        for phrase in (CI_TRIGGER_PHRASE, NO_PR_NO_CI_PHRASE):
+            with self.subTest(doc="README.md", phrase=phrase):
+                # assertTrue, not assertIn: a failure must not dump all of README.md.
+                self.assertTrue(phrase in readme, f"README.md does not say {phrase!r} (CT-6)")
 
 
 if __name__ == "__main__":

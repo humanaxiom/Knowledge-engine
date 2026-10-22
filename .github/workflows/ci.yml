@@ -1,7 +1,12 @@
 name: CI
 
 on:
+  # ci-triggers (ADR-KE-015): push runs only for the default branch, and
+  # every pull request gets one run, so a PR push is verified once. A
+  # branch with no open PR gets no CI. Renaming the default branch must
+  # update this list and DEFAULT_BRANCH in tests/test_stack_ready_docs.py.
   push:
+    branches: [ccr-19465ed4-j1u0m5]
   pull_request:
 
 permissions:

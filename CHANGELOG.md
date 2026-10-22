@@ -4,6 +4,16 @@ Maintained by the `marketer` agent. Follows a Keep a Changelog style.
 
 ## [Unreleased]
 
+### 2026-10-21 (ci-triggers)
+
+**Changed:**
+- A push to a pull request branch now runs CI once (the pull_request run),
+  not twice; a push to the default branch runs once as before. A branch with
+  no open PR gets no CI. A PR with a merge conflict gets no run until the
+  conflict is resolved.
+- The CI timeout re-measure rule (PS-3.4) now counts a PR run and its manual
+  re-run on the same commit as the two green runs.
+
 ### 2026-10-21 (ci-speed)
 
 **Changed:**

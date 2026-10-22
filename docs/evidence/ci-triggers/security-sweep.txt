@@ -1,0 +1,24 @@
+== profile paths
+== SIDs
+== tokens/keys
+== keyword secrets
+== conn strings
+== KE_MODEL
+green-verify-full.txt:1:verify full: KE_MODEL_UPSTREAM and KE_EGRESS_ALLOWLIST must both be set to reach the model host; running without it (model-calling tests skip)
+green-verify-full.txt:1507:test_embed_role_answers (tests.integration.test_model_roles.ModelRolesTest.test_embed_role_answers) ... skipped 'model host not configured: KE_MODEL_UPSTREAM is empty (set it and KE_EGRESS_ALLOWLIST in the caller environment or .env)'
+green-verify-full.txt:1508:test_compose_role_answers (tests.integration.test_model_roles.ModelRolesTest.test_compose_role_answers) ... skipped 'model host not configured: KE_MODEL_UPSTREAM is empty (set it and KE_EGRESS_ALLOWLIST in the caller environment or .env)'
+green-verify-full.txt:1509:test_rewrite_role_answers (tests.integration.test_model_roles.ModelRolesTest.test_rewrite_role_answers) ... skipped 'model host not configured: KE_MODEL_UPSTREAM is empty (set it and KE_EGRESS_ALLOWLIST in the caller environment or .env)'
+green-verify-full.txt:1510:test_audit_role_answers (tests.integration.test_model_roles.ModelRolesTest.test_audit_role_answers) ... skipped 'model host not configured: KE_MODEL_UPSTREAM is empty (set it and KE_EGRESS_ALLOWLIST in the caller environment or .env)'
+green-verify-full.txt:1516:test_readyz_reports_reachable_model_host (tests.integration.test_stack_ready.ReadyzIntegrationTest.test_readyz_reports_reachable_model_host) ... skipped 'model host not configured: KE_MODEL_UPSTREAM is empty (set it and KE_EGRESS_ALLOWLIST in the caller environment or .env)'
+== IPv4
+      6 127.0.0.1
+      2 192.168.160.2
+      2 172.19.0.2
+== hostnames/fqdn
+== <scratch>/<sid> markers
+ct7-cost.md:0
+green-verify-fast.txt:0
+green-verify-full.txt:0
+red-mutants.txt:0
+red-verify-fast.txt:0
+== emails

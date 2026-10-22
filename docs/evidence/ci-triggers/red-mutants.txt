@@ -1,0 +1,17 @@
+# ci-triggers RED mutants, 2026-10-21, tester
+# command: uv run python <scratchpad>/ct_mutants.py (drives CiTriggersTest.assert_triggers on scratch copies of ci.yml; repo ci.yml untouched)
+variant                                            expected got   reason
+current (repo ci.yml, unchanged)                   fail     fail  None != {'branches': ['ccr-19465ed4-j1u0m5']} : push must have only `branches: [ccr-19465ed4-j1u0m5]`; no tags
+a target on: block (ADR-KE-015)                    pass     pass  
+a2 target, pull_request: {}                        pass     pass  
+b target + workflow_dispatch:                      fail     fail  Items in the first set but not the second:
+c push branches: [main]                            fail     fail  {'branches': ['main']} != {'branches': ['ccr-19465ed4-j1u0m5']}
+d push branches + paths-ignore                     fail     fail  {'branches': ['ccr-19465ed4-j1u0m5'], 'paths-ignore': ['**.md']} != {'branches': ['ccr-19465ed4-j1u0m5']}
+e pull_request branches: [ccr-19465ed4-j1u0m5]     fail     fail  {'branches': ['ccr-19465ed4-j1u0m5']} not found in (None, {}) : pull_request must have no filter (CT-1, Q-CT1)
+f push branches: [ccr-19465ed4-j1u0m5, main]       fail     fail  {'branches': ['ccr-19465ed4-j1u0m5', 'main']} != {'branches': ['ccr-19465ed4-j1u0m5']}
+g target + pull_request_target:                    fail     fail  Items in the first set but not the second:
+h quoted 'on': key, target                         pass     pass  
+i no on: block                                     fail     fail  unexpectedly None : ci.yml has no `on:` block (CT-1)
+unexpected results: 0
+exit=0
+Mutant scripts saved: ct_mutants.py (tester), rv_mutants.py (reviewer) in this directory.

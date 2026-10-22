@@ -209,7 +209,9 @@ Guards that make a green run mean something:
   `__init__.py` (its tests would otherwise be skipped silently).
   `tests/integration/` runs only in `full`.
 - CI runs on `ubuntu-24.04`, with the checkout action pinned to a commit SHA
-  and credentials not persisted.
+  and credentials not persisted. CI runs only on pushes to the default branch
+  and on pull requests: a branch pushed with no open PR gets no CI, and a PR
+  with a merge conflict gets none until the conflict is resolved.
 
 ## Tracing your own agents
 
