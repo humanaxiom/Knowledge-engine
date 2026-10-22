@@ -2968,6 +2968,31 @@ sequencing call for the orchestrator.
   - Manual evidence: `u3-no-uv-in-ke-app.txt` (no uv, notices runs,
     certifi version) and `u3-real-scan.txt` (scan exits 0), both under
     `docs/evidence/platform-supply-chain/`. Passing this gates PSC-6.
+- **PSC-18 Only a finished `full` says PASS (added by the architect,
+  2026-10-22, unit 5; security u4-r1 L-3, L-4, review r1-n3).** A new
+  number, not a PSC-6 sub-bullet: PSC-6 places the scan, PSC-18 is about
+  what every `full` run prints at its end, whatever the stage. Design:
+  ADR-KE-013 amendment 1, D4.
+  - `verify.sh full` prints `== verify full: PASS (Ns) ==` exactly once,
+    as its last stdout line, and only when every stage finished with rc
+    0. A failing stage prints no such line.
+  - The `gates-it` half of `full` prints `== gates-it: PASS ==`, never
+    a `verify full: PASS` line. `fast` keeps `== verify fast: PASS ==`.
+  - INT, TERM and HUP to a `full` run give exit 130, 143 and 129, with a
+    `== verify full: FAIL (exit N) ==` line last and no PASS line.
+  - An untrapped fatal signal (USR1 in the tests) gives
+    `FAIL (stopped before the last stage; no PASS)`.
+  - `offline_check.sh` never prints its PASS line on a signal: INT, TERM
+    and HUP give 130, 143 and 129 with no `offline_check: PASS`.
+  - `[unit: test_verify_full_only_the_outer_line_says_pass]`,
+    `[unit: test_gates_it_half_prints_its_own_success_line]`,
+    `[unit: test_verify_full_untrapped_signal_says_stopped_before_the_last_stage]`
+    (`tests/test_stack_scripts.py`),
+    `[unit: test_offline_check_signal_exits_with_its_status_and_no_pass]`
+    (`tests/test_offline_check.py`), all fast with fake docker; the unit 4
+    signal tests (for example
+    `test_verify_full_signal_during_smoke_exits_with_its_status_and_no_pass`)
+    stay green.
 
 **SBOM and the M-NT1 remainder: moved.** PSC-13–PSC-15 moved to § "Item:
 platform-sbom" (split accepted by the orchestrator, 2026-10-21), rewritten
@@ -2975,7 +3000,8 @@ there for the Q57 and Q58 rulings.
 
 **Split (accepted 2026-10-21, orchestrator).** The analyst's proposal stood:
 1. `platform-supply-chain` (this branch): PSC-1–PSC-12, plus PSC-17
-   (added 2026-10-21, unit 3). TDD order: PSC-11 → PSC-10 → PSC-1, 2, 3,
+   (added 2026-10-21, unit 3) and PSC-18 (added 2026-10-22, unit 5,
+   after PSC-6). TDD order: PSC-11 → PSC-10 → PSC-1, 2, 3,
    5, 8 → PSC-4 → PSC-17 → PSC-6 → PSC-7 → PSC-9 → PSC-12
    (first tests: `docs/architecture.md` §2.6 "platform-supply-chain").
 2. `platform-sbom`: PSC-13–PSC-16, opened right after this item.
@@ -2990,6 +3016,26 @@ PSC-17 no-uv and real-scan evidence, and the Windows run. Gate:
 `scripts/verify.sh full`.
 
 ### Follow-ups (not in platform-supply-chain)
+
+Recorded 2026-10-22 (architect, unit 5; security-u4-r1.md, review-u4-r1.md,
+orchestrator ruling). None blocks this item; none can print a false PASS.
+- **USR1 pin for `offline_check.sh`.** PSC-18 tests INT, TERM and HUP
+  there. A USR1 subtest (an untrapped fatal signal) would pin its finished
+  flag, as this test does for `verify.sh`:
+  `test_verify_full_untrapped_signal_says_stopped_before_the_last_stage`.
+- **r1-n4: a second signal during cleanup's teardown.** Inside verify's
+  cleanup, INT, TERM and HUP still exit at once, so a second signal during
+  the trap's teardown skips the FAIL line. It never prints PASS. Candidate
+  fix: `trap '' INT TERM HUP` inside cleanup, as `scan.sh` does.
+- **I-8: SIGKILL to `verify.sh` leaves the project behind.** The verify
+  project and the orphaned stage keep running; an untrapped USR1 to verify
+  alone tears down while the orphaned smoke stage runs on. Both fail closed
+  (no PASS), and nothing more is possible for KILL; the project is removed
+  by hand (`docker compose -p <project> down --volumes`).
+- **I-9: no false PASS rests on every stage reporting a signal as
+  non-zero.** All four real stages do today (security I-9). Any new stage
+  script must turn a signal into a non-zero exit, and should get a signal
+  test like PSC-18's.
 
 Recorded 2026-10-21 (architect, unit 4 rework 1; security-u4.md). Neither
 blocks this item.

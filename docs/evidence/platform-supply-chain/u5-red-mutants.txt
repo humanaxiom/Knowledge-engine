@@ -1,0 +1,69 @@
+# Unit 5 RED mutants (tester, 2026-10-22): security L-3, L-4; review r1-n3. Driver u5-red-mutants.py.txt, run in the gates image ke-gates:wt-33a132fbfdd7 (--network none, uid 10001, label com.docker.compose.project=ke-tester-psc): /work = the real checkout read-only, /scratch = the scratchpad read-only; all copies under /tmp. Driver exit 0.
+# Command: docker run --rm --network none --label com.docker.compose.project=ke-tester-psc --user 10001:10001 --tmpfs /tmp:exec,mode=1777 -v <checkout>:/work:ro -v <scratchpad>:/scratch:ro -w /work ke-gates:wt-33a132fbfdd7 uv run --locked python /scratch/u5_mutants.py
+
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.76ms
+Installed 1 package in 1ms
+## RED on today's tree (each new or re-checked test, alone)
+FAIL  test_verify_full_only_the_outer_line_says_pass  FAIL: test_verify_full_only_the_outer_line_says_pass (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_only_the_outer_line_says_pass) | AssertionError: 2 != 1 : more than one `verify full: PASS` line; the inner gates-it half must print '== gates-it: PASS ==' instead (security L-3):
+FAIL  test_gates_it_half_prints_its_own_success_line  FAIL: test_gates_it_half_prints_its_own_success_line (tests.test_stack_scripts.VerifyCallsLintTest.test_gates_it_half_prints_its_own_success_line) | AssertionError: '== gates-it: PASS ==' not found in ['== verify full: no-git+dirty ==', 'Ran 3 tests', 'test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok', '== verify full: PASS =='] : the gates-it half must print '== gates-it: PASS ==' on its own line:
+FAIL  test_verify_full_fails_when_image_scan_fails  FAIL: test_verify_full_fails_when_image_scan_fails (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_fails_when_image_scan_fails) | AssertionError: 'verify full: PASS' unexpectedly found in 'verify full: KE_MODEL_UPSTREAM and KE_EGRESS_ALLOWLIST must both be set to reach the model host; running without it (model-calling tests skip)\n== verify full: project ke-verify-229021818 ==\n== verify full: no-git+dirty ==\nfake gates-it lint: ok\nRan 1 test in 0.001s\ntest_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok\nfake gates-it smoke: ok\n== verify full: PASS ==\nstub scan: failing\n== verify full: FAIL (exit 7) ==\n'
+FAIL  test_verify_full_signal_during_smoke_exits_with_its_status_and_no_pass  FAIL: test_verify_full_signal_during_smoke_exits_with_its_status_and_no_pass (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_signal_during_smoke_exits_with_its_status_and_no_pass) (interrupt='SIGINT') | AssertionError: 'verify full: PASS' unexpectedly found in 'verify full: KE_MODEL_UPSTREAM and KE_EGRESS_ALLOWLIST must both be set to reach the model host; running without it (model-calling tests skip)\n== verify full: project ke-verify-3428997 ==\n== verify full: no-git+dirty ==\nfake gates-it lint: ok\nRan 1 test in 0.001s\ntest_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok\nfake gates-it smoke: ok\n== verify full
+FAIL  test_verify_full_untrapped_signal_says_stopped_before_the_last_stage  FAIL: test_verify_full_untrapped_signal_says_stopped_before_the_last_stage (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_untrapped_signal_says_stopped_before_the_last_stage) (stage='smoke') | AssertionError: Lists differ: ['== verify full: PASS =='] != [] | FAIL: test_verify_full_untrapped_signal_says_stopped_before_the_last_stage (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_untrapped_signal_says_stopped_before_the_last_stage) (stage='scan') | AssertionError: Lists differ: ['== verify full: PASS =='] != []
+FAIL  test_offline_check_signal_exits_with_its_status_and_no_pass  FAIL: test_offline_check_signal_exits_with_its_status_and_no_pass (tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_signal_exits_with_its_status_and_no_pass) (signal='SIGHUP') | AssertionError: 'offline_check: PASS' unexpectedly found in 'offline: df start\nFilesystem     1024-blocks      Used Available Capacity Mounted on\n/dev/fake       104857600  52428800  52428800      50% /\noffline: the daemon\'s DockerRootDir (/tmp/tmp0ictky6s/no-such-docker-root) is not on this host (Docker Desktop keeps it in a VM): not measurable, only dist/ is checked\noffline: df after bundle\nFilesystem     1024-blocks      Used Available Capacity Mounted on\n/dev/fake       104857600  5242880
+FAIL  test_harness_followups  FAIL: test_verify_sees_sentinel_and_ran_lines_from_real_test_sh (tests.test_harness_followups.IntegrationRunsOnceTest.test_verify_sees_sentinel_and_ran_lines_from_real_test_sh) (mode='full') | AssertionError: '== gates-it: PASS ==' not found in '== verify full: no-git+dirty ==\nfake lint: ok\nresources: phase=start nproc=24 cpu_max_quota=max cpu_max_period=100000 cg_cpu_usage_us=32091606 cg_cpu_throttled_us=0 mem_total_kib=32583712 mem_available_kib=23747156 swap_total_kib=8388608 swap_free_kib=7667284 cg_mem_max=max cg_mem_peak=116674560 psi_cpu_some_us=7573675035 psi_memory_some_us=3592785 psi_memory_full_us=3354919 psi_io_some_us=354706244 psi_io_full_us=336431335 cpu_steal_ticks=0 cpu_to
+-- r1-n3 per stage on today's tree (launch is before gates-it, so L-3 cannot reach it):
+pass  N3[launch] on today (guard)  
+
+## Satisfiability: scratch green shapes (touched modules + shellcheck)
+GREEN  green_oc_a_hup_trap  modules=ok  shellcheck rc=0  
+GREEN  green_oc_b_finished_flag  modules=ok  shellcheck rc=0  
+--- diff today -> green: scripts/verify.sh ---
+156c156,160
+< echo "== verify $mode: PASS =="
+---
+> if [ "$mode" = full ]; then
+>   echo "== gates-it: PASS =="
+> else
+>   echo "== verify $mode: PASS =="
+> fi
+
+--- diff today -> green: scripts/offline_check.sh ---
+154c154
+<   trap - EXIT INT TERM
+---
+>   trap - EXIT INT TERM HUP
+167a168
+> trap 'exit 129' HUP
+
+--- diff today -> green: scripts/offline_check.sh (shape B) ---
+162c162
+<   if [ "$rc" -eq 0 ]; then echo "== offline_check: PASS ($(( $(date +%s) - started ))s) =="; fi
+---
+>   if [ "$rc" -eq 0 ] && [ "$finished" -eq 1 ]; then echo "== offline_check: PASS ($(( $(date +%s) - started ))s) =="; fi
+164a165
+> finished=0
+238a240
+> finished=1
+
+## Mutants of the green shapes (each must be KILLED by the named tests)
+KILLED  v_inner_old_wording (= today)  FAIL: test_verify_full_only_the_outer_line_says_pass (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_only_the_outer_line_says_pass) | AssertionError: 2 != 1 : more than one `verify full: PASS` line; the inner gates-it half must print '== gates-it: PASS ==' instead (security L-3): | FAIL: test_gates_it_half_prints_its_own_success_line (tests.test_stack_scripts.VerifyCallsLintTest.test
+KILLED  v_inner_prints_both_lines  FAIL: test_verify_full_only_the_outer_line_says_pass (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_only_the_outer_line_says_pass) | AssertionError: 2 != 1 : more than one `verify full: PASS` line; the inner gates-it half must print '== gates-it: PASS ==' instead (security L-3):
+KILLED  v_inner_wording_keeps_verify_full_pass  FAIL: test_verify_full_only_the_outer_line_says_pass (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_only_the_outer_line_says_pass) | AssertionError: 2 != 1 : more than one `verify full: PASS` line; the inner gates-it half must print '== gates-it: PASS ==' instead (security L-3):
+KILLED  v_inner_silent_in_full  FAIL: test_verify_full_only_the_outer_line_says_pass (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_only_the_outer_line_says_pass) | AssertionError: '== gates-it: PASS ==' not found in ['verify full: KE_MODEL_UPSTREAM and KE_EGRESS_ALLOWLIST must both be set to reach the model host; running without it (model-calling tests skip)', '== verify full: project ke-verify-1477024095 ==', '=
+KILLED  v_text_after_outer_pass  FAIL: test_verify_full_only_the_outer_line_says_pass (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_only_the_outer_line_says_pass) | AssertionError: 'verify: done' != '== verify full: PASS (0s) =='
+KILLED  v_outer_pass_on_stderr  FAIL: test_verify_full_only_the_outer_line_says_pass (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_only_the_outer_line_says_pass) | AssertionError: '== gates-it: PASS ==' != '== verify full: PASS (0s) =='
+KILLED  v_drop_finished_flag (r1-n3)  FAIL: test_verify_full_untrapped_signal_says_stopped_before_the_last_stage (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_untrapped_signal_says_stopped_before_the_last_stage) (stage='launch') | AssertionError: 'stopped before the last stage' not found in 'verify full: KE_MODEL_UPSTREAM and KE_EGRESS_ALLOWLIST must both be set to reach the model host; running without it (model-callin
+KILLED  v_finished_set_before_scan (r1-n3)  FAIL: test_verify_full_untrapped_signal_says_stopped_before_the_last_stage (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_untrapped_signal_says_stopped_before_the_last_stage) (stage='scan') | AssertionError: 'stopped before the last stage' not found in 'verify full: KE_MODEL_UPSTREAM and KE_EGRESS_ALLOWLIST must both be set to reach the model host; running without it (model-calling 
+KILLED  o_no_hup_trap (= today)  FAIL: test_offline_check_signal_exits_with_its_status_and_no_pass (tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_signal_exits_with_its_status_and_no_pass) (signal='SIGHUP') | AssertionError: 'offline_check: PASS' unexpectedly found in 'offline: df start\nFilesystem     1024-blocks      Used Available Capacity Mounted on\n/dev/fake       104857600  52428800  52428800      50% /
+KILLED  o_hup_exits_0  FAIL: test_offline_check_signal_exits_with_its_status_and_no_pass (tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_signal_exits_with_its_status_and_no_pass) (signal='SIGHUP') | AssertionError: 0 != 129 : offline_check on SIGHUP must exit 129 (L-4):
+KILLED  o_hup_exits_143  FAIL: test_offline_check_signal_exits_with_its_status_and_no_pass (tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_signal_exits_with_its_status_and_no_pass) (signal='SIGHUP') | AssertionError: 143 != 129 : offline_check on SIGHUP must exit 129 (L-4):
+KILLED  o_hup_exits_1  FAIL: test_offline_check_signal_exits_with_its_status_and_no_pass (tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_signal_exits_with_its_status_and_no_pass) (signal='SIGHUP') | AssertionError: 1 != 129 : offline_check on SIGHUP must exit 129 (L-4):
+KILLED  o_pass_whatever_rc  FAIL: test_offline_check_signal_exits_with_its_status_and_no_pass (tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_signal_exits_with_its_status_and_no_pass) (signal='SIGINT') | AssertionError: 'offline_check: PASS' unexpectedly found in 'offline: df start\nFilesystem     1024-blocks      Used Available Capacity Mounted on\n/dev/fake       104857600  52428800  52428800      50% /
+KILLED  o_no_int_trap  FAIL: test_offline_check_signal_exits_with_its_status_and_no_pass (tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_signal_exits_with_its_status_and_no_pass) (signal='SIGINT') | AssertionError: 'offline_check: PASS' unexpectedly found in 'offline: df start\nFilesystem     1024-blocks      Used Available Capacity Mounted on\n/dev/fake       104857600  52428800  52428800      50% /
+KILLED  o_term_exits_1  FAIL: test_offline_check_signal_exits_with_its_status_and_no_pass (tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_signal_exits_with_its_status_and_no_pass) (signal='SIGTERM') | AssertionError: 1 != 143 : offline_check on SIGTERM must exit 143 (L-4):
+KILLED  o_flag_set_at_start (shape B)  FAIL: test_offline_check_signal_exits_with_its_status_and_no_pass (tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_signal_exits_with_its_status_and_no_pass) (signal='SIGHUP') | AssertionError: 'offline_check: PASS' unexpectedly found in 'offline: df start\nFilesystem     1024-blocks      Used Available Capacity Mounted on\n/dev/fake       104857600  52428800  52428800      50% /
+16/16 killed
+
+driver verdict: OK

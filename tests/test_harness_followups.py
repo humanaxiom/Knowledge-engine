@@ -22,6 +22,15 @@ TEST_SH = ROOT / "scripts" / "test.sh"
 VERIFY_SH = ROOT / "scripts" / "verify.sh"
 PROBE_SH = ROOT / "scripts" / "resource_probe.sh"
 
+# The container half's success line per mode. platform-supply-chain unit 5
+# (security L-3, docs/evidence/platform-supply-chain/security-u4-r1.md;
+# orchestrator ruling 2026-10-22 in docs/handoffs/platform-supply-chain.md):
+# the gates-it half of `full` no longer prints "== verify full: PASS ==",
+# which only the host half prints once the whole run finished; it prints
+# "== gates-it: PASS ==". Tester 2026-10-22 changed these pins from
+# f"== verify {mode}: PASS ==" for that reason. `fast` is unchanged.
+INNER_PASS = {"fast": "== verify fast: PASS ==", "full": "== gates-it: PASS =="}
+
 # Orchestrator ruling PS-Q1 (docs/handoffs/platform-skeleton.md): pin the
 # image `ubuntu-latest` resolved to before the 2026-10-19 runner move.
 PINNED_RUNNER = "ubuntu-24.04"
@@ -824,7 +833,7 @@ class IntegrationRunsOnceTest(unittest.TestCase):
                                             script="verify.sh")
             with self.subTest(mode=mode):
                 self.assertEqual(code, 0, output[-3000:])
-                self.assertIn(f"== verify {mode}: PASS ==", output)
+                self.assertIn(INNER_PASS[mode], output)
                 self.assertEqual(output.splitlines().count(VerifyRequiresTestsRunTest.SENTINEL), 1,
                                  output[-3000:])
 
@@ -1034,7 +1043,7 @@ class VerifyRequiresTestsRunTest(unittest.TestCase):
                 with self.subTest(attempt=attempt, mode=mode):
                     self.assertGreater(len(output), 200 * 1024)
                     self.assertEqual(code, 0, output[-2000:])
-                    self.assertIn(f"== verify {mode}: PASS ==", output)
+                    self.assertIn(INNER_PASS[mode], output)
 
     def test_sentinel_name_in_other_module_fails(self):
         # Security I1 case 1 / review N17: a sub-package test with the same
@@ -1073,7 +1082,7 @@ class VerifyRequiresTestsRunTest(unittest.TestCase):
             code, output = self.verify(mode)
             with self.subTest(mode=mode):
                 self.assertEqual(code, 0, output)
-                self.assertIn(f"== verify {mode}: PASS ==", output)
+                self.assertIn(INNER_PASS[mode], output)
 
     def test_ran_some_tests_passes(self):
         # Control: a real-looking run passes, and test.sh's output is still
@@ -1084,7 +1093,7 @@ class VerifyRequiresTestsRunTest(unittest.TestCase):
             with self.subTest(mode=mode):
                 self.assertEqual(code, 0, output)
                 self.assertIn("Ran 3 tests", output)
-                self.assertIn(f"== verify {mode}: PASS ==", output)
+                self.assertIn(INNER_PASS[mode], output)
                 if mode == "full":
                     self.assertIn("fake smoke: ok", output)
 

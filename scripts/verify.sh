@@ -109,7 +109,9 @@ if [ "${KE_IN_GATES:-}" != "1" ]; then
   }
   trap cleanup EXIT
   # M-1: bash runs the EXIT trap for an untrapped fatal signal with $? still 0,
-  # so name each signal's status (128+n) and let cleanup see it.
+  # so name each signal's status (128+n) and let cleanup see it. A signal sent
+  # to verify.sh alone (not its process group) waits for the running stage to
+  # finish before the trap exits.
   trap 'exit 130' INT
   trap 'exit 143' TERM
   trap 'exit 129' HUP
@@ -153,4 +155,8 @@ fi
 if [ "$mode" = "full" ]; then
   scripts/smoke.sh
 fi
-echo "== verify $mode: PASS =="
+if [ "$mode" = "full" ]; then
+  echo "== gates-it: PASS =="
+else
+  echo "== verify $mode: PASS =="
+fi

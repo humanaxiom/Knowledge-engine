@@ -933,11 +933,39 @@ exit 0
 DOCKER_STUB = """#!/usr/bin/env bash
 echo "docker $* | project=${COMPOSE_PROJECT_NAME:-} | file=${COMPOSE_FILE:-} | tag=${KE_IMAGE_TAG-<unset>} | sep=${COMPOSE_PATH_SEPARATOR:-}" >> "$STAGE_LOG"
 case "$*" in *gates-it*)
-  case "|${FAIL_STAGE:-}|" in *"|gates-it|"*) echo "stub gates-it: failing" >&2; exit 7 ;; esac ;;
+  case "|${FAIL_STAGE:-}|" in *"|gates-it|"*) echo "stub gates-it: failing" >&2; exit 7 ;; esac
+  # Security L-3 (docs/evidence/platform-supply-chain/security-u4-r1.md): the
+  # real `compose run gates-it scripts/verify.sh full` streams the inner
+  # half's output, its success line included, into the host half's output.
+  # So run the inner half (KE_IN_GATES=1) of the verify.sh under test, in a
+  # sandbox with passing lint/test/smoke stand-ins: whatever wording it
+  # prints reaches the host stdout just as it does in a real run.
+  inner="$(mktemp -d)"
+  trap 'rm -rf "$inner"' EXIT
+  mkdir "$inner/scripts"
+  cp scripts/verify.sh "$inner/scripts/verify.sh"
+  printf '#!/usr/bin/env bash\\necho "fake gates-it lint: ok"\\n' > "$inner/scripts/lint.sh"
+  printf '#!/usr/bin/env bash\\necho "Ran 1 test in 0.001s" >&2\\necho "%s" >&2\\n' \\
+    'test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok' \\
+    > "$inner/scripts/test.sh"
+  printf '#!/usr/bin/env bash\\necho "fake gates-it smoke: ok"\\n' > "$inner/scripts/smoke.sh"
+  chmod +x "$inner/scripts/"*.sh
+  KE_IN_GATES=1 bash "$inner/scripts/verify.sh" "${@: -1}"
+  exit $?
+  ;;
 esac
 case "$*" in *"compose version"*"--short"*) echo "2.29.7" ;; esac
 exit 0
 """
+
+# The inner gates-it half's own success line (security L-3, orchestrator
+# unit-5 ruling 2026-10-22 in docs/handoffs/platform-supply-chain.md): never
+# the host half's "== verify full: PASS (Ns) ==", so a reader or a grep for
+# `verify full: PASS` finds only the outer line, printed when the whole run
+# finished. `verify fast` keeps its one line, "== verify fast: PASS ==".
+INNER_FULL_PASS = "== gates-it: PASS =="
+# Printed by the fake gates-it's lint stand-in: the inner half really ran.
+INNER_RAN = "fake gates-it lint: ok"
 
 
 # platform-offline (PS-3.2 *Wired into full*; architecture §2.6 item 10 and
@@ -1325,6 +1353,10 @@ class VerifyHostHalfTest(unittest.TestCase):
         for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
             with self.subTest(interrupt=sig.name):
                 status, out, stages = self._interrupt_full_in("scan", sig)
+                # Unit 5 (security L-3): the fake gates-it now prints what the
+                # real inner half prints, so this "no PASS" holds only because
+                # the inner line has its own wording.
+                self.assertIn(INNER_RAN, out, "harness: the inner gates-it half did not run")
                 self.assertEqual(status, 128 + sig.value,
                                  f"verify full on {sig.name} during the scan must exit {128 + sig.value} (M-1):\n{out}")
                 self.assertNotIn("verify full: PASS", out,
@@ -1375,12 +1407,71 @@ class VerifyHostHalfTest(unittest.TestCase):
         for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
             with self.subTest(interrupt=sig.name):
                 status, out, stages = self._interrupt_full_in("smoke", sig)
+                self.assertIn(INNER_RAN, out, "harness: the inner gates-it half did not run")  # L-3
                 self.assertEqual(status, 128 + sig.value,
                                  f"verify full on {sig.name} during smoke must exit {128 + sig.value} (M-1):\n{out}")
                 self.assertNotIn("verify full: PASS", out,
                                  f"verify full printed PASS after {sig.name} during smoke (security M-1)")
                 self.assertEqual(stages, FULL_ORDER[:FULL_ORDER.index("smoke") + 1] + ["teardown"],
                                  f"on {sig.name} during smoke the trap tears down once; nothing later runs")
+
+    # -- platform-supply-chain unit 5 ("verify output hygiene") ---------------
+
+    @staticmethod
+    def _pass_lines(out: str) -> list[str]:
+        return [l for l in out.splitlines() if "verify full: PASS" in l]
+
+    def test_verify_full_only_the_outer_line_says_pass(self):
+        """Security L-3 (security-u4-r1.md; orchestrator unit-5 ruling
+        2026-10-22): in every `full` run the only line with
+        `verify full: PASS` is the host half's own `== verify full: PASS (Ns) ==`,
+        printed last on stdout and only when every stage finished. The inner
+        gates-it half, whose output the fake streams as the real run does,
+        prints its own line (INNER_FULL_PASS) earlier."""
+        result, lines = self._verify()
+        out = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 0, out)
+        self.assertIn(INNER_RAN, result.stdout, "harness: the inner gates-it half did not run")
+        stdout = [l for l in result.stdout.splitlines() if l.strip()]
+        passes = self._pass_lines(out)
+        self.assertEqual(len(passes), 1,
+                         f"more than one `verify full: PASS` line; the inner gates-it half must "
+                         f"print {INNER_FULL_PASS!r} instead (security L-3):\n{out}")
+        self.assertRegex(passes[0], r"^== verify full: PASS \(\d+s\) ==$",
+                         "the one PASS line is the host half's, with its run time")
+        self.assertEqual(stdout[-1], passes[0], f"the outer PASS line is the last line printed:\n{out}")
+        self.assertIn(INNER_FULL_PASS, stdout,
+                      f"the inner gates-it half prints {INNER_FULL_PASS!r} on its own line (L-3):\n{out}")
+        self.assertLess(stdout.index(INNER_FULL_PASS), stdout.index(passes[0]))
+        for stage in ("launch", "gates-it", "smoke", "teardown", "scan", "offline_check"):
+            with self.subTest(failing=stage):
+                result, lines = self._verify(FAIL_STAGE=stage)
+                out = result.stdout + result.stderr
+                self.assertNotEqual(result.returncode, 0, f"{stage} failed but verify exited 0:\n{out}")
+                if FULL_ORDER.index(stage) > FULL_ORDER.index("gates-it"):
+                    self.assertIn(INNER_RAN, out, "harness: the inner gates-it half did not run")
+                self.assertEqual(self._pass_lines(out), [],
+                                 f"verify full failed in {stage} but a `verify full: PASS` line was "
+                                 f"printed (security L-3):\n{out}")
+
+    def test_verify_full_untrapped_signal_says_stopped_before_the_last_stage(self):
+        """Review r1-n3 (review-u4-r1.md): USR1, a fatal signal verify.sh does
+        not trap, runs the EXIT trap with $? = 0. The run is not finished, so
+        verify exits non-zero and prints "stopped before the last stage", never
+        PASS. Kills the mutant that drops the finished flag from the PASS test
+        (the INT/TERM/HUP traps alone cannot catch it)."""
+        if not hasattr(os, "killpg"):  # pragma: no cover - the gates image is Linux
+            self.skipTest("os.killpg is POSIX only")
+        for stage in ("launch", "smoke", "scan"):
+            with self.subTest(stage=stage):
+                status, out, stages = self._interrupt_full_in(stage, signal.SIGUSR1)
+                self.assertNotEqual(status, 0, f"verify full exited 0 after USR1 during {stage}:\n{out}")
+                self.assertIn("stopped before the last stage", out,
+                              f"USR1 during {stage}: the unfinished run must say it stopped (r1-n3):\n{out}")
+                self.assertEqual(self._pass_lines(out), [],
+                                 f"verify full printed PASS after USR1 during {stage} (r1-n3, L-3):\n{out}")
+                self.assertEqual(stages.count("teardown"), 1, f"teardown on USR1 during {stage}: {stages}")
+                self.assertNotIn("offline_check", stages)
 
     def test_verify_full_uses_per_worktree_image_tag(self):  # PS-3.9 N6, §2.6 item 9
         def tags(lines: list[str]) -> set[str]:
@@ -2103,8 +2194,27 @@ class VerifyCallsLintTest(unittest.TestCase):
             with self.subTest(mode=mode):
                 result, calls = self._verify(mode, LINT_FAIL="1")
                 self.assertNotEqual(result.returncode, 0, "verify passed although lint failed")
-                self.assertNotIn(f"== verify {mode}: PASS ==", result.stdout + result.stderr)
+                # Unit 5 (security L-3): any success line, whatever its wording.
+                self.assertNotIn(": PASS ==", result.stdout + result.stderr)
 
+
+    def test_gates_it_half_prints_its_own_success_line(self):
+        """Security L-3 (security-u4-r1.md; orchestrator unit-5 ruling
+        2026-10-22): the container half of `full` (gates-it) prints
+        INNER_FULL_PASS, never `verify full: PASS`, which only the host half
+        prints once the whole run finished. `fast` keeps its one line."""
+        result, _ = self._verify("full")
+        out = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 0, out)
+        self.assertIn(INNER_FULL_PASS, out.splitlines(),
+                      f"the gates-it half must print {INNER_FULL_PASS!r} on its own line:\n{out}")
+        self.assertNotIn("verify full: PASS", out,
+                         "the gates-it half prints the host half's `verify full: PASS` wording (L-3)")
+        result, _ = self._verify("fast")
+        out = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 0, out)
+        self.assertIn("== verify fast: PASS ==", out.splitlines())
+        self.assertNotIn(INNER_FULL_PASS, out)
 
 # --------------------------------------------------------------------------
 # B4: smoke resolves the compose file with no .env

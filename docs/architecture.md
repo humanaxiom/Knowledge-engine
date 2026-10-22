@@ -6001,6 +6001,22 @@ over HTTPS and each archive is checked against the checksum in the listing.
 - Keys: only the variables above. The two model keys stay the only keys a
   `full` run takes from outside the repo (PSC-6), and no caller value
   reaches the scan.
+- *Only a finished run says PASS (2026-10-22, unit 5; PSC-18; security
+  u4-r1 L-3, L-4).*
+  - Verify's host half prints `== verify full: PASS (Ns) ==` once, last,
+    and only when `rc` is 0 and the `finished` flag (set just before
+    `exit 0`) is 1.
+  - INT, TERM and HUP trap to `exit` 130/143/129, so cleanup prints
+    `FAIL (exit N)`. An untrapped fatal signal leaves `finished=0`, and
+    cleanup prints `FAIL (stopped before the last stage; no PASS)`.
+  - The `gates-it` half prints `== gates-it: PASS ==`, so no inner line
+    reads as the run's verdict. `fast` keeps `== verify fast: PASS ==`.
+  - `offline_check.sh` uses the same shape (orchestrator ruling: both,
+    not one): a HUP trap (`exit 129`, HUP in the trap reset) and a
+    finished flag guarding its PASS line. The traps give the exit
+    status; the flag catches every signal bash does not trap.
+  - Residuals (a second signal during cleanup, SIGKILL, a stage that
+    swallows a signal) are follow-ups in `docs/requirements.md`.
 
 **D5. Policy and the ignore file (Q42 ruling).**
 - One grype run gates and reports: `--only-fixed --fail-on high` fails on a

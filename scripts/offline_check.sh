@@ -112,6 +112,7 @@ fi
 # ---------------------------------------------------------------------------
 CDPATH='' cd -- "$(dirname -- "$0")/.."
 started="$(date +%s)"
+finished=0
 # verify.sh sets MSYS_NO_PATHCONV for its container paths; bundle.sh hands an
 # absolute host path to `docker save -o`, which Git Bash must convert.
 unset MSYS_NO_PATHCONV
@@ -151,7 +152,7 @@ df_log() { # df_log STAGE
 # shellcheck disable=SC2317  # runs from the EXIT trap
 cleanup() {
   local rc=$?
-  trap - EXIT INT TERM
+  trap - EXIT INT TERM HUP
   df_log "before teardown"
   if ! bash scripts/teardown.sh --volumes --profile offline; then
     echo "offline_check: FAIL (teardown of project $project failed; remove it by hand: COMPOSE_FILE=docker-compose.offline.yml KE_OFFLINE_BUNDLE=$bundle_rel docker compose -p $project --profile offline down --volumes)" >&2
@@ -159,12 +160,13 @@ cleanup() {
   fi
   rm -rf -- "$bundle_rel" "$bundle_rel.manifest.sha256"
   df_log "after teardown"
-  if [ "$rc" -eq 0 ]; then echo "== offline_check: PASS ($(( $(date +%s) - started ))s) =="; fi
+  if [ "$rc" -eq 0 ] && [ "$finished" -eq 1 ]; then echo "== offline_check: PASS ($(( $(date +%s) - started ))s) =="; fi
   exit "$rc"
 }
 trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
+trap 'exit 129' HUP
 
 at_least() { # at_least MINIMUM VERSION: dotted numbers, field by field
   local IFS=. i have want
@@ -236,4 +238,5 @@ bash scripts/net_isolated.sh "${project}_offline" || die "the offline network ${
 echo "offline: running the offline client"
 compose run --rm offline-client || die "the offline client failed (see its output above)"
 df_log "after client run"
+finished=1
 exit 0

@@ -1,0 +1,43 @@
+"""Reviewer scratch mutants, platform-supply-chain unit 5. Copies only under /tmp."""
+import shutil, subprocess, sys
+from pathlib import Path
+SRC = Path("/work")
+OC = "scripts/offline_check.sh"
+V = "scripts/verify.sh"
+OCT = "tests.test_offline_check"
+SS = "tests.test_stack_scripts"
+HF = "tests.test_harness_followups"
+
+def copy(dst):
+    shutil.copytree(SRC, dst, ignore=shutil.ignore_patterns(".git", ".venv", "dist", "__pycache__", "node_modules"))
+
+def run(root, mods):
+    p = subprocess.run([sys.executable, "-m", "unittest", *mods], cwd=root, capture_output=True, text=True, timeout=1500)
+    fails = [l for l in p.stderr.splitlines() if l.startswith(("FAIL:", "ERROR:"))]
+    tail = [l for l in p.stderr.splitlines() if l.startswith(("Ran ", "OK", "FAILED"))]
+    return p.returncode, fails, tail
+
+MUTANTS = {
+  "baseline": (None, None, None, [OCT, SS]),
+  "oc_drop_finished_set": (OC, 'df_log "after client run"\nfinished=1\n', 'df_log "after client run"\n', [OCT, SS]),
+  "oc_finished_at_start": (OC, 'finished=0\n', 'finished=1\n', [OCT]),
+  "oc_drop_hup_trap_keep_flag": (OC, "trap 'exit 129' HUP\n", "", [OCT]),
+  "oc_hup_not_in_reset": (OC, "trap - EXIT INT TERM HUP\n", "trap - EXIT INT TERM\n", [OCT]),
+  "v_inner_full_fails_before_pass": (V, '  echo "== gates-it: PASS =="\n', '  exit 3\n', [SS + ".VerifyHostHalfTest"]),
+  "v_inner_full_pass_line_dropped_but_rc0": (V, '  echo "== gates-it: PASS =="\n', '  :\n', [SS, HF]),
+}
+only = sys.argv[1:] or list(MUTANTS)
+for name in only:
+    f, old, new, mods = MUTANTS[name]
+    root = Path("/tmp") / ("m_" + name)
+    if root.exists(): shutil.rmtree(root)
+    copy(root)
+    if f:
+        t = (root / f).read_text()
+        assert t.count(old) == 1, (name, t.count(old))
+        (root / f).write_text(t.replace(old, new))
+    rc, fails, tail = run(root, mods)
+    verdict = "baseline" if f is None else ("KILLED" if rc != 0 else "SURVIVED")
+    print(f"{verdict:9} {name} rc={rc} {' '.join(tail)}")
+    for l in fails[:6]: print("    ", l)
+    sys.stdout.flush()
