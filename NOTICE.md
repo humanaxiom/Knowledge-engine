@@ -24,7 +24,6 @@ identifier or expression, such as `GPL-3.0` or `BSD-3-Clause AND MIT`.
 | Image | Reference | Licence | Source | Note |
 |---|---|---|---|---|
 | postgres | `postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4` | PostgreSQL | Licence field of `/usr/share/doc/postgresql-16/copyright` inside the image; https://www.postgresql.org/about/licence/ | PostgreSQL 16.15. The Debian layers carry their own licences under `/usr/share/doc/*/copyright`. |
-| neo4j | `neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b` | GPL-3.0 | `/var/lib/neo4j/LICENSE.txt` inside the image (GNU GPL version 3, Neo4j Sweden AB); Upstream source: https://github.com/neo4j/neo4j (tag 5.26.32) | Neo4j Community 5.26.32, used unmodified. The licence text is `licenses/GPL-3.0.txt`. |
 | valkey | `valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507` | BSD-3-Clause | Upstream `COPYING` (`SPDX-License-Identifier: BSD-3-Clause`) at https://github.com/valkey-io/valkey/blob/8.1.10/COPYING; the image label `org.opencontainers.image.source` names the same repository | Valkey 8.1.10. The image itself holds no licence file; the upstream `COPYING` text is `licenses/BSD-3-Clause-valkey.txt`. |
 | phoenix | `arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c` | Elastic-2.0 | Licence file inside the image, `arize_phoenix-20.22.0.dist-info/licenses/LICENSE` (and `IP_NOTICE`), and the package metadata `License: Elastic-2.0`; the image label `org.opencontainers.image.licenses` says only `NOASSERTION`; https://github.com/Arize-ai/phoenix | Documented exception (human ruling Q43) to the rule that the stack uses open-source components only: the Elastic License 2.0 is source-available, not OSI open source. Internal on-premises use is allowed; it forbids offering the software to third parties as a hosted or managed service, circumventing its licence-key functionality, and removing its notices; see the licence text for all limitations. |
 
@@ -36,6 +35,19 @@ identifier or expression, such as `GPL-3.0` or `BSD-3-Clause AND MIT`.
 Apache-2.0, from https://github.com/nginx/docker-nginx-unprivileged; nginx
 itself is BSD-2-Clause (`/usr/share/licenses/nginx/COPYRIGHT` inside the
 image). `ke-gateway` adds only configuration.
+
+## Base image of `ke-neo4j`
+
+`docker/neo4j.Dockerfile` builds `ke-neo4j` from
+`neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b`
+(Neo4j Community 5.26.32) and removes `/var/lib/neo4j/products`. That
+directory holds the commercially licensed fleet-management plugin and the
+GPL-3.0 GenAI plugin, neither of which the stack uses. No other file is
+changed: the filesystem is otherwise the official image's, flattened into a
+single filesystem layer. Neo4j Community itself is unmodified and is licensed
+under GPL-3.0 (`/var/lib/neo4j/LICENSE.txt` inside the image, GNU GPL version
+3, Neo4j Sweden AB); the licence text is `licenses/GPL-3.0.txt`. Upstream
+source: https://github.com/neo4j/neo4j (tag 5.26.32).
 
 ## psycopg (LGPL-3.0-only)
 

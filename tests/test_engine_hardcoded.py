@@ -9,7 +9,9 @@ fixture tests below pin down:
 - `files`: mapping of repo-relative POSIX path -> file text;
 - `declared_values`: iterable of literal strings (ports, hosts, model names);
 - `exemptions`: iterable of `(path, symbol, reason)`; the line assigning
-  `symbol` in `path` is not flagged;
+  `symbol` in `path` is not flagged (in a Dockerfile, which has no
+  assignment for an instruction, `symbol` is one whole instruction line,
+  matched exactly; platform-sbom U4b);
 - each Finding has `.path`, `.line` (1-based) and `.value`.
 
 Rule 1: a declared value appearing as a whole token in a scanned file is a
@@ -32,16 +34,24 @@ from urllib.parse import urlsplit
 
 from tests.engine_support import DEFAULTS, ENV_EXAMPLE, ROOT, read_env_example
 
-# The single recorded exemption (ADR-KE-010; architecture §2.3,
-# "harness_telemetry default collector"). harness_telemetry is a standalone
+# The recorded exemptions. First (ADR-KE-010; architecture §2.3,
+# "harness_telemetry default collector"): harness_telemetry is a standalone
 # template package with no config system and log_event runs on the host, so
 # its default collector stays a literal, pinned to .env.example by
 # test_harness_default_collector_matches_env_example (platform-stack, PS-2.2).
+# Second (platform-sbom U4b, PSC-26, design-notes N16; orchestrator U4b
+# ruling 1): ke-neo4j is FROM scratch, so it declares again the official
+# image's ExposedPorts; 7687 is also config/defaults.yaml's neo4j port.
 EXEMPTIONS = [(
     "harness_telemetry/tracing.py",
     "DEFAULT_COLLECTOR",
     "standalone template package with no config system; drift-tested against "
     ".env.example by test_harness_default_collector_matches_env_example",
+), (
+    "docker/neo4j.Dockerfile",
+    "EXPOSE 7473 7474 7687",
+    "mirrors the pinned official neo4j image's own ExposedPorts metadata (PSC-26, design-notes N16); "
+    "not a port the engine configures",
 )]
 
 # Human ruling Q7: the model host's name is a host name under PS-1.2 even
@@ -130,6 +140,30 @@ class ScannerContractTest(unittest.TestCase):
         self.assertTrue(_scan({"engine/tracing.py": line}, ["47101"], EXEMPTIONS))
         other = 'OTHER = "http://localhost:47101"\n'
         self.assertTrue(_scan({"harness_telemetry/tracing.py": other}, ["47101"], EXEMPTIONS))
+
+    def test_dockerfile_exemption_covers_only_its_instruction_line(self):
+        # platform-sbom U4b (PSC-26, N16; orchestrator U4b ruling 1): the
+        # neo4j EXPOSE line is exempt, and only that exact line of that file.
+        path, line = "docker/neo4j.Dockerfile", "EXPOSE 7473 7474 7687\n"
+        self.assertEqual(_scan({path: line}, ["7687"], EXEMPTIONS), [])
+        self.assertEqual(_scan({path: "  EXPOSE 7473 7474 7687  \n"}, ["7687"], EXEMPTIONS), [])
+        for other in ("EXPOSE 7687\n", "EXPOSE 7473 7474 7687 8080\n", "EXPOSE 7473 7474 7687/tcp\n",
+                      "ENV NEO4J_server_bolt_listen__address=:7687\n", "# bolt listens on 7687\n",
+                      "HEALTHCHECK CMD cypher-shell -a bolt://localhost:7687 'RETURN 1'\n",
+                      "RUN echo EXPOSE 7473 7474 7687\n", "EXPOSE=7687\n"):
+            with self.subTest(same_file=other):
+                self.assertTrue(_scan({path: other}, ["7687"], EXEMPTIONS), "another line of the file was exempted")
+        with self.subTest(case="the exempt line plus another literal: one finding, on the other line"):
+            found = _scan({path: line + "ENV BOLT=7687\n"}, ["7687"], EXEMPTIONS)
+            self.assertEqual([(f.line, f.value) for f in found], [(2, "7687")])
+        for other_path in ("docker/app.Dockerfile", "docker/gateway.Dockerfile", "docker/neo4j/Dockerfile",
+                           "Dockerfile", "docker-compose.yml", "scripts/build.sh"):
+            with self.subTest(other_path=other_path):
+                self.assertTrue(_scan({other_path: line}, ["7687"], EXEMPTIONS), "the exemption left its file")
+        with self.subTest(case="the Python exemption keeps the assignment form (N4)"):
+            self.assertTrue(_scan({"harness_telemetry/tracing.py": "DEFAULT_COLLECTOR\n"},
+                                  ["DEFAULT_COLLECTOR"], EXEMPTIONS),
+                            "a bare symbol line (no assignment) was exempted in a Python file")
 
     def test_allowed_locations_are_never_flagged(self):
         for path in ("config/defaults.yaml", ".env.example", "config/verify.env",

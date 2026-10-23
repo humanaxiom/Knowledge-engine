@@ -3293,7 +3293,9 @@ item.
 
 ## Item: platform-sbom
 
-Status: **not started.** Opens right after `platform-supply-chain` (split
+Status: **In progress (2026-10-23):** U0-U4 committed on `agent/platform-sbom`
+(31bfed4, 23e3c9b, 98b6d27, 464fa11, 40e2181), not pushed; U4b next (PSC-26).
+*(Updated 2026-10-23, documenter, status)* Opened (2026-10-21) right after `platform-supply-chain` (split
 accepted by the orchestrator, 2026-10-21), on `agent/platform-sbom`.
 PSC-13–PSC-15 moved here from `platform-supply-chain` and were rewritten on
 2026-10-21 (architect) for the Q57 and Q58 rulings; PSC-16 is new. The
@@ -3325,6 +3327,25 @@ changed:
 it, before U3 (the SBOM, PSC-13) and U9 (the generated "Source code"
 section, PSC-15, PSC-24) land. Until then `NOTICE.md` names an SBOM and a
 section the bundle does not carry (PSC-14). *(Amended 2026-10-23, analyst, U1 review.)*
+
+**Criterion status (2026-10-23).** *(Updated 2026-10-23, documenter, status)*
+Counts are not restated here; the evidence under
+`docs/evidence/platform-sbom/` names its queries.
+
+| Criterion | Status | Unit (commit) |
+|---|---|---|
+| PSC-13 SBOM per bundled image | MET | U3 (464fa11) |
+| PSC-14 notices complete for `ke-app` | MET (the generated "Source code" section is U9) | U1 (23e3c9b) |
+| PSC-15 GPL source offers | PENDING | U5-U7, U9 |
+| PSC-16 CI cost and disk measured on CI | PENDING | U11 |
+| PSC-19 end to end offline install | PENDING | U10 |
+| PSC-20 SBOM generator pinned and hardened | MET | U2 (98b6d27) |
+| PSC-21 per-arch bundles | PENDING (next recorded arm64 run) | U12 |
+| PSC-22 obligations not hidden | MET (report, drift check, `always` list; their `sources/` entries are U6-U7) | U4 (40e2181) |
+| PSC-23 bounded source fetch | PENDING | U8 |
+| PSC-24 no partial bundle, manifest rules | PENDING | U9 |
+| PSC-25 psycopg on Debian libpq | MET | U0 (31bfed4) |
+| PSC-26 first-party neo4j image | PENDING | U4b |
 
 Outcome metric moved: **neither.** No draft is reviewed and no rule is
 ratified because of this item. It closes the M-NT1 remainder
@@ -3557,7 +3578,9 @@ full what it contains.
   - `NOTICE.md`'s neo4j row (PS-3.8, not a `ke-app` criterion) names the
     official image by its digest and says "used unmodified". U4b (PSC-26,
     *Notices*) updates that row. PSC-14's `ke-app` criteria are unchanged.
-    *(Amended 2026-10-23, analyst, Q67.)*
+    *(Amended 2026-10-23, analyst, Q67.)* U4b replaces that neo4j vendor
+    row with a "Base image of `ke-neo4j`" section (PSC-26 *Notices*).
+    *(Amended 2026-10-23, analyst, U4b rulings.)*
 - **PSC-15 GPL source offers, built now (Q58).**
   - *Obligations to meet.*
     - **GPL-2.0 §3.** Whoever distributes the object code must do one of:
@@ -4022,11 +4045,46 @@ full what it contains.
     architecture. A field the official image leaves unset stays unset. A
     field that must differ is named in the ADR with its reason and pinned
     by the test; none is expected. *(Added 2026-10-23, analyst, Q67.)*
+    - *Fields compared.* *(Amended 2026-10-23, analyst, U4b rulings.)* The comparison covers
+      `Config.Entrypoint`, `Config.Cmd`, `Config.Env` (every entry, in the
+      official image's order), `Config.WorkingDir`,
+      `Config.ExposedPorts` and `Config.Volumes`; each equals the pinned
+      official image's, for the same architecture. `Config.User`,
+      `Config.Healthcheck` and `Config.StopSignal` must be unset in
+      `ke-neo4j`, as they are in the official image (the entrypoint runs
+      as root and drops privilege itself; compose has its own
+      healthcheck). `Config.Labels` is not compared, because compose adds
+      its own labels to the image it builds; the Dockerfile itself sets
+      no `LABEL`. Where this list and the paragraph above differ, this
+      list applies.
+    - *PS-1.2 exemption.* *(Amended 2026-10-23, analyst, U4b rulings.)* The last stage's
+      `EXPOSE 7473 7474 7687` line mirrors the pinned official image's
+      `ExposedPorts` metadata; it is not a configurable host port. It has
+      a recorded PS-1.2 exemption (an entry, with its reason, in the
+      `EXEMPTIONS` list of `tests/test_engine_hardcoded.py`), reviewed by
+      security. `[unit: test_no_hardcoded_ports]` is not weakened: the
+      exemption is scoped as narrowly as the `EXEMPTIONS` mechanism (its
+      path, symbol and reason entries) allows: that file and its `EXPOSE`
+      directive. The same port literal elsewhere in
+      `docker/neo4j.Dockerfile`, or in another Dockerfile, is still
+      flagged (a control proves it), as is any port literal outside the
+      PS-1.2 locations.
   - *File tree.* Every path in the official image outside
     `/var/lib/neo4j/products` is in `ke-neo4j` with the same type, owner,
     group, mode and (for a symlink) target, and `ke-neo4j` adds no path.
     This keeps the entrypoint's user switch and its ownership of `/data`
     working. *(Added 2026-10-23, analyst, Q67.)*
+    - *Evidence, not a gate step.* *(Amended 2026-10-23, analyst, U4b rulings.)* Because of CI
+      cost (Q62), this equality is not checked on every
+      `scripts/verify.sh full` run. It is recorded at GREEN under
+      `docs/evidence/platform-sbom/u4b/` (both images listed with
+      `docker create` + `docker export | tar -tv` and compared by path for
+      type, mode, uid/gid, size and link target; design notes N16) and
+      again in the A34 proof (`u4b/windows-run.txt`). The only difference
+      allowed is `var/lib/neo4j/products/` and its two files; a hard link
+      written out as a regular file is recorded, not failed. The
+      comparison logic, `scripts/sbom_check.py tree`, stays unit-tested on
+      stub exports.
   - *Plugin absent.* No `/var/lib/neo4j/products` path and no file whose
     name contains `neo4j-fleet-management-plugin` is in the image, nor in
     any layer of `ke-neo4j.tar` as `bundle.sh` saves it. Every layer the
@@ -4037,6 +4095,23 @@ full what it contains.
     `com.neo4j/neo4j-fleet-management-plugin` package (any version, by
     purl or by name). It still lists Neo4j Community (`org.neo4j/neo4j`)
     and the Temurin OpenJDK. *(Added 2026-10-23, analyst, Q67.)*
+  - *Where the `full` checks run.* *(Amended 2026-10-23, analyst, U4b rulings.)*
+    - The config, saved-tar and SBOM checks run in
+      `scripts/offline_check.sh`, after its drift step, as
+      `scripts/sbom_check.py neo4j`: on the `docker image inspect` config
+      of both images, on `images/ke-neo4j.tar` as `bundle.sh` saved it,
+      and on `app/sboms/ke-neo4j.spdx.json` from the bundle it writes. A
+      problem fails the offline check.
+    - `offline_check.sh` pulls the official neo4j image by its full
+      digest before it runs `bundle.sh`, as it pulls the `ke-app` base
+      (PSC-22).
+    - The "plugin absent in the live image" half is the stack smoke step:
+      in the running `neo4j` service, `/var/lib/neo4j/products` is absent
+      and no file under `/` (same filesystem) is named
+      `*fleet-management*`. The whole output is compared, and the step
+      fails closed.
+    - The file-tree equality is evidence, not a run step (*File tree*
+      above).
   - *Bundled as first-party.* `bundle.json` lists
     `ke-neo4j:bundle-<sha12>`. No `neo4j:5-community` reference, no
     `ke-vendor/neo4j:*` image and no `neo4j.tar` is in the bundle, so the
@@ -4063,16 +4138,35 @@ full what it contains.
     orchestrator, 2026-10-23). Scanning every bundled image is a follow-up
     for the human ("Follow-ups (not in platform-sbom)", "Scan every bundled
     image"). *(Amended 2026-10-23, analyst, Q68.)*
-  - *Notices.* `NOTICE.md`'s neo4j row names `ke-neo4j`, built from the
-    pinned official image (its full digest) with `/var/lib/neo4j/products`
-    (the commercially licensed fleet-management plugin) removed. Neo4j
-    Community 5.26.32 itself is unmodified, so the row says that instead
-    of "used unmodified" for the image. The licence (GPL-3.0), the
-    `LICENSE.txt` path, the upstream source and `licenses/GPL-3.0.txt`
-    stay. The notices tests that find the row by the compose vendor
-    reference (`test_notices_neo4j_has_source_url` and the vendor-row
-    tests in `tests/test_offline_bundle.py`) are re-targeted to the new
-    Dockerfile's base pin, and the notices run (PS-3.8) stays green. *(Added 2026-10-23, analyst, Q67.)*
+  - *Notices.* *(Amended 2026-10-23, analyst, U4b rulings.)* This replaces the
+    row wording added with Q67 (design notes N16). `NOTICE.md` has no
+    neo4j row under "Vendor images" (`ke-neo4j` is not a digest-pinned
+    stack ref, so `bundle.sh` checks no row for it). A section headed
+    "Base image of `ke-neo4j`", as for `ke-gateway`, states:
+    - `ke-neo4j` is built from the pinned official image, named by its
+      full reference with the full digest, byte for byte as
+      `docker/neo4j.Dockerfile`'s `FROM` gives it, with
+      `/var/lib/neo4j/products` removed;
+    - that directory held the fleet-management plugin (under a
+      commercial licence) and the GenAI plugin (GPL-3.0), which the stack
+      does not use;
+    - Neo4j Community 5.26.32 itself is unmodified: no Neo4j file is
+      changed, and the filesystem is otherwise the official image's,
+      flattened. The section does not say "used unmodified" of the image;
+    - the licence is GPL-3.0, with its text at
+      `/var/lib/neo4j/LICENSE.txt` in the image and at
+      `licenses/GPL-3.0.txt`; the upstream source is
+      https://github.com/neo4j/neo4j, tag 5.26.32.
+
+    A fast test ties the section's reference to the Dockerfile's `FROM`,
+    as U1's does for `ke-app`. The notices tests that found the row by
+    the compose vendor reference (`test_notices_neo4j_has_source_url` and
+    the vendor-row tests in `tests/test_offline_bundle.py`) are
+    re-targeted to this section and the Dockerfile's base pin, and the
+    notices run (PS-3.8) stays green.
+    *Superseded, kept for the record:* "`NOTICE.md`'s neo4j row names
+    `ke-neo4j` ... so the row says that instead of 'used unmodified' for
+    the image" (Added 2026-10-23, analyst, Q67).
   - *Stack still works.* The stack smoke in `full` passes: neo4j's compose
     healthcheck passes, and the api's `/readyz` reports neo4j ready. *(Added 2026-10-23, analyst, Q67.)*
   - *Windows (A34).* A new Dockerfile and a compose change, so the A34
@@ -4095,14 +4189,26 @@ full what it contains.
       static): the last stage declares ENTRYPOINT, CMD, ENV, WORKDIR,
       EXPOSE and VOLUME (and USER, HEALTHCHECK and STOPSIGNAL where the
       official image sets them). Control: a fixture missing one fails.
+      *(Amended 2026-10-23, analyst, U4b rulings.)* The official image sets none of USER,
+      HEALTHCHECK and STOPSIGNAL, so the last stage sets none of them, and
+      no LABEL; a fixture that sets one fails.
     - `[unit: test_compose_neo4j_uses_first_party_image]` (fast): the
       neo4j service's image is `ke-neo4j:${KE_IMAGE_TAG:-local}`, its `build:` names the
       new Dockerfile, and no `neo4j:5-community` reference is in
       `docker-compose.yml`.
     - `[full: ke-neo4j config matches the pinned official image]`
-      (`docker image inspect` of both).
-    - `[full: ke-neo4j file tree equals the official image minus products]`.
+      (`docker image inspect` of both). *(Amended 2026-10-23, analyst, U4b rulings.)* In
+      `offline_check.sh`, as `sbom_check.py neo4j`, on the fields in
+      *Fields compared*.
+    - *Evidence, not a `full` tag:* ke-neo4j file tree equals the
+      official image minus products, recorded at GREEN and in the A34
+      proof (*File tree*). The `sbom_check.py tree` logic is covered by a
+      fast unit test on stub exports. *(Amended 2026-10-23, analyst, U4b rulings.)*
+      *Superseded, kept for the record:* "`[full: ke-neo4j file tree
+      equals the official image minus products]`".
     - `[full: ke-neo4j has no fleet-management plugin in image or saved tar]`.
+      *(Amended 2026-10-23, analyst, U4b rulings.)* The image half is the stack smoke step;
+      the saved-tar half is `offline_check.sh`'s `sbom_check.py neo4j`.
     - `[full: ke-neo4j SBOM lists no fleet-management plugin]` (the SBOM
       `offline_check.sh`'s bundle writes).
     - The stack smoke, the notices run and `[gate: image-scan]` (still
@@ -4117,6 +4223,12 @@ PSC-19 → PSC-16, with PSC-21 at the next recorded arm64 run. Gate: `scripts/ve
 run under A34 if the item changes Dockerfiles, compose files or a
 PowerShell script (`install.ps1` included, Q45).
 U4b (PSC-26) runs after U4 (PSC-22) and before U5. *(Added 2026-10-23, analyst, Q67.)*
+
+*Unit order (architecture N15), current:* U0 (PSC-25), U1 (PSC-14), U2
+(PSC-20), U3 (PSC-13), U4 (PSC-22), U4b (PSC-26), U5 (licence classifier), U6
+(source policy), U7 (generated source lock), U8 (PSC-23), U9 (PSC-15,
+PSC-24), U10 (PSC-19), U11 (PSC-16), U12 (PSC-21). Where this differs from
+the PSC-number order above, the unit order wins. *(Updated 2026-10-23, documenter, status)*
 
 ### Follow-ups (not in platform-sbom)
 
@@ -4135,6 +4247,22 @@ U4b (PSC-26) runs after U4 (PSC-22) and before U5. *(Added 2026-10-23, analyst, 
   added scan time and disk are measured on CI first (as PSC-16), and the
   human rules with that measurement. Not a platform-sbom criterion.
   *(Added 2026-10-23, analyst, Q68.)*
+- **GCC runtime source or exemption (for the human; decided before U7).**
+  `upstream=gcc-12` (`ke-app`, postgres) and `upstream=gcc-14` (neo4j,
+  phoenix) are in the `always` list (PSC-22). Either ship their Debian
+  source via the `deb` kind or record a reviewed exemption. The design
+  (architecture N10) recommends shipping the source, and the architect's
+  U4 round-1 decision follows it; the human confirms before U7.
+  *(Updated 2026-10-23, documenter, status)*
+- **Revision label on the image (security U3 L-1; planned for U10).**
+  A bundle can name a git sha that the image did not come from (the
+  SBOM creator tool and `bundle.json`). The `ke:image-config` annotation
+  stays true to the tar. Suggested fix: the build stamps
+  `org.opencontainers.image.revision` and `bundle.sh` refuses on a
+  mismatch, or `bundle.sh` only takes the tag `verify` builds. Not yet a
+  criterion; it is recorded in
+  `docs/evidence/platform-sbom/u3/security.md`.
+  *(Updated 2026-10-23, documenter, status)*
 
 ---
 

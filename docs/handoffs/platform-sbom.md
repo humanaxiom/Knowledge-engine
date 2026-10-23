@@ -117,29 +117,48 @@ it closes the M-NT1 remainder (no GPL source offer, incomplete SBOM). Branch:
 - The U4 A34 proof (`u4/windows-run.txt`) is stale after the tmpfs change: re-run 2b and 3b.
 - Next: developer round-1 GREEN.
 
-## 2026-10-23 — developer (U4 rework GREEN)
-- Applied the 5 r1 targets unchanged (modes 755 kept); B2 already absent in the target; added the N8 comment above `sbom_cleanup`. No test changed.
-- verify fast PASS, verify full PASS (937 s); no "unable to get filesystem cache"; drift summary line present; unlicensed ke-app 19, gateway 0, neo4j 28, phoenix 35, postgres 25, valkey 1.
-- Evidence: u4/r1-green-verify-fast.txt, r1-green-verify-full.txt, r1-real-run-report.txt (security re-review). Next: reviewer + security; redo A34 2b/3b.
+## U4 (committed 40e2181; detail: archive/platform-sbom-part6.md and part7.md)
+- Rework rounds used: 1 of 5.
+- H-1 closed; all six unlicensed lists accepted by security.
+- The cache warning is fixed with tmpfs `/tmp:mode=1777`.
+- Carried to U5: security L-4, L-5, I-4, review R2 and R3, and a named LicenseRef fixture row.
 
-## 2026-10-23 — security (U4 re-check)
-- PASS. Closed: H-1 (independent recount: 59 hash rows, none hidden; 19/0/28/35/25/1), M-1, M-2, L-1, L-2 (probe: /tmp is noexec,nosuid,nodev, mode 1777) and L-3. M-3 is with the human (Q67, U4b). Per-image unlicensed review: all six accepted, no new `always` needed (hash rows go to source via N8/U7 deb; krb5, libxslt1.1 and pandas may be exempted at U6).
-- Non-blocking for U5: L-4, so that declared `<hash>` + concluded `MIT` does not classify as MIT (pin it in N8 and add a test row). Carry: L-5, escape `validate`'s `sid` and drift's names with `_clean` and use `fullmatch`. Evidence: u4/security.md "Re-check", u4/r1-security-probes.txt.
+## U4b (PSC-26, Q67; detail: archive/platform-sbom-part7.md)
+- Orchestrator rulings: the EXPOSE exemption (the scanner gains a Dockerfile exact-line rule, which security must review); checks in offline_check after drift; the file tree as evidence only; the NOTICE section; labels excluded; installers unchanged; Q68, ke-neo4j not scanned.
+- RED: 29 failing, 61 controls, reach PASS.
+- GREEN: verify full PASS 990 s; config identical; file tree equal minus products (two jars: the fleet-management and genai plugins); plugin absent from the tar; ke-neo4j unlicensed 27; tar -1.15%.
+- Next: A34 Windows proof (new Dockerfile plus compose), reviewer and security in parallel, orchestrator verify full, commit.
 
-## 2026-10-23 — reviewer (U4 re-check)
-- APPROVED: B1, B2 and N1-N8 closed; H-1, M-1, M-2, L-1 and L-3 verified (25 `always` entries match the fixtures; fixtures equal the U3 blobs). Controls `r1 --base repo`: 61 rows, 0 unexpected. Full run: 0 cache warnings, summary line, counts 19/0/28/35/25/1.
-- Nits: R1 PSC-22 test names; R2 escaping (= security L-5); R3 stale `u4_controls.py` anchor. Detail in `u4/review.md` "Re-check"; A34 2b/3b still pending.
+Session checkpoint: next-session brief is docs/handoffs/NEXT-SESSION.md (untracked)
+## 2026-10-23 — reviewer (U4b)
+- APPROVED, 0 blocking. Dockerfile = N16 exactly; compose/NOTICE/policy/smoke/offline_check/sbom_check per PSC-26 and rulings 1-6; 11 re-targeted tests keep intent; controls re-run `--base repo`: 61 rows, 0 unexpected.
+- Nits N1-N7 (README/CHANGELOG lack U4b, NOTICE GenAI wording, SBOM package diff + tree listings not saved, tree omits size, scanner continuation-line edge): `u4b/review.md`.
 
-## 2026-10-23 — tester (U4 rework Windows proof)
-- A34 PASS (`u4/r1-windows-run.txt`; project ke-tester-u4r1win, 28 files hashed, identical start/end). 2b: tmpfs `/tmp:mode=1777` resolves from Windows PowerShell. 3b: bundle.sh wrote 6 valid SBOMs; "unable to get filesystem cache" count 0 (the drift base run also 0); unlicensed ke-app 19, ke-gateway 0, neo4j 28, phoenix 35, postgres 25, valkey 1; drift `ok` summary line printed; controls exit 1. verify fast PASS (851). Teardown left nothing; the bundle tags were restored.
-- A tester sed bug in the first 3b count compare (it missed the by-type suffix) is recorded; the addendum re-ran the compare on the same raw output and the counts are equal. Next: reviewer + security verdicts, then orchestrator verify full.
+## 2026-10-23 — marketer (U4b CHANGELOG)
+- CHANGELOG `platform-sbom (in progress)` entry: one Changed bullet for the own neo4j image (ke-neo4j, Q67/PSC-26), NOTICE.md described.
+- The bullet names the removed `products/` folder: it holds the fleet-management plugin and the GenAI plugin (the Dockerfile removes the whole folder).
+- To keep the subsection at 11 lines, the two ke-app Changed bullets (psycopg, pip) were merged into one. No content lost.
+- README positioning not touched (documenter owns the README status).
+- Next: reviewer or orchestrator judges the CHANGELOG; the U4b commit is already on the branch.
 
-## 2026-10-23 — orchestrator (U4 commit gate)
-- Review APPROVED (re-check; R1 fixed in PSC-22, R2/R3 carried to U5), security PASS
-  (re-check: H-1 closed, all six unlicensed lists accepted; L-4, L-5, I-4 carried to
-  U5 in PSC-22), A34 re-proof PASS (0 cache warnings on Windows). Rework rounds 1 of 5.
-- Orchestrator verify full PASS 896 s (851 unit + 15 integration; drift ok; counts
-  19/0/28/35/25/1; 0 cache warnings; `u4/orchestrator-verify-full.txt`). Diff read.
-- Accepted: the 16-hex `LicenseRef-` row meets PSC-22's "non-hash LicenseRef" control;
-  a named-ref fixture row is a U5 nicety.
-- Commit APPROVED: U4 (PSC-22). Next: U4b (PSC-26 own neo4j image, design N16).
+## 2026-10-23 — security (U4b)
+- PASS; M-3 closed: no products/, fleet jar or whiteout in any layer of ke-neo4j's saved tar; bundle has 3 first-party + phoenix/postgres/valkey, no neo4j or ke-vendor/neo4j. Tree vs official: 8019 paths equal incl. content sha256; setid, world-writable, owners, USER unset and entrypoint drop to 7474 all as official. Scanner rule exact-line, one file; smoke step injection-safe and fails closed; offline pull by digest, CLAUDE.md holds; NOTICE true.
+- Non-blocking: L-1 smoke `find -xdev` skips volumes; I-1 `tree` checks no size/content; I-2 continuation/heredoc line; I-3 "one layer" (2nd is empty); I-4 ArgsEscaped; I-5 NEO4J_PLUGINS fallback. Evidence: u4b/security.md, u4b/security-probes.txt.
+
+## 2026-10-23 — orchestrator (correction)
+- The marketer's "U4b CHANGELOG" section says the U4b commit is on the branch: it is
+  not. HEAD is 40e2181 (U4); U4b is uncommitted until its commit gate.
+
+## 2026-10-23 — tester (U4b Windows proof)
+- A34 PASS (`u4b/windows-run.txt`): build.ps1 builds ke-neo4j; config 13/13 N16 fields equal; launch 7/7 healthy, live neo4j on ke-neo4j with no products/ or fleet file; bundle.sh writes images/ke-neo4j.tar + its SBOM (no neo4j.tar, no ke-vendor/neo4j); NEW install.ps1 section: loads ke-neo4j:bundle-<sha12>, installed stack 7/7 healthy; tree = official minus products/, 0 attribute/owner diffs; teardown leaves nothing; Windows tests 7 OK; verify fast PASS (871). N4 TSV diff and N5 listings: `u4b/windows-*.{tsv,txt}`.
+- Findings for review/security: ke-neo4j .Config has `ArgsEscaped=true` (official: absent), outside N16's list and sbom_check's NEO4J_CONFIG_FIELDS; ke-neo4j has 2 rootfs layers (the 2nd is WORKDIR's empty layer, 0 entries), not 1.
+
+## 2026-10-23 — orchestrator (U4b commit gate)
+- Review APPROVED (0 rework rounds; doc nits N1-N3 fixed: README, CHANGELOG, NOTICE
+  wording; N4/N5 evidence recorded in the A34 run; N6/N7 + cosmetic carried to U5),
+  security PASS (M-3 closed; flattened image as safe as official by content hash),
+  A34 PASS (incl. install.ps1 from the bundle; SBOM diff = 2 plugin jars + root row).
+- Orchestrator verify full PASS 995 s (871 unit + 15 integration; ke-neo4j ok; no
+  fleet plugin on build host and offline client; `u4b/orchestrator-verify-full.txt`).
+  Diff read. Commit APPROVED: U4b (PSC-26) + this session's README/CHANGELOG/
+  requirements-status updates. Next: U5 (classifier; carry list in U4/U4b bullets).

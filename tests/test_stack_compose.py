@@ -22,7 +22,9 @@ PUBLISHED = re.compile(
     r"^\$\{KE_BIND_ADDRESS:-127\.0\.0\.1\}:\$\{(KE_[A-Z0-9_]+_PORT):-(\d+)\}:(?P<target>[^:]+)$")
 PUBLISHED_PORT = re.compile(r"^\$\{(KE_[A-Z0-9_]+_PORT):-(\d+)\}$")
 PORT_RANGE = range(47100, 47200)
-FIRST_PARTY_REPOS = {"ke-app", "ke-gateway", "ke-gates"}
+# platform-sbom U4b (PSC-26, N16 *First failing tests*): ke-neo4j is first-party
+# (tester, U4b RED).
+FIRST_PARTY_REPOS = {"ke-app", "ke-gateway", "ke-gates", "ke-neo4j"}
 OFFLINE_SERVICES = ("dind", "offline-client")  # profile `offline` (architecture §2.5)
 
 
@@ -137,7 +139,9 @@ class ServicesTest(unittest.TestCase):
         self.assertTrue(pulled_dind, "dind (profile offline) is not defined with a pulled image")
 
     def test_dockerfiles_pin_base_images_by_digest(self):  # PS-2.1, §2.4 Images
-        for required in ("app.Dockerfile", "gateway.Dockerfile", "gates.Dockerfile"):
+        # platform-sbom U4b (PSC-26 *Build*): docker/neo4j.Dockerfile builds ke-neo4j
+        # from the official image pinned by digest (tester, U4b RED).
+        for required in ("app.Dockerfile", "gateway.Dockerfile", "gates.Dockerfile", "neo4j.Dockerfile"):
             with self.subTest(required=required):
                 self.assertTrue((ROOT / "docker" / required).is_file(),
                                 f"docker/{required} is missing (architecture §2.4 Images)")

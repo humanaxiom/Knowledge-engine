@@ -67,6 +67,21 @@ def _token(value: str) -> re.Pattern[str]:
     return re.compile(rf"(?<![\w.-]){re.escape(value)}(?![\w-]|\.\w)", re.I)
 
 
+def _is_dockerfile(path: str) -> bool:
+    return bool(re.fullmatch(r"(?:.*/)?(?:[^/]*\.)?Dockerfile", path))
+
+
+def _exempt_line(path: str, symbol: str) -> re.Pattern[str]:
+    """The line an exemption covers. Review N4: only the line that assigns
+    the symbol (not ==, +=, a call). A Dockerfile has no assignment for an
+    instruction such as EXPOSE, so there the symbol is one whole instruction
+    line, matched exactly (platform-sbom U4b, PSC-26; orchestrator U4b
+    ruling 1): the same literal on any other line still counts."""
+    if _is_dockerfile(path):
+        return re.compile(rf"^\s*{re.escape(symbol)}\s*$")
+    return re.compile(rf"^\s*{re.escape(symbol)}\s*(?::[^=]*)?=(?!=)")
+
+
 def find_hardcoded(
     files: Mapping[str, str],
     declared_values: Iterable[str],
@@ -75,9 +90,7 @@ def find_hardcoded(
     """Declared values as whole tokens (rule 1) and, in Python, URL literals
     and integer ports (rule 2). Exempt lines assign an exempt symbol."""
     patterns = [(v, _token(v)) for v in dict.fromkeys(str(v) for v in declared_values) if v]
-    # Review N4: only the line that assigns the symbol (not ==, +=, a call).
-    exempt = [(path, re.compile(rf"^\s*{re.escape(symbol)}\s*(?::[^=]*)?=(?!=)"))
-              for path, symbol, _ in exemptions]
+    exempt = [(path, _exempt_line(path, symbol)) for path, symbol, _ in exemptions]
     findings: list[Finding] = []
     for path, text in files.items():
         if _allowed(path):

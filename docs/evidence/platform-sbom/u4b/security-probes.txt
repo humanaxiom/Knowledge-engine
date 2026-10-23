@@ -1,0 +1,143 @@
+U4b security probes (security, 2026-10-23). Own containers only: label ke.security.u4b=1, --rm, --network none. Images: official neo4j@sha256:0a6e7aedf54a...db02b (ID 0a6e7aedf54a); ke-neo4j:wt-33a132fbfdd7 (ID 4797a370530a, the GREEN verify full build; same ID as ke-neo4j:bundle-40e21819680d). Scratch scripts: layers.py (every blob of a docker save tar), tree.py (merged layer filesystem with whiteouts applied; type, mode, uid, gid, size, link, sha256 of content, SCHILY.xattr).
+
+== A. image config (docker image inspect)
+sha256:4797a370530a33f1e8310c3679dd084af807efb0a11419d8b6923cb2c691b5a4 linux/amd64 layers=2 {"ArgsEscaped":true,"Cmd":["neo4j"],"Entrypoint":["tini","-g","--","/startup/docker-entrypoint.sh"],"Env":["PATH=/var/lib/neo4j/bin:/opt/java/openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin","JAVA_HOME=/opt/java/openjdk","NEO4J_SHA256=d279ae6a9b38034280681a558b0cd222dce89f87cc3d9867f1f7bd28ef5ebc30","NEO4J_TARBALL=neo4j-community-5.26.32-unix.tar.gz","NEO4J_EDITION=community","NEO4J_HOME=/var/lib/neo4j","LANG=C.UTF-8"],"ExposedPorts":{"7473/tcp":{},"7474/tcp":{},"7687/tcp":{}},"Labels":{"com.docker.compose.project":"ke-verify-2867714362","com.docker.compose.service":"neo4j","com.docker.compose.version":"5.1.4"},"Volumes":{"/data":{},"/logs":{}},"WorkingDir":"/var/lib/neo4j"}
+sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b linux/amd64 layers=5 {"Cmd":["neo4j"],"Entrypoint":["tini","-g","--","/startup/docker-entrypoint.sh"],"Env":["PATH=/var/lib/neo4j/bin:/opt/java/openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin","JAVA_HOME=/opt/java/openjdk","NEO4J_SHA256=d279ae6a9b38034280681a558b0cd222dce89f87cc3d9867f1f7bd28ef5ebc30","NEO4J_TARBALL=neo4j-community-5.26.32-unix.tar.gz","NEO4J_EDITION=community","NEO4J_HOME=/var/lib/neo4j","LANG=C.UTF-8"],"ExposedPorts":{"7473/tcp":{},"7474/tcp":{},"7687/tcp":{}},"Volumes":{"/data":{},"/logs":{}},"WorkingDir":"/var/lib/neo4j"}
+
+== B. docker save ke-neo4j: every blob (layers.py; world-writable list truncated, the full list equals the official one minus products/ and its 2 jars)
+manifest: [{"Config": "blobs/sha256/a7dabd715285f2c1dd0a3dba715a4db2a4a62777b71ba14c5ec6aff7e59bb801", "RepoTags": ["ke-neo4j:wt-33a132fbfdd7"], "Layers": ["blobs/sha256/7274e8eeddf1dfafcc78f105b7a629dcafc2f4c142bea923cc26d7fef5b01297", "blobs/sha256/4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1"]}]
+blobs/sha256/26b200baee135eb3f41d9bf196d2d2cdbc826fb7712d43c884bf28f2248cb4c9: not a tar (1853 B) json-hits=[]
+blobs/sha256/2fa4bd480a65edb123620ea3196f08a30a97fc70a273362c527965a9e4b6c8f7: not a tar (167 B) json-hits=[]
+blobs/sha256/4797a370530a33f1e8310c3679dd084af807efb0a11419d8b6923cb2c691b5a4: not a tar (855 B) json-hits=[]
+blobs/sha256/4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1: tar 0 entries; hits=[]; setid=[]; world-writable(non-symlink)=[ ...]
+blobs/sha256/52452c53ebeeb993bd90070047ffd8431b51d8b84f6a1d3aa92e30c3b004c7a3: not a tar (564 B) json-hits=[]
+blobs/sha256/7274e8eeddf1dfafcc78f105b7a629dcafc2f4c142bea923cc26d7fef5b01297: tar 8019 entries; hits=[]; setid=['usr/bin/chage', 'usr/bin/chfn', 'usr/bin/chsh', 'usr/bin/expiry', 'usr/bin/gpasswd', 'usr/bin/mount', 'usr/bin/newgrp', 'usr/bin/passwd', 'usr/bin/su', 'usr/bin/umount', 'usr/sbin/unix_chkpwd', 'var/mail']; world-writable(non-symlink)=['data', 'data/databases', 'data/transactions', 'logs', 'run/lock', 'tmp', 'var/lib/neo4j', 'var/lib/neo4j/LICENSE.txt', 'var/lib/neo4j/LICENSES.txt', 'var/lib/neo4j/NOTICE.txt', 'var/lib/neo4j/README.txt', 'var/lib/neo4j/UPGRADE.txt', 'var/lib/neo4j/certificates', 'var/lib/neo4j/conf', 'var/lib/neo4 ...]
+blobs/sha256/a3fa109e7021a7db9a0b8ead21b40f79e8802e6ebce94581e5a0234030e69fdc: not a tar (670 B) json-hits=[]
+blobs/sha256/a7dabd715285f2c1dd0a3dba715a4db2a4a62777b71ba14c5ec6aff7e59bb801: not a tar (2274 B) json-hits=[]
+
+== B2. docker save official: every blob (same script; for contrast)
+manifest: [{"Config": "blobs/sha256/4e4837b1c3649f458cc4ff43f8b47eb5ab4dc2f84e79beb82685f063f04b576a", "RepoTags": null, "Layers": ["blobs/sha256/ecc510c1e359bdc007b39802570bb7e4dec7d6ebccf357c3201a74299113e05e", "blobs/sha256/2ce9187fdeeaf2cb69e8b2a0ed6a8502e2e6c85645bfec69db3c43dcdfc3149a", "blobs/sha256/dbb8dd4100e0e46d40973cbd4f9cefd2acae277f3563547c621afe37dcd63cc0", "blobs/sha256/86c7147e3b4ff327047e3b90c7d3c21aa0b03ddf2700707e1090efd8bb627a93", "blobs/sha256/4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1"]}]
+blobs/sha256/0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b: not a tar (2699 B) json-hits=[]
+blobs/sha256/2ce9187fdeeaf2cb69e8b2a0ed6a8502e2e6c85645bfec69db3c43dcdfc3149a: tar 543 entries; hits=[]; setid=[]; world-writable(non-symlink)=[ ...]
+blobs/sha256/4160b6f4051bd76d20786b95551adee6588959debc9f837366e88598b0b12878: not a tar (4296756 B) json-hits=[]
+blobs/sha256/47ea172cbd3eb5c5128c3117233dbe567af795d916f3fa48814716c50986b1af: not a tar (1955 B) json-hits=[]
+blobs/sha256/4c7e2502bf2c23bf348e66f1588fd98ceeaf23569568f4118ac21ddbfa2ab88f: not a tar (241 B) json-hits=[]
+blobs/sha256/4e4837b1c3649f458cc4ff43f8b47eb5ab4dc2f84e79beb82685f063f04b576a: not a tar (5337 B) json-hits=[]
+blobs/sha256/4e650689bb4787287a18883081b42d3c52b5b531777ff6a0bc411d737034b0b9: not a tar (841 B) json-hits=[]
+blobs/sha256/4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1: tar 0 entries; hits=[]; setid=[]; world-writable(non-symlink)=[ ...]
+blobs/sha256/848cfc355336062d25958bf2238013bd1dde0a217249e2006cb30c7bd9873f4c: not a tar (21222 B) json-hits=[]
+blobs/sha256/86c7147e3b4ff327047e3b90c7d3c21aa0b03ddf2700707e1090efd8bb627a93: tar 4254 entries; hits=['startup/.wh.neo4j-admin-report.sh', 'var/lib/neo4j/products', 'var/lib/neo4j/products/neo4j-fleet-management-plugin-1.2.0-v5.jar', 'var/lib/neo4j/products/neo4j-genai-plugin-5.26.32.jar']; setid=[]; world-writable(non-symlink)=['data', 'data/databases', 'data/transactions', 'logs', 'var/lib/neo4j', 'var/lib/neo4j/LICENSE.txt', 'var/lib/neo4j/LICENSES.txt', 'var/lib/neo4j/NOTICE.txt', 'var/lib/neo4j/README.txt', 'var/lib/neo4j/UPGRADE.txt', 'var/lib/neo4j/certificates', 'var/lib/neo4j/conf', 'var/lib/neo4j/conf/neo4j-admin. ...]
+blobs/sha256/dbb8dd4100e0e46d40973cbd4f9cefd2acae277f3563547c621afe37dcd63cc0: tar 6 entries; hits=[]; setid=[]; world-writable(non-symlink)=[ ...]
+blobs/sha256/ecc510c1e359bdc007b39802570bb7e4dec7d6ebccf357c3201a74299113e05e: tar 3271 entries; hits=[]; setid=['usr/bin/chage', 'usr/bin/chfn', 'usr/bin/chsh', 'usr/bin/expiry', 'usr/bin/gpasswd', 'usr/bin/mount', 'usr/bin/newgrp', 'usr/bin/passwd', 'usr/bin/su', 'usr/bin/umount', 'usr/sbin/unix_chkpwd', 'var/mail']; world-writable(non-symlink)=['run/lock', 'tmp', 'var/tmp' ...]
+
+== C. merged filesystems compared (tree.py off.tar ke.tar)
+official: 5 layers, 8023 paths; ke-neo4j: 2 layers, 8019 paths
+only in official: ['.', 'var/lib/neo4j/products', 'var/lib/neo4j/products/neo4j-fleet-management-plugin-1.2.0-v5.jar', 'var/lib/neo4j/products/neo4j-genai-plugin-5.26.32.jar']
+only in ke-neo4j: []
+attribute or content differences on common paths: 0
+paths with xattrs in official: []
+setid equal: True ['usr/bin/chage', 'usr/bin/chfn', 'usr/bin/chsh', 'usr/bin/expiry', 'usr/bin/gpasswd', 'usr/bin/mount', 'usr/bin/newgrp', 'usr/bin/passwd', 'usr/bin/su', 'usr/bin/umount', 'usr/sbin/unix_chkpwd', 'var/mail']
+world-writable equal: False count 256
+  data: off=(b'5', '0o777', 7474, 7474, 0) ke=(b'5', '0o777', 7474, 7474, 0)
+  logs: off=(b'5', '0o777', 7474, 7474, 0) ke=(b'5', '0o777', 7474, 7474, 0)
+  var/lib/neo4j: off=(b'5', '0o777', 7474, 7474, 0) ke=(b'5', '0o777', 7474, 7474, 0)
+  var/lib/neo4j/conf/neo4j.conf: off=(b'0', '0o777', 7474, 7474, 16065) ke=(b'0', '0o777', 7474, 7474, 16065)
+  startup/docker-entrypoint.sh: off=(b'0', '0o755', 0, 0, 28472) ke=(b'0', '0o755', 0, 0, 28472)
+  var/lib/neo4j/plugins: off=(b'5', '0o777', 7474, 7474, 0) ke=(b'5', '0o777', 7474, 7474, 0)
+  tmp: off=(b'5', '0o1777', 0, 0, 0) ke=(b'5', '0o1777', 0, 0, 0)
+  etc/passwd: off=(b'0', '0o644', 0, 0, 881) ke=(b'0', '0o644', 0, 0, 881)
+  etc/shadow: off=(b'0', '0o640', 0, 42, 494) ke=(b'0', '0o640', 0, 42, 494)
+fleet/products/genai anywhere in ke: []
+etc/hostname,hosts,resolv.conf,.dockerenv in ke: {'etc/hostname': True, 'etc/hosts': False, 'etc/resolv.conf': True, '.dockerenv': False} in off: {'etc/hostname': True, 'etc/hosts': False, 'etc/resolv.conf': True, '.dockerenv': False}
+
+== D. runtime, entrypoint overridden (id, stat, setid files, world-writable count, /var/lib/neo4j, the smoke's find)
+== neo4j@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+uid=0(root) gid=0(root) groups=0(root)
+/ 755 root:root
+/data 777 neo4j:neo4j
+/logs 777 neo4j:neo4j
+/var/lib/neo4j 777 neo4j:neo4j
+/tmp 1777 root:root
+/usr/bin/chage /usr/bin/chfn /usr/bin/chsh /usr/bin/expiry /usr/bin/gpasswd /usr/bin/mount /usr/bin/newgrp /usr/bin/passwd /usr/bin/su /usr/bin/umount /usr/sbin/unix_chkpwd 
+257
+LICENSE.txt
+LICENSES.txt
+NOTICE.txt
+README.txt
+UPGRADE.txt
+bin
+certificates
+conf
+data
+import
+labs
+lib
+licenses
+logs
+packaging_info
+plugins
+products
+run
+web
+/var/lib/neo4j/products
+/var/lib/neo4j/products/neo4j-fleet-management-plugin-1.2.0-v5.jar
+/var/lib/neo4j/LICENSE.txt
+== ke-neo4j:wt-33a132fbfdd7
+uid=0(root) gid=0(root) groups=0(root)
+/ 755 root:root
+/data 777 neo4j:neo4j
+/logs 777 neo4j:neo4j
+/var/lib/neo4j 777 neo4j:neo4j
+/tmp 1777 root:root
+/usr/bin/chage /usr/bin/chfn /usr/bin/chsh /usr/bin/expiry /usr/bin/gpasswd /usr/bin/mount /usr/bin/newgrp /usr/bin/passwd /usr/bin/su /usr/bin/umount /usr/sbin/unix_chkpwd 
+254
+LICENSE.txt
+LICENSES.txt
+NOTICE.txt
+README.txt
+UPGRADE.txt
+bin
+certificates
+conf
+data
+import
+labs
+lib
+licenses
+logs
+packaging_info
+plugins
+run
+web
+/var/lib/neo4j/LICENSE.txt
+
+== E. through the real entrypoint, CMD 'sh -c id; CapEff; NoNewPrivs' (the entrypoint su-execs to neo4j:neo4j)
+-- neo4j@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+uid=7474(neo4j) gid=7474(neo4j) groups=7474(neo4j)
+CapEff:	0000000000000000
+NoNewPrivs:	0
+-- ke-neo4j:wt-33a132fbfdd7
+uid=7474(neo4j) gid=7474(neo4j) groups=7474(neo4j)
+CapEff:	0000000000000000
+NoNewPrivs:	0
+
+== F. server start under --network none (NEO4J_AUTH=neo4j/<probe pw>): both official and ke-neo4j exit 3 within seconds ('Neo4j Server shutdown initiated by request'); parity, not a ke-neo4j regression; the GREEN smoke shows ke-neo4j healthy on the backend network.
+
+== G. neo4j-plugins.json in ke-neo4j: products/ locations (fallback when absent)
+9:    "location": "/var/lib/neo4j/labs/apoc-*-core.jar",
+10-    "versions": "https://neo4j.github.io/apoc/versions.json",
+--
+16:    "location": "/var/lib/neo4j/products/bloom-plugin-*.jar",
+17-    "versions": "https://bloom-plugins.s3.eu-west-2.amazonaws.com/versions.json",
+--
+26:    "location": "/var/lib/neo4j/products/neo4j-graph-data-science-*.jar",
+27-    "properties": {
+--
+38:    "location": "/var/lib/neo4j/products/neo4j-genai-plugin-*.jar",
+39-    "properties": {
+--
+44:    "location": "/var/lib/neo4j/products/neo4j-fleet-management-*.jar",
+45-    "properties": {
+NEO4J_PLUGINS/NEO4JLABS_PLUGINS set anywhere in compose, scripts, engine, config: none (grep)
+C2. world-writable (non-symlink) only in official: ['var/lib/neo4j/products', 'var/lib/neo4j/products/neo4j-fleet-management-plugin-1.2.0-v5.jar', 'var/lib/neo4j/products/neo4j-genai-plugin-5.26.32.jar'] ; only in ke-neo4j: []
+C3. official root entry '.': (b'5', '0o755', 0, 0, 0, '', '', '{}') (ke-neo4j has no '.' entry; the daemon's / is 755 root:root in both, probe D)

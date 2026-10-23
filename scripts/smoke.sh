@@ -208,6 +208,21 @@ print(",".join(h).replace(" ", "_") or "-")')" || {
   exit 1
 }
 echo "smoke: no pip in api"
+# PSC-26 (Q67, N16): neo4j runs ke-neo4j, the official image without
+# /var/lib/neo4j/products (the commercial fleet-management plugin). find
+# prints any match and one control path that ke-neo4j must hold, so a find
+# that answers nothing fails (fail closed); the whole output is compared only
+# as a string, never evaluated (M-1 pattern).
+echo "== smoke: no fleet plugin =="
+fleet_out="$(compose exec -T neo4j find / -xdev \( -path /var/lib/neo4j/products -o -name '*fleet-management*' -o -path /var/lib/neo4j/LICENSE.txt \) -print)" || {
+  echo "smoke: FAIL (fleet plugin: the check in neo4j failed)" >&2
+  exit 1
+}
+[ "$fleet_out" = /var/lib/neo4j/LICENSE.txt ] || {
+  echo "smoke: FAIL (fleet plugin: find in neo4j printed '$fleet_out', want only /var/lib/neo4j/LICENSE.txt (products/ or a fleet-management file in neo4j, or no answer))" >&2
+  exit 1
+}
+echo "smoke: no products/ or fleet-management plugin in neo4j"
 
 # ci/offline (PS-3.3, architecture §2.5): api and worker have no route to
 # anything off the backend network. The target is the gateway's own address on

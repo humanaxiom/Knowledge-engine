@@ -1004,23 +1004,26 @@ class SbomBundleRunTest(_BundleBase, unittest.TestCase):
     # ---- PSC-24's spirit, the part U3 owns -------------------------------------
 
     def test_bundle_refuses_on_sbom_failure(self):
-        bad22 = raw_doc("neo4j", self.syft_version)
+        # Platform-sbom U4b (PSC-26 *Bundled as first-party*): the neo4j service's image is
+        # saved as ke-neo4j (images/ke-neo4j.tar, app/sboms/ke-neo4j.spdx.json); re-targeted
+        # by the tester, U4b RED.
+        bad22 = raw_doc("ke-neo4j", self.syft_version)
         bad22["spdxVersion"] = "SPDX-2.2"
-        dangling = raw_doc("neo4j", self.syft_version)
+        dangling = raw_doc("ke-neo4j", self.syft_version)
         dangling["relationships"].append({"spdxElementId": dangling["packages"][1]["SPDXID"],
                                           "relatedSpdxElement": "SPDXRef-nope", "relationshipType": "CONTAINS"})
         cases = {
-            "syft fails for neo4j": {"FAKE_DOCKER_FAIL": "docker-archive:/in/neo4j.tar"},
-            "neo4j's raw document is not JSON": {"FAKE_SYFT_RAW": json.dumps({"neo4j": "{"})},
-            "neo4j's raw document is empty": {"FAKE_SYFT_RAW": json.dumps({"neo4j": ""})},
-            "neo4j's raw document is SPDX-2.2": {"FAKE_SYFT_RAW": json.dumps({"neo4j": json.dumps(bad22)})},
-            "neo4j's raw document has a dangling relationship":
-                {"FAKE_SYFT_RAW": json.dumps({"neo4j": json.dumps(dangling)})},
+            "syft fails for ke-neo4j": {"FAKE_DOCKER_FAIL": "docker-archive:/in/ke-neo4j.tar"},
+            "ke-neo4j's raw document is not JSON": {"FAKE_SYFT_RAW": json.dumps({"ke-neo4j": "{"})},
+            "ke-neo4j's raw document is empty": {"FAKE_SYFT_RAW": json.dumps({"ke-neo4j": ""})},
+            "ke-neo4j's raw document is SPDX-2.2": {"FAKE_SYFT_RAW": json.dumps({"ke-neo4j": json.dumps(bad22)})},
+            "ke-neo4j's raw document has a dangling relationship":
+                {"FAKE_SYFT_RAW": json.dumps({"ke-neo4j": json.dumps(dangling)})},
         }
         for case, env in cases.items():
             with self.subTest(case=case):
                 result, recs, out, _ = self._run(**env)
-                self._no_bundle(result, out, "neo4j")
+                self._no_bundle(result, out, "ke-neo4j")
                 self.assertEqual(self._downs_after_runs(recs), [], "the teardown runs on a failure too")
                 for r in recs:
                     if names_sbom_file(r["argv"]) and compose_split(r["argv"])[2] == "run":

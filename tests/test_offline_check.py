@@ -57,8 +57,10 @@ GIB_KB = 1024 * 1024
 OFFLINE_CHECK = ROOT / "scripts" / "offline_check.sh"
 NET_ISOLATED = ROOT / "scripts" / "net_isolated.sh"
 ISOLATED_KEY = "com.docker.network.bridge.gateway_mode_ipv4"
+# platform-sbom U4b (PSC-26, N16 *First failing tests*): ke-neo4j joins the
+# first-party images, built from docker/neo4j.Dockerfile (tester, U4b RED).
 FIRST_PARTY = {"app.Dockerfile": "ke-app", "gateway.Dockerfile": "ke-gateway",
-               "gates.Dockerfile": "ke-gates"}
+               "gates.Dockerfile": "ke-gates", "neo4j.Dockerfile": "ke-neo4j"}
 TAG_VAR = "${KE_IMAGE_TAG:-local}"
 WT_TAG = "wt-0123456789ab"
 DOCKER_MISSING = ("docker (CLI + compose plugin) is not on PATH: the gates image carries both "
@@ -355,15 +357,17 @@ class ImageTagTest(unittest.TestCase):
         bundle = str(self.tmp / "bundle")
         live = self._config(["docker-compose.yml"], profile=False, KE_OFFLINE_BUNDLE=bundle)
         live_images = {name: svc.get("image") for name, svc in (live.get("services") or {}).items()}
-        for name in ("gateway", "api", "worker"):
+        # platform-sbom U4b (PSC-26 *Tags*): neo4j is ke-neo4j:local live and
+        # ke-neo4j:wt-<12 hex> under verify (tester, U4b RED).
+        for name in ("gateway", "api", "worker", "neo4j"):
             with self.subTest(live=name):
-                self.assertRegex(str(live_images.get(name)), r"^ke-(?:app|gateway):local$",
+                self.assertRegex(str(live_images.get(name)), r"^ke-(?:app|gateway|neo4j):local$",
                                  "the live stack's first-party images resolve to the :local tag")
         verify = self._config(["docker-compose.yml", "docker-compose.verify.yml"], profile=True,
                               KE_IMAGE_TAG=WT_TAG, KE_OFFLINE_BUNDLE=bundle)
         built = {name: svc.get("image") for name, svc in (verify.get("services") or {}).items()
                  if svc.get("build") or str(svc.get("image", "")).startswith("ke-")}
-        self.assertTrue({"gateway", "api", "worker", "gates", "gates-it"} <= set(built), built)
+        self.assertTrue({"gateway", "api", "worker", "neo4j", "gates", "gates-it"} <= set(built), built)
         for name, image in sorted(built.items()):
             with self.subTest(verify=name, image=image):
                 self.assertEqual(str(image).rsplit(":", 1)[-1], WT_TAG,
@@ -453,11 +457,20 @@ if [ -n "$out" ]; then mkdir -p "$out" && echo '{}' > "$out/bundle.json"; fi
 _SBOM_STUB = r'''if [ -n "$out" ] && [ -n "${FAKE_STUB_BUNDLE_JSON:-}" ]; then cp "$FAKE_STUB_BUNDLE_JSON" "$out/bundle.json"; fi
 if [ -n "$out" ] && [ -n "${FAKE_STUB_KE_APP_SBOM:-}" ]; then
   mkdir -p "$out/app/sboms" && cp "$FAKE_STUB_KE_APP_SBOM" "$out/app/sboms/ke-app.spdx.json"
+fi
+if [ -n "$out" ] && [ -n "${FAKE_STUB_KE_NEO4J_SBOM:-}" ]; then
+  mkdir -p "$out/app/sboms" && cp "$FAKE_STUB_KE_NEO4J_SBOM" "$out/app/sboms/ke-neo4j.spdx.json"
+fi
+if [ -n "$out" ] && [ -n "${FAKE_STUB_KE_NEO4J_TAR:-}" ]; then
+  mkdir -p "$out/images" && cp "$FAKE_STUB_KE_NEO4J_TAR" "$out/images/ke-neo4j.tar"
 fi'''
 _BUNDLE_PRE = _BUNDLE_PRE.replace("@SBOM_STUB@", _SBOM_STUB)
-# Files the host half's U4 drift step reads from the checkout.
+# Files the host half's U4 drift step reads from the checkout, and (U4b,
+# PSC-26) the ke-neo4j step: docker/neo4j.Dockerfile's FROM is the official
+# reference it pulls and compares with. The stub bundle also writes the
+# ke-neo4j SBOM and saved tar (FAKE_STUB_KE_NEO4J_SBOM, FAKE_STUB_KE_NEO4J_TAR).
 _U4_HOST_FILES = ("scripts/sbom_check.py", cs.SBOM_COMPOSE_NAME, "docker/app.Dockerfile", "licenses",
-                  "tests/test_notice_ke_app.py", "uv.lock", "pyproject.toml")
+                  "tests/test_notice_ke_app.py", "uv.lock", "pyproject.toml", "docker/neo4j.Dockerfile")
 
 _INSTALL_PRE = r'''parent_mode="$(stat -c %a "$(dirname "$1")" 2>/dev/null || echo missing)"'''
 
@@ -475,6 +488,8 @@ def _stub(name: str, pre: str = "", post: str = "") -> str:
 
 AS_APP = "ke-app:bundle-0123456789ab"
 AS_GATEWAY = "ke-gateway:bundle-0123456789ab"
+AS_NEO4J = "ke-neo4j:bundle-0123456789ab"
+NEO4J_WT = "ke-neo4j:wt-0123456789ab"
 PG_REF = "postgres:16-bookworm@sha256:" + "a" * 64
 VK_REF = "valkey/valkey:8-alpine@sha256:" + "b" * 64
 AS_PG = "ke-vendor/postgres:aaaaaaaaaaaa"
@@ -483,6 +498,7 @@ BUNDLE_ENTRIES = [
     {"file": "images/ke-app.tar", "ref": "ke-app:wt-0123456789ab", "as": AS_APP, "services": "api worker"},
     {"file": "images/ke-gateway.tar", "ref": "ke-gateway:wt-0123456789ab", "as": AS_GATEWAY,
      "services": "gateway"},
+    {"file": "images/ke-neo4j.tar", "ref": NEO4J_WT, "as": AS_NEO4J, "services": "neo4j"},
     {"file": "images/postgres.tar", "ref": PG_REF, "as": AS_PG, "services": "postgres"},
     {"file": "images/valkey.tar", "ref": VK_REF, "as": AS_VK, "services": "valkey"},
 ]
@@ -555,9 +571,22 @@ class OfflineCheckScriptTest(_OfflineBase):
         if not sbom.exists():
             ss.write_json(sbom, ss.ke_app_doc())
         sbom_file = ROOT / cs.SBOM_COMPOSE_NAME
+        # platform-sbom U4b (PSC-26, N16): a clean ke-neo4j SBOM and saved tar,
+        # and both images' configs (ke-neo4j's with the labels compose adds).
+        from tests import neo4j_support as ns
+        neo4j_sbom = self.tmp / "stub-ke-neo4j.spdx.json"
+        if not neo4j_sbom.exists():
+            ss.write_json(neo4j_sbom, ns.ke_neo4j_doc())
+        neo4j_tar = self.tmp / "stub-ke-neo4j.tar"
+        if not neo4j_tar.exists():
+            ns.save_tar(neo4j_tar, [ns.CLEAN_LAYER])
+        official = ns.dockerfile_base_ref(repo / "docker" / "neo4j.Dockerfile") or ns.OFFICIAL_REF
+        configs = {official: ns.OFFICIAL_CONFIG, NEO4J_WT: dict(ns.OFFICIAL_CONFIG, Labels=ns.COMPOSE_LABELS)}
         # The host half has a route out: its `docker pull` of the ke-app base
         # (orchestrator U4 ruling 6) succeeds unless a test says otherwise.
         return {"FAKE_DOCKER_PULL_OK": "1",
+                "FAKE_STUB_KE_NEO4J_SBOM": str(neo4j_sbom), "FAKE_STUB_KE_NEO4J_TAR": str(neo4j_tar),
+                "FAKE_IMAGE_CONFIGS": json.dumps(configs),
                 "FAKE_COMPOSE_FILE_IMAGES": json.dumps({cs.SBOM_COMPOSE_NAME: {"sbom": cs.sbom_generator_ref(sbom_file)}}),
                 "FAKE_COMPOSE_FILE_REQUIRED": json.dumps({cs.SBOM_COMPOSE_NAME: cs.required_vars(sbom_file)}),
                 "FAKE_STUB_BUNDLE_JSON": str(bundle_json), "FAKE_STUB_KE_APP_SBOM": str(sbom),
@@ -1024,15 +1053,26 @@ fi'''.replace("@SBOM_STUB@", _SBOM_STUB.replace("\n", "\n  "))
         compose file or service, "pull base" when it names the ke-app base by
         its pinned digest (platform-sbom U4, orchestrator ruling 6), else
         "pull" (any other pull is out of order); and "drift" for the `docker
-        save` of that base (the start of the U4 drift step)."""
+        save` of that base (the start of the U4 drift step). Platform-sbom
+        U4b (PSC-26, N16): "pull neo4j base" when a pull names the official
+        neo4j image by its pinned digest, and "neo4j" for the checker run
+        `sbom_check.py neo4j` (tester, U4b RED)."""
+        from tests import neo4j_support as ns
         from tests import sbom_support as ss
         argv = record["argv"]
         digest = ss.base_ref().rsplit("@", 1)[1]
+        neo4j_digest = ns.OFFICIAL_CONFIG_DIGEST
         if argv[:1] != ["STUB"] and ("pull" in argv or argv[:2] == ["image", "pull"]):
             names = cs.SBOM_COMPOSE_NAME in " ".join(argv) or argv[-1:] == ["sbom"]
             if names:
                 return "pull sbom"
+            if any(a.endswith("@" + neo4j_digest) for a in argv):
+                return "pull neo4j base"
             return "pull base" if any(a.endswith("@" + digest) for a in argv) else "pull"
+        if argv[:1] == ["run"] and any(a.replace("\\", "/").endswith("/sbom_check.py") for a in argv):
+            tail = argv[[i for i, a in enumerate(argv) if a.replace("\\", "/").endswith("/sbom_check.py")][-1] + 1:]
+            if tail[:1] == ["neo4j"]:
+                return "neo4j"
         if (argv[:1] == ["save"] or argv[:2] == ["image", "save"]) and any(a.endswith("@" + digest) for a in argv):
             return "drift"
         return self._event(record)
@@ -1051,9 +1091,14 @@ fi'''.replace("@SBOM_STUB@", _SBOM_STUB.replace("\n", "\n  "))
         # the drift step after bundle.sh, so the exact order gains "pull base"
         # and "drift" (re-targeted by the tester, U4 RED; the generator pull
         # stays first and single).
+        # Platform-sbom U4b (PSC-26; design-notes N16; the placement is the
+        # tester's proposal, flagged to the architect): the official neo4j
+        # image is pulled by its digest after the ke-app base and before
+        # bundle.sh, and the ke-neo4j check runs after the drift step
+        # (re-targeted by the tester, U4b RED).
         self.assertEqual(self._events_u2(records),
-                         ["pull sbom", "pull base", "bundle", "drift", "up dind", "net_isolated", "run client",
-                          "teardown"], out)
+                         ["pull sbom", "pull base", "pull neo4j base", "bundle", "drift", "neo4j", "up dind",
+                          "net_isolated", "run client", "teardown"], out)
         pulls = [r for r in records if self._event_u2(r) == "pull sbom"]
         self.assertEqual(len(pulls), 1, "one pull of the generator")
         argv, env = pulls[0]["argv"], pulls[0]["env"]

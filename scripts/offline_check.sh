@@ -9,9 +9,10 @@
 #
 # Host half (no KE_OFFLINE_CLIENT): runs its own project ke-offline-<random>
 #   from the standalone docker-compose.offline.yml, and nothing else:
-#   disk floor (7 GiB) -> pulls (SBOM generator, then the ke-app base) ->
-#   bundle.sh -> image-side drift check (the ke-app SBOM against an SBOM of
-#   its base) -> `dind` up ->
+#   disk floor (7 GiB) -> pulls (SBOM generator, ke-app base, ke-neo4j base)
+#   -> bundle.sh -> image-side drift check (the ke-app SBOM against an SBOM
+#   of its base) -> ke-neo4j check (its config against the official image's,
+#   its saved tar and SBOM without the fleet plugin) -> `dind` up ->
 #   net_isolated.sh on the offline network -> `run offline-client`. The EXIT
 #   trap always runs
 #   `teardown.sh --volumes --profile offline` and removes the bundle. `df` is
@@ -249,6 +250,15 @@ base_ref="$(sed -n 's/^FROM \([^ ]*\) AS runtime$/\1/p' docker/app.Dockerfile)"
 echo "offline: pulling the ke-app base ($base_ref)"
 docker pull "$base_ref" > /dev/null || die "pulling the ke-app base failed ($base_ref); no retry"
 
+# platform-sbom U4b (PSC-26, Q67; design-notes N16): the official neo4j image
+# ke-neo4j is built from, by the pinned digest of docker/neo4j.Dockerfile's
+# FROM, for the config check below. Before bundle.sh, one call, no retry.
+neo4j_base="$(sed -n 's/^FROM \([^ ]*\) AS runtime$/\1/p' docker/neo4j.Dockerfile)"
+[[ "$neo4j_base" =~ ^neo4j:[A-Za-z0-9._-]+@sha256:[0-9a-f]{64}$ ]] \
+  || die "cannot read the ke-neo4j base reference from docker/neo4j.Dockerfile"
+echo "offline: pulling the ke-neo4j base ($neo4j_base)"
+docker pull "$neo4j_base" > /dev/null || die "pulling the ke-neo4j base failed ($neo4j_base); no retry"
+
 bash scripts/bundle.sh --out "$bundle_rel" || die "bundle.sh failed"
 # CI run 39364201188: bundle.sh writes private (0600) files but the offline client runs as uid 10001; open only this throwaway dir, read-only.
 chmod -R a+rX -- "$bundle_rel"
@@ -291,6 +301,37 @@ rm -rf -- "$drift_work"
 drift_work=""
 echo "offline: image-side drift check: the ke-app SBOM matches its base ($base_ref)"
 df_log "after drift check"
+
+# platform-sbom U4b (PSC-26; design-notes N16): ke-neo4j as bundled. Its
+# `docker image inspect` config equals the official image's; no layer of
+# images/ke-neo4j.tar holds /var/lib/neo4j/products, a whiteout of it or a
+# fleet-management plugin file; app/sboms/ke-neo4j.spdx.json lists no such
+# plugin but still lists Neo4j Community and the Temurin OpenJDK. The checker
+# runs in the ke-app image, with no network and read-only mounts.
+neo4j_ref="$(sed -n 's/.*"ref": "\(ke-neo4j:[^"]*\)".*/\1/p' "$bundle_rel/bundle.json" | head -n 1)"
+[ -n "$neo4j_ref" ] || die "bundle.json names no ke-neo4j image"
+neo4j_work="$(mktemp -d "$PWD/dist/.ke-neo4j.XXXXXXXX")" || die "cannot create the ke-neo4j work dir"
+drift_work="$neo4j_work"
+docker image inspect --format '{{json .Config}}' "$neo4j_base" > "$neo4j_work/official-config.json" \
+  || die "docker image inspect of the ke-neo4j base failed ($neo4j_base)"
+docker image inspect --format '{{json .Config}}' "$neo4j_ref" > "$neo4j_work/config.json" \
+  || die "docker image inspect of $neo4j_ref failed"
+chmod -R a+rX -- "$neo4j_work"
+MSYS_NO_PATHCONV=1 \
+docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --pull never \
+  --user "$(id -u):$(id -g)" --label "com.docker.compose.project=${project}-sbomcheck" \
+  -v "$repo_host/scripts/sbom_check.py:/opt/ke/sbom_check.py:ro" \
+  -v "$(hostpath "$PWD/$bundle_rel/app/sboms"):/sboms:ro" \
+  -v "$(hostpath "$PWD/$bundle_rel/images"):/images:ro" \
+  -v "$(hostpath "$neo4j_work"):/neo4j:ro" \
+  --entrypoint python "$app_ref" -I /opt/ke/sbom_check.py neo4j \
+  --official-config /neo4j/official-config.json --config /neo4j/config.json \
+  --sbom /sboms/ke-neo4j.spdx.json --tar /images/ke-neo4j.tar \
+  || die "the ke-neo4j check failed (see above): products/ or the fleet-management plugin, or a config change"
+rm -rf -- "$neo4j_work"
+drift_work=""
+echo "offline: ke-neo4j check: config equals $neo4j_base; no products/ or fleet-management plugin in its tar or SBOM"
+df_log "after ke-neo4j check"
 
 echo "offline: starting dind (privileged) in project $project"
 if ! compose up -d --wait dind; then

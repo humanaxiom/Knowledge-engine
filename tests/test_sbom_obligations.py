@@ -408,20 +408,23 @@ class UnlicensedBundleOutputTest(_BundleBase, unittest.TestCase):
     scripts/sbom_check.py)."""
 
     def test_bundle_output_lists_unlicensed_packages_per_image(self):
+        # Platform-sbom U4b (PSC-26 *Bundled as first-party*): the neo4j service's image is
+        # saved as ke-neo4j (images/ke-neo4j.tar, app/sboms/ke-neo4j.spdx.json); re-targeted
+        # by the tester, U4b RED.
         raw = neo4j_unlicensed_doc()
         result, _, out = self._bundle(COMPOSE_PROJECT_NAME=PROJECT,
-                                      FAKE_SYFT_RAW=json.dumps({"neo4j": json.dumps(raw)}))
+                                      FAKE_SYFT_RAW=json.dumps({"ke-neo4j": json.dumps(raw)}))
         output = self._out(result)
         self.assertEqual(result.returncode, 0, "bundle.sh failed on a fit build host:\n" + output)
         data = json.loads((out / "bundle.json").read_text(encoding="utf-8"))
         names = sorted(Path(e["file"]).stem for e in data["images"])
-        self.assertIn("neo4j", names)
+        self.assertIn("ke-neo4j", names)
         for name in names:
             with self.subTest(image=name):
                 doc = json.loads((out / "app" / "sboms" / f"{name}.spdx.json").read_text(encoding="utf-8"))
                 self.assertEqual(output_report_problems(output, name, doc), [])
         with self.subTest(part="precondition: the stub neo4j document reaches the bundle with 4 rows"):
-            doc = json.loads((out / "app" / "sboms" / "neo4j.spdx.json").read_text(encoding="utf-8"))
+            doc = json.loads((out / "app" / "sboms" / "ke-neo4j.spdx.json").read_text(encoding="utf-8"))
             self.assertEqual(len(oracle_unlicensed(doc)), 4)
 
 
@@ -455,7 +458,9 @@ PSC22_COMPONENTS: dict[str, list[tuple[str, str]]] = {
                    ("apk-tools", "pkg:apk/alpine/apk-tools@3.0.3-r1?arch=x86_64&distro=alpine-3.23.3"),
                    ("ssl_client", "pkg:apk/alpine/ssl_client@1.37.0-r30?arch=x86_64&distro=alpine-3.23.3"
                                   "&upstream=busybox")],
-    "neo4j": [("Temurin", "pkg:generic/oracle/openjdk@21.0.12.1%2B1-LTS?repository_url=https%3A%2F%2Fgithub.com"
+    # platform-sbom U4b (PSC-26, N16): the neo4j entries name ke-neo4j, whose
+    # packages are the official image's minus products/ (re-targeted, U4b RED).
+    "ke-neo4j": [("Temurin", "pkg:generic/oracle/openjdk@21.0.12.1%2B1-LTS?repository_url=https%3A%2F%2Fgithub.com"
                           "%2Fadoptium%2Fjdk21u.git"),
               ("Neo4j Community", "pkg:maven/org.neo4j/neo4j@5.26.32"),
               ("glibc", ss.deb("libc6", "2.41-12+deb13u4", upstream="glibc", distro=D13))],
@@ -470,7 +475,7 @@ PSC22_COMPONENTS: dict[str, list[tuple[str, str]]] = {
     "phoenix": [("glibc", ss.deb("libc6", "2.41-12+deb13u4", upstream="glibc", distro=D13))],
 }
 DECOYS = {"valkey": f"pkg:apk/alpine/musl@1.2.5-r10{ALP}", "ke-gateway": f"pkg:apk/alpine/musl@1.2.5-r10{ALP}",
-          "neo4j": "pkg:maven/org.slf4j/slf4j-api@2.0.17", "ke-app": "pkg:pypi/httpx@0.28.1",
+          "ke-neo4j": "pkg:maven/org.slf4j/slf4j-api@2.0.17", "ke-app": "pkg:pypi/httpx@0.28.1",
           "postgres": ss.deb("tzdata", "2025b-0+deb12u2", distro=D12),
           "phoenix": ss.deb("tzdata", "2025b-4", distro=D13)}
 
@@ -734,8 +739,15 @@ class DriftOfflineCheckTest(toc._OfflineBase):
     def _base_pulls(records: list[dict]) -> list[int]:
         """Every daemon-level pull (`docker pull` / `docker image pull`) of the
         host half: the generator is pulled through compose, so these are the
-        ke-app base pulls (orchestrator U4 ruling 6)."""
-        return [i for i, r in enumerate(records) if r["argv"][:1] == ["pull"] or r["argv"][:2] == ["image", "pull"]]
+        ke-app base pulls (orchestrator U4 ruling 6). Platform-sbom U4b
+        (PSC-26 `[full: ke-neo4j config matches the pinned official image]`):
+        the one pull of the official neo4j image by its pinned digest, for the
+        ke-neo4j step, is not one; tests/test_neo4j_image.py pins it
+        (re-targeted by the tester, U4b RED). Any other pull still counts here,
+        so `_pull_problems` still refuses it."""
+        from tests import neo4j_support as ns
+        return [i for i, r in enumerate(records) if (r["argv"][:1] == ["pull"] or r["argv"][:2] == ["image", "pull"])
+                and r["argv"][-1] != ns.OFFICIAL_REF]
 
     def _pull_problems(self, records: list[dict]) -> list[str]:
         """Ruling 6: by its pinned digest, never by a tag alone."""
@@ -1219,7 +1231,8 @@ def _upstream(purl: str) -> str:
 
 
 # (image, exact `match`) pairs the rework adds (security M-1, L-1).
-R1_ENTRIES = [("ke-app", "upstream=gcc-12"), ("postgres", "upstream=gcc-12"), ("neo4j", "upstream=gcc-14"),
+# Platform-sbom U4b (PSC-26, N16): neo4j's entries name ke-neo4j (re-targeted, U4b RED).
+R1_ENTRIES = [("ke-app", "upstream=gcc-12"), ("postgres", "upstream=gcc-12"), ("ke-neo4j", "upstream=gcc-14"),
               ("phoenix", "upstream=gcc-14"), ("valkey", "upstream=busybox"), ("valkey", "upstream=apk-tools"),
               ("ke-gateway", "upstream=busybox"), ("ke-gateway", "upstream=apk-tools")]
 
@@ -1229,13 +1242,17 @@ def r1_required(image: str, purl: str) -> str | None:
     up = _upstream(purl)
     if image in ("ke-app", "postgres") and up == "gcc-12":
         return "M-1 GCC 12 runtime"
-    if image in ("neo4j", "phoenix") and up == "gcc-14":
+    if image in ("ke-neo4j", "phoenix") and up == "gcc-14":
         return "M-1 GCC 14 runtime"
-    if image == "neo4j" and purl.split("@", 1)[0] == "pkg:maven/jrt-fs/jrt-fs":
+    if image == "ke-neo4j" and purl.split("@", 1)[0] == "pkg:maven/jrt-fs/jrt-fs":
         return "M-2 Temurin jrt-fs.jar"
     if image in ("valkey", "ke-gateway") and _purl_name(purl) in ("busybox-binsh", "libapk"):
         return "L-1 " + _purl_name(purl)
     return None
+
+
+# U3 fixture name -> the image name the policy uses (platform-sbom U4b, PSC-26).
+U4B_POLICY_NAME = {"neo4j": "ke-neo4j"}
 
 
 def real_always_problems(always: list[dict[str, Any]], matches: Any) -> list[str]:
@@ -1244,8 +1261,12 @@ def real_always_problems(always: list[dict[str, Any]], matches: Any) -> list[str
     for pair in R1_ENTRIES:
         if pair not in have:
             p.append(f"`always` has no {{image: {pair[0]}, match: {pair[1]}}} (security U4 M-1/L-1)")
-    for image in ss.U3_IMAGES:
-        doc = ss.u3_doc(image)
+    for fixture in ss.U3_IMAGES:
+        # Platform-sbom U4b (PSC-26, N16): the U3 neo4j list is the official
+        # image's; ke-neo4j's is that list minus the two products/ plugins,
+        # which no `always` entry matches, so it stands in for ke-neo4j.
+        image = U4B_POLICY_NAME.get(fixture, fixture)
+        doc = ss.u3_doc(fixture)
         flagged, problems = matches(image, doc, always)
         p += [f"real {image} package list: {m}" for m in problems]
         required = 0
@@ -1256,9 +1277,9 @@ def real_always_problems(always: list[dict[str, Any]], matches: Any) -> list[str
                 required += 1
                 if pkg["SPDXID"] not in flagged:
                     p.append(f"{image}: {purl} ({why}) is not flagged by `always`")
-            elif image == "neo4j" and purl.startswith("pkg:maven/") and pkg["SPDXID"] in flagged \
+            elif image == "ke-neo4j" and purl.startswith("pkg:maven/") and pkg["SPDXID"] in flagged \
                     and purl.split("@", 1)[0] != "pkg:maven/org.neo4j/neo4j":
-                p.append(f"neo4j: {purl} is flagged; an `always` match is too wide (only neo4j and jrt-fs)")
+                p.append(f"ke-neo4j: {purl} is flagged; an `always` match is too wide (only neo4j and jrt-fs)")
         if image != "ke-gateway" and image != "valkey" and not required:
             p.append(f"precondition: the real {image} list has no package the rework must flag")
     return p
@@ -1476,16 +1497,19 @@ class ReworkR1BundleTest(_BundleBase, unittest.TestCase):
 
     def test_bundle_output_marks_unidentified_and_escapes_generator_text(self):
         """H-1 and L-3 end to end: bundle.sh prints the checker's report."""
-        raw = ss.spdx_doc("neo4j", hash_rows() + evil_rows())
-        result, _, out, _ = self._good(FAKE_SYFT_RAW=json.dumps({"neo4j": json.dumps(raw)}))
+        # Platform-sbom U4b (PSC-26 *Bundled as first-party*): the neo4j service's image is
+        # saved as ke-neo4j (images/ke-neo4j.tar, app/sboms/ke-neo4j.spdx.json); re-targeted
+        # by the tester, U4b RED.
+        raw = ss.spdx_doc("ke-neo4j", hash_rows() + evil_rows())
+        result, _, out, _ = self._good(FAKE_SYFT_RAW=json.dumps({"ke-neo4j": json.dumps(raw)}))
         output = self._out(result)
-        doc = json.loads((out / "app" / "sboms" / "neo4j.spdx.json").read_text(encoding="utf-8"))
+        doc = json.loads((out / "app" / "sboms" / "ke-neo4j.spdx.json").read_text(encoding="utf-8"))
         with self.subTest(part="count: the hash rows are unlicensed"):
             line = next((ln for ln in output.splitlines() if re.search(r"(?i)\bunlicensed\b", ln)
-                         and re.search(r"(?<![\w.-])neo4j(?![\w.-])", ln)), "")
+                         and re.search(r"(?<![\w.-])ke-neo4j(?![\w.-])", ln)), "")
             n = len(oracle_unlicensed(doc))
             self.assertEqual(n, len(HASH_UNLICENSED | PLAIN_UNLICENSED) + 2, "precondition")
-            self.assertRegex(line.replace("neo4j", " "), rf"(?<![\w.]){n}(?![\w.])")
+            self.assertRegex(line.replace("ke-neo4j", " "), rf"(?<![\w.]){n}(?![\w.])")
         with self.subTest(part="H-1 marker"):
             plain = copy.deepcopy(doc)
             plain["packages"] = [p for p in plain["packages"] if "evil" not in json.dumps(p)]
@@ -1494,7 +1518,7 @@ class ReworkR1BundleTest(_BundleBase, unittest.TestCase):
             self.assertNotIn("\x1b", output)
             self.assertNotIn("\x9b", output)
             self.assertFalse([ln for ln in output.splitlines() if ln.startswith("INJECTED")
-                              or (ln.lstrip().startswith("neo4j:   pkg:maven/injected/line@1"))
+                              or (ln.lstrip().startswith("ke-neo4j:   pkg:maven/injected/line@1"))
                               or ln.startswith("RED")], "a generator newline forged an output line")
 
 

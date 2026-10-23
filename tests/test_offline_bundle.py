@@ -3875,17 +3875,27 @@ class BundleNoticesTest(_BundleBase, unittest.TestCase):
             self._assert_nothing_written(result, calls, out2, r"widget")
 
     def test_notices_neo4j_has_source_url(self):
-        neo4j = self._vendor().get("neo4j")
-        self.assertIsNotNone(neo4j, "precondition: neo4j is a stack image")
+        # platform-sbom U4b (PSC-26 *Notices*, design-notes N16; re-targeted by
+        # the tester, U4b RED): neo4j ships as ke-neo4j, the official image
+        # minus /var/lib/neo4j/products, so it is no longer a vendor row found
+        # by the compose reference. The bundle's NOTICE.md carries a "Base
+        # image of `ke-neo4j`" section, found by the Dockerfile's base pin; the
+        # intent (GPL-3.0, an https source URL; A43, R4) is unchanged.
+        from tests import neo4j_support as ns
+        base = ns.dockerfile_base_ref()
+        self.assertIsNotNone(base, "precondition: docker/neo4j.Dockerfile pins the official neo4j image (PSC-26)")
         _, _, out, _ = self._ok()
-        row = self._image_rows(self._notices(out)).get(str(neo4j))
-        self.assertIsNotNone(row, f"neo4j ({neo4j}) has no row in {self.NOTICES}")
-        assert row is not None
-        self.assertRegex(_cell(row["licence"]), r"^GPL-3\.0(?:-only|-or-later)?$",
-                         "Neo4j Community is listed as GPL-3.0 (A43, R4)")
-        self.assertRegex(_cell(row["source"]), r"https://[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?:/\S*)?",
-                         "Neo4j's row gives an https source URL (R4)")
-        self.assertNotRegex(_cell(row["source"]), r"http://", "the source URL is https")
+        text = (out / "NOTICE.md").read_text(encoding="utf-8")
+        sections = [s for s in re.split(r"(?m)^## ", text) if s.startswith("Base image of `ke-neo4j`")]
+        self.assertEqual(len(sections), 1, "the bundle's NOTICE.md has one `Base image of ke-neo4j` section (N16)")
+        section = sections[0] if sections else ""
+        self.assertIn(f"`{base}`", section, "the section names docker/neo4j.Dockerfile's base pin byte for byte")
+        self.assertRegex(section, r"\bGPL-3\.0(?:-only|-or-later)?\b", "Neo4j Community is listed as GPL-3.0 (A43, R4)")
+        self.assertRegex(section, r"https://[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?:/\S*)?",
+                         "the section gives an https source URL (R4)")
+        self.assertNotRegex(section, r"http://", "the source URL is https")
+        self.assertNotIn(str(base), self._image_rows(self._notices(out)),
+                         "the official image has no row among the bundle's stack images (it is not bundled)")
 
     def test_notices_mark_phoenix_as_exception(self):
         phoenix = self._vendor().get("phoenix")
@@ -4307,9 +4317,13 @@ class ProjectLicenceTextTest(unittest.TestCase):
         self.assertIn(f"licenses/{name}", self._row("valkey"), "NOTICE.md's valkey row points to the text")
 
     def test_notice_wording_asserts_no_more_than_the_facts(self):
-        # audit-nt L-NT1.
-        neo4j = self._row("neo4j")
+        # audit-nt L-NT1. Platform-sbom U4b (PSC-26 *Notices*, N16): the neo4j
+        # statements left the vendor table for the "Base image of `ke-neo4j`"
+        # section (re-targeted by the tester, U4b RED; same intent).
+        sections = [s for s in re.split(r"(?m)^## ", self._notice()) if s.startswith("Base image of `ke-neo4j`")]
+        neo4j = _words(sections[0]) if len(sections) == 1 else ""
         with self.subTest(part="neo4j: upstream source, no compliance claim"):
+            self.assertEqual(len(sections), 1, "precondition: NOTICE.md has one `Base image of ke-neo4j` section")
             self.assertIn("Upstream source:", neo4j)
             self.assertNotRegex(neo4j, r"(?i)corresponding source is at")
         with self.subTest(part="phoenix: the licence-key limitation"):

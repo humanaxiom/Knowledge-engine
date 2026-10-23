@@ -571,3 +571,18 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-23T19:21:13Z | reviewer | platform-sbom | U4 re-check | review: APPROVED
 2026-10-23T19:28:55Z | tester | platform-sbom | U4 rework A34 Windows proof (tmpfs mode=1777) | a34: PASS
 2026-10-23T19:44:56Z | orchestrator | platform-sbom | U4 gates judged: review APPROVED, security PASS, A34 PASS, verify full PASS 896 s; commit approved | smoke: PASS
+2026-10-23T19:45:14Z | developer | platform-sbom | committed U4 on agent/platform-sbom | commit: done
+2026-10-23T20:35:29Z | marketer | platform-sbom | CHANGELOG entry for platform-sbom U0-U4 (in progress) | docs: changelog
+2026-10-23T20:36:12Z | documenter | platform-sbom | README + platform-sbom status brought in line with U0-U4 | docs: updated
+2026-10-23T20:52:43Z | tester | platform-sbom | U4b RED: own ke-neo4j image without the fleet plugin | tdd red: 29 failing as expected
+2026-10-23T20:53:50Z | orchestrator | platform-sbom | U4b rulings: EXPOSE exemption, checks in offline_check, tree check as evidence, NOTICE section, labels excluded | plan: rulings recorded
+2026-10-23T21:25:41Z | tester | platform-sbom | U4b RED re-run after ruling 1: PS-1.2 EXPOSE exemption + control; reach verify fast PASS | tdd red: 29 failing as expected
+2026-10-23T21:57:55Z | developer | platform-sbom | U4b GREEN: ke-neo4j built without the fleet plugin, flattened, config re-declared | tdd green: verify fast + full PASS
+2026-10-23T21:58:34Z | documenter | platform-sbom | handoff split: U4 tail + U4b to archive/platform-sbom-part7.md | docs: updated
+2026-10-23T22:08:03Z | reviewer | platform-sbom | U4b review | review: APPROVED
+2026-10-23T22:08:59Z | documenter | platform-sbom | README: U4b ke-neo4j | docs: updated
+2026-10-23T22:09:11Z | marketer | platform-sbom | CHANGELOG: U4b own neo4j image | docs: changelog
+2026-10-23T22:09:40Z | security | platform-sbom | U4b audit (M-3 closure) | security: PASS
+2026-10-23T22:33:36Z | tester | platform-sbom | U4b A34 Windows proof (ke-neo4j) | a34: PASS
+2026-10-23T22:36:31Z | documenter | platform-sbom | NOTICE ke-neo4j wording (review N3, security I-3) | docs: updated
+2026-10-23T22:54:45Z | orchestrator | platform-sbom | U4b gates judged: review APPROVED, security PASS, A34 PASS, verify full PASS 995 s; commit approved | smoke: PASS

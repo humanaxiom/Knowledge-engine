@@ -27,6 +27,20 @@ its base: the added dpkg set equals ADDED_PACKAGES, no pip, the CPython
 version equals each licence file's line 1, libpq5 at the pin, psycopg-c at
 its lock version and no psycopg-binary. Exit 1 naming each problem; on
 success one summary line on stdout.
+
+  sbom_check.py neo4j --official-config CFG --config CFG --sbom SBOM --tar TAR
+
+`neo4j` (PSC-26, U4b, N16) checks ke-neo4j against the pinned official
+image: the `docker image inspect .Config` fields equal (Labels aside),
+no /var/lib/neo4j/products path, whiteout or fleet-management plugin file
+in any layer of the saved tar, and the SBOM lists no fleet-management
+plugin but lists Neo4j Community and the Temurin OpenJDK. Exit 1 naming
+each problem; on success one summary line on stdout.
+
+  sbom_check.py tree --official EXPORT --image EXPORT
+
+`tree` compares two `docker export` tars: ke-neo4j equals the official
+image minus /var/lib/neo4j/products (type, mode, owner, group, link).
 """
 
 from __future__ import annotations
@@ -452,6 +466,201 @@ def finish(a: argparse.Namespace) -> int:
     return 0
 
 
+# --- PSC-26 (U4b, Q67; design-notes N16): ke-neo4j against the official image -
+
+PRODUCTS = "var/lib/neo4j/products"
+FLEET = "neo4j-fleet-management-plugin"
+FLEET_PURL = "pkg:maven/com.neo4j/neo4j-fleet-management-plugin"
+# PSC-26 *Image config carried over*. Labels are not compared: compose adds
+# its com.docker.compose.* labels to every image it builds (ke-app has them).
+NEO4J_CONFIG_FIELDS = ("Entrypoint", "Cmd", "Env", "User", "WorkingDir", "ExposedPorts", "Volumes",
+                       "Healthcheck", "StopSignal", "OnBuild", "Shell")
+NEO4J_REQUIRED = (("Neo4j Community", "pkg:maven/org.neo4j/neo4j"),
+                  ("the Temurin OpenJDK", "pkg:generic/oracle/openjdk"))
+
+
+def _unset(value: Any) -> bool:
+    return value is None or value == "" or value == [] or value == {}
+
+
+def neo4j_config_problems(official: Any, image: Any) -> list[str]:
+    """Each NEO4J_CONFIG_FIELDS value of `docker image inspect .Config` equal
+    in both; absent, null and empty are one "unset" value (PSC-26)."""
+    if not isinstance(official, dict) or not isinstance(image, dict):
+        return ["a config is not a JSON object (docker image inspect --format '{{json .Config}}')"]
+    problems = []
+    for key in NEO4J_CONFIG_FIELDS:
+        want, have = official.get(key), image.get(key)
+        if _unset(want) and _unset(have):
+            continue
+        if want != have:
+            problems.append(f"config {key}: ke-neo4j has {_clean(json.dumps(have))}, "
+                            f"the official image has {_clean(json.dumps(want))}")
+    return problems
+
+
+def _rel(name: str) -> str:
+    while name.startswith(("./", "/")):
+        name = name[2:] if name.startswith("./") else name[1:]
+    return name.rstrip("/")
+
+
+def _in_products(rel: str) -> bool:
+    return rel == PRODUCTS or rel.startswith(PRODUCTS + "/")
+
+
+def _plugin_name(rel: str) -> bool:
+    return FLEET in rel.rsplit("/", 1)[-1].lower()
+
+
+def _layer_problems(label: str, layer: tarfile.TarFile) -> list[str]:
+    problems = []
+    for member in layer:
+        rel = _rel(member.name)
+        base = rel.rsplit("/", 1)[-1]
+        if _in_products(rel):
+            problems.append(f"{label}: {_clean(rel)} is under /{PRODUCTS}")
+        elif base == ".wh.products" and rel.rsplit("/", 1)[0] == "var/lib/neo4j":
+            problems.append(f"{label}: {_clean(rel)} is a whiteout of /{PRODUCTS}: the jar is hidden, not gone")
+        elif _plugin_name(rel):
+            problems.append(f"{label}: {_clean(rel)} is the fleet-management plugin")
+    return problems
+
+
+def neo4j_tar_problems(tar_path: str) -> list[str]:
+    """No /var/lib/neo4j/products path, whiteout of it, or file named for the
+    fleet-management plugin in any layer manifest.json lists (PSC-26)."""
+    problems: list[str] = []
+    checked = 0
+    with tarfile.open(tar_path) as tar:
+        member = tar.extractfile("manifest.json")
+        if member is None:
+            return ["manifest.json is not a file in the tar"]
+        manifest = json.load(member)
+        if not isinstance(manifest, list) or not manifest:
+            return ["the tar's manifest.json lists no image"]
+        for entry in manifest:
+            layers = entry.get("Layers") if isinstance(entry, dict) else None
+            if not isinstance(layers, list) or not layers:
+                problems.append("a manifest.json entry lists no layers")
+                continue
+            for name in layers:
+                try:
+                    blob = tar.extractfile(str(name))
+                except KeyError:
+                    blob = None
+                if blob is None:
+                    problems.append(f"layer {_clean(name)} is listed in manifest.json but not in the tar")
+                    continue
+                try:
+                    with tarfile.open(fileobj=blob, mode="r:*") as layer:
+                        problems += _layer_problems(f"layer {_clean(name)}", layer)
+                except tarfile.TarError as exc:
+                    problems.append(f"layer {_clean(name)} cannot be read: {_clean(exc)}")
+                checked += 1
+    if not checked and not problems:
+        problems.append("no layer was checked")
+    return problems
+
+
+def neo4j_sbom_problems(doc: Any) -> list[str]:
+    """No fleet-management plugin package, by purl (any version) or by name;
+    Neo4j Community and the Temurin OpenJDK still listed (PSC-26)."""
+    if not isinstance(doc, dict):
+        return ["the SBOM is not a JSON object"]
+    problems = []
+    found = {purl: False for _, purl in NEO4J_REQUIRED}
+    for pkg in _packages(doc):
+        purls = [str(r.get("referenceLocator", "")) for r in pkg.get("externalRefs") or []
+                 if isinstance(r, dict) and r.get("referenceType") == "purl"]
+        names = [unquote(p).lower() for p in purls]
+        if (any(n.split("@", 1)[0].split("?", 1)[0] == FLEET_PURL for n in names)
+                or FLEET in str(pkg.get("name", "")).lower()):
+            problems.append(f"the SBOM lists the fleet-management plugin: {_clean(pkg.get('name'))} "
+                            f"{_clean(' '.join(purls) or '(no purl)')}")
+        for purl in found:
+            if any(p.split("@", 1)[0] == purl and "@" in p for p in purls):
+                found[purl] = True
+    for label, purl in NEO4J_REQUIRED:
+        if not found[purl]:
+            problems.append(f"the SBOM does not list {label} ({purl})")
+    return problems
+
+
+def tree_listing(tar_path: str) -> dict[str, tuple[str, int, int, int, str]]:
+    """path -> (type, mode, uid, gid, link target) of a `docker export` tar."""
+    kinds = {tarfile.REGTYPE: "file", tarfile.AREGTYPE: "file", tarfile.DIRTYPE: "dir", tarfile.SYMTYPE: "symlink",
+             tarfile.LNKTYPE: "hardlink", tarfile.CHRTYPE: "char", tarfile.BLKTYPE: "block", tarfile.FIFOTYPE: "fifo"}
+    out: dict[str, tuple[str, int, int, int, str]] = {}
+    with tarfile.open(tar_path, mode="r:*") as tar:
+        for m in tar:
+            rel = _rel(m.name) or "."
+            kind = kinds.get(m.type, "other")
+            out[rel] = (kind, m.mode & 0o7777, m.uid, m.gid, m.linkname if kind == "symlink" else "")
+    return out
+
+
+def neo4j_tree_problems(official: dict[str, tuple[str, int, int, int, str]],
+                        image: dict[str, tuple[str, int, int, int, str]]) -> list[str]:
+    """Every official path outside /var/lib/neo4j/products is in ke-neo4j
+    with the same type, mode, owner, group and symlink target, and ke-neo4j
+    adds no path (PSC-26). A hard link written out as a regular file is the
+    same file (N16)."""
+    problems = []
+    for rel, want in sorted(official.items()):
+        if _in_products(rel):
+            continue
+        have = image.get(rel)
+        if have is None:
+            problems.append(f"/{_clean(rel)} is in the official image, not in ke-neo4j")
+            continue
+        if want[0] == "hardlink" and have[0] == "file":
+            want = ("file",) + tuple(want[1:])  # type: ignore[assignment]
+        if tuple(have) != tuple(want):
+            problems.append(f"/{_clean(rel)}: ke-neo4j has {tuple(have)}, the official image has {tuple(want)}")
+    for rel in sorted(set(image) - set(official)):
+        problems.append(f"/{_clean(rel)} is in ke-neo4j, not in the official image")
+    for rel in sorted(r for r in image if _in_products(r) or _plugin_name(r)):
+        problems.append(f"/{_clean(rel)} is in ke-neo4j: products/ or the fleet-management plugin")
+    return problems
+
+
+def neo4j(a: argparse.Namespace) -> int:
+    try:
+        docs = []
+        for path in (a.official_config, a.config, a.sbom):
+            with open(path, encoding="utf-8") as fh:
+                docs.append(json.load(fh))
+        problems = neo4j_config_problems(docs[0], docs[1])
+        problems += neo4j_tar_problems(a.tar)
+    except (OSError, ValueError, KeyError, tarfile.TarError) as exc:
+        print(f"sbom_check: ke-neo4j: {_clean(exc)}", file=sys.stderr)
+        return 1
+    problems += neo4j_sbom_problems(docs[2])
+    for line in problems:
+        print(f"sbom_check: ke-neo4j: {line}", file=sys.stderr)
+    if problems:
+        return 1
+    print("sbom_check: ke-neo4j: ok: config equals the official image's "
+          f"({', '.join(NEO4J_CONFIG_FIELDS)}); no /{PRODUCTS} or fleet-management plugin in the saved tar "
+          "or the SBOM; the SBOM lists Neo4j Community and the Temurin OpenJDK")
+    return 0
+
+
+def tree(a: argparse.Namespace) -> int:
+    try:
+        problems = neo4j_tree_problems(tree_listing(a.official), tree_listing(a.image))
+    except (OSError, tarfile.TarError) as exc:
+        print(f"sbom_check: tree: {_clean(exc)}", file=sys.stderr)
+        return 1
+    for line in problems:
+        print(f"sbom_check: tree: {line}", file=sys.stderr)
+    if problems:
+        return 1
+    print("sbom_check: tree: ok: ke-neo4j equals the official image minus /" + PRODUCTS)
+    return 0
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="sbom_check.py")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -464,11 +673,21 @@ def main(argv: list[str]) -> int:
     for opt in ("--sbom", "--base", "--added-from", "--libpq", "--lock"):
         d.add_argument(opt, required=True)
     d.add_argument("--licence", action="append", required=True)
+    n = sub.add_parser("neo4j")
+    for opt in ("--official-config", "--config", "--sbom", "--tar"):
+        n.add_argument(opt, required=True)
+    t = sub.add_parser("tree")
+    for opt in ("--official", "--image"):
+        t.add_argument(opt, required=True)
     args = parser.parse_args(argv)
     if args.command == "finish":
         return finish(args)
     if args.command == "drift":
         return drift(args)
+    if args.command == "neo4j":
+        return neo4j(args)
+    if args.command == "tree":
+        return tree(args)
     return 2
 
 

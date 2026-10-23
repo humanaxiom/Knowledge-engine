@@ -294,6 +294,26 @@ never touches a real daemon. What it does:
   comma-separated absolute paths (a trailing `/` makes a directory, else
   an empty file). FAKE_API_PIP_IMPORTABLE=1 puts a `pip` package on CODE's
   sys.path that the walk does not see (importable only).
+- platform-sbom U4b (PSC-26, Q67, design-notes N16; smoke `no fleet
+  plugin`): `compose exec [opts] neo4j find ROOT... EXPR` evaluates EXPR
+  (`-xdev`/`-mount`, `-path`, `-name`, `-iname`, `-type f|d|l`, `-print`,
+  `-prune`, `!`/`-not`, `-a`/`-and`, `-o`/`-or`, `(`/`)`; no action means
+  `-print`) over a model of the neo4j container, walked depth first in
+  sorted order. The model is a clean ke-neo4j: `/var/lib/neo4j` with
+  `LICENSE.txt`, `bin/neo4j`, `lib/neo4j-kernel-5.26.32.jar`,
+  `labs/apoc-5.26.32-core.jar`, the `data -> /data` and `logs -> /logs`
+  links, `/startup/docker-entrypoint.sh` and `neo4j-plugins.json`,
+  `/opt/java/openjdk/lib/jrt-fs.jar`, `/data/databases/` and `/logs/`.
+  FAKE_NEO4J_FILES adds comma-separated absolute paths (a trailing `/`
+  makes a directory), FAKE_NEO4J_DROP removes paths (and what is below
+  them), and FAKE_NEO4J_OTHER_FS adds paths on another filesystem (under
+  `/proc`, `/data` or `/logs`), which `-xdev` does not enter. Any other
+  token exits 1 ("unknown predicate").
+  - FAKE_IMAGE_CONFIGS (JSON object, reference -> image `Config`): `image
+    inspect [--format T] REF...` for references it names renders T against
+    {"Config": <that object>} (no T: a JSON list of those records); a
+    reference it does not name exits 1, "No such image". Inert when unset,
+    and checked before FAKE_DOCKER_IMAGES.
 - platform-sbom U2 (PSC-20, ADR-KE-016 point 1, design-notes N1). Inert
   unless FAKE_COMPOSE_FILE_IMAGES is set (the bundle.sh tests set it):
   - FAKE_COMPOSE_FILE_IMAGES (JSON object, compose file basename ->
@@ -733,6 +753,137 @@ if argv[:1] == ["compose"] and "exec" in argv:
             if _p.startswith("/lib/"):
                 _p = "/usr" + _p
             print(_p + ".15" if _p.endswith("libpq.so.5") else _p)
+        sys.exit(0)
+    if _psvc == "neo4j" and _pword == "find":
+        # platform-sbom U4b (PSC-26, N16): a model of the ke-neo4j filesystem.
+        import fnmatch as _fnmatch
+        _nfs = {"/": "d", "/var": "d", "/var/lib": "d", "/var/lib/neo4j": "d",
+                "/var/lib/neo4j/LICENSE.txt": "f", "/var/lib/neo4j/bin": "d", "/var/lib/neo4j/bin/neo4j": "f",
+                "/var/lib/neo4j/lib": "d", "/var/lib/neo4j/lib/neo4j-kernel-5.26.32.jar": "f",
+                "/var/lib/neo4j/labs": "d", "/var/lib/neo4j/labs/apoc-5.26.32-core.jar": "f",
+                "/var/lib/neo4j/data": "l", "/var/lib/neo4j/logs": "l", "/startup": "d",
+                "/startup/docker-entrypoint.sh": "f", "/startup/neo4j-plugins.json": "f", "/opt": "d",
+                "/opt/java": "d", "/opt/java/openjdk": "d", "/opt/java/openjdk/lib": "d",
+                "/opt/java/openjdk/lib/jrt-fs.jar": "f", "/data": "d", "/data/databases": "d", "/logs": "d",
+                "/proc": "d"}
+
+        def _nadd(_spec):
+            for _a in [e.strip() for e in (_spec or "").split(",") if e.strip()]:
+                _dir = _a.endswith("/")
+                _a = _a.rstrip("/") or "/"
+                _parts = [x for x in _a.split("/") if x]
+                for _k in range(1, len(_parts)):
+                    _nfs.setdefault("/" + "/".join(_parts[:_k]), "d")
+                _nfs[_a] = "d" if _dir else "f"
+        _nadd(os.environ.get("FAKE_NEO4J_FILES"))
+        _nadd(os.environ.get("FAKE_NEO4J_OTHER_FS"))
+        for _d in [e.strip().rstrip("/") for e in (os.environ.get("FAKE_NEO4J_DROP") or "").split(",") if e.strip()]:
+            for _k in [k for k in _nfs if k == _d or k.startswith(_d + "/")]:
+                del _nfs[_k]
+        _toks = _pcmd[1:]
+        _roots = []
+        while _toks and not _toks[0].startswith(("-", "(", ")", "!")):
+            _roots.append(_toks.pop(0).rstrip("/") or "/")
+        _xdev = any(t in ("-xdev", "-mount") for t in _toks)
+        _toks = [t for t in _toks if t not in ("-xdev", "-mount")]
+        _has_action = any(t in ("-print", "-prune") for t in _toks)
+        _out = []
+
+        def _nfail(msg):
+            sys.stderr.write("find: %s\n" % msg)
+            sys.exit(1)
+
+        def _parse_or(i):
+            node, i = _parse_and(i)
+            while i < len(_toks) and _toks[i] in ("-o", "-or"):
+                rhs, i = _parse_and(i + 1)
+                node = ("or", node, rhs)
+            return node, i
+
+        def _parse_and(i):
+            node, i = _parse_not(i)
+            while i < len(_toks) and _toks[i] not in ("-o", "-or", ")"):
+                if _toks[i] in ("-a", "-and"):
+                    i += 1
+                rhs, i = _parse_not(i)
+                node = ("and", node, rhs)
+            return node, i
+
+        def _parse_not(i):
+            if i < len(_toks) and _toks[i] in ("!", "-not"):
+                node, i = _parse_not(i + 1)
+                return ("not", node), i
+            return _parse_prim(i)
+
+        def _parse_prim(i):
+            if i >= len(_toks):
+                _nfail("expected an expression")
+            t = _toks[i]
+            if t == "(":
+                node, i = _parse_or(i + 1)
+                if i >= len(_toks) or _toks[i] != ")":
+                    _nfail("missing )")
+                return node, i + 1
+            if t in ("-path", "-name", "-iname", "-type"):
+                if i + 1 >= len(_toks):
+                    _nfail("missing argument to %s" % t)
+                return (t, _toks[i + 1]), i + 2
+            if t in ("-print", "-prune"):
+                return (t,), i + 1
+            _nfail("unknown predicate `%s'" % t)
+
+        _tree = _parse_or(0)[0] if _toks else ("true",)
+        _pruned = set()
+
+        def _ev(node, path):
+            kind = node[0]
+            if kind == "or":
+                return _ev(node[1], path) or _ev(node[2], path)
+            if kind == "and":
+                return _ev(node[1], path) and _ev(node[2], path)
+            if kind == "not":
+                return not _ev(node[1], path)
+            if kind == "true":
+                return True
+            if kind == "-print":
+                _out.append(path)
+                return True
+            if kind == "-prune":
+                _pruned.add(path)
+                return True
+            if kind == "-path":
+                return _fnmatch.fnmatchcase(path, node[1])
+            base = path.rsplit("/", 1)[-1] or "/"
+            if kind == "-name":
+                return _fnmatch.fnmatchcase(base, node[1])
+            if kind == "-iname":
+                return _fnmatch.fnmatchcase(base.lower(), node[1].lower())
+            if kind == "-type":
+                return _nfs.get(path) == node[1]
+            return False
+
+        def _children(path):
+            pre = "/" if path == "/" else path + "/"
+            return sorted(k for k in _nfs if k != path and k.startswith(pre) and "/" not in k[len(pre):])
+
+        def _walk(path, dev_root):
+            if path not in _nfs:
+                _nfail("'%s': No such file or directory" % path)
+            if _ev(_tree, path) and not _has_action:
+                _out.append(path)
+            if _nfs.get(path) != "d" or path in _pruned:
+                return
+            for c in _children(path):
+                if _xdev and c in ("/proc", "/data", "/logs") and c != dev_root:
+                    # another filesystem: find tests the mount point, never enters it
+                    if _ev(_tree, c) and not _has_action:
+                        _out.append(c)
+                    continue
+                _walk(c, dev_root)
+        for _r in _roots or ["."]:
+            _walk(_r, _r)
+        if _out:
+            print("\n".join(_out))
         sys.exit(0)
     if _pword == "find":
         import fnmatch as _fnmatch
@@ -1265,6 +1416,20 @@ def _render(template, obj):
             return "[" + " ".join(str(v) for v in val) + "]"
         return str(val)
     return _re.sub(r"\{\{\s*(json\s+)?\.([A-Za-z0-9_.]*)\s*\}\}", sub, template)
+
+if argv[:2] == ["image", "inspect"] and os.environ.get("FAKE_IMAGE_CONFIGS"):
+    # platform-sbom U4b (PSC-26): the ke-neo4j config check.
+    _cfgs = json.loads(os.environ["FAKE_IMAGE_CONFIGS"])
+    _skip = set(format_values())
+    _names = [a for a in argv[2:] if not a.startswith("-") and a not in _skip]
+    for _n in _names:
+        if _n not in _cfgs:
+            sys.stderr.write("Error response from daemon: No such image: %s\n" % _n)
+            sys.exit(1)
+    _fmt = format_values()
+    for _n in _names:
+        print(_render(_fmt[-1], {"Config": _cfgs[_n]}) if _fmt else json.dumps([{"Config": _cfgs[_n]}]))
+    sys.exit(0)
 
 if argv[:2] == ["image", "inspect"] or argv[:1] == ["inspect"]:
     table = _image_table()
