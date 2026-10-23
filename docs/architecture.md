@@ -6548,7 +6548,7 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
   every operator bundle; **Q64**, psycopg is built on Debian's libpq
   (point 0), with the orchestrator's Q65 and Q66. Reuses ADR-KE-013 am. 1 (D1–D3, D8) and ADR-KE-012
   (manifest, R2, R6) unchanged. Detail is in
-  `docs/evidence/platform-sbom/design-notes.md` (N0–N15).
+  `docs/evidence/platform-sbom/design-notes.md` (N0–N16).
 - **Context:** `bundle.sh` "makes no network call". Install's path rule
   (`[A-Za-z0-9._-]` per segment) and `bundle.json` regex live in three
   scripts; it publishes only `app/` and never compares image IDs (R2).
@@ -6580,14 +6580,9 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
      - *Drift:* a fast test ties `+deb12u<n>` to the `-bookworm` base; a
        moved dependency fails point 4's coverage check by name. The fix is
        a reviewed bump and re-lock, never an unpinned install.
-     - *Proof:* in the smoke stage, in the live `api` (the gates have no
-       socket), `python -I` and `ldd` on the extension. It fails unless the
-       impl is `c`; no `psycopg_binary*` is under `/opt/venv`; `pq.version()`
-       and `__build_version__` equal the installed dpkg libpq5 version (the
-       offline client has no Dockerfile), parsed by a strict regex that
-       fails closed (M-1); and `libpq.so.5`, at `/usr/lib/<triplet>/` or the
-       merged-usr `/lib/<triplet>/`, realpaths to a file `dpkg-query -S`
-       attributes to libpq5. A fast test checks the same in `ke-gates`.
+     - *Proof:* smoke, in the live `api`: impl `c`, no `psycopg_binary*`,
+       libpq versions equal the dpkg libpq5 (strict, fails closed, M-1),
+       `libpq.so.5` dpkg-owned (N0). A fast test checks `ke-gates`.
      - *Effects:* dpkg-catalogued libpq5 and its dependencies replace the
        unseen files; L-13 is closed (security, U0; a fixed High: Q42).
        libpq 18 becomes 15; `gssencmode="disable"` stays. Size: N0.
@@ -6596,15 +6591,14 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
      the binary copied out with `docker cp`, never run (D2; security's
      `generator-provenance.md`). Standalone `docker-compose.sbom.yml` (no
      profiles, never bundled), service `sbom`: `network_mode: none`,
-     `read_only`, tmpfs `/tmp`, `cap_drop: [ALL]`, `no-new-privileges`, no
-     socket, no update check or remote licence lookups. It reads
+     `read_only`, tmpfs `/tmp:mode=1777` (image `/tmp` is 0755; N1), `cap_drop:
+     [ALL]`, `no-new-privileges`, no socket, no update check or remote licence lookups. It reads
      `docker-archive:/in/<name>.tar` read-only; its one writable mount is a
      per-image work dir outside `--out` that also takes the unpack
      (`TMPDIR`). `--scope all-layers`; uid:gid the caller's (`KE_SBOM_USER`);
      run by `compose -p <project>-sbom run --rm --pull never` after the saves.
      `bundle.sh` refuses before any write if the image is absent. SPDX 2.3
-     by a required-field validator (N6). No post-step: syft's dpkg
-     cataloguer sees libpq5 and its dependencies, the python one psycopg-c.
+     by a required-field validator (N6); syft itself sees libpq5, psycopg-c.
      *Amended U2 (2026-10-23, N1 amendment):* pinned at v1.54.1, the syft
      that grype v0.120.1 embeds, by its index digest. Eight `SYFT_*=false`
      keys turn off the update check and every remote lookup. Until U8,
@@ -6675,8 +6669,11 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
      `gpl`, or an id with a `gpl`/`lgpl`/`agpl` token (syft folds pom URLs
      into one `LicenseRef-`), needs source and is listed; so is every
      URL-folded id. A missing `licenseDeclared` falls through to
-     `licenseConcluded`; none or `NOASSERTION` in both is reported per
-     image (PSC-22). `docker/source-policy.json` holds
+     `licenseConcluded`, then `licenseInfoFromFiles`; missing in all three
+     is reported per image (PSC-22; exact rule N8). A licence made only of
+     `LicenseRef-<64 hex>` ids (syft's hash of unidentified text) counts as
+     missing there and is unknown to the classifier: source unless a
+     reviewed `exempt` clears it (H-1, N8). `docker/source-policy.json` holds
      `hosts`, `always` (each PSC-22 component and its image; one missing
      from its image fails) and `exempt` (versioned purl, `reason`,
      `reviewed: security <date>`). Security reviews every diff, and a
@@ -6709,10 +6706,13 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
       e2e `verify` are timed on the slower of two green CI runs (D8) and
       held to 180 s. Past that, the orchestrator decides before the
       timeout is raised; R6 is re-derived, never lowered.
-- **TDD units** (one commit each, all `verify.sh full`; loop, A34: N15):
-  U1 `full`, A34. U4 image side: `ke-app`'s dpkg set minus the base's is
-  `ADDED_PACKAGES`, no `pkg:pypi/pip`, CPython equals the U1 file header.
-  U9 states notice paths relative to `app/` (I-3).
+  12. **Own neo4j image (Q67, security M-3; U4b, N16):** `ke-neo4j` from
+      `docker/neo4j.Dockerfile`: the pinned official image minus
+      `/var/lib/neo4j/products/` (the commercial fleet plugin, and GenAI),
+      flattened `FROM scratch` with its config re-set; first-party in
+      compose, bundle and install, as `ke-gateway`.
+- **TDD units** (one commit each, all `verify.sh full`): U0-U12 with U4b
+  after U4; scope, loop mode and A34 per unit in N15.
 - **Alternatives considered:** trivy or cdxgen; fetching in `bundle.sh`;
   no lock; deb.debian.org (URLs rot); widening the path rule or sanitised
   names; new `bundle.json` fields; the checker in `engine/` or jq;
@@ -6721,7 +6721,8 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
   or under a `linux` marker (Linux hosts compile); conflicting extras
   (more machinery, same result); `build-constraint-dependencies`
   (versions, no hashes); snapshot.debian.org apt (another build host).
-  For U1: a pip delete in a stage `FROM` the base (its layer keeps pip).
+  For U1 and U4b: a delete in a stage `FROM` the base (its layer keeps
+  the file); for U4b, keeping the plugin under Neo4j's terms (Q67).
 - **Consequences:** new inputs: the syft pin (never bundled), the lock
   (re-locked on every digest, `uv.lock` or libpq bump; reviewed) and the
   libpq pin. Every postgresql-15 update in bookworm-security breaks
@@ -6734,7 +6735,6 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
   javassist are OR, Apache-2.0 elected, reviewed `exempt` (U6); jaxb-api
   ships its sources jar (CDDL-1.1 elected, its 3.1 source term; U7); no
   cargo default for NOASSERTION (U4 report); `XDG_CACHE_HOME=/tmp/cache` (U4). `ke-app` shares no layer with the base (U1). No spans.
-- **Q66 (ruled):** Debian 12's libpq 15, no apt.postgresql.org. It lacks
-  `require_auth` (libpq 16+); security re-rated that follow-up at U0 (A66).
-- **First tests:** U0's eight are in N0 ("U0 RED tests"; committed
-  31bfed4). U1, U2 and U5: N15.
+  The GCC runtime (gcc-12, gcc-14) ships its Debian source (U7; N10).
+- **Q66 (ruled):** Debian 12's libpq 15 (no `require_auth`; re-rated at
+  U0, A66). **First tests:** N0 (U0), N15 (U1, U2, U5), N16 (U4b).

@@ -258,7 +258,7 @@ ADR-KE-013 am. 1 D1). Never in the stack's `COMPOSE_FILE`, never copied by
 | Command | `docker-archive:/in/<name>.tar --scope all-layers -o spdx-json=/out/raw.spdx.json` (the developer may pass the tar name as an argument of `compose run`) |
 | Network | `network_mode: none` |
 | Mounts | `${KE_SBOM_IN:?}` at `/in` **read-only** (the bundle's `images/`); `${KE_SBOM_OUT:?}` at `/out` read-write, a per-image work dir **outside** `--out`; nothing else, no checkout |
-| Root FS | `read_only: true`; tmpfs `/tmp` (small: syft's unpack goes to `/out/tmp`, see below) |
+| Root FS | `read_only: true`; tmpfs `/tmp:mode=1777` (U4 rework, review B1: *N1 amendment, U4 rework*; small: syft's unpack goes to `/out/tmp`, see below) |
 | Hardening | `cap_drop: [ALL]`, `no-new-privileges:true`; no socket, no `DOCKER_HOST`, no `ports`, not privileged |
 | User (U3) | `user: ${KE_SBOM_USER:?set by scripts/bundle.sh}`, the caller's numeric `id -u`:`id -g` (security L-2): syft reads the `0600` tars and writes the work dir as their owner, with no capability |
 | Environment (literals) | `TMPDIR=/out/tmp` and, all `false`: `SYFT_CHECK_FOR_APP_UPDATE`, `SYFT_JAVA_USE_NETWORK`, `SYFT_JAVA_RESOLVE_TRANSITIVE_DEPENDENCIES`, `SYFT_GOLANG_SEARCH_REMOTE_LICENSES`, `SYFT_GOLANG_USE_PACKAGES_LIB`, `SYFT_JAVASCRIPT_SEARCH_REMOTE_LICENSES`, `SYFT_PYTHON_SEARCH_REMOTE_LICENSES`, `SYFT_CPP_VCPKG_ALLOW_GIT_CLONE` (U2, see *Env keys (U2)*) |
@@ -267,15 +267,17 @@ ADR-KE-013 am. 1 D1). Never in the stack's `COMPOSE_FILE`, never copied by
   `u3/target-bundle.sh`).* `bundle.sh`, from the repo root, once per saved
   tar:
   ```
-  KE_SBOM_IN="$out/images" KE_SBOM_OUT="$work" KE_SBOM_USER="$sbom_user" \
+  MSYS_NO_PATHCONV=1 \
+  KE_SBOM_IN="$(hostpath "$out/images")" KE_SBOM_OUT="$(hostpath "$work")" KE_SBOM_USER="$sbom_user" \
     docker compose -p "$sbom_project" --env-file .env.example -f docker-compose.sbom.yml \
     run --rm --pull never sbom "docker-archive:/in/$name.tar" --scope all-layers -o spdx-json=/out/raw.spdx.json
   ```
   `sbom_project` is `<project>-sbom`, so the container's compose project
   label is `<project>-sbom` (PSC-20; as the notices run's
   `<project>-notices`). `KE_SBOM_IN` is `<out>/images`; `$work` is
-  `<sbom_work>/<name>`, mode 0700 with `tmp/` (the `TMPDIR`), under a
-  `mktemp -d` outside `--out`; `sbom_user` is `$(id -u):$(id -g)`, refused
+  `<sbom_work>/<name>`, mode 0700 with `tmp/` (the `TMPDIR`), under
+  `<sbom_work>`, a `mktemp -d` beside `--out` and outside it (U4: *N1
+  amendment, U4*; `hostpath` and `MSYS_NO_PATHCONV` are explained there); `sbom_user` is `$(id -u):$(id -g)`, refused
   unless it matches `^[0-9]+:[0-9]+$`. The EXIT trap runs, from the repo
   root and with the same three keys (`KE_SBOM_OUT=<sbom_work>`),
   `docker compose -p "$sbom_project" --env-file .env.example -f docker-compose.sbom.yml down`,
@@ -287,13 +289,15 @@ ADR-KE-013 am. 1 D1). Never in the stack's `COMPOSE_FILE`, never copied by
   phoenix and neo4j unpack to an estimated 1-2 GB, which on a `/tmp` tmpfs
   is memory on a runner that also has to run the stack later. On disk the
   peak is the bundle plus one unpacked image, below the dind-store peak the
-  7 GiB floor already covers (R6). *Confirm at GREEN:* syft (Go
+  7 GiB floor already covers (R6); true from U4, when the work dir moved
+  beside `--out` (review N6; *N1 amendment, U4*). *Confirm at GREEN:* syft (Go
   `os.TempDir`) honours `TMPDIR`, and with `read_only` it writes nowhere but
   `/out` and `/tmp` (fallback as D1 of ADR-KE-013 am. 1: a literal `HOME` /
   `XDG_CACHE_HOME` at or under `/tmp`, the tmpfs, never under `/out`, so
   the work dir the checker reads holds only the unpack and `raw.spdx.json`;
   security I-2, amended U3). *Result (U3 GREEN):* syft tried
-  `/.cache/syft`; U4 sets `XDG_CACHE_HOME: /tmp/cache` (N8a item 6).
+  `/.cache/syft`; U4 sets `XDG_CACHE_HOME: /tmp/cache` (N8a item 6), which
+  works only with the tmpfs at mode 1777 (*N1 amendment, U4 rework*).
 - *Why `--scope all-layers`:* the tar carries every layer, so a package
   deleted in an upper layer is still redistributed object code. The
   squashed view would hide it. Duplicates across layers collapse to one
@@ -375,6 +379,119 @@ note's "nothing fetched" header does not apply to this subsection.
 - *CLAUDE.md:* no change. The `full` host half already "builds and pulls
   images"; this is one more pull, from the same registry host.
 
+### N1 amendment, U4 (architect, 2026-10-23)
+
+U4 rulings (orchestrator, tester points 1-8; handoff "U4 rulings").
+- *Run forms (review N3).* The run above and N3's checker run are U3's
+  Windows-host form. `hostpath` is `cygpath -m --` where `cygpath` is on
+  PATH, else the path unchanged; it converts `KE_SBOM_IN`, `KE_SBOM_OUT`
+  and every `-v` source. `MSYS_NO_PATHCONV=1` is set on the generator run
+  and the checker run only, never on `docker save` (its `-o` is a host
+  path Git Bash must convert). Directories: `mkdir`, then `chmod 0700`
+  (`mkdir -m` fails on NTFS under Git Bash).
+- *Work dir (point 5, review N6).*
+  `sbom_work="$(mktemp -d "$(dirname -- "$out")/.ke-sbom.XXXXXXXX")"`,
+  made after `--out` exists and removed by the EXIT trap. It is outside
+  `--out`, so it is never in the manifest, and never under `TMPDIR`.
+  **The 7 GiB floor covers it** once the floor is also measured on
+  `dirname(--out)` (U4 rework, review N5: *N1 amendment, U4 rework*). The
+  first form measured only the nearest existing ancestor of `--out`,
+  which is `--out` itself when it already exists (empty), e.g. a mount
+  point, so the unpack's filesystem went unmeasured. The peak in
+  `bundle.sh` is the bundle (0.94 GiB) plus one image's unpack (1-2 GiB
+  estimated), about 3 GiB. That is below the 4.3 GiB measured need, and
+  the work dir is gone before `dind`, so R6's basis is unchanged. U11
+  re-derives it from CI `df` logs (PSC-16). In `offline_check.sh`,
+  `dirname(--out)` is `dist/`, already in `df_paths`. A SIGKILL can leave a
+  `.ke-sbom.*` beside the bundle. It is outside the bundle and its
+  manifest, so install never sees it.
+- *Base image for the drift check (point 6, orchestrator ruling).*
+  `offline_check.sh`, host half, right after the generator pull and before
+  `bundle.sh`, so a pull failure costs seconds, not a bundle:
+  ```
+  base_ref="$(sed -n 's/^FROM \([^ ]*\) AS runtime$/\1/p' docker/app.Dockerfile)"
+  [[ "$base_ref" =~ <the tester's pinned pattern: tag and @sha256 digest required, no leading '-'> ]] \
+    || die "cannot read the ke-app base reference from docker/app.Dockerfile"
+  echo "offline: pulling the ke-app base ($base_ref)"
+  docker pull "$base_ref" > /dev/null || die "pulling the ke-app base failed ($base_ref); no retry"
+  ```
+  The drift step's "never pulls it" refusal is dropped. If the image is
+  missing, `docker save` fails naming the ref. *Why pull:* BuildKit
+  fetches the base into its own cache, which `docker save` does not read,
+  and a CI runner starts empty. No `--platform`: the daemon takes its
+  native entry of the index, which is the platform `build.sh` built
+  `ke-app` on. *Confirm at GREEN:* `docker save` of the `name:tag@digest`
+  form works on both stores. On the containerd store, if the save fails on
+  the index's absent platforms, add `--platform linux/<daemon arch>` to the
+  save.
+  - *U8 does not take this over.* `bundle_fetch.sh` fetches what an
+    operator bundle needs: the generator and the sources. The base is not
+    an input to `bundle.sh`; only the gate's drift check reads it. U8
+    replaces only the generator pull line, and this pull stays.
+  - *CI egress (confirmed).* `python:3.12-slim-bookworm` is on Docker
+    Hub, the registry of the generator and of the stack images `build.sh`
+    already pulls (the same base, through BuildKit). The pull runs in the
+    host half of `verify.sh full`, not in `gates`/`gates-it`, so no
+    container network changes. CLAUDE.md already says the host half
+    "builds and pulls images": **no CLAUDE.md change**, and N13's U8 text
+    is unaffected.
+- *Base SBOM run (point 7).* The same form as `bundle.sh`'s run
+  (`MSYS_NO_PATHCONV=1`, the three `KE_SBOM_*` keys through `hostpath`,
+  `--env-file .env.example -f docker-compose.sbom.yml run --rm --pull
+  never sbom docker-archive:/in/<name>.tar --scope all-layers -o
+  spdx-json=/out/<file>`) with **no `-p`**. It inherits the exported
+  `COMPOSE_PROJECT_NAME`, the offline project, so it adds no project of
+  its own to tear down. `run --rm` leaves no container. Its work dir is a
+  `mktemp -d` under `dist/` (in `df_paths`), outside the bundle, removed
+  on success and by the EXIT trap.
+- *`ADDED_PACKAGES` (point 8).* Read by `ast` from
+  `tests/test_notice_ke_app.py`, mounted read-only into the checker run.
+  It is never imported, because importing a test module would run test
+  imports inside `ke-app`. The U1 static test and the U4 image check share
+  this one literal. A missing or non-literal value fails, naming the file.
+
+### N1 amendment, U4 rework (architect, 2026-10-23)
+
+Review B1 and N5, security L-2; evidence `u4/windows-run.txt` 3c.
+- *tmpfs `/tmp:mode=1777` (B1).* `docker-compose.sbom.yml`, service
+  `sbom`: `tmpfs: ["/tmp:mode=1777"]`; `XDG_CACHE_HOME: /tmp/cache` stays.
+  - *Cause.* The syft image's own `/tmp` is `drwxr-xr-x 0/0` (3c part 2,
+    from `docker export`). A tmpfs mounted over an image directory with no
+    `mode=` takes that directory's mode, so the caller's uid cannot create
+    `/tmp/cache` and syft warns on every run (7 of 7, U4 GREEN and A34).
+    It is the image, not the engine, so Linux behaves the same. With
+    `mode=1777` the same run prints no cache warning (3c part 2).
+  - *Security.* A sticky world-writable `/tmp` is a risk only when a
+    second principal shares it. Here: one process, one uid, `read_only`
+    root, `network_mode: none`, `cap_drop: [ALL]`, `no-new-privileges`, a
+    per-container tmpfs that dies with `run --rm`, and Docker's tmpfs
+    defaults `noexec,nosuid,nodev` kept (no `exec` is added, unlike the
+    gate services). syft can already write `/out`; this gives nothing new.
+    The cache stays near-empty (every remote lookup off) and off the host
+    (I-2, ADR-KE-013 am. 1 D1). Same form as the gates' tmpfs (PS-3.5).
+  - *Tests.* The tmpfs entry carries `mode=1777` and no `exec`;
+    `_tmpfs_targets` already strips options, so U2's pins hold. Proof: a
+    real run with no `unable to get filesystem cache` line (A34 re-runs
+    2b and 3b; the PR's CI run is the first Linux classic-store proof).
+- *Disk floor on `dirname(--out)` too (N5; this rework, not later).*
+  Choice: measure, do not refuse. `bundle.sh` runs the same floor check
+  (nearest existing ancestor, `df -Pk`, 7 GiB, same message form
+  `need 7 GiB free on <path>, found <N> GiB`) for `--out` and for
+  `dirname(--out)`, skipping the second when it resolves to the same
+  probe path (the usual case, `--out` absent). A pre-existing empty
+  `--out` on another filesystem (a mounted stick) is a legitimate operator
+  layout, so refusing it would be a behaviour change for no gain, and
+  "is a mount point" has no portable test across Linux, macOS and Git
+  Bash. Requiring 7 GiB on each filesystem is conservative (the bundle
+  needs about 1 GiB on `--out`, the unpack 1-2 GiB beside it); U11
+  re-derives the floor. Why now: the false claim and the work dir are
+  both U4's, the fake `df` already answers per path
+  (`FAKE_DF_AVAIL_BY_PATH`), and the fix is a few lines. First test:
+  `--out` pre-created empty, `df` gives `--out` 50 GiB and its parent
+  3 GiB: refused before any `docker save`, `--out` empty, no record, the
+  message names the parent; the swapped case names `--out`; both 50 GiB
+  passes. `offline_check.sh` is unchanged (`dist/` is in `df_paths`).
+
 ## N2. Generator provenance (PSC-1 form; security records it)
 
 `docs/evidence/platform-sbom/generator-provenance.md`, before the pin is
@@ -404,16 +521,18 @@ Where it runs:
 - at bundle time, inside the `ke-app` image being bundled, as the notices
   run (U3, pinned in `u3/target-bundle.sh`):
   ```
+  MSYS_NO_PATHCONV=1 \
   docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --pull never \
     --user "$sbom_user" --label "com.docker.compose.project=${project}-sbomcheck" \
-    -v "$repo_root/scripts/sbom_check.py:/opt/ke/sbom_check.py:ro" -v "$work:/work:ro" -v "$out/images:/images:ro" \
+    -v "$(hostpath "$repo_root")/scripts/sbom_check.py:/opt/ke/sbom_check.py:ro" -v "$(hostpath "$work"):/work:ro" -v "$(hostpath "$out/images"):/images:ro" \
     --entrypoint python "$app_ref" -I /opt/ke/sbom_check.py finish \
     --name "$name" --ref "$ref" --arch "$arch" --git-sha "$git_sha" \
     --raw /work/raw.spdx.json --tar "/images/$name.tar" "${site_args[@]}" \
     > "$app/sboms/$name.spdx.json"
   ```
   with `site_args` = `--site /opt/venv/lib/python3.12/site-packages --lock
-  /app/uv.lock` for `ke-app` only. The label is `<project>-sbomcheck`, its
+  /app/uv.lock` for `ke-app` only (`hostpath`, `MSYS_NO_PATHCONV`: N1
+  amendment, U4). The label is `<project>-sbomcheck`, its
   own, distinct from `<project>-sbom`. The `ke-app` venv is not used (`-I`
   keeps it out). It runs there because the runtime-package check must list
   the real installed distributions;
@@ -648,7 +767,14 @@ proved byte-identical to the one install loaded.
   `/var/lib/dpkg/status`. U4's `full` test asserts that `ke-app`'s SBOM
   lists `pkg:deb/debian/libpq5@<pin>` (upstream `postgresql-15`) and
   `pkg:pypi/psycopg-c@3.3.6`, and has no `psycopg-binary`; and NOTICE's
-  image-side drift check (N10, B3).
+  image-side drift check (N10, B3). Both run in the drift step of
+  `offline_check.sh`, on the bundle's `app/sboms/ke-app.spdx.json` (N1
+  amendment, U4).
+- *Forked lock (U4, review N7).* `uv.lock` is read as a map from name to
+  the **set** of its locked versions. An installed distribution passes if
+  its version is in its name's set. A name locked at two versions is
+  accepted, not refused: `uv sync --locked` installed one of them, and both
+  are locked. Today the lock has no duplicate name.
 
 ## N8. The licence classifier (PSC-15 forms, PSC-22)
 
@@ -659,7 +785,42 @@ writes `NOASSERTION` to `licenseDeclared` of jars it licenses from file
 content, e.g. jna's concluded `Apache-2.0 AND LGPL-2.1-only`). If both
 fields are set (none are in U3's SBOMs), it needs source if either does.
 - Unlicensed: all three missing: reported per image with a count
-  (PSC-22), printed by `bundle.sh` and kept in the index.
+  (PSC-22). U4: printed by `bundle.sh` (bundle output; the evidence keeps
+  the run's output). U9: kept in the index (N9).
+  - *Exact rule (U4, point 4; the tester's reading, confirmed).* A string
+    field is *missing* when it is absent or `null`, or equals `""`,
+    `"NONE"` or `"NOASSERTION"`. The match is exact and case-sensitive,
+    as SPDX 2.3 spells the keywords, with no strip. A package is
+    unlicensed when `licenseConcluded` and `licenseDeclared` are both
+    missing **and** `licenseInfoFromFiles` is absent, `null`, `[]`, or a
+    list whose every entry is missing. Any other value in any of the
+    three makes the package licensed, and the classifier reads it in the
+    input order above. "The list syft gives" is `licenseInfoFromFiles`,
+    with its missing entries dropped and the rest joined with AND.
+  - *Type rule (tightening).* A value of the wrong type is treated as
+    missing: a non-string in either expression field, a non-list
+    `licenseInfoFromFiles`, or a non-string entry. Such a package goes to
+    the report, which security reviews, and it never crashes the report
+    (e.g. an unhashable list in a set test). The DESCRIBES root is never
+    reported.
+  - *Hash-only ids (U4 rework, security H-1).* syft writes
+    `LicenseRef-<64 lower-case hex>`, a hash of licence text it could not
+    identify, as the only id on 59 rows (wget, the GCC runtime, gnutls,
+    libgcrypt among them). Such a value is *missing* too: a string field
+    whose licence ids, after splitting on whitespace and parentheses and
+    dropping the operators `AND`/`OR`/`WITH` (any case) and the exception
+    id after each `WITH`, are at least one and all match
+    `^LicenseRef-[0-9a-f]{64}$` (exact, case-sensitive, as syft writes it).
+    The rule applies to `licenseConcluded`, `licenseDeclared` and each
+    `licenseInfoFromFiles` entry, so such a package is in the report.
+    Security's expected counts: ke-app 19, ke-gateway 0, neo4j 28, phoenix
+    35, postgres 25, valkey 1. Test rows: one hash alone; two hashes with
+    `AND`; `MIT AND <hash>` is not reported (U5 still flags it, below).
+    Security found no real row mixing a hash with a known id.
+  - *Today:* syft v1.54.1 writes no `licenseInfoFromFiles` on any package
+    of U3's valkey (25) or ke-gateway (71) documents. So the rule reduces
+    to the two expression fields. The third field is read so that a
+    generator which fills it is classified, not reported.
 - Parse as an SPDX expression: ids, `(`, `)`, `AND`, `OR`, `WITH`
   (operators case-insensitive, so Debian's `with` parses).
   `needs(OR) = all(needs(child))`, `needs(AND) = any(needs(child))`,
@@ -682,6 +843,16 @@ fields are set (none are in U3's SBOMs), it needs source if either does.
   parses as a single id and the anchored pattern alone would pass it
   with no source (fail open). Every `LicenseRef-` id containing `http`
   is listed as "unparsed" too, flagged or not (43 in neo4j).
+- Hash ids (U5; security H-1): `^LicenseRef-[0-9a-f]{64}$` is *unknown*,
+  never "no source needed": `needs(id)` is true for it (as the token
+  rule fails closed), and every package carrying one is listed as
+  "unidentified" in the index (N9) for security. Only a reviewed `exempt`
+  entry (N10), whose `reason` names the licence security read in the
+  SBOM's `hasExtractedLicensingInfos`, clears it; otherwise U7 locks its
+  source. So `<hash>` and `Apache-2.0 AND <hash>` need source, and
+  `MIT OR <hash>` does not (MIT elected) but is still listed. *Not*
+  reading `hasExtractedLicensingInfos` through the token rule: a GPL text
+  that never spells `gpl` ("GNU General Public License") would pass.
 - Unparseable text: needs source if it contains `gpl` as a word
   (case-insensitive), and is listed as "unparsed" in the index for
   security.
@@ -762,7 +933,9 @@ select any one of them.
    is ADR-KE-013 am. 1's for grype. *Not* `SYFT_CACHE_DIR`: a ninth
    `SYFT_*` key U2's pin does not know. The cache stays empty (lookups
    off) and dies with the tmpfs. A34 not needed (a container-side literal,
-   no host path or argv); the orchestrator's call.
+   no host path or argv); the orchestrator's call. *U4 review B1:* the key
+   was inert, because the tmpfs took the image's 0755 `/tmp`; the tmpfs
+   gains `mode=1777` (*N1 amendment, U4 rework*).
 
 ## N9. `sources/index.json` and the stored names (PSC-15, PSC-24)
 
@@ -778,7 +951,7 @@ Windows reserved name, and dedups a file two components share).
     "files": [{"name": "<upstream name>", "url": "...", "sha256": "...",
                "upstream": {...}, "path": "sources/files/<sha256>"}]}],
  "unlicensed": {"ke-app": {"count": 0, "packages": []}, ...},
- "unparsed": [...]}
+ "unparsed": [...], "unidentified": [...]}
 ```
 - `path` is relative to the installed root (`app/` in the bundle).
 - `not-shipped` exists only when `set` is `sample`; a `full` bundle with
@@ -786,7 +959,8 @@ Windows reserved name, and dedups a file two components share).
   the purl's `upstream` qualifier (source name, and version when it
   differs) else the package name/version; apk by `upstream` (origin);
   `pkg:maven/org.neo4j/*` and `com.neo4j/*` at the image's Neo4j version
-  to the `neo4j` entry; the JVM package to `temurin`; pypi by name; any
+  to the `neo4j` entry; the JVM package, and `pkg:maven/jrt-fs/jrt-fs` (the
+  JDK's own jar, security M-2), to `temurin`; pypi by name; any
   other `pkg:maven/<group>/<artifact>@<version>` to `maven:` (N8a).
   *Confirm at GREEN* each mapping against the real SBOMs (U3); an
   unmappable GPL-family package fails with its purl, never passes.
@@ -805,10 +979,64 @@ Windows reserved name, and dedups a file two components share).
   ```
   `always` (PSC-22): busybox, apk-tools, ssl_client (valkey, ke-gateway);
   the Temurin JVM (neo4j); Neo4j Community (neo4j); psycopg and
-  psycopg-c (ke-app); glibc (`upstream=glibc`, every Debian image). libpq5
-  and its dependencies are ordinary dpkg packages under the classifier
-  (libkeyutils1 is LGPL by its copyright file; libldap-2.5-0 and the two
-  libsasl2 packages are GPL-family by theirs: N15, I-1). An `always`
+  psycopg-c (ke-app); glibc (`upstream=glibc`, every Debian image); and
+  in `ke-app`, libldap-2.5-0 (`upstream=openldap`) and libsasl2-2 and
+  libsasl2-modules-db (`upstream=cyrus-sasl2`).
+  - *U4 ruling 2.* This supersedes this note's earlier text, which called
+    these three "ordinary dpkg packages under the classifier". PSC-22's
+    last bullet requires them covered "whatever licence the generator
+    reports", and that is `always`. libpq5's other dependencies stay
+    under the classifier. libkeyutils1, for example, is LGPL by its
+    copyright file.
+  - *Flag (orchestrator).* `postgres` ships the same three binaries
+    (U3 evidence). There, syft's AND expressions carry `GPL-2.0-only`,
+    `GPL-3.0-or-later` and similar ids, so the classifier flags them. U7's
+    one entry per source package (`openldap`, `cyrus-sasl2`) covers both
+    images. `postgres` `always` entries for these three are optional
+    belt-and-braces; that call is not the architect's.
+  - *U4 rework (security M-1, M-2, L-1): new `always` entries.* Each was
+    checked against the U3 SBOMs (`u3/sboms/*.pkgs.tsv`):
+    | image | match | catalogued rows |
+    |---|---|---|
+    | ke-app, postgres | `upstream=gcc-12` | gcc-12-base, libgcc-s1, libstdc++6 (12.2.0-14+deb12u1) |
+    | neo4j, phoenix | `upstream=gcc-14` | gcc-14-base, libgcc-s1, libstdc++6 (14.2.0-19), and libgomp1 in phoenix |
+    | neo4j | `pkg:maven/jrt-fs/jrt-fs` | jrt-fs@21.0.12.1, the JDK's `/opt/java/openjdk/lib/jrt-fs.jar` |
+    | valkey, ke-gateway | `upstream=busybox` | busybox-binsh, ssl_client |
+    | valkey, ke-gateway | `upstream=apk-tools` | libapk |
+    The exact-name busybox and apk-tools entries stay: those packages carry
+    no `upstream` qualifier. After U4b every `neo4j` key reads `ke-neo4j`
+    (N16).
+  - *How each is met (U6/U7).*
+    - **GCC runtime: ship the source, `deb` kind (U7).** Lock keys
+      `deb:gcc-12@12.2.0-14+deb12u1` and `deb:gcc-14@14.2.0-19` by the
+      normal snapshot route; no `exempt` entry. *Why not the GCC Runtime
+      Library Exception:* it lets Target Code "formed by combining the
+      Runtime Library with Independent Modules" be conveyed on any terms.
+      The images carry the runtime itself (`libgcc_s.so.1`,
+      `libstdc++.so.6`, `libgomp.so.1`) as stand-alone object code in
+      Debian packages. Whether the exception reaches that is a legal
+      reading. Shipping the source needs no such reading, as for jaxb-api
+      (N8a 2). It also needs no new kind, host or review form: glibc,
+      openldap and cyrus-sasl2 take the same route. *Cost:* each gcc
+      `.orig.tar` is large (estimate 80-100 MB; U7 measures), in the full
+      set only. The sample takes the smallest `deb`, so verify and CI are
+      unchanged. U11's floor re-derivation counts it. If the human rules
+      the size unacceptable, the fallback is one `exempt` entry per
+      versioned purl and image, reviewed by security, with a reason that
+      cites the exception. That is the human's call, not a default.
+    - **jrt-fs: the Temurin entry (U9 mapping, N9).** No lock entry and
+      no exemption: the `temurin:` jdk-sources archive is its source. N9
+      maps `pkg:maven/jrt-fs/jrt-fs` to `temurin`. U9 checks that its
+      version is the image's Temurin build, else it fails naming the purl.
+    - **busybox-binsh, ssl_client, libapk: the existing apk entries.**
+      The apk route keys by origin (`apk:busybox@<v>`,
+      `apk:apk-tools@<v>`), and N9 maps by `upstream`, so no new lock
+      entry is needed.
+  - *Arrival (U4 ruling 1).* `always` arrives at U4, alone in the file,
+    with entries shaped `{"image", "match", "why"}`. `match` is a
+    versionless purl or `upstream=<source>`, the latter matched on the
+    qualifier's name before any `@`. U6 adds `hosts` and `exempt` and the
+    exactly-three-keys schema test below. An `always`
   entry with no matching package in its image fails ("expected component
   not catalogued"): the generator cannot hide one by missing it. An exemption
   names a versioned purl, so a version bump voids it and forces a new
@@ -852,8 +1080,10 @@ Windows reserved name, and dedups a file two components share).
     `full` SBOM test (review B3), on `ke-app`'s SBOM (`--scope
     all-layers`, so a pip file in any layer counts):
     - its dpkg names minus those in an SBOM of the pinned base (same `sbom`
-      service, `docker save` of the local base, `--pull never`; *confirm
-      at GREEN*) equal the U1 test's `ADDED_PACKAGES`;
+      service, `--pull never`, on a `docker save` of the base that
+      `offline_check.sh` pulls by digest first, outside the bundle: N1
+      amendment, U4) equal the U1 test's `ADDED_PACKAGES` (read by `ast`,
+      never imported);
     - it has no `pkg:pypi/pip` package, of any version (this replaces the
       pip-version check);
     - its CPython package version (syft's binary cataloguer; the exact
@@ -1158,11 +1388,12 @@ column is the mode for the red/green loop.
 | U1 | PSC-14 NOTICE.md "Base of `ke-app`" section and pointer; round 2: no pip (`app.Dockerfile` `runtime` stage, `FROM scratch` flatten, N10a), smoke `no pip`, `licenses/CPython-3.12-incorporated.txt`; static tests, incl. the U0/D10/digest tests re-targeted at `runtime` | full | yes (Dockerfile) |
 | U2 | PSC-20 `docker-compose.sbom.yml` `sbom`, pin and provenance, presence refusal in `bundle.sh` | full | yes (compose) |
 | U3 | PSC-13 `bundle.sh` save -> syft -> `finish`; `sbom_check.py` N6 and runtime packages; Neo4j jars decided (ruling 5) | full | no |
-| U4 | PSC-22: `ke-app` SBOM lists libpq5 (dpkg) and psycopg-c with no psycopg-binary; NOTICE's image-side checks (dpkg set of `ke-app` minus the base equals `ADDED_PACKAGES`; no `pkg:pypi/pip`; CPython version equals the incorporated-licences header; N10, B3); unlicensed report per image (by rule; minus the DESCRIBES root; counts per purl type; no-purl rows by SPDXID; N8a 4-5); `sbom` env `XDG_CACHE_HOME: /tmp/cache` (N8a 6) | full | no |
-| U5 | PSC-15 classifier (N8), pure functions; ruling 5: NOASSERTION fall-through, token rule, URL-folded ids listed (N8a) | fast | no |
-| U6 | `docker/source-policy.json` and schema test; `always` rule; `exempt` for jna and javassist, security-reviewed (N8a 1, 3) | fast | no |
-| U7 | lock: `docker/sources.lock.json`, `scripts/sources_lock.sh`, provenance evidence (security's second fetch); `maven` kind, jaxb-api sources jar (N8a 2) | full | no |
-| U8 | PSC-23 `bundle_fetch.sh`, `sources-fetch` and client loop, wired into `offline_check.sh`; README and header wording; CLAUDE.md text to the human (ruling 6) | full | yes (compose) |
+| U4 | PSC-22: `ke-app` SBOM lists libpq5 (dpkg) and psycopg-c with no psycopg-binary; NOTICE's image-side checks (dpkg set of `ke-app` minus the base equals `ADDED_PACKAGES`; no `pkg:pypi/pip`; CPython version equals the incorporated-licences header; N10, B3); unlicensed report per image (by rule; minus the DESCRIBES root; counts per purl type; no-purl rows by SPDXID; N8a 4-5; exact rule N8); `sbom` env `XDG_CACHE_HOME: /tmp/cache` (N8a 6); `docker/source-policy.json` with `always` only (N10, incl. openldap and cyrus-sasl2 in ke-app); base pulled by digest in `offline_check.sh`, SBOM work dir beside `--out` (N1 amendment, U4); carry: review N1-N4, N6, N7 (N7 forked lock), N9. Rework round 1: hash-only `LicenseRef-<64 hex>` counts as missing (N8, H-1); `sbom` tmpfs `/tmp:mode=1777` and the floor also on `dirname(--out)` (N1 amendment, U4 rework); `always` gains gcc-12/gcc-14, jrt-fs, `upstream=busybox`/`apk-tools` (N10) | full | yes (compose tmpfs: re-run 2b and 3b) |
+| U4b | Q67 (security M-3): first-party `ke-neo4j` without `products/` (N16): `docker/neo4j.Dockerfile` (flattened, config re-set), compose `neo4j` service, NOTICE vendor row replaced by "Base image of `ke-neo4j`", `source-policy.json` `neo4j` keys renamed `ke-neo4j`, smoke no-plugin step, first-party image lists in tests | full | yes (Dockerfile, compose) |
+| U5 | PSC-15 classifier (N8), pure functions; ruling 5: NOASSERTION fall-through, token rule, URL-folded ids listed (N8a); hash ids unknown, needs source, listed "unidentified" (N8, H-1) | fast | no |
+| U6 | `docker/source-policy.json` gains `hosts` and `exempt` (`always` is U4's) and the three-key schema test; `exempt` for jna and javassist, security-reviewed (N8a 1, 3) | fast | no |
+| U7 | lock: `docker/sources.lock.json`, `scripts/sources_lock.sh`, provenance evidence (security's second fetch); `maven` kind, jaxb-api sources jar (N8a 2); `deb` gcc-12 and gcc-14 (N10) | full | no |
+| U8 | PSC-23 `bundle_fetch.sh`, `sources-fetch` and client loop, wired into `offline_check.sh` (replaces the generator pull only; the base pull stays, N1 amendment, U4); README and header wording; CLAUDE.md text to the human (ruling 6) | full | yes (compose) |
 | U9 | PSC-15/24 `index`, content-addressed copy, notices section (paths relative to `app/`, I-3, N10a), no-partial tests, install tamper tests (sh and ps1) | full | only if `install.ps1` changes |
 | U10 | PSC-19 e2e `verify`, `/install` size and memory pre-check; follow-up security U3 L-1: `build.sh` stamps `org.opencontainers.image.revision=<git HEAD>` on each first-party `ke-*` image, and `bundle.sh` refuses, before any write, an image whose label is absent or differs from its `git_sha` (else the SBOM creator and `bundle.json` name the wrong commit; U3's stale ke-app SBOM is the case). First test: the refusal on a mismatched or missing label (fake docker) | full | yes (compose) |
 | U11 | PSC-16 two CI runs, floor re-derivation, Q62 trigger, PS-3.4; full operator recorded run (Q63) | full (CI) | no |
@@ -1198,3 +1429,156 @@ vendored table. First tests for U1, U2 and U5 are unchanged:
   default, fail closed), unless security records a reviewed `exempt`
   entry per versioned purl at U6. U5's table adds Debian's `GPL-3+` and
   `GPL-2+ with Autoconf exception`; both need source.
+
+## N16. U4b: our own neo4j image, `ke-neo4j` (human ruling Q67, 2026-10-23)
+
+Security M-3: `/var/lib/neo4j/products/` ships
+`neo4j-fleet-management-plugin-1.2.0-v5.jar` (`com.neo4j`, "Use of this
+Software without a proper commercial license with Neo4j, Inc. ... is
+prohibited"). The human ruled that we build our own image without it.
+Probe (2026-10-23, architect): `docker create` of the pinned image, then
+`docker export | tar -tv`, so nothing ran. 8,028 entries.
+- *What goes.* `products/` holds exactly two files, both `0777
+  7474:7474`. The first is the fleet plugin, sha256 `e4c3250a...222faf`.
+  The second is `neo4j-genai-plugin-5.26.32.jar` (`org.neo4j`, GPL-3.0
+  by its own `META-INF/NOTICE.txt`; sha256 `f355e1e7...bdf8123`). No
+  other path names fleet or the plugin; `lib/` and `labs/` hold neither.
+  `/startup/neo4j-plugins.json` points at `products/*.jar` only when
+  `NEO4J_PLUGINS` asks for a plugin. The stack never sets it, and without
+  the file the entrypoint would try a download, which fails on the
+  backend network. The whole directory goes, as the ruling says. The
+  GenAI plugin is unused and its loss changes nothing at runtime. The
+  entrypoint and `neo4j-plugins.json` are left untouched.
+- *`docker/neo4j.Dockerfile`* (shape of `app.Dockerfile`'s flatten, N10a):
+  ```
+  # ke-neo4j: the official Neo4j Community image without products/ (Q67).
+  # Config below re-set from `docker image inspect <ref> --format '{{json .Config}}'`;
+  # re-read it on every digest bump.
+  FROM neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b AS runtime
+  RUN rm -rf /var/lib/neo4j/products
+  FROM scratch
+  COPY --from=runtime / /
+  ENV PATH=/var/lib/neo4j/bin:/opt/java/openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+      JAVA_HOME=/opt/java/openjdk \
+      NEO4J_SHA256=d279ae6a9b38034280681a558b0cd222dce89f87cc3d9867f1f7bd28ef5ebc30 \
+      NEO4J_TARBALL=neo4j-community-5.26.32-unix.tar.gz \
+      NEO4J_EDITION=community \
+      NEO4J_HOME=/var/lib/neo4j \
+      LANG=C.UTF-8
+  WORKDIR /var/lib/neo4j
+  VOLUME ["/data", "/logs"]
+  EXPOSE 7473 7474 7687
+  ENTRYPOINT ["tini", "-g", "--", "/startup/docker-entrypoint.sh"]
+  CMD ["neo4j"]
+  ```
+  *Why flatten:* a `RUN rm` layer over the official layers still ships
+  the jar in the saved tar (`--scope all-layers` would list it, and the
+  bytes would be redistributed). That is U1's pip finding.
+- *The full config, from `docker image inspect`* (amd64 entry of the
+  pinned digest):
+  - `Entrypoint` `["tini","-g","--","/startup/docker-entrypoint.sh"]`
+  - `Cmd` `["neo4j"]`
+  - `Env`, in order: `PATH`, `JAVA_HOME`, `NEO4J_SHA256`,
+    `NEO4J_TARBALL`, `NEO4J_EDITION`, `NEO4J_HOME`, `LANG`, values as above
+  - `WorkingDir` `/var/lib/neo4j`
+  - `ExposedPorts` 7473, 7474 and 7687/tcp
+  - `Volumes` `/data` and `/logs`
+  - `User` empty (root). This is not set, and it must stay unset: the
+    entrypoint runs as root, chowns `NEO4J_HOME`, `/data` and `/logs` to
+    7474, then drops privilege.
+  - `Labels` null, `Healthcheck` null (compose has its own), `StopSignal`
+    empty, `OnBuild` null, `Shell` null. None of these is set.
+
+  A fast static test pins this list against the final stage. Every value
+  is copied as is. The `NEO4J_*` keys are read by the entrypoint, which
+  also uses `NEO4J_SHA256` and `NEO4J_TARBALL` in its exclusion list, so
+  none is dropped.
+- *Ownership and modes (probe).* The flatten keeps them.
+  - `COPY --from=<stage> / /` with no `--chown` keeps uid/gid, mode bits
+    (setuid, setgid, sticky), symlinks and hard links.
+  - Key paths in the official image, to be reproduced:
+    - `/var/lib/neo4j` and its subdirectories `0777 7474:7474`, except
+      `bin/` at `0755 7474:7474`
+    - `/data` and `/logs` `0777 7474:7474`
+    - `var/lib/neo4j/data -> /data` and `logs -> /logs`, symlinks owned
+      0:0
+    - `/startup` `0755 0:0`; `/opt/java/openjdk` `0755 0:0`
+    - `/tmp`, `/var/tmp` and `/run/lock` `1777`
+    - 8 setuid-root binaries (su, passwd, mount ...), plus setgid shadow
+      (gid 42) on chage and expiry
+    - one hard link, `usr/bin/perl5.40.1`
+  - The export carries no xattrs, so no file capability can be lost.
+  - *Confirm at GREEN (evidence, not a gate step):* list both images with
+    `docker create` + `docker export | tar -tv`. Compare type, mode,
+    uid/gid, size and link target, by path. The only difference allowed is
+    `var/lib/neo4j/products/` and its two files. A hard link written out
+    as a regular file is recorded, not failed.
+- *Name and tag:* `ke-neo4j:${KE_IMAGE_TAG:-local}`, like `ke-gateway`. In
+  compose, service `neo4j` keeps its name, networks, env, volume and
+  healthcheck. `image:` becomes that ref, plus `build: {context: .,
+  dockerfile: docker/neo4j.Dockerfile}` (nothing is copied from the
+  context, so BuildKit sends nothing). `build.sh`/`build.ps1` need no
+  logic change: `compose build` builds it, and `pull --ignore-buildable`
+  no longer pulls neo4j (BuildKit fetches the base by digest). Each
+  header comment gains `ke-neo4j`. `verify.sh` builds it under
+  `wt-<12 hex>`, as the other first-party images.
+- *Bundle and install, first-party like `ke-gateway`.* The ref has no
+  digest and matches `^ke-`, so `bundle.sh` saves it as
+  `ke-neo4j:bundle-<sha12>`, in `images/ke-neo4j.tar`, with the SBOM at
+  `app/sboms/ke-neo4j.spdx.json` (`ke:ref` the `wt-` ref). Install
+  (sh and ps1) already accepts `ke-[a-z0-9._-]+:bundle-<12 hex>`, checks
+  the header `git_sha`, and writes the `neo4j` override. **No install
+  change.** U10's revision label covers it with the other `ke-*` images.
+  The `neo4j-data` volume is compatible (same uid 7474, same paths).
+- *NOTICE.md (analyst owns wording).*
+  - The `neo4j` row leaves "Vendor images". `bundle.sh` checks rows only
+    for digest-pinned stack refs, and `ke-neo4j` is not one.
+  - A new "Base image of `ke-neo4j`" section, as for `ke-gateway`, carries
+    these facts: the base ref byte for byte from the Dockerfile `FROM`;
+    Neo4j Community 5.26.32, GPL-3.0 (`/var/lib/neo4j/LICENSE.txt`,
+    `licenses/GPL-3.0.txt`); upstream source https://github.com/neo4j/neo4j
+    tag 5.26.32; and that `ke-neo4j` omits `/var/lib/neo4j/products/` (the
+    fleet-management plugin under a commercial licence, and the GenAI
+    plugin). It also says no Neo4j file is changed and the filesystem is
+    otherwise the official one, flattened.
+  - A fast test ties that ref to the Dockerfile, as U1's does for
+    `ke-app`.
+- *SBOM, policy, scan.*
+  - The SBOM now has one layer, and neither plugin, nor anything syft
+    catalogued inside them, is in it. GREEN evidence diffs its package
+    list against U4's neo4j SBOM: the plugin rows go, and nothing else
+    changes.
+  - The unlicensed report loses the fleet row.
+  - The `neo4j` keys in `docker/source-policy.json` become `ke-neo4j`;
+    the `always` matches are unchanged.
+  - N9's `com.neo4j/*` mapping then has no member (kept; harmless).
+  - The scan is unchanged: `scan.sh` scans `ke-app` only (ADR-KE-013),
+    and neo4j was never scanned.
+  - The lock's `neo4j:` and `temurin:` entries and the N5 route for them
+    are unchanged.
+- *Smoke (live stack).* In the running `neo4j` service, `/var/lib/neo4j/products` is absent and no
+  file under `/` (`-xdev`) is named `*fleet-management*`. This holds on
+  every image; whole-output compare, failing closed (U1 form).
+- *First failing tests (fast):*
+  - compose `neo4j` image is `ke-neo4j:${KE_IMAGE_TAG:-local}` with
+    `build.dockerfile` `docker/neo4j.Dockerfile`;
+  - the Dockerfile's `runtime` stage removes `/var/lib/neo4j/products`,
+    and its last stage is `FROM scratch` + `COPY --from=runtime / /` with
+    exactly the config list above;
+  - NOTICE has no neo4j vendor row and has the base section with the
+    Dockerfile's ref;
+  - no `"image": "neo4j"` key remains in `source-policy.json`;
+  - the first-party lists in `tests/test_stack_compose.py`
+    (`FIRST_PARTY_REPOS`) and `tests/test_offline_check.py`
+    (`FIRST_PARTY`) gain `ke-neo4j`.
+
+  Then `full`: smoke step red on today's image, green after.
+- *A34 (yes).* A Dockerfile and a compose change. The Windows proof:
+  `build.ps1` builds `ke-neo4j`; `launch.ps1` brings `neo4j` healthy on
+  it; Git Bash `bundle.sh` writes `images/ke-neo4j.tar` and its SBOM
+  (with no plugin rows); `install.ps1` loads it as `ke-neo4j:bundle-<sha12>`
+  and writes the override; the ownership diff above on Docker Desktop's
+  containerd store; `teardown.ps1` leaves nothing.
+- *Size:* about 380 KB less, plus anything the official layers deleted
+  above themselves. Build adds one rootfs copy (about 590 MB, once per
+  base digest; cached).

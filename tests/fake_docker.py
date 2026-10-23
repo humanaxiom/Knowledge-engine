@@ -89,7 +89,11 @@ never touches a real daemon. What it does:
     `tag` from an unknown source exits 1 too. `--format` understands
     `{{.Field}}`, `{{json .}}` and `{{json .Field}}`.
   - `save -o|--output <path> <ref>...` writes a small file at <path> (its
-    directory must exist), so manifests can hash it.
+    directory must exist), so manifests can hash it. platform-sbom U4: with
+    FAKE_DOCKER_IMAGES set, a <ref> not in it (nor tagged from it) exits 1,
+    as the daemon does; save never pulls. A `pull <ref>` (last argument)
+    logged earlier with FAKE_DOCKER_PULL_OK=1 makes <ref> known (inspect,
+    tag, save), as a real pull does.
   - `load -i|--input <file>` prints FAKE_DOCKER_LOAD[<basename>] when that
     JSON object names the file (any text: none, one or two lines), else
     `Loaded image ID: sha256:<sha256 of the file>`. A missing file exits 1.
@@ -332,7 +336,13 @@ never touches a real daemon. What it does:
     FAKE_SYFT_PYPI_VERSIONS (JSON name -> version reported instead),
     FAKE_SYFT_RAW (JSON image name -> document text written verbatim),
     FAKE_SYFT_LOG (one JSON line per run: name, in, out, user, and the
-    entries of KE_SBOM_OUT and of its tmp/ before the run).
+    entries of KE_SBOM_OUT and of its tmp/ before the run; platform-sbom U4,
+    review N4: also `out_mode` and `tmp_mode`, their permission bits).
+    U4 rework 1 (review B1): syft's cache is modelled from the compose
+    file's `sbom` service (`_syft_cache_warning`): a non-root user whose
+    cache dir sits on a tmpfs without an o+w `mode=` (the image's /tmp is
+    0755 root), or on the read-only root, gets syft's `WARN unable to get
+    filesystem cache at ...` line on stderr; the run still succeeds.
   - `run ... <image> [args] <dir>/sbom_check.py ARGS` (the N3 checker): runs
     the real script, read from the host source of its `-v`/`--volume`/
     `--mount` bind, under this interpreter with `-I -S -B`, the venv site of
@@ -1231,6 +1241,10 @@ def _known_image(name, table):
                 src = _known_image(a[-2], table)
                 if src is not None:
                     return src
+            # platform-sbom U4: a successful `pull <name>` puts it on the daemon.
+            if ((a[:1] == ["pull"] or a[:2] == ["image", "pull"]) and a[-1:] == [name]
+                    and os.environ.get("FAKE_DOCKER_PULL_OK") == "1"):
+                return {"Id": "sha256:" + "2" * 64, "Os": "linux", "Architecture": "amd64", "RepoDigests": [name]}
     return None
 
 def _render(template, obj):
@@ -1323,6 +1337,13 @@ if argv[:1] == ["save"] or argv[:2] == ["image", "save"]:
             sys.exit(1)
         refs = [a for a in argv[1:] if not a.startswith("-") and a not in out
                 and a not in opt_values("--platform") and a != "save"]
+        # platform-sbom U4: as the real daemon, `save` of an image it does not
+        # hold fails (it never pulls), when FAKE_DOCKER_IMAGES models the store.
+        _stable = _image_table()
+        for _sref in refs if _stable is not None else []:
+            if _known_image(_sref, _stable) is None:
+                sys.stderr.write("Error response from daemon: reference does not exist: %s\n" % _sref)
+                sys.exit(1)
         if os.environ.get("FAKE_DOCKER_SAVE_TAR"):
             _write_image_tar(target, refs, os.environ["FAKE_DOCKER_SAVE_TAR"])
         else:
@@ -1493,6 +1514,64 @@ def _syft_doc(name, ver):
                              "created": _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime())},
             "packages": [root] + pkgs, "files": [status], "relationships": rels}
 
+def _syft_cache_warning(files, own, env):
+    """platform-sbom U4 rework 1 (review B1, security L-2; u4/windows-run.txt
+    3c, u4/security-probes.txt 5): syft's filesystem cache, modelled from the
+    compose file's `sbom` service. The cache is $XDG_CACHE_HOME/syft (else
+    $HOME/.cache/syft, HOME "/" in the syft image). The syft image's own
+    directories are 0755 root and a tmpfs over one takes that mode unless its
+    entry sets mode=; the root is read-only. A non-root user that cannot
+    create the cache gets syft's warning line, returned here ("" if none)."""
+    import posixpath as _pp, re as _re
+    path = next(f for f in files if os.path.basename(f) == own)
+    try:
+        import yaml as _yaml
+        with open(path, encoding="utf-8") as fh:
+            svc = (_yaml.safe_load(fh) or {})["services"]["sbom"]
+    except Exception as exc:  # the model must never pass silently
+        sys.stderr.write("fake syft: cannot model the cache from %s: %r\n" % (path, exc))
+        sys.exit(1)
+
+    def interp(value):
+        return _re.sub(r"\$\{([A-Za-z_][A-Za-z0-9_]*)[^}]*\}", lambda m: env.get(m.group(1), ""), str(value))
+    senv = svc.get("environment") or {}
+    if isinstance(senv, list):
+        senv = dict(str(e).split("=", 1) if "=" in str(e) else (str(e), "") for e in senv)
+    senv = {k: interp(v) for k, v in senv.items()}
+    cache = _pp.join(_pp.normpath(senv.get("XDG_CACHE_HOME") or _pp.join(senv.get("HOME") or "/", ".cache")),
+                     "syft")
+    user = interp(svc.get("user", "")).strip()
+    root_user = user in ("", "0", "root") or user.startswith(("0:", "root:"))
+    mounts = [("/", "root", None)]
+    raw = svc.get("tmpfs") or []
+    for entry in [raw] if isinstance(raw, str) else raw:
+        target, _, opts = str(entry).partition(":")
+        mode = 0o755
+        for opt in opts.split(","):
+            if opt.startswith("mode="):
+                mode = int(opt[len("mode="):], 8)
+        mounts.append((_pp.normpath(target), "tmpfs", mode))
+    for vol in svc.get("volumes") or []:
+        if isinstance(vol, dict):
+            target, ro = str(vol.get("target", "")), bool(vol.get("read_only"))
+        else:
+            parts = str(vol).split(":")
+            target, ro = parts[1] if len(parts) > 1 else parts[0], len(parts) > 2 and "ro" in parts[2].split(",")
+        mounts.append((_pp.normpath(target), "bind", ro))
+    target, kind, attr = max((m for m in mounts if m[0] == "/" or cache == m[0] or cache.startswith(m[0] + "/")),
+                             key=lambda m: len(m[0]))
+    if kind == "tmpfs":
+        reason = None if root_user or attr & 0o002 else "permission denied"
+    elif kind == "bind":
+        reason = "read-only file system" if attr else None
+    else:
+        reason = "read-only file system" if svc.get("read_only") else (None if root_user else "permission denied")
+    if reason is None:
+        return ""
+    first = _pp.join(target, cache[len(target):].lstrip("/").split("/")[0])
+    return ("[0000]  WARN unable to get filesystem cache at %s: unable to create directory at '%s': mkdir %s: %s"
+            % (cache, cache, first, reason))
+
 if _u3_own and "run" in argv:
     _at3 = argv.index("run")
     _takes3 = {"-e", "--env", "-u", "--user", "-v", "--volume", "--name", "--entrypoint", "-w",
@@ -1529,6 +1608,9 @@ if _u3_own and "run" in argv:
         if not _spdx3 or not _spdx3[-1].startswith("/out/"):
             sys.stderr.write("fake syft: want -o spdx-json=/out/<file>\n")
             sys.exit(1)
+        _cache3 = _syft_cache_warning(_u3_files, _u3_own[0], _env3)
+        if _cache3:
+            sys.stderr.write(_cache3 + "\n")
         _work3 = _env3.get("KE_SBOM_OUT", "")
         _name3 = os.path.basename(_tar3)
         _name3 = _name3[:-4] if _name3.endswith(".tar") else _name3
@@ -1539,7 +1621,9 @@ if _u3_own and "run" in argv:
                     "name": _name3, "in": _env3.get("KE_SBOM_IN", ""), "out": _work3,
                     "user": _env3.get("KE_SBOM_USER"),
                     "out_entries": sorted(os.listdir(_work3)) if os.path.isdir(_work3) else None,
-                    "tmp_entries": sorted(os.listdir(_tmp3)) if os.path.isdir(_tmp3) else None}) + "\n")
+                    "tmp_entries": sorted(os.listdir(_tmp3)) if os.path.isdir(_tmp3) else None,
+                    "out_mode": (os.stat(_work3).st_mode & 0o7777) if os.path.isdir(_work3) else None,
+                    "tmp_mode": (os.stat(_tmp3).st_mode & 0o7777) if os.path.isdir(_tmp3) else None}) + "\n")
         if not os.path.isfile(_tar3):
             sys.stderr.write("1 error occurred:\n\t* could not open docker-archive:/in/%s.tar\n" % _name3)
             sys.exit(1)

@@ -95,22 +95,34 @@ fi
 # about 4.3 GiB; 7 GiB leaves about 60% headroom.
 # The Available column is the number before the "NN%" capacity field, so a
 # filesystem or mount name with spaces cannot shift it (security L-6).
+# Measured on --out and on dirname(--out), where the SBOM work dir unpacks
+# (review N5; design-notes "N1 amendment, U4 rework"), each at its nearest
+# existing ancestor; the second is skipped when both probe the same path.
 floor_kb=$((7 * 1024 * 1024))
-probe="$out"
-while [ ! -e "$probe" ]; do probe="$(dirname "$probe")"; done
-df_text="$(df -Pk -- "$probe")" || die "cannot read the free space on $probe"
-avail_kb="$(printf '%s\n' "$df_text" | awk '
-  NR > 1 && v == "" {
-    for (i = 4; i <= NF; i++) {
-      if ($i ~ /^[0-9]+%$/ && $(i-1) ~ /^[0-9]+$/ && $(i-2) ~ /^[0-9]+$/ && $(i-3) ~ /^[0-9]+$/) { v = $(i-1); break }
+floor_probe() { local p="$1"; while [ ! -e "$p" ]; do p="$(dirname "$p")"; done; printf '%s' "$p"; }
+check_floor() {  # $1: the path named in the message, $2: its probe
+  local df_text avail_kb
+  df_text="$(df -Pk -- "$2")" || die "cannot read the free space on $2"
+  avail_kb="$(printf '%s\n' "$df_text" | awk '
+    NR > 1 && v == "" {
+      for (i = 4; i <= NF; i++) {
+        if ($i ~ /^[0-9]+%$/ && $(i-1) ~ /^[0-9]+$/ && $(i-2) ~ /^[0-9]+$/ && $(i-3) ~ /^[0-9]+$/) { v = $(i-1); break }
+      }
     }
-  }
-  END { print v }')"
-case "$avail_kb" in
-  '' | *[!0-9]*) die "cannot read the free space on $probe" ;;
-esac
-if [ "$avail_kb" -lt "$floor_kb" ]; then
-  die "need 7 GiB free on $out, found $((avail_kb / 1024 / 1024)) GiB"
+    END { print v }')"
+  case "$avail_kb" in
+    '' | *[!0-9]*) die "cannot read the free space on $2" ;;
+  esac
+  if [ "$avail_kb" -lt "$floor_kb" ]; then
+    die "need 7 GiB free on $1, found $((avail_kb / 1024 / 1024)) GiB"
+  fi
+}
+out_probe="$(floor_probe "$out")"
+check_floor "$out" "$out_probe"
+out_parent="$(dirname -- "$out")"
+parent_probe="$(floor_probe "$out_parent")"
+if [ "$parent_probe" != "$out_probe" ]; then
+  check_floor "$out_parent" "$parent_probe"
 fi
 
 # --- the stack's images ----------------------------------------------------
@@ -380,7 +392,9 @@ done < <(git ls-files -z -- licenses)
 # fresh urn:uuid namespace, and for ke-app the runtime packages checked
 # against uv.lock. Any failure stops here, before the manifest and the record.
 sbom_project="${project}-sbom"
-sbom_work="$(mktemp -d "${TMPDIR:-/tmp}/ke-sbom.XXXXXXXX")" || die "cannot create the SBOM work dir"
+# Beside --out, so the 7 GiB floor measured above covers the unpack (review N6).
+sbom_work="$(mktemp -d "$(dirname -- "$out")/.ke-sbom.XXXXXXXX")" || die "cannot create the SBOM work dir"
+# `down` binds nothing, so the raw (non-hostpath) KE_SBOM_* values below are harmless here.
 sbom_cleanup() {
   ( CDPATH='' cd -- "$repo_root" \
       && KE_SBOM_IN="$out/images" KE_SBOM_OUT="$sbom_work" KE_SBOM_USER="$sbom_user" \
@@ -396,7 +410,7 @@ hostpath() { if command -v cygpath > /dev/null 2>&1; then cygpath -m -- "$1"; el
 for ref in "${refs[@]}"; do
   name="${ref_name[$ref]}"
   work="$sbom_work/$name"
-  # mkdir -m fails under Git Bash on NTFS (L-13); create, then chmod.
+  # mkdir -m fails under Git Bash on NTFS (cannot change permissions); create, then chmod.
   mkdir -- "$work" "$work/tmp" || die "cannot create the SBOM work dir for image $name"
   chmod 0700 -- "$work" "$work/tmp" || die "cannot restrict the SBOM work dir for image $name"
   MSYS_NO_PATHCONV=1 \

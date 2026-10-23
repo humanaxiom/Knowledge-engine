@@ -1,0 +1,101 @@
+# platform-sbom U4 rework r1: security re-check probes (2026-10-23)
+# Scripts ran from a scratch dir (<scratch>), python -I; containers labelled ke-sec-u4r1-probe, --rm or removed.
+
+## Probe A: independent recount from tests/fixtures/sbom-u3 (byte copies of u3/sboms/*.pkgs.tsv, cmp-checked)
+# own parser, not sbom_check.py; DESCRIBES/pkg:oci root excluded; hash = LicenseRef-[0-9a-f]{64} fullmatch
+ke-app      total= 153 unlicensed= 19 hash-only= 18 rows-with-any-hash= 18 mixed-in-expr=0 cross-field=0 uppercase-hash=0
+ke-gateway  total=  71 unlicensed=  0 hash-only=  0 rows-with-any-hash=  0 mixed-in-expr=0 cross-field=0 uppercase-hash=0
+neo4j       total= 341 unlicensed= 28 hash-only=  9 rows-with-any-hash=  9 mixed-in-expr=0 cross-field=0 uppercase-hash=0
+phoenix     total= 277 unlicensed= 35 hash-only= 10 rows-with-any-hash= 10 mixed-in-expr=0 cross-field=0 uppercase-hash=0
+postgres    total= 149 unlicensed= 25 hash-only= 22 rows-with-any-hash= 22 mixed-in-expr=0 cross-field=0 uppercase-hash=0
+valkey      total=  24 unlicensed=  1 hash-only=  0 rows-with-any-hash=  0 mixed-in-expr=0 cross-field=0 uppercase-hash=0
+# hex-like LicenseRef ids of any length >= 8, by length:
+     59 64
+
+## Probe B: always entries vs real package lists (own matcher)
+valkey     pkg:apk/alpine/busybox            1  busybox
+valkey     pkg:apk/alpine/apk-tools          1  apk-tools
+valkey     pkg:apk/alpine/ssl_client         1  ssl_client
+ke-gateway pkg:apk/alpine/busybox            1  busybox
+ke-gateway pkg:apk/alpine/apk-tools          1  apk-tools
+ke-gateway pkg:apk/alpine/ssl_client         1  ssl_client
+neo4j      pkg:generic/oracle/openjdk        1  openjdk
+neo4j      pkg:maven/org.neo4j/neo4j         1  neo4j
+neo4j      upstream=glibc                    4  libc-bin, libc-dev-bin, libc6, libc6-dev
+ke-app     pkg:pypi/psycopg                  1  psycopg
+ke-app     pkg:pypi/psycopg-c                1  psycopg-c
+ke-app     upstream=glibc                    2  libc-bin, libc6
+ke-app     upstream=openldap                 1  libldap-2.5-0
+ke-app     upstream=cyrus-sasl2              2  libsasl2-2, libsasl2-modules-db
+postgres   upstream=glibc                    4  libc-bin, libc-l10n, libc6, locales
+phoenix    upstream=glibc                    2  libc-bin, libc6
+valkey     upstream=busybox                  2  busybox-binsh, ssl_client
+valkey     upstream=apk-tools                1  libapk
+ke-gateway upstream=busybox                  2  busybox-binsh, ssl_client
+ke-gateway upstream=apk-tools                1  libapk
+neo4j      pkg:maven/jrt-fs/jrt-fs           1  jrt-fs
+neo4j      upstream=gcc-14                   3  gcc-14-base, libgcc-s1, libstdc++6
+ke-app     upstream=gcc-12                   3  gcc-12-base, libgcc-s1, libstdc++6
+postgres   upstream=gcc-12                   3  gcc-12-base, libgcc-s1, libstdc++6
+phoenix    upstream=gcc-14                   4  gcc-14-base, libgcc-s1, libgomp1, libstdc++6
+
+## Probe C: sbom_check.py edge cases (hash rule, escaping)
+'LicenseRef-ababababababababababababababa'     missing=True
+'(LicenseRef-abababababababababababababab'     missing=True
+'LicenseRef-ababababababababababababababa'     missing=True
+'LicenseRef-ababababababababababababababa'     missing=True
+'LicenseRef-ababababababababababababababa'     missing=True
+' LicenseRef-abababababababababababababab'     missing=True
+'MIT AND LicenseRef-ababababababababababa'     missing=False
+'MIT OR LicenseRef-ababababababababababab'     missing=False
+'LicenseRef-ababababababababababababababa'     missing=False
+'LicenseRef-aaaaaaaaaaaaaaaaaaaaaaaaaaaaa'     missing=False
+'LicenseRef-ABABABABABABABABABABABABABABA'     missing=False
+'LicenseRef-ababababababababababababababa'     missing=False
+'DocumentRef-x:LicenseRef-abababababababa'     missing=False
+'WITH'                                         missing=False
+''                                             missing=True
+'NOASSERTION'                                  missing=True
+'AND'                                          missing=False
+'()'                                           missing=False
+'neo4j: unlicensed packages (no licence, NOASSERTION or unidentified text): 2 (none: 2)'
+'neo4j:   SPDXRef-a evil\\x1b[2J\\x9b31m\\x85\\x7f\u2028x (no purl) (unidentified licence text)'
+'neo4j:   SPDXRef-c c (no purl) (unidentified licence text)'
+
+## Probe D: tmpfs of the real sbom service (docker-compose.sbom.yml + override of image/entrypoint/command only -> bash:5.2)
+# override: <scratch>/tmpfs-probe/override.yml; KE_SBOM_USER = caller uid:gid; no syft run
+    tmpfs:
+      - /tmp:mode=1777
+uid=197610 gid=197121 groups=197121
+2584 2575 0:457 / /tmp rw,nosuid,nodev,noexec,relatime - tmpfs tmpfs rw
+tmp mode 1777 owner 0
+mkdir /tmp/cache ok
+sh: /tmp/bb: Permission denied
+exec denied on /tmp
+root read-only
+CapEff:	0000000000000000
+NoNewPrivs:	1
+lo
+# leftover labelled containers:
+0
+
+## Probe E: Debian copyright files read from the vendored images (sh -c grep, --rm, --network none, read-only; phoenix via create/cp/rm)
+postgres base-files             gpl/lgpl lines=3   GNU General Public License as published by|GNU General Public License for more details|
+postgres debian-archive-keyring gpl/lgpl lines=5   GNU General Public License for more details|GNU General Public License with|
+postgres libselinux1            gpl/lgpl lines=7   GNU General Public License,|GNU Lesser General Public License as published by the|
+postgres libkrb5-3              gpl/lgpl lines=7   GNU General Public License ("GPL") version 2 or any|GNU General Public License|
+postgres libxslt1.1             gpl/lgpl lines=0   
+postgres libsemanage2           gpl/lgpl lines=6   GNU General Public License is also available at|
+postgres libksba8               gpl/lgpl lines=14  GNU Lesser General Public License as published by the Free|GNU General Public License as published by the Free|
+postgres libgcrypt20            gpl/lgpl lines=21  GNU General Public License (GPL); see the|GNU Lesser General Public License as|
+postgres libtasn1-6             gpl/lgpl lines=10  GNU General Public License as published by|GNU General Public License for more details|
+postgres libgnutls30            gpl/lgpl lines=91  GNU General Public License version 3+|GNU Lesser General Public License|
+postgres libcrypt1              gpl/lgpl lines=5   
+postgres gcc-12-base            gpl/lgpl lines=48  GNU General Public License as published by the Free|GNU General Public License|
+Copyright: (C) 2007 Free Software Foundation, Inc.
+
+Released under the terms of the GPL; see
+/usr/share/common-licenses/GPL-3.
+-rwxr-xr-x 1 root root 482672 Mar  8  2025 /usr/bin/wget
+phoenix python3.13-minimal copyright: PSF stack; GPL-2+ text for the readline module note and the Documentation block (lines 548-554, 796-799); libcrypt1: LGPL-2.1+ overall (line 14)
+phoenix pandas-2.3.3.dist-info (create/export listing/cp/rm): LICENSE line 1 "BSD 3-Clause License"; METADATA "License: BSD 3-Clause License"; its GPL mentions (l.629-832) are the bundled CPython PSF history table only

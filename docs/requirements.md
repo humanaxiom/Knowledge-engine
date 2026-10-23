@@ -3381,6 +3381,8 @@ full what it contains.
   - When `bundle.sh` builds a bundle, it writes one SPDX 2.3 JSON document
     for each image in `bundle.json`: `ke-app`, `ke-gateway` and every
     third-party stack image (postgres, neo4j, valkey, phoenix).
+    From U4b the neo4j document is `ke-neo4j`'s, a first-party image
+    (PSC-26). *(Amended 2026-10-23, analyst, Q67.)*
   - Each is generated offline, at bundle time, from the image tar the bundle
     ships: no network, no pull and no Docker socket in the generator
     container. The generator image is pinned by digest, with its provenance
@@ -3552,6 +3554,10 @@ full what it contains.
     untracked file would leave `NOTICE.md` naming a file the bundle lacks
     (security I-4, review N12).
     `[unit: test_notice_named_licence_files_are_tracked]`. *(Amended 2026-10-23, analyst, U1 round 3.)*
+  - `NOTICE.md`'s neo4j row (PS-3.8, not a `ke-app` criterion) names the
+    official image by its digest and says "used unmodified". U4b (PSC-26,
+    *Notices*) updates that row. PSC-14's `ke-app` criteria are unchanged.
+    *(Amended 2026-10-23, analyst, Q67.)*
 - **PSC-15 GPL source offers, built now (Q58).**
   - *Obligations to meet.*
     - **GPL-2.0 §3.** Whoever distributes the object code must do one of:
@@ -3769,6 +3775,75 @@ full what it contains.
     Libtool exceptions). Units U5/U6 give each of them a `deb` source entry
     or an exemption whose reason security has reviewed, whatever licence
     the generator reports for them. *(Amended 2026-10-23, analyst, U1 review.)*
+  - *Hash-only licences (security H-1).* syft writes `LicenseRef-` plus 64
+    hex characters (a hash of licence text it could not identify) as the
+    only id on some rows: 59 at U4's digests, wget (GPL-3) in neo4j and the
+    GCC runtime among them. A licence expression made only of ids matching
+    `LicenseRef-[0-9a-f]{64}` (exact, case-sensitive) counts as unlicensed,
+    like absent, `""`, `NONE` and `NOASSERTION`. An expression that also
+    holds any other id is not. Such packages are listed in the unlicensed
+    report with the rest, and security reviews them; any it finds
+    GPL-family needs a source entry or a reviewed exemption. The U5
+    classifier (design notes N8) treats such ids as unknown and lists them
+    for security; it never reads them as a licence. *(Amended 2026-10-23, analyst, U4 review.)*
+    - Security's probe expects, at U4's digests: `ke-app` 19, `ke-gateway`
+      0, neo4j 28, phoenix 35, postgres 25, valkey 1. The real run's counts
+      are recorded under `docs/evidence/platform-sbom/u4/`; a difference is
+      explained there, not accepted silently.
+    - `[unit: test_hash_only_licences_count_as_unlicensed]`,
+      `[unit: test_hash_rows_marked_unidentified_in_report_lines]`,
+      `[unit: test_real_package_lists_report_hash_only_rows]` (fast,
+      stubbed; `tests/test_sbom_obligations.py`, `ReworkR1UnlicensedTest`)
+      cover a row declared only `LicenseRef-<64 hex>` (reported). Controls:
+      a row declared `MIT AND LicenseRef-<64 hex>` is not reported, and
+      neither is a row declared `LicenseRef-<63 hex>` or a non-hash
+      `LicenseRef-<name>`. `test_unlicensed_packages_are_reported` keeps
+      its PSC-22 scope and gains no hash row. *(Amended 2026-10-23, analyst, U4 review R1.)*
+    - *Carried to the U5 classifier (security U4 L-4).* "Hash-only counts
+      as unlicensed" is for the report only. For classification a
+      hash-only id is a set field holding an unknown id, never "missing":
+      a row declared `LicenseRef-<64 hex>` and concluded `MIT` still needs
+      a source entry or a reviewed exemption. `NONE` or `NOASSERTION`
+      inside a compound expression (for example `MIT AND NOASSERTION`)
+      counts as unknown, not as absent. Unit U5. *(Amended 2026-10-23, analyst, U4 review R1.)*
+  - *`always` additions (security M-1, M-2, L-1).* `docker/source-policy.json`'s
+    `always` list also holds the entries below, so the PSC-15 source check
+    covers them whatever licence the generator reports. Each needs a
+    `sources/` entry (U7) or an exemption whose reason security has
+    reviewed (U6). *(Amended 2026-10-23, analyst, U4 review.)*
+    - The GCC runtime (GPL-3.0-or-later with the GCC Runtime Library
+      Exception): `upstream=gcc-12` in `ke-app` and postgres, and
+      `upstream=gcc-14` in neo4j and phoenix (M-1).
+    - neo4j's `jrt-fs` (`pkg:maven/jrt-fs/jrt-fs`, the Temurin JDK's own
+      `jrt-fs.jar`, GPL-2.0 with the Classpath Exception), tied to the
+      Temurin OpenJDK's source entry (M-2).
+    - `upstream=busybox` and `upstream=apk-tools` wherever busybox and
+      apk-tools ship (valkey, `ke-gateway`), which catch `busybox-binsh`
+      and `libapk`. The exact-name busybox and apk-tools entries stay,
+      because those packages carry no upstream qualifier (L-1).
+    - Every `always` entry, these included, matches at least one package
+      in its image's real SBOM (the U4 check of `always` against the real
+      SBOMs covers them). From U4b the neo4j entries name `ke-neo4j`
+      (PSC-26).
+  - *Report output is escaped (security L-3).* The unlicensed report, and
+    every other line `bundle.sh` prints from an SBOM's `name` or purl,
+    prints no C0 or C1 control character (U+0000-U+001F, U+007F-U+009F)
+    as-is; each is escaped, and the row stays identifiable.
+    `[unit: test_report_lines_escape_control_characters]` (fast,
+    stubbed, `ReworkR1UnlicensedTest`: a row whose name holds an ESC
+    sequence; the output holds no raw control character and names the
+    row), with `[unit: test_bundle_output_marks_unidentified_and_escapes_generator_text]`
+    (fast, fake docker, `ReworkR1BundleTest`) for the bundle output. *(Amended 2026-10-23, analyst, U4 review.)* *(Amended 2026-10-23, analyst, U4 review R1.)*
+  - *Carried to U5 (security U4 L-5, review U4 R2).* In
+    `scripts/sbom_check.py`, `validate`'s SPDXID check matches the whole
+    id (a full match, so no trailing newline or other suffix passes), and
+    the drift and psycopg problem lines escape generator text through
+    `_clean`, as the report lines do (L-3). Unit U5. *(Amended 2026-10-23, analyst, U4 review R1.)*
+  - *Re-review on a generator change (security U4 I-4).* A new syft image
+    digest in `docker-compose.sbom.yml` triggers a PSC-22 re-review by
+    security, as a changed image digest or lock does: the unlicensed and
+    hash-only counts per image and the `always` matches are re-run and the
+    differences explained in the evidence. *(Amended 2026-10-23, analyst, U4 review R1.)*
 - **PSC-23 The source fetch is a named, bounded network step (added
   2026-10-22, analyst).**
   - SBOM generation stays offline (Q57); the fetch is the item's only new
@@ -3916,6 +3991,122 @@ full what it contains.
       check in the real image).
     - The stack smoke, `[gate: image-scan]` and the two PS-2.5
       gssencmode tests stay green.
+- **PSC-26 A first-party neo4j image without the commercial plugin (Q67,
+  unit U4b).** *(Added 2026-10-23, analyst, Q67.)* Human ruling A67 (2026-10-23): the bundle
+  ships our own neo4j image, not the official one. The official image
+  carries `com.neo4j/neo4j-fleet-management-plugin` 1.2.0 in
+  `/var/lib/neo4j/products`. It is inactive by default, and its notice
+  prohibits use without a commercial licence with Neo4j, Inc. (U4 security
+  M-3). Unit U4b comes after U4 (PSC-22) and before U5. The criteria say
+  `ke-neo4j`; if the architect names the image otherwise, they apply to
+  that name.
+  - *Build.* A new Dockerfile (`docker/neo4j.Dockerfile`, or the
+    architect's name) builds from `neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b`, pinned by its full digest. It
+    removes `/var/lib/neo4j/products` and ends with a flattened last
+    stage, `FROM scratch` + `COPY --from=<stage> / /`, as `ke-app` does
+    (N10a), so the plugin is in no layer. It installs no package and
+    changes no other file. *(Added 2026-10-23, analyst, Q67.)*
+  - *Tags.* *(Added 2026-10-23, analyst, Q67.)*
+    - Compose: `ke-neo4j:${KE_IMAGE_TAG:-local}`, as `ke-app` and `ke-gateway`.
+    - `scripts/verify.sh full`: `ke-neo4j:wt-<12 hex>` (the
+      `KE_IMAGE_TAG` that `scripts/image_tag.sh` gives).
+    - Bundle: `ke-neo4j:bundle-<first 12 hex of the git sha>`, saved as
+      `ke-neo4j.tar`, with its SBOM at `app/sboms/ke-neo4j.spdx.json`.
+  - *Image config carried over.* `FROM scratch` drops the base's config,
+    so the last stage declares again everything the official image sets.
+    In `docker image inspect`, `ke-neo4j`'s `Config.Entrypoint`,
+    `Config.Cmd`, `Config.Env` (`NEO4J_HOME`, `PATH`, `JAVA_HOME` and every
+    other entry), `Config.User`, `Config.WorkingDir`,
+    `Config.ExposedPorts`, `Config.Volumes`, `Config.Healthcheck` and
+    `Config.StopSignal` equal the pinned official image's, for the same
+    architecture. A field the official image leaves unset stays unset. A
+    field that must differ is named in the ADR with its reason and pinned
+    by the test; none is expected. *(Added 2026-10-23, analyst, Q67.)*
+  - *File tree.* Every path in the official image outside
+    `/var/lib/neo4j/products` is in `ke-neo4j` with the same type, owner,
+    group, mode and (for a symlink) target, and `ke-neo4j` adds no path.
+    This keeps the entrypoint's user switch and its ownership of `/data`
+    working. *(Added 2026-10-23, analyst, Q67.)*
+  - *Plugin absent.* No `/var/lib/neo4j/products` path and no file whose
+    name contains `neo4j-fleet-management-plugin` is in the image, nor in
+    any layer of `ke-neo4j.tar` as `bundle.sh` saves it. Every layer the
+    tar's `manifest.json` lists is checked, and a whiteout entry for
+    `products` also fails: the jar must be gone from the tar, not hidden.
+    *(Added 2026-10-23, analyst, Q67.)*
+  - *SBOM.* `app/sboms/ke-neo4j.spdx.json` lists no
+    `com.neo4j/neo4j-fleet-management-plugin` package (any version, by
+    purl or by name). It still lists Neo4j Community (`org.neo4j/neo4j`)
+    and the Temurin OpenJDK. *(Added 2026-10-23, analyst, Q67.)*
+  - *Bundled as first-party.* `bundle.json` lists
+    `ke-neo4j:bundle-<sha12>`. No `neo4j:5-community` reference, no
+    `ke-vendor/neo4j:*` image and no `neo4j.tar` is in the bundle, so the
+    official image, plugin included, does not ship beside it. The offline
+    install (PS-3, PSC-19) loads `ke-neo4j` from its tar and brings neo4j
+    up healthy. *(Added 2026-10-23, analyst, Q67.)*
+  - *Compose and vendoring.* *(Added 2026-10-23, analyst, Q67.)*
+    - `docker-compose.yml`'s neo4j service uses
+      `image: ke-neo4j:${KE_IMAGE_TAG:-local}` with a `build:` that names the new
+      Dockerfile. The service name stays `neo4j`, and its environment,
+      volumes, networks, the `depends_on` edges to it and its healthcheck
+      are unchanged.
+    - The official reference leaves `docker-compose.yml`. In the repo's
+      build inputs it appears only as the new Dockerfile's `FROM`.
+      `scripts/build.sh` and `scripts/build.ps1` build `ke-neo4j` with the
+      other first-party images, and `pull --ignore-buildable` no longer
+      pulls the official image as a stack image; the build fetches it by
+      digest.
+    - The neo4j `always` entries in `docker/source-policy.json` (PSC-22)
+      name `ke-neo4j`, and each still matches a package in its SBOM.
+  - *Not scanned in U4b (Q68).* U4b does not add `ke-neo4j` to the image
+    scan: `scripts/scan.sh` still scans `ke-app` only, as today, and
+    `ke-gateway` and the vendored images are not scanned either (A68,
+    orchestrator, 2026-10-23). Scanning every bundled image is a follow-up
+    for the human ("Follow-ups (not in platform-sbom)", "Scan every bundled
+    image"). *(Amended 2026-10-23, analyst, Q68.)*
+  - *Notices.* `NOTICE.md`'s neo4j row names `ke-neo4j`, built from the
+    pinned official image (its full digest) with `/var/lib/neo4j/products`
+    (the commercially licensed fleet-management plugin) removed. Neo4j
+    Community 5.26.32 itself is unmodified, so the row says that instead
+    of "used unmodified" for the image. The licence (GPL-3.0), the
+    `LICENSE.txt` path, the upstream source and `licenses/GPL-3.0.txt`
+    stay. The notices tests that find the row by the compose vendor
+    reference (`test_notices_neo4j_has_source_url` and the vendor-row
+    tests in `tests/test_offline_bundle.py`) are re-targeted to the new
+    Dockerfile's base pin, and the notices run (PS-3.8) stays green. *(Added 2026-10-23, analyst, Q67.)*
+  - *Stack still works.* The stack smoke in `full` passes: neo4j's compose
+    healthcheck passes, and the api's `/readyz` reports neo4j ready. *(Added 2026-10-23, analyst, Q67.)*
+  - *Windows (A34).* A new Dockerfile and a compose change, so the A34
+    Windows proof (the PS-2.9 PowerShell `build.ps1`, `launch.ps1` and
+    `teardown.ps1` run, plus `scripts/verify.sh fast` on Windows) is
+    recorded in `docs/evidence/platform-sbom/u4b/windows-run.txt` before
+    the unit commits. It must match the branch head, or the diff since
+    must touch none of the A34 files. *(Added 2026-10-23, analyst, Q67.)*
+  - *arm64.* The config, file-tree, plugin-absence and SBOM checks run on
+    the arm64 `ke-neo4j` in the next recorded arm64 run (PSC-21). *(Added 2026-10-23, analyst, Q67.)*
+  - Tests: *(Added 2026-10-23, analyst, Q67.)*
+    - `[unit: test_neo4j_dockerfile_pins_base_and_removes_products]`
+      (fast, static check of the new Dockerfile): `FROM` the full pinned
+      digest; `/var/lib/neo4j/products` removed; a `FROM scratch` last
+      stage that copies the whole root from the build stage; no package
+      install. Controls: a fixture without the removal fails, so does one
+      whose last stage is the official image, and so does an unpinned
+      `FROM`.
+    - `[unit: test_neo4j_dockerfile_redeclares_base_config]` (fast,
+      static): the last stage declares ENTRYPOINT, CMD, ENV, WORKDIR,
+      EXPOSE and VOLUME (and USER, HEALTHCHECK and STOPSIGNAL where the
+      official image sets them). Control: a fixture missing one fails.
+    - `[unit: test_compose_neo4j_uses_first_party_image]` (fast): the
+      neo4j service's image is `ke-neo4j:${KE_IMAGE_TAG:-local}`, its `build:` names the
+      new Dockerfile, and no `neo4j:5-community` reference is in
+      `docker-compose.yml`.
+    - `[full: ke-neo4j config matches the pinned official image]`
+      (`docker image inspect` of both).
+    - `[full: ke-neo4j file tree equals the official image minus products]`.
+    - `[full: ke-neo4j has no fleet-management plugin in image or saved tar]`.
+    - `[full: ke-neo4j SBOM lists no fleet-management plugin]` (the SBOM
+      `offline_check.sh`'s bundle writes).
+    - The stack smoke, the notices run and `[gate: image-scan]` (still
+      `ke-app` only, Q68) stay green. *(Amended 2026-10-23, analyst, Q68.)*
 
 TDD order: PSC-14 → PSC-13 → PSC-15 → PSC-16. *Proposed by the analyst
 (2026-10-22), for the architect to confirm:* PSC-14 → PSC-20 → PSC-13 →
@@ -3925,6 +4116,7 @@ PSC-25 → PSC-14 → PSC-20 → PSC-13 → PSC-22 → PSC-15 → PSC-23 → PSC
 PSC-19 → PSC-16, with PSC-21 at the next recorded arm64 run. Gate: `scripts/verify.sh full`; a recorded Windows
 run under A34 if the item changes Dockerfiles, compose files or a
 PowerShell script (`install.ps1` included, Q45).
+U4b (PSC-26) runs after U4 (PSC-22) and before U5. *(Added 2026-10-23, analyst, Q67.)*
 
 ### Follow-ups (not in platform-sbom)
 
@@ -3933,6 +4125,16 @@ PowerShell script (`install.ps1` included, Q45).
   `.pyc` files in the shipped stage. They are root-owned 0644 and not
   writable by `ke`, so they are harmless. Running `python -B` in that
   `RUN` would avoid them. Not a U1 criterion. *(Amended 2026-10-23, analyst, U1 round 3.)*
+- **Scan every bundled image (Q68; for the human).** Today
+  `scripts/scan.sh` scans only `ke-app`; `ke-gateway`, `ke-neo4j` (PSC-26)
+  and the vendored images (postgres, valkey, phoenix) are not scanned
+  (A68). The follow-up decides whether to scan every bundled image, in
+  report-only mode (a new mode, which changes the Q42 policy) or in fail
+  mode (PSC-4 and PSC-5, where a finding only an upstream digest bump can
+  fix turns `full` red until the bump or a time-limited ignore entry). The
+  added scan time and disk are measured on CI first (as PSC-16), and the
+  human rules with that measurement. Not a platform-sbom criterion.
+  *(Added 2026-10-23, analyst, Q68.)*
 
 ---
 

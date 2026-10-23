@@ -1,0 +1,134 @@
+sbom_check: ke-app: unlicensed packages (no licence, NOASSERTION or unidentified text): 19 (deb: 18, generic: 1)
+sbom_check: ke-app:   pkg:deb/debian/base-files@12.4%2Bdeb12u15?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/debian-archive-keyring@2023.3%2Bdeb12u2?arch=all&distro=debian-12.15 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/gcc-12-base@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libc-bin@2.36-9%2Bdeb12u14?arch=amd64&distro=debian-12.15&upstream=glibc (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libc6@2.36-9%2Bdeb12u14?arch=amd64&distro=debian-12.15&upstream=glibc (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libcrypt1@1%3A4.4.33-2?arch=amd64&distro=debian-12.15&upstream=libxcrypt (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libgcc-s1@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libgcrypt20@1.10.1-3%2Bdeb12u1?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libgnutls30@3.7.9-2%2Bdeb12u7?arch=amd64&distro=debian-12.15&upstream=gnutls28 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libgssapi-krb5-2@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libk5crypto3@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libkrb5-3@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libkrb5support0@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libselinux1@3.4-1%2Bb6?arch=amd64&distro=debian-12.15&upstream=libselinux%403.4-1 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libsemanage-common@3.4-1?arch=all&distro=debian-12.15&upstream=libsemanage (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libsemanage2@3.4-1%2Bb5?arch=amd64&distro=debian-12.15&upstream=libsemanage%403.4-1 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libstdc%2B%2B6@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libtasn1-6@4.19.0-2%2Bdeb12u1?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: ke-app:   pkg:generic/python@3.12.15
+ Container ke-offline-3040121049-sbom-sbom-run-abfc4b02c7c0 Creating 
+ Container ke-offline-3040121049-sbom-sbom-run-abfc4b02c7c0 Created 
+sbom_check: ke-gateway: unlicensed packages (no licence, NOASSERTION or unidentified text): 0
+ Container ke-offline-3040121049-sbom-sbom-run-4ab0d95af000 Creating 
+ Container ke-offline-3040121049-sbom-sbom-run-4ab0d95af000 Created 
+sbom_check: neo4j: unlicensed packages (no licence, NOASSERTION or unidentified text): 28 (deb: 9, generic: 1, maven: 18)
+sbom_check: neo4j:   pkg:maven/net.sourceforge.argparse4j/argparse4j@0.9.0
+sbom_check: neo4j:   pkg:maven/org.apache.commons/commons-lang3@3.18.0
+sbom_check: neo4j:   pkg:maven/org.apache.commons/commons-text@1.10.0
+sbom_check: neo4j:   pkg:deb/debian/debian-archive-keyring@2025.1?arch=all&distro=debian-13.7 (unidentified licence text)
+sbom_check: neo4j:   pkg:deb/debian/gcc-14-base@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14 (unidentified licence text)
+sbom_check: neo4j:   pkg:maven/com.github.seancfoley.ipaddress/ipaddress@5.5.1
+sbom_check: neo4j:   pkg:maven/jrt-fs/jrt-fs@21.0.12.1
+sbom_check: neo4j:   pkg:maven/org.bitbucket.inkytonik.kiama/kiama_2.13@2.5.1
+sbom_check: neo4j:   pkg:deb/debian/libcrypt-dev@1%3A4.4.38-1?arch=amd64&distro=debian-13.7&upstream=libxcrypt (unidentified licence text)
+sbom_check: neo4j:   pkg:deb/debian/libcrypt1@1%3A4.4.38-1?arch=amd64&distro=debian-13.7&upstream=libxcrypt (unidentified licence text)
+sbom_check: neo4j:   pkg:deb/debian/libgcc-s1@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14 (unidentified licence text)
+sbom_check: neo4j:   pkg:deb/debian/libgnutls30t64@3.8.9-3%2Bdeb13u4?arch=amd64&distro=debian-13.7&upstream=gnutls28 (unidentified licence text)
+sbom_check: neo4j:   pkg:deb/debian/libstdc%2B%2B6@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14 (unidentified licence text)
+sbom_check: neo4j:   pkg:deb/debian/libtasn1-6@4.20.0-2%2Bdeb13u1?arch=amd64&distro=debian-13.7 (unidentified licence text)
+sbom_check: neo4j:   pkg:maven/com.softwaremill.magnolia1_2/magnolia_2.13@1.1.8
+sbom_check: neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection@12.0.0
+sbom_check: neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection-netty@12.0.0
+sbom_check: neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection-pooled@12.0.0
+sbom_check: neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection-routed@12.0.0
+sbom_check: neo4j:   pkg:maven/org.neo4j/neo4j-cypher-dsl@2024.2.0
+sbom_check: neo4j:   pkg:maven/com.neo4j/neo4j-fleet-management-plugin@1.2.0
+sbom_check: neo4j:   pkg:generic/oracle/openjdk@21.0.12.1%2B1-LTS?repository_url=https%3A%2F%2Fgithub.com%2Fadoptium%2Fjdk21u.git
+sbom_check: neo4j:   pkg:maven/picocli/picocli@4.7.6
+sbom_check: neo4j:   pkg:maven/org.reactivestreams/reactive-streams@1.0.4
+sbom_check: neo4j:   pkg:maven/org.scala-lang.modules/scala-collection-contrib_2.13@0.3.0
+sbom_check: neo4j:   pkg:maven/org.slf4j/slf4j-api@2.0.11
+sbom_check: neo4j:   pkg:deb/debian/wget@1.25.0-2?arch=amd64&distro=debian-13.7 (unidentified licence text)
+sbom_check: neo4j:   pkg:maven/net.openhft/zero-allocation-hashing@0.27ea1
+ Container ke-offline-3040121049-sbom-sbom-run-3edf71aa3879 Creating 
+ Container ke-offline-3040121049-sbom-sbom-run-3edf71aa3879 Created 
+sbom_check: phoenix: unlicensed packages (no licence, NOASSERTION or unidentified text): 35 (deb: 14, generic: 1, none: 8, pypi: 12)
+sbom_check: phoenix:   pkg:pypi/aiosqlite@0.22.1
+sbom_check: phoenix:   SPDXRef-Package-binary-cli-3c111f636ab23ae2 cli (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-cli-32-864fbd8df8eebeff cli-32 (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-cli-64-58d92fd2583882cf cli-64 (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-cli-arm64-6de49882b0a31d2a cli-arm64 (no purl)
+sbom_check: phoenix:   pkg:pypi/daytona-analytics-api-client@0.223.1
+sbom_check: phoenix:   pkg:pypi/daytona-analytics-api-client-async@0.223.1
+sbom_check: phoenix:   pkg:generic/deno@2.1.4
+sbom_check: phoenix:   pkg:pypi/exceptiongroup@1.3.1
+sbom_check: phoenix:   pkg:deb/debian/gcc-14-base@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14 (unidentified licence text)
+sbom_check: phoenix:   SPDXRef-Package-binary-gui-90e51b43c7a824a9 gui (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-gui-32-bf5cb4b4bc756f59 gui-32 (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-gui-64-54afa822a7647b6f gui-64 (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-gui-arm64-b70024c9a835570f gui-arm64 (no purl)
+sbom_check: phoenix:   pkg:pypi/httpx-ws@0.9.0
+sbom_check: phoenix:   pkg:pypi/jinja2@3.1.6
+sbom_check: phoenix:   pkg:deb/debian/libcrypt1@1%3A4.4.38-1?arch=amd64&distro=debian-13.7&upstream=libxcrypt (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libgcc-s1@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14
+sbom_check: phoenix:   pkg:deb/debian/libgomp1@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14
+sbom_check: phoenix:   pkg:deb/debian/libgssapi-krb5-2@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libk5crypto3@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libkrb5-3@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libkrb5support0@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libncursesw6@6.5%2B20250216-2?arch=amd64&distro=debian-13.7&upstream=ncurses
+sbom_check: phoenix:   pkg:deb/debian/libpython3.13-minimal@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libpython3.13-stdlib@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libstdc%2B%2B6@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14
+sbom_check: phoenix:   pkg:pypi/markdown-it-py@4.2.0
+sbom_check: phoenix:   pkg:pypi/obstore@0.11.1
+sbom_check: phoenix:   pkg:pypi/pandas@2.3.3 (unidentified licence text)
+sbom_check: phoenix:   pkg:pypi/protobuf-py-ext@0.1.1
+sbom_check: phoenix:   pkg:pypi/pyqwest@0.10.0
+sbom_check: phoenix:   pkg:deb/debian/python3.13-minimal@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/python3.13-venv@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13
+sbom_check: phoenix:   pkg:pypi/synchronicity@0.12.6
+ Container ke-offline-3040121049-sbom-sbom-run-3186e6f26313 Creating 
+ Container ke-offline-3040121049-sbom-sbom-run-3186e6f26313 Created 
+sbom_check: postgres: unlicensed packages (no licence, NOASSERTION or unidentified text): 25 (deb: 22, golang: 3)
+sbom_check: postgres:   pkg:deb/debian/base-files@12.4%2Bdeb12u15?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/debian-archive-keyring@2023.3%2Bdeb12u2?arch=all&distro=debian-12.15 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/gcc-12-base@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: postgres:   pkg:golang/github.com/moby/sys/user@v0.1.0
+sbom_check: postgres:   pkg:golang/github.com/tianon/gosu@v1.19.0
+sbom_check: postgres:   pkg:golang/golang.org/x/sys@v0.1.0
+sbom_check: postgres:   pkg:deb/debian/libc-bin@2.36-9%2Bdeb12u14?arch=amd64&distro=debian-12.15&upstream=glibc (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libc-l10n@2.36-9%2Bdeb12u14?arch=all&distro=debian-12.15&upstream=glibc (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libc6@2.36-9%2Bdeb12u14?arch=amd64&distro=debian-12.15&upstream=glibc (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libcrypt1@1%3A4.4.33-2?arch=amd64&distro=debian-12.15&upstream=libxcrypt (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libgcc-s1@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libgcrypt20@1.10.1-3%2Bdeb12u1?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libgnutls30@3.7.9-2%2Bdeb12u7?arch=amd64&distro=debian-12.15&upstream=gnutls28 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libgssapi-krb5-2@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libk5crypto3@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libkrb5-3@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libkrb5support0@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libksba8@1.6.3-2?arch=amd64&distro=debian-12.15&upstream=libksba (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libselinux1@3.4-1%2Bb6?arch=amd64&distro=debian-12.15&upstream=libselinux%403.4-1 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libsemanage-common@3.4-1?arch=all&distro=debian-12.15&upstream=libsemanage (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libsemanage2@3.4-1%2Bb5?arch=amd64&distro=debian-12.15&upstream=libsemanage%403.4-1 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libstdc%2B%2B6@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libtasn1-6@4.19.0-2%2Bdeb12u1?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libxslt1.1@1.1.35-1%2Bdeb12u4?arch=amd64&distro=debian-12.15&upstream=libxslt (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/locales@2.36-9%2Bdeb12u14?arch=all&distro=debian-12.15&upstream=glibc (unidentified licence text)
+ Container ke-offline-3040121049-sbom-sbom-run-0f6643a2460a Creating 
+ Container ke-offline-3040121049-sbom-sbom-run-0f6643a2460a Created 
+sbom_check: valkey: unlicensed packages (no licence, NOASSERTION or unidentified text): 1 (generic: 1)
+sbom_check: valkey:   pkg:generic/valkey@8.1.10
+bundle written: /c/repos/Knowledge-engine/dist/ke-offline-3040121049-amd64
+manifest sha256: 42dff48d7f16f72d55cc26c96b8e08ec2965c84fc688ce46bb5c89094044207b
+release record: /c/repos/Knowledge-engine/dist/ke-offline-3040121049-amd64.manifest.sha256
+offline: df after bundle
+Filesystem     1024-blocks      Used  Available Capacity Mounted on
+C:              3967116284 662765796 3304350488      17% /c
+ Container ke-offline-3040121049-sbom-run-eff17360ee1f Creating 
+ Container ke-offline-3040121049-sbom-run-eff17360ee1f Created 
+sbom_check: drift: ok: added libldap-2.5-0, libpq5, libsasl2-2, libsasl2-modules-db; no pip; CPython 3.12.15 (3 licence files); libpq5 15.19-0+deb12u1 (postgresql-15); psycopg-c 3.3.6, no psycopg-binary
+offline: image-side drift check: the ke-app SBOM matches its base (python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258)

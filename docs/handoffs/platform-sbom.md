@@ -103,11 +103,43 @@ it closes the M-NT1 remainder (no GPL source offer, incomplete SBOM). Branch:
 - A34 PASS (`u3/windows-run.txt`); verify full PASS 855 s.
 - Carry to U4: review N1 (sbom_check.py docstring), N2 (L-13 cite in a bundle.sh comment), N3 (design notes lack hostpath/MSYS), N4 (tests for cygpath/MSYS/chmod), N5/ruling (XDG_CACHE_HOME), N6 (disk floor on TMPDIR, or work dir next to --out), N7 (uv.lock map keyed by name), N9 (stale u3_controls anchors).
 - Tester finding (documenter): Windows build hosts need jq on PATH, and jq.exe needs `-b` (CRLF).
+- U3 committed 464fa11 (review APPROVED, security PASS, A34 PASS, orchestrator verify full PASS 856 s).
 
-## 2026-10-23 — orchestrator (U3 commit gate)
-- Review APPROVED (0 rework rounds; nits carried to U4), security PASS (M-1 resolved by
-  regenerating evidence from fresh images; redaction fixed), A34 PASS (bundle.sh wrote 6
-  valid SBOMs on Windows), ruling 5 decided (architect, implemented U4-U7).
-- Orchestrator verify full PASS 856 s (812 unit + 15 integration; offline_check 168 s,
-  was 95 s at U2: the SBOM stage adds ~73 s locally, PSC-16/Q62 measure on CI at U11).
-- Commit APPROVED: U3 (PSC-13). Next: U4 (PSC-22 + the carry list above).
+## U4 so far (PSC-22; detail: archive/platform-sbom-part6.md)
+- RED: 18 tests failing (all U4), reach PASS. GREEN: targets applied unchanged, verify fast PASS (832), full PASS (923 s); the real drift check passes on the ke-app SBOM.
+- Orchestrator rulings, points 1-8: (1) `always` key of docker/source-policy.json arrives at U4; (2) libldap/libsasl2 in ke-app only; (3) the unlicensed report is bundle.sh output (index at U9); (4) the architect confirms the third field (licenseInfoFromFiles); (5) the work dir is beside `--out` (`.ke-sbom.*` in dirname(--out)); (6) offline_check.sh pulls the base by pinned digest before the drift step, fail closed; (7) the base SBOM run inherits the offline project; (8) ADDED_PACKAGES read by AST from tests/test_notice_ke_app.py. No postgres `always` entries.
+- Q68 option 3 (orchestrator): ke-neo4j is not scanned in U4b; the scan-all-images follow-up goes to the human, with measured cost.
+- Human ruling Q67: build our own neo4j image without the commercial fleet plugin (U4b, PSC-26, design N16).
+- Review CHANGES REQUESTED: B1 (XDG_CACHE_HOME inert; add tmpfs `/tmp:mode=1777`), B2 (stale docstring at sbom_check.py l.30), N1-N8.
+- Security FAIL: H-1 (59 hash-only `LicenseRef-<64 hex>` rows escape the unlicensed report and N8); M-1 (gcc in `always`), M-2 (jrt-fs), M-3 (neo4j fleet jar, human), L-1 (busybox/apk-tools), L-3 (escape report lines).
+- Rework round 1 of 5 in progress. Architect decisions: H-1 rule in N8 (hash-only id = unlicensed in the report, unknown at U5); tmpfs `/tmp:mode=1777`; N5 floor on `--out` and `dirname(--out)`; the GCC runtime ships Debian source via the deb kind at U7 (no exemption).
+- Tester round-1 RED: 16 tests failing (all `ReworkR1*`), controls 61 rows / 0 unexpected, reach PASS (851). Expected real counts: ke-app 19, ke-gateway 0, neo4j 28, phoenix 35, postgres 25, valkey 1.
+- The U4 A34 proof (`u4/windows-run.txt`) is stale after the tmpfs change: re-run 2b and 3b.
+- Next: developer round-1 GREEN.
+
+## 2026-10-23 — developer (U4 rework GREEN)
+- Applied the 5 r1 targets unchanged (modes 755 kept); B2 already absent in the target; added the N8 comment above `sbom_cleanup`. No test changed.
+- verify fast PASS, verify full PASS (937 s); no "unable to get filesystem cache"; drift summary line present; unlicensed ke-app 19, gateway 0, neo4j 28, phoenix 35, postgres 25, valkey 1.
+- Evidence: u4/r1-green-verify-fast.txt, r1-green-verify-full.txt, r1-real-run-report.txt (security re-review). Next: reviewer + security; redo A34 2b/3b.
+
+## 2026-10-23 — security (U4 re-check)
+- PASS. Closed: H-1 (independent recount: 59 hash rows, none hidden; 19/0/28/35/25/1), M-1, M-2, L-1, L-2 (probe: /tmp is noexec,nosuid,nodev, mode 1777) and L-3. M-3 is with the human (Q67, U4b). Per-image unlicensed review: all six accepted, no new `always` needed (hash rows go to source via N8/U7 deb; krb5, libxslt1.1 and pandas may be exempted at U6).
+- Non-blocking for U5: L-4, so that declared `<hash>` + concluded `MIT` does not classify as MIT (pin it in N8 and add a test row). Carry: L-5, escape `validate`'s `sid` and drift's names with `_clean` and use `fullmatch`. Evidence: u4/security.md "Re-check", u4/r1-security-probes.txt.
+
+## 2026-10-23 — reviewer (U4 re-check)
+- APPROVED: B1, B2 and N1-N8 closed; H-1, M-1, M-2, L-1 and L-3 verified (25 `always` entries match the fixtures; fixtures equal the U3 blobs). Controls `r1 --base repo`: 61 rows, 0 unexpected. Full run: 0 cache warnings, summary line, counts 19/0/28/35/25/1.
+- Nits: R1 PSC-22 test names; R2 escaping (= security L-5); R3 stale `u4_controls.py` anchor. Detail in `u4/review.md` "Re-check"; A34 2b/3b still pending.
+
+## 2026-10-23 — tester (U4 rework Windows proof)
+- A34 PASS (`u4/r1-windows-run.txt`; project ke-tester-u4r1win, 28 files hashed, identical start/end). 2b: tmpfs `/tmp:mode=1777` resolves from Windows PowerShell. 3b: bundle.sh wrote 6 valid SBOMs; "unable to get filesystem cache" count 0 (the drift base run also 0); unlicensed ke-app 19, ke-gateway 0, neo4j 28, phoenix 35, postgres 25, valkey 1; drift `ok` summary line printed; controls exit 1. verify fast PASS (851). Teardown left nothing; the bundle tags were restored.
+- A tester sed bug in the first 3b count compare (it missed the by-type suffix) is recorded; the addendum re-ran the compare on the same raw output and the counts are equal. Next: reviewer + security verdicts, then orchestrator verify full.
+
+## 2026-10-23 — orchestrator (U4 commit gate)
+- Review APPROVED (re-check; R1 fixed in PSC-22, R2/R3 carried to U5), security PASS
+  (re-check: H-1 closed, all six unlicensed lists accepted; L-4, L-5, I-4 carried to
+  U5 in PSC-22), A34 re-proof PASS (0 cache warnings on Windows). Rework rounds 1 of 5.
+- Orchestrator verify full PASS 896 s (851 unit + 15 integration; drift ok; counts
+  19/0/28/35/25/1; 0 cache warnings; `u4/orchestrator-verify-full.txt`). Diff read.
+- Accepted: the 16-hex `LicenseRef-` row meets PSC-22's "non-hash LicenseRef" control;
+  a named-ref fixture row is a U5 nicety.
+- Commit APPROVED: U4 (PSC-22). Next: U4b (PSC-26 own neo4j image, design N16).

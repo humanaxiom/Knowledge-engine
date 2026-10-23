@@ -551,3 +551,23 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-23T13:39:53Z | tester | platform-sbom | U3 A34 Windows proof (sbom user:, bundle.sh SBOMs on Windows) | a34: PASS
 2026-10-23T13:41:13Z | documenter | platform-sbom | handoff split: U1 gate, U2, U3 to archive/platform-sbom-part5.md | docs: updated
 2026-10-23T13:55:32Z | orchestrator | platform-sbom | U3 gates judged: review APPROVED, security PASS, A34 PASS, verify full PASS 856 s; commit approved | smoke: PASS
+2026-10-23T13:55:43Z | developer | platform-sbom | committed U3 on agent/platform-sbom | commit: done
+2026-10-23T15:13:37Z | tester | platform-sbom | U4 RED: PSC-22 obligations, unlicensed report, image-side drift check, carry list | tdd red: 15 failing as expected
+2026-10-23T15:14:39Z | orchestrator | platform-sbom | U4 rulings: tester points 1-3,5,7,8 accepted; base image pulled by digest in offline_check before drift (point 6) | plan: rulings recorded
+2026-10-23T15:20:41Z | architect | platform-sbom | U4: rulings recorded (unlicensed rule, base pull, always, work dir) | plan: design amended
+2026-10-23T16:03:15Z | tester | platform-sbom | U4 RED re-target: base pull before bundle.sh (ruling 6, N1 am. U4), N8 type rule, N7 forked lock accepted | tdd red: 18 failing as expected
+2026-10-23T16:30:56Z | developer | platform-sbom | U4 GREEN: PSC-22 obligations, unlicensed report, base pull + drift check, carry list | tdd green: verify fast + full PASS
+2026-10-23T16:41:57Z | reviewer | platform-sbom | U4 review | review: changes requested
+2026-10-23T16:44:30Z | security | platform-sbom | U4 audit + unlicensed list review | security: FAIL (H-1 hash-only licences hidden)
+2026-10-23T16:53:43Z | tester | platform-sbom | U4 A34 Windows proof (XDG_CACHE_HOME, base pull, drift) | a34: PASS
+2026-10-23T18:00:26Z | orchestrator | platform-sbom | U4 review CHANGES REQUESTED + security FAIL H-1; human ruled M-3 build own neo4j (U4b); rework round 1 of 5 | security: fail (H-1)
+2026-10-23T18:04:52Z | analyst | platform-sbom | Q67 recorded; PSC-26 own neo4j image; PSC-22 H-1/always amends | plan: criteria amended
+2026-10-23T18:05:53Z | orchestrator | platform-sbom | Q68 ruled option 3: ke-neo4j not added to the scan in U4b; scan-all-images follow-up for the human | plan: ruling recorded
+2026-10-23T18:09:46Z | architect | platform-sbom | U4 rework design (H-1, tmpfs, N5, always) + U4b own neo4j image design | plan: design amended
+2026-10-23T18:41:16Z | tester | platform-sbom | U4 rework RED: H-1 hash-only licences, tmpfs mode, always gcc/jrt-fs/busybox/apk, L-3, nits | tdd red: 16 failing as expected
+2026-10-23T18:42:14Z | documenter | platform-sbom | handoff split: U3 gate + U4 to archive/platform-sbom-part6.md | docs: updated
+2026-10-23T19:09:08Z | developer | platform-sbom | U4 rework GREEN: H-1, tmpfs mode, always gcc/jrt-fs/busybox/apk, floor, nits | tdd green: verify fast + full PASS
+2026-10-23T19:20:08Z | security | platform-sbom | U4 re-check + unlicensed list review | security: PASS
+2026-10-23T19:21:13Z | reviewer | platform-sbom | U4 re-check | review: APPROVED
+2026-10-23T19:28:55Z | tester | platform-sbom | U4 rework A34 Windows proof (tmpfs mode=1777) | a34: PASS
+2026-10-23T19:44:56Z | orchestrator | platform-sbom | U4 gates judged: review APPROVED, security PASS, A34 PASS, verify full PASS 896 s; commit approved | smoke: PASS

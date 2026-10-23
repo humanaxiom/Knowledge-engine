@@ -26,8 +26,10 @@ services:
     user: ${KE_SBOM_USER:?set by scripts/bundle.sh}
     network_mode: none
     read_only: true
+    # mode=1777 (review B1): the syft image's /tmp is 0755 root and a tmpfs
+    # takes that mode, so syft's uid could not create its cache. No exec.
     tmpfs:
-      - /tmp
+      - /tmp:mode=1777
     cap_drop:
       - ALL
     security_opt:
@@ -42,6 +44,8 @@ services:
         target: /out
     environment:
       TMPDIR: /out/tmp
+      # Ruling 5 item 6 (design-notes N8a): syft's cache on the tmpfs, not /.cache.
+      XDG_CACHE_HOME: /tmp/cache
       SYFT_CHECK_FOR_APP_UPDATE: "false"
       SYFT_JAVA_USE_NETWORK: "false"
       SYFT_JAVA_RESOLVE_TRANSITIVE_DEPENDENCIES: "false"

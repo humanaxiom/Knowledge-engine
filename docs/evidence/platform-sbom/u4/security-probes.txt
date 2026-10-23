@@ -1,0 +1,56 @@
+security U4 probes, 2026-10-23. All containers: --rm --network none --read-only --cap-drop ALL,
+label ke.probe=security-u4; probe scripts mounted read-only from <scratch> (profile path redacted).
+
+1. Hash-only licences (H-1). U3 fresh package lists (u3/sboms/*.pkgs.tsv), rows whose concluded and
+   declared fields are only LicenseRef-<64 hex> or NOASSERTION (no mixed rows exist):
+   ke-app 18, ke-gateway 0, neo4j 9, phoenix 10, postgres 22, valkey 0 (59 total).
+   ke-app : base-files debian-archive-keyring gcc-12-base libc-bin libc6 libcrypt1 libgcc-s1 libgcrypt20
+            libgnutls30 libgssapi-krb5-2 libk5crypto3 libkrb5-3 libkrb5support0 libselinux1
+            libsemanage-common libsemanage2 libstdc++6 libtasn1-6
+   neo4j  : debian-archive-keyring gcc-14-base libcrypt-dev libcrypt1 libgcc-s1 libgnutls30t64 libstdc++6
+            libtasn1-6 wget
+   phoenix: gcc-14-base libcrypt1 libgssapi-krb5-2 libk5crypto3 libkrb5-3 libkrb5support0
+            libpython3.13-minimal libpython3.13-stdlib pandas python3.13-minimal
+   postgres: ke-app's 18 plus libc-l10n libksba8 libxslt1.1 locales (22)
+   Copyright files (docker run ... --entrypoint sh <image> grep):
+     neo4j /usr/share/doc/wget/copyright l.15-16: "Released under the terms of the GPL; see
+       /usr/share/common-licenses/GPL-3."  (/usr/bin/wget 482672 bytes)
+     postgres: libgcc-s1, libstdc++6: GPL-3+ text + "GCC RUNTIME LIBRARY EXCEPTION";
+       libgnutls30 GPLv3+/LGPL; libgcrypt20 GPL/LGPL; libtasn1-6 GPLv3+/LGPL; libksba8 GPLv3+/LGPL-3;
+       libcrypt1 GPL; libsemanage2 GPL; base-files GPL; debian-archive-keyring GPL.
+   N8 rule today: LicenseRef-<hex> is neither "missing" (U4 report) nor GPL by pattern or token (U5).
+
+2. always vs real package lists (scripts/sbom_check.py always_matches on u3/sboms/*.pkgs.tsv, oci root
+   dropped): valkey 3 (apk-tools busybox ssl_client), ke-gateway 3 (same), neo4j 6 (libc-bin
+   libc-dev-bin libc6 libc6-dev neo4j openjdk), ke-app 7 (libc-bin libc6 libldap-2.5-0 libsasl2-2
+   libsasl2-modules-db psycopg psycopg-c), postgres 4 (glibc x4), phoenix 2 (glibc x2); problems: none.
+   Not matched: busybox-binsh (upstream=busybox), libapk (upstream=apk-tools) in valkey and ke-gateway;
+   jrt-fs (JDK jar) in neo4j.
+
+3. neo4j unlicensed jars (docker create + docker cp, nothing run; zipfile read):
+   argparse4j, neo4j-bolt-connection*, neo4j-cypher-dsl: pom has no <licenses> (inherited from a parent
+   pom not in the jar). neo4j-fleet-management-plugin-1.2.0-v5.jar (/var/lib/neo4j/products):
+   licensing/commercial-notice.txt = "(c) Neo4j, Inc. All Rights Reserved. Use of this Software without
+   a proper commercial license with Neo4j, Inc. or its affiliates is prohibited." No LICENSES.txt in the jar.
+   jrt-fs.jar at /opt/java/openjdk/lib/jrt-fs.jar (the Temurin JDK's).
+   U3 -> U4 count: the U3 20 rows = the same 18 maven + openjdk + pkg:oci root; U4 drops the root.
+
+4. phoenix (python3.13, importlib.metadata): aiosqlite MIT, daytona-analytics-api-client(-async)
+   Apache-2.0 (LICENSE file), exceptiongroup MIT, httpx-ws MIT, jinja2 BSD, markdown-it-py MIT,
+   obstore MIT, pyqwest MIT, synchronicity Apache-2.0, protobuf-py-ext: no licence metadata
+   (bufbuild/protobuf-py; embedded CycloneDX of its Rust deps: MIT 10, MIT OR Apache-2.0 24,
+   Apache-2.0 1, Zlib 1, Unlicense OR MIT 1, Apache-2.0 OR BSL-1.0 1, Apache-2.0 WITH LLVM-exception 1,
+   (MIT OR Apache-2.0) AND Unicode-3.0 1). No-purl cli*/gui*.exe: setuptools 84.0.0 launchers.
+   deno: /usr/local/bin/deno (144904312 bytes), no pypi owner. Copyright: libgcc-s1, libgomp1 free-form
+   with GCC RUNTIME LIBRARY EXCEPTION; libncursesw6 DEP-5 BSD-3-clause, MIT/X11, X11;
+   python3.13-venv doc dir is a dangling symlink (no copyright file in the image).
+
+5. tmpfs mode (bash:5.2, --user 1000:1000; Docker 29.5.2, Compose v5.1.4):
+   syft image /tmp: drwxr-xr-x 0/0 (docker export). A tmpfs over an image dir takes that dir's mode:
+   --tmpfs /home -> 755 root, mkdir Permission denied; --tmpfs /home:mode=1777 -> 1777, mkdir ok.
+   Mount options either way: rw,nosuid,nodev,noexec; exec from the tmpfs denied.
+   grype (docker-compose.scan.yml) runs as root, so the same tmpfs works there.
+
+6. base_ref ERE: accepts name:tag@sha256:<64 hex>; refuses a leading '-', a two-line value, no tag,
+   no digest, ';rm', '$(id)', host:port. Accepts a registry-qualified host/p:tag@sha256 (same ref
+   BuildKit pulls). Dockerfile runtime FROM line ends in LF.

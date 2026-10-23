@@ -1,0 +1,58 @@
+offline: pulling the ke-app base (python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258)
+sbom_check: ke-app: unlicensed packages (no licence or NOASSERTION): 1 (generic: 1)
+sbom_check: ke-app:   pkg:generic/python@3.12.15
+sbom_check: ke-gateway: unlicensed packages (no licence or NOASSERTION): 0
+sbom_check: neo4j: unlicensed packages (no licence or NOASSERTION): 19 (generic: 1, maven: 18)
+sbom_check: neo4j:   pkg:maven/net.sourceforge.argparse4j/argparse4j@0.9.0
+sbom_check: neo4j:   pkg:maven/org.apache.commons/commons-lang3@3.18.0
+sbom_check: neo4j:   pkg:maven/org.apache.commons/commons-text@1.10.0
+sbom_check: neo4j:   pkg:maven/com.github.seancfoley.ipaddress/ipaddress@5.5.1
+sbom_check: neo4j:   pkg:maven/jrt-fs/jrt-fs@21.0.12.1
+sbom_check: neo4j:   pkg:maven/org.bitbucket.inkytonik.kiama/kiama_2.13@2.5.1
+sbom_check: neo4j:   pkg:maven/com.softwaremill.magnolia1_2/magnolia_2.13@1.1.8
+sbom_check: neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection@12.0.0
+sbom_check: neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection-netty@12.0.0
+sbom_check: neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection-pooled@12.0.0
+sbom_check: neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection-routed@12.0.0
+sbom_check: neo4j:   pkg:maven/org.neo4j/neo4j-cypher-dsl@2024.2.0
+sbom_check: neo4j:   pkg:maven/com.neo4j/neo4j-fleet-management-plugin@1.2.0
+sbom_check: neo4j:   pkg:generic/oracle/openjdk@21.0.12.1%2B1-LTS?repository_url=https%3A%2F%2Fgithub.com%2Fadoptium%2Fjdk21u.git
+sbom_check: neo4j:   pkg:maven/picocli/picocli@4.7.6
+sbom_check: neo4j:   pkg:maven/org.reactivestreams/reactive-streams@1.0.4
+sbom_check: neo4j:   pkg:maven/org.scala-lang.modules/scala-collection-contrib_2.13@0.3.0
+sbom_check: neo4j:   pkg:maven/org.slf4j/slf4j-api@2.0.11
+sbom_check: neo4j:   pkg:maven/net.openhft/zero-allocation-hashing@0.27ea1
+sbom_check: phoenix: unlicensed packages (no licence or NOASSERTION): 25 (deb: 5, generic: 1, none: 8, pypi: 11)
+sbom_check: phoenix:   pkg:pypi/aiosqlite@0.22.1
+sbom_check: phoenix:   SPDXRef-Package-binary-cli-3c111f636ab23ae2 cli (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-cli-32-864fbd8df8eebeff cli-32 (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-cli-64-58d92fd2583882cf cli-64 (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-cli-arm64-6de49882b0a31d2a cli-arm64 (no purl)
+sbom_check: phoenix:   pkg:pypi/daytona-analytics-api-client@0.223.1
+sbom_check: phoenix:   pkg:pypi/daytona-analytics-api-client-async@0.223.1
+sbom_check: phoenix:   pkg:generic/deno@2.1.4
+sbom_check: phoenix:   pkg:pypi/exceptiongroup@1.3.1
+sbom_check: phoenix:   SPDXRef-Package-binary-gui-90e51b43c7a824a9 gui (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-gui-32-bf5cb4b4bc756f59 gui-32 (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-gui-64-54afa822a7647b6f gui-64 (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-gui-arm64-b70024c9a835570f gui-arm64 (no purl)
+sbom_check: phoenix:   pkg:pypi/httpx-ws@0.9.0
+sbom_check: phoenix:   pkg:pypi/jinja2@3.1.6
+sbom_check: phoenix:   pkg:deb/debian/libgcc-s1@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14
+sbom_check: phoenix:   pkg:deb/debian/libgomp1@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14
+sbom_check: phoenix:   pkg:deb/debian/libncursesw6@6.5%2B20250216-2?arch=amd64&distro=debian-13.7&upstream=ncurses
+sbom_check: phoenix:   pkg:deb/debian/libstdc%2B%2B6@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14
+sbom_check: phoenix:   pkg:pypi/markdown-it-py@4.2.0
+sbom_check: phoenix:   pkg:pypi/obstore@0.11.1
+sbom_check: phoenix:   pkg:pypi/protobuf-py-ext@0.1.1
+sbom_check: phoenix:   pkg:pypi/pyqwest@0.10.0
+sbom_check: phoenix:   pkg:deb/debian/python3.13-venv@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13
+sbom_check: phoenix:   pkg:pypi/synchronicity@0.12.6
+sbom_check: postgres: unlicensed packages (no licence or NOASSERTION): 3 (golang: 3)
+sbom_check: postgres:   pkg:golang/github.com/moby/sys/user@v0.1.0
+sbom_check: postgres:   pkg:golang/github.com/tianon/gosu@v1.19.0
+sbom_check: postgres:   pkg:golang/golang.org/x/sys@v0.1.0
+sbom_check: valkey: unlicensed packages (no licence or NOASSERTION): 1 (generic: 1)
+sbom_check: valkey:   pkg:generic/valkey@8.1.10
+offline: image-side drift check: the ke-app SBOM matches its base (python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258)
+offline: df after drift check

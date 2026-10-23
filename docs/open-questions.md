@@ -293,7 +293,9 @@ platform-sbom", PSC-13-PSC-24; handoff `docs/handoffs/platform-sbom.md`).
 recommended option. Q57 and Q58 (§ platform-supply-chain above) are settled
 and not re-opened. **Q64 was resolved by the human on 2026-10-22**; Q65 and
 Q66 (raised by the analyst 2026-10-22, from the Q64 amendments) were
-resolved by the orchestrator on 2026-10-22.
+resolved by the orchestrator on 2026-10-22. **Q67 was resolved by the
+human on 2026-10-23** (security U4 M-3); Q68 (raised by the analyst
+2026-10-23, from Q67) was resolved by the orchestrator on 2026-10-23.
 
 - **Q61. Resolved 2026-10-22 (human ruling).** **A61:** FAIL CLOSED on a
   failed or checksum-mismatched source fetch: one call, no retry, naming the
@@ -555,6 +557,66 @@ resolved by the orchestrator on 2026-10-22.
   - Recommended: option 1. It keeps Q64's "ordinary Debian packages", and
     the risk the follow-up addressed is removed by the switch itself.
   - Who rules: the orchestrator, with security's rating.
+
+- **Q67. Resolved 2026-10-23 (human ruling).** **A67:** the bundle ships
+  our own neo4j image, built from the pinned
+  `neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b`
+  with `/var/lib/neo4j/products` (the commercially licensed
+  fleet-management plugin) removed, and flattened (`FROM scratch` +
+  `COPY --from`, as `ke-app`, N10a) so the jar is not in the saved tar.
+  Built as PSC-26, unit U4b, after U4 (`docs/requirements.md` § "Item:
+  platform-sbom"). Raised by security as U4 M-3
+  (`docs/evidence/platform-sbom/u4/security.md`).
+
+  Original question, kept for the record: *Q67. May the bundle
+  redistribute the commercial jar in the official neo4j image?*
+  - Context: the official `neo4j:5-community` image ships
+    `com.neo4j/neo4j-fleet-management-plugin` 1.2.0 in
+    `/var/lib/neo4j/products`. It is inactive by default. Its notice
+    reads: "Use of this Software without a proper commercial license with
+    Neo4j, Inc. ... is prohibited". It is not GPL-family.
+  - Options:
+    1. Ship the official image unmodified and defer to SFU legal (citing
+       Neo4j's terms for redistributing the image).
+    2. Build our own image without `products/`.
+  - Who rules: the human.
+
+- **Q68. Resolved 2026-10-23 (orchestrator ruling).** **A68:** option 3.
+  U4b does not add `ke-neo4j` to the image scan, so the scan scope stays as
+  it is today: `scripts/scan.sh` scans `ke-app` only, and `ke-gateway` and
+  the vendored images are not scanned either. Reason: option 1 would likely
+  turn every `full` run red on upstream jar CVEs that only a Neo4j digest
+  bump can fix, and option 2 changes the Q42 policy, which is the human's
+  call. Scanning every bundled image (report-only or fail mode, with the CI
+  cost measured) is recorded as a follow-up for the human
+  (`docs/requirements.md` § "Item: platform-sbom", "Follow-ups (not in
+  platform-sbom)", "Scan every bundled image").
+
+  Original question, kept for the record: *Q68. How does the image scan
+  treat `ke-neo4j`?* It blocked only PSC-26's *Scanned* bullet.
+  - Context:
+    - `scripts/scan.sh` scans only the `ke-app` tar today, under PSC-4
+      (fail on any High or Critical with a fixed version) and PSC-5
+      (ignore entries, 90-day cap). The third-party stack images, the
+      official neo4j among them, are not scanned.
+    - `ke-neo4j` holds the official image's files minus `products/`. A
+      fixed High in a jar Neo4j ships, or in the Temurin JDK, can be
+      fixed only by a newer upstream digest, not by us.
+    - The orchestrator's brief for PSC-26 says `ke-neo4j` is scanned as a
+      first-party image.
+  - Options:
+    1. Scan it under PSC-4 and PSC-5, as `ke-app`: a fixed High or
+       Critical fails `verify.sh full` until a digest bump or a
+       time-limited ignore entry whose reason security confirms.
+    2. Scan it and report the matches without failing (a new mode, which
+       changes the Q42 policy for this image).
+    3. Do not scan it, as today for the official image.
+  - Recommended: option 1. It is what a first-party image gets today and
+    needs no new policy. Trade-off: `full` can turn red on an upstream
+    finding we cannot fix ourselves, and the 90-day cap then forces a
+    digest bump. The scan time it adds is measured on CI (PSC-16).
+  - Who rules: the orchestrator; the human for option 2, since it changes
+    the Q42 policy.
 
 ## platform-skeleton
 

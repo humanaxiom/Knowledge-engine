@@ -442,7 +442,22 @@ exit 0
 
 _BUNDLE_PRE = r'''out=""; prev=""
 for a in "$@"; do [ "$prev" = "--out" ] && out="$a"; prev="$a"; done
-if [ -n "$out" ]; then mkdir -p "$out" && echo '{}' > "$out/bundle.json"; fi'''
+if [ -n "$out" ]; then mkdir -p "$out" && echo '{}' > "$out/bundle.json"; fi
+@SBOM_STUB@'''
+
+# platform-sbom U4 (PSC-14/22 image-side drift check, design-notes N7, N10 B3):
+# the stub bundle also writes a bundle.json naming the stack images and the
+# ke-app SBOM the real bundle.sh writes (app/sboms/ke-app.spdx.json), from the
+# files the harness names (FAKE_STUB_BUNDLE_JSON, FAKE_STUB_KE_APP_SBOM), so
+# the host half's drift step has a real document to check.
+_SBOM_STUB = r'''if [ -n "$out" ] && [ -n "${FAKE_STUB_BUNDLE_JSON:-}" ]; then cp "$FAKE_STUB_BUNDLE_JSON" "$out/bundle.json"; fi
+if [ -n "$out" ] && [ -n "${FAKE_STUB_KE_APP_SBOM:-}" ]; then
+  mkdir -p "$out/app/sboms" && cp "$FAKE_STUB_KE_APP_SBOM" "$out/app/sboms/ke-app.spdx.json"
+fi'''
+_BUNDLE_PRE = _BUNDLE_PRE.replace("@SBOM_STUB@", _SBOM_STUB)
+# Files the host half's U4 drift step reads from the checkout.
+_U4_HOST_FILES = ("scripts/sbom_check.py", cs.SBOM_COMPOSE_NAME, "docker/app.Dockerfile", "licenses",
+                  "tests/test_notice_ke_app.py", "uv.lock", "pyproject.toml")
 
 _INSTALL_PRE = r'''parent_mode="$(stat -c %a "$(dirname "$1")" 2>/dev/null || echo missing)"'''
 
@@ -514,15 +529,45 @@ class OfflineCheckScriptTest(_OfflineBase):
         shutil.copy(OFFLINE_CHECK, repo / "scripts" / "offline_check.sh")
         for rel in ("docker-compose.yml", ".env.example"):
             shutil.copy(ROOT / rel, repo / rel)
+        for rel in _U4_HOST_FILES:
+            src = ROOT / rel
+            if src.is_dir():
+                shutil.copytree(src, repo / rel, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+            elif src.is_file():
+                (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(src, repo / rel)
         _executable(repo / "scripts" / "bundle.sh", _stub("bundle.sh", pre=_BUNDLE_PRE))
         _executable(repo / "scripts" / "teardown.sh", _stub("teardown.sh"))
         _executable(repo / "scripts" / "net_isolated.sh", _stub("net_isolated.sh"))
         return repo
 
+    def _sbom_env(self, repo: Path) -> dict[str, str]:
+        """platform-sbom U4: what the host half's drift step needs from the
+        fake daemon: the generator's compose file modelled (syft writes a
+        base SBOM; tests/fake_docker.py), the stub bundle's bundle.json and
+        ke-app SBOM (a document the drift check accepts), and the ke-app
+        image's /app (uv.lock) mapped for a checker run in that image."""
+        from tests import sbom_support as ss
+        bundle_json = self.tmp / "stub-bundle.json"
+        if not bundle_json.exists():
+            bundle_json.write_text(_bundle_json(BUNDLE_ENTRIES), encoding="utf-8")
+        sbom = self.tmp / "stub-ke-app.spdx.json"
+        if not sbom.exists():
+            ss.write_json(sbom, ss.ke_app_doc())
+        sbom_file = ROOT / cs.SBOM_COMPOSE_NAME
+        # The host half has a route out: its `docker pull` of the ke-app base
+        # (orchestrator U4 ruling 6) succeeds unless a test says otherwise.
+        return {"FAKE_DOCKER_PULL_OK": "1",
+                "FAKE_COMPOSE_FILE_IMAGES": json.dumps({cs.SBOM_COMPOSE_NAME: {"sbom": cs.sbom_generator_ref(sbom_file)}}),
+                "FAKE_COMPOSE_FILE_REQUIRED": json.dumps({cs.SBOM_COMPOSE_NAME: cs.required_vars(sbom_file)}),
+                "FAKE_STUB_BUNDLE_JSON": str(bundle_json), "FAKE_STUB_KE_APP_SBOM": str(sbom),
+                "FAKE_IMAGE_PATHS": json.dumps({"/app": str(repo)})}
+
     def _host(self, **extra: str) -> tuple[subprocess.CompletedProcess, list[dict], Path]:
         repo = self._host_setup()
         self.json.write_text("", encoding="utf-8")
         env_vars = {"FAKE_DOCKER_ROOT_DIR": str(self.tmp / "no-such-docker-root")}
+        env_vars.update(self._sbom_env(repo))
         env_vars.update(extra)  # a test may point the daemon's root dir somewhere real
         env = self._base_env(COMPOSE_PROJECT_NAME="ke-verify-1234", KE_SMOKE_OWNS_PROJECT="1", **env_vars)
         result = subprocess.run(["bash", "scripts/offline_check.sh"], cwd=repo, env=env,
@@ -706,7 +751,8 @@ class OfflineCheckScriptTest(_OfflineBase):
                 self.json.write_text("", encoding="utf-8")
                 hooks = json.dumps([{"on": "offline-client", "sleep": 60}])
                 env = self._base_env(FAKE_DOCKER_HOOKS=hooks,
-                                     FAKE_DOCKER_ROOT_DIR=str(self.tmp / "no-such-docker-root"))
+                                     FAKE_DOCKER_ROOT_DIR=str(self.tmp / "no-such-docker-root"),
+                                     **self._sbom_env(repo))
                 proc = subprocess.Popen(["bash", "scripts/offline_check.sh"], cwd=repo, env=env,
                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
                                         start_new_session=True)
@@ -746,7 +792,8 @@ class OfflineCheckScriptTest(_OfflineBase):
                 self.json.write_text("", encoding="utf-8")
                 hooks = json.dumps([{"on": "offline-client", "sleep": 60}])
                 env = self._base_env(FAKE_DOCKER_HOOKS=hooks,
-                                     FAKE_DOCKER_ROOT_DIR=str(self.tmp / "no-such-docker-root"))
+                                     FAKE_DOCKER_ROOT_DIR=str(self.tmp / "no-such-docker-root"),
+                                     **self._sbom_env(repo))
                 proc = subprocess.Popen(["bash", "scripts/offline_check.sh"], cwd=repo, env=env,
                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
                                         start_new_session=True)
@@ -821,6 +868,7 @@ if [ -n "$out" ]; then
   umask 077
   mkdir -p "$out/images" "$out/app/scripts"
   echo '{}' > "$out/bundle.json"
+  @SBOM_STUB@
   for f in images/ke-app.tar images/valkey.tar app/compose.yml MANIFEST.sha256; do
     printf 'x\n' > "$out/$f"; chmod 600 "$out/$f"
   done
@@ -830,7 +878,7 @@ if [ -n "$out" ]; then
   chmod 600 "$out/bundle.json"
   chmod 700 "$out" "$out/images" "$out/app" "$out/app/scripts"
   printf 'h\n' > "$out.manifest.sha256"; chmod 600 "$out.manifest.sha256"
-fi'''
+fi'''.replace("@SBOM_STUB@", _SBOM_STUB.replace("\n", "\n  "))
 
     _DECOY = "dist/ke-offline-decoy-amd64"
 
@@ -865,7 +913,7 @@ fi'''
         env = self._base_env(COMPOSE_PROJECT_NAME="ke-verify-1234", KE_SMOKE_OWNS_PROJECT="1",
                              FAKE_DOCKER_ROOT_DIR=str(self.tmp / "no-such-docker-root"),
                              KE_TEST_SNAP=str(snap), KE_TEST_SNAP_ROOT=str(repo),
-                             KE_TEST_SNAP_LOG=str(log))
+                             KE_TEST_SNAP_LOG=str(log), **self._sbom_env(repo))
         env["PATH"] = f"{wrap.parent}{os.pathsep}{env['PATH']}"
         baseline_log = self.tmp / "baseline.jsonl"
         subprocess.run([str(snap), "baseline"], env={**env, "KE_TEST_SNAP_LOG": str(baseline_log)},
@@ -973,11 +1021,20 @@ fi'''
 
     def _event_u2(self, record: dict) -> str | None:
         """`_event`, plus any pull: "pull sbom" when it names the generator's
-        compose file or service, else "pull" (any other pull is out of order)."""
+        compose file or service, "pull base" when it names the ke-app base by
+        its pinned digest (platform-sbom U4, orchestrator ruling 6), else
+        "pull" (any other pull is out of order); and "drift" for the `docker
+        save` of that base (the start of the U4 drift step)."""
+        from tests import sbom_support as ss
         argv = record["argv"]
+        digest = ss.base_ref().rsplit("@", 1)[1]
         if argv[:1] != ["STUB"] and ("pull" in argv or argv[:2] == ["image", "pull"]):
             names = cs.SBOM_COMPOSE_NAME in " ".join(argv) or argv[-1:] == ["sbom"]
-            return "pull sbom" if names else "pull"
+            if names:
+                return "pull sbom"
+            return "pull base" if any(a.endswith("@" + digest) for a in argv) else "pull"
+        if (argv[:1] == ["save"] or argv[:2] == ["image", "save"]) and any(a.endswith("@" + digest) for a in argv):
+            return "drift"
         return self._event(record)
 
     def _events_u2(self, records: list[dict]) -> list[str]:
@@ -987,8 +1044,16 @@ fi'''
         result, records, repo = self._host()
         out = self._out(result)
         self.assertEqual(result.returncode, 0, out)
+        # platform-sbom U4, orchestrator ruling 6 and design-notes "N1 amendment,
+        # U4" (docs/handoffs/platform-sbom.md, "U4 rulings", "architect (U4
+        # rulings)"): the host half also pulls the ke-app base by its pinned
+        # digest right after the generator pull and before bundle.sh, and runs
+        # the drift step after bundle.sh, so the exact order gains "pull base"
+        # and "drift" (re-targeted by the tester, U4 RED; the generator pull
+        # stays first and single).
         self.assertEqual(self._events_u2(records),
-                         ["pull sbom", "bundle", "up dind", "net_isolated", "run client", "teardown"], out)
+                         ["pull sbom", "pull base", "bundle", "drift", "up dind", "net_isolated", "run client",
+                          "teardown"], out)
         pulls = [r for r in records if self._event_u2(r) == "pull sbom"]
         self.assertEqual(len(pulls), 1, "one pull of the generator")
         argv, env = pulls[0]["argv"], pulls[0]["env"]
