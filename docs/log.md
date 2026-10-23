@@ -457,3 +457,31 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-22T19:39:44Z | documenter | ci-triggers | close-out review nits N1/N2/N3/N5 | docs: updated
 2026-10-22T19:39:51Z | documenter | ci-triggers | close-out review nits N1/N2/N3/N5 | docs: updated
 2026-10-22T19:59:55Z | orchestrator | ci-triggers | Done check confirmed; close-out review APPROVED + security PASS; verify full PASS 667 s; commit approved; item closed | done check: confirmed
+2026-10-22T20:00:17Z | developer | ci-triggers | committed ci-triggers close-out on agent/ci-triggers-closeout | commit: done
+2026-10-22T23:06:45Z | analyst | platform-sbom | PSC-13..16 confirmed/amended (PSC-14 uv drift fixed, PSC-13 image ID, PSC-16 manifest+tmpfs); PSC-19..24 added (e2e, generator hardening, arm64, hidden obligations, fetch step, no partial bundle); Q61-Q63 raised with recommendations | plan: criteria confirmed
+2026-10-22T23:21:38Z | orchestrator | platform-sbom | human ruled Q61 fail closed, Q62 Q60 trigger applies, Q63 reduced verify set; analyst criteria PSC-13..16 amended + PSC-19..24 accepted | plan: criteria accepted
+2026-10-22T23:22:11Z | documenter | platform-sbom | recorded human rulings Q61-Q63 in open-questions and requirements | docs: updated
+2026-10-22T23:33:11Z | architect | platform-sbom | ADR-KE-016 written (syft pin, offline bundle.sh + bundle_fetch.sh, sources lock, content-addressed sources under app/, classifier, /install sizing, PSC-19 e2e, units U1-U12); Q61-Q63 rulings applied; 5 points flagged | plan: design recorded
+2026-10-22T23:58:00Z | orchestrator | platform-sbom | human ruled Q64 (psycopg on Debian libpq); orchestrator ruled ADR-KE-016 open points 1,2,4,5; CLAUDE.md wording deferred to U8 | plan: rulings recorded
+2026-10-23T00:04:30Z | analyst | platform-sbom | Q64 recorded; PSC-25 added; PSC-14/22/13/19 amended | plan: criteria amended
+2026-10-23T00:05:34Z | orchestrator | platform-sbom | ruled Q65 (shipped image only; resolution is the architect's) and Q66 (accept libpq 15, security re-rates require_auth) | plan: rulings recorded
+2026-10-23T00:08:25Z | architect | platform-sbom | ADR-KE-016 amended for Q64: U0 psycopg on Debian libpq; srpm kind removed | plan: design amended
+2026-10-23T00:09:32Z | documenter | platform-sbom | handoff split: plan phase to archive/platform-sbom-part1.md | docs: updated
+2026-10-23T00:37:09Z | tester | platform-sbom | U0 RED: 8 PSC-25 tests in tests/test_psycopg_c.py, fake docker psycopg model, bundle fixture follows lock; static+smoke mutants 0 unexpected | tdd red: 8 failing as expected
+2026-10-23T01:10:29Z | developer | platform-sbom | U0 GREEN: psycopg-c on Debian libpq5 15.19 (pyproject groups, uv.lock, both Dockerfiles, smoke step, NOTICE) | tdd green: verify fast + full PASS
+2026-10-23T01:11:57Z | documenter | platform-sbom | U0 docs: u0-psycopg-c.md, psycopg-binary mentions | docs: updated
+2026-10-23T01:24:26Z | tester | platform-sbom | U0 A34 Windows proof | a34: PASS
+2026-10-23T01:32:24Z | reviewer | platform-sbom | U0 review | review: changes requested
+2026-10-23T01:34:58Z | security | platform-sbom | U0 audit | security: PASS
+2026-10-23T01:35:41Z | orchestrator | platform-sbom | U0 review CHANGES REQUESTED (B1-B3) + security PASS with M-1; rework round 1 of 5 dispatched | review: changes requested
+2026-10-23T01:36:47Z | documenter | platform-sbom | U0 rework: README operator pin note, package list corrected, L-13 wording | docs: updated
+2026-10-23T01:37:18Z | analyst | platform-sbom | U0 rework: PSC-13/25 runtime-package definition, A34 wording, L-13 closed, A66 re-rated | plan: criteria amended
+2026-10-23T01:39:25Z | architect | platform-sbom | U0 rework: ADR/N0 test names, proof wording, operator consequence | plan: design amended
+2026-10-23T01:57:40Z | tester | platform-sbom | U0 rework RED: B1, M-1, N3 subtests | tdd red: 15 failing as expected
+2026-10-23T02:20:36Z | developer | platform-sbom | U0 rework GREEN: smoke B1/M-1/N3, tar sizes, q65 output, base tag removed | tdd green: verify fast + full PASS
+2026-10-23T02:24:53Z | security | platform-sbom | U0 re-check | security: PASS
+2026-10-23T02:30:03Z | reviewer | platform-sbom | U0 re-check | review: approved
+2026-10-23T02:31:02Z | developer | platform-sbom | U0 N8: smoke.sh stale comment fixed | code: comment only
+2026-10-23T02:31:11Z | documenter | platform-sbom | U0 nits N6/N9/I-9 | docs: updated
+2026-10-23T02:43:59Z | tester | platform-sbom | U0 N7: subtests kill R2/R6 | tests: pins added
+2026-10-23T02:56:41Z | orchestrator | platform-sbom | U0 gates judged: review APPROVED, security PASS, verify full PASS 694 s; commit approved | smoke: PASS

@@ -1,0 +1,73 @@
+# security U0: offline inspection of the shipped ke-app image (2026-10-22)
+# image ke-app:bundle-737750d06839 (id sha256:42f3710d5537943e20c5445e6fa2b4e6ff970000aacaa7116b70dac61718669a), built by u0/green-verify-full.txt
+# run: docker run --rm --network none --read-only --cap-drop ALL --entrypoint sh <image> -c '<checks>'
+## find / -xdev -name psycopg_binary* -o -name *.libs
+(end)
+## compilers on PATH (gcc cc c++ g++ pg_config make ld as)
+(end)
+## dpkg -dev / gcc / cpp / binutils packages
+gcc-12-base 12.2.0-14+deb12u1
+(end; gcc-12-base is the runtime base package libgcc-s1 needs, not a compiler)
+## libpq stack (dpkg status)
+libgssapi-krb5-2 1.20.1-2+deb12u5 ii 
+libk5crypto3 1.20.1-2+deb12u5 ii 
+libkeyutils1 1.6.3-2 ii 
+libkrb5-3 1.20.1-2+deb12u5 ii 
+libkrb5support0 1.20.1-2+deb12u5 ii 
+libldap-2.5-0 2.5.13+dfsg-5 ii 
+libpq5 15.19-0+deb12u1 ii 
+libsasl2-2 2.1.28+dfsg-10 ii 
+libsasl2-modules-db 2.1.28+dfsg-10 ii 
+## dpkg -S libpq.so.5
+libpq5:amd64: /usr/lib/x86_64-linux-gnu/libpq.so.5.15
+libpq5:amd64: /usr/lib/x86_64-linux-gnu/libpq.so.5
+## site-packages: setuptools / wheel / packaging / psycopg*
+psycopg
+psycopg-3.3.6.dist-info
+psycopg_c
+psycopg_c-3.3.6.dist-info
+## id
+uid=10001(ke) gid=10001(ke) groups=10001(ke)
+
+# base image python@sha256:34386ef0... (the pinned FROM): which libpq5 dependencies it already has, and its apt trust
+dpkg-query: no packages found matching libldap-2.5-0
+dpkg-query: no packages found matching libsasl2-2
+dpkg-query: no packages found matching libsasl2-modules-db
+libgssapi-krb5-2 1.20.1-2+deb12u5
+libk5crypto3 1.20.1-2+deb12u5
+libkeyutils1 1.6.3-2
+libkrb5-3 1.20.1-2+deb12u5
+libkrb5support0 1.20.1-2+deb12u5
+## /etc/apt/sources.list.d/debian.sources
+Types: deb
+# http://snapshot.debian.org/archive/debian/20261005T000000Z
+URIs: http://deb.debian.org/debian
+Suites: bookworm bookworm-updates
+Components: main
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+Types: deb
+# http://snapshot.debian.org/archive/debian-security/20261005T000000Z
+URIs: http://deb.debian.org/debian-security
+Suites: bookworm-security
+Components: main
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+## keyrings
+debian-archive-bookworm-automatic.gpg
+debian-archive-bookworm-security-automatic.gpg
+debian-archive-bookworm-stable.gpg
+debian-archive-bullseye-automatic.gpg
+debian-archive-bullseye-security-automatic.gpg
+debian-archive-bullseye-stable.gpg
+debian-archive-keyring.gpg
+debian-archive-removed-keys.gpg
+debian-archive-trixie-automatic.gpg
+debian-archive-trixie-security-automatic.gpg
+debian-archive-trixie-stable.gpg
+
+# local cache: python images (the unpinned pull is the 3.12-slim-bookworm tag)
+REPOSITORY   TAG                  DIGEST                                                                    IMAGE ID       CREATED        SIZE
+python       3.12-slim-bookworm   sha256:6a0e06f5ba0b373d051aabd3fffb9b873f27f9a2a3a14bcbe37dee6f0e3bbc70   6a0e06f5ba0b   2 days ago     188MB
+python       <none>               sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258   34386ef0cb08   2 weeks ago    422MB
+python       3.11-alpine          sha256:6857d2dae63e052057f2db389a7061188ac9a92a3fa8d402bde68f36df6fada1   6857d2dae63e   2 months ago   84.6MB
+python       3.11-slim            sha256:baf89808ec37adeaab83cec287adb4a2afa4a11c1d51e961c7ec737877e61af6   baf89808ec37   3 months ago   189MB

@@ -2869,7 +2869,7 @@ NOTICE_LAYOUT = {"httpx": "noheader", "six": "legacy", "protobuf": "bare"}
 # package -> (metadata licence lines, licence the notices must show for it)
 NOTICE_LICENCE = {
     "psycopg": (["License-Expression: LGPL-3.0-only"], "LGPL-3.0-only"),
-    "psycopg-binary": (["License-Expression: LGPL-3.0-only"], "LGPL-3.0-only"),
+    "psycopg-c": (["License-Expression: LGPL-3.0-only"], "LGPL-3.0-only"),
     "httpx": (["Classifier: License :: OSI Approved :: BSD License"], "BSD"),
     "six": (["License: MIT"], "MIT"),
     "protobuf": (["License: 3-Clause BSD License"], "3-Clause BSD License"),
@@ -2880,15 +2880,23 @@ def _norm(name: str) -> str:
     return re.sub(r"[-_.]+", "-", name).lower()
 
 
+# platform-sbom U0 (PSC-25, ADR-KE-016 point 0): the ke-app builder also
+# syncs the `pq-c` group (psycopg-c), so the image holds it.
+IMAGE_GROUPS = ("pq-c",)
+
+
 def _runtime_packages() -> dict[str, str]:
     """name -> version of every package uv.lock installs for the project
-    without the dev group (its dependencies and the extras they name,
+    without the dev group (its dependencies, the image groups the ke-app
+    builder syncs when the lock has them, and the extras they name,
     transitively). Markers are ignored, so this is a superset on any one
     platform."""
     import tomllib
     lock = tomllib.loads((ROOT / "uv.lock").read_text(encoding="utf-8"))
     pkgs = {p["name"]: p for p in lock["package"]}
     todo = list(pkgs[PROJECT_DIST].get("dependencies", []))
+    for group in IMAGE_GROUPS:
+        todo += pkgs[PROJECT_DIST].get("dev-dependencies", {}).get(group, [])
     seen: dict[str, str] = {}
     done: set[tuple[str, str]] = set()
     while todo:
@@ -3796,9 +3804,13 @@ class BundleNoticesTest(_BundleBase, unittest.TestCase):
             self.assertIn("psycopg", self._notices(out))
             self.assertEqual(len(self._notice_runs(calls)), 1)
         cases = {"psycopg (LGPL, licenses/LICENSE.txt)": "psycopg",
-                 "psycopg-binary": "psycopg-binary",
+                 "psycopg-c (LGPL, licenses/LICENSE.txt)": "psycopg-c",
                  "six (legacy layout, MIT)": "six",
                  "httpx (no License-File header)": "httpx"}
+        # PSC-25 (platform-sbom U0): the image's psycopg native package is
+        # psycopg-c (the ke-app builder's `pq-c` group), never psycopg-binary.
+        self.assertIn("psycopg-c", self.packages, "precondition: the image has psycopg-c (PSC-25)")
+        self.assertNotIn("psycopg-binary", self.packages, "the image has no psycopg-binary (PSC-25)")
         for case, name in cases.items():
             with self.subTest(case=case):
                 site = self.tmp / f"site-{_norm(name)}"

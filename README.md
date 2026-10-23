@@ -94,6 +94,12 @@ needs `jq` and at least 7 GiB free on the disk that holds the output directory
    scripts/teardown.sh --volumes   # also removes the data (PowerShell: -Volumes)
    ```
 
+   `ke-app` pins Debian's `libpq5`. When Debian publishes a postgresql-15
+   update, the old version leaves the mirror and `build.sh` fails naming
+   `libpq5` until the pin is bumped in both Dockerfiles
+   (`docker/app.Dockerfile` and `docker/gates.Dockerfile`). Installing from
+   a bundle is unaffected.
+
    `launch` creates `.env` from `.env.example` if it is missing and waits until
    every service is healthy.
 3. The API is at http://localhost:47100 (`/healthz`, `/readyz`) and Phoenix at
@@ -176,10 +182,14 @@ The scan (`scripts/scan.sh`) looks for known vulnerabilities in the
 `ke-app` image. A one-shot `scan-db` container fetches the scanner's
 database fresh on every run, and the scan itself runs with no network.
 `scan-db` is not the only container with a route out: the smoke check's
-network-control probe runs on the stack's `edge` network. The scan does not
-see the native libraries vendored inside the psycopg-binary wheel
-(`psycopg_binary.libs`); this is a documented residual (L-13), see
-`docs/requirements.md` PSC-7. A fixed High or Critical finding fails the
+network-control probe runs on the stack's `edge` network. `ke-app` ships no
+psycopg-binary wheel: psycopg is built from source (`psycopg-c`) against
+Debian's `libpq5`, so the scan sees libpq through the image's package
+database (PSC-25, `docs/architecture.md` ADR-KE-016). That closed the L-13
+residual (the wheel's vendored libraries, which the scan could not see) on
+2026-10-23; security's ruling is in
+`docs/evidence/platform-sbom/u0/security.md`. A fixed High or Critical
+finding fails the
 run, and so does a database host that cannot be reached; there is no retry
 and no skip. `full` therefore needs
 outbound HTTPS to `grype.anchore.io` for the vulnerability database.

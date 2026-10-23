@@ -230,6 +230,52 @@ never touches a real daemon. What it does:
     fake `compose run ... scan` prints a grype-like table).
   - hook "exit": n -- then exit n at once (grype's exit status), before
     FAKE_DOCKER_FAIL / FAIL_NTH and any modelled reply.
+- platform-sbom U0 (PSC-25, ADR-KE-016 point 0, design-notes N0): the
+  api's psycopg, libpq and dpkg inside `compose ... exec [opts] <svc> CMD`.
+  The defaults model a correct image (psycopg-c on Debian's libpq at the
+  `LIBPQ_VERSION` pin read from docker/app.Dockerfile when the fake is
+  installed, else 15.14-0+deb12u1), so earlier smoke tests stay green when
+  smoke gains the psycopg step. CMD is matched on its first word:
+  - `python|python3 [flags] -c CODE [args]`: CODE runs under this
+    interpreter with `-I -S -B` and a stub site holding `psycopg`
+    (`psycopg.pq.__impl__`, `pq.version()`, `pq.__build_version__`,
+    `pq.PGconn`) and the impl package: `psycopg_c` for `c`, `psycopg_binary`
+    for `binary`, neither for `python`. The impl package's `pq` and
+    `_psycopg` modules report `__file__` (and `__spec__.origin`) as
+    `<stub>/<pkg>/<mod>.cpython-312-<FAKE_PQ_TRIPLET>.so`; that file does not
+    exist. stdout, stderr and the exit status are CODE's. Variables:
+    FAKE_PQ_IMPL (`c`), FAKE_PQ_VERSION (the pin's number, 15.N ->
+    150000+N), FAKE_PQ_BUILD_VERSION (FAKE_PQ_VERSION), FAKE_PQ_TRIPLET
+    (`x86_64-linux-gnu`). The stub site is
+    `<tmp>/opt/venv/lib/python3.12/site-packages` and CODE sees
+    `sys.prefix`/`sys.exec_prefix` as `<tmp>/opt/venv` (the literal path
+    `/opt/venv` is the host's, not the api's). FAKE_PQ_VENV_EXTRA
+    (U0 rework, review B1): comma-separated entries also installed in that
+    site beside the impl package: `psycopg_binary` (an importable package),
+    `psycopg_binary.libs` (a directory holding a vendored libpq) and
+    `<name>-<ver>.dist-info` (METADATA and RECORD); each is a directory.
+  - `ldd PATH...`: prints ldd lines for an extension linked to libpq;
+    `libpq.so.5 => FAKE_LDD_LIBPQ` (default `/lib/<triplet>/libpq.so.5`, as
+    bookworm's ld.so.cache gives it; `not found` prints `=> not found`),
+    plus FAKE_LDD_EXTRA lines verbatim. The path is not read.
+  - `dpkg-query -W [-f|--showformat FMT] libpq5`, `dpkg -s libpq5`: libpq5
+    installed at FAKE_LIBPQ5_VERSION (default the pin; set but empty prints
+    an empty version; any other value verbatim). FMT understands
+    `${Version}`, `${Package}`, `${binary:Package}`, `${Status}`,
+    `${db:Status-Abbrev}` and `\\n`. FAKE_LIBPQ5_ABSENT=1: libpq5 is not
+    installed; both exit 1, "dpkg-query: no packages found matching libpq5".
+  - `dpkg -S|dpkg-query -S PATH`: `<owner>: PATH` only for
+    `/usr/lib/<triplet>/libpq.so.5*` (merged-usr: dpkg does not own the
+    `/lib/...` alias); anything else exits 1, "no path found". The owner is
+    FAKE_LIBPQ_OWNER (default `libpq5:<arch>`; set but empty: no owner).
+  - `realpath|readlink -f PATH`: `/lib/<t>/` becomes `/usr/lib/<t>/`, and
+    a path ending `libpq.so.5` gains `.15`; FAKE_LIBPQ_REALPATH, if set, is
+    printed instead for a path ending `libpq.so.5`.
+  - `find PATH... [-name PAT [-o -name PAT]...]` (U0 rework, review B1):
+    for a PATH that is `/opt/venv`, `/`, or any directory on the way to or
+    equal to the site, prints `/opt/venv/lib/python3.12/site-packages/<e>`
+    for each FAKE_PQ_VENV_EXTRA entry whose name matches a `-name`/`-iname`
+    PAT (every entry with no PAT); exit 0.
 - Every other call exits 0.
 """
 
@@ -432,6 +478,169 @@ for item in filter(None, os.environ.get("FAKE_DOCKER_FAIL_NTH", "").split("|")):
 ISOLATED = {"com.docker.network.bridge.gateway_mode_ipv4": "isolated"}
 CLIENT_VERSION = "27.0.0"
 project = os.environ.get("COMPOSE_PROJECT_NAME") or "knowledge-engine"
+
+# --- platform-sbom U0 (PSC-25): psycopg, libpq and dpkg inside the api ------
+def _pq_number(debver):
+    import re as _re
+    m = _re.match(r"^(\d+)\.(\d+)", debver or "")
+    return int(m.group(1)) * 10000 + int(m.group(2)) if m else 0
+
+def _exec_split():
+    _at = argv.index("exec")
+    _takes = {"-e", "--env", "-u", "--user", "-w", "--workdir", "--index"}
+    _i = _at + 1
+    while _i < len(argv):
+        if argv[_i] in _takes:
+            _i += 2
+            continue
+        if argv[_i].startswith("-"):
+            _i += 1
+            continue
+        return argv[_i], argv[_i + 1:]
+    return None, []
+
+if argv[:1] == ["compose"] and "exec" in argv:
+    _psvc, _pcmd = _exec_split()
+    _pword = os.path.basename(_pcmd[0]) if _pcmd else ""
+    _triplet = os.environ.get("FAKE_PQ_TRIPLET") or "x86_64-linux-gnu"
+    _darch = "arm64" if _triplet.startswith("aarch64") else "amd64"
+    _deb = os.environ["FAKE_LIBPQ5_VERSION"] if "FAKE_LIBPQ5_VERSION" in os.environ else LIBPQ_PIN
+    _venv_extra = [e for e in (os.environ.get("FAKE_PQ_VENV_EXTRA") or "").split(",") if e]
+    _venv_site = "/opt/venv/lib/python3.12/site-packages"
+    if _pword in ("python", "python3") and "-c" in _pcmd:
+        import shutil as _shutil, subprocess as _subprocess, tempfile as _tempfile
+        _ci = _pcmd.index("-c")
+        _code = _pcmd[_ci + 1] if _ci + 1 < len(_pcmd) else ""
+        _rest = _pcmd[_ci + 2:]
+        _impl = os.environ.get("FAKE_PQ_IMPL", "c")
+        _ver = int(os.environ.get("FAKE_PQ_VERSION") or _pq_number(LIBPQ_PIN))
+        _build = int(os.environ.get("FAKE_PQ_BUILD_VERSION") or _ver)
+        _root = _tempfile.mkdtemp(prefix="fake-pq-site-")
+        _prefix = os.path.join(_root, "opt", "venv")
+        _site = os.path.join(_prefix, "lib", "python3.12", "site-packages")
+        try:
+            os.makedirs(os.path.join(_site, "psycopg", "pq"))
+            with open(os.path.join(_site, "psycopg", "__init__.py"), "w", encoding="utf-8") as fh:
+                fh.write("__version__ = '3.3.6'\nfrom . import pq\n")
+            _impl_pkg = {"c": "psycopg_c", "binary": "psycopg_binary"}.get(_impl)
+            with open(os.path.join(_site, "psycopg", "pq", "__init__.py"), "w", encoding="utf-8") as fh:
+                fh.write("__impl__ = %r\n__build_version__ = %d\n" % (_impl, _build))
+                fh.write("def version():\n    return %d\n" % _ver)
+                if _impl_pkg:
+                    fh.write("from %s import pq as _pq\nPGconn = _pq.PGconn\n" % _impl_pkg)
+                else:
+                    fh.write("class PGconn:\n    pass\n")
+            if _impl_pkg:
+                _pkg = os.path.join(_site, _impl_pkg)
+                os.makedirs(_pkg)
+                with open(os.path.join(_pkg, "__init__.py"), "w", encoding="utf-8") as fh:
+                    fh.write("__version__ = '3.3.6'\n")
+                for _mod in ("pq", "_psycopg"):
+                    _so = os.path.join(_pkg, "%s.cpython-312-%s.so" % (_mod, _triplet)).replace(os.sep, "/")
+                    with open(os.path.join(_pkg, _mod + ".py"), "w", encoding="utf-8") as fh:
+                        fh.write("__file__ = %r\n__spec__.origin = __file__\nclass PGconn:\n    pass\n" % _so)
+            for _e in _venv_extra:
+                _d = os.path.join(_site, _e)
+                os.makedirs(_d, exist_ok=True)
+                if _e.endswith(".dist-info"):
+                    with open(os.path.join(_d, "METADATA"), "w", encoding="utf-8") as fh:
+                        fh.write("Metadata-Version: 2.4\nName: %s\nVersion: 3.3.6\n" % _e.split("-")[0])
+                    with open(os.path.join(_d, "RECORD"), "w", encoding="utf-8") as fh:
+                        fh.write("%s/METADATA,,\n" % _e)
+                elif _e.endswith(".libs"):
+                    open(os.path.join(_d, "libpq-9f3e2a1b.so.5.18"), "w").close()
+                elif not os.path.exists(os.path.join(_d, "__init__.py")):
+                    with open(os.path.join(_d, "__init__.py"), "w", encoding="utf-8") as fh:
+                        fh.write("__version__ = '3.3.6'\n")
+            _boot = ("import sys; _prefix, _site, _code = sys.argv[1], sys.argv[2], sys.argv[3]; "
+                     "sys.argv = ['-c'] + sys.argv[4:]; sys.prefix = sys.exec_prefix = _prefix; "
+                     "sys.path.insert(0, _site); exec(compile(_code, '<string>', 'exec'), {'__name__': '__main__'})")
+            sys.stdout.flush()
+            _done = _subprocess.run([sys.executable, "-I", "-S", "-B", "-c", _boot, _prefix, _site, _code, *_rest])
+        finally:
+            _shutil.rmtree(_root, ignore_errors=True)
+        sys.exit(_done.returncode)
+    if _pword == "ldd":
+        _lib = os.environ.get("FAKE_LDD_LIBPQ") or "/lib/%s/libpq.so.5" % _triplet
+        _out = ["\tlinux-vdso.so.1 (0x00007ffc5e3f1000)"]
+        _out.append("\tlibpq.so.5 => not found" if _lib == "not found"
+                    else "\tlibpq.so.5 => %s (0x00007f3a1c600000)" % _lib)
+        _out += ["\tlibc.so.6 => /lib/%s/libc.so.6 (0x00007f3a1c200000)" % _triplet,
+                 "\tlibssl.so.3 => /lib/%s/libssl.so.3 (0x00007f3a1c100000)" % _triplet,
+                 "\tlibgssapi_krb5.so.2 => /lib/%s/libgssapi_krb5.so.2 (0x00007f3a1c000000)" % _triplet]
+        _out += [l for l in (os.environ.get("FAKE_LDD_EXTRA") or "").split("\n") if l]
+        print("\n".join(_out))
+        sys.exit(0)
+    if _pword in ("dpkg", "dpkg-query") and ("-S" in _pcmd or "--search" in _pcmd):
+        import re as _re
+        _paths = [a for a in _pcmd[1:] if not a.startswith("-")]
+        _rc = 0
+        for _p in _paths:
+            _owner = os.environ.get("FAKE_LIBPQ_OWNER", "libpq5:" + _darch)
+            if os.environ.get("FAKE_LIBPQ5_ABSENT") == "1":
+                _owner = ""
+            if _owner and _re.fullmatch(r"/usr/lib/%s/libpq\.so\.5(\.\d+)*" % _re.escape(_triplet), _p):
+                print("%s: %s" % (_owner, _p))
+            else:
+                sys.stderr.write("dpkg-query: no path found matching pattern %s\n" % _p)
+                _rc = 1
+        sys.exit(_rc if _paths else 2)
+    if _pword in ("dpkg-query", "dpkg") and ("-W" in _pcmd or "--show" in _pcmd or "-s" in _pcmd
+                                             or "--status" in _pcmd):
+        _fmt = None
+        _skip = set()
+        for _j, _a in enumerate(_pcmd):
+            if _a in ("-f", "--showformat") and _j + 1 < len(_pcmd):
+                _fmt = _pcmd[_j + 1]
+                _skip.add(_j + 1)
+            elif _a.startswith("--showformat=") or _a.startswith("-f="):
+                _fmt = _a.split("=", 1)[1]
+        _names = [a for j, a in enumerate(_pcmd) if j > 0 and j not in _skip and not a.startswith("-")]
+        if [n for n in _names if n.split(":")[0] != "libpq5"] or os.environ.get("FAKE_LIBPQ5_ABSENT") == "1":
+            sys.stderr.write("dpkg-query: no packages found matching %s\n" % " ".join(_names))
+            sys.exit(1)
+        if "-s" in _pcmd or "--status" in _pcmd:
+            print("Package: libpq5\nStatus: install ok installed\nArchitecture: %s\nVersion: %s" % (_darch, _deb))
+            sys.exit(0)
+        if _fmt is None:
+            print("libpq5:%s\t%s" % (_darch, _deb))
+            sys.exit(0)
+        _txt = (_fmt.replace("${Version}", _deb).replace("${binary:Package}", "libpq5:" + _darch)
+                .replace("${Package}", "libpq5").replace("${Status}", "install ok installed")
+                .replace("${db:Status-Abbrev}", "ii ").replace("\\n", "\n"))
+        sys.stdout.write(_txt)
+        sys.exit(0)
+    if _pword in ("realpath", "readlink"):
+        _real = os.environ.get("FAKE_LIBPQ_REALPATH")
+        for _p in [a for a in _pcmd[1:] if not a.startswith("-")]:
+            if _real and _p.endswith("libpq.so.5"):
+                print(_real)
+                continue
+            if _p.startswith("/lib/"):
+                _p = "/usr" + _p
+            print(_p + ".15" if _p.endswith("libpq.so.5") else _p)
+        sys.exit(0)
+    if _pword == "find":
+        import fnmatch as _fnmatch
+        _pats, _roots, _j = [], [], 1
+        while _j < len(_pcmd) and not _pcmd[_j].startswith(("-", "(", ")", "!")):
+            _roots.append(_pcmd[_j].rstrip("/") or "/")
+            _j += 1
+        while _j < len(_pcmd):
+            if _pcmd[_j] in ("-name", "-iname") and _j + 1 < len(_pcmd):
+                _pats.append((_pcmd[_j + 1], _pcmd[_j] == "-iname"))
+                _j += 2
+                continue
+            _j += 1
+
+        def _under(_r):
+            return _r == "/" or _venv_site == _r or _venv_site.startswith(_r + "/")
+        for _e in _venv_extra:
+            _hit = not _pats or any(_fnmatch.fnmatchcase(_e.lower() if _ci else _e, _pt.lower() if _ci else _pt)
+                                    for _pt, _ci in _pats)
+            if _hit and any(_under(_r) for _r in _roots):
+                print("%s/%s" % (_venv_site, _e))
+        sys.exit(0)
 
 def _go(val):
     # Go's default rendering of a template value: lists as [a b], nested.
@@ -1173,11 +1382,22 @@ sys.exit(0)
 '''
 
 
+def _libpq_pin() -> str:
+    """The `ARG LIBPQ_VERSION=` pin of docker/app.Dockerfile (platform-sbom U0),
+    or a bookworm-shaped stand-in while the Dockerfile has none."""
+    import re
+
+    path = Path(__file__).resolve().parent.parent / "docker" / "app.Dockerfile"
+    text = path.read_text(encoding="utf-8") if path.is_file() else ""
+    m = re.search(r"(?m)^\s*ARG\s+LIBPQ_VERSION=(\S+)\s*$", text)
+    return m.group(1).strip("\"'") if m else "15.14-0+deb12u1"
+
+
 def install(bin_dir: Path) -> Path:
     """Write the fake `docker` into `bin_dir` and return its path."""
     bin_dir.mkdir(parents=True, exist_ok=True)
     fake = bin_dir / "docker"
-    fake.write_text(f"#!{sys.executable}\nVERSION = {VERSION!r}\n{_SCRIPT}",
+    fake.write_text(f"#!{sys.executable}\nVERSION = {VERSION!r}\nLIBPQ_PIN = {_libpq_pin()!r}\n{_SCRIPT}",
                     encoding="utf-8", newline="\n")
     fake.chmod(0o755)
     return fake

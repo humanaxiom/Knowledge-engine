@@ -39,17 +39,20 @@ image). `ke-gateway` adds only configuration.
 
 ## psycopg (LGPL-3.0-only)
 
-The `ke-app` image installs `psycopg` and `psycopg-binary` 3.3.6 from PyPI,
+The `ke-app` image installs `psycopg` and `psycopg-c` 3.3.6 from PyPI,
 unmodified, under the GNU Lesser General Public License version 3 only
-(`licenses/LGPL-3.0.txt`). The engine imports them as ordinary Python packages,
-so a user can replace them with another build. The source of `psycopg` is the
-sdist locked in `uv.lock`:
+(`licenses/LGPL-3.0.txt`). `psycopg-c` is compiled in the image build from its
+locked sdist against Debian's `libpq5`. The engine imports both as ordinary
+Python packages, so a user can replace them with another build. The source of
+`psycopg` is the sdist locked in `uv.lock`:
 https://files.pythonhosted.org/packages/76/26/3ea4ca5eaea1c0debcdf7ee7c1613fbe721dc27a03c461c0817ffd8a0601/psycopg-3.3.6.tar.gz
 (sha256 `c081f2250df751a943036e42db6df4571c66cd0aabe8291a7a506512b12007d2`);
-the source of `psycopg-binary` is in the same upstream project,
-https://github.com/psycopg/psycopg. Each package's own licence file stays in
-the image under its `dist-info/licenses/` directory and is listed in
-`THIRD_PARTY_NOTICES.md`.
+the source of `psycopg-c` is the sdist locked in `uv.lock`:
+https://files.pythonhosted.org/packages/58/53/bf15aa48cd6f0ad0039b9f48681d2e76e8564d413af47b13fab50dd03555/psycopg_c-3.3.6.tar.gz
+(sha256 `29c568426ad61c1b702c7d73505c43ca2c9fc5d97a8431d8d9049e731e319ff8`).
+Both belong to the upstream project https://github.com/psycopg/psycopg. Each
+package's own licence file stays in the image under its `dist-info/licenses/`
+directory and is listed in `THIRD_PARTY_NOTICES.md`.
 
 ## Licence texts
 

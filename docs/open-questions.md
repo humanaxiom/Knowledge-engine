@@ -285,6 +285,277 @@ record.
     trigger keeps the rule simple, but the job grows by the scan's cost
     with no one deciding it.
 
+## platform-sbom
+
+Raised 2026-10-22 by the analyst (`docs/requirements.md` § "Item:
+platform-sbom", PSC-13-PSC-24; handoff `docs/handoffs/platform-sbom.md`).
+**Q61-Q63 were resolved by the human on 2026-10-22**, each matching the
+recommended option. Q57 and Q58 (§ platform-supply-chain above) are settled
+and not re-opened. **Q64 was resolved by the human on 2026-10-22**; Q65 and
+Q66 (raised by the analyst 2026-10-22, from the Q64 amendments) were
+resolved by the orchestrator on 2026-10-22.
+
+- **Q61. Resolved 2026-10-22 (human ruling).** **A61:** FAIL CLOSED on a
+  failed or checksum-mismatched source fetch: one call, no retry, naming the
+  host, the stage and the file, as Q56(b).
+
+  Original question, kept for the record: *Q61. A failed or
+  checksum-mismatched source fetch.*
+  - Context:
+    - PSC-15 fetches the exact-version source of every GPL-family
+      component at bundle time, on the build host, and checks each file
+      against the upstream checksum in the Q48 form. PSC-23 makes the fetch
+      the item's only new network step.
+    - The hosts include Debian's archive, Alpine's aports and distfiles,
+      GitHub (the Neo4j tag, the Temurin build) and PyPI. The images are
+      pinned by digest, so their package versions age. Older Debian
+      versions may by then be served only by `snapshot.debian.org`, which is
+      slow and rate-limited (to be confirmed by the architect).
+    - Two kinds of failure: (i) the host cannot be reached, times out or
+      returns an error; (ii) the file arrives, but its checksum differs from
+      the upstream one (or from the trust-on-first-use value recorded
+      earlier, Q48).
+  - Options:
+    1. Fail closed for both. The bundle step exits non-zero, naming the
+       host, the stage and the file, and leaves no manifest and no release
+       record (PSC-24). One call, no retry, no skip path, as Q56(b) for the
+       scan database.
+    2. Fail closed for both, with one bounded retry on an unreachable host
+       first.
+    3. Fail open on an unreachable host. The bundle is written; the
+       component falls back to the L-NT1 wording ("Upstream source:
+       <url>"), and the gap is recorded in the source index and
+       `bundle.json` and printed. A mismatch still fails closed.
+  - **Recommended: option 1, and a mismatch is never fail-open under any
+    option.**
+    - A bundle that ships GPL binaries without their source is the M-NT1
+      defect this item closes. A fail-open bundle can reach a third party
+      with nobody noticing, which the Q58 ruling (build the offers now) is
+      meant to prevent.
+    - A checksum mismatch is an integrity failure (tampering, or an
+      upstream re-release), not an availability one.
+    - It keeps one rule for verify's network steps (Q56(b)).
+  - Trade-offs:
+    - An outage at any source host turns `full` red, in CI and locally,
+      even for changes that touch no image. The exposure depends on Q63:
+      with the full set fetched every run, every PR push depends on every
+      source host; with a reduced verify set, only on a few small files.
+    - A bounded retry (option 2) softens transient failures, at a CI cost
+      PSC-16 would measure; the scan precedent chose no retry.
+    - Option 3 keeps unrelated work moving, but a green run could then
+      carry a bundle with missing source, which is what the item exists to
+      stop.
+
+- **Q62. Resolved 2026-10-22 (human ruling).** **A62:** Q60's 3-minute CI-cost
+  trigger applies to this item. Above 180 s on the slower of two green runs,
+  the measurement goes to the human before the timeout is raised.
+
+  Original question, kept for the record: *Q62. Does Q60's 3-minute trigger
+  apply to this item's CI time, and what happens past it?*
+  - Context:
+    - A60 set the trigger for the scan stages only ("the save, `scan-db`
+      and `scan` stages together add more than 3 min"). PSC-16 says this
+      item re-measures PS-3.4 if it adds a minute or more on CI.
+    - This item adds SBOM generation for six images, the source fetch, a
+      larger bundle to hash and copy, a larger install to check, and the
+      PSC-19 e2e checks.
+    - Today a PR push costs one run of about 17 billed minutes (CT-7) on a
+      private repo with 2,000 minutes a month. PSC-9's slower green run was
+      24.5 min against a 37-min timeout. The scan used 88-98 s of its 180 s.
+  - Options:
+    1. The same trigger: if this item's added stages together add more
+       than 180 s to the slower of two green CI runs (timed from marker
+       line to marker line, as ADR-KE-013 amendment 1, D8), the
+       orchestrator decides before the timeout is raised.
+    2. A separate, larger budget for this item (for example 5 min), since
+       the fetch is network-bound.
+    3. A cumulative trigger: 3 min over the platform-supply-chain
+       close-out job time, so every later item shares one margin.
+    4. No trigger: PS-3.4 alone sets the timeout from the measured time.
+  - Past the trigger (options 1-3): the timeout is not raised before the
+    decision. The orchestrator either accepts and re-measures under PS-3.4,
+    or asks the architect to cut the cost (for example Q63's reduced verify
+    set). It brings the measurement and its decision to the human, since CI
+    minutes are billed.
+  - **Recommended: option 1.**
+    - One rule for every stage added to `full` keeps the margin in view,
+      and it is the rule already applied and met once (PSC-9).
+    - 180 s is about 18% of today's 17-min run, enough for this item under
+      Q63's recommended answer but not under a full fetch every run, which
+      is the case that should get a decision.
+    - Option 3 is the better long-run rule, but it changes how A60 is read
+      for every later item, which is a wider call than this item.
+  - Trade-off: a fixed trigger can force a decision on a cost that is
+    worth paying. Option 4 keeps the rule simple, but the job grows by this
+    item's cost with nobody deciding it.
+  - Whichever is chosen, the added time is measured on CI (PSC-16); a local
+    timing never counts.
+
+- **Q63. Resolved 2026-10-22 (human ruling).** **A63:** REDUCED VERIFY SET.
+  Every run builds all SBOMs, the full source index and the full coverage
+  check, and fetches and ships one source of each kind. Operator bundles get
+  the full set.
+
+  Original question, kept for the record: *Q63. Does `verify.sh full`, and so
+  CI, build the whole source set on every run?*
+  - Context:
+    - `offline_check.sh` builds and installs a real bundle in every `full`
+      run, and CI's only step is `./scripts/verify.sh full` (a test
+      enforces it).
+    - PSC-15 estimates `sources/` at 1-2.5 GB per bundle. That is not a
+      measurement.
+    - The 7 GiB floor (R6) is the bundle (0.94 GiB amd64) plus the `dind`
+      store after load (about 3.3 GiB), about 4.3 GiB, with about 60%
+      headroom. CI had 9.1 GiB free at the offline stage (run
+      39359710258).
+    - The same derivation with 1-2.5 GB of sources gives a need of about
+      5.3-6.8 GiB, and about 8.5-10.9 GiB with the same headroom: at or
+      above what CI has today (estimate).
+    - Install's staging copy sits on the offline client's `/install` tmpfs,
+      so sources also add about their size to memory during install.
+    - Each run would also fetch 1-2.5 GB from third-party hosts (the Q61
+      exposure).
+  - Options:
+    1. **The full set every run.** The strongest proof, since what CI
+       checks is what ships. It likely breaks the floor on today's runner
+       (estimate), adds minutes of fetch time and gigabytes of memory, and
+       makes every PR push depend on every source host.
+    2. **A cached, content-addressed source set**, keyed by the SBOMs'
+       package names and versions and fetched once per image or lock
+       change. Locally it saves the fetch after the first run. GitHub's
+       hosted runners keep nothing between runs, so on CI it helps only
+       with a cache step outside `verify.sh`. That breaks "CI's only step
+       is `./scripts/verify.sh full`" unless you rule otherwise, and it
+       must then be listed in CLAUDE.md. The bundle's disk use is
+       unchanged.
+    3. **A reduced verify set, and the full set for every operator
+       bundle.** `verify.sh full` builds every SBOM and the full source
+       index: every GPL-family package mapped to its source URL and
+       upstream checksum, so PSC-15's coverage rule is still checked in
+       full. It fetches and ships only a fixed sample, one source of each
+       kind (a Debian source package, an Alpine package, the Neo4j tag, the
+       Temurin build and the psycopg sdist), and runs the PSC-19 e2e on
+       it. `bundle.sh` run for an operator builds the full set, and each
+       such bundle's full checks are recorded as evidence before it is
+       handed over. Precedent: the verify run already leaves out `--tar`
+       for disk (R6).
+    4. **A separate CI job** (a second job or workflow, on a schedule or a
+       tag) builds the full set. It breaks the single-step CI rule and its
+       test, needs your ruling and a CLAUDE.md change, and spends runner
+       minutes whenever it runs.
+  - **Recommended: option 3.**
+    - It keeps disk and memory near today's measured values, and keeps
+      each PR run's network exposure to a few small files.
+    - The coverage rule is checked in full every run; only the bytes are
+      sampled, one per kind of source, so each fetch path is exercised.
+    - The full set is proven where it matters, on the bundle that is
+      handed to someone, with no CI-only step.
+  - Trade-offs:
+    - A component-specific fetch failure outside the sample, or a
+      full-set disk or memory problem, is found only when an operator
+      bundle is built. The recorded run is the control; option 1 would
+      catch it on every push, at a cost CI likely cannot carry today.
+    - Option 2 helps locally but not on hosted CI without a CI-only step.
+  - Cost claims here are estimates. PSC-16 measures the chosen option on CI
+    (two green runs) and re-derives the floor from the measurement; the
+    floor is never lowered to pass. If option 1 is chosen and the runner
+    cannot meet the re-derived floor, that is a blocker for you, not a
+    reason to lower the floor.
+
+- **Q64. Resolved 2026-10-22 (human ruling).** **A64:** build psycopg
+  against Debian's libpq (`psycopg[c]` in `ke-app`'s builder stage, the Q42
+  structural fix). `psycopg_binary.libs` is removed, its libraries become
+  ordinary Debian packages, and the `srpm` source kind is not built. Built
+  as PSC-25, unit U0 (`docs/requirements.md` § "Item: platform-sbom").
+  L-13 closes under Q64 (platform-sbom U0).
+
+  Original question, kept for the record: *Q64. Where does the source of
+  the LGPL libraries vendored in psycopg-binary come from?* libcrypt and
+  libkeyutils (LGPL-2.1) in `psycopg_binary.libs` come from the wheel's
+  CentOS 7 (el7, manylinux2014) build image, at a release the wheel does
+  not record (ADR-KE-016 flag (c); design notes N12). Options: (1) a `srpm`
+  source kind from vault.centos.org with a reviewed best guess at the
+  release, which may not be provably exact; (2) the libpq switch, which
+  removes the vendored libraries.
+
+- **Q65. Resolved 2026-10-22 (orchestrator ruling).** **A65:** the shipped
+  `ke-app` image contains no psycopg-binary and uses `psycopg-c` built on
+  Debian's libpq. How the lock, the dev hosts and `ke-gates` resolve
+  psycopg is the architect's (ADR-KE-016), by platform markers or uv
+  extras, within these limits: no CLAUDE.md or AGENTS.md change, no C
+  toolchain on dev hosts, `--locked` everywhere, and the `uv run` log step
+  keeps working on Windows. The lock test checks what the `ke-app` builder
+  resolves (PSC-25, `test_ke_app_resolves_psycopg_c_not_binary`). The
+  human's Q64 intent is unchanged.
+
+  Original question, kept for the record: *Q65. psycopg-binary on hosts
+  outside a Linux image.* It blocked U0's lock change (PSC-25, "Lock").
+  - Context:
+    - `uv.lock` is universal, and `uv run` syncs the project's runtime
+      dependencies on whatever host runs it. Every role's log step
+      (`uv run python -m harness_telemetry.log_event`, AGENTS.md) runs on
+      the Windows dev host. Its `.venv` holds psycopg-binary today, from
+      the `win_amd64` wheel.
+    - `psycopg-c` is published as an sdist only. Without psycopg-binary in
+      the lock, `uv run` on a host without `pg_config` and a C compiler has
+      to build it, and is expected to fail (not tried). That would break
+      the log step on the Windows dev host, and on any other host that
+      runs it outside an image.
+    - `ke-gates` also runs `uv sync --locked`, so it builds `psycopg-c`
+      too. It does not ship, so a compiler there is a design choice, not a
+      PSC-25 breach.
+  - Options:
+    1. **Platform markers:** `psycopg[c]` on Linux, `psycopg[binary]`
+       elsewhere. psycopg-binary then stays in `uv.lock` under a marker
+       that excludes Linux. PSC-25's lock bullet would become: "no
+       `psycopg-binary` resolves for Linux, and no image installs it",
+       with `test_lock_has_no_psycopg_binary` checking the marker.
+    2. **Keep the lock free of psycopg-binary** and change how hosts run
+       the log step, so that it does not install the project's runtime
+       dependencies. That changes the AGENTS.md and CLAUDE.md command (the
+       human's) and both agent sets.
+    3. **A C toolchain and libpq on every dev host.** Heavy on Windows, and
+       it breaks the log step for anyone without them.
+  - Recommended: option 1. Q64's effect on what ships is unchanged (no
+    image holds psycopg-binary), and the log step keeps working. Trade-off:
+    `uv.lock` still names psycopg-binary, so the test pins the marker and
+    the image check, not the lock's absence of the name.
+  - Who rules: the orchestrator; the human if option 2 is chosen, since it
+    changes CLAUDE.md.
+
+- **Q66. Resolved 2026-10-22 (orchestrator ruling).** **A66:** accept
+  Debian 12's libpq (the PostgreSQL 15 series); no apt.postgresql.org.
+  Security re-rates the `require_auth` hardening follow-up at U0 review.
+  Outcome 2026-10-23: security re-rated the follow-up low, re-scoped to
+  auth-audit (see `docs/requirements.md`, the `require_auth` follow-up, and
+  `docs/evidence/platform-sbom/u0/security.md`). Compensating control:
+  Debian security updates arrive through the pin and base-image bumps, and
+  the scan sees libpq5 through dpkg.
+
+  Original question, kept for the record: *Q66. libpq drops from 18 to
+  15.* It did not block U0.
+  - Context:
+    - psycopg-binary 3.3.6 vendors libpq 18.0.6 (PSC-7 evidence). Debian
+      12's `libpq5` is the PostgreSQL 15 series. The stack's server is
+      `postgres:16-bookworm`; a libpq 15 client connects to it.
+    - The recorded L-13 hardening follow-up (`docs/requirements.md`,
+      "`require_auth="scram-sha-256"` on every libpq connection", goes
+      with `auth-audit`) relies on `require_auth`, which libpq has only
+      from 16. It guarded the vendored el7 krb5. Under PSC-25 that krb5 is
+      gone, and the GSSAPI code is Debian's krb5, which Debian's security
+      updates patch. `gssencmode="disable"` stays.
+  - Options:
+    1. **Accept Debian's libpq 15.** Security re-rates the follow-up: keep
+       it for when libpq 16+ is available, re-scope it, or retire it.
+    2. **libpq 16+ from the PostgreSQL apt repository**
+       (apt.postgresql.org). This adds a new apt source with its own
+       signing-key provenance (Q48), a new fetch host, and source that
+       snapshot.debian.org does not hold, so the `deb` source kind would
+       need another route.
+  - Recommended: option 1. It keeps Q64's "ordinary Debian packages", and
+    the risk the follow-up addressed is removed by the switch itself.
+  - Who rules: the orchestrator, with security's rating.
+
 ## platform-skeleton
 
 Raised in the analyst review of the platform-skeleton criteria (2026-10-18) as
@@ -358,6 +629,8 @@ analyst plan") and decided when that item opens. It does not block
       libraries move with the wheel); `gssencmode=disable` is today's
       mitigation; the structural fix stays the switch to psycopg on
       Debian's libpq.
+    - L-13 closes under Q64 (platform-sbom U0). *(Added 2026-10-22,
+      analyst, Q64; § platform-sbom, PSC-25.)*
   - Who rules: the orchestrator or security, as before. The 90-day cap is
     the orchestrator's or the human's call.
 

@@ -1,0 +1,127 @@
+# platform-sbom U0 re-check (reviewer, 2026-10-23): scratch checks of the shipped scripts/smoke.sh psycopg step
+# Nothing in the repo was written except this file. Scratch dir: the reviewer's session scratchpad (not kept).
+
+## 1. Reviewer mutants of the shipped smoke.sh, run through SmokePsycopgTest (all 5 methods, fake docker)
+# Command: docker run --rm --network none --read-only --tmpfs /tmp:exec,mode=1777 -e PYTHONDONTWRITEBYTECODE=1 -e HARNESS_TRACING=off -v <repo>:/work:ro -v <scratch>/rv:/rv:ro -w /work ke-gates:wt-33a132fbfdd7 /opt/venv/bin/python /rv/rv_mutants.py
+# Driver (verbatim):
+#   """Reviewer re-check: run SmokePsycopgTest against the shipped smoke.sh and reviewer mutants (scratch copies only)."""
+#   import sys, unittest
+#   from pathlib import Path
+#   REPO = Path("/work"); sys.path.insert(0, str(REPO))
+#   from tests import test_psycopg_c as t
+#   smoke = (REPO / "scripts/smoke.sh").read_text(encoding="utf-8")
+#   def sub(old, new):
+#       assert smoke.count(old) == 1, old
+#       return smoke.replace(old, new)
+#   V = {
+#    "SHIPPED": smoke,
+#    "R1 drop ldd psycopg_binary text check": sub(' || [[ "$ldd_out" == *psycopg_binary* ]]', ''),
+#    "R2 no end anchor on libpq path": sub(r'libpq\.so\.5(\.[0-9]+)*$ ]]', r'libpq\.so\.5 ]]'),
+#    "R3 venv scan on literal /opt/venv": sub('os.walk(sys.prefix)', 'os.walk("/opt/venv")'),
+#    "R4 owner check only ^libpq5": sub(r'^libpq5(:[a-z0-9]+)?:\ (.+)$ ]] || [ "${BASH_REMATCH[2]}" != "$libpq_real" ]', r'^libpq5 ]]'),
+#    "R5 pq_bin check removed": sub('if [ "${pq_bin:--}" != - ]; then', 'if false; then'),
+#    "R6 realpath failure ignored": sub('libpq_real="$(compose exec -T api realpath -e "$libpq")" || {', 'libpq_real="$(compose exec -T api realpath -e "$libpq")" || true || {'),
+#    "R7 version compare drops __build_version__": sub('[ "$pq_version" != "$want" ] || [ "$pq_build" != "$want" ]', '[ "$pq_version" != "$want" ]'),
+#   }
+#   TESTS = [n for n in dir(t.SmokePsycopgTest) if n.startswith("test_")]
+#   bad = 0
+#   for name, text in V.items():
+#       class C(t.SmokePsycopgTest):
+#           def setUp(self):
+#               super().setUp(); (self.tmp / "scripts/smoke.sh").write_text(text, encoding="utf-8", newline="\n")
+#       r = unittest.TestResult()
+#       fails = []
+#       class R(unittest.TestResult):
+#           def addSubTest(s, test, st, err):
+#               super().addSubTest(test, st, err)
+#               if err: fails.append(f"{test._testMethodName}[{st.params.get('case', st.params.get('control'))}]")
+#           def addFailure(s, test, err): super().addFailure(test, err); fails.append(test._testMethodName)
+#           def addError(s, test, err): super().addError(test, err); fails.append(test._testMethodName + " ERROR")
+#       rr = R()
+#       for n in TESTS: C(n).run(rr)
+#       ok = (not fails) if name == "SHIPPED" else bool(fails)
+#       bad += not ok
+#       print(f"### {name}: ran {rr.testsRun}, failing subtests {len(fails)} {'' if ok else 'UNEXPECTED'}")
+#       for f in fails[:8]: print("   ", f)
+#   print("unexpected:", bad)
+# Output:
+### SHIPPED: ran 5, failing subtests 0 
+### R1 drop ldd psycopg_binary text check: ran 5, failing subtests 1 
+    test_smoke_checks_psycopg_c_impl_in_api[ldd mentions psycopg_binary]
+### R2 no end anchor on libpq path: ran 5, failing subtests 0 UNEXPECTED
+### R3 venv scan on literal /opt/venv: ran 5, failing subtests 2 
+    test_smoke_fails_when_psycopg_binary_is_beside_psycopg_c[psycopg_binary.libs dir]
+    test_smoke_fails_when_psycopg_binary_is_beside_psycopg_c[psycopg_binary-3.3.6.dist-info]
+### R4 owner check only ^libpq5: ran 5, failing subtests 1 
+    test_smoke_checks_dpkg_libpq5_owns_the_loaded_libpq[owned by libpq5-fork (libpq5 is only a prefix)]
+### R5 pq_bin check removed: ran 5, failing subtests 4 
+    test_smoke_fails_when_psycopg_binary_is_beside_psycopg_c[psycopg_binary package dir]
+    test_smoke_fails_when_psycopg_binary_is_beside_psycopg_c[psycopg_binary.libs dir]
+    test_smoke_fails_when_psycopg_binary_is_beside_psycopg_c[psycopg_binary-3.3.6.dist-info]
+    test_smoke_fails_when_psycopg_binary_is_beside_psycopg_c[a whole psycopg-binary wheel]
+### R6 realpath failure ignored: ran 5, failing subtests 0 UNEXPECTED
+### R7 version compare drops __build_version__: ran 5, failing subtests 1 
+    test_smoke_checks_psycopg_c_impl_in_api[version() != __build_version__]
+unexpected: 2
+# R2 and R6 survive: see review.md Re-check N7 (both still fail closed through the dpkg-query -S check).
+
+## 2. Security M-1 PoC idea, re-run on the shipped lines (host Git Bash: GNU bash, version 5.3.9(1)-release (x86_64-pc-cygwin))
+# Driver = 'set -euo pipefail; deb=$1' + smoke.sh from the '# M-1:' comment through the 'want=$((' line, verbatim:
+#   #!/usr/bin/env bash
+#   set -euo pipefail
+#   deb="$1"
+#   # M-1: container output never reaches $(( )) unvalidated.
+#   if ! [[ "$deb" =~ ^([0-9]+)\.([0-9]+)-[0-9A-Za-z.+~]+$ ]]; then
+#     echo "smoke: FAIL (libpq: libpq5 version in api is '$deb', not <major>.<minor>-<revision>)" >&2
+#     exit 1
+#   fi
+#   want=$((10#${BASH_REMATCH[1]} * 10000 + 10#${BASH_REMATCH[2]}))
+#   echo "want=$want"
+## input: 15.19-0+deb12u1
+want=150019
+exit=0
+## input: 0+PPID\[\$\(touch\ marker1\)\]
+smoke: FAIL (libpq: libpq5 version in api is '0+PPID[$(touch marker1)]', not <major>.<minor>-<revision>)
+exit=1
+## input: 0+BASH_VERSINFO\[\$\(touch\ marker2\)\]
+smoke: FAIL (libpq: libpq5 version in api is '0+BASH_VERSINFO[$(touch marker2)]', not <major>.<minor>-<revision>)
+exit=1
+## input: a\[\$\(touch\ marker3\)\]
+smoke: FAIL (libpq: libpq5 version in api is 'a[$(touch marker3)]', not <major>.<minor>-<revision>)
+exit=1
+## input: 15.19-0+deb12u1\$\(touch\ marker4\)
+smoke: FAIL (libpq: libpq5 version in api is '15.19-0+deb12u1$(touch marker4)', not <major>.<minor>-<revision>)
+exit=1
+## input: $'15.19-0+deb12u1\n0+PPID[$(touch marker5)]'
+smoke: FAIL (libpq: libpq5 version in api is '15.19-0+deb12u1
+0+PPID[$(touch marker5)]', not <major>.<minor>-<revision>)
+exit=1
+## input: ''
+smoke: FAIL (libpq: libpq5 version in api is '', not <major>.<minor>-<revision>)
+exit=1
+## input: x.y
+smoke: FAIL (libpq: libpq5 version in api is 'x.y', not <major>.<minor>-<revision>)
+exit=1
+## input: 15.19
+smoke: FAIL (libpq: libpq5 version in api is '15.19', not <major>.<minor>-<revision>)
+exit=1
+## input: 99999999999999999999.1-1
+want=2003764205206886641
+exit=0
+## input: 1:15.19-0
+smoke: FAIL (libpq: libpq5 version in api is '1:15.19-0', not <major>.<minor>-<revision>)
+exit=1
+markers created on the host: none
+
+## 3. B2 tar size cross-check (reviewer, Windows host Docker, docker save | wc -c, as bundle.sh line 281 docker save -o)
+ke-app:bundle-737750d06839 58818048 bytes
+ke-app:bundle-d6b70355c452 60456960 bytes
+# after = size.md after exactly (58,818,048); d6b7035 build = 60,456,960 vs size.md 737750d build 60,414,464 (same psycopg-binary image family, -0.07%).
+
+## 4. A34 tree hashes now (sha256sum, working tree) vs windows-run.txt lines 141-145
+ad1a2bf5826fc00c39b7d75d7b6a72facaf5162f35799d9dc8afc5155ff8b98d *docker/app.Dockerfile
+a8904f6bcd8db9686761ad6e6e0d58ae8d211f9acdfcea4aeb04be6bc4f7a970 *docker/gates.Dockerfile
+feff883374df875719902dcd949e0ef30c52567da866ab8d5557c530c5b2a821 *uv.lock
+80d1770939b35c68f614fd65b682486450136762458e3fd29ca2256f3bc24cf8 *pyproject.toml
+d2eee6b2c9a8ad4e9612dff6871fb0050f83f014a64b5e4abed31cea53f86641 *scripts/smoke.sh
+# first four equal the proof; smoke.sh differs (gate script, Q34 scope).

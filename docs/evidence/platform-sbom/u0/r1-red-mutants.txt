@@ -1,0 +1,111 @@
+# platform-sbom U0 rework round 1 RED: scratch check of the new SmokePsycopgTest cases (tester, 2026-10-23)
+# Command (Git Bash host, repo mounted read-only, never written):
+#   docker run --rm --network none --read-only --tmpfs /tmp:exec,mode=1777 -e PYTHONDONTWRITEBYTECODE=1 -e HARNESS_TRACING=off -v <repo>:/work:ro -w /work ke-gates:wt-33a132fbfdd7 /opt/venv/bin/python docs/evidence/platform-sbom/u0/r1_smoke_check.py
+# Driver: docs/evidence/platform-sbom/u0/r1_smoke_check.py. TARGET = scripts/smoke.sh with its psycopg block replaced by
+#   docs/evidence/platform-sbom/u0/r1-target-smoke-block.sh (security recipe: $deb validated by ^([0-9]+)\.([0-9]+)-[0-9A-Za-z.+~]+$
+#   and BASH_REMATCH, fail closed; libpq regex end-anchored; realpath -e + dpkg-query -S, owner exactly libpq5[:arch];
+#   os.walk(sys.prefix) for psycopg_binary* in the python step). shellcheck -x on the TARGET smoke.sh: rc 0 (no findings).
+# Rows: outcome, test (test_smoke_ prefix dropped), subtest case, first assertion line. CURRENT/TARGET list every subtest; mutants list only failures.
+# Driver exit status: 0 (unexpected variant results: 0).
+
+### CURRENT repo smoke.sh  (want: new cases fail; new-case fails 15, older-case fails 0)
+  pass  checks_psycopg_c_impl_in_api                  default: psycopg-c on /lib/x86_64-linux-gnu/libpq.so.5              
+  pass  checks_psycopg_c_impl_in_api                  libpq under /usr/lib/x86_64-linux-gnu                               
+  pass  checks_psycopg_c_impl_in_api                  aarch64, /lib alias                                                 
+  pass  checks_psycopg_c_impl_in_api                  aarch64, /usr/lib                                                   
+  pass  checks_psycopg_c_impl_in_api                  impl binary                                                         
+  pass  checks_psycopg_c_impl_in_api                  impl python                                                         
+  pass  checks_psycopg_c_impl_in_api                  version() != __build_version__                                      
+  pass  checks_psycopg_c_impl_in_api                  both != the pin                                                     
+  pass  checks_psycopg_c_impl_in_api                  libpq from psycopg_binary.libs                                      
+  pass  checks_psycopg_c_impl_in_api                  libpq from /usr/local/lib                                           
+  pass  checks_psycopg_c_impl_in_api                  libpq not found                                                     
+  pass  checks_psycopg_c_impl_in_api                  ldd mentions psycopg_binary                                         
+  pass  checks_psycopg_c_impl_in_api                  the python check fails in api                                       
+  pass  checks_psycopg_c_impl_in_api                  ldd fails in api                                                    
+  fail  checks_dpkg_libpq5_owns_the_loaded_libpq      realpath /usr/lib/x86_64-linux-gnu/libpq.so.5.15, owner libpq5:amd  AssertionError: [] is not true : smoke never asks dpkg in api who owns /usr/lib/x86_64-linux-gnu/libpq.so.5.15 (dpkg-query -S): [['sh', '-c', 'wget -q -O - "http://127.0.
+  fail  checks_dpkg_libpq5_owns_the_loaded_libpq      aarch64: realpath /usr/lib/aarch64-linux-gnu/libpq.so.5.15, owner   AssertionError: [] is not true : smoke never asks dpkg in api who owns /usr/lib/aarch64-linux-gnu/libpq.so.5.15 (dpkg-query -S): [['sh', '-c', 'wget -q -O - "http://127.0
+  fail  checks_dpkg_libpq5_owns_the_loaded_libpq      realpath is an unowned vendored copy                                AssertionError: 0 == 0 : smoke passed with realpath is an unowned vendored copy:
+  fail  checks_dpkg_libpq5_owns_the_loaded_libpq      the Debian path, but dpkg owns no such file                         AssertionError: 0 == 0 : smoke passed with the Debian path, but dpkg owns no such file:
+  fail  checks_dpkg_libpq5_owns_the_loaded_libpq      owned by libpq-dev, not libpq5                                      AssertionError: 0 == 0 : smoke passed with owned by libpq-dev, not libpq5:
+  fail  checks_dpkg_libpq5_owns_the_loaded_libpq      owned by libpq5-fork (libpq5 is only a prefix)                      AssertionError: 0 == 0 : smoke passed with owned by libpq5-fork (libpq5 is only a prefix):
+  fail  checks_dpkg_libpq5_owns_the_loaded_libpq      ldd path runs on past libpq.so.5 (N3 end anchor)                    AssertionError: 0 == 0 : smoke passed with ldd path runs on past libpq.so.5 (N3 end anchor):
+  pass  fails_closed_on_dpkg_query_errors             dpkg-query exits non-zero in api                                    
+  fail  fails_closed_on_dpkg_query_errors             empty libpq5 version                                                AssertionError: <re.Match object; span=(538, 558), match='smoke.sh: line 153: '> is not None : smoke stopped on a bash error, not a named FAIL (empty version):
+  pass  fails_when_psycopg_binary_is_beside_psycopg_  control: psycopg and psycopg_c dist-info only                       
+  fail  fails_when_psycopg_binary_is_beside_psycopg_  psycopg_binary package dir                                          AssertionError: 0 == 0 : smoke passed with psycopg_binary package dir:
+  fail  fails_when_psycopg_binary_is_beside_psycopg_  psycopg_binary.libs dir                                             AssertionError: 0 == 0 : smoke passed with psycopg_binary.libs dir:
+  fail  fails_when_psycopg_binary_is_beside_psycopg_  psycopg_binary-3.3.6.dist-info                                      AssertionError: 0 == 0 : smoke passed with psycopg_binary-3.3.6.dist-info:
+  fail  fails_when_psycopg_binary_is_beside_psycopg_  a whole psycopg-binary wheel                                        AssertionError: 0 == 0 : smoke passed with a whole psycopg-binary wheel:
+  fail  never_evaluates_the_libpq5_version            injection via PPID subscript                                        AssertionError: True is not false : smoke ran a command from the libpq5 version on the host: /tmp/tmpapmav1qr/m1-marker-ppid exists
+  fail  never_evaluates_the_libpq5_version            injection via BASH_VERSINFO subscript                               AssertionError: True is not false : smoke ran a command from the libpq5 version on the host: /tmp/tmpapmav1qr/m1-marker-bash_versinfo exists
+  fail  never_evaluates_the_libpq5_version            non-numeric version x.y                                             AssertionError: <re.Match object; span=(538, 558), match='smoke.sh: line 153: '> is not None : smoke stopped on a bash error, not a named FAIL (x.y):
+
+### TARGET (r1-target-smoke-block.sh)  (want: all pass; new-case fails 0, older-case fails 0)
+  pass  checks_psycopg_c_impl_in_api                  default: psycopg-c on /lib/x86_64-linux-gnu/libpq.so.5              
+  pass  checks_psycopg_c_impl_in_api                  libpq under /usr/lib/x86_64-linux-gnu                               
+  pass  checks_psycopg_c_impl_in_api                  aarch64, /lib alias                                                 
+  pass  checks_psycopg_c_impl_in_api                  aarch64, /usr/lib                                                   
+  pass  checks_psycopg_c_impl_in_api                  impl binary                                                         
+  pass  checks_psycopg_c_impl_in_api                  impl python                                                         
+  pass  checks_psycopg_c_impl_in_api                  version() != __build_version__                                      
+  pass  checks_psycopg_c_impl_in_api                  both != the pin                                                     
+  pass  checks_psycopg_c_impl_in_api                  libpq from psycopg_binary.libs                                      
+  pass  checks_psycopg_c_impl_in_api                  libpq from /usr/local/lib                                           
+  pass  checks_psycopg_c_impl_in_api                  libpq not found                                                     
+  pass  checks_psycopg_c_impl_in_api                  ldd mentions psycopg_binary                                         
+  pass  checks_psycopg_c_impl_in_api                  the python check fails in api                                       
+  pass  checks_psycopg_c_impl_in_api                  ldd fails in api                                                    
+  pass  checks_dpkg_libpq5_owns_the_loaded_libpq      realpath /usr/lib/x86_64-linux-gnu/libpq.so.5.15, owner libpq5:amd  
+  pass  checks_dpkg_libpq5_owns_the_loaded_libpq      aarch64: realpath /usr/lib/aarch64-linux-gnu/libpq.so.5.15, owner   
+  pass  checks_dpkg_libpq5_owns_the_loaded_libpq      realpath is an unowned vendored copy                                
+  pass  checks_dpkg_libpq5_owns_the_loaded_libpq      the Debian path, but dpkg owns no such file                         
+  pass  checks_dpkg_libpq5_owns_the_loaded_libpq      owned by libpq-dev, not libpq5                                      
+  pass  checks_dpkg_libpq5_owns_the_loaded_libpq      owned by libpq5-fork (libpq5 is only a prefix)                      
+  pass  checks_dpkg_libpq5_owns_the_loaded_libpq      ldd path runs on past libpq.so.5 (N3 end anchor)                    
+  pass  fails_closed_on_dpkg_query_errors             dpkg-query exits non-zero in api                                    
+  pass  fails_closed_on_dpkg_query_errors             empty libpq5 version                                                
+  pass  fails_when_psycopg_binary_is_beside_psycopg_  control: psycopg and psycopg_c dist-info only                       
+  pass  fails_when_psycopg_binary_is_beside_psycopg_  psycopg_binary package dir                                          
+  pass  fails_when_psycopg_binary_is_beside_psycopg_  psycopg_binary.libs dir                                             
+  pass  fails_when_psycopg_binary_is_beside_psycopg_  psycopg_binary-3.3.6.dist-info                                      
+  pass  fails_when_psycopg_binary_is_beside_psycopg_  a whole psycopg-binary wheel                                        
+  pass  never_evaluates_the_libpq5_version            injection via PPID subscript                                        
+  pass  never_evaluates_the_libpq5_version            injection via BASH_VERSINFO subscript                               
+  pass  never_evaluates_the_libpq5_version            non-numeric version x.y                                             
+
+### T1 owner matched as a prefix (libpq5*)  (want: some fail; new-case fails 1, older-case fails 0)
+  fail  checks_dpkg_libpq5_owns_the_loaded_libpq      owned by libpq5-fork (libpq5 is only a prefix)                      AssertionError: 0 == 0 : smoke passed with owned by libpq5-fork (libpq5 is only a prefix):
+
+### T2 find_spec only, no venv scan  (want: some fail; new-case fails 2, older-case fails 0)
+  fail  fails_when_psycopg_binary_is_beside_psycopg_  psycopg_binary.libs dir                                             AssertionError: 0 == 0 : smoke passed with psycopg_binary.libs dir:
+  fail  fails_when_psycopg_binary_is_beside_psycopg_  psycopg_binary-3.3.6.dist-info                                      AssertionError: 0 == 0 : smoke passed with psycopg_binary-3.3.6.dist-info:
+
+### T3 arithmetic on raw $deb before validation  (want: some fail; new-case fails 4, older-case fails 0)
+  fail  fails_closed_on_dpkg_query_errors             empty libpq5 version                                                AssertionError: <re.Match object; span=(538, 558), match='smoke.sh: line 164: '> is not None : smoke stopped on a bash error, not a named FAIL (empty version):
+  fail  never_evaluates_the_libpq5_version            injection via PPID subscript                                        AssertionError: True is not false : smoke ran a command from the libpq5 version on the host: /tmp/tmp73gyw82m/m1-marker-ppid exists
+  fail  never_evaluates_the_libpq5_version            injection via BASH_VERSINFO subscript                               AssertionError: True is not false : smoke ran a command from the libpq5 version on the host: /tmp/tmp73gyw82m/m1-marker-bash_versinfo exists
+  fail  never_evaluates_the_libpq5_version            non-numeric version x.y                                             AssertionError: <re.Match object; span=(538, 558), match='smoke.sh: line 164: '> is not None : smoke stopped on a bash error, not a named FAIL (x.y):
+
+### T4 dpkg -S on the ldd path, no realpath  (want: some fail; new-case fails 4, older-case fails 2)
+  fail  checks_psycopg_c_impl_in_api                  default: psycopg-c on /lib/x86_64-linux-gnu/libpq.so.5              AssertionError: 1 != 0 : smoke: compose resolves with no .env; 2 ports, all on 127.0.0.1
+  fail  checks_psycopg_c_impl_in_api                  aarch64, /lib alias                                                 AssertionError: 1 != 0 : smoke: compose resolves with no .env; 2 ports, all on 127.0.0.1
+  fail  checks_dpkg_libpq5_owns_the_loaded_libpq      realpath /usr/lib/x86_64-linux-gnu/libpq.so.5.15, owner libpq5:amd  AssertionError: 1 != 0 : smoke failed with realpath /usr/lib/x86_64-linux-gnu/libpq.so.5.15, owner libpq5:amd64:
+  fail  checks_dpkg_libpq5_owns_the_loaded_libpq      aarch64: realpath /usr/lib/aarch64-linux-gnu/libpq.so.5.15, owner   AssertionError: 1 != 0 : smoke failed with aarch64: realpath /usr/lib/aarch64-linux-gnu/libpq.so.5.15, owner libpq5:arm64:
+  fail  checks_dpkg_libpq5_owns_the_loaded_libpq      realpath is an unowned vendored copy                                AssertionError: [] is not true : the failure must name 'libpq-0a1b2c3d' (realpath is an unowned vendored copy):
+  fail  fails_when_psycopg_binary_is_beside_psycopg_  control: psycopg and psycopg_c dist-info only                       AssertionError: 1 != 0 : smoke failed with control: psycopg and psycopg_c dist-info only:
+
+### T5a owner name never checked (dpkg -S must only succeed)  (want: some fail; new-case fails 2, older-case fails 0)
+  fail  checks_dpkg_libpq5_owns_the_loaded_libpq      owned by libpq-dev, not libpq5                                      AssertionError: 0 == 0 : smoke passed with owned by libpq-dev, not libpq5:
+  fail  checks_dpkg_libpq5_owns_the_loaded_libpq      owned by libpq5-fork (libpq5 is only a prefix)                      AssertionError: 0 == 0 : smoke passed with owned by libpq5-fork (libpq5 is only a prefix):
+
+### T5b dpkg -S result ignored  (want: some fail; new-case fails 4, older-case fails 0)
+  fail  checks_dpkg_libpq5_owns_the_loaded_libpq      realpath is an unowned vendored copy                                AssertionError: 0 == 0 : smoke passed with realpath is an unowned vendored copy:
+  fail  checks_dpkg_libpq5_owns_the_loaded_libpq      the Debian path, but dpkg owns no such file                         AssertionError: 0 == 0 : smoke passed with the Debian path, but dpkg owns no such file:
+  fail  checks_dpkg_libpq5_owns_the_loaded_libpq      owned by libpq-dev, not libpq5                                      AssertionError: 0 == 0 : smoke passed with owned by libpq-dev, not libpq5:
+  fail  checks_dpkg_libpq5_owns_the_loaded_libpq      owned by libpq5-fork (libpq5 is only a prefix)                      AssertionError: 0 == 0 : smoke passed with owned by libpq5-fork (libpq5 is only a prefix):
+
+### T6 dpkg-query -W failure branch removed  (want: some fail; new-case fails 1, older-case fails 0)
+  fail  fails_closed_on_dpkg_query_errors             dpkg-query exits non-zero in api                                    AssertionError: [] is not true : the failure must be a `smoke: FAIL` line naming psycopg or libpq (dpkg-query fails):
+
+unexpected variant results: 0

