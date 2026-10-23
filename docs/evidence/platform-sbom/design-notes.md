@@ -254,13 +254,13 @@ ADR-KE-013 am. 1 D1). Never in the stack's `COMPOSE_FILE`, never copied by
 
 | | `sbom` |
 |---|---|
-| Image | `anchore/syft:v<X.Y.Z>@sha256:<64 hex>` (multi-arch index digest) |
+| Image | `anchore/syft:v1.54.1@sha256:3eb5379ba7b409c3f4069b686110527af0c47df993fa5c10d13e7cf34f49b1aa` (multi-arch index digest; see *Pin (U2)* below) |
 | Command | `docker-archive:/in/<name>.tar --scope all-layers -o spdx-json=/out/raw.spdx.json` (the developer may pass the tar name as an argument of `compose run`) |
 | Network | `network_mode: none` |
 | Mounts | `${KE_SBOM_IN:?}` at `/in` **read-only** (the bundle's `images/`); `${KE_SBOM_OUT:?}` at `/out` read-write, a per-image work dir **outside** `--out`; nothing else, no checkout |
 | Root FS | `read_only: true`; tmpfs `/tmp` (small: syft's unpack goes to `/out/tmp`, see below) |
 | Hardening | `cap_drop: [ALL]`, `no-new-privileges:true`; no socket, no `DOCKER_HOST`, no `ports`, not privileged |
-| Environment (literals) | `SYFT_CHECK_FOR_APP_UPDATE=false`, `TMPDIR=/out/tmp`, `SYFT_JAVA_USE_NETWORK=false`, `SYFT_GOLANG_SEARCH_REMOTE_LICENSES=false`, `SYFT_JAVASCRIPT_SEARCH_REMOTE_LICENSES=false` |
+| Environment (literals) | `TMPDIR=/out/tmp` and, all `false`: `SYFT_CHECK_FOR_APP_UPDATE`, `SYFT_JAVA_USE_NETWORK`, `SYFT_JAVA_RESOLVE_TRANSITIVE_DEPENDENCIES`, `SYFT_GOLANG_SEARCH_REMOTE_LICENSES`, `SYFT_GOLANG_USE_PACKAGES_LIB`, `SYFT_JAVASCRIPT_SEARCH_REMOTE_LICENSES`, `SYFT_PYTHON_SEARCH_REMOTE_LICENSES`, `SYFT_CPP_VCPKG_ALLOW_GIT_CLONE` (U2, see *Env keys (U2)*) |
 
 - `bundle.sh` runs it as `docker compose -p <project>-sbom -f docker-compose.sbom.yml run --rm --pull never sbom ...`,
   so the container's compose project label is `<project>-sbom` (PSC-20; as
@@ -280,9 +280,80 @@ ADR-KE-013 am. 1 D1). Never in the stack's `COMPOSE_FILE`, never copied by
   squashed view would hide it. Duplicates across layers collapse to one
   index component (N5) by source key.
 - *Presence check (PSC-20):* before any write, `bundle.sh` reads the
-  reference with `docker compose -f docker-compose.sbom.yml config --images`
+  reference with
+  `KE_SBOM_IN=/nonexistent KE_SBOM_OUT=/nonexistent docker compose --env-file .env.example -f docker-compose.sbom.yml config --images sbom`
   (single line, `ref_re` plus a mandatory `@sha256:`), and runs
-  `docker image inspect <ref>`. Absent: `bundle: the SBOM generator image is not present (<ref>); run scripts/bundle_fetch.sh first; this script never pulls`, exit 1, `--out` untouched.
+  `docker image inspect <ref>`. Absent, from U2 until U8:
+  `bundle: the SBOM generator image is not present (<ref>); pull it first with: docker pull <ref>; this script never pulls`,
+  exit 1, `--out` untouched (`<ref>` is the value read, never a literal in
+  `bundle.sh`). U8 replaces `pull it first with: docker pull <ref>` with
+  `run scripts/bundle_fetch.sh first`, in the same commit that adds it.
+
+### N1 amendment, U2 (architect, 2026-10-23)
+
+Facts here were fetched (GitHub releases API, `docker pull`,
+`docker buildx imagetools inspect`, and `syft config` run offline); the
+note's "nothing fetched" header does not apply to this subsection.
+
+- *Pin (U2).* `anchore/syft` **v1.54.1**, released 2026-10-06 (17 days
+  old; v1.55.0 of 2026-10-19 is too new). It is the syft that the pinned
+  grype v0.120.1 embeds (grype's `go.mod` at v0.120.1:
+  `github.com/anchore/syft v1.54.1`), so SBOM and scan share catalogers.
+  Index (OCI image index) `sha256:3eb5379ba7b409c3f4069b686110527af0c47df993fa5c10d13e7cf34f49b1aa`;
+  linux/amd64 `sha256:507b76f097cd0f4a0f998a346afe61f5776329913d6ab3c0bd678b6635356120`;
+  linux/arm64 `sha256:9c493ce4965bb26995e0f30b5a7799cb4628c83c1733cfca4dcd4ac2e92cb1a6`
+  (the index also lists ppc64le, riscv64 and s390x; no attestation
+  manifests). Security's N2 record checks these before the pin is
+  committed.
+- *Interim pull (U2 to U8).* `scripts/offline_check.sh`, host half, after
+  the Compose version check and immediately before `bash scripts/bundle.sh`:
+  ```
+  echo "offline: pulling the SBOM generator (docker-compose.sbom.yml, service sbom)"
+  KE_SBOM_IN=/nonexistent KE_SBOM_OUT=/nonexistent \
+    docker compose --env-file .env.example -f docker-compose.sbom.yml pull sbom \
+    || die "pulling the SBOM generator failed (docker-compose.sbom.yml, service sbom); no retry"
+  ```
+  Why there: it is the consumer's own script (as `scan.sh` pulls grype
+  just before using it), it keeps `verify.sh` a list of gate scripts, it
+  makes `offline_check.sh` run alone, and it is the line U8 replaces with
+  `bash scripts/bundle_fetch.sh ...` (N15 U8: "wired into
+  `offline_check.sh`"). Not `bundle.sh`, which never pulls. Not
+  `build.sh`, which the operator runs too and which pulls only the stack.
+  `-f` overrides the exported `COMPOSE_FILE`; the exported
+  `COMPOSE_PROJECT_NAME` is harmless (pull creates nothing). On Git Bash
+  MSYS rewrites `/nonexistent`; neither `pull` nor `config` reads the bind
+  source.
+- *Dummy values, not `--no-interpolate` (tester items 3 and 4).* Compose
+  5.1.4 refuses the file with the `:?` variables unset, even for `config`.
+  `config --no-interpolate --images sbom` and the dummy form both print the
+  ref, but `pull` has no `--no-interpolate`. So both the read and every pull
+  (U2 here, and U8's `bundle_fetch.sh` N4 step 1) use the one form,
+  `KE_SBOM_IN=/nonexistent KE_SBOM_OUT=/nonexistent docker compose --env-file .env.example -f docker-compose.sbom.yml ...`.
+  `--env-file .env.example` matches every other compose call in
+  `bundle.sh`, `scan.sh` and `offline_check.sh`, so the repo-root `.env`
+  (it holds the model keys) is never loaded for this file. Proven on this
+  host with the real ref: pull, then `config --images`, then
+  `docker image inspect` all exit 0; a wrong digest makes inspect exit 1.
+- *Operator before U8.* `build.sh`, then the command the refusal prints,
+  `docker pull <ref>`. This is the same daemon pull as the compose form:
+  the digest wins and the tag is dropped (checked on this host). README
+  wording waits for U8 (ruling 6). README may not name the ref (pin place).
+- *Env keys (U2).* From `syft config` of v1.54.1, run with
+  `--network none --read-only`: every key that makes syft reach the
+  network, set to `false` (the Environment row). None needs a value other
+  than `false`. Defaults: `check-for-app-update` is `true`. The others are
+  unset (tri-state) or `false`, and `enrich: []` would turn them on; an
+  explicit key wins over `enrich`. Not set: `SYFT_ENRICH` (a list, and
+  covered by the explicit keys); the URL keys `SYFT_JAVA_MAVEN_URL`,
+  `SYFT_JAVASCRIPT_NPM_BASE_URL`, `SYFT_PYTHON_PYPI_BASE_URL`,
+  `SYFT_GOLANG_PROXY` (unused with lookups off, and not `false`); the
+  registry keys and `SYFT_FROM` (the `docker-archive:` scheme never
+  contacts a registry). `network_mode: none` is the control. The keys stop
+  syft from trying, so a run does not wait on timeouts and the SBOM is the
+  same on online and offline hosts. The `SYFT_*` keys must be exactly
+  these eight; extra keys are still allowed if they are `false`.
+- *CLAUDE.md:* no change. The `full` host half already "builds and pulls
+  images"; this is one more pull, from the same registry host.
 
 ## N2. Generator provenance (PSC-1 form; security records it)
 
@@ -347,7 +418,10 @@ not held to bash 3.2). The bundle's only network step besides `build.sh`.
 ```
 scripts/bundle_fetch.sh --set full|sample --out <dir>
 ```
-1. `== sources: pull ==` `docker compose -f docker-compose.sbom.yml pull sbom`
+1. `== sources: pull ==` `KE_SBOM_IN=/nonexistent KE_SBOM_OUT=/nonexistent docker compose --env-file .env.example -f docker-compose.sbom.yml pull sbom`
+   (the N1 U2 form; it replaces `offline_check.sh`'s interim pull, and the
+   refusal's `pull it first with: docker pull <ref>` becomes
+   `run scripts/bundle_fetch.sh first`)
    (the generator; PSC-20 "the step that pulls it"). One call; failure:
    `bundle_fetch: FAIL (stage pull: pulling the SBOM generator <ref> failed; no retry)`.
 2. `== sources: fetch ==` `compose run --rm --pull never sources-fetch`.

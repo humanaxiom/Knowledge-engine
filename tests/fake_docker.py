@@ -290,6 +290,17 @@ never touches a real daemon. What it does:
   comma-separated absolute paths (a trailing `/` makes a directory, else
   an empty file). FAKE_API_PIP_IMPORTABLE=1 puts a `pip` package on CODE's
   sys.path that the walk does not see (importable only).
+- platform-sbom U2 (PSC-20, ADR-KE-016 point 1, design-notes N1). Inert
+  unless FAKE_COMPOSE_FILE_IMAGES is set (the bundle.sh tests set it):
+  - FAKE_COMPOSE_FILE_IMAGES (JSON object, compose file basename ->
+    {service: image}): a `compose ... config` call whose `-f`/`--file`
+    (else COMPOSE_FILE) names such a file answers from that entry in place
+    of FAKE_COMPOSE_IMAGES: `--images [svc...]`, `--services` and `--format
+    json` as above, with no depends_on and no profile images.
+  - FAKE_COMPOSE_FILE_REQUIRED (JSON object, basename -> variable names):
+    each must be set and non-empty in the interpolation environment (process
+    KE_* or the env file), else exit 1 "required variable X is missing a
+    value", as compose does for `${X:?}`; `--no-interpolate` skips it.
 - Every other call exits 0.
 """
 
@@ -1262,9 +1273,29 @@ if "config" in argv:
     images = None
     depends = json.loads(os.environ.get("FAKE_COMPOSE_DEPENDS") or "null")
     wanted = []
+    # platform-sbom U2 (PSC-20): a compose file of its own, named by -f/--file
+    # (else COMPOSE_FILE) and listed in FAKE_COMPOSE_FILE_IMAGES, answers from
+    # that entry instead of the stack's, with no depends_on and no profile
+    # images; its FAKE_COMPOSE_FILE_REQUIRED variables must be set and
+    # non-empty unless --no-interpolate is given, as real compose requires.
+    _file_images = json.loads(os.environ.get("FAKE_COMPOSE_FILE_IMAGES") or "{}")
+    _cfiles = opt_values("-f") + opt_values("--file")
+    if not _cfiles and os.environ.get("COMPOSE_FILE"):
+        _cfiles = os.environ["COMPOSE_FILE"].split(os.environ.get("COMPOSE_PATH_SEPARATOR") or os.pathsep)
+    _own = [os.path.basename(f) for f in _cfiles if os.path.basename(f) in _file_images]
+    if _own:
+        if "--no-interpolate" not in argv:
+            _required = json.loads(os.environ.get("FAKE_COMPOSE_FILE_REQUIRED") or "{}").get(_own[0], [])
+            for _var in _required:
+                if not env.get(_var):
+                    sys.stderr.write("error while interpolating %s: required variable %s is missing a value\n"
+                                     % (_own[0], _var))
+                    sys.exit(1)
+        stack_images = json.dumps(_file_images[_own[0]])
+        depends = None
     if stack_images is not None:
         images = dict(json.loads(stack_images))
-        if opt_values("--profile"):
+        if opt_values("--profile") and not _own:
             images.update(json.loads(os.environ.get("FAKE_COMPOSE_PROFILE_IMAGES") or "{}"))
         at = argv.index("config")
         skip = (set(opt_values("--format")) | set(opt_values("-o")) | set(opt_values("--output"))

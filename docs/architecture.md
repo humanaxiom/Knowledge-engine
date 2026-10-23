@@ -6605,6 +6605,12 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
      `bundle.sh` refuses before any write if the image is absent. SPDX 2.3
      by a required-field validator (N6). No post-step: syft's dpkg
      cataloguer sees libpq5 and its dependencies, the python one psycopg-c.
+     *Amended U2 (2026-10-23, N1 amendment):* pinned at v1.54.1, the syft
+     that grype v0.120.1 embeds, by its index digest. Eight `SYFT_*=false`
+     keys turn off the update check and every remote lookup. Until U8,
+     `offline_check.sh` pulls it just before `bundle.sh`, with dummy `:?`
+     values and `--env-file .env.example`. The refusal tells the operator to
+     run `docker pull <ref>`; U8 swaps both for `bundle_fetch.sh`.
   2. **One checker, `scripts/sbom_check.py`** (N3): standard library only,
      never shipped; every subcommand reads read-only mounts and writes
      only stdout. At bundle time it runs inside the `ke-app` image being

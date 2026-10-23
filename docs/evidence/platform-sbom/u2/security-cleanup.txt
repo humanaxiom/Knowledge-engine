@@ -1,0 +1,37 @@
+$ docker rmi anchore/syft@sha256:9c493ce4...b1a6 anchore/syft@sha256:507b76f0...6120 ghcr.io/sigstore/cosign/cosign@sha256:9e5c2f2e...11b8
+Untagged: anchore/syft@sha256:9c493ce4965bb26995e0f30b5a7799cb4628c83c1733cfca4dcd4ac2e92cb1a6
+Deleted: sha256:9c493ce4965bb26995e0f30b5a7799cb4628c83c1733cfca4dcd4ac2e92cb1a6
+Untagged: anchore/syft@sha256:507b76f097cd0f4a0f998a346afe61f5776329913d6ab3c0bd678b6635356120
+Deleted: sha256:507b76f097cd0f4a0f998a346afe61f5776329913d6ab3c0bd678b6635356120
+Untagged: ghcr.io/sigstore/cosign/cosign@sha256:9e5c2f2edc34351160407ca3416c61855bdf9403c3c5936e0f0be7fc261611b8
+Deleted: sha256:9e5c2f2edc34351160407ca3416c61855bdf9403c3c5936e0f0be7fc261611b8
+exit=0
+$ docker image rm --platform linux/arm64 anchore/syft:v1.54.1
+Error response from daemon: Content will be removed from all images referencing this variant. Use —-force to force delete.
+exit=1
+$ docker image ls --tree (syft, cosign)
+anchore/syft:v1.54.1                                                                                
+anchore/syft@sha256:3eb5379ba7b409c3f4069b686110527af0c47df993fa5c10d13e7cf34f49b1aa                   3eb5379ba7b4        237MB         59.7MB        
+├─ linux/amd64                                                                                         507b76f097cd        123MB         31.2MB        
+├─ linux/arm64                                                                                         9c493ce4965b        114MB         28.5MB        
+├─ linux/ppc64le                                                                                       a5daf02d77de           0B             0B        
+├─ linux/riscv64                                                                                       3c45ad7a24fb           0B             0B        
+└─ linux/s390x                                                                                         486cba6f6d61           0B             0B        
+
+$ docker image inspect anchore/syft:v1.54.1 (amd64 still present, pin resolves)
+amd64 ["anchore/syft@sha256:3eb5379ba7b409c3f4069b686110527af0c47df993fa5c10d13e7cf34f49b1aa"]
+exit=0
+$ docker ps -a --filter label=ke.scratch=sec-u2
+(end)
+$ docker image rm --force --platform linux/arm64 anchore/syft:v1.54.1   (only the syft index references this variant)
+Deleted: sha256:9c493ce4965bb26995e0f30b5a7799cb4628c83c1733cfca4dcd4ac2e92cb1a6
+exit=0
+anchore/syft@sha256:3eb5379ba7b409c3f4069b686110527af0c47df993fa5c10d13e7cf34f49b1aa                   3eb5379ba7b4        123MB         31.1MB        
+├─ linux/amd64                                                                                         507b76f097cd        123MB         31.1MB        
+├─ linux/arm64                                                                                         9c493ce4965b           0B             0B        
+├─ linux/ppc64le                                                                                       a5daf02d77de           0B             0B        
+├─ linux/riscv64                                                                                       3c45ad7a24fb           0B             0B        
+└─ linux/s390x                                                                                         486cba6f6d61           0B             0B        
+
+amd64 ["anchore/syft@sha256:3eb5379ba7b409c3f4069b686110527af0c47df993fa5c10d13e7cf34f49b1aa"]
+inspect exit=0

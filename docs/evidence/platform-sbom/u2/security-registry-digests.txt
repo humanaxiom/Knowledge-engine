@@ -1,0 +1,108 @@
+$ docker buildx imagetools inspect anchore/syft:v1.54.1
+Name:      docker.io/anchore/syft:v1.54.1
+MediaType: application/vnd.oci.image.index.v1+json
+Digest:    sha256:3eb5379ba7b409c3f4069b686110527af0c47df993fa5c10d13e7cf34f49b1aa
+           
+Manifests: 
+  Name:      docker.io/anchore/syft:v1.54.1@sha256:507b76f097cd0f4a0f998a346afe61f5776329913d6ab3c0bd678b6635356120
+  MediaType: application/vnd.oci.image.manifest.v1+json
+  Platform:  linux/amd64
+             
+  Name:      docker.io/anchore/syft:v1.54.1@sha256:9c493ce4965bb26995e0f30b5a7799cb4628c83c1733cfca4dcd4ac2e92cb1a6
+  MediaType: application/vnd.oci.image.manifest.v1+json
+  Platform:  linux/arm64
+             
+  Name:      docker.io/anchore/syft:v1.54.1@sha256:a5daf02d77de403423ec2f9bdac374155b702227dc5d5cd1139ad9d95648d58b
+  MediaType: application/vnd.oci.image.manifest.v1+json
+  Platform:  linux/ppc64le
+             
+  Name:      docker.io/anchore/syft:v1.54.1@sha256:3c45ad7a24fb25501d8aa4237638959b95278dc243bfee452cc5e383d68a2beb
+  MediaType: application/vnd.oci.image.manifest.v1+json
+  Platform:  linux/riscv64
+             
+  Name:      docker.io/anchore/syft:v1.54.1@sha256:486cba6f6d61a20ca71b425b511ff5a3e47c940bf623b50f13a0e1f065f6e86a
+  MediaType: application/vnd.oci.image.manifest.v1+json
+  Platform:  linux/s390x
+exit=0
+
+$ docker buildx imagetools inspect ghcr.io/anchore/syft:v1.54.1
+Name:      ghcr.io/anchore/syft:v1.54.1
+MediaType: application/vnd.oci.image.index.v1+json
+Digest:    sha256:3eb5379ba7b409c3f4069b686110527af0c47df993fa5c10d13e7cf34f49b1aa
+           
+Manifests: 
+  Name:      ghcr.io/anchore/syft:v1.54.1@sha256:507b76f097cd0f4a0f998a346afe61f5776329913d6ab3c0bd678b6635356120
+  MediaType: application/vnd.oci.image.manifest.v1+json
+  Platform:  linux/amd64
+             
+  Name:      ghcr.io/anchore/syft:v1.54.1@sha256:9c493ce4965bb26995e0f30b5a7799cb4628c83c1733cfca4dcd4ac2e92cb1a6
+  MediaType: application/vnd.oci.image.manifest.v1+json
+  Platform:  linux/arm64
+             
+  Name:      ghcr.io/anchore/syft:v1.54.1@sha256:a5daf02d77de403423ec2f9bdac374155b702227dc5d5cd1139ad9d95648d58b
+  MediaType: application/vnd.oci.image.manifest.v1+json
+  Platform:  linux/ppc64le
+             
+  Name:      ghcr.io/anchore/syft:v1.54.1@sha256:3c45ad7a24fb25501d8aa4237638959b95278dc243bfee452cc5e383d68a2beb
+  MediaType: application/vnd.oci.image.manifest.v1+json
+  Platform:  linux/riscv64
+             
+  Name:      ghcr.io/anchore/syft:v1.54.1@sha256:486cba6f6d61a20ca71b425b511ff5a3e47c940bf623b50f13a0e1f065f6e86a
+  MediaType: application/vnd.oci.image.manifest.v1+json
+  Platform:  linux/s390x
+exit=0
+
+$ docker buildx imagetools inspect --raw docker.io/anchore/syft@sha256:3eb5379ba7b409c3f4069b686110527af0c47df993fa5c10d13e7cf34f49b1aa
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.index.v1+json",
+  "manifests": [
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:507b76f097cd0f4a0f998a346afe61f5776329913d6ab3c0bd678b6635356120",
+      "size": 860,
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      }
+    },
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:9c493ce4965bb26995e0f30b5a7799cb4628c83c1733cfca4dcd4ac2e92cb1a6",
+      "size": 860,
+      "platform": {
+        "architecture": "arm64",
+        "os": "linux"
+      }
+    },
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:a5daf02d77de403423ec2f9bdac374155b702227dc5d5cd1139ad9d95648d58b",
+      "size": 860,
+      "platform": {
+        "architecture": "ppc64le",
+        "os": "linux"
+      }
+    },
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:3c45ad7a24fb25501d8aa4237638959b95278dc243bfee452cc5e383d68a2beb",
+      "size": 860,
+      "platform": {
+        "architecture": "riscv64",
+        "os": "linux"
+      }
+    },
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:486cba6f6d61a20ca71b425b511ff5a3e47c940bf623b50f13a0e1f065f6e86a",
+      "size": 860,
+      "platform": {
+        "architecture": "s390x",
+        "os": "linux"
+      }
+    }
+  ]
+}exit=0
+# local sha256 of the raw index bytes (must equal the pinned index digest)
+3eb5379ba7b409c3f4069b686110527af0c47df993fa5c10d13e7cf34f49b1aa *-

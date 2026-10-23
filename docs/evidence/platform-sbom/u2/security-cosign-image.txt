@@ -1,0 +1,79 @@
+cosign image: ghcr.io/sigstore/cosign/cosign:v3.1.3@sha256:9e5c2f2edc34351160407ca3416c61855bdf9403c3c5936e0f0be7fc261611b8
+$ docker run --rm --label ke.scratch=sec-u2 $COSIGN verify --certificate-identity 'https://github.com/anchore/syft/.github/workflows/release.yaml@refs/heads/main' --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' docker.io/anchore/syft@sha256:3eb5379ba7b409c3f4069b686110527af0c47df993fa5c10d13e7cf34f49b1aa
+Unable to find image 'ghcr.io/sigstore/cosign/cosign:v3.1.3@sha256:9e5c2f2edc34351160407ca3416c61855bdf9403c3c5936e0f0be7fc261611b8' locally
+ghcr.io/sigstore/cosign/cosign@sha256:9e5c2f2edc34351160407ca3416c61855bdf9403c3c5936e0f0be7fc261611b8: Pulling from sigstore/cosign/cosign
+1711bc6f8894: Pulling fs layer
+1eed391ea893: Pulling fs layer
+250c06f7c38e: Pulling fs layer
+dd64bf2dd177: Pulling fs layer
+ebddc55facdc: Pulling fs layer
+3214acf345c0: Pulling fs layer
+b839dfae01f6: Pulling fs layer
+99ba982a9142: Pulling fs layer
+2780920e5dbf: Pulling fs layer
+d6b1b89eccac: Pulling fs layer
+bdfd7f7e5bf6: Pulling fs layer
+99515e7b4d35: Pulling fs layer
+7c12895b777b: Pulling fs layer
+52630fc75a18: Pulling fs layer
+c172f21841df: Pulling fs layer
+ebddc55facdc: Already exists
+2780920e5dbf: Already exists
+7c12895b777b: Already exists
+dd64bf2dd177: Already exists
+3214acf345c0: Already exists
+b839dfae01f6: Already exists
+c172f21841df: Already exists
+d6b1b89eccac: Already exists
+52630fc75a18: Already exists
+bdfd7f7e5bf6: Download complete
+1eed391ea893: Download complete
+250c06f7c38e: Download complete
+99ba982a9142: Download complete
+c172f21841df: Pull complete
+1eed391ea893: Pull complete
+99515e7b4d35: Download complete
+d6b1b89eccac: Pull complete
+99ba982a9142: Pull complete
+99515e7b4d35: Pull complete
+2780920e5dbf: Pull complete
+7c12895b777b: Pull complete
+dd64bf2dd177: Pull complete
+3214acf345c0: Pull complete
+b839dfae01f6: Pull complete
+52630fc75a18: Pull complete
+ebddc55facdc: Pull complete
+bdfd7f7e5bf6: Pull complete
+250c06f7c38e: Pull complete
+1711bc6f8894: Download complete
+1711bc6f8894: Pull complete
+Digest: sha256:9e5c2f2edc34351160407ca3416c61855bdf9403c3c5936e0f0be7fc261611b8
+Status: Downloaded newer image for ghcr.io/sigstore/cosign/cosign@sha256:9e5c2f2edc34351160407ca3416c61855bdf9403c3c5936e0f0be7fc261611b8
+Error: no signatures found
+error during command execution: no signatures found
+exit=10
+
+$ ... verify --certificate-identity-regexp '^https://github.com/anchore/syft/' --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' docker.io/anchore/syft@sha256:3eb5379ba7b409c3f4069b686110527af0c47df993fa5c10d13e7cf34f49b1aa
+Error: no signatures found
+error during command execution: no signatures found
+exit=10
+
+$ ... verify --certificate-identity-regexp '^https://github.com/anchore/syft/' --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' ghcr.io/anchore/syft@sha256:3eb5379b...49b1aa
+Error: no signatures found
+error during command execution: no signatures found
+exit=10
+
+$ ... tree docker.io/anchore/syft@sha256:3eb5379ba7b409c3f4069b686110527af0c47df993fa5c10d13e7cf34f49b1aa
+📦 Supply Chain Security Related artifacts for an image: docker.io/anchore/syft@sha256:3eb5379ba7b409c3f4069b686110527af0c47df993fa5c10d13e7cf34f49b1aa
+No Supply Chain Security Related Artifacts found for image docker.io/anchore/syft@sha256:3eb5379ba7b409c3f4069b686110527af0c47df993fa5c10d13e7cf34f49b1aa,
+ start creating one with simply running$ cosign sign <img>exit=0
+
+$ ... tree docker.io/anchore/syft@sha256:507b76f097cd0f4a0f998a346afe61f5776329913d6ab3c0bd678b6635356120
+📦 Supply Chain Security Related artifacts for an image: docker.io/anchore/syft@sha256:507b76f097cd0f4a0f998a346afe61f5776329913d6ab3c0bd678b6635356120
+No Supply Chain Security Related Artifacts found for image docker.io/anchore/syft@sha256:507b76f097cd0f4a0f998a346afe61f5776329913d6ab3c0bd678b6635356120,
+ start creating one with simply running$ cosign sign <img>exit=0
+
+$ ... tree docker.io/anchore/syft@sha256:9c493ce4965bb26995e0f30b5a7799cb4628c83c1733cfca4dcd4ac2e92cb1a6
+📦 Supply Chain Security Related artifacts for an image: docker.io/anchore/syft@sha256:9c493ce4965bb26995e0f30b5a7799cb4628c83c1733cfca4dcd4ac2e92cb1a6
+No Supply Chain Security Related Artifacts found for image docker.io/anchore/syft@sha256:9c493ce4965bb26995e0f30b5a7799cb4628c83c1733cfca4dcd4ac2e92cb1a6,
+ start creating one with simply running$ cosign sign <img>exit=0

@@ -1,0 +1,51 @@
+$ docker pull --platform linux/amd64 anchore/syft@sha256:507b76f097cd0f4a0f998a346afe61f5776329913d6ab3c0bd678b6635356120
+docker.io/anchore/syft@sha256:507b76f097cd0f4a0f998a346afe61f5776329913d6ab3c0bd678b6635356120
+exit=0
+$ docker pull --platform linux/arm64 anchore/syft@sha256:9c493ce4965bb26995e0f30b5a7799cb4628c83c1733cfca4dcd4ac2e92cb1a6
+docker.io/anchore/syft@sha256:9c493ce4965bb26995e0f30b5a7799cb4628c83c1733cfca4dcd4ac2e92cb1a6
+exit=0
+created amd64 container (label ke.scratch=sec-u2)
+created arm64 container (label ke.scratch=sec-u2)
+$ docker container inspect -f '{{.Config.Image}} {{.State.Status}} started={{.State.StartedAt}}'
+anchore/syft@sha256:507b76f097cd0f4a0f998a346afe61f5776329913d6ab3c0bd678b6635356120 created started=0001-01-01T00:00:00Z
+anchore/syft@sha256:9c493ce4965bb26995e0f30b5a7799cb4628c83c1733cfca4dcd4ac2e92cb1a6 created started=0001-01-01T00:00:00Z
+docker cp exit=0
+$ docker export (amd64) | tar -tv
+-rwxr-xr-x 0/0               0 2026-10-23 01:38 .dockerenv
+drwxr-xr-x 0/0               0 2026-10-23 01:38 dev/
+-rwxr-xr-x 0/0               0 2026-10-23 01:38 dev/console
+drwxr-xr-x 0/0               0 2026-10-23 01:38 dev/pts/
+drwxr-xr-x 0/0               0 2026-10-23 01:38 dev/shm/
+drwxr-xr-x 0/0               0 2026-10-23 01:38 etc/
+-rwxr-xr-x 0/0               0 2026-10-23 01:38 etc/hostname
+-rwxr-xr-x 0/0               0 2026-10-23 01:38 etc/hosts
+lrwxrwxrwx 0/0               0 2026-10-23 01:38 etc/mtab -> /proc/mounts
+-rwxr-xr-x 0/0               0 2026-10-23 01:38 etc/resolv.conf
+drwxr-xr-x 0/0               0 2026-10-06 08:34 etc/ssl/
+drwxr-xr-x 0/0               0 2026-10-06 08:34 etc/ssl/certs/
+-r-xr-xr-x 0/0          224449 1969-12-31 16:00 etc/ssl/certs/ca-certificates.crt
+drwxr-xr-x 0/0               0 2026-10-23 01:38 proc/
+-rwxr-xr-x 0/0        91779234 2026-10-06 08:34 syft
+drwxr-xr-x 0/0               0 2026-10-23 01:38 sys/
+drwxr-xr-x 0/0               0 2026-10-06 08:34 tmp/
+$ docker image inspect (config)
+amd64 entrypoint=["/syft"] user="" layers=3 created=2026-10-06T15:34:16.483430315Z version=1.54.1 revision=b254e6d92f28c3868a755f62fb3ca8f26e9fee76
+arm64 entrypoint=["/syft"] user="" layers=3 created=2026-10-06T15:34:16.860754357Z version=1.54.1 revision=b254e6d92f28c3868a755f62fb3ca8f26e9fee76
+$ docker image history --no-trunc (amd64)
+ENTRYPOINT ["/syft"] | 0B
+COPY linux/amd64/syft / # buildkit | 91.8MB
+ARG TARGETPLATFORM=linux/amd64 | 0B
+WORKDIR /tmp | 8.19kB
+COPY /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt # buildkit | 242kB
+
+$ sha256sum x-amd64/syft img-amd64/syft x-arm64/syft img-arm64/syft
+dbf75864e7a7ff9e1fbf00552c31483f693188632a9f68f343cd7653dac513d6 *x-amd64/syft
+dbf75864e7a7ff9e1fbf00552c31483f693188632a9f68f343cd7653dac513d6 *img-amd64/syft
+7d3cc523a2652d26568b9b2b94b5419dbf05f34ce896cf29904a0073d84eecf2 *x-arm64/syft
+7d3cc523a2652d26568b9b2b94b5419dbf05f34ce896cf29904a0073d84eecf2 *img-arm64/syft
+$ cmp
+amd64 identical
+arm64 identical
+$ docker rm
+rm exit=0
+$ docker ps -a --filter label=ke.scratch=sec-u2 (expect empty)

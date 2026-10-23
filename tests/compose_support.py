@@ -127,3 +127,31 @@ def volume_sources(svc: dict[str, Any]) -> list[tuple[str, str]]:
 def compose_defaults(text: str) -> list[tuple[str, str]]:
     """Every `${VAR:-default}` / `${VAR-default}` in a compose file's text."""
     return _DEFAULT.findall(text)
+
+
+# platform-sbom U2 (PSC-20, ADR-KE-016 point 1, design-notes N1): the SBOM
+# generator's own compose file. The bundle tests' fake daemon holds its image
+# (tests/test_offline_bundle.py _BundleBase), and the fake compose answers
+# `config` for this file from it (tests/fake_docker.py FAKE_COMPOSE_FILE_IMAGES).
+SBOM_COMPOSE_NAME = "docker-compose.sbom.yml"
+# Used while the file is absent (RED); the tests that need the file fail first.
+SBOM_PLACEHOLDER_REF = "anchore/syft:v0.0.0@sha256:" + "0" * 64
+_REQUIRED_VAR = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*):\?")
+
+
+def sbom_generator_ref(path: Path | None = None) -> str:
+    """The `sbom` service's image in docker-compose.sbom.yml, else the placeholder."""
+    path = ROOT / SBOM_COMPOSE_NAME if path is None else path
+    if not path.is_file():
+        return SBOM_PLACEHOLDER_REF
+    return str((services(path).get("sbom") or {}).get("image") or SBOM_PLACEHOLDER_REF)
+
+
+def required_vars(path: Path | None = None) -> list[str]:
+    """Every `${VAR:?...}` the file names: real compose refuses any command
+    that loads the file (`config` included) while one is unset or empty,
+    unless `--no-interpolate` is given. N1's two mounts while it is absent."""
+    path = ROOT / SBOM_COMPOSE_NAME if path is None else path
+    if not path.is_file():
+        return ["KE_SBOM_IN", "KE_SBOM_OUT"]
+    return sorted(set(_REQUIRED_VAR.findall(path.read_text(encoding="utf-8"))))

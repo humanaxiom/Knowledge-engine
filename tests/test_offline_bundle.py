@@ -2843,8 +2843,12 @@ def _image_record(ref: str, arch: str = "amd64") -> dict[str, Any]:
             "RepoDigests": [ref] if "@" in ref else [], "Os": "linux", "Architecture": arch}
 
 
+# platform-sbom U2 (PSC-20): docker-compose.sbom.yml is copied when it exists,
+# so bundle.sh reads the generator's reference from a tracked file, as in a
+# real checkout (tests/test_sbom_generator.py proves it is never shipped).
 _REPO_COPY = (".env.example", ".gitignore", ".dockerignore", "docker-compose.yml", "pyproject.toml",
-              "uv.lock", "LICENSE", "NOTICE.md", "config", "scripts", "licenses", "docs/quickstart.md")
+              "uv.lock", "LICENSE", "NOTICE.md", "config", "scripts", "licenses", "docs/quickstart.md",
+              cs.SBOM_COMPOSE_NAME)
 
 
 # ---- PS-3.8 licence notices: a stand-in for the ke-app image's venv --------
@@ -3016,6 +3020,12 @@ class _BundleBase:
         # PS-3.8: the ke-app image's venv as the notices generator sees it.
         self.site = self.tmp / "site-packages"
         self.packages = _make_site(self.site)
+        # platform-sbom U2 (PSC-20, design-notes N1): the SBOM generator, as
+        # docker-compose.sbom.yml pins it, is present on the fake daemon (the
+        # fetch step pulled it); tests/test_sbom_generator.py removes it.
+        sbom_file = ROOT / cs.SBOM_COMPOSE_NAME
+        self.sbom_ref = cs.sbom_generator_ref(sbom_file)
+        self.sbom_required = cs.required_vars(sbom_file)
 
     def _git(self, *args: str) -> str:
         env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": str(self.tmp),
@@ -3028,7 +3038,7 @@ class _BundleBase:
         return done.stdout
 
     def _images_table(self, stack: dict[str, str], default: str = "amd64", **arch: str) -> dict[str, Any]:
-        refs = set(stack.values()) | set(_profile_images().values())
+        refs = set(stack.values()) | set(_profile_images().values()) | {self.sbom_ref}
         return {r: _image_record(r, arch.get(r, default)) for r in refs}
 
     def _bundle(self, out: Path | None = None, *, stack: dict[str, str] | None = None,
@@ -3059,6 +3069,11 @@ class _BundleBase:
             # PS-3.8: `docker run ... engine.notices` runs the real generator
             # against self.site (tests/fake_docker.py).
             "FAKE_NOTICES_SITE": str(self.site), "FAKE_NOTICES_APP_ROOT": str(ROOT),
+            # platform-sbom U2 (PSC-20): `compose -f docker-compose.sbom.yml
+            # config` answers with the generator's service and image, and
+            # refuses while a `${VAR:?}` of that file is unset, as compose does.
+            "FAKE_COMPOSE_FILE_IMAGES": json.dumps({cs.SBOM_COMPOSE_NAME: {"sbom": self.sbom_ref}}),
+            "FAKE_COMPOSE_FILE_REQUIRED": json.dumps({cs.SBOM_COMPOSE_NAME: self.sbom_required}),
         }
         run_env.update(env)
         result = subprocess.run(["bash", "scripts/bundle.sh", *args, "--out", str(out)], env=run_env,

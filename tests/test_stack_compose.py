@@ -291,6 +291,13 @@ class NetworksTest(unittest.TestCase):
             # their mounts row by row and that the file holds only these two.
             if file == "docker-compose.scan.yml" and name in ("scan-db", "scan"):
                 continue
+            # ADR-KE-016 point 1, design-notes N1 (platform-sbom PSC-20): `sbom`
+            # is the same kind of verify/bundle-time one-shot, never in the
+            # stack's COMPOSE_FILE; it binds the image tar dir read-only and its
+            # work dir read-write by design. tests/test_sbom_generator.py pins
+            # those two mounts and that nothing else is mounted.
+            if file == "docker-compose.sbom.yml" and name == "sbom":
+                continue
             for kind, source in cs.volume_sources(svc):
                 with self.subTest(file=file, service=name, source=source):
                     self.assertEqual(kind, "volume", "stack services use named volumes only")

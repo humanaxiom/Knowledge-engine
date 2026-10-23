@@ -528,3 +528,14 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-23T07:38:44Z | security | platform-sbom | U1 re-check 4: L-9b closed | security: PASS
 2026-10-23T07:49:55Z | documenter | platform-sbom | handoff split: U1 rounds 2-4 to archive/platform-sbom-part4.md | docs: updated
 2026-10-23T07:50:20Z | orchestrator | platform-sbom | U1 gates judged: review APPROVED, security PASS, verify full PASS 721 s; commit approved | smoke: PASS
+2026-10-23T07:50:33Z | developer | platform-sbom | committed U1 on agent/platform-sbom | commit: done
+2026-10-23T08:27:47Z | tester | platform-sbom | U2 RED: syft pin, sbom compose hardening, bundle refusal | tdd red: 4 failing as expected
+2026-10-23T08:34:09Z | architect | platform-sbom | U2: syft version + digest, interim pull, env keys | plan: design amended
+2026-10-23T08:41:38Z | security | platform-sbom | U2: syft v1.54.1 provenance recorded | security: PASS
+2026-10-23T09:10:02Z | tester | platform-sbom | U2 RED re-target: 8 syft keys, refusal message, offline_check pull | tdd red: 11 failing as expected
+2026-10-23T09:10:56Z | orchestrator | platform-sbom | U2 plan gate: syft v1.54.1 pinned + provenance PASS; RED accepted; standing rule provenance-before-run | tdd red: accepted
+2026-10-23T09:31:38Z | developer | platform-sbom | U2 GREEN: docker-compose.sbom.yml (syft v1.54.1 pinned, hardened), bundle.sh refusal, offline_check pull | tdd green: verify fast + full PASS
+2026-10-23T09:37:11Z | reviewer | platform-sbom | U2 review | review: APPROVED
+2026-10-23T09:38:36Z | security | platform-sbom | U2 audit | security: PASS
+2026-10-23T09:46:23Z | tester | platform-sbom | U2 A34 Windows proof (docker-compose.sbom.yml) | a34: PASS
+2026-10-23T09:59:01Z | orchestrator | platform-sbom | U2 gates judged: review APPROVED, security PASS, A34 PASS, verify full PASS 699 s; commit approved; U3 carry list recorded | smoke: PASS

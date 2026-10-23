@@ -1,0 +1,55 @@
+security U2 integration probes, 2026-10-23 (raw; summary in security.md).
+Host: Docker 29.5.2, Compose 5.1.4, Git Bash, MSYS_NO_PATHCONV=1.
+No syft container was created or run. Only `docker compose config`,
+`docker image inspect` and a bash harness with a fake `docker` function.
+Scratch paths redacted to <scratch>.
+
+== P1 real read (repo, dummy vars)
+$ KE_SBOM_IN=/nonexistent KE_SBOM_OUT=/nonexistent docker compose --env-file .env.example -f docker-compose.sbom.yml config --images sbom
+anchore/syft:v1.54.1@sha256:3eb5379ba7b409c3f4069b686110527af0c47df993fa5c10d13e7cf34f49b1aa
+rc=0
+== P2 real read, vars unset
+error while interpolating services.sbom.volumes.[].source: required variable KE_SBOM_IN is missing a value: set by scripts/bundle.sh
+rc=1
+== P3 resolved model (`config sbom`, dummy vars; repo-root .env IS present on this host)
+environment: exactly TMPDIR=/out/tmp + the 8 SYFT_*="false"; network_mode none; read_only true;
+cap_drop [ALL]; no-new-privileges:true; tmpfs [/tmp]; binds /in (read_only) and /out; nothing from .env.
+== image config (docker image inspect, no run)
+Entrypoint ["/syft"]; Env PATH only; WorkingDir "/tmp"; no User (runs as uid 0);
+RepoDigests [anchore/syft@sha256:3eb5379b...49b1aa]; Id = index digest (containerd store); amd64.
+
+== E1 control, scratch: no --env-file -> default .env loaded
+from-dotenv/leak:1   rc=0
+== E2 --env-file alt.env -> .env NOT loaded
+error while interpolating services.p.image: required variable PROBE_REF is missing a value: not set   rc=1
+== E3 env-file value with $(...) and backticks
+x$(touch PWNED_E3)`touch PWNED_E3b`   rc=0   -> printed literally, no PWNED files
+== E4 missing env file
+couldn't find env file: <scratch>\nope.env   rc=1
+== E5 crafted image string in compose file
+a;touch PWNED_E5 $(id)@sha256:000...0   rc=0   -> printed literally, no PWNED files
+
+== Snippet harness: bundle.sh lines 194-202 sourced with a fake docker (logs argv;
+   `compose` prints $CRAFT; `image inspect` succeeds only if PRESENT=1)
+S1 valid, present          -> continues; calls: compose --env-file .env.example -f docker-compose.sbom.yml config --images sbom; image inspect --format {{.Id}} <ref>
+S2 valid, absent           -> rc=1 exact N1 refusal text
+S3 `a;touch .. $(touch ..)@sha256:..` -> rc=1 "fails its pattern: a\;touch\ PWNED_S3\ \$\(touch\ PWNED_S3b\)@sha256:..." (printf %q); no inspect
+S4 two lines               -> rc=1 "names more than one image"
+S5 anchore/syft:latest     -> rc=1 "no digest pin"
+S6 -f/x@sha256:..          -> passes ref_re, inspect called, rc=1 refusal (real docker: see F1)
+S7 empty                   -> rc=1 "names no image"
+S8 compose exits 1         -> rc=1 "config --images sbom failed"
+S9 ESC[2J prefix           -> rc=1, %q prints $'\E[2J...' (no raw control bytes)
+No PWNED files. No call other than compose config and image inspect in any case.
+
+== F1 flag-shaped refs against the real docker CLI (all non-zero -> refusal)
+inspect [-f/x@sha256:0...0]   rc=1
+inspect [--help@sha256:0...0] rc=125
+inspect [-s@sha256:0...0]     rc=125
+
+== C1 compose `config` with a top-level remote include (scratch; 127.0.0.1:1, no egress)
+failed to pull OCI resource "127.0.0.1:1/probe/x:y": failed to do request: Head "https://127.0.0.1:1/v2/probe/x/manifests/y": proxyconnect tcp: ...   rc=1
+-> Compose 5.1.4 `config` fetches remote includes by default (makes a network request).
+== C2 service `extends` from another file (scratch)
+main: sbom {extends: {file: ext.yml, service: base}, image: a@sha256:..}; ext.yml base: network_mode host, volume /:/host
+resolved: network_mode: host, target: /host   -> merged into sbom; raw-YAML checks see neither.

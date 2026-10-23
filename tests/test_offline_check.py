@@ -963,6 +963,73 @@ fi'''
         else:
             self.fail(f"no `compose run|up offline-client` call: {[s['label'] for s in snaps]}")
 
+    # ---- platform-sbom U2: the interim SBOM generator pull --------------------
+    # PSC-20; design-notes "N1 amendment, U2" *Interim pull (U2 to U8)*: the host
+    # half pulls the generator through its own compose file, after the Compose
+    # version check and immediately before bundle.sh (which never pulls). U8
+    # replaces this step with scripts/bundle_fetch.sh.
+
+    SBOM_PULL_FAIL = "pulling the SBOM generator failed (docker-compose.sbom.yml, service sbom); no retry"
+
+    def _event_u2(self, record: dict) -> str | None:
+        """`_event`, plus any pull: "pull sbom" when it names the generator's
+        compose file or service, else "pull" (any other pull is out of order)."""
+        argv = record["argv"]
+        if argv[:1] != ["STUB"] and ("pull" in argv or argv[:2] == ["image", "pull"]):
+            names = cs.SBOM_COMPOSE_NAME in " ".join(argv) or argv[-1:] == ["sbom"]
+            return "pull sbom" if names else "pull"
+        return self._event(record)
+
+    def _events_u2(self, records: list[dict]) -> list[str]:
+        return [e for e in (self._event_u2(r) for r in records) if e and e != "df"]
+
+    def test_offline_check_pulls_sbom_generator_before_bundle(self):
+        result, records, repo = self._host()
+        out = self._out(result)
+        self.assertEqual(result.returncode, 0, out)
+        self.assertEqual(self._events_u2(records),
+                         ["pull sbom", "bundle", "up dind", "net_isolated", "run client", "teardown"], out)
+        pulls = [r for r in records if self._event_u2(r) == "pull sbom"]
+        self.assertEqual(len(pulls), 1, "one pull of the generator")
+        argv, env = pulls[0]["argv"], pulls[0]["env"]
+        self.assertEqual(argv[:1], ["compose"], f"the pull goes through compose, not `docker pull`: {argv}")
+        self.assertIn(("--env-file", ".env.example"), self._pairs(argv),
+                      "--env-file .env.example: the repo-root .env (model keys) is never loaded")
+        files = [b for a, b in self._pairs(argv) if a in ("-f", "--file")]
+        self.assertEqual(files, [cs.SBOM_COMPOSE_NAME],
+                         "-f docker-compose.sbom.yml only (it overrides the exported COMPOSE_FILE)")
+        self.assertEqual(argv[-2:], ["pull", "sbom"], "pulls the `sbom` service only")
+        self.assertNotIn("--profile", argv)
+        for var in ("KE_SBOM_IN", "KE_SBOM_OUT"):
+            # Git Bash may rewrite /nonexistent to <git root>/nonexistent (N1 amendment).
+            self.assertTrue(env.get(var, "").endswith("/nonexistent"),
+                            f"{var} is the dummy /nonexistent for the pull (the file's ${{{var}:?}}): "
+                            f"{env.get(var)!r}")
+        version = [i for i, r in enumerate(records) if r["argv"][:2] == ["compose", "version"]]
+        self.assertTrue(version and version[0] < records.index(pulls[0]),
+                        "the pull comes after the Compose version check")
+        self.assertEqual(self._bundle_dirs(repo), [])
+
+    def test_offline_check_stops_when_sbom_pull_fails(self):
+        with self.subTest(case="the pull fails"):
+            result, records, repo = self._host(FAKE_DOCKER_FAIL="pull sbom")
+            out = self._out(result)
+            self.assertNotEqual(result.returncode, 0, out)
+            self.assertIn(self.SBOM_PULL_FAIL, result.stderr, out)
+            self.assertNotRegex(out, r"(?i)\bpass(?:ed)?\b")
+            self.assertEqual(self._events_u2(records), ["pull sbom", "teardown"],
+                             "bundle.sh ran after a failed pull, the pull was retried, or teardown did not run once")
+            teardown = next(r for r in records if self._event(r) == "teardown")
+            self.assertEqual(teardown["argv"][2:], ["--volumes", "--profile", "offline"])
+            self.assertEqual(self._bundle_dirs(repo), [], "the bundle directory was left behind")
+        for case, extra in (("below the disk floor", {"FAKE_DF_AVAIL_KB": str(3 * GIB_KB)}),
+                            ("Compose below 2.27", {"FAKE_COMPOSE_VERSION": "2.20.0"})):
+            with self.subTest(case=f"{case}: no pull"):
+                result, records, _ = self._host(**extra)
+                self.assertNotEqual(result.returncode, 0, self._out(result))
+                self.assertEqual(self._events_u2(records), ["teardown"],
+                                 "the generator is pulled only after the disk and Compose checks")
+
     # ---- client half ---------------------------------------------------------
 
     def _client(self, entries: list[dict[str, str]] | None = None,

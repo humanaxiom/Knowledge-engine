@@ -90,3 +90,54 @@ it closes the M-NT1 remainder (no GPL source offer, incomplete SBOM). Branch:
   15 integration; psycopg c on libpq5 and "no pip in api" on build host and offline
   client; scan done; `u1/orchestrator-verify-full.txt`). Diff read. A34 proof stands.
 - Commit APPROVED: U1 (PSC-14, pip dropped, ke-app flattened). Next: U2 (PSC-20).
+
+## 2026-10-23 — tester (U2 RED)
+- RED: `tests/test_sbom_generator.py` has 4 PSC-20 tests (8 subtest failures). They fail because docker-compose.sbom.yml is missing and bundle.sh has no generator check. Everything else passes, including the sentinel (`u2/red-verify-fast.txt`).
+- Harness: the fake reads compose `config` for each file (FAKE_COMPOSE_FILE_IMAGES/_REQUIRED); `_BundleBase` holds the syft ref; `docker-compose.sbom.yml` is in `_REPO_COPY`. Contradiction resolved: `test_stack_services_have_no_bind_mounts` exempts `sbom` (ADR-KE-016 pt 1, N1).
+- Targets for the developer: `u2/target-*` (the compose file, the refusal snippet before "licence notices", the pin location). Reach: verify fast PASS with these targets (`u2/red-reach-verify-fast.txt`). Controls: 110, 0 unexpected (`u2/red-mutants.txt`, driver `u2/u2_controls.py`).
+- Open for the orchestrator: (1) U2 verify full: nothing pulls syft before U8's bundle_fetch.sh, so offline_check's bundle.sh refuses. Pick the step that pulls it at U2. (2) The refusal text names bundle_fetch.sh, which does not exist yet. (3) The label (`-p <project>-sbom`) is tested statically only; the run itself is U3's.
+
+## 2026-10-23 — architect (U2 decisions)
+- syft v1.54.1 (the one grype v0.120.1 embeds), index sha256:3eb5379b…49b1aa; 8 `SYFT_*=false` keys (4 new: JAVA_RESOLVE_TRANSITIVE_DEPENDENCIES, GOLANG_USE_PACKAGES_LIB, PYTHON_SEARCH_REMOTE_LICENSES, CPP_VCPKG_ALLOW_GIT_CLONE); full digests and reasons in design-notes "N1 amendment, U2"; ADR-KE-016 pt 1 amended.
+- Interim pull in `offline_check.sh` just before `bundle.sh`: `KE_SBOM_IN=/nonexistent KE_SBOM_OUT=/nonexistent docker compose --env-file .env.example -f docker-compose.sbom.yml pull sbom`; read uses same dummy form (not --no-interpolate; pull has none); refusal says `pull it first with: docker pull <ref>` until U8. Tester: re-target RED (env set, message, new offline_check "pull sbom" before "bundle" + pull-fail stops before bundle). CLAUDE.md unchanged.
+
+## 2026-10-23 — security (U2 provenance)
+- PASS: `anchore/syft:v1.54.1@sha256:3eb5379b…49b1aa` (amd64 507b76f0…, arm64 9c493ce4…) confirmed on docker.io and ghcr.io; image unsigned, so N2 step 3: `syft_1.54.1_checksums.txt` verify-blob OK against anchore/syft `release.yaml@refs/heads/main` (commit b254e6d9 = tag), 3 negative controls fail; both archives match it; `/syft` docker-cp'd (never run) from each platform image is byte-identical to the archive binary.
+- Gaps: G2 low (built on a self-hosted runs-on.com runner, unlike grype; re-check at each bump), G1/G3/G4/G5 info. Record: `docs/evidence/platform-sbom/generator-provenance.md`, raw `u2/security-*.txt`; host keeps only the amd64 pin.
+- Tester (U2 RED re-target, 2026-10-23): RED now 11 failures, all U2 (`u2/red-verify-fast.txt`): the 4 sbom tests plus new `test_offline_check_pulls_sbom_generator_before_bundle` and `test_offline_check_stops_when_sbom_pull_fails`; eight `SYFT_*=false` + TMPDIR, exact refusal (`pull it first with: docker pull <ref>`), `--env-file .env.example` on every sbom compose call; targets `u2/target-*` (real pin, `target-offline_check.sh` + pull snippet); controls 138, 0 unexpected (`u2/red-mutants.txt`); reach PASS (`u2/red-reach-verify-fast.txt`); `u2/syft-v1.54.1-config.txt` copied (checked: no secrets, no profile paths).
+
+## 2026-10-23 — orchestrator (U2 plan gate)
+- Architect: syft v1.54.1 (grype v0.120.1's syft), index sha256:3eb5379b...49b1aa;
+  interim pull in offline_check.sh before bundle.sh; 8 SYFT_*=false keys + TMPDIR.
+  Security: provenance PASS (unsigned image; signed checksums + byte-identical binary
+  for amd64/arm64; G2 low self-hosted runner, re-check at each bump).
+- Standing rule (security G5, adopted): record provenance BEFORE running any newly
+  pinned image, even offline.
+- Tester RED re-target accepted (11 failing, 138 controls, reach PASS). Next: GREEN.
+
+## 2026-10-23 — developer (U2 GREEN)
+- Added docker-compose.sbom.yml (syft v1.54.1 index pin, hardened, 8 SYFT_* keys, TMPDIR), bundle.sh refusal, offline_check.sh interim pull; copied from the tester's targets (diff vs targets empty). No .ps1 counterpart changes (install.ps1 only consumes bundles). Tests unchanged.
+- verify fast PASS; verify full PASS 703 s (offline_check stage 95 s; pull line then "bundle written"). Pull cost not separable: output has no timestamps and the image may have been cached (u2/green-verify-fast.txt, u2/green-verify-full.txt).
+
+## 2026-10-23 — reviewer (U2)
+- APPROVED, no blocking. Diff read; files equal targets; controls re-run on the real files: 138, 0 unexpected (`u2/review-controls-base-repo.txt`); evidence red/reach/green fast+full consistent.
+- Nits N1-N5 in `u2/review.md`; N1 (run/down lines lack `--env-file .env.example`) and N2 (no linux/$arch check of the generator) carry to U3 with tester items 5 and 8 (deferral accepted on that condition).
+
+## 2026-10-23 — security (U2)
+- PASS (no crit/high/med): hardening, 8 SYFT keys + TMPDIR complete vs v1.54.1 config, refusal read injection-safe/no pull/no `.env` (probes), pull adds no egress (docker.io already; CLAUDE.md holds), pin agrees. `u2/security.md`, raw `u2/security-u2-probes.txt`.
+- L-1 low: tests read raw YAML; compose `config` fetches remote `include` and `extends` merges host net/binds unseen; forbid both. L-2 low (U3): no `user:`, syft runs uid 0 writing /out; set caller uid:gid. I-1..I-3 info.
+
+## 2026-10-23 — tester (U2 Windows proof)
+- A34 PASS (`u2/windows-run.txt`): U1 driver/phases/shim, project ke-tester-u2win, tag u2win-23e3c9b; build/launch (7/7 healthy)/4b/4c/refusal/teardown/7 Windows tests PASS; NEW 2b: `docker compose --env-file .env.example -f docker-compose.sbom.yml config` resolves on Windows (network_mode none, read_only, cap_drop ALL, no-new-privileges, tmpfs /tmp, /in ro + /out binds), `config --images sbom` == pin, unset KE_SBOM_IN fails closed; syft not run or pulled; verify fast PASS (798, 480 s); teardown left nothing; six sha256 identical start/end (2b "ports/profiles: 1 entries" is a PowerShell @($null) artifact, real key set in the final check).
+
+## 2026-10-23 — orchestrator (U2 commit gate)
+- Review APPROVED (0 rework rounds), security PASS, A34 Windows proof PASS (hashes in
+  u2/windows-run.txt), orchestrator verify full PASS 699 s (798 unit + 15 integration;
+  syft pulled then bundle written; `u2/orchestrator-verify-full.txt`). Diff read.
+- Carried to U3 (the first syft run, which edits these files anyway): review N1
+  (--env-file + KE_SBOM_* on run/down), N2 (generator image is linux/$arch), N3
+  (offline_check header stage list), N4 (design note wording), N5 (compose comment);
+  security L-1 (tests forbid top-level include/extends), L-2 (run as caller uid:gid),
+  I-1 (ref_re leading '-'), I-2 (no HOME/XDG under /out/tmp). Reviewer's conditions:
+  U3 RED pins the full run argv and the `<project>-sbom` project + its teardown.
+- Commit APPROVED: U2 (PSC-20). Next: U3 (PSC-13 SBOM generation).
