@@ -40,13 +40,25 @@ RUN uv sync --locked --no-dev --group pq-c --no-binary-package psycopg-c \
     --no-editable \
     && rm -f /opt/venv/.lock
 
-FROM python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+# The shipped files: the base, libpq5, and no pip (PSC-14, N10a). Its layers
+# do not ship: the last stage copies its / whole.
+FROM python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258 AS runtime
 ARG LIBPQ_VERSION
 # The shared library psycopg-c loads; apt adds only its missing dependencies.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends libpq5=${LIBPQ_VERSION} \
  && rm -rf /var/lib/apt/lists/*
-ENV PATH=/opt/venv/bin:$PATH \
+# pip's RECORD lists its files; both commands fail the build if pip is gone.
+RUN python -m pip uninstall -y pip \
+ && rm /usr/local/lib/python3.12/ensurepip/_bundled/pip-*.whl
+
+# One layer: a delete in a layer on the base would leave pip in the saved tar.
+# ENV: the base sets PATH, LANG, GPG_KEY, PYTHON_VERSION and PYTHON_SHA256. The
+# last three only served the base build (nothing reads them), so they are dropped.
+FROM scratch
+COPY --from=runtime / /
+ENV PATH=/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin \
+    LANG=C.UTF-8 \
     PYTHONUNBUFFERED=1
 COPY --from=builder /opt/venv /opt/venv
 COPY --from=builder /app /app

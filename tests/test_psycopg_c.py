@@ -400,45 +400,127 @@ def app_build_problems(path: Path) -> list[str]:
     return problems
 
 
+# platform-sbom U1 round 2 (ADR-KE-016 point 9, design-notes N10a; PSC-25
+# amended): ke-app's last stage may flatten the shipped files, `FROM scratch`
+# whose first instruction is `COPY --from=<stage> / /`. The stage it copies
+# `/` from is then the one whose files ship, and the runtime checks read it.
+# That stage may also hold the pip removal (PSC-14), exactly this RUN:
+#   python -m pip uninstall -y pip \
+#    && rm /usr/local/lib/python3.X/ensurepip/_bundled/pip-*.whl
+# (`&&` only, so a base without pip fails the build by name; `rm` with no
+# flags, so no -f hides a missing wheel; tester, U1 round 2 RED).
+PIP_UNINSTALL_RE = re.compile(r"(?:/usr/local/bin/)?python(?:3(?:\.\d+)?)? -m pip uninstall (?:-y|--yes) pip")
+PIP_WHEEL_RM_RE = re.compile(r"rm /usr/local/lib/python(?P<minor>\d+\.\d+)/ensurepip/_bundled/pip-\*\.whl")
+# A package install or removal, as one shell command of a RUN.
+PKG_OP_RE = re.compile(
+    r"\b(?:apt-get|apt|aptitude)\s+(?:\S+\s+)*?(?:install|reinstall|remove|purge|autoremove)\b"
+    r"|\bdpkg\s+(?:\S+\s+)*?(?:-i|-r|-P|--install|--remove|--purge|--unpack)\b"
+    r"|\bpip(?:3(?:\.\d+)?)?\s+(?:\S+\s+)*?(?:install|uninstall)\b"
+    r"|\buv\s+pip\b|\bensurepip\b|\bget-pip\b|\bapk\s+(?:add|del)\b")
+_APT_LISTS_RM_RE = re.compile(r"rm\s+-rf\s+/var/lib/apt/lists/\*")
+_RM_RE = re.compile(r"rm\b")
+
+
+def pip_removal_minor(run: str) -> str | None:
+    """The CPython minor in the wheel path if `run` is exactly the pip-removal
+    RUN above (whitespace aside), else None."""
+    parts = [p.strip() for p in " ".join(run.split()).split("&&")]
+    if len(parts) != 2 or any(re.search(r"[;|&`]|\$\(", p) for p in parts):
+        return None
+    if not PIP_UNINSTALL_RE.fullmatch(parts[0]):
+        return None
+    m = PIP_WHEEL_RM_RE.fullmatch(parts[1])
+    return m["minor"] if m else None
+
+
+def shipped_stage(stages: list[dict[str, Any]]) -> tuple[dict[str, Any] | None, dict[str, Any] | None, list[str]]:
+    """(the stage whose files ship, the flattening last stage or None, problems).
+
+    The last stage ships, unless it is `FROM scratch`: then its first
+    instruction must be `COPY --from=<stage> / /`, and <stage> (one stage of
+    the file, by name) is the one whose files ship (N10a)."""
+    if not stages:
+        return None, None, ["app.Dockerfile has no FROM"]
+    last = stages[-1]
+    if last["ref"] != "scratch":
+        return last, None, []
+    body = last["body"]
+    words = body[0][1].split() if body and body[0][0] == "COPY" else []
+    if len(words) != 3 or not words[0].startswith("--from=") or words[1:] != ["/", "/"]:
+        return None, last, ["the last stage is FROM scratch but its first instruction is not "
+                            "`COPY --from=<stage> / /` (N10a)"]
+    src = words[0].split("=", 1)[1].lower()
+    found = [s for s in stages[:-1] if (s["name"] or "").lower() == src]
+    if len(found) != 1:
+        return None, last, [f"the last stage copies / from {src!r}, which is not one stage of the file (N10a)"]
+    return found[0], last, []
+
+
+def _pkg_or_rm(run: str) -> list[str]:
+    return [c for c in _commands(run) if PKG_OP_RE.search(c) or _RM_RE.match(c)]
+
+
 def app_runtime_problems(path: Path) -> list[str]:
-    """test_runtime_stage_has_no_compiler on `path`."""
-    problems: list[str] = []
+    """test_runtime_stage_has_no_compiler on `path`: on the stage whose files
+    ship (the last stage, or the stage a `FROM scratch` last stage copies `/`
+    from, N10a) and on the last stage."""
     stages = _stages(path)
     if not stages:
         return ["app.Dockerfile has no FROM"]
-    final = stages[-1]
+    final, flat, problems = shipped_stage(stages)
+    if final is None:
+        return problems
     body = final["body"]
+    where = "last stage" if flat is None else f"shipped stage {final['name']!r}"
     if (final["name"] or "").lower() == "builder":
-        problems.append("the last stage is the builder")
+        problems.append(f"the {'last' if flat is None else 'shipped'} stage is the builder")
     if not _has_bare_arg(body):
-        problems.append("last stage: no `ARG LIBPQ_VERSION` (libpq5=${LIBPQ_VERSION} would be empty)")
+        problems.append(f"{where}: no `ARG LIBPQ_VERSION` (libpq5=${{LIBPQ_VERSION}} would be empty)")
     apt_runs = [(n, rest) for n, (k, rest) in enumerate(body) if k == "RUN" and _apt_installs(rest)]
     if len(apt_runs) != 1:
-        problems.append(f"last stage: {len(apt_runs)} RUNs install apt packages, want exactly 1")
+        problems.append(f"{where}: {len(apt_runs)} RUNs install apt packages, want exactly 1")
     for n, rest in apt_runs:
         installs = _apt_installs(rest)
         pkgs = [p for words in installs for p in _packages(words)]
         if pkgs != ["libpq5=${LIBPQ_VERSION}"]:
-            problems.append(f"last stage: installs {pkgs}, want exactly ['libpq5=${{LIBPQ_VERSION}}']")
+            problems.append(f"{where}: installs {pkgs}, want exactly ['libpq5=${{LIBPQ_VERSION}}']")
         flags = [w for words in installs for w in words if w.startswith("-")]
         if "--no-install-recommends" not in flags:
-            problems.append(f"last stage: apt install without --no-install-recommends: {rest}")
+            problems.append(f"{where}: apt install without --no-install-recommends: {rest}")
         if "-y" not in flags and "--yes" not in flags and "-qy" not in flags:
-            problems.append(f"last stage: apt install without -y: {rest}")
+            problems.append(f"{where}: apt install without -y: {rest}")
         if not re.search(r"\bapt-get\s+update\b", rest):
-            problems.append(f"last stage: no apt-get update in the install RUN: {rest}")
+            problems.append(f"{where}: no apt-get update in the install RUN: {rest}")
         if not re.search(r"\brm\s+-rf\s+/var/lib/apt/lists/\*", rest):
-            problems.append(f"last stage: /var/lib/apt/lists/* not removed in the same RUN: {rest}")
+            problems.append(f"{where}: /var/lib/apt/lists/* not removed in the same RUN: {rest}")
         users = [m for m, (k, _) in enumerate(body) if k == "USER"]
         if users and users[0] < n:
-            problems.append("last stage: the apt RUN comes after USER (it needs root)")
-    for keyword, rest in body:
-        if keyword != "RUN":
-            continue
-        words = [w.strip("\"'") for w in re.split(r"[\s;&|()<>`=]+", rest) if w]
-        bad = [w for w in words if not w.startswith("-") and BUILD_ONLY_RE.fullmatch(w)]
-        if bad:
-            problems.append(f"last stage: a RUN names build-only packages or tools {bad}: {rest}")
+            problems.append(f"{where}: the apt RUN comes after USER (it needs root)")
+        other = [c for c in _pkg_or_rm(rest) if not _apt_installs(c) and not _APT_LISTS_RM_RE.fullmatch(c)]
+        if other:
+            problems.append(f"{where}: the libpq5 RUN also installs or removes {other} (PSC-25: no other "
+                            f"package install or removal)")
+    apt_at = {n for n, _ in apt_runs}
+    pip_runs = [n for n, (k, rest) in enumerate(body) if k == "RUN" and pip_removal_minor(rest) is not None]
+    if len(pip_runs) > 1:
+        problems.append(f"{where}: {len(pip_runs)} pip-removal RUNs, want at most 1")
+    for n, (keyword, rest) in enumerate(body):
+        if keyword == "RUN" and n not in apt_at and n not in pip_runs and _pkg_or_rm(rest):
+            problems.append(f"{where}: a RUN installs or removes {_pkg_or_rm(rest)}; only the libpq5 apt RUN "
+                            f"and the pip removal may (PSC-25, amended U1 round 2)")
+    if flat is not None:
+        for keyword, rest in flat["body"]:
+            if keyword == "RUN" and (_apt_installs(rest) or _pkg_or_rm(rest)):
+                problems.append(f"last stage (FROM scratch): a RUN installs or removes packages or files: "
+                                f"{rest} (the shipped stage {final['name']!r} does that; N10a)")
+    for stage, label in [(final, where)] + ([(flat, "last stage")] if flat is not None else []):
+        for keyword, rest in stage["body"]:
+            if keyword != "RUN":
+                continue
+            words = [w.strip("\"'") for w in re.split(r"[\s;&|()<>`=]+", rest) if w]
+            bad = [w for w in words if not w.startswith("-") and BUILD_ONLY_RE.fullmatch(w)]
+            if bad:
+                problems.append(f"{label}: a RUN names build-only packages or tools {bad}: {rest}")
     builder = _builder(stages)
     b_pkgs = [p for k, rest in (builder["body"] if builder else []) if k == "RUN"
               for words in _apt_installs(rest) for p in _packages(words)]
@@ -767,6 +849,28 @@ RUN useradd --no-create-home --uid 10001 ke
 USER ke
 CMD ["python", "-m", "engine.api"]
 """
+# U1 round 2 (N10a): the flattened shape. `runtime` holds the libpq5 RUN and
+# the pip removal; the last stage is `FROM scratch` + `COPY --from=runtime / /`.
+_RUNTIME_RUNS = """RUN apt-get update \\
+ && apt-get install -y --no-install-recommends libpq5=${LIBPQ_VERSION} \\
+ && rm -rf /var/lib/apt/lists/*
+RUN python -m pip uninstall -y pip \\
+ && rm /usr/local/lib/python3.12/ensurepip/_bundled/pip-*.whl
+"""
+_FLAT_TAIL = """FROM scratch
+COPY --from=runtime / /
+ENV PATH=/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin \\
+    LANG=C.UTF-8 \\
+    PYTHONUNBUFFERED=1
+COPY --from=builder /opt/venv /opt/venv
+COPY --from=builder /app /app
+WORKDIR /app
+RUN useradd --no-create-home --uid 10001 ke
+USER ke
+CMD ["python", "-m", "engine.api"]
+"""
+TARGET_APP_FLAT = (TARGET_APP[:TARGET_APP.index(f"FROM {_BASE}\nARG LIBPQ_VERSION\nENV PATH")]
+                   + f"FROM {_BASE} AS runtime\nARG LIBPQ_VERSION\n" + _RUNTIME_RUNS + "\n" + _FLAT_TAIL)
 TARGET_GATES = f"""ARG LIBPQ_VERSION={_PIN}
 FROM ghcr.io/astral-sh/uv:0.11.21@sha256:{"f" * 64} AS uv
 
@@ -777,6 +881,77 @@ RUN apt-get update \\
  && rm -rf /var/lib/apt/lists/*
 RUN uv sync --locked --group pq-build --group pq-c --no-binary-package psycopg-c
 """
+
+
+def _runtime_controls() -> tuple[dict[str, str], dict[str, str]]:
+    """(must pass, must fail) for test_runtime_stage_has_no_compiler. The U0
+    controls run on the U0 shape (last stage FROM the base) and, as `flat:`,
+    on the N10a shape (runtime stage + FROM scratch), so the re-target still
+    catches what U0 caught; the rest are N10a shapes (U1 round 2)."""
+    runtime = "libpq5=${LIBPQ_VERSION} \\\n"
+    pip_run = ("RUN python -m pip uninstall -y pip \\\n"
+               " && rm /usr/local/lib/python3.12/ensurepip/_bundled/pip-*.whl\n")
+    passing = {
+        "U0 shape (last stage FROM the base)": TARGET_APP,
+        "N10a shape (runtime + FROM scratch, COPY --from=runtime / /)": TARGET_APP_FLAT,
+        "U0 shape with the pip removal in the last stage (PSC-25 allows it)": TARGET_APP.replace(
+            "COPY --from=builder /opt/venv", pip_run + "COPY --from=builder /opt/venv"),
+        "N10a shape without the pip removal (this check allows it; U1's test needs it)": TARGET_APP_FLAT.replace(
+            pip_run, ""),
+    }
+    u0 = {
+        "gcc in the last stage": lambda t: t.replace(runtime, "libpq5=${LIBPQ_VERSION} gcc \\\n"),
+        "libpq-dev in the last stage": lambda t: t.replace(
+            runtime, "libpq5=${LIBPQ_VERSION} libpq-dev=${LIBPQ_VERSION} \\\n"),
+        "unpinned libpq5": lambda t: t.replace(runtime, "libpq5 \\\n"),
+        "make in a later RUN": lambda t: t.replace("RUN useradd", "RUN apt-get purge -y make && useradd"),
+        "apt lists kept": lambda t: t.replace("libpq5=${LIBPQ_VERSION} \\\n && rm -rf /var/lib/apt/lists/*",
+                                              "libpq5=${LIBPQ_VERSION}"),
+        "recommends allowed": lambda t: t.replace("install -y --no-install-recommends libpq5", "install -y libpq5"),
+        "no ARG in the last stage": lambda t: t.replace(f"FROM {_BASE}\nARG LIBPQ_VERSION\n", f"FROM {_BASE}\n").replace(
+            f"FROM {_BASE} AS runtime\nARG LIBPQ_VERSION\n", f"FROM {_BASE} AS runtime\n"),
+        "no libpq-dev in the builder": lambda t: t.replace(" libpq-dev=${LIBPQ_VERSION}", ""),
+    }
+    failing: dict[str, str] = {}
+    for name, mutate in u0.items():
+        for shape, base in (("", TARGET_APP), ("flat: ", TARGET_APP_FLAT)):
+            text = mutate(base)
+            assert text != base, f"{shape}{name}"
+            failing[shape + name] = text
+    flat = TARGET_APP_FLAT
+    apt_run = flat[flat.index("RUN apt-get update \\\n && apt-get install -y --no-install-recommends libpq5"):
+                   flat.index(pip_run)]
+    failing.update({
+        "flat: the libpq5 apt RUN moved to the scratch stage": flat.replace(apt_run, "").replace(
+            "COPY --from=builder /opt/venv", apt_run + "COPY --from=builder /opt/venv"),
+        "flat: the scratch stage copies / from builder": flat.replace("COPY --from=runtime / /",
+                                                                      "COPY --from=builder / /"),
+        "flat: the scratch stage copies / from a stage that is not in the file": flat.replace(
+            "COPY --from=runtime / /", "COPY --from=nosuch / /"),
+        "flat: FROM scratch without COPY --from=runtime / / first": flat.replace(
+            "COPY --from=runtime / /\nENV PATH", "ENV PATH").replace("PYTHONUNBUFFERED=1\n",
+                                                                     "PYTHONUNBUFFERED=1\nCOPY --from=runtime / /\n"),
+        "flat: no apt RUN in runtime": flat.replace(apt_run, ""),
+        "flat: runtime also purges a package": flat.replace(pip_run, pip_run + "RUN apt-get purge -y libsasl2-2\n"),
+        "flat: runtime pip-installs a package": flat.replace(pip_run, pip_run + "RUN pip install requests\n"),
+        "flat: the pip removal also uninstalls setuptools": flat.replace("uninstall -y pip \\",
+                                                                         "uninstall -y pip setuptools \\"),
+        "flat: runtime removes a directory": flat.replace(
+            pip_run, pip_run + "RUN rm -rf /usr/local/lib/python3.12/site-packages/foo\n"),
+        "flat: the libpq5 RUN also purges a package": flat.replace(
+            " && rm -rf /var/lib/apt/lists/*\nRUN python",
+            " && apt-get purge -y libsasl2-2 \\\n && rm -rf /var/lib/apt/lists/*\nRUN python"),
+        "flat: the scratch stage removes files": flat.replace("RUN useradd", "RUN rm -f /etc/motd && useradd"),
+        "flat: the pip removal twice": flat.replace(pip_run, pip_run + pip_run),
+        "U0 shape: the last stage also removes a package": TARGET_APP.replace(
+            "COPY --from=builder /opt/venv", "RUN dpkg -r libsasl2-2\nCOPY --from=builder /opt/venv"),
+    })
+    for name, text in failing.items():
+        assert text not in passing.values(), name
+    return passing, failing
+
+
+RUNTIME_PASSING, RUNTIME_CONTROLS = _runtime_controls()
 
 
 class _Scratch:
@@ -921,23 +1096,20 @@ class PsycopgCStaticTest(unittest.TestCase):
         libpq5=${LIBPQ_VERSION}` and `rm -rf /var/lib/apt/lists/*`, before
         USER; no gcc/cc/make/-dev anywhere in it; the builder has libpq-dev.
         RED: today's last stage installs no libpq5 and the builder has no
-        libpq-dev."""
+        libpq-dev.
+
+        Re-targeted in U1 round 2 (N10a; PSC-25 amended): with a `FROM
+        scratch` last stage that starts `COPY --from=<stage> / /`, the checks
+        read <stage>, the stage whose files ship, and the last stage may
+        install or remove nothing. The shipped stage may hold the pip removal
+        and no other package install or removal. Both shapes pass; every
+        control runs on both (RUNTIME_CONTROLS)."""
         s = _Scratch(self)
-        t = TARGET_APP
-        runtime = "libpq5=${LIBPQ_VERSION} \\\n"
-        controls = {
-            "gcc in the last stage": t.replace(runtime, "libpq5=${LIBPQ_VERSION} gcc \\\n"),
-            "libpq-dev in the last stage": t.replace(runtime, "libpq5=${LIBPQ_VERSION} libpq-dev=${LIBPQ_VERSION} \\\n"),
-            "unpinned libpq5": t.replace(runtime, "libpq5 \\\n"),
-            "make in a later RUN": t.replace("RUN useradd", "RUN apt-get purge -y make && useradd"),
-            "apt lists kept": t.replace(" \\\n && rm -rf /var/lib/apt/lists/*\nCOPY --from=builder",
-                                        "\nCOPY --from=builder"),
-            "recommends allowed": t.replace("install -y --no-install-recommends libpq5", "install -y libpq5"),
-            "no ARG in the last stage": t.replace("FROM " + _BASE + "\nARG LIBPQ_VERSION\n", "FROM " + _BASE + "\n"),
-            "no libpq-dev in the builder": t.replace(" libpq-dev=${LIBPQ_VERSION}", ""),
-        }
-        self._controls(self.assert_app_runtime, (s.write(t, "app.Dockerfile"),),
-                       {k: (s.write(v, "app.Dockerfile"),) for k, v in controls.items()})
+        for name, text in RUNTIME_PASSING.items():
+            with self.subTest(control=name):
+                self.assert_app_runtime(s.write(text, "app.Dockerfile"))
+        self._controls(self.assert_app_runtime, (s.write(TARGET_APP, "app.Dockerfile"),),
+                       {k: (s.write(v, "app.Dockerfile"),) for k, v in RUNTIME_CONTROLS.items()})
         self.assert_app_runtime(APP_DOCKERFILE)
 
     # ---- 5 ------------------------------------------------------------------

@@ -276,6 +276,20 @@ never touches a real daemon. What it does:
     equal to the site, prints `/opt/venv/lib/python3.12/site-packages/<e>`
     for each FAKE_PQ_VENV_EXTRA entry whose name matches a `-name`/`-iname`
     PAT (every entry with no PAT); exit 0.
+- platform-sbom U1 round 2 (PSC-14, design-notes N10a; smoke `no pip`):
+  inside the `python|python3 [flags] -c CODE` model above, `os.walk` of
+  `/usr`, `/opt` or a path below them walks a model of the api's files and
+  yields the api's absolute paths; any other path is walked as is. The
+  model is a clean shipped image: `/usr/local/bin/python`, `python3`,
+  `python3.12`, `/usr/local/lib/python3.12/{LICENSE.txt,pipes.py}`,
+  `ensurepip/{__init__,__main__}.py` and an empty `ensurepip/_bundled/`,
+  `site-packages/README.txt`, `/usr/lib/<triplet>/libpipeline.so.1` and
+  `libpq.so.5.15`, `/usr/share/doc/libpipeline1/copyright`,
+  `/opt/venv/bin/python`, psycopg and psycopg_c in the venv site, and
+  each FAKE_PQ_VENV_EXTRA entry there. FAKE_API_FILES adds
+  comma-separated absolute paths (a trailing `/` makes a directory, else
+  an empty file). FAKE_API_PIP_IMPORTABLE=1 puts a `pip` package on CODE's
+  sys.path that the walk does not see (importable only).
 - Every other call exits 0.
 """
 
@@ -552,11 +566,49 @@ if argv[:1] == ["compose"] and "exec" in argv:
                 elif not os.path.exists(os.path.join(_d, "__init__.py")):
                     with open(os.path.join(_d, "__init__.py"), "w", encoding="utf-8") as fh:
                         fh.write("__version__ = '3.3.6'\n")
-            _boot = ("import sys; _prefix, _site, _code = sys.argv[1], sys.argv[2], sys.argv[3]; "
-                     "sys.argv = ['-c'] + sys.argv[4:]; sys.prefix = sys.exec_prefix = _prefix; "
-                     "sys.path.insert(0, _site); exec(compile(_code, '<string>', 'exec'), {'__name__': '__main__'})")
+            # platform-sbom U1 round 2 (N10a): the api's /usr and /opt, for
+            # os.walk, and pip importable by the system interpreter.
+            _fs = os.path.join(_root, "apifs")
+            _api = ["/usr/local/bin/python", "/usr/local/bin/python3", "/usr/local/bin/python3.12",
+                    "/usr/local/lib/python3.12/LICENSE.txt", "/usr/local/lib/python3.12/pipes.py",
+                    "/usr/local/lib/python3.12/ensurepip/__init__.py",
+                    "/usr/local/lib/python3.12/ensurepip/__main__.py",
+                    "/usr/local/lib/python3.12/ensurepip/_bundled/",
+                    "/usr/local/lib/python3.12/site-packages/README.txt",
+                    "/usr/lib/%s/libpipeline.so.1" % _triplet, "/usr/lib/%s/libpq.so.5.15" % _triplet,
+                    "/usr/share/doc/libpipeline1/copyright", "/opt/venv/bin/python",
+                    _venv_site + "/psycopg/__init__.py", _venv_site + "/psycopg_c/__init__.py"]
+            _api += [_venv_site + "/" + _e + "/" for _e in _venv_extra]
+            _api += [e.strip() for e in (os.environ.get("FAKE_API_FILES") or "").split(",") if e.strip()]
+            for _a in _api:
+                _here = os.path.join(_fs, *[p for p in _a.split("/") if p])
+                if _a.endswith("/"):
+                    os.makedirs(_here, exist_ok=True)
+                else:
+                    os.makedirs(os.path.dirname(_here), exist_ok=True)
+                    open(_here, "a").close()
+            if os.environ.get("FAKE_API_PIP_IMPORTABLE") == "1":
+                os.makedirs(os.path.join(_site, "pip"), exist_ok=True)
+                with open(os.path.join(_site, "pip", "__init__.py"), "w", encoding="utf-8") as fh:
+                    fh.write("__version__ = '25.0.1'\n")
+            _boot = ("import os, sys\n"
+                     "_prefix, _site, _code = sys.argv[1], sys.argv[2], sys.argv[3]\n"
+                     "sys.argv = ['-c'] + sys.argv[4:]\n"
+                     "sys.prefix = sys.exec_prefix = _prefix\n"
+                     "sys.path.insert(0, _site)\n"
+                     "_fs, _walk = os.environ.get('FAKE_API_FS', ''), os.walk\n"
+                     "def _api_walk(top, *a, **k):\n"
+                     "    t = os.fspath(top)\n"
+                     "    if _fs and isinstance(t, str) and (t in ('/usr', '/opt') or t.startswith(('/usr/', '/opt/'))):\n"
+                     "        for d, ds, fs in _walk(_fs + t, *a, **k):\n"
+                     "            yield '/' + os.path.relpath(d, _fs).replace(os.sep, '/'), ds, fs\n"
+                     "    else:\n"
+                     "        yield from _walk(top, *a, **k)\n"
+                     "os.walk = _api_walk\n"
+                     "exec(compile(_code, '<string>', 'exec'), {'__name__': '__main__'})\n")
             sys.stdout.flush()
-            _done = _subprocess.run([sys.executable, "-I", "-S", "-B", "-c", _boot, _prefix, _site, _code, *_rest])
+            _done = _subprocess.run([sys.executable, "-I", "-S", "-B", "-c", _boot, _prefix, _site, _code, *_rest],
+                                    env=dict(os.environ, FAKE_API_FS=_fs))
         finally:
             _shutil.rmtree(_root, ignore_errors=True)
         sys.exit(_done.returncode)

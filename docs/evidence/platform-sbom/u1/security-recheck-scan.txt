@@ -1,0 +1,258 @@
+# platform-sbom U1 security re-check: scan output (2026-10-22). Read-only; repo files untouched.
+# Image: ke-app:bundle-31bfed4b6a11 (U0 build; last stage FROM python:3.12-slim-bookworm@sha256:34386ef0...a07258). All docker runs: --network none --read-only.
+# <SCRATCH> = the session scratchpad (profile path redacted).
+
+## 1. Image probe (pip vendor list, licence files, CPython LICENSE.txt contents)
+== vendor.txt
+CacheControl==0.14.1
+distlib==0.3.9
+distro==1.9.0
+msgpack==1.1.0
+packaging==24.2
+platformdirs==4.3.6
+pyproject-hooks==1.2.0
+requests==2.32.3
+    certifi==2024.8.30
+    idna==3.10
+    urllib3==1.26.20
+rich==13.9.4
+    pygments==2.18.0
+    typing_extensions==4.12.2
+resolvelib==1.0.1
+setuptools==70.3.0
+tomli==2.2.1
+truststore==0.10.0
+== licence-like files under pip and dist-info
+/usr/local/lib/python3.12/site-packages/pip-25.0.1.dist-info/LICENSE.txt
+/usr/local/lib/python3.12/site-packages/pip/_vendor/packaging/licenses
+== dist-info
+AUTHORS.txt
+INSTALLER
+LICENSE.txt
+METADATA
+RECORD
+REQUESTED
+WHEEL
+entry_points.txt
+top_level.txt
+License: MIT
+Classifier: License :: OSI Approved :: MIT License
+License-File: LICENSE.txt
+License-File: AUTHORS.txt
+== CPython LICENSE.txt
+13936 /usr/local/lib/python3.12/LICENSE.txt
+1:A. HISTORY OF THE SOFTWARE
+59:B. TERMS AND CONDITIONS FOR ACCESSING OR OTHERWISE USING PYTHON
+63:Python Software Foundation License Version 2.
+66:the documentation are dual licensed under the PSF License Version 2
+73:PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2
+76:1. This LICENSE AGREEMENT is between the Python Software Foundation
+77:("PSF"), and the Individual or Organization ("Licensee") accessing and
+81:2. Subject to the terms and conditions of this License Agreement, PSF hereby
+82:grants Licensee a nonexclusive, royalty-free, world-wide license to reproduce,
+85:provided, however, that PSF's License Agreement and PSF's notice of copyright,
+89:prepared by Licensee.
+91:3. In the event Licensee prepares a derivative work that is based on
+94:Licensee hereby agrees to include in any such work a brief summary of
+97:4. PSF is making Python available to Licensee on an "AS IS"
+100:DISCLAIMS ANY REPRESENTATION OR WARRANTY OF MERCHANTABILITY OR FITNESS
+101:FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF PYTHON WILL NOT
+102:INFRINGE ANY THIRD PARTY RIGHTS.
+104:5. PSF SHALL NOT BE LIABLE TO LICENSEE OR ANY OTHER USERS OF PYTHON
+109:6. This License Agreement will automatically terminate upon a material
+112:7. Nothing in this License Agreement shall be deemed to create any
+114:Licensee.  This License Agreement does not grant permission to use PSF
+116:products or services of Licensee, or any third party.
+118:8. By copying, installing or otherwise using Python, Licensee
+119:agrees to be bound by the terms and conditions of this License
+123:BEOPEN.COM LICENSE AGREEMENT FOR PYTHON 2.0
+126:BEOPEN PYTHON OPEN SOURCE LICENSE AGREEMENT VERSION 1
+128:1. This LICENSE AGREEMENT is between BeOpen.com ("BeOpen"), having an
+130:Individual or Organization ("Licensee") accessing and otherwise using
+134:2. Subject to the terms and conditions of this BeOpen Python License
+135:Agreement, BeOpen hereby grants Licensee a non-exclusive,
+139:provided, however, that the BeOpen Python License is retained in the
+140:Software, alone or in any derivative version prepared by Licensee.
+142:3. BeOpen is making the Software available to Licensee on an "AS IS"
+145:DISCLAIMS ANY REPRESENTATION OR WARRANTY OF MERCHANTABILITY OR FITNESS
+146:FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF THE SOFTWARE WILL NOT
+147:INFRINGE ANY THIRD PARTY RIGHTS.
+149:4. BEOPEN SHALL NOT BE LIABLE TO LICENSEE OR ANY OTHER USERS OF THE
+154:5. This License Agreement will automatically terminate upon a material
+157:6. This License Agreement shall be governed by and interpreted in all
+159:law provisions.  Nothing in this License Agreement shall be deemed to
+161:between BeOpen and Licensee.  This License Agreement does not grant
+163:sense to endorse or promote products or services of Licensee, or any
+168:7. By copying, installing or otherwise using the software, Licensee
+169:agrees to be bound by the terms and conditions of this License
+173:CNRI LICENSE AGREEMENT FOR PYTHON 1.6.1
+176:1. This LICENSE AGREEMENT is between the Corporation for National
+179:("Licensee") accessing and otherwise using Python 1.6.1 software in
+182:2. Subject to the terms and conditions of this License Agreement, CNRI
+183:hereby grants Licensee a nonexclusive, royalty-free, world-wide
+187:License Agreement and CNRI's notice of copyright, i.e., "Copyright (c)
+190:version prepared by Licensee.  Alternately, in lieu of CNRI's License
+191:Agreement, Licensee may substitute the following text (omitting the
+193:conditions in CNRI's License Agreement.  This Agreement together with
+199:3. In the event Licensee prepares a derivative work that is based on
+202:Licensee hereby agrees to include in any such work a brief summary of
+205:4. CNRI is making Python 1.6.1 available to Licensee on an "AS IS"
+208:DISCLAIMS ANY REPRESENTATION OR WARRANTY OF MERCHANTABILITY OR FITNESS
+209:FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF PYTHON 1.6.1 WILL NOT
+210:INFRINGE ANY THIRD PARTY RIGHTS.
+212:5. CNRI SHALL NOT BE LIABLE TO LICENSEE OR ANY OTHER USERS OF PYTHON
+== third-party markers
+mimalloc: 0
+HACL: 0
+libmpdec: 0
+Mersenne: 0
+SipHash: 0
+David M. Gay: 0
+expat: 0
+libffi: 0
+zlib: 0
+OpenSSL: 0
+W3C: 0
+asyncio: 0
+== other licence docs in /usr/local
+/usr/local/lib/python3.12/LICENSE.txt
+
+## 2. CPython bundled libraries and venv overlap
+python 3.12.15 expat expat_2.8.5 libmpdec 2.5.1
+ldd /usr/local/lib/python3.12/lib-dynload/_decimal.cpython-312-x86_64-linux-gnu.so:
+	linux-vdso.so.1
+	libm.so.6 => /lib/x86_64-linux-gnu/libm.so.6
+	libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6
+	/lib64/ld-linux-x86-64.so.2
+ldd /usr/local/lib/python3.12/lib-dynload/pyexpat.cpython-312-x86_64-linux-gnu.so:
+	linux-vdso.so.1
+	libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6
+	/lib64/ld-linux-x86-64.so.2
+venv packages overlapping pip/_vendor:
+certifi-2026.10.19.dist-info
+idna-3.20.dist-info
+requests-2.34.2.dist-info
+typing_extensions-4.16.0.dist-info
+urllib3-2.8.0.dist-info
+
+## 3. Licence text provenance (offline reference: Debian base-files in the pinned base, dpkg-owned)
+base-files: /usr/share/common-licenses/Apache-2.0
+base-files: /usr/share/common-licenses/MPL-2.0
+base-files	12.4+deb12u15
+3b83ef96387f14655fc854ddc3c6bd57  usr/share/common-licenses/Apache-2.0
+815ca599c9df247a0c7f619bab123dad  usr/share/common-licenses/MPL-2.0
+3b83ef96387f14655fc854ddc3c6bd57  usr/share/common-licenses/Apache-2.0
+815ca599c9df247a0c7f619bab123dad  usr/share/common-licenses/MPL-2.0
+11358 Apache-2.0.debian
+16726 MPL-2.0.debian
+28084 total
+cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30 *Apache-2.0.debian
+fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85 *MPL-2.0.debian
+11357 licenses/Apache-2.0.txt
+16726 licenses/MPL-2.0.txt
+28083 total
+c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4 *licenses/Apache-2.0.txt
+fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85 *licenses/MPL-2.0.txt
+cmp MPL-2.0.txt vs debian:
+identical
+cmp Apache-2.0.txt vs debian:
+<SCRATCH>/ref/Apache-2.0.debian licenses/Apache-2.0.txt differ: char 1, line 1
+first byte of debian Apache-2.0:
+0000000  \n
+debian Apache-2.0 minus its first byte vs committed:
+identical
+CR bytes:
+licenses/Apache-2.0.txt:0
+licenses/MPL-2.0.txt:0
+git attr:
+licenses/Apache-2.0.txt: text: unset
+licenses/MPL-2.0.txt: text: unset
+
+## 4. Proposed wording run through the four U1 checks (scratch copy; licenses/Apache-2.0.txt replaced by the Debian copy)
+$ uv run --locked python -I <SCRATCH>/drv/recheck_wording.py <repo> <SCRATCH>/ref/Apache-2.0.debian
+base_paragraph: []
+libpq_debian: []
+pointer: []
+licence_text: []
+--- proposed Base/Source/Licence-texts text ---
+## Base of `ke-app`
+
+The shipped (last) stage of `docker/app.Dockerfile` builds on
+`python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258`.
+Besides `/opt/venv` and `/app` it holds:
+
+- CPython 3.12 under `/usr/local`, under the Python License 2.0 (SPDX
+  `Python-2.0`: the PSF licence stacked on the BeOpen, CNRI and CWI
+  licences). `/usr/local/lib/python3.12/LICENSE.txt` inside the image holds
+  that licence stack only. CPython also builds in third-party code under
+  its own licences (among them expat and libmpdec), whose texts are in
+  `licenses/CPython-3.12-incorporated.txt`.
+- The Debian 12 (bookworm) packages of the base image, each under its own
+  licence in `/usr/share/doc/*/copyright` inside the image and, where the
+  bundle carries one, in the image's SBOM.
+- The Debian packages the last stage adds: `libpq5` 15.19-0+deb12u1 (the
+  `LIBPQ_VERSION` pin), under the PostgreSQL licence, and what apt pulls in
+  for it: `libldap-2.5-0`, `libsasl2-2` and `libsasl2-modules-db`, with their
+  licences in `/usr/share/doc/*/copyright` (and the SBOM where the bundle
+  carries one).
+- The base's own pip 25.0.1 in the system site-packages (MIT). It is outside
+  `uv.lock`, so it is not in the generated table of `THIRD_PARTY_NOTICES.md`.
+  The packages pip vendors, listed in `pip/_vendor/vendor.txt`, keep their
+  own licences: Apache-2.0 (CacheControl, distro, msgpack, requests),
+  MPL-2.0 (certifi), Apache-2.0 OR BSD-2-Clause (packaging), PSF-2.0
+  (distlib, typing_extensions), BSD-3-Clause (idna), BSD-2-Clause
+  (pygments), ISC (resolvelib) and MIT (platformdirs, pyproject-hooks,
+  rich, setuptools' pkg_resources, tomli, truststore, urllib3). pip 25.0.1
+  ships no licence files for them, so the bundle carries the Apache-2.0 and
+  MPL-2.0 texts as `licenses/Apache-2.0.txt` and `licenses/MPL-2.0.txt`,
+  and each package's own licence f
+## 5. Secret / path / IP sweep over git diff 31bfed4 + untracked U1 files (NEXT-SESSION.md and the prompt file excluded)
+secret regex hits (only the prior audit's own description line):
+1
+profile path / SID hits (only the prior audit's own description line):
+1
+IPv4 literals:
+      2 0.0.0.0
+      9 127.0.0.1
+      2 172.19.0.2
+      2 192.168.160.2
+orchestrator-verify-full.txt tail:
+== offline_check: PASS (103s) ==
+== verify full: PASS (697s) ==
+21:06 NOTICE.md
+20:49 docs/evidence/platform-sbom/u1/orchestrator-verify-full.txt
+21:06 licenses/Apache-2.0.txt
+
+## 6. Driver source (<SCRATCH>/drv/recheck_wording.py)
+"""Security U1 re-check: apply proposed wording to a scratch NOTICE.md and run the four U1 checks."""
+import shutil, sys, tempfile
+from pathlib import Path
+repo = Path(sys.argv[1]).resolve(); apache_ref = Path(sys.argv[2])
+sys.path.insert(0, str(repo))
+from tests import test_notice_ke_app as t
+src = (repo / "NOTICE.md").read_text(encoding="utf-8")
+swaps = [
+ ("`/usr/local/lib/python3.12/LICENSE.txt` inside the image holds\n  the full licence stack and the licences of the third-party code CPython\n  bundles.",
+  "`/usr/local/lib/python3.12/LICENSE.txt` inside the image holds\n  that licence stack only. CPython also builds in third-party code under\n  its own licences (among them expat and libmpdec), whose texts are in\n  `licenses/CPython-3.12-incorporated.txt`."),
+ ("keep their\n  own licences (among them Apache-2.0 and MPL-2.0); pip 25.0.1 ships no\n  licence files for them, so the bundle carries those two texts as\n  `licenses/Apache-2.0.txt` and `licenses/MPL-2.0.txt`.",
+  "keep their\n  own licences: Apache-2.0 (CacheControl, distro, msgpack, requests),\n  MPL-2.0 (certifi), Apache-2.0 OR BSD-2-Clause (packaging), PSF-2.0\n  (distlib, typing_extensions), BSD-3-Clause (idna), BSD-2-Clause\n  (pygments), ISC (resolvelib) and MIT (platformdirs, pyproject-hooks,\n  rich, setuptools' pkg_resources, tomli, truststore, urllib3). pip 25.0.1\n  ships no licence files for them, so the bundle carries the Apache-2.0 and\n  MPL-2.0 texts as `licenses/Apache-2.0.txt` and `licenses/MPL-2.0.txt`,\n  and each package's own licence file, with its copyright notice, in\n  `licenses/pip-25.0.1-vendored.txt`."),
+ ("has\nno `sources/` and carries no third-party source code, so it does not\nitself provide the source that any of these licences requires.",
+  "has\nno `sources/`, so it does not itself provide the source that a\nGPL-family licence requires."),
+ ("are the Apache License 2.0\nand Mozilla Public License 2.0 texts, unmodified, copied from the licence files\nof the locked packages `opentelemetry-api` 1.45.1 and `pathspec` 1.1.1 (see\n`docs/evidence/platform-sbom/u1/licence-texts-provenance.md`). They cover the\npackages that the base's pip vendors.",
+  "are the Apache License 2.0\nand Mozilla Public License 2.0 texts, unmodified: byte for byte the same as\n`/usr/share/common-licenses/Apache-2.0` and `/usr/share/common-licenses/MPL-2.0`\n(Debian `base-files`) inside the `ke-app` image. They cover the Apache-2.0 and\nMPL-2.0 packages that the base's pip vendors."),
+]
+for old, new in swaps:
+    assert src.count(old) == 1, old[:60]
+    src = src.replace(old, new)
+with tempfile.TemporaryDirectory() as d:
+    d = Path(d); (d / "NOTICE.md").write_text(src, encoding="utf-8")
+    lic = d / "licenses"; shutil.copytree(repo / "licenses", lic)
+    shutil.copyfile(apache_ref, lic / "Apache-2.0.txt")
+    df = repo / "docker" / "app.Dockerfile"
+    for name, probs in (("base_paragraph", t.base_paragraph_problems(d / "NOTICE.md", df)),
+                        ("libpq_debian", t.libpq_debian_problems(d / "NOTICE.md")),
+                        ("pointer", t.pointer_problems(d / "NOTICE.md")),
+                        ("licence_text", t.licence_text_problems(d / "NOTICE.md", lic))):
+        print(f"{name}: {probs}")
+    print("--- proposed Base/Source/Licence-texts text ---")
+    print(src[src.index("## Base of `ke-app`"):])

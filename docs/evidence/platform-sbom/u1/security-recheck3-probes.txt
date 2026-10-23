@@ -1,0 +1,218 @@
+# platform-sbom U1 security re-check 3: probes (2026-10-23). Scratch paths shown as <scratch>/.
+
+## 1. HACL second fetch (tarball fetched earlier by security, re-hashed now)
+$ sha256sum <scratch>/cpy-fetch/Python-3.12.15.tar.xz
+c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a Python-3.12.15.tar.xz
+base PYTHON_SHA256 (docker image inspect of the pinned base, offline; also u1/base-config.json): c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a
+tar -tvJf: 0 non-regular, non-directory members. Extracted 32 named members into a fresh dir (--no-same-owner --no-same-permissions); nothing executed.
+$ sed -n '1,/^ \*\/$/p' Modules/_hacl/Hacl_Hash_SHA2.c > extract  (23 lines)
+998ce04fb8ad9dedb0bc1b44938f8c3dcf1089780fa105ce1c8c30fb5554d78c extract
+$ tail -n +6 licenses/CPython-3.12-HACL.txt > body; cmp extract body
+cmp: equal (rc 0)
+file sha256: d83382d7cac3377506f4901d6a145185c85e5504618a58d36c44da6372b4c483; index blob cmp-equal to work tree; 0 CR bytes; check-attr text: unset (licenses/* -text)
+
+## 2. KaRaMeL: is it compiled in?
+### #include chains (Modules/_hacl and the four modules)
+_hacl/Hacl_Hash_MD5.c:26:#include "internal/Hacl_Hash_MD5.h"
+_hacl/Hacl_Hash_SHA1.c:26:#include "internal/Hacl_Hash_SHA1.h"
+_hacl/Hacl_Hash_SHA2.c:26:#include "internal/Hacl_Hash_SHA2.h"
+_hacl/Hacl_Hash_SHA3.c:26:#include "internal/Hacl_Hash_SHA3.h"
+_hacl/Hacl_Hash_MD5.h:35:#include "krml/types.h"
+_hacl/Hacl_Hash_MD5.h:36:#include "krml/lowstar_endianness.h"
+_hacl/Hacl_Hash_MD5.h:37:#include "krml/internal/target.h"
+_hacl/Hacl_Hash_SHA1.h:35:#include "krml/types.h"
+_hacl/Hacl_Hash_SHA1.h:36:#include "krml/lowstar_endianness.h"
+_hacl/Hacl_Hash_SHA1.h:37:#include "krml/internal/target.h"
+_hacl/Hacl_Hash_SHA2.h:35:#include "krml/types.h"
+_hacl/Hacl_Hash_SHA2.h:36:#include "krml/lowstar_endianness.h"
+_hacl/Hacl_Hash_SHA2.h:37:#include "krml/internal/target.h"
+_hacl/Hacl_Hash_SHA3.h:35:#include "krml/types.h"
+_hacl/Hacl_Hash_SHA3.h:36:#include "krml/lowstar_endianness.h"
+_hacl/Hacl_Hash_SHA3.h:37:#include "krml/internal/target.h"
+_hacl/Hacl_Streaming_Types.h:34:#include "krml/types.h"
+_hacl/Hacl_Streaming_Types.h:35:#include "krml/lowstar_endianness.h"
+_hacl/Hacl_Streaming_Types.h:36:#include "krml/internal/target.h"
+_hacl/internal/Hacl_Hash_MD5.h:34:#include "krml/types.h"
+_hacl/internal/Hacl_Hash_MD5.h:35:#include "krml/lowstar_endianness.h"
+_hacl/internal/Hacl_Hash_MD5.h:36:#include "krml/internal/target.h"
+_hacl/internal/Hacl_Hash_SHA1.h:34:#include "krml/types.h"
+_hacl/internal/Hacl_Hash_SHA1.h:35:#include "krml/lowstar_endianness.h"
+_hacl/internal/Hacl_Hash_SHA1.h:36:#include "krml/internal/target.h"
+_hacl/internal/Hacl_Hash_SHA2.h:34:#include "krml/types.h"
+_hacl/internal/Hacl_Hash_SHA2.h:35:#include "krml/lowstar_endianness.h"
+_hacl/internal/Hacl_Hash_SHA2.h:36:#include "krml/internal/target.h"
+_hacl/internal/Hacl_Hash_SHA3.h:34:#include "krml/types.h"
+_hacl/internal/Hacl_Hash_SHA3.h:35:#include "krml/lowstar_endianness.h"
+_hacl/internal/Hacl_Hash_SHA3.h:36:#include "krml/internal/target.h"
+md5module.c:38:#include "_hacl/Hacl_Hash_MD5.h"
+sha1module.c:38:#include "_hacl/Hacl_Hash_SHA1.h"
+sha2module.c:48:#include "_hacl/Hacl_Hash_SHA2.h"
+sha3module.c:59:#include "_hacl/Hacl_Hash_SHA3.h"
+### build wiring
+79:@MODULE__MD5_TRUE@_md5 md5module.c -I$(srcdir)/Modules/_hacl/include _hacl/Hacl_Hash_MD5.c -D_BSD_SOURCE -D_DEFAULT_SOURCE
+80:@MODULE__SHA1_TRUE@_sha1 sha1module.c -I$(srcdir)/Modules/_hacl/include _hacl/Hacl_Hash_SHA1.c -D_BSD_SOURCE -D_DEFAULT_SOURCE
+81:@MODULE__SHA2_TRUE@_sha2 sha2module.c -I$(srcdir)/Modules/_hacl/include Modules/_hacl/libHacl_Hash_SHA2.a
+82:@MODULE__SHA3_TRUE@_sha3 sha3module.c -I$(srcdir)/Modules/_hacl/include _hacl/Hacl_Hash_SHA3.c -D_BSD_SOURCE -D_DEFAULT_SOURCE
+# hashlib's HACL* library
+
+LIBHACL_SHA2_OBJS= \
+                Modules/_hacl/Hacl_Hash_SHA2.o
+
+LIBHACL_HEADERS= \
+                Modules/_hacl/include/krml/FStar_UInt128_Verified.h \
+                Modules/_hacl/include/krml/FStar_UInt_8_16_32_64.h \
+                Modules/_hacl/include/krml/fstar_uint128_struct_endianness.h \
+                Modules/_hacl/include/krml/internal/target.h \
+                Modules/_hacl/include/krml/lowstar_endianness.h \
+                Modules/_hacl/include/krml/types.h \
+		Modules/_hacl/Hacl_Streaming_Types.h \
+                Modules/_hacl/python_hacl_namespaces.h
+
+LIBHACL_SHA2_HEADERS= \
+                Modules/_hacl/Hacl_Hash_SHA2.h \
+                Modules/_hacl/internal/Hacl_Hash_SHA2.h \
+		$(LIBHACL_HEADERS)
+# Build HACL* static libraries for hashlib: libHacl_Hash_SHA2.a
+LIBHACL_CFLAGS=-I$(srcdir)/Modules/_hacl/include -D_BSD_SOURCE -D_DEFAULT_SOURCE $(PY_STDMODULE_CFLAGS) $(CCSHARED)
+
+Modules/_hacl/Hacl_Hash_SHA2.o: $(srcdir)/Modules/_hacl/Hacl_Hash_SHA2.c $(LIBHACL_SHA2_HEADERS)
+	$(CC) -c $(LIBHACL_CFLAGS) -o $@ $(srcdir)/Modules/_hacl/Hacl_Hash_SHA2.c
+
+$(LIBHACL_SHA2_A): $(LIBHACL_SHA2_OBJS)
+	-rm -f $@
+	$(AR) $(ARFLAGS) $@ $(LIBHACL_SHA2_OBJS)
+2826:MODULE__MD5_DEPS=$(srcdir)/Modules/hashlib.h $(LIBHACL_HEADERS) Modules/_hacl/Hacl_Hash_MD5.h Modules/_hacl/Hacl_Hash_MD5.c
+2827:MODULE__SHA1_DEPS=$(srcdir)/Modules/hashlib.h $(LIBHACL_HEADERS) Modules/_hacl/Hacl_Hash_SHA1.h Modules/_hacl/Hacl_Hash_SHA1.c
+2828:MODULE__SHA2_DEPS=$(srcdir)/Modules/hashlib.h $(LIBHACL_SHA2_HEADERS) $(LIBHACL_SHA2_A)
+2829:MODULE__SHA3_DEPS=$(srcdir)/Modules/hashlib.h $(LIBHACL_HEADERS) Modules/_hacl/Hacl_Hash_SHA3.h Modules/_hacl/Hacl_Hash_SHA3.c
+7218:AC_MSG_CHECKING([for --with-builtin-hashlib-hashes])
+7219-AC_ARG_WITH(
+7220-  [builtin-hashlib-hashes],
+7221-  [AS_HELP_STRING(
+### KaRaMeL macro / inline uses per HACL source (count name)
+-- _hacl/Hacl_Hash_MD5.c
+     64 load32_le
+      4 KRML_HOST_CALLOC
+      3 KRML_HOST_FREE
+      2 KRML_MAYBE_FOR4
+      2 KRML_HOST_MALLOC
+      1 store64_le
+      1 store32_le
+-- _hacl/Hacl_Hash_SHA1.c
+      4 KRML_HOST_CALLOC
+      3 KRML_HOST_FREE
+      2 KRML_MAYBE_FOR5
+      2 KRML_HOST_MALLOC
+      1 store64_be
+      1 store32_be
+      1 load32_be
+-- _hacl/Hacl_Hash_SHA2.c
+     16 load64_be
+     16 load32_be
+     12 KRML_HOST_CALLOC
+     10 KRML_MAYBE_FOR8
+      6 KRML_HOST_MALLOC
+      6 KRML_HOST_FREE
+      4 KRML_MAYBE_FOR16
+      3 store64_be
+      2 store32_be
+      2 FStar_UInt128_add
+      1 KRML_MAYBE_FOR5
+      1 KRML_MAYBE_FOR4
+-- _hacl/Hacl_Hash_SHA3.c
+      4 KRML_MAYBE_FOR5
+      4 KRML_HOST_CALLOC
+      3 KRML_HOST_FREE
+      2 KRML_HOST_MALLOC
+      2 KRML_HOST_EXIT
+      2 KRML_HOST_EPRINTF
+      2 KRML_CHECK_SIZE
+      1 store64_le
+      1 load64_le
+### where they are defined
+FStar_UInt128_Verified.h:27:FStar_UInt128_add(FStar_UInt128_uint128 a, FStar_UInt128_uint128 b)
+lowstar_endianness.h:197:#define load32_le(b) (le32toh(load32(b)))
+lowstar_endianness.h:199:#define load32_be(b) (be32toh(load32(b)))
+lowstar_endianness.h:200:#define store32_be(b, i) (store32(b, htobe32(i)))
+lowstar_endianness.h:203:#define store64_le(b, i) (store64(b, htole64(i)))
+lowstar_endianness.h:204:#define load64_be(b) (be64toh(load64(b)))
+lowstar_endianness.h:205:#define store64_be(b, i) (store64(b, htobe64(i)))
+internal/target.h:45:#  define KRML_HOST_MALLOC malloc
+internal/target.h:49:#  define KRML_HOST_CALLOC calloc
+internal/target.h:53:#  define KRML_HOST_FREE free
+internal/target.h:217:#  define KRML_MAYBE_FOR4(i, z, n, k, x) KRML_UNROLL_FOR(i, z, 4, k, x)
+internal/target.h:219:#  define KRML_MAYBE_FOR4(i, z, n, k, x) KRML_ACTUAL_FOR(i, z, n, k, x)
+25-
+26-static inline FStar_UInt128_uint128
+27:FStar_UInt128_add(FStar_UInt128_uint128 a, FStar_UInt128_uint128 b)
+### the notices (all five identical in substance)
+-- internal/target.h
+/* Copyright (c) INRIA and Microsoft Corporation. All rights reserved.
+   Licensed under the Apache 2.0 License. */
+-- lowstar_endianness.h
+/* Copyright (c) INRIA and Microsoft Corporation. All rights reserved.
+   Licensed under the Apache 2.0 License. */
+-- fstar_uint128_struct_endianness.h
+/* Copyright (c) INRIA and Microsoft Corporation. All rights reserved.
+   Licensed under the Apache 2.0 License. */
+-- FStar_UInt128_Verified.h
+/*
+  Copyright (c) INRIA and Microsoft Corporation. All rights reserved.
+  Licensed under the Apache 2.0 License.
+*/
+-- FStar_UInt_8_16_32_64.h
+/*
+  Copyright (c) INRIA and Microsoft Corporation. All rights reserved.
+  Licensed under the Apache 2.0 License.
+*/
+-- types.h (no notice)
+#pragma once
+
+#include <inttypes.h>
+candidate extract: sed -n '1,/\*\//p' Modules/_hacl/include/krml/internal/target.h -> 2 lines, 116 B, sha256 6b7cb4bd5441f287eeb8b745073c11bc5d2974252bec3b6d8c101ff67f918a26
+licenses/CPython-3.12-incorporated.txt: 0 hits for KaRaMeL|krml|HACL|INRIA; it does carry Apache-2.0 sections 1-9 inside its OpenSSL section (l.377-552; diff -w -B against base-files' text differs only in the http/https URL line)
+
+### offline image probes (--rm --network none --read-only, label ke.scratch=sec-u1r3)
+### base python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30  /usr/share/common-licenses/Apache-2.0
+11358 /usr/share/common-licenses/Apache-2.0
+base-files: /usr/share/common-licenses/Apache-2.0
+base-files	12.4+deb12u15
+_md5.cpython-312-x86_64-linux-gnu.so
+_sha1.cpython-312-x86_64-linux-gnu.so
+_sha2.cpython-312-x86_64-linux-gnu.so
+_sha3.cpython-312-x86_64-linux-gnu.so
+225
+0
+### ke-app 2c662c94f624
+cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30  /usr/share/common-licenses/Apache-2.0
+_md5.cpython-312-x86_64-linux-gnu.so
+_sha1.cpython-312-x86_64-linux-gnu.so
+_sha2.cpython-312-x86_64-linux-gnu.so
+_sha3.cpython-312-x86_64-linux-gnu.so
+/usr/local/lib/python3.12/lib-dynload/_sha2.cpython-312-x86_64-linux-gnu.so
+e3b0c442
+### ke-app 071866c74d68
+cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30  /usr/share/common-licenses/Apache-2.0
+_md5.cpython-312-x86_64-linux-gnu.so
+_sha1.cpython-312-x86_64-linux-gnu.so
+_sha2.cpython-312-x86_64-linux-gnu.so
+_sha3.cpython-312-x86_64-linux-gnu.so
+/usr/local/lib/python3.12/lib-dynload/_sha2.cpython-312-x86_64-linux-gnu.so
+e3b0c442
+base-files Apache-2.0 also copied out offline: cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30, 11358 B
+
+## 4. smoke whole-output comparison, reproduced in bash (pip_out="$(printf -- X)"; [ "$pip_out" = - ])
+PASS <-\\n> -> -
+PASS <-> -> -
+FAIL <''> -> ''
+FAIL <\\n> -> ''
+FAIL <-\\n/usr/bin/pip> -> $'-\n/usr/bin/pip'
+FAIL <\ -> -> \ -
+PASS <-\\n\\n> -> -
+FAIL <\$\(touch\ x\)> -> \$\(touch\ x\)
+FAIL <-o> -> -o
+FAIL <\!> -> \!
+FAIL <-a\ -> -> -a\ -
+FAIL <-\\r> -> $'-\r'
+FAIL <=\ -> -> =\ -

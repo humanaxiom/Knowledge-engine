@@ -1,0 +1,101 @@
+# U1 controls, rework round 1 (tester, 2026-10-23; supersedes the 2026-10-22 RED run, which had 35 controls)
+# Command: HARNESS_TRACING=off uv run --locked python docs/evidence/platform-sbom/u1/u1_controls.py --reach --licences .venv/Lib/site-packages/googleapis_common_protos-1.75.5.dist-info/licenses/LICENSE .venv/Lib/site-packages/pathspec-1.1.1.dist-info/licenses/LICENSE
+# (the two --licences files are local canonical Apache-2.0 (11358 B) and MPL-2.0 (16726 B) texts, used only to prove the markers match real texts)
+# Columns: check | case | wanted | result | first problem. REPO rows list every problem. reach = today's NOTICE.md with r1-target-notice-sections.md spliced in (scratch copy) + scratch licenses/.
+# exit 0
+
+base     | TARGET                                                     | want pass | passes
+base     | trixie ref, NOTICE says Debian 13 (trixie) (B1 P3)         | want pass | passes
+base     | registry-prefixed 3.13 ref, NOTICE says 3.13 (B1)          | want pass | passes
+base     | no Base of ke-app heading                                  | want fail | FAILS | NOTICE.md has no `## Base of `ke-app`` section (PSC-14, ADR-KE-016 point 9)
+base     | elements under another heading                             | want fail | FAILS | the section does not give the last stage's base reference 'python:3.12-slim-bookworm@sha256:aaaaaaaa
+base     | base digest differs in NOTICE                              | want fail | FAILS | the section does not give the last stage's base reference 'python:3.12-slim-bookworm@sha256:aaaaaaaa
+base     | base digest differs in Dockerfile                          | want fail | FAILS | the section does not give the last stage's base reference 'python:3.12-slim-bookworm@sha256:cccccccc
+base     | unparseable ref: no codename (B1)                          | want fail | FAILS | the last stage's base reference 'python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+base     | unparseable ref: no digest (B1)                            | want fail | FAILS | the last stage's base reference 'python:3.12-slim-bookworm' does not parse as [registry/]python:X.Y-
+base     | unparseable ref: short digest (B1)                         | want fail | FAILS | the last stage's base reference 'python:3.12-slim-bookworm@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+base     | unparseable ref: not python (B1)                           | want fail | FAILS | the last stage's base reference 'pypy:3.10-slim-bookworm@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+base     | unknown codename sid (B1)                                  | want fail | FAILS | unknown Debian codename 'sid' in 'python:3.12-slim-sid@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+base     | no CPython                                                 | want fail | FAILS | no block names CPython 3.12 under /usr/local with its licence Python-2.0 and the pointer /usr/local/
+base     | CPython licence PSF-2.0, not Python-2.0 (N3)               | want fail | FAILS | no block names CPython 3.12 under /usr/local with its licence Python-2.0 and the pointer /usr/local/
+base     | CPython without the LICENSE.txt pointer (N3)               | want fail | FAILS | no block names CPython 3.12 under /usr/local with its licence Python-2.0 and the pointer /usr/local/
+base     | LICENSE.txt pointer names another minor (N3)               | want fail | FAILS | no block names CPython 3.12 under /usr/local with its licence Python-2.0 and the pointer /usr/local/
+base     | CPython without /usr/local                                 | want fail | FAILS | no block names CPython 3.12 under /usr/local with its licence Python-2.0 and the pointer /usr/local/
+base     | CPython minor is not the base tag's                        | want fail | FAILS | no block names CPython 3.13 under /usr/local with its licence Python-2.0 and the pointer /usr/local/
+base     | registry-prefixed 3.13 ref, NOTICE still says 3.12 (B1 P1) | want fail | FAILS | no block names CPython 3.13 under /usr/local with its licence Python-2.0 and the pointer /usr/local/
+base     | trixie ref, NOTICE still says Debian 12 (B1 P2)            | want fail | FAILS | no block names the base's Debian 13 (trixie) packages with their licences in /usr/share/doc/*/copyri
+base     | no Debian 12                                               | want fail | FAILS | no block names the base's Debian 12 (bookworm) packages with their licences in /usr/share/doc/*/copy
+base     | Debian 12 without codename (B1)                            | want fail | FAILS | no block names the base's Debian 12 (bookworm) packages with their licences in /usr/share/doc/*/copy
+base     | Debian 12 without copyright path                           | want fail | FAILS | no block names the base's Debian 12 (bookworm) packages with their licences in /usr/share/doc/*/copy
+base     | Debian 12 without SBOM                                     | want fail | FAILS | no block names the base's Debian 12 (bookworm) packages with their licences in /usr/share/doc/*/copy
+base     | Debian 12 SBOM unconditional (L-1)                         | want fail | FAILS | the section names the SBOM unconditionally; say "where the bundle carries one" (security L-1): '- Th
+base     | added packages SBOM unconditional (L-1)                    | want fail | FAILS | the section names the SBOM unconditionally; say "where the bundle carries one" (security L-1): '- Th
+base     | libpq5 not named                                           | want fail | FAILS | the section does not name libpq5, a Debian package the last stage adds, with its licence
+base     | libpq5 pin missing                                         | want fail | FAILS | the section does not give libpq5 at the pinned LIBPQ_VERSION 15.99-0+deb12u9
+base     | libpq5 pin differs in Dockerfile                           | want fail | FAILS | the section does not give libpq5 at the pinned LIBPQ_VERSION 15.98-0+deb12u9
+base     | libsasl2-modules-db missing                                | want fail | FAILS | the section does not name libsasl2-modules-db, a Debian package the last stage adds, with its licenc
+base     | libldap-2.5-0 missing                                      | want fail | FAILS | the section does not name libldap-2.5-0, a Debian package the last stage adds, with its licence
+base     | ADDED_PACKAGES names libzz9 the NOTICE lacks               | want fail | FAILS | the section does not name libzz9, a Debian package the last stage adds, with its licence
+base     | Dockerfile adds a package outside ADDED_PACKAGES           | want fail | FAILS | app.Dockerfile: the last stage installs libzz9, which is not in ADDED_PACKAGES ['libldap-2.5-0', 'li
+base     | pip missing                                                | want fail | FAILS | no block names the base's pip <version> in the system site-packages (MIT), outside uv.lock
+base     | pip without version                                        | want fail | FAILS | no block names the base's pip <version> in the system site-packages (MIT), outside uv.lock
+base     | pip without MIT                                            | want fail | FAILS | no block names the base's pip <version> in the system site-packages (MIT), outside uv.lock
+base     | pip without uv.lock                                        | want fail | FAILS | no block names the base's pip <version> in the system site-packages (MIT), outside uv.lock
+base     | pip without site-packages                                  | want fail | FAILS | no block names the base's pip <version> in the system site-packages (MIT), outside uv.lock
+base     | pip without its vendored licences (L-2)                    | want fail | FAILS | the pip block does not say that the packages pip vendors (pip/_vendor/vendor.txt) keep their own lic
+base     | pip vendored without Apache-2.0 (L-2)                      | want fail | FAILS | the pip block does not say that the packages pip vendors (pip/_vendor/vendor.txt) keep their own lic
+base     | pip vendored without MPL-2.0 (L-2)                         | want fail | FAILS | the pip block does not say that the packages pip vendors (pip/_vendor/vendor.txt) keep their own lic
+base     | pip without vendor.txt (L-2)                               | want fail | FAILS | the pip block does not say that the packages pip vendors (pip/_vendor/vendor.txt) keep their own lic
+base     | pip without 'ships no licence files' (L-2)                 | want fail | FAILS | the pip block does not say that the packages pip vendors (pip/_vendor/vendor.txt) keep their own lic
+base     | uv named as shipped                                        | want fail | FAILS | the section names uv as shipped: '- uv 0.11.21 under `/usr/local/bin` (MIT OR Apache-2.0).'
+base     | no uv statement                                            | want fail | FAILS | the section does not say uv is not shipped (it runs only in the builder stage, PSC-17)
+base     | REPO NOTICE.md (RED expected)                              | want fail | FAILS
+         |   - no block names CPython 3.12 under /usr/local with its licence Python-2.0 and the pointer /usr/local/lib/python3.12/LICENSE.txt (review N3, security L-3)
+         |   - the section names the SBOM unconditionally; say "where the bundle carries one" (security L-1): '- The Debian 12 (bookworm) packages of the base image, each under its own licence in `/usr/share/doc/*/copyright` inside'
+         |   - the section names the SBOM unconditionally; say "where the bundle carries one" (security L-1): '- The Debian packages the last stage adds: `libpq5` 15.19-0+deb12u1 (the `LIBPQ_VERSION` pin), under the PostgreSQL lice'
+         |   - the pip block does not say that the packages pip vendors (pip/_vendor/vendor.txt) keep their own licences, among them Apache-2.0 and MPL-2.0, and that pip ships no licence files for them (security L-2)
+libpq    | TARGET                                                     | want pass | passes
+libpq    | History: block names psycopg-binary (N4)                   | want pass | passes
+libpq    | libpq5 without the PostgreSQL licence                      | want fail | FAILS | no block of NOTICE.md names libpq5 as a Debian package under the PostgreSQL licence
+libpq    | libpq5 under another licence                               | want fail | FAILS | no block of NOTICE.md names libpq5 as a Debian package under the PostgreSQL licence
+libpq    | libpq5 not a Debian package                                | want fail | FAILS | no block of NOTICE.md names libpq5 as a Debian package under the PostgreSQL licence
+libpq    | vendored-libraries heading                                 | want fail | FAILS | NOTICE.md has a vendored-libraries heading: '## Vendored libraries'
+libpq    | vendored-libraries table                                   | want fail | FAILS | NOTICE.md has a table row of vendored libraries: '| `libpq-9b38f5e3.so.5.16` | PostgreSQL |'
+libpq    | psycopg_binary undated                                     | want fail | FAILS | NOTICE.md names psycopg-binary outside dated history (a block that starts with a date or "History:",
+libpq    | psycopg-binary in a block dated mid-text (N4)              | want fail | FAILS | NOTICE.md names psycopg-binary outside dated history (a block that starts with a date or "History:",
+libpq    | REPO NOTICE.md (green expected)                            | want pass | passes
+pointer  | TARGET                                                     | want pass | passes
+pointer  | no pointer                                                 | want fail | FAILS | no block of NOTICE.md points to the "Source code" section of THIRD_PARTY_NOTICES.md and `sources/` (
+pointer  | pointer without Source code                                | want fail | FAILS | no block of NOTICE.md points to the "Source code" section of THIRD_PARTY_NOTICES.md and `sources/` (
+pointer  | pointer without sources/                                   | want fail | FAILS | no block of NOTICE.md points to the "Source code" section of THIRD_PARTY_NOTICES.md and `sources/` (
+pointer  | pointer without THIRD_PARTY_NOTICES.md                     | want fail | FAILS | no block of NOTICE.md points to the "Source code" section of THIRD_PARTY_NOTICES.md and `sources/` (
+pointer  | no M-1 sentence                                            | want fail | FAILS | the "Source code" block does not say that a bundle whose THIRD_PARTY_NOTICES.md has no "Source code"
+pointer  | M-1 sentence in its own paragraph                          | want fail | FAILS | the "Source code" block does not say that a bundle whose THIRD_PARTY_NOTICES.md has no "Source code"
+pointer  | M-1 without the no-section condition                       | want fail | FAILS | the "Source code" block does not say that a bundle whose THIRD_PARTY_NOTICES.md has no "Source code"
+pointer  | M-1 without has no sources/                                | want fail | FAILS | the "Source code" block does not say that a bundle whose THIRD_PARTY_NOTICES.md has no "Source code"
+pointer  | M-1 says the bundle provides the source                    | want fail | FAILS | the "Source code" block does not say that a bundle whose THIRD_PARTY_NOTICES.md has no "Source code"
+pointer  | REPO NOTICE.md (RED expected)                              | want fail | FAILS
+         |   - the "Source code" block does not say that a bundle whose THIRD_PARTY_NOTICES.md has no "Source code" section has no `sources/` and does not itself provide the source (security U1 M-1)
+licences | TARGET                                                     | want pass | passes
+licences | Apache-2.0.txt missing                                     | want fail | FAILS | licenses/Apache-2.0.txt is missing (the full text ships with the bundle)
+licences | MPL-2.0.txt missing                                        | want fail | FAILS | licenses/MPL-2.0.txt is missing (the full text ships with the bundle)
+licences | Apache-2.0.txt truncated                                   | want fail | FAILS | licenses/Apache-2.0.txt is not the canonical text: it lacks ['END OF TERMS AND CONDITIONS']
+licences | MPL-2.0.txt truncated                                      | want fail | FAILS | licenses/MPL-2.0.txt is not the canonical text: it lacks ['Exhibit B - "Incompatible With Secondary 
+licences | Apache-2.0.txt holds another licence                       | want fail | FAILS | licenses/Apache-2.0.txt is not the canonical text: it lacks ['Apache License', 'Version 2.0, January
+licences | MPL-2.0.txt holds another licence                          | want fail | FAILS | licenses/MPL-2.0.txt is not the canonical text: it lacks ['Mozilla Public License Version 2.0', '1. 
+licences | MPL-2.0.txt is MPL 1.1                                     | want fail | FAILS | licenses/MPL-2.0.txt is not the canonical text: it lacks ['Mozilla Public License Version 2.0']
+licences | NOTICE pip block names neither file                        | want fail | FAILS | NOTICE.md's pip block does not name licenses/Apache-2.0.txt
+licences | NOTICE pip block omits MPL-2.0.txt                         | want fail | FAILS | NOTICE.md's pip block does not name licenses/MPL-2.0.txt
+licences | NOTICE names the files outside the pip block               | want fail | FAILS | NOTICE.md's pip block does not name licenses/Apache-2.0.txt
+licences | REPO NOTICE.md + licenses/ (RED expected)                  | want fail | FAILS
+         |   - licenses/Apache-2.0.txt is missing (the full text ships with the bundle)
+         |   - licenses/MPL-2.0.txt is missing (the full text ships with the bundle)
+         |   - NOTICE.md's pip block does not name licenses/Apache-2.0.txt
+         |   - NOTICE.md's pip block does not name licenses/MPL-2.0.txt
+added    | repo last-stage apt names ['libpq5']; ADDED_PACKAGES ['libldap-2.5-0', 'libpq5', 'libsasl2-2', 'libsasl2-modules-db']
+controls: 68 must-fail + 3 must-pass = 71
+unexpected: 0
+reach base    : []
+reach libpq   : []
+reach pointer : []
+reach licences: []

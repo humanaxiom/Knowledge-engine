@@ -101,7 +101,8 @@ and `pypi.org` leaves `hosts`.
      is removed and does not ship. `--no-binary-package` is a guard: if
      PyPI ever adds a psycopg-c wheel and a re-lock picks it up, the image
      still compiles.
-- Last stage, one layer, before `useradd`:
+- Last stage, one layer, before `useradd` (U1 round 2: this moves to stage
+  `runtime`, which the last stage flattens; N10a):
   `apt-get update && apt-get install -y --no-install-recommends
   libpq5=${LIBPQ_VERSION} && rm -rf /var/lib/apt/lists/*`.
   - Nothing else is named. Apt adds the libpq5 dependencies the base
@@ -510,12 +511,13 @@ proved byte-identical to the one install loaded.
   `/app/uv.lock`'s (`tomllib`). "Installed" means what `uv sync --locked
   --no-dev --group pq-c` installed (N0), so the check uses that set
   without re-resolving markers. `psycopg-c` is in it; `pq-build` is not.
-- There is no vendored-library injection and no drift check (Q64), because
-  there is no `psycopg_binary.libs`. libpq5 and its dependencies are dpkg
-  packages, which syft's dpkg cataloguer reads from `/var/lib/dpkg/status`.
-  U4's `full` test asserts that `ke-app`'s SBOM lists
-  `pkg:deb/debian/libpq5@<pin>` (upstream `postgresql-15`) and
-  `pkg:pypi/psycopg-c@3.3.6`, and has no `psycopg-binary`.
+- There is no vendored-library injection and no vendored-library drift
+  check (Q64), because there is no `psycopg_binary.libs`. libpq5 and its
+  dependencies are dpkg packages, which syft's dpkg cataloguer reads from
+  `/var/lib/dpkg/status`. U4's `full` test asserts that `ke-app`'s SBOM
+  lists `pkg:deb/debian/libpq5@<pin>` (upstream `postgresql-15`) and
+  `pkg:pypi/psycopg-c@3.3.6`, and has no `psycopg-binary`; and NOTICE's
+  image-side drift check (N10, B3).
 
 ## N8. The licence classifier (PSC-15 forms, PSC-22)
 
@@ -586,9 +588,10 @@ Windows reserved name, and dedups a file two components share).
   the Temurin JVM (neo4j); Neo4j Community (neo4j); psycopg and
   psycopg-c (ke-app); glibc (`upstream=glibc`, every Debian image). libpq5
   and its dependencies are ordinary dpkg packages under the classifier
-  (libkeyutils1 is LGPL by its copyright file). An `always` entry with no
-  matching package in its image fails ("expected component not
-  catalogued"): the generator cannot hide one by missing it. An exemption
+  (libkeyutils1 is LGPL by its copyright file; libldap-2.5-0 and the two
+  libsasl2 packages are GPL-family by theirs: N15, I-1). An `always`
+  entry with no matching package in its image fails ("expected component
+  not catalogued"): the generator cannot hide one by missing it. An exemption
   names a versioned purl, so a version bump voids it and forces a new
   review. Schema test:
   exactly these three keys; `reason` non-blank; `reviewed` matches
@@ -597,22 +600,69 @@ Windows reserved name, and dedups a file two components share).
   in `hosts`.
 - `NOTICE.md` (PSC-14) gains one section and one pointer:
   - "Base of `ke-app`":
-    - the base reference, byte for byte from `docker/app.Dockerfile`;
-    - CPython 3.12.x under `/usr/local` (PSF-2.0);
+    - the base reference, byte for byte from the `FROM` of
+      `docker/app.Dockerfile`'s `runtime` stage (from U1 round 2; the last
+      stage is `FROM scratch`, N10a);
+    - CPython 3.12.x under `/usr/local`, SPDX `Python-2.0` (the stacked
+      PSF/BeOpen/CNRI/CWI licence; `PSF-2.0` is only its top layer), ending
+      with security's M-2 text: "`/usr/local/lib/python3.12/LICENSE.txt`
+      inside the image holds that licence stack only. CPython also builds
+      in third-party code under its own licences. CPython's own list of it
+      (among them expat and libmpdec) is in
+      `licenses/CPython-3.12-incorporated.txt`; the HACL* hash code (MIT)
+      in `_md5`, `_sha1`, `_sha2` and `_sha3`, which that list omits, is in
+      `licenses/CPython-3.12-HACL.txt`." (Round 3, L-9: the bullet names
+      what each file holds and claims no complete set. This note's earlier
+      "and the licences of the code CPython bundles" was wrong: M-2.);
     - the base's Debian 12 packages, plus libpq5 at `LIBPQ_VERSION` and
       the dependencies apt adds (N0), with their licences in
-      `/usr/share/doc/*/copyright` and the SBOM;
-    - the base's pip `<version>` in the system site-packages (MIT),
-      outside `uv.lock` and the generated table (the developer confirms
-      the version in the image);
+      `/usr/share/doc/*/copyright` and, where the bundle carries one, the
+      image's SBOM (conditional wording until U3 ships SBOMs; L-1);
+    - no pip: the shipped image carries neither the base's pip nor
+      ensurepip's bundled pip wheel (human ruling 2026-10-23, superseding
+      the keep-pip ruling; N10a). The pip bullet, its vendored-licence
+      text and `licenses/Apache-2.0.txt`/`MPL-2.0.txt` go (L-2, L-2b, L-7,
+      B4 are moot);
     - no uv.
 
-    A static fast test pins the reference and the libpq pin to the
-    Dockerfile. There is no image-side drift check.
-  - A pointer: "`THIRD_PARTY_NOTICES.md` says, for each GPL-family
-    component, whether its source is in `sources/` of this bundle." The
-    committed file claims nothing per component, because the same file
-    ships in sample and full bundles.
+    A static fast test pins the reference, the libpq pin, the CPython
+    minor and the Debian release (parsed strictly from the reference, no
+    default; review B1) to the Dockerfile. The image-side checks are U4's
+    `full` SBOM test (review B3), on `ke-app`'s SBOM (`--scope
+    all-layers`, so a pip file in any layer counts):
+    - its dpkg names minus those in an SBOM of the pinned base (same `sbom`
+      service, `docker save` of the local base, `--pull never`; *confirm
+      at GREEN*) equal the U1 test's `ADDED_PACKAGES`;
+    - it has no `pkg:pypi/pip` package, of any version (this replaces the
+      pip-version check);
+    - its CPython package version (syft's binary cataloguer; the exact
+      purl is *confirm at GREEN*) equals the `X.Y.Z` on line 1 of
+      `licenses/CPython-3.12-incorporated.txt` and of
+      `licenses/CPython-3.12-HACL.txt`.
+    A base, pin or apt change that moves any one fails U4 by name. A micro
+    bump of the base between U1 and U4 is only caught at U4; N1 (no bundle
+    before U3 and U9) means none ships meanwhile.
+  - A pointer: "`THIRD_PARTY_NOTICES.md` says, in its "Source code"
+    section, for each GPL-family component whether its source is in
+    `sources/` of this bundle." The same block ends with security's L-6
+    text (it replaces the M-1 sentence; true until U9 writes the section
+    and after): "A bundle whose `THIRD_PARTY_NOTICES.md` has no "Source
+    code" section has no `sources/`, so it does not itself provide the
+    source that a GPL-family licence requires." The committed file claims
+    nothing per component, because the same file ships in sample and full
+    bundles. U9 restates the paths per I-3 (N10a).
+  - "Licence texts" drops the Apache-2.0/MPL-2.0 paragraph and gains one
+    with no `docs/` path (L-8): "`licenses/CPython-3.12-incorporated.txt`
+    is the "Licenses and Acknowledgements for Incorporated Software"
+    section of CPython 3.12.15's `Doc/license.rst`, unmodified, fetched
+    over HTTPS from
+    https://raw.githubusercontent.com/python/cpython/v3.12.15/Doc/license.rst;
+    its header gives the fetched file's sha256." Round 3 (L-9) adds:
+    "`licenses/CPython-3.12-HACL.txt` is the MIT licence header of
+    `Modules/_hacl/Hacl_Hash_SHA2.c` in CPython 3.12.15's release tarball
+    https://www.python.org/ftp/python/3.12.15/Python-3.12.15.tar.xz,
+    unmodified; its header gives the tarball's sha256." (Facts fixed here;
+    the analyst owns the wording.) Both files are git-added at commit (I-4).
 - Generated `THIRD_PARTY_NOTICES.md` gains "## Source code": one row per
   index component; `shipped` says "source in `sources/` (see
   `sources/index.json`)", anything else keeps the L-NT1 wording
@@ -624,6 +674,174 @@ Windows reserved name, and dedups a file two components share).
   `app/sources/files/*`, and copies of `NOTICE.md`,
   `THIRD_PARTY_NOTICES.md`, `LICENSE` and `licenses/` (the root copies
   stay where they are).
+
+### N10a. U1 round 2: `ke-app` ships no pip
+
+Probe, 2026-10-22, pinned base, `--network none`, label `ke.scratch=u1r2`
+(transcript for the orchestrator to file as `u1/r2-pip-probe.txt`: the
+architect's report names it):
+- `ensurepip/_bundled/` holds `pip-25.0.1-py3-none-any.whl`, 1,841,526 B:
+  the same vendored code, so it goes too. Also present: `site-packages/pip`,
+  `pip-25.0.1.dist-info`, `/usr/local/bin/pip`, `pip3`, `pip3.12`.
+- `python -m pip uninstall -y pip` removes the package, dist-info and all
+  three scripts (pip's RECORD); only the wheel is left.
+- A scratch image doing both deletes in a layer on the base, then `docker
+  save`: the base layer still holds 536 pip entries, the new layer only
+  `.wh.` whiteouts. So a delete in any stage `FROM` the base still ships
+  pip in the bundle tar, and syft (`--scope all-layers`) still finds it.
+- The same, `FROM scratch` + `COPY --from=<stage> / /`: one layer, 0 pip
+  entries; setuid/setgid set, hardlinks (4), `dpkg -l` (110 lines) and
+  `/tmp` 1777 unchanged; `venv --with-pip` then fails (rc 2).
+
+Decision:
+- **Command:** `python -m pip uninstall -y pip`, not `rm -rf` globs:
+  RECORD is the exact list (scripts and dist-info too), nothing hand-kept,
+  and it fails the build if pip is gone, so a base that drops pip shows
+  by name. The wheel: `rm /usr/local/lib/python3.12/ensurepip/_bundled/pip-*.whl`
+  with no `-f`, failing the same way. `ensurepip` and `venv --with-pip`
+  stop working; the engine uses neither (uv builds the venv in `builder`).
+  The `ensurepip` module itself stays (stdlib, under `Python-2.0`).
+- **Separate RUN**, after the libpq5 RUN, in stage `runtime`: U0's
+  apt-RUN rules keep their meaning, and layers inside `runtime` do not
+  ship, because the last stage flattens it.
+- **Shape** (`builder` and `uv` unchanged):
+  ```
+  FROM python:3.12-slim-bookworm@sha256:<builder's> AS runtime
+  ARG LIBPQ_VERSION
+  RUN apt-get update \
+   && apt-get install -y --no-install-recommends libpq5=${LIBPQ_VERSION} \
+   && rm -rf /var/lib/apt/lists/*
+  RUN python -m pip uninstall -y pip \
+   && rm /usr/local/lib/python3.12/ensurepip/_bundled/pip-*.whl
+
+  FROM scratch
+  COPY --from=runtime / /
+  ENV PATH=/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin \
+      LANG=C.UTF-8 \
+      PYTHONUNBUFFERED=1
+  COPY --from=builder /opt/venv /opt/venv
+  COPY --from=builder /app /app
+  WORKDIR /app
+  RUN useradd --no-create-home --uid 10001 ke
+  USER ke
+  CMD ["python", "-m", "engine.api"]
+  ```
+  `PATH` is spelled out (scratch has no `$PATH`). The base's `GPG_KEY`,
+  `PYTHON_VERSION` and `PYTHON_SHA256` are build metadata; nothing in the
+  repo reads them, so they are not re-set. Amends ADR-KE-013 am. 1 D10
+  ("final FROM is the base"); D10's reason (venv interpreter paths) holds,
+  as `runtime`'s FROM is the builder's byte for byte.
+- **Existing static tests that must follow the shape** (tester, fast):
+  `test_psycopg_c.app_runtime_problems` checks the stage the last stage
+  copies `/` from, not `stages[-1]`, and the last stage has no apt RUN;
+  `pin_base_problems` is unchanged (builder plus `runtime`). D10 test 1
+  (`test_image_scan`): last stage `FROM scratch`, first instruction
+  `COPY --from=runtime / /` (once), `runtime`'s FROM equals the builder's,
+  other copies only `/opt/venv` and `/app` from `builder`.
+  `test_dockerfiles_pin_base_images_by_digest` allows `scratch` (it pulls
+  nothing). `test_notice_ke_app` reads the base from `runtime`.
+- **New static test** (U1): `runtime` holds exactly that pip RUN after the
+  libpq5 RUN; the last stage starts with `COPY --from=runtime / /`; its
+  `PATH` starts `/opt/venv/bin:` and has `/usr/local/bin`; `LANG=C.UTF-8`.
+- **Smoke `no pip`** (live `api`, after the psycopg step, M-1 pattern):
+  ```
+  pip_out="$(compose exec -T api /usr/local/bin/python3 -I -c 'import importlib.util as u, os, re
+  h = sorted(os.path.join(d, n) for r in ("/usr", "/opt") for d, ds, fs in os.walk(r)
+             for n in ds + fs if re.fullmatch(r"pip(3(\.[0-9]+)?)?|pip-.+\.(dist-info|whl)", n))
+  if u.find_spec("pip") and not h:
+      h = ["pip (importable)"]
+  print(",".join(h).replace(" ", "_") or "-")')" || FAIL "the check in api failed"
+  [ "$pip_out" = - ] || FAIL "pip in api: $pip_out"
+  ```
+  Round 3 (B6, I-6): the whole captured output is compared, with no
+  `read` and no default. Empty output fails (orchestrator ruling
+  2026-10-23; the old `${pip_hits:--}` was mutant S10), and so does `-`
+  followed by any second line (I-6: `read -r` kept only line 1). `$(...)`
+  strips trailing newlines only, so `-` plus a newline still passes.
+  The base interpreter, because the venv's `sys.path` omits the system
+  site-packages, so `find_spec` there misses the base pip. The walk
+  covers `/usr/local/bin/pip*`, the dist-info and the wheel. As in M-1 the
+  container output is one token compared as a string with `-`: no `$(( ))`,
+  no `eval`, no unquoted expansion; it is printed only inside a quoted
+  message. On the unmodified base it prints all six paths (probe).
+- **I-5 (follow-up, not U1):** the 156 stdlib `.pyc` files pip's run
+  writes in `runtime` ship (root 0644, harmless); `python -B -m pip
+  uninstall -y pip` would drop them, a later plan item's call.
+- **CPython incorporated licences** (`licenses/CPython-3.12-incorporated.txt`):
+  - Fetch: `curl -q --proto '=https' --tlsv1.2 --fail -o <empty dir>/license.rst
+    https://raw.githubusercontent.com/python/cpython/v3.12.15/Doc/license.rst`
+    (the Valkey `COPYING` route). Architect's probe fetch, 2026-10-22:
+    54,130 B, sha256
+    `341832873fd316a37927e79385093fbbfd40a467428480835fe435a80cadf4e5`.
+  - Extract: from the one line exactly `Licenses and Acknowledgements for
+    Incorporated Software` (it must occur once, followed by its `=`
+    underline) to the end of the file, bytes unchanged, reST kept
+    (`sed -n '/^Licenses and Acknowledgements for Incorporated Software$/,$p'`).
+    Probe: 808 lines, 38,036 B, sha256 `d4f3b214...40698a`; 20 subsections
+    from Mersenne Twister to asyncio, with expat and libmpdec.
+  - Header (four lines, then a blank line, then the extract):
+    ```
+    CPython 3.12.15: "Licenses and Acknowledgements for Incorporated Software"
+    Source: https://raw.githubusercontent.com/python/cpython/v3.12.15/Doc/license.rst
+    Source sha256: <64 hex of the fetched license.rst>
+    Extract: from that heading line to the end of the file, unmodified.
+    ```
+    The fast test checks the shape, that the URL's tag equals line 1's
+    version, the minor equals the base's `3.12`, and the extract starts
+    with the heading and its underline. U4 checks the micro (N10).
+  - Q48 form: no upstream checksum for the file, so the first fetch is
+    trusted and recorded. Security's second fetch is
+    `https://www.python.org/ftp/python/3.12.15/Python-3.12.15.tar.xz`,
+    whose sha256 must equal the pinned base's `PYTHON_SHA256`
+    (`c2c43219...94fd5a`, read offline with `docker inspect` of the
+    digest); `Python-3.12.15/Doc/license.rst` in it must match the
+    header's sha256, and the re-extract must `cmp` equal. Recorded as
+    "no upstream checksum; TOFU, confirmed by security from the release
+    tarball anchored to the base's PYTHON_SHA256".
+- **CPython HACL* notice** (`licenses/CPython-3.12-HACL.txt`; L-9, round
+  3). v3.12.15's `license.rst` has 0 `HACL` hits, yet `_md5`, `_sha1`,
+  `_sha2`, `_sha3` are built from `Modules/_hacl/` (MIT).
+  - Source: member `Python-3.12.15/Modules/_hacl/Hacl_Hash_SHA2.c` of
+    https://www.python.org/ftp/python/3.12.15/Python-3.12.15.tar.xz, sha256
+    `c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a`
+    (equals the base's `PYTHON_SHA256`: Q48 anchor, no TOFU). Fetch and
+    untar as in security's second fetch: HTTPS, one regular-file member
+    into an empty directory, nothing executed. Probe, 2026-10-22: member
+    36,131 B, LF only, sha256 `30638efb...201b31`.
+  - Extract rule: from line 1 of that member to its first line that is
+    exactly ` */` (space, `*`, `/`), bytes unchanged:
+    `sed -n '1,/^ \*\/$/p'`. Checkable: line 1 is exactly `/* MIT License`,
+    the extract holds `HACL* Contributors` and ends at the ` */` after
+    ` * SOFTWARE.`. Probe: 23 lines, 1,207 B, sha256
+    `998ce04fb8ad9dedb0bc1b44938f8c3dcf1089780fa105ce1c8c30fb5554d78c`;
+    13 of the 20 `.c`/`.h` files under `Modules/_hacl/` carry this same
+    block byte for byte.
+  - Header (four lines, then a blank line, then the extract; `tail -n +6`
+    must `cmp` equal the re-extract):
+    ```
+    CPython 3.12.15: HACL* licence header (MIT), Modules/_hacl/
+    Source: Python-3.12.15/Modules/_hacl/Hacl_Hash_SHA2.c
+    Tarball: https://www.python.org/ftp/python/3.12.15/Python-3.12.15.tar.xz
+    Tarball sha256: c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a
+    ```
+    Fast test: this shape; line 1's version equals the incorporated
+    file's line 1 and the `Source:`/`Tarball:` versions; minor `3.12`;
+    sha256 is 64 lower-case hex; the extract's first line is
+    `/* MIT License` and its last ` */`. U4 checks the micro (N10). Security
+    re-fetches once at GREEN and `cmp`s.
+  - Open for security (not designed here): the other 7 files differ. Five
+    KaRaMeL headers under `Modules/_hacl/include/krml/` say "Licensed
+    under the Apache 2.0 License" (INRIA and Microsoft); the probe did not
+    settle which of their code is compiled in. NOTICE's wording above
+    claims no complete set, so it stays true either way.
+- **I-3 (U9):** `sources/` lives at `app/sources/`; the bundle root and
+  `app/` both carry NOTICE.md and THIRD_PARTY_NOTICES.md, and install
+  publishes `app/` as the install directory. One identical text in every
+  copy: the Source code section, and NOTICE's pointer, say once "Paths
+  here are relative to the bundle's `app/` directory, which install
+  publishes as the install directory", then write `sources/`. U9's test
+  resolves `<app root of each copy>/sources/index.json` for the root copy,
+  the `app/` copy and the installed copy.
 
 ## N11. PSC-19 e2e (`ci/deployable-offline`)
 
@@ -716,22 +934,26 @@ column is the mode for the red/green loop.
 | # | Unit | Loop | Windows (A34) |
 |---|---|---|---|
 | U0 | PSC-25 psycopg on Debian libpq (N0): `pyproject.toml` groups and `uv.lock`; `app.Dockerfile` builder and `libpq5` pin; `gates.Dockerfile`; the smoke `psycopg` step; NOTICE.md psycopg section | full | yes (Dockerfiles) |
-| U1 | PSC-14 NOTICE.md "Base of `ke-app`" section and pointer, plus static tests | fast | no |
+| U1 | PSC-14 NOTICE.md "Base of `ke-app`" section and pointer; round 2: no pip (`app.Dockerfile` `runtime` stage, `FROM scratch` flatten, N10a), smoke `no pip`, `licenses/CPython-3.12-incorporated.txt`; static tests, incl. the U0/D10/digest tests re-targeted at `runtime` | full | yes (Dockerfile) |
 | U2 | PSC-20 `docker-compose.sbom.yml` `sbom`, pin and provenance, presence refusal in `bundle.sh` | full | yes (compose) |
 | U3 | PSC-13 `bundle.sh` save -> syft -> `finish`; `sbom_check.py` N6 and runtime packages; Neo4j jars decided (ruling 5) | full | no |
-| U4 | PSC-22: `ke-app` SBOM lists libpq5 (dpkg) and psycopg-c with no psycopg-binary; unlicensed report per image | full | no |
+| U4 | PSC-22: `ke-app` SBOM lists libpq5 (dpkg) and psycopg-c with no psycopg-binary; NOTICE's image-side checks (dpkg set of `ke-app` minus the base equals `ADDED_PACKAGES`; no `pkg:pypi/pip`; CPython version equals the incorporated-licences header; N10, B3); unlicensed report per image | full | no |
 | U5 | PSC-15 classifier (N8), pure functions | fast | no |
 | U6 | `docker/source-policy.json` and schema test; `always` rule | fast | no |
 | U7 | lock: `docker/sources.lock.json`, `scripts/sources_lock.sh`, provenance evidence (security's second fetch) | full | no |
 | U8 | PSC-23 `bundle_fetch.sh`, `sources-fetch` and client loop, wired into `offline_check.sh`; README and header wording; CLAUDE.md text to the human (ruling 6) | full | yes (compose) |
-| U9 | PSC-15/24 `index`, content-addressed copy, notices section, no-partial tests, install tamper tests (sh and ps1) | full | only if `install.ps1` changes |
+| U9 | PSC-15/24 `index`, content-addressed copy, notices section (paths relative to `app/`, I-3, N10a), no-partial tests, install tamper tests (sh and ps1) | full | only if `install.ps1` changes |
 | U10 | PSC-19 e2e `verify`, `/install` size and memory pre-check | full | yes (compose) |
 | U11 | PSC-16 two CI runs, floor re-derivation, Q62 trigger, PS-3.4; full operator recorded run (Q63) | full (CI) | no |
 | U12 | PSC-21 recorded arm64 run (Q51 form) | full (arm64) | no |
 
 Dropped by Q64: U4's vendored injection and two-way drift check, and U1's
 vendored table. First tests for U1, U2 and U5 are unchanged:
-- U1: `test_notice_has_ke_app_base_paragraph` (it now also names libpq5).
+- U1: `test_notice_has_ke_app_base_paragraph` (it now also names libpq5);
+  round 2: the N10a static test (pip RUN in `runtime`, `FROM scratch`
+  flatten) and the CPython-incorporated header test; the smoke `no pip`
+  step is red on today's image (six pip paths) before the Dockerfile
+  change.
 - U2: `test_sbom_generator_is_pinned`,
   `test_sbom_generator_runs_without_network_or_privileges` and
   `test_bundle_refuses_when_sbom_generator_absent` (`--out` stays empty).
@@ -741,3 +963,11 @@ vendored table. First tests for U1, U2 and U5 are unchanged:
   - `LGPL-2.1-or-later OR Apache-2.0` does not;
   - `NOASSERTION` is unlicensed;
   - junk containing "GPL" needs source and is listed as unparsed.
+- U5/U6 (security u1 I-1): the copyright files of libldap-2.5-0 (GPL-2+
+  and GPL-3+ lines, mostly with Autoconf or Libtool exceptions),
+  libsasl2-2 and libsasl2-modules-db (GPL-3 and GPL-3+ lines) make the
+  classifier mark all three GPL-family. So U7's lock carries their deb
+  sources (`openldap`, `cyrus-sasl2`, by the normal snapshot route; the
+  default, fail closed), unless security records a reviewed `exempt`
+  entry per versioned purl at U6. U5's table adds Debian's `GPL-3+` and
+  `GPL-2+ with Autoconf exception`; both need source.

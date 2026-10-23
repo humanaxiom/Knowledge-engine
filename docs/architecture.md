@@ -6234,6 +6234,12 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
   cannot be reached; there is no retry and no skip."
 
 **D10. `ke-app` ships without uv (PSC-17; architect, 2026-10-21, unit 3).**
+- **Amended 2026-10-22 (platform-sbom U1; ADR-KE-016 point 9, design-notes
+  N10a).** The final stage is now `FROM scratch` + `COPY --from=runtime / /`,
+  where `runtime` is built `FROM` the pinned base and removes pip. A
+  layer delete does not remove pip from the saved tar, because `docker
+  save` keeps the base layer. D10's reason, the venv's interpreter paths,
+  still holds: `runtime`'s `FROM` equals the builder's, byte for byte.
 - **Context.** The first real scan of `ke-app`
   (`docs/evidence/platform-supply-chain/u2-green-real-scan.txt`) fails on
   two fixed findings at or above the threshold:
@@ -6665,12 +6671,23 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
      from its image fails) and `exempt` (versioned purl, `reason`,
      `reviewed: security <date>`). Security reviews every diff, and a
      schema test pins the format (N10).
-  9. **NOTICE.md (PSC-14):** a "Base of `ke-app`" section (base digest,
-     CPython 3.12, the Debian 12 packages, libpq5 and its dependencies,
-     the base's pip; no uv). It points to the generated "Source code"
-     section of `THIRD_PARTY_NOTICES.md`, which claims `sources/` only for
-     shipped components and keeps "Upstream source: <url>" (L-NT1)
-     otherwise. A sample bundle says it is not for distribution.
+  9. **NOTICE.md (PSC-14); no pip (human, 2026-10-23).** "Base of
+     `ke-app`": base digest; CPython 3.12, `Python-2.0`, `LICENSE.txt` for
+     that stack only (M-2); Debian 12 packages, libpq5 and its dependencies;
+     no pip, no uv. A pointer to `THIRD_PARTY_NOTICES.md`'s generated
+     "Source code" section (L-NT1); until U9, no such section means no
+     `sources/` (L-6); until U3, SBOM "where the bundle carries one" (L-1).
+     - *pip out (N10):* stage `runtime` (`FROM` the base) runs the libpq5
+       `RUN`, then `RUN python -m pip uninstall -y pip && rm
+       /usr/local/lib/python3.12/ensurepip/_bundled/pip-*.whl`. Last stage:
+       `FROM scratch`, `COPY --from=runtime / /`, `PATH`/`LANG`, then D10's
+       copies, user, `CMD` (a saved tar carries every layer, so a later
+       delete still ships pip; probe). Amends D10. Smoke: no pip in the api.
+     - *L-5, L-9:* `licenses/CPython-3.12-incorporated.txt`: the "Licenses
+       and Acknowledgements for Incorporated Software" part of `license.rst`
+       at `v3.12.15`; `licenses/CPython-3.12-HACL.txt`: the HACL* MIT header
+       that list omits (`Modules/_hacl/Hacl_Hash_SHA2.c`). Both verbatim, Q48
+       via the tarball = base `PYTHON_SHA256`; U4 ties the version to SBOM.
   10. **PSC-19 e2e:** after install and before launch, the offline client
       runs `sbom_check.py verify /bundle "$target"`. On the installed
       copy it checks the manifest and hashes, one SBOM per image (`ref`,
@@ -6682,16 +6699,10 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
       e2e `verify` are timed on the slower of two green CI runs (D8) and
       held to 180 s. Past that, the orchestrator decides before the
       timeout is raised; R6 is re-derived, never lowered.
-- **TDD units** (one commit each, N15; every commit runs `verify.sh full`):
-  U0 PSC-25 psycopg on Debian libpq (full, A34); U1 PSC-14 NOTICE (fast);
-  U2 PSC-20 pin, compose, refusal (full, A34); U3 PSC-13 generation and
-  `finish` (full); U4 PSC-22 catalogued components and unlicensed report
-  (full); U5 classifier (fast); U6 policy file (fast); U7 lock and
-  provenance (full); U8 PSC-23 fetch and CLAUDE.md wording (full, A34);
-  U9 PSC-15/24 index, copy, notices, no partial bundle, install tamper
-  tests (full; A34 only if `install.ps1` changes); U10 PSC-19 and
-  `/install` sizing (full, A34); U11 PSC-16 on CI, Q62, full recorded
-  run; U12 PSC-21 arm64 run.
+- **TDD units** (one commit each, all `verify.sh full`; loop, A34: N15):
+  U1 `full`, A34. U4 image side: `ke-app`'s dpkg set minus the base's is
+  `ADDED_PACKAGES`, no `pkg:pypi/pip`, CPython equals the U1 file header.
+  U9 states notice paths relative to `app/` (I-3).
 - **Alternatives considered:** trivy or cdxgen; fetching in `bundle.sh`;
   no lock; deb.debian.org (URLs rot); widening the path rule or sanitised
   names; new `bundle.json` fields; the checker in `engine/` or jq;
@@ -6700,6 +6711,7 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
   or under a `linux` marker (Linux hosts compile); conflicting extras
   (more machinery, same result); `build-constraint-dependencies`
   (versions, no hashes); snapshot.debian.org apt (another build host).
+  For U1: a pip delete in a stage `FROM` the base (its layer keeps pip).
 - **Consequences:** new inputs: the syft pin (never bundled), the lock
   (re-locked on every digest, `uv.lock` or libpq bump; reviewed) and the
   libpq pin. Every postgresql-15 update in bookworm-security breaks
@@ -6709,15 +6721,9 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
   the fix is a re-lock, never a skip. Operators run `build.sh`,
   `bundle_fetch.sh --set full`, `bundle.sh --sources`. The CLAUDE.md text
   (N13) goes to the human at U8 (ruling 6). Neo4j's GPL-family jars are
-  decided at U3, back to the architect if any (ruling 5). No agent step: no
-  spans.
+  decided at U3, back to the architect if any (ruling 5). `ke-app` shares
+  no layer with the base (U1). No agent step: no spans.
 - **Q66 (ruled):** Debian 12's libpq 15, no apt.postgresql.org. It lacks
   `require_auth` (libpq 16+); security re-rated that follow-up at U0 (A66).
-- **First tests:** U0 (RED: psycopg-binary is locked and loaded; N0):
-  `test_ke_app_resolves_psycopg_c_not_binary`,
-  `test_pyproject_puts_psycopg_c_in_image_groups_only`,
-  `test_app_dockerfile_builds_psycopg_c_on_pinned_libpq`,
-  `test_runtime_stage_has_no_compiler`, `test_libpq_pin_matches_bookworm_base`,
-  `test_gates_psycopg_is_c_impl_on_debian_libpq`,
-  `test_smoke_checks_psycopg_c_impl_in_api`,
-  `test_notice_psycopg_section_matches_lock`. U1, U2 and U5: N15.
+- **First tests:** U0's eight are in N0 ("U0 RED tests"; committed
+  31bfed4). U1, U2 and U5: N15.

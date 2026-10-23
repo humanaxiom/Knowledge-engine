@@ -26,6 +26,45 @@ FIRST_PARTY_REPOS = {"ke-app", "ke-gateway", "ke-gates"}
 OFFLINE_SERVICES = ("dind", "offline-client")  # profile `offline` (architecture §2.5)
 
 
+def unpinned_bases(text: str) -> list[str]:
+    """FROM references in a Dockerfile that are neither an earlier stage, nor
+    `@sha256:<64 hex>`, nor exactly `scratch` (U1 round 2, N10a). A name is a
+    stage only when an earlier FROM line defines it with `AS` (security L-12:
+    not a self-named or a forward stage)."""
+    defined: set[str] = set()
+    unpinned = []
+    for m in re.finditer(r"^FROM\s+(?:--\S+\s+)*(\S+)(?:\s+AS\s+(\S+))?", text, re.M | re.I):
+        image, alias = m.group(1), m.group(2)
+        if image.lower() not in defined and image != "scratch" and not DIGEST.search(image):
+            unpinned.append(image)
+        if alias:
+            defined.add(alias.lower())
+    return unpinned
+
+
+_PINNED = "python:3.12-slim-bookworm@sha256:" + "7" * 64
+UNPINNED_PASSING = {
+    "digest-pinned base": f"FROM {_PINNED}\n",
+    "a stage named earlier": f"FROM {_PINNED} AS base\nFROM base\n",
+    "scratch (U1 round 2, N10a)": f"FROM {_PINNED} AS runtime\nFROM scratch\nCOPY --from=runtime / /\n",
+    "scratch with --platform": "FROM --platform=linux/amd64 scratch\n",
+}
+UNPINNED_CONTROLS = {
+    "tag only": "FROM python:3.12-slim-bookworm\n",
+    "short digest": "FROM python:3.12-slim-bookworm@sha256:" + "7" * 63 + "\n",
+    "scratch with a tag": "FROM scratch:latest\n",
+    "scratch from a registry": "FROM docker.io/library/scratch\n",
+    "a name that starts scratch": "FROM scratchy\n",
+    "Scratch, not the reserved word": "FROM Scratch\n",
+    "busybox unpinned after a scratch stage": "FROM scratch AS empty\nFROM busybox\n",
+    "unpinned base before a pinned one": f"FROM alpine:3.20\nFROM {_PINNED}\n",
+    # Security L-12 (U1 re-check 2): a name counts as a stage only when an
+    # earlier FROM line defines it. Both pull an unpinned image.
+    "self-named stage: FROM alpine AS alpine (L-12)": "FROM alpine AS alpine\n",
+    "forward stage reference (L-12)": f"FROM later\nFROM {_PINNED} AS later\n",
+}
+
+
 def _network_defs() -> dict[str, dict[str, Any]]:
     defs: dict[str, dict[str, Any]] = {}
     for path in cs.compose_files():
@@ -102,14 +141,19 @@ class ServicesTest(unittest.TestCase):
             with self.subTest(required=required):
                 self.assertTrue((ROOT / "docker" / required).is_file(),
                                 f"docker/{required} is missing (architecture §2.4 Images)")
+        # platform-sbom U1 round 2 (ADR-KE-016 point 9, N10a): `scratch`, and
+        # only the exact word, may stand unpinned; it pulls nothing.
+        for name, text in UNPINNED_PASSING.items():
+            with self.subTest(control=name):
+                self.assertEqual(unpinned_bases(text), [], f"a control that must pass failed: {name}")
+        for name, text in UNPINNED_CONTROLS.items():
+            with self.subTest(control=name):
+                self.assertNotEqual(unpinned_bases(text), [], f"the check passed a control that must fail: {name}")
         for dockerfile in sorted((ROOT / "docker").rglob("*Dockerfile")):
             text = dockerfile.read_text(encoding="utf-8")
-            stages = set(re.findall(r"^FROM\s+\S+\s+AS\s+(\S+)", text, re.M | re.I))
             for image in re.findall(r"^FROM\s+(?:--\S+\s+)*(\S+)", text, re.M | re.I):
                 with self.subTest(dockerfile=dockerfile.name, image=image):
-                    if image in stages:
-                        continue
-                    self.assertRegex(image, DIGEST, "base image is not pinned by digest")
+                    self.assertNotIn(image, unpinned_bases(text), "base image is not pinned by digest")
 
 
 class PortsTest(unittest.TestCase):

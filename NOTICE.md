@@ -54,6 +54,48 @@ Both belong to the upstream project https://github.com/psycopg/psycopg. Each
 package's own licence file stays in the image under its `dist-info/licenses/`
 directory and is listed in `THIRD_PARTY_NOTICES.md`.
 
+## Base of `ke-app`
+
+The shipped stage of `docker/app.Dockerfile` is `runtime`, which the last
+stage copies whole (`FROM scratch`, then `COPY --from=runtime / /`). It
+builds on
+`python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258`.
+Besides `/opt/venv` and `/app` it holds:
+
+- CPython 3.12 under `/usr/local`, under the Python License 2.0 (SPDX
+  `Python-2.0`: the PSF licence stacked on the BeOpen, CNRI and CWI
+  licences). `/usr/local/lib/python3.12/LICENSE.txt` inside the image holds
+  that licence stack only. CPython also builds in third-party code under
+  its own licences. CPython's own list of it (among them expat and
+  libmpdec) is in `licenses/CPython-3.12-incorporated.txt`; the licence of
+  the HACL* hash code (MIT) in `_md5`, `_sha1`, `_sha2` and `_sha3`, which
+  that list omits, is in `licenses/CPython-3.12-HACL.txt`, and that code
+  compiles in KaRaMeL headers (Copyright INRIA and Microsoft Corporation,
+  Apache-2.0), whose notice is in `licenses/CPython-3.12-KaRaMeL.txt` and
+  licence text in `licenses/Apache-2.0.txt`.
+- The Debian 12 (bookworm) packages of the base image, each under its own
+  licence in `/usr/share/doc/*/copyright` inside the image and, where the
+  bundle carries one, in the image's SBOM.
+- The Debian packages the shipped stage adds: `libpq5` 15.19-0+deb12u1 (the
+  `LIBPQ_VERSION` pin), under the PostgreSQL licence, and what apt pulls in
+  for it: `libldap-2.5-0`, `libsasl2-2` and `libsasl2-modules-db`, with their
+  licences in `/usr/share/doc/*/copyright` (and the SBOM where the bundle
+  carries one).
+
+pip is not shipped: the shipped stage removes the base's pip and
+`ensurepip`'s bundled pip wheel, so the image carries neither pip nor the
+packages pip vendors.
+
+uv is not shipped: it runs only in the `builder` stage, which does not ship.
+
+## Source code
+
+`THIRD_PARTY_NOTICES.md` says, in its "Source code" section, for each
+GPL-family component whether its source is in `sources/` of this bundle.
+A bundle whose `THIRD_PARTY_NOTICES.md` has no "Source code" section has
+no `sources/`, so it does not itself provide the source that a
+GPL-family licence requires.
+
 ## Licence texts
 
 `licenses/GPL-3.0.txt` and `licenses/LGPL-3.0.txt` are the GNU texts,
@@ -63,3 +105,24 @@ and https://www.gnu.org/licenses/lgpl-3.0.txt.
 `licenses/BSD-3-Clause-valkey.txt` is the upstream Valkey `COPYING` at tag 8.1.10,
 unmodified, fetched over HTTPS from
 https://raw.githubusercontent.com/valkey-io/valkey/8.1.10/COPYING.
+
+`licenses/CPython-3.12-incorporated.txt` is the "Licenses and
+Acknowledgements for Incorporated Software" section of CPython 3.12.15's
+`Doc/license.rst`, unmodified, fetched over HTTPS from
+https://raw.githubusercontent.com/python/cpython/v3.12.15/Doc/license.rst;
+its header gives the fetched file's sha256.
+
+`licenses/CPython-3.12-HACL.txt` is the MIT licence header of
+`Modules/_hacl/Hacl_Hash_SHA2.c` in CPython 3.12.15's release tarball
+https://www.python.org/ftp/python/3.12.15/Python-3.12.15.tar.xz,
+unmodified; its header gives the tarball's sha256.
+
+`licenses/CPython-3.12-KaRaMeL.txt` is the licence header of
+`Modules/_hacl/include/krml/internal/target.h` in CPython 3.12.15's release
+tarball https://www.python.org/ftp/python/3.12.15/Python-3.12.15.tar.xz,
+unmodified; its header gives the tarball's sha256.
+
+`licenses/Apache-2.0.txt` is the Apache License 2.0 as Debian's
+`base-files` ships it at `/usr/share/common-licenses/Apache-2.0` in the
+`ke-app` base image, unmodified (sha256
+`cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`).

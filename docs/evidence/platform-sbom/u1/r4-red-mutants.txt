@@ -1,0 +1,555 @@
+platform-sbom U1 round 4 RED: controls and reach (tester, 2026-10-23)
+=====================================================================
+
+Driver: docs/evidence/platform-sbom/u1/u1_controls.py (round 4: karamel check,
+round 4 --red rows, round 4 reach). Run in the gates image (network none,
+project ke-tester-u1r4, the image verify.sh fast had just built):
+  COMPOSE_PROJECT_NAME=ke-tester-u1r4 KE_IMAGE_TAG=wt-33a132fbfdd7 \
+    COMPOSE_FILE=docker-compose.yml docker compose --env-file .env.example \
+    --profile gates run --rm gates \
+    uv run --locked python docs/evidence/platform-sbom/u1/u1_controls.py --red --reach
+Exit 0. Its output is below the line at the end of this header, unedited
+except that the 6 leading compose/uv progress lines are omitted.
+Default mode (no --red) on today's tree, host run: exit 1, "unexpected: 2",
+exactly the hacl REPO row (I-8) and the karamel REPO row (L-9b). On a GREEN
+tree default mode exits 0.
+
+Totals
+- Controls: 321 must-fail + 29 must-pass = 350, unexpected 0 (--red).
+  New in round 4: karamel 51+3 (incl. "the stand-in Apache text against the
+  pinned base-files sha256", which runs the check with its default
+  APACHE_2_SHA256); hacl +2 (I-8: round 3's clause, round 3's whole
+  sentence); base +2 (Apache-2.0.txt beside pip, in a Licence-texts block or
+  in the bullet); tracked +1 (target NOTICE with an untracked KaRaMeL file).
+  Unchanged counts: libpq 7+1, pointer 13+0, incorporated 25+2, evidence 5+1,
+  pip 28+3, u0-runtime 29+4, d10 42+2, digest 10+4.
+- Contradiction resolved (base check): round 2's "NOTICE.md names neither
+  licenses/Apache-2.0.txt nor licenses/MPL-2.0.txt" is now wrong, since
+  Apache-2.0.txt ships for KaRaMeL. Cited: PSC-14 amended 2026-10-23 round 4
+  (requirements.md, "`licenses/Apache-2.0.txt` does ship, but for KaRaMeL ...
+  not for pip; `licenses/MPL-2.0.txt` stays out") and security L-9b fix 5.
+  The rule is now: MPL-2.0.txt never; Apache-2.0.txt only in a block that
+  names KaRaMeL or base-files and does not name pip. The round 2 control
+  "pip: NOTICE names licenses/Apache-2.0.txt (reverted)" still fails.
+- Item 5 (tracked): automatic. LICENCE_PATH_RE finds licenses/Apache-2.0.txt
+  and licenses/CPython-3.12-KaRaMeL.txt in r4-target-notice.md; against an
+  empty index untracked_licence_problems names both (host probe); the
+  fixture's TRACKED_FILES now holds both, and the reach (scratch repo
+  `git add licenses/`) passes.
+- Cleanups: UNTRACKED_FILES' scratch control is
+  licenses/Scratch-untracked-example.txt (was licenses/Apache-2.0.txt); the
+  COMPLETENESS message no longer says "the KaRaMeL headers are unsettled".
+- Reach (round 4 targets spliced into scratch copies; the repository
+  untouched): NOTICE.md = today's, CPython bullet replaced by
+  r4-target-notice.md's, KaRaMeL and Apache Licence-texts paragraphs
+  appended; licenses/ = a copy plus r4-target-CPython-3.12-KaRaMeL.txt and
+  r4-target-Apache-2.0.txt; scratch git repo. All 15 checks pass (incl.
+  base, hacl, karamel, tracked); static classes 17/17. Smoke reach (round 3
+  block, smoke.sh not touched in round 4): 3/3, 5/5, 17/17; 12/12 smoke
+  mutants killed.
+- Targets:
+  - r4-target-CPython-3.12-KaRaMeL.txt: the 4-line header + blank +
+    security's extract (scratchpad sec-r3-krml-extract.txt, sha256
+    6b7cb4bd5441f287eeb8b745073c11bc5d2974252bec3b6d8c101ff67f918a26);
+    421 B, 0 CR, sha256
+    323002668cbbd5150617a717d89aa3e00acc128da7588260e470e8eefbab796d.
+    `tail -n +6` is cmp-equal to the extract; line 4 is cmp-equal to line 4
+    of licenses/CPython-3.12-HACL.txt.
+  - r4-target-Apache-2.0.txt: security's probe copy (scratchpad
+    sec-r3-apache-base.txt), 11358 B, sha256
+    cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30. A
+    reach fixture: the developer makes licenses/Apache-2.0.txt with
+    security's offline docker command (fix 1).
+
+------------------------------------------------------------------------------
+base     | TARGET                                                                 | want pass | passes
+base     | trixie ref, NOTICE says Debian 13 (trixie) (B1 P3)                     | want pass | passes
+base     | registry-prefixed 3.13 ref, NOTICE says 3.13 (B1)                      | want pass | passes
+base     | N10a Dockerfile (runtime + FROM scratch)                               | want pass | passes
+base     | N10a Dockerfile, registry-prefixed 3.13 runtime, NOTICE says 3.13      | want pass | passes
+base     | no Base of ke-app heading                                              | want fail | FAILS | NOTICE.md has no `## Base of `ke-app`` section (PSC-14, ADR-KE-016 point 9)
+base     | elements under another heading                                         | want fail | FAILS | the section does not give the shipped stage's base reference 'python:3.12-slim-bookworm@sh
+base     | base digest differs in NOTICE                                          | want fail | FAILS | the section does not give the shipped stage's base reference 'python:3.12-slim-bookworm@sh
+base     | base digest differs in Dockerfile                                      | want fail | FAILS | the section does not give the shipped stage's base reference 'python:3.12-slim-bookworm@sh
+base     | unparseable ref: no codename (B1)                                      | want fail | FAILS | the shipped stage's base reference 'python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+base     | unparseable ref: no digest (B1)                                        | want fail | FAILS | the shipped stage's base reference 'python:3.12-slim-bookworm' does not parse as [registry
+base     | unparseable ref: short digest (B1)                                     | want fail | FAILS | the shipped stage's base reference 'python:3.12-slim-bookworm@sha256:aaaaaaaaaaaaaaaaaaaaa
+base     | unparseable ref: not python (B1)                                       | want fail | FAILS | the shipped stage's base reference 'pypy:3.10-slim-bookworm@sha256:aaaaaaaaaaaaaaaaaaaaaaa
+base     | unknown codename sid (B1)                                              | want fail | FAILS | unknown Debian codename 'sid' in 'python:3.12-slim-sid@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaa
+base     | no CPython                                                             | want fail | FAILS | no block names CPython 3.12 under /usr/local with its licence Python-2.0 and the pointer /
+base     | CPython licence PSF-2.0, not Python-2.0 (N3)                           | want fail | FAILS | no block names CPython 3.12 under /usr/local with its licence Python-2.0 and the pointer /
+base     | CPython without the LICENSE.txt pointer (N3)                           | want fail | FAILS | no block names CPython 3.12 under /usr/local with its licence Python-2.0 and the pointer /
+base     | LICENSE.txt pointer names another minor (N3)                           | want fail | FAILS | no block names CPython 3.12 under /usr/local with its licence Python-2.0 and the pointer /
+base     | CPython without /usr/local                                             | want fail | FAILS | no block names CPython 3.12 under /usr/local with its licence Python-2.0 and the pointer /
+base     | CPython minor is not the base tag's                                    | want fail | FAILS | no block names CPython 3.13 under /usr/local with its licence Python-2.0 and the pointer /
+base     | registry-prefixed 3.13 ref, NOTICE still says 3.12 (B1 P1)             | want fail | FAILS | no block names CPython 3.13 under /usr/local with its licence Python-2.0 and the pointer /
+base     | trixie ref, NOTICE still says Debian 12 (B1 P2)                        | want fail | FAILS | no block names the base's Debian 13 (trixie) packages with their licences in /usr/share/do
+base     | M-2: today's LICENSE.txt overclaim                                     | want fail | FAILS | the CPython block does not say that /usr/local/lib/python3.12/LICENSE.txt holds that licen
+base     | M-2: LICENSE.txt without 'licence stack only'                          | want fail | FAILS | the CPython block does not say that /usr/local/lib/python3.12/LICENSE.txt holds that licen
+base     | M-2: CPython block without the incorporated file                       | want fail | FAILS | the CPython block does not say that /usr/local/lib/python3.12/LICENSE.txt holds that licen
+base     | M-2: the incorporated file for another minor                           | want fail | FAILS | the CPython block does not say that /usr/local/lib/python3.12/LICENSE.txt holds that licen
+base     | M-2: the incorporated file named outside the CPython block             | want fail | FAILS | the CPython block does not say that /usr/local/lib/python3.12/LICENSE.txt holds that licen
+base     | M-2: 'stack only', and LICENSE.txt also holds the incorporated licence | want fail | FAILS | the section says LICENSE.txt holds the licences of the code CPython builds in; it holds th
+base     | no Debian 12                                                           | want fail | FAILS | no block names the base's Debian 12 (bookworm) packages with their licences in /usr/share/
+base     | Debian 12 without codename (B1)                                        | want fail | FAILS | no block names the base's Debian 12 (bookworm) packages with their licences in /usr/share/
+base     | Debian 12 without copyright path                                       | want fail | FAILS | no block names the base's Debian 12 (bookworm) packages with their licences in /usr/share/
+base     | Debian 12 without SBOM                                                 | want fail | FAILS | no block names the base's Debian 12 (bookworm) packages with their licences in /usr/share/
+base     | Debian 12 SBOM unconditional (L-1)                                     | want fail | FAILS | the section names the SBOM unconditionally; say "where the bundle carries one" (security L
+base     | added packages SBOM unconditional (L-1)                                | want fail | FAILS | the section names the SBOM unconditionally; say "where the bundle carries one" (security L
+base     | libpq5 not named                                                       | want fail | FAILS | the section does not name libpq5, a Debian package the shipped stage adds, with its licenc
+base     | libpq5 pin missing                                                     | want fail | FAILS | the section does not give libpq5 at the pinned LIBPQ_VERSION 15.99-0+deb12u9
+base     | libpq5 pin differs in Dockerfile                                       | want fail | FAILS | the section does not give libpq5 at the pinned LIBPQ_VERSION 15.98-0+deb12u9
+base     | libsasl2-modules-db missing                                            | want fail | FAILS | the section does not name libsasl2-modules-db, a Debian package the shipped stage adds, wi
+base     | libldap-2.5-0 missing                                                  | want fail | FAILS | the section does not name libldap-2.5-0, a Debian package the shipped stage adds, with its
+base     | ADDED_PACKAGES names libzz9 the NOTICE lacks                           | want fail | FAILS | the section does not name libzz9, a Debian package the shipped stage adds, with its licenc
+base     | Dockerfile adds a package outside ADDED_PACKAGES                       | want fail | FAILS | app.Dockerfile: the shipped stage installs libzz9, which is not in ADDED_PACKAGES ['liblda
+base     | pip: no 'not shipped' statement                                        | want fail | FAILS | the section does not say pip is not shipped (human ruling 2026-10-23, PSC-14)
+base     | pip: today's pip bullet back                                           | want fail | FAILS | NOTICE.md names licenses/MPL-2.0.txt; the pip licence texts are reverted (PSC-14, pip drop
+base     | pip: named as shipped                                                  | want fail | FAILS | the section names pip as shipped: "- The base's pip in the system site-packages."
+base     | pip: negated, with a version                                           | want fail | FAILS | a pip block gives a pip version: no pip licence bullet, pip is not shipped (PSC-14): "pip 
+base     | pip: negated, naming vendor.txt                                        | want fail | FAILS | a pip block gives pip/_vendor/vendor.txt: no pip licence bullet, pip is not shipped (PSC-1
+base     | pip: negated, naming MIT                                               | want fail | FAILS | a pip block gives an MIT, Apache-2.0 or MPL-2.0 identifier: no pip licence bullet, pip is 
+base     | pip: negated, naming Apache-2.0 and MPL-2.0                            | want fail | FAILS | a pip block gives an MIT, Apache-2.0 or MPL-2.0 identifier: no pip licence bullet, pip is 
+base     | pip: NOTICE names licenses/Apache-2.0.txt (reverted)                   | want fail | FAILS | NOTICE.md names licenses/Apache-2.0.txt in a block that names pip, or names neither KaRaMe
+base     | pip: NOTICE names licenses/Apache-2.0.txt with base-files, beside pip  | want fail | FAILS | NOTICE.md names licenses/Apache-2.0.txt in a block that names pip, or names neither KaRaMe
+base     | pip: NOTICE names licenses/Apache-2.0.txt for KaRaMeL and for pip (L-9 | want fail | FAILS | NOTICE.md names licenses/Apache-2.0.txt in a block that names pip, or names neither KaRaMe
+base     | pip: NOTICE names licenses/MPL-2.0.txt (reverted)                      | want fail | FAILS | NOTICE.md names licenses/MPL-2.0.txt; the pip licence texts are reverted (PSC-14, pip drop
+base     | uv named as shipped                                                    | want fail | FAILS | the section names uv as shipped: '- uv 0.11.21 under `/usr/local/bin` (MIT OR Apache-2.0).
+base     | no uv statement                                                        | want fail | FAILS | the section does not say uv is not shipped (it runs only in the builder stage, PSC-17)
+base     | flat: runtime digest differs from NOTICE                               | want fail | FAILS | the section does not give the shipped stage's base reference 'python:3.12-slim-bookworm@sh
+base     | flat: NOTICE gives the builder's ref, runtime's differs                | want fail | FAILS | the section does not give the shipped stage's base reference 'python:3.12-slim-bookworm@sh
+base     | flat: unparseable runtime ref (B1)                                     | want fail | FAILS | the shipped stage's base reference 'python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+base     | flat: runtime minor 3.13, NOTICE says 3.12                             | want fail | FAILS | no block names CPython 3.13 under /usr/local with its licence Python-2.0 and the pointer /
+base     | flat: runtime adds a package outside ADDED_PACKAGES                    | want fail | FAILS | app.Dockerfile: the shipped stage installs libzz9, which is not in ADDED_PACKAGES ['liblda
+base     | flat: libpq5 pin differs                                               | want fail | FAILS | the section does not give libpq5 at the pinned LIBPQ_VERSION 15.98-0+deb12u9
+base     | flat: scratch stage copies / from a missing stage                      | want fail | FAILS | app.Dockerfile: the last stage copies / from 'nosuch', which is not one stage of the file 
+base     | flat: scratch stage does not start with COPY / /                       | want fail | FAILS | app.Dockerfile: the last stage is FROM scratch but its first instruction is not `COPY --fr
+base     | REPO NOTICE.md + app.Dockerfile                                        | want pass | passes
+libpq    | TARGET                                                                 | want pass | passes
+libpq    | History: block names psycopg-binary (N4)                               | want pass | passes
+libpq    | libpq5 without the PostgreSQL licence                                  | want fail | FAILS | no block of NOTICE.md names libpq5 as a Debian package under the PostgreSQL licence
+libpq    | libpq5 under another licence                                           | want fail | FAILS | no block of NOTICE.md names libpq5 as a Debian package under the PostgreSQL licence
+libpq    | libpq5 not a Debian package                                            | want fail | FAILS | no block of NOTICE.md names libpq5 as a Debian package under the PostgreSQL licence
+libpq    | vendored-libraries heading                                             | want fail | FAILS | NOTICE.md has a vendored-libraries heading: '## Vendored libraries'
+libpq    | vendored-libraries table                                               | want fail | FAILS | NOTICE.md has a table row of vendored libraries: '| `libpq-9b38f5e3.so.5.16` | PostgreSQL 
+libpq    | psycopg_binary undated                                                 | want fail | FAILS | NOTICE.md names psycopg-binary outside dated history (a block that starts with a date or "
+libpq    | psycopg-binary in a block dated mid-text (N4)                          | want fail | FAILS | NOTICE.md names psycopg-binary outside dated history (a block that starts with a date or "
+libpq    | REPO NOTICE.md                                                         | want pass | passes
+pointer  | TARGET                                                                 | want pass | passes
+pointer  | no pointer                                                             | want fail | FAILS | no block of NOTICE.md points to the "Source code" section of THIRD_PARTY_NOTICES.md and `s
+pointer  | pointer without Source code                                            | want fail | FAILS | no block of NOTICE.md points to the "Source code" section of THIRD_PARTY_NOTICES.md and `s
+pointer  | pointer without sources/                                               | want fail | FAILS | no block of NOTICE.md points to the "Source code" section of THIRD_PARTY_NOTICES.md and `s
+pointer  | pointer without THIRD_PARTY_NOTICES.md                                 | want fail | FAILS | no block of NOTICE.md points to the "Source code" section of THIRD_PARTY_NOTICES.md and `s
+pointer  | no L-6 sentence                                                        | want fail | FAILS | the "Source code" block does not carry security L-6's sentence verbatim: 'A bundle whose `
+pointer  | L-6 sentence in its own paragraph                                      | want fail | FAILS | the "Source code" block does not carry security L-6's sentence verbatim: 'A bundle whose `
+pointer  | today's M-1 sentence ('carries no third-party source code', L-6)       | want fail | FAILS | NOTICE.md says a bundle 'carries no third-party source code'; the images carry .py source 
+pointer  | L-6 with 'any of these licences' (no antecedent, L-6)                  | want fail | FAILS | the "Source code" block does not carry security L-6's sentence verbatim: 'A bundle whose `
+pointer  | L-6 without the no-section condition                                   | want fail | FAILS | the "Source code" block does not carry security L-6's sentence verbatim: 'A bundle whose `
+pointer  | L-6 without has no sources/                                            | want fail | FAILS | the "Source code" block does not carry security L-6's sentence verbatim: 'A bundle whose `
+pointer  | L-6 says the bundle provides the source                                | want fail | FAILS | the "Source code" block does not carry security L-6's sentence verbatim: 'A bundle whose `
+pointer  | L-6 with curly quotes (verbatim)                                       | want fail | FAILS | the "Source code" block does not carry security L-6's sentence verbatim: 'A bundle whose `
+pointer  | L-6 kept, the old claim elsewhere                                      | want fail | FAILS | NOTICE.md says a bundle 'carries no third-party source code'; the images carry .py source 
+pointer  | REPO NOTICE.md                                                         | want pass | passes
+incorp   | TARGET                                                                 | want pass | passes
+incorp   | U0-shape Dockerfile                                                    | want pass | passes
+incorp   | honest bump: 3.13 base, 3.13.1 file, NOTICE names it                   | want pass | passes
+incorp   | NOTICE does not name the file                                          | want fail | FAILS | NOTICE.md does not name licenses/CPython-3.12-incorporated.txt (PSC-14, security L-5)
+incorp   | the file is missing                                                    | want fail | FAILS | licenses/CPython-3.12-incorporated.txt is missing (the base tag's CPython is 3.12)
+incorp   | file and NOTICE for 3.13, base 3.12                                    | want fail | FAILS | NOTICE.md does not name licenses/CPython-3.12-incorporated.txt (PSC-14, security L-5)
+incorp   | line 1 3.13.0 with its URL, base 3.12                                  | want fail | FAILS | licenses/CPython-3.12-incorporated.txt: line 1 names CPython 3.13.0, not the base tag's 3.
+incorp   | URL tag is not line 1's version                                        | want fail | FAILS | licenses/CPython-3.12-incorporated.txt: line 1 names CPython 3.12.99 but the source URL's 
+incorp   | URL over http                                                          | want fail | FAILS | licenses/CPython-3.12-incorporated.txt line 2 is not `Source: https://raw.githubuserconten
+incorp   | URL on another host                                                    | want fail | FAILS | licenses/CPython-3.12-incorporated.txt line 2 is not `Source: https://raw.githubuserconten
+incorp   | URL to another file                                                    | want fail | FAILS | licenses/CPython-3.12-incorporated.txt line 2 is not `Source: https://raw.githubuserconten
+incorp   | line 1 without the section title                                       | want fail | FAILS | licenses/CPython-3.12-incorporated.txt line 1 is not `CPython X.Y.Z: "Licenses and Acknowl
+incorp   | line 1 names Python, not CPython                                       | want fail | FAILS | licenses/CPython-3.12-incorporated.txt line 1 is not `CPython X.Y.Z: "Licenses and Acknowl
+incorp   | sha256 short                                                           | want fail | FAILS | licenses/CPython-3.12-incorporated.txt line 3 is not `Source sha256: <64 hex>`: 'Source sh
+incorp   | sha256 upper-case                                                      | want fail | FAILS | licenses/CPython-3.12-incorporated.txt line 3 is not `Source sha256: <64 hex>`: 'Source sh
+incorp   | no sha256 line                                                         | want fail | FAILS | licenses/CPython-3.12-incorporated.txt line 3 is not `Source sha256: <64 hex>`: 'Extract: 
+incorp   | Extract line reworded                                                  | want fail | FAILS | licenses/CPython-3.12-incorporated.txt line 4 is not 'Extract: from that heading line to t
+incorp   | no blank line after the header                                         | want fail | FAILS | licenses/CPython-3.12-incorporated.txt line 5 is not blank: 'Licenses and Acknowledgements
+incorp   | extract starts at a subsection                                         | want fail | FAILS | licenses/CPython-3.12-incorporated.txt: the extract does not start with the heading line '
+incorp   | heading underlined with -                                              | want fail | FAILS | licenses/CPython-3.12-incorporated.txt: the extract does not start with the heading line '
+incorp   | underline too short                                                    | want fail | FAILS | licenses/CPython-3.12-incorporated.txt: the extract does not start with the heading line '
+incorp   | heading twice                                                          | want fail | FAILS | licenses/CPython-3.12-incorporated.txt: the heading line occurs 2 times in the extract, wa
+incorp   | extract cut before libmpdec                                            | want fail | FAILS | licenses/CPython-3.12-incorporated.txt: the extract does not name libmpdec (NOTICE.md says
+incorp   | extract without expat                                                  | want fail | FAILS | licenses/CPython-3.12-incorporated.txt: the extract does not name expat (NOTICE.md says it
+incorp   | CRLF line endings                                                      | want fail | FAILS | licenses/CPython-3.12-incorporated.txt has CR line endings; the extract is the LF bytes of
+incorp   | NOTICE gives another tag's URL                                         | want fail | FAILS | no block of NOTICE.md names licenses/CPython-3.12-incorporated.txt with the header's sourc
+incorp   | NOTICE names the file without its URL                                  | want fail | FAILS | no block of NOTICE.md names licenses/CPython-3.12-incorporated.txt with the header's sourc
+incorp   | unparseable base ref (B1)                                              | want fail | FAILS | the shipped stage's base reference 'python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+incorp   | REPO NOTICE.md + licenses/                                             | want pass | passes
+hacl     | TARGET                                                                 | want pass | passes
+hacl     | U0-shape Dockerfile                                                    | want pass | passes
+hacl     | no trailing newline after ` */`                                        | want pass | passes
+hacl     | honest bump: 3.13 base, 3.13.1 files, NOTICE names them                | want pass | passes
+hacl     | I-8: round 3's 'the HACL* hash code ... is in' (the code, not its lice | want fail | FAILS | the CPython bullet does not say "the licence of the HACL* hash code ... is in" licenses/CP
+hacl     | I-8: round 3's whole sentence (today's NOTICE.md)                      | want fail | FAILS | the CPython bullet does not say "the licence of the HACL* hash code ... is in" licenses/CP
+hacl     | round 2's bullet: 'whose texts are in', no HACL file named             | want fail | FAILS | the CPython bullet does not name licenses/CPython-3.12-HACL.txt; it says what each file ho
+hacl     | NOTICE names the HACL file nowhere                                     | want fail | FAILS | the CPython bullet does not name licenses/CPython-3.12-HACL.txt; it says what each file ho
+hacl     | the bullet does not name the HACL file (Licence texts does)            | want fail | FAILS | the CPython bullet does not name licenses/CPython-3.12-HACL.txt; it says what each file ho
+hacl     | the bullet does not name the incorporated file                         | want fail | FAILS | the CPython bullet does not name licenses/CPython-3.12-incorporated.txt; it says what each
+hacl     | the bullet without HACL*                                               | want fail | FAILS | the CPython bullet does not name HACL*; it says what each file holds (N10 round 3, securit
+hacl     | the bullet without MIT                                                 | want fail | FAILS | the CPython bullet does not name MIT; it says what each file holds (N10 round 3, security 
+hacl     | the bullet without _sha3                                               | want fail | FAILS | the CPython bullet does not name _sha3; it says what each file holds (N10 round 3, securit
+hacl     | the bullet without _md5                                                | want fail | FAILS | the CPython bullet does not name _md5; it says what each file holds (N10 round 3, security
+hacl     | the bullet does not call the incorporated file a list                  | want fail | FAILS | the CPython bullet does not name the word 'list' (the incorporated file is CPython's own l
+hacl     | completeness: 'all of it'                                              | want fail | FAILS | the CPython bullet claims a complete set ('all'); CPython's list omits HACL* (N10 round 3,
+hacl     | completeness: 'the complete list'                                      | want fail | FAILS | the CPython bullet claims a complete set ('complete'); CPython's list omits HACL* (N10 rou
+hacl     | completeness: 'every licence'                                          | want fail | FAILS | the CPython bullet claims a complete set ('Every'); CPython's list omits HACL* (N10 round 
+hacl     | completeness: 'whose texts are in' beside the HACL file                | want fail | FAILS | the CPython bullet claims a complete set ('whose texts are in'); CPython's list omits HACL
+hacl     | the HACL file is missing                                               | want fail | FAILS | licenses/CPython-3.12-HACL.txt is missing (the base tag's CPython is 3.12; security L-9)
+hacl     | line 1 reworded                                                        | want fail | FAILS | licenses/CPython-3.12-HACL.txt line 1 is not `CPython X.Y.Z: HACL* licence header (MIT), M
+hacl     | line 1 names Python, not CPython                                       | want fail | FAILS | licenses/CPython-3.12-HACL.txt line 1 is not `CPython X.Y.Z: HACL* licence header (MIT), M
+hacl     | Source: version differs                                                | want fail | FAILS | licenses/CPython-3.12-HACL.txt: line 1 names CPython 3.12.99 but Source: names 3.12.98
+hacl     | Tarball: directory version differs                                     | want fail | FAILS | licenses/CPython-3.12-HACL.txt: line 1 names CPython 3.12.99 but Tarball: directory names 
+hacl     | Tarball: file version differs                                          | want fail | FAILS | licenses/CPython-3.12-HACL.txt: line 1 names CPython 3.12.99 but Tarball: file names 3.12.
+hacl     | the HACL file's 3.12.98 throughout, incorporated 3.12.99               | want fail | FAILS | licenses/CPython-3.12-HACL.txt: line 1 names CPython 3.12.98 but licenses/CPython-3.12-inc
+hacl     | the incorporated file is missing (no line 1 to compare)                | want fail | FAILS | licenses/CPython-3.12-HACL.txt: cannot compare line 1 with licenses/CPython-3.12-incorpora
+hacl     | minor 3.13 in both files, base 3.12                                    | want fail | FAILS | licenses/CPython-3.12-HACL.txt: line 1 names CPython 3.13.0, not the base tag's 3.12
+hacl     | Source: another file (Hacl_Hash_SHA1.c)                                | want fail | FAILS | licenses/CPython-3.12-HACL.txt line 2 is not `Source: Python-X.Y.Z/Modules/_hacl/Hacl_Hash
+hacl     | Source: without the Python-X.Y.Z/ prefix                               | want fail | FAILS | licenses/CPython-3.12-HACL.txt line 2 is not `Source: Python-X.Y.Z/Modules/_hacl/Hacl_Hash
+hacl     | Tarball over http                                                      | want fail | FAILS | licenses/CPython-3.12-HACL.txt line 3 is not `Tarball: https://www.python.org/ftp/python/X
+hacl     | Tarball on another host                                                | want fail | FAILS | licenses/CPython-3.12-HACL.txt line 3 is not `Tarball: https://www.python.org/ftp/python/X
+hacl     | Tarball .tgz                                                           | want fail | FAILS | licenses/CPython-3.12-HACL.txt line 3 is not `Tarball: https://www.python.org/ftp/python/X
+hacl     | sha256 short                                                           | want fail | FAILS | licenses/CPython-3.12-HACL.txt line 4 is not `Tarball sha256: <64 lower-case hex>`: 'Tarba
+hacl     | sha256 upper-case                                                      | want fail | FAILS | licenses/CPython-3.12-HACL.txt line 4 is not `Tarball sha256: <64 lower-case hex>`: 'Tarba
+hacl     | line 4 'Source sha256:', not 'Tarball sha256:'                         | want fail | FAILS | licenses/CPython-3.12-HACL.txt line 4 is not `Tarball sha256: <64 lower-case hex>`: 'Sourc
+hacl     | no blank line after the header                                         | want fail | FAILS | licenses/CPython-3.12-HACL.txt line 5 is not blank: '/* MIT License'
+hacl     | a fifth header line                                                    | want fail | FAILS | licenses/CPython-3.12-HACL.txt line 5 is not blank: 'Extract: lines 1-23.'
+hacl     | extract does not start `/* MIT License`                                | want fail | FAILS | licenses/CPython-3.12-HACL.txt: the extract's first line is '/*', want '/* MIT License'
+hacl     | extract starts at the copyright line                                   | want fail | FAILS | licenses/CPython-3.12-HACL.txt: the extract's first line is ' * Copyright (c) 2016-2022 IN
+hacl     | extract cut before ` */`                                               | want fail | FAILS | licenses/CPython-3.12-HACL.txt: the extract's last line is ' * SOFTWARE.', want ' */'
+hacl     | extract runs into the code                                             | want fail | FAILS | licenses/CPython-3.12-HACL.txt: the extract's last line is '#include "internal/Hacl_Hash_S
+hacl     | extract runs on to a second ` */`                                      | want fail | FAILS | licenses/CPython-3.12-HACL.txt: the extract has 2 ' */' lines; it ends at the first (sed -
+hacl     | no HACL* Contributors                                                  | want fail | FAILS | licenses/CPython-3.12-HACL.txt: the extract does not hold 'HACL* Contributors'
+hacl     | CRLF line endings                                                      | want fail | FAILS | licenses/CPython-3.12-HACL.txt has CR line endings; the extract is the LF bytes of Modules
+hacl     | NOTICE gives no tarball URL for the HACL file                          | want fail | FAILS | no block of NOTICE.md names licenses/CPython-3.12-HACL.txt with Modules/_hacl/Hacl_Hash_SH
+hacl     | NOTICE gives another version's tarball URL                             | want fail | FAILS | no block of NOTICE.md names licenses/CPython-3.12-HACL.txt with Modules/_hacl/Hacl_Hash_SH
+hacl     | NOTICE's HACL block without Hacl_Hash_SHA2.c                           | want fail | FAILS | no block of NOTICE.md names licenses/CPython-3.12-HACL.txt with Modules/_hacl/Hacl_Hash_SH
+hacl     | unparseable base ref (B1)                                              | want fail | FAILS | the shipped stage's base reference 'python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+hacl     | REPO NOTICE.md + licenses/                                             | want fail | FAILS (RED expected)
+         |   - the CPython bullet does not say "the licence of the HACL* hash code ... is in" licenses/CPython-3.12-HACL.txt: the file holds the code's licence, not the code (security I-8): '- CPython 3.12 under `/usr/local`, under the Python License 2.0 (SPDX `Python-2.0`: the PSF licence '
+karamel  | TARGET                                                                 | want pass | passes
+karamel  | U0-shape Dockerfile                                                    | want pass | passes
+karamel  | no trailing newline after ` */`                                        | want pass | passes
+karamel  | honest bump: 3.13 base, 3.13.1 files, NOTICE names them                | want pass | passes
+karamel  | round 3's bullet (today's): KaRaMeL not named                          | want fail | FAILS | the CPython bullet does not name KaRaMeL: the HACL* code compiles in KaRaMeL headers (INRI
+karamel  | the bullet without KaRaMeL                                             | want fail | FAILS | the CPython bullet does not name KaRaMeL: the HACL* code compiles in KaRaMeL headers (INRI
+karamel  | the bullet without INRIA and Microsoft                                 | want fail | FAILS | the CPython bullet does not name INRIA and Microsoft: the HACL* code compiles in KaRaMeL h
+karamel  | the bullet without the licence Apache-2.0                              | want fail | FAILS | the CPython bullet does not name the licence Apache-2.0: the HACL* code compiles in KaRaMe
+karamel  | the bullet does not name the KaRaMeL file (Licence texts does)         | want fail | FAILS | the CPython bullet does not name licenses/CPython-3.12-KaRaMeL.txt: the HACL* code compile
+karamel  | the bullet does not name licenses/Apache-2.0.txt (Licence texts does)  | want fail | FAILS | the CPython bullet does not name licenses/Apache-2.0.txt: the HACL* code compiles in KaRaM
+karamel  | the KaRaMeL clause in a paragraph of its own, not the bullet           | want fail | FAILS | the CPython bullet does not name KaRaMeL: the HACL* code compiles in KaRaMeL headers (INRI
+karamel  | the KaRaMeL file is missing                                            | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt is missing (the base tag's CPython is 3.12; security L-9
+karamel  | line 1 without (Apache-2.0)                                            | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt line 1 is not `CPython X.Y.Z: KaRaMeL licence header (Ap
+karamel  | line 1 copied from the HACL file                                       | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt line 1 is not `CPython X.Y.Z: KaRaMeL licence header (Ap
+karamel  | line 1 names Python, not CPython                                       | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt line 1 is not `CPython X.Y.Z: KaRaMeL licence header (Ap
+karamel  | Source: version differs                                                | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt: line 1 names CPython 3.12.99 but Source: names 3.12.98
+karamel  | Source: another krml header (types.h)                                  | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt line 2 is not `Source: Python-X.Y.Z/Modules/_hacl/includ
+karamel  | Source: the HACL file's source                                         | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt line 2 is not `Source: Python-X.Y.Z/Modules/_hacl/includ
+karamel  | Tarball: directory version differs                                     | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt: line 1 names CPython 3.12.99 but Tarball: directory nam
+karamel  | Tarball: file version differs                                          | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt: line 1 names CPython 3.12.99 but Tarball: file names 3.
+karamel  | Tarball over http                                                      | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt line 3 is not `Tarball: https://www.python.org/ftp/pytho
+karamel  | sha256 short                                                           | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt line 4 is not `Tarball sha256: <64 lower-case hex>`: 'Ta
+karamel  | sha256 upper-case                                                      | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt line 4 is not `Tarball sha256: <64 lower-case hex>`: 'Ta
+karamel  | Tarball sha256 differs from the HACL file's (one tarball)              | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt: line 4 is not the HACL file's `Tarball sha256:` line; b
+karamel  | line 4 'Source sha256:', not 'Tarball sha256:'                         | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt line 4 is not `Tarball sha256: <64 lower-case hex>`: 'So
+karamel  | no blank line after the header                                         | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt has 6 lines: not a 4-line header, a blank line and the 2
+karamel  | a fifth header line                                                    | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt line 5 is not blank: 'Extract: lines 1-2.'
+karamel  | the KaRaMeL file's 3.12.98 throughout, the others 3.12.99              | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt: line 1 names CPython 3.12.98 but licenses/CPython-3.12-
+karamel  | the HACL file 3.12.98, KaRaMeL and incorporated 3.12.99                | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt: line 1 names CPython 3.12.99 but licenses/CPython-3.12-
+karamel  | the incorporated file 3.12.98, KaRaMeL and HACL 3.12.99                | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt: line 1 names CPython 3.12.99 but licenses/CPython-3.12-
+karamel  | the HACL file is missing (no line 1 to compare)                        | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt: cannot compare line 1 with licenses/CPython-3.12-HACL.t
+karamel  | the incorporated file is missing (no line 1 to compare)                | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt: cannot compare line 1 with licenses/CPython-3.12-incorp
+karamel  | minor 3.13 in all three files, base 3.12                               | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt: line 1 names CPython 3.13.0, not the base tag's 3.12
+karamel  | extract without 'All rights reserved.'                                 | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt: the extract's first line is '/* Copyright (c) INRIA and
+karamel  | extract starts at the Licensed line                                    | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt has 6 lines: not a 4-line header, a blank line and the 2
+karamel  | extract's last line without ` */`                                      | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt: the extract's last line is '   Licensed under the Apach
+karamel  | extract's last line with text before 'Licensed'                        | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt: the extract's last line is '   This file is Licensed un
+karamel  | extract runs into the code                                             | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt: the extract has 4 lines, want 2 (sed -n '1,/\*\//p' of 
+karamel  | extract is the HACL MIT header                                         | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt: the extract has 9 lines, want 2 (sed -n '1,/\*\//p' of 
+karamel  | extract names another licence (Apache 2.1)                             | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt: the extract's last line is '   Licensed under the Apach
+karamel  | CRLF line endings                                                      | want fail | FAILS | licenses/CPython-3.12-KaRaMeL.txt has CR line endings; the extract is the LF bytes of Modu
+karamel  | NOTICE names the KaRaMeL file nowhere                                  | want fail | FAILS | the CPython bullet does not name licenses/CPython-3.12-KaRaMeL.txt: the HACL* code compile
+karamel  | NOTICE's KaRaMeL paragraph without the tarball URL                     | want fail | FAILS | no block of NOTICE.md names licenses/CPython-3.12-KaRaMeL.txt with Modules/_hacl/include/k
+karamel  | NOTICE's KaRaMeL paragraph gives another version's tarball URL         | want fail | FAILS | no block of NOTICE.md names licenses/CPython-3.12-KaRaMeL.txt with Modules/_hacl/include/k
+karamel  | NOTICE's KaRaMeL paragraph without target.h                            | want fail | FAILS | no block of NOTICE.md names licenses/CPython-3.12-KaRaMeL.txt with Modules/_hacl/include/k
+karamel  | licenses/Apache-2.0.txt is missing                                     | want fail | FAILS | licenses/Apache-2.0.txt is missing: the Apache License 2.0 that KaRaMeL's notice names (se
+karamel  | licenses/Apache-2.0.txt with an added header line                      | want fail | FAILS | licenses/Apache-2.0.txt has sha256 3af4f4bd0ca070d0e15b70d09a037851207f6887b384fece1ea752a
+karamel  | licenses/Apache-2.0.txt with CRLF line endings                         | want fail | FAILS | licenses/Apache-2.0.txt has sha256 3565404b20e7fb4a0a315d08a9771276e1218f59e25b08b1680d1e9
+karamel  | licenses/Apache-2.0.txt is another text (the MIT header)               | want fail | FAILS | licenses/Apache-2.0.txt has sha256 e2afdb7089566a972c43c104d8d95975484ea5ab3ff19263581ae9c
+karamel  | NOTICE has no Apache-2.0.txt Licence-texts paragraph                   | want fail | FAILS | no block of NOTICE.md names licenses/Apache-2.0.txt with base-files, /usr/share/common-lic
+karamel  | NOTICE's Apache paragraph without base-files                           | want fail | FAILS | no block of NOTICE.md names licenses/Apache-2.0.txt with base-files, /usr/share/common-lic
+karamel  | NOTICE's Apache paragraph without the common-licenses path             | want fail | FAILS | no block of NOTICE.md names licenses/Apache-2.0.txt with base-files, /usr/share/common-lic
+karamel  | NOTICE's Apache paragraph gives another sha256                         | want fail | FAILS | no block of NOTICE.md names licenses/Apache-2.0.txt with base-files, /usr/share/common-lic
+karamel  | unparseable base ref (B1)                                              | want fail | FAILS | the shipped stage's base reference 'python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+karamel  | the stand-in Apache text against the pinned base-files sha256          | want fail | FAILS | licenses/Apache-2.0.txt has sha256 63fed0f00886bd65f89b0e8993789fb2da41eff079acc037a74e033
+karamel  | REPO NOTICE.md + licenses/                                             | want fail | FAILS (RED expected)
+         |   - the CPython bullet does not name KaRaMeL: the HACL* code compiles in KaRaMeL headers (INRIA and Microsoft, Apache-2.0; security L-9b fix 3): '- CPython 3.12 under `/usr/local`, under the Python License 2.0 (SPDX `Python-2.0`: the PSF licence '
+         |   - the CPython bullet does not name INRIA and Microsoft: the HACL* code compiles in KaRaMeL headers (INRIA and Microsoft, Apache-2.0; security L-9b fix 3): '- CPython 3.12 under `/usr/local`, under the Python License 2.0 (SPDX `Python-2.0`: the PSF licence '
+         |   - the CPython bullet does not name the licence Apache-2.0: the HACL* code compiles in KaRaMeL headers (INRIA and Microsoft, Apache-2.0; security L-9b fix 3): '- CPython 3.12 under `/usr/local`, under the Python License 2.0 (SPDX `Python-2.0`: the PSF licence '
+         |   - the CPython bullet does not name licenses/CPython-3.12-KaRaMeL.txt: the HACL* code compiles in KaRaMeL headers (INRIA and Microsoft, Apache-2.0; security L-9b fix 3): '- CPython 3.12 under `/usr/local`, under the Python License 2.0 (SPDX `Python-2.0`: the PSF licence '
+         |   - the CPython bullet does not name licenses/Apache-2.0.txt: the HACL* code compiles in KaRaMeL headers (INRIA and Microsoft, Apache-2.0; security L-9b fix 3): '- CPython 3.12 under `/usr/local`, under the Python License 2.0 (SPDX `Python-2.0`: the PSF licence '
+         |   - licenses/CPython-3.12-KaRaMeL.txt is missing (the base tag's CPython is 3.12; security L-9b)
+         |   - licenses/Apache-2.0.txt is missing: the Apache License 2.0 that KaRaMeL's notice names (security L-9b)
+         |   - no block of NOTICE.md names licenses/Apache-2.0.txt with base-files, /usr/share/common-licenses/Apache-2.0 and its sha256 cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30 (security L-9b fix 4)
+tracked  | TARGET                                                                 | want pass | passes
+tracked  | names only tracked files, with a full stop after one                   | want pass | passes
+tracked  | names the licenses/ directory only                                     | want pass | passes
+tracked  | the target NOTICE with an untracked incorporated file                  | want fail | FAILS | NOTICE.md names licenses/CPython-3.13-incorporated.txt, which git does not track, so bundl
+tracked  | the target NOTICE with an untracked KaRaMeL file (round 4)             | want fail | FAILS | NOTICE.md names licenses/CPython-3.13-KaRaMeL.txt, which git does not track, so bundle.sh 
+tracked  | names an untracked file that exists                                    | want fail | FAILS | NOTICE.md names licenses/Scratch-untracked-example.txt, which git does not track, so bundl
+tracked  | names a tracked file and an untracked one                              | want fail | FAILS | NOTICE.md names licenses/Scratch-untracked-example.txt, which git does not track, so bundl
+tracked  | names a file that does not exist                                       | want fail | FAILS | NOTICE.md names licenses/MPL-2.0.txt, which git does not track, so bundle.sh would not shi
+tracked  | names a tracked file in another case                                   | want fail | FAILS | NOTICE.md names licenses/gpl-3.0.txt, which git does not track, so bundle.sh would not shi
+tracked  | names an untracked file in a bare sentence                             | want fail | FAILS | NOTICE.md names licenses/CPython-3.13-incorporated.txt, which git does not track, so bundl
+tracked  | git cannot run                                                         | want fail | FAILS | `git ls-files -- licenses` could not run in /tmp/u1-track-3umbswin (FileNotFoundError(2, '
+tracked  | not a git work tree                                                    | want fail | FAILS | `git ls-files -- licenses` failed in /tmp/u1-controls-937bwlrc (exit 128): fatal: not a gi
+tracked  | REPO NOTICE.md + git index                                             | want pass | passes
+evidence | TARGET                                                                 | want pass | passes
+evidence | the word evidence and app/docs/quickstart.md                           | want pass | passes
+evidence | today's provenance pointer                                             | want fail | FAILS | NOTICE.md cites 'docs/evidence', a repository path no bundle carries (review B4, security 
+evidence | a bare path                                                            | want fail | FAILS | NOTICE.md cites 'docs/evidence', a repository path no bundle carries (review B4, security 
+evidence | a repository URL                                                       | want fail | FAILS | NOTICE.md cites 'docs/evidence', a repository path no bundle carries (review B4, security 
+evidence | a Windows path                                                         | want fail | FAILS | NOTICE.md cites 'docs\\evidence', a repository path no bundle carries (review B4, security
+evidence | upper case                                                             | want fail | FAILS | NOTICE.md cites 'DOCS/EVIDENCE', a repository path no bundle carries (review B4, security 
+evidence | REPO NOTICE.md                                                         | want pass | passes
+pip      | TARGET                                                                 | want pass | passes
+pip      | python3 -m pip uninstall --yes pip                                     | want pass | passes
+pip      | ENV split over two instructions                                        | want pass | passes
+pip      | one line, extra spaces                                                 | want pass | passes
+pip      | today's shape: no runtime stage, last stage FROM the base              | want fail | FAILS | the last stage is FROM 'python:3.12-slim-bookworm@sha256:333333333333333333333333333333333
+pip      | U0 shape with the pip removal (pip still ships in the base layer)      | want fail | FAILS | the last stage is FROM 'python:3.12-slim-bookworm@sha256:333333333333333333333333333333333
+pip      | runtime without the pip removal                                        | want fail | FAILS | runtime has 0 pip-removal RUNs, want exactly one `RUN python -m pip uninstall -y pip && rm
+pip      | pip removal before the libpq5 RUN                                      | want fail | FAILS | runtime's pip-removal RUN does not come after its libpq5 apt RUN (N10a)
+pip      | pip removal in the scratch stage, not runtime                          | want fail | FAILS | the last stage runs pip, ensurepip or get-pip: python -m pip uninstall -y pip  && rm /usr/
+pip      | uninstall without -y                                                   | want fail | FAILS | runtime has 0 pip-removal RUNs, want exactly one `RUN python -m pip uninstall -y pip && rm
+pip      | pip3 uninstall, not python -m pip                                      | want fail | FAILS | runtime has 0 pip-removal RUNs, want exactly one `RUN python -m pip uninstall -y pip && rm
+pip      | uninstall also removes setuptools                                      | want fail | FAILS | runtime has 0 pip-removal RUNs, want exactly one `RUN python -m pip uninstall -y pip && rm
+pip      | rm -f on the wheel                                                     | want fail | FAILS | runtime has 0 pip-removal RUNs, want exactly one `RUN python -m pip uninstall -y pip && rm
+pip      | rm -rf of the _bundled directory                                       | want fail | FAILS | runtime has 0 pip-removal RUNs, want exactly one `RUN python -m pip uninstall -y pip && rm
+pip      | ; instead of && (a missing pip passes)                                 | want fail | FAILS | runtime has 0 pip-removal RUNs, want exactly one `RUN python -m pip uninstall -y pip && rm
+pip      | || true after the removal                                              | want fail | FAILS | runtime has 0 pip-removal RUNs, want exactly one `RUN python -m pip uninstall -y pip && rm
+pip      | uninstall and rm in two RUNs                                           | want fail | FAILS | runtime has 0 pip-removal RUNs, want exactly one `RUN python -m pip uninstall -y pip && rm
+pip      | the wheel glob widened to pip*.whl                                     | want fail | FAILS | runtime has 0 pip-removal RUNs, want exactly one `RUN python -m pip uninstall -y pip && rm
+pip      | the wheel under python3.13, base 3.12                                  | want fail | FAILS | runtime removes the wheel under python3.13, but the base tag's CPython is 3.12
+pip      | no wheel removal                                                       | want fail | FAILS | runtime has 0 pip-removal RUNs, want exactly one `RUN python -m pip uninstall -y pip && rm
+pip      | last stage FROM runtime (its layers ship)                              | want fail | FAILS | the last stage is FROM 'runtime', not scratch: a delete in a stage FROM the base leaves pi
+pip      | last stage FROM the base                                               | want fail | FAILS | the last stage is FROM 'python:3.12-slim-bookworm@sha256:333333333333333333333333333333333
+pip      | COPY --from=runtime / / not first                                      | want fail | FAILS | the last stage does not start with `COPY --from=runtime / /` (N10a)
+pip      | COPY --from=builder / /                                                | want fail | FAILS | the last stage does not start with `COPY --from=runtime / /` (N10a)
+pip      | PATH extends $PATH (empty under scratch)                               | want fail | FAILS | the last stage's PATH must start /opt/venv/bin:, have /usr/local/bin and be spelled out (s
+pip      | PATH without /usr/local/bin                                            | want fail | FAILS | the last stage's PATH must start /opt/venv/bin:, have /usr/local/bin and be spelled out (s
+pip      | PATH with /usr/local/bin/ only as a prefix of another entry            | want fail | FAILS | the last stage's PATH must start /opt/venv/bin:, have /usr/local/bin and be spelled out (s
+pip      | PATH not starting /opt/venv/bin:                                       | want fail | FAILS | the last stage's PATH must start /opt/venv/bin:, have /usr/local/bin and be spelled out (s
+pip      | no LANG                                                                | want fail | FAILS | the last stage's LANG is None, want 'C.UTF-8' (the base's, N10a)
+pip      | LANG=C                                                                 | want fail | FAILS | the last stage's LANG is 'C', want 'C.UTF-8' (the base's, N10a)
+pip      | the scratch stage restores pip with ensurepip                          | want fail | FAILS | the last stage runs pip, ensurepip or get-pip: python -m ensurepip && useradd --no-create-
+pip      | two runtime stages                                                     | want fail | FAILS | app.Dockerfile has 2 stages `AS runtime`, want 1 (N10a)
+pip      | REPO app.Dockerfile                                                    | want pass | passes
+u0-run   | TARGET                                                                 | want pass | passes
+u0-run   | U0 shape (last stage FROM the base)                                    | want pass | passes
+u0-run   | N10a shape (runtime + FROM scratch, COPY --from=runtime / /)           | want pass | passes
+u0-run   | U0 shape with the pip removal in the last stage (PSC-25 allows it)     | want pass | passes
+u0-run   | N10a shape without the pip removal (this check allows it; U1's test ne | want pass | passes
+u0-run   | gcc in the last stage                                                  | want fail | FAILS | last stage: installs ['libpq5=${LIBPQ_VERSION}', 'gcc'], want exactly ['libpq5=${LIBPQ_VER
+u0-run   | flat: gcc in the last stage                                            | want fail | FAILS | shipped stage 'runtime': installs ['libpq5=${LIBPQ_VERSION}', 'gcc'], want exactly ['libpq
+u0-run   | libpq-dev in the last stage                                            | want fail | FAILS | last stage: installs ['libpq5=${LIBPQ_VERSION}', 'libpq-dev=${LIBPQ_VERSION}'], want exact
+u0-run   | flat: libpq-dev in the last stage                                      | want fail | FAILS | shipped stage 'runtime': installs ['libpq5=${LIBPQ_VERSION}', 'libpq-dev=${LIBPQ_VERSION}'
+u0-run   | unpinned libpq5                                                        | want fail | FAILS | last stage: installs ['libpq5'], want exactly ['libpq5=${LIBPQ_VERSION}']
+u0-run   | flat: unpinned libpq5                                                  | want fail | FAILS | shipped stage 'runtime': installs ['libpq5'], want exactly ['libpq5=${LIBPQ_VERSION}']
+u0-run   | make in a later RUN                                                    | want fail | FAILS | last stage: a RUN installs or removes ['apt-get purge -y make']; only the libpq5 apt RUN a
+u0-run   | flat: make in a later RUN                                              | want fail | FAILS | last stage (FROM scratch): a RUN installs or removes packages or files: apt-get purge -y m
+u0-run   | apt lists kept                                                         | want fail | FAILS | last stage: /var/lib/apt/lists/* not removed in the same RUN: apt-get update  && apt-get i
+u0-run   | flat: apt lists kept                                                   | want fail | FAILS | shipped stage 'runtime': /var/lib/apt/lists/* not removed in the same RUN: apt-get update 
+u0-run   | recommends allowed                                                     | want fail | FAILS | last stage: apt install without --no-install-recommends: apt-get update  && apt-get instal
+u0-run   | flat: recommends allowed                                               | want fail | FAILS | shipped stage 'runtime': apt install without --no-install-recommends: apt-get update  && a
+u0-run   | no ARG in the last stage                                               | want fail | FAILS | last stage: no `ARG LIBPQ_VERSION` (libpq5=${LIBPQ_VERSION} would be empty)
+u0-run   | flat: no ARG in the last stage                                         | want fail | FAILS | shipped stage 'runtime': no `ARG LIBPQ_VERSION` (libpq5=${LIBPQ_VERSION} would be empty)
+u0-run   | no libpq-dev in the builder                                            | want fail | FAILS | builder: no libpq-dev (got ['gcc', 'libc6-dev'])
+u0-run   | flat: no libpq-dev in the builder                                      | want fail | FAILS | builder: no libpq-dev (got ['gcc', 'libc6-dev'])
+u0-run   | flat: the libpq5 apt RUN moved to the scratch stage                    | want fail | FAILS | shipped stage 'runtime': 0 RUNs install apt packages, want exactly 1
+u0-run   | flat: the scratch stage copies / from builder                          | want fail | FAILS | the shipped stage is the builder
+u0-run   | flat: the scratch stage copies / from a stage that is not in the file  | want fail | FAILS | the last stage copies / from 'nosuch', which is not one stage of the file (N10a)
+u0-run   | flat: FROM scratch without COPY --from=runtime / / first               | want fail | FAILS | the last stage is FROM scratch but its first instruction is not `COPY --from=<stage> / /` 
+u0-run   | flat: no apt RUN in runtime                                            | want fail | FAILS | shipped stage 'runtime': 0 RUNs install apt packages, want exactly 1
+u0-run   | flat: runtime also purges a package                                    | want fail | FAILS | shipped stage 'runtime': a RUN installs or removes ['apt-get purge -y libsasl2-2']; only t
+u0-run   | flat: runtime pip-installs a package                                   | want fail | FAILS | shipped stage 'runtime': a RUN installs or removes ['pip install requests']; only the libp
+u0-run   | flat: the pip removal also uninstalls setuptools                       | want fail | FAILS | shipped stage 'runtime': a RUN installs or removes ['python -m pip uninstall -y pip setupt
+u0-run   | flat: runtime removes a directory                                      | want fail | FAILS | shipped stage 'runtime': a RUN installs or removes ['rm -rf /usr/local/lib/python3.12/site
+u0-run   | flat: the libpq5 RUN also purges a package                             | want fail | FAILS | shipped stage 'runtime': the libpq5 RUN also installs or removes ['apt-get purge -y libsas
+u0-run   | flat: the scratch stage removes files                                  | want fail | FAILS | last stage (FROM scratch): a RUN installs or removes packages or files: rm -f /etc/motd &&
+u0-run   | flat: the pip removal twice                                            | want fail | FAILS | shipped stage 'runtime': 2 pip-removal RUNs, want at most 1
+u0-run   | U0 shape: the last stage also removes a package                        | want fail | FAILS | last stage: a RUN installs or removes ['dpkg -r libsasl2-2']; only the libpq5 apt RUN and 
+u0-run   | REPO app.Dockerfile                                                    | want pass | passes
+d10      | TARGET                                                                 | want pass | passes
+d10      | D10 shape (last stage FROM the base)                                   | want pass | passes
+d10      | N10a shape (FROM scratch + COPY --from=runtime / /)                    | want pass | passes
+d10      | COPY --from=uv in the final stage                                      | want fail | FAILS | final stage: `COPY --from=uv /uv /usr/local/bin/uv` (D10: no uv)
+d10      | flat: COPY --from=uv in the final stage                                | want fail | FAILS | final stage: `COPY --from=uv /uv /usr/local/bin/uv` (D10: no uv)
+d10      | COPY from the uv image in the final stage                              | want fail | FAILS | final stage: `COPY --from=ghcr.io/astral-sh/uv:0.11.21 /uv /bin/uv` (D10: no uv)
+d10      | flat: COPY from the uv image in the final stage                        | want fail | FAILS | final stage: `COPY --from=ghcr.io/astral-sh/uv:0.11.21 /uv /bin/uv` (D10: no uv)
+d10      | uv command in a final RUN                                              | want fail | FAILS | final stage: `RUN uv --version && useradd --no-create-home --uid 10001 ke` names the uv bi
+d10      | flat: uv command in a final RUN                                        | want fail | FAILS | final stage: `RUN uv --version && useradd --no-create-home --uid 10001 ke` names the uv bi
+d10      | an extra COPY in the final stage                                       | want fail | FAILS | the final stage's only other COPYs are `COPY --from=builder /opt/venv /opt/venv` and `COPY
+d10      | flat: an extra COPY in the final stage                                 | want fail | FAILS | the final stage's only other COPYs are `COPY --from=builder /opt/venv /opt/venv` and `COPY
+d10      | COPY --chown on the venv                                               | want fail | FAILS | the final stage's only other COPYs are `COPY --from=builder /opt/venv /opt/venv` and `COPY
+d10      | flat: COPY --chown on the venv                                         | want fail | FAILS | the final stage's only other COPYs are `COPY --from=builder /opt/venv /opt/venv` and `COPY
+d10      | PATH without /opt/venv/bin first                                       | want fail | FAILS | the final stage's PATH starts with /opt/venv/bin: (got '/usr/bin:$PATH')
+d10      | flat: PATH without /opt/venv/bin first                                 | want fail | FAILS | the final stage's PATH starts with /opt/venv/bin: (got '/usr/bin:/usr/local/bin:/usr/sbin:
+d10      | UV_ variable in the final stage                                        | want fail | FAILS | the final stage sets a UV_* variable (D10: nothing reads them)
+d10      | flat: UV_ variable in the final stage                                  | want fail | FAILS | the final stage sets a UV_* variable (D10: nothing reads them)
+d10      | no PYTHONUNBUFFERED                                                    | want fail | FAILS | the final stage sets PYTHONUNBUFFERED=1 (got None)
+d10      | flat: no PYTHONUNBUFFERED                                              | want fail | FAILS | the final stage sets PYTHONUNBUFFERED=1 (got None)
+d10      | no WORKDIR /app                                                        | want fail | FAILS | the final stage has no `WORKDIR /app` (PSC-17)
+d10      | flat: no WORKDIR /app                                                  | want fail | FAILS | the final stage has no `WORKDIR /app` (PSC-17)
+d10      | user ke with another uid                                               | want fail | FAILS | the final stage does not create user ke with uid 10001
+d10      | flat: user ke with another uid                                         | want fail | FAILS | the final stage does not create user ke with uid 10001
+d10      | ends as root                                                           | want fail | FAILS | the final stage does not end as USER ke
+d10      | flat: ends as root                                                     | want fail | FAILS | the final stage does not end as USER ke
+d10      | CMD runs another module                                                | want fail | FAILS | the final stage's CMD is not ["python", "-m", "engine.api"] (got ['python', '-m', 'engine.
+d10      | flat: CMD runs another module                                          | want fail | FAILS | the final stage's CMD is not ["python", "-m", "engine.api"] (got ['python', '-m', 'engine.
+d10      | builder without --locked                                               | want fail | FAILS | the builder runs no `uv sync --locked --no-dev` (D10)
+d10      | flat: builder without --locked                                         | want fail | FAILS | the builder runs no `uv sync --locked --no-dev` (D10)
+d10      | two builder stages                                                     | want fail | FAILS | app.Dockerfile has 2 stages `AS builder`, want 1 (D10)
+d10      | flat: two builder stages                                               | want fail | FAILS | app.Dockerfile has 2 stages `AS builder`, want 1 (D10)
+d10      | the final FROM is another digest                                       | want fail | FAILS | the final FROM is not byte for byte the builder's (venv interpreter paths, D10)
+d10      | the final FROM is builder                                              | want fail | FAILS | the final FROM 'builder' is neither the pinned python:3.12-slim-bookworm@sha256 image nor 
+d10      | flat: the final FROM is runtime (its layers would ship)                | want fail | FAILS | the final FROM 'runtime' is neither the pinned python:3.12-slim-bookworm@sha256 image nor 
+d10      | flat: runtime FROM another digest                                      | want fail | FAILS | the runtime FROM is not byte for byte the builder's (venv interpreter paths, D10)
+d10      | flat: runtime FROM an unpinned base                                    | want fail | FAILS | the runtime FROM 'python:3.12-slim-bookworm' is not the pinned python:3.12-slim-bookworm@s
+d10      | flat: COPY --from=builder / / (uv and the compiler ship)               | want fail | FAILS | the last stage is FROM scratch: its first instruction, and its only copy of `/`, is `COPY 
+d10      | flat: COPY --from=runtime / / not first                                | want fail | FAILS | the last stage is FROM scratch: its first instruction, and its only copy of `/`, is `COPY 
+d10      | flat: COPY --from=runtime / / twice                                    | want fail | FAILS | the last stage is FROM scratch: its first instruction, and its only copy of `/`, is `COPY 
+d10      | flat: FROM scratch with no copy of /                                   | want fail | FAILS | the last stage is FROM scratch: its first instruction, and its only copy of `/`, is `COPY 
+d10      | flat: only part of runtime copied                                      | want fail | FAILS | the last stage is FROM scratch: its first instruction, and its only copy of `/`, is `COPY 
+d10      | flat: two runtime stages                                               | want fail | FAILS | app.Dockerfile has 2 stages `AS runtime`, want 1 (N10a)
+d10      | flat: runtime copies uv in                                             | want fail | FAILS | the runtime stage copies files in [('COPY', '--from=uv', '/uv', '/usr/local/bin/uv')]; its
+d10      | flat: runtime RUN uses uv                                              | want fail | FAILS | runtime stage: `RUN uv --version && python -m pip uninstall -y pip && rm /usr/local/lib/py
+d10      | flat: runtime copies a file in                                         | want fail | FAILS | the runtime stage copies files in [('COPY', 'config', '/config')]; its whole `/` ships, so
+d10      | REPO app.Dockerfile                                                    | want pass | passes
+digest   | TARGET                                                                 | want pass | passes
+digest   | digest-pinned base                                                     | want pass | passes
+digest   | a stage named earlier                                                  | want pass | passes
+digest   | scratch (U1 round 2, N10a)                                             | want pass | passes
+digest   | scratch with --platform                                                | want pass | passes
+digest   | tag only                                                               | want fail | FAILS | python:3.12-slim-bookworm
+digest   | short digest                                                           | want fail | FAILS | python:3.12-slim-bookworm@sha256:777777777777777777777777777777777777777777777777777777777
+digest   | scratch with a tag                                                     | want fail | FAILS | scratch:latest
+digest   | scratch from a registry                                                | want fail | FAILS | docker.io/library/scratch
+digest   | a name that starts scratch                                             | want fail | FAILS | scratchy
+digest   | Scratch, not the reserved word                                         | want fail | FAILS | Scratch
+digest   | busybox unpinned after a scratch stage                                 | want fail | FAILS | busybox
+digest   | unpinned base before a pinned one                                      | want fail | FAILS | alpine:3.20
+digest   | self-named stage: FROM alpine AS alpine (L-12)                         | want fail | FAILS | alpine
+digest   | forward stage reference (L-12)                                         | want fail | FAILS | later
+digest   | REPO app.Dockerfile                                                    | want pass | passes
+digest   | REPO gates.Dockerfile                                                  | want pass | passes
+digest   | REPO gateway.Dockerfile                                                | want pass | passes
+added    | repo shipped-stage apt names ['libpq5']; ADDED_PACKAGES ['libldap-2.5-0', 'libpq5', 'libsasl2-2', 'libsasl2-modules-db']
+controls base    : 57 must-fail + 4 must-pass
+controls libpq   : 7 must-fail + 1 must-pass
+controls pointer : 13 must-fail + 0 must-pass
+controls incorp  : 25 must-fail + 2 must-pass
+controls hacl    : 45 must-fail + 3 must-pass
+controls karamel : 51 must-fail + 3 must-pass
+controls tracked : 9 must-fail + 2 must-pass
+controls evidence: 5 must-fail + 1 must-pass
+controls pip     : 28 must-fail + 3 must-pass
+controls u0-run  : 29 must-fail + 4 must-pass
+controls d10     : 42 must-fail + 2 must-pass
+controls digest  : 10 must-fail + 4 must-pass
+controls: 321 must-fail + 29 must-pass = 350
+unexpected: 0
+---- reach: the round-4 targets spliced into scratch copies ----
+REACH note: licenses/ = the repository's plus r4-target-CPython-3.12-KaRaMeL.txt (target header + security's extract) and r4-target-Apache-2.0.txt (security's base-files copy); the scratch repository `git add`s licenses/
+base     | REACH target                                                           | want pass | passes
+libpq    | REACH target                                                           | want pass | passes
+pointer  | REACH target                                                           | want pass | passes
+incorp   | REACH target                                                           | want pass | passes
+hacl     | REACH target                                                           | want pass | passes
+karamel  | REACH target                                                           | want pass | passes
+tracked  | REACH target                                                           | want pass | passes
+evidence | REACH target                                                           | want pass | passes
+pip      | REACH target                                                           | want pass | passes
+u0-run   | REACH target                                                           | want pass | passes
+u0-build | REACH target                                                           | want pass | passes
+u0-pin   | REACH target                                                           | want pass | passes
+u0-psyc  | REACH target                                                           | want pass | passes
+d10      | REACH target                                                           | want pass | passes
+digest   | REACH target                                                           | want pass | passes
+REACH static classes (NoticeKeAppBaseTest, KeAppNoPipStaticTest, PsycopgCStaticTest, AppImageTest): ran 17, failures 0, errors 0, skipped 0
+REACH note: smoke.sh lines replaced: 19 (today's no-pip step), by 18 target lines
+REACH smoke: SmokeNoPipTest: ran 3, failures 0, errors 0, skipped 0
+REACH smoke: SmokePsycopgTest: ran 5, failures 0, errors 0, skipped 0
+REACH smoke: test_stack_scripts SmokeResolvesWithoutEnvTest, SmokeBackendIsolatedTest, SmokeStoreStopStartTest: ran 17, failures 0, errors 0, skipped 0
+mutant   | S1 eval of the container output (M-1)                                  | want killed | killed (8 failing subtests)
+         |   by test_smoke_fails_when_pip_is_in_api (case='importable only (nothing on disk)')
+         |   by test_smoke_fails_when_pip_is_in_api (case='the check prints `-`, then a second line with a pip path')
+         |   by test_smoke_never_evaluates_the_pip_token (case='a pip path, then a command')
+         |   by test_smoke_never_evaluates_the_pip_token (case='array subscript')
+         |   by test_smoke_never_evaluates_the_pip_token (case='backticks')
+         |   by test_smoke_never_evaluates_the_pip_token (case='command substitution')
+         |   by test_smoke_never_evaluates_the_pip_token (case='dash, then a second word')
+         |   by test_smoke_never_evaluates_the_pip_token (case='dash-prefixed token')
+mutant   | S2 only the first word compared                                        | want killed | killed (1 failing subtests)
+         |   by test_smoke_never_evaluates_the_pip_token (case='dash, then a second word')
+mutant   | S3 no find_spec fallback                                               | want killed | killed (12 failing subtests)
+         |   by test_smoke_checks_no_pip_in_api (case="clean image (the fake's default model)")
+         |   by test_smoke_checks_no_pip_in_api (case='near misses: libpipeline, pipes.py, pipx, an empty _bundled')
+         |   by test_smoke_fails_when_pip_is_in_api (case='importable only (nothing on disk)')
+         |   by test_smoke_fails_when_pip_is_in_api (case='the check exits 0 and prints nothing')
+         |   by test_smoke_fails_when_pip_is_in_api (case='the check fails in api')
+         |   by test_smoke_fails_when_pip_is_in_api (case='the check prints `-`, then a second line with a pip path')
+         |   by test_smoke_never_evaluates_the_pip_token (case='a pip path, then a command')
+         |   by test_smoke_never_evaluates_the_pip_token (case='array subscript')
+         |   by test_smoke_never_evaluates_the_pip_token (case='backticks')
+         |   by test_smoke_never_evaluates_the_pip_token (case='command substitution')
+         |   by test_smoke_never_evaluates_the_pip_token (case='dash, then a second word')
+         |   by test_smoke_never_evaluates_the_pip_token (case='dash-prefixed token')
+mutant   | S4 walks /usr/local/bin only                                           | want killed | killed (7 failing subtests)
+         |   by test_smoke_checks_no_pip_in_api (case="clean image (the fake's default model)")
+         |   by test_smoke_checks_no_pip_in_api (case='near misses: libpipeline, pipes.py, pipx, an empty _bundled')
+         |   by test_smoke_fails_when_pip_is_in_api (case="ensurepip's bundled wheel")
+         |   by test_smoke_fails_when_pip_is_in_api (case="pip's dist-info")
+         |   by test_smoke_fails_when_pip_is_in_api (case='pip in the venv')
+         |   by test_smoke_fails_when_pip_is_in_api (case='the pip package in site-packages')
+         |   by test_smoke_fails_when_pip_is_in_api (case='the unmodified base (six hits, N10a probe)')
+mutant   | S5 no dist-info/whl names                                              | want killed | killed (3 failing subtests)
+         |   by test_smoke_fails_when_pip_is_in_api (case="ensurepip's bundled wheel")
+         |   by test_smoke_fails_when_pip_is_in_api (case="pip's dist-info")
+         |   by test_smoke_fails_when_pip_is_in_api (case='the unmodified base (six hits, N10a probe)')
+mutant   | S6 no `|| FAIL` on a failed exec                                       | want killed | killed (1 failing subtests)
+         |   by test_smoke_fails_when_pip_is_in_api (case='the check fails in api')
+mutant   | S7 the venv python, not /usr/local/bin/python3                         | want killed | killed (2 failing subtests)
+         |   by test_smoke_checks_no_pip_in_api (case="clean image (the fake's default model)")
+         |   by test_smoke_checks_no_pip_in_api (case='near misses: libpipeline, pipes.py, pipx, an empty _bundled')
+mutant   | S8 walks /usr only (misses /opt)                                       | want killed | killed (3 failing subtests)
+         |   by test_smoke_checks_no_pip_in_api (case="clean image (the fake's default model)")
+         |   by test_smoke_checks_no_pip_in_api (case='near misses: libpipeline, pipes.py, pipx, an empty _bundled')
+         |   by test_smoke_fails_when_pip_is_in_api (case='pip in the venv')
+mutant   | S9 a pip hit only warns                                                | want killed | killed (16 failing subtests)
+         |   by test_smoke_fails_when_pip_is_in_api (case="ensurepip's bundled wheel")
+         |   by test_smoke_fails_when_pip_is_in_api (case="pip's dist-info")
+         |   by test_smoke_fails_when_pip_is_in_api (case='/usr/local/bin/pip3')
+         |   by test_smoke_fails_when_pip_is_in_api (case='/usr/local/bin/pip3.12')
+         |   by test_smoke_fails_when_pip_is_in_api (case='importable only (nothing on disk)')
+         |   by test_smoke_fails_when_pip_is_in_api (case='pip in the venv')
+         |   by test_smoke_fails_when_pip_is_in_api (case='the check exits 0 and prints nothing')
+         |   by test_smoke_fails_when_pip_is_in_api (case='the check prints `-`, then a second line with a pip path')
+         |   by test_smoke_fails_when_pip_is_in_api (case='the pip package in site-packages')
+         |   by test_smoke_fails_when_pip_is_in_api (case='the unmodified base (six hits, N10a probe)')
+         |   by test_smoke_never_evaluates_the_pip_token (case='a pip path, then a command')
+         |   by test_smoke_never_evaluates_the_pip_token (case='array subscript')
+         |   by test_smoke_never_evaluates_the_pip_token (case='backticks')
+         |   by test_smoke_never_evaluates_the_pip_token (case='command substitution')
+         |   by test_smoke_never_evaluates_the_pip_token (case='dash, then a second word')
+         |   by test_smoke_never_evaluates_the_pip_token (case='dash-prefixed token')
+mutant   | S10 ${pip_out:--} default (empty output read as clean)                 | want killed | killed (1 failing subtests)
+         |   by test_smoke_fails_when_pip_is_in_api (case='the check exits 0 and prints nothing')
+mutant   | S11 round 2's `read -r` first line only (I-6)                          | want killed | killed (1 failing subtests)
+         |   by test_smoke_fails_when_pip_is_in_api (case='the check prints `-`, then a second line with a pip path')
+mutant   | S12 only the first line compared (head -n1)                            | want killed | killed (1 failing subtests)
+         |   by test_smoke_fails_when_pip_is_in_api (case='the check prints `-`, then a second line with a pip path')
+unexpected (with reach): 0

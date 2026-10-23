@@ -190,6 +190,24 @@ if ! [[ "$libpq_owner" =~ ^libpq5(:[a-z0-9]+)?:\ (.+)$ ]] || [ "${BASH_REMATCH[2
   exit 1
 fi
 echo "smoke: psycopg c on Debian libpq5 $deb ($libpq -> $libpq_real)"
+# PSC-14 (N10a, human 2026-10-23): ke-app ships no pip. The base interpreter,
+# since the venv's sys.path omits the system site-packages. The whole container
+# output is compared only as a string with `-` (M-1, I-6): never evaluated.
+echo "== smoke: no pip =="
+pip_out="$(compose exec -T api /usr/local/bin/python3 -I -c 'import importlib.util as u, os, re
+h = sorted(os.path.join(d, n) for r in ("/usr", "/opt") for d, ds, fs in os.walk(r)
+           for n in ds + fs if re.fullmatch(r"pip(3(\.[0-9]+)?)?|pip-.+\.(dist-info|whl)", n))
+if u.find_spec("pip") and not h:
+    h = ["pip (importable)"]
+print(",".join(h).replace(" ", "_") or "-")')" || {
+  echo "smoke: FAIL (no pip: the check in api failed)" >&2
+  exit 1
+}
+[ "$pip_out" = - ] || {
+  echo "smoke: FAIL (no pip: the check in api printed '$pip_out', want '-' (pip in api, or no answer))" >&2
+  exit 1
+}
+echo "smoke: no pip in api"
 
 # ci/offline (PS-3.3, architecture §2.5): api and worker have no route to
 # anything off the backend network. The target is the gateway's own address on

@@ -485,3 +485,46 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-23T02:31:11Z | documenter | platform-sbom | U0 nits N6/N9/I-9 | docs: updated
 2026-10-23T02:43:59Z | tester | platform-sbom | U0 N7: subtests kill R2/R6 | tests: pins added
 2026-10-23T02:56:41Z | orchestrator | platform-sbom | U0 gates judged: review APPROVED, security PASS, verify full PASS 694 s; commit approved | smoke: PASS
+2026-10-23T02:56:49Z | developer | platform-sbom | committed U0 on agent/platform-sbom | commit: done
+2026-10-23T03:11:28Z | tester | platform-sbom | U1 RED: NOTICE base paragraph tests | tdd red: 3 failing as expected
+2026-10-23T03:12:27Z | analyst | platform-sbom | PSC-14: tag for the Source code pointer test | plan: criteria amended
+2026-10-23T03:20:46Z | tester | platform-sbom | U1 RED rework: ADDED_PACKAGES constant, no evidence input | tdd red: 3 failing as expected
+2026-10-23T03:21:24Z | documenter | platform-sbom | handoff split: U0 to archive/platform-sbom-part2.md | docs: updated
+2026-10-23T03:37:30Z | developer | platform-sbom | U1 GREEN: NOTICE.md base of ke-app section | tdd green: verify fast PASS
+2026-10-23T03:42:08Z | security | platform-sbom | U1 audit | security: PASS
+2026-10-23T03:42:38Z | reviewer | platform-sbom | U1 review | review: changes requested
+2026-10-23T03:44:01Z | orchestrator | platform-sbom | U1 review CHANGES REQUESTED + security PASS (M-1 wording); rework round 1 of 5 | review: changes requested
+2026-10-23T03:45:15Z | analyst | platform-sbom | U1 rework: PSC-14/15/22 amended | plan: criteria amended
+2026-10-23T03:46:09Z | orchestrator | platform-sbom | human ruled pip kept in ke-app; Apache-2.0 and MPL-2.0 texts ship in licenses/ | plan: ruling recorded
+2026-10-23T03:46:36Z | architect | platform-sbom | U1 rework: ADR/N10/N15 amended | plan: design amended
+2026-10-23T04:03:00Z | tester | platform-sbom | U1 rework RED: strict base parse, Python-2.0, M-1/L-1/L-2 wording | tdd red: 3 failing as expected
+2026-10-23T04:14:21Z | developer | platform-sbom | U1 rework GREEN: NOTICE wording, Apache-2.0/MPL-2.0 texts, pip probe | tdd green: verify fast PASS
+2026-10-23T04:19:57Z | reviewer | platform-sbom | U1 re-check | review: changes requested
+2026-10-23T04:24:25Z | security | platform-sbom | U1 re-check | security: PASS
+2026-10-23T04:27:52Z | orchestrator | platform-sbom | human ruled drop pip from ke-app (supersedes keep-pip); U1 rework round 2 of 5 | review: changes requested
+2026-10-23T04:30:53Z | analyst | platform-sbom | U1 round 2: pip dropped, CPython incorporated licences, B4 | plan: criteria amended
+2026-10-23T04:38:32Z | architect | platform-sbom | U1 round 2: pip removal design, CPython incorporated licences fetch | plan: design amended
+2026-10-23T04:39:34Z | orchestrator | platform-sbom | ruled: flatten ke-app last stage (FROM scratch + COPY runtime /) so dropped pip does not ship | plan: ruling recorded
+2026-10-23T04:40:18Z | documenter | platform-sbom | handoff split: U1 rounds to archive/platform-sbom-part3.md | docs: updated
+2026-10-23T05:16:38Z | tester | platform-sbom | U1 round 2 RED: pip drop, flattened stage, CPython incorporated licences, B4 | tdd red: 8 failing as expected
+2026-10-23T05:28:59Z | tester | platform-sbom | U1 round 2 RED: empty no-pip output fails (ruling), subtest + S10 mutant | tdd red: 8 failing as expected
+2026-10-23T05:51:12Z | developer | platform-sbom | U1 round 2 GREEN: pip dropped, ke-app flattened, CPython incorporated licences | tdd green: verify fast + full PASS
+2026-10-23T05:58:10Z | reviewer | platform-sbom | U1 re-check 2 | review: changes requested
+2026-10-23T06:04:19Z | security | platform-sbom | U1 re-check 2 + CPython licence second fetch | security: PASS
+2026-10-23T06:04:45Z | tester | platform-sbom | U1 A34 Windows proof (flattened ke-app, no pip) | a34: PASS
+2026-10-23T06:05:25Z | orchestrator | platform-sbom | U1 re-check 2: review CHANGES REQUESTED (doc-only B5/B6), security PASS (L-9); rework round 3 of 5 | review: changes requested
+2026-10-23T06:06:52Z | analyst | platform-sbom | U1 round 3: B5 shipped-stage wording, L-9 HACL, I-4 tracked licences | plan: criteria amended
+2026-10-23T06:09:07Z | architect | platform-sbom | U1 round 3: N10a whole-output check, HACL licence file design | plan: design amended
+2026-10-23T06:43:37Z | tester | platform-sbom | U1 round 3 RED: HACL file, tracked licences, whole-output no-pip, L-12 | tdd red: 5 failing as expected
+2026-10-23T06:45:07Z | tester | platform-sbom | U1 round 3: L-12 fixed in unpinned_bases (earlier-line stage rule) | digest controls: pass (14, 0 unexpected)
+2026-10-23T06:54:07Z | developer | platform-sbom | U1 round 3 GREEN: HACL licence file, NOTICE CPython bullet, whole-output no-pip, licence files staged | tdd green: verify fast PASS
+2026-10-23T06:59:09Z | reviewer | platform-sbom | U1 re-check 3 | review: APPROVED
+2026-10-23T07:03:02Z | security | platform-sbom | U1 re-check 3 + KaRaMeL ruling | security: PASS
+2026-10-23T07:04:08Z | orchestrator | platform-sbom | U1 re-check 3: review APPROVED, security PASS with L-9b (KaRaMeL); rework round 4 of 5 | security: pass (fix L-9b before commit)
+2026-10-23T07:04:37Z | analyst | platform-sbom | U1 round 4: PSC-14 KaRaMeL + Apache-2.0 | plan: criteria amended
+2026-10-23T07:26:20Z | tester | platform-sbom | U1 round 4 RED: KaRaMeL notice + Apache-2.0 text | tdd red: 2 failing as expected
+2026-10-23T07:36:27Z | developer | platform-sbom | U1 round 4 GREEN: KaRaMeL notice + Apache-2.0 text | tdd green: verify fast PASS
+2026-10-23T07:38:32Z | reviewer | platform-sbom | U1 re-check 4 | review: APPROVED
+2026-10-23T07:38:44Z | security | platform-sbom | U1 re-check 4: L-9b closed | security: PASS
+2026-10-23T07:49:55Z | documenter | platform-sbom | handoff split: U1 rounds 2-4 to archive/platform-sbom-part4.md | docs: updated
+2026-10-23T07:50:20Z | orchestrator | platform-sbom | U1 gates judged: review APPROVED, security PASS, verify full PASS 721 s; commit approved | smoke: PASS

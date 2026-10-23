@@ -3237,7 +3237,7 @@ Neither blocks this item.
   - Nobody has yet checked whether such a release exists.
 - **pip in `ke-app`.** The base image's pip 25.0.1 has fixed findings, all
   Medium or Low and below the threshold. Dropping pip from the final stage
-  is a candidate.
+  is a candidate. DONE by platform-sbom U1 (PSC-14). *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
 
 Recorded 2026-10-21 (orchestrator ruling, u1 rework 1). None blocks this
 item.
@@ -3311,13 +3311,20 @@ changed:
 - PSC-14: `uv` removed (PSC-17 took it out of `ke-app`; it runs only in the
   unshipped `builder` stage). The shipped stage's real contents are named
   instead: CPython 3.12, the Debian 12 packages and the base's pip. The 15
-  vendored files are named from the PSC-7 evidence; arm64 is covered.
+  vendored files are named from the PSC-7 evidence; arm64 is covered. pip
+  was later dropped from the shipped stage (PSC-14). *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
 - PSC-15: obligations and recommendation unchanged; its check also covers
   the components PSC-22 names; each bundle's `sources/` is self-sufficient.
 - PSC-16: also measures the manifest size and the install's tmpfs (memory)
   use.
 - The three open points are now Q61-Q63 in `docs/open-questions.md`.
 - New: PSC-19 (e2e) to PSC-24. TDD order extended.
+
+**Standing rule (orchestrator, 2026-10-23):** nothing from
+`agent/platform-sbom` merges to `main`, and no operator bundle is cut from
+it, before U3 (the SBOM, PSC-13) and U9 (the generated "Source code"
+section, PSC-15, PSC-24) land. Until then `NOTICE.md` names an SBOM and a
+section the bundle does not carry (PSC-14). *(Amended 2026-10-23, analyst, U1 review.)*
 
 Outcome metric moved: **neither.** No draft is reviewed and no rule is
 ratified because of this item. It closes the M-NT1 remainder
@@ -3405,21 +3412,107 @@ full what it contains.
     images, and install checks them through the manifest.
 - **PSC-14 Notices complete for `ke-app` (M-NT1).** *(Amended 2026-10-22,
   analyst: uv left `ke-app` with PSC-17.)* *(Amended 2026-10-22, analyst, Q64.)*
-  - `NOTICE.md` has a paragraph for what `ke-app`'s shipped (last) stage
-    holds besides `/opt/venv` and `/app`, pinned to the base digest in
+  - `NOTICE.md` has a paragraph for what `ke-app`'s shipped stage
+    (`runtime`, which the `FROM scratch` last stage copies whole; N10a)
+    *(Amended 2026-10-23, analyst, U1 round 3.)* holds besides `/opt/venv` and `/app`, pinned to the base digest in
     `docker/app.Dockerfile`, each with its licence: CPython 3.12 under
     `/usr/local`; the Debian 12 (bookworm) packages of
     `python:3.12-slim-bookworm` (licences under `/usr/share/doc/*/copyright`,
-    and in the SBOM, PSC-13); and the base's own pip in its system
-    site-packages, which is outside `uv.lock` and so outside the generated
-    package table (the developer confirms this in the image).
+    and in the image's SBOM "where the bundle carries one", PSC-13). The
+    base's own pip is removed from the shipped stage (pip bullet below), so
+    the paragraph does not list it as shipped. *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)* (Review N10: the SBOM
+    mention uses the conditional wording of the SBOM bullet below.)
+  - CPython is named under SPDX `Python-2.0`, the stacked
+    PSF/BeOpen/CNRI/CWI licence, not `PSF-2.0` (only its top layer). It
+    applies wherever PSC-14 or `NOTICE.md` names CPython's licence.
+    `NOTICE.md` points to `/usr/local/lib/python3.12/LICENSE.txt` inside the
+    image, which holds the PSF/BeOpen/CNRI/CWI licence stack only.
+    *(Amended 2026-10-23, analyst, U1 review.)* *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)* (Security M-2: that
+    file holds none of the licences of the code CPython builds in.)
+    - The licences of the third-party code CPython builds in (expat,
+      libmpdec and the rest listed in CPython's `Doc/license.rst`,
+      "Licenses and Acknowledgements for Incorporated Software") ship as
+      `licenses/CPython-3.12-incorporated.txt`. *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)* (Security L-5.)
+    - The file is that section, extracted from `Doc/license.rst` at the
+      CPython tag that matches the image's CPython (`v3.12.15` today), and
+      it names that CPython version. A maintainer fetches it over HTTPS
+      (the fetch needs network), and its source URL and sha256 are
+      recorded; security fetches it a second time and the sha256 must
+      match (Q48 form). It is git-tracked, because `scripts/bundle.sh`
+      ships only `git ls-files -- licenses` (security I-4). *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+    - CPython 3.12.15 also builds `_md5`, `_sha1`, `_sha2` and `_sha3` from
+      HACL* code under MIT (`Modules/_hacl/`), and `Doc/license.rst` omits
+      it (security L-9). The bundle therefore also ships
+      `licenses/CPython-3.12-HACL.txt`: the MIT header copied as-is from
+      `Modules/_hacl/Hacl_Hash_SHA2.c` in the security-verified
+      `Python-3.12.15.tar.xz` (sha256
+      `c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a`,
+      equal to the base's `PYTHON_SHA256`), under a header that names the
+      source file and the tarball sha256. *(Amended 2026-10-23, analyst, U1 round 3.)*
+    - CPython 3.12.15's HACL* modules compile in KaRaMeL headers
+      (`Modules/_hacl/include/krml/`, Copyright INRIA and Microsoft
+      Corporation, Apache-2.0), per the security ruling of 2026-10-23
+      (security L-9b). The bundle therefore also ships two files:
+      - `licenses/CPython-3.12-KaRaMeL.txt`: the licence header notice
+        extracted from `Modules/_hacl/include/krml/internal/target.h` in
+        the same verified tarball, under the same 4-line header form as
+        `licenses/CPython-3.12-HACL.txt` (description, source file,
+        tarball URL, tarball sha256), then a blank line, then the extract.
+      - `licenses/Apache-2.0.txt`: an offline byte copy, with no added
+        header, of `/usr/share/common-licenses/Apache-2.0` from the pinned
+        base (Debian `base-files` 12.4+deb12u15, sha256
+        `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`).
+      Both are git-tracked, as `scripts/bundle.sh` ships only
+      `git ls-files -- licenses`. *(Amended 2026-10-23, analyst, U1 round 4.)*
+    - `NOTICE.md` names `licenses/CPython-3.12-incorporated.txt`,
+      `licenses/CPython-3.12-HACL.txt`, `licenses/CPython-3.12-KaRaMeL.txt`
+      and `licenses/Apache-2.0.txt`.
+      `[unit: test_notice_names_cpython_incorporated_licences]` (fast;
+      extended to cover the HACL* file, then the KaRaMeL file and
+      `licenses/Apache-2.0.txt`). *(Amended 2026-10-23, analyst, U1 round 3.)* *(Amended 2026-10-23, analyst, U1 round 4.)* *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+    - U4 adds the image-side check: the `ke-app` SBOM's CPython version
+      equals the version the file names (PSC-22). *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+  - SBOM mentions are conditional: `NOTICE.md` says the licences are in
+    the image's SBOM only "where the bundle carries one". The wording is
+    true before U3 (PSC-13) and after it, so it stays after U3.
+    *(Amended 2026-10-23, analyst, U1 review.)* *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)* (Review N10.)
+  - pip is not shipped (human, 2026-10-23, superseding the earlier keep
+    ruling). *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)* This removes the notice obligations of pip's vendored
+    packages (security L-2, L-2b; review N9) instead of documenting them.
+    - The shipped stage of `ke-app` (`runtime`, which the `FROM scratch`
+      last stage copies whole; N10a) *(Amended 2026-10-23, analyst, U1 round 3.)* removes the base's pip, and removes
+      `ensurepip`'s bundled pip wheel if the base carries one (it holds the
+      same vendored code). In the real image, pip is not importable by the
+      system Python, no pip distribution is installed in its
+      site-packages, no `pip` command is on `PATH`, and `ensurepip` has no
+      bundled pip wheel. *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+    - `NOTICE.md` says that pip is not shipped and has no pip licence
+      bullet. *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+    - `licenses/` gains no Apache-2.0 or MPL-2.0 text for pip: the
+      untracked `licenses/Apache-2.0.txt` and `licenses/MPL-2.0.txt` are
+      reverted. `test_licenses_carry_texts_for_pip_vendored_licences` is
+      retired. *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+      `licenses/Apache-2.0.txt` does ship, but for KaRaMeL (security
+      L-9b; KaRaMeL bullet above), not for pip; `licenses/MPL-2.0.txt`
+      stays out. *(Amended 2026-10-23, analyst, U1 round 4.)*
+    - `[unit: test_ke_app_last_stage_removes_pip]` (fast, static check of
+      `docker/app.Dockerfile`: the shipped stage (`runtime`, which the
+      `FROM scratch` last stage copies whole; N10a) removes pip and the
+      `ensurepip` pip wheel; the test name stays). *(Amended 2026-10-23, analyst, U1 round 3.)* `[full: smoke: no pip in api]` (smoke check
+      in the running api container: the image-side facts above). *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+    - The Dockerfile changes, so U1 needs `scripts/verify.sh full` and the
+      A34 Windows proof before it commits, as PSC-25 did. *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+    - The platform-supply-chain follow-up "drop pip from `ke-app`'s last
+      stage" (§ "Follow-ups (not in platform-supply-chain)", "pip in
+      `ke-app`") is DONE by platform-sbom U1. *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
   - It does not name uv as shipped: uv runs only in the `builder` stage,
-    which does not ship (PSC-17). If pip is dropped from the last stage
-    (platform-supply-chain follow-up), its line goes in the same change.
+    which does not ship (PSC-17). Nor does it name pip as shipped (bullet
+    above). *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
   - `ke-app` ships no `psycopg_binary.libs` (PSC-25); libpq and its
     dependencies are Debian packages covered by the SBOM and the `deb`
     source kind. The base paragraph above therefore also names the Debian
-    packages the last stage adds to the base (`libpq5` and what it pulls
+    packages the shipped stage (`runtime`, which the `FROM scratch` last
+    stage copies whole; N10a) *(Amended 2026-10-23, analyst, U1 round 3.)* adds to the base (`libpq5` and what it pulls
     in, PSC-25), and `NOTICE.md` names `libpq5` as a Debian package under
     the PostgreSQL licence. *(Amended 2026-10-22, analyst, Q64.)* The 15-library vendored table and
     its drift check against the image's `psycopg_binary.libs` are removed:
@@ -3433,6 +3526,32 @@ full what it contains.
     test, with its assertion replaced; the real-image drift check is
     retired in favour of `[full: ke-app psycopg impl is c and links system
     libpq]` (PSC-25). *(Amended 2026-10-22, analyst, Q64.)*
+  - `NOTICE.md` points, in its own "Source code" section, to the generated
+    "Source code" section of `THIRD_PARTY_NOTICES.md` and to `sources/`.
+    The pointer is not inside the `ke-app` base section, because the
+    generated section covers GPL-family components in every image. That
+    section is generated in U9 (PSC-15, PSC-24), so until then the pointer
+    names a section the bundle does not yet carry.
+    `[unit: test_notice_points_to_generated_source_code_section]` (fast).
+    *(Amended 2026-10-23, analyst, U1.)* *(Amended 2026-10-23, analyst, U1 review.)*
+  - Before U9, `NOTICE.md`'s "Source code" section also says: "A bundle
+    whose `THIRD_PARTY_NOTICES.md` has no "Source code" section has no
+    `sources/`, so it does not itself provide the source that a
+    GPL-family licence requires." The sentence stays true after U9.
+    *(Amended 2026-10-23, analyst, U1 review.)* *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)* (Security L-6: the
+    earlier "carries no third-party source code" was false, because the
+    images carry `.py` source.)
+  - `NOTICE.md` cites no `docs/evidence/` path. Bundles carry only
+    `app/docs/quickstart.md` from `docs/` (`scripts/bundle.sh`), so a
+    recipient could not follow such a path; any provenance a recipient
+    needs is stated in `NOTICE.md` itself.
+    `[unit: test_notice_cites_no_repo_evidence_path]` (fast). *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+    (Review B4, security L-8.)
+  - Every `licenses/` file that `NOTICE.md` names is tracked by git,
+    because `scripts/bundle.sh` ships only `git ls-files -- licenses`; an
+    untracked file would leave `NOTICE.md` naming a file the bundle lacks
+    (security I-4, review N12).
+    `[unit: test_notice_named_licence_files_are_tracked]`. *(Amended 2026-10-23, analyst, U1 round 3.)*
 - **PSC-15 GPL source offers, built now (Q58).**
   - *Obligations to meet.*
     - **GPL-2.0 §3.** Whoever distributes the object code must do one of:
@@ -3519,6 +3638,10 @@ full what it contains.
       is met only for components whose source is in the bundle, and keep
       the L-NT1 wording ("Upstream source: <url>") for anything else.
       Security reviews the wording.
+    - For U9: the source directory in the bundle is `app/sources/`.
+      `NOTICE.md`'s and `THIRD_PARTY_NOTICES.md`'s `sources/` references
+      must resolve from where each copy sits in the bundle. *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+      (Security I-3.)
     - `[unit: test_every_gpl_package_has_source]`,
       `[unit: test_source_archive_hashes_in_manifest]` (fast, stubbed SBOM
       and index); the same checks run on the real bundle in
@@ -3526,6 +3649,11 @@ full what it contains.
     - The first check also covers the components PSC-22 names, whatever
       licence the generator reports for them. *(Added 2026-10-22,
       analyst.)*
+    - The heading `NOTICE.md` names for the generated section (PSC-14) is
+      exactly the heading `scripts/bundle.sh` generates in
+      `THIRD_PARTY_NOTICES.md`. Unit U9.
+      `[unit: test_notice_source_code_heading_matches_generated]` (fast).
+      *(Amended 2026-10-23, analyst, U1 review.)*
 - **PSC-16 CI cost and disk measured on CI.**
   - Two green CI runs record, from the runner's per-line timestamps: the
     SBOM generation per image, the source fetch, and the whole job; plus
@@ -3625,6 +3753,22 @@ full what it contains.
     `[unit: test_unlicensed_packages_are_reported]` (fast, stubbed).
     `test_sbom_lists_psycopg_binary_vendored_libs` is retired: nothing is
     vendored to inject, and PSC-25's full check proves it. *(Amended 2026-10-22, analyst, Q64.)*
+  - The ke-app SBOM's dpkg packages minus the base image's dpkg packages
+    equal `ADDED_PACKAGES` in `tests/test_notice_ke_app.py`, and the ke-app
+    SBOM lists no pip package. The ke-app SBOM's CPython version equals the
+    version `licenses/CPython-3.12-incorporated.txt` names (PSC-14). Unit
+    U4. This is the image-side check that keeps `NOTICE.md`'s added-package
+    line, the pip removal and the CPython incorporated-licence file from
+    going stale on a base or pin bump.
+    `[full: ke-app SBOM's added dpkg set equals ADDED_PACKAGES and lists no pip package]`,
+    `[full: ke-app SBOM's CPython version matches the incorporated-licence file]`.
+    *(Amended 2026-10-23, analyst, U1 review.)* *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+  - The copyright files of `libldap-2.5-0`, `libsasl2-2` and
+    `libsasl2-modules-db` (added to `ke-app` with `libpq5`, PSC-25) contain
+    GPL-2+ and GPL-3+ lines (in `libldap-2.5-0` mostly with Autoconf or
+    Libtool exceptions). Units U5/U6 give each of them a `deb` source entry
+    or an exemption whose reason security has reviewed, whatever licence
+    the generator reports for them. *(Amended 2026-10-23, analyst, U1 review.)*
 - **PSC-23 The source fetch is a named, bounded network step (added
   2026-10-22, analyst).**
   - SBOM generation stays offline (Q57); the fetch is the item's only new
@@ -3758,11 +3902,16 @@ full what it contains.
       `test_lock_has_no_psycopg_binary`, because the lock itself may still
       name psycopg-binary for other platforms (A65). *(Amended 2026-10-22, analyst, A65/A66.)*
     - `[unit: test_runtime_stage_has_no_compiler]` (fast, static check of
-      `docker/app.Dockerfile`): the last stage installs `libpq5=<version>`
+      `docker/app.Dockerfile`): the shipped stage (`runtime`, which the
+      `FROM scratch` last stage copies whole; N10a) *(Amended 2026-10-23, analyst, U1 round 3.)* installs `libpq5=<version>`
       with the apt lists removed in the same `RUN`, and installs no
       compiler and no `-dev` package; the builder stage installs
       `libpq-dev`. Controls: a fixture with `gcc` or `libpq-dev` in the
-      last stage fails, and so does an unpinned `libpq5`.
+      shipped stage fails, and so does an unpinned `libpq5`. *(Amended 2026-10-23, analyst, U1 round 3.)*
+      The shipped stage may also hold the pip removal (PSC-14, U1). The test
+      allows exactly that: the `libpq5` apt `RUN` plus the pip removal, and
+      no other package install or removal. *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+      The test name stays. *(Amended 2026-10-23, analyst, U1 round 3.)*
     - `[full: ke-app psycopg impl is c and links system libpq]` (smoke
       check in the real image).
     - The stack smoke, `[gate: image-scan]` and the two PS-2.5
@@ -3776,6 +3925,14 @@ PSC-25 → PSC-14 → PSC-20 → PSC-13 → PSC-22 → PSC-15 → PSC-23 → PSC
 PSC-19 → PSC-16, with PSC-21 at the next recorded arm64 run. Gate: `scripts/verify.sh full`; a recorded Windows
 run under A34 if the item changes Dockerfiles, compose files or a
 PowerShell script (`install.ps1` included, Q45).
+
+### Follow-ups (not in platform-sbom)
+
+- **`.pyc` files from the pip uninstall (security I-5).** The pip
+  uninstall in `ke-app`'s `runtime` stage leaves 156 stdlib `__pycache__`
+  `.pyc` files in the shipped stage. They are root-owned 0644 and not
+  writable by `ke`, so they are harmless. Running `python -B` in that
+  `RUN` would avoid them. Not a U1 criterion. *(Amended 2026-10-23, analyst, U1 round 3.)*
 
 ---
 
