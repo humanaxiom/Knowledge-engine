@@ -1,0 +1,342 @@
+pkg:maven/com.sun.xml.fastinfoset/FastInfoset@1.2.16	1.2.16	LicenseRef-http---www.opensource.org-licenses-apache2.0.php--http---www.eclipse.org-org-documents-edl-v10.php|NOASSERTION
+pkg:maven/org.hdrhistogram/HdrHistogram@2.1.9	2.1.9	LicenseRef-Public-Domain--per-Creative-Commons-CC0|NOASSERTION
+pkg:maven/org.roaringbitmap/RoaringBitmap@0.7.17	0.7.17	LicenseRef-Apache-2|NOASSERTION
+pkg:maven/com.profesorfalken/WMI4Java@1.6.3	1.6.3	LicenseRef-Apache-License--Version-2.0|NOASSERTION
+pkg:maven/net.minidev/accessors-smart@2.5.2	2.5.2	LicenseRef-The-Apache-Software-License--Version-2.0|NOASSERTION
+pkg:maven/org.neo4j/annotations@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.antlr/antlr4-runtime@4.13.2	4.13.2	LicenseRef-https---www.antlr.org-license.html|NOASSERTION
+pkg:maven/org.neo4j.procedure/apoc@5.26.32-core	5.26.32-core	NOASSERTION|MIT
+pkg:deb/debian/apt@3.0.3?arch=amd64&distro=debian-13.7	3.0.3	BSD-3-Clause AND LicenseRef-Expat AND GPL-2.0-only AND GPL-2.0-or-later AND curl|NOASSERTION
+pkg:maven/net.sourceforge.argparse4j/argparse4j@0.9.0	0.9.0	NOASSERTION|NOASSERTION
+pkg:deb/debian/base-files@13.8%2Bdeb13u7?arch=amd64&distro=debian-13.7	13.8+deb13u7	GPL-2.0-only AND GPL-2.0-or-later AND LicenseRef-verbatim|NOASSERTION
+pkg:deb/debian/base-passwd@3.6.7?arch=amd64&distro=debian-13.7	3.6.7	GPL-2.0-only AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/bash@5.2.37-2%2Bb10?arch=amd64&distro=debian-13.7&upstream=bash%405.2.37-2	5.2.37-2+b10	BSD-4-Clause-UC AND GFDL-1.3-only AND LicenseRef-GFDL-NIV-1.3 AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND GPL-3.0-or-later AND Latex2e AND LicenseRef-MIT-like AND LicenseRef-permissive|NOASSERTION
+pkg:deb/debian/bsdutils@1%3A2.41.5-0%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=util-linux%402.41.5-0%2Bdeb13u1	1:2.41.5-0+deb13u1	BSD-2-Clause AND BSD-3-Clause AND BSD-4-Clause AND LicenseRef-BSLA AND LicenseRef-Expat AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND GPL-3.0-or-later AND ISC AND LicenseRef-LGPL AND LGPL-2.0-only AND LGPL-2.0-or-later AND LGPL-2.1-only AND LGPL-2.1-or-later AND LGPL-3.0-only AND LGPL-3.0-or-later AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/ca-certificates@20250419?arch=all&distro=debian-13.7	20250419	GPL-2.0-only AND GPL-2.0-or-later AND MPL-2.0|NOASSERTION
+pkg:maven/com.github.ben-manes.caffeine/caffeine@3.1.8	3.1.8	Apache-2.0|NOASSERTION
+pkg:maven/commons-codec/commons-codec@1.17.1	1.17.1	Apache-2.0|NOASSERTION
+pkg:maven/org.apache.commons/commons-compress@1.27.1	1.27.1	Apache-2.0|NOASSERTION
+pkg:maven/org.apache.commons/commons-configuration2@2.15.1	2.15.1	Apache-2.0|NOASSERTION
+pkg:maven/commons-io/commons-io@2.17.0	2.17.0	Apache-2.0|NOASSERTION
+pkg:maven/org.apache.commons/commons-lang3@3.18.0	3.18.0	NOASSERTION|NOASSERTION
+pkg:maven/org.apache.commons/commons-lang3@3.18.0	3.18.0	Apache-2.0|NOASSERTION
+pkg:maven/commons-logging/commons-logging@1.3.4	1.3.4	Apache-2.0|NOASSERTION
+pkg:maven/org.apache.commons/commons-text@1.10.0	1.10.0	NOASSERTION|NOASSERTION
+pkg:maven/org.apache.commons/commons-text@1.12.0	1.12.0	Apache-2.0|NOASSERTION
+pkg:deb/debian/coreutils@9.7-3?arch=amd64&distro=debian-13.7	9.7-3	BSD-4-Clause-UC AND FSFULLR AND GFDL-1.3-only AND LicenseRef-GFDL-NIV-1.3 AND GPL-3.0-only AND GPL-3.0-or-later AND ISC|NOASSERTION
+pkg:maven/org.neo4j/cypher-antlr-ast-common@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0
+pkg:maven/org.neo4j/cypher-antlr-common@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause
+pkg:maven/org.neo4j/cypher-ast-factory@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0
+pkg:maven/org.neo4j/cypher-parser-ast-common@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0
+pkg:maven/org.neo4j/cypher-parser-common@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0
+pkg:maven/org.neo4j/cypher-parser-factory@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0
+pkg:maven/org.neo4j/cypher-shell@5.26.32	5.26.32	NOASSERTION|GPL-3.0-only
+pkg:maven/org.neo4j/cypher-v25-antlr-parser@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause
+pkg:maven/org.neo4j/cypher-v25-ast-factory@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND MIT
+pkg:maven/org.neo4j/cypher-v25-parser-listener@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause
+pkg:maven/org.neo4j/cypher-v5-antlr-parser@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause
+pkg:maven/org.neo4j/cypher-v5-ast-factory@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND MIT
+pkg:maven/org.neo4j/cypher-v5-literal-interpreter@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/cypher-v5-parser-listener@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause
+pkg:deb/debian/dash@0.5.12-12?arch=amd64&distro=debian-13.7	0.5.12-12	BSD-3-Clause AND BSD-3-Clause AND GPL-2.0-only AND GPL-2.0-or-later AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/debconf@1.5.91?arch=all&distro=debian-13.7	1.5.91	BSD-2-Clause|NOASSERTION
+pkg:deb/debian/debian-archive-keyring@2025.1?arch=all&distro=debian-13.7	2025.1	NOASSERTION|LicenseRef-8f918c0bebd1454a084698a95c09d9a03cec8453dad1fc6eab9e6427da9d33a9
+pkg:deb/debian/debianutils@5.23.2?arch=amd64&distro=debian-13.7	5.23.2	GPL-2.0-only AND GPL-2.0-or-later AND SMAIL-GPL AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/diffutils@1%3A3.10-4?arch=amd64&distro=debian-13.7	1:3.10-4	FSFAP AND FSFULLR AND GFDL-1.3-only AND LicenseRef-GFDL-NIV-1.3 AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND GPL-3.0-or-later AND LGPL-2.0-only AND LGPL-2.0-or-later AND LGPL-2.1-only AND LGPL-2.1-or-later AND LGPL-3.0-only AND LGPL-3.0-or-later AND X11 AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/dpkg@1.22.22?arch=amd64&distro=debian-13.7	1.22.22	GPL-2.0-only AND GPL-2.0-or-later AND LicenseRef-public-domain-s-s-d|NOASSERTION
+pkg:maven/org.eclipse.collections/eclipse-collections@11.1.0	11.1.0	LicenseRef--Eclipse-Public-License---v-1.0--link--https---www.eclipse.org-legal-epl-v10.html---Eclipse-Distribution-License---v-1.0--link--https---www.eclipse.org-licenses-edl-v10.html-|NOASSERTION
+pkg:maven/org.eclipse.collections/eclipse-collections-api@11.1.0	11.1.0	LicenseRef--Eclipse-Public-License---v-1.0--link--https---www.eclipse.org-legal-epl-v10.html---Eclipse-Distribution-License---v-1.0--link--https---www.eclipse.org-licenses-edl-v10.html-|NOASSERTION
+pkg:deb/debian/findutils@4.10.0-3?arch=amd64&distro=debian-13.7	4.10.0-3	BSD-3-Clause AND FSFAP AND FSFULLR AND GFDL-1.3-only AND LicenseRef-GFDL-NIV-1.3- AND LicenseRef-GPL AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND GPL-3.0-or-later AND ISC AND LicenseRef-LGPL AND LGPL-2.0-only AND LGPL-2.0-or-later AND LGPL-2.1-only AND LGPL-2.1-or-later AND LGPL-3.0-only AND LGPL-3.0-or-later AND X11 AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/gcc-14-base@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14	14.2.0-19	NOASSERTION|LicenseRef-20390f8a6f3b1e4d7cb45dd8652dabb259bbef688cbad839bcdb0b9ba7252f79
+pkg:deb/debian/grep@3.11-4?arch=amd64&distro=debian-13.7	3.11-4	GPL-3.0-only AND GPL-3.0-or-later|NOASSERTION
+pkg:deb/debian/gzip@1.13-1%2Bdeb13u1?arch=amd64&distro=debian-13.7	1.13-1+deb13u1	LicenseRef-FSF-manpages AND LicenseRef-GFDL-1.3--no-invariant AND LicenseRef-GFDL-3 AND GPL-3.0-only AND GPL-3.0-or-later|NOASSERTION
+pkg:maven/org.apache.hadoop/hadoop-common@3.5.0	3.5.0	NOASSERTION|Apache-2.0 AND MIT
+pkg:maven/org.glassfish.hk2/hk2-api@2.6.1	2.6.1	LicenseRef-http---www.eclipse.org-legal-epl-2.0--https---www.gnu.org-software-classpath-license.html|NOASSERTION
+pkg:maven/org.glassfish.hk2/hk2-locator@2.6.1	2.6.1	LicenseRef-http---www.eclipse.org-legal-epl-2.0--https---www.gnu.org-software-classpath-license.html|NOASSERTION
+pkg:maven/org.glassfish.hk2/hk2-utils@2.6.1	2.6.1	LicenseRef-http---www.eclipse.org-legal-epl-2.0--https---www.gnu.org-software-classpath-license.html|NOASSERTION
+pkg:deb/debian/hostname@3.25?arch=amd64&distro=debian-13.7	3.25	GPL-2.0-only|NOASSERTION
+pkg:deb/debian/init-system-helpers@1.69~deb13u1?arch=all&distro=debian-13.7	1.69~deb13u1	BSD-3-Clause AND GPL-2.0-only AND GPL-2.0-or-later|NOASSERTION
+pkg:maven/com.github.seancfoley.ipaddress/ipaddress@5.5.1	5.5.1	NOASSERTION|NOASSERTION
+pkg:maven/com.sun.istack/istack-commons-runtime@3.0.8	3.0.8	BSD-3-Clause|NOASSERTION
+pkg:maven/com.profesorfalken/jPowerShell@3.0	3.0	LicenseRef-Apache-License--Version-2.0|NOASSERTION
+pkg:maven/org.jprocesses/jProcesses@1.6.5	1.6.5	LicenseRef-Apache-License--Version-2.0|NOASSERTION
+pkg:maven/com.fasterxml.jackson.core/jackson-annotations@2.22	2.22	Apache-2.0|NOASSERTION
+pkg:maven/com.fasterxml.jackson.core/jackson-annotations@2.22	2.22	LicenseRef-The-Apache-Software-License--Version-2.0|NOASSERTION
+pkg:maven/com.fasterxml.jackson.core/jackson-core@2.22.2	2.22.2	LicenseRef-The-Apache-Software-License--Version-2.0|NOASSERTION
+pkg:maven/com.fasterxml.jackson.core/jackson-core@2.22.3	2.22.3	Apache-2.0|NOASSERTION
+pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.22.2	2.22.2	LicenseRef-The-Apache-Software-License--Version-2.0|NOASSERTION
+pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.22.3	2.22.3	Apache-2.0|NOASSERTION
+pkg:maven/com.fasterxml.jackson.jaxrs/jackson-jaxrs-base@2.22.3	2.22.3	Apache-2.0|NOASSERTION
+pkg:maven/com.fasterxml.jackson.jaxrs/jackson-jaxrs-json-provider@2.22.3	2.22.3	Apache-2.0|NOASSERTION
+pkg:maven/com.fasterxml.jackson.module/jackson-module-jaxb-annotations@2.22.3	2.22.3	Apache-2.0|NOASSERTION
+pkg:maven/jakarta.activation/jakarta.activation-api@1.2.2	1.2.2	BSD-3-Clause|NOASSERTION
+pkg:maven/jakarta.annotation/jakarta.annotation-api@1.3.5	1.3.5	LicenseRef-http---www.eclipse.org-legal-epl-2.0--https---www.gnu.org-software-classpath-license.html|NOASSERTION
+pkg:maven/org.glassfish.hk2.external/jakarta.inject@2.6.1	2.6.1	LicenseRef-http---www.eclipse.org-legal-epl-2.0--https---www.gnu.org-software-classpath-license.html|NOASSERTION
+pkg:maven/jakarta.validation/jakarta.validation-api@2.0.2	2.0.2	Apache-2.0|NOASSERTION
+pkg:maven/jakarta.ws.rs/jakarta.ws.rs-api@2.1.6	2.1.6	LicenseRef-http---www.eclipse.org-legal-epl-2.0--https---www.gnu.org-software-classpath-license.html|NOASSERTION
+pkg:maven/jakarta.xml.bind/jakarta.xml.bind-api@2.3.2	2.3.2	BSD-3-Clause|NOASSERTION
+pkg:maven/org.fusesource.jansi/jansi@2.4.0	2.4.0	Apache-2.0|NOASSERTION
+pkg:maven/org.javassist/javassist@3.30.2-GA	3.30.2-GA	LicenseRef-https---www.mozilla.org-en-US-MPL-1.1---https---www.gnu.org-licenses-lgpl-2.1.html--https---www.apache.org-licenses-LICENSE-2.0|NOASSERTION
+pkg:maven/javax.annotation/javax.annotation-api@1.3.2	1.3.2	LicenseRef-https---github.com-javaee-javax.annotation-blob-master-LICENSE|NOASSERTION
+pkg:maven/javax.xml.bind/jaxb-api@2.2.12	2.2.12	LicenseRef-https---glassfish.java.net-public-CDDL-GPL-1-1.html--https---glassfish.java.net-public-CDDL-GPL-1-1.html|NOASSERTION
+pkg:maven/org.glassfish.jaxb/jaxb-runtime@2.3.2	2.3.2	NOASSERTION|BSD-3-Clause
+pkg:maven/org.jctools/jctools-core@4.0.5	4.0.5	Apache-2.0|NOASSERTION
+pkg:maven/org.jctools/jctools-core@4.0.5	4.0.5	LicenseRef-Apache-License--Version-2.0|NOASSERTION
+pkg:maven/org.glassfish.jersey.core/jersey-client@2.46	2.46	LicenseRef-http---www.eclipse.org-legal-epl-2.0--https---www.gnu.org-software-classpath-license.html--http---www.eclipse.org-org-documents-edl-v10.php--https---opensource.org-licenses-BSD-2-Clause--http---www.apache.org-licenses-LICENSE-2.0.html--https---creativecommons.org-publicdomain-zero-1.0---https---asm.ow2.io-license.html--jquery.org-license--http---www.opensource.org-licenses-mit-license.php--https---www.w3.org-Consortium-Legal-copyright-documents-19990405|NOASSERTION
+pkg:maven/org.glassfish.jersey.core/jersey-common@2.46	2.46	LicenseRef-http---www.eclipse.org-legal-epl-2.0--https---www.gnu.org-software-classpath-license.html--http---www.apache.org-licenses-LICENSE-2.0.html--https---creativecommons.org-publicdomain-zero-1.0-|NOASSERTION
+pkg:maven/org.glassfish.jersey.containers/jersey-container-servlet@2.46	2.46	LicenseRef-http---www.eclipse.org-legal-epl-2.0--https---www.gnu.org-software-classpath-license.html--http---www.eclipse.org-org-documents-edl-v10.php--https---opensource.org-licenses-BSD-2-Clause--http---www.apache.org-licenses-LICENSE-2.0.html--https---creativecommons.org-publicdomain-zero-1.0---https---asm.ow2.io-license.html--jquery.org-license--http---www.opensource.org-licenses-mit-license.php--https---www.w3.org-Consortium-Legal-copyright-documents-19990405|NOASSERTION
+pkg:maven/org.glassfish.jersey.containers/jersey-container-servlet-core@2.46	2.46	LicenseRef-http---www.eclipse.org-legal-epl-2.0--https---www.gnu.org-software-classpath-license.html--http---www.eclipse.org-org-documents-edl-v10.php--https---opensource.org-licenses-BSD-2-Clause--http---www.apache.org-licenses-LICENSE-2.0.html--https---creativecommons.org-publicdomain-zero-1.0---https---asm.ow2.io-license.html--jquery.org-license--http---www.opensource.org-licenses-mit-license.php--https---www.w3.org-Consortium-Legal-copyright-documents-19990405|NOASSERTION
+pkg:maven/org.glassfish.jersey.inject/jersey-hk2@2.46	2.46	LicenseRef-http---www.eclipse.org-legal-epl-2.0--https---www.gnu.org-software-classpath-license.html--http---www.eclipse.org-org-documents-edl-v10.php--https---opensource.org-licenses-BSD-2-Clause--http---www.apache.org-licenses-LICENSE-2.0.html--https---creativecommons.org-publicdomain-zero-1.0---https---asm.ow2.io-license.html--jquery.org-license--http---www.opensource.org-licenses-mit-license.php--https---www.w3.org-Consortium-Legal-copyright-documents-19990405|NOASSERTION
+pkg:maven/org.glassfish.jersey.core/jersey-server@2.46	2.46	LicenseRef-http---www.eclipse.org-legal-epl-2.0--https---www.gnu.org-software-classpath-license.html--http---www.apache.org-licenses-LICENSE-2.0.html--https---asm.ow2.io-license.html|NOASSERTION
+pkg:maven/org.codehaus.jettison/jettison@1.5.4	1.5.4	Apache-2.0|NOASSERTION
+pkg:maven/org.eclipse.jetty/jetty-alpn-java-server@12.1.13	12.1.13	LicenseRef-https---www.eclipse.org-legal-epl-2.0---https---www.apache.org-licenses-LICENSE-2.0.txt|NOASSERTION
+pkg:maven/org.eclipse.jetty/jetty-alpn-server@12.1.13	12.1.13	LicenseRef-https---www.eclipse.org-legal-epl-2.0---https---www.apache.org-licenses-LICENSE-2.0.txt|NOASSERTION
+pkg:maven/org.eclipse.jetty.ee/jetty-ee-webapp@12.1.13	12.1.13	LicenseRef-https---www.eclipse.org-legal-epl-2.0---https---www.apache.org-licenses-LICENSE-2.0.txt|NOASSERTION
+pkg:maven/org.eclipse.jetty.ee8/jetty-ee8-nested@12.1.13	12.1.13	LicenseRef-https---www.eclipse.org-legal-epl-2.0---https---www.apache.org-licenses-LICENSE-2.0.txt|NOASSERTION
+pkg:maven/org.eclipse.jetty.ee8/jetty-ee8-security@12.1.13	12.1.13	LicenseRef-https---www.eclipse.org-legal-epl-2.0---https---www.apache.org-licenses-LICENSE-2.0.txt|NOASSERTION
+pkg:maven/org.eclipse.jetty.ee8/jetty-ee8-servlet@12.1.13	12.1.13	LicenseRef-https---www.eclipse.org-legal-epl-2.0---https---www.apache.org-licenses-LICENSE-2.0.txt|NOASSERTION
+pkg:maven/org.eclipse.jetty.ee8/jetty-ee8-webapp@12.1.13	12.1.13	LicenseRef-https---www.eclipse.org-legal-epl-2.0---https---www.apache.org-licenses-LICENSE-2.0.txt|NOASSERTION
+pkg:maven/org.eclipse.jetty/jetty-http@12.1.13	12.1.13	LicenseRef-https---www.eclipse.org-legal-epl-2.0---https---www.apache.org-licenses-LICENSE-2.0.txt|NOASSERTION
+pkg:maven/org.eclipse.jetty.http2/jetty-http2-common@12.1.13	12.1.13	LicenseRef-https---www.eclipse.org-legal-epl-2.0---https---www.apache.org-licenses-LICENSE-2.0.txt|NOASSERTION
+pkg:maven/org.eclipse.jetty.http2/jetty-http2-hpack@12.1.13	12.1.13	LicenseRef-https---www.eclipse.org-legal-epl-2.0---https---www.apache.org-licenses-LICENSE-2.0.txt|NOASSERTION
+pkg:maven/org.eclipse.jetty.http2/jetty-http2-server@12.1.13	12.1.13	LicenseRef-https---www.eclipse.org-legal-epl-2.0---https---www.apache.org-licenses-LICENSE-2.0.txt|NOASSERTION
+pkg:maven/org.eclipse.jetty/jetty-io@12.1.13	12.1.13	LicenseRef-https---www.eclipse.org-legal-epl-2.0---https---www.apache.org-licenses-LICENSE-2.0.txt|NOASSERTION
+pkg:maven/org.eclipse.jetty/jetty-security@12.1.13	12.1.13	LicenseRef-https---www.eclipse.org-legal-epl-2.0---https---www.apache.org-licenses-LICENSE-2.0.txt|NOASSERTION
+pkg:maven/org.eclipse.jetty/jetty-server@12.1.13	12.1.13	LicenseRef-https---www.eclipse.org-legal-epl-2.0---https---www.apache.org-licenses-LICENSE-2.0.txt|NOASSERTION
+pkg:maven/org.eclipse.jetty.toolchain/jetty-servlet-api@4.0.9	4.0.9	LicenseRef-http---www.apache.org-licenses-LICENSE-2.0--https---www.eclipse.org-legal-epl-2.0-|NOASSERTION
+pkg:maven/org.eclipse.jetty/jetty-session@12.1.13	12.1.13	LicenseRef-https---www.eclipse.org-legal-epl-2.0---https---www.apache.org-licenses-LICENSE-2.0.txt|NOASSERTION
+pkg:maven/org.eclipse.jetty/jetty-util@12.1.13	12.1.13	LicenseRef-https---www.eclipse.org-legal-epl-2.0---https---www.apache.org-licenses-LICENSE-2.0.txt|NOASSERTION
+pkg:maven/org.eclipse.jetty/jetty-xml@12.1.13	12.1.13	LicenseRef-https---www.eclipse.org-legal-epl-2.0---https---www.apache.org-licenses-LICENSE-2.0.txt|NOASSERTION
+pkg:maven/org.jline/jline-reader@3.21.0	3.21.0	BSD-3-Clause|NOASSERTION
+pkg:maven/org.jline/jline-terminal@3.21.0	3.21.0	BSD-3-Clause|NOASSERTION
+pkg:maven/org.jline/jline-terminal-jansi@3.21.0	3.21.0	BSD-3-Clause|NOASSERTION
+pkg:maven/com.sun.jna/jna@5.15.0	5.15.0	NOASSERTION|Apache-2.0 AND LGPL-2.1-only
+pkg:deb/debian/jq@1.7.1-6%2Bdeb13u4?arch=amd64&distro=debian-13.7	1.7.1-6+deb13u4	CC-BY-3.0 AND LicenseRef-Expat AND GPL-2.0-only AND GPL-2.0-or-later AND MIT|NOASSERTION
+pkg:maven/jrt-fs/jrt-fs@21.0.12.1	21.0.12.1	NOASSERTION|NOASSERTION
+pkg:maven/net.minidev/json-smart@2.5.2	2.5.2	LicenseRef-The-Apache-Software-License--Version-2.0|NOASSERTION
+pkg:maven/org.locationtech.jts/jts-core@1.20.0	1.20.0	LicenseRef-https---github.com-locationtech-jts-blob-master-LICENSE-EPLv2.txt--https---github.com-locationtech-jts-blob-master-LICENSE-EDLv1.txt|NOASSERTION
+pkg:maven/org.bitbucket.inkytonik.kiama/kiama_2.13@2.5.1	2.5.1	NOASSERTION|NOASSERTION
+pkg:deb/debian/libacl1@2.3.2-2%2Bb1?arch=amd64&distro=debian-13.7&upstream=acl%402.3.2-2	2.3.2-2+b1	GPL-2.0-only AND GPL-2.0-or-later AND LGPL-2.0-or-later AND LGPL-2.1-only|NOASSERTION
+pkg:deb/debian/libapt-pkg7.0@3.0.3?arch=amd64&distro=debian-13.7&upstream=apt	3.0.3	BSD-3-Clause AND LicenseRef-Expat AND GPL-2.0-only AND GPL-2.0-or-later AND curl|NOASSERTION
+pkg:deb/debian/libattr1@1%3A2.5.2-3?arch=amd64&distro=debian-13.7&upstream=attr	1:2.5.2-3	GPL-2.0-only AND GPL-2.0-or-later AND LGPL-2.0-or-later AND LGPL-2.1-only|NOASSERTION
+pkg:deb/debian/libaudit-common@1%3A4.0.2-2%2Bdeb13u1?arch=all&distro=debian-13.7&upstream=audit	1:4.0.2-2+deb13u1	GPL-1.0-only AND GPL-2.0-only AND LGPL-2.1-only|NOASSERTION
+pkg:deb/debian/libaudit1@1%3A4.0.2-2%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=audit	1:4.0.2-2+deb13u1	GPL-1.0-only AND GPL-2.0-only AND LGPL-2.1-only|NOASSERTION
+pkg:deb/debian/libblkid1@2.41.5-0%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=util-linux	2.41.5-0+deb13u1	BSD-2-Clause AND BSD-3-Clause AND BSD-4-Clause AND LicenseRef-BSLA AND LicenseRef-Expat AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND GPL-3.0-or-later AND ISC AND LicenseRef-LGPL AND LGPL-2.0-only AND LGPL-2.0-or-later AND LGPL-2.1-only AND LGPL-2.1-or-later AND LGPL-3.0-only AND LGPL-3.0-or-later AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libbsd0@0.12.2-2?arch=amd64&distro=debian-13.7&upstream=libbsd	0.12.2-2	BSD-2-Clause AND BSD-2-Clause AND LicenseRef-BSD-2-clause-author AND LicenseRef-BSD-2-clause-verbatim AND BSD-3-Clause AND LicenseRef-BSD-3-clause-John-Birrell AND LicenseRef-BSD-3-clause-Regents AND LicenseRef-BSD-3-clause-author AND LicenseRef-BSD-5-clause-Peter-Wemm AND Beerware AND LicenseRef-Expat AND ISC AND LicenseRef-ISC-Original AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libbz2-1.0@1.0.8-6?arch=amd64&distro=debian-13.7&upstream=bzip2	1.0.8-6	LicenseRef-BSD-variant AND GPL-2.0-only|NOASSERTION
+pkg:deb/debian/libc-bin@2.41-12%2Bdeb13u4?arch=amd64&distro=debian-13.7&upstream=glibc	2.41-12+deb13u4	BSD-2-Clause AND LicenseRef-BSD-3-clause-Berkeley AND LicenseRef-BSD-3-clause-Carnegie AND LicenseRef-BSD-3-clause-Oracle AND LicenseRef-BSD-3-clause-WIDE AND LicenseRef-BSD-like-Spencer AND BSL-1.0 AND LicenseRef-CORE-MATH AND LicenseRef-Carnegie AND LicenseRef-DEC AND FSFAP AND GPL-2.0-only AND GPL-2.0-or-later AND LicenseRef-GPL-2--with-link-exception AND GPL-3.0-only AND GPL-3.0-or-later AND LicenseRef-IBM AND ISC AND LicenseRef-Inner-Net AND LGPL-2.0-only AND LGPL-2.0-or-later AND LGPL-2.1-only AND LGPL-2.1-or-later AND LicenseRef-LGPL-2.1--with-link-exception AND LGPL-3.0-only AND LGPL-3.0-or-later AND LicenseRef-MIT-like-Lord AND LicenseRef-PCRE AND SunPro AND Unicode-DFS-2016 AND LicenseRef-Univ-Coimbra AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libc-dev-bin@2.41-12%2Bdeb13u4?arch=amd64&distro=debian-13.7&upstream=glibc	2.41-12+deb13u4	BSD-2-Clause AND LicenseRef-BSD-3-clause-Berkeley AND LicenseRef-BSD-3-clause-Carnegie AND LicenseRef-BSD-3-clause-Oracle AND LicenseRef-BSD-3-clause-WIDE AND LicenseRef-BSD-like-Spencer AND BSL-1.0 AND LicenseRef-CORE-MATH AND LicenseRef-Carnegie AND LicenseRef-DEC AND FSFAP AND GPL-2.0-only AND GPL-2.0-or-later AND LicenseRef-GPL-2--with-link-exception AND GPL-3.0-only AND GPL-3.0-or-later AND LicenseRef-IBM AND ISC AND LicenseRef-Inner-Net AND LGPL-2.0-only AND LGPL-2.0-or-later AND LGPL-2.1-only AND LGPL-2.1-or-later AND LicenseRef-LGPL-2.1--with-link-exception AND LGPL-3.0-only AND LGPL-3.0-or-later AND LicenseRef-MIT-like-Lord AND LicenseRef-PCRE AND SunPro AND Unicode-DFS-2016 AND LicenseRef-Univ-Coimbra AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libc6@2.41-12%2Bdeb13u4?arch=amd64&distro=debian-13.7&upstream=glibc	2.41-12+deb13u4	BSD-2-Clause AND LicenseRef-BSD-3-clause-Berkeley AND LicenseRef-BSD-3-clause-Carnegie AND LicenseRef-BSD-3-clause-Oracle AND LicenseRef-BSD-3-clause-WIDE AND LicenseRef-BSD-like-Spencer AND BSL-1.0 AND LicenseRef-CORE-MATH AND LicenseRef-Carnegie AND LicenseRef-DEC AND FSFAP AND GPL-2.0-only AND GPL-2.0-or-later AND LicenseRef-GPL-2--with-link-exception AND GPL-3.0-only AND GPL-3.0-or-later AND LicenseRef-IBM AND ISC AND LicenseRef-Inner-Net AND LGPL-2.0-only AND LGPL-2.0-or-later AND LGPL-2.1-only AND LGPL-2.1-or-later AND LicenseRef-LGPL-2.1--with-link-exception AND LGPL-3.0-only AND LGPL-3.0-or-later AND LicenseRef-MIT-like-Lord AND LicenseRef-PCRE AND SunPro AND Unicode-DFS-2016 AND LicenseRef-Univ-Coimbra AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libc6-dev@2.41-12%2Bdeb13u4?arch=amd64&distro=debian-13.7&upstream=glibc	2.41-12+deb13u4	BSD-2-Clause AND LicenseRef-BSD-3-clause-Berkeley AND LicenseRef-BSD-3-clause-Carnegie AND LicenseRef-BSD-3-clause-Oracle AND LicenseRef-BSD-3-clause-WIDE AND LicenseRef-BSD-like-Spencer AND BSL-1.0 AND LicenseRef-CORE-MATH AND LicenseRef-Carnegie AND LicenseRef-DEC AND FSFAP AND GPL-2.0-only AND GPL-2.0-or-later AND LicenseRef-GPL-2--with-link-exception AND GPL-3.0-only AND GPL-3.0-or-later AND LicenseRef-IBM AND ISC AND LicenseRef-Inner-Net AND LGPL-2.0-only AND LGPL-2.0-or-later AND LGPL-2.1-only AND LGPL-2.1-or-later AND LicenseRef-LGPL-2.1--with-link-exception AND LGPL-3.0-only AND LGPL-3.0-or-later AND LicenseRef-MIT-like-Lord AND LicenseRef-PCRE AND SunPro AND Unicode-DFS-2016 AND LicenseRef-Univ-Coimbra AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libcap-ng0@0.8.5-4%2Bb1?arch=amd64&distro=debian-13.7&upstream=libcap-ng%400.8.5-4	0.8.5-4+b1	GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND LGPL-2.1-only AND LGPL-2.1-or-later|NOASSERTION
+pkg:deb/debian/libcap2@1%3A2.75-10%2Bdeb13u1%2Bb3?arch=amd64&distro=debian-13.7&upstream=libcap2%401%3A2.75-10%2Bdeb13u1	1:2.75-10+deb13u1+b3	BSD-3-Clause AND GPL-2.0-only AND GPL-2.0-or-later|NOASSERTION
+pkg:deb/debian/libcrypt-dev@1%3A4.4.38-1?arch=amd64&distro=debian-13.7&upstream=libxcrypt	1:4.4.38-1	NOASSERTION|LicenseRef-5a5e7ca0e9f3f9679977e3a3e9ede45ad92885a3297ea78e766979f9866c5a16
+pkg:deb/debian/libcrypt1@1%3A4.4.38-1?arch=amd64&distro=debian-13.7&upstream=libxcrypt	1:4.4.38-1	NOASSERTION|LicenseRef-5a5e7ca0e9f3f9679977e3a3e9ede45ad92885a3297ea78e766979f9866c5a16
+pkg:deb/debian/libdb5.3t64@5.3.28%2Bdfsg2-9?arch=amd64&distro=debian-13.7&upstream=db5.3	5.3.28+dfsg2-9	LicenseRef-Artistic AND BSD-3-Clause AND LicenseRef-BSD-3-clause-fjord AND LicenseRef-GPL AND GPL-3.0-only AND LicenseRef-MIT-old AND MS-PL AND Sleepycat AND LicenseRef-TCL-like AND X11 AND Zlib|NOASSERTION
+pkg:deb/debian/libdebconfclient0@0.280?arch=amd64&distro=debian-13.7&upstream=cdebconf	0.280	BSD-2-Clause AND BSD-2-Clause AND GPL-2.0-only AND GPL-2.0-or-later|NOASSERTION
+pkg:deb/debian/libffi8@3.4.8-2?arch=amd64&distro=debian-13.7&upstream=libffi	3.4.8-2	LicenseRef-Expat AND LicenseRef-GPL AND GPL-2.0-or-later AND GPL-3.0-or-later AND MPL-1.1 AND X11 AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libgcc-s1@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14	14.2.0-19	NOASSERTION|LicenseRef-20390f8a6f3b1e4d7cb45dd8652dabb259bbef688cbad839bcdb0b9ba7252f79
+pkg:deb/debian/libgmp10@2%3A6.3.0%2Bdfsg-3?arch=amd64&distro=debian-13.7&upstream=gmp	2:6.3.0+dfsg-3	GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND GPL-3.0-or-later AND LGPL-3.0-only AND LGPL-3.0-or-later|NOASSERTION
+pkg:deb/debian/libgnutls30t64@3.8.9-3%2Bdeb13u4?arch=amd64&distro=debian-13.7&upstream=gnutls28	3.8.9-3+deb13u4	NOASSERTION|LicenseRef-a07e99815cf1998f1dabbc21fe199460bfa09b85ead0d56b49a32cac3d1791b5
+pkg:deb/debian/libhogweed6t64@3.10.1-1?arch=amd64&distro=debian-13.7&upstream=nettle	3.10.1-1	LicenseRef-Expat AND LicenseRef-GAP AND LicenseRef-GPL AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-or-later AND LicenseRef-LGPL AND LGPL-2.0-only AND LGPL-2.0-or-later AND LGPL-3.0-or-later AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libidn2-0@2.3.8-2?arch=amd64&distro=debian-13.7&upstream=libidn2	2.3.8-2	LicenseRef-Expat AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND GPL-3.0-or-later AND LGPL-3.0-only AND LGPL-3.0-or-later AND LicenseRef-Unicode|NOASSERTION
+pkg:deb/debian/libjq1@1.7.1-6%2Bdeb13u4?arch=amd64&distro=debian-13.7&upstream=jq	1.7.1-6+deb13u4	CC-BY-3.0 AND LicenseRef-Expat AND GPL-2.0-only AND GPL-2.0-or-later AND MIT|NOASSERTION
+pkg:deb/debian/liblastlog2-2@2.41.5-0%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=util-linux	2.41.5-0+deb13u1	BSD-2-Clause AND BSD-3-Clause AND BSD-4-Clause AND LicenseRef-BSLA AND LicenseRef-Expat AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND GPL-3.0-or-later AND ISC AND LicenseRef-LGPL AND LGPL-2.0-only AND LGPL-2.0-or-later AND LGPL-2.1-only AND LGPL-2.1-or-later AND LGPL-3.0-only AND LGPL-3.0-or-later AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/liblz4-1@1.10.0-4?arch=amd64&distro=debian-13.7&upstream=lz4	1.10.0-4	BSD-2-Clause AND GPL-2.0-only AND GPL-2.0-or-later|NOASSERTION
+pkg:deb/debian/liblzma5@5.8.1-1%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=xz-utils	5.8.1-1+deb13u1	0BSD AND FSFUL AND FSFULLR AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND LicenseRef-GPL-3.0-or-later-WITH-Autoconf-exception-macro AND LGPL-2.1-only AND LGPL-2.1-or-later AND LicenseRef-PD AND LicenseRef-PD-debian AND LicenseRef-noderivs AND LicenseRef-permissive-nowarranty|NOASSERTION
+pkg:deb/debian/libmd0@1.1.0-2%2Bb1?arch=amd64&distro=debian-13.7&upstream=libmd%401.1.0-2	1.1.0-2+b1	BSD-2-Clause AND BSD-2-Clause AND BSD-3-Clause AND LicenseRef-BSD-3-clause-Aaron-D-Gifford AND Beerware AND ISC AND LicenseRef-public-domain-md4 AND LicenseRef-public-domain-md5 AND LicenseRef-public-domain-sha1|NOASSERTION
+pkg:deb/debian/libmount1@2.41.5-0%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=util-linux	2.41.5-0+deb13u1	BSD-2-Clause AND BSD-3-Clause AND BSD-4-Clause AND LicenseRef-BSLA AND LicenseRef-Expat AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND GPL-3.0-or-later AND ISC AND LicenseRef-LGPL AND LGPL-2.0-only AND LGPL-2.0-or-later AND LGPL-2.1-only AND LGPL-2.1-or-later AND LGPL-3.0-only AND LGPL-3.0-or-later AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libncursesw6@6.5%2B20250216-2?arch=amd64&distro=debian-13.7&upstream=ncurses	6.5+20250216-2	BSD-3-Clause AND LicenseRef-MIT-X11 AND X11|NOASSERTION
+pkg:deb/debian/libnettle8t64@3.10.1-1?arch=amd64&distro=debian-13.7&upstream=nettle	3.10.1-1	LicenseRef-Expat AND LicenseRef-GAP AND LicenseRef-GPL AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-or-later AND LicenseRef-LGPL AND LGPL-2.0-only AND LGPL-2.0-or-later AND LGPL-3.0-or-later AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libonig5@6.9.9-1%2Bb1?arch=amd64&distro=debian-13.7&upstream=libonig%406.9.9-1	6.9.9-1+b1	BSD-2-Clause AND GPL-2.0-only AND GPL-2.0-or-later|NOASSERTION
+pkg:deb/debian/libp11-kit0@0.25.5-3?arch=amd64&distro=debian-13.7&upstream=p11-kit	0.25.5-3	Apache-2.0 AND BSD-3-Clause AND FSFAP AND FSFULLR AND GPL-2.0-or-later AND GPL-3.0-or-later AND ISC AND LGPL-2.1-only AND LGPL-2.1-or-later AND X11 AND LicenseRef-customFSFUL AND LicenseRef-customFSFULLRWD|NOASSERTION
+pkg:deb/debian/libpam-modules@1.7.0-5?arch=amd64&distro=debian-13.7&upstream=pam	1.7.0-5	BSD-3-Clause AND LicenseRef-BSD-tcp-wrappers AND Beerware AND GPL-1.0-only AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND GPL-3.0-or-later AND LGPL-2.0-only AND LGPL-2.0-or-later AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libpam-modules-bin@1.7.0-5?arch=amd64&distro=debian-13.7&upstream=pam	1.7.0-5	BSD-3-Clause AND LicenseRef-BSD-tcp-wrappers AND Beerware AND GPL-1.0-only AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND GPL-3.0-or-later AND LGPL-2.0-only AND LGPL-2.0-or-later AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libpam-runtime@1.7.0-5?arch=all&distro=debian-13.7&upstream=pam	1.7.0-5	BSD-3-Clause AND LicenseRef-BSD-tcp-wrappers AND Beerware AND GPL-1.0-only AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND GPL-3.0-or-later AND LGPL-2.0-only AND LGPL-2.0-or-later AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libpam0g@1.7.0-5?arch=amd64&distro=debian-13.7&upstream=pam	1.7.0-5	BSD-3-Clause AND LicenseRef-BSD-tcp-wrappers AND Beerware AND GPL-1.0-only AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND GPL-3.0-or-later AND LGPL-2.0-only AND LGPL-2.0-or-later AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libpcre2-8-0@10.46-1~deb13u3?arch=amd64&distro=debian-13.7&upstream=pcre2	10.46-1~deb13u3	BSD-2-Clause AND BSD-3-Clause AND LicenseRef-BSD-3-clause-Cambridge AND X11 AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libproc2-0@2%3A4.0.4-9?arch=amd64&distro=debian-13.7&upstream=procps	2:4.0.4-9	GPL-2.0-only AND GPL-2.0-or-later AND LGPL-2.0-only AND LGPL-2.0-or-later AND LGPL-2.1-only AND LGPL-2.1-or-later|NOASSERTION
+pkg:deb/debian/libpsl5t64@0.21.2-1.1%2Bb1?arch=amd64&distro=debian-13.7&upstream=libpsl%400.21.2-1.1	0.21.2-1.1+b1	LicenseRef-Chromium AND MIT AND LicenseRef-gnulib|NOASSERTION
+pkg:deb/debian/libseccomp2@2.6.0-2?arch=amd64&distro=debian-13.7&upstream=libseccomp	2.6.0-2	LGPL-2.1-only|NOASSERTION
+pkg:deb/debian/libselinux1@3.8.1-1?arch=amd64&distro=debian-13.7&upstream=libselinux	3.8.1-1	GPL-2.0-only AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libsemanage-common@3.8.1-1?arch=all&distro=debian-13.7&upstream=libsemanage	3.8.1-1	GPL-2.0-only AND LGPL-2.1-only AND LGPL-2.1-or-later|NOASSERTION
+pkg:deb/debian/libsemanage2@3.8.1-1?arch=amd64&distro=debian-13.7&upstream=libsemanage	3.8.1-1	GPL-2.0-only AND LGPL-2.1-only AND LGPL-2.1-or-later|NOASSERTION
+pkg:deb/debian/libsepol2@3.8.1-1?arch=amd64&distro=debian-13.7&upstream=libsepol	3.8.1-1	GPL-2.0-only AND GPL-2.0-or-later AND LGPL-2.1-only AND LGPL-2.1-or-later AND Zlib|NOASSERTION
+pkg:deb/debian/libsmartcols1@2.41.5-0%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=util-linux	2.41.5-0+deb13u1	BSD-2-Clause AND BSD-3-Clause AND BSD-4-Clause AND LicenseRef-BSLA AND LicenseRef-Expat AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND GPL-3.0-or-later AND ISC AND LicenseRef-LGPL AND LGPL-2.0-only AND LGPL-2.0-or-later AND LGPL-2.1-only AND LGPL-2.1-or-later AND LGPL-3.0-only AND LGPL-3.0-or-later AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libsqlite3-0@3.46.1-7%2Bdeb13u2?arch=amd64&distro=debian-13.7&upstream=sqlite3	3.46.1-7+deb13u2	GPL-2.0-only AND GPL-2.0-or-later AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libssl3t64@3.5.7-1~deb13u3?arch=amd64&distro=debian-13.7&upstream=openssl	3.5.7-1~deb13u3	Apache-2.0 AND LicenseRef-Artistic AND GPL-1.0-only AND GPL-1.0-or-later|NOASSERTION
+pkg:deb/debian/libstdc%2B%2B6@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14	14.2.0-19	NOASSERTION|LicenseRef-20390f8a6f3b1e4d7cb45dd8652dabb259bbef688cbad839bcdb0b9ba7252f79
+pkg:deb/debian/libsystemd0@257.13-1~deb13u1?arch=amd64&distro=debian-13.7&upstream=systemd	257.13-1~deb13u1	CC0-1.0 AND LicenseRef-Expat AND GPL-2.0-only AND GPL-2.0-or-later AND LGPL-2.1-only AND LGPL-2.1-or-later AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libtasn1-6@4.20.0-2%2Bdeb13u1?arch=amd64&distro=debian-13.7	4.20.0-2+deb13u1	NOASSERTION|LicenseRef-5f9f7b538d221104bdb561ae80fd794ec5f813eb8fd04650293bddcc0f856e7d
+pkg:deb/debian/libtinfo6@6.5%2B20250216-2?arch=amd64&distro=debian-13.7&upstream=ncurses	6.5+20250216-2	BSD-3-Clause AND LicenseRef-MIT-X11 AND X11|NOASSERTION
+pkg:deb/debian/libudev1@257.13-1~deb13u1?arch=amd64&distro=debian-13.7&upstream=systemd	257.13-1~deb13u1	CC0-1.0 AND LicenseRef-Expat AND GPL-2.0-only AND GPL-2.0-or-later AND LGPL-2.1-only AND LGPL-2.1-or-later AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libunistring5@1.3-2?arch=amd64&distro=debian-13.7&upstream=libunistring	1.3-2	BSD-3-Clause AND LicenseRef-FreeSoftware AND GFDL-1.2-or-later AND GFDL-1.3-or-later AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND GPL-3.0-or-later AND ISC AND LGPL-2.0-only AND LGPL-2.0-or-later AND LGPL-2.1-only AND LGPL-2.1-or-later AND LGPL-3.0-only AND LGPL-3.0-or-later AND Unicode-DFS-2016 AND X11 AND BSD-3-Clause AND GFDL-1.2-or-later AND GFDL-1.3-or-later AND ISC AND LicenseRef-public-domain AND Unicode-DFS-2016|NOASSERTION
+pkg:deb/debian/libuuid1@2.41.5-0%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=util-linux	2.41.5-0+deb13u1	BSD-2-Clause AND BSD-3-Clause AND BSD-4-Clause AND LicenseRef-BSLA AND LicenseRef-Expat AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND GPL-3.0-or-later AND ISC AND LicenseRef-LGPL AND LGPL-2.0-only AND LGPL-2.0-or-later AND LGPL-2.1-only AND LGPL-2.1-or-later AND LGPL-3.0-only AND LGPL-3.0-or-later AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libxxhash0@0.8.3-2?arch=amd64&distro=debian-13.7&upstream=xxhash	0.8.3-2	BSD-2-Clause AND GPL-2.0-only AND GPL-2.0-or-later|NOASSERTION
+pkg:deb/debian/libzstd1@1.5.7%2Bdfsg-1?arch=amd64&distro=debian-13.7&upstream=libzstd	1.5.7+dfsg-1	BSD-3-Clause AND LicenseRef-Expat AND GPL-2.0-only AND Zlib|NOASSERTION
+pkg:deb/debian/linux-libc-dev@6.12.113-1?arch=all&distro=debian-13.7&upstream=linux	6.12.113-1	BSD-2-Clause AND GPL-2.0-only AND LicenseRef-GPL-2--or-X11 AND LGPL-2.1-only AND LicenseRef-Unicode-data AND LicenseRef-Xen-interface|NOASSERTION
+pkg:maven/org.apache.logging.log4j/log4j-api@2.26.1	2.26.1	LicenseRef--Apache-2.0--link--https---www.apache.org-licenses-LICENSE-2.0.txt-|NOASSERTION
+pkg:maven/org.apache.logging.log4j/log4j-core@2.26.1	2.26.1	LicenseRef--Apache-2.0--link--https---www.apache.org-licenses-LICENSE-2.0.txt-|NOASSERTION
+pkg:maven/org.apache.logging.log4j/log4j-layout-template-json@2.26.1	2.26.1	LicenseRef--Apache-2.0--link--https---www.apache.org-licenses-LICENSE-2.0.txt-|NOASSERTION
+pkg:deb/debian/login@1%3A4.16.0-2%2Breally2.41.5-0%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=util-linux%402.41.5-0%2Bdeb13u1	1:4.16.0-2+really2.41.5-0+deb13u1	BSD-2-Clause AND BSD-3-Clause AND BSD-4-Clause AND LicenseRef-BSLA AND LicenseRef-Expat AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND GPL-3.0-or-later AND ISC AND LicenseRef-LGPL AND LGPL-2.0-only AND LGPL-2.0-or-later AND LGPL-2.1-only AND LGPL-2.1-or-later AND LGPL-3.0-only AND LGPL-3.0-or-later AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/login.defs@1%3A4.17.4-2?arch=all&distro=debian-13.7&upstream=shadow	1:4.17.4-2	BSD-3-Clause AND GPL-1.0-only AND GPL-2.0-only AND GPL-2.0-or-later|NOASSERTION
+pkg:maven/org.apache.lucene/lucene-analysis-common@9.11.1	9.11.1	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND ICU AND MIT
+pkg:maven/org.apache.lucene/lucene-backward-codecs@9.11.1	9.11.1	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND ICU AND MIT
+pkg:maven/org.apache.lucene/lucene-core@9.11.1	9.11.1	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND ICU AND MIT
+pkg:maven/org.apache.lucene/lucene-queryparser@9.11.1	9.11.1	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND ICU AND MIT
+pkg:maven/com.softwaremill.magnolia1_2/magnolia_2.13@1.1.8	1.1.8	NOASSERTION|NOASSERTION
+pkg:deb/debian/mawk@1.3.4.20250131-1?arch=amd64&distro=debian-13.7	1.3.4.20250131-1	CC-BY-3.0 AND GPL-2.0-only AND GPL-2.0-only AND X11|NOASSERTION
+pkg:deb/debian/mount@2.41.5-0%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=util-linux	2.41.5-0+deb13u1	BSD-2-Clause AND BSD-3-Clause AND BSD-4-Clause AND LicenseRef-BSLA AND LicenseRef-Expat AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND GPL-3.0-or-later AND ISC AND LicenseRef-LGPL AND LGPL-2.0-only AND LGPL-2.0-or-later AND LGPL-2.1-only AND LGPL-2.1-or-later AND LGPL-3.0-only AND LGPL-3.0-or-later AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/ncurses-base@6.5%2B20250216-2?arch=all&distro=debian-13.7&upstream=ncurses	6.5+20250216-2	BSD-3-Clause AND LicenseRef-MIT-X11 AND X11|NOASSERTION
+pkg:deb/debian/ncurses-bin@6.5%2B20250216-2?arch=amd64&distro=debian-13.7&upstream=ncurses	6.5+20250216-2	BSD-3-Clause AND LicenseRef-MIT-X11 AND X11|NOASSERTION
+pkg:maven/org.neo4j/neo4j@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND EPL-2.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT AND MIT-0 AND MPL-2.0 AND Unlicense
+pkg:maven/org.neo4j/neo4j-ast@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0
+pkg:maven/org.neo4j/neo4j-bolt@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND EPL-2.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT AND MPL-2.0
+pkg:maven/org.neo4j.bolt/neo4j-bolt-connection@12.0.0	12.0.0	NOASSERTION|NOASSERTION
+pkg:maven/org.neo4j.bolt/neo4j-bolt-connection-netty@12.0.0	12.0.0	NOASSERTION|NOASSERTION
+pkg:maven/org.neo4j.bolt/neo4j-bolt-connection-pooled@12.0.0	12.0.0	NOASSERTION|NOASSERTION
+pkg:maven/org.neo4j.bolt/neo4j-bolt-connection-routed@12.0.0	12.0.0	NOASSERTION|NOASSERTION
+pkg:maven/org.neo4j/neo4j-bootcheck@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND EPL-2.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT AND MIT-0 AND MPL-2.0 AND Unlicense
+pkg:maven/org.neo4j/neo4j-capabilities@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-cloud@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-codegen@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-collections@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-command-line@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT
+pkg:maven/org.neo4j/neo4j-common@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-concurrent@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-configuration@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-consistency-check@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT
+pkg:maven/org.neo4j/neo4j-csv@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-cypher@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT AND MPL-2.0
+pkg:maven/org.neo4j/neo4j-cypher-ast-factory@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0
+pkg:maven/org.neo4j/neo4j-cypher-cache@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-cypher-config@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-cypher-dsl@2024.2.0	2024.2.0	NOASSERTION|NOASSERTION
+pkg:maven/org.neo4j/neo4j-cypher-expression-evaluator@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT
+pkg:maven/org.neo4j/neo4j-cypher-interpreted-runtime@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT
+pkg:maven/org.neo4j/neo4j-cypher-ir@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-cypher-javacc-parser@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0
+pkg:maven/org.neo4j/neo4j-cypher-logical-plans@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-cypher-macros@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0
+pkg:maven/org.neo4j/neo4j-cypher-physical-planning@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT
+pkg:maven/org.neo4j/neo4j-cypher-planner@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT
+pkg:maven/org.neo4j/neo4j-cypher-planner-spi@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-cypher-rendering@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT
+pkg:maven/org.neo4j/neo4j-cypher-runtime-util@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT
+pkg:maven/org.neo4j/neo4j-cypher-slotted-runtime@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT
+pkg:maven/org.neo4j/neo4j-data-collector@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT AND MPL-2.0
+pkg:maven/org.neo4j/neo4j-dbms@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT
+pkg:maven/org.neo4j/neo4j-diagnostics@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-exceptions@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-expressions@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0
+pkg:maven/org.neo4j/neo4j-fabric@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND EPL-2.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT AND MIT-0 AND MPL-2.0
+pkg:maven/com.neo4j/neo4j-fleet-management-plugin@1.2.0	1.2.0	NOASSERTION|NOASSERTION
+pkg:maven/org.neo4j/neo4j-front-end@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0
+pkg:maven/org.neo4j/neo4j-fulltext-index@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-genai-plugin@5.26.32	5.26.32	NOASSERTION|GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-gql-status@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-graph-algo@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT
+pkg:maven/org.neo4j/neo4j-graphdb-api@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-id-generator@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-import-api@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-import-tool@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT AND MPL-2.0
+pkg:maven/org.neo4j/neo4j-import-util@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT
+pkg:maven/org.neo4j/neo4j-index@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-io@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j.driver/neo4j-java-driver@5.28.15	5.28.15	Apache-2.0|NOASSERTION
+pkg:maven/org.neo4j/neo4j-kernel@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT
+pkg:maven/org.neo4j/neo4j-kernel-api@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-layout@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-lock@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-logging@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-lucene-index@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-monitoring@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-native@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-notifications@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-procedure@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND EPL-2.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT AND MIT-0 AND MPL-2.0
+pkg:maven/org.neo4j/neo4j-procedure-api@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-push-to-cloud@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND GPL-2.0-only AND MIT
+pkg:maven/org.neo4j/neo4j-query-router@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND EPL-2.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT AND MIT-0 AND MPL-2.0
+pkg:maven/org.neo4j/neo4j-record-storage-engine@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT
+pkg:maven/org.neo4j/neo4j-resource@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-rewriting@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0
+pkg:maven/org.neo4j/neo4j-schema@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-security@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT
+pkg:maven/org.neo4j.app/neo4j-server@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND EPL-2.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT AND MIT-0 AND MPL-2.0 AND Unlicense
+pkg:maven/org.neo4j/neo4j-slf4j-provider@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only AND MIT
+pkg:maven/org.neo4j/neo4j-spatial-index@5.26.32	5.26.32	NOASSERTION|GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-ssl@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-storage-engine-util@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-token-api@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-udc@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT
+pkg:maven/org.neo4j/neo4j-unsafe@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-util@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0
+pkg:maven/org.neo4j/neo4j-values@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/org.neo4j/neo4j-wal@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-3-Clause AND EPL-1.0 AND GPL-3.0-only
+pkg:maven/io.netty/netty-buffer@4.1.138.Final	4.1.138.Final	Apache-2.0|NOASSERTION
+pkg:maven/io.netty/netty-codec@4.1.138.Final	4.1.138.Final	Apache-2.0|NOASSERTION
+pkg:maven/io.netty/netty-codec-http@4.1.138.Final	4.1.138.Final	Apache-2.0|NOASSERTION
+pkg:maven/io.netty/netty-common@4.1.138.Final	4.1.138.Final	Apache-2.0|NOASSERTION
+pkg:maven/io.netty/netty-handler@4.1.138.Final	4.1.138.Final	Apache-2.0|NOASSERTION
+pkg:maven/io.netty/netty-resolver@4.1.138.Final	4.1.138.Final	Apache-2.0|NOASSERTION
+pkg:maven/io.netty/netty-tcnative@2.0.84.Final	2.0.84.Final	Apache-2.0|NOASSERTION
+pkg:maven/io.netty/netty-tcnative@2.0.84.Final	2.0.84.Final	Apache-2.0|NOASSERTION
+pkg:maven/io.netty/netty-tcnative@2.0.84.Final	2.0.84.Final	Apache-2.0|NOASSERTION
+pkg:maven/io.netty/netty-tcnative@2.0.84.Final	2.0.84.Final	Apache-2.0|NOASSERTION
+pkg:maven/io.netty/netty-tcnative-classes@2.0.84.Final	2.0.84.Final	Apache-2.0|NOASSERTION
+pkg:maven/io.netty/netty-transport@4.1.138.Final	4.1.138.Final	Apache-2.0|NOASSERTION
+pkg:maven/io.netty/netty-transport-classes-epoll@4.1.138.Final	4.1.138.Final	Apache-2.0|NOASSERTION
+pkg:maven/io.netty/netty-transport-classes-kqueue@4.1.138.Final	4.1.138.Final	Apache-2.0|NOASSERTION
+pkg:maven/io.netty/netty-transport-native-epoll@4.1.138.Final	4.1.138.Final	Apache-2.0|NOASSERTION
+pkg:maven/io.netty/netty-transport-native-epoll@4.1.138.Final	4.1.138.Final	Apache-2.0|NOASSERTION
+pkg:maven/io.netty/netty-transport-native-kqueue@4.1.138.Final	4.1.138.Final	Apache-2.0|NOASSERTION
+pkg:maven/io.netty/netty-transport-native-kqueue@4.1.138.Final	4.1.138.Final	Apache-2.0|NOASSERTION
+pkg:maven/io.netty/netty-transport-native-unix-common@4.1.138.Final	4.1.138.Final	Apache-2.0|NOASSERTION
+pkg:maven/com.opencsv/opencsv@5.7.1	5.7.1	LicenseRef-Apache-2|NOASSERTION
+pkg:generic/oracle/openjdk@21.0.12.1%2B1-LTS?repository_url=https%3A%2F%2Fgithub.com%2Fadoptium%2Fjdk21u.git	21.0.12.1+1-LTS	NOASSERTION|NOASSERTION
+pkg:deb/debian/openssl@3.5.7-1~deb13u3?arch=amd64&distro=debian-13.7	3.5.7-1~deb13u3	Apache-2.0 AND LicenseRef-Artistic AND GPL-1.0-only AND GPL-1.0-or-later|NOASSERTION
+pkg:deb/debian/openssl-provider-legacy@3.5.7-1~deb13u3?arch=amd64&distro=debian-13.7&upstream=openssl	3.5.7-1~deb13u3	Apache-2.0 AND LicenseRef-Artistic AND GPL-1.0-only AND GPL-1.0-or-later|NOASSERTION
+pkg:maven/org.apache.parquet/parquet-column@1.18.1	1.18.1	NOASSERTION|Apache-2.0
+pkg:maven/org.apache.parquet/parquet-common@1.18.1	1.18.1	NOASSERTION|Apache-2.0
+pkg:maven/org.apache.parquet/parquet-encoding@1.18.1	1.18.1	NOASSERTION|Apache-2.0
+pkg:maven/blue.strategic.parquet/parquet-floor@1.62	1.62	LicenseRef-The-Apache-Software-License--Version-2.0|NOASSERTION
+pkg:maven/org.apache.parquet/parquet-format-structures@1.18.1	1.18.1	NOASSERTION|Apache-2.0
+pkg:maven/org.apache.parquet/parquet-hadoop@1.18.1	1.18.1	NOASSERTION|Apache-2.0
+pkg:maven/org.apache.parquet/parquet-jackson@1.18.1	1.18.1	NOASSERTION|Apache-2.0
+pkg:deb/debian/passwd@1%3A4.17.4-2?arch=amd64&distro=debian-13.7&upstream=shadow	1:4.17.4-2	BSD-3-Clause AND GPL-1.0-only AND GPL-2.0-only AND GPL-2.0-or-later|NOASSERTION
+pkg:deb/debian/perl-base@5.40.1-6%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=perl	5.40.1-6+deb13u1	LicenseRef-Artistic AND Artistic-2.0 AND Artistic-dist AND BSD-3-Clause AND LicenseRef-BSD-3-clause-GENERIC AND LicenseRef-BSD-3-clause-with-weird-numbering AND LicenseRef-BSD-4-clause-POWERDOG AND LicenseRef-BZIP AND LicenseRef-DONT-CHANGE-THE-GPL AND LicenseRef-Expat AND FSFAP AND GPL-1.0-only AND GPL-1.0-or-later AND GPL-2.0-only AND GPL-2.0-or-later AND LicenseRef-GPL-3--WITH-BISON-EXCEPTION AND LGPL-2.1-only AND LicenseRef-REGCOMP AND LicenseRef-REGCOMP- AND LicenseRef-SDBM-PUBLIC-DOMAIN AND LicenseRef-TEXT-TABS AND LicenseRef-Unicode AND Zlib|NOASSERTION
+pkg:maven/picocli/picocli@4.7.6	4.7.6	NOASSERTION|NOASSERTION
+pkg:deb/debian/procps@2%3A4.0.4-9?arch=amd64&distro=debian-13.7	2:4.0.4-9	GPL-2.0-only AND GPL-2.0-or-later AND LGPL-2.0-only AND LGPL-2.0-or-later AND LGPL-2.1-only AND LGPL-2.1-or-later|NOASSERTION
+pkg:maven/org.reactivestreams/reactive-streams@1.0.4	1.0.4	NOASSERTION|NOASSERTION
+pkg:maven/io.projectreactor.reactor-core/reactor-core@3.7.12	3.7.12	NOASSERTION|Apache-2.0
+pkg:deb/debian/rpcsvc-proto@1.4.3-1?arch=amd64&distro=debian-13.7	1.4.3-1	BSD-3-Clause AND GPL-2.0-only AND LicenseRef-GPL-2--autoconf-exception AND GPL-3.0-only AND LicenseRef-GPL-3--autoconf-exception AND MIT AND LicenseRef-permissive-autoconf-m4 AND LicenseRef-permissive-autoconf-m4-no-warranty AND LicenseRef-permissive-configure AND LicenseRef-permissive-fsf AND LicenseRef-permissive-makefile-in|NOASSERTION
+pkg:maven/org.scala-lang.modules/scala-collection-contrib_2.13@0.3.0	0.3.0	NOASSERTION|NOASSERTION
+pkg:maven/org.scala-lang.scala-library/scala-library@2.13.11	2.13.11	NOASSERTION|Apache-2.0
+pkg:maven/org.scala-lang.scala-reflect/scala-reflect@2.13.11	2.13.11	NOASSERTION|Apache-2.0
+pkg:deb/debian/sed@4.9-2%2Bdeb13u1?arch=amd64&distro=debian-13.7	4.9-2+deb13u1	BSD-4-Clause-UC AND BSL-1.0 AND GFDL-1.3-only AND LicenseRef-GFDL-NIV-1.3- AND GPL-3.0-only AND GPL-3.0-or-later AND ISC AND X11 AND LicenseRef-pcre|NOASSERTION
+pkg:maven/org.neo4j/server-api@5.26.32	5.26.32	NOASSERTION|Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND CDDL-1.1 AND EPL-1.0 AND EPL-2.0 AND GPL-2.0-only AND GPL-3.0-only AND MIT
+pkg:maven/org.apache.shiro/shiro-cache@3.0.0	3.0.0	Apache-2.0|NOASSERTION
+pkg:maven/org.apache.shiro/shiro-config-core@3.0.0	3.0.0	Apache-2.0|NOASSERTION
+pkg:maven/org.apache.shiro/shiro-core@3.0.0	3.0.0	Apache-2.0|NOASSERTION
+pkg:maven/org.apache.shiro/shiro-crypto-cipher@3.0.0	3.0.0	Apache-2.0|NOASSERTION
+pkg:maven/org.apache.shiro/shiro-crypto-core@3.0.0	3.0.0	Apache-2.0|NOASSERTION
+pkg:maven/org.apache.shiro/shiro-crypto-hash@3.0.0	3.0.0	Apache-2.0|NOASSERTION
+pkg:maven/org.apache.shiro/shiro-event@3.0.0	3.0.0	Apache-2.0|NOASSERTION
+pkg:maven/org.apache.shiro/shiro-lang@3.0.0	3.0.0	Apache-2.0|NOASSERTION
+pkg:maven/org.slf4j/slf4j-api@2.0.11	2.0.11	NOASSERTION|NOASSERTION
+pkg:maven/org.slf4j/slf4j-api@2.0.9	2.0.9	LicenseRef-http---www.opensource.org-licenses-mit-license.php|NOASSERTION
+pkg:maven/org.xerial.snappy/snappy-java@1.1.10.8	1.1.10.8	Apache-2.0|NOASSERTION
+pkg:deb/debian/sqv@1.3.0-3%2Bb2?arch=amd64&distro=debian-13.7&upstream=rust-sequoia-sqv%401.3.0-3	1.3.0-3+b2	LGPL-2.0-only AND LGPL-2.0-or-later|NOASSERTION
+pkg:maven/org.jvnet.staxex/stax-ex@1.8.1	1.8.1	BSD-3-Clause|NOASSERTION
+pkg:deb/debian/sysvinit-utils@3.14-4?arch=amd64&distro=debian-13.7&upstream=sysvinit	3.14-4	GPL-2.0-only AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND GPL-3.0-only AND LGPL-2.1-only AND LGPL-2.1-or-later|NOASSERTION
+pkg:deb/debian/tar@1.35%2Bdfsg-3.1?arch=amd64&distro=debian-13.7	1.35+dfsg-3.1	GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND GPL-3.0-or-later AND LGPL-2.1-only AND LGPL-2.1-or-later AND LGPL-3.0-only AND LGPL-3.0-or-later|NOASSERTION
+pkg:deb/debian/tini@0.19.0-3%2Bb8?arch=amd64&distro=debian-13.7&upstream=tini%400.19.0-3	0.19.0-3+b8	LicenseRef-Expat|NOASSERTION
+pkg:maven/org.glassfish.jaxb/txw2@2.3.2	2.3.2	NOASSERTION|BSD-3-Clause
+pkg:deb/debian/tzdata@2026c-0%2Bdeb13u1?arch=all&distro=debian-13.7	2026c-0+deb13u1	LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/util-linux@2.41.5-0%2Bdeb13u1?arch=amd64&distro=debian-13.7	2.41.5-0+deb13u1	BSD-2-Clause AND BSD-3-Clause AND BSD-4-Clause AND LicenseRef-BSLA AND LicenseRef-Expat AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND GPL-3.0-or-later AND ISC AND LicenseRef-LGPL AND LGPL-2.0-only AND LGPL-2.0-or-later AND LGPL-2.1-only AND LGPL-2.1-or-later AND LGPL-3.0-only AND LGPL-3.0-or-later AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/wget@1.25.0-2?arch=amd64&distro=debian-13.7	1.25.0-2	NOASSERTION|LicenseRef-289d796794edf8c547691e415ddd7ba3396e6e6d8de03397bd69ce9515914bf8
+pkg:maven/net.openhft/zero-allocation-hashing@0.27ea1	0.27ea1	NOASSERTION|NOASSERTION
+pkg:deb/debian/zlib1g@1%3A1.3.dfsg%2Breally1.3.1-1%2Bb1?arch=amd64&distro=debian-13.7&upstream=zlib%401%3A1.3.dfsg%2Breally1.3.1-1	1:1.3.dfsg+really1.3.1-1+b1	Zlib|NOASSERTION
+pkg:maven/com.github.luben/zstd-jni@1.5.6-6	1.5.6-6	LicenseRef-https---opensource.org-licenses-BSD-2-Clause-description-BSD-2-Clause-License|NOASSERTION
+pkg:maven/org.neo4j.licensing-proxy/zstd-proxy@5.26.32	5.26.32	NOASSERTION|BSD-2-Clause
+pkg:oci/%2Fin%2Fneo4j.tar@sha256%3A4c54f919a9958b4d4645d7cd888eed7ad74c337a398120778c4d8dc1d95f06a3?arch=amd64	sha256:4c54f919a9958b4d4645d7cd888eed7ad74c337a398120778c4d8dc1d95f06a3	NOASSERTION|NOASSERTION

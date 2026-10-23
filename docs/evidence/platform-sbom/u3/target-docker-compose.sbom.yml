@@ -1,0 +1,52 @@
+# The SBOM generator (platform-sbom PSC-20; ADR-KE-016 point 1, design-notes
+# N1). Standalone and never bundled. bundle.sh reads the pinned reference from
+# this file and refuses the bundle when the image is absent (it never pulls);
+# until U8 scripts/offline_check.sh pulls it through this file, and from U8
+# scripts/bundle_fetch.sh does. No profiles: only `compose run` starts it, as
+#   KE_SBOM_IN=<out>/images KE_SBOM_OUT=<work dir> KE_SBOM_USER=<uid:gid>
+#   docker compose -p <project>-sbom --env-file .env.example
+#     -f docker-compose.sbom.yml run --rm --pull never sbom
+#     docker-archive:/in/<name>.tar --scope all-layers
+#     -o spdx-json=/out/raw.spdx.json
+# so its containers carry the project label <project>-sbom; bundle.sh's
+# `down` uses the same -p, --env-file and KE_SBOM_* values. No top-level
+# name: the file fixes no project of its own.
+#
+# sbom has no network, a read-only root with /tmp as tmpfs, no capabilities
+# and no socket. It reads the saved image tars read-only at /in; its one
+# writable mount is the per-image work dir at /out (outside --out), which
+# also takes syft's unpack (TMPDIR). Every syft setting that reaches the
+# network is off (design-notes "N1 amendment, U2", from `syft config`).
+# The image is the multi-arch index digest of the release.
+services:
+  sbom:
+    image: anchore/syft:v1.54.1@sha256:3eb5379ba7b409c3f4069b686110527af0c47df993fa5c10d13e7cf34f49b1aa
+    # The caller's uid:gid (security L-2): syft reads the 0600 tars bundle.sh
+    # saved and writes the work dir as their owner, with no capability.
+    user: ${KE_SBOM_USER:?set by scripts/bundle.sh}
+    network_mode: none
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - type: bind
+        source: ${KE_SBOM_IN:?set by scripts/bundle.sh}
+        target: /in
+        read_only: true
+      - type: bind
+        source: ${KE_SBOM_OUT:?set by scripts/bundle.sh}
+        target: /out
+    environment:
+      TMPDIR: /out/tmp
+      SYFT_CHECK_FOR_APP_UPDATE: "false"
+      SYFT_JAVA_USE_NETWORK: "false"
+      SYFT_JAVA_RESOLVE_TRANSITIVE_DEPENDENCIES: "false"
+      SYFT_GOLANG_SEARCH_REMOTE_LICENSES: "false"
+      SYFT_GOLANG_USE_PACKAGES_LIB: "false"
+      SYFT_JAVASCRIPT_SEARCH_REMOTE_LICENSES: "false"
+      SYFT_PYTHON_SEARCH_REMOTE_LICENSES: "false"
+      SYFT_CPP_VCPKG_ALLOW_GIT_CLONE: "false"

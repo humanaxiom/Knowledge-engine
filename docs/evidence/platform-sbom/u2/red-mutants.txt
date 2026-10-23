@@ -113,7 +113,7 @@ compose       | HTTPS_PROXY passed through from the host                   | mus
 compose       | TMPDIR=${TMPDIR} (host interpolation)                      | must fail | ok | sbom: `TMPDIR` interpolates a host value
 compose       | SYFT_JAVA_MAVEN_URL=https://repo (extra, not false)        | must fail | ok | sbom: SYFT_JAVA_MAVEN_URL='https://repo.example'; a SYFT_* key beyond N1's may only switch a feature off (fals
 compose       | SYFT_GOLANG_SEARCH_LOCAL_MOD_CACHE_LICENSES=false (extra,  | must pass | ok | no problem
-compose       | HOME=/out/tmp/home (N1 fallback)                           | must pass | ok | no problem
+compose       | HOME=/out/tmp/home (N1 fallback): superseded by security I-2 at U3 (HOME/XDG only at or under /tmp; now must fail), see u3/red-mutants.txt
 compose       | XDG_CACHE_HOME=/root/.cache (fallback not under /out/tmp)  | must fail | ok | sbom: XDG_CACHE_HOME='/root/.cache' is not under /out/tmp (N1 fallback)
 compose       | an unrelated key LANG=C                                    | must fail | ok | sbom: sets LANG, which N1's Environment row does not name
 compose       | ports 8080:80                                              | must fail | ok | sbom: publishes or exposes a port

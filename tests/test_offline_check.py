@@ -1005,6 +1005,12 @@ fi'''
             self.assertTrue(env.get(var, "").endswith("/nonexistent"),
                             f"{var} is the dummy /nonexistent for the pull (the file's ${{{var}:?}}): "
                             f"{env.get(var)!r}")
+        # platform-sbom U3 (security L-2): the `user:` of the sbom service is
+        # ${KE_SBOM_USER:?}, and compose refuses to load the file for the pull
+        # while any ${VAR:?} it names is unset or empty (tester, U3 RED).
+        for var in sorted((set(cs.required_vars()) | {"KE_SBOM_USER"}) - {"KE_SBOM_IN", "KE_SBOM_OUT"}):
+            self.assertTrue(env.get(var), f"{var} is set (non-empty) for the pull, or compose refuses "
+                                          f"docker-compose.sbom.yml (its ${{{var}:?}}): {env.get(var)!r}")
         version = [i for i, r in enumerate(records) if r["argv"][:2] == ["compose", "version"]]
         self.assertTrue(version and version[0] < records.index(pulls[0]),
                         "the pull comes after the Compose version check")

@@ -9,8 +9,9 @@
 #
 # Host half (no KE_OFFLINE_CLIENT): runs its own project ke-offline-<random>
 #   from the standalone docker-compose.offline.yml, and nothing else:
-#   disk floor (7 GiB) -> bundle.sh -> `dind` up -> net_isolated.sh on the
-#   offline network -> `run offline-client`. The EXIT trap always runs
+#   disk floor (7 GiB) -> SBOM generator pull -> bundle.sh -> `dind` up ->
+#   net_isolated.sh on the offline network -> `run offline-client`. The EXIT
+#   trap always runs
 #   `teardown.sh --volumes --profile offline` and removes the bundle. `df` is
 #   logged around each stage.
 #
@@ -228,7 +229,7 @@ fi
 # U8 replaces these lines with scripts/bundle_fetch.sh. The ${VAR:?} mounts get
 # dummy values (pull reads no bind source); -f overrides COMPOSE_FILE.
 echo "offline: pulling the SBOM generator (docker-compose.sbom.yml, service sbom)"
-KE_SBOM_IN=/nonexistent KE_SBOM_OUT=/nonexistent \
+KE_SBOM_IN=/nonexistent KE_SBOM_OUT=/nonexistent KE_SBOM_USER="$(id -u):$(id -g)" \
   docker compose --env-file .env.example -f docker-compose.sbom.yml pull sbom \
   || die "pulling the SBOM generator failed (docker-compose.sbom.yml, service sbom); no retry"
 

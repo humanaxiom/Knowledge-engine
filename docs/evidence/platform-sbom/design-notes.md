@@ -260,13 +260,29 @@ ADR-KE-013 am. 1 D1). Never in the stack's `COMPOSE_FILE`, never copied by
 | Mounts | `${KE_SBOM_IN:?}` at `/in` **read-only** (the bundle's `images/`); `${KE_SBOM_OUT:?}` at `/out` read-write, a per-image work dir **outside** `--out`; nothing else, no checkout |
 | Root FS | `read_only: true`; tmpfs `/tmp` (small: syft's unpack goes to `/out/tmp`, see below) |
 | Hardening | `cap_drop: [ALL]`, `no-new-privileges:true`; no socket, no `DOCKER_HOST`, no `ports`, not privileged |
+| User (U3) | `user: ${KE_SBOM_USER:?set by scripts/bundle.sh}`, the caller's numeric `id -u`:`id -g` (security L-2): syft reads the `0600` tars and writes the work dir as their owner, with no capability |
 | Environment (literals) | `TMPDIR=/out/tmp` and, all `false`: `SYFT_CHECK_FOR_APP_UPDATE`, `SYFT_JAVA_USE_NETWORK`, `SYFT_JAVA_RESOLVE_TRANSITIVE_DEPENDENCIES`, `SYFT_GOLANG_SEARCH_REMOTE_LICENSES`, `SYFT_GOLANG_USE_PACKAGES_LIB`, `SYFT_JAVASCRIPT_SEARCH_REMOTE_LICENSES`, `SYFT_PYTHON_SEARCH_REMOTE_LICENSES`, `SYFT_CPP_VCPKG_ALLOW_GIT_CLONE` (U2, see *Env keys (U2)*) |
 
-- `bundle.sh` runs it as `docker compose -p <project>-sbom -f docker-compose.sbom.yml run --rm --pull never sbom ...`,
-  so the container's compose project label is `<project>-sbom` (PSC-20; as
-  the notices run's `<project>-notices`). Its EXIT trap runs
-  `docker compose -p <project>-sbom -f docker-compose.sbom.yml down` and
-  removes the work dir.
+- *Run and `down` (U3; review N1; argv pinned by the tester,
+  `u3/target-bundle.sh`).* `bundle.sh`, from the repo root, once per saved
+  tar:
+  ```
+  KE_SBOM_IN="$out/images" KE_SBOM_OUT="$work" KE_SBOM_USER="$sbom_user" \
+    docker compose -p "$sbom_project" --env-file .env.example -f docker-compose.sbom.yml \
+    run --rm --pull never sbom "docker-archive:/in/$name.tar" --scope all-layers -o spdx-json=/out/raw.spdx.json
+  ```
+  `sbom_project` is `<project>-sbom`, so the container's compose project
+  label is `<project>-sbom` (PSC-20; as the notices run's
+  `<project>-notices`). `KE_SBOM_IN` is `<out>/images`; `$work` is
+  `<sbom_work>/<name>`, mode 0700 with `tmp/` (the `TMPDIR`), under a
+  `mktemp -d` outside `--out`; `sbom_user` is `$(id -u):$(id -g)`, refused
+  unless it matches `^[0-9]+:[0-9]+$`. The EXIT trap runs, from the repo
+  root and with the same three keys (`KE_SBOM_OUT=<sbom_work>`),
+  `docker compose -p "$sbom_project" --env-file .env.example -f docker-compose.sbom.yml down`,
+  warns on stderr if it fails, and removes `<sbom_work>`. Every call to
+  this file therefore sets all three `KE_SBOM_*` keys and passes
+  `--env-file .env.example`: the presence read below and `offline_check.sh`'s
+  pull set `KE_SBOM_USER="$(id -u):$(id -g)"` next to the two dummies.
 - *Why `/out/tmp`:* syft unpacks every layer of the tar into its temp dir.
   phoenix and neo4j unpack to an estimated 1-2 GB, which on a `/tmp` tmpfs
   is memory on a runner that also has to run the stack later. On disk the
@@ -274,15 +290,19 @@ ADR-KE-013 am. 1 D1). Never in the stack's `COMPOSE_FILE`, never copied by
   7 GiB floor already covers (R6). *Confirm at GREEN:* syft (Go
   `os.TempDir`) honours `TMPDIR`, and with `read_only` it writes nowhere but
   `/out` and `/tmp` (fallback as D1 of ADR-KE-013 am. 1: a literal `HOME` /
-  `XDG_CACHE_HOME` under `/out/tmp`).
+  `XDG_CACHE_HOME` at or under `/tmp`, the tmpfs, never under `/out`, so
+  the work dir the checker reads holds only the unpack and `raw.spdx.json`;
+  security I-2, amended U3). *Result (U3 GREEN):* syft tried
+  `/.cache/syft`; U4 sets `XDG_CACHE_HOME: /tmp/cache` (N8a item 6).
 - *Why `--scope all-layers`:* the tar carries every layer, so a package
   deleted in an upper layer is still redistributed object code. The
   squashed view would hide it. Duplicates across layers collapse to one
   index component (N5) by source key.
 - *Presence check (PSC-20):* before any write, `bundle.sh` reads the
   reference with
-  `KE_SBOM_IN=/nonexistent KE_SBOM_OUT=/nonexistent docker compose --env-file .env.example -f docker-compose.sbom.yml config --images sbom`
-  (single line, `ref_re` plus a mandatory `@sha256:`), and runs
+  `KE_SBOM_IN=/nonexistent KE_SBOM_OUT=/nonexistent KE_SBOM_USER="$sbom_user" docker compose --env-file .env.example -f docker-compose.sbom.yml config --images sbom`
+  (single line, `ref_re` plus a mandatory `@sha256:`; U3: `ref_re` refuses
+  a leading `-`, security I-1), and runs
   `docker image inspect <ref>`. Absent, from U2 until U8:
   `bundle: the SBOM generator image is not present (<ref>); pull it first with: docker pull <ref>; this script never pulls`,
   exit 1, `--out` untouched (`<ref>` is the value read, never a literal in
@@ -350,8 +370,8 @@ note's "nothing fetched" header does not apply to this subsection.
   registry keys and `SYFT_FROM` (the `docker-archive:` scheme never
   contacts a registry). `network_mode: none` is the control. The keys stop
   syft from trying, so a run does not wait on timeouts and the SBOM is the
-  same on online and offline hosts. The `SYFT_*` keys must be exactly
-  these eight; extra keys are still allowed if they are `false`.
+  same on online and offline hosts. The `SYFT_*` keys must include these
+  eight; extra `SYFT_*` keys are allowed only if `false` (review N4, U3).
 - *CLAUDE.md:* no change. The `full` host half already "builds and pulls
   images"; this is one more pull, from the same registry host.
 
@@ -382,22 +402,39 @@ agent step: no spans (as `engine.notices`).
 
 Where it runs:
 - at bundle time, inside the `ke-app` image being bundled, as the notices
-  run: `docker run --rm --network none --read-only --cap-drop ALL
-  --security-opt no-new-privileges --pull never --label
-  com.docker.compose.project=<project>-sbomcheck --entrypoint python -v
-  <checkout>/scripts/sbom_check.py:/opt/ke/sbom_check.py:ro ...` (the
-  `ke-app` venv is not used; `-I` keeps it out). It runs there because the
-  runtime-package check must list the real installed distributions;
+  run (U3, pinned in `u3/target-bundle.sh`):
+  ```
+  docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --pull never \
+    --user "$sbom_user" --label "com.docker.compose.project=${project}-sbomcheck" \
+    -v "$repo_root/scripts/sbom_check.py:/opt/ke/sbom_check.py:ro" -v "$work:/work:ro" -v "$out/images:/images:ro" \
+    --entrypoint python "$app_ref" -I /opt/ke/sbom_check.py finish \
+    --name "$name" --ref "$ref" --arch "$arch" --git-sha "$git_sha" \
+    --raw /work/raw.spdx.json --tar "/images/$name.tar" "${site_args[@]}" \
+    > "$app/sboms/$name.spdx.json"
+  ```
+  with `site_args` = `--site /opt/venv/lib/python3.12/site-packages --lock
+  /app/uv.lock` for `ke-app` only. The label is `<project>-sbomcheck`, its
+  own, distinct from `<project>-sbom`. The `ke-app` venv is not used (`-I`
+  keeps it out). It runs there because the runtime-package check must list
+  the real installed distributions;
 - at e2e time, inside the offline client (`ke-gates` image, system
   `python3`), mounted read-only next to `offline_check.sh`;
 - in `fast`, imported by the unit tests.
 
 Subcommands (names are the developer's to adjust):
-- `finish <name> <ref> <arch> <git_sha> <bundle_uuid>`: reads
-  `/work/raw.spdx.json` and `/images/<name>.tar` (only the `manifest.json`
-  member, with `tarfile`, no extraction) and prints the final SPDX
-  document (N6). For `ke-app` it also runs the runtime-package check
-  (N7).
+- `finish --name N --ref R --arch A --git-sha S --raw PATH --tar PATH
+  [--site DIR --lock PATH]` (U3; no `--uuid`, N6 makes the namespace):
+  reads the raw document and the tar (only the `manifest.json` member,
+  with `tarfile`, no extraction) and prints the final SPDX document (N6).
+  With `--site` and `--lock` (`ke-app`; they go together) it also runs the
+  runtime-package check (N7).
+- *Argv-path rule (U3):* the checker opens only paths named on its argv;
+  it holds no container path, mount point or default location of its own.
+  The caller maps them (`-v` above; the unit harness remaps them the same
+  way), so one file serves the `ke-app` run, the e2e client and tests.
+- *Interface:* `validate(doc) -> list[str]`, `[]` when valid, one message
+  per failure; `finish` prints the first 20 to stderr and exits 1. Exit 2
+  is a bad argument (pattern, arch).
 - `index <arch> <set>`: reads every final SBOM, `docker/source-policy.json`,
   `docker/sources.lock.json` and the fetched directory, all read-only;
   classifies (N8), maps each GPL-family package to a lock entry, checks
@@ -471,6 +508,7 @@ at GREEN* the redirect targets from real fetches):
 | `github.com`, `codeload.github.com` | `neo4j` (tag tarball), `temurin` (release asset, first hop) |
 | `objects.githubusercontent.com`, `release-assets.githubusercontent.com` | `temurin` (release asset redirect targets) |
 | `files.pythonhosted.org` | `pypi` (sdist URLs from `uv.lock`; `pypi.org`'s API is no longer needed, N0) |
+| `repo1.maven.org` | `maven` (sources jars; jaxb-api, ruling 5, N8a) |
 
 The generator pull uses the registry hosts `build.sh` already needs.
 
@@ -500,7 +538,8 @@ except the `manual` entries below):
 ```
 - Component keys: `deb:<source>@<source version>`, `apk:<origin>@<version>`
   (+ `"commit"` and `"branch"` fields), `neo4j:neo4j@<tag>`,
-  `temurin:<release tag>`, `pypi:<name>@<version>`.
+  `temurin:<release tag>`, `pypi:<name>@<version>`,
+  `maven:<group>:<artifact>@<version>` (ruling 5, N8a).
 - Per kind, where the upstream checksum comes from (PSC-15, Q48 form):
   - `deb`: snapshot.debian.org only (stable URLs; deb.debian.org drops
     superseded versions, and the images are pinned so their versions age).
@@ -527,6 +566,8 @@ except the `manual` entries below):
     release's published `.sha256.txt`.
   - `pypi`: `psycopg` and `psycopg-c` from `uv.lock` (`sdist` URL and
     hash, no network; N0).
+  - `maven`: `https://repo1.maven.org/maven2/<group path>/<artifact>/<version>/<artifact>-<version>-sources.jar`,
+    checked by the `.sha1` Maven Central publishes beside it (jaxb-api).
 - `origin: manual` entries (the singletons, if the developer prefers to
   write them by hand with their provenance) are kept as they are by the
   tool; `generated` entries are rewritten.
@@ -550,9 +591,14 @@ sample is a few hundred MB, dominated by those two).
 
 `finish` keeps syft's packages, files and relationships and changes only:
 - `name`: the `bundle.json` `ref`;
-- `documentNamespace`:
-  `https://spdx.knowledge-engine.invalid/<git_sha>/<arch>/<name>/<bundle_uuid>`,
-  `bundle_uuid` generated once per `bundle.sh` run (so unique per bundle);
+- `documentNamespace`: `urn:uuid:<uuid4>`, a fresh `uuid.uuid4()` per
+  document, made by `finish` itself (U3, orchestrator ruling (b)). Why:
+  SPDX 2.3 requires a unique absolute URI; RFC 3986 (scheme `urn`) with
+  RFC 4122 (the `uuid` namespace) makes `urn:uuid:` one, with no host.
+  PS-1.2 forbids hardcoded hosts in scripts, and any https base would
+  invent a domain we do not own. Identity lives in the annotations below,
+  not the namespace, so `bundle.sh` makes no uuid and passes none (its
+  `od /dev/urandom` uuid and `finish --uuid` are dropped);
 - `creationInfo.creators`: syft's `Tool: syft-<version>` kept, plus
   `Tool: knowledge-engine-bundle-<git_sha[:12]>`;
 - three document `annotations` (`annotationType: OTHER`, annotator
@@ -562,13 +608,24 @@ sample is a few hundred MB, dominated by those two).
 
 Then `finish` validates, and exits 1 naming the first failure:
 `spdxVersion == "SPDX-2.3"`, `dataLicense == "CC0-1.0"`,
-`SPDXID == "SPDXRef-DOCUMENT"`, non-empty `name`, `documentNamespace` an
-absolute `https` URI containing the uuid, `creationInfo.created` an RFC 3339
+`SPDXID == "SPDXRef-DOCUMENT"`, non-empty `name`, `documentNamespace`
+matching `^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`
+(lower-case uuid4, as `str(uuid.uuid4())`), `creationInfo.created` an RFC 3339
 UTC time, creators include a `Tool: syft-` entry; every package has a
 unique `SPDXID` matching `^SPDXRef-[A-Za-z0-9.-]+$`, a `name` and a
 `downloadLocation`; exactly one `DESCRIBES` from the document; every
 relationship end resolves. This is the SPDX 2.3 required-field set PSC-13
 tests, not the full JSON schema (rejected: a schema-validator dependency).
+`validate` sees one document; that the namespaces differ across a
+bundle's documents is a bundle-level check, by the PSC-13 tests over
+`app/sboms/` and by N11's `verify`.
+
+*Ruling 5, Neo4j jars (U3):* decided at the developer's GREEN `verify
+full`, the first real syft run (the RED tests stub syft and cannot see
+them). The developer lists, from the `neo4j` SBOM, every package whose
+licence the N8 classifier marks GPL-family, with purl and licence, in the
+GREEN evidence. None: recorded, ruling 5 closed. Any GPL-family jar comes
+back to the architect before the commit gate (lock kind, N5/N9 mapping).
 
 *Image identity (flagged to the orchestrator):* the value is the config
 digest, not "the ID install reports". Install prints `Loaded image: <as>`
@@ -595,10 +652,14 @@ proved byte-identical to the one install loaded.
 
 ## N8. The licence classifier (PSC-15 forms, PSC-22)
 
-Input: a package's `licenseDeclared` (else `licenseConcluded`; else the
-list syft gives, joined with AND).
-- Unlicensed: absent, empty, `NONE` or `NOASSERTION`: reported per image
-  with a count (PSC-22), printed by `bundle.sh` and kept in the index.
+Input: a package's `licenseDeclared`; if that is missing, its
+`licenseConcluded`; if both are, the list syft gives, joined with AND.
+Missing means absent, empty, `NONE` or `NOASSERTION` (ruling 5, N8a: syft
+writes `NOASSERTION` to `licenseDeclared` of jars it licenses from file
+content, e.g. jna's concluded `Apache-2.0 AND LGPL-2.1-only`). If both
+fields are set (none are in U3's SBOMs), it needs source if either does.
+- Unlicensed: all three missing: reported per image with a count
+  (PSC-22), printed by `bundle.sh` and kept in the index.
 - Parse as an SPDX expression: ids, `(`, `)`, `AND`, `OR`, `WITH`
   (operators case-insensitive, so Debian's `with` parses).
   `needs(OR) = all(needs(child))`, `needs(AND) = any(needs(child))`,
@@ -613,12 +674,95 @@ list syft gives, joined with AND).
   `GPL-2`, `GPL-2+`, `LGPL-2.1+`, `GPL`, `LGPL`, and also `AGPL-3.0*`,
   `GPL-1.0*`, `LGPL-2.0*` (wider than PSC-15's list: conservative,
   flagged). `GFDL*` does not match.
+- Token rule (ruling 5, N8a): an id the pattern does not match is still
+  GPL-family if any token of its lower-cased text, split on
+  `[^a-z0-9]+`, matches `^(a|l)?gpl(v?\d+)?$`; it is then also listed
+  as "unparsed". Syft folds a pom's licence URLs into one `LicenseRef-`
+  id, so jaxb-api's `LicenseRef-https---glassfish.java.net-public-CDDL-GPL-1-1.html...`
+  parses as a single id and the anchored pattern alone would pass it
+  with no source (fail open). Every `LicenseRef-` id containing `http`
+  is listed as "unparsed" too, flagged or not (43 in neo4j).
 - Unparseable text: needs source if it contains `gpl` as a word
   (case-insensitive), and is listed as "unparsed" in the index for
   security.
 - The `always` list (N10) overrides: matching packages need source
   whatever `needs()` says.
 Pure functions, no I/O: the first fast tests.
+
+### N8a. Ruling 5 (U3 GREEN; architect, 2026-10-23)
+
+Evidence: `u3/gpl-family-packages.md`, `u3/sboms/*.pkgs.tsv`, and each
+jar's own metadata, read from `ke-vendor/neo4j:0a6e7aedf54a` by `docker
+create`/`cp` (nothing run): `jna-5.15.0.jar` sha256
+`a564158d28ab5127fc6a958028ed54279fe0999662c46425b6a3b09a2a52094d`,
+`jaxb-api-2.2.12.jar`
+`68a621ec18485f951d09ac76f43e57eee394dbe42cb8f2a4c59c93296fa9dcc6`,
+`javassist-3.30.2-GA.jar`
+`eba37290994b5e4868f3af98ff113f6244a6b099385d9ad46881307d3cb01aaf`.
+Maven's POM reference: several `<license>` entries mean the user may
+select any one of them.
+1. **jna 5.15.0: OR, Apache-2.0 elected, no source.** Its
+   `META-INF/LICENSE`: `SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1`,
+   "LGPL, version 2.1 or later, or ... the Apache License, version 2.0.
+   You can freely decide". Syft's `Apache-2.0 AND LGPL-2.1-only` is the
+   two texts in `META-INF` (`AL2.0`, `LGPL2.1`) joined with AND. Nothing
+   rewrites syft's expression: the classifier stays literal (needs
+   source) and a reviewed `exempt` entry (N10; image `neo4j`, purl
+   `pkg:maven/com.sun.jna/jna@5.15.0`) carries the correction, its reason
+   naming the LICENSE line, the elected branch and the jar sha256. *Not*
+   a licence-override key: same versioned-purl, security-reviewed,
+   void-on-bump effect, with no fourth policy key or classifier input, and
+   the index keeps the generator's text verbatim. *Not* jna's sources
+   jar: it has the Java only, not the C of the bundled `libjnidispatch`,
+   so it is not complete source under the LGPL branch. U5 pins the
+   literal result, U6 the entry and its security review.
+2. **jaxb-api 2.2.12: OR, CDDL-1.1 elected, source shipped.** Pom:
+   `CDDL 1.1` and `GPL2 w/ CPE`, both to `CDDL+GPL_1_1.html`, i.e.
+   `CDDL-1.1 OR GPL-2.0-only WITH Classpath-exception-2.0`. CDDL 3.1
+   still requires the Source Code form of covered files to be made
+   available and recipients told how; the GPL branch needs it as well, so
+   no branch removes it. Met by shipping the exact sources jar: U7 adds a
+   `maven` kind (N5), key `maven:javax.xml.bind:jaxb-api@2.2.12`, file
+   `jaxb-api-2.2.12-sources.jar` from `repo1.maven.org` (joins N4
+   `hosts`), checked by Maven Central's published `.sha1` (as temurin's
+   `.sha256.txt`). *Confirm at U7* the jar is published; if not, back to
+   the architect (Q61 fails closed). *Not* an exemption with an "Upstream
+   source" pointer: for an offline bundle that is the judgment PSC-15
+   option 1 avoids. No special case: the N8 token rule makes it
+   GPL-family and lists it unparsed. U5 (rule), U7 (lock), U9 (index).
+3. **javassist 3.30.2-GA (found here):** syft's folded id holds
+   `...gnu.org-licenses-lgpl-2.1.html...`; the developer's list missed it
+   (its selection was case-sensitive). Pom: MPL 1.1, LGPL 2.1, Apache 2.0
+   (OR). As jna: Apache-2.0 elected, `exempt` at U6. U5's ids are tested
+   lower- and mixed-case.
+4. **neo4j NOASSERTION: confirmed to the U4 report, by rule, not a list.**
+   20 rows: 18 maven jars, `pkg:generic/oracle/openjdk` and the `pkg:oci`
+   root. The report excludes only the package the document DESCRIBES (the
+   image itself). openjdk is also an `always` (temurin) match, so it needs
+   source anyway; `jrt-fs@21.0.12.1` is the JDK's jar. The six Neo4j-org
+   jars at other versions (4 `org.neo4j.bolt`@12.0.0, `cypher-dsl`@2024.2.0,
+   `com.neo4j` fleet-management@1.2.0) do not map to the `neo4j` entry
+   (N9: the image's Neo4j version only); security reviews them as listed,
+   with the 43 URL-folded ids (EE4J `EPL-2.0 OR GPL-2.0 WITH
+   Classpath-exception-2.0`, Eclipse, Jetty) the token rule does not flag.
+5. **ke-app NOASSERTION: to the U4 report; no cargo default.** The
+   ke-app figures in `u3/gpl-family-packages.md` (700/83/505, 493
+   `pkg:cargo`) came from a stale pre-U0 image (security, U3); the tester
+   regenerates them. The ruling is conditional: it applies to
+   whatever the regenerated ke-app SBOM shows: every unlicensed row, cargo
+   or not, goes to the report. "Cargo means MIT/Apache" would hide a GPL
+   crate, the case PSC-22 exists for; unknown stays unknown. To keep it reviewable,
+   the report counts rows per purl type and names a row with no purl by
+   SPDXID and name. How security checks crates is its call at U4; a
+   finding that changes the outcome uses an `exempt` or source entry.
+6. **Syft cache warning: set `XDG_CACHE_HOME: /tmp/cache`** (literal, in
+   `sbom`'s environment; U4, a compose change, U3's file untouched). The
+   N1 *confirm at GREEN* fallback triggers: syft tried `/.cache/syft`,
+   outside `/out` and `/tmp`. I-2 allows it at or under `/tmp`; the value
+   is ADR-KE-013 am. 1's for grype. *Not* `SYFT_CACHE_DIR`: a ninth
+   `SYFT_*` key U2's pin does not know. The cache stays empty (lookups
+   off) and dies with the tmpfs. A34 not needed (a container-side literal,
+   no host path or argv); the orchestrator's call.
 
 ## N9. `sources/index.json` and the stored names (PSC-15, PSC-24)
 
@@ -642,7 +786,8 @@ Windows reserved name, and dedups a file two components share).
   the purl's `upstream` qualifier (source name, and version when it
   differs) else the package name/version; apk by `upstream` (origin);
   `pkg:maven/org.neo4j/*` and `com.neo4j/*` at the image's Neo4j version
-  to the `neo4j` entry; the JVM package to `temurin`; pypi by name.
+  to the `neo4j` entry; the JVM package to `temurin`; pypi by name; any
+  other `pkg:maven/<group>/<artifact>@<version>` to `maven:` (N8a).
   *Confirm at GREEN* each mapping against the real SBOMs (U3); an
   unmappable GPL-family package fails with its purl, never passes.
 - Manifest size: each source line is 64 + 2 + 87 + 1 = 154 bytes, so the
@@ -667,7 +812,9 @@ Windows reserved name, and dedups a file two components share).
   entry with no matching package in its image fails ("expected component
   not catalogued"): the generator cannot hide one by missing it. An exemption
   names a versioned purl, so a version bump voids it and forces a new
-  review. Schema test:
+  review. An exemption also carries a corrected licence: an OR the
+  generator reported as AND, with the elected branch and the jar's own
+  evidence in `reason` (jna, javassist; ruling 5, N8a). Schema test:
   exactly these three keys; `reason` non-blank; `reviewed` matches
   `^security \d{4}-\d{2}-\d{2}$`; purl has `@<version>`; no duplicates;
   hosts are lower-case DNS names with no wildcard; every lock URL host is
@@ -1011,13 +1158,13 @@ column is the mode for the red/green loop.
 | U1 | PSC-14 NOTICE.md "Base of `ke-app`" section and pointer; round 2: no pip (`app.Dockerfile` `runtime` stage, `FROM scratch` flatten, N10a), smoke `no pip`, `licenses/CPython-3.12-incorporated.txt`; static tests, incl. the U0/D10/digest tests re-targeted at `runtime` | full | yes (Dockerfile) |
 | U2 | PSC-20 `docker-compose.sbom.yml` `sbom`, pin and provenance, presence refusal in `bundle.sh` | full | yes (compose) |
 | U3 | PSC-13 `bundle.sh` save -> syft -> `finish`; `sbom_check.py` N6 and runtime packages; Neo4j jars decided (ruling 5) | full | no |
-| U4 | PSC-22: `ke-app` SBOM lists libpq5 (dpkg) and psycopg-c with no psycopg-binary; NOTICE's image-side checks (dpkg set of `ke-app` minus the base equals `ADDED_PACKAGES`; no `pkg:pypi/pip`; CPython version equals the incorporated-licences header; N10, B3); unlicensed report per image | full | no |
-| U5 | PSC-15 classifier (N8), pure functions | fast | no |
-| U6 | `docker/source-policy.json` and schema test; `always` rule | fast | no |
-| U7 | lock: `docker/sources.lock.json`, `scripts/sources_lock.sh`, provenance evidence (security's second fetch) | full | no |
+| U4 | PSC-22: `ke-app` SBOM lists libpq5 (dpkg) and psycopg-c with no psycopg-binary; NOTICE's image-side checks (dpkg set of `ke-app` minus the base equals `ADDED_PACKAGES`; no `pkg:pypi/pip`; CPython version equals the incorporated-licences header; N10, B3); unlicensed report per image (by rule; minus the DESCRIBES root; counts per purl type; no-purl rows by SPDXID; N8a 4-5); `sbom` env `XDG_CACHE_HOME: /tmp/cache` (N8a 6) | full | no |
+| U5 | PSC-15 classifier (N8), pure functions; ruling 5: NOASSERTION fall-through, token rule, URL-folded ids listed (N8a) | fast | no |
+| U6 | `docker/source-policy.json` and schema test; `always` rule; `exempt` for jna and javassist, security-reviewed (N8a 1, 3) | fast | no |
+| U7 | lock: `docker/sources.lock.json`, `scripts/sources_lock.sh`, provenance evidence (security's second fetch); `maven` kind, jaxb-api sources jar (N8a 2) | full | no |
 | U8 | PSC-23 `bundle_fetch.sh`, `sources-fetch` and client loop, wired into `offline_check.sh`; README and header wording; CLAUDE.md text to the human (ruling 6) | full | yes (compose) |
 | U9 | PSC-15/24 `index`, content-addressed copy, notices section (paths relative to `app/`, I-3, N10a), no-partial tests, install tamper tests (sh and ps1) | full | only if `install.ps1` changes |
-| U10 | PSC-19 e2e `verify`, `/install` size and memory pre-check | full | yes (compose) |
+| U10 | PSC-19 e2e `verify`, `/install` size and memory pre-check; follow-up security U3 L-1: `build.sh` stamps `org.opencontainers.image.revision=<git HEAD>` on each first-party `ke-*` image, and `bundle.sh` refuses, before any write, an image whose label is absent or differs from its `git_sha` (else the SBOM creator and `bundle.json` name the wrong commit; U3's stale ke-app SBOM is the case). First test: the refusal on a mismatched or missing label (fake docker) | full | yes (compose) |
 | U11 | PSC-16 two CI runs, floor re-derivation, Q62 trigger, PS-3.4; full operator recorded run (Q63) | full (CI) | no |
 | U12 | PSC-21 recorded arm64 run (Q51 form) | full (arm64) | no |
 
@@ -1036,7 +1183,13 @@ vendored table. First tests for U1, U2 and U5 are unchanged:
     `GPL-2.0-only WITH Classpath-exception-2.0` need source;
   - `LGPL-2.1-or-later OR Apache-2.0` does not;
   - `NOASSERTION` is unlicensed;
-  - junk containing "GPL" needs source and is listed as unparsed.
+  - junk containing "GPL" needs source and is listed as unparsed;
+  - ruling 5 (N8a): declared `NOASSERTION` with concluded
+    `Apache-2.0 AND LGPL-2.1-only` needs source (fall-through; literal
+    AND); jaxb-api's folded `LicenseRef-...CDDL-GPL-1-1.html...` and
+    javassist's `...lgpl-2.1.html...` need source and are listed
+    unparsed; `LicenseRef-...gnu.org-software-classpath-license.html`
+    needs none but is listed.
 - U5/U6 (security u1 I-1): the copyright files of libldap-2.5-0 (GPL-2+
   and GPL-3+ lines, mostly with Autoconf or Libtool exceptions),
   libsasl2-2 and libsasl2-modules-db (GPL-3 and GPL-3+ lines) make the

@@ -1,0 +1,129 @@
+ Container ke-tester-u3c-gates-run-4bff65e246e7 Creating 
+ Container ke-tester-u3c-gates-run-4bff65e246e7 Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.82ms
+Installed 1 package in 1ms
+U3 controls (targets): 121 rows, 103 must-fail, 18 must-pass, 0 unexpected
+ok  [compose] TARGET user                                                                 must pass | no problem
+ok  [compose] TARGET hardening (U2 + I-2)                                                 must pass | no problem
+ok  [compose] no user                                                                     must fail | sbom: no `user:` (security L-2: syft must run as the caller's uid:gid, `user: ${KE_SBOM_USER:?...}`)
+ok  [compose] user: "0:0"                                                                 must fail | sbom: user is '0:0', want `${KE_SBOM_USER:?...}` (set by bundle.sh to $(id -u):$(id -g))
+ok  [compose] user ${KE_SBOM_USER:-}                                                      must fail | sbom: user is '${KE_SBOM_USER:-}', want `${KE_SBOM_USER:?...}` (set by bundle.sh to $(id -u):$(id -g))
+ok  [compose] user ${KE_SBOM_UID:?x}                                                      must fail | sbom: user is '${KE_SBOM_UID:?x}', want `${KE_SBOM_USER:?...}` (set by bundle.sh to $(id -u):$(id -g))
+ok  [compose] HOME=/out/tmp (I-2)                                                         must fail | sbom: HOME='/out/tmp' is not at or under /tmp (N1 fallback; security I-2: never under the host-writable /out)
+ok  [compose] HOME=/out/tmp/home (I-2)                                                    must fail | sbom: HOME='/out/tmp/home' is not at or under /tmp (N1 fallback; security I-2: never under the host-writable /
+ok  [compose] XDG_CACHE_HOME=/out/cache (I-2)                                             must fail | sbom: XDG_CACHE_HOME='/out/cache' is not at or under /tmp (N1 fallback; security I-2: never under the host-wri
+ok  [compose] HOME=/tmp/../out (I-2)                                                      must fail | sbom: HOME='/tmp/../out' is not at or under /tmp (N1 fallback; security I-2: never under the host-writable /ou
+ok  [compose] HOME=/tmp/home                                                              must pass | no problem
+ok  [compose] XDG_CACHE_HOME=/tmp                                                         must pass | no problem
+ok  [compose] TARGET top level                                                            must pass | no problem
+ok  [compose] top-level include (L-1)                                                     must fail | docker-compose.sbom.yml: top-level `include` (only ['services'] and x-* are allowed; security L-1)
+ok  [compose] top-level volumes                                                           must fail | docker-compose.sbom.yml: top-level `volumes` (only ['services'] and x-* are allowed; security L-1)
+ok  [compose] top-level networks                                                          must fail | docker-compose.sbom.yml: top-level `networks` (only ['services'] and x-* are allowed; security L-1)
+ok  [compose] top-level name                                                              must fail | docker-compose.sbom.yml: top-level `name` (only ['services'] and x-* are allowed; security L-1)
+ok  [compose] x-anchor                                                                    must pass | no problem
+ok  [compose] extends on sbom (L-1)                                                       must fail | docker-compose.sbom.yml: service sbom uses `extends` (security L-1)
+ok  [compose] scan TARGET (as committed)                                                  must pass | no problem
+ok  [compose] scan + include (L-1)                                                        must fail | docker-compose.scan.yml: top-level `include` (only ['services', 'volumes'] and x-* are allowed; security L-1)
+ok  [compose] scan + extends (L-1)                                                        must fail | docker-compose.scan.yml: service scan uses `extends` (security L-1)
+ok  [sbom_check static] TARGET                                                                      must pass | no problem
+ok  [sbom_check static] import yaml                                                                 must fail | scripts/sbom_check.py imports yaml, which is not in the standard library (N3)
+ok  [sbom_check static] from packaging import version                                               must fail | scripts/sbom_check.py imports packaging, which is not in the standard library (N3)
+ok  [sbom_check static] no validate()                                                               must fail | scripts/sbom_check.py defines no top-level `validate(doc)` (N6's validator)
+ok  [sbom_check static] no __main__                                                                 must fail | scripts/sbom_check.py has no `if __name__ == "__main__":` entry point (it is run as a script)
+ok  [offline header] TARGET                                                                      must pass | no problem
+ok  [offline header] pre-U3 (HEAD)                                                               must fail | offline_check.sh's header stage list does not name the SBOM generator pull before bundle.sh (review N3, U2)
+ok  [offline header] pull after bundle.sh                                                        must fail | offline_check.sh's header stage list does not name the SBOM generator pull before bundle.sh (review N3, U2)
+ok  [offline_check pull] TARGET                                                                      must pass | no problem
+ok  [offline_check pull] pull without KE_SBOM_USER                                                   must fail | test_offline_check_pulls_sbom_generator_before_bundle: None is not true : KE_SBOM_USER is set (non-empty) for 
+ok  [offline_check pull] pull with KE_SBOM_USER empty                                                must fail | test_offline_check_pulls_sbom_generator_before_bundle: '' is not true : KE_SBOM_USER is set (non-empty) for th
+ok  [bundle.sh] TARGET                                                                      must pass | no problem
+ok  [bundle.sh] run: no --env-file                                                          must fail | test_sbom_generator_run_is_pinned (image='ke-app', part='argv'): Tuples differ: ([('-f', 'docker-compose.sbom.
+ok  [bundle.sh] run: no --pull never                                                        must fail | test_sbom_generator_run_is_pinned (image='ke-app', part='argv'): Lists differ: ['the generator run lacks --pul
+ok  [bundle.sh] run: -p <project> (not -sbom)                                               must fail | test_sbom_generator_run_is_pinned (image='ke-app', part='argv'): Tuples differ: ([('-[31 chars]-f', 'docker-co
+ok  [bundle.sh] run: --scope squashed                                                       must fail | test_sbom_generator_run_is_pinned (image='ke-app', part='argv'): Lists differ: ["the syft arguments are ['dock
+ok  [bundle.sh] run: -o spdx-json=/out/sbom.json                                            must fail | test_sbom_generator_run_is_pinned (image='ke-app', part='argv'): Lists differ: ["the syft arguments are ['dock
+ok  [bundle.sh] run: extra -e option                                                        must fail | test_sbom_generator_run_is_pinned (image='ke-app', part='argv'): Lists differ: ["the generator run passes ['-e
+ok  [bundle.sh] run: -T added (allowed)                                                     must pass | no problem
+ok  [bundle.sh] run: globals reordered (allowed)                                            must pass | no problem
+ok  [bundle.sh] run: KE_SBOM_IN=$out                                                        must fail | test_sbom_generator_run_is_pinned: 1 != 0 : bundle.sh failed on a fit build host:
+ok  [bundle.sh] run: KE_SBOM_USER=0:0                                                       must fail | test_sbom_generator_run_is_pinned (image='ke-app', part="KE_SBOM_USER is the caller's uid:gid (security L-2)")
+ok  [bundle.sh] run: no KE_SBOM_USER                                                        must fail | test_bundle_has_sbom_per_image: 1 != 0 : bundle.sh failed on a fit build host:
+ok  [bundle.sh] work dir inside --out                                                       must fail | test_sbom_generator_run_is_pinned (image='ke-app', part='KE_SBOM_OUT: a work dir outside --out, removed afterw
+ok  [bundle.sh] one shared work dir                                                         must fail | test_sbom_generator_run_is_pinned (part='a fresh work dir per image (only an empty tmp/ when syft starts)'): 1
+ok  [bundle.sh] no tmp/ in the work dir                                                     must fail | test_bundle_has_sbom_per_image: 1 != 0 : bundle.sh failed on a fit build host:
+ok  [bundle.sh] work dir not removed                                                        must fail | test_sbom_generator_run_is_pinned (image='ke-app', part='KE_SBOM_OUT: a work dir outside --out, removed afterw
+ok  [bundle.sh] no down                                                                     must fail | test_sbom_generator_run_is_pinned (part='compose subcommands on the file: config, run, down'): Lists differ: [
+ok  [bundle.sh] down: no KE_SBOM_USER                                                       must fail | test_sbom_generator_run_is_pinned (part='teardown (review N1)'): Lists differ: ["the down runs with ['KE_SBOM_
+ok  [bundle.sh] down: no --env-file                                                         must fail | test_sbom_generator_run_is_pinned (part='teardown (review N1)'): Lists differ: ["the down's global options are
+ok  [bundle.sh] down: --remove-orphans (allowed)                                            must pass | no problem
+ok  [bundle.sh] no trap                                                                     must fail | test_sbom_generator_run_is_pinned (image='ke-app', part='KE_SBOM_OUT: a work dir outside --out, removed afterw
+ok  [bundle.sh] no generator arch check                                                     must fail | test_sbom_generator_is_daemon_arch (case='amd64 daemon, arm64 generator'): 0 == 0 : bundle.sh passed:
+ok  [bundle.sh] ref_re allows a leading -                                                   must fail | test_bundle_refuses_ref_starting_with_dash (case='generator'): 'fails its pattern' not found in "bundle: the S
+ok  [bundle.sh] checker: no --network none                                                  must fail | test_sbom_generator_run_is_pinned (part='checker run hardening (N3)', argv='run --rm --read-only --cap-drop AL
+ok  [bundle.sh] checker: no --read-only                                                     must fail | test_sbom_generator_run_is_pinned (part='checker run hardening (N3)', argv='run --rm --network none --cap-drop
+ok  [bundle.sh] checker: no --cap-drop ALL                                                  must fail | test_sbom_generator_run_is_pinned (part='checker run hardening (N3)', argv='run --rm --network none --read-onl
+ok  [bundle.sh] checker: label -notices                                                     must fail | test_sbom_generator_run_is_pinned (part='checker run hardening (N3)', argv='run --rm --network none --read-onl
+ok  [bundle.sh] checker: work mount writable                                                must fail | test_sbom_generator_run_is_pinned (part='checker run hardening (N3)', argv='run --rm --network none --read-onl
+ok  [bundle.sh] checker: no -I                                                              must fail | test_sbom_generator_run_is_pinned (part='checker run hardening (N3)', argv='run --rm --network none --read-onl
+ok  [bundle.sh] checker: runs in the gateway image                                          must fail | test_sbom_generator_run_is_pinned (part='checker run hardening (N3)', argv='run --rm --network none --read-onl
+ok  [bundle.sh] SBOMs at $out/sboms                                                         must fail | test_bundle_has_sbom_per_image (part='one app/sboms/<name>.spdx.json per bundle.json image, nothing else'): Li
+ok  [bundle.sh] SBOMs left out of the manifest                                              must fail | test_bundle_has_sbom_per_image (image='ke-app', part='listed in MANIFEST.sha256 with its hash'): False is not 
+ok  [bundle.sh] no ke-app runtime check                                                     must fail | test_sbom_lists_every_locked_runtime_package (case='refused: syft misses psycopg-c'): 0 == 0 : bundle.sh passe
+ok  [bundle.sh] syft failure ignored (equivalent: checker refuses, no raw doc)              must pass | no problem
+ok  [bundle.sh] checker failure ignored                                                     must fail | test_sbom_lists_every_locked_runtime_package (case='refused: syft misses psycopg-c'): 0 == 0 : bundle.sh passe
+ok  [sbom_check.py] TARGET (validate table, module)                                             must pass | no problem
+ok  [sbom_check.py] no annotations                                                              must fail | test_bundle_has_sbom_per_image (image='ke-app', part="names its ref, arch and the tar's config digest (ruling 
+ok  [sbom_check.py] annotationType REVIEW                                                       must fail | test_bundle_has_sbom_per_image (image='ke-app', part="names its ref, arch and the tar's config digest (ruling 
+ok  [sbom_check.py] annotator not the bundle tool                                               must fail | test_bundle_has_sbom_per_image (image='ke-app', part="names its ref, arch and the tar's config digest (ruling 
+ok  [sbom_check.py] ke:ref is the name                                                          must fail | test_bundle_has_sbom_per_image (image='ke-app', part="names its ref, arch and the tar's config digest (ruling 
+ok  [sbom_check.py] name not set to the ref                                                     must fail | test_bundle_has_sbom_per_image (image='ke-app', part="names its ref, arch and the tar's config digest (ruling 
+ok  [sbom_check.py] legacy Config unsupported                                                   must fail | test_bundle_has_sbom_per_image (part='legacy save layout (Config <hex>.json)'): 1 != 0 : bundle.sh failed on a
+ok  [sbom_check.py] multi-image tar accepted                                                    must fail | test_bundle_has_sbom_per_image (part='a tar whose manifest.json holds two images is refused'): 0 == 0 : bundle
+ok  [sbom_check.py] namespace not set (syft's https kept)                                       must fail | test_sbom_is_spdx_2_3: 1 != 0 : bundle.sh failed on a fit build host:
+ok  [sbom_check.py] namespace constant                                                          must fail | test_sbom_is_spdx_2_3 (part="namespace: distinct across the bundle's documents"): 1 != 6 : two documents share
+ok  [sbom_check.py] namespace stable per image (v4-shaped hash of the name): second run repeats must fail | test_sbom_is_spdx_2_3 (part='namespace: a second run of the same tree gives new ones'): Lists differ: ['urn:uu
+ok  [sbom_check.py] namespace shared by the bundle (per-run uuid from bundle.sh)                must fail | test_sbom_is_spdx_2_3 (part="namespace: distinct across the bundle's documents"): 1 != 6 : two documents share
+ok  [sbom_check.py] syft creator dropped                                                        must fail | test_sbom_is_spdx_2_3: 1 != 0 : bundle.sh failed on a fit build host:
+ok  [sbom_check.py] created rewritten                                                           must fail | test_sbom_is_spdx_2_3 (part='finish changes only name, namespace, creators and annotations (N6)'): '2000-01-01
+ok  [sbom_check.py] packages dropped (root only)                                                must fail | test_sbom_lists_every_locked_runtime_package: 1 != 0 : bundle.sh failed on a fit build host:
+ok  [sbom_check.py] pypi names not PEP 503 normalised                                           must fail | test_bundle_has_sbom_per_image: 1 != 0 : bundle.sh failed on a fit build host:
+ok  [sbom_check.py] versions not compared                                                       must fail | test_sbom_lists_every_locked_runtime_package (case='refused: syft reports another httpx version'): 0 == 0 : bu
+ok  [sbom_check.py] runtime check skipped                                                       must fail | test_sbom_lists_every_locked_runtime_package (case='refused: syft misses psycopg-c'): 0 == 0 : bundle.sh passe
+ok  [sbom_check.py] validate: spdxVersion not checked                                           must fail | test_sbom_is_spdx_2_3 (case='spdxVersion SPDX-2.2'): [] is not true : validate accepted a document with spdxVe
+ok  [sbom_check.py] validate: dataLicense not checked                                           must fail | test_sbom_is_spdx_2_3 (case='dataLicense MIT'): [] is not true : validate accepted a document with dataLicense
+ok  [sbom_check.py] validate: SPDXID not checked                                                must fail | test_sbom_is_spdx_2_3 (case='SPDXID not SPDXRef-DOCUMENT'): [] is not true : validate accepted a document with
+ok  [sbom_check.py] validate: name not checked                                                  must fail | test_sbom_is_spdx_2_3 (case='name empty'): [] is not true : validate accepted a document with name empty
+ok  [sbom_check.py] validate: namespace any                                                     must fail | test_sbom_is_spdx_2_3 (case='namespace an https URL'): [] is not true : validate accepted a document with name
+ok  [sbom_check.py] validate: namespace https accepted                                          must fail | test_sbom_is_spdx_2_3 (case='namespace an https URL'): [] is not true : validate accepted a document with name
+ok  [sbom_check.py] validate: namespace upper-case accepted                                     must fail | test_sbom_is_spdx_2_3 (case='namespace upper-case hex'): [] is not true : validate accepted a document with na
+ok  [sbom_check.py] validate: namespace any uuid version                                        must fail | test_sbom_is_spdx_2_3 (case='namespace a version-1 uuid'): [] is not true : validate accepted a document with 
+ok  [sbom_check.py] validate: namespace any uuid variant                                        must fail | test_sbom_is_spdx_2_3 (case='namespace a non-RFC-4122 variant'): [] is not true : validate accepted a document
+ok  [sbom_check.py] validate: namespace '#' accepted                                            must fail | test_sbom_is_spdx_2_3 (case="namespace with a '#'"): [] is not true : validate accepted a document with namesp
+ok  [sbom_check.py] validate: namespace trailing newline accepted                               must fail | test_sbom_is_spdx_2_3 (case='namespace with a trailing newline'): [] is not true : validate accepted a documen
+ok  [sbom_check.py] validate: namespace bare uuid accepted                                      must fail | test_sbom_is_spdx_2_3 (case='namespace a bare uuid'): [] is not true : validate accepted a document with names
+ok  [sbom_check.py] validate: created any                                                       must fail | test_sbom_is_spdx_2_3 (case='created not RFC 3339'): [] is not true : validate accepted a document with create
+ok  [sbom_check.py] validate: created any offset                                                must fail | test_sbom_is_spdx_2_3 (case='created not UTC'): [] is not true : validate accepted a document with created not
+ok  [sbom_check.py] validate: syft creator not checked                                          must fail | test_sbom_is_spdx_2_3 (case='creators without Tool: syft-'): [] is not true : validate accepted a document wit
+ok  [sbom_check.py] validate: SPDXID uniqueness off                                             must fail | test_sbom_is_spdx_2_3 (case='duplicate package SPDXID'): [] is not true : validate accepted a document with du
+ok  [sbom_check.py] validate: SPDXID pattern off                                                must fail | test_sbom_is_spdx_2_3 (case='package SPDXID with an underscore'): [] is not true : validate accepted a documen
+ok  [sbom_check.py] validate: package name not required                                         must fail | test_sbom_is_spdx_2_3 (case='package without name'): [] is not true : validate accepted a document with packag
+ok  [sbom_check.py] validate: downloadLocation not required                                     must fail | test_sbom_is_spdx_2_3 (case='package without downloadLocation'): [] is not true : validate accepted a document
+ok  [sbom_check.py] validate: DESCRIBES >= 1                                                    must fail | test_sbom_is_spdx_2_3 (case='two DESCRIBES'): [] is not true : validate accepted a document with two DESCRIBES
+ok  [sbom_check.py] validate: DESCRIBES <= 1                                                    must fail | test_sbom_is_spdx_2_3 (case='no DESCRIBES'): [] is not true : validate accepted a document with no DESCRIBES
+ok  [sbom_check.py] validate: ends not resolved                                                 must fail | test_sbom_is_spdx_2_3 (case='relationship to an unknown id'): [] is not true : validate accepted a document wi
+ok  [sbom_check.py] validate: file ids not counted                                              must fail | test_sbom_is_spdx_2_3 (case='valid'): Lists differ: ["relationship end 'SPDXRef-File-lib-apk-d[103 chars]lve
+ok  [sbom_check.py] validate: raises on a list                                                  must fail | test_sbom_is_spdx_2_3 (case='not an object'): validate raised AttributeError: 'list' object has no attribute '
+ok  [finish CLI (N6 amendment)] TARGET                                                                      must pass | no problem
+ok  [finish CLI (N6 amendment)] --uuid accepted (ignored)                                                   must fail | test_finish_refuses_uuid_option (part='--uuid is an unknown option (exit 2)'): 0 != 2 : finish accepted --uuid
+ok  [finish CLI (N6 amendment)] --uuid accepted and used                                                    must fail | test_finish_refuses_uuid_option (part='--uuid is an unknown option (exit 2)'): 0 != 2 : finish accepted --uuid
+ok  [finish CLI (N6 amendment)] namespace constant                                                          must fail | test_finish_namespace_is_fresh_per_run: 'urn:uuid:0f8fad5b-d9cb-469f-a165-70867728950e' == 'urn:uuid:0f8fad5b-
+ok  [finish CLI (N6 amendment)] namespace v4-shaped hash of the name                                        must fail | test_finish_namespace_is_fresh_per_run: 'urn:uuid:36c0c6b3-2a5c-4cbe-aa19-2a2af99f9ac8' == 'urn:uuid:36c0c6b3-
+ok  [finish CLI (N6 amendment)] namespace uuid1 (time based, not v4)                                        must fail | test_finish_namespace_is_fresh_per_run (run=0): 1 != 0 : sbom_check: valkey: documentNamespace 'urn:uuid:6e9a6
+ok  [never shipped] TARGET                                                                      must pass | no problem
+ok  [never shipped] app.Dockerfile copies it                                                    must fail | test_sbom_check_is_stdlib_and_never_shipped (part='never shipped, never imported by the product'): Lists diffe
+ok  [never shipped] engine imports it                                                           must fail | test_sbom_check_is_stdlib_and_never_shipped (part='never shipped, never imported by the product'): Lists diffe
+ok  [never shipped] bundle.sh copies it                                                         must fail | test_sbom_check_is_stdlib_and_never_shipped (part='never shipped, never imported by the product'): Lists diffe
+ok  [never shipped] no sbom_check.py (pre-U3)                                                   must fail | test_sbom_check_is_stdlib_and_never_shipped (part='present'): False is not true : scripts/sbom_check.py is mis
+exit 0

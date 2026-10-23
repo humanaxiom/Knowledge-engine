@@ -6600,8 +6600,8 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
      socket, no update check or remote licence lookups. It reads
      `docker-archive:/in/<name>.tar` read-only; its one writable mount is a
      per-image work dir outside `--out` that also takes the unpack
-     (`TMPDIR`). `--scope all-layers` (the tar ships every layer); run as
-     `compose -p <project>-sbom run --rm --pull never` after the saves.
+     (`TMPDIR`). `--scope all-layers`; uid:gid the caller's (`KE_SBOM_USER`);
+     run by `compose -p <project>-sbom run --rm --pull never` after the saves.
      `bundle.sh` refuses before any write if the image is absent. SPDX 2.3
      by a required-field validator (N6). No post-step: syft's dpkg
      cataloguer sees libpq5 and its dependencies, the python one psycopg-c.
@@ -6633,7 +6633,7 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
      stage, host and file, with no retry; the partial output is removed
      and `bundle.sh` never runs. No caller key reaches the fetch (PSC-6).
   4. **A committed, generated lock: `docker/sources.lock.json`** (N5),
-     keys `deb:`, `apk:`, `neo4j:`, `temurin:`, `pypi:`, each to file
+     keys `deb:`, `apk:`, `neo4j:`, `temurin:`, `pypi:`, `maven:`, each to file
      URLs, SHA-256, size and the upstream check. *Why:* Q63 still needs
      the full index every run; the lock builds it offline. *Routes:*
      Debian from snapshot.debian.org only (`.dsc` by snapshot's SHA-1,
@@ -6641,7 +6641,8 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
      commit by the APKBUILD `sha512sums`, read as text; Neo4j's tag
      tarball, trusted on first use (Q48) plus a second fetch by security;
      Temurin's `jdk-sources` by its `.sha256.txt`; psycopg and psycopg-c
-     by their sdist URL and hash in `uv.lock`, with no API call.
+     by their sdist URL and hash in `uv.lock`, with no API call; Maven
+     sources jars from `repo1.maven.org` by their `.sha1` (ruling 5).
      `scripts/sources_lock.sh` (maintainer, network) regenerates it;
      security reviews every diff; arches merge (PSC-21). A GPL-family
      package with no entry fails the bundle, naming it and the tool.
@@ -6657,8 +6658,8 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
      `app/sboms/<name>.spdx.json`, annotated `ke:ref`, `ke:arch` and
      `ke:image-config=sha256:<hex>`. The image is named by the tar's
      `manifest.json` `Config` digest, the same on both stores (R2), not
-     by an ID install reports. `documentNamespace` holds a per-bundle
-     uuid. SBOMs, sources and copies of `NOTICE.md`,
+     by an ID install reports. `documentNamespace` is `urn:uuid:<uuid4>`,
+     fresh per document (N6). SBOMs, sources and copies of `NOTICE.md`,
      `THIRD_PARTY_NOTICES.md`, `LICENSE` and `licenses/` all go under
      `app/`, so install publishes them and the manifest covers them.
   7. **`/install` (PSC-16, N14):** `size=${KE_OFFLINE_INSTALL_TMPFS:?}`
@@ -6671,8 +6672,11 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
      version, `+`, `-only` or `-or-later`, and a deprecated
      `-with-…-exception`. This is wider than PSC-15 (AGPL, GPL-1.0,
      LGPL-2.0), which is more conservative. Unparseable text containing
-     `gpl` needs source and is listed. A licence of none or `NOASSERTION`
-     is reported per image (PSC-22). `docker/source-policy.json` holds
+     `gpl`, or an id with a `gpl`/`lgpl`/`agpl` token (syft folds pom URLs
+     into one `LicenseRef-`), needs source and is listed; so is every
+     URL-folded id. A missing `licenseDeclared` falls through to
+     `licenseConcluded`; none or `NOASSERTION` in both is reported per
+     image (PSC-22). `docker/source-policy.json` holds
      `hosts`, `always` (each PSC-22 component and its image; one missing
      from its image fails) and `exempt` (versioned purl, `reason`,
      `reviewed: security <date>`). Security reviews every diff, and a
@@ -6724,11 +6728,12 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
   `build.sh` on every branch and on CI until the pin is bumped, and
   rebuilding an old tag fails; installs from a bundle are unaffected. `full`
   needs the N4 hosts; an outage or refused fetch turns it red by name (Q61);
-  the fix is a re-lock, never a skip. Operators run `build.sh`,
+  the fix is a re-lock, never a skip (N4 gains `repo1.maven.org`). Operators run `build.sh`,
   `bundle_fetch.sh --set full`, `bundle.sh --sources`. The CLAUDE.md text
-  (N13) goes to the human at U8 (ruling 6). Neo4j's GPL-family jars are
-  decided at U3, back to the architect if any (ruling 5). `ke-app` shares
-  no layer with the base (U1). No agent step: no spans.
+  (N13) goes to the human at U8 (ruling 6). Ruling 5 (U3, N8a): jna and
+  javassist are OR, Apache-2.0 elected, reviewed `exempt` (U6); jaxb-api
+  ships its sources jar (CDDL-1.1 elected, its 3.1 source term; U7); no
+  cargo default for NOASSERTION (U4 report); `XDG_CACHE_HOME=/tmp/cache` (U4). `ke-app` shares no layer with the base (U1). No spans.
 - **Q66 (ruled):** Debian 12's libpq 15, no apt.postgresql.org. It lacks
   `require_auth` (libpq 16+); security re-rated that follow-up at U0 (A66).
 - **First tests:** U0's eight are in N0 ("U0 RED tests"; committed

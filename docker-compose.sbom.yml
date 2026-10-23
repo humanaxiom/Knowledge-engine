@@ -3,11 +3,14 @@
 # this file and refuses the bundle when the image is absent (it never pulls);
 # until U8 scripts/offline_check.sh pulls it through this file, and from U8
 # scripts/bundle_fetch.sh does. No profiles: only `compose run` starts it, as
-#   docker compose -p <project>-sbom -f docker-compose.sbom.yml run --rm
-#     --pull never sbom docker-archive:/in/<name>.tar --scope all-layers
+#   KE_SBOM_IN=<out>/images KE_SBOM_OUT=<work dir> KE_SBOM_USER=<uid:gid>
+#   docker compose -p <project>-sbom --env-file .env.example
+#     -f docker-compose.sbom.yml run --rm --pull never sbom
+#     docker-archive:/in/<name>.tar --scope all-layers
 #     -o spdx-json=/out/raw.spdx.json
-# (U3), so its containers carry the project label <project>-sbom. No
-# top-level name, so that -p always wins.
+# so its containers carry the project label <project>-sbom; bundle.sh's
+# `down` uses the same -p, --env-file and KE_SBOM_* values. No top-level
+# name: the file fixes no project of its own.
 #
 # sbom has no network, a read-only root with /tmp as tmpfs, no capabilities
 # and no socket. It reads the saved image tars read-only at /in; its one
@@ -18,6 +21,9 @@
 services:
   sbom:
     image: anchore/syft:v1.54.1@sha256:3eb5379ba7b409c3f4069b686110527af0c47df993fa5c10d13e7cf34f49b1aa
+    # The caller's uid:gid (security L-2): syft reads the 0600 tars bundle.sh
+    # saved and writes the work dir as their owner, with no capability.
+    user: ${KE_SBOM_USER:?set by scripts/bundle.sh}
     network_mode: none
     read_only: true
     tmpfs:

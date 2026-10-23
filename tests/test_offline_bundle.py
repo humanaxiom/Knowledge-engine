@@ -3018,7 +3018,10 @@ class _BundleBase:
         self.stack = _stack_images()
         self.n = 0
         # PS-3.8: the ke-app image's venv as the notices generator sees it.
-        self.site = self.tmp / "site-packages"
+        # platform-sbom U3: laid out as the image's /opt/venv, so the fake maps
+        # that container path (FAKE_IMAGE_PATHS) for the SBOM check (N3, N7).
+        self.venv = self.tmp / "venv"
+        self.site = self.venv / "lib" / "python3.12" / "site-packages"
         self.packages = _make_site(self.site)
         # platform-sbom U2 (PSC-20, design-notes N1): the SBOM generator, as
         # docker-compose.sbom.yml pins it, is present on the fake daemon (the
@@ -3074,6 +3077,12 @@ class _BundleBase:
             # refuses while a `${VAR:?}` of that file is unset, as compose does.
             "FAKE_COMPOSE_FILE_IMAGES": json.dumps({cs.SBOM_COMPOSE_NAME: {"sbom": self.sbom_ref}}),
             "FAKE_COMPOSE_FILE_REQUIRED": json.dumps({cs.SBOM_COMPOSE_NAME: self.sbom_required}),
+            # platform-sbom U3 (PSC-13, design-notes N3/N6): `docker save` writes
+            # a real image tar (manifest.json `Config`, docker 25+ layout), and
+            # the SBOM checker run in the ke-app image sees its /opt/venv and
+            # /app (uv.lock) here (tests/fake_docker.py).
+            "FAKE_DOCKER_SAVE_TAR": "oci",
+            "FAKE_IMAGE_PATHS": json.dumps({"/opt/venv": str(self.venv), "/app": str(ROOT)}),
         }
         run_env.update(env)
         result = subprocess.run(["bash", "scripts/bundle.sh", *args, "--out", str(out)], env=run_env,
@@ -4116,9 +4125,13 @@ class BundleNoticesTest(_BundleBase, unittest.TestCase):
         tracked_config = sorted(self._git("ls-files", "config").split())
         _, _, out, _ = self._ok()
         with self.subTest(part="app/ is exact"):
+            # platform-sbom U3 (PSC-13; ADR-KE-016 point 6, orchestrator ruling 2):
+            # app/ also holds one SPDX document per bundled image, named after its
+            # tar, at app/sboms/<name>.spdx.json (tester, U3 RED, 2026-10-23).
+            sboms = {f"sboms/{Path(e['file']).stem}.spdx.json" for e in self._expected().values()}
             expected = sorted({"docker-compose.yml", ".env.example", "docs/quickstart.md", *tracked_config,
                                *(f"scripts/{s}" for s in ("launch.sh", "teardown.sh", "smoke.sh", "launch.ps1",
-                                                          "teardown.ps1", "net_isolated.sh"))},
+                                                          "teardown.ps1", "net_isolated.sh")), *sboms},
                               key=lambda s: s.encode("utf-8"))
             self.assertEqual(_regular_files(out / "app"), expected, "app/ holds exactly §2.5 Bundle step 3")
         with self.subTest(part="the root is exact"):

@@ -34,7 +34,10 @@ Interface pinned by these tests (tester, RED U2, 2026-10-23):
   SYFT_GOLANG_SEARCH_REMOTE_LICENSES, SYFT_GOLANG_USE_PACKAGES_LIB,
   SYFT_JAVASCRIPT_SEARCH_REMOTE_LICENSES, SYFT_PYTHON_SEARCH_REMOTE_LICENSES,
   SYFT_CPP_VCPKG_ALLOW_GIT_CLONE. N1's fallback HOME and
-  XDG_CACHE_HOME are allowed under /out/tmp. Any further SYFT_* key must be
+  XDG_CACHE_HOME are allowed only at or under /tmp, the container's tmpfs,
+  never under /out (security I-2, carried to U3 by the orchestrator's U2
+  commit gate: syft's config search path must not sit in the host-writable
+  work dir; tester, U3 RED, 2026-10-23). Any further SYFT_* key must be
   the literal `false` (switching a feature off); no other key is allowed.
   Its own label (PSC-20): the file sets no top-level `name`, no
   `container_name` and no `com.docker.compose.*` label, so the project label
@@ -108,7 +111,9 @@ REQUIRED_ENV = {
 # `run scripts/bundle_fetch.sh first` in the commit that adds that script).
 REFUSAL = ("bundle: the SBOM generator image is not present ({ref}); "
            "pull it first with: docker pull {ref}; this script never pulls")
-# N1 *Confirm at GREEN* fallback: a literal HOME / XDG_CACHE_HOME under /out/tmp.
+# N1 *Confirm at GREEN* fallback: a literal HOME / XDG_CACHE_HOME. Security
+# I-2 (u2/security.md; U2 commit gate carry list): at or under /tmp (tmpfs),
+# never under the host-writable /out (U3 RED, 2026-10-23).
 FALLBACK_ENV = {"HOME", "XDG_CACHE_HOME"}
 IN_SOURCE = re.compile(r"^\$\{KE_SBOM_IN:\?[^}]*\}$")
 OUT_SOURCE = re.compile(r"^\$\{KE_SBOM_OUT:\?[^}]*\}$")
@@ -281,8 +286,9 @@ def hardening_problems(data: Mapping[str, Any]) -> list[str]:
         if key in REQUIRED_ENV or key.upper().startswith("DOCKER_"):
             continue
         if key in FALLBACK_ENV:
-            if not (value == "/out/tmp" or value.startswith("/out/tmp/")):
-                p.append(f"sbom: {key}={value!r} is not under /out/tmp (N1 fallback)")
+            if not (value == "/tmp" or value.startswith("/tmp/")) or "/../" in f"{value}/":
+                p.append(f"sbom: {key}={value!r} is not at or under /tmp (N1 fallback; security I-2: "
+                         "never under the host-writable /out)")
             continue
         if key.upper().startswith("SYFT_"):
             if value.lower() != "false":

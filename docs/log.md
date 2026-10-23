@@ -539,3 +539,15 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-23T09:38:36Z | security | platform-sbom | U2 audit | security: PASS
 2026-10-23T09:46:23Z | tester | platform-sbom | U2 A34 Windows proof (docker-compose.sbom.yml) | a34: PASS
 2026-10-23T09:59:01Z | orchestrator | platform-sbom | U2 gates judged: review APPROVED, security PASS, A34 PASS, verify full PASS 699 s; commit approved; U3 carry list recorded | smoke: PASS
+2026-10-23T09:59:11Z | developer | platform-sbom | committed U2 on agent/platform-sbom | commit: done
+2026-10-23T10:53:26Z | tester | platform-sbom | U3 RED: SBOM per image, SPDX 2.3, ke-app packages, run argv, carry list | tdd red: 14 failing as expected
+2026-10-23T10:54:34Z | orchestrator | platform-sbom | U3 ruling: SPDX documentNamespace urn:uuid:<uuid4> per document (avoids PS-1.2 hardcoded URL) | plan: ruling recorded
+2026-10-23T10:57:32Z | architect | platform-sbom | U3: N6 urn:uuid namespace, N1 nits, interface pins | plan: design amended
+2026-10-23T11:25:43Z | tester | platform-sbom | U3 RED re-target: urn:uuid namespace, finish CLI without --uuid; reach PASS | tdd red: 16 failing as expected
+2026-10-23T13:06:08Z | developer | platform-sbom | U3 GREEN: SBOM per image (syft first real run), sbom_check.py, user: caller | tdd green: verify fast + full PASS
+2026-10-23T13:14:39Z | security | platform-sbom | U3 audit | security: PASS
+2026-10-23T13:16:26Z | architect | platform-sbom | ruling 5: neo4j jars jna/jaxb-api; NOASSERTION to U4; cache warning | plan: ruling recorded
+2026-10-23T13:19:51Z | reviewer | platform-sbom | U3 review | review: APPROVED
+2026-10-23T13:39:53Z | tester | platform-sbom | U3 A34 Windows proof (sbom user:, bundle.sh SBOMs on Windows) | a34: PASS
+2026-10-23T13:41:13Z | documenter | platform-sbom | handoff split: U1 gate, U2, U3 to archive/platform-sbom-part5.md | docs: updated
+2026-10-23T13:55:32Z | orchestrator | platform-sbom | U3 gates judged: review APPROVED, security PASS, A34 PASS, verify full PASS 856 s; commit approved | smoke: PASS

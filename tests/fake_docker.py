@@ -301,6 +301,47 @@ never touches a real daemon. What it does:
     each must be set and non-empty in the interpolation environment (process
     KE_* or the env file), else exit 1 "required variable X is missing a
     value", as compose does for `${X:?}`; `--no-interpolate` skips it.
+- platform-sbom U3 (PSC-13; ADR-KE-016 points 1, 2 and 6; design-notes N1,
+  N3, N6, N7). Each is inert unless its variable is set (the bundle.sh tests
+  set FAKE_DOCKER_SAVE_TAR and FAKE_IMAGE_PATHS):
+  - FAKE_DOCKER_SAVE_TAR (`oci`, `legacy` or `two`): `save -o` writes a real
+    image tar. `oci` is the docker 25+ layout (manifest.json `Config` is
+    `blobs/sha256/<hex>`, plus index.json and oci-layout), `legacy` the older
+    one (`Config` is `<hex>.json`), `two` an `oci` tar whose manifest.json
+    has two entries. The config blob is JSON naming the saved references, so
+    its digest differs per image and from the FAKE_DOCKER_IMAGES `Id`.
+  - `compose ... -f <file> ...` for a file in FAKE_COMPOSE_FILE_IMAGES: the
+    FAKE_COMPOSE_FILE_REQUIRED check applies to every command that loads the
+    file (`run` and `down` too), not only `config`.
+  - `compose ... run [opts] sbom docker-archive:/in/<name>.tar ... -o
+    spdx-json=/out/<file>` models syft: `/in` is KE_SBOM_IN and `/out` is
+    KE_SBOM_OUT, from the interpolation environment. It exits 1 when the tar
+    is missing or `<KE_SBOM_OUT>/tmp` is not a directory (TMPDIR=/out/tmp; Go's
+    MkdirTemp needs it). Otherwise it writes an unpack scratch file under
+    `<KE_SBOM_OUT>/tmp/` and a syft-shaped SPDX 2.3 JSON document at
+    `/out/<file>`: creators `Organization: Anchore, Inc` and `Tool:
+    syft-<version of the sbom image's tag>`; a DocumentRoot package for the
+    image, which the document DESCRIBES and which CONTAINS every package;
+    dpkg packages (base-files, libc6, plus libpq5 at the pin for ke-app),
+    each OTHER-related to a /var/lib/dpkg/status file; and, for `ke-app`, one
+    `pkg:pypi/<METADATA Name>@<Version>` package per `*.dist-info` in
+    `<FAKE_IMAGE_PATHS["/opt/venv"]>/lib/python3.12/site-packages`
+    (knowledge-engine included, as syft lists it). Purl versions are
+    percent-encoded (`+` is `%2B`), as syft writes them. Knobs:
+    FAKE_SYFT_DROP (comma-separated pypi names left out, PEP 503 compared),
+    FAKE_SYFT_PYPI_VERSIONS (JSON name -> version reported instead),
+    FAKE_SYFT_RAW (JSON image name -> document text written verbatim),
+    FAKE_SYFT_LOG (one JSON line per run: name, in, out, user, and the
+    entries of KE_SBOM_OUT and of its tmp/ before the run).
+  - `run ... <image> [args] <dir>/sbom_check.py ARGS` (the N3 checker): runs
+    the real script, read from the host source of its `-v`/`--volume`/
+    `--mount` bind, under this interpreter with `-I -S -B`, the venv site of
+    FAKE_IMAGE_PATHS["/opt/venv"] appended to sys.path. Each argument after
+    the script that is a container path (or `--opt=<path>`) is rewritten to
+    the host: under a mount target by its bind source, else under a
+    FAKE_IMAGE_PATHS prefix (JSON, container prefix -> host dir; the tests
+    map `/opt/venv` and `/app`), longest prefix first. stdout, stderr and the
+    exit status are the script's; a script that is not there exits 2.
 - Every other call exits 0.
 """
 
@@ -994,6 +1035,79 @@ if argv[:1] == ["inspect"] or argv[:2] == ["container", "inspect"]:
         sys.exit(0)
 
 if argv[:1] == ["run"] or argv[:2] == ["container", "run"]:
+    # platform-sbom U3 (N3): `run ... <image> ... sbom_check.py ARGS`.
+    _rv = {"-v", "--volume", "--mount", "-e", "--env", "--env-file", "-l", "--label", "--label-file",
+           "--entrypoint", "--network", "--net", "--security-opt", "--cap-drop", "--cap-add", "-u",
+           "--user", "--pull", "--name", "-w", "--workdir", "--tmpfs", "--platform", "-m", "--memory",
+           "--cpus", "--ulimit", "--log-driver", "--log-opt", "-h", "--hostname", "--add-host", "--dns",
+           "--device", "--stop-signal", "--pids-limit", "--userns", "--ipc", "--pid", "--uts",
+           "--cgroupns", "--restart", "--shm-size", "--gpus"}
+    _rs = 1 if argv[0] == "run" else 2
+    _ri, _rimg = _rs, None
+    while _ri < len(argv):
+        if argv[_ri] in _rv:
+            _ri += 2
+            continue
+        if argv[_ri].startswith("-"):
+            _ri += 1
+            continue
+        _rimg = _ri
+        break
+    _rtail = argv[_rimg + 1:] if _rimg is not None else []
+    _rck = [k for k, a in enumerate(_rtail) if a.replace("\\", "/").rsplit("/", 1)[-1] == "sbom_check.py"]
+    if _rck:
+        import subprocess as _subprocess
+        _pairs = []
+        _ro = argv[_rs:_rimg]
+        for _k, _a in enumerate(_ro):
+            _val = None
+            if _a in ("-v", "--volume", "--mount") and _k + 1 < len(_ro):
+                _val, _kind = _ro[_k + 1], _a
+            elif _a.startswith(("--volume=", "--mount=", "-v=")):
+                _kind, _val = _a.split("=", 1)
+            if _val is None:
+                continue
+            if _kind == "--mount":
+                _kv = dict(p.split("=", 1) if "=" in p else (p, "") for p in _val.split(","))
+                _src = _kv.get("source") or _kv.get("src") or ""
+                _dst = _kv.get("target") or _kv.get("destination") or _kv.get("dst") or ""
+            else:
+                _parts = _val.split(":")
+                if len(_parts) >= 2 and len(_parts[0]) == 1 and _parts[0].isalpha():
+                    _parts = [_parts[0] + ":" + _parts[1]] + _parts[2:]
+                _src, _dst = _parts[0], (_parts[1] if len(_parts) > 1 else "")
+            if _src and _dst:
+                _pairs.append((_dst, _src))
+        _imgpaths = json.loads(os.environ.get("FAKE_IMAGE_PATHS") or "{}")
+        _pairs += list(_imgpaths.items())
+
+        def _remap(t):
+            if t.startswith("--") and "=" in t:
+                _k2, _v2 = t.split("=", 1)
+                return _k2 + "=" + _remap(_v2)
+            best = None
+            for c, h in _pairs:
+                c2 = c.rstrip("/") or "/"
+                if t == c2 or t.startswith(c2.rstrip("/") + "/"):
+                    if best is None or len(c2) > len(best[0]):
+                        best = (c2, h)
+            if best is None:
+                return t
+            return best[1].rstrip("/\\") + t[len(best[0].rstrip("/")):]
+
+        _script = _remap(_rtail[_rck[0]])
+        if not os.path.isfile(_script):
+            sys.stderr.write("python: can't open file %r: [Errno 2] No such file or directory\n" % _rtail[_rck[0]])
+            sys.exit(2)
+        _venv = _imgpaths.get("/opt/venv")
+        _site = os.path.join(_venv, "lib", "python3.12", "site-packages") if _venv else ""
+        _boot = ("import runpy, sys; s, site = sys.argv[1], sys.argv[2]; "
+                 "sys.path.append(site) if site else None; sys.argv = [s] + sys.argv[3:]; "
+                 "runpy.run_path(s, run_name='__main__')")
+        sys.stdout.flush()
+        _done = _subprocess.run([sys.executable, "-I", "-S", "-B", "-c", _boot, _script, _site,
+                                 *[_remap(a) for a in _rtail[_rck[0] + 1:]]])
+        sys.exit(_done.returncode)
     if "engine.notices" in argv:
         import subprocess as _subprocess
         _site = os.environ.get("FAKE_NOTICES_SITE")
@@ -1168,6 +1282,38 @@ if argv[:1] == ["tag"] or argv[:2] == ["image", "tag"]:
             sys.exit(1)
     sys.exit(0)
 
+def _write_image_tar(target, refs, form):
+    """platform-sbom U3: a real image tar (FAKE_DOCKER_SAVE_TAR)."""
+    import hashlib as _h, io as _io, tarfile as _tf
+    def _add(tar, name, data):
+        info = _tf.TarInfo(name)
+        info.size = len(data)
+        info.mtime = 0
+        tar.addfile(info, _io.BytesIO(data))
+    buf = _io.BytesIO()
+    with _tf.open(fileobj=buf, mode="w") as lt:
+        _add(lt, "etc/fake-release", ("layer of %s\n" % " ".join(refs)).encode("utf-8"))
+    layer = buf.getvalue()
+    layer_hex = _h.sha256(layer).hexdigest()
+    config = json.dumps({"architecture": "fake", "os": "linux",
+                         "config": {"Labels": {"ke.fake.refs": " ".join(refs)}},
+                         "rootfs": {"type": "layers", "diff_ids": ["sha256:" + layer_hex]}},
+                        sort_keys=True).encode("utf-8")
+    cfg_hex = _h.sha256(config).hexdigest()
+    if form == "legacy":
+        cfg_name, layer_name = cfg_hex + ".json", layer_hex + "/layer.tar"
+    else:
+        cfg_name, layer_name = "blobs/sha256/" + cfg_hex, "blobs/sha256/" + layer_hex
+    entry = {"Config": cfg_name, "RepoTags": refs, "Layers": [layer_name]}
+    manifest = [entry, dict(entry, RepoTags=["fake-second:entry"])] if form == "two" else [entry]
+    with _tf.open(target, "w") as tar:
+        _add(tar, cfg_name, config)
+        _add(tar, layer_name, layer)
+        if form != "legacy":
+            _add(tar, "oci-layout", b'{"imageLayoutVersion": "1.0.0"}')
+            _add(tar, "index.json", json.dumps({"schemaVersion": 2, "manifests": []}).encode("utf-8"))
+        _add(tar, "manifest.json", json.dumps(manifest).encode("utf-8"))
+
 if argv[:1] == ["save"] or argv[:2] == ["image", "save"]:
     out = opt_values("-o") + opt_values("--output")
     if out:
@@ -1177,8 +1323,11 @@ if argv[:1] == ["save"] or argv[:2] == ["image", "save"]:
             sys.exit(1)
         refs = [a for a in argv[1:] if not a.startswith("-") and a not in out
                 and a not in opt_values("--platform") and a != "save"]
-        with open(target, "wb") as fh:
-            fh.write(("fake image tar for %s\n" % " ".join(refs)).encode("utf-8"))
+        if os.environ.get("FAKE_DOCKER_SAVE_TAR"):
+            _write_image_tar(target, refs, os.environ["FAKE_DOCKER_SAVE_TAR"])
+        else:
+            with open(target, "wb") as fh:
+                fh.write(("fake image tar for %s\n" % " ".join(refs)).encode("utf-8"))
         if os.environ.get("FAKE_DOCKER_SAVE_MODE"):
             os.chmod(target, int(os.environ["FAKE_DOCKER_SAVE_MODE"], 8))
     sys.exit(0)
@@ -1255,6 +1404,158 @@ def interpolation_env():
         if k.startswith("KE_") or k.startswith("PHOENIX_"):
             merged[k] = v
     return merged
+
+# platform-sbom U3 (PSC-13, N1): a file of its own (FAKE_COMPOSE_FILE_IMAGES)
+# is loaded by every command, so its ${VAR:?} check applies to run and down
+# too; `run ... sbom docker-archive:/in/<name>.tar ...` models syft.
+_u3_images = json.loads(os.environ.get("FAKE_COMPOSE_FILE_IMAGES") or "{}")
+_u3_files = opt_values("-f") + opt_values("--file")
+if not _u3_files and os.environ.get("COMPOSE_FILE"):
+    _u3_files = os.environ["COMPOSE_FILE"].split(os.environ.get("COMPOSE_PATH_SEPARATOR") or os.pathsep)
+_u3_own = [os.path.basename(f) for f in _u3_files if os.path.basename(f) in _u3_images]
+if _u3_own and "config" not in argv and "--no-interpolate" not in argv:
+    _u3_env = interpolation_env()
+    for _var in json.loads(os.environ.get("FAKE_COMPOSE_FILE_REQUIRED") or "{}").get(_u3_own[0], []):
+        if not _u3_env.get(_var):
+            sys.stderr.write("error while interpolating %s: required variable %s is missing a value\n"
+                             % (_u3_own[0], _var))
+            sys.exit(1)
+
+def _pep503(n):
+    import re as _re
+    return _re.sub(r"[-_.]+", "-", n).lower()
+
+def _syft_doc(name, ver):
+    import hashlib as _h, re as _re, time as _time, uuid as _uuid
+    from urllib.parse import quote as _quote
+    def _id(prefix, *parts):
+        stem = _re.sub(r"[^A-Za-z0-9.-]", "-", parts[0])
+        return "SPDXRef-%s-%s-%s" % (prefix, stem, _h.sha256("|".join(parts).encode()).hexdigest()[:16])
+    root = {"name": "/in/%s.tar" % name, "SPDXID": "SPDXRef-DocumentRoot-Image-" + _re.sub(r"[^A-Za-z0-9.-]", "-", name),
+            "versionInfo": "sha256:" + _h.sha256(name.encode()).hexdigest(), "supplier": "NOASSERTION",
+            "downloadLocation": "NOASSERTION", "filesAnalyzed": False, "licenseConcluded": "NOASSERTION",
+            "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION", "primaryPackagePurpose": "CONTAINER"}
+    status = {"fileName": "/var/lib/dpkg/status", "SPDXID": _id("File", "var-lib-dpkg-status", name),
+              "checksums": [{"algorithm": "SHA1", "checksumValue": "0" * 40}],
+              "licenseConcluded": "NOASSERTION", "copyrightText": ""}
+    pkgs, rels = [], [{"spdxElementId": "SPDXRef-DOCUMENT", "relatedSpdxElement": root["SPDXID"],
+                       "relationshipType": "DESCRIBES"}]
+    debs = [("base-files", "12.4+deb12u13", "GPL-2.0-or-later"),
+            ("libc6", "2.36-9+deb12u13", "GPL-2.0-only AND LGPL-2.1-only")]
+    if name == "ke-app":
+        debs.append(("libpq5", LIBPQ_PIN, "PostgreSQL"))
+    for n, v, lic in debs:
+        p = {"name": n, "SPDXID": _id("Package-deb", n, v), "versionInfo": v, "supplier": "Person: Debian",
+             "downloadLocation": "NOASSERTION", "filesAnalyzed": False,
+             "sourceInfo": "acquired package info from DPKG DB: /var/lib/dpkg/status",
+             "licenseConcluded": "NOASSERTION", "licenseDeclared": lic, "copyrightText": "NOASSERTION",
+             "externalRefs": [{"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl",
+                               "referenceLocator": "pkg:deb/debian/%s@%s?arch=amd64&distro=debian-12"
+                               % (n, _quote(v, safe=""))}]}
+        pkgs.append(p)
+        rels.append({"spdxElementId": p["SPDXID"], "relatedSpdxElement": status["SPDXID"],
+                     "relationshipType": "OTHER",
+                     "comment": "evident-by: indicates the package's existence is evident by the given file"})
+    if name == "ke-app":
+        venv = json.loads(os.environ.get("FAKE_IMAGE_PATHS") or "{}").get("/opt/venv")
+        site = os.path.join(venv, "lib", "python3.12", "site-packages") if venv else ""
+        drop = {_pep503(d) for d in os.environ.get("FAKE_SYFT_DROP", "").split(",") if d}
+        versions = {_pep503(k): v for k, v in json.loads(os.environ.get("FAKE_SYFT_PYPI_VERSIONS") or "{}").items()}
+        for dist in sorted(os.listdir(site)) if site and os.path.isdir(site) else []:
+            if not dist.endswith(".dist-info"):
+                continue
+            meta = {}
+            with open(os.path.join(site, dist, "METADATA"), encoding="utf-8") as fh:
+                for line in fh.read().split("\n\n", 1)[0].splitlines():
+                    k, _, v = line.partition(": ")
+                    meta.setdefault(k, v)
+            n, v = meta.get("Name", ""), meta.get("Version", "")
+            if not n or _pep503(n) in drop:
+                continue
+            v = versions.get(_pep503(n), v)
+            pkgs.append({"name": n, "SPDXID": _id("Package-python", n, v), "versionInfo": v,
+                         "supplier": "NOASSERTION", "downloadLocation": "NOASSERTION", "filesAnalyzed": False,
+                         "sourceInfo": "acquired package info from installed python package manifest file: "
+                                       "/opt/venv/lib/python3.12/site-packages/%s/METADATA" % dist,
+                         "licenseConcluded": "NOASSERTION",
+                         "licenseDeclared": meta.get("License-Expression", "NOASSERTION"),
+                         "copyrightText": "NOASSERTION",
+                         "externalRefs": [{"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl",
+                                           "referenceLocator": "pkg:pypi/%s@%s" % (n, _quote(v, safe=""))}]})
+    for p in pkgs:
+        rels.append({"spdxElementId": root["SPDXID"], "relatedSpdxElement": p["SPDXID"],
+                     "relationshipType": "CONTAINS"})
+    return {"spdxVersion": "SPDX-2.3", "dataLicense": "CC0-1.0", "SPDXID": "SPDXRef-DOCUMENT",
+            "name": "/in/%s.tar" % name,
+            "documentNamespace": "https://anchore.com/syft/file/in/%s.tar-%s" % (name, _uuid.uuid4()),
+            "creationInfo": {"licenseListVersion": "3.27",
+                             "creators": ["Organization: Anchore, Inc", "Tool: syft-" + ver],
+                             "created": _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime())},
+            "packages": [root] + pkgs, "files": [status], "relationships": rels}
+
+if _u3_own and "run" in argv:
+    _at3 = argv.index("run")
+    _takes3 = {"-e", "--env", "-u", "--user", "-v", "--volume", "--name", "--entrypoint", "-w",
+               "--workdir", "-l", "--label", "-p", "--publish", "--pull", "--cap-add", "--cap-drop"}
+    _i3, _svc3 = _at3 + 1, None
+    while _i3 < len(argv):
+        if argv[_i3] in _takes3:
+            _i3 += 2
+            continue
+        if argv[_i3].startswith("-"):
+            _i3 += 1
+            continue
+        _svc3 = argv[_i3]
+        break
+    if _svc3 == "sbom":
+        import re as _re3
+        _args3 = argv[_i3 + 1:]
+        _env3 = interpolation_env()
+        _src3 = _args3[0] if _args3 else ""
+        if not _src3.startswith("docker-archive:/in/"):
+            sys.stderr.write("fake syft: want docker-archive:/in/<name>.tar first, got %r\n" % _src3)
+            sys.exit(1)
+        _tar3 = os.path.join(_env3.get("KE_SBOM_IN", ""), _src3[len("docker-archive:/in/"):])
+        _outs3, _j3 = [], 0
+        while _j3 < len(_args3):
+            if _args3[_j3] in ("-o", "--output") and _j3 + 1 < len(_args3):
+                _outs3.append(_args3[_j3 + 1])
+                _j3 += 2
+                continue
+            if _args3[_j3].startswith(("-o=", "--output=")):
+                _outs3.append(_args3[_j3].split("=", 1)[1])
+            _j3 += 1
+        _spdx3 = [o.split("=", 1)[1] for o in _outs3 if o.startswith("spdx-json=")]
+        if not _spdx3 or not _spdx3[-1].startswith("/out/"):
+            sys.stderr.write("fake syft: want -o spdx-json=/out/<file>\n")
+            sys.exit(1)
+        _work3 = _env3.get("KE_SBOM_OUT", "")
+        _name3 = os.path.basename(_tar3)
+        _name3 = _name3[:-4] if _name3.endswith(".tar") else _name3
+        if os.environ.get("FAKE_SYFT_LOG"):
+            _tmp3 = os.path.join(_work3, "tmp")
+            with open(os.environ["FAKE_SYFT_LOG"], "a", encoding="utf-8") as fh:
+                fh.write(json.dumps({
+                    "name": _name3, "in": _env3.get("KE_SBOM_IN", ""), "out": _work3,
+                    "user": _env3.get("KE_SBOM_USER"),
+                    "out_entries": sorted(os.listdir(_work3)) if os.path.isdir(_work3) else None,
+                    "tmp_entries": sorted(os.listdir(_tmp3)) if os.path.isdir(_tmp3) else None}) + "\n")
+        if not os.path.isfile(_tar3):
+            sys.stderr.write("1 error occurred:\n\t* could not open docker-archive:/in/%s.tar\n" % _name3)
+            sys.exit(1)
+        if not os.path.isdir(os.path.join(_work3, "tmp")):
+            sys.stderr.write("mkdir /out/tmp/stereoscope-1: no such file or directory\n")
+            sys.exit(1)
+        os.makedirs(os.path.join(_work3, "tmp", "stereoscope-fake"), exist_ok=True)
+        with open(os.path.join(_work3, "tmp", "stereoscope-fake", "layer.tar"), "wb") as fh:
+            fh.write(b"unpacked layer (fake)\n")
+        _raw3 = json.loads(os.environ.get("FAKE_SYFT_RAW") or "{}").get(_name3)
+        if _raw3 is None:
+            _m3 = _re3.search(r":v(\d+\.\d+\.\d+)", str(_u3_images[_u3_own[0]].get("sbom", "")))
+            _raw3 = json.dumps(_syft_doc(_name3, _m3.group(1) if _m3 else "0.0.0"), indent=1)
+        with open(os.path.join(_work3, _spdx3[-1][len("/out/"):]), "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(_raw3)
+        sys.exit(0)
 
 if "config" in argv:
     env = interpolation_env()

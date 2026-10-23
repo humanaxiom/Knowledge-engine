@@ -1,0 +1,79 @@
+# security U3 probes (2026-10-23); profile paths redacted to <user>, scratch dir to <scratch>
+
+## P1 Linux mkdtemp + mkdir/chmod (ke-app:local, --network none, umask 000)
+mktemp -d mode (umask 000): 700
+child mkdir mode before chmod: 777
+after chmod: 700 700
+drwxrwxrwt 1 root root 4096 Oct 23 13:10 /tmp
+
+## P2 sbom_check.py finish on JSON depth bombs (200000 nested arrays)
+deep.json exit=1
+               ^^^^^^^^^^^^^^^^^^^^^^
+RecursionError: maximum recursion depth exceeded while decoding a JSON array from a unicode string
+deepobj.json exit=1
+               ^^^^^^^^^^^^^^^^^^^^^^
+RecursionError: maximum recursion depth exceeded while decoding a JSON array from a unicode string
+-- full stderr deep.json:
+Traceback (most recent call last):
+  File "C:\repos\Knowledge-engine\scripts\sbom_check.py", line 226, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ^^^^^^^^^^^^^^^^^^
+  File "C:\repos\Knowledge-engine\scripts\sbom_check.py", line 221, in main
+    return finish(args)
+           ^^^^^^^^^^^^
+  File "C:\repos\Knowledge-engine\scripts\sbom_check.py", line 172, in finish
+    doc = json.load(fh)
+          ^^^^^^^^^^^^^
+  File "<scratch>\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\json\__init__.py", line 293, in load
+    return loads(fp.read(),
+           ^^^^^^^^^^^^^^^^
+  File "<scratch>\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\json\__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<scratch>\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\json\decoder.py", line 338, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<scratch>\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\json\decoder.py", line 354, in raw_decode
+    obj, end = self.scan_once(s, idx)
+               ^^^^^^^^^^^^^^^^^^^^^^
+RecursionError: maximum recursion depth exceeded while decoding a JSON array from a unicode string
+
+## P3 pinned syft run, bundle.sh argv shape, project ke-secu3probe-sbom, docker save ke-gateway:local (0600) at /in
+ Container ke-secu3probe-sbom-sbom-run-80c61720a7b9 Creating 
+ Container ke-secu3probe-sbom-sbom-run-80c61720a7b9 Created 
+[0000]  WARN unable to get filesystem cache at /.cache/syft: unable to create directory at '/.cache/syft': mkdir /.cache: read-only file system
+syft exit=0
+== work dir after run
+drwxr-xr-x 1 adam 197121 0 Oct 23 06:10 work
+-rw-r--r-- 1 adam 197121 1083932 Oct 23 06:10 work/raw.spdx.json
+drwxr-xr-x 1 adam 197121 0 Oct 23 06:10 work/tmp
+== project leftovers
+== in dir after run
+total 22544
+drwxr-xr-x 1 adam 197121        0 Oct 23 06:10 .
+drwxr-xr-x 1 adam 197121        0 Oct 23 06:10 ..
+-rw-r--r-- 1 adam 197121 23079936 Oct 23 06:10 probe.tar
+
+## P3b same compose run, detached, docker container inspect, then rm -f + down
+User=197610:197121 Net=none RO=true CapDrop=[ALL] CapAdd=[] SecOpt=[no-new-privileges:true] Priv=false Tmpfs={"/tmp":""} Networks={"none":{"IPAMConfig":null,"Links":null,"Aliases":null,"DriverOpts":null,"GwPriority":0,"NetworkID":"57347d65ac5437a7c4c369e5ea0564b1e72ee9a2566ebdba1f80053dbd26c1fb","EndpointID":"","Gateway":"","IPAddress":"","MacAddress":"","IPPrefixLen":0,"IPv6Gateway":"","GlobalIPv6Address":"","GlobalIPv6PrefixLen":0,"DNSNames":null}} Env=["SYFT_GOLANG_SEARCH_REMOTE_LICENSES=false","SYFT_CPP_VCPKG_ALLOW_GIT_CLONE=false","SYFT_PYTHON_SEARCH_REMOTE_LICENSES=false","SYFT_GOLANG_USE_PACKAGES_LIB=false","SYFT_JAVA_RESOLVE_TRANSITIVE_DEPENDENCIES=false","SYFT_CHECK_FOR_APP_UPDATE=false","SYFT_JAVA_USE_NETWORK=false","SYFT_JAVASCRIPT_SEARCH_REMOTE_LICENSES=false","TMPDIR=/out/tmp","PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"]
+bind /out rw=true src=<scratch>/work2
+bind /in rw=false src=<scratch>/in
+
+
+## P4 cygpath -m with --, and with shell metacharacters (Git Bash)
+cygpath -m -- /c/repos/Knowledge-engine -> C:/repos/Knowledge-engine
+cygpath -m -- '/tmp/a b;c$(x)' -> <scratch>/AppData/Local/Temp/a b;c$(x)  (returned as one quoted word, not evaluated)
+
+## P5 secret-pattern grep, git diff 98b6d27 + sbom_check.py + test_sbom_bundle.py (2138 lines), and all of u3/: 0 hits for private keys, AKIA/ASIA, gh*_ , github_pat_, sk-, xox*, AIza, JWT, URL userinfo, C:/Users, /c/Users, S-1-5-21, key=literal
+
+## P6 stale ke-app:local used by the developer evidence bundle (M-1)
+docker image ls: ke-app:local 510c1b59b838 2026-10-19 20:39:32 -0700 (same ID as ke-app:bundle-98b6d27c1f73)
+docker run --rm --network none --pull never --label ke.probe=security-u3-pq --entrypoint sh ke-app:local -c 'ls -d .../psycopg*; dpkg-query -W libpq5'
+/opt/venv/lib/python3.12/site-packages/psycopg
+/opt/venv/lib/python3.12/site-packages/psycopg-3.3.6.dist-info
+/opt/venv/lib/python3.12/site-packages/psycopg_binary
+/opt/venv/lib/python3.12/site-packages/psycopg_binary-3.3.6.dist-info
+/opt/venv/lib/python3.12/site-packages/psycopg_binary.libs
+dpkg-query: no packages found matching libpq5
+u3/sboms/ke-app.pkgs.tsv: 389 pkg:pypi/pip@25.0.1; 411-412 pkg:pypi/psycopg-binary@3.3.6; no libpq entry
+u3/green-verify-full.txt:186,232 verify full built and bundled ke-app:wt-33a132fbfdd7 (fresh)

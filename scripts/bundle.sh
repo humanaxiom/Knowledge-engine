@@ -11,7 +11,9 @@
 # committed NOTICE.md and licenses/, a generated THIRD_PARTY_NOTICES.md (the
 # ke-app image's package licences, read inside that image with no network, and
 # the stack images' licences from NOTICE.md; any package or digest-pinned image
-# without a licence refuses the bundle before anything is written), a
+# without a licence refuses the bundle before anything is written), one SPDX
+# 2.3 SBOM per image under app/sboms/ (the pinned generator reads each saved
+# tar with no network; scripts/sbom_check.py finishes and checks it), a
 # bundle.json record and MANIFEST.sha256 over every other file.
 set -euo pipefail
 export LC_ALL=C
@@ -49,6 +51,7 @@ case "$asserted_arch" in
 esac
 
 CDPATH='' cd -- "$(dirname -- "$0")/.."
+repo_root="$PWD"
 
 # jq reads each service's image from the resolved compose model (defect D1); it
 # is a build-host prerequisite, checked before anything else runs.
@@ -115,7 +118,8 @@ fi
 unset COMPOSE_PROFILES COMPOSE_FILE
 compose=(docker compose -f docker-compose.yml --env-file .env.example)
 
-ref_re='^[a-z0-9._/-]+(:[A-Za-z0-9._-]+)?(@sha256:[0-9a-f]{64})?$'
+# The first character is never `-`, so no reference reads as an option (security I-1).
+ref_re='^[a-z0-9][a-z0-9._/-]*(:[A-Za-z0-9._-]+)?(@sha256:[0-9a-f]{64})?$'
 services_out="$("${compose[@]}" config --services)" || die "docker compose config --services failed"
 [ -n "$services_out" ] || die "compose config lists no services"
 # Sorted, so the bundle does not depend on Compose's service order (it is not
@@ -190,16 +194,22 @@ done
 # before anything is written. This script never pulls it. Compose refuses to
 # load the file while its ${VAR:?} mounts are unset, even for `config`, so
 # they get dummy values here (N1 amendment, U2); the run that uses them is
-# U3's. --env-file .env.example keeps the repo-root .env out of this file.
-sbom_ref="$(KE_SBOM_IN=/nonexistent KE_SBOM_OUT=/nonexistent \
+# below. --env-file .env.example keeps the repo-root .env out of this file.
+# The generator runs as the caller's uid:gid (security L-2; `user:` in the file).
+sbom_user="$(id -u):$(id -g)"
+[[ "$sbom_user" =~ ^[0-9]+:[0-9]+$ ]] || die "id -u / id -g gave no numeric uid:gid"
+sbom_ref="$(KE_SBOM_IN=/nonexistent KE_SBOM_OUT=/nonexistent KE_SBOM_USER="$sbom_user" \
   docker compose --env-file .env.example -f docker-compose.sbom.yml config --images sbom)" \
   || die "docker compose config --images sbom failed for docker-compose.sbom.yml"
 [ -n "$sbom_ref" ] || die "docker-compose.sbom.yml names no image for the sbom service"
 [[ "$sbom_ref" != *$'\n'* ]] || die "docker-compose.sbom.yml names more than one image for the sbom service"
 [[ "$sbom_ref" =~ $ref_re && "$sbom_ref" == *"@sha256:"* ]] \
   || die "the SBOM generator reference has no digest pin or fails its pattern: $(printf '%q' "$sbom_ref")"
-docker image inspect --format '{{.Id}}' "$sbom_ref" > /dev/null 2>&1 \
+sbom_platform="$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$sbom_ref" 2> /dev/null)" \
   || die "the SBOM generator image is not present ($sbom_ref); pull it first with: docker pull $sbom_ref; this script never pulls"
+# Each bundle's SBOMs come from its own daemon's arch, never emulated (PSC-21).
+[ "$sbom_platform" = "linux/$arch" ] \
+  || die "the SBOM generator image $sbom_ref is $(printf '%q' "$sbom_platform"), not linux/$arch (no emulation)"
 
 # --- licence notices (PS-3.8): everything that can refuse the bundle runs here,
 # before any tag or save, so a refusal leaves nothing in --out and no record.
@@ -359,6 +369,54 @@ done < <(git ls-files -z -- licenses)
   done
   printf ']}\n'
 } > "$out/bundle.json"
+
+# --- SBOMs (PSC-13; ADR-KE-016 points 1, 2 and 6; design-notes N1, N3, N6) --
+# One SPDX 2.3 document per saved tar, at app/sboms/<name>.spdx.json. syft
+# reads the tar with no network in its own project (<project>-sbom), as the
+# caller's uid:gid, into a fresh per-image work dir outside --out (it also
+# takes the unpack, TMPDIR=/out/tmp). scripts/sbom_check.py then runs in the
+# ke-app image (no network, read-only mounts, its own label) and prints the
+# final document: the image named by its ref and its tar's config digest, a
+# fresh urn:uuid namespace, and for ke-app the runtime packages checked
+# against uv.lock. Any failure stops here, before the manifest and the record.
+sbom_project="${project}-sbom"
+sbom_work="$(mktemp -d "${TMPDIR:-/tmp}/ke-sbom.XXXXXXXX")" || die "cannot create the SBOM work dir"
+sbom_cleanup() {
+  ( CDPATH='' cd -- "$repo_root" \
+      && KE_SBOM_IN="$out/images" KE_SBOM_OUT="$sbom_work" KE_SBOM_USER="$sbom_user" \
+        docker compose -p "$sbom_project" --env-file .env.example -f docker-compose.sbom.yml down ) \
+    > /dev/null 2>&1 || echo "bundle: warning: docker compose -p $sbom_project down failed" >&2
+  if [ -n "$sbom_work" ]; then rm -rf -- "$sbom_work"; fi
+}
+trap sbom_cleanup EXIT
+mkdir -p -- "$app/sboms"
+# Git Bash rewrites container paths in arguments; MSYS_NO_PATHCONV stops that, so host
+# paths for mounts and KE_SBOM_* are handed over in Windows form (cygpath -m) where it exists.
+hostpath() { if command -v cygpath > /dev/null 2>&1; then cygpath -m -- "$1"; else printf "%s" "$1"; fi; }
+for ref in "${refs[@]}"; do
+  name="${ref_name[$ref]}"
+  work="$sbom_work/$name"
+  # mkdir -m fails under Git Bash on NTFS (L-13); create, then chmod.
+  mkdir -- "$work" "$work/tmp" || die "cannot create the SBOM work dir for image $name"
+  chmod 0700 -- "$work" "$work/tmp" || die "cannot restrict the SBOM work dir for image $name"
+  MSYS_NO_PATHCONV=1 \
+  KE_SBOM_IN="$(hostpath "$out/images")" KE_SBOM_OUT="$(hostpath "$work")" KE_SBOM_USER="$sbom_user" \
+    docker compose -p "$sbom_project" --env-file .env.example -f docker-compose.sbom.yml \
+    run --rm --pull never sbom "docker-archive:/in/$name.tar" --scope all-layers -o spdx-json=/out/raw.spdx.json \
+    >&2 || die "SBOM generation failed for image $name ($ref); no bundle written"
+  site_args=()
+  if [ "$ref" = "$app_ref" ]; then
+    site_args=(--site /opt/venv/lib/python3.12/site-packages --lock /app/uv.lock)
+  fi
+  MSYS_NO_PATHCONV=1 \
+  docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --pull never \
+    --user "$sbom_user" --label "com.docker.compose.project=${project}-sbomcheck" \
+    -v "$(hostpath "$repo_root")/scripts/sbom_check.py:/opt/ke/sbom_check.py:ro" -v "$(hostpath "$work"):/work:ro" -v "$(hostpath "$out/images"):/images:ro" \
+    --entrypoint python "$app_ref" -I /opt/ke/sbom_check.py finish \
+    --name "$name" --ref "$ref" --arch "$arch" --git-sha "$git_sha" \
+    --raw /work/raw.spdx.json --tar "/images/$name.tar" "${site_args[@]}" \
+    > "$app/sboms/$name.spdx.json" || die "the SBOM check failed for image $name ($ref); no bundle written"
+done
 
 # --- manifest: every regular file except itself, LC_ALL=C order ------------
 CDPATH='' cd -- "$out"
