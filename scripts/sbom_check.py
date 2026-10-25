@@ -40,13 +40,23 @@ each problem; on success one summary line on stdout.
   sbom_check.py tree --official EXPORT --image EXPORT
 
   sbom_check.py lock-check --lock LOCK --policy POLICY --arch amd64|arm64
-                           --sbom IMAGE=PATH [--sbom IMAGE=PATH ...]
+                           --sbom IMAGE=PATH [--sbom IMAGE=PATH ...] [--pending-neo4j]
 
 `lock-check` (PSC-15, U7a; design-notes N5 and its U7 amendment) checks
 docker/sources.lock.json against the policy and the bundled images' SBOMs:
 schema, canonical text, file hosts, per-kind file rules, and coverage both
 ways for the arch. Exit 0 with one summary line, 1 naming the first 20
-problems, 2 on a bad argument.
+problems, 2 on a bad argument. With `--pending-neo4j` (U7b rework round 1,
+item 2) it exits 3 when the full problem list is non-empty and every problem
+is a coverage miss for a `neo4j:` key (security's second fetch pending).
+
+  sbom_check.py lock-needs --policy POLICY --sbom IMAGE=PATH [--sbom ...]
+                           [--tar IMAGE=SAVED_TAR ...]
+
+`lock-needs` (U7b; N5 amendment U7, item 3.3) prints needs.json for
+scripts/sources_resolve.py: per lock key its kind, packages and route
+inputs; Temurin's release file is read from the image's saved tar. Exit 1
+naming the first 20 problems, 2 on a bad argument.
 
 `tree` compares two `docker export` tars: ke-neo4j equals the official
 image minus /var/lib/neo4j/products (type, mode, owner, group, size, link;
@@ -1467,15 +1477,35 @@ def lock_problems(lock: Any, policy: dict[str, Any], docs: dict[str, Any], arch:
     p += mapping
     covered = {k for k, e in comps.items() if isinstance(e, dict) and isinstance(e.get("arches"), list)
                and arch in e["arches"]}
-    for key in sorted(needs):
-        if key not in covered:
-            for pkg in needs[key]["packages"]:
-                p.append(f"{pkg['image']}: {_clean(pkg['purl'])} needs source; the lock has no {_clean(key)} for "
-                         f"{arch}: run scripts/sources_lock.sh --arch {arch}")
+    p += [line for _, line in _coverage_misses(needs, covered, arch)]
     for key in sorted(covered - set(needs)):
         p.append(f"lock: {_clean(key)} is listed for {arch} but no image needs it: "
                  f"run scripts/sources_lock.sh --arch {arch}")
     return p
+
+
+def _coverage_misses(needs: dict[str, Any], covered: set[str], arch: str) -> list[tuple[str, str]]:
+    out = []
+    for key in sorted(needs):
+        if key not in covered:
+            for pkg in needs[key]["packages"]:
+                out.append((key, f"{pkg['image']}: {_clean(pkg['purl'])} needs source; the lock has no {_clean(key)} "
+                                 f"for {arch}: run scripts/sources_lock.sh --arch {arch}"))
+    return out
+
+
+def only_neo4j_misses(problems: list[str], text: str, policy: dict[str, Any], docs: dict[str, Any],
+                      arch: str) -> bool:
+    """U7b rework round 1, item 2: True exactly when the full list is
+    non-empty and every problem is a coverage miss for a `neo4j:` key."""
+    if not problems:
+        return False
+    comps = json.loads(text).get("components")
+    covered = {k for k, e in comps.items() if isinstance(e, dict) and isinstance(e.get("arches"), list)
+               and arch in e["arches"]}
+    needs, _ = lock_needs(policy, docs)
+    neo = {line for key, line in _coverage_misses(needs, covered, arch) if key.startswith("neo4j:")}
+    return all(x in neo for x in problems)
 
 
 def sample_keys(lock: dict[str, Any], arch: str) -> list[str]:
@@ -1521,11 +1551,116 @@ def lock_check(a: argparse.Namespace) -> int:
     except Exception as exc:  # noqa: BLE001 - fail closed with one message, never a traceback (rework r1, N5)
         print(f"lock-check: FAIL ({type(exc).__name__}: {_clean(exc)})", file=sys.stderr)
         return 1
+    try:
+        pending = bool(a.pending_neo4j) and only_neo4j_misses(problems, text, policy, docs, a.arch)
+    except Exception as exc:  # noqa: BLE001 - fail closed
+        print(f"lock-check: FAIL ({type(exc).__name__}: {_clean(exc)})", file=sys.stderr)
+        return 1
     if problems:
         for line in problems[:20]:
             print(f"sbom_check: lock-check: {line}", file=sys.stderr)
-        return 1
+        return 3 if pending else 1
     print(f"lock-check: ok ({len(json.loads(text)['components'])} components, {a.arch})")
+    return 0
+
+
+# --- PSC-15: lock-needs, the resolver's input (U7b; N5 amendment U7, item 3.3) --
+
+TEMURIN_RELEASE = "opt/java/openjdk/release"
+
+
+def tar_file_text(tar_path: str, member: str) -> str | None:
+    """The text of `member` in a `docker save` tar, the top layer's copy
+    winning; None when no layer holds it. Read only, never extracted."""
+    found: bytes | None = None
+    with tarfile.open(tar_path) as tar:
+        m = tar.extractfile("manifest.json")
+        if m is None:
+            raise ValueError("manifest.json is not a file in the tar")
+        manifest = json.load(m)
+        if not isinstance(manifest, list) or len(manifest) != 1:
+            raise ValueError("the tar's manifest.json does not hold exactly one image")
+        for name in manifest[0].get("Layers") or []:
+            blob = tar.extractfile(str(name))
+            if blob is None:
+                raise ValueError(f"layer {_clean(name)} is not a file in the tar")
+            with tarfile.open(fileobj=blob, mode="r:*") as layer:
+                for item in layer:
+                    if _rel(item.name) == member and item.isfile():
+                        data = layer.extractfile(item)
+                        found = data.read(1 << 20) if data is not None else None
+    return None if found is None else found.decode("utf-8", errors="replace")
+
+
+def lock_needs_doc(policy: dict[str, Any], docs: dict[str, Any],
+                   releases: dict[str, str]) -> tuple[dict[str, Any], list[str]]:
+    """needs.json: per key its kind, packages and route inputs (item 3.3):
+    deb/pgdg {src, ver}; apk {origin, ver}; neo4j {ver}; temurin
+    {sbom_version, release} (the release file text of the image's tar);
+    pypi {name, ver}; maven {g, a, v}."""
+    needs, problems = lock_needs(policy, docs)
+    out: dict[str, Any] = {}
+    for key, entry in sorted(needs.items()):
+        kind = entry["kind"]
+        name, ver = _key_parts(key)
+        route: dict[str, Any]
+        if kind in ("deb", "pgdg"):
+            route = {"src": name, "ver": ver}
+        elif kind == "apk":
+            route = {"origin": name, "ver": ver}
+        elif kind == "neo4j":
+            route = {"ver": ver}
+        elif kind == "pypi":
+            route = {"name": name, "ver": ver}
+        elif kind == "maven":
+            g, _, a = name.partition(":")
+            route = {"g": g, "a": a, "v": ver}
+        else:  # temurin
+            jdk = [p for p in entry["packages"] if str(p.get("purl") or "").startswith("pkg:generic/oracle/openjdk@")]
+            if not jdk:
+                problems.append(f"{_clean(key)}: no pkg:generic/oracle/openjdk package")
+                continue
+            m = PURL_RE.match(str(jdk[0]["purl"]))
+            image = jdk[0]["image"]
+            release = releases.get(image)
+            if release is None:
+                problems.append(f"{_clean(key)}: {image}: no /{TEMURIN_RELEASE} (pass --tar {image}=<saved tar>)")
+                continue
+            route = {"sbom_version": unquote(m.group("version")) if m else "", "release": release}
+        out[key] = {"kind": kind, "packages": entry["packages"], "route": route}
+    return {"format": 1, "needs": out}, problems
+
+
+def lock_needs_cli(a: argparse.Namespace) -> int:
+    docs: dict[str, Any] = {}
+    tars: dict[str, str] = {}
+    for opt, specs, into in (("--sbom", a.sbom, docs), ("--tar", a.tar or [], tars)):
+        for spec in specs:
+            image, sep, path = spec.partition("=")
+            if not sep or not NAME_RE.fullmatch(image) or not path:
+                print(f"lock-needs: {opt} {spec!r} is not IMAGE=PATH", file=sys.stderr)
+                return 2
+            into[image] = path
+    try:
+        with open(a.policy, encoding="utf-8") as fh:
+            policy = json.load(fh)
+        for image, path in list(docs.items()):
+            with open(path, encoding="utf-8") as fh:
+                docs[image] = json.load(fh)
+        releases = {}
+        for image, path in tars.items():
+            body = tar_file_text(path, TEMURIN_RELEASE)
+            if body is not None:
+                releases[image] = body
+        doc, problems = lock_needs_doc(policy, docs, releases)
+    except Exception as exc:  # noqa: BLE001 - one FAIL line, never a traceback (as lock-check)
+        print(f"lock-needs: FAIL ({type(exc).__name__}: {_clean(exc)})", file=sys.stderr)
+        return 1
+    if problems:
+        for line in problems[:20]:
+            print(f"sbom_check: lock-needs: {line}", file=sys.stderr)
+        return 1
+    print(lock_text(doc), end="")
     return 0
 
 
@@ -1551,6 +1686,11 @@ def main(argv: list[str]) -> int:
     for opt in ("--lock", "--policy", "--arch"):
         lc.add_argument(opt, required=True)
     lc.add_argument("--sbom", action="append", required=True)
+    lc.add_argument("--pending-neo4j", action="store_true")
+    ln = sub.add_parser("lock-needs")
+    ln.add_argument("--policy", required=True)
+    ln.add_argument("--sbom", action="append", required=True)
+    ln.add_argument("--tar", action="append")
     args = parser.parse_args(argv)
     if args.command == "finish":
         return finish(args)
@@ -1562,6 +1702,8 @@ def main(argv: list[str]) -> int:
         return tree(args)
     if args.command == "lock-check":
         return lock_check(args)
+    if args.command == "lock-needs":
+        return lock_needs_cli(args)
     return 2
 
 

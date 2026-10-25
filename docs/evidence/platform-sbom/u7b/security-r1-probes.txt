@@ -1,0 +1,71 @@
+platform-sbom U7b rework r1: security probes (security, 2026-10-25)
+Tree: HEAD 9b1754f (U7a) + working tree; scripts/sources_resolve.py, sources_lock.sh, docker-compose.sources.yml, sbom_check.py == u7b/r1-target-* (compose unchanged).
+Script: u7b/security_r1_probes.py (two scripts concatenated); fake network, plus one loopback HTTP server for the drip-feed row; no external request.
+Gates image, python -I, COMPOSE_PROJECT_NAME=ke-security-u5, scratch dir read-only at /scratch. Output unedited except
+compose/uv preamble lines dropped and raw control bytes in output shown as <xNN>.
+
+== R1-1. First URL and hops ==
+  first: port                                    requests=[] -> refused: https://github.com:8443/a: refused: a port
+  first: userinfo                                requests=[] -> refused: https://evil@github.com/a: refused: userinfo
+  first: backslash userinfo                      requests=[] -> refused: https://evil.example\@github.com/a: refused: userinfo
+  first: fragment                                requests=[] -> refused: https://github.com/a#x: refused: a fragment
+  first: query on first URL (resolver template)  requests=['https://github.com/a?x=1'] -> OK status=200
+  first: %2B in first URL path                   requests=['https://github.com/a/jdk-21%2B1/x'] -> OK status=200
+  first: //                                      requests=[] -> refused: https://github.com//a: refused: not a plain path
+  first: /./                                     requests=[] -> refused: https://github.com/./a: refused: not a plain path
+  first: upper-case scheme                       requests=[] -> refused: not an https URL: HTTPS://github.com/a
+  first: upper-case host                         requests=['https://GITHUB.com/a'] -> OK status=200
+  first: tab                                     requests=[] -> refused: https://git\x09hub.com/a: refused: not printable ASCII
+  first: pypi.org without first_allow            requests=[] -> refused: pypi.org: not in hosts: https://pypi.org/pypi/x/1/json
+  first: pypi.org with first_allow (JSON route)  requests=['https://pypi.org/pypi/x/1/json'] -> OK status=200
+  pypi JSON 302 -> pypi.org/other (hop)          requests=['https://pypi.org/pypi/x/1/json'] -> refused: redirect to pypi.org refused: not in hosts
+  302 -> relative /b                             requests=['https://github.com/a', 'https://github.com/b'] -> OK status=200
+  302 -> query on an allowed host (signed asset) requests=['https://github.com/a', 'https://release-assets.githubusercontent.com/x/y?sig=abc&exp'] -> OK status=200
+  302 -> query to a non-listed host              requests=['https://github.com/a'] -> refused: redirect to evil.example refused: not in hosts
+  302 -> pypi.org on a hop                       requests=['https://github.com/a'] -> refused: redirect to pypi.org refused: not in hosts
+  302 -> port                                    requests=['https://github.com/a'] -> refused: redirect to https://github.com:8443/b refused: a port
+  302 -> userinfo                                requests=['https://github.com/a'] -> refused: redirect to https://evil@github.com/b refused: userinfo
+  302 -> fragment                                requests=['https://github.com/a'] -> refused: redirect to https://github.com/b#f refused: a fragment
+  302 -> %2e%2e in path                          requests=['https://github.com/a'] -> refused: redirect to https://github.com/%2e%2e/b refused: not a plain path
+  302 -> %2B in path                             requests=['https://github.com/a'] -> refused: redirect to https://github.com/a%2Bb refused: not a plain path
+  302 -> HTTPS upper raw                         requests=['https://github.com/a'] -> refused: redirect to a non-https URL refused: HTTPS://evil.example/b
+  302 -> Https mixed raw                         requests=['https://github.com/a'] -> refused: redirect to a non-https URL refused: Https://github.com/b
+  302 -> https: no slashes                       requests=['https://github.com/a'] -> refused: redirect to a non-https URL refused: https:evil.example/b
+  302 -> https:/ one slash                       requests=['https://github.com/a'] -> refused: redirect to a non-https URL refused: https:/evil.example/b
+  302 -> scheme-relative                         requests=['https://github.com/a'] -> refused: redirect to evil.example refused: not in hosts
+  302 -> tab in raw Location                     requests=['https://github.com/a'] -> refused: redirect to https://git\x09hub.com/b refused: not printable ASCII
+  302 -> LF in raw Location                      requests=['https://github.com/a'] -> refused: redirect to https://github.com/b\x0aX refused: not printable ASCII
+  302 -> backslash path                          requests=['https://github.com/a'] -> refused: redirect to a non-https URL refused: https:\\evil.example/b
+  302 -> dot segment                             requests=['https://github.com/a', 'https://github.com/b'] -> OK status=200
+  302 -> raw space                               requests=['https://github.com/a'] -> refused: redirect to /b c refused: not printable ASCII
+  302 -> non-ASCII raw                           requests=['https://github.com/a'] -> refused: redirect to /é refused: not printable ASCII
+  302 -> javascript:                             requests=['https://github.com/a'] -> refused: redirect to a non-https URL refused: javascript:x
+  302 -> relative with colon a:b                 requests=['https://github.com/a'] -> refused: redirect to a non-https URL refused: a:b
+  redirect loop                                  requests=['https://github.com/a', 'https://github.com/a', 'https://github.com/a', 'https://github.com/a', 'https://github.com/a', 'https://github.com/a'] -> refused: more than 5 redirects: https://github.com/a
+
+== R1-2. Streaming guards ==
+  cap (patched to 10 chunks): aborted after 11 chunks pulled: github.com: more than 655360 bytes: https://github.com/a
+  IncompleteRead mid-body -> ResolveError: github.com: IncompleteRead: https://github.com/a
+  OSError        mid-body -> ResolveError: github.com: OSError: https://github.com/a
+  TimeoutError   mid-body -> ResolveError: github.com: timeout after 60 s: https://github.com/a
+  ValueError     mid-body -> ResolveError: github.com: ValueError: https://github.com/a
+  deadline (patched 1 s), many small chunks: aborted at 1.0s: github.com: deadline 1 s passed: https://github.com/a
+
+== R1-3. Drip-feed against the real opener (loopback HTTP; DEADLINE patched to 2 s, per-op timeout 5 s) ==
+  after 12.0s: still blocked inside one read (deadline 2 s not enforced within a chunk)
+
+== R1-4. sources_lock.sh paths (no docker; tools check runs first) ==
+  jq on PATH: True
+  git on PATH: True
+  docker on PATH: False
+  run with the tools missing: rc=1 stderr='sources_lock: FAIL (tools: docker not on PATH; the lock is unchanged)'
+  script has 'chmod 0644 -- "$tmp"': True
+  script has 'if [ -n "$tmp" ]; then rm -f -- "$tmp"; fi': True
+  script has '--pending-neo4j': True
+  script has 'six=(ke-app ke-gateway ke-neo4j phoenix postgres valkey)': True
+  script has '3) pending=1 ;;': True
+  grep in step 5: False
+== R1-5. M-1 re-run: lock-check --pending-neo4j on the real fixtures ==
+  all but neo4j and pgdg (73 neo4j + 5 pgdg misses)          rc=1 lines=20
+  all but neo4j and temurin                                  rc=1 lines=20
+  all but pgdg                                               rc=1 lines=5

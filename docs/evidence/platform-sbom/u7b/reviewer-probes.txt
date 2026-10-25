@@ -1,0 +1,19 @@
+# reviewer U7b probes, 2026-10-25 (host python -I; working tree; fake OPENER patched as the tests do; temp paths redacted)
+## baseline maven route: (0, "''", ['lock.new.json'])
+## timeout raised by OPENER (tested case): (1, "'sources_lock: FAIL (resolve: maven:javax.xml.bind:jaxb-api@2.2.12: repo1.maven.org: timeout after 60 s: https://repo1.maven.org/maven2/javax/xml/bind/jaxb-api/", [])
+## TimeoutError mid-body: ('RAISED TimeoutError: The read operation timed out', "''", [])
+## http.client.IncompleteRead mid-body: ('RAISED IncompleteRead: IncompleteRead(1 bytes read, 100 more expected)', "''", [])
+## ConnectionResetError mid-body: ('RAISED ConnectionResetError: reset', "''", [])
+## OPENER raises http.client.InvalidURL (ValueError): ('RAISED InvalidURL: bad', "''", [])
+## OPENER raises http.client.BadStatusLine: ('RAISED BadStatusLine: x', "''", [])
+## hop: redirect to an allowed host on port 8443 / with userinfo
+   'https://repo1.maven.org:8443/x.jar' -> FOLLOWED, calls: ["'https://repo1.maven.org/a'", "'https://repo1.maven.org:8443/x.jar'"]
+   'https://user:pw@repo1.maven.org/x.jar' -> FOLLOWED, calls: ["'https://repo1.maven.org/a'", "'https://user:pw@repo1.maven.org/x.jar'"]
+   'https://repo1.maven.org\t.evil.example/x.jar' -> ResolveError 'redirect to repo1.maven.org.evil.example refused: not in hosts'
+## an endless body (no overall byte deadline): stream stops only when the body ends
+   streamed 1310785536 bytes ( 1.22 GiB ) with no cap or deadline
+## lock-check truncation: missing neo4j + missing pypi:pandas (and pgdg) - what sources_lock.sh sees
+   problems: 79 | non-neo4j problems: 6 e.g. ['postgres: pkg:deb/debian/postgresql-16@16.15-1.pgdg12%2B2?arch=amd64&distro=debian-12.15 needs source; the lock has no pgdg:postgresql-16@16.15-1.pgdg12+2 for amd64: run scripts/sources_lock.sh --ar
+   first 20 printed by lock-check are all neo4j misses: True
+
+## host: command -v jq -> (none on this Git Bash host); scripts/sources_lock.sh l.53 needs jq with no check or fallback

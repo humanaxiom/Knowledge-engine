@@ -1,0 +1,71 @@
+platform-sbom U7b gate: security probes (security, 2026-10-25)
+Tree: HEAD 9b1754f (U7a) + working tree; scripts/sources_resolve.py, sources_lock.sh, docker-compose.sources.yml, sbom_check.py == u7b/target-*.
+Script: u7b/security_probes.py; fake network (OPENER replaced), no real request.
+Gates image, python -I, COMPOSE_PROJECT_NAME=ke-security-u5, scratch dir read-only at /scratch. Output unedited except
+compose/uv preamble lines dropped and raw control bytes in output shown as <xNN>.
+
+/scratch/u7b.py:41: SyntaxWarning: invalid escape sequence '\@'
+  try_fetch("first URL backslash userinfo", "https://evil.example\@github.com/a", {"https://evil.example\@github.com/a": (200, {}, b"x")})
+/scratch/u7b.py:41: SyntaxWarning: invalid escape sequence '\@'
+  try_fetch("first URL backslash userinfo", "https://evil.example\@github.com/a", {"https://evil.example\@github.com/a": (200, {}, b"x")})
+== U7b-1. fetch: first URL and redirect hops (fake network) ==
+  first URL http                                 requests=[] -> refused: not an https URL: http://github.com/a
+  first URL not in hosts                         requests=[] -> refused: evil.example: not in hosts: https://evil.example/a
+  first URL port :8443                           requests=['https://github.com:8443/a'] -> OK status=200
+  first URL userinfo evil@github.com             requests=['https://evil@github.com/a'] -> OK status=200
+  first URL github.com@evil                      requests=[] -> refused: evil.example: not in hosts: https://github.com@evil.example/a
+  first URL upper-case host                      requests=['https://GITHUB.com/a'] -> OK status=200
+  first URL trailing dot                         requests=[] -> refused: github.com.: not in hosts: https://github.com./a
+  first URL IDN look-alike                       requests=[] -> refused: gіthub.com: not in hosts: https://gіthub.com/a
+  first URL backslash userinfo                   requests=['https://evil.example\\@github.com/a'] -> OK status=200
+  302 -> relative /b                             requests=['https://github.com/a', 'https://github.com/b'] -> OK status=200
+  302 -> relative b                              requests=['https://github.com/a', 'https://github.com/b'] -> OK status=200
+  302 -> scheme-relative //evil                  requests=['https://github.com/a'] -> refused: redirect to evil.example refused: not in hosts
+  302 -> http                                    requests=['https://github.com/a'] -> refused: redirect to a non-https URL refused: http://github.com/b
+  302 -> userinfo evil@github                    requests=['https://github.com/a', 'https://evil@github.com/b'] -> refused: github.com: HTTP 404: https://evil@github.com/b
+  302 -> github@evil                             requests=['https://github.com/a'] -> refused: redirect to evil.example refused: not in hosts
+  302 -> port                                    requests=['https://github.com/a', 'https://github.com:8443/b'] -> refused: github.com: HTTP 404: https://github.com:8443/b
+  302 -> IDN                                     requests=['https://github.com/a'] -> refused: redirect to gіthub.com refused: not in hosts
+  302 -> trailing dot                            requests=['https://github.com/a'] -> refused: redirect to github.com. refused: not in hosts
+  302 -> pypi.org (any route)                    requests=['https://github.com/a', 'https://pypi.org/x'] -> refused: pypi.org: HTTP 404: https://pypi.org/x
+  302 -> backslash https:\evil                   requests=['https://github.com/a', 'https://github.com/\\evil.example/b'] -> refused: github.com: HTTP 404: https://github.com/\evil.example/b
+  302 -> tab in host                             requests=['https://github.com/a'] -> refused: redirect to evil.example refused: not in hosts
+  302 -> tab making github                       requests=['https://github.com/a', 'https://github.com/b'] -> OK status=200
+  302 -> CRLF in Location                        requests=['https://github.com/a', 'https://github.com/bX: y'] -> refused: github.com: HTTP 404: https://github.com/bX: y
+  302 -> data: URL                               requests=['https://github.com/a'] -> refused: redirect to a non-https URL refused: data:text/plain,x
+  302 -> file:                                   requests=['https://github.com/a'] -> refused: redirect to a non-https URL refused: file:///etc/passwd
+  302 -> javascript:                             requests=['https://github.com/a'] -> refused: redirect to a non-https URL refused: javascript:alert(1)
+  302 -> empty Location                          requests=['https://github.com/a'] -> refused: github.com: HTTP 302: https://github.com/a
+  308 -> relative                                requests=['https://github.com/a', 'https://github.com/b'] -> OK status=200
+  3xx without Location                           requests=['https://github.com/a'] -> refused: github.com: HTTP 302: https://github.com/a
+  304 Not Modified                               requests=['https://github.com/a'] -> refused: github.com: HTTP 304: https://github.com/a
+  redirect loop to itself                        requests=['https://github.com/a', 'https://github.com/a', 'https://github.com/a', 'https://github.com/a', 'https://github.com/a', 'https://github.com/a'] -> refused: more than 5 redirects: https://github.com/a
+  5 redirects then 200                           requests=['https://github.com/0', 'https://github.com/1', 'https://github.com/2', 'https://github.com/3', 'https://github.com/4', 'https://github.com/5'] -> OK status=200
+  6 redirects                                    requests=['https://github.com/0', 'https://github.com/1', 'https://github.com/2', 'https://github.com/3', 'https://github.com/4', 'https://github.com/5'] -> refused: more than 5 redirects: https://github.com/0
+  200 with body on hop 1 (final)                 requests=['https://github.com/a'] -> OK status=200
+  100 Continue status                            requests=['https://github.com/a'] -> refused: github.com: HTTP 100: https://github.com/a
+
+== U7b-2. Streaming ==
+  Content-Length lies (10): size=300000 == 300000: True; sha256 exact: True
+  Content-Encoding gzip body: hashed raw bytes=True (raw 1004, decoded would be 1000000)
+  3 GiB body: streamed with no cap: size=3221225472 in 0.7s (no size limit in stream())
+  IncompleteRead mid-body        escapes as IncompleteRead (not ResolveError)
+  ssl/OSError mid-body           escapes as OSError (not ResolveError)
+  TimeoutError mid-body          escapes as TimeoutError (not ResolveError)
+  text() 2 MiB: refused: https://github.com/a: more than 1048576 bytes
+
+== U7b-3. main(): a body error mid-stream, and the TOFU/merge rules ==
+  maven jar body fails mid-stream: rc=RAISED IncompleteRead lock.new.json written=False out=[] stderr=''
+  maven good: rc=0 written=True out=['lock.new.json'] entry=https://repo1.maven.org/maven2/javax/xml/bind/jaxb-api/2.2.1
+  neo4j TOFU (no entry): rc=3 written=True neo4j in new lock=False stdout=neo4j candidate: {"date": "2026-10-25", "host": "codeload.github.com", "key": "neo4j:neo4j@5.26.32", "name": "5.26.32.tar.gz", "origin": "ma
+  neo4j manual entry present: rc=0 requests=0 manual kept identical=True
+  maven key with a manual entry + --no-refresh: kept=True
+  same with --refresh: rc=0 (manual skipped before refresh is read: line 333)
+  a manual entry no image needs: kept=True (lock-check then flags it)
+  candidate line escapes control chars: {"k": "\u001b"}
+
+== U7b-4. sources_lock.sh step 5 pending rule against a truncated lock-check output ==
+  lock-check rc=1; lines printed=20; neo4j-miss lines=20; pgdg-miss lines printed=0
+  full problem list: 78 problems; pgdg misses=5; neo4j misses=73
+  script rule (lines 141-143) on that output: pending=1
+  mktemp default mode (as in line 149): 600

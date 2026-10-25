@@ -1,0 +1,585 @@
+Windows proof (A34) -- platform-sbom, unit U7b: docker-compose.sources.yml (`sources-resolve`), scripts/sources_lock.sh,
+scripts/sources_resolve.py and scripts/sbom_check.py `lock-needs`. Tester, 2026-10-25 (UTC).
+HEAD 9b1754f (agent/platform-sbom) PLUS the uncommitted U7b GREEN working tree (sources_resolve.py, sources_lock.sh and
+docker-compose.sources.yml byte-equal to u7b/target-*; sbom_check.py equal to u7b/target-sbom_check.py). Host aria-alien1, Windows 11
+Pro 10.0.26200, Git Bash 5.3.9 (MSYS 3.6.7), PowerShell 7.6.7, Docker Desktop Engine 29.5.2 linux/amd64, Compose 5.1.4.
+Own project COMPOSE_PROJECT_NAME=ke-tester-u7bwin (sbom run: ke-tester-u7bwin-sbom); images used as present: ke-gates:local,
+ke-neo4j:local (sha256:a28c71b4...), the stack's six refs at :local / pinned digests, the pinned syft image. No image was built,
+pulled, tagged or removed. No real network fetch (U7d does the real run). Every output under <scratch>/u7bwin, removed at the end.
+Hashed files (20): docker-compose{,.verify,.sbom,.scan,.offline,.sources}.yml, scripts/sources_lock.sh, sources_resolve.py,
+sbom_check.py, build.ps1, launch.ps1, teardown.ps1, install.ps1, docker/source-policy.json, tests/test_sources_resolve.py,
+test_stack_compose.py, test_sources_lock.py, uv.lock, pyproject.toml, .env.example: start = end, 20/20 identical (both runs).
+
+VERDICT: A34 FAIL (one defect found by the proof; everything else PASS)
+  (1) compose config resolves on Windows: PASS (Git Bash with MSYS_NO_PATHCONV=1 and cygpath -m, and PowerShell 7.6.7; without the
+      required keys compose refuses naming KE_SOURCES_IN / KE_SOURCES_USER).
+  (2) sources-resolve runs hardened on Docker Desktop: PASS. Bad argument exit 2; a dry run (empty needs, empty lock, no request)
+      exit 0 writing only /out/lock.new.json (canonical, owned by the caller 197610:197121); inside: / /opt/ke /in refused, /out and
+      /tmp writable, CapEff 0, NoNewPrivs 1; docker inspect: ReadonlyRootfs true, CapDrop [ALL], no-new-privileges, User = the
+      caller, network ke-tester-u7bwin_default, not privileged, tmpfs /tmp; mounts /opt/ke/* and /in rw=false, /out rw=true.
+  (3) sources_lock.sh refusals on Git Bash: PASS. Bad arguments ("", --arch x86_64, --bogus, --arch) exit 2; a missing image gives
+      exactly `sources_lock: FAIL (images: ke-app:u7bwin-missing not found: run scripts/build.sh first; the lock is unchanged)`,
+      exit 1; the 7 GiB floor (df shim, 1000 KiB) refuses, exit 1, no container started; no docker/sources.lock.json and no
+      docker/.sources.lock.json.* after any of them; the work dir is removed by the trap.
+  (4) lock-needs --tar on a real saved ke-neo4j tar: PASS once the SBOM work dir has tmp/, FAIL as sources_lock.sh does it:
+      - the first run (section 4) ran the pinned `sbom` service exactly as sources_lock.sh step 2 does, into a work dir without
+        tmp/: syft "could not determine source: no source providers were able to resolve the input /in/ke-neo4j.tar" (exit 1),
+        because docker-compose.sbom.yml sets TMPDIR=/out/tmp and bundle.sh creates out/tmp but sources_lock.sh does not
+        (`mkdir -- "$work/tars" "$work/sboms" "$work/in" "$work/out"`). So a real `sources_lock.sh --arch amd64` fails at its
+        step 2 (fail closed: "sbom: ke-app: the SBOM generator failed; the lock is unchanged"). DEFECT for the developer: create
+        `$work/sboms/tmp` (as bundle.sh does) and pin it by a test (no fake-docker happy-path test covers step 2: the U7b RED's
+        flagged gap). The tester's target had the same omission.
+      - the re-run (section 4 re-run) with tmp/: the fresh ke-neo4j SPDX plus the five fixture SBOMs give 182 keys, the same set as
+        tests/fixtures/sbom-u3 (deb 152, pgdg 3, apk 19, neo4j 1, temurin 1, maven 1, pypi 5); the temurin route carries the real
+        /opt/java/openjdk/release text (IMPLEMENTOR_VERSION="Temurin-21.0.12.1+1") and sbom_version 21.0.12.1+1-LTS.
+      - O3 note: the neo4j key's packages are 72 in the fresh ke-neo4j against 73 in the U3 fixture; the one missing is
+        pkg:maven/org.neo4j/neo4j-genai-plugin@5.26.32, removed with products/ by U4b (expected; no key changes).
+  (5) teardown: PASS. No container, network or volume with project ke-tester-u7bwin or ke-tester-u7bwin-sbom, no ke-sources-*
+      project left; scratch removed; hashes identical.
+Flags:
+  - The gates image's own ENV puts KE_IN_GATES into the resolver's environment (the compose `environment:` is literal only:
+    PYTHONDONTWRITEBYTECODE=1). Ruling 3 says "no KE_* keys in the service environment"; KE_IN_GATES is a marker, not a secret,
+    but a test only checks the compose file. Orchestrator/security: accept, or have the service unset it (e.g. `env -u`) or use
+    an image without it.
+  - A repo-root .env (an unmarked copy of .env.example, written 09:32Z, two minutes before this run, by another role) was present
+    throughout; this run never read it (every compose call passes --env-file .env.example) and did not touch it.
+
+
+################ run.log ################
+
+=== 0. host and versions ===
+date (UTC): 2026-10-25T09:34:33Z
+MINGW64_NT-10.0-26200 aria-alien1 3.6.7-fb42d713.x86_64 2026-03-29 11:44 UTC x86_64 Msys
+engine 29.5.2 linux/amd64; compose 5.1.4
+git HEAD 9b1754f460d4e877123c2016cba6bfc502ae5869 (agent/platform-sbom); working tree: U7b GREEN (uncommitted)
+id: 197610:197121
+hashed 20 files -> hash-start.txt
+lock before: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ before: 0
+.env present (unexpected)
+
+=== 1. compose config resolves on Windows (Git Bash, MSYS_NO_PATHCONV=1, cygpath -m) ===
+--- 1a. without the required keys (negative control)
+$ docker compose -p ke-tester-u7bwin --env-file .env.example -f docker-compose.sources.yml config --quiet
+error while interpolating services.sources-resolve.volumes.[].source: required variable KE_SOURCES_IN is missing a value: set by scripts/sources_lock.sh
+[exit 1]
+--- 1b. with the required keys
+[exit 0]
+jq: error: Could not open file <scratch>/u7bwin/config.json: No such file or directory
+jq: error: Could not open file <scratch>/u7bwin/config.json: No such file or directory
+networks in the model: 
+
+=== 2. sources-resolve on Docker Desktop with its hardened options ===
+--- 2a. a bad argument exits 2 (the container starts, the mounts resolve, the user works)
+ Network ke-tester-u7bwin_default Creating 
+ Network ke-tester-u7bwin_default Created 
+ Container ke-tester-u7bwin-sources-resolve-run-0a9dcbe8f4c8 Creating 
+ Container ke-tester-u7bwin-sources-resolve-run-0a9dcbe8f4c8 Created 
+sources_resolve: --arch 'x86_64' is not amd64 or arm64
+
+[exit 2]
+--- 2b. a dry run: empty needs, empty lock, no request (no key to resolve)
+ Container ke-tester-u7bwin-sources-resolve-run-deb1c877ab81 Creating 
+ Container ke-tester-u7bwin-sources-resolve-run-deb1c877ab81 Created 
+[exit 0]
+total 5
+drwxr-xr-x 1 adam 197121  0 Oct 25 02:34 .
+drwxr-xr-x 1 adam 197121  0 Oct 25 02:34 ..
+-rw-r--r-- 1 adam 197121 36 Oct 25 02:34 lock.new.json
+lock.new.json:
+{
+ "components": {},
+ "format": 1
+}
+--- 2c. probes inside the service (entrypoint overridden; same hardening)
+ Container ke-tester-u7bwin-sources-resolve-run-60e9510f0d10 Creating 
+ Container ke-tester-u7bwin-sources-resolve-run-60e9510f0d10 Created 
+uid:gid 197610:197121
+write /: refused
+write /opt/ke: refused
+write /in: refused
+write /out: allowed
+write /tmp: allowed
+CapPrm:	0000000000000000
+CapEff:	0000000000000000
+NoNewPrivs:	1
+KE_* keys in env: 1
+env keys: GPG_KEY HARNESS_TRACING HOME HOSTNAME KE_IN_GATES LANG PATH POWERSHELL_TELEMETRY_OPTOUT POWERSHELL_UPDATECHECK PWD PYTHONDONTWRITEBYTECODE PYTHON_SHA256 PYTHON_VERSION UV_CACHE_DIR UV_LINK_MODE UV_OFFLINE UV_PROJECT_ENVIRONMENT UV_PYTHON_DOWNLOADS 
+/in:
+total 0
+-rwxrwxrwx 1 root root 31 Oct 25 09:34 needs.json
+-rwxrwxrwx 1 root root 36 Oct 25 09:34 sources.lock.json
+
+/opt/ke:
+total 116
+-rwxrwxrwx 1 root root  4440 Oct 25 03:04 source-policy.json
+-rwxrwxrwx 1 root root 18321 Oct 25 09:02 sources_resolve.py
+-rwxrwxrwx 1 root root 86781 Oct 23 00:39 uv.lock
+
+/out:
+total 0
+-rw-r--r-- 1 197610 197121 36 Oct 25 09:34 lock.new.json
+[exit 0]
+--- 2d. docker inspect of a detached run
+ Container ke-tester-u7bwin-sources-resolve-run-dad17eee5d09 Creating 
+ Container ke-tester-u7bwin-sources-resolve-run-dad17eee5d09 Created 
+[exit 0]
+true ["ALL"] ["no-new-privileges:true"] "197610:197121" "ke-tester-u7bwin_default" false {"/tmp":""}
+/opt/ke/sources_resolve.py rw=false type=bind
+/opt/ke/source-policy.json rw=false type=bind
+/opt/ke/uv.lock rw=false type=bind
+/in rw=false type=bind
+/out rw=true type=bind
+
+["PYTHONDONTWRITEBYTECODE=1","PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin","LANG=C.UTF-8","GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305","PYTHON_VERSION=3.12.15","PYTHON_SHA256=c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a","POWERSHELL_TELEMETRY_OPTOUT=1","POWERSHELL_UPDATECHECK=Off","UV_PROJECT_ENVIRONMENT=/opt/venv","UV_PYTHON_DOWNLOADS=never","UV_LINK_MODE=copy","KE_IN_GATES=1","HARNESS_TRACING=off","UV_CACHE_DIR=/opt/uv-cache","UV_OFFLINE=1"]
+removed the probe container
+ Network ke-tester-u7bwin_default Removing 
+ Network ke-tester-u7bwin_default Removed 
+[down exit 0]
+
+=== 3. scripts/sources_lock.sh refusal paths (Git Bash, real Docker Desktop) ===
+--- 3a. bad arguments exit 2
+args [] -> exit 2: usage: scripts/sources_lock.sh --arch amd64|arm64 [--refresh]
+args [--arch x86_64] -> exit 2: usage: scripts/sources_lock.sh --arch amd64|arm64 [--refresh]
+args [--bogus] -> exit 2: usage: scripts/sources_lock.sh --arch amd64|arm64 [--refresh]
+args [--arch] -> exit 2: usage: scripts/sources_lock.sh --arch amd64|arm64 [--refresh]
+--- 3b. a missing image (KE_IMAGE_TAG=u7bwin-missing: no ke-* image has that tag)
+sources_lock: FAIL (images: ke-app:u7bwin-missing not found: run scripts/build.sh first; the lock is unchanged)
+[exit 1]
+lock after 3b: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 3b: 0
+work dirs left in TMPDIR: 0
+--- 3c. the 7 GiB floor (images present at :local; a df shim first on PATH reports 1000 KiB free)
+sources_lock: FAIL (images: <scratch>/u7bwin/tmp/ke-sources.qiiyASfk has 1000 KiB free, below the 7 GiB floor (R6); the lock is unchanged)
+[exit 1]
+containers unchanged by 3c (no save, no run)
+lock after 3c: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 3c: 0
+work dirs left in TMPDIR: 0
+
+=== 4. sbom_check.py lock-needs --tar on a real saved ke-neo4j tar ===
+image: ke-neo4j:local sha256:a28c71b490f40e7101f3483384de4ff229c67c9875c22b66287e14378fafa58b
+$ docker save -o <scratch>/u7bwin/tars/ke-neo4j.tar ke-neo4j:local
+[exit 0]
+total 343672
+-rw-r--r-- 1 adam 197121 351918592 Oct 25 02:34 ke-neo4j.tar
+--- 4a. its SPDX by the pinned sbom service (no network), as sources_lock.sh step 2
+ Container ke-tester-u7bwin-sbom-sbom-run-3886edc6e35f Creating 
+ Container ke-tester-u7bwin-sbom-sbom-run-3886edc6e35f Created 
+[0000] ERROR could not determine source: no source providers were able to resolve the input "/in/ke-neo4j.tar"
+
+[exit 1]
+--- 4b. the other five images' SBOMs from tests/fixtures/sbom-u3 (stand-ins, as the tests use)
+written
+total 516
+-rw-r--r-- 1 adam 197121 124099 Oct 25 02:34 ke-app.spdx.json
+-rw-r--r-- 1 adam 197121  52820 Oct 25 02:34 ke-gateway.spdx.json
+-rw-r--r-- 1 adam 197121      0 Oct 25 02:34 ke-neo4j.spdx.json
+-rw-r--r-- 1 adam 197121 193363 Oct 25 02:34 phoenix.spdx.json
+-rw-r--r-- 1 adam 197121 130328 Oct 25 02:34 postgres.spdx.json
+-rw-r--r-- 1 adam 197121  18460 Oct 25 02:34 valkey.spdx.json
+--- 4c. lock-needs in the gates image (no network, read-only), as sources_lock.sh step 3
+lock-needs: FAIL (JSONDecodeError: Expecting value: line 1 column 1 (char 0))
+[exit 1]
+Traceback (most recent call last):
+  File "<string>", line 6, in <module>
+  File "<profile>\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\json\__init__.py", line 293, in load
+    return loads(fp.read(),
+           ^^^^^^^^^^^^^^^^
+  File "<profile>\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\json\__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<profile>\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\json\decoder.py", line 338, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<profile>\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\json\decoder.py", line 356, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+=== 5. teardown and final check ===
+project ke-tester-u7bwin: containers [] networks [] volumes []
+project ke-tester-u7bwin-sbom: containers [] networks [] volumes []
+ke-sources-* projects: []
+scratch tars and work dirs removed
+hashes start = end (20/20 identical)
+lock at the end: ls: cannot access 'docker/sources.lock.json': No such file or directory
+.env present (unexpected)
+
+################ run1b.log ################
+=== 1b (re-shown). the resolved model (jq on a Windows path; the first run's jq could not open an MSYS /tmp path) ===
+[exit 0]
+{
+  "image": "ke-gates:local",
+  "pull_policy": "never",
+  "user": "197610:197121",
+  "read_only": true,
+  "tmpfs": [
+    "/tmp"
+  ],
+  "cap_drop": [
+    "ALL"
+  ],
+  "security_opt": [
+    "no-new-privileges:true"
+  ],
+  "network_mode": null,
+  "networks": {
+    "default": null
+  },
+  "entrypoint": [
+    "python3",
+    "-I",
+    "/opt/ke/sources_resolve.py",
+    "--needs",
+    "/in/needs.json",
+    "--lock",
+    "/in/sources.lock.json",
+    "--policy",
+    "/opt/ke/source-policy.json",
+    "--uv-lock",
+    "/opt/ke/uv.lock",
+    "--out",
+    "/out"
+  ],
+  "environment": {
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "volumes": [
+    {
+      "type": "bind",
+      "source": "C:\\repos\\Knowledge-engine\\scripts\\sources_resolve.py",
+      "target": "/opt/ke/sources_resolve.py",
+      "read_only": true
+    },
+    {
+      "type": "bind",
+      "source": "C:\\repos\\Knowledge-engine\\docker\\source-policy.json",
+      "target": "/opt/ke/source-policy.json",
+      "read_only": true
+    },
+    {
+      "type": "bind",
+      "source": "C:\\repos\\Knowledge-engine\\uv.lock",
+      "target": "/opt/ke/uv.lock",
+      "read_only": true
+    },
+    {
+      "type": "bind",
+      "source": "<scratch>/u7bwin/in1",
+      "target": "/in",
+      "read_only": true
+    },
+    {
+      "type": "bind",
+      "source": "<scratch>/u7bwin/out1",
+      "target": "/out",
+      "read_only": null
+    }
+  ]
+}
+top-level networks: {"default":{"name":"ke-tester-u7bwin_default","ipam":{}}}
+
+################ run4.log ################
+
+=== 0. host and versions ===
+date (UTC): 2026-10-25T09:35:22Z
+MINGW64_NT-10.0-26200 aria-alien1 3.6.7-fb42d713.x86_64 2026-03-29 11:44 UTC x86_64 Msys
+engine 29.5.2 linux/amd64; compose 5.1.4
+git HEAD 9b1754f460d4e877123c2016cba6bfc502ae5869 (agent/platform-sbom); working tree: U7b GREEN (uncommitted)
+id: 197610:197121
+hashed 20 files -> hash-start.txt
+lock before: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ before: 0
+.env present (unexpected)
+
+=== 4 (re-run). lock-needs --tar on a real saved ke-neo4j tar, the SBOM work dir with tmp/ (TMPDIR=/out/tmp) ===
+image: ke-neo4j:local sha256:a28c71b490f40e7101f3483384de4ff229c67c9875c22b66287e14378fafa58b
+$ docker save -o <scratch>/u7bwin/tars/ke-neo4j.tar ke-neo4j:local
+[exit 0]
+total 343672
+-rw-r--r-- 1 adam 197121 351918592 Oct 25 02:35 ke-neo4j.tar
+--- 4a. its SPDX by the pinned sbom service (no network), as sources_lock.sh step 2
+ Container ke-tester-u7bwin-sbom-sbom-run-3001d347d07c Creating 
+ Container ke-tester-u7bwin-sbom-sbom-run-3001d347d07c Created 
+[exit 0]
+--- 4b. the other five images' SBOMs from tests/fixtures/sbom-u3 (stand-ins, as the tests use)
+written
+total 5660
+-rw-r--r-- 1 adam 197121  124099 Oct 25 02:35 ke-app.spdx.json
+-rw-r--r-- 1 adam 197121   52820 Oct 25 02:35 ke-gateway.spdx.json
+-rw-r--r-- 1 adam 197121 5263724 Oct 25 02:35 ke-neo4j.spdx.json
+-rw-r--r-- 1 adam 197121  193363 Oct 25 02:35 phoenix.spdx.json
+-rw-r--r-- 1 adam 197121  130328 Oct 25 02:35 postgres.spdx.json
+drwxr-xr-x 1 adam 197121       0 Oct 25 02:35 tmp
+-rw-r--r-- 1 adam 197121   18460 Oct 25 02:35 valkey.spdx.json
+--- 4c. lock-needs in the gates image (no network, read-only), as sources_lock.sh step 3
+[exit 0]
+keys: 182 {'apk': 19, 'deb': 152, 'maven': 1, 'neo4j': 1, 'pgdg': 3, 'pypi': 5, 'temurin': 1}
+fixture keys: 182
+only in the real run: []
+only in the fixtures: []
+temurin route sbom_version: 21.0.12.1+1-LTS
+temurin release text:
+IMPLEMENTOR="Eclipse Adoptium"
+IMPLEMENTOR_VERSION="Temurin-21.0.12.1+1"
+JAVA_RUNTIME_VERSION="21.0.12.1+1-LTS"
+JAVA_VERSION="21.0.12.1"
+JAVA_VERSION_DATE="2026-08-18"
+LIBC="gnu"
+MODULES="java.base java.compiler java.datatransfer java.xml java.prefs java.desktop java.instrument java.logging java.management java.security.sasl java.naming java.rmi java.management.rmi java.net.http java.scripting java.security.jgss java.transaction.xa java.sql java.sql.rowset java.xml.crypto java.se java.smartcardio jdk.accessibility jdk.internal.jvmstat jdk.attach jdk.charsets jdk.internal.opt jdk.zipfs jdk.compiler jdk.crypto.ec jdk.crypto.cryptoki jdk.dynalink jdk.internal.ed jdk.editpad jdk.hotspot.agent jdk.httpserver jdk.incubator.vector jdk.internal.le jdk.internal.vm.ci jdk.internal.vm.compiler jdk.internal.vm.compiler.management jdk.jartool jdk.javadoc jdk.jcmd jdk.management jdk.management.agent jdk.jconsole jdk.jdeps jdk.jdwp.agent jdk.jdi jdk.jfr jdk.jlink jdk.jpackage jdk.jshell jdk.jsobject jdk.jstatd jdk.localedata jdk.management.jfr jdk.naming.dns jdk.naming.rmi jdk.net jdk.nio.mapmode jdk.random jdk.sctp jdk.security.auth jdk.security.jgss jdk.unsupported jdk.unsupported.desktop jdk.xml.dom"
+OS_ARCH="x86_64"
+OS_NAME="Linux"
+SOURCE=".:git:1c417fbfc2f7"
+BUILD_SOURCE="git:e6ba7dec3d07654074559310376a3ae89da5f4ac"
+BUILD_SOURCE_REPO="https://github.com/adoptium/temurin-build.git"
+SOURCE_REPO="https://github.com/adoptium/jdk21u.git"
+FULL_VERSION="21.0.12.1+1-LTS"
+SEMANTIC_VERSION="21.0.12.1+1"
+BUILD_INFO="OS: Linux Version: 6.8.0-1064-azure"
+JVM_VARIANT="Hotspot"
+JVM_VERSION="21.0.12.1+1-LTS"
+IMAGE_TYPE="JDK"
+
+neo4j packages: 72
+
+=== 5. teardown and final check ===
+project ke-tester-u7bwin: containers [] networks [] volumes []
+project ke-tester-u7bwin-sbom: containers [] networks [] volumes []
+ke-sources-* projects: []
+scratch tars and work dirs removed
+hashes start = end (20/20 identical)
+lock at the end: ls: cannot access 'docker/sources.lock.json': No such file or directory
+.env present (unexpected)
+
+################ ps.log ################
+PowerShell 7.6.7
+--- without the required keys
+error while interpolating services.sources-resolve.user: required variable KE_SOURCES_USER is missing a value: set by scripts/sources_lock.sh
+[exit 1]
+--- with the required keys
+[exit 0]
+image=ke-gates:local user=1000:1000 read_only=True pull_policy=never cap_drop=ALL
+  bind C:\repos\Knowledge-engine\scripts\sources_resolve.py -> /opt/ke/sources_resolve.py read_only=True
+  bind C:\repos\Knowledge-engine\docker\source-policy.json -> /opt/ke/source-policy.json read_only=True
+  bind C:\repos\Knowledge-engine\uv.lock -> /opt/ke/uv.lock read_only=True
+  bind <scratch>\u7bwin\psin -> /in read_only=True
+  bind <scratch>\u7bwin\psout -> /out read_only=
+
+################ O3 diff (neo4j key packages, fixture vs fresh) ################
+only in the U3 fixture: ['pkg:maven/org.neo4j/neo4j-genai-plugin@5.26.32']
+only in the fresh ke-neo4j: []
+keys whose ke-neo4j packages differ: ['neo4j:neo4j@5.26.32']
+
+
+==========================================================================
+ADDENDUM 2026-10-25 (tester): A34 re-run of steps 3 and 4 on the U7b rework
+round 1 GREEN tree (uncommitted, on 9b1754f). Steps 1, 2 and 5 of the run
+above stand (docker-compose.sources.yml unchanged; teardown re-checked below).
+Driver: a scratchpad script (Git Bash, Docker Desktop 29.5.2, Compose 5.1.4),
+project ke-tester-u7bwin. Paths redacted: <profile>, <scratch>.
+
+Verdict: A34 PASS for steps 3 and 4 (the script's mechanics on Windows).
+- 3a bad arguments exit 2; 3b missing image; 3c the 7 GiB floor; 3d tools
+  first (jq, git, docker, each the exact FAIL line, no container); 3e exactly
+  six images (an extra `redis` and a missing `valkey`, from a scratch copy
+  of the repo with an edited docker-compose.yml): all refuse before any
+  save. No lock or temp file, and no work dir, is left behind.
+- 4: the script itself saved the six real images and ran the pinned sbom
+  service on each. `<work>/sboms/tmp` now exists (the U7b defect is fixed).
+  It then ran lock-needs in the gates image with `--tar
+  ke-neo4j=/tars/ke-neo4j.tar` and got 181 keys, with the real Temurin
+  release text. A docker shim stopped the run at the resolver step (no
+  network in step 4); the script failed closed with the lock unchanged.
+- Teardown: no ke-sources-* container, network or volume left. All 21
+  files hash the same at start and end.
+
+O3 drift (for the orchestrator; not a script defect): the fresh key set
+differs from the fixtures (182 keys):
+- only in the real run: pypi:psycopg-binary@3.3.6, in ke-app;
+- only in the fixtures: pypi:psycopg-c@3.3.6 and
+  deb:postgresql-15@15.19-0+deb12u1 (ke-app's libpq5);
+- neo4j has 72 packages against the fixtures' 73 (genai plugin, as before).
+Cause: ke-app:local on this host (sha256:510c1b59..., built 2026-10-20)
+predates the psycopg-c app.Dockerfile (23e3c9b, 2026-10-23). It still
+carries psycopg-binary (bundled libpq, no Debian libpq5). A real lock run
+needs `scripts/build.sh` first. U7d's key-set drift check would stop on
+this.
+
+Attempts (driver bugs, recorded for honesty; redacted logs in
+u7b/windows-run-r1-attempts.txt):
+- Attempt 1: the driver gave its scratch dir in C:/ form, so the PATH shims
+  (the df shim for 3c and the docker shim for 4) never took effect. 3c and
+  4 therefore ran the whole script, including a real resolver run with
+  network.
+- Attempt 2: the scratch dir was fixed, but the docker shim's case pattern
+  never matched, so step 4 again ran the real resolver.
+- In all three real resolver runs (attempt 1's 3c and 4, attempt 2's 4) it
+  fetched in key order (maven, neo4j). Each run then stopped closed at
+  `pypi:psycopg-binary@3.3.6: pypi psycopg-binary 3.3.6: 0 sdists, want
+  1`: psycopg-binary has no sdist on PyPI, and it is only present because
+  the image is stale. Each run gave exactly one FAIL line, exit 1, nothing
+  written and no leftovers.
+- Attempt 3, below, is the run of record.
+--------------------------------------------------------------------------
+
+=== 0. host and versions (U7b rework round 1 GREEN) ===
+date (UTC): 2026-10-25T11:18:33Z
+MINGW64_NT-10.0-26200 aria-alien1 3.6.7-fb42d713.x86_64 2026-03-29 11:44 UTC x86_64 Msys
+engine 29.5.2 linux/amd64; compose 5.1.4
+git HEAD 9b1754f460d4e877123c2016cba6bfc502ae5869 (agent/platform-sbom); working tree: U7b rework round 1 GREEN (uncommitted)
+id: 197610:197121
+fa5f18d760f74f341619d5421950906221760bb8b12aecada8d59a306d3cd4c7 *scripts/sources_lock.sh
+16985eb06da8f68b28ab1e89d21ea05b8ce74936affc3ffc37fb5201af688927 *scripts/sources_resolve.py
+b1f3dc85fe9b1e6869e9bfa20d393fb273e0c310fc73b5fe2e5053f9838e5115 *scripts/sbom_check.py
+23c6e98f55554a1c1dcaf6a43055cce7c0361cd0f72fa8d33b7480a8ca86b79c *docker-compose.sources.yml
+hashed 21 files -> hash-start-r1.txt
+lock before: ls: cannot access 'docker/sources.lock.json': No such file or directory
+.env present (unexpected)
+
+=== 3. scripts/sources_lock.sh refusal paths (round 1) ===
+--- 3a. bad arguments exit 2
+args [] -> exit 2: usage: scripts/sources_lock.sh --arch amd64|arm64 [--refresh]
+args [--arch x86_64] -> exit 2: usage: scripts/sources_lock.sh --arch amd64|arm64 [--refresh]
+args [--bogus] -> exit 2: usage: scripts/sources_lock.sh --arch amd64|arm64 [--refresh]
+args [--arch] -> exit 2: usage: scripts/sources_lock.sh --arch amd64|arm64 [--refresh]
+--- 3b. a missing image (KE_IMAGE_TAG=u7bwin-missing)
+sources_lock: FAIL (images: ke-app:u7bwin-missing not found: run scripts/build.sh first; the lock is unchanged)
+[exit 1]
+lock after 3b: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 3b: 0
+work dirs left in TMPDIR after 3b: 0
+--- 3c. the 7 GiB floor (a df shim first on PATH reports 1000 KiB free)
+sources_lock: FAIL (images: <scratch>/u7bwin/tmp/ke-sources.mCNy6DeK has 1000 KiB free, below the 7 GiB floor (R6); the lock is unchanged)
+[exit 1]
+containers unchanged by 3c (no save, no run)
+lock after 3c: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 3c: 0
+work dirs left in TMPDIR after 3c: 0
+--- 3d. tools first (item 4): PATH without each tool; every other command still found
+PATH without jq finds: [git docker dirname]
+sources_lock: FAIL (tools: jq not on PATH; the lock is unchanged)
+[exit 1]
+no container started
+PATH without git finds: [jq docker dirname]
+sources_lock: FAIL (tools: git not on PATH; the lock is unchanged)
+[exit 1]
+no container started
+PATH without docker finds: [jq git dirname]
+sources_lock: FAIL (tools: docker not on PATH; the lock is unchanged)
+[exit 1]
+no container started
+lock after 3d: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 3d: 0
+work dirs left in TMPDIR after 3d: 0
+--- 3e. exactly the six images (item 6): a scratch copy of the repo whose docker-compose.yml adds redis / drops valkey
+compose services: api gateway neo4j phoenix postgres redis valkey worker
+sources_lock: FAIL (images: redis is not one of the six bundled images; the lock is unchanged)
+[exit 1]
+no container started (no save, no run)
+scratch lock after 3e extra: ls: cannot access '<scratch>/u7bwin/mini/extra/docker/sources.lock.json': No such file or directory
+compose services: api gateway neo4j phoenix postgres worker
+sources_lock: FAIL (images: valkey is missing from the stack; the lock is unchanged)
+[exit 1]
+no container started (no save, no run)
+scratch lock after 3e missing: ls: cannot access '<scratch>/u7bwin/mini/missing/docker/sources.lock.json': No such file or directory
+lock after 3e: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 3e: 0
+work dirs left in TMPDIR after 3e: 0
+
+=== 4 (round 1). the script's own SBOM + lock-needs path on the real images (sboms/tmp now made by the script) ===
+image: ke-app:local sha256:510c1b59b838090dd5ab3bcf3dd20a4a67026ece0c172fce335215f9626f2b2c
+image: ke-gateway:local sha256:ebdf7b0728385718bdcfe14f59d81b4d0154af231420933df028bdd448a0f293
+image: ke-neo4j:local sha256:a28c71b490f40e7101f3483384de4ff229c67c9875c22b66287e14378fafa58b
+image: ke-gates:local sha256:28445623d85fbd1777115ca49c1a3f4ce3298ba5896ae5825bc1cd0294b68159
+ Container ke-sources-da51ee4c-sbom-sbom-run-b7184a753d6d Creating 
+ Container ke-sources-da51ee4c-sbom-sbom-run-b7184a753d6d Created 
+ Container ke-sources-da51ee4c-sbom-sbom-run-67869e0ea7f0 Creating 
+ Container ke-sources-da51ee4c-sbom-sbom-run-67869e0ea7f0 Created 
+ Container ke-sources-da51ee4c-sbom-sbom-run-5557a5272d86 Creating 
+ Container ke-sources-da51ee4c-sbom-sbom-run-5557a5272d86 Created 
+ Container ke-sources-da51ee4c-sbom-sbom-run-f6c3da50971f Creating 
+ Container ke-sources-da51ee4c-sbom-sbom-run-f6c3da50971f Created 
+ Container ke-sources-da51ee4c-sbom-sbom-run-93e8dc342019 Creating 
+ Container ke-sources-da51ee4c-sbom-sbom-run-93e8dc342019 Created 
+ Container ke-sources-da51ee4c-sbom-sbom-run-fb9cb1163fba Creating 
+ Container ke-sources-da51ee4c-sbom-sbom-run-fb9cb1163fba Created 
+a34 shim: the resolver step is not run (step 4 stops before the network)
+sources_lock: FAIL (resolve: scripts/sources_resolve.py exited 1; the lock is unchanged)
+[exit 1] after 104 s
+lock after 4: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 4: 0
+work dirs left in TMPDIR after 4: 0
+--- the work dir as the resolver step would have seen it
+KE_SOURCES_IN=<scratch>/u7bwin/tmp/ke-sources.kESSjCOP/in
+<scratch>/u7bwin/tmp/ke-sources.kESSjCOP/sboms:
+total 51736
+0 Oct 25 04:20 .
+0 Oct 25 04:18 ..
+5555896 Oct 25 04:18 ke-app.spdx.json
+6155486 Oct 25 04:18 ke-app.syft.json
+1084317 Oct 25 04:19 ke-gateway.spdx.json
+1125825 Oct 25 04:19 ke-gateway.syft.json
+5263724 Oct 25 04:19 ke-neo4j.spdx.json
+7436446 Oct 25 04:19 ke-neo4j.syft.json
+3884596 Oct 25 04:20 phoenix.spdx.json
+7169890 Oct 25 04:20 phoenix.syft.json
+6923171 Oct 25 04:20 postgres.spdx.json
+7241631 Oct 25 04:20 postgres.syft.json
+0 Oct 25 04:20 tmp
+558263 Oct 25 04:20 valkey.spdx.json
+550606 Oct 25 04:20 valkey.syft.json
+
+<scratch>/u7bwin/tmp/ke-sources.kESSjCOP/sboms/tmp:
+total 4
+0 Oct 25 04:20 .
+0 Oct 25 04:20 ..
+
+<scratch>/u7bwin/tmp/ke-sources.kESSjCOP/tars:
+total 958984
+0 Oct 25 04:20 .
+0 Oct 25 04:18 ..
+99121664 Oct 25 04:18 ke-app.tar
+23079936 Oct 25 04:18 ke-gateway.tar
+351918592 Oct 25 04:19 ke-neo4j.tar
+326907904 Oct 25 04:19 phoenix.tar
+163448832 Oct 25 04:20 postgres.tar
+17510912 Oct 25 04:20 valkey.tar
+--- needs.json from the script's own lock-needs (real SBOMs of the six real images)
+keys: 181 {'apk': 19, 'deb': 151, 'maven': 1, 'neo4j': 1, 'pgdg': 3, 'pypi': 5, 'temurin': 1}
+fixture keys: 182
+only in the real run: ['pypi:psycopg-binary@3.3.6']
+only in the fixtures: ['deb:postgresql-15@15.19-0+deb12u1', 'pypi:psycopg-c@3.3.6']
+images: ['ke-app', 'ke-gateway', 'ke-neo4j', 'phoenix', 'postgres', 'valkey']
+temurin route sbom_version: 21.0.12.1+1-LTS
+temurin release text:
+IMPLEMENTOR="Eclipse Adoptium"
+IMPLEMENTOR_VERSION="Temurin-21.0.12.1+1"
+JAVA_RUNTIME_VERSION="21.0.12.1+1-LTS"
+JAVA_VERSION="21.0.12.1"
+JAVA_VERSION_DATE="2026-08-18"
+LIBC="gnu"
+MODULES="java.base java.compiler java.datatransfer java.xml java.prefs java.desktop java.instrument java.logging java.management java.security.sasl java.naming java.rmi java.management.rmi java.net.http java.scripting java.security.jgss java.transaction.xa java.sql java.sql.rowset java.xml.crypto java.se java.smartcardio jdk.accessibility jdk.internal.jvmstat jdk.attach jdk.charsets jdk.internal.opt jdk.zipfs jdk.compiler jdk.crypto.ec jdk.crypto.cryptoki jdk.dynalink jdk.internal.ed jdk.editpad jdk.hotspot.agent jdk.httpserver jdk.incubator.vector jdk.internal.le jdk.internal.vm.ci jdk.internal.vm.compiler jdk.internal.vm.compiler.management jdk.jartool jdk.javadoc jdk.jcmd jdk.management jdk.management.agent jdk.jconsole jdk.jdeps jdk.jdwp.agent jdk.jdi jdk.jfr jdk.jlink jdk.jpackage jdk.jshell jdk.jsobject jdk.jstatd jdk.localedata jdk.management.jfr jdk.naming.dns jdk.naming.rmi jdk.net jdk.nio.mapmode jdk.random jdk.sctp jdk.security.auth jdk.security.jgss jdk.unsupported jdk.unsupported.desktop jdk.xml.dom"
+OS_ARCH="x86_64"
+OS_NAME="Linux"
+SOURCE=".:git:1c417fbfc2f7"
+BUILD_SOURCE="git:e6ba7dec3d07654074559310376a3ae89da5f4ac"
+BUILD_SOURCE_REPO="https://github.com/adoptium/temurin-build.git"
+SOURCE_REPO="https://github.com/adoptium/jdk21u.git"
+FULL_VERSION="21.0.12.1+1-LTS"
+SEMANTIC_VERSION="21.0.12.1+1"
+BUILD_INFO="OS: Linux Version: 6.8.0-1064-azure"
+JVM_VARIANT="Hotspot"
+JVM_VERSION="21.0.12.1+1-LTS"
+IMAGE_TYPE="JDK"
+
+neo4j packages: 72
+
+=== 5. teardown and final check ===
+project ke-tester-u7bwin: containers []
+project ke-tester-u7bwin-sbom: containers []
+ke-sources-* projects: []
+ke-sources-* networks/volumes: [] []
+scratch work dirs removed
+hashes start = end (21/21 identical)
+lock at the end: ls: cannot access 'docker/sources.lock.json': No such file or directory
+.env present (unexpected)

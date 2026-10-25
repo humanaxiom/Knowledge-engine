@@ -1381,6 +1381,187 @@ round. It has no effect on real data, since both `uv.lock` sdists match.
    segment, an extra or a missing segment, a path that does not start
    with `/packages/`.
 
+**U7b interface pins (orchestrator accepted, 2026-10-25).** These come
+from the U7b RED (the tester's section in the handoff). They are written
+down here so that GREEN, review and U7c work from the same interfaces.
+1. **Fake-network hook.** `scripts/sources_resolve.py` has a module-level
+   `OPENER(url, timeout)`, and every request goes through it (item 3.5's
+   hop rules run on top of it). Tests import the module by path (N3) and
+   patch `OPENER`. There is no flag, no test mode, and nothing is read
+   from the environment to select it.
+2. **`needs.json`.** `sbom_check.py lock-needs --policy P --sbom IMG=PATH...
+   --tar ke-neo4j=PATH [--syft IMG=PATH...]` prints
+   `{"format": 1, "needs": {<key>: {"kind": ..., "packages": [{image,
+   purl, spdxid}], "route": {...}}}}`, with `route` holding item 3.3's
+   per-kind inputs. For `temurin`, `route` also carries the text of
+   `/opt/java/openjdk/release`, read from the saved tar without running
+   anything. If more than one layer has the file, the top layer's copy
+   wins. The resolver derives the tag from that text and cross-checks it
+   against the SBOM purl's tag. A mismatch is item 4's `temurin: release
+   file says <x>, SBOM says <y>`. This reconciles item 3.3 with the ruling
+   that the tag comes from the saved tar.
+3. **U7b scope.** In U7b the resolver skips `deb`, `apk` and `pgdg` keys
+   and names each one on stderr. `lock-check` then fails the run on those
+   coverage misses, so U7b never writes a partial lock that passes.
+   `--prune` is not in U7b; it lands with U12's arm64 merge or earlier if
+   it is needed.
+4. **Exit lines.** A resolver failure prints `sources_lock: FAIL
+   (resolve: <key>: <why>; the lock is unchanged)` and exits 1. The
+   `<why>` texts are item 4's, cleaned. A `neo4j` TOFU candidate exits 3
+   (item 3.6).
+5. **Compose bind mounts.** The bind-mount rule in
+   `tests/test_stack_compose.py` gains a `sources-resolve` exemption shaped
+   like `sbom`'s. It names that service and its exact mounts, and grants
+   no general allowance.
+6. **Provenance on record** (`docs/evidence/platform-sbom/sources-provenance.md`,
+   security's second fetch).
+   - Neo4j 5.26.32 tag tarball: sha256
+     `182ae2e5c3807bc3d7a09770dbf450d2e8667080bde93b3b6c829125db0f91e3`,
+     20907800 bytes, tag commit `27f24499b751708815d42c8cf26bfb6597b3516c`.
+   - Temurin: the sidecar confirms the tag `jdk-21.0.12.1+1` and the asset
+     `OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz`, so round 2 item 2's exact
+     form holds unchanged. Its sha256 is `573057d0...8234`, given in full
+     in the provenance file.
+   - The redirect target was `release-assets.githubusercontent.com`.
+     `objects.githubusercontent.com` was not used. U8 confirms from real
+     fetches whether to drop it from `hosts`; that would be a reviewed test
+     change (N10 am. U6 item 2).
+   - Size note: the Neo4j tarball is about 20 MB, not item 5's 60-100 MB
+     guess, so the sample and full-set estimates fall by that much. U7d
+     measures them.
+7. **Third fetch (orchestrator ruling).**
+   - Security's second fetch is independent of the developer's tool by
+     process, so it stands for U7b.
+   - Before U7d commits the lock, a third fetch of the Neo4j tarball runs
+     over a different network path: the ARM model host or the CI runner.
+     It is recorded in `sources-provenance.md` with its host, date,
+     sha256 and size.
+   - A mismatch fails closed. The lock is not committed, and the
+     disagreement goes to the orchestrator.
+   - The manual entry's `upstream.from` keeps the second-fetch form
+     (round 1 item 1). The third fetch is evidence only, not a new field.
+
+**U7b rework round 1 (orchestrator rulings, 2026-10-25).** These come from
+`u7b/review.md` (B1, B2, N1-N6) and security's U7b audit (PASS with M-1 =
+B2, L-1 = N1, L-3/L-4 = B1, plus L-2, L-5, I-1, I-3). Every rule fails
+closed: a named failure, never a traceback and never a pass.
+1. **B1, transport errors, deadline and byte cap.**
+   - Every error raised while opening a URL or reading its body becomes a
+     `ResolveError` with item 4's text:
+     - timeouts (`TimeoutError`, `socket.timeout`): `<host>: timeout after
+       <n> s: <url>`;
+     - everything else, which covers `OSError` (incl.
+       `ConnectionResetError`), `http.client.HTTPException` (incl.
+       `IncompleteRead`, `BadStatusLine`) and `ValueError` (incl.
+       `InvalidURL`): `<host>: <error class>: <url>`.
+   - Each file has a wall-clock deadline of 600 s (default; item 3.5). On
+     breach: `<host>: deadline <n> s passed: <url>`.
+   - Streaming has a byte cap of 4294967296 (4 GiB, as U7a round 1 item
+     10). The read aborts the moment the cap is passed, before more is
+     hashed: `<host>: more than 4294967296 bytes: <url>`.
+   - `main` catches every exception into the one line `sources_lock: FAIL
+     (resolve: <key or "-">: <cleaned message>; the lock is unchanged)`
+     and exits 1, with no traceback. This covers an `OSError` writing
+     `/out` and a wrong-typed `needs` entry (N6).
+2. **B2 / security M-1, the pending-neo4j decision in Python.**
+   `sbom_check.py lock-check ... --pending-neo4j` exits 3 exactly when the
+   problem list is non-empty and every problem is a coverage miss for a
+   `neo4j:` key. Otherwise it exits 1 on problems, or 0 when there are
+   none. The decision uses the full list in memory; the 20-line print cut
+   applies only to output. `sources_lock.sh` branches on that exit code
+   alone and never parses lock-check's text. Without the flag, lock-check
+   keeps U7a's exits 0, 1 and 2.
+3. **N1 / security L-1, rules on every redirect hop.** Each `Location`
+   target, once joined, is refused unless it passes all of these:
+   - characters 0x21-0x7e only;
+   - a lower-case `https://` scheme, compared literally;
+   - no userinfo and no port;
+   - no fragment;
+   - a plain path (U7a round 2 item 1, with no `%` in the path);
+   - a host in the allowlist of item 8.
+   *Architect's precisions:*
+   - A hop may carry a *query*. GitHub's release-asset redirects are
+     signed URLs whose query is the signature, so a no-query rule would
+     refuse every Temurin fetch. The query is never written to the lock,
+     whose file URLs stay query-free (U7a).
+   - The resolver's own first request URLs are fixed templates (the
+     endpoint list). They pass the charset, scheme, userinfo, port and
+     fragment rules. They are exempt from the path `%` rule, because they
+     carry the endpoints' own encodings: GitLab's `alpine%2Faports`, and
+     snapshot's `%3A`, `%2B` and `%7E` in a quoted Debian version.
+   - If U8's real fetches find a needed redirect with a `%` in its path,
+     the architect amends this rule; it is never loosened in code.
+   - *Duplication, recorded:* `sbom_check.py` cannot be imported in the
+     `sources-resolve` container (only the resolver is mounted), so
+     `sources_resolve.py` carries a minimal copy of these checks. U7a's
+     tests pin the lock side and U7b's tests pin the hop side, each with
+     the same bad shapes (port, userinfo, fragment, `%2e%2e`, backslash,
+     tab, `HTTPS://`).
+4. **N2, tools first.** `sources_lock.sh` checks `jq`, `git` and `docker`
+   with `command -v` before anything else. A missing tool fails with
+   `sources_lock: FAIL (tools: <tool> not on PATH; the lock is
+   unchanged)`.
+5. **N3, temp file.** The EXIT trap removes
+   `docker/.sources.lock.json.XXXXXXXX` on every failure path, alongside
+   the work dir.
+6. **N4, six images.** The script takes the image refs from the same list
+   `bundle.sh` uses (one source, not a copy). It requires exactly those six
+   names, each present locally, and fails naming any that is missing or
+   extra. It derives the `ke-neo4j` tar path from that list rather than a
+   literal.
+7. **N5, whiteouts.** Recorded as failing closed, no change.
+   `tar_file_text` ignores a top-layer `.wh.release`, but the resolver's
+   SBOM cross-check (interface pins item 2) refuses any resulting
+   mismatch.
+8. **Security L-2, the pypi.org scope.** `pypi.org` is allowed only for the
+   request `https://pypi.org/pypi/<name>/<ver>/json`, where `<name>` and
+   `<ver>` come from a `pypi:` key. Every other request, and every
+   redirect hop of every request including that one, uses the policy
+   `hosts` alone. This narrows the endpoint list's "`hosts` ∪ {`pypi.org`}"
+   to that one request.
+9. **Security L-5, file mode.** `sources_lock.sh` runs `chmod 0644` on the
+   temp lock before the `mv`. `mktemp` creates it 0600, and the gates
+   container (uid 10001) must be able to read the committed file.
+10. **Security I-1, error bodies.** The real opener reads a 3xx or 4xx
+    response body only up to 1 MiB (1048576 bytes) and then discards it.
+    It is never parsed or printed.
+11. **Security I-3, keys first.** Before building any URL, the resolver
+    checks each `needs` key against U7a's key grammar for its kind (U7a
+    item 6 (c)). It carries the patterns in its minimal copy (item 3). A
+    bad key is `ResolveError` `<key>: not a valid lock key`. No request is
+    made for it, and the run ends (item 1's line).
+12. **A34 finding, the sbom tmp dir (orchestrator, 2026-10-25;
+    `u7b/windows-run.txt`).** The pinned `sbom` service sets
+    `TMPDIR=/out/tmp`. `bundle.sh` creates that directory, but
+    `sources_lock.sh` never creates `$work/sboms/tmp`, so a real run stops
+    at step 2.
+    - Rule: the script creates `$work/sboms/tmp` (with `mkdir` then
+      `chmod`, the U3 Windows form) before the syft run.
+    - A fake-docker happy-path test of the whole script is added. It runs
+      every step in order: `docker save`, sbom, `lock-needs`, resolve,
+      `lock-check` (`--pending-neo4j`), `chmod 0644`, `mv`, `git diff
+      --stat`. It asserts exit 0 for a complete lock and exit 3 for
+      neo4j-pending.
+    - So a step-ordering or missing-directory defect turns `fast` red. It
+      is no longer found only by a real run.
+13. **`KE_IN_GATES` (orchestrator ruling, 2026-10-25).** `KE_IN_GATES` in
+    the resolver's process environment comes from the gates image's own
+    `ENV`. It is an image marker: not a secret, not a compose key, and not
+    taken from the caller. Item 3's "no `KE_*` key" (and N4's) concerns the
+    compose `environment:` block and any pass-through from the caller or
+    `.env` only. Tests assert that the service's `environment:` block holds
+    literals with no `KE_*` name and that the script passes no `-e` or
+    `--env-file` value. They do not assert an empty process environment.
+*O3 observation (orchestrator, 2026-10-25, from the A34 proof):* the fresh
+`ke-neo4j` SBOM lists 72 packages under `neo4j:neo4j@5.26.32`, while the
+fixture lists 73. The difference is `neo4j-genai-plugin`, which U4b
+removed with `products/`. The key set is unchanged. U7d's drift check
+(O3) therefore compares *key sets*, fresh against the fixtures. Any key
+added or missing stops U7d and goes to the orchestrator. A different
+package count inside a key that both share is reported as information
+(key, fixture count, fresh count, the purls that differ) and does not stop
+it. The committed-lock test still checks coverage against the fixtures.
+
 ## N6. The final SPDX document
 
 `finish` keeps syft's packages, files and relationships and changes only:

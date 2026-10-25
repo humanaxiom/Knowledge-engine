@@ -648,3 +648,20 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-25T07:32:14Z | reviewer | platform-sbom | U7a rework r2 review: R1-B1/N1/N2 and R1-L1 closed; every kind's url path exact; 182 keys unchanged | review: APPROVED
 2026-10-25T07:33:23Z | security | platform-sbom | U7a rework r2 re-check (pypi linear, temurin exact, plain paths, CLI) | security: PASS (R1-L1, R1-L2 closed; no new finding)
 2026-10-25T07:47:00Z | orchestrator | platform-sbom | U7a gates judged: review APPROVED (r2), security PASS (r2), verify full PASS 968 s; commit approved | smoke: PASS
+2026-10-25T07:47:48Z | developer | platform-sbom | committed U7a on agent/platform-sbom | commit: done
+2026-10-25T07:50:17Z | documenter | platform-sbom | handoff: U7a closed to a summary, detail to archive/platform-sbom-part10.md | docs: updated
+2026-10-25T07:51:57Z | security | platform-sbom | U7b second fetch: neo4j 5.26.32 tarball, tag commit, temurin sidecar | security: provenance recorded
+2026-10-25T09:01:32Z | tester | platform-sbom | U7b RED: sources_resolve.py (fake opener: hops, parsers, temurin/maven/pypi/neo4j routes, merge, CLI), lock-needs, docker-compose.sources.yml hardening, sources_lock.sh refusals | tdd red: 20 failing as expected
+2026-10-25T09:03:32Z | architect | platform-sbom | U7b interface pins recorded (OPENER hook, needs.json, release text via lock-needs, provenance, third fetch at U7d) | plan: design amended
+2026-10-25T09:31:01Z | developer | platform-sbom | U7b GREEN: sources_resolve.py, sources_lock.sh, compose.sources.yml, lock-needs | tdd green: verify fast + full PASS
+2026-10-25T09:37:08Z | reviewer | platform-sbom | U7b review: B1 resolver mid-body/opener errors are tracebacks and no byte deadline; B2 sources_lock.sh neo4j-only check reads lock-check's first 20 lines; nits N1-N6 | review: changes requested
+2026-10-25T09:37:54Z | security | platform-sbom | U7b gate audit (resolver, sources_lock.sh, compose, lock-needs) | security: PASS (no critical/high; M-1 pending rule on truncated output; L-1..L-5)
+2026-10-25T09:38:23Z | tester | platform-sbom | U7b A34 Windows proof (sources-resolve, sources_lock.sh, lock-needs --tar): defect sources_lock.sh lacks $work/sboms/tmp (syft TMPDIR) | a34: FAIL
+2026-10-25T09:39:20Z | architect | platform-sbom | U7b rework r1 rulings recorded (error handling, deadline, byte cap, pending-neo4j in Python, hop rules, jq check, trap, six images) | plan: design amended
+2026-10-25T09:41:19Z | documenter | platform-sbom | handoff trim: U7b round-0 sections to archive/platform-sbom-part10.md | docs: updated
+2026-10-25T10:37:33Z | tester | platform-sbom | U7b rework r1 RED: ReworkR1* tests (transport/deadline/cap, main, real opener, hop rules, pypi scope, keys, script end to end via fake docker) + lock-check --pending-neo4j; r1 targets reach-proven; controls 71 rows 0 unexpected | tdd red: 25 failing as expected
+2026-10-25T11:07:56Z | developer | platform-sbom | U7b rework r1 GREEN: resolver hardening, lock.sh tools/six-images/tmp, lock-check --pending-neo4j | tdd green: verify fast + full PASS
+2026-10-25T11:12:37Z | reviewer | platform-sbom | U7b rework r1 review: B1/B2/N1-N6 closed; happy-path fake-docker test; R1-N1 pypi JSON url exempt from path-% rule (fails closed at lock-check) | review: APPROVED
+2026-10-25T11:12:44Z | security | platform-sbom | U7b rework r1 re-check (pending, per-hop URL rules, pypi JSON-only, deadline, cap) | security: PASS (M-1, L-1, L-2, L-4, L-5, I-1, I-3 closed; R1-L1 low: deadline not enforced within one read)
+2026-10-25T11:22:23Z | tester | platform-sbom | U7b r1: controls baseline fixed to saved u7b targets and re-run --base repo (71 rows); A34 steps 3+4 re-run on Windows (refusals incl. tools/six images; script SBOM + lock-needs with sboms/tmp); O3 drift from stale ke-app:local | a34: PASS; controls: 0 unexpected
+2026-10-25T11:27:41Z | orchestrator | platform-sbom | U7b gates judged: review APPROVED (r1), security PASS (r1), A34 PASS, verify full PASS 1042 s; commit approved | smoke: PASS

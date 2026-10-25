@@ -367,11 +367,23 @@ never touches a real daemon. What it does:
     the real script, read from the host source of its `-v`/`--volume`/
     `--mount` bind, under this interpreter with `-I -S -B`, the venv site of
     FAKE_IMAGE_PATHS["/opt/venv"] appended to sys.path. Each argument after
-    the script that is a container path (or `--opt=<path>`) is rewritten to
+    the script that is a container path (or `--opt=<path>`, or, from U7b
+    rework round 1, `IMAGE=<path>` as --sbom and --tar take) is rewritten to
     the host: under a mount target by its bind source, else under a
     FAKE_IMAGE_PATHS prefix (JSON, container prefix -> host dir; the tests
     map `/opt/venv` and `/app`), longest prefix first. stdout, stderr and the
     exit status are the script's; a script that is not there exits 2.
+- platform-sbom U7b rework round 1 (design-notes "U7b rework round 1", item
+  12): `compose ... -f docker-compose.sources.yml run [opts] sources-resolve
+  ARGS`, when that file is in FAKE_COMPOSE_FILE_IMAGES, runs the real
+  resolver: the service's entrypoint (`python3 -I <script> ...`) and ARGS,
+  each container path rewritten by the service's long-form binds (sources
+  interpolated from the interpolation environment, relative ones against
+  the compose file's directory; a `${X:?}` with no value, or a bind source
+  that does not exist, exits 1 as compose and the daemon do). The module's
+  OPENER is replaced by FAKE_RESOLVE_NET (JSON url -> [status, headers,
+  body text]; any other url is a 404); FAKE_RESOLVE_LOG gets one requested
+  url per line. stdout, stderr and the exit status are the resolver's.
 - Every other call exits 0.
 """
 
@@ -1246,6 +1258,10 @@ if argv[:1] == ["run"] or argv[:2] == ["container", "run"]:
             if t.startswith("--") and "=" in t:
                 _k2, _v2 = t.split("=", 1)
                 return _k2 + "=" + _remap(_v2)
+            if "=" in t and not t.startswith("/") and t.split("=", 1)[1].startswith("/"):
+                # platform-sbom U7b rework round 1: IMAGE=<container path> (--sbom, --tar)
+                _k2, _v2 = t.split("=", 1)
+                return _k2 + "=" + _remap(_v2)
             best = None
             for c, h in _pairs:
                 c2 = c.rstrip("/") or "/"
@@ -1805,6 +1821,96 @@ if _u3_own and "run" in argv:
         with open(os.path.join(_work3, _spdx3[-1][len("/out/"):]), "w", encoding="utf-8", newline="\n") as fh:
             fh.write(_raw3)
         sys.exit(0)
+    if _svc3 == "sources-resolve":
+        # platform-sbom U7b rework round 1 (design-notes, U7b rework round 1,
+        # item 12): the real scripts/sources_resolve.py, read from its bind in
+        # the compose file, under this interpreter; every bind of the service
+        # maps its target to its source; OPENER is FAKE_RESOLVE_NET.
+        import subprocess as _subprocess
+        _env4 = interpolation_env()
+        _path4 = next(f for f in _u3_files if os.path.basename(f) == _u3_own[0])
+        try:
+            import yaml as _yaml4
+            with open(_path4, encoding="utf-8") as fh:
+                _svc4 = (_yaml4.safe_load(fh) or {})["services"]["sources-resolve"]
+        except Exception as exc:  # the model must never pass silently
+            sys.stderr.write("fake sources-resolve: cannot read %s: %r" % (_path4, exc) + chr(10))
+            sys.exit(1)
+
+        def _interp4(value):
+            text, out = str(value), ""
+            while "${" in text:
+                head, _, rest = text.partition("${")
+                body, _, text = rest.partition("}")
+                name, op, word = body, "", ""
+                for sep in (":?", ":-"):
+                    if sep in body:
+                        name, _, word = body.partition(sep)
+                        op = sep
+                        break
+                val = _env4.get(name, "")
+                if op == ":?" and not val:
+                    sys.stderr.write("error while interpolating %s: required variable %s is missing a value: %s"
+                                     % (os.path.basename(_path4), name, word) + chr(10))
+                    sys.exit(1)
+                out += head + (word if op == ":-" and not val else val)
+            return out + text
+
+        _interp4(_svc4.get("user", ""))
+        _base4 = os.path.dirname(os.path.abspath(_path4))
+        _pairs4 = []
+        for _vol4 in _svc4.get("volumes") or []:
+            if not isinstance(_vol4, dict) or _vol4.get("type") != "bind":
+                sys.stderr.write("fake sources-resolve: only long-form binds are modelled" + chr(10))
+                sys.exit(1)
+            _s4 = _interp4(_vol4["source"])
+            if not os.path.isabs(_s4):
+                _s4 = os.path.normpath(os.path.join(_base4, _s4))
+            if not os.path.exists(_s4):
+                sys.stderr.write("Error response from daemon: invalid mount config: bind source path does not "
+                                 "exist: %s" % _s4 + chr(10))
+                sys.exit(1)
+            _pairs4.append((_vol4["target"], _s4))
+
+        def _remap4(t):
+            best = None
+            for c, h in _pairs4:
+                if t == c or t.startswith(c.rstrip("/") + "/"):
+                    if best is None or len(c) > len(best[0]):
+                        best = (c, h)
+            return t if best is None else best[1] + t[len(best[0]):]
+
+        _entry4 = [str(x) for x in _svc4.get("entrypoint") or []]
+        if _entry4[:2] != ["python3", "-I"] or len(_entry4) < 3:
+            sys.stderr.write("fake sources-resolve: want an entrypoint python3 -I <script> ..., got %r" % _entry4
+                             + chr(10))
+            sys.exit(1)
+        _script4 = _remap4(_entry4[2])
+        if not os.path.isfile(_script4):
+            sys.stderr.write("python3: can't open file %r: [Errno 2] No such file or directory" % _entry4[2] + chr(10))
+            sys.exit(2)
+        _boot4 = chr(10).join([
+            "import importlib.util, json, os, sys, types",
+            "spec = importlib.util.spec_from_file_location('sources_resolve', sys.argv[1])",
+            "mod = importlib.util.module_from_spec(spec)",
+            "sys.modules['sources_resolve'] = mod",
+            "spec.loader.exec_module(mod)",
+            "net = json.loads(os.environ.get('FAKE_RESOLVE_NET') or '{}')",
+            "log = os.environ.get('FAKE_RESOLVE_LOG')",
+            "def opener(url, timeout):",
+            "    if log:",
+            "        with open(log, 'a', encoding='utf-8') as fh:",
+            "            fh.write(url + chr(10))",
+            "    st, hd, body = net.get(url, [404, {}, 'not found'])",
+            "    return types.SimpleNamespace(status=st, headers={k.lower(): v for k, v in hd.items()},",
+            "                                 body=[body.encode('utf-8')])",
+            "mod.OPENER = opener",
+            "sys.exit(mod.main(sys.argv[2:]))",
+            ""])
+        sys.stdout.flush()
+        _done4 = _subprocess.run([sys.executable, "-I", "-S", "-B", "-c", _boot4, _script4,
+                                  *[_remap4(a) for a in _entry4[3:] + argv[_i3 + 1:]]])
+        sys.exit(_done4.returncode)
 
 if "config" in argv:
     env = interpolation_env()

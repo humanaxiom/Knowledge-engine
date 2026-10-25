@@ -302,6 +302,14 @@ class NetworksTest(unittest.TestCase):
             # those two mounts and that nothing else is mounted.
             if file == "docker-compose.sbom.yml" and name == "sbom":
                 continue
+            # platform-sbom U7b (design-notes N5 amendment U7, item 3.4):
+            # `sources-resolve` is the lock tool's maintainer-only one-shot,
+            # never in the stack's COMPOSE_FILE nor run by verify or CI; it
+            # binds its script, the policy, uv.lock and /in read-only and its
+            # out dir read-write by design. tests/test_sources_resolve.py
+            # (SourcesComposeTest) pins those mounts and that nothing else is.
+            if file == "docker-compose.sources.yml" and name == "sources-resolve":
+                continue
             for kind, source in cs.volume_sources(svc):
                 with self.subTest(file=file, service=name, source=source):
                     self.assertEqual(kind, "volume", "stack services use named volumes only")

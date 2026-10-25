@@ -1196,5 +1196,82 @@ class ReworkR2CliLineTest(LockCheckCliTest):
                 self._one_line(r, cls)
 
 
+# --------------------------------------------------------------------------
+# U7b rework round 1, item 2 (review B2, security M-1; design-notes "U7b
+# rework round 1"): `lock-check --pending-neo4j` decides "only neo4j keys
+# missing" in Python, on the full problem list. Exit 3 exactly when the list
+# is non-empty and every problem is a coverage miss for a `neo4j:` key; else
+# 1 on problems, 0 on none. Without the flag, U7a's exits are unchanged.
+# --------------------------------------------------------------------------
+
+U7B_NEO = "neo4j:neo4j@5.26.32"
+
+
+class ReworkR1PendingNeo4jCliTest(LockCheckCliTest):
+
+    def _pending(self, lock: Any, *, docs: dict[str, Any] | None = None, flag: bool = True
+                 ) -> subprocess.CompletedProcess:
+        ss.write_json(self.tmp / "policy.json", policy())
+        (self.tmp / "lock.json").write_text(lock if isinstance(lock, str) else canon(lock), encoding="utf-8",
+                                            newline="")
+        args = []
+        for image, doc in (docs if docs is not None else small_docs()).items():
+            ss.write_json(self.tmp / f"{image}.spdx.json", doc)
+            args += ["--sbom", f"{image}={self.tmp / f'{image}.spdx.json'}"]
+        return subprocess.run([sys.executable, "-I", str(ROOT / "scripts" / "sbom_check.py"), "lock-check",
+                               "--lock", str(self.tmp / "lock.json"), "--policy", str(self.tmp / "policy.json"),
+                               "--arch", ARCH, *args] + (["--pending-neo4j"] if flag else []),
+                              capture_output=True, text=True, timeout=120)
+
+    def test_only_neo4j_misses_exit_3(self):
+        lock = good_lock(SMALL_KEYS - {U7B_NEO})
+        self.assertEqual(lock_problems_of(lock), [miss("ke-neo4j", "pkg:maven/org.neo4j/neo4j@5.26.32", U7B_NEO)],
+                         "fixture: the only problem is the neo4j miss")
+        r = self._pending(lock)
+        self.assertEqual(r.returncode, 3, r.stdout + r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+        self.assertEqual(self._pending(lock, flag=False).returncode, 1, "without the flag U7a's exit 1 is unchanged")
+
+    def test_a_clean_lock_exits_0_with_the_flag(self):
+        r = self._pending(good_lock(SMALL_KEYS))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(r.stdout.strip(), f"lock-check: ok ({len(SMALL_KEYS)} components, amd64)")
+
+    def test_the_reviewers_79_problem_lock_exits_1(self):
+        """u7b/review.md B2: the fixture lock without neo4j, pandas and the
+        three pgdg keys has 79 problems; the first 20 printed are all neo4j
+        misses and 6 later ones are not. The decision must see all 79."""
+        drop = {U7B_NEO, "pypi:pandas@2.3.3"} | {k for k in FIXTURE_KEYS if k.startswith("pgdg:")}
+        lock = good_lock(FIXTURE_KEYS - drop)
+        problems = lock_problems_of(lock, docs=fixture_docs())
+        neo = [x for x in problems if f"the lock has no {U7B_NEO} for" in x]
+        self.assertEqual((len(problems), len(problems) - len(neo)), (79, 6), "fixture: the reviewer's B2 row")
+        self.assertTrue(all(x in neo for x in problems[:20]), "fixture: the first 20 problems are neo4j misses")
+        r = self._pending(lock, docs=fixture_docs())
+        self.assertEqual(r.returncode, 1, "6 of 79 problems are not neo4j misses: not pending (B2, M-1)")
+        printed = [ln for ln in r.stderr.splitlines() if ln.startswith("sbom_check: lock-check: ")]
+        self.assertEqual(len(printed), 20, "the print cut is unchanged (output only)")
+
+    def test_other_problems_with_a_neo4j_miss_exit_1(self):
+        rows = {
+            "a neo4j miss and a stale entry": (good_lock((SMALL_KEYS - {U7B_NEO}) | {"deb:zzz@1.0-1"}), None),
+            "a neo4j miss and a non-canonical lock": (json.dumps(good_lock(SMALL_KEYS - {U7B_NEO}), indent=2), None),
+            "a stale neo4j entry only (not a miss)": (
+                good_lock(SMALL_KEYS),
+                {k: v for k, v in small_docs().items() if k != "ke-neo4j"} | {"ke-neo4j": ss.spdx_doc("ke-neo4j", [
+                    {"purl": "pkg:generic/oracle/openjdk@21.0.12.1%2B1-LTS", "declared": "NOASSERTION"},
+                    {"purl": "pkg:maven/javax.xml.bind/jaxb-api@2.2.12", "declared": JAXB_ID}])}),
+            "a bad neo4j entry (a shape problem, not a miss)": (
+                {"format": 1, "components": dict(good_lock(SMALL_KEYS)["components"],
+                                                 **{U7B_NEO: dict(good_entry(U7B_NEO), files=[])})}, None),
+        }
+        for case, (lock, docs) in rows.items():
+            with self.subTest(case=case):
+                self.assertTrue(lock_problems_of(lock, docs=docs), "fixture: the lock has problems")
+                r = self._pending(lock, docs=docs)
+                self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+                self.assertNotIn("Traceback", r.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
