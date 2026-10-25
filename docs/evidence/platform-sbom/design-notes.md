@@ -1527,6 +1527,209 @@ Decision:
   resolves `<app root of each copy>/sources/index.json` for the root copy,
   the `app/` copy and the installed copy.
 
+### N10 amendment, U6 (architect, 2026-10-25)
+
+Orchestrator rulings for U6 (N15 row U6; N8a 1 and 3; review U5 r3
+I-r3-1, security U5 r3 I-9), with the precision the developer needs.
+Supersedes N8a 1's image name `neo4j` (it is `ke-neo4j` since U4b, N16)
+and, for U6, N10's "every lock URL host is in `hosts`" (no lock until U7:
+that check arrives with U7's lock test, not here).
+
+**1. `exempt_matches` and `classify_document`.**
+- `exempt_matches(image: str, doc: dict, exempt: list[dict]) ->
+  tuple[list[str], list[str]]` in `scripts/sbom_check.py`: (flagged
+  SPDXIDs, problems), the shape of `always_matches`; entries for other
+  images are skipped.
+- Match: the package's purl with its qualifiers (`?...`) and subpath
+  (`#...`) removed equals the entry's `package` exactly, as a string
+  (type, namespace, name and version; no percent-decoding, no case fold:
+  the entry is written as syft writes the purl). A miss is a loud problem,
+  never a silent pass, so literal comparison fails closed.
+- Problems: an entry whose `package` is not a versioned purl without
+  qualifiers or subpath (`PURL_RE` match, no `?`, no `#`) matches nothing
+  and is `"<image>: exempt entry is not a versioned purl: <package>"`; an
+  entry with no package at that purl is `"<image>: exempt entry matches
+  nothing: <package>; the version moved or the package left: review
+  again"` (void on bump). SBOM strings in problems go through `_clean`.
+- `classify_document(image, doc, always, exempt=())`: every row gains
+  `exempt` (bool). Choice: `always` wins inside the classifier and the
+  conflict is U9's to refuse. A row flagged by both keeps
+  `always: True, exempt: True, needs: True`; a row flagged by `exempt`
+  only gets `needs = False`; `unparsed`, `unidentified` and `expression`
+  are left as computed (the index keeps the generator's text verbatim,
+  N8a 1). `classify_document` drops `exempt_matches`'s problems as it
+  drops `always_matches`'s; U9's `index` calls both for problems and
+  refuses a row with both flags ("`always` and `exempt` both match
+  <purl>"). *Why not in `exempt_matches`:* it would need the always
+  flags, coupling the two lists; one boolean pair on the row is enough.
+- With the default `exempt=()` every U5 row is unchanged but for
+  `exempt: False`.
+- The ke-app libldap/libsasl2 rows (N15 notes, security u1 I-1) are
+  `always` matches since U4 ruling 2, so an `exempt` entry for them would
+  be the conflict above: none is written; U7's lock covers them.
+
+**2. `hosts`: the N4 list, nine names.** `bundle_fetch.sh` (U8) refuses
+any other host on any hop (N4).
+- `snapshot.debian.org`: `deb`
+- `gitlab.alpinelinux.org`: `apk` (APKBUILD and local patches at the commit)
+- `distfiles.alpinelinux.org`: `apk` (upstream tarballs, Alpine's mirror)
+- `github.com`: `neo4j` (tag tarball), `temurin` (release asset, first hop)
+- `codeload.github.com`: `neo4j` (the tarball redirect target)
+- `objects.githubusercontent.com`: `temurin` (release asset redirect target)
+- `release-assets.githubusercontent.com`: `temurin` (release asset redirect target)
+- `files.pythonhosted.org`: `pypi`
+- `repo1.maven.org`: `maven` (N8a 2)
+
+N4 names every kind's host; no new host is proposed. Two remarks. `apk`
+upstream files come only from Alpine's mirror, never the upstream
+project's own host, by N5's design (a file missing there fails closed,
+Q61, and goes back to the architect at U7). The redirect targets stay
+*confirm at GREEN* of U8 (N4); a host U8 finds is added by a design-note
+amendment and a test change, never by the developer alone. The brief's
+"github.com/adoptium" is the host `github.com`: `hosts` holds no paths.
+
+**3. Schema test (U6, fast).** On `docker/source-policy.json`:
+- exactly the keys `hosts`, `always`, `exempt`;
+- `hosts`: a non-empty list of strings, no duplicates, each a full match
+  of `[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}`
+  (lower case, at least one dot, no scheme, port, path, wildcard or IP
+  literal); and the set equals the nine of item 2 (a new host is a
+  reviewed test change);
+- `always`: unchanged (U4's `always_problems`);
+- `exempt`: a list; each entry exactly the keys `image`, `package`,
+  `reason`, `reviewed`; `image` a bundled image name (`bundled_names()`);
+  `package` as in item 1; `reason` non-blank after strip and containing
+  `sha256 ` followed by 64 lower-case hex, and the word `elected`;
+  `reviewed` a full match of `security \d{4}-\d{2}-\d{2}` and a valid
+  date (`date.fromisoformat`); no two entries with the same
+  (`image`, `package`);
+- fixture check: for each entry, `exempt_matches(image, ss.u3_doc(fixture),
+  [entry])` flags at least one SPDXID and returns no problem. Fixture
+  mapping: the reverse of `U4B_POLICY_NAME` (`tests/test_sbom_obligations.py`),
+  so image `ke-neo4j` reads `tests/fixtures/sbom-u3/neo4j.pkgs.tsv`, every
+  other image `<image>.pkgs.tsv`. The U3 neo4j list stands in for
+  ke-neo4j (same rows, N16). jna and javassist sit in `var/lib/neo4j/lib`,
+  not `products/` (`u4b/windows-tree-ke-neo4j.tvf.txt` l.7807, 7840), and
+  `u4b/windows-ke-neo4j.pkgs.tsv` l.79, 113 hold the same purls;
+- no fixture row is flagged by both `always` and `exempt` (the U9 conflict
+  is caught at verify time on real data).
+
+**4. The two entries (image `ke-neo4j`).**
+- `pkg:maven/com.sun.jna/jna@5.15.0` (fixture l.113; syft: declared
+  `NOASSERTION`, concluded `Apache-2.0 AND LGPL-2.1-only`). Reason facts:
+  `META-INF/LICENSE` reads `SPDX-License-Identifier: Apache-2.0 OR
+  LGPL-2.1`; Apache-2.0 elected; jar `jna-5.15.0.jar` sha256
+  `a564158d28ab5127fc6a958028ed54279fe0999662c46425b6a3b09a2a52094d`.
+- `pkg:maven/org.javassist/javassist@3.30.2-GA` (fixture l.79; syft's
+  URL-folded MPL-1.1 / LGPL-2.1 / Apache-2.0 id). Reason facts: the pom's
+  three `<license>` entries (MPL 1.1, LGPL 2.1, Apache 2.0) are an OR by
+  Maven's POM reference; Apache-2.0 elected; jar `javassist-3.30.2-GA.jar`
+  sha256 `eba37290994b5e4868f3af98ff113f6244a6b099385d9ad46881307d3cb01aaf`.
+- Real-row test: `classify_document("ke-neo4j", <neo4j fixture>, always,
+  exempt)` gives jna and javassist `exempt: True, needs: False`
+  (javassist stays `unparsed: True`); every other row of every image
+  equals its U5 value with `exempt: False`.
+- *`reviewed` sequencing (flag).* The test checks the pattern, so the
+  entries cannot go green before a value exists, and the value may only
+  be written after security's review. So security's review of the two
+  entries is a separate dispatch between the entries' RED and GREEN:
+  security checks each `reason` against N8a's evidence and records PASS
+  with its date in `docs/evidence/platform-sbom/u6/security-exempt.md`;
+  the developer then writes `security <that date>` (expected
+  `2026-10-25`). No placeholder value is committed or made to pass. The
+  U6 gate audit by security still follows on the integrated diff.
+
+**5. I-r3-1: separated keyword segments (U6's first test row).**
+In `_unknown_id`, after the DocumentRef strip and round 3's trim of
+`.`, `-`, `+`: if the trimmed bare id is ASCII and does not start with
+`licenseref-` under ASCII case fold, it is unknown when any segment of
+it split on `.` and `-` equals `NONE` or `NOASSERTION` under ASCII case
+fold. The hash rule and the whole-id rule are unchanged. `+` cannot sit
+inside a parsed leaf (`LEAF_RE`) and splits runs (`RUN_SPLIT_RE`), so
+`.` and `-` are the only separators needed. The name in a
+`DocumentRef-NONE:` prefix is not a licence and is ignored
+(`DocumentRef-NONE:MIT` is bare `MIT`, ordinary). Because `_unknown_id`
+also serves fallback runs and `WITH` exception ids, the rule applies
+there too (fail closed).
+- Unknown (needs, unparsed, unidentified): `NOASSERTION.NONE` (T,F,T),
+  `NOASSERTION-2.0` (T,F,T), `MIT-NOASSERTION` (T,F,T), `MIT AND
+  NONE.NONE` (T,F,T, security I-9), `none-mit` (T,F,T),
+  `DocumentRef-x:NONE-1` (T,F,T).
+- Ordinary: `LicenseRef-NONE`, `licenseref-none`, `LicenseRef-NOASSERTION`,
+  `DocumentRef-x:LicenseRef-NONE` (F,F,F); `NOASSERTIONS`, `NONEX-1`
+  (F,F,F); `NOASSERTIONS apply` (F,T,F).
+- *Pins that flip (recorded):* `MIT-NOASSERTION` (round 3 item 5; the
+  orchestrator's ruling) and also `see NONE.txt here`, which the ruling
+  did not name: its run `NONE.txt` has the segment `NONE`, so it goes
+  from (F,T,F) to (T,T,T). Both pins sit in `tests/test_sbom_classifier.py`
+  (l.626 and l.959-960 at d8ffa2d). The architect recommends the flip
+  (fail closed; one rule for leaves and runs). Keeping `see NONE.txt
+  here` ordinary would need the rule scoped to parsed leaves only, a
+  second code path; flagged for the orchestrator's ruling.
+- Real-row effect: none. Architect's simulation at d8ffa2d (the rule
+  patched over `_unknown_id`, `classify_document` on all six U3 fixtures
+  with the real `always`): 1015 rows, 0 changed. The tester confirms it
+  with the snapshot.
+
+**6. Loop mode.** `fast` (N15 row U6). `scripts/sbom_check.py` is under
+`scripts/`, so the developer runs `scripts/verify.sh full` before the
+gate.
+
+**Suggested TDD order.** (a) item 5's table, both flipped pins included;
+(b) `exempt_matches` on synthetic docs: match with qualifiers ignored,
+version moved, other image skipped, qualifier-bearing or versionless
+entry; (c) `classify_document` with `exempt`: exempt only, both flags,
+default `()` unchanged; (d) item 3's schema test on the committed file
+(RED until `hosts` and `exempt` land; its `reviewed` part RED until
+security's entry review); (e) item 4's real-row test. Pure functions and
+a JSON file: no spans (no agent loop, model, retrieval or tool call).
+
+**Open for the orchestrator (not U6 code).** The U5 amendment's "3.
+Generator digest (I-4)" says the analyst amends PSC-22's wording with
+U6; that is not in this brief.
+
+**Correction (orchestrator, 2026-10-25; supersedes the `always`/`exempt`
+choice in item 1 above).** The analyst found that PSC-22 bullet 1, its
+"`always` additions", the libldap/libsasl2 bullet and N10's human-call
+GCC fallback all let a reviewed exemption clear an `always` package.
+Ruling: `always` overrides only the classifier; a reviewed `exempt` entry
+at the exact versioned purl still clears the package.
+- `classify_document(image, doc, always, exempt=())`: a row flagged by
+  `exempt` gets `exempt: True` and `needs = False`, whether or not
+  `always` also flags it. A row flagged by both is `always: True,
+  exempt: True, needs: False`. A row flagged by `always` only keeps
+  `needs = True`. `unparsed`, `unidentified` and `expression` are left
+  as computed.
+- U9's `index` does not refuse a row with both flags. It lists it as
+  "always, cleared by exemption <reviewed>" (the entry's `reviewed`
+  value), so the clearance is visible. Item 1's "refuses a row with both
+  flags" and its "*Why not in `exempt_matches`*" sentence are withdrawn;
+  `exempt_matches` still takes no `always` input.
+- Item 3: the bullet "no fixture row is flagged by both `always` and
+  `exempt`" is withdrawn (both is now a legal state). At U6 no entry hits
+  an `always` package: jna and javassist match no ke-neo4j `always` entry.
+- Item 1, last bullet: for the libldap/libsasl2 rows an `exempt` entry is
+  now possible, not a conflict. None is written at U6, so U7's lock
+  covers them (the default, fail closed; N15 notes).
+- Item (c) of the TDD order becomes: exempt only (`needs` False), both
+  flags (`needs` False, both True), always only (`needs` True), default
+  `()` unchanged but for `exempt: False`.
+
+**Contradiction with `docs/requirements.md` (flag, not resolved here).**
+PSC-22's "*First test row (U5 review I-r3-1, orchestrator 2026-10-25)*"
+bullet says an opaque idstring with a keyword joined by `.` or `-` "stays
+ordinary, as `MIT-NOASSERTION` does", and names `NOASSERTION.NONE`,
+`NOASSERTION-2.0` and `LicenseRef-NOASSERTION`. Item 5 (the orchestrator's
+ruling 5) makes the first two and `MIT-NOASSERTION` unknown; only
+`LicenseRef-NOASSERTION` stays ordinary. The analyst must amend that
+bullet before the tester's RED. Its "*`always` and `exempt` (open)*"
+bullet is settled by the correction above.
+*Update (architect, 2026-10-25):* resolved while this was written. The
+analyst's amended bullet (requirements l.3929 on) now matches item 5. It
+does not name `see NONE.txt here`; that flip (item 5) is still for the
+orchestrator to confirm.
+*Ruled (orchestrator, 2026-10-25):* `see NONE.txt here` flips to (T,T,T) under item 5; one fail-closed rule for leaves, runs and exception ids, no second code path.
+
 ## N11. PSC-19 e2e (`ci/deployable-offline`)
 
 In the client half of `offline_check.sh`, after `install.sh` and before

@@ -623,7 +623,9 @@ class ReworkR1UnknownLeavesTest(_Table):
             ("NOASSERTION NONE", True, True, True), ("MIT AND AND NOASSERTION", True, True, True),
             ("public domain and none", True, True, True), ("see (noassertion) here", True, True, True),
             # near misses: a run that only contains the word
-            ("see NONE.txt here", False, True, False), ("NOASSERTIONS apply", False, True, False),
+            # `see NONE.txt here` moved to U6SegmentRuleTest: it needs source
+            # under U6 ruling 5 (segment rule; CLAUDE.md Contradictions).
+            ("NOASSERTIONS apply", False, True, False),
             ("Public Domain", False, True, False),
         ])
 
@@ -956,8 +958,9 @@ class ReworkR3DecoratedIdsTest(_Table):
     def test_near_misses_stay_ordinary(self):
         # Ruling 5 (pinned near-misses) and ruling 4 (65 hex is not a hash).
         self.check([
-            ("see NONE.txt here", False, True, False), ("NOASSERTIONS apply", False, True, False),
-            ("MIT-NOASSERTION", False, False, False), ("LicenseRef-NONE", False, False, False),
+            # U6 ruling 5 (segment rule) flips `see NONE.txt here` and
+            # `MIT-NOASSERTION` to unknown; they moved to U6SegmentRuleTest.
+            ("NOASSERTIONS apply", False, True, False), ("LicenseRef-NONE", False, False, False),
             (HASH65, False, False, False), (f"MIT AND {HASH65}", False, False, False),
             ("LicenseRef-" + "0123456789ABCDEF" * 4 + "+", False, False, False),
         ])
@@ -973,6 +976,187 @@ class ReworkR3RunSplitTest(_Table):
             ("DocumentRef-:NONE", True, True, True), ("Public Domain MIT:NOASSERTION", True, True, True),
             ("MIT OR (x:none)", True, True, True),
         ])
+
+
+# --------------------------------------------------------------------------
+# platform-sbom U6: `exempt` (N10; N8a items 1 and 3; orchestrator U6
+# rulings 1, 4, 5). Tester, U6 RED, 2026-10-25.
+# --------------------------------------------------------------------------
+
+JNA_PURL = "pkg:maven/com.sun.jna/jna@5.15.0"
+JAVASSIST_PURL = "pkg:maven/org.javassist/javassist@3.30.2-GA"
+
+
+def u6_exempt(package: str, image: str = "ke-neo4j") -> dict[str, str]:
+    return {"image": image, "package": package, "reason": "Apache-2.0 elected (test)", "reviewed": "security 2026-10-25"}
+
+
+def u6_doc(purls: list[str], image: str = "ke-neo4j") -> dict[str, Any]:
+    return ss.spdx_doc(image, [{"purl": p, "declared": "NOASSERTION", "concluded": "Apache-2.0 AND LGPL-2.1-only"}
+                               for p in purls])
+
+
+def u6_fn(name: str) -> Callable[..., Any]:
+    got = getattr(load_sbom_check(), name, None)
+    if not callable(got):
+        raise AssertionError(f"scripts/sbom_check.py has no {name}() (U6 interface, orchestrator U6 ruling 1; "
+                             "tests/test_sbom_classifier.py)")
+    return got
+
+
+def u6_classify(*args: Any) -> list[dict[str, Any]]:
+    """classify_document with the U6 `exempt` argument, or a failure naming it."""
+    try:
+        return fn("classify_document")(*args)
+    except TypeError as exc:
+        raise AssertionError(f"classify_document has no `exempt` parameter (U6 ruling 1): {exc}") from None
+
+
+def real_exempt() -> list[dict[str, Any]]:
+    data = json.loads(POLICY.read_text(encoding="utf-8"))
+    if not isinstance(data.get("exempt"), list):
+        raise AssertionError("docker/source-policy.json has no `exempt` list (U6, N10)")
+    return data["exempt"]
+
+
+class U6ExemptMatchesTest(unittest.TestCase):
+    """`exempt_matches(image, doc, exempt) -> (flagged SPDXIDs, problems)`:
+    exact type, namespace, name and version; qualifiers ignored; no match in
+    its image is a problem (a version bump voids the exemption)."""
+
+    def test_exempt_matches_exact_versioned_purl(self):
+        matches = u6_fn("exempt_matches")
+        doc = u6_doc([JNA_PURL + "?type=jar", JAVASSIST_PURL, "pkg:maven/com.sun.jna/jna-platform@5.15.0",
+                      "pkg:maven/net.java.dev.jna/jna@5.15.0", "pkg:generic/com.sun.jna/jna@5.15.0"])
+        sid = {pkg_purl_of(p): p["SPDXID"] for p in doc["packages"][1:]}
+        flagged, problems = matches("ke-neo4j", doc, [u6_exempt(JNA_PURL), u6_exempt(JAVASSIST_PURL)])
+        self.assertEqual(sorted(flagged), sorted([sid[JNA_PURL + "?type=jar"], sid[JAVASSIST_PURL]]),
+                         "only jna and javassist at those versions (qualifiers ignored)")
+        self.assertEqual(problems, [])
+        with self.subTest(case="an entry carrying qualifiers or a subpath is a problem and matches nothing (N10 am. U6)"):
+            for bad in (JNA_PURL + "?classifier=x", JNA_PURL + "#sub"):
+                flagged, problems = matches("ke-neo4j", doc, [u6_exempt(bad)])
+                self.assertEqual(flagged, [], bad)
+                self.assertTrue(problems, f"no problem for the entry {bad}")
+        with self.subTest(case="literal compare: no case fold"):
+            self.assertEqual(matches("ke-neo4j", doc, [u6_exempt("pkg:maven/com.sun.jna/JNA@5.15.0")])[0], [])
+        with self.subTest(case="the root (DESCRIBES) is never flagged"):
+            root = doc["relationships"][0]["relatedSpdxElement"]
+            self.assertNotIn(root, matches("ke-neo4j", doc, [u6_exempt(JNA_PURL)])[0])
+        with self.subTest(case="another image's entry does not apply, and is not this image's problem"):
+            self.assertEqual(matches("ke-neo4j", doc, [u6_exempt(JNA_PURL, image="phoenix")]), ([], []))
+
+    def test_exempt_void_on_version_bump(self):
+        matches = u6_fn("exempt_matches")
+        for case, purl in {"a bumped version": "pkg:maven/com.sun.jna/jna@5.16.0",
+                           "a version prefix": "pkg:maven/com.sun.jna/jna@5.15",
+                           "a version suffix": "pkg:maven/com.sun.jna/jna@5.15.0.1"}.items():
+            with self.subTest(case=case):
+                flagged, problems = matches("ke-neo4j", u6_doc([purl]), [u6_exempt(JNA_PURL)])
+                self.assertEqual(flagged, [], f"{case}: the exemption still applies")
+                self.assertTrue(problems and any("ke-neo4j" in m and "jna" in m for m in problems),
+                                f"{case}: no problem names the image and the package: {problems}")
+        with self.subTest(case="a versionless entry matches nothing"):
+            flagged, problems = matches("ke-neo4j", u6_doc([JNA_PURL]), [u6_exempt("pkg:maven/com.sun.jna/jna")])
+            self.assertEqual(flagged, [])
+            self.assertTrue(problems)
+
+
+def pkg_purl_of(pkg: dict[str, Any]) -> str:
+    return pkg["externalRefs"][0]["referenceLocator"]
+
+
+class U6ClassifyDocumentExemptTest(unittest.TestCase):
+    """classify_document(image, doc, always, exempt=()): an exempt row gets
+    exempt True and needs False, also when `always` matches it (both flags
+    set; orchestrator correction to U6 ruling 1)."""
+
+    def test_exempt_clears_needs_also_under_always(self):
+        classify = u6_classify
+        doc = u6_doc([JNA_PURL, JAVASSIST_PURL, "pkg:maven/javax.xml.bind/jaxb-api@2.2.12"])
+        by = rows_by_purl(classify("ke-neo4j", doc, [], [u6_exempt(JNA_PURL)]))
+        self.assertIs(by["pkg:maven/com.sun.jna/jna"].get("exempt"), True)
+        self.assertFalse(by["pkg:maven/com.sun.jna/jna"]["needs"], "an exempt row needs no source")
+        self.assertIs(by["pkg:maven/org.javassist/javassist"].get("exempt"), False)
+        self.assertTrue(by["pkg:maven/org.javassist/javassist"]["needs"], "a row not exempt keeps its needs")
+        with self.subTest(case="exempt and always both match: the reviewed exemption clears it"):
+            # Orchestrator correction to U6 ruling 1: `always` overrides only
+            # the classifier; a reviewed exemption at the exact versioned purl
+            # still clears the package (PSC-22, N10's GCC fallback). U9 lists
+            # it as "always, cleared by exemption".
+            always = [{"image": "ke-neo4j", "match": "pkg:maven/com.sun.jna/jna", "why": "t"}]
+            row = rows_by_purl(classify("ke-neo4j", doc, always, [u6_exempt(JNA_PURL)]))["pkg:maven/com.sun.jna/jna"]
+            self.assertTrue(row["always"] is True and row["exempt"] is True and row["needs"] is False, row)
+        with self.subTest(case="always alone still forces needs"):
+            always = [{"image": "ke-neo4j", "match": "pkg:maven/org.javassist/javassist", "why": "t"}]
+            mit = ss.spdx_doc("ke-neo4j", [{"purl": JAVASSIST_PURL, "declared": "MIT"}])  # no source by licence
+            row = rows_by_purl(classify("ke-neo4j", mit, always, [u6_exempt(JNA_PURL)]))["pkg:maven/org.javassist/javassist"]
+            self.assertTrue(row["always"] is True and row["exempt"] is False and row["needs"] is True, row)
+        with self.subTest(case="exempt defaults to none: every row carries exempt False"):
+            rows = classify("ke-neo4j", doc, [])
+            self.assertTrue(all(r.get("exempt") is False for r in rows), rows)
+        with self.subTest(case="a bumped exempt entry clears nothing"):
+            row = rows_by_purl(classify("ke-neo4j", u6_doc(["pkg:maven/com.sun.jna/jna@5.16.0"]), [],
+                                        [u6_exempt(JNA_PURL)]))["pkg:maven/com.sun.jna/jna"]
+            self.assertTrue(row["needs"] and row["exempt"] is False, row)
+
+    def test_real_rows_with_the_committed_exempt(self):
+        # Ruling 4, N10 am. U6 item 4: exactly jna and javassist (ke-neo4j)
+        # become exempt with needs False; every other row of every image and
+        # every other key is as without `exempt` (the U5 result).
+        classify = u6_classify
+        always, exempt = real_always(), real_exempt()
+        changed = {}
+        for fixture in ss.U3_IMAGES:
+            image = "ke-neo4j" if fixture == "neo4j" else fixture
+            doc = ss.spdx_doc(image, ss.u3_rows(fixture))
+            before = classify(image, doc, always)
+            after = classify(image, doc, always, exempt)
+            self.assertEqual(len(before), len(after))
+            for b, a in zip(before, after):
+                self.assertEqual(a["spdxid"], b["spdxid"])
+                diff = {k for k in set(a) | set(b) if a.get(k) != b.get(k)}
+                if diff:
+                    changed[(image, str(a["purl"]).split("?", 1)[0])] = diff
+                self.assertFalse(a["always"] and a["exempt"], f"{image}: {a['purl']} is flagged by always and exempt")
+        self.assertEqual(changed, {("ke-neo4j", JNA_PURL): {"exempt", "needs"},
+                                   ("ke-neo4j", JAVASSIST_PURL): {"exempt", "needs"}})
+        doc = ss.spdx_doc("ke-neo4j", ss.u3_rows("neo4j"))
+        after = classify("ke-neo4j", doc, always, exempt)
+        for r in after:
+            if str(r["purl"]).split("?", 1)[0] in (JNA_PURL, JAVASSIST_PURL):
+                self.assertTrue(r["exempt"] is True and r["needs"] is False and r["always"] is False, r)
+        javassist = [r for r in after if str(r["purl"]).startswith(JAVASSIST_PURL)]
+        self.assertTrue(javassist and javassist[0]["unparsed"], "javassist stays listed unparsed (N8a 3)")
+        self.assertEqual(u6_fn("exempt_matches")("ke-neo4j", doc, exempt)[1], [],
+                         "a committed exemption matches no package in the real list")
+
+
+class U6SegmentRuleTest(_Table):
+    """Ruling 5 (review I-r3-1, security I-9): outside a LicenseRef- id, a
+    `.`- or `-`-separated segment equal to NONE/NOASSERTION (any case) is
+    unknown."""
+
+    def test_segment_rule(self):
+        self.check([
+            ("NOASSERTION.NONE", True, False, True), ("NOASSERTION-2.0", True, False, True),
+            ("MIT-NOASSERTION", True, False, True), ("mit-none", True, False, True),
+            ("DocumentRef-x:MIT-NONE", True, False, True), ("MIT OR Apache-NONE", False, False, True),
+            ("LicenseRef-NONE", False, False, False), ("LicenseRef-NOASSERTION", False, False, False),
+            ("DocumentRef-x:LicenseRef-NONE", False, False, False), ("licenseref-none", False, False, False),
+            ("NOASSERTIONS-2.0", False, False, False), ("MIT-NONEX", False, False, False),
+            # N10 am. U6 item 5 rows
+            ("MIT AND NONE.NONE", True, False, True), ("none-mit", True, False, True),
+            ("DocumentRef-x:NONE-1", True, False, True), ("NOASSERTIONS", False, False, False),
+            ("NONEX-1", False, False, False), ("DocumentRef-NONE:MIT", False, False, False),
+            ("MIT WITH NONE-exception", True, False, True),
+        ])
+
+    def test_segment_rule_in_runs(self):
+        # The same rule on runs of unparseable text (it lives in _unknown_id):
+        # `see NONE.txt here` now needs source (was a pinned near-miss).
+        self.check([("see NONE.txt here", True, True, True), ("Public Domain MIT-NOASSERTION", True, True, True),
+                    ("NOASSERTIONS apply", False, True, False)])
 
 
 if __name__ == "__main__":

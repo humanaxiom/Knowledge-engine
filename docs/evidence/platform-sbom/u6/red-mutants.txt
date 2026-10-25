@@ -1,0 +1,54 @@
+$ COMPOSE_FILE=docker-compose.yml COMPOSE_PROJECT_NAME=ke-tester-u6 docker compose --env-file .env.example --profile gates run --rm gates uv run --locked python docs/evidence/platform-sbom/u6/u6_controls.py   (base: u6/target-sbom_check.py + u6/target-source-policy.json; HEAD rows read git HEAD d8ffa2d (U5); FULL output; tester, U6 RED, 2026-10-25)
+ Container ke-tester-u6-gates-run-1c175d1f1fdb Creating 
+ Container ke-tester-u6-gates-run-1c175d1f1fdb Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.79ms
+Installed 1 package in 1ms
+ok  [target] TARGET: the 10 U6 tests                                            must pass | no problem
+ok  [target] TARGET: 61 classifier/policy regression tests                      must pass | no problem
+ok  [head] HEAD (U5): test_exempt_entries_jna_and_javassist                   must fail | test_exempt_entries_jna_and_javassist: AssertionError: None is not an instance of <class 'list'> : docker/sour
+ok  [head] HEAD (U5): test_hosts_are_the_fetch_hosts                          must fail | test_hosts_are_the_fetch_hosts: AssertionError: None is not an instance of <class 'list'> : docker/source-poli
+ok  [head] HEAD (U5): test_policy_schema_rejects_bad_shapes (guard)           must pass | no problem
+ok  [head] HEAD (U5): test_source_policy_has_exactly_hosts_always_exempt      must fail | test_source_policy_has_exactly_hosts_always_exempt: -  '`exempt` is not a list (N10)']
+ok  [head] HEAD (U5): test_exempt_matches_exact_versioned_purl                must fail | test_exempt_matches_exact_versioned_purl: AssertionError: scripts/sbom_check.py has no exempt_matches() (U6 in
+ok  [head] HEAD (U5): test_exempt_void_on_version_bump                        must fail | test_exempt_void_on_version_bump: AssertionError: scripts/sbom_check.py has no exempt_matches() (U6 interface,
+ok  [head] HEAD (U5): test_exempt_clears_needs_also_under_always              must fail | test_exempt_clears_needs_also_under_always: AssertionError: classify_document has no `exempt` parameter (U6 ru
+ok  [head] HEAD (U5): test_real_rows_with_the_committed_exempt                must fail | test_real_rows_with_the_committed_exempt: AssertionError: docker/source-policy.json has no `exempt` list (U6, 
+ok  [head] HEAD (U5): test_segment_rule                                       must fail | test_segment_rule: AssertionError: False != True : needs_source('NOASSERTION.NONE') needs False, want True
+ok  [head] HEAD (U5): test_segment_rule_in_runs                               must fail | test_segment_rule_in_runs: AssertionError: False != True : needs_source('see NONE.txt here') needs False, want
+ok  [head] HEAD checker + TARGET policy: test_source_policy_has_exactly_hosts_always_exempt must pass | no problem
+ok  [head] TARGET checker + HEAD policy: test_real_rows_with_the_committed_exempt must fail | test_real_rows_with_the_committed_exempt: AssertionError: docker/source-policy.json has no `exempt` list (U6, 
+ok  [checker] exempt matching ignores the version                                must fail | test_exempt_void_on_version_bump: + [] : a bumped version: the exemption still applies
+ok  [checker] exempt matching by version prefix                                  must fail | test_exempt_void_on_version_bump: + [] : a version suffix: the exemption still applies
+ok  [checker] exempt matching case-folded                                        must fail | test_exempt_matches_exact_versioned_purl: + []
+ok  [checker] no void-on-bump problem                                            must fail | test_exempt_void_on_version_bump: AssertionError: [] is not true : a bumped version: no problem names the imag
+ok  [checker] other images' entries applied                                      must fail | test_exempt_matches_exact_versioned_purl: + ([], [])
+ok  [checker] always beats exempt (both matched: needs left True)                must fail | test_exempt_clears_needs_also_under_always: AssertionError: False is not true : {'needs': True, 'expression': 
+ok  [checker] exempt alone does not clear needs                                  must fail | test_exempt_clears_needs_also_under_always: AssertionError: True is not false : an exempt row needs no source
+ok  [checker] exempt clears needs but always no longer forces it                 must fail | test_exempt_clears_needs_also_under_always: AssertionError: False is not true : {'needs': False, 'expression':
+ok  [checker] the exempt flag only on matched rows                               must fail | test_exempt_clears_needs_also_under_always: KeyError: 'exempt'
+ok  [checker] segment rule dropped (U5 round 3)                                  must fail | test_segment_rule: AssertionError: False != True : needs_source('NOASSERTION.NONE') needs False, want True
+ok  [checker] segment rule also inside LicenseRef- ids                           must fail | test_segment_rule: AssertionError: True != False : needs_source('LicenseRef-NONE') needs True, want False
+ok  [checker] segment rule on `-` only                                           must fail | test_segment_rule: AssertionError: False != True : needs_source('NOASSERTION.NONE') needs False, want True
+ok  [checker] segment rule case-sensitive                                        must fail | test_segment_rule: AssertionError: False != True : needs_source('mit-none') needs False, want True
+ok  [checker] segment rule on parsed leaves only (runs keep `see NONE.txt here`) must fail | test_segment_rule_in_runs: AssertionError: False != True : needs_source('see NONE.txt here') needs False, want
+ok  [policy] a host with a scheme                                               must fail | test_source_policy_has_exactly_hosts_always_exempt: -  'path, port or wildcard)']
+ok  [policy] a host with a path                                                 must fail | test_source_policy_has_exactly_hosts_always_exempt: -  'path, port or wildcard)']
+ok  [policy] a wildcard host                                                    must fail | test_source_policy_has_exactly_hosts_always_exempt: -  'path, port or wildcard)']
+ok  [policy] a tenth host (valid, not N4's)                                     must fail | test_hosts_are_the_fetch_hosts: 'pypi.org' : `hosts` is not N4's host table plus repo1.maven.org
+ok  [policy] a fetch host missing                                               must fail | test_hosts_are_the_fetch_hosts: 'codeload.github.com' : `hosts` is not N4's host table plus repo1.maven.org
+ok  [policy] a fourth key                                                       must fail | test_source_policy_has_exactly_hosts_always_exempt: -  "'exempt', 'hosts'] (N10)"]
+ok  [policy] reviewed loosened (no date)                                        must fail | test_source_policy_has_exactly_hosts_always_exempt: + []
+ok  [policy] reviewed loosened (another reviewer)                               must fail | test_source_policy_has_exactly_hosts_always_exempt: + []
+ok  [policy] reviewed with an impossible date                                   must fail | test_source_policy_has_exactly_hosts_always_exempt: + []
+ok  [policy] jna bumped in the entry (void)                                     must fail | test_source_policy_has_exactly_hosts_always_exempt: -  'package list at that version (tests/fixtures/sbom-u3/n
+ok  [policy] jna bumped: the real-row test                                      must fail | test_real_rows_with_the_committed_exempt:                                                                  'ne
+ok  [policy] a reason without the jar sha256                                    must fail | test_source_policy_has_exactly_hosts_always_exempt: -  'item 3)']
+ok  [policy] the javassist entry dropped                                        must fail | test_exempt_entries_jna_and_javassist: +  ('ke-neo4j', 'pkg:maven/org.javassist/javassist@3.30.2-GA')] : `exem
+ok  [policy] jaxb-api exempted too                                              must fail | test_exempt_entries_jna_and_javassist:    ('ke-neo4j', 'pkg:maven/org.javassist/javassist@3.30.2-GA')] : `exem
+ok  [policy] an always-matched package exempted (openjdk)                       must fail | test_real_rows_with_the_committed_exempt: AssertionError: True is not false : ke-neo4j: pkg:generic/oracle/ope
+ok  [policy] the entry under image neo4j (pre-U4b name)                         must fail | test_source_policy_has_exactly_hosts_always_exempt: -  "'ke-neo4j', 'phoenix', 'postgres', 'valkey']"]
+
+U6 controls (targets): 44 rows, 40 must-fail, 4 must-pass, 0 unexpected
+controls exit: 0

@@ -1606,5 +1606,197 @@ class ReworkR1OfflineTest(toc._OfflineBase):
             self.assertEqual([ln for ln in output.splitlines() if CACHE_WARNING in ln], [])
 
 
+# --------------------------------------------------------------------------
+# platform-sbom U6: docker/source-policy.json gains `hosts` and `exempt`
+# (PSC-15, PSC-22; design-notes N10 schema, N4 hosts, N8a items 1-3;
+# orchestrator U6 rulings 2-4). Tester, U6 RED, 2026-10-25.
+# --------------------------------------------------------------------------
+
+# N4's host table (the fetch step's only egress), with repo1.maven.org from
+# N8a 2. Exact list; a host N4 does not name is not added here.
+U6_HOSTS = {"snapshot.debian.org", "gitlab.alpinelinux.org", "distfiles.alpinelinux.org", "github.com",
+            "codeload.github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com",
+            "files.pythonhosted.org", "repo1.maven.org"}
+# The policy's image name -> its tests/fixtures/sbom-u3 package list (U4b,
+# PSC-26: the U3 neo4j list stands in for ke-neo4j). Others: same name.
+U6_FIXTURE_OF = {policy: fixture for fixture, policy in U4B_POLICY_NAME.items()}
+U6_EXEMPT_KEYS = {"image", "package", "reason", "reviewed"}
+# N10 amendment, U6, item 3: lower case, at least one dot, a letter TLD.
+U6_HOST_RE = re.compile(r"[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}")
+U6_REVIEWED_RE = re.compile(r"security (\d{4}-\d{2}-\d{2})")
+U6_PURL_RE = re.compile(r"pkg:(?P<type>[a-z0-9.+-]+)/(?:(?P<ns>[^@?#]+)/)?(?P<name>[^/@?#]+)@(?P<version>[^?#]+)")
+U6_SHA_RE = re.compile(r"sha256 [0-9a-f]{64}")
+U6_JNA = "pkg:maven/com.sun.jna/jna@5.15.0"
+U6_JAVASSIST = "pkg:maven/org.javassist/javassist@3.30.2-GA"
+U6_JAR_SHA256 = {U6_JNA: "a564158d28ab5127fc6a958028ed54279fe0999662c46425b6a3b09a2a52094d",
+                 U6_JAVASSIST: "eba37290994b5e4868f3af98ff113f6244a6b099385d9ad46881307d3cb01aaf"}
+
+
+def u6_purl_key(purl: str) -> str | None:
+    """A versioned purl without qualifiers or subpath, as written (N10 am.
+    U6 item 1: literal compare)."""
+    return purl if U6_PURL_RE.fullmatch(purl) else None
+
+
+def u6_fixture_keys(image: str) -> set[str]:
+    fixture = U6_FIXTURE_OF.get(image, image)
+    if fixture not in ss.U3_IMAGES:
+        return set()
+    return {(r["purl"] or "").split("?", 1)[0].split("#", 1)[0] for r in ss.u3_rows(fixture)}
+
+
+def u6_policy_problems(data: Any, names: set[str] | None = None) -> list[str]:
+    """N10 schema (U6): exactly hosts, always, exempt; hosts lower-case DNS
+    names (no scheme, path, port or wildcard), unique, non-empty; always as
+    U4; exempt entries {image, package, reason, reviewed}, image a bundled
+    image, package a versioned purl present at that version in the image's
+    fixture, reason non-blank, reviewed `security YYYY-MM-DD` (a real date),
+    no duplicate (image, package)."""
+    import datetime
+    names = bundled_names() if names is None else names
+    if not isinstance(data, dict):
+        return ["docker/source-policy.json is not a JSON object"]
+    p = []
+    if set(data) != {"hosts", "always", "exempt"}:
+        p.append(f"keys are {sorted(data)}, want exactly ['always', 'exempt', 'hosts'] (N10)")
+    hosts = data.get("hosts")
+    if not isinstance(hosts, list) or not hosts:
+        p.append("`hosts` is not a non-empty list (N4)")
+        hosts = []
+    for i, h in enumerate(hosts):
+        if not isinstance(h, str) or not U6_HOST_RE.fullmatch(h):
+            p.append(f"hosts[{i}] {h!r} is not a lower-case host name (no scheme, path, port or wildcard)")
+    if len([h for h in hosts if isinstance(h, str)]) != len({h for h in hosts if isinstance(h, str)}):
+        p.append("`hosts` has a duplicate")
+    always = data.get("always")
+    p += always_problems(always)
+    seen_always = [(e.get("image"), e.get("match")) for e in always or [] if isinstance(e, dict)]
+    if len(seen_always) != len(set(seen_always)):
+        p.append("`always` has a duplicate (image, match)")
+    exempt = data.get("exempt")
+    if not isinstance(exempt, list):
+        p.append("`exempt` is not a list (N10)")
+        exempt = []
+    seen = set()
+    for i, e in enumerate(exempt):
+        if not isinstance(e, dict):
+            p.append(f"exempt[{i}] is not an object")
+            continue
+        if set(e) != U6_EXEMPT_KEYS:
+            p.append(f"exempt[{i}] keys are {sorted(e)}, want {sorted(U6_EXEMPT_KEYS)}")
+        image, package = e.get("image"), e.get("package")
+        if image not in names:
+            p.append(f"exempt[{i}] names image {image!r}, not a bundled image {sorted(names)}")
+        key = u6_purl_key(package) if isinstance(package, str) else None
+        if key is None:
+            p.append(f"exempt[{i}] package {package!r} is not a versioned purl without qualifiers or subpath")
+        elif key not in u6_fixture_keys(str(image)):
+            p.append(f"exempt[{i}] package {package} is not in {image}'s package list at that version "
+                     f"(tests/fixtures/sbom-u3/{U6_FIXTURE_OF.get(str(image), image)}.pkgs.tsv)")
+        if not isinstance(e.get("reason"), str) or not e["reason"].strip():
+            p.append(f"exempt[{i}] has no non-blank reason")
+        elif not U6_SHA_RE.search(e["reason"]) or not re.search(r"(?<![A-Za-z])elected(?![A-Za-z])", e["reason"]):
+            p.append(f"exempt[{i}] reason names no `sha256 <64 hex>` or no elected branch (N10 am. U6 item 3)")
+        m = U6_REVIEWED_RE.fullmatch(e.get("reviewed")) if isinstance(e.get("reviewed"), str) else None
+        if not m:
+            p.append(f"exempt[{i}] reviewed {e.get('reviewed')!r} is not `security YYYY-MM-DD`")
+        else:
+            try:
+                datetime.date.fromisoformat(m.group(1))
+            except ValueError:
+                p.append(f"exempt[{i}] reviewed {e.get('reviewed')!r} is not a real date")
+        if (image, package) in seen:
+            p.append(f"exempt[{i}] duplicates ({image}, {package})")
+        seen.add((image, package))
+    return p
+
+
+def u6_good_policy() -> dict[str, Any]:
+    always = json.loads(POLICY.read_text(encoding="utf-8"))["always"]
+    return {"hosts": sorted(U6_HOSTS), "always": copy.deepcopy(always),
+            "exempt": [{"image": "ke-neo4j", "package": U6_JNA,
+                        "reason": f"Apache-2.0 elected; jar sha256 {U6_JAR_SHA256[U6_JNA]} (N8a 1)",
+                        "reviewed": "security 2026-10-25"}]}
+
+
+class PolicyU6SchemaTest(unittest.TestCase):
+    """N10's schema test (U6): the committed policy and the oracle's own
+    controls (each bad shape is refused)."""
+
+    def _policy(self) -> Any:
+        self.assertTrue(POLICY.is_file(), POLICY_MISSING)
+        return json.loads(POLICY.read_text(encoding="utf-8"))
+
+    def test_source_policy_has_exactly_hosts_always_exempt(self):
+        self.assertEqual(u6_policy_problems(self._policy()), [])
+
+    def test_hosts_are_the_fetch_hosts(self):
+        hosts = self._policy().get("hosts")
+        self.assertIsInstance(hosts, list, "docker/source-policy.json has no `hosts` (U6, N4)")
+        self.assertEqual(set(hosts), U6_HOSTS, "`hosts` is not N4's host table plus repo1.maven.org")
+
+    def test_exempt_entries_jna_and_javassist(self):
+        exempt = self._policy().get("exempt")
+        self.assertIsInstance(exempt, list, "docker/source-policy.json has no `exempt` (U6, N10)")
+        self.assertEqual(sorted((e.get("image"), e.get("package")) for e in exempt),
+                         [("ke-neo4j", U6_JNA), ("ke-neo4j", U6_JAVASSIST)],
+                         "`exempt` is exactly jna and javassist in ke-neo4j (N8a 1, 3)")
+        for e in exempt:
+            with self.subTest(package=e.get("package")):
+                reason = e.get("reason", "")
+                self.assertIn(U6_JAR_SHA256[e["package"]], reason, "the reason names the jar sha256 (N8a)")
+                self.assertIn("Apache-2.0", reason, "the reason names the elected branch")
+                for word in (("LGPL-2.1", "META-INF/LICENSE") if e["package"] == U6_JNA else ("MPL", "LGPL", "pom")):
+                    self.assertIn(word, reason)
+                fixture = U6_FIXTURE_OF.get(e["image"], e["image"])
+                flagged, problems = fn("exempt_matches")(e["image"], ss.u3_doc(fixture), [e])
+                self.assertTrue(flagged and not problems, f"exempt_matches on the {fixture} fixture: {problems}")
+
+    def test_policy_schema_rejects_bad_shapes(self):
+        self.assertEqual(u6_policy_problems(u6_good_policy()), [], "the oracle's good policy fails")
+
+        def change(fn: Any) -> dict[str, Any]:
+            d = u6_good_policy()
+            fn(d)
+            return d
+        bad = {
+            "a fourth key": change(lambda d: d.update(sources=[])),
+            "no exempt key": change(lambda d: d.pop("exempt")),
+            "no hosts key": change(lambda d: d.pop("hosts")),
+            "empty hosts": change(lambda d: d.update(hosts=[])),
+            "a host with a scheme": change(lambda d: d["hosts"].append("https://evil.example")),
+            "a host with a path": change(lambda d: d["hosts"].append("evil.example/x")),
+            "a host with a port": change(lambda d: d["hosts"].append("evil.example:443")),
+            "a wildcard host": change(lambda d: d["hosts"].append("*.githubusercontent.com")),
+            "an upper-case host": change(lambda d: d["hosts"].append("Repo1.Maven.org")),
+            "a duplicate host": change(lambda d: d["hosts"].append("github.com")),
+            "a bare label host": change(lambda d: d["hosts"].append("localhost")),
+            "an IP literal host": change(lambda d: d["hosts"].append("10.0.0.1")),
+            "a reason without the jar sha256": change(lambda d: d["exempt"][0].update(reason="Apache-2.0 elected")),
+            "a reason without an elected branch": change(lambda d: d["exempt"][0].update(
+                reason=f"sha256 {U6_JAR_SHA256[U6_JNA]}")),
+            "an entry carrying qualifiers": change(lambda d: d["exempt"][0].update(package=U6_JNA + "?type=jar")),
+            "reviewed without a date": change(lambda d: d["exempt"][0].update(reviewed="security")),
+            "reviewed by someone else": change(lambda d: d["exempt"][0].update(reviewed="developer 2026-10-25")),
+            "reviewed with a short date": change(lambda d: d["exempt"][0].update(reviewed="security 2026-10-5")),
+            "reviewed with an impossible date": change(lambda d: d["exempt"][0].update(reviewed="security 2026-13-45")),
+            "reviewed with trailing text": change(lambda d: d["exempt"][0].update(reviewed="security 2026-10-25 ok")),
+            "a blank reason": change(lambda d: d["exempt"][0].update(reason="  ")),
+            "a versionless package": change(lambda d: d["exempt"][0].update(package="pkg:maven/com.sun.jna/jna")),
+            "a package at another version": change(lambda d: d["exempt"][0].update(package="pkg:maven/com.sun.jna/jna@5.16.0")),
+            "a package not in the image": change(lambda d: d["exempt"][0].update(image="valkey")),
+            "an image that is not bundled": change(lambda d: d["exempt"][0].update(image="neo4j-official")),
+            "a fifth entry key": change(lambda d: d["exempt"][0].update(note="x")),
+            "a duplicate exempt entry": change(lambda d: d["exempt"].append(dict(d["exempt"][0]))),
+            "a duplicate always entry": change(lambda d: d["always"].append(dict(d["always"][0]))),
+            "an always entry with no why": change(lambda d: d["always"][0].pop("why")),
+        }
+        for case, data in bad.items():
+            with self.subTest(case=case):
+                self.assertNotEqual(u6_policy_problems(data), [], f"the schema accepts {case}")
+        with self.subTest(case="an empty exempt list is a valid shape"):
+            self.assertEqual(u6_policy_problems(change(lambda d: d.update(exempt=[]))), [])
+
+
 if __name__ == "__main__":
     unittest.main()

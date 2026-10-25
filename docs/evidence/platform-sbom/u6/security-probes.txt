@@ -1,0 +1,124 @@
+platform-sbom U6 gate: security probes (security, 2026-10-25)
+Tree: HEAD d8ffa2d + working tree; scripts/sbom_check.py == u6/target-sbom_check.py, docker/source-policy.json == u6/target-source-policy.json.
+Script: u6/security_probes.py (U6 vs d8ffa2d's sbom_check.py as u5c_sbom_check.py, and c300d88's as head_sbom_check.py; the
+schema oracle is tests.test_sbom_obligations.u6_policy_problems). Gates image, python -I, scratch dir read-only at /scratch.
+Output unedited (two schema rows hold fullwidth and Arabic-Indic digits, as probed).
+
+ Container ke-security-u5-gates-run-ecba7662fc41 Creating 
+ Container ke-security-u5-gates-run-ecba7662fc41 Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.77ms
+Installed 1 package in 1ms
+== U6-1. exempt_matches: crafted SBOM purls against the real jna entry ==
+  exact                            cleared=True  problems=0
+  qualifiers                       cleared=True  problems=0
+  subpath                          cleared=True  problems=0
+  qual+subpath                     cleared=True  problems=0
+  version prefix 5.15              cleared=False problems=1
+  version suffix 5.15.0.1          cleared=False problems=1
+  version 5.15.0-SNAPSHOT          cleared=False problems=1
+  percent-encoded dot 5.15%2E0     cleared=False problems=1
+  percent-encoded name j%6Ea       cleared=False problems=1
+  upper-case namespace             cleared=False problems=1
+  upper-case type                  cleared=False problems=1
+  @ in namespace                   cleared=False problems=1
+  extra namespace segment          cleared=False problems=1
+  other type pkg:generic           cleared=False problems=1
+  trailing space                   cleared=False problems=1
+  trailing newline                 cleared=False problems=1
+  leading space                    cleared=False problems=1
+  no namespace                     cleared=False problems=1
+  ? in version position            cleared=False problems=1
+  jna-platform                     cleared=False problems=1
+  NUL inside                       cleared=False problems=1
+  two packages with jna's purl (+1 other): cleared=['SPDXRef-0', 'SPDXRef-1'] problems=[]
+  duplicate SPDXID (a GPL package reusing jna's SPDXID): [('pkg:maven/com.sun.jna/jna@5.15.0', False, True), ('pkg:maven/evil/gpl@1', False, True)] | validate(): ['package SPDXID SPDXRef-0 is not unique']
+  other image (valkey) with jna's purl: cleared=[] problems=[]
+  entry package='pkg:maven/com.sun.jna/jna'                  cleared=[] problems=['ke-neo4j: exempt entry is not a versioned purl: pkg:maven/com.sun.jna/jna']
+  entry package='pkg:maven/com.sun.jna/jna@5.15.0?type=jar'  cleared=[] problems=['ke-neo4j: exempt entry is not a versioned purl: pkg:maven/com.sun.jna/jna@5.15.0']
+  entry package='pkg:maven/com.sun.jna/jna@5.15.0#x'         cleared=[] problems=['ke-neo4j: exempt entry is not a versioned purl: pkg:maven/com.sun.jna/jna@5.15.0']
+  entry package=''                                           cleared=[] problems=['ke-neo4j: exempt entry is not a versioned purl: ']
+  entry package=None                                         cleared=[] problems=['ke-neo4j: exempt entry is not a versioned purl: None']
+  entry package=5                                            cleared=[] problems=['ke-neo4j: exempt entry is not a versioned purl: 5']
+  entry package='pkg:maven/com.sun.jna/jna@'                 cleared=[] problems=['ke-neo4j: exempt entry is not a versioned purl: pkg:maven/com.sun.jna/jna@']
+  entry package='pkg:maven/com.sun.jna/jna@5.15.0\x1b[2J'    cleared=[] problems=['ke-neo4j: exempt entry matches nothing: pkg:maven/com.sun.jna/jna@5.15.0\\x1b[2J;']
+  malformed entry list [None]                               cleared=[] problems=[]
+  malformed entry list ['x']                                cleared=[] problems=[]
+  malformed entry list [{'image': None}]                    cleared=[] problems=[]
+  malformed entry list [{'package': 'pkg:maven/com.sun.jna/jna@5.15.0'}] cleared=[] problems=[]
+  exempt=None RAISED TypeError (fails closed, nothing cleared)
+
+== U6-2. Schema oracle (tests.test_sbom_obligations.u6_policy_problems) on further mutations ==
+  committed policy problems: [] | oracle good: []
+  reviewed fullwidth digits                rejected=True  ["exempt[0] reviewed 'security ２０２６-１０-２５' is not a real date"]
+  reviewed Arabic-Indic digits             rejected=True  ["exempt[0] reviewed 'security ٢٠٢٦-١٠-٢٥' is not a real date"]
+  reviewed double space                    rejected=True  ["exempt[0] reviewed 'security  2026-10-25' is not `security YYYY-MM-DD`"]
+  reviewed trailing newline                rejected=True  ["exempt[0] reviewed 'security 2026-10-25\\n' is not `security YYYY-MM-DD`"]
+  reviewed Security (capital)              rejected=True  ["exempt[0] reviewed 'Security 2026-10-25' is not `security YYYY-MM-DD`"]
+  reviewed future 2099-01-01               rejected=False []
+  reviewed 2026-02-30                      rejected=True  ["exempt[0] reviewed 'security 2026-02-30' is not a real date"]
+  reviewed list                            rejected=True  ["exempt[0] reviewed ['security 2026-10-25'] is not `security YYYY-MM-DD`"]
+  host trailing dot                        rejected=True  ["hosts[9] 'github.com.' is not a lower-case host name (no scheme, path, port or wildcard)"]
+  host trailing newline                    rejected=True  ["hosts[9] 'github.com\\n' is not a lower-case host name (no scheme, path, port or wildcard)"]
+  host userinfo                            rejected=True  ["hosts[9] 'user@github.com' is not a lower-case host name (no scheme, path, port or wildcard)"]
+  host IPv6 literal                        rejected=True  ["hosts[9] '[::1]' is not a lower-case host name (no scheme, path, port or wildcard)"]
+  host decimal IP 2130706433               rejected=True  ["hosts[9] '2130706433' is not a lower-case host name (no scheme, path, port or wildcard)"]
+  host punycode xn--                       rejected=False []
+  host extra subdomain evil.github.com     rejected=False []
+  host non-string                          rejected=True  ['hosts[9] 5 is not a lower-case host name (no scheme, path, port or wildcard)']
+  hosts not a list (str)                   rejected=True  ['`hosts` is not a non-empty list (N4)']
+  package trailing space                   rejected=True  ["exempt[0] package pkg:maven/com.sun.jna/jna@5.15.0  is not in ke-neo4j's package list at that version (tests/fixtures/sbom-u3/neo4j.pkgs.tsv
+  package with @ in namespace              rejected=True  ["exempt[0] package pkg:maven/com.sun@jna/jna@5.15.0 is not in ke-neo4j's package list at that version (tests/fixtures/sbom-u3/neo4j.pkgs.tsv)
+  package upper-case                       rejected=True  ["exempt[0] package pkg:maven/com.sun.JNA/jna@5.15.0 is not in ke-neo4j's package list at that version (tests/fixtures/sbom-u3/neo4j.pkgs.tsv)
+  image wrong case KE-neo4j                rejected=True  ["exempt[0] names image 'KE-neo4j', not a bundled image ['ke-app', 'ke-gateway', 'ke-neo4j', 'phoenix', 'postgres', 'valkey']"]
+  duplicate by case-variant package        rejected=True  ["exempt[1] package 'pkg:maven/com.sun.jna/jna@5.15.0?x=1' is not a versioned purl without qualifiers or subpath"]
+  exempt is a dict                         rejected=True  ['`exempt` is not a list (N10)']
+  entry is a list                          rejected=True  ['exempt[1] is not an object']
+  reason sha256 upper-hex                  rejected=True  ['exempt[0] reason names no `sha256 <64 hex>` or no elected branch (N10 am. U6 item 3)']
+  reason 'unelected'                       rejected=True  ['exempt[0] reason names no `sha256 <64 hex>` or no elected branch (N10 am. U6 item 3)']
+  committed hosts == U6_HOSTS: True | len 9 | keys ['always', 'exempt', 'hosts']
+
+== U6-3. Segment rule: nothing weaker than U5 (d8ffa2d), ReDoS, real rows ==
+  150000 expressions: {'both': 92915, 'u6_only': 11763, 'u5_only': 0, 'neither': 45322}; needs regressions: 0 []; lost listings: 0 []
+  NOASSERTION.NONE                   needs=True  unparsed=False unident=True
+  NOASSERTION-2.0                    needs=True  unparsed=False unident=True
+  MIT-NOASSERTION                    needs=True  unparsed=False unident=True
+  MIT AND NONE.NONE                  needs=True  unparsed=False unident=True
+  none-mit                           needs=True  unparsed=False unident=True
+  DocumentRef-x:NONE-1               needs=True  unparsed=False unident=True
+  LicenseRef-NONE                    needs=False unparsed=False unident=False
+  licenseref-none                    needs=False unparsed=False unident=False
+  LicenseRef-NOASSERTION             needs=False unparsed=False unident=False
+  DocumentRef-x:LicenseRef-NONE      needs=False unparsed=False unident=False
+  NOASSERTIONS                       needs=False unparsed=False unident=False
+  NONEX-1                            needs=False unparsed=False unident=False
+  NOASSERTIONS apply                 needs=False unparsed=True  unident=False
+  see NONE.txt here                  needs=True  unparsed=True  unident=True
+  DocumentRef-NONE:MIT               needs=False unparsed=False unident=False
+  MIT WITH x-NONE                    needs=True  unparsed=False unident=True
+  LicenseRefX-NONE                   needs=True  unparsed=False unident=True
+  Licenseref-.NONE                   needs=False unparsed=False unident=False
+  _unknown_id 1MB of '.-'                              0.003s False
+  _unknown_id 1MB 'a.' segments                        0.036s False
+  _unknown_id 1MB 'a-' + NONE                          0.037s True
+  needs_source 200k 'x-y AND'                          0.516s (False, {'unparsed': False, 'u
+  needs_source 1MB junk 'a.b, '                        0.222s (False, {'unparsed': True, 'un
+  exempt_matches 100k packages x 2 entries             0.200s 1
+
+  real rows: U6 classify_document(image, doc, always, exempt) vs U5 classify_document(image, doc, always)
+  ke-app     rows=153 needs u6=102 (u5 102) changed=[]
+  ke-gateway rows=71 needs u6=17 (u5 17) changed=[]
+  ke-neo4j   rows=341 needs u6=164 (u5 166) changed=[('pkg:maven/org.javassist/javassist@3.30.2-GA', True, False, True, False, True), ('pkg:maven/com.sun.jna/jna@5.15.0', True, False, True, False, False)]
+  phoenix    rows=277 needs u6=33 (u5 33) changed=[]
+  postgres   rows=149 needs u6=130 (u5 130) changed=[]
+  valkey     rows=24 needs u6=12 (u5 12) changed=[]
+
+== U6-4. unlicensed_report untouched vs U4b HEAD c300d88 and vs U5 ==
+  sources identical to c300d88: True
+  ke-app     count= 19 equal-to-c300d88=True
+  ke-gateway count=  0 equal-to-c300d88=True
+  neo4j      count= 28 equal-to-c300d88=True
+  phoenix    count= 35 equal-to-c300d88=True
+  postgres   count= 25 equal-to-c300d88=True
+  valkey     count=  1 equal-to-c300d88=True

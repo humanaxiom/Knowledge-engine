@@ -616,3 +616,13 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-25T02:13:14Z | security | platform-sbom | U5 rework r3 re-check (R2-L1, HASH_IN_RE, run split) | security: PASS (R2-L1 and I-7 closed; not weaker than r2; no new finding)
 2026-10-25T02:14:54Z | reviewer | platform-sbom | U5 rework r3 review: R2-B1/B2 and R2-L1 closed; real rows identical; I-r3-1 carried to U6 | review: APPROVED
 2026-10-25T02:28:55Z | orchestrator | platform-sbom | U5 gates judged: review APPROVED (r3), security PASS (r3), verify full PASS 999 s; commit approved | smoke: PASS
+2026-10-25T02:29:41Z | developer | platform-sbom | committed U5 on agent/platform-sbom | commit: done
+2026-10-25T02:34:30Z | documenter | platform-sbom | handoff: U5 closed to a summary, detail to archive/platform-sbom-part9.md | docs: updated
+2026-10-25T02:35:13Z | analyst | platform-sbom | PSC-22 amended: generator digest re-review trigger, exempt/hosts criteria; status U5 committed | plan: criteria amended
+2026-10-25T02:37:11Z | architect | platform-sbom | U6: N10 amendment (exempt_matches API, hosts list, schema, jna/javassist entries, I-r3-1 rule) | plan: design amended
+2026-10-25T02:42:56Z | security | platform-sbom | U6 exempt review (jna 5.15.0, javassist 3.30.2-GA, hosts) | security: exempt review PASS
+2026-10-25T03:03:17Z | tester | platform-sbom | U6 RED: policy hosts/exempt schema, exempt_matches, classify_document exempt, jna/javassist entries, segment rule | tdd red: 9 failing as expected
+2026-10-25T03:31:40Z | developer | platform-sbom | U6 GREEN: hosts + exempt policy, exempt_matches, segment rule | tdd green: verify fast + full PASS
+2026-10-25T03:34:57Z | reviewer | platform-sbom | U6 review: exempt_matches exact/void, exempt clears always, segment rule monotone; nits N1-N5 (N1 U9 precondition) | review: APPROVED
+2026-10-25T03:35:37Z | security | platform-sbom | U6 gate audit (hosts, exempt, exempt_matches, segment rule) | security: PASS (no critical/high/medium; L-1 multi-match, L-2 SPDXID keying for U9)
+2026-10-25T03:49:11Z | orchestrator | platform-sbom | U6 gates judged: review APPROVED, security PASS (+exempt review PASS), verify full PASS 962 s; commit approved | smoke: PASS

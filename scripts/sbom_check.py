@@ -381,7 +381,16 @@ def _unknown_id(id_: str) -> bool:
     case-fold (round 1) once the DocumentRef-<id>: prefix (round 2) and
     leading/trailing `.`, `-`, `+` (round 3, review R2-B1) are removed."""
     bare = _bare(id_).strip(".-+")
-    return bool(HASH_IN_RE.search(id_)) or (bare.isascii() and bare.upper() in UNKNOWN_LEAVES)
+    if HASH_IN_RE.search(id_):
+        return True
+    if not bare.isascii():
+        return False
+    if bare.upper() in UNKNOWN_LEAVES:
+        return True
+    # U6 (review I-r3-1, security I-9): outside a LicenseRef- id, a `.`- or
+    # `-`-separated segment equal to NONE/NOASSERTION is unknown too.
+    return (not bare.lower().startswith("licenseref-")
+            and any(seg.upper() in UNKNOWN_LEAVES for seg in re.split(r"[.-]", bare)))
 
 
 def _unknown_in_text(text: str) -> bool:
@@ -522,18 +531,56 @@ def classify_package(pkg: dict[str, Any]) -> dict[str, Any]:
             "unidentified": unidentified, "purl": _purl(pkg), "spdxid": pkg.get("SPDXID"), "name": pkg.get("name")}
 
 
-def classify_document(image: str, doc: dict[str, Any], always: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def classify_document(image: str, doc: dict[str, Any], always: list[dict[str, Any]],
+                      exempt: Any = ()) -> list[dict[str, Any]]:
     """One row per package but the DESCRIBES root; an `always` match (N10)
-    needs source whatever the licence says."""
+    needs source whatever the licence says; a reviewed `exempt` match (U6)
+    clears the package, also when `always` matches it (both flags set; U9
+    lists it as "always, cleared by exemption"). `always` overrides only
+    the classifier (orchestrator correction to U6 ruling 1)."""
     flagged, _ = always_matches(image, doc, always)
+    exempted, _ = exempt_matches(image, doc, list(exempt))
     rows = []
     for pkg in _packages(doc):
         row = classify_package(pkg)
-        row["always"] = str(pkg.get("SPDXID")) in flagged
-        if row["always"]:
+        sid = str(pkg.get("SPDXID"))
+        row["always"] = sid in flagged
+        row["exempt"] = sid in exempted
+        if row["exempt"]:
+            row["needs"] = False  # a reviewed exemption clears it, `always` or not
+        elif row["always"]:
             row["needs"] = True
         rows.append(row)
     return rows
+
+
+def _purl_base(purl: str) -> str:
+    """The purl without qualifiers and subpath, as written (U6: literal)."""
+    return purl.split("?", 1)[0].split("#", 1)[0]
+
+
+def exempt_matches(image: str, doc: dict[str, Any], exempt: list[dict[str, Any]]) -> tuple[list[str], list[str]]:
+    """N10 `exempt` for one image: (flagged SPDXIDs, problems). An entry names
+    a versioned purl without qualifiers and matches a package whose purl,
+    qualifiers and subpath removed, equals it as a string; an entry with no
+    such package in its image is a problem, so a version bump voids the
+    exemption (U6; N10 amendment, U6, item 1)."""
+    flagged: list[str] = []
+    problems: list[str] = []
+    keys = [(str(p.get("SPDXID")), _purl_base(_purl(p) or "")) for p in _packages(doc)]
+    for entry in exempt:
+        if not isinstance(entry, dict) or entry.get("image") != image:
+            continue
+        want = entry.get("package")
+        if not isinstance(want, str) or not PURL_RE.match(want) or "?" in want or "#" in want:
+            problems.append(f"{image}: exempt entry is not a versioned purl: {_clean(want)}")
+            continue
+        hits = [sid for sid, key in keys if key == want]
+        if not hits:
+            problems.append(f"{image}: exempt entry matches nothing: {_clean(want)}; the version moved or the "
+                            "package left: review again")
+        flagged += [h for h in hits if h not in flagged]
+    return flagged, problems
 
 
 # --- PSC-14/22 B3, N7: the image-side drift check (U4) ----------------------

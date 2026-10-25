@@ -3293,8 +3293,10 @@ item.
 
 ## Item: platform-sbom
 
-Status: **In progress (2026-10-24):** U0-U4b committed and pushed (draft PR
-#14; its CI run 40046377958 passed, verify job 32m32s); U5 (classifier) in review. *(Amended 2026-10-24, documenter, review N7)*
+Status: **In progress (2026-10-25):** U0-U5 committed (U5 d8ffa2d, not yet
+pushed; U0-U4b pushed as draft PR #14, whose CI run 40046377958 passed,
+verify job 32m32s); U6 in progress. *(Amended 2026-10-25, analyst, U6.)*
+*(Amended 2026-10-24, documenter, review N7)*
 *(Updated 2026-10-23, documenter, status)* Opened (2026-10-21) right after `platform-supply-chain` (split
 accepted by the orchestrator, 2026-10-21), on `agent/platform-sbom`.
 PSC-13–PSC-15 moved here from `platform-supply-chain` and were rewritten on
@@ -3336,7 +3338,7 @@ Counts are not restated here; the evidence under
 |---|---|---|
 | PSC-13 SBOM per bundled image | MET | U3 (464fa11) |
 | PSC-14 notices complete for `ke-app` | MET (the generated "Source code" section is U9) | U1 (23e3c9b) |
-| PSC-15 GPL source offers | PENDING | U5-U7, U9 |
+| PSC-15 GPL source offers | PENDING (classifier landed in U5, d8ffa2d) | U5 (d8ffa2d), U6-U7, U9 |
 | PSC-16 CI cost and disk measured on CI | PENDING | U11 |
 | PSC-19 end to end offline install | PENDING | U10 |
 | PSC-20 SBOM generator pinned and hardened | MET | U2 (98b6d27) |
@@ -3345,7 +3347,7 @@ Counts are not restated here; the evidence under
 | PSC-23 bounded source fetch | PENDING | U8 |
 | PSC-24 no partial bundle, manifest rules | PENDING | U9 |
 | PSC-25 psycopg on Debian libpq | MET | U0 (31bfed4) |
-| PSC-26 first-party neo4j image | PENDING | U4b |
+| PSC-26 first-party neo4j image | MET | U4b (c300d88) |
 
 Outcome metric moved: **neither.** No draft is reviewed and no rule is
 ratified because of this item. It closes the M-NT1 remainder
@@ -3678,6 +3680,12 @@ full what it contains.
     - The first check also covers the components PSC-22 names, whatever
       licence the generator reports for them. *(Added 2026-10-22,
       analyst.)*
+    - The "recorded exemption whose reason security has reviewed" in the
+      first check is an `exempt` entry in `docker/source-policy.json`. It
+      meets the rules in PSC-22's `exempt` bullets (unit U6): a versioned
+      purl that a version bump voids, a reason naming the licence text
+      that was read, and a `reviewed: security YYYY-MM-DD` field. No other
+      form of exemption clears a package. *(Amended 2026-10-25, analyst, U6.)*
     - The heading `NOTICE.md` names for the generated section (PSC-14) is
       exactly the heading `scripts/bundle.sh` generates in
       `THIRD_PARTY_NOTICES.md`. Unit U9.
@@ -3867,6 +3875,79 @@ full what it contains.
     security, as a changed image digest or lock does: the unlicensed and
     hash-only counts per image and the `always` matches are re-run and the
     differences explained in the evidence. *(Amended 2026-10-23, analyst, U4 review R1.)*
+    - The reason (security U4 I-4; design notes N8 amendment U5, item 3):
+      the hash-only and unknown-id rules match syft's spelling
+      `LicenseRef-<64 hex>` exactly and case-sensitively, so if a new
+      generator spelled the id differently, it would turn a hash row into
+      an ordinary id. For example, an upper-case hex id stays ordinary (U5
+      review I-r3-2). *(Amended 2026-10-25, analyst, U6.)*
+  - *U5 landed (d8ffa2d).* The licence classifier (PSC-15's GPL-family
+    forms; PSC-22's unknown ids) is in `scripts/sbom_check.py`. Its
+    fail-closed rules are design notes N8 amendment U5, rework rounds 1-3
+    included (`docs/evidence/platform-sbom/design-notes.md`). *(Amended 2026-10-25, analyst, U6.)*
+  - *`docker/source-policy.json` gains `exempt` and `hosts` (unit U6;
+    orchestrator, 2026-10-25; design notes N4, N8a items 1 and 3, N10).*
+    *(Amended 2026-10-25, analyst, U6.)* The file has exactly three
+    keys: `hosts`, `always` and `exempt`. Security reviews every diff to
+    it.
+    - *Versioned purl, void on bump.* An `exempt` entry names an image and
+      a purl with `@<version>`. No two entries share an image and a purl.
+      Given a bundle whose SBOM for that image catalogues no package with
+      that purl at that exact version, when the source check runs, then
+      the bundle fails, naming the image and the purl, the same way an
+      `always` entry with no match fails ("expected component not
+      catalogued"). A version bump therefore voids the entry. A new review
+      is needed; the old entry never carries over.
+    - *Reason.* `reason` is non-blank and names:
+      - the licence text that was read, and where it was read (for
+        example the jar's `META-INF/LICENSE` line, or the SBOM's
+        `hasExtractedLicensingInfos` text for a hash id);
+      - the SHA-256 of the artifact the text was read from;
+      - where the entry corrects an OR that the generator reported as
+        AND, the elected branch. For jna 5.15.0 and javassist 3.30.2-GA
+        that branch is Apache-2.0 (ruling 5).
+      The generator's licence text is kept verbatim. An exemption is not a
+      licence override.
+    - *Reviewed.* `reviewed` matches `^security \d{4}-\d{2}-\d{2}$`.
+      Security writes it only after auditing that entry, and records the
+      audit in the plan item's handoff and evidence. An entry without the
+      field, or with any other value, fails the schema test.
+    - *`always` and `exempt` (ruled: orchestrator, 2026-10-25).* `always`
+      overrides only the classifier: a package an `always` entry matches
+      needs source whatever `needs()` returns (N8). A reviewed `exempt`
+      entry at that package's exact versioned purl still clears it, as
+      PSC-22's earlier bullets say, so the human's GCC fallback (N10)
+      stays open. The clearance is visible: the index (U9) lists such a
+      row as "always, cleared by exemption <reviewed>", where `<reviewed>`
+      is the entry's `reviewed` value. *(Amended 2026-10-25, analyst, U6; orchestrator ruling.)*
+    - *Hosts.* `hosts` holds lower-case DNS names, with no wildcard and no
+      duplicate. The fetch step (U8, PSC-23) refuses any host that is not
+      listed (an exact match after lower-casing). This applies to the
+      first request and to every redirect hop. A refusal fails closed
+      (Q61): no retry and no bundle. Every URL host in the source lock
+      (U7) is in `hosts`.
+    - *First test row (U5 review I-r3-1; ruled, orchestrator 2026-10-25).*
+      The boundary closes. *(Amended 2026-10-25, analyst, U6; orchestrator ruling.)* The classifier strips any
+      `DocumentRef-...:` prefix. If the bare id that is left does not
+      start with `licenseref-` (ASCII case-fold), and any of its `.`- or
+      `-`-separated segments equals `NONE` or `NOASSERTION` (ASCII
+      case-fold), then the id is unknown: the package needs source and is
+      listed "unidentified".
+      - Given `NOASSERTION.NONE`, `NOASSERTION-2.0` or `MIT-NOASSERTION`,
+        the id is unknown. This reverses U5 round 3's pin that kept
+        `MIT-NOASSERTION` ordinary (design notes N8 amendment U5, rework
+        round 3, item 5).
+      - Given `LicenseRef-NONE`, `LicenseRef-NOASSERTION` or
+        `DocumentRef-x:LicenseRef-NONE`, the id stays ordinary.
+    - `[unit: test_source_policy_schema]` (exactly three keys; the
+      `exempt` and `hosts` rules above) and
+      `[unit: test_exempt_not_catalogued_at_version_fails]` (fast,
+      stubbed SBOM). The check is pure and lands in U6. It fails the
+      bundle from U9, when the index runs, as `always` problems do (N8
+      amendment U5). The jna and javassist entries land with security's
+      review. Hosts refusal:
+      `[unit: test_source_fetch_is_https_only_to_listed_hosts]` (PSC-23,
+      U8).
 - **PSC-23 The source fetch is a named, bounded network step (added
   2026-10-22, analyst).**
   - SBOM generation stays offline (Q57); the fetch is the item's only new
