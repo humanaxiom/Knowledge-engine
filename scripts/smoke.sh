@@ -212,9 +212,10 @@ echo "smoke: no pip in api"
 # /var/lib/neo4j/products (the commercial fleet-management plugin). find
 # prints any match and one control path that ke-neo4j must hold, so a find
 # that answers nothing fails (fail closed); the whole output is compared only
-# as a string, never evaluated (M-1 pattern).
+# as a string, never evaluated (M-1 pattern). No -xdev: the walk enters the
+# volumes (/data, /logs); /proc, /sys and /dev are pruned (U5, security L-1).
 echo "== smoke: no fleet plugin =="
-fleet_out="$(compose exec -T neo4j find / -xdev \( -path /var/lib/neo4j/products -o -name '*fleet-management*' -o -path /var/lib/neo4j/LICENSE.txt \) -print)" || {
+fleet_out="$(compose exec -T neo4j find / \( -path /proc -o -path /sys -o -path /dev \) -prune -o \( -path /var/lib/neo4j/products -o -name '*fleet-management*' -o -path /var/lib/neo4j/LICENSE.txt \) -print)" || {
   echo "smoke: FAIL (fleet plugin: the check in neo4j failed)" >&2
   exit 1
 }

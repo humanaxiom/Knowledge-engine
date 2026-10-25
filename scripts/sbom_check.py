@@ -40,7 +40,12 @@ each problem; on success one summary line on stdout.
   sbom_check.py tree --official EXPORT --image EXPORT
 
 `tree` compares two `docker export` tars: ke-neo4j equals the official
-image minus /var/lib/neo4j/products (type, mode, owner, group, link).
+image minus /var/lib/neo4j/products (type, mode, owner, group, size, link;
+a hard link counts as its target file in both, U5).
+
+The licence classifier (PSC-15, PSC-22; design-notes N8, N8a, "N8
+amendment, U5") is pure functions for U9's `index`: `licence_input`,
+`is_gpl_id`, `needs_source`, `classify_package`, `classify_document`.
 """
 
 from __future__ import annotations
@@ -78,22 +83,22 @@ def validate(doc: Any) -> list[str]:
         return ["the document is not a JSON object"]
     p: list[str] = []
     if doc.get("spdxVersion") != "SPDX-2.3":
-        p.append(f"spdxVersion is {doc.get('spdxVersion')!r}, want SPDX-2.3")
+        p.append(f"spdxVersion is {_clean(repr(doc.get('spdxVersion')))}, want SPDX-2.3")
     if doc.get("dataLicense") != "CC0-1.0":
-        p.append(f"dataLicense is {doc.get('dataLicense')!r}, want CC0-1.0")
+        p.append(f"dataLicense is {_clean(repr(doc.get('dataLicense')))}, want CC0-1.0")
     if doc.get("SPDXID") != "SPDXRef-DOCUMENT":
-        p.append(f"SPDXID is {doc.get('SPDXID')!r}, want SPDXRef-DOCUMENT")
+        p.append(f"SPDXID is {_clean(repr(doc.get('SPDXID')))}, want SPDXRef-DOCUMENT")
     if not isinstance(doc.get("name"), str) or not doc.get("name"):
         p.append("name is empty")
     ns = doc.get("documentNamespace")
     if not isinstance(ns, str) or not NAMESPACE_RE.fullmatch(ns):
-        p.append(f"documentNamespace {ns!r} is not urn:uuid:<lower-case uuid4>")
+        p.append(f"documentNamespace {_clean(repr(ns))} is not urn:uuid:<lower-case uuid4>")
     info = doc.get("creationInfo")
     if not isinstance(info, dict):
         p.append("creationInfo is missing")
         info = {}
-    if not RFC3339_UTC.match(str(info.get("created", ""))):
-        p.append(f"creationInfo.created {info.get('created')!r} is not an RFC 3339 UTC time")
+    if not RFC3339_UTC.fullmatch(str(info.get("created", ""))):
+        p.append(f"creationInfo.created {_clean(repr(info.get('created')))} is not an RFC 3339 UTC time")
     creators = info.get("creators") if isinstance(info.get("creators"), list) else []
     if not any(isinstance(c, str) and c.startswith("Tool: syft-") for c in creators):
         p.append("creationInfo.creators has no `Tool: syft-<version>` entry")
@@ -104,16 +109,16 @@ def validate(doc: Any) -> list[str]:
             p.append(f"package {i} is not an object")
             continue
         sid = pkg.get("SPDXID")
-        if not isinstance(sid, str) or not SPDXID_RE.match(sid):
-            p.append(f"package {i} has SPDXID {sid!r}")
+        if not isinstance(sid, str) or not SPDXID_RE.fullmatch(sid):
+            p.append(f"package {i} has SPDXID {_clean(repr(sid))}")
         elif sid in ids:
-            p.append(f"package SPDXID {sid} is not unique")
+            p.append(f"package SPDXID {_clean(sid)} is not unique")
         else:
             ids.add(sid)
         if not pkg.get("name"):
-            p.append(f"package {sid} has no name")
+            p.append(f"package {_clean(sid)} has no name")
         if not pkg.get("downloadLocation"):
-            p.append(f"package {sid} has no downloadLocation")
+            p.append(f"package {_clean(sid)} has no downloadLocation")
     for f in doc.get("files") if isinstance(doc.get("files"), list) else []:
         if isinstance(f, dict) and isinstance(f.get("SPDXID"), str):
             ids.add(f["SPDXID"])
@@ -128,7 +133,7 @@ def validate(doc: Any) -> list[str]:
             describes += 1
         for end in (a, b):
             if end not in ids and end not in ("NOASSERTION", "NONE"):
-                p.append(f"relationship end {end!r} does not resolve")
+                p.append(f"relationship end {_clean(repr(end))} does not resolve")
     if describes != 1:
         p.append(f"the document DESCRIBES {describes} elements, want exactly 1")
     return p
@@ -304,6 +309,233 @@ def always_matches(image: str, doc: dict[str, Any], always: list[dict[str, Any]]
     return flagged, problems
 
 
+# --- PSC-15, PSC-22: the licence classifier (U5; N8, N8a, N8 amendment U5) ---
+
+# N8: the anchored GPL-family pattern, on the lower-cased id without a
+# leading `licenseref-`; N8a ruling 5: the token rule, any token of the
+# lower-cased text split on [^a-z0-9]+.
+GPL_ID_RE = re.compile(r"(a|l)?gpl(-?v?\d+(\.\d+)*)?(\+|-only|-or-later)?(-with-[a-z0-9-]+-exception)?")
+# Rework round 1 (security L-1): a token containing `gpl`, the token
+# `affero`, or the consecutive tokens `general public licen[cs]e[s]`.
+GPL_PHRASE_RE = re.compile(r"(?:^| )general public licen[cs]es?(?: |$)")
+UNKNOWN_LEAVES = ("NONE", "NOASSERTION")
+# Rework round 2 (review R1-B1): a leaf is an SPDX 2.3 idstring, with an
+# optional DocumentRef-<id>: prefix and the `+` suffix; any other leaf makes
+# the text unparseable (the token-or-unknown fallback).
+LEAF_RE = re.compile(r"(DocumentRef-[A-Za-z0-9.-]+:)?[A-Za-z0-9.-]+\+?")
+DOCREF_RE = re.compile(r"DocumentRef-[A-Za-z0-9.-]+:")
+# Runs of unparseable text: split on anything outside [A-Za-z0-9.-], so `+`
+# and `:` split runs too (rework round 3, review R2-B2).
+RUN_SPLIT_RE = re.compile(r"[^A-Za-z0-9.-]+")
+# A hash id anywhere in a leaf or run (rework round 3, security R2-L1); 64
+# hex exactly, so 65 hex digits are still not a hash (round 3 item 4).
+HASH_IN_RE = re.compile(r"LicenseRef-[0-9a-f]{64}(?![0-9a-f])")
+
+
+class _Unparsed(Exception):
+    pass
+
+
+def _set(value: Any) -> bool:
+    """The classifier's "set" (N8 amendment, U5, item 1): a string, not
+    exactly "", NONE or NOASSERTION. A hash-only value is set (unknown ids)."""
+    return isinstance(value, str) and value not in MISSING
+
+
+def _input_parts(pkg: Any) -> list[str]:
+    if not isinstance(pkg, dict):
+        return []
+    declared, concluded = pkg.get("licenseDeclared"), pkg.get("licenseConcluded")
+    parts = [v for v in (declared, concluded) if _set(v)]
+    if len(parts) == 2 and parts[0] == parts[1]:
+        parts = parts[:1]
+    if not parts:
+        raw = pkg.get("licenseInfoFromFiles")
+        parts = [f for f in raw if _set(f)] if isinstance(raw, list) else []
+    return parts
+
+
+def licence_input(pkg: Any) -> str | None:
+    """N8 input selection: declared, concluded, or both (`(d) AND (c)`), else
+    the set licenseInfoFromFiles entries; None when nothing is set."""
+    parts = _input_parts(pkg)
+    if not parts:
+        return None
+    return parts[0] if len(parts) == 1 else " AND ".join(f"({x})" for x in parts)
+
+
+def _token_hit(text: str) -> bool:
+    tokens = [t for t in re.split(r"[^a-z0-9]+", text.lower()) if t]
+    return (any("gpl" in t or t == "affero" for t in tokens)
+            or bool(GPL_PHRASE_RE.search(" ".join(tokens))))
+
+
+def _bare(id_: str) -> str:
+    """The id without a leading DocumentRef-<id>: (rework round 2)."""
+    m = DOCREF_RE.match(id_)
+    return id_[m.end():] if m else id_
+
+
+def _unknown_id(id_: str) -> bool:
+    """A hash id anywhere in it (round 3), or NONE/NOASSERTION under ASCII
+    case-fold (round 1) once the DocumentRef-<id>: prefix (round 2) and
+    leading/trailing `.`, `-`, `+` (round 3, review R2-B1) are removed."""
+    bare = _bare(id_).strip(".-+")
+    return bool(HASH_IN_RE.search(id_)) or (bare.isascii() and bare.upper() in UNKNOWN_LEAVES)
+
+
+def _unknown_in_text(text: str) -> bool:
+    return bool(HASH_ID_RE.search(text)) or any(_unknown_id(r) for r in RUN_SPLIT_RE.split(text) if r)
+
+
+def _pattern_hit(id_: str) -> bool:
+    low = _bare(id_).lower()
+    if low.startswith("licenseref-"):
+        low = low[len("licenseref-"):]
+    return bool(GPL_ID_RE.fullmatch(low))
+
+
+def is_gpl_id(id_: Any) -> bool:
+    """N8 pattern, or else the N8a token rule (fail closed)."""
+    return isinstance(id_, str) and (_pattern_hit(id_) or _token_hit(id_))
+
+
+def _parse(tokens: list[str]) -> Any:
+    """SPDX 2.3 Annex D: WITH > AND > OR, parentheses override; operators
+    any case. Nodes: ("leaf", id), ("and"|"or", [children])."""
+    pos = 0
+
+    def peek() -> str | None:
+        return tokens[pos] if pos < len(tokens) else None
+
+    def kw(t: str | None) -> str:
+        return t.upper() if t is not None and t.isascii() else ""
+
+    def is_op(t: str | None) -> bool:
+        return kw(t) in ("AND", "OR", "WITH")
+
+    def take() -> str:
+        nonlocal pos
+        pos += 1
+        return tokens[pos - 1]
+
+    def binary(op: str, sub: Any) -> Any:
+        children = [sub()]
+        while kw(peek()) == op:
+            take()
+            children.append(sub())
+        return children[0] if len(children) == 1 else (op.lower(), children)
+
+    def primary() -> Any:
+        t = peek()
+        if t is None or t == ")" or is_op(t):
+            raise _Unparsed
+        if t == "(":
+            take()
+            node = expr()
+            if peek() != ")":
+                raise _Unparsed
+            take()
+            return node
+        leaf = take()
+        if not LEAF_RE.fullmatch(leaf):  # rework round 2: not an SPDX idstring
+            raise _Unparsed
+        if kw(peek()) == "WITH":
+            take()
+            e = peek()
+            if e is None or e in ("(", ")") or is_op(e) or not LEAF_RE.fullmatch(e):
+                raise _Unparsed
+            return ("with", leaf, take())
+        return ("leaf", leaf)
+
+    def expr() -> Any:
+        return binary("OR", lambda: binary("AND", primary))
+
+    node = expr()
+    if pos != len(tokens):
+        raise _Unparsed
+    return node
+
+
+def _url_ref(id_: str) -> bool:
+    """A LicenseRef- id holding http (N8a 2-4), DocumentRef prefix aside."""
+    bare = _bare(id_).lower()
+    return bare.startswith("licenseref-") and "http" in bare
+
+
+def _leaf(id_: str) -> tuple[bool, bool, bool]:
+    """(needs, unparsed, unidentified) of one id."""
+    url = _url_ref(id_)
+    if _unknown_id(id_):
+        return True, url, True
+    if _pattern_hit(id_):
+        return True, url, False
+    if _token_hit(id_):
+        return True, True, False
+    return False, url, False
+
+
+def _evaluate(node: Any) -> tuple[bool, bool, bool]:
+    if node[0] == "leaf":
+        return _leaf(node[1])
+    if node[0] == "with":
+        needs, unparsed, unidentified = _leaf(node[1])
+        exc = node[2]
+        if _unknown_id(exc):  # addition b: an unknown exception id
+            return True, unparsed, True
+        if _pattern_hit(exc) or _token_hit(exc):  # ruling 4: a GPL-family exception slot (malformed)
+            return True, True, unidentified
+        return needs, unparsed or _url_ref(exc), unidentified  # round 2 (R1-N1): an http ref is listed
+    results = [_evaluate(c) for c in node[1]]
+    needs = any(r[0] for r in results) if node[0] == "and" else all(r[0] for r in results)
+    return needs, any(r[1] for r in results), any(r[2] for r in results)
+
+
+def needs_source(expr: Any) -> tuple[bool, dict[str, bool]]:
+    """N8: needs(OR) = all, needs(AND) = any, needs(X WITH e) = needs(X);
+    unknown leaves (hash ids, NONE, NOASSERTION) need source, unidentified.
+    Unparseable text needs source if the token rule hits it or it holds a
+    hash id or a NONE/NOASSERTION run (any case); non-ASCII text needs
+    source; both are listed unparsed (N8 amendment, U5, rework round 1)."""
+    if not isinstance(expr, str):
+        return True, {"unparsed": True, "unidentified": False}
+    if not expr.isascii():  # rework ruling 3 (security L-3): SPDX ids are ASCII
+        return True, {"unparsed": True, "unidentified": _unknown_in_text(expr)}
+    try:
+        needs, unparsed, unidentified = _evaluate(_parse(re.findall(r"\(|\)|[^\s()]+", expr)))
+    except (_Unparsed, RecursionError):
+        unknown = _unknown_in_text(expr)  # a hash id or a NONE/NOASSERTION run (rework ruling 1)
+        return _token_hit(expr) or unknown, {"unparsed": True, "unidentified": unknown}
+    return needs, {"unparsed": unparsed, "unidentified": unidentified}
+
+
+def classify_package(pkg: dict[str, Any]) -> dict[str, Any]:
+    """needs = any over licence_input's parts, flags OR-ed (N8 amendment, U5).
+    U9's index takes `needs` from here and never re-derives it from
+    `expression`, which is a record only (rework round 1, review N5)."""
+    needs = unparsed = unidentified = False
+    parts = _input_parts(pkg)
+    for part in parts:
+        n, info = needs_source(part)
+        needs, unparsed, unidentified = needs or n, unparsed or info["unparsed"], unidentified or info["unidentified"]
+    return {"needs": needs, "expression": licence_input(pkg), "unlicensed": not parts, "unparsed": unparsed,
+            "unidentified": unidentified, "purl": _purl(pkg), "spdxid": pkg.get("SPDXID"), "name": pkg.get("name")}
+
+
+def classify_document(image: str, doc: dict[str, Any], always: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """One row per package but the DESCRIBES root; an `always` match (N10)
+    needs source whatever the licence says."""
+    flagged, _ = always_matches(image, doc, always)
+    rows = []
+    for pkg in _packages(doc):
+        row = classify_package(pkg)
+        row["always"] = str(pkg.get("SPDXID")) in flagged
+        if row["always"]:
+            row["needs"] = True
+        rows.append(row)
+    return rows
+
+
 # --- PSC-14/22 B3, N7: the image-side drift check (U4) ----------------------
 
 def _named(doc: dict[str, Any], ptype: str) -> dict[str, set[str]]:
@@ -316,30 +548,37 @@ def _named(doc: dict[str, Any], ptype: str) -> dict[str, set[str]]:
     return out
 
 
-def drift_problems(app: dict[str, Any], base: dict[str, Any], added: frozenset[str] | set[str],
-                   licence_texts: dict[str, str]) -> list[str]:
-    p = []
-    debs = set(_named(app, "deb")) - set(_named(base, "deb"))
-    for n in sorted(debs - set(added)):
-        p.append(f"ke-app adds the Debian package {n}, which ADDED_PACKAGES does not name")
-    for n in sorted(set(added) - debs):
-        p.append(f"ADDED_PACKAGES names {n}, which the ke-app SBOM does not add to its base")
-    pypi = _named(app, "pypi")
-    if "pip" in pypi:
-        p.append(f"the ke-app SBOM lists pip {sorted(pypi['pip'])} (pip is not shipped)")
+def _cpython(app: dict[str, Any]) -> set[str]:
+    """CPython versions: the non-namespaced pkg:generic/python rows (syft's
+    binary cataloguer, U3), the set drift checks and prints (U5 review B3)."""
     py = set()
     for pkg in _packages(app):
         m = PURL_RE.match(_purl(pkg) or "")
         if m and m.group("type") == "generic" and not m.group("ns") and m.group("name") == "python":
             py.add(unquote(m.group("version")))
+    return py
+
+
+def drift_problems(app: dict[str, Any], base: dict[str, Any], added: frozenset[str] | set[str],
+                   licence_texts: dict[str, str]) -> list[str]:
+    p = []
+    debs = set(_named(app, "deb")) - set(_named(base, "deb"))
+    for n in sorted(debs - set(added)):
+        p.append(f"ke-app adds the Debian package {_clean(n)}, which ADDED_PACKAGES does not name")
+    for n in sorted(set(added) - debs):
+        p.append(f"ADDED_PACKAGES names {_clean(n)}, which the ke-app SBOM does not add to its base")
+    pypi = _named(app, "pypi")
+    if "pip" in pypi:
+        p.append(f"the ke-app SBOM lists pip {_clean(sorted(pypi['pip']))} (pip is not shipped)")
+    py = _cpython(app)
     if len(py) != 1:
-        p.append(f"the ke-app SBOM lists CPython (pkg:generic/python) at {sorted(py)}, want exactly one version")
+        p.append(f"the ke-app SBOM lists CPython (pkg:generic/python) at {_clean(sorted(py))}, want exactly one version")
     for path, text in sorted(licence_texts.items()):
         m = re.match(r"^CPython (\d+\.\d+\.\d+):", text.split("\n", 1)[0])
         if not m:
             p.append(f"{path}: line 1 does not start `CPython X.Y.Z:`")
         elif len(py) == 1 and m.group(1) not in py:
-            p.append(f"{path} names CPython {m.group(1)}, the ke-app SBOM lists {sorted(py)[0]}")
+            p.append(f"{path} names CPython {m.group(1)}, the ke-app SBOM lists {_clean(sorted(py)[0])}")
     return p
 
 
@@ -351,14 +590,14 @@ def psycopg_problems(app: dict[str, Any], libpq_pin: str, psycopg_c_version: str
              for purl in (_purl(x) or "" for x in _packages(app))
              for m in [PURL_RE.match(purl)] if m and m.group("type") == "deb" and m.group("name") == "libpq5"]
     if (libpq_pin, f"postgresql-{major}") not in libpq:
-        p.append(f"the ke-app SBOM does not list libpq5 {libpq_pin} (upstream postgresql-{major}): {libpq}")
+        p.append(f"the ke-app SBOM does not list libpq5 {libpq_pin} (upstream postgresql-{major}): {_clean(libpq)}")
     pypi = _named(app, "pypi")
     want = {psycopg_c_version} if isinstance(psycopg_c_version, str) else set(psycopg_c_version)
     if not want & pypi.get("psycopg-c", set()):
         p.append(f"the ke-app SBOM does not list psycopg-c at a locked version {sorted(want)}: "
-                 f"{sorted(pypi.get('psycopg-c', []))}")
+                 f"{_clean(sorted(pypi.get('psycopg-c', [])))}")
     if "psycopg-binary" in pypi:
-        p.append(f"the ke-app SBOM lists psycopg-binary {sorted(pypi['psycopg-binary'])} (PSC-25)")
+        p.append(f"the ke-app SBOM lists psycopg-binary {_clean(sorted(pypi['psycopg-binary']))} (PSC-25)")
     return p
 
 
@@ -406,10 +645,10 @@ def drift(a: argparse.Namespace) -> int:
         print(f"sbom_check: drift: {line}", file=sys.stderr)
     if problems:
         return 1
-    py = sorted(_named(docs[0], "generic").get("python", set()))
+    py = sorted(_cpython(docs[0]))
     pc = sorted(locked & _named(docs[0], "pypi").get("psycopg-c", set()))
     major = a.libpq.split(".", 1)[0]
-    print(f"sbom_check: drift: ok: added {', '.join(sorted(added))}; no pip; CPython {', '.join(py)} "
+    print(f"sbom_check: drift: ok: added {', '.join(sorted(added))}; no pip; CPython {_clean(', '.join(py))} "
           f"({len(texts)} licence files); libpq5 {a.libpq} (postgresql-{major}); psycopg-c {', '.join(pc)}, "
           "no psycopg-binary")
     return 0
@@ -417,7 +656,7 @@ def drift(a: argparse.Namespace) -> int:
 
 def finish(a: argparse.Namespace) -> int:
     for label, value, rx in (("--name", a.name, NAME_RE), ("--git-sha", a.git_sha, SHA_RE)):
-        if not rx.match(value):
+        if not rx.fullmatch(value):
             print(f"sbom_check: {label} {value!r} fails its pattern", file=sys.stderr)
             return 2
     if a.arch not in ("amd64", "arm64"):
@@ -587,25 +826,43 @@ def neo4j_sbom_problems(doc: Any) -> list[str]:
     return problems
 
 
-def tree_listing(tar_path: str) -> dict[str, tuple[str, int, int, int, str]]:
-    """path -> (type, mode, uid, gid, link target) of a `docker export` tar."""
+TreeEntry = tuple[str, int, int, int, int, str]
+
+
+def tree_listing(tar_path: str) -> dict[str, TreeEntry]:
+    """path -> (type, mode, uid, gid, size, link target) of a `docker export`
+    tar; size is a regular file's (0 otherwise); a hard link's target is
+    its path through _rel (U5, U4b review N6)."""
     kinds = {tarfile.REGTYPE: "file", tarfile.AREGTYPE: "file", tarfile.DIRTYPE: "dir", tarfile.SYMTYPE: "symlink",
              tarfile.LNKTYPE: "hardlink", tarfile.CHRTYPE: "char", tarfile.BLKTYPE: "block", tarfile.FIFOTYPE: "fifo"}
-    out: dict[str, tuple[str, int, int, int, str]] = {}
+    out: dict[str, TreeEntry] = {}
     with tarfile.open(tar_path, mode="r:*") as tar:
         for m in tar:
             rel = _rel(m.name) or "."
             kind = kinds.get(m.type, "other")
-            out[rel] = (kind, m.mode & 0o7777, m.uid, m.gid, m.linkname if kind == "symlink" else "")
+            link = m.linkname if kind == "symlink" else (_rel(m.linkname) if kind == "hardlink" else "")
+            out[rel] = (kind, m.mode & 0o7777, m.uid, m.gid, m.size if kind == "file" else 0, link)
     return out
 
 
-def neo4j_tree_problems(official: dict[str, tuple[str, int, int, int, str]],
-                        image: dict[str, tuple[str, int, int, int, str]]) -> list[str]:
+def _resolve_hardlinks(listing: dict[str, TreeEntry]) -> dict[str, TreeEntry]:
+    """A hard link becomes its target's regular file (its size); a target
+    absent or not a file leaves it a hardlink, so it differs (fail closed)."""
+    out = dict(listing)
+    for rel, entry in listing.items():
+        if entry[0] == "hardlink":
+            target = listing.get(entry[5])
+            if target is not None and target[0] == "file":
+                out[rel] = ("file", entry[1], entry[2], entry[3], target[4], "")
+    return out
+
+
+def neo4j_tree_problems(official: dict[str, TreeEntry], image: dict[str, TreeEntry]) -> list[str]:
     """Every official path outside /var/lib/neo4j/products is in ke-neo4j
-    with the same type, mode, owner, group and symlink target, and ke-neo4j
-    adds no path (PSC-26). A hard link written out as a regular file is the
-    same file (N16)."""
+    with the same type, mode, owner, group, size and link target, and
+    ke-neo4j adds no path (PSC-26). A hard link and a regular file are the
+    same file when the link's target is (N16; both ways, U5)."""
+    official, image = _resolve_hardlinks(official), _resolve_hardlinks(image)
     problems = []
     for rel, want in sorted(official.items()):
         if _in_products(rel):
@@ -614,8 +871,6 @@ def neo4j_tree_problems(official: dict[str, tuple[str, int, int, int, str]],
         if have is None:
             problems.append(f"/{_clean(rel)} is in the official image, not in ke-neo4j")
             continue
-        if want[0] == "hardlink" and have[0] == "file":
-            want = ("file",) + tuple(want[1:])  # type: ignore[assignment]
         if tuple(have) != tuple(want):
             problems.append(f"/{_clean(rel)}: ke-neo4j has {tuple(have)}, the official image has {tuple(want)}")
     for rel in sorted(set(image) - set(official)):

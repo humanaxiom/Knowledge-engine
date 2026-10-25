@@ -76,7 +76,8 @@ def _exempt_line(path: str, symbol: str) -> re.Pattern[str]:
     the symbol (not ==, +=, a call). A Dockerfile has no assignment for an
     instruction such as EXPOSE, so there the symbol is one whole instruction
     line, matched exactly (platform-sbom U4b, PSC-26; orchestrator U4b
-    ruling 1): the same literal on any other line still counts."""
+    ruling 1): the same literal on any other line still counts, including
+    a continuation line (U5: find_hardcoded checks the previous line)."""
     if _is_dockerfile(path):
         return re.compile(rf"^\s*{re.escape(symbol)}\s*$")
     return re.compile(rf"^\s*{re.escape(symbol)}\s*(?::[^=]*)?=(?!=)")
@@ -95,8 +96,14 @@ def find_hardcoded(
     for path, text in files.items():
         if _allowed(path):
             continue
+        prev = ""
         for number, line in enumerate(text.splitlines(), start=1):
-            if any(path == p and rx.match(line) for p, rx in exempt):
+            # A Dockerfile line after one ending in `\` continues that
+            # instruction, so it is never the exempt instruction line
+            # (platform-sbom U5; U4b review N7, security I-2).
+            continued = _is_dockerfile(path) and prev.rstrip().endswith("\\")
+            prev = line
+            if not continued and any(path == p and rx.match(line) for p, rx in exempt):
                 continue
             # Compose: blank the whole default. Elsewhere: expose the default
             # as a bare token so it is found.

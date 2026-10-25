@@ -586,3 +586,33 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-23T22:33:36Z | tester | platform-sbom | U4b A34 Windows proof (ke-neo4j) | a34: PASS
 2026-10-23T22:36:31Z | documenter | platform-sbom | NOTICE ke-neo4j wording (review N3, security I-3) | docs: updated
 2026-10-23T22:54:45Z | orchestrator | platform-sbom | U4b gates judged: review APPROVED, security PASS, A34 PASS, verify full PASS 995 s; commit approved | smoke: PASS
+2026-10-23T22:54:59Z | developer | platform-sbom | committed U4b on agent/platform-sbom | commit: done
+2026-10-24T00:43:41Z | orchestrator | platform-sbom | pushed agent/platform-sbom, draft PR #14; human ruled Q69 GCC source ships, Q70 no extra scanning now | push: done (draft PR)
+2026-10-24T21:09:44Z | documenter | platform-sbom | handoff split: U4b gate detail to archive/platform-sbom-part8.md | docs: updated
+2026-10-24T21:12:12Z | architect | platform-sbom | U5: N8 amendment recorded (L-4 input rule, hash/NONE tokens unknown, API names) | plan: design amended
+2026-10-24T21:51:48Z | tester | platform-sbom | U5 RED: licence classifier, L-4/L-5/R2 escaping, tree size, scanner continuation, smoke -xdev | tdd red: 30 failing as expected
+2026-10-24T21:53:50Z | architect | platform-sbom | U5: amendment item 2 hash-in-junk rule, N16 -xdev note, tester pins | plan: design amended
+2026-10-24T21:54:17Z | documenter | platform-sbom | handoff trim: opener, plan-phase detail and U4 in-progress summary to archive part1/part6 | docs: updated
+2026-10-24T22:23:44Z | developer | platform-sbom | U5 GREEN: licence classifier, escaping, tree size, scanner continuation, smoke prune | tdd green: verify fast + full PASS
+2026-10-24T22:33:35Z | reviewer | platform-sbom | U5 review: B1 per-part test gap, B2 NOASSERTION-in-junk ruling, B3 drift ok-line escaping | review: changes requested
+2026-10-24T22:37:44Z | security | platform-sbom | U5 audit (L-4, L-5, I-2, L-1 closure) | security: PASS (L-4, I-2, L-1 closed; L-5 closed but L-5a low = review B3; new low L-1..L-4 non-blocking)
+2026-10-24T22:39:30Z | architect | platform-sbom | U5 rework r1 rulings recorded (B2/L-2 any-case unknown leaves, L-1 wider token rule, L-3 non-ASCII, L-4 WITH exception, B3 drift line, N5) | plan: design amended
+2026-10-24T22:39:41Z | documenter | platform-sbom | requirements status: PR #14 CI passed (review N7) | docs: updated
+2026-10-24T23:12:38Z | tester | platform-sbom | U5 rework r1 RED: unknown leaves any case, wider token rule, non-ASCII, WITH exception, per-part rows, drift ok line | tdd red: 11 failing as expected
+2026-10-24T23:14:29Z | documenter | platform-sbom | handoff trim: U1-U4 summaries condensed, detail to archive parts 3/5/6 | docs: updated
+2026-10-24T23:58:51Z | developer | platform-sbom | U5 rework r1 GREEN: unknown leaves any case, wider token rule, non-ASCII, WITH exception, drift line clean | tdd green: verify fast + full PASS
+2026-10-25T00:04:02Z | security | platform-sbom | U5 rework r1 re-check (L-1..L-4, L-5a) | security: PASS (L-1, L-2, L-3, L-4, L-5a closed; no new finding)
+2026-10-25T00:04:55Z | reviewer | platform-sbom | U5 rework r1 review: B1-B3 closed; R1-B1 unknown id inside a non-SPDX leaf passes silently | review: changes requested
+2026-10-25T00:06:22Z | architect | platform-sbom | U5 rework r2 ruling recorded (leaf charset, DocumentRef, unknown-run split) | plan: design amended
+2026-10-25T00:07:51Z | documenter | platform-sbom | handoff trim: U5 round 0/1 gate detail to archive/platform-sbom-part9.md | docs: updated
+2026-10-25T00:37:04Z | tester | platform-sbom | U5 rework r2 RED: leaf idstring charset, run split on punctuation, DocumentRef prefix, http exception listed, ASCII test source | tdd red: 5 failing as expected
+2026-10-25T01:07:09Z | developer | platform-sbom | U5 rework r2 GREEN: leaf charset, run split, DocumentRef prefix, http exception | tdd green: verify fast + full PASS
+2026-10-25T01:10:36Z | security | platform-sbom | U5 rework r2 re-check (R1-B1 leaf charset, DocumentRef) | security: PASS (R1-B1 closed; not weaker than r1; new R2-L1 low non-blocking)
+2026-10-25T01:11:40Z | reviewer | platform-sbom | U5 rework r2 review: R1-B1/N1/N2 closed; R2-B1 plus-suffix unknown id, R2-B2 colon/plus inside fallback runs | review: changes requested
+2026-10-25T01:13:00Z | architect | platform-sbom | U5 rework r3 ruling recorded (run split, trimmed unknown ids, hash anywhere in a leaf) | plan: design amended
+2026-10-25T01:14:44Z | documenter | platform-sbom | handoff trim: U5 round 1/2 sections to archive/platform-sbom-part9.md | docs: updated
+2026-10-25T01:40:47Z | tester | platform-sbom | U5 rework r3 RED: + and : split runs, trimmed bare id, hash anywhere in a leaf, near-misses pinned | tdd red: 3 failing as expected
+2026-10-25T02:10:42Z | developer | platform-sbom | U5 rework r3 GREEN: run split, trim, hash anywhere in leaf | tdd green: verify fast + full PASS
+2026-10-25T02:13:14Z | security | platform-sbom | U5 rework r3 re-check (R2-L1, HASH_IN_RE, run split) | security: PASS (R2-L1 and I-7 closed; not weaker than r2; no new finding)
+2026-10-25T02:14:54Z | reviewer | platform-sbom | U5 rework r3 review: R2-B1/B2 and R2-L1 closed; real rows identical; I-r3-1 carried to U6 | review: APPROVED
+2026-10-25T02:28:55Z | orchestrator | platform-sbom | U5 gates judged: review APPROVED (r3), security PASS (r3), verify full PASS 999 s; commit approved | smoke: PASS

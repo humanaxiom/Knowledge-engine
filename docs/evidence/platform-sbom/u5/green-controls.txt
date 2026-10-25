@@ -1,0 +1,8 @@
+ok  [smoke] only /proc pruned                                                  must fail | test_smoke_checks_no_fleet_plugin_in_neo4j: AssertionError: ('-path', '/sys') not found in [('find', '/'), ('/
+ok  [smoke] /dev not pruned                                                    must fail | test_smoke_checks_no_fleet_plugin_in_neo4j: AssertionError: ('-path', '/dev') not found in [('find', '/'), ('/
+ok  [smoke] no prune at all                                                    must fail | test_smoke_checks_no_fleet_plugin_in_neo4j: AssertionError: ('-path', '/proc') not found in [('find', '/'), ('
+ok  [smoke] the exec status ignored                                            must fail | test_smoke_fails_when_the_fleet_plugin_is_in_neo4j: smoke: PASS
+ok  [offline] TARGET (drift_work comment)                                        must pass | no problem
+ok  [offline] TARGET has the drift_work comment (ruling 9)                       must pass | no problem
+
+U5 controls (repo): 66 rows, 58 must-fail, 8 must-pass, 0 unexpected

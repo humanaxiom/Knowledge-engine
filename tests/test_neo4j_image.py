@@ -845,19 +845,29 @@ class Neo4jSbomCheckTest(unittest.TestCase):
 
 class Neo4jTreeCheckTest(_Tmp):
     """`[full: ke-neo4j file tree equals the official image minus products]`:
-    the logic (`sbom_check.py tree` on two `docker export` tars)."""
+    the logic (`sbom_check.py tree` on two `docker export` tars).
+
+    U5 (orchestrator U5 ruling 6; U4b review N6, security I-1;
+    design-notes "N8 amendment, U5", item 4): `tree_listing` gives path ->
+    (type, mode, uid, gid, size, link target), size the member's for a
+    regular file and 0 otherwise, and a hard link counts as its target's
+    regular file in both listings. The U4b 5-tuple shape (no size) is
+    replaced here, in the same change that makes it wrong (CLAUDE.md
+    *Contradictions*); the U4b passing case "a hard link written out as a
+    regular file" moves to the tar-based tests below, which do not depend
+    on how the listing records a hard link."""
 
     OFFICIAL = {
-        ".": ("dir", 0o755, 0, 0, ""), "var/lib/neo4j": ("dir", 0o777, 7474, 7474, ""),
-        "var/lib/neo4j/bin": ("dir", 0o755, 7474, 7474, ""),
-        "var/lib/neo4j/data": ("symlink", 0o777, 0, 0, "/data"), "data": ("dir", 0o777, 7474, 7474, ""),
-        "tmp": ("dir", 0o1777, 0, 0, ""), "usr/bin/su": ("file", 0o4755, 0, 0, ""),
-        "usr/bin/chage": ("file", 0o2755, 0, 42, ""), "usr/bin/perl5.40.1": ("hardlink", 0o755, 0, 0, ""),
-        "var/lib/neo4j/products": ("dir", 0o777, 7474, 7474, ""),
-        ns.FLEET_JAR: ("file", 0o777, 7474, 7474, ""), ns.GENAI_JAR: ("file", 0o777, 7474, 7474, ""),
+        ".": ("dir", 0o755, 0, 0, 0, ""), "var/lib/neo4j": ("dir", 0o777, 7474, 7474, 0, ""),
+        "var/lib/neo4j/bin": ("dir", 0o755, 7474, 7474, 0, ""),
+        "var/lib/neo4j/data": ("symlink", 0o777, 0, 0, 0, "/data"), "data": ("dir", 0o777, 7474, 7474, 0, ""),
+        "tmp": ("dir", 0o1777, 0, 0, 0, ""), "usr/bin/su": ("file", 0o4755, 0, 0, 72000, ""),
+        "usr/bin/chage": ("file", 0o2755, 0, 42, 80000, ""),
+        "var/lib/neo4j/products": ("dir", 0o777, 7474, 7474, 0, ""),
+        ns.FLEET_JAR: ("file", 0o777, 7474, 7474, 5000, ""), ns.GENAI_JAR: ("file", 0o777, 7474, 7474, 6000, ""),
     }
 
-    def _image(self, **change: Any) -> dict[str, tuple[str, int, int, int, str]]:
+    def _image(self, **change: Any) -> dict[str, tuple[str, int, int, int, int, str]]:
         image = {k: v for k, v in self.OFFICIAL.items() if not k.startswith("var/lib/neo4j/products")}
         for k, v in change.items():
             k = k.replace("__", "/")
@@ -869,21 +879,22 @@ class Neo4jTreeCheckTest(_Tmp):
 
     def test_neo4j_tree_check_logic(self):
         check = fn("neo4j_tree_problems")
-        passing = {"the official tree minus products/": self._image(),
-                   "a hard link written out as a regular file (N16)": self._image(
-                       **{"usr__bin__perl5.40.1": ("file", 0o755, 0, 0, "")})}
+        passing = {"the official tree minus products/": self._image()}
         failing = {
             "products/ kept": dict(self._image(), **{k: v for k, v in self.OFFICIAL.items() if "products" in k}),
             "a path missing": self._image(**{"usr__bin__su": None}),
-            "setuid lost": self._image(**{"usr__bin__su": ("file", 0o755, 0, 0, "")}),
-            "setgid group lost": self._image(**{"usr__bin__chage": ("file", 0o2755, 0, 0, "")}),
-            "sticky bit lost on /tmp": self._image(tmp=("dir", 0o777, 0, 0, "")),
-            "owner 7474 lost (COPY --chown or a root copy)": self._image(**{"var__lib__neo4j": ("dir", 0o777, 0, 0, "")}),
-            "a symlink retargeted": self._image(**{"var__lib__neo4j__data": ("symlink", 0o777, 0, 0, "/srv")}),
-            "a symlink made a directory": self._image(**{"var__lib__neo4j__data": ("dir", 0o777, 0, 0, "")}),
-            "a path added": self._image(**{"etc__ke-marker": ("file", 0o644, 0, 0, "")}),
+            "setuid lost": self._image(**{"usr__bin__su": ("file", 0o755, 0, 0, 72000, "")}),
+            "setgid group lost": self._image(**{"usr__bin__chage": ("file", 0o2755, 0, 0, 80000, "")}),
+            "sticky bit lost on /tmp": self._image(tmp=("dir", 0o777, 0, 0, 0, "")),
+            "owner 7474 lost (COPY --chown or a root copy)": self._image(
+                **{"var__lib__neo4j": ("dir", 0o777, 0, 0, 0, "")}),
+            "a symlink retargeted": self._image(**{"var__lib__neo4j__data": ("symlink", 0o777, 0, 0, 0, "/srv")}),
+            "a symlink made a directory": self._image(**{"var__lib__neo4j__data": ("dir", 0o777, 0, 0, 0, "")}),
+            "a path added": self._image(**{"etc__ke-marker": ("file", 0o644, 0, 0, 1, "")}),
             "the jar added elsewhere": self._image(**{"opt__neo4j-fleet-management-plugin.jar":
-                                                      ("file", 0o644, 0, 0, "")}),
+                                                      ("file", 0o644, 0, 0, 5000, "")}),
+            "a regular file's size changed (U5, review N6)": self._image(
+                **{"usr__bin__su": ("file", 0o4755, 0, 0, 72001, "")}),
         }
         for case, image in passing.items():
             with self.subTest(case=case):
@@ -891,22 +902,78 @@ class Neo4jTreeCheckTest(_Tmp):
         for case, image in failing.items():
             with self.subTest(case=case):
                 self.assertNotEqual(check(self.OFFICIAL, image), [], f"the check passed: {case}")
-        with self.subTest(part="tree_listing reads a docker export tar"):
-            import io
-            import tarfile
-            path = self.tmp / "export.tar"
-            with tarfile.open(path, "w") as tar:
-                for name, (kind, mode, uid, gid, link) in (("var/lib/neo4j/", ("dir", 0o777, 7474, 7474, "")),
-                                                           ("var/lib/neo4j/data", ("symlink", 0o777, 0, 0, "/data")),
-                                                           ("usr/bin/su", ("file", 0o4755, 0, 0, ""))):
-                    info = tarfile.TarInfo(name)
-                    info.type = {"dir": tarfile.DIRTYPE, "symlink": tarfile.SYMTYPE, "file": tarfile.REGTYPE}[kind]
-                    info.mode, info.uid, info.gid, info.linkname = mode, uid, gid, link
-                    tar.addfile(info, io.BytesIO(b"") if kind == "file" else None)
-            self.assertEqual(fn("tree_listing")(str(path)),
-                             {"var/lib/neo4j": ("dir", 0o777, 7474, 7474, ""),
-                              "var/lib/neo4j/data": ("symlink", 0o777, 0, 0, "/data"),
-                              "usr/bin/su": ("file", 0o4755, 0, 0, "")})
+
+    def _export(self, entries: list[tuple[str, str, int, bytes | str]]) -> str:
+        """A `docker export`-shaped tar: (name, kind, mode, content or link)."""
+        import io
+        import tarfile
+        self.n += 1
+        path = self.tmp / f"export{self.n}.tar"
+        with tarfile.open(path, "w") as tar:
+            for name, kind, mode, body in entries:
+                info = tarfile.TarInfo(name)
+                info.type = {"dir": tarfile.DIRTYPE, "symlink": tarfile.SYMTYPE, "file": tarfile.REGTYPE,
+                             "hardlink": tarfile.LNKTYPE}[kind]
+                info.mode, info.uid, info.gid = mode, 0, 0
+                data = None
+                if kind in ("symlink", "hardlink"):
+                    info.linkname = str(body)
+                elif kind == "file":
+                    raw = body if isinstance(body, bytes) else str(body).encode()
+                    info.size = len(raw)
+                    data = io.BytesIO(raw)
+                tar.addfile(info, data)
+        return str(path)
+
+    def test_tree_listing_records_regular_file_size(self):
+        import io
+        import tarfile
+        path = self.tmp / "export.tar"
+        with tarfile.open(path, "w") as tar:
+            for name, (kind, mode, uid, gid, body) in (("var/lib/neo4j/", ("dir", 0o777, 7474, 7474, b"")),
+                                                       ("var/lib/neo4j/data", ("symlink", 0o777, 0, 0, "/data")),
+                                                       ("usr/bin/su", ("file", 0o4755, 0, 0, b"abc"))):
+                info = tarfile.TarInfo(name)
+                info.type = {"dir": tarfile.DIRTYPE, "symlink": tarfile.SYMTYPE, "file": tarfile.REGTYPE}[kind]
+                info.mode, info.uid, info.gid = mode, uid, gid
+                if kind == "symlink":
+                    info.linkname = str(body)
+                if kind == "file":
+                    info.size = len(body)
+                tar.addfile(info, io.BytesIO(body) if kind == "file" else None)  # type: ignore[arg-type]
+        self.assertEqual(fn("tree_listing")(str(path)),
+                         {"var/lib/neo4j": ("dir", 0o777, 7474, 7474, 0, ""),
+                          "var/lib/neo4j/data": ("symlink", 0o777, 0, 0, 0, "/data"),
+                          "usr/bin/su": ("file", 0o4755, 0, 0, 3, "")},
+                         "tree_listing is path -> (type, mode, uid, gid, size, link target) (N8 amendment, U5, "
+                         "item 4)")
+
+    def test_tree_check_compares_size_and_hard_links_both_ways(self):
+        listing, check = fn("tree_listing"), fn("neo4j_tree_problems")
+        perl = ("usr/bin/perl", "file", 0o755, b"#!perl" * 100)
+        as_link = [("usr/", "dir", 0o755, b""), ("usr/bin/", "dir", 0o755, b""), perl,
+                   ("usr/bin/perl5.40.1", "hardlink", 0o755, "usr/bin/perl")]
+        as_file = as_link[:3] + [("usr/bin/perl5.40.1", "file", 0o755, b"#!perl" * 100)]
+
+        def problems(official: list, image: list) -> list[str]:
+            return check(listing(self._export(official)), listing(self._export(image)))
+
+        with self.subTest(case="official hard link, ke-neo4j regular file (N16, U4b)"):
+            self.assertEqual(problems(as_link, as_file), [])
+        with self.subTest(case="official regular file, ke-neo4j hard link (symmetric, U5)"):
+            self.assertEqual(problems(as_file, as_link), [], "the hard-link normalisation is one-way (review N6)")
+        with self.subTest(case="a size-only difference is a problem (U5, review N6)"):
+            bigger = as_file[:2] + [("usr/bin/perl", "file", 0o755, b"#!perl" * 101)] + as_file[3:]
+            self.assertNotEqual(problems(as_file, bigger), [], "a regular file that changed size passed")
+        with self.subTest(case="the hard link's file differs in size"):
+            other = as_file[:3] + [("usr/bin/perl5.40.1", "file", 0o755, b"x")]
+            self.assertNotEqual(problems(as_link, other), [], "a hard link and a file of another size passed")
+        with self.subTest(case="a hard link whose target is absent (fail closed)"):
+            dangling = as_link[:2] + [("usr/bin/perl5.40.1", "hardlink", 0o755, "usr/bin/perl")]
+            self.assertNotEqual(problems(as_file[:2] + [as_file[3]], dangling), [], "a dangling hard link passed")
+        with self.subTest(case="a hard link with another mode"):
+            moded = as_link[:3] + [("usr/bin/perl5.40.1", "hardlink", 0o700, "usr/bin/perl")]
+            self.assertNotEqual(problems(as_file, moded), [], "a hard link with another mode passed")
 
 
 class Neo4jCheckerCliTest(_Tmp):
@@ -1041,10 +1108,18 @@ FLEET_CHECK_RX = r"\bexec\b.*\bneo4j\b.*\bfind\b"
 
 class SmokeNoFleetPluginTest(unittest.TestCase):
     """N16 *Smoke (live stack)*: in the running neo4j service,
-    /var/lib/neo4j/products is absent and no file under / (-xdev) is named
+    /var/lib/neo4j/products is absent and no file under / is named
     *fleet-management*; whole-output compare, failing closed (U1 form). The
     fake docker models the container's files (tests/fake_docker.py, U4b:
-    FAKE_NEO4J_FILES, FAKE_NEO4J_DROP, FAKE_NEO4J_OTHER_FS)."""
+    FAKE_NEO4J_FILES, FAKE_NEO4J_DROP, FAKE_NEO4J_OTHER_FS).
+
+    U5 (U4b security L-1; orchestrator U5 ruling 8; design-notes "N8
+    amendment, U5", item 6): no `-xdev`, so the walk enters volumes and
+    mounts (/data, /logs); /proc, /sys and /dev are pruned. The U4b passing
+    case "a match on another filesystem (-xdev)" is now "a match under /proc
+    (pruned)"; a match in the /data volume fails. The fake's
+    FAKE_NEO4J_OTHER_FS paths are walked once -xdev is gone. The real step
+    runs only in `verify.sh full`."""
 
     _smoke = tss.SmokeBackendIsolatedTest._smoke
     BASH_ERROR = re.compile(r"(?m)smoke\.sh: line \d+: ")
@@ -1077,7 +1152,9 @@ class SmokeNoFleetPluginTest(unittest.TestCase):
             "clean ke-neo4j (the fake's default model)": {},
             "near misses: productsx/, a fleet- name that is not fleet-management": {
                 "FAKE_NEO4J_FILES": "/var/lib/neo4j/productsx/,/var/lib/neo4j/lib/neo4j-fleet-client.jar"},
-            "a match on another filesystem (-xdev, N16)": {"FAKE_NEO4J_OTHER_FS": "/proc/1/fleet-management"},
+            "a match under /proc (pruned, U5)": {"FAKE_NEO4J_OTHER_FS": "/proc/1/fleet-management"},
+            "matches under /sys and /dev (pruned, U5)": {
+                "FAKE_NEO4J_FILES": "/sys/kernel/fleet-management,/dev/fleet-management0"},
         }
         for case, extra in passing.items():
             with self.subTest(case=case):
@@ -1093,6 +1170,11 @@ class SmokeNoFleetPluginTest(unittest.TestCase):
                     continue
                 n, cmd = checks[0]
                 self.assertIn("-T", records[n]["argv"], "exec -T (no tty)")
+                self.assertFalse({"-xdev", "-mount"} & set(cmd), f"the find stops at mounts (L-1): {cmd}")
+                pairs = list(zip(cmd, cmd[1:]))
+                for top in ("/proc", "/sys", "/dev"):
+                    self.assertIn(("-path", top), pairs, f"the find does not prune {top}: {cmd}")
+                self.assertIn("-prune", cmd, f"the find prunes nothing: {cmd}")
                 no_pip = [m for m, svc, c in execs if svc == "api" and 'find_spec("pip")' in " ".join(c)]
                 self.assertTrue(no_pip and max(no_pip) < n, "the check runs after the no-pip check")
 
@@ -1104,6 +1186,9 @@ class SmokeNoFleetPluginTest(unittest.TestCase):
             "the plugin moved to plugins/": {
                 "FAKE_NEO4J_FILES": "/var/lib/neo4j/plugins/neo4j-fleet-management-plugin-1.2.0-v5.jar"},
             "a fleet-management file elsewhere": {"FAKE_NEO4J_FILES": "/opt/fleet-management/agent.conf"},
+            "the plugin in the neo4j-data volume (/data, U5, L-1)": {
+                "FAKE_NEO4J_OTHER_FS": "/data/plugins/neo4j-fleet-management-plugin-1.2.0-v5.jar"},
+            "a fleet-management file in /logs (U5, L-1)": {"FAKE_NEO4J_OTHER_FS": "/logs/fleet-management.log"},
             "the control path gone (an empty answer)": {"FAKE_NEO4J_DROP": "/var/lib/neo4j/LICENSE.txt"},
             "the check fails in neo4j": {"FAKE_DOCKER_HOOKS": json.dumps([{"on": FLEET_CHECK_RX, "exit": 1}])},
             # find exits non-zero when it could not read a directory, so a

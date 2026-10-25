@@ -83,3 +83,21 @@ U3 commit gate and U4 sections up to rework round 1 RED
 - New in `tests/test_sbom_obligations.py` (classes `ReworkR1*`, interface in the docstring's last section) + fixtures `tests/fixtures/sbom-u3/*.pkgs.tsv` (byte copies of u3 lists) + fake syft cache model in `tests/fake_docker.py`. H-1 per architect N8 (split on whitespace/parens, drop AND/OR/WITH any case + WITH's exception); marker `(unidentified licence text)` per row; L-3 no C0/C1 in report lines; B1 tmpfs exactly `/tmp:mode=1777` + no cache WARN (fake-modelled, bundle and offline drift runs); N5 floor on `--out` and `dirname(--out)`; N1-N4, N6 (one `drift` summary line), N7 (label `<project>[-x]`).
 - RED `u4/r1-red-verify-fast.txt`: 851 tests, 16 distinct tests fail (29 entries), all `ReworkR1*`, none else. Reach `u4/r1-target-reach-verify-fast.txt` PASS (851, targets `u4/r1-target-*` incl. bundle.sh, restored after). Real counts with the target (`u4/r1-real-counts.txt`): ke-app 19, ke-gateway 0, neo4j 28, phoenix 35, postgres 25, valkey 1 = security's.
 - Controls `u4/r1-red-mutants.txt` (`u4/r1_controls.py`): 61 rows, 0 unexpected (first run caught a prefix-match gap; a 65-hex row was added). Developer: B2 (drop sbom_check.py l.30), N8 comment; swapped-floor and same-fs floor tests are green on arrival (guards).
+
+## U4 in-progress summary (moved from the live doc 2026-10-24)
+- RED: 18 tests failing (all U4), reach PASS. GREEN: targets applied unchanged, verify fast PASS (832), full PASS (923 s); the real drift check passes on the ke-app SBOM.
+- Orchestrator rulings, points 1-8: (1) `always` key of docker/source-policy.json arrives at U4; (2) libldap/libsasl2 in ke-app only; (3) the unlicensed report is bundle.sh output (index at U9); (4) the architect confirms the third field (licenseInfoFromFiles); (5) the work dir is beside `--out` (`.ke-sbom.*` in dirname(--out)); (6) offline_check.sh pulls the base by pinned digest before the drift step, fail closed; (7) the base SBOM run inherits the offline project; (8) ADDED_PACKAGES read by AST from tests/test_notice_ke_app.py. No postgres `always` entries.
+- Q68 option 3 (orchestrator): ke-neo4j is not scanned in U4b; the scan-all-images follow-up goes to the human, with measured cost.
+- Human ruling Q67: build our own neo4j image without the commercial fleet plugin (U4b, PSC-26, design N16).
+- Review CHANGES REQUESTED: B1 (XDG_CACHE_HOME inert; add tmpfs `/tmp:mode=1777`), B2 (stale docstring at sbom_check.py l.30), N1-N8.
+- Security FAIL: H-1 (59 hash-only `LicenseRef-<64 hex>` rows escape the unlicensed report and N8); M-1 (gcc in `always`), M-2 (jrt-fs), M-3 (neo4j fleet jar, human), L-1 (busybox/apk-tools), L-3 (escape report lines).
+- Rework round 1 of 5 in progress. Architect decisions: H-1 rule in N8 (hash-only id = unlicensed in the report, unknown at U5); tmpfs `/tmp:mode=1777`; N5 floor on `--out` and `dirname(--out)`; the GCC runtime ships Debian source via the deb kind at U7 (no exemption).
+- Tester round-1 RED: 16 tests failing (all `ReworkR1*`), controls 61 rows / 0 unexpected, reach PASS (851). Expected real counts: ke-app 19, ke-gateway 0, neo4j 28, phoenix 35, postgres 25, valkey 1.
+- The U4 A34 proof (`u4/windows-run.txt`) is stale after the tmpfs change: re-run 2b and 3b.
+- Next: developer round-1 GREEN.
+
+## U4 live-doc summary (moved 2026-10-24)
+- Rework rounds used: 1 of 5.
+- H-1 closed; all six unlicensed lists accepted by security.
+- The cache warning is fixed with tmpfs `/tmp:mode=1777`.
+- Carried to U5: security L-4, L-5, I-4, review R2 and R3, and a named LicenseRef fixture row.

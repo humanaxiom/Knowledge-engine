@@ -1,4 +1,9 @@
-"""platform-sbom U4 RED: controls for tests/test_sbom_obligations.py, the U4
+"""SUPERSEDED by r1_controls.py (U4 rework round 1; review U4 R3, as U3 N9).
+
+This is the round-0 record; its anchors fit the round-0 targets only, so do
+not re-run it.
+
+platform-sbom U4 RED: controls for tests/test_sbom_obligations.py, the U4
 harness edits (tests/test_offline_check.py, tests/fake_docker.py), and the U3
 controls folded in (review N9: the reviewer's adapted anchors and 3 probe rows
 from docs/evidence/platform-sbom/u3/review_u3_controls.py, rebased on the U4

@@ -937,6 +937,239 @@ select any one of them.
    was inert, because the tmpfs took the image's 0755 `/tmp`; the tmpfs
    gains `mode=1777` (*N1 amendment, U4 rework*).
 
+### N8 amendment, U5 (architect, 2026-10-24)
+
+Records orchestrator rulings 1-7 for U5 (security U4 L-4, L-5, I-4; review
+U4 R2; U4b review N6, N7; U4b security L-1, I-2). N8 and N8a stand except
+where a bullet here says otherwise; the *precision* bullets are the
+architect's and leave the rulings unchanged.
+
+**1. Classifier input (L-4, both parts).**
+- Two "missing" predicates, never mixed:
+  - *Report* (U4, `_missing`, unchanged): absent, `null` or wrong type, or
+    exactly `""`/`NONE`/`NOASSERTION`, or hash-only. `unlicensed_report`
+    keeps it, so its membership and counts do not move.
+  - *Classifier* (U5, a new predicate; `_missing` is not edited): absent,
+    `null` or wrong type (N8 type rule), or exactly `""`/`NONE`/
+    `NOASSERTION` (case-sensitive, no strip). A hash-only field is *set*;
+    its ids are unknown. This supersedes N8 l.806-815 ("such a value is
+    *missing* too") for the classifier only.
+- Input selection reads N8 l.781-786 with the classifier predicate:
+  declared; else concluded; else the set `licenseInfoFromFiles` entries.
+  Both expression fields set: needs source if either does (N8 l.786).
+- So declared `<hash>` + concluded `MIT`: needs = true, unidentified. It is
+  not in the U4 report (concluded is set there): the L-4 gap, closed. A
+  package whose fields are all hash-only is in the U4 report *and*
+  classified needs = true, unidentified, `unlicensed` = false.
+- `NONE` and `NOASSERTION` as a leaf inside an expression (`<hash> OR
+  NOASSERTION`, `MIT AND NOASSERTION`, `(NOASSERTION)`): unknown id, exact
+  and case-sensitive like the hash rule; needs = true for that leaf, and
+  the package is unidentified. `MIT OR NOASSERTION`: needs = false (MIT
+  elected), still unidentified.
+- *Precision, WITH:* `needs(X WITH e) = needs(X)` for the leaf X (N8 says
+  `gpl(X)`; an unknown X fails closed). The exception id is not read.
+- *Precision, grammar:* SPDX 2.3 Annex D precedence, `WITH` > `AND` > `OR`;
+  parentheses override. So `MIT OR GPL-2.0-only AND Apache-2.0` is
+  `MIT OR (GPL-2.0-only AND Apache-2.0)`: needs = false. A leaf is a
+  maximal run of characters other than whitespace and parentheses (no
+  charset check; the token rule covers odd ids). Unparseable: empty,
+  unbalanced parentheses, two leaves or two operators adjacent, an
+  operator first or last, `WITH` not between a leaf and an exception id.
+- *Precision, "gpl as a word":* the N8a token rule applied to the whole
+  text (lower-case, split on `[^a-z0-9]+`, any token matches
+  `^(a|l)?gpl(v?\d+)?$`). It catches every `\bgpl\b` hit and also `LGPL`,
+  `GPLv2`, `gpl_2`: fail closed.
+
+**2. API (fixed by the orchestrator; the tester's RED uses these names and
+the developer keeps them).** All in `scripts/sbom_check.py`, standard
+library, no I/O (N3). The `index` subcommand (U9) is the only caller.
+- `licence_input(pkg: dict) -> str | None`: N8 input selection with the
+  classifier predicate; None when all three are missing (unlicensed).
+  *Precision, the string:* the selected parts joined with ` AND `, each in
+  parentheses only when there are two or more: declared alone; or
+  `(<declared>) AND (<concluded>)` when both are set and differ (equal: one
+  copy); or the set `licenseInfoFromFiles` entries in list order.
+- `is_gpl_id(id: str) -> bool`: lower-case, strip a leading `licenseref-`
+  (a superset of stripping `LicenseRef-` first), then N8's anchored
+  pattern, or else the N8a token rule.
+- `needs_source(expr: str) -> tuple[bool, dict]`: parses (operators
+  case-insensitive); `info` has at least `unparsed` (unparseable text, or a
+  leaf only the token rule caught, or a `LicenseRef-` leaf containing
+  `http`, case-insensitive) and `unidentified` (a hash leaf, by
+  `fullmatch`, or a `NONE`/`NOASSERTION` leaf). Unparseable text needs
+  source iff the token rule hits it; it is also `unidentified` if
+  `HASH_ID_RE` is found in it (listing only).
+  - *Correction (orchestrator ruling, 2026-10-24), supersedes "iff ...
+    (listing only)" above:* unparseable text needs source if the token
+    rule finds `gpl` **or** the text contains a `LicenseRef-[0-9a-f]{64}`
+    id (search, case-sensitive); such text is both `unparsed` and
+    `unidentified`. Fail closed: `Public Domain OR <hash>` needs source.
+- `classify_package(pkg: dict) -> dict`: keys `needs`, `expression`
+  (`licence_input`), `unlicensed`, `unparsed`, `unidentified`, `purl`
+  (`_purl`), `spdxid`, `name` (raw values; cleaned only when printed, 7).
+  *Precision:* `needs` is `any(needs_source(part))` over the parts
+  `licence_input` joined, and the info flags are OR-ed over them. This
+  equals `needs(AND)` when every part parses, and stops one unparseable
+  part from hiding a hash or GPL part beside it. Unlicensed: `needs` false,
+  `expression` None, both flags false.
+- `classify_document(image: str, doc: dict, always: list[dict]) ->
+  list[dict]`: one row per package in document order, DESCRIBES roots
+  (`_roots`) excluded; rows whose SPDXID `always_matches(image, doc,
+  always)` flags get `needs = True`; every row carries `always` (bool).
+  `always_matches`' problems are not returned here; U9's `index` reports
+  them (exit 1).
+
+**3. Generator digest (I-4).** A bump of the syft image digest
+(`docker-compose.sbom.yml`) is a PSC-22 re-review trigger: the hash rule is
+case-sensitive to syft's spelling. The analyst amends PSC-22's wording with
+U6.
+
+**4. `tree` (U4b review N6).** `tree_listing` gives path -> (type, mode,
+uid, gid, size, link target), size the member's for regular files, 0
+otherwise. *Precision:* tar writes a hard link with size 0, so one
+normalisation runs on both listings before the compare: a `hardlink`
+becomes `file` with its target's size (target path through `_rel`); a
+target absent or not a regular file leaves it `hardlink`, so it differs
+(fail closed). Evidence-only subcommand.
+
+**5. Scanner exemption (U4b review N7, security I-2).** The Dockerfile
+exact-line exemption in `tests/hardcoded_scan.py` also requires the previous
+physical line, right-stripped, not to end in `\` (the first line has none).
+Security re-reviews it as PS-1.2.
+
+**6. Smoke no-plugin step (U4b security L-1).** Drop `-xdev`; prune
+`/proc`, `/sys` and `/dev` (`find / \( -path /proc -o -path /sys -o -path
+/dev \) -prune -o \( <today's tests> \) -print`). Wanted output and
+fail-closed handling unchanged (any other match, or a non-zero exit, FAILs).
+
+**7. Escaping and anchors (security L-5, review R2).** Every SBOM-sourced
+string printed outside `report_lines` goes through `_clean`: `validate`'s
+SPDXID failures, `drift_problems`' Debian names (unquoted by `_named`) and
+CPython version, `psycopg_problems`. Every regex anchored with `$`
+(`SPDXID_RE`, `NAMESPACE_RE`, `RFC3339_UTC`, and `NAME_RE`/`SHA_RE` on argv)
+is used with `fullmatch`. *Precision:* prefix patterns (`PURL_RE`,
+`PURL_TYPE_RE`, the `CPython x.y.z:` header) keep `match`.
+
+**Loop mode.** The classifier loop stays `fast` (N15). Items 5 and 6 touch
+`tests/` and `scripts/smoke.sh`; the smoke step runs only in `full`, so
+item 6's GREEN is a `full` run (the commit gate's run suffices).
+
+**First failing tests (adds to N15's U5 table).**
+- declared `<hash>`, concluded `MIT`: needs, unidentified, not unlicensed;
+  all fields hash-only: same, and `unlicensed_report` still lists it;
+- `<hash> OR NOASSERTION`, `MIT AND NOASSERTION`, `<hash> WITH
+  Classpath-exception-2.0`: needs, unidentified; `MIT OR NOASSERTION`: no
+  source, unidentified;
+- precedence: `MIT OR GPL-2.0-only AND Apache-2.0` no source;
+  `GPL-2.0-only OR LGPL-2.1-only` needs; `GPL v2` unparsed, needs;
+- named LicenseRef: `LicenseRef-GPL-2.0-only` needs, not unparsed;
+  `LicenseRef-Public-Domain` no source, not unparsed;
+- `licence_input` strings above; a non-string declared falls to concluded;
+- `classify_document` skips the root, and `always` forces needs;
+- `validate` rejects SPDXID `"SPDXRef-a\n"` and prints it escaped; `tree`
+  size and symmetric hard link; scanner continuation line; smoke text has
+  no `-xdev` and prunes the three.
+
+**Tester pins accepted (orchestrator, 2026-10-24).**
+- Junk text is read by the token rule: `the LGPL, version 2.1` is
+  unparseable and needs source (token `lgpl`), listed unparsed.
+- `tree` (item 4): a hard link keeps its own mode (and uid, gid) and takes
+  its target's size.
+- Scanner (item 5): blanks after a trailing `\` still make a continuation
+  line (the right-strip), so the next line is not exempt.
+- `needs_source` never raises on any string: deeply nested parentheses must
+  not raise (no `RecursionError` escapes).
+
+**Rework round 1 (orchestrator rulings, 2026-10-24).** From U5 review B1-B3
+(`u5/review.md`) and security L-1..L-4 (`u5/security.md`). Every rule fails
+closed; no real row has these shapes today. Supersedes the bullets above
+where they conflict.
+1. *Unknown leaves, any case (B2, security L-2).* In the classifier a leaf
+   equal to `NONE` or `NOASSERTION` under ASCII case-fold (`none`,
+   `NoAssertion`) is unknown: needs = true, unidentified (item 1 said
+   case-sensitive). In unparseable text, any run between whitespace or
+   parentheses equal to either, case-insensitively, counts like a hash id:
+   needs source, unidentified. The U4 report rule (`_missing`) and the
+   classifier's whole-field predicate stay exact and case-sensitive, so a
+   whole field `none` is *set* and its one leaf is unknown.
+2. *Wider token rule (security L-1).* A hit is any lower-cased token
+   (split on `[^a-z0-9]+`) *containing* `gpl` (`gplv2orlater`, `lgpl2`;
+   it subsumes N8a's `^(a|l)?gpl(v?\d+)?$`), or the consecutive tokens
+   `general public licen[cs]e` (optionally after `lesser`, which the
+   match does not need), or the token `affero`. A hit only by the token
+   rule is listed unparsed, as before. Applies in `is_gpl_id`, the leaf
+   test and the unparseable-text fallback.
+3. *Non-ASCII (security L-3, review N2).* An expression with any non-ASCII
+   character (`not expr.isascii()`) needs source and is listed unparsed.
+   `AND`/`OR`/`WITH` are recognised only as ASCII letters, compared by
+   ASCII case-fold; never `str.upper()` on arbitrary text.
+4. *Exception id read (security L-4, review N1).* In `X WITH e`, if `e` is
+   GPL-family by the pattern or the token rule (`MIT WITH GPL-3.0-only`),
+   the leaf needs source and is listed unparsed (malformed). Otherwise
+   `needs(X WITH e) = needs(X)`, unchanged.
+5. *Drift success line (B3, L-5a).* `drift`'s success line takes the
+   CPython versions from the same non-namespaced `pkg:generic/python` set
+   that `drift_problems` checks, through `_clean`.
+6. *Per-part rule pinned (B1).* Tests: declared `Public Domain`, concluded
+   `MIT AND NOASSERTION` gives needs, unidentified; the same with the two
+   values as `licenseInfoFromFiles` entries. The tester's note calling
+   the joined text "an equivalent mutant" is wrong; the controls gain the
+   row.
+7. *U9 (review N5).* `index` never re-derives `needs` from `expression`:
+   `needs` is the per-part result `classify_package` returns, and
+   `expression` is a record only.
+8. *No change:* review N4 (a whitespace-only field is set; no strip, per
+   SPDX), the heredoc half of I-2, review N8 (CI flake risk, noted for
+   U11), I-2 `/dev/shm`.
+9. *Plural (orchestrator, 2026-10-24):* rule 2's phrase matches `general public licen[cs]es?` (plural included).
+10. *Unknown exception (orchestrator, 2026-10-24):* in `X WITH e`, an `e` that is a hash id or `NONE`/`NOASSERTION` (any case) is unknown: the leaf needs source and is unidentified.
+
+**Rework round 2 (orchestrator rulings, 2026-10-24).** From U5 review
+re-check R1-B1, R1-N1, R1-N2 (`u5/review-r1.md`; security PASS,
+`u5/security-r1.md`). Fail closed. Effect on the 7572 real leaves: none
+(all already fullmatch (a)).
+1. *Leaf charset (R1-B1).* Every leaf, the exception id after `WITH`
+   included, must fullmatch `(DocumentRef-[A-Za-z0-9.-]+:)?[A-Za-z0-9.-]+\+?`.
+   Any other leaf (`MIT,NOASSERTION`, `MIT/NOASSERTION`, `"NOASSERTION"`,
+   `LicenseRef-<hash>;`) makes the whole text unparseable, so it takes the
+   token-or-unknown fallback. Supersedes item 1's "no charset check". Rule
+   3 of round 1 (non-ASCII needs source) still applies first.
+2. *Unknown-run split.* `_unknown_in_text` splits runs on any character
+   outside `[A-Za-z0-9.+:-]`, as well as on whitespace and parentheses
+   (so `MIT,NOASSERTION` yields `NOASSERTION`).
+3. *DocumentRef prefix.* `_unknown_id` accepts an optional
+   `DocumentRef-[A-Za-z0-9.-]+:` prefix on hash ids and on
+   `NONE`/`NOASSERTION` (any case), in leaves and in fallback runs; e.g.
+   `DocumentRef-x:LicenseRef-<hash>` parses as a leaf and is unknown.
+4. *http exception (R1-N1).* A `LicenseRef-` exception id containing
+   `http` is listed unparsed, like any http `LicenseRef-` leaf.
+5. *Tests (R1-N2).* Non-ASCII test characters are written as `\u`
+   escapes in the test source.
+
+**Rework round 3 (orchestrator rulings, 2026-10-25).** From U5 review
+re-check R2-B1, R2-B2 (`u5/review-r2.md`) and security R2-L1
+(`u5/security-r2.md`): a trailing `+` or a `:`/`+` joiner hid an unknown
+id. Fail closed. Real-row effect: none (reviewer and security simulated).
+1. *Run split.* `RUN_SPLIT_RE` is `[^A-Za-z0-9.-]+`: `+` and `:` split
+   runs too (supersedes round 2 item 2's `[A-Za-z0-9.+:-]`). So
+   `MIT:NOASSERTION` and `MIT+NOASSERTION` (unparseable by round 2 item 1)
+   yield the run `NOASSERTION`. A run therefore never carries a
+   DocumentRef prefix; round 2 item 3 still applies to leaves.
+2. *Trimmed bare id.* `_unknown_id` strips a `DocumentRef-...:` prefix,
+   then trims leading and trailing `.`, `-` and `+`, and tests what is
+   left (exact 64-hex hash id, or `NONE`/`NOASSERTION` in any case). So
+   `NOASSERTION+`, `NOASSERTION.`, `-NONE` and `DocumentRef-x:NONE+` are
+   unknown.
+3. *Hash anywhere.* A leaf or run in which `HASH_ID_RE.search` finds a
+   hash is unknown (`LicenseRef-<hash>.x`, `xLicenseRef-<hash>`,
+   `LicenseRef-<hash>+`).
+4. *Unchanged:* 65 hex digits are not a hash; the exact 64 rule holds.
+5. *Pinned near-misses stay ordinary:* `see NONE.txt here`, `NOASSERTIONS
+   apply`, `MIT-NOASSERTION` (one run; trimmed, still `MIT-NOASSERTION`)
+   and `LicenseRef-NONE` (`NONE` is not the whole trimmed bare id).
+6. *Rulings 3 and 4 reconciled (orchestrator, 2026-10-25):* leaves and runs use `HASH_IN_RE = LicenseRef-[0-9a-f]{64}(?![0-9a-f])`, so a 65-hex id stays ordinary; unparseable text keeps round 0's whole-text `HASH_ID_RE.search` (so `Public Domain <65 hex>` still needs source, fail closed); `HASH_ID_RE` and the U4 report are untouched.
+7. *Listing of decorated unknowns (orchestrator, 2026-10-25):* decorated unknown leaves (`NOASSERTION+`, `<hash>.x`) are listed through "unidentified"; no additional "unparsed" flag is required.
+
 ## N9. `sources/index.json` and the stored names (PSC-15, PSC-24)
 
 Stored names are content-addressed: `app/sources/files/<sha256>`
@@ -1559,6 +1792,9 @@ Probe (2026-10-23, architect): `docker create` of the pinned image, then
 - *Smoke (live stack).* In the running `neo4j` service, `/var/lib/neo4j/products` is absent and no
   file under `/` (`-xdev`) is named `*fleet-management*`. This holds on
   every image; whole-output compare, failing closed (U1 form).
+  - *Note (architect, 2026-10-24):* `-xdev` is superseded by the N8
+    amendment, U5, item 6: the step prunes `/proc`, `/sys` and `/dev`
+    instead (security U4b L-1).
 - *First failing tests (fast):*
   - compose `neo4j` image is `ke-neo4j:${KE_IMAGE_TAG:-local}` with
     `build.dockerfile` `docker/neo4j.Dockerfile`;

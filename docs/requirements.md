@@ -3293,8 +3293,8 @@ item.
 
 ## Item: platform-sbom
 
-Status: **In progress (2026-10-23):** U0-U4 committed on `agent/platform-sbom`
-(31bfed4, 23e3c9b, 98b6d27, 464fa11, 40e2181), not pushed; U4b next (PSC-26).
+Status: **In progress (2026-10-24):** U0-U4b committed and pushed (draft PR
+#14; its CI run 40046377958 passed, verify job 32m32s); U5 (classifier) in review. *(Amended 2026-10-24, documenter, review N7)*
 *(Updated 2026-10-23, documenter, status)* Opened (2026-10-21) right after `platform-supply-chain` (split
 accepted by the orchestrator, 2026-10-21), on `agent/platform-sbom`.
 PSC-13–PSC-15 moved here from `platform-supply-chain` and were rewritten on
@@ -4237,7 +4237,9 @@ the PSC-number order above, the unit order wins. *(Updated 2026-10-23, documente
   `.pyc` files in the shipped stage. They are root-owned 0644 and not
   writable by `ke`, so they are harmless. Running `python -B` in that
   `RUN` would avoid them. Not a U1 criterion. *(Amended 2026-10-23, analyst, U1 round 3.)*
-- **Scan every bundled image (Q68; for the human).** Today
+- **Scan every bundled image (Q68).** Ruled (human, 2026-10-23, Q70): not
+  now. No scan work in platform-sbom; the text below is kept for the
+  record. *(Amended 2026-10-23, analyst, Q69/Q70)* Today
   `scripts/scan.sh` scans only `ke-app`; `ke-gateway`, `ke-neo4j` (PSC-26)
   and the vendored images (postgres, valkey, phoenix) are not scanned
   (A68). The follow-up decides whether to scan every bundled image, in
@@ -4247,7 +4249,10 @@ the PSC-number order above, the unit order wins. *(Updated 2026-10-23, documente
   added scan time and disk are measured on CI first (as PSC-16), and the
   human rules with that measurement. Not a platform-sbom criterion.
   *(Added 2026-10-23, analyst, Q68.)*
-- **GCC runtime source or exemption (for the human; decided before U7).**
+- **GCC runtime source or exemption.** Ruled (human, 2026-10-23, Q69):
+  source ships at U7. U7's lock carries the Debian `gcc-12` and `gcc-14`
+  source packages via the `deb` kind, with no exemption under the GCC
+  Runtime Library Exception (the N10 default). *(Amended 2026-10-23, analyst, Q69/Q70)*
   `upstream=gcc-12` (`ke-app`, postgres) and `upstream=gcc-14` (neo4j,
   phoenix) are in the `always` list (PSC-22). Either ship their Debian
   source via the `deb` kind or record a reviewed exemption. The design

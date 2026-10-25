@@ -89,3 +89,16 @@
   stage (`runtime` stage FROM the pinned base runs libpq5 + pip removal; last stage
   FROM scratch + COPY --from=runtime / /, ENV re-set). It amends ADR-KE-013 am.1
   D10; the architect records that amendment. Probe filed as u1/r2-pip-probe.txt.
+
+## U1 live-doc summary (moved 2026-10-24)
+- Rounds used: 4 of 5.
+- Human rulings: pip first kept, then dropped (2026-10-23).
+- Outcome: ke-app is flattened (`FROM scratch` + `COPY --from=runtime / /`, amending ADR-KE-013 D10); pip and the ensurepip wheel are gone; image 259 -> 238 MB; tar 58.8 -> 54.9 MB (-6.7%).
+- NOTICE: the Base of ke-app section (CPython is Python-2.0, points to LICENSE.txt), the incorporated, HACL* and KaRaMeL licence files, Apache-2.0.txt from the base's base-files, and the L-6 Source code sentence.
+- Security confirmed the CPython, HACL* and KaRaMeL files by a second fetch of Python-3.12.15.tar.xz; its sha256 equals the base's PYTHON_SHA256.
+- Tests added: `test_ke_app_no_pip.py`, `test_notice_ke_app.py`, the tracked-licence test; four tests re-targeted for the flattened shape; L-12 fixed in `unpinned_bases`.
+- A34 proof `u1/windows-run.txt` stands because the Dockerfile is unchanged since it.
+- Standing rule N1: no merge to main and no operator bundle before U3 (SBOM) and U9 (Source code section) land.
+- Follow-ups: I-5 (.pyc from the pip uninstall), I-7 (optional bundle.sh twin of the tracked-licence check), N14/N16 (nits).
+- Carried to later units: I-1 (U5/U6 libldap/libsasl2 GPL lines), I-3 (U9 `app/sources/`).
+- Next: U2 (PSC-20 SBOM generator pin, compose, refusal).

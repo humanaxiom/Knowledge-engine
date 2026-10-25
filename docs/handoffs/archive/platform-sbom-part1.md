@@ -142,3 +142,41 @@
 - U0: `psycopg` (no extra) in deps; groups `pq-c` (`psycopg[c]`) and `pq-build` (hash-locked build deps, `no-build-isolation-package`); builder and ke-gates compile with `--locked --no-binary-package psycopg-c`; runtime `libpq5=${LIBPQ_VERSION}` (one global ARG, also `libpq-dev`); hosts' `uv run` gets pure psycopg and compiles nothing; psycopg-binary leaves the lock.
 - Proof in the smoke stage (live `api`: impl `c`, versions equal pin, ldd Debian libpq); gates test checks ke-gates. Confirm at GREEN: uv flags and psycopg-c build requires (not checked online, no network).
 - Next: tester RED on U0, `test_app_builder_resolves_psycopg_c_from_locked_sdist` first (N0 lists 8 tests); U0 loop full, A34 Windows proof.
+
+## Plan-phase detail (moved from the live doc 2026-10-24)
+Opener (2026-10-22 orchestrator), bullets 3 onward:
+- Settled, not re-opened: Q57 (SPDX 2.3 JSON per bundled image, offline at
+  bundle time), Q58 (source offers built now), R4/A43, R7 (stack images
+  only), Q48 (hash provenance for new pins and fetched source).
+- Known drift to reconcile: PSC-14 names "the `uv` binary" in ke-app's base,
+  but platform-supply-chain unit 3 (D10/PSC-17) removed uv from ke-app.
+  The ke-app image is now multi-stage; check what the runtime stage holds.
+- Open for the human (analyst drafts each with a recommendation):
+  1. a failed source fetch: fail closed (as Q56(b) for the scan DB) or not;
+  2. whether Q60's 3-min CI cost trigger applies to this item;
+  3. whether `verify.sh full` builds the whole source set, given the 7 GiB
+     disk floor (R6) and the 9.1 GiB free measured on CI.
+- Constraints: CI cost and disk claims are measured on CI only; the floor
+  is never lowered to pass; a new pinned tool needs digest + provenance
+  (PSC-1 form); A34 Windows proof if Dockerfiles or compose files change;
+  every product item ships its own e2e test (human, 2026-10-22), so the
+  analyst says whether the SBOM/source bundle needs one here.
+- Next role (analyst): confirm or correct the criteria, number any new
+  ones PSC-19+, write the three questions into `docs/open-questions.md`
+  (next free Q number) with recommendations, append here, log.
+
+Plan phase, further rulings:
+- 2026-10-22 orchestrator, ADR rulings (human new Q64: psycopg on Debian libpq, no `srpm` kind, adds U0): config digest names the image (analyst amends PSC-13/19); SBOMs, sources, notice copies under `app/`; classifier wider than PSC-15 (AGPL, GPL-1.0, LGPL-2.0) confirmed; neo4j jars decided at U3, back to architect if any; CLAUDE.md wording goes to the human at U8.
+- 2026-10-22 analyst (Q64): PSC-25 added, PSC-13/19 use config digest, vendored libs dropped from PSC-14/15/22; Q65 (Windows host lock) and Q66 (libpq 15 vs 16+) opened.
+- 2026-10-22 orchestrator, rulings: Q65 (orchestrator) shipped ke-app has no psycopg-binary, lock/dev-host resolution is the architect's, `--locked` kept; Q66 (orchestrator) accept Debian 12 libpq 15, security re-rates `require_auth` at U0 review.
+- 2026-10-22 architect (Q64): ADR point 0 (U0) added; Q65/Q66 folded in.
+- Final U0 tests (requirements names win):
+  - `test_ke_app_resolves_psycopg_c_not_binary` (architect's #1)
+  - `test_runtime_stage_has_no_compiler` (architect's #4, was `test_app_runtime_stage_installs_only_libpq5`)
+  - `test_pyproject_puts_psycopg_c_in_image_groups_only`
+  - `test_app_dockerfile_builds_psycopg_c_on_pinned_libpq`
+  - `test_libpq_pin_matches_bookworm_base`
+  - `test_gates_psycopg_is_c_impl_on_debian_libpq`
+  - `test_smoke_checks_psycopg_c_impl_in_api`
+  - `test_notice_psycopg_section_matches_lock`
+- Next: tester RED on U0.

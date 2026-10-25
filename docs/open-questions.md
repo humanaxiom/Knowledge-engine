@@ -296,6 +296,7 @@ Q66 (raised by the analyst 2026-10-22, from the Q64 amendments) were
 resolved by the orchestrator on 2026-10-22. **Q67 was resolved by the
 human on 2026-10-23** (security U4 M-3); Q68 (raised by the analyst
 2026-10-23, from Q67) was resolved by the orchestrator on 2026-10-23.
+**Q69 and Q70 were resolved by the human on 2026-10-23.** *(Amended 2026-10-23, analyst, Q69/Q70)*
 
 - **Q61. Resolved 2026-10-22 (human ruling).** **A61:** FAIL CLOSED on a
   failed or checksum-mismatched source fetch: one call, no retry, naming the
@@ -617,6 +618,31 @@ human on 2026-10-23** (security U4 M-3); Q68 (raised by the analyst
     digest bump. The scan time it adds is measured on CI (PSC-16).
   - Who rules: the orchestrator; the human for option 2, since it changes
     the Q42 policy.
+
+- **Q69. Resolved 2026-10-23 (human ruling).** **A69:** source ships.
+  U7's generated source lock carries the Debian `gcc-12` and `gcc-14`
+  source packages via the `deb` kind, with no exemption under the GCC
+  Runtime Library Exception. This is the design default (architecture
+  N10). *(Amended 2026-10-23, analyst, Q69/Q70)*
+
+  Original question, kept for the record: *Q69. For the GCC runtime
+  libraries (`upstream=gcc-12` in `ke-app` and postgres, `upstream=gcc-14`
+  in neo4j and phoenix; PSC-22 `always` list), does the bundle ship
+  their Debian source or record a reviewed exemption?* Raised as a
+  platform-sbom follow-up (`docs/requirements.md` § "Item:
+  platform-sbom", "Follow-ups (not in platform-sbom)"), to be decided
+  before U7. Who rules: the human.
+
+- **Q70. Resolved 2026-10-23 (human ruling).** **A70:** not now. The
+  bundled images other than `ke-app` (`ke-gateway`, `ke-neo4j`, and the
+  vendored postgres, valkey and phoenix) are not scanned for now. The
+  Q68 follow-up "Scan every bundled image" is closed as deferred by the
+  human, with no work in platform-sbom. *(Amended 2026-10-23, analyst, Q69/Q70)*
+
+  Original question, kept for the record: *Q70. Does the image scan
+  cover every bundled image, in report-only mode (a Q42 policy change)
+  or fail mode (PSC-4, PSC-5), with the CI cost measured first?* Raised
+  by A68. Who rules: the human.
 
 ## platform-skeleton
 

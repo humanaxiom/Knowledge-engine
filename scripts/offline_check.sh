@@ -311,6 +311,7 @@ df_log "after drift check"
 neo4j_ref="$(sed -n 's/.*"ref": "\(ke-neo4j:[^"]*\)".*/\1/p' "$bundle_rel/bundle.json" | head -n 1)"
 [ -n "$neo4j_ref" ] || die "bundle.json names no ke-neo4j image"
 neo4j_work="$(mktemp -d "$PWD/dist/.ke-neo4j.XXXXXXXX")" || die "cannot create the ke-neo4j work dir"
+# drift_work is reused so the EXIT trap removes this work dir too (U4b review).
 drift_work="$neo4j_work"
 docker image inspect --format '{{json .Config}}' "$neo4j_base" > "$neo4j_work/official-config.json" \
   || die "docker image inspect of the ke-neo4j base failed ($neo4j_base)"

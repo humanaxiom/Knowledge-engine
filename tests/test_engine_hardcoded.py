@@ -165,6 +165,33 @@ class ScannerContractTest(unittest.TestCase):
                                   ["DEFAULT_COLLECTOR"], EXEMPTIONS),
                             "a bare symbol line (no assignment) was exempted in a Python file")
 
+    def test_dockerfile_exemption_skips_continuation_lines(self):
+        # platform-sbom U5 (U4b review N7, security I-2; orchestrator U5
+        # ruling 7; design-notes "N8 amendment, U5", item 5): the exempt text
+        # on a continuation line of another instruction is not exempt. The
+        # previous physical line, right-stripped, must not end in `\`.
+        path, line = "docker/neo4j.Dockerfile", "EXPOSE 7473 7474 7687\n"
+        for case, text in {"RUN continued": "RUN echo \\\n" + line,
+                           "RUN continued, trailing blanks after the backslash": "RUN echo \\  \t\n" + line,
+                           "ENV continued": "ENV A=1 \\\n" + line,
+                           "after the real file's ENV continuation lines": "ENV PATH=/bin \\\n    LANG=C \\\n" + line}.items():
+            with self.subTest(case=case):
+                found = _scan({path: text}, ["7687"], EXEMPTIONS)
+                self.assertTrue([f for f in found if f.value == "7687"],
+                                f"the exempt line was exempted as a continuation line ({case})")
+        for case, text in {"first line": line, "after a complete instruction": "WORKDIR /var/lib/neo4j\n" + line,
+                           "after a blank line": "RUN echo \\\n    done\n\n" + line,
+                           "after a line with a backslash inside": 'RUN echo "a\\b" done\n' + line}.items():
+            with self.subTest(case=case):
+                self.assertEqual(_scan({path: text}, ["7687"], EXEMPTIONS), [], case)
+        with self.subTest(case="the real docker/neo4j.Dockerfile is still exempt"):
+            real = (ROOT / path).read_text(encoding="utf-8")
+            self.assertIn(line, real.replace("\r\n", "\n"), "docker/neo4j.Dockerfile has no EXPOSE line")
+            self.assertEqual(_scan({path: real}, ["7687"], EXEMPTIONS), [])
+        with self.subTest(case="the Python assignment exemption is unchanged after a backslash line"):
+            text = 'X = "a" \\\n    "b"\nDEFAULT_COLLECTOR = "http://localhost:47101"\n'
+            self.assertEqual(_scan({"harness_telemetry/tracing.py": text}, ["47101"], EXEMPTIONS), [])
+
     def test_allowed_locations_are_never_flagged(self):
         for path in ("config/defaults.yaml", ".env.example", "config/verify.env",
                      "tests/test_x.py", "docs/architecture.md"):

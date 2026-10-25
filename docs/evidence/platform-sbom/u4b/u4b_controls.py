@@ -1,4 +1,8 @@
-"""platform-sbom U4b RED: controls for tests/test_neo4j_image.py (PSC-26).
+"""SUPERSEDED by u5/u5_controls.py (U5: its `-xdev` smoke anchor and 5-tuple tree rows go stale).
+
+This is the U4b record; do not re-run it against the U5 files.
+
+platform-sbom U4b RED: controls for tests/test_neo4j_image.py (PSC-26).
 
 Never writes the repository. It builds a temporary checkout holding the
 files the harnesses read, with the U4b targets (docs/evidence/platform-sbom/

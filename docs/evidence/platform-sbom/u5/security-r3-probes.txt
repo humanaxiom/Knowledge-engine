@@ -1,0 +1,80 @@
+platform-sbom U5 rework r3: security probes (security, 2026-10-25)
+Tree: HEAD c300d88 + working tree; scripts/sbom_check.py == u5/r3-target-sbom_check.py (cmp).
+Script: u5/security_r3_probes.py (r3 vs u5/r2-target-sbom_check.py and HEAD). Gates image, python -I,
+COMPOSE_PROJECT_NAME=ke-security-u5, scratch dir (script + git show HEAD:scripts/sbom_check.py) read-only at /scratch. Output unedited.
+
+ Container ke-security-u5-gates-run-e5ec9dbc4c5a Creating 
+ Container ke-security-u5-gates-run-e5ec9dbc4c5a Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.89ms
+Installed 1 package in 1ms
+== R3-A. R2-L1, review R2-B1/B2 inputs, pinned near-misses, new tricks ==
+  R2-L1 <hash>+                                        needs=True  unparsed=False unident=True  (r2 needs=False unident=False)
+  R2-L1 MIT WITH <hash>+                               needs=True  unparsed=False unident=True  (r2 needs=False unident=False)
+  R2-L1 <hash>.x                                       needs=True  unparsed=False unident=True  (r2 needs=False unident=False)
+  R2-L1 x<hash>                                        needs=True  unparsed=False unident=True  (r2 needs=False unident=False)
+  R2-L1 MIT AND NOASSERTION.                           needs=True  unparsed=False unident=True  (r2 needs=False unident=False)
+  R2-L1 MIT AND NOASSERTION+                           needs=True  unparsed=False unident=True  (r2 needs=False unident=False)
+  R2-L1 MIT AND -NONE                                  needs=True  unparsed=False unident=True  (r2 needs=False unident=False)
+  R2-L1 65-hex stays ordinary                          needs=False unparsed=False unident=False (r2 needs=False unident=False)
+  R2-L1 Public Domain <65 hex> (junk)                  needs=True  unparsed=True  unident=True  (r2 needs=True  unident=True)
+  B2 MIT:NOASSERTION                                   needs=True  unparsed=True  unident=True  (r2 needs=False unident=False)
+  B2 MIT+NOASSERTION                                   needs=True  unparsed=True  unident=True  (r2 needs=False unident=False)
+  B1 DocumentRef-x:NONE+                               needs=True  unparsed=False unident=True  (r2 needs=False unident=False)
+  I-7 documentref-x:NONE                               needs=True  unparsed=True  unident=True  (r2 needs=False unident=False)
+  I-7 DocumentRef-a:DocumentRef-b:NONE                 needs=True  unparsed=True  unident=True  (r2 needs=False unident=False)
+  I-7 DocumentRef-:NONE                                needs=True  unparsed=True  unident=True  (r2 needs=False unident=False)
+  I-7 MIT AND NONE:                                    needs=True  unparsed=True  unident=True  (r2 needs=False unident=False)
+  pinned see NONE.txt here                             needs=False unparsed=True  unident=False (r2 needs=False unident=False)
+  pinned NOASSERTIONS apply                            needs=False unparsed=True  unident=False (r2 needs=False unident=False)
+  pinned MIT-NOASSERTION                               needs=False unparsed=False unident=False (r2 needs=False unident=False)
+  pinned LicenseRef-NONE                               needs=False unparsed=False unident=False (r2 needs=False unident=False)
+  trick ..NONE..                                       needs=True  unparsed=False unident=True  (r2 needs=False unident=False)
+  trick +-.NOASSERTION.-+                              needs=True  unparsed=True  unident=True  (r2 needs=False unident=False)
+  trick NONE.NONE                                      needs=False unparsed=False unident=False (r2 needs=False unident=False)
+  trick <hash>F (upper hex after)                      needs=True  unparsed=False unident=True  (r2 needs=False unident=False)
+  trick <hash> with upper hex inside                   needs=False unparsed=False unident=False (r2 needs=False unident=False)
+  trick LicenseRef-<hash> split by +                   needs=False unparsed=True  unident=False (r2 needs=False unident=False)
+  trick MIT WITH NONE.                                 needs=True  unparsed=False unident=True  (r2 needs=False unident=False)
+  trick MIT OR NOASSERTION+ (elected)                  needs=False unparsed=False unident=True  (r2 needs=False unident=False)
+  trick DocumentRef-x:-NONE-                           needs=True  unparsed=False unident=True  (r2 needs=False unident=False)
+  trick DocumentRef-NONE:MIT                           needs=False unparsed=False unident=False (r2 needs=False unident=False)
+  regress MIT OR GPL-2.0-only AND Apache-2.0           needs=False unparsed=False unident=False (r2 needs=False unident=False)
+  regress GPL-2.0+                                     needs=True  unparsed=False unident=False (r2 needs=True  unident=False)
+  regress MIT+ OR Apache-2.0+                          needs=False unparsed=False unident=False (r2 needs=False unident=False)
+
+== R3-B. Monotonicity r2 -> r3 ==
+  150000 expressions: {'both': 94851, 'r3_only': 10088, 'r2_only': 0, 'neither': 45061}; needs regressions: 0 []; lost listings: 0 []
+
+== R3-C. Real rows r2 -> r3 ==
+  ke-app     rows=153 needs r3=102 (r2 102) changed=0
+  ke-gateway rows=71 needs r3=17 (r2 17) changed=0
+  ke-neo4j   rows=341 needs r3=166 (r2 166) changed=0
+  phoenix    rows=277 needs r3=33 (r2 33) changed=0
+  postgres   rows=149 needs r3=130 (r2 130) changed=0
+  valkey     rows=24 needs r3=12 (r2 12) changed=0
+
+== R3-D. unlicensed_report untouched vs HEAD ==
+  sources identical: True | HASH_ID_RE unchanged: True
+  ke-app     HEAD= 19 r3= 19 equal=True lines-equal=True
+  ke-gateway HEAD=  0 r3=  0 equal=True lines-equal=True
+  neo4j      HEAD= 28 r3= 28 equal=True lines-equal=True
+  phoenix    HEAD= 35 r3= 35 equal=True lines-equal=True
+  postgres   HEAD= 25 r3= 25 equal=True lines-equal=True
+  valkey     HEAD=  1 r3=  1 equal=True lines-equal=True
+
+== R3-E. ReDoS / cost: HASH_IN_RE, the trim, RUN_SPLIT_RE, _unknown_id, needs_source ==
+  HASH_IN_RE.search LicenseRef- * 90k                        0.001s None
+  HASH_IN_RE.search LicenseRef- + hex*1M                     0.001s None
+  HASH_IN_RE.search (LicenseRef- + 63 hex) * 13k             0.001s None
+  HASH_IN_RE.search (LicenseRef- + 65 hex) * 13k             0.001s None
+  _unknown_id .-+ * 333k + NONE + .-+ * 333k                 0.005s True
+  _unknown_id DocumentRef-x: + .*1M                          0.002s False
+  RUN_SPLIT_RE.split +:*500k                                 0.001s 2
+  _unknown_in_text a+ * 500k                                 0.112s False
+  _unknown_in_text (NONE: )*100k                             0.011s True
+  needs_source 1MB .-+ junk                                  0.093s (False, {'unparsed': True, 'unidentified': False})
+  needs_source width 200k MIT AND NOASSERTION.               0.137s (True, {'unparsed': True, 'unidentified': True})
+  needs_source width 100k MIT OR <hash>+                     0.114s (True, {'unparsed': True, 'unidentified': True})
+  needs_source depth 100000 NONE+                            0.018s (True, {'unparsed': True, 'unidentified': True})

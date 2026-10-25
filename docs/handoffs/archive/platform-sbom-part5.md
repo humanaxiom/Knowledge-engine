@@ -97,3 +97,24 @@
 ## 2026-10-23 — tester (U3 Windows proof)
 - A34 PASS (`u3/windows-run.txt`): U2 driver/shim/phases, ke-tester-u3win, tag u3win-98b6d27; 2b shows `user: 1000:1000`, KE_SBOM_USER unset/empty fail closed (PowerShell, Git Bash); bundle.sh from Git Bash exit 0 in 96 s, 6 SBOMs validate() [], 6/6 namespaces, manifest verifies; launch 7/7, 4b/4c, refusal, teardown, 7 Windows tests, verify fast PASS (812, 556 s); nothing left; 7 sha256 equal start/end. Finding: bundle.sh on Windows needs jq on PATH in LF mode (winget jq.exe writes CRLF; run used `jq.exe -b`); host docs should say so.
 - Security M-1: images proven fresh (ke-app 2becf293: no psycopg_binary/pip, libpq5 15.19-0+deb12u1); `u3/sboms/*.pkgs.tsv`, ke-gateway/valkey JSON and `u3/gpl-family-packages.md` regenerated from that bundle. ke-app 700/83/505 -> 154/84/2 (pkgs/GPL/no-licence; stale had 493 cargo, pip, psycopg-binary); ke-gateway 72/19/1 unchanged (only the pkg:oci row differs); neo4j jna + jaxb-api unchanged; other four TSVs byte-identical.
+
+## U2 live-doc summary (moved 2026-10-24)
+- syft v1.54.1 (grype v0.120.1's syft) pinned by index digest sha256:3eb5379b...49b1aa; provenance PASS (unsigned image; signed release checksums verify, amd64/arm64 binaries byte-identical).
+- Hardened `sbom` service (`docker-compose.sbom.yml`): no network, read-only root, tmpfs /tmp, cap_drop ALL, no-new-privileges, /in ro, /out the only rw mount, 8 `SYFT_*=false` keys.
+- `bundle.sh` refuses before any write if the generator image is absent; it never pulls.
+- Interim pull in `offline_check.sh` before `bundle.sh` (fails closed) until U8.
+- Rework rounds used: 0 of 5; review APPROVED, security PASS, A34 PASS, verify full PASS 699 s.
+- Standing rule (security G5): record provenance BEFORE the first run of a newly pinned image.
+
+## U3 live-doc summary (moved 2026-10-24)
+- Outcome: one SPDX SBOM per bundled image in `app/sboms/`. Fresh evidence: ke-app 154 packages / 84 GPL-family / 2 unlicensed; neo4j 342. The earlier 700/505 came from a stale pre-U0 image (security M-1, fixed by regeneration).
+- `documentNamespace` is `urn:uuid:<uuid4>`, fresh per document (orchestrator ruling b).
+- `scripts/sbom_check.py` (validate/finish) checks and finishes each document.
+- syft runs as the caller (`KE_SBOM_USER`, `user:` in the compose file).
+- Windows-host fixes in `bundle.sh`: `hostpath`/`cygpath -m`, `MSYS_NO_PATHCONV=1`, mkdir then chmod.
+- Ruling 5: jna and javassist are Apache-2.0 OR (exempt at U6); jaxb-api takes the CDDL branch (maven sources jar at U7); classifier token rule at U5; NOASSERTION goes to the U4 report; `XDG_CACHE_HOME=/tmp/cache` at U4.
+- Review APPROVED (nits N1-N9); security PASS (M-1 fixed; L-1 revision-label check deferred to U10).
+- A34 PASS (`u3/windows-run.txt`); verify full PASS 855 s.
+- Carry to U4: review N1 (sbom_check.py docstring), N2 (L-13 cite in a bundle.sh comment), N3 (design notes lack hostpath/MSYS), N4 (tests for cygpath/MSYS/chmod), N5/ruling (XDG_CACHE_HOME), N6 (disk floor on TMPDIR, or work dir next to --out), N7 (uv.lock map keyed by name), N9 (stale u3_controls anchors).
+- Tester finding (documenter): Windows build hosts need jq on PATH, and jq.exe needs `-b` (CRLF).
+- U3 committed 464fa11 (review APPROVED, security PASS, A34 PASS, orchestrator verify full PASS 856 s).
