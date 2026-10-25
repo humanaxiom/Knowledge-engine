@@ -1645,15 +1645,17 @@ def u6_fixture_keys(image: str) -> set[str]:
     return {(r["purl"] or "").split("?", 1)[0].split("#", 1)[0] for r in ss.u3_rows(fixture)}
 
 
-def u6_policy_problems(data: Any, names: set[str] | None = None) -> list[str]:
+def u6_policy_problems(data: Any, names: set[str] | None = None, today: Any = None) -> list[str]:
     """N10 schema (U6): exactly hosts, always, exempt; hosts lower-case DNS
     names (no scheme, path, port or wildcard), unique, non-empty; always as
     U4; exempt entries {image, package, reason, reviewed}, image a bundled
     image, package a versioned purl present at that version in the image's
-    fixture, reason non-blank, reviewed `security YYYY-MM-DD` (a real date),
-    no duplicate (image, package)."""
+    fixture, reason non-blank, reviewed `security YYYY-MM-DD` (a real date,
+    not after `today`, which defaults to the UTC date: U7a carry (g), review
+    U6 N3 / security I-1; never local time), no duplicate (image, package)."""
     import datetime
     names = bundled_names() if names is None else names
+    today = today or datetime.datetime.now(datetime.timezone.utc).date()
     if not isinstance(data, dict):
         return ["docker/source-policy.json is not a JSON object"]
     p = []
@@ -1702,13 +1704,19 @@ def u6_policy_problems(data: Any, names: set[str] | None = None) -> list[str]:
             p.append(f"exempt[{i}] reviewed {e.get('reviewed')!r} is not `security YYYY-MM-DD`")
         else:
             try:
-                datetime.date.fromisoformat(m.group(1))
+                if datetime.date.fromisoformat(m.group(1)) > today:
+                    p.append(f"exempt[{i}] reviewed {e.get('reviewed')!r} is after today ({today}, UTC)")
             except ValueError:
                 p.append(f"exempt[{i}] reviewed {e.get('reviewed')!r} is not a real date")
         if (image, package) in seen:
             p.append(f"exempt[{i}] duplicates ({image}, {package})")
         seen.add((image, package))
     return p
+
+
+def u7a_utc_today() -> Any:
+    import datetime
+    return datetime.datetime.now(datetime.timezone.utc).date()
 
 
 def u6_good_policy() -> dict[str, Any]:
@@ -1781,6 +1789,8 @@ class PolicyU6SchemaTest(unittest.TestCase):
             "reviewed with a short date": change(lambda d: d["exempt"][0].update(reviewed="security 2026-10-5")),
             "reviewed with an impossible date": change(lambda d: d["exempt"][0].update(reviewed="security 2026-13-45")),
             "reviewed with trailing text": change(lambda d: d["exempt"][0].update(reviewed="security 2026-10-25 ok")),
+            "reviewed tomorrow (UTC; U7a carry (g))": change(lambda d: d["exempt"][0].update(
+                reviewed=f"security {u7a_utc_today() + __import__('datetime').timedelta(days=1)}")),
             "a blank reason": change(lambda d: d["exempt"][0].update(reason="  ")),
             "a versionless package": change(lambda d: d["exempt"][0].update(package="pkg:maven/com.sun.jna/jna")),
             "a package at another version": change(lambda d: d["exempt"][0].update(package="pkg:maven/com.sun.jna/jna@5.16.0")),
@@ -1796,6 +1806,15 @@ class PolicyU6SchemaTest(unittest.TestCase):
                 self.assertNotEqual(u6_policy_problems(data), [], f"the schema accepts {case}")
         with self.subTest(case="an empty exempt list is a valid shape"):
             self.assertEqual(u6_policy_problems(change(lambda d: d.update(exempt=[]))), [])
+        with self.subTest(case="reviewed today (UTC) is accepted (U7a carry (g))"):
+            self.assertEqual(u6_policy_problems(change(lambda d: d["exempt"][0].update(
+                reviewed=f"security {u7a_utc_today()}"))), [])
+        with self.subTest(case="`today` is a parameter: the committed date against a fixed today, no clock"):
+            import datetime
+            committed = change(lambda d: d["exempt"][0].update(reviewed="security 2026-10-25"))
+            self.assertEqual(u6_policy_problems(committed, today=datetime.date(2026, 10, 25)), [])
+            self.assertNotEqual(u6_policy_problems(committed, today=datetime.date(2026, 10, 24)), [],
+                                "a review dated after `today` is accepted")
 
 
 if __name__ == "__main__":

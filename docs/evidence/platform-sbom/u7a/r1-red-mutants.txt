@@ -1,0 +1,94 @@
+$ COMPOSE_FILE=docker-compose.yml COMPOSE_PROJECT_NAME=ke-tester-u7ar1 docker compose --env-file .env.example --profile gates run --rm gates uv run --locked python docs/evidence/platform-sbom/u7a/r1_controls.py   (base: u7a/r1-target-sbom_check.py; "U7a checker" rows run u7a/target-sbom_check.py; HEAD rows read git HEAD 66781a9 (U6); FULL output; tester, U7a rework r1 RED, 2026-10-25)
+ Container ke-tester-u7ar1-gates-run-02c0cf2b768b Creating 
+ Container ke-tester-u7ar1-gates-run-02c0cf2b768b Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.74ms
+Installed 1 package in 1ms
+ok  [target] TARGET: the 24 lock tests                                          must pass | no problem
+ok  [target] TARGET: the 2 carry rows (g), (h)                                  must pass | no problem
+ok  [target] TARGET: 44 classifier/policy regression tests                      must pass | no problem
+ok  [head] HEAD (U6): test_mapping_table                                      must fail | test_mapping_table: AssertionError: scripts/sbom_check.py has no lock_needs() (U7a interface, N5 amendment U7;
+ok  [head] HEAD (U6): test_needs_from_the_fixtures                            must fail | test_needs_from_the_fixtures: AssertionError: scripts/sbom_check.py has no lock_needs() (U7a interface, N5 ame
+ok  [head] HEAD (U6): test_bad_shapes                                         must fail | test_bad_shapes: AssertionError: scripts/sbom_check.py has no lock_problems() (U7a interface, N5 amendment U7;
+ok  [head] HEAD (U6): test_good_full_lock_passes                              must fail | test_good_full_lock_passes: AssertionError: scripts/sbom_check.py has no lock_problems() (U7a interface, N5 am
+ok  [head] HEAD (U6): test_good_small_lock_passes                             must fail | test_good_small_lock_passes: AssertionError: scripts/sbom_check.py has no lock_problems() (U7a interface, N5 a
+ok  [head] HEAD (U6): test_lock_text_is_canonical                             must fail | test_lock_text_is_canonical: AssertionError: scripts/sbom_check.py has no lock_text() (U7a interface, N5 amend
+ok  [head] HEAD (U6): test_a_missing_key_names_every_package                  must fail | test_a_missing_key_names_every_package: AssertionError: scripts/sbom_check.py has no lock_needs() (U7a interfa
+ok  [head] HEAD (U6): test_a_stale_key_is_reported                            must fail | test_a_stale_key_is_reported: AssertionError: scripts/sbom_check.py has no lock_problems() (U7a interface, N5 
+ok  [head] HEAD (U6): test_arches                                             must fail | test_arches: AssertionError: scripts/sbom_check.py has no lock_problems() (U7a interface, N5 amendment U7; tes
+ok  [head] HEAD (U6): test_small_lock_missing_key_exact_message               must fail | test_small_lock_missing_key_exact_message: AssertionError: scripts/sbom_check.py has no lock_problems() (U7a i
+ok  [head] HEAD (U6): test_sample_keys                                        must fail | test_sample_keys: AssertionError: scripts/sbom_check.py has no sample_keys() (U7a interface, N5 amendment U7; 
+ok  [head] HEAD (U6): test_lock_check_cli                                     must fail | test_lock_check_cli: sbom_check.py: error: argument command: invalid choice: 'lock-check' (choose from finish,
+ok  [u7a] U7a checker: test_neo4j_entry_binds_one_sha256_file                must fail | test_neo4j_entry_binds_one_sha256_file: AssertionError: [] is not true : two files: no problem contains 'neo4j
+ok  [u7a] U7a checker: test_printable_ascii_before_parsing                   must fail | test_printable_ascii_before_parsing: AssertionError: [] is not true : a tab in the url host: no problem contai
+ok  [u7a] U7a checker: test_url_round_trips_and_scheme_is_lower_case_https   must fail | test_url_round_trips_and_scheme_is_lower_case_https: AssertionError: [] is not true : an empty query (`?`): no
+ok  [u7a] U7a checker: test_any_pgdg_file_is_a_problem_until_q71             must fail | test_any_pgdg_file_is_a_problem_until_q71: AssertionError: 0 != 2 : each of the 2 pgdg files is a problem: ['l
+ok  [u7a] U7a checker: test_good_names (guard)                               must pass | no problem
+ok  [u7a] U7a checker: test_per_kind_hosts_paths_and_names                   must fail | test_per_kind_hosts_paths_and_names: AssertionError: [] is not true : a maven jar named evil-1.0-sources.jar: 
+ok  [u7a] U7a checker: test_deb_needs_more_than_the_dsc                      must fail | test_deb_needs_more_than_the_dsc: AssertionError: [] is not true : a .dsc-only deb: no problem contains 'deb: 
+ok  [u7a] U7a checker: test_exact_key_sets                                   must fail | test_exact_key_sets: AssertionError: [] is not true : "skip": true on a deb entry: no problem contains 'unexpe
+ok  [u7a] U7a checker: test_wrong_types_are_problems                         must fail | test_wrong_types_are_problems: AssertionError: arches ["amd64", 1]: lock_problems raised TypeError: '<' not su
+ok  [u7a] U7a checker: test_keys_printed_clean                               must fail | test_keys_printed_clean: AssertionError: False is not true : a key from the SBOM is printed raw (L-3): ['postg
+ok  [u7a] U7a checker: test_size_cap                                         must fail | test_size_cap: AssertionError: [] is not true : size 4 GiB + 1: no problem contains 'is not an int in 1..42949
+ok  [u7a] U7a checker: test_lock_check_never_shows_a_traceback               must fail | test_lock_check_never_shows_a_traceback: AssertionError: 'Traceback' unexpectedly found in 'Traceback (most re
+ok  [u7a] U7a checker: test_bad_shapes                                       must fail | test_bad_shapes: AssertionError: [] is not true : the lock check accepts a file with an extra key (no problem 
+ok  [head] HEAD (U6): test_policy_schema_rejects_bad_shapes (carry guard, green before U7a) must pass | no problem
+ok  [head] HEAD (U6): test_exempt_matches_strip_the_package_subpath (carry guard, green before U7a) must pass | no problem
+ok  [mutant] a kind's host check dropped (neo4j)                                must fail | test_bad_shapes: AssertionError: [] is not true : the lock check accepts host evil.github.com (no problem cont
+ok  [mutant] a kind's host check dropped (pypi)                                 must fail | test_bad_shapes: AssertionError: [] is not true : the lock check accepts a pypi file on pypi.org (metadata onl
+ok  [mutant] http accepted                                                      must fail | test_bad_shapes: AssertionError: [] is not true : the lock check accepts http (no problem contains 'url scheme
+ok  [mutant] userinfo accepted                                                  must fail | test_bad_shapes: AssertionError: [] is not true : the lock check accepts userinfo (no problem contains 'url ca
+ok  [mutant] a stale entry ignored                                              must fail | test_a_stale_key_is_reported: +  'run scripts/sources_lock.sh --arch amd64']
+ok  [mutant] a miss message with a wrong key (kind dropped)                     must fail | test_small_lock_missing_key_exact_message:    'scripts/sources_lock.sh --arch amd64']
+ok  [mutant] a miss reported once per key, not per package                      must fail | test_a_missing_key_names_every_package: 'ke-app: pkg:deb/debian/libstdc%2B%2B6@12.2.0-14%2Bdeb12u1?arch=amd64&
+ok  [mutant] an arm64-only entry covers amd64                                   must fail | test_arches: +  'scripts/sources_lock.sh --arch amd64'] : an arm64-only entry does not cover amd64, and is not
+ok  [mutant] sample picking the largest                                         must fail | test_sample_keys:    'temurin:jdk-21.0.12.1+1']
+ok  [mutant] sample ignoring the arch                                           must fail | test_sample_keys:    'temurin:jdk-21.0.12.1+1']
+ok  [mutant] sample ties broken by the largest key                              must fail | test_sample_keys:    'temurin:jdk-21.0.12.1+1']
+ok  [mutant] the .pgdg mapping dropped                                          must fail | test_needs_from_the_fixtures: AssertionError: {'deb:libgcrypt20@1.10.1-3+deb12u1', 'deb[4812 chars]-10'} != fr
+ok  [mutant] the version percent-decoding wrong (raw)                           must fail | test_needs_from_the_fixtures: AssertionError: {'deb:libnsl@1.3.0-3', 'deb:sysvinit@3.14[5056 chars]3-6'} != fr
+ok  [mutant] the epoch dropped                                                  must fail | test_needs_from_the_fixtures: AssertionError: {'deb:libgcrypt20@1.10.1-3+deb12u1', 'deb[4785 chars]-10'} != fr
+ok  [mutant] the epoch dropped (mapping table)                                  must fail | test_mapping_table: ?          ++
+ok  [mutant] upstream ignored for deb (binary name)                             must fail | test_mapping_table: + deb:bash@5.2.15-2
+ok  [mutant] the jrt-fs build check dropped                                     must fail | test_mapping_table: AssertionError: [] is not true : []
+ok  [mutant] neo4j-group rows without a neo4j row pass as maven                 must fail | test_mapping_table: AssertionError: 0 != 2 : []
+ok  [mutant] unknown purl types fall to maven                                   must fail | test_mapping_table: -                                          'spdxid': 'SPDXRef-Package-left-pad-342ccadb7c6
+ok  [mutant] pypi names not PEP 503                                             must fail | test_mapping_table: ?      ^      ^^
+ok  [mutant] exempt ignored by lock_needs (jna gets a key)                      must fail | test_needs_from_the_fixtures: AssertionError: {'deb:libgcrypt20@1.10.1-3+deb12u1', 'deb[4890 chars]-10'} != fr
+ok  [mutant] the canonical-form check dropped                                   must fail | test_bad_shapes: AssertionError: [] is not true : the lock check accepts not canonical (indent 2) (no problem 
+ok  [mutant] lock_text not sorted                                               must fail | test_lock_text_is_canonical: Diff is 12922 characters long. Set self.maxDiff to None to see it.
+ok  [mutant] size true accepted                                                 must fail | test_bad_shapes: AssertionError: [] is not true : the lock check accepts size true (no problem contains 'is no
+ok  [mutant] the .dsc name keeps the epoch                                      must fail | test_good_small_lock_passes: -  'attr_1:2.5.1-4.dsc']
+ok  [mutant] a neo4j second fetch dated after today accepted                    must fail | test_bad_shapes: AssertionError: [] is not true : the lock check accepts neo4j from dated after today (UTC) (n
+ok  [mutant] R1-2: urlsplit before the charset check                            must fail | test_printable_ascii_before_parsing: AssertionError: [] is not true : a tab in the url host: no problem contai
+ok  [mutant] R1-2: the round-trip check dropped                                 must fail | test_url_round_trips_and_scheme_is_lower_case_https: AssertionError: [] is not true : an empty query (`?`): no
+ok  [mutant] R1-2: upper-case HTTPS accepted                                    must fail | test_url_round_trips_and_scheme_is_lower_case_https: AssertionError: [] is not true : HTTPS upper case: no pro
+ok  [mutant] R1-2: from held to 0x21-0x7e (no space)                            must fail | test_url_round_trips_and_scheme_is_lower_case_https: -  'lock: neo4j:neo4j@5.26.32: upstream.from is not print
+ok  [mutant] R1-2: from allows any character                                    must fail | test_printable_ascii_before_parsing: AssertionError: [] is not true : a tab in from: no problem contains 'upst
+ok  [mutant] R1-3: deb host binding dropped                                     must fail | test_per_kind_hosts_paths_and_names: AssertionError: [] is not true : a deb file on deb.debian.org: no problem
+ok  [mutant] R1-3: apk host binding dropped                                     must fail | test_per_kind_hosts_paths_and_names: AssertionError: [] is not true : an apk file on repo1.maven.org: no probl
+ok  [mutant] R1-3: neo4j host binding dropped                                   must fail | test_per_kind_hosts_paths_and_names: AssertionError: [] is not true : a neo4j tarball on files.pythonhosted.or
+ok  [mutant] R1-3: temurin host binding dropped                                 must fail | test_per_kind_hosts_paths_and_names: AssertionError: [] is not true : a temurin asset on repo1.maven.org: no p
+ok  [mutant] R1-3: pypi host binding dropped                                    must fail | test_per_kind_hosts_paths_and_names: AssertionError: [] is not true : a pypi sdist on github.com: no problem c
+ok  [mutant] R1-3: maven host binding dropped                                   must fail | test_per_kind_hosts_paths_and_names: AssertionError: [] is not true : a maven jar on files.pythonhosted.org: n
+ok  [mutant] R1-3: pgdg allowed (a host in the policy suffices)                 must fail | test_any_pgdg_file_is_a_problem_until_q71: AssertionError: 0 != 2 : each of the 2 pgdg files is a problem: ['l
+ok  [mutant] R1-3: the last-segment rule dropped                                must fail | test_per_kind_hosts_paths_and_names: AssertionError: [] is not true : a url whose last segment is not name: no
+ok  [mutant] R1-3: the .. segment rule dropped                                  must fail | test_per_kind_hosts_paths_and_names: AssertionError: [] is not true : ../.. in a path: no problem contains 'ur
+ok  [mutant] R1-3: pypi name not PEP 503-normalised (psycopg_c refused)         must fail | test_good_names: -  'psycopg-c 3.3.6']
+ok  [mutant] R1-3: apk GitLab path not bound to the commit                      must fail | test_per_kind_hosts_paths_and_names: AssertionError: [] is not true : an apk file on GitLab at another commit:
+ok  [mutant] R1-1: neo4j alg sha1 accepted                                      must fail | test_neo4j_entry_binds_one_sha256_file: AssertionError: [] is not true : alg sha1 with a 40-hex value: no prob
+ok  [mutant] R1-1: two neo4j files accepted                                     must fail | test_neo4j_entry_binds_one_sha256_file: AssertionError: [] is not true : two files: no problem contains 'neo4j
+ok  [mutant] R1-1: neo4j value not bound to the file sha256                     must fail | test_neo4j_entry_binds_one_sha256_file: AssertionError: [] is not true : sha256 with a different value: no pro
+ok  [mutant] R1-4: a .dsc-only deb accepted                                     must fail | test_deb_needs_more_than_the_dsc: AssertionError: [] is not true : a .dsc-only deb: no problem contains 'deb: 
+ok  [mutant] R1-5: an extra entry key accepted                                  must fail | test_exact_key_sets: AssertionError: [] is not true : "skip": true on a deb entry: no problem contains 'unexpe
+ok  [mutant] R1-6: arches items not type-checked (sorted() raises)              must fail | test_wrong_types_are_problems: AssertionError: arches ["amd64", 1]: lock_problems raised TypeError: '<' not su
+ok  [mutant] R1-6: lock-check lets an exception through                         must fail | test_lock_check_never_shows_a_traceback: AssertionError: 'Traceback' unexpectedly found in 'Traceback (most re
+ok  [mutant] R1-6: lock-check: RecursionError not caught on reading             must fail | test_lock_check_never_shows_a_traceback: AssertionError: 'Traceback' unexpectedly found in 'Traceback (most re
+ok  [mutant] R1-8: the key printed raw in the miss message                      must fail | test_keys_printed_clean: AssertionError: False is not true : a key from the SBOM is printed raw (L-3): ['postg
+ok  [mutant] R1-9: the size cap dropped                                         must fail | test_size_cap: AssertionError: [] is not true : size 4 GiB + 1: no problem contains 'is not an int in 1..42949
+ok  [mutant] lock-check prints every problem (no first-20 cut)                  must fail | test_lock_check_cli: sbom_check: lock-check: ke-neo4j: pkg:generic/oracle/openjdk@21.0.12.1%2B1-LTS?repository
+ok  [mutant] lock-check: a bad arch exits 1                                     must fail | test_lock_check_cli: AssertionError: 1 != 2
+
+U7a rework r1 controls (targets): 84 rows, 78 must-fail, 6 must-pass, 0 unexpected
+controls exit: 0

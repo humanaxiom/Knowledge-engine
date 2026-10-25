@@ -1046,6 +1046,19 @@ class U6ExemptMatchesTest(unittest.TestCase):
         with self.subTest(case="another image's entry does not apply, and is not this image's problem"):
             self.assertEqual(matches("ke-neo4j", doc, [u6_exempt(JNA_PURL, image="phoenix")]), ([], []))
 
+    def test_exempt_matches_strip_the_package_subpath(self):
+        # U7a carry (h), review U6 N5: the committed jna entry still matches a
+        # package purl with a subpath, with or without qualifiers before it.
+        matches = u6_fn("exempt_matches")
+        jna = [e for e in real_exempt() if e.get("package") == JNA_PURL]
+        self.assertEqual(len(jna), 1, "the committed policy has one jna entry")
+        for purl in (JNA_PURL + "#sub/path", JNA_PURL + "?type=jar#sub"):
+            with self.subTest(purl=purl):
+                doc = u6_doc([purl])
+                flagged, problems = matches("ke-neo4j", doc, jna)
+                self.assertEqual(flagged, [doc["packages"][1]["SPDXID"]])
+                self.assertEqual(problems, [])
+
     def test_exempt_void_on_version_bump(self):
         matches = u6_fn("exempt_matches")
         for case, purl in {"a bumped version": "pkg:maven/com.sun.jna/jna@5.16.0",

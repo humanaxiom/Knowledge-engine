@@ -39,6 +39,15 @@ each problem; on success one summary line on stdout.
 
   sbom_check.py tree --official EXPORT --image EXPORT
 
+  sbom_check.py lock-check --lock LOCK --policy POLICY --arch amd64|arm64
+                           --sbom IMAGE=PATH [--sbom IMAGE=PATH ...]
+
+`lock-check` (PSC-15, U7a; design-notes N5 and its U7 amendment) checks
+docker/sources.lock.json against the policy and the bundled images' SBOMs:
+schema, canonical text, file hosts, per-kind file rules, and coverage both
+ways for the arch. Exit 0 with one summary line, 1 naming the first 20
+problems, 2 on a bad argument.
+
 `tree` compares two `docker export` tars: ke-neo4j equals the official
 image minus /var/lib/neo4j/products (type, mode, owner, group, size, link;
 a hard link counts as its target file in both, U5).
@@ -963,6 +972,563 @@ def tree(a: argparse.Namespace) -> int:
     return 0
 
 
+# --- PSC-15: the source lock, pure half (U7a; design-notes N5 and its U7 amendment) -
+
+LOCK_ARCHES = ("amd64", "arm64")
+LOCK_KINDS = ("deb", "pgdg", "apk", "neo4j", "temurin", "pypi", "maven")
+LOCK_KEY_RES = {
+    "deb": re.compile(r"deb:[a-z0-9][a-z0-9+.-]+@([0-9]+:)?[0-9][A-Za-z0-9.+~-]*"),
+    "pgdg": re.compile(r"pgdg:[a-z0-9][a-z0-9+.-]+@([0-9]+:)?[0-9][A-Za-z0-9.+~-]*"),
+    "apk": re.compile(r"apk:[a-z0-9][a-z0-9+._-]*@[0-9][A-Za-z0-9._+]*-r[0-9]+"),
+    "neo4j": re.compile(r"neo4j:neo4j@\d+(\.\d+)+"),
+    "temurin": re.compile(r"temurin:jdk-\d+(\.\d+)*\+\d+"),
+    "pypi": re.compile(r"pypi:[a-z0-9]+(-[a-z0-9]+)*@[0-9][A-Za-z0-9.+!-]*"),
+    "maven": re.compile(r"maven:[A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+@[A-Za-z0-9_.+-]+"),
+}
+LOCK_FILE_NAME_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+~-]{0,254}")
+HEX_RE = re.compile(r"[0-9a-f]+")
+ALG_LEN = {"sha1": 40, "sha256": 64, "sha512": 128}
+NEO4J_FROM_RE = re.compile(r"second fetch: security (\d{4}-\d{2}-\d{2}), docs/evidence/platform-sbom/sources-provenance\.md")
+# PS-1.2 (rule 2): no URL literal in Python; the deb file URL is checked as
+# https (by _url_problems), this host, and this path.
+SNAPSHOT_HOST = "snapshot.debian.org"
+SNAPSHOT_PATH_RE = re.compile(r"/file/([0-9a-f]{40})")
+
+
+def _snapshot_sha1(url: Any) -> str | None:
+    """The sha1 of a snapshot.debian.org /file/<sha1> URL, else None."""
+    from urllib.parse import urlsplit
+    if not isinstance(url, str):
+        return None
+    try:
+        u = urlsplit(url)
+    except ValueError:
+        return None
+    m = SNAPSHOT_PATH_RE.fullmatch(u.path)
+    if u.scheme != "https" or u.netloc != SNAPSHOT_HOST or u.query or u.fragment or not m:
+        return None
+    return m.group(1)
+NEO4J_GROUPS = ("org.neo4j", "com.neo4j")
+
+
+def _neo4j_group(group: str) -> bool:
+    return group in NEO4J_GROUPS or group.startswith(tuple(g + "." for g in NEO4J_GROUPS))
+
+
+def _image_versions(rows: list[dict[str, Any]]) -> tuple[str | None, str | None]:
+    """(the image's Neo4j version, its Temurin openjdk version) from its rows."""
+    neo4j = openjdk = None
+    for r in rows:
+        m = PURL_RE.match(str(r.get("purl") or ""))
+        if not m:
+            continue
+        if m.group("type") == "maven" and m.group("ns") == "org.neo4j" and m.group("name") == "neo4j":
+            neo4j = unquote(m.group("version"))
+        if m.group("type") == "generic" and m.group("ns") == "oracle" and m.group("name") == "openjdk":
+            openjdk = unquote(m.group("version"))
+    return neo4j, openjdk
+
+
+def component_key(image: str, row: dict[str, Any], ctx: dict[str, Any]) -> tuple[str | None, str | None]:
+    """N5 amendment, U7, item 2: the lock key for one `needs` row, read from
+    its purl only; (None, problem) when it maps to no kind."""
+    purl = row.get("purl")
+    if not isinstance(purl, str) or not purl:
+        return None, (f"{image}: {_clean(row.get('spdxid'))} {_clean(row.get('name'))} (no purl) needs source "
+                      "and maps to no lock kind: back to the architect")
+    m = PURL_RE.match(purl)
+    unmapped = f"{image}: {_clean(purl)} needs source and maps to no lock kind: back to the architect"
+    if not m:
+        return None, unmapped
+    ptype, ns, name = m.group("type"), unquote(m.group("ns") or ""), unquote(m.group("name"))
+    ver = unquote(m.group("version"))
+    q = _qualifiers(purl)
+    if ptype == "deb" and ns == "debian":
+        up = q.get("upstream", "")
+        src, _, srcver = up.partition("@") if up else (name, "", ver)
+        srcver = srcver or ver
+        return (f"pgdg:{src}@{srcver}" if ".pgdg" in srcver else f"deb:{src}@{srcver}"), None
+    if ptype == "apk" and ns == "alpine":
+        origin = q.get("upstream", "").partition("@")[0] or name
+        return f"apk:{origin}@{ver}", None
+    if ptype == "generic" and ns == "oracle" and name == "openjdk":
+        return f"temurin:jdk-{ver[:-len('-LTS')] if ver.endswith('-LTS') else ver}", None
+    if ptype == "maven" and ns == "jrt-fs" and name == "jrt-fs":
+        openjdk = ctx.get("openjdk")
+        build = openjdk.split("+", 1)[0] if openjdk else None
+        if build is None or ver != build:
+            return None, f"{image}: jrt-fs {_clean(ver)} is not the image's Temurin build {_clean(openjdk)}"
+        return f"temurin:jdk-{openjdk[:-len('-LTS')] if openjdk.endswith('-LTS') else openjdk}", None
+    if ptype == "maven":
+        if _neo4j_group(ns):
+            if ctx.get("neo4j") is None:
+                return None, (f"{image}: {_clean(purl)} is a Neo4j artifact but the image lists no "
+                              "pkg:maven/org.neo4j/neo4j: back to the architect")
+            if ver == ctx["neo4j"]:
+                return f"neo4j:neo4j@{ver}", None
+        return f"maven:{ns}:{name}@{ver}", None
+    if ptype == "pypi":
+        return f"pypi:{_norm(name)}@{ver}", None
+    return None, unmapped
+
+
+def lock_needs(policy: dict[str, Any], docs: dict[str, Any]) -> tuple[dict[str, dict[str, Any]], list[str]]:
+    """Which lock keys the bundled images need: per key its kind and the
+    packages (image, purl, SPDXID) of every row `classify_document` marks
+    `needs` (N5 amendment, U7, item 2); and the mapping problems."""
+    always = policy.get("always") or []
+    exempt = policy.get("exempt") or []
+    needs: dict[str, dict[str, Any]] = {}
+    problems: list[str] = []
+    for image in sorted(docs):
+        rows = classify_document(image, docs[image], always, exempt)
+        neo4j, openjdk = _image_versions(rows)
+        ctx = {"neo4j": neo4j, "openjdk": openjdk}
+        for row in rows:
+            if not row["needs"]:
+                continue
+            key, problem = component_key(image, row, ctx)
+            if problem:
+                problems.append(problem)
+                continue
+            assert key is not None
+            entry = needs.setdefault(key, {"kind": key.split(":", 1)[0], "packages": []})
+            entry["packages"].append({"image": image, "purl": row.get("purl"), "spdxid": row.get("spdxid")})
+    return needs, problems
+
+
+def lock_text(lock: Any) -> str:
+    """The lock's canonical text (N5 amendment, U7, item 6 (c))."""
+    return json.dumps(lock, indent=1, sort_keys=True, ensure_ascii=True) + "\n"
+
+
+def _key_parts(key: str) -> tuple[str, str]:
+    """(name part, version) of `<kind>:<name>@<version>`."""
+    body = key.split(":", 1)[1]
+    name, _, ver = body.rpartition("@")
+    return name, ver
+
+
+# Rework round 1 (N5 amendment U7): every string field is printable ASCII
+# 0x21-0x7e (upstream.from 0x20-0x7e), checked before any parsing.
+PRINTABLE_RE = re.compile(r"[\x21-\x7e]+")
+FROM_PRINTABLE_RE = re.compile(r"[\x20-\x7e]+")
+MAX_FILE_SIZE = 4294967296  # 4 GiB (security U7a I-2)
+ENTRY_KEYS = {"kind", "arches", "origin", "files"}
+APK_KEYS = {"commit", "branch", "repo"}
+FILE_KEYS = {"name", "url", "sha256", "size", "upstream"}
+UPSTREAM_KEYS = {"alg", "value", "from"}
+# Per-kind file hosts (N4; N10 am. U6 item 2). pgdg has none until Q71.
+KIND_HOSTS = {"deb": ("snapshot.debian.org",), "pgdg": (), "apk": ("gitlab.alpinelinux.org", "distfiles.alpinelinux.org"),
+              "neo4j": ("github.com",), "temurin": ("github.com",), "pypi": ("files.pythonhosted.org",),
+              "maven": ("repo1.maven.org",)}
+# Rework round 2 (security R1-L1): the sdist name is split at its last `-`
+# (no nested quantifier), and the dist part checked by a linear pattern.
+PYPI_DIST_RE = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?")
+# Rework round 2, item 5: Warehouse's content-addressed file layout.
+PYPI_PATH_RE = re.compile(r"/packages/[0-9a-f]{2}/[0-9a-f]{2}/[0-9a-f]{60}/")
+
+
+def _pypi_parts(name: str) -> tuple[str, str] | None:
+    """(dist, version) of `<dist>-<version>.tar.gz`, else None."""
+    if not name.endswith(".tar.gz"):
+        return None
+    dist, sep, ver = name[:-len(".tar.gz")].rpartition("-")
+    if not sep or not ver or not PYPI_DIST_RE.fullmatch(dist):
+        return None
+    return dist, ver
+
+
+def _str_problems(where: str, field: str, value: Any, *, space: bool = False) -> list[str]:
+    if not isinstance(value, str):
+        return [f"{where}: {field} is not a string"]
+    if not (FROM_PRINTABLE_RE if space else PRINTABLE_RE).fullmatch(value):
+        return [f"{where}: {field} is not printable ASCII ({'0x20' if space else '0x21'}-0x7e)"]
+    return []
+
+
+def _split(url: str) -> Any:
+    from urllib.parse import urlsplit
+    try:
+        u = urlsplit(url)
+        u.port  # noqa: B018 - raises on a bad port
+        return u
+    except ValueError:
+        return None
+
+
+TEMURIN_TAG_SEGMENT = 5  # /adoptium/temurin<N>-binaries/releases/download/<tag>/<asset>
+
+
+def _plain_path(path: str, url: str, kind: str | None) -> bool:
+    """Rework round 2 (review R1-B1): a plain path. Segments are non-empty,
+    none is `.` or `..`, no backslash anywhere in the url, and no `%` in the
+    path but the literal `%2B` inside temurin's tag segment."""
+    segs = path.split("/")
+    if not path.startswith("/") or "\\" in url or any(seg == "" for seg in segs[1:]):
+        return False
+    if any(seg in (".", "..") for seg in segs):
+        return False
+    for i, seg in enumerate(segs):
+        if "%" in seg and not (kind == "temurin" and i == TEMURIN_TAG_SEGMENT and "%" not in seg.replace("%2B", "")):
+            return False
+    return True
+
+
+def _url_problems(where: str, url: Any, hosts: set[str], kind: str | None = None) -> list[str]:
+    from urllib.parse import urlunsplit
+    p = _str_problems(where, "url", url)
+    if p:
+        return p
+    u = _split(url)
+    if u is None:
+        return [f"{where}: url does not parse"]
+    if urlunsplit(u) != url:
+        p.append(f"{where}: url does not round-trip (urlunsplit(urlsplit(url)) differs)")
+    if not url.startswith("https://"):
+        p.append(f"{where}: url scheme is not https")
+    if u.username is not None or u.password is not None or "@" in u.netloc:
+        p.append(f"{where}: url carries userinfo")
+    if u.port is not None or u.netloc.endswith(":"):
+        p.append(f"{where}: url carries a port")
+    if u.query or "?" in url:
+        p.append(f"{where}: url carries a query")
+    if u.fragment or "#" in url:
+        p.append(f"{where}: url carries a fragment")
+    host = u.netloc.rsplit("@", 1)[-1].split(":", 1)[0]
+    if host not in hosts:
+        p.append(f"{where}: url host {_clean(host)} is not in docker/source-policy.json hosts")
+    if not _plain_path(u.path, url, kind):
+        p.append(f"{where}: url path is not a plain path")
+    return p
+
+
+def _file_problems(where: str, f: Any, hosts: set[str], kind: str | None = None) -> list[str]:
+    if not isinstance(f, dict):
+        return [f"{where}: a file is not an object"]
+    p = [f"{where}: a file has an unexpected key {_clean(k)}" for k in sorted(set(f) - FILE_KEYS, key=str)]
+    p += [f"{where}: a file has no {k}" for k in sorted(FILE_KEYS - set(f))]
+    if p:
+        return p
+    name = f["name"]
+    p += _str_problems(where, "name", name)
+    if not p and (not LOCK_FILE_NAME_RE.fullmatch(name) or ".." in name):
+        p.append(f"{where}: {_clean(name)}: not a safe file name")
+    p += _url_problems(where, f["url"], hosts, kind)
+    p += _str_problems(where, "sha256", f["sha256"])
+    if isinstance(f["sha256"], str) and not re.fullmatch(r"[0-9a-f]{64}", f["sha256"]):
+        p.append(f"{where}: sha256 is not 64 lower-case hex")
+    if type(f["size"]) is not int or not 0 < f["size"] <= MAX_FILE_SIZE:
+        p.append(f"{where}: size {_clean(repr(f['size']))} is not an int in 1..{MAX_FILE_SIZE}")
+    up = f["upstream"]
+    if not isinstance(up, dict):
+        return p + [f"{where}: upstream is not an object"]
+    p += [f"{where}: upstream has an unexpected key {_clean(k)}" for k in sorted(set(up) - UPSTREAM_KEYS, key=str)]
+    p += [f"{where}: upstream has no {k}" for k in sorted(UPSTREAM_KEYS - set(up))]
+    if set(up) != UPSTREAM_KEYS:
+        return p
+    q = _str_problems(where, "upstream.alg", up["alg"]) + _str_problems(where, "upstream.value", up["value"])
+    q += _str_problems(where, "upstream.from", up["from"], space=True)
+    p += q
+    if q:
+        return p
+    if up["alg"] not in ALG_LEN:
+        p.append(f"{where}: upstream alg {_clean(repr(up['alg']))} is not sha1, sha256 or sha512")
+    elif len(up["value"]) != ALG_LEN[up["alg"]] or not HEX_RE.fullmatch(up["value"]):
+        p.append(f"{where}: upstream value is not {ALG_LEN[up['alg']]} lower-case hex")
+    elif up["alg"] == "sha256" and up["value"] != f["sha256"]:
+        p.append(f"{where}: upstream sha256 differs from the file's sha256")
+    if not up["from"].strip():
+        p.append(f"{where}: upstream from is blank")
+    return p
+
+
+def _binding_problems(where: str, key: str, kind: str, entry: dict[str, Any], f: dict[str, Any]) -> list[str]:
+    """Rework round 1, item 3 (review N1, security L-2): the url host and path
+    and the file name fit the entry's kind and key."""
+    name, url = f.get("name"), f.get("url")
+    if not isinstance(name, str) or not isinstance(url, str):
+        return []
+    if not LOCK_FILE_NAME_RE.fullmatch(name) or ".." in name:
+        return []  # already "not a safe file name"; no regex on it (security R1-L1)
+    u = _split(url)
+    if u is None:
+        return []
+    host, path = u.netloc, u.path
+    name_part, ver = _key_parts(key)
+    if kind == "pgdg":
+        return [f"{where}: {_clean(name)}: pgdg has no allowed host until Q71"]
+    if host not in KIND_HOSTS[kind]:
+        return [f"{where}: {_clean(name)}: url host {_clean(host)} is not a {kind} file host"]
+    if kind == "deb":
+        if not SNAPSHOT_PATH_RE.fullmatch(path):
+            return [f"{where}: {_clean(name)}: not a deb file url (snapshot.debian.org /file/<sha1>)"]
+        return []
+    p = []
+    if path.rsplit("/", 1)[-1] != name:
+        p.append(f"{where}: {_clean(name)}: url path does not end in /{_clean(name)}")
+    if kind == "apk":
+        if host == "gitlab.alpinelinux.org":
+            want = f"/alpine/aports/-/raw/{entry.get('commit')}/{entry.get('repo')}/{name_part}/{name}"
+        else:
+            want = f"/distfiles/{entry.get('branch')}/{name}"
+            if name == "APKBUILD":
+                p.append(f"{where}: APKBUILD: not a apk file url (the APKBUILD comes from gitlab.alpinelinux.org)")
+        if path != want:
+            p.append(f"{where}: {_clean(name)}: not a apk file url (want path {_clean(want)})")
+    elif kind == "neo4j":
+        if path != f"/neo4j/neo4j/archive/refs/tags/{ver}.tar.gz" or name != f"{ver}.tar.gz":
+            p.append(f"{where}: {_clean(name)}: not a neo4j file url (github.com/neo4j/neo4j/archive/refs/tags/{ver}.tar.gz)")
+    elif kind == "temurin":
+        # Rework round 2 (review R1-N1): the path and asset bound exactly to the
+        # key `temurin:jdk-<ver>` (U7b confirms the real asset name).
+        tver = key.split("jdk-", 1)[-1]
+        feature = tver.split(".", 1)[0]
+        asset = f"OpenJDK{feature}U-jdk-sources_{tver.replace('+', '_')}.tar.gz"
+        want = f"/adoptium/temurin{feature}-binaries/releases/download/jdk-{tver.replace('+', '%2B')}/{asset}"
+        if path != want or name != asset:
+            p.append(f"{where}: {_clean(name)}: not a temurin file url (want path {_clean(want)})")
+        up = f.get("upstream") if isinstance(f.get("upstream"), dict) else {}
+        if up.get("from") != f"{asset}.sha256.txt":
+            p.append(f"{where}: {_clean(name)}: temurin upstream from is not {_clean(asset)}.sha256.txt")
+    elif kind == "pypi":
+        if not PYPI_PATH_RE.fullmatch(path.rsplit("/", 1)[0] + "/") or path.rsplit("/", 1)[-1] != name:
+            p.append(f"{where}: {_clean(name)}: not a pypi file url (/packages/<2 hex>/<2 hex>/<60 hex>/<name>)")
+        parts = _pypi_parts(name)
+        if parts is None or _norm(parts[0]) != name_part or parts[1] != ver:
+            p.append(f"{where}: {_clean(name)}: not a pypi file of {_clean(name_part)} {_clean(ver)}")
+    elif kind == "maven":
+        g, _, a = name_part.partition(":")
+        want = f"/maven2/{g.replace('.', '/')}/{a}/{ver}/{a}-{ver}-sources.jar"
+        if path != want or name != f"{a}-{ver}-sources.jar":
+            p.append(f"{where}: {_clean(name)}: not a maven file url (want path {_clean(want)})")
+    return p
+
+
+def _kind_problems(key: str, kind: str, entry: dict[str, Any], today: Any) -> list[str]:
+    import datetime
+    where = f"lock: {_clean(key)}"
+    files = [f for f in entry["files"] if isinstance(f, dict)]
+    names = [str(f.get("name")) for f in files]
+
+    def alg(f: dict[str, Any]) -> Any:
+        return f["upstream"].get("alg") if isinstance(f.get("upstream"), dict) else None
+    p = []
+    for f in files:
+        p += _binding_problems(where, key, kind, entry, f)
+    name_part, ver = _key_parts(key)
+    if kind == "deb":
+        dscs = [f for f in files if str(f.get("name")).endswith(".dsc")]
+        if len(dscs) != 1:
+            p.append(f"{where}: {len(dscs)} .dsc files, want exactly 1")
+        else:
+            dsc = dscs[0]
+            want = f"{name_part}_{ver.split(':', 1)[1] if ':' in ver else ver}.dsc"
+            if dsc.get("name") != want:
+                p.append(f"{where}: the .dsc is {_clean(dsc.get('name'))}, want {_clean(want)}")
+            up = dsc.get("upstream") if isinstance(dsc.get("upstream"), dict) else {}
+            sha1 = _snapshot_sha1(dsc.get("url"))
+            if up.get("alg") != "sha1" or sha1 is None or sha1 != up.get("value"):
+                p.append(f"{where}: the .dsc is not sha1 with a {SNAPSHOT_HOST} /file/<that sha1> url")
+            others = [f for f in files if f is not dsc]
+            if not others:
+                p.append(f"{where}: deb: no file besides the .dsc")
+            for f in others:
+                fup = f.get("upstream") if isinstance(f.get("upstream"), dict) else {}
+                if (fup.get("alg") != "sha256" or fup.get("from") != f"{dsc.get('name')} Checksums-Sha256"
+                        or _snapshot_sha1(f.get("url")) is None):
+                    p.append(f"{where}: {_clean(f.get('name'))} is not sha256 from {_clean(dsc.get('name'))} "
+                             "Checksums-Sha256 with a snapshot.debian.org/file/<sha1> url")
+    elif kind == "apk":
+        for field, rx in (("commit", r"[0-9a-f]{40}"), ("branch", r"v\d+\.\d+"), ("repo", r"main|community")):
+            if not isinstance(entry.get(field), str) or not re.fullmatch(rx, entry[field]):
+                p.append(f"{where}: {field} {_clean(repr(entry.get(field)))} is missing or malformed")
+        apkbuilds = [f for f in files if f.get("name") == "APKBUILD"]
+        if len(apkbuilds) != 1 or alg(apkbuilds[0]) != "sha256":
+            p.append(f"{where}: not exactly one APKBUILD with sha256")
+        for f in files:
+            if f.get("name") != "APKBUILD" and alg(f) != "sha512":
+                p.append(f"{where}: {_clean(f.get('name'))} is not sha512 (APKBUILD sha512sums)")
+    elif kind == "maven":
+        if len(files) != 1 or not names[0].endswith("-sources.jar") or alg(files[0]) != "sha1":
+            p.append(f"{where}: not one -sources.jar with sha1")
+    elif kind in ("temurin", "pypi"):
+        if len(files) != 1 or alg(files[0]) != "sha256":
+            p.append(f"{where}: not one file with sha256")
+    elif kind == "neo4j":
+        if len(entry["files"]) != 1:
+            p.append(f"{where}: neo4j: not exactly one file")
+        for f in files:
+            fup = f.get("upstream") if isinstance(f.get("upstream"), dict) else {}
+            if fup.get("alg") != "sha256":
+                p.append(f"{where}: neo4j: upstream alg is not sha256")
+            elif fup.get("value") != f.get("sha256"):
+                p.append(f"{where}: neo4j: upstream value is not the file's sha256")
+            m = NEO4J_FROM_RE.fullmatch(str(fup.get("from")))
+            if not m:
+                p.append(f"{where}: upstream from is not `second fetch: security YYYY-MM-DD, "
+                         "docs/evidence/platform-sbom/sources-provenance.md`")
+                continue
+            try:
+                when = datetime.date.fromisoformat(m.group(1))
+            except ValueError:
+                p.append(f"{where}: the second-fetch date {m.group(1)} is not a date")
+                continue
+            if when > today:
+                p.append(f"{where}: the second-fetch date {m.group(1)} is after today (UTC)")
+    return p
+
+
+def _entry_problems(key: Any, entry: Any, hosts: set[str], today: Any) -> list[str]:
+    p = _str_problems(f"lock: {_clean(key)}", "key", key)
+    if p:
+        return p
+    if ":" not in key or key.split(":", 1)[0] not in LOCK_KEY_RES:
+        return [f"lock: {_clean(key)}: not a lock key of a known kind"]
+    kind = key.split(":", 1)[0]
+    where = f"lock: {_clean(key)}"
+    if not LOCK_KEY_RES[kind].fullmatch(key) or (kind in ("deb", "pgdg") and ((".pgdg" in key) != (kind == "pgdg"))):
+        p.append(f"{where}: not a valid {kind} key")
+    if not isinstance(entry, dict):
+        return p + [f"{where}: the entry is not an object"]
+    want = ENTRY_KEYS | (APK_KEYS if kind == "apk" else set())
+    extra = [f"{where}: unexpected key {_clean(k)}" for k in sorted(set(entry) - want, key=str)]
+    missing = [f"{where}: missing key {k}" for k in sorted(want - set(entry))]
+    p += extra + missing
+    for field in ("kind", "origin") + (tuple(sorted(APK_KEYS)) if kind == "apk" else ()):
+        if field in entry:
+            p += _str_problems(where, field, entry[field])
+    if entry.get("kind") != kind:
+        p.append(f"{where}: kind {_clean(repr(entry.get('kind')))} is not {kind}")
+    arches = entry.get("arches")
+    if not isinstance(arches, list) or not all(isinstance(a, str) for a in arches):
+        p.append(f"{where}: arches is not a list of strings")
+    else:
+        for a in arches:
+            p += _str_problems(where, "arches item", a)
+        if not arches or arches != sorted(set(arches)) or not set(arches) <= set(LOCK_ARCHES):
+            p.append(f"{where}: arches {_clean(repr(arches))} is not a sorted, unique, non-empty subset "
+                     f"of {list(LOCK_ARCHES)}")
+    origin = entry.get("origin")
+    if origin != ("manual" if kind == "neo4j" else "generated"):
+        p.append(f"{where}: origin {_clean(repr(origin))}; neo4j is manual, every other kind generated")
+    files = entry.get("files")
+    if not isinstance(files, list):
+        return p + [f"{where}: files is not a list"]
+    if not files:
+        return p + [f"{where}: no files"]
+    seen = set()
+    for f in files:
+        p += _file_problems(where, f, hosts, kind)
+        n = f.get("name") if isinstance(f, dict) else None
+        if isinstance(n, str):
+            if n in seen:
+                p.append(f"{where}: {_clean(n)} is listed twice")
+            seen.add(n)
+    if not missing:
+        p += _kind_problems(key, kind, entry, today)
+    return p
+
+
+def lock_problems(lock: Any, policy: dict[str, Any], docs: dict[str, Any], arch: str,
+                  today: Any = None) -> list[str]:
+    """The lock's text checked: schema, canonical form, every URL host in
+    the policy `hosts` and in its kind's hosts, per-kind file rules, and
+    coverage both ways for `arch` against what `docs` need (N5 amendment,
+    U7, items 2, 4, 6 and rework round 1). Wrong types are problems, never
+    exceptions."""
+    import datetime
+    today = today or datetime.datetime.now(datetime.timezone.utc).date()
+    if arch not in LOCK_ARCHES:
+        return [f"lock: arch {_clean(repr(arch))} is not amd64 or arm64"]
+    if not isinstance(lock, str):
+        return ["lock: the lock is not text"]
+    try:
+        data = json.loads(lock)
+    except (ValueError, RecursionError) as exc:
+        return [f"lock: not JSON: {_clean(exc)}"]
+    p = []
+    try:
+        if lock != lock_text(data):
+            p.append("lock: not in canonical form: regenerate")
+    except (ValueError, RecursionError):
+        p.append("lock: not in canonical form: regenerate")
+    if not isinstance(data, dict) or set(data) != {"format", "components"}:
+        return p + ["lock: top-level keys are not exactly format and components"]
+    if data["format"] != 1 or type(data["format"]) is not int:
+        p.append(f"lock: format {_clean(repr(data['format']))} is not 1")
+    comps = data["components"]
+    if not isinstance(comps, dict):
+        return p + ["lock: components is not an object"]
+    hosts = {h for h in policy.get("hosts") or [] if isinstance(h, str)}
+    for key, entry in sorted(comps.items()):
+        p += _entry_problems(key, entry, hosts, today)
+    needs, mapping = lock_needs(policy, docs)
+    p += mapping
+    covered = {k for k, e in comps.items() if isinstance(e, dict) and isinstance(e.get("arches"), list)
+               and arch in e["arches"]}
+    for key in sorted(needs):
+        if key not in covered:
+            for pkg in needs[key]["packages"]:
+                p.append(f"{pkg['image']}: {_clean(pkg['purl'])} needs source; the lock has no {_clean(key)} for "
+                         f"{arch}: run scripts/sources_lock.sh --arch {arch}")
+    for key in sorted(covered - set(needs)):
+        p.append(f"lock: {_clean(key)} is listed for {arch} but no image needs it: "
+                 f"run scripts/sources_lock.sh --arch {arch}")
+    return p
+
+
+def sample_keys(lock: dict[str, Any], arch: str) -> list[str]:
+    """Q63 sample: per kind present for `arch`, the entry with the smallest
+    total size, ties broken by key (N5; amendment U7, item 5). Call it only
+    on a lock `lock_problems` passed (security U7a I-4)."""
+    best: dict[str, tuple[int, str]] = {}
+    for key, entry in (lock.get("components") or {}).items():
+        if not isinstance(entry, dict) or arch not in (entry.get("arches") or []):
+            continue
+        total = sum(f.get("size", 0) for f in entry.get("files") or [] if isinstance(f, dict))
+        kind = key.split(":", 1)[0]
+        if kind not in best or (total, key) < best[kind]:
+            best[kind] = (total, key)
+    return sorted(k for _, k in best.values())
+
+
+def lock_check(a: argparse.Namespace) -> int:
+    if a.arch not in LOCK_ARCHES:
+        print(f"sbom_check: lock-check: --arch {a.arch!r} is not amd64 or arm64", file=sys.stderr)
+        return 2
+    docs = {}
+    for spec in a.sbom:
+        image, sep, path = spec.partition("=")
+        if not sep or not NAME_RE.fullmatch(image) or not path:
+            print(f"sbom_check: lock-check: --sbom {spec!r} is not IMAGE=PATH", file=sys.stderr)
+            return 2
+        docs[image] = path
+    try:
+        with open(a.lock, encoding="utf-8", newline="") as fh:
+            text = fh.read()
+        json.loads(text)  # read errors and deep nesting are a FAIL line here (rework round 2, item 3)
+        with open(a.policy, encoding="utf-8") as fh:
+            policy = json.load(fh)
+        for image, path in list(docs.items()):
+            with open(path, encoding="utf-8") as fh:
+                docs[image] = json.load(fh)
+    except (OSError, ValueError, RecursionError) as exc:  # UnicodeDecodeError and JSONDecodeError are ValueErrors
+        print(f"lock-check: FAIL ({type(exc).__name__}: {_clean(exc)})", file=sys.stderr)
+        return 1
+    try:
+        problems = lock_problems(text, policy, docs, a.arch)
+    except Exception as exc:  # noqa: BLE001 - fail closed with one message, never a traceback (rework r1, N5)
+        print(f"lock-check: FAIL ({type(exc).__name__}: {_clean(exc)})", file=sys.stderr)
+        return 1
+    if problems:
+        for line in problems[:20]:
+            print(f"sbom_check: lock-check: {line}", file=sys.stderr)
+        return 1
+    print(f"lock-check: ok ({len(json.loads(text)['components'])} components, {a.arch})")
+    return 0
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="sbom_check.py")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -981,6 +1547,10 @@ def main(argv: list[str]) -> int:
     t = sub.add_parser("tree")
     for opt in ("--official", "--image"):
         t.add_argument(opt, required=True)
+    lc = sub.add_parser("lock-check")
+    for opt in ("--lock", "--policy", "--arch"):
+        lc.add_argument(opt, required=True)
+    lc.add_argument("--sbom", action="append", required=True)
     args = parser.parse_args(argv)
     if args.command == "finish":
         return finish(args)
@@ -990,6 +1560,8 @@ def main(argv: list[str]) -> int:
         return neo4j(args)
     if args.command == "tree":
         return tree(args)
+    if args.command == "lock-check":
+        return lock_check(args)
     return 2
 
 

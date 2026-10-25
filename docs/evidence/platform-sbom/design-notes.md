@@ -706,6 +706,681 @@ the entry with the smallest total `size` (ties by key). `neo4j` and
 `temurin` have one entry each, so both are always fetched (estimate: the
 sample is a few hundred MB, dominated by those two).
 
+### N5 amendment, U7 (architect, 2026-10-25)
+
+This amendment makes U7 implementable in TDD units (N15 row U7; Q69 gcc
+ships as `deb`; ruling 5 / N8a 2, jaxb-api is `maven`). It supersedes, for
+U7 only, N13's draft "Generated artifacts" row (item 7) and N5's
+"`origin: manual` (the singletons, if the developer prefers)" (item 4:
+`neo4j` is always `manual`, and every other kind is always `generated`).
+Fixture facts are from `tests/fixtures/sbom-u3/*.pkgs.tsv`, read through
+`classify_document(image, doc, always, exempt)` with the committed
+`docker/source-policy.json` at 66781a9. Tests read fixture `neo4j` as image
+`ke-neo4j` (U6 `U6_FIXTURE_OF`).
+
+**1. Split: four commits, one TDD loop each.** Every commit runs `verify.sh
+full` first (CLAUDE.md). The arch is amd64 now: every entry is written
+`"arches": ["amd64"]`, and arm64 merges in at U12 (PSC-21, N5 `arches`).
+| Unit | Scope | Loop | A34 |
+|---|---|---|---|
+| U7a | `sbom_check.py`, pure: `lock_needs`, `lock_problems`, `sample_keys`, `lock_text`, the `lock-check` subcommand; carry rows (item 6). No lock is committed yet. | `fast`; `full` before the gate (scripts/) | no |
+| U7b | `scripts/sources_resolve.py` (stdlib, the hop-checked fetcher, the pure parsers, the routes for the single-file kinds `neo4j`, `temurin`, `pypi`, `maven`); `scripts/sources_lock.sh`; `docker-compose.sources.yml` service `sources-resolve`; `sbom_check.py lock-needs` with `--tar` (Temurin release file). A real run of the single-file kinds is recorded as evidence, and security's second fetch of the neo4j tarball goes in `sources-provenance.md`. | `full` | no (maintainer tool; record the host the real run used) |
+| U7c | The `deb` route (snapshot.debian.org), the `apk` route (aports + distfiles), and `pgdg` if O1 is ruled (a); `lock-needs --syft` (apk commit). Fake-network tests; a real run of one component per route is recorded as evidence. | `fast` loop (the parsers and the fake opener); `full` before the gate | no |
+| U7d | The real full amd64 run; `docker/sources.lock.json` committed; the committed-lock test; sizes recorded; security reviews the lock diff; the CLAUDE.md row (the human's approval, same commit). | `full` | no |
+*Why four, not three:* U7c's routes test against a fake network, while
+U7d is data plus one test and a security review. That review covers about
+180 entries, so it should not share a rework loop with parser code.
+*Why no lock before U7d:* the committed-lock test (item 6, U7d) asserts
+`== []` for every kind. A partial lock would need a per-kind allowance in
+the test, which is a weaker gate.
+
+**2. Coverage rule: which packages get an entry.** For each bundled image,
+the rows of `classify_document(image, doc, policy["always"],
+policy["exempt"])` with `needs == True`, and only those. A row that is
+`unparsed` or `unidentified` with `needs == False` is listed only (U9's
+index) and gets no entry. In the fixtures these are 42 `ke-neo4j` maven rows
+(URL-folded `LicenseRef-` ids, among them javassist, which is exempt). jna is
+exempt and has no entry. `component_key(image, row, ctx) -> (key | None,
+problem | None)` reads the purl only. syft writes the purl version
+percent-encoded, with the Debian epoch kept (`libattr1@1%3A2.5.1-4`), and
+the `upstream` qualifier as `<src>` or `<src>%40<srcver>`. `_qualifiers`
+decodes both.
+- `pkg:deb/debian/<name>@<ver>`: the key is
+  `deb:<src>@<srcver>`. `<src>` and `<srcver>` come from
+  `upstream=<src>@<srcver>` when present (e.g. `bash@5.2.15-2+b13`
+  `upstream=bash%405.2.15-2` gives `deb:bash@5.2.15-2`, and `sqv@1.3.0-3+b2`
+  gives `deb:rust-sequoia-sqv@1.3.0-3`). With `upstream=<src>` alone, the
+  version is the binary's (`libattr1` gives `deb:attr@1:2.5.1-4`, `libgcc-s1`
+  gives `deb:gcc-12@12.2.0-14+deb12u1`). With no qualifier the key is
+  `deb:<name>@<ver>` (dpkg's `Source:` rule). If `<srcver>` contains
+  `.pgdg`, the key is `pgdg:<src>@<srcver>` (O1).
+- `pkg:apk/alpine/<name>@<ver>`: the key is `apk:<origin>@<ver>`, where
+  origin is `upstream=` if present, else `<name>`. Alpine subpackages share
+  the origin's `pkgver-rpkgrel` (`libstdc%2B%2B@15.2.0-r2` with
+  `upstream=gcc` gives `apk:gcc@15.2.0-r2`; `musl@1.2.5-r21` gives
+  `apk:musl@1.2.5-r21`).
+- `pkg:maven/<g>/<a>@<v>`, where `<g>` is `org.neo4j`, `com.neo4j` or
+  starts with `org.neo4j.` or `com.neo4j.` (`org.neo4j.app/neo4j-server`),
+  and `<v>` equals the version of the image's `pkg:maven/org.neo4j/neo4j`
+  row: the key is `neo4j:neo4j@<v>`. If there is no such row, every
+  neo4j-group row is a problem. At another `<v>`, the row falls to `maven:`.
+- `pkg:generic/oracle/openjdk@<v>` (syft's name for the Temurin JVM;
+  `repository_url` names adoptium) gives `temurin:jdk-<v minus "-LTS">`
+  (`21.0.12.1%2B1-LTS` gives `temurin:jdk-21.0.12.1+1`).
+  `pkg:maven/jrt-fs/jrt-fs@<v>` maps to that same key when `<v>` equals the
+  openjdk version before `+`. Otherwise it is a problem: "`<image>: jrt-fs
+  <v> is not the image's Temurin build <t>`". This is the N10 jrt-fs check,
+  moved from U9 to here.
+- Any other `pkg:maven/<g>/<a>@<v>` gives `maven:<g>:<a>@<v>`.
+- `pkg:pypi/<name>@<v>` gives `pypi:<PEP 503 name>@<v>`.
+- Anything else with `needs` set is a problem, never a pass: "`<image>:
+  <purl> needs source and maps to no lock kind: back to the architect`". A
+  row with no purl is named by SPDXID.
+- Fixture result (architect's run, 1015 rows): 182 keys. By kind: `deb`
+  152, `pgdg` 3, `apk` 19, `neo4j` 1 (73 rows), `temurin` 1 (2 rows),
+  `maven` 1 (jaxb-api), `pypi` 5 (`psycopg`, `psycopg-c` in ke-app;
+  `autocommand`, `ldap3`, `pandas` in phoenix; O2). Distinct Debian sources
+  per image: ke-app 70, ke-neo4j 61 (Debian 13), phoenix 21, postgres 78
+  (+3 pgdg). Shared: 152 in total. Q69 holds: `deb:gcc-12@12.2.0-14+deb12u1`
+  (ke-app, postgres) and `deb:gcc-14@14.2.0-19` (ke-neo4j, phoenix).
+  `openldap` and `cyrus-sasl2` are there. So are `linux@6.12.113-1` (ke-neo4j
+  `linux-libc-dev`) and both perl `5.36.0-7+deb12u3`/`u4` (postgres carries
+  both).
+
+**3. Where the lock tool runs.**
+`scripts/sources_lock.sh --arch amd64|arm64 [--refresh] [--prune <arch>]`
+is a maintainer tool. It runs on a Linux or Git Bash host, never in verify
+and never in CI, and is not bundled.
+1. Refuse unless the six bundled images exist locally at the tags
+   `build.sh` gives them: "`sources_lock: FAIL (images: <ref> not found:
+   run scripts/build.sh first; the lock is unchanged)`". It checks the 7 GiB
+   floor (R6) on its work dir, which is `mktemp -d`, removed by `trap` on
+   every exit path.
+2. `docker save` each image into the work dir, then run the `sbom` service
+   (N1: pinned, `--network none`) with `-o spdx-json=... -o syft-json=...`.
+3. `sbom_check.py lock-needs --policy P --sbom IMG=PATH... [--syft
+   IMG=PATH...] [--tar ke-neo4j=PATH]` runs in `ke-gates`
+   (`--network none --read-only --cap-drop ALL`, ro mounts, argv paths
+   only). It prints `needs.json`: per key the kind, the packages
+   (image, purl, SPDXID) and the route inputs. These are deb `{src, ver}`;
+   apk `{origin, ver, commit, branch}`, with `commit` from syft-json (apk
+   `c:`; the exact field name is *confirm at U7c*), branch `v3.23` from
+   `distro=alpine-3.23.3`, and two commits for one key a problem; neo4j
+   `{ver}`; temurin `{tag, implementor_version}`, from
+   `/opt/java/openjdk/release` read out of the tar (no run), where the tag
+   differs from the SBOM's is a problem; pypi `{name, ver, from: uv.lock |
+   pypi}`, with ke-app's two read from `uv.lock` (no network, N0); maven
+   `{g, a, v}`.
+4. Resolve: `docker compose --env-file .env.example -f
+   docker-compose.sources.yml -p ke-sources-<random> run --rm --pull never
+   sources-resolve`. The service is `ke-gates`, `pull_policy: never`, on the
+   project's default bridge (the file's only route out). It has
+   `read_only`, tmpfs `/tmp`, `cap_drop: [ALL]`, `no-new-privileges`, and
+   `user: ${KE_SOURCES_USER:?}`. Its mounts are `sources_resolve.py`,
+   `needs.json`, the committed lock, the policy and `uv.lock`, all ro, plus
+   `${KE_SOURCES_OUT:?}` rw, the only writable mount. Its environment is
+   literals only: no `KE_*` key, no model key, no token, no `.env` read for
+   values (PSC-6, PSC-23). `teardown.sh --volumes` runs on every exit path.
+   U8 adds `sources-fetch` to the same file.
+5. `sources_resolve.py` (stdlib, `python3 -I`) writes only
+   `$KE_SOURCES_OUT/lock.new.json`. Every request goes through one opener.
+   It has no redirect handler; a 3xx is followed by hand, at most 5 hops,
+   each `https`, each host in the policy `hosts` (exact, after lower-casing;
+   the N4 rules) plus O2's metadata host, if ruled. TLS uses
+   `ssl.create_default_context()` with TLS 1.2 as the floor and
+   `ProxyHandler({})`. A per-request timeout and an overall byte deadline
+   apply, with one call and no retry (Q61's rule, applied to the tool too).
+   A file it needs to hash is *streamed into the hashers and never stored*,
+   so nothing is unpacked or kept. It skips any key whose `generated`
+   entry already exists for that arch, unless `--refresh` is given. It never
+   rewrites a `manual` entry.
+6. `sbom_check.py lock-check --lock lock.new.json --policy P --arch A
+   --sbom IMG=PATH...` (the U7a function, on the fresh SBOMs). On `[]` the
+   script writes `docker/.sources.lock.json.<random>` in `docker/`, `mv`s it
+   over `docker/sources.lock.json` and prints `git diff --stat`. Exit 0.
+   If the only problems are missing `neo4j` keys (item 4), it writes the
+   file, prints the TOFU candidate and exits 3. Any other problem means
+   exit 1, and the committed file is untouched.
+Merge (N5 `arches`): for the run's arch, entries no image needs lose that
+arch, and an entry left with no arch is removed. Other arches' entries are
+untouched unless `--prune <arch>` is given. A `manual` entry no image needs
+is not removed; lock-check reports it as stale, and the maintainer deletes
+it by hand (a reviewed diff).
+
+**4. Checksums and provenance per kind (Q48 form).** In every `files[]`
+entry, `sha256` is the file's own SHA-256 (U8's content-addressed name and
+first check). `upstream` is the published check the tool verified, or for
+`neo4j` the second fetch.
+- `deb`: `GET https://snapshot.debian.org/mr/package/<src>/<urlquote(ver)>/srcfiles?fileinfo=1`.
+  Its single `.dsc` is named `<src>_<ver without epoch>.dsc` and archived
+  under `debian` or `debian-security`. Fetch it from
+  `https://snapshot.debian.org/file/<sha1>`. The lock records
+  `upstream {sha1, <sha1>, "snapshot.debian.org mr/package/<src>/<ver>/srcfiles"}`,
+  the SHA-256 computed, and the size. Parse the `.dsc`: strip the
+  clearsign armour and undo the dash escapes, but do not verify the
+  signature (no keyring, as the ADR's route). `Source` and `Version` must
+  equal the key. `Checksums-Sha1`, `Checksums-Sha256` and `Files` must list
+  the same names and sizes. Every SHA-1 must be among mr's srcfiles hashes.
+  Each other file gets `url .../file/<its sha1>`, its `sha256` and `size`
+  from `Checksums-Sha256`, and `upstream {sha256, <same>, "<dsc name>
+  Checksums-Sha256"}`. The `orig` and `debian` tars are not fetched at lock
+  time.
+- `pgdg` (O1 (a)): the same `.dsc` chain from
+  `https://apt-archive.postgresql.org/pub/repos/apt/pool/main/<p>/<src>/`.
+  The `.dsc`'s SHA-256 comes from that archive's suite `Sources` index
+  (`upstream.alg` sha256, `from` naming the index URL). The paths and suite
+  names are *confirm at U7c*.
+- `apk`: GitLab's
+  `api/v4/projects/alpine%2Faports/repository/tree?path=<repo>/<origin>&ref=<commit>`
+  for `repo` in `main` and `community`. A hit in exactly one is required,
+  else it fails. The APKBUILD comes from
+  `.../repository/files/<repo>%2F<origin>%2FAPKBUILD?ref=<commit>`
+  (`content_sha256`) and its raw
+  `https://gitlab.alpinelinux.org/alpine/aports/-/raw/<commit>/<repo>/<origin>/APKBUILD`.
+  The APKBUILD is read as text and never sourced or run. Its `upstream` is
+  `{sha256, content_sha256, "gitlab.alpinelinux.org files API at <commit>"}`.
+  This replaces N5's git blob id, so `alg` stays in {sha1, sha256, sha512}.
+  `pkgver=` and `pkgrel=` must be literals equal to the key, else it fails.
+  Each name in `sha512sums=` is fetched raw from GitLab at the commit if
+  it is in the tree listing, and otherwise from
+  `https://distfiles.alpinelinux.org/distfiles/<branch>/<name>` (*confirm
+  at U7c*; a missing file fails closed and comes back to the architect,
+  per N10 amendment U6 item 2). The lock records `upstream {sha512,
+  <from APKBUILD>, "APKBUILD sha512sums at <commit>"}`, with the SHA-256
+  and size computed. The entry gets `commit` (40 hex), `branch` (`v\d+\.\d+`)
+  and `repo`.
+- `neo4j`: `https://github.com/neo4j/neo4j/archive/refs/tags/<ver>.tar.gz`.
+  The redirect target is `codeload.github.com`. There is no published
+  checksum, so the tool streams it once and prints the candidate (sha256,
+  size, UTC date, its host). It never writes the entry. Security then
+  fetches it independently, from another host or network. Security records
+  in `docs/evidence/platform-sbom/sources-provenance.md` the command, host,
+  date, SHA-256, size, and the tag's commit from `git ls-remote
+  https://github.com/neo4j/neo4j refs/tags/<ver>` (for information). When
+  the two agree, the developer writes the entry by hand: `origin: manual`,
+  with `upstream {sha256, <same>, "second fetch: security <YYYY-MM-DD>,
+  docs/evidence/platform-sbom/sources-provenance.md"}`. A disagreement goes
+  to the orchestrator. Risk: GitHub-generated archives are not promised to
+  be byte-stable. If they change, U8's fetch fails closed (Q61), and the
+  fix is a re-TOFU plus a second fetch, never a skip.
+- `temurin`: `https://github.com/adoptium/temurin<feature>-binaries/releases/download/<urlquote(tag)>/OpenJDK<feature>U-jdk-sources_<ver with + as _>.tar.gz`
+  and the `.sha256.txt` beside it. That file must be exactly one line,
+  `<64 hex>` followed by whitespace and the asset name. The lock records
+  `upstream {sha256, <that>, "<asset>.sha256.txt"}`, and the stream must
+  match it. The asset name and tag form are *confirm at U7b* (404 fails).
+- `pypi`: from `uv.lock` (ke-app), the `sdist` url, `hash` and `size`, with
+  `upstream {sha256, <hash>, "uv.lock"}` and no network. For phoenix (O2),
+  `https://pypi.org/pypi/<name>/<ver>/json` must have exactly one
+  `packagetype: sdist` in `urls` (url host `files.pythonhosted.org`). The
+  lock records `upstream {sha256, digests.sha256, "pypi.org JSON <name>
+  <ver>"}`, and the stream must match it.
+- `maven`: `https://repo1.maven.org/maven2/<g as path>/<a>/<v>/<a>-<v>-sources.jar`
+  and `<...>.sha1`. The `.sha1` body's first token must be 40 hex. The lock
+  records `upstream {sha1, <that>, "<name>.sha1"}`, and the stream must
+  match it, with the SHA-256 computed. A missing sources jar fails closed
+  and comes back to the architect (N8a 2).
+
+Failure messages (Q61: fail closed, naming the stage, host and file; SBOM
+strings via `_clean`) take the form `sources_lock: FAIL (<stage>: <key>:
+<why>; the lock is unchanged)`. Stages are `images`, `sbom`, `needs`,
+`resolve` and `check`. The `<why>` texts, exact:
+`<host>: HTTP <code>: <url>`; `<host>: timeout after <n> s: <url>`;
+`redirect to <host> refused: not in hosts`; `redirect to a non-https URL
+refused: <url>`; `more than 5 redirects: <url>`; `<name>: <alg> mismatch:
+got <x>, <from> says <y>`; `no <src>_<ver>.dsc in snapshot.debian.org
+srcfiles`; `two .dsc files named <name> in snapshot.debian.org srcfiles`;
+`<dsc>: Source/Version is <x>, want <y>`; `<dsc>: Checksums-Sha1,
+Checksums-Sha256 and Files list different files`; `<name>: sha1 not in
+snapshot.debian.org srcfiles`; `<name>: not a safe file name`; `<origin>:
+in both main and community at <commit>`; `<origin>: in neither main nor
+community at <commit>`; `APKBUILD at <commit>: pkgver/pkgrel <x> is not
+<y>` (also when either is not a literal); `APKBUILD at <commit>: no
+sha512sums`; `temurin: release file says <x>, SBOM says <y>`; `pypi
+<name> <ver>: <n> sdists, want 1`; `maven <g>:<a>@<v>: <name>.sha1 is not
+40 hex`. Exit codes: 1 is a fail with nothing written; 2 is a bad
+argument; 3 means written, with manual `neo4j` entries pending (item 3.6).
+
+**5. Size budget (PS-3.4, Q62, R6; PSC-16).**
+- Verify fetches nothing at U7. The sample arrives with U8, so U7 moves
+  neither the floor nor CI time.
+- The sample is `sample_keys(lock, arch)`: per kind, the smallest total
+  `size`, with ties broken by key, so one per kind. That gives 7 with
+  `pgdg` (6 without). `neo4j` and `temurin` are singletons. Estimate:
+  about 200-300 MB, dominated by the Neo4j tag tarball and Temurin's
+  jdk-sources, plus a few MB for the smallest deb, pgdg
+  (`postgresql-common`), apk, pypi (`psycopg`, 168 kB per `uv.lock`) and
+  jaxb-api.
+- Full set, an estimate and not a measurement: 152 Debian sources, about
+  0.9-1.1 GB, of which `gcc-12` and `gcc-14` orig are 80-100 MB each, `linux`
+  is about 150 MB, and glibc, postgresql-15/16/18, icu, python3.13,
+  systemd, openssl and perl add more. Alpine adds about 150 MB (`gcc` 15.2.0
+  once: two `gcc` keys share the tarball, deduplicated by N9's
+  content-addressed name; gettext and util-linux too). Neo4j and Temurin
+  add about 200-250 MB. The total is about 1.3-1.6 GB, inside PSC-15's
+  1-2.5 GB.
+- U7d measures this from the lock with no extra fetch. deb and pgdg sizes
+  come from the `.dsc` files; apk, neo4j, temurin and maven sizes are
+  streamed; pypi sizes come from `uv.lock` and the JSON. It writes
+  `docs/evidence/platform-sbom/u7/lock-sizes.txt`: per kind, the full set,
+  the sample, and the ten largest files, plus the full set's manifest line
+  count against N9's ~6,800 cap.
+- U11 re-derives the R6 floor and the `/install` size (N14). By the
+  estimate, a full operator bundle (fetch dir + bundle copy + install
+  staging) exceeds today's 7 GiB on the same derivation, so the operator
+  host needs more. That is U11's to state.
+
+**6. First tests.**
+U7a: pure, in `tests/test_sources_lock.py`, plus the carry rows in the
+U6 test classes. They run in `fast` RED; the developer runs `full`.
+- (a) *Needs from the fixtures.* `lock_needs` over the six fixtures with
+  the committed policy gives exactly item 2's 182 keys, with these kind
+  counts. Named rows: `deb:gcc-12@12.2.0-14+deb12u1` (ke-app gcc-12-base,
+  libgcc-s1, libstdc++6), `deb:gcc-14@14.2.0-19`, `deb:attr@1:2.5.1-4`,
+  `deb:bash@5.2.15-2`, `deb:rust-sequoia-sqv@1.3.0-3`, `deb:linux@6.12.113-1`,
+  `deb:openldap@2.5.13+dfsg-5`, `deb:cyrus-sasl2@2.1.28+dfsg-10`,
+  `pgdg:postgresql-common@293.pgdg12+1`, `apk:gcc@15.2.0-r2`,
+  `apk:musl@1.2.5-r21`, `neo4j:neo4j@5.26.32` (73 packages incl.
+  `org.neo4j.app/neo4j-server`), `temurin:jdk-21.0.12.1+1` (openjdk and
+  jrt-fs), `maven:javax.xml.bind:jaxb-api@2.2.12`, the five `pypi:` keys.
+  jna and javassist and the other 41 listed-only rows give no key.
+- (b) *Mapping table* (synthetic rows): `pkg:npm/x@1` with `needs` set is
+  a problem naming image and purl; so are a no-purl row (by SPDXID) and
+  `pkg:deb/ubuntu/...`; `org.neo4j` at another version gives `maven:`; a
+  jrt-fs version mismatch is a problem; neo4j-group rows with no
+  `org.neo4j/neo4j` row are a problem; `needs` False gives no key.
+- (c) *Schema* on a synthetic good lock (one entry per kind) gives `[]`.
+  Each bad shape gives one problem. Top keys not exactly `format` and
+  `components`; `format` != 1; text != `lock_text(parsed)` (`json.dumps(...,
+  indent=1, sort_keys=True, ensure_ascii=True) + "\n"`: "not in canonical
+  form: regenerate"). The key grammar per kind:
+  - `deb`/`pgdg`: `<src>` `[a-z0-9][a-z0-9+.-]+`, version
+    `([0-9]+:)?[0-9][A-Za-z0-9.+~-]*`, and `pgdg` iff it contains `.pgdg`;
+  - `apk`: origin `[a-z0-9][a-z0-9+._-]*`, `@<v>-r<n>`;
+  - `neo4j:neo4j@\d+(\.\d+)+`;
+  - `temurin:jdk-\d+(\.\d+)*\+\d+`;
+  - `pypi:[a-z0-9]+(-[a-z0-9]+)*@<v>`;
+  - `maven:<g>:<a>@<v>`.
+  - `kind` != the key prefix;
+  - `arches` empty, unsorted, duplicated, or not in {amd64, arm64};
+  - `origin` not in {generated, manual}; `neo4j` not `manual`, or any
+    other kind `manual`;
+  - a `neo4j` `upstream.from` not exactly `second fetch: security
+    YYYY-MM-DD, docs/evidence/platform-sbom/sources-provenance.md`, or
+    dated after today (UTC);
+  - `files` empty; a file without exactly `name`, `url`, `sha256`, `size`,
+    `upstream`;
+  - `name` outside `[A-Za-z0-9][A-Za-z0-9._+~-]{0,254}` (so `/`, `..` and a
+    leading `.` fail), or a name duplicated within the entry;
+  - `url` not `https`; carrying userinfo, a port, a query or a fragment;
+    or a host not in the policy `hosts` (`deb.debian.org`,
+    `evil.github.com`, `Snapshot.debian.org`);
+  - `sha256` not 64 lower-case hex (63, 65, upper case);
+  - `size` not an int > 0 (0, -1, `true`, `"1"`);
+  - `upstream` without exactly `alg`, `value`, `from`; `alg` not in {sha1,
+    sha256, sha512} (`md5`); `value` not lower-case hex of 40/64/128 for
+    its `alg`; `alg` sha256 but `value` != `sha256`; `from` blank;
+  - per kind:
+    - deb: not exactly one `.dsc`; the `.dsc` name not
+      `<src>_<ver without epoch>.dsc`; the `.dsc` not `sha1` with its url
+      `https://snapshot.debian.org/file/<that sha1>`; another file not
+      `sha256` from `<dsc name> Checksums-Sha256` with a `/file/<40 hex>`
+      url;
+    - apk: no `commit`, `branch` or `repo`; not exactly one `APKBUILD`
+      (`sha256`); another file not `sha512`;
+    - maven: not one `-sources.jar` with `sha1`;
+    - temurin, pypi: not one file with `sha256`.
+- (d) *Coverage* (`lock_problems(lock, policy, docs, arch)`). A synthetic
+  lock built from (a)'s keys (one valid file each) gives `[]`. Drop one
+  key: one problem per affected package, exactly "`<image>: <purl> needs
+  source; the lock has no <key> for <arch>: run scripts/sources_lock.sh
+  --arch <arch>`". An extra key gives "`lock: <key> is listed for <arch>
+  but no image needs it: run scripts/sources_lock.sh --arch <arch>`". An
+  entry with `arches: ["arm64"]` does not cover amd64.
+- (e) *Sample* (`sample_keys(lock, arch)`): the smallest total size per
+  kind, ties broken by key, only entries for that arch, one key per kind
+  present, singletons always in. `plan` (U8) is its only other caller; N3's
+  "sample selection lives only in `plan`" now reads "only in
+  `sample_keys`, which `plan` calls".
+- (f) *`lock-check` CLI*: argv paths only (N3). It prints `lock-check: ok
+  (<n> components, <arch>)` with exit 0. With problems, the first 20 go to
+  stderr with exit 1. A bad arch exits 2.
+- (g) *Carry, review U6 N3 / security I-1.* The U6 policy oracle
+  (`u6_policy_problems`) rejects `reviewed: security <tomorrow, UTC>` and
+  accepts today's date. Compare with `datetime.now(timezone.utc).date()`,
+  never local time: the committed `2026-10-25` was written at 03:49Z,
+  still the 24th on a Pacific-time host. Add the bad shape to the oracle's
+  controls.
+- (h) *Carry, review U6 N5.* `exempt_matches` flags a package whose purl is
+  `pkg:maven/com.sun.jna/jna@5.15.0#sub/path`, and also one ending
+  `?type=jar#sub`, for the committed jna entry, because the subpath is
+  stripped on the package side.
+U7b first tests are against a fake opener; no network in verify:
+- hop rules, each with its item-4 message: an unlisted host, http,
+  6 hops, non-2xx, timeout;
+- `.sha256.txt`, `.sha1` and `uv.lock` sdist parsers;
+- pypi JSON: exactly one sdist;
+- the release file parser and the tag check;
+- the neo4j candidate is printed and never written (exit 3);
+- `sources_lock.sh` with `tests/fake_docker.py`:
+  - it refuses when an image is absent and leaves the lock untouched on
+    every failure;
+  - it keeps `manual` entries byte-identical;
+  - it merges arches;
+  - it passes no `-e`/`--env-file` value and no `KE_*`;
+  - the compose service's hardening is pinned;
+  - `test_verify_full_takes_no_caller_ke_key_but_the_model_keys` stays
+    green.
+U7c: the `.dsc` parser (armour, dash-escape, section mismatch, epoch
+dropped from the name); the mr fileinfo choice (missing or two `.dsc`
+files); the APKBUILD (`sha512sums` block, non-literal `pkgver`); the
+main/community choice; the `pgdg` `Sources` parse. U7d:
+`lock_problems(committed lock, committed policy, six fixtures, "amd64") ==
+[]` and `lock_text(lock) == file text`.
+
+**7. CLAUDE.md "Generated artifacts" row (the human's file; draft for the
+orchestrator, U7d, same commit as the lock; supersedes N13's row):**
+```
+| `docker/sources.lock.json` | the bundled images' SBOMs (from `scripts/build.sh` images) and their upstream source metadata (snapshot.debian.org, Alpine aports, GitHub, PyPI, Maven Central); `docker/source-policy.json`; `uv.lock` | `scripts/sources_lock.sh --arch <arch>` (maintainer, network; never run by verify or CI); security reviews every diff | `tests/test_sources_lock.py` runs `sbom_check.py`'s lock check on the committed lock in every verify run; from U9, `bundle.sh` (`sbom_check.py index`) refuses a package with no entry |
+```
+
+**Open, for the orchestrator or the human (before U7c unless stated).**
+- *O1, a new host (human: the SFU egress list).* The `postgres` image's
+  `postgresql-16 16.15-1.pgdg12+2`, `postgresql-18 18.6-1.pgdg12+2` (its
+  `libpq5`) and `postgresql-common 293.pgdg12+1` come from PGDG. They are
+  not on snapshot.debian.org. Options:
+  - (a) Recommended: kind `pgdg` and a tenth host,
+    `apt-archive.postgresql.org` (PGDG's archive of every published
+    version). This needs the U6 host-set test amended, ADR-KE-016 point 4
+    amended and security's review.
+  - (b) Upstream PostgreSQL tarballs. Not recommended: they lack PGDG's
+    `debian/` packaging and patches, so they are not the corresponding
+    source.
+  - (c) Exempt them. Not recommended: `postgresql-common` is GPL-2.0, and
+    there is no OR to elect.
+- *O2, a metadata host (orchestrator; human if it counts as egress).*
+  Phoenix's `autocommand 2.2.2` (`LicenseRef-LGPLv3`), `ldap3 2.9.1`
+  (`LicenseRef-LGPL-v3`) and `pandas 2.3.3` (a hash-only id, so fail
+  closed) are not in `uv.lock`. ADR-KE-016 point 4's "no API call" does not
+  cover them. Options:
+  - (a) Recommended: `pypi.org` JSON at lock time only. It is never in a
+    lock URL, so `hosts` is unchanged, and lock-check rejects it as a file
+    host.
+  - (b) The BLAKE2b path in `files.pythonhosted.org` URLs. This adds an
+    `alg` and relies on Warehouse internals.
+  pandas could instead get a security-reviewed `exempt` entry (its
+  `LICENSE` is BSD-3-Clause). That is not needed: about 4.5 MB ships by
+  default.
+- *O3, fixture versus fresh images (U7d).* The committed-lock test uses
+  the U3 fixtures, but the lock comes from freshly built images. `ke-app`'s
+  apt dependencies may have moved since U3 (only libpq5 is pinned). The
+  developer diffs the fresh package lists against the fixtures first. Any
+  difference stops U7d and goes to the orchestrator, because refreshing the
+  fixtures re-pins U4-U6's real-row tests.
+- *O4, to confirm, not to rule.* The Temurin tag form `jdk-21.0.12.1+1`
+  (U7b), the syft-json apk commit field, and the distfiles path (U7c).
+
+No spans: a build-time maintainer tool, not an agent step (N3).
+
+*Resolution endpoints (architect, 2026-10-25; PSC-23 "N5 lists the
+resolution endpoints"; O2 ruled):* `sources_resolve.py` makes exactly
+these calls. No other endpoint is used.
+- **No GitHub API call:** nothing goes to `api.github.com`.
+  - The Temurin tag comes from `/opt/java/openjdk/release` in the tar,
+    cross-checked against the SBOM.
+  - The tool streams the asset
+    `https://github.com/adoptium/temurin<feature>-binaries/releases/download/<urlquote(tag)>/<asset>`
+    and reads `<asset>.sha256.txt` at the same path. Both are plain
+    github.com file URLs, and their redirects go only to
+    `objects.githubusercontent.com` or `release-assets.githubusercontent.com`.
+  - Neo4j is the file URL
+    `https://github.com/neo4j/neo4j/archive/refs/tags/<ver>.tar.gz`
+    (redirect to `codeload.github.com`).
+  - Security's `git ls-remote` is part of the manual second fetch, not a
+    tool call.
+- **snapshot.debian.org:**
+  - `GET /mr/package/<urlquote(src)>/<urlquote(ver, safe="")>/srcfiles?fileinfo=1`;
+  - `GET /file/<sha1>` (the `.dsc`).
+- **gitlab.alpinelinux.org:**
+  - `GET /api/v4/projects/alpine%2Faports/repository/tree?path=<repo>/<origin>&ref=<commit>&per_page=100`,
+    for `repo` in `main` and `community`. A non-empty `X-Next-Page`
+    response header fails closed: "`<origin>: more than 100 files at
+    <commit>`";
+  - `GET /api/v4/projects/alpine%2Faports/repository/files/<repo>%2F<origin>%2FAPKBUILD?ref=<commit>`
+    (`content_sha256`);
+  - `GET /alpine/aports/-/raw/<commit>/<repo>/<origin>/<name>` (the
+    APKBUILD and local files).
+- **distfiles.alpinelinux.org:** `GET /distfiles/<branch>/<name>`.
+- **pypi.org:** `GET /pypi/<name>/<ver>/json`. This is phoenix only. It is
+  a resolution host on the maintainer host and is never a lock file URL
+  (O2 ruling: `hosts` governs file URLs only). The opener's allowlist is
+  `hosts` ∪ {`pypi.org`}.
+- **files.pythonhosted.org:** the sdist URL from that JSON (streamed).
+  ke-app's two packages come from `uv.lock`, with no call.
+- **repo1.maven.org:** `GET /maven2/<g path>/<a>/<v>/<a>-<v>-sources.jar`
+  and the same path plus `.sha1`.
+- **pgdg:** waits on Q71.
+
+**Rework round 1 (orchestrator rulings, 2026-10-25).** These come from the
+U7a review (`u7a/review.md`, B1, B2 and N1-N7). They add to item 6 (c),
+and every rule fails closed: a breach is a named problem, never a pass and
+never a crash.
+1. **B1, neo4j binding.** A `neo4j` entry has exactly one file. Its
+   `upstream` must be `{alg: "sha256", value: <equal to that file's
+   sha256>, from: "second fetch: security YYYY-MM-DD,
+   docs/evidence/platform-sbom/sources-provenance.md"}` (the date rule as
+   before). Anything else is a problem. Bad-shape rows:
+   - two files;
+   - `alg` sha1 with a 40-hex value;
+   - `alg` sha512 with a 128-hex value;
+   - sha256 with a different value.
+2. **B2, charset before parsing.** `_url_problems` refuses a `url` unless
+   every character is in 0x21-0x7e. That excludes space, tab, CR, LF, NUL,
+   DEL and non-ASCII. The check runs before `urlsplit`, so the host check
+   sees the literal string U8 will request. The same rule (0x21-0x7e) holds
+   for `name` and for every other string field of an entry: the component
+   key, `kind`, `origin`, each `arches` item, `sha256`, `upstream.alg`,
+   `upstream.value`, and apk's `commit`, `branch` and `repo`.
+   *Architect's precision:* the one exception is `upstream.from`. Its
+   recorded forms have spaces (`second fetch: security ...`, `<dsc name>
+   Checksums-Sha256`), so `from` allows 0x20-0x7e. Space is allowed there,
+   but no other whitespace or control character. Rows:
+   - a tab in the url host;
+   - a space or an LF in the url path;
+   - a NUL in `name`;
+   - a non-ASCII `name`;
+   - a tab in `from`.
+3. **N1, per-kind host and name rules** (N4; N10 am. U6 item 2). A file is
+   a problem unless its url host and its name fit its kind.
+   - *Every kind:* `name` matches `[A-Za-z0-9][A-Za-z0-9._+~-]{0,254}`. So
+     no `/`, NUL or leading `-` or `.`, and also no `..` anywhere in the
+     name. The url path has no `..` segment. Its last segment equals `name`,
+     except for `deb` (below).
+   - *`deb`:* host `snapshot.debian.org` only. The path is `/file/<40 hex>`,
+     which is content-addressed, so for `deb` this form replaces the
+     last-segment rule (architect's precision: snapshot URLs carry no file
+     name). The `.dsc` url's SHA-1 equals its `upstream.value`, as in U7a.
+   - *`pgdg`:* host `apt-archive.postgresql.org` once Q71 is ruled. Until
+     then the kind has no allowed host, so every `pgdg` file is a problem.
+     The tests stop adding the pgdg host to their policy for this check.
+     U7c writes pgdg's path rule with Q71.
+   - *`apk`:* host `gitlab.alpinelinux.org`, with path
+     `/alpine/aports/-/raw/<commit>/<repo>/<origin>/<name>`, where commit,
+     repo and origin are the entry's and the key's. Or host
+     `distfiles.alpinelinux.org`, with path
+     `/distfiles/<branch>/<name>`, where branch is the entry's. The
+     APKBUILD must be the GitLab form.
+   - *`neo4j`:* host `github.com`, path
+     `/neo4j/neo4j/archive/refs/tags/<ver>.tar.gz`, and name
+     `<ver>.tar.gz`, where `<ver>` is the key's version.
+   - *`temurin`:* host `github.com`. The path starts
+     `/adoptium/temurin<N>-binaries/releases/download/`, where `<N>` is the
+     key's feature version, the digits before the first `.`. The name
+     matches `*-jdk-sources_*.tar.gz` (as regex
+     `[A-Za-z0-9]+-jdk-sources_[A-Za-z0-9._]+\.tar\.gz`). `upstream.from`
+     equals `<name>.sha256.txt`.
+   - *`pypi`:* host `files.pythonhosted.org`. The name is
+     `<dist>-<ver>.tar.gz`, with `<ver>` the key's version and the url path
+     ending in `/<name>`.
+     *Architect's precision, flag:* the ruling's "`<name>` (PEP 503 name)"
+     would refuse the real `psycopg_c-3.3.6.tar.gz` in `uv.lock`, because
+     PEP 625 sdists use `_`. So `<dist>` must PEP 503-normalise to the
+     key's name: lower-case it and turn each run of `-`, `_`, `.` into `-`.
+     Then `psycopg_c` and `psycopg-c` both match `pypi:psycopg-c`.
+     `<dist>` itself matches `[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?`.
+   - *`maven`:* host `repo1.maven.org`. The path is
+     `/maven2/<g with . as />/<a>/<v>/<a>-<v>-sources.jar`, and its last
+     segment equals `name`. `<g>`, `<a>` and `<v>` come from the key.
+   - Rows, one per breach:
+     - a maven jar named `evil-1.0-sources.jar`;
+     - a maven jar on `files.pythonhosted.org`;
+     - a pypi sdist of another package;
+     - a temurin asset on `repo1.maven.org`;
+     - a neo4j tarball at `github.com/attacker/...`;
+     - `../..` in a path;
+     - an apk file on GitLab at another commit;
+     - a url whose last segment is not `name`;
+     - any pgdg file.
+     The good pypi rows are `psycopg-3.3.6.tar.gz` and
+     `psycopg_c-3.3.6.tar.gz`.
+4. **N2, deb completeness.** A `deb` (and later `pgdg`) entry has the
+   `.dsc` plus at least one file that is not a `.dsc`. U7c's resolver
+   writes the entry from the fetched `.dsc` (item 4). U8's fetch checks
+   that the fetched `.dsc`'s `Files` and `Checksums-Sha256` list exactly
+   the entry's other files, by name, size and sha256. A mismatch is
+   `<dsc>: Files/Checksums-Sha256 differ from the lock entry` (Q61). An apk
+   entry with only the APKBUILD stays legal: some APKBUILDs have no
+   sources.
+5. **N4, exact key sets.** An entry has exactly `kind`, `arches`, `origin`
+   and `files`, and also exactly `commit`, `branch` and `repo` for `apk`.
+   Each file has exactly `name`, `url`, `sha256`, `size` and `upstream`,
+   and `upstream` has exactly `alg`, `value` and `from`. An extra or a
+   missing key is a problem naming the key. Row: `"skip": true` on a deb
+   entry.
+6. **N5, wrong types.** Any field of the wrong JSON type is a problem,
+   never a `TypeError` or `KeyError`. That covers top-level `components`
+   not an object, an entry not an object, `arches` not a list or holding a
+   non-string (checked before any `sorted` or `set`), `files` not a list, a
+   file or `upstream` not an object, and a string field holding a number,
+   list or null. Rows: `arches` holding `["amd64", 1]`, `[["amd64"]]` and
+   `"amd64"`; `files: {}`; `upstream: null`. `lock_problems` returns
+   normally on every row.
+7. **N6, line endings (U7d).** The U7d commit adds
+   `docker/sources.lock.json text eol=lf` to `.gitattributes`. The canonical
+   text check stays byte-exact, which keeps it correct on a
+   `core.autocrlf=true` checkout (A34).
+8. **N7, sharper rows.** Each bad-shape row asserts that the problem list
+   contains that row's targeted substring: the field and the rule, e.g.
+   `host files.py\thon...` or `neo4j: upstream alg`. A non-empty list is
+   not enough, so an unrelated problem from the same mutation cannot mask
+   the row. The good lock stays `[]`.
+N3 (pgdg rules) goes to U7c with Q71, per item 3's pgdg bullet.
+9. **Security I-1, scheme (orchestrator, 2026-10-25).** The url's scheme
+   must be exactly `https` in lower case, compared on the literal string
+   before `urlsplit` (which lower-cases it). Rows: `HTTPS://...` and
+   `Https://...`.
+10. **Security I-2, size cap (orchestrator, 2026-10-25).** `size` must be
+    an int with 0 < size <= 4294967296 (4 GiB). Anything larger is a
+    problem naming the file. Rows: 4294967297 and 10**20.
+11. **Security I-4/L-3, no crash and clean output (orchestrator,
+    2026-10-25).** Three rules:
+    - `lock-check` catches every exception, `RecursionError` included
+      (for example from deeply nested JSON). It exits 1 with a single
+      line, `lock-check: FAIL (<exception class>: <message passed through
+      _clean>)`, and prints no traceback.
+    - `sample_keys` is called only after a check that returned `[]`.
+    - Every component key, purl, name and url in a problem message passes
+      through `_clean`.
+
+    Rows:
+    - a lock nested 100000 levels deep (exit 1, one line, no
+      `Traceback`);
+    - a key and a purl carrying ESC and LF are printed cleaned;
+    - `sample_keys` is not reached when the check fails.
+
+**Rework round 2 (orchestrator rulings, 2026-10-25).** These come from the
+U7a re-check (`u7a/review-r1.md`, R1-B1, R1-N1, R1-N2). They add to round
+1 and fail closed.
+1. **R1-B1, plain URL paths (every kind).** Each check reads the literal
+   string after round 1's charset and scheme checks. A url is a problem,
+   with the one text `url path is not a plain path`, when any of these
+   holds:
+   - it contains a backslash anywhere;
+   - its path has an empty segment (`//`, or a trailing `/`);
+   - a segment is `.` or `..`;
+   - the path holds a `%`, except a literal `%2B` inside the temurin tag
+     segment (item 2).
+
+   This closes `%2e%2e`, `%2E.`, `.%2e`, `..\`, `\..\` and `%2f` variants
+   in both the shared rule and round 1's last-segment rule. The query and
+   fragment stay refused (U7a). Rows:
+   - `/a/%2e%2e/b`, `/a/%2E%2E/b`, `/a/.%2e/b`;
+   - `/a/..%5cb`, `/a\..\b`;
+   - `/a//b`, `/a/./b`;
+   - `%2B` outside the temurin tag segment;
+   - `%2b` in lower case inside it, because only the literal `%2B` is
+     allowed.
+2. **R1-N1, temurin binding.** From the key `temurin:jdk-<ver>`, `<N>`
+   is the digits before the first `.` of `<ver>`. The rule:
+   - url path exactly
+     `/adoptium/temurin<N>-binaries/releases/download/jdk-<ver with + as %2B>/<asset>`;
+   - `name` == `<asset>` == `OpenJDK<N>U-jdk-sources_<ver with + as _>.tar.gz`;
+   - `upstream.from` == `<asset>.sha256.txt`.
+
+   For `temurin:jdk-21.0.12.1+1` that is
+   `/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz`.
+   This replaces round 1 item 3's prefix rule and the
+   `*-jdk-sources_*.tar.gz` pattern. U7b confirms the real asset name and
+   tag form against the release page. If they differ, the architect amends
+   this exact form; it is never loosened to a prefix or a pattern. Rows:
+   - another `<N>`, tag or asset version;
+   - `+` left unencoded in the tag;
+   - a JRE or JDK binary asset name;
+   - `from` naming another asset.
+3. **R1-N2, the CLI failure line.** For every exception `lock-check`
+   catches, read errors (`OSError`, `UnicodeDecodeError`,
+   `json.JSONDecodeError`) and `RecursionError` included, it writes
+   exactly `lock-check: FAIL (<ExceptionClass>: <message passed through
+   _clean>)` on stderr and exits 1. There is no traceback and no other
+   line. `<ExceptionClass>` is `type(e).__name__`. This supersedes round 1
+   item 11's `<exception class>` wording. Problems found by a check that
+   ran cleanly keep U7a's form: the first 20 on stderr, exit 1. The test
+   pins the exact line for three cases: a missing file, invalid JSON, and
+   the 100000-deep nesting.
+4. **Security R1-L1, linear name checks (`u7a/security-r1.md`).**
+   `PYPI_DIST_RE` takes quadratic time on over-long names: `a-` repeated
+   50000 times takes 7 s.
+   - `_binding_problems` runs no regex on a `name` that has already failed
+     `LOCK_FILE_NAME_RE`. That leaves one problem, the name rule's.
+   - `PYPI_DIST_RE` is rewritten so that no two repetitions can match the
+     same characters, which makes it linear.
+   - *Architect's suggestion (the developer's choice of means):* take the
+     version from the key. First check `name.endswith(f"-{ver}.tar.gz")`
+     and strip that fixed suffix with string operations. Then check the
+     `<dist>` part without a backtracking pattern: it is non-empty, its
+     first and last characters are ASCII alphanumerics, and every
+     character is in `[A-Za-z0-9._-]`. Then compare its PEP 503 form with
+     the key's name.
+   - Rows:
+     - a 255-character adversarial name (`a-` repeated, then `-1.tar.gz`)
+       is checked in under 0.1 s, timed in the test;
+     - a 50000-character `a-` name gives the name-rule problem only, also
+       under 0.1 s;
+     - `psycopg_c-3.3.6.tar.gz` stays good.
+*Architect's precision, pypi (for confirmation; R1-B1 names pypi):* item 1
+removes the dot-segment bypass. The binding beyond the last segment is
+Warehouse's content-addressed layout, which `uv.lock` (e.g.
+`/packages/76/26/<60 hex>/psycopg-3.3.6.tar.gz`) and the JSON both use.
+Proposed exact rule: the path is
+`/packages/<2 hex>/<2 hex>/<60 hex>/<name>`, lower-case hex. A path of
+another shape is a problem. The architect recommends adding it in this
+round. It has no effect on real data, since both `uv.lock` sdists match.
+5. **Confirmed (orchestrator, 2026-10-25): the pypi path rule is in for
+   round 2.** A `pypi` file's url path must be exactly
+   `/packages/<2 hex>/<2 hex>/<60 hex>/<name>`, in lower-case hex. Any
+   other shape is a problem. Rows: upper-case hex, a 59- or 61-hex third
+   segment, an extra or a missing segment, a path that does not start
+   with `/packages/`.
+
 ## N6. The final SPDX document
 
 `finish` keeps syft's packages, files and relationships and changes only:

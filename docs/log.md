@@ -626,3 +626,25 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-25T03:34:57Z | reviewer | platform-sbom | U6 review: exempt_matches exact/void, exempt clears always, segment rule monotone; nits N1-N5 (N1 U9 precondition) | review: APPROVED
 2026-10-25T03:35:37Z | security | platform-sbom | U6 gate audit (hosts, exempt, exempt_matches, segment rule) | security: PASS (no critical/high/medium; L-1 multi-match, L-2 SPDXID keying for U9)
 2026-10-25T03:49:11Z | orchestrator | platform-sbom | U6 gates judged: review APPROVED, security PASS (+exempt review PASS), verify full PASS 962 s; commit approved | smoke: PASS
+2026-10-25T03:49:50Z | developer | platform-sbom | committed U6 on agent/platform-sbom | commit: done
+2026-10-25T03:52:13Z | documenter | platform-sbom | handoff: U6 closed to a summary, detail to archive/platform-sbom-part9.md | docs: updated
+2026-10-25T04:02:34Z | architect | platform-sbom | U7 plan: N5 amendment (split U7a-c, coverage rule, provenance, first tests, CLAUDE.md row draft) | plan: design amended
+2026-10-25T04:05:10Z | analyst | platform-sbom | Q71 drafted (PGDG host/kind, for the human); O2 lock-time resolution hosts ruling recorded | plan: question drafted
+2026-10-25T04:48:11Z | tester | platform-sbom | U7a RED: lock_needs (182 fixture keys), lock_problems schema/coverage, sample_keys, lock_text, lock-check CLI, carry rows (g)(h) | tdd red: 12 failing as expected
+2026-10-25T05:16:39Z | developer | platform-sbom | U7a GREEN: lock_needs, lock_problems, sample_keys, lock_text, lock-check | tdd green: verify fast + full PASS
+2026-10-25T05:21:38Z | reviewer | platform-sbom | U7a review: B1 neo4j upstream not bound to sha256, B2 urlsplit drops control chars in URLs; nits N1-N7 | review: changes requested
+2026-10-25T05:23:45Z | architect | platform-sbom | U7a rework r1 rulings recorded (neo4j second-fetch binding, URL charset, per-kind host/name rules, exact keys) | plan: design amended
+2026-10-25T05:23:49Z | security | platform-sbom | U7a gate audit (lock_problems, lock_needs, lock-check) | security: PASS (no critical/high/medium; L-1 URL charset, L-2 kind-host binding, L-3 raw key, L-4 profile path in reviewer-probes)
+2026-10-25T05:25:57Z | reviewer | platform-sbom | U7a evidence redaction: profile path in u7a/reviewer-probes.txt l.2 replaced with <scratch> (security L-4); u5/u6/u7a re-grepped clean | docs: updated
+2026-10-25T05:56:16Z | tester | platform-sbom | U7a rework r1 RED: neo4j binding, printable ASCII before parsing, per-kind host/path binding, pgdg no host until Q71, exact keys, types, clean keys, size cap, targeted substrings | tdd red: 12 failing as expected
+2026-10-25T05:58:24Z | documenter | platform-sbom | handoff trim: U7 plan and U7a round-0 sections to archive/platform-sbom-part10.md | docs: updated
+2026-10-25T06:24:45Z | developer | platform-sbom | U7a rework r1 GREEN: neo4j binding, URL charset, kind host/path binding, type-safe lock_problems | tdd green: verify fast + full PASS
+2026-10-25T06:28:43Z | reviewer | platform-sbom | U7a rework r1 review: B1/B2/N1-N7 closed; R1-B1 encoded/backslash dot-segments bypass the .. rule (temurin, pypi) | review: changes requested
+2026-10-25T06:29:28Z | security | platform-sbom | U7a rework r1 re-check (charset, binding, clean, size, CLI) | security: PASS (L-1, L-3, L-4, I-2, I-4 closed; L-2 closed but temurin; new R1-L1 pypi regex, R1-L2 temurin binding, both low)
+2026-10-25T06:30:37Z | architect | platform-sbom | U7a rework r2 rulings recorded (plain URL paths, temurin tag/asset binding, CLI failure line) | plan: design amended
+2026-10-25T07:00:49Z | tester | platform-sbom | U7a rework r2 RED: plain URL paths, exact temurin binding, pypi path layout, linear name checks, lock-check FAIL line | tdd red: 6 failing as expected
+2026-10-25T07:02:35Z | documenter | platform-sbom | handoff trim: U7a round-1 sections to archive/platform-sbom-part10.md | docs: updated
+2026-10-25T07:29:31Z | developer | platform-sbom | U7a rework r2 GREEN: plain URL paths, exact temurin binding, FAIL line, linear pypi check | tdd green: verify fast + full PASS
+2026-10-25T07:32:14Z | reviewer | platform-sbom | U7a rework r2 review: R1-B1/N1/N2 and R1-L1 closed; every kind's url path exact; 182 keys unchanged | review: APPROVED
+2026-10-25T07:33:23Z | security | platform-sbom | U7a rework r2 re-check (pypi linear, temurin exact, plain paths, CLI) | security: PASS (R1-L1, R1-L2 closed; no new finding)
+2026-10-25T07:47:00Z | orchestrator | platform-sbom | U7a gates judged: review APPROVED (r2), security PASS (r2), verify full PASS 968 s; commit approved | smoke: PASS

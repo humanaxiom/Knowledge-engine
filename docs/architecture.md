@@ -6738,3 +6738,22 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
   The GCC runtime (gcc-12, gcc-14) ships its Debian source (U7; N10).
 - **Q66 (ruled):** Debian 12's libpq 15 (no `require_auth`; re-rated at
   U0, A66). **First tests:** N0 (U0), N15 (U1, U2, U5), N16 (U4b).
+- **Amended U7 (2026-10-25, architect; design-notes "N5 amendment, U7").**
+  U7 splits into U7a-U7d:
+  - U7a: the pure `lock_needs`, `lock_problems`, `sample_keys` and the
+    `lock-check` subcommand in `sbom_check.py`.
+  - U7b: `scripts/sources_resolve.py` and `scripts/sources_lock.sh`, run in
+    a `sources-resolve` service (`ke-gates`, `docker-compose.sources.yml`).
+    The service has a literal env, one rw mount and hop-checked HTTPS.
+    Files are streamed into the hashers and never stored. This covers the
+    single-file kinds.
+  - U7c: the `deb` and `apk` routes.
+  - U7d: the committed lock and its every-verify coverage test.
+  The coverage set is `classify_document(..., always, exempt)` rows with
+  `needs`. From the U3 fixtures that is 182 keys (152 Debian sources).
+  `neo4j` is `manual` only (TOFU plus security's second fetch); every other
+  kind is `generated`. Pending rulings:
+  - O1: the postgres image's PGDG sources are not on snapshot.debian.org.
+    Recommended: kind `pgdg` and host `apt-archive.postgresql.org`.
+  - O2: phoenix's PyPI packages are not in `uv.lock`. Recommended:
+    `pypi.org` JSON at lock time only, never a file host.

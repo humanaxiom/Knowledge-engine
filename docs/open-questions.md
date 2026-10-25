@@ -297,6 +297,8 @@ resolved by the orchestrator on 2026-10-22. **Q67 was resolved by the
 human on 2026-10-23** (security U4 M-3); Q68 (raised by the analyst
 2026-10-23, from Q67) was resolved by the orchestrator on 2026-10-23.
 **Q69 and Q70 were resolved by the human on 2026-10-23.** *(Amended 2026-10-23, analyst, Q69/Q70)*
+**Q71 is open for the human** (raised 2026-10-25 by the analyst from
+architect U7 point O1; decide before U7c). *(Amended 2026-10-25, analyst, U7)*
 
 - **Q61. Resolved 2026-10-22 (human ruling).** **A61:** FAIL CLOSED on a
   failed or checksum-mismatched source fetch: one call, no retry, naming the
@@ -643,6 +645,46 @@ human on 2026-10-23** (security U4 M-3); Q68 (raised by the analyst
   cover every bundled image, in report-only mode (a Q42 policy change)
   or fail mode (PSC-4, PSC-5), with the CI cost measured first?* Raised
   by A68. Who rules: the human.
+
+- **Q71. Open (raised 2026-10-25, analyst, U7).** *Where does the bundle
+  get the source of the three postgres-image packages that come from the
+  PostgreSQL project's Debian archive (PGDG), not from Debian?*
+  *(Added 2026-10-25, analyst, U7)*
+  - Context: the `postgres` image ships `postgresql-16 16.15-1.pgdg12+2`,
+    `postgresql-18 18.6-1.pgdg12+2` (which also builds the image's
+    `libpq5`) and `postgresql-common 293.pgdg12+1`.
+    - PGDG builds them, so `snapshot.debian.org` does not have their
+      source, and the U7 lock (PSC-15 option 1) cannot get it through the
+      `deb` kind.
+    - Every fetch host is in `docker/source-policy.json` `hosts` (PSC-22,
+      U6; nine hosts today). U8's fetch refuses any other host (PSC-23).
+    - Source: design notes "N5 amendment, U7", point O1
+      (`docs/evidence/platform-sbom/design-notes.md`).
+  - Options:
+    1. A `pgdg` lock kind and a tenth fetch host,
+       `apt-archive.postgresql.org` (PGDG's archive of every published
+       version). The kind takes the same `.dsc` chain as `deb`, from
+       `https://apt-archive.postgresql.org/pub/repos/apt/pool/main/<p>/<src>/`.
+       This amends:
+       - the U6 host-set test (ten hosts);
+       - ADR-KE-016 point 4;
+       - the SFU egress list that ADR-KE-016 records (PSC-23).
+       Security reviews the host and the kind.
+    2. Upstream PostgreSQL release tarballs. They lack PGDG's `debian/`
+       packaging and patches, so they are not the corresponding source of
+       the shipped binaries.
+    3. A reviewed `exempt` entry per package. `postgresql-common` is plain
+       GPL-2.0 with no OR branch to elect, so no exemption reason can be
+       justified (PSC-22's `exempt` rules).
+  - Recommended (architect, adopted by the analyst): option 1. It ships
+    the exact corresponding source, as the `deb` kind does for Debian's
+    packages. Its only new cost is one host on the egress list.
+    Trade-off: the bundle-time fetch gains a route to a host that SFU's
+    egress rules may need to allow.
+  - Who rules: the human, because the SFU egress list is the human's.
+  - Deadline: before U7c (the `deb`, `apk` and `pgdg` routes). Until it is
+    ruled, U7c's `pgdg` route is not built, and the three keys stay
+    without an entry, so the source check fails closed (Q61).
 
 ## platform-skeleton
 

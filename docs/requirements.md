@@ -3926,6 +3926,8 @@ full what it contains.
       first request and to every redirect hop. A refusal fails closed
       (Q61): no retry and no bundle. Every URL host in the source lock
       (U7) is in `hosts`.
+      - `hosts` covers file URLs only. The lock tool's resolution calls
+        at lock time are not file URLs (PSC-23, ruling O2). *(Amended 2026-10-25, analyst, U7.)*
     - *First test row (U5 review I-r3-1; ruled, orchestrator 2026-10-25).*
       The boundary closes. *(Amended 2026-10-25, analyst, U6; orchestrator ruling.)* The classifier strips any
       `DocumentRef-...:` prefix. If the bare id that is left does not
@@ -3971,6 +3973,35 @@ full what it contains.
     `[unit: test_source_fetch_checks_before_use]` (fast, fake fetch);
     `test_verify_full_takes_no_caller_ke_key_but_the_model_keys` stays
     green.
+  - *Lock-time resolution calls (orchestrator ruling O2, 2026-10-25;
+    design notes "N5 amendment, U7").* *(Amended 2026-10-25, analyst, U7.)*
+    - The maintainer tool that writes the source lock (U7,
+      `sources_resolve.py`) reads metadata on the maintainer host to
+      resolve each component to its files and checksums:
+      - snapshot.debian.org's `mr` API;
+      - gitlab.alpinelinux.org's API;
+      - `pypi.org` JSON, for phoenix's `autocommand`, `ldap3` and `pandas`,
+        which are not in `uv.lock`;
+      - the GitHub release API.
+    - These are resolution calls, never bundle file URLs.
+    - `hosts` governs file URLs only and is unchanged by them.
+    - Given the committed lock, every file URL host in it is in `hosts`,
+      and no lock entry's file URL is a resolution endpoint. The lock
+      check rejects a resolution host as a file host, for example
+      `pypi.org`.
+    - Design notes N5 lists the resolution endpoints.
+  - *PGDG sources (Q71, open for the human, before U7c).* Three postgres
+    packages come from PGDG, not Debian, so `snapshot.debian.org` cannot
+    supply their source. The recommendation is a `pgdg` lock kind and a
+    tenth host, `apt-archive.postgresql.org`. If it is ruled, the U6
+    host-set test and ADR-KE-016 point 4 are amended, and security reviews
+    the host and the kind. Until it is ruled, the three keys have no
+    entry, and the source check fails closed. *(Amended 2026-10-25, analyst, U7.)*
+  - *Fixtures versus fresh images (orchestrator O3, 2026-10-25).* Before
+    U7d commits the lock, the developer diffs the freshly built images'
+    package lists against the U3 fixtures. If they differ in any way, U7d
+    stops and goes to the orchestrator: refreshing the fixtures re-pins
+    the real-row tests of U4-U6. *(Amended 2026-10-25, analyst, U7.)*
 - **PSC-24 No partial bundle, and the manifest rules hold (added
   2026-10-22, analyst).**
   - Any SBOM, index or source failure makes the bundle step exit non-zero,

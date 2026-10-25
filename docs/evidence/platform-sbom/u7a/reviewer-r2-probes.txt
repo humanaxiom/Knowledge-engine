@@ -1,0 +1,37 @@
+# reviewer U7a r2 probes, 2026-10-25 (host python -I; working tree; committed policy, tests' small_docs)
+## baseline
+good small lock: PASSES (0.001 s)
+  temurin url: /adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz
+  pypi url: /packages/e5/f6/545f3c0185584b757e6981c445180bec909ff0bc7c7317794f634195b650/psycopg-c-3.3.6.tar.gz
+## R1-B1 inputs (temurin, pypi)
+temurin %2e%2e x4: refused: 'lock: temurin:jdk-21.0.12.1+1: url path is not a plain path' (0.001 s)
+temurin %2E%2E x4: refused: 'lock: temurin:jdk-21.0.12.1+1: url path is not a plain path' (0.001 s)
+temurin ..%2F: refused: 'lock: temurin:jdk-21.0.12.1+1: url path is not a plain path' (0.001 s)
+temurin backslash: refused: 'lock: temurin:jdk-21.0.12.1+1: url path is not a plain path' (0.001 s)
+temurin ./: refused: 'lock: temurin:jdk-21.0.12.1+1: url path is not a plain path' (0.001 s)
+temurin extra subdir: refused: 'lock: temurin:jdk-21.0.12.1+1: OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz: not a temurin file url (want path /adoptium/temurin21-binaries/re (0.001 s)
+pypi /%2e%2e/<name>: refused: 'lock: pypi:psycopg-c@3.3.6: url path is not a plain path' (0.001 s)
+## R1-N1 temurin binding
+tag jdk-17.0.1%2B1: refused: 'lock: temurin:jdk-21.0.12.1+1: OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz: not a temurin file url (want path /adoptium/temurin21-binaries/re (0.001 s)
+tag with + unencoded: refused: 'lock: temurin:jdk-21.0.12.1+1: OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz: not a temurin file url (want path /adoptium/temurin21-binaries/re (0.000 s)
+tag with %2b lower: refused: 'lock: temurin:jdk-21.0.12.1+1: url path is not a plain path' (0.001 s)
+JRE asset name: refused: 'lock: temurin:jdk-21.0.12.1+1: OpenJDK21U-jre_21.0.12.1_1.tar.gz: not a temurin file url (want path /adoptium/temurin21-binaries/releases/d (0.001 s)
+## further shapes
+pypi path upper hex: refused: 'lock: pypi:psycopg-c@3.3.6: psycopg-c-3.3.6.tar.gz: not a pypi file url (/packages/<2 hex>/<2 hex>/<60 hex>/<name>)' (0.001 s)
+pypi path ;params in name: refused: 'lock: pypi:psycopg-c@3.3.6: psycopg-c-3.3.6.tar.gz;x: not a safe file name' (0.001 s)
+maven ..; segment: refused: 'lock: maven:javax.xml.bind:jaxb-api@2.2.12: jaxb-api-2.2.12-sources.jar: not a maven file url (want path /maven2/javax/xml/bind/jaxb-api/2. (0.001 s)
+apk gitlab path with %2F: refused: 'lock: apk:readline@8.2.13-r1: url path is not a plain path' (0.001 s)
+deb /file/<sha1>/ trailing slash: refused: 'lock: deb:bash@5.2.15-2: url path is not a plain path' (0.001 s)
+neo4j trailing //: refused: 'lock: neo4j:neo4j@5.26.32: url path is not a plain path' (0.001 s)
+host with trailing dot: refused: 'lock: maven:javax.xml.bind:jaxb-api@2.2.12: url host repo1.maven.org. is not in docker/source-policy.json hosts' (0.001 s)
+empty path host only: refused: 'lock: pypi:psycopg-c@3.3.6: url path is not a plain path' (0.001 s)
+## security R1-L1 timing
+adversarial 255-char pypi name: refused: 'lock: pypi:psycopg-c@3.3.6: a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a (0.001 s)
+50008-char name: refused: 'lock: pypi:psycopg-c@3.3.6: a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a (0.001 s)
+## CLI FAIL lines
+  missing file: (1, 'lock-check: FAIL (FileNotFoundError: [Errno 2] No such file or directory: <tmp>/nope.json)')  [profile temp path redacted]
+  invalid JSON: (1, "'lock-check: FAIL (JSONDecodeError: Expecting property name enclosed in double quotes: line 1 column 2 (char 1))'")
+  100000-deep: (1, "'lock-check: FAIL (RecursionError: maximum recursion depth exceeded while decoding a JSON array from a unicode string)'")
+  exception inside the check: (1, '"lock-check: FAIL (TypeError: \'int\' object is not iterable)"')
+## 182 keys
+  keys 182 == FIXTURE_KEYS: True problems []
