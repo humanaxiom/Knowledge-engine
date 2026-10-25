@@ -1185,6 +1185,27 @@ def _plain_path(path: str, url: str, kind: str | None) -> bool:
     return True
 
 
+# U7c rework round 1, item 9: the one GitLab form an apk file may have (the
+# API raw endpoint); its query and its %-encoded path segment are checked by
+# the apk binding, never accepted anywhere else.
+APK_API_HOST = "gitlab.alpinelinux.org"
+APK_API_PATH_RE = re.compile(r"/api/v4/projects/alpine%2Faports/repository/files/([^/?#]+)/raw")
+APK_API_QUERY_RE = re.compile(r"ref=([^&#=]*)")
+
+
+def _apk_api_shape(url: str) -> tuple[str, str] | None:
+    """(<P>, <C>) when `url` has the item-9 shape, else None. Scheme, host,
+    path and query are compared separately (PS-1.2: no URL literal)."""
+    head, sep, query = url.partition("?")
+    scheme, _, rest = head.partition("://")
+    host, slash, path = rest.partition("/")
+    m = APK_API_PATH_RE.fullmatch(slash + path)
+    q = APK_API_QUERY_RE.fullmatch(query)
+    if scheme != "https" or host != APK_API_HOST or not sep or not m or not q:
+        return None
+    return m.group(1), q.group(1)
+
+
 def _url_problems(where: str, url: Any, hosts: set[str], kind: str | None = None) -> list[str]:
     from urllib.parse import urlunsplit
     p = _str_problems(where, "url", url)
@@ -1201,14 +1222,15 @@ def _url_problems(where: str, url: Any, hosts: set[str], kind: str | None = None
         p.append(f"{where}: url carries userinfo")
     if u.port is not None or u.netloc.endswith(":"):
         p.append(f"{where}: url carries a port")
-    if u.query or "?" in url:
+    api = kind == "apk" and _apk_api_shape(url) is not None
+    if (u.query or "?" in url) and not api:
         p.append(f"{where}: url carries a query")
     if u.fragment or "#" in url:
         p.append(f"{where}: url carries a fragment")
     host = u.netloc.rsplit("@", 1)[-1].split(":", 1)[0]
     if host not in hosts:
         p.append(f"{where}: url host {_clean(host)} is not in docker/source-policy.json hosts")
-    if not _plain_path(u.path, url, kind):
+    if not api and not _plain_path(u.path, url, kind):
         p.append(f"{where}: url path is not a plain path")
     return p
 
@@ -1253,6 +1275,29 @@ def _file_problems(where: str, f: Any, hosts: set[str], kind: str | None = None)
     return p
 
 
+def _apk_api_problem(url: str, entry: dict[str, Any], origin: str, name: str) -> str | None:
+    """Item 9 (a), (b), (d): why `url` is not this file's GitLab API raw url."""
+    from urllib.parse import quote, unquote
+    shape = _apk_api_shape(url)
+    if shape is None:
+        return "want .../repository/files/<repo>%2F<origin>%2F<name>/raw?ref=<commit>"
+    seg, ref = shape
+    if not re.fullmatch(r"[0-9a-f]{40}", ref) or ref != entry.get("commit"):
+        return "the ref is not the entry's commit"
+    decoded = unquote(seg)
+    if quote(decoded, safe="") != seg:
+        return "the path segment is not canonical (quote(unquote(P), safe='') != P)"
+    if "%" in decoded or "\\" in decoded or not re.fullmatch(r"[\x21-\x7e]+", decoded):
+        return "the decoded path holds %, a backslash or a non-printable character"
+    parts = decoded.split("/")
+    if (len(parts) < 3 or parts[0] != entry.get("repo") or parts[1] != origin or parts[-1] != name
+            or any(x in ("", ".", "..") for x in parts)):
+        return "the decoded path is not <repo>/<origin>(/<segment>)*/<name>"
+    if name == "APKBUILD" and len(parts) != 3:
+        return "the APKBUILD is not at <repo>/<origin>/APKBUILD"
+    return None
+
+
 def _binding_problems(where: str, key: str, kind: str, entry: dict[str, Any], f: dict[str, Any]) -> list[str]:
     """Rework round 1, item 3 (review N1, security L-2): the url host and path
     and the file name fit the entry's kind and key."""
@@ -1275,11 +1320,15 @@ def _binding_problems(where: str, key: str, kind: str, entry: dict[str, Any], f:
             return [f"{where}: {_clean(name)}: not a deb file url (snapshot.debian.org /file/<sha1>)"]
         return []
     p = []
-    if path.rsplit("/", 1)[-1] != name:
+    if path.rsplit("/", 1)[-1] != name and not (kind == "apk" and host == "gitlab.alpinelinux.org"):
         p.append(f"{where}: {_clean(name)}: url path does not end in /{_clean(name)}")
     if kind == "apk":
         if host == "gitlab.alpinelinux.org":
-            want = f"/alpine/aports/-/raw/{entry.get('commit')}/{entry.get('repo')}/{name_part}/{name}"
+            # U7c rework round 1, item 9: exactly .../files/<P>/raw?ref=<commit>; the old /-/raw/ form is gone.
+            why = _apk_api_problem(url, entry, name_part, name)
+            if why:
+                p.append(f"{where}: {_clean(name)}: not a apk file url ({why})")
+            return p
         else:
             want = f"/distfiles/{entry.get('branch')}/{name}"
             if name == "APKBUILD":
@@ -1356,9 +1405,20 @@ def _kind_problems(key: str, kind: str, entry: dict[str, Any], today: Any) -> li
         apkbuilds = [f for f in files if f.get("name") == "APKBUILD"]
         if len(apkbuilds) != 1 or alg(apkbuilds[0]) != "sha256":
             p.append(f"{where}: not exactly one APKBUILD with sha256")
+        gl_from = f"gitlab files API content_sha256 at {entry.get('commit')}"
+        for f in apkbuilds[:1]:
+            fup = f.get("upstream") if isinstance(f.get("upstream"), dict) else {}
+            if fup.get("from") != gl_from:  # U7c gap rulings item 3: replaces A3's text
+                p.append(f"{where}: the APKBUILD upstream from is not `gitlab files API content_sha256 at <commit>`")
         for f in files:
-            if f.get("name") != "APKBUILD" and alg(f) != "sha512":
-                p.append(f"{where}: {_clean(f.get('name'))} is not sha512 (APKBUILD sha512sums)")
+            fup = f.get("upstream") if isinstance(f.get("upstream"), dict) else {}
+            fu = _split(f.get("url")) if isinstance(f.get("url"), str) else None
+            on_gitlab = fu is not None and fu.netloc == "gitlab.alpinelinux.org"
+            # U7c ruling 3: a package-directory file outside sha512sums is sha256 by the files API.
+            if f.get("name") != "APKBUILD" and alg(f) != "sha512" and not (
+                    alg(f) == "sha256" and fup.get("from") == gl_from and on_gitlab):
+                p.append(f"{where}: {_clean(f.get('name'))} is not sha512 (APKBUILD sha512sums) or sha256 "
+                         "(gitlab files API content_sha256)")
     elif kind == "maven":
         if len(files) != 1 or not names[0].endswith("-sources.jar") or alg(files[0]) != "sha1":
             p.append(f"{where}: not one -sources.jar with sha1")
@@ -1569,9 +1629,14 @@ def lock_check(a: argparse.Namespace) -> int:
 TEMURIN_RELEASE = "opt/java/openjdk/release"
 
 
-def tar_file_text(tar_path: str, member: str) -> str | None:
+class TarMemberTooLarge(ValueError):
+    """A tar member over its read limit: a failure, never a truncation (U7c A1)."""
+
+
+def tar_file_text(tar_path: str, member: str, limit: int = 1 << 20) -> str | None:
     """The text of `member` in a `docker save` tar, the top layer's copy
-    winning; None when no layer holds it. Read only, never extracted."""
+    winning; None when no layer holds it. Read only, never extracted. A
+    member larger than `limit` raises TarMemberTooLarge (U7c A1)."""
     found: bytes | None = None
     with tarfile.open(tar_path) as tar:
         m = tar.extractfile("manifest.json")
@@ -1587,17 +1652,77 @@ def tar_file_text(tar_path: str, member: str) -> str | None:
             with tarfile.open(fileobj=blob, mode="r:*") as layer:
                 for item in layer:
                     if _rel(item.name) == member and item.isfile():
+                        if item.size > limit:
+                            raise TarMemberTooLarge(f"/{member} larger than {limit // (1 << 20)} MiB")
                         data = layer.extractfile(item)
-                        found = data.read(1 << 20) if data is not None else None
+                        found = data.read(limit + 1) if data is not None else None
+                        if found is not None and len(found) > limit:
+                            raise TarMemberTooLarge(f"/{member} larger than {limit // (1 << 20)} MiB")
     return None if found is None else found.decode("utf-8", errors="replace")
 
 
-def lock_needs_doc(policy: dict[str, Any], docs: dict[str, Any],
-                   releases: dict[str, str]) -> tuple[dict[str, Any], list[str]]:
+APK_DB = "lib/apk/db/installed"
+ALPINE_RELEASE = "etc/alpine-release"
+
+
+def apk_stanzas(db_text: str) -> list[dict[str, str]]:
+    """`lib/apk/db/installed`: stanzas split on blank lines, `X:value` fields
+    (the first of each letter kept)."""
+    out = []
+    for block in re.split(r"\n\s*\n", db_text):
+        st: dict[str, str] = {}
+        for line in block.splitlines():
+            if len(line) >= 2 and line[1] == ":":
+                st.setdefault(line[0], line[2:])
+        if st:
+            out.append(st)
+    return out
+
+
+def _apk_route(key: str, origin: str, ver: str, packages: list[dict[str, Any]],
+               apk: dict[str, dict[str, str]]) -> tuple[dict[str, Any] | None, list[str]]:
+    """U7c A1: {origin, ver, commit, branch} from each image's installed db
+    and alpine-release."""
+    problems, commits, branches = [], set(), set()
+    for pkg in packages:
+        image = pkg["image"]
+        m = PURL_RE.match(str(pkg.get("purl") or ""))
+        name = unquote(m.group("name")) if m else ""
+        pver = unquote(m.group("version")) if m else ""
+        db = (apk.get(image) or {}).get("installed") or ""
+        hits = [st for st in apk_stanzas(db) if st.get("P") == name and st.get("V") == pver
+                and st.get("o") == origin and re.fullmatch(r"[0-9a-f]{40}", st.get("c", ""))]
+        if not hits:
+            problems.append(f"{_clean(key)}: {_clean(image)}: {_clean(name)} {_clean(pver)} has no installed-db stanza "
+                            f"with origin {_clean(origin)} and an aports commit")
+            continue
+        commits.add(hits[0]["c"])
+        release = ((apk.get(image) or {}).get("release") or "").strip()
+        distro = _qualifiers(str(pkg.get("purl"))).get("distro", "")
+        rm = re.fullmatch(r"(\d+)\.(\d+)\.\d+", release)
+        if not rm or distro != f"alpine-{release}":
+            problems.append(f"{_clean(key)}: {_clean(image)}: alpine-release {_clean(release or '(none)')}, "
+                            f"purl distro {_clean(distro or '(none)')}")
+            continue
+        branches.add(f"v{rm.group(1)}.{rm.group(2)}")
+    if len(commits) > 1:
+        a, b = sorted(commits)[:2]
+        problems.append(f"{_clean(key)}: two aports commits {a}, {b}")
+    if len(branches) > 1:
+        problems.append(f"{_clean(key)}: two Alpine branches {', '.join(sorted(branches))}")
+    if problems or not commits or not branches:
+        return None, problems
+    return {"origin": origin, "ver": ver, "commit": commits.pop(), "branch": branches.pop()}, []
+
+
+def lock_needs_doc(policy: dict[str, Any], docs: dict[str, Any], releases: dict[str, str],
+                   apk: dict[str, dict[str, str]] | None = None) -> tuple[dict[str, Any], list[str]]:
     """needs.json: per key its kind, packages and route inputs (item 3.3):
-    deb/pgdg {src, ver}; apk {origin, ver}; neo4j {ver}; temurin
-    {sbom_version, release} (the release file text of the image's tar);
-    pypi {name, ver}; maven {g, a, v}."""
+    deb/pgdg {src, ver}; apk {origin, ver, commit, branch} (U7c A1: `apk` maps
+    an image to {"installed": <lib/apk/db/installed text>, "release":
+    <etc/alpine-release text>}); neo4j {ver}; temurin {sbom_version, release}
+    (the release file text of the image's tar); pypi {name, ver}; maven
+    {g, a, v}."""
     needs, problems = lock_needs(policy, docs)
     out: dict[str, Any] = {}
     for key, entry in sorted(needs.items()):
@@ -1607,7 +1732,11 @@ def lock_needs_doc(policy: dict[str, Any], docs: dict[str, Any],
         if kind in ("deb", "pgdg"):
             route = {"src": name, "ver": ver}
         elif kind == "apk":
-            route = {"origin": name, "ver": ver}
+            apk_route, why = _apk_route(key, name, ver, entry["packages"], apk or {})
+            problems += why
+            if apk_route is None:
+                continue
+            route = apk_route
         elif kind == "neo4j":
             route = {"ver": ver}
         elif kind == "pypi":
@@ -1647,12 +1776,28 @@ def lock_needs_cli(a: argparse.Namespace) -> int:
         for image, path in list(docs.items()):
             with open(path, encoding="utf-8") as fh:
                 docs[image] = json.load(fh)
-        releases = {}
+        # U7c A1: a tar is read only for the kinds its image needs.
+        wanted: dict[str, set[str]] = {}
+        for entry in lock_needs(policy, docs)[0].values():
+            for pkg in entry["packages"]:
+                wanted.setdefault(pkg["image"], set()).add(entry["kind"])
+        releases: dict[str, str] = {}
+        apk: dict[str, dict[str, str]] = {}
+        too_large = []
         for image, path in tars.items():
-            body = tar_file_text(path, TEMURIN_RELEASE)
-            if body is not None:
-                releases[image] = body
-        doc, problems = lock_needs_doc(policy, docs, releases)
+            kinds = wanted.get(image, set())
+            try:
+                if "temurin" in kinds:
+                    body = tar_file_text(path, TEMURIN_RELEASE)
+                    if body is not None:
+                        releases[image] = body
+                if "apk" in kinds:
+                    apk[image] = {"installed": tar_file_text(path, APK_DB, 16 << 20) or "",
+                                  "release": tar_file_text(path, ALPINE_RELEASE) or ""}
+            except TarMemberTooLarge as exc:
+                too_large.append(f"{_clean(image)}: {exc}")
+        doc, problems = lock_needs_doc(policy, docs, releases, apk)
+        problems = too_large + problems
     except Exception as exc:  # noqa: BLE001 - one FAIL line, never a traceback (as lock-check)
         print(f"lock-needs: FAIL ({type(exc).__name__}: {_clean(exc)})", file=sys.stderr)
         return 1

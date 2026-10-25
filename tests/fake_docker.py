@@ -332,7 +332,9 @@ never touches a real daemon. What it does:
     image tar. `oci` is the docker 25+ layout (manifest.json `Config` is
     `blobs/sha256/<hex>`, plus index.json and oci-layout), `legacy` the older
     one (`Config` is `<hex>.json`), `two` an `oci` tar whose manifest.json
-    has two entries. The config blob is JSON naming the saved references, so
+    has two entries. U7c (A1): FAKE_IMAGE_TAR_FILES (JSON image name ->
+    {member: text}) adds files to the layer of `<name>.tar`. The config blob
+    is JSON naming the saved references, so
     its digest differs per image and from the FAKE_DOCKER_IMAGES `Id`.
   - `compose ... -f <file> ...` for a file in FAKE_COMPOSE_FILE_IMAGES: the
     FAKE_COMPOSE_FILE_REQUIRED check applies to every command that loads the
@@ -1488,6 +1490,12 @@ def _write_image_tar(target, refs, form):
     buf = _io.BytesIO()
     with _tf.open(fileobj=buf, mode="w") as lt:
         _add(lt, "etc/fake-release", ("layer of %s\n" % " ".join(refs)).encode("utf-8"))
+        # platform-sbom U7c (A1): FAKE_IMAGE_TAR_FILES (JSON image name -> {member: text})
+        # adds files to the layer of `<name>.tar` (lib/apk/db/installed, etc/alpine-release).
+        _stem = os.path.basename(target)
+        _stem = _stem[:-4] if _stem.endswith(".tar") else _stem
+        for _mem, _txt in sorted(json.loads(os.environ.get("FAKE_IMAGE_TAR_FILES") or "{}").get(_stem, {}).items()):
+            _add(lt, _mem, _txt.encode("utf-8"))
     layer = buf.getvalue()
     layer_hex = _h.sha256(layer).hexdigest()
     config = json.dumps({"architecture": "fake", "os": "linux",

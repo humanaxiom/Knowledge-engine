@@ -1,0 +1,42 @@
+ Container ke-reviewer-u7c-gates-run-75c3b38c1014 Creating 
+ Container ke-reviewer-u7c-gates-run-75c3b38c1014 Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.84ms
+Installed 1 package in 1ms
+ok  [target] TARGET: the 13 round-1 tests                                           must pass | no problem
+ok  [target] TARGET: the 61 U7b, U7b-r1 and U7c tests                               must pass | no problem
+ok  [target] TARGET: 17 U7a and U7c lock tests                                      must pass | no problem
+ok  [u7c] U7c (saved targets): ReworkR1U7cApkbuildTest.test_a_subdirectory_apkbuild_beside_the_top_one must fail | test_a_subdirectory_apkbuild_beside_the_top_one: ?                                   +++++ ++++ ^^ ^^^^^^^^^^
+ok  [u7c] U7c (saved targets): ReworkR1U7cApkbuildTest.test_only_a_subdirectory_apkbuild must fail | test_only_a_subdirectory_apkbuild: ?                                    ^^^^^^^^^^^^      ^^^^^^^ ^
+ok  [u7c] U7c (saved targets): ReworkR1U7cDscTest.test_control_characters        must fail | test_control_characters: + bash_5.2.15-2.dsc: control character in field Homepage
+ok  [u7c] U7c (saved targets): ReworkR1U7cDscTest.test_crlf_parses_like_lf (guard) must pass | no problem
+ok  [u7c] U7c (saved targets): ReworkR1U7cDscTest.test_duplicate_fields          must fail | test_duplicate_fields: + bash_5.2.15-2.dsc: duplicate field Version
+ok  [u7c] U7c (saved targets): ReworkR1U7cApkbuildAssignTest.test_repeated_assignments must fail | test_repeated_assignments: + apk:readline@8.2.13-r1: readline: APKBUILD assigns pkgver more than once
+ok  [u7c] U7c (saved targets): ReworkR1U7cListingTest.test_a_full_page           must fail | test_a_full_page: ?                                   ++++  ^   ^^^^^^   ^  +++++
+ok  [u7c] U7c (saved targets): ReworkR1U7cListingTest.test_the_path_is_encoded   must fail | test_the_path_is_encoded: ke_sources_resolve_under_test_5ed3101b7845.ResolveError: apk:libsigc++@3.6.0-r1: lib
+ok  [u7c] U7c (saved targets): ReworkR1U7cApkbuildPathTest.test_the_apkbuild_path_is_exact must fail | test_the_apkbuild_path_is_exact: Diff is 1205 characters long. Set self.maxDiff to None to see it. : a patch i
+ok  [u7c] U7c (saved targets): ReworkR1U7cApiUrlTest.test_bad_forms (guard)      must pass | no problem
+ok  [u7c] U7c (saved targets): ReworkR1U7cApiUrlTest.test_good_forms             must fail | test_good_forms: Diff is 1205 characters long. Set self.maxDiff to None to see it.
+ok  [u7c] U7c (saved targets): ReworkR1U7cApiUrlResolverTest.test_a_bot_challenge must fail | test_a_bot_challenge: +  'the lock is unchanged)']
+ok  [u7c] U7c (saved targets): ReworkR1U7cApiUrlResolverTest.test_the_request_forms must fail | test_the_request_forms: ke_sources_resolve_under_test_5ed3101b7845.ResolveError: apk:readline@8.2.13-r1: readl
+ok  [mutant] item 9: the old /-/raw/ form accepted -> test_bad_forms                must fail | test_bad_forms: AssertionError: [] is not true : the old /-/raw/ form: no problem contains 'not a apk file url
+ok  [mutant] item 9: the query not exact (ref plus another param) -> test_bad_forms must fail | test_bad_forms: AssertionError: [] is not true : ref then another param: no problem contains 'url carries a qu
+ok  [mutant] item 9: a non-canonical %2f accepted -> test_bad_forms                 must fail | test_bad_forms: AssertionError: [] is not true : lower-case escapes: no problem contains 'lock: apk:readline@8
+ok  [mutant] item 9: the /raw suffix optional -> test_bad_forms                     must fail | test_bad_forms: AssertionError: [] is not true : no /raw: no problem contains 'lock: apk:readline@8.2.13-r1': 
+ok  [mutant] item 9: the resolver requests the old /-/raw/ form -> test_the_request_forms must fail | test_the_request_forms: ke_sources_resolve_under_test_22706fd61708.ResolveError: apk:readline@8.2.13-r1: gitla
+ok  [mutant] lock: the APKBUILD path unpinned -> test_the_apkbuild_path_is_exact    must fail | test_the_apkbuild_path_is_exact: AssertionError: [] is not true : the reviewer's tests/APKBUILD: no problem co
+ok  [mutant] resolver: a subdirectory APKBUILD accepted -> test_only_a_subdirectory_apkbuild must fail | test_only_a_subdirectory_apkbuild: AssertionError: ResolveError not raised
+ok  [mutant] dsc: last-wins duplicate field -> test_duplicate_fields                must fail | test_duplicate_fields: + bash_5.2.15-2.dsc: duplicate field Version
+ok  [mutant] dsc: duplicates compared case-sensitively -> test_duplicate_fields     must fail | test_duplicate_fields: AssertionError: ResolveError not raised
+ok  [mutant] dsc: splitlines() -> test_control_characters                           must fail | test_control_characters: + bash_5.2.15-2.dsc: control character in field Homepage
+ok  [mutant] dsc: CRLF not folded -> test_crlf_parses_like_lf                       must fail | test_crlf_parses_like_lf: ke_sources_resolve_under_test_4e5534806de6.ResolveError: deb:bash@5.2.15-2: bash_5.2
+ok  [mutant] dsc: only C0 and DEL refused -> test_control_characters                must fail | test_control_characters: AssertionError: ResolveError not raised
+ok  [mutant] dsc: a lone CR allowed -> test_control_characters                      must fail | test_control_characters: + bash_5.2.15-2.dsc: control character in field Checksums-Sha256
+ok  [mutant] apkbuild: the first assignment read -> test_repeated_assignments       must fail | test_repeated_assignments: AssertionError: ResolveError not raised
+ok  [mutant] apkbuild: indented assignments counted -> test_repeated_assignments    must fail | test_repeated_assignments: ke_sources_resolve_under_test_bc86acec266e.ResolveError: apk:readline@8.2.13-r1: re
+ok  [mutant] listing: a full page taken as complete -> test_a_full_page             must fail | test_a_full_page: AssertionError: ResolveError not raised
+ok  [mutant] listing: a missing x-next-page taken as empty -> test_a_full_page      must fail | test_a_full_page: AssertionError: ResolveError not raised
+ok  [mutant] listing: the path not encoded -> test_the_path_is_encoded              must fail | test_the_path_is_encoded: ke_sources_resolve_under_test_996c2ab0a91b.ResolveError: apk:libsigc++@3.6.0-r1: lib
+
+U7c rework round 1 controls (repo): 34 rows, 29 must-fail, 5 must-pass, 0 unexpected

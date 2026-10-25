@@ -53,7 +53,7 @@ from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
 from unittest import mock
-from urllib.parse import urljoin
+from urllib.parse import quote, unquote, urljoin
 
 import yaml
 
@@ -185,6 +185,37 @@ def tem_need() -> dict[str, Any]:
 
 
 EMPTY_LOCK = {"format": 1, "components": {}}
+PGDG_KEY = "pgdg:postgresql-common@293.pgdg12+1"
+
+
+def aports_commit(origin: str, ver: str) -> str:
+    """A synthetic aports commit, one per origin@ver (U7c A1 fixtures)."""
+    return hashlib.sha1(f"aports {origin}@{ver}".encode()).hexdigest()
+
+
+def apk_inputs(docs: dict[str, Any]) -> dict[str, dict[str, str]]:
+    """Per Alpine image of `docs`, what lock-needs reads from its saved tar
+    (U7c A1): a `lib/apk/db/installed` with one stanza per apk purl (`o:` the
+    purl's origin, `c:` aports_commit) and `etc/alpine-release` from the purl
+    `distro`."""
+    out: dict[str, dict[str, str]] = {}
+    for image, doc in docs.items():
+        stanzas, release = [], ""
+        for p in doc.get("packages") or []:
+            for ref in p.get("externalRefs") or []:
+                purl = str(ref.get("referenceLocator", ""))
+                if not purl.startswith("pkg:apk/alpine/"):
+                    continue
+                body, _, q = purl.partition("?")
+                name, _, ver = body[len("pkg:apk/alpine/"):].rpartition("@")
+                name, ver = unquote(name), unquote(ver)
+                quals = {k: unquote(v) for k, _, v in (x.partition("=") for x in q.split("&") if x)}
+                origin = quals.get("upstream", name).split("@", 1)[0]
+                release = quals.get("distro", "alpine-").split("-", 1)[1]
+                stanzas.append(f"C:Q1fake=\nP:{name}\nV:{ver}\nA:x86_64\no:{origin}\nc:{aports_commit(origin, ver)}\n")
+        if stanzas:
+            out[image] = {"installed": "\n".join(stanzas), "release": release + "\n"}
+    return out
 
 
 def docs_for(rows: dict[str, list[dict[str, Any]]]) -> dict[str, Any]:
@@ -428,7 +459,9 @@ class ResolverMergeTest(unittest.TestCase):
         needs = {NEO_KEY: need(NEO_KEY, "ke-neo4j", "pkg:maven/org.neo4j/neo4j@5.26.32", {"ver": "5.26.32"}),
                  TEM_KEY: tem_need(),
                  "deb:bash@5.2.15-2": need("deb:bash@5.2.15-2", "postgres", "pkg:deb/debian/bash@5.2.15-2"),
-                 "deb:zlib@1:1.2.13.dfsg-1": need("deb:zlib@1:1.2.13.dfsg-1", "postgres", "pkg:deb/debian/zlib1g@1")}
+                 # U7c (design-notes "U7c precision"): deb has a route now, so the
+                 # kind with no route is pgdg (Q71); was deb:zlib until U7b.
+                 PGDG_KEY: need(PGDG_KEY, "postgres", "pkg:deb/debian/postgresql-common@293.pgdg12%2B1")}
         with network(mod, temurin_routes()) as net:
             new, cands, skipped = resolve(mod, needs, lock)
         comps = new["components"]
@@ -440,8 +473,8 @@ class ResolverMergeTest(unittest.TestCase):
         self.assertNotIn("maven:a:c@1", comps, "an entry left with no arch is removed")
         self.assertEqual(comps["neo4j:neo4j@1.0"], stale_manual, "an unneeded manual entry is kept (lock-check reports it)")
         self.assertEqual(comps["deb:bash@5.2.15-2"], deb_old, "a needed deb entry of U7c's kind is left untouched")
-        self.assertIn("deb:zlib@1:1.2.13.dfsg-1", skipped, "a needed key of a kind with no route is named as skipped")
-        self.assertNotIn("deb:zlib@1:1.2.13.dfsg-1", comps, "a kind with no route yet is never invented")
+        self.assertIn(PGDG_KEY, skipped, "a needed key of a kind with no route is named as skipped")
+        self.assertNotIn(PGDG_KEY, comps, "a kind with no route yet is never invented")
         with self.subTest(case="--refresh never rewrites a manual entry"):
             with network(mod, temurin_routes()) as net:
                 again, cands, _ = resolve(mod, {NEO_KEY: needs[NEO_KEY]}, {"format": 1, "components": {NEO_KEY: manual}},
@@ -565,7 +598,10 @@ class LockNeedsTest(unittest.TestCase):
         return got
 
     def test_lock_needs_doc_on_the_fixtures(self):
-        doc, problems = self._fn("lock_needs_doc")(policy(), fixture_docs(), {"ke-neo4j": RELEASE})
+        # U7c A1 (design-notes "U7c precision"): the apk route adds commit and
+        # branch, read from each Alpine image's tar (the `apk` argument).
+        doc, problems = self._fn("lock_needs_doc")(policy(), fixture_docs(), {"ke-neo4j": RELEASE},
+                                                   apk_inputs(fixture_docs()))
         self.assertEqual(problems, [])
         needs = doc["needs"]
         self.assertEqual(doc["format"], 1)
@@ -575,10 +611,12 @@ class LockNeedsTest(unittest.TestCase):
         self.assertEqual(needs[JAXB_KEY]["route"], {"g": "javax.xml.bind", "a": "jaxb-api", "v": "2.2.12"})
         self.assertEqual(needs["pypi:pandas@2.3.3"]["route"], {"name": "pandas", "ver": "2.3.3"})
         self.assertEqual(needs["deb:attr@1:2.5.1-4"]["route"], {"src": "attr", "ver": "1:2.5.1-4"})
-        self.assertEqual(needs["apk:gcc@15.2.0-r2"]["route"], {"origin": "gcc", "ver": "15.2.0-r2"})
+        self.assertEqual(needs["apk:gcc@15.2.0-r2"]["route"], {"origin": "gcc", "ver": "15.2.0-r2",
+                                                               "commit": aports_commit("gcc", "15.2.0-r2"),
+                                                               "branch": "v3.23"})
         self.assertEqual(len(needs[NEO_KEY]["packages"]), 73)
         with self.subTest(case="no release file for the image"):
-            _, problems = self._fn("lock_needs_doc")(policy(), fixture_docs(), {})
+            _, problems = self._fn("lock_needs_doc")(policy(), fixture_docs(), {}, apk_inputs(fixture_docs()))
             self.assertTrue(problems and "--tar ke-neo4j=" in problems[0], problems)
 
     def test_release_from_the_saved_tar(self):
@@ -593,14 +631,21 @@ class LockNeedsTest(unittest.TestCase):
         with self.subTest(case="the CLI"):
             for image, d in fixture_docs().items():
                 ss.write_json(tmp / f"{image}.spdx.json", d)
+            # U7c A1: the Alpine images' tars carry the installed db and alpine-release.
+            alpine = [a for image, inp in apk_inputs(fixture_docs()).items()
+                      for a in ("--tar", "{}={}".format(image, save_tar_with(tmp / f"{image}.tar", [
+                          {"lib/apk/db/installed": inp["installed"].encode(),
+                           "etc/alpine-release": inp["release"].encode()}])))]
             r = subprocess.run([sys.executable, "-I", str(ROOT / "scripts" / "sbom_check.py"), "lock-needs",
                                 "--policy", str(ROOT / "docker" / "source-policy.json"),
                                 *[a for image in fixture_docs() for a in ("--sbom", f"{image}={tmp / f'{image}.spdx.json'}")],
-                                "--tar", f"ke-neo4j={tar}"], capture_output=True, text=True, timeout=120)
+                                "--tar", f"ke-neo4j={tar}", *alpine], capture_output=True, text=True, timeout=120)
             self.assertEqual(r.returncode, 0, r.stderr[-800:])
             doc = json.loads(r.stdout)
             self.assertEqual(set(doc["needs"]), FIXTURE_KEYS)
             self.assertEqual(doc["needs"][TEM_KEY]["route"]["release"], RELEASE)
+            self.assertEqual(doc["needs"]["apk:gcc@15.2.0-r2"]["route"]["commit"], aports_commit("gcc", "15.2.0-r2"),
+                             "U7c A1: the apk commit comes from the image's saved tar")
             self.assertEqual(r.stdout, load_sbom_check().lock_text(doc), "needs.json is not canonical text")
             bad = subprocess.run([sys.executable, "-I", str(ROOT / "scripts" / "sbom_check.py"), "lock-needs",
                                   "--policy", str(ROOT / "docker" / "source-policy.json"), "--sbom", "no-equals-sign"],
@@ -1306,6 +1351,10 @@ class ReworkR1LockScriptRunTest(_BundleBase, unittest.TestCase):
                "FAKE_IMAGE_PATHS": json.dumps({"/opt/venv": str(self.venv)}),
                "FAKE_SYFT_RAW": json.dumps({img: json.dumps(doc) for img, doc in docs.items()}),
                "FAKE_SYFT_LOG": str(self.syft_log),
+               # U7c A1: the Alpine images' saved tars carry the apk route inputs.
+               "FAKE_IMAGE_TAR_FILES": json.dumps({img: {"lib/apk/db/installed": inp["installed"],
+                                                         "etc/alpine-release": inp["release"]}
+                                                   for img, inp in apk_inputs(docs).items()}),
                "FAKE_RESOLVE_NET": json.dumps(net or {}), "FAKE_RESOLVE_LOG": str(self.resolve_log)}
         bash = shutil.which("bash")
         self.assertIsNotNone(bash)
@@ -1453,6 +1502,885 @@ class ReworkR1LockScriptRunTest(_BundleBase, unittest.TestCase):
     def test_the_neo4j_tar_is_not_a_literal(self):
         self.assertNotIn("ke-neo4j.tar", LOCK_SH.read_text(encoding="utf-8"),
                          "item 6 (N4): the ke-neo4j tar path is derived from the image list")
+
+
+# ==========================================================================
+# U7c: the deb and apk routes (design-notes "U7c precision": D1-D7, A1-A5,
+# C1-C3; orchestrator rulings R-1 (a) and R-2 (c), 2026-10-25). Fake network
+# only; no real fetch.
+# Interface added (tester, U7c RED): `SNAPSHOT_PAUSE` (1.0 s, a module
+# constant read when used; tests patch it to 0); `parse_dsc(text) -> {field:
+# value}` (a field's first line and continuation lines joined with "\n",
+# stripped); sbom_check.py `lock_needs_doc(policy, docs, releases, apk)` with
+# `apk` = {image: {"installed": <lib/apk/db/installed>, "release":
+# <etc/alpine-release>}}, and `tar_file_text(tar, member, limit)`.
+# ==========================================================================
+
+SNAP = "snapshot.debian.org"
+GL = "gitlab.alpinelinux.org"
+APORTS = f"https://{GL}/api/v4/projects/alpine%2Faports/repository"
+BASH_KEY = "deb:bash@5.2.15-2"
+BASH_DOCS = {"postgres": [{"purl": ss.deb("bash", "5.2.15-2+b13", upstream="bash@5.2.15-2"),
+                           "declared": "GPL-3.0-or-later"}]}
+RL_KEY = "apk:readline@8.2.13-r1"
+RL_PURL = "pkg:apk/alpine/readline@8.2.13-r1?arch=x86_64&distro=alpine-3.23.3"
+RL_DOCS = {"valkey": [{"purl": RL_PURL, "declared": "GPL-3.0-or-later"}]}
+RL_COMMIT = aports_commit("readline", "8.2.13-r1")
+
+
+def snap_url(src: str, ver: str) -> str:
+    return f"https://{SNAP}/mr/package/{quote(src, safe='')}/{quote(ver, safe='')}/srcfiles?fileinfo=1"
+
+
+def snap_file(sha1: str) -> str:
+    return f"https://{SNAP}/file/{sha1}"
+
+
+def no_pause(test: unittest.TestCase, mod: ModuleType) -> None:
+    p = mock.patch.object(mod, "SNAPSHOT_PAUSE", 0, create=True)
+    p.start()
+    test.addCleanup(p.stop)
+
+
+class DebFixture:
+    """A snapshot.debian.org source package for one deb key: the srcfiles
+    JSON (fileinfo) and a `.dsc` listing its files (D1-D6)."""
+
+    def __init__(self, key: str, files: dict[str, bytes] | None = None):
+        self.key = key
+        self.src, _, self.ver = key.split(":", 1)[1].rpartition("@")
+        nover = self.ver.split(":", 1)[1] if ":" in self.ver else self.ver
+        self.dsc = f"{self.src}_{nover}.dsc"
+        if files is None:
+            if "-" in nover:
+                up = nover.rsplit("-", 1)[0]
+                files = {f"{self.src}_{up}.orig.tar.xz": f"orig of {key}".encode(),
+                         f"{self.src}_{nover}.debian.tar.xz": f"debian of {key}".encode()}
+            else:
+                files = {f"{self.src}_{nover}.tar.xz": f"native {key}".encode()}
+        self.files = files
+
+    def lines(self, alg: str, files: dict[str, bytes] | None = None) -> str:
+        return "".join(f" {hashlib.new(alg, b).hexdigest()} {len(b)} {n}\n" for n, b in (files or self.files).items())
+
+    def text(self, *, armour: bool = True, source: str | None = None, version: str | None = None,
+             drop: tuple[str, ...] = (), replace: dict[str, str] | None = None, dash: bool = False) -> str:
+        head = [f"Format: 3.0 (quilt)", f"Source: {source or self.src}", f"Binary: {self.src}", "Architecture: any",
+                f"Version: {version or self.ver}", "Maintainer: Fixture <fixture@example.invalid>",
+                "Build-Depends: debhelper-compat (= 13),\n autoconf"]
+        if dash:
+            head[1] = "- " + head[1]
+        body = "\n".join(head) + "\n"
+        for field, alg in (("Checksums-Sha1", "sha1"), ("Checksums-Sha256", "sha256"), ("Files", "md5")):
+            if field in drop:
+                continue
+            body += f"{field}:\n" + ((replace or {}).get(field) or self.lines(alg))
+        if not armour:
+            return body
+        return ("-----BEGIN PGP SIGNED MESSAGE-----\nHash: SHA512\n\n" + body
+                + "\n-----BEGIN PGP SIGNATURE-----\nComment: fixture-signature\n\niQIzBAEBCgAdFiEEfixture\n=abcd\n-----END PGP SIGNATURE-----\n")
+
+    def fileinfo(self, dsc_body: bytes, files: dict[str, bytes] | None = None) -> dict[str, Any]:
+        info: dict[str, Any] = {sha("sha1", dsc_body): [{"archive_name": "debian", "first_seen": "20230101T000000Z",
+                                                         "name": self.dsc, "path": f"/pool/main/x/{self.src}",
+                                                         "size": len(dsc_body)}]}
+        for n, b in (self.files if files is None else files).items():
+            info.setdefault(sha("sha1", b), []).append({"archive_name": "debian", "first_seen": "20230101T000000Z",
+                                                        "name": n, "path": f"/pool/main/x/{self.src}", "size": len(b)})
+        return info
+
+    def routes(self, dsc_text: str | None = None, *, fileinfo: dict[str, Any] | None = None,
+               dsc_served: bytes | None = None) -> dict[str, Any]:
+        body = (dsc_text if dsc_text is not None else self.text()).encode()
+        info = self.fileinfo(body) if fileinfo is None else fileinfo
+        doc = {"_comment": "foo", "package": self.src, "version": self.ver,
+               "result": [{"hash": h} for h in sorted(info)], "fileinfo": info}
+        return {snap_url(self.src, self.ver): ok(json.dumps(doc)),
+                snap_file(sha("sha1", body)): ok(body if dsc_served is None else dsc_served)}
+
+    def entry(self) -> dict[str, Any]:
+        body = self.text().encode()
+        d1 = sha("sha1", body)
+        files = [{"name": self.dsc, "url": snap_file(d1), "sha256": sha("sha256", body), "size": len(body),
+                  "upstream": {"alg": "sha1", "value": d1, "from": f"{SNAP} mr/package fileinfo"}}]
+        for n, b in self.files.items():
+            h = sha("sha256", b)
+            files.append({"name": n, "url": snap_file(sha("sha1", b)), "sha256": h, "size": len(b),
+                          "upstream": {"alg": "sha256", "value": h, "from": f"{self.dsc} Checksums-Sha256"}})
+        return {"kind": "deb", "arches": [ARCH], "origin": "generated", "files": files}
+
+
+def by_name(entry: dict[str, Any]) -> dict[str, Any]:
+    return dict(entry, files=sorted(entry["files"], key=lambda f: f["name"]))
+
+
+def deb_need(key: str) -> dict[str, Any]:
+    src, _, ver = key.split(":", 1)[1].rpartition("@")
+    return need(key, "postgres", f"pkg:deb/debian/{src}@{quote(ver, safe='')}", {"src": src, "ver": ver})
+
+
+class U7cDebRouteTest(unittest.TestCase):
+    """D1-D7: srcfiles, then the `.dsc` alone; the other files are recorded
+    from its Checksums-Sha256 and never fetched."""
+
+    def setUp(self) -> None:
+        self.mod = load_resolver()
+        no_pause(self, self.mod)
+
+    def _resolve(self, key: str, routes: dict[str, Any]) -> tuple[dict[str, Any], Any]:
+        with network(self.mod, routes) as net:
+            lock, _, skipped = resolve(self.mod, {key: deb_need(key)})
+        self.assertEqual(skipped, [], "a deb key was skipped (U7c: deb has a route)")
+        return lock, net
+
+    def test_the_entry(self):
+        fx = DebFixture(BASH_KEY)
+        lock, net = self._resolve(BASH_KEY, fx.routes())
+        self.assertEqual(by_name(lock["components"][BASH_KEY]), by_name(fx.entry()))
+        self.assertEqual(net.calls, [snap_url("bash", "5.2.15-2"), snap_file(sha("sha1", fx.text().encode()))],
+                         "only srcfiles and the .dsc are requested; orig and debian tarballs are not streamed (D6)")
+        lock_ok(self, lock, docs_for(BASH_DOCS))
+
+    def test_dsc_forms(self):
+        rows = {
+            "an epoch: the .dsc name drops it, Version keeps it": ("deb:attr@1:2.5.1-4", {}),
+            "a native package": ("deb:adduser@3.134", {}),
+            "a version with + and ~": ("deb:openldap@2.5.13+dfsg-5~bpo1", {}),
+            "no clearsign armour": (BASH_KEY, {"armour": False}),
+            "a dash-escaped line": (BASH_KEY, {"dash": True}),
+        }
+        for case, (key, opts) in rows.items():
+            with self.subTest(case=case):
+                fx = DebFixture(key)
+                lock, net = self._resolve(key, fx.routes(fx.text(**opts)))
+                e = lock["components"][key]
+                self.assertEqual({f["name"] for f in e["files"]}, {fx.dsc} | set(fx.files))
+                self.assertEqual(net.calls[0], snap_url(fx.src, fx.ver))
+        self.assertEqual(DebFixture("deb:attr@1:2.5.1-4").dsc, "attr_2.5.1-4.dsc")
+        self.assertIn("1%3A2.5.1-4", snap_url("attr", "1:2.5.1-4"))
+
+    def test_failures(self):
+        err = rfn("ResolveError")
+        fx = DebFixture(BASH_KEY)
+        good = fx.text()
+        gbody = good.encode()
+        orig, debian = list(fx.files)
+        sha1 = fx.lines("sha1")
+        rows: dict[str, tuple[dict[str, Any], str]] = {
+            "srcfiles 404": ({}, f"{SNAP}: HTTP 404: {snap_url('bash', '5.2.15-2')}"),
+            "srcfiles not JSON": ({snap_url("bash", "5.2.15-2"): ok("<html>")}, f"{SNAP} srcfiles is not the expected JSON"),
+            "fileinfo with a key that is not 40 hex": (
+                {snap_url("bash", "5.2.15-2"): ok(json.dumps({"fileinfo": {"../../x": [{"name": fx.dsc}]}}))},
+                f"{SNAP} srcfiles is not the expected JSON"),
+            "fileinfo entry without a name": (
+                {snap_url("bash", "5.2.15-2"): ok(json.dumps({"fileinfo": {"a" * 40: [{"size": 1}]}}))},
+                f"{SNAP} srcfiles is not the expected JSON"),
+            "a name with two sha1s": (fx.routes(fileinfo=dict(fx.fileinfo(gbody), **{"b" * 40: [{"name": orig}]})),
+                                      f"two files named {orig} in snapshot's srcfiles"),
+            "no .dsc in srcfiles": (fx.routes(fileinfo={k: v for k, v in fx.fileinfo(gbody).items()
+                                                        if v[0]["name"] != fx.dsc}),
+                                    f"{SNAP} has no {fx.dsc} in srcfiles"),
+            ".dsc sha1 mismatch": (fx.routes(dsc_served=gbody + b"tampered"),
+                                   f"{fx.dsc}: sha1 mismatch: got {sha('sha1', gbody + b'tampered')}, {SNAP} says "
+                                   f"{sha('sha1', gbody)}"),
+            ".dsc over 1 MiB": (fx.routes(good + "X-Pad: " + "x" * 1048576 + "\n"), f"{fx.dsc}: more than 1048576 bytes"),
+            "Source/Version": (fx.routes(fx.text(version="5.2.15-3")),
+                               f"{fx.dsc}: Source/Version is bash/5.2.15-3, want bash/5.2.15-2"),
+            "no Checksums-Sha256": (fx.routes(fx.text(drop=("Checksums-Sha256",))), f"{fx.dsc}: no Checksums-Sha256"),
+            "no Files (gap ruling 4)": (fx.routes(fx.text(drop=("Files",))), ".dsc has no Files"),
+            "a bad Checksums-Sha256 line": (fx.routes(fx.text(replace={"Checksums-Sha256": " abc 12 x.tar.xz\n"})),
+                                            f"{fx.dsc}: bad Checksums-Sha256 line"),
+            "a bad Files line": (fx.routes(fx.text(replace={"Files": " " + "a" * 32 + " twelve x.tar.xz\n"})),
+                                 f"{fx.dsc}: bad Files line"),
+            "different files": (fx.routes(fx.text(replace={"Files": fx.lines("md5", {orig: fx.files[orig]})})),
+                                f"{fx.dsc}: Checksums-Sha256 and Files list different files"),
+            "different sizes": (fx.routes(fx.text(replace={"Files": fx.lines("md5").replace(
+                f" {len(fx.files[orig])} {orig}", f" {len(fx.files[orig]) + 1} {orig}")})),
+                f"{fx.dsc}: Checksums-Sha256 and Files list different files"),
+            "a Checksums-Sha1 that is not snapshot's": (
+                fx.routes(fx.text(replace={"Checksums-Sha1": sha1.replace(sha("sha1", fx.files[orig]), "c" * 40)})),
+                f"{orig}: Checksums-Sha1 says {'c' * 40}, {SNAP} says {sha('sha1', fx.files[orig])}"),
+            "a listed file absent from srcfiles": (
+                fx.routes(fileinfo={k: v for k, v in fx.fileinfo(gbody).items() if v[0]["name"] != debian}),
+                f"{debian} is in the .dsc but not in snapshot's srcfiles"),
+        }
+        unsafe = DebFixture(BASH_KEY, files={"../evil.tar.xz": b"evil"})
+        rows["an unsafe name in the .dsc"] = (unsafe.routes(), "../evil.tar.xz: not a safe file name")
+        colon = DebFixture(BASH_KEY, files={"a::b.tar.xz": b"evil"})
+        rows["a name with ::"] = (colon.routes(), "a::b.tar.xz: not a safe file name")
+        bad_utf8 = gbody + b"\xff\xfe\n"
+        rows[".dsc not UTF-8"] = (fx.routes(fileinfo=dict(fx.fileinfo(bad_utf8)), dsc_served=bad_utf8) |
+                                  {snap_file(sha("sha1", bad_utf8)): ok(bad_utf8)}, f"{fx.dsc}: not UTF-8 text")
+        for case, (routes, why) in rows.items():
+            with self.subTest(case=case):
+                with network(self.mod, routes) as net:
+                    with self.assertRaises(err) as caught:
+                        resolve(self.mod, {BASH_KEY: deb_need(BASH_KEY)})
+                self.assertEqual(str(caught.exception), f"{BASH_KEY}: {why}")
+                self.assertFalse([c for c in net.calls if "evil" in c or c.endswith(("orig.tar.xz", "debian.tar.xz"))],
+                                 "a listed file was requested")
+
+    def test_parse_dsc(self):
+        fx = DebFixture(BASH_KEY)
+        for case, text in {"armoured": fx.text(), "plain": fx.text(armour=False),
+                           "dash-escaped": fx.text(dash=True)}.items():
+            with self.subTest(case=case):
+                f = rfn("parse_dsc")(text)
+                self.assertEqual((f["Source"], f["Version"]), ("bash", "5.2.15-2"))
+                # Gap rulings, interface pins: the Checksums fields come back in a
+                # parsed form of the developer's choice; every line's hash, size and
+                # name must be in it (continuation lines read).
+                for field, alg in (("Checksums-Sha256", "sha256"), ("Files", "md5"), ("Checksums-Sha1", "sha1")):
+                    got = json.dumps(f[field])
+                    for n, b in fx.files.items():
+                        self.assertTrue(hashlib.new(alg, b).hexdigest() in got and n in got and str(len(b)) in got,
+                                        f"{field}: {n} missing from {got}")
+                self.assertNotIn("iQIzBAEBCgAdFiEEfixture", json.dumps(f), "the signature is not part of the fields")
+                self.assertNotIn("Comment", f, "the signature's armour header is not a field")
+
+
+class ApkFixture:
+    """An aports directory at a commit (A2-A5 with the U7c gap rulings 1-3):
+    the recursive tree listing; the APKBUILD and an install script (files API
+    content_sha256); a local patch and a patch in a subdirectory (GitLab raw,
+    sha512sums); an upstream tarball (distfiles, sha512sums)."""
+
+    def __init__(self, key: str = RL_KEY, *, commit: str = RL_COMMIT, branch: str = "v3.23", repo: str = "main"):
+        self.key, self.commit, self.branch, self.repo = key, commit, branch, repo
+        self.origin, _, self.ver = key.split(":", 1)[1].rpartition("@")
+        self.pkgver, _, self.pkgrel = self.ver.rpartition("-r")
+        # rel path -> bytes: the regular files beside the APKBUILD
+        self.local = {"fix-build.patch": f"--- a\n+++ b\n{key}\n".encode(),
+                      "patches/sub-fix.patch": f"--- c\n+++ d\n{key}\n".encode()}
+        self.extra = {f"{self.origin}.post-install": f"#!/bin/sh\n# {key}\n".encode()}
+        self.upstream = {f"{self.origin}-{self.pkgver}.tar.gz": f"upstream tarball of {key}".encode()}
+
+    def summed(self) -> dict[str, bytes]:
+        """basename -> bytes of every sha512sums name."""
+        return {**self.upstream, **{rel.rsplit("/", 1)[-1]: b for rel, b in self.local.items()}}
+
+    def sums(self) -> str:
+        return "".join(f"{sha('sha512', b)}  {n}\n" for n, b in self.summed().items())
+
+    def apkbuild(self, *, pkgver: str | None = None, pkgrel: str | None = None, sums: str | None = None,
+                 quote_char: str = '"') -> str:
+        block = "" if sums == "" else f"sha512sums={quote_char}\n{self.sums() if sums is None else sums}{quote_char}\n"
+        return (f"# Contributor: Fixture <fixture@example.invalid>\npkgname={self.origin}\n"
+                f"pkgver={self.pkgver if pkgver is None else pkgver}\npkgrel={self.pkgrel if pkgrel is None else pkgrel}\n"
+                f'pkgdesc="fixture"\nurl="https://example.invalid/{self.origin}"\narch="all"\n'
+                f'license="GPL-3.0-or-later"\ninstall="$pkgname.post-install"\n'
+                f'source="https://example.invalid/{self.origin}-$pkgver.tar.gz\n'
+                f'\tfix-build.patch\n\tpatches/sub-fix.patch\n\t"\n\nbuild() {{\n\t./configure --prefix=/usr\n\tmake\n}}\n\n'
+                f"{block}")
+
+    def tree(self, repo: str) -> str:
+        # U7c rework round 1, item 8 (security I-1): the path value is percent-encoded
+        # (was the raw `<repo>/<origin>` until round 1).
+        return (f"{APORTS}/tree?path={quote(f'{repo}/{self.origin}', safe='')}&ref={self.commit}"
+                "&recursive=true&per_page=100")
+
+    def files_api(self, rel: str = "APKBUILD", repo: str | None = None) -> str:
+        return f"{APORTS}/files/{quote(f'{repo or self.repo}/{self.origin}/{rel}', safe='')}?ref={self.commit}"
+
+    def raw(self, rel: str, repo: str | None = None) -> str:
+        # U7c rework round 1, item 9: the API raw endpoint (was /alpine/aports/-/raw/<commit>/...,
+        # which sits behind a bot challenge: u7c/windows-run.txt).
+        return f"{APORTS}/files/{quote(f'{repo or self.repo}/{self.origin}/{rel}', safe='')}/raw?ref={self.commit}"
+
+    def dist(self, name: str) -> str:
+        return f"https://distfiles.alpinelinux.org/distfiles/{self.branch}/{name}"
+
+    def listing(self, repo: str, extra: list[dict[str, Any]] | None = None) -> str:
+        rels = ["APKBUILD", *self.local, *self.extra]
+        items: list[dict[str, Any]] = [{"id": "d" * 40, "name": "patches", "type": "tree",
+                                        "path": f"{repo}/{self.origin}/patches", "mode": "040000"}]
+        items += [{"id": sha("sha1", (repo + r).encode()), "name": r.rsplit("/", 1)[-1], "type": "blob",
+                   "path": f"{repo}/{self.origin}/{r}", "mode": "100755" if r in self.extra else "100644"}
+                  for r in rels]
+        return json.dumps(items + (extra or []))
+
+    def meta(self, rel: str, body: bytes, content_sha256: str | None = None) -> Any:
+        return ok(json.dumps({"file_name": rel.rsplit("/", 1)[-1], "file_path": f"{self.repo}/{self.origin}/{rel}",
+                              "size": len(body), "encoding": "base64", "ref": self.commit,
+                              "content_sha256": content_sha256 or sha("sha256", body)}))
+
+    def routes(self, apkbuild: str | None = None, *, content_sha256: str | None = None,
+               listing: str | None = None) -> dict[str, Any]:
+        text_ = (self.apkbuild() if apkbuild is None else apkbuild).encode()
+        r: dict[str, Any] = {
+            self.tree(self.repo): (200, {"X-Next-Page": "", "X-Total": "6"},
+                                   self.listing(self.repo) if listing is None else listing),
+            self.files_api(): self.meta("APKBUILD", text_, content_sha256),
+            self.raw("APKBUILD"): ok(text_)}
+        r.update({self.raw(rel): ok(b) for rel, b in {**self.local, **self.extra}.items()})
+        r.update({self.files_api(rel): self.meta(rel, b) for rel, b in self.extra.items()})
+        r.update({self.dist(n): ok(b) for n, b in self.upstream.items()})
+        return r
+
+    def entry(self) -> dict[str, Any]:
+        text_ = self.apkbuild().encode()
+        gl = f"gitlab files API content_sha256 at {self.commit}"
+        files = [{"name": "APKBUILD", "url": self.raw("APKBUILD"), "sha256": sha("sha256", text_), "size": len(text_),
+                  "upstream": {"alg": "sha256", "value": sha("sha256", text_), "from": gl}}]
+        for rel, b in self.extra.items():
+            files.append({"name": rel, "url": self.raw(rel), "sha256": sha("sha256", b), "size": len(b),
+                          "upstream": {"alg": "sha256", "value": sha("sha256", b), "from": gl}})
+        for rel, b in {**self.upstream, **self.local}.items():
+            files.append({"name": rel.rsplit("/", 1)[-1], "url": self.raw(rel) if rel in self.local else self.dist(rel),
+                          "sha256": sha("sha256", b), "size": len(b),
+                          "upstream": {"alg": "sha512", "value": sha("sha512", b),
+                                       "from": f"APKBUILD sha512sums at {self.commit}"}})
+        return {"kind": "apk", "arches": [ARCH], "origin": "generated", "commit": self.commit, "branch": self.branch,
+                "repo": self.repo, "files": files}
+
+
+def apk_need(fx: ApkFixture, **route: Any) -> dict[str, Any]:
+    r = {"origin": fx.origin, "ver": fx.ver, "commit": fx.commit, "branch": fx.branch}
+    r.update(route)
+    return need(fx.key, "valkey", RL_PURL, {k: v for k, v in r.items() if v is not ...})
+
+
+class U7cApkRouteTest(unittest.TestCase):
+    """A2-A5, R-1 (a) and the U7c gap rulings 1-4: every regular file of the
+    package directory is locked, every URL fetched once."""
+
+    def setUp(self) -> None:
+        self.mod = load_resolver()
+
+    def test_the_entry(self):
+        for repo in ("main", "community"):
+            with self.subTest(repo=repo):
+                fx = ApkFixture(repo=repo)
+                with network(self.mod, fx.routes()) as net:
+                    lock, _, skipped = resolve(self.mod, {RL_KEY: apk_need(fx)})
+                self.assertEqual(skipped, [], "an apk key was skipped (U7c: apk has a route)")
+                self.assertEqual(by_name(lock["components"][RL_KEY]), by_name(fx.entry()))
+                self.assertEqual(len(net.calls), len(set(net.calls)), "a URL was requested twice")
+                self.assertEqual(set(net.calls), {fx.tree("main"), fx.tree("community"), fx.files_api(),
+                                                  fx.files_api("readline.post-install"), fx.raw("APKBUILD"),
+                                                  fx.raw("fix-build.patch"), fx.raw("patches/sub-fix.patch"),
+                                                  fx.raw("readline.post-install"), fx.dist("readline-8.2.13.tar.gz")})
+                lock_ok(self, lock, docs_for(RL_DOCS))
+        with self.subTest(case="single-quoted sha512sums"):
+            fx = ApkFixture()
+            with network(self.mod, fx.routes(fx.apkbuild(quote_char="'"))):
+                lock, _, _ = resolve(self.mod, {RL_KEY: apk_need(fx)})
+            self.assertEqual(len(lock["components"][RL_KEY]["files"]), 5)
+        with self.subTest(case="an empty main listing is not here (gap ruling 2)"):
+            fx = ApkFixture(repo="community")
+            with network(self.mod, dict(fx.routes(), **{fx.tree("main"): (200, {"X-Next-Page": ""}, "[]")})):
+                lock, _, _ = resolve(self.mod, {RL_KEY: apk_need(fx)})
+            self.assertEqual(lock["components"][RL_KEY]["repo"], "community")
+
+    def test_failures(self):
+        err = rfn("ResolveError")
+        fx = ApkFixture()
+        c = fx.commit
+        good = fx.routes()
+        com = ApkFixture(repo="community")
+        tree_main = fx.tree("main")
+        patch_bad = dict(good, **{fx.raw("fix-build.patch"): ok(b"tampered")})
+        post = "readline.post-install"
+
+        def listed(*extra: dict[str, Any]) -> dict[str, Any]:
+            return fx.routes(listing=fx.listing("main", list(extra)))
+        rows: dict[str, tuple[dict[str, Any], str]] = {
+            "in both main and community": (good | com.routes(), f"readline: in both main and community at {c}"),
+            "in neither": ({}, f"readline: in neither main nor community at {c}"),
+            "empty listings in both": ({tree_main: (200, {}, "[]"), fx.tree("community"): (200, {}, "[]")},
+                                       f"readline: in neither main nor community at {c}"),
+            "a tree 500": (dict(good, **{tree_main: (500, {}, b"")}), f"{GL}: HTTP 500: {tree_main}"),
+            "more than 100 files": (dict(good, **{tree_main: (200, {"X-Next-Page": "2"}, fx.listing("main"))}),
+                                    f"readline: more than 100 files at {c}"),
+            "a symlink": (listed({"id": "e" * 40, "name": "link", "type": "blob", "path": "main/readline/link",
+                                  "mode": "120000"}), f"readline: main/readline/link at {c} is not a regular file"),
+            "a submodule": (listed({"id": "e" * 40, "name": "sub", "type": "commit", "path": "main/readline/sub",
+                                    "mode": "160000"}), f"readline: main/readline/sub at {c} is not a regular file"),
+            "two blobs with one basename": (listed({"id": "e" * 40, "name": "fix-build.patch", "type": "blob",
+                                                    "path": "main/readline/patches/fix-build.patch",
+                                                    "mode": "100644"}),
+                                            f"readline: two files named fix-build.patch at {c}"),
+            "content_sha256 mismatch": (fx.routes(content_sha256="e" * 64),
+                                        f"APKBUILD: sha256 mismatch: got {sha('sha256', fx.apkbuild().encode())}, "
+                                        f"gitlab files API says {'e' * 64}"),
+            "an install script's content_sha256 mismatch": (
+                dict(good, **{fx.files_api(post): fx.meta(post, fx.extra[post], "f" * 64)}),
+                f"{post}: sha256 mismatch: got {sha('sha256', fx.extra[post])}, gitlab files API says {'f' * 64}"),
+            "an install script not retrievable": ({k: v for k, v in good.items() if k != fx.raw(post)},
+                                                  f"{GL}: HTTP 404: {fx.raw(post)}"),
+            "an install script with no files API answer": ({k: v for k, v in good.items() if k != fx.files_api(post)},
+                                                           f"{GL}: HTTP 404: {fx.files_api(post)}"),
+            "pkgver is not the key's": (fx.routes(fx.apkbuild(pkgver="8.2.12")),
+                                        f"APKBUILD at {c}: pkgver/pkgrel 8.2.12-r1 is not 8.2.13-r1"),
+            "pkgrel is not the key's": (fx.routes(fx.apkbuild(pkgrel="2")),
+                                        f"APKBUILD at {c}: pkgver/pkgrel 8.2.13-r2 is not 8.2.13-r1"),
+            "no sha512sums": (fx.routes(fx.apkbuild(sums="")), f"APKBUILD at {c}: no sha512sums"),
+            "an empty sha512sums": (fx.routes(fx.apkbuild(sums="\n")), f"APKBUILD at {c}: no sha512sums"),
+            "sha512sums not a literal": (fx.routes(fx.apkbuild(sums=fx.sums() + "$_extra  x.patch\n")),
+                                         f"APKBUILD at {c}: sha512sums is not a literal"),
+            "an unsafe sha512sums name": (fx.routes(fx.apkbuild(sums=fx.sums() + "a" * 128 + "  ../evil.tar.gz\n")),
+                                          "../evil.tar.gz: not a safe file name"),
+            "a :: name": (fx.routes(fx.apkbuild(sums=fx.sums() + "a" * 128 + "  evil.tar.gz::https\n")),
+                          "evil.tar.gz::https: not a safe file name"),
+            "a local file's sha512": (patch_bad, f"fix-build.patch: sha512 mismatch: got {sha('sha512', b'tampered')}, "
+                                                 f"APKBUILD sha512sums at {c} says "
+                                                 f"{sha('sha512', fx.local['fix-build.patch'])}"),
+            "a distfile's sha512": (dict(good, **{fx.dist("readline-8.2.13.tar.gz"): ok(b"tampered")}),
+                                    f"readline-8.2.13.tar.gz: sha512 mismatch: got {sha('sha512', b'tampered')}, "
+                                    f"APKBUILD sha512sums at {c} says {sha('sha512', fx.upstream['readline-8.2.13.tar.gz'])}"),
+            "not in the tree and not on distfiles": (
+                {k: v for k, v in good.items() if k != fx.dist("readline-8.2.13.tar.gz")},
+                f"distfiles.alpinelinux.org: HTTP 404: {fx.dist('readline-8.2.13.tar.gz')}"),
+        }
+        for case, (routes, why) in rows.items():
+            with self.subTest(case=case):
+                with network(self.mod, routes) as net:
+                    with self.assertRaises(err) as caught:
+                        resolve(self.mod, {RL_KEY: apk_need(fx)})
+                self.assertEqual(str(caught.exception), f"{RL_KEY}: {why}")
+                self.assertFalse([u for u in net.calls if "evil" in u], "a URL was built from an unsafe name")
+        with self.subTest(case="an unsafe path in the listing"):
+            with network(self.mod, listed({"id": "e" * 40, "name": "evil.patch", "type": "blob",
+                                           "path": "main/readline/../evil.patch", "mode": "100644"})) as net:
+                with self.assertRaises(err):
+                    resolve(self.mod, {RL_KEY: apk_need(fx)})
+            self.assertFalse([u for u in net.calls if "evil" in u], "a URL was built from an unsafe listing path")
+        with self.subTest(case="a non-literal pkgver"):
+            with network(self.mod, fx.routes(fx.apkbuild(pkgver="$_ver"))):
+                with self.assertRaises(err) as caught:
+                    resolve(self.mod, {RL_KEY: apk_need(fx)})
+            msg = str(caught.exception)
+            self.assertTrue(msg.startswith(f"{RL_KEY}: APKBUILD at {c}: pkgver/pkgrel ") and
+                            msg.endswith(" is not 8.2.13-r1"), msg)
+        for field, route in (("origin", {"origin": "ncurses"}), ("origin", {"origin": ...}), ("ver", {"ver": "1-r0"}),
+                             ("commit", {"commit": None}), ("commit", {"commit": "../x"}),
+                             ("branch", {"branch": "master"}), ("branch", {"branch": 3})):
+            with self.subTest(field=field, route=repr(route)):
+                with network(self.mod, good) as net:
+                    with self.assertRaises(err) as caught:
+                        resolve(self.mod, {RL_KEY: apk_need(fx, **route)})
+                self.assertEqual(str(caught.exception), f"{RL_KEY}: apk {RL_KEY}: route is malformed ({field})")
+                self.assertEqual(net.calls, [], "a request was made with a malformed route")
+
+
+class U7cCoverageTest(unittest.TestCase):
+    """Ruling 3: the 152 deb and 19 apk fixture keys all resolve (none is
+    skipped) and every entry passes U7a's lock_problems."""
+
+    def test_the_fixture_keys(self):
+        mod = load_resolver()
+        no_pause(self, mod)
+        check = load_sbom_check()
+        docs = fixture_docs()
+        needs_all, problems = check.lock_needs(policy(), docs)
+        self.assertEqual(problems, [])
+        needs: dict[str, Any] = {}
+        routes: dict[str, Any] = {}
+        for key, e in sorted(needs_all.items()):
+            kind = key.split(":", 1)[0]
+            name, _, ver = key.split(":", 1)[1].rpartition("@")
+            if kind == "deb":
+                needs[key] = {"kind": kind, "packages": e["packages"], "route": {"src": name, "ver": ver}}
+                routes.update(DebFixture(key).routes())
+            elif kind == "apk":
+                distro = {unquote(q.partition("=")[2]) for p in e["packages"]
+                          for q in str(p["purl"]).partition("?")[2].split("&") if q.startswith("distro=")}
+                self.assertEqual(len(distro), 1, key)
+                x, y, _ = distro.pop().split("-", 1)[1].split(".")
+                fx = ApkFixture(key, commit=aports_commit(name, ver), branch=f"v{x}.{y}")
+                needs[key] = {"kind": kind, "packages": e["packages"], "route": {
+                    "origin": name, "ver": ver, "commit": fx.commit, "branch": fx.branch}}
+                routes.update(fx.routes())
+        self.assertEqual((sum(k.startswith("deb:") for k in needs), sum(k.startswith("apk:") for k in needs)), (152, 19))
+        with network(mod, routes):
+            lock, _, skipped = resolve(mod, needs)
+        self.assertEqual(skipped, [])
+        self.assertEqual(set(lock["components"]), set(needs), "a deb or apk key got no entry")
+        bad = [p for p in check.lock_problems(check.lock_text(lock), policy(), docs, ARCH)
+               if p.startswith(("lock: deb:", "lock: apk:"))]
+        self.assertEqual(bad, [], "a resolved deb or apk entry fails lock_problems")
+
+
+class U7cCarriedTest(unittest.TestCase):
+    """C1 (review U7b R1-N1), C2 (security U7b R1-L1), pgdg (interface pins
+    item 3)."""
+
+    def test_a_server_supplied_url_gets_the_hop_rules(self):
+        mod = load_resolver()
+        bad = "https://files.pythonhosted.org/packages/33/01/%2e%2e/%2e%2e/" + "d" * 60 + "/pandas-2.3.3.tar.gz"
+        doc = json.loads(pandas_json())
+        doc["urls"][1]["url"] = bad
+        key = "pypi:pandas@2.3.3"
+        with network(mod, {"https://pypi.org/pypi/pandas/2.3.3/json": ok(json.dumps(doc)), bad: ok(PANDAS_BODY)}) as net:
+            with self.assertRaises(rfn("ResolveError")):
+                resolve(mod, {key: need(key, "phoenix", "pkg:pypi/pandas@2.3.3", {"name": "pandas", "ver": "2.3.3"})})
+        self.assertNotIn(bad, net.calls, "R1-N1: the server-supplied url was requested")
+
+    def test_the_real_opener_reads_with_read1(self):
+        spec = importlib.util.spec_from_file_location("ke_sources_resolve_read1", RESOLVER)
+        assert spec is not None and spec.loader is not None
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        chunks = [b"ab", b"c", b""]
+
+        class Resp:
+            status, headers = 200, {}
+
+            def read(self, n: int = -1) -> bytes:
+                raise AssertionError("read(n) loops over recv until n bytes: use read1 (security U7b R1-L1)")
+
+            def read1(self, n: int = -1) -> bytes:
+                return chunks.pop(0)
+        fake = SimpleNamespace(open=mock.Mock(return_value=Resp()))
+        with mock.patch("urllib.request.build_opener", return_value=fake):
+            r = mod.OPENER(JAXB_URL, 5)
+            self.assertEqual(b"".join(r.body), b"abc")
+
+    def test_snapshot_pause(self):
+        mod = load_resolver()
+        self.assertEqual(getattr(mod, "SNAPSHOT_PAUSE", None), 1.0, "D7: 1 s between snapshot requests")
+        fx, fx2 = DebFixture(BASH_KEY), DebFixture("deb:attr@1:2.5.1-4")
+        times: list[float] = []
+
+        class Timed(FakeNet):
+            def __call__(self, url: str, timeout: float) -> Any:
+                times.append(time.monotonic())
+                return super().__call__(url, timeout)
+        with mock.patch.object(mod, "SNAPSHOT_PAUSE", 0.3), mock.patch.object(mod, "OPENER",
+                                                                              Timed(fx.routes() | fx2.routes())):
+            resolve(mod, {BASH_KEY: deb_need(BASH_KEY), fx2.key: deb_need(fx2.key)})
+        gaps = [b - a for a, b in zip(times, times[1:])]
+        self.assertEqual(len(times), 4)
+        self.assertTrue(all(g >= 0.28 for g in gaps), f"snapshot requests not spaced by SNAPSHOT_PAUSE: {gaps}")
+
+    def test_pgdg_is_skipped_until_q71(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        net = Opener({})
+        code, _, err = run_main(tmp, {PGDG_KEY: need(PGDG_KEY, "postgres", "pkg:deb/debian/postgresql-common@293")}, net)
+        self.assertEqual(code, 0, err)
+        self.assertIn(f"sources_resolve: skip: {PGDG_KEY} (no pgdg route until Q71)", err.splitlines())
+        self.assertEqual(net.calls, [])
+
+
+# --------------------------------------------------------------------------
+# U7c A1: lock-needs reads the apk route inputs from the saved tar
+# --------------------------------------------------------------------------
+
+RL_DEV_PURL = "pkg:apk/alpine/readline-static@8.2.13-r1?arch=x86_64&distro=alpine-3.23.3&upstream=readline"
+
+
+def rl_docs() -> dict[str, Any]:
+    return docs_for({"valkey": [{"purl": RL_PURL, "declared": "GPL-3.0-or-later"},
+                                {"purl": RL_DEV_PURL, "declared": "GPL-3.0-or-later"}]})
+
+
+def rl_db(*, static_origin: str = "readline", static_commit: str = RL_COMMIT, drop_static: bool = False) -> str:
+    db = f"C:Q1a=\nP:readline\nV:8.2.13-r1\nA:x86_64\no:readline\nm:Fixture\nc:{RL_COMMIT}\n\n"
+    if not drop_static:
+        db += f"C:Q1b=\nP:readline-static\nV:8.2.13-r1\nA:x86_64\no:{static_origin}\nc:{static_commit}\n\n"
+    return db + f"C:Q1c=\nP:musl\nV:1.2.5-r21\nA:x86_64\no:musl\nc:{'0' * 40}\n"
+
+
+class U7cLockNeedsTest(unittest.TestCase):
+
+    def _doc(self, apk: Any) -> tuple[dict[str, Any], list[str]]:
+        fn_ = getattr(load_sbom_check(), "lock_needs_doc")
+        return fn_(policy(), rl_docs(), {}, apk)
+
+    def test_the_apk_route(self):
+        doc, problems = self._doc({"valkey": {"installed": rl_db(), "release": "3.23.3\n"}})
+        self.assertEqual(problems, [])
+        self.assertEqual(doc["needs"][RL_KEY]["route"], {"origin": "readline", "ver": "8.2.13-r1", "commit": RL_COMMIT,
+                                                         "branch": "v3.23"})
+
+    def test_problems(self):
+        miss = (f"{RL_KEY}: valkey: readline-static 8.2.13-r1 has no installed-db stanza with origin readline "
+                "and an aports commit")
+        other = "a" * 40
+        rows = {
+            "a package with no stanza": ({"installed": rl_db(drop_static=True), "release": "3.23.3\n"}, miss),
+            "a stanza with another origin": ({"installed": rl_db(static_origin="ncurses"), "release": "3.23.3\n"}, miss),
+            "a commit that is not 40 hex": ({"installed": rl_db(static_commit="abc"), "release": "3.23.3\n"}, miss),
+            "two commits": ({"installed": rl_db(static_commit=other), "release": "3.23.3\n"},
+                            f"{RL_KEY}: two aports commits {min(other, RL_COMMIT)}, {max(other, RL_COMMIT)}"),
+            "alpine-release and the purl disagree": ({"installed": rl_db(), "release": "3.24.2\n"},
+                                                     f"{RL_KEY}: valkey: alpine-release 3.24.2, purl distro alpine-3.23.3"),
+        }
+        for case, (inputs, want) in rows.items():
+            with self.subTest(case=case):
+                doc, problems = self._doc({"valkey": inputs})
+                self.assertIn(want, problems)
+                self.assertNotIn(RL_KEY, doc["needs"], "a key with a problem got a route")
+        with self.subTest(case="no tar inputs for the image"):
+            doc, problems = self._doc({})
+            self.assertTrue([p for p in problems if p.startswith(f"{RL_KEY}: ")], problems)
+
+    def _cli(self, tmp: Path, tar: Path, image: str = "valkey") -> subprocess.CompletedProcess:
+        docs = rl_docs()
+        if image == "ke-neo4j":
+            docs = docs_for(TEM_DOCS)
+        for img, d in docs.items():
+            ss.write_json(tmp / f"{img}.spdx.json", d)
+        return subprocess.run([sys.executable, "-I", str(ROOT / "scripts" / "sbom_check.py"), "lock-needs",
+                               "--policy", str(ROOT / "docker" / "source-policy.json"),
+                               *[a for img in docs for a in ("--sbom", f"{img}={tmp / f'{img}.spdx.json'}")],
+                               "--tar", f"{image}={tar}"], capture_output=True, text=True, timeout=120)
+
+    def test_the_cli_reads_the_tar(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        tar = save_tar_with(tmp / "valkey.tar", [{"lib/apk/db/installed": rl_db(static_commit="b" * 40).encode(),
+                                                  "etc/alpine-release": b"3.22.1\n"},
+                                                 {"lib/apk/db/installed": rl_db().encode(),
+                                                  "etc/alpine-release": b"3.23.3\n"}])
+        r = self._cli(tmp, tar)
+        self.assertEqual(r.returncode, 0, r.stderr[-800:])
+        self.assertEqual(json.loads(r.stdout)["needs"][RL_KEY]["route"]["commit"], RL_COMMIT, "the top layer wins")
+        with self.subTest(case="an installed db over 16 MiB"):
+            big = save_tar_with(tmp / "big.tar", [{"lib/apk/db/installed": rl_db().encode() + b"x" * (16 << 20),
+                                                   "etc/alpine-release": b"3.23.3\n"}])
+            r = self._cli(tmp, big)
+            self.assertEqual(r.returncode, 1, r.stderr[-800:])
+            self.assertIn("valkey: /lib/apk/db/installed larger than 16 MiB", r.stderr)
+            self.assertNotIn("Traceback", r.stderr)
+        with self.subTest(case="a release file over 1 MiB"):
+            big = save_tar_with(tmp / "neo.tar", [{"opt/java/openjdk/release": RELEASE.encode() + b"#" * (1 << 20)}])
+            r = self._cli(tmp, big, image="ke-neo4j")
+            self.assertEqual(r.returncode, 1, r.stderr[-800:])
+            self.assertIn("ke-neo4j: /opt/java/openjdk/release larger than 1 MiB", r.stderr)
+            self.assertNotIn("Traceback", r.stderr)
+
+
+class U7cLockScriptRunTest(_BundleBase, unittest.TestCase):
+    """A1 in sources_lock.sh: `--tar` for every image; R-2 (c): the literal
+    six equals the stack's bundled names."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        for rel in ("docker/source-policy.json", SOURCES_YML):
+            (self.repo / rel).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ROOT / rel, self.repo / rel)
+        self.lock = self.repo / "docker" / "sources.lock.json"
+        self.check = load_sbom_check()
+        self.syft_log = self.tmp / "syft.jsonl"
+        self.resolve_log = self.tmp / "resolve.log"
+
+    _commit_lock = ReworkR1LockScriptRunTest._commit_lock
+    _run = ReworkR1LockScriptRunTest._run
+    _steps = staticmethod(ReworkR1LockScriptRunTest._steps)
+
+    def test_lock_needs_gets_every_tar(self):
+        lock, docs, _ = self._commit_lock(HAPPY_ROWS)
+        r, calls = self._run(docs)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr[-3000:])
+        needs_call = [c for n, c in self._steps(calls) if n == "lock-needs"]
+        self.assertEqual(len(needs_call), 1)
+        tars = [needs_call[0][i + 1] for i, a in enumerate(needs_call[0]) if a == "--tar"]
+        self.assertEqual(sorted(tars), sorted(f"{n}=/tars/{n}.tar" for n in HAPPY_ROWS), "A1: --tar for every image")
+
+    def test_the_six_equal_the_bundled_names(self):
+        from tests.test_sbom_obligations import bundled_names
+        m = re.search(r"(?m)^six=\(([^)]*)\)$", LOCK_SH.read_text(encoding="utf-8"))
+        self.assertIsNotNone(m, "scripts/sources_lock.sh has no `six=(...)` literal (R-2 (c))")
+        assert m is not None
+        self.assertEqual(set(m.group(1).split()), bundled_names(),
+                         "R-2 (c): the six=(...) guard in scripts/sources_lock.sh and the stack compose config "
+                         "(bundle.sh's image set) disagree: change both")
+
+
+# ==========================================================================
+# U7c rework round 1 (design-notes "U7c rework round 1", orchestrator rulings
+# 2026-10-25; u7c/review.md B1, N1, N2; u7c/security.md L-2, L-3, I-1).
+# ==========================================================================
+
+class ReworkR1U7cApkbuildTest(unittest.TestCase):
+    """Item 1 (B1), resolver side: the APKBUILD is the top-level blob."""
+
+    def test_only_a_subdirectory_apkbuild(self):
+        mod = load_resolver()
+        fx = ApkFixture()
+        items = json.loads(fx.listing("main"))
+        for it in items:
+            if it["name"] == "APKBUILD":
+                it["path"] = "main/readline/tests/APKBUILD"
+        with network(mod, fx.routes(listing=json.dumps(items))) as net:
+            with self.assertRaises(rfn("ResolveError")) as caught:
+                resolve(mod, {RL_KEY: apk_need(fx)})
+        self.assertEqual(str(caught.exception), f"{RL_KEY}: readline: no APKBUILD at main/readline at {fx.commit}")
+        self.assertFalse([u for u in net.calls if "APKBUILD" in u], "a subdirectory APKBUILD was requested")
+
+    def test_a_subdirectory_apkbuild_beside_the_top_one(self):
+        mod = load_resolver()
+        fx = ApkFixture()
+        extra = {"id": "e" * 40, "name": "APKBUILD", "type": "blob", "path": "main/readline/tests/APKBUILD",
+                 "mode": "100644"}
+        with network(mod, fx.routes(listing=fx.listing("main", [extra]))):
+            with self.assertRaises(rfn("ResolveError")) as caught:
+                resolve(mod, {RL_KEY: apk_need(fx)})
+        self.assertEqual(str(caught.exception), f"{RL_KEY}: readline: two files named APKBUILD at {fx.commit}")
+
+
+class ReworkR1U7cDscTest(unittest.TestCase):
+    """Items 2 (N1) and 6 (L-2): duplicate fields, CRLF, control characters."""
+
+    def setUp(self) -> None:
+        self.mod = load_resolver()
+        no_pause(self, self.mod)
+        self.fx = DebFixture(BASH_KEY)
+
+    def _why(self, text: str) -> str:
+        with network(self.mod, self.fx.routes(text)):
+            with self.assertRaises(rfn("ResolveError")) as caught:
+                resolve(self.mod, {BASH_KEY: deb_need(BASH_KEY)})
+        msg = str(caught.exception)
+        self.assertTrue(msg.startswith(f"{BASH_KEY}: "), msg)
+        return msg[len(BASH_KEY) + 2:]
+
+    def test_duplicate_fields(self):
+        fx, dsc = self.fx, self.fx.dsc
+        good = fx.text()
+        rows = {
+            "two Version lines": (good.replace("Maintainer:", "Version: 9.9-9\nMaintainer:", 1), "Version"),
+            "two Files blocks": (good.replace("\n-----BEGIN PGP SIGNATURE", "Files:\n" + fx.lines("md5")
+                                              + "\n-----BEGIN PGP SIGNATURE", 1), "Files"),
+            "Checksums-Sha256 and checksums-sha256": (good.replace(
+                "\n-----BEGIN PGP SIGNATURE", "checksums-sha256:\n" + fx.lines("sha256") + "\n-----BEGIN PGP SIGNATURE", 1),
+                "checksums-sha256"),
+        }
+        for case, (text, field) in rows.items():
+            with self.subTest(case=case):
+                self.assertEqual(self._why(text), f"{dsc}: duplicate field {field}")
+
+    def test_crlf_parses_like_lf(self):
+        fx = self.fx
+        text = fx.text().replace("\n", "\r\n")
+        with network(self.mod, fx.routes(text)):
+            lock, _, _ = resolve(self.mod, {BASH_KEY: deb_need(BASH_KEY)})
+        e = lock["components"][BASH_KEY]
+        self.assertEqual([f for f in e["files"] if f["name"] != fx.dsc],
+                         [f for f in fx.entry()["files"] if f["name"] != fx.dsc])
+
+    def test_control_characters(self):
+        fx, dsc = self.fx, self.fx.dsc
+        good = fx.text()
+        self.assertEqual(self._why(good.replace("Architecture: any", "Homepage: a\u2028Source: evil\nArchitecture: any")),
+                         f"{dsc}: control character in field Homepage")
+        first = fx.lines("sha256").split("\n")[0]
+        for ch in ("\u0085", "\u2028", "\u2029", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e", "\r"):
+            with self.subTest(char=hex(ord(ch))):
+                bad = first[:65] + ch + first[65:]  # after the hash, inside the line
+                self.assertEqual(self._why(good.replace(first, bad, 1)),
+                                 f"{dsc}: control character in field Checksums-Sha256")
+
+
+class ReworkR1U7cApkbuildAssignTest(unittest.TestCase):
+    """Item 3 (N2): one top-level pkgver, pkgrel and sha512sums."""
+
+    def test_repeated_assignments(self):
+        mod = load_resolver()
+        fx = ApkFixture()
+        good = fx.apkbuild()
+        rows = {
+            "a later pkgver=9.0": (good + "pkgver=9.0\n", "pkgver"),
+            "a second pkgrel": (good.replace("pkgdesc=", "pkgrel=7\npkgdesc=", 1), "pkgrel"),
+            "a second sha512sums block": (good + 'sha512sums="\n' + fx.sums() + '"\n', "sha512sums"),
+        }
+        for case, (text, name) in rows.items():
+            with self.subTest(case=case):
+                with network(mod, fx.routes(text)):
+                    with self.assertRaises(rfn("ResolveError")) as caught:
+                        resolve(mod, {RL_KEY: apk_need(fx)})
+                self.assertEqual(str(caught.exception), f"{RL_KEY}: readline: APKBUILD assigns {name} more than once")
+        with self.subTest(case="an indented sha512sums in prepare() is not top-level"):
+            text = good.replace("build() {", 'prepare() {\n\tsha512sums="x"\n\tdefault_prepare\n}\n\nbuild() {', 1)
+            with network(mod, fx.routes(text)):
+                lock, _, _ = resolve(mod, {RL_KEY: apk_need(fx)})
+            self.assertIn(RL_KEY, lock["components"])
+
+
+class ReworkR1U7cListingTest(unittest.TestCase):
+    """Items 7 (L-3) and 8 (I-1): a full page; the encoded path."""
+
+    def _padded(self, fx: ApkFixture, total: int) -> str:
+        items = json.loads(fx.listing("main"))
+        items += [{"id": f"{i:040x}", "name": f"d{i}", "type": "tree", "path": f"main/readline/d{i}", "mode": "040000"}
+                  for i in range(total - len(items))]
+        self.assertEqual(len(items), total)
+        return json.dumps(items)
+
+    def test_a_full_page(self):
+        mod = load_resolver()
+        fx = ApkFixture()
+        for case, total, headers, fails in (("100, no header", 100, {}, True),
+                                            ("100, x-next-page 2", 100, {"X-Next-Page": "2"}, True),
+                                            ("100, an empty x-next-page", 100, {"X-Next-Page": ""}, False),
+                                            ("99, no header", 99, {}, False)):
+            with self.subTest(case=case):
+                routes = dict(fx.routes(), **{fx.tree("main"): (200, headers, self._padded(fx, total))})
+                with network(mod, routes):
+                    if fails:
+                        with self.assertRaises(rfn("ResolveError")) as caught:
+                            resolve(mod, {RL_KEY: apk_need(fx)})
+                        self.assertEqual(str(caught.exception),
+                                         f"{RL_KEY}: readline: listing may be truncated at {fx.commit}")
+                    else:
+                        lock, _, _ = resolve(mod, {RL_KEY: apk_need(fx)})
+                        self.assertIn(RL_KEY, lock["components"])
+
+    def test_the_path_is_encoded(self):
+        mod = load_resolver()
+        fx = ApkFixture("apk:libsigc++@3.6.0-r1", commit=aports_commit("libsigc++", "3.6.0-r1"))
+        purl = "pkg:apk/alpine/libsigc%2B%2B@3.6.0-r1?arch=x86_64&distro=alpine-3.23.3"
+        with network(mod, fx.routes()) as net:
+            lock, _, _ = resolve(mod, {fx.key: need(fx.key, "valkey", purl, {
+                "origin": fx.origin, "ver": fx.ver, "commit": fx.commit, "branch": fx.branch})})
+        self.assertIn("path=main%2Flibsigc%2B%2B&", net.calls[0])
+        self.assertIn(fx.key, lock["components"])
+
+
+class ReworkR1U7cApiUrlResolverTest(unittest.TestCase):
+    """Item 9 (the A34 finding), resolver side: requests at exactly the API
+    raw form, the metadata request without /raw, and a bot challenge (307 to
+    a challenge url, then 418) as one FAIL line with nothing written."""
+
+    def test_the_request_forms(self):
+        mod = load_resolver()
+        fx = ApkFixture()
+        with network(mod, fx.routes()) as net:
+            lock, _, _ = resolve(mod, {RL_KEY: apk_need(fx)})
+        gl = [u for u in net.calls if u.startswith(f"https://{GL}/")]
+        self.assertFalse([u for u in gl if "/-/raw/" in u], "the old /-/raw/ form was requested")
+        api = f"{APORTS}/files/"
+        self.assertEqual(sorted(u for u in gl if u.startswith(api) and "/raw?" in u),
+                         sorted(fx.raw(r) for r in ["APKBUILD", *fx.local, *fx.extra]))
+        self.assertEqual(sorted(u for u in gl if u.startswith(api) and "/raw?" not in u),
+                         sorted([fx.files_api(), *(fx.files_api(r) for r in fx.extra)]))
+        self.assertTrue(all(f["url"].endswith(f"/raw?ref={fx.commit}") for f in lock["components"][RL_KEY]["files"]
+                            if f["url"].startswith(f"https://{GL}/")))
+        lock_ok(self, lock, docs_for(RL_DOCS))
+
+    def test_a_bot_challenge(self):
+        """Both fail closed with one line and write nothing. A challenge that
+        redirects to a plain path gives item 9's HTTP 418 line; one that keeps
+        the API path (%2F) is refused by the hop rules (U7b rework round 1
+        item 3: a hop path has no %), which item 9 keeps."""
+        fx = ApkFixture()
+        gid = "__goaway_id=e788cf47493a5646bec6ec8ddbefd5ba"
+        plain = f"https://{GL}/.within.website/challenge?__goaway_challenge=cookie&{gid}"
+        same = fx.raw("APKBUILD") + f"&__goaway_challenge=cookie&{gid}"
+        for case, location, why in (
+                ("to a plain path", plain, f"{GL}: HTTP 418: {plain}"),
+                ("on the same API path", same, f"redirect to {same} refused: not a plain path")):
+            with self.subTest(case=case):
+                routes = dict(fx.routes(), **{fx.raw("APKBUILD"): (307, {"Location": location}, b""),
+                                             location: (418, {}, b"challenge page")})
+                tmp = Path(tempfile.mkdtemp())
+                self.addCleanup(shutil.rmtree, tmp, True)
+                code, _, err = run_main(tmp, {RL_KEY: apk_need(fx)}, FakeNet(routes))
+                self.assertEqual(code, 1, err)
+                self.assertEqual(fail_lines(err), [f"sources_lock: FAIL (resolve: {RL_KEY}: {why}; the lock is unchanged)"])
+                self.assertNotIn("lock.new.json", os.listdir(tmp / "out"))
 
 
 if __name__ == "__main__":

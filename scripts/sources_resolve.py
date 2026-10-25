@@ -9,8 +9,9 @@ dir read-write. It writes nothing but `<out>/lock.new.json`.
   sources_resolve.py --needs NEEDS --lock LOCK --policy POLICY --uv-lock UVLOCK
                      --out DIR --arch amd64|arm64 [--refresh]
 
-Routes in U7b: `temurin`, `maven`, `pypi`, `neo4j` (U7c adds `deb` and `apk`;
-`pgdg` waits on Q71: such keys are skipped and named on stderr). Every request
+Routes: `temurin`, `maven`, `pypi`, `neo4j` (U7b); `deb` and `apk` (U7c,
+design-notes "U7c precision" D1-D7 and A1-A5). `pgdg` waits on Q71: such keys
+are skipped and named on stderr. Every request
 goes through `OPENER(url, timeout)`; redirects are followed by hand, at most 5,
 each hop passing rework round 1's rules (item 3: printable, `https://`, no
 userinfo, port or fragment, a plain path; a query allowed) with its host in
@@ -25,6 +26,13 @@ any URL is built (item 11). One call per file, no retry (Q61).
 - maven: the `-sources.jar` against its `.sha1`.
 - pypi: from uv.lock (no call) or pypi.org's JSON (exactly one sdist), then the
   sdist streamed and checked.
+- deb: snapshot.debian.org's srcfiles?fileinfo=1 (name -> sha1), then the
+  `.dsc` alone from /file/<sha1> (sha1 checked, 1 MiB); the other files are
+  recorded from its Checksums-Sha256 and never fetched. Snapshot requests are
+  spaced by SNAPSHOT_PAUSE.
+- apk: the aports tree at the commit (main, then community), the APKBUILD by
+  the files API's content_sha256, then every sha512sums name streamed from
+  GitLab raw (in the tree) or distfiles (not in it), sha512 checked.
 - neo4j: no published checksum. The tarball is streamed once and the candidate
   printed (`neo4j candidate: {...}`); the entry is never written (origin
   `manual`, by hand after security's second fetch). Exit 3.
@@ -58,11 +66,19 @@ DEADLINE = 600  # seconds per file, wall clock (U7b rework round 1, item 1)
 MAX_BYTES = 4294967296  # 4 GiB, the U7a size cap (round 1, item 1)
 ERROR_BODY_LIMIT = 1048576  # a 3xx/4xx body is read up to 1 MiB, then dropped (round 1, item 10)
 CHUNK = 1 << 16
+TEXT_LIMIT = 1048576  # the .dsc, the APKBUILD and every JSON body (U7c D1, D3, A3)
+SNAPSHOT_PAUSE = 1.0  # seconds between snapshot.debian.org requests (U7c D7)
+SNAPSHOT = "snapshot.debian.org"
+GITLAB = "gitlab.alpinelinux.org"
+DISTFILES = "distfiles.alpinelinux.org"
+APORTS_API = f"https://{GITLAB}/api/v4/projects/alpine%2Faports/repository"
+NAME_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+~-]{0,254}")  # the U7a lock name rule
+_LAST_SNAPSHOT: list[float] = []
 ARCHES = ("amd64", "arm64")
 PYPI_JSON_HOST = "pypi.org"  # resolution only, never a lock file URL (O2)
 GITHUB = "github.com"
 MAVEN = "repo1.maven.org"
-ROUTES = ("temurin", "maven", "pypi", "neo4j")
+ROUTES = ("temurin", "maven", "pypi", "neo4j", "deb", "apk")
 HEX = {"sha1": 40, "sha256": 64, "sha512": 128}
 # U7a's key grammar (item 6 (c)), a minimal copy: sbom_check.py is not mounted
 # in the sources-resolve service (round 1, items 3 and 11).
@@ -123,7 +139,7 @@ def _default_opener(url: str, timeout: float) -> Response:  # pragma: no cover -
 
     def chunks() -> Iterable[bytes]:
         while True:
-            data = r.read(CHUNK)
+            data = r.read1(CHUNK)  # one recv per call (U7c C2, security U7b R1-L1)
             if not data:
                 return
             yield data
@@ -190,7 +206,8 @@ def _guarded(r: Response, host: str, url: str, started: float, timeout: float) -
 
 
 def fetch(url: str, allow: set[str], *, timeout: float = TIMEOUT, hops: list[str] | None = None,
-          first_allow: set[str] | frozenset[str] = frozenset()) -> Response:
+          first_allow: set[str] | frozenset[str] = frozenset(), supplied: bool = False,
+          missing_ok: bool = False) -> Response | None:
     """GET with hop-by-hop redirects: at most 5, each passing `_hop_refusal`
     and its host in `allow` (exact, lower-cased); `first_allow` widens only
     the first request (pypi.org's JSON, round 1, item 8). Item 4's messages;
@@ -198,7 +215,8 @@ def fetch(url: str, allow: set[str], *, timeout: float = TIMEOUT, hops: list[str
     current = url
     started = time.monotonic()
     for hop in range(MAX_HOPS + 1):
-        refusal = _hop_refusal(current, first=hop == 0)
+        # U7c C1: a url taken from a response body (supplied) gets the hop rules.
+        refusal = _hop_refusal(current, first=hop == 0 and not supplied)
         if refusal == "not https":
             raise ResolveError(f"redirect to a non-https URL refused: {_clean(current)}" if hop
                                else f"not an https URL: {_clean(current)}")
@@ -230,6 +248,8 @@ def fetch(url: str, allow: set[str], *, timeout: float = TIMEOUT, hops: list[str
                 raise ResolveError(f"redirect to a non-https URL refused: {_clean(loc)}")
             current = urljoin(current, loc)
             continue
+        if missing_ok and r.status == 404:
+            return None
         if not 200 <= r.status < 300:
             raise ResolveError(f"{host}: HTTP {r.status}: {_clean(current)}")
         return Response(r.status, r.headers, _guarded(r, host, current, started, timeout))
@@ -237,9 +257,10 @@ def fetch(url: str, allow: set[str], *, timeout: float = TIMEOUT, hops: list[str
 
 
 def stream(url: str, allow: set[str], algs: tuple[str, ...] = ("sha256",),
-           hops: list[str] | None = None) -> tuple[dict[str, str], int]:
+           hops: list[str] | None = None, supplied: bool = False) -> tuple[dict[str, str], int]:
     """The body's digests and size; the bytes are hashed, never stored."""
-    r = fetch(url, allow, hops=hops)
+    r = fetch(url, allow, hops=hops, supplied=supplied)
+    assert r is not None
     hashers = {a: hashlib.new(a) for a in set(algs) | {"sha256"}}
     size = 0
     for chunk in r.body:
@@ -251,6 +272,7 @@ def stream(url: str, allow: set[str], algs: tuple[str, ...] = ("sha256",),
 
 def text(url: str, allow: set[str], limit: int = 1 << 20, first_allow: frozenset[str] = frozenset()) -> str:
     r = fetch(url, allow, first_allow=first_allow)
+    assert r is not None
     data = b""
     for chunk in r.body:
         data += chunk
@@ -388,13 +410,364 @@ def resolve_pypi(key: str, arch: str, allow: set[str], uv_lock_text: str) -> dic
     except ValueError:
         raise ResolveError(f"pypi {_clean(name)} {_clean(ver)}: the pypi.org JSON does not parse") from None
     sd = pypi_json_sdist(doc, name, ver)
-    got, size = stream(sd["url"], allow)
+    got, size = stream(sd["url"], allow, supplied=True)  # U7c C1: a server-supplied url
     fname = sd["url"].rsplit("/", 1)[-1]
     if got["sha256"] != sd["sha256"]:
         raise ResolveError(f"{fname}: sha256 mismatch: got {got['sha256']}, pypi.org JSON {name} {ver} says "
                            f"{sd['sha256']}")
     return _entry("pypi", arch, [_file(fname, sd["url"], sd["sha256"], size, "sha256", sd["sha256"],
                                        f"pypi.org JSON {name} {ver}")])
+
+
+
+# --- U7c: the deb route (design-notes "U7c precision" D1-D7) -----------------
+
+def safe_name(name: Any) -> bool:
+    return isinstance(name, str) and bool(NAME_RE.fullmatch(name)) and ".." not in name
+
+
+def _snapshot_wait() -> None:
+    """D7: SNAPSHOT_PAUSE seconds between snapshot requests (monotonic)."""
+    if _LAST_SNAPSHOT:
+        wait = SNAPSHOT_PAUSE - (time.monotonic() - _LAST_SNAPSHOT[-1])
+        if wait > 0:
+            time.sleep(wait)
+    _LAST_SNAPSHOT[:] = [time.monotonic()]
+
+
+def capped(url: str, allow: set[str], name: str, limit: int = TEXT_LIMIT,
+           algs: tuple[str, ...] = ("sha256",), missing_ok: bool = False) -> tuple[bytes, dict[str, str]] | None:
+    """The body, at most `limit` bytes (`<name>: more than <limit> bytes`),
+    hashed while read."""
+    r = fetch(url, allow, missing_ok=missing_ok)
+    if r is None:
+        return None
+    hashers = {a: hashlib.new(a) for a in set(algs) | {"sha256"}}
+    data = bytearray()
+    for chunk in r.body:
+        data += chunk
+        if len(data) > limit:
+            raise ResolveError(f"{_clean(name)}: more than {limit} bytes")
+        for h in hashers.values():
+            h.update(chunk)
+    return bytes(data), {a: h.hexdigest() for a, h in hashers.items()}
+
+
+def srcfiles_map(doc: Any) -> dict[str, str]:
+    """D1: name -> sha1 from snapshot's `fileinfo`, every archive."""
+    bad = ResolveError(f"{SNAPSHOT} srcfiles is not the expected JSON")
+    info = doc.get("fileinfo") if isinstance(doc, dict) else None
+    if not isinstance(info, dict):
+        raise bad
+    out: dict[str, str] = {}
+    for sha1, entries in info.items():
+        if not isinstance(sha1, str) or not re.fullmatch(r"[0-9a-f]{40}", sha1) or not isinstance(entries, list):
+            raise bad
+        for e in entries:
+            if not isinstance(e, dict) or not isinstance(e.get("name"), str):
+                raise bad
+            if out.get(e["name"], sha1) != sha1:
+                raise ResolveError(f"two files named {_clean(e['name'])} in snapshot's srcfiles")
+            out[e["name"]] = sha1
+    return out
+
+
+# U7c rework round 1, item 6 (security L-2): every C0 character but TAB and
+# LF, DEL, C1 (with U+0085), U+2028 and U+2029; a lone CR after CRLF is folded.
+DSC_BAD_CHARS = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f\u2028\u2029]")
+
+
+def parse_dsc(body: str, name: str = ".dsc") -> dict[str, str]:
+    """D4: the deb822 fields of a `.dsc` (clearsign armour stripped, `- `
+    dash-escapes undone, the signature not verified). A field's value is its
+    first line and its continuation lines, joined with newlines and stripped.
+    Round 1: CRLF folded, split on LF only; a control or line-separator
+    character fails (`<name>: control character in field <field>`, `-` in
+    the armour or before the first field); a field named twice (case-blind)
+    fails (`<name>: duplicate field <field>`)."""
+    lines = body.replace("\r\n", "\n").split("\n")
+    body_lines = lines
+    armour: list[str] = []
+    if lines and lines[0].startswith("-----BEGIN PGP SIGNED MESSAGE"):
+        rest = lines[1:]
+        start = rest.index("") + 1 if "" in rest else len(rest)
+        armour = lines[:start + 1]
+        rest = rest[start:]
+        for k, ln in enumerate(rest):
+            if ln.startswith("-----BEGIN PGP SIGNATURE"):
+                armour += rest[k:]
+                rest = rest[:k]
+                break
+        body_lines = [ln[2:] if ln.startswith("- ") else ln for ln in rest]
+    for ln in armour:
+        if DSC_BAD_CHARS.search(ln):
+            raise ResolveError(f"{_clean(name)}: control character in field -")
+    fields: dict[str, list[str]] = {}
+    seen: set[str] = set()
+    current = None
+    for ln in body_lines:
+        if not ln.strip():
+            if DSC_BAD_CHARS.search(ln):
+                raise ResolveError(f"{_clean(name)}: control character in field {current or '-'}")
+            current = None
+            continue
+        if ln[0] in " \t" and current is not None:
+            if DSC_BAD_CHARS.search(ln):
+                raise ResolveError(f"{_clean(name)}: control character in field {_clean(current)}")
+            fields[current].append(ln.strip())
+            continue
+        field, sep, value = ln.partition(":")
+        if DSC_BAD_CHARS.search(ln):
+            raise ResolveError(f"{_clean(name)}: control character in field "
+                               f"{_clean(field) if sep and field and ' ' not in field else '-'}")
+        if not sep or not field or " " in field:
+            current = None
+            continue
+        if field.lower() in seen:
+            raise ResolveError(f"{_clean(name)}: duplicate field {_clean(field)}")
+        seen.add(field.lower())
+        current = field
+        fields[current] = [value.strip()]
+    return {k: "\n".join(v).strip() for k, v in fields.items()}
+
+
+def _dsc_lines(dsc: str, fields: dict[str, str], field: str, hexlen: int) -> list[tuple[str, int, str]]:
+    out = []
+    for ln in fields.get(field, "").splitlines():
+        parts = ln.split()
+        if (len(parts) != 3 or not re.fullmatch(f"[0-9a-f]{{{hexlen}}}", parts[0])
+                or not re.fullmatch(r"[0-9]+", parts[1])):
+            raise ResolveError(f"{_clean(dsc)}: bad {field} line")
+        out.append((parts[0], int(parts[1]), parts[2]))
+    return out
+
+
+def dsc_files(fields: dict[str, str], dsc: str, src: str, ver: str, names: dict[str, str]) -> list[dict[str, Any]]:
+    """D4-D6: the files the `.dsc` lists, as lock file entries."""
+    if (fields.get("Source"), fields.get("Version")) != (src, ver):
+        raise ResolveError(f"{_clean(dsc)}: Source/Version is {_clean(fields.get('Source'))}/"
+                           f"{_clean(fields.get('Version'))}, want {src}/{ver}")
+    if not fields.get("Checksums-Sha256"):
+        raise ResolveError(f"{_clean(dsc)}: no Checksums-Sha256")
+    if not fields.get("Files"):
+        raise ResolveError(".dsc has no Files")  # ruling 4
+    sha256s = _dsc_lines(dsc, fields, "Checksums-Sha256", 64)
+    md5s = _dsc_lines(dsc, fields, "Files", 32)
+    sha1s = _dsc_lines(dsc, fields, "Checksums-Sha1", 40) if "Checksums-Sha1" in fields else []
+    for _, _, name in sha256s + md5s + sha1s:
+        if not safe_name(name):
+            raise ResolveError(f"{_clean(name)}: not a safe file name")
+    if sorted((n, z) for _, z, n in sha256s) != sorted((n, z) for _, z, n in md5s) or \
+            len({n for _, _, n in sha256s}) != len(sha256s):
+        raise ResolveError(f"{_clean(dsc)}: Checksums-Sha256 and Files list different files")
+    for _, _, name in sha256s:
+        if name not in names:
+            raise ResolveError(f"{_clean(name)} is in the .dsc but not in snapshot's srcfiles")
+    for h, _, name in sha1s:
+        if names.get(name) != h:
+            raise ResolveError(f"{_clean(name)}: Checksums-Sha1 says {h}, {SNAPSHOT} says {names.get(name)}")
+    return [_file(name, f"https://{SNAPSHOT}/file/{names[name]}", h, size, "sha256", h, f"{dsc} Checksums-Sha256")
+            for h, size, name in sha256s]
+
+
+def resolve_deb(key: str, arch: str, allow: set[str]) -> dict[str, Any]:
+    src, _, ver = key.split(":", 1)[1].rpartition("@")
+    url = f"https://{SNAPSHOT}/mr/package/{quote(src, safe='')}/{quote(ver, safe='')}/srcfiles?fileinfo=1"
+    _snapshot_wait()
+    try:
+        doc = json.loads(text(url, allow, TEXT_LIMIT))
+    except ValueError:
+        raise ResolveError(f"{SNAPSHOT} srcfiles is not the expected JSON") from None
+    names = srcfiles_map(doc)
+    dsc = f"{src}_{ver.split(':', 1)[1] if ':' in ver else ver}.dsc"
+    if dsc not in names:
+        raise ResolveError(f"{SNAPSHOT} has no {dsc} in srcfiles")
+    durl = f"https://{SNAPSHOT}/file/{names[dsc]}"
+    _snapshot_wait()
+    got = capped(durl, allow, dsc, TEXT_LIMIT, ("sha1", "sha256"))
+    assert got is not None
+    data, digests = got
+    if digests["sha1"] != names[dsc]:
+        raise ResolveError(f"{dsc}: sha1 mismatch: got {digests['sha1']}, {SNAPSHOT} says {names[dsc]}")
+    try:
+        body = data.decode("utf-8")
+    except UnicodeDecodeError:
+        raise ResolveError(f"{dsc}: not UTF-8 text") from None
+    others = dsc_files(parse_dsc(body, dsc), dsc, src, ver, names)
+    return _entry("deb", arch, [_file(dsc, durl, digests["sha256"], len(data), "sha1", names[dsc],
+                                      f"{SNAPSHOT} mr/package fileinfo")] + others)
+
+
+# --- U7c: the apk route (design-notes "U7c precision" A1-A5) -----------------
+
+def parse_apkbuild(body: str, commit: str, ver: str, origin: str = "-") -> list[tuple[str, str]]:
+    """A4: (name, sha512) per `sha512sums` line; pkgver/pkgrel literals equal
+    to `ver`. Read as text, never sourced."""
+    def literal(field: str) -> str | None:
+        m = re.search(rf"(?m)^{field}=(.*)$", body)
+        if not m:
+            return None
+        v = m.group(1).strip()
+        return v if v and not re.search(r"[$\"'`\s]", v) else None
+    for field in ("pkgver", "pkgrel", "sha512sums"):  # round 1, item 3: one top-level assignment each
+        if len(re.findall(rf"(?m)^{field}=", body)) > 1:
+            raise ResolveError(f"{origin}: APKBUILD assigns {field} more than once")
+    pv, pr = literal("pkgver"), literal("pkgrel")
+    raw_v = re.search(r"(?m)^pkgver=(.*)$", body)
+    raw_r = re.search(r"(?m)^pkgrel=(.*)$", body)
+    shown = f"{raw_v.group(1).strip() if raw_v else '(none)'}-r{raw_r.group(1).strip() if raw_r else '(none)'}"
+    if pv is None or pr is None or f"{pv}-r{pr}" != ver:
+        raise ResolveError(f"APKBUILD at {commit}: pkgver/pkgrel {_clean(shown)} is not {ver}")
+    m = re.search(r"(?ms)^sha512sums=([\"'])(.*?)\1", body)
+    if not m:
+        raise ResolveError(f"APKBUILD at {commit}: no sha512sums")
+    block = m.group(2)
+    if "$" in block or "`" in block:
+        raise ResolveError(f"APKBUILD at {commit}: sha512sums is not a literal")
+    out: list[tuple[str, str]] = []
+    for ln in block.splitlines():
+        if not ln.strip():
+            continue
+        lm = re.fullmatch(r"\s*([0-9a-f]{128})[ \t]+(\S+)\s*", ln)
+        if not lm:
+            raise ResolveError(f"APKBUILD at {commit}: a sha512sums line is not `<128 hex> <name>`")
+        if not safe_name(lm.group(2)):
+            raise ResolveError(f"{_clean(lm.group(2))}: not a safe file name")
+        if lm.group(2) in {n for n, _ in out}:
+            raise ResolveError(f"APKBUILD at {commit}: {lm.group(2)} is listed twice in sha512sums")
+        out.append((lm.group(2), lm.group(1)))
+    if not out:
+        raise ResolveError(f"APKBUILD at {commit}: no sha512sums")
+    return out
+
+
+def _json(url: str, allow: set[str], what: str, missing_ok: bool = False) -> tuple[Any, dict[str, str]] | None:
+    r = fetch(url, allow, missing_ok=missing_ok)
+    if r is None:
+        return None
+    data = bytearray()
+    for chunk in r.body:
+        data += chunk
+        if len(data) > TEXT_LIMIT:
+            raise ResolveError(f"{what}: more than {TEXT_LIMIT} bytes")
+    try:
+        return json.loads(bytes(data).decode("utf-8")), r.headers
+    except ValueError:
+        raise ResolveError(f"{what} is not the expected JSON") from None
+
+
+def _tree_blobs(listing: Any, repo: str, origin: str, commit: str) -> dict[str, str]:
+    """A2 (ruling 1): basename -> path under `<repo>/<origin>/` of every blob
+    of the recursive listing; each path segment passes the lock name rule;
+    two blobs with one basename fail."""
+    if not isinstance(listing, list):
+        raise ResolveError(f"{GITLAB} tree listing is not the expected JSON")
+    prefix = f"{repo}/{origin}/"
+    out: dict[str, str] = {}
+    for e in listing:
+        if not isinstance(e, dict):
+            raise ResolveError(f"{GITLAB} tree listing is not the expected JSON")
+        if e.get("type") == "tree":
+            continue
+        path, name = e.get("path"), e.get("name")
+        if not isinstance(path, str) or not isinstance(name, str) or not path.startswith(prefix):
+            raise ResolveError(f"{GITLAB} tree listing is not the expected JSON")
+        if e.get("type") != "blob" or e.get("mode") not in ("100644", "100755"):
+            raise ResolveError(f"{origin}: {_clean(path)} at {commit} is not a regular file")
+        rel = path[len(prefix):]
+        segs = rel.split("/")
+        if segs[-1] != name or not all(safe_name(x) for x in segs):
+            raise ResolveError(f"{_clean(rel)}: not a safe file name")
+        if name in out:
+            raise ResolveError(f"{origin}: two files named {name} at {commit}")
+        out[name] = rel
+    return out
+
+
+def resolve_apk(key: str, route: dict[str, Any], arch: str, allow: set[str]) -> dict[str, Any]:
+    origin, _, ver = key.split(":", 1)[1].rpartition("@")
+    commit, branch = route.get("commit"), route.get("branch")
+    for field, value, rx in (("origin", route.get("origin"), re.escape(origin)), ("ver", route.get("ver"), re.escape(ver)),
+                             ("commit", commit, r"[0-9a-f]{40}"), ("branch", branch, r"v\d+\.\d+")):
+        if not isinstance(value, str) or not re.fullmatch(rx, value):
+            raise ResolveError(f"apk {key}: route is malformed ({field})")
+    found: dict[str, dict[str, str]] = {}
+    for repo in ("main", "community"):
+        got = _json(f"{APORTS_API}/tree?path={quote(f'{repo}/{origin}', safe='')}&ref={commit}&recursive=true&per_page=100", allow,
+                    f"{GITLAB} tree listing", missing_ok=True)
+        if got is None:
+            continue
+        listing, headers = got
+        if isinstance(listing, list) and len(listing) >= 100 and headers.get("x-next-page", None) != "":
+            raise ResolveError(f"{origin}: listing may be truncated at {commit}")  # round 1, item 7
+        if headers.get("x-next-page"):
+            raise ResolveError(f"{origin}: more than 100 files at {commit}")
+        blobs = _tree_blobs(listing, repo, origin, commit)
+        if blobs:  # ruling 2: an empty listing is "not here"
+            found[repo] = blobs
+    if len(found) == 2:
+        raise ResolveError(f"{origin}: in both main and community at {commit}")
+    if not found:
+        raise ResolveError(f"{origin}: in neither main nor community at {commit}")
+    repo, blobs = next(iter(found.items()))
+    # U7c rework round 1, item 9: the API raw endpoint (the /-/raw/ form is behind a bot challenge).
+
+    def api_raw(rel: str) -> str:
+        return f"{APORTS_API}/files/{quote(f'{repo}/{origin}/{rel}', safe='')}/raw?ref={commit}"
+    gl_from = f"gitlab files API content_sha256 at {commit}"
+
+    def content_sha256(rel: str) -> str:
+        meta = _json(f"{APORTS_API}/files/{quote(f'{repo}/{origin}/{rel}', safe='')}?ref={commit}", allow,
+                     f"{GITLAB} files API")
+        assert meta is not None
+        want = meta[0].get("content_sha256") if isinstance(meta[0], dict) else None
+        if not isinstance(want, str) or not re.fullmatch(r"[0-9a-f]{64}", want):
+            raise ResolveError(f"{GITLAB} files API is not the expected JSON")
+        return want
+    if "APKBUILD" not in blobs or blobs["APKBUILD"] != "APKBUILD":
+        raise ResolveError(f"{origin}: no APKBUILD at {repo}/{origin} at {commit}")  # round 1, item 1
+    want = content_sha256("APKBUILD")
+    got = capped(api_raw("APKBUILD"), allow, "APKBUILD")
+    assert got is not None
+    data, digests = got
+    if digests["sha256"] != want:
+        raise ResolveError(f"APKBUILD: sha256 mismatch: got {digests['sha256']}, gitlab files API says {want}")
+    try:
+        body = data.decode("utf-8")
+    except UnicodeDecodeError:
+        raise ResolveError("APKBUILD: not UTF-8 text") from None
+    sums = dict(parse_apkbuild(body, commit, ver, origin))
+    files = [_file("APKBUILD", api_raw("APKBUILD"), want, len(data), "sha256", want, gl_from)]
+    # Ruling 3: every regular file of the package directory is locked.
+    for name, rel in sorted(blobs.items(), key=lambda kv: kv[1]):
+        if name == "APKBUILD":
+            continue
+        url = api_raw(rel)
+        if name in sums:
+            hashed, size = stream(url, allow, ("sha512", "sha256"))
+            if hashed["sha512"] != sums[name]:
+                raise ResolveError(f"{name}: sha512 mismatch: got {hashed['sha512']}, APKBUILD sha512sums at {commit} "
+                                   f"says {sums[name]}")
+            files.append(_file(name, url, hashed["sha256"], size, "sha512", sums[name],
+                               f"APKBUILD sha512sums at {commit}"))
+        else:
+            cs = content_sha256(rel)
+            hashed, size = stream(url, allow)
+            if hashed["sha256"] != cs:
+                raise ResolveError(f"{name}: sha256 mismatch: got {hashed['sha256']}, gitlab files API says {cs}")
+            files.append(_file(name, url, cs, size, "sha256", cs, gl_from))
+    for name, sha512 in sums.items():
+        if name in blobs:
+            continue
+        url = f"https://{DISTFILES}/distfiles/{branch}/{name}"
+        hashed, size = stream(url, allow, ("sha512", "sha256"))
+        if hashed["sha512"] != sha512:
+            raise ResolveError(f"{name}: sha512 mismatch: got {hashed['sha512']}, APKBUILD sha512sums at {commit} "
+                               f"says {sha512}")
+        files.append(_file(name, url, hashed["sha256"], size, "sha512", sha512, f"APKBUILD sha512sums at {commit}"))
+    entry = _entry("apk", arch, files)
+    entry.update({"commit": commit, "branch": branch, "repo": repo})
+    return entry
 
 
 def neo4j_candidate(key: str, allow: set[str]) -> dict[str, Any]:
@@ -448,6 +821,10 @@ def resolve(needs: dict[str, Any], lock: dict[str, Any], policy: dict[str, Any],
                 entry = resolve_temurin(key, (needs[key] or {}).get("route") or {}, arch, allow)
             elif kind == "maven":
                 entry = resolve_maven(key, arch, allow)
+            elif kind == "deb":
+                entry = resolve_deb(key, arch, allow)
+            elif kind == "apk":
+                entry = resolve_apk(key, (needs[key] or {}).get("route") or {}, arch, allow)
             else:
                 entry = resolve_pypi(key, arch, allow, uv_lock_text)
         except ResolveError as exc:
@@ -508,7 +885,7 @@ def main(argv: list[str]) -> int:
               file=sys.stderr)
         return 1
     for key in skipped:
-        print(f"sources_resolve: skip: {_clean(key)} (no {key.split(':', 1)[0]} route until U7c)", file=sys.stderr)
+        print(f"sources_resolve: skip: {_clean(key)} (no {key.split(':', 1)[0]} route until Q71)", file=sys.stderr)
     for c in candidates:
         print("neo4j candidate: " + json.dumps(c, sort_keys=True))
     return 3 if candidates else 0

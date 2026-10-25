@@ -1,0 +1,15 @@
+# reviewer U7c r1 probes, 2026-10-25 (host python -I; working tree; the tests' fixtures)
+## baseline
+  fixture entry: PASSES
+## item 9 lock rule: candidate shapes
+  middle segment `~@:` (decoded main/readline/~@:/fix-build.patch): PASSES
+  middle segment `..;`: PASSES
+  middle segment `a?b` (decoded ?): PASSES
+  middle segment `x&ref=0`: PASSES
+  middle segment `-` (leading dash): PASSES
+  APKBUILD in a subdirectory: refused: 'lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (the APKBUILD is not at <repo>/<origin>/APKBUILD)'
+  old /-/raw/ form: refused: 'lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (want .../repository/files/<repo>%2F<origin>%2F<name>/raw?ref=<commit>)'
+  ref of another commit: refused: "lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (the ref is not the entry's commit)"
+  literal backslash in P: refused: "lock: apk:readline@8.2.13-r1: fix-build.patch: not a apk file url (the path segment is not canonical (quote(unquote(P), safe='') != P))"
+## parse_dsc: junk line inside Checksums-Sha256 drops the lines after it
+  Checksums-Sha256 lines kept: 1 of 2

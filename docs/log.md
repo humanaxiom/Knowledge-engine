@@ -665,3 +665,24 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-25T11:12:44Z | security | platform-sbom | U7b rework r1 re-check (pending, per-hop URL rules, pypi JSON-only, deadline, cap) | security: PASS (M-1, L-1, L-2, L-4, L-5, I-1, I-3 closed; R1-L1 low: deadline not enforced within one read)
 2026-10-25T11:22:23Z | tester | platform-sbom | U7b r1: controls baseline fixed to saved u7b targets and re-run --base repo (71 rows); A34 steps 3+4 re-run on Windows (refusals incl. tools/six images; script SBOM + lock-needs with sboms/tmp); O3 drift from stale ke-app:local | a34: PASS; controls: 0 unexpected
 2026-10-25T11:27:41Z | orchestrator | platform-sbom | U7b gates judged: review APPROVED (r1), security PASS (r1), A34 PASS, verify full PASS 1042 s; commit approved | smoke: PASS
+2026-10-25T11:28:35Z | developer | platform-sbom | committed U7b on agent/platform-sbom | commit: done
+2026-10-25T11:30:27Z | documenter | platform-sbom | handoff: U7b closed to a summary, detail to archive/platform-sbom-part10.md | docs: updated
+2026-10-25T11:33:30Z | architect | platform-sbom | U7c precision: deb/apk routes, apk route inputs via lock-needs, distfiles streaming rule, carried rows | plan: design amended
+2026-10-25T12:13:38Z | tester | platform-sbom | U7c RED: U7c* tests (deb route D1-D7, apk route A2-A5, 152 deb + 19 apk fixture coverage, C1/C2, pause, pgdg text, lock-needs A1, script --tar for every image, R-2 guard); targets u7c/target-* reach-proven; controls 59 rows 0 unexpected | tdd red: 17 failing as expected
+2026-10-25T12:15:56Z | architect | platform-sbom | U7c gap rulings recorded (recursive tree, empty listing, all aports files locked, pinned texts, interface pins) | plan: design amended
+2026-10-25T12:48:29Z | tester | platform-sbom | U7c RED amended for the gap rulings (recursive tree, regular files, every aports file locked, pinned texts, U7a apk lock rules (i)/(ii)); reach PASS; controls 79 rows 0 unexpected | tdd red: 19 failing as expected
+2026-10-25T13:19:06Z | developer | platform-sbom | U7c GREEN: deb and apk resolver routes, apk lock rules, lock-needs apk route | tdd green: verify fast + full PASS
+2026-10-25T13:23:43Z | reviewer | platform-sbom | U7c review: B1 apk lock rule (i) admits an APKBUILD from a subdirectory; nits N1-N4 | review: changes requested
+2026-10-25T13:25:15Z | architect | platform-sbom | U7c rework r1 rulings recorded (APKBUILD path pinned, duplicate deb822 fields fail, repeated APKBUILD assignments fail, U8 name checks) | plan: design amended
+2026-10-25T13:25:22Z | security | platform-sbom | U7c gate audit (deb/apk routes, apk lock rules, tar reads, read1) | security: PASS (no critical/high/medium; L-1 subdir APKBUILD, L-2 parse_dsc separators/duplicates, L-3 listing truncation)
+2026-10-25T13:26:58Z | tester | platform-sbom | U7c A34 Windows proof: steps 3-4 PASS, real deb bash PASS (lock-check ok), real apk pax-utils FAIL (GitLab raw behind an anti-bot challenge 307->418; API raw 200) | a34: FAIL
+2026-10-25T13:27:49Z | documenter | platform-sbom | handoff trim: U7c round-0 sections to archive/platform-sbom-part10.md | docs: updated
+2026-10-25T13:56:45Z | tester | platform-sbom | U7c rework r1 RED: ReworkR1U7c* (APKBUILD path exact, duplicate deb822 fields, control chars/CRLF, repeated APKBUILD assignments, full-page listing, encoded path); targets reach PASS; controls 25 rows 0 unexpected | tdd red: 11 failing as expected
+2026-10-25T13:59:14Z | architect | platform-sbom | U7c r1 item 9: apk GitLab URL moves to the API raw endpoint with ref=<commit>; old raw form rejected | plan: design amended
+2026-10-25T14:45:42Z | tester | platform-sbom | U7c rework r1 RED amended for item 9 (apk GitLab API raw url form, lock and resolver rows, challenge rows); reach PASS 1047 OK; controls 34 rows 0 unexpected | tdd red: 39 failing as expected
+2026-10-25T15:15:49Z | developer | platform-sbom | U7c rework r1 GREEN: apk GitLab API raw urls, item 9 fixtures | tdd green: verify fast + full PASS
+2026-10-25T15:21:01Z | tester | platform-sbom | U7c r1 A34 Windows re-run: real apk:pax-utils@1.3.8-r2 resolves via the API raw form (lock-check ok); real deb:bash byte-identical after one snapshot 503 | a34: PASS
+2026-10-25T15:21:51Z | reviewer | platform-sbom | U7c rework r1 review: B1/N1/N2/L-2/L-3/I-1 and item 9 closed; nits R1-N1 decoded segment charset, R1-N2 parse_dsc junk line | review: APPROVED
+2026-10-25T15:21:56Z | security | platform-sbom | U7c rework r1 re-check (APKBUILD pin, parse_dsc, truncation, GitLab API raw form) | security: PASS (L-1, L-2, L-3, I-1 closed; item 9 holds; no new finding)
+2026-10-25T15:23:28Z | documenter | platform-sbom | handoff trim: U7c round-1 sections to archive/platform-sbom-part10.md | docs: updated
+2026-10-25T15:34:48Z | orchestrator | platform-sbom | U7c gates judged: review APPROVED (r1), security PASS (r1), A34 PASS, verify full PASS 1004 s; commit approved | smoke: PASS

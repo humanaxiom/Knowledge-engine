@@ -117,8 +117,11 @@ def good_entry(key: str, size: int = 1000) -> dict[str, Any]:
         tar = f"{name}-{ver.rsplit('-r', 1)[0]}.tar.gz"
         entry.update(commit=commit, branch="v3.23", repo="main")
         entry["files"] = [
-            _f("APKBUILD", f"https://gitlab.alpinelinux.org/alpine/aports/-/raw/{commit}/main/{name}/APKBUILD",
-               key + "APKBUILD", "sha256", None, f"gitlab.alpinelinux.org files API at {commit}", size),
+            # U7c rework round 1, item 9: the API raw url (was /alpine/aports/-/raw/<commit>/main/<name>/APKBUILD).
+            _f("APKBUILD", "https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/"
+               + quote(f"main/{name}/APKBUILD", safe="") + f"/raw?ref={commit}",
+               # U7c gap rulings item 3: this from text replaces A3's (was "gitlab.alpinelinux.org files API at").
+               key + "APKBUILD", "sha256", None, f"gitlab files API content_sha256 at {commit}", size),
             _f(tar, f"https://distfiles.alpinelinux.org/distfiles/v3.23/{tar}", key + tar, "sha512",
                _h("sha512", key + tar), f"APKBUILD sha512sums at {commit}", size)]
     elif kind == "neo4j":
@@ -836,8 +839,9 @@ class ReworkR1BindingTest(_R1Rows):
     the file name; pgdg has no allowed host until Q71."""
 
     def test_per_kind_hosts_paths_and_names(self):
+        # U7c rework round 1, item 9: the commit is the url's ref= (was its /-/raw/<commit>/ segment).
         other_commit = lambda f: f.update(url=f["url"].replace(  # noqa: E731
-            f["url"].split("/raw/", 1)[1].split("/", 1)[0], OTHER_SHA1))
+            f["url"].rsplit("ref=", 1)[1], OTHER_SHA1))
         self.rows({
             "a maven jar named evil-1.0-sources.jar": (r1_rename(R1_MAV, "evil-1.0-sources.jar"), "not a maven file url"),
             "a maven jar on files.pythonhosted.org": (r1_file(R1_MAV, lambda f: f.update(
@@ -1271,6 +1275,170 @@ class ReworkR1PendingNeo4jCliTest(LockCheckCliTest):
                 r = self._pending(lock, docs=docs)
                 self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
                 self.assertNotIn("Traceback", r.stderr)
+
+
+# --------------------------------------------------------------------------
+# U7c gap rulings, consequence for U7a's apk lock rules (design-notes "U7c
+# gap rulings", architect's flag (i) and (ii); orchestrator, 2026-10-25).
+# Rule changes, not loosening: (i) a GitLab raw path may carry plain
+# subdirectory segments below <origin>, the last segment still the name;
+# (ii) an apk file outside sha512sums may be sha256 iff its url is GitLab raw
+# at the entry's commit and its from is exactly `gitlab files API
+# content_sha256 at <commit>`; distfiles files stay sha512; the APKBUILD is
+# required once, sha256, with that same from.
+# --------------------------------------------------------------------------
+
+APK_API = "https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/"
+
+
+def apk_api_url(commit: str, path: str, *, seg: str | None = None, query: str | None = None) -> str:
+    """U7c rework round 1, item 9: the GitLab API raw url of an aports file."""
+    return APK_API + (quote(path, safe="") if seg is None else seg) + "/raw" + (f"?ref={commit}" if query is None else query)
+
+
+def u7c_apk_lock(change: Callable[[dict[str, Any]], Any] | None = None) -> dict[str, Any]:
+    """The small good lock whose apk entry also holds an install script
+    (sha256 by the files API) and a patch in a subdirectory (sha512)."""
+    def add(d: dict[str, Any]) -> None:
+        e = d["components"][R1_APK]
+        c = e["commit"]
+        e["files"].append(_f("readline.post-install", apk_api_url(c, "main/readline/readline.post-install"), "post",
+                             "sha256", None, f"gitlab files API content_sha256 at {c}"))
+        e["files"].append(_f("sub-fix.patch", apk_api_url(c, "main/readline/patches/sub-fix.patch"), "sub", "sha512",
+                             _h("sha512", "sub"), f"APKBUILD sha512sums at {c}"))
+        if change:
+            change(e)
+    return r1_lock(add)
+
+
+def _apk_file(name: str) -> Callable[[Callable[[dict[str, Any]], Any]], Callable[[dict[str, Any]], Any]]:
+    def wrap(change: Callable[[dict[str, Any]], Any]) -> Callable[[dict[str, Any]], Any]:
+        return lambda e: change(next(f for f in e["files"] if f["name"] == name))
+    return wrap
+
+
+def _reurl(name: str, make: Callable[[str], str]) -> dict[str, Any]:
+    """u7c_apk_lock with file `name`'s url replaced by make(<entry commit>)."""
+    return u7c_apk_lock(lambda e: next(f for f in e["files"] if f["name"] == name).update(url=make(e["commit"])))
+
+
+class U7cApkLockRulesTest(_R1Rows):
+    """U7c gap rulings (i), (ii), with item 9's url form (round 1): the
+    subdirectory rows are now about the decoded path <P>."""
+
+    def test_the_new_shapes_pass(self):
+        self.assertEqual([p for p in lock_problems_of(u7c_apk_lock()) if R1_APK in p], [],
+                         "an install script (sha256, files API) and a subdirectory patch are legal apk files")
+
+    def test_bad_shapes(self):
+        post = _apk_file("readline.post-install")
+        self.rows({
+            # Item 9 (b) supersedes the plain-segment rule: "-patches" is a legal
+            # segment now; "." is not (was "/-patches/" until round 1).
+            "a . subdirectory segment": (_reurl("sub-fix.patch", lambda c: apk_api_url(
+                c, "main/readline/./sub-fix.patch")), "not a apk file url"),
+            "an empty subdirectory segment": (_reurl("sub-fix.patch", lambda c: apk_api_url(
+                c, "main/readline/patches//sub-fix.patch")), "not a apk file url"),
+            "a subdirectory under another origin": (_reurl("sub-fix.patch", lambda c: apk_api_url(
+                c, "main/ncurses/patches/sub-fix.patch")), "not a apk file url"),
+            "a path whose last segment is not the name": (_reurl("sub-fix.patch", lambda c: apk_api_url(
+                c, "main/readline/patches/other.patch")), "not a apk file url"),
+            "a sha256 file with another from": (u7c_apk_lock(post(lambda f: f["upstream"].update(
+                **{"from": f"APKBUILD sha512sums at {'0' * 40}"}))), "is not sha512 (APKBUILD sha512sums)"),
+            "a sha256 file with the files API from at another commit": (u7c_apk_lock(post(lambda f: f["upstream"].update(
+                **{"from": f"gitlab files API content_sha256 at {'0' * 40}"}))), "is not sha512 (APKBUILD sha512sums)"),
+            "a sha256 file on distfiles": (u7c_apk_lock(post(lambda f: f.update(
+                url="https://distfiles.alpinelinux.org/distfiles/v3.23/readline.post-install"))),
+                "is not sha512 (APKBUILD sha512sums)"),
+            "the APKBUILD with A3's old from": (u7c_apk_lock(_apk_file("APKBUILD")(lambda f: f["upstream"].update(
+                **{"from": "gitlab.alpinelinux.org files API at " + f["url"].rsplit("ref=", 1)[1]}))),
+                "APKBUILD upstream from"),
+            "two APKBUILDs": (u7c_apk_lock(lambda e: e["files"].append(dict(copy.deepcopy(e["files"][0])))),
+                              "not exactly one APKBUILD with sha256"),
+        })
+
+
+class ReworkR1U7cApkbuildPathTest(_R1Rows):
+    """U7c rework round 1, item 1 (review B1), in item 9's form: the
+    APKBUILD's decoded path is exactly <repo>/<origin>/APKBUILD; subdirectory
+    segments hold for every other file only."""
+
+    def test_the_apkbuild_path_is_exact(self):
+        self.rows({
+            "the reviewer's tests/APKBUILD": (_reurl("APKBUILD", lambda c: apk_api_url(
+                c, "main/readline/tests/APKBUILD")), "not a apk file url"),
+            "a/b/APKBUILD": (_reurl("APKBUILD", lambda c: apk_api_url(c, "main/readline/a/b/APKBUILD")),
+                             "not a apk file url"),
+        })
+        self.assertEqual([p for p in lock_problems_of(u7c_apk_lock()) if R1_APK in p], [],
+                         "a patch in a subdirectory stays good")
+
+
+class ReworkR1U7cApiUrlTest(_R1Rows):
+    """U7c rework round 1, item 9 (the A34 finding): every apk GitLab file is
+    at .../repository/files/<P>/raw?ref=<commit>, narrowly; the old /-/raw/
+    form is gone; no other kind or form carries a query or %2F."""
+
+    def test_good_forms(self):
+        self.assertEqual([p for p in lock_problems_of(u7c_apk_lock()) if R1_APK in p], [])
+
+        def community(e: dict[str, Any]) -> None:
+            e["repo"] = "community"
+            for f in e["files"]:
+                if f["url"].startswith(APK_API):
+                    f["url"] = f["url"].replace(quote("main/", safe=""), quote("community/", safe=""), 1)
+        self.assertEqual([p for p in lock_problems_of(u7c_apk_lock(community)) if R1_APK in p], [],
+                         "a community entry's files")
+
+    def test_bad_forms(self):
+        key = f"lock: {R1_APK}"
+        apkb = "main/readline/APKBUILD"
+        rows: dict[str, tuple[Any, str]] = {
+            "the old /-/raw/ form": (_reurl("APKBUILD", lambda c: (
+                f"https://gitlab.alpinelinux.org/alpine/aports/-/raw/{c}/main/readline/APKBUILD")), "not a apk file url"),
+            "ref another commit": (_reurl("APKBUILD", lambda c: apk_api_url("0" * 40, apkb)), key),
+            "ref upper-case": (_reurl("APKBUILD", lambda c: apk_api_url(c.upper(), apkb)), key),
+            "ref 39 hex": (_reurl("APKBUILD", lambda c: apk_api_url(c[:39], apkb)), key),
+            "ref then another param": (_reurl("APKBUILD", lambda c: apk_api_url(c, apkb, query=f"?ref={c}&x=1")),
+                                       "url carries a query"),
+            "another param then ref": (_reurl("APKBUILD", lambda c: apk_api_url(c, apkb, query=f"?x=1&ref={c}")),
+                                       "url carries a query"),
+            "ref twice": (_reurl("APKBUILD", lambda c: apk_api_url(c, apkb, query=f"?ref={c}&ref={c}")),
+                          "url carries a query"),
+            "an empty ref": (_reurl("APKBUILD", lambda c: apk_api_url(c, apkb, query="?ref=")), key),
+            "a fragment": (_reurl("APKBUILD", lambda c: apk_api_url(c, apkb) + "#f"), "url carries a fragment"),
+            "lower-case escapes": (_reurl("APKBUILD", lambda c: apk_api_url(c, "", seg="main%2freadline%2fAPKBUILD")),
+                                   key),
+            "a needless escape": (_reurl("APKBUILD", lambda c: apk_api_url(c, "", seg="main%2Freadline%2F%41PKBUILD")),
+                                  key),
+            "double encoding": (_reurl("APKBUILD", lambda c: apk_api_url(c, "", seg="main%252Freadline%252FAPKBUILD")),
+                                key),
+            "an encoded dot-dot": (_reurl("APKBUILD", lambda c: apk_api_url(c, "", seg="main%2F%2e%2e%2FAPKBUILD")),
+                                   key),
+            "the path split into real segments": (_reurl("APKBUILD", lambda c: apk_api_url(c, "", seg=apkb)), key),
+            "another origin": (_reurl("APKBUILD", lambda c: apk_api_url(c, "main/other/APKBUILD")), key),
+            "community for a main entry": (_reurl("APKBUILD", lambda c: apk_api_url(c, "community/readline/APKBUILD")),
+                                           key),
+            "an empty segment": (_reurl("sub-fix.patch", lambda c: apk_api_url(c, "main/readline//sub-fix.patch")), key),
+            "a . segment": (_reurl("sub-fix.patch", lambda c: apk_api_url(c, "main/readline/./sub-fix.patch")), key),
+            "an APKBUILD in a subdirectory": (_reurl("APKBUILD", lambda c: apk_api_url(c, "main/readline/sub/APKBUILD")),
+                                              key),
+            "another name": (_reurl("APKBUILD", lambda c: apk_api_url(c, "main/readline/APKBUILD.orig")), key),
+            "no /raw": (_reurl("APKBUILD", lambda c: apk_api_url(c, apkb).replace("/raw?", "?")), key),
+            "another project": (_reurl("APKBUILD", lambda c: apk_api_url(c, apkb).replace("alpine%2Faports",
+                                                                                         "alpine%2Fother")), key),
+            "this form on a deb file": (r1_file(R1_DEB, lambda f: f.update(url=apk_api_url("a" * 40, "main/x/x.dsc"))),
+                                        "url carries a query"),
+            "this form on a temurin file": (r1_file(R1_TEM, lambda f: f.update(url=apk_api_url("a" * 40, "main/x/x"))),
+                                            "url carries a query"),
+            "this form on a maven file": (r1_file("maven:javax.xml.bind:jaxb-api@2.2.12", lambda f: f.update(
+                url=apk_api_url("a" * 40, "main/x/x.jar"))), "url carries a query"),
+            "a query on a distfiles url": (_reurl("readline-8.2.13.tar.gz", lambda c: (
+                "https://distfiles.alpinelinux.org/distfiles/v3.23/readline-8.2.13.tar.gz?x=1")), "url carries a query"),
+            "%2F on a distfiles url": (_reurl("readline-8.2.13.tar.gz", lambda c: (
+                "https://distfiles.alpinelinux.org/distfiles/v3.23%2Freadline-8.2.13.tar.gz")), "plain path"),
+        }
+        self.rows(rows)
 
 
 if __name__ == "__main__":

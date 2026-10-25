@@ -12,7 +12,7 @@
 #  2. saves each image and runs the pinned `sbom` service (no network) for
 #     its SPDX and syft-json documents;
 #  3. runs `sbom_check.py lock-needs` in the gates image (no network,
-#     read-only) for needs.json;
+#     read-only) for needs.json, with every saved tar (U7c A1);
 #  4. runs the `sources-resolve` service (docker-compose.sources.yml), which
 #     writes lock.new.json into the work dir only;
 #  5. runs `sbom_check.py lock-check` on it and, on success, writes a temp
@@ -120,7 +120,7 @@ sbom_args=()
 tar_args=()
 for name in "${names[@]}"; do
   sbom_args+=(--sbom "$name=/sboms/$name.spdx.json")
-  if [ "$name" = ke-neo4j ]; then tar_args+=(--tar "$name=/tars/$name.tar"); fi
+  tar_args+=(--tar "$name=/tars/$name.tar")  # U7c A1: every image (Temurin release, apk installed db)
 done
 
 # --- 3. what the images need ---------------------------------------------------

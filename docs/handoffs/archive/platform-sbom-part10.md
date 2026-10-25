@@ -330,3 +330,188 @@ Plan: design-notes N5 amendment U7.
   - Each then failed closed on `pypi:psycopg-binary@3.3.6: ... 0 sdists, want 1`, which comes from the stale image.
   - One FAIL line each, exit 1, nothing written, no leftovers.
 - `.env`: a repo-root `.env` (mtime 04:09 local, not mine) was present throughout. The script reads only `.env.example`, and I did not touch the `.env`.
+
+## U7b region as it stood at commit 6d8fa4d (verbatim from the live doc)
+
+### 2026-10-25 — security (U7b second fetch)
+- Neo4j 5.26.32 sha256 `182ae2e5...91e3`, 20907800 B, commit `27f24499...`; Temurin sidecar `573057d0...8234`; hops github.com -> codeload / release-assets.
+- Detail: archive/platform-sbom-part10.md; evidence docs/evidence/platform-sbom/sources-provenance.md
+
+### 2026-10-25 — tester (U7b RED)
+- U7b RED: 20 failing, reach PASS, controls 62 (0 unexpected), OPENER hook.
+- Detail: archive/platform-sbom-part10.md; evidence u7b/red-verify-fast.txt, u7b/target-reach-verify-fast.txt, u7b/red-mutants.txt
+
+### 2026-10-25 — developer (U7b GREEN)
+- U7b GREEN: verify fast + full PASS 983 s, controls 0 unexpected.
+- Detail: archive/platform-sbom-part10.md; evidence u7b/green-verify-fast.txt, u7b/green-verify-full.txt, u7b/green-controls.txt
+
+### 2026-10-25 — reviewer (U7b)
+- CHANGES REQUESTED: B1 body errors/deadline/cap, B2 pending-neo4j from truncated output, N1-N6.
+- Detail: archive/platform-sbom-part10.md; evidence u7b/review.md, u7b/reviewer-controls.txt, u7b/reviewer-probes.txt
+
+### 2026-10-25 — security (U7b)
+- PASS: M-1 = B2, L-1..L-5, I-1..I-4.
+- Detail: archive/platform-sbom-part10.md; evidence u7b/security.md, u7b/security-probes.txt
+
+### 2026-10-25 — tester (U7b Windows proof)
+- A34 FAIL on one defect: `sources_lock.sh` lacks `$work/sboms/tmp`; all other checks PASS. O3: fresh ke-neo4j 72 vs 73 Neo4j packages (genai plugin), keys unchanged.
+- Detail: archive/platform-sbom-part10.md; evidence u7b/windows-run.txt
+
+### 2026-10-25 — tester (U7b rework r1 RED)
+- U7b r1 RED: 25 failing as expected (new classes only), reach PASS (1016 OK), controls 71 rows 0 unexpected; fake docker runs the real resolver for the script happy path.
+- KE_IN_GATES accepted (item 13). After GREEN: re-run A34 steps 3 and 4 on Windows.
+- Detail: archive/platform-sbom-part10.md; evidence u7b/r1-red-verify-fast.txt, u7b/r1-target-reach-verify-fast.txt, u7b/r1-red-mutants.txt
+
+### 2026-10-25 — developer (U7b rework r1 GREEN)
+- Asked: U7b rework r1 GREEN (review B1/B2/N1-N6, security M-1/L-1..L-5, A34 `$work/sboms/tmp`; design-notes "U7b rework round 1"). Copied `u7b/r1-target-sources_resolve.py`, `r1-target-sources_lock.sh`, `r1-target-sbom_check.py` (adds `lock-check --pending-neo4j`, exit 3, `_coverage_misses`, `only_neo4j_misses`) over the scripts; diffs against the U7b GREEN read, no refactor. `mv -f -- "$tmp" docker/sources.lock.json` stays alone on its line. Compose unchanged. `sources_lock.sh` NOT run against the network.
+- `scripts/verify.sh fast`: PASS (`u7b/r1-green-verify-fast.txt`). `scripts/verify.sh full`: PASS (`u7b/r1-green-verify-full.txt`). Controls: `u7b/r1-green-controls.txt`.
+- Next: reviewer and security re-check. Nothing committed.
+- Controls note (U7b rework r1): `r1-green-controls.txt` reports 71 rows, 25 "unexpected". All 25 are the "U7b GREEN: ... must fail" baseline rows, which read the repo's own scripts as the old U7b GREEN tree (`GREEN_U7B` in `r1_controls.py`); with the repo now at r1 they pass, so they cannot fail. Every target and mutant row is ok. Not a code defect; the tester should confirm or fix the control's baseline (use the saved U7b target files).
+
+### 2026-10-25 — reviewer (U7b rework r1)
+- Asked: re-check U7b rework round 1 (rulings l.1444-1563). Verdict: **APPROVED**. Detail: `u7b/review-r1.md`.
+- Closed:
+  - B1: mid-body timeout, IncompleteRead and ConnectionResetError, plus OPENER InvalidURL and BadStatusLine, now give one FAIL line with the item 4 text and no lock.new.json. The 600 s deadline, the 4 GiB cap before hashing and the catch-all in main are in.
+  - B2: `--pending-neo4j` decides on the full list; my 79-problem input gives exit 1, and the end-to-end test keeps the lock byte-identical.
+  - N1: port, userinfo, tab, `%` and non-literal https hops are refused.
+  - N2-N4, L-2, L-5, I-1, I-3 and the sbom tmp dir.
+- The happy-path fake-docker test runs the real resolver and pins step order, chmod 0644, no temp left, `git diff --stat`, and exits 0 and 3.
+- r1 controls re-run after the harness fix: 71/66/5, 0 unexpected (`u7b/reviewer-r1-controls.txt`). Probes: `u7b/reviewer-r1-probes.txt`.
+- Nits, as U7c first rows:
+  - R1-N1: the pypi JSON sdist url (server-supplied) is fetched as a first request, so it is exempt from the path-% rule. `.../packages/33/01/%2e%2e/%2e%2e/<60>/pandas-2.3.3.tar.gz` is requested; the U7a lock check then refuses the entry, so it fails closed.
+  - R1-N2: the `six=(...)` literal beside the compose list.
+- Next: security re-check; orchestrator commit gate.
+
+### 2026-10-25 — security (U7b rework r1)
+- Asked: re-check U7b rework round 1 (pending decided by `lock-check --pending-neo4j`, per-hop URL rules, pypi.org JSON-only, deadline and cap, ResolveError everywhere, 0644, key grammar first). Verdict: **PASS** (no critical/high/medium). Detail: `u7b/security-r1.md`; probes `u7b/security-r1-probes.txt` (fake network plus one loopback server).
+- Closed: M-1 (the real-fixture lock without neo4j and pgdg now rc 1, not 3; no grep in step 5), L-1 (port/userinfo/fragment/non-plain path/raw-Location tricks refused on the first URL and every hop; query only on hops to allowed hosts), L-2, L-4, L-5, I-1, I-3. L-3: the cap and the slow-chunk deadline hold.
+- New R1-L1 (low): the deadline is checked only between chunks, and the real opener `read(65536)` blocks until 64 KiB: a 1-byte/50 ms drip held one read past 12 s against a 2 s deadline. Use `read1` or a per-read socket timeout = remaining deadline. Listed hosts only; a stalled maintainer run at worst.
+- Script: tools first (`tools: docker not on PATH`), six images exactly, trap removes the temp file. r1 evidence clean.
+
+### 2026-10-25 — tester (U7b r1 controls + A34 re-run)
+- Controls baseline fixed (saved u7b/target-*): `--base repo` 71 rows, 0 unexpected. A34 steps 3 and 4 PASS on Windows (refusals incl. tools and six images; the script's own SBOM + lock-needs path with sboms/tmp).
+- O3: the fresh key set differs (psycopg-binary in, psycopg-c and postgresql-15 out) because ke-app:local here is stale (pre-23e3c9b); rebuild before a real lock run.
+- Detail: archive/platform-sbom-part10.md; evidence u7b/r1-green-controls.txt, u7b/windows-run.txt (addendum), u7b/windows-run-r1-attempts.txt
+
+### 2026-10-25 — orchestrator (U7b commit gate)
+- Rework rounds used: 1 of 5 (B1 body errors/deadline/byte cap, B2/M-1 pending-neo4j on the full list, hop rules, tools check, trap, six images, pypi.org JSON-only, chmod 0644, error-body limit, key validation, A34 defect `$work/sboms/tmp`). Rulings: design-notes N5 amendment U7 "U7b interface pins" l.1384-1442 and "U7b rework round 1" l.1444-1563.
+- Review APPROVED (r1), security PASS (r1), A34 PASS (steps 1-5; 3-4 re-run after r1), controls 71 rows 0 unexpected after the harness baseline fix (saved targets, not the repo).
+- Orchestrator verify full PASS 1042 s (1016 unit + 15 integration, sentinel ok; `u7b/orchestrator-verify-full.txt`). Diff read: sources_resolve.py (fetch/stream/hop rules), sources_lock.sh (round-1 diff), compose service, lock-needs. Sentinel untouched. No lock file committed.
+- Rulings: KE_IN_GATES accepted (image ENV marker); the second fetch stands for U7b, U7d adds a third fetch from another network path; U7d compares KEY SETS (fresh ke-neo4j 72 vs 73 Neo4j packages is information).
+- Carried to U7c first test rows: review R1-N1 (a server-supplied pypi sdist URL is checked by the hop/path rules before streaming), security R1-L1 (deadline enforced within one read: `read1` or per-read socket timeout = remaining deadline), review R1-N2 (the six-image list is a literal beside bundle.sh's).
+- Notes: the host's `ke-app:local` is stale (built 2026-10-20, carries psycopg-binary): U7d runs build.sh first. The tester's A34 driver bug caused 3 unintended real-network resolver runs (maven jar + Neo4j tarball fetched, then failed closed at pypi psycopg-binary; nothing written; `u7b/windows-run-r1-attempts.txt`).
+- Commit APPROVED (`git add --chmod=+x` for the two new scripts). Next: U7c (deb/apk routes against a fake network; pgdg waits for Q71).
+
+## 2026-10-25 — architect (U7c)
+- Asked: make U7c implementable. Wrote "U7c precision" at design-notes l.1565-1789, before N6.
+- deb (D1-D7): snapshot `srcfiles` gives a name->sha1 map, and only the `.dsc` is streamed (sha1 + sha256). Then `Checksums-Sha256`/`Files` are parsed and every name must be in the map. orig/debian files are not streamed. Requests are 1 s apart, with exact why-texts.
+- apk (A1-A5): `lock-needs` reads `lib/apk/db/installed` (`o:`, `c:`) and `etc/alpine-release` from the saved tar; syft-json is not used. `--tar` goes to every image. Then the GitLab tree (`x-next-page` rule) picks main or community; the APKBUILD is checked by `content_sha256`; `sha512sums` is parsed as literal text (its names are the local `::` names); each file is streamed from GitLab raw or distfiles.
+- Carried rows: server-supplied URLs pass the hop rules first; `read1` bounds a drip at 660 s; six-image list per R-2.
+- Rulings needed: R-1 (stream distfiles tarballs at lock time; recommend yes, about 250-300 MB per full run); R-2 (six-image list; recommend a fast test pinning `six` == `bundled_names()`, with no bundle.sh change).
+- Also: `sources_lock.sh` changes, so A34 applies. U7d cannot finish while Q71 is open (3 pgdg keys).
+
+
+## 2026-10-25 — tester (U7c RED)
+- Asked: the U7c RED against the "U7c precision" (D1-D7, A1-A5, C1-C3) and rulings R-1 (a), R-2 (c). Project `ke-tester-u7c`. Fake network only.
+- **17 tests fail**, as the RED intends: 16 new methods (U7c* classes in `tests/test_sources_resolve.py`) plus 2 changed LockNeedsTest methods, less 1 guard.
+  - The deb route: entry, `.dsc` forms (epoch, native, `+`/`~`, plain, dash-escaped), 19 failure rows with exact texts, `parse_dsc`.
+  - The apk route: entry for main and community, 18 failure rows.
+  - The 152 deb and 19 apk fixture keys: all resolve, and every entry passes `lock_problems`.
+  - Carried rows: C1 (`%2e%2e` sdist URL never requested), C2 (`read1` pin via a patched `build_opener`), `SNAPSHOT_PAUSE` 1.0 (0.3 s spacing measured), and the pgdg skip text `until Q71`.
+  - lock-needs A1 (installed-db stanzas, origin, commit, branch, 16 MiB fail, release 1 MiB fail, top layer wins).
+  - The script: `--tar` for every image; R-2 guard `six` == `bundled_names()`.
+- **Changed U7b tests** (each cites the U7c precision):
+  - ResolverMergeTest: the no-route key is now pgdg, since deb has a route.
+  - LockNeedsTest fixtures and CLI: the apk route gains commit/branch from the tar (`apk_inputs` helper).
+  - ReworkR1LockScriptRunTest `_run` now gives the Alpine tars their db via the new fake-docker knob `FAKE_IMAGE_TAR_FILES`.
+- Targets (reach-proven): `u7c/target-sources_resolve.py`, `target-sbom_check.py`, `target-sources_lock.sh`.
+- **Interface pins:**
+  - `SNAPSHOT_PAUSE`;
+  - `parse_dsc(text) -> {field: value}`;
+  - `lock_needs_doc(policy, docs, releases, apk)`, where `apk` maps an image to `{installed, release}`;
+  - `tar_file_text(tar, member, limit)`.
+- **Evidence:**
+  - RED `u7c/red-verify-fast.txt`: FAIL, 1032 run, failures=54 / errors=11 by subtest, all in the U7c rows; lint PASS.
+  - Reach `u7c/target-reach-verify-fast.txt`: PASS, 1032 OK.
+  - Controls `u7c/u7c_controls.py` + `u7c/red-mutants.txt`: 59 rows (55 must-fail, 4 must-pass), 0 unexpected. The baseline is the saved `u7b/r1-target-*`, which equals 6d8fa4d. Attempt 1 is `red-mutants-attempt1.txt`.
+- **Design notes for the architect:**
+  - (1) Tree subdirectories: a patch in a `tree` subdirectory is not in the blob set, so it would go to distfiles.
+  - (2) Missing paths: GitLab may answer a missing path with 200 `[]`, not 404; A2 counts any list as "here", so this risks a false "in both".
+  - (3) Install scripts: aports files outside `sha512sums` (for example `*.post-install`) get no entry.
+  - (4) Texts not in the design: a missing `Files` and a bad apk route have no listed text, and the target uses its own.
+  - (5) The `pkgver` literal check never decides on its own, because the version compare already catches a non-literal.
+- After GREEN, A34: the U7b real-run path through lock-needs, plus one real deb and one real apk component.
+- Note (tester, 2026-10-25, U7c gap rulings, design-notes l.1806-1892): RED amended, now **19 failing**.
+  - Recursive tree; mode 100644/100755 only; flat basenames from subdirectories; two blobs with one basename fail.
+  - `200 []` counts as not here.
+  - Every package-directory file is locked; files outside `sha512sums` go by the files API `content_sha256`.
+  - Texts pinned: `.dsc has no Files`, `apk <key>: route is malformed (<field>)`, `gitlab files API says`.
+  - `parse_dsc` is checked by content only.
+  - The U7a apk lock rule changes (i) and (ii) are pinned in `tests/test_sources_lock.py` U7cApkLockRulesTest; `good_entry`'s APKBUILD `from` now uses the new text.
+  - Evidence: `u7c/red-verify-fast.txt` (1034 run, failures=70 / errors=12 by subtest), `u7c/target-reach-verify-fast.txt` PASS 1034 OK, `u7c/red-mutants.txt` 79 rows, 0 unexpected. Earlier runs are kept as `*-attempt1/2`.
+
+## 2026-10-25 — developer (U7c GREEN)
+- Asked: U7c GREEN (deb and apk resolver routes; pgdg stays skipped until Q71). Copied `u7c/target-sources_resolve.py`, `target-sbom_check.py`, `target-sources_lock.sh` over `scripts/`; diffs against HEAD read (ignoring EOL), no refactor. `sources_lock.sh` NOT run against the network. New scripts keep +x in the working tree.
+- `scripts/verify.sh fast`: PASS, 1034 ran (`u7c/green-verify-fast.txt`). `scripts/verify.sh full`: PASS (`u7c/green-verify-full.txt`). Controls: 79 rows, 0 unexpected (`u7c/green-controls.txt`).
+- Next: reviewer and security. Nothing committed.
+
+## 2026-10-25 — reviewer (U7c)
+- Asked: review U7c (deb and apk routes, lock-needs apk inputs, the two apk lock-rule changes) against the U7c precision and gap rulings. Verdict: **CHANGES REQUESTED**. Detail: `u7c/review.md`.
+- B1: rule change (i) also lets the APKBUILD come from a subdirectory.
+  - Input: the fixture apk entry with the APKBUILD url at `.../main/readline/tests/APKBUILD` passes `lock_problems` (sbom_check.py l.1280-1293).
+  - Fix: pin the APKBUILD path to `<commit>/<repo>/<origin>/APKBUILD`, plus a row.
+- Nits:
+  - N1: `parse_dsc` keeps the last of a duplicated field; it should fail. CRLF, leading blank and armour are fine.
+  - N2: `parse_apkbuild` takes the first `pkgver=` or `sha512sums=` and ignores later reassignments.
+  - N3 (U8 carry): check the apk `sha512sums` names against the entry.
+  - N4: a listing with no blobs counts as not here.
+- Conformant: D1-D7, A1-A5, gap rulings 1-4, rule (ii), C1/C2/six. Coverage of 152 deb + 19 apk keys passes lock_problems. Controls re-run: 79/75/4, 0 unexpected (`u7c/reviewer-controls.txt`). Probes: `u7c/reviewer-probes.txt`.
+- Next: tester row for B1; developer GREEN; re-check.
+
+## 2026-10-25 — security (U7c)
+- Asked: gate audit of the deb and apk routes, the two apk lock-rule changes, the installed-db/alpine-release tar reads and `read1`. Verdict: **PASS** (no critical/high/medium). Detail: `u7c/security.md`; probes `u7c/security-probes.txt` (no external request).
+- Closed: U7b R1-L1 (a 1-byte/50 ms drip now stops at the 2 s patched deadline).
+- Holds: `.dsc` names (slash, `..`, NUL, not in srcfiles), Files vs Checksums agreement, sha1 vs snapshot, two sha1s per name refused; GitLab symlink/submodule/`..`/percent/prefix/collision refused before any URL; sha256-only files bound to GitLab raw at the entry commit with the files-API `from`; tar member limits fail closed.
+- Low, non-blocking: **L-1** `lock-check` accepts the APKBUILD from a subdirectory (`.../raw/<commit>/main/readline/sub/APKBUILD`): exclude APKBUILD from the subdirectory form. **L-2** `parse_dsc` splits on U+2028/U+0085 etc. (`Homepage: a<U+2028>Source: evil` sets Source) and lets a repeated field win: split on newline only, refuse duplicates. **L-3** a 100-entry tree listing without `x-next-page` passes as complete.
+- Info: I-1 the tree path query is unencoded (plus-sign origins fail closed); I-2 a sums-listed file in the tree may be recorded sha256; I-3 `.dsc` sizes unchecked until `lock-check`; I-4 tar whiteouts/hard links (carried).
+
+## 2026-10-25 — tester (U7c Windows proof)
+- **A34 FAIL**, on the real Alpine component; every other check passes (`u7c/windows-run.txt`, redacted).
+  - Step 3 refusals pass, including tools and six images.
+  - Step 4 passes: save, sbom (sboms/tmp present), lock-needs with `--tar` for all six. It gave 181 keys; all 19 apk keys carry commit and branch (ke-gateway v3.23, valkey v3.24). The drift is the recorded stale-ke-app one.
+  - Real deb `deb:bash@5.2.15-2` passes: 2 snapshot requests, 2.7 s, `lock-check: ok`.
+  - Teardown is clean, hashes are unchanged, and there is no `docker/sources.lock.json`.
+- **Gap for the architect:** gitlab.alpinelinux.org's `/-/raw/` URLs answer 307 to an anti-bot challenge (`__goaway_challenge`), then 418.
+  - The API raw endpoint `.../repository/files/<path>/raw?ref=<commit>` answers 200.
+  - Every apk lock URL is GitLab raw (A3, A5, U7a binding), so neither the resolver nor U8 can fetch aports files. The API form needs a query, which U7a forbids in lock URLs.
+
+## 2026-10-25 — tester (U7c rework r1 RED)
+- 11 failing as expected: 8 new ReworkR1U7c* methods plus 3 U7c apk tests. The 3 fail because the fixture's tree URL now percent-encodes `path=` (ruling 8, security I-1), which the U7c code does not yet do.
+  - Rows: APKBUILD path exact (lock side) and top-level only (resolver); `<dsc>: duplicate field <name>` (case-blind); CRLF folded (guard); `<dsc>: control character in field <name>`; `<origin>: APKBUILD assigns <name> more than once` (an indented one ignored); `<origin>: listing may be truncated at <commit>` (100 entries without an empty `x-next-page`); `path=main%2Flibsigc%2B%2B`.
+  - Interface: `parse_dsc(text, name=".dsc")`; `parse_apkbuild(..., origin)`.
+- Targets `u7c/r1-target-sources_resolve.py` and `r1-target-sbom_check.py` reach PASS, 1043 OK (`u7c/r1-target-reach-verify-fast.txt`). RED: `u7c/r1-red-verify-fast.txt`.
+- Controls: `u7c/r1_controls.py` + `u7c/r1-red-mutants.txt`, 25 rows, 0 unexpected; the baseline is the saved `u7c/target-*`.
+- Open for the architect (from the A34 above): GitLab raw is behind a bot challenge.
+- Note (tester, item 9, the apk GitLab URL form): RED amended, now **39 failing**.
+  - The 39 are 13 round-1 methods, and 26 U7a/U7b/U7c tests whose fixture lock (`good_entry`) now uses the API raw URL, which the GREEN lock rule still refuses.
+  - Rows: lock good/bad per the item-9 list (in ReworkR1U7cApiUrlTest); resolver requests at the API raw form; a challenge.
+  - Gap for the architect: the challenge row's 418 text only appears when the challenge redirects to a plain path. A same-path challenge on the API form (`%2F`) is refused by the hop rules (`redirect to <url> refused: not a plain path`). Both fail closed.
+  - Reach PASS, 1047 OK, after a PS-1.2 fix in the target (no URL literal). Controls: 34 rows, 0 unexpected. Earlier runs are kept as `-attempt1/2`.
+
+## 2026-10-25 — developer (U7c rework r1 GREEN)
+- Asked: U7c rework r1 GREEN (review B1/N1/N2, security L-2/L-3/I-1, A34 GitLab bot challenge; design-notes "U7c rework round 1" items 1-9). Copied `u7c/r1-target-sources_resolve.py` and `r1-target-sbom_check.py` over `scripts/` (sources_lock.sh unchanged); diffs against the U7c GREEN files read, no refactor. Every apk GitLab file url is now the API raw form (`_apk_api_shape`, `_apk_api_problem`); no URL literals. `sources_lock.sh` NOT run against the network.
+- `scripts/verify.sh fast`: PASS (`u7c/r1-green-verify-fast.txt`). `scripts/verify.sh full`: PASS (`u7c/r1-green-verify-full.txt`). Controls: `u7c/r1-green-controls.txt`.
+- Next: reviewer and security re-check. Nothing committed.
+
+## 2026-10-25 — tester (U7c r1 Windows re-run)
+- **A34 PASS** (`u7c/windows-run.txt`, addendum).
+  - `apk:pax-utils@1.3.8-r2`: tree, metadata, API raw and distfiles calls answer 200 (community's 404 means not here). 3 files, 129375 B, 5.2 s, `lock-check: ok`.
+  - `deb:bash@5.2.15-2`: snapshot answered 503 once (failed closed, no retry). The re-run passed in 32.4 s, and its entry is byte-identical to the U7c GREEN run's.
+  - Teardown is clean, hashes are unchanged, and there is no `docker/sources.lock.json`.
+
+
+## 2026-10-25 — security (U7c rework r1)
+- Asked: re-check U7c rework round 1 (APKBUILD path pinned, parse_dsc separators/duplicates, truncation rule, encoded tree path, item 9 GitLab API raw form). Verdict: **PASS** (no critical/high/medium; no new finding). Detail: `u7c/security-r1.md`; probes `u7c/security-r1-probes.txt`.
+- Closed: L-1, L-2 (every separator in values, names, continuation, armour and trailer refused; duplicates case-blind), L-3 (100 entries need an empty `x-next-page`), I-1.
+- Item 9 holds: project, ref, `<P>` (`%252F`, `%2F..%2F`, `.%2F`, `%2e%2e`, lower hex, unicode, `%5C`, subdir APKBUILD, other origin/repo), metadata or `/-/raw/` forms, userinfo/port/case all refused; the form is apk-only. Challenge: no Location gives 307, the absolute challenge gives 418, a relative one is refused at the hop.
+- Info: I-5 a real `__goaway_id` nonce copied into a test and RED output (not a credential); I-6 U+FEFF/U+200B not refused but fail closed; I-7 relative challenge refused at the hop rather than reaching 418.

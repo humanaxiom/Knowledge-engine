@@ -1562,6 +1562,548 @@ package count inside a key that both share is reported as information
 (key, fixture count, fresh count, the purls that differ) and does not stop
 it. The committed-lock test still checks coverage against the fixtures.
 
+**U7c precision (architect, 2026-10-25).** U7c adds the `deb` and `apk`
+routes to `sources_resolve.py` and the apk route inputs to `lock-needs`.
+`pgdg` keys stay skipped until Q71 is ruled, named on stderr as
+`sources_resolve: skip: <key> (no pgdg route until Q71)`, so lock-check
+still fails a run that needs them (interface pins item 3).
+This block supersedes item 4's `debian`/`debian-security` archive filter
+(the name-collision rule below replaces it). It also supersedes item 3.3's
+"apk commit from syft-json": the inputs come from the saved tar (A2). It
+pins the `<why>` texts. `resolve()` already prefixes the key, so a full
+line reads `sources_lock: FAIL (resolve: <key>: <why>; the lock is
+unchanged)`. The orchestrator's "deb <key>: ..." form is that line.
+
+*D. The deb route (per `deb:<src>@<ver>` key).*
+1. `GET https://snapshot.debian.org/mr/package/<urlquote(src, safe="")>/<urlquote(ver, safe="")>/srcfiles?fileinfo=1`.
+   Read it as text (1 MiB limit) and parse it as JSON.
+   - `fileinfo` must be an object of `<40 hex>` keys, each mapped to a
+     list of objects with a string `name`.
+   - Build `name -> sha1` from every entry under every archive.
+   - A name mapped to two different SHA-1s fails: `two files named <name>
+     in snapshot's srcfiles`.
+   - Any other shape fails: `snapshot.debian.org srcfiles is not the
+     expected JSON`.
+2. The `.dsc` name is `<src>_<ver without its epoch>.dsc`. If it is not in
+   the map: `snapshot.debian.org has no <dsc> in srcfiles`.
+3. Fetch the `.dsc` alone, from `https://snapshot.debian.org/file/<its
+   sha1>`.
+   - The fetch hashes SHA-1 and SHA-256 while it reads, with a 1 MiB
+     limit (`<dsc>: more than 1048576 bytes`).
+   - If the SHA-1 is not the map's: `<dsc>: sha1 mismatch: got <x>,
+     snapshot.debian.org says <y>`.
+   - Then decode UTF-8 (`<dsc>: not UTF-8 text`).
+4. Parse the `.dsc`.
+   - Strip the clearsign armour if present: drop the header up to the
+     first blank line, drop everything from `-----BEGIN PGP SIGNATURE`,
+     and undo `- ` dash-escapes. The signature is not verified.
+   - Read the deb822 fields with continuation lines.
+   - `Source` and `Version` must equal the key (`<dsc>: Source/Version is
+     <x>/<y>, want <src>/<ver>`).
+   - It needs `Checksums-Sha256` (`<dsc>: no Checksums-Sha256`) and
+     `Files`.
+   - Each line of either is three fields: `<hex> <size> <name>` (64 hex
+     for Checksums-Sha256, 32 hex for `Files`), size in decimal digits.
+     Otherwise: `<dsc>: bad <field> line`.
+   - The two must list the same names with the same sizes (`<dsc>:
+     Checksums-Sha256 and Files list different files`).
+   - If `Checksums-Sha1` is present, each of its SHA-1s must equal the
+     map's (`<name>: Checksums-Sha1 says <x>, snapshot.debian.org says
+     <y>`).
+5. Each listed name must pass the lock name rule (`<name>: not a safe file
+   name`) and be in the map (`<name> is in the .dsc but not in snapshot's
+   srcfiles`). The `.dsc` must list at least one file (round 1 item 4).
+6. The entry:
+   - the `.dsc`: url `https://snapshot.debian.org/file/<sha1>`, the
+     streamed `sha256` and `size`, `upstream {sha1, <map sha1>,
+     "snapshot.debian.org mr/package fileinfo"}`;
+   - each listed file: url `https://snapshot.debian.org/file/<map sha1>`,
+     `sha256` and `size` from the `.dsc`, `upstream {sha256, <same>,
+     "<dsc> Checksums-Sha256"}`.
+
+   The orig, debian and diff files are *not streamed* at lock time. Their
+   sha256 is the `.dsc`'s, as N5 has it. U8's fetch checks it before
+   anything reads the file.
+
+   *Note:* the `.dsc` `upstream.from` text here
+   (`snapshot.debian.org mr/package fileinfo`) replaces item 4's longer
+   form. U7a's lock rule does not pin `from` for deb, so nothing else
+   changes.
+7. Requests are spaced by `SNAPSHOT_PAUSE = 1.0` s (a monotonic sleep
+   before each snapshot request after the first). snapshot.debian.org is
+   slow and shared, and there is still no retry (Q61).
+
+*A. The apk route (per `apk:<origin>@<ver>` key).*
+1. **Inputs, by `lock-needs` from the saved tar.** Neither syft-json nor
+   its field names are used.
+   - `sources_lock.sh` passes `--tar <image>=<saved tar>` for every image
+     in its list (not only ke-neo4j). `lock-needs` reads a tar only for the
+     kinds that need it.
+   - For each apk key, the image's `lib/apk/db/installed` (the top layer's
+     copy, read like the Temurin release file) is parsed into stanzas
+     split on blank lines, with the fields `P:`, `V:`, `o:` and `c:`.
+   - Every package of the key (its purl name and version) must have a
+     stanza with that `P:` and `V:`, `o:` equal to the key's origin, and
+     `c:` 40 lower-case hex. Otherwise: `<key>: <image>: <name> <ver> has
+     no installed-db stanza with origin <origin> and an aports commit`.
+   - All of the key's packages must share one commit (`<key>: two aports
+     commits <a>, <b>`).
+   - `etc/alpine-release` (one line, `\d+\.\d+\.\d+`) gives the branch
+     `v<major>.<minor>`. It must agree with every package purl's `distro`
+     qualifier (`alpine-<x.y.z>`): `<key>: <image>: alpine-release <x>,
+     purl distro <y>`.
+   - `tar_file_text` gains a size argument. The installed db is read up to
+     16 MiB; a larger member fails (`<image>: /lib/apk/db/installed larger
+     than 16 MiB`). It is never truncated silently. The Temurin release
+     file keeps 1 MiB, now also fail-closed on overflow rather than
+     truncated.
+   - The route is `{"origin", "ver", "commit", "branch"}`. `repo` (`main`
+     or `community`) is the resolver's (A2), not `lock-needs`'s.
+   - *Why the tar and not syft-json:* the db is the authoritative record
+     (`o:`/`c:`). The tar is already saved and read the same way for
+     Temurin. syft-json would add a second SBOM format and an unconfirmed
+     field name (O4).
+2. **Tree.**
+   `GET https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/tree?path=<repo>/<origin>&ref=<commit>&per_page=100`
+   for `main`, then `community`.
+   - An HTTP 404 means "not here". Any other non-2xx fails (item 4).
+   - A JSON list means "here". A non-empty `x-next-page` header fails
+     (`<origin>: more than 100 files at <commit>`).
+   - Found in both: `<origin>: in both main and community at <commit>`.
+     Found in neither: `<origin>: in neither main nor community at
+     <commit>`.
+   - The listing's `type: "blob"` names form the set of local files.
+3. **APKBUILD.**
+   - `GET .../repository/files/<repo>%2F<origin>%2FAPKBUILD?ref=<commit>`
+     (JSON; `content_sha256` 64 hex).
+   - Then stream `https://gitlab.alpinelinux.org/alpine/aports/-/raw/<commit>/<repo>/<origin>/APKBUILD`,
+     1 MiB limit, keeping the text. Its sha256 must equal `content_sha256`
+     (`APKBUILD: sha256 mismatch: got <x>, gitlab.alpinelinux.org files
+     API says <y>`).
+   - Its entry is `upstream {sha256, content_sha256,
+     "gitlab.alpinelinux.org files API at <commit>"}`.
+4. **Parse, as text; never sourced.**
+   - `pkgver=` and `pkgrel=` are line-anchored literals with no `$`, quote
+     or backtick, and `<pkgver>-r<pkgrel>` must equal the key's version
+     (`APKBUILD at <commit>: pkgver/pkgrel <x> is not <y>`).
+   - `sha512sums=` starts a line, then `"` or `'`, and runs to the
+     matching closing quote, over one or more lines. The block must hold
+     no `$` and no backtick (`APKBUILD at <commit>: sha512sums is not a
+     literal`).
+   - Each non-blank line inside is `<128 lower hex><one or more spaces or
+     tabs><name>`. A missing or empty block fails: `APKBUILD at <commit>:
+     no sha512sums`.
+   - Names are unique and pass the lock name rule.
+   - *The `name::url` rename:* the `::` form appears only in `source=`,
+     which is not parsed. `sha512sums` lists the *local* name (the part
+     before `::`). abuild names the downloaded file by that name, and
+     Alpine's distfiles mirror stores it under that name. So the lock
+     `name`, the distfiles path segment and the hash all use the
+     `sha512sums` name.
+   - A `sha512sums` name containing `::` fails the name rule, since `:` is
+     not allowed.
+5. **Each listed name.**
+   - In the tree's blob set: stream
+     `https://gitlab.alpinelinux.org/alpine/aports/-/raw/<commit>/<repo>/<origin>/<name>`.
+   - Otherwise: stream `https://distfiles.alpinelinux.org/distfiles/<branch>/<name>`.
+   - Both hash SHA-512 and SHA-256. The SHA-512 must equal the APKBUILD's
+     (`<name>: sha512 mismatch: got <x>, APKBUILD sha512sums at <commit>
+     says <y>`).
+   - The entry is url, the streamed `sha256` and `size`, and `upstream
+     {sha512, <APKBUILD value>, "APKBUILD sha512sums at <commit>"}`.
+   - The entry also carries `commit`, `branch` and `repo`.
+   - *Ruling needed (R-1, below): stream distfiles tarballs at lock time.*
+
+*C. Carried rows.*
+1. **Review U7b R1-N1, server-supplied URLs.** A URL taken from a
+   response body is checked by the hop rules with `first=False` before any
+   request: no `%` in the path, the plain path, the host in `hosts`. Today
+   that is pypi JSON's `url`. It is also checked by the lock's per-kind
+   URL rule (pypi: host `files.pythonhosted.org`, path
+   `/packages/<2>/<2>/<60 hex>/<name>`). Names parsed from bodies (`.dsc`
+   lines, APKBUILD `sha512sums`, tree listings) pass the lock name rule
+   before any URL is built from them. The resolver's own templates (the
+   endpoint list) keep the first-request exemption. Row: R1-N1's
+   `%2e%2e` sdist URL is refused with no request made (the fake opener
+   records no call).
+2. **Security U7b R1-L1, the deadline inside one read.** The real opener
+   reads with `r.read1(CHUNK)`, one `recv` per call. The deadline is
+   checked between chunks, so a drip feed is aborted within `DEADLINE +
+   TIMEOUT` (660 s) at worst. The per-read socket timeout stays 60 s. The
+   real opener stays untested in verify (`pragma: no cover`). Security's
+   loopback drip probe (`u7b/security-r1-probes.txt` form) is re-run at
+   the U7c gate as evidence. Unit row: the fake body pattern stays.
+3. **Review U7b R1-N2, the six-image list.** *Ruling needed (R-2,
+   below).*
+
+*S. Sizes and run budget (estimates; U7c and U7d record them).*
+- deb: 152 `srcfiles` calls plus 152 `.dsc` streams, which is 304
+  snapshot requests. The `.dsc` files are about 2-10 kB each, so about 1
+  MB in all. At 1-3 s each plus the 1 s pause, that is about 10-20 min.
+- apk: 19 keys.
+  - API calls: 19 to 38 tree calls (main, then community) and 19 files
+    calls.
+  - Streamed from GitLab: 19 APKBUILDs plus the local files (patches,
+    configs; an estimate of 40-80, small).
+  - Streamed from distfiles: about 20-30 upstream tarballs. The two `gcc`
+    keys (r2 on v3.23, r5 on v3.24) each stream the same 15.2.0 tarball
+    from their own branch's URL (about 95 MB each). There is no in-run
+    reuse, so every lock URL is fetched once by the tool.
+  - Total about 250-300 MB streamed, and about 150 requests.
+- Singletons as U7b. With the save and syft steps, a full amd64 run is
+  about 30-45 min on the dev box. It is a maintainer run, never verify
+  or CI.
+
+*L. Loop and A34.* The RED and GREEN loop is `fast`: parsers, the fake
+opener, and fake docker for the script. The developer runs `full` before
+the gate. A1 changes `sources_lock.sh` (`--tar` for every image), which by
+the orchestrator's item 5 condition triggers A34. The A34 proof is a re-run
+of the U7b real-run path on Windows through the `lock-needs` step, and one
+real apk and one real deb component. No compose change.
+
+*Rulings needed (orchestrator).*
+- **R-1, distfiles streaming. Recommended: (a).**
+  - (a) Stream every apk upstream file at lock time, verifying its SHA-512
+    and recording the SHA-256 and size. The lock needs `sha256` for every
+    file (U8's content name and first check), and the APKBUILD publishes
+    only SHA-512. It costs about 250-300 MB per full run.
+  - (b) Lock SHA-512 only and let U8 compute SHA-256. Not recommended:
+    U7a's schema, U8's content-addressed name and N9 all assume `sha256`
+    is in the lock.
+  - deb orig tarballs stay unstreamed in both cases: their SHA-256 is
+    published in the `.dsc`, so (a) is consistent with D6.
+- **R-2, the six-image list. Recommended: (c).**
+  - (a) A sourced `scripts/lib/images.sh`. It changes `bundle.sh`, an
+    operator path, which means A34 and an install re-proof.
+  - (b) Parse `bundle.sh`'s array. Not possible: `bundle.sh` has no
+    array, it derives the set from the stack's compose config.
+  - (c) The compose stack is the single source. Both scripts already
+    derive names from it the same way. `sources_lock.sh` keeps its literal
+    `six` as a guard, and a fast test asserts that the `six=(...)` literal,
+    parsed from the script text, equals `bundled_names()` (the
+    compose-derived set the U3-U6 tests use for `bundle.sh`). A seventh
+    image then fails that test, naming both places. There is no runtime
+    change and `bundle.sh` is untouched.
+- *Also, as a consequence:* U7d cannot finish while Q71 is open. postgres's
+  three pgdg keys stay uncovered, and the committed-lock test asserts `==
+  []`.
+- *Ruled (orchestrator, 2026-10-25): R-1 (a).*
+  - Every apk file is streamed at lock time: GitLab-raw local files and
+    distfiles upstream tarballs alike.
+  - Each file's SHA-512 is checked against the APKBUILD, and its SHA-256
+    and size are recorded.
+  - Each lock URL is fetched once per run, with no in-run reuse.
+  - Debian orig, debian and diff files stay unstreamed, with their
+    SHA-256 and size taken from the `.dsc` (D6).
+- *Ruled (orchestrator, 2026-10-25): R-2 (c).*
+  - The stack's compose config is the single source of the image set, and
+    `bundle.sh` is unchanged.
+  - `sources_lock.sh` keeps the literal `six=(...)` as a guard.
+  - A fast test parses that literal from the script text and asserts that
+    it equals `bundled_names()`. A seventh bundled image then fails the
+    test, naming both places.
+
+**U7c gap rulings (orchestrator, 2026-10-25).** These come from the
+tester's U7c RED. They supersede A2, A3 and A5 of the precision block
+where they differ, and all fail closed.
+1. **Recursive tree.**
+   - The listing is
+     `GET .../repository/tree?path=<repo>/<origin>&ref=<commit>&recursive=true&per_page=100`.
+     A non-empty `x-next-page` fails closed, as before.
+   - A blob in a subdirectory is fetched raw at its full relative path,
+     `/alpine/aports/-/raw/<commit>/<repo>/<origin>/<sub>/.../<basename>`,
+     and locked under its basename.
+   - Two blobs that share a basename fail: `<origin>: two files named
+     <basename> at <commit>`.
+   - *Architect's precision:* tree entries are handled by type.
+     - A `tree` entry is skipped.
+     - A `blob` must have mode `100644` or `100755` (a regular file).
+     - Mode `120000` (a symlink) or any other type, such as a `commit`
+       entry for a submodule, fails: `<origin>: <path> at <commit> is not
+       a regular file`.
+     - Each path segment passes the plain-path rule, and the basename
+       passes the lock name rule.
+2. **Empty listing.** `200 []` counts as "not here", the same as a 404. A
+   listing counts as present only when it is non-empty, so "in both main
+   and community" means both listings are non-empty, and "in neither"
+   means neither is.
+3. **Every aports file is locked.** Every regular file in the package
+   directory at the commit gets a lock file entry. Each file takes one of
+   three routes:
+   - **The name is in `sha512sums` and in the tree.** Raw from GitLab,
+     verified by SHA-512, with SHA-256 and size recorded, and `upstream
+     {sha512, <APKBUILD value>, "APKBUILD sha512sums at <commit>"}`.
+   - **The name is in `sha512sums` but not in the tree.** From distfiles,
+     the same way (R-1).
+   - **The file is in the tree but not in `sha512sums`.** This covers the
+     APKBUILD, `*.post-install`, `*.pre-install`, `*.trigger`, `*.initd`,
+     `*.confd` and the rest.
+     - The resolver calls `GET .../repository/files/<urlquote(full
+       path, safe="")>?ref=<commit>` for its `content_sha256`, 64 hex.
+     - It streams the raw file and requires sha256 == `content_sha256`.
+     - The entry's `upstream` is `{sha256, <value>, "gitlab files API
+       content_sha256 at <commit>"}`. This text also replaces A3's
+       APKBUILD `from` text.
+   - A blob that is neither in `sha512sums` nor retrievable by this route
+     fails through the item-4 transport or HTTP message, or `<name>:
+     sha256 mismatch: got <x>, gitlab files API says <y>`.
+4. **Pinned texts.** These are the `<why>` texts after the key prefix
+   from `resolve()`:
+   - `.dsc has no Files`;
+   - `apk <key>: route is malformed (<field>)`, where `<field>` is the
+     first of `origin`, `ver`, `commit` or `branch` that is missing or
+     wrongly typed or shaped.
+
+   As pinned, the second repeats the key inside the line. That is
+   accepted; it is the tester's exact text.
+5. **Defence in depth.** The literal `pkgver`/`pkgrel` check (A4) stays,
+   even though the commit and the installed db already fix the version.
+
+*Consequence for U7a's lock rules (architect, flag).* Items 1 and 3 need
+two changes to `lock_problems`'s apk binding (U7a round 1 item 3 and
+item 6 (c)). U7c's RED must test both, and they are reviewed as rule
+changes, never as loosening.
+- (i) A GitLab apk URL path may be
+  `/alpine/aports/-/raw/<commit>/<repo>/<origin>(/<plain segment>)*/<name>`.
+  Each extra segment is plain, and the last segment still equals `name`.
+- (ii) An apk file other than the `sha512sums` ones may be `sha256`, if
+  and only if its url is GitLab raw at the entry's commit and its
+  `upstream.from` is exactly `gitlab files API content_sha256 at
+  <commit>`. A distfiles url is always `sha512`.
+
+  This replaces U7a's "another file not sha512 is a problem". The
+  APKBUILD is still required, exactly once, and as `sha256`.
+- *Requests:* each non-`sha512sums` aports file adds one files-API call.
+  That is an estimated 20-40 more across the 19 keys, inside S's budget.
+
+*Interface pins (the tester's, accepted).*
+- `SNAPSHOT_PAUSE = 1.0`: the module-level constant, which tests patch to
+  0.
+- `parse_dsc(text) -> dict`: a pure parser. It returns at least `Source`,
+  `Version`, `Checksums-Sha256`, `Files` and, if present, `Checksums-Sha1`
+  as parsed lists, and raises `ResolveError` with D4's texts.
+- `lock_needs_doc(policy, docs, releases, apk)`, where `apk` is `{image:
+  {"installed": <text>, "release": <text>}}`, read by `sources_lock.sh`'s
+  `lock-needs` from each tar (A1).
+- `tar_file_text(tar, member, limit)`: the top layer's copy wins, and a
+  member over `limit` raises.
+- The fake-docker knob `FAKE_IMAGE_TAR_FILES` makes `tests/fake_docker.py`
+  write the named members into the saved tar. It is a test fixture only
+  and is never read by a production script.
+
+**U7c rework round 1 (orchestrator rulings, 2026-10-25).** These come from
+`u7c/review.md` (B1, N1-N4). All fail closed.
+1. **B1, the APKBUILD's path is pinned.** In `lock_problems`, the apk file
+   named `APKBUILD` must have the url path exactly
+   `/alpine/aports/-/raw/<commit>/<repo>/<origin>/APKBUILD`, with no
+   subdirectory. The gap rulings' rule (i) (extra plain segments) applies
+   to every other file only.
+   *Architect's precision, the resolver side:* the APKBUILD that is parsed
+   and locked is the top-level blob `<repo>/<origin>/APKBUILD`.
+   - If none exists: `<origin>: no APKBUILD at <repo>/<origin> at
+     <commit>`.
+   - A subdirectory blob named `APKBUILD` beside a top-level one already
+     fails by the gap rulings' item 1 (`two files named APKBUILD`).
+   - A subdirectory one alone fails the same no-APKBUILD rule.
+   - Rows (lock side): `.../<origin>/sub/APKBUILD` and
+     `.../<origin>/a/b/APKBUILD` are problems. `.../<origin>/sub/x.patch`
+     stays good.
+2. **N1, duplicate deb822 fields.** In `parse_dsc`, a field name that
+   occurs twice in the `.dsc` paragraph is a failure: `<dsc>: duplicate
+   field <name>`. The value is never last-wins. Field names are compared
+   case-insensitively, as deb822 defines them.
+   Rows: duplicate `Files`, duplicate `checksums-sha256` versus
+   `Checksums-Sha256`, and duplicate `Version`.
+3. **N2, repeated APKBUILD assignments.** More than one top-level
+   (line-anchored, column 0) assignment of `pkgver`, `pkgrel` or
+   `sha512sums` fails: `<origin>: APKBUILD assigns <name> more than
+   once`. Assignments indented inside functions or conditionals are not
+   counted as top-level. Their presence does not clear the rule, because
+   only one top-level literal is ever read.
+   Rows: two `pkgver=` lines, two `sha512sums=` blocks, and a
+   `sha512sums=` inside `prepare()` beside the top-level one (not a
+   failure: one top-level).
+4. **N3, carried to U8 (first test rows there).** After a file is fetched
+   and its sha256 matched:
+   - for an apk entry, U8 parses the fetched APKBUILD's `sha512sums` (the
+     same text rules as A4 and this block's item 3). Its names must equal
+     exactly the entry's `sha512` file names (`APKBUILD at <commit>:
+     sha512sums names differ from the lock entry`);
+   - for a deb entry, U8 parses the fetched `.dsc` (`parse_dsc`). Its
+     `Files` names and sizes must equal exactly the entry's other files
+     (round 1 item 4's text, `<dsc>: Files/Checksums-Sha256 differ from
+     the lock entry`).
+
+   Both run inside U8's fetch, before anything else reads the files.
+   *Precision:* U8 runs in the `sources-fetch` container, where
+   `sources_resolve.py`'s parsers are not imported by path. The fetch
+   client either mounts and calls `sources_resolve.py`'s parsers through a
+   small CLI subcommand, or reuses them by mount. It never re-implements
+   them. That choice is U8's design.
+5. **N4, directory-only listings.** A listing that holds only `tree`
+   entries and no blob counts as "not here". This is consistent with the
+   gap rulings' item 2 ("present" means a non-empty listing of files).
+   No change.
+6. **Security L-2, line endings and control characters in `parse_dsc`
+   (orchestrator, 2026-10-25).**
+   - `\r\n` is normalised to `\n` first, and the text is then split on
+     `\n` only, never with `splitlines()`.
+   - Any other control or line-separator character fails: `<dsc>: control
+     character in field <name>`. The ruling names U+0085, U+2028, U+2029,
+     VT, FF and 0x1c-0x1e.
+   - *Architect's precision, fail closed:* the refused set is every
+     character in C0 (0x00-0x1f) except TAB and LF, plus DEL (0x7f), C1
+     (0x80-0x9f, which includes U+0085), U+2028 and U+2029. A lone CR left
+     after normalisation is refused too. TAB stays allowed, because deb822
+     continuation lines may start with it. `<name>` is the field in which
+     the character sits, or `-` when it sits in the armour or before the
+     first field.
+   - Rows:
+     - a CRLF `.dsc` parses the same as its LF copy;
+     - each of U+0085, U+2028, U+2029, VT, FF, 0x1c, 0x1d and 0x1e inside
+       `Checksums-Sha256` fails, naming that field;
+     - a lone CR fails.
+7. **Security L-3, a full page counts as possibly truncated (orchestrator,
+   2026-10-25).** With `per_page=100`, a tree page that holds exactly 100
+   entries is complete only if the response carries an `x-next-page`
+   header and the header is empty.
+   - A missing header, or a non-empty one, fails: `<origin>: listing may
+     be truncated at <commit>`.
+   - A page of fewer than 100 entries is complete. A non-empty
+     `x-next-page` there still fails, by the gap rulings' item 1.
+   - Rows: 100 entries with no header; 100 with `x-next-page: 2`; 100 with
+     an empty header (complete); 99 with no header (complete).
+8. **Security I-1, percent-encoding the path (orchestrator,
+   2026-10-25).** The `path=` value of the tree request is
+   `urllib.parse.quote("<repo>/<origin>", safe="")`, so `main/busybox` is
+   sent as `main%2Fbusybox`. The same applies to the files-API path
+   segment, which the gap rulings' item 3 already writes as
+   `urlquote(full path, safe="")`. The origin has already passed the apk
+   key grammar (U7b rework round 1 item 11).
+   Row: an origin containing `+` (e.g. `libstdc++`, were it an origin) is
+   sent as `%2B`.
+
+**U7c rework round 1, item 9: apk GitLab URL form (architect,
+2026-10-25).**
+*Finding (`u7c/windows-run.txt`, A34 proof):*
+- `deb:bash@5.2.15-2` resolved and passes lock-check.
+- `apk:pax-utils@1.3.8-r2` failed closed.
+  - `GET https://gitlab.alpinelinux.org/alpine/aports/-/raw/<commit>/main/pax-utils/APKBUILD`
+    answers 307 to `?__goaway_challenge=cookie&__goaway_id=...` (an
+    anti-bot challenge), then 418.
+  - The tree and files-API calls answered 200. The API raw endpoint
+    `/api/v4/projects/alpine%2Faports/repository/files/main%2Fpax-utils%2FAPKBUILD/raw?ref=<commit>`
+    answered 200 (1782 B) with the resolver's User-Agent.
+- So the `/-/raw/` form of A3, A5, the gap rulings' item 1 and round 1
+  item 1 cannot be fetched, by the resolver or by U8.
+- *Decision:* every GitLab apk file URL moves to the API raw endpoint,
+  with the narrowest exception to U7a's no-query and plain-path rules that
+  makes it work. This supersedes those URL forms and U7a's apk GitLab
+  binding (round 1 item 3, gap rulings' consequence (i)).
+
+*The rule (lock side, `lock_problems`; the resolver builds exactly this
+form):* an apk file whose host is `gitlab.alpinelinux.org` is a problem
+unless its url is exactly
+```
+https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/<P>/raw?ref=<C>
+```
+with:
+- (a) **Query.** It is exactly `ref=<C>`, where `<C>` equals the entry's
+  `commit` (40 lower-case hex). There is no other parameter, no repeated
+  `ref`, no empty value, and no fragment.
+- (b) **Path segment.** `<P>` is one path segment, the only one besides
+  the fixed `alpine%2Faports` that may hold `%` escapes. It must equal
+  `urllib.parse.quote(D, safe="")` exactly, where `D =
+  urllib.parse.unquote(<P>)`. That round-trip makes the encoding
+  canonical, so lower-case escapes (`%2f`), needless escapes (`%41`),
+  `%2e` and double encoding (`%252F`) all fail. `D` must:
+  - contain no `%`, no backslash and no character outside 0x21-0x7e;
+  - read `<repo>/<origin>(/<plain segment>)*/<name>`, where `<repo>` is
+    the entry's `repo`, `<origin>` is the key's, every segment is
+    non-empty and not `.` or `..`, and the last segment equals the file's
+    `name`;
+  - for the file named `APKBUILD`, be exactly `<repo>/<origin>/APKBUILD`.
+- The prefix up to and including `/files/` and the suffix `/raw` are
+  literal, compared as strings.
+- (c) **Scope.** No other kind and no other GitLab path form may carry a
+  query or `%2F` (or any `%` beyond U7a's temurin `%2B`). The apk
+  distfiles form `/distfiles/<branch>/<name>` stays query-free and
+  plain.
+- (d) **The old form is gone.** `/alpine/aports/-/raw/...` is no longer
+  accepted for any file, so a hand-edited lock cannot point U8 at the
+  challenged endpoint.
+- (e) **U8.** The query is part of the locked URL. U8's fetcher requests
+  the lock URL as written, after `lock-check` has passed it. The first
+  request carries this form. Redirect hops keep their own rules (U7b
+  rework round 1 item 3: a query is allowed on hops, and a hop path has no
+  `%`). This endpoint answered 200 directly; a redirect from it is
+  followed under those rules, or fails closed.
+- `upstream` is unchanged:
+  - `sha512sums` files keep `{sha512, <APKBUILD value>, "APKBUILD
+    sha512sums at <commit>"}`;
+  - files outside `sha512sums`, the APKBUILD included, keep `{sha256,
+    content_sha256, "gitlab files API content_sha256 at <commit>"}`,
+    taken from the files-API metadata request (`.../files/<P>?ref=<C>`,
+    no `/raw`), which is a resolver call and not a lock URL.
+
+*Failure text for a challenge.*
+- The resolver follows the 307 (its Location adds a query on the same
+  host, which hop rules allow) and then gets 418. So the line reads
+  `sources_lock: FAIL (resolve: <key>: gitlab.alpinelinux.org: HTTP 418:
+  <challenge url, cleaned>; the lock is unchanged)`.
+- A 307 with no Location reads `gitlab.alpinelinux.org: HTTP 307: <url>`.
+- Both are item 4's existing `<host>: HTTP <code>: <url>`, so no new
+  message is needed.
+- *Precision:* this corrects the brief's "`HTTP 307` covers it". A
+  challenge with a Location surfaces as the final status, here 418.
+
+*Alternatives rejected.*
+- cgit (`https://git.alpinelinux.org/aports/plain/<path>?id=<commit>`):
+  it needs a query too and adds a new host (Q71-type egress review).
+- A cookie- or JavaScript-solving client: it defeats the operator's bot
+  control and adds state and code to a fail-closed fetcher.
+- The repository archive endpoint (`.../repository/archive.tar.gz?sha=`):
+  the tarball is generated, so it is neither byte-stable nor per-file.
+- The files-API JSON `content` (base64): the lock URL would be metadata,
+  and the shipped bytes would be decoded rather than "as fetched"
+  (PSC-23).
+- *Considered, not probed:* `/api/v4/projects/<numeric id>/repository/blobs/<blob sha>/raw`
+  needs no query and no `%2F`. But the numeric project id is a second
+  trust point, and the endpoint was not probed. If U8's real fetch shows
+  the files/raw form failing, it is the first candidate, by amendment.
+
+*Test rows.* Lock side: `tests/test_sources_lock.py`; each bad row
+asserts its substring (U7a round 1 item 8).
+- Good:
+  - `.../files/main%2Fpax-utils%2FAPKBUILD/raw?ref=<commit>`;
+  - `.../files/main%2Fx%2Fsub%2Fa.patch/raw?ref=<commit>` (name `a.patch`);
+  - `.../files/community%2Fx%2Fx.post-install/raw?ref=<commit>`.
+- Bad:
+  - the old `/alpine/aports/-/raw/<commit>/main/x/APKBUILD`;
+  - the query:
+    - `ref` equal to another commit, or upper-case;
+    - 39 hex;
+    - `?ref=<c>&x=1`, `?x=1&ref=<c>`, `?ref=<c>&ref=<c>`, `?ref=`;
+    - a fragment;
+  - `<P>` not canonical: `main%2fx%2fAPKBUILD`, `main%2Fx%2F%41PKBUILD`,
+    `main%252Fx%252FAPKBUILD`, `main%2F%2e%2e%2FAPKBUILD`;
+  - `<P>` split into real segments (`.../files/main/x/APKBUILD/raw`);
+  - the decoded path is `main/other/APKBUILD`, `community/x/...` for a
+    `main` entry, `main/x//a.patch`, `main/x/./a.patch`,
+    `main/x/sub/APKBUILD`, or ends in another name;
+  - the form without `/raw`; a project `alpine%2Fother`;
+  - this form on a `deb`, `temurin` or `maven` file;
+  - `?x=1` or `%2F` on an apk distfiles URL.
+- Resolver side (fake opener):
+  - the APKBUILD and the local files are requested at exactly the API raw
+    form, and the metadata request has no `/raw`;
+  - a 307 to `?__goaway_challenge=...` followed by 418 gives the exact
+    line above, and nothing is written;
+  - an entry the resolver writes passes `lock_problems`, as U7c's
+    round-trip row does.
+- Real (A34 re-run): `apk:pax-utils@1.3.8-r2` resolves, and its entry
+  passes lock-check.
+
 ## N6. The final SPDX document
 
 `finish` keeps syft's packages, files and relationships and changes only:

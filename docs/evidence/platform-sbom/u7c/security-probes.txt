@@ -1,0 +1,87 @@
+platform-sbom U7c gate: security probes (security, 2026-10-25)
+Tree: HEAD 6d8fa4d (U7b) + working tree; scripts/sources_resolve.py, sources_lock.sh, sbom_check.py == u7c/target-*.
+Script: u7c/security_probes.py; pure functions, synthetic tars, one loopback HTTP server; no external request.
+Gates image, python -I, COMPOSE_PROJECT_NAME=ke-security-u5, scratch dir read-only at /scratch. Output unedited except
+compose/uv preamble lines dropped and raw control bytes in output shown as <xNN>.
+
+== U7c-1. parse_dsc / dsc_files on crafted .dsc text ==
+  baseline                                                   -> [('x_1.orig.tar.gz', 100, 'cccccccccc')]
+  NEL (U+0085) injects a Checksums line inside a value       -> x
+  U+2028 injects a field                                     -> ['Checksums-Sha256', 'Files', 'Format', 'Homepage', 'Source', 'Version']
+  U+2028 Source override -> Source value                     -> evil
+  duplicate Checksums-Sha256 (last wins?)                    -> [('evil.tar.gz', 5, 'dddddddddd')]
+  trailer after the signature (unsigned text)                -> [('x_1.orig.tar.gz', 100, 'cccccccccc')]
+  text before BEGIN SIGNED MESSAGE                           -> [('x_1.orig.tar.gz', 100, 'cccccccccc')]
+  unsigned .dsc                                              -> [('x_1.orig.tar.gz', 100, 'cccccccccc')]
+  CRLF line ends                                             -> [('x_1.orig.tar.gz', 100, 'cccccccccc')]
+  dash-escaped field line '- Files:'                         -> x
+  name with /                                                -> ResolveError: ../x_1.orig.tar.gz: not a safe file name
+  name with ..                                               -> ResolveError: x..y: not a safe file name
+  name with NUL                                              -> ResolveError: x\x00y: not a safe file name
+  name not in snapshot srcfiles                              -> ResolveError: other.tar.gz is in the .dsc but not in snapshot's srcfiles
+  size 0                                                     -> [('x_1.orig.tar.gz', 0, 'cccccccccc')]
+  size 10**20                                                -> [('x_1.orig.tar.gz', 100000000000000000000, 'cccccccccc')]
+  size with Arabic digits                                    -> ResolveError: x_1-1.dsc: bad Checksums-Sha256 line
+  Files and Checksums-Sha256 differ                          -> ResolveError: x_1-1.dsc: Checksums-Sha256 and Files list different files
+  Checksums-Sha1 disagrees with snapshot                     -> ResolveError: x_1.orig.tar.gz: Checksums-Sha1 says ffffffffffffffffffffffffffffffffffffffff, snapshot.debian.org says cccccc
+  Source/Version mismatch                                    -> ResolveError: x_1-1.dsc: Source/Version is y/1-1, want x/1-1
+  continuation ' .' line in Files                            -> ResolveError: x_1-1.dsc: bad Files line
+  field name with tab                                        -> ['Sou\trce', 'Source']
+  parse_dsc 1 MB continuation lines: 0.026s
+
+== U7c-2. srcfiles_map ==
+  baseline                                                   -> {'a': 'cccccccccccccccccccccccccccccccccccccccc', 'b': 'dddddddddddddddddddddddddddddddddddddddd'}
+  same name, two sha1s                                       -> ResolveError: two files named a in snapshot's srcfiles
+  same name, same sha1 twice (two archives)                  -> {'a': 'cccccccccccccccccccccccccccccccccccccccc'}
+  upper-case sha1 key                                        -> ResolveError: snapshot.debian.org srcfiles is not the expected JSON
+  entries not a list                                         -> ResolveError: snapshot.debian.org srcfiles is not the expected JSON
+  name int                                                   -> ResolveError: snapshot.debian.org srcfiles is not the expected JSON
+  fileinfo list                                              -> ResolveError: snapshot.debian.org srcfiles is not the expected JSON
+  name ../x accepted into the map (checked later)            -> {'../x': 'cccccccccccccccccccccccccccccccccccccccc'}
+
+== U7c-3. GitLab tree listing (_tree_blobs) ==
+  baseline (APKBUILD, patch, sub/x.patch)                    -> {'APKBUILD': 'APKBUILD', 'a.patch': 'a.patch', 'x.patch': 'sub/x.patch'}
+  symlink 120000                                             -> ResolveError: readline: main/readline/l at 1111111111111111111111111111111111111111 is not a regular file
+  submodule (type commit, 160000)                            -> ResolveError: readline: main/readline/m at 1111111111111111111111111111111111111111 is not a regular file
+  mode int 100644                                            -> ResolveError: readline: main/readline/APKBUILD at 1111111111111111111111111111111111111111 is not a regular file
+  path with ..                                               -> ResolveError: ../bash/APKBUILD: not a safe file name
+  path with %2e%2e                                           -> ResolveError: %2e%2e/x: not a safe file name
+  path outside prefix (main/readline-x/)                     -> ResolveError: gitlab.alpinelinux.org tree listing is not the expected JSON
+  name differs from path basename                            -> ResolveError: a: not a safe file name
+  basename collision (a.patch, sub/a.patch)                  -> ResolveError: readline: two files named a.patch at 1111111111111111111111111111111111111111
+  tree entry with odd path (skipped)                         -> {'APKBUILD': 'APKBUILD'}
+  listing is a dict                                          -> ResolveError: gitlab.alpinelinux.org tree listing is not the expected JSON
+  entry type missing                                         -> ResolveError: readline: main/readline/APKBUILD at 1111111111111111111111111111111111111111 is not a regular file
+  100 entries, no x-next-page (truncation check is header-only) -> 100
+
+== U7c-4. The two lock-rule changes (lock_problems on a good apk entry) ==
+  baseline problems: []
+  APKBUILD moved to a subdirectory (sub/APKBUILD)                accepted=True  []
+  APKBUILD moved to sub/deeper/APKBUILD                          accepted=True  []
+  extra sha256 gitlab file at top level                          accepted=True  []
+  extra sha256 gitlab file in a subdirectory                     accepted=True  []
+  sha256 gitlab-from file on distfiles                           accepted=False ['lock: apk:readline@8.2.13-r1: y.tar.gz is not sha512 (APKBUILD sha512sums) or sha256 (gitlab files API content']
+  sha256 file on gitlab at another commit                        accepted=False ['lock: apk:readline@8.2.13-r1: a.patch: not a apk file url (want path /alpine/aports/-/raw/164709483a69ff847763']
+  sha256 gitlab file whose from names another commit             accepted=False ['lock: apk:readline@8.2.13-r1: a.patch is not sha512 (APKBUILD sha512sums) or sha256 (gitlab files API content_']
+  sha256 gitlab file with from 'uv.lock'                         accepted=False ['lock: apk:readline@8.2.13-r1: a.patch is not sha512 (APKBUILD sha512sums) or sha256 (gitlab files API content_']
+  subdirectory segment with a dot-dot inside a name (a..b)       accepted=False ['lock: apk:readline@8.2.13-r1: x.patch: not a apk file url (want path /alpine/aports/-/raw/164709483a69ff847763']
+  subdirectory into another origin (../bash/)                    accepted=False ['lock: apk:readline@8.2.13-r1: url path is not a plain path']
+  the upstream tarball as a gitlab sha256 file (in the tree)     accepted=True  []
+  APKBUILD with from 'APKBUILD sha512sums'                       accepted=False ['lock: apk:readline@8.2.13-r1: the APKBUILD upstream from is not `gitlab files API content_sha256 at <commit>`']
+  two APKBUILDs (top and sub/)                                   accepted=False ['lock: apk:readline@8.2.13-r1: APKBUILD is listed twice']
+
+== U7c-5. tar reading of lib/apk/db/installed and etc/alpine-release ==
+  top layer wins                                             -> new
+  top layer whiteout .wh.installed (lower copy still read)   -> old
+  top layer hard link (skipped, lower wins)                  -> old
+  top layer symlink to /etc/passwd (skipped)                 -> old
+  member over the 16 MiB limit                               -> RAISED TarMemberTooLarge: /lib/apk/db/installed larger than 16 MiB
+  lower layer over the limit, top small                      -> RAISED TarMemberTooLarge: /lib/apk/db/installed larger than 1 MiB
+  ./-prefixed member name                                    -> dot
+  ../-prefixed member name (no match)                        -> None
+  apk_stanzas: duplicate P keeps the first: readline; CRLF stanza: {'P': 'x', 'V': '2'}
+  apk_stanzas on ~3 MB: 0.13s
+  apk_stanzas on 2 MB of spaces between newlines: 0.01s
+
+== U7c-6. read1 drip-feed re-probe (loopback HTTP, DEADLINE patched to 2 s) ==
+  after 2.0s: ResolveError after 2.0s: 127.0.0.1: deadline 2 s passed: http://127.0.0.1:48761/drip
