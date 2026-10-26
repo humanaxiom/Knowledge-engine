@@ -1,0 +1,69 @@
+ Container ke-reviewer-u4b-gates-run-5457dd1371ed Creating 
+ Container ke-reviewer-u4b-gates-run-5457dd1371ed Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 1ms
+Installed 1 package in 1ms
+ok  [dockerfile build] TARGET                                                         must pass | no problem
+ok  [dockerfile build] no rm of products/                                             must fail | the first stage does not run exactly `rm -rf /var/lib/neo4j/products` (PSC-26: the directory goes)
+ok  [dockerfile build] unpinned FROM                                                  must fail | the first stage is FROM 'neo4j:5-community', not the pinned neo4j:5-community@sha256:0a6e7aedf54a531f76286032d
+ok  [dockerfile build] no flatten (FROM scratch -> FROM runtime)                      must fail | the last stage is FROM 'runtime', not scratch: a delete in a stage FROM the base leaves the jar in a layer of 
+ok  [dockerfile build] apt-get install in the build stage                             must fail | the first stage does not run exactly `rm -rf /var/lib/neo4j/products` (PSC-26: the directory goes)
+ok  [dockerfile build] COPY --chown on the flatten                                    must fail | the last stage does not start with `COPY --from=runtime / /` (N16, as ke-app N10a)
+ok  [dockerfile config] TARGET                                                         must pass | no problem
+ok  [dockerfile config] no EXPOSE                                                      must fail | the last stage sets EXPOSE 0 times, want once (FROM scratch drops the base's config; PSC-26)
+ok  [dockerfile config] USER neo4j                                                     must fail | `USER neo4j`: the official image leaves it unset, so ke-neo4j does too (N16)
+ok  [dockerfile config] Env order swapped (LANG first)                                 must fail | Env is ['LANG=C.UTF-8', 'PATH=/var/lib/neo4j/bin:/opt/java/openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbi
+ok  [dockerfile config] a LABEL                                                        must fail | `LABEL a=b`: the official image leaves it unset, so ke-neo4j does too (N16)
+ok  [dockerfile config] no CMD                                                         must fail | the last stage sets CMD 0 times, want once (FROM scratch drops the base's config; PSC-26)
+ok  [compose] TARGET                                                         must pass | no problem
+ok  [compose] official image (U4)                                            must fail | neo4j's image is 'neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b', 
+ok  [compose] no build                                                       must fail | neo4j's build is None, want {context: ., dockerfile: docker/neo4j.Dockerfile} (N16)
+ok  [compose] retries 18 -> 3                                                must fail | neo4j's healthcheck changed: {'test': ['CMD-SHELL', 'cypher-shell -u neo4j -p "$${NEO4J_AUTH#*/}" \'RETURN 1\'
+ok  [official ref] TARGET build inputs                                            must pass | no problem
+ok  [official ref] offline_check.sh with the literal ref                          must fail | scripts/offline_check.sh names the official image: # neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead
+ok  [build scripts] TARGET build.sh                                                must pass | no problem
+ok  [build scripts] U4 build.sh (HEAD)                                             must fail | build.sh's header does not list ke-neo4j among the images it builds: 'Builds the images (ke-app, ke-gateway, k
+ok  [build scripts] TARGET build.ps1                                               must pass | no problem
+ok  [build scripts] U4 build.ps1 (HEAD)                                            must fail | build.ps1's header does not list ke-neo4j among the images it builds: 'Builds the images (ke-app, ke-gateway, 
+ok  [policy] TARGET                                                         must pass | no problem
+ok  [policy] U4 policy (HEAD)                                               must fail | 5 `always` entries still name image neo4j (N16: they name ke-neo4j)
+ok  [notice] TARGET                                                         must pass | no problem
+ok  [notice] U4 NOTICE.md (HEAD)                                            must fail | NOTICE.md still has a neo4j vendor row (N16: the row leaves `Vendor images`)
+ok  [notice] TARGET saying `used unmodified`                                must fail | the section says `used unmodified`: ke-neo4j changes the image (PSC-26)
+ok  [logic] TARGET: test_neo4j_config_check_logic                          must pass | no problem
+ok  [logic] TARGET: test_neo4j_tar_check_logic                             must pass | no problem
+ok  [logic] TARGET: test_neo4j_sbom_check_logic                            must pass | no problem
+ok  [logic] TARGET: test_neo4j_tree_check_logic                            must pass | no problem
+ok  [logic] TARGET: test_neo4j_checker_cli                                 must pass | no problem
+ok  [logic] config: Env compared as a set                                  must fail | AssertionError: [] is not true : no problem names Env (Env out of order): []
+ok  [logic] config: User not compared                                      must fail | AssertionError: [] is not true : no problem names User (User 7474): []
+ok  [logic] tar: only the last layer read                                  must fail | AssertionError: [] is not true : no problem names 'products' (the jar in a lower layer, a clean top layer): []
+ok  [logic] tar: only the first manifest entry                             must fail | AssertionError: [] is not true : no problem names 'products' (a second manifest entry holds it): []
+ok  [logic] tar: whiteouts not checked                                     must fail | AssertionError: [] is not true : no problem names 'whiteout' (a whiteout of products/ over it (U1's pip findin
+ok  [logic] sbom: purl only, not the name                                  must fail | AssertionError: [] is not true : no problem names 'fleet-management' (the plugin by name only (no purl)): []
+ok  [logic] sbom: exact version 1.2.0 only                                 must fail | AssertionError: [] is not true : no problem names 'fleet-management' (the plugin purl at another version, anot
+ok  [logic] sbom: Temurin not required                                     must fail | AssertionError: [] is not true : no problem names 'Temurin' (no Temurin): []
+ok  [logic] tree: mode not compared                                        must fail | AssertionError: [] == [] : the check passed: setuid lost
+ok  [logic] tree: added paths allowed                                      must fail | AssertionError: [] == [] : the check passed: a path added
+ok  [smoke] TARGET                                                         must pass | no problem
+ok  [smoke] no -xdev                                                       must fail | test_smoke_checks_no_fleet_plugin_in_neo4j: /var/lib/neo4j/LICENSE.txt', want only /var/lib/neo4j/LICENSE.txt 
+ok  [smoke] no control path (compare with empty)                           must fail | test_smoke_fails_when_the_fleet_plugin_is_in_neo4j: smoke: PASS
+ok  [smoke] first line only (read -r)                                      must fail | test_smoke_fails_when_the_fleet_plugin_is_in_neo4j: smoke: PASS
+ok  [smoke] the exec status ignored                                        must fail | test_smoke_fails_when_the_fleet_plugin_is_in_neo4j: smoke: PASS
+ok  [smoke] the output evaluated (eval echo)                               must fail | test_smoke_fails_when_the_fleet_plugin_is_in_neo4j: scripts/smoke.sh: line 223: /var/lib/neo4j/products/neo4j-
+ok  [smoke] the step removed (U4 smoke, HEAD)                              must fail | test_smoke_checks_no_fleet_plugin_in_neo4j: AssertionError: '== smoke: no fleet plugin ==' not found in 'smoke
+ok  [offline] TARGET                                                         must pass | no problem
+ok  [offline] the step removed (U4 offline_check.sh, HEAD)                   must fail | test_offline_check_runs_ke_neo4j_check: AssertionError: False is not true : ['pull sbom', 'pull base', 'bundle
+ok  [offline] no --network none on the checker                               must fail | test_offline_check_runs_ke_neo4j_check: AssertionError: ('--network', 'none') not found in [('run', '--rm'), (
+ok  [offline] a failed check ignored                                         must fail | test_offline_check_fails_on_ke_neo4j_problems: sbom_check: ke-neo4j: the SBOM lists the fleet-management plugi
+ok  [offline] the official image pulled by tag                               must fail | test_offline_check_runs_ke_neo4j_check: AssertionError: False is not true : ['pull sbom', 'pull base', 'pull',
+ok  [offline] the SBOM not passed (tar and config only)                      must fail | test_offline_check_runs_ke_neo4j_check: offline_check: FAIL (the ke-neo4j check failed (see above): products/ 
+ok  [exemption] TARGET Dockerfile + the exemption                              must pass | no problem
+ok  [exemption] path-wide: every line of docker/neo4j.Dockerfile exempt        must fail | test_dockerfile_exemption_covers_only_its_instruction_line: AssertionError: [] is not true : another line of t
+ok  [exemption] prefix match: any line starting EXPOSE 7473 7474 7687          must fail | test_dockerfile_exemption_covers_only_its_instruction_line: AssertionError: [] is not true : another line of t
+ok  [exemption] exact-line rule for every path (Python too)                    must fail | test_dockerfile_exemption_covers_only_its_instruction_line: AssertionError: [] is not true : a bare symbol lin
+ok  [exemption] any Dockerfile path (path not compared)                        must fail | test_dockerfile_exemption_covers_only_its_instruction_line: AssertionError: [] is not true : the exemption lef
+ok  [exemption] no Dockerfile form (assignment only, the U4 scanner)           must fail | test_dockerfile_exemption_covers_only_its_instruction_line: + []
+
+U4b controls (repo): 61 rows, 45 must-fail, 16 must-pass, 0 unexpected

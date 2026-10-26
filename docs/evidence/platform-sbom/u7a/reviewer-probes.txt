@@ -1,0 +1,31 @@
+# reviewer U7a probes, 2026-10-25 (host python -I; working tree scripts/sbom_check.py; policy = committed + pgdg host, docs = small_docs, as the tests)
+<scratch>\probe_u7a.py:33: SyntaxWarning: invalid escape sequence '\@'
+  run("url with backslash before @", mut(PYP, lambda e: e["files"][0].update(url="https://files.pythonhosted.org\@evil.example/x")))
+## baseline
+good small lock: PASSES
+## candidate fail-opens
+neo4j upstream alg sha1, unrelated value, second-fetch from: PASSES
+neo4j upstream alg sha512, unrelated value: PASSES
+neo4j two files: PASSES
+neo4j url on github.com/attacker/x, any name: PASSES
+deb with only the .dsc (no orig/debian tar): PASSES
+entry with an extra key: PASSES
+maven sources jar served from files.pythonhosted.org, other name: PASSES
+pypi sdist named for another package: PASSES
+temurin asset on repo1.maven.org: PASSES
+apk APKBUILD only, no sha512 files: PASSES
+pgdg entry with no .dsc (no pgdg rules): PASSES
+url with a tab inside the host (urlsplit drops it): PASSES
+url with a newline in the path: PASSES
+url with a space in the path: PASSES
+url with path traversal: PASSES
+url with backslash before @: ['lock: pypi:psycopg@3.3.6: url https://files.pythonhosted.org\\@evil.example/x carries userinfo', 'lock: pypi:psycopg@3.3.6: url host evil.example is not in docker/source-policy.json hosts']
+arches [['amd64']] (unhashable): RAISES TypeError: unhashable type: 'list'
+arches [1, 'amd64'] (mixed types): RAISES TypeError: '<' not supported between instances of 'str' and 'int'
+files: [1] non-dict file: ['lock: pypi:psycopg@3.3.6: a file is not exactly {name, url, sha256, size, upstream}', 'lock: pypi:psycopg@3.3.6: not one file with sha256']
+upstream from non-str: ['lock: pypi:psycopg@3.3.6: psycopg-3.3.6.tar.gz: upstream from is blank']
+component value null: ['lock: deb:x@1: not a valid deb key', 'lock: deb:x@1: the entry is not an object']
+lock JSON array: ['lock: top-level keys are not exactly format and components']
+format true: ['lock: format True is not 1']
+## 182 keys: independent derivation
+  independent 182 == FIXTURE_KEYS: True diff []

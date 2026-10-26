@@ -1,0 +1,150 @@
+platform-sbom U6: security exempt review probes (security, 2026-10-25)
+Image ke-neo4j:bundle-c300d881cd94 = sha256:d4c9e9b67570a9054e6a8ad9d8f70899fdfc66a4bd3e26a980d9dc94900e7a24 (docker/neo4j.Dockerfile unchanged since c300d88).
+Extraction (nothing run): docker create --network none <image>; docker cp <id>:/var/lib/neo4j/lib/<jar> <empty scratch dir>; docker rm.
+Reading: python -I with zipfile, jar paths as arguments, run from the repo root (never from the jar dir).
+Upstream build paths embedded in the native libraries are shown as <upstream build dir> (third-party, not ours).
+
+== jar paths in the image (docker export | tar -t | grep -iE 'jna|javassist|jnidispatch') ==
+var/lib/neo4j/lib/javassist-3.30.2-GA.jar
+var/lib/neo4j/lib/jna-5.15.0.jar
+
+== sha256sum ==
+a564158d28ab5127fc6a958028ed54279fe0999662c46425b6a3b09a2a52094d *jna-5.15.0.jar
+eba37290994b5e4868f3af98ff113f6244a6b099385d9ad46881307d3cb01aaf *javassist-3.30.2-GA.jar
+
+======================================================================
+jna-5.15.0.jar | entries 191 | classes 124
+top-level class packages: ['com/sun']
+non-class files:
+      3905 c79294db2ca7834d.. META-INF/MANIFEST.MF
+    226304 752d597cee7e95cb.. com/sun/jna/win32-x86/jnidispatch.dll
+    613721 f33d3b4c2ca35fac.. com/sun/jna/aix-ppc/libjnidispatch.a
+    657335 be8a1c6a282c637c.. com/sun/jna/aix-ppc64/libjnidispatch.a
+    109824 69cca8bbe2f0ff3f.. com/sun/jna/darwin-x86-64/libjnidispatch.jnilib
+    159800 70c9af22ba3ce121.. com/sun/jna/darwin-aarch64/libjnidispatch.jnilib
+    123384 546ec7cc6548de41.. com/sun/jna/linux-x86/libjnidispatch.so
+    134447 ca07953d59521008.. com/sun/jna/linux-x86-64/libjnidispatch.so
+    130788 b2a32135dea251fd.. com/sun/jna/linux-arm/libjnidispatch.so
+    139472 d9db010b0336cdbf.. com/sun/jna/linux-armel/libjnidispatch.so
+    162288 f18fa2c973b2b9ea.. com/sun/jna/linux-aarch64/libjnidispatch.so
+    127724 fbde8c5b108934e7.. com/sun/jna/linux-ppc/libjnidispatch.so
+    145072 aaa31a2220e270f6.. com/sun/jna/linux-ppc64le/libjnidispatch.so
+    144056 0025cd4345faec5a.. com/sun/jna/linux-mips64el/libjnidispatch.so
+    341968 6c55d9ec3efaaee1.. com/sun/jna/linux-loongarch64/libjnidispatch.so
+    136976 b31df7050aa22907.. com/sun/jna/linux-s390x/libjnidispatch.so
+    100064 f817ac611184e31f.. com/sun/jna/linux-riscv64/libjnidispatch.so
+    153152 fdba3f2f4220fb40.. com/sun/jna/sunos-x86/libjnidispatch.so
+    169992 4a0b0b11369d4f88.. com/sun/jna/sunos-x86-64/libjnidispatch.so
+    231108 5ae26c1d50dd6836.. com/sun/jna/sunos-sparc/libjnidispatch.so
+    166976 ccd720895968a885.. com/sun/jna/sunos-sparcv9/libjnidispatch.so
+    116880 c0c6e64b476d726d.. com/sun/jna/dragonflybsd-x86-64/libjnidispatch.so
+    105372 784b2a955b1504de.. com/sun/jna/freebsd-x86/libjnidispatch.so
+    121040 3c4d14c74bb6798c.. com/sun/jna/freebsd-x86-64/libjnidispatch.so
+    116008 bca4aece4b834fd0.. com/sun/jna/freebsd-aarch64/libjnidispatch.so
+    108073 c1837623157a7b51.. com/sun/jna/openbsd-x86/libjnidispatch.so
+    122942 d0eda029037f25c4.. com/sun/jna/openbsd-x86-64/libjnidispatch.so
+    273408 5a7ff949f6d93d86.. com/sun/jna/win32-x86-64/jnidispatch.dll
+    274432 b8f98be314234cf1.. com/sun/jna/win32-aarch64/jnidispatch.dll
+     10174 0d542e0c8804e39a.. META-INF/AL2.0
+     24389 eea173a556abac03.. META-INF/LGPL2.1
+       788 521bb271ac56e0e2.. META-INF/LICENSE
+MANIFEST licence/identity lines:
+  Implementation-Title: com.sun.jna
+  Implementation-Vendor: JNA Development Team
+  Implementation-Version: 5.15.0 (b0)
+  Bundle-SymbolicName: com.sun.jna
+  Bundle-Version: 5.15.0
+  Bundle-Vendor: JNA Development Team
+--- META-INF/LICENSE ---
+SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1
+
+Java Native Access (JNA) is licensed under the LGPL, version 2.1
+or later, or (from version 4.0 onward) the Apache License,
+version 2.0.
+
+You can freely decide which license you want to apply to the project.
+
+You may obtain a copy of the LGPL License at:
+
+http://www.gnu.org/licenses/licenses.html
+
+A copy is also included in the downloadable source code package
+containing JNA, in file "LGPL2.1", under the same directory
+as this file.
+
+You may obtain a copy of the Apache License at:
+
+http://www.apache.org/licenses/
+
+A copy is also included in the downloadable source code package
+containing JNA, in file "AL2.0", under the same directory
+as this file.
+
+Commercial support may be available, please e-mail
+twall[at]users[dot]sf[dot]net.
+
+--- META-INF/AL2.0 first lines ---
+Apache License
+                           Version 2.0, January 2004
+--- META-INF/LGPL2.1 first lines ---
+GNU LESSER GENERAL PUBLIC LICENSE
+		       Version 2.1, February 1999
+native libjnidispatch builds: 28; licence-ish strings (gpl|licen[cs]e|copyright|general public|free software|libffi) per build:
+  union of hits over all builds: ['<upstream build dir>/build-package-aix-ppc-7.0.2/native/libffi/src/closures.c', '<upstream build dir>/build-package-aix-ppc-7.0.2/native/libffi/src/java_raw_api.c', '<upstream build dir>/build-package-aix-ppc-7.0.2/native/libffi/src/powerpc/ffi_darwin.c', '<upstream build dir>/build-package-aix-ppc-7.0.2/native/libffi/src/prep_cif.c', '<upstream build dir>/build-package-aix-ppc-7.0.2/native/libffi/src/raw_api.c', '<upstream build dir>/build-package-aix-ppc-7.0.2/native/libffi/src/types.c', '<upstream build dir>/build-package-aix-ppc64-7.0.2/native/libffi/src/closures.c', '<upstream build dir>/build-package-aix-ppc64-7.0.2/native/libffi/src/java_raw_api.c', '<upstream build dir>/build-package-aix-ppc64-7.0.2/native/libffi/src/powerpc/ffi_darwin.c', '<upstream build dir>/build-package-aix-ppc64-7.0.2/native/libffi/src/prep_cif.c', '<upstream build dir>/build-package-aix-ppc64-7.0.2/native/libffi/src/raw_api.c', '<upstream build dir>/build-package-aix-ppc64-7.0.2/native/libffi/src/types.c', '<upstream build dir>/build-package-openbsd-x86-64-7.0.2/native/libffi/src/x86/unix64.S', '<upstream build dir>/build-package-openbsd-x86-64-7.0.2/native/libffi/src/x86/win64.S', '<upstream build dir>/build-package-openbsd-x86-7.0.2/native/libffi/src/x86/sysv.S', 'LIBFFI_TMPDIR', '_GLOBAL__F__<upstream build dir>_build_package_aix_ppc64_7.0.2_native_libffi_src_java_raw_api.c_B338A092_0x2688811b5198859b', '_GLOBAL__F__<upstream build dir>_build_package_aix_ppc64_7.0.2_native_libffi_src_powerpc_ffi_darwin.c_97458EF0_0xa9eefe94d71a9831', '_GLOBAL__F__<upstream build dir>_build_package_aix_ppc64_7.0.2_native_libffi_src_prep_cif.c_1B3F6131_0xb69378dddbc52ade', '_GLOBAL__F__<upstream build dir>_build_package_aix_ppc64_7.0.2_native_libffi_src_raw_api.c_63156AD6_0xacf5dc7b057b486d', '_GLOBAL__F__<upstream build dir>_build_package_aix_ppc_7.0.2_native_libffi_src_java_raw_api.c_B338A092_0x36ec2a3d0b16e613', '_GLOBAL__F__<upstream build dir>_build_package_aix_ppc_7.0.2_native_libffi_src_powerpc_ffi_darwin.c_97458EF0_0x433b2423b78bf5e7', '_GLOBAL__F__<upstream build dir>_build_package_aix_ppc_7.0.2_native_libffi_src_prep_cif.c_1B3F6131_0x1469b60e861fdfc1', '_GLOBAL__F__<upstream build dir>_build_package_aix_ppc_7.0.2_native_libffi_src_raw_api.c_63156AD6_0x8f7e188b5cea224b', '_GLOBAL__F_libffi_src_powerpc_aix', '_GLOBAL__F_libffi_src_powerpc_aix_closure', 'libffi']
+  builds with libffi symbols (ffi_call/ffi_prep_cif): 28 of 28
+======================================================================
+javassist-3.30.2-GA.jar | entries 450 | classes 426
+top-level class packages: ['javassist/', 'javassist/bytecode', 'javassist/compiler', 'javassist/convert', 'javassist/expr', 'javassist/runtime', 'javassist/scopedpool', 'javassist/tools', 'javassist/util']
+non-class files:
+      2280 6175b07c1ddd3bff.. META-INF/MANIFEST.MF
+        61 0653c51110a74965.. META-INF/maven/org.javassist/javassist/pom.properties
+     10960 4227851cb70e43f7.. META-INF/maven/org.javassist/javassist/pom.xml
+MANIFEST licence/identity lines:
+  Bundle-License: https://www.mozilla.org/en-US/MPL/1.1/, https://www.gnu.org/licenses/lgpl-2.1.html, https://www.apache.org/licenses/LICENSE-2.0
+  Bundle-SymbolicName: javassist
+  Bundle-Vendor: Shigeru Chiba, www.javassist.org
+  Bundle-Version: 3.30.2.GA
+--- META-INF/maven/org.javassist/javassist/pom.properties ---
+artifactId=javassist
+groupId=org.javassist
+version=3.30.2-GA
+--- META-INF/maven/org.javassist/javassist/pom.xml <licenses> ---
+<licenses>
+    <!-- this is the license under which javassist is usually distributed
+      -->
+    <license>
+      <name>MPL 1.1</name>
+      <url>https://www.mozilla.org/en-US/MPL/1.1/</url>
+    </license>
+    <!-- this is the license under which javassist is distributed when
+         it is bundled with JBoss
+      -->
+    <license>
+      <name>LGPL 2.1</name>
+      <url>https://www.gnu.org/licenses/lgpl-2.1.html</url>
+    </license>
+    <!-- this is the license under which javassist can be distributed.
+      -->
+    <license>
+      <name>Apache License 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+    </license>
+  </licenses>
+
+== Neo4j's own third-party listing in the same image (/var/lib/neo4j/LICENSES.txt, NOTICE.txt) ==
+LICENSES.txt section 'Apache Software License, Version 2.0' runs l.6-343 (next section 'BSD - Scala License' at l.344):
+Apache Software License, Version 2.0
+  Java Native Access
+  Javassist
+NOTICE.txt section 'Apache Software License, Version 2.0' runs l.28-159:
+Apache Software License, Version 2.0
+  Java Native Access
+  Javassist
+grep -ciE 'libffi' LICENSES.txt NOTICE.txt:
+LICENSES.txt:0
+NOTICE.txt:0
+
+== Consumers of docker/source-policy.json outside docs/evidence ==
+./tests/test_neo4j_image.py
+./tests/test_sbom_classifier.py
+./tests/test_sbom_obligations.py

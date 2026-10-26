@@ -1,0 +1,17 @@
+# reviewer U6 probes, 2026-10-25 (host python -I; working tree vs HEAD d8ffa2d checker; argv[1] = git show HEAD:scripts/sbom_check.py)
+## 1. duplicate SPDXID: a GPL package sharing jna's SPDXID
+  pkg:maven/com.sun.jna/jna@5.15.0 needs False exempt True
+  pkg:deb/debian/bash@5.2.15-2?arch=amd64 needs False exempt True
+  validate on that doc: ['package SPDXID SPDXRef-Package-jna-442bd2432f63587e is not unique']
+## 2. package purl with a subpath
+  (['SPDXRef-Package-jna-6cac95fdcc4aab87'], ['ke-neo4j: exempt entry matches nothing: pkg:maven/org.javassist/javassist@3.30.2-GA; the version moved or the package left: review again'])
+## 3. real rows: HEAD (U5) vs current with exempt=() row by row; with the real exempt, changed rows
+  ke-app 153 U5-equal: True changed with exempt: []
+  ke-gateway 71 U5-equal: True changed with exempt: []
+  ke-neo4j 341 U5-equal: True changed with exempt: [('pkg:maven/org.javassist/javassist@3.30.2-GA', {'exempt', 'needs'}), ('pkg:maven/com.sun.jna/jna@5.15.0', {'exempt', 'needs'})]
+  phoenix 277 U5-equal: True changed with exempt: []
+  postgres 149 U5-equal: True changed with exempt: []
+  valkey 24 U5-equal: True changed with exempt: []
+## 4. segment rule monotone vs HEAD: random expressions
+  checked 200000; lost needs: 0 lost listing: 0 changed: 90450
+  LGPL-NONE head (True, {'unparsed': True, 'unidentified': False}) cur (True, {'unparsed': False, 'unidentified': True})

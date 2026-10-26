@@ -1,0 +1,126 @@
+# security U0 re-check: M-1 PoC against the round-1 scripts/smoke.sh psycopg step (2026-10-23)
+# Driver = a stub compose() (each container output from an env var) + the psycopg block of scripts/smoke.sh, extracted with
+#   sed -n '/== smoke: psycopg ==/,/smoke: psycopg c on Debian/p' scripts/smoke.sh   (byte-identical to u0/r1-target-smoke-block.sh)
+# Each case puts a $(touch <scratch>/marker-<case>) payload in one container-supplied value; 'absent' = no host command ran.
+# GNU bash, version 5.3.9(1)-release (x86_64-pc-cygwin)
+## stub compose():
+#!/usr/bin/env bash
+# Stub compose: each container output comes from an env var (attacker-controlled).
+set -euo pipefail
+compose() {
+  shift 3  # exec -T api
+  case "$1" in
+    python) printf '%s\n' "${PQ_OUT:-c 150019 150019 /opt/venv/lib/python3.12/site-packages/psycopg_c/pq.cpython-312-x86_64-linux-gnu.so -}" ;;
+    dpkg-query) if [ "$2" = -W ]; then [ -n "${DEB_FAIL:-}" ] && return 1; printf '%s' "${DEB-15.19-0+deb12u1}"; else printf '%s\n' "${OWNER:-libpq5:amd64: /usr/lib/x86_64-linux-gnu/libpq.so.5.15}"; fi ;;
+    ldd) printf '%s\n' "${LDD:-	libpq.so.5 => /lib/x86_64-linux-gnu/libpq.so.5 (0x00007f)}" ;;
+    realpath) printf '%s\n' "${REAL:-/usr/lib/x86_64-linux-gnu/libpq.so.5.15}" ;;
+  esac
+}
+echo "== smoke: psycopg =="
+## results:
+## case baseline: 
+== smoke: psycopg ==
+smoke: psycopg c on Debian libpq5 15.19-0+deb12u1 (/lib/x86_64-linux-gnu/libpq.so.5 -> /usr/lib/x86_64-linux-gnu/libpq.so.5.15)
+exit=0
+marker-baseline absent
+## case deb-ppid: DEB=0+PPID[$(touch <scratch>/marker-deb-ppid)]
+== smoke: psycopg ==
+smoke: FAIL (libpq: libpq5 version in api is '0+PPID[$(touch <scratch>/marker-deb-ppid)]', not <major>.<minor>-<revision>)
+exit=1
+marker-deb-ppid absent
+## case deb-versinfo: DEB=0+BASH_VERSINFO[$(touch <scratch>/marker-deb-versinfo)]
+== smoke: psycopg ==
+smoke: FAIL (libpq: libpq5 version in api is '0+BASH_VERSINFO[$(touch <scratch>/marker-deb-versinfo)]', not <major>.<minor>-<revision>)
+exit=1
+marker-deb-versinfo absent
+## case deb-a: DEB=a[$(touch <scratch>/marker-deb-a)]
+== smoke: psycopg ==
+smoke: FAIL (libpq: libpq5 version in api is 'a[$(touch <scratch>/marker-deb-a)]', not <major>.<minor>-<revision>)
+exit=1
+marker-deb-a absent
+## case deb-suffix: DEB=15.19-0+PPID[$(touch <scratch>/marker-deb-suffix)]
+== smoke: psycopg ==
+smoke: FAIL (libpq: libpq5 version in api is '15.19-0+PPID[$(touch <scratch>/marker-deb-suffix)]', not <major>.<minor>-<revision>)
+exit=1
+marker-deb-suffix absent
+## case deb-nl: DEB=15.19-0+deb12u1
+0+PPID[$(touch <scratch>/marker-deb-nl)]
+== smoke: psycopg ==
+smoke: FAIL (libpq: libpq5 version in api is '15.19-0+deb12u1
+0+PPID[$(touch <scratch>/marker-deb-nl)]', not <major>.<minor>-<revision>)
+exit=1
+marker-deb-nl absent
+## case deb-lead: DEB=PPID[$(touch <scratch>/marker-deb-lead)].19-0
+== smoke: psycopg ==
+smoke: FAIL (libpq: libpq5 version in api is 'PPID[$(touch <scratch>/marker-deb-lead)].19-0', not <major>.<minor>-<revision>)
+exit=1
+marker-deb-lead absent
+## case deb-big: DEB=99999999999999999999999.1-1
+== smoke: psycopg ==
+smoke: FAIL (psycopg: libpq version() 150019, __build_version__ 150019; libpq5 99999999999999999999999.1-1 is -6930898827444496143)
+exit=1
+marker-deb-big absent
+## case pqver: PQ_OUT=c 0+PPID[$(touch <scratch>/marker-pqver)] 150019 /x.so -
+== smoke: psycopg ==
+smoke: FAIL (psycopg: psycopg_binary is installed in api beside psycopg-c: /x.so -)
+exit=1
+marker-pqver absent
+## case pqbuild: PQ_OUT=c 150019 PPID[$(touch <scratch>/marker-pqbuild)] /x.so -
+== smoke: psycopg ==
+smoke: FAIL (psycopg: psycopg_binary is installed in api beside psycopg-c: /x.so -)
+exit=1
+marker-pqbuild absent
+## case pqext: PQ_OUT=c 150019 150019 $(touch <scratch>/marker-pqext);PPID[$(touch <scratch>/marker-pqext)] -
+== smoke: psycopg ==
+smoke: FAIL (psycopg: psycopg_binary is installed in api beside psycopg-c: <scratch>/marker-pqext);PPID[$(touch <scratch>/marker-pqext)] -)
+exit=1
+marker-pqext absent
+## case pqimpl: PQ_OUT=PPID[$(touch <scratch>/marker-pqimpl)] 150019 150019 /x.so -
+== smoke: psycopg ==
+smoke: FAIL (psycopg: api uses the 'PPID[$(touch' implementation, want c)
+exit=1
+marker-pqimpl absent
+## case ldd: LDD=	libpq.so.5 => /lib/x86_64-linux-gnu/libpq.so.5$(touch <scratch>/marker-ldd) (0x0)
+== smoke: psycopg ==
+smoke: FAIL (libpq: the psycopg_c extension loads '/lib/x86_64-linux-gnu/libpq.so.5$(touch', not Debian's libpq5)
+exit=1
+marker-ldd absent
+## case ldd2: LDD=	libpq.so.5 => PPID[$(touch <scratch>/marker-ldd2)] (0x0)
+== smoke: psycopg ==
+smoke: FAIL (libpq: the psycopg_c extension loads 'PPID[$(touch', not Debian's libpq5)
+exit=1
+marker-ldd2 absent
+## case real: REAL=/usr/lib/$(touch <scratch>/marker-real)
+== smoke: psycopg ==
+smoke: FAIL (libpq: /usr/lib/$(touch <scratch>/marker-real) belongs to 'libpq5:amd64', not libpq5)
+exit=1
+marker-real absent
+## case owner: OWNER=libpq5:amd64: PPID[$(touch <scratch>/marker-owner)]
+== smoke: psycopg ==
+smoke: FAIL (libpq: /usr/lib/x86_64-linux-gnu/libpq.so.5.15 belongs to 'libpq5:amd64', not libpq5)
+exit=1
+marker-owner absent
+## case owner2: OWNER=PPID[$(touch <scratch>/marker-owner2)]: /usr/lib/x86_64-linux-gnu/libpq.so.5.15
+== smoke: psycopg ==
+smoke: FAIL (libpq: /usr/lib/x86_64-linux-gnu/libpq.so.5.15 belongs to 'PPID[$(touch <scratch>/marker-owner2)]', not libpq5)
+exit=1
+marker-owner2 absent
+## case deb-empty: DEB=
+== smoke: psycopg ==
+smoke: FAIL (libpq: libpq5 version in api is '', not <major>.<minor>-<revision>)
+exit=1
+marker-deb-empty absent
+## case deb-fail: DEB_FAIL=1
+== smoke: psycopg ==
+smoke: FAIL (libpq: dpkg-query libpq5 failed in api)
+exit=1
+marker-deb-fail absent
+## case baseline2: 
+== smoke: psycopg ==
+smoke: psycopg c on Debian libpq5 15.19-0+deb12u1 (/lib/x86_64-linux-gnu/libpq.so.5 -> /usr/lib/x86_64-linux-gnu/libpq.so.5.15)
+exit=0
+marker-baseline2 absent
+## CONTROL: round-0 lines (from u0/security-smoke-arith-poc.txt), same marker harness
+want=7095979527
+exit=0
+MARKER marker-control CREATED (harness detects execution)

@@ -2843,8 +2843,12 @@ def _image_record(ref: str, arch: str = "amd64") -> dict[str, Any]:
             "RepoDigests": [ref] if "@" in ref else [], "Os": "linux", "Architecture": arch}
 
 
+# platform-sbom U2 (PSC-20): docker-compose.sbom.yml is copied when it exists,
+# so bundle.sh reads the generator's reference from a tracked file, as in a
+# real checkout (tests/test_sbom_generator.py proves it is never shipped).
 _REPO_COPY = (".env.example", ".gitignore", ".dockerignore", "docker-compose.yml", "pyproject.toml",
-              "uv.lock", "LICENSE", "NOTICE.md", "config", "scripts", "licenses", "docs/quickstart.md")
+              "uv.lock", "LICENSE", "NOTICE.md", "config", "scripts", "licenses", "docs/quickstart.md",
+              cs.SBOM_COMPOSE_NAME)
 
 
 # ---- PS-3.8 licence notices: a stand-in for the ke-app image's venv --------
@@ -2869,7 +2873,7 @@ NOTICE_LAYOUT = {"httpx": "noheader", "six": "legacy", "protobuf": "bare"}
 # package -> (metadata licence lines, licence the notices must show for it)
 NOTICE_LICENCE = {
     "psycopg": (["License-Expression: LGPL-3.0-only"], "LGPL-3.0-only"),
-    "psycopg-binary": (["License-Expression: LGPL-3.0-only"], "LGPL-3.0-only"),
+    "psycopg-c": (["License-Expression: LGPL-3.0-only"], "LGPL-3.0-only"),
     "httpx": (["Classifier: License :: OSI Approved :: BSD License"], "BSD"),
     "six": (["License: MIT"], "MIT"),
     "protobuf": (["License: 3-Clause BSD License"], "3-Clause BSD License"),
@@ -2880,15 +2884,23 @@ def _norm(name: str) -> str:
     return re.sub(r"[-_.]+", "-", name).lower()
 
 
+# platform-sbom U0 (PSC-25, ADR-KE-016 point 0): the ke-app builder also
+# syncs the `pq-c` group (psycopg-c), so the image holds it.
+IMAGE_GROUPS = ("pq-c",)
+
+
 def _runtime_packages() -> dict[str, str]:
     """name -> version of every package uv.lock installs for the project
-    without the dev group (its dependencies and the extras they name,
+    without the dev group (its dependencies, the image groups the ke-app
+    builder syncs when the lock has them, and the extras they name,
     transitively). Markers are ignored, so this is a superset on any one
     platform."""
     import tomllib
     lock = tomllib.loads((ROOT / "uv.lock").read_text(encoding="utf-8"))
     pkgs = {p["name"]: p for p in lock["package"]}
     todo = list(pkgs[PROJECT_DIST].get("dependencies", []))
+    for group in IMAGE_GROUPS:
+        todo += pkgs[PROJECT_DIST].get("dev-dependencies", {}).get(group, [])
     seen: dict[str, str] = {}
     done: set[tuple[str, str]] = set()
     while todo:
@@ -3006,8 +3018,17 @@ class _BundleBase:
         self.stack = _stack_images()
         self.n = 0
         # PS-3.8: the ke-app image's venv as the notices generator sees it.
-        self.site = self.tmp / "site-packages"
+        # platform-sbom U3: laid out as the image's /opt/venv, so the fake maps
+        # that container path (FAKE_IMAGE_PATHS) for the SBOM check (N3, N7).
+        self.venv = self.tmp / "venv"
+        self.site = self.venv / "lib" / "python3.12" / "site-packages"
         self.packages = _make_site(self.site)
+        # platform-sbom U2 (PSC-20, design-notes N1): the SBOM generator, as
+        # docker-compose.sbom.yml pins it, is present on the fake daemon (the
+        # fetch step pulled it); tests/test_sbom_generator.py removes it.
+        sbom_file = ROOT / cs.SBOM_COMPOSE_NAME
+        self.sbom_ref = cs.sbom_generator_ref(sbom_file)
+        self.sbom_required = cs.required_vars(sbom_file)
 
     def _git(self, *args: str) -> str:
         env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": str(self.tmp),
@@ -3020,7 +3041,7 @@ class _BundleBase:
         return done.stdout
 
     def _images_table(self, stack: dict[str, str], default: str = "amd64", **arch: str) -> dict[str, Any]:
-        refs = set(stack.values()) | set(_profile_images().values())
+        refs = set(stack.values()) | set(_profile_images().values()) | {self.sbom_ref}
         return {r: _image_record(r, arch.get(r, default)) for r in refs}
 
     def _bundle(self, out: Path | None = None, *, stack: dict[str, str] | None = None,
@@ -3051,6 +3072,17 @@ class _BundleBase:
             # PS-3.8: `docker run ... engine.notices` runs the real generator
             # against self.site (tests/fake_docker.py).
             "FAKE_NOTICES_SITE": str(self.site), "FAKE_NOTICES_APP_ROOT": str(ROOT),
+            # platform-sbom U2 (PSC-20): `compose -f docker-compose.sbom.yml
+            # config` answers with the generator's service and image, and
+            # refuses while a `${VAR:?}` of that file is unset, as compose does.
+            "FAKE_COMPOSE_FILE_IMAGES": json.dumps({cs.SBOM_COMPOSE_NAME: {"sbom": self.sbom_ref}}),
+            "FAKE_COMPOSE_FILE_REQUIRED": json.dumps({cs.SBOM_COMPOSE_NAME: self.sbom_required}),
+            # platform-sbom U3 (PSC-13, design-notes N3/N6): `docker save` writes
+            # a real image tar (manifest.json `Config`, docker 25+ layout), and
+            # the SBOM checker run in the ke-app image sees its /opt/venv and
+            # /app (uv.lock) here (tests/fake_docker.py).
+            "FAKE_DOCKER_SAVE_TAR": "oci",
+            "FAKE_IMAGE_PATHS": json.dumps({"/opt/venv": str(self.venv), "/app": str(ROOT)}),
         }
         run_env.update(env)
         result = subprocess.run(["bash", "scripts/bundle.sh", *args, "--out", str(out)], env=run_env,
@@ -3796,9 +3828,13 @@ class BundleNoticesTest(_BundleBase, unittest.TestCase):
             self.assertIn("psycopg", self._notices(out))
             self.assertEqual(len(self._notice_runs(calls)), 1)
         cases = {"psycopg (LGPL, licenses/LICENSE.txt)": "psycopg",
-                 "psycopg-binary": "psycopg-binary",
+                 "psycopg-c (LGPL, licenses/LICENSE.txt)": "psycopg-c",
                  "six (legacy layout, MIT)": "six",
                  "httpx (no License-File header)": "httpx"}
+        # PSC-25 (platform-sbom U0): the image's psycopg native package is
+        # psycopg-c (the ke-app builder's `pq-c` group), never psycopg-binary.
+        self.assertIn("psycopg-c", self.packages, "precondition: the image has psycopg-c (PSC-25)")
+        self.assertNotIn("psycopg-binary", self.packages, "the image has no psycopg-binary (PSC-25)")
         for case, name in cases.items():
             with self.subTest(case=case):
                 site = self.tmp / f"site-{_norm(name)}"
@@ -3839,17 +3875,27 @@ class BundleNoticesTest(_BundleBase, unittest.TestCase):
             self._assert_nothing_written(result, calls, out2, r"widget")
 
     def test_notices_neo4j_has_source_url(self):
-        neo4j = self._vendor().get("neo4j")
-        self.assertIsNotNone(neo4j, "precondition: neo4j is a stack image")
+        # platform-sbom U4b (PSC-26 *Notices*, design-notes N16; re-targeted by
+        # the tester, U4b RED): neo4j ships as ke-neo4j, the official image
+        # minus /var/lib/neo4j/products, so it is no longer a vendor row found
+        # by the compose reference. The bundle's NOTICE.md carries a "Base
+        # image of `ke-neo4j`" section, found by the Dockerfile's base pin; the
+        # intent (GPL-3.0, an https source URL; A43, R4) is unchanged.
+        from tests import neo4j_support as ns
+        base = ns.dockerfile_base_ref()
+        self.assertIsNotNone(base, "precondition: docker/neo4j.Dockerfile pins the official neo4j image (PSC-26)")
         _, _, out, _ = self._ok()
-        row = self._image_rows(self._notices(out)).get(str(neo4j))
-        self.assertIsNotNone(row, f"neo4j ({neo4j}) has no row in {self.NOTICES}")
-        assert row is not None
-        self.assertRegex(_cell(row["licence"]), r"^GPL-3\.0(?:-only|-or-later)?$",
-                         "Neo4j Community is listed as GPL-3.0 (A43, R4)")
-        self.assertRegex(_cell(row["source"]), r"https://[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?:/\S*)?",
-                         "Neo4j's row gives an https source URL (R4)")
-        self.assertNotRegex(_cell(row["source"]), r"http://", "the source URL is https")
+        text = (out / "NOTICE.md").read_text(encoding="utf-8")
+        sections = [s for s in re.split(r"(?m)^## ", text) if s.startswith("Base image of `ke-neo4j`")]
+        self.assertEqual(len(sections), 1, "the bundle's NOTICE.md has one `Base image of ke-neo4j` section (N16)")
+        section = sections[0] if sections else ""
+        self.assertIn(f"`{base}`", section, "the section names docker/neo4j.Dockerfile's base pin byte for byte")
+        self.assertRegex(section, r"\bGPL-3\.0(?:-only|-or-later)?\b", "Neo4j Community is listed as GPL-3.0 (A43, R4)")
+        self.assertRegex(section, r"https://[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?:/\S*)?",
+                         "the section gives an https source URL (R4)")
+        self.assertNotRegex(section, r"http://", "the source URL is https")
+        self.assertNotIn(str(base), self._image_rows(self._notices(out)),
+                         "the official image has no row among the bundle's stack images (it is not bundled)")
 
     def test_notices_mark_phoenix_as_exception(self):
         phoenix = self._vendor().get("phoenix")
@@ -4089,9 +4135,13 @@ class BundleNoticesTest(_BundleBase, unittest.TestCase):
         tracked_config = sorted(self._git("ls-files", "config").split())
         _, _, out, _ = self._ok()
         with self.subTest(part="app/ is exact"):
+            # platform-sbom U3 (PSC-13; ADR-KE-016 point 6, orchestrator ruling 2):
+            # app/ also holds one SPDX document per bundled image, named after its
+            # tar, at app/sboms/<name>.spdx.json (tester, U3 RED, 2026-10-23).
+            sboms = {f"sboms/{Path(e['file']).stem}.spdx.json" for e in self._expected().values()}
             expected = sorted({"docker-compose.yml", ".env.example", "docs/quickstart.md", *tracked_config,
                                *(f"scripts/{s}" for s in ("launch.sh", "teardown.sh", "smoke.sh", "launch.ps1",
-                                                          "teardown.ps1", "net_isolated.sh"))},
+                                                          "teardown.ps1", "net_isolated.sh")), *sboms},
                               key=lambda s: s.encode("utf-8"))
             self.assertEqual(_regular_files(out / "app"), expected, "app/ holds exactly §2.5 Bundle step 3")
         with self.subTest(part="the root is exact"):
@@ -4267,9 +4317,13 @@ class ProjectLicenceTextTest(unittest.TestCase):
         self.assertIn(f"licenses/{name}", self._row("valkey"), "NOTICE.md's valkey row points to the text")
 
     def test_notice_wording_asserts_no_more_than_the_facts(self):
-        # audit-nt L-NT1.
-        neo4j = self._row("neo4j")
+        # audit-nt L-NT1. Platform-sbom U4b (PSC-26 *Notices*, N16): the neo4j
+        # statements left the vendor table for the "Base image of `ke-neo4j`"
+        # section (re-targeted by the tester, U4b RED; same intent).
+        sections = [s for s in re.split(r"(?m)^## ", self._notice()) if s.startswith("Base image of `ke-neo4j`")]
+        neo4j = _words(sections[0]) if len(sections) == 1 else ""
         with self.subTest(part="neo4j: upstream source, no compliance claim"):
+            self.assertEqual(len(sections), 1, "precondition: NOTICE.md has one `Base image of ke-neo4j` section")
             self.assertIn("Upstream source:", neo4j)
             self.assertNotRegex(neo4j, r"(?i)corresponding source is at")
         with self.subTest(part="phoenix: the licence-key limitation"):

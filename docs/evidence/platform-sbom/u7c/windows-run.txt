@@ -1,0 +1,434 @@
+# platform-sbom U7c A34 Windows proof (tester, 2026-10-25)
+# Git Bash on Windows 11 (MINGW64), Docker Desktop 29.5.2, Compose 5.1.4; project ke-tester-u7cwin.
+# Tree: U7c GREEN (uncommitted, on 6d8fa4d). Paths redacted: <profile>, <scratch>; the GitLab challenge id as <id>.
+# Two parts: the driver run (steps 0, 3, 4, 5, 6), then part 2 (the deb component alone, one probe of the
+# GitLab challenge, and a re-check of 3e). Drivers and the resolver wrapper (OPENER logged) are tester scratch files.
+#
+# VERDICT: A34 FAIL, on the real Alpine component. Every other check passes.
+# - Step 3 PASS. 3a bad arguments exit 2; 3b a missing image; 3c the 7 GiB floor; 3d tools first (jq, git,
+#   docker: exact FAIL line, no container); 3e six images (an extra redis, a missing valkey). All refuse
+#   before any save, and no lock, temp file or work dir is left.
+#   - 3e's "CONTAINERS CHANGED" in part 1 was a container started elsewhere. In part 2's re-check no
+#     container started or was removed.
+# - Step 4 PASS. The script saved the six real images and ran the sbom service with sboms/tmp present.
+#   lock-needs got --tar for all six images and produced 181 keys:
+#   - 19 apk keys, each with origin/ver/commit/branch: ke-gateway on v3.23, valkey on v3.24;
+#   - fixtures minus pypi:psycopg-c and deb:postgresql-15, plus pypi:psycopg-binary. This is the drift from
+#     the stale ke-app:local already recorded; neo4j has 72 packages (the genai plugin).
+#   The resolver step was stopped by a shim, and the lock is unchanged.
+# - Step 5, the real Debian component: PASS. deb:bash@5.2.15-2, from 2 requests to snapshot.debian.org:
+#   srcfiles?fileinfo=1, then /file/<.dsc sha1>. Exit 0 in 2.7 s, container start to exit.
+#   - 3 files: the .dsc (2317 B, streamed), orig.tar.gz (9997221 B) and debian.tar.xz (97380 B). The last
+#     two are listed from Checksums-Sha256 and not fetched.
+#   - sbom_check.py lock-check on that lock.new.json: `lock-check: ok (1 components, amd64)`.
+# - Step 5, the real Alpine component apk:pax-utils@1.3.8-r2 (ke-gateway, commit 3912b4fa..., v3.23): FAIL.
+#   - The tree API (main 200, community 404) and the files API (200) answer normally.
+#   - The GitLab *raw* URL /alpine/aports/-/raw/<commit>/main/pax-utils/APKBUILD answers 307, to the same
+#     URL plus `?__goaway_challenge=cookie&__goaway_id=<id>`. That hop then answers 418: an anti-bot
+#     challenge in front of the raw endpoint.
+#   - The resolver failed closed with one FAIL line and wrote nothing.
+#   - Probe (part 2, one request each, the resolver's User-Agent):
+#     - the raw URL gives 307;
+#     - the API raw endpoint /api/v4/projects/alpine%2Faports/repository/files/main%2Fpax-utils%2FAPKBUILD/raw?ref=<commit>
+#       gives 200, text/plain, 1782 B.
+#   - DESIGN GAP for the architect: every apk lock URL is a GitLab raw URL (A3, A5, the U7a binding), so
+#     neither the resolver nor U8's fetch can retrieve aports files from it as things stand. The API raw
+#     endpoint works but carries a query (`?ref=`), and U7a requires query-free lock URLs.
+# - Teardown PASS: no container, network or volume left for ke-tester-u7cwin*, ke-sources-*. The 13
+#   touched repo files hash the same at start and end (both parts). docker/sources.lock.json does not
+#   exist, and docker/ holds no temp lock file.
+# - A repo-root .env (another role's) was present. Nothing here read or touched it; the scripts read
+#   .env.example only.
+
+==================== part 1 ====================
+
+=== 0. host and versions (U7c GREEN) ===
+date (UTC): 2026-10-25T13:22:45Z
+MINGW64_NT-10.0-26200 aria-alien1 3.6.7-fb42d713.x86_64 2026-03-29 11:44 UTC x86_64 Msys
+engine 29.5.2 linux/amd64; compose 5.1.4
+git HEAD 6d8fa4d5c1ae4e1a7216b13e9105712555df5009 (agent/platform-sbom); working tree: U7c GREEN (uncommitted)
+id: 197610:197121
+84b6d4a2ac362f525301d1c8d6e6978e057710a093361f533705578e97f695e8 *scripts/sources_lock.sh
+5ed3101b7845d4a1881448ef90e0b0dc02fcdec9b2a5e0e175149c6fb5dddfb9 *scripts/sources_resolve.py
+bcdbbb413f9ee217e5426d90aefdb35b011cc59c3bdce6c1b6847c33b9a01354 *scripts/sbom_check.py
+23c6e98f55554a1c1dcaf6a43055cce7c0361cd0f72fa8d33b7480a8ca86b79c *docker-compose.sources.yml
+hashed 13 files -> hash-start.txt
+lock before: ls: cannot access 'docker/sources.lock.json': No such file or directory
+.env present (another role's; not read or touched by this run)
+
+=== 3. scripts/sources_lock.sh refusal paths ===
+--- 3a. bad arguments exit 2
+args [] -> exit 2: usage: scripts/sources_lock.sh --arch amd64|arm64 [--refresh]
+args [--arch x86_64] -> exit 2: usage: scripts/sources_lock.sh --arch amd64|arm64 [--refresh]
+args [--bogus] -> exit 2: usage: scripts/sources_lock.sh --arch amd64|arm64 [--refresh]
+args [--arch] -> exit 2: usage: scripts/sources_lock.sh --arch amd64|arm64 [--refresh]
+--- 3b. a missing image (KE_IMAGE_TAG=u7cwin-missing)
+sources_lock: FAIL (images: ke-app:u7cwin-missing not found: run scripts/build.sh first; the lock is unchanged)
+[exit 1]
+lock after 3b: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 3b: 0
+work dirs left in TMPDIR after 3b: 0
+--- 3c. the 7 GiB floor (a df shim first on PATH reports 1000 KiB free)
+sources_lock: FAIL (images: <scratch>/u7cwin/tmp/ke-sources.mLfKAVfo has 1000 KiB free, below the 7 GiB floor (R6); the lock is unchanged)
+[exit 1]
+containers unchanged by 3c (no save, no run)
+lock after 3c: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 3c: 0
+work dirs left in TMPDIR after 3c: 0
+--- 3d. tools first: PATH without each tool
+PATH without jq finds: [git docker dirname]
+sources_lock: FAIL (tools: jq not on PATH; the lock is unchanged)
+[exit 1]
+no container started
+PATH without git finds: [jq docker dirname]
+sources_lock: FAIL (tools: git not on PATH; the lock is unchanged)
+[exit 1]
+no container started
+PATH without docker finds: [jq git dirname]
+sources_lock: FAIL (tools: docker not on PATH; the lock is unchanged)
+[exit 1]
+no container started
+lock after 3d: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 3d: 0
+work dirs left in TMPDIR after 3d: 0
+--- 3e. exactly the six images: a scratch copy of the repo whose docker-compose.yml adds redis / drops valkey
+compose services: api gateway neo4j phoenix postgres redis valkey worker
+sources_lock: FAIL (images: redis is not one of the six bundled images; the lock is unchanged)
+[exit 1]
+CONTAINERS CHANGED
+compose services: api gateway neo4j phoenix postgres worker
+sources_lock: FAIL (images: valkey is missing from the stack; the lock is unchanged)
+[exit 1]
+no container started (no save, no run)
+lock after 3e: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 3e: 0
+work dirs left in TMPDIR after 3e: 0
+
+=== 4. the script's own path: save -> sbom -> lock-needs (--tar for all six), stopped at the resolver ===
+image: ke-app:local sha256:510c1b59b838090dd5ab3bcf3dd20a4a67026ece0c172fce335215f9626f2b2c
+image: ke-gateway:local sha256:ebdf7b0728385718bdcfe14f59d81b4d0154af231420933df028bdd448a0f293
+image: ke-neo4j:local sha256:a28c71b490f40e7101f3483384de4ff229c67c9875c22b66287e14378fafa58b
+image: ke-gates:local sha256:28445623d85fbd1777115ca49c1a3f4ce3298ba5896ae5825bc1cd0294b68159
+ Container ke-sources-45a4dbe2-sbom-sbom-run-550635abdb07 Creating 
+ Container ke-sources-45a4dbe2-sbom-sbom-run-550635abdb07 Created 
+ Container ke-sources-45a4dbe2-sbom-sbom-run-650f04b221b9 Creating 
+ Container ke-sources-45a4dbe2-sbom-sbom-run-650f04b221b9 Created 
+ Container ke-sources-45a4dbe2-sbom-sbom-run-7da3d1a20c24 Creating 
+ Container ke-sources-45a4dbe2-sbom-sbom-run-7da3d1a20c24 Created 
+ Container ke-sources-45a4dbe2-sbom-sbom-run-a5ac5b5aba33 Creating 
+ Container ke-sources-45a4dbe2-sbom-sbom-run-a5ac5b5aba33 Created 
+ Container ke-sources-45a4dbe2-sbom-sbom-run-4b43e14a27b6 Creating 
+ Container ke-sources-45a4dbe2-sbom-sbom-run-4b43e14a27b6 Created 
+ Container ke-sources-45a4dbe2-sbom-sbom-run-0b5a9d298ab1 Creating 
+ Container ke-sources-45a4dbe2-sbom-sbom-run-0b5a9d298ab1 Created 
+a34 shim: the resolver step is not run (step 4 stops before the network)
+sources_lock: FAIL (resolve: scripts/sources_resolve.py exited 1; the lock is unchanged)
+[exit 1] after 108 s
+lock after 4: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 4: 0
+work dirs left in TMPDIR after 4: 0
+--- the lock-needs call (paths only)
+--tar ke-app=/tars/ke-app.tar
+--tar ke-gateway=/tars/ke-gateway.tar
+--tar ke-neo4j=/tars/ke-neo4j.tar
+--tar phoenix=/tars/phoenix.tar
+--tar postgres=/tars/postgres.tar
+--tar valkey=/tars/valkey.tar
+--- the work dir as the resolver step would have seen it
+KE_SOURCES_IN=<scratch>/u7cwin/tmp/ke-sources.1RGjoYwT/in
+<scratch>/u7cwin/tmp/ke-sources.1RGjoYwT/sboms:
+total 51736
+0 Oct 25 06:24 .
+0 Oct 25 06:22 ..
+5555896 Oct 25 06:23 ke-app.spdx.json
+6155486 Oct 25 06:23 ke-app.syft.json
+1084317 Oct 25 06:23 ke-gateway.spdx.json
+1125825 Oct 25 06:23 ke-gateway.syft.json
+5263724 Oct 25 06:23 ke-neo4j.spdx.json
+7436446 Oct 25 06:23 ke-neo4j.syft.json
+3884596 Oct 25 06:24 phoenix.spdx.json
+7169890 Oct 25 06:24 phoenix.syft.json
+6923171 Oct 25 06:24 postgres.spdx.json
+7241631 Oct 25 06:24 postgres.syft.json
+0 Oct 25 06:24 tmp
+558263 Oct 25 06:24 valkey.spdx.json
+550606 Oct 25 06:24 valkey.syft.json
+
+<scratch>/u7cwin/tmp/ke-sources.1RGjoYwT/sboms/tmp:
+total 4
+0 Oct 25 06:24 .
+0 Oct 25 06:24 ..
+
+<scratch>/u7cwin/tmp/ke-sources.1RGjoYwT/tars:
+total 958984
+0 Oct 25 06:24 .
+0 Oct 25 06:22 ..
+99121664 Oct 25 06:23 ke-app.tar
+23079936 Oct 25 06:23 ke-gateway.tar
+351918592 Oct 25 06:23 ke-neo4j.tar
+326907904 Oct 25 06:23 phoenix.tar
+163448832 Oct 25 06:24 postgres.tar
+17510912 Oct 25 06:24 valkey.tar
+--- needs.json from the script's own lock-needs (real SBOMs and saved tars of the six images)
+keys: 181 {'apk': 19, 'deb': 151, 'maven': 1, 'neo4j': 1, 'pgdg': 3, 'pypi': 5, 'temurin': 1}
+fixture keys: 182
+only in the real run: ['pypi:psycopg-binary@3.3.6']
+only in the fixtures: ['deb:postgresql-15@15.19-0+deb12u1', 'pypi:psycopg-c@3.3.6']
+apk keys: 19 with origin/ver/commit/branch: 19 malformed: []
+  apk:alpine-baselayout@3.7.1-r8: ke-gateway commit dd4f6c3f0557fbcdaa88494e6de30c9aa7530be1 branch v3.23
+  apk:alpine-baselayout@3.7.2-r1: valkey commit 60a7585bbab2fa0f762504eb617dbca90216e31f branch v3.24
+  apk:apk-tools@3.0.3-r1: ke-gateway commit b7ab616ba639f0c93be528dfc4f1e0e906a98449 branch v3.23
+  apk:apk-tools@3.0.8-r0: valkey commit 4588b452722bd4800efdc6cce4f6e980e02a997f branch v3.24
+  apk:busybox@1.37.0-r30: ke-gateway commit 1e823a60eb85606954b3a5af5f8e5bbd1ea680cf branch v3.23
+  apk:busybox@1.37.0-r31: valkey commit c3ef5d10e6ef6528852c51f0564963e2f8c1be19 branch v3.24
+  apk:gcc@15.2.0-r2: ke-gateway commit 7fa6e7fd3465c5ff89cc33a56d20bf4d59105aaf branch v3.23
+  apk:gcc@15.2.0-r5: valkey commit 423a8ad043d07f2c7546c8ec3e2b0384cda360ae branch v3.24
+  apk:geoip@1.6.12-r6: ke-gateway commit 6db81e6559d66572861f28962c24459c4a583da1 branch v3.23
+  apk:gettext@0.24.1-r1: ke-gateway commit c82bd9e35f215c0e39ee43d1aa8c55c230bfbeec branch v3.23
+  apk:libcap-ng@0.8.5-r2: valkey commit 5218322ff9abeee315a9a19f9be7a1440f89d042 branch v3.24
+  apk:libidn2@2.3.8-r0: ke-gateway commit 8240e09aa2fdd8f9979b2016be082273965aff0c branch v3.23
+  apk:libunistring@1.4.1-r0: ke-gateway commit cd5407e1341869af38d836fe83f9dbc98799f43a branch v3.23
+  apk:musl@1.2.5-r21: ke-gateway commit f2036bfe000ab05e1f300c6fce57be3da9db426e branch v3.23
+  apk:musl@1.2.6-r2: valkey commit f5640d3a10f664c9119720c60515265d3d6f6d01 branch v3.24
+  apk:pax-utils@1.3.8-r2: ke-gateway commit 3912b4fa83437852312ad3c37a00229ff59fab1c branch v3.23
+  apk:pax-utils@1.3.9-r1: valkey commit c61801eeacb3ffcd9c2025b09e402153bb93fb39 branch v3.24
+  apk:util-linux@2.42.3-r1: valkey commit d98c55af59055e6ca60fbe36e171546918709965 branch v3.24
+  apk:xz@5.8.2-r0: ke-gateway commit cc9bc015d3f4556c7205d4700e9c76fe7b718e12 branch v3.23
+temurin route sbom_version: 21.0.12.1+1-LTS | release lines: 19
+neo4j packages: 72
+
+=== 5. one real Debian and one real Alpine component through the resolver (real network, the sources-resolve service) ===
+keys resolved: deb:bash@5.2.15-2, apk:pax-utils@1.3.8-r2
+  deb:bash@5.2.15-2 route: {'src': 'bash', 'ver': '5.2.15-2'}
+  apk:pax-utils@1.3.8-r2 route: {'branch': 'v3.23', 'commit': '3912b4fa83437852312ad3c37a00229ff59fab1c', 'origin': 'pax-utils', 'ver': '1.3.8-r2'}
+ Network ke-tester-u7cwin_default Creating 
+ Network ke-tester-u7cwin_default Created 
+ Container ke-tester-u7cwin-sources-resolve-run-37a3970fe63f Creating 
+ Container ke-tester-u7cwin-sources-resolve-run-37a3970fe63f Created 
+a34 request: +   0.02s GET gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/tree?path=main/pax-utils&ref=3912b4fa83437852312ad3c37a00229ff59fab1c&recursive=true&per_page=100 -> 200
+a34 request: +   0.78s GET gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/tree?path=community/pax-utils&ref=3912b4fa83437852312ad3c37a00229ff59fab1c&recursive=true&per_page=100 -> 404
+a34 request: +   1.31s GET gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Fpax-utils%2FAPKBUILD?ref=3912b4fa83437852312ad3c37a00229ff59fab1c -> 200
+a34 request: +   1.88s GET gitlab.alpinelinux.org/alpine/aports/-/raw/3912b4fa83437852312ad3c37a00229ff59fab1c/main/pax-utils/APKBUILD -> 307
+a34 request: +   2.34s GET gitlab.alpinelinux.org/alpine/aports/-/raw/3912b4fa83437852312ad3c37a00229ff59fab1c/main/pax-utils/APKBUILD?__goaway_challenge=cookie&__goaway_id=<id> -> 418
+sources_lock: FAIL (resolve: apk:pax-utils@1.3.8-r2: gitlab.alpinelinux.org: HTTP 418: https://gitlab.alpinelinux.org/alpine/aports/-/raw/3912b4fa83437852312ad3c37a00229ff59fab1c/main/pax-utils/APKBUILD?__goaway_challenge=cookie&__goaway_id=<id>; the lock is unchanged)
+
+[exit 1] wall time 3.8 s (container start to exit)
+out dir: 
+--- the produced entries
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '<scratch>/u7cwin/real/out/lock.new.json'
+--- lock-check on the lock side: sbom_check.py lock-check on lock.new.json, with SBOMs holding exactly these keys' packages
+docs: {'ke-gateway': 1, 'ke-app': 1, 'postgres': 1}
+lock-check: FAIL (FileNotFoundError: [Errno 2] No such file or directory: '<scratch>/u7cwin/real/out/lock.new.json')
+[exit 1]
+
+=== 6. teardown and final check ===
+project ke-tester-u7cwin: containers [] networks [] volumes []
+project ke-tester-u7cwin-sbom: containers [] networks [] volumes []
+ke-sources-* projects: []
+ke-sources-* networks/volumes: [] []
+scratch work dirs removed
+hashes start = end (13/13 identical)
+lock at the end: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ at the end: 0
+
+==================== part 2 ====================
+
+=== 0b. part 2 start ===
+date (UTC): 2026-10-25T13:26:05Z
+
+=== 3e (re-check). the extra-image refusal, naming any container that changes meanwhile ===
+sources_lock: FAIL (images: redis is not one of the six bundled images; the lock is unchanged)
+[exit 1]
+no container started or removed
+
+=== 5b. the deb component alone through the resolver (real network, the sources-resolve service) ===
+keys resolved: deb:bash@5.2.15-2 | packages: [('ke-app', 'pkg:deb/debian/bash@5.2.15-2%2Bb13'), ('postgres', 'pkg:deb/debian/bash@5.2.15-2%2Bb13')]
+ Network ke-tester-u7cwin_default Creating 
+ Network ke-tester-u7cwin_default Created 
+ Container ke-tester-u7cwin-sources-resolve-run-7c1bcc6396b9 Creating 
+ Container ke-tester-u7cwin-sources-resolve-run-7c1bcc6396b9 Created 
+a34 request: +   0.02s GET snapshot.debian.org/mr/package/bash/5.2.15-2/srcfiles?fileinfo=1 -> 200
+a34 request: +   1.02s GET snapshot.debian.org/file/1c8463de9b96f5e72d178a50c49f80242e48d8c7 -> 200
+[exit 0] wall time 2.7 s (container start to exit)
+out dir: lock.new.json 
+--- the produced entry
+deb:bash@5.2.15-2: kind deb arches ['amd64'] origin generated files 3 total 10096918 B (listed)
+  bash_5.2.15-2.dsc  2317 B  sha256 f51753e946af43eb58549c81e03b35a47af9fe6c6364179ccd4ef862b7c3b2d3
+    url https://snapshot.debian.org/file/1c8463de9b96f5e72d178a50c49f80242e48d8c7
+    upstream sha1 1c8463de9b96f5e72d178a50c49f80242e48d8c7 from 'snapshot.debian.org mr/package fileinfo'
+  bash_5.2.15.orig.tar.gz  9997221 B  sha256 7a315bc0e9d90713159e4390ec1096a41e4f33cd8cc3d1a749a8e5ad56600f51
+    url https://snapshot.debian.org/file/87f4eb879578479049306f3b721ff38aa17cfa1d
+    upstream sha256 7a315bc0e9d90713159e4390ec1096a41e4f33cd8cc3d1a749a8e5ad56600f51 from 'bash_5.2.15-2.dsc Checksums-Sha256'
+  bash_5.2.15-2.debian.tar.xz  97380 B  sha256 998f8ea5b754a734ae7d8306e149c43d713ddfcf49623a036004b729237dbcca
+    url https://snapshot.debian.org/file/d922d9f78e120a6068105ebfe7c15cbadddc31a0
+    upstream sha256 998f8ea5b754a734ae7d8306e149c43d713ddfcf49623a036004b729237dbcca from 'bash_5.2.15-2.dsc Checksums-Sha256'
+--- lock-check on the lock side (SBOMs holding exactly this key's packages)
+docs: {'ke-app': 1, 'postgres': 1}
+lock-check: ok (1 components, amd64)
+[exit 0]
+
+=== 5c. the GitLab raw challenge (one probe each, the resolver's User-Agent, no cookies, no redirects followed) ===
+GET gitlab.alpinelinux.org/alpine/aports/-/raw/3912b4fa83437852312ad3c37a00229ff59fab1c/main/pax-utils/APKBUILD -> 307 text/html; charset=utf-8 196 (Location: https://gitlab.alpinelinux.org/alpine/aports/-/raw/3912b4fa83437852312ad3c37a00229ff59fab1c/main/pax-utils/APKBUILD?__goaway_challenge=cookie&__goaway_id=<id>)
+GET gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Fpax-utils%2FAPKBUILD/raw?ref=3912b4fa83437852312ad3c37a00229ff59fab1c -> 200 text/plain; charset=utf-8 1782
+
+=== 6b. teardown and final check (part 2) ===
+project ke-tester-u7cwin: containers [] networks [] volumes []
+project ke-tester-u7cwin-sbom: containers [] networks [] volumes []
+ke-sources-* networks/volumes: [] []
+hashes start = end (13/13 identical)
+lock at the end: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ at the end: 0
+
+
+==========================================================================
+ADDENDUM 2026-10-25 (tester): A34 re-run on the U7c rework round 1 GREEN
+tree (uncommitted, on 6d8fa4d), project ke-tester-u7cr1win. The real
+components are run through the r1 resolver in the sources-resolve service,
+one key per run, each with a needs.json restricted to that key and an empty
+lock copy, and --out in the scratch work dir. Paths are redacted.
+
+VERDICT: A34 PASS.
+- apk:pax-utils@1.3.8-r2 (ke-gateway, commit 3912b4fa..., v3.23): PASS, exit 0 in 5.2 s.
+  - Requests, each answering 200 except community's tree (404 = not here):
+    - the tree for main (encoded path=main%2Fpax-utils, recursive, per_page 100) and for community;
+    - the files-API metadata for the APKBUILD (no /raw);
+    - the API raw files for APKBUILD and unsigned.patch (?ref=<commit>);
+    - distfiles v3.23/pax-utils-1.3.8.tar.xz.
+  - 3 files, 129375 B in all:
+    - APKBUILD: 1782 B, sha256, from the files API content_sha256;
+    - unsigned.patch: 4037 B, sha512 from APKBUILD sha512sums;
+    - pax-utils-1.3.8.tar.xz: 123556 B, sha512 from sha512sums, from distfiles.
+  - lock-check: ok (1 components, amd64).
+- deb:bash@5.2.15-2: PASS on the second run.
+  - The first run (part 1) got HTTP 503 from snapshot.debian.org on srcfiles. It failed closed with one line and wrote nothing; there is no retry, by design (Q61).
+  - The second run (part 2): srcfiles 200 (slow, about 31 s), then /file/<.dsc sha1> 200, exit 0 in 32.4 s.
+  - lock-check: ok. The entry, and the whole lock.new.json, is byte-identical to the U7c GREEN run's (part 2 of the first addendum).
+- Teardown: nothing is left for ke-tester-u7cr1win* or ke-sources-*. The 13 touched files hash the same at start and end of both parts. There is no docker/sources.lock.json and no temp lock file.
+- A repo-root .env (another role's) was present and not touched.
+
+==================== r1 part 1 ====================
+
+=== 0. host and versions (U7c rework round 1 GREEN) ===
+date (UTC): 2026-10-25T15:18:16Z
+engine 29.5.2 linux/amd64; compose 5.1.4
+git HEAD 6d8fa4d5c1ae4e1a7216b13e9105712555df5009; working tree: U7c rework round 1 GREEN (uncommitted)
+705e9777feb1529ded92465406ceba6f277bc4f2a758c9c896b579d7173ce0a0 *scripts/sources_resolve.py
+980ee87aeeba2f9576620f571d881a82a4c9a20372fabd139f1c232919f0bd49 *scripts/sbom_check.py
+84b6d4a2ac362f525301d1c8d6e6978e057710a093361f533705578e97f695e8 *scripts/sources_lock.sh
+23c6e98f55554a1c1dcaf6a43055cce7c0361cd0f72fa8d33b7480a8ca86b79c *docker-compose.sources.yml
+lock before: ls: cannot access 'docker/sources.lock.json': No such file or directory
+.env present (another role's; not read or touched by this run)
+
+=== apk: apk:pax-utils@1.3.8-r2 through the resolver (real network, the sources-resolve service) ===
+route: {'branch': 'v3.23', 'commit': '3912b4fa83437852312ad3c37a00229ff59fab1c', 'origin': 'pax-utils', 'ver': '1.3.8-r2'} | packages: [('ke-gateway', 'pkg:apk/alpine/scanelf@1.3.8-r2')]
+ Network ke-tester-u7cr1win_default Creating 
+ Network ke-tester-u7cr1win_default Created 
+ Container ke-tester-u7cr1win-sources-resolve-run-5492ef749da1 Creating 
+ Container ke-tester-u7cr1win-sources-resolve-run-5492ef749da1 Created 
+a34 request: +   0.01s GET gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/tree?path=main%2Fpax-utils&ref=3912b4fa83437852312ad3c37a00229ff59fab1c&recursive=true&per_page=100 -> 200
+a34 request: +   0.68s GET gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/tree?path=community%2Fpax-utils&ref=3912b4fa83437852312ad3c37a00229ff59fab1c&recursive=true&per_page=100 -> 404
+a34 request: +   1.24s GET gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Fpax-utils%2FAPKBUILD?ref=3912b4fa83437852312ad3c37a00229ff59fab1c -> 200
+a34 request: +   1.84s GET gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Fpax-utils%2FAPKBUILD/raw?ref=3912b4fa83437852312ad3c37a00229ff59fab1c -> 200
+a34 request: +   2.44s GET gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Fpax-utils%2Funsigned.patch/raw?ref=3912b4fa83437852312ad3c37a00229ff59fab1c -> 200
+a34 request: +   3.05s GET distfiles.alpinelinux.org/distfiles/v3.23/pax-utils-1.3.8.tar.xz -> 200
+[exit 0] wall time 5.2 s (container start to exit)
+out dir: lock.new.json 
+--- the produced entry
+apk:pax-utils@1.3.8-r2: kind apk arches ['amd64'] origin generated {'commit': '3912b4fa83437852312ad3c37a00229ff59fab1c', 'branch': 'v3.23', 'repo': 'main'} files 3 total 129375 B
+  APKBUILD  1782 B  sha256 d3ab7f1f1de34d023921a8f09cf80ba70063b05f1a99d8e2056ff8667c0f1213
+    url https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Fpax-utils%2FAPKBUILD/raw?ref=3912b4fa83437852312ad3c37a00229ff59fab1c
+    upstream sha256 d3ab7f1f1de34d023921a8f09cf80ba70063b05f1a99d8e2056ff8667c0f1213 from 'gitlab files API content_sha256 at 3912b4fa83437852312ad3c37a00229ff59fab1c'
+  unsigned.patch  4037 B  sha256 0a2f4088f5474603388091230c0332fbb7a7f8a7b93ca8f83f96ba2095450012
+    url https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Fpax-utils%2Funsigned.patch/raw?ref=3912b4fa83437852312ad3c37a00229ff59fab1c
+    upstream sha512 6687f4aad61dfcfb16be9ececc123ce93adb8e87c52e7964594ac8f9a48d040882aae6cbcfcf41cbbec9ed893303aa70c6c682d4173933793019f15797bd24af from 'APKBUILD sha512sums at 3912b4fa83437852312ad3c37a00229ff59fab1c'
+  pax-utils-1.3.8.tar.xz  123556 B  sha256 12a168d1aeae2626efdbde3979da88a60ca80bb38e1db565e95ee441ff1d5a0c
+    url https://distfiles.alpinelinux.org/distfiles/v3.23/pax-utils-1.3.8.tar.xz
+    upstream sha512 0dde95f86802729d80b7b38af84dec636e973f6abc70600633edcb05d3d5f95c1b2861300ce478dd7f798c7a1e5eccb1011c06c53adba38e11a996b69d463656 from 'APKBUILD sha512sums at 3912b4fa83437852312ad3c37a00229ff59fab1c'
+--- lock-check on the lock side (SBOMs holding exactly this key's packages)
+docs: {'ke-gateway': 1}
+lock-check: ok (1 components, amd64)
+[exit 0]
+
+=== deb: deb:bash@5.2.15-2 through the resolver (real network, the sources-resolve service) ===
+route: {'src': 'bash', 'ver': '5.2.15-2'} | packages: [('ke-app', 'pkg:deb/debian/bash@5.2.15-2%2Bb13'), ('postgres', 'pkg:deb/debian/bash@5.2.15-2%2Bb13')]
+ Network ke-tester-u7cr1win_default Creating 
+ Network ke-tester-u7cr1win_default Created 
+ Container ke-tester-u7cr1win-sources-resolve-run-a35af7c9c3cc Creating 
+ Container ke-tester-u7cr1win-sources-resolve-run-a35af7c9c3cc Created 
+a34 request: +   0.02s GET snapshot.debian.org/mr/package/bash/5.2.15-2/srcfiles?fileinfo=1 -> 503
+sources_lock: FAIL (resolve: deb:bash@5.2.15-2: snapshot.debian.org: HTTP 503: https://snapshot.debian.org/mr/package/bash/5.2.15-2/srcfiles?fileinfo=1; the lock is unchanged)
+
+[exit 1] wall time 1.1 s (container start to exit)
+out dir: 
+--- the produced entry
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '<scratch>/u7cwin/real-deb/out/lock.new.json'
+--- lock-check on the lock side (SBOMs holding exactly this key's packages)
+docs: {'ke-app': 1, 'postgres': 1}
+lock-check: FAIL (FileNotFoundError: [Errno 2] No such file or directory: '<scratch>/u7cwin/real-deb/out/lock.new.json')
+[exit 1]
+--- the deb entry against the first run's (u7c GREEN, part 2)
+Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '<scratch>/u7cwin/u7cr1-deb-lock.new.json'
+
+=== 6. teardown and final check ===
+project ke-tester-u7cr1win: containers [] networks [] volumes []
+project ke-tester-u7cr1win-sbom: containers [] networks [] volumes []
+ke-sources-* networks/volumes: [] []
+hashes start = end (13/13 identical)
+lock at the end: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ at the end: 0
+
+==================== r1 part 2 ====================
+
+=== 0. host and versions (U7c rework round 1 GREEN) ===
+date (UTC): 2026-10-25T15:19:30Z
+engine 29.5.2 linux/amd64; compose 5.1.4
+git HEAD 6d8fa4d5c1ae4e1a7216b13e9105712555df5009; working tree: U7c rework round 1 GREEN (uncommitted)
+705e9777feb1529ded92465406ceba6f277bc4f2a758c9c896b579d7173ce0a0 *scripts/sources_resolve.py
+980ee87aeeba2f9576620f571d881a82a4c9a20372fabd139f1c232919f0bd49 *scripts/sbom_check.py
+84b6d4a2ac362f525301d1c8d6e6978e057710a093361f533705578e97f695e8 *scripts/sources_lock.sh
+23c6e98f55554a1c1dcaf6a43055cce7c0361cd0f72fa8d33b7480a8ca86b79c *docker-compose.sources.yml
+lock before: ls: cannot access 'docker/sources.lock.json': No such file or directory
+.env present (another role's; not read or touched by this run)
+
+=== deb: deb:bash@5.2.15-2 through the resolver (real network, the sources-resolve service) ===
+route: {'src': 'bash', 'ver': '5.2.15-2'} | packages: [('ke-app', 'pkg:deb/debian/bash@5.2.15-2%2Bb13'), ('postgres', 'pkg:deb/debian/bash@5.2.15-2%2Bb13')]
+ Network ke-tester-u7cr1win_default Creating 
+ Network ke-tester-u7cr1win_default Created 
+ Container ke-tester-u7cr1win-sources-resolve-run-87785dc08401 Creating 
+ Container ke-tester-u7cr1win-sources-resolve-run-87785dc08401 Created 
+a34 request: +   0.01s GET snapshot.debian.org/mr/package/bash/5.2.15-2/srcfiles?fileinfo=1 -> 200
+a34 request: +  31.40s GET snapshot.debian.org/file/1c8463de9b96f5e72d178a50c49f80242e48d8c7 -> 200
+[exit 0] wall time 32.4 s (container start to exit)
+out dir: lock.new.json 
+--- the produced entry
+deb:bash@5.2.15-2: kind deb arches ['amd64'] origin generated {} files 3 total 10096918 B
+  bash_5.2.15-2.dsc  2317 B  sha256 f51753e946af43eb58549c81e03b35a47af9fe6c6364179ccd4ef862b7c3b2d3
+    url https://snapshot.debian.org/file/1c8463de9b96f5e72d178a50c49f80242e48d8c7
+    upstream sha1 1c8463de9b96f5e72d178a50c49f80242e48d8c7 from 'snapshot.debian.org mr/package fileinfo'
+  bash_5.2.15.orig.tar.gz  9997221 B  sha256 7a315bc0e9d90713159e4390ec1096a41e4f33cd8cc3d1a749a8e5ad56600f51
+    url https://snapshot.debian.org/file/87f4eb879578479049306f3b721ff38aa17cfa1d
+    upstream sha256 7a315bc0e9d90713159e4390ec1096a41e4f33cd8cc3d1a749a8e5ad56600f51 from 'bash_5.2.15-2.dsc Checksums-Sha256'
+  bash_5.2.15-2.debian.tar.xz  97380 B  sha256 998f8ea5b754a734ae7d8306e149c43d713ddfcf49623a036004b729237dbcca
+    url https://snapshot.debian.org/file/d922d9f78e120a6068105ebfe7c15cbadddc31a0
+    upstream sha256 998f8ea5b754a734ae7d8306e149c43d713ddfcf49623a036004b729237dbcca from 'bash_5.2.15-2.dsc Checksums-Sha256'
+--- lock-check on the lock side (SBOMs holding exactly this key's packages)
+docs: {'ke-app': 1, 'postgres': 1}
+lock-check: ok (1 components, amd64)
+[exit 0]
+--- the deb entry against the first run's (u7c GREEN, part 2)
+entry byte-identical (canonical JSON): True
+lock.new.json byte-identical: True
+
+=== 6. teardown and final check ===
+project ke-tester-u7cr1win: containers [] networks [] volumes []
+project ke-tester-u7cr1win-sbom: containers [] networks [] volumes []
+ke-sources-* networks/volumes: [] []
+hashes start = end (13/13 identical)
+lock at the end: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ at the end: 0

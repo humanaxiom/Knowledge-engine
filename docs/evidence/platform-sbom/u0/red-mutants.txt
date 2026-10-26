@@ -1,0 +1,151 @@
+# platform-sbom U0 RED mutants (tester, 2026-10-22)
+# Static (tests 1-5, 8): host, command: HARNESS_TRACING=off uv run python docs/evidence/platform-sbom/u0/u0_mutants.py <scratch>/u0-mutants/static
+# Scratch copies: <scratch>/u0-mutants/static/vNN/ (TARGET = v01). Placeholders in TARGET: LIBPQ_VERSION 15.14-0+deb12u1, psycopg-c sdist URL/sha256, pq-build pins.
+
+variant                                                        check        want  got   first problem
+current repo files (RED)                                       1 lock       fail  fail  uv.lock has no `pq-c` group for knowledge-engine (the builder syncs --group pq-c)
+current repo files (RED)                                       2 pyproject  fail  fail  dependencies: psycopg[binary] has an extra; the default install is pure psycopg (Q65)
+current repo files (RED)                                       3 build      fail  fail  app.Dockerfile: 0 global `ARG LIBPQ_VERSION=` before the first FROM, want 1
+current repo files (RED)                                       4 runtime    fail  fail  last stage: no `ARG LIBPQ_VERSION` (libpq5=${LIBPQ_VERSION} would be empty)
+current repo files (RED)                                       5 pin/base   fail  fail  app.Dockerfile: 0 global `ARG LIBPQ_VERSION=` before the first FROM, want 1
+current repo files (RED)                                       8 notice     fail  fail  the builder's locked set has no psycopg-c (psycopg packages: ['psycopg', 'psycopg-binary'])
+TARGET per N0                                                  1 lock       pass  pass  
+TARGET per N0                                                  2 pyproject  pass  pass  
+TARGET per N0                                                  3 build      pass  pass  
+TARGET per N0                                                  4 runtime    pass  pass  
+TARGET per N0                                                  5 pin/base   pass  pass  
+TARGET per N0                                                  8 notice     pass  pass  
+TARGET per N0                                                  AppImageTest pass  pass  (existing PSC-17 tests green on the target)
+M1 compiler (gcc) in the runtime stage                         1 lock       pass  pass  
+M1 compiler (gcc) in the runtime stage                         2 pyproject  pass  pass  
+M1 compiler (gcc) in the runtime stage                         3 build      pass  pass  
+M1 compiler (gcc) in the runtime stage                         4 runtime    fail  fail  last stage: installs ['libpq5=${LIBPQ_VERSION}', 'gcc'], want exactly ['libpq5=${LIBPQ_VERSION}']
+M1 compiler (gcc) in the runtime stage                         5 pin/base   pass  pass  
+M1 compiler (gcc) in the runtime stage                         8 notice     pass  pass  
+M2 unpinned libpq5                                             1 lock       pass  pass  
+M2 unpinned libpq5                                             2 pyproject  pass  pass  
+M2 unpinned libpq5                                             3 build      pass  pass  
+M2 unpinned libpq5                                             4 runtime    fail  fail  last stage: installs ['libpq5'], want exactly ['libpq5=${LIBPQ_VERSION}']
+M2 unpinned libpq5                                             5 pin/base   pass  pass  
+M2 unpinned libpq5                                             8 notice     pass  pass  
+M3 libpq-dev in the runtime stage                              1 lock       pass  pass  
+M3 libpq-dev in the runtime stage                              2 pyproject  pass  pass  
+M3 libpq-dev in the runtime stage                              3 build      pass  pass  
+M3 libpq-dev in the runtime stage                              4 runtime    fail  fail  last stage: installs ['libpq5=${LIBPQ_VERSION}', 'libpq-dev=${LIBPQ_VERSION}'], want exactly ['libpq5=${LIBPQ_VERSION}']
+M3 libpq-dev in the runtime stage                              5 pin/base   pass  pass  
+M3 libpq-dev in the runtime stage                              8 notice     pass  pass  
+M4 final sync without --no-binary-package psycopg-c            1 lock       pass  pass  
+M4 final sync without --no-binary-package psycopg-c            2 pyproject  pass  pass  
+M4 final sync without --no-binary-package psycopg-c            3 build      fail  fail  `uv sync --locked --no-dev --group pq-c --no-editable` names pq-c without --no-binary-package psycopg-c
+M4 final sync without --no-binary-package psycopg-c            4 runtime    pass  pass  
+M4 final sync without --no-binary-package psycopg-c            5 pin/base   pass  pass  
+M4 final sync without --no-binary-package psycopg-c            8 notice     pass  pass  
+M5 final sync keeps pq-build                                   1 lock       pass  pass  
+M5 final sync keeps pq-build                                   2 pyproject  pass  pass  
+M5 final sync keeps pq-build                                   3 build      fail  fail  builder: the final sync keeps pq-build (it would ship): uv sync --locked --no-dev --group pq-build --group pq-c --no-bin
+M5 final sync keeps pq-build                                   4 runtime    pass  pass  
+M5 final sync keeps pq-build                                   5 pin/base   pass  pass  
+M5 final sync keeps pq-build                                   8 notice     pass  pass  
+M6 psycopg-binary resolvable for linux (pq-c, linux marker)    1 lock       fail  fail  the ke-app builder (linux x86_64) resolves psycopg-binary
+M6 psycopg-binary resolvable for linux (pq-c, linux marker)    2 pyproject  pass  pass  
+M6 psycopg-binary resolvable for linux (pq-c, linux marker)    3 build      pass  pass  
+M6 psycopg-binary resolvable for linux (pq-c, linux marker)    4 runtime    pass  pass  
+M6 psycopg-binary resolvable for linux (pq-c, linux marker)    5 pin/base   pass  pass  
+M6 psycopg-binary resolvable for linux (pq-c, linux marker)    8 notice     fail  fail  NOTICE.md psycopg section does not name psycopg-binary
+M7 psycopg-binary kept in the lock for win32 only              1 lock       fail  fail  uv.lock still holds psycopg-binary (ADR-KE-016 point 0: no marker or extra keeps it)
+M7 psycopg-binary kept in the lock for win32 only              2 pyproject  pass  pass  
+M7 psycopg-binary kept in the lock for win32 only              3 build      pass  pass  
+M7 psycopg-binary kept in the lock for win32 only              4 runtime    pass  pass  
+M7 psycopg-binary kept in the lock for win32 only              5 pin/base   pass  pass  
+M7 psycopg-binary kept in the lock for win32 only              8 notice     pass  pass  
+M8 psycopg-c with a locked wheel                               1 lock       fail  fail  psycopg-c 3.3.6 has locked wheels (it must build from its sdist)
+M8 psycopg-c with a locked wheel                               2 pyproject  pass  pass  
+M8 psycopg-c with a locked wheel                               3 build      pass  pass  
+M8 psycopg-c with a locked wheel                               4 runtime    pass  pass  
+M8 psycopg-c with a locked wheel                               5 pin/base   pass  pass  
+M8 psycopg-c with a locked wheel                               8 notice     pass  pass  
+M9 pin not +deb12u (pgdg 15.14-1.pgdg120+1)                    1 lock       pass  pass  
+M9 pin not +deb12u (pgdg 15.14-1.pgdg120+1)                    2 pyproject  pass  pass  
+M9 pin not +deb12u (pgdg 15.14-1.pgdg120+1)                    3 build      fail  fail  app.Dockerfile: LIBPQ_VERSION '15.14-1.pgdg120+1' is not a bookworm version (<major>.<minor>-<rev>+deb12u<n>)
+M9 pin not +deb12u (pgdg 15.14-1.pgdg120+1)                    4 runtime    pass  pass  
+M9 pin not +deb12u (pgdg 15.14-1.pgdg120+1)                    5 pin/base   fail  fail  app.Dockerfile: LIBPQ_VERSION '15.14-1.pgdg120+1' is not a bookworm version (<major>.<minor>-<rev>+deb12u<n>)
+M9 pin not +deb12u (pgdg 15.14-1.pgdg120+1)                    8 notice     pass  pass  
+M10 pin +deb13u on a trixie base (both images)                 1 lock       pass  pass  
+M10 pin +deb13u on a trixie base (both images)                 2 pyproject  pass  pass  
+M10 pin +deb13u on a trixie base (both images)                 3 build      fail  fail  app.Dockerfile: LIBPQ_VERSION '17.6-0+deb13u1' is not a bookworm version (<major>.<minor>-<rev>+deb12u<n>)
+M10 pin +deb13u on a trixie base (both images)                 4 runtime    pass  pass  
+M10 pin +deb13u on a trixie base (both images)                 5 pin/base   fail  fail  app.Dockerfile: LIBPQ_VERSION '17.6-0+deb13u1' is not a bookworm version (<major>.<minor>-<rev>+deb12u<n>)
+M10 pin +deb13u on a trixie base (both images)                 8 notice     pass  pass  
+M11 gates on a different pin                                   1 lock       pass  pass  
+M11 gates on a different pin                                   2 pyproject  pass  pass  
+M11 gates on a different pin                                   3 build      pass  pass  
+M11 gates on a different pin                                   4 runtime    pass  pass  
+M11 gates on a different pin                                   5 pin/base   fail  fail  gates.Dockerfile pins LIBPQ_VERSION '15.13-0+deb12u1', app.Dockerfile '15.14-0+deb12u1'
+M11 gates on a different pin                                   8 notice     pass  pass  
+M12 pyproject default-groups include pq-c                      1 lock       pass  pass  
+M12 pyproject default-groups include pq-c                      2 pyproject  fail  fail  [tool.uv] default-groups ['dev', 'pq-c'] include an image group (a host's uv run would compile)
+M12 pyproject default-groups include pq-c                      3 build      pass  pass  
+M12 pyproject default-groups include pq-c                      4 runtime    pass  pass  
+M12 pyproject default-groups include pq-c                      5 pin/base   pass  pass  
+M12 pyproject default-groups include pq-c                      8 notice     pass  pass  
+M13 pyproject keeps psycopg[binary]                            1 lock       pass  pass  
+M13 pyproject keeps psycopg[binary]                            2 pyproject  fail  fail  dependencies: psycopg[binary] has an extra; the default install is pure psycopg (Q65)
+M13 pyproject keeps psycopg[binary]                            3 build      pass  pass  
+M13 pyproject keeps psycopg[binary]                            4 runtime    pass  pass  
+M13 pyproject keeps psycopg[binary]                            5 pin/base   pass  pass  
+M13 pyproject keeps psycopg[binary]                            8 notice     pass  pass  
+M14 NOTICE without psycopg-c                                   1 lock       pass  pass  
+M14 NOTICE without psycopg-c                                   2 pyproject  pass  pass  
+M14 NOTICE without psycopg-c                                   3 build      pass  pass  
+M14 NOTICE without psycopg-c                                   4 runtime    pass  pass  
+M14 NOTICE without psycopg-c                                   5 pin/base   pass  pass  
+M14 NOTICE without psycopg-c                                   8 notice     fail  fail  NOTICE.md psycopg section does not name psycopg-c
+M15 NOTICE with a wrong psycopg-c sha256                       1 lock       pass  pass  
+M15 NOTICE with a wrong psycopg-c sha256                       2 pyproject  pass  pass  
+M15 NOTICE with a wrong psycopg-c sha256                       3 build      pass  pass  
+M15 NOTICE with a wrong psycopg-c sha256                       4 runtime    pass  pass  
+M15 NOTICE with a wrong psycopg-c sha256                       5 pin/base   pass  pass  
+M15 NOTICE with a wrong psycopg-c sha256                       8 notice     fail  fail  NOTICE.md psycopg section does not give psycopg-c's sdist sha256 0000000000000000000000000000000000000000000000000000000
+
+unexpected results: 0
+exit=0
+
+# Smoke (test 7): in ke-gates:local, command:
+#   docker run --rm --network none --read-only --tmpfs /tmp:exec,mode=1777 -e PYTHONDONTWRITEBYTECODE=1 -e HARNESS_TRACING=off -v <repo>:/work:ro -w /work ke-gates:local /opt/venv/bin/python docs/evidence/platform-sbom/u0/u0_smoke_mutants.py
+# TARGET = scripts/smoke.sh + docs/evidence/platform-sbom/u0/target_smoke_block.sh after the first /readyz ready line (scratch only).
+
+repo smoke.sh as is (RED)                                        want=fail got=fail
+    'default: psycopg-c on /lib/x86_64-linux-gnu/libpq.so.5'): AssertionError: [] is not true : smoke never runs `compose exec -T api python -c ...` reading psycopg (PSC-25 smoke check): [['sh', '-c', 'wg
+    'libpq under /usr/lib/x86_64-linux-gnu'): AssertionError: [] is not true : smoke never runs `compose exec -T api python -c ...` reading psycopg (PSC-25 smoke check): [['sh', '-c', 'wget -q -O 
+    'aarch64, /lib alias'): AssertionError: [] is not true : smoke never runs `compose exec -T api python -c ...` reading psycopg (PSC-25 smoke check): [['sh', '-c', 'wget -q -O 
+    ... 11 more failing subtests
+TARGET (block per N0)                                            want=pass got=pass
+S1 no impl check                                                 want=fail got=fail
+    'impl binary'): smoke: PASS
+    'impl python'): smoke: PASS
+S2 version()==__build_version__ only, no pin/libpq5 compare      want=fail got=fail
+    'both != the pin'): smoke: PASS
+S3 no libpq path check                                           want=fail got=fail
+    'libpq from psycopg_binary.libs'): smoke: PASS
+    'libpq from /usr/local/lib'): smoke: PASS
+    'libpq not found'): smoke: PASS
+    ... 1 more failing subtests
+S4 over-strict: /usr/lib only (rejects bookworm's /lib alias)    want=fail got=fail
+    'default: psycopg-c on /lib/x86_64-linux-gnu/libpq.so.5'): smoke: FAIL (libpq: the psycopg_c extension loads '/lib/x86_64-linux-gnu/libpq.so.5', not Debian's libpq5)
+    'aarch64, /lib alias'): smoke: FAIL (libpq: the psycopg_c extension loads '/lib/aarch64-linux-gnu/libpq.so.5', not Debian's libpq5)
+S5 check runs in worker, not api                                 want=fail got=fail
+    'default: psycopg-c on /lib/x86_64-linux-gnu/libpq.so.5'): 'api' : the psycopg check runs in api
+    'libpq under /usr/lib/x86_64-linux-gnu'): 'api' : the psycopg check runs in api
+    'aarch64, /lib alias'): 'api' : the psycopg check runs in api
+    ... 1 more failing subtests
+S6 no ldd step (and no libpq path)                               want=fail got=fail
+    'default: psycopg-c on /lib/x86_64-linux-gnu/libpq.so.5'): AssertionError: [] is not true : smoke never runs `compose exec -T api ldd <extension>`
+    'libpq under /usr/lib/x86_64-linux-gnu'): AssertionError: [] is not true : smoke never runs `compose exec -T api ldd <extension>`
+    'aarch64, /lib alias'): AssertionError: [] is not true : smoke never runs `compose exec -T api ldd <extension>`
+    ... 6 more failing subtests
+S7 (equivalent) python check failure ignored (|| true)           want=pass got=pass
+
+unexpected results: 0
+exit=0
+
+# Test 6 (test_gates_psycopg_is_c_impl_on_debian_libpq) is a real import in ke-gates: no static mutant; its RED is in red-verify-fast.txt (impl 'binary').

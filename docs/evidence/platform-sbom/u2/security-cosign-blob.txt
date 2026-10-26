@@ -1,0 +1,18 @@
+$ docker run --rm --label ke.scratch=sec-u2 -v "<dl>:/work:ro" $COSIGN verify-blob --bundle /work/syft_1.54.1_checksums.txt.sigstore.json --certificate-identity 'https://github.com/anchore/syft/.github/workflows/release.yaml@refs/heads/main' --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' /work/syft_1.54.1_checksums.txt
+Verified OK
+exit=0
+
+NEG1 wrong identity (anchore/grype release.yaml):
+Error: failed to verify certificate identity: no matching CertificateIdentity found, last error: expected SAN value "https://github.com/anchore/grype/.github/workflows/release.yaml@refs/heads/main", got "https://github.com/anchore/syft/.github/workflows/release.yaml@refs/heads/main"
+error during command execution: failed to verify certificate identity: no matching CertificateIdentity found, last error: expected SAN value "https://github.com/anchore/grype/.github/workflows/release.yaml@refs/heads/main", got "https://github.com/anchore/syft/.github/workflows/release.yaml@refs/heads/main"
+exit=1
+
+NEG2 wrong issuer (https://accounts.google.com):
+Error: failed to verify certificate identity: no matching CertificateIdentity found, last error: expected issuer value "https://accounts.google.com", got "https://token.actions.githubusercontent.com"
+error during command execution: failed to verify certificate identity: no matching CertificateIdentity found, last error: expected issuer value "https://accounts.google.com", got "https://token.actions.githubusercontent.com"
+exit=1
+
+NEG3 tampered checksums.txt (first hex nibble of the linux_amd64.tar.gz line c->d, copy in a separate dir):
+Error: failed to verify signature: could not verify message: invalid signature when validating ASN.1 encoded signature
+error during command execution: failed to verify signature: could not verify message: invalid signature when validating ASN.1 encoded signature
+exit=1

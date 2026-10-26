@@ -1,0 +1,114 @@
+$ scripts/verify.sh fast   (COMPOSE_PROJECT_NAME=ke-tester-u7b, throwaway .env from .env.example + marker, jq on PATH; REACH: u7b/target-sources_resolve.py, target-sources_lock.sh, target-docker-compose.sources.yml, target-sbom_check.py overlaid (the first three new); removed/restored after; tester U7b RED 2026-10-25)
+ Image ke-gates:wt-081af287bf18 Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 534B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from gates.Dockerfile
+#2 transferring dockerfile: 7.34kB done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#3 DONE 0.0s
+
+#4 [internal] load metadata for docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#4 DONE 0.6s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 97B done
+#5 DONE 0.0s
+
+#6 [stage-1  1/13] FROM docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#6 resolve docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258 0.0s done
+#6 DONE 0.0s
+
+#7 [uv 1/1] FROM ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#7 resolve ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946 0.0s done
+#7 DONE 0.0s
+
+#8 [internal] load build context
+#8 transferring context: 2.37kB done
+#8 DONE 0.0s
+
+#9 [stage-1  2/13] COPY --from=uv /uv /usr/local/bin/uv
+#9 CACHED
+
+#10 [stage-1  9/13] COPY pyproject.toml uv.lock ./
+#10 CACHED
+
+#11 [stage-1  8/13] WORKDIR /work
+#11 CACHED
+
+#12 [stage-1 12/13] COPY config ./config
+#12 CACHED
+
+#13 [stage-1  5/13] RUN set -eu;     curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL -o /tmp/psa.nupkg       "https://www.powershellgallery.com/api/v2/package/PSScriptAnalyzer/1.25.0";     echo "e7fb573262e604bab29914ae62921d24b97c2f88b519b41277b403ef6ce163f14b7d1b36dc73449a68e5ae5a8d9502891b10c264131fd1813adf29bf131c1663  /tmp/psa.nupkg" | sha512sum -c -;     dir="/usr/local/share/powershell/Modules/PSScriptAnalyzer/1.25.0";     python3 -I -m zipfile -e /tmp/psa.nupkg "/usr/local/share/powershell/Modules/PSScriptAnalyzer/1.25.0";     rm -rf "$dir/_rels" "$dir/package" "$dir/[Content_Types].xml" "$dir/PSScriptAnalyzer.nuspec" "$dir/.signature.p7s" /tmp/psa.nupkg;     pwsh -NoProfile -NonInteractive -Command "Import-Module PSScriptAnalyzer -ErrorAction Stop"
+#13 CACHED
+
+#14 [stage-1 10/13] COPY harness_telemetry ./harness_telemetry
+#14 CACHED
+
+#15 [stage-1  3/13] RUN apt-get update  && apt-get install -y --no-install-recommends git jq ca-certificates curl       shellcheck=0.9.0-1 libicu72 libssl3 zlib1g       gcc libc6-dev libpq-dev=15.19-0+deb12u1  && rm -rf /var/lib/apt/lists/*  && git config --system --add safe.directory /work  && git config --system core.autocrlf true
+#15 CACHED
+
+#16 [stage-1  6/13] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x86_64; sha="c158ecc55adb3afb01bbd3539ed3b997d20c26dbdc418080506cc1bf5243ff57" ;;       arm64) arch=aarch64; sha="3e93cc6d1a686456a3b18eefdde26467a837a7a2b257af22e27cba1dbc1b2018" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker.tgz       "https://download.docker.com/linux/static/stable/$arch/docker-29.9.1.tgz";     echo "$sha  /tmp/docker.tgz" | sha256sum -c -;     tar -xzf /tmp/docker.tgz -C /usr/local/bin --strip-components=1       --no-same-owner docker/docker;     rm /tmp/docker.tgz
+#16 CACHED
+
+#17 [stage-1  7/13] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x86_64; sha="40343e21ca777173e69cff5dbafeb37c6f81f3b0d57d9e597f036e95eb63e76a" ;;       arm64) arch=aarch64; sha="733ec76717ceb59052a9609b9dadfb523b2df8eab57a54212872d10a58078ea2" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose       "https://github.com/docker/compose/releases/download/v5.6.0/docker-compose-linux-$arch";     echo "$sha  /tmp/docker-compose" | sha256sum -c -;     mkdir -p /usr/local/lib/docker/cli-plugins;     install -m 0755 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose;     rm /tmp/docker-compose
+#17 CACHED
+
+#18 [stage-1 11/13] COPY engine ./engine
+#18 CACHED
+
+#19 [stage-1  4/13] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x64; sha="3fc5e1567c450bd7bd5ae69ebb0a9a4a4e0418bbc36b0232cf6dd547f0bfc0eb" ;;       arm64) arch=arm64; sha="d0c216cec4c6c866fc15a105f039740228b53206f8576d2ed0bcd656a35ed6f6" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     tarball="powershell-7.4.21-linux-${arch}.tar.gz";     curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball"       "https://github.com/PowerShell/PowerShell/releases/download/v7.4.21/$tarball";     echo "$sha  /tmp/$tarball" | sha256sum -c -;     mkdir -p /opt/microsoft/powershell;     tar -xzf "/tmp/$tarball" -C /opt/microsoft/powershell;     chmod +x /opt/microsoft/powershell/pwsh;     ln -s /opt/microsoft/powershell/pwsh /usr/local/bin/pwsh;     rm "/tmp/$tarball"
+#19 CACHED
+
+#20 [stage-1 13/13] RUN uv sync --locked --group pq-build --no-install-project  && uv sync --locked --group pq-build --group pq-c --no-binary-package psycopg-c --no-install-project  && uv sync --locked --group pq-build --group pq-c --no-binary-package psycopg-c  && chown -R 10001:10001 /opt/venv /opt/uv-cache
+#20 CACHED
+
+#21 exporting to image
+#21 exporting layers done
+#21 exporting manifest sha256:3fc8241ac70d43421a79f6433543666e25ae6e5e673644c3b0374d2d1ffb2d4f done
+#21 exporting config sha256:ca23ac003d32661714eb22f9671ef40c1d06785206dc0b708ac56766a8391182 done
+#21 exporting attestation manifest sha256:4db23ff4ea0f2e0162009eea10b73e6e90de368febac5bd0ab5eb3b3b87e0aaf 0.0s done
+#21 exporting manifest list sha256:eeb4e8e436756976d4a6a7471f0eeb1e4236ab1703a71d6c94a0e9b0fcbdc630 0.0s done
+#21 naming to docker.io/library/ke-gates:wt-081af287bf18
+#21 naming to docker.io/library/ke-gates:wt-081af287bf18 done
+#21 unpacking to docker.io/library/ke-gates:wt-081af287bf18 done
+#21 DONE 0.1s
+
+#22 resolving provenance for metadata file
+#22 DONE 0.0s
+ Image ke-gates:wt-081af287bf18 Built 
+ Container ke-tester-u7b-gates-run-4b734601c908 Creating 
+ Container ke-tester-u7b-gates-run-4b734601c908 Created 
+== verify fast: 9b1754f+dirty ==
+lint: shellcheck on 20 files
+
+In scripts/sources_lock.sh line 73:
+  KE_SOURCES_IN=/nonexistent KE_SOURCES_OUT=/nonexistent KE_SOURCES_USER=0:0 \
+  ^-- SC2317 (info): Command appears to be unreachable. Check usage (or ignore if invoked indirectly).
+
+
+In scripts/sources_lock.sh line 75:
+    > /dev/null 2>&1 || true
+                        ^--^ SC2317 (info): Command appears to be unreachable. Check usage (or ignore if invoked indirectly).
+
+
+In scripts/sources_lock.sh line 76:
+  rm -rf -- "$work"
+  ^---------------^ SC2317 (info): Command appears to be unreachable. Check usage (or ignore if invoked indirectly).
+
+For more information:
+  https://www.shellcheck.net/wiki/SC2317 -- Command appears to be unreachable...
+lint: PSScriptAnalyzer on 4 files
+
+lint: FAIL
+verify fast: FAIL (lint.sh exited non-zero)
+
+
+real	0m10.702s
+user	0m0.075s
+sys	0m0.121s
+verify exit: 1
+.env removed

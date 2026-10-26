@@ -89,7 +89,11 @@ never touches a real daemon. What it does:
     `tag` from an unknown source exits 1 too. `--format` understands
     `{{.Field}}`, `{{json .}}` and `{{json .Field}}`.
   - `save -o|--output <path> <ref>...` writes a small file at <path> (its
-    directory must exist), so manifests can hash it.
+    directory must exist), so manifests can hash it. platform-sbom U4: with
+    FAKE_DOCKER_IMAGES set, a <ref> not in it (nor tagged from it) exits 1,
+    as the daemon does; save never pulls. A `pull <ref>` (last argument)
+    logged earlier with FAKE_DOCKER_PULL_OK=1 makes <ref> known (inspect,
+    tag, save), as a real pull does.
   - `load -i|--input <file>` prints FAKE_DOCKER_LOAD[<basename>] when that
     JSON object names the file (any text: none, one or two lines), else
     `Loaded image ID: sha256:<sha256 of the file>`. A missing file exits 1.
@@ -230,6 +234,158 @@ never touches a real daemon. What it does:
     fake `compose run ... scan` prints a grype-like table).
   - hook "exit": n -- then exit n at once (grype's exit status), before
     FAKE_DOCKER_FAIL / FAIL_NTH and any modelled reply.
+- platform-sbom U0 (PSC-25, ADR-KE-016 point 0, design-notes N0): the
+  api's psycopg, libpq and dpkg inside `compose ... exec [opts] <svc> CMD`.
+  The defaults model a correct image (psycopg-c on Debian's libpq at the
+  `LIBPQ_VERSION` pin read from docker/app.Dockerfile when the fake is
+  installed, else 15.14-0+deb12u1), so earlier smoke tests stay green when
+  smoke gains the psycopg step. CMD is matched on its first word:
+  - `python|python3 [flags] -c CODE [args]`: CODE runs under this
+    interpreter with `-I -S -B` and a stub site holding `psycopg`
+    (`psycopg.pq.__impl__`, `pq.version()`, `pq.__build_version__`,
+    `pq.PGconn`) and the impl package: `psycopg_c` for `c`, `psycopg_binary`
+    for `binary`, neither for `python`. The impl package's `pq` and
+    `_psycopg` modules report `__file__` (and `__spec__.origin`) as
+    `<stub>/<pkg>/<mod>.cpython-312-<FAKE_PQ_TRIPLET>.so`; that file does not
+    exist. stdout, stderr and the exit status are CODE's. Variables:
+    FAKE_PQ_IMPL (`c`), FAKE_PQ_VERSION (the pin's number, 15.N ->
+    150000+N), FAKE_PQ_BUILD_VERSION (FAKE_PQ_VERSION), FAKE_PQ_TRIPLET
+    (`x86_64-linux-gnu`). The stub site is
+    `<tmp>/opt/venv/lib/python3.12/site-packages` and CODE sees
+    `sys.prefix`/`sys.exec_prefix` as `<tmp>/opt/venv` (the literal path
+    `/opt/venv` is the host's, not the api's). FAKE_PQ_VENV_EXTRA
+    (U0 rework, review B1): comma-separated entries also installed in that
+    site beside the impl package: `psycopg_binary` (an importable package),
+    `psycopg_binary.libs` (a directory holding a vendored libpq) and
+    `<name>-<ver>.dist-info` (METADATA and RECORD); each is a directory.
+  - `ldd PATH...`: prints ldd lines for an extension linked to libpq;
+    `libpq.so.5 => FAKE_LDD_LIBPQ` (default `/lib/<triplet>/libpq.so.5`, as
+    bookworm's ld.so.cache gives it; `not found` prints `=> not found`),
+    plus FAKE_LDD_EXTRA lines verbatim. The path is not read.
+  - `dpkg-query -W [-f|--showformat FMT] libpq5`, `dpkg -s libpq5`: libpq5
+    installed at FAKE_LIBPQ5_VERSION (default the pin; set but empty prints
+    an empty version; any other value verbatim). FMT understands
+    `${Version}`, `${Package}`, `${binary:Package}`, `${Status}`,
+    `${db:Status-Abbrev}` and `\\n`. FAKE_LIBPQ5_ABSENT=1: libpq5 is not
+    installed; both exit 1, "dpkg-query: no packages found matching libpq5".
+  - `dpkg -S|dpkg-query -S PATH`: `<owner>: PATH` only for
+    `/usr/lib/<triplet>/libpq.so.5*` (merged-usr: dpkg does not own the
+    `/lib/...` alias); anything else exits 1, "no path found". The owner is
+    FAKE_LIBPQ_OWNER (default `libpq5:<arch>`; set but empty: no owner).
+  - `realpath|readlink -f PATH`: `/lib/<t>/` becomes `/usr/lib/<t>/`, and
+    a path ending `libpq.so.5` gains `.15`; FAKE_LIBPQ_REALPATH, if set, is
+    printed instead for a path ending `libpq.so.5`.
+  - `find PATH... [-name PAT [-o -name PAT]...]` (U0 rework, review B1):
+    for a PATH that is `/opt/venv`, `/`, or any directory on the way to or
+    equal to the site, prints `/opt/venv/lib/python3.12/site-packages/<e>`
+    for each FAKE_PQ_VENV_EXTRA entry whose name matches a `-name`/`-iname`
+    PAT (every entry with no PAT); exit 0.
+- platform-sbom U1 round 2 (PSC-14, design-notes N10a; smoke `no pip`):
+  inside the `python|python3 [flags] -c CODE` model above, `os.walk` of
+  `/usr`, `/opt` or a path below them walks a model of the api's files and
+  yields the api's absolute paths; any other path is walked as is. The
+  model is a clean shipped image: `/usr/local/bin/python`, `python3`,
+  `python3.12`, `/usr/local/lib/python3.12/{LICENSE.txt,pipes.py}`,
+  `ensurepip/{__init__,__main__}.py` and an empty `ensurepip/_bundled/`,
+  `site-packages/README.txt`, `/usr/lib/<triplet>/libpipeline.so.1` and
+  `libpq.so.5.15`, `/usr/share/doc/libpipeline1/copyright`,
+  `/opt/venv/bin/python`, psycopg and psycopg_c in the venv site, and
+  each FAKE_PQ_VENV_EXTRA entry there. FAKE_API_FILES adds
+  comma-separated absolute paths (a trailing `/` makes a directory, else
+  an empty file). FAKE_API_PIP_IMPORTABLE=1 puts a `pip` package on CODE's
+  sys.path that the walk does not see (importable only).
+- platform-sbom U4b (PSC-26, Q67, design-notes N16; smoke `no fleet
+  plugin`): `compose exec [opts] neo4j find ROOT... EXPR` evaluates EXPR
+  (`-xdev`/`-mount`, `-path`, `-name`, `-iname`, `-type f|d|l`, `-print`,
+  `-prune`, `!`/`-not`, `-a`/`-and`, `-o`/`-or`, `(`/`)`; no action means
+  `-print`) over a model of the neo4j container, walked depth first in
+  sorted order. The model is a clean ke-neo4j: `/var/lib/neo4j` with
+  `LICENSE.txt`, `bin/neo4j`, `lib/neo4j-kernel-5.26.32.jar`,
+  `labs/apoc-5.26.32-core.jar`, the `data -> /data` and `logs -> /logs`
+  links, `/startup/docker-entrypoint.sh` and `neo4j-plugins.json`,
+  `/opt/java/openjdk/lib/jrt-fs.jar`, `/data/databases/` and `/logs/`.
+  FAKE_NEO4J_FILES adds comma-separated absolute paths (a trailing `/`
+  makes a directory), FAKE_NEO4J_DROP removes paths (and what is below
+  them), and FAKE_NEO4J_OTHER_FS adds paths on another filesystem (under
+  `/proc`, `/data` or `/logs`), which `-xdev` does not enter. Any other
+  token exits 1 ("unknown predicate").
+  - FAKE_IMAGE_CONFIGS (JSON object, reference -> image `Config`): `image
+    inspect [--format T] REF...` for references it names renders T against
+    {"Config": <that object>} (no T: a JSON list of those records); a
+    reference it does not name exits 1, "No such image". Inert when unset,
+    and checked before FAKE_DOCKER_IMAGES.
+- platform-sbom U2 (PSC-20, ADR-KE-016 point 1, design-notes N1). Inert
+  unless FAKE_COMPOSE_FILE_IMAGES is set (the bundle.sh tests set it):
+  - FAKE_COMPOSE_FILE_IMAGES (JSON object, compose file basename ->
+    {service: image}): a `compose ... config` call whose `-f`/`--file`
+    (else COMPOSE_FILE) names such a file answers from that entry in place
+    of FAKE_COMPOSE_IMAGES: `--images [svc...]`, `--services` and `--format
+    json` as above, with no depends_on and no profile images.
+  - FAKE_COMPOSE_FILE_REQUIRED (JSON object, basename -> variable names):
+    each must be set and non-empty in the interpolation environment (process
+    KE_* or the env file), else exit 1 "required variable X is missing a
+    value", as compose does for `${X:?}`; `--no-interpolate` skips it.
+- platform-sbom U3 (PSC-13; ADR-KE-016 points 1, 2 and 6; design-notes N1,
+  N3, N6, N7). Each is inert unless its variable is set (the bundle.sh tests
+  set FAKE_DOCKER_SAVE_TAR and FAKE_IMAGE_PATHS):
+  - FAKE_DOCKER_SAVE_TAR (`oci`, `legacy` or `two`): `save -o` writes a real
+    image tar. `oci` is the docker 25+ layout (manifest.json `Config` is
+    `blobs/sha256/<hex>`, plus index.json and oci-layout), `legacy` the older
+    one (`Config` is `<hex>.json`), `two` an `oci` tar whose manifest.json
+    has two entries. U7c (A1): FAKE_IMAGE_TAR_FILES (JSON image name ->
+    {member: text}) adds files to the layer of `<name>.tar`. The config blob
+    is JSON naming the saved references, so
+    its digest differs per image and from the FAKE_DOCKER_IMAGES `Id`.
+  - `compose ... -f <file> ...` for a file in FAKE_COMPOSE_FILE_IMAGES: the
+    FAKE_COMPOSE_FILE_REQUIRED check applies to every command that loads the
+    file (`run` and `down` too), not only `config`.
+  - `compose ... run [opts] sbom docker-archive:/in/<name>.tar ... -o
+    spdx-json=/out/<file>` models syft: `/in` is KE_SBOM_IN and `/out` is
+    KE_SBOM_OUT, from the interpolation environment. It exits 1 when the tar
+    is missing or `<KE_SBOM_OUT>/tmp` is not a directory (TMPDIR=/out/tmp; Go's
+    MkdirTemp needs it). Otherwise it writes an unpack scratch file under
+    `<KE_SBOM_OUT>/tmp/` and a syft-shaped SPDX 2.3 JSON document at
+    `/out/<file>`: creators `Organization: Anchore, Inc` and `Tool:
+    syft-<version of the sbom image's tag>`; a DocumentRoot package for the
+    image, which the document DESCRIBES and which CONTAINS every package;
+    dpkg packages (base-files, libc6, plus libpq5 at the pin for ke-app),
+    each OTHER-related to a /var/lib/dpkg/status file; and, for `ke-app`, one
+    `pkg:pypi/<METADATA Name>@<Version>` package per `*.dist-info` in
+    `<FAKE_IMAGE_PATHS["/opt/venv"]>/lib/python3.12/site-packages`
+    (knowledge-engine included, as syft lists it). Purl versions are
+    percent-encoded (`+` is `%2B`), as syft writes them. Knobs:
+    FAKE_SYFT_DROP (comma-separated pypi names left out, PEP 503 compared),
+    FAKE_SYFT_PYPI_VERSIONS (JSON name -> version reported instead),
+    FAKE_SYFT_RAW (JSON image name -> document text written verbatim),
+    FAKE_SYFT_LOG (one JSON line per run: name, in, out, user, and the
+    entries of KE_SBOM_OUT and of its tmp/ before the run; platform-sbom U4,
+    review N4: also `out_mode` and `tmp_mode`, their permission bits).
+    U4 rework 1 (review B1): syft's cache is modelled from the compose
+    file's `sbom` service (`_syft_cache_warning`): a non-root user whose
+    cache dir sits on a tmpfs without an o+w `mode=` (the image's /tmp is
+    0755 root), or on the read-only root, gets syft's `WARN unable to get
+    filesystem cache at ...` line on stderr; the run still succeeds.
+  - `run ... <image> [args] <dir>/sbom_check.py ARGS` (the N3 checker): runs
+    the real script, read from the host source of its `-v`/`--volume`/
+    `--mount` bind, under this interpreter with `-I -S -B`, the venv site of
+    FAKE_IMAGE_PATHS["/opt/venv"] appended to sys.path. Each argument after
+    the script that is a container path (or `--opt=<path>`, or, from U7b
+    rework round 1, `IMAGE=<path>` as --sbom and --tar take) is rewritten to
+    the host: under a mount target by its bind source, else under a
+    FAKE_IMAGE_PATHS prefix (JSON, container prefix -> host dir; the tests
+    map `/opt/venv` and `/app`), longest prefix first. stdout, stderr and the
+    exit status are the script's; a script that is not there exits 2.
+- platform-sbom U7b rework round 1 (design-notes "U7b rework round 1", item
+  12): `compose ... -f docker-compose.sources.yml run [opts] sources-resolve
+  ARGS`, when that file is in FAKE_COMPOSE_FILE_IMAGES, runs the real
+  resolver: the service's entrypoint (`python3 -I <script> ...`) and ARGS,
+  each container path rewritten by the service's long-form binds (sources
+  interpolated from the interpolation environment, relative ones against
+  the compose file's directory; a `${X:?}` with no value, or a bind source
+  that does not exist, exits 1 as compose and the daemon do). The module's
+  OPENER is replaced by FAKE_RESOLVE_NET (JSON url -> [status, headers,
+  body text]; any other url is a 404); FAKE_RESOLVE_LOG gets one requested
+  url per line. stdout, stderr and the exit status are the resolver's.
 - Every other call exits 0.
 """
 
@@ -432,6 +588,338 @@ for item in filter(None, os.environ.get("FAKE_DOCKER_FAIL_NTH", "").split("|")):
 ISOLATED = {"com.docker.network.bridge.gateway_mode_ipv4": "isolated"}
 CLIENT_VERSION = "27.0.0"
 project = os.environ.get("COMPOSE_PROJECT_NAME") or "knowledge-engine"
+
+# --- platform-sbom U0 (PSC-25): psycopg, libpq and dpkg inside the api ------
+def _pq_number(debver):
+    import re as _re
+    m = _re.match(r"^(\d+)\.(\d+)", debver or "")
+    return int(m.group(1)) * 10000 + int(m.group(2)) if m else 0
+
+def _exec_split():
+    _at = argv.index("exec")
+    _takes = {"-e", "--env", "-u", "--user", "-w", "--workdir", "--index"}
+    _i = _at + 1
+    while _i < len(argv):
+        if argv[_i] in _takes:
+            _i += 2
+            continue
+        if argv[_i].startswith("-"):
+            _i += 1
+            continue
+        return argv[_i], argv[_i + 1:]
+    return None, []
+
+if argv[:1] == ["compose"] and "exec" in argv:
+    _psvc, _pcmd = _exec_split()
+    _pword = os.path.basename(_pcmd[0]) if _pcmd else ""
+    _triplet = os.environ.get("FAKE_PQ_TRIPLET") or "x86_64-linux-gnu"
+    _darch = "arm64" if _triplet.startswith("aarch64") else "amd64"
+    _deb = os.environ["FAKE_LIBPQ5_VERSION"] if "FAKE_LIBPQ5_VERSION" in os.environ else LIBPQ_PIN
+    _venv_extra = [e for e in (os.environ.get("FAKE_PQ_VENV_EXTRA") or "").split(",") if e]
+    _venv_site = "/opt/venv/lib/python3.12/site-packages"
+    if _pword in ("python", "python3") and "-c" in _pcmd:
+        import shutil as _shutil, subprocess as _subprocess, tempfile as _tempfile
+        _ci = _pcmd.index("-c")
+        _code = _pcmd[_ci + 1] if _ci + 1 < len(_pcmd) else ""
+        _rest = _pcmd[_ci + 2:]
+        _impl = os.environ.get("FAKE_PQ_IMPL", "c")
+        _ver = int(os.environ.get("FAKE_PQ_VERSION") or _pq_number(LIBPQ_PIN))
+        _build = int(os.environ.get("FAKE_PQ_BUILD_VERSION") or _ver)
+        _root = _tempfile.mkdtemp(prefix="fake-pq-site-")
+        _prefix = os.path.join(_root, "opt", "venv")
+        _site = os.path.join(_prefix, "lib", "python3.12", "site-packages")
+        try:
+            os.makedirs(os.path.join(_site, "psycopg", "pq"))
+            with open(os.path.join(_site, "psycopg", "__init__.py"), "w", encoding="utf-8") as fh:
+                fh.write("__version__ = '3.3.6'\nfrom . import pq\n")
+            _impl_pkg = {"c": "psycopg_c", "binary": "psycopg_binary"}.get(_impl)
+            with open(os.path.join(_site, "psycopg", "pq", "__init__.py"), "w", encoding="utf-8") as fh:
+                fh.write("__impl__ = %r\n__build_version__ = %d\n" % (_impl, _build))
+                fh.write("def version():\n    return %d\n" % _ver)
+                if _impl_pkg:
+                    fh.write("from %s import pq as _pq\nPGconn = _pq.PGconn\n" % _impl_pkg)
+                else:
+                    fh.write("class PGconn:\n    pass\n")
+            if _impl_pkg:
+                _pkg = os.path.join(_site, _impl_pkg)
+                os.makedirs(_pkg)
+                with open(os.path.join(_pkg, "__init__.py"), "w", encoding="utf-8") as fh:
+                    fh.write("__version__ = '3.3.6'\n")
+                for _mod in ("pq", "_psycopg"):
+                    _so = os.path.join(_pkg, "%s.cpython-312-%s.so" % (_mod, _triplet)).replace(os.sep, "/")
+                    with open(os.path.join(_pkg, _mod + ".py"), "w", encoding="utf-8") as fh:
+                        fh.write("__file__ = %r\n__spec__.origin = __file__\nclass PGconn:\n    pass\n" % _so)
+            for _e in _venv_extra:
+                _d = os.path.join(_site, _e)
+                os.makedirs(_d, exist_ok=True)
+                if _e.endswith(".dist-info"):
+                    with open(os.path.join(_d, "METADATA"), "w", encoding="utf-8") as fh:
+                        fh.write("Metadata-Version: 2.4\nName: %s\nVersion: 3.3.6\n" % _e.split("-")[0])
+                    with open(os.path.join(_d, "RECORD"), "w", encoding="utf-8") as fh:
+                        fh.write("%s/METADATA,,\n" % _e)
+                elif _e.endswith(".libs"):
+                    open(os.path.join(_d, "libpq-9f3e2a1b.so.5.18"), "w").close()
+                elif not os.path.exists(os.path.join(_d, "__init__.py")):
+                    with open(os.path.join(_d, "__init__.py"), "w", encoding="utf-8") as fh:
+                        fh.write("__version__ = '3.3.6'\n")
+            # platform-sbom U1 round 2 (N10a): the api's /usr and /opt, for
+            # os.walk, and pip importable by the system interpreter.
+            _fs = os.path.join(_root, "apifs")
+            _api = ["/usr/local/bin/python", "/usr/local/bin/python3", "/usr/local/bin/python3.12",
+                    "/usr/local/lib/python3.12/LICENSE.txt", "/usr/local/lib/python3.12/pipes.py",
+                    "/usr/local/lib/python3.12/ensurepip/__init__.py",
+                    "/usr/local/lib/python3.12/ensurepip/__main__.py",
+                    "/usr/local/lib/python3.12/ensurepip/_bundled/",
+                    "/usr/local/lib/python3.12/site-packages/README.txt",
+                    "/usr/lib/%s/libpipeline.so.1" % _triplet, "/usr/lib/%s/libpq.so.5.15" % _triplet,
+                    "/usr/share/doc/libpipeline1/copyright", "/opt/venv/bin/python",
+                    _venv_site + "/psycopg/__init__.py", _venv_site + "/psycopg_c/__init__.py"]
+            _api += [_venv_site + "/" + _e + "/" for _e in _venv_extra]
+            _api += [e.strip() for e in (os.environ.get("FAKE_API_FILES") or "").split(",") if e.strip()]
+            for _a in _api:
+                _here = os.path.join(_fs, *[p for p in _a.split("/") if p])
+                if _a.endswith("/"):
+                    os.makedirs(_here, exist_ok=True)
+                else:
+                    os.makedirs(os.path.dirname(_here), exist_ok=True)
+                    open(_here, "a").close()
+            if os.environ.get("FAKE_API_PIP_IMPORTABLE") == "1":
+                os.makedirs(os.path.join(_site, "pip"), exist_ok=True)
+                with open(os.path.join(_site, "pip", "__init__.py"), "w", encoding="utf-8") as fh:
+                    fh.write("__version__ = '25.0.1'\n")
+            _boot = ("import os, sys\n"
+                     "_prefix, _site, _code = sys.argv[1], sys.argv[2], sys.argv[3]\n"
+                     "sys.argv = ['-c'] + sys.argv[4:]\n"
+                     "sys.prefix = sys.exec_prefix = _prefix\n"
+                     "sys.path.insert(0, _site)\n"
+                     "_fs, _walk = os.environ.get('FAKE_API_FS', ''), os.walk\n"
+                     "def _api_walk(top, *a, **k):\n"
+                     "    t = os.fspath(top)\n"
+                     "    if _fs and isinstance(t, str) and (t in ('/usr', '/opt') or t.startswith(('/usr/', '/opt/'))):\n"
+                     "        for d, ds, fs in _walk(_fs + t, *a, **k):\n"
+                     "            yield '/' + os.path.relpath(d, _fs).replace(os.sep, '/'), ds, fs\n"
+                     "    else:\n"
+                     "        yield from _walk(top, *a, **k)\n"
+                     "os.walk = _api_walk\n"
+                     "exec(compile(_code, '<string>', 'exec'), {'__name__': '__main__'})\n")
+            sys.stdout.flush()
+            _done = _subprocess.run([sys.executable, "-I", "-S", "-B", "-c", _boot, _prefix, _site, _code, *_rest],
+                                    env=dict(os.environ, FAKE_API_FS=_fs))
+        finally:
+            _shutil.rmtree(_root, ignore_errors=True)
+        sys.exit(_done.returncode)
+    if _pword == "ldd":
+        _lib = os.environ.get("FAKE_LDD_LIBPQ") or "/lib/%s/libpq.so.5" % _triplet
+        _out = ["\tlinux-vdso.so.1 (0x00007ffc5e3f1000)"]
+        _out.append("\tlibpq.so.5 => not found" if _lib == "not found"
+                    else "\tlibpq.so.5 => %s (0x00007f3a1c600000)" % _lib)
+        _out += ["\tlibc.so.6 => /lib/%s/libc.so.6 (0x00007f3a1c200000)" % _triplet,
+                 "\tlibssl.so.3 => /lib/%s/libssl.so.3 (0x00007f3a1c100000)" % _triplet,
+                 "\tlibgssapi_krb5.so.2 => /lib/%s/libgssapi_krb5.so.2 (0x00007f3a1c000000)" % _triplet]
+        _out += [l for l in (os.environ.get("FAKE_LDD_EXTRA") or "").split("\n") if l]
+        print("\n".join(_out))
+        sys.exit(0)
+    if _pword in ("dpkg", "dpkg-query") and ("-S" in _pcmd or "--search" in _pcmd):
+        import re as _re
+        _paths = [a for a in _pcmd[1:] if not a.startswith("-")]
+        _rc = 0
+        for _p in _paths:
+            _owner = os.environ.get("FAKE_LIBPQ_OWNER", "libpq5:" + _darch)
+            if os.environ.get("FAKE_LIBPQ5_ABSENT") == "1":
+                _owner = ""
+            if _owner and _re.fullmatch(r"/usr/lib/%s/libpq\.so\.5(\.\d+)*" % _re.escape(_triplet), _p):
+                print("%s: %s" % (_owner, _p))
+            else:
+                sys.stderr.write("dpkg-query: no path found matching pattern %s\n" % _p)
+                _rc = 1
+        sys.exit(_rc if _paths else 2)
+    if _pword in ("dpkg-query", "dpkg") and ("-W" in _pcmd or "--show" in _pcmd or "-s" in _pcmd
+                                             or "--status" in _pcmd):
+        _fmt = None
+        _skip = set()
+        for _j, _a in enumerate(_pcmd):
+            if _a in ("-f", "--showformat") and _j + 1 < len(_pcmd):
+                _fmt = _pcmd[_j + 1]
+                _skip.add(_j + 1)
+            elif _a.startswith("--showformat=") or _a.startswith("-f="):
+                _fmt = _a.split("=", 1)[1]
+        _names = [a for j, a in enumerate(_pcmd) if j > 0 and j not in _skip and not a.startswith("-")]
+        if [n for n in _names if n.split(":")[0] != "libpq5"] or os.environ.get("FAKE_LIBPQ5_ABSENT") == "1":
+            sys.stderr.write("dpkg-query: no packages found matching %s\n" % " ".join(_names))
+            sys.exit(1)
+        if "-s" in _pcmd or "--status" in _pcmd:
+            print("Package: libpq5\nStatus: install ok installed\nArchitecture: %s\nVersion: %s" % (_darch, _deb))
+            sys.exit(0)
+        if _fmt is None:
+            print("libpq5:%s\t%s" % (_darch, _deb))
+            sys.exit(0)
+        _txt = (_fmt.replace("${Version}", _deb).replace("${binary:Package}", "libpq5:" + _darch)
+                .replace("${Package}", "libpq5").replace("${Status}", "install ok installed")
+                .replace("${db:Status-Abbrev}", "ii ").replace("\\n", "\n"))
+        sys.stdout.write(_txt)
+        sys.exit(0)
+    if _pword in ("realpath", "readlink"):
+        _real = os.environ.get("FAKE_LIBPQ_REALPATH")
+        for _p in [a for a in _pcmd[1:] if not a.startswith("-")]:
+            if _real and _p.endswith("libpq.so.5"):
+                print(_real)
+                continue
+            if _p.startswith("/lib/"):
+                _p = "/usr" + _p
+            print(_p + ".15" if _p.endswith("libpq.so.5") else _p)
+        sys.exit(0)
+    if _psvc == "neo4j" and _pword == "find":
+        # platform-sbom U4b (PSC-26, N16): a model of the ke-neo4j filesystem.
+        import fnmatch as _fnmatch
+        _nfs = {"/": "d", "/var": "d", "/var/lib": "d", "/var/lib/neo4j": "d",
+                "/var/lib/neo4j/LICENSE.txt": "f", "/var/lib/neo4j/bin": "d", "/var/lib/neo4j/bin/neo4j": "f",
+                "/var/lib/neo4j/lib": "d", "/var/lib/neo4j/lib/neo4j-kernel-5.26.32.jar": "f",
+                "/var/lib/neo4j/labs": "d", "/var/lib/neo4j/labs/apoc-5.26.32-core.jar": "f",
+                "/var/lib/neo4j/data": "l", "/var/lib/neo4j/logs": "l", "/startup": "d",
+                "/startup/docker-entrypoint.sh": "f", "/startup/neo4j-plugins.json": "f", "/opt": "d",
+                "/opt/java": "d", "/opt/java/openjdk": "d", "/opt/java/openjdk/lib": "d",
+                "/opt/java/openjdk/lib/jrt-fs.jar": "f", "/data": "d", "/data/databases": "d", "/logs": "d",
+                "/proc": "d"}
+
+        def _nadd(_spec):
+            for _a in [e.strip() for e in (_spec or "").split(",") if e.strip()]:
+                _dir = _a.endswith("/")
+                _a = _a.rstrip("/") or "/"
+                _parts = [x for x in _a.split("/") if x]
+                for _k in range(1, len(_parts)):
+                    _nfs.setdefault("/" + "/".join(_parts[:_k]), "d")
+                _nfs[_a] = "d" if _dir else "f"
+        _nadd(os.environ.get("FAKE_NEO4J_FILES"))
+        _nadd(os.environ.get("FAKE_NEO4J_OTHER_FS"))
+        for _d in [e.strip().rstrip("/") for e in (os.environ.get("FAKE_NEO4J_DROP") or "").split(",") if e.strip()]:
+            for _k in [k for k in _nfs if k == _d or k.startswith(_d + "/")]:
+                del _nfs[_k]
+        _toks = _pcmd[1:]
+        _roots = []
+        while _toks and not _toks[0].startswith(("-", "(", ")", "!")):
+            _roots.append(_toks.pop(0).rstrip("/") or "/")
+        _xdev = any(t in ("-xdev", "-mount") for t in _toks)
+        _toks = [t for t in _toks if t not in ("-xdev", "-mount")]
+        _has_action = any(t in ("-print", "-prune") for t in _toks)
+        _out = []
+
+        def _nfail(msg):
+            sys.stderr.write("find: %s\n" % msg)
+            sys.exit(1)
+
+        def _parse_or(i):
+            node, i = _parse_and(i)
+            while i < len(_toks) and _toks[i] in ("-o", "-or"):
+                rhs, i = _parse_and(i + 1)
+                node = ("or", node, rhs)
+            return node, i
+
+        def _parse_and(i):
+            node, i = _parse_not(i)
+            while i < len(_toks) and _toks[i] not in ("-o", "-or", ")"):
+                if _toks[i] in ("-a", "-and"):
+                    i += 1
+                rhs, i = _parse_not(i)
+                node = ("and", node, rhs)
+            return node, i
+
+        def _parse_not(i):
+            if i < len(_toks) and _toks[i] in ("!", "-not"):
+                node, i = _parse_not(i + 1)
+                return ("not", node), i
+            return _parse_prim(i)
+
+        def _parse_prim(i):
+            if i >= len(_toks):
+                _nfail("expected an expression")
+            t = _toks[i]
+            if t == "(":
+                node, i = _parse_or(i + 1)
+                if i >= len(_toks) or _toks[i] != ")":
+                    _nfail("missing )")
+                return node, i + 1
+            if t in ("-path", "-name", "-iname", "-type"):
+                if i + 1 >= len(_toks):
+                    _nfail("missing argument to %s" % t)
+                return (t, _toks[i + 1]), i + 2
+            if t in ("-print", "-prune"):
+                return (t,), i + 1
+            _nfail("unknown predicate `%s'" % t)
+
+        _tree = _parse_or(0)[0] if _toks else ("true",)
+        _pruned = set()
+
+        def _ev(node, path):
+            kind = node[0]
+            if kind == "or":
+                return _ev(node[1], path) or _ev(node[2], path)
+            if kind == "and":
+                return _ev(node[1], path) and _ev(node[2], path)
+            if kind == "not":
+                return not _ev(node[1], path)
+            if kind == "true":
+                return True
+            if kind == "-print":
+                _out.append(path)
+                return True
+            if kind == "-prune":
+                _pruned.add(path)
+                return True
+            if kind == "-path":
+                return _fnmatch.fnmatchcase(path, node[1])
+            base = path.rsplit("/", 1)[-1] or "/"
+            if kind == "-name":
+                return _fnmatch.fnmatchcase(base, node[1])
+            if kind == "-iname":
+                return _fnmatch.fnmatchcase(base.lower(), node[1].lower())
+            if kind == "-type":
+                return _nfs.get(path) == node[1]
+            return False
+
+        def _children(path):
+            pre = "/" if path == "/" else path + "/"
+            return sorted(k for k in _nfs if k != path and k.startswith(pre) and "/" not in k[len(pre):])
+
+        def _walk(path, dev_root):
+            if path not in _nfs:
+                _nfail("'%s': No such file or directory" % path)
+            if _ev(_tree, path) and not _has_action:
+                _out.append(path)
+            if _nfs.get(path) != "d" or path in _pruned:
+                return
+            for c in _children(path):
+                if _xdev and c in ("/proc", "/data", "/logs") and c != dev_root:
+                    # another filesystem: find tests the mount point, never enters it
+                    if _ev(_tree, c) and not _has_action:
+                        _out.append(c)
+                    continue
+                _walk(c, dev_root)
+        for _r in _roots or ["."]:
+            _walk(_r, _r)
+        if _out:
+            print("\n".join(_out))
+        sys.exit(0)
+    if _pword == "find":
+        import fnmatch as _fnmatch
+        _pats, _roots, _j = [], [], 1
+        while _j < len(_pcmd) and not _pcmd[_j].startswith(("-", "(", ")", "!")):
+            _roots.append(_pcmd[_j].rstrip("/") or "/")
+            _j += 1
+        while _j < len(_pcmd):
+            if _pcmd[_j] in ("-name", "-iname") and _j + 1 < len(_pcmd):
+                _pats.append((_pcmd[_j + 1], _pcmd[_j] == "-iname"))
+                _j += 2
+                continue
+            _j += 1
+
+        def _under(_r):
+            return _r == "/" or _venv_site == _r or _venv_site.startswith(_r + "/")
+        for _e in _venv_extra:
+            _hit = not _pats or any(_fnmatch.fnmatchcase(_e.lower() if _ci else _e, _pt.lower() if _ci else _pt)
+                                    for _pt, _ci in _pats)
+            if _hit and any(_under(_r) for _r in _roots):
+                print("%s/%s" % (_venv_site, _e))
+        sys.exit(0)
 
 def _go(val):
     # Go's default rendering of a template value: lists as [a b], nested.
@@ -722,6 +1210,83 @@ if argv[:1] == ["inspect"] or argv[:2] == ["container", "inspect"]:
         sys.exit(0)
 
 if argv[:1] == ["run"] or argv[:2] == ["container", "run"]:
+    # platform-sbom U3 (N3): `run ... <image> ... sbom_check.py ARGS`.
+    _rv = {"-v", "--volume", "--mount", "-e", "--env", "--env-file", "-l", "--label", "--label-file",
+           "--entrypoint", "--network", "--net", "--security-opt", "--cap-drop", "--cap-add", "-u",
+           "--user", "--pull", "--name", "-w", "--workdir", "--tmpfs", "--platform", "-m", "--memory",
+           "--cpus", "--ulimit", "--log-driver", "--log-opt", "-h", "--hostname", "--add-host", "--dns",
+           "--device", "--stop-signal", "--pids-limit", "--userns", "--ipc", "--pid", "--uts",
+           "--cgroupns", "--restart", "--shm-size", "--gpus"}
+    _rs = 1 if argv[0] == "run" else 2
+    _ri, _rimg = _rs, None
+    while _ri < len(argv):
+        if argv[_ri] in _rv:
+            _ri += 2
+            continue
+        if argv[_ri].startswith("-"):
+            _ri += 1
+            continue
+        _rimg = _ri
+        break
+    _rtail = argv[_rimg + 1:] if _rimg is not None else []
+    _rck = [k for k, a in enumerate(_rtail) if a.replace("\\", "/").rsplit("/", 1)[-1] == "sbom_check.py"]
+    if _rck:
+        import subprocess as _subprocess
+        _pairs = []
+        _ro = argv[_rs:_rimg]
+        for _k, _a in enumerate(_ro):
+            _val = None
+            if _a in ("-v", "--volume", "--mount") and _k + 1 < len(_ro):
+                _val, _kind = _ro[_k + 1], _a
+            elif _a.startswith(("--volume=", "--mount=", "-v=")):
+                _kind, _val = _a.split("=", 1)
+            if _val is None:
+                continue
+            if _kind == "--mount":
+                _kv = dict(p.split("=", 1) if "=" in p else (p, "") for p in _val.split(","))
+                _src = _kv.get("source") or _kv.get("src") or ""
+                _dst = _kv.get("target") or _kv.get("destination") or _kv.get("dst") or ""
+            else:
+                _parts = _val.split(":")
+                if len(_parts) >= 2 and len(_parts[0]) == 1 and _parts[0].isalpha():
+                    _parts = [_parts[0] + ":" + _parts[1]] + _parts[2:]
+                _src, _dst = _parts[0], (_parts[1] if len(_parts) > 1 else "")
+            if _src and _dst:
+                _pairs.append((_dst, _src))
+        _imgpaths = json.loads(os.environ.get("FAKE_IMAGE_PATHS") or "{}")
+        _pairs += list(_imgpaths.items())
+
+        def _remap(t):
+            if t.startswith("--") and "=" in t:
+                _k2, _v2 = t.split("=", 1)
+                return _k2 + "=" + _remap(_v2)
+            if "=" in t and not t.startswith("/") and t.split("=", 1)[1].startswith("/"):
+                # platform-sbom U7b rework round 1: IMAGE=<container path> (--sbom, --tar)
+                _k2, _v2 = t.split("=", 1)
+                return _k2 + "=" + _remap(_v2)
+            best = None
+            for c, h in _pairs:
+                c2 = c.rstrip("/") or "/"
+                if t == c2 or t.startswith(c2.rstrip("/") + "/"):
+                    if best is None or len(c2) > len(best[0]):
+                        best = (c2, h)
+            if best is None:
+                return t
+            return best[1].rstrip("/\\") + t[len(best[0].rstrip("/")):]
+
+        _script = _remap(_rtail[_rck[0]])
+        if not os.path.isfile(_script):
+            sys.stderr.write("python: can't open file %r: [Errno 2] No such file or directory\n" % _rtail[_rck[0]])
+            sys.exit(2)
+        _venv = _imgpaths.get("/opt/venv")
+        _site = os.path.join(_venv, "lib", "python3.12", "site-packages") if _venv else ""
+        _boot = ("import runpy, sys; s, site = sys.argv[1], sys.argv[2]; "
+                 "sys.path.append(site) if site else None; sys.argv = [s] + sys.argv[3:]; "
+                 "runpy.run_path(s, run_name='__main__')")
+        sys.stdout.flush()
+        _done = _subprocess.run([sys.executable, "-I", "-S", "-B", "-c", _boot, _script, _site,
+                                 *[_remap(a) for a in _rtail[_rck[0] + 1:]]])
+        sys.exit(_done.returncode)
     if "engine.notices" in argv:
         import subprocess as _subprocess
         _site = os.environ.get("FAKE_NOTICES_SITE")
@@ -845,6 +1410,10 @@ def _known_image(name, table):
                 src = _known_image(a[-2], table)
                 if src is not None:
                     return src
+            # platform-sbom U4: a successful `pull <name>` puts it on the daemon.
+            if ((a[:1] == ["pull"] or a[:2] == ["image", "pull"]) and a[-1:] == [name]
+                    and os.environ.get("FAKE_DOCKER_PULL_OK") == "1"):
+                return {"Id": "sha256:" + "2" * 64, "Os": "linux", "Architecture": "amd64", "RepoDigests": [name]}
     return None
 
 def _render(template, obj):
@@ -865,6 +1434,20 @@ def _render(template, obj):
             return "[" + " ".join(str(v) for v in val) + "]"
         return str(val)
     return _re.sub(r"\{\{\s*(json\s+)?\.([A-Za-z0-9_.]*)\s*\}\}", sub, template)
+
+if argv[:2] == ["image", "inspect"] and os.environ.get("FAKE_IMAGE_CONFIGS"):
+    # platform-sbom U4b (PSC-26): the ke-neo4j config check.
+    _cfgs = json.loads(os.environ["FAKE_IMAGE_CONFIGS"])
+    _skip = set(format_values())
+    _names = [a for a in argv[2:] if not a.startswith("-") and a not in _skip]
+    for _n in _names:
+        if _n not in _cfgs:
+            sys.stderr.write("Error response from daemon: No such image: %s\n" % _n)
+            sys.exit(1)
+    _fmt = format_values()
+    for _n in _names:
+        print(_render(_fmt[-1], {"Config": _cfgs[_n]}) if _fmt else json.dumps([{"Config": _cfgs[_n]}]))
+    sys.exit(0)
 
 if argv[:2] == ["image", "inspect"] or argv[:1] == ["inspect"]:
     table = _image_table()
@@ -896,6 +1479,44 @@ if argv[:1] == ["tag"] or argv[:2] == ["image", "tag"]:
             sys.exit(1)
     sys.exit(0)
 
+def _write_image_tar(target, refs, form):
+    """platform-sbom U3: a real image tar (FAKE_DOCKER_SAVE_TAR)."""
+    import hashlib as _h, io as _io, tarfile as _tf
+    def _add(tar, name, data):
+        info = _tf.TarInfo(name)
+        info.size = len(data)
+        info.mtime = 0
+        tar.addfile(info, _io.BytesIO(data))
+    buf = _io.BytesIO()
+    with _tf.open(fileobj=buf, mode="w") as lt:
+        _add(lt, "etc/fake-release", ("layer of %s\n" % " ".join(refs)).encode("utf-8"))
+        # platform-sbom U7c (A1): FAKE_IMAGE_TAR_FILES (JSON image name -> {member: text})
+        # adds files to the layer of `<name>.tar` (lib/apk/db/installed, etc/alpine-release).
+        _stem = os.path.basename(target)
+        _stem = _stem[:-4] if _stem.endswith(".tar") else _stem
+        for _mem, _txt in sorted(json.loads(os.environ.get("FAKE_IMAGE_TAR_FILES") or "{}").get(_stem, {}).items()):
+            _add(lt, _mem, _txt.encode("utf-8"))
+    layer = buf.getvalue()
+    layer_hex = _h.sha256(layer).hexdigest()
+    config = json.dumps({"architecture": "fake", "os": "linux",
+                         "config": {"Labels": {"ke.fake.refs": " ".join(refs)}},
+                         "rootfs": {"type": "layers", "diff_ids": ["sha256:" + layer_hex]}},
+                        sort_keys=True).encode("utf-8")
+    cfg_hex = _h.sha256(config).hexdigest()
+    if form == "legacy":
+        cfg_name, layer_name = cfg_hex + ".json", layer_hex + "/layer.tar"
+    else:
+        cfg_name, layer_name = "blobs/sha256/" + cfg_hex, "blobs/sha256/" + layer_hex
+    entry = {"Config": cfg_name, "RepoTags": refs, "Layers": [layer_name]}
+    manifest = [entry, dict(entry, RepoTags=["fake-second:entry"])] if form == "two" else [entry]
+    with _tf.open(target, "w") as tar:
+        _add(tar, cfg_name, config)
+        _add(tar, layer_name, layer)
+        if form != "legacy":
+            _add(tar, "oci-layout", b'{"imageLayoutVersion": "1.0.0"}')
+            _add(tar, "index.json", json.dumps({"schemaVersion": 2, "manifests": []}).encode("utf-8"))
+        _add(tar, "manifest.json", json.dumps(manifest).encode("utf-8"))
+
 if argv[:1] == ["save"] or argv[:2] == ["image", "save"]:
     out = opt_values("-o") + opt_values("--output")
     if out:
@@ -905,8 +1526,18 @@ if argv[:1] == ["save"] or argv[:2] == ["image", "save"]:
             sys.exit(1)
         refs = [a for a in argv[1:] if not a.startswith("-") and a not in out
                 and a not in opt_values("--platform") and a != "save"]
-        with open(target, "wb") as fh:
-            fh.write(("fake image tar for %s\n" % " ".join(refs)).encode("utf-8"))
+        # platform-sbom U4: as the real daemon, `save` of an image it does not
+        # hold fails (it never pulls), when FAKE_DOCKER_IMAGES models the store.
+        _stable = _image_table()
+        for _sref in refs if _stable is not None else []:
+            if _known_image(_sref, _stable) is None:
+                sys.stderr.write("Error response from daemon: reference does not exist: %s\n" % _sref)
+                sys.exit(1)
+        if os.environ.get("FAKE_DOCKER_SAVE_TAR"):
+            _write_image_tar(target, refs, os.environ["FAKE_DOCKER_SAVE_TAR"])
+        else:
+            with open(target, "wb") as fh:
+                fh.write(("fake image tar for %s\n" % " ".join(refs)).encode("utf-8"))
         if os.environ.get("FAKE_DOCKER_SAVE_MODE"):
             os.chmod(target, int(os.environ["FAKE_DOCKER_SAVE_MODE"], 8))
     sys.exit(0)
@@ -984,6 +1615,311 @@ def interpolation_env():
             merged[k] = v
     return merged
 
+# platform-sbom U3 (PSC-13, N1): a file of its own (FAKE_COMPOSE_FILE_IMAGES)
+# is loaded by every command, so its ${VAR:?} check applies to run and down
+# too; `run ... sbom docker-archive:/in/<name>.tar ...` models syft.
+_u3_images = json.loads(os.environ.get("FAKE_COMPOSE_FILE_IMAGES") or "{}")
+_u3_files = opt_values("-f") + opt_values("--file")
+if not _u3_files and os.environ.get("COMPOSE_FILE"):
+    _u3_files = os.environ["COMPOSE_FILE"].split(os.environ.get("COMPOSE_PATH_SEPARATOR") or os.pathsep)
+_u3_own = [os.path.basename(f) for f in _u3_files if os.path.basename(f) in _u3_images]
+if _u3_own and "config" not in argv and "--no-interpolate" not in argv:
+    _u3_env = interpolation_env()
+    for _var in json.loads(os.environ.get("FAKE_COMPOSE_FILE_REQUIRED") or "{}").get(_u3_own[0], []):
+        if not _u3_env.get(_var):
+            sys.stderr.write("error while interpolating %s: required variable %s is missing a value\n"
+                             % (_u3_own[0], _var))
+            sys.exit(1)
+
+def _pep503(n):
+    import re as _re
+    return _re.sub(r"[-_.]+", "-", n).lower()
+
+def _syft_doc(name, ver):
+    import hashlib as _h, re as _re, time as _time, uuid as _uuid
+    from urllib.parse import quote as _quote
+    def _id(prefix, *parts):
+        stem = _re.sub(r"[^A-Za-z0-9.-]", "-", parts[0])
+        return "SPDXRef-%s-%s-%s" % (prefix, stem, _h.sha256("|".join(parts).encode()).hexdigest()[:16])
+    root = {"name": "/in/%s.tar" % name, "SPDXID": "SPDXRef-DocumentRoot-Image-" + _re.sub(r"[^A-Za-z0-9.-]", "-", name),
+            "versionInfo": "sha256:" + _h.sha256(name.encode()).hexdigest(), "supplier": "NOASSERTION",
+            "downloadLocation": "NOASSERTION", "filesAnalyzed": False, "licenseConcluded": "NOASSERTION",
+            "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION", "primaryPackagePurpose": "CONTAINER"}
+    status = {"fileName": "/var/lib/dpkg/status", "SPDXID": _id("File", "var-lib-dpkg-status", name),
+              "checksums": [{"algorithm": "SHA1", "checksumValue": "0" * 40}],
+              "licenseConcluded": "NOASSERTION", "copyrightText": ""}
+    pkgs, rels = [], [{"spdxElementId": "SPDXRef-DOCUMENT", "relatedSpdxElement": root["SPDXID"],
+                       "relationshipType": "DESCRIBES"}]
+    debs = [("base-files", "12.4+deb12u13", "GPL-2.0-or-later"),
+            ("libc6", "2.36-9+deb12u13", "GPL-2.0-only AND LGPL-2.1-only")]
+    if name == "ke-app":
+        debs.append(("libpq5", LIBPQ_PIN, "PostgreSQL"))
+    for n, v, lic in debs:
+        p = {"name": n, "SPDXID": _id("Package-deb", n, v), "versionInfo": v, "supplier": "Person: Debian",
+             "downloadLocation": "NOASSERTION", "filesAnalyzed": False,
+             "sourceInfo": "acquired package info from DPKG DB: /var/lib/dpkg/status",
+             "licenseConcluded": "NOASSERTION", "licenseDeclared": lic, "copyrightText": "NOASSERTION",
+             "externalRefs": [{"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl",
+                               "referenceLocator": "pkg:deb/debian/%s@%s?arch=amd64&distro=debian-12"
+                               % (n, _quote(v, safe=""))}]}
+        pkgs.append(p)
+        rels.append({"spdxElementId": p["SPDXID"], "relatedSpdxElement": status["SPDXID"],
+                     "relationshipType": "OTHER",
+                     "comment": "evident-by: indicates the package's existence is evident by the given file"})
+    if name == "ke-app":
+        venv = json.loads(os.environ.get("FAKE_IMAGE_PATHS") or "{}").get("/opt/venv")
+        site = os.path.join(venv, "lib", "python3.12", "site-packages") if venv else ""
+        drop = {_pep503(d) for d in os.environ.get("FAKE_SYFT_DROP", "").split(",") if d}
+        versions = {_pep503(k): v for k, v in json.loads(os.environ.get("FAKE_SYFT_PYPI_VERSIONS") or "{}").items()}
+        for dist in sorted(os.listdir(site)) if site and os.path.isdir(site) else []:
+            if not dist.endswith(".dist-info"):
+                continue
+            meta = {}
+            with open(os.path.join(site, dist, "METADATA"), encoding="utf-8") as fh:
+                for line in fh.read().split("\n\n", 1)[0].splitlines():
+                    k, _, v = line.partition(": ")
+                    meta.setdefault(k, v)
+            n, v = meta.get("Name", ""), meta.get("Version", "")
+            if not n or _pep503(n) in drop:
+                continue
+            v = versions.get(_pep503(n), v)
+            pkgs.append({"name": n, "SPDXID": _id("Package-python", n, v), "versionInfo": v,
+                         "supplier": "NOASSERTION", "downloadLocation": "NOASSERTION", "filesAnalyzed": False,
+                         "sourceInfo": "acquired package info from installed python package manifest file: "
+                                       "/opt/venv/lib/python3.12/site-packages/%s/METADATA" % dist,
+                         "licenseConcluded": "NOASSERTION",
+                         "licenseDeclared": meta.get("License-Expression", "NOASSERTION"),
+                         "copyrightText": "NOASSERTION",
+                         "externalRefs": [{"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl",
+                                           "referenceLocator": "pkg:pypi/%s@%s" % (n, _quote(v, safe=""))}]})
+    for p in pkgs:
+        rels.append({"spdxElementId": root["SPDXID"], "relatedSpdxElement": p["SPDXID"],
+                     "relationshipType": "CONTAINS"})
+    return {"spdxVersion": "SPDX-2.3", "dataLicense": "CC0-1.0", "SPDXID": "SPDXRef-DOCUMENT",
+            "name": "/in/%s.tar" % name,
+            "documentNamespace": "https://anchore.com/syft/file/in/%s.tar-%s" % (name, _uuid.uuid4()),
+            "creationInfo": {"licenseListVersion": "3.27",
+                             "creators": ["Organization: Anchore, Inc", "Tool: syft-" + ver],
+                             "created": _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime())},
+            "packages": [root] + pkgs, "files": [status], "relationships": rels}
+
+def _syft_cache_warning(files, own, env):
+    """platform-sbom U4 rework 1 (review B1, security L-2; u4/windows-run.txt
+    3c, u4/security-probes.txt 5): syft's filesystem cache, modelled from the
+    compose file's `sbom` service. The cache is $XDG_CACHE_HOME/syft (else
+    $HOME/.cache/syft, HOME "/" in the syft image). The syft image's own
+    directories are 0755 root and a tmpfs over one takes that mode unless its
+    entry sets mode=; the root is read-only. A non-root user that cannot
+    create the cache gets syft's warning line, returned here ("" if none)."""
+    import posixpath as _pp, re as _re
+    path = next(f for f in files if os.path.basename(f) == own)
+    try:
+        import yaml as _yaml
+        with open(path, encoding="utf-8") as fh:
+            svc = (_yaml.safe_load(fh) or {})["services"]["sbom"]
+    except Exception as exc:  # the model must never pass silently
+        sys.stderr.write("fake syft: cannot model the cache from %s: %r\n" % (path, exc))
+        sys.exit(1)
+
+    def interp(value):
+        return _re.sub(r"\$\{([A-Za-z_][A-Za-z0-9_]*)[^}]*\}", lambda m: env.get(m.group(1), ""), str(value))
+    senv = svc.get("environment") or {}
+    if isinstance(senv, list):
+        senv = dict(str(e).split("=", 1) if "=" in str(e) else (str(e), "") for e in senv)
+    senv = {k: interp(v) for k, v in senv.items()}
+    cache = _pp.join(_pp.normpath(senv.get("XDG_CACHE_HOME") or _pp.join(senv.get("HOME") or "/", ".cache")),
+                     "syft")
+    user = interp(svc.get("user", "")).strip()
+    root_user = user in ("", "0", "root") or user.startswith(("0:", "root:"))
+    mounts = [("/", "root", None)]
+    raw = svc.get("tmpfs") or []
+    for entry in [raw] if isinstance(raw, str) else raw:
+        target, _, opts = str(entry).partition(":")
+        mode = 0o755
+        for opt in opts.split(","):
+            if opt.startswith("mode="):
+                mode = int(opt[len("mode="):], 8)
+        mounts.append((_pp.normpath(target), "tmpfs", mode))
+    for vol in svc.get("volumes") or []:
+        if isinstance(vol, dict):
+            target, ro = str(vol.get("target", "")), bool(vol.get("read_only"))
+        else:
+            parts = str(vol).split(":")
+            target, ro = parts[1] if len(parts) > 1 else parts[0], len(parts) > 2 and "ro" in parts[2].split(",")
+        mounts.append((_pp.normpath(target), "bind", ro))
+    target, kind, attr = max((m for m in mounts if m[0] == "/" or cache == m[0] or cache.startswith(m[0] + "/")),
+                             key=lambda m: len(m[0]))
+    if kind == "tmpfs":
+        reason = None if root_user or attr & 0o002 else "permission denied"
+    elif kind == "bind":
+        reason = "read-only file system" if attr else None
+    else:
+        reason = "read-only file system" if svc.get("read_only") else (None if root_user else "permission denied")
+    if reason is None:
+        return ""
+    first = _pp.join(target, cache[len(target):].lstrip("/").split("/")[0])
+    return ("[0000]  WARN unable to get filesystem cache at %s: unable to create directory at '%s': mkdir %s: %s"
+            % (cache, cache, first, reason))
+
+if _u3_own and "run" in argv:
+    _at3 = argv.index("run")
+    _takes3 = {"-e", "--env", "-u", "--user", "-v", "--volume", "--name", "--entrypoint", "-w",
+               "--workdir", "-l", "--label", "-p", "--publish", "--pull", "--cap-add", "--cap-drop"}
+    _i3, _svc3 = _at3 + 1, None
+    while _i3 < len(argv):
+        if argv[_i3] in _takes3:
+            _i3 += 2
+            continue
+        if argv[_i3].startswith("-"):
+            _i3 += 1
+            continue
+        _svc3 = argv[_i3]
+        break
+    if _svc3 == "sbom":
+        import re as _re3
+        _args3 = argv[_i3 + 1:]
+        _env3 = interpolation_env()
+        _src3 = _args3[0] if _args3 else ""
+        if not _src3.startswith("docker-archive:/in/"):
+            sys.stderr.write("fake syft: want docker-archive:/in/<name>.tar first, got %r\n" % _src3)
+            sys.exit(1)
+        _tar3 = os.path.join(_env3.get("KE_SBOM_IN", ""), _src3[len("docker-archive:/in/"):])
+        _outs3, _j3 = [], 0
+        while _j3 < len(_args3):
+            if _args3[_j3] in ("-o", "--output") and _j3 + 1 < len(_args3):
+                _outs3.append(_args3[_j3 + 1])
+                _j3 += 2
+                continue
+            if _args3[_j3].startswith(("-o=", "--output=")):
+                _outs3.append(_args3[_j3].split("=", 1)[1])
+            _j3 += 1
+        _spdx3 = [o.split("=", 1)[1] for o in _outs3 if o.startswith("spdx-json=")]
+        if not _spdx3 or not _spdx3[-1].startswith("/out/"):
+            sys.stderr.write("fake syft: want -o spdx-json=/out/<file>\n")
+            sys.exit(1)
+        _cache3 = _syft_cache_warning(_u3_files, _u3_own[0], _env3)
+        if _cache3:
+            sys.stderr.write(_cache3 + "\n")
+        _work3 = _env3.get("KE_SBOM_OUT", "")
+        _name3 = os.path.basename(_tar3)
+        _name3 = _name3[:-4] if _name3.endswith(".tar") else _name3
+        if os.environ.get("FAKE_SYFT_LOG"):
+            _tmp3 = os.path.join(_work3, "tmp")
+            with open(os.environ["FAKE_SYFT_LOG"], "a", encoding="utf-8") as fh:
+                fh.write(json.dumps({
+                    "name": _name3, "in": _env3.get("KE_SBOM_IN", ""), "out": _work3,
+                    "user": _env3.get("KE_SBOM_USER"),
+                    "out_entries": sorted(os.listdir(_work3)) if os.path.isdir(_work3) else None,
+                    "tmp_entries": sorted(os.listdir(_tmp3)) if os.path.isdir(_tmp3) else None,
+                    "out_mode": (os.stat(_work3).st_mode & 0o7777) if os.path.isdir(_work3) else None,
+                    "tmp_mode": (os.stat(_tmp3).st_mode & 0o7777) if os.path.isdir(_tmp3) else None}) + "\n")
+        if not os.path.isfile(_tar3):
+            sys.stderr.write("1 error occurred:\n\t* could not open docker-archive:/in/%s.tar\n" % _name3)
+            sys.exit(1)
+        if not os.path.isdir(os.path.join(_work3, "tmp")):
+            sys.stderr.write("mkdir /out/tmp/stereoscope-1: no such file or directory\n")
+            sys.exit(1)
+        os.makedirs(os.path.join(_work3, "tmp", "stereoscope-fake"), exist_ok=True)
+        with open(os.path.join(_work3, "tmp", "stereoscope-fake", "layer.tar"), "wb") as fh:
+            fh.write(b"unpacked layer (fake)\n")
+        _raw3 = json.loads(os.environ.get("FAKE_SYFT_RAW") or "{}").get(_name3)
+        if _raw3 is None:
+            _m3 = _re3.search(r":v(\d+\.\d+\.\d+)", str(_u3_images[_u3_own[0]].get("sbom", "")))
+            _raw3 = json.dumps(_syft_doc(_name3, _m3.group(1) if _m3 else "0.0.0"), indent=1)
+        with open(os.path.join(_work3, _spdx3[-1][len("/out/"):]), "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(_raw3)
+        sys.exit(0)
+    if _svc3 == "sources-resolve":
+        # platform-sbom U7b rework round 1 (design-notes, U7b rework round 1,
+        # item 12): the real scripts/sources_resolve.py, read from its bind in
+        # the compose file, under this interpreter; every bind of the service
+        # maps its target to its source; OPENER is FAKE_RESOLVE_NET.
+        import subprocess as _subprocess
+        _env4 = interpolation_env()
+        _path4 = next(f for f in _u3_files if os.path.basename(f) == _u3_own[0])
+        try:
+            import yaml as _yaml4
+            with open(_path4, encoding="utf-8") as fh:
+                _svc4 = (_yaml4.safe_load(fh) or {})["services"]["sources-resolve"]
+        except Exception as exc:  # the model must never pass silently
+            sys.stderr.write("fake sources-resolve: cannot read %s: %r" % (_path4, exc) + chr(10))
+            sys.exit(1)
+
+        def _interp4(value):
+            text, out = str(value), ""
+            while "${" in text:
+                head, _, rest = text.partition("${")
+                body, _, text = rest.partition("}")
+                name, op, word = body, "", ""
+                for sep in (":?", ":-"):
+                    if sep in body:
+                        name, _, word = body.partition(sep)
+                        op = sep
+                        break
+                val = _env4.get(name, "")
+                if op == ":?" and not val:
+                    sys.stderr.write("error while interpolating %s: required variable %s is missing a value: %s"
+                                     % (os.path.basename(_path4), name, word) + chr(10))
+                    sys.exit(1)
+                out += head + (word if op == ":-" and not val else val)
+            return out + text
+
+        _interp4(_svc4.get("user", ""))
+        _base4 = os.path.dirname(os.path.abspath(_path4))
+        _pairs4 = []
+        for _vol4 in _svc4.get("volumes") or []:
+            if not isinstance(_vol4, dict) or _vol4.get("type") != "bind":
+                sys.stderr.write("fake sources-resolve: only long-form binds are modelled" + chr(10))
+                sys.exit(1)
+            _s4 = _interp4(_vol4["source"])
+            if not os.path.isabs(_s4):
+                _s4 = os.path.normpath(os.path.join(_base4, _s4))
+            if not os.path.exists(_s4):
+                sys.stderr.write("Error response from daemon: invalid mount config: bind source path does not "
+                                 "exist: %s" % _s4 + chr(10))
+                sys.exit(1)
+            _pairs4.append((_vol4["target"], _s4))
+
+        def _remap4(t):
+            best = None
+            for c, h in _pairs4:
+                if t == c or t.startswith(c.rstrip("/") + "/"):
+                    if best is None or len(c) > len(best[0]):
+                        best = (c, h)
+            return t if best is None else best[1] + t[len(best[0]):]
+
+        _entry4 = [str(x) for x in _svc4.get("entrypoint") or []]
+        if _entry4[:2] != ["python3", "-I"] or len(_entry4) < 3:
+            sys.stderr.write("fake sources-resolve: want an entrypoint python3 -I <script> ..., got %r" % _entry4
+                             + chr(10))
+            sys.exit(1)
+        _script4 = _remap4(_entry4[2])
+        if not os.path.isfile(_script4):
+            sys.stderr.write("python3: can't open file %r: [Errno 2] No such file or directory" % _entry4[2] + chr(10))
+            sys.exit(2)
+        _boot4 = chr(10).join([
+            "import importlib.util, json, os, sys, types",
+            "spec = importlib.util.spec_from_file_location('sources_resolve', sys.argv[1])",
+            "mod = importlib.util.module_from_spec(spec)",
+            "sys.modules['sources_resolve'] = mod",
+            "spec.loader.exec_module(mod)",
+            "net = json.loads(os.environ.get('FAKE_RESOLVE_NET') or '{}')",
+            "log = os.environ.get('FAKE_RESOLVE_LOG')",
+            "def opener(url, timeout):",
+            "    if log:",
+            "        with open(log, 'a', encoding='utf-8') as fh:",
+            "            fh.write(url + chr(10))",
+            "    st, hd, body = net.get(url, [404, {}, 'not found'])",
+            "    return types.SimpleNamespace(status=st, headers={k.lower(): v for k, v in hd.items()},",
+            "                                 body=[body.encode('utf-8')])",
+            "mod.OPENER = opener",
+            "sys.exit(mod.main(sys.argv[2:]))",
+            ""])
+        sys.stdout.flush()
+        _done4 = _subprocess.run([sys.executable, "-I", "-S", "-B", "-c", _boot4, _script4,
+                                  *[_remap4(a) for a in _entry4[3:] + argv[_i3 + 1:]]])
+        sys.exit(_done4.returncode)
+
 if "config" in argv:
     env = interpolation_env()
     resolved = {
@@ -1001,9 +1937,29 @@ if "config" in argv:
     images = None
     depends = json.loads(os.environ.get("FAKE_COMPOSE_DEPENDS") or "null")
     wanted = []
+    # platform-sbom U2 (PSC-20): a compose file of its own, named by -f/--file
+    # (else COMPOSE_FILE) and listed in FAKE_COMPOSE_FILE_IMAGES, answers from
+    # that entry instead of the stack's, with no depends_on and no profile
+    # images; its FAKE_COMPOSE_FILE_REQUIRED variables must be set and
+    # non-empty unless --no-interpolate is given, as real compose requires.
+    _file_images = json.loads(os.environ.get("FAKE_COMPOSE_FILE_IMAGES") or "{}")
+    _cfiles = opt_values("-f") + opt_values("--file")
+    if not _cfiles and os.environ.get("COMPOSE_FILE"):
+        _cfiles = os.environ["COMPOSE_FILE"].split(os.environ.get("COMPOSE_PATH_SEPARATOR") or os.pathsep)
+    _own = [os.path.basename(f) for f in _cfiles if os.path.basename(f) in _file_images]
+    if _own:
+        if "--no-interpolate" not in argv:
+            _required = json.loads(os.environ.get("FAKE_COMPOSE_FILE_REQUIRED") or "{}").get(_own[0], [])
+            for _var in _required:
+                if not env.get(_var):
+                    sys.stderr.write("error while interpolating %s: required variable %s is missing a value\n"
+                                     % (_own[0], _var))
+                    sys.exit(1)
+        stack_images = json.dumps(_file_images[_own[0]])
+        depends = None
     if stack_images is not None:
         images = dict(json.loads(stack_images))
-        if opt_values("--profile"):
+        if opt_values("--profile") and not _own:
             images.update(json.loads(os.environ.get("FAKE_COMPOSE_PROFILE_IMAGES") or "{}"))
         at = argv.index("config")
         skip = (set(opt_values("--format")) | set(opt_values("-o")) | set(opt_values("--output"))
@@ -1173,11 +2129,22 @@ sys.exit(0)
 '''
 
 
+def _libpq_pin() -> str:
+    """The `ARG LIBPQ_VERSION=` pin of docker/app.Dockerfile (platform-sbom U0),
+    or a bookworm-shaped stand-in while the Dockerfile has none."""
+    import re
+
+    path = Path(__file__).resolve().parent.parent / "docker" / "app.Dockerfile"
+    text = path.read_text(encoding="utf-8") if path.is_file() else ""
+    m = re.search(r"(?m)^\s*ARG\s+LIBPQ_VERSION=(\S+)\s*$", text)
+    return m.group(1).strip("\"'") if m else "15.14-0+deb12u1"
+
+
 def install(bin_dir: Path) -> Path:
     """Write the fake `docker` into `bin_dir` and return its path."""
     bin_dir.mkdir(parents=True, exist_ok=True)
     fake = bin_dir / "docker"
-    fake.write_text(f"#!{sys.executable}\nVERSION = {VERSION!r}\n{_SCRIPT}",
+    fake.write_text(f"#!{sys.executable}\nVERSION = {VERSION!r}\nLIBPQ_PIN = {_libpq_pin()!r}\n{_SCRIPT}",
                     encoding="utf-8", newline="\n")
     fake.chmod(0o755)
     return fake

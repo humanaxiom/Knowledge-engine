@@ -4,6 +4,21 @@ Maintained by the `marketer` agent. Follows a Keep a Changelog style.
 
 ## [Unreleased]
 
+### 2026-10-23 (platform-sbom, in progress)
+
+In progress: not finished, and the bundle is not yet for operators.
+
+**Changed:**
+- ke-app builds psycopg against Debian's libpq instead of the psycopg-binary wheel, and no longer ships pip. Its image is flattened, so pip is also gone from the saved tar.
+- NOTICE.md gains a ke-app base section and licence files for CPython, HACL*, KaRaMeL and Apache-2.0.
+- `scripts/bundle.sh` needs the pinned SBOM generator image and refuses to build without it.
+- The stack runs its own neo4j image, built from the pinned official Neo4j Community image with the commercial fleet-management plugin and the unused GenAI plugin removed (the `products/` folder). Neo4j itself is unchanged. NOTICE.md describes it.
+
+**Added:**
+- Each bundle carries one SPDX 2.3 SBOM per image.
+- `scripts/bundle.sh` prints a per-image report of packages with no identifiable licence.
+- `scripts/verify.sh full` runs an image-side drift check on ke-app.
+
 ### 2026-10-21 (ci-triggers)
 
 **Changed:**

@@ -1793,6 +1793,204 @@ def _env_pairs(rest: str) -> list[tuple[str, str]]:
     return [tuple(w.split("=", 1)) for w in words if "=" in w]  # type: ignore[misc]
 
 
+def _copies(body: list[tuple[str, str]]) -> list[tuple[str, ...]]:
+    return sorted((keyword, *rest.split()) for keyword, rest in body if keyword in ("COPY", "ADD"))
+
+
+def _uv_in_stage(stage: dict[str, Any], label: str) -> list[str]:
+    """D10: no COPY/ADD --from the uv stage or the uv image, and no uv or uvx
+    path or command word in any instruction of a stage whose files ship."""
+    problems = []
+    for keyword, rest in stage["body"]:
+        if keyword in ("COPY", "ADD"):
+            for src in re.findall(r"--from=(\S+)", rest):
+                if src.lower() == "uv" or "astral-sh/uv" in src.lower():
+                    problems.append(f"{label}: `{keyword} {rest}` (D10: no uv)")
+        if any(UV_WORD.fullmatch(w) for w in _words(rest)):
+            problems.append(f"{label}: `{keyword} {rest}` names the uv binary (D10: the shipped stage has no uv)")
+    return problems
+
+
+def final_stage_problems(path: Path) -> list[str]:
+    """D10 test 1 on `path`. Two shapes ship the same files:
+    - ADR-KE-013 am. 1 D10: the last stage is FROM the builder's python base;
+    - ADR-KE-016 point 9 / design-notes N10a (U1 round 2, amends D10): the
+      last stage is `FROM scratch` whose first instruction is `COPY
+      --from=runtime / /` (once), and `runtime` is FROM the builder's base,
+      byte for byte, with no COPY/ADD (its whole `/` ships).
+    Either way: no uv in a stage whose files ship, the last stage's other
+    copies are exactly /opt/venv and /app from `builder`, PATH starts
+    /opt/venv/bin:, PYTHONUNBUFFERED=1, no UV_*, and the runtime contract."""
+    problems: list[str] = []
+    stages = _stages(path)
+    if not stages:
+        return ["docker/app.Dockerfile has no FROM"]
+    final = stages[-1]
+    body = final["body"]
+    builders = [s for s in stages if (s["name"] or "").lower() == "builder"]
+    if len(builders) != 1:
+        problems.append(f"app.Dockerfile has {len(builders)} stages `AS builder`, want 1 (D10)")
+    if (final["name"] or "").lower() == "builder":
+        problems.append("the last stage ships; it is not builder")
+    builder_ref = builders[0]["ref"] if len(builders) == 1 else None
+    shipped = [(final, "final stage")]
+    copies = _copies(body)
+    if final["ref"] == "scratch":
+        roots = [(n, keyword, rest) for n, (keyword, rest) in enumerate(body)
+                 if keyword in ("COPY", "ADD") and [w for w in rest.split() if not w.startswith("--")][:1] == ["/"]]
+        if [(n, keyword, rest.split()) for n, keyword, rest in roots] != [(0, "COPY", ["--from=runtime", "/", "/"])]:
+            problems.append(f"the last stage is FROM scratch: its first instruction, and its only copy of `/`, is "
+                            f"`COPY --from=runtime / /` (N10a); got {[f'{k} {r}' for _, k, r in roots]}")
+        runtimes = [s for s in stages[:-1] if (s["name"] or "").lower() == "runtime"]
+        if len(runtimes) != 1:
+            problems.append(f"app.Dockerfile has {len(runtimes)} stages `AS runtime`, want 1 (N10a)")
+        else:
+            runtime = runtimes[0]
+            shipped.append((runtime, "runtime stage"))
+            if not PYTHON_BASE_RE.match(runtime["ref"]):
+                problems.append(f"the runtime FROM {runtime['ref']!r} is not the pinned "
+                                f"python:3.12-slim-bookworm@sha256 image (N10a)")
+            if builder_ref is not None and runtime["ref"] != builder_ref:
+                problems.append("the runtime FROM is not byte for byte the builder's (venv interpreter paths, D10)")
+            if _copies(runtime["body"]):
+                problems.append(f"the runtime stage copies files in {_copies(runtime['body'])}; its whole `/` ships, "
+                                f"so it copies nothing (N10a, D10)")
+        copies = [c for c in copies if list(c) != ["COPY", "--from=runtime", "/", "/"]]
+    else:
+        if not PYTHON_BASE_RE.match(final["ref"]):
+            problems.append(f"the final FROM {final['ref']!r} is neither the pinned "
+                            f"python:3.12-slim-bookworm@sha256 image nor scratch (D10, N10a)")
+        if builder_ref is not None and final["ref"] != builder_ref:
+            problems.append("the final FROM is not byte for byte the builder's (venv interpreter paths, D10)")
+    for stage, label in shipped:
+        problems += _uv_in_stage(stage, label)
+    if copies != [("COPY", "--from=builder", "/app", "/app"), ("COPY", "--from=builder", "/opt/venv", "/opt/venv")]:
+        problems.append(f"the final stage's only other COPYs are `COPY --from=builder /opt/venv /opt/venv` and "
+                        f"`COPY --from=builder /app /app` (D10; root-owned, read-only to ke): {copies}")
+    env = dict(pair for keyword, rest in body if keyword == "ENV" for pair in _env_pairs(rest))
+    if not env.get("PATH", "").startswith("/opt/venv/bin:"):
+        problems.append(f"the final stage's PATH starts with /opt/venv/bin: (got {env.get('PATH')!r})")
+    if env.get("PYTHONUNBUFFERED") != "1":
+        problems.append(f"the final stage sets PYTHONUNBUFFERED=1 (got {env.get('PYTHONUNBUFFERED')!r})")
+    if [k for k in env if k.upper().startswith("UV_")]:
+        problems.append("the final stage sets a UV_* variable (D10: nothing reads them)")
+    if ("WORKDIR", "/app") not in body:
+        problems.append("the final stage has no `WORKDIR /app` (PSC-17)")
+    runs = " && ".join(rest for keyword, rest in body if keyword == "RUN")
+    if not re.search(r"\buseradd\b[^;&|]*--uid[= ]10001\b[^;&|]*\bke\b", runs):
+        problems.append("the final stage does not create user ke with uid 10001")
+    if [rest for keyword, rest in body if keyword == "USER"][-1:] != ["ke"]:
+        problems.append("the final stage does not end as USER ke")
+    cmds = [rest for keyword, rest in body if keyword == "CMD"]
+    try:
+        cmd = json.loads(cmds[-1]) if cmds else None
+    except ValueError:
+        cmd = cmds[-1]
+    if cmd != ["python", "-m", "engine.api"]:
+        problems.append(f"the final stage's CMD is not [\"python\", \"-m\", \"engine.api\"] (got {cmd!r})")
+    if len(builders) == 1:
+        b = builders[0]["body"]
+        b_env = dict(pair for keyword, rest in b if keyword == "ENV" for pair in _env_pairs(rest))
+        if b_env.get("UV_PROJECT_ENVIRONMENT") != "/opt/venv":
+            problems.append("builder: UV_PROJECT_ENVIRONMENT is not /opt/venv")
+        syncs = [rest for keyword, rest in b if keyword == "RUN" and re.search(r"\buv\s+sync\b", rest)]
+        if not [s for s in syncs if "--locked" in s.split() and "--no-dev" in s.split()]:
+            problems.append("the builder runs no `uv sync --locked --no-dev` (D10)")
+    return problems
+
+
+_D10_BASE = "python:3.12-slim-bookworm@sha256:" + "5" * 64
+_D10_BUILDER = f"""FROM ghcr.io/astral-sh/uv:0.11.21@sha256:{"f" * 64} AS uv
+
+FROM {_D10_BASE} AS builder
+COPY --from=uv /uv /usr/local/bin/uv
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv
+WORKDIR /app
+COPY pyproject.toml uv.lock ./
+RUN uv sync --locked --no-dev --no-editable && rm -f /opt/venv/.lock
+
+"""
+_D10_CONTRACT = """COPY --from=builder /opt/venv /opt/venv
+COPY --from=builder /app /app
+WORKDIR /app
+RUN useradd --no-create-home --uid 10001 ke
+USER ke
+CMD ["python", "-m", "engine.api"]
+"""
+# D10's shape (ADR-KE-013 am. 1) and N10a's (ADR-KE-016 point 9).
+D10_LEGACY = (_D10_BUILDER + f"FROM {_D10_BASE}\nRUN apt-get update && apt-get install -y libpq5\n"
+              "ENV PATH=/opt/venv/bin:$PATH \\\n    PYTHONUNBUFFERED=1\n" + _D10_CONTRACT)
+D10_FLAT = (_D10_BUILDER + f"FROM {_D10_BASE} AS runtime\nRUN apt-get update && apt-get install -y libpq5\n"
+            "RUN python -m pip uninstall -y pip && rm /usr/local/lib/python3.12/ensurepip/_bundled/pip-*.whl\n\n"
+            "FROM scratch\nCOPY --from=runtime / /\n"
+            "ENV PATH=/opt/venv/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \\\n    LANG=C.UTF-8 \\\n"
+            "    PYTHONUNBUFFERED=1\n" + _D10_CONTRACT)
+
+
+def _d10_controls() -> tuple[dict[str, str], dict[str, str]]:
+    """(must pass, must fail) for D10 test 1. D10's controls run on both
+    shapes (`flat:` on N10a's), so the re-target still catches them."""
+    other = "python:3.12-slim-bookworm@sha256:" + "6" * 64
+    passing = {"D10 shape (last stage FROM the base)": D10_LEGACY,
+               "N10a shape (FROM scratch + COPY --from=runtime / /)": D10_FLAT}
+    d10 = {
+        "COPY --from=uv in the final stage": lambda t: t.replace(
+            "WORKDIR /app\nRUN useradd", "COPY --from=uv /uv /usr/local/bin/uv\nWORKDIR /app\nRUN useradd"),
+        "COPY from the uv image in the final stage": lambda t: t.replace(
+            "WORKDIR /app\nRUN useradd",
+            "COPY --from=ghcr.io/astral-sh/uv:0.11.21 /uv /bin/uv\nWORKDIR /app\nRUN useradd"),
+        "uv command in a final RUN": lambda t: t.replace("RUN useradd", "RUN uv --version && useradd"),
+        "an extra COPY in the final stage": lambda t: t.replace("COPY --from=builder /app /app\n",
+                                                                "COPY --from=builder /app /app\nCOPY config /config\n"),
+        "COPY --chown on the venv": lambda t: t.replace("COPY --from=builder /opt/venv /opt/venv",
+                                                        "COPY --chown=ke --from=builder /opt/venv /opt/venv"),
+        "PATH without /opt/venv/bin first": lambda t: t.replace("ENV PATH=/opt/venv/bin:", "ENV PATH=/usr/bin:"),
+        "UV_ variable in the final stage": lambda t: t.replace("    PYTHONUNBUFFERED=1\n",
+                                                               "    PYTHONUNBUFFERED=1 \\\n    UV_LINK_MODE=copy\n"),
+        "no PYTHONUNBUFFERED": lambda t: t.replace(" \\\n    PYTHONUNBUFFERED=1\n", "\n"),
+        "no WORKDIR /app": lambda t: t.replace("WORKDIR /app\nRUN useradd", "RUN useradd"),
+        "user ke with another uid": lambda t: t.replace("--uid 10001", "--uid 1000"),
+        "ends as root": lambda t: t.replace("USER ke\n", ""),
+        "CMD runs another module": lambda t: t.replace('"engine.api"', '"engine.worker"'),
+        "builder without --locked": lambda t: t.replace("uv sync --locked --no-dev", "uv sync --no-dev"),
+        "two builder stages": lambda t: t.replace("FROM ghcr.io", f"FROM {_D10_BASE} AS builder\nFROM ghcr.io"),
+    }
+    failing: dict[str, str] = {}
+    for name, mutate in d10.items():
+        for shape, base in (("", D10_LEGACY), ("flat: ", D10_FLAT)):
+            text = mutate(base)
+            assert text != base, shape + name
+            failing[shape + name] = text
+    failing.update({
+        "the final FROM is another digest": D10_LEGACY.replace(f"FROM {_D10_BASE}\nRUN", f"FROM {other}\nRUN"),
+        "the final FROM is builder": D10_LEGACY.replace(f"FROM {_D10_BASE}\nRUN", "FROM builder\nRUN"),
+        "flat: the final FROM is runtime (its layers would ship)": D10_FLAT.replace(
+            "FROM scratch\nCOPY --from=runtime / /\n", "FROM runtime\n"),
+        "flat: runtime FROM another digest": D10_FLAT.replace(f"FROM {_D10_BASE} AS runtime",
+                                                              f"FROM {other} AS runtime"),
+        "flat: runtime FROM an unpinned base": D10_FLAT.replace(f"FROM {_D10_BASE} AS runtime",
+                                                                "FROM python:3.12-slim-bookworm AS runtime"),
+        "flat: COPY --from=builder / / (uv and the compiler ship)": D10_FLAT.replace(
+            "COPY --from=runtime / /", "COPY --from=builder / /"),
+        "flat: COPY --from=runtime / / not first": D10_FLAT.replace(
+            "COPY --from=runtime / /\nENV PATH", "ENV PATH").replace(
+            "COPY --from=builder /opt/venv", "COPY --from=runtime / /\nCOPY --from=builder /opt/venv"),
+        "flat: COPY --from=runtime / / twice": D10_FLAT.replace(
+            "COPY --from=builder /opt/venv", "COPY --from=runtime / /\nCOPY --from=builder /opt/venv"),
+        "flat: FROM scratch with no copy of /": D10_FLAT.replace("COPY --from=runtime / /\n", ""),
+        "flat: only part of runtime copied": D10_FLAT.replace("COPY --from=runtime / /", "COPY --from=runtime /usr /usr"),
+        "flat: two runtime stages": D10_FLAT.replace(f"FROM {_D10_BASE} AS runtime",
+                                                     f"FROM {_D10_BASE} AS runtime\nFROM {_D10_BASE} AS runtime"),
+        "flat: runtime copies uv in": D10_FLAT.replace("AS runtime\n", "AS runtime\nCOPY --from=uv /uv /usr/local/bin/uv\n"),
+        "flat: runtime RUN uses uv": D10_FLAT.replace("RUN python -m pip", "RUN uv --version && python -m pip"),
+        "flat: runtime copies a file in": D10_FLAT.replace("AS runtime\n", "AS runtime\nCOPY config /config\n"),
+    })
+    return passing, failing
+
+
+D10_PASSING, D10_CONTROLS = _d10_controls()
+
+
 class AppImageTest(unittest.TestCase):
     """PSC-17, ADR-KE-013 amendment 1 D10 first tests 1 and 1b (static)."""
 
@@ -1800,64 +1998,24 @@ class AppImageTest(unittest.TestCase):
         """D10 test 1: the shipped (last) stage of docker/app.Dockerfile has no
         uv: it copies only /opt/venv and /app from a `builder` stage on the
         same pinned python base, and keeps the runtime contract. RED until
-        D10: today the final stage holds `COPY --from=uv /uv /usr/local/bin/uv`."""
-        stages = _stages(APP_DOCKERFILE)
-        self.assertTrue(stages, "docker/app.Dockerfile has no FROM")
-        final = stages[-1]
-        body = final["body"]
-        builders = [s for s in stages if (s["name"] or "").lower() == "builder"]
-        with self.subTest(part="final stage: no COPY/ADD --from the uv stage or the uv image"):
-            for keyword, rest in body:
-                if keyword not in ("COPY", "ADD"):
-                    continue
-                for src in re.findall(r"--from=(\S+)", rest):
-                    self.assertNotEqual(src.lower(), "uv", f"final stage: `{keyword} {rest}` (D10: no uv)")
-                    self.assertNotIn("astral-sh/uv", src.lower(), f"final stage: `{keyword} {rest}`")
-        with self.subTest(part="final stage: no uv or uvx path, and no uv command word in any RUN"):
-            hits = [f"{keyword} {rest}" for keyword, rest in body
-                    if any(UV_WORD.fullmatch(w) for w in _words(rest))]
-            self.assertEqual(hits, [], "the final stage names the uv binary (D10: the shipped stage has no uv)")
-        with self.subTest(part="one `builder` stage; the final stage is not it, and uses its python base"):
-            self.assertEqual(len(builders), 1, "app.Dockerfile has one stage `AS builder` (D10)")
-            self.assertNotEqual((final["name"] or "").lower(), "builder", "the last stage ships; it is not builder")
-            self.assertRegex(final["ref"], PYTHON_BASE_RE,
-                             "the final FROM is the pinned python:3.12-slim-bookworm@sha256 image (not `builder`)")
-            if builders:
-                self.assertEqual(final["ref"], builders[0]["ref"],
-                                 "the final FROM is byte for byte the builder's (venv interpreter paths, D10)")
-        with self.subTest(part="final stage copies only /opt/venv and /app from builder, no --chown/--chmod"):
-            copies = [(keyword, rest.split()) for keyword, rest in body if keyword in ("COPY", "ADD")]
-            got = sorted((keyword, *words) for keyword, words in copies)
-            self.assertEqual(got, [("COPY", "--from=builder", "/app", "/app"),
-                                   ("COPY", "--from=builder", "/opt/venv", "/opt/venv")],
-                             "the final stage's only COPYs are `COPY --from=builder /opt/venv /opt/venv` and "
-                             "`COPY --from=builder /app /app` (D10; root-owned, read-only to ke)")
-        env = dict(pair for keyword, rest in body if keyword == "ENV" for pair in _env_pairs(rest))
-        with self.subTest(part="final stage ENV: PATH starts /opt/venv/bin:, PYTHONUNBUFFERED=1, no UV_*"):
-            self.assertTrue(env.get("PATH", "").startswith("/opt/venv/bin:"),
-                            f"the final stage's PATH starts with /opt/venv/bin: (got {env.get('PATH')!r})")
-            self.assertEqual(env.get("PYTHONUNBUFFERED"), "1")
-            self.assertEqual(sorted(k for k in env if k.upper().startswith("UV_")), [],
-                             "the final stage sets a UV_* variable (D10: nothing reads them)")
-        with self.subTest(part="runtime contract: WORKDIR /app, user ke uid 10001, USER ke, CMD (PSC-17)"):
-            self.assertIn(("WORKDIR", "/app"), body)
-            runs = " && ".join(rest for keyword, rest in body if keyword == "RUN")
-            self.assertRegex(runs, r"\buseradd\b[^;&|]*--uid[= ]10001\b[^;&|]*\bke\b",
-                             "the final stage creates user ke with uid 10001")
-            users = [rest for keyword, rest in body if keyword == "USER"]
-            self.assertEqual(users[-1:], ["ke"], "the final stage ends as USER ke")
-            cmds = [rest for keyword, rest in body if keyword == "CMD"]
-            self.assertTrue(cmds, "the final stage has a CMD")
-            if cmds:
-                self.assertEqual(json.loads(cmds[-1]), ["python", "-m", "engine.api"])
-        with self.subTest(part="builder: uv sync --locked --no-dev into /opt/venv"):
-            if builders:
-                b = builders[0]["body"]
-                b_env = dict(pair for keyword, rest in b if keyword == "ENV" for pair in _env_pairs(rest))
-                self.assertEqual(b_env.get("UV_PROJECT_ENVIRONMENT"), "/opt/venv")
-                syncs = [rest for keyword, rest in b if keyword == "RUN" and re.search(r"\buv\s+sync\b", rest)]
-                self.assertTrue([s for s in syncs if "--locked" in s.split() and "--no-dev" in s.split()],
-                                "the builder runs `uv sync --locked --no-dev` (D10)")
+        D10: today the final stage holds `COPY --from=uv /uv /usr/local/bin/uv`.
+
+        Re-targeted in U1 round 2 (ADR-KE-016 point 9, N10a; it amends D10):
+        the last stage may instead be `FROM scratch` starting with `COPY
+        --from=runtime / /` (once), where `runtime` is FROM the builder's base
+        byte for byte and holds no uv and no COPY; both shapes pass, and D10's
+        controls run on both (D10_CONTROLS)."""
+        with tempfile.TemporaryDirectory() as d:
+            for n, (name, text) in enumerate([*D10_PASSING.items(), *D10_CONTROLS.items()]):
+                path = Path(d) / f"{n:03d}.Dockerfile"
+                path.write_text(text, encoding="utf-8", newline="\n")
+                with self.subTest(control=name):
+                    if name in D10_PASSING:
+                        self.assertEqual(final_stage_problems(path), [], f"a control that must pass failed: {name}")
+                    else:
+                        self.assertNotEqual(final_stage_problems(path), [],
+                                            f"the check passed a control that must fail: {name}")
+        self.assertEqual(final_stage_problems(APP_DOCKERFILE), [])
         with self.subTest(part="the venv copied from builder cannot carry uv: uv.lock has no uv package"):
             self.assertIsNone(re.search(r'(?m)^name = "uvx?"$', UV_LOCK.read_text(encoding="utf-8")),
                               "uv.lock installs a uv package into /opt/venv")

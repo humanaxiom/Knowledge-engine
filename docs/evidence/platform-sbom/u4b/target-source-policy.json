@@ -1,0 +1,29 @@
+{
+  "always": [
+    {"image": "valkey", "match": "pkg:apk/alpine/busybox", "why": "PSC-22: busybox (GPL-2.0-only) whatever the generator reports"},
+    {"image": "valkey", "match": "pkg:apk/alpine/apk-tools", "why": "PSC-22: apk-tools (GPL-2.0-only)"},
+    {"image": "valkey", "match": "pkg:apk/alpine/ssl_client", "why": "PSC-22: ssl_client, built from busybox"},
+    {"image": "ke-gateway", "match": "pkg:apk/alpine/busybox", "why": "PSC-22: busybox (GPL-2.0-only) whatever the generator reports"},
+    {"image": "ke-gateway", "match": "pkg:apk/alpine/apk-tools", "why": "PSC-22: apk-tools (GPL-2.0-only)"},
+    {"image": "ke-gateway", "match": "pkg:apk/alpine/ssl_client", "why": "PSC-22: ssl_client, built from busybox"},
+    {"image": "ke-neo4j", "match": "pkg:generic/oracle/openjdk", "why": "PSC-22: the Temurin OpenJDK (GPL-2.0 with Classpath exception)"},
+    {"image": "ke-neo4j", "match": "pkg:maven/org.neo4j/neo4j", "why": "PSC-22: Neo4j Community (GPL-3.0)"},
+    {"image": "ke-neo4j", "match": "upstream=glibc", "why": "PSC-22: glibc (LGPL-2.1)"},
+    {"image": "ke-app", "match": "pkg:pypi/psycopg", "why": "PSC-22: psycopg (LGPL-3.0-only)"},
+    {"image": "ke-app", "match": "pkg:pypi/psycopg-c", "why": "PSC-22, PSC-25: psycopg-c, the compiled extension (LGPL-3.0-only)"},
+    {"image": "ke-app", "match": "upstream=glibc", "why": "PSC-22: glibc (LGPL-2.1)"},
+    {"image": "ke-app", "match": "upstream=openldap", "why": "PSC-22 last bullet, security u1 I-1: libldap-2.5-0 copyright has GPL-2+ and GPL-3+ lines"},
+    {"image": "ke-app", "match": "upstream=cyrus-sasl2", "why": "PSC-22 last bullet, security u1 I-1: libsasl2-2 and libsasl2-modules-db copyright has GPL-3 and GPL-3+ lines"},
+    {"image": "postgres", "match": "upstream=glibc", "why": "PSC-22: glibc (LGPL-2.1)"},
+    {"image": "phoenix", "match": "upstream=glibc", "why": "PSC-22: glibc (LGPL-2.1)"},
+    {"image": "valkey", "match": "upstream=busybox", "why": "PSC-22, security U4 L-1: busybox-binsh and other busybox subpackages"},
+    {"image": "valkey", "match": "upstream=apk-tools", "why": "PSC-22, security U4 L-1: libapk, apk-tools' library (GPL-2.0-only)"},
+    {"image": "ke-gateway", "match": "upstream=busybox", "why": "PSC-22, security U4 L-1: busybox-binsh and other busybox subpackages"},
+    {"image": "ke-gateway", "match": "upstream=apk-tools", "why": "PSC-22, security U4 L-1: libapk, apk-tools' library (GPL-2.0-only)"},
+    {"image": "ke-neo4j", "match": "pkg:maven/jrt-fs/jrt-fs", "why": "PSC-22, security U4 M-2: the Temurin JDK's jrt-fs.jar (GPL-2.0 with Classpath exception)"},
+    {"image": "ke-neo4j", "match": "upstream=gcc-14", "why": "PSC-22, security U4 M-1: GCC runtime (GPL-3.0-or-later with the GCC runtime exception)"},
+    {"image": "ke-app", "match": "upstream=gcc-12", "why": "PSC-22, security U4 M-1: GCC runtime (GPL-3.0-or-later with the GCC runtime exception)"},
+    {"image": "postgres", "match": "upstream=gcc-12", "why": "PSC-22, security U4 M-1: GCC runtime (GPL-3.0-or-later with the GCC runtime exception)"},
+    {"image": "phoenix", "match": "upstream=gcc-14", "why": "PSC-22, security U4 M-1: GCC runtime (GPL-3.0-or-later with the GCC runtime exception)"}
+  ]
+}

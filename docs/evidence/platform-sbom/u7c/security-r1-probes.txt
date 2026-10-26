@@ -1,0 +1,94 @@
+platform-sbom U7c rework r1: security probes (security, 2026-10-25)
+Tree: HEAD 6d8fa4d (U7b) + working tree; scripts/sources_resolve.py, sources_lock.sh, sbom_check.py == u7c/r1-target-* (sources_lock.sh unchanged).
+Script: u7c/security_r1_probes.py; lock rules on the test good lock, fake network, pure parsers; no external request.
+Gates image, python -I, COMPOSE_PROJECT_NAME=ke-security-u5, scratch dir read-only at /scratch. Output unedited except
+compose/uv preamble lines dropped and raw control bytes in output shown as <xNN>.
+
+== U7c-r1-1. Item 9: the GitLab API raw form in lock-check ==
+  baseline problems: []
+  baseline APKBUILD url: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=164709483a69ff847763c0d3c9ffca929d1a7169
+  baseline equals the canonical form: True
+  project alpine%2Faports%2F..                               accepted=False ['lock: apk:readline@8.2.13-r1: url carries a query']
+  project alpine%2faports (lower hex)                        accepted=False ['lock: apk:readline@8.2.13-r1: url carries a query']
+  project alpine%2FAports                                    accepted=False ['lock: apk:readline@8.2.13-r1: url carries a query']
+  project numeric id 3                                       accepted=False ['lock: apk:readline@8.2.13-r1: url carries a query']
+  project alpine/aports (unencoded)                          accepted=False ['lock: apk:readline@8.2.13-r1: url carries a query']
+  ref twice                                                  accepted=False ['lock: apk:readline@8.2.13-r1: url carries a query']
+  ref=HEAD                                                   accepted=False ["lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (the ref is not the entry's commit)"]
+  ref=<c>%00                                                 accepted=False ["lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (the ref is not the entry's commit)"]
+  ref upper-case commit                                      accepted=False ["lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (the ref is not the entry's commit)"]
+  ref another commit                                         accepted=False ["lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (the ref is not the entry's commit)"]
+  no query                                                   accepted=False ['lock: apk:readline@8.2.13-r1: url path is not a plain path']
+  query x=1&ref=<c>                                          accepted=False ['lock: apk:readline@8.2.13-r1: url carries a query']
+  query ref=<c>&x=1                                          accepted=False ['lock: apk:readline@8.2.13-r1: url carries a query']
+  fragment                                                   accepted=False ['lock: apk:readline@8.2.13-r1: url carries a query']
+  P %252F                                                    accepted=False ['lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (the decoded path holds %, a backslash or a non-printable cha']
+  P %2F..%2F                                                 accepted=False ['lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (the decoded path is not <repo>/<origin>(/<segment>)*/<name>)']
+  P .%2F                                                     accepted=False ['lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (the decoded path is not <repo>/<origin>(/<segment>)*/<name>)']
+  P %2e%2e segment                                           accepted=False ["lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (the path segment is not canonical (quote(unquote(P), safe=''"]
+  P lower-case %2f                                           accepted=False ["lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (the path segment is not canonical (quote(unquote(P), safe=''"]
+  P unicode %C3%A9                                           accepted=False ['lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (the decoded path holds %, a backslash or a non-printable cha']
+  P invalid UTF-8 %FF                                        accepted=False ["lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (the path segment is not canonical (quote(unquote(P), safe=''"]
+  P backslash %5C                                            accepted=False ['lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (the decoded path holds %, a backslash or a non-printable cha']
+  P subdirectory APKBUILD                                    accepted=False ['lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (the APKBUILD is not at <repo>/<origin>/APKBUILD)']
+  P other origin                                             accepted=False ['lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (the decoded path is not <repo>/<origin>(/<segment>)*/<name>)']
+  P other repo                                               accepted=False ['lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (the decoded path is not <repo>/<origin>(/<segment>)*/<name>)']
+  P empty segment %2F%2F                                     accepted=False ['lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (the decoded path is not <repo>/<origin>(/<segment>)*/<name>)']
+  P raw / inside (two path segments)                         accepted=False ['lock: apk:readline@8.2.13-r1: url carries a query']
+  metadata form (no /raw)                                    accepted=False ['lock: apk:readline@8.2.13-r1: url carries a query']
+  /raw/raw                                                   accepted=False ['lock: apk:readline@8.2.13-r1: url carries a query']
+  old /-/raw/ form                                           accepted=False ['lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (want .../repository/files/<repo>%2F<origin>%2F<name>/raw?ref']
+  userinfo                                                   accepted=False ['lock: apk:readline@8.2.13-r1: url carries userinfo']
+  port 443                                                   accepted=False ['lock: apk:readline@8.2.13-r1: url carries a port']
+  upper-case host                                            accepted=False ['lock: apk:readline@8.2.13-r1: url carries a query']
+  api/v3                                                     accepted=False ['lock: apk:readline@8.2.13-r1: url carries a query']
+  HTTPS upper scheme                                         accepted=False ['lock: apk:readline@8.2.13-r1: url does not round-trip (urlunsplit(urlsplit(url)) differs)']
+  second apk file url: https://distfiles.alpinelinux.org/distfiles/v3.23/readline-8.2.13.tar.gz
+  extra sha256 file in a subdirectory via the API form: accepted=True
+  the API form on a maven entry: problems=['lock: maven:javax.xml.bind:jaxb-api@2.2.12: url carries a query', 'lock: maven:javax.xml.bind:jaxb-api@2.2.12: url path is not a plain path']
+  a query on a pypi url: problems=['lock: pypi:psycopg@3.3.6: url carries a query']
+
+== U7c-r1-2. The 307 bot challenge and the hop rules (fake network) ==
+  307 relative ?challenge, then 418            requests=1 -> refused: redirect to https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/r
+  307 absolute plain path ?challenge, then 418 requests=2 -> refused: gitlab.alpinelinux.org: HTTP 418: https://gitlab.alpinelinux.org/alpine/aports/-/raw/x?__goaway_challenge=cookie
+  307 without Location                         requests=1 -> refused: gitlab.alpinelinux.org: HTTP 307: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2
+  307 to another project path (no %)           requests=2 -> OK 200
+  307 to another host                          requests=1 -> refused: redirect to evil.example refused: not in hosts
+  first request 200 (no hop)                   requests=1 -> OK 200
+
+== U7c-r1-3. parse_dsc separators, duplicates, size ==
+  baseline                                                   -> ['Files', 'Source', 'Version']
+  U+0085 in a value                                          -> ResolveError: .dsc: control character in field Homepage
+  U+2028 in a value                                          -> ResolveError: .dsc: control character in field Homepage
+  U+2029 in a value                                          -> ResolveError: .dsc: control character in field Homepage
+  VT in a value                                              -> ResolveError: .dsc: control character in field Homepage
+  FF in a value                                              -> ResolveError: .dsc: control character in field Homepage
+  0x1c in a value                                            -> ResolveError: .dsc: control character in field Homepage
+  DEL in a value                                             -> ResolveError: .dsc: control character in field Homepage
+  NUL in a value                                             -> ResolveError: .dsc: control character in field Homepage
+  ESC in a value                                             -> ResolveError: .dsc: control character in field Homepage
+  lone CR in a value                                         -> ResolveError: .dsc: control character in field Homepage
+  TAB in a value (allowed)                                   -> ['Files', 'Homepage', 'Source', 'Version']
+  U+2028 in a field name                                     -> ResolveError: .dsc: control character in field Sou
+rce
+  U+0085 in a field name                                     -> ResolveError: .dsc: control character in field Ho\x85me
+  U+2028 in a continuation line                              -> ResolveError: .dsc: control character in field Files
+  U+2028 in the armour (Hash header)                         -> ResolveError: .dsc: control character in field -
+  U+2028 in the signature block                              -> ResolveError: .dsc: control character in field -
+  U+2028 in an ignored non-field line                        -> ResolveError: .dsc: control character in field -
+  U+2028 after the END PGP SIGNATURE                         -> ResolveError: .dsc: control character in field -
+  duplicate Files                                            -> ResolveError: .dsc: duplicate field Files
+  duplicate case-blind (files)                               -> ResolveError: .dsc: duplicate field files
+  duplicate Source after a blank line (two paragraphs)       -> ResolveError: .dsc: duplicate field Source
+  CRLF file                                                  -> ['Files', 'Source', 'Version']
+  U+FEFF BOM first                                           -> ['Files', 'Version', '\ufeffSource']
+  U+200B zero-width space in a value                         -> x​
+  1 MB single field: 0.004s
+  400k continuation lines: 0.051s
+
+== U7c-r1-4. Listing truncation rule (resolve_apk with a crafted 100-entry listing) ==
+  100 entries, no x-next-page              -> ResolveError: readline: listing may be truncated at 164709483a69ff847763c0d3c9ffca929d1a7169 (requests 1)
+  100 entries, x-next-page empty           -> ResolveError: gitlab.alpinelinux.org: HTTP 404: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2F (requests 3)
+  100 entries, x-next-page 2               -> ResolveError: readline: listing may be truncated at 164709483a69ff847763c0d3c9ffca929d1a7169 (requests 1)
+  100 entries, x-next-page ' ' (space)     -> ResolveError: readline: listing may be truncated at 164709483a69ff847763c0d3c9ffca929d1a7169 (requests 1)
+  tree url path query encodes the repo/origin: path=main%2Freadline&ref=164709483a69ff8

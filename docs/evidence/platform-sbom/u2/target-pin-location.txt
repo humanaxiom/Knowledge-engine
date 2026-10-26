@@ -1,0 +1,17 @@
+Pin location (PSC-20, U2 target; re-targeted after the architect's U2 decisions)
+
+The one committed place: docker-compose.sbom.yml, service sbom, key image:
+    image: anchore/syft:v1.54.1@sha256:3eb5379ba7b409c3f4069b686110527af0c47df993fa5c10d13e7cf34f49b1aa
+(the multi-arch index digest; design-notes "N1 amendment, U2" *Pin (U2)*).
+Nowhere else outside docs/ and tests/ may an anchore/syft:<tag> or
+anchore/syft@sha256: reference, or the digest, be written
+(test_sbom_generator_is_pinned, pin_place_problems). bundle.sh reads it with
+  KE_SBOM_IN=/nonexistent KE_SBOM_OUT=/nonexistent \
+    docker compose --env-file .env.example -f docker-compose.sbom.yml config --images sbom
+and, from U2 until U8, scripts/offline_check.sh pulls it with
+  KE_SBOM_IN=/nonexistent KE_SBOM_OUT=/nonexistent \
+    docker compose --env-file .env.example -f docker-compose.sbom.yml pull sbom
+(target-offline_check-pull-snippet.sh, just before `bash scripts/bundle.sh`).
+U8's bundle_fetch.sh takes over that pull in the same form.
+The record that names the same tag and digest is
+docs/evidence/platform-sbom/generator-provenance.md (security, N2).

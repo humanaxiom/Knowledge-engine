@@ -1,0 +1,321 @@
+platform-sbom U5 security probes (security, 2026-10-24)
+Tree audited: agent/platform-sbom HEAD c300d88 + the uncommitted U5 working tree.
+
+Part 1. Pure-Python probes: docs/evidence/platform-sbom/u5/security_probes.py
+Command (repo root, Git Bash; the scratch dir holds that script and `git show HEAD:scripts/sbom_check.py`
+as head_sbom_check.py, mounted read-only at /scratch):
+  MSYS_NO_PATHCONV=1 COMPOSE_PROJECT_NAME=ke-security-u5 COMPOSE_FILE=docker-compose.yml \
+    docker compose --env-file .env.example --profile gates run --rm -v "<scratch>:/scratch:ro" \
+    gates uv run --locked python -I /scratch/probes.py
+Exit 0. Output follows, unedited (compose/uv preamble kept).
+------------------------------------------------------------------------------
+ Container ke-security-u5-gates-run-9465ac3a5d72 Creating 
+ Container ke-security-u5-gates-run-9465ac3a5d72 Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.81ms
+Installed 1 package in 2ms
+== A. L-4: classifier fail-open hunt (classify_package) ==
+  A1 declared <hash>, concluded MIT                          needs=True  unparsed=False unident=True  unlic=False expr='(LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef) AND (MIT)'
+  A2 declared MIT, concluded <hash>                          needs=True  unparsed=False unident=True  unlic=False expr='(MIT) AND (LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef)'
+  A3 declared NOASSERTION, concluded <hash>                  needs=True  unparsed=False unident=True  unlic=False expr='LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+  A4 <hash> OR NOASSERTION                                   needs=True  unparsed=False unident=True  unlic=False expr='LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef OR NOASSERTION'
+  A5 MIT AND NOASSERTION                                     needs=True  unparsed=False unident=True  unlic=False expr='MIT AND NOASSERTION'
+  A6 (NOASSERTION)                                           needs=True  unparsed=False unident=True  unlic=False expr='(NOASSERTION)'
+  A7 MIT OR NONE                                             needs=False unparsed=False unident=True  unlic=False expr='MIT OR NONE'
+  A8 <hash> WITH Classpath-exception-2.0                     needs=True  unparsed=False unident=True  unlic=False expr='LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef WITH Classpath-exception-2.0'
+  A9 MIT OR (<hash> WITH x)                                  needs=False unparsed=False unident=True  unlic=False expr='MIT OR (LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef WITH x)'
+  A10 MIT AND (<hash> WITH x)                                needs=True  unparsed=False unident=True  unlic=False expr='MIT AND (LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef WITH x)'
+  A11 URL-folded gnu lgpl                                    needs=True  unparsed=True  unident=False unlic=False expr='LicenseRef-https---www.gnu.org-licenses-lgpl-2.1.html'
+  A12 URL-folded gnu copyleft/lesser (no gpl token)          needs=False unparsed=True  unident=False unlic=False expr='LicenseRef-https---www.gnu.org-copyleft-lesser.html'
+  A13 spelled out GNU-General-Public-License-v2              needs=False unparsed=False unident=False unlic=False expr='LicenseRef-GNU-General-Public-License-v2'
+  A14 spelled out, junk text                                 needs=False unparsed=True  unident=False unlic=False expr='GNU General Public License v2'
+  A15 mixed case gPl-2.0-OnLy                                needs=True  unparsed=False unident=False unlic=False expr='gPl-2.0-OnLy'
+  A16 MIT oR GPL-2.0-only aNd Apache-2.0                     needs=False unparsed=False unident=False unlic=False expr='MIT oR GPL-2.0-only aNd Apache-2.0'
+  A17 lower-case noassertion leaf                            needs=False unparsed=False unident=False unlic=False expr='noassertion'
+  A18 NoAssertion AND MIT                                    needs=False unparsed=False unident=False unlic=False expr='NoAssertion AND MIT'
+  A19 upper-hex hash (I-4)                                   needs=False unparsed=False unident=False unlic=False expr='LicenseRef-0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF'
+  A20 63-hex hash                                            needs=False unparsed=False unident=False unlic=False expr='LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcde'
+  A21 Cyrillic ER in GPL                                     needs=False unparsed=False unident=False unlic=False expr='GРL-3.0-only'
+  A22 fullwidth GPL                                          needs=False unparsed=False unident=False unlic=False expr='ＧＰＬ-3.0'
+  A23 zero-width joiner in GPL                               needs=False unparsed=False unident=False unlic=False expr='G\u200dPL-2.0'
+  A24 dotless-i as WITH: MIT w-dotless-ith GPL-3.0           needs=False unparsed=False unident=False unlic=False expr='MIT wıth GPL-3.0-only'
+  A25 MIT WITH GPL-3.0-only (exception slot)                 needs=False unparsed=False unident=False unlic=False expr='MIT WITH GPL-3.0-only'
+  A26 GPL-2.0-only WITH x                                    needs=True  unparsed=False unident=False unlic=False expr='GPL-2.0-only WITH Classpath-exception-2.0'
+  A27 parentheses: ((MIT)) OR (GPL-2.0)                      needs=False unparsed=False unident=False unlic=False expr='((MIT)) OR (GPL-2.0)'
+  A28 parentheses: MIT) OR (GPL-2.0                          needs=True  unparsed=True  unident=False unlic=False expr='MIT) OR (GPL-2.0'
+  A29 parentheses: ()                                        needs=False unparsed=True  unident=False unlic=False expr='()'
+  A30 junk MIT AND AND NOASSERTION                           needs=False unparsed=True  unident=False unlic=False expr='MIT AND AND NOASSERTION'
+  A31 junk MIT AND AND <hash>                                needs=True  unparsed=True  unident=True  unlic=False expr='MIT AND AND LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+  A32 junk Public Domain OR <hash>                           needs=True  unparsed=True  unident=True  unlic=False expr='Public Domain OR LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+  A33 junk: the LGPL, version 2.1                            needs=True  unparsed=True  unident=False unlic=False expr='the LGPL, version 2.1'
+  A34 MIT,GPL-2.0 (comma leaf)                               needs=True  unparsed=True  unident=False unlic=False expr='MIT,GPL-2.0'
+  A35 MIT/LGPLv2.1+                                          needs=True  unparsed=True  unident=False unlic=False expr='MIT/LGPLv2.1+'
+  A36 declared list [GPL-2.0], concluded MIT                 needs=False unparsed=False unident=False unlic=False expr='MIT'
+  A37 declared dict, concluded MIT                           needs=False unparsed=False unident=False unlic=False expr='MIT'
+  A38 declared 123, concluded MIT                            needs=False unparsed=False unident=False unlic=False expr='MIT'
+  A39 declared padded NOASSERTION                            needs=True  unparsed=False unident=True  unlic=False expr=' NOASSERTION '
+  A40 declared blank spaces                                  needs=False unparsed=True  unident=False unlic=False expr='   '
+  A41 files [GPL-2.0-only] only                              needs=True  unparsed=False unident=False unlic=False expr='GPL-2.0-only'
+  A42 files [MIT, <hash>]                                    needs=True  unparsed=False unident=True  unlic=False expr='(MIT) AND (LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef)'
+  A43 files [MIT, NOASSERTION, 5, None]                      needs=False unparsed=False unident=False unlic=False expr='MIT'
+  A44 files str GPL-2.0 (not a list)                         needs=False unparsed=False unident=False unlic=True  expr=None
+  A45 declared MIT, files [GPL-2.0-only] (files ignored)     needs=False unparsed=False unident=False unlic=False expr='MIT'
+  A46 declared empty/concluded NONE/files []                 needs=False unparsed=False unident=False unlic=True  expr=None
+  A47 NEL-separated MIT NEL GPL-2.0                          needs=True  unparsed=True  unident=False unlic=False expr='MIT\x85GPL-2.0'
+  A48 NUL-separated MIT NUL OR NUL GPL                       needs=True  unparsed=True  unident=False unlic=False expr='MIT\x00OR\x00GPL-2.0'
+  A49 LicenseRef-GNU-Affero-General-Public-License           needs=False unparsed=False unident=False unlic=False expr='LicenseRef-GNU-Affero-General-Public-License'
+  A50 GPLv2orlater (no separator)                            needs=False unparsed=False unident=False unlic=False expr='GPLv2orlater'
+  A51 DocumentRef-x:LicenseRef-GPL-2.0                       needs=True  unparsed=True  unident=False unlic=False expr='DocumentRef-x:LicenseRef-GPL-2.0'
+  A52 declared GPL-2.0 OR MIT, concluded MIT                 needs=False unparsed=False unident=False unlic=False expr='(GPL-2.0 OR MIT) AND (MIT)'
+  A53 blank blank NOASSERTION tab                            needs=True  unparsed=False unident=True  unlic=False expr='NOASSERTION\t'
+
+== A-b. Non-ASCII characters whose upper() is ASCII letters (operator look-alikes) ==
+  chars: ['0xdf', '0x131', '0x17f', '0xfb00', '0xfb01', '0xfb02', '0xfb03', '0xfb04', '0xfb05', '0xfb06'] ['SS', 'I', 'S', 'FF', 'FI', 'FL', 'FFI', 'FFL', 'ST', 'ST']
+  'wıth'.upper() == 'WITH': True
+  non-ASCII whose lower() holds ASCII a-z0-9: ['0x130', '0x212a']
+
+== A-c. Robustness: nesting, width, length (never raises; timing) ==
+  depth 100 GPL-2.0                              0.000s needs=True {'unparsed': False, 'unidentified': False}
+  depth 100 MIT                                  0.000s needs=False {'unparsed': False, 'unidentified': False}
+  depth 199 GPL-2.0                              0.000s needs=True {'unparsed': True, 'unidentified': False}
+  depth 199 MIT                                  0.000s needs=False {'unparsed': True, 'unidentified': False}
+  depth 200 GPL-2.0                              0.000s needs=True {'unparsed': True, 'unidentified': False}
+  depth 200 MIT                                  0.000s needs=False {'unparsed': True, 'unidentified': False}
+  depth 1000 GPL-2.0                             0.000s needs=True {'unparsed': True, 'unidentified': False}
+  depth 1000 MIT                                 0.000s needs=False {'unparsed': True, 'unidentified': False}
+  depth 3000 GPL-2.0                             0.000s needs=True {'unparsed': True, 'unidentified': False}
+  depth 3000 MIT                                 0.000s needs=False {'unparsed': True, 'unidentified': False}
+  depth 100000 GPL-2.0                           0.007s needs=True {'unparsed': True, 'unidentified': False}
+  depth 100000 MIT                               0.008s needs=False {'unparsed': True, 'unidentified': False}
+  depth 3000 NOASSERTION                         0.000s needs=False {'unparsed': True, 'unidentified': False}
+  depth 3000 <hash>                              0.000s needs=True {'unparsed': True, 'unidentified': True}
+  depth 3000 MIT OR (... GPL)                    0.000s needs=True {'unparsed': True, 'unidentified': False}
+  depth 3000 unbalanced open                     0.000s needs=False {'unparsed': True, 'unidentified': False}
+  width 200k MIT AND                             0.311s needs=False {'unparsed': False, 'unidentified': False}
+  width 200k MIT OR + GPL                        0.321s needs=False {'unparsed': False, 'unidentified': False}
+  WITH chain 100k                                0.052s needs=False {'unparsed': True, 'unidentified': False}
+  1MB single leaf a-                             0.065s needs=False {'unparsed': False, 'unidentified': False}
+  1MB gpl-with-a-a-                              0.053s needs=True {'unparsed': True, 'unidentified': False}
+  1MB LicenseRef-aaaa (hash search)              0.008s needs=False {'unparsed': False, 'unidentified': False}
+  1MB repeated LicenseRef-                       0.024s needs=False {'unparsed': False, 'unidentified': False}
+  non-str None                                   0.000s needs=True {'unparsed': True, 'unidentified': False}
+  non-str list                                   0.000s needs=True {'unparsed': True, 'unidentified': False}
+  non-str bytes                                  0.000s needs=True {'unparsed': True, 'unidentified': False}
+  GPL_ID_RE    on  400005-char adversarial input: 0.059s
+  GPL_ID_RE    on  600017-char adversarial input: 0.004s
+  GPL_ID_RE    on  900001-char adversarial input: 0.000s
+  GPL_ID_RE    on 1100000-char adversarial input: 0.015s
+  GPL_ID_RE    on  600011-char adversarial input: 0.022s
+  GPL_TOKEN_RE on  400005-char adversarial input: 0.000s
+  GPL_TOKEN_RE on  600017-char adversarial input: 0.000s
+  GPL_TOKEN_RE on  900001-char adversarial input: 0.000s
+  GPL_TOKEN_RE on 1100000-char adversarial input: 0.015s
+  GPL_TOKEN_RE on  600011-char adversarial input: 0.000s
+  HASH_ID_RE   on  400005-char adversarial input: 0.000s
+  HASH_ID_RE   on  600017-char adversarial input: 0.000s
+  HASH_ID_RE   on  900001-char adversarial input: 0.000s
+  HASH_ID_RE   on 1100000-char adversarial input: 0.001s
+  HASH_ID_RE   on  600011-char adversarial input: 0.000s
+  CONTROL_RE   on  400005-char adversarial input: 0.001s
+  CONTROL_RE   on  600017-char adversarial input: 0.001s
+  CONTROL_RE   on  900001-char adversarial input: 0.002s
+  CONTROL_RE   on 1100000-char adversarial input: 0.002s
+  CONTROL_RE   on  600011-char adversarial input: 0.001s
+  SPDXID_RE    1MB: 0.003s
+  NAMESPACE_RE 1MB: 0.000s
+  RFC3339_UTC  1MB: 0.000s
+  NAME_RE      1MB: 0.000s
+  SHA_RE       1MB: 0.000s
+  is_gpl_id 1MB: 0.005s
+
+== A-d. Real U3 rows (all six images, real always): needs=False rows with GPL-ish words / odd keywords / non-ASCII ==
+  ke-gateway: needs=False unparsed=False purl=pkg:apk/alpine/freetype@2.14.1-r0?arch=x86_64&distro=alpine-3.23.3 expr='(FTL OR GPL-2.0-or-later)'
+  ke-gateway: needs=False unparsed=False purl=pkg:apk/alpine/zstd-libs@1.5.7-r2?arch=x86_64&distro=alpine-3.23.3&upstream=zstd expr='(BSD-3-Clause OR GPL-2.0-or-later)'
+  ke-neo4j: needs=False unparsed=True purl=pkg:maven/org.eclipse.collections/eclipse-collections@11.1.0 expr='LicenseRef--Eclipse-Public-License---v-1.0--link--https---www.eclipse.org-legal-epl-v10.html---Eclipse-Distribution-License---v-1.0--link--https---www.eclipse.org-licenses-edl-v10.html-'
+  ke-neo4j: needs=False unparsed=True purl=pkg:maven/org.eclipse.collections/eclipse-collections-api@11.1.0 expr='LicenseRef--Eclipse-Public-License---v-1.0--link--https---www.eclipse.org-legal-epl-v10.html---Eclipse-Distribution-License---v-1.0--link--https---www.eclipse.org-licenses-edl-v10.html-'
+  ke-neo4j: needs=False unparsed=True purl=pkg:maven/org.glassfish.hk2/hk2-api@2.6.1 expr='LicenseRef-http---www.eclipse.org-legal-epl-2.0--https---www.gnu.org-software-classpath-license.html'
+  ke-neo4j: needs=False unparsed=True purl=pkg:maven/org.glassfish.hk2/hk2-locator@2.6.1 expr='LicenseRef-http---www.eclipse.org-legal-epl-2.0--https---www.gnu.org-software-classpath-license.html'
+  ke-neo4j: needs=False unparsed=True purl=pkg:maven/org.glassfish.hk2/hk2-utils@2.6.1 expr='LicenseRef-http---www.eclipse.org-legal-epl-2.0--https---www.gnu.org-software-classpath-license.html'
+  ke-neo4j: needs=False unparsed=True purl=pkg:maven/jakarta.annotation/jakarta.annotation-api@1.3.5 expr='LicenseRef-http---www.eclipse.org-legal-epl-2.0--https---www.gnu.org-software-classpath-license.html'
+  ke-neo4j: needs=False unparsed=True purl=pkg:maven/org.glassfish.hk2.external/jakarta.inject@2.6.1 expr='LicenseRef-http---www.eclipse.org-legal-epl-2.0--https---www.gnu.org-software-classpath-license.html'
+  ke-neo4j: needs=False unparsed=True purl=pkg:maven/jakarta.ws.rs/jakarta.ws.rs-api@2.1.6 expr='LicenseRef-http---www.eclipse.org-legal-epl-2.0--https---www.gnu.org-software-classpath-license.html'
+  ke-neo4j: needs=False unparsed=True purl=pkg:maven/org.glassfish.jersey.core/jersey-client@2.46 expr='LicenseRef-http---www.eclipse.org-legal-epl-2.0--https---www.gnu.org-software-classpath-license.html--http---www.eclipse.org-org-documents-edl-v10.php--https---opensource.org-licenses-BSD-2-Clause
+  ke-neo4j: needs=False unparsed=True purl=pkg:maven/org.glassfish.jersey.core/jersey-common@2.46 expr='LicenseRef-http---www.eclipse.org-legal-epl-2.0--https---www.gnu.org-software-classpath-license.html--http---www.apache.org-licenses-LICENSE-2.0.html--https---creativecommons.org-publicdomain-zero
+  ke-neo4j: needs=False unparsed=True purl=pkg:maven/org.glassfish.jersey.containers/jersey-container-servlet@2.46 expr='LicenseRef-http---www.eclipse.org-legal-epl-2.0--https---www.gnu.org-software-classpath-license.html--http---www.eclipse.org-org-documents-edl-v10.php--https---opensource.org-lice
+  ke-neo4j: needs=False unparsed=True purl=pkg:maven/org.glassfish.jersey.containers/jersey-container-servlet-core@2.46 expr='LicenseRef-http---www.eclipse.org-legal-epl-2.0--https---www.gnu.org-software-classpath-license.html--http---www.eclipse.org-org-documents-edl-v10.php--https---opensource.org
+  ke-neo4j: needs=False unparsed=True purl=pkg:maven/org.glassfish.jersey.inject/jersey-hk2@2.46 expr='LicenseRef-http---www.eclipse.org-legal-epl-2.0--https---www.gnu.org-software-classpath-license.html--http---www.eclipse.org-org-documents-edl-v10.php--https---opensource.org-licenses-BSD-2-Clause-
+  ke-neo4j: needs=False unparsed=True purl=pkg:maven/org.glassfish.jersey.core/jersey-server@2.46 expr='LicenseRef-http---www.eclipse.org-legal-epl-2.0--https---www.gnu.org-software-classpath-license.html--http---www.apache.org-licenses-LICENSE-2.0.html--https---asm.ow2.io-license.html'
+  ke-neo4j: needs=False unparsed=False purl=pkg:deb/debian/libpsl5t64@0.21.2-1.1%2Bb1?arch=amd64&distro=debian-13.7&upstream=libpsl%400.21.2-1.1 expr='LicenseRef-Chromium AND MIT AND LicenseRef-gnulib'
+  rows classified: 1015; needs=False: 555; suspicious needs=False rows: 17
+  ke-app     rows= 153 needs= 102 unparsed=  3 unidentified= 18 unlicensed=  1 always= 10
+  ke-gateway rows=  71 needs=  17 unparsed=  0 unidentified=  0 unlicensed=  0 always=  5
+  ke-neo4j   rows= 341 needs= 166 unparsed= 52 unidentified=  9 unlicensed= 19 always= 10
+  phoenix    rows= 277 needs=  33 unparsed=  4 unidentified= 10 unlicensed= 25 always=  6
+  postgres   rows= 149 needs= 130 unparsed=  6 unidentified= 22 unlicensed=  3 always=  7
+  valkey     rows=  24 needs=  12 unparsed=  0 unidentified=  0 unlicensed=  1 always=  5
+
+== F. unlicensed_report unchanged (HEAD vs working tree) ==
+  function source identical: True | _missing: True | _hash_only: True | report_lines: True | _clean: True | MISSING/HASH/CONTROL: True
+  ke-app     count HEAD= 19 now= 19 equal=True lines-equal=True
+  ke-gateway count HEAD=  0 now=  0 equal=True lines-equal=True
+  neo4j      count HEAD= 28 now= 28 equal=True lines-equal=True
+  phoenix    count HEAD= 35 now= 35 equal=True lines-equal=True
+  postgres   count HEAD= 25 now= 25 equal=True lines-equal=True
+  valkey     count HEAD=  1 now=  1 equal=True lines-equal=True
+  crafted A-rows report equal: True count 4
+
+== B. L-5/R2: escaping (ESC, CSI, NEL, DEL, trailing newline) ==
+  control doc problems: []
+  validate spdxVersion       'SPDXRef-a\n'            problems=1 raw-control-lines=0
+  validate dataLicense       'SPDXRef-a\n'            problems=1 raw-control-lines=0
+  validate SPDXID            'SPDXRef-a\n'            problems=1 raw-control-lines=0
+  validate documentNamespace 'SPDXRef-a\n'            problems=1 raw-control-lines=0
+  validate created           'SPDXRef-a\n'            problems=1 raw-control-lines=0
+  validate pkg-SPDXID        'SPDXRef-a\n'            problems=2 raw-control-lines=0
+  validate rel-end           'SPDXRef-a\n'            problems=1 raw-control-lines=0
+  validate spdxVersion       'SPDXRef-a\x1b[31m'      problems=1 raw-control-lines=0
+  validate dataLicense       'SPDXRef-a\x1b[31m'      problems=1 raw-control-lines=0
+  validate SPDXID            'SPDXRef-a\x1b[31m'      problems=1 raw-control-lines=0
+  validate documentNamespace 'SPDXRef-a\x1b[31m'      problems=1 raw-control-lines=0
+  validate created           'SPDXRef-a\x1b[31m'      problems=1 raw-control-lines=0
+  validate pkg-SPDXID        'SPDXRef-a\x1b[31m'      problems=2 raw-control-lines=0
+  validate rel-end           'SPDXRef-a\x1b[31m'      problems=1 raw-control-lines=0
+  validate spdxVersion       'SPDXRef-a\x9b2J'        problems=1 raw-control-lines=0
+  validate dataLicense       'SPDXRef-a\x9b2J'        problems=1 raw-control-lines=0
+  validate SPDXID            'SPDXRef-a\x9b2J'        problems=1 raw-control-lines=0
+  validate documentNamespace 'SPDXRef-a\x9b2J'        problems=1 raw-control-lines=0
+  validate created           'SPDXRef-a\x9b2J'        problems=1 raw-control-lines=0
+  validate pkg-SPDXID        'SPDXRef-a\x9b2J'        problems=2 raw-control-lines=0
+  validate rel-end           'SPDXRef-a\x9b2J'        problems=1 raw-control-lines=0
+  validate spdxVersion       'SPDXRef-a\x85'          problems=1 raw-control-lines=0
+  validate dataLicense       'SPDXRef-a\x85'          problems=1 raw-control-lines=0
+  validate SPDXID            'SPDXRef-a\x85'          problems=1 raw-control-lines=0
+  validate documentNamespace 'SPDXRef-a\x85'          problems=1 raw-control-lines=0
+  validate created           'SPDXRef-a\x85'          problems=1 raw-control-lines=0
+  validate pkg-SPDXID        'SPDXRef-a\x85'          problems=2 raw-control-lines=0
+  validate rel-end           'SPDXRef-a\x85'          problems=1 raw-control-lines=0
+  validate spdxVersion       'SPDXRef-a\x7f'          problems=1 raw-control-lines=0
+  validate dataLicense       'SPDXRef-a\x7f'          problems=1 raw-control-lines=0
+  validate SPDXID            'SPDXRef-a\x7f'          problems=1 raw-control-lines=0
+  validate documentNamespace 'SPDXRef-a\x7f'          problems=1 raw-control-lines=0
+  validate created           'SPDXRef-a\x7f'          problems=1 raw-control-lines=0
+  validate pkg-SPDXID        'SPDXRef-a\x7f'          problems=2 raw-control-lines=0
+  validate rel-end           'SPDXRef-a\x7f'          problems=1 raw-control-lines=0
+  validate list-typed SPDXID, no name: ["package 1 has SPDXID ['SPDXRef-\\x1b']", "package ['SPDXRef-\\x1b'] has no name"]
+  drift+psycopg purl-encoded %1b%5b31m  problems=8 raw-control-lines=0
+      ke-app adds the Debian package evil\x1b[31m, which ADDED_PACKAGES does not name
+      ADDED_PACKAGES names x, which the ke-app SBOM does not add to its base
+      the ke-app SBOM lists pip ['1\x1b[31m'] (pip is not shipped)
+      the ke-app SBOM lists CPython (pkg:generic/python) at ['3.12.15\x1b[31m', '3.12.16\x1b[31m'], want exactly one version
+      the ke-app SBOM does not list libpq5 17.0 (upstream postgresql-17): [('1', ''), ('17.0\x1b[31m', 'postgresql-17')]
+      the ke-app SBOM does not list psycopg-c at a locked version ['3.2.0']: ['9\x1b[31m']
+      the ke-app SBOM lists psycopg-binary ['1\x1b[31m'] (PSC-25)
+      /l.txt names CPython 3.12.15, the ke-app SBOM lists 3.12.15\x1b[31m
+  drift+psycopg purl-encoded %c2%9b2J   problems=8 raw-control-lines=0
+  drift+psycopg purl-encoded %c2%85     problems=8 raw-control-lines=0
+  drift+psycopg purl-encoded %7f        problems=8 raw-control-lines=0
+  drift+psycopg purl-encoded %0a        problems=8 raw-control-lines=0
+  drift CLI path (main) with a hostile SBOM: see section B2 in the shell part
+  finish argv (fullmatch):
+    name='ke-app\n' sha-tail='aa' rc=2 raw-control-in-stderr=False "sbom_check: --name 'ke-app\\n' fails its pattern"
+    name='ke-app' sha-tail='a\n' rc=2 raw-control-in-stderr=False "sbom_check: --git-sha 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\n' fails its pattern"
+    name='ke-app\x1b[2J' sha-tail='aa' rc=2 raw-control-in-stderr=False "sbom_check: --name 'ke-app\\x1b[2J' fails its pattern"
+    name='ke-app\x85' sha-tail='aa' rc=2 raw-control-in-stderr=False "sbom_check: --name 'ke-app\\x85' fails its pattern"
+  $-anchored regexes used with .match/.search: {'SPDXID_RE': (0, 0), 'NAMESPACE_RE': (0, 0), 'RFC3339_UTC': (0, 0), 'NAME_RE': (0, 0), 'SHA_RE': (0, 0)}
+  every compiled pattern with a $ anchor: ['NAMESPACE_RE', 'SPDXID_RE', 'RFC3339_UTC', 'NAME_RE', 'SHA_RE']
+
+== C. PS-1.2 scanner continuation rule (find_hardcoded) ==
+  exemption entries for docker/neo4j.Dockerfile: [('docker/neo4j.Dockerfile', 'EXPOSE 7473 7474 7687', "mirrors the pinned official neo4j image's own ExposedPorts metadata (PSC-26, design-notes N16); not a port the engine configures")]
+  real docker/neo4j.Dockerfile findings for 7687: []
+  first line                                                 -> []
+  after RUN x BS                                             -> [('docker/neo4j.Dockerfile', 2, '7687')]
+  after RUN x BS + blanks                                    -> [('docker/neo4j.Dockerfile', 2, '7687')]
+  after CRLF RUN x BS                                        -> [('docker/neo4j.Dockerfile', 2, '7687')]
+  comment line between (Docker strips it; still continued)   -> []
+  empty line between (BuildKit keeps continuing)             -> []
+  after a comment ending in BS (Docker: not continued)       -> [('docker/neo4j.Dockerfile', 2, '7687')]
+  heredoc body                                               -> []
+  same path, other file name docker/neo4j.dockerfile         -> [('docker/neo4j.dockerfile', 1, '7687')]
+  other Dockerfile docker/gateway.Dockerfile                 -> [('docker/gateway.Dockerfile', 1, '7687')]
+  EXPOSE 7473 7474 7687 8080                                 -> [('docker/neo4j.Dockerfile', 1, '7687')]
+  lead/trail spaces                                          -> []
+  escape directive backtick then RUN x backtick              -> []
+  after a line with BS inside, not at end                    -> []
+  Python exemption after a backslash line: []
+
+== B2. CLI paths end to end (subprocess, python -I): drift and finish with hostile SBOMs ==
+  drift: rc=1 stderr-lines=6 raw-control-lines=0 injected-line-present=False
+     sbom_check: drift: ke-app adds the Debian package evil\x1b[2J, which ADDED_PACKAGES does not name
+     sbom_check: drift: the ke-app SBOM lists pip ['1\x85x'] (pip is not shipped)
+     sbom_check: drift: /tmp/tmpvi42hmp_/l.txt names CPython 3.12.15, the ke-app SBOM lists 3.12.15\x9b31m
+     sbom_check: drift: the ke-app SBOM does not list libpq5 17.0 (upstream postgresql-17): [('1', '')]
+     sbom_check: drift: the ke-app SBOM does not list psycopg-c at a locked version ['3.3.6']: ['0\nFAKE-LINE']
+     sbom_check: drift: the ke-app SBOM lists psycopg-binary ['1\x7f'] (PSC-25)
+  finish (validate fails): rc=1 stderr-lines=5 raw-control-lines=0
+     sbom_check: ke-app: spdxVersion is 'SPDX-2.3\x85', want SPDX-2.3
+     sbom_check: ke-app: package 1 has SPDXID 'SPDXRef-a\x1b[2J'
+     sbom_check: ke-app: package SPDXRef-a\x1b[2J has no downloadLocation
+     sbom_check: ke-app: package 2 has SPDXID 'SPDXRef-b\n'
+     sbom_check: ke-app: package SPDXRef-b\x0a has no name
+  finish (ok, report lines): rc=0 stderr-lines=3 raw-control-lines=0
+     sbom_check: ke-app: unlicensed packages (no licence, NOASSERTION or unidentified text): 2 (deb: 1, none: 1)
+     sbom_check: ke-app:   SPDXRef-c n\x1b]0;title\x07 (no purl)
+     sbom_check: ke-app:   pkg:deb/x\x85\x7f\x9b@1
+------------------------------------------------------------------------------
+
+Part 2. Smoke "no fleet plugin" find (L-1), in ke-neo4j:bundle-c300d881cd94 (ID 46b0abd9e641;
+docker/neo4j.Dockerfile is unchanged by U5). Own containers only: --rm, --network none,
+label ke.security.u5=1, two labelled throwaway volumes at /data and /logs (removed after).
+Run as the image's default user (root, USER unset), as `compose exec` does. The find argv is
+the smoke's, byte for byte:
+  find / ( -path /proc -o -path /sys -o -path /dev ) -prune -o ( -path /var/lib/neo4j/products \
+    -o -name '*fleet-management*' -o -path /var/lib/neo4j/LICENSE.txt ) -print
+
+P1 clean, default caps (as compose):
+/var/lib/neo4j/LICENSE.txt
+rc=0
+P2/P3 planted /data/plugins/neo4j-fleet-management-plugin-1.2.0.jar and /logs/x-fleet-management.jar:
+/data/plugins/neo4j-fleet-management-plugin-1.2.0.jar
+/logs/x-fleet-management.jar
+/var/lib/neo4j/LICENSE.txt
+rc=0
+  -> the smoke's whole-output compare (want only /var/lib/neo4j/LICENSE.txt) FAILs: fail closed.
+P4 tmpfs mounted at /plugins holding a fleet jar, plus one in /dev/shm:
+/data/plugins/neo4j-fleet-management-plugin-1.2.0.jar
+/logs/x-fleet-management.jar
+/var/lib/neo4j/LICENSE.txt
+/plugins/neo4j-fleet-management-plugin.jar
+  -> other mounts are crossed; /dev/shm is pruned with /dev (not seen).
+P5 the old U4b form (find / -xdev ...) on the same planted volumes:
+/var/lib/neo4j/LICENSE.txt
+rc=0
+  -> the planted jars were NOT seen: the L-1 gap existed and U5 closes it.
+P6 paths under /proc, /sys or /dev printed by the pruned walk: 0
+P7 with --cap-drop ALL (not compose's setting): find prints
+  "find: '/var/cache/apt/archives/partial': Permission denied" and exits 1, so the smoke step would
+  FAIL (fail closed, never a pass). Today compose gives neo4j the default capabilities (GREEN
+  verify full: "smoke: no products/ or fleet-management plugin in neo4j", twice).
+
+Part 3. libpsl's LicenseRef-gnulib (the one deb row the real-row sweep listed as needs=False):
+  docker run --rm --network none --entrypoint sh ke-neo4j:bundle-c300d881cd94 -c \
+    'awk "/^License: gnulib/,/^$/" /usr/share/doc/libpsl5t64/copyright'
+License: gnulib
+ This file is free software; the Free Software Foundation
+ gives unlimited permission to copy and/or distribute it,
+ with or without modifications, as long as this notice is preserved.
+  -> FSF all-permissive (an m4 macro in a Debian patch); no source is the right answer.
+
+Part 4. Evidence sweep (docs/evidence/platform-sbom/u5/*, tests/test_sbom_classifier.py):
+  secret patterns (AWS/GitHub/OpenAI/Slack tokens, private keys, JWTs, password=, credential URLs): 0
+  profile paths, AppData, SIDs (S-1-5-21-): 0
+  model-host names or port: 0; KE_MODEL_UPSTREAM= / KE_EGRESS_ALLOWLIST= values: 0
+  IPv4: 127.0.0.1 (13), the stack gateway's internal 192.168.160.2 / 172.19.0.2 / 172.30.0.2 in
+  the smoke's no-route lines, and 21.0.12.1 (a Temurin version string).
+
+Part 5. drift success line (found after the reviewer's B3; probe u5/security_probes_drift_ok.py, gates image, python -I).
+An SBOM with the real pkg:generic/python@3.12.15 plus a namespaced pkg:generic/x/python@3.12.15%1b%5d0%3bOWNED%07%1b%5b2J
+passes the drift check (the namespaced row is not counted) and the ok line prints its version raw on stdout:
+drift success path: rc 0 | raw control chars in stderr: ['0x1b', '0x7', '0x1b']
+stdout (repr): 'sbom_check: drift: ok: added libpq5; no pip; CPython 3.12.15, 3.12.15\x1b]0;OWNED\x07\x1b[2J (1 licence files); libpq5 17.0 (postgresql-17); psycopg-c 3.3.6, no psycopg-binary\n'
+stderr (repr): ''

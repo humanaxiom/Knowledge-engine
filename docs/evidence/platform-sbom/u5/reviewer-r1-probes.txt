@@ -1,0 +1,29 @@
+# reviewer U5 r1 probes, 2026-10-24 (host python -I, scripts/sbom_check.py working tree)
+## probe_r1.py
+'MIT/NOASSERTION' (False, {'unparsed': False, 'unidentified': False})
+'"NOASSERTION"' (False, {'unparsed': False, 'unidentified': False})
+'NOASSERTION,' (False, {'unparsed': False, 'unidentified': False})
+'MIT,NOASSERTION' (False, {'unparsed': False, 'unidentified': False})
+'NOASSERTION;MIT' (False, {'unparsed': False, 'unidentified': False})
+'LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef;' (False, {'unparsed': False, 'unidentified': False})
+'MIT,LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' (False, {'unparsed': False, 'unidentified': False})
+'DocumentRef-spdx:LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' (False, {'unparsed': False, 'unidentified': False})
+'MIT AND DocumentRef-x:LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' (False, {'unparsed': False, 'unidentified': False})
+'MIT\x00NOASSERTION' (False, {'unparsed': False, 'unidentified': False})
+'MIT WITH LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdefx' (False, {'unparsed': False, 'unidentified': False})
+'MIT WITH LicenseRef-https---example.org-x' (False, {'unparsed': False, 'unidentified': False})
+'MIT WITH LicenseRef-https---gnu.org-gpl' (True, {'unparsed': True, 'unidentified': False})
+'MIT WITH none-exception' (False, {'unparsed': False, 'unidentified': False})
+'NONE-2.0' (False, {'unparsed': False, 'unidentified': False})
+'MIT AND GNU-General-Public-License' (True, {'unparsed': True, 'unidentified': False})
+'general public license' (True, {'unparsed': True, 'unidentified': False})
+'GENERAL PUBLIC LICENSE' (True, {'unparsed': True, 'unidentified': False})
+'MIT AND (Apache-2.0 WITH GPL-3.0-only) OR Zlib' (False, {'unparsed': True, 'unidentified': False})
+'aaaaaaaaaa' (False, {'unparsed': False, 'unidentified': False})
+deep with (True, {'unparsed': True, 'unidentified': False})
+
+## mutant_joined.py on r1 tests
+MUTANT joined-text: failures 3 errors 0 ran 37
+CONTROL broken: failures 27 errors 7
+
+## real U3 fixture leaves outside SPDX idstring (DocumentRef-x:)?[A-Za-z0-9.-]+\+?: 0 of 7572 leaves (all six tests/fixtures/sbom-u3/*.pkgs.tsv, declared|concluded split)

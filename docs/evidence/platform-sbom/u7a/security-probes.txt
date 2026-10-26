@@ -1,0 +1,205 @@
+platform-sbom U7a gate: security probes (security, 2026-10-25)
+Tree: HEAD 66781a9 (U6) + working tree; scripts/sbom_check.py == u7a/target-sbom_check.py.
+Script: u7a/security_probes.py, using tests/test_sources_lock.py's good_lock/small_docs/policy_with_pgdg as the baseline.
+Gates image, python -I, COMPOSE_PROJECT_NAME=ke-security-u5, scratch dir read-only at /scratch. Output unedited except
+compose/uv preamble lines dropped and raw control bytes in output shown as <xNN>.
+
+== baseline good lock (SMALL_KEYS, policy+pgdg host, small_docs): []
+
+== U7a-1. URL / host smuggling on the pypi file (want: rejected) ==
+  userinfo host@evil                         rejected=True  ['lock: pypi:psycopg@3.3.6: url https://files.pythonhosted.org@evil.example/x.tar.gz carries']
+  userinfo evil@host                         rejected=True  ['lock: pypi:psycopg@3.3.6: url https://evil.example@files.pythonhosted.org/x.tar.gz carries']
+  user:pass@host                             rejected=True  ['lock: pypi:psycopg@3.3.6: url https://u:p@files.pythonhosted.org/x.tar.gz carries userinfo']
+  IDN lookalike (Cyrillic o)                 rejected=True  ['lock: pypi:psycopg@3.3.6: url host files.pythonhоsted.org is not in docker/source-policy.j']
+  punycode                                   rejected=True  ['lock: pypi:psycopg@3.3.6: url host xn--files-pythonhosted-org.example is not in docker/sou']
+  fullwidth dot                              rejected=True  ['lock: pypi:psycopg@3.3.6: url host files．pythonhosted.org is not in docker/source-policy.j']
+  trailing dot                               rejected=True  ['lock: pypi:psycopg@3.3.6: url host files.pythonhosted.org. is not in docker/source-policy.']
+  port 443                                   rejected=True  ['lock: pypi:psycopg@3.3.6: url https://files.pythonhosted.org:443/x.tar.gz carries a port']
+  empty port                                 rejected=True  ['lock: pypi:psycopg@3.3.6: url https://files.pythonhosted.org:/x.tar.gz carries a port']
+  uppercase host                             rejected=True  ['lock: pypi:psycopg@3.3.6: url host FILES.pythonhosted.org is not in docker/source-policy.j']
+  percent-encoded host                       rejected=True  ['lock: pypi:psycopg@3.3.6: url host files%2Epythonhosted.org is not in docker/source-policy']
+  backslash before host                      rejected=True  ['lock: pypi:psycopg@3.3.6: url https://evil.example\\@files.pythonhosted.org/x.tar.gz carrie']
+  backslash after host                       rejected=True  ['lock: pypi:psycopg@3.3.6: url host files.pythonhosted.org\\.evil.example is not in docker/s']
+  backslash path                             rejected=True  ['lock: pypi:psycopg@3.3.6: url host files.pythonhosted.org\\x.tar.gz is not in docker/source']
+  http                                       rejected=True  ['lock: pypi:psycopg@3.3.6: url http://files.pythonhosted.org/x.tar.gz is not https']
+  HTTP upper                                 rejected=True  ['lock: pypi:psycopg@3.3.6: url HTTP://files.pythonhosted.org/x.tar.gz is not https']
+  HTTPS upper (still https)                  rejected=False []
+  ftp                                        rejected=True  ['lock: pypi:psycopg@3.3.6: url ftp://files.pythonhosted.org/x.tar.gz is not https']
+  file                                       rejected=True  ['lock: pypi:psycopg@3.3.6: url file:///etc/passwd is not https']
+  scheme-relative                            rejected=True  ['lock: pypi:psycopg@3.3.6: url //files.pythonhosted.org/x.tar.gz is not https']
+  single slash                               rejected=True  ['lock: pypi:psycopg@3.3.6: url host  is not in docker/source-policy.json hosts']
+  no slashes                                 rejected=True  ['lock: pypi:psycopg@3.3.6: url host  is not in docker/source-policy.json hosts']
+  query                                      rejected=True  ['lock: pypi:psycopg@3.3.6: url https://files.pythonhosted.org/x.tar.gz?a=1 carries a query']
+  fragment                                   rejected=True  ['lock: pypi:psycopg@3.3.6: url https://files.pythonhosted.org/x.tar.gz#a carries a fragment']
+  IPv4                                       rejected=True  ['lock: pypi:psycopg@3.3.6: url host 151.101.0.223 is not in docker/source-policy.json hosts']
+  IPv6                                       rejected=True  ['lock: pypi:psycopg@3.3.6: url host [2a04 is not in docker/source-policy.json hosts']
+  tab inside host                            rejected=False []
+  newline inside host                        rejected=False []
+  CR in path                                 rejected=False []
+  leading space                              rejected=False []
+  trailing space                             rejected=False []
+  leading NUL                                rejected=False []
+  space in path                              rejected=False []
+  non-ASCII path                             rejected=False []
+  path traversal ../                         rejected=False []
+  other listed host (github.com) for pypi    rejected=False []
+  not a string                               rejected=True  ['lock: pypi:psycopg@3.3.6: url 5 is not a string']
+
+== U7a-2. name / hash / size / upstream on the pypi file ==
+  name ../x                                  rejected=True  ["lock: pypi:psycopg@3.3.6: '../x': not a safe file name"]
+  name /abs                                  rejected=True  ["lock: pypi:psycopg@3.3.6: '/etc/passwd': not a safe file name"]
+  name a/b                                   rejected=True  ["lock: pypi:psycopg@3.3.6: 'a/b': not a safe file name"]
+  name NUL                                   rejected=True  ["lock: pypi:psycopg@3.3.6: 'a\\x00b': not a safe file name"]
+  name ..                                    rejected=True  ["lock: pypi:psycopg@3.3.6: '..': not a safe file name"]
+  name .hidden                               rejected=True  ["lock: pypi:psycopg@3.3.6: '.x': not a safe file name"]
+  name a..b                                  rejected=False []
+  name 256 chars                             rejected=True  ["lock: pypi:psycopg@3.3.6: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]
+  name CON (Windows reserved)                rejected=False []
+  name aux.tar.gz                            rejected=False []
+  name backslash                             rejected=True  ["lock: pypi:psycopg@3.3.6: 'a\\\\b': not a safe file name"]
+  name not the URL basename                  rejected=False []
+  name trailing dot                          rejected=False []
+  name non-ASCII                             rejected=True  ["lock: pypi:psycopg@3.3.6: 'é.tar.gz': not a safe file name"]
+  name newline                               rejected=True  ["lock: pypi:psycopg@3.3.6: 'a\\nb': not a safe file name"]
+  sha256 uppercase                           rejected=True  ['lock: pypi:psycopg@3.3.6: psycopg-3.3.6.tar.gz: sha256 is not 64 lower-case hex']
+  sha256 63                                  rejected=True  ['lock: pypi:psycopg@3.3.6: psycopg-3.3.6.tar.gz: sha256 is not 64 lower-case hex']
+  sha256 65                                  rejected=True  ['lock: pypi:psycopg@3.3.6: psycopg-3.3.6.tar.gz: sha256 is not 64 lower-case hex']
+  sha256 fullwidth digit                     rejected=True  ['lock: pypi:psycopg@3.3.6: psycopg-3.3.6.tar.gz: sha256 is not 64 lower-case hex']
+  sha256 int                                 rejected=True  ['lock: pypi:psycopg@3.3.6: psycopg-3.3.6.tar.gz: sha256 is not 64 lower-case hex']
+  size 0                                     rejected=True  ['lock: pypi:psycopg@3.3.6: psycopg-3.3.6.tar.gz: size 0 is not an int > 0']
+  size -1                                    rejected=True  ['lock: pypi:psycopg@3.3.6: psycopg-3.3.6.tar.gz: size -1 is not an int > 0']
+  size True                                  rejected=True  ['lock: pypi:psycopg@3.3.6: psycopg-3.3.6.tar.gz: size True is not an int > 0']
+  size 1.0                                   rejected=True  ['lock: pypi:psycopg@3.3.6: psycopg-3.3.6.tar.gz: size 1.0 is not an int > 0']
+  size '5'                                   rejected=True  ["lock: pypi:psycopg@3.3.6: psycopg-3.3.6.tar.gz: size '5' is not an int > 0"]
+  size 10**30 (huge)                         rejected=False []
+  size 2**63                                 rejected=False []
+  a sixth key                                rejected=True  ['lock: pypi:psycopg@3.3.6: a file is not exactly {name, url, sha256, size, upstream}']
+  upstream alg sha1 (pypi wants sha256)      rejected=True  ['lock: pypi:psycopg@3.3.6: not one file with sha256']
+  upstream alg SHA256                        rejected=True  ["lock: pypi:psycopg@3.3.6: psycopg-3.3.6.tar.gz: upstream alg 'SHA256' is not sha1, sha256 "]
+  upstream alg md5                           rejected=True  ["lock: pypi:psycopg@3.3.6: psycopg-3.3.6.tar.gz: upstream alg 'md5' is not sha1, sha256 or "]
+  upstream value differs from sha256         rejected=True  ["lock: pypi:psycopg@3.3.6: psycopg-3.3.6.tar.gz: upstream sha256 differs from the file's sh"]
+  upstream value uppercase                   rejected=True  ['lock: pypi:psycopg@3.3.6: psycopg-3.3.6.tar.gz: upstream value is not 64 lower-case hex']
+  upstream value 63                          rejected=True  ['lock: pypi:psycopg@3.3.6: psycopg-3.3.6.tar.gz: upstream value is not 64 lower-case hex']
+  upstream from blank                        rejected=True  ['lock: pypi:psycopg@3.3.6: psycopg-3.3.6.tar.gz: upstream from is blank']
+  upstream from int                          rejected=True  ['lock: pypi:psycopg@3.3.6: psycopg-3.3.6.tar.gz: upstream from is blank']
+  upstream from with ESC                     rejected=False []
+
+== U7a-3. Per-kind rules: is the URL bound to its kind's host and shape? ==
+  deb .dsc url: https://snapshot.debian.org/file/72201406836a3d941a09f3222bc | name bash_5.2.15-2.dsc
+  deb .dsc from github.com                   rejected=True
+  deb .dsc /file/<other sha1>                rejected=True
+  deb .dsc /file/<sha1>/                     rejected=True
+  deb .dsc /file/<SHA1 upper>                rejected=True
+  deb orig from files.pythonhosted.org       rejected=True
+  apk:readline@8.2.13-r1                     every file moved to another listed host: rejected=False []
+  maven:javax.xml.bind:jaxb-api@2.2.12       every file moved to another listed host: rejected=False []
+  neo4j:neo4j@5.26.32                        every file moved to another listed host: rejected=False []
+  pgdg:postgresql-common@293.pgdg12+1        every file moved to another listed host: rejected=False []
+  pypi:psycopg@3.3.6                         every file moved to another listed host: rejected=False []
+  temurin:jdk-21.0.12.1+1                    every file moved to another listed host: rejected=False []
+  pgdg:postgresql-common@293.pgdg12+1: one arbitrary file, no .dsc: rejected=False []
+  pgdg entry with the committed hosts (no apt-archive host): ['lock: pgdg:postgresql-common@293.pgdg12+1: url host apt-archive.postgresql.org is not in docker/source-policy.', 'lock: pgdg:postgresql-common@293.pgdg12+1: url host apt-archive.postgresql.org is not in docker/source-policy.']
+  neo4j keys in BASE: ['neo4j:neo4j@5.26.32']
+
+== U7a-4. Raw control characters in messages (key from the lock; key from an SBOM purl) ==
+  lock key 'deb:x<ESC>[2J@1': problems=3 raw-control lines=1 ["'lock: deb:x\\x1b[2J@1: the .dsc is bash_5.2.15-2.dsc, want x\\x1b[2J_1.dsc'"]
+  lock key 'apk:x<CSI>2J@1-r0': problems=8 raw-control lines=6 ["'lock: apk:x\\x9b2J@1-r0: commit None is missing or malformed'", "'lock: apk:x\\x9b2J@1-r0: branch None is missing or malformed'", "'lock: apk:x\\x9b2J@1-r0: repo None is missing or malformed'"]
+  SBOM purls with %1b in upstream/name/version: problems=6 raw-control lines=3
+      'postgres: pkg:deb/debian/evil@1?upstream=ev%1b%5b2Jil%401 needs source; the lock has no deb:ev\x1b[2Jil@1 for amd64: run scripts/sources_lock.sh --arch amd64'
+      'postgres: pkg:deb/debian/ok%1b%5d0%3bT%07@1 needs source; the lock has no deb:ok\x1b]0;T\x07@1 for amd64: run scripts/sources_lock.sh --arch amd64'
+      'postgres: pkg:pypi/x%1b@1 needs source; the lock has no pypi:x\x1b@1 for amd64: run scripts/sources_lock.sh --arch amd64'
+
+== U7a-5. lock_needs: can a needs=True row map to no key and no problem? ==
+  'pkg:deb/debian/x@1'                           needs_rows=1 keys=['deb:x@1'] valid=False problems=0
+  'pkg:deb/debian/x@1:2.0-1'                     needs_rows=1 keys=['deb:x@1:2.0-1'] valid=False problems=0
+  'pkg:deb/debian/x@1%3A2.0-1'                   needs_rows=1 keys=['deb:x@1:2.0-1'] valid=False problems=0
+  'pkg:deb/debian/x@1?upstream='                 needs_rows=1 keys=['deb:x@1'] valid=False problems=0
+  'pkg:deb/debian/x@1?upstream=%40'              needs_rows=1 keys=['deb:@1'] valid=False problems=0
+  'pkg:deb/debian/x@1?upstream=src%40'           needs_rows=1 keys=['deb:src@1'] valid=True problems=0
+  'pkg:deb/debian/x@1?upstream=src@2'            needs_rows=1 keys=['deb:src@2'] valid=True problems=0
+  'pkg:deb/debian/x@1.pgdg12'                    needs_rows=1 keys=['pgdg:x@1.pgdg12'] valid=False problems=0
+  'pkg:deb/ubuntu/x@1'                           needs_rows=1 keys=[] valid=- problems=1
+  'pkg:deb/x@1'                                  needs_rows=1 keys=[] valid=- problems=1
+  'pkg:DEB/debian/x@1'                           needs_rows=1 keys=[] valid=- problems=1
+  'pkg:apk/alpine/x@1-r0'                        needs_rows=1 keys=['apk:x@1-r0'] valid=True problems=0
+  'pkg:apk/alpine/x@1-r0?upstream='              needs_rows=1 keys=['apk:x@1-r0'] valid=True problems=0
+  'pkg:apk/wolfi/x@1-r0'                         needs_rows=1 keys=[] valid=- problems=1
+  'pkg:maven/org.neo4j/neo4j-x@9.9'              needs_rows=1 keys=[] valid=- problems=1
+  'pkg:maven/org.neo4jx/y@1'                     needs_rows=1 keys=['maven:org.neo4jx:y@1'] valid=True problems=0
+  'pkg:maven/jrt-fs/jrt-fs@1'                    needs_rows=1 keys=[] valid=- problems=1
+  'pkg:generic/oracle/openjdk@21'                needs_rows=1 keys=['temurin:jdk-21'] valid=False problems=0
+  'pkg:generic/oracle/openjdk@21-LTS'            needs_rows=1 keys=['temurin:jdk-21'] valid=False problems=0
+  'pkg:generic/x/y@1'                            needs_rows=1 keys=[] valid=- problems=1
+  'pkg:pypi/A_B@1'                               needs_rows=1 keys=['pypi:a-b@1'] valid=True problems=0
+  'pkg:npm/x@1'                                  needs_rows=1 keys=[] valid=- problems=1
+  'pkg:golang/x/y@1'                             needs_rows=1 keys=[] valid=- problems=1
+  'pkg:cargo/x@1'                                needs_rows=1 keys=[] valid=- problems=1
+  'pkg:gem/x@1'                                  needs_rows=1 keys=[] valid=- problems=1
+  'pkg:github/x/y@1'                             needs_rows=1 keys=[] valid=- problems=1
+  'pkg:oci/x@sha256%3Aab'                        needs_rows=1 keys=[] valid=- problems=1
+  'pkg:deb/debian/x'                             needs_rows=1 keys=[] valid=- problems=1
+  'pkg:deb/debian/@1'                            needs_rows=1 keys=[] valid=- problems=1
+  'not-a-purl'                                   needs_rows=1 keys=[] valid=- problems=1
+  ''                                             needs_rows=1 keys=[] valid=- problems=1
+  None                                           needs_rows=1 keys=[] valid=- problems=1
+
+== U7a-6. ReDoS / cost on the new regexes and functions ==
+  LOCK_KEY_RES[deb] digits+!                                   0.000s False
+  LOCK_KEY_RES[deb] a-a-+@                                     0.001s False
+  LOCK_KEY_RES[deb] 1.1.+!                                     0.003s False
+  LOCK_KEY_RES[deb] -r-r                                       0.000s False
+  LOCK_KEY_RES[deb] jdk 1.                                     0.001s False
+  LOCK_KEY_RES[pgdg] digits+!                                  0.000s False
+  LOCK_KEY_RES[pgdg] a-a-+@                                    0.001s False
+  LOCK_KEY_RES[pgdg] 1.1.+!                                    0.003s False
+  LOCK_KEY_RES[pgdg] -r-r                                      0.000s False
+  LOCK_KEY_RES[pgdg] jdk 1.                                    0.001s False
+  LOCK_KEY_RES[apk] digits+!                                   0.001s False
+  LOCK_KEY_RES[apk] a-a-+@                                     0.001s False
+  LOCK_KEY_RES[apk] 1.1.+!                                     0.001s False
+  LOCK_KEY_RES[apk] -r-r                                       0.000s False
+  LOCK_KEY_RES[apk] jdk 1.                                     0.001s False
+  LOCK_KEY_RES[neo4j] digits+!                                 0.000s False
+  LOCK_KEY_RES[neo4j] a-a-+@                                   0.000s False
+  LOCK_KEY_RES[neo4j] 1.1.+!                                   0.037s False
+  LOCK_KEY_RES[neo4j] -r-r                                     0.000s False
+  LOCK_KEY_RES[neo4j] jdk 1.                                   0.000s False
+  LOCK_KEY_RES[temurin] digits+!                               0.000s False
+  LOCK_KEY_RES[temurin] a-a-+@                                 0.000s False
+  LOCK_KEY_RES[temurin] 1.1.+!                                 0.000s False
+  LOCK_KEY_RES[temurin] -r-r                                   0.000s False
+  LOCK_KEY_RES[temurin] jdk 1.                                 0.040s False
+  LOCK_KEY_RES[pypi] digits+!                                  0.001s True
+  LOCK_KEY_RES[pypi] a-a-+@                                    0.039s False
+  LOCK_KEY_RES[pypi] 1.1.+!                                    0.001s True
+  LOCK_KEY_RES[pypi] -r-r                                      0.001s True
+  LOCK_KEY_RES[pypi] jdk 1.                                    0.000s False
+  LOCK_KEY_RES[maven] digits+!                                 0.000s False
+  LOCK_KEY_RES[maven] a-a-+@                                   0.001s False
+  LOCK_KEY_RES[maven] 1.1.+!                                   0.000s False
+  LOCK_KEY_RES[maven] -r-r                                     0.000s False
+  LOCK_KEY_RES[maven] jdk 1.                                   0.001s False
+  LOCK_FILE_NAME_RE 1MB                                        0.000s False
+  HEX_RE 1MB + g                                               0.005s False
+  SNAPSHOT_PATH_RE 1MB                                         0.000s False
+  NEO4J_FROM_RE 1MB                                            0.000s False
+  _url_problems 1MB url                                        0.004s 1
+  _url_problems 1MB of @                                       0.003s 2
+  json.loads deep [ * 100000 via lock_problems                 0.001s RAISED RecursionError
+  lock_problems 20000 entries                                  0.858s 40000
+  lock_needs on the six fixtures                               0.035s 182
+  sample_keys on a lock with a non-int size                    0.000s RAISED TypeError
+
+== U7a-7. Fixture coverage: lock_needs on the six real fixtures ==
+  keys=182 by kind={'apk': 19, 'deb': 152, 'maven': 1, 'neo4j': 1, 'pgdg': 3, 'pypi': 5, 'temurin': 1} mapping problems=[]
+  needed keys that no valid lock entry could carry (fail closed, but would block): []
+  needs rows=458, packages mapped=458, problems=0
+
+== U7a-8. lock-check CLI ==
+  good: (0, 'lock-check: ok (8 components, amd64)')
+  arch x86: (2, "sbom_check: lock-check: --arch 'x86' is not amd64 or arm64")
+  --sbom '-x=/etc/passwd': (2, 'usage: sbom_check.py lock-check [-h] --lock LOCK --policy POLICY --arch ARCH\n                                --sbom SBOM\nsbom_check.py lock-check: error: argume')
+  --sbom 'ke app=...': (2, "sbom_check: lock-check: --sbom 'ke app=/tmp/tmp3psq7rnk/lock.json' is not IMAGE=PATH")
+  missing lock file: (1, "sbom_check: lock-check: [Errno 2] No such file or directory: '/tmp/tmp3psq7rnk/nope'")
+  deep JSON lock: (1, 'Traceback (most recent call last):\n  File "/work/scripts/sbom_check.py", line 1386, in <module>\n    sys.exit(main(sys.argv[1:]))\n             ^^^^^^^^^^^^^^^^^^')
+  CRLF lock (not canonical): (1, 'sbom_check: lock-check: lock: not in canonical form: regenerate')

@@ -20,7 +20,29 @@ for the third-party software the stack images carry are in
 [NOTICE.md](NOTICE.md) (vendor images, with licence texts under `licenses/`).
 An offline bundle ships `LICENSE`, `NOTICE.md`, `licenses/` and a generated
 `THIRD_PARTY_NOTICES.md` (the packages inside the images, from that build) at
-its root, all listed in the bundle's `MANIFEST.sha256`.
+its root, all listed in the bundle's `MANIFEST.sha256`. It also carries
+`app/sboms/<image>.spdx.json`, one SPDX 2.3 software bill of materials per
+bundled image, listed in the manifest too. (Updated 2026-10-23, documenter, status)
+
+`bundle.sh` generates the SBOMs offline with the pinned `anchore/syft` image
+(`docker-compose.sbom.yml`, service `sbom`). It never pulls: if the image is
+not on the local Docker daemon it refuses before writing anything and prints
+the `docker pull` command to run. During `verify.sh full`, `offline_check.sh`
+pulls the generator first. While it runs, `bundle.sh` prints a per-image
+report of packages with no licence, `NOASSERTION`, or a licence text syft
+could only hash (marked "unidentified licence text"). Any SBOM that fails
+validation refuses the bundle, with no manifest written. The bundle is not a
+release: the generated "Source code" section of `NOTICE.md` is not built yet.
+(Updated 2026-10-23, documenter, status)
+
+The stack's neo4j service runs the first-party `ke-neo4j:${KE_IMAGE_TAG}`
+image, built by `build.sh`/`build.ps1` from `docker/neo4j.Dockerfile` on the
+pinned official `neo4j:5-community` digest. The build removes
+`/var/lib/neo4j/products` (the commercial fleet-management plugin and the
+unused GenAI plugin) and flattens the image. Neo4j itself is unchanged. A
+bundle ships `images/ke-neo4j.tar` and `app/sboms/ke-neo4j.spdx.json`; the
+official neo4j image is no longer vendored.
+(Updated 2026-10-23, documenter, status)
 
 ## Install paths
 
@@ -79,8 +101,12 @@ arrives with `auth-audit`. Set real secrets in `.env` regardless.
 Prerequisites: Git, and Docker Engine 28 or later with Compose 2.24 or later.
 Linux (bash) and Windows (PowerShell) are supported for the code-first install;
 macOS only through the offline bundle. A host that builds an offline bundle also
-needs `jq` and at least 7 GiB free on the disk that holds the output directory
-(`bundle.sh` refuses otherwise). See [docs/quickstart.md](docs/quickstart.md).
+needs `jq` and at least 7 GiB free, checked on the output directory (`--out`)
+and on its parent (`bundle.sh` refuses otherwise). On a Windows build host
+run `bundle.sh` from Git Bash with `jq` on `PATH`; a winget `jq.exe` writes
+CRLF, so it has to be run as `jq.exe -b`. The pinned SBOM generator image must be local: see
+"Licence" above. See [docs/quickstart.md](docs/quickstart.md).
+(Updated 2026-10-23, documenter, status)
 
 1. Copy `.env.example` to `.env` and set the secrets
    (`KE_STORES__POSTGRES__PASSWORD`, `KE_STORES__NEO4J__PASSWORD`). The
@@ -93,6 +119,18 @@ needs `jq` and at least 7 GiB free on the disk that holds the output directory
    scripts/teardown.sh    # PowerShell: scripts\teardown.ps1
    scripts/teardown.sh --volumes   # also removes the data (PowerShell: -Volumes)
    ```
+
+   `ke-app` pins Debian's `libpq5`. When Debian publishes a postgresql-15
+   update, the old version leaves the mirror and `build.sh` fails naming
+   `libpq5` until the pin is bumped in both Dockerfiles
+   (`docker/app.Dockerfile` and `docker/gates.Dockerfile`). Installing from
+   a bundle is unaffected.
+
+   `ke-app` runs psycopg's C implementation, built from source (`psycopg-c`)
+   against that Debian `libpq5`; it ships no psycopg-binary wheel. The image
+   has no pip, and its last stage is flattened (`FROM scratch` plus
+   `COPY --from=runtime /`), so pip is also absent from the saved tar.
+   (Updated 2026-10-23, documenter, status)
 
    `launch` creates `.env` from `.env.example` if it is missing and waits until
    every service is healthy.
@@ -170,16 +208,27 @@ throwaway bundle for the local architecture and installs it from a client
 container with no network, against a Docker-in-Docker daemon that holds only
 the bundle's images. That daemon runs privileged, so a host or CI runner that
 refuses privileged containers cannot run `full`; there is no way around it. It
-also needs the 7 GiB of free disk that `bundle.sh` requires.
+also needs the 7 GiB of free disk that `bundle.sh` requires, and outbound
+access to pull the SBOM generator and, by its pinned digest, the `ke-app`
+base image: the offline check compares `ke-app` with that base to prove it
+added only the expected Debian packages, no pip, CPython matching the shipped
+licence files, `libpq5` with `psycopg-c`, and no psycopg-binary. It also pulls the
+official neo4j image by its pinned digest and checks the `ke-neo4j` config,
+tar and SBOM against it.
+(Updated 2026-10-23, documenter, status)
 
 The scan (`scripts/scan.sh`) looks for known vulnerabilities in the
 `ke-app` image. A one-shot `scan-db` container fetches the scanner's
 database fresh on every run, and the scan itself runs with no network.
 `scan-db` is not the only container with a route out: the smoke check's
-network-control probe runs on the stack's `edge` network. The scan does not
-see the native libraries vendored inside the psycopg-binary wheel
-(`psycopg_binary.libs`); this is a documented residual (L-13), see
-`docs/requirements.md` PSC-7. A fixed High or Critical finding fails the
+network-control probe runs on the stack's `edge` network. `ke-app` ships no
+psycopg-binary wheel: psycopg is built from source (`psycopg-c`) against
+Debian's `libpq5`, so the scan sees libpq through the image's package
+database (PSC-25, `docs/architecture.md` ADR-KE-016). That closed the L-13
+residual (the wheel's vendored libraries, which the scan could not see) on
+2026-10-23; security's ruling is in
+`docs/evidence/platform-sbom/u0/security.md`. A fixed High or Critical
+finding fails the
 run, and so does a database host that cannot be reached; there is no retry
 and no skip. `full` therefore needs
 outbound HTTPS to `grype.anchore.io` for the vulnerability database.
@@ -278,7 +327,8 @@ credentials (`user:pass@`). The error names the setting, never its value.
 - `docker-compose.yml` — the stack (gateway, api, worker, postgres, neo4j,
   valkey, Phoenix) and the one-shot `gates` and `gates-it` services;
   `docker-compose.verify.yml` is the overlay `verify.sh` uses (nothing published)
-- `docker/` — the gates, app and gateway images
+- `docker/` — the gates, app, gateway and neo4j images (`docker/neo4j.Dockerfile`
+  builds `ke-neo4j`) (Updated 2026-10-23, documenter, status)
 - `scripts/{build,launch,teardown}.{sh,ps1}` — run the stack
 - `.gitattributes` — forces LF line endings for shell scripts
 - `scripts/verify.sh` — the single verification entrypoint (`fast|full`)

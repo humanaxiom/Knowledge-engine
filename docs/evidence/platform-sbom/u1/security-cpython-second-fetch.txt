@@ -1,0 +1,53 @@
+platform-sbom U1 round 2: security second fetch of the CPython incorporated licences (Q48)
+Date: 2026-10-22 (local). Auditor: security. Host: Windows, Git Bash. Scratch paths shown as <scratch>.
+Result: CONFIRMED. licenses/CPython-3.12-incorporated.txt is byte for byte the release tarball's extract.
+
+1. Anchor, read offline (no pull, no network):
+$ docker image inspect 34386ef0cb08 --format '{{json .RepoDigests}} {{json .Config.Env}}'
+["python@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258"] [...,"PYTHON_VERSION=3.12.15","PYTHON_SHA256=c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a"]
+(the digest is ke-app's pinned base, docker/app.Dockerfile lines 13 and 45)
+
+2. Fetch, HTTPS only, into a new empty directory <scratch>/cpy-fetch (0 entries before):
+$ curl -q --proto '=https' --tlsv1.2 --fail -sS -w 'http=%{http_code} size=%{size_download} url=%{url_effective} ssl_verify=%{ssl_verify_result}\n' \
+    -o Python-3.12.15.tar.xz https://www.python.org/ftp/python/3.12.15/Python-3.12.15.tar.xz
+http=200 size=20829824 url=https://www.python.org/ftp/python/3.12.15/Python-3.12.15.tar.xz ssl_verify=0
+rc=0
+$ sha256sum Python-3.12.15.tar.xz
+c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a  Python-3.12.15.tar.xz
+=> EQUALS the base's PYTHON_SHA256.
+
+3. Untrusted-data handling: listed only, then exactly one member extracted into a new
+   empty directory <scratch>/cpy-extract; nothing from the tarball was executed.
+$ tar -tvJf Python-3.12.15.tar.xz | grep ' Python-3.12.15/Doc/license.rst$'
+-rw-r--r-- 0/0           54130 2026-09-30 15:04 Python-3.12.15/Doc/license.rst   (regular file, not a link)
+member count matching Doc/license.rst: 1; members with absolute or '..' paths: 0
+$ tar -xJf Python-3.12.15.tar.xz -C <scratch>/cpy-extract --no-same-owner --no-same-permissions Python-3.12.15/Doc/license.rst
+rc=0; the extract dir then holds only Python-3.12.15/Doc/license.rst
+$ sha256sum Python-3.12.15/Doc/license.rst
+341832873fd316a37927e79385093fbbfd40a467428480835fe435a80cadf4e5  (54,130 B)
+=> EQUALS the licence file's "Source sha256" header line and the architect's and developer's raw.githubusercontent fetches.
+
+4. Re-extract with the N10a rule and compare:
+$ grep -c -x 'Licenses and Acknowledgements for Incorporated Software' license.rst   -> 1 (line 298; line 299 is the '=' underline)
+$ sed -n '/^Licenses and Acknowledgements for Incorporated Software$/,$p' license.rst > extract.txt
+  808 lines, 38,036 B, sha256 d4f3b2147ce2d4b6a4671b208523669923778b9a3f609aab753c41d34540698a (equals the probe and the developer's figure)
+$ tail -n +6 licenses/CPython-3.12-incorporated.txt > body.txt     (the file minus its 4 header lines and the blank line 5)
+  808 lines, 38,036 B
+$ cmp extract.txt body.txt && echo CMP_EQUAL
+CMP_EQUAL
+Line 5 of the file is a single LF; the file has 0 CR bytes; .gitattributes sets 'licenses/* -text'
+(git check-attr: text unset), so core.autocrlf=true cannot rewrite it at commit or checkout.
+
+Provenance line for NOTICE / design notes (Q48 form): "no upstream checksum for Doc/license.rst;
+TOFU from raw.githubusercontent.com tag v3.12.15, confirmed by security from the python.org release
+tarball Python-3.12.15.tar.xz, whose sha256 equals the pinned base's PYTHON_SHA256."
+
+5. Open point from N10a (HACL*): the tarball's Modules/_hacl/ (27 entries, e.g. Hacl_Hash_SHA2.c)
+carries an MIT header "Copyright (c) 2016-2022 INRIA, CMU and Microsoft Corporation /
+Copyright (c) 2022-2023 HACL* Contributors" with "The above copyright notice and this permission
+notice shall be included in all copies or substantial portions of the Software." license.rst has
+0 'HACL' hits. The image ships _md5, _sha1, _sha2 and _sha3 under lib-dynload (built from _hacl in
+3.12). See security.md Re-check 2, L-9.
+
+Scratch directories (cpy-fetch, cpy-extract, cpy-work, cpy-hacl, cpy-hacl2) stay in the session
+scratchpad; nothing was written into the repo except this file and security.md.

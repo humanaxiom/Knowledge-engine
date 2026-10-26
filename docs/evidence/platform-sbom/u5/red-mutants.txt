@@ -1,0 +1,76 @@
+$ COMPOSE_FILE=docker-compose.yml COMPOSE_PROJECT_NAME=ke-tester-u5 docker compose --env-file .env.example --profile gates run --rm gates uv run --locked python docs/evidence/platform-sbom/u5/u5_controls.py   (base: u5/target-*; HEAD rows read git HEAD c300d88; tester, U5 RED, 2026-10-24)
+ Container ke-tester-u5-gates-run-1d63d8ec1805 Creating 
+ Container ke-tester-u5-gates-run-1d63d8ec1805 Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.95ms
+Installed 1 package in 1ms
+ok  [logic] TARGET: all 32 logic tests                                         must pass | no problem
+ok  [logic] TARGET: test_neo4j_checker_cli (python -I on the copy)             must pass | no problem
+ok  [logic] HEAD sbom_check.py: test_classifier_table                          must fail | test_classifier_table: AssertionError: scripts/sbom_check.py has no needs_source() (U5 interface, PSC-15; desi
+ok  [logic] HEAD sbom_check.py: test_licence_input_selection                   must fail | test_licence_input_selection: AssertionError: scripts/sbom_check.py has no licence_input() (U5 interface, PSC-
+ok  [logic] HEAD sbom_check.py: test_classify_document_skips_root_and_applies_always must fail | test_classify_document_skips_root_and_applies_always: AssertionError: scripts/sbom_check.py has no classify_do
+ok  [logic] HEAD sbom_check.py: test_validate_rejects_trailing_newline_spdxid_and_prints_escaped must fail | test_validate_rejects_trailing_newline_spdxid_and_prints_escaped: AssertionError: [] is not true : validate ac
+ok  [logic] HEAD sbom_check.py: test_drift_problems_escape_debian_name_and_cpython_version must fail | test_drift_problems_escape_debian_name_and_cpython_version: -  'name'] : a Debian name printed raw (L-5, R2): 
+ok  [logic] HEAD sbom_check.py: test_finish_argv_patterns_fullmatch            must fail | test_finish_argv_patterns_fullmatch: AssertionError: 1 != 2 : --name 'ke-app\n' is not refused as a bad argume
+ok  [logic] HEAD sbom_check.py: test_tree_listing_records_regular_file_size    must fail | test_tree_listing_records_regular_file_size:  : tree_listing is path -> (type, mode, uid, gid, size, link targ
+ok  [logic] HEAD sbom_check.py: test_tree_check_compares_size_and_hard_links_both_ways must fail | test_tree_check_compares_size_and_hard_links_both_ways: -  "image has ('file', 493, 0, 0, '')"] : the hard-lin
+ok  [logic] HEAD sbom_check.py: test_neo4j_tree_check_logic (guard, green before U5) must pass | no problem
+ok  [logic] HEAD sbom_check.py: test_psycopg_problems_escape (guard, green before U5) must pass | no problem
+ok  [logic] L-4 open: the classifier uses the report's _missing (hash = missing) must fail | test_both_fields_set: AssertionError: False != True : needs is False, want True for {'name': 'x', 'SPDXID': 'S
+ok  [logic] L-4 open (licence_input)                                           must fail | test_licence_input_selection:  : hash-only declared is set (L-4)
+ok  [logic] NONE/NOASSERTION leaves read as known ids                          must fail | test_unknown_leaves_need_source_and_are_unidentified: AssertionError: False != True : needs_source('LicenseRef
+ok  [logic] NONE/NOASSERTION leaves case-insensitive                           must fail | test_unknown_leaves_need_source_and_are_unidentified: AssertionError: True is not false : `noassertion` is an 
+ok  [logic] hash ids case-insensitive                                          must fail | test_unknown_leaves_need_source_and_are_unidentified: AssertionError: True is not false : LicenseRef-012345678
+ok  [logic] needs(OR) = any                                                    must fail | test_classifier_table: AssertionError: True != False : needs_source('LGPL-2.1-or-later OR Apache-2.0') needs T
+ok  [logic] needs(AND) = all                                                   must fail | test_classifier_table: AssertionError: False != True : needs_source('MIT AND GPL-3.0-or-later') needs False, w
+ok  [logic] precedence inverted (OR binds tighter than AND)                    must fail | test_precedence_and_parentheses: AssertionError: True != False : needs_source('GPL-2.0-only AND Apache-2.0 OR 
+ok  [logic] an unclosed parenthesis accepted                                   must fail | test_unparseable_text: AssertionError: False != True : needs_source('(MIT OR GPL-2.0-only') needs False, want 
+ok  [logic] operators case-sensitive                                           must fail | test_operators_any_case: AssertionError: True != False : needs_source('MIT and GPL-2.0-only') unparsed True, w
+ok  [logic] WITH reads gpl(X) only (an unknown X passes)                       must fail | test_unknown_leaves_need_source_and_are_unidentified: AssertionError: False != True : needs_source('LicenseRef
+ok  [logic] no token rule (ids)                                                must fail | test_url_folded_ids: AssertionError: False != True : needs_source('LicenseRef-https---glassfish.java.net-publi
+ok  [logic] no token rule (is_gpl_id)                                          must fail | test_is_gpl_id_pattern_and_token_rule: AssertionError: False is not True : is_gpl_id('LicenseRef-lgpl-custom')
+ok  [logic] token-rule ids not listed unparsed                                 must fail | test_named_licenseref_rows: AssertionError: False != True : needs_source('LicenseRef-lgpl-custom') unparsed Fa
+ok  [logic] http ids not listed unparsed                                       must fail | test_url_folded_ids: AssertionError: False != True : needs_source('LicenseRef-http---www.eclipse.org-legal-epl
+ok  [logic] http matched case-sensitively                                      must fail | test_url_folded_ids: AssertionError: False != True : needs_source('LicenseRef-HTTPS---example.org-licence') un
+ok  [logic] LicenseRef- stripped before lower-casing                           must fail | test_named_licenseref_rows: AssertionError: True != False : needs_source('LICENSEREF-GPL-2.0-only') unparsed T
+ok  [logic] junk: hash ids ignored (listing only)                              must fail | test_unparseable_text: AssertionError: False != True : needs_source('Public Domain OR LicenseRef-0123456789abc
+ok  [logic] junk: \bgpl\b instead of the token rule                            must fail | test_unparseable_text: AssertionError: False != True : needs_source('the LGPL, version 2.1') needs False, want
+ok  [logic] deep nesting raises (RecursionError not caught)                    must fail | test_needs_source_never_raises: RecursionError: maximum recursion depth exceeded
+ok  [logic] licence_input joins without parentheses                            must fail | test_licence_input_selection:  : both set and differ
+ok  [logic] both set: declared only                                            must fail | test_both_fields_set:  : expression is 'LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789a
+ok  [logic] files read when declared is set                                    must fail | test_licence_input_selection:  : files not read when declared is set (N8 input order)
+ok  [logic] type rule dropped (any non-missing value is set)                   must fail | test_licence_input_type_rule:  : non-string declared falls to concluded
+ok  [logic] classify_document includes the DESCRIBES root                      must fail | test_classify_document_skips_root_and_applies_always: AssertionError: 'SPDXRef-DocumentRoot-Image-valkey' unex
+ok  [logic] always does not force needs                                        must fail | test_classify_document_skips_root_and_applies_always: AssertionError: False != True : pkg:apk/alpine/busybox: 
+ok  [logic] always (real policy) not applied                                   must fail | test_classify_document_real_neo4j_rows: AssertionError: False != True : pkg:generic/oracle/openjdk: needs is F
+ok  [logic] validate: SPDXID with match ($ before a final newline)             must fail | test_validate_rejects_trailing_newline_spdxid_and_prints_escaped: AssertionError: [] is not true : validate ac
+ok  [logic] validate: SPDXID printed raw                                       must fail | test_validate_rejects_trailing_newline_spdxid_and_prints_escaped: + [] : validate prints SBOM text raw (L-5: _
+ok  [logic] validate: created with match                                       must fail | test_validate_rejects_created_with_trailing_newline: AssertionError: [] is not true : created with a trailing 
+ok  [logic] drift: Debian name printed raw                                     must fail | test_drift_problems_escape_debian_name_and_cpython_version: -  'name'] : a Debian name printed raw (L-5, R2): 
+ok  [logic] drift: CPython version printed raw                                 must fail | test_drift_problems_escape_debian_name_and_cpython_version: -  'SBOM lists 3.12.15\x1b'] : the CPython version
+ok  [logic] finish: --name/--git-sha with match                                must fail | test_finish_argv_patterns_fullmatch: AssertionError: 1 != 2 : --name 'ke-app\n' is not refused as a bad argume
+ok  [logic] tree: size not recorded                                            must fail | test_tree_listing_records_regular_file_size:    'var/lib/neo4j/data': ('symlink', 511, 0, 0, 0, '/data')} : tr
+ok  [logic] tree: size not compared                                            must fail | test_tree_check_compares_size_and_hard_links_both_ways: AssertionError: [] == [] : a regular file that changed
+ok  [logic] tree: hard links resolved in the official listing only (U4b)       must fail | test_tree_check_compares_size_and_hard_links_both_ways: -  "'usr/bin/perl'), the official image has ('file', 4
+ok  [logic] tree: a hard link takes size 0, not its target's                   must fail | test_tree_check_compares_size_and_hard_links_both_ways: -  "image has ('file', 493, 0, 0, 0, '')"]
+ok  [logic] tree: a hard link takes its target's mode                          must fail | test_tree_check_compares_size_and_hard_links_both_ways: AssertionError: [] == [] : a hard link with another mo
+ok  [exemption] TARGET scanner                                                     must pass | no problem
+ok  [exemption] HEAD scanner (no continuation rule)                                must fail | test_dockerfile_exemption_skips_continuation_lines: AssertionError: [] is not true : the exempt line was exemp
+ok  [exemption] previous line not right-stripped                                   must fail | test_dockerfile_exemption_skips_continuation_lines: AssertionError: [] is not true : the exempt line was exemp
+ok  [exemption] any backslash in the previous line                                 must fail | test_dockerfile_exemption_skips_continuation_lines: + [] : after a line with a backslash inside
+ok  [exemption] prev never updated                                                 must fail | test_dockerfile_exemption_skips_continuation_lines: AssertionError: [] is not true : the exempt line was exemp
+ok  [exemption] the exemption never applies (control: the passing half is exercised) must fail | test_dockerfile_exemption_skips_continuation_lines: + [] : first line
+ok  [smoke] TARGET                                                             must pass | no problem
+ok  [smoke] HEAD smoke (-xdev, U4b)                                            must fail | test_smoke_checks_no_fleet_plugin_in_neo4j: AssertionError: {'-xdev'} is not false : the find stops at mounts 
+ok  [smoke] prune kept, -xdev added back                                       must fail | test_smoke_checks_no_fleet_plugin_in_neo4j: AssertionError: {'-xdev'} is not false : the find stops at mounts 
+ok  [smoke] -mount instead of the prune                                        must fail | test_smoke_checks_no_fleet_plugin_in_neo4j: AssertionError: {'-mount'} is not false : the find stops at mounts
+ok  [smoke] only /proc pruned                                                  must fail | test_smoke_checks_no_fleet_plugin_in_neo4j: AssertionError: ('-path', '/sys') not found in [('find', '/'), ('/
+ok  [smoke] /dev not pruned                                                    must fail | test_smoke_checks_no_fleet_plugin_in_neo4j: AssertionError: ('-path', '/dev') not found in [('find', '/'), ('/
+ok  [smoke] no prune at all                                                    must fail | test_smoke_checks_no_fleet_plugin_in_neo4j: AssertionError: ('-path', '/proc') not found in [('find', '/'), ('
+ok  [smoke] the exec status ignored                                            must fail | test_smoke_fails_when_the_fleet_plugin_is_in_neo4j: smoke: PASS
+ok  [offline] TARGET (drift_work comment)                                        must pass | no problem
+ok  [offline] TARGET has the drift_work comment (ruling 9)                       must pass | no problem
+
+U5 controls (targets): 66 rows, 58 must-fail, 8 must-pass, 0 unexpected
+controls exit: 0

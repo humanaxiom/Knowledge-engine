@@ -1,0 +1,26 @@
+# reviewer U5 probes, 2026-10-24 (host python -I, scripts/sbom_check.py working tree)
+## probe.py
+'Public Domain AND NOASSERTION' (False, {'unparsed': True, 'unidentified': False})
+'MIT NOASSERTION' (False, {'unparsed': True, 'unidentified': False})
+'(NOASSERTION) WITH x' (False, {'unparsed': True, 'unidentified': False})
+'MIT WITH GPL-2.0-only' (False, {'unparsed': False, 'unidentified': False})
+'MIT w\u0131th GPL-2.0-only' (False, {'unparsed': False, 'unidentified': False})
+'  ' (False, {'unparsed': True, 'unidentified': False})
+'MIT AND (NOASSERTION' (False, {'unparsed': True, 'unidentified': False})
+'NOASSERTION NONE' (False, {'unparsed': True, 'unidentified': False})
+'GPL-2.0-only WITH x OR MIT' (False, {'unparsed': False, 'unidentified': False})
+'licenseref-0000000000000000000000000000000000000000000000000000000000000000' (False, {'unparsed': False, 'unidentified': False})
+'MIT OR LicenseRef-GPL-2.0-only' (False, {'unparsed': False, 'unidentified': False})
+{'SPDXID': 'SPDXRef-x', 'name': 'x', 'licenseDeclared': 'Public Domain', 'licenseConcluded': 'MIT AND NOASSERTION'} {'needs': True, 'unparsed': True, 'unidentified': True, 'expression': '(Public Domain) AND (MIT AND NOASSERTION)'} joined: (False, {'unparsed': True, 'unidentified': False})
+{'SPDXID': 'SPDXRef-x', 'name': 'x', 'licenseDeclared': '  '} {'needs': False, 'unparsed': True, 'unidentified': False, 'expression': '  '} joined: (False, {'unparsed': True, 'unidentified': False})
+{'SPDXID': 'SPDXRef-x', 'name': 'x', 'licenseInfoFromFiles': ['Public Domain', 'MIT AND NONE']} {'needs': True, 'unparsed': True, 'unidentified': True, 'expression': '(Public Domain) AND (MIT AND NONE)'} joined: (False, {'unparsed': True, 'unidentified': False})
+[('0x131', '\u0131', 'I')]
+
+## probe_drift.py (drift success line)
+rc 0
+stdout 'sbom_check: drift: ok: added libldap-2.5-0, libpq5, libsasl2-2, libsasl2-modules-db; no pip; CPython 3.12.15, 3.12.15\x1b[2J (3 licence files); libpq5 15.19-0+deb12u1 (postgresql-15); psycopg-c 3.3.6, no psycopg-binary\n'
+stderr ''
+
+## mutant_joined.py (classify the joined licence_input text; control breaks classify_package)
+MUTANT joined-text: failures 0 errors 0 ran 26
+CONTROL broken: failures 18 errors 7

@@ -1,0 +1,65 @@
+import sys, copy, io, contextlib
+sys.path.insert(0, r"c:\repos\Knowledge-engine")
+import tests.test_sources_lock as t
+m = t.load_sbom_check()
+P = t.policy(); D = t.small_docs()
+def run(name, lock=None, raw=None):
+    try:
+        p = m.lock_problems(raw if raw is not None else t.canon(lock), P, D, "amd64")
+        print(f"{name}: {'PASSES' if p == [] else 'refused: ' + ascii(p[0])[:150]}")
+    except Exception as e:
+        print(f"{name}: RAISES {type(e).__name__}: {e}")
+def mut(key, ch):
+    d = t.good_lock(t.SMALL_KEYS); ch(d["components"][key]); return d
+keys = sorted(t.SMALL_KEYS); print("SMALL_KEYS:", keys)
+NEO, DEB, MAV, TEM, APK = "neo4j:neo4j@5.26.32", "deb:bash@5.2.15-2", "maven:javax.xml.bind:jaxb-api@2.2.12", "temurin:jdk-21.0.12.1+1", "apk:readline@8.2.13-r1"
+PYP = [k for k in keys if k.startswith("pypi:")][0]
+f0 = lambda e: e["files"][0]
+print("## baseline"); run("good small lock (committed policy)", t.good_lock(t.SMALL_KEYS))
+print("## round-0 inputs (all must be refused)")
+run("B1 neo4j alg sha1 any value", mut(NEO, lambda e: f0(e)["upstream"].update(alg="sha1", value="0"*40)))
+run("B1 neo4j alg sha512", mut(NEO, lambda e: f0(e)["upstream"].update(alg="sha512", value="0"*128)))
+run("B1 neo4j two files", mut(NEO, lambda e: e["files"].append(dict(copy.deepcopy(f0(e)), name="x.tar.gz"))))
+run("B2 tab in host", mut(PYP, lambda e: f0(e).update(url=f0(e)["url"].replace("files.python", "files.py\tthon"))))
+run("B2 LF in path", mut(PYP, lambda e: f0(e).update(url=f0(e)["url"].replace("/packages", "/pack\nages"))))
+run("B2 space in path", mut(PYP, lambda e: f0(e).update(url=f0(e)["url"].replace("/packages", "/pack ages"))))
+run("N1 maven jar on files.pythonhosted.org", mut(MAV, lambda e: f0(e).update(url=f0(e)["url"].replace("repo1.maven.org", "files.pythonhosted.org"))))
+run("N1 maven evil name", mut(MAV, lambda e: f0(e).update(name="evil-1.0-sources.jar", url=f0(e)["url"].rsplit("/",1)[0] + "/evil-1.0-sources.jar")))
+run("N1 temurin on repo1.maven.org", mut(TEM, lambda e: f0(e).update(url="https://repo1.maven.org/x/" + f0(e)["name"])))
+run("N1 neo4j github.com/attacker", mut(NEO, lambda e: f0(e).update(url=f0(e)["url"].replace("/neo4j/neo4j/", "/attacker/x/"))))
+run("N2 deb only .dsc", mut(DEB, lambda e: e["files"].pop(1)))
+run("N4 entry extra key", mut(DEB, lambda e: e.update(skip=True)))
+run("N5 arches [['amd64']]", mut(DEB, lambda e: e.update(arches=[["amd64"]])))
+run("N5 arches [1,'amd64']", mut(DEB, lambda e: e.update(arches=[1, "amd64"])))
+print("## new candidates")
+tem_prefix = lambda e: f0(e)["url"].rsplit("/", 2)[0]
+B = chr(92)
+run("temurin path with literal backslash traversal", mut(TEM, lambda e: f0(e).update(url=tem_prefix(e) + "/x" + B + ".." + B + ".." + B + ".." + B + ".." + B + "attacker" + B + "repo/" + f0(e)["name"])))
+run("temurin path with %2E%2E (upper)", mut(TEM, lambda e: f0(e).update(url=tem_prefix(e) + "/%2E%2E/%2E%2E/%2E%2E/%2E%2E/attacker/repo/releases/download/x/" + f0(e)["name"])))
+run("temurin path with ..%2F", mut(TEM, lambda e: f0(e).update(url=tem_prefix(e) + "/..%2F..%2F..%2F..%2Fattacker/" + f0(e)["name"])))
+run("temurin path with %2e%2e segments", mut(TEM, lambda e: f0(e).update(url=tem_prefix(e) + "/%2e%2e/%2e%2e/%2e%2e/%2e%2e/attacker/repo/releases/download/x/" + f0(e)["name"])))
+run("temurin path with ./ segment", mut(TEM, lambda e: f0(e).update(url=tem_prefix(e) + "/./" + f0(e)["name"])))
+run("temurin path with an extra subdir", mut(TEM, lambda e: f0(e).update(url=tem_prefix(e) + "/any/deeper/" + f0(e)["name"])))
+run("temurin tag segment not the key's tag", mut(TEM, lambda e: f0(e).update(url=tem_prefix(e) + "/jdk-17.0.1%2B1/" + f0(e)["name"])))
+run("temurin asset of another feature", mut(TEM, lambda e: f0(e).update(name="OpenJDK17U-jdk-sources_17.0.1_1.tar.gz", url=f0(e)["url"].rsplit("/",1)[0] + "/OpenJDK17U-jdk-sources_17.0.1_1.tar.gz") or f0(e)["upstream"].update({"from": "OpenJDK17U-jdk-sources_17.0.1_1.tar.gz.sha256.txt"})))
+run("pypi path %2e%2e on its host", mut(PYP, lambda e: f0(e).update(url="https://files.pythonhosted.org/%2e%2e/" + f0(e)["name"])))
+run("deb .dsc url with %2F", mut(DEB, lambda e: f0(e).update(url=f0(e)["url"].replace("/file/", "/file%2F"))))
+run("HTTPS upper", mut(PYP, lambda e: f0(e).update(url=f0(e)["url"].replace("https://", "HTTPS://"))))
+run("size 4 GiB exactly", mut(PYP, lambda e: f0(e).update(size=4294967296)))
+run("size 4 GiB + 1", mut(PYP, lambda e: f0(e).update(size=4294967297)))
+run("apk distfiles at another branch", mut(APK, lambda e: e["files"][1].update(url=e["files"][1]["url"].replace("/v3.23/", "/v3.22/"))))
+run("from with a tab", mut(PYP, lambda e: f0(e)["upstream"].update({"from": "uv\t.lock"})))
+run("from with DEL", mut(PYP, lambda e: f0(e)["upstream"].update({"from": "uv.lock\x7f"})))
+run("key with ESC (cleaned)", None, t.canon({"format": 1, "components": dict(t.good_lock(t.SMALL_KEYS)["components"], **{"deb:x\x1b[2J@1": {}})}))
+print("## CLI message form on an exception inside the check")
+import tempfile, os, json
+d = tempfile.mkdtemp()
+lp = os.path.join(d, "lock.json"); open(lp, "w", newline="").write(t.canon(t.good_lock(t.SMALL_KEYS)))
+pp = os.path.join(d, "policy.json"); open(pp, "w").write('{"hosts": 5, "always": [], "exempt": []}')
+sp = os.path.join(d, "x.json"); open(sp, "w").write(json.dumps(D["postgres"]))
+err = io.StringIO()
+with contextlib.redirect_stderr(err): rc = m.main(["lock-check", "--lock", lp, "--policy", pp, "--arch", "amd64", "--sbom", "postgres=" + sp])
+print("  rc", rc, "stderr:", ascii(err.getvalue().strip()).replace(d.replace("\\", "\\\\"), "<tmp>"))
+print("## 182 keys")
+needs, probs = m.lock_needs(t.policy(), t.fixture_docs())
+print("  keys", len(needs), "== FIXTURE_KEYS:", set(needs) == set(t.FIXTURE_KEYS), "problems", probs)

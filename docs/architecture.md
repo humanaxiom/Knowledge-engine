@@ -4395,7 +4395,8 @@ The template's existing ADR (OpenInference tracing to Arize Phoenix) stays in
 force, and its text is kept below unchanged. ADR-KE-001 is built (amended by
 ADR-KE-009). ADR-KE-002 to ADR-KE-012 are **proposed**. ADR-KE-014
 (model roles) is **accepted** by the 2026-10-20 rulings. ADR-KE-015
-(CI triggers) is **accepted** by the 2026-10-22 rulings.
+(CI triggers) is **accepted** by the 2026-10-22 rulings. ADR-KE-016 (SBOMs
+and the GPL source archive, platform-sbom) is **proposed** (2026-10-22).
 
 ### ADR: OpenInference tracing to Arize Phoenix
 - Context: `docs/log.md` records what each role did, but not how agent code
@@ -6233,6 +6234,12 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
   cannot be reached; there is no retry and no skip."
 
 **D10. `ke-app` ships without uv (PSC-17; architect, 2026-10-21, unit 3).**
+- **Amended 2026-10-22 (platform-sbom U1; ADR-KE-016 point 9, design-notes
+  N10a).** The final stage is now `FROM scratch` + `COPY --from=runtime / /`,
+  where `runtime` is built `FROM` the pinned base and removes pip. A
+  layer delete does not remove pip from the saved tar, because `docker
+  save` keeps the base layer. D10's reason, the venv's interpreter paths,
+  still holds: `runtime`'s `FROM` equals the builder's, byte for byte.
 - **Context.** The first real scan of `ke-app`
   (`docs/evidence/platform-supply-chain/u2-green-real-scan.txt`) fails on
   two fixed findings at or above the threshold:
@@ -6530,3 +6537,223 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
   (CT-1, RED today: `push` is null); `test_docs_say_ci_needs_a_pull_request`
   (CT-6, RED today); `test_ci_concurrency_per_ref` (CT-3, passes on arrival
   as a pin, not a RED).
+
+### ADR-KE-016: SBOMs and GPL source archive in the bundle (platform-sbom)
+- **Status:** proposed (architect, 2026-10-22; amended for Q64 the same
+  day), for the Plan gate. Criteria: `docs/requirements.md`
+  `## Item: platform-sbom`, PSC-13–16 and PSC-19–25. Rulings applied: Q48,
+  Q56(b), Q57–Q60, and the human's 2026-10-22 rulings: **Q61**, fail
+  closed on any failed or mismatched source fetch; **Q62**, Q60's 180 s
+  trigger applies; **Q63**, a reduced verify set and the full set for
+  every operator bundle; **Q64**, psycopg is built on Debian's libpq
+  (point 0), with the orchestrator's Q65 and Q66. Reuses ADR-KE-013 am. 1 (D1–D3, D8) and ADR-KE-012
+  (manifest, R2, R6) unchanged. Detail is in
+  `docs/evidence/platform-sbom/design-notes.md` (N0–N16).
+- **Context:** `bundle.sh` "makes no network call". Install's path rule
+  (`[A-Za-z0-9._-]` per segment) and `bundle.json` regex live in three
+  scripts; it publishes only `app/` and never compares image IDs (R2).
+  No cataloguer sees the 15 files of `psycopg_binary.libs` (PSC-7, L-13),
+  two LGPL from an unrecorded el7 build. `/install` is an unsized tmpfs.
+- **Decision:**
+  0. **psycopg on Debian's libpq (Q64, PSC-25, N0).** Supersedes
+     ADR-KE-011's rejected "plain psycopg plus apt libpq5".
+     - *uv:* `dependencies` keeps `psycopg>=3.3.6`, no extra. Group `pq-c`
+       is `psycopg[c]>=3.3.6` (the extra pins `psycopg-c==3.3.6`); group
+       `pq-build` locks psycopg-c's `[build-system] requires`; `[tool.uv]
+       no-build-isolation-package = ["psycopg-c"]`, so the build uses only
+       hash-locked packages. `uv.lock` drops `psycopg-binary` and gains
+       `psycopg-c` with its sdist URL and SHA-256 (no wheels exist).
+       *Q65:* a host's `uv run` (default group `dev`, Windows included)
+       gets pure psycopg and compiles nothing; no host imports it.
+     - *Builder:* `gcc`, `libc6-dev`, `libpq-dev=${LIBPQ_VERSION}`
+       (`pg_config`); no `python3-dev`, the base's CPython has headers.
+       Three `--locked` syncs: `pq-build`, no project; `pq-build` + `pq-c`
+       with `--no-binary-package psycopg-c` (compiles the locked sdist);
+       final `--no-dev --group pq-c --no-binary-package psycopg-c
+       --no-editable`, an exact sync that drops `pq-build`. `ke-gates`
+       builds it the same way and keeps both groups.
+     - *Runtime:* one `RUN` of `apt-get update`, `apt-get install -y
+       --no-install-recommends libpq5=${LIBPQ_VERSION}` and `rm -rf
+       /var/lib/apt/lists/*`. `ARG LIBPQ_VERSION=<bookworm version>`,
+       declared once before the first `FROM`, is the only literal, so
+       compile-time and runtime libpq match (what apt adds with it: N0).
+     - *Drift:* a fast test ties `+deb12u<n>` to the `-bookworm` base; a
+       moved dependency fails point 4's coverage check by name. The fix is
+       a reviewed bump and re-lock, never an unpinned install.
+     - *Proof:* smoke, in the live `api`: impl `c`, no `psycopg_binary*`,
+       libpq versions equal the dpkg libpq5 (strict, fails closed, M-1),
+       `libpq.so.5` dpkg-owned (N0). A fast test checks `ke-gates`.
+     - *Effects:* dpkg-catalogued libpq5 and its dependencies replace the
+       unseen files; L-13 is closed (security, U0; a fixed High: Q42).
+       libpq 18 becomes 15; `gssencmode="disable"` stays. Size: N0.
+  1. **Generator: syft**, `anchore/syft:v<X.Y.Z>@sha256:<index digest>`,
+     provenance by `cosign verify`, else the signed `checksums.txt` against
+     the binary copied out with `docker cp`, never run (D2; security's
+     `generator-provenance.md`). Standalone `docker-compose.sbom.yml` (no
+     profiles, never bundled), service `sbom`: `network_mode: none`,
+     `read_only`, tmpfs `/tmp:mode=1777` (image `/tmp` is 0755; N1), `cap_drop:
+     [ALL]`, `no-new-privileges`, no socket, no update check or remote licence lookups. It reads
+     `docker-archive:/in/<name>.tar` read-only; its one writable mount is a
+     per-image work dir outside `--out` that also takes the unpack
+     (`TMPDIR`). `--scope all-layers`; uid:gid the caller's (`KE_SBOM_USER`);
+     run by `compose -p <project>-sbom run --rm --pull never` after the saves.
+     `bundle.sh` refuses before any write if the image is absent. SPDX 2.3
+     by a required-field validator (N6); syft itself sees libpq5, psycopg-c.
+     *Amended U2 (2026-10-23, N1 amendment):* pinned at v1.54.1, the syft
+     that grype v0.120.1 embeds, by its index digest. Eight `SYFT_*=false`
+     keys turn off the update check and every remote lookup. Until U8,
+     `offline_check.sh` pulls it just before `bundle.sh`, with dummy `:?`
+     values and `--env-file .env.example`. The refusal tells the operator to
+     run `docker pull <ref>`; U8 swaps both for `bundle_fetch.sh`.
+  2. **One checker, `scripts/sbom_check.py`** (N3): standard library only,
+     never shipped; every subcommand reads read-only mounts and writes
+     only stdout. At bundle time it runs inside the `ke-app` image being
+     bundled, as the notices run does (`--network none`, `--read-only`,
+     `--cap-drop ALL`, its own label), so the runtime-package check sees
+     the real venv. The e2e runs it in the offline client; fast tests
+     import it.
+  3. **The fetch is a separate pre-bundle step; `bundle.sh` stays
+     offline.** `scripts/bundle_fetch.sh --set full|sample --out <dir>`
+     pulls the generator, then runs the one-shot `sources-fetch`
+     (`ke-gates`, `pull_policy: never`, the file's only route out,
+     `read_only`, `cap_drop: [ALL]`, literal env, one writable mount).
+     `bundle.sh --sources <dir>` re-hashes and copies offline; only
+     `offline_check.sh` passes `--sources-set sample` (Q63). Each file is
+     fetched once (`curl -q --proto '=https' --proto-redir '=https'
+     --tlsv1.2 --fail`, no `-L`; at most 5 hops, each host in `hosts` of
+     `docker/source-policy.json`, N4), its SHA-256 equal to the lock's
+     before anything reads it, and never unpacked, built or run. **Q61:**
+     any non-2xx, timeout, refused hop or mismatch fails at once, naming
+     stage, host and file, with no retry; the partial output is removed
+     and `bundle.sh` never runs. No caller key reaches the fetch (PSC-6).
+  4. **A committed, generated lock: `docker/sources.lock.json`** (N5),
+     keys `deb:`, `apk:`, `neo4j:`, `temurin:`, `pypi:`, `maven:`, each to file
+     URLs, SHA-256, size and the upstream check. *Why:* Q63 still needs
+     the full index every run; the lock builds it offline. *Routes:*
+     Debian from snapshot.debian.org only (`.dsc` by snapshot's SHA-1,
+     the rest by its `Checksums-Sha256`); Alpine at the apk db's aports
+     commit by the APKBUILD `sha512sums`, read as text; Neo4j's tag
+     tarball, trusted on first use (Q48) plus a second fetch by security;
+     Temurin's `jdk-sources` by its `.sha256.txt`; psycopg and psycopg-c
+     by their sdist URL and hash in `uv.lock`, with no API call; Maven
+     sources jars from `repo1.maven.org` by their `.sha1` (ruling 5).
+     `scripts/sources_lock.sh` (maintainer, network) regenerates it;
+     security reviews every diff; arches merge (PSC-21). A GPL-family
+     package with no entry fails the bundle, naming it and the tool.
+     *Sample (Q63):* the smallest entry per kind for the arch.
+  5. **Names (PSC-24): content-addressed; the path rule is unchanged.**
+     `app/sources/files/<sha256>`, with `app/sources/index.json` holding
+     each upstream name, URL, checksums and SBOM packages (N9). The rule
+     is a security control (reserved names, case clashes, safe printing),
+     and upstream names are not ours to bound. 154-byte lines fit about
+     6,800 under the 1 MiB cap; the full set is estimated under 1,000.
+  6. **Recording (rulings 1, 2): `bundle.json` and both
+     installers do not change.** The SBOM for `images/<name>.tar` is
+     `app/sboms/<name>.spdx.json`, annotated `ke:ref`, `ke:arch` and
+     `ke:image-config=sha256:<hex>`. The image is named by the tar's
+     `manifest.json` `Config` digest, the same on both stores (R2), not
+     by an ID install reports. `documentNamespace` is `urn:uuid:<uuid4>`,
+     fresh per document (N6). SBOMs, sources and copies of `NOTICE.md`,
+     `THIRD_PARTY_NOTICES.md`, `LICENSE` and `licenses/` all go under
+     `app/`, so install publishes them and the manifest covers them.
+  7. **`/install` (PSC-16, N14):** `size=${KE_OFFLINE_INSTALL_TMPFS:?}`
+     (bundle size plus 512 MiB) with a Linux `MemAvailable` pre-check
+     before dind; a tmpfs still, as Q63 keeps the verify set small.
+  8. **Classifier (PSC-15, N8; decided, ruling 4):** SPDX expressions with
+     case-insensitive operators. `OR` needs source only if every branch
+     does, `AND` if any term does, `X WITH e` if `X` does. A GPL-family
+     id, after dropping `LicenseRef-`, is `(A|L)?GPL` with an optional
+     version, `+`, `-only` or `-or-later`, and a deprecated
+     `-with-…-exception`. This is wider than PSC-15 (AGPL, GPL-1.0,
+     LGPL-2.0), which is more conservative. Unparseable text containing
+     `gpl`, or an id with a `gpl`/`lgpl`/`agpl` token (syft folds pom URLs
+     into one `LicenseRef-`), needs source and is listed; so is every
+     URL-folded id. A missing `licenseDeclared` falls through to
+     `licenseConcluded`, then `licenseInfoFromFiles`; missing in all three
+     is reported per image (PSC-22; exact rule N8). A licence made only of
+     `LicenseRef-<64 hex>` ids (syft's hash of unidentified text) counts as
+     missing there and is unknown to the classifier: source unless a
+     reviewed `exempt` clears it (H-1, N8). `docker/source-policy.json` holds
+     `hosts`, `always` (each PSC-22 component and its image; one missing
+     from its image fails) and `exempt` (versioned purl, `reason`,
+     `reviewed: security <date>`). Security reviews every diff, and a
+     schema test pins the format (N10).
+  9. **NOTICE.md (PSC-14); no pip (human, 2026-10-23).** "Base of
+     `ke-app`": base digest; CPython 3.12, `Python-2.0`, `LICENSE.txt` for
+     that stack only (M-2); Debian 12 packages, libpq5 and its dependencies;
+     no pip, no uv. A pointer to `THIRD_PARTY_NOTICES.md`'s generated
+     "Source code" section (L-NT1); until U9, no such section means no
+     `sources/` (L-6); until U3, SBOM "where the bundle carries one" (L-1).
+     - *pip out (N10):* stage `runtime` (`FROM` the base) runs the libpq5
+       `RUN`, then `RUN python -m pip uninstall -y pip && rm
+       /usr/local/lib/python3.12/ensurepip/_bundled/pip-*.whl`. Last stage:
+       `FROM scratch`, `COPY --from=runtime / /`, `PATH`/`LANG`, then D10's
+       copies, user, `CMD` (a saved tar carries every layer, so a later
+       delete still ships pip; probe). Amends D10. Smoke: no pip in the api.
+     - *L-5, L-9:* `licenses/CPython-3.12-incorporated.txt`: the "Licenses
+       and Acknowledgements for Incorporated Software" part of `license.rst`
+       at `v3.12.15`; `licenses/CPython-3.12-HACL.txt`: the HACL* MIT header
+       that list omits (`Modules/_hacl/Hacl_Hash_SHA2.c`). Both verbatim, Q48
+       via the tarball = base `PYTHON_SHA256`; U4 ties the version to SBOM.
+  10. **PSC-19 e2e:** after install and before launch, the offline client
+      runs `sbom_check.py verify /bundle "$target"`. On the installed
+      copy it checks the manifest and hashes, one SBOM per image (`ref`,
+      config digest, arch), the SPDX fields, the re-computed coverage
+      rule, the upstream checksums and the notices' claims (N11). The
+      full set is run by hand (`offline_check.sh --sources full`) and
+      recorded before any hand-over (Q63).
+  11. **Q62:** `sources: pull`, `sources: fetch`, `sbom`, `index` and the
+      e2e `verify` are timed on the slower of two green CI runs (D8) and
+      held to 180 s. Past that, the orchestrator decides before the
+      timeout is raised; R6 is re-derived, never lowered.
+  12. **Own neo4j image (Q67, security M-3; U4b, N16):** `ke-neo4j` from
+      `docker/neo4j.Dockerfile`: the pinned official image minus
+      `/var/lib/neo4j/products/` (the commercial fleet plugin, and GenAI),
+      flattened `FROM scratch` with its config re-set; first-party in
+      compose, bundle and install, as `ke-gateway`.
+- **TDD units** (one commit each, all `verify.sh full`): U0-U12 with U4b
+  after U4; scope, loop mode and A34 per unit in N15.
+- **Alternatives considered:** trivy or cdxgen; fetching in `bundle.sh`;
+  no lock; deb.debian.org (URLs rot); widening the path rule or sanitised
+  names; new `bundle.json` fields; the checker in `engine/` or jq;
+  disk-backed `/install`; squashed scope; JSON-schema validation. For U0:
+  an `srpm` kind (release not provable); `psycopg[c]` in `dependencies`
+  or under a `linux` marker (Linux hosts compile); conflicting extras
+  (more machinery, same result); `build-constraint-dependencies`
+  (versions, no hashes); snapshot.debian.org apt (another build host).
+  For U1 and U4b: a delete in a stage `FROM` the base (its layer keeps
+  the file); for U4b, keeping the plugin under Neo4j's terms (Q67).
+- **Consequences:** new inputs: the syft pin (never bundled), the lock
+  (re-locked on every digest, `uv.lock` or libpq bump; reviewed) and the
+  libpq pin. Every postgresql-15 update in bookworm-security breaks
+  `build.sh` on every branch and on CI until the pin is bumped, and
+  rebuilding an old tag fails; installs from a bundle are unaffected. `full`
+  needs the N4 hosts; an outage or refused fetch turns it red by name (Q61);
+  the fix is a re-lock, never a skip (N4 gains `repo1.maven.org`). Operators run `build.sh`,
+  `bundle_fetch.sh --set full`, `bundle.sh --sources`. The CLAUDE.md text
+  (N13) goes to the human at U8 (ruling 6). Ruling 5 (U3, N8a): jna and
+  javassist are OR, Apache-2.0 elected, reviewed `exempt` (U6); jaxb-api
+  ships its sources jar (CDDL-1.1 elected, its 3.1 source term; U7); no
+  cargo default for NOASSERTION (U4 report); `XDG_CACHE_HOME=/tmp/cache` (U4). `ke-app` shares no layer with the base (U1). No spans.
+  The GCC runtime (gcc-12, gcc-14) ships its Debian source (U7; N10).
+- **Q66 (ruled):** Debian 12's libpq 15 (no `require_auth`; re-rated at
+  U0, A66). **First tests:** N0 (U0), N15 (U1, U2, U5), N16 (U4b).
+- **Amended U7 (2026-10-25, architect; design-notes "N5 amendment, U7").**
+  U7 splits into U7a-U7d:
+  - U7a: the pure `lock_needs`, `lock_problems`, `sample_keys` and the
+    `lock-check` subcommand in `sbom_check.py`.
+  - U7b: `scripts/sources_resolve.py` and `scripts/sources_lock.sh`, run in
+    a `sources-resolve` service (`ke-gates`, `docker-compose.sources.yml`).
+    The service has a literal env, one rw mount and hop-checked HTTPS.
+    Files are streamed into the hashers and never stored. This covers the
+    single-file kinds.
+  - U7c: the `deb` and `apk` routes.
+  - U7d: the committed lock and its every-verify coverage test.
+  The coverage set is `classify_document(..., always, exempt)` rows with
+  `needs`. From the U3 fixtures that is 182 keys (152 Debian sources).
+  `neo4j` is `manual` only (TOFU plus security's second fetch); every other
+  kind is `generated`. Pending rulings:
+  - O1: the postgres image's PGDG sources are not on snapshot.debian.org.
+    Recommended: kind `pgdg` and host `apt-archive.postgresql.org`.
+  - O2: phoenix's PyPI packages are not in `uv.lock`. Recommended:
+    `pypi.org` JSON at lock time only, never a file host.

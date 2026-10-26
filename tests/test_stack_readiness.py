@@ -477,7 +477,11 @@ class ReadinessCliTest(unittest.TestCase):
 #   connection (with the DR38 control: guard disabled, a connection is
 #   attempted), HTTP errors are raised and classified, and the readiness
 #   timeout reaches the request.
-# - Security L-13: postgres connections pass gssencmode=disable.
+# - Security L-13: postgres connections pass gssencmode=disable. The first
+#   reason (psycopg-binary's vendored el7 krb5) is gone since platform-sbom
+#   U0 (psycopg-c on Debian's libpq5), but Debian's libpq is still built with
+#   GSSAPI, so the control stays as defence in depth: the client never
+#   negotiates GSS encryption, which keeps krb5 off that path.
 # --------------------------------------------------------------------------
 
 OFF_LIST_URL = "http://model.offlist.example:8102/v1"

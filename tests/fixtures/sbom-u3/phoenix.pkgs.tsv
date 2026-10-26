@@ -1,0 +1,278 @@
+pkg:pypi/aioboto3@7.0.0	7.0.0	LicenseRef-Apache-2|NOASSERTION
+pkg:pypi/aiobotocore@3.9.2	3.9.2	Apache-2.0|NOASSERTION
+pkg:pypi/aiofile@3.12.3	3.12.3	Apache-2.0|NOASSERTION
+pkg:pypi/aiofiles@25.1.0	25.1.0	Apache-2.0|NOASSERTION
+pkg:pypi/aiohappyeyeballs@2.7.1	2.7.1	PSF-2.0|NOASSERTION
+pkg:pypi/aiohttp@3.14.4	3.14.4	(Apache-2.0 AND MIT)|NOASSERTION
+pkg:pypi/aiohttp-retry@2.9.1	2.9.1	MIT|NOASSERTION
+pkg:pypi/aioitertools@0.13.0	0.13.0	MIT|NOASSERTION
+pkg:pypi/aiosignal@1.4.0	1.4.0	LicenseRef-Apache-2.0|NOASSERTION
+pkg:pypi/aiosqlite@0.22.1	0.22.1	NOASSERTION|NOASSERTION
+pkg:pypi/alembic@1.20.0	1.20.0	MIT|NOASSERTION
+pkg:pypi/annotated-doc@0.0.5	0.0.5	MIT|NOASSERTION
+pkg:pypi/annotated-types@0.8.0	0.8.0	MIT|NOASSERTION
+pkg:pypi/anthropic@1.13.0	1.13.0	MIT|NOASSERTION
+pkg:pypi/anyio@4.15.1	4.15.1	MIT|NOASSERTION
+pkg:pypi/arize-phoenix@20.22.0	20.22.0	Elastic-2.0|NOASSERTION
+pkg:pypi/arize-phoenix-client@3.5.0	3.5.0	Apache-2.0|NOASSERTION
+pkg:pypi/arize-phoenix-evals@3.9.2	3.9.2	Elastic-2.0|NOASSERTION
+pkg:pypi/arize-phoenix-otel@0.17.2	0.17.2	Apache-2.0|NOASSERTION
+pkg:pypi/arize-phoenix-sqlean@0.2.0	0.2.0	(Zlib AND MIT AND BSD-2-Clause AND BSD-3-Clause AND PSF-2.0)|NOASSERTION
+pkg:pypi/asgiref@3.12.1	3.12.1	BSD-3-Clause|NOASSERTION
+pkg:pypi/asyncpg@0.32.0	0.32.0	Apache-2.0|NOASSERTION
+pkg:pypi/attrs@26.1.0	26.1.0	MIT|NOASSERTION
+pkg:pypi/authlib@1.8.0	1.8.0	BSD-3-Clause|NOASSERTION
+pkg:pypi/autocommand@2.2.2	2.2.2	LicenseRef-LGPLv3|NOASSERTION
+pkg:pypi/azure-core@1.41.0	1.41.0	MIT|NOASSERTION
+pkg:pypi/azure-identity@1.26.0	1.26.0	MIT|NOASSERTION
+pkg:pypi/backports-tarfile@1.2.0	1.2.0	NOASSERTION|MIT
+pkg:deb/debian/base-files@13.8%2Bdeb13u7?arch=amd64&distro=debian-13.7	13.8+deb13u7	GPL-2.0-only AND GPL-2.0-or-later AND LicenseRef-verbatim|NOASSERTION
+pkg:pypi/bashkit@0.18.2	0.18.2	MIT|NOASSERTION
+pkg:pypi/beartype@0.23.0	0.23.0	MIT|NOASSERTION
+pkg:pypi/bidict@0.24.1	0.24.1	MPL-2.0|NOASSERTION
+pkg:pypi/boto3@1.43.106	1.43.106	Apache-2.0|NOASSERTION
+pkg:pypi/botocore@1.43.106	1.43.106	Apache-2.0|NOASSERTION
+pkg:pypi/bracex@3.0.1	3.0.1	MIT|NOASSERTION
+pkg:deb/debian/ca-certificates@20250419?arch=all&distro=debian-13.7	20250419	GPL-2.0-only AND GPL-2.0-or-later AND MPL-2.0|NOASSERTION
+pkg:pypi/cachetools@7.2.1	7.2.1	MIT|NOASSERTION
+pkg:pypi/caio@0.12.9	0.12.9	Apache-2.0|NOASSERTION
+pkg:pypi/cbor2@6.1.5	6.1.5	MIT|NOASSERTION
+pkg:pypi/certifi@2026.7.22	2026.7.22	MPL-2.0|NOASSERTION
+pkg:pypi/cffi@2.1.1	2.1.1	MIT-0|NOASSERTION
+pkg:pypi/charset-normalizer@3.5.2	3.5.2	MIT|NOASSERTION
+-	UNKNOWN	NOASSERTION|NOASSERTION
+-	UNKNOWN	NOASSERTION|NOASSERTION
+-	UNKNOWN	NOASSERTION|NOASSERTION
+-	UNKNOWN	NOASSERTION|NOASSERTION
+pkg:pypi/click@8.5.0	8.5.0	BSD-3-Clause|NOASSERTION
+pkg:pypi/connectrpc@0.11.1	0.11.1	Apache-2.0|NOASSERTION
+pkg:pypi/cross-web@0.7.0	0.7.0	MIT|NOASSERTION
+pkg:pypi/cryptography@50.0.2	50.0.2	(Apache-2.0 OR BSD-3-Clause)|NOASSERTION
+pkg:pypi/cyclopts@5.2.0	5.2.0	Apache-2.0|NOASSERTION
+pkg:pypi/daytona-analytics-api-client@0.223.1	0.223.1	NOASSERTION|NOASSERTION
+pkg:pypi/daytona-analytics-api-client-async@0.223.1	0.223.1	NOASSERTION|NOASSERTION
+pkg:pypi/daytona-api-client@0.223.1	0.223.1	Apache-2.0|NOASSERTION
+pkg:pypi/daytona-api-client-async@0.223.1	0.223.1	Apache-2.0|NOASSERTION
+pkg:pypi/daytona-sdk@0.223.1	0.223.1	Apache-2.0|NOASSERTION
+pkg:pypi/daytona-toolbox-api-client@0.223.1	0.223.1	Apache-2.0|NOASSERTION
+pkg:pypi/daytona-toolbox-api-client-async@0.223.1	0.223.1	Apache-2.0|NOASSERTION
+pkg:generic/deno@2.1.4	2.1.4	NOASSERTION|NOASSERTION
+pkg:pypi/deprecated@1.3.1	1.3.1	MIT|NOASSERTION
+pkg:pypi/distro@1.9.0	1.9.0	LicenseRef-Apache-License--Version-2.0|NOASSERTION
+pkg:pypi/dnspython@2.9.0	2.9.0	ISC|NOASSERTION
+pkg:pypi/docstring-parser@0.18.0	0.18.0	MIT|NOASSERTION
+pkg:pypi/e2b@2.55.1	2.55.1	MIT|NOASSERTION
+pkg:pypi/e2b-code-interpreter@2.10.5	2.10.5	MIT|NOASSERTION
+pkg:pypi/e2b-dockerfile-utils@0.1.0	0.1.0	Apache-2.0|NOASSERTION
+pkg:pypi/email-validator@2.3.0	2.3.0	Unlicense|NOASSERTION
+pkg:pypi/exceptiongroup@1.3.1	1.3.1	NOASSERTION|NOASSERTION
+pkg:pypi/fastapi@0.143.0	0.143.0	MIT|NOASSERTION
+pkg:pypi/fastmcp-slim@4.1.0	4.1.0	Apache-2.0|NOASSERTION
+pkg:pypi/frozenlist@1.8.0	1.8.0	Apache-2.0|NOASSERTION
+pkg:deb/debian/gcc-14-base@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14	14.2.0-19	NOASSERTION|LicenseRef-20390f8a6f3b1e4d7cb45dd8652dabb259bbef688cbad839bcdb0b9ba7252f79
+pkg:pypi/genai-prices@0.1.10	0.1.10	MIT|NOASSERTION
+pkg:pypi/google-auth@2.61.0	2.61.0	LicenseRef-Apache-2.0|NOASSERTION
+pkg:pypi/google-genai@2.29.0	2.29.0	Apache-2.0|NOASSERTION
+pkg:pypi/googleapis-common-protos@1.75.5	1.75.5	Apache-2.0|NOASSERTION
+pkg:pypi/graphql-core@3.3.0	3.3.0	MIT|NOASSERTION
+pkg:pypi/greenlet@3.5.6	3.5.6	(MIT AND PSF-2.0)|NOASSERTION
+pkg:pypi/griffelib@2.3.2	2.3.2	ISC|NOASSERTION
+pkg:pypi/grpc-interceptor@0.15.4	0.15.4	MIT|NOASSERTION
+pkg:pypi/grpcio@1.84.0	1.84.0	Apache-2.0|NOASSERTION
+pkg:pypi/grpclib@0.4.9	0.4.9	BSD-3-Clause|NOASSERTION
+-	UNKNOWN	NOASSERTION|NOASSERTION
+-	UNKNOWN	NOASSERTION|NOASSERTION
+-	UNKNOWN	NOASSERTION|NOASSERTION
+-	UNKNOWN	NOASSERTION|NOASSERTION
+pkg:pypi/h11@0.16.0	0.16.0	MIT|NOASSERTION
+pkg:pypi/h2@4.4.1	4.4.1	MIT|NOASSERTION
+pkg:pypi/hpack@4.2.0	4.2.0	MIT|NOASSERTION
+pkg:pypi/httpcore@1.0.9	1.0.9	BSD-3-Clause|NOASSERTION
+pkg:pypi/httpcore2@2.13.1	2.13.1	BSD-3-Clause|NOASSERTION
+pkg:pypi/httpx@0.28.1	0.28.1	BSD-3-Clause|NOASSERTION
+pkg:pypi/httpx-ws@0.9.0	0.9.0	NOASSERTION|NOASSERTION
+pkg:pypi/httpx2@2.13.1	2.13.1	BSD-3-Clause|NOASSERTION
+pkg:pypi/hyperframe@6.1.0	6.1.0	MIT|NOASSERTION
+pkg:pypi/idna@3.20	3.20	BSD-3-Clause|NOASSERTION
+pkg:pypi/importlib-metadata@8.7.1	8.7.1	Apache-2.0|NOASSERTION
+pkg:pypi/jaraco-classes@3.4.0	3.4.0	NOASSERTION|MIT
+pkg:pypi/jaraco-context@6.1.0	6.1.0	MIT|NOASSERTION
+pkg:pypi/jaraco-context@6.1.2	6.1.2	MIT|NOASSERTION
+pkg:pypi/jaraco-functools@4.4.0	4.4.0	MIT|NOASSERTION
+pkg:pypi/jaraco-functools@4.6.0	4.6.0	MIT|NOASSERTION
+pkg:pypi/jaraco-text@4.0.0	4.0.0	NOASSERTION|MIT
+pkg:pypi/jeepney@0.9.0	0.9.0	MIT|NOASSERTION
+pkg:pypi/jinja2@3.1.6	3.1.6	NOASSERTION|NOASSERTION
+pkg:pypi/jiter@0.17.0	0.17.0	MIT|NOASSERTION
+pkg:pypi/jmespath@1.1.0	1.1.0	MIT|NOASSERTION
+pkg:pypi/joserfc@1.7.5	1.7.5	BSD-3-Clause|NOASSERTION
+pkg:pypi/jsonpath-ng@1.10.0	1.10.0	Apache-2.0|NOASSERTION
+pkg:pypi/jsonref@1.1.0	1.1.0	MIT|NOASSERTION
+pkg:pypi/jsonschema@4.26.0	4.26.0	MIT|NOASSERTION
+pkg:pypi/jsonschema-path@0.5.0	0.5.0	Apache-2.0|NOASSERTION
+pkg:pypi/jsonschema-specifications@2025.9.1	2025.9.1	MIT|NOASSERTION
+pkg:pypi/keyring@25.7.0	25.7.0	MIT|NOASSERTION
+pkg:pypi/ldap3@2.9.1	2.9.1	LicenseRef-LGPL-v3|NOASSERTION
+pkg:deb/debian/libbz2-1.0@1.0.8-6?arch=amd64&distro=debian-13.7&upstream=bzip2	1.0.8-6	LicenseRef-BSD-variant AND GPL-2.0-only|NOASSERTION
+pkg:deb/debian/libc-bin@2.41-12%2Bdeb13u4?arch=amd64&distro=debian-13.7&upstream=glibc	2.41-12+deb13u4	BSD-2-Clause AND LicenseRef-BSD-3-clause-Berkeley AND LicenseRef-BSD-3-clause-Carnegie AND LicenseRef-BSD-3-clause-Oracle AND LicenseRef-BSD-3-clause-WIDE AND LicenseRef-BSD-like-Spencer AND BSL-1.0 AND LicenseRef-CORE-MATH AND LicenseRef-Carnegie AND LicenseRef-DEC AND FSFAP AND GPL-2.0-only AND GPL-2.0-or-later AND LicenseRef-GPL-2--with-link-exception AND GPL-3.0-only AND GPL-3.0-or-later AND LicenseRef-IBM AND ISC AND LicenseRef-Inner-Net AND LGPL-2.0-only AND LGPL-2.0-or-later AND LGPL-2.1-only AND LGPL-2.1-or-later AND LicenseRef-LGPL-2.1--with-link-exception AND LGPL-3.0-only AND LGPL-3.0-or-later AND LicenseRef-MIT-like-Lord AND LicenseRef-PCRE AND SunPro AND Unicode-DFS-2016 AND LicenseRef-Univ-Coimbra AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libc6@2.41-12%2Bdeb13u4?arch=amd64&distro=debian-13.7&upstream=glibc	2.41-12+deb13u4	BSD-2-Clause AND LicenseRef-BSD-3-clause-Berkeley AND LicenseRef-BSD-3-clause-Carnegie AND LicenseRef-BSD-3-clause-Oracle AND LicenseRef-BSD-3-clause-WIDE AND LicenseRef-BSD-like-Spencer AND BSL-1.0 AND LicenseRef-CORE-MATH AND LicenseRef-Carnegie AND LicenseRef-DEC AND FSFAP AND GPL-2.0-only AND GPL-2.0-or-later AND LicenseRef-GPL-2--with-link-exception AND GPL-3.0-only AND GPL-3.0-or-later AND LicenseRef-IBM AND ISC AND LicenseRef-Inner-Net AND LGPL-2.0-only AND LGPL-2.0-or-later AND LGPL-2.1-only AND LGPL-2.1-or-later AND LicenseRef-LGPL-2.1--with-link-exception AND LGPL-3.0-only AND LGPL-3.0-or-later AND LicenseRef-MIT-like-Lord AND LicenseRef-PCRE AND SunPro AND Unicode-DFS-2016 AND LicenseRef-Univ-Coimbra AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libcom-err2@1.47.2-3%2Bb12?arch=amd64&distro=debian-13.7&upstream=e2fsprogs%401.47.2-3	1.47.2-3+b12	0BSD AND Apache-2.0 AND Apache-2.0 AND BSD-3-Clause AND LicenseRef-BSD-3-Clause-Variant AND LicenseRef-BSD-4-Clause-CMU AND LicenseRef-Expat AND LicenseRef-GPL AND GPL-2.0-only AND GPL-2.0-or-later AND ISC AND Kazlib AND LGPL-2.0-only AND Latex2e|NOASSERTION
+pkg:deb/debian/libcrypt1@1%3A4.4.38-1?arch=amd64&distro=debian-13.7&upstream=libxcrypt	1:4.4.38-1	NOASSERTION|LicenseRef-5a5e7ca0e9f3f9679977e3a3e9ede45ad92885a3297ea78e766979f9866c5a16
+pkg:deb/debian/libdb5.3t64@5.3.28%2Bdfsg2-9?arch=amd64&distro=debian-13.7&upstream=db5.3	5.3.28+dfsg2-9	LicenseRef-Artistic AND BSD-3-Clause AND LicenseRef-BSD-3-clause-fjord AND LicenseRef-GPL AND GPL-3.0-only AND LicenseRef-MIT-old AND MS-PL AND Sleepycat AND LicenseRef-TCL-like AND X11 AND Zlib|NOASSERTION
+pkg:deb/debian/libexpat1@2.8.3-1~deb13u1?arch=amd64&distro=debian-13.7&upstream=expat	2.8.3-1~deb13u1	MIT|NOASSERTION
+pkg:deb/debian/libffi8@3.4.8-2?arch=amd64&distro=debian-13.7&upstream=libffi	3.4.8-2	LicenseRef-Expat AND LicenseRef-GPL AND GPL-2.0-or-later AND GPL-3.0-or-later AND MPL-1.1 AND X11 AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libgcc-s1@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14	14.2.0-19	NOASSERTION|NOASSERTION
+pkg:deb/debian/libgomp1@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14	14.2.0-19	NOASSERTION|NOASSERTION
+pkg:deb/debian/libgssapi-krb5-2@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5	1.21.3-5+deb13u1	NOASSERTION|LicenseRef-936728f4181718f42951b881c1e8f1386bf6b2723c4fbc533c374d6f42c71816
+pkg:deb/debian/libk5crypto3@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5	1.21.3-5+deb13u1	NOASSERTION|LicenseRef-936728f4181718f42951b881c1e8f1386bf6b2723c4fbc533c374d6f42c71816
+pkg:deb/debian/libkeyutils1@1.6.3-6?arch=amd64&distro=debian-13.7&upstream=keyutils	1.6.3-6	GPL-2.0-only AND GPL-2.0-or-later AND LGPL-2.0-only AND LGPL-2.0-or-later|NOASSERTION
+pkg:deb/debian/libkrb5-3@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5	1.21.3-5+deb13u1	NOASSERTION|LicenseRef-936728f4181718f42951b881c1e8f1386bf6b2723c4fbc533c374d6f42c71816
+pkg:deb/debian/libkrb5support0@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5	1.21.3-5+deb13u1	NOASSERTION|LicenseRef-936728f4181718f42951b881c1e8f1386bf6b2723c4fbc533c374d6f42c71816
+pkg:deb/debian/liblzma5@5.8.1-1%2Bdeb13u2?arch=amd64&distro=debian-13.7&upstream=xz-utils	5.8.1-1+deb13u2	0BSD AND FSFUL AND FSFULLR AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND LicenseRef-GPL-3.0-or-later-WITH-Autoconf-exception-macro AND LGPL-2.1-only AND LGPL-2.1-or-later AND LicenseRef-PD AND LicenseRef-PD-debian AND LicenseRef-noderivs AND LicenseRef-permissive-nowarranty|NOASSERTION
+pkg:deb/debian/libncursesw6@6.5%2B20250216-2?arch=amd64&distro=debian-13.7&upstream=ncurses	6.5+20250216-2	NOASSERTION|NOASSERTION
+pkg:deb/debian/libnsl2@1.3.0-3%2Bb3?arch=amd64&distro=debian-13.7&upstream=libnsl%401.3.0-3	1.3.0-3+b3	BSD-3-Clause AND GPL-2.0-only AND LicenseRef-GPL-2--autoconf-exception AND LicenseRef-GPL-2--libtool-exception AND GPL-3.0-only AND LicenseRef-GPL-3--autoconf-exception AND LGPL-2.1-only AND LGPL-2.1-or-later AND MIT AND LicenseRef-permissive-autoconf-m4 AND LicenseRef-permissive-autoconf-m4-no-warranty AND LicenseRef-permissive-configure AND LicenseRef-permissive-fsf AND LicenseRef-permissive-makefile-in|NOASSERTION
+pkg:deb/debian/libpython3.13-minimal@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13	3.13.5-2+deb13u5	NOASSERTION|LicenseRef-f1cbf908e1daa8789b389fdcf17811ed36b675d736b39a103591399861350382
+pkg:deb/debian/libpython3.13-stdlib@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13	3.13.5-2+deb13u5	NOASSERTION|LicenseRef-f1cbf908e1daa8789b389fdcf17811ed36b675d736b39a103591399861350382
+pkg:deb/debian/libreadline8t64@8.2-6?arch=amd64&distro=debian-13.7&upstream=readline	8.2-6	LicenseRef-GFDL AND LicenseRef-GFDL-NIV-1.3- AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND GPL-3.0-or-later AND LicenseRef-ISC-no-attribution|NOASSERTION
+pkg:deb/debian/libsqlite3-0@3.46.1-7%2Bdeb13u2?arch=amd64&distro=debian-13.7&upstream=sqlite3	3.46.1-7+deb13u2	GPL-2.0-only AND GPL-2.0-or-later AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libssl3t64@3.5.7-1~deb13u3?arch=amd64&distro=debian-13.7&upstream=openssl	3.5.7-1~deb13u3	Apache-2.0 AND LicenseRef-Artistic AND GPL-1.0-only AND GPL-1.0-or-later|NOASSERTION
+pkg:deb/debian/libstdc%2B%2B6@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14	14.2.0-19	NOASSERTION|NOASSERTION
+pkg:deb/debian/libtinfo6@6.5%2B20250216-2?arch=amd64&distro=debian-13.7&upstream=ncurses	6.5+20250216-2	BSD-3-Clause AND LicenseRef-MIT-X11 AND X11|NOASSERTION
+pkg:deb/debian/libtirpc3t64@1.3.6%2Bds-1?arch=amd64&distro=debian-13.7&upstream=libtirpc	1.3.6+ds-1	BSD-3-Clause AND GPL-2.0-only AND LGPL-2.1-only|NOASSERTION
+pkg:deb/debian/libuuid1@2.41.5-0%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=util-linux	2.41.5-0+deb13u1	BSD-2-Clause AND BSD-3-Clause AND BSD-4-Clause AND LicenseRef-BSLA AND LicenseRef-Expat AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-only AND GPL-3.0-or-later AND ISC AND LicenseRef-LGPL AND LGPL-2.0-only AND LGPL-2.0-or-later AND LGPL-2.1-only AND LGPL-2.1-or-later AND LGPL-3.0-only AND LGPL-3.0-or-later AND LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/libzstd1@1.5.7%2Bdfsg-1?arch=amd64&distro=debian-13.7&upstream=libzstd	1.5.7+dfsg-1	BSD-3-Clause AND LicenseRef-Expat AND GPL-2.0-only AND Zlib|NOASSERTION
+pkg:pypi/logfire-api@5.1.1	5.1.1	MIT|NOASSERTION
+pkg:pypi/mako@1.4.3	1.4.3	MIT|NOASSERTION
+pkg:pypi/markdown-it-py@4.2.0	4.2.0	NOASSERTION|NOASSERTION
+pkg:pypi/markupsafe@3.0.4	3.0.4	BSD-3-Clause|NOASSERTION
+pkg:pypi/mcp@2.3.0	2.3.0	MIT|NOASSERTION
+pkg:pypi/mcp-types@2.3.0	2.3.0	MIT|NOASSERTION
+pkg:pypi/mdurl@0.1.2	0.1.2	NOASSERTION|MIT
+pkg:deb/debian/media-types@13.0.0?arch=all&distro=debian-13.7	13.0.0	LicenseRef-ad-hoc|NOASSERTION
+pkg:pypi/modal@1.6.1	1.6.1	Apache-2.0|NOASSERTION
+pkg:pypi/more-itertools@10.8.0	10.8.0	MIT|NOASSERTION
+pkg:pypi/more-itertools@11.1.0	11.1.0	MIT|NOASSERTION
+pkg:pypi/msal@1.39.0	1.39.0	MIT|NOASSERTION
+pkg:pypi/msal-extensions@1.3.1	1.3.1	LicenseRef-MIT-License|NOASSERTION
+pkg:pypi/multidict@6.9.1	6.9.1	LicenseRef-Apache-License-2.0|NOASSERTION
+pkg:deb/debian/netbase@6.5?arch=all&distro=debian-13.7	6.5	GPL-2.0-only|NOASSERTION
+pkg:pypi/numpy@2.5.3	2.5.3	(BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0)|NOASSERTION
+pkg:pypi/obstore@0.11.1	0.11.1	NOASSERTION|NOASSERTION
+pkg:pypi/openai@3.28.0	3.28.0	Apache-2.0|NOASSERTION
+pkg:pypi/openapi-pydantic@0.6.0	0.6.0	MIT|NOASSERTION
+pkg:pypi/openinference-instrumentation@0.1.71	0.1.71	Apache-2.0|NOASSERTION
+pkg:pypi/openinference-instrumentation-openai@0.1.65	0.1.65	Apache-2.0|NOASSERTION
+pkg:pypi/openinference-semantic-conventions@0.1.41	0.1.41	Apache-2.0|NOASSERTION
+pkg:pypi/opentelemetry-api@1.45.0	1.45.0	Apache-2.0|NOASSERTION
+pkg:pypi/opentelemetry-exporter-http-transport@0.66b0	0.66b0	Apache-2.0|NOASSERTION
+pkg:pypi/opentelemetry-exporter-otlp@1.45.0	1.45.0	Apache-2.0|NOASSERTION
+pkg:pypi/opentelemetry-exporter-otlp-common@0.66b0	0.66b0	Apache-2.0|NOASSERTION
+pkg:pypi/opentelemetry-exporter-otlp-proto-common@1.45.0	1.45.0	Apache-2.0|NOASSERTION
+pkg:pypi/opentelemetry-exporter-otlp-proto-grpc@1.45.0	1.45.0	Apache-2.0|NOASSERTION
+pkg:pypi/opentelemetry-exporter-otlp-proto-http@1.45.0	1.45.0	Apache-2.0|NOASSERTION
+pkg:pypi/opentelemetry-instrumentation@0.66b0	0.66b0	Apache-2.0|NOASSERTION
+pkg:pypi/opentelemetry-instrumentation-aiohttp-client@0.66b0	0.66b0	Apache-2.0|NOASSERTION
+pkg:pypi/opentelemetry-instrumentation-asgi@0.66b0	0.66b0	Apache-2.0|NOASSERTION
+pkg:pypi/opentelemetry-instrumentation-fastapi@0.66b0	0.66b0	Apache-2.0|NOASSERTION
+pkg:pypi/opentelemetry-instrumentation-grpc@0.66b0	0.66b0	Apache-2.0|NOASSERTION
+pkg:pypi/opentelemetry-instrumentation-sqlalchemy@0.66b0	0.66b0	Apache-2.0|NOASSERTION
+pkg:pypi/opentelemetry-proto@1.45.0	1.45.0	Apache-2.0|NOASSERTION
+pkg:pypi/opentelemetry-sdk@1.45.0	1.45.0	Apache-2.0|NOASSERTION
+pkg:pypi/opentelemetry-semantic-conventions@0.66b0	0.66b0	Apache-2.0|NOASSERTION
+pkg:pypi/opentelemetry-util-http@0.66b0	0.66b0	Apache-2.0|NOASSERTION
+pkg:pypi/orjson@3.13.0	3.13.0	MPL-2.0 AND (Apache-2.0 OR MIT)|NOASSERTION
+pkg:pypi/packaging@26.0	26.0	(Apache-2.0 OR BSD-2-Clause)|NOASSERTION
+pkg:pypi/packaging@26.3	26.3	(Apache-2.0 OR BSD-2-Clause)|NOASSERTION
+pkg:pypi/pandas@2.3.3	2.3.3	LicenseRef-1efd6de77e03a0dc2652da8c425085e0284cc0e6eb17e64589643ed21ab0054f|NOASSERTION
+pkg:pypi/pathable@0.6.0	0.6.0	Apache-2.0|NOASSERTION
+pkg:pypi/platformdirs@4.12.4	4.12.4	MIT|NOASSERTION
+pkg:pypi/platformdirs@4.4.0	4.4.0	MIT|NOASSERTION
+pkg:pypi/prometheus-client@0.26.0	0.26.0	(Apache-2.0 AND BSD-2-Clause)|NOASSERTION
+pkg:pypi/propcache@0.5.4	0.5.4	Apache-2.0|NOASSERTION
+pkg:pypi/protobuf@6.33.6	6.33.6	LicenseRef-3-Clause-BSD-License|NOASSERTION
+pkg:pypi/protobuf-py@0.1.1	0.1.1	Apache-2.0|NOASSERTION
+pkg:pypi/protobuf-py-ext@0.1.1	0.1.1	NOASSERTION|NOASSERTION
+pkg:pypi/psutil@7.2.2	7.2.2	BSD-3-Clause|NOASSERTION
+pkg:pypi/py-grpc-prometheus@0.8.0	0.8.0	NOASSERTION|Apache-2.0
+pkg:pypi/py-key-value-aio@0.4.6	0.4.6	Apache-2.0|NOASSERTION
+pkg:pypi/pyarrow@26.0.0	26.0.0	Apache-2.0|NOASSERTION
+pkg:pypi/pyasn1@0.6.4	0.6.4	BSD-2-Clause|NOASSERTION
+pkg:pypi/pyasn1-modules@0.4.2	0.4.2	LicenseRef-BSD|NOASSERTION
+pkg:pypi/pycparser@3.11	3.11	BSD-3-Clause|NOASSERTION
+pkg:pypi/pydantic@2.14.0	2.14.0	MIT|NOASSERTION
+pkg:pypi/pydantic-ai-slim@2.55.0	2.55.0	MIT|NOASSERTION
+pkg:pypi/pydantic-core@2.50.0	2.50.0	MIT|NOASSERTION
+pkg:pypi/pydantic-graph@2.55.0	2.55.0	MIT|NOASSERTION
+pkg:pypi/pydantic-monty@1.1.0	1.1.0	MIT|NOASSERTION
+pkg:pypi/pydantic-monty-client@1.1.0	1.1.0	MIT|NOASSERTION
+pkg:pypi/pydantic-monty-runtime@1.1.0	1.1.0	MIT|NOASSERTION
+pkg:pypi/pydantic-settings@2.15.0	2.15.0	MIT|NOASSERTION
+pkg:pypi/pygments@2.21.0	2.21.0	BSD-2-Clause|NOASSERTION
+pkg:pypi/pyjwt@2.15.1	2.15.1	MIT|NOASSERTION
+pkg:pypi/pyperclip@1.11.0	1.11.0	LicenseRef-BSD|NOASSERTION
+pkg:pypi/pyqwest@0.10.0	0.10.0	NOASSERTION|NOASSERTION
+pkg:pypi/pystache@0.6.8	0.6.8	MIT|NOASSERTION
+pkg:pypi/python-dateutil@2.9.0.post0	2.9.0.post0	LicenseRef-Dual-License|NOASSERTION
+pkg:pypi/python-dotenv@1.2.4	1.2.4	BSD-3-Clause|NOASSERTION
+pkg:pypi/python-engineio@4.14.0	4.14.0	MIT|NOASSERTION
+pkg:pypi/python-multipart@0.0.32	0.0.32	Apache-2.0|NOASSERTION
+pkg:pypi/python-socketio@5.17.0	5.17.0	MIT|NOASSERTION
+pkg:deb/debian/python3.13-minimal@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13	3.13.5-2+deb13u5	NOASSERTION|LicenseRef-f1cbf908e1daa8789b389fdcf17811ed36b675d736b39a103591399861350382
+pkg:deb/debian/python3.13-venv@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13	3.13.5-2+deb13u5	NOASSERTION|NOASSERTION
+pkg:pypi/pytz@2026.5	2026.5	MIT|NOASSERTION
+pkg:pypi/pyyaml@6.0.3	6.0.3	MIT|NOASSERTION
+pkg:pypi/referencing@0.37.0	0.37.0	MIT|NOASSERTION
+pkg:pypi/regex@2026.9.29	2026.9.29	(Apache-2.0 AND CNRI-Python)|NOASSERTION
+pkg:pypi/requests@2.34.2	2.34.2	Apache-2.0|NOASSERTION
+pkg:pypi/rich@15.0.0	15.0.0	MIT|NOASSERTION
+pkg:pypi/rich-rst@2.2.0	2.2.0	MIT|NOASSERTION
+pkg:pypi/rpds-py@2026.9.1	2026.9.1	MIT|NOASSERTION
+pkg:pypi/s3transfer@0.19.2	0.19.2	LicenseRef-Apache-License-2.0|NOASSERTION
+pkg:pypi/secretstorage@3.5.0	3.5.0	BSD-3-Clause|NOASSERTION
+pkg:pypi/setuptools@84.0.0	84.0.0	MIT|NOASSERTION
+pkg:pypi/simple-websocket@1.1.0	1.1.0	NOASSERTION|MIT
+pkg:pypi/six@1.17.0	1.17.0	MIT|NOASSERTION
+pkg:pypi/sniffio@1.3.1	1.3.1	(MIT OR Apache-2.0)|NOASSERTION
+pkg:pypi/snowballstemmer@3.1.1	3.1.1	BSD-3-Clause|NOASSERTION
+pkg:pypi/sqlalchemy@2.1.4	2.1.4	MIT|NOASSERTION
+pkg:pypi/sqlglot@30.21.0	30.21.0	MIT|NOASSERTION
+pkg:pypi/sse-starlette@3.5.0	3.5.0	BSD-3-Clause|NOASSERTION
+pkg:pypi/starlette@1.7.0	1.7.0	BSD-3-Clause|NOASSERTION
+pkg:pypi/strawberry-graphql@0.332.0	0.332.0	MIT|NOASSERTION
+pkg:pypi/synchronicity@0.12.6	0.12.6	NOASSERTION|NOASSERTION
+pkg:pypi/tenacity@9.1.4	9.1.4	LicenseRef-Apache-2.0|NOASSERTION
+pkg:pypi/tiktoken@0.14.0	0.14.0	MIT|NOASSERTION
+pkg:pypi/toml@0.10.2	0.10.2	MIT|NOASSERTION
+pkg:pypi/tomli@2.4.0	2.4.0	MIT|NOASSERTION
+pkg:pypi/tqdm@4.70.1	4.70.1	(MPL-2.0 AND MIT)|NOASSERTION
+pkg:pypi/truststore@0.10.4	0.10.4	MIT|NOASSERTION
+pkg:pypi/types-aiobotocore-bedrock-runtime@3.9.2	3.9.2	MIT|NOASSERTION
+pkg:pypi/types-certifi@2021.10.8.3	2021.10.8.3	LicenseRef-Apache-2.0-license|NOASSERTION
+pkg:pypi/types-toml@0.10.8.20260518	0.10.8.20260518	Apache-2.0|NOASSERTION
+pkg:pypi/typing-extensions@4.16.0	4.16.0	PSF-2.0|NOASSERTION
+pkg:pypi/typing-inspection@0.4.4	0.4.4	MIT|NOASSERTION
+pkg:pypi/tzdata@2026.5	2026.5	Apache-2.0|NOASSERTION
+pkg:deb/debian/tzdata@2026c-0%2Bdeb13u1?arch=all&distro=debian-13.7	2026c-0+deb13u1	LicenseRef-public-domain|NOASSERTION
+pkg:deb/debian/tzdata-legacy@2026c-0%2Bdeb13u1?arch=all&distro=debian-13.7&upstream=tzdata	2026c-0+deb13u1	LicenseRef-public-domain|NOASSERTION
+pkg:pypi/uncalled-for@0.4.1	0.4.1	MIT|NOASSERTION
+pkg:pypi/urllib3@2.8.0	2.8.0	MIT|NOASSERTION
+pkg:pypi/uvicorn@0.54.0	0.54.0	BSD-3-Clause|NOASSERTION
+pkg:pypi/uvloop@0.23.0	0.23.0	LicenseRef-MIT-License|NOASSERTION
+pkg:pypi/vercel@0.7.2	0.7.2	MIT|NOASSERTION
+pkg:pypi/vercel-cache@0.7.6	0.7.6	MIT|NOASSERTION
+pkg:pypi/vercel-headers@0.7.2	0.7.2	MIT|NOASSERTION
+pkg:pypi/vercel-internal-telemetry@0.8.1	0.8.1	MIT|NOASSERTION
+pkg:pypi/vercel-oidc@0.10.0	0.10.0	MIT|NOASSERTION
+pkg:pypi/vercel-workers@0.0.25	0.0.25	MIT|NOASSERTION
+pkg:pypi/wasmtime@49.0.0	49.0.0	(Apache-2.0 WITH LLVM-exception)|NOASSERTION
+pkg:pypi/watchfiles@1.3.0	1.3.0	MIT|NOASSERTION
+pkg:pypi/wcmatch@11.1	11.1	MIT|NOASSERTION
+pkg:pypi/websocket-client@1.9.2	1.9.2	Apache-2.0|NOASSERTION
+pkg:pypi/websockets@15.0.1	15.0.1	BSD-3-Clause|NOASSERTION
+pkg:pypi/wheel@0.46.3	0.46.3	MIT|NOASSERTION
+pkg:pypi/wrapt@1.17.3	1.17.3	LicenseRef-BSD|NOASSERTION
+pkg:pypi/wsproto@1.3.2	1.3.2	MIT|NOASSERTION
+pkg:pypi/yarl@1.25.1	1.25.1	Apache-2.0|NOASSERTION
+pkg:pypi/zipp@3.23.0	3.23.0	MIT|NOASSERTION
+pkg:deb/debian/zlib1g@1%3A1.3.dfsg%2Breally1.3.1-1%2Bb1?arch=amd64&distro=debian-13.7&upstream=zlib%401%3A1.3.dfsg%2Breally1.3.1-1	1:1.3.dfsg+really1.3.1-1+b1	Zlib|NOASSERTION
+pkg:oci/%2Fin%2Fphoenix.tar@sha256%3A65eb726c2d3b0572bd563d8ac89905163d32e416e211ebd1507073269eab214e?arch=amd64	sha256:65eb726c2d3b0572bd563d8ac89905163d32e416e211ebd1507073269eab214e	NOASSERTION|NOASSERTION

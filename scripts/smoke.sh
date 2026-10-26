@@ -128,6 +128,103 @@ if ! readiness --wait-for ready --within 60; then
 fi
 echo "smoke: /readyz ready"
 
+# PSC-25 (N0): the api runs psycopg-c on Debian's libpq5, not a vendored libpq.
+# bookworm is merged-usr: ldd may print /lib/<triplet>/ or /usr/lib/<triplet>/.
+# Checks: no psycopg_binary* in the venv; dpkg libpq5 owns the loaded libpq;
+# the libpq5 version is validated before any arithmetic.
+echo "== smoke: psycopg =="
+pq_out="$(compose exec -T api python -I -c 'import importlib.util as u, os, sys, psycopg
+p = psycopg.pq
+s = u.find_spec("psycopg_c.pq") if u.find_spec("psycopg_c") else None
+b = sorted(os.path.relpath(os.path.join(d, n), sys.prefix) for d, ds, fs in os.walk(sys.prefix)
+           for n in ds + fs if n.startswith("psycopg_binary"))
+if u.find_spec("psycopg_binary") and not b:
+    b = ["psycopg_binary (importable)"]
+print(p.__impl__, p.version(), p.__build_version__, s.origin if s else "-", ",".join(b).replace(" ", "_") or "-")')" || {
+  echo "smoke: FAIL (psycopg: the check in api failed)" >&2
+  exit 1
+}
+read -r pq_impl pq_version pq_build pq_ext pq_bin <<< "$pq_out"
+if [ "$pq_impl" != c ]; then
+  echo "smoke: FAIL (psycopg: api uses the '$pq_impl' implementation, want c)" >&2
+  exit 1
+fi
+if [ "${pq_bin:--}" != - ]; then
+  echo "smoke: FAIL (psycopg: psycopg_binary is installed in api beside psycopg-c: $pq_bin)" >&2
+  exit 1
+fi
+# shellcheck disable=SC2016  # dpkg-query expands ${Version}
+deb="$(compose exec -T api dpkg-query -W -f='${Version}' libpq5)" || {
+  echo "smoke: FAIL (libpq: dpkg-query libpq5 failed in api)" >&2
+  exit 1
+}
+# M-1: container output never reaches $(( )) unvalidated.
+if ! [[ "$deb" =~ ^([0-9]+)\.([0-9]+)-[0-9A-Za-z.+~]+$ ]]; then
+  echo "smoke: FAIL (libpq: libpq5 version in api is '$deb', not <major>.<minor>-<revision>)" >&2
+  exit 1
+fi
+want=$((10#${BASH_REMATCH[1]} * 10000 + 10#${BASH_REMATCH[2]}))
+if [ "$pq_version" != "$want" ] || [ "$pq_build" != "$want" ]; then
+  echo "smoke: FAIL (psycopg: libpq version() $pq_version, __build_version__ $pq_build; libpq5 $deb is $want)" >&2
+  exit 1
+fi
+ldd_out="$(compose exec -T api ldd "$pq_ext")" || {
+  echo "smoke: FAIL (libpq: ldd $pq_ext failed in api)" >&2
+  exit 1
+}
+libpq="$(printf '%s\n' "$ldd_out" | sed -n 's/^[[:space:]]*libpq\.so\.5 => \([^ ]*\).*/\1/p')"
+if ! [[ "$libpq" =~ ^(/usr)?/lib/(x86_64|aarch64)-linux-gnu/libpq\.so\.5(\.[0-9]+)*$ ]] || [[ "$ldd_out" == *psycopg_binary* ]]; then
+  echo "smoke: FAIL (libpq: the psycopg_c extension loads '${libpq:-nothing}', not Debian's libpq5)" >&2
+  exit 1
+fi
+libpq_real="$(compose exec -T api realpath -e "$libpq")" || {
+  echo "smoke: FAIL (libpq: realpath $libpq failed in api)" >&2
+  exit 1
+}
+libpq_owner="$(compose exec -T api dpkg-query -S "$libpq_real")" || {
+  echo "smoke: FAIL (libpq: dpkg owns no file $libpq_real in api, so it is not Debian's libpq5)" >&2
+  exit 1
+}
+if ! [[ "$libpq_owner" =~ ^libpq5(:[a-z0-9]+)?:\ (.+)$ ]] || [ "${BASH_REMATCH[2]}" != "$libpq_real" ]; then
+  echo "smoke: FAIL (libpq: $libpq_real belongs to '${libpq_owner%%: *}', not libpq5)" >&2
+  exit 1
+fi
+echo "smoke: psycopg c on Debian libpq5 $deb ($libpq -> $libpq_real)"
+# PSC-14 (N10a, human 2026-10-23): ke-app ships no pip. The base interpreter,
+# since the venv's sys.path omits the system site-packages. The whole container
+# output is compared only as a string with `-` (M-1, I-6): never evaluated.
+echo "== smoke: no pip =="
+pip_out="$(compose exec -T api /usr/local/bin/python3 -I -c 'import importlib.util as u, os, re
+h = sorted(os.path.join(d, n) for r in ("/usr", "/opt") for d, ds, fs in os.walk(r)
+           for n in ds + fs if re.fullmatch(r"pip(3(\.[0-9]+)?)?|pip-.+\.(dist-info|whl)", n))
+if u.find_spec("pip") and not h:
+    h = ["pip (importable)"]
+print(",".join(h).replace(" ", "_") or "-")')" || {
+  echo "smoke: FAIL (no pip: the check in api failed)" >&2
+  exit 1
+}
+[ "$pip_out" = - ] || {
+  echo "smoke: FAIL (no pip: the check in api printed '$pip_out', want '-' (pip in api, or no answer))" >&2
+  exit 1
+}
+echo "smoke: no pip in api"
+# PSC-26 (Q67, N16): neo4j runs ke-neo4j, the official image without
+# /var/lib/neo4j/products (the commercial fleet-management plugin). find
+# prints any match and one control path that ke-neo4j must hold, so a find
+# that answers nothing fails (fail closed); the whole output is compared only
+# as a string, never evaluated (M-1 pattern). No -xdev: the walk enters the
+# volumes (/data, /logs); /proc, /sys and /dev are pruned (U5, security L-1).
+echo "== smoke: no fleet plugin =="
+fleet_out="$(compose exec -T neo4j find / \( -path /proc -o -path /sys -o -path /dev \) -prune -o \( -path /var/lib/neo4j/products -o -name '*fleet-management*' -o -path /var/lib/neo4j/LICENSE.txt \) -print)" || {
+  echo "smoke: FAIL (fleet plugin: the check in neo4j failed)" >&2
+  exit 1
+}
+[ "$fleet_out" = /var/lib/neo4j/LICENSE.txt ] || {
+  echo "smoke: FAIL (fleet plugin: find in neo4j printed '$fleet_out', want only /var/lib/neo4j/LICENSE.txt (products/ or a fleet-management file in neo4j, or no answer))" >&2
+  exit 1
+}
+echo "smoke: no products/ or fleet-management plugin in neo4j"
+
 # ci/offline (PS-3.3, architecture §2.5): api and worker have no route to
 # anything off the backend network. The target is the gateway's own address on
 # <project>_edge: live and routable from anything on that network, and it needs

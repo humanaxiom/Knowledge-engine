@@ -57,8 +57,10 @@ GIB_KB = 1024 * 1024
 OFFLINE_CHECK = ROOT / "scripts" / "offline_check.sh"
 NET_ISOLATED = ROOT / "scripts" / "net_isolated.sh"
 ISOLATED_KEY = "com.docker.network.bridge.gateway_mode_ipv4"
+# platform-sbom U4b (PSC-26, N16 *First failing tests*): ke-neo4j joins the
+# first-party images, built from docker/neo4j.Dockerfile (tester, U4b RED).
 FIRST_PARTY = {"app.Dockerfile": "ke-app", "gateway.Dockerfile": "ke-gateway",
-               "gates.Dockerfile": "ke-gates"}
+               "gates.Dockerfile": "ke-gates", "neo4j.Dockerfile": "ke-neo4j"}
 TAG_VAR = "${KE_IMAGE_TAG:-local}"
 WT_TAG = "wt-0123456789ab"
 DOCKER_MISSING = ("docker (CLI + compose plugin) is not on PATH: the gates image carries both "
@@ -355,15 +357,17 @@ class ImageTagTest(unittest.TestCase):
         bundle = str(self.tmp / "bundle")
         live = self._config(["docker-compose.yml"], profile=False, KE_OFFLINE_BUNDLE=bundle)
         live_images = {name: svc.get("image") for name, svc in (live.get("services") or {}).items()}
-        for name in ("gateway", "api", "worker"):
+        # platform-sbom U4b (PSC-26 *Tags*): neo4j is ke-neo4j:local live and
+        # ke-neo4j:wt-<12 hex> under verify (tester, U4b RED).
+        for name in ("gateway", "api", "worker", "neo4j"):
             with self.subTest(live=name):
-                self.assertRegex(str(live_images.get(name)), r"^ke-(?:app|gateway):local$",
+                self.assertRegex(str(live_images.get(name)), r"^ke-(?:app|gateway|neo4j):local$",
                                  "the live stack's first-party images resolve to the :local tag")
         verify = self._config(["docker-compose.yml", "docker-compose.verify.yml"], profile=True,
                               KE_IMAGE_TAG=WT_TAG, KE_OFFLINE_BUNDLE=bundle)
         built = {name: svc.get("image") for name, svc in (verify.get("services") or {}).items()
                  if svc.get("build") or str(svc.get("image", "")).startswith("ke-")}
-        self.assertTrue({"gateway", "api", "worker", "gates", "gates-it"} <= set(built), built)
+        self.assertTrue({"gateway", "api", "worker", "neo4j", "gates", "gates-it"} <= set(built), built)
         for name, image in sorted(built.items()):
             with self.subTest(verify=name, image=image):
                 self.assertEqual(str(image).rsplit(":", 1)[-1], WT_TAG,
@@ -442,7 +446,31 @@ exit 0
 
 _BUNDLE_PRE = r'''out=""; prev=""
 for a in "$@"; do [ "$prev" = "--out" ] && out="$a"; prev="$a"; done
-if [ -n "$out" ]; then mkdir -p "$out" && echo '{}' > "$out/bundle.json"; fi'''
+if [ -n "$out" ]; then mkdir -p "$out" && echo '{}' > "$out/bundle.json"; fi
+@SBOM_STUB@'''
+
+# platform-sbom U4 (PSC-14/22 image-side drift check, design-notes N7, N10 B3):
+# the stub bundle also writes a bundle.json naming the stack images and the
+# ke-app SBOM the real bundle.sh writes (app/sboms/ke-app.spdx.json), from the
+# files the harness names (FAKE_STUB_BUNDLE_JSON, FAKE_STUB_KE_APP_SBOM), so
+# the host half's drift step has a real document to check.
+_SBOM_STUB = r'''if [ -n "$out" ] && [ -n "${FAKE_STUB_BUNDLE_JSON:-}" ]; then cp "$FAKE_STUB_BUNDLE_JSON" "$out/bundle.json"; fi
+if [ -n "$out" ] && [ -n "${FAKE_STUB_KE_APP_SBOM:-}" ]; then
+  mkdir -p "$out/app/sboms" && cp "$FAKE_STUB_KE_APP_SBOM" "$out/app/sboms/ke-app.spdx.json"
+fi
+if [ -n "$out" ] && [ -n "${FAKE_STUB_KE_NEO4J_SBOM:-}" ]; then
+  mkdir -p "$out/app/sboms" && cp "$FAKE_STUB_KE_NEO4J_SBOM" "$out/app/sboms/ke-neo4j.spdx.json"
+fi
+if [ -n "$out" ] && [ -n "${FAKE_STUB_KE_NEO4J_TAR:-}" ]; then
+  mkdir -p "$out/images" && cp "$FAKE_STUB_KE_NEO4J_TAR" "$out/images/ke-neo4j.tar"
+fi'''
+_BUNDLE_PRE = _BUNDLE_PRE.replace("@SBOM_STUB@", _SBOM_STUB)
+# Files the host half's U4 drift step reads from the checkout, and (U4b,
+# PSC-26) the ke-neo4j step: docker/neo4j.Dockerfile's FROM is the official
+# reference it pulls and compares with. The stub bundle also writes the
+# ke-neo4j SBOM and saved tar (FAKE_STUB_KE_NEO4J_SBOM, FAKE_STUB_KE_NEO4J_TAR).
+_U4_HOST_FILES = ("scripts/sbom_check.py", cs.SBOM_COMPOSE_NAME, "docker/app.Dockerfile", "licenses",
+                  "tests/test_notice_ke_app.py", "uv.lock", "pyproject.toml", "docker/neo4j.Dockerfile")
 
 _INSTALL_PRE = r'''parent_mode="$(stat -c %a "$(dirname "$1")" 2>/dev/null || echo missing)"'''
 
@@ -460,6 +488,8 @@ def _stub(name: str, pre: str = "", post: str = "") -> str:
 
 AS_APP = "ke-app:bundle-0123456789ab"
 AS_GATEWAY = "ke-gateway:bundle-0123456789ab"
+AS_NEO4J = "ke-neo4j:bundle-0123456789ab"
+NEO4J_WT = "ke-neo4j:wt-0123456789ab"
 PG_REF = "postgres:16-bookworm@sha256:" + "a" * 64
 VK_REF = "valkey/valkey:8-alpine@sha256:" + "b" * 64
 AS_PG = "ke-vendor/postgres:aaaaaaaaaaaa"
@@ -468,6 +498,7 @@ BUNDLE_ENTRIES = [
     {"file": "images/ke-app.tar", "ref": "ke-app:wt-0123456789ab", "as": AS_APP, "services": "api worker"},
     {"file": "images/ke-gateway.tar", "ref": "ke-gateway:wt-0123456789ab", "as": AS_GATEWAY,
      "services": "gateway"},
+    {"file": "images/ke-neo4j.tar", "ref": NEO4J_WT, "as": AS_NEO4J, "services": "neo4j"},
     {"file": "images/postgres.tar", "ref": PG_REF, "as": AS_PG, "services": "postgres"},
     {"file": "images/valkey.tar", "ref": VK_REF, "as": AS_VK, "services": "valkey"},
 ]
@@ -514,15 +545,58 @@ class OfflineCheckScriptTest(_OfflineBase):
         shutil.copy(OFFLINE_CHECK, repo / "scripts" / "offline_check.sh")
         for rel in ("docker-compose.yml", ".env.example"):
             shutil.copy(ROOT / rel, repo / rel)
+        for rel in _U4_HOST_FILES:
+            src = ROOT / rel
+            if src.is_dir():
+                shutil.copytree(src, repo / rel, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+            elif src.is_file():
+                (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(src, repo / rel)
         _executable(repo / "scripts" / "bundle.sh", _stub("bundle.sh", pre=_BUNDLE_PRE))
         _executable(repo / "scripts" / "teardown.sh", _stub("teardown.sh"))
         _executable(repo / "scripts" / "net_isolated.sh", _stub("net_isolated.sh"))
         return repo
 
+    def _sbom_env(self, repo: Path) -> dict[str, str]:
+        """platform-sbom U4: what the host half's drift step needs from the
+        fake daemon: the generator's compose file modelled (syft writes a
+        base SBOM; tests/fake_docker.py), the stub bundle's bundle.json and
+        ke-app SBOM (a document the drift check accepts), and the ke-app
+        image's /app (uv.lock) mapped for a checker run in that image."""
+        from tests import sbom_support as ss
+        bundle_json = self.tmp / "stub-bundle.json"
+        if not bundle_json.exists():
+            bundle_json.write_text(_bundle_json(BUNDLE_ENTRIES), encoding="utf-8")
+        sbom = self.tmp / "stub-ke-app.spdx.json"
+        if not sbom.exists():
+            ss.write_json(sbom, ss.ke_app_doc())
+        sbom_file = ROOT / cs.SBOM_COMPOSE_NAME
+        # platform-sbom U4b (PSC-26, N16): a clean ke-neo4j SBOM and saved tar,
+        # and both images' configs (ke-neo4j's with the labels compose adds).
+        from tests import neo4j_support as ns
+        neo4j_sbom = self.tmp / "stub-ke-neo4j.spdx.json"
+        if not neo4j_sbom.exists():
+            ss.write_json(neo4j_sbom, ns.ke_neo4j_doc())
+        neo4j_tar = self.tmp / "stub-ke-neo4j.tar"
+        if not neo4j_tar.exists():
+            ns.save_tar(neo4j_tar, [ns.CLEAN_LAYER])
+        official = ns.dockerfile_base_ref(repo / "docker" / "neo4j.Dockerfile") or ns.OFFICIAL_REF
+        configs = {official: ns.OFFICIAL_CONFIG, NEO4J_WT: dict(ns.OFFICIAL_CONFIG, Labels=ns.COMPOSE_LABELS)}
+        # The host half has a route out: its `docker pull` of the ke-app base
+        # (orchestrator U4 ruling 6) succeeds unless a test says otherwise.
+        return {"FAKE_DOCKER_PULL_OK": "1",
+                "FAKE_STUB_KE_NEO4J_SBOM": str(neo4j_sbom), "FAKE_STUB_KE_NEO4J_TAR": str(neo4j_tar),
+                "FAKE_IMAGE_CONFIGS": json.dumps(configs),
+                "FAKE_COMPOSE_FILE_IMAGES": json.dumps({cs.SBOM_COMPOSE_NAME: {"sbom": cs.sbom_generator_ref(sbom_file)}}),
+                "FAKE_COMPOSE_FILE_REQUIRED": json.dumps({cs.SBOM_COMPOSE_NAME: cs.required_vars(sbom_file)}),
+                "FAKE_STUB_BUNDLE_JSON": str(bundle_json), "FAKE_STUB_KE_APP_SBOM": str(sbom),
+                "FAKE_IMAGE_PATHS": json.dumps({"/app": str(repo)})}
+
     def _host(self, **extra: str) -> tuple[subprocess.CompletedProcess, list[dict], Path]:
         repo = self._host_setup()
         self.json.write_text("", encoding="utf-8")
         env_vars = {"FAKE_DOCKER_ROOT_DIR": str(self.tmp / "no-such-docker-root")}
+        env_vars.update(self._sbom_env(repo))
         env_vars.update(extra)  # a test may point the daemon's root dir somewhere real
         env = self._base_env(COMPOSE_PROJECT_NAME="ke-verify-1234", KE_SMOKE_OWNS_PROJECT="1", **env_vars)
         result = subprocess.run(["bash", "scripts/offline_check.sh"], cwd=repo, env=env,
@@ -706,7 +780,8 @@ class OfflineCheckScriptTest(_OfflineBase):
                 self.json.write_text("", encoding="utf-8")
                 hooks = json.dumps([{"on": "offline-client", "sleep": 60}])
                 env = self._base_env(FAKE_DOCKER_HOOKS=hooks,
-                                     FAKE_DOCKER_ROOT_DIR=str(self.tmp / "no-such-docker-root"))
+                                     FAKE_DOCKER_ROOT_DIR=str(self.tmp / "no-such-docker-root"),
+                                     **self._sbom_env(repo))
                 proc = subprocess.Popen(["bash", "scripts/offline_check.sh"], cwd=repo, env=env,
                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
                                         start_new_session=True)
@@ -746,7 +821,8 @@ class OfflineCheckScriptTest(_OfflineBase):
                 self.json.write_text("", encoding="utf-8")
                 hooks = json.dumps([{"on": "offline-client", "sleep": 60}])
                 env = self._base_env(FAKE_DOCKER_HOOKS=hooks,
-                                     FAKE_DOCKER_ROOT_DIR=str(self.tmp / "no-such-docker-root"))
+                                     FAKE_DOCKER_ROOT_DIR=str(self.tmp / "no-such-docker-root"),
+                                     **self._sbom_env(repo))
                 proc = subprocess.Popen(["bash", "scripts/offline_check.sh"], cwd=repo, env=env,
                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
                                         start_new_session=True)
@@ -821,6 +897,7 @@ if [ -n "$out" ]; then
   umask 077
   mkdir -p "$out/images" "$out/app/scripts"
   echo '{}' > "$out/bundle.json"
+  @SBOM_STUB@
   for f in images/ke-app.tar images/valkey.tar app/compose.yml MANIFEST.sha256; do
     printf 'x\n' > "$out/$f"; chmod 600 "$out/$f"
   done
@@ -830,7 +907,7 @@ if [ -n "$out" ]; then
   chmod 600 "$out/bundle.json"
   chmod 700 "$out" "$out/images" "$out/app" "$out/app/scripts"
   printf 'h\n' > "$out.manifest.sha256"; chmod 600 "$out.manifest.sha256"
-fi'''
+fi'''.replace("@SBOM_STUB@", _SBOM_STUB.replace("\n", "\n  "))
 
     _DECOY = "dist/ke-offline-decoy-amd64"
 
@@ -865,7 +942,7 @@ fi'''
         env = self._base_env(COMPOSE_PROJECT_NAME="ke-verify-1234", KE_SMOKE_OWNS_PROJECT="1",
                              FAKE_DOCKER_ROOT_DIR=str(self.tmp / "no-such-docker-root"),
                              KE_TEST_SNAP=str(snap), KE_TEST_SNAP_ROOT=str(repo),
-                             KE_TEST_SNAP_LOG=str(log))
+                             KE_TEST_SNAP_LOG=str(log), **self._sbom_env(repo))
         env["PATH"] = f"{wrap.parent}{os.pathsep}{env['PATH']}"
         baseline_log = self.tmp / "baseline.jsonl"
         subprocess.run([str(snap), "baseline"], env={**env, "KE_TEST_SNAP_LOG": str(baseline_log)},
@@ -962,6 +1039,112 @@ fi'''
                 break
         else:
             self.fail(f"no `compose run|up offline-client` call: {[s['label'] for s in snaps]}")
+
+    # ---- platform-sbom U2: the interim SBOM generator pull --------------------
+    # PSC-20; design-notes "N1 amendment, U2" *Interim pull (U2 to U8)*: the host
+    # half pulls the generator through its own compose file, after the Compose
+    # version check and immediately before bundle.sh (which never pulls). U8
+    # replaces this step with scripts/bundle_fetch.sh.
+
+    SBOM_PULL_FAIL = "pulling the SBOM generator failed (docker-compose.sbom.yml, service sbom); no retry"
+
+    def _event_u2(self, record: dict) -> str | None:
+        """`_event`, plus any pull: "pull sbom" when it names the generator's
+        compose file or service, "pull base" when it names the ke-app base by
+        its pinned digest (platform-sbom U4, orchestrator ruling 6), else
+        "pull" (any other pull is out of order); and "drift" for the `docker
+        save` of that base (the start of the U4 drift step). Platform-sbom
+        U4b (PSC-26, N16): "pull neo4j base" when a pull names the official
+        neo4j image by its pinned digest, and "neo4j" for the checker run
+        `sbom_check.py neo4j` (tester, U4b RED)."""
+        from tests import neo4j_support as ns
+        from tests import sbom_support as ss
+        argv = record["argv"]
+        digest = ss.base_ref().rsplit("@", 1)[1]
+        neo4j_digest = ns.OFFICIAL_CONFIG_DIGEST
+        if argv[:1] != ["STUB"] and ("pull" in argv or argv[:2] == ["image", "pull"]):
+            names = cs.SBOM_COMPOSE_NAME in " ".join(argv) or argv[-1:] == ["sbom"]
+            if names:
+                return "pull sbom"
+            if any(a.endswith("@" + neo4j_digest) for a in argv):
+                return "pull neo4j base"
+            return "pull base" if any(a.endswith("@" + digest) for a in argv) else "pull"
+        if argv[:1] == ["run"] and any(a.replace("\\", "/").endswith("/sbom_check.py") for a in argv):
+            tail = argv[[i for i, a in enumerate(argv) if a.replace("\\", "/").endswith("/sbom_check.py")][-1] + 1:]
+            if tail[:1] == ["neo4j"]:
+                return "neo4j"
+        if (argv[:1] == ["save"] or argv[:2] == ["image", "save"]) and any(a.endswith("@" + digest) for a in argv):
+            return "drift"
+        return self._event(record)
+
+    def _events_u2(self, records: list[dict]) -> list[str]:
+        return [e for e in (self._event_u2(r) for r in records) if e and e != "df"]
+
+    def test_offline_check_pulls_sbom_generator_before_bundle(self):
+        result, records, repo = self._host()
+        out = self._out(result)
+        self.assertEqual(result.returncode, 0, out)
+        # platform-sbom U4, orchestrator ruling 6 and design-notes "N1 amendment,
+        # U4" (docs/handoffs/platform-sbom.md, "U4 rulings", "architect (U4
+        # rulings)"): the host half also pulls the ke-app base by its pinned
+        # digest right after the generator pull and before bundle.sh, and runs
+        # the drift step after bundle.sh, so the exact order gains "pull base"
+        # and "drift" (re-targeted by the tester, U4 RED; the generator pull
+        # stays first and single).
+        # Platform-sbom U4b (PSC-26; design-notes N16; the placement is the
+        # tester's proposal, flagged to the architect): the official neo4j
+        # image is pulled by its digest after the ke-app base and before
+        # bundle.sh, and the ke-neo4j check runs after the drift step
+        # (re-targeted by the tester, U4b RED).
+        self.assertEqual(self._events_u2(records),
+                         ["pull sbom", "pull base", "pull neo4j base", "bundle", "drift", "neo4j", "up dind",
+                          "net_isolated", "run client", "teardown"], out)
+        pulls = [r for r in records if self._event_u2(r) == "pull sbom"]
+        self.assertEqual(len(pulls), 1, "one pull of the generator")
+        argv, env = pulls[0]["argv"], pulls[0]["env"]
+        self.assertEqual(argv[:1], ["compose"], f"the pull goes through compose, not `docker pull`: {argv}")
+        self.assertIn(("--env-file", ".env.example"), self._pairs(argv),
+                      "--env-file .env.example: the repo-root .env (model keys) is never loaded")
+        files = [b for a, b in self._pairs(argv) if a in ("-f", "--file")]
+        self.assertEqual(files, [cs.SBOM_COMPOSE_NAME],
+                         "-f docker-compose.sbom.yml only (it overrides the exported COMPOSE_FILE)")
+        self.assertEqual(argv[-2:], ["pull", "sbom"], "pulls the `sbom` service only")
+        self.assertNotIn("--profile", argv)
+        for var in ("KE_SBOM_IN", "KE_SBOM_OUT"):
+            # Git Bash may rewrite /nonexistent to <git root>/nonexistent (N1 amendment).
+            self.assertTrue(env.get(var, "").endswith("/nonexistent"),
+                            f"{var} is the dummy /nonexistent for the pull (the file's ${{{var}:?}}): "
+                            f"{env.get(var)!r}")
+        # platform-sbom U3 (security L-2): the `user:` of the sbom service is
+        # ${KE_SBOM_USER:?}, and compose refuses to load the file for the pull
+        # while any ${VAR:?} it names is unset or empty (tester, U3 RED).
+        for var in sorted((set(cs.required_vars()) | {"KE_SBOM_USER"}) - {"KE_SBOM_IN", "KE_SBOM_OUT"}):
+            self.assertTrue(env.get(var), f"{var} is set (non-empty) for the pull, or compose refuses "
+                                          f"docker-compose.sbom.yml (its ${{{var}:?}}): {env.get(var)!r}")
+        version = [i for i, r in enumerate(records) if r["argv"][:2] == ["compose", "version"]]
+        self.assertTrue(version and version[0] < records.index(pulls[0]),
+                        "the pull comes after the Compose version check")
+        self.assertEqual(self._bundle_dirs(repo), [])
+
+    def test_offline_check_stops_when_sbom_pull_fails(self):
+        with self.subTest(case="the pull fails"):
+            result, records, repo = self._host(FAKE_DOCKER_FAIL="pull sbom")
+            out = self._out(result)
+            self.assertNotEqual(result.returncode, 0, out)
+            self.assertIn(self.SBOM_PULL_FAIL, result.stderr, out)
+            self.assertNotRegex(out, r"(?i)\bpass(?:ed)?\b")
+            self.assertEqual(self._events_u2(records), ["pull sbom", "teardown"],
+                             "bundle.sh ran after a failed pull, the pull was retried, or teardown did not run once")
+            teardown = next(r for r in records if self._event(r) == "teardown")
+            self.assertEqual(teardown["argv"][2:], ["--volumes", "--profile", "offline"])
+            self.assertEqual(self._bundle_dirs(repo), [], "the bundle directory was left behind")
+        for case, extra in (("below the disk floor", {"FAKE_DF_AVAIL_KB": str(3 * GIB_KB)}),
+                            ("Compose below 2.27", {"FAKE_COMPOSE_VERSION": "2.20.0"})):
+            with self.subTest(case=f"{case}: no pull"):
+                result, records, _ = self._host(**extra)
+                self.assertNotEqual(result.returncode, 0, self._out(result))
+                self.assertEqual(self._events_u2(records), ["teardown"],
+                                 "the generator is pulled only after the disk and Compose checks")
 
     # ---- client half ---------------------------------------------------------
 

@@ -1,14 +1,20 @@
 # One-shot gate runner: `scripts/verify.sh` re-runs itself in this image so
 # local, agent and CI verification are the same command in the same box.
+# Same libpq pin as docker/app.Dockerfile (PSC-25): the tests import the psycopg
+# implementation that ships, built on Debian's libpq. Bump both together.
+ARG LIBPQ_VERSION=15.19-0+deb12u1
+
 FROM ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946 AS uv
 
 FROM python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+ARG LIBPQ_VERSION
 ENV POWERSHELL_TELEMETRY_OPTOUT=1 \
     POWERSHELL_UPDATECHECK=Off
 COPY --from=uv /uv /usr/local/bin/uv
 RUN apt-get update \
  && apt-get install -y --no-install-recommends git jq ca-certificates curl \
       shellcheck=0.9.0-1 libicu72 libssl3 zlib1g \
+      gcc libc6-dev libpq-dev=${LIBPQ_VERSION} \
  && rm -rf /var/lib/apt/lists/* \
  && git config --system --add safe.directory /work \
  && git config --system core.autocrlf true
@@ -113,7 +119,9 @@ ENV UV_CACHE_DIR=/opt/uv-cache
 # Ownership is set in the same layer as the sync so the venv and cache are not
 # stored twice (L-5): the gate user (10001:10001) owns both, nothing else in
 # the image is writable by it.
-RUN uv sync --locked \
+RUN uv sync --locked --group pq-build --no-install-project \
+ && uv sync --locked --group pq-build --group pq-c --no-binary-package psycopg-c --no-install-project \
+ && uv sync --locked --group pq-build --group pq-c --no-binary-package psycopg-c \
  && chown -R 10001:10001 /opt/venv /opt/uv-cache
 # Gates have no network. After the build-time sync, never let uv reach PyPI
 # (a stale build cache otherwise sends `uv run` to the index and it fails).

@@ -1,0 +1,281 @@
+platform-sbom U2 RED: controls for tests/test_sbom_generator.py and the U2 tests of tests/test_offline_check.py (tester, 2026-10-23)
+====================================================================================================================================
+
+Re-target after the architect's U2 decisions (design-notes "N1 amendment, U2").
+This file replaces the first RED's (110 controls, placeholder pin).
+
+Driver: docs/evidence/platform-sbom/u2/u2_controls.py. Run in the gates image
+(the bundle and offline_check cases need bash, git and jq), network none,
+project ke-tester-u2b, from the repository root (mounted read-only; the driver
+writes only temp dirs):
+  COMPOSE_PROJECT_NAME=ke-tester-u2b COMPOSE_FILE=docker-compose.yml \
+    docker compose --env-file .env.example --profile gates run --rm --build gates \
+    uv run --locked python docs/evidence/platform-sbom/u2/u2_controls.py
+Exit 0. Output below the line, unedited except that the first 83 lines
+(docker build progress, every step CACHED) are omitted.
+
+Base: the U2 targets in this directory:
+- target-docker-compose.sbom.yml: the real pin
+  anchore/syft:v1.54.1@sha256:3eb5379ba7b409c3f4069b686110527af0c47df993fa5c10d13e7cf34f49b1aa,
+  TMPDIR=/out/tmp and the eight SYFT_*=false keys;
+- target-bundle.sh = scripts/bundle.sh at 23e3c9b plus
+  target-bundle-refusal-snippet.sh before "licence notices" (the read with
+  --env-file .env.example and the dummy KE_SBOM_* values; the refusal
+  "... not present (<ref>); pull it first with: docker pull <ref>; this
+  script never pulls");
+- target-offline_check.sh = scripts/offline_check.sh at 23e3c9b plus
+  target-offline_check-pull-snippet.sh just before `bash scripts/bundle.sh`;
+- target-generator-provenance-shape.md, a shape fixture (not a provenance
+  record; security writes generator-provenance.md).
+At GREEN, run with "--base repo" to use the repository's own files.
+
+Groups:
+- compose: pin_problems + hardening_problems on the target and one-line
+  mutants (every N1 row; the re-target adds removed and =true for each of the
+  four new keys, a case-insensitive False that must pass, and an extra
+  SYFT_* key set to false that must pass).
+- pin place: pin_place_problems on the repo's files with the target compose.
+- provenance: provenance_problems on the shape fixture.
+- bundle static: bundle_static_problems (compose read, image inspect, no pull).
+- bundle run: the real SbomBundleTest methods against a temp tree holding
+  the mutated bundle.sh and the target compose file (harness ROOT patched).
+  Re-target adds: no --env-file .env.example, an extra --env-file .env, the
+  U8 wording (names bundle_fetch.sh), and a refusal without the pull command.
+- offline_check (new): the real OfflineCheckScriptTest methods
+  test_offline_check_pulls_sbom_generator_before_bundle,
+  test_offline_check_stops_when_sbom_pull_fails and, to show the pull does
+  not break them, test_offline_check_host_half_runs_stages_in_order and
+  test_offline_check_tears_down_on_failure, on a mutated offline_check.sh
+  (module OFFLINE_CHECK patched). Note: "docker pull of a literal ref" fails
+  because the fake's bare `docker pull` exits 1 (it plays the client half's
+  registry probe), before the order assertion is reached; it is caught either way.
+Each failing test or subtest is listed under its row.
+
+Reach (separate run): red-reach-verify-fast.txt.
+
+------------------------------------------------------------------------------
+ Container ke-tester-u2b-gates-run-256a56749747 Creating 
+ Container ke-tester-u2b-gates-run-256a56749747 Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 1ms
+Installed 1 package in 1ms
+compose       | TARGET                                                     | must pass | ok | no problem
+compose       | network_mode removed                                       | must fail | ok | sbom: network_mode is not `none`
+compose       | network_mode: bridge                                       | must fail | ok | sbom: network_mode is not `none`
+compose       | networks: [default] instead of none                        | must fail | ok | sbom: network_mode is not `none`
+compose       | network_mode: host                                         | must fail | ok | sbom: network_mode is not `none`
+compose       | read_only: false                                           | must fail | ok | sbom: read_only is not true
+compose       | read_only removed                                          | must fail | ok | sbom: read_only is not true
+compose       | tmpfs removed                                              | must fail | ok | sbom: tmpfs is [], want exactly ['/tmp']
+compose       | tmpfs adds /var/tmp                                        | must fail | ok | sbom: tmpfs is ['/tmp', '/var/tmp'], want exactly ['/tmp']
+compose       | tmpfs /tmp:size=64m (still /tmp)                           | must pass | ok | no problem
+compose       | cap_drop removed                                           | must fail | ok | sbom: cap_drop is not [ALL]
+compose       | cap_drop [NET_RAW]                                         | must fail | ok | sbom: cap_drop is not [ALL]
+compose       | cap_add [SYS_ADMIN]                                        | must fail | ok | sbom: sets cap_add
+compose       | security_opt removed                                       | must fail | ok | sbom: security_opt lacks no-new-privileges:true
+compose       | no-new-privileges:false                                    | must fail | ok | sbom: security_opt lacks no-new-privileges:true
+compose       | no-new-privileges=true (equals form)                       | must pass | ok | no problem
+compose       | security_opt + seccomp:unconfined                          | must fail | ok | sbom: security_opt loosens confinement: ['seccomp:unconfined']
+compose       | security_opt + apparmor=unconfined                         | must fail | ok | sbom: security_opt loosens confinement: ['apparmor:unconfined']
+compose       | privileged: true                                           | must fail | ok | sbom: privileged
+compose       | Docker socket bind added                                   | must fail | ok | sbom: mounts ['/in', '/out', '/var/run/docker.sock'], want exactly /in and /out
+compose       | DOCKER_HOST=tcp://host:2375                                | must fail | ok | sbom: sets DOCKER_HOST (no DOCKER_HOST, no Docker client settings)
+compose       | DOCKER_CONFIG=/out/tmp                                     | must fail | ok | sbom: sets DOCKER_CONFIG (no DOCKER_HOST, no Docker client settings)
+compose       | /in read_only removed                                      | must fail | ok | sbom: the image tar mount /in is not read-only
+compose       | /in source ${KE_SBOM_IN:-/} (default, not required)        | must fail | ok | sbom: /in is not a bind of ${KE_SBOM_IN:?...} (bind ${KE_SBOM_IN:-/})
+compose       | /in a named volume                                         | must fail | ok | sbom: /in is not a bind of ${KE_SBOM_IN:?...} (volume sbom-in)
+compose       | /out read_only: true (no writable output)                  | must fail | ok | sbom: writable mounts are [], want only /out (the SBOM output)
+compose       | /out source ./out (checkout path)                          | must fail | ok | sbom: /out is not a bind of ${KE_SBOM_OUT:?...} (bind ./out)
+compose       | extra checkout bind ./:/src:ro                             | must fail | ok | sbom: mounts ['/in', '/out', '/src'], want exactly /in and /out
+compose       | extra writable bind /cache                                 | must fail | ok | sbom: mounts ['/cache', '/in', '/out'], want exactly /in and /out
+compose       | short-syntax mounts, same meaning                          | must pass | ok | no problem
+compose       | SYFT_CHECK_FOR_APP_UPDATE=true                             | must fail | ok | sbom: SYFT_CHECK_FOR_APP_UPDATE is 'true', want 'false' (N1 Environment row)
+compose       | SYFT_CHECK_FOR_APP_UPDATE removed                          | must fail | ok | sbom: SYFT_CHECK_FOR_APP_UPDATE is None, want 'false' (N1 Environment row)
+compose       | TMPDIR removed                                             | must fail | ok | sbom: TMPDIR is None, want '/out/tmp' (N1 Environment row)
+compose       | TMPDIR=/tmp (unpack into tmpfs memory)                     | must fail | ok | sbom: TMPDIR is '/tmp', want '/out/tmp' (N1 Environment row)
+compose       | SYFT_JAVA_USE_NETWORK=true                                 | must fail | ok | sbom: SYFT_JAVA_USE_NETWORK is 'true', want 'false' (N1 Environment row)
+compose       | SYFT_JAVA_USE_NETWORK removed                              | must fail | ok | sbom: SYFT_JAVA_USE_NETWORK is None, want 'false' (N1 Environment row)
+compose       | SYFT_GOLANG_SEARCH_REMOTE_LICENSES removed                 | must fail | ok | sbom: SYFT_GOLANG_SEARCH_REMOTE_LICENSES is None, want 'false' (N1 Environment row)
+compose       | SYFT_GOLANG_SEARCH_REMOTE_LICENSES=true                    | must fail | ok | sbom: SYFT_GOLANG_SEARCH_REMOTE_LICENSES is 'true', want 'false' (N1 Environment row)
+compose       | SYFT_JAVASCRIPT_SEARCH_REMOTE_LICENSES=true                | must fail | ok | sbom: SYFT_JAVASCRIPT_SEARCH_REMOTE_LICENSES is 'true', want 'false' (N1 Environment row)
+compose       | SYFT_JAVASCRIPT_SEARCH_REMOTE_LICENSES removed             | must fail | ok | sbom: SYFT_JAVASCRIPT_SEARCH_REMOTE_LICENSES is None, want 'false' (N1 Environment row)
+compose       | SYFT_JAVA_RESOLVE_TRANSITIVE_DEPENDENCIES removed          | must fail | ok | sbom: SYFT_JAVA_RESOLVE_TRANSITIVE_DEPENDENCIES is None, want 'false' (N1 Environment row)
+compose       | SYFT_JAVA_RESOLVE_TRANSITIVE_DEPENDENCIES=true             | must fail | ok | sbom: SYFT_JAVA_RESOLVE_TRANSITIVE_DEPENDENCIES is 'true', want 'false' (N1 Environment row)
+compose       | SYFT_GOLANG_USE_PACKAGES_LIB removed                       | must fail | ok | sbom: SYFT_GOLANG_USE_PACKAGES_LIB is None, want 'false' (N1 Environment row)
+compose       | SYFT_GOLANG_USE_PACKAGES_LIB=true                          | must fail | ok | sbom: SYFT_GOLANG_USE_PACKAGES_LIB is 'true', want 'false' (N1 Environment row)
+compose       | SYFT_PYTHON_SEARCH_REMOTE_LICENSES removed                 | must fail | ok | sbom: SYFT_PYTHON_SEARCH_REMOTE_LICENSES is None, want 'false' (N1 Environment row)
+compose       | SYFT_PYTHON_SEARCH_REMOTE_LICENSES=true                    | must fail | ok | sbom: SYFT_PYTHON_SEARCH_REMOTE_LICENSES is 'true', want 'false' (N1 Environment row)
+compose       | SYFT_CPP_VCPKG_ALLOW_GIT_CLONE removed                     | must fail | ok | sbom: SYFT_CPP_VCPKG_ALLOW_GIT_CLONE is None, want 'false' (N1 Environment row)
+compose       | SYFT_CPP_VCPKG_ALLOW_GIT_CLONE=true                        | must fail | ok | sbom: SYFT_CPP_VCPKG_ALLOW_GIT_CLONE is 'true', want 'false' (N1 Environment row)
+compose       | SYFT_CPP_VCPKG_ALLOW_GIT_CLONE=False (case-insensitive, st | must pass | ok | no problem
+compose       | HTTPS_PROXY passed through from the host                   | must fail | ok | sbom: `HTTPS_PROXY` is passed through from the host
+compose       | TMPDIR=${TMPDIR} (host interpolation)                      | must fail | ok | sbom: `TMPDIR` interpolates a host value
+compose       | SYFT_JAVA_MAVEN_URL=https://repo (extra, not false)        | must fail | ok | sbom: SYFT_JAVA_MAVEN_URL='https://repo.example'; a SYFT_* key beyond N1's may only switch a feature off (fals
+compose       | SYFT_GOLANG_SEARCH_LOCAL_MOD_CACHE_LICENSES=false (extra,  | must pass | ok | no problem
+compose       | HOME=/out/tmp/home (N1 fallback): superseded by security I-2 at U3 (HOME/XDG only at or under /tmp; now must fail), see u3/red-mutants.txt
+compose       | XDG_CACHE_HOME=/root/.cache (fallback not under /out/tmp)  | must fail | ok | sbom: XDG_CACHE_HOME='/root/.cache' is not under /out/tmp (N1 fallback)
+compose       | an unrelated key LANG=C                                    | must fail | ok | sbom: sets LANG, which N1's Environment row does not name
+compose       | ports 8080:80                                              | must fail | ok | sbom: publishes or exposes a port
+compose       | profiles [sbom]                                            | must fail | ok | sbom: sets profiles
+compose       | restart: always                                            | must fail | ok | sbom: has a restart policy (it is a one-shot)
+compose       | env_file .env                                              | must fail | ok | sbom: sets env_file
+compose       | devices /dev/fuse                                          | must fail | ok | sbom: sets devices
+compose       | extra_hosts                                                | must fail | ok | sbom: sets extra_hosts
+compose       | volumes_from gateway                                       | must fail | ok | sbom: sets volumes_from
+compose       | pid: host                                                  | must fail | ok | sbom: pid shares a namespace (host)
+compose       | ipc: host                                                  | must fail | ok | sbom: ipc shares a namespace (host)
+compose       | own label: top-level name: knowledge-engine                | must fail | ok | docker-compose.sbom.yml sets a top-level `name` (the run's `-p <project>-sbom` must win)
+compose       | own label: com.docker.compose.project label                | must fail | ok | sbom: sets a com.docker.compose.* label
+compose       | own label: container_name                                  | must fail | ok | sbom: sets container_name
+compose       | a harmless label (ke.role: sbom)                           | must pass | ok | no problem
+compose       | image tag only anchore/syft:v1.2.3                         | must fail | ok | sbom image 'anchore/syft:v1.2.3' is not anchore/syft:v<X.Y.Z>@sha256:<64 hex> (PSC-20, PSC-1 form)
+compose       | image anchore/syft:latest@sha256:...                       | must fail | ok | sbom image 'anchore/syft:latest@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' is no
+compose       | image digest only anchore/syft@sha256:...                  | must fail | ok | sbom image 'anchore/syft@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' is not ancho
+compose       | image 63-hex digest                                        | must fail | ok | sbom image 'anchore/syft:v1.2.3@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcde' is not
+compose       | image anchore/grype                                        | must fail | ok | sbom image 'anchore/grype:v1.2.3@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' is n
+compose       | image tag v1.2 (not X.Y.Z)                                 | must fail | ok | sbom image 'anchore/syft:v1.2@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' is not 
+compose       | service renamed syft                                       | must fail | ok | docker-compose.sbom.yml defines no `sbom` service (N1)
+compose       | an extra service `other`                                   | must fail | ok | docker-compose.sbom.yml defines ['other']; N1/N4 allow only sbom and sources-fetch
+compose       | a sources-fetch service (U8)                               | must pass | ok | no problem
+pin place     | TARGET                                                     | must pass | ok | no problem
+pin place     | bundle.sh holds the literal reference                      | must fail | ok | scripts/bundle.sh names an anchore/syft reference; the pin lives only in docker-compose.sbom.yml (read it thro
+pin place     | build.sh holds the digest only                             | must fail | ok | scripts/build.sh holds the generator's digest; the pin lives only in docker-compose.sbom.yml
+pin place     | compose comment repeats the reference                      | must fail | ok | docker-compose.sbom.yml names an anchore/syft reference 2 times, want exactly 1
+pin place     | README.md names anchore/syft:v1.2.3                        | must fail | ok | README.md names an anchore/syft reference; the pin lives only in docker-compose.sbom.yml (read it through comp
+pin place     | docker-compose.yml image anchore/syft@sha256               | must fail | ok | docker-compose.yml names an anchore/syft reference; the pin lives only in docker-compose.sbom.yml (read it thr
+pin place     | ci.yml pulls anchore/syft:v0                               | must fail | ok | .github/workflows/ci.yml names an anchore/syft reference; the pin lives only in docker-compose.sbom.yml (read 
+pin place     | docs/ quotes the pin (exempt)                              | must pass | ok | no problem
+pin place     | tests/ quote the pin (exempt)                              | must pass | ok | no problem
+pin place     | prose 'anchore/syft' without tag                           | must pass | ok | no problem
+pin place     | compose file not committed or new (ignored)                | must fail | ok | docker-compose.sbom.yml is not a committed (or new, unignored) file
+provenance    | TARGET (shape fixture)                                     | must pass | ok | no problem
+provenance    | record missing                                             | must fail | ok | docs/evidence/platform-sbom/generator-provenance.md is missing: security records the generator's provenance (P
+provenance    | digest missing                                             | must fail | ok | the provenance record does not hold the pinned index digest
+provenance    | digest truncated                                           | must fail | ok | the provenance record does not hold the pinned index digest
+provenance    | other release named                                        | must fail | ok | the provenance record does not name the pinned release v1.54.1
+provenance    | release with an extra digit                                | must fail | ok | the provenance record does not name the pinned release v1.54.1
+provenance    | image not named                                            | must fail | ok | the provenance record does not name anchore/syft
+bundle static | TARGET                                                     | must pass | ok | no problem
+bundle static | pre-U2 bundle.sh (no generator read)                       | must fail | ok | bundle.sh does not read docker-compose.sbom.yml (N1 presence check)
+bundle static | adds docker pull "$sbom_ref"                               | must fail | ok | bundle.sh line 159 (comments and messages stripped) has a pull: 'docker pull "$sbom_ref"'
+bundle static | adds compose -f docker-compose.sbom.yml pull sbom          | must fail | ok | bundle.sh line 159 (comments and messages stripped) has a pull: 'docker compose -f docker-compose.sbom.yml pul
+bundle static | adds docker image pull                                     | must fail | ok | bundle.sh line 159 (comments and messages stripped) has a pull: 'docker image pull "$sbom_ref"'
+bundle static | notices run --pull missing                                 | must fail | ok | bundle.sh passes --pull missing
+bundle static | notices run --pull=always                                  | must fail | ok | bundle.sh passes --pull always
+bundle static | a pull word in a die message only                          | must pass | ok | no problem
+bundle static | a pull word in a comment only                              | must pass | ok | no problem
+bundle run    | TARGET                                                     | must pass | ok | no problem
+bundle run    | pre-U2 bundle.sh (RED reach)                               | must fail | ok | test_bundle_refuses_when_sbom_generator_absent (part='static: bundle.sh reads docker-compose.sbom.yml, inspect
+                - test_bundle_refuses_when_sbom_generator_absent (part='static: bundle.sh reads docker-compose.sbom.yml, inspects, never pulls')
+                - test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out does not exist')
+                - test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out exists and is empty')
+                - test_bundle_refuses_when_sbom_generator_absent (case='the reference is the one docker-compose.sbom.yml gives')
+                - test_bundle_refuses_when_sbom_generator_absent (case='a tag-only reference is refused even when present')
+                - test_bundle_refuses_when_sbom_generator_absent (case='present, with a second service in the file: the bundle is written')
+bundle run    | presence inspect removed                                   | must fail | ok | test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out does not exist')
+                - test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out does not exist')
+                - test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out exists and is empty')
+                - test_bundle_refuses_when_sbom_generator_absent (case='the reference is the one docker-compose.sbom.yml gives')
+bundle run    | inspect result ignored (|| true)                           | must fail | ok | test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out does not exist')
+                - test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out does not exist')
+                - test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out exists and is empty')
+                - test_bundle_refuses_when_sbom_generator_absent (case='the reference is the one docker-compose.sbom.yml gives')
+bundle run    | check moved after mkdir of --out/images                    | must fail | ok | test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out does not exist')
+                - test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out does not exist')
+                - test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out exists and is empty')
+                - test_bundle_refuses_when_sbom_generator_absent (case='the reference is the one docker-compose.sbom.yml gives')
+                - test_bundle_refuses_when_sbom_generator_absent (case='a tag-only reference is refused even when present')
+bundle run    | reference hardcoded, compose not read                      | must fail | ok | test_bundle_refuses_when_sbom_generator_absent (part='static: bundle.sh reads docker-compose.sbom.yml, inspect
+                - test_bundle_refuses_when_sbom_generator_absent (part='static: bundle.sh reads docker-compose.sbom.yml, inspects, never pulls')
+                - test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out does not exist')
+                - test_bundle_refuses_when_sbom_generator_absent (case='the reference is the one docker-compose.sbom.yml gives')
+                - test_bundle_refuses_when_sbom_generator_absent (case='a tag-only reference is refused even when present')
+                - test_bundle_refuses_when_sbom_generator_absent (case='present, with a second service in the file: the bundle is written')
+bundle run    | @sha256 not required (tag-only accepted)                   | must fail | ok | test_bundle_refuses_when_sbom_generator_absent (case='a tag-only reference is refused even when present')
+                - test_bundle_refuses_when_sbom_generator_absent (case='a tag-only reference is refused even when present')
+bundle run    | config --images without the sbom service                   | must fail | ok | test_bundle_refuses_when_sbom_generator_absent (case='present, with a second service in the file: the bundle i
+                - test_bundle_refuses_when_sbom_generator_absent (case='present, with a second service in the file: the bundle is written')
+bundle run    | required ${VAR:?} mounts not set for the read              | must fail | ok | test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out does not exist')
+                - test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out does not exist')
+                - test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out exists and is empty')
+                - test_bundle_refuses_when_sbom_generator_absent (case='the reference is the one docker-compose.sbom.yml gives')
+                - test_bundle_refuses_when_sbom_generator_absent (case='a tag-only reference is refused even when present')
+                - test_bundle_refuses_when_sbom_generator_absent (case='present, with a second service in the file: the bundle is written')
+                - test_bundle_has_no_sbom_generator: 1 != 0 : bundle.sh failed on a fit build host:
+bundle run    | --no-interpolate instead of the dummy values (env-file kep | must pass | ok | no problem
+bundle run    | read without --env-file .env.example (loads .env)          | must fail | ok | test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out does not exist')
+                - test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out does not exist')
+                - test_bundle_refuses_when_sbom_generator_absent (case='present, with a second service in the file: the bundle is written')
+bundle run    | read with --env-file .env (the model keys)                 | must fail | ok | test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out does not exist')
+                - test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out does not exist')
+                - test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out exists and is empty')
+                - test_bundle_refuses_when_sbom_generator_absent (case='the reference is the one docker-compose.sbom.yml gives')
+                - test_bundle_refuses_when_sbom_generator_absent (case='a tag-only reference is refused even when present')
+                - test_bundle_refuses_when_sbom_generator_absent (case='present, with a second service in the file: the bundle is written')
+                - test_bundle_has_no_sbom_generator: 1 != 0 : bundle.sh failed on a fit build host:
+bundle run    | refusal does not name the reference                        | must fail | ok | test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out does not exist')
+                - test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out does not exist')
+                - test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out exists and is empty')
+                - test_bundle_refuses_when_sbom_generator_absent (case='the reference is the one docker-compose.sbom.yml gives')
+bundle run    | refusal names bundle_fetch.sh (U8 wording, too early)      | must fail | ok | test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out does not exist')
+                - test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out does not exist')
+                - test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out exists and is empty')
+                - test_bundle_refuses_when_sbom_generator_absent (case='the reference is the one docker-compose.sbom.yml gives')
+bundle run    | refusal without the pull command                           | must fail | ok | test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out does not exist')
+                - test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out does not exist')
+                - test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out exists and is empty')
+                - test_bundle_refuses_when_sbom_generator_absent (case='the reference is the one docker-compose.sbom.yml gives')
+bundle run    | pulls when absent                                          | must fail | ok | test_bundle_refuses_when_sbom_generator_absent (part='static: bundle.sh reads docker-compose.sbom.yml, inspect
+                - test_bundle_refuses_when_sbom_generator_absent (part='static: bundle.sh reads docker-compose.sbom.yml, inspects, never pulls')
+                - test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out does not exist')
+                - test_bundle_refuses_when_sbom_generator_absent (case='generator absent, --out exists and is empty')
+                - test_bundle_refuses_when_sbom_generator_absent (case='the reference is the one docker-compose.sbom.yml gives')
+bundle run    | ships docker-compose.sbom.yml in app/                      | must fail | ok | test_bundle_has_no_sbom_generator (part='no bundled path names syft or the sbom compose file')
+                - test_bundle_has_no_sbom_generator (part='no bundled path names syft or the sbom compose file')
+                - test_bundle_has_no_sbom_generator (part="no bundled file's content names the generator, its file or digest")
+bundle run    | saves the generator image into the bundle                  | must fail | ok | test_bundle_has_no_sbom_generator (part='no bundled path names syft or the sbom compose file')
+                - test_bundle_has_no_sbom_generator (part='no bundled path names syft or the sbom compose file')
+                - test_bundle_has_no_sbom_generator (part="no bundled file's content names the generator, its file or digest")
+                - test_bundle_has_no_sbom_generator (part='no manifest entry is the generator image (PSC-8 form)')
+offline_check | TARGET                                                     | must pass | ok | no problem
+offline_check | pre-U2 offline_check.sh (no pull; RED reach)               | must fail | ok | test_offline_check_pulls_sbom_generator_before_bundle: Lists differ: ['bundle', 'up dind', 'net_isolated', 'ru
+                - test_offline_check_pulls_sbom_generator_before_bundle: Lists differ: ['bundle', 'up dind', 'net_isolated', 'run client', 'teardown'] !=
+                - test_offline_check_stops_when_sbom_pull_fails (case='the pull fails')
+offline_check | pull after bundle.sh                                       | must fail | ok | test_offline_check_pulls_sbom_generator_before_bundle: Lists differ: ['bundle', 'pull sbom', 'up dind', 'net_i
+                - test_offline_check_pulls_sbom_generator_before_bundle: Lists differ: ['bundle', 'pull sbom', 'up dind', 'net_isolated', 'run client', '
+                - test_offline_check_stops_when_sbom_pull_fails (case='the pull fails')
+offline_check | pull before the disk and Compose checks                    | must fail | ok | test_offline_check_pulls_sbom_generator_before_bundle: False is not true : the pull comes after the Compose ve
+                - test_offline_check_pulls_sbom_generator_before_bundle: False is not true : the pull comes after the Compose version check
+                - test_offline_check_stops_when_sbom_pull_fails (case='below the disk floor: no pull')
+                - test_offline_check_stops_when_sbom_pull_fails (case='Compose below 2.27: no pull')
+offline_check | pull without --env-file .env.example                       | must fail | ok | test_offline_check_pulls_sbom_generator_before_bundle: ('--env-file', '.env.example') not found in [('compose'
+                - test_offline_check_pulls_sbom_generator_before_bundle: ('--env-file', '.env.example') not found in [('compose', '-f'), ('-f', 'docker-c
+offline_check | pull through compose() (adds --profile offline)            | must fail | ok | test_offline_check_pulls_sbom_generator_before_bundle: '--profile' unexpectedly found in ['compose', '--env-fi
+                - test_offline_check_pulls_sbom_generator_before_bundle: '--profile' unexpectedly found in ['compose', '--env-file', '.env.example', '--p
+offline_check | pull without the dummy KE_SBOM_* values                    | must fail | ok | test_offline_check_pulls_sbom_generator_before_bundle: False is not true : KE_SBOM_IN is the dummy /nonexisten
+                - test_offline_check_pulls_sbom_generator_before_bundle: False is not true : KE_SBOM_IN is the dummy /nonexistent for the pull (the file'
+offline_check | only KE_SBOM_IN set                                        | must fail | ok | test_offline_check_pulls_sbom_generator_before_bundle: False is not true : KE_SBOM_OUT is the dummy /nonexiste
+                - test_offline_check_pulls_sbom_generator_before_bundle: False is not true : KE_SBOM_OUT is the dummy /nonexistent for the pull (the file
+offline_check | pulls every service of the file                            | must fail | ok | test_offline_check_pulls_sbom_generator_before_bundle: Lists differ: ['docker-compose.sbom.yml', 'pull'] != ['
+                - test_offline_check_pulls_sbom_generator_before_bundle: Lists differ: ['docker-compose.sbom.yml', 'pull'] != ['pull', 'sbom']
+                - test_offline_check_stops_when_sbom_pull_fails (case='the pull fails')
+offline_check | docker pull of a literal ref instead of compose            | must fail | ok | test_offline_check_pulls_sbom_generator_before_bundle: 1 != 0 : offline: df start
+                - test_offline_check_pulls_sbom_generator_before_bundle: 1 != 0 : offline: df start
+                - test_offline_check_stops_when_sbom_pull_fails (case='the pull fails')
+                - test_offline_check_host_half_runs_stages_in_order (arch='x86_64')
+                - test_offline_check_host_half_runs_stages_in_order (arch='aarch64')
+                - test_offline_check_tears_down_on_failure (case='bundle.sh fails')
+                - test_offline_check_tears_down_on_failure (case='dind does not come up')
+                - test_offline_check_tears_down_on_failure (case='offline network not isolated')
+                - test_offline_check_tears_down_on_failure (case='client run fails')
+offline_check | pull failure ignored (|| true)                             | must fail | ok | test_offline_check_stops_when_sbom_pull_fails (case='the pull fails')
+                - test_offline_check_stops_when_sbom_pull_fails (case='the pull fails')
+offline_check | retries once on failure                                    | must fail | ok | test_offline_check_stops_when_sbom_pull_fails (case='the pull fails')
+                - test_offline_check_stops_when_sbom_pull_fails (case='the pull fails')
+offline_check | other failure message                                      | must fail | ok | test_offline_check_stops_when_sbom_pull_fails (case='the pull fails')
+                - test_offline_check_stops_when_sbom_pull_fails (case='the pull fails')
+offline_check | echo line removed (not required)                           | must pass | ok | no problem
+offline_check | -f before --env-file (same meaning)                        | must pass | ok | no problem
+
+controls: 138 (116 must-fail, 22 must-pass), unexpected: 0

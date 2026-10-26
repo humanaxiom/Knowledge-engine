@@ -1,0 +1,45 @@
+# reviewer U5 r2 probes, 2026-10-24 (host python -I; scripts/sbom_check.py working tree, r1-target for the snapshot)
+## probe_r2.py
+'NOASSERTION+' (False, {'unparsed': False, 'unidentified': False})
+'none+' (False, {'unparsed': False, 'unidentified': False})
+'LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef+' (False, {'unparsed': False, 'unidentified': False})
+'MIT AND LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef+' (False, {'unparsed': False, 'unidentified': False})
+'DocumentRef-x:LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef+' (False, {'unparsed': False, 'unidentified': False})
+'DocumentRef-x:NONE+' (False, {'unparsed': False, 'unidentified': False})
+'MIT WITH NOASSERTION+' (False, {'unparsed': False, 'unidentified': False})
+'MIT WITH LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef+' (False, {'unparsed': False, 'unidentified': False})
+'MIT:NOASSERTION' (False, {'unparsed': True, 'unidentified': False})
+'MIT+NOASSERTION' (False, {'unparsed': True, 'unidentified': False})
+'NOASSERTION+MIT' (False, {'unparsed': True, 'unidentified': False})
+'Public Domain MIT:NOASSERTION' (False, {'unparsed': True, 'unidentified': False})
+'NOASSERTION:' (False, {'unparsed': True, 'unidentified': False})
+'MIT-NOASSERTION' (False, {'unparsed': False, 'unidentified': False})
+'DocumentRef-:NONE' (False, {'unparsed': True, 'unidentified': False})
+'DocumentRef-x:DocumentRef-y:LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' (True, {'unparsed': True, 'unidentified': True})
+'MIT AND NOASSERTION+ AND Zlib' (False, {'unparsed': False, 'unidentified': False})
+snapshot: image (rows, needs, unparsed, unidentified, unlicensed) cur | r1 | full row-by-row equal
+ke-app (153, 102, 3, 18, 1) (153, 102, 3, 18, 1) True
+ke-gateway (71, 17, 0, 0, 0) (71, 17, 0, 0, 0) True
+neo4j (341, 164, 52, 9, 19) (341, 164, 52, 9, 19) True
+phoenix (277, 30, 4, 10, 25) (277, 30, 4, 10, 25) True
+postgres (149, 130, 6, 22, 3) (149, 130, 6, 22, 3) True
+valkey (24, 12, 0, 0, 1) (24, 12, 0, 0, 1) True
+
+## probe_r2_fix.py (proposed fix simulated on an in-memory copy; no repo file changed)
+'NOASSERTION+' fix: (True, {'unparsed': False, 'unidentified': True})
+'none+' fix: (True, {'unparsed': False, 'unidentified': True})
+'LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef+' fix: (True, {'unparsed': False, 'unidentified': True})
+'MIT WITH NOASSERTION+' fix: (True, {'unparsed': False, 'unidentified': True})
+'MIT:NOASSERTION' fix: (True, {'unparsed': True, 'unidentified': True})
+'MIT+NOASSERTION' fix: (True, {'unparsed': True, 'unidentified': True})
+'NOASSERTION:' fix: (True, {'unparsed': True, 'unidentified': True})
+'DocumentRef-:NONE' fix: (True, {'unparsed': True, 'unidentified': True})
+'see NONE.txt here' fix: (False, {'unparsed': True, 'unidentified': False})
+'MIT-NOASSERTION' fix: (False, {'unparsed': False, 'unidentified': False})
+ke-app real rows equal under fix: True
+ke-gateway real rows equal under fix: True
+neo4j real rows equal under fix: True
+phoenix real rows equal under fix: True
+postgres real rows equal under fix: True
+valkey real rows equal under fix: True
+existing classifier tests under fix: ran 47 failures 0 errors 0

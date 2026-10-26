@@ -1,0 +1,136 @@
+platform-sbom U7a rework r1: security probes (security, 2026-10-25)
+Tree: HEAD 66781a9 (U6) + working tree; scripts/sbom_check.py == u7a/r1-target-sbom_check.py; compared with u7a/target-sbom_check.py (U7a GREEN).
+Script: u7a/security_r1_probes.py, baseline tests/test_sources_lock.py good_lock(SMALL_KEYS), small_docs, committed policy.
+Gates image, python -I, COMPOSE_PROJECT_NAME=ke-security-u5, scratch dir read-only at /scratch. Output unedited except
+compose/uv preamble lines dropped and raw control bytes in output shown as <xNN>.
+
+== baseline good lock problems (no pgdg key in SMALL_KEYS; expect none):
+
+== R1-1. U7a smuggling set re-run on the pypi file (every row should now be rejected) ==
+  userinfo host@evil                                         rejected=True  ['lock: pypi:psycopg@3.3.6: url carries userinfo']
+  IDN lookalike                                              rejected=True  ['lock: pypi:psycopg@3.3.6: url is not printable ASCII (0x21-0x7e)']
+  fullwidth dot                                              rejected=True  ['lock: pypi:psycopg@3.3.6: url is not printable ASCII (0x21-0x7e)']
+  trailing dot                                               rejected=True  ['lock: pypi:psycopg@3.3.6: url host files.pythonhosted.org. is not in docker/source-policy.json hosts']
+  port                                                       rejected=True  ['lock: pypi:psycopg@3.3.6: url carries a port']
+  uppercase host                                             rejected=True  ['lock: pypi:psycopg@3.3.6: url host FILES.pythonhosted.org is not in docker/source-policy.json hosts']
+  percent host                                               rejected=True  ['lock: pypi:psycopg@3.3.6: url host files%2Epythonhosted.org is not in docker/source-policy.json host']
+  backslash before host                                      rejected=True  ['lock: pypi:psycopg@3.3.6: url carries userinfo']
+  HTTP                                                       rejected=True  ['lock: pypi:psycopg@3.3.6: url does not round-trip (urlunsplit(urlsplit(url)) differs)']
+  HTTPS upper                                                rejected=True  ['lock: pypi:psycopg@3.3.6: url does not round-trip (urlunsplit(urlsplit(url)) differs)']
+  tab in host                                                rejected=True  ['lock: pypi:psycopg@3.3.6: url is not printable ASCII (0x21-0x7e)']
+  LF in host                                                 rejected=True  ['lock: pypi:psycopg@3.3.6: url is not printable ASCII (0x21-0x7e)']
+  CR in path                                                 rejected=True  ['lock: pypi:psycopg@3.3.6: url is not printable ASCII (0x21-0x7e)']
+  leading space                                              rejected=True  ['lock: pypi:psycopg@3.3.6: url is not printable ASCII (0x21-0x7e)']
+  trailing space                                             rejected=True  ['lock: pypi:psycopg@3.3.6: url is not printable ASCII (0x21-0x7e)']
+  leading NUL                                                rejected=True  ['lock: pypi:psycopg@3.3.6: url is not printable ASCII (0x21-0x7e)']
+  space in path                                              rejected=True  ['lock: pypi:psycopg@3.3.6: url is not printable ASCII (0x21-0x7e)']
+  non-ASCII path                                             rejected=True  ['lock: pypi:psycopg@3.3.6: url is not printable ASCII (0x21-0x7e)']
+  ../ in path                                                rejected=True  ['lock: pypi:psycopg@3.3.6: url path has a .. segment']
+  %2e%2e in path                                             rejected=False []
+  backslash in path                                          rejected=False []
+  double quote in path                                       rejected=False []
+  angle brackets in path                                     rejected=False []
+  empty segment //                                           rejected=False []
+  pypi on github.com                                         rejected=True  ['lock: pypi:psycopg@3.3.6: psycopg-3.3.6.tar.gz: url host github.com is not a pypi file host']
+  size 4 GiB                                                 rejected=False []
+  size 4 GiB + 1                                             rejected=True  ['lock: pypi:psycopg@3.3.6: size 4294967297 is not an int in 1..4294967296']
+  size 10**30                                                rejected=True  ['lock: pypi:psycopg@3.3.6: size 1000000000000000000000000000000 is not an int in 1..4294967296']
+  name CON                                                   rejected=True  ['lock: pypi:psycopg@3.3.6: CON: url path does not end in /CON']
+  name a..b                                                  rejected=True  ['lock: pypi:psycopg@3.3.6: a..b: not a safe file name']
+  from with ESC                                              rejected=True  ['lock: pypi:psycopg@3.3.6: upstream.from is not printable ASCII (0x20-0x7e)']
+
+== R1-2. Binding rules (L-2) ==
+    apk:readline@8.2.13-r1 ['https://gitlab.alpinelinux.org/alpine/aports/-/raw/164709483a69ff847763c0d3c9ffca929d1a7169/main/rea', 'https://distfiles.alpinelinux.org/distfiles/v3.23/readline-8.2.13.tar.gz']
+    deb:attr@1:2.5.1-4 ['https://snapshot.debian.org/file/2d6c153d209981811b3d4977f79bea34e10e1665', 'https://snapshot.debian.org/file/4cf01153b25d4fa913565684ca9551a2c569f62f']
+    deb:bash@5.2.15-2 ['https://snapshot.debian.org/file/72201406836a3d941a09f3222bc0d134d46b9497', 'https://snapshot.debian.org/file/54f43fc685b6ca3e99ddeea4618f6f13883d19f2']
+    maven:javax.xml.bind:jaxb-api@2.2.12 ['https://repo1.maven.org/maven2/javax/xml/bind/jaxb-api/2.2.12/jaxb-api-2.2.12-sources.jar']
+    neo4j:neo4j@5.26.32 ['https://github.com/neo4j/neo4j/archive/refs/tags/5.26.32.tar.gz']
+    pypi:psycopg-c@3.3.6 ['https://files.pythonhosted.org/packages/ab/cd/psycopg-c-3.3.6.tar.gz']
+    pypi:psycopg@3.3.6 ['https://files.pythonhosted.org/packages/ab/cd/psycopg-3.3.6.tar.gz']
+    temurin:jdk-21.0.12.1+1 ['https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk-so']
+  maven jar on github.com                                    rejected=True  ['lock: maven:javax.xml.bind:jaxb-api@2.2.12: jaxb-api-2.2.12-sources.jar: url host github.com is not ']
+  maven jar at another version path                          rejected=True  ['lock: maven:javax.xml.bind:jaxb-api@2.2.12: jaxb-api-2.2.12-sources.jar: not a maven file url (want ']
+  maven jar of another artifact (same dir)                   rejected=True  ['lock: maven:javax.xml.bind:jaxb-api@2.2.12: jaxb-impl-2.2.12-sources.jar: not a maven file url (want']
+  maven binary jar, not -sources                             rejected=True  ['lock: maven:javax.xml.bind:jaxb-api@2.2.12: jaxb-api-2.2.12.jar: not a maven file url (want path /ma']
+   temurin url: https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz
+  temurin asset of another feature (17) in temurin21 repo    rejected=False []
+  temurin same feature, another release tag                  rejected=False []
+  temurin same feature, other tag and other version asset    rejected=False []
+  temurin extra path segments                                rejected=False []
+  temurin repo temurin17-binaries                            rejected=True  ['lock: temurin:jdk-21.0.12.1+1: OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz: not a temurin file url (ad']
+  temurin a JDK binary, not sources (name)                   rejected=True  ['lock: temurin:jdk-21.0.12.1+1: OpenJDK21U-jdk_x64_linux_hotspot_21.0.12.1_1.tar.gz: not a temurin fi']
+  temurin asset named Evil-jdk-sources_x.tar.gz              rejected=False []
+   apk urls: ['https://gitlab.alpinelinux.org/alpine/aports/-/raw/164709483a69ff847763c0d3c9ffca929d1a7169/main/readline/APKBUILD', 'https://distfiles.alpinelinux.org/distfiles/v3.23/readline-8.2.13.tar.gz']
+  apk APKBUILD at another commit                             rejected=True  ['lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (want path /alpine/aports/-/raw/164709483']
+  apk APKBUILD from community (repo main)                    rejected=True  ['lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (want path /alpine/aports/-/raw/164709483']
+  apk APKBUILD of another origin                             rejected=True  ['lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (want path /alpine/aports/-/raw/164709483']
+  apk APKBUILD from distfiles                                rejected=True  ['lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (the APKBUILD comes from gitlab.alpinelin']
+  apk tarball at another branch                              rejected=True  ['lock: apk:readline@8.2.13-r1: readline-8.2.13.tar.gz: not a apk file url (want path /distfiles/v3.23']
+  apk tarball raw from gitlab at the commit                  rejected=False []
+  apk tarball raw from gitlab at another commit              rejected=True  ['lock: apk:readline@8.2.13-r1: readline-8.2.13.tar.gz: not a apk file url (want path /alpine/aports/-']
+  apk entry commit changed (urls keep the old one)           rejected=True  ['lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (want path /alpine/aports/-/raw/fffffffff']
+   pypi url: https://files.pythonhosted.org/packages/ab/cd/psycopg-3.3.6.tar.gz
+  pypi name Psycopg-3.3.6.tar.gz                             rejected=False []
+  pypi name psycopg_c-3.3.6.tar.gz                           rejected=True  ['lock: pypi:psycopg@3.3.6: psycopg_c-3.3.6.tar.gz: not a pypi file of psycopg 3.3.6']
+  pypi name psycopg-c-3.3.6.tar.gz                           rejected=True  ['lock: pypi:psycopg@3.3.6: psycopg-c-3.3.6.tar.gz: not a pypi file of psycopg 3.3.6']
+  pypi name psycopg-3.3.7.tar.gz                             rejected=True  ['lock: pypi:psycopg@3.3.6: psycopg-3.3.7.tar.gz: not a pypi file of psycopg 3.3.6']
+  pypi name psycopg-3.3.6-1.tar.gz                           rejected=True  ['lock: pypi:psycopg@3.3.6: psycopg-3.3.6-1.tar.gz: not a pypi file of psycopg 3.3.6']
+  pypi name psycopg-binary-3.3.6.tar.gz                      rejected=True  ['lock: pypi:psycopg@3.3.6: psycopg-binary-3.3.6.tar.gz: not a pypi file of psycopg 3.3.6']
+  pypi name psycopg-3.3.6.zip                                rejected=True  ['lock: pypi:psycopg@3.3.6: psycopg-3.3.6.zip: not a pypi file of psycopg 3.3.6']
+  pypi name psycopg-3.3.6-py3-none-any.whl                   rejected=True  ['lock: pypi:psycopg@3.3.6: psycopg-3.3.6-py3-none-any.whl: not a pypi file of psycopg 3.3.6']
+  pypi name PSYCOPG-3.3.6.tar.gz                             rejected=False []
+  pypi name psycopg.-3.3.6.tar.gz                            rejected=True  ['lock: pypi:psycopg@3.3.6: psycopg.-3.3.6.tar.gz: not a pypi file of psycopg 3.3.6']
+  pypi name psycopg--3.3.6.tar.gz                            rejected=True  ['lock: pypi:psycopg@3.3.6: psycopg--3.3.6.tar.gz: not a pypi file of psycopg 3.3.6']
+  pypi url basename differs from name                        rejected=True  ['lock: pypi:psycopg@3.3.6: psycopg-3.3.6.tar.gz: url path does not end in /psycopg-3.3.6.tar.gz']
+  deb .dsc url sha1 != upstream sha1                         rejected=True  ['lock: deb:bash@5.2.15-2: the .dsc is not sha1 with a snapshot.debian.org /file/<that sha1> url']
+  deb .dsc upstream sha1 changed (url keeps old)             rejected=True  ['lock: deb:bash@5.2.15-2: the .dsc is not sha1 with a snapshot.debian.org /file/<that sha1> url']
+  deb orig on gitlab                                         rejected=True  ['lock: deb:bash@5.2.15-2: bash_5.2.15.orig.tar.xz: url host gitlab.alpinelinux.org is not a deb file ']
+  deb orig /file/<40 hex> but upper case                     rejected=True  ['lock: deb:bash@5.2.15-2: bash_5.2.15.orig.tar.xz: not a deb file url (snapshot.debian.org /file/<sha']
+  deb only the .dsc (no other file)                          rejected=True  ['lock: deb:bash@5.2.15-2: deb: no file besides the .dsc']
+  neo4j second file                                          rejected=True  ['lock: neo4j:neo4j@5.26.32: x.tar.gz: url path does not end in /x.tar.gz']
+  neo4j another tag                                          rejected=True  ['lock: neo4j:neo4j@5.26.32: 5.26.32.tar.gz: url path does not end in /5.26.32.tar.gz']
+  neo4j name other than <ver>.tar.gz                         rejected=True  ['lock: neo4j:neo4j@5.26.32: neo4j-5.26.32.tar.gz: url path does not end in /neo4j-5.26.32.tar.gz']
+  neo4j upstream alg sha1                                    rejected=True  ['lock: neo4j:neo4j@5.26.32: neo4j: upstream alg is not sha256']
+  neo4j upstream value != file sha256                        rejected=True  ["lock: neo4j:neo4j@5.26.32: upstream sha256 differs from the file's sha256"]
+  neo4j from codeload.github.com                             rejected=True  ['lock: neo4j:neo4j@5.26.32: 5.26.32.tar.gz: url host codeload.github.com is not a neo4j file host']
+  KIND_HOSTS subset of the committed policy hosts: True | pgdg hosts: ()
+
+== R1-3. Escaping (L-3): raw control bytes in any message ==
+  hostile lock keys, name, url, file key + SBOM purls: problems=11 raw-control lines=0 []
+
+== R1-4. Robustness: wrong types never raise; CLI never prints a traceback ==
+  lock not str         problems=1 ['lock: the lock is not text']
+  deep JSON            problems=1 ['lock: not JSON: maximum recursion depth exceeded while decoding a JSON']
+  components list      problems=2 ['lock: not in canonical form: regenerate']
+  entry list           problems=9 ['lock: pypi:psycopg@3.3.6: the entry is not an object']
+  files dict           problems=8 ['lock: pypi:psycopg@3.3.6: files is not a list']
+  file list            problems=9 ['lock: pypi:psycopg@3.3.6: a file is not an object']
+  upstream list        problems=9 ['lock: pypi:psycopg@3.3.6: upstream is not an object']
+  arches dicts         problems=9 ['lock: pypi:psycopg@3.3.6: arches is not a list of strings']
+  name int             problems=8 ['lock: pypi:psycopg@3.3.6: name is not a string']
+  apk commit int       problems=10 ['lock: apk:readline@8.2.13-r1: commit is not a string']
+  key int-like         problems=10 ['lock: not in canonical form: regenerate']
+  NaN format           problems=10 ['lock: not in canonical form: regenerate']
+  huge int             problems=1 ['lock: not JSON: Exceeds the limit (4300 digits) for integer string con']
+  CLI deep JSON    rc=1 traceback=False sbom_check: lock-check: lock: not JSON: maximum recursion depth exceeded while decoding a JSON array from a unicode stri
+  CLI huge int     rc=1 traceback=False sbom_check: lock-check: lock: not JSON: Exceeds the limit (4300 digits) for integer string conversion: value has 5000 di
+  CLI good         rc=0 traceback=False lock-check: ok (8 components, amd64)
+  CLI deep policy  rc=1 traceback=False
+
+== R1-5. ReDoS / cost on the new checks ==
+  PYPI_DIST_RE 'a-' * 1000 (no .tar.gz)                           0.003s False
+  PYPI_DIST_RE 'a-' * 1000 + '.tar.g'                             0.003s False
+  TEMURIN_ASSET_RE 'a-jdk-sources_' + '.' * 1000                  0.000s False
+  PYPI_DIST_RE 'a-' * 10000 (no .tar.gz)                          0.294s False
+  PYPI_DIST_RE 'a-' * 10000 + '.tar.g'                            0.292s False
+  TEMURIN_ASSET_RE 'a-jdk-sources_' + '.' * 10000                 0.000s False
+  PYPI_DIST_RE 'a-' * 50000 (no .tar.gz)                          7.097s False
+  PYPI_DIST_RE 'a-' * 50000 + '.tar.g'                            7.114s False
+  TEMURIN_ASSET_RE 'a-jdk-sources_' + '.' * 50000                 0.000s False
+  PRINTABLE_RE 1MB + DEL                                          0.004s False
+  lock_problems: pypi file with a 100k-char a- name               7.209s 2
+  lock_problems 20000 entries                                     1.224s 40000
+
+== R1-6. lock_needs unchanged vs the U7a GREEN (u7a/target-sbom_check.py) ==
+  keys r1=182 green=182 equal=True problems=[]
+  component_key/lock_needs/classify_document/unlicensed_report source equal to GREEN: True

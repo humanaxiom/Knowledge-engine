@@ -1,0 +1,83 @@
+# platform-sbom U7b rework round 1 RED: controls/mutants (full output)
+# command: COMPOSE_PROJECT_NAME=ke-tester-u7br1 COMPOSE_FILE=docker-compose.yml docker compose --env-file .env.example --profile gates run --rm gates uv run --locked python docs/evidence/platform-sbom/u7b/r1_controls.py
+# run 2026-10-25 by the tester in the gates image (ke-gates:local), targets = docs/evidence/platform-sbom/u7b/r1-target-*; exit 0
+
+ Container ke-tester-u7br1-gates-run-7d6f39892b26 Creating 
+ Container ke-tester-u7br1-gates-run-7d6f39892b26 Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.72ms
+Installed 1 package in 1ms
+ok  [target] TARGET: the 27 round-1 tests                                           must pass | no problem
+ok  [target] TARGET: the 22 U7b tests                                               must pass | no problem
+ok  [target] TARGET: 11 U7a lock regression tests                                   must pass | no problem
+ok  [u7b] U7b GREEN: ReworkR1TransportTest.test_errors_while_opening             must fail | test_errors_while_opening: ?                  ^^ +++++ ^^    +++++
+ok  [u7b] U7b GREEN: ReworkR1TransportTest.test_errors_while_reading_the_body    must fail | test_errors_while_reading_the_body: TimeoutError: timed out
+ok  [u7b] U7b GREEN: ReworkR1TransportTest.test_the_byte_cap                     must fail | test_the_byte_cap: AssertionError: None != 4294967296 : 4 GiB, as U7a round 1 item 10
+ok  [u7b] U7b GREEN: ReworkR1TransportTest.test_the_deadline                     must fail | test_the_deadline: AssertionError: None != 600 : 600 s per file (item 1)
+ok  [u7b] U7b GREEN: ReworkR1MainTest.test_a_body_error_is_one_fail_line         must fail | test_a_body_error_is_one_fail_line: AssertionError: 'raised IncompleteRead: IncompleteRead(1 bytes read)' != 1
+ok  [u7b] U7b GREEN: ReworkR1MainTest.test_an_error_writing_out_is_one_fail_line must fail | test_an_error_writing_out_is_one_fail_line: AssertionError: "raised FileNotFoundError: [Errno 2] No s[68 chars
+ok  [u7b] U7b GREEN: ReworkR1MainTest.test_wrong_typed_needs_are_one_fail_line   must fail | test_wrong_typed_needs_are_one_fail_line: AssertionError: "raised AttributeError: 'str' object has no attribut
+ok  [u7b] U7b GREEN: ReworkR1RealOpenerTest.test_error_bodies_are_read_to_1_mib_only must fail | test_error_bodies_are_read_to_1_mib_only: AssertionError: None != 1048576 : the I-1 limit constant
+ok  [u7b] U7b GREEN: ReworkR1HopRulesTest.test_a_hop_may_carry_a_query (guard)   must pass | no problem
+ok  [u7b] U7b GREEN: ReworkR1HopRulesTest.test_bad_hops_are_refused_and_never_requested must fail | test_bad_hops_are_refused_and_never_requested: AssertionError: ResolveError not raised
+ok  [u7b] U7b GREEN: ReworkR1HopRulesTest.test_the_first_url                     must fail | test_the_first_url: AssertionError: ResolveError not raised
+ok  [u7b] U7b GREEN: ReworkR1PypiScopeTest.test_a_maven_redirect_to_pypi_org_is_refused must fail | test_a_maven_redirect_to_pypi_org_is_refused: AssertionError: ResolveError not raised
+ok  [u7b] U7b GREEN: ReworkR1PypiScopeTest.test_a_redirect_of_the_json_request_to_pypi_org_is_refused must fail | test_a_redirect_of_the_json_request_to_pypi_org_is_refused: AssertionError: ResolveError not raised
+ok  [u7b] U7b GREEN: ReworkR1PypiScopeTest.test_the_json_request_itself_is_allowed (guard) must pass | no problem
+ok  [u7b] U7b GREEN: ReworkR1KeysTest.test_bad_keys_are_refused_before_any_request must fail | test_bad_keys_are_refused_before_any_request: + temurin:jdk-21.0.12.1+1/../../x: not a valid lock key
+ok  [u7b] U7b GREEN: ReworkR1KeysTest.test_the_main_line                         must fail | test_the_main_line: + []
+ok  [u7b] U7b GREEN: ReworkR1LockScriptRunTest.test_a_truncated_neo4j_list_is_not_pending must fail | test_a_truncated_neo4j_list_is_not_pending: AssertionError: 'sources_lock: FAIL (check: ' not found in 'mkdir 
+ok  [u7b] U7b GREEN: ReworkR1LockScriptRunTest.test_exactly_the_six_images       must fail | test_exactly_the_six_images: sources_lock: FAIL (sbom: ke-app: the SBOM generator failed; the lock is unchange
+ok  [u7b] U7b GREEN: ReworkR1LockScriptRunTest.test_happy_path_exit_0            must fail | test_happy_path_exit_0: sources_lock: FAIL (sbom: ke-app: the SBOM generator failed; the lock is unchanged)
+ok  [u7b] U7b GREEN: ReworkR1LockScriptRunTest.test_neo4j_pending_exit_3         must fail | test_neo4j_pending_exit_3: sources_lock: FAIL (sbom: ke-app: the SBOM generator failed; the lock is unchanged)
+ok  [u7b] U7b GREEN: ReworkR1LockScriptRunTest.test_the_neo4j_tar_is_not_a_literal must fail | test_the_neo4j_tar_is_not_a_literal: AssertionError: 'ke-neo4j.tar' unexpectedly found in '#!/usr/bin/env bash
+ok  [u7b] U7b GREEN: ReworkR1LockScriptRunTest.test_the_temp_file_is_removed_on_failure must fail | test_the_temp_file_is_removed_on_failure: sources_lock: FAIL (sbom: ke-app: the SBOM generator failed; the loc
+ok  [u7b] U7b GREEN: ReworkR1LockScriptRunTest.test_tools_first                  must fail | test_tools_first: AssertionError: 'sources_lock: FAIL (tools: jq not on PATH; the lock is unchanged)' not foun
+ok  [u7b] U7b GREEN: ReworkR1PendingNeo4jCliTest.test_a_clean_lock_exits_0_with_the_flag must fail | test_a_clean_lock_exits_0_with_the_flag: sbom_check.py: error: unrecognized arguments: --pending-neo4j
+ok  [u7b] U7b GREEN: ReworkR1PendingNeo4jCliTest.test_only_neo4j_misses_exit_3   must fail | test_only_neo4j_misses_exit_3: sbom_check.py: error: unrecognized arguments: --pending-neo4j
+ok  [u7b] U7b GREEN: ReworkR1PendingNeo4jCliTest.test_other_problems_with_a_neo4j_miss_exit_1 must fail | test_other_problems_with_a_neo4j_miss_exit_1: sbom_check.py: error: unrecognized arguments: --pending-neo4j
+ok  [u7b] U7b GREEN: ReworkR1PendingNeo4jCliTest.test_the_reviewers_79_problem_lock_exits_1 must fail | test_the_reviewers_79_problem_lock_exits_1: AssertionError: 2 != 1 : 6 of 79 problems are not neo4j misses: no
+ok  [mutant] a body error uncaught -> test_errors_while_reading_the_body            must fail | test_errors_while_reading_the_body: TimeoutError: timed out
+ok  [mutant] only OSError caught at open -> test_errors_while_opening               must fail | test_errors_while_opening: http.client.BadStatusLine: garbage
+ok  [mutant] the error text, not its class -> test_errors_while_opening             must fail | test_errors_while_opening: ?                  ^^ +++++ ^^    +++++
+ok  [mutant] the deadline dropped -> test_the_deadline                              must fail | test_the_deadline: AssertionError: ResolveError not raised
+ok  [mutant] the deadline 6000 s -> test_the_deadline                               must fail | test_the_deadline: AssertionError: 6000 != 600 : 600 s per file (item 1)
+ok  [mutant] the byte cap dropped -> test_the_byte_cap                              must fail | test_the_byte_cap: AssertionError: ResolveError not raised
+ok  [mutant] the byte cap checked after the chunk is handed on -> test_the_byte_cap must fail | test_the_byte_cap: AssertionError: 3 != 2 : the read went on past the cap
+ok  [mutant] the byte cap off by one -> test_the_byte_cap                           must fail | test_the_byte_cap: ke_sources_resolve_under_test_29f31fadde5f.ResolveError: repo1.maven.org: more than 10 byte
+ok  [mutant] main: an OSError writing /out escapes -> test_an_error_writing_out_is_one_fail_line must fail | test_an_error_writing_out_is_one_fail_line: AssertionError: "raised FileNotFoundError: [Errno 2] No s[68 chars
+ok  [mutant] main: a wrong-typed needs entry not named -> test_wrong_typed_needs_are_one_fail_line must fail | test_wrong_typed_needs_are_one_fail_line: AssertionError: False is not true : sources_lock: FAIL (resolve: -: 
+ok  [mutant] the real opener reads a whole error body -> test_error_bodies_are_read_to_1_mib_only must fail | test_error_bodies_are_read_to_1_mib_only: AssertionError: 3145728 not less than or equal to 1048576 : more tha
+ok  [mutant] a port allowed on a hop -> test_bad_hops_are_refused_and_never_requested must fail | test_bad_hops_are_refused_and_never_requested: AssertionError: ResolveError not raised
+ok  [mutant] userinfo allowed on a hop -> test_bad_hops_are_refused_and_never_requested must fail | test_bad_hops_are_refused_and_never_requested: AssertionError: ResolveError not raised
+ok  [mutant] a fragment allowed on a hop -> test_bad_hops_are_refused_and_never_requested must fail | test_bad_hops_are_refused_and_never_requested: AssertionError: ResolveError not raised
+ok  [mutant] a percent allowed on a hop -> test_bad_hops_are_refused_and_never_requested must fail | test_bad_hops_are_refused_and_never_requested: AssertionError: ResolveError not raised
+ok  [mutant] the raw Location not checked (a tab dropped by the join) -> test_bad_hops_are_refused_and_never_requested must fail | test_bad_hops_are_refused_and_never_requested: AssertionError: ResolveError not raised
+ok  [mutant] the scheme not compared literally -> test_bad_hops_are_refused_and_never_requested must fail | test_bad_hops_are_refused_and_never_requested: AssertionError: ResolveError not raised
+ok  [mutant] a query refused on a hop -> test_a_hop_may_carry_a_query               must fail | test_a_hop_may_carry_a_query: ke_sources_resolve_under_test_4ddf24a3c0c2.ResolveError: redirect to https://rel
+ok  [mutant] a percent refused in a first url -> test_the_first_url                 must fail | test_the_first_url: ke_sources_resolve_under_test_bac7998816ee.ResolveError: https://gitlab.alpinelinux.org/ap
+ok  [mutant] a port allowed on the first url -> test_the_first_url                  must fail | test_the_first_url: AssertionError: ResolveError not raised
+ok  [mutant] pypi.org allowed everywhere -> test_a_maven_redirect_to_pypi_org_is_refused must fail | test_a_maven_redirect_to_pypi_org_is_refused: AssertionError: ResolveError not raised
+ok  [mutant] pypi.org allowed on the JSON request's hops -> test_a_redirect_of_the_json_request_to_pypi_org_is_refused must fail | test_a_redirect_of_the_json_request_to_pypi_org_is_refused: AssertionError: ResolveError not raised
+ok  [mutant] pypi.org refused for the JSON request too -> test_the_json_request_itself_is_allowed must fail | test_the_json_request_itself_is_allowed: ke_sources_resolve_under_test_7dcd49113c58.ResolveError: pypi:pandas@
+ok  [mutant] a key not validated -> test_bad_keys_are_refused_before_any_request    must fail | test_bad_keys_are_refused_before_any_request: + temurin:jdk-21.0.12.1+1/../../x: not a valid lock key
+ok  [mutant] the deb/pgdg kind rule dropped -> test_bad_keys_are_refused_before_any_request must fail | test_bad_keys_are_refused_before_any_request: AssertionError: ResolveError not raised
+ok  [mutant] lock-check: pending decided on the first 20 -> test_the_reviewers_79_problem_lock_exits_1 must fail | test_the_reviewers_79_problem_lock_exits_1: AssertionError: 3 != 1 : 6 of 79 problems are not neo4j misses: no
+ok  [mutant] lock-check: any miss counts as pending -> test_the_reviewers_79_problem_lock_exits_1 must fail | test_the_reviewers_79_problem_lock_exits_1: AssertionError: 3 != 1 : 6 of 79 problems are not neo4j misses: no
+ok  [mutant] lock-check: a non-miss neo4j problem counts -> test_other_problems_with_a_neo4j_miss_exit_1 must fail | test_other_problems_with_a_neo4j_miss_exit_1: AssertionError: 3 != 1 : sbom_check: lock-check: lock: neo4j:neo
+ok  [mutant] lock-check: pending exits 1 -> test_only_neo4j_misses_exit_3           must fail | test_only_neo4j_misses_exit_3: AssertionError: 1 != 3 : sbom_check: lock-check: ke-neo4j: pkg:maven/org.neo4j/
+ok  [mutant] script: pending decided by grep on the printed (truncated) list -> test_a_truncated_neo4j_list_is_not_pending must fail | test_a_truncated_neo4j_list_is_not_pending: sources_lock: written; neo4j entries pending: security's second fe
+ok  [mutant] script: exit 3 from lock-check treated as a failure -> test_neo4j_pending_exit_3 must fail | test_neo4j_pending_exit_3: sources_lock: FAIL (check: sbom_check.py lock-check found problems; the lock is unc
+ok  [mutant] script: chmod dropped -> test_happy_path_exit_0                        must fail | test_happy_path_exit_0: AssertionError: 384 != 420 : item 9: chmod 0644 before the mv
+ok  [mutant] script: sboms/tmp not created -> test_happy_path_exit_0                must fail | test_happy_path_exit_0: sources_lock: FAIL (sbom: ke-app: the SBOM generator failed; the lock is unchanged)
+ok  [mutant] script: no git diff --stat -> test_happy_path_exit_0                   must fail | test_happy_path_exit_0: AssertionError: 'docker/sources.lock.json' not found in '' : no `git diff --stat` outp
+ok  [mutant] script: resolve skipped (the old lock copied) -> test_happy_path_exit_0 must fail | test_happy_path_exit_0: sources_lock: FAIL (check: sbom_check.py lock-check found problems; the lock is unchan
+ok  [mutant] script: the temp file not removed by the trap -> test_the_temp_file_is_removed_on_failure must fail | test_the_temp_file_is_removed_on_failure: + [] : item 5: the EXIT trap removes the temp lock file
+ok  [mutant] script: jq not checked first -> test_tools_first                       must fail | test_tools_first: AssertionError: 'sources_lock: FAIL (tools: jq not on PATH; the lock is unchanged)' not foun
+ok  [mutant] script: the tools checked after compose -> test_tools_first            must fail | test_tools_first: -   'version']] : docker was called before the tools check
+ok  [mutant] script: an extra image accepted -> test_exactly_the_six_images         must fail | test_exactly_the_six_images: sources_lock: FAIL (check: sbom_check.py lock-check found problems; the lock is u
+ok  [mutant] script: a missing image accepted -> test_exactly_the_six_images        must fail | test_exactly_the_six_images: sources_lock: FAIL (check: sbom_check.py lock-check found problems; the lock is u
+ok  [mutant] script: the ke-neo4j tar a literal -> test_the_neo4j_tar_is_not_a_literal must fail | test_the_neo4j_tar_is_not_a_literal: AssertionError: 'ke-neo4j.tar' unexpectedly found in '#!/usr/bin/env bash
+
+U7b rework round 1 controls (targets): 71 rows, 66 must-fail, 5 must-pass, 0 unexpected

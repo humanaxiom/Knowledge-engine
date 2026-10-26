@@ -1,0 +1,7 @@
+CPython 3.12.15: KaRaMeL licence header (Apache-2.0), Modules/_hacl/include/krml/
+Source: Python-3.12.15/Modules/_hacl/include/krml/internal/target.h
+Tarball: https://www.python.org/ftp/python/3.12.15/Python-3.12.15.tar.xz
+Tarball sha256: c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a
+
+/* Copyright (c) INRIA and Microsoft Corporation. All rights reserved.
+   Licensed under the Apache 2.0 License. */

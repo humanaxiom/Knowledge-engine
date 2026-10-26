@@ -1,0 +1,55 @@
+$ COMPOSE_FILE=docker-compose.yml COMPOSE_PROJECT_NAME=ke-tester-u7a docker compose --env-file .env.example --profile gates run --rm gates uv run --locked python docs/evidence/platform-sbom/u7a/u7a_controls.py   (base: u7a/target-sbom_check.py; HEAD rows read git HEAD 66781a9 (U6); FULL output; tester, U7a RED, 2026-10-25)
+ Container ke-tester-u7a-gates-run-72d61ebcfa66 Creating 
+ Container ke-tester-u7a-gates-run-72d61ebcfa66 Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.71ms
+Installed 1 package in 1ms
+ok  [target] TARGET: the 12 lock tests                                          must pass | no problem
+ok  [target] TARGET: the 2 carry rows (g), (h)                                  must pass | no problem
+ok  [target] TARGET: 44 classifier/policy regression tests                      must pass | no problem
+ok  [head] HEAD (U6): test_mapping_table                                      must fail | test_mapping_table: AssertionError: scripts/sbom_check.py has no lock_needs() (U7a interface, N5 amendment U7;
+ok  [head] HEAD (U6): test_needs_from_the_fixtures                            must fail | test_needs_from_the_fixtures: AssertionError: scripts/sbom_check.py has no lock_needs() (U7a interface, N5 ame
+ok  [head] HEAD (U6): test_bad_shapes                                         must fail | test_bad_shapes: AssertionError: scripts/sbom_check.py has no lock_problems() (U7a interface, N5 amendment U7;
+ok  [head] HEAD (U6): test_good_full_lock_passes                              must fail | test_good_full_lock_passes: AssertionError: scripts/sbom_check.py has no lock_problems() (U7a interface, N5 am
+ok  [head] HEAD (U6): test_good_small_lock_passes                             must fail | test_good_small_lock_passes: AssertionError: scripts/sbom_check.py has no lock_problems() (U7a interface, N5 a
+ok  [head] HEAD (U6): test_lock_text_is_canonical                             must fail | test_lock_text_is_canonical: AssertionError: scripts/sbom_check.py has no lock_text() (U7a interface, N5 amend
+ok  [head] HEAD (U6): test_a_missing_key_names_every_package                  must fail | test_a_missing_key_names_every_package: AssertionError: scripts/sbom_check.py has no lock_needs() (U7a interfa
+ok  [head] HEAD (U6): test_a_stale_key_is_reported                            must fail | test_a_stale_key_is_reported: AssertionError: scripts/sbom_check.py has no lock_problems() (U7a interface, N5 
+ok  [head] HEAD (U6): test_arches                                             must fail | test_arches: AssertionError: scripts/sbom_check.py has no lock_problems() (U7a interface, N5 amendment U7; tes
+ok  [head] HEAD (U6): test_small_lock_missing_key_exact_message               must fail | test_small_lock_missing_key_exact_message: AssertionError: scripts/sbom_check.py has no lock_problems() (U7a i
+ok  [head] HEAD (U6): test_sample_keys                                        must fail | test_sample_keys: AssertionError: scripts/sbom_check.py has no sample_keys() (U7a interface, N5 amendment U7; 
+ok  [head] HEAD (U6): test_lock_check_cli                                     must fail | test_lock_check_cli: sbom_check.py: error: argument command: invalid choice: 'lock-check' (choose from finish,
+ok  [head] HEAD (U6): test_policy_schema_rejects_bad_shapes (carry guard, green before U7a) must pass | no problem
+ok  [head] HEAD (U6): test_exempt_matches_strip_the_package_subpath (carry guard, green before U7a) must pass | no problem
+ok  [mutant] a kind's host check dropped (neo4j)                                must fail | test_bad_shapes: AssertionError: [] == [] : the lock check accepts host evil.github.com
+ok  [mutant] a kind's host check dropped (pypi)                                 must fail | test_bad_shapes: AssertionError: [] == [] : the lock check accepts a pypi file on pypi.org (metadata only, O2)
+ok  [mutant] http accepted                                                      must fail | test_bad_shapes: AssertionError: [] == [] : the lock check accepts http
+ok  [mutant] userinfo accepted                                                  must fail | test_bad_shapes: AssertionError: [] == [] : the lock check accepts userinfo
+ok  [mutant] a stale entry ignored                                              must fail | test_a_stale_key_is_reported: +  'run scripts/sources_lock.sh --arch amd64']
+ok  [mutant] a miss message with a wrong key (kind dropped)                     must fail | test_small_lock_missing_key_exact_message:    'scripts/sources_lock.sh --arch amd64']
+ok  [mutant] a miss reported once per key, not per package                      must fail | test_a_missing_key_names_every_package: 'postgres: pkg:deb/debian/gcc-12-base@12.2.0-14%2Bdeb12u1?arch=amd64&d
+ok  [mutant] an arm64-only entry covers amd64                                   must fail | test_arches: +  'scripts/sources_lock.sh --arch amd64'] : an arm64-only entry does not cover amd64, and is not
+ok  [mutant] sample picking the largest                                         must fail | test_sample_keys:    'temurin:jdk-21.0.12.1+1']
+ok  [mutant] sample ignoring the arch                                           must fail | test_sample_keys:    'temurin:jdk-21.0.12.1+1']
+ok  [mutant] sample ties broken by the largest key                              must fail | test_sample_keys:    'temurin:jdk-21.0.12.1+1']
+ok  [mutant] the .pgdg mapping dropped                                          must fail | test_needs_from_the_fixtures: AssertionError: {'deb:libgpg-error@1.46-1', 'deb:postgres[4812 chars]3u1'} != fr
+ok  [mutant] the version percent-decoding wrong (raw)                           must fail | test_needs_from_the_fixtures: AssertionError: {'deb:libgpg-error@1.46-1', 'deb:libtasn1[5056 chars]3-2'} != fr
+ok  [mutant] the epoch dropped                                                  must fail | test_needs_from_the_fixtures: AssertionError: {'deb:libgpg-error@1.46-1', 'deb:postgres[4785 chars]3u1'} != fr
+ok  [mutant] the epoch dropped (mapping table)                                  must fail | test_mapping_table: ?          ++
+ok  [mutant] upstream ignored for deb (binary name)                             must fail | test_mapping_table: + deb:bash@5.2.15-2
+ok  [mutant] the jrt-fs build check dropped                                     must fail | test_mapping_table: AssertionError: [] is not true : []
+ok  [mutant] neo4j-group rows without a neo4j row pass as maven                 must fail | test_mapping_table: AssertionError: 0 != 2 : []
+ok  [mutant] unknown purl types fall to maven                                   must fail | test_mapping_table: -                                          'spdxid': 'SPDXRef-Package-left-pad-342ccadb7c6
+ok  [mutant] pypi names not PEP 503                                             must fail | test_mapping_table: ?      ^      ^^
+ok  [mutant] exempt ignored by lock_needs (jna gets a key)                      must fail | test_needs_from_the_fixtures: AssertionError: {'deb:libgpg-error@1.46-1', 'deb:postgres[4890 chars]3u1'} != fr
+ok  [mutant] the canonical-form check dropped                                   must fail | test_bad_shapes: AssertionError: [] == [] : the lock check accepts not canonical (indent 2)
+ok  [mutant] lock_text not sorted                                               must fail | test_lock_text_is_canonical: Diff is 14122 characters long. Set self.maxDiff to None to see it.
+ok  [mutant] size true accepted                                                 must fail | test_bad_shapes: AssertionError: [] == [] : the lock check accepts size true
+ok  [mutant] the .dsc name keeps the epoch                                      must fail | test_good_small_lock_passes: -  'attr_1:2.5.1-4.dsc']
+ok  [mutant] a neo4j second fetch dated after today accepted                    must fail | test_bad_shapes: AssertionError: [] == [] : the lock check accepts neo4j from dated after today (UTC)
+ok  [mutant] lock-check prints every problem (no first-20 cut)                  must fail | test_lock_check_cli: sbom_check: lock-check: ke-neo4j: pkg:generic/oracle/openjdk@21.0.12.1%2B1-LTS?repository
+ok  [mutant] lock-check: a bad arch exits 1                                     must fail | test_lock_check_cli: AssertionError: 1 != 2
+
+U7a controls (targets): 45 rows, 40 must-fail, 5 must-pass, 0 unexpected
+controls exit: 0

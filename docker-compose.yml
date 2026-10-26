@@ -131,8 +131,13 @@ services:
       timeout: 5s
       retries: 12
 
+  # Our own image: the official one without its commercial fleet-management
+  # plugin (Q67, PSC-26); docker/neo4j.Dockerfile pins the official digest.
   neo4j:
-    image: neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+    image: ke-neo4j:${KE_IMAGE_TAG:-local}
+    build:
+      context: .
+      dockerfile: docker/neo4j.Dockerfile
     restart: unless-stopped
     networks: [backend]
     environment:

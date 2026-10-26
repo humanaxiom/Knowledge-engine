@@ -1,0 +1,78 @@
+# platform-sbom U0 N7 (tester, 2026-10-22): new SmokePsycopgTest subtests pin R2 (libpq regex end anchor) and R6 (realpath -e failure).
+# Repo writes: tests/test_psycopg_c.py (two new subtests, one renamed) and this file. tests/fake_docker.py unchanged (existing hook "stdout"/"exit" used).
+# Mutants are scratch copies of scripts/smoke.sh written into each test's tmp tree; the repo's smoke.sh is mounted read-only.
+# smoke.sh at run time: efa9b29cac829526d8abb3a23476b561dcbe075edfbed11771497c26d365d9de *scripts/smoke.sh
+# Command: docker run --rm --network none --read-only --tmpfs /tmp:exec,mode=1777 -e PYTHONDONTWRITEBYTECODE=1 -e HARNESS_TRACING=off -v <repo>:/work:ro -v <scratch>/rv:/rv:ro -w /work ke-gates:wt-33a132fbfdd7 /opt/venv/bin/python /rv/n7_mutants.py
+# Driver (verbatim; the reviewer's driver from r1-review-mutants.txt section 1 plus R2b, a variant dropping only the $):
+#   """Tester U0 N7: run SmokePsycopgTest against the shipped smoke.sh and mutants R1-R7 (scratch copies only).
+#   Same mutant substitutions as the reviewer's driver (docs/evidence/platform-sbom/u0/r1-review-mutants.txt section 1)."""
+#   import sys, unittest
+#   from pathlib import Path
+#   REPO = Path("/work"); sys.path.insert(0, str(REPO))
+#   from tests import test_psycopg_c as t
+#   smoke = (REPO / "scripts/smoke.sh").read_text(encoding="utf-8")
+#   def sub(old, new):
+#       assert smoke.count(old) == 1, old
+#       return smoke.replace(old, new)
+#   V = {
+#    "SHIPPED": smoke,
+#    "R1 drop ldd psycopg_binary text check": sub(' || [[ "$ldd_out" == *psycopg_binary* ]]', ''),
+#    "R2 no end anchor on libpq path": sub(r'libpq\.so\.5(\.[0-9]+)*$ ]]', r'libpq\.so\.5 ]]'),
+#    "R2b only the $ dropped": sub(r'libpq\.so\.5(\.[0-9]+)*$ ]]', r'libpq\.so\.5(\.[0-9]+)* ]]'),
+#    "R3 venv scan on literal /opt/venv": sub('os.walk(sys.prefix)', 'os.walk("/opt/venv")'),
+#    "R4 owner check only ^libpq5": sub(r'^libpq5(:[a-z0-9]+)?:\ (.+)$ ]] || [ "${BASH_REMATCH[2]}" != "$libpq_real" ]', r'^libpq5 ]]'),
+#    "R5 pq_bin check removed": sub('if [ "${pq_bin:--}" != - ]; then', 'if false; then'),
+#    "R6 realpath failure ignored": sub('libpq_real="$(compose exec -T api realpath -e "$libpq")" || {', 'libpq_real="$(compose exec -T api realpath -e "$libpq")" || true || {'),
+#    "R7 version compare drops __build_version__": sub('[ "$pq_version" != "$want" ] || [ "$pq_build" != "$want" ]', '[ "$pq_version" != "$want" ]'),
+#   }
+#   TESTS = [n for n in dir(t.SmokePsycopgTest) if n.startswith("test_")]
+#   bad = 0
+#   for name, text in V.items():
+#       class C(t.SmokePsycopgTest):
+#           def setUp(self):
+#               super().setUp(); (self.tmp / "scripts/smoke.sh").write_text(text, encoding="utf-8", newline="\n")
+#       fails = []
+#       class R(unittest.TestResult):
+#           def addSubTest(s, test, st, err):
+#               super().addSubTest(test, st, err)
+#               if err: fails.append(f"{test._testMethodName}[{st.params.get('case', st.params.get('control'))}]")
+#           def addFailure(s, test, err): super().addFailure(test, err); fails.append(test._testMethodName)
+#           def addError(s, test, err): super().addError(test, err); fails.append(test._testMethodName + " ERROR")
+#       rr = R()
+#       for n in TESTS: C(n).run(rr)
+#       ok = (not fails) if name == "SHIPPED" else bool(fails)
+#       bad += not ok
+#       print(f"### {name}: ran {rr.testsRun}, failing subtests {len(fails)} {'' if ok else 'UNEXPECTED'}")
+#       for f in fails[:8]: print("   ", f)
+#   print("unexpected:", bad)
+## Output:
+### SHIPPED: ran 5, failing subtests 0 
+### R1 drop ldd psycopg_binary text check: ran 5, failing subtests 1 
+    test_smoke_checks_psycopg_c_impl_in_api[ldd mentions psycopg_binary]
+### R2 no end anchor on libpq path: ran 5, failing subtests 1 
+    test_smoke_checks_dpkg_libpq5_owns_the_loaded_libpq[end anchor: ldd libpq.so.5.evil, realpath to the libpq5-owned file]
+### R2b only the $ dropped: ran 5, failing subtests 1 
+    test_smoke_checks_dpkg_libpq5_owns_the_loaded_libpq[end anchor: ldd libpq.so.5.evil, realpath to the libpq5-owned file]
+### R3 venv scan on literal /opt/venv: ran 5, failing subtests 2 
+    test_smoke_fails_when_psycopg_binary_is_beside_psycopg_c[psycopg_binary.libs dir]
+    test_smoke_fails_when_psycopg_binary_is_beside_psycopg_c[psycopg_binary-3.3.6.dist-info]
+### R4 owner check only ^libpq5: ran 5, failing subtests 1 
+    test_smoke_checks_dpkg_libpq5_owns_the_loaded_libpq[owned by libpq5-fork (libpq5 is only a prefix)]
+### R5 pq_bin check removed: ran 5, failing subtests 4 
+    test_smoke_fails_when_psycopg_binary_is_beside_psycopg_c[psycopg_binary package dir]
+    test_smoke_fails_when_psycopg_binary_is_beside_psycopg_c[psycopg_binary.libs dir]
+    test_smoke_fails_when_psycopg_binary_is_beside_psycopg_c[psycopg_binary-3.3.6.dist-info]
+    test_smoke_fails_when_psycopg_binary_is_beside_psycopg_c[a whole psycopg-binary wheel]
+### R6 realpath failure ignored: ran 5, failing subtests 1 
+    test_smoke_checks_dpkg_libpq5_owns_the_loaded_libpq[realpath -e fails in api (its output is the libpq5-owned file)]
+### R7 version compare drops __build_version__: ran 5, failing subtests 1 
+    test_smoke_checks_psycopg_c_impl_in_api[version() != __build_version__]
+unexpected: 0
+## Mutant table
+| Mutant | Shipped-suite result before N7 (r1-review-mutants.txt) | After N7 | Killing subtest |
+|---|---|---|---|
+| R2 no end anchor (libpq\.so\.5 ]]) | survived | killed | test_smoke_checks_dpkg_libpq5_owns_the_loaded_libpq[end anchor: ldd libpq.so.5.evil, realpath to the libpq5-owned file] |
+| R2b only $ dropped | not run | killed | same subtest |
+| R6 realpath failure ignored (appends "or true") | survived | killed | test_smoke_checks_dpkg_libpq5_owns_the_loaded_libpq[realpath -e fails in api (its output is the libpq5-owned file)] |
+| R1, R3, R4, R5, R7 | killed | killed | unchanged |
+| SHIPPED | 0 failing | 0 failing | - |

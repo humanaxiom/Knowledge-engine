@@ -1,0 +1,241 @@
+# platform-sbom U7b rework round 1 A34 re-run: the two attempts before the run of record (driver bugs; see the windows-run.txt addendum). Redacted.
+
+===== attempt 1 (scratch dir in C:/ form: PATH shims ineffective) =====
+
+=== 0. host and versions (U7b rework round 1 GREEN) ===
+date (UTC): 2026-10-25T11:11:13Z
+MINGW64_NT-10.0-26200 aria-alien1 3.6.7-fb42d713.x86_64 2026-03-29 11:44 UTC x86_64 Msys
+engine 29.5.2 linux/amd64; compose 5.1.4
+git HEAD 9b1754f460d4e877123c2016cba6bfc502ae5869 (agent/platform-sbom); working tree: U7b rework round 1 GREEN (uncommitted)
+id: 197610:197121
+fa5f18d760f74f341619d5421950906221760bb8b12aecada8d59a306d3cd4c7 *scripts/sources_lock.sh
+16985eb06da8f68b28ab1e89d21ea05b8ce74936affc3ffc37fb5201af688927 *scripts/sources_resolve.py
+b1f3dc85fe9b1e6869e9bfa20d393fb273e0c310fc73b5fe2e5053f9838e5115 *scripts/sbom_check.py
+23c6e98f55554a1c1dcaf6a43055cce7c0361cd0f72fa8d33b7480a8ca86b79c *docker-compose.sources.yml
+hashed 21 files -> hash-start-r1.txt
+lock before: ls: cannot access 'docker/sources.lock.json': No such file or directory
+.env present (unexpected)
+
+=== 3. scripts/sources_lock.sh refusal paths (round 1) ===
+--- 3a. bad arguments exit 2
+args [] -> exit 2: usage: scripts/sources_lock.sh --arch amd64|arm64 [--refresh]
+args [--arch x86_64] -> exit 2: usage: scripts/sources_lock.sh --arch amd64|arm64 [--refresh]
+args [--bogus] -> exit 2: usage: scripts/sources_lock.sh --arch amd64|arm64 [--refresh]
+args [--arch] -> exit 2: usage: scripts/sources_lock.sh --arch amd64|arm64 [--refresh]
+--- 3b. a missing image (KE_IMAGE_TAG=u7bwin-missing)
+sources_lock: FAIL (images: ke-app:u7bwin-missing not found: run scripts/build.sh first; the lock is unchanged)
+[exit 1]
+lock after 3b: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 3b: 0
+work dirs left in TMPDIR after 3b: 0
+--- 3c. the 7 GiB floor (a df shim first on PATH reports 1000 KiB free)
+ Container ke-sources-9bff387f-sbom-sbom-run-007423b9470e Creating 
+ Container ke-sources-9bff387f-sbom-sbom-run-007423b9470e Created 
+ Container ke-sources-9bff387f-sbom-sbom-run-3bb40ca89ec3 Creating 
+ Container ke-sources-9bff387f-sbom-sbom-run-3bb40ca89ec3 Created 
+ Container ke-sources-9bff387f-sbom-sbom-run-f444f3be6945 Creating 
+ Container ke-sources-9bff387f-sbom-sbom-run-f444f3be6945 Created 
+ Container ke-sources-9bff387f-sbom-sbom-run-30d275d3d5da Creating 
+ Container ke-sources-9bff387f-sbom-sbom-run-30d275d3d5da Created 
+ Container ke-sources-9bff387f-sbom-sbom-run-2d840418293c Creating 
+ Container ke-sources-9bff387f-sbom-sbom-run-2d840418293c Created 
+ Container ke-sources-9bff387f-sbom-sbom-run-c9487ccf63b9 Creating 
+ Container ke-sources-9bff387f-sbom-sbom-run-c9487ccf63b9 Created 
+ Network ke-sources-9bff387f_default Creating 
+ Network ke-sources-9bff387f_default Created 
+ Container ke-sources-9bff387f-sources-resolve-run-01013e07a8d0 Creating 
+ Container ke-sources-9bff387f-sources-resolve-run-01013e07a8d0 Created 
+sources_lock: FAIL (resolve: pypi:psycopg-binary@3.3.6: pypi psycopg-binary 3.3.6: 0 sdists, want 1; the lock is unchanged)
+
+sources_lock: FAIL (resolve: scripts/sources_resolve.py exited 1; the lock is unchanged)
+[exit 1]
+CONTAINERS CHANGED
+lock after 3c: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 3c: 0
+work dirs left in TMPDIR after 3c: 0
+--- 3d. tools first (item 4): PATH without each tool; every other command still found
+PATH without jq finds: [git docker dirname]
+sources_lock: FAIL (tools: jq not on PATH; the lock is unchanged)
+[exit 1]
+no container started
+PATH without git finds: [jq docker dirname]
+sources_lock: FAIL (tools: git not on PATH; the lock is unchanged)
+[exit 1]
+no container started
+PATH without docker finds: [jq git dirname]
+sources_lock: FAIL (tools: docker not on PATH; the lock is unchanged)
+[exit 1]
+no container started
+lock after 3d: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 3d: 0
+work dirs left in TMPDIR after 3d: 0
+--- 3e. exactly the six images (item 6): a scratch copy of the repo whose docker-compose.yml adds redis / drops valkey
+compose services: api gateway neo4j phoenix postgres redis valkey worker
+sources_lock: FAIL (images: redis is not one of the six bundled images; the lock is unchanged)
+[exit 1]
+no container started (no save, no run)
+scratch lock after 3e extra: ls: cannot access '<scratch>/u7bwin/mini/extra/docker/sources.lock.json': No such file or directory
+compose services: api gateway neo4j phoenix postgres worker
+sources_lock: FAIL (images: valkey is missing from the stack; the lock is unchanged)
+[exit 1]
+no container started (no save, no run)
+scratch lock after 3e missing: ls: cannot access '<scratch>/u7bwin/mini/missing/docker/sources.lock.json': No such file or directory
+lock after 3e: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 3e: 0
+work dirs left in TMPDIR after 3e: 0
+
+=== 4 (round 1). the script's own SBOM + lock-needs path on the real images (sboms/tmp now made by the script) ===
+image: ke-app:local sha256:510c1b59b838090dd5ab3bcf3dd20a4a67026ece0c172fce335215f9626f2b2c
+image: ke-gateway:local sha256:ebdf7b0728385718bdcfe14f59d81b4d0154af231420933df028bdd448a0f293
+image: ke-neo4j:local sha256:a28c71b490f40e7101f3483384de4ff229c67c9875c22b66287e14378fafa58b
+image: ke-gates:local sha256:28445623d85fbd1777115ca49c1a3f4ce3298ba5896ae5825bc1cd0294b68159
+ Container ke-sources-af0279a3-sbom-sbom-run-5b684675886b Creating 
+ Container ke-sources-af0279a3-sbom-sbom-run-5b684675886b Created 
+ Container ke-sources-af0279a3-sbom-sbom-run-8180e5f6c760 Creating 
+ Container ke-sources-af0279a3-sbom-sbom-run-8180e5f6c760 Created 
+ Container ke-sources-af0279a3-sbom-sbom-run-1ca64e899a64 Creating 
+ Container ke-sources-af0279a3-sbom-sbom-run-1ca64e899a64 Created 
+ Container ke-sources-af0279a3-sbom-sbom-run-9361c3118cb6 Creating 
+ Container ke-sources-af0279a3-sbom-sbom-run-9361c3118cb6 Created 
+ Container ke-sources-af0279a3-sbom-sbom-run-78ccb395efdc Creating 
+ Container ke-sources-af0279a3-sbom-sbom-run-78ccb395efdc Created 
+ Container ke-sources-af0279a3-sbom-sbom-run-d9d0f0302460 Creating 
+ Container ke-sources-af0279a3-sbom-sbom-run-d9d0f0302460 Created 
+ Network ke-sources-af0279a3_default Creating 
+ Network ke-sources-af0279a3_default Created 
+ Container ke-sources-af0279a3-sources-resolve-run-7766eccaf68e Creating 
+ Container ke-sources-af0279a3-sources-resolve-run-7766eccaf68e Created 
+sources_lock: FAIL (resolve: pypi:psycopg-binary@3.3.6: pypi psycopg-binary 3.3.6: 0 sdists, want 1; the lock is unchanged)
+
+sources_lock: FAIL (resolve: scripts/sources_resolve.py exited 1; the lock is unchanged)
+[exit 1] after 110 s
+lock after 4: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 4: 0
+work dirs left in TMPDIR after 4: 0
+--- the work dir as the resolver step would have seen it
+sed: can't read <scratch>/u7bwin/work-r1.txt: No such file or directory
+--- needs.json from the script's own lock-needs (real SBOMs of the six real images)
+Traceback (most recent call last):
+  File "<string>", line 6, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '<scratch>/u7bwin/needs-r1.json'
+
+=== 5. teardown and final check ===
+project ke-tester-u7bwin: containers []
+project ke-tester-u7bwin-sbom: containers []
+ke-sources-* projects: []
+ke-sources-* networks/volumes: [] []
+scratch work dirs removed
+hashes start = end (21/21 identical)
+lock at the end: ls: cannot access 'docker/sources.lock.json': No such file or directory
+.env present (unexpected)
+
+===== attempt 2 (docker shim pattern never matched) =====
+
+=== 0. host and versions (U7b rework round 1 GREEN) ===
+date (UTC): 2026-10-25T11:15:52Z
+MINGW64_NT-10.0-26200 aria-alien1 3.6.7-fb42d713.x86_64 2026-03-29 11:44 UTC x86_64 Msys
+engine 29.5.2 linux/amd64; compose 5.1.4
+git HEAD 9b1754f460d4e877123c2016cba6bfc502ae5869 (agent/platform-sbom); working tree: U7b rework round 1 GREEN (uncommitted)
+id: 197610:197121
+fa5f18d760f74f341619d5421950906221760bb8b12aecada8d59a306d3cd4c7 *scripts/sources_lock.sh
+16985eb06da8f68b28ab1e89d21ea05b8ce74936affc3ffc37fb5201af688927 *scripts/sources_resolve.py
+b1f3dc85fe9b1e6869e9bfa20d393fb273e0c310fc73b5fe2e5053f9838e5115 *scripts/sbom_check.py
+23c6e98f55554a1c1dcaf6a43055cce7c0361cd0f72fa8d33b7480a8ca86b79c *docker-compose.sources.yml
+hashed 21 files -> hash-start-r1.txt
+lock before: ls: cannot access 'docker/sources.lock.json': No such file or directory
+.env present (unexpected)
+
+=== 3. scripts/sources_lock.sh refusal paths (round 1) ===
+--- 3a. bad arguments exit 2
+args [] -> exit 2: usage: scripts/sources_lock.sh --arch amd64|arm64 [--refresh]
+args [--arch x86_64] -> exit 2: usage: scripts/sources_lock.sh --arch amd64|arm64 [--refresh]
+args [--bogus] -> exit 2: usage: scripts/sources_lock.sh --arch amd64|arm64 [--refresh]
+args [--arch] -> exit 2: usage: scripts/sources_lock.sh --arch amd64|arm64 [--refresh]
+--- 3b. a missing image (KE_IMAGE_TAG=u7bwin-missing)
+sources_lock: FAIL (images: ke-app:u7bwin-missing not found: run scripts/build.sh first; the lock is unchanged)
+[exit 1]
+lock after 3b: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 3b: 0
+work dirs left in TMPDIR after 3b: 0
+--- 3c. the 7 GiB floor (a df shim first on PATH reports 1000 KiB free)
+sources_lock: FAIL (images: <scratch>/u7bwin/tmp/ke-sources.mk4SU5Kt has 1000 KiB free, below the 7 GiB floor (R6); the lock is unchanged)
+[exit 1]
+containers unchanged by 3c (no save, no run)
+lock after 3c: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 3c: 0
+work dirs left in TMPDIR after 3c: 0
+--- 3d. tools first (item 4): PATH without each tool; every other command still found
+PATH without jq finds: [git docker dirname]
+sources_lock: FAIL (tools: jq not on PATH; the lock is unchanged)
+[exit 1]
+no container started
+PATH without git finds: [jq docker dirname]
+sources_lock: FAIL (tools: git not on PATH; the lock is unchanged)
+[exit 1]
+no container started
+PATH without docker finds: [jq git dirname]
+sources_lock: FAIL (tools: docker not on PATH; the lock is unchanged)
+[exit 1]
+no container started
+lock after 3d: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 3d: 0
+work dirs left in TMPDIR after 3d: 0
+--- 3e. exactly the six images (item 6): a scratch copy of the repo whose docker-compose.yml adds redis / drops valkey
+compose services: api gateway neo4j phoenix postgres redis valkey worker
+sources_lock: FAIL (images: redis is not one of the six bundled images; the lock is unchanged)
+[exit 1]
+no container started (no save, no run)
+scratch lock after 3e extra: ls: cannot access '<scratch>/u7bwin/mini/extra/docker/sources.lock.json': No such file or directory
+compose services: api gateway neo4j phoenix postgres worker
+sources_lock: FAIL (images: valkey is missing from the stack; the lock is unchanged)
+[exit 1]
+no container started (no save, no run)
+scratch lock after 3e missing: ls: cannot access '<scratch>/u7bwin/mini/missing/docker/sources.lock.json': No such file or directory
+lock after 3e: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 3e: 0
+work dirs left in TMPDIR after 3e: 0
+
+=== 4 (round 1). the script's own SBOM + lock-needs path on the real images (sboms/tmp now made by the script) ===
+image: ke-app:local sha256:510c1b59b838090dd5ab3bcf3dd20a4a67026ece0c172fce335215f9626f2b2c
+image: ke-gateway:local sha256:ebdf7b0728385718bdcfe14f59d81b4d0154af231420933df028bdd448a0f293
+image: ke-neo4j:local sha256:a28c71b490f40e7101f3483384de4ff229c67c9875c22b66287e14378fafa58b
+image: ke-gates:local sha256:28445623d85fbd1777115ca49c1a3f4ce3298ba5896ae5825bc1cd0294b68159
+ Container ke-sources-9744acf4-sbom-sbom-run-0c8528bfaaa2 Creating 
+ Container ke-sources-9744acf4-sbom-sbom-run-0c8528bfaaa2 Created 
+ Container ke-sources-9744acf4-sbom-sbom-run-80c194c1f333 Creating 
+ Container ke-sources-9744acf4-sbom-sbom-run-80c194c1f333 Created 
+ Container ke-sources-9744acf4-sbom-sbom-run-f0fe3f1d2218 Creating 
+ Container ke-sources-9744acf4-sbom-sbom-run-f0fe3f1d2218 Created 
+ Container ke-sources-9744acf4-sbom-sbom-run-4d7898949bd4 Creating 
+ Container ke-sources-9744acf4-sbom-sbom-run-4d7898949bd4 Created 
+ Container ke-sources-9744acf4-sbom-sbom-run-032b687c81c0 Creating 
+ Container ke-sources-9744acf4-sbom-sbom-run-032b687c81c0 Created 
+ Container ke-sources-9744acf4-sbom-sbom-run-934c9ca97d28 Creating 
+ Container ke-sources-9744acf4-sbom-sbom-run-934c9ca97d28 Created 
+ Network ke-sources-9744acf4_default Creating 
+ Network ke-sources-9744acf4_default Created 
+ Container ke-sources-9744acf4-sources-resolve-run-b162c4720221 Creating 
+ Container ke-sources-9744acf4-sources-resolve-run-b162c4720221 Created 
+sources_lock: FAIL (resolve: pypi:psycopg-binary@3.3.6: pypi psycopg-binary 3.3.6: 0 sdists, want 1; the lock is unchanged)
+
+sources_lock: FAIL (resolve: scripts/sources_resolve.py exited 1; the lock is unchanged)
+[exit 1] after 109 s
+lock after 4: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 4: 0
+work dirs left in TMPDIR after 4: 0
+--- the work dir as the resolver step would have seen it
+sed: can't read <scratch>/u7bwin/work-r1.txt: No such file or directory
+--- needs.json from the script's own lock-needs (real SBOMs of the six real images)
+Traceback (most recent call last):
+  File "<string>", line 6, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '<scratch>/u7bwin/needs-r1.json'
+
+=== 5. teardown and final check ===
+project ke-tester-u7bwin: containers []
+project ke-tester-u7bwin-sbom: containers []
+ke-sources-* projects: []
+ke-sources-* networks/volumes: [] []
+scratch work dirs removed
+hashes start = end (21/21 identical)
+lock at the end: ls: cannot access 'docker/sources.lock.json': No such file or directory
+.env present (unexpected)

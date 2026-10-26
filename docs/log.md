@@ -457,3 +457,232 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-22T19:39:44Z | documenter | ci-triggers | close-out review nits N1/N2/N3/N5 | docs: updated
 2026-10-22T19:39:51Z | documenter | ci-triggers | close-out review nits N1/N2/N3/N5 | docs: updated
 2026-10-22T19:59:55Z | orchestrator | ci-triggers | Done check confirmed; close-out review APPROVED + security PASS; verify full PASS 667 s; commit approved; item closed | done check: confirmed
+2026-10-22T20:00:17Z | developer | ci-triggers | committed ci-triggers close-out on agent/ci-triggers-closeout | commit: done
+2026-10-22T23:06:45Z | analyst | platform-sbom | PSC-13..16 confirmed/amended (PSC-14 uv drift fixed, PSC-13 image ID, PSC-16 manifest+tmpfs); PSC-19..24 added (e2e, generator hardening, arm64, hidden obligations, fetch step, no partial bundle); Q61-Q63 raised with recommendations | plan: criteria confirmed
+2026-10-22T23:21:38Z | orchestrator | platform-sbom | human ruled Q61 fail closed, Q62 Q60 trigger applies, Q63 reduced verify set; analyst criteria PSC-13..16 amended + PSC-19..24 accepted | plan: criteria accepted
+2026-10-22T23:22:11Z | documenter | platform-sbom | recorded human rulings Q61-Q63 in open-questions and requirements | docs: updated
+2026-10-22T23:33:11Z | architect | platform-sbom | ADR-KE-016 written (syft pin, offline bundle.sh + bundle_fetch.sh, sources lock, content-addressed sources under app/, classifier, /install sizing, PSC-19 e2e, units U1-U12); Q61-Q63 rulings applied; 5 points flagged | plan: design recorded
+2026-10-22T23:58:00Z | orchestrator | platform-sbom | human ruled Q64 (psycopg on Debian libpq); orchestrator ruled ADR-KE-016 open points 1,2,4,5; CLAUDE.md wording deferred to U8 | plan: rulings recorded
+2026-10-23T00:04:30Z | analyst | platform-sbom | Q64 recorded; PSC-25 added; PSC-14/22/13/19 amended | plan: criteria amended
+2026-10-23T00:05:34Z | orchestrator | platform-sbom | ruled Q65 (shipped image only; resolution is the architect's) and Q66 (accept libpq 15, security re-rates require_auth) | plan: rulings recorded
+2026-10-23T00:08:25Z | architect | platform-sbom | ADR-KE-016 amended for Q64: U0 psycopg on Debian libpq; srpm kind removed | plan: design amended
+2026-10-23T00:09:32Z | documenter | platform-sbom | handoff split: plan phase to archive/platform-sbom-part1.md | docs: updated
+2026-10-23T00:37:09Z | tester | platform-sbom | U0 RED: 8 PSC-25 tests in tests/test_psycopg_c.py, fake docker psycopg model, bundle fixture follows lock; static+smoke mutants 0 unexpected | tdd red: 8 failing as expected
+2026-10-23T01:10:29Z | developer | platform-sbom | U0 GREEN: psycopg-c on Debian libpq5 15.19 (pyproject groups, uv.lock, both Dockerfiles, smoke step, NOTICE) | tdd green: verify fast + full PASS
+2026-10-23T01:11:57Z | documenter | platform-sbom | U0 docs: u0-psycopg-c.md, psycopg-binary mentions | docs: updated
+2026-10-23T01:24:26Z | tester | platform-sbom | U0 A34 Windows proof | a34: PASS
+2026-10-23T01:32:24Z | reviewer | platform-sbom | U0 review | review: changes requested
+2026-10-23T01:34:58Z | security | platform-sbom | U0 audit | security: PASS
+2026-10-23T01:35:41Z | orchestrator | platform-sbom | U0 review CHANGES REQUESTED (B1-B3) + security PASS with M-1; rework round 1 of 5 dispatched | review: changes requested
+2026-10-23T01:36:47Z | documenter | platform-sbom | U0 rework: README operator pin note, package list corrected, L-13 wording | docs: updated
+2026-10-23T01:37:18Z | analyst | platform-sbom | U0 rework: PSC-13/25 runtime-package definition, A34 wording, L-13 closed, A66 re-rated | plan: criteria amended
+2026-10-23T01:39:25Z | architect | platform-sbom | U0 rework: ADR/N0 test names, proof wording, operator consequence | plan: design amended
+2026-10-23T01:57:40Z | tester | platform-sbom | U0 rework RED: B1, M-1, N3 subtests | tdd red: 15 failing as expected
+2026-10-23T02:20:36Z | developer | platform-sbom | U0 rework GREEN: smoke B1/M-1/N3, tar sizes, q65 output, base tag removed | tdd green: verify fast + full PASS
+2026-10-23T02:24:53Z | security | platform-sbom | U0 re-check | security: PASS
+2026-10-23T02:30:03Z | reviewer | platform-sbom | U0 re-check | review: approved
+2026-10-23T02:31:02Z | developer | platform-sbom | U0 N8: smoke.sh stale comment fixed | code: comment only
+2026-10-23T02:31:11Z | documenter | platform-sbom | U0 nits N6/N9/I-9 | docs: updated
+2026-10-23T02:43:59Z | tester | platform-sbom | U0 N7: subtests kill R2/R6 | tests: pins added
+2026-10-23T02:56:41Z | orchestrator | platform-sbom | U0 gates judged: review APPROVED, security PASS, verify full PASS 694 s; commit approved | smoke: PASS
+2026-10-23T02:56:49Z | developer | platform-sbom | committed U0 on agent/platform-sbom | commit: done
+2026-10-23T03:11:28Z | tester | platform-sbom | U1 RED: NOTICE base paragraph tests | tdd red: 3 failing as expected
+2026-10-23T03:12:27Z | analyst | platform-sbom | PSC-14: tag for the Source code pointer test | plan: criteria amended
+2026-10-23T03:20:46Z | tester | platform-sbom | U1 RED rework: ADDED_PACKAGES constant, no evidence input | tdd red: 3 failing as expected
+2026-10-23T03:21:24Z | documenter | platform-sbom | handoff split: U0 to archive/platform-sbom-part2.md | docs: updated
+2026-10-23T03:37:30Z | developer | platform-sbom | U1 GREEN: NOTICE.md base of ke-app section | tdd green: verify fast PASS
+2026-10-23T03:42:08Z | security | platform-sbom | U1 audit | security: PASS
+2026-10-23T03:42:38Z | reviewer | platform-sbom | U1 review | review: changes requested
+2026-10-23T03:44:01Z | orchestrator | platform-sbom | U1 review CHANGES REQUESTED + security PASS (M-1 wording); rework round 1 of 5 | review: changes requested
+2026-10-23T03:45:15Z | analyst | platform-sbom | U1 rework: PSC-14/15/22 amended | plan: criteria amended
+2026-10-23T03:46:09Z | orchestrator | platform-sbom | human ruled pip kept in ke-app; Apache-2.0 and MPL-2.0 texts ship in licenses/ | plan: ruling recorded
+2026-10-23T03:46:36Z | architect | platform-sbom | U1 rework: ADR/N10/N15 amended | plan: design amended
+2026-10-23T04:03:00Z | tester | platform-sbom | U1 rework RED: strict base parse, Python-2.0, M-1/L-1/L-2 wording | tdd red: 3 failing as expected
+2026-10-23T04:14:21Z | developer | platform-sbom | U1 rework GREEN: NOTICE wording, Apache-2.0/MPL-2.0 texts, pip probe | tdd green: verify fast PASS
+2026-10-23T04:19:57Z | reviewer | platform-sbom | U1 re-check | review: changes requested
+2026-10-23T04:24:25Z | security | platform-sbom | U1 re-check | security: PASS
+2026-10-23T04:27:52Z | orchestrator | platform-sbom | human ruled drop pip from ke-app (supersedes keep-pip); U1 rework round 2 of 5 | review: changes requested
+2026-10-23T04:30:53Z | analyst | platform-sbom | U1 round 2: pip dropped, CPython incorporated licences, B4 | plan: criteria amended
+2026-10-23T04:38:32Z | architect | platform-sbom | U1 round 2: pip removal design, CPython incorporated licences fetch | plan: design amended
+2026-10-23T04:39:34Z | orchestrator | platform-sbom | ruled: flatten ke-app last stage (FROM scratch + COPY runtime /) so dropped pip does not ship | plan: ruling recorded
+2026-10-23T04:40:18Z | documenter | platform-sbom | handoff split: U1 rounds to archive/platform-sbom-part3.md | docs: updated
+2026-10-23T05:16:38Z | tester | platform-sbom | U1 round 2 RED: pip drop, flattened stage, CPython incorporated licences, B4 | tdd red: 8 failing as expected
+2026-10-23T05:28:59Z | tester | platform-sbom | U1 round 2 RED: empty no-pip output fails (ruling), subtest + S10 mutant | tdd red: 8 failing as expected
+2026-10-23T05:51:12Z | developer | platform-sbom | U1 round 2 GREEN: pip dropped, ke-app flattened, CPython incorporated licences | tdd green: verify fast + full PASS
+2026-10-23T05:58:10Z | reviewer | platform-sbom | U1 re-check 2 | review: changes requested
+2026-10-23T06:04:19Z | security | platform-sbom | U1 re-check 2 + CPython licence second fetch | security: PASS
+2026-10-23T06:04:45Z | tester | platform-sbom | U1 A34 Windows proof (flattened ke-app, no pip) | a34: PASS
+2026-10-23T06:05:25Z | orchestrator | platform-sbom | U1 re-check 2: review CHANGES REQUESTED (doc-only B5/B6), security PASS (L-9); rework round 3 of 5 | review: changes requested
+2026-10-23T06:06:52Z | analyst | platform-sbom | U1 round 3: B5 shipped-stage wording, L-9 HACL, I-4 tracked licences | plan: criteria amended
+2026-10-23T06:09:07Z | architect | platform-sbom | U1 round 3: N10a whole-output check, HACL licence file design | plan: design amended
+2026-10-23T06:43:37Z | tester | platform-sbom | U1 round 3 RED: HACL file, tracked licences, whole-output no-pip, L-12 | tdd red: 5 failing as expected
+2026-10-23T06:45:07Z | tester | platform-sbom | U1 round 3: L-12 fixed in unpinned_bases (earlier-line stage rule) | digest controls: pass (14, 0 unexpected)
+2026-10-23T06:54:07Z | developer | platform-sbom | U1 round 3 GREEN: HACL licence file, NOTICE CPython bullet, whole-output no-pip, licence files staged | tdd green: verify fast PASS
+2026-10-23T06:59:09Z | reviewer | platform-sbom | U1 re-check 3 | review: APPROVED
+2026-10-23T07:03:02Z | security | platform-sbom | U1 re-check 3 + KaRaMeL ruling | security: PASS
+2026-10-23T07:04:08Z | orchestrator | platform-sbom | U1 re-check 3: review APPROVED, security PASS with L-9b (KaRaMeL); rework round 4 of 5 | security: pass (fix L-9b before commit)
+2026-10-23T07:04:37Z | analyst | platform-sbom | U1 round 4: PSC-14 KaRaMeL + Apache-2.0 | plan: criteria amended
+2026-10-23T07:26:20Z | tester | platform-sbom | U1 round 4 RED: KaRaMeL notice + Apache-2.0 text | tdd red: 2 failing as expected
+2026-10-23T07:36:27Z | developer | platform-sbom | U1 round 4 GREEN: KaRaMeL notice + Apache-2.0 text | tdd green: verify fast PASS
+2026-10-23T07:38:32Z | reviewer | platform-sbom | U1 re-check 4 | review: APPROVED
+2026-10-23T07:38:44Z | security | platform-sbom | U1 re-check 4: L-9b closed | security: PASS
+2026-10-23T07:49:55Z | documenter | platform-sbom | handoff split: U1 rounds 2-4 to archive/platform-sbom-part4.md | docs: updated
+2026-10-23T07:50:20Z | orchestrator | platform-sbom | U1 gates judged: review APPROVED, security PASS, verify full PASS 721 s; commit approved | smoke: PASS
+2026-10-23T07:50:33Z | developer | platform-sbom | committed U1 on agent/platform-sbom | commit: done
+2026-10-23T08:27:47Z | tester | platform-sbom | U2 RED: syft pin, sbom compose hardening, bundle refusal | tdd red: 4 failing as expected
+2026-10-23T08:34:09Z | architect | platform-sbom | U2: syft version + digest, interim pull, env keys | plan: design amended
+2026-10-23T08:41:38Z | security | platform-sbom | U2: syft v1.54.1 provenance recorded | security: PASS
+2026-10-23T09:10:02Z | tester | platform-sbom | U2 RED re-target: 8 syft keys, refusal message, offline_check pull | tdd red: 11 failing as expected
+2026-10-23T09:10:56Z | orchestrator | platform-sbom | U2 plan gate: syft v1.54.1 pinned + provenance PASS; RED accepted; standing rule provenance-before-run | tdd red: accepted
+2026-10-23T09:31:38Z | developer | platform-sbom | U2 GREEN: docker-compose.sbom.yml (syft v1.54.1 pinned, hardened), bundle.sh refusal, offline_check pull | tdd green: verify fast + full PASS
+2026-10-23T09:37:11Z | reviewer | platform-sbom | U2 review | review: APPROVED
+2026-10-23T09:38:36Z | security | platform-sbom | U2 audit | security: PASS
+2026-10-23T09:46:23Z | tester | platform-sbom | U2 A34 Windows proof (docker-compose.sbom.yml) | a34: PASS
+2026-10-23T09:59:01Z | orchestrator | platform-sbom | U2 gates judged: review APPROVED, security PASS, A34 PASS, verify full PASS 699 s; commit approved; U3 carry list recorded | smoke: PASS
+2026-10-23T09:59:11Z | developer | platform-sbom | committed U2 on agent/platform-sbom | commit: done
+2026-10-23T10:53:26Z | tester | platform-sbom | U3 RED: SBOM per image, SPDX 2.3, ke-app packages, run argv, carry list | tdd red: 14 failing as expected
+2026-10-23T10:54:34Z | orchestrator | platform-sbom | U3 ruling: SPDX documentNamespace urn:uuid:<uuid4> per document (avoids PS-1.2 hardcoded URL) | plan: ruling recorded
+2026-10-23T10:57:32Z | architect | platform-sbom | U3: N6 urn:uuid namespace, N1 nits, interface pins | plan: design amended
+2026-10-23T11:25:43Z | tester | platform-sbom | U3 RED re-target: urn:uuid namespace, finish CLI without --uuid; reach PASS | tdd red: 16 failing as expected
+2026-10-23T13:06:08Z | developer | platform-sbom | U3 GREEN: SBOM per image (syft first real run), sbom_check.py, user: caller | tdd green: verify fast + full PASS
+2026-10-23T13:14:39Z | security | platform-sbom | U3 audit | security: PASS
+2026-10-23T13:16:26Z | architect | platform-sbom | ruling 5: neo4j jars jna/jaxb-api; NOASSERTION to U4; cache warning | plan: ruling recorded
+2026-10-23T13:19:51Z | reviewer | platform-sbom | U3 review | review: APPROVED
+2026-10-23T13:39:53Z | tester | platform-sbom | U3 A34 Windows proof (sbom user:, bundle.sh SBOMs on Windows) | a34: PASS
+2026-10-23T13:41:13Z | documenter | platform-sbom | handoff split: U1 gate, U2, U3 to archive/platform-sbom-part5.md | docs: updated
+2026-10-23T13:55:32Z | orchestrator | platform-sbom | U3 gates judged: review APPROVED, security PASS, A34 PASS, verify full PASS 856 s; commit approved | smoke: PASS
+2026-10-23T13:55:43Z | developer | platform-sbom | committed U3 on agent/platform-sbom | commit: done
+2026-10-23T15:13:37Z | tester | platform-sbom | U4 RED: PSC-22 obligations, unlicensed report, image-side drift check, carry list | tdd red: 15 failing as expected
+2026-10-23T15:14:39Z | orchestrator | platform-sbom | U4 rulings: tester points 1-3,5,7,8 accepted; base image pulled by digest in offline_check before drift (point 6) | plan: rulings recorded
+2026-10-23T15:20:41Z | architect | platform-sbom | U4: rulings recorded (unlicensed rule, base pull, always, work dir) | plan: design amended
+2026-10-23T16:03:15Z | tester | platform-sbom | U4 RED re-target: base pull before bundle.sh (ruling 6, N1 am. U4), N8 type rule, N7 forked lock accepted | tdd red: 18 failing as expected
+2026-10-23T16:30:56Z | developer | platform-sbom | U4 GREEN: PSC-22 obligations, unlicensed report, base pull + drift check, carry list | tdd green: verify fast + full PASS
+2026-10-23T16:41:57Z | reviewer | platform-sbom | U4 review | review: changes requested
+2026-10-23T16:44:30Z | security | platform-sbom | U4 audit + unlicensed list review | security: FAIL (H-1 hash-only licences hidden)
+2026-10-23T16:53:43Z | tester | platform-sbom | U4 A34 Windows proof (XDG_CACHE_HOME, base pull, drift) | a34: PASS
+2026-10-23T18:00:26Z | orchestrator | platform-sbom | U4 review CHANGES REQUESTED + security FAIL H-1; human ruled M-3 build own neo4j (U4b); rework round 1 of 5 | security: fail (H-1)
+2026-10-23T18:04:52Z | analyst | platform-sbom | Q67 recorded; PSC-26 own neo4j image; PSC-22 H-1/always amends | plan: criteria amended
+2026-10-23T18:05:53Z | orchestrator | platform-sbom | Q68 ruled option 3: ke-neo4j not added to the scan in U4b; scan-all-images follow-up for the human | plan: ruling recorded
+2026-10-23T18:09:46Z | architect | platform-sbom | U4 rework design (H-1, tmpfs, N5, always) + U4b own neo4j image design | plan: design amended
+2026-10-23T18:41:16Z | tester | platform-sbom | U4 rework RED: H-1 hash-only licences, tmpfs mode, always gcc/jrt-fs/busybox/apk, L-3, nits | tdd red: 16 failing as expected
+2026-10-23T18:42:14Z | documenter | platform-sbom | handoff split: U3 gate + U4 to archive/platform-sbom-part6.md | docs: updated
+2026-10-23T19:09:08Z | developer | platform-sbom | U4 rework GREEN: H-1, tmpfs mode, always gcc/jrt-fs/busybox/apk, floor, nits | tdd green: verify fast + full PASS
+2026-10-23T19:20:08Z | security | platform-sbom | U4 re-check + unlicensed list review | security: PASS
+2026-10-23T19:21:13Z | reviewer | platform-sbom | U4 re-check | review: APPROVED
+2026-10-23T19:28:55Z | tester | platform-sbom | U4 rework A34 Windows proof (tmpfs mode=1777) | a34: PASS
+2026-10-23T19:44:56Z | orchestrator | platform-sbom | U4 gates judged: review APPROVED, security PASS, A34 PASS, verify full PASS 896 s; commit approved | smoke: PASS
+2026-10-23T19:45:14Z | developer | platform-sbom | committed U4 on agent/platform-sbom | commit: done
+2026-10-23T20:35:29Z | marketer | platform-sbom | CHANGELOG entry for platform-sbom U0-U4 (in progress) | docs: changelog
+2026-10-23T20:36:12Z | documenter | platform-sbom | README + platform-sbom status brought in line with U0-U4 | docs: updated
+2026-10-23T20:52:43Z | tester | platform-sbom | U4b RED: own ke-neo4j image without the fleet plugin | tdd red: 29 failing as expected
+2026-10-23T20:53:50Z | orchestrator | platform-sbom | U4b rulings: EXPOSE exemption, checks in offline_check, tree check as evidence, NOTICE section, labels excluded | plan: rulings recorded
+2026-10-23T21:25:41Z | tester | platform-sbom | U4b RED re-run after ruling 1: PS-1.2 EXPOSE exemption + control; reach verify fast PASS | tdd red: 29 failing as expected
+2026-10-23T21:57:55Z | developer | platform-sbom | U4b GREEN: ke-neo4j built without the fleet plugin, flattened, config re-declared | tdd green: verify fast + full PASS
+2026-10-23T21:58:34Z | documenter | platform-sbom | handoff split: U4 tail + U4b to archive/platform-sbom-part7.md | docs: updated
+2026-10-23T22:08:03Z | reviewer | platform-sbom | U4b review | review: APPROVED
+2026-10-23T22:08:59Z | documenter | platform-sbom | README: U4b ke-neo4j | docs: updated
+2026-10-23T22:09:11Z | marketer | platform-sbom | CHANGELOG: U4b own neo4j image | docs: changelog
+2026-10-23T22:09:40Z | security | platform-sbom | U4b audit (M-3 closure) | security: PASS
+2026-10-23T22:33:36Z | tester | platform-sbom | U4b A34 Windows proof (ke-neo4j) | a34: PASS
+2026-10-23T22:36:31Z | documenter | platform-sbom | NOTICE ke-neo4j wording (review N3, security I-3) | docs: updated
+2026-10-23T22:54:45Z | orchestrator | platform-sbom | U4b gates judged: review APPROVED, security PASS, A34 PASS, verify full PASS 995 s; commit approved | smoke: PASS
+2026-10-23T22:54:59Z | developer | platform-sbom | committed U4b on agent/platform-sbom | commit: done
+2026-10-24T00:43:41Z | orchestrator | platform-sbom | pushed agent/platform-sbom, draft PR #14; human ruled Q69 GCC source ships, Q70 no extra scanning now | push: done (draft PR)
+2026-10-24T21:09:44Z | documenter | platform-sbom | handoff split: U4b gate detail to archive/platform-sbom-part8.md | docs: updated
+2026-10-24T21:12:12Z | architect | platform-sbom | U5: N8 amendment recorded (L-4 input rule, hash/NONE tokens unknown, API names) | plan: design amended
+2026-10-24T21:51:48Z | tester | platform-sbom | U5 RED: licence classifier, L-4/L-5/R2 escaping, tree size, scanner continuation, smoke -xdev | tdd red: 30 failing as expected
+2026-10-24T21:53:50Z | architect | platform-sbom | U5: amendment item 2 hash-in-junk rule, N16 -xdev note, tester pins | plan: design amended
+2026-10-24T21:54:17Z | documenter | platform-sbom | handoff trim: opener, plan-phase detail and U4 in-progress summary to archive part1/part6 | docs: updated
+2026-10-24T22:23:44Z | developer | platform-sbom | U5 GREEN: licence classifier, escaping, tree size, scanner continuation, smoke prune | tdd green: verify fast + full PASS
+2026-10-24T22:33:35Z | reviewer | platform-sbom | U5 review: B1 per-part test gap, B2 NOASSERTION-in-junk ruling, B3 drift ok-line escaping | review: changes requested
+2026-10-24T22:37:44Z | security | platform-sbom | U5 audit (L-4, L-5, I-2, L-1 closure) | security: PASS (L-4, I-2, L-1 closed; L-5 closed but L-5a low = review B3; new low L-1..L-4 non-blocking)
+2026-10-24T22:39:30Z | architect | platform-sbom | U5 rework r1 rulings recorded (B2/L-2 any-case unknown leaves, L-1 wider token rule, L-3 non-ASCII, L-4 WITH exception, B3 drift line, N5) | plan: design amended
+2026-10-24T22:39:41Z | documenter | platform-sbom | requirements status: PR #14 CI passed (review N7) | docs: updated
+2026-10-24T23:12:38Z | tester | platform-sbom | U5 rework r1 RED: unknown leaves any case, wider token rule, non-ASCII, WITH exception, per-part rows, drift ok line | tdd red: 11 failing as expected
+2026-10-24T23:14:29Z | documenter | platform-sbom | handoff trim: U1-U4 summaries condensed, detail to archive parts 3/5/6 | docs: updated
+2026-10-24T23:58:51Z | developer | platform-sbom | U5 rework r1 GREEN: unknown leaves any case, wider token rule, non-ASCII, WITH exception, drift line clean | tdd green: verify fast + full PASS
+2026-10-25T00:04:02Z | security | platform-sbom | U5 rework r1 re-check (L-1..L-4, L-5a) | security: PASS (L-1, L-2, L-3, L-4, L-5a closed; no new finding)
+2026-10-25T00:04:55Z | reviewer | platform-sbom | U5 rework r1 review: B1-B3 closed; R1-B1 unknown id inside a non-SPDX leaf passes silently | review: changes requested
+2026-10-25T00:06:22Z | architect | platform-sbom | U5 rework r2 ruling recorded (leaf charset, DocumentRef, unknown-run split) | plan: design amended
+2026-10-25T00:07:51Z | documenter | platform-sbom | handoff trim: U5 round 0/1 gate detail to archive/platform-sbom-part9.md | docs: updated
+2026-10-25T00:37:04Z | tester | platform-sbom | U5 rework r2 RED: leaf idstring charset, run split on punctuation, DocumentRef prefix, http exception listed, ASCII test source | tdd red: 5 failing as expected
+2026-10-25T01:07:09Z | developer | platform-sbom | U5 rework r2 GREEN: leaf charset, run split, DocumentRef prefix, http exception | tdd green: verify fast + full PASS
+2026-10-25T01:10:36Z | security | platform-sbom | U5 rework r2 re-check (R1-B1 leaf charset, DocumentRef) | security: PASS (R1-B1 closed; not weaker than r1; new R2-L1 low non-blocking)
+2026-10-25T01:11:40Z | reviewer | platform-sbom | U5 rework r2 review: R1-B1/N1/N2 closed; R2-B1 plus-suffix unknown id, R2-B2 colon/plus inside fallback runs | review: changes requested
+2026-10-25T01:13:00Z | architect | platform-sbom | U5 rework r3 ruling recorded (run split, trimmed unknown ids, hash anywhere in a leaf) | plan: design amended
+2026-10-25T01:14:44Z | documenter | platform-sbom | handoff trim: U5 round 1/2 sections to archive/platform-sbom-part9.md | docs: updated
+2026-10-25T01:40:47Z | tester | platform-sbom | U5 rework r3 RED: + and : split runs, trimmed bare id, hash anywhere in a leaf, near-misses pinned | tdd red: 3 failing as expected
+2026-10-25T02:10:42Z | developer | platform-sbom | U5 rework r3 GREEN: run split, trim, hash anywhere in leaf | tdd green: verify fast + full PASS
+2026-10-25T02:13:14Z | security | platform-sbom | U5 rework r3 re-check (R2-L1, HASH_IN_RE, run split) | security: PASS (R2-L1 and I-7 closed; not weaker than r2; no new finding)
+2026-10-25T02:14:54Z | reviewer | platform-sbom | U5 rework r3 review: R2-B1/B2 and R2-L1 closed; real rows identical; I-r3-1 carried to U6 | review: APPROVED
+2026-10-25T02:28:55Z | orchestrator | platform-sbom | U5 gates judged: review APPROVED (r3), security PASS (r3), verify full PASS 999 s; commit approved | smoke: PASS
+2026-10-25T02:29:41Z | developer | platform-sbom | committed U5 on agent/platform-sbom | commit: done
+2026-10-25T02:34:30Z | documenter | platform-sbom | handoff: U5 closed to a summary, detail to archive/platform-sbom-part9.md | docs: updated
+2026-10-25T02:35:13Z | analyst | platform-sbom | PSC-22 amended: generator digest re-review trigger, exempt/hosts criteria; status U5 committed | plan: criteria amended
+2026-10-25T02:37:11Z | architect | platform-sbom | U6: N10 amendment (exempt_matches API, hosts list, schema, jna/javassist entries, I-r3-1 rule) | plan: design amended
+2026-10-25T02:42:56Z | security | platform-sbom | U6 exempt review (jna 5.15.0, javassist 3.30.2-GA, hosts) | security: exempt review PASS
+2026-10-25T03:03:17Z | tester | platform-sbom | U6 RED: policy hosts/exempt schema, exempt_matches, classify_document exempt, jna/javassist entries, segment rule | tdd red: 9 failing as expected
+2026-10-25T03:31:40Z | developer | platform-sbom | U6 GREEN: hosts + exempt policy, exempt_matches, segment rule | tdd green: verify fast + full PASS
+2026-10-25T03:34:57Z | reviewer | platform-sbom | U6 review: exempt_matches exact/void, exempt clears always, segment rule monotone; nits N1-N5 (N1 U9 precondition) | review: APPROVED
+2026-10-25T03:35:37Z | security | platform-sbom | U6 gate audit (hosts, exempt, exempt_matches, segment rule) | security: PASS (no critical/high/medium; L-1 multi-match, L-2 SPDXID keying for U9)
+2026-10-25T03:49:11Z | orchestrator | platform-sbom | U6 gates judged: review APPROVED, security PASS (+exempt review PASS), verify full PASS 962 s; commit approved | smoke: PASS
+2026-10-25T03:49:50Z | developer | platform-sbom | committed U6 on agent/platform-sbom | commit: done
+2026-10-25T03:52:13Z | documenter | platform-sbom | handoff: U6 closed to a summary, detail to archive/platform-sbom-part9.md | docs: updated
+2026-10-25T04:02:34Z | architect | platform-sbom | U7 plan: N5 amendment (split U7a-c, coverage rule, provenance, first tests, CLAUDE.md row draft) | plan: design amended
+2026-10-25T04:05:10Z | analyst | platform-sbom | Q71 drafted (PGDG host/kind, for the human); O2 lock-time resolution hosts ruling recorded | plan: question drafted
+2026-10-25T04:48:11Z | tester | platform-sbom | U7a RED: lock_needs (182 fixture keys), lock_problems schema/coverage, sample_keys, lock_text, lock-check CLI, carry rows (g)(h) | tdd red: 12 failing as expected
+2026-10-25T05:16:39Z | developer | platform-sbom | U7a GREEN: lock_needs, lock_problems, sample_keys, lock_text, lock-check | tdd green: verify fast + full PASS
+2026-10-25T05:21:38Z | reviewer | platform-sbom | U7a review: B1 neo4j upstream not bound to sha256, B2 urlsplit drops control chars in URLs; nits N1-N7 | review: changes requested
+2026-10-25T05:23:45Z | architect | platform-sbom | U7a rework r1 rulings recorded (neo4j second-fetch binding, URL charset, per-kind host/name rules, exact keys) | plan: design amended
+2026-10-25T05:23:49Z | security | platform-sbom | U7a gate audit (lock_problems, lock_needs, lock-check) | security: PASS (no critical/high/medium; L-1 URL charset, L-2 kind-host binding, L-3 raw key, L-4 profile path in reviewer-probes)
+2026-10-25T05:25:57Z | reviewer | platform-sbom | U7a evidence redaction: profile path in u7a/reviewer-probes.txt l.2 replaced with <scratch> (security L-4); u5/u6/u7a re-grepped clean | docs: updated
+2026-10-25T05:56:16Z | tester | platform-sbom | U7a rework r1 RED: neo4j binding, printable ASCII before parsing, per-kind host/path binding, pgdg no host until Q71, exact keys, types, clean keys, size cap, targeted substrings | tdd red: 12 failing as expected
+2026-10-25T05:58:24Z | documenter | platform-sbom | handoff trim: U7 plan and U7a round-0 sections to archive/platform-sbom-part10.md | docs: updated
+2026-10-25T06:24:45Z | developer | platform-sbom | U7a rework r1 GREEN: neo4j binding, URL charset, kind host/path binding, type-safe lock_problems | tdd green: verify fast + full PASS
+2026-10-25T06:28:43Z | reviewer | platform-sbom | U7a rework r1 review: B1/B2/N1-N7 closed; R1-B1 encoded/backslash dot-segments bypass the .. rule (temurin, pypi) | review: changes requested
+2026-10-25T06:29:28Z | security | platform-sbom | U7a rework r1 re-check (charset, binding, clean, size, CLI) | security: PASS (L-1, L-3, L-4, I-2, I-4 closed; L-2 closed but temurin; new R1-L1 pypi regex, R1-L2 temurin binding, both low)
+2026-10-25T06:30:37Z | architect | platform-sbom | U7a rework r2 rulings recorded (plain URL paths, temurin tag/asset binding, CLI failure line) | plan: design amended
+2026-10-25T07:00:49Z | tester | platform-sbom | U7a rework r2 RED: plain URL paths, exact temurin binding, pypi path layout, linear name checks, lock-check FAIL line | tdd red: 6 failing as expected
+2026-10-25T07:02:35Z | documenter | platform-sbom | handoff trim: U7a round-1 sections to archive/platform-sbom-part10.md | docs: updated
+2026-10-25T07:29:31Z | developer | platform-sbom | U7a rework r2 GREEN: plain URL paths, exact temurin binding, FAIL line, linear pypi check | tdd green: verify fast + full PASS
+2026-10-25T07:32:14Z | reviewer | platform-sbom | U7a rework r2 review: R1-B1/N1/N2 and R1-L1 closed; every kind's url path exact; 182 keys unchanged | review: APPROVED
+2026-10-25T07:33:23Z | security | platform-sbom | U7a rework r2 re-check (pypi linear, temurin exact, plain paths, CLI) | security: PASS (R1-L1, R1-L2 closed; no new finding)
+2026-10-25T07:47:00Z | orchestrator | platform-sbom | U7a gates judged: review APPROVED (r2), security PASS (r2), verify full PASS 968 s; commit approved | smoke: PASS
+2026-10-25T07:47:48Z | developer | platform-sbom | committed U7a on agent/platform-sbom | commit: done
+2026-10-25T07:50:17Z | documenter | platform-sbom | handoff: U7a closed to a summary, detail to archive/platform-sbom-part10.md | docs: updated
+2026-10-25T07:51:57Z | security | platform-sbom | U7b second fetch: neo4j 5.26.32 tarball, tag commit, temurin sidecar | security: provenance recorded
+2026-10-25T09:01:32Z | tester | platform-sbom | U7b RED: sources_resolve.py (fake opener: hops, parsers, temurin/maven/pypi/neo4j routes, merge, CLI), lock-needs, docker-compose.sources.yml hardening, sources_lock.sh refusals | tdd red: 20 failing as expected
+2026-10-25T09:03:32Z | architect | platform-sbom | U7b interface pins recorded (OPENER hook, needs.json, release text via lock-needs, provenance, third fetch at U7d) | plan: design amended
+2026-10-25T09:31:01Z | developer | platform-sbom | U7b GREEN: sources_resolve.py, sources_lock.sh, compose.sources.yml, lock-needs | tdd green: verify fast + full PASS
+2026-10-25T09:37:08Z | reviewer | platform-sbom | U7b review: B1 resolver mid-body/opener errors are tracebacks and no byte deadline; B2 sources_lock.sh neo4j-only check reads lock-check's first 20 lines; nits N1-N6 | review: changes requested
+2026-10-25T09:37:54Z | security | platform-sbom | U7b gate audit (resolver, sources_lock.sh, compose, lock-needs) | security: PASS (no critical/high; M-1 pending rule on truncated output; L-1..L-5)
+2026-10-25T09:38:23Z | tester | platform-sbom | U7b A34 Windows proof (sources-resolve, sources_lock.sh, lock-needs --tar): defect sources_lock.sh lacks $work/sboms/tmp (syft TMPDIR) | a34: FAIL
+2026-10-25T09:39:20Z | architect | platform-sbom | U7b rework r1 rulings recorded (error handling, deadline, byte cap, pending-neo4j in Python, hop rules, jq check, trap, six images) | plan: design amended
+2026-10-25T09:41:19Z | documenter | platform-sbom | handoff trim: U7b round-0 sections to archive/platform-sbom-part10.md | docs: updated
+2026-10-25T10:37:33Z | tester | platform-sbom | U7b rework r1 RED: ReworkR1* tests (transport/deadline/cap, main, real opener, hop rules, pypi scope, keys, script end to end via fake docker) + lock-check --pending-neo4j; r1 targets reach-proven; controls 71 rows 0 unexpected | tdd red: 25 failing as expected
+2026-10-25T11:07:56Z | developer | platform-sbom | U7b rework r1 GREEN: resolver hardening, lock.sh tools/six-images/tmp, lock-check --pending-neo4j | tdd green: verify fast + full PASS
+2026-10-25T11:12:37Z | reviewer | platform-sbom | U7b rework r1 review: B1/B2/N1-N6 closed; happy-path fake-docker test; R1-N1 pypi JSON url exempt from path-% rule (fails closed at lock-check) | review: APPROVED
+2026-10-25T11:12:44Z | security | platform-sbom | U7b rework r1 re-check (pending, per-hop URL rules, pypi JSON-only, deadline, cap) | security: PASS (M-1, L-1, L-2, L-4, L-5, I-1, I-3 closed; R1-L1 low: deadline not enforced within one read)
+2026-10-25T11:22:23Z | tester | platform-sbom | U7b r1: controls baseline fixed to saved u7b targets and re-run --base repo (71 rows); A34 steps 3+4 re-run on Windows (refusals incl. tools/six images; script SBOM + lock-needs with sboms/tmp); O3 drift from stale ke-app:local | a34: PASS; controls: 0 unexpected
+2026-10-25T11:27:41Z | orchestrator | platform-sbom | U7b gates judged: review APPROVED (r1), security PASS (r1), A34 PASS, verify full PASS 1042 s; commit approved | smoke: PASS
+2026-10-25T11:28:35Z | developer | platform-sbom | committed U7b on agent/platform-sbom | commit: done
+2026-10-25T11:30:27Z | documenter | platform-sbom | handoff: U7b closed to a summary, detail to archive/platform-sbom-part10.md | docs: updated
+2026-10-25T11:33:30Z | architect | platform-sbom | U7c precision: deb/apk routes, apk route inputs via lock-needs, distfiles streaming rule, carried rows | plan: design amended
+2026-10-25T12:13:38Z | tester | platform-sbom | U7c RED: U7c* tests (deb route D1-D7, apk route A2-A5, 152 deb + 19 apk fixture coverage, C1/C2, pause, pgdg text, lock-needs A1, script --tar for every image, R-2 guard); targets u7c/target-* reach-proven; controls 59 rows 0 unexpected | tdd red: 17 failing as expected
+2026-10-25T12:15:56Z | architect | platform-sbom | U7c gap rulings recorded (recursive tree, empty listing, all aports files locked, pinned texts, interface pins) | plan: design amended
+2026-10-25T12:48:29Z | tester | platform-sbom | U7c RED amended for the gap rulings (recursive tree, regular files, every aports file locked, pinned texts, U7a apk lock rules (i)/(ii)); reach PASS; controls 79 rows 0 unexpected | tdd red: 19 failing as expected
+2026-10-25T13:19:06Z | developer | platform-sbom | U7c GREEN: deb and apk resolver routes, apk lock rules, lock-needs apk route | tdd green: verify fast + full PASS
+2026-10-25T13:23:43Z | reviewer | platform-sbom | U7c review: B1 apk lock rule (i) admits an APKBUILD from a subdirectory; nits N1-N4 | review: changes requested
+2026-10-25T13:25:15Z | architect | platform-sbom | U7c rework r1 rulings recorded (APKBUILD path pinned, duplicate deb822 fields fail, repeated APKBUILD assignments fail, U8 name checks) | plan: design amended
+2026-10-25T13:25:22Z | security | platform-sbom | U7c gate audit (deb/apk routes, apk lock rules, tar reads, read1) | security: PASS (no critical/high/medium; L-1 subdir APKBUILD, L-2 parse_dsc separators/duplicates, L-3 listing truncation)
+2026-10-25T13:26:58Z | tester | platform-sbom | U7c A34 Windows proof: steps 3-4 PASS, real deb bash PASS (lock-check ok), real apk pax-utils FAIL (GitLab raw behind an anti-bot challenge 307->418; API raw 200) | a34: FAIL
+2026-10-25T13:27:49Z | documenter | platform-sbom | handoff trim: U7c round-0 sections to archive/platform-sbom-part10.md | docs: updated
+2026-10-25T13:56:45Z | tester | platform-sbom | U7c rework r1 RED: ReworkR1U7c* (APKBUILD path exact, duplicate deb822 fields, control chars/CRLF, repeated APKBUILD assignments, full-page listing, encoded path); targets reach PASS; controls 25 rows 0 unexpected | tdd red: 11 failing as expected
+2026-10-25T13:59:14Z | architect | platform-sbom | U7c r1 item 9: apk GitLab URL moves to the API raw endpoint with ref=<commit>; old raw form rejected | plan: design amended
+2026-10-25T14:45:42Z | tester | platform-sbom | U7c rework r1 RED amended for item 9 (apk GitLab API raw url form, lock and resolver rows, challenge rows); reach PASS 1047 OK; controls 34 rows 0 unexpected | tdd red: 39 failing as expected
+2026-10-25T15:15:49Z | developer | platform-sbom | U7c rework r1 GREEN: apk GitLab API raw urls, item 9 fixtures | tdd green: verify fast + full PASS
+2026-10-25T15:21:01Z | tester | platform-sbom | U7c r1 A34 Windows re-run: real apk:pax-utils@1.3.8-r2 resolves via the API raw form (lock-check ok); real deb:bash byte-identical after one snapshot 503 | a34: PASS
+2026-10-25T15:21:51Z | reviewer | platform-sbom | U7c rework r1 review: B1/N1/N2/L-2/L-3/I-1 and item 9 closed; nits R1-N1 decoded segment charset, R1-N2 parse_dsc junk line | review: APPROVED
+2026-10-25T15:21:56Z | security | platform-sbom | U7c rework r1 re-check (APKBUILD pin, parse_dsc, truncation, GitLab API raw form) | security: PASS (L-1, L-2, L-3, I-1 closed; item 9 holds; no new finding)
+2026-10-25T15:23:28Z | documenter | platform-sbom | handoff trim: U7c round-1 sections to archive/platform-sbom-part10.md | docs: updated
+2026-10-25T15:34:48Z | orchestrator | platform-sbom | U7c gates judged: review APPROVED (r1), security PASS (r1), A34 PASS, verify full PASS 1004 s; commit approved | smoke: PASS

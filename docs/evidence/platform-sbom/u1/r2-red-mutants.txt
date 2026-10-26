@@ -1,0 +1,384 @@
+platform-sbom U1 round 2 RED: controls, mutants and reach (tester, 2026-10-23)
+===============================================================================
+
+Driver: docs/evidence/platform-sbom/u1/u1_controls.py (rewritten for round 2).
+Run in the gates image (the smoke reach needs bash on Linux), network none:
+  docker compose --env-file .env.example --profile gates run --rm gates \
+    uv run --locked python docs/evidence/platform-sbom/u1/u1_controls.py --reach
+Exit 0. Its output, unedited, is below the line at the end of this header.
+
+Totals
+- Controls: 212 must-fail + 21 must-pass = 233, unexpected 0.
+  base 55+4, libpq 7+1, pointer 13+0, incorporated 25+2, evidence 5+1,
+  pip (N10a static) 28+3, u0-runtime 29+4, d10 42+2, digest 8+4.
+- Smoke-block mutants: 10 of 10 killed by SmokeNoPipTest (S1 eval of the
+  output, S2 second word ignored, S3 no find_spec fallback, S4 /usr/local/bin
+  only, S5 no dist-info/whl names, S6 no `|| FAIL`, S7 venv python, S8 /usr
+  only, S9 a hit only warns, S10 N10a's `${pip_hits:--}` restored:
+  killed by 1 subtest, the new 'the check exits 0 and prints nothing').
+- Reach (targets spliced into scratch copies; the repository untouched): all
+  12 checks pass on r2-target-notice-sections.md + r2-target-app.Dockerfile
+  + the header with a stand-in extract; NoticeKeAppBaseTest,
+  KeAppNoPipStaticTest, PsycopgCStaticTest, AppImageTest 16/16;
+  r2-target-smoke-block.sh spliced into smoke.sh: SmokeNoPipTest 3/3,
+  SmokePsycopgTest 5/5, test_stack_scripts Smoke* 17/17.
+
+Re-targeted (N10a): each passes today's tree and the flattened target; each
+U0/D10 control runs on both shapes (`flat:` rows), plus new N10a shapes.
+1. test_psycopg_c.test_runtime_stage_has_no_compiler: app_runtime_problems
+   reads tests.test_psycopg_c.shipped_stage (the stage a FROM scratch last
+   stage copies / from), the last stage may install or remove nothing, and
+   the shipped stage allows exactly the libpq5 apt RUN plus the pip removal
+   (PSC-25 amended). Controls 29 must-fail (8 U0 x 2 shapes + 13 N10a),
+   4 must-pass.
+2. test_image_scan.test_app_image_final_stage_has_no_uv: now
+   final_stage_problems + D10_CONTROLS; accepts FROM scratch with `COPY
+   --from=runtime / /` first and once, runtime FROM the builder's base byte
+   for byte, no uv and no COPY in runtime. 42 must-fail (14 D10 x 2 shapes +
+   14 N10a), 2 must-pass.
+3. test_stack_compose.test_dockerfiles_pin_base_images_by_digest:
+   unpinned_bases allows exactly `scratch`; scratch:latest, a registry
+   scratch, scratchy, Scratch, busybox and tags still fail. 8+4.
+4. test_notice_ke_app base check: runtime_stage reads the shipped stage, so
+   the base ref comes from `runtime`; 8 `flat:` controls (runtime digest,
+   builder vs runtime ref, unparseable, minor, extra package, pin, missing
+   COPY source, no COPY / /) fail; 2 flat passing controls pass. On today's
+   tree the base test is RED only for M-2 and pip; no base-ref problem
+   (REPO row below).
+
+RED in scripts/verify.sh fast (r2-red-verify-fast.txt): 8 test methods,
+23 failing subtests (after the empty-output ruling; 22 before), all U1 round 2;
+nothing else newly red; sentinel ok.
+
+Notes for the next roles
+- licenses/Apache-2.0.txt and licenses/MPL-2.0.txt are still in the working
+  tree, untracked (the handoff says reverted). The base test fails while
+  NOTICE.md names them; the reach removes them from its scratch copy.
+- The licence file in the reach has a stand-in extract; the real extract is
+  the maintainer's fetch (N10a). The test checks shape, not CPython's text.
+- Orchestrator ruling 2026-10-23 (supersedes N10a's `${pip_hits:--}`): empty
+  output FAILS. New subtest test_smoke_fails_when_pip_is_in_api (case='the
+  check exits 0 and prints nothing'); the target compares "$pip_hits" to `-`
+  exactly and its FAIL names the printed token. RED re-run: r2-red-verify-fast.txt.
+- Harness fix during this round: the hook regex for the no-pip exec needs
+  (?s), because the joined argv holds the multi-line CODE.
+
+-------------------------------------------------------------------------------
+ Container ke-tester-u1r2-gates-run-9885e52e07b9 Creating 
+ Container ke-tester-u1r2-gates-run-9885e52e07b9 Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 1ms
+Installed 1 package in 1ms
+base     | TARGET                                                                 | want pass | passes
+base     | trixie ref, NOTICE says Debian 13 (trixie) (B1 P3)                     | want pass | passes
+base     | registry-prefixed 3.13 ref, NOTICE says 3.13 (B1)                      | want pass | passes
+base     | N10a Dockerfile (runtime + FROM scratch)                               | want pass | passes
+base     | N10a Dockerfile, registry-prefixed 3.13 runtime, NOTICE says 3.13      | want pass | passes
+base     | no Base of ke-app heading                                              | want fail | FAILS | NOTICE.md has no `## Base of `ke-app`` section (PSC-14, ADR-KE-016 point 9)
+base     | elements under another heading                                         | want fail | FAILS | the section does not give the shipped stage's base reference 'python:3.12-slim-bookworm@sh
+base     | base digest differs in NOTICE                                          | want fail | FAILS | the section does not give the shipped stage's base reference 'python:3.12-slim-bookworm@sh
+base     | base digest differs in Dockerfile                                      | want fail | FAILS | the section does not give the shipped stage's base reference 'python:3.12-slim-bookworm@sh
+base     | unparseable ref: no codename (B1)                                      | want fail | FAILS | the shipped stage's base reference 'python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+base     | unparseable ref: no digest (B1)                                        | want fail | FAILS | the shipped stage's base reference 'python:3.12-slim-bookworm' does not parse as [registry
+base     | unparseable ref: short digest (B1)                                     | want fail | FAILS | the shipped stage's base reference 'python:3.12-slim-bookworm@sha256:aaaaaaaaaaaaaaaaaaaaa
+base     | unparseable ref: not python (B1)                                       | want fail | FAILS | the shipped stage's base reference 'pypy:3.10-slim-bookworm@sha256:aaaaaaaaaaaaaaaaaaaaaaa
+base     | unknown codename sid (B1)                                              | want fail | FAILS | unknown Debian codename 'sid' in 'python:3.12-slim-sid@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaa
+base     | no CPython                                                             | want fail | FAILS | no block names CPython 3.12 under /usr/local with its licence Python-2.0 and the pointer /
+base     | CPython licence PSF-2.0, not Python-2.0 (N3)                           | want fail | FAILS | no block names CPython 3.12 under /usr/local with its licence Python-2.0 and the pointer /
+base     | CPython without the LICENSE.txt pointer (N3)                           | want fail | FAILS | no block names CPython 3.12 under /usr/local with its licence Python-2.0 and the pointer /
+base     | LICENSE.txt pointer names another minor (N3)                           | want fail | FAILS | no block names CPython 3.12 under /usr/local with its licence Python-2.0 and the pointer /
+base     | CPython without /usr/local                                             | want fail | FAILS | no block names CPython 3.12 under /usr/local with its licence Python-2.0 and the pointer /
+base     | CPython minor is not the base tag's                                    | want fail | FAILS | no block names CPython 3.13 under /usr/local with its licence Python-2.0 and the pointer /
+base     | registry-prefixed 3.13 ref, NOTICE still says 3.12 (B1 P1)             | want fail | FAILS | no block names CPython 3.13 under /usr/local with its licence Python-2.0 and the pointer /
+base     | trixie ref, NOTICE still says Debian 12 (B1 P2)                        | want fail | FAILS | no block names the base's Debian 13 (trixie) packages with their licences in /usr/share/do
+base     | M-2: today's LICENSE.txt overclaim                                     | want fail | FAILS | the CPython block does not say that /usr/local/lib/python3.12/LICENSE.txt holds that licen
+base     | M-2: LICENSE.txt without 'licence stack only'                          | want fail | FAILS | the CPython block does not say that /usr/local/lib/python3.12/LICENSE.txt holds that licen
+base     | M-2: CPython block without the incorporated file                       | want fail | FAILS | the CPython block does not say that /usr/local/lib/python3.12/LICENSE.txt holds that licen
+base     | M-2: the incorporated file for another minor                           | want fail | FAILS | the CPython block does not say that /usr/local/lib/python3.12/LICENSE.txt holds that licen
+base     | M-2: the incorporated file named outside the CPython block             | want fail | FAILS | the CPython block does not say that /usr/local/lib/python3.12/LICENSE.txt holds that licen
+base     | M-2: 'stack only', and LICENSE.txt also holds the incorporated licence | want fail | FAILS | the section says LICENSE.txt holds the licences of the code CPython builds in; it holds th
+base     | no Debian 12                                                           | want fail | FAILS | no block names the base's Debian 12 (bookworm) packages with their licences in /usr/share/
+base     | Debian 12 without codename (B1)                                        | want fail | FAILS | no block names the base's Debian 12 (bookworm) packages with their licences in /usr/share/
+base     | Debian 12 without copyright path                                       | want fail | FAILS | no block names the base's Debian 12 (bookworm) packages with their licences in /usr/share/
+base     | Debian 12 without SBOM                                                 | want fail | FAILS | no block names the base's Debian 12 (bookworm) packages with their licences in /usr/share/
+base     | Debian 12 SBOM unconditional (L-1)                                     | want fail | FAILS | the section names the SBOM unconditionally; say "where the bundle carries one" (security L
+base     | added packages SBOM unconditional (L-1)                                | want fail | FAILS | the section names the SBOM unconditionally; say "where the bundle carries one" (security L
+base     | libpq5 not named                                                       | want fail | FAILS | the section does not name libpq5, a Debian package the shipped stage adds, with its licenc
+base     | libpq5 pin missing                                                     | want fail | FAILS | the section does not give libpq5 at the pinned LIBPQ_VERSION 15.99-0+deb12u9
+base     | libpq5 pin differs in Dockerfile                                       | want fail | FAILS | the section does not give libpq5 at the pinned LIBPQ_VERSION 15.98-0+deb12u9
+base     | libsasl2-modules-db missing                                            | want fail | FAILS | the section does not name libsasl2-modules-db, a Debian package the shipped stage adds, wi
+base     | libldap-2.5-0 missing                                                  | want fail | FAILS | the section does not name libldap-2.5-0, a Debian package the shipped stage adds, with its
+base     | ADDED_PACKAGES names libzz9 the NOTICE lacks                           | want fail | FAILS | the section does not name libzz9, a Debian package the shipped stage adds, with its licenc
+base     | Dockerfile adds a package outside ADDED_PACKAGES                       | want fail | FAILS | app.Dockerfile: the shipped stage installs libzz9, which is not in ADDED_PACKAGES ['liblda
+base     | pip: no 'not shipped' statement                                        | want fail | FAILS | the section does not say pip is not shipped (human ruling 2026-10-23, PSC-14)
+base     | pip: today's pip bullet back                                           | want fail | FAILS | NOTICE.md names licenses/Apache-2.0.txt; the pip licence texts are reverted (PSC-14, pip d
+base     | pip: named as shipped                                                  | want fail | FAILS | the section names pip as shipped: "- The base's pip in the system site-packages."
+base     | pip: negated, with a version                                           | want fail | FAILS | a pip block gives a pip version: no pip licence bullet, pip is not shipped (PSC-14): "pip 
+base     | pip: negated, naming vendor.txt                                        | want fail | FAILS | a pip block gives pip/_vendor/vendor.txt: no pip licence bullet, pip is not shipped (PSC-1
+base     | pip: negated, naming MIT                                               | want fail | FAILS | a pip block gives an MIT, Apache-2.0 or MPL-2.0 identifier: no pip licence bullet, pip is 
+base     | pip: negated, naming Apache-2.0 and MPL-2.0                            | want fail | FAILS | a pip block gives an MIT, Apache-2.0 or MPL-2.0 identifier: no pip licence bullet, pip is 
+base     | pip: NOTICE names licenses/Apache-2.0.txt (reverted)                   | want fail | FAILS | NOTICE.md names licenses/Apache-2.0.txt; the pip licence texts are reverted (PSC-14, pip d
+base     | pip: NOTICE names licenses/MPL-2.0.txt (reverted)                      | want fail | FAILS | NOTICE.md names licenses/MPL-2.0.txt; the pip licence texts are reverted (PSC-14, pip drop
+base     | uv named as shipped                                                    | want fail | FAILS | the section names uv as shipped: '- uv 0.11.21 under `/usr/local/bin` (MIT OR Apache-2.0).
+base     | no uv statement                                                        | want fail | FAILS | the section does not say uv is not shipped (it runs only in the builder stage, PSC-17)
+base     | flat: runtime digest differs from NOTICE                               | want fail | FAILS | the section does not give the shipped stage's base reference 'python:3.12-slim-bookworm@sh
+base     | flat: NOTICE gives the builder's ref, runtime's differs                | want fail | FAILS | the section does not give the shipped stage's base reference 'python:3.12-slim-bookworm@sh
+base     | flat: unparseable runtime ref (B1)                                     | want fail | FAILS | the shipped stage's base reference 'python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+base     | flat: runtime minor 3.13, NOTICE says 3.12                             | want fail | FAILS | no block names CPython 3.13 under /usr/local with its licence Python-2.0 and the pointer /
+base     | flat: runtime adds a package outside ADDED_PACKAGES                    | want fail | FAILS | app.Dockerfile: the shipped stage installs libzz9, which is not in ADDED_PACKAGES ['liblda
+base     | flat: libpq5 pin differs                                               | want fail | FAILS | the section does not give libpq5 at the pinned LIBPQ_VERSION 15.98-0+deb12u9
+base     | flat: scratch stage copies / from a missing stage                      | want fail | FAILS | app.Dockerfile: the last stage copies / from 'nosuch', which is not one stage of the file 
+base     | flat: scratch stage does not start with COPY / /                       | want fail | FAILS | app.Dockerfile: the last stage is FROM scratch but its first instruction is not `COPY --fr
+base     | REPO NOTICE.md + app.Dockerfile (RED expected)                         | want fail | FAILS
+         |   - NOTICE.md names licenses/Apache-2.0.txt; the pip licence texts are reverted (PSC-14, pip dropped)
+         |   - NOTICE.md names licenses/MPL-2.0.txt; the pip licence texts are reverted (PSC-14, pip dropped)
+         |   - the CPython block does not say that /usr/local/lib/python3.12/LICENSE.txt holds that licence stack only and name licenses/CPython-3.12-incorporated.txt for the code CPython builds in (security M-2)
+         |   - the section says LICENSE.txt holds the licences of the code CPython builds in; it holds the licence stack only (security M-2): '- CPython 3.12 under `/usr/local`, under the Python License 2.0 (SPDX `Python-2.0`: the PSF licence stacked on the BeOpe'
+         |   - a pip block gives a pip version: no pip licence bullet, pip is not shipped (PSC-14): "- The base's own pip 25.0.1 in the system site-packages (MIT). It is outside `uv.lock`, so it is not in the generated ta"
+         |   - a pip block gives pip/_vendor/vendor.txt: no pip licence bullet, pip is not shipped (PSC-14): "- The base's own pip 25.0.1 in the system site-packages (MIT). It is outside `uv.lock`, so it is not in the generated ta"
+         |   - a pip block gives an MIT, Apache-2.0 or MPL-2.0 identifier: no pip licence bullet, pip is not shipped (PSC-14): "- The base's own pip 25.0.1 in the system site-packages (MIT). It is outside `uv.lock`, so it is not in the generated ta"
+         |   - a pip block gives a licenses/ path: no pip licence bullet, pip is not shipped (PSC-14): "- The base's own pip 25.0.1 in the system site-packages (MIT). It is outside `uv.lock`, so it is not in the generated ta"
+libpq    | TARGET                                                                 | want pass | passes
+libpq    | History: block names psycopg-binary (N4)                               | want pass | passes
+libpq    | libpq5 without the PostgreSQL licence                                  | want fail | FAILS | no block of NOTICE.md names libpq5 as a Debian package under the PostgreSQL licence
+libpq    | libpq5 under another licence                                           | want fail | FAILS | no block of NOTICE.md names libpq5 as a Debian package under the PostgreSQL licence
+libpq    | libpq5 not a Debian package                                            | want fail | FAILS | no block of NOTICE.md names libpq5 as a Debian package under the PostgreSQL licence
+libpq    | vendored-libraries heading                                             | want fail | FAILS | NOTICE.md has a vendored-libraries heading: '## Vendored libraries'
+libpq    | vendored-libraries table                                               | want fail | FAILS | NOTICE.md has a table row of vendored libraries: '| `libpq-9b38f5e3.so.5.16` | PostgreSQL 
+libpq    | psycopg_binary undated                                                 | want fail | FAILS | NOTICE.md names psycopg-binary outside dated history (a block that starts with a date or "
+libpq    | psycopg-binary in a block dated mid-text (N4)                          | want fail | FAILS | NOTICE.md names psycopg-binary outside dated history (a block that starts with a date or "
+libpq    | REPO NOTICE.md (green expected)                                        | want pass | passes
+pointer  | TARGET                                                                 | want pass | passes
+pointer  | no pointer                                                             | want fail | FAILS | no block of NOTICE.md points to the "Source code" section of THIRD_PARTY_NOTICES.md and `s
+pointer  | pointer without Source code                                            | want fail | FAILS | no block of NOTICE.md points to the "Source code" section of THIRD_PARTY_NOTICES.md and `s
+pointer  | pointer without sources/                                               | want fail | FAILS | no block of NOTICE.md points to the "Source code" section of THIRD_PARTY_NOTICES.md and `s
+pointer  | pointer without THIRD_PARTY_NOTICES.md                                 | want fail | FAILS | no block of NOTICE.md points to the "Source code" section of THIRD_PARTY_NOTICES.md and `s
+pointer  | no L-6 sentence                                                        | want fail | FAILS | the "Source code" block does not carry security L-6's sentence verbatim: 'A bundle whose `
+pointer  | L-6 sentence in its own paragraph                                      | want fail | FAILS | the "Source code" block does not carry security L-6's sentence verbatim: 'A bundle whose `
+pointer  | today's M-1 sentence ('carries no third-party source code', L-6)       | want fail | FAILS | NOTICE.md says a bundle 'carries no third-party source code'; the images carry .py source 
+pointer  | L-6 with 'any of these licences' (no antecedent, L-6)                  | want fail | FAILS | the "Source code" block does not carry security L-6's sentence verbatim: 'A bundle whose `
+pointer  | L-6 without the no-section condition                                   | want fail | FAILS | the "Source code" block does not carry security L-6's sentence verbatim: 'A bundle whose `
+pointer  | L-6 without has no sources/                                            | want fail | FAILS | the "Source code" block does not carry security L-6's sentence verbatim: 'A bundle whose `
+pointer  | L-6 says the bundle provides the source                                | want fail | FAILS | the "Source code" block does not carry security L-6's sentence verbatim: 'A bundle whose `
+pointer  | L-6 with curly quotes (verbatim)                                       | want fail | FAILS | the "Source code" block does not carry security L-6's sentence verbatim: 'A bundle whose `
+pointer  | L-6 kept, the old claim elsewhere                                      | want fail | FAILS | NOTICE.md says a bundle 'carries no third-party source code'; the images carry .py source 
+pointer  | REPO NOTICE.md (RED expected)                                          | want fail | FAILS
+         |   - NOTICE.md says a bundle 'carries no third-party source code'; the images carry .py source (security L-6)
+         |   - the "Source code" block does not carry security L-6's sentence verbatim: 'A bundle whose `THIRD_PARTY_NOTICES.md` has no "Source code" section has no `sources/`, so it does not itself provide the source that a GPL-family licence requires.'
+incorp   | TARGET                                                                 | want pass | passes
+incorp   | U0-shape Dockerfile                                                    | want pass | passes
+incorp   | honest bump: 3.13 base, 3.13.1 file, NOTICE names it                   | want pass | passes
+incorp   | NOTICE does not name the file                                          | want fail | FAILS | NOTICE.md does not name licenses/CPython-3.12-incorporated.txt (PSC-14, security L-5)
+incorp   | the file is missing                                                    | want fail | FAILS | licenses/CPython-3.12-incorporated.txt is missing (the base tag's CPython is 3.12)
+incorp   | file and NOTICE for 3.13, base 3.12                                    | want fail | FAILS | NOTICE.md does not name licenses/CPython-3.12-incorporated.txt (PSC-14, security L-5)
+incorp   | line 1 3.13.0 with its URL, base 3.12                                  | want fail | FAILS | licenses/CPython-3.12-incorporated.txt: line 1 names CPython 3.13.0, not the base tag's 3.
+incorp   | URL tag is not line 1's version                                        | want fail | FAILS | licenses/CPython-3.12-incorporated.txt: line 1 names CPython 3.12.99 but the source URL's 
+incorp   | URL over http                                                          | want fail | FAILS | licenses/CPython-3.12-incorporated.txt line 2 is not `Source: https://raw.githubuserconten
+incorp   | URL on another host                                                    | want fail | FAILS | licenses/CPython-3.12-incorporated.txt line 2 is not `Source: https://raw.githubuserconten
+incorp   | URL to another file                                                    | want fail | FAILS | licenses/CPython-3.12-incorporated.txt line 2 is not `Source: https://raw.githubuserconten
+incorp   | line 1 without the section title                                       | want fail | FAILS | licenses/CPython-3.12-incorporated.txt line 1 is not `CPython X.Y.Z: "Licenses and Acknowl
+incorp   | line 1 names Python, not CPython                                       | want fail | FAILS | licenses/CPython-3.12-incorporated.txt line 1 is not `CPython X.Y.Z: "Licenses and Acknowl
+incorp   | sha256 short                                                           | want fail | FAILS | licenses/CPython-3.12-incorporated.txt line 3 is not `Source sha256: <64 hex>`: 'Source sh
+incorp   | sha256 upper-case                                                      | want fail | FAILS | licenses/CPython-3.12-incorporated.txt line 3 is not `Source sha256: <64 hex>`: 'Source sh
+incorp   | no sha256 line                                                         | want fail | FAILS | licenses/CPython-3.12-incorporated.txt line 3 is not `Source sha256: <64 hex>`: 'Extract: 
+incorp   | Extract line reworded                                                  | want fail | FAILS | licenses/CPython-3.12-incorporated.txt line 4 is not 'Extract: from that heading line to t
+incorp   | no blank line after the header                                         | want fail | FAILS | licenses/CPython-3.12-incorporated.txt line 5 is not blank: 'Licenses and Acknowledgements
+incorp   | extract starts at a subsection                                         | want fail | FAILS | licenses/CPython-3.12-incorporated.txt: the extract does not start with the heading line '
+incorp   | heading underlined with -                                              | want fail | FAILS | licenses/CPython-3.12-incorporated.txt: the extract does not start with the heading line '
+incorp   | underline too short                                                    | want fail | FAILS | licenses/CPython-3.12-incorporated.txt: the extract does not start with the heading line '
+incorp   | heading twice                                                          | want fail | FAILS | licenses/CPython-3.12-incorporated.txt: the heading line occurs 2 times in the extract, wa
+incorp   | extract cut before libmpdec                                            | want fail | FAILS | licenses/CPython-3.12-incorporated.txt: the extract does not name libmpdec (NOTICE.md says
+incorp   | extract without expat                                                  | want fail | FAILS | licenses/CPython-3.12-incorporated.txt: the extract does not name expat (NOTICE.md says it
+incorp   | CRLF line endings                                                      | want fail | FAILS | licenses/CPython-3.12-incorporated.txt has CR line endings; the extract is the LF bytes of
+incorp   | NOTICE gives another tag's URL                                         | want fail | FAILS | no block of NOTICE.md names licenses/CPython-3.12-incorporated.txt with the header's sourc
+incorp   | NOTICE names the file without its URL                                  | want fail | FAILS | no block of NOTICE.md names licenses/CPython-3.12-incorporated.txt with the header's sourc
+incorp   | unparseable base ref (B1)                                              | want fail | FAILS | the shipped stage's base reference 'python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+incorp   | REPO NOTICE.md + licenses/ (RED expected)                              | want fail | FAILS
+         |   - NOTICE.md does not name licenses/CPython-3.12-incorporated.txt (PSC-14, security L-5)
+         |   - licenses/CPython-3.12-incorporated.txt is missing (the base tag's CPython is 3.12)
+evidence | TARGET                                                                 | want pass | passes
+evidence | the word evidence and app/docs/quickstart.md                           | want pass | passes
+evidence | today's provenance pointer                                             | want fail | FAILS | NOTICE.md cites 'docs/evidence', a repository path no bundle carries (review B4, security 
+evidence | a bare path                                                            | want fail | FAILS | NOTICE.md cites 'docs/evidence', a repository path no bundle carries (review B4, security 
+evidence | a repository URL                                                       | want fail | FAILS | NOTICE.md cites 'docs/evidence', a repository path no bundle carries (review B4, security 
+evidence | a Windows path                                                         | want fail | FAILS | NOTICE.md cites 'docs\\evidence', a repository path no bundle carries (review B4, security
+evidence | upper case                                                             | want fail | FAILS | NOTICE.md cites 'DOCS/EVIDENCE', a repository path no bundle carries (review B4, security 
+evidence | REPO NOTICE.md (RED expected)                                          | want fail | FAILS
+         |   - NOTICE.md cites 'docs/evidence', a repository path no bundle carries (review B4, security L-8): '`docs/evidence/platform-sbom/u1/licence-texts-provenance.md`). They cover the'
+pip      | TARGET                                                                 | want pass | passes
+pip      | python3 -m pip uninstall --yes pip                                     | want pass | passes
+pip      | ENV split over two instructions                                        | want pass | passes
+pip      | one line, extra spaces                                                 | want pass | passes
+pip      | today's shape: no runtime stage, last stage FROM the base              | want fail | FAILS | the last stage is FROM 'python:3.12-slim-bookworm@sha256:333333333333333333333333333333333
+pip      | U0 shape with the pip removal (pip still ships in the base layer)      | want fail | FAILS | the last stage is FROM 'python:3.12-slim-bookworm@sha256:333333333333333333333333333333333
+pip      | runtime without the pip removal                                        | want fail | FAILS | runtime has 0 pip-removal RUNs, want exactly one `RUN python -m pip uninstall -y pip && rm
+pip      | pip removal before the libpq5 RUN                                      | want fail | FAILS | runtime's pip-removal RUN does not come after its libpq5 apt RUN (N10a)
+pip      | pip removal in the scratch stage, not runtime                          | want fail | FAILS | the last stage runs pip, ensurepip or get-pip: python -m pip uninstall -y pip  && rm /usr/
+pip      | uninstall without -y                                                   | want fail | FAILS | runtime has 0 pip-removal RUNs, want exactly one `RUN python -m pip uninstall -y pip && rm
+pip      | pip3 uninstall, not python -m pip                                      | want fail | FAILS | runtime has 0 pip-removal RUNs, want exactly one `RUN python -m pip uninstall -y pip && rm
+pip      | uninstall also removes setuptools                                      | want fail | FAILS | runtime has 0 pip-removal RUNs, want exactly one `RUN python -m pip uninstall -y pip && rm
+pip      | rm -f on the wheel                                                     | want fail | FAILS | runtime has 0 pip-removal RUNs, want exactly one `RUN python -m pip uninstall -y pip && rm
+pip      | rm -rf of the _bundled directory                                       | want fail | FAILS | runtime has 0 pip-removal RUNs, want exactly one `RUN python -m pip uninstall -y pip && rm
+pip      | ; instead of && (a missing pip passes)                                 | want fail | FAILS | runtime has 0 pip-removal RUNs, want exactly one `RUN python -m pip uninstall -y pip && rm
+pip      | || true after the removal                                              | want fail | FAILS | runtime has 0 pip-removal RUNs, want exactly one `RUN python -m pip uninstall -y pip && rm
+pip      | uninstall and rm in two RUNs                                           | want fail | FAILS | runtime has 0 pip-removal RUNs, want exactly one `RUN python -m pip uninstall -y pip && rm
+pip      | the wheel glob widened to pip*.whl                                     | want fail | FAILS | runtime has 0 pip-removal RUNs, want exactly one `RUN python -m pip uninstall -y pip && rm
+pip      | the wheel under python3.13, base 3.12                                  | want fail | FAILS | runtime removes the wheel under python3.13, but the base tag's CPython is 3.12
+pip      | no wheel removal                                                       | want fail | FAILS | runtime has 0 pip-removal RUNs, want exactly one `RUN python -m pip uninstall -y pip && rm
+pip      | last stage FROM runtime (its layers ship)                              | want fail | FAILS | the last stage is FROM 'runtime', not scratch: a delete in a stage FROM the base leaves pi
+pip      | last stage FROM the base                                               | want fail | FAILS | the last stage is FROM 'python:3.12-slim-bookworm@sha256:333333333333333333333333333333333
+pip      | COPY --from=runtime / / not first                                      | want fail | FAILS | the last stage does not start with `COPY --from=runtime / /` (N10a)
+pip      | COPY --from=builder / /                                                | want fail | FAILS | the last stage does not start with `COPY --from=runtime / /` (N10a)
+pip      | PATH extends $PATH (empty under scratch)                               | want fail | FAILS | the last stage's PATH must start /opt/venv/bin:, have /usr/local/bin and be spelled out (s
+pip      | PATH without /usr/local/bin                                            | want fail | FAILS | the last stage's PATH must start /opt/venv/bin:, have /usr/local/bin and be spelled out (s
+pip      | PATH with /usr/local/bin/ only as a prefix of another entry            | want fail | FAILS | the last stage's PATH must start /opt/venv/bin:, have /usr/local/bin and be spelled out (s
+pip      | PATH not starting /opt/venv/bin:                                       | want fail | FAILS | the last stage's PATH must start /opt/venv/bin:, have /usr/local/bin and be spelled out (s
+pip      | no LANG                                                                | want fail | FAILS | the last stage's LANG is None, want 'C.UTF-8' (the base's, N10a)
+pip      | LANG=C                                                                 | want fail | FAILS | the last stage's LANG is 'C', want 'C.UTF-8' (the base's, N10a)
+pip      | the scratch stage restores pip with ensurepip                          | want fail | FAILS | the last stage runs pip, ensurepip or get-pip: python -m ensurepip && useradd --no-create-
+pip      | two runtime stages                                                     | want fail | FAILS | app.Dockerfile has 2 stages `AS runtime`, want 1 (N10a)
+pip      | REPO app.Dockerfile (RED expected)                                     | want fail | FAILS
+         |   - the last stage is FROM 'python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258', not scratch: a delete in a stage FROM the base leaves pip in the base layer of the saved tar (N10a probe)
+         |   - the last stage does not start with `COPY --from=runtime / /` (N10a)
+         |   - the last stage's PATH must start /opt/venv/bin:, have /usr/local/bin and be spelled out (scratch has no $PATH; N10a): '/opt/venv/bin:$PATH'
+         |   - the last stage's LANG is None, want 'C.UTF-8' (the base's, N10a)
+         |   - app.Dockerfile has 0 stages `AS runtime`, want 1 (N10a)
+u0-run   | TARGET                                                                 | want pass | passes
+u0-run   | U0 shape (last stage FROM the base)                                    | want pass | passes
+u0-run   | N10a shape (runtime + FROM scratch, COPY --from=runtime / /)           | want pass | passes
+u0-run   | U0 shape with the pip removal in the last stage (PSC-25 allows it)     | want pass | passes
+u0-run   | N10a shape without the pip removal (this check allows it; U1's test ne | want pass | passes
+u0-run   | gcc in the last stage                                                  | want fail | FAILS | last stage: installs ['libpq5=${LIBPQ_VERSION}', 'gcc'], want exactly ['libpq5=${LIBPQ_VER
+u0-run   | flat: gcc in the last stage                                            | want fail | FAILS | shipped stage 'runtime': installs ['libpq5=${LIBPQ_VERSION}', 'gcc'], want exactly ['libpq
+u0-run   | libpq-dev in the last stage                                            | want fail | FAILS | last stage: installs ['libpq5=${LIBPQ_VERSION}', 'libpq-dev=${LIBPQ_VERSION}'], want exact
+u0-run   | flat: libpq-dev in the last stage                                      | want fail | FAILS | shipped stage 'runtime': installs ['libpq5=${LIBPQ_VERSION}', 'libpq-dev=${LIBPQ_VERSION}'
+u0-run   | unpinned libpq5                                                        | want fail | FAILS | last stage: installs ['libpq5'], want exactly ['libpq5=${LIBPQ_VERSION}']
+u0-run   | flat: unpinned libpq5                                                  | want fail | FAILS | shipped stage 'runtime': installs ['libpq5'], want exactly ['libpq5=${LIBPQ_VERSION}']
+u0-run   | make in a later RUN                                                    | want fail | FAILS | last stage: a RUN installs or removes ['apt-get purge -y make']; only the libpq5 apt RUN a
+u0-run   | flat: make in a later RUN                                              | want fail | FAILS | last stage (FROM scratch): a RUN installs or removes packages or files: apt-get purge -y m
+u0-run   | apt lists kept                                                         | want fail | FAILS | last stage: /var/lib/apt/lists/* not removed in the same RUN: apt-get update  && apt-get i
+u0-run   | flat: apt lists kept                                                   | want fail | FAILS | shipped stage 'runtime': /var/lib/apt/lists/* not removed in the same RUN: apt-get update 
+u0-run   | recommends allowed                                                     | want fail | FAILS | last stage: apt install without --no-install-recommends: apt-get update  && apt-get instal
+u0-run   | flat: recommends allowed                                               | want fail | FAILS | shipped stage 'runtime': apt install without --no-install-recommends: apt-get update  && a
+u0-run   | no ARG in the last stage                                               | want fail | FAILS | last stage: no `ARG LIBPQ_VERSION` (libpq5=${LIBPQ_VERSION} would be empty)
+u0-run   | flat: no ARG in the last stage                                         | want fail | FAILS | shipped stage 'runtime': no `ARG LIBPQ_VERSION` (libpq5=${LIBPQ_VERSION} would be empty)
+u0-run   | no libpq-dev in the builder                                            | want fail | FAILS | builder: no libpq-dev (got ['gcc', 'libc6-dev'])
+u0-run   | flat: no libpq-dev in the builder                                      | want fail | FAILS | builder: no libpq-dev (got ['gcc', 'libc6-dev'])
+u0-run   | flat: the libpq5 apt RUN moved to the scratch stage                    | want fail | FAILS | shipped stage 'runtime': 0 RUNs install apt packages, want exactly 1
+u0-run   | flat: the scratch stage copies / from builder                          | want fail | FAILS | the shipped stage is the builder
+u0-run   | flat: the scratch stage copies / from a stage that is not in the file  | want fail | FAILS | the last stage copies / from 'nosuch', which is not one stage of the file (N10a)
+u0-run   | flat: FROM scratch without COPY --from=runtime / / first               | want fail | FAILS | the last stage is FROM scratch but its first instruction is not `COPY --from=<stage> / /` 
+u0-run   | flat: no apt RUN in runtime                                            | want fail | FAILS | shipped stage 'runtime': 0 RUNs install apt packages, want exactly 1
+u0-run   | flat: runtime also purges a package                                    | want fail | FAILS | shipped stage 'runtime': a RUN installs or removes ['apt-get purge -y libsasl2-2']; only t
+u0-run   | flat: runtime pip-installs a package                                   | want fail | FAILS | shipped stage 'runtime': a RUN installs or removes ['pip install requests']; only the libp
+u0-run   | flat: the pip removal also uninstalls setuptools                       | want fail | FAILS | shipped stage 'runtime': a RUN installs or removes ['python -m pip uninstall -y pip setupt
+u0-run   | flat: runtime removes a directory                                      | want fail | FAILS | shipped stage 'runtime': a RUN installs or removes ['rm -rf /usr/local/lib/python3.12/site
+u0-run   | flat: the libpq5 RUN also purges a package                             | want fail | FAILS | shipped stage 'runtime': the libpq5 RUN also installs or removes ['apt-get purge -y libsas
+u0-run   | flat: the scratch stage removes files                                  | want fail | FAILS | last stage (FROM scratch): a RUN installs or removes packages or files: rm -f /etc/motd &&
+u0-run   | flat: the pip removal twice                                            | want fail | FAILS | shipped stage 'runtime': 2 pip-removal RUNs, want at most 1
+u0-run   | U0 shape: the last stage also removes a package                        | want fail | FAILS | last stage: a RUN installs or removes ['dpkg -r libsasl2-2']; only the libpq5 apt RUN and 
+u0-run   | REPO app.Dockerfile (green expected)                                   | want pass | passes
+d10      | TARGET                                                                 | want pass | passes
+d10      | D10 shape (last stage FROM the base)                                   | want pass | passes
+d10      | N10a shape (FROM scratch + COPY --from=runtime / /)                    | want pass | passes
+d10      | COPY --from=uv in the final stage                                      | want fail | FAILS | final stage: `COPY --from=uv /uv /usr/local/bin/uv` (D10: no uv)
+d10      | flat: COPY --from=uv in the final stage                                | want fail | FAILS | final stage: `COPY --from=uv /uv /usr/local/bin/uv` (D10: no uv)
+d10      | COPY from the uv image in the final stage                              | want fail | FAILS | final stage: `COPY --from=ghcr.io/astral-sh/uv:0.11.21 /uv /bin/uv` (D10: no uv)
+d10      | flat: COPY from the uv image in the final stage                        | want fail | FAILS | final stage: `COPY --from=ghcr.io/astral-sh/uv:0.11.21 /uv /bin/uv` (D10: no uv)
+d10      | uv command in a final RUN                                              | want fail | FAILS | final stage: `RUN uv --version && useradd --no-create-home --uid 10001 ke` names the uv bi
+d10      | flat: uv command in a final RUN                                        | want fail | FAILS | final stage: `RUN uv --version && useradd --no-create-home --uid 10001 ke` names the uv bi
+d10      | an extra COPY in the final stage                                       | want fail | FAILS | the final stage's only other COPYs are `COPY --from=builder /opt/venv /opt/venv` and `COPY
+d10      | flat: an extra COPY in the final stage                                 | want fail | FAILS | the final stage's only other COPYs are `COPY --from=builder /opt/venv /opt/venv` and `COPY
+d10      | COPY --chown on the venv                                               | want fail | FAILS | the final stage's only other COPYs are `COPY --from=builder /opt/venv /opt/venv` and `COPY
+d10      | flat: COPY --chown on the venv                                         | want fail | FAILS | the final stage's only other COPYs are `COPY --from=builder /opt/venv /opt/venv` and `COPY
+d10      | PATH without /opt/venv/bin first                                       | want fail | FAILS | the final stage's PATH starts with /opt/venv/bin: (got '/usr/bin:$PATH')
+d10      | flat: PATH without /opt/venv/bin first                                 | want fail | FAILS | the final stage's PATH starts with /opt/venv/bin: (got '/usr/bin:/usr/local/bin:/usr/sbin:
+d10      | UV_ variable in the final stage                                        | want fail | FAILS | the final stage sets a UV_* variable (D10: nothing reads them)
+d10      | flat: UV_ variable in the final stage                                  | want fail | FAILS | the final stage sets a UV_* variable (D10: nothing reads them)
+d10      | no PYTHONUNBUFFERED                                                    | want fail | FAILS | the final stage sets PYTHONUNBUFFERED=1 (got None)
+d10      | flat: no PYTHONUNBUFFERED                                              | want fail | FAILS | the final stage sets PYTHONUNBUFFERED=1 (got None)
+d10      | no WORKDIR /app                                                        | want fail | FAILS | the final stage has no `WORKDIR /app` (PSC-17)
+d10      | flat: no WORKDIR /app                                                  | want fail | FAILS | the final stage has no `WORKDIR /app` (PSC-17)
+d10      | user ke with another uid                                               | want fail | FAILS | the final stage does not create user ke with uid 10001
+d10      | flat: user ke with another uid                                         | want fail | FAILS | the final stage does not create user ke with uid 10001
+d10      | ends as root                                                           | want fail | FAILS | the final stage does not end as USER ke
+d10      | flat: ends as root                                                     | want fail | FAILS | the final stage does not end as USER ke
+d10      | CMD runs another module                                                | want fail | FAILS | the final stage's CMD is not ["python", "-m", "engine.api"] (got ['python', '-m', 'engine.
+d10      | flat: CMD runs another module                                          | want fail | FAILS | the final stage's CMD is not ["python", "-m", "engine.api"] (got ['python', '-m', 'engine.
+d10      | builder without --locked                                               | want fail | FAILS | the builder runs no `uv sync --locked --no-dev` (D10)
+d10      | flat: builder without --locked                                         | want fail | FAILS | the builder runs no `uv sync --locked --no-dev` (D10)
+d10      | two builder stages                                                     | want fail | FAILS | app.Dockerfile has 2 stages `AS builder`, want 1 (D10)
+d10      | flat: two builder stages                                               | want fail | FAILS | app.Dockerfile has 2 stages `AS builder`, want 1 (D10)
+d10      | the final FROM is another digest                                       | want fail | FAILS | the final FROM is not byte for byte the builder's (venv interpreter paths, D10)
+d10      | the final FROM is builder                                              | want fail | FAILS | the final FROM 'builder' is neither the pinned python:3.12-slim-bookworm@sha256 image nor 
+d10      | flat: the final FROM is runtime (its layers would ship)                | want fail | FAILS | the final FROM 'runtime' is neither the pinned python:3.12-slim-bookworm@sha256 image nor 
+d10      | flat: runtime FROM another digest                                      | want fail | FAILS | the runtime FROM is not byte for byte the builder's (venv interpreter paths, D10)
+d10      | flat: runtime FROM an unpinned base                                    | want fail | FAILS | the runtime FROM 'python:3.12-slim-bookworm' is not the pinned python:3.12-slim-bookworm@s
+d10      | flat: COPY --from=builder / / (uv and the compiler ship)               | want fail | FAILS | the last stage is FROM scratch: its first instruction, and its only copy of `/`, is `COPY 
+d10      | flat: COPY --from=runtime / / not first                                | want fail | FAILS | the last stage is FROM scratch: its first instruction, and its only copy of `/`, is `COPY 
+d10      | flat: COPY --from=runtime / / twice                                    | want fail | FAILS | the last stage is FROM scratch: its first instruction, and its only copy of `/`, is `COPY 
+d10      | flat: FROM scratch with no copy of /                                   | want fail | FAILS | the last stage is FROM scratch: its first instruction, and its only copy of `/`, is `COPY 
+d10      | flat: only part of runtime copied                                      | want fail | FAILS | the last stage is FROM scratch: its first instruction, and its only copy of `/`, is `COPY 
+d10      | flat: two runtime stages                                               | want fail | FAILS | app.Dockerfile has 2 stages `AS runtime`, want 1 (N10a)
+d10      | flat: runtime copies uv in                                             | want fail | FAILS | the runtime stage copies files in [('COPY', '--from=uv', '/uv', '/usr/local/bin/uv')]; its
+d10      | flat: runtime RUN uses uv                                              | want fail | FAILS | runtime stage: `RUN uv --version && python -m pip uninstall -y pip && rm /usr/local/lib/py
+d10      | flat: runtime copies a file in                                         | want fail | FAILS | the runtime stage copies files in [('COPY', 'config', '/config')]; its whole `/` ships, so
+d10      | REPO app.Dockerfile (green expected)                                   | want pass | passes
+digest   | TARGET                                                                 | want pass | passes
+digest   | digest-pinned base                                                     | want pass | passes
+digest   | a stage named earlier                                                  | want pass | passes
+digest   | scratch (U1 round 2, N10a)                                             | want pass | passes
+digest   | scratch with --platform                                                | want pass | passes
+digest   | tag only                                                               | want fail | FAILS | python:3.12-slim-bookworm
+digest   | short digest                                                           | want fail | FAILS | python:3.12-slim-bookworm@sha256:777777777777777777777777777777777777777777777777777777777
+digest   | scratch with a tag                                                     | want fail | FAILS | scratch:latest
+digest   | scratch from a registry                                                | want fail | FAILS | docker.io/library/scratch
+digest   | a name that starts scratch                                             | want fail | FAILS | scratchy
+digest   | Scratch, not the reserved word                                         | want fail | FAILS | Scratch
+digest   | busybox unpinned after a scratch stage                                 | want fail | FAILS | busybox
+digest   | unpinned base before a pinned one                                      | want fail | FAILS | alpine:3.20
+digest   | REPO app.Dockerfile (green expected)                                   | want pass | passes
+digest   | REPO gates.Dockerfile (green expected)                                 | want pass | passes
+digest   | REPO gateway.Dockerfile (green expected)                               | want pass | passes
+added    | repo shipped-stage apt names ['libpq5']; ADDED_PACKAGES ['libldap-2.5-0', 'libpq5', 'libsasl2-2', 'libsasl2-modules-db']
+controls base    : 55 must-fail + 4 must-pass
+controls libpq   : 7 must-fail + 1 must-pass
+controls pointer : 13 must-fail + 0 must-pass
+controls incorp  : 25 must-fail + 2 must-pass
+controls evidence: 5 must-fail + 1 must-pass
+controls pip     : 28 must-fail + 3 must-pass
+controls u0-run  : 29 must-fail + 4 must-pass
+controls d10     : 42 must-fail + 2 must-pass
+controls digest  : 8 must-fail + 4 must-pass
+controls: 212 must-fail + 21 must-pass = 233
+unexpected: 0
+---- reach: the round-2 targets spliced into scratch copies ----
+REACH note: the licence file is the target header plus a stand-in extract (the real extract is the maintainer's fetch)
+base     | REACH target                                                           | want pass | passes
+libpq    | REACH target                                                           | want pass | passes
+pointer  | REACH target                                                           | want pass | passes
+incorp   | REACH target                                                           | want pass | passes
+evidence | REACH target                                                           | want pass | passes
+pip      | REACH target                                                           | want pass | passes
+u0-run   | REACH target                                                           | want pass | passes
+u0-build | REACH target                                                           | want pass | passes
+u0-pin   | REACH target                                                           | want pass | passes
+u0-psyc  | REACH target                                                           | want pass | passes
+d10      | REACH target                                                           | want pass | passes
+digest   | REACH target                                                           | want pass | passes
+REACH static classes (NoticeKeAppBaseTest, KeAppNoPipStaticTest, PsycopgCStaticTest, AppImageTest): ran 16, failures 0, errors 0, skipped 0
+REACH smoke: SmokeNoPipTest: ran 3, failures 0, errors 0, skipped 0
+REACH smoke: SmokePsycopgTest: ran 5, failures 0, errors 0, skipped 0
+REACH smoke: test_stack_scripts SmokeResolvesWithoutEnvTest, SmokeBackendIsolatedTest, SmokeStoreStopStartTest: ran 17, failures 0, errors 0, skipped 0
+mutant   | S1 eval of the container output (M-1)                                  | want killed | killed (7 failing subtests)
+mutant   | S2 a second word ignored                                               | want killed | killed (1 failing subtests)
+mutant   | S3 no find_spec fallback                                               | want killed | killed (11 failing subtests)
+mutant   | S4 walks /usr/local/bin only                                           | want killed | killed (7 failing subtests)
+mutant   | S5 no dist-info/whl names                                              | want killed | killed (3 failing subtests)
+mutant   | S6 no `|| FAIL` on a failed exec                                       | want killed | killed (1 failing subtests)
+mutant   | S7 the venv python, not /usr/local/bin/python3                         | want killed | killed (2 failing subtests)
+mutant   | S8 walks /usr only (misses /opt)                                       | want killed | killed (3 failing subtests)
+mutant   | S9 a pip hit only warns                                                | want killed | killed (15 failing subtests)
+mutant   | S10 N10a's ${pip_hits:--} default restored (empty output read as clean | want killed | killed (1 failing subtests)
+unexpected (with reach): 0

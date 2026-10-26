@@ -1,0 +1,52 @@
+U1 round 2 architect probes, 2026-10-22. All runs --network none, label ke.scratch=u1r2.
+B=python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+
+$ docker run --rm --network none --label ke.scratch=u1r2 $B ls -la /usr/local/lib/python3.12/ensurepip/_bundled/
+total 1808
+drwxr-xr-x 2 root root    4096 Oct  6 02:04 .
+drwxr-xr-x 4 root root    4096 Oct  6 02:04 ..
+-rw-r--r-- 1 root root 1841526 Oct  6 02:04 pip-25.0.1-py3-none-any.whl
+
+$ docker run ... $B sh -c 'ls /usr/local/bin; ls -d site-packages/*; python -VV'
+pip -> pip3, pip3, pip3.12 in /usr/local/bin
+/usr/local/lib/python3.12/site-packages/README.txt
+/usr/local/lib/python3.12/site-packages/pip
+/usr/local/lib/python3.12/site-packages/pip-25.0.1.dist-info
+Python 3.12.15 (main, Oct  6 2026, 02:02:31) [GCC 12.2.0]
+
+$ docker run ... $B sh -c 'python -m pip uninstall -y pip; find / -xdev -iname "*pip*" ...; find_spec("pip")'
+Successfully uninstalled pip-25.0.1   (rc=0; pip prints its root-user WARNING)
+remaining: /usr/local/lib/python3.12/ensurepip  and  ensurepip/_bundled/pip-25.0.1-py3-none-any.whl
+find_spec("pip") -> None
+
+Layered delete (scratch image: FROM $B; RUN python -m pip uninstall -y pip && rm .../_bundled/pip-*.whl), docker save:
+  layer 86a9e13e035d...: 536 pip entries   (the base layer, still in the tar)
+  new layer: only whiteouts .wh.pip, .wh.pip3, .wh.pip3.12, .wh.pip-25.0.1-py3-none-any.whl, .wh.pip, .wh.pip-25.0.1.dist-info
+  tar 49,310,208 B
+
+Flattened (FROM $B AS runtime-root; RUN <same>; FROM scratch; COPY --from=runtime-root / /; ENV PATH, LANG), docker save:
+  one layer, 6209 entries, 0 pip entries; tar 43,718,656 B
+  base vs flat: setuid/setgid list md5 equal (0bc4d59f...), hardlinked files 4 = 4, dpkg -l 110 = 110,
+  files+links 5898 -> 5610 (pip gone); /tmp 1777, /var/tmp 1777, /usr/bin/su 4755
+  python -m ensurepip --version -> pip 25.0.1 (rc 0, constant only); python -m venv --with-pip -> rc 2
+
+Smoke `no pip` draft, run with /usr/local/bin/python3 -I:
+  flattened image: -
+  unmodified base: /usr/local/bin/pip,/usr/local/bin/pip3,/usr/local/bin/pip3.12,/usr/local/lib/python3.12/ensurepip/_bundled/pip-25.0.1-py3-none-any.whl,/usr/local/lib/python3.12/site-packages/pip,/usr/local/lib/python3.12/site-packages/pip-25.0.1.dist-info
+
+Base config (docker inspect $B): Env PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin,
+  LANG=C.UTF-8, GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305, PYTHON_VERSION=3.12.15,
+  PYTHON_SHA256=c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a; Cmd ["python3"]
+
+CPython Doc/license.rst probe fetch (network, HTTPS, TLS 1.2+, into an empty scratch dir; read as text only):
+$ curl -q --proto '=https' --tlsv1.2 --fail -sS -o license.rst https://raw.githubusercontent.com/python/cpython/v3.12.15/Doc/license.rst
+  54,130 B, sha256 341832873fd316a37927e79385093fbbfd40a467428480835fe435a80cadf4e5, UTF-8, LF, 1105 lines
+  heading "Licenses and Acknowledgements for Incorporated Software" at line 298 (once), "=" underline at 299
+  subsections: Mersenne Twister, Sockets, Asynchronous socket services, Cookie management, Execution tracing,
+  UUencode and UUdecode functions, XML Remote Procedure Calls, test_epoll, Select kqueue, SipHash24,
+  strtod and dtoa, OpenSSL, expat, libffi, zlib, cfuhash, libmpdec, W3C C14N test suite, Audioop, asyncio
+  "HACL" occurrences: 0
+$ sed -n '/^Licenses and Acknowledgements for Incorporated Software$/,$p' license.rst > extract.txt
+  808 lines, 38,036 B, sha256 d4f3b2147ce2d4b6a4671b208523669923778b9a3f609aab753c41d34540698a
+
+Scratch images ke-scratch:u1r2-layered and ke-scratch:u1r2-flat were removed after the probe.

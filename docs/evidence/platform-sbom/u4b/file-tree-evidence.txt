@@ -1,0 +1,14 @@
+U4b file-tree evidence (developer, 2026-10-23). Evidence, not a gate (ruling 3).
+official: neo4j:5-community@sha256:0a6e7aedf54a...db02b ; image: ke-neo4j:local (built from docker/neo4j.Dockerfile)
+Containers created (label ke.u4b.tmp=1), never started, removed.
+docker export | tar -tv: official 8028 entries, ke-neo4j 8025 entries.
+Compared by path: type, mode, uid/gid, size, link target.
+only in official: var/lib/neo4j/products/ ; var/lib/neo4j/products/neo4j-fleet-management-plugin-1.2.0-v5.jar ; var/lib/neo4j/products/neo4j-genai-plugin-5.26.32.jar
+only in ke-neo4j: (none)
+attribute differences on common paths: 0
+scripts/sbom_check.py tree --official off.exp.tar --image ke.exp.tar:
+sbom_check: tree: ok: ke-neo4j equals the official image minus /var/lib/neo4j/products
+
+Config comparison (OS/arch, ExposedPorts, Env, Entrypoint, Cmd, Volumes, WorkingDir, User, Healthcheck, StopSignal, OnBuild, Shell): IDENTICAL (diff empty). Labels excluded: ke-neo4j has only compose labels, official has none.
+Saved tar (docker save ke-neo4j:local): one layer blob with 8019 entries; grep -Ei 'products|fleet-management' over every layer: no match.
+Sizes: ke-neo4j:local 954MB on disk / 352MB content; official 961MB / 356MB. docker save tar: ke-neo4j 351918592 bytes, official 356012032 bytes (-4093440, -1.15%).

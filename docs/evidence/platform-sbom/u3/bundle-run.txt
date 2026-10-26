@@ -1,0 +1,21 @@
+ Container ke-u3bundle-sbom-sbom-run-62b6c6f61f52 Creating 
+ Container ke-u3bundle-sbom-sbom-run-62b6c6f61f52 Created 
+[0000]  WARN unable to get filesystem cache at /.cache/syft: unable to create directory at '/.cache/syft': mkdir /.cache: read-only file system
+ Container ke-u3bundle-sbom-sbom-run-9132dbd397b6 Creating 
+ Container ke-u3bundle-sbom-sbom-run-9132dbd397b6 Created 
+[0000]  WARN unable to get filesystem cache at /.cache/syft: unable to create directory at '/.cache/syft': mkdir /.cache: read-only file system
+ Container ke-u3bundle-sbom-sbom-run-c5c27e0f1341 Creating 
+ Container ke-u3bundle-sbom-sbom-run-c5c27e0f1341 Created 
+[0000]  WARN unable to get filesystem cache at /.cache/syft: unable to create directory at '/.cache/syft': mkdir /.cache: read-only file system
+ Container ke-u3bundle-sbom-sbom-run-853f2d5cd0e1 Creating 
+ Container ke-u3bundle-sbom-sbom-run-853f2d5cd0e1 Created 
+[0000]  WARN unable to get filesystem cache at /.cache/syft: unable to create directory at '/.cache/syft': mkdir /.cache: read-only file system
+ Container ke-u3bundle-sbom-sbom-run-e302cdfd7b0f Creating 
+ Container ke-u3bundle-sbom-sbom-run-e302cdfd7b0f Created 
+[0000]  WARN unable to get filesystem cache at /.cache/syft: unable to create directory at '/.cache/syft': mkdir /.cache: read-only file system
+ Container ke-u3bundle-sbom-sbom-run-45bdc697cf40 Creating 
+ Container ke-u3bundle-sbom-sbom-run-45bdc697cf40 Created 
+[0000]  WARN unable to get filesystem cache at /.cache/syft: unable to create directory at '/.cache/syft': mkdir /.cache: read-only file system
+bundle written: /c/repos/Knowledge-engine/dist/ke-u3bundle-amd64
+manifest sha256: 96f60ea2b6c9ab8eed3a9c00abf482638941861c6590a069164fd60c040f89b7
+release record: /c/repos/Knowledge-engine/dist/ke-u3bundle-amd64.manifest.sha256

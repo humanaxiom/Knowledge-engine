@@ -1,0 +1,28 @@
+# security U1 re-check 4 probes (2026-10-23). Scratch dir shown as <scratch>.
+## staged (git diff --cached --name-only)
+licenses/Apache-2.0.txt
+licenses/CPython-3.12-HACL.txt
+licenses/CPython-3.12-KaRaMeL.txt
+licenses/CPython-3.12-incorporated.txt
+tests/test_ke_app_no_pip.py
+tests/test_notice_ke_app.py
+## licence files: bytes, CR count, sha256
+licenses/Apache-2.0.txt 11358 CR=0 cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30
+licenses/BSD-3-Clause-valkey.txt 3091 CR=0 1a53dca3aab7ce048e91e77b03c0342f3075366f9dede8ec4d19d0cf229e12a0
+licenses/CPython-3.12-HACL.txt 1476 CR=0 d83382d7cac3377506f4901d6a145185c85e5504618a58d36c44da6372b4c483
+licenses/CPython-3.12-KaRaMeL.txt 421 CR=0 323002668cbbd5150617a717d89aa3e00acc128da7588260e470e8eefbab796d
+licenses/CPython-3.12-incorporated.txt 38342 CR=0 64ed663ac8008b5cc9bab026c551835bbbd473eeb0cef83097e9c2b8869d2653
+licenses/GPL-3.0.txt 35149 CR=0 3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986
+licenses/LGPL-3.0.txt 7652 CR=0 e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118
+## index blob = work tree
+licenses/Apache-2.0.txt idx=d645695673349e3947e8e5ae42332d0ac3164cd7 wt=d645695673349e3947e8e5ae42332d0ac3164cd7
+licenses/CPython-3.12-KaRaMeL.txt idx=ae1bd20e69c0072cd943be144936e32efff73f41 wt=ae1bd20e69c0072cd943be144936e32efff73f41
+## pinned base (label ke.scratch=sec-u1r4, --rm --network none --read-only)
+base-files: 12.4+deb12u15
+<scratch>/sec-r4-base-apache.txt 11358 cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30
+cmp base Apache-2.0 vs licenses/Apache-2.0.txt: EQUAL
+## KaRaMeL
+<scratch>/sec-r3-krml-extract.txt 116 6b7cb4bd5441f287eeb8b745073c11bc5d2974252bec3b6d8c101ff67f918a26
+cmp tail -n +6 vs re-check 3 extract: EQUAL
+cmp head -n 5 vs re-check 3 header text: EQUAL
+## leftover labelled containers: 0

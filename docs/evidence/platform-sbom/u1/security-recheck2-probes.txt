@@ -1,0 +1,93 @@
+platform-sbom U1 re-check 2: security image probes (2026-10-22 local)
+Images by ID (tags can move while the tester's A34 run builds): base 34386ef0cb08 (python:3.12-slim-bookworm@sha256:34386ef0...a07258),
+U0 f113aac6fa37 (ke-app:bundle-737750d06839, 259 MB), U1 2c662c94f624 (ke-app:wt-33a132fbfdd7 = ke-app:bundle-31bfed4b6a11, the GREEN full build, 238 MB).
+All runs: docker run --rm --network none --label ke.scratch=sec-u1r2 (plus --read-only except the -writable listing, where EROFS hides writability). 0 labelled containers left.
+
+== 1. docker save 2c662c94f624 (54,872,576 B, equals size.md) ==
+layers: U1 5 (RootFS), U0 9, base 4
+L1 entries=6246 top=bin boot dev etc home lib lib64 media mnt opt proc root run sbin srv sys tmp usr var 
+L2 entries=2854 top=opt 
+L3 entries=50 top=app 
+L4 entries=0 top=
+L5 entries=13 top=etc 
+regex '(^|/)(\.wh\.)?(pip(3(\.[0-9]+)?)?|pip-[^/]*\.(dist-info|whl))(/|$)' hits per layer: 0 0 0 0 0; '.wh.' entries: 0 0 0 0 0; '_vendor' entries: 0
+every entry containing 'pip' (case-insensitive, excluding __pycache__):
+  usr/lib/x86_64-linux-gnu/perl-base/IO/Pipe.pm
+  usr/local/lib/python3.12/ensurepip/
+  usr/local/lib/python3.12/ensurepip/__init__.py
+  usr/local/lib/python3.12/ensurepip/__main__.py
+  usr/local/lib/python3.12/ensurepip/_bundled/
+  usr/local/lib/python3.12/ensurepip/_uninstall.py
+  usr/local/lib/python3.12/pipes.py
+  usr/share/perl5/Debconf/DbDriver/Pipe.pm
+  opt/venv/lib/python3.12/site-packages/psycopg/_pipeline.py
+  opt/venv/lib/python3.12/site-packages/psycopg/_pipeline_async.py
+  opt/venv/lib/python3.12/site-packages/psycopg/_pipeline_base.py
+  opt/venv/lib/python3.12/site-packages/pydantic/experimental/pipeline.py
+*.whl entries: 0
+
+== 2. runtime pip (U1) ==
+  /usr/local/bin/python3: 3.12.15 /usr/local None
+  /opt/venv/bin/python: 3.12.15 /opt/venv None
+  _bundled: []
+  2to3
+  2to3-3.12
+  idle
+  idle3
+  idle3.12
+  pydoc
+  pydoc3
+  pydoc3.12
+  python
+  python-config
+  python3
+  python3-config
+  python3.12
+  python3.12-config
+  ensurepip version const: 25.0.1
+  pip 25.0.1
+  ensurepip rc=0
+  no pip on PATH
+  venv no-site: include-system-site-packages = false
+
+== 3. flattened image vs base / U0 (stdlib os.lstat walk of / -xdev, minus /proc /sys /dev, run as root) ==
+entries: base 6601, U0 9545, U1 9154; xattrs (incl. security.capability) on any non-link: 0 in all three
+U0 -> U1 diff: 547 entries only in U0, all pip (site-packages/pip, dist-info, /usr/local/bin/pip*, _bundled wheel); 156 only in U1, all /usr/local/lib/python3.12/**/__pycache__/*.pyc, 0644 0:0; no path changed mode, owner, link count or link target
+setuid/setgid (base = U0 = U1, md5 8c37af01fa4c):
+  2755 0:42 /usr/bin/chage
+  2755 0:42 /usr/bin/expiry
+  2755 0:42 /usr/sbin/unix_chkpwd
+  4755 0:0 /usr/bin/chfn
+  4755 0:0 /usr/bin/chsh
+  4755 0:0 /usr/bin/gpasswd
+  4755 0:0 /usr/bin/mount
+  4755 0:0 /usr/bin/newgrp
+  4755 0:0 /usr/bin/passwd
+  4755 0:0 /usr/bin/su
+  4755 0:0 /usr/bin/umount
+world-writable non-links (base = U1):
+  d 1777 0:0 /run/lock
+  d 1777 0:0 /tmp
+  d 1777 0:0 /var/tmp
+group-writable non-links: base 12 = U1 12 (identical list)
+hardlinked files: base 4 = U1 4 (identical)
+paths writable by the image's default user (no --read-only):
+  uid=10001(ke) gid=10001(ke) groups=10001(ke)
+  /run/lock
+  /tmp
+  /var/lock
+  /var/tmp
+  (U0 identical)
+
+== 4. dpkg-query -W (status, package:arch, version) ==
+base 105, U0 109, U1 109; U0 == U1 (md5 75340a949238). base -> U1 adds:
+  > ii  libldap-2.5-0:amd64 2.5.13+dfsg-5
+  > ii  libpq5:amd64 15.19-0+deb12u1
+  > ii  libsasl2-2:amd64 2.1.28+dfsg-10
+  > ii  libsasl2-modules-db:amd64 2.1.28+dfsg-10
+
+== 5. image config ==
+U0: {"User":"ke","Env":["PATH=/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin","LANG=C.UTF-8","GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305","PYTHON_VERSION=3.12.15","PYTHON_SHA256=c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a","PYTHONUNBUFFERED=1"],"Cmd":["python","-m","engine.api"],"WorkingDir":"/app","Labels":{"com.docker.compose.project":"ke-verify-3036217311","com.docker.compose.service":"api","com.docker.compose.version":"5.1.4"},"ArgsEscaped":true}
+U1: {"User":"ke","Env":["PATH=/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin","LANG=C.UTF-8","PYTHONUNBUFFERED=1"],"Cmd":["python","-m","engine.api"],"WorkingDir":"/app","Labels":{"com.docker.compose.project":"ke-verify-2955418178","com.docker.compose.service":"api","com.docker.compose.version":"5.1.4"},"ArgsEscaped":true}
+Os/Arch both linux/amd64
+repo readers of GPG_KEY / PYTHON_VERSION / PYTHON_SHA256 outside docs/: only the app.Dockerfile comment

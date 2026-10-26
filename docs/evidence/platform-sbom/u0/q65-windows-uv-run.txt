@@ -1,0 +1,18 @@
+$ HARNESS_TRACING=off uv run --locked python -m harness_telemetry.log_event --help   (Windows host, Git Bash, 2026-10-23, U0 tree)
+                    --plan-item PLAN_ITEM --action ACTION --gate GATE
+                    [--evidence EVIDENCE] [--log LOG] [--project PROJECT]
+
+Append one line to ``docs/log.md`` and emit the same event as a Phoenix trace.
+
+options:
+  -h, --help            show this help message and exit
+  --role {orchestrator,analyst,architect,developer,tester,reviewer,security,documenter,marketer}
+  --plan-item PLAN_ITEM
+                        plan-item slug
+  --action ACTION
+  --gate GATE           e.g. "tdd: pass", "review: changes requested"
+  --evidence EVIDENCE   path under docs/evidence/<plan-item-slug>/
+  --log LOG
+  --project PROJECT     Phoenix project name
+note: the first `usage:` line of the --help output is missing; it was truncated in capture.
+exit code: 0

@@ -1,0 +1,64 @@
+# The source lock's resolver (platform-sbom U7b; PSC-15, PSC-23; design-notes
+# N5 and its U7 amendment, item 3). Standalone and never bundled; only the
+# maintainer tool scripts/sources_lock.sh starts it, never verify or CI:
+#   KE_SOURCES_IN=<work>/in KE_SOURCES_OUT=<work>/out KE_SOURCES_USER=<uid:gid>
+#   docker compose -p ke-sources-<random> --env-file .env.example
+#     -f docker-compose.sources.yml run --rm --pull never sources-resolve
+#     --arch <arch> [--refresh]
+# No top-level name: the run's -p wins. U8 adds `sources-fetch` here.
+#
+# sources-resolve runs scripts/sources_resolve.py (stdlib, python3 -I) in the
+# gates image. Its one route out is the project's default bridge (no other
+# network, no published port). Read-only root with /tmp as tmpfs, no
+# capabilities, no socket, the caller's uid:gid. It reads needs.json and a
+# copy of the lock (/in), the policy and uv.lock, all read-only; its one
+# writable mount is /out, where it writes lock.new.json. The environment is
+# literals only: no KE_* key, no model key, no token (PSC-6, PSC-23).
+services:
+  sources-resolve:
+    image: ke-gates:${KE_IMAGE_TAG:-local}
+    pull_policy: never
+    user: ${KE_SOURCES_USER:?set by scripts/sources_lock.sh}
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    entrypoint:
+      - python3
+      - -I
+      - /opt/ke/sources_resolve.py
+      - --needs
+      - /in/needs.json
+      - --lock
+      - /in/sources.lock.json
+      - --policy
+      - /opt/ke/source-policy.json
+      - --uv-lock
+      - /opt/ke/uv.lock
+      - --out
+      - /out
+    volumes:
+      - type: bind
+        source: ./scripts/sources_resolve.py
+        target: /opt/ke/sources_resolve.py
+        read_only: true
+      - type: bind
+        source: ./docker/source-policy.json
+        target: /opt/ke/source-policy.json
+        read_only: true
+      - type: bind
+        source: ./uv.lock
+        target: /opt/ke/uv.lock
+        read_only: true
+      - type: bind
+        source: ${KE_SOURCES_IN:?set by scripts/sources_lock.sh}
+        target: /in
+        read_only: true
+      - type: bind
+        source: ${KE_SOURCES_OUT:?set by scripts/sources_lock.sh}
+        target: /out
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"

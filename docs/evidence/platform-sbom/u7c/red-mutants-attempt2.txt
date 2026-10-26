@@ -1,0 +1,71 @@
+# platform-sbom U7c RED: controls/mutants (full output)
+# command: COMPOSE_PROJECT_NAME=ke-tester-u7c COMPOSE_FILE=docker-compose.yml docker compose --env-file .env.example --profile gates run --rm gates uv run --locked python docs/evidence/platform-sbom/u7c/u7c_controls.py
+# 2026-10-25, tester, gates image ke-gates:local; targets u7c/target-*; baseline the saved u7b/r1-target-* (= 6d8fa4d); exit 0
+
+ Container ke-tester-u7c-gates-run-1e1c6a62e7d6 Creating 
+ Container ke-tester-u7c-gates-run-1e1c6a62e7d6 Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.70ms
+Installed 1 package in 1ms
+ok  [target] TARGET: the 18 U7c tests                                               must pass | no problem
+ok  [target] TARGET: the 43 U7b and rework-1 tests                                  must pass | no problem
+ok  [target] TARGET: 15 U7a lock tests                                              must pass | no problem
+ok  [u7b] U7b (saved r1 targets): U7cDebRouteTest.test_dsc_forms                 must fail | test_dsc_forms: + [] : a deb key was skipped (U7c: deb has a route)
+ok  [u7b] U7b (saved r1 targets): U7cDebRouteTest.test_failures                  must fail | test_failures: AssertionError: ResolveError not raised
+ok  [u7b] U7b (saved r1 targets): U7cDebRouteTest.test_parse_dsc                 must fail | test_parse_dsc: AssertionError: scripts/sources_resolve.py has no parse_dsc (U7b interface, tests/test_sources
+ok  [u7b] U7b (saved r1 targets): U7cDebRouteTest.test_the_entry                 must fail | test_the_entry: + [] : a deb key was skipped (U7c: deb has a route)
+ok  [u7b] U7b (saved r1 targets): U7cApkRouteTest.test_failures                  must fail | test_failures: AssertionError: ResolveError not raised
+ok  [u7b] U7b (saved r1 targets): U7cApkRouteTest.test_the_entry                 must fail | test_the_entry: + [] : an apk key was skipped (U7c: apk has a route)
+ok  [u7b] U7b (saved r1 targets): U7cCoverageTest.test_the_fixture_keys          must fail | test_the_fixture_keys: Diff is 5060 characters long. Set self.maxDiff to None to see it.
+ok  [u7b] U7b (saved r1 targets): U7cCarriedTest.test_a_server_supplied_url_gets_the_hop_rules must fail | test_a_server_supplied_url_gets_the_hop_rules: AssertionError: ResolveError not raised
+ok  [u7b] U7b (saved r1 targets): U7cCarriedTest.test_pgdg_is_skipped_until_q71  must fail | test_pgdg_is_skipped_until_q71: AssertionError: 'sources_resolve: skip: pgdg:postgresql-common@293.pgdg12+1 (n
+ok  [u7b] U7b (saved r1 targets): U7cCarriedTest.test_snapshot_pause             must fail | test_snapshot_pause: AssertionError: None != 1.0 : D7: 1 s between snapshot requests
+ok  [u7b] U7b (saved r1 targets): U7cCarriedTest.test_the_real_opener_reads_with_read1 must fail | test_the_real_opener_reads_with_read1: AssertionError: read(n) loops over recv until n bytes: use read1 (secur
+ok  [u7b] U7b (saved r1 targets): U7cLockNeedsTest.test_problems                 must fail | test_problems: TypeError: lock_needs_doc() takes 3 positional arguments but 4 were given
+ok  [u7b] U7b (saved r1 targets): U7cLockNeedsTest.test_the_apk_route            must fail | test_the_apk_route: TypeError: lock_needs_doc() takes 3 positional arguments but 4 were given
+ok  [u7b] U7b (saved r1 targets): U7cLockNeedsTest.test_the_cli_reads_the_tar    must fail | test_the_cli_reads_the_tar: KeyError: 'commit'
+ok  [u7b] U7b (saved r1 targets): U7cLockScriptRunTest.test_lock_needs_gets_every_tar must fail | test_lock_needs_gets_every_tar: +  'valkey=/tars/valkey.tar'] : A1: --tar for every image
+ok  [u7b] U7b (saved r1 targets): U7cLockScriptRunTest.test_the_six_equal_the_bundled_names (guard) must pass | no problem
+ok  [u7b] U7b (saved r1 targets): LockNeedsTest.test_lock_needs_doc_on_the_fixtures must fail | test_lock_needs_doc_on_the_fixtures: TypeError: lock_needs_doc() takes 3 positional arguments but 4 were given
+ok  [u7b] U7b (saved r1 targets): LockNeedsTest.test_release_from_the_saved_tar  must fail | test_release_from_the_saved_tar: KeyError: 'commit'
+ok  [mutant] deb: the listed files streamed -> test_the_entry                       must fail | test_the_entry: ke_sources_resolve_under_test_04fc7fb99cc2.ResolveError: deb:bash@5.2.15-2: snapshot.debian.or
+ok  [mutant] deb: the .dsc sha1 not compared -> test_failures                       must fail | test_failures: AssertionError: ResolveError not raised
+ok  [mutant] deb: Source/Version not checked -> test_failures                       must fail | test_failures: AssertionError: ResolveError not raised
+ok  [mutant] deb: sizes not compared -> test_failures                               must fail | test_failures: AssertionError: ResolveError not raised
+ok  [mutant] deb: Checksums-Sha1 not compared -> test_failures                      must fail | test_failures: AssertionError: ResolveError not raised
+ok  [mutant] deb: the name rule dropped -> test_failures                            must fail | test_failures: AssertionError: ResolveError not raised
+ok  [mutant] deb: a listed file absent from srcfiles accepted -> test_failures      must fail | test_failures: + deb:bash@5.2.15-2: bash_5.2.15-2.debian.tar.xz is in the .dsc but not in snapshot's srcfiles
+ok  [mutant] deb: two sha1s for a name accepted -> test_failures                    must fail | test_failures: + deb:bash@5.2.15-2: two files named bash_5.2.15.orig.tar.xz in snapshot's srcfiles
+ok  [mutant] deb: fileinfo keys not checked as 40 hex -> test_failures              must fail | test_failures: + deb:bash@5.2.15-2: snapshot.debian.org srcfiles is not the expected JSON
+ok  [mutant] deb: the .dsc cap dropped -> test_failures                             must fail | test_failures: AssertionError: ResolveError not raised
+ok  [mutant] deb: dash-escapes kept -> test_parse_dsc                               must fail | test_parse_dsc: KeyError: 'Source'
+ok  [mutant] deb: the signature kept -> test_parse_dsc                              must fail | test_parse_dsc: AssertionError: 'Comment' unexpectedly found in {'Format': '3.0 (quilt)', 'Source': 'bash', 'B
+ok  [mutant] deb: the epoch kept in the .dsc name -> test_dsc_forms                 must fail | test_dsc_forms: ke_sources_resolve_under_test_5b5d2f44fc96.ResolveError: deb:attr@1:2.5.1-4: snapshot.debian.o
+ok  [mutant] deb: the .dsc upstream from is item 4's old text -> test_the_entry     must fail | test_the_entry: Diff is 1720 characters long. Set self.maxDiff to None to see it.
+ok  [mutant] deb: no pause -> test_snapshot_pause                                   must fail | test_snapshot_pause: AssertionError: False is not true : snapshot requests not spaced by SNAPSHOT_PAUSE: [9.92
+ok  [mutant] deb: the pause 0.5 s -> test_snapshot_pause                            must fail | test_snapshot_pause: AssertionError: 0.5 != 1.0 : D7: 1 s between snapshot requests
+ok  [mutant] deb: the route dropped (skipped) -> test_the_fixture_keys              must fail | test_the_fixture_keys: Diff is 4520 characters long. Set self.maxDiff to None to see it.
+ok  [mutant] apk: both repos not detected -> test_failures                          must fail | test_failures: AssertionError: ResolveError not raised
+ok  [mutant] apk: x-next-page ignored -> test_failures                              must fail | test_failures: AssertionError: ResolveError not raised
+ok  [mutant] apk: content_sha256 not compared -> test_failures                      must fail | test_failures: AssertionError: ResolveError not raised
+ok  [mutant] apk: pkgver/pkgrel not compared -> test_failures                       must fail | test_failures: AssertionError: ResolveError not raised
+ok  [mutant] apk: sha512 not compared -> test_failures                              must fail | test_failures: AssertionError: ResolveError not raised
+ok  [mutant] apk: a sha512sums `$` accepted -> test_failures                        must fail | test_failures: ?                                                                                              
+ok  [mutant] apk: an unsafe sha512sums name accepted -> test_failures               must fail | test_failures: + apk:readline@8.2.13-r1: ../evil.tar.gz: not a safe file name
+ok  [mutant] apk: a bad route accepted -> test_failures                             must fail | test_failures: -  'https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/tree?path=communi
+ok  [mutant] apk: every file from GitLab raw (distfiles never used) -> test_the_entry must fail | test_the_entry: ke_sources_resolve_under_test_fec4a78513c8.ResolveError: apk:readline@8.2.13-r1: gitlab.alpine
+ok  [mutant] C1: a server-supplied url keeps the first-request exemption -> test_a_server_supplied_url_gets_the_hop_rules must fail | test_a_server_supplied_url_gets_the_hop_rules: AssertionError: ResolveError not raised
+ok  [mutant] C2: read(CHUNK) in the real opener -> test_the_real_opener_reads_with_read1 must fail | test_the_real_opener_reads_with_read1: AssertionError: read(n) loops over recv until n bytes: use read1 (secur
+ok  [mutant] pgdg: the old skip text -> test_pgdg_is_skipped_until_q71              must fail | test_pgdg_is_skipped_until_q71: AssertionError: 'sources_resolve: skip: pgdg:postgresql-common@293.pgdg12+1 (n
+ok  [mutant] lock-needs: the origin not compared -> test_problems                   must fail | test_problems: AssertionError: 'apk:readline@8.2.13-r1: valkey: readline-static 8.2.13-r1 has no installed-db 
+ok  [mutant] lock-needs: the commit not checked as 40 hex -> test_problems          must fail | test_problems: AssertionError: 'apk:readline@8.2.13-r1: valkey: readline-static 8.2.13-r1 has no installed-db 
+ok  [mutant] lock-needs: two commits accepted -> test_problems                      must fail | test_problems: AssertionError: 'apk:readline@8.2.13-r1: two aports commits 6f795764e13fac00cb7efa46632fc78a9d3
+ok  [mutant] lock-needs: alpine-release not compared with the purl -> test_problems must fail | test_problems: AssertionError: 'apk:readline@8.2.13-r1: valkey: alpine-release 3.24.2, purl distro alpine-3.23
+ok  [mutant] lock-needs: the bottom layer's db wins -> test_the_cli_reads_the_tar   must fail | test_the_cli_reads_the_tar: sbom_check: lock-needs: apk:readline@8.2.13-r1: two aports commits 6f795764e13fac0
+ok  [mutant] lock-needs: the db read with no 16 MiB limit -> test_the_cli_reads_the_tar must fail | test_the_cli_reads_the_tar: AssertionError: 0 != 1 :
+ok  [mutant] lock-needs: the release file not fail-closed -> test_the_cli_reads_the_tar must fail | test_the_cli_reads_the_tar: AssertionError: 0 != 1 :
+ok  [mutant] script: --tar for ke-neo4j only -> test_lock_needs_gets_every_tar      must fail | test_lock_needs_gets_every_tar: sources_lock: FAIL (needs: sbom_check.py lock-needs failed; the lock is unchan
+ok  [mutant] script: a seventh name in six -> test_the_six_equal_the_bundled_names  must fail | test_the_six_equal_the_bundled_names: 'redis' : R-2 (c): the six=(...) guard in scripts/sources_lock.sh and th
+
+U7c controls (targets): 59 rows, 55 must-fail, 4 must-pass, 0 unexpected

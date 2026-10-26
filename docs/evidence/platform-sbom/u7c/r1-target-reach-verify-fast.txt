@@ -1,0 +1,1598 @@
+ Image ke-gates:wt-33a132fbfdd7 Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 536B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from gates.Dockerfile
+#2 transferring dockerfile: 7.34kB done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#3 ...
+
+#4 [internal] load metadata for docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#4 DONE 0.5s
+
+#3 [internal] load metadata for ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#3 DONE 0.6s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 97B done
+#5 DONE 0.0s
+
+#6 [stage-1  1/13] FROM docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+#6 resolve docker.io/library/python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258 0.0s done
+#6 DONE 0.0s
+
+#7 [uv 1/1] FROM ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#7 resolve ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946 0.0s done
+#7 DONE 0.0s
+
+#8 [internal] load build context
+#8 transferring context: 2.37kB done
+#8 DONE 0.0s
+
+#9 [stage-1  5/13] RUN set -eu;     curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL -o /tmp/psa.nupkg       "https://www.powershellgallery.com/api/v2/package/PSScriptAnalyzer/1.25.0";     echo "e7fb573262e604bab29914ae62921d24b97c2f88b519b41277b403ef6ce163f14b7d1b36dc73449a68e5ae5a8d9502891b10c264131fd1813adf29bf131c1663  /tmp/psa.nupkg" | sha512sum -c -;     dir="/usr/local/share/powershell/Modules/PSScriptAnalyzer/1.25.0";     python3 -I -m zipfile -e /tmp/psa.nupkg "/usr/local/share/powershell/Modules/PSScriptAnalyzer/1.25.0";     rm -rf "$dir/_rels" "$dir/package" "$dir/[Content_Types].xml" "$dir/PSScriptAnalyzer.nuspec" "$dir/.signature.p7s" /tmp/psa.nupkg;     pwsh -NoProfile -NonInteractive -Command "Import-Module PSScriptAnalyzer -ErrorAction Stop"
+#9 CACHED
+
+#10 [stage-1  6/13] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x86_64; sha="c158ecc55adb3afb01bbd3539ed3b997d20c26dbdc418080506cc1bf5243ff57" ;;       arm64) arch=aarch64; sha="3e93cc6d1a686456a3b18eefdde26467a837a7a2b257af22e27cba1dbc1b2018" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker.tgz       "https://download.docker.com/linux/static/stable/$arch/docker-29.9.1.tgz";     echo "$sha  /tmp/docker.tgz" | sha256sum -c -;     tar -xzf /tmp/docker.tgz -C /usr/local/bin --strip-components=1       --no-same-owner docker/docker;     rm /tmp/docker.tgz
+#10 CACHED
+
+#11 [stage-1  2/13] COPY --from=uv /uv /usr/local/bin/uv
+#11 CACHED
+
+#12 [stage-1 12/13] COPY config ./config
+#12 CACHED
+
+#13 [stage-1  3/13] RUN apt-get update  && apt-get install -y --no-install-recommends git jq ca-certificates curl       shellcheck=0.9.0-1 libicu72 libssl3 zlib1g       gcc libc6-dev libpq-dev=15.19-0+deb12u1  && rm -rf /var/lib/apt/lists/*  && git config --system --add safe.directory /work  && git config --system core.autocrlf true
+#13 CACHED
+
+#14 [stage-1 10/13] COPY harness_telemetry ./harness_telemetry
+#14 CACHED
+
+#15 [stage-1  7/13] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x86_64; sha="40343e21ca777173e69cff5dbafeb37c6f81f3b0d57d9e597f036e95eb63e76a" ;;       arm64) arch=aarch64; sha="733ec76717ceb59052a9609b9dadfb523b2df8eab57a54212872d10a58078ea2" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose       "https://github.com/docker/compose/releases/download/v5.6.0/docker-compose-linux-$arch";     echo "$sha  /tmp/docker-compose" | sha256sum -c -;     mkdir -p /usr/local/lib/docker/cli-plugins;     install -m 0755 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose;     rm /tmp/docker-compose
+#15 CACHED
+
+#16 [stage-1  8/13] WORKDIR /work
+#16 CACHED
+
+#17 [stage-1 11/13] COPY engine ./engine
+#17 CACHED
+
+#18 [stage-1  9/13] COPY pyproject.toml uv.lock ./
+#18 CACHED
+
+#19 [stage-1  4/13] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x64; sha="3fc5e1567c450bd7bd5ae69ebb0a9a4a4e0418bbc36b0232cf6dd547f0bfc0eb" ;;       arm64) arch=arm64; sha="d0c216cec4c6c866fc15a105f039740228b53206f8576d2ed0bcd656a35ed6f6" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     tarball="powershell-7.4.21-linux-${arch}.tar.gz";     curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball"       "https://github.com/PowerShell/PowerShell/releases/download/v7.4.21/$tarball";     echo "$sha  /tmp/$tarball" | sha256sum -c -;     mkdir -p /opt/microsoft/powershell;     tar -xzf "/tmp/$tarball" -C /opt/microsoft/powershell;     chmod +x /opt/microsoft/powershell/pwsh;     ln -s /opt/microsoft/powershell/pwsh /usr/local/bin/pwsh;     rm "/tmp/$tarball"
+#19 CACHED
+
+#20 [stage-1 13/13] RUN uv sync --locked --group pq-build --no-install-project  && uv sync --locked --group pq-build --group pq-c --no-binary-package psycopg-c --no-install-project  && uv sync --locked --group pq-build --group pq-c --no-binary-package psycopg-c  && chown -R 10001:10001 /opt/venv /opt/uv-cache
+#20 CACHED
+
+#21 exporting to image
+#21 exporting layers done
+#21 exporting manifest sha256:4a54d5e5cfa1301ec03800d0c33a00f399ade4c976f888af3797218d4d87ecfa done
+#21 exporting config sha256:accf9f4678e26b977b694f159dd8369c4fe74b7257bcbdb3bc85cb435e147cb7 done
+#21 exporting attestation manifest sha256:3b8107dec22e601e30b7b59d00e7d8300c0c8a1c214c4b09a48041b621cafd40 0.0s done
+#21 exporting manifest list sha256:829d39f95ddf27c2eb634d4a50f78854ac928e23bb131942659d7851ef2382b5 done
+#21 naming to docker.io/library/ke-gates:wt-33a132fbfdd7
+#21 naming to docker.io/library/ke-gates:wt-33a132fbfdd7 done
+#21 unpacking to docker.io/library/ke-gates:wt-33a132fbfdd7 done
+#21 DONE 0.1s
+
+#22 resolving provenance for metadata file
+#22 DONE 0.0s
+ Image ke-gates:wt-33a132fbfdd7 Built 
+ Container ke-tester-u7cr1-gates-run-b3e8dc14db70 Creating 
+ Container ke-tester-u7cr1-gates-run-b3e8dc14db70 Created 
+== verify fast: 6d8fa4d+dirty ==
+lint: shellcheck on 20 files
+lint: PSScriptAnalyzer on 4 files
+
+lint: PASS
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.66ms
+Installed 1 package in 1ms
+resources: phase=start nproc=24 cpu_max_quota=max cpu_max_period=100000 cg_cpu_usage_us=3353643 cg_cpu_throttled_us=0 mem_total_kib=32583712 mem_available_kib=26685368 swap_total_kib=8388608 swap_free_kib=4643300 cg_mem_max=max cg_mem_peak=109809664 psi_cpu_some_us=10514790982 psi_memory_some_us=427336322 psi_memory_full_us=403317687 psi_io_some_us=1160341118 psi_io_full_us=1085267821 cpu_steal_ticks=0 cpu_total_ticks=3002482344
+test_backslash_forms_deny_push_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_forms_deny_push_off_main) ... ok
+test_backslash_newline_after_comment_or_even_run_denies_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_off_main) ... ok
+test_backslash_newline_after_comment_or_even_run_denies_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_after_comment_or_even_run_denies_on_main) ... ok
+test_backslash_newline_joins_to_nothing_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_joins_to_nothing_off_main) ... ok
+test_backslash_newline_joins_to_nothing_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_backslash_newline_joins_to_nothing_on_main) ... ok
+test_carriage_return_denies_as_without_it_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_carriage_return_denies_as_without_it_off_main) ... ok
+test_carriage_return_denies_as_without_it_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_carriage_return_denies_as_without_it_on_main) ... ok
+test_carriage_return_stays_silent_as_without_it (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_carriage_return_stays_silent_as_without_it) ... ok
+test_comment_or_even_run_then_continued_push_denies_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_comment_or_even_run_then_continued_push_denies_off_main) ... ok
+test_comment_then_continued_commit_denies_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_comment_then_continued_commit_denies_on_main) ... ok
+test_denies_commit_and_push_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_commit_and_push_on_main) ... ok
+test_denies_commit_creating_commands_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_commit_creating_commands_on_main) ... ok
+test_denies_git_first_word_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_git_first_word_on_main) ... ok
+test_denies_nested_git_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_nested_git_on_main) ... ok
+test_denies_nested_push_to_main_or_force_from_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_nested_push_to_main_or_force_from_plan_item_branch) ... ok
+test_denies_on_master (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_on_master) ... ok
+test_denies_push_on_master (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_on_master) ... ok
+test_denies_push_refspec_forms_from_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_refspec_forms_from_plan_item_branch) ... ok
+test_denies_push_to_main_or_force_push_from_any_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_to_main_or_force_push_from_any_branch) ... ok
+test_denies_push_with_c_global_option_from_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_denies_push_with_c_global_option_from_plan_item_branch) ... ok
+test_description_with_forged_command_key_is_not_judged (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_description_with_forged_command_key_is_not_judged) ... ok
+test_escaped_quote_does_not_hide_following_push (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_escaped_quote_does_not_hide_following_push) ... ok
+test_five_megabyte_command_without_backslash_newline_is_one_pass (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_five_megabyte_command_without_backslash_newline_is_one_pass) ... ok
+test_grep_for_a_verb_on_main_is_accepted_false_positive (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_grep_for_a_verb_on_main_is_accepted_false_positive) ... ok
+test_json_without_command_field_is_silent (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_json_without_command_field_is_silent) ... ok
+test_judges_only_the_command_field (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_judges_only_the_command_field) ... ok
+test_long_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_long_command_finishes_quickly) ... ok
+test_multiline_without_backslash_newline_unchanged (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_multiline_without_backslash_newline_unchanged) ... ok
+test_one_line_mentions_are_accepted_false_positives_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_line_mentions_are_accepted_false_positives_off_main) ... ok
+test_one_megabyte_command_finishes_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_command_finishes_quickly) ... ok
+test_one_megabyte_token_shapes_finish_quickly (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_one_megabyte_token_shapes_finish_quickly) ... ok
+test_only_first_command_value_is_judged (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_only_first_command_value_is_judged) ... ok
+test_payload_helper_is_compact_claude_code_shape (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_payload_helper_is_compact_claude_code_shape) ... ok
+test_prefixed_push_to_main_denied_off_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_prefixed_push_to_main_denied_off_main) ... ok
+test_real_continuation_of_plan_item_push_stays_silent (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_real_continuation_of_plan_item_push_stays_silent) ... ok
+test_second_text_built_and_judged_only_with_backslash_newline (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_second_text_built_and_judged_only_with_backslash_newline) ... ok
+test_shell_wrapped_commit_denied_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_shell_wrapped_commit_denied_on_main) ... ok
+test_silent_for_claude_code_heredoc_commit_on_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_claude_code_heredoc_commit_on_plan_item_branch) ... ok
+test_silent_for_everyday_commands_on_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_everyday_commands_on_plan_item_branch) ... ok
+test_silent_for_non_git_command (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_non_git_command) ... ok
+test_silent_for_plain_push_of_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_plain_push_of_plan_item_branch) ... ok
+test_silent_for_text_that_only_mentions_push_on_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_for_text_that_only_mentions_push_on_plan_item_branch) ... ok
+test_silent_on_plan_item_branch (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_silent_on_plan_item_branch) ... ok
+test_split_or_cased_git_word_denied_on_main (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_split_or_cased_git_word_denied_on_main) ... ok
+test_trace_count_independent_of_caller_ps4 (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_trace_count_independent_of_caller_ps4) ... ok
+test_works_without_jq_on_raw_input (tests.test_block_main_commit_hook.BlockMainCommitHookTest.test_works_without_jq_on_raw_input) ... ok
+test_busy_child_counts_about_its_wall_time (tests.test_block_main_commit_hook.ChildCpuHelperTest.test_busy_child_counts_about_its_wall_time) ... ok
+test_busy_grandchild_is_counted (tests.test_block_main_commit_hook.ChildCpuHelperTest.test_busy_grandchild_is_counted) ... ok
+test_hang_guard_is_a_60_s_timeout (tests.test_block_main_commit_hook.ChildCpuHelperTest.test_hang_guard_is_a_60_s_timeout) ... ok
+test_sleeping_child_counts_under_half_a_second (tests.test_block_main_commit_hook.ChildCpuHelperTest.test_sleeping_child_counts_under_half_a_second) ... ok
+test_gates_image_installs_jq (tests.test_block_main_commit_hook.GatesImageJqTest.test_gates_image_installs_jq) ... ok
+test_header_says_q18_skipped_and_hook_is_only_automated_guard (tests.test_block_main_commit_hook.HookHeaderTest.test_header_says_q18_skipped_and_hook_is_only_automated_guard) ... ok
+test_detector_flags_each_construct_and_allows_plain_redirection (tests.test_block_main_commit_hook.HookLaunchesNoBackgroundWorkTest.test_detector_flags_each_construct_and_allows_plain_redirection) ... ok
+test_detector_splits_on_newline_only (tests.test_block_main_commit_hook.HookLaunchesNoBackgroundWorkTest.test_detector_splits_on_newline_only) ... ok
+test_full_check_rejects_hidden_separator_and_hash_line_mutants (tests.test_block_main_commit_hook.HookLaunchesNoBackgroundWorkTest.test_full_check_rejects_hidden_separator_and_hash_line_mutants) ... ok
+test_hook_launches_no_background_work (tests.test_block_main_commit_hook.HookLaunchesNoBackgroundWorkTest.test_hook_launches_no_background_work) ... ok
+test_malformed_values_raise_config_error (tests.test_engine_config.ConfigErrorContractTest.test_malformed_values_raise_config_error) ... ok
+test_config_error_has_no_value_anywhere (tests.test_engine_config.ConfigErrorNeverCarriesValueTest.test_config_error_has_no_value_anywhere) ... ok
+test_base_url_with_userinfo_is_refused (tests.test_engine_config.ModelUrlUserinfoTest.test_base_url_with_userinfo_is_refused) ... ok
+test_model_upstream_with_userinfo_is_refused (tests.test_engine_config.ModelUrlUserinfoTest.test_model_upstream_with_userinfo_is_refused) ... ok
+test_startup_refuses_userinfo_without_the_password (tests.test_engine_config.ModelUrlUserinfoTest.test_startup_refuses_userinfo_without_the_password) ... ok
+test_urls_without_userinfo_still_load (tests.test_engine_config.ModelUrlUserinfoTest.test_urls_without_userinfo_still_load) ... ok
+test_error_names_the_variable_the_user_set (tests.test_engine_config.PrecedenceTest.test_error_names_the_variable_the_user_set) ... ok
+test_ke_names_outrank_standard_names (tests.test_engine_config.PrecedenceTest.test_ke_names_outrank_standard_names) ... ok
+test_model_upstream_has_one_name (tests.test_engine_config.PrecedenceTest.test_model_upstream_has_one_name) ... ok
+test_standard_name_used_when_ke_name_unset (tests.test_engine_config.PrecedenceTest.test_standard_name_used_when_ke_name_unset) ... ok
+test_config_defaults_and_env_override (tests.test_engine_config.TypedConfigTest.test_config_defaults_and_env_override) ... ok
+test_config_ignores_unprefixed_names (tests.test_engine_config.TypedConfigTest.test_config_ignores_unprefixed_names) ... ok
+test_config_init_args_take_precedence (tests.test_engine_config.TypedConfigTest.test_config_init_args_take_precedence) ... ok
+test_config_missing_defaults_file_names_path (tests.test_engine_config.TypedConfigTest.test_config_missing_defaults_file_names_path) ... ok
+test_config_missing_secret_names_key (tests.test_engine_config.TypedConfigTest.test_config_missing_secret_names_key) ... ok
+test_config_rejects_bad_type (tests.test_engine_config.TypedConfigTest.test_config_rejects_bad_type) ... ok
+test_config_secrets_have_no_yaml_default (tests.test_engine_config.TypedConfigTest.test_config_secrets_have_no_yaml_default) ... ok
+test_every_non_secret_setting_has_a_yaml_default (tests.test_engine_config.TypedConfigTest.test_every_non_secret_setting_has_a_yaml_default) ... ok
+test_model_role_defaults (tests.test_engine_config.TypedConfigTest.test_model_role_defaults)
+model-roles MR-1, MR-2, MR-6 (ADR-KE-014, §2.4 *Model roles*): every ... ok
+test_secret_values_are_not_in_repr (tests.test_engine_config.TypedConfigTest.test_secret_values_are_not_in_repr) ... ok
+test_env_example_is_not_ignored (tests.test_engine_deploy_files.GitIgnoreTest.test_env_example_is_not_ignored) ... ok
+test_env_file_is_ignored (tests.test_engine_deploy_files.GitIgnoreTest.test_env_file_is_ignored) ... ok
+test_egress_guard_allows_listed_host (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_allows_listed_host) ... ok
+test_egress_guard_checks_every_redirect_hop (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_checks_every_redirect_hop) ... ok
+test_egress_guard_mutant_goes_red (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_mutant_goes_red)
+DR38: the runtime assertion fails when the guard is removed. ... ok
+test_egress_guard_runtime (tests.test_engine_egress.EgressRuntimeTest.test_egress_guard_runtime) ... ok
+test_model_client_uses_guarded_transport (tests.test_engine_egress.EgressRuntimeTest.test_model_client_uses_guarded_transport) ... ok
+test_egress_guard_startup (tests.test_engine_egress.EgressStartupTest.test_egress_guard_startup) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+ok
+test_egress_startup_check_refuses_in_every_env (tests.test_engine_egress.EgressStartupTest.test_egress_startup_check_refuses_in_every_env) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+ok
+test_is_local_endpoint (tests.test_engine_egress.LocalEndpointTest.test_is_local_endpoint) ... ok
+test_declared_value_files_exist (tests.test_engine_hardcoded.RepositoryScanTest.test_declared_value_files_exist) ... ok
+test_model_host_name_only_in_allowed_locations (tests.test_engine_hardcoded.RepositoryScanTest.test_model_host_name_only_in_allowed_locations) ... ok
+test_no_hardcoded_hosts_or_models (tests.test_engine_hardcoded.RepositoryScanTest.test_no_hardcoded_hosts_or_models) ... ok
+test_no_hardcoded_ports (tests.test_engine_hardcoded.RepositoryScanTest.test_no_hardcoded_ports) ... ok
+test_allowed_locations_are_never_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_allowed_locations_are_never_flagged) ... ok
+test_compose_variable_default_is_allowed (tests.test_engine_hardcoded.ScannerContractTest.test_compose_variable_default_is_allowed) ... ok
+test_dockerfile_exemption_covers_only_its_instruction_line (tests.test_engine_hardcoded.ScannerContractTest.test_dockerfile_exemption_covers_only_its_instruction_line) ... ok
+test_dockerfile_exemption_skips_continuation_lines (tests.test_engine_hardcoded.ScannerContractTest.test_dockerfile_exemption_skips_continuation_lines) ... ok
+test_exemption_covers_only_its_symbol_and_path (tests.test_engine_hardcoded.ScannerContractTest.test_exemption_covers_only_its_symbol_and_path) ... ok
+test_integer_port_assignment_in_python_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_integer_port_assignment_in_python_is_flagged) ... ok
+test_planted_host_name_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_planted_host_name_is_flagged) ... ok
+test_planted_model_name_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_planted_model_name_is_flagged) ... ok
+test_planted_port_literal_is_flagged (tests.test_engine_hardcoded.ScannerContractTest.test_planted_port_literal_is_flagged) ... ok
+test_port_token_boundaries (tests.test_engine_hardcoded.ScannerContractTest.test_port_token_boundaries) ... ok
+test_rule_two_is_python_only (tests.test_engine_hardcoded.ScannerContractTest.test_rule_two_is_python_only) ... ok
+test_shell_parameter_default_is_flagged_outside_compose (tests.test_engine_hardcoded.ScannerContractTest.test_shell_parameter_default_is_flagged_outside_compose) ... ok
+test_url_literal_in_python_is_flagged_even_if_undeclared (tests.test_engine_hardcoded.ScannerContractTest.test_url_literal_in_python_is_flagged_even_if_undeclared) ... ok
+test_hardcoded_scan_covers_every_text_file (tests.test_engine_hardcoded.ScannerWideningTest.test_hardcoded_scan_covers_every_text_file) ... ok
+test_n1_host_names_match_case_insensitively (tests.test_engine_hardcoded.ScannerWideningTest.test_n1_host_names_match_case_insensitively) ... ok
+test_n2_compose_files_of_any_name_keep_their_defaults (tests.test_engine_hardcoded.ScannerWideningTest.test_n2_compose_files_of_any_name_keep_their_defaults) ... ok
+test_n3_tuple_and_dict_ports_are_flagged (tests.test_engine_hardcoded.ScannerWideningTest.test_n3_tuple_and_dict_ports_are_flagged) ... ok
+test_n4_exemption_covers_only_the_assignment_line (tests.test_engine_hardcoded.ScannerWideningTest.test_n4_exemption_covers_only_the_assignment_line) ... ok
+test_n5_no_loopback_definition_includes_unspecified_address (tests.test_engine_hardcoded.ScannerWideningTest.test_n5_no_loopback_definition_includes_unspecified_address) ... ok
+test_complete_emits_llm_span_with_model_name (tests.test_engine_llm.ModelClientTracingTest.test_complete_emits_llm_span_with_model_name) ... ok
+test_denied_host_marks_llm_span_error (tests.test_engine_llm.ModelClientTracingTest.test_denied_host_marks_llm_span_error) ... ok
+test_licence_file_outside_site_packages_is_not_found (tests.test_engine_notices.NoticesTest.test_licence_file_outside_site_packages_is_not_found) ... ok
+test_licence_files_across_layouts (tests.test_engine_notices.NoticesTest.test_licence_files_across_layouts) ... ok
+test_licence_label_order_and_fallbacks (tests.test_engine_notices.NoticesTest.test_licence_label_order_and_fallbacks) ... ok
+test_main_prints_the_table_or_refuses (tests.test_engine_notices.NoticesTest.test_main_prints_the_table_or_refuses) ... ok
+test_main_reads_sys_argv_by_default (tests.test_engine_notices.NoticesTest.test_main_reads_sys_argv_by_default) ... ok
+test_missing_or_escaping_licence_file_is_not_found (tests.test_engine_notices.NoticesTest.test_missing_or_escaping_licence_file_is_not_found) ... ok
+test_rows_skip_the_project_and_duplicates_and_name_missing (tests.test_engine_notices.NoticesTest.test_rows_skip_the_project_and_duplicates_and_name_missing) ... ok
+test_engine_dependencies_declared (tests.test_engine_quality.DependenciesTest.test_engine_dependencies_declared) ... ok
+test_pin_equivalence_check_accepts_uv_forms_and_rejects_others (tests.test_engine_quality.PythonPinTest.test_pin_equivalence_check_accepts_uv_forms_and_rejects_others)
+Guards the checker above: uv's forms pass, looser/other pins fail. ... ok
+test_python_pinned_to_312 (tests.test_engine_quality.PythonPinTest.test_python_pinned_to_312) ... ok
+test_test_sh_enforces_coverage_and_mypy (tests.test_engine_quality.QualityGateTest.test_test_sh_enforces_coverage_and_mypy) ... ok
+test_tests_excluded_from_measurement (tests.test_engine_quality.QualityGateTest.test_tests_excluded_from_measurement) ... ok
+test_env_example_secret_placeholders_are_changeme (tests.test_engine_startup.PlaceholderSecretTest.test_env_example_secret_placeholders_are_changeme) ... ok
+test_placeholder_check_is_prefix_only (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_check_is_prefix_only) ... ok
+test_placeholder_check_reads_no_file (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_check_reads_no_file) ... ok
+test_placeholder_hidden_behind_invisible_prefix_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_behind_invisible_prefix_is_refused) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+ok
+test_placeholder_hidden_by_invisible_characters_is_refused (tests.test_engine_startup.PlaceholderSecretTest.test_placeholder_hidden_by_invisible_characters_is_refused) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+ok
+test_real_secrets_with_ordinary_characters_are_accepted (tests.test_engine_startup.PlaceholderSecretTest.test_real_secrets_with_ordinary_characters_are_accepted) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+ok
+test_startup_refuses_placeholder_secrets (tests.test_engine_startup.PlaceholderSecretTest.test_startup_refuses_placeholder_secrets) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+ok
+test_installed_provider_refusal_is_logged (tests.test_engine_startup.StartupCarryInTest.test_installed_provider_refusal_is_logged) ... ok
+test_startup_loads_settings_once (tests.test_engine_startup.StartupCarryInTest.test_startup_loads_settings_once) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+ok
+test_auth_enabled_outside_prod_warns_no_effect_until_auth_audit (tests.test_engine_startup.StartupRefusalTest.test_auth_enabled_outside_prod_warns_no_effect_until_auth_audit)
+Security M-L2a (docs/evidence/platform-offline/audit-l2.md, routed ... ok
+test_dev_auth_off_warns (tests.test_engine_startup.StartupRefusalTest.test_dev_auth_off_warns) ... ok
+test_dev_hide_flag_off_warns_naming_flag (tests.test_engine_startup.StartupRefusalTest.test_dev_hide_flag_off_warns_naming_flag) ... ok
+test_hide_flags_default_true_in_every_env (tests.test_engine_startup.StartupRefusalTest.test_hide_flags_default_true_in_every_env) ... ok
+test_startup_accepts_local_collectors (tests.test_engine_startup.StartupRefusalTest.test_startup_accepts_local_collectors) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+ok
+test_startup_refuses_prod_until_auth_audit (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_prod_until_auth_audit)
+Orchestrator ruling 2026-10-19 (platform-offline smoke loop 2, F10), ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+ok
+test_startup_refuses_unsafe (tests.test_engine_startup.StartupRefusalTest.test_startup_refuses_unsafe) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+ok
+test_startup_safe_defaults_pass (tests.test_engine_startup.StartupRefusalTest.test_startup_safe_defaults_pass) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+ok
+test_config_load_span_names_overridden_keys_not_values (tests.test_engine_startup.StartupTracingTest.test_config_load_span_names_overridden_keys_not_values) ... ok
+test_configure_tracing_attaches_nothing_for_non_local (tests.test_engine_startup.StartupTracingTest.test_configure_tracing_attaches_nothing_for_non_local) ... ok
+test_non_local_collector_gets_no_exporter (tests.test_engine_startup.StartupTracingTest.test_non_local_collector_gets_no_exporter) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=dev)
+ok
+test_refused_startup_marks_spans (tests.test_engine_startup.StartupTracingTest.test_refused_startup_marks_spans) ... ok
+test_startup_is_traced (tests.test_engine_startup.StartupTracingTest.test_startup_is_traced) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+ok
+test_console_mode_never_builds_otlp (tests.test_engine_telemetry.ChooseExporterTest.test_console_mode_never_builds_otlp) ... ok
+test_off_gives_no_exporter (tests.test_engine_telemetry.ChooseExporterTest.test_off_gives_no_exporter) ... ok
+test_otlp_to_local_collector_builds_traces_url (tests.test_engine_telemetry.ChooseExporterTest.test_otlp_to_local_collector_builds_traces_url) ... ok
+test_otlp_to_non_local_collector_gives_none (tests.test_engine_telemetry.ChooseExporterTest.test_otlp_to_non_local_collector_gives_none) ... ok
+test_console_mode_installs_console_exporter_only (tests.test_engine_telemetry.ConfigureTracingTest.test_console_mode_installs_console_exporter_only) ... ok
+test_hide_defaults_apply_before_any_span (tests.test_engine_telemetry.ConfigureTracingTest.test_hide_defaults_apply_before_any_span)
+The YAML hide defaults (true) redact span values even when the ... ok
+test_local_collector_gets_an_otlp_exporter (tests.test_engine_telemetry.ConfigureTracingTest.test_local_collector_gets_an_otlp_exporter) ... ok
+test_non_local_collector_gets_no_exporter (tests.test_engine_telemetry.ConfigureTracingTest.test_non_local_collector_gets_no_exporter) ... ok
+test_engine_built_shapes_are_accepted (tests.test_engine_telemetry.InstalledProviderTest.test_engine_built_shapes_are_accepted) ... ok
+test_formerly_accepted_foreign_shapes_are_refused (tests.test_engine_telemetry.InstalledProviderTest.test_formerly_accepted_foreign_shapes_are_refused) ... ok
+test_non_local_or_unknown_exporter_is_refused (tests.test_engine_telemetry.InstalledProviderTest.test_non_local_or_unknown_exporter_is_refused) ... ok
+test_refused_startup_installs_nothing (tests.test_engine_telemetry.StartupWiringTest.test_refused_startup_installs_nothing) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+ok
+test_refused_startup_leaves_hide_env_untouched (tests.test_engine_telemetry.StartupWiringTest.test_refused_startup_leaves_hide_env_untouched) ... ok
+test_startup_installs_the_exporter (tests.test_engine_telemetry.StartupWiringTest.test_startup_installs_the_exporter) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+ok
+test_chosen_exporter_dials_only_the_collector (tests.test_engine_tracing_guard.ExporterIgnoresProxyEnvTest.test_chosen_exporter_dials_only_the_collector) ... Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+ok
+test_chosen_exporter_session_does_not_trust_env (tests.test_engine_tracing_guard.ExporterIgnoresProxyEnvTest.test_chosen_exporter_session_does_not_trust_env) ... ok
+test_configured_exporter_dials_only_the_collector (tests.test_engine_tracing_guard.ExporterIgnoresProxyEnvTest.test_configured_exporter_dials_only_the_collector) ... Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+Failed to export spans batch due to timeout, max retries or shutdown.
+ok
+test_custom_span_processor_is_refused (tests.test_engine_tracing_guard.InstalledProviderGuardTest.test_custom_span_processor_is_refused) ... ok
+test_local_otlp_that_ignores_proxy_env_is_refused_unless_engine_built (tests.test_engine_tracing_guard.InstalledProviderGuardTest.test_local_otlp_that_ignores_proxy_env_is_refused_unless_engine_built) ... ok
+test_local_otlp_that_trusts_proxy_env_is_refused (tests.test_engine_tracing_guard.InstalledProviderGuardTest.test_local_otlp_that_trusts_proxy_env_is_refused) ... ok
+test_local_otlp_with_unreachable_session_is_refused (tests.test_engine_tracing_guard.InstalledProviderGuardTest.test_local_otlp_with_unreachable_session_is_refused) ... ok
+test_non_sdk_provider_is_refused (tests.test_engine_tracing_guard.InstalledProviderGuardTest.test_non_sdk_provider_is_refused) ... ok
+test_proxy_provider_is_accepted (tests.test_engine_tracing_guard.InstalledProviderGuardTest.test_proxy_provider_is_accepted) ... ok
+test_build_provider_does_not_install_globally (tests.test_engine_tracing_guard.ProviderIdentityTest.test_build_provider_does_not_install_globally) ... ok
+test_build_provider_resource_and_processors (tests.test_engine_tracing_guard.ProviderIdentityTest.test_build_provider_resource_and_processors) ... ok
+test_configure_tracing_installs_an_engine_built_provider (tests.test_engine_tracing_guard.ProviderIdentityTest.test_configure_tracing_installs_an_engine_built_provider) ... ok
+test_configure_tracing_refuses_if_its_provider_is_not_the_global (tests.test_engine_tracing_guard.ProviderIdentityTest.test_configure_tracing_refuses_if_its_provider_is_not_the_global) ... ok
+test_decoy_equal_to_an_engine_provider_is_refused (tests.test_engine_tracing_guard.ProviderIdentityTest.test_decoy_equal_to_an_engine_provider_is_refused) ... telemetry.tracing: an installed tracer provider was not built by the engine
+ok
+test_engine_built_provider_is_accepted (tests.test_engine_tracing_guard.ProviderIdentityTest.test_engine_built_provider_is_accepted) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled: authentication is disabled
+auth.enabled: authentication is disabled
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+ok
+test_private_attribute_inspection_removed (tests.test_engine_tracing_guard.ProviderIdentityTest.test_private_attribute_inspection_removed) ... ok
+test_provider_not_built_by_engine_is_refused (tests.test_engine_tracing_guard.ProviderIdentityTest.test_provider_not_built_by_engine_is_refused) ... telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+ok
+test_support_provider_is_engine_built (tests.test_engine_tracing_guard.ProviderIdentityTest.test_support_provider_is_engine_built) ... ok
+test_provider_resource_carries_openinference_project_name (tests.test_engine_tracing_guard.ResourceProjectNameTest.test_provider_resource_carries_openinference_project_name) ... ok
+test_control_spans_do_reach_an_accepted_provider (tests.test_engine_tracing_guard.StartupVerifiesProviderFirstTest.test_control_spans_do_reach_an_accepted_provider) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+ok
+test_foreign_provider_gets_no_span_with_refusing_settings (tests.test_engine_tracing_guard.StartupVerifiesProviderFirstTest.test_foreign_provider_gets_no_span_with_refusing_settings) ... telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+ok
+test_foreign_provider_refused_before_any_span_passing_settings (tests.test_engine_tracing_guard.StartupVerifiesProviderFirstTest.test_foreign_provider_refused_before_any_span_passing_settings) ... telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+telemetry.tracing: an installed tracer provider was not built by the engine
+ok
+test_coverage_data_file_is_under_tmp (tests.test_gate_least_privilege.CoverageAndUvEnvTest.test_coverage_data_file_is_under_tmp) ... ok
+test_coverage_erase_removes_stale_parallel_data (tests.test_gate_least_privilege.CoverageAndUvEnvTest.test_coverage_erase_removes_stale_parallel_data) ... ok
+test_coverage_file_env_is_never_set (tests.test_gate_least_privilege.CoverageAndUvEnvTest.test_coverage_file_env_is_never_set) ... ok
+test_uv_no_sync_is_never_set (tests.test_gate_least_privilege.CoverageAndUvEnvTest.test_uv_no_sync_is_never_set) ... ok
+test_gate_services_drop_capabilities_and_new_privileges (tests.test_gate_least_privilege.GateServicesComposeTest.test_gate_services_drop_capabilities_and_new_privileges) ... ok
+test_gate_services_env_for_read_only_repo (tests.test_gate_least_privilege.GateServicesComposeTest.test_gate_services_env_for_read_only_repo) ... ok
+test_gate_services_mount_repo_read_only (tests.test_gate_least_privilege.GateServicesComposeTest.test_gate_services_mount_repo_read_only) ... ok
+test_gate_services_run_as_uid_10001 (tests.test_gate_least_privilege.GateServicesComposeTest.test_gate_services_run_as_uid_10001) ... ok
+test_gate_services_run_as_uid_and_gid_10001 (tests.test_gate_least_privilege.GateServicesComposeTest.test_gate_services_run_as_uid_and_gid_10001) ... ok
+test_gate_services_tmp_is_exec_tmpfs (tests.test_gate_least_privilege.GateServicesComposeTest.test_gate_services_tmp_is_exec_tmpfs) ... ok
+test_gate_services_use_long_syntax_read_only_checkout (tests.test_gate_least_privilege.GateServicesComposeTest.test_gate_services_use_long_syntax_read_only_checkout) ... ok
+test_gates_it_is_non_root_with_read_only_repo (tests.test_gate_least_privilege.GateServicesComposeTest.test_gates_it_is_non_root_with_read_only_repo) ... ok
+test_gates_mask_overlay_holds_only_the_env_mask (tests.test_gate_least_privilege.GateServicesComposeTest.test_gates_mask_overlay_holds_only_the_env_mask) ... ok
+test_gates_image_venv_and_uv_cache_owned_by_gate_user (tests.test_gate_least_privilege.GatesImageOwnershipTest.test_gates_image_venv_and_uv_cache_owned_by_gate_user) ... ok
+test_gate_services_have_no_docker_host (tests.test_gates_docker_cli.GateServicesNoDockerHostTest.test_gate_services_have_no_docker_host) ... ok
+test_gates_image_compose_plugin_at_least_2_24 (tests.test_gates_docker_cli.GatesImageDockerCliTest.test_gates_image_compose_plugin_at_least_2_24) ... ok
+test_gates_image_installs_docker_only_from_pinned_binaries (tests.test_gates_docker_cli.GatesImageDockerCliTest.test_gates_image_installs_docker_only_from_pinned_binaries) ... ok
+test_gates_image_pins_compose_plugin_by_hash (tests.test_gates_docker_cli.GatesImageDockerCliTest.test_gates_image_pins_compose_plugin_by_hash) ... ok
+test_gates_image_pins_docker_cli_by_hash (tests.test_gates_docker_cli.GatesImageDockerCliTest.test_gates_image_pins_docker_cli_by_hash) ... ok
+test_gates_image_compose_plugin_mode_0755 (tests.test_gates_docker_cli.GatesImageInstallSurfaceTest.test_gates_image_compose_plugin_mode_0755) ... ok
+test_gates_image_curl_downloads_are_https_only_tls12 (tests.test_gates_docker_cli.GatesImageInstallSurfaceTest.test_gates_image_curl_downloads_are_https_only_tls12) ... ok
+test_gates_image_docker_client_extracted_with_no_same_owner (tests.test_gates_docker_cli.GatesImageInstallSurfaceTest.test_gates_image_docker_client_extracted_with_no_same_owner) ... ok
+test_gates_image_extracts_only_the_docker_client (tests.test_gates_docker_cli.GatesImageInstallSurfaceTest.test_gates_image_extracts_only_the_docker_client) ... ok
+test_gates_image_removes_docker_downloads_in_the_same_run (tests.test_gates_docker_cli.GatesImageInstallSurfaceTest.test_gates_image_removes_docker_downloads_in_the_same_run) ... ok
+test_gates_image_psscriptanalyzer_version_agrees (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_psscriptanalyzer_version_agrees) ... ok
+test_gates_image_sets_telemetry_optout_before_pwsh (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_sets_telemetry_optout_before_pwsh) ... ok
+test_gates_image_verifies_psscriptanalyzer_hash (tests.test_gates_docker_cli.GatesImagePowerShellSupplyChainTest.test_gates_image_verifies_psscriptanalyzer_hash) ... ok
+test_ci_actions_pinned_to_sha (tests.test_harness_followups.CiWorkflowTest.test_ci_actions_pinned_to_sha) ... ok
+test_ci_checkout_does_not_persist_credentials (tests.test_harness_followups.CiWorkflowTest.test_ci_checkout_does_not_persist_credentials) ... ok
+test_ci_runner_pinned (tests.test_harness_followups.CiWorkflowTest.test_ci_runner_pinned) ... ok
+test_combine_leaving_a_run_data_file_fails_naming_its_label (tests.test_harness_followups.IntegrationRunsOnceTest.test_combine_leaving_a_run_data_file_fails_naming_its_label) ... ok
+test_coverage_combine_gets_an_explicit_file_list (tests.test_harness_followups.IntegrationRunsOnceTest.test_coverage_combine_gets_an_explicit_file_list) ... ok
+test_coverage_erase_precedes_first_run_and_spares_checkout (tests.test_harness_followups.IntegrationRunsOnceTest.test_coverage_erase_precedes_first_run_and_spares_checkout) ... ok
+test_data_file_lookup_empty_or_failed_fails_before_any_test (tests.test_harness_followups.IntegrationRunsOnceTest.test_data_file_lookup_empty_or_failed_fails_before_any_test) ... ok
+test_each_coverage_run_leaves_data_or_fails_naming_its_label (tests.test_harness_followups.IntegrationRunsOnceTest.test_each_coverage_run_leaves_data_or_fails_naming_its_label) ... ok
+test_failing_integration_module_fails_full_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_integration_module_fails_full_run) ... ok
+test_failing_module_fails_run_and_other_modules_still_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_module_fails_run_and_other_modules_still_run) ... ok
+test_failing_subpackage_module_fails_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_failing_subpackage_module_fails_run) ... ok
+test_helper_package_without_tests_passes (tests.test_harness_followups.IntegrationRunsOnceTest.test_helper_package_without_tests_passes) ... ok
+test_integration_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_integration_tests_run_once) ... ok
+test_nested_dir_without_init_fails_loudly (tests.test_harness_followups.IntegrationRunsOnceTest.test_nested_dir_without_init_fails_loudly) ... ok
+test_nested_test_sh_leaves_gate_coverage_data_alone (tests.test_harness_followups.IntegrationRunsOnceTest.test_nested_test_sh_leaves_gate_coverage_data_alone) ... ok
+test_no_top_level_unit_tests_fails_clearly (tests.test_harness_followups.IntegrationRunsOnceTest.test_no_top_level_unit_tests_fails_clearly) ... ok
+test_package_with_only_nested_tests_runs_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_package_with_only_nested_tests_runs_once) ... ok
+test_quality_gates_always_run (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_always_run) ... ok
+test_quality_gates_run_with_pyproject (tests.test_harness_followups.IntegrationRunsOnceTest.test_quality_gates_run_with_pyproject) ... ok
+test_resource_lines_bracket_the_unit_stage (tests.test_harness_followups.IntegrationRunsOnceTest.test_resource_lines_bracket_the_unit_stage) ... ok
+test_test_dir_without_init_fails_loudly (tests.test_harness_followups.IntegrationRunsOnceTest.test_test_dir_without_init_fails_loudly) ... ok
+test_top_level_modules_run_in_one_process (tests.test_harness_followups.IntegrationRunsOnceTest.test_top_level_modules_run_in_one_process) ... ok
+test_top_level_run_has_durations_10_and_no_other_run_does (tests.test_harness_followups.IntegrationRunsOnceTest.test_top_level_run_has_durations_10_and_no_other_run_does) ... ok
+test_unit_tests_run_once (tests.test_harness_followups.IntegrationRunsOnceTest.test_unit_tests_run_once) ... ok
+test_verify_fails_when_a_top_level_module_exits_zero_at_import (tests.test_harness_followups.IntegrationRunsOnceTest.test_verify_fails_when_a_top_level_module_exits_zero_at_import) ... ok
+test_verify_sees_sentinel_and_ran_lines_from_real_test_sh (tests.test_harness_followups.IntegrationRunsOnceTest.test_verify_sees_sentinel_and_ran_lines_from_real_test_sh) ... ok
+test_data_file_comes_from_coverage_api_not_debug_config (tests.test_harness_followups.UnitStageStaticTest.test_data_file_comes_from_coverage_api_not_debug_config) ... ok
+test_pool_machinery_is_gone (tests.test_harness_followups.UnitStageStaticTest.test_pool_machinery_is_gone) ... ok
+test_printf_formats_hold_no_literal_newline (tests.test_harness_followups.UnitStageStaticTest.test_printf_formats_hold_no_literal_newline) ... ok
+test_probe_runs_with_a_phase_only (tests.test_harness_followups.UnitStageStaticTest.test_probe_runs_with_a_phase_only) ... ok
+test_failing_smoke_fails_full (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_failing_smoke_fails_full) ... ok
+test_failing_test_sh_still_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_failing_test_sh_still_fails) ... ok
+test_no_ran_line_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_no_ran_line_fails) ... ok
+test_ran_some_tests_passes (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_ran_some_tests_passes) ... ok
+test_ran_without_sentinel_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_ran_without_sentinel_fails) ... ok
+test_ran_zero_tests_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_ran_zero_tests_fails) ... ok
+test_sentinel_followed_by_large_output_passes (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_followed_by_large_output_passes) ... ok
+test_sentinel_line_is_the_exact_full_line (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_line_is_the_exact_full_line) ... ok
+test_sentinel_name_in_other_module_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_name_in_other_module_fails) ... ok
+test_sentinel_text_in_skip_reason_fails (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_text_in_skip_reason_fails) ... ok
+test_sentinel_with_ran_passes (tests.test_harness_followups.VerifyRequiresTestsRunTest.test_sentinel_with_ran_passes) ... ok
+test_agent_model_tiers (tests.test_harness_port.AgentPortTest.test_agent_model_tiers) ... ok
+test_agent_port_preserves_constraints (tests.test_harness_port.AgentPortTest.test_agent_port_preserves_constraints) ... ok
+test_copilot_agents_kept (tests.test_harness_port.AgentPortTest.test_copilot_agents_kept) ... ok
+test_every_role_ported (tests.test_harness_port.AgentPortTest.test_every_role_ported) ... ok
+test_judges_cannot_edit (tests.test_harness_port.AgentPortTest.test_judges_cannot_edit) ... ok
+test_non_producer_body_identical_to_copilot (tests.test_harness_port.AgentPortTest.test_non_producer_body_identical_to_copilot) ... ok
+test_producer_sections_identical_except_verification_steps (tests.test_harness_port.AgentPortTest.test_producer_sections_identical_except_verification_steps) ... ok
+test_ci_only_and_generated_artifacts_listed (tests.test_harness_port.ClaudeMdTest.test_ci_only_and_generated_artifacts_listed) ... ok
+test_claude_md_imports_agents (tests.test_harness_port.ClaudeMdTest.test_claude_md_imports_agents) ... ok
+test_delivery_rules_present (tests.test_harness_port.ClaudeMdTest.test_delivery_rules_present) ... ok
+test_done_check_in_handoff_readme (tests.test_harness_port.HandoffCapTest.test_done_check_in_handoff_readme) ... ok
+test_handoff_line_cap (tests.test_harness_port.HandoffCapTest.test_handoff_line_cap) ... ok
+test_hook_wired_on_bash (tests.test_harness_port.SettingsTest.test_hook_wired_on_bash) ... ok
+test_ci_calls_verify_only (tests.test_harness_port.VerificationEntryPointTest.test_ci_calls_verify_only) ... ok
+test_depth_table_identical_everywhere (tests.test_harness_port.VerificationEntryPointTest.test_depth_table_identical_everywhere) ... ok
+test_evidence_contract_present (tests.test_harness_port.VerificationEntryPointTest.test_evidence_contract_present) ... ok
+test_gate_scripts_use_locked (tests.test_harness_port.VerificationEntryPointTest.test_gate_scripts_use_locked) ... ok
+test_no_stray_verification_commands (tests.test_harness_port.VerificationEntryPointTest.test_no_stray_verification_commands) ... ok
+test_tester_owns_contradictions (tests.test_harness_port.VerificationEntryPointTest.test_tester_owns_contradictions) ... ok
+test_verify_sh_has_no_inlined_commands (tests.test_harness_port.VerificationEntryPointTest.test_verify_sh_has_no_inlined_commands) ... ok
+test_app_image_builder_drops_world_writable_venv_lock (tests.test_image_scan.AppImageTest.test_app_image_builder_drops_world_writable_venv_lock)
+Security I-1: uv leaves an empty `/opt/venv/.lock`, mode 0666, the one ... ok
+test_app_image_builder_puts_no_uv_under_shipped_paths (tests.test_image_scan.AppImageTest.test_app_image_builder_puts_no_uv_under_shipped_paths)
+Review r3-2 (guard; kills the reviewer's m8 and m9): the final stage ... ok
+test_app_image_final_stage_has_no_uv (tests.test_image_scan.AppImageTest.test_app_image_final_stage_has_no_uv)
+D10 test 1: the shipped (last) stage of docker/app.Dockerfile has no ... ok
+test_uv_pin_matches_in_app_and_gates_images (tests.test_image_scan.AppImageTest.test_uv_pin_matches_in_app_and_gates_images)
+D10 test 1b (guard): the ghcr.io/astral-sh/uv:<v>@sha256:<64 hex> ... ok
+test_bundle_has_no_scanner_or_db (tests.test_image_scan.ScanBundleTest.test_bundle_has_no_scanner_or_db) ... ok
+test_compose_scan_db_has_only_db_volume (tests.test_image_scan.ScanComposeTest.test_compose_scan_db_has_only_db_volume) ... ok
+test_compose_scan_has_no_network (tests.test_image_scan.ScanComposeTest.test_compose_scan_has_no_network) ... ok
+test_image_scanner_is_pinned (tests.test_image_scan.ScanComposeTest.test_image_scanner_is_pinned) ... ok
+test_scan_command_is_exactly_the_d5_policy (tests.test_image_scan.ScanComposeTest.test_scan_command_is_exactly_the_d5_policy)
+PSC-4, D5 (Q42), review N1: the `scan` command is D1's list exactly, ... ok
+test_scan_services_have_no_docker_socket (tests.test_image_scan.ScanComposeTest.test_scan_services_have_no_docker_socket) ... ok
+test_scan_ignores_are_justified (tests.test_image_scan.ScanIgnoreTest.test_scan_ignores_are_justified) ... ok
+test_scan_cleanup_ignores_signals_before_clearing_exit_trap (tests.test_image_scan.ScanScriptTest.test_scan_cleanup_ignores_signals_before_clearing_exit_trap)
+Security I-4: in the EXIT-trap function, INT and TERM are ignored ... ok
+test_scan_cleanup_with_only_other_projects_containers_removes_nothing (tests.test_image_scan.ScanScriptTest.test_scan_cleanup_with_only_other_projects_containers_removes_nothing)
+Review r3-1: the daemon holds only other projects' containers (one ... ok
+test_scan_clears_caller_docker_default_platform (tests.test_image_scan.ScanScriptTest.test_scan_clears_caller_docker_default_platform)
+L-3: a caller DOCKER_DEFAULT_PLATFORM (an unverified architecture ... ok
+test_scan_container_removal_failure_gives_working_hand_command (tests.test_image_scan.ScanScriptTest.test_scan_container_removal_failure_gives_working_hand_command)
+Review r1-b: when `docker rm -f` fails, the message gives a hand ... ok
+test_scan_db_failure_fails_closed_naming_host_and_stage (tests.test_image_scan.ScanScriptTest.test_scan_db_failure_fails_closed_naming_host_and_stage) ... ok
+test_scan_does_not_widen_scanner_privileges (tests.test_image_scan.ScanScriptTest.test_scan_does_not_widen_scanner_privileges)
+M-1 guard: the fix is the tar's mode, never more privilege: no ... ok
+test_scan_fails_on_fixed_high (tests.test_image_scan.ScanScriptTest.test_scan_fails_on_fixed_high)
+PSC-4 (§2.6 item 4): grype finds a fixed High and exits non-zero ... ok
+test_scan_fails_when_container_listing_fails (tests.test_image_scan.ScanScriptTest.test_scan_fails_when_container_listing_fails)
+Review r1-a: cleanup lists the project's containers with `docker ps` ... ok
+test_scan_fails_when_teardown_fails (tests.test_image_scan.ScanScriptTest.test_scan_fails_when_teardown_fails)
+N2 (D4): a failed teardown fails an otherwise passing scan, naming ... ok
+test_scan_ignores_caller_env_file_and_compose_settings (tests.test_image_scan.ScanScriptTest.test_scan_ignores_caller_env_file_and_compose_settings)
+N4 (D4: no caller value reaches the scan): a hostile KE_ENV_FILE, ... ok
+test_scan_input_is_read_only_ke_app_tar (tests.test_image_scan.ScanScriptTest.test_scan_input_is_read_only_ke_app_tar) ... ok
+test_scan_interrupt_removes_own_project_containers_before_teardown (tests.test_image_scan.ScanScriptTest.test_scan_interrupt_removes_own_project_containers_before_teardown)
+B1 (PSC-3, D4): a signal during scan-db kills the compose client but ... ok
+test_scan_order_is_save_then_db_then_scan (tests.test_image_scan.ScanScriptTest.test_scan_order_is_save_then_db_then_scan) ... ok
+test_scan_project_name_uses_srandom (tests.test_image_scan.ScanScriptTest.test_scan_project_name_uses_srandom)
+Security I-6: the project name is `ke-scan-${SRANDOM}` (32 bits ... ok
+test_scan_refuses_a_project_name_that_is_not_ke_scan_digits (tests.test_image_scan.ScanScriptTest.test_scan_refuses_a_project_name_that_is_not_ke_scan_digits)
+Security L-1 (review r3-5): `${SRANDOM}` exists only in bash >= 5.1. ... ok
+test_scan_refuses_existing_scan_dir (tests.test_image_scan.ScanScriptTest.test_scan_refuses_existing_scan_dir)
+L-2: dist/<project> must be new. A path already there (a planted ... ok
+test_scan_refuses_malformed_image_tag (tests.test_image_scan.ScanScriptTest.test_scan_refuses_malformed_image_tag) ... ok
+test_scan_removes_tar_on_every_exit (tests.test_image_scan.ScanScriptTest.test_scan_removes_tar_on_every_exit)
+N3, PSC-6 (§2.6 item 5): pass, a failure at each stage, INT and ... ok
+test_scan_reports_but_passes_unfixed_and_lower (tests.test_image_scan.ScanScriptTest.test_scan_reports_but_passes_unfixed_and_lower)
+PSC-4: only suppressed (unfixed, ignored) rows and fixed rows below ... ok
+test_scan_second_signal_does_not_abort_cleanup (tests.test_image_scan.ScanScriptTest.test_scan_second_signal_does_not_abort_cleanup)
+L-1: once cleanup starts it ignores INT and TERM, so a second ... ok
+test_scan_tar_is_world_readable_before_any_compose_call (tests.test_image_scan.ScanScriptTest.test_scan_tar_is_world_readable_before_any_compose_call)
+M-1: on a Linux engine `docker save -o` writes the tar 0600 and the ... ok
+test_scan_updates_db_every_run (tests.test_image_scan.ScanScriptTest.test_scan_updates_db_every_run) ... ok
+test_ke_app_last_stage_removes_pip (tests.test_ke_app_no_pip.KeAppNoPipStaticTest.test_ke_app_last_stage_removes_pip)
+PSC-14, ADR-KE-016 point 9, N10a: stage `runtime` runs `python -m ... ok
+test_smoke_checks_no_pip_in_api (tests.test_ke_app_no_pip.SmokeNoPipTest.test_smoke_checks_no_pip_in_api)
+The clean image passes; the check runs in api with `-T` as ... ok
+test_smoke_fails_when_pip_is_in_api (tests.test_ke_app_no_pip.SmokeNoPipTest.test_smoke_fails_when_pip_is_in_api)
+Each thing the base ships for pip fails smoke by name: the ... ok
+test_smoke_never_evaluates_the_pip_token (tests.test_ke_app_no_pip.SmokeNoPipTest.test_smoke_never_evaluates_the_pip_token)
+Security M-1 pattern: the check's output is container output. smoke ... ok
+test_appends_one_line_and_emits_session_span (tests.test_log_event.LogEventTest.test_appends_one_line_and_emits_session_span) ... ok
+test_failed_gate_marks_span_error (tests.test_log_event.LogEventTest.test_failed_gate_marks_span_error) ... ok
+test_format_line_keeps_one_line_per_entry (tests.test_log_event.LogEventTest.test_format_line_keeps_one_line_per_entry) ... ok
+test_rejects_unknown_role (tests.test_log_event.LogEventTest.test_rejects_unknown_role) ... ok
+test_bundle_saves_ke_neo4j_as_first_party (tests.test_neo4j_image.BundleKeNeo4jTest.test_bundle_saves_ke_neo4j_as_first_party) ... ok
+test_neo4j_checker_cli (tests.test_neo4j_image.Neo4jCheckerCliTest.test_neo4j_checker_cli) ... ok
+test_build_scripts_build_ke_neo4j (tests.test_neo4j_image.Neo4jComposeTest.test_build_scripts_build_ke_neo4j) ... ok
+test_compose_neo4j_uses_first_party_image (tests.test_neo4j_image.Neo4jComposeTest.test_compose_neo4j_uses_first_party_image) ... ok
+test_install_accepts_ke_neo4j_bundle_tag (tests.test_neo4j_image.Neo4jComposeTest.test_install_accepts_ke_neo4j_bundle_tag)
+N16 *Bundle and install*: install.sh and install.ps1 already accept ... ok
+test_neo4j_official_ref_only_in_dockerfile_from (tests.test_neo4j_image.Neo4jComposeTest.test_neo4j_official_ref_only_in_dockerfile_from) ... ok
+test_neo4j_config_check_logic (tests.test_neo4j_image.Neo4jConfigCheckTest.test_neo4j_config_check_logic) ... ok
+test_neo4j_dockerfile_pins_base_and_removes_products (tests.test_neo4j_image.Neo4jDockerfileTest.test_neo4j_dockerfile_pins_base_and_removes_products) ... ok
+test_neo4j_dockerfile_redeclares_base_config (tests.test_neo4j_image.Neo4jDockerfileTest.test_neo4j_dockerfile_redeclares_base_config) ... ok
+test_notice_has_ke_neo4j_base_section (tests.test_neo4j_image.Neo4jPolicyAndNoticeTest.test_notice_has_ke_neo4j_base_section) ... ok
+test_source_policy_names_ke_neo4j (tests.test_neo4j_image.Neo4jPolicyAndNoticeTest.test_source_policy_names_ke_neo4j) ... ok
+test_neo4j_sbom_check_logic (tests.test_neo4j_image.Neo4jSbomCheckTest.test_neo4j_sbom_check_logic) ... ok
+test_neo4j_tar_check_logic (tests.test_neo4j_image.Neo4jTarCheckTest.test_neo4j_tar_check_logic) ... ok
+test_neo4j_tree_check_logic (tests.test_neo4j_image.Neo4jTreeCheckTest.test_neo4j_tree_check_logic) ... ok
+test_tree_check_compares_size_and_hard_links_both_ways (tests.test_neo4j_image.Neo4jTreeCheckTest.test_tree_check_compares_size_and_hard_links_both_ways) ... ok
+test_tree_listing_records_regular_file_size (tests.test_neo4j_image.Neo4jTreeCheckTest.test_tree_listing_records_regular_file_size) ... ok
+test_offline_check_fails_on_ke_neo4j_problems (tests.test_neo4j_image.OfflineKeNeo4jTest.test_offline_check_fails_on_ke_neo4j_problems) ... ok
+test_offline_check_runs_ke_neo4j_check (tests.test_neo4j_image.OfflineKeNeo4jTest.test_offline_check_runs_ke_neo4j_check) ... ok
+test_smoke_checks_no_fleet_plugin_in_neo4j (tests.test_neo4j_image.SmokeNoFleetPluginTest.test_smoke_checks_no_fleet_plugin_in_neo4j) ... ok
+test_smoke_fails_when_the_fleet_plugin_is_in_neo4j (tests.test_neo4j_image.SmokeNoFleetPluginTest.test_smoke_fails_when_the_fleet_plugin_is_in_neo4j) ... ok
+test_smoke_never_evaluates_the_neo4j_output (tests.test_neo4j_image.SmokeNoFleetPluginTest.test_smoke_never_evaluates_the_neo4j_output) ... ok
+test_notice_cites_no_repo_evidence_path (tests.test_notice_ke_app.NoticeKeAppBaseTest.test_notice_cites_no_repo_evidence_path)
+PSC-14 (review B4, security L-8): NOTICE.md cites no ... ok
+test_notice_has_ke_app_base_paragraph (tests.test_notice_ke_app.NoticeKeAppBaseTest.test_notice_has_ke_app_base_paragraph)
+PSC-14 (ADR-KE-016 point 9, N10, N10a; U1 review B1, N3; security ... ok
+test_notice_named_licence_files_are_tracked (tests.test_notice_ke_app.NoticeKeAppBaseTest.test_notice_named_licence_files_are_tracked)
+PSC-14 (U1 round 3; security I-4, review N12): every ... ok
+test_notice_names_cpython_incorporated_licences (tests.test_notice_ke_app.NoticeKeAppBaseTest.test_notice_names_cpython_incorporated_licences)
+PSC-14 (security L-5, M-2; N10a): NOTICE.md names ... ok
+test_notice_names_libpq_as_a_debian_package (tests.test_notice_ke_app.NoticeKeAppBaseTest.test_notice_names_libpq_as_a_debian_package)
+PSC-14 (Q64; review N4): NOTICE.md names libpq5 as a Debian ... ok
+test_notice_points_to_generated_source_code_section (tests.test_notice_ke_app.NoticeKeAppBaseTest.test_notice_points_to_generated_source_code_section)
+PSC-14 tag; ADR-KE-016 point 9 and N10 (U1 per N15); security U1 ... ok
+test_bundle_contents (tests.test_offline_bundle.BundleNoticesTest.test_bundle_contents) ... ok
+test_bundle_has_third_party_notices (tests.test_offline_bundle.BundleNoticesTest.test_bundle_has_third_party_notices) ... ok
+test_bundle_ships_tracked_licenses_only (tests.test_offline_bundle.BundleNoticesTest.test_bundle_ships_tracked_licenses_only) ... ok
+test_notices_accept_crlf_notice_md (tests.test_offline_bundle.BundleNoticesTest.test_notices_accept_crlf_notice_md) ... ok
+test_notices_fail_when_package_licence_missing (tests.test_offline_bundle.BundleNoticesTest.test_notices_fail_when_package_licence_missing) ... ok
+test_notices_licence_operators_sit_between_ids (tests.test_offline_bundle.BundleNoticesTest.test_notices_licence_operators_sit_between_ids) ... ok
+test_notices_licence_tokens_are_spdx_characters (tests.test_offline_bundle.BundleNoticesTest.test_notices_licence_tokens_are_spdx_characters) ... ok
+test_notices_list_every_stack_image_with_licence (tests.test_offline_bundle.BundleNoticesTest.test_notices_list_every_stack_image_with_licence) ... ok
+test_notices_malformed_row_refusal_names_row_and_reason (tests.test_offline_bundle.BundleNoticesTest.test_notices_malformed_row_refusal_names_row_and_reason) ... ok
+test_notices_mark_phoenix_as_exception (tests.test_offline_bundle.BundleNoticesTest.test_notices_mark_phoenix_as_exception) ... ok
+test_notices_neo4j_has_source_url (tests.test_offline_bundle.BundleNoticesTest.test_notices_neo4j_has_source_url) ... ok
+test_notices_refuse_output_without_package_table (tests.test_offline_bundle.BundleNoticesTest.test_notices_refuse_output_without_package_table) ... ok
+test_notices_run_carries_its_own_compose_label (tests.test_offline_bundle.BundleNoticesTest.test_notices_run_carries_its_own_compose_label) ... ok
+test_notices_vendor_row_parse_is_strict (tests.test_offline_bundle.BundleNoticesTest.test_notices_vendor_row_parse_is_strict) ... ok
+test_arch_normalisation (tests.test_offline_bundle.BundleScriptTest.test_arch_normalisation) ... ok
+test_bundle_always_ships_net_isolated (tests.test_offline_bundle.BundleScriptTest.test_bundle_always_ships_net_isolated) ... ok
+test_bundle_arch_comes_from_daemon (tests.test_offline_bundle.BundleScriptTest.test_bundle_arch_comes_from_daemon) ... ok
+test_bundle_fails_below_free_disk (tests.test_offline_bundle.BundleScriptTest.test_bundle_fails_below_free_disk) ... ok
+test_bundle_fails_when_compose_config_fails (tests.test_offline_bundle.BundleScriptTest.test_bundle_fails_when_compose_config_fails) ... ok
+test_bundle_fails_when_pinned_digest_unresolved (tests.test_offline_bundle.BundleScriptTest.test_bundle_fails_when_pinned_digest_unresolved) ... ok
+test_bundle_has_no_wheels (tests.test_offline_bundle.BundleScriptTest.test_bundle_has_no_wheels) ... ok
+test_bundle_holds_stack_images_only (tests.test_offline_bundle.BundleScriptTest.test_bundle_holds_stack_images_only) ... ok
+test_bundle_json_marks_dirty_tree (tests.test_offline_bundle.BundleScriptTest.test_bundle_json_marks_dirty_tree) ... ok
+test_bundle_json_names_every_image (tests.test_offline_bundle.BundleScriptTest.test_bundle_json_names_every_image) ... ok
+test_bundle_json_records_arch (tests.test_offline_bundle.BundleScriptTest.test_bundle_json_records_arch) ... ok
+test_bundle_json_records_file_ref_as (tests.test_offline_bundle.BundleScriptTest.test_bundle_json_records_file_ref_as) ... ok
+test_bundle_lists_every_compose_image (tests.test_offline_bundle.BundleScriptTest.test_bundle_lists_every_compose_image) ... ok
+test_bundle_manifest_covers_every_file (tests.test_offline_bundle.BundleScriptTest.test_bundle_manifest_covers_every_file) ... ok
+test_bundle_maps_each_service_to_own_image_despite_dependencies (tests.test_offline_bundle.BundleScriptTest.test_bundle_maps_each_service_to_own_image_despite_dependencies)
+Defect D1 (docs/evidence/platform-offline/recorded-runs.md): on ... ok
+test_bundle_out_name_carries_arch (tests.test_offline_bundle.BundleScriptTest.test_bundle_out_name_carries_arch) ... ok
+test_bundle_prints_manifest_hash (tests.test_offline_bundle.BundleScriptTest.test_bundle_prints_manifest_hash) ... ok
+test_bundle_reads_available_column_when_filesystem_has_spaces (tests.test_offline_bundle.BundleScriptTest.test_bundle_reads_available_column_when_filesystem_has_spaces) ... ok
+test_bundle_refuses_empty_json_model (tests.test_offline_bundle.BundleScriptTest.test_bundle_refuses_empty_json_model)
+L-D1b (b): an empty JSON model (no output, `{}`, no services, null) ... ok
+test_bundle_refuses_existing_manifest_record (tests.test_offline_bundle.BundleScriptTest.test_bundle_refuses_existing_manifest_record) ... ok
+test_bundle_refuses_image_of_other_arch (tests.test_offline_bundle.BundleScriptTest.test_bundle_refuses_image_of_other_arch) ... ok
+test_bundle_refuses_service_without_image_in_model (tests.test_offline_bundle.BundleScriptTest.test_bundle_refuses_service_without_image_in_model)
+L-D1b (b): a stack service whose `.services.<svc>.image` is absent, ... ok
+test_bundle_refuses_unfit_image_or_out (tests.test_offline_bundle.BundleScriptTest.test_bundle_refuses_unfit_image_or_out) ... ok
+test_bundle_refuses_unpinned_third_party_image (tests.test_offline_bundle.BundleScriptTest.test_bundle_refuses_unpinned_third_party_image) ... ok
+test_bundle_refuses_when_compose_json_model_fails (tests.test_offline_bundle.BundleScriptTest.test_bundle_refuses_when_compose_json_model_fails)
+L-D1b (b): `docker compose config --format json` exiting non-zero, ... ok
+test_bundle_refuses_without_jq_before_any_docker_call (tests.test_offline_bundle.BundleScriptTest.test_bundle_refuses_without_jq_before_any_docker_call)
+L-D1b (a): jq is a build-host prerequisite (defect D1 fix). With no ... ok
+test_bundle_saves_one_tar_per_image_without_platform (tests.test_offline_bundle.BundleScriptTest.test_bundle_saves_one_tar_per_image_without_platform) ... ok
+test_bundle_ships_tracked_config_only (tests.test_offline_bundle.BundleScriptTest.test_bundle_ships_tracked_config_only) ... ok
+test_bundle_writes_manifest_hash_beside_bundle (tests.test_offline_bundle.BundleScriptTest.test_bundle_writes_manifest_hash_beside_bundle) ... ok
+test_dist_is_gitignored (tests.test_offline_bundle.DistIgnoredTest.test_dist_is_gitignored) ... ok
+test_operator_scripts_are_executable_in_git (tests.test_offline_bundle.ExecBitTest.test_operator_scripts_are_executable_in_git) ... ok
+test_arch_normalisation (tests.test_offline_bundle.InstallPs1Test.test_arch_normalisation)
+`docker info` Architecture x86_64|amd64 -> amd64 and aarch64|arm64 ... ok
+test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper) ... ok
+test_install_claims_target_before_docker (tests.test_offline_bundle.InstallPs1Test.test_install_claims_target_before_docker)
+The target is claimed (an exclusive mkdir, 0700) before any docker ... ok
+test_install_does_not_follow_target_planted_during_load (tests.test_offline_bundle.InstallPs1Test.test_install_does_not_follow_target_planted_during_load) ... ok
+test_install_empties_swapped_staging (tests.test_offline_bundle.InstallPs1Test.test_install_empties_swapped_staging)
+Security I-7: after staging is renamed away and a lookalike planted ... ok
+test_install_fails_when_claim_marker_deleted_before_publish (tests.test_offline_bundle.InstallPs1Test.test_install_fails_when_claim_marker_deleted_before_publish)
+Security L-12: the claim marker deleted after the last docker call ... ok
+test_install_fails_when_compose_config_fails (tests.test_offline_bundle.InstallPs1Test.test_install_fails_when_compose_config_fails) ... ok
+test_install_fails_when_service_has_no_bundle_entry (tests.test_offline_bundle.InstallPs1Test.test_install_fails_when_service_has_no_bundle_entry) ... ok
+test_install_flags_target_parent_others_can_write (tests.test_offline_bundle.InstallPs1Test.test_install_flags_target_parent_others_can_write)
+Security H-1 fix 3, round-4 ruling: a target parent that others can ... ok
+test_install_ignores_script_changed_during_run (tests.test_offline_bundle.InstallPs1Test.test_install_ignores_script_changed_during_run)
+Security M-4: a command appended to the bundle's installer while it ... ok
+test_install_ignores_script_rewritten_in_place (tests.test_offline_bundle.InstallPs1Test.test_install_ignores_script_rewritten_in_place)
+Review RB3, security M-4b: at `docker info` the bundle's installer ... ok
+test_install_leaves_no_partial_target (tests.test_offline_bundle.InstallPs1Test.test_install_leaves_no_partial_target) ... ok
+test_install_loads_and_copies_verified_bytes_only (tests.test_offline_bundle.InstallPs1Test.test_install_loads_and_copies_verified_bytes_only) ... ok
+test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails) ... ok
+test_install_never_removes_dir_renamed_into_staging_name (tests.test_offline_bundle.InstallPs1Test.test_install_never_removes_dir_renamed_into_staging_name)
+Security M-7 (probes A2r/A10, W1r): at `docker info`, after the ... ok
+test_install_next_line_creates_env_before_launch (tests.test_offline_bundle.InstallPs1Test.test_install_next_line_creates_env_before_launch)
+Smoke-gate loop 2, F9 (docs/evidence/platform-offline/recorded2-runs.md): ... ok
+test_install_next_line_restricts_env_before_launch (tests.test_offline_bundle.InstallPs1Test.test_install_next_line_restricts_env_before_launch)
+Security L-L2e (docs/evidence/platform-offline/audit-l2.md): the ... ok
+test_install_override_maps_every_service_to_as_tag (tests.test_offline_bundle.InstallPs1Test.test_install_override_maps_every_service_to_as_tag) ... ok
+test_install_prints_and_checks_manifest_hash (tests.test_offline_bundle.InstallPs1Test.test_install_prints_and_checks_manifest_hash) ... ok
+test_install_ps1_acl_read_failure_is_not_silent (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_acl_read_failure_is_not_silent)
+Security M-6, round-4 ruling (fail closed): a `try` that reads an ... ok
+test_install_ps1_checks_marker_exists_right_before_delete (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_checks_marker_exists_right_before_delete)
+Security L-12: `[IO.File]::Delete` is silent when the file is ... ok
+test_install_ps1_counts_generic_write_rights (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_counts_generic_write_rights)
+Review N1, architecture §2.5: the Windows parent check counts ... ok
+test_install_ps1_creates_windows_staging_with_its_acl (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_creates_windows_staging_with_its_acl)
+Security H-1 fix 1: on Windows, staging is created with its ... ok
+test_install_ps1_never_casts_undefined_rights (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_never_casts_undefined_rights)
+Security M-6: `[FileSystemRights]0x40000000` (GenericWrite) and ... ok
+test_install_ps1_never_removes_staging_recursively_by_name (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_never_removes_staging_recursively_by_name)
+Security M-7: `Remove-Item -LiteralPath $script:Staging -Recurse` ... ok
+test_install_ps1_rechecks_target_is_dir_right_before_chmod (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_rechecks_target_is_dir_right_before_chmod)
+Security L-12: `[IO.File]::SetUnixFileMode($targetPath, ...)` ... ok
+test_install_ps1_refuses_non_empty_staging (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_refuses_non_empty_staging)
+Review N7 (parity with RB6/H-2): right after staging is created, a ... ok
+test_install_ps1_refuses_parent_owned_by_another_user (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_refuses_parent_owned_by_another_user)
+Security L-15, round-4 ruling: off Windows, install.ps1 refuses a ... skipped 'no directory owned by another non-root uid (and not group/world-writable) exists on this host, so the ps1 owner rule (security L-15) cannot be exercised here'
+test_install_ps1_refuses_relative_or_empty_path_entries (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_refuses_relative_or_empty_path_entries)
+Review RB5a, security L-9 (twin of the sh test; kills mutant ... ok
+test_install_ps1_requires_pwsh_7_3 (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_requires_pwsh_7_3)
+Review RB2(b): Windows PowerShell 5.1 fails at Add-Type with a C# ... ok
+test_install_ps1_session_recovers_after_signal (tests.test_offline_bundle.InstallPs1Test.test_install_ps1_session_recovers_after_signal)
+Review RB1: run in-process (`& .\install.ps1` in an open session), ... ok
+test_install_refuses_arch_mismatch (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_arch_mismatch)
+After `docker info` answers and before `compose config` or any ... ok
+test_install_refuses_case_variant_paths (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_case_variant_paths) ... ok
+test_install_refuses_manifest_link_or_fifo (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_manifest_link_or_fifo) ... ok
+test_install_refuses_target_replaced_during_load (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_target_replaced_during_load)
+Security L-8: a directory or symlink planted at the target during ... ok
+test_install_refuses_unfit_target_or_daemon (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_unfit_target_or_daemon) ... ok
+test_install_rejects_bundle_json_missing_field (tests.test_offline_bundle.InstallPs1Test.test_install_rejects_bundle_json_missing_field) ... ok
+test_install_removes_staging_on_every_exit (tests.test_offline_bundle.InstallPs1Test.test_install_removes_staging_on_every_exit) ... ok
+test_install_stages_privately_in_target_parent (tests.test_offline_bundle.InstallPs1Test.test_install_stages_privately_in_target_parent) ... ok
+test_install_stops_on_signal_to_its_own_pid (tests.test_offline_bundle.InstallPs1Test.test_install_stops_on_signal_to_its_own_pid)
+SIGTERM or SIGHUP sent to the installer's pid only (not its group, ... ok
+test_install_survives_staging_swap_after_verification (tests.test_offline_bundle.InstallPs1Test.test_install_survives_staging_swap_after_verification)
+Security H-1: someone who can rename entries in the target's parent ... ok
+test_install_tags_loaded_image_as_bundle_name (tests.test_offline_bundle.InstallPs1Test.test_install_tags_loaded_image_as_bundle_name) ... ok
+test_install_target_modes_ignore_build_host_umask (tests.test_offline_bundle.InstallPs1Test.test_install_target_modes_ignore_build_host_umask)
+F6 (docs/evidence/platform-offline/recorded-runs.md): after install ... ok
+test_install_writes_override_0644 (tests.test_offline_bundle.InstallPs1Test.test_install_writes_override_0644) ... ok
+test_empty_path_entry_is_dropped_on_windows (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_empty_path_entry_is_dropped_on_windows)
+Review RB5a, security L-9: on Windows an empty PATH entry is a ... skipped 'Windows ACLs: runs only on a Windows host with pwsh; the gates image is Linux, so verify.sh skips it (security H-1)'
+test_parent_granting_authenticated_users_modify_is_refused (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_parent_granting_authenticated_users_modify_is_refused)
+Round-4 ruling (orchestrator "unit-2 rework round 4/5", POLICY ... skipped 'Windows ACLs: runs only on a Windows host with pwsh; the gates image is Linux, so verify.sh skips it (security H-1)'
+test_parent_others_can_create_in_is_refused (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_parent_others_can_create_in_is_refused)
+Security M-6 (probes W2, W3), behavioural: an Everyone ... skipped 'Windows ACLs: runs only on a Windows host with pwsh; the gates image is Linux, so verify.sh skips it (security H-1)'
+test_staging_junction_to_operator_dir_is_never_emptied (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_staging_junction_to_operator_dir_is_never_emptied)
+Security H-2 (probe W1) on Windows: right after staging is ... skipped 'Windows ACLs: runs only on a Windows host with pwsh; the gates image is Linux, so verify.sh skips it (security H-1)'
+test_staging_never_inherits_an_ace (tests.test_offline_bundle.InstallPs1WindowsAclTest.test_staging_never_inherits_an_ace)
+Security H-1: staging never carries an inherited ACE, under a ... skipped 'Windows ACLs: runs only on a Windows host with pwsh; the gates image is Linux, so verify.sh skips it (security H-1)'
+test_install_sh_runs_with_bsd_tool_shims (tests.test_offline_bundle.InstallShPortableTest.test_install_sh_runs_with_bsd_tool_shims) ... ok
+test_install_sh_uses_no_gnu_or_bash4_constructs (tests.test_offline_bundle.InstallShPortableTest.test_install_sh_uses_no_gnu_or_bash4_constructs) ... ok
+test_launch_and_teardown_run_with_bsd_tool_shims (tests.test_offline_bundle.InstallShPortableTest.test_launch_and_teardown_run_with_bsd_tool_shims)
+Rework round 2 (review RB2a, Q53 extended): launch.sh (argument ... ok
+test_launch_enforces_compose_version_floor (tests.test_offline_bundle.InstallShPortableTest.test_launch_enforces_compose_version_floor)
+Review RB5b (kills mutant atl, `at_least` always true): launch.sh ... ok
+test_operator_scripts_use_no_gnu_or_bash4_constructs (tests.test_offline_bundle.InstallShPortableTest.test_operator_scripts_use_no_gnu_or_bash4_constructs)
+Rework round 2 (review RB2a, Q53 extended): launch.sh and ... ok
+test_arch_normalisation (tests.test_offline_bundle.InstallShTest.test_arch_normalisation)
+`docker info` Architecture x86_64|amd64 -> amd64 and aarch64|arm64 ... ok
+test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallShTest.test_bundle_manifest_rejects_tamper) ... ok
+test_install_claims_target_before_docker (tests.test_offline_bundle.InstallShTest.test_install_claims_target_before_docker)
+The target is claimed (an exclusive mkdir, 0700) before any docker ... ok
+test_install_does_not_follow_target_planted_during_load (tests.test_offline_bundle.InstallShTest.test_install_does_not_follow_target_planted_during_load) ... ok
+test_install_empties_swapped_staging (tests.test_offline_bundle.InstallShTest.test_install_empties_swapped_staging)
+Security I-7: after staging is renamed away and a lookalike planted ... ok
+test_install_fails_when_claim_marker_deleted_before_publish (tests.test_offline_bundle.InstallShTest.test_install_fails_when_claim_marker_deleted_before_publish)
+Security L-12: the claim marker deleted after the last docker call ... ok
+test_install_fails_when_compose_config_fails (tests.test_offline_bundle.InstallShTest.test_install_fails_when_compose_config_fails) ... ok
+test_install_fails_when_service_has_no_bundle_entry (tests.test_offline_bundle.InstallShTest.test_install_fails_when_service_has_no_bundle_entry) ... ok
+test_install_flags_target_parent_others_can_write (tests.test_offline_bundle.InstallShTest.test_install_flags_target_parent_others_can_write)
+Security H-1 fix 3, round-4 ruling: a target parent that others can ... ok
+test_install_ignores_script_changed_during_run (tests.test_offline_bundle.InstallShTest.test_install_ignores_script_changed_during_run)
+Security M-4: a command appended to the bundle's installer while it ... ok
+test_install_ignores_script_rewritten_in_place (tests.test_offline_bundle.InstallShTest.test_install_ignores_script_rewritten_in_place)
+Review RB3, security M-4b: at `docker info` the bundle's installer ... ok
+test_install_leaves_no_partial_target (tests.test_offline_bundle.InstallShTest.test_install_leaves_no_partial_target) ... ok
+test_install_loads_and_copies_verified_bytes_only (tests.test_offline_bundle.InstallShTest.test_install_loads_and_copies_verified_bytes_only) ... ok
+test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallShTest.test_install_loads_nothing_when_manifest_fails) ... ok
+test_install_never_removes_dir_renamed_into_staging_name (tests.test_offline_bundle.InstallShTest.test_install_never_removes_dir_renamed_into_staging_name)
+Security M-7 (probes A2r/A10, W1r): at `docker info`, after the ... ok
+test_install_next_line_creates_env_before_launch (tests.test_offline_bundle.InstallShTest.test_install_next_line_creates_env_before_launch)
+Smoke-gate loop 2, F9 (docs/evidence/platform-offline/recorded2-runs.md): ... ok
+test_install_next_line_restricts_env_before_launch (tests.test_offline_bundle.InstallShTest.test_install_next_line_restricts_env_before_launch)
+Security L-L2e (docs/evidence/platform-offline/audit-l2.md): the ... ok
+test_install_override_maps_every_service_to_as_tag (tests.test_offline_bundle.InstallShTest.test_install_override_maps_every_service_to_as_tag) ... ok
+test_install_prints_and_checks_manifest_hash (tests.test_offline_bundle.InstallShTest.test_install_prints_and_checks_manifest_hash) ... ok
+test_install_refuses_arch_mismatch (tests.test_offline_bundle.InstallShTest.test_install_refuses_arch_mismatch)
+After `docker info` answers and before `compose config` or any ... ok
+test_install_refuses_case_variant_paths (tests.test_offline_bundle.InstallShTest.test_install_refuses_case_variant_paths) ... ok
+test_install_refuses_manifest_link_or_fifo (tests.test_offline_bundle.InstallShTest.test_install_refuses_manifest_link_or_fifo) ... ok
+test_install_refuses_target_replaced_during_load (tests.test_offline_bundle.InstallShTest.test_install_refuses_target_replaced_during_load)
+Security L-8: a directory or symlink planted at the target during ... ok
+test_install_refuses_unfit_target_or_daemon (tests.test_offline_bundle.InstallShTest.test_install_refuses_unfit_target_or_daemon) ... ok
+test_install_rejects_bundle_json_missing_field (tests.test_offline_bundle.InstallShTest.test_install_rejects_bundle_json_missing_field) ... ok
+test_install_removes_staging_on_every_exit (tests.test_offline_bundle.InstallShTest.test_install_removes_staging_on_every_exit) ... ok
+test_install_sh_comments_never_allow_a_sticky_parent (tests.test_offline_bundle.InstallShTest.test_install_sh_comments_never_allow_a_sticky_parent)
+Review N10 / security L-19: the round-4 rule refuses a sticky ... ok
+test_install_sh_flags_parent_owned_by_another_user (tests.test_offline_bundle.InstallShTest.test_install_sh_flags_parent_owned_by_another_user)
+Review N1, architecture §2.5, round-4 ruling: install.sh REFUSES a ... ok
+test_install_sh_ignores_exported_cdpath (tests.test_offline_bundle.InstallShTest.test_install_sh_ignores_exported_cdpath)
+Security L-OC1b-a: install.sh's `unset CDPATH` survived every test. ... ok
+test_install_sh_leaves_no_target_when_claim_mkdir_fails (tests.test_offline_bundle.InstallShTest.test_install_sh_leaves_no_target_when_claim_mkdir_fails)
+Security L-13: under Git Bash on NTFS, `mkdir -m 0700` creates the ... ok
+test_install_sh_names_case_rule_for_present_case_variant (tests.test_offline_bundle.InstallShTest.test_install_sh_names_case_rule_for_present_case_variant)
+Review P2: on a case-insensitive staging volume (macOS APFS) the ... ok
+test_install_sh_never_chmods_a_target_swapped_at_publish (tests.test_offline_bundle.InstallShTest.test_install_sh_never_chmods_a_target_swapped_at_publish)
+Security M-5 (probe A6): at the `chmod 0755` that opens up the ... ok
+test_install_sh_never_empties_dir_swapped_in_for_staging (tests.test_offline_bundle.InstallShTest.test_install_sh_never_empties_dir_swapped_in_for_staging)
+Security H-2, review RB6: right after `mktemp -d` creates staging, ... ok
+test_install_sh_never_removes_staging_recursively_by_name (tests.test_offline_bundle.InstallShTest.test_install_sh_never_removes_staging_recursively_by_name)
+Security M-7: `rm -rf -- "$staging"` deletes whatever directory sits ... ok
+test_install_sh_next_line_runs_launch_with_bash (tests.test_offline_bundle.InstallShTest.test_install_sh_next_line_runs_launch_with_bash)
+Review N6: the quickstart says `bash scripts/launch.sh` so the ... ok
+test_install_sh_piped_checks_exit_explicitly (tests.test_offline_bundle.InstallShTest.test_install_sh_piped_checks_exit_explicitly)
+Security I-5: a `die` inside a `... | { ...; }` group runs in a ... ok
+test_install_sh_refuses_parent_it_cannot_check (tests.test_offline_bundle.InstallShTest.test_install_sh_refuses_parent_it_cannot_check)
+Round-4 ruling (orchestrator "unit-2 rework round 4/5"): any error ... ok
+test_install_sh_refuses_real_dir_swapped_in_at_publish (tests.test_offline_bundle.InstallShTest.test_install_sh_refuses_real_dir_swapped_in_at_publish)
+Review N11 (probe dir_swap_at_publish): at `chmod 0755 .` inside ... ok
+test_install_sh_refuses_relative_or_empty_path_entries (tests.test_offline_bundle.InstallShTest.test_install_sh_refuses_relative_or_empty_path_entries)
+Security L-9: with an empty, `.` or relative PATH entry, a `mktemp` ... ok
+test_install_sh_refuses_staging_loosened_before_cd (tests.test_offline_bundle.InstallShTest.test_install_sh_refuses_staging_loosened_before_cd)
+Security L-11: between creating staging and the `cd` into it, a ... ok
+test_install_sh_refuses_target_swapped_for_link_before_chmod (tests.test_offline_bundle.InstallShTest.test_install_sh_refuses_target_swapped_for_link_before_chmod)
+Security L-12 (round-3 orchestrator item): `chmod 0755` on the ... ok
+test_install_stages_privately_in_target_parent (tests.test_offline_bundle.InstallShTest.test_install_stages_privately_in_target_parent) ... ok
+test_install_stops_on_signal_to_its_own_pid (tests.test_offline_bundle.InstallShTest.test_install_stops_on_signal_to_its_own_pid)
+SIGTERM or SIGHUP sent to the installer's pid only (not its group, ... ok
+test_install_survives_staging_swap_after_verification (tests.test_offline_bundle.InstallShTest.test_install_survives_staging_swap_after_verification)
+Security H-1: someone who can rename entries in the target's parent ... ok
+test_install_tags_loaded_image_as_bundle_name (tests.test_offline_bundle.InstallShTest.test_install_tags_loaded_image_as_bundle_name) ... ok
+test_install_target_modes_ignore_build_host_umask (tests.test_offline_bundle.InstallShTest.test_install_target_modes_ignore_build_host_umask)
+F6 (docs/evidence/platform-offline/recorded-runs.md): after install ... ok
+test_install_writes_override_0644 (tests.test_offline_bundle.InstallShTest.test_install_writes_override_0644) ... ok
+test_licence_file_is_mit (tests.test_offline_bundle.ProjectLicenceTextTest.test_licence_file_is_mit) ... ok
+test_notice_states_project_is_mit (tests.test_offline_bundle.ProjectLicenceTextTest.test_notice_states_project_is_mit) ... ok
+test_notice_table_guidance_requires_spdx_licence (tests.test_offline_bundle.ProjectLicenceTextTest.test_notice_table_guidance_requires_spdx_licence) ... ok
+test_notice_wording_asserts_no_more_than_the_facts (tests.test_offline_bundle.ProjectLicenceTextTest.test_notice_wording_asserts_no_more_than_the_facts) ... ok
+test_pyproject_declares_mit_licence (tests.test_offline_bundle.ProjectLicenceTextTest.test_pyproject_declares_mit_licence) ... ok
+test_valkey_bsd_text_is_committed_and_referenced (tests.test_offline_bundle.ProjectLicenceTextTest.test_valkey_bsd_text_is_committed_and_referenced) ... ok
+test_quickstart_code_first_comes_first (tests.test_offline_bundle.QuickstartOfflineTest.test_quickstart_code_first_comes_first) ... ok
+test_quickstart_describes_offline_install (tests.test_offline_bundle.QuickstartOfflineTest.test_quickstart_describes_offline_install) ... ok
+test_quickstart_icacls_grants_current_user_sid (tests.test_offline_bundle.QuickstartOfflineTest.test_quickstart_icacls_grants_current_user_sid)
+Security L-L2c (docs/evidence/platform-offline/audit-l2.md): the ... ok
+test_quickstart_names_bundle_disk_floor (tests.test_offline_bundle.QuickstartOfflineTest.test_quickstart_names_bundle_disk_floor)
+R6 as amended (7 GiB, CI run 39359710258): the build-host ... ok
+test_quickstart_names_existing_scripts (tests.test_offline_bundle.QuickstartOfflineTest.test_quickstart_names_existing_scripts)
+Review RB4: every `scripts/<name>` or `scripts\<name>` in a ... ok
+test_quickstart_offline_commands_run_as_written (tests.test_offline_bundle.QuickstartOfflineTest.test_quickstart_offline_commands_run_as_written)
+Review RB2(b, c), security (c): the commands work on a stock host. ... ok
+test_quickstart_offline_env_step_is_private_and_names_ke_env (tests.test_offline_bundle.QuickstartOfflineTest.test_quickstart_offline_env_step_is_private_and_names_ke_env)
+Smoke-gate loop 2, findings F10 and F12 of the recorded offline runs ... ok
+test_quickstart_offline_operator_steps (tests.test_offline_bundle.QuickstartOfflineTest.test_quickstart_offline_operator_steps)
+Smoke-gate loop 1, findings F1-F5 of the recorded offline runs ... ok
+test_quickstart_offline_safety_notes (tests.test_offline_bundle.QuickstartOfflineTest.test_quickstart_offline_safety_notes)
+Security quickstart gaps (b) and (e), review RB2(d) and P6. ... ok
+test_quickstart_parent_rule_round5 (tests.test_offline_bundle.QuickstartOfflineTest.test_quickstart_parent_rule_round5)
+Review RB8 (= security L-19) and security I-14, round 5. PS-3.2 ... ok
+test_quickstart_project_name_advice_precedes_launch (tests.test_offline_bundle.QuickstartOfflineTest.test_quickstart_project_name_advice_precedes_launch)
+Recorded run 3, finding Q1 (recorded3-runs.md): step 5's block ends ... ok
+test_quickstart_round3_notes (tests.test_offline_bundle.QuickstartOfflineTest.test_quickstart_round3_notes)
+Review N3 and the security quickstart nits (rework round 3). ... ok
+test_quickstart_target_not_directly_under_c_or_opt (tests.test_offline_bundle.QuickstartOfflineTest.test_quickstart_target_not_directly_under_c_or_opt)
+Security H-1 (gap a), review RB2(d): an example target directly ... ok
+test_first_party_images_use_image_tag (tests.test_offline_check.ImageTagTest.test_first_party_images_use_image_tag) ... ok
+test_verify_does_not_retag_live_images (tests.test_offline_check.ImageTagTest.test_verify_does_not_retag_live_images) ... ok
+test_net_isolated_passes_an_internal_isolated_network (tests.test_offline_check.NetIsolatedScriptTest.test_net_isolated_passes_an_internal_isolated_network) ... ok
+test_net_isolated_refuses_not_internal_or_not_isolated (tests.test_offline_check.NetIsolatedScriptTest.test_net_isolated_refuses_not_internal_or_not_isolated) ... ok
+test_offline_check_asserts_clean_daemon (tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_asserts_clean_daemon) ... ok
+test_offline_check_client_half_runs_install_launch_smoke_teardown (tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_client_half_runs_install_launch_smoke_teardown) ... ok
+test_offline_check_client_refuses_ca_or_server_certs (tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_client_refuses_ca_or_server_certs) ... ok
+test_offline_check_fails_below_free_disk (tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_fails_below_free_disk) ... ok
+test_offline_check_fails_when_tag_set_differs_from_as_set (tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_fails_when_tag_set_differs_from_as_set) ... ok
+test_offline_check_fails_without_privileged_daemon (tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_fails_without_privileged_daemon) ... ok
+test_offline_check_host_half_runs_stages_in_order (tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_host_half_runs_stages_in_order) ... ok
+test_offline_check_logs_disk_around_each_stage (tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_logs_disk_around_each_stage) ... ok
+test_offline_check_opens_bundle_before_the_client_starts (tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_opens_bundle_before_the_client_starts) ... ok
+test_offline_check_opens_its_own_bundle_to_the_client_only (tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_opens_its_own_bundle_to_the_client_only) ... ok
+test_offline_check_pulls_sbom_generator_before_bundle (tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_pulls_sbom_generator_before_bundle) ... ok
+test_offline_check_signal_exits_with_its_status_and_no_pass (tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_signal_exits_with_its_status_and_no_pass)
+Security L-4 (docs/evidence/platform-supply-chain/security-u4-r1.md; ... ok
+test_offline_check_stops_when_sbom_pull_fails (tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_stops_when_sbom_pull_fails) ... ok
+test_offline_check_tears_down_on_failure (tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_tears_down_on_failure) ... ok
+test_offline_check_tears_down_on_interrupt (tests.test_offline_check.OfflineCheckScriptTest.test_offline_check_tears_down_on_interrupt) ... ok
+test_offline_dind_uses_containerd_store (tests.test_offline_check.OfflineCheckScriptTest.test_offline_dind_uses_containerd_store) ... ok
+test_compose_offline_services (tests.test_offline_check.OfflineComposeTest.test_compose_offline_services) ... ok
+test_offline_client_mounts_only_client_certs_read_only (tests.test_offline_check.OfflineComposeTest.test_offline_client_mounts_only_client_certs_read_only) ... ok
+test_offline_client_never_pulls (tests.test_offline_check.OfflineComposeTest.test_offline_client_never_pulls) ... ok
+test_offline_dind_has_network_alias_docker (tests.test_offline_check.OfflineComposeTest.test_offline_dind_has_network_alias_docker) ... ok
+test_offline_inner_networks_are_internal (tests.test_offline_check.OfflineComposeTest.test_offline_inner_networks_are_internal) ... ok
+test_stack_compose_has_no_required_variable (tests.test_offline_check.OfflineComposeTest.test_stack_compose_has_no_required_variable) ... ok
+test_connected_exits_0_and_closes (tests.test_offline_netprobe.NetprobeTest.test_connected_exits_0_and_closes) ... ok
+test_netprobe_accepts_the_bounds (tests.test_offline_netprobe.NetprobeTest.test_netprobe_accepts_the_bounds) ... ok
+test_netprobe_bad_arguments_print_exactly_bad_arguments_with_empty_stderr (tests.test_offline_netprobe.NetprobeTest.test_netprobe_bad_arguments_print_exactly_bad_arguments_with_empty_stderr) ... ok
+test_netprobe_cli_bad_arguments_have_no_traceback (tests.test_offline_netprobe.NetprobeTest.test_netprobe_cli_bad_arguments_have_no_traceback) ... ok
+test_netprobe_cli_bad_arguments_print_bad_arguments_and_nothing_on_stderr (tests.test_offline_netprobe.NetprobeTest.test_netprobe_cli_bad_arguments_print_bad_arguments_and_nothing_on_stderr) ... ok
+test_netprobe_rejects_bad_arguments_with_one_word (tests.test_offline_netprobe.NetprobeTest.test_netprobe_rejects_bad_arguments_with_one_word) ... ok
+test_netprobe_runs_no_startup_and_reads_only_its_arguments (tests.test_offline_netprobe.NetprobeTest.test_netprobe_runs_no_startup_and_reads_only_its_arguments) ... ok
+test_no_route_errnos_print_no_route_and_exit_1 (tests.test_offline_netprobe.NetprobeTest.test_no_route_errnos_print_no_route_and_exit_1) ... ok
+test_real_loopback_connected_and_refused (tests.test_offline_netprobe.NetprobeTest.test_real_loopback_connected_and_refused) ... ok
+test_refused_timeout_and_other_errors (tests.test_offline_netprobe.NetprobeTest.test_refused_timeout_and_other_errors) ... ok
+test_within_bounds_the_connect (tests.test_offline_netprobe.NetprobeTest.test_within_bounds_the_connect) ... ok
+test_ci_offline_control_never_pulls (tests.test_offline_netprobe.SmokeCiOfflineTest.test_ci_offline_control_never_pulls) ... ok
+test_ci_offline_control_run_labels_its_own_probe_project (tests.test_offline_netprobe.SmokeCiOfflineTest.test_ci_offline_control_run_labels_its_own_probe_project) ... ok
+test_ci_offline_fails_naming_the_service_that_gets_out (tests.test_offline_netprobe.SmokeCiOfflineTest.test_ci_offline_fails_naming_the_service_that_gets_out) ... ok
+test_ci_offline_inconclusive_names_the_target_the_control_probed (tests.test_offline_netprobe.SmokeCiOfflineTest.test_ci_offline_inconclusive_names_the_target_the_control_probed) ... ok
+test_ci_offline_pass_says_in_plain_words_what_it_checked (tests.test_offline_netprobe.SmokeCiOfflineTest.test_ci_offline_pass_says_in_plain_words_what_it_checked) ... ok
+test_ci_offline_probes_api_and_worker_after_a_connected_control (tests.test_offline_netprobe.SmokeCiOfflineTest.test_ci_offline_probes_api_and_worker_after_a_connected_control) ... ok
+test_ci_offline_refuses_a_non_ipv4_target (tests.test_offline_netprobe.SmokeCiOfflineTest.test_ci_offline_refuses_a_non_ipv4_target) ... ok
+test_offline_probe_fails_when_control_fails (tests.test_offline_netprobe.SmokeCiOfflineTest.test_offline_probe_fails_when_control_fails) ... ok
+test_gates_psycopg_is_c_impl_on_debian_libpq (tests.test_psycopg_c.GatesPsycopgTest.test_gates_psycopg_is_c_impl_on_debian_libpq)
+In ke-gates: `psycopg.pq.__impl__ == "c"`; `pq.version()` and ... ok
+test_app_dockerfile_builds_psycopg_c_on_pinned_libpq (tests.test_psycopg_c.PsycopgCStaticTest.test_app_dockerfile_builds_psycopg_c_on_pinned_libpq)
+PSC-25 Builder stage, N0 app.Dockerfile: one global `ARG ... ok
+test_ke_app_resolves_psycopg_c_not_binary (tests.test_psycopg_c.PsycopgCStaticTest.test_ke_app_resolves_psycopg_c_not_binary)
+PSC-25 Lock (A65/A66, ADR-KE-016 point 0): what `uv sync --locked ... ok
+test_libpq_pin_matches_bookworm_base (tests.test_psycopg_c.PsycopgCStaticTest.test_libpq_pin_matches_bookworm_base)
+N0 Drift: the pin is `+deb12u<n>`, both python FROM lines of ... ok
+test_notice_psycopg_section_matches_lock (tests.test_psycopg_c.PsycopgCStaticTest.test_notice_psycopg_section_matches_lock)
+PSC-25 Notices: every psycopg package in the builder's locked set ... ok
+test_pyproject_puts_psycopg_c_in_image_groups_only (tests.test_psycopg_c.PsycopgCStaticTest.test_pyproject_puts_psycopg_c_in_image_groups_only)
+PSC-25 Lock, Q65, N0 pyproject: `dependencies` has `psycopg` with ... ok
+test_runtime_stage_has_no_compiler (tests.test_psycopg_c.PsycopgCStaticTest.test_runtime_stage_has_no_compiler)
+PSC-25 Runtime stage: the last stage has one apt RUN, `apt-get ... ok
+test_smoke_checks_dpkg_libpq5_owns_the_loaded_libpq (tests.test_psycopg_c.SmokePsycopgTest.test_smoke_checks_dpkg_libpq5_owns_the_loaded_libpq) ... ok
+test_smoke_checks_psycopg_c_impl_in_api (tests.test_psycopg_c.SmokePsycopgTest.test_smoke_checks_psycopg_c_impl_in_api) ... ok
+test_smoke_fails_closed_on_dpkg_query_errors (tests.test_psycopg_c.SmokePsycopgTest.test_smoke_fails_closed_on_dpkg_query_errors) ... ok
+test_smoke_fails_when_psycopg_binary_is_beside_psycopg_c (tests.test_psycopg_c.SmokePsycopgTest.test_smoke_fails_when_psycopg_binary_is_beside_psycopg_c) ... ok
+test_smoke_never_evaluates_the_libpq5_version (tests.test_psycopg_c.SmokePsycopgTest.test_smoke_never_evaluates_the_libpq5_version) ... ok
+test_each_reader_caps_bytes_and_lines (tests.test_resource_probe.ResourceProbeTest.test_each_reader_caps_bytes_and_lines) ... ok
+test_fifo_or_device_source_gives_na_quickly (tests.test_resource_probe.ResourceProbeTest.test_fifo_or_device_source_gives_na_quickly) ... ok
+test_missing_sources_print_na_and_exit_0 (tests.test_resource_probe.ResourceProbeTest.test_missing_sources_print_na_and_exit_0) ... ok
+test_no_root_path_reads_no_env (tests.test_resource_probe.ResourceProbeTest.test_no_root_path_reads_no_env) ... ok
+test_nproc_ignores_openmp_env (tests.test_resource_probe.ResourceProbeTest.test_nproc_ignores_openmp_env) ... ok
+test_oversized_source_is_cut_off (tests.test_resource_probe.ResourceProbeTest.test_oversized_source_is_cut_off) ... ok
+test_prints_one_line_from_a_fake_root (tests.test_resource_probe.ResourceProbeTest.test_prints_one_line_from_a_fake_root) ... ok
+test_prints_only_numbers_never_file_text_or_env (tests.test_resource_probe.ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env) ... ok
+test_stat_fields_are_base_10_and_capped (tests.test_resource_probe.ResourceProbeTest.test_stat_fields_are_base_10_and_capped) ... ok
+test_bundle_has_sbom_per_image (tests.test_sbom_bundle.SbomBundleRunTest.test_bundle_has_sbom_per_image) ... ok
+test_bundle_refuses_on_sbom_failure (tests.test_sbom_bundle.SbomBundleRunTest.test_bundle_refuses_on_sbom_failure) ... ok
+test_bundle_refuses_ref_starting_with_dash (tests.test_sbom_bundle.SbomBundleRunTest.test_bundle_refuses_ref_starting_with_dash) ... ok
+test_sbom_generator_is_daemon_arch (tests.test_sbom_bundle.SbomBundleRunTest.test_sbom_generator_is_daemon_arch) ... ok
+test_sbom_generator_run_is_pinned (tests.test_sbom_bundle.SbomBundleRunTest.test_sbom_generator_run_is_pinned) ... ok
+test_sbom_is_spdx_2_3 (tests.test_sbom_bundle.SbomBundleRunTest.test_sbom_is_spdx_2_3) ... ok
+test_sbom_lists_every_locked_runtime_package (tests.test_sbom_bundle.SbomBundleRunTest.test_sbom_lists_every_locked_runtime_package) ... ok
+test_finish_namespace_is_fresh_per_run (tests.test_sbom_bundle.SbomCheckModuleTest.test_finish_namespace_is_fresh_per_run) ... ok
+test_finish_refuses_uuid_option (tests.test_sbom_bundle.SbomCheckModuleTest.test_finish_refuses_uuid_option) ... ok
+test_sbom_check_is_stdlib_and_never_shipped (tests.test_sbom_bundle.SbomCheckModuleTest.test_sbom_check_is_stdlib_and_never_shipped) ... ok
+test_sbom_is_spdx_2_3 (tests.test_sbom_bundle.SbomCheckModuleTest.test_sbom_is_spdx_2_3)
+N6's validator, table-driven: [] for a valid document, problems ... ok
+test_compose_files_have_no_include_or_extends (tests.test_sbom_bundle.SbomStaticU3Test.test_compose_files_have_no_include_or_extends) ... ok
+test_offline_check_header_names_sbom_pull (tests.test_sbom_bundle.SbomStaticU3Test.test_offline_check_header_names_sbom_pull) ... ok
+test_sbom_generator_runs_as_caller (tests.test_sbom_bundle.SbomStaticU3Test.test_sbom_generator_runs_as_caller) ... ok
+test_classify_document_real_neo4j_rows (tests.test_sbom_classifier.ClassifyDocumentTest.test_classify_document_real_neo4j_rows) ... ok
+test_classify_document_real_rows_every_image (tests.test_sbom_classifier.ClassifyDocumentTest.test_classify_document_real_rows_every_image) ... ok
+test_classify_document_skips_root_and_applies_always (tests.test_sbom_classifier.ClassifyDocumentTest.test_classify_document_skips_root_and_applies_always) ... ok
+test_both_fields_set (tests.test_sbom_classifier.ClassifyPackageTest.test_both_fields_set) ... ok
+test_classify_package_keys_and_raw_values (tests.test_sbom_classifier.ClassifyPackageTest.test_classify_package_keys_and_raw_values) ... ok
+test_files_list (tests.test_sbom_classifier.ClassifyPackageTest.test_files_list) ... ok
+test_hash_only_package_is_classified_and_still_reported (tests.test_sbom_classifier.ClassifyPackageTest.test_hash_only_package_is_classified_and_still_reported) ... ok
+test_jna_fall_through_is_literal (tests.test_sbom_classifier.ClassifyPackageTest.test_jna_fall_through_is_literal) ... ok
+test_unlicensed_packages (tests.test_sbom_classifier.ClassifyPackageTest.test_unlicensed_packages) ... ok
+test_drift_problems_escape_debian_name_and_cpython_version (tests.test_sbom_classifier.EscapingTest.test_drift_problems_escape_debian_name_and_cpython_version) ... ok
+test_finish_argv_patterns_fullmatch (tests.test_sbom_classifier.EscapingTest.test_finish_argv_patterns_fullmatch) ... ok
+test_psycopg_problems_escape (tests.test_sbom_classifier.EscapingTest.test_psycopg_problems_escape) ... ok
+test_validate_rejects_created_with_trailing_newline (tests.test_sbom_classifier.EscapingTest.test_validate_rejects_created_with_trailing_newline) ... ok
+test_validate_rejects_trailing_newline_spdxid_and_prints_escaped (tests.test_sbom_classifier.EscapingTest.test_validate_rejects_trailing_newline_spdxid_and_prints_escaped) ... ok
+test_is_gpl_id_pattern_and_token_rule (tests.test_sbom_classifier.GplIdTest.test_is_gpl_id_pattern_and_token_rule) ... ok
+test_licence_input_selection (tests.test_sbom_classifier.LicenceInputTest.test_licence_input_selection) ... ok
+test_licence_input_type_rule (tests.test_sbom_classifier.LicenceInputTest.test_licence_input_type_rule) ... ok
+test_classifier_table (tests.test_sbom_classifier.NeedsSourceTest.test_classifier_table) ... ok
+test_debian_with_autoconf_exception (tests.test_sbom_classifier.NeedsSourceTest.test_debian_with_autoconf_exception) ... ok
+test_named_licenseref_rows (tests.test_sbom_classifier.NeedsSourceTest.test_named_licenseref_rows) ... ok
+test_needs_source_never_raises (tests.test_sbom_classifier.NeedsSourceTest.test_needs_source_never_raises) ... ok
+test_operators_any_case (tests.test_sbom_classifier.NeedsSourceTest.test_operators_any_case) ... ok
+test_precedence_and_parentheses (tests.test_sbom_classifier.NeedsSourceTest.test_precedence_and_parentheses) ... ok
+test_unknown_leaves_need_source_and_are_unidentified (tests.test_sbom_classifier.NeedsSourceTest.test_unknown_leaves_need_source_and_are_unidentified) ... ok
+test_unparseable_text (tests.test_sbom_classifier.NeedsSourceTest.test_unparseable_text) ... ok
+test_url_folded_ids (tests.test_sbom_classifier.NeedsSourceTest.test_url_folded_ids) ... ok
+test_drift_success_line_is_clean_and_non_namespaced (tests.test_sbom_classifier.ReworkR1DriftLineTest.test_drift_success_line_is_clean_and_non_namespaced) ... ok
+test_non_ascii_expressions (tests.test_sbom_classifier.ReworkR1NonAsciiTest.test_non_ascii_expressions) ... ok
+test_non_ascii_package (tests.test_sbom_classifier.ReworkR1NonAsciiTest.test_non_ascii_package) ... ok
+test_each_part_is_classified_alone (tests.test_sbom_classifier.ReworkR1PerPartTest.test_each_part_is_classified_alone) ... ok
+test_unparseable_part_does_not_hide_an_unknown_leaf (tests.test_sbom_classifier.ReworkR1PerPartTest.test_unparseable_part_does_not_hide_an_unknown_leaf) ... ok
+test_wider_token_rule_expressions (tests.test_sbom_classifier.ReworkR1TokenRuleTest.test_wider_token_rule_expressions) ... ok
+test_wider_token_rule_ids (tests.test_sbom_classifier.ReworkR1TokenRuleTest.test_wider_token_rule_ids) ... ok
+test_unknown_exception_ids (tests.test_sbom_classifier.ReworkR1UnknownLeavesTest.test_unknown_exception_ids) ... ok
+test_unknown_leaves_any_case (tests.test_sbom_classifier.ReworkR1UnknownLeavesTest.test_unknown_leaves_any_case) ... ok
+test_unknown_runs_in_unparseable_text (tests.test_sbom_classifier.ReworkR1UnknownLeavesTest.test_unknown_runs_in_unparseable_text) ... ok
+test_gpl_family_exception_id (tests.test_sbom_classifier.ReworkR1WithExceptionTest.test_gpl_family_exception_id) ... ok
+test_document_ref_prefix (tests.test_sbom_classifier.ReworkR2DocumentRefTest.test_document_ref_prefix) ... ok
+test_document_ref_prefix_in_unparseable_text (tests.test_sbom_classifier.ReworkR2DocumentRefTest.test_document_ref_prefix_in_unparseable_text) ... ok
+test_hash_anywhere_in_unparseable_text (tests.test_sbom_classifier.ReworkR2LeafCharsetTest.test_hash_anywhere_in_unparseable_text) ... ok
+test_idstring_leaves_still_parse (tests.test_sbom_classifier.ReworkR2LeafCharsetTest.test_idstring_leaves_still_parse) ... ok
+test_odd_leaves_are_unparsed (tests.test_sbom_classifier.ReworkR2LeafCharsetTest.test_odd_leaves_are_unparsed) ... ok
+test_unknown_id_joined_by_punctuation (tests.test_sbom_classifier.ReworkR2LeafCharsetTest.test_unknown_id_joined_by_punctuation) ... ok
+test_every_real_run_is_an_idstring (tests.test_sbom_classifier.ReworkR2RealRowsTest.test_every_real_run_is_an_idstring) ... ok
+test_real_rows_unchanged_by_the_leaf_rule (tests.test_sbom_classifier.ReworkR2RealRowsTest.test_real_rows_unchanged_by_the_leaf_rule) ... ok
+test_classifier_tests_are_ascii (tests.test_sbom_classifier.ReworkR2SourceTest.test_classifier_tests_are_ascii) ... ok
+test_http_exception_id_listed (tests.test_sbom_classifier.ReworkR2WithUrlTest.test_http_exception_id_listed) ... ok
+test_hash_anywhere_in_a_leaf (tests.test_sbom_classifier.ReworkR3DecoratedIdsTest.test_hash_anywhere_in_a_leaf) ... ok
+test_hash_search_in_unparseable_text_unchanged (tests.test_sbom_classifier.ReworkR3DecoratedIdsTest.test_hash_search_in_unparseable_text_unchanged) ... ok
+test_near_misses_stay_ordinary (tests.test_sbom_classifier.ReworkR3DecoratedIdsTest.test_near_misses_stay_ordinary) ... ok
+test_trimmed_unknown_leaves (tests.test_sbom_classifier.ReworkR3DecoratedIdsTest.test_trimmed_unknown_leaves) ... ok
+test_joiners_split_runs (tests.test_sbom_classifier.ReworkR3RunSplitTest.test_joiners_split_runs) ... ok
+test_exempt_clears_needs_also_under_always (tests.test_sbom_classifier.U6ClassifyDocumentExemptTest.test_exempt_clears_needs_also_under_always) ... ok
+test_real_rows_with_the_committed_exempt (tests.test_sbom_classifier.U6ClassifyDocumentExemptTest.test_real_rows_with_the_committed_exempt) ... ok
+test_exempt_matches_exact_versioned_purl (tests.test_sbom_classifier.U6ExemptMatchesTest.test_exempt_matches_exact_versioned_purl) ... ok
+test_exempt_matches_strip_the_package_subpath (tests.test_sbom_classifier.U6ExemptMatchesTest.test_exempt_matches_strip_the_package_subpath) ... ok
+test_exempt_void_on_version_bump (tests.test_sbom_classifier.U6ExemptMatchesTest.test_exempt_void_on_version_bump) ... ok
+test_segment_rule (tests.test_sbom_classifier.U6SegmentRuleTest.test_segment_rule) ... ok
+test_segment_rule_in_runs (tests.test_sbom_classifier.U6SegmentRuleTest.test_segment_rule_in_runs) ... ok
+test_bundle_has_no_sbom_generator (tests.test_sbom_generator.SbomBundleTest.test_bundle_has_no_sbom_generator) ... ok
+test_bundle_refuses_when_sbom_generator_absent (tests.test_sbom_generator.SbomBundleTest.test_bundle_refuses_when_sbom_generator_absent) ... ok
+test_sbom_generator_is_pinned (tests.test_sbom_generator.SbomComposeTest.test_sbom_generator_is_pinned) ... ok
+test_sbom_generator_runs_without_network_or_privileges (tests.test_sbom_generator.SbomComposeTest.test_sbom_generator_runs_without_network_or_privileges) ... ok
+test_added_packages_read_from_notice_test_module (tests.test_sbom_obligations.DriftLogicTest.test_added_packages_read_from_notice_test_module) ... ok
+test_ke_app_sbom_added_dpkg_set_equals_added_packages (tests.test_sbom_obligations.DriftLogicTest.test_ke_app_sbom_added_dpkg_set_equals_added_packages) ... ok
+test_ke_app_sbom_cpython_matches_licence_files (tests.test_sbom_obligations.DriftLogicTest.test_ke_app_sbom_cpython_matches_licence_files) ... ok
+test_ke_app_sbom_lists_libpq5_and_psycopg_c_not_binary (tests.test_sbom_obligations.DriftLogicTest.test_ke_app_sbom_lists_libpq5_and_psycopg_c_not_binary) ... ok
+test_ke_app_sbom_lists_no_pip (tests.test_sbom_obligations.DriftLogicTest.test_ke_app_sbom_lists_no_pip) ... ok
+test_offline_check_fails_on_image_side_drift (tests.test_sbom_obligations.DriftOfflineCheckTest.test_offline_check_fails_on_image_side_drift) ... ok
+test_offline_check_fails_when_ke_app_base_pull_fails (tests.test_sbom_obligations.DriftOfflineCheckTest.test_offline_check_fails_when_ke_app_base_pull_fails)
+Ruling 6 (replaces U4 RED's "absent base fails, no pull"): a failed ... ok
+test_offline_check_pulls_ke_app_base_absent_locally (tests.test_sbom_obligations.DriftOfflineCheckTest.test_offline_check_pulls_ke_app_base_absent_locally)
+Ruling 6: the check never relies on the BuildKit cache; a daemon ... ok
+test_offline_check_refuses_an_unpinned_base_reference (tests.test_sbom_obligations.DriftOfflineCheckTest.test_offline_check_refuses_an_unpinned_base_reference)
+N1 am. U4: the runtime stage's FROM needs a tag and an @sha256 ... ok
+test_offline_check_runs_image_side_drift_check (tests.test_sbom_obligations.DriftOfflineCheckTest.test_offline_check_runs_image_side_drift_check) ... ok
+test_named_gpl_components_need_source_whatever_the_generator_says (tests.test_sbom_obligations.NamedComponentsTest.test_named_gpl_components_need_source_whatever_the_generator_says) ... ok
+test_source_policy_always_covers_psc22_components (tests.test_sbom_obligations.NamedComponentsTest.test_source_policy_always_covers_psc22_components) ... ok
+test_exempt_entries_jna_and_javassist (tests.test_sbom_obligations.PolicyU6SchemaTest.test_exempt_entries_jna_and_javassist) ... ok
+test_hosts_are_the_fetch_hosts (tests.test_sbom_obligations.PolicyU6SchemaTest.test_hosts_are_the_fetch_hosts) ... ok
+test_policy_schema_rejects_bad_shapes (tests.test_sbom_obligations.PolicyU6SchemaTest.test_policy_schema_rejects_bad_shapes) ... ok
+test_source_policy_has_exactly_hosts_always_exempt (tests.test_sbom_obligations.PolicyU6SchemaTest.test_source_policy_has_exactly_hosts_always_exempt) ... ok
+test_bundle_output_marks_unidentified_and_escapes_generator_text (tests.test_sbom_obligations.ReworkR1BundleTest.test_bundle_output_marks_unidentified_and_escapes_generator_text)
+H-1 and L-3 end to end: bundle.sh prints the checker's report. ... ok
+test_bundle_syft_runs_print_no_cache_warning (tests.test_sbom_obligations.ReworkR1BundleTest.test_bundle_syft_runs_print_no_cache_warning) ... ok
+test_fake_syft_models_the_cache_warning (tests.test_sbom_obligations.ReworkR1BundleTest.test_fake_syft_models_the_cache_warning)
+Harness control (green on arrival): the fake warns exactly where ... ok
+test_sbom_tmp_tmpfs_is_mode_1777_not_exec (tests.test_sbom_obligations.ReworkR1BundleTest.test_sbom_tmp_tmpfs_is_mode_1777_not_exec) ... ok
+test_bundle_floor_both_filesystems_fit (tests.test_sbom_obligations.ReworkR1DiskFloorTest.test_bundle_floor_both_filesystems_fit) ... ok
+test_bundle_floor_on_out_parent_when_out_exists (tests.test_sbom_obligations.ReworkR1DiskFloorTest.test_bundle_floor_on_out_parent_when_out_exists) ... ok
+test_bundle_floor_on_out_when_out_exists (tests.test_sbom_obligations.ReworkR1DiskFloorTest.test_bundle_floor_on_out_when_out_exists) ... ok
+test_bundle_floor_probes_once_on_one_filesystem (tests.test_sbom_obligations.ReworkR1DiskFloorTest.test_bundle_floor_probes_once_on_one_filesystem)
+--out absent: both checks resolve to dirname(--out), so one df. ... ok
+test_added_packages_errors_are_value_errors (tests.test_sbom_obligations.ReworkR1DriftTest.test_added_packages_errors_are_value_errors)
+Review N3: the interface says ValueError; drift then exits 1. ... ok
+test_drift_accepts_forked_psycopg_c_lock (tests.test_sbom_obligations.ReworkR1DriftTest.test_drift_accepts_forked_psycopg_c_lock)
+Review N1 (N7 rule): the SBOM's psycopg-c is one of the locked versions. ... ok
+test_drift_prints_one_summary_line_on_success (tests.test_sbom_obligations.ReworkR1DriftTest.test_drift_prints_one_summary_line_on_success) ... ok
+test_psycopg_check_splits_upstream_at_at (tests.test_sbom_obligations.ReworkR1DriftTest.test_psycopg_check_splits_upstream_at_at)
+Review N2: syft writes `upstream=<source>@<version>` when the source ... ok
+test_offline_drift_step_labelled_summarised_and_quiet (tests.test_sbom_obligations.ReworkR1OfflineTest.test_offline_drift_step_labelled_summarised_and_quiet) ... ok
+test_always_flags_gcc_runtime_jrt_fs_and_alpine_subpackages (tests.test_sbom_obligations.ReworkR1PolicyTest.test_always_flags_gcc_runtime_jrt_fs_and_alpine_subpackages) ... ok
+test_hash_only_licences_count_as_unlicensed (tests.test_sbom_obligations.ReworkR1UnlicensedTest.test_hash_only_licences_count_as_unlicensed)
+H-1: syft's `LicenseRef-<64 hex>` (unidentified text) is not a licence. ... ok
+test_hash_rows_marked_unidentified_in_report_lines (tests.test_sbom_obligations.ReworkR1UnlicensedTest.test_hash_rows_marked_unidentified_in_report_lines) ... ok
+test_real_package_lists_report_hash_only_rows (tests.test_sbom_obligations.ReworkR1UnlicensedTest.test_real_package_lists_report_hash_only_rows)
+The U3 SBOMs' real hash rows (security probe 1) are reported; the ... ok
+test_report_lines_escape_control_characters (tests.test_sbom_obligations.ReworkR1UnlicensedTest.test_report_lines_escape_control_characters)
+L-3: a crafted name or purl cannot drive the terminal or forge a line. ... ok
+test_unlicensed_report_survives_odd_external_refs (tests.test_sbom_obligations.ReworkR1UnlicensedTest.test_unlicensed_report_survives_odd_external_refs)
+Review N4: never raise; a row without a usable purl has purl None. ... ok
+test_bundle_hands_host_paths_through_cygpath (tests.test_sbom_obligations.SbomCarryU4Test.test_bundle_hands_host_paths_through_cygpath)
+Review N4: the Git Bash branch of hostpath(), with a fake cygpath. ... ok
+test_bundle_sbom_work_dir_is_private (tests.test_sbom_obligations.SbomCarryU4Test.test_bundle_sbom_work_dir_is_private) ... ok
+test_bundle_sbom_work_dir_on_out_filesystem (tests.test_sbom_obligations.SbomCarryU4Test.test_bundle_sbom_work_dir_on_out_filesystem)
+Review N6 (tester's default, pending the architect): the 1-2 GB ... ok
+test_bundle_sets_msys_no_pathconv_on_container_runs_only (tests.test_sbom_obligations.SbomCarryU4Test.test_bundle_sets_msys_no_pathconv_on_container_runs_only) ... ok
+test_runtime_check_accepts_a_name_locked_at_two_versions (tests.test_sbom_obligations.SbomCarryU4Test.test_runtime_check_accepts_a_name_locked_at_two_versions)
+Review N7 (architect U4, design-notes N7 "Forked lock"): uv.lock is ... ok
+test_sbom_generator_cache_under_tmp (tests.test_sbom_obligations.SbomCarryU4Test.test_sbom_generator_cache_under_tmp) ... ok
+test_bundle_output_lists_unlicensed_packages_per_image (tests.test_sbom_obligations.UnlicensedBundleOutputTest.test_bundle_output_lists_unlicensed_packages_per_image) ... ok
+test_unlicensed_packages_are_reported (tests.test_sbom_obligations.UnlicensedReportTest.test_unlicensed_packages_are_reported)
+PSC-22 bullet 2, N8a 4-5, by rule: every unlicensed row but the ... ok
+test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok
+test_lock_check_cli (tests.test_sources_lock.LockCheckCliTest.test_lock_check_cli) ... ok
+test_a_missing_key_names_every_package (tests.test_sources_lock.LockCoverageTest.test_a_missing_key_names_every_package) ... ok
+test_a_stale_key_is_reported (tests.test_sources_lock.LockCoverageTest.test_a_stale_key_is_reported) ... ok
+test_arches (tests.test_sources_lock.LockCoverageTest.test_arches) ... ok
+test_small_lock_missing_key_exact_message (tests.test_sources_lock.LockCoverageTest.test_small_lock_missing_key_exact_message) ... ok
+test_mapping_table (tests.test_sources_lock.LockNeedsTest.test_mapping_table) ... ok
+test_needs_from_the_fixtures (tests.test_sources_lock.LockNeedsTest.test_needs_from_the_fixtures) ... ok
+test_bad_shapes (tests.test_sources_lock.LockSchemaTest.test_bad_shapes) ... ok
+test_good_full_lock_passes (tests.test_sources_lock.LockSchemaTest.test_good_full_lock_passes) ... ok
+test_good_small_lock_passes (tests.test_sources_lock.LockSchemaTest.test_good_small_lock_passes) ... ok
+test_lock_text_is_canonical (tests.test_sources_lock.LockSchemaTest.test_lock_text_is_canonical) ... ok
+test_any_pgdg_file_is_a_problem_until_q71 (tests.test_sources_lock.ReworkR1BindingTest.test_any_pgdg_file_is_a_problem_until_q71) ... ok
+test_good_names (tests.test_sources_lock.ReworkR1BindingTest.test_good_names) ... ok
+test_per_kind_hosts_paths_and_names (tests.test_sources_lock.ReworkR1BindingTest.test_per_kind_hosts_paths_and_names) ... ok
+test_printable_ascii_before_parsing (tests.test_sources_lock.ReworkR1CharsetTest.test_printable_ascii_before_parsing) ... ok
+test_url_round_trips_and_scheme_is_lower_case_https (tests.test_sources_lock.ReworkR1CharsetTest.test_url_round_trips_and_scheme_is_lower_case_https) ... ok
+test_keys_printed_clean (tests.test_sources_lock.ReworkR1CleanAndSizeTest.test_keys_printed_clean) ... ok
+test_size_cap (tests.test_sources_lock.ReworkR1CleanAndSizeTest.test_size_cap) ... ok
+test_lock_check_never_shows_a_traceback (tests.test_sources_lock.ReworkR1CliTest.test_lock_check_never_shows_a_traceback) ... ok
+test_deb_needs_more_than_the_dsc (tests.test_sources_lock.ReworkR1CompletenessAndKeysTest.test_deb_needs_more_than_the_dsc) ... ok
+test_exact_key_sets (tests.test_sources_lock.ReworkR1CompletenessAndKeysTest.test_exact_key_sets) ... ok
+test_neo4j_entry_binds_one_sha256_file (tests.test_sources_lock.ReworkR1Neo4jBindingTest.test_neo4j_entry_binds_one_sha256_file) ... ok
+test_a_clean_lock_exits_0_with_the_flag (tests.test_sources_lock.ReworkR1PendingNeo4jCliTest.test_a_clean_lock_exits_0_with_the_flag) ... ok
+test_lock_check_cli (tests.test_sources_lock.ReworkR1PendingNeo4jCliTest.test_lock_check_cli) ... ok
+test_only_neo4j_misses_exit_3 (tests.test_sources_lock.ReworkR1PendingNeo4jCliTest.test_only_neo4j_misses_exit_3) ... ok
+test_other_problems_with_a_neo4j_miss_exit_1 (tests.test_sources_lock.ReworkR1PendingNeo4jCliTest.test_other_problems_with_a_neo4j_miss_exit_1) ... ok
+test_the_reviewers_79_problem_lock_exits_1 (tests.test_sources_lock.ReworkR1PendingNeo4jCliTest.test_the_reviewers_79_problem_lock_exits_1)
+u7b/review.md B2: the fixture lock without neo4j, pandas and the ... ok
+test_wrong_types_are_problems (tests.test_sources_lock.ReworkR1TypesTest.test_wrong_types_are_problems) ... ok
+test_bad_forms (tests.test_sources_lock.ReworkR1U7cApiUrlTest.test_bad_forms) ... ok
+test_good_forms (tests.test_sources_lock.ReworkR1U7cApiUrlTest.test_good_forms) ... ok
+test_the_apkbuild_path_is_exact (tests.test_sources_lock.ReworkR1U7cApkbuildPathTest.test_the_apkbuild_path_is_exact) ... ok
+test_exception_line (tests.test_sources_lock.ReworkR2CliLineTest.test_exception_line) ... ok
+test_url_paths_are_plain (tests.test_sources_lock.ReworkR2PlainPathTest.test_url_paths_are_plain) ... ok
+test_pypi_path_layout (tests.test_sources_lock.ReworkR2PypiPathTest.test_pypi_path_layout) ... ok
+test_adversarial_pypi_names (tests.test_sources_lock.ReworkR2RedosTest.test_adversarial_pypi_names) ... ok
+test_temurin_bound_to_the_key (tests.test_sources_lock.ReworkR2TemurinBindingTest.test_temurin_bound_to_the_key) ... ok
+test_sample_keys (tests.test_sources_lock.SampleKeysTest.test_sample_keys) ... ok
+test_bad_shapes (tests.test_sources_lock.U7cApkLockRulesTest.test_bad_shapes) ... ok
+test_the_new_shapes_pass (tests.test_sources_lock.U7cApkLockRulesTest.test_the_new_shapes_pass) ... ok
+test_lock_needs_doc_on_the_fixtures (tests.test_sources_resolve.LockNeedsTest.test_lock_needs_doc_on_the_fixtures) ... ok
+test_release_from_the_saved_tar (tests.test_sources_resolve.LockNeedsTest.test_release_from_the_saved_tar) ... ok
+test_hop_rules_and_messages (tests.test_sources_resolve.ResolverHopsTest.test_hop_rules_and_messages) ... ok
+test_failure_writes_nothing (tests.test_sources_resolve.ResolverMainTest.test_failure_writes_nothing) ... ok
+test_neo4j_candidate_exit_3 (tests.test_sources_resolve.ResolverMainTest.test_neo4j_candidate_exit_3) ... ok
+test_resolver_bad_arguments_exit_2 (tests.test_sources_resolve.ResolverMainTest.test_resolver_bad_arguments_exit_2) ... ok
+test_writes_only_the_out_lock (tests.test_sources_resolve.ResolverMainTest.test_writes_only_the_out_lock) ... ok
+test_merge_rules (tests.test_sources_resolve.ResolverMergeTest.test_merge_rules) ... ok
+test_release_file_and_tag (tests.test_sources_resolve.ResolverParsersTest.test_release_file_and_tag) ... ok
+test_sidecar_parsers (tests.test_sources_resolve.ResolverParsersTest.test_sidecar_parsers) ... ok
+test_uv_lock_and_pypi_json (tests.test_sources_resolve.ResolverParsersTest.test_uv_lock_and_pypi_json) ... ok
+test_maven (tests.test_sources_resolve.ResolverRoutesTest.test_maven) ... ok
+test_neo4j_candidate_is_printed_never_written (tests.test_sources_resolve.ResolverRoutesTest.test_neo4j_candidate_is_printed_never_written) ... ok
+test_pypi (tests.test_sources_resolve.ResolverRoutesTest.test_pypi) ... ok
+test_temurin (tests.test_sources_resolve.ResolverRoutesTest.test_temurin) ... ok
+test_a_hop_may_carry_a_query (tests.test_sources_resolve.ReworkR1HopRulesTest.test_a_hop_may_carry_a_query) ... ok
+test_bad_hops_are_refused_and_never_requested (tests.test_sources_resolve.ReworkR1HopRulesTest.test_bad_hops_are_refused_and_never_requested) ... ok
+test_the_first_url (tests.test_sources_resolve.ReworkR1HopRulesTest.test_the_first_url) ... ok
+test_bad_keys_are_refused_before_any_request (tests.test_sources_resolve.ReworkR1KeysTest.test_bad_keys_are_refused_before_any_request) ... ok
+test_the_main_line (tests.test_sources_resolve.ReworkR1KeysTest.test_the_main_line) ... ok
+test_a_truncated_neo4j_list_is_not_pending (tests.test_sources_resolve.ReworkR1LockScriptRunTest.test_a_truncated_neo4j_list_is_not_pending)
+B2 / M-1 end to end: more than 20 neo4j misses print first and hide ... ok
+test_exactly_the_six_images (tests.test_sources_resolve.ReworkR1LockScriptRunTest.test_exactly_the_six_images) ... ok
+test_happy_path_exit_0 (tests.test_sources_resolve.ReworkR1LockScriptRunTest.test_happy_path_exit_0) ... ok
+test_neo4j_pending_exit_3 (tests.test_sources_resolve.ReworkR1LockScriptRunTest.test_neo4j_pending_exit_3) ... ok
+test_the_neo4j_tar_is_not_a_literal (tests.test_sources_resolve.ReworkR1LockScriptRunTest.test_the_neo4j_tar_is_not_a_literal) ... ok
+test_the_temp_file_is_removed_on_failure (tests.test_sources_resolve.ReworkR1LockScriptRunTest.test_the_temp_file_is_removed_on_failure) ... ok
+test_tools_first (tests.test_sources_resolve.ReworkR1LockScriptRunTest.test_tools_first) ... ok
+test_a_body_error_is_one_fail_line (tests.test_sources_resolve.ReworkR1MainTest.test_a_body_error_is_one_fail_line) ... ok
+test_an_error_writing_out_is_one_fail_line (tests.test_sources_resolve.ReworkR1MainTest.test_an_error_writing_out_is_one_fail_line) ... ok
+test_wrong_typed_needs_are_one_fail_line (tests.test_sources_resolve.ReworkR1MainTest.test_wrong_typed_needs_are_one_fail_line) ... ok
+test_a_maven_redirect_to_pypi_org_is_refused (tests.test_sources_resolve.ReworkR1PypiScopeTest.test_a_maven_redirect_to_pypi_org_is_refused) ... ok
+test_a_redirect_of_the_json_request_to_pypi_org_is_refused (tests.test_sources_resolve.ReworkR1PypiScopeTest.test_a_redirect_of_the_json_request_to_pypi_org_is_refused) ... ok
+test_the_json_request_itself_is_allowed (tests.test_sources_resolve.ReworkR1PypiScopeTest.test_the_json_request_itself_is_allowed) ... ok
+test_error_bodies_are_read_to_1_mib_only (tests.test_sources_resolve.ReworkR1RealOpenerTest.test_error_bodies_are_read_to_1_mib_only) ... ok
+test_errors_while_opening (tests.test_sources_resolve.ReworkR1TransportTest.test_errors_while_opening) ... ok
+test_errors_while_reading_the_body (tests.test_sources_resolve.ReworkR1TransportTest.test_errors_while_reading_the_body) ... ok
+test_the_byte_cap (tests.test_sources_resolve.ReworkR1TransportTest.test_the_byte_cap) ... ok
+test_the_deadline (tests.test_sources_resolve.ReworkR1TransportTest.test_the_deadline) ... ok
+test_a_bot_challenge (tests.test_sources_resolve.ReworkR1U7cApiUrlResolverTest.test_a_bot_challenge)
+Both fail closed with one line and write nothing. A challenge that ... ok
+test_the_request_forms (tests.test_sources_resolve.ReworkR1U7cApiUrlResolverTest.test_the_request_forms) ... ok
+test_repeated_assignments (tests.test_sources_resolve.ReworkR1U7cApkbuildAssignTest.test_repeated_assignments) ... ok
+test_a_subdirectory_apkbuild_beside_the_top_one (tests.test_sources_resolve.ReworkR1U7cApkbuildTest.test_a_subdirectory_apkbuild_beside_the_top_one) ... ok
+test_only_a_subdirectory_apkbuild (tests.test_sources_resolve.ReworkR1U7cApkbuildTest.test_only_a_subdirectory_apkbuild) ... ok
+test_control_characters (tests.test_sources_resolve.ReworkR1U7cDscTest.test_control_characters) ... ok
+test_crlf_parses_like_lf (tests.test_sources_resolve.ReworkR1U7cDscTest.test_crlf_parses_like_lf) ... ok
+test_duplicate_fields (tests.test_sources_resolve.ReworkR1U7cDscTest.test_duplicate_fields) ... ok
+test_a_full_page (tests.test_sources_resolve.ReworkR1U7cListingTest.test_a_full_page) ... ok
+test_the_path_is_encoded (tests.test_sources_resolve.ReworkR1U7cListingTest.test_the_path_is_encoded) ... ok
+test_hardening_check_rejects_loosened_services (tests.test_sources_resolve.SourcesComposeTest.test_hardening_check_rejects_loosened_services) ... ok
+test_sources_resolve_service_hardening (tests.test_sources_resolve.SourcesComposeTest.test_sources_resolve_service_hardening) ... ok
+test_bad_arguments_exit_2 (tests.test_sources_resolve.SourcesLockScriptRunTest.test_bad_arguments_exit_2) ... ok
+test_refuses_below_the_floor (tests.test_sources_resolve.SourcesLockScriptRunTest.test_refuses_below_the_floor) ... ok
+test_refuses_when_an_image_is_missing (tests.test_sources_resolve.SourcesLockScriptRunTest.test_refuses_when_an_image_is_missing) ... ok
+test_never_run_by_verify_or_ci (tests.test_sources_resolve.SourcesLockScriptStaticTest.test_never_run_by_verify_or_ci) ... ok
+test_sources_lock_sh_shape (tests.test_sources_resolve.SourcesLockScriptStaticTest.test_sources_lock_sh_shape) ... ok
+test_failures (tests.test_sources_resolve.U7cApkRouteTest.test_failures) ... ok
+test_the_entry (tests.test_sources_resolve.U7cApkRouteTest.test_the_entry) ... ok
+test_a_server_supplied_url_gets_the_hop_rules (tests.test_sources_resolve.U7cCarriedTest.test_a_server_supplied_url_gets_the_hop_rules) ... ok
+test_pgdg_is_skipped_until_q71 (tests.test_sources_resolve.U7cCarriedTest.test_pgdg_is_skipped_until_q71) ... ok
+test_snapshot_pause (tests.test_sources_resolve.U7cCarriedTest.test_snapshot_pause) ... ok
+test_the_real_opener_reads_with_read1 (tests.test_sources_resolve.U7cCarriedTest.test_the_real_opener_reads_with_read1) ... ok
+test_the_fixture_keys (tests.test_sources_resolve.U7cCoverageTest.test_the_fixture_keys) ... ok
+test_dsc_forms (tests.test_sources_resolve.U7cDebRouteTest.test_dsc_forms) ... ok
+test_failures (tests.test_sources_resolve.U7cDebRouteTest.test_failures) ... ok
+test_parse_dsc (tests.test_sources_resolve.U7cDebRouteTest.test_parse_dsc) ... ok
+test_the_entry (tests.test_sources_resolve.U7cDebRouteTest.test_the_entry) ... ok
+test_problems (tests.test_sources_resolve.U7cLockNeedsTest.test_problems) ... ok
+test_the_apk_route (tests.test_sources_resolve.U7cLockNeedsTest.test_the_apk_route) ... ok
+test_the_cli_reads_the_tar (tests.test_sources_resolve.U7cLockNeedsTest.test_the_cli_reads_the_tar) ... ok
+test_lock_needs_gets_every_tar (tests.test_sources_resolve.U7cLockScriptRunTest.test_lock_needs_gets_every_tar) ... ok
+test_the_six_equal_the_bundled_names (tests.test_sources_resolve.U7cLockScriptRunTest.test_the_six_equal_the_bundled_names) ... ok
+test_bind_address_setting_defaults_to_loopback (tests.test_stack_bind_address.EngineRefusalTest.test_bind_address_setting_defaults_to_loopback) ... ok
+test_bind_address_that_is_not_an_address_is_a_config_error (tests.test_stack_bind_address.EngineRefusalTest.test_bind_address_that_is_not_an_address_is_a_config_error) ... ok
+test_dev_non_loopback_bind_address_warns (tests.test_stack_bind_address.EngineRefusalTest.test_dev_non_loopback_bind_address_warns) ... ok
+test_ipv6_bind_address_is_a_config_error_in_every_env (tests.test_stack_bind_address.EngineRefusalTest.test_ipv6_bind_address_is_a_config_error_in_every_env) ... ok
+test_loopback_or_unset_bind_address_passes_everywhere (tests.test_stack_bind_address.EngineRefusalTest.test_loopback_or_unset_bind_address_passes_everywhere) ... ok
+test_startup_refusal_is_recorded_on_the_span (tests.test_stack_bind_address.EngineRefusalTest.test_startup_refusal_is_recorded_on_the_span) ... ok
+test_startup_refuses_non_loopback_bind_address (tests.test_stack_bind_address.EngineRefusalTest.test_startup_refuses_non_loopback_bind_address) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+ok
+test_gateway_bind_check_allows_loopback_and_warns_in_dev (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_bind_check_allows_loopback_and_warns_in_dev) ... ok
+test_gateway_bind_check_refuses_non_loopback (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_bind_check_refuses_non_loopback) ... ok
+test_gateway_bind_check_rejects_non_ipv4_in_every_env (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_bind_check_rejects_non_ipv4_in_every_env) ... ok
+test_gateway_image_runs_bind_check (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_image_runs_bind_check) ... ok
+test_launch_ps1_checks_bind_address (tests.test_stack_bind_address.LaunchScriptTest.test_launch_ps1_checks_bind_address) ... ok
+test_launch_sh_allows_loopback_and_warns_in_dev (tests.test_stack_bind_address.LaunchScriptTest.test_launch_sh_allows_loopback_and_warns_in_dev) ... ok
+test_launch_sh_creates_env_from_example (tests.test_stack_bind_address.LaunchScriptTest.test_launch_sh_creates_env_from_example) ... ok
+test_launch_sh_refuses_non_loopback_bind_address (tests.test_stack_bind_address.LaunchScriptTest.test_launch_sh_refuses_non_loopback_bind_address) ... ok
+test_teardown_keeps_volumes_unless_asked (tests.test_stack_bind_address.TeardownScriptTest.test_teardown_keeps_volumes_unless_asked) ... ok
+test_agents_md_hook_wording_not_absolute (tests.test_stack_carry_ins.AgentsHookWordingTest.test_agents_md_hook_wording_not_absolute) ... ok
+test_pyproject_name_matches_project_name (tests.test_stack_carry_ins.ProjectNameTest.test_pyproject_name_matches_project_name) ... ok
+test_quickstart_names_existing_scripts (tests.test_stack_carry_ins.QuickstartTest.test_quickstart_names_existing_scripts) ... ok
+test_test_sh_header_matches_integration_mechanism (tests.test_stack_carry_ins.TestShHeaderTest.test_test_sh_header_matches_integration_mechanism) ... ok
+test_env_example_not_in_app_image (tests.test_stack_compose.ImageContentsTest.test_env_example_not_in_app_image) ... ok
+test_gates_it_internal_only_and_no_socket (tests.test_stack_compose.NetworksTest.test_gates_it_internal_only_and_no_socket) ... ok
+test_no_docker_socket_mounted (tests.test_stack_compose.NetworksTest.test_no_docker_socket_mounted) ... ok
+test_only_gateway_on_edge_network (tests.test_stack_compose.NetworksTest.test_only_gateway_on_edge_network) ... ok
+test_stack_services_have_no_bind_mounts (tests.test_stack_compose.NetworksTest.test_stack_services_have_no_bind_mounts) ... ok
+test_compose_phoenix_listen_port_matches_config (tests.test_stack_compose.PhoenixPortTest.test_compose_phoenix_listen_port_matches_config) ... ok
+test_docs_name_current_phoenix_port (tests.test_stack_compose.PhoenixPortTest.test_docs_name_current_phoenix_port) ... ok
+test_harness_default_collector_matches_env_example (tests.test_stack_compose.PhoenixPortTest.test_harness_default_collector_matches_env_example) ... ok
+test_compose_defaults_match_env_example (tests.test_stack_compose.PortsTest.test_compose_defaults_match_env_example) ... ok
+test_compose_passes_bind_address_to_app (tests.test_stack_compose.PortsTest.test_compose_passes_bind_address_to_app) ... ok
+test_env_example_bind_address_is_loopback (tests.test_stack_compose.PortsTest.test_env_example_bind_address_is_loopback) ... ok
+test_env_example_ports_in_range_and_unique (tests.test_stack_compose.PortsTest.test_env_example_ports_in_range_and_unique) ... ok
+test_published_ports_use_bind_address (tests.test_stack_compose.PortsTest.test_published_ports_use_bind_address) ... ok
+test_backend_bridge_gateway_is_isolated (tests.test_stack_compose.Rework1ComposeTest.test_backend_bridge_gateway_is_isolated) ... ok
+test_gateway_gets_the_egress_allowlist (tests.test_stack_compose.Rework1ComposeTest.test_gateway_gets_the_egress_allowlist) ... ok
+test_no_ke_env_default_anywhere_in_compose (tests.test_stack_compose.Rework1ComposeTest.test_no_ke_env_default_anywhere_in_compose) ... ok
+test_quickstart_requires_docker_engine_28 (tests.test_stack_compose.Rework1ComposeTest.test_quickstart_requires_docker_engine_28) ... ok
+test_worker_command_runs_engine_startup (tests.test_stack_compose.Rework1ComposeTest.test_worker_command_runs_engine_startup) ... ok
+test_backend_has_no_ipam_subnet_or_ip_range (tests.test_stack_compose.Rework2ComposeTest.test_backend_has_no_ipam_subnet_or_ip_range) ... ok
+test_no_fixed_address_pool_anywhere (tests.test_stack_compose.Rework2ComposeTest.test_no_fixed_address_pool_anywhere) ... ok
+test_scripts_create_no_fixed_subnet (tests.test_stack_compose.Rework2ComposeTest.test_scripts_create_no_fixed_subnet) ... ok
+test_compose_images_pinned_by_digest (tests.test_stack_compose.ServicesTest.test_compose_images_pinned_by_digest) ... ok
+test_compose_services_have_restart_policy (tests.test_stack_compose.ServicesTest.test_compose_services_have_restart_policy) ... ok
+test_dockerfiles_pin_base_images_by_digest (tests.test_stack_compose.ServicesTest.test_dockerfiles_pin_base_images_by_digest) ... ok
+test_api_main_is_not_exempt_from_coverage (tests.test_stack_entrypoints.ApiEntrypointTest.test_api_main_is_not_exempt_from_coverage) ... ok
+test_api_main_refused_setting_never_serves (tests.test_stack_entrypoints.ApiEntrypointTest.test_api_main_refused_setting_never_serves) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+ok
+test_api_main_runs_startup_before_serving (tests.test_stack_entrypoints.ApiEntrypointTest.test_api_main_runs_startup_before_serving) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+ok
+test_every_substituted_variable_refuses_an_injection (tests.test_stack_entrypoints.GatewayPortCheckTest.test_every_substituted_variable_refuses_an_injection) ... ok
+test_gateway_accepts_valid_ports (tests.test_stack_entrypoints.GatewayPortCheckTest.test_gateway_accepts_valid_ports) ... ok
+test_gateway_refuses_every_bad_or_injected_port (tests.test_stack_entrypoints.GatewayPortCheckTest.test_gateway_refuses_every_bad_or_injected_port) ... ok
+test_local_resolvers_is_overwritten_by_the_image (tests.test_stack_entrypoints.GatewayPortCheckTest.test_local_resolvers_is_overwritten_by_the_image) ... ok
+test_template_variables_are_known (tests.test_stack_entrypoints.GatewayPortCheckTest.test_template_variables_are_known) ... ok
+test_every_gateway_check_is_installed_as_an_entrypoint_script (tests.test_stack_entrypoints.GatewayUpstreamCheckTest.test_every_gateway_check_is_installed_as_an_entrypoint_script) ... ok
+test_gateway_accepts_empty_or_allowlisted_upstream (tests.test_stack_entrypoints.GatewayUpstreamCheckTest.test_gateway_accepts_empty_or_allowlisted_upstream) ... ok
+test_gateway_checks_run_before_envsubst (tests.test_stack_entrypoints.GatewayUpstreamCheckTest.test_gateway_checks_run_before_envsubst) ... ok
+test_gateway_refuses_upstream_not_on_allowlist_or_malformed (tests.test_stack_entrypoints.GatewayUpstreamCheckTest.test_gateway_refuses_upstream_not_on_allowlist_or_malformed) ... ok
+test_worker_main_idles_after_a_passing_startup (tests.test_stack_entrypoints.WorkerEntrypointTest.test_worker_main_idles_after_a_passing_startup) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+ok
+test_worker_main_is_not_exempt_from_coverage (tests.test_stack_entrypoints.WorkerEntrypointTest.test_worker_main_is_not_exempt_from_coverage) ... ok
+test_worker_main_refused_setting_exits_before_idling (tests.test_stack_entrypoints.WorkerEntrypointTest.test_worker_main_refused_setting_exits_before_idling) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+ok
+test_worker_module_refuses_as_a_process (tests.test_stack_entrypoints.WorkerEntrypointTest.test_worker_module_refuses_as_a_process) ... ok
+test_env_value_caller_env_wins_even_when_empty (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_caller_env_wins_even_when_empty) ... ok
+test_env_value_config_failure_is_reported_without_content (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_config_failure_is_reported_without_content) ... ok
+test_env_value_reads_dotenv_only_through_compose_config (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_reads_dotenv_only_through_compose_config) ... ok
+test_env_value_refuses_a_json_escaped_value (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_refuses_a_json_escaped_value) ... ok
+test_env_value_refuses_any_other_name (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_refuses_any_other_name) ... ok
+test_env_value_trusts_compose_resolution (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_trusts_compose_resolution) ... ok
+test_env_value_without_dotenv_is_empty (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_without_dotenv_is_empty) ... ok
+test_verify_full_model_keys_both_or_neither (tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_model_keys_both_or_neither) ... ok
+test_verify_full_passes_model_upstream_keys (tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_passes_model_upstream_keys) ... ok
+test_verify_full_stops_before_build_when_the_helper_fails (tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_stops_before_build_when_the_helper_fails) ... ok
+test_verify_full_takes_no_caller_ke_key_but_the_model_keys (tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_takes_no_caller_ke_key_but_the_model_keys) ... ok
+test_verify_full_takes_no_other_env_key (tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_takes_no_other_env_key) ... ok
+test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) ... ok
+test_model_role_tests_run_in_order (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_tests_run_in_order) ... ok
+test_model_role_tests_skip_not_configured (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_tests_skip_not_configured) ... ok
+test_model_tests_skip_not_configured (tests.test_stack_model_skip.ModelSkipHelperTest.test_model_tests_skip_not_configured) ... ok
+test_model_tests_skip_with_named_reason (tests.test_stack_model_skip.ModelSkipHelperTest.test_model_tests_skip_with_named_reason) ... ok
+test_real_probe_of_a_closed_port_skips_as_refused (tests.test_stack_model_skip.ModelSkipHelperTest.test_real_probe_of_a_closed_port_skips_as_refused) ... ok
+test_unmarked_test_fails_rather_than_skips (tests.test_stack_model_skip.ModelSkipHelperTest.test_unmarked_test_fails_rather_than_skips) ... ok
+test_no_model_calls_in_unit_suite (tests.test_stack_model_skip.UnitSuiteModelTest.test_no_model_calls_in_unit_suite) ... ok
+test_readyz_model_host_not_configured_without_base_url (tests.test_stack_readiness.ModelHostNotConfiguredTest.test_readyz_model_host_not_configured_without_base_url) ... ok
+test_readyz_model_host_not_configured_without_upstream (tests.test_stack_readiness.ModelHostNotConfiguredTest.test_readyz_model_host_not_configured_without_upstream) ... ok
+test_readyz_model_host_probed_when_upstream_set (tests.test_stack_readiness.ModelHostNotConfiguredTest.test_readyz_model_host_probed_when_upstream_set) ... ok
+test_model_probe_http_errors_are_raised_and_classified (tests.test_stack_readiness.ModelProbeTest.test_model_probe_http_errors_are_raised_and_classified) ... ok
+test_model_probe_off_list_host_is_denied_before_any_socket (tests.test_stack_readiness.ModelProbeTest.test_model_probe_off_list_host_is_denied_before_any_socket) ... ok
+test_model_probe_passes_its_timeout (tests.test_stack_readiness.ModelProbeTest.test_model_probe_passes_its_timeout) ... ok
+test_readyz_reports_egress_denied_through_the_real_probe (tests.test_stack_readiness.ModelProbeTest.test_readyz_reports_egress_denied_through_the_real_probe) ... ok
+test_every_postgres_connect_in_engine_disables_gss_encryption (tests.test_stack_readiness.PostgresGssencTest.test_every_postgres_connect_in_engine_disables_gss_encryption) ... ok
+test_postgres_probe_disables_gss_encryption (tests.test_stack_readiness.PostgresGssencTest.test_postgres_probe_disables_gss_encryption) ... ok
+test_readiness_cli_api_unreachable (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_api_unreachable) ... ok
+test_readiness_cli_condition_met (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_met) ... ok
+test_readiness_cli_condition_never_met (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_never_met) ... ok
+test_readiness_cli_unknown_dependency_is_a_usage_error (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_unknown_dependency_is_a_usage_error) ... ok
+test_readyz_body_never_carries_error_text (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_body_never_carries_error_text) ... /opt/venv/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+ok
+test_readyz_is_traced (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_is_traced) ... ok
+test_readyz_ready_excludes_model_host (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_ready_excludes_model_host) ... ok
+test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) ... ok
+test_readyz_reason_vocabulary_for_store_drivers (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary_for_store_drivers) ... ok
+test_store_probe_classifies_closed_port (tests.test_stack_readiness.StoreProbeTest.test_store_probe_classifies_closed_port) ... ok
+test_gateway_only_external_upstream_is_model_upstream (tests.test_stack_ready_compose.GatewayUpstreamTest.test_gateway_only_external_upstream_is_model_upstream) ... ok
+test_gateway_upstream_scan_sees_a_planted_host (tests.test_stack_ready_compose.GatewayUpstreamTest.test_gateway_upstream_scan_sees_a_planted_host) ... ok
+test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) ... ok
+test_defaults_keep_null_base_urls (tests.test_stack_ready_compose.ModelWiringTest.test_defaults_keep_null_base_urls) ... ok
+test_gates_it_gets_model_upstream_and_store_passwords (tests.test_stack_ready_compose.ModelWiringTest.test_gates_it_gets_model_upstream_and_store_passwords) ... ok
+test_model_base_urls_come_from_one_anchor (tests.test_stack_ready_compose.ModelWiringTest.test_model_base_urls_come_from_one_anchor) ... ok
+test_compose_postgres_identity_matches_defaults (tests.test_stack_ready_compose.StoreIdentityTest.test_compose_postgres_identity_matches_defaults) ... ok
+test_ci_job_has_timeout (tests.test_stack_ready_docs.CiTimeoutTest.test_ci_job_has_timeout) ... ok
+test_ci_concurrency_per_ref (tests.test_stack_ready_docs.CiTriggersTest.test_ci_concurrency_per_ref) ... ok
+test_ci_triggers_push_default_branch_and_pull_request (tests.test_stack_ready_docs.CiTriggersTest.test_ci_triggers_push_default_branch_and_pull_request) ... ok
+test_docs_say_ci_needs_a_pull_request (tests.test_stack_ready_docs.CiTriggersTest.test_docs_say_ci_needs_a_pull_request) ... ok
+test_claude_md_lists_verify_only_checks (tests.test_stack_ready_docs.ClaudeMdVerifyOnlyTest.test_claude_md_lists_verify_only_checks) ... ok
+test_image_tag_falls_back_to_shasum (tests.test_stack_scripts.ImageTagHelperTest.test_image_tag_falls_back_to_shasum) ... ok
+test_image_tag_ignores_cdpath (tests.test_stack_scripts.ImageTagHelperTest.test_image_tag_ignores_cdpath) ... ok
+test_image_tag_prints_sha256_of_the_real_path (tests.test_stack_scripts.ImageTagHelperTest.test_image_tag_prints_sha256_of_the_real_path) ... ok
+test_image_tag_reads_no_environment (tests.test_stack_scripts.ImageTagHelperTest.test_image_tag_reads_no_environment) ... ok
+test_launch_ps1_creates_env_with_mode_at_open (tests.test_stack_scripts.LaunchEnvCreationStaticTest.test_launch_ps1_creates_env_with_mode_at_open)
+L-L2b: off Windows, launch.ps1 created `.env` empty at the umask's ... ok
+test_launch_ps1_icacls_failure_only_warns (tests.test_stack_scripts.LaunchEnvCreationStaticTest.test_launch_ps1_icacls_failure_only_warns)
+L-L2c (i): under Windows PowerShell 5.1 (the code-first ... ok
+test_launch_ps1_icacls_grants_current_user_sid (tests.test_stack_scripts.LaunchEnvCreationStaticTest.test_launch_ps1_icacls_grants_current_user_sid)
+L-L2c (ii): `$env:USERNAME` is resolved by name, and a local account ... ok
+test_launch_ps1_icacls_warning_says_restrict_before_secrets (tests.test_stack_scripts.LaunchEnvCreationStaticTest.test_launch_ps1_icacls_warning_says_restrict_before_secrets)
+L-L2c (iii): when the restriction fails, `.env` keeps the inherited ... ok
+test_launch_sh_creates_env_with_noclobber (tests.test_stack_scripts.LaunchEnvCreationStaticTest.test_launch_sh_creates_env_with_noclobber)
+L-L2a: the check-then-create `[ ! -f .env ]` + `> .env` follows a ... ok
+test_launch_accepts_docker_engine_28_or_later (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_accepts_docker_engine_28_or_later) ... ok
+test_launch_accepts_loopback_and_warns_for_dev (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_accepts_loopback_and_warns_for_dev) ... ok
+test_launch_creates_env_private_whatever_the_umask (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_creates_env_private_whatever_the_umask)
+Smoke-gate loop 2, F12 (docs/evidence/platform-offline/recorded2-runs.md): ... ok
+test_launch_honours_every_dotenv_form_compose_honours (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_honours_every_dotenv_form_compose_honours) ... ok
+test_launch_leaves_dangling_env_symlink_alone (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_leaves_dangling_env_symlink_alone)
+Security L-L2a (docs/evidence/platform-offline/audit-l2.md): a ... ok
+test_launch_never_falls_back_to_env_example (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_never_falls_back_to_env_example) ... ok
+test_launch_port_without_host_ip_warns_in_dev (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_port_without_host_ip_warns_in_dev) ... ok
+test_launch_refuses_docker_engine_below_28_or_unreadable (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_refuses_docker_engine_below_28_or_unreadable) ... ok
+test_launch_refuses_when_env_file_lacks_ke_env (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_refuses_when_env_file_lacks_ke_env) ... ok
+test_launch_resolves_with_the_env_file_compose_will_use (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_resolves_with_the_env_file_compose_will_use) ... ok
+test_launch_treats_a_port_without_host_ip_as_all_interfaces (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_treats_a_port_without_host_ip_as_all_interfaces) ... ok
+test_launch_trusts_compose_config_not_its_own_parser (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_trusts_compose_config_not_its_own_parser) ... ok
+test_launch_ps1_icacls_failure_warns_and_continues (tests.test_stack_scripts.LaunchPs1WindowsEnvTest.test_launch_ps1_icacls_failure_warns_and_continues) ... skipped 'Windows ACLs and Windows PowerShell 5.1: runs only on a Windows host; the gates image is Linux, so verify.sh skips it (security L-L2c)'
+test_launch_ps1_restricts_env_to_current_user_sid (tests.test_stack_scripts.LaunchPs1WindowsEnvTest.test_launch_ps1_restricts_env_to_current_user_sid) ... skipped 'Windows ACLs and Windows PowerShell 5.1: runs only on a Windows host; the gates image is Linux, so verify.sh skips it (security L-L2c)'
+test_launch_accepts_docker_engine_28_or_later (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_accepts_docker_engine_28_or_later) ... ok
+test_launch_accepts_loopback_and_warns_for_dev (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_accepts_loopback_and_warns_for_dev) ... ok
+test_launch_creates_env_private_whatever_the_umask (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_creates_env_private_whatever_the_umask)
+Smoke-gate loop 2, F12 (docs/evidence/platform-offline/recorded2-runs.md): ... ok
+test_launch_honours_every_dotenv_form_compose_honours (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_honours_every_dotenv_form_compose_honours) ... ok
+test_launch_leaves_dangling_env_symlink_alone (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_leaves_dangling_env_symlink_alone)
+Security L-L2a (docs/evidence/platform-offline/audit-l2.md): a ... ok
+test_launch_never_falls_back_to_env_example (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_never_falls_back_to_env_example) ... ok
+test_launch_port_without_host_ip_warns_in_dev (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_port_without_host_ip_warns_in_dev) ... ok
+test_launch_refuses_docker_engine_below_28_or_unreadable (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_refuses_docker_engine_below_28_or_unreadable) ... ok
+test_launch_refuses_when_env_file_lacks_ke_env (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_refuses_when_env_file_lacks_ke_env) ... ok
+test_launch_resolves_with_the_env_file_compose_will_use (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_resolves_with_the_env_file_compose_will_use) ... ok
+test_launch_treats_a_port_without_host_ip_as_all_interfaces (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_treats_a_port_without_host_ip_as_all_interfaces) ... ok
+test_launch_trusts_compose_config_not_its_own_parser (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_trusts_compose_config_not_its_own_parser) ... ok
+test_gates_image_has_shellcheck_and_psscriptanalyzer (tests.test_stack_scripts.LintScriptTest.test_gates_image_has_shellcheck_and_psscriptanalyzer) ... ok
+test_lint_covers_every_shell_and_powershell_script (tests.test_stack_scripts.LintScriptTest.test_lint_covers_every_shell_and_powershell_script) ... ok
+test_lint_covers_upper_case_ps1_and_psm1 (tests.test_stack_scripts.LintScriptTest.test_lint_covers_upper_case_ps1_and_psm1) ... ok
+test_lint_fails_on_a_directory_symlink_holding_a_finding (tests.test_stack_scripts.LintScriptTest.test_lint_fails_on_a_directory_symlink_holding_a_finding) ... ok
+test_lint_fails_on_a_symlinked_script (tests.test_stack_scripts.LintScriptTest.test_lint_fails_on_a_symlinked_script) ... ok
+test_lint_fails_on_warning_severity_finding (tests.test_stack_scripts.LintScriptTest.test_lint_fails_on_warning_severity_finding) ... ok
+test_lint_fails_when_either_tool_fails (tests.test_stack_scripts.LintScriptTest.test_lint_fails_when_either_tool_fails) ... ok
+test_lint_powershell_command_text_is_fixed (tests.test_stack_scripts.LintScriptTest.test_lint_powershell_command_text_is_fixed) ... ok
+test_lint_ps1_lone_open_bracket_is_refused_before_pwsh (tests.test_stack_scripts.LintScriptTest.test_lint_ps1_lone_open_bracket_is_refused_before_pwsh) ... ok
+test_lint_ps1_wildcard_name_cannot_escape (tests.test_stack_scripts.LintScriptTest.test_lint_ps1_wildcard_name_cannot_escape) ... ok
+test_lint_refuses_a_symlink_to_a_clean_script (tests.test_stack_scripts.LintScriptTest.test_lint_refuses_a_symlink_to_a_clean_script) ... ok
+test_lint_refuses_any_symlink_under_scripts_and_docker (tests.test_stack_scripts.LintScriptTest.test_lint_refuses_any_symlink_under_scripts_and_docker) ... ok
+test_lint_runs_no_code_from_a_powershell_filename (tests.test_stack_scripts.LintScriptTest.test_lint_runs_no_code_from_a_powershell_filename) ... ok
+test_lint_shellchecks_upper_case_sh (tests.test_stack_scripts.LintScriptTest.test_lint_shellchecks_upper_case_sh) ... ok
+test_lint_with_real_tools_fails_on_a_planted_finding (tests.test_stack_scripts.LintScriptTest.test_lint_with_real_tools_fails_on_a_planted_finding) ... ok
+test_smoke_fails_when_backend_is_not_internal (tests.test_stack_scripts.SmokeBackendIsolatedTest.test_smoke_fails_when_backend_is_not_internal) ... ok
+test_smoke_fails_when_backend_is_not_isolated (tests.test_stack_scripts.SmokeBackendIsolatedTest.test_smoke_fails_when_backend_is_not_isolated) ... ok
+test_smoke_fails_when_backend_network_is_missing (tests.test_stack_scripts.SmokeBackendIsolatedTest.test_smoke_fails_when_backend_network_is_missing) ... ok
+test_smoke_inspects_its_own_backend_network (tests.test_stack_scripts.SmokeBackendIsolatedTest.test_smoke_inspects_its_own_backend_network) ... ok
+test_smoke_fails_when_a_port_is_not_loopback (tests.test_stack_scripts.SmokeResolvesWithoutEnvTest.test_smoke_fails_when_a_port_is_not_loopback) ... ok
+test_smoke_fails_when_resolution_fails (tests.test_stack_scripts.SmokeResolvesWithoutEnvTest.test_smoke_fails_when_resolution_fails) ... ok
+test_smoke_resolves_compose_without_env_file (tests.test_stack_scripts.SmokeResolvesWithoutEnvTest.test_smoke_resolves_compose_without_env_file) ... ok
+test_smoke_sh_contains_the_check (tests.test_stack_scripts.SmokeResolvesWithoutEnvTest.test_smoke_sh_contains_the_check) ... ok
+test_smoke_checks_every_service_healthy_after_the_store_is_back (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_checks_every_service_healthy_after_the_store_is_back) ... ok
+test_smoke_decides_it_launched_before_launching (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_decides_it_launched_before_launching) ... ok
+test_smoke_fails_naming_the_store_when_readiness_never_recovers (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_fails_naming_the_store_when_readiness_never_recovers) ... ok
+test_smoke_fails_when_a_service_is_unhealthy_after_the_restart (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_fails_when_a_service_is_unhealthy_after_the_restart) ... ok
+test_smoke_fails_when_each_store_step_fails (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_fails_when_each_store_step_fails) ... ok
+test_smoke_flag_without_a_running_project_fails_loudly (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_flag_without_a_running_project_fails_loudly) ... ok
+test_smoke_leaves_a_project_it_did_not_launch (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_leaves_a_project_it_did_not_launch) ... ok
+test_smoke_owned_by_verify_stops_and_restarts_without_teardown (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_owned_by_verify_stops_and_restarts_without_teardown) ... ok
+test_smoke_stops_and_restarts_a_store (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_stops_and_restarts_a_store) ... ok
+test_teardown_fails_when_a_listing_fails (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_fails_when_a_listing_fails) ... ok
+test_teardown_fails_without_a_resolved_project (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_fails_without_a_resolved_project) ... ok
+test_teardown_kept_volume_is_not_a_leftover_without_volumes (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_kept_volume_is_not_a_leftover_without_volumes) ... ok
+test_teardown_leaves_other_projects_alone (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_leaves_other_projects_alone) ... ok
+test_teardown_lists_with_the_project_compose_resolves (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_lists_with_the_project_compose_resolves) ... ok
+test_teardown_removes_or_reports_project_leftovers (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_removes_or_reports_project_leftovers) ... ok
+test_teardown_with_nothing_left_passes (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_with_nothing_left_passes) ... ok
+test_teardown_activates_no_profile (tests.test_stack_scripts.TeardownPs1ScopeTest.test_teardown_activates_no_profile) ... ok
+test_teardown_carries_project_and_env_file (tests.test_stack_scripts.TeardownPs1ScopeTest.test_teardown_carries_project_and_env_file) ... ok
+test_teardown_does_not_remove_orphans (tests.test_stack_scripts.TeardownPs1ScopeTest.test_teardown_does_not_remove_orphans) ... ok
+test_teardown_script_has_no_profile_wildcard (tests.test_stack_scripts.TeardownPs1ScopeTest.test_teardown_script_has_no_profile_wildcard) ... ok
+test_teardown_fails_when_a_listing_fails (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_fails_when_a_listing_fails) ... ok
+test_teardown_fails_without_a_resolved_project (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_fails_without_a_resolved_project) ... ok
+test_teardown_kept_volume_is_not_a_leftover_without_volumes (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_kept_volume_is_not_a_leftover_without_volumes) ... ok
+test_teardown_leaves_other_projects_alone (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_leaves_other_projects_alone) ... ok
+test_teardown_lists_with_the_project_compose_resolves (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_lists_with_the_project_compose_resolves) ... ok
+test_teardown_removes_or_reports_project_leftovers (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_removes_or_reports_project_leftovers) ... ok
+test_teardown_with_nothing_left_passes (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_with_nothing_left_passes) ... ok
+test_teardown_accepts_only_the_offline_profile (tests.test_stack_scripts.TeardownShScopeTest.test_teardown_accepts_only_the_offline_profile) ... ok
+test_teardown_activates_no_profile (tests.test_stack_scripts.TeardownShScopeTest.test_teardown_activates_no_profile) ... ok
+test_teardown_carries_project_and_env_file (tests.test_stack_scripts.TeardownShScopeTest.test_teardown_carries_project_and_env_file) ... ok
+test_teardown_does_not_remove_orphans (tests.test_stack_scripts.TeardownShScopeTest.test_teardown_does_not_remove_orphans) ... ok
+test_teardown_script_has_no_profile_wildcard (tests.test_stack_scripts.TeardownShScopeTest.test_teardown_script_has_no_profile_wildcard) ... ok
+test_container_half_runs_lint_before_tests (tests.test_stack_scripts.VerifyCallsLintTest.test_container_half_runs_lint_before_tests) ... ok
+test_gates_it_half_prints_its_own_success_line (tests.test_stack_scripts.VerifyCallsLintTest.test_gates_it_half_prints_its_own_success_line)
+Security L-3 (security-u4-r1.md; orchestrator unit-5 ruling ... ok
+test_lint_failure_fails_verify (tests.test_stack_scripts.VerifyCallsLintTest.test_lint_failure_fails_verify) ... ok
+test_each_failing_stage_fails_verify_and_still_tears_down (tests.test_stack_scripts.VerifyHostHalfTest.test_each_failing_stage_fails_verify_and_still_tears_down) ... ok
+test_every_stage_sees_the_verify_overlay_and_nothing_publishes (tests.test_stack_scripts.VerifyHostHalfTest.test_every_stage_sees_the_verify_overlay_and_nothing_publishes) ... ok
+test_fast_runs_gates_without_publishing (tests.test_stack_scripts.VerifyHostHalfTest.test_fast_runs_gates_without_publishing) ... ok
+test_full_runs_stages_in_order_then_tears_down (tests.test_stack_scripts.VerifyHostHalfTest.test_full_runs_stages_in_order_then_tears_down) ... ok
+test_gates_compose_files_are_pinned_whatever_the_caller_sets (tests.test_stack_scripts.VerifyHostHalfTest.test_gates_compose_files_are_pinned_whatever_the_caller_sets) ... ok
+test_gates_mask_overlay_only_when_env_exists (tests.test_stack_scripts.VerifyHostHalfTest.test_gates_mask_overlay_only_when_env_exists) ... ok
+test_project_name_is_random_and_shared_by_every_stage (tests.test_stack_scripts.VerifyHostHalfTest.test_project_name_is_random_and_shared_by_every_stage) ... ok
+test_removing_the_gates_it_stage_is_caught (tests.test_stack_scripts.VerifyHostHalfTest.test_removing_the_gates_it_stage_is_caught) ... ok
+test_teardown_failure_after_green_run_is_reported (tests.test_stack_scripts.VerifyHostHalfTest.test_teardown_failure_after_green_run_is_reported) ... ok
+test_teardown_runs_on_interrupt (tests.test_stack_scripts.VerifyHostHalfTest.test_teardown_runs_on_interrupt) ... ok
+test_verify_fast_does_not_set_the_smoke_flag (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_fast_does_not_set_the_smoke_flag) ... ok
+test_verify_full_fails_when_image_scan_fails (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_fails_when_image_scan_fails)
+PSC-4/PSC-6 (§2.6 item 5): a failing scan.sh makes verify full exit ... ok
+test_verify_full_marks_its_own_project_for_smoke (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_marks_its_own_project_for_smoke) ... ok
+test_verify_full_only_the_outer_line_says_pass (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_only_the_outer_line_says_pass)
+Security L-3 (security-u4-r1.md; orchestrator unit-5 ruling ... ok
+test_verify_full_runs_offline_check (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_runs_offline_check) ... ok
+test_verify_full_runs_scan_between_teardown_and_offline_check (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_runs_scan_between_teardown_and_offline_check)
+PSC-6: `full` runs scripts/scan.sh exactly once, after the verify ... ok
+test_verify_full_signal_during_smoke_exits_with_its_status_and_no_pass (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_signal_during_smoke_exits_with_its_status_and_no_pass)
+Security M-1 (predates U4; security-u4.md P2 run B, last row): INT, ... ok
+test_verify_full_untrapped_signal_says_stopped_before_the_last_stage (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_untrapped_signal_says_stopped_before_the_last_stage)
+Review r1-n3 (review-u4-r1.md): USR1, a fatal signal verify.sh does ... ok
+test_verify_full_uses_per_worktree_image_tag (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_uses_per_worktree_image_tag) ... ok
+test_verify_image_tag_is_sha256_of_the_real_path_in_both_modes (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_image_tag_is_sha256_of_the_real_path_in_both_modes) ... ok
+test_verify_image_tag_separates_crc_colliding_paths (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_image_tag_separates_crc_colliding_paths) ... ok
+test_verify_image_tag_uses_the_real_path_not_a_symlink (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_image_tag_uses_the_real_path_not_a_symlink) ... ok
+test_verify_is_cdpath_safe (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_is_cdpath_safe) ... ok
+test_verify_overlay_resets_every_published_port (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_overlay_resets_every_published_port) ... ok
+test_verify_refuses_a_malformed_image_tag_before_any_build (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_refuses_a_malformed_image_tag_before_any_build) ... ok
+test_verify_runs_with_a_well_formed_stub_tag (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_runs_with_a_well_formed_stub_tag) ... ok
+test_compose_worker_waits_for_valkey (tests.test_stack_worker.WorkerComposeTest.test_compose_worker_waits_for_valkey) ... ok
+test_worker_command_unchanged (tests.test_stack_worker.WorkerComposeTest.test_worker_command_unchanged) ... ok
+test_worker_is_a_simple_worker (tests.test_stack_worker.WorkerJobAllowlistTest.test_worker_is_a_simple_worker) ... /opt/venv/lib/python3.12/site-packages/rq/worker/base.py:270: Warning: CLIENT LIST command not supported, setting ip_address to unknown
+  warnings.warn('CLIENT LIST command not supported, setting ip_address to unknown', Warning)
+ok
+test_worker_never_resolves_a_refused_jobs_function (tests.test_stack_worker.WorkerJobAllowlistTest.test_worker_never_resolves_a_refused_jobs_function) ... ok
+test_worker_refuses_a_job_outside_engine_jobs (tests.test_stack_worker.WorkerJobAllowlistTest.test_worker_refuses_a_job_outside_engine_jobs) ... ok
+test_worker_runs_a_job_in_engine_jobs (tests.test_stack_worker.WorkerJobAllowlistTest.test_worker_runs_a_job_in_engine_jobs) ... ok
+test_worker_uses_json_serializer (tests.test_stack_worker.WorkerJobAllowlistTest.test_worker_uses_json_serializer) ... ok
+test_every_job_is_traced (tests.test_stack_worker.WorkerJobTracingTest.test_every_job_is_traced) ... ok
+test_failing_job_marks_its_span (tests.test_stack_worker.WorkerJobTracingTest.test_failing_job_marks_its_span) ... ok
+test_worker_job_is_traced (tests.test_stack_worker.WorkerJobTracingTest.test_worker_job_is_traced) ... ok
+test_agent_loop_renders_as_nested_tree (tests.test_tracing.TracingTest.test_agent_loop_renders_as_nested_tree) ... ok
+test_chain_span_kind (tests.test_tracing.TracingTest.test_chain_span_kind) ... ok
+test_exception_marks_span_error_and_propagates (tests.test_tracing.TracingTest.test_exception_marks_span_error_and_propagates) ... ok
+test_hide_inputs_and_outputs_redacts_values (tests.test_tracing.TracingTest.test_hide_inputs_and_outputs_redacts_values) ... ok
+test_llm_records_model_and_token_usage (tests.test_tracing.TracingTest.test_llm_records_model_and_token_usage) ... ok
+test_retriever_records_parameterised_query_and_documents (tests.test_tracing.TracingTest.test_retriever_records_parameterised_query_and_documents) ... ok
+test_setup_tracing_is_idempotent (tests.test_tracing.TracingTest.test_setup_tracing_is_idempotent) ... ok
+test_spans_tolerate_non_recording_span (tests.test_tracing.TracingTest.test_spans_tolerate_non_recording_span)
+Regression (platform-config): with tracing off and no provider ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+20.613s    test_lint_runs_no_code_from_a_powershell_filename (tests.test_stack_scripts.LintScriptTest.test_lint_runs_no_code_from_a_powershell_filename)
+13.139s    test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails)
+13.136s    test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper)
+11.995s    test_bundle_maps_each_service_to_own_image_despite_dependencies (tests.test_offline_bundle.BundleScriptTest.test_bundle_maps_each_service_to_own_image_despite_dependencies)
+9.267s     test_smoke_checks_psycopg_c_impl_in_api (tests.test_psycopg_c.SmokePsycopgTest.test_smoke_checks_psycopg_c_impl_in_api)
+9.163s     test_notices_vendor_row_parse_is_strict (tests.test_offline_bundle.BundleNoticesTest.test_notices_vendor_row_parse_is_strict)
+8.790s     test_install_refuses_unfit_target_or_daemon (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_unfit_target_or_daemon)
+8.297s     test_lint_covers_upper_case_ps1_and_psm1 (tests.test_stack_scripts.LintScriptTest.test_lint_covers_upper_case_ps1_and_psm1)
+8.287s     test_lint_with_real_tools_fails_on_a_planted_finding (tests.test_stack_scripts.LintScriptTest.test_lint_with_real_tools_fails_on_a_planted_finding)
+8.053s     test_ci_offline_fails_naming_the_service_that_gets_out (tests.test_offline_netprobe.SmokeCiOfflineTest.test_ci_offline_fails_naming_the_service_that_gets_out)
+
+----------------------------------------------------------------------
+Ran 1047 tests in 669.572s
+
+OK (skipped=8)
+resources: phase=end nproc=24 cpu_max_quota=max cpu_max_period=100000 cg_cpu_usage_us=600732082 cg_cpu_throttled_us=0 mem_total_kib=32583712 mem_available_kib=26680516 swap_total_kib=8388608 swap_free_kib=4643300 cg_mem_max=max cg_mem_peak=341467136 psi_cpu_some_us=10519146528 psi_memory_some_us=427336322 psi_memory_full_us=403317687 psi_io_some_us=1160447295 psi_io_full_us=1085368863 cpu_steal_ticks=0 cpu_total_ticks=3004094625
+Combined 1 file
+Name                             Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------
+engine/__init__.py                   0      0      0      0   100%
+engine/api.py                       27      3      2      0    90%   20, 25-26
+engine/config/__init__.py            3      0      0      0   100%
+engine/config/loader.py             77      6     24      2    92%   74, 95, 110, 120-121, 123
+engine/config/settings.py          123      0     12      0   100%
+engine/egress.py                    41      1      6      1    96%   64
+engine/errors.py                     6      0      0      0   100%
+engine/jobs.py                      23      0      2      1    96%   27->30
+engine/llm/__init__.py               0      0      0      0   100%
+engine/llm/client.py                34      2      6      2    90%   39, 57
+engine/netprobe.py                  64      3     10      1    95%   78-79, 97
+engine/notices.py                   94      0     38      1    99%   82->80
+engine/readiness.py                165     48     46      1    70%   78-81, 176-182, 186, 191-198, 202-231
+engine/startup.py                  101      0     38      0   100%
+engine/telemetry.py                 62      0     16      0   100%
+engine/worker.py                    22      0      2      0   100%
+harness_telemetry/__init__.py        2      0      0      0   100%
+harness_telemetry/log_event.py      45      4      6      2    88%   45, 78-79, 84
+harness_telemetry/tracing.py        86     14     28      4    79%   49-70, 111->113, 113->115, 118
+----------------------------------------------------------------------------
+TOTAL                              975     81    236     15    90%
+Success: no issues found in 19 source files
+== verify fast: PASS ==

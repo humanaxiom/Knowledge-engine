@@ -1,0 +1,72 @@
+$ COMPOSE_FILE=docker-compose.yml COMPOSE_PROJECT_NAME=ke-tester-u7b docker compose --env-file .env.example --profile gates run --rm gates uv run --locked python docs/evidence/platform-sbom/u7b/u7b_controls.py   (base: u7b/target-*; HEAD rows read git HEAD 9b1754f (U7a); FULL output; tester, U7b RED, 2026-10-25)
+ Container ke-tester-u7b-gates-run-54fe0033bcc8 Creating 
+ Container ke-tester-u7b-gates-run-54fe0033bcc8 Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.76ms
+Installed 1 package in 1ms
+ok  [target] TARGET: the 22 U7b tests                                           must pass | no problem
+ok  [target] TARGET: 11 U7a lock regression tests                               must pass | no problem
+ok  [head] HEAD (U7a): test_hop_rules_and_messages                            must fail | test_hop_rules_and_messages: AssertionError: scripts/sources_resolve.py is missing (platform-sbom U7b; design-
+ok  [head] HEAD (U7a): test_release_file_and_tag                              must fail | test_release_file_and_tag: AssertionError: scripts/sources_resolve.py is missing (platform-sbom U7b; design-no
+ok  [head] HEAD (U7a): test_sidecar_parsers                                   must fail | test_sidecar_parsers: AssertionError: scripts/sources_resolve.py is missing (platform-sbom U7b; design-notes N
+ok  [head] HEAD (U7a): test_uv_lock_and_pypi_json                             must fail | test_uv_lock_and_pypi_json: AssertionError: scripts/sources_resolve.py is missing (platform-sbom U7b; design-n
+ok  [head] HEAD (U7a): test_maven                                             must fail | test_maven: AssertionError: scripts/sources_resolve.py is missing (platform-sbom U7b; design-notes N5 amendmen
+ok  [head] HEAD (U7a): test_neo4j_candidate_is_printed_never_written          must fail | test_neo4j_candidate_is_printed_never_written: AssertionError: scripts/sources_resolve.py is missing (platform
+ok  [head] HEAD (U7a): test_pypi                                              must fail | test_pypi: AssertionError: scripts/sources_resolve.py is missing (platform-sbom U7b; design-notes N5 amendment
+ok  [head] HEAD (U7a): test_temurin                                           must fail | test_temurin: AssertionError: scripts/sources_resolve.py is missing (platform-sbom U7b; design-notes N5 amendm
+ok  [head] HEAD (U7a): test_merge_rules                                       must fail | test_merge_rules: AssertionError: scripts/sources_resolve.py is missing (platform-sbom U7b; design-notes N5 am
+ok  [head] HEAD (U7a): test_failure_writes_nothing                            must fail | test_failure_writes_nothing: AssertionError: scripts/sources_resolve.py is missing (platform-sbom U7b; design-
+ok  [head] HEAD (U7a): test_neo4j_candidate_exit_3                            must fail | test_neo4j_candidate_exit_3: AssertionError: scripts/sources_resolve.py is missing (platform-sbom U7b; design-
+ok  [head] HEAD (U7a): test_resolver_bad_arguments_exit_2                     must fail | test_resolver_bad_arguments_exit_2: AssertionError: scripts/sources_resolve.py is missing (platform-sbom U7b; 
+ok  [head] HEAD (U7a): test_writes_only_the_out_lock                          must fail | test_writes_only_the_out_lock: AssertionError: scripts/sources_resolve.py is missing (platform-sbom U7b; desig
+ok  [head] HEAD (U7a): test_lock_needs_doc_on_the_fixtures                    must fail | test_lock_needs_doc_on_the_fixtures: AssertionError: scripts/sbom_check.py has no lock_needs_doc() (U7b: lock-
+ok  [head] HEAD (U7a): test_release_from_the_saved_tar                        must fail | test_release_from_the_saved_tar: AssertionError: scripts/sbom_check.py has no tar_file_text() (U7b: lock-needs
+ok  [head] HEAD (U7a): test_hardening_check_rejects_loosened_services (guard) must pass | no problem
+ok  [head] HEAD (U7a): test_sources_resolve_service_hardening                 must fail | test_sources_resolve_service_hardening: AssertionError: False is not true : docker-compose.sources.yml is miss
+ok  [head] HEAD (U7a): test_never_run_by_verify_or_ci (guard)                 must pass | no problem
+ok  [head] HEAD (U7a): test_sources_lock_sh_shape                             must fail | test_sources_lock_sh_shape: AssertionError: False is not true : scripts/sources_lock.sh is missing (U7b, N5 am
+ok  [head] HEAD (U7a): test_bad_arguments_exit_2                              must fail | test_bad_arguments_exit_2: AssertionError: False is not true : scripts/sources_lock.sh is missing (U7b, N5 ame
+ok  [head] HEAD (U7a): test_refuses_below_the_floor                           must fail | test_refuses_below_the_floor: AssertionError: False is not true : scripts/sources_lock.sh is missing (U7b, N5 
+ok  [head] HEAD (U7a): test_refuses_when_an_image_is_missing                  must fail | test_refuses_when_an_image_is_missing: AssertionError: False is not true : scripts/sources_lock.sh is missing 
+ok  [mutant] a redirect host not checked                                        must fail | test_hop_rules_and_messages: + redirect to evil.example.com refused: not in hosts
+ok  [mutant] an http redirect followed                                          must fail | test_hop_rules_and_messages: + redirect to a non-https URL refused: http://objects.githubusercontent.com/x
+ok  [mutant] six redirects allowed                                              must fail | test_hop_rules_and_messages: AssertionError: ResolveError not raised
+ok  [mutant] a retry after a non-2xx                                            must fail | test_hop_rules_and_messages: AssertionError: 2 != 1 : a URL was requested twice (no retry, Q61)
+ok  [mutant] the temurin sidecar not compared                                   must fail | test_temurin: AssertionError: ResolveError not raised
+ok  [mutant] the tag taken from the SBOM alone                                  must fail | test_release_file_and_tag: AssertionError: ResolveError not raised
+ok  [mutant] the maven .sha1 not compared                                       must fail | test_maven: AssertionError: ResolveError not raised
+ok  [mutant] the .sha1 any length                                               must fail | test_sidecar_parsers: AssertionError: ResolveError not raised
+ok  [mutant] pypi JSON: the first of several sdists                             must fail | test_uv_lock_and_pypi_json: AssertionError: ResolveError not raised
+ok  [mutant] pypi JSON: the sdist host not checked                              must fail | test_uv_lock_and_pypi_json: AssertionError: ResolveError not raised
+ok  [mutant] pypi: uv.lock ignored (always the JSON)                            must fail | test_pypi: ke_sources_resolve_under_test_50f518f7b943.ResolveError: pypi:psycopg@3.3.6: pypi.org: HTTP 404: ht
+ok  [mutant] pypi: the sdist not compared with the JSON                         must fail | test_pypi: AssertionError: ResolveError not raised
+ok  [mutant] neo4j: the TOFU entry written                                      must fail | test_neo4j_candidate_is_printed_never_written: AssertionError: 'neo4j:neo4j@5.26.32' unexpectedly found in {'n
+ok  [mutant] a manual entry rewritten                                           must fail | test_merge_rules: ke_sources_resolve_under_test_117138bd4202.ResolveError: neo4j:neo4j@5.26.32: github.com: HT
+ok  [mutant] arches not merged                                                  must fail | test_merge_rules: + ['amd64', 'arm64'] : arches merge (N5)
+ok  [mutant] an unneeded generated entry kept                                   must fail | test_merge_rules: + ['arm64'] : an unneeded generated entry loses this arch
+ok  [mutant] --refresh ignored                                                  must fail | test_merge_rules: AssertionError: [] is not true : --refresh fetches again
+ok  [mutant] a failed run still writes                                          must fail | test_failure_writes_nothing: + [] : a failed run wrote into the out dir
+ok  [mutant] a cache file left in the out dir                                   must fail | test_writes_only_the_out_lock: + ['lock.new.json'] : the resolver wrote something else
+ok  [mutant] neo4j candidates exit 0                                            must fail | test_neo4j_candidate_exit_3: AssertionError: 0 != 3 :
+ok  [mutant] a bad arch accepted                                                must fail | test_resolver_bad_arguments_exit_2: AssertionError: 1 != 2
+ok  [mutant] lock-needs: a missing release file not a problem                   must fail | test_lock_needs_doc_on_the_fixtures: AssertionError: [] is not true : []
+ok  [mutant] lock-needs: the bottom layer's release wins                        must fail | test_release_from_the_saved_tar:  : the top layer's copy wins
+ok  [mutant] lock-needs: the deb route keeps no epoch                           must fail | test_lock_needs_doc_on_the_fixtures: ?                         ++
+ok  [mutant] compose: a KE_* key in the environment                             must fail | test_sources_resolve_service_hardening: -  'or token; PSC-6, PSC-23)']
+ok  [mutant] compose: host networking                                           must fail | test_sources_resolve_service_hardening: -  'route; a one-shot)']
+ok  [mutant] compose: writable root                                             must fail | test_sources_resolve_service_hardening: + []
+ok  [mutant] compose: /in writable                                              must fail | test_sources_resolve_service_hardening: -  '2)']
+ok  [mutant] compose: capabilities kept                                         must fail | test_sources_resolve_service_hardening: + []
+ok  [mutant] compose: pulls                                                     must fail | test_sources_resolve_service_hardening: + []
+ok  [mutant] script: the image check dropped                                    must fail | test_refuses_when_an_image_is_missing: AssertionError: 'sources_lock: FAIL (images: ke-app:local not found: ru
+ok  [mutant] script: the floor check dropped                                    must fail | test_refuses_below_the_floor: AssertionError: '7 GiB' not found in "lock-needs: FAIL (FileNotFoundError: [Errn
+ok  [mutant] script: a bad arch accepted                                        must fail | test_bad_arguments_exit_2: sources_lock: FAIL (needs: sbom_check.py lock-needs failed; the lock is unchanged)
+ok  [mutant] script: the move before lock-check                                 must fail | test_sources_lock_sh_shape: -  'lock-check does not run before the lock is written']
+ok  [mutant] script: no git diff --stat                                         must fail | test_sources_lock_sh_shape: + []
+ok  [mutant] script: the .env read                                              must fail | test_sources_lock_sh_shape: + []
+ok  [mutant] script: a KE_* value passed into the resolver                      must fail | test_sources_lock_sh_shape: -  'passes an environment value into a container (-e/--env)']
+ok  [mutant] script: no exit 3                                                  must fail | test_sources_lock_sh_shape: + []
+
+U7b controls (targets): 62 rows, 58 must-fail, 4 must-pass, 0 unexpected
+controls exit: 0

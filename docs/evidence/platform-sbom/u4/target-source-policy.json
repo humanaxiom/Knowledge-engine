@@ -1,0 +1,20 @@
+{
+  "always": [
+    {"image": "valkey", "match": "pkg:apk/alpine/busybox", "why": "PSC-22: busybox (GPL-2.0-only) whatever the generator reports"},
+    {"image": "valkey", "match": "pkg:apk/alpine/apk-tools", "why": "PSC-22: apk-tools (GPL-2.0-only)"},
+    {"image": "valkey", "match": "pkg:apk/alpine/ssl_client", "why": "PSC-22: ssl_client, built from busybox"},
+    {"image": "ke-gateway", "match": "pkg:apk/alpine/busybox", "why": "PSC-22: busybox (GPL-2.0-only) whatever the generator reports"},
+    {"image": "ke-gateway", "match": "pkg:apk/alpine/apk-tools", "why": "PSC-22: apk-tools (GPL-2.0-only)"},
+    {"image": "ke-gateway", "match": "pkg:apk/alpine/ssl_client", "why": "PSC-22: ssl_client, built from busybox"},
+    {"image": "neo4j", "match": "pkg:generic/oracle/openjdk", "why": "PSC-22: the Temurin OpenJDK (GPL-2.0 with Classpath exception)"},
+    {"image": "neo4j", "match": "pkg:maven/org.neo4j/neo4j", "why": "PSC-22: Neo4j Community (GPL-3.0)"},
+    {"image": "neo4j", "match": "upstream=glibc", "why": "PSC-22: glibc (LGPL-2.1)"},
+    {"image": "ke-app", "match": "pkg:pypi/psycopg", "why": "PSC-22: psycopg (LGPL-3.0-only)"},
+    {"image": "ke-app", "match": "pkg:pypi/psycopg-c", "why": "PSC-22, PSC-25: psycopg-c, the compiled extension (LGPL-3.0-only)"},
+    {"image": "ke-app", "match": "upstream=glibc", "why": "PSC-22: glibc (LGPL-2.1)"},
+    {"image": "ke-app", "match": "upstream=openldap", "why": "PSC-22 last bullet, security u1 I-1: libldap-2.5-0 copyright has GPL-2+ and GPL-3+ lines"},
+    {"image": "ke-app", "match": "upstream=cyrus-sasl2", "why": "PSC-22 last bullet, security u1 I-1: libsasl2-2 and libsasl2-modules-db copyright has GPL-3 and GPL-3+ lines"},
+    {"image": "postgres", "match": "upstream=glibc", "why": "PSC-22: glibc (LGPL-2.1)"},
+    {"image": "phoenix", "match": "upstream=glibc", "why": "PSC-22: glibc (LGPL-2.1)"}
+  ]
+}

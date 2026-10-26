@@ -1,0 +1,20 @@
+ Container ke-review-u4r1b-gates-run-d38113b4684e Creating 
+ Container ke-review-u4r1b-gates-run-d38113b4684e Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.79ms
+Installed 1 package in 1ms
+Traceback (most recent call last):
+  File "/work/docs/evidence/platform-sbom/u4/u4_controls.py", line 766, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/work/docs/evidence/platform-sbom/u4/u4_controls.py", line 751, in main
+    u4_check_controls()
+  File "/work/docs/evidence/platform-sbom/u4/u4_controls.py", line 564, in u4_check_controls
+    {"check": sub(C, "if isinstance(raw, list) else []", "if raw else []")}),
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/docs/evidence/platform-sbom/u4/u4_controls.py", line 75, in sub
+    assert text.count(old) == count, (old, text.count(old))
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ('if isinstance(raw, list) else []', 2)
+

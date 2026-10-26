@@ -1,0 +1,8 @@
+$ COMPOSE_FILE=docker-compose.yml COMPOSE_PROJECT_NAME=ke-tester-u4r1 docker compose --env-file .env.example --profile gates run --rm gates uv run --locked python docs/evidence/platform-sbom/u4/r1_real_counts.py   (compose progress lines filtered)
+image       U4-GREEN  r1-target  of which unidentified (marked)   security's expected
+ke-app             1         19                              18                    19
+ke-gateway         0          0                               0                     0
+neo4j             19         28                               9                    28
+phoenix           25         35                              10                    35
+postgres           3         25                              22                    25
+valkey             1          1                               0                     1

@@ -1,0 +1,52 @@
+# reviewer U5 r3 probes, 2026-10-25 (host python -I; scripts/sbom_check.py working tree vs r1/r2 targets)
+## round-2 findings (R2-B1, R2-B2) and security R2-L1
+'NOASSERTION+' (True, {'unparsed': False, 'unidentified': True})
+'none+' (True, {'unparsed': False, 'unidentified': True})
+'DocumentRef-x:NONE+' (True, {'unparsed': False, 'unidentified': True})
+'LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef+' (True, {'unparsed': False, 'unidentified': True})
+'MIT AND LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef+' (True, {'unparsed': False, 'unidentified': True})
+'DocumentRef-x:LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef+' (True, {'unparsed': False, 'unidentified': True})
+'MIT WITH NOASSERTION+' (True, {'unparsed': False, 'unidentified': True})
+'MIT WITH LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef+' (True, {'unparsed': False, 'unidentified': True})
+'MIT:NOASSERTION' (True, {'unparsed': True, 'unidentified': True})
+'MIT+NOASSERTION' (True, {'unparsed': True, 'unidentified': True})
+'NOASSERTION+MIT' (True, {'unparsed': True, 'unidentified': True})
+'NOASSERTION:' (True, {'unparsed': True, 'unidentified': True})
+'DocumentRef-:NONE' (True, {'unparsed': True, 'unidentified': True})
+'Public Domain MIT:NOASSERTION' (True, {'unparsed': True, 'unidentified': True})
+'LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.x' (True, {'unparsed': False, 'unidentified': True})
+'xLicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' (True, {'unparsed': False, 'unidentified': True})
+'MIT AND NOASSERTION.' (True, {'unparsed': False, 'unidentified': True})
+'MIT AND -NONE' (True, {'unparsed': False, 'unidentified': True})
+'NOASSERTION..' (True, {'unparsed': False, 'unidentified': True})
+'-NONE-' (True, {'unparsed': False, 'unidentified': True})
+## near-misses and opaque idstrings (ruled ordinary)
+'see NONE.txt here' (False, {'unparsed': True, 'unidentified': False})
+'NOASSERTIONS apply' (False, {'unparsed': True, 'unidentified': False})
+'MIT-NOASSERTION' (False, {'unparsed': False, 'unidentified': False})
+'LicenseRef-NONE' (False, {'unparsed': False, 'unidentified': False})
+'LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdefa' (False, {'unparsed': False, 'unidentified': False})
+'MIT AND LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdefa' (False, {'unparsed': False, 'unidentified': False})
+'Public Domain LicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdefa' (True, {'unparsed': True, 'unidentified': True})
+'NOASSERTION.NONE' (False, {'unparsed': False, 'unidentified': False})
+'NOASSERTION-2.0' (False, {'unparsed': False, 'unidentified': False})
+'LicenseRef-NOASSERTION' (False, {'unparsed': False, 'unidentified': False})
+'LicenseRef-0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF' (False, {'unparsed': False, 'unidentified': False})
+'DocumentRef-x:LicenseRef-NONE' (False, {'unparsed': False, 'unidentified': False})
+## other shapes
+'NOASSERTION_' (True, {'unparsed': True, 'unidentified': True})
+'MIT AND NoAssertion+' (True, {'unparsed': False, 'unidentified': True})
+'MIT WITH -NONE' (True, {'unparsed': False, 'unidentified': True})
+'MIT WITH xLicenseRef-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' (True, {'unparsed': False, 'unidentified': True})
+'(NONE+)' (True, {'unparsed': False, 'unidentified': True})
+'MIT OR NONE+' (False, {'unparsed': False, 'unidentified': True})
+'DocumentRef-a.b-c:NOASSERTION' (True, {'unparsed': False, 'unidentified': True})
+'GPL-2.0-only+' (True, {'unparsed': True, 'unidentified': False})
+'DocumentRef-x:GPL-2.0+' (True, {'unparsed': False, 'unidentified': False})
+## snapshot: image counts cur | equal to r1 row-by-row | equal to r2 row-by-row
+ke-app (153, 102, 3, 18, 1) True True
+ke-gateway (71, 17, 0, 0, 0) True True
+neo4j (341, 164, 52, 9, 19) True True
+phoenix (277, 30, 4, 10, 25) True True
+postgres (149, 130, 6, 22, 3) True True
+valkey (24, 12, 0, 0, 1) True True

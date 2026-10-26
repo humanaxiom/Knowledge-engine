@@ -1,0 +1,96 @@
+platform-sbom U5 rework r2: security probes (security, 2026-10-24)
+Tree: HEAD c300d88 + working tree; scripts/sbom_check.py == u5/r2-target-sbom_check.py (cmp).
+Script: u5/security_r2_probes.py (r2 compared with u5/r1-target-sbom_check.py and HEAD). Gates image, python -I,
+COMPOSE_PROJECT_NAME=ke-security-u5, scratch dir (the script + git show HEAD:scripts/sbom_check.py) read-only at /scratch.
+Output unedited except the NUL bytes in one label, shown as <x00>.
+
+ Container ke-security-u5-gates-run-1c541e189ea5 Creating 
+ Container ke-security-u5-gates-run-1c541e189ea5 Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 1ms
+Installed 1 package in 1ms
+== R2-A. Reviewer R1-B1 inputs and punctuation / DocumentRef / prefix tricks ==
+  B1 MIT,NOASSERTION                                       needs=True  unparsed=True  unident=True  (r1 needs=False unparsed=False)
+  B1 MIT/NOASSERTION                                       needs=True  unparsed=True  unident=True  (r1 needs=False unparsed=False)
+  B1 quoted NOASSERTION                                    needs=True  unparsed=True  unident=True  (r1 needs=False unparsed=False)
+  B1 <hash>;                                               needs=True  unparsed=True  unident=True  (r1 needs=False unparsed=False)
+  B1 DocumentRef-x:<hash>                                  needs=True  unparsed=False unident=True  (r1 needs=False unparsed=False)
+  B1 MIT OR DocumentRef-x:NONE                             needs=False unparsed=False unident=True  (r1 needs=False unparsed=False)
+  B1 MIT AND DocumentRef-x:noassertion                     needs=True  unparsed=False unident=True  (r1 needs=False unparsed=False)
+  doc DocumentRef-x:GPL-2.0-only                           needs=True  unparsed=False unident=False (r1 needs=True  unparsed=True)
+  doc DocumentRef-x:LicenseRef-GPL-2.0                     needs=True  unparsed=False unident=False (r1 needs=True  unparsed=True)
+  doc DocumentRef-x:LicenseRef-https---gnu.org-x           needs=False unparsed=True  unident=False (r1 needs=False unparsed=False)
+  doc lower-case prefix documentref-x:NONE                 needs=False unparsed=True  unident=False (r1 needs=False unparsed=False)
+  doc double prefix DocumentRef-a:DocumentRef-b:NONE       needs=False unparsed=True  unident=False (r1 needs=False unparsed=False)
+  doc double prefix ...:DocumentRef-b:<hash>               needs=True  unparsed=True  unident=True  (r1 needs=False unparsed=False)
+  doc empty id DocumentRef-:NONE                           needs=False unparsed=True  unident=False (r1 needs=False unparsed=False)
+  doc prefix only DocumentRef-x:                           needs=False unparsed=True  unident=False (r1 needs=False unparsed=False)
+  doc MIT WITH DocumentRef-x:<hash>                        needs=True  unparsed=False unident=True  (r1 needs=False unparsed=False)
+  doc MIT WITH DocumentRef-x:GPL-3.0-only                  needs=True  unparsed=True  unident=False (r1 needs=True  unparsed=True)
+  doc DocumentRef-gpl:MIT (prefix holds gpl)               needs=True  unparsed=True  unident=False (r1 needs=True  unparsed=True)
+  idstring punct: MIT AND NOASSERTION.                     needs=False unparsed=False unident=False (r1 needs=False unparsed=False)
+  idstring punct: MIT AND NOASSERTION+                     needs=False unparsed=False unident=False (r1 needs=False unparsed=False)
+  idstring punct: MIT AND -NONE                            needs=False unparsed=False unident=False (r1 needs=False unparsed=False)
+  idstring punct: MIT AND NONE:                            needs=False unparsed=True  unident=False (r1 needs=False unparsed=False)
+  idstring punct: <hash>+                                  needs=False unparsed=False unident=False (r1 needs=False unparsed=False)
+  idstring punct: <hash>.x                                 needs=False unparsed=False unident=False (r1 needs=False unparsed=False)
+  idstring punct: <hash>0 (65 hex)                         needs=False unparsed=False unident=False (r1 needs=False unparsed=False)
+  idstring punct: x<hash>                                  needs=False unparsed=False unident=False (r1 needs=False unparsed=False)
+  idstring punct: MIT WITH <hash>+                         needs=False unparsed=False unident=False (r1 needs=False unparsed=False)
+  idstring punct: MIT AND LicenseRef-NONE                  needs=False unparsed=False unident=False (r1 needs=False unparsed=False)
+  non-idstring: MIT AND GPL_2.0 (underscore)               needs=True  unparsed=True  unident=False (r1 needs=True  unparsed=True)
+  non-idstring: MIT OR GPL;                                needs=True  unparsed=True  unident=False (r1 needs=False unparsed=True)
+  non-idstring: MIT OR Apache-2.0;                         needs=False unparsed=True  unident=False (r1 needs=False unparsed=False)
+  non-idstring: MIT OR (x=NOASSERTION)                     needs=True  unparsed=True  unident=True  (r1 needs=False unparsed=False)
+  non-idstring: MIT OR Apache-2.0 WITH x;                  needs=False unparsed=True  unident=False (r1 needs=False unparsed=False)
+  non-idstring: MIT OR LicenseRef-a@b                      needs=False unparsed=True  unident=False (r1 needs=False unparsed=False)
+  non-idstring: MIT OR <hash>#                             needs=True  unparsed=True  unident=True  (r1 needs=False unparsed=False)
+  non-idstring: NUL MIT<x00>OR<x00>NONE                            needs=True  unparsed=True  unident=True  (r1 needs=False unparsed=False)
+  non-idstring: tab-only separators MIT	OR	GPL-2.0         needs=False unparsed=False unident=False (r1 needs=False unparsed=False)
+  plus: GPL-2.0+                                           needs=True  unparsed=False unident=False (r1 needs=True  unparsed=False)
+  plus: MIT+ OR Apache-2.0+                                needs=False unparsed=False unident=False (r1 needs=False unparsed=False)
+  plus: MIT++                                              needs=False unparsed=True  unident=False (r1 needs=False unparsed=False)
+  WITH http ref: MIT WITH LicenseRef-https---x             needs=False unparsed=True  unident=False (r1 needs=False unparsed=False)
+  regress MIT OR GPL-2.0-only AND Apache-2.0               needs=False unparsed=False unident=False (r1 needs=False unparsed=False)
+  regress jna Apache-2.0 AND LGPL-2.1-only                 needs=True  unparsed=False unident=False (r1 needs=True  unparsed=False)
+
+== R2-B. Monotonicity r1 -> r2 (seeded random expressions, punctuation-rich alphabet) ==
+  100000 expressions: {'both': 61464, 'r2_only': 3841, 'r1_only': 0, 'neither': 34695}; needs regressions (r1 True, r2 False): 0 []
+  listed-in-r1 but neither needs nor listed in r2: 0 []
+
+== R2-C. Real U3 rows: r1 -> r2 changes ==
+  ke-app     rows=153 needs r2=102 (r1 102) changed=0 []
+  ke-gateway rows=71 needs r2=17 (r1 17) changed=0 []
+  ke-neo4j   rows=341 needs r2=166 (r1 166) changed=0 []
+  phoenix    rows=277 needs r2=33 (r1 33) changed=0 []
+  postgres   rows=149 needs r2=130 (r1 130) changed=0 []
+  valkey     rows=24 needs r2=12 (r1 12) changed=0 []
+  real leaves: 3731; not fullmatching LEAF_RE: 0
+
+== R2-D. unlicensed_report untouched vs HEAD ==
+  sources identical: True
+  ke-app     HEAD= 19 r2= 19 equal=True lines-equal=True
+  ke-gateway HEAD=  0 r2=  0 equal=True lines-equal=True
+  neo4j      HEAD= 28 r2= 28 equal=True lines-equal=True
+  phoenix    HEAD= 35 r2= 35 equal=True lines-equal=True
+  postgres   HEAD= 25 r2= 25 equal=True lines-equal=True
+  valkey     HEAD=  1 r2=  1 equal=True lines-equal=True
+
+== R2-E. ReDoS / cost: LEAF_RE, DOCREF_RE, RUN_SPLIT_RE, _bare, _unknown_in_text, needs_source ==
+  LEAF_RE.fullmatch DocumentRef- + a*1M + !                    0.011s None
+  LEAF_RE.fullmatch DocumentRef- + a*1M (no colon)             0.003s <re.Match object; span=(0, 1000012), match='Docume
+  LEAF_RE.fullmatch (DocumentRef-a:)*50k                       0.000s None
+  LEAF_RE.fullmatch a*1M + ++                                  0.008s None
+  LEAF_RE.fullmatch -.*500k + :                                0.009s None
+  DOCREF_RE.match DocumentRef- + a*1M                          0.002s None
+  _bare DocumentRef- + a*1M + :x                               0.001s 1
+  RUN_SPLIT_RE.split ,*1M                                      0.001s 2
+  RUN_SPLIT_RE.split a,*500k                                   0.020s 500001
+  _unknown_in_text DocumentRef-a:*70k                          0.005s False
+  _unknown_in_text (DocumentRef-x:NONE,)*60k                   0.010s True
+  _unknown_in_text x,*500k                                     0.124s False
+  needs_source width 200k MIT AND DocumentRef-x:MIT            0.223s (False, {'unparsed': True, 'unidentified': False})
+  needs_source 1MB punctuation junk                            0.106s (False, {'unparsed': True, 'unidentified': False})
+  needs_source 1MB single bad leaf                             0.025s (False, {'unparsed': True, 'unidentified': False})
+  needs_source depth 100000 DocumentRef-x:NONE                 0.015s (True, {'unparsed': True, 'unidentified': True})

@@ -576,9 +576,11 @@ N18, N19; security L2, L5, L7, L16, L17, L18.
     `stores.postgres.database`. `[unit: test_compose_postgres_identity_matches_defaults]`
     (fast)
   - *No GSS encryption on postgres connections (security L-13; rework
-    round 1, 2026-10-19).* psycopg-binary vendors old Kerberos/SASL
-    libraries that pip-audit cannot see, so the engine never negotiates GSS
-    encryption. Given the postgres readiness probe, it connects with
+    round 1, 2026-10-19).* The engine never negotiates GSS encryption, as
+    defence in depth that keeps krb5 off that path. The first reason
+    (psycopg-binary's vendored el7 Kerberos/SASL libraries) is gone under
+    PSC-25, but Debian 12's libpq 15 is still built with GSSAPI, so
+    `gssencmode="disable"` still applies. *(Amended 2026-10-23, analyst, U0 review.)* Given the postgres readiness probe, it connects with
     `gssencmode="disable"`. `[unit: test_postgres_probe_disables_gss_encryption]`
     (fast). Given the engine source, every psycopg connect call passes
     `gssencmode="disable"`.
@@ -2958,6 +2960,10 @@ sequencing call for the orchestrator.
       vendored libraries move with the wheel.
     - Mitigation today: `gssencmode=disable` (PS-2.5).
     - Structural fix: Q42's switch to psycopg on Debian's libpq.
+    - L-13 closes under Q64 (platform-sbom U0). *(Added 2026-10-22,
+      analyst, Q64; PSC-25.)*
+    - **L-13 CLOSED 2026-10-23 by security (U0,
+      `docs/evidence/platform-sbom/u0/security.md`).** *(Amended 2026-10-23, analyst, U0 review.)*
   - Evidence, checked by the reviewer and security; no unit test.
 - **PSC-8 Not in the bundle.** The deployed product never scans: no bundle
   manifest entry names the scanner image or its database.
@@ -3196,6 +3202,25 @@ blocks this item.
   `test_every_postgres_connect_in_engine_disables_gss_encryption`) to
   require it, and confirm the stack postgres uses SCRAM (a live readyz in
   `full`).
+  - L-13 closes under Q64 (platform-sbom U0). Under PSC-25 the image's
+    libpq is Debian 12's (the PostgreSQL 15 series), which has no
+    `require_auth`, and the vendored krb5 this guarded is gone; whether
+    this follow-up is kept, re-scoped or retired is Q66. *(Added
+    2026-10-22, analyst, Q64.)*
+  - Re-rated by security at U0 review (A66).
+  - **L-13 CLOSED 2026-10-23 by security (U0,
+    `docs/evidence/platform-sbom/u0/security.md`).** Security's A66
+    re-rating: **low, re-scoped (not retired), goes with `auth-audit`,
+    non-blocking.** `require_auth` cannot be added on libpq 15, and libpq
+    15 still calls krb5 when a server asks for GSS auth (`gssencmode`
+    stops GSS encryption only). The bullet is replaced by: *(Amended 2026-10-23, analyst, U0 review.)*
+    1. Server side, now: `password_encryption=scram-sha-256` and a TCP
+       `pg_hba` that is `scram-sha-256` only, proved by a live `full` check
+       (`SHOW password_encryption`, `pg_hba_file_rules`).
+    2. `channel_binding=require` on the client, only if `auth-audit` adds
+       TLS to postgres.
+    3. `require_auth=scram-sha-256` at every connect site, with the PS-2.5
+       pair extended, once the base's libpq is 16 or later.
 - **Security I-2: `scan.sh` saves by tag, not image ID**
   (`scripts/scan.sh:92`). A second `full` from the same checkout (same
   `wt-` tag) that rebuilds between build and scan could swap the image
@@ -3212,7 +3237,7 @@ Neither blocks this item.
   - Nobody has yet checked whether such a release exists.
 - **pip in `ke-app`.** The base image's pip 25.0.1 has fixed findings, all
   Medium or Low and below the threshold. Dropping pip from the final stage
-  is a candidate.
+  is a candidate. DONE by platform-sbom U1 (PSC-14). *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
 
 Recorded 2026-10-21 (orchestrator ruling, u1 rework 1). None blocks this
 item.
@@ -3268,13 +3293,61 @@ item.
 
 ## Item: platform-sbom
 
-Status: **not started.** Opens right after `platform-supply-chain` (split
+Status: **In progress (2026-10-25):** U0-U5 committed (U5 d8ffa2d, not yet
+pushed; U0-U4b pushed as draft PR #14, whose CI run 40046377958 passed,
+verify job 32m32s); U6 in progress. *(Amended 2026-10-25, analyst, U6.)*
+*(Amended 2026-10-24, documenter, review N7)*
+*(Updated 2026-10-23, documenter, status)* Opened (2026-10-21) right after `platform-supply-chain` (split
 accepted by the orchestrator, 2026-10-21), on `agent/platform-sbom`.
 PSC-13–PSC-15 moved here from `platform-supply-chain` and were rewritten on
 2026-10-21 (architect) for the Q57 and Q58 rulings; PSC-16 is new. The
 analyst confirms the criteria when the item opens. No mechanism is designed
 yet: the item's architect writes an ADR for the SBOM generator (a new pinned
 dependency) and the source archive.
+
+*Confirmed/amended by the analyst, 2026-10-22* (item opened; checked against
+`docker/app.Dockerfile`, `scripts/bundle.sh`, `scripts/install.sh`,
+`scripts/install.ps1`, `scripts/offline_check.sh`, `docker-compose.scan.yml`
+and `NOTICE.md` at `737750d`). The Q57 and Q58 rulings are untouched. What
+changed:
+- PSC-13: the image is named by its `ref` and by one value, the image ID of
+  the tar; "runtime package" defined.
+- PSC-14: `uv` removed (PSC-17 took it out of `ke-app`; it runs only in the
+  unshipped `builder` stage). The shipped stage's real contents are named
+  instead: CPython 3.12, the Debian 12 packages and the base's pip. The 15
+  vendored files are named from the PSC-7 evidence; arm64 is covered. pip
+  was later dropped from the shipped stage (PSC-14). *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+- PSC-15: obligations and recommendation unchanged; its check also covers
+  the components PSC-22 names; each bundle's `sources/` is self-sufficient.
+- PSC-16: also measures the manifest size and the install's tmpfs (memory)
+  use.
+- The three open points are now Q61-Q63 in `docs/open-questions.md`.
+- New: PSC-19 (e2e) to PSC-24. TDD order extended.
+
+**Standing rule (orchestrator, 2026-10-23):** nothing from
+`agent/platform-sbom` merges to `main`, and no operator bundle is cut from
+it, before U3 (the SBOM, PSC-13) and U9 (the generated "Source code"
+section, PSC-15, PSC-24) land. Until then `NOTICE.md` names an SBOM and a
+section the bundle does not carry (PSC-14). *(Amended 2026-10-23, analyst, U1 review.)*
+
+**Criterion status (2026-10-23).** *(Updated 2026-10-23, documenter, status)*
+Counts are not restated here; the evidence under
+`docs/evidence/platform-sbom/` names its queries.
+
+| Criterion | Status | Unit (commit) |
+|---|---|---|
+| PSC-13 SBOM per bundled image | MET | U3 (464fa11) |
+| PSC-14 notices complete for `ke-app` | MET (the generated "Source code" section is U9) | U1 (23e3c9b) |
+| PSC-15 GPL source offers | PENDING (classifier landed in U5, d8ffa2d) | U5 (d8ffa2d), U6-U7, U9 |
+| PSC-16 CI cost and disk measured on CI | PENDING | U11 |
+| PSC-19 end to end offline install | PENDING | U10 |
+| PSC-20 SBOM generator pinned and hardened | MET | U2 (98b6d27) |
+| PSC-21 per-arch bundles | PENDING (next recorded arm64 run) | U12 |
+| PSC-22 obligations not hidden | MET (report, drift check, `always` list; their `sources/` entries are U6-U7) | U4 (40e2181) |
+| PSC-23 bounded source fetch | PENDING | U8 |
+| PSC-24 no partial bundle, manifest rules | PENDING | U9 |
+| PSC-25 psycopg on Debian libpq | MET | U0 (31bfed4) |
+| PSC-26 first-party neo4j image | MET | U4b (c300d88) |
 
 Outcome metric moved: **neither.** No draft is reviewed and no rule is
 ratified because of this item. It closes the M-NT1 remainder
@@ -3295,30 +3368,66 @@ full what it contains.
     source.
 - Not ruled and not blocking (Q58): who asks SFU legal/IP, and whether
   distribution outside SFU is planned.
-- For the orchestrator when the item opens (not yet questions in
-  `docs/open-questions.md`):
-  - whether a failed source fetch fails closed, as Q56(b) ruled for the
-    scan database;
-  - whether Q60's 3-min trigger also applies to this item's CI cost;
-  - whether `verify.sh full` builds the whole source set, given the disk
-    floor (PSC-16).
+- Ruled by the human (`docs/open-questions.md` § platform-sbom, raised by
+  the analyst 2026-10-22):
+  - Q61 ruled 2026-10-22: fail closed on a failed or checksum-mismatched
+    source fetch (one call, no retry, as Q56(b));
+  - Q62 ruled 2026-10-22: Q60's 3-min trigger applies to this item's added
+    CI time (above 180 s on the slower of two green runs, the measurement
+    goes to the human before the timeout is raised);
+  - Q63 ruled 2026-10-22: a reduced verify set, the full set for every
+    operator bundle.
+  - Q64 ruled 2026-10-22: psycopg built against Debian's libpq
+    (`psycopg[c]`, the Q42 structural fix); `psycopg_binary.libs` is
+    removed, its libraries become Debian packages, and no `srpm` source
+    kind is built. Built as PSC-25, unit U0; L-13 closes. PSC-13, PSC-14,
+    PSC-15, PSC-19 and PSC-22 are amended to match. *(Amended 2026-10-22, analyst, Q64.)*
+- Orchestrator rulings on ADR-KE-016's open points (2026-10-22, handoff
+  "rulings on ADR-KE-016 open points"). *(Amended 2026-10-22, analyst, Q64.)*
+  - (1) The SBOM names its image by the tar's config digest, not by an
+    image ID (PSC-13, PSC-19).
+  - (2) SBOMs, sources and the notice copies sit under `app/`, the only
+    directory install publishes. PSC-19's "installed copy" is that `app/`.
+  - (4) The classifier is wider than PSC-15's licence list: it also treats
+    AGPL, GPL-1.0 and LGPL-2.0, in any form, as GPL-family. Accepted as
+    the more conservative reading; PSC-15's list is the minimum.
+- Q65 and Q66 (`docs/open-questions.md` § platform-sbom, raised by the
+  analyst 2026-10-22) ruled by the orchestrator 2026-10-22: A65, the
+  shipped `ke-app` has no psycopg-binary and uses `psycopg-c` on Debian's
+  libpq, and how the lock, dev hosts and `ke-gates` resolve psycopg is the
+  architect's (no CLAUDE.md or AGENTS.md change, no dev-host toolchain,
+  `--locked` everywhere, the `uv run` log step keeps working on Windows);
+  A66, accept Debian 12's libpq 15, no apt.postgresql.org, and security
+  re-rates the `require_auth` follow-up at U0 review. *(Amended 2026-10-22, analyst, A65/A66.)*
 
 - **PSC-13 SBOM per bundled image (Q57).**
   - When `bundle.sh` builds a bundle, it writes one SPDX 2.3 JSON document
     for each image in `bundle.json`: `ke-app`, `ke-gateway` and every
     third-party stack image (postgres, neo4j, valkey, phoenix).
+    From U4b the neo4j document is `ke-neo4j`'s, a first-party image
+    (PSC-26). *(Amended 2026-10-23, analyst, Q67.)*
   - Each is generated offline, at bundle time, from the image tar the bundle
     ships: no network, no pull and no Docker socket in the generator
     container. The generator image is pinned by digest, with its provenance
     recorded as in PSC-1, and is not in the bundle.
   - Each document is listed in the bundle manifest with its hash, and names
-    the image it describes by the `ref` in `bundle.json` and the image's
-    digest or ID.
+    the image it describes by the `ref` in `bundle.json` and by the config
+    digest of the tar it was generated from (`sha256:<hex>`, the `Config`
+    entry of the tar's `manifest.json`), which is the same whichever image
+    store loads the tar (R2); for a vendor image the pinned index digest is
+    in the `ref`. *(Amended 2026-10-22, analyst: "digest or ID" made one
+    value a test can compare.)* *(Amended 2026-10-22, analyst, Q64.)* Orchestrator ruling 1: the
+    image ID `install` sees differs by store (R2), and a named load prints
+    `Loaded image: <ref>`, so the config digest replaces it.
   - Each has the SPDX 2.3 required fields: `spdxVersion: "SPDX-2.3"`,
     `dataLicense: "CC0-1.0"`, a `documentNamespace` unique to the bundle,
     and `creationInfo` naming the generator and its version.
   - `ke-app`'s document lists every runtime package in `uv.lock` with its
-    locked version. Every document lists the image's OS packages (dpkg or
+    locked version. A runtime package is one the `ke-app` builder's final
+    sync, `uv sync --locked --no-dev --group pq-c --no-binary-package
+    psycopg-c`, installs into `/opt/venv`; that set includes `psycopg-c`
+    (PSC-25). `test_sbom_lists_every_locked_runtime_package` takes the
+    expected set from this definition. *(Amended 2026-10-23, analyst, U0 review.)* Every document lists the image's OS packages (dpkg or
     apk) with their versions and declared licences, as the generator
     reports them.
   - `[unit: test_bundle_has_sbom_per_image]`,
@@ -3326,18 +3435,154 @@ full what it contains.
     `[unit: test_sbom_lists_every_locked_runtime_package]` (fast, stubbed);
     `ci/deployable-offline` (full) generates the documents from the real
     images, and install checks them through the manifest.
-- **PSC-14 Notices complete for `ke-app` (M-NT1).**
-  - `NOTICE.md` has a paragraph for `ke-app`'s base: CPython, the Debian
-    layers and the `uv` binary, each with its licence.
-  - It lists the native libraries vendored in `psycopg_binary.libs` (libpq,
-    OpenSSL, krb5, libsasl2, libldap, libcrypt, libkeyutils and any others
-    present at the locked version), each with its licence.
-  - A drift check fails when a library in the image's `psycopg_binary.libs`
-    is not listed.
+- **PSC-14 Notices complete for `ke-app` (M-NT1).** *(Amended 2026-10-22,
+  analyst: uv left `ke-app` with PSC-17.)* *(Amended 2026-10-22, analyst, Q64.)*
+  - `NOTICE.md` has a paragraph for what `ke-app`'s shipped stage
+    (`runtime`, which the `FROM scratch` last stage copies whole; N10a)
+    *(Amended 2026-10-23, analyst, U1 round 3.)* holds besides `/opt/venv` and `/app`, pinned to the base digest in
+    `docker/app.Dockerfile`, each with its licence: CPython 3.12 under
+    `/usr/local`; the Debian 12 (bookworm) packages of
+    `python:3.12-slim-bookworm` (licences under `/usr/share/doc/*/copyright`,
+    and in the image's SBOM "where the bundle carries one", PSC-13). The
+    base's own pip is removed from the shipped stage (pip bullet below), so
+    the paragraph does not list it as shipped. *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)* (Review N10: the SBOM
+    mention uses the conditional wording of the SBOM bullet below.)
+  - CPython is named under SPDX `Python-2.0`, the stacked
+    PSF/BeOpen/CNRI/CWI licence, not `PSF-2.0` (only its top layer). It
+    applies wherever PSC-14 or `NOTICE.md` names CPython's licence.
+    `NOTICE.md` points to `/usr/local/lib/python3.12/LICENSE.txt` inside the
+    image, which holds the PSF/BeOpen/CNRI/CWI licence stack only.
+    *(Amended 2026-10-23, analyst, U1 review.)* *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)* (Security M-2: that
+    file holds none of the licences of the code CPython builds in.)
+    - The licences of the third-party code CPython builds in (expat,
+      libmpdec and the rest listed in CPython's `Doc/license.rst`,
+      "Licenses and Acknowledgements for Incorporated Software") ship as
+      `licenses/CPython-3.12-incorporated.txt`. *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)* (Security L-5.)
+    - The file is that section, extracted from `Doc/license.rst` at the
+      CPython tag that matches the image's CPython (`v3.12.15` today), and
+      it names that CPython version. A maintainer fetches it over HTTPS
+      (the fetch needs network), and its source URL and sha256 are
+      recorded; security fetches it a second time and the sha256 must
+      match (Q48 form). It is git-tracked, because `scripts/bundle.sh`
+      ships only `git ls-files -- licenses` (security I-4). *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+    - CPython 3.12.15 also builds `_md5`, `_sha1`, `_sha2` and `_sha3` from
+      HACL* code under MIT (`Modules/_hacl/`), and `Doc/license.rst` omits
+      it (security L-9). The bundle therefore also ships
+      `licenses/CPython-3.12-HACL.txt`: the MIT header copied as-is from
+      `Modules/_hacl/Hacl_Hash_SHA2.c` in the security-verified
+      `Python-3.12.15.tar.xz` (sha256
+      `c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a`,
+      equal to the base's `PYTHON_SHA256`), under a header that names the
+      source file and the tarball sha256. *(Amended 2026-10-23, analyst, U1 round 3.)*
+    - CPython 3.12.15's HACL* modules compile in KaRaMeL headers
+      (`Modules/_hacl/include/krml/`, Copyright INRIA and Microsoft
+      Corporation, Apache-2.0), per the security ruling of 2026-10-23
+      (security L-9b). The bundle therefore also ships two files:
+      - `licenses/CPython-3.12-KaRaMeL.txt`: the licence header notice
+        extracted from `Modules/_hacl/include/krml/internal/target.h` in
+        the same verified tarball, under the same 4-line header form as
+        `licenses/CPython-3.12-HACL.txt` (description, source file,
+        tarball URL, tarball sha256), then a blank line, then the extract.
+      - `licenses/Apache-2.0.txt`: an offline byte copy, with no added
+        header, of `/usr/share/common-licenses/Apache-2.0` from the pinned
+        base (Debian `base-files` 12.4+deb12u15, sha256
+        `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`).
+      Both are git-tracked, as `scripts/bundle.sh` ships only
+      `git ls-files -- licenses`. *(Amended 2026-10-23, analyst, U1 round 4.)*
+    - `NOTICE.md` names `licenses/CPython-3.12-incorporated.txt`,
+      `licenses/CPython-3.12-HACL.txt`, `licenses/CPython-3.12-KaRaMeL.txt`
+      and `licenses/Apache-2.0.txt`.
+      `[unit: test_notice_names_cpython_incorporated_licences]` (fast;
+      extended to cover the HACL* file, then the KaRaMeL file and
+      `licenses/Apache-2.0.txt`). *(Amended 2026-10-23, analyst, U1 round 3.)* *(Amended 2026-10-23, analyst, U1 round 4.)* *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+    - U4 adds the image-side check: the `ke-app` SBOM's CPython version
+      equals the version the file names (PSC-22). *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+  - SBOM mentions are conditional: `NOTICE.md` says the licences are in
+    the image's SBOM only "where the bundle carries one". The wording is
+    true before U3 (PSC-13) and after it, so it stays after U3.
+    *(Amended 2026-10-23, analyst, U1 review.)* *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)* (Review N10.)
+  - pip is not shipped (human, 2026-10-23, superseding the earlier keep
+    ruling). *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)* This removes the notice obligations of pip's vendored
+    packages (security L-2, L-2b; review N9) instead of documenting them.
+    - The shipped stage of `ke-app` (`runtime`, which the `FROM scratch`
+      last stage copies whole; N10a) *(Amended 2026-10-23, analyst, U1 round 3.)* removes the base's pip, and removes
+      `ensurepip`'s bundled pip wheel if the base carries one (it holds the
+      same vendored code). In the real image, pip is not importable by the
+      system Python, no pip distribution is installed in its
+      site-packages, no `pip` command is on `PATH`, and `ensurepip` has no
+      bundled pip wheel. *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+    - `NOTICE.md` says that pip is not shipped and has no pip licence
+      bullet. *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+    - `licenses/` gains no Apache-2.0 or MPL-2.0 text for pip: the
+      untracked `licenses/Apache-2.0.txt` and `licenses/MPL-2.0.txt` are
+      reverted. `test_licenses_carry_texts_for_pip_vendored_licences` is
+      retired. *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+      `licenses/Apache-2.0.txt` does ship, but for KaRaMeL (security
+      L-9b; KaRaMeL bullet above), not for pip; `licenses/MPL-2.0.txt`
+      stays out. *(Amended 2026-10-23, analyst, U1 round 4.)*
+    - `[unit: test_ke_app_last_stage_removes_pip]` (fast, static check of
+      `docker/app.Dockerfile`: the shipped stage (`runtime`, which the
+      `FROM scratch` last stage copies whole; N10a) removes pip and the
+      `ensurepip` pip wheel; the test name stays). *(Amended 2026-10-23, analyst, U1 round 3.)* `[full: smoke: no pip in api]` (smoke check
+      in the running api container: the image-side facts above). *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+    - The Dockerfile changes, so U1 needs `scripts/verify.sh full` and the
+      A34 Windows proof before it commits, as PSC-25 did. *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+    - The platform-supply-chain follow-up "drop pip from `ke-app`'s last
+      stage" (§ "Follow-ups (not in platform-supply-chain)", "pip in
+      `ke-app`") is DONE by platform-sbom U1. *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+  - It does not name uv as shipped: uv runs only in the `builder` stage,
+    which does not ship (PSC-17). Nor does it name pip as shipped (bullet
+    above). *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+  - `ke-app` ships no `psycopg_binary.libs` (PSC-25); libpq and its
+    dependencies are Debian packages covered by the SBOM and the `deb`
+    source kind. The base paragraph above therefore also names the Debian
+    packages the shipped stage (`runtime`, which the `FROM scratch` last
+    stage copies whole; N10a) *(Amended 2026-10-23, analyst, U1 round 3.)* adds to the base (`libpq5` and what it pulls
+    in, PSC-25), and `NOTICE.md` names `libpq5` as a Debian package under
+    the PostgreSQL licence. *(Amended 2026-10-22, analyst, Q64.)* The 15-library vendored table and
+    its drift check against the image's `psycopg_binary.libs` are removed:
+    nothing is vendored to list, and PSC-25's full check proves the
+    directory is absent from the real image.
   - `[unit: test_notice_has_ke_app_base_paragraph]`,
-    `[unit: test_notice_lists_psycopg_binary_vendored_libs]` (fast, stubbed);
-    the drift check against the real image runs in `ci/deployable-offline`
-    (full).
+    `[unit: test_notice_names_libpq_as_a_debian_package]` (fast, stubbed:
+    `NOTICE.md` names `libpq5` as a Debian package under the PostgreSQL
+    licence and has no table of libraries vendored in psycopg-binary).
+    `test_notice_lists_psycopg_binary_vendored_libs` is renamed to this
+    test, with its assertion replaced; the real-image drift check is
+    retired in favour of `[full: ke-app psycopg impl is c and links system
+    libpq]` (PSC-25). *(Amended 2026-10-22, analyst, Q64.)*
+  - `NOTICE.md` points, in its own "Source code" section, to the generated
+    "Source code" section of `THIRD_PARTY_NOTICES.md` and to `sources/`.
+    The pointer is not inside the `ke-app` base section, because the
+    generated section covers GPL-family components in every image. That
+    section is generated in U9 (PSC-15, PSC-24), so until then the pointer
+    names a section the bundle does not yet carry.
+    `[unit: test_notice_points_to_generated_source_code_section]` (fast).
+    *(Amended 2026-10-23, analyst, U1.)* *(Amended 2026-10-23, analyst, U1 review.)*
+  - Before U9, `NOTICE.md`'s "Source code" section also says: "A bundle
+    whose `THIRD_PARTY_NOTICES.md` has no "Source code" section has no
+    `sources/`, so it does not itself provide the source that a
+    GPL-family licence requires." The sentence stays true after U9.
+    *(Amended 2026-10-23, analyst, U1 review.)* *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)* (Security L-6: the
+    earlier "carries no third-party source code" was false, because the
+    images carry `.py` source.)
+  - `NOTICE.md` cites no `docs/evidence/` path. Bundles carry only
+    `app/docs/quickstart.md` from `docs/` (`scripts/bundle.sh`), so a
+    recipient could not follow such a path; any provenance a recipient
+    needs is stated in `NOTICE.md` itself.
+    `[unit: test_notice_cites_no_repo_evidence_path]` (fast). *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+    (Review B4, security L-8.)
+  - Every `licenses/` file that `NOTICE.md` names is tracked by git,
+    because `scripts/bundle.sh` ships only `git ls-files -- licenses`; an
+    untracked file would leave `NOTICE.md` naming a file the bundle lacks
+    (security I-4, review N12).
+    `[unit: test_notice_named_licence_files_are_tracked]`. *(Amended 2026-10-23, analyst, U1 round 3.)*
+  - `NOTICE.md`'s neo4j row (PS-3.8, not a `ke-app` criterion) names the
+    official image by its digest and says "used unmodified". U4b (PSC-26,
+    *Notices*) updates that row. PSC-14's `ke-app` criteria are unchanged.
+    *(Amended 2026-10-23, analyst, Q67.)* U4b replaces that neo4j vendor
+    row with a "Base image of `ke-neo4j`" section (PSC-26 *Notices*).
+    *(Amended 2026-10-23, analyst, U4b rulings.)*
 - **PSC-15 GPL source offers, built now (Q58).**
   - *Obligations to meet.*
     - **GPL-2.0 §3.** Whoever distributes the object code must do one of:
@@ -3363,11 +3608,14 @@ full what it contains.
       the GPL-3.0 Debian packages.
     - The LGPL components carry equivalent source terms: psycopg's
       compiled extension (LGPL-3.0, which applies GPL-3.0 §6 to conveying
-      the library's object code), the LGPL-2.1 libraries vendored in
-      `psycopg_binary.libs` (LGPL-2.1 §4, which allows only the accompanying
+      the library's object code), the LGPL-2.1 libraries among the image's
+      Debian packages (LGPL-2.1 §4, which allows only the accompanying
       source or equal access from the same place, with no written-offer
       option) and glibc. The mechanism covers
-      them too.
+      them too. *(Amended 2026-10-22, analyst, Q64.)* They are no longer vendored in
+      `psycopg_binary.libs` (PSC-25), so their source is the `deb` kind;
+      psycopg's compiled extension is now `psycopg-c`, built from its
+      locked sdist.
   - *Options.*
     1. **A source archive in the bundle** (GPL-2.0 §3(a); for GPL-3.0 the
        source travels with the object code by the same means). The bundle
@@ -3396,7 +3644,10 @@ full what it contains.
       `uv.lock` hash), in the Q48 form. The SBOMs stay offline (Q57).
     - Source does not depend on the architecture. Whether amd64 and arm64
       bundles share one source set, where the package versions match, is a
-      design choice.
+      design choice. Each bundle's `sources/` still holds every source its
+      own SBOMs need (PSC-21).
+    - A failed or mismatched fetch: Q61. Which source set the verify bundle
+      carries: Q63.
     - *Cost (estimate, not a measurement):* about 1–2.5 GB of disk per
       bundle (today's bundle is 941 MiB amd64, 2.4 GiB arm64), dominated by
       OpenJDK, the Debian runtime and toolchain sources across four
@@ -3409,17 +3660,37 @@ full what it contains.
       licence (GPL-2.0, GPL-3.0, LGPL-2.1, LGPL-3.0, in any `-only`,
       `-or-later` or `WITH`-exception form) has an entry in the `sources/`
       index, or a recorded exemption whose reason security has reviewed. A
-      drift check fails otherwise.
+      drift check fails otherwise. That list is the minimum: the check also
+      treats AGPL, GPL-1.0 and LGPL-2.0 as GPL-family (orchestrator ruling
+      4). *(Amended 2026-10-22, analyst, Q64.)*
     - Every source file is in the bundle manifest with its SHA-256, and
       matches the upstream checksum recorded when it was fetched.
     - The notices point to `sources/`. They claim that a source obligation
       is met only for components whose source is in the bundle, and keep
       the L-NT1 wording ("Upstream source: <url>") for anything else.
       Security reviews the wording.
+    - For U9: the source directory in the bundle is `app/sources/`.
+      `NOTICE.md`'s and `THIRD_PARTY_NOTICES.md`'s `sources/` references
+      must resolve from where each copy sits in the bundle. *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+      (Security I-3.)
     - `[unit: test_every_gpl_package_has_source]`,
       `[unit: test_source_archive_hashes_in_manifest]` (fast, stubbed SBOM
       and index); the same checks run on the real bundle in
       `ci/deployable-offline` (full).
+    - The first check also covers the components PSC-22 names, whatever
+      licence the generator reports for them. *(Added 2026-10-22,
+      analyst.)*
+    - The "recorded exemption whose reason security has reviewed" in the
+      first check is an `exempt` entry in `docker/source-policy.json`. It
+      meets the rules in PSC-22's `exempt` bullets (unit U6): a versioned
+      purl that a version bump voids, a reason naming the licence text
+      that was read, and a `reviewed: security YYYY-MM-DD` field. No other
+      form of exemption clears a package. *(Amended 2026-10-25, analyst, U6.)*
+    - The heading `NOTICE.md` names for the generated section (PSC-14) is
+      exactly the heading `scripts/bundle.sh` generates in
+      `THIRD_PARTY_NOTICES.md`. Unit U9.
+      `[unit: test_notice_source_code_heading_matches_generated]` (fast).
+      *(Amended 2026-10-23, analyst, U1 review.)*
 - **PSC-16 CI cost and disk measured on CI.**
   - Two green CI runs record, from the runner's per-line timestamps: the
     SBOM generation per image, the source fetch, and the whole job; plus
@@ -3430,11 +3701,685 @@ full what it contains.
     floor (R6). A source set of 1–2.5 GB in the verify bundle can break the
     floor, so the floor is re-derived from the measurement (as R6 was) in
     the same item. The floor is never lowered to pass.
-  - The item re-measures PS-3.4 if it adds a minute or more on CI.
+  - The item re-measures PS-3.4 if it adds a minute or more on CI. Whether
+    Q60's 3-min trigger also applies: Q62.
+  - *(Added 2026-10-22, analyst.)* The same two runs also record the
+    `MANIFEST.sha256` size against install's 1 MiB cap, and the `/install`
+    tmpfs use in the offline client with the runner's free memory at that
+    point. Install's staging copy is held in memory, about the bundle's size
+    (R6), so `sources/` adds to memory as well as disk. What the verify
+    bundle carries is Q63.
 
-TDD order: PSC-14 → PSC-13 → PSC-15 → PSC-16. Gate: `scripts/verify.sh
-full`; a recorded Windows run under A34 if the item changes Dockerfiles or
-compose files.
+- **PSC-19 End to end: the shipped SBOMs and sources survive an offline
+  install (added 2026-10-22, analyst; human rule of 2026-10-22, every
+  product item ships its own e2e test).** This item changes what the bundle
+  hands an operator, so it needs one. It extends `ci/deployable-offline`
+  and adds no new stack.
+  - Given the bundle that `offline_check.sh` builds in `verify.sh full` from
+    the real images, when the offline client installs it with `install.sh`
+    (no route out), then, reading only the installed copy:
+    - every SBOM is listed in `MANIFEST.sha256`, parses as SPDX 2.3, and
+      names one `bundle.json` `ref` and the config digest of that image's
+      tar (`manifest.json` `Config`), the same value whichever store
+      install loaded it into (R2); each `bundle.json` image has exactly one
+      SBOM; *(Amended 2026-10-22, analyst, Q64.)*
+    - the PSC-15 checks pass on the installed files: every GPL-family
+      package has an index entry or a reviewed exemption, and every source
+      file's SHA-256 matches the manifest and the recorded upstream
+      checksum;
+    - the notices point to `sources/`.
+  - The source set the verify bundle carries follows Q63. If it is reduced,
+    the same checks run on a full operator bundle in a recorded run, saved
+    under `docs/evidence/platform-sbom/`.
+  - The installed copy is the `app/` install publishes; SBOMs, sources and
+    the notice copies sit under it (orchestrator ruling 2). *(Amended 2026-10-22, analyst, Q64.)*
+  - `[e2e: test_installed_bundle_has_sboms_and_sources]` (full, in
+    `ci/deployable-offline`); the existing deployable-offline checks stay
+    green.
+- **PSC-20 The SBOM generator runs like the scanner (PSC-1-PSC-3, PSC-8;
+  added 2026-10-22, analyst).**
+  - It is pinned by its multi-arch index digest (`@sha256:` + 64 hex, no
+    tag-only reference). Security records its provenance in the PSC-1 form
+    before the pin is committed:
+    `docs/evidence/platform-sbom/generator-provenance.md`.
+  - Its container has no network (`network_mode: none` or `--network
+    none`), a read-only root filesystem with `/tmp` as tmpfs, `cap_drop:
+    ALL` and `no-new-privileges`. It has no Docker socket and no
+    `DOCKER_HOST`. The image tar is mounted read-only, its only writable
+    mount is the SBOM output, and its update check is off.
+  - Its run carries a label of its own, as the notices run does
+    (`<project>-notices`), so it never looks like part of a stack project.
+  - `bundle.sh` never pulls it. When it is absent, `bundle.sh` refuses
+    before anything is written to `--out`, naming the reference. The ADR
+    names the step that pulls it.
+  - No bundle manifest entry names the generator image (as PSC-8).
+  - `[unit: test_sbom_generator_is_pinned]`,
+    `[unit: test_sbom_generator_runs_without_network_or_privileges]` (fast,
+    static); `[unit: test_bundle_refuses_when_sbom_generator_absent]` (fast,
+    fake docker); `[unit: test_bundle_has_no_sbom_generator]` (fast).
+- **PSC-21 Per-arch bundles (Q49, Q51, Q59 form; added 2026-10-22,
+  analyst).**
+  - Each bundle's SBOMs are generated from its own tars on its build
+    daemon's architecture, with no `--platform` and no emulation, and each
+    SBOM records that architecture.
+  - Each bundle's `sources/` holds every source its own SBOMs need. Any
+    sharing between amd64 and arm64 happens at build time only; no bundle
+    refers to another.
+  - `verify.sh full` proves the native bundle (amd64 on CI and the dev
+    host). The arm64 bundle's SBOMs, the PSC-14 drift check, the PSC-15
+    checks and PSC-19 run in the next recorded arm64 run (Q51 form), saved
+    under `docs/evidence/platform-sbom/arm64/`. Whether the item may close
+    before that run is the orchestrator's call; platform-supply-chain
+    deferred its arm64 scan evidence the same way (PSC-2).
+- **PSC-22 An obligation is not hidden by what the generator reports
+  (added 2026-10-22, analyst).** *(Amended 2026-10-22, analyst, Q64.)* Generators miss things: the
+  scanner catalogued none of the 15 files in `psycopg_binary.libs` (PSC-7),
+  which PSC-25 removes from `ke-app`. The clause that injected those files
+  into `ke-app`'s SBOM is dropped with them.
+  - The PSC-15 source check covers these whatever licence the generator
+    reports: busybox, apk-tools and ssl_client; the Temurin OpenJDK in
+    neo4j; Neo4j Community; psycopg, with `psycopg-c`, its compiled
+    extension (LGPL-3.0-only, PSC-25); and glibc. Each has a `sources/`
+    entry or an exemption whose reason security has reviewed.
+  - Packages the generator reports with no licence (none or
+    `NOASSERTION`) are listed per image, with a count, in the bundle output
+    and the evidence. Security reviews the list whenever a digest or the
+    lock changes; any it finds GPL-family needs a source entry or a
+    reviewed exemption.
+  - `[unit: test_named_gpl_components_need_source_whatever_the_generator_says]`,
+    `[unit: test_unlicensed_packages_are_reported]` (fast, stubbed).
+    `test_sbom_lists_psycopg_binary_vendored_libs` is retired: nothing is
+    vendored to inject, and PSC-25's full check proves it. *(Amended 2026-10-22, analyst, Q64.)*
+  - The ke-app SBOM's dpkg packages minus the base image's dpkg packages
+    equal `ADDED_PACKAGES` in `tests/test_notice_ke_app.py`, and the ke-app
+    SBOM lists no pip package. The ke-app SBOM's CPython version equals the
+    version `licenses/CPython-3.12-incorporated.txt` names (PSC-14). Unit
+    U4. This is the image-side check that keeps `NOTICE.md`'s added-package
+    line, the pip removal and the CPython incorporated-licence file from
+    going stale on a base or pin bump.
+    `[full: ke-app SBOM's added dpkg set equals ADDED_PACKAGES and lists no pip package]`,
+    `[full: ke-app SBOM's CPython version matches the incorporated-licence file]`.
+    *(Amended 2026-10-23, analyst, U1 review.)* *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+  - The copyright files of `libldap-2.5-0`, `libsasl2-2` and
+    `libsasl2-modules-db` (added to `ke-app` with `libpq5`, PSC-25) contain
+    GPL-2+ and GPL-3+ lines (in `libldap-2.5-0` mostly with Autoconf or
+    Libtool exceptions). Units U5/U6 give each of them a `deb` source entry
+    or an exemption whose reason security has reviewed, whatever licence
+    the generator reports for them. *(Amended 2026-10-23, analyst, U1 review.)*
+  - *Hash-only licences (security H-1).* syft writes `LicenseRef-` plus 64
+    hex characters (a hash of licence text it could not identify) as the
+    only id on some rows: 59 at U4's digests, wget (GPL-3) in neo4j and the
+    GCC runtime among them. A licence expression made only of ids matching
+    `LicenseRef-[0-9a-f]{64}` (exact, case-sensitive) counts as unlicensed,
+    like absent, `""`, `NONE` and `NOASSERTION`. An expression that also
+    holds any other id is not. Such packages are listed in the unlicensed
+    report with the rest, and security reviews them; any it finds
+    GPL-family needs a source entry or a reviewed exemption. The U5
+    classifier (design notes N8) treats such ids as unknown and lists them
+    for security; it never reads them as a licence. *(Amended 2026-10-23, analyst, U4 review.)*
+    - Security's probe expects, at U4's digests: `ke-app` 19, `ke-gateway`
+      0, neo4j 28, phoenix 35, postgres 25, valkey 1. The real run's counts
+      are recorded under `docs/evidence/platform-sbom/u4/`; a difference is
+      explained there, not accepted silently.
+    - `[unit: test_hash_only_licences_count_as_unlicensed]`,
+      `[unit: test_hash_rows_marked_unidentified_in_report_lines]`,
+      `[unit: test_real_package_lists_report_hash_only_rows]` (fast,
+      stubbed; `tests/test_sbom_obligations.py`, `ReworkR1UnlicensedTest`)
+      cover a row declared only `LicenseRef-<64 hex>` (reported). Controls:
+      a row declared `MIT AND LicenseRef-<64 hex>` is not reported, and
+      neither is a row declared `LicenseRef-<63 hex>` or a non-hash
+      `LicenseRef-<name>`. `test_unlicensed_packages_are_reported` keeps
+      its PSC-22 scope and gains no hash row. *(Amended 2026-10-23, analyst, U4 review R1.)*
+    - *Carried to the U5 classifier (security U4 L-4).* "Hash-only counts
+      as unlicensed" is for the report only. For classification a
+      hash-only id is a set field holding an unknown id, never "missing":
+      a row declared `LicenseRef-<64 hex>` and concluded `MIT` still needs
+      a source entry or a reviewed exemption. `NONE` or `NOASSERTION`
+      inside a compound expression (for example `MIT AND NOASSERTION`)
+      counts as unknown, not as absent. Unit U5. *(Amended 2026-10-23, analyst, U4 review R1.)*
+  - *`always` additions (security M-1, M-2, L-1).* `docker/source-policy.json`'s
+    `always` list also holds the entries below, so the PSC-15 source check
+    covers them whatever licence the generator reports. Each needs a
+    `sources/` entry (U7) or an exemption whose reason security has
+    reviewed (U6). *(Amended 2026-10-23, analyst, U4 review.)*
+    - The GCC runtime (GPL-3.0-or-later with the GCC Runtime Library
+      Exception): `upstream=gcc-12` in `ke-app` and postgres, and
+      `upstream=gcc-14` in neo4j and phoenix (M-1).
+    - neo4j's `jrt-fs` (`pkg:maven/jrt-fs/jrt-fs`, the Temurin JDK's own
+      `jrt-fs.jar`, GPL-2.0 with the Classpath Exception), tied to the
+      Temurin OpenJDK's source entry (M-2).
+    - `upstream=busybox` and `upstream=apk-tools` wherever busybox and
+      apk-tools ship (valkey, `ke-gateway`), which catch `busybox-binsh`
+      and `libapk`. The exact-name busybox and apk-tools entries stay,
+      because those packages carry no upstream qualifier (L-1).
+    - Every `always` entry, these included, matches at least one package
+      in its image's real SBOM (the U4 check of `always` against the real
+      SBOMs covers them). From U4b the neo4j entries name `ke-neo4j`
+      (PSC-26).
+  - *Report output is escaped (security L-3).* The unlicensed report, and
+    every other line `bundle.sh` prints from an SBOM's `name` or purl,
+    prints no C0 or C1 control character (U+0000-U+001F, U+007F-U+009F)
+    as-is; each is escaped, and the row stays identifiable.
+    `[unit: test_report_lines_escape_control_characters]` (fast,
+    stubbed, `ReworkR1UnlicensedTest`: a row whose name holds an ESC
+    sequence; the output holds no raw control character and names the
+    row), with `[unit: test_bundle_output_marks_unidentified_and_escapes_generator_text]`
+    (fast, fake docker, `ReworkR1BundleTest`) for the bundle output. *(Amended 2026-10-23, analyst, U4 review.)* *(Amended 2026-10-23, analyst, U4 review R1.)*
+  - *Carried to U5 (security U4 L-5, review U4 R2).* In
+    `scripts/sbom_check.py`, `validate`'s SPDXID check matches the whole
+    id (a full match, so no trailing newline or other suffix passes), and
+    the drift and psycopg problem lines escape generator text through
+    `_clean`, as the report lines do (L-3). Unit U5. *(Amended 2026-10-23, analyst, U4 review R1.)*
+  - *Re-review on a generator change (security U4 I-4).* A new syft image
+    digest in `docker-compose.sbom.yml` triggers a PSC-22 re-review by
+    security, as a changed image digest or lock does: the unlicensed and
+    hash-only counts per image and the `always` matches are re-run and the
+    differences explained in the evidence. *(Amended 2026-10-23, analyst, U4 review R1.)*
+    - The reason (security U4 I-4; design notes N8 amendment U5, item 3):
+      the hash-only and unknown-id rules match syft's spelling
+      `LicenseRef-<64 hex>` exactly and case-sensitively, so if a new
+      generator spelled the id differently, it would turn a hash row into
+      an ordinary id. For example, an upper-case hex id stays ordinary (U5
+      review I-r3-2). *(Amended 2026-10-25, analyst, U6.)*
+  - *U5 landed (d8ffa2d).* The licence classifier (PSC-15's GPL-family
+    forms; PSC-22's unknown ids) is in `scripts/sbom_check.py`. Its
+    fail-closed rules are design notes N8 amendment U5, rework rounds 1-3
+    included (`docs/evidence/platform-sbom/design-notes.md`). *(Amended 2026-10-25, analyst, U6.)*
+  - *`docker/source-policy.json` gains `exempt` and `hosts` (unit U6;
+    orchestrator, 2026-10-25; design notes N4, N8a items 1 and 3, N10).*
+    *(Amended 2026-10-25, analyst, U6.)* The file has exactly three
+    keys: `hosts`, `always` and `exempt`. Security reviews every diff to
+    it.
+    - *Versioned purl, void on bump.* An `exempt` entry names an image and
+      a purl with `@<version>`. No two entries share an image and a purl.
+      Given a bundle whose SBOM for that image catalogues no package with
+      that purl at that exact version, when the source check runs, then
+      the bundle fails, naming the image and the purl, the same way an
+      `always` entry with no match fails ("expected component not
+      catalogued"). A version bump therefore voids the entry. A new review
+      is needed; the old entry never carries over.
+    - *Reason.* `reason` is non-blank and names:
+      - the licence text that was read, and where it was read (for
+        example the jar's `META-INF/LICENSE` line, or the SBOM's
+        `hasExtractedLicensingInfos` text for a hash id);
+      - the SHA-256 of the artifact the text was read from;
+      - where the entry corrects an OR that the generator reported as
+        AND, the elected branch. For jna 5.15.0 and javassist 3.30.2-GA
+        that branch is Apache-2.0 (ruling 5).
+      The generator's licence text is kept verbatim. An exemption is not a
+      licence override.
+    - *Reviewed.* `reviewed` matches `^security \d{4}-\d{2}-\d{2}$`.
+      Security writes it only after auditing that entry, and records the
+      audit in the plan item's handoff and evidence. An entry without the
+      field, or with any other value, fails the schema test.
+    - *`always` and `exempt` (ruled: orchestrator, 2026-10-25).* `always`
+      overrides only the classifier: a package an `always` entry matches
+      needs source whatever `needs()` returns (N8). A reviewed `exempt`
+      entry at that package's exact versioned purl still clears it, as
+      PSC-22's earlier bullets say, so the human's GCC fallback (N10)
+      stays open. The clearance is visible: the index (U9) lists such a
+      row as "always, cleared by exemption <reviewed>", where `<reviewed>`
+      is the entry's `reviewed` value. *(Amended 2026-10-25, analyst, U6; orchestrator ruling.)*
+    - *Hosts.* `hosts` holds lower-case DNS names, with no wildcard and no
+      duplicate. The fetch step (U8, PSC-23) refuses any host that is not
+      listed (an exact match after lower-casing). This applies to the
+      first request and to every redirect hop. A refusal fails closed
+      (Q61): no retry and no bundle. Every URL host in the source lock
+      (U7) is in `hosts`.
+      - `hosts` covers file URLs only. The lock tool's resolution calls
+        at lock time are not file URLs (PSC-23, ruling O2). *(Amended 2026-10-25, analyst, U7.)*
+    - *First test row (U5 review I-r3-1; ruled, orchestrator 2026-10-25).*
+      The boundary closes. *(Amended 2026-10-25, analyst, U6; orchestrator ruling.)* The classifier strips any
+      `DocumentRef-...:` prefix. If the bare id that is left does not
+      start with `licenseref-` (ASCII case-fold), and any of its `.`- or
+      `-`-separated segments equals `NONE` or `NOASSERTION` (ASCII
+      case-fold), then the id is unknown: the package needs source and is
+      listed "unidentified".
+      - Given `NOASSERTION.NONE`, `NOASSERTION-2.0` or `MIT-NOASSERTION`,
+        the id is unknown. This reverses U5 round 3's pin that kept
+        `MIT-NOASSERTION` ordinary (design notes N8 amendment U5, rework
+        round 3, item 5).
+      - Given `LicenseRef-NONE`, `LicenseRef-NOASSERTION` or
+        `DocumentRef-x:LicenseRef-NONE`, the id stays ordinary.
+    - `[unit: test_source_policy_schema]` (exactly three keys; the
+      `exempt` and `hosts` rules above) and
+      `[unit: test_exempt_not_catalogued_at_version_fails]` (fast,
+      stubbed SBOM). The check is pure and lands in U6. It fails the
+      bundle from U9, when the index runs, as `always` problems do (N8
+      amendment U5). The jna and javassist entries land with security's
+      review. Hosts refusal:
+      `[unit: test_source_fetch_is_https_only_to_listed_hosts]` (PSC-23,
+      U8).
+- **PSC-23 The source fetch is a named, bounded network step (added
+  2026-10-22, analyst).**
+  - SBOM generation stays offline (Q57); the fetch is the item's only new
+    step with a route out. `scripts/bundle.sh`'s header says today that it
+    "makes no network call". Where the fetch runs is the ADR's choice, and
+    that header, CLAUDE.md's verification paragraph and the README then say
+    where the route out is. CLAUDE.md is the human's: its change needs the
+    human's approval and lands in the same commit, as for Q56(a).
+  - Every fetch is HTTPS only (`--proto '=https' --proto-redir '=https'
+    --tlsv1.2`, as PSC-10), to hosts listed in one committed place. The ADR
+    records that list for SFU egress, as Q56's note did for the scan
+    database host.
+  - A fetched file is checked (PSC-15) before anything else reads it, and
+    ships as fetched: it is never unpacked, built or run on the build host
+    or in a gate service.
+  - The fetch takes no key from the caller's environment or `.env`; the two
+    model keys stay the only ones (PSC-6). `gates` and `gates-it` stay
+    offline (Q56(a)).
+  - A failed fetch or a checksum mismatch: Q61.
+  - `[unit: test_source_fetch_is_https_only_to_listed_hosts]`,
+    `[unit: test_source_fetch_checks_before_use]` (fast, fake fetch);
+    `test_verify_full_takes_no_caller_ke_key_but_the_model_keys` stays
+    green.
+  - *Lock-time resolution calls (orchestrator ruling O2, 2026-10-25;
+    design notes "N5 amendment, U7").* *(Amended 2026-10-25, analyst, U7.)*
+    - The maintainer tool that writes the source lock (U7,
+      `sources_resolve.py`) reads metadata on the maintainer host to
+      resolve each component to its files and checksums:
+      - snapshot.debian.org's `mr` API;
+      - gitlab.alpinelinux.org's API;
+      - `pypi.org` JSON, for phoenix's `autocommand`, `ldap3` and `pandas`,
+        which are not in `uv.lock`;
+      - the GitHub release API.
+    - These are resolution calls, never bundle file URLs.
+    - `hosts` governs file URLs only and is unchanged by them.
+    - Given the committed lock, every file URL host in it is in `hosts`,
+      and no lock entry's file URL is a resolution endpoint. The lock
+      check rejects a resolution host as a file host, for example
+      `pypi.org`.
+    - Design notes N5 lists the resolution endpoints.
+  - *PGDG sources (Q71, open for the human, before U7c).* Three postgres
+    packages come from PGDG, not Debian, so `snapshot.debian.org` cannot
+    supply their source. The recommendation is a `pgdg` lock kind and a
+    tenth host, `apt-archive.postgresql.org`. If it is ruled, the U6
+    host-set test and ADR-KE-016 point 4 are amended, and security reviews
+    the host and the kind. Until it is ruled, the three keys have no
+    entry, and the source check fails closed. *(Amended 2026-10-25, analyst, U7.)*
+  - *Fixtures versus fresh images (orchestrator O3, 2026-10-25).* Before
+    U7d commits the lock, the developer diffs the freshly built images'
+    package lists against the U3 fixtures. If they differ in any way, U7d
+    stops and goes to the orchestrator: refreshing the fixtures re-pins
+    the real-row tests of U4-U6. *(Amended 2026-10-25, analyst, U7.)*
+- **PSC-24 No partial bundle, and the manifest rules hold (added
+  2026-10-22, analyst).**
+  - Any SBOM, index or source failure makes the bundle step exit non-zero,
+    naming the stage and the image or file. It leaves no `MANIFEST.sha256`
+    and no release record, so install cannot accept what is left. Checks
+    that can run before any write still run before it, as today.
+  - Every file under the SBOM and source directories passes the manifest
+    path rule that `bundle.sh`, `install.sh` and `install.ps1` enforce today
+    (`[A-Za-z0-9._-]` per path segment). Debian source file names often
+    hold `+` or `~` (today's `ke-app` has krb5 `1.20.1-2+deb12u5` and
+    OpenSSL `3.0.22-1~deb12u1`, PSC-7 evidence). Either such files are
+    stored under names that pass and the index records each upstream file
+    name and URL, or the rule changes in all three scripts with security's
+    review and tests. It is never loosened silently.
+  - `MANIFEST.sha256` stays under install's 1 MiB cap, which is not raised
+    to pass (measured, PSC-16).
+  - Install refuses a bundle with a source or SBOM file missing, changed or
+    unlisted. The manifest checks already do this; the tests pin it for the
+    new paths in `install.sh` and `install.ps1`.
+  - `[unit: test_bundle_writes_no_manifest_when_sbom_or_source_fails]`
+    (fast, fake docker), `[unit: test_source_file_names_pass_the_manifest_rule]`
+    (fast, stubbed index), `[unit: test_install_refuses_tampered_or_missing_source_file]`
+    (fast; `install.sh` and `install.ps1`).
+
+- **PSC-25 psycopg on Debian libpq (Q64, unit U0).** *(Added 2026-10-22,
+  analyst, Q64.)* The Q42 structural fix, ruled by the human. `ke-app`
+  stops shipping psycopg-binary and the 15 native libraries it vendors in
+  `psycopg_binary.libs` (PSC-7). psycopg uses its C implementation, built
+  against Debian 12's libpq, so libpq and its dependencies become Debian
+  packages: the SBOM catalogues them (PSC-13), Debian's security updates
+  patch them, the scan sees them (PSC-4) and the `deb` source kind covers
+  them (PSC-15). L-13 closes. It is unit U0, before PSC-14, because PSC-14
+  and PSC-22 assume `ke-app` vendors nothing.
+  - *Lock.* *(Amended 2026-10-22, analyst, A65/A66.)* *(Amended 2026-10-23, analyst, U0 review.)* The `ke-app`
+    builder's resolved set (what its final sync, `uv sync --locked
+    --no-dev --group pq-c --no-binary-package psycopg-c`, installs into
+    `/opt/venv` in the builder stage, on its platform) holds `psycopg-c` at psycopg's version, from
+    its locked sdist with its sha256, and no `psycopg-binary`. Whether
+    `uv.lock` still holds psycopg-binary under a non-Linux marker or a uv
+    extra, for dev hosts and `ke-gates`, follows ADR-KE-016 within A65's
+    limits: no CLAUDE.md or AGENTS.md change, no C toolchain on dev hosts,
+    `--locked` everywhere, and the `uv run` log step keeps working on
+    Windows. `uv.lock` is regenerated inside the gates image (CLAUDE.md,
+    Generated artifacts) and the gate scripts' `--locked` runs stay green.
+  - *Builder stage.* `psycopg-c` is compiled from source in `ke-app`'s
+    `builder` stage against that stage's Debian `libpq-dev`. The compiler,
+    `libpq-dev` and every other `-dev` or build-only package are installed
+    in the builder stage only.
+  - *Runtime stage.* The shipped (last) stage installs Debian's `libpq5`
+    and only the packages it needs that the base lacks, each pinned to an
+    exact version (`<package>=<version>`, as `gates.Dockerfile` pins
+    shellcheck), with no recommended packages, and removes
+    `/var/lib/apt/lists/*` in the same layer. It holds no compiler (`gcc`,
+    `cc`, `make`) and no `-dev` package.
+  - *No vendored copy.* `/opt/venv` in the shipped image has no
+    `psycopg_binary` directory, no `psycopg_binary.libs` directory and no
+    `psycopg_binary-*.dist-info`.
+  - *C implementation, system libpq.* In the real image,
+    `psycopg.pq.__impl__ == "c"`. The `libpq.so.5` the extension loads is
+    a file the dpkg package `libpq5` owns, not a copy under `/opt/venv`,
+    and `psycopg.pq.version()` matches the installed `libpq5` upstream
+    version. A smoke check in `full` asserts all three against the image
+    `verify.sh full` builds.
+  - *Still connects.* The stack smoke in `full` stays green, and the api's
+    postgres readiness probe connects to postgres through the new build
+    (live `readyz` reports postgres ready).
+  - *gssencmode unchanged.* Every postgres connection keeps
+    `gssencmode="disable"`. Today the one site is `_probe_postgres` in
+    `engine/readiness.py` (line 91), pinned by
+    `test_postgres_probe_disables_gss_encryption` and
+    `test_every_postgres_connect_in_engine_disables_gss_encryption` (PS-2.5,
+    `tests/test_stack_readiness.py`). Debian's libpq5 is also built with
+    GSSAPI, so the mitigation still applies. Both tests stay green and
+    unchanged.
+  - *Scan.* The image scan (PSC-4) still passes under the pinned policy
+    (the Q42 threshold, `docker/scan-ignore.yaml`, the 90-day cap). If it
+    newly reports a fixed High or Critical in `libpq5` or a package it
+    pulls in, that is handled under PSC-4 and PSC-5 (upgrade the pin, or a
+    time-limited ignore entry whose reason security confirms), never by
+    loosening the policy or the threshold.
+  - *Size.* `ke-app`'s image size and its bundle tar size, before and
+    after, are recorded under `docs/evidence/platform-sbom/`. No ceiling
+    exists today; the numbers feed PSC-16's floor derivation.
+  - *Notices.* `NOTICE.md`'s psycopg section names `psycopg` and
+    `psycopg-c` (both LGPL-3.0-only, each with its locked sdist URL and
+    sha256) instead of psycopg-binary. The notices run (PS-3.8) stays
+    green; stubbed fixtures that model psycopg-binary as a runtime package
+    (`tests/test_offline_bundle.py`) move to `psycopg-c`.
+  - *Windows (A34).* The Dockerfile changes, so, as for PSC-12, the
+    Windows proof is recorded under `docs/evidence/platform-sbom/` before
+    the unit commits: the PS-2.9 PowerShell `build.ps1`, `launch.ps1` and
+    `teardown.ps1` proof, plus `scripts/verify.sh fast` run on Windows.
+    It must match the branch head, or the diff since must touch none of the
+    A34 files (PS-2.9). Recorded in
+    `docs/evidence/platform-sbom/u0/windows-run.txt`. *(Amended 2026-10-23, analyst, U0 review.)*
+  - *arm64.* The same image checks (C implementation, system libpq, no
+    `psycopg_binary*`) run on the arm64 image in the next recorded arm64
+    run (PSC-21).
+  - Tests:
+    - `[unit: test_ke_app_resolves_psycopg_c_not_binary]` (fast, offline):
+      the set `uv.lock` resolves for the `ke-app` builder, with the
+      builder's flags and platform (for example `uv export` or `uv tree`
+      with `--locked --no-dev --group pq-c` for Linux on the image's
+      architectures; *(Amended 2026-10-23, analyst, U0 review.)*),
+      holds `psycopg-c` at psycopg's version and no `psycopg-binary`.
+      Control: a lock or dependency fixture under which the builder's
+      platform resolves `psycopg-binary` fails. Renamed from
+      `test_lock_has_no_psycopg_binary`, because the lock itself may still
+      name psycopg-binary for other platforms (A65). *(Amended 2026-10-22, analyst, A65/A66.)*
+    - `[unit: test_runtime_stage_has_no_compiler]` (fast, static check of
+      `docker/app.Dockerfile`): the shipped stage (`runtime`, which the
+      `FROM scratch` last stage copies whole; N10a) *(Amended 2026-10-23, analyst, U1 round 3.)* installs `libpq5=<version>`
+      with the apt lists removed in the same `RUN`, and installs no
+      compiler and no `-dev` package; the builder stage installs
+      `libpq-dev`. Controls: a fixture with `gcc` or `libpq-dev` in the
+      shipped stage fails, and so does an unpinned `libpq5`. *(Amended 2026-10-23, analyst, U1 round 3.)*
+      The shipped stage may also hold the pip removal (PSC-14, U1). The test
+      allows exactly that: the `libpq5` apt `RUN` plus the pip removal, and
+      no other package install or removal. *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
+      The test name stays. *(Amended 2026-10-23, analyst, U1 round 3.)*
+    - `[full: ke-app psycopg impl is c and links system libpq]` (smoke
+      check in the real image).
+    - The stack smoke, `[gate: image-scan]` and the two PS-2.5
+      gssencmode tests stay green.
+- **PSC-26 A first-party neo4j image without the commercial plugin (Q67,
+  unit U4b).** *(Added 2026-10-23, analyst, Q67.)* Human ruling A67 (2026-10-23): the bundle
+  ships our own neo4j image, not the official one. The official image
+  carries `com.neo4j/neo4j-fleet-management-plugin` 1.2.0 in
+  `/var/lib/neo4j/products`. It is inactive by default, and its notice
+  prohibits use without a commercial licence with Neo4j, Inc. (U4 security
+  M-3). Unit U4b comes after U4 (PSC-22) and before U5. The criteria say
+  `ke-neo4j`; if the architect names the image otherwise, they apply to
+  that name.
+  - *Build.* A new Dockerfile (`docker/neo4j.Dockerfile`, or the
+    architect's name) builds from `neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b`, pinned by its full digest. It
+    removes `/var/lib/neo4j/products` and ends with a flattened last
+    stage, `FROM scratch` + `COPY --from=<stage> / /`, as `ke-app` does
+    (N10a), so the plugin is in no layer. It installs no package and
+    changes no other file. *(Added 2026-10-23, analyst, Q67.)*
+  - *Tags.* *(Added 2026-10-23, analyst, Q67.)*
+    - Compose: `ke-neo4j:${KE_IMAGE_TAG:-local}`, as `ke-app` and `ke-gateway`.
+    - `scripts/verify.sh full`: `ke-neo4j:wt-<12 hex>` (the
+      `KE_IMAGE_TAG` that `scripts/image_tag.sh` gives).
+    - Bundle: `ke-neo4j:bundle-<first 12 hex of the git sha>`, saved as
+      `ke-neo4j.tar`, with its SBOM at `app/sboms/ke-neo4j.spdx.json`.
+  - *Image config carried over.* `FROM scratch` drops the base's config,
+    so the last stage declares again everything the official image sets.
+    In `docker image inspect`, `ke-neo4j`'s `Config.Entrypoint`,
+    `Config.Cmd`, `Config.Env` (`NEO4J_HOME`, `PATH`, `JAVA_HOME` and every
+    other entry), `Config.User`, `Config.WorkingDir`,
+    `Config.ExposedPorts`, `Config.Volumes`, `Config.Healthcheck` and
+    `Config.StopSignal` equal the pinned official image's, for the same
+    architecture. A field the official image leaves unset stays unset. A
+    field that must differ is named in the ADR with its reason and pinned
+    by the test; none is expected. *(Added 2026-10-23, analyst, Q67.)*
+    - *Fields compared.* *(Amended 2026-10-23, analyst, U4b rulings.)* The comparison covers
+      `Config.Entrypoint`, `Config.Cmd`, `Config.Env` (every entry, in the
+      official image's order), `Config.WorkingDir`,
+      `Config.ExposedPorts` and `Config.Volumes`; each equals the pinned
+      official image's, for the same architecture. `Config.User`,
+      `Config.Healthcheck` and `Config.StopSignal` must be unset in
+      `ke-neo4j`, as they are in the official image (the entrypoint runs
+      as root and drops privilege itself; compose has its own
+      healthcheck). `Config.Labels` is not compared, because compose adds
+      its own labels to the image it builds; the Dockerfile itself sets
+      no `LABEL`. Where this list and the paragraph above differ, this
+      list applies.
+    - *PS-1.2 exemption.* *(Amended 2026-10-23, analyst, U4b rulings.)* The last stage's
+      `EXPOSE 7473 7474 7687` line mirrors the pinned official image's
+      `ExposedPorts` metadata; it is not a configurable host port. It has
+      a recorded PS-1.2 exemption (an entry, with its reason, in the
+      `EXEMPTIONS` list of `tests/test_engine_hardcoded.py`), reviewed by
+      security. `[unit: test_no_hardcoded_ports]` is not weakened: the
+      exemption is scoped as narrowly as the `EXEMPTIONS` mechanism (its
+      path, symbol and reason entries) allows: that file and its `EXPOSE`
+      directive. The same port literal elsewhere in
+      `docker/neo4j.Dockerfile`, or in another Dockerfile, is still
+      flagged (a control proves it), as is any port literal outside the
+      PS-1.2 locations.
+  - *File tree.* Every path in the official image outside
+    `/var/lib/neo4j/products` is in `ke-neo4j` with the same type, owner,
+    group, mode and (for a symlink) target, and `ke-neo4j` adds no path.
+    This keeps the entrypoint's user switch and its ownership of `/data`
+    working. *(Added 2026-10-23, analyst, Q67.)*
+    - *Evidence, not a gate step.* *(Amended 2026-10-23, analyst, U4b rulings.)* Because of CI
+      cost (Q62), this equality is not checked on every
+      `scripts/verify.sh full` run. It is recorded at GREEN under
+      `docs/evidence/platform-sbom/u4b/` (both images listed with
+      `docker create` + `docker export | tar -tv` and compared by path for
+      type, mode, uid/gid, size and link target; design notes N16) and
+      again in the A34 proof (`u4b/windows-run.txt`). The only difference
+      allowed is `var/lib/neo4j/products/` and its two files; a hard link
+      written out as a regular file is recorded, not failed. The
+      comparison logic, `scripts/sbom_check.py tree`, stays unit-tested on
+      stub exports.
+  - *Plugin absent.* No `/var/lib/neo4j/products` path and no file whose
+    name contains `neo4j-fleet-management-plugin` is in the image, nor in
+    any layer of `ke-neo4j.tar` as `bundle.sh` saves it. Every layer the
+    tar's `manifest.json` lists is checked, and a whiteout entry for
+    `products` also fails: the jar must be gone from the tar, not hidden.
+    *(Added 2026-10-23, analyst, Q67.)*
+  - *SBOM.* `app/sboms/ke-neo4j.spdx.json` lists no
+    `com.neo4j/neo4j-fleet-management-plugin` package (any version, by
+    purl or by name). It still lists Neo4j Community (`org.neo4j/neo4j`)
+    and the Temurin OpenJDK. *(Added 2026-10-23, analyst, Q67.)*
+  - *Where the `full` checks run.* *(Amended 2026-10-23, analyst, U4b rulings.)*
+    - The config, saved-tar and SBOM checks run in
+      `scripts/offline_check.sh`, after its drift step, as
+      `scripts/sbom_check.py neo4j`: on the `docker image inspect` config
+      of both images, on `images/ke-neo4j.tar` as `bundle.sh` saved it,
+      and on `app/sboms/ke-neo4j.spdx.json` from the bundle it writes. A
+      problem fails the offline check.
+    - `offline_check.sh` pulls the official neo4j image by its full
+      digest before it runs `bundle.sh`, as it pulls the `ke-app` base
+      (PSC-22).
+    - The "plugin absent in the live image" half is the stack smoke step:
+      in the running `neo4j` service, `/var/lib/neo4j/products` is absent
+      and no file under `/` (same filesystem) is named
+      `*fleet-management*`. The whole output is compared, and the step
+      fails closed.
+    - The file-tree equality is evidence, not a run step (*File tree*
+      above).
+  - *Bundled as first-party.* `bundle.json` lists
+    `ke-neo4j:bundle-<sha12>`. No `neo4j:5-community` reference, no
+    `ke-vendor/neo4j:*` image and no `neo4j.tar` is in the bundle, so the
+    official image, plugin included, does not ship beside it. The offline
+    install (PS-3, PSC-19) loads `ke-neo4j` from its tar and brings neo4j
+    up healthy. *(Added 2026-10-23, analyst, Q67.)*
+  - *Compose and vendoring.* *(Added 2026-10-23, analyst, Q67.)*
+    - `docker-compose.yml`'s neo4j service uses
+      `image: ke-neo4j:${KE_IMAGE_TAG:-local}` with a `build:` that names the new
+      Dockerfile. The service name stays `neo4j`, and its environment,
+      volumes, networks, the `depends_on` edges to it and its healthcheck
+      are unchanged.
+    - The official reference leaves `docker-compose.yml`. In the repo's
+      build inputs it appears only as the new Dockerfile's `FROM`.
+      `scripts/build.sh` and `scripts/build.ps1` build `ke-neo4j` with the
+      other first-party images, and `pull --ignore-buildable` no longer
+      pulls the official image as a stack image; the build fetches it by
+      digest.
+    - The neo4j `always` entries in `docker/source-policy.json` (PSC-22)
+      name `ke-neo4j`, and each still matches a package in its SBOM.
+  - *Not scanned in U4b (Q68).* U4b does not add `ke-neo4j` to the image
+    scan: `scripts/scan.sh` still scans `ke-app` only, as today, and
+    `ke-gateway` and the vendored images are not scanned either (A68,
+    orchestrator, 2026-10-23). Scanning every bundled image is a follow-up
+    for the human ("Follow-ups (not in platform-sbom)", "Scan every bundled
+    image"). *(Amended 2026-10-23, analyst, Q68.)*
+  - *Notices.* *(Amended 2026-10-23, analyst, U4b rulings.)* This replaces the
+    row wording added with Q67 (design notes N16). `NOTICE.md` has no
+    neo4j row under "Vendor images" (`ke-neo4j` is not a digest-pinned
+    stack ref, so `bundle.sh` checks no row for it). A section headed
+    "Base image of `ke-neo4j`", as for `ke-gateway`, states:
+    - `ke-neo4j` is built from the pinned official image, named by its
+      full reference with the full digest, byte for byte as
+      `docker/neo4j.Dockerfile`'s `FROM` gives it, with
+      `/var/lib/neo4j/products` removed;
+    - that directory held the fleet-management plugin (under a
+      commercial licence) and the GenAI plugin (GPL-3.0), which the stack
+      does not use;
+    - Neo4j Community 5.26.32 itself is unmodified: no Neo4j file is
+      changed, and the filesystem is otherwise the official image's,
+      flattened. The section does not say "used unmodified" of the image;
+    - the licence is GPL-3.0, with its text at
+      `/var/lib/neo4j/LICENSE.txt` in the image and at
+      `licenses/GPL-3.0.txt`; the upstream source is
+      https://github.com/neo4j/neo4j, tag 5.26.32.
+
+    A fast test ties the section's reference to the Dockerfile's `FROM`,
+    as U1's does for `ke-app`. The notices tests that found the row by
+    the compose vendor reference (`test_notices_neo4j_has_source_url` and
+    the vendor-row tests in `tests/test_offline_bundle.py`) are
+    re-targeted to this section and the Dockerfile's base pin, and the
+    notices run (PS-3.8) stays green.
+    *Superseded, kept for the record:* "`NOTICE.md`'s neo4j row names
+    `ke-neo4j` ... so the row says that instead of 'used unmodified' for
+    the image" (Added 2026-10-23, analyst, Q67).
+  - *Stack still works.* The stack smoke in `full` passes: neo4j's compose
+    healthcheck passes, and the api's `/readyz` reports neo4j ready. *(Added 2026-10-23, analyst, Q67.)*
+  - *Windows (A34).* A new Dockerfile and a compose change, so the A34
+    Windows proof (the PS-2.9 PowerShell `build.ps1`, `launch.ps1` and
+    `teardown.ps1` run, plus `scripts/verify.sh fast` on Windows) is
+    recorded in `docs/evidence/platform-sbom/u4b/windows-run.txt` before
+    the unit commits. It must match the branch head, or the diff since
+    must touch none of the A34 files. *(Added 2026-10-23, analyst, Q67.)*
+  - *arm64.* The config, file-tree, plugin-absence and SBOM checks run on
+    the arm64 `ke-neo4j` in the next recorded arm64 run (PSC-21). *(Added 2026-10-23, analyst, Q67.)*
+  - Tests: *(Added 2026-10-23, analyst, Q67.)*
+    - `[unit: test_neo4j_dockerfile_pins_base_and_removes_products]`
+      (fast, static check of the new Dockerfile): `FROM` the full pinned
+      digest; `/var/lib/neo4j/products` removed; a `FROM scratch` last
+      stage that copies the whole root from the build stage; no package
+      install. Controls: a fixture without the removal fails, so does one
+      whose last stage is the official image, and so does an unpinned
+      `FROM`.
+    - `[unit: test_neo4j_dockerfile_redeclares_base_config]` (fast,
+      static): the last stage declares ENTRYPOINT, CMD, ENV, WORKDIR,
+      EXPOSE and VOLUME (and USER, HEALTHCHECK and STOPSIGNAL where the
+      official image sets them). Control: a fixture missing one fails.
+      *(Amended 2026-10-23, analyst, U4b rulings.)* The official image sets none of USER,
+      HEALTHCHECK and STOPSIGNAL, so the last stage sets none of them, and
+      no LABEL; a fixture that sets one fails.
+    - `[unit: test_compose_neo4j_uses_first_party_image]` (fast): the
+      neo4j service's image is `ke-neo4j:${KE_IMAGE_TAG:-local}`, its `build:` names the
+      new Dockerfile, and no `neo4j:5-community` reference is in
+      `docker-compose.yml`.
+    - `[full: ke-neo4j config matches the pinned official image]`
+      (`docker image inspect` of both). *(Amended 2026-10-23, analyst, U4b rulings.)* In
+      `offline_check.sh`, as `sbom_check.py neo4j`, on the fields in
+      *Fields compared*.
+    - *Evidence, not a `full` tag:* ke-neo4j file tree equals the
+      official image minus products, recorded at GREEN and in the A34
+      proof (*File tree*). The `sbom_check.py tree` logic is covered by a
+      fast unit test on stub exports. *(Amended 2026-10-23, analyst, U4b rulings.)*
+      *Superseded, kept for the record:* "`[full: ke-neo4j file tree
+      equals the official image minus products]`".
+    - `[full: ke-neo4j has no fleet-management plugin in image or saved tar]`.
+      *(Amended 2026-10-23, analyst, U4b rulings.)* The image half is the stack smoke step;
+      the saved-tar half is `offline_check.sh`'s `sbom_check.py neo4j`.
+    - `[full: ke-neo4j SBOM lists no fleet-management plugin]` (the SBOM
+      `offline_check.sh`'s bundle writes).
+    - The stack smoke, the notices run and `[gate: image-scan]` (still
+      `ke-app` only, Q68) stay green. *(Amended 2026-10-23, analyst, Q68.)*
+
+TDD order: PSC-14 → PSC-13 → PSC-15 → PSC-16. *Proposed by the analyst
+(2026-10-22), for the architect to confirm:* PSC-14 → PSC-20 → PSC-13 →
+PSC-22 → PSC-15 → PSC-23 → PSC-24 → PSC-19 → PSC-16, with PSC-21 at the
+next recorded arm64 run. *(Amended 2026-10-22, analyst, Q64.)* PSC-25 (U0) comes first:
+PSC-25 → PSC-14 → PSC-20 → PSC-13 → PSC-22 → PSC-15 → PSC-23 → PSC-24 →
+PSC-19 → PSC-16, with PSC-21 at the next recorded arm64 run. Gate: `scripts/verify.sh full`; a recorded Windows
+run under A34 if the item changes Dockerfiles, compose files or a
+PowerShell script (`install.ps1` included, Q45).
+U4b (PSC-26) runs after U4 (PSC-22) and before U5. *(Added 2026-10-23, analyst, Q67.)*
+
+*Unit order (architecture N15), current:* U0 (PSC-25), U1 (PSC-14), U2
+(PSC-20), U3 (PSC-13), U4 (PSC-22), U4b (PSC-26), U5 (licence classifier), U6
+(source policy), U7 (generated source lock), U8 (PSC-23), U9 (PSC-15,
+PSC-24), U10 (PSC-19), U11 (PSC-16), U12 (PSC-21). Where this differs from
+the PSC-number order above, the unit order wins. *(Updated 2026-10-23, documenter, status)*
+
+### Follow-ups (not in platform-sbom)
+
+- **`.pyc` files from the pip uninstall (security I-5).** The pip
+  uninstall in `ke-app`'s `runtime` stage leaves 156 stdlib `__pycache__`
+  `.pyc` files in the shipped stage. They are root-owned 0644 and not
+  writable by `ke`, so they are harmless. Running `python -B` in that
+  `RUN` would avoid them. Not a U1 criterion. *(Amended 2026-10-23, analyst, U1 round 3.)*
+- **Scan every bundled image (Q68).** Ruled (human, 2026-10-23, Q70): not
+  now. No scan work in platform-sbom; the text below is kept for the
+  record. *(Amended 2026-10-23, analyst, Q69/Q70)* Today
+  `scripts/scan.sh` scans only `ke-app`; `ke-gateway`, `ke-neo4j` (PSC-26)
+  and the vendored images (postgres, valkey, phoenix) are not scanned
+  (A68). The follow-up decides whether to scan every bundled image, in
+  report-only mode (a new mode, which changes the Q42 policy) or in fail
+  mode (PSC-4 and PSC-5, where a finding only an upstream digest bump can
+  fix turns `full` red until the bump or a time-limited ignore entry). The
+  added scan time and disk are measured on CI first (as PSC-16), and the
+  human rules with that measurement. Not a platform-sbom criterion.
+  *(Added 2026-10-23, analyst, Q68.)*
+- **GCC runtime source or exemption.** Ruled (human, 2026-10-23, Q69):
+  source ships at U7. U7's lock carries the Debian `gcc-12` and `gcc-14`
+  source packages via the `deb` kind, with no exemption under the GCC
+  Runtime Library Exception (the N10 default). *(Amended 2026-10-23, analyst, Q69/Q70)*
+  `upstream=gcc-12` (`ke-app`, postgres) and `upstream=gcc-14` (neo4j,
+  phoenix) are in the `always` list (PSC-22). Either ship their Debian
+  source via the `deb` kind or record a reviewed exemption. The design
+  (architecture N10) recommends shipping the source, and the architect's
+  U4 round-1 decision follows it; the human confirms before U7.
+  *(Updated 2026-10-23, documenter, status)*
+- **Revision label on the image (security U3 L-1; planned for U10).**
+  A bundle can name a git sha that the image did not come from (the
+  SBOM creator tool and `bundle.json`). The `ke:image-config` annotation
+  stays true to the tar. Suggested fix: the build stamps
+  `org.opencontainers.image.revision` and `bundle.sh` refuses on a
+  mismatch, or `bundle.sh` only takes the tag `verify` builds. Not yet a
+  criterion; it is recorded in
+  `docs/evidence/platform-sbom/u3/security.md`.
+  *(Updated 2026-10-23, documenter, status)*
 
 ---
 

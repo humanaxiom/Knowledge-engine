@@ -11,7 +11,7 @@ dependencies = [
     "openinference-semantic-conventions>=0.1.41",
     "opentelemetry-exporter-otlp-proto-http>=1.45.1",
     "opentelemetry-sdk>=1.45.1",
-    "psycopg[binary]>=3.3.6",
+    "psycopg>=3.3.6",
     "pydantic-settings>=2.16.0",
     "pyyaml>=6.0.3",
     "redis>=8.1.0",
@@ -33,6 +33,19 @@ dev = [
     "mypy>=2.4.0",
     "types-pyyaml>=6.0.12.20260906",
 ]
+# Image-only groups (PSC-25, ADR-KE-016): a host's `uv run` installs neither,
+# so no host needs a C toolchain. The ke-app builder and ke-gates add them.
+# pq-c builds psycopg-c from its locked sdist against Debian's libpq.
+pq-c = ["psycopg[c]>=3.3.6"]
+# psycopg-c 3.3.6's [build-system] requires, pinned with == and hash-locked;
+# bump them with psycopg-c (it builds with --no-build-isolation).
+pq-build = [
+    "setuptools==83.0.0",
+    "wheel==0.48.0",
+]
+
+[tool.uv]
+no-build-isolation-package = ["psycopg-c"]
 
 [tool.coverage.run]
 branch = true

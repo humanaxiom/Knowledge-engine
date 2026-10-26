@@ -1,0 +1,15 @@
+$ gh api repos/anchore/syft/releases/tags/v1.54.1 --jq '.assets[] | [.name,.digest,.size] | @tsv' | grep -E 'checksums|linux_(amd64|arm64)\.tar\.gz$'
+syft_1.54.1_checksums.txt	sha256:7577f0d0b3fb16f65a2e56b413862f69aa5eaa2379d5760cb73d691ca7986059	2690
+syft_1.54.1_checksums.txt.sigstore.json	sha256:0ceabca2ff98a0791cb09d70b175ab51f5d4798c2a4cb3b2d77be9e396e10b3e	10084
+
+$ release: tag, published_at, prerelease, draft, immutable, url
+v1.54.1	2026-10-06T15:35:10Z	false	false	true	https://github.com/anchore/syft/releases/tag/v1.54.1
+tag object 749cd89ef26db65d5102d879f5dd63a174312b1e (tagger 2026-10-06T15:32:16Z) -> commit b254e6d92f28c3868a755f62fb3ca8f26e9fee76 (gh api repos/anchore/syft/git/tags/<obj>; gh api repos/anchore/syft/commits/v1.54.1 --jq .sha)
+release run 37480824322 (gh api repos/anchore/syft/actions/runs/37480824322): head_sha b254e6d92f28c3868a755f62fb3ca8f26e9fee76, branch main, event workflow_dispatch, attempt 2, conclusion success, path .github/workflows/release.yaml
+release.yaml at the tag: runs-on runs-on=${{ github.run_id }}/cpu=16+32/... (runs-on.com self-hosted, environment: release, id-token: write); grype v0.120.1 release.yaml runs-on ubuntu-24.04
+.goreleaser.yaml at the tag: signs: cosign sign-blob --bundle, artifacts: checksum; dockers_v2 with --provenance=false, sbom false; no docker_signs
+grype v0.120.1 go.mod line 81: github.com/anchore/syft v1.54.1
+
+$ gh api repos/anchore/syft/releases/tags/v1.54.1 --jq '.assets[] | [.name,.digest,.size] | @tsv' | grep -E 'linux_(amd64|arm64)\.tar\.gz\s'   (the grep above anchored on $ and missed these)
+syft_1.54.1_linux_amd64.tar.gz	sha256:c069905b391cc4c20a5ba65ad5c10be2a7ba074f8ea6ad203e24d14e303dad47	30968256
+syft_1.54.1_linux_arm64.tar.gz	sha256:dfdf0537610113edbefe1f1fc6548bc957b2d77439636ec824fcf0e10d46d054	28276172

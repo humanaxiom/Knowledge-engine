@@ -1,0 +1,41 @@
+# reviewer U7a r1 probes, 2026-10-25 (host python -I; working tree scripts/sbom_check.py; committed policy, tests' small_docs)
+SMALL_KEYS: ['apk:readline@8.2.13-r1', 'deb:attr@1:2.5.1-4', 'deb:bash@5.2.15-2', 'maven:javax.xml.bind:jaxb-api@2.2.12', 'neo4j:neo4j@5.26.32', 'pypi:psycopg-c@3.3.6', 'pypi:psycopg@3.3.6', 'temurin:jdk-21.0.12.1+1']
+## baseline
+good small lock (committed policy): PASSES
+## round-0 inputs (all must be refused)
+B1 neo4j alg sha1 any value: refused: 'lock: neo4j:neo4j@5.26.32: neo4j: upstream alg is not sha256'
+B1 neo4j alg sha512: refused: 'lock: neo4j:neo4j@5.26.32: neo4j: upstream alg is not sha256'
+B1 neo4j two files: refused: 'lock: neo4j:neo4j@5.26.32: x.tar.gz: url path does not end in /x.tar.gz'
+B2 tab in host: refused: 'lock: pypi:psycopg-c@3.3.6: url is not printable ASCII (0x21-0x7e)'
+B2 LF in path: refused: 'lock: pypi:psycopg-c@3.3.6: url is not printable ASCII (0x21-0x7e)'
+B2 space in path: refused: 'lock: pypi:psycopg-c@3.3.6: url is not printable ASCII (0x21-0x7e)'
+N1 maven jar on files.pythonhosted.org: refused: 'lock: maven:javax.xml.bind:jaxb-api@2.2.12: jaxb-api-2.2.12-sources.jar: url host files.pythonhosted.org is not a maven file host'
+N1 maven evil name: refused: 'lock: maven:javax.xml.bind:jaxb-api@2.2.12: evil-1.0-sources.jar: not a maven file url (want path /maven2/javax/xml/bind/jaxb-api/2.2.12/jaxb-api-2.2
+N1 temurin on repo1.maven.org: refused: 'lock: temurin:jdk-21.0.12.1+1: OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz: url host repo1.maven.org is not a temurin file host'
+N1 neo4j github.com/attacker: refused: 'lock: neo4j:neo4j@5.26.32: 5.26.32.tar.gz: not a neo4j file url (github.com/neo4j/neo4j/archive/refs/tags/5.26.32.tar.gz)'
+N2 deb only .dsc: refused: 'lock: deb:bash@5.2.15-2: deb: no file besides the .dsc'
+N4 entry extra key: refused: 'lock: deb:bash@5.2.15-2: unexpected key skip'
+N5 arches [['amd64']]: refused: 'lock: deb:bash@5.2.15-2: arches is not a list of strings'
+N5 arches [1,'amd64']: refused: 'lock: deb:bash@5.2.15-2: arches is not a list of strings'
+## new candidates
+temurin path with literal backslash traversal: PASSES
+temurin path with %2E%2E (upper): PASSES
+temurin path with ..%2F: PASSES
+temurin path with %2e%2e segments: PASSES
+temurin path with ./ segment: PASSES
+temurin path with an extra subdir: PASSES
+temurin tag segment not the key's tag: PASSES
+temurin asset of another feature: PASSES
+pypi path %2e%2e on its host: PASSES
+deb .dsc url with %2F: refused: 'lock: deb:bash@5.2.15-2: bash_5.2.15-2.dsc: not a deb file url (snapshot.debian.org /file/<sha1>)'
+HTTPS upper: refused: 'lock: pypi:psycopg-c@3.3.6: url does not round-trip (urlunsplit(urlsplit(url)) differs)'
+size 4 GiB exactly: PASSES
+size 4 GiB + 1: refused: 'lock: pypi:psycopg-c@3.3.6: size 4294967297 is not an int in 1..4294967296'
+apk distfiles at another branch: refused: 'lock: apk:readline@8.2.13-r1: readline-8.2.13.tar.gz: not a apk file url (want path /distfiles/v3.23/readline-8.2.13.tar.gz)'
+from with a tab: refused: 'lock: pypi:psycopg-c@3.3.6: upstream.from is not printable ASCII (0x20-0x7e)'
+from with DEL: refused: 'lock: pypi:psycopg-c@3.3.6: upstream.from is not printable ASCII (0x20-0x7e)'
+key with ESC (cleaned): refused: 'lock: deb:x\\x1b[2J@1: key is not printable ASCII (0x21-0x7e)'
+## CLI message form on an exception inside the check
+  rc 1 stderr: "sbom_check: lock-check: the check failed: TypeError: 'int' object is not iterable"
+## 182 keys
+  keys 182 == FIXTURE_KEYS: True problems []
