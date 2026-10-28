@@ -184,8 +184,13 @@ SMALL_KEYS = frozenset({"deb:bash@5.2.15-2", "deb:attr@1:2.5.1-4", "pypi:psycopg
                         "apk:readline@8.2.13-r1", "neo4j:neo4j@5.26.32", "temurin:jdk-21.0.12.1+1",
                         "maven:javax.xml.bind:jaxb-api@2.2.12", "pypi:psycopg@3.3.6"})
 
-# The 182 lock keys the six U3 fixtures need with the committed policy (N5
-# amendment, U7, item 2; the architect's run and the tester's agree).
+# The 183 lock keys the six U3 fixtures need with the committed policy (N5
+# amendment, U7, item 2; the architect's run and the tester's agree; 182 until U7e).
+# U7e R4 re-pin (base 6dd8b6da): +deb:openssl@3.0.22-1~deb12u2 and
+# +deb:ca-certificates@20250419~deb12u2, -deb:ca-certificates@20250419~deb12u1
+# (only ke-app needed it); openssl ~deb12u1 stays for postgres; tzdata has no
+# key (public domain). Explained by docs/evidence/platform-sbom/u7e/key-diff.txt
+# l.6-8 <- base-dpkg-diff.txt (libssl3/openssl and ca-certificates moved).
 FIXTURE_KEYS = frozenset({
     "apk:alpine-baselayout@3.7.1-r8", "apk:alpine-baselayout@3.7.2-r1", "apk:apk-tools@3.0.3-r1",
     "apk:apk-tools@3.0.8-r0", "apk:busybox@1.37.0-r30", "apk:busybox@1.37.0-r31", "apk:gcc@15.2.0-r2",
@@ -196,7 +201,7 @@ FIXTURE_KEYS = frozenset({
     "deb:attr@1:2.5.1-4", "deb:attr@1:2.5.2-3", "deb:audit@1:3.0.9-1", "deb:audit@1:4.0.2-2+deb13u1",
     "deb:base-files@12.4+deb12u15", "deb:base-files@13.8+deb13u7", "deb:base-passwd@3.6.1", "deb:base-passwd@3.6.7",
     "deb:bash@5.2.15-2", "deb:bash@5.2.37-2", "deb:bzip2@1.0.8-5", "deb:bzip2@1.0.8-6",
-    "deb:ca-certificates@20250419", "deb:ca-certificates@20250419~deb12u1", "deb:cdebconf@0.270",
+    "deb:ca-certificates@20250419", "deb:ca-certificates@20250419~deb12u2", "deb:cdebconf@0.270",
     "deb:cdebconf@0.280", "deb:coreutils@9.1-1", "deb:coreutils@9.7-3", "deb:cyrus-sasl2@2.1.28+dfsg-10",
     "deb:dash@0.5.12-12", "deb:dash@0.5.12-2", "deb:db5.3@5.3.28+dfsg2-1", "deb:db5.3@5.3.28+dfsg2-9",
     "deb:debian-archive-keyring@2023.3+deb12u2", "deb:debian-archive-keyring@2025.1", "deb:debianutils@5.23.2",
@@ -221,7 +226,8 @@ FIXTURE_KEYS = frozenset({
     "deb:libzstd@1.5.7+dfsg-1", "deb:linux@6.12.113-1", "deb:lz4@1.10.0-4", "deb:lz4@1.9.4-1",
     "deb:mawk@1.3.4.20200120-3.1", "deb:mawk@1.3.4.20250131-1", "deb:netbase@6.4", "deb:netbase@6.5",
     "deb:nettle@3.10.1-1", "deb:nettle@3.8.1-2", "deb:npth@1.6-3", "deb:openldap@2.5.13+dfsg-5",
-    "deb:openssl@3.0.22-1~deb12u1", "deb:openssl@3.5.7-1~deb13u3", "deb:p11-kit@0.24.1-2", "deb:p11-kit@0.25.5-3",
+    "deb:openssl@3.0.22-1~deb12u1", "deb:openssl@3.0.22-1~deb12u2", "deb:openssl@3.5.7-1~deb13u3",
+    "deb:p11-kit@0.24.1-2", "deb:p11-kit@0.25.5-3",
     "deb:pam@1.5.2-6+deb12u2", "deb:pam@1.7.0-5", "deb:perl@5.36.0-7+deb12u3", "deb:perl@5.36.0-7+deb12u4",
     "deb:perl@5.40.1-6+deb13u1", "deb:pinentry@1.2.1-1", "deb:postgresql-15@15.19-0+deb12u1",
     "deb:procps@2:4.0.4-9", "deb:python3.13@3.13.5-2+deb13u5", "deb:readline@8.2-1.3", "deb:readline@8.2-6",
@@ -264,7 +270,8 @@ class LockNeedsTest(unittest.TestCase):
         self.assertEqual(set(needs), FIXTURE_KEYS, f"missing {sorted(FIXTURE_KEYS - set(needs))[:5]}, "
                                                    f"extra {sorted(set(needs) - FIXTURE_KEYS)[:5]}")
         self.assertEqual(Counter(k.split(":", 1)[0] for k in needs),
-                         Counter(deb=152, pgdg=3, apk=19, neo4j=1, temurin=1, maven=1, pypi=5))
+                         # deb 152 -> 153 in U7e: u7e/key-diff.txt l.6-8 (+2 -1 deb keys).
+                         Counter(deb=153, pgdg=3, apk=19, neo4j=1, temurin=1, maven=1, pypi=5))
         for key, entry in needs.items():
             with self.subTest(key=key):
                 self.assertEqual(entry.get("kind"), key.split(":", 1)[0])

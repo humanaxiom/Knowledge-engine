@@ -419,6 +419,129 @@ raising a question to the human: bump the postgres digest when the
 upstream image is rebuilt, and accept the risk until then. That touches
 `postgres`'s lock keys at that time.
 
+**Ruled by the human: base bump (2026-10-27, verbatim "get the fixed
+python").** U7e takes the new base
+`python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753`.
+Security read it offline: openssl/libssl3 3.0.22-1~deb12u2,
+`PYTHON_VERSION` 3.12.16 (`u7e/security-openssl.md`).
+
+*Withdrawn* (pin-only text):
+- item 1's `ARG OPENSSL_VERSION` and the libssl3/openssl apt pin;
+- item 1a in full (`test_openssl_pin_in_runtime_stage` and
+  `deb_pin_problems`);
+- item 1b's optional NOTICE sentence;
+- item 2's "the diff is exactly the two openssl rows" rule, replaced by
+  R4 below.
+
+Item 2's "only ke-app's fixture is refreshed" and item 4's one-commit
+recommendation (U7d + U7e) stand.
+
+- **R1, the digests.**
+  - All three python `FROM` lines change together to the new digest: the
+    builder and runtime stages in `docker/app.Dockerfile`, and
+    `docker/gates.Dockerfile`. N0's drift test keeps them identical and
+    `-bookworm`. There is no libssl pin.
+  - *PSC-1 form, before the first build (security G5):* security records
+    the digest's provenance in `u7e/base-provenance.md`: the tag, the
+    index and amd64/arm64 digests from `docker buildx imagetools inspect`
+    (no pull, no run), the date, and `PYTHON_VERSION` and
+    `PYTHON_SHA256` from the config.
+  - Security also makes a second fetch of
+    `https://www.python.org/ftp/python/3.12.16/Python-3.12.16.tar.xz`,
+    whose sha256 must equal the base's `PYTHON_SHA256`, as U1 did. A
+    mismatch stops U7e.
+  - `NOTICE.md`'s base reference (l.74) is the new `FROM` line, byte for
+    byte, under the existing static test.
+  - `offline_check.sh` reads `base_ref` from the runtime `FROM`, so it
+    pulls the new digest with no change.
+  - `docs/requirements.md` and `docs/architecture.md` lines naming the old
+    digest as current go to the analyst. History stays as written.
+- **R2, the CPython licence files** (3.12.15 -> 3.12.16).
+  - `licenses/CPython-3.12-incorporated.txt` is re-extracted from
+    `https://raw.githubusercontent.com/python/cpython/v3.12.16/Doc/license.rst`
+    (the same heading-to-end rule; header line 1 `CPython 3.12.16: ...`;
+    a new source sha256).
+  - `CPython-3.12-HACL.txt` and `CPython-3.12-KaRaMeL.txt` are re-read
+    from the 3.12.16 tarball (R1's verified sha256 in their headers), at
+    the same files (`Modules/_hacl/Hacl_Hash_SHA2.c`,
+    `.../krml/internal/target.h`).
+  - Security diffs each body against the 3.12.15 one. A changed
+    incorporated list, or a new third-party header under `Modules/_hacl/`,
+    is re-reviewed before NOTICE's M-2 sentences are kept.
+  - `NOTICE.md` l.122-134 change to the 3.12.16 URLs and version, and
+    `test_notice_ke_app`'s header and URL tests follow. U4's drift check
+    (the SBOM's CPython equals the licence headers) is the image-side
+    proof.
+- **R3, the drift check and the libpq5 pin.**
+  - libpq5 is not in the base (`ADDED_PACKAGES`). The pin
+    `15.19-0+deb12u1` stays unless bookworm-security has superseded it.
+    `build.sh` then fails by name, and PSC-25's pin bumps in both
+    Dockerfiles.
+  - At RED, security reads the new base's `/var/lib/dpkg/status` offline
+    (`docker create` + `docker cp`, never run) and diffs it against the
+    old base's, recorded in `u7e/base-dpkg-diff.txt`.
+  - That diff also shows whether `ADDED_PACKAGES` still holds: libpq5's
+    dependencies that apt adds may now be in the base, or vice versa. Any
+    change re-pins `ADDED_PACKAGES`, with the dpkg diff as the reason.
+  - `test_libpq_pin_matches_bookworm_base` passes unchanged once all three
+    FROM lines move together.
+- **R4, the lock and the fixture.**
+  - ke-app's key set may change beyond openssl: any base package whose
+    *source* version moved between the two bases. So the *whole*
+    `tests/fixtures/sbom-u3/ke-app.pkgs.tsv` is replaced from the fresh
+    `bundle.sh` SBOM (via `u7e/sboms/ke-app.pkgs.tsv`, U3 extraction).
+    Only ke-app's fixture changes.
+  - The lock re-run (`sources_lock.sh --arch amd64 --evidence-dir ...`,
+    exit 0) adds every new `deb:` key. Keys that only ke-app needed and
+    that left it lose amd64, unless postgres still needs them, as with
+    `openssl@~deb12u1`.
+  - *O3:* `u7e/key-diff.txt` lists every key added and removed against
+    the U7d lock. Each must be explained by a line of
+    `u7e/base-dpkg-diff.txt`, or by the libpq5 dependencies. An
+    unexplained key stops U7e and goes to the orchestrator.
+  - The tester re-pins the fixture-dependent counts after GREEN produces
+    the fixture, each with that reason: the U7a key set (183 or more),
+    U4 unlicensed counts if they move, and the U5/U6 real-row snapshots.
+  - Security reviews the new lock entries.
+- **R5, A34 and the checks.** A34 is required (two Dockerfiles):
+  `build.sh`, `bundle.sh`, `install.ps1` from the bundle and `verify.sh
+  full` on Windows. The smoke `no pip` and `psycopg` steps are unchanged,
+  and the scan stage is the proof.
+- **R6, the gates image.** `build.sh` rebuilds `ke-gates` on the new base.
+  `uv.lock` is unchanged and `uv sync --locked` still holds. `ke-gates`
+  gets its own PSC-1 provenance row in `u7e/base-provenance.md` (the same
+  digest).
+- **R7, order.**
+  1. Security provenance and the second tarball fetch first (G5), plus
+     the dpkg diff.
+  2. Tester RED.
+  3. Developer GREEN: digests, licence files, NOTICE, `build.sh`, the
+     fresh SBOM and fixture, the lock re-run.
+  4. Tester re-pins with reasons.
+  5. Security and reviewer.
+  6. A34.
+  7. The orchestrator's `verify.sh full`, scan green.
+  8. One commit (U7d + U7e). The push and a new draft PR need the human's
+     approval.
+- **First RED tests:**
+  - (a) a static test that all three python `FROM` lines equal the ruled
+    digest `...6dd8b6dab6b3adc7...9753`;
+  - (b) the three licence files' line-1 version is `3.12.16`, and the two
+    tarball headers carry `PYTHON_SHA256`;
+  - (c) NOTICE's base reference and CPython URLs name the new digest and
+    3.12.16 (the existing tests with the new expected values);
+  - (d) the full-mode U4 drift check (CPython in the SBOM equals the
+    headers), red on today's image.
+
+  Each is red on HEAD by expected value only. The fixture and lock re-pins
+  wait for GREEN's data (R4).
+- *Update (architect, 2026-10-27, from the handoff):* U7d is already
+  committed as WIP `45411ae`, on the human's instruction, with the scan
+  red. So R7 step 8 becomes **one U7e commit** on top of `45411ae`, which
+  turns the scan green. Item 4's "one commit for U7d + U7e" is moot. PR
+  #14 was merged at 86f7831, so U7e lands on a new draft PR for
+  `agent/platform-sbom`, opened or approved by the human.
+
 ## N1. The SBOM generator run (`sbom` service)
 
 `docker-compose.sbom.yml`, standalone, no profiles (as `docker-compose.scan.yml`,

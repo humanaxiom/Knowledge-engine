@@ -59,7 +59,7 @@ it closes the M-NT1 remainder (no GPL source offer, incomplete SBOM). Branch:
 ## U6 (hosts + exempt; committed 66781a9; detail: archive/platform-sbom-part9.md)
 - Outcome: `hosts` (nine N4 hosts) and `exempt` (jna, javassist; reviewed `security 2026-10-25`) landed with `exempt_matches` and the segment rule. Rework 0 of 5; verify full PASS 962 s. Still carried to U9: libffi notice in the ke-neo4j NOTICE section; an exempt entry matching more than one package is a problem; `index` runs `validate` first; drop the "no row both always and exempt" assertion and list "always, cleared by exemption"; a base-image digest bump re-triggers the exempt review.
 
-## U7 (source lock; U7a 9b1754f, U7b 6d8fa4d, U7c 86f7831 committed, U7d gate passed (commit this session); detail: archive/platform-sbom-part10.md and part11.md)
+## U7 (source lock; U7a 9b1754f, U7b 6d8fa4d, U7c 86f7831 committed, U7d 45411ae WIP, U7e gate passed (commit in progress); detail: archive/platform-sbom-part10.md and part11.md)
 - Plan: the architect's split U7a-d; 182 keys = deb 152 / pgdg 3 / apk 19 / neo4j 1 / temurin 1 / maven 1 / pypi 5. The CLAUDE.md row draft is in N5 amendment U7 item 7, for the human at U7d.
 - U7a outcome: `lock_needs`, `lock_problems`, `sample_keys`, `lock_text` and `lock-check`; fail-closed URL, path and per-kind binding rules; no lock committed.
 - Rework 2 of 5; review APPROVED, security PASS, orchestrator verify full PASS 968 s.
@@ -77,7 +77,7 @@ it closes the M-NT1 remainder (no GPL source offer, incomplete SBOM). Branch:
 - Carried to U7d first rows: R1-N1 middle segments, R1-N2 non-field `.dsc` line, I-5 synthetic nonce.
 - U7d: Q71/Q72 ruled by the human 2026-10-25; CI run 40244299450 on 86f7831 PASS (verify 23 min); see the U7d block below.
 
-## U7d (source lock real run; gate passed 2026-10-26; commit pending in this session; detail: archive/platform-sbom-part11.md)
+## U7d (source lock real run; gate passed 2026-10-26; committed 45411ae as WIP; detail: archive/platform-sbom-part11.md)
 - Outcome: pgdg route via the apt-archive InRelease-bound Sources; bounded retry 3x (10/30/60 s) on 5xx and timeouts plus a run budget (20 / 3 h); real-data rules: aports symlink skip, leading `_`, size-0 GitLab apk files, scanner skips the lock. The lock: 182 keys, 872 files, 1.327 GB full, 137 MB sample, 1 manual neo4j entry == second fetch. CLAUDE.md row added with the human's approval.
 - Gates: review APPROVED, security PASS + gpgv lock review PASS, A34 PASS, controls 0 unexpected, verify full PASS 1018 s (plus a final run after the CLAUDE.md row). Rework 1 of 5.
 - Rulings: A71 (pgdg kind + tenth host), A72 (lock-tool retry only), P-R1 (no signature verification in the tool), P-R2 (mid-body timeouts retried), item 14 (third Neo4j fetch deferred to U8's CI sample fetch; the ARM one-liner is still preferred before the first operator bundle).
@@ -92,20 +92,12 @@ it closes the M-NT1 remainder (no GPL source offer, incomplete SBOM). Branch:
 ## 2026-10-27 — marketer (CHANGELOG U5-U7d)
 - CHANGELOG "platform-sbom (in progress)" rewritten to U0-U7d in six bullets (U0-U4b merged in, U5-U7d added); no README change (no operator-facing shift until U9); no evidence file.
 
-## 2026-10-27 — orchestrator (U7d commit BLOCKED by a fresh scan High; U7e opened)
-- After the docs/CLAUDE.md row, the orchestrator's `verify.sh full` FAILED at the scan stage (`u7d/orchestrator-verify-full-after-claude-row.txt` l.2075-2372): ke-app's base carries openssl/libssl3 3.0.22-1~deb12u1, fixed in 3.0.22-1~deb12u2, CVE-2026-84782 High (+ Mediums/Lows in the same fix; CPython Mediums with no 3.12 fix). Unit + integration tests were green. Never commit on red: the U7d commit waits for U7e.
-- U7e (openssl 3.0.22-1~deb12u2 pinned in ke-app's runtime stage like libpq5; scan green; the lock regenerated with the new `deb:openssl@...deb12u2` key; the U3 fixtures refreshed and real-row tests re-pinned; NOTICE true; A34): analyst criteria, architect design (N0 amendment U7e) and security advisory confirmation dispatched 2026-10-27; next session runs tester RED -> GREEN (incl. the lock re-run) -> reviews -> one commit for U7d+U7e or two (architect recommends).
+## U7e (base bump to python 3.12.16; gate passed 2026-10-28; detail: archive/platform-sbom-part12.md)
+- Outcome: all three FROM lines (app builder, app runtime, gates) move to `python:3.12-slim-bookworm@sha256:6dd8b6da...9753`: CPython 3.12.16, openssl/libssl3 3.0.22-1~deb12u2, no libssl pin. CPython licence file headers to 3.12.16, bodies byte-identical. NOTICE updated. Whole ke-app fixture replaced (6 rows changed, each explained by the base dpkg diff). Lock 183 keys: +openssl~u2, +ca-certificates~u2, -ca-certificates~u1; openssl~u1 kept for postgres. Image sizes flat (`u7e/size.md`). CHANGELOG bullet added. PSC-27's drift-check claim withdrawn; the proof is the scan plus the fixture rows.
+- Gates: tester RED (`u7e/tester-red-verify-full.txt`), developer GREEN (`developer-verify-full.txt`), tester re-pins (`tester-repin-verify-full.txt`), security PASS with 3 records (`security-review.md`, `base-provenance.md`, `base-dpkg-diff.txt`), reviewer APPROVED after rework 1 of 5 (`review.md`), A34 PASS (`a34-windows-run.txt`, `a34-verify-full.txt`, 1132 s), orchestrator verify full PASS 1162 s on the final tree (`orchestrator-verify-full.txt`; scan green, CVE-2026-84782 absent).
+- Rulings: human: base bump ("get the fixed python"); orchestrator: B-2 proof ruling (scan + fixture rows, not a drift check); tester kept ReworkR1 B2 at (79,6).
+- Lessons: an inserted test must not split a neighbouring loop (RED's insertion silently dropped a control, caught at re-pin); a count in a test name goes stale.
+- Decisions waiting for the human: (1) security M-1: ke-gates' compose 5.6.0 (Go stdlib / x-net Criticals) and uv 0.11.21 (quinn-proto High) are not bundled and have no network; bump the pins as a follow-up item? (2) postgres still ships openssl ~deb12u1, unscanned under Q70. (3) the Neo4j ARM third fetch (U8's CI sample fetch, or the ARM one-liner first).
+- Forward: next U8; keep the orchestrator's "record provenance before running" rule. Commit of U7d+U7e on a new draft PR needs the human.
 
-## 2026-10-27 — architect (U7e)
-- Design: design-notes "N0 amendment, U7e" l.248-420. Pin `ARG OPENSSL_VERSION=3.0.22-1~deb12u2` and install `libssl3`/`openssl` beside libpq5 in the runtime stage only (not builder, not gates); no base-digest bump. Tests: static `test_openssl_pin_in_runtime_stage` + image-side `deb_pin_problems`; the scan is the proof; drift is unchanged (it compares names) and a NOTICE change is optional (analyst).
-- Lock: new key `deb:openssl@3.0.22-1~deb12u2` (ke-app); `~deb12u1` stays for postgres, so 183 keys. Refresh only `ke-app.pkgs.tsv`, and its diff must be exactly the two openssl rows, else stop. Incremental real lock run. A34 yes.
-- Recommend ONE commit for U7d+U7e: verify gates the whole tree and neither unit goes green alone. Flag for the human: the pinned postgres image carries the same vulnerable openssl, but Q70 means it is not scanned.
-
-## 2026-10-27 — analyst (U7e)
-- New PSC-27 in requirements.md (U7e, before U7d's commit). Pin libssl3/openssl 3.0.22-1~deb12u2 in the runtime apt RUN. The static and NOTICE tests split upgraded from added packages. Drift check on versions; scan clean with a fresh DB; lock gains deb:openssl@...u2 (tool-generated, security-reviewed); all six U3 fixtures refreshed (O3) and real rows re-pinned; the NOTICE base section names the upgrade; A34; gate full; metric neither. Status line and table updated.
-- Flag: postgres carries the same libssl3 u1 and is unscanned (A70), so deb:openssl@u1 stays in the lock for it.
-
-## 2026-10-28 — security (openssl advisory)
-- **Confirmed:** CVE-2026-84782 (OpenSSL High, DTLS only) plus five Low/Medium, fixed for bookworm in `3.0.22-1~deb12u2` (DLA-4859-1), on deb.debian.org debian-security and snapshot (`.dsc` sha1 `eb6d0239...`, first_seen 20261026T032458Z); CPython Mediums have no 3.12 fix in grype and do not fail the `--only-fixed --fail-on high` policy. Detail: `u7e/security-openssl.md`.
-- **Prefer:** pin `libssl3=3.0.22-1~deb12u2 openssl=3.0.22-1~deb12u2` in the app runtime stage now; bump the base to `python:3.12-slim-bookworm@sha256:6dd8b6da...` (3.12.16 plus deb12u2, already published) as its own item with the CPython licence refresh. Either way the lock gains `deb:openssl@3.0.22-1~deb12u2` and the U3 ke-app fixture must move.
-- Other images: postgres also has deb12u1 (vulnerable, not scanned, Q70); phoenix and ke-neo4j have trixie `3.5.7-1~deb13u3` (fixed); FYI the Alpine gateway (3.5.5-r0) and valkey (3.5.8-r0) are below upstream 3.5.9 (backport not checked).
+- 2026-10-28 documenter: U7e closed in this file; sections moved verbatim to archive/platform-sbom-part12.md. Status: U7e gate passed, commit in progress, next U8.

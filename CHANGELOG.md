@@ -12,6 +12,7 @@ In progress: not finished, and the bundle is not yet for operators. Source fetch
 - ke-app builds psycopg against Debian's libpq instead of the psycopg-binary wheel, no longer ships pip, and is flattened. NOTICE.md gains a ke-app base section and licence files for CPython, HACL*, KaRaMeL and Apache-2.0.
 - The stack runs its own ke-neo4j image: the official Neo4j Community image without the commercial fleet-management plugin or the unused GenAI plugin (the `products/` folder). Neo4j itself is unchanged. Its smoke check now walks volumes.
 - `docker/source-policy.json` lists the ten hosts a source fetch may use, and two security-reviewed exemptions (jna and javassist).
+- ke-app and ke-gates move to the Python 3.12 slim base at digest `sha256:6dd8b6da…9753` (CPython 3.12.16). The base brings openssl and libssl3 3.0.22-1~deb12u2, which closes CVE-2026-84782 (High) found by the image scan during U7d. The CPython licence files and NOTICE.md now name 3.12.16; the licence texts are unchanged. The source lock is regenerated with 183 components: the openssl and ca-certificates deb12u2 keys are added, the old ca-certificates key is dropped, and the old openssl key stays for the pinned postgres image.
 
 **Added:**
 - One SPDX 2.3 SBOM per bundled image. `scripts/bundle.sh` needs the pinned SBOM generator image and prints a per-image report of packages with no identifiable licence. `scripts/verify.sh full` runs an image-side drift check on ke-app.

@@ -656,12 +656,46 @@ class DriftLogicTest(unittest.TestCase):
         for rel in ss.LICENCE_FILES:
             with self.subTest(case=f"{rel} names another version"):
                 texts = dict(self.texts)
-                texts[rel] = texts[rel].replace(f"CPython {want}:", "CPython 3.12.16:", 1)
+                # 3.12.99, never a real release: U7e makes 3.12.16 the files'
+                # own version, so this control's old "3.12.16" would be a
+                # no-op there (PSC-27, N0 amendment U7e R2).
+                texts[rel] = texts[rel].replace(f"CPython {want}:", "CPython 3.12.99:", 1)
+                self.assertNotEqual(texts[rel], self.texts[rel], f"the {rel} control changed nothing")
                 self._fails(self._run(texts=texts), Path(rel).name)
             with self.subTest(case=f"{rel} line 1 does not parse"):
                 texts = dict(self.texts)
                 texts[rel] = "garbage\n" + texts[rel]
                 self._fails(self._run(texts=texts), Path(rel).name)
+
+    def test_ke_app_real_rows_cpython_is_the_ruled_release(self):
+        """U7e (PSC-27 *CPython licence files*, PSC-22 drift; N0 amendment
+        U7e R2, R4), the fast stand-in for the full-mode drift check: on
+        ke-app's real package rows (tests/fixtures/sbom-u3/ke-app.pkgs.tsv,
+        the image's syft rows), CPython is exactly CPYTHON_RELEASE and the
+        drift check finds no CPython mismatch against the committed licence
+        files. The full-mode check (offline_check.sh -> sbom_check.py drift
+        on the fresh image's SBOM) compares the same pair and reads its
+        expected version only from the licence headers. History (U7e): at RED
+        the real rows were CPython 3.12.15 against the ruled 3.12.16; GREEN
+        refreshed the fixture from the U7e image to 3.12.16 (R4)."""
+        from tests.test_notice_ke_app import CPYTHON_RELEASE
+        app = ss.u3_doc("ke-app")
+        texts = ss.licence_texts()
+
+        def cpython_problems(t: dict[str, str]) -> list[str]:
+            return [p for p in self._run(app=copy.deepcopy(app), texts=t) if "CPython" in p]
+
+        with self.subTest(case="control: licence headers one release ahead of the real rows fail drift"):
+            have = sorted(fn("_cpython")(app))
+            self.assertEqual(len(have), 1, f"the real ke-app rows list CPython at {have}")
+            ahead = {rel: re.sub(r"^CPython \d+\.\d+\.\d+:", "CPython 3.12.99:", text, count=1)
+                     for rel, text in texts.items()}
+            self._fails(cpython_problems(ahead), "3.12.99", have[0])
+        with self.subTest(case="the real rows' CPython matches the committed licence files"):
+            self.assertEqual(cpython_problems(texts), [])
+        with self.subTest(case="the real rows' CPython is the ruled release"):
+            self.assertEqual(sorted(fn("_cpython")(app)), [CPYTHON_RELEASE],
+                             "ke-app's real rows list another CPython than the ruled base's (PSC-27, U7e R4)")
 
     def test_ke_app_sbom_lists_libpq5_and_psycopg_c_not_binary(self):
         check = fn("psycopg_problems")

@@ -3293,9 +3293,14 @@ item.
 
 ## Item: platform-sbom
 
-Status: **In progress (2026-10-27):** U0-U7c pushed (draft PR #14; CI 23
-min); U7d gate passed; commit blocked on a fresh scan High (openssl) ->
-U7e first (PSC-27). *(Amended 2026-10-27, analyst.)*
+Status: **In progress (2026-10-28):** U0-U7c on main (PR #14 merged at
+86f7831); U7d committed as WIP 45411ae (scan red on openssl); U7e (PSC-27,
+base bump to python 3.12.16): tester's verify full PASS with the image scan
+green (`u7e/tester-repin-verify-full.txt`), security PASS, reviewer and A34
+in progress; PSC-27 PENDING until the orchestrator's gate; next U8. *(Amended 2026-10-28, analyst; U7e.)*
+*(Before: "U0-U7c pushed (draft PR #14; CI 23 min); U7d gate passed; commit
+blocked on a fresh scan High (openssl) -> U7e first (PSC-27).")* *(Amended 2026-10-27, analyst.)* U7e: base bump to
+python 3.12.16 (human ruling). *(Amended 2026-10-27, analyst; human ruling.)*
 *(Earlier the same day: "U7d gate passed 2026-10-26 (commit landing); next U8".)* *(Amended 2026-10-27, analyst.)*
 *(Amended 2026-10-25, analyst, U7d; human ruling.)*
 *(Amended 2026-10-25, analyst, U7d.)* *(Amended 2026-10-25, analyst, U6.)*
@@ -3341,7 +3346,7 @@ Counts are not restated here; the evidence under
 |---|---|---|
 | PSC-13 SBOM per bundled image | MET | U3 (464fa11) |
 | PSC-14 notices complete for `ke-app` | MET (the generated "Source code" section is U9) | U1 (23e3c9b) |
-| PSC-15 GPL source offers | PENDING (classifier U5, policy U6, lock U7a-U7d (committed lock, 182 components); source archive in the bundle arrives U8/U9) | U5 (d8ffa2d), U6 (66781a9), U7a-U7c (9b1754f, 6d8fa4d, 86f7831), U7d (landing), U8, U9 |
+| PSC-15 GPL source offers | PENDING (classifier U5, policy U6, lock U7a-U7d (committed lock, 183 components; 182 at U7d, +openssl and ca-certificates `~deb12u2`, -ca-certificates `~deb12u1` with the U7e base bump); source archive in the bundle arrives U8/U9) | U5 (d8ffa2d), U6 (66781a9), U7a-U7c (9b1754f, 6d8fa4d, 86f7831), U7d (45411ae, WIP), U7e, U8, U9 |
 | PSC-16 CI cost and disk measured on CI | PENDING (measurements for U11: full operator source set 1.327 GB, verify sample 137 MB; full bundle ~8 GiB staged, over the 7 GiB floor; CI 23 min on 86f7831) | U11 |
 | PSC-19 end to end offline install | PENDING | U10 |
 | PSC-20 SBOM generator pinned and hardened | MET | U2 (98b6d27) |
@@ -3351,7 +3356,7 @@ Counts are not restated here; the evidence under
 | PSC-24 no partial bundle, manifest rules | PENDING | U9 |
 | PSC-25 psycopg on Debian libpq | MET | U0 (31bfed4) |
 | PSC-26 first-party neo4j image | MET | U4b (c300d88) |
-| PSC-27 `ke-app` ships the fixed OpenSSL | PENDING (blocks the U7d commit) | U7e |
+| PSC-27 `ke-app` ships the fixed OpenSSL | PENDING (U7e: tester verify full PASS with the scan green, security PASS, reviewer and A34 in progress; U7d committed as WIP 45411ae, so U7e is its own commit) | U7e |
 
 *(Rows PSC-15, PSC-16, PSC-22 and PSC-23 updated 2026-10-27, analyst.)*
 
@@ -3465,22 +3470,25 @@ full what it contains.
       "Licenses and Acknowledgements for Incorporated Software") ship as
       `licenses/CPython-3.12-incorporated.txt`. *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)* (Security L-5.)
     - The file is that section, extracted from `Doc/license.rst` at the
-      CPython tag that matches the image's CPython (`v3.12.15` today), and
+      CPython tag that matches the image's CPython (`v3.12.16` today; `v3.12.15` before U7e), and
       it names that CPython version. A maintainer fetches it over HTTPS
       (the fetch needs network), and its source URL and sha256 are
       recorded; security fetches it a second time and the sha256 must
       match (Q48 form). It is git-tracked, because `scripts/bundle.sh`
-      ships only `git ls-files -- licenses` (security I-4). *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
-    - CPython 3.12.15 also builds `_md5`, `_sha1`, `_sha2` and `_sha3` from
+      ships only `git ls-files -- licenses` (security I-4). *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)* *(Amended 2026-10-28, analyst; U7e: v3.12.16; `license.rst` sha256 unchanged,
+      `341832873fd316a37927e79385093fbbfd40a467428480835fe435a80cadf4e5`.)*
+    - CPython 3.12.16 also builds `_md5`, `_sha1`, `_sha2` and `_sha3` from
       HACL* code under MIT (`Modules/_hacl/`), and `Doc/license.rst` omits
       it (security L-9). The bundle therefore also ships
       `licenses/CPython-3.12-HACL.txt`: the MIT header copied as-is from
       `Modules/_hacl/Hacl_Hash_SHA2.c` in the security-verified
-      `Python-3.12.15.tar.xz` (sha256
-      `c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a`,
+      `Python-3.12.16.tar.xz` (sha256
+      `b5796915dc45ff745cfb4e990a7e7c93d6f546328a102ce31448d69ebc37575c`,
       equal to the base's `PYTHON_SHA256`), under a header that names the
-      source file and the tarball sha256. *(Amended 2026-10-23, analyst, U1 round 3.)*
-    - CPython 3.12.15's HACL* modules compile in KaRaMeL headers
+      source file and the tarball sha256. *(Amended 2026-10-23, analyst, U1 round 3.)* *(Amended 2026-10-28, analyst; U7e: was
+      3.12.15, tarball sha256 `c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a`;
+      the licence bodies are byte-identical, only the headers moved.)*
+    - CPython 3.12.16's HACL* modules compile in KaRaMeL headers
       (`Modules/_hacl/include/krml/`, Copyright INRIA and Microsoft
       Corporation, Apache-2.0), per the security ruling of 2026-10-23
       (security L-9b). The bundle therefore also ships two files:
@@ -3494,7 +3502,8 @@ full what it contains.
         base (Debian `base-files` 12.4+deb12u15, sha256
         `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`).
       Both are git-tracked, as `scripts/bundle.sh` ships only
-      `git ls-files -- licenses`. *(Amended 2026-10-23, analyst, U1 round 4.)*
+      `git ls-files -- licenses`. *(Amended 2026-10-23, analyst, U1 round 4.)* *(Amended 2026-10-28,
+      analyst; U7e: 3.12.15 -> 3.12.16, same tarball as above; KaRaMeL body unchanged.)*
     - `NOTICE.md` names `licenses/CPython-3.12-incorporated.txt`,
       `licenses/CPython-3.12-HACL.txt`, `licenses/CPython-3.12-KaRaMeL.txt`
       and `licenses/Apache-2.0.txt`.
@@ -4381,113 +4390,141 @@ full what it contains.
   - Evidence:
     `docs/evidence/platform-sbom/u7d/orchestrator-verify-full-after-claude-row.txt`
     l.2075-2372.
-  - This blocks the U7d commit. U7e lands first.
+  - This blocks the U7d commit. U7e lands first. *(Amended 2026-10-28,
+    analyst; U7e: superseded. U7d was committed as WIP 45411ae on the
+    human's instruction with the scan red; U7e is its own commit on top.)*
   - It is handled under PSC-4 and PSC-5 by upgrading the package, as
     PSC-25's *Scan* bullet requires for `libpq5` and what it pulls in
     (`libpq5` depends on `libssl3`). It is never handled by an ignore
     entry, a loosened threshold or a skipped scan.
+  - *Human ruling, 2026-10-27 ("get the fixed python").* The upgrade
+    comes from a new base image, not a package pin. The first draft's
+    *Pin* and the added-versus-upgraded package split are withdrawn.
+    Source: `docs/evidence/platform-sbom/u7e/security-openssl.md`. *(Amended 2026-10-27, analyst; human ruling.)*
   - Outcome metric moved: **neither.** This is a security fix to the
     shipped image. It keeps `verify.sh full` green, and the item's
     commits depend on that.
   - Gate: `scripts/verify.sh full`, plus the A34 Windows proof, because
-    `docker/app.Dockerfile` changes.
-  - *Pin.* Given the pinned `ke-app` base, the shipped stage (`runtime`)
-    installs `libssl3=3.0.22-1~deb12u2` and `openssl=3.0.22-1~deb12u2`.
-    - They go in the same apt `RUN` as `libpq5`, each pinned to an exact
-      version as `LIBPQ_VERSION` pins `libpq5`, with no recommended
-      packages, and the apt lists are removed in that layer.
-    - The base reference and its digest are unchanged.
-    - These two packages upgrade packages the base already has. They are
-      not additions.
-  - *Static test.* `test_runtime_stage_has_no_compiler` (PSC-25) still
-    allows exactly one apt `RUN` plus the pip removal in the shipped
-    stage. That `RUN` may now also install the two pinned upgrades, and
-    nothing else.
-    - The NOTICE test (`tests/test_notice_ke_app.py`) requires every
-      package name the shipped stage installs to be either in
-      `ADDED_PACKAGES` or in a named set of upgraded base packages
-      (`libssl3`, `openssl`). No name may be in both.
-    - Controls that must fail:
-      - an unpinned `libssl3` or `openssl`;
-      - a version other than the pin;
-      - an upgraded name missing from the upgrade set.
-  - *Image-side drift check* (PSC-22, in `offline_check.sh`). Given the
-    fresh `ke-app` SBOM:
-    - its `libssl3` and `openssl` rows carry exactly
-      `3.0.22-1~deb12u2`;
-    - the base's SBOM still carries `3.0.22-1~deb12u1`;
-    - the dpkg names `ke-app` adds over the base still equal
-      `ADDED_PACKAGES`;
-    - each upgraded name exists in both SBOMs, at the pinned version in
-      `ke-app`.
-    A mismatch fails `full`, naming the package and both versions.
+    `docker/app.Dockerfile` and `docker/gates.Dockerfile` change. *(Amended 2026-10-27, analyst; human ruling.)*
+  - *Base* (replaces *Pin*). *(Amended 2026-10-27, analyst; human ruling.)*
+    - Every `FROM python:3.12-slim-bookworm@sha256:...` line in
+      `docker/app.Dockerfile` (the `builder` and `runtime` stages) and
+      `docker/gates.Dockerfile` names
+      `python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753`.
+      That base carries CPython 3.12.16 and `libssl3` and `openssl`
+      `3.0.22-1~deb12u2`.
+    - The new digest is pinned in the PSC-1 form. Before the first build
+      from it, security records its provenance, including a second fetch
+      of `Python-3.12.16.tar.xz` whose SHA-256 equals the base's
+      `PYTHON_SHA256`.
+    - No package pin is added. The shipped stage's apt `RUN` is unchanged,
+      and `test_runtime_stage_has_no_compiler` (PSC-25) and the
+      `ADDED_PACKAGES` rule in `tests/test_notice_ke_app.py` stay as they
+      are.
+  - *CPython licence files.* *(Amended 2026-10-27, analyst; human ruling.)*
+    - `licenses/CPython-3.12-incorporated.txt`, `CPython-3.12-HACL.txt` and
+      `CPython-3.12-KaRaMeL.txt` are refreshed to CPython 3.12.16: the
+      version, the source and the tarball lines.
+    - NOTICE's CPython line and `tests/test_notice_ke_app.py`'s header are
+      refreshed to 3.12.16 too.
+    - The PSC-22 drift check passes on the fresh image: the `ke-app`
+      SBOM's CPython version equals the version the incorporated-licence
+      file names.
+  - *libpq5 pin.* `test_libpq_pin_matches_bookworm_base` is re-checked
+    against the new base. PSC-25's `libpq5` pin changes only if the new
+    base moved it; otherwise it stays `15.19-0+deb12u1`. *(Amended 2026-10-27, analyst; human ruling.)*
+  - *Image-side drift check* (PSC-22, in `offline_check.sh`). *(Amended 2026-10-27, analyst; human ruling.)*
+    - It pulls the new base by its digest.
+    - The dpkg names `ke-app` adds over that base still equal
+      `ADDED_PACKAGES`, and the SBOM lists no pip package.
+    - Withdrawn (was: "The `ke-app` SBOM's `libssl3` and `openssl` rows
+      carry `3.0.22-1~deb12u2`."): the drift check holds no
+      package-version check, and one would go stale at every base bump.
+      The fixed OpenSSL is proved instead by (1) the image scan in
+      `scripts/verify.sh full`: CVE-2026-84782 absent and no fixed High
+      unsuppressed (`u7e/tester-repin-verify-full.txt` l.2083-2367), and
+      (2) the refreshed `ke-app` fixture: `tests/fixtures/sbom-u3/ke-app.pkgs.tsv`
+      l.93 (`libssl3`) and l.114 (`openssl`) at `3.0.22-1~deb12u2`
+      (`u7e/fixture-diff.txt`). *(Amended 2026-10-28, analyst; U7e,
+      reviewer B-2, orchestrator ruling.)*
   - *Scan.* With a freshly fetched vulnerability database (`scan-db`),
     the `ke-app` scan passes under the unchanged policy. No `libssl3` or
     `openssl` match at or above High remains unsuppressed, and
     `docker/scan-ignore.yaml` gains no entry.
-  - *Lock.* The committed lock (`docker/sources.lock.json`) gains
-    `deb:openssl@3.0.22-1~deb12u2` for `ke-app`'s rows.
-    - The maintainer tool (`scripts/sources_lock.sh`) regenerates it; it
-      is never hand-edited.
+  - *Lock.* *(Amended 2026-10-27, analyst; human ruling.)* The maintainer tool
+    (`scripts/sources_lock.sh`) is re-run, and the committed lock
+    (`docker/sources.lock.json`) is never hand-edited.
+    - The lock gains every new `deb:` key the new `ke-app` needs, among
+      them `deb:openssl@3.0.22-1~deb12u2`.
+    - The old keys stay while another image still needs them; postgres
+      keeps `deb:openssl@3.0.22-1~deb12u1`.
+    - The committed-lock test checks coverage both ways. So a key that
+      only the old `ke-app` needed leaves the lock, and the lock diff lists
+      it.
     - Security reviews the lock diff, as for U7d.
-    - The committed-lock test checks coverage both ways, so
-      `deb:openssl@3.0.22-1~deb12u1` stays exactly while another image
-      still needs it. At the U3 fixtures, postgres's `libssl3` is
-      `3.0.22-1~deb12u1`.
-  - *Fixtures (rule O3).* *(Amended 2026-10-27, analyst; orchestrator ruling, aligned with design notes N0 amendment U7e.)* This replaces the
-    first draft's "refresh all six".
-    - Only `tests/fixtures/sbom-u3/ke-app.pkgs.tsv` is refreshed. It comes
-      from a real `bundle.sh` SBOM of the U7e image, which is written
-      first under `docs/evidence/platform-sbom/u7e/sboms/`.
-    - Given the refreshed fixture, its diff against the old one is exactly
-      the two openssl rows: `libssl3` and `openssl`, from
-      `3.0.22-1~deb12u1` to `3.0.22-1~deb12u2`. Any other difference
-      stops the unit, and it goes back to the orchestrator.
-    - The other five fixtures do not change:
-      - postgres, phoenix and valkey are pinned by digest;
-      - `ke-gateway` is unchanged;
-      - neo4j is deliberately the official image.
-    - Each re-pinned real-row test is explained by those two rows in the
-      U7e evidence, among them U7a's fixture key set going from 182 to 183
-      keys. No other change is accepted.
+  - *Fixtures (rule O3).* *(Amended 2026-10-27, analyst; human ruling.)* This replaces the
+    earlier same-day two-row rule, which assumed a package pin.
+    - Only `tests/fixtures/sbom-u3/ke-app.pkgs.tsv` is refreshed, and the
+      whole file is replaced. It comes from a real `bundle.sh` SBOM of the
+      U7e image, which is written first under
+      `docs/evidence/platform-sbom/u7e/sboms/`.
+    - Every row difference against the old fixture is explained, in the
+      U7e evidence, by the dpkg diff between the old base and the new
+      base, or by the CPython 3.12.15 to 3.12.16 change. Any difference
+      they do not explain stops the unit, and it goes back to the
+      orchestrator.
+    - The other five fixtures do not change: postgres, phoenix and valkey
+      are pinned by digest; `ke-gateway` is unchanged; neo4j is
+      deliberately the official image.
+    - Each re-pinned real-row test (U4-U7, U7a's fixture key set among
+      them) is explained by those differences.
     - The lock changes, so PSC-22 calls for a security re-review of the
       unlicensed list.
-  - *Notices.* `NOTICE.md`'s "Base of `ke-app`" section stays true. It
-    names the two upgraded packages and their pinned version as changed
-    from the base, under their own licences in
-    `/usr/share/doc/*/copyright`. Its added-packages line is unchanged.
-    The notices run (PS-3.8) and `test_notice_has_ke_app_base_paragraph`
-    stay green.
-    - Required, not optional (orchestrator ruling, 2026-10-27): the
-      section gains one sentence naming `libssl3` and `openssl` as
-      upgraded from the base to `3.0.22-1~deb12u2`. Without it, NOTICE
-      would say the base's packages ship as they are, which would be
-      false. *(Amended 2026-10-27, analyst; orchestrator ruling, aligned with design notes N0 amendment U7e.)*
-  - *Windows (A34).* The Dockerfile changes, so the PS-2.9 PowerShell
+  - *Notices.* *(Amended 2026-10-27, analyst; human ruling.)* `NOTICE.md`'s "Base of `ke-app`"
+    section stays true.
+    - Its base reference is the new digest, byte for byte from the
+      `FROM`.
+    - Its CPython line names 3.12.16.
+    - Its added-packages line is unchanged.
+    - The earlier "upgraded from the base" sentence is withdrawn with the
+      pin: with the base bump, the base ships these packages as they are.
+    - The notices run (PS-3.8) and `test_notice_has_ke_app_base_paragraph`
+      stay green.
+  - *Windows (A34).* Two Dockerfiles change, so the PS-2.9 PowerShell
     proof and `scripts/verify.sh fast` on Windows are recorded at
     `docs/evidence/platform-sbom/u7e/windows-run.txt` before the unit
     commits. The proof matches the branch head, or the diff since touches
     none of the A34 files.
   - *Size.* `ke-app`'s image and bundle tar sizes are recorded before and
     after, for PSC-16.
-  - *Exposure, not a criterion.*
-    - A pinned exact version stops building once Debian's security
-      archive supersedes it. `libpq5`'s pin already has this exposure
-      (PSC-25), and the scan surfaces the next fix.
-    - The other bookworm images carry the same `libssl3` (postgres, at
-      the U3 fixtures). They are not scanned (A70), and this unit does
-      not rebuild them.
-      The orchestrator has raised postgres with the human: bump its digest
-      when upstream rebuilds, or accept the risk. *(Amended 2026-10-27, analyst; orchestrator ruling, aligned with design notes N0 amendment U7e.)*
-  - Tests:
-    - `[unit: test_runtime_stage_has_no_compiler]` (amended as above) and
-      the NOTICE added-versus-upgraded test (fast, static);
-    - `[full: ke-app SBOM carries the pinned openssl and libssl3]` (the
-      drift check);
-    - `[gate: image-scan]`;
-    - `test_sources_lock_committed` on the regenerated lock and the
-      refreshed fixtures;
-    - the stack smoke and the PSC-25 smoke check stay green.
+  - *Exposure, not a criterion.* *(Amended 2026-10-27, analyst; human ruling.)*
+    - The next Debian fix in the base arrives with the next base-digest
+      bump, and the scan (PSC-4) surfaces it as this one did.
+    - The other bookworm images carry the same `libssl3`
+      `3.0.22-1~deb12u1` (postgres, at the U3 fixtures). They are not
+      scanned (A70), and this unit does not rebuild them. The orchestrator
+      has raised postgres with the human: bump its digest when upstream
+      rebuilds, or accept the risk.
+    - The Alpine images, `ke-gateway` (Alpine 3.23.3, `libssl3` 3.5.5-r0)
+      and valkey (Alpine 3.24.2, 3.5.8-r0), are below upstream OpenSSL
+      3.5.9. Whether Alpine backported the fix is not checked; this is
+      information only (security, `u7e/security-openssl.md`).
+  - *Follow-up closed.* Security suggested the base bump to
+    `6dd8b6da...` "as its own plan item", after a package pin. The human's
+    ruling folds it into U7e, so no separate plan item is opened. *(Amended 2026-10-27, analyst; human ruling.)*
+  - Tests: *(Amended 2026-10-27, analyst; human ruling.)*
+    - `[unit: test_runtime_stage_has_no_compiler]` and the
+      `ADDED_PACKAGES` rule stay green and unchanged.
+    - Existing tests that pin the base digest move to the new digest;
+      none is removed or loosened.
+    - `test_libpq_pin_matches_bookworm_base` passes against the new
+      base.
+    - `[full: ke-app SBOM's CPython version matches the incorporated-licence file]`
+      (3.12.16), and the drift check on the new base.
+    - `[gate: image-scan]` passes with a fresh database.
+    - `test_sources_lock_committed` passes on the re-run lock and the
+      refreshed `ke-app` fixture.
+    - The stack smoke and the PSC-25 smoke check stay green.
 
 TDD order: PSC-14 → PSC-13 → PSC-15 → PSC-16. *Proposed by the analyst
 (2026-10-22), for the architect to confirm:* PSC-14 → PSC-20 → PSC-13 →
@@ -4499,6 +4536,9 @@ run under A34 if the item changes Dockerfiles, compose files or a
 PowerShell script (`install.ps1` included, Q45).
 U4b (PSC-26) runs after U4 (PSC-22) and before U5. *(Added 2026-10-23, analyst, Q67.)*
 U7e (PSC-27) runs after U7d's gate and before U7d's commit. *(Added 2026-10-27, analyst.)*
+*(Amended 2026-10-28, analyst; U7e: U7d was committed as WIP 45411ae on the
+human's instruction with the image scan red; U7e is its own commit on top of
+it and turns the scan green.)*
 
 *Unit order (architecture N15), current:* U0 (PSC-25), U1 (PSC-14), U2
 (PSC-20), U3 (PSC-13), U4 (PSC-22), U4b (PSC-26), U5 (licence classifier), U6

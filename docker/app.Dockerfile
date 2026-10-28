@@ -10,7 +10,7 @@ ARG LIBPQ_VERSION=15.19-0+deb12u1
 
 FROM ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946 AS uv
 
-FROM python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258 AS builder
+FROM python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753 AS builder
 ARG LIBPQ_VERSION
 COPY --from=uv /uv /usr/local/bin/uv
 
@@ -42,7 +42,7 @@ RUN uv sync --locked --no-dev --group pq-c --no-binary-package psycopg-c \
 
 # The shipped files: the base, libpq5, and no pip (PSC-14, N10a). Its layers
 # do not ship: the last stage copies its / whole.
-FROM python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258 AS runtime
+FROM python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753 AS runtime
 ARG LIBPQ_VERSION
 # The shared library psycopg-c loads; apt adds only its missing dependencies.
 RUN apt-get update \

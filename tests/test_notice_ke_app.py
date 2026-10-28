@@ -110,6 +110,13 @@ security L-9/I-4; round 4 2026-10-23 security L-9b/I-8, PSC-14 amended round 4):
   target fixture (passes), on controls that must pass, on controls that
   each drop or break one element (each must fail), and then on the
   repository's files.
+- U7e (PSC-27, human ruling 2026-10-27; N0 amendment U7e R1, R2; tester RED
+  2026-10-28): the release is pinned as well as cross-checked.
+  CPYTHON_RELEASE (3.12.16) and CPYTHON_TARBALL_SHA256 (the base's
+  PYTHON_SHA256) are what the three licence files' line 1 and the HACL and
+  KaRaMeL line 4 name; NOTICE.md's base section names exactly
+  tests.test_psycopg_c.RULED_PYTHON_BASE, and NOTICE.md gives the 3.12.16
+  license.rst and tarball URLs and no other CPython X.Y.Z.
 
 Retired in U1 round 2 (PSC-14, human ruling 2026-10-23: pip dropped):
 `test_licenses_carry_texts_for_pip_vendored_licences` and its check, since
@@ -129,7 +136,7 @@ from pathlib import Path
 
 from tests.engine_support import ROOT
 from tests.test_image_scan import _stages
-from tests.test_psycopg_c import _apt_installs, _packages, _Scratch, libpq_pin, shipped_stage
+from tests.test_psycopg_c import RULED_PYTHON_BASE, _apt_installs, _packages, _Scratch, libpq_pin, shipped_stage
 
 NOTICE = ROOT / "NOTICE.md"
 APP_DOCKERFILE = ROOT / "docker" / "app.Dockerfile"
@@ -230,10 +237,25 @@ KARAMEL_LAST = "Licensed under the Apache 2.0 License. */"
 APACHE_SPDX_RE = re.compile(r"(?<![\w./-])Apache-2\.0(?![\w-]|\.\w)")
 # base-files 12.4+deb12u15's /usr/share/common-licenses/Apache-2.0 (11358 B) in
 # python:3.12-slim-bookworm@sha256:34386ef0...7258 (security re-check 3, L-9b
-# fix 1; identical in 2c662c94 and 071866c7). A canonical text, so the exact
-# hash is pinned; if a base bump changes it, re-copy the file and update this.
+# fix 1; identical in 2c662c94 and 071866c7). Re-confirmed by security on the
+# U7e base python:3.12-slim-bookworm@sha256:6dd8b6da...9753 (base-files
+# 12.4+deb12u15 unchanged; docs/evidence/platform-sbom/u7e/security-review.md).
+# A canonical text, so the exact hash is pinned; if a base bump changes it,
+# re-copy the file and update this.
 APACHE_2_SHA256 = "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
 APACHE_SOURCE = "/usr/share/common-licenses/Apache-2.0"
+# The ruled CPython release of ke-app's base (platform-sbom U7e, PSC-27; human
+# ruling 2026-10-27 "get the fixed python"; design-notes N0 amendment U7e R1,
+# R2): the pinned base's PYTHON_VERSION and PYTHON_SHA256, which security's
+# second fetch of Python-3.12.16.tar.xz matched before the first build. The
+# checks above take the version from the files; these pins say which release
+# the files, NOTICE.md and tests.test_psycopg_c.RULED_PYTHON_BASE must name.
+# A base bump moves all of them together.
+CPYTHON_RELEASE = "3.12.16"
+CPYTHON_TARBALL_SHA256 = "b5796915dc45ff745cfb4e990a7e7c93d6f546328a102ce31448d69ebc37575c"
+# A CPython X.Y.Z as NOTICE.md's licence-text paragraphs write it.
+NOTICE_CPYTHON_VERSION_RE = re.compile(r"\bCPython (\d+\.\d+\.\d+)\b|/cpython/v(\d+\.\d+\.\d+)/"
+                                       r"|/ftp/python/(\d+\.\d+\.\d+)/|\bPython-(\d+\.\d+\.\d+)\b")
 # N10 round 3: the CPython bullet claims no complete set of licences.
 COMPLETENESS_RE = re.compile(r"(?i)\bwhose\s+(?:licen[cs]e\s+)?texts?\s+(?:are|is)\s+in\b"
                              r"|\b(?:all|every|complete(?:ly)?|full(?:y)?|entire(?:ly)?|whole)\b")
@@ -745,6 +767,57 @@ def evidence_path_problems(notice: Path) -> list[str]:
     return [f"NOTICE.md cites {m.group(0)!r}, a repository path no bundle carries (review B4, security L-8): "
             f"{line.strip()[:120]!r}"
             for line in notice.read_text(encoding="utf-8").splitlines() for m in EVIDENCE_RE.finditer(line)]
+
+
+def release_notice_problems(notice: Path, base_ref: str = RULED_PYTHON_BASE,
+                            release: str = CPYTHON_RELEASE) -> list[str]:
+    """U7e (PSC-27 *Notices*; N0 amendment U7e R1, R2) on `notice`: the
+    "Base of `ke-app`" section names exactly one base reference, `base_ref`
+    byte for byte; NOTICE.md gives the `v<release>` license.rst URL and the
+    python.org `<release>` tarball URL, and names no other CPython X.Y.Z (a
+    paragraph left at the old release is a problem)."""
+    text = notice.read_text(encoding="utf-8")
+    problems: list[str] = []
+    section = base_section(text)
+    if section is None:
+        problems.append("NOTICE.md has no `Base of `ke-app`` section")
+    else:
+        refs = sorted({m.group(0) for m in BASE_REF_RE.finditer(section)})
+        if refs != [base_ref]:
+            problems.append(f"NOTICE.md's ke-app base section names {refs}, want exactly [{base_ref!r}] (U7e R1)")
+    for url in (f"https://raw.githubusercontent.com/python/cpython/v{release}/Doc/license.rst",
+                f"https://www.python.org/ftp/python/{release}/Python-{release}.tar.xz"):
+        if url not in text:
+            problems.append(f"NOTICE.md does not give {url} (CPython {release}, U7e R2)")
+    others = sorted({v for m in NOTICE_CPYTHON_VERSION_RE.finditer(text) for v in m.groups() if v} - {release})
+    if others:
+        problems.append(f"NOTICE.md still names CPython {others}, want only {release} (U7e R2)")
+    return problems
+
+
+def release_licence_problems(licenses: Path, release: str = CPYTHON_RELEASE,
+                             tarball_sha256: str = CPYTHON_TARBALL_SHA256) -> list[str]:
+    """U7e (PSC-27 *CPython licence files*; N0 amendment U7e R2) on the
+    `licenses` directory: line 1 of CPython-<X.Y>-incorporated.txt, -HACL.txt
+    and -KaRaMeL.txt names `CPython <release>:`, and line 4 of the HACL and
+    KaRaMeL files is `Tarball sha256: <tarball_sha256>` (the base's
+    PYTHON_SHA256). The checks above already bind the Source:/Tarball:
+    versions to line 1 and the KaRaMeL sha256 to the HACL one."""
+    minor = release.rsplit(".", 1)[0]
+    problems: list[str] = []
+    for kind, sha in (("incorporated", None), ("HACL", tarball_sha256), ("KaRaMeL", tarball_sha256)):
+        rel = f"licenses/CPython-{minor}-{kind}.txt"
+        try:
+            lines = (licenses / f"CPython-{minor}-{kind}.txt").read_text(encoding="utf-8").split("\n")
+        except OSError as exc:
+            problems.append(f"{rel}: cannot be read ({exc.__class__.__name__})")
+            continue
+        if not lines[0].startswith(f"CPython {release}: "):
+            problems.append(f"{rel} line 1 does not name CPython {release} (U7e R2): {lines[0][:100]!r}")
+        if sha is not None and (len(lines) < 4 or lines[3] != f"Tarball sha256: {sha}"):
+            got = lines[3][:100] if len(lines) >= 4 else None
+            problems.append(f"{rel} line 4 is not `Tarball sha256: {sha}` (PYTHON_SHA256, U7e R1/R2): {got!r}")
+    return problems
 
 
 # --------------------------------------------------------------------------
@@ -1505,6 +1578,34 @@ class NoticeKeAppBaseTest(unittest.TestCase):
                        {k: files(*v) for k, v in BASE_CONTROLS.items()},
                        {k: files(*v) for k, v in BASE_PASSING.items()})
         self.assertEqual(base_paragraph_problems(NOTICE, APP_DOCKERFILE), [])
+        # U7e (PSC-27 *Notices*; N0 amendment U7e R1, R2): which base and
+        # CPython release NOTICE.md names. RED (U7e): NOTICE.md names the old
+        # base sha256:34386ef0...7258 and CPython 3.12.15.
+        old = "3.12.98"
+        other_ref = FIX_REF.replace(FIX_DIGEST, "b" * 64)
+
+        def notice(text: str) -> Path:
+            return s.write(text, "NOTICE.md")
+
+        self._controls(release_notice_problems, (notice(TARGET_NOTICE), FIX_REF, FIX_CPYTHON), {
+            "U7e: the base section on another digest": (notice(_swap(FIX_REF, other_ref)), FIX_REF, FIX_CPYTHON),
+            "U7e: the ruled base is not the section's": (notice(TARGET_NOTICE), other_ref, FIX_CPYTHON),
+            "U7e: a second base reference in the section": (
+                notice(_swap("Besides `/opt/venv`", f"It was `{other_ref}`. Besides `/opt/venv`")), FIX_REF,
+                FIX_CPYTHON),
+            "U7e: no base section": (notice(_swap("## Base of `ke-app`", "## Base")), FIX_REF, FIX_CPYTHON),
+            "U7e: the incorporated URL at an older release": (
+                notice(_swap(FIX_URL, FIX_URL.replace(FIX_CPYTHON, old))), FIX_REF, FIX_CPYTHON),
+            "U7e: the HACL paragraph's tarball at an older release": (
+                notice(_swap(f"{FIX_TARBALL},\nunmodified", f"{FIX_TARBALL.replace(FIX_CPYTHON, old)},\nunmodified")),
+                FIX_REF, FIX_CPYTHON),
+            "U7e: the KaRaMeL paragraph names an older release": (
+                notice(_swap(f"target.h` in CPython {FIX_CPYTHON}'s", f"target.h` in CPython {old}'s")), FIX_REF,
+                FIX_CPYTHON),
+            "U7e: another release is ruled": (notice(TARGET_NOTICE), FIX_REF, old),
+        })
+        with self.subTest(repository="U7e: NOTICE.md names the ruled base and CPython release"):
+            self.assertEqual(release_notice_problems(NOTICE), [])
 
     def test_notice_names_libpq_as_a_debian_package(self):
         """PSC-14 (Q64; review N4): NOTICE.md names libpq5 as a Debian
@@ -1619,6 +1720,37 @@ class NoticeKeAppBaseTest(unittest.TestCase):
                             ("KaRaMeL and Apache-2.0", karamel_licence_problems)):
             with self.subTest(repository=name):
                 self.assertEqual(check(NOTICE, LICENSES, APP_DOCKERFILE), [])
+        # U7e (PSC-27 *CPython licence files*; N0 amendment U7e R2): the three
+        # files name the ruled release and the HACL/KaRaMeL headers the base's
+        # PYTHON_SHA256. RED (U7e): all three name CPython 3.12.15 and the two
+        # headers the 3.12.15 tarball sha256 c2c43219...fd5a.
+        old, sha, other = "3.12.98", "c" * 64, "d" * 64
+
+        def licence_dir(text: str | None = TARGET_INCORPORATED, hacl: str | None = TARGET_HACL,
+                        karamel: str | None = TARGET_KARAMEL) -> Path:
+            d = s.write("", "NOTICE.md").parent / "licenses"
+            d.mkdir()
+            for kind, body in (("incorporated", text), ("HACL", hacl), ("KaRaMeL", karamel)):
+                if body is not None:
+                    (d / f"CPython-3.12-{kind}.txt").write_bytes(body.encode("utf-8"))
+            return d
+
+        self._controls(release_licence_problems, (licence_dir(), FIX_CPYTHON, sha), {
+            "U7e: the incorporated file at an older release": (licence_dir(text=incorporated_text(old)), FIX_CPYTHON,
+                                                               sha),
+            "U7e: the HACL file at an older release": (licence_dir(hacl=hacl_text(old, sha=sha)), FIX_CPYTHON, sha),
+            "U7e: the KaRaMeL file at an older release": (licence_dir(karamel=karamel_text(old, sha=sha)),
+                                                          FIX_CPYTHON, sha),
+            "U7e: the HACL header on another tarball sha256": (licence_dir(hacl=hacl_text(sha=other)), FIX_CPYTHON,
+                                                               sha),
+            "U7e: the KaRaMeL header on another tarball sha256": (licence_dir(karamel=karamel_text(sha=other)),
+                                                                  FIX_CPYTHON, sha),
+            "U7e: the KaRaMeL file missing": (licence_dir(karamel=None), FIX_CPYTHON, sha),
+            "U7e: another release is ruled": (licence_dir(), old, sha),
+            "U7e: another tarball sha256 is ruled": (licence_dir(), FIX_CPYTHON, other),
+        })
+        with self.subTest(repository="U7e: the licence files name the ruled CPython release and tarball"):
+            self.assertEqual(release_licence_problems(LICENSES), [])
 
     def test_notice_named_licence_files_are_tracked(self):
         """PSC-14 (U1 round 3; security I-4, review N12): every

@@ -1993,7 +1993,7 @@ class U7cApkRouteTest(unittest.TestCase):
 
 
 class U7cCoverageTest(unittest.TestCase):
-    """Ruling 3: the 152 deb and 19 apk fixture keys all resolve (none is
+    """Ruling 3: the 153 deb and 19 apk fixture keys all resolve (none is
     skipped) and every entry passes U7a's lock_problems."""
 
     def test_the_fixture_keys(self):
@@ -2020,7 +2020,9 @@ class U7cCoverageTest(unittest.TestCase):
                 needs[key] = {"kind": kind, "packages": e["packages"], "route": {
                     "origin": name, "ver": ver, "commit": fx.commit, "branch": fx.branch}}
                 routes.update(fx.routes())
-        self.assertEqual((sum(k.startswith("deb:") for k in needs), sum(k.startswith("apk:") for k in needs)), (152, 19))
+        # deb 152 -> 153 in U7e: u7e/key-diff.txt l.6-8 (+openssl~deb12u2, +ca-certificates~deb12u2,
+        # -ca-certificates~deb12u1; base-dpkg-diff.txt).
+        self.assertEqual((sum(k.startswith("deb:") for k in needs), sum(k.startswith("apk:") for k in needs)), (153, 19))
         with network(mod, routes):
             lock, _, skipped = resolve(mod, needs)
         self.assertEqual(skipped, [])
@@ -2986,16 +2988,18 @@ class U7dLockNeedsTest(unittest.TestCase):
 
 class U7dCoverageTest(unittest.TestCase):
     """The orchestrator's item 6: with the fixture docs and the ten-host
-    policy, all 182 keys resolve in the fake network (neo4j as the TOFU
+    policy, every fixture key (183 since U7e, 182 in U7d; the count is
+    pinned in the method, not its name) resolves in the fake network (neo4j as the TOFU
     candidate, written by hand) and the lock passes lock_problems."""
 
-    def test_the_182_keys(self):
+    def test_every_fixture_key_resolves(self):
         mod = load_resolver()
         no_pause(self, mod)
         check = load_sbom_check()
         docs = fixture_docs()
         needs_all, problems = check.lock_needs(policy(), docs)
-        self.assertEqual((problems, len(needs_all)), ([], 182))
+        # 182 -> 183 in U7e: u7e/key-diff.txt l.6-8 (+2 -1 deb keys; base-dpkg-diff.txt).
+        self.assertEqual((problems, len(needs_all)), ([], 183))
         needs: dict[str, Any] = {}
         routes: dict[str, Any] = {}
         pg = PgdgFixture(tuple(k for k in needs_all if k.startswith("pgdg:")))

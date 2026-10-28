@@ -1335,4 +1335,1085 @@ test_oversized_source_is_cut_off (tests.test_resource_probe.ResourceProbeTest.te
 test_prints_one_line_from_a_fake_root (tests.test_resource_probe.ResourceProbeTest.test_prints_one_line_from_a_fake_root) ... ok
 test_prints_only_numbers_never_file_text_or_env (tests.test_resource_probe.ResourceProbeTest.test_prints_only_numbers_never_file_text_or_env) ... ok
 test_stat_fields_are_base_10_and_capped (tests.test_resource_probe.ResourceProbeTest.test_stat_fields_are_base_10_and_capped) ... ok
-test_bundle_has_sbom_per_image (tests.test_sbom_bundle.SbomBundleRunTest.test_bundle_has_sbom_per_image) ... 
+test_bundle_has_sbom_per_image (tests.test_sbom_bundle.SbomBundleRunTest.test_bundle_has_sbom_per_image) ... ok
+test_bundle_refuses_on_sbom_failure (tests.test_sbom_bundle.SbomBundleRunTest.test_bundle_refuses_on_sbom_failure) ... ok
+test_bundle_refuses_ref_starting_with_dash (tests.test_sbom_bundle.SbomBundleRunTest.test_bundle_refuses_ref_starting_with_dash) ... ok
+test_sbom_generator_is_daemon_arch (tests.test_sbom_bundle.SbomBundleRunTest.test_sbom_generator_is_daemon_arch) ... ok
+test_sbom_generator_run_is_pinned (tests.test_sbom_bundle.SbomBundleRunTest.test_sbom_generator_run_is_pinned) ... ok
+test_sbom_is_spdx_2_3 (tests.test_sbom_bundle.SbomBundleRunTest.test_sbom_is_spdx_2_3) ... ok
+test_sbom_lists_every_locked_runtime_package (tests.test_sbom_bundle.SbomBundleRunTest.test_sbom_lists_every_locked_runtime_package) ... ok
+test_finish_namespace_is_fresh_per_run (tests.test_sbom_bundle.SbomCheckModuleTest.test_finish_namespace_is_fresh_per_run) ... ok
+test_finish_refuses_uuid_option (tests.test_sbom_bundle.SbomCheckModuleTest.test_finish_refuses_uuid_option) ... ok
+test_sbom_check_is_stdlib_and_never_shipped (tests.test_sbom_bundle.SbomCheckModuleTest.test_sbom_check_is_stdlib_and_never_shipped) ... ok
+test_sbom_is_spdx_2_3 (tests.test_sbom_bundle.SbomCheckModuleTest.test_sbom_is_spdx_2_3)
+N6's validator, table-driven: [] for a valid document, problems ... ok
+test_compose_files_have_no_include_or_extends (tests.test_sbom_bundle.SbomStaticU3Test.test_compose_files_have_no_include_or_extends) ... ok
+test_offline_check_header_names_sbom_pull (tests.test_sbom_bundle.SbomStaticU3Test.test_offline_check_header_names_sbom_pull) ... ok
+test_sbom_generator_runs_as_caller (tests.test_sbom_bundle.SbomStaticU3Test.test_sbom_generator_runs_as_caller) ... ok
+test_classify_document_real_neo4j_rows (tests.test_sbom_classifier.ClassifyDocumentTest.test_classify_document_real_neo4j_rows) ... ok
+test_classify_document_real_rows_every_image (tests.test_sbom_classifier.ClassifyDocumentTest.test_classify_document_real_rows_every_image) ... ok
+test_classify_document_skips_root_and_applies_always (tests.test_sbom_classifier.ClassifyDocumentTest.test_classify_document_skips_root_and_applies_always) ... ok
+test_both_fields_set (tests.test_sbom_classifier.ClassifyPackageTest.test_both_fields_set) ... ok
+test_classify_package_keys_and_raw_values (tests.test_sbom_classifier.ClassifyPackageTest.test_classify_package_keys_and_raw_values) ... ok
+test_files_list (tests.test_sbom_classifier.ClassifyPackageTest.test_files_list) ... ok
+test_hash_only_package_is_classified_and_still_reported (tests.test_sbom_classifier.ClassifyPackageTest.test_hash_only_package_is_classified_and_still_reported) ... ok
+test_jna_fall_through_is_literal (tests.test_sbom_classifier.ClassifyPackageTest.test_jna_fall_through_is_literal) ... ok
+test_unlicensed_packages (tests.test_sbom_classifier.ClassifyPackageTest.test_unlicensed_packages) ... ok
+test_drift_problems_escape_debian_name_and_cpython_version (tests.test_sbom_classifier.EscapingTest.test_drift_problems_escape_debian_name_and_cpython_version) ... ok
+test_finish_argv_patterns_fullmatch (tests.test_sbom_classifier.EscapingTest.test_finish_argv_patterns_fullmatch) ... ok
+test_psycopg_problems_escape (tests.test_sbom_classifier.EscapingTest.test_psycopg_problems_escape) ... ok
+test_validate_rejects_created_with_trailing_newline (tests.test_sbom_classifier.EscapingTest.test_validate_rejects_created_with_trailing_newline) ... ok
+test_validate_rejects_trailing_newline_spdxid_and_prints_escaped (tests.test_sbom_classifier.EscapingTest.test_validate_rejects_trailing_newline_spdxid_and_prints_escaped) ... ok
+test_is_gpl_id_pattern_and_token_rule (tests.test_sbom_classifier.GplIdTest.test_is_gpl_id_pattern_and_token_rule) ... ok
+test_licence_input_selection (tests.test_sbom_classifier.LicenceInputTest.test_licence_input_selection) ... ok
+test_licence_input_type_rule (tests.test_sbom_classifier.LicenceInputTest.test_licence_input_type_rule) ... ok
+test_classifier_table (tests.test_sbom_classifier.NeedsSourceTest.test_classifier_table) ... ok
+test_debian_with_autoconf_exception (tests.test_sbom_classifier.NeedsSourceTest.test_debian_with_autoconf_exception) ... ok
+test_named_licenseref_rows (tests.test_sbom_classifier.NeedsSourceTest.test_named_licenseref_rows) ... ok
+test_needs_source_never_raises (tests.test_sbom_classifier.NeedsSourceTest.test_needs_source_never_raises) ... ok
+test_operators_any_case (tests.test_sbom_classifier.NeedsSourceTest.test_operators_any_case) ... ok
+test_precedence_and_parentheses (tests.test_sbom_classifier.NeedsSourceTest.test_precedence_and_parentheses) ... ok
+test_unknown_leaves_need_source_and_are_unidentified (tests.test_sbom_classifier.NeedsSourceTest.test_unknown_leaves_need_source_and_are_unidentified) ... ok
+test_unparseable_text (tests.test_sbom_classifier.NeedsSourceTest.test_unparseable_text) ... ok
+test_url_folded_ids (tests.test_sbom_classifier.NeedsSourceTest.test_url_folded_ids) ... ok
+test_drift_success_line_is_clean_and_non_namespaced (tests.test_sbom_classifier.ReworkR1DriftLineTest.test_drift_success_line_is_clean_and_non_namespaced) ... ok
+test_non_ascii_expressions (tests.test_sbom_classifier.ReworkR1NonAsciiTest.test_non_ascii_expressions) ... ok
+test_non_ascii_package (tests.test_sbom_classifier.ReworkR1NonAsciiTest.test_non_ascii_package) ... ok
+test_each_part_is_classified_alone (tests.test_sbom_classifier.ReworkR1PerPartTest.test_each_part_is_classified_alone) ... ok
+test_unparseable_part_does_not_hide_an_unknown_leaf (tests.test_sbom_classifier.ReworkR1PerPartTest.test_unparseable_part_does_not_hide_an_unknown_leaf) ... ok
+test_wider_token_rule_expressions (tests.test_sbom_classifier.ReworkR1TokenRuleTest.test_wider_token_rule_expressions) ... ok
+test_wider_token_rule_ids (tests.test_sbom_classifier.ReworkR1TokenRuleTest.test_wider_token_rule_ids) ... ok
+test_unknown_exception_ids (tests.test_sbom_classifier.ReworkR1UnknownLeavesTest.test_unknown_exception_ids) ... ok
+test_unknown_leaves_any_case (tests.test_sbom_classifier.ReworkR1UnknownLeavesTest.test_unknown_leaves_any_case) ... ok
+test_unknown_runs_in_unparseable_text (tests.test_sbom_classifier.ReworkR1UnknownLeavesTest.test_unknown_runs_in_unparseable_text) ... ok
+test_gpl_family_exception_id (tests.test_sbom_classifier.ReworkR1WithExceptionTest.test_gpl_family_exception_id) ... ok
+test_document_ref_prefix (tests.test_sbom_classifier.ReworkR2DocumentRefTest.test_document_ref_prefix) ... ok
+test_document_ref_prefix_in_unparseable_text (tests.test_sbom_classifier.ReworkR2DocumentRefTest.test_document_ref_prefix_in_unparseable_text) ... ok
+test_hash_anywhere_in_unparseable_text (tests.test_sbom_classifier.ReworkR2LeafCharsetTest.test_hash_anywhere_in_unparseable_text) ... ok
+test_idstring_leaves_still_parse (tests.test_sbom_classifier.ReworkR2LeafCharsetTest.test_idstring_leaves_still_parse) ... ok
+test_odd_leaves_are_unparsed (tests.test_sbom_classifier.ReworkR2LeafCharsetTest.test_odd_leaves_are_unparsed) ... ok
+test_unknown_id_joined_by_punctuation (tests.test_sbom_classifier.ReworkR2LeafCharsetTest.test_unknown_id_joined_by_punctuation) ... ok
+test_every_real_run_is_an_idstring (tests.test_sbom_classifier.ReworkR2RealRowsTest.test_every_real_run_is_an_idstring) ... ok
+test_real_rows_unchanged_by_the_leaf_rule (tests.test_sbom_classifier.ReworkR2RealRowsTest.test_real_rows_unchanged_by_the_leaf_rule) ... ok
+test_classifier_tests_are_ascii (tests.test_sbom_classifier.ReworkR2SourceTest.test_classifier_tests_are_ascii) ... ok
+test_http_exception_id_listed (tests.test_sbom_classifier.ReworkR2WithUrlTest.test_http_exception_id_listed) ... ok
+test_hash_anywhere_in_a_leaf (tests.test_sbom_classifier.ReworkR3DecoratedIdsTest.test_hash_anywhere_in_a_leaf) ... ok
+test_hash_search_in_unparseable_text_unchanged (tests.test_sbom_classifier.ReworkR3DecoratedIdsTest.test_hash_search_in_unparseable_text_unchanged) ... ok
+test_near_misses_stay_ordinary (tests.test_sbom_classifier.ReworkR3DecoratedIdsTest.test_near_misses_stay_ordinary) ... ok
+test_trimmed_unknown_leaves (tests.test_sbom_classifier.ReworkR3DecoratedIdsTest.test_trimmed_unknown_leaves) ... ok
+test_joiners_split_runs (tests.test_sbom_classifier.ReworkR3RunSplitTest.test_joiners_split_runs) ... ok
+test_exempt_clears_needs_also_under_always (tests.test_sbom_classifier.U6ClassifyDocumentExemptTest.test_exempt_clears_needs_also_under_always) ... ok
+test_real_rows_with_the_committed_exempt (tests.test_sbom_classifier.U6ClassifyDocumentExemptTest.test_real_rows_with_the_committed_exempt) ... ok
+test_exempt_matches_exact_versioned_purl (tests.test_sbom_classifier.U6ExemptMatchesTest.test_exempt_matches_exact_versioned_purl) ... ok
+test_exempt_matches_strip_the_package_subpath (tests.test_sbom_classifier.U6ExemptMatchesTest.test_exempt_matches_strip_the_package_subpath) ... ok
+test_exempt_void_on_version_bump (tests.test_sbom_classifier.U6ExemptMatchesTest.test_exempt_void_on_version_bump) ... ok
+test_segment_rule (tests.test_sbom_classifier.U6SegmentRuleTest.test_segment_rule) ... ok
+test_segment_rule_in_runs (tests.test_sbom_classifier.U6SegmentRuleTest.test_segment_rule_in_runs) ... ok
+test_bundle_has_no_sbom_generator (tests.test_sbom_generator.SbomBundleTest.test_bundle_has_no_sbom_generator) ... ok
+test_bundle_refuses_when_sbom_generator_absent (tests.test_sbom_generator.SbomBundleTest.test_bundle_refuses_when_sbom_generator_absent) ... ok
+test_sbom_generator_is_pinned (tests.test_sbom_generator.SbomComposeTest.test_sbom_generator_is_pinned) ... ok
+test_sbom_generator_runs_without_network_or_privileges (tests.test_sbom_generator.SbomComposeTest.test_sbom_generator_runs_without_network_or_privileges) ... ok
+test_added_packages_read_from_notice_test_module (tests.test_sbom_obligations.DriftLogicTest.test_added_packages_read_from_notice_test_module) ... ok
+test_ke_app_sbom_added_dpkg_set_equals_added_packages (tests.test_sbom_obligations.DriftLogicTest.test_ke_app_sbom_added_dpkg_set_equals_added_packages) ... ok
+test_ke_app_sbom_cpython_matches_licence_files (tests.test_sbom_obligations.DriftLogicTest.test_ke_app_sbom_cpython_matches_licence_files) ... ok
+test_ke_app_sbom_lists_libpq5_and_psycopg_c_not_binary (tests.test_sbom_obligations.DriftLogicTest.test_ke_app_sbom_lists_libpq5_and_psycopg_c_not_binary) ... ok
+test_ke_app_sbom_lists_no_pip (tests.test_sbom_obligations.DriftLogicTest.test_ke_app_sbom_lists_no_pip) ... ok
+test_offline_check_fails_on_image_side_drift (tests.test_sbom_obligations.DriftOfflineCheckTest.test_offline_check_fails_on_image_side_drift) ... ok
+test_offline_check_fails_when_ke_app_base_pull_fails (tests.test_sbom_obligations.DriftOfflineCheckTest.test_offline_check_fails_when_ke_app_base_pull_fails)
+Ruling 6 (replaces U4 RED's "absent base fails, no pull"): a failed ... ok
+test_offline_check_pulls_ke_app_base_absent_locally (tests.test_sbom_obligations.DriftOfflineCheckTest.test_offline_check_pulls_ke_app_base_absent_locally)
+Ruling 6: the check never relies on the BuildKit cache; a daemon ... ok
+test_offline_check_refuses_an_unpinned_base_reference (tests.test_sbom_obligations.DriftOfflineCheckTest.test_offline_check_refuses_an_unpinned_base_reference)
+N1 am. U4: the runtime stage's FROM needs a tag and an @sha256 ... ok
+test_offline_check_runs_image_side_drift_check (tests.test_sbom_obligations.DriftOfflineCheckTest.test_offline_check_runs_image_side_drift_check) ... ok
+test_named_gpl_components_need_source_whatever_the_generator_says (tests.test_sbom_obligations.NamedComponentsTest.test_named_gpl_components_need_source_whatever_the_generator_says) ... ok
+test_source_policy_always_covers_psc22_components (tests.test_sbom_obligations.NamedComponentsTest.test_source_policy_always_covers_psc22_components) ... ok
+test_exempt_entries_jna_and_javassist (tests.test_sbom_obligations.PolicyU6SchemaTest.test_exempt_entries_jna_and_javassist) ... ok
+test_hosts_are_the_fetch_hosts (tests.test_sbom_obligations.PolicyU6SchemaTest.test_hosts_are_the_fetch_hosts) ... ok
+test_policy_schema_rejects_bad_shapes (tests.test_sbom_obligations.PolicyU6SchemaTest.test_policy_schema_rejects_bad_shapes) ... ok
+test_source_policy_has_exactly_hosts_always_exempt (tests.test_sbom_obligations.PolicyU6SchemaTest.test_source_policy_has_exactly_hosts_always_exempt) ... ok
+test_bundle_output_marks_unidentified_and_escapes_generator_text (tests.test_sbom_obligations.ReworkR1BundleTest.test_bundle_output_marks_unidentified_and_escapes_generator_text)
+H-1 and L-3 end to end: bundle.sh prints the checker's report. ... ok
+test_bundle_syft_runs_print_no_cache_warning (tests.test_sbom_obligations.ReworkR1BundleTest.test_bundle_syft_runs_print_no_cache_warning) ... ok
+test_fake_syft_models_the_cache_warning (tests.test_sbom_obligations.ReworkR1BundleTest.test_fake_syft_models_the_cache_warning)
+Harness control (green on arrival): the fake warns exactly where ... ok
+test_sbom_tmp_tmpfs_is_mode_1777_not_exec (tests.test_sbom_obligations.ReworkR1BundleTest.test_sbom_tmp_tmpfs_is_mode_1777_not_exec) ... ok
+test_bundle_floor_both_filesystems_fit (tests.test_sbom_obligations.ReworkR1DiskFloorTest.test_bundle_floor_both_filesystems_fit) ... ok
+test_bundle_floor_on_out_parent_when_out_exists (tests.test_sbom_obligations.ReworkR1DiskFloorTest.test_bundle_floor_on_out_parent_when_out_exists) ... ok
+test_bundle_floor_on_out_when_out_exists (tests.test_sbom_obligations.ReworkR1DiskFloorTest.test_bundle_floor_on_out_when_out_exists) ... ok
+test_bundle_floor_probes_once_on_one_filesystem (tests.test_sbom_obligations.ReworkR1DiskFloorTest.test_bundle_floor_probes_once_on_one_filesystem)
+--out absent: both checks resolve to dirname(--out), so one df. ... ok
+test_added_packages_errors_are_value_errors (tests.test_sbom_obligations.ReworkR1DriftTest.test_added_packages_errors_are_value_errors)
+Review N3: the interface says ValueError; drift then exits 1. ... ok
+test_drift_accepts_forked_psycopg_c_lock (tests.test_sbom_obligations.ReworkR1DriftTest.test_drift_accepts_forked_psycopg_c_lock)
+Review N1 (N7 rule): the SBOM's psycopg-c is one of the locked versions. ... ok
+test_drift_prints_one_summary_line_on_success (tests.test_sbom_obligations.ReworkR1DriftTest.test_drift_prints_one_summary_line_on_success) ... ok
+test_psycopg_check_splits_upstream_at_at (tests.test_sbom_obligations.ReworkR1DriftTest.test_psycopg_check_splits_upstream_at_at)
+Review N2: syft writes `upstream=<source>@<version>` when the source ... ok
+test_offline_drift_step_labelled_summarised_and_quiet (tests.test_sbom_obligations.ReworkR1OfflineTest.test_offline_drift_step_labelled_summarised_and_quiet) ... ok
+test_always_flags_gcc_runtime_jrt_fs_and_alpine_subpackages (tests.test_sbom_obligations.ReworkR1PolicyTest.test_always_flags_gcc_runtime_jrt_fs_and_alpine_subpackages) ... ok
+test_hash_only_licences_count_as_unlicensed (tests.test_sbom_obligations.ReworkR1UnlicensedTest.test_hash_only_licences_count_as_unlicensed)
+H-1: syft's `LicenseRef-<64 hex>` (unidentified text) is not a licence. ... ok
+test_hash_rows_marked_unidentified_in_report_lines (tests.test_sbom_obligations.ReworkR1UnlicensedTest.test_hash_rows_marked_unidentified_in_report_lines) ... ok
+test_real_package_lists_report_hash_only_rows (tests.test_sbom_obligations.ReworkR1UnlicensedTest.test_real_package_lists_report_hash_only_rows)
+The U3 SBOMs' real hash rows (security probe 1) are reported; the ... ok
+test_report_lines_escape_control_characters (tests.test_sbom_obligations.ReworkR1UnlicensedTest.test_report_lines_escape_control_characters)
+L-3: a crafted name or purl cannot drive the terminal or forge a line. ... ok
+test_unlicensed_report_survives_odd_external_refs (tests.test_sbom_obligations.ReworkR1UnlicensedTest.test_unlicensed_report_survives_odd_external_refs)
+Review N4: never raise; a row without a usable purl has purl None. ... ok
+test_bundle_hands_host_paths_through_cygpath (tests.test_sbom_obligations.SbomCarryU4Test.test_bundle_hands_host_paths_through_cygpath)
+Review N4: the Git Bash branch of hostpath(), with a fake cygpath. ... ok
+test_bundle_sbom_work_dir_is_private (tests.test_sbom_obligations.SbomCarryU4Test.test_bundle_sbom_work_dir_is_private) ... ok
+test_bundle_sbom_work_dir_on_out_filesystem (tests.test_sbom_obligations.SbomCarryU4Test.test_bundle_sbom_work_dir_on_out_filesystem)
+Review N6 (tester's default, pending the architect): the 1-2 GB ... ok
+test_bundle_sets_msys_no_pathconv_on_container_runs_only (tests.test_sbom_obligations.SbomCarryU4Test.test_bundle_sets_msys_no_pathconv_on_container_runs_only) ... ok
+test_runtime_check_accepts_a_name_locked_at_two_versions (tests.test_sbom_obligations.SbomCarryU4Test.test_runtime_check_accepts_a_name_locked_at_two_versions)
+Review N7 (architect U4, design-notes N7 "Forked lock"): uv.lock is ... ok
+test_sbom_generator_cache_under_tmp (tests.test_sbom_obligations.SbomCarryU4Test.test_sbom_generator_cache_under_tmp) ... ok
+test_bundle_output_lists_unlicensed_packages_per_image (tests.test_sbom_obligations.UnlicensedBundleOutputTest.test_bundle_output_lists_unlicensed_packages_per_image) ... ok
+test_unlicensed_packages_are_reported (tests.test_sbom_obligations.UnlicensedReportTest.test_unlicensed_packages_are_reported)
+PSC-22 bullet 2, N8a 4-5, by rule: every unlicensed row but the ... ok
+test_top_level_unit_suite_ran (tests.test_sentinel.TopLevelSuiteSentinelTest.test_top_level_unit_suite_ran) ... ok
+test_lock_check_cli (tests.test_sources_lock.LockCheckCliTest.test_lock_check_cli) ... ok
+test_a_missing_key_names_every_package (tests.test_sources_lock.LockCoverageTest.test_a_missing_key_names_every_package) ... ok
+test_a_stale_key_is_reported (tests.test_sources_lock.LockCoverageTest.test_a_stale_key_is_reported) ... ok
+test_arches (tests.test_sources_lock.LockCoverageTest.test_arches) ... ok
+test_small_lock_missing_key_exact_message (tests.test_sources_lock.LockCoverageTest.test_small_lock_missing_key_exact_message) ... ok
+test_mapping_table (tests.test_sources_lock.LockNeedsTest.test_mapping_table) ... ok
+test_needs_from_the_fixtures (tests.test_sources_lock.LockNeedsTest.test_needs_from_the_fixtures) ... ok
+test_bad_shapes (tests.test_sources_lock.LockSchemaTest.test_bad_shapes) ... ok
+test_good_full_lock_passes (tests.test_sources_lock.LockSchemaTest.test_good_full_lock_passes) ... ok
+test_good_small_lock_passes (tests.test_sources_lock.LockSchemaTest.test_good_small_lock_passes) ... ok
+test_lock_text_is_canonical (tests.test_sources_lock.LockSchemaTest.test_lock_text_is_canonical) ... ok
+test_good_names (tests.test_sources_lock.ReworkR1BindingTest.test_good_names) ... ok
+test_per_kind_hosts_paths_and_names (tests.test_sources_lock.ReworkR1BindingTest.test_per_kind_hosts_paths_and_names) ... ok
+test_pgdg_files_need_the_tenth_host (tests.test_sources_lock.ReworkR1BindingTest.test_pgdg_files_need_the_tenth_host)
+U7d (A71, P5) supersedes "any pgdg file is a problem until Q71": ... ok
+test_printable_ascii_before_parsing (tests.test_sources_lock.ReworkR1CharsetTest.test_printable_ascii_before_parsing) ... ok
+test_url_round_trips_and_scheme_is_lower_case_https (tests.test_sources_lock.ReworkR1CharsetTest.test_url_round_trips_and_scheme_is_lower_case_https) ... ok
+test_keys_printed_clean (tests.test_sources_lock.ReworkR1CleanAndSizeTest.test_keys_printed_clean) ... ok
+test_size_cap (tests.test_sources_lock.ReworkR1CleanAndSizeTest.test_size_cap) ... ok
+test_lock_check_never_shows_a_traceback (tests.test_sources_lock.ReworkR1CliTest.test_lock_check_never_shows_a_traceback) ... ok
+test_deb_needs_more_than_the_dsc (tests.test_sources_lock.ReworkR1CompletenessAndKeysTest.test_deb_needs_more_than_the_dsc) ... ok
+test_exact_key_sets (tests.test_sources_lock.ReworkR1CompletenessAndKeysTest.test_exact_key_sets) ... ok
+test_neo4j_entry_binds_one_sha256_file (tests.test_sources_lock.ReworkR1Neo4jBindingTest.test_neo4j_entry_binds_one_sha256_file) ... ok
+test_a_clean_lock_exits_0_with_the_flag (tests.test_sources_lock.ReworkR1PendingNeo4jCliTest.test_a_clean_lock_exits_0_with_the_flag) ... ok
+test_lock_check_cli (tests.test_sources_lock.ReworkR1PendingNeo4jCliTest.test_lock_check_cli) ... ok
+test_only_neo4j_misses_exit_3 (tests.test_sources_lock.ReworkR1PendingNeo4jCliTest.test_only_neo4j_misses_exit_3) ... ok
+test_other_problems_with_a_neo4j_miss_exit_1 (tests.test_sources_lock.ReworkR1PendingNeo4jCliTest.test_other_problems_with_a_neo4j_miss_exit_1) ... ok
+test_the_reviewers_79_problem_lock_exits_1 (tests.test_sources_lock.ReworkR1PendingNeo4jCliTest.test_the_reviewers_79_problem_lock_exits_1)
+u7b/review.md B2: the fixture lock without neo4j, pandas and the ... ok
+test_wrong_types_are_problems (tests.test_sources_lock.ReworkR1TypesTest.test_wrong_types_are_problems) ... ok
+test_bad_forms (tests.test_sources_lock.ReworkR1U7cApiUrlTest.test_bad_forms) ... ok
+test_good_forms (tests.test_sources_lock.ReworkR1U7cApiUrlTest.test_good_forms) ... ok
+test_the_apkbuild_path_is_exact (tests.test_sources_lock.ReworkR1U7cApkbuildPathTest.test_the_apkbuild_path_is_exact) ... ok
+test_an_empty_apkbuild_fails (tests.test_sources_lock.ReworkR1U7dEmptyFileLockTest.test_an_empty_apkbuild_fails)
+Review R1-N1 (item 13 RED): the APKBUILD keeps size > 0 under item 12; ... ok
+test_an_empty_gitlab_file_passes (tests.test_sources_lock.ReworkR1U7dEmptyFileLockTest.test_an_empty_gitlab_file_passes) ... ok
+test_still_refused (tests.test_sources_lock.ReworkR1U7dEmptyFileLockTest.test_still_refused) ... ok
+test_packages_that_derive_two_suites (tests.test_sources_lock.ReworkR1U7dSuiteBindingTest.test_packages_that_derive_two_suites) ... ok
+test_the_suite_is_bound (tests.test_sources_lock.ReworkR1U7dSuiteBindingTest.test_the_suite_is_bound) ... ok
+test_a_leading_underscore_passes (tests.test_sources_lock.ReworkR1U7dUnderscoreLockTest.test_a_leading_underscore_passes) ... ok
+test_still_refused (tests.test_sources_lock.ReworkR1U7dUnderscoreLockTest.test_still_refused) ... ok
+test_the_pattern (tests.test_sources_lock.ReworkR1U7dUnderscoreLockTest.test_the_pattern) ... ok
+test_exception_line (tests.test_sources_lock.ReworkR2CliLineTest.test_exception_line) ... ok
+test_url_paths_are_plain (tests.test_sources_lock.ReworkR2PlainPathTest.test_url_paths_are_plain) ... ok
+test_pypi_path_layout (tests.test_sources_lock.ReworkR2PypiPathTest.test_pypi_path_layout) ... ok
+test_adversarial_pypi_names (tests.test_sources_lock.ReworkR2RedosTest.test_adversarial_pypi_names) ... ok
+test_temurin_bound_to_the_key (tests.test_sources_lock.ReworkR2TemurinBindingTest.test_temurin_bound_to_the_key) ... ok
+test_sample_keys (tests.test_sources_lock.SampleKeysTest.test_sample_keys) ... ok
+test_bad_shapes (tests.test_sources_lock.U7cApkLockRulesTest.test_bad_shapes) ... ok
+test_the_new_shapes_pass (tests.test_sources_lock.U7cApkLockRulesTest.test_the_new_shapes_pass) ... ok
+test_middle_segments (tests.test_sources_lock.U7dApkSegmentNameTest.test_middle_segments) ... ok
+test_bad_entries (tests.test_sources_lock.U7dPgdgLockRulesTest.test_bad_entries) ... ok
+test_the_good_entry (tests.test_sources_lock.U7dPgdgLockRulesTest.test_the_good_entry) ... ok
+test_canonical_lf_and_format (tests.test_sources_lock_committed.CommittedLockTest.test_canonical_lf_and_format) ... ok
+test_every_needed_key_and_nothing_else (tests.test_sources_lock_committed.CommittedLockTest.test_every_needed_key_and_nothing_else) ... ok
+test_gitattributes_pins_lf (tests.test_sources_lock_committed.CommittedLockTest.test_gitattributes_pins_lf) ... ok
+test_no_lock_problems (tests.test_sources_lock_committed.CommittedLockTest.test_no_lock_problems) ... ok
+test_nothing_the_hardcoded_scan_would_miss (tests.test_sources_lock_committed.CommittedLockTest.test_nothing_the_hardcoded_scan_would_miss)
+U7d round 1, item 13: tests/hardcoded_scan.py skips this file whole, ... ok
+test_the_manual_neo4j_entry (tests.test_sources_lock_committed.CommittedLockTest.test_the_manual_neo4j_entry) ... ok
+test_the_sample (tests.test_sources_lock_committed.CommittedLockTest.test_the_sample) ... ok
+test_lock_needs_doc_on_the_fixtures (tests.test_sources_resolve.LockNeedsTest.test_lock_needs_doc_on_the_fixtures) ... ok
+test_release_from_the_saved_tar (tests.test_sources_resolve.LockNeedsTest.test_release_from_the_saved_tar) ... ok
+test_hop_rules_and_messages (tests.test_sources_resolve.ResolverHopsTest.test_hop_rules_and_messages) ... ok
+test_failure_writes_nothing (tests.test_sources_resolve.ResolverMainTest.test_failure_writes_nothing) ... ok
+test_neo4j_candidate_exit_3 (tests.test_sources_resolve.ResolverMainTest.test_neo4j_candidate_exit_3) ... ok
+test_resolver_bad_arguments_exit_2 (tests.test_sources_resolve.ResolverMainTest.test_resolver_bad_arguments_exit_2) ... ok
+test_writes_only_the_out_lock (tests.test_sources_resolve.ResolverMainTest.test_writes_only_the_out_lock) ... ok
+test_merge_rules (tests.test_sources_resolve.ResolverMergeTest.test_merge_rules) ... ok
+test_release_file_and_tag (tests.test_sources_resolve.ResolverParsersTest.test_release_file_and_tag) ... ok
+test_sidecar_parsers (tests.test_sources_resolve.ResolverParsersTest.test_sidecar_parsers) ... ok
+test_uv_lock_and_pypi_json (tests.test_sources_resolve.ResolverParsersTest.test_uv_lock_and_pypi_json) ... ok
+test_maven (tests.test_sources_resolve.ResolverRoutesTest.test_maven) ... ok
+test_neo4j_candidate_is_printed_never_written (tests.test_sources_resolve.ResolverRoutesTest.test_neo4j_candidate_is_printed_never_written) ... ok
+test_pypi (tests.test_sources_resolve.ResolverRoutesTest.test_pypi) ... ok
+test_temurin (tests.test_sources_resolve.ResolverRoutesTest.test_temurin) ... ok
+test_a_hop_may_carry_a_query (tests.test_sources_resolve.ReworkR1HopRulesTest.test_a_hop_may_carry_a_query) ... ok
+test_bad_hops_are_refused_and_never_requested (tests.test_sources_resolve.ReworkR1HopRulesTest.test_bad_hops_are_refused_and_never_requested) ... ok
+test_the_first_url (tests.test_sources_resolve.ReworkR1HopRulesTest.test_the_first_url) ... ok
+test_bad_keys_are_refused_before_any_request (tests.test_sources_resolve.ReworkR1KeysTest.test_bad_keys_are_refused_before_any_request) ... ok
+test_the_main_line (tests.test_sources_resolve.ReworkR1KeysTest.test_the_main_line) ... ok
+test_a_truncated_neo4j_list_is_not_pending (tests.test_sources_resolve.ReworkR1LockScriptRunTest.test_a_truncated_neo4j_list_is_not_pending)
+B2 / M-1 end to end: more than 20 neo4j misses print first and hide ... ok
+test_exactly_the_six_images (tests.test_sources_resolve.ReworkR1LockScriptRunTest.test_exactly_the_six_images) ... ok
+test_happy_path_exit_0 (tests.test_sources_resolve.ReworkR1LockScriptRunTest.test_happy_path_exit_0) ... ok
+test_neo4j_pending_exit_3 (tests.test_sources_resolve.ReworkR1LockScriptRunTest.test_neo4j_pending_exit_3) ... ok
+test_the_neo4j_tar_is_not_a_literal (tests.test_sources_resolve.ReworkR1LockScriptRunTest.test_the_neo4j_tar_is_not_a_literal) ... ok
+test_the_temp_file_is_removed_on_failure (tests.test_sources_resolve.ReworkR1LockScriptRunTest.test_the_temp_file_is_removed_on_failure) ... ok
+test_tools_first (tests.test_sources_resolve.ReworkR1LockScriptRunTest.test_tools_first) ... ok
+test_a_body_error_is_one_fail_line (tests.test_sources_resolve.ReworkR1MainTest.test_a_body_error_is_one_fail_line) ... ok
+test_an_error_writing_out_is_one_fail_line (tests.test_sources_resolve.ReworkR1MainTest.test_an_error_writing_out_is_one_fail_line) ... ok
+test_wrong_typed_needs_are_one_fail_line (tests.test_sources_resolve.ReworkR1MainTest.test_wrong_typed_needs_are_one_fail_line) ... ok
+test_a_maven_redirect_to_pypi_org_is_refused (tests.test_sources_resolve.ReworkR1PypiScopeTest.test_a_maven_redirect_to_pypi_org_is_refused) ... ok
+test_a_redirect_of_the_json_request_to_pypi_org_is_refused (tests.test_sources_resolve.ReworkR1PypiScopeTest.test_a_redirect_of_the_json_request_to_pypi_org_is_refused) ... ok
+test_the_json_request_itself_is_allowed (tests.test_sources_resolve.ReworkR1PypiScopeTest.test_the_json_request_itself_is_allowed) ... ok
+test_error_bodies_are_read_to_1_mib_only (tests.test_sources_resolve.ReworkR1RealOpenerTest.test_error_bodies_are_read_to_1_mib_only) ... ok
+test_errors_while_opening (tests.test_sources_resolve.ReworkR1TransportTest.test_errors_while_opening) ... ok
+test_errors_while_reading_the_body (tests.test_sources_resolve.ReworkR1TransportTest.test_errors_while_reading_the_body) ... ok
+test_the_byte_cap (tests.test_sources_resolve.ReworkR1TransportTest.test_the_byte_cap) ... ok
+test_the_deadline (tests.test_sources_resolve.ReworkR1TransportTest.test_the_deadline) ... ok
+test_a_bot_challenge (tests.test_sources_resolve.ReworkR1U7cApiUrlResolverTest.test_a_bot_challenge)
+Both fail closed with one line and write nothing. A challenge that ... ok
+test_the_request_forms (tests.test_sources_resolve.ReworkR1U7cApiUrlResolverTest.test_the_request_forms) ... ok
+test_repeated_assignments (tests.test_sources_resolve.ReworkR1U7cApkbuildAssignTest.test_repeated_assignments) ... ok
+test_a_subdirectory_apkbuild_beside_the_top_one (tests.test_sources_resolve.ReworkR1U7cApkbuildTest.test_a_subdirectory_apkbuild_beside_the_top_one) ... ok
+test_only_a_subdirectory_apkbuild (tests.test_sources_resolve.ReworkR1U7cApkbuildTest.test_only_a_subdirectory_apkbuild) ... ok
+test_control_characters (tests.test_sources_resolve.ReworkR1U7cDscTest.test_control_characters) ... ok
+test_crlf_parses_like_lf (tests.test_sources_resolve.ReworkR1U7cDscTest.test_crlf_parses_like_lf) ... ok
+test_duplicate_fields (tests.test_sources_resolve.ReworkR1U7cDscTest.test_duplicate_fields) ... ok
+test_a_full_page (tests.test_sources_resolve.ReworkR1U7cListingTest.test_a_full_page) ... ok
+test_the_path_is_encoded (tests.test_sources_resolve.ReworkR1U7cListingTest.test_the_path_is_encoded) ... ok
+test_an_empty_aports_file (tests.test_sources_resolve.ReworkR1U7dEmptyFileTest.test_an_empty_aports_file) ... ok
+test_docker_save_gets_the_host_path (tests.test_sources_resolve.ReworkR1U7dScriptTest.test_docker_save_gets_the_host_path)
+Item 2 (B2): `docker save -o` takes `hostpath` (cygpath -m). ... ok
+test_failures_leave_the_lock (tests.test_sources_resolve.ReworkR1U7dScriptTest.test_failures_leave_the_lock) ... ok
+test_the_directory_must_be_writable (tests.test_sources_resolve.ReworkR1U7dScriptTest.test_the_directory_must_be_writable) ... ok
+test_the_inrelease_is_copied_before_the_move (tests.test_sources_resolve.ReworkR1U7dScriptTest.test_the_inrelease_is_copied_before_the_move) ... ok
+test_the_option_is_required (tests.test_sources_resolve.ReworkR1U7dScriptTest.test_the_option_is_required) ... ok
+test_refused_links (tests.test_sources_resolve.ReworkR1U7dSymlinkTest.test_refused_links) ... ok
+test_the_real_shape (tests.test_sources_resolve.ReworkR1U7dSymlinkTest.test_the_real_shape) ... ok
+test_a_link_to_an_underscore_name (tests.test_sources_resolve.ReworkR1U7dUnderscoreTest.test_a_link_to_an_underscore_name) ... ok
+test_one_pattern (tests.test_sources_resolve.ReworkR1U7dUnderscoreTest.test_one_pattern) ... ok
+test_safe_name (tests.test_sources_resolve.ReworkR1U7dUnderscoreTest.test_safe_name) ... ok
+test_still_refused (tests.test_sources_resolve.ReworkR1U7dUnderscoreTest.test_still_refused) ... ok
+test_the_real_shapes (tests.test_sources_resolve.ReworkR1U7dUnderscoreTest.test_the_real_shapes) ... ok
+test_the_skip_line_names_the_key (tests.test_sources_resolve.ReworkR1U7dUnderscoreTest.test_the_skip_line_names_the_key)
+Item 10 (the "printed twice" reading): run 2's two lines were two ... ok
+test_the_mapping (tests.test_sources_resolve.ReworkR1U7dUrlErrorTest.test_the_mapping) ... ok
+test_through_resolve (tests.test_sources_resolve.ReworkR1U7dUrlErrorTest.test_through_resolve) ... ok
+test_hardening_check_rejects_loosened_services (tests.test_sources_resolve.SourcesComposeTest.test_hardening_check_rejects_loosened_services) ... ok
+test_sources_resolve_service_hardening (tests.test_sources_resolve.SourcesComposeTest.test_sources_resolve_service_hardening) ... ok
+test_bad_arguments_exit_2 (tests.test_sources_resolve.SourcesLockScriptRunTest.test_bad_arguments_exit_2) ... ok
+test_refuses_below_the_floor (tests.test_sources_resolve.SourcesLockScriptRunTest.test_refuses_below_the_floor) ... ok
+test_refuses_when_an_image_is_missing (tests.test_sources_resolve.SourcesLockScriptRunTest.test_refuses_when_an_image_is_missing) ... ok
+test_never_run_by_verify_or_ci (tests.test_sources_resolve.SourcesLockScriptStaticTest.test_never_run_by_verify_or_ci) ... ok
+test_sources_lock_sh_shape (tests.test_sources_resolve.SourcesLockScriptStaticTest.test_sources_lock_sh_shape) ... ok
+test_failures (tests.test_sources_resolve.U7cApkRouteTest.test_failures) ... ok
+test_the_entry (tests.test_sources_resolve.U7cApkRouteTest.test_the_entry) ... ok
+test_a_server_supplied_url_gets_the_hop_rules (tests.test_sources_resolve.U7cCarriedTest.test_a_server_supplied_url_gets_the_hop_rules) ... ok
+test_pgdg_is_no_longer_skipped (tests.test_sources_resolve.U7cCarriedTest.test_pgdg_is_no_longer_skipped)
+U7d (A71) supersedes "pgdg is skipped until Q71": the key resolves ... ok
+test_snapshot_pause (tests.test_sources_resolve.U7cCarriedTest.test_snapshot_pause) ... ok
+test_the_real_opener_reads_with_read1 (tests.test_sources_resolve.U7cCarriedTest.test_the_real_opener_reads_with_read1) ... ok
+test_the_fixture_keys (tests.test_sources_resolve.U7cCoverageTest.test_the_fixture_keys) ... ok
+test_dsc_forms (tests.test_sources_resolve.U7cDebRouteTest.test_dsc_forms) ... ok
+test_failures (tests.test_sources_resolve.U7cDebRouteTest.test_failures) ... ok
+test_parse_dsc (tests.test_sources_resolve.U7cDebRouteTest.test_parse_dsc) ... ok
+test_the_entry (tests.test_sources_resolve.U7cDebRouteTest.test_the_entry) ... ok
+test_problems (tests.test_sources_resolve.U7cLockNeedsTest.test_problems) ... ok
+test_the_apk_route (tests.test_sources_resolve.U7cLockNeedsTest.test_the_apk_route) ... ok
+test_the_cli_reads_the_tar (tests.test_sources_resolve.U7cLockNeedsTest.test_the_cli_reads_the_tar) ... ok
+test_lock_needs_gets_every_tar (tests.test_sources_resolve.U7cLockScriptRunTest.test_lock_needs_gets_every_tar) ... ok
+test_the_six_equal_the_bundled_names (tests.test_sources_resolve.U7cLockScriptRunTest.test_the_six_equal_the_bundled_names) ... ok
+test_a_dsc_with_its_first_entry_on_the_field_line (tests.test_sources_resolve.U7dCarriedTest.test_a_dsc_with_its_first_entry_on_the_field_line) ... ok
+test_a_line_that_is_not_a_field (tests.test_sources_resolve.U7dCarriedTest.test_a_line_that_is_not_a_field) ... ok
+test_parse_deb822 (tests.test_sources_resolve.U7dCarriedTest.test_parse_deb822) ... ok
+test_the_182_keys (tests.test_sources_resolve.U7dCoverageTest.test_the_182_keys) ... ok
+test_the_fixture_routes (tests.test_sources_resolve.U7dLockNeedsTest.test_the_fixture_routes) ... ok
+test_trixie_and_unknown (tests.test_sources_resolve.U7dLockNeedsTest.test_trixie_and_unknown) ... ok
+test_a_malformed_route (tests.test_sources_resolve.U7dPgdgRouteTest.test_a_malformed_route) ... ok
+test_failures (tests.test_sources_resolve.U7dPgdgRouteTest.test_failures) ... ok
+test_main_writes_the_inrelease (tests.test_sources_resolve.U7dPgdgRouteTest.test_main_writes_the_inrelease) ... ok
+test_the_caps (tests.test_sources_resolve.U7dPgdgRouteTest.test_the_caps) ... ok
+test_the_entries (tests.test_sources_resolve.U7dPgdgRouteTest.test_the_entries) ... ok
+test_the_pool_rule (tests.test_sources_resolve.U7dPgdgRouteTest.test_the_pool_rule) ... ok
+test_constants (tests.test_sources_resolve.U7dRetryConstantsTest.test_constants) ... ok
+test_fetch_retries_nothing_by_default (tests.test_sources_resolve.U7dRetryConstantsTest.test_fetch_retries_nothing_by_default) ... ok
+test_fetch_with_retries (tests.test_sources_resolve.U7dRetryConstantsTest.test_fetch_with_retries) ... ok
+test_a_5xx_at_a_hop_restarts_from_the_first_url (tests.test_sources_resolve.U7dRetryTest.test_a_5xx_at_a_hop_restarts_from_the_first_url) ... ok
+test_a_query_is_omitted_from_retry_lines (tests.test_sources_resolve.U7dRetryTest.test_a_query_is_omitted_from_retry_lines) ... ok
+test_never_retried (tests.test_sources_resolve.U7dRetryTest.test_never_retried) ... ok
+test_retried_statuses (tests.test_sources_resolve.U7dRetryTest.test_retried_statuses) ... ok
+test_the_budget_is_exhausted (tests.test_sources_resolve.U7dRetryTest.test_the_budget_is_exhausted) ... ok
+test_the_lines_and_waits (tests.test_sources_resolve.U7dRetryTest.test_the_lines_and_waits) ... ok
+test_the_run_budget (tests.test_sources_resolve.U7dRetryTest.test_the_run_budget) ... ok
+test_the_run_deadline (tests.test_sources_resolve.U7dRetryTest.test_the_run_deadline) ... ok
+test_the_snapshot_pause_holds_for_retries (tests.test_sources_resolve.U7dRetryTest.test_the_snapshot_pause_holds_for_retries) ... ok
+test_timeouts_are_retried (tests.test_sources_resolve.U7dRetryTest.test_timeouts_are_retried) ... ok
+test_the_inrelease_is_copied (tests.test_sources_resolve.U7dScriptStaticTest.test_the_inrelease_is_copied) ... ok
+test_bind_address_setting_defaults_to_loopback (tests.test_stack_bind_address.EngineRefusalTest.test_bind_address_setting_defaults_to_loopback) ... ok
+test_bind_address_that_is_not_an_address_is_a_config_error (tests.test_stack_bind_address.EngineRefusalTest.test_bind_address_that_is_not_an_address_is_a_config_error) ... ok
+test_dev_non_loopback_bind_address_warns (tests.test_stack_bind_address.EngineRefusalTest.test_dev_non_loopback_bind_address_warns) ... ok
+test_ipv6_bind_address_is_a_config_error_in_every_env (tests.test_stack_bind_address.EngineRefusalTest.test_ipv6_bind_address_is_a_config_error_in_every_env) ... ok
+test_loopback_or_unset_bind_address_passes_everywhere (tests.test_stack_bind_address.EngineRefusalTest.test_loopback_or_unset_bind_address_passes_everywhere) ... ok
+test_startup_refusal_is_recorded_on_the_span (tests.test_stack_bind_address.EngineRefusalTest.test_startup_refusal_is_recorded_on_the_span) ... ok
+test_startup_refuses_non_loopback_bind_address (tests.test_stack_bind_address.EngineRefusalTest.test_startup_refuses_non_loopback_bind_address) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+ok
+test_gateway_bind_check_allows_loopback_and_warns_in_dev (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_bind_check_allows_loopback_and_warns_in_dev) ... ok
+test_gateway_bind_check_refuses_non_loopback (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_bind_check_refuses_non_loopback) ... ok
+test_gateway_bind_check_rejects_non_ipv4_in_every_env (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_bind_check_rejects_non_ipv4_in_every_env) ... ok
+test_gateway_image_runs_bind_check (tests.test_stack_bind_address.GatewayBindCheckTest.test_gateway_image_runs_bind_check) ... ok
+test_launch_ps1_checks_bind_address (tests.test_stack_bind_address.LaunchScriptTest.test_launch_ps1_checks_bind_address) ... ok
+test_launch_sh_allows_loopback_and_warns_in_dev (tests.test_stack_bind_address.LaunchScriptTest.test_launch_sh_allows_loopback_and_warns_in_dev) ... ok
+test_launch_sh_creates_env_from_example (tests.test_stack_bind_address.LaunchScriptTest.test_launch_sh_creates_env_from_example) ... ok
+test_launch_sh_refuses_non_loopback_bind_address (tests.test_stack_bind_address.LaunchScriptTest.test_launch_sh_refuses_non_loopback_bind_address) ... ok
+test_teardown_keeps_volumes_unless_asked (tests.test_stack_bind_address.TeardownScriptTest.test_teardown_keeps_volumes_unless_asked) ... ok
+test_agents_md_hook_wording_not_absolute (tests.test_stack_carry_ins.AgentsHookWordingTest.test_agents_md_hook_wording_not_absolute) ... ok
+test_pyproject_name_matches_project_name (tests.test_stack_carry_ins.ProjectNameTest.test_pyproject_name_matches_project_name) ... ok
+test_quickstart_names_existing_scripts (tests.test_stack_carry_ins.QuickstartTest.test_quickstart_names_existing_scripts) ... ok
+test_test_sh_header_matches_integration_mechanism (tests.test_stack_carry_ins.TestShHeaderTest.test_test_sh_header_matches_integration_mechanism) ... ok
+test_env_example_not_in_app_image (tests.test_stack_compose.ImageContentsTest.test_env_example_not_in_app_image) ... ok
+test_gates_it_internal_only_and_no_socket (tests.test_stack_compose.NetworksTest.test_gates_it_internal_only_and_no_socket) ... ok
+test_no_docker_socket_mounted (tests.test_stack_compose.NetworksTest.test_no_docker_socket_mounted) ... ok
+test_only_gateway_on_edge_network (tests.test_stack_compose.NetworksTest.test_only_gateway_on_edge_network) ... ok
+test_stack_services_have_no_bind_mounts (tests.test_stack_compose.NetworksTest.test_stack_services_have_no_bind_mounts) ... ok
+test_compose_phoenix_listen_port_matches_config (tests.test_stack_compose.PhoenixPortTest.test_compose_phoenix_listen_port_matches_config) ... ok
+test_docs_name_current_phoenix_port (tests.test_stack_compose.PhoenixPortTest.test_docs_name_current_phoenix_port) ... ok
+test_harness_default_collector_matches_env_example (tests.test_stack_compose.PhoenixPortTest.test_harness_default_collector_matches_env_example) ... ok
+test_compose_defaults_match_env_example (tests.test_stack_compose.PortsTest.test_compose_defaults_match_env_example) ... ok
+test_compose_passes_bind_address_to_app (tests.test_stack_compose.PortsTest.test_compose_passes_bind_address_to_app) ... ok
+test_env_example_bind_address_is_loopback (tests.test_stack_compose.PortsTest.test_env_example_bind_address_is_loopback) ... ok
+test_env_example_ports_in_range_and_unique (tests.test_stack_compose.PortsTest.test_env_example_ports_in_range_and_unique) ... ok
+test_published_ports_use_bind_address (tests.test_stack_compose.PortsTest.test_published_ports_use_bind_address) ... ok
+test_backend_bridge_gateway_is_isolated (tests.test_stack_compose.Rework1ComposeTest.test_backend_bridge_gateway_is_isolated) ... ok
+test_gateway_gets_the_egress_allowlist (tests.test_stack_compose.Rework1ComposeTest.test_gateway_gets_the_egress_allowlist) ... ok
+test_no_ke_env_default_anywhere_in_compose (tests.test_stack_compose.Rework1ComposeTest.test_no_ke_env_default_anywhere_in_compose) ... ok
+test_quickstart_requires_docker_engine_28 (tests.test_stack_compose.Rework1ComposeTest.test_quickstart_requires_docker_engine_28) ... ok
+test_worker_command_runs_engine_startup (tests.test_stack_compose.Rework1ComposeTest.test_worker_command_runs_engine_startup) ... ok
+test_backend_has_no_ipam_subnet_or_ip_range (tests.test_stack_compose.Rework2ComposeTest.test_backend_has_no_ipam_subnet_or_ip_range) ... ok
+test_no_fixed_address_pool_anywhere (tests.test_stack_compose.Rework2ComposeTest.test_no_fixed_address_pool_anywhere) ... ok
+test_scripts_create_no_fixed_subnet (tests.test_stack_compose.Rework2ComposeTest.test_scripts_create_no_fixed_subnet) ... ok
+test_compose_images_pinned_by_digest (tests.test_stack_compose.ServicesTest.test_compose_images_pinned_by_digest) ... ok
+test_compose_services_have_restart_policy (tests.test_stack_compose.ServicesTest.test_compose_services_have_restart_policy) ... ok
+test_dockerfiles_pin_base_images_by_digest (tests.test_stack_compose.ServicesTest.test_dockerfiles_pin_base_images_by_digest) ... ok
+test_api_main_is_not_exempt_from_coverage (tests.test_stack_entrypoints.ApiEntrypointTest.test_api_main_is_not_exempt_from_coverage) ... ok
+test_api_main_refused_setting_never_serves (tests.test_stack_entrypoints.ApiEntrypointTest.test_api_main_refused_setting_never_serves) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+ok
+test_api_main_runs_startup_before_serving (tests.test_stack_entrypoints.ApiEntrypointTest.test_api_main_runs_startup_before_serving) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+ok
+test_every_substituted_variable_refuses_an_injection (tests.test_stack_entrypoints.GatewayPortCheckTest.test_every_substituted_variable_refuses_an_injection) ... ok
+test_gateway_accepts_valid_ports (tests.test_stack_entrypoints.GatewayPortCheckTest.test_gateway_accepts_valid_ports) ... ok
+test_gateway_refuses_every_bad_or_injected_port (tests.test_stack_entrypoints.GatewayPortCheckTest.test_gateway_refuses_every_bad_or_injected_port) ... ok
+test_local_resolvers_is_overwritten_by_the_image (tests.test_stack_entrypoints.GatewayPortCheckTest.test_local_resolvers_is_overwritten_by_the_image) ... ok
+test_template_variables_are_known (tests.test_stack_entrypoints.GatewayPortCheckTest.test_template_variables_are_known) ... ok
+test_every_gateway_check_is_installed_as_an_entrypoint_script (tests.test_stack_entrypoints.GatewayUpstreamCheckTest.test_every_gateway_check_is_installed_as_an_entrypoint_script) ... ok
+test_gateway_accepts_empty_or_allowlisted_upstream (tests.test_stack_entrypoints.GatewayUpstreamCheckTest.test_gateway_accepts_empty_or_allowlisted_upstream) ... ok
+test_gateway_checks_run_before_envsubst (tests.test_stack_entrypoints.GatewayUpstreamCheckTest.test_gateway_checks_run_before_envsubst) ... ok
+test_gateway_refuses_upstream_not_on_allowlist_or_malformed (tests.test_stack_entrypoints.GatewayUpstreamCheckTest.test_gateway_refuses_upstream_not_on_allowlist_or_malformed) ... ok
+test_worker_main_idles_after_a_passing_startup (tests.test_stack_entrypoints.WorkerEntrypointTest.test_worker_main_idles_after_a_passing_startup) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+ok
+test_worker_main_is_not_exempt_from_coverage (tests.test_stack_entrypoints.WorkerEntrypointTest.test_worker_main_is_not_exempt_from_coverage) ... ok
+test_worker_main_refused_setting_exits_before_idling (tests.test_stack_entrypoints.WorkerEntrypointTest.test_worker_main_refused_setting_exits_before_idling) ... auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+auth.enabled (KE_AUTH__ENABLED) is true: it has no effect until auth-audit, so the API is not authenticated (env=ci)
+ok
+test_worker_module_refuses_as_a_process (tests.test_stack_entrypoints.WorkerEntrypointTest.test_worker_module_refuses_as_a_process) ... ok
+test_env_value_caller_env_wins_even_when_empty (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_caller_env_wins_even_when_empty) ... ok
+test_env_value_config_failure_is_reported_without_content (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_config_failure_is_reported_without_content) ... ok
+test_env_value_reads_dotenv_only_through_compose_config (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_reads_dotenv_only_through_compose_config) ... ok
+test_env_value_refuses_a_json_escaped_value (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_refuses_a_json_escaped_value) ... ok
+test_env_value_refuses_any_other_name (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_refuses_any_other_name) ... ok
+test_env_value_trusts_compose_resolution (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_trusts_compose_resolution) ... ok
+test_env_value_without_dotenv_is_empty (tests.test_stack_model_keys.EnvValueScriptTest.test_env_value_without_dotenv_is_empty) ... ok
+test_verify_full_model_keys_both_or_neither (tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_model_keys_both_or_neither) ... ok
+test_verify_full_passes_model_upstream_keys (tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_passes_model_upstream_keys) ... ok
+test_verify_full_stops_before_build_when_the_helper_fails (tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_stops_before_build_when_the_helper_fails) ... ok
+test_verify_full_takes_no_caller_ke_key_but_the_model_keys (tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_takes_no_caller_ke_key_but_the_model_keys) ... ok
+test_verify_full_takes_no_other_env_key (tests.test_stack_model_keys.VerifyModelKeysTest.test_verify_full_takes_no_other_env_key) ... ok
+test_model_role_assertions_on_a_stub_host (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_assertions_on_a_stub_host) ... ok
+test_model_role_tests_run_in_order (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_tests_run_in_order) ... ok
+test_model_role_tests_skip_not_configured (tests.test_stack_model_skip.ModelRolesSuiteTest.test_model_role_tests_skip_not_configured) ... ok
+test_model_tests_skip_not_configured (tests.test_stack_model_skip.ModelSkipHelperTest.test_model_tests_skip_not_configured) ... ok
+test_model_tests_skip_with_named_reason (tests.test_stack_model_skip.ModelSkipHelperTest.test_model_tests_skip_with_named_reason) ... ok
+test_real_probe_of_a_closed_port_skips_as_refused (tests.test_stack_model_skip.ModelSkipHelperTest.test_real_probe_of_a_closed_port_skips_as_refused) ... ok
+test_unmarked_test_fails_rather_than_skips (tests.test_stack_model_skip.ModelSkipHelperTest.test_unmarked_test_fails_rather_than_skips) ... ok
+test_no_model_calls_in_unit_suite (tests.test_stack_model_skip.UnitSuiteModelTest.test_no_model_calls_in_unit_suite) ... ok
+test_readyz_model_host_not_configured_without_base_url (tests.test_stack_readiness.ModelHostNotConfiguredTest.test_readyz_model_host_not_configured_without_base_url) ... ok
+test_readyz_model_host_not_configured_without_upstream (tests.test_stack_readiness.ModelHostNotConfiguredTest.test_readyz_model_host_not_configured_without_upstream) ... ok
+test_readyz_model_host_probed_when_upstream_set (tests.test_stack_readiness.ModelHostNotConfiguredTest.test_readyz_model_host_probed_when_upstream_set) ... ok
+test_model_probe_http_errors_are_raised_and_classified (tests.test_stack_readiness.ModelProbeTest.test_model_probe_http_errors_are_raised_and_classified) ... ok
+test_model_probe_off_list_host_is_denied_before_any_socket (tests.test_stack_readiness.ModelProbeTest.test_model_probe_off_list_host_is_denied_before_any_socket) ... ok
+test_model_probe_passes_its_timeout (tests.test_stack_readiness.ModelProbeTest.test_model_probe_passes_its_timeout) ... ok
+test_readyz_reports_egress_denied_through_the_real_probe (tests.test_stack_readiness.ModelProbeTest.test_readyz_reports_egress_denied_through_the_real_probe) ... ok
+test_every_postgres_connect_in_engine_disables_gss_encryption (tests.test_stack_readiness.PostgresGssencTest.test_every_postgres_connect_in_engine_disables_gss_encryption) ... ok
+test_postgres_probe_disables_gss_encryption (tests.test_stack_readiness.PostgresGssencTest.test_postgres_probe_disables_gss_encryption) ... ok
+test_readiness_cli_api_unreachable (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_api_unreachable) ... ok
+test_readiness_cli_condition_met (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_met) ... ok
+test_readiness_cli_condition_never_met (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_condition_never_met) ... ok
+test_readiness_cli_unknown_dependency_is_a_usage_error (tests.test_stack_readiness.ReadinessCliTest.test_readiness_cli_unknown_dependency_is_a_usage_error) ... ok
+test_readyz_body_never_carries_error_text (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_body_never_carries_error_text) ... /opt/venv/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+ok
+test_readyz_is_traced (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_is_traced) ... ok
+test_readyz_ready_excludes_model_host (tests.test_stack_readiness.ReadyzRouteTest.test_readyz_ready_excludes_model_host) ... ok
+test_readyz_reason_vocabulary (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary) ... ok
+test_readyz_reason_vocabulary_for_store_drivers (tests.test_stack_readiness.ReasonVocabularyTest.test_readyz_reason_vocabulary_for_store_drivers) ... ok
+test_store_probe_classifies_closed_port (tests.test_stack_readiness.StoreProbeTest.test_store_probe_classifies_closed_port) ... ok
+test_gateway_only_external_upstream_is_model_upstream (tests.test_stack_ready_compose.GatewayUpstreamTest.test_gateway_only_external_upstream_is_model_upstream) ... ok
+test_gateway_upstream_scan_sees_a_planted_host (tests.test_stack_ready_compose.GatewayUpstreamTest.test_gateway_upstream_scan_sees_a_planted_host) ... ok
+test_compose_model_wiring (tests.test_stack_ready_compose.ModelWiringTest.test_compose_model_wiring) ... ok
+test_defaults_keep_null_base_urls (tests.test_stack_ready_compose.ModelWiringTest.test_defaults_keep_null_base_urls) ... ok
+test_gates_it_gets_model_upstream_and_store_passwords (tests.test_stack_ready_compose.ModelWiringTest.test_gates_it_gets_model_upstream_and_store_passwords) ... ok
+test_model_base_urls_come_from_one_anchor (tests.test_stack_ready_compose.ModelWiringTest.test_model_base_urls_come_from_one_anchor) ... ok
+test_compose_postgres_identity_matches_defaults (tests.test_stack_ready_compose.StoreIdentityTest.test_compose_postgres_identity_matches_defaults) ... ok
+test_ci_job_has_timeout (tests.test_stack_ready_docs.CiTimeoutTest.test_ci_job_has_timeout) ... ok
+test_ci_concurrency_per_ref (tests.test_stack_ready_docs.CiTriggersTest.test_ci_concurrency_per_ref) ... ok
+test_ci_triggers_push_default_branch_and_pull_request (tests.test_stack_ready_docs.CiTriggersTest.test_ci_triggers_push_default_branch_and_pull_request) ... ok
+test_docs_say_ci_needs_a_pull_request (tests.test_stack_ready_docs.CiTriggersTest.test_docs_say_ci_needs_a_pull_request) ... ok
+test_claude_md_lists_verify_only_checks (tests.test_stack_ready_docs.ClaudeMdVerifyOnlyTest.test_claude_md_lists_verify_only_checks) ... ok
+test_image_tag_falls_back_to_shasum (tests.test_stack_scripts.ImageTagHelperTest.test_image_tag_falls_back_to_shasum) ... ok
+test_image_tag_ignores_cdpath (tests.test_stack_scripts.ImageTagHelperTest.test_image_tag_ignores_cdpath) ... ok
+test_image_tag_prints_sha256_of_the_real_path (tests.test_stack_scripts.ImageTagHelperTest.test_image_tag_prints_sha256_of_the_real_path) ... ok
+test_image_tag_reads_no_environment (tests.test_stack_scripts.ImageTagHelperTest.test_image_tag_reads_no_environment) ... ok
+test_launch_ps1_creates_env_with_mode_at_open (tests.test_stack_scripts.LaunchEnvCreationStaticTest.test_launch_ps1_creates_env_with_mode_at_open)
+L-L2b: off Windows, launch.ps1 created `.env` empty at the umask's ... ok
+test_launch_ps1_icacls_failure_only_warns (tests.test_stack_scripts.LaunchEnvCreationStaticTest.test_launch_ps1_icacls_failure_only_warns)
+L-L2c (i): under Windows PowerShell 5.1 (the code-first ... ok
+test_launch_ps1_icacls_grants_current_user_sid (tests.test_stack_scripts.LaunchEnvCreationStaticTest.test_launch_ps1_icacls_grants_current_user_sid)
+L-L2c (ii): `$env:USERNAME` is resolved by name, and a local account ... ok
+test_launch_ps1_icacls_warning_says_restrict_before_secrets (tests.test_stack_scripts.LaunchEnvCreationStaticTest.test_launch_ps1_icacls_warning_says_restrict_before_secrets)
+L-L2c (iii): when the restriction fails, `.env` keeps the inherited ... ok
+test_launch_sh_creates_env_with_noclobber (tests.test_stack_scripts.LaunchEnvCreationStaticTest.test_launch_sh_creates_env_with_noclobber)
+L-L2a: the check-then-create `[ ! -f .env ]` + `> .env` follows a ... ok
+test_launch_accepts_docker_engine_28_or_later (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_accepts_docker_engine_28_or_later) ... ok
+test_launch_accepts_loopback_and_warns_for_dev (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_accepts_loopback_and_warns_for_dev) ... ok
+test_launch_creates_env_private_whatever_the_umask (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_creates_env_private_whatever_the_umask)
+Smoke-gate loop 2, F12 (docs/evidence/platform-offline/recorded2-runs.md): ... ok
+test_launch_honours_every_dotenv_form_compose_honours (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_honours_every_dotenv_form_compose_honours) ... ok
+test_launch_leaves_dangling_env_symlink_alone (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_leaves_dangling_env_symlink_alone)
+Security L-L2a (docs/evidence/platform-offline/audit-l2.md): a ... ok
+test_launch_never_falls_back_to_env_example (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_never_falls_back_to_env_example) ... ok
+test_launch_port_without_host_ip_warns_in_dev (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_port_without_host_ip_warns_in_dev) ... ok
+test_launch_refuses_docker_engine_below_28_or_unreadable (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_refuses_docker_engine_below_28_or_unreadable) ... ok
+test_launch_refuses_when_env_file_lacks_ke_env (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_refuses_when_env_file_lacks_ke_env) ... ok
+test_launch_resolves_with_the_env_file_compose_will_use (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_resolves_with_the_env_file_compose_will_use) ... ok
+test_launch_treats_a_port_without_host_ip_as_all_interfaces (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_treats_a_port_without_host_ip_as_all_interfaces) ... ok
+test_launch_trusts_compose_config_not_its_own_parser (tests.test_stack_scripts.LaunchPs1ResolvedTest.test_launch_trusts_compose_config_not_its_own_parser) ... ok
+test_launch_ps1_icacls_failure_warns_and_continues (tests.test_stack_scripts.LaunchPs1WindowsEnvTest.test_launch_ps1_icacls_failure_warns_and_continues) ... skipped 'Windows ACLs and Windows PowerShell 5.1: runs only on a Windows host; the gates image is Linux, so verify.sh skips it (security L-L2c)'
+test_launch_ps1_restricts_env_to_current_user_sid (tests.test_stack_scripts.LaunchPs1WindowsEnvTest.test_launch_ps1_restricts_env_to_current_user_sid) ... skipped 'Windows ACLs and Windows PowerShell 5.1: runs only on a Windows host; the gates image is Linux, so verify.sh skips it (security L-L2c)'
+test_launch_accepts_docker_engine_28_or_later (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_accepts_docker_engine_28_or_later) ... ok
+test_launch_accepts_loopback_and_warns_for_dev (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_accepts_loopback_and_warns_for_dev) ... ok
+test_launch_creates_env_private_whatever_the_umask (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_creates_env_private_whatever_the_umask)
+Smoke-gate loop 2, F12 (docs/evidence/platform-offline/recorded2-runs.md): ... ok
+test_launch_honours_every_dotenv_form_compose_honours (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_honours_every_dotenv_form_compose_honours) ... ok
+test_launch_leaves_dangling_env_symlink_alone (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_leaves_dangling_env_symlink_alone)
+Security L-L2a (docs/evidence/platform-offline/audit-l2.md): a ... ok
+test_launch_never_falls_back_to_env_example (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_never_falls_back_to_env_example) ... ok
+test_launch_port_without_host_ip_warns_in_dev (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_port_without_host_ip_warns_in_dev) ... ok
+test_launch_refuses_docker_engine_below_28_or_unreadable (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_refuses_docker_engine_below_28_or_unreadable) ... ok
+test_launch_refuses_when_env_file_lacks_ke_env (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_refuses_when_env_file_lacks_ke_env) ... ok
+test_launch_resolves_with_the_env_file_compose_will_use (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_resolves_with_the_env_file_compose_will_use) ... ok
+test_launch_treats_a_port_without_host_ip_as_all_interfaces (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_treats_a_port_without_host_ip_as_all_interfaces) ... ok
+test_launch_trusts_compose_config_not_its_own_parser (tests.test_stack_scripts.LaunchShResolvedTest.test_launch_trusts_compose_config_not_its_own_parser) ... ok
+test_gates_image_has_shellcheck_and_psscriptanalyzer (tests.test_stack_scripts.LintScriptTest.test_gates_image_has_shellcheck_and_psscriptanalyzer) ... ok
+test_lint_covers_every_shell_and_powershell_script (tests.test_stack_scripts.LintScriptTest.test_lint_covers_every_shell_and_powershell_script) ... ok
+test_lint_covers_upper_case_ps1_and_psm1 (tests.test_stack_scripts.LintScriptTest.test_lint_covers_upper_case_ps1_and_psm1) ... ok
+test_lint_fails_on_a_directory_symlink_holding_a_finding (tests.test_stack_scripts.LintScriptTest.test_lint_fails_on_a_directory_symlink_holding_a_finding) ... ok
+test_lint_fails_on_a_symlinked_script (tests.test_stack_scripts.LintScriptTest.test_lint_fails_on_a_symlinked_script) ... ok
+test_lint_fails_on_warning_severity_finding (tests.test_stack_scripts.LintScriptTest.test_lint_fails_on_warning_severity_finding) ... ok
+test_lint_fails_when_either_tool_fails (tests.test_stack_scripts.LintScriptTest.test_lint_fails_when_either_tool_fails) ... ok
+test_lint_powershell_command_text_is_fixed (tests.test_stack_scripts.LintScriptTest.test_lint_powershell_command_text_is_fixed) ... ok
+test_lint_ps1_lone_open_bracket_is_refused_before_pwsh (tests.test_stack_scripts.LintScriptTest.test_lint_ps1_lone_open_bracket_is_refused_before_pwsh) ... ok
+test_lint_ps1_wildcard_name_cannot_escape (tests.test_stack_scripts.LintScriptTest.test_lint_ps1_wildcard_name_cannot_escape) ... ok
+test_lint_refuses_a_symlink_to_a_clean_script (tests.test_stack_scripts.LintScriptTest.test_lint_refuses_a_symlink_to_a_clean_script) ... ok
+test_lint_refuses_any_symlink_under_scripts_and_docker (tests.test_stack_scripts.LintScriptTest.test_lint_refuses_any_symlink_under_scripts_and_docker) ... ok
+test_lint_runs_no_code_from_a_powershell_filename (tests.test_stack_scripts.LintScriptTest.test_lint_runs_no_code_from_a_powershell_filename) ... ok
+test_lint_shellchecks_upper_case_sh (tests.test_stack_scripts.LintScriptTest.test_lint_shellchecks_upper_case_sh) ... ok
+test_lint_with_real_tools_fails_on_a_planted_finding (tests.test_stack_scripts.LintScriptTest.test_lint_with_real_tools_fails_on_a_planted_finding) ... ok
+test_smoke_fails_when_backend_is_not_internal (tests.test_stack_scripts.SmokeBackendIsolatedTest.test_smoke_fails_when_backend_is_not_internal) ... ok
+test_smoke_fails_when_backend_is_not_isolated (tests.test_stack_scripts.SmokeBackendIsolatedTest.test_smoke_fails_when_backend_is_not_isolated) ... ok
+test_smoke_fails_when_backend_network_is_missing (tests.test_stack_scripts.SmokeBackendIsolatedTest.test_smoke_fails_when_backend_network_is_missing) ... ok
+test_smoke_inspects_its_own_backend_network (tests.test_stack_scripts.SmokeBackendIsolatedTest.test_smoke_inspects_its_own_backend_network) ... ok
+test_smoke_fails_when_a_port_is_not_loopback (tests.test_stack_scripts.SmokeResolvesWithoutEnvTest.test_smoke_fails_when_a_port_is_not_loopback) ... ok
+test_smoke_fails_when_resolution_fails (tests.test_stack_scripts.SmokeResolvesWithoutEnvTest.test_smoke_fails_when_resolution_fails) ... ok
+test_smoke_resolves_compose_without_env_file (tests.test_stack_scripts.SmokeResolvesWithoutEnvTest.test_smoke_resolves_compose_without_env_file) ... ok
+test_smoke_sh_contains_the_check (tests.test_stack_scripts.SmokeResolvesWithoutEnvTest.test_smoke_sh_contains_the_check) ... ok
+test_smoke_checks_every_service_healthy_after_the_store_is_back (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_checks_every_service_healthy_after_the_store_is_back) ... ok
+test_smoke_decides_it_launched_before_launching (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_decides_it_launched_before_launching) ... ok
+test_smoke_fails_naming_the_store_when_readiness_never_recovers (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_fails_naming_the_store_when_readiness_never_recovers) ... ok
+test_smoke_fails_when_a_service_is_unhealthy_after_the_restart (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_fails_when_a_service_is_unhealthy_after_the_restart) ... ok
+test_smoke_fails_when_each_store_step_fails (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_fails_when_each_store_step_fails) ... ok
+test_smoke_flag_without_a_running_project_fails_loudly (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_flag_without_a_running_project_fails_loudly) ... ok
+test_smoke_leaves_a_project_it_did_not_launch (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_leaves_a_project_it_did_not_launch) ... ok
+test_smoke_owned_by_verify_stops_and_restarts_without_teardown (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_owned_by_verify_stops_and_restarts_without_teardown) ... ok
+test_smoke_stops_and_restarts_a_store (tests.test_stack_scripts.SmokeStoreStopStartTest.test_smoke_stops_and_restarts_a_store) ... ok
+test_teardown_fails_when_a_listing_fails (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_fails_when_a_listing_fails) ... ok
+test_teardown_fails_without_a_resolved_project (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_fails_without_a_resolved_project) ... ok
+test_teardown_kept_volume_is_not_a_leftover_without_volumes (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_kept_volume_is_not_a_leftover_without_volumes) ... ok
+test_teardown_leaves_other_projects_alone (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_leaves_other_projects_alone) ... ok
+test_teardown_lists_with_the_project_compose_resolves (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_lists_with_the_project_compose_resolves) ... ok
+test_teardown_removes_or_reports_project_leftovers (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_removes_or_reports_project_leftovers) ... ok
+test_teardown_with_nothing_left_passes (tests.test_stack_scripts.TeardownPs1LeftoversTest.test_teardown_with_nothing_left_passes) ... ok
+test_teardown_activates_no_profile (tests.test_stack_scripts.TeardownPs1ScopeTest.test_teardown_activates_no_profile) ... ok
+test_teardown_carries_project_and_env_file (tests.test_stack_scripts.TeardownPs1ScopeTest.test_teardown_carries_project_and_env_file) ... ok
+test_teardown_does_not_remove_orphans (tests.test_stack_scripts.TeardownPs1ScopeTest.test_teardown_does_not_remove_orphans) ... ok
+test_teardown_script_has_no_profile_wildcard (tests.test_stack_scripts.TeardownPs1ScopeTest.test_teardown_script_has_no_profile_wildcard) ... ok
+test_teardown_fails_when_a_listing_fails (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_fails_when_a_listing_fails) ... ok
+test_teardown_fails_without_a_resolved_project (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_fails_without_a_resolved_project) ... ok
+test_teardown_kept_volume_is_not_a_leftover_without_volumes (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_kept_volume_is_not_a_leftover_without_volumes) ... ok
+test_teardown_leaves_other_projects_alone (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_leaves_other_projects_alone) ... ok
+test_teardown_lists_with_the_project_compose_resolves (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_lists_with_the_project_compose_resolves) ... ok
+test_teardown_removes_or_reports_project_leftovers (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_removes_or_reports_project_leftovers) ... ok
+test_teardown_with_nothing_left_passes (tests.test_stack_scripts.TeardownShLeftoversTest.test_teardown_with_nothing_left_passes) ... ok
+test_teardown_accepts_only_the_offline_profile (tests.test_stack_scripts.TeardownShScopeTest.test_teardown_accepts_only_the_offline_profile) ... ok
+test_teardown_activates_no_profile (tests.test_stack_scripts.TeardownShScopeTest.test_teardown_activates_no_profile) ... ok
+test_teardown_carries_project_and_env_file (tests.test_stack_scripts.TeardownShScopeTest.test_teardown_carries_project_and_env_file) ... ok
+test_teardown_does_not_remove_orphans (tests.test_stack_scripts.TeardownShScopeTest.test_teardown_does_not_remove_orphans) ... ok
+test_teardown_script_has_no_profile_wildcard (tests.test_stack_scripts.TeardownShScopeTest.test_teardown_script_has_no_profile_wildcard) ... ok
+test_container_half_runs_lint_before_tests (tests.test_stack_scripts.VerifyCallsLintTest.test_container_half_runs_lint_before_tests) ... ok
+test_gates_it_half_prints_its_own_success_line (tests.test_stack_scripts.VerifyCallsLintTest.test_gates_it_half_prints_its_own_success_line)
+Security L-3 (security-u4-r1.md; orchestrator unit-5 ruling ... ok
+test_lint_failure_fails_verify (tests.test_stack_scripts.VerifyCallsLintTest.test_lint_failure_fails_verify) ... ok
+test_each_failing_stage_fails_verify_and_still_tears_down (tests.test_stack_scripts.VerifyHostHalfTest.test_each_failing_stage_fails_verify_and_still_tears_down) ... ok
+test_every_stage_sees_the_verify_overlay_and_nothing_publishes (tests.test_stack_scripts.VerifyHostHalfTest.test_every_stage_sees_the_verify_overlay_and_nothing_publishes) ... ok
+test_fast_runs_gates_without_publishing (tests.test_stack_scripts.VerifyHostHalfTest.test_fast_runs_gates_without_publishing) ... ok
+test_full_runs_stages_in_order_then_tears_down (tests.test_stack_scripts.VerifyHostHalfTest.test_full_runs_stages_in_order_then_tears_down) ... ok
+test_gates_compose_files_are_pinned_whatever_the_caller_sets (tests.test_stack_scripts.VerifyHostHalfTest.test_gates_compose_files_are_pinned_whatever_the_caller_sets) ... ok
+test_gates_mask_overlay_only_when_env_exists (tests.test_stack_scripts.VerifyHostHalfTest.test_gates_mask_overlay_only_when_env_exists) ... ok
+test_project_name_is_random_and_shared_by_every_stage (tests.test_stack_scripts.VerifyHostHalfTest.test_project_name_is_random_and_shared_by_every_stage) ... ok
+test_removing_the_gates_it_stage_is_caught (tests.test_stack_scripts.VerifyHostHalfTest.test_removing_the_gates_it_stage_is_caught) ... ok
+test_teardown_failure_after_green_run_is_reported (tests.test_stack_scripts.VerifyHostHalfTest.test_teardown_failure_after_green_run_is_reported) ... ok
+test_teardown_runs_on_interrupt (tests.test_stack_scripts.VerifyHostHalfTest.test_teardown_runs_on_interrupt) ... ok
+test_verify_fast_does_not_set_the_smoke_flag (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_fast_does_not_set_the_smoke_flag) ... ok
+test_verify_full_fails_when_image_scan_fails (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_fails_when_image_scan_fails)
+PSC-4/PSC-6 (§2.6 item 5): a failing scan.sh makes verify full exit ... ok
+test_verify_full_marks_its_own_project_for_smoke (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_marks_its_own_project_for_smoke) ... ok
+test_verify_full_only_the_outer_line_says_pass (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_only_the_outer_line_says_pass)
+Security L-3 (security-u4-r1.md; orchestrator unit-5 ruling ... ok
+test_verify_full_runs_offline_check (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_runs_offline_check) ... ok
+test_verify_full_runs_scan_between_teardown_and_offline_check (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_runs_scan_between_teardown_and_offline_check)
+PSC-6: `full` runs scripts/scan.sh exactly once, after the verify ... ok
+test_verify_full_signal_during_smoke_exits_with_its_status_and_no_pass (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_signal_during_smoke_exits_with_its_status_and_no_pass)
+Security M-1 (predates U4; security-u4.md P2 run B, last row): INT, ... ok
+test_verify_full_untrapped_signal_says_stopped_before_the_last_stage (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_untrapped_signal_says_stopped_before_the_last_stage)
+Review r1-n3 (review-u4-r1.md): USR1, a fatal signal verify.sh does ... ok
+test_verify_full_uses_per_worktree_image_tag (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_full_uses_per_worktree_image_tag) ... ok
+test_verify_image_tag_is_sha256_of_the_real_path_in_both_modes (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_image_tag_is_sha256_of_the_real_path_in_both_modes) ... ok
+test_verify_image_tag_separates_crc_colliding_paths (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_image_tag_separates_crc_colliding_paths) ... ok
+test_verify_image_tag_uses_the_real_path_not_a_symlink (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_image_tag_uses_the_real_path_not_a_symlink) ... ok
+test_verify_is_cdpath_safe (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_is_cdpath_safe) ... ok
+test_verify_overlay_resets_every_published_port (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_overlay_resets_every_published_port) ... ok
+test_verify_refuses_a_malformed_image_tag_before_any_build (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_refuses_a_malformed_image_tag_before_any_build) ... ok
+test_verify_runs_with_a_well_formed_stub_tag (tests.test_stack_scripts.VerifyHostHalfTest.test_verify_runs_with_a_well_formed_stub_tag) ... ok
+test_compose_worker_waits_for_valkey (tests.test_stack_worker.WorkerComposeTest.test_compose_worker_waits_for_valkey) ... ok
+test_worker_command_unchanged (tests.test_stack_worker.WorkerComposeTest.test_worker_command_unchanged) ... ok
+test_worker_is_a_simple_worker (tests.test_stack_worker.WorkerJobAllowlistTest.test_worker_is_a_simple_worker) ... /opt/venv/lib/python3.12/site-packages/rq/worker/base.py:270: Warning: CLIENT LIST command not supported, setting ip_address to unknown
+  warnings.warn('CLIENT LIST command not supported, setting ip_address to unknown', Warning)
+ok
+test_worker_never_resolves_a_refused_jobs_function (tests.test_stack_worker.WorkerJobAllowlistTest.test_worker_never_resolves_a_refused_jobs_function) ... ok
+test_worker_refuses_a_job_outside_engine_jobs (tests.test_stack_worker.WorkerJobAllowlistTest.test_worker_refuses_a_job_outside_engine_jobs) ... ok
+test_worker_runs_a_job_in_engine_jobs (tests.test_stack_worker.WorkerJobAllowlistTest.test_worker_runs_a_job_in_engine_jobs) ... ok
+test_worker_uses_json_serializer (tests.test_stack_worker.WorkerJobAllowlistTest.test_worker_uses_json_serializer) ... ok
+test_every_job_is_traced (tests.test_stack_worker.WorkerJobTracingTest.test_every_job_is_traced) ... ok
+test_failing_job_marks_its_span (tests.test_stack_worker.WorkerJobTracingTest.test_failing_job_marks_its_span) ... ok
+test_worker_job_is_traced (tests.test_stack_worker.WorkerJobTracingTest.test_worker_job_is_traced) ... ok
+test_agent_loop_renders_as_nested_tree (tests.test_tracing.TracingTest.test_agent_loop_renders_as_nested_tree) ... ok
+test_chain_span_kind (tests.test_tracing.TracingTest.test_chain_span_kind) ... ok
+test_exception_marks_span_error_and_propagates (tests.test_tracing.TracingTest.test_exception_marks_span_error_and_propagates) ... ok
+test_hide_inputs_and_outputs_redacts_values (tests.test_tracing.TracingTest.test_hide_inputs_and_outputs_redacts_values) ... ok
+test_llm_records_model_and_token_usage (tests.test_tracing.TracingTest.test_llm_records_model_and_token_usage) ... ok
+test_retriever_records_parameterised_query_and_documents (tests.test_tracing.TracingTest.test_retriever_records_parameterised_query_and_documents) ... ok
+test_setup_tracing_is_idempotent (tests.test_tracing.TracingTest.test_setup_tracing_is_idempotent) ... ok
+test_spans_tolerate_non_recording_span (tests.test_tracing.TracingTest.test_spans_tolerate_non_recording_span)
+Regression (platform-config): with tracing off and no provider ... ok
+
+Slowest test durations
+----------------------------------------------------------------------
+26.981s    test_lint_runs_no_code_from_a_powershell_filename (tests.test_stack_scripts.LintScriptTest.test_lint_runs_no_code_from_a_powershell_filename)
+16.313s    test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails)
+14.919s    test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper)
+14.411s    test_bundle_maps_each_service_to_own_image_despite_dependencies (tests.test_offline_bundle.BundleScriptTest.test_bundle_maps_each_service_to_own_image_despite_dependencies)
+12.494s    test_notices_vendor_row_parse_is_strict (tests.test_offline_bundle.BundleNoticesTest.test_notices_vendor_row_parse_is_strict)
+11.834s    test_smoke_checks_psycopg_c_impl_in_api (tests.test_psycopg_c.SmokePsycopgTest.test_smoke_checks_psycopg_c_impl_in_api)
+11.031s    test_lint_with_real_tools_fails_on_a_planted_finding (tests.test_stack_scripts.LintScriptTest.test_lint_with_real_tools_fails_on_a_planted_finding)
+10.909s    test_arch_normalisation (tests.test_offline_bundle.BundleScriptTest.test_arch_normalisation)
+10.593s    test_install_refuses_unfit_target_or_daemon (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_unfit_target_or_daemon)
+10.095s    test_lint_covers_upper_case_ps1_and_psm1 (tests.test_stack_scripts.LintScriptTest.test_lint_covers_upper_case_ps1_and_psm1)
+
+----------------------------------------------------------------------
+Ran 1108 tests in 857.347s
+
+OK (skipped=8)
+resources: phase=end nproc=24 cpu_max_quota=max cpu_max_period=100000 cg_cpu_usage_us=776872986 cg_cpu_throttled_us=0 mem_total_kib=32583712 mem_available_kib=19107260 swap_total_kib=8388608 swap_free_kib=4735204 cg_mem_max=max cg_mem_peak=341712896 psi_cpu_some_us=12155476408 psi_memory_some_us=427924467 psi_memory_full_us=403875676 psi_io_some_us=1211049791 psi_io_full_us=1132912895 cpu_steal_ticks=0 cpu_total_ticks=3504177532
+test_gates_it_cannot_read_repo_env (tests.integration.test_gate_least_privilege.GateLeastPrivilegeTest.test_gates_it_cannot_read_repo_env) ... ok
+test_gates_it_cannot_write_repo (tests.integration.test_gate_least_privilege.GateLeastPrivilegeTest.test_gates_it_cannot_write_repo) ... ok
+test_gates_uv_locked_catches_drift_as_non_root (tests.integration.test_gate_least_privilege.GateLeastPrivilegeTest.test_gates_uv_locked_catches_drift_as_non_root) ... ok
+test_embed_role_answers (tests.integration.test_model_roles.ModelRolesTest.test_embed_role_answers) ... skipped 'model host not configured: KE_MODEL_UPSTREAM is empty (set it and KE_EGRESS_ALLOWLIST in the caller environment or .env)'
+test_compose_role_answers (tests.integration.test_model_roles.ModelRolesTest.test_compose_role_answers) ... skipped 'model host not configured: KE_MODEL_UPSTREAM is empty (set it and KE_EGRESS_ALLOWLIST in the caller environment or .env)'
+test_rewrite_role_answers (tests.integration.test_model_roles.ModelRolesTest.test_rewrite_role_answers) ... skipped 'model host not configured: KE_MODEL_UPSTREAM is empty (set it and KE_EGRESS_ALLOWLIST in the caller environment or .env)'
+test_audit_role_answers (tests.integration.test_model_roles.ModelRolesTest.test_audit_role_answers) ... skipped 'model host not configured: KE_MODEL_UPSTREAM is empty (set it and KE_EGRESS_ALLOWLIST in the caller environment or .env)'
+test_readyz_fails_when_store_down (tests.integration.test_stack_ready.ReadyzIntegrationTest.test_readyz_fails_when_store_down) ... /opt/venv/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+ok
+test_readyz_ready_without_model_host (tests.integration.test_stack_ready.ReadyzIntegrationTest.test_readyz_ready_without_model_host) ... ok
+test_readyz_reports_each_dependency (tests.integration.test_stack_ready.ReadyzIntegrationTest.test_readyz_reports_each_dependency) ... ok
+test_readyz_reports_reachable_model_host (tests.integration.test_stack_ready.ReadyzIntegrationTest.test_readyz_reports_reachable_model_host) ... skipped 'model host not configured: KE_MODEL_UPSTREAM is empty (set it and KE_EGRESS_ALLOWLIST in the caller environment or .env)'
+test_worker_consumes_noop_job (tests.integration.test_stack_ready.WorkerIntegrationTest.test_worker_consumes_noop_job) ... ok
+test_egress_allowlist_holds_with_network_access (tests.integration.test_stack_up.EgressWithNetworkAccessTest.test_egress_allowlist_holds_with_network_access) ... ok
+test_healthz (tests.integration.test_stack_up.HealthzTest.test_healthz) ... ok
+test_gates_it_has_no_route_out (tests.integration.test_stack_up.NoRouteOutTest.test_gates_it_has_no_route_out) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 5.344s
+
+OK (skipped=5)
+Combined 2 files
+Name                             Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------
+engine/__init__.py                   0      0      0      0   100%
+engine/api.py                       27      3      2      0    90%   20, 25-26
+engine/config/__init__.py            3      0      0      0   100%
+engine/config/loader.py             77      6     24      2    92%   74, 95, 110, 120-121, 123
+engine/config/settings.py          123      0     12      0   100%
+engine/egress.py                    41      1      6      1    96%   64
+engine/errors.py                     6      0      0      0   100%
+engine/jobs.py                      23      0      2      1    96%   27->30
+engine/llm/__init__.py               0      0      0      0   100%
+engine/llm/client.py                34      2      6      2    90%   39, 57
+engine/netprobe.py                  64      3     10      1    95%   78-79, 97
+engine/notices.py                   94      0     38      1    99%   82->80
+engine/readiness.py                165     48     46      1    70%   78-81, 176-182, 186, 191-198, 202-231
+engine/startup.py                  101      0     38      0   100%
+engine/telemetry.py                 62      0     16      0   100%
+engine/worker.py                    22      0      2      0   100%
+harness_telemetry/__init__.py        2      0      0      0   100%
+harness_telemetry/log_event.py      45      4      6      2    88%   45, 78-79, 84
+harness_telemetry/tracing.py        86     14     28      4    79%   49-70, 111->113, 113->115, 118
+----------------------------------------------------------------------------
+TOTAL                              975     81    236     15    90%
+Success: no issues found in 19 source files
+Based on the graph, Project X needs Component Y.
+smoke: pass (4 spans exported)
+== gates-it: PASS ==
+time="2026-10-27T17:35:08-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T17:35:08-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T17:35:08-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T17:35:08-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T17:35:08-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T17:35:08-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T17:35:08-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T17:35:08-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T17:35:08-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T17:35:08-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T17:35:08-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T17:35:08-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T17:35:08-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T17:35:08-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+smoke: compose resolves with no .env; 2 ports, all on 127.0.0.1
+smoke: project ke-verify-902210553 is already running
+net_isolated: ke-verify-902210553_backend is internal with gateway_mode_ipv4=isolated
+smoke: ke-verify-902210553_backend is internal with gateway_mode_ipv4=isolated
+smoke: gateway healthy
+smoke: api healthy
+smoke: worker healthy
+smoke: postgres healthy
+smoke: neo4j healthy
+smoke: valkey healthy
+smoke: phoenix healthy
+smoke: gateway proxies api /healthz
+smoke: gateway proxies phoenix /healthz
+smoke: /readyz ready
+== smoke: psycopg ==
+smoke: psycopg c on Debian libpq5 15.19-0+deb12u1 (/lib/x86_64-linux-gnu/libpq.so.5 -> /usr/lib/x86_64-linux-gnu/libpq.so.5.15)
+== smoke: no pip ==
+smoke: no pip in api
+== smoke: no fleet plugin ==
+smoke: no products/ or fleet-management plugin in neo4j
+smoke: ci/offline api has no route to 192.168.192.2:8100 (api cannot reach outside the stack)
+smoke: ci/offline worker has no route to 192.168.192.2:8100 (worker cannot reach outside the stack)
+ Container ke-verify-902210553-postgres-1 Stopping 
+ Container ke-verify-902210553-postgres-1 Stopped 
+smoke: /readyz reports postgres down
+ Container ke-verify-902210553-postgres-1 Starting 
+ Container ke-verify-902210553-postgres-1 Started 
+ Container ke-verify-902210553-postgres-1 Waiting 
+ Container ke-verify-902210553-postgres-1 Healthy 
+smoke: /readyz ready again after postgres restart
+smoke: gateway healthy
+smoke: api healthy
+smoke: worker healthy
+smoke: postgres healthy
+smoke: neo4j healthy
+smoke: valkey healthy
+smoke: phoenix healthy
+smoke: PASS
+ Container ke-verify-902210553-worker-1 Stopping 
+ Container ke-verify-902210553-gateway-1 Stopping 
+ Container ke-verify-902210553-phoenix-1 Stopping 
+ Container ke-verify-902210553-api-1 Stopping 
+ Container ke-verify-902210553-worker-1 Stopped 
+ Container ke-verify-902210553-worker-1 Removing 
+ Container ke-verify-902210553-gateway-1 Stopped 
+ Container ke-verify-902210553-gateway-1 Removing 
+ Container ke-verify-902210553-worker-1 Removed 
+ Container ke-verify-902210553-gateway-1 Removed 
+ Container ke-verify-902210553-api-1 Stopped 
+ Container ke-verify-902210553-api-1 Removing 
+ Container ke-verify-902210553-phoenix-1 Stopped 
+ Container ke-verify-902210553-phoenix-1 Removing 
+ Container ke-verify-902210553-api-1 Removed 
+ Container ke-verify-902210553-neo4j-1 Stopping 
+ Container ke-verify-902210553-valkey-1 Stopping 
+ Container ke-verify-902210553-postgres-1 Stopping 
+ Container ke-verify-902210553-valkey-1 Stopped 
+ Container ke-verify-902210553-valkey-1 Removing 
+ Container ke-verify-902210553-postgres-1 Stopped 
+ Container ke-verify-902210553-postgres-1 Removing 
+ Container ke-verify-902210553-phoenix-1 Removed 
+ Container ke-verify-902210553-valkey-1 Removed 
+ Container ke-verify-902210553-postgres-1 Removed 
+ Container ke-verify-902210553-neo4j-1 Stopped 
+ Container ke-verify-902210553-neo4j-1 Removing 
+ Container ke-verify-902210553-neo4j-1 Removed 
+ Volume ke-verify-902210553_phoenix-data Removing 
+ Network ke-verify-902210553_backend Removing 
+ Volume ke-verify-902210553_neo4j-data Removing 
+ Volume ke-verify-902210553_valkey-data Removing 
+ Volume ke-verify-902210553_postgres-data Removing 
+ Network ke-verify-902210553_edge Removing 
+ Volume ke-verify-902210553_phoenix-data Removed 
+ Volume ke-verify-902210553_neo4j-data Removed 
+ Volume ke-verify-902210553_valkey-data Removed 
+ Volume ke-verify-902210553_postgres-data Removed 
+ Network ke-verify-902210553_backend Removed 
+ Network ke-verify-902210553_edge Removed 
+== scan: ignore entries (docker/scan-ignore.yaml) ==
+ignore: []
+== scan: save ==
+scan: save took 1s
+== scan: scan-db ==
+ Image anchore/grype:v0.120.1@sha256:e4a44ef45d285b829ce6efe2642980329661bd2d18eab5fc539138d4adaebbbe Pulling 
+ Image anchore/grype:v0.120.1@sha256:e4a44ef45d285b829ce6efe2642980329661bd2d18eab5fc539138d4adaebbbe Pulled 
+ Network ke-scan-636583472_default Creating 
+ Network ke-scan-636583472_default Created 
+ Volume ke-scan-636583472_scan-db Creating 
+ Volume ke-scan-636583472_scan-db Created 
+ Container ke-scan-636583472-scan-db-run-4d6c5d0f304a Creating 
+ Container ke-scan-636583472-scan-db-run-4d6c5d0f304a Created 
+Vulnerability database updated to latest version!
+scan: scan-db took 74s
+== scan: scan ==
+ Container ke-scan-636583472-scan-run-21aa437a247d Creating 
+ Container ke-scan-636583472-scan-run-21aa437a247d Created 
+[0003] ERROR discovered vulnerabilities at or above the severity threshold
+NAME                 INSTALLED               FIXED IN                       TYPE    VULNERABILITY     SEVERITY    EPSS          RISK                 
+libssl3              3.0.22-1~deb12u1        3.0.22-1~deb12u2               deb     CVE-2026-84782    High        0.8% (57th)   0.7                  
+openssl              3.0.22-1~deb12u1        3.0.22-1~deb12u2               deb     CVE-2026-84782    High        0.8% (57th)   0.7                  
+libssl3              3.0.22-1~deb12u1        3.0.22-1~deb12u2               deb     CVE-2026-75806    Medium      1.1% (65th)   0.6                  
+openssl              3.0.22-1~deb12u1        3.0.22-1~deb12u2               deb     CVE-2026-75806    Medium      1.1% (65th)   0.6                  
+python               3.12.15                 *3.13.10, 3.14.1, 3.15.0a2     binary  CVE-2025-12781    Medium      0.9% (58th)   0.5                  
+python               3.12.15                 *3.13.15, 3.14.7, 3.15.0a6     binary  CVE-2025-15366    Medium      0.4% (37th)   0.2                  
+python               3.12.15                 3.15.0a6                       binary  CVE-2025-15367    Medium      0.4% (31st)   0.2                  
+python               3.12.15                 3.15.0rc3                      binary  CVE-2026-12345    Medium      0.3% (27th)   0.2                  
+libssl3              3.0.22-1~deb12u1        3.0.22-1~deb12u2               deb     CVE-2026-75805    Medium      0.3% (25th)   0.2                  
+openssl              3.0.22-1~deb12u1        3.0.22-1~deb12u2               deb     CVE-2026-75805    Medium      0.3% (25th)   0.2                  
+libssl3              3.0.22-1~deb12u1        3.0.22-1~deb12u2               deb     CVE-2026-35189    Medium      0.3% (24th)   0.2                  
+openssl              3.0.22-1~deb12u1        3.0.22-1~deb12u2               deb     CVE-2026-35189    Medium      0.3% (24th)   0.2                  
+libssl3              3.0.22-1~deb12u1        3.0.22-1~deb12u2               deb     CVE-2026-54872    Low         0.4% (36th)   0.1                  
+openssl              3.0.22-1~deb12u1        3.0.22-1~deb12u2               deb     CVE-2026-54872    Low         0.4% (36th)   0.1                  
+libssl3              3.0.22-1~deb12u1        3.0.22-1~deb12u2               deb     CVE-2026-77696    Low         0.4% (33rd)   0.1                  
+openssl              3.0.22-1~deb12u1        3.0.22-1~deb12u2               deb     CVE-2026-77696    Low         0.4% (33rd)   0.1                  
+python               3.12.15                 *3.13.13, 3.14.4, 3.15.0a8     binary  CVE-2026-3446     Medium      0.2% (8th)    0.1                  
+python               3.12.15                 *3.13.14, 3.14.5rc1, 3.15.0b1  binary  CVE-2026-6019     Medium      0.2% (11th)   < 0.1                
+python               3.12.15                 *3.13.13, 3.14.4, 3.15.0a8     binary  CVE-2026-3479     Negligible  0.2% (15th)   < 0.1                
+tar                  1.34+dfsg-1.2+deb12u1                                  deb     CVE-2005-2541     Negligible  4.0% (90th)   0.2    (suppressed)  
+login                1:4.13+dfsg1-1+deb12u2                                 deb     CVE-2007-5686     Negligible  0.9% (60th)   < 0.1  (suppressed)  
+passwd               1:4.13+dfsg1-1+deb12u2                                 deb     CVE-2007-5686     Negligible  0.9% (60th)   < 0.1  (suppressed)  
+libc-bin             2.36-9+deb12u14                                        deb     CVE-2010-4756     Negligible  2.6% (85th)   0.1    (suppressed)  
+libc6                2.36-9+deb12u14                                        deb     CVE-2010-4756     Negligible  2.6% (85th)   0.1    (suppressed)  
+apt                  2.6.1                                                  deb     CVE-2011-3374     Negligible  1.2% (67th)   < 0.1  (suppressed)  
+libapt-pkg6.0        2.6.1                                                  deb     CVE-2011-3374     Negligible  1.2% (67th)   < 0.1  (suppressed)  
+libgnutls30          3.7.9-2+deb12u7                                        deb     CVE-2011-3389     Negligible  73.3% (99th)  3.7    (suppressed)  
+perl-base            5.36.0-7+deb12u4                                       deb     CVE-2011-4116     Negligible  0.5% (44th)   < 0.1  (suppressed)  
+libsystemd0          252.39-1~deb12u2                                       deb     CVE-2013-4392     Negligible  0.5% (40th)   < 0.1  (suppressed)  
+libudev1             252.39-1~deb12u2                                       deb     CVE-2013-4392     Negligible  0.5% (40th)   < 0.1  (suppressed)  
+libldap-2.5-0        2.5.13+dfsg-5                                          deb     CVE-2015-3276     Negligible  5.3% (92nd)   0.3    (suppressed)  
+coreutils            9.1-1                   (won't fix)                    deb     CVE-2016-2781     Low         0.4% (36th)   0.1    (suppressed)  
+libldap-2.5-0        2.5.13+dfsg-5                                          deb     CVE-2017-14159    Negligible  0.3% (27th)   < 0.1  (suppressed)  
+libldap-2.5-0        2.5.13+dfsg-5                                          deb     CVE-2017-17740    Negligible  7.0% (94th)   0.4    (suppressed)  
+coreutils            9.1-1                                                  deb     CVE-2017-18018    Negligible  0.3% (27th)   < 0.1  (suppressed)  
+libc-bin             2.36-9+deb12u14                                        deb     CVE-2018-20796    Negligible  5.8% (93rd)   0.3    (suppressed)  
+libc6                2.36-9+deb12u14                                        deb     CVE-2018-20796    Negligible  5.8% (93rd)   0.3    (suppressed)  
+libgssapi-krb5-2     1.20.1-2+deb12u5                                       deb     CVE-2018-5709     Negligible  2.0% (81st)   0.1    (suppressed)  
+libk5crypto3         1.20.1-2+deb12u5                                       deb     CVE-2018-5709     Negligible  2.0% (81st)   0.1    (suppressed)  
+libkrb5-3            1.20.1-2+deb12u5                                       deb     CVE-2018-5709     Negligible  2.0% (81st)   0.1    (suppressed)  
+libkrb5support0      1.20.1-2+deb12u5                                       deb     CVE-2018-5709     Negligible  2.0% (81st)   0.1    (suppressed)  
+libgcrypt20          1.10.1-3+deb12u1                                       deb     CVE-2018-6829     Negligible  1.8% (78th)   < 0.1  (suppressed)  
+libc-bin             2.36-9+deb12u14                                        deb     CVE-2019-1010022  Negligible  3.2% (88th)   0.2    (suppressed)  
+libc6                2.36-9+deb12u14                                        deb     CVE-2019-1010022  Negligible  3.2% (88th)   0.2    (suppressed)  
+libc-bin             2.36-9+deb12u14                                        deb     CVE-2019-1010023  Negligible  3.1% (87th)   0.2    (suppressed)  
+libc6                2.36-9+deb12u14                                        deb     CVE-2019-1010023  Negligible  3.1% (87th)   0.2    (suppressed)  
+libc-bin             2.36-9+deb12u14                                        deb     CVE-2019-1010024  Negligible  3.2% (88th)   0.2    (suppressed)  
+libc6                2.36-9+deb12u14                                        deb     CVE-2019-1010024  Negligible  3.2% (88th)   0.2    (suppressed)  
+libc-bin             2.36-9+deb12u14                                        deb     CVE-2019-1010025  Negligible  2.5% (84th)   0.1    (suppressed)  
+libc6                2.36-9+deb12u14                                        deb     CVE-2019-1010025  Negligible  2.5% (84th)   0.1    (suppressed)  
+libc-bin             2.36-9+deb12u14                                        deb     CVE-2019-9192     Negligible  2.4% (84th)   0.1    (suppressed)  
+libc6                2.36-9+deb12u14                                        deb     CVE-2019-9192     Negligible  2.4% (84th)   0.1    (suppressed)  
+libldap-2.5-0        2.5.13+dfsg-5                                          deb     CVE-2020-15719    Negligible  2.5% (84th)   0.1    (suppressed)  
+libsqlite3-0         3.40.1-2+deb12u2                                       deb     CVE-2021-45346    Negligible  1.6% (76th)   < 0.1  (suppressed)  
+bsdutils             1:2.38.1-5+deb12u3                                     deb     CVE-2022-0563     Negligible  0.4% (37th)   < 0.1  (suppressed)  
+libblkid1            2.38.1-5+deb12u3                                       deb     CVE-2022-0563     Negligible  0.4% (37th)   < 0.1  (suppressed)  
+libmount1            2.38.1-5+deb12u3                                       deb     CVE-2022-0563     Negligible  0.4% (37th)   < 0.1  (suppressed)  
+libsmartcols1        2.38.1-5+deb12u3                                       deb     CVE-2022-0563     Negligible  0.4% (37th)   < 0.1  (suppressed)  
+libuuid1             2.38.1-5+deb12u3                                       deb     CVE-2022-0563     Negligible  0.4% (37th)   < 0.1  (suppressed)  
+mount                2.38.1-5+deb12u3                                       deb     CVE-2022-0563     Negligible  0.4% (37th)   < 0.1  (suppressed)  
+util-linux           2.38.1-5+deb12u3                                       deb     CVE-2022-0563     Negligible  0.4% (37th)   < 0.1  (suppressed)  
+util-linux-extra     2.38.1-5+deb12u3                                       deb     CVE-2022-0563     Negligible  0.4% (37th)   < 0.1  (suppressed)  
+gcc-12-base          12.2.0-14+deb12u1                                      deb     CVE-2022-27943    Negligible  1.0% (61st)   < 0.1  (suppressed)  
+libgcc-s1            12.2.0-14+deb12u1                                      deb     CVE-2022-27943    Negligible  1.0% (61st)   < 0.1  (suppressed)  
+libstdc++6           12.2.0-14+deb12u1                                      deb     CVE-2022-27943    Negligible  1.0% (61st)   < 0.1  (suppressed)  
+gpgv                 2.2.40-1.1+deb12u2                                     deb     CVE-2022-3219     Negligible  0.3% (21st)   < 0.1  (suppressed)  
+libldap-2.5-0        2.5.13+dfsg-5           (won't fix)                    deb     CVE-2023-2953     High        2.0% (80th)   1.5    (suppressed)  
+libsystemd0          252.39-1~deb12u2                                       deb     CVE-2023-31437    Negligible  0.3% (27th)   < 0.1  (suppressed)  
+libudev1             252.39-1~deb12u2                                       deb     CVE-2023-31437    Negligible  0.3% (27th)   < 0.1  (suppressed)  
+libsystemd0          252.39-1~deb12u2                                       deb     CVE-2023-31438    Negligible  0.3% (25th)   < 0.1  (suppressed)  
+libudev1             252.39-1~deb12u2                                       deb     CVE-2023-31438    Negligible  0.3% (25th)   < 0.1  (suppressed)  
+libsystemd0          252.39-1~deb12u2                                       deb     CVE-2023-31439    Negligible  0.3% (28th)   < 0.1  (suppressed)  
+libudev1             252.39-1~deb12u2                                       deb     CVE-2023-31439    Negligible  0.3% (28th)   < 0.1  (suppressed)  
+perl-base            5.36.0-7+deb12u4                                       deb     CVE-2023-31486    Negligible  1.7% (77th)   < 0.1  (suppressed)  
+libncursesw6         6.4-4                   (won't fix)                    deb     CVE-2023-50495    Medium      1.0% (63rd)   0.6    (suppressed)  
+libtinfo6            6.4-4                   (won't fix)                    deb     CVE-2023-50495    Medium      1.0% (63rd)   0.6    (suppressed)  
+ncurses-base         6.4-4                   (won't fix)                    deb     CVE-2023-50495    Medium      1.0% (63rd)   0.6    (suppressed)  
+ncurses-bin          6.4-4                   (won't fix)                    deb     CVE-2023-50495    Medium      1.0% (63rd)   0.6    (suppressed)  
+libpam-modules       1.5.2-6+deb12u2         (won't fix)                    deb     CVE-2024-10041    Medium      0.3% (18th)   0.1    (suppressed)  
+libpam-modules-bin   1.5.2-6+deb12u2         (won't fix)                    deb     CVE-2024-10041    Medium      0.3% (18th)   0.1    (suppressed)  
+libpam-runtime       1.5.2-6+deb12u2         (won't fix)                    deb     CVE-2024-10041    Medium      0.3% (18th)   0.1    (suppressed)  
+libpam0g             1.5.2-6+deb12u2         (won't fix)                    deb     CVE-2024-10041    Medium      0.3% (18th)   0.1    (suppressed)  
+libgcrypt20          1.10.1-3+deb12u1                                       deb     CVE-2024-2236     Negligible  1.1% (66th)   < 0.1  (suppressed)  
+libgssapi-krb5-2     1.20.1-2+deb12u5                                       deb     CVE-2024-26458    Negligible  0.8% (56th)   < 0.1  (suppressed)  
+libk5crypto3         1.20.1-2+deb12u5                                       deb     CVE-2024-26458    Negligible  0.8% (56th)   < 0.1  (suppressed)  
+libkrb5-3            1.20.1-2+deb12u5                                       deb     CVE-2024-26458    Negligible  0.8% (56th)   < 0.1  (suppressed)  
+libkrb5support0      1.20.1-2+deb12u5                                       deb     CVE-2024-26458    Negligible  0.8% (56th)   < 0.1  (suppressed)  
+libgssapi-krb5-2     1.20.1-2+deb12u5                                       deb     CVE-2024-26461    Negligible  1.1% (66th)   < 0.1  (suppressed)  
+libk5crypto3         1.20.1-2+deb12u5                                       deb     CVE-2024-26461    Negligible  1.1% (66th)   < 0.1  (suppressed)  
+libkrb5-3            1.20.1-2+deb12u5                                       deb     CVE-2024-26461    Negligible  1.1% (66th)   < 0.1  (suppressed)  
+libkrb5support0      1.20.1-2+deb12u5                                       deb     CVE-2024-26461    Negligible  1.1% (66th)   < 0.1  (suppressed)  
+login                1:4.13+dfsg1-1+deb12u2  (won't fix)                    deb     CVE-2024-56433    Low         0.4% (36th)   0.1    (suppressed)  
+passwd               1:4.13+dfsg1-1+deb12u2  (won't fix)                    deb     CVE-2024-56433    Low         0.4% (36th)   0.1    (suppressed)  
+libtasn1-6           4.19.0-2+deb12u1        (won't fix)                    deb     CVE-2025-13151    High        1.4% (71st)   1.0    (suppressed)  
+bsdutils             1:2.38.1-5+deb12u3                                     deb     CVE-2025-14104    Negligible  0.2% (9th)    < 0.1  (suppressed)  
+libblkid1            2.38.1-5+deb12u3                                       deb     CVE-2025-14104    Negligible  0.2% (9th)    < 0.1  (suppressed)  
+libmount1            2.38.1-5+deb12u3                                       deb     CVE-2025-14104    Negligible  0.2% (9th)    < 0.1  (suppressed)  
+libsmartcols1        2.38.1-5+deb12u3                                       deb     CVE-2025-14104    Negligible  0.2% (9th)    < 0.1  (suppressed)  
+libuuid1             2.38.1-5+deb12u3                                       deb     CVE-2025-14104    Negligible  0.2% (9th)    < 0.1  (suppressed)  
+mount                2.38.1-5+deb12u3                                       deb     CVE-2025-14104    Negligible  0.2% (9th)    < 0.1  (suppressed)  
+util-linux           2.38.1-5+deb12u3                                       deb     CVE-2025-14104    Negligible  0.2% (9th)    < 0.1  (suppressed)  
+util-linux-extra     2.38.1-5+deb12u3                                       deb     CVE-2025-14104    Negligible  0.2% (9th)    < 0.1  (suppressed)  
+libssl3              3.0.22-1~deb12u1                                       deb     CVE-2025-27587    Negligible  0.4% (38th)   < 0.1  (suppressed)  
+openssl              3.0.22-1~deb12u1                                       deb     CVE-2025-27587    Negligible  0.4% (38th)   < 0.1  (suppressed)  
+libsqlite3-0         3.40.1-2+deb12u2                                       deb     CVE-2025-29088    Negligible  0.2% (12th)   < 0.1  (suppressed)  
+gpgv                 2.2.40-1.1+deb12u2      (won't fix)                    deb     CVE-2025-30258    Medium      0.2% (9th)    < 0.1  (suppressed)  
+coreutils            9.1-1                                                  deb     CVE-2025-5278     Negligible  0.3% (23rd)   < 0.1  (suppressed)  
+libncursesw6         6.4-4                   (won't fix)                    deb     CVE-2025-6141     Medium      0.2% (9th)    < 0.1  (suppressed)  
+libtinfo6            6.4-4                   (won't fix)                    deb     CVE-2025-6141     Medium      0.2% (9th)    < 0.1  (suppressed)  
+ncurses-base         6.4-4                   (won't fix)                    deb     CVE-2025-6141     Medium      0.2% (9th)    < 0.1  (suppressed)  
+ncurses-bin          6.4-4                   (won't fix)                    deb     CVE-2025-6141     Medium      0.2% (9th)    < 0.1  (suppressed)  
+gpgv                 2.2.40-1.1+deb12u2      (won't fix)                    deb     CVE-2025-68972    Medium      0.1% (1st)    < 0.1  (suppressed)  
+libncursesw6         6.4-4                   (won't fix)                    deb     CVE-2025-69720    High        0.5% (39th)   0.4    (suppressed)  
+libtinfo6            6.4-4                   (won't fix)                    deb     CVE-2025-69720    High        0.5% (39th)   0.4    (suppressed)  
+ncurses-base         6.4-4                   (won't fix)                    deb     CVE-2025-69720    High        0.5% (39th)   0.4    (suppressed)  
+ncurses-bin          6.4-4                   (won't fix)                    deb     CVE-2025-69720    High        0.5% (39th)   0.4    (suppressed)  
+libsqlite3-0         3.40.1-2+deb12u2                                       deb     CVE-2025-70873    Negligible  0.5% (39th)   < 0.1  (suppressed)  
+libsqlite3-0         3.40.1-2+deb12u2        (won't fix)                    deb     CVE-2025-7458     Critical    0.3% (25th)   0.3    (suppressed)  
+libsqlite3-0         3.40.1-2+deb12u2        (won't fix)                    deb     CVE-2025-7709     Medium      0.4% (30th)   0.2    (suppressed)  
+gcc-12-base          12.2.0-14+deb12u1       (won't fix)                    deb     CVE-2026-102010   High        0.3% (23rd)   0.2    (suppressed)  
+libgcc-s1            12.2.0-14+deb12u1       (won't fix)                    deb     CVE-2026-102010   High        0.3% (23rd)   0.2    (suppressed)  
+libstdc++6           12.2.0-14+deb12u1       (won't fix)                    deb     CVE-2026-102010   High        0.3% (23rd)   0.2    (suppressed)  
+dash                 0.5.12-2                                               deb     CVE-2026-102473   Negligible  0.1% (0th)    < 0.1  (suppressed)  
+dash                 0.5.12-2                                               deb     CVE-2026-102474   Negligible  0.1% (1st)    < 0.1  (suppressed)  
+gpgv                 2.2.40-1.1+deb12u2      (won't fix)                    deb     CVE-2026-105712   Low         0.1% (2nd)    < 0.1  (suppressed)  
+libsasl2-2           2.1.28+dfsg-10                                         deb     CVE-2026-107161   High        0.3% (26th)   0.3    (suppressed)  
+libsasl2-modules-db  2.1.28+dfsg-10                                         deb     CVE-2026-107161   High        0.3% (26th)   0.3    (suppressed)  
+libgssapi-krb5-2     1.20.1-2+deb12u5        (won't fix)                    deb     CVE-2026-107708   Medium      0.5% (43rd)   0.3    (suppressed)  
+libk5crypto3         1.20.1-2+deb12u5        (won't fix)                    deb     CVE-2026-107708   Medium      0.5% (43rd)   0.3    (suppressed)  
+libkrb5-3            1.20.1-2+deb12u5        (won't fix)                    deb     CVE-2026-107708   Medium      0.5% (43rd)   0.3    (suppressed)  
+libkrb5support0      1.20.1-2+deb12u5        (won't fix)                    deb     CVE-2026-107708   Medium      0.5% (43rd)   0.3    (suppressed)  
+libgssapi-krb5-2     1.20.1-2+deb12u5        (won't fix)                    deb     CVE-2026-107778   High        0.4% (36th)   0.3    (suppressed)  
+libk5crypto3         1.20.1-2+deb12u5        (won't fix)                    deb     CVE-2026-107778   High        0.4% (36th)   0.3    (suppressed)  
+libkrb5-3            1.20.1-2+deb12u5        (won't fix)                    deb     CVE-2026-107778   High        0.4% (36th)   0.3    (suppressed)  
+libkrb5support0      1.20.1-2+deb12u5        (won't fix)                    deb     CVE-2026-107778   High        0.4% (36th)   0.3    (suppressed)  
+libsqlite3-0         3.40.1-2+deb12u2        (won't fix)                    deb     CVE-2026-11822    High        0.4% (29th)   0.3    (suppressed)  
+libsqlite3-0         3.40.1-2+deb12u2        (won't fix)                    deb     CVE-2026-11824    High        0.2% (7th)    0.1    (suppressed)  
+libgssapi-krb5-2     1.20.1-2+deb12u5                                       deb     CVE-2026-11850    Negligible  0.3% (19th)   < 0.1  (suppressed)  
+libk5crypto3         1.20.1-2+deb12u5                                       deb     CVE-2026-11850    Negligible  0.3% (19th)   < 0.1  (suppressed)  
+libkrb5-3            1.20.1-2+deb12u5                                       deb     CVE-2026-11850    Negligible  0.3% (19th)   < 0.1  (suppressed)  
+libkrb5support0      1.20.1-2+deb12u5                                       deb     CVE-2026-11850    Negligible  0.3% (19th)   < 0.1  (suppressed)  
+bsdutils             1:2.38.1-5+deb12u3                                     deb     CVE-2026-13595    Medium      0.1% (3rd)    < 0.1  (suppressed)  
+libblkid1            2.38.1-5+deb12u3                                       deb     CVE-2026-13595    Medium      0.1% (3rd)    < 0.1  (suppressed)  
+libmount1            2.38.1-5+deb12u3                                       deb     CVE-2026-13595    Medium      0.1% (3rd)    < 0.1  (suppressed)  
+libsmartcols1        2.38.1-5+deb12u3                                       deb     CVE-2026-13595    Medium      0.1% (3rd)    < 0.1  (suppressed)  
+libuuid1             2.38.1-5+deb12u3                                       deb     CVE-2026-13595    Medium      0.1% (3rd)    < 0.1  (suppressed)  
+mount                2.38.1-5+deb12u3                                       deb     CVE-2026-13595    Medium      0.1% (3rd)    < 0.1  (suppressed)  
+util-linux           2.38.1-5+deb12u3                                       deb     CVE-2026-13595    Medium      0.1% (3rd)    < 0.1  (suppressed)  
+util-linux-extra     2.38.1-5+deb12u3                                       deb     CVE-2026-13595    Medium      0.1% (3rd)    < 0.1  (suppressed)  
+libp11-kit0          0.24.1-2                (won't fix)                    deb     CVE-2026-13757    Medium      0.2% (4th)    < 0.1  (suppressed)  
+libsystemd0          252.39-1~deb12u2        (won't fix)                    deb     CVE-2026-15059    Medium      0.2% (5th)    < 0.1  (suppressed)  
+libudev1             252.39-1~deb12u2        (won't fix)                    deb     CVE-2026-15059    Medium      0.2% (5th)    < 0.1  (suppressed)  
+perl-base            5.36.0-7+deb12u4                                       deb     CVE-2026-15534    Medium      0.2% (5th)    < 0.1  (suppressed)  
+libsystemd0          252.39-1~deb12u2        (won't fix)                    deb     CVE-2026-16742    Medium      < 0.1% (0th)  < 0.1  (suppressed)  
+libudev1             252.39-1~deb12u2        (won't fix)                    deb     CVE-2026-16742    Medium      < 0.1% (0th)  < 0.1  (suppressed)  
+libc-bin             2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-18374    Medium      0.1% (3rd)    < 0.1  (suppressed)  
+libc6                2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-18374    Medium      0.1% (3rd)    < 0.1  (suppressed)  
+tar                  1.34+dfsg-1.2+deb12u1   (won't fix)                    deb     CVE-2026-18477    Medium      < 0.1% (0th)  < 0.1  (suppressed)  
+tar                  1.34+dfsg-1.2+deb12u1   (won't fix)                    deb     CVE-2026-18508    Medium      0.1% (3rd)    < 0.1  (suppressed)  
+libp11-kit0          0.24.1-2                (won't fix)                    deb     CVE-2026-18938    Medium      0.1% (1st)    < 0.1  (suppressed)  
+libc-bin             2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-19499    High        0.3% (22nd)   0.2    (suppressed)  
+libc6                2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-19499    High        0.3% (22nd)   0.2    (suppressed)  
+libc-bin             2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-19542    Medium      0.2% (13th)   0.1    (suppressed)  
+libc6                2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-19542    Medium      0.2% (13th)   0.1    (suppressed)  
+libldap-2.5-0        2.5.13+dfsg-5                                          deb     CVE-2026-22185    Negligible  0.2% (4th)    < 0.1  (suppressed)  
+zlib1g               1:1.2.13.dfsg-1         (won't fix)                    deb     CVE-2026-27171    Medium      0.2% (15th)   0.1    (suppressed)  
+bsdutils             1:2.38.1-5+deb12u3      (won't fix)                    deb     CVE-2026-27456    Medium      0.2% (4th)    < 0.1  (suppressed)  
+libblkid1            2.38.1-5+deb12u3        (won't fix)                    deb     CVE-2026-27456    Medium      0.2% (4th)    < 0.1  (suppressed)  
+libmount1            2.38.1-5+deb12u3        (won't fix)                    deb     CVE-2026-27456    Medium      0.2% (4th)    < 0.1  (suppressed)  
+libsmartcols1        2.38.1-5+deb12u3        (won't fix)                    deb     CVE-2026-27456    Medium      0.2% (4th)    < 0.1  (suppressed)  
+libuuid1             2.38.1-5+deb12u3        (won't fix)                    deb     CVE-2026-27456    Medium      0.2% (4th)    < 0.1  (suppressed)  
+mount                2.38.1-5+deb12u3        (won't fix)                    deb     CVE-2026-27456    Medium      0.2% (4th)    < 0.1  (suppressed)  
+util-linux           2.38.1-5+deb12u3        (won't fix)                    deb     CVE-2026-27456    Medium      0.2% (4th)    < 0.1  (suppressed)  
+util-linux-extra     2.38.1-5+deb12u3        (won't fix)                    deb     CVE-2026-27456    Medium      0.2% (4th)    < 0.1  (suppressed)  
+bsdutils             1:2.38.1-5+deb12u3      (won't fix)                    deb     CVE-2026-3184     Medium      0.4% (37th)   0.2    (suppressed)  
+libblkid1            2.38.1-5+deb12u3        (won't fix)                    deb     CVE-2026-3184     Medium      0.4% (37th)   0.2    (suppressed)  
+libmount1            2.38.1-5+deb12u3        (won't fix)                    deb     CVE-2026-3184     Medium      0.4% (37th)   0.2    (suppressed)  
+libsmartcols1        2.38.1-5+deb12u3        (won't fix)                    deb     CVE-2026-3184     Medium      0.4% (37th)   0.2    (suppressed)  
+libuuid1             2.38.1-5+deb12u3        (won't fix)                    deb     CVE-2026-3184     Medium      0.4% (37th)   0.2    (suppressed)  
+mount                2.38.1-5+deb12u3        (won't fix)                    deb     CVE-2026-3184     Medium      0.4% (37th)   0.2    (suppressed)  
+util-linux           2.38.1-5+deb12u3        (won't fix)                    deb     CVE-2026-3184     Medium      0.4% (37th)   0.2    (suppressed)  
+util-linux-extra     2.38.1-5+deb12u3        (won't fix)                    deb     CVE-2026-3184     Medium      0.4% (37th)   0.2    (suppressed)  
+libsystemd0          252.39-1~deb12u2        (won't fix)                    deb     CVE-2026-40228    Low         0.2% (6th)    < 0.1  (suppressed)  
+libudev1             252.39-1~deb12u2        (won't fix)                    deb     CVE-2026-40228    Low         0.2% (6th)    < 0.1  (suppressed)  
+gzip                 1.12-1                  (won't fix)                    deb     CVE-2026-41991    Medium      0.1% (1st)    < 0.1  (suppressed)  
+gzip                 1.12-1                  (won't fix)                    deb     CVE-2026-41992    High        0.6% (49th)   0.5    (suppressed)  
+libbz2-1.0           1.0.8-5+b1              (won't fix)                    deb     CVE-2026-42250    Medium      0.1% (2nd)    < 0.1  (suppressed)  
+libsqlite3-0         3.40.1-2+deb12u2        (won't fix)                    deb     CVE-2026-50812    Medium      0.2% (5th)    < 0.1  (suppressed)  
+libsqlite3-0         3.40.1-2+deb12u2        (won't fix)                    deb     CVE-2026-50813    Medium      0.2% (4th)    < 0.1  (suppressed)  
+bsdutils             1:2.38.1-5+deb12u3                                     deb     CVE-2026-53613    High        0.2% (5th)    0.1    (suppressed)  
+libblkid1            2.38.1-5+deb12u3                                       deb     CVE-2026-53613    High        0.2% (5th)    0.1    (suppressed)  
+libmount1            2.38.1-5+deb12u3                                       deb     CVE-2026-53613    High        0.2% (5th)    0.1    (suppressed)  
+libsmartcols1        2.38.1-5+deb12u3                                       deb     CVE-2026-53613    High        0.2% (5th)    0.1    (suppressed)  
+libuuid1             2.38.1-5+deb12u3                                       deb     CVE-2026-53613    High        0.2% (5th)    0.1    (suppressed)  
+mount                2.38.1-5+deb12u3                                       deb     CVE-2026-53613    High        0.2% (5th)    0.1    (suppressed)  
+util-linux           2.38.1-5+deb12u3                                       deb     CVE-2026-53613    High        0.2% (5th)    0.1    (suppressed)  
+util-linux-extra     2.38.1-5+deb12u3                                       deb     CVE-2026-53613    High        0.2% (5th)    0.1    (suppressed)  
+bsdutils             1:2.38.1-5+deb12u3                                     deb     CVE-2026-53615    High        0.2% (7th)    0.1    (suppressed)  
+libblkid1            2.38.1-5+deb12u3                                       deb     CVE-2026-53615    High        0.2% (7th)    0.1    (suppressed)  
+libmount1            2.38.1-5+deb12u3                                       deb     CVE-2026-53615    High        0.2% (7th)    0.1    (suppressed)  
+libsmartcols1        2.38.1-5+deb12u3                                       deb     CVE-2026-53615    High        0.2% (7th)    0.1    (suppressed)  
+libuuid1             2.38.1-5+deb12u3                                       deb     CVE-2026-53615    High        0.2% (7th)    0.1    (suppressed)  
+mount                2.38.1-5+deb12u3                                       deb     CVE-2026-53615    High        0.2% (7th)    0.1    (suppressed)  
+util-linux           2.38.1-5+deb12u3                                       deb     CVE-2026-53615    High        0.2% (7th)    0.1    (suppressed)  
+util-linux-extra     2.38.1-5+deb12u3                                       deb     CVE-2026-53615    High        0.2% (7th)    0.1    (suppressed)  
+diffutils            1:3.8-4                                                deb     CVE-2026-53910    Negligible  0.3% (26th)   < 0.1  (suppressed)  
+libc-bin             2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-5435     High        0.2% (14th)   0.2    (suppressed)  
+libc6                2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-5435     High        0.2% (14th)   0.2    (suppressed)  
+libacl1              2.3.1-3                 (won't fix)                    deb     CVE-2026-54369    High        0.2% (4th)    0.1    (suppressed)  
+libacl1              2.3.1-3                 (won't fix)                    deb     CVE-2026-54370    High        < 0.1% (0th)  < 0.1  (suppressed)  
+libattr1             1:2.5.1-4               (won't fix)                    deb     CVE-2026-54371    Medium      0.1% (3rd)    < 0.1  (suppressed)  
+libpam-modules       1.5.2-6+deb12u2         (won't fix)                    deb     CVE-2026-54411    Medium      0.3% (24th)   0.2    (suppressed)  
+libpam-modules-bin   1.5.2-6+deb12u2         (won't fix)                    deb     CVE-2026-54411    Medium      0.3% (24th)   0.2    (suppressed)  
+libpam-runtime       1.5.2-6+deb12u2         (won't fix)                    deb     CVE-2026-54411    Medium      0.3% (24th)   0.2    (suppressed)  
+libpam0g             1.5.2-6+deb12u2         (won't fix)                    deb     CVE-2026-54411    Medium      0.3% (24th)   0.2    (suppressed)  
+libc-bin             2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-5450     Critical    0.5% (42nd)   0.5    (suppressed)  
+libc6                2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-5450     Critical    0.5% (42nd)   0.5    (suppressed)  
+coreutils            9.1-1                                                  deb     CVE-2026-56391    Negligible  0.1% (2nd)    < 0.1  (suppressed)  
+coreutils            9.1-1                                                  deb     CVE-2026-56392    Negligible  0.2% (8th)    < 0.1  (suppressed)  
+tar                  1.34+dfsg-1.2+deb12u1   (won't fix)                    deb     CVE-2026-5704     Medium      0.4% (36th)   0.2    (suppressed)  
+gpgv                 2.2.40-1.1+deb12u2      (won't fix)                    deb     CVE-2026-57062    Low         0.1% (4th)    < 0.1  (suppressed)  
+libc-bin             2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-5928     High        0.4% (30th)   0.3    (suppressed)  
+libc6                2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-5928     High        0.4% (30th)   0.3    (suppressed)  
+libc-bin             2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-6238     Medium      0.4% (29th)   0.2    (suppressed)  
+libc6                2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-6238     Medium      0.4% (29th)   0.2    (suppressed)  
+libc-bin             2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-6368     Low         0.1% (1st)    < 0.1  (suppressed)  
+libc6                2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-6368     Low         0.1% (1st)    < 0.1  (suppressed)  
+libgnutls30          3.7.9-2+deb12u7                                        deb     CVE-2026-67693    Negligible  0.2% (4th)    < 0.1  (suppressed)  
+libc-bin             2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-6791     Medium      0.2% (12th)   0.1    (suppressed)  
+libc6                2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-6791     Medium      0.2% (12th)   0.1    (suppressed)  
+bsdutils             1:2.38.1-5+deb12u3                                     deb     CVE-2026-76642    High        0.2% (11th)   0.2    (suppressed)  
+libblkid1            2.38.1-5+deb12u3                                       deb     CVE-2026-76642    High        0.2% (11th)   0.2    (suppressed)  
+libmount1            2.38.1-5+deb12u3                                       deb     CVE-2026-76642    High        0.2% (11th)   0.2    (suppressed)  
+libsmartcols1        2.38.1-5+deb12u3                                       deb     CVE-2026-76642    High        0.2% (11th)   0.2    (suppressed)  
+libuuid1             2.38.1-5+deb12u3                                       deb     CVE-2026-76642    High        0.2% (11th)   0.2    (suppressed)  
+mount                2.38.1-5+deb12u3                                       deb     CVE-2026-76642    High        0.2% (11th)   0.2    (suppressed)  
+util-linux           2.38.1-5+deb12u3                                       deb     CVE-2026-76642    High        0.2% (11th)   0.2    (suppressed)  
+util-linux-extra     2.38.1-5+deb12u3                                       deb     CVE-2026-76642    High        0.2% (11th)   0.2    (suppressed)  
+libc-bin             2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-77117    Medium      0.4% (29th)   0.2    (suppressed)  
+libc6                2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-77117    Medium      0.4% (29th)   0.2    (suppressed)  
+bsdutils             1:2.38.1-5+deb12u3                                     deb     CVE-2026-78408    High        0.2% (8th)    0.1    (suppressed)  
+libblkid1            2.38.1-5+deb12u3                                       deb     CVE-2026-78408    High        0.2% (8th)    0.1    (suppressed)  
+libmount1            2.38.1-5+deb12u3                                       deb     CVE-2026-78408    High        0.2% (8th)    0.1    (suppressed)  
+libsmartcols1        2.38.1-5+deb12u3                                       deb     CVE-2026-78408    High        0.2% (8th)    0.1    (suppressed)  
+libuuid1             2.38.1-5+deb12u3                                       deb     CVE-2026-78408    High        0.2% (8th)    0.1    (suppressed)  
+mount                2.38.1-5+deb12u3                                       deb     CVE-2026-78408    High        0.2% (8th)    0.1    (suppressed)  
+util-linux           2.38.1-5+deb12u3                                       deb     CVE-2026-78408    High        0.2% (8th)    0.1    (suppressed)  
+util-linux-extra     2.38.1-5+deb12u3                                       deb     CVE-2026-78408    High        0.2% (8th)    0.1    (suppressed)  
+bsdutils             1:2.38.1-5+deb12u3                                     deb     CVE-2026-78409    High        0.2% (8th)    0.1    (suppressed)  
+libblkid1            2.38.1-5+deb12u3                                       deb     CVE-2026-78409    High        0.2% (8th)    0.1    (suppressed)  
+libmount1            2.38.1-5+deb12u3                                       deb     CVE-2026-78409    High        0.2% (8th)    0.1    (suppressed)  
+libsmartcols1        2.38.1-5+deb12u3                                       deb     CVE-2026-78409    High        0.2% (8th)    0.1    (suppressed)  
+libuuid1             2.38.1-5+deb12u3                                       deb     CVE-2026-78409    High        0.2% (8th)    0.1    (suppressed)  
+mount                2.38.1-5+deb12u3                                       deb     CVE-2026-78409    High        0.2% (8th)    0.1    (suppressed)  
+util-linux           2.38.1-5+deb12u3                                       deb     CVE-2026-78409    High        0.2% (8th)    0.1    (suppressed)  
+util-linux-extra     2.38.1-5+deb12u3                                       deb     CVE-2026-78409    High        0.2% (8th)    0.1    (suppressed)  
+bsdutils             1:2.38.1-5+deb12u3                                     deb     CVE-2026-78410    High        0.2% (5th)    0.1    (suppressed)  
+libblkid1            2.38.1-5+deb12u3                                       deb     CVE-2026-78410    High        0.2% (5th)    0.1    (suppressed)  
+libmount1            2.38.1-5+deb12u3                                       deb     CVE-2026-78410    High        0.2% (5th)    0.1    (suppressed)  
+libsmartcols1        2.38.1-5+deb12u3                                       deb     CVE-2026-78410    High        0.2% (5th)    0.1    (suppressed)  
+libuuid1             2.38.1-5+deb12u3                                       deb     CVE-2026-78410    High        0.2% (5th)    0.1    (suppressed)  
+mount                2.38.1-5+deb12u3                                       deb     CVE-2026-78410    High        0.2% (5th)    0.1    (suppressed)  
+util-linux           2.38.1-5+deb12u3                                       deb     CVE-2026-78410    High        0.2% (5th)    0.1    (suppressed)  
+util-linux-extra     2.38.1-5+deb12u3                                       deb     CVE-2026-78410    High        0.2% (5th)    0.1    (suppressed)  
+libc-bin             2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-80489    Medium      0.4% (29th)   0.2    (suppressed)  
+libc6                2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-80489    Medium      0.4% (29th)   0.2    (suppressed)  
+perl-base            5.36.0-7+deb12u4                                       deb     CVE-2026-82560    High        0.6% (49th)   0.5    (suppressed)  
+zlib1g               1:1.2.13.dfsg-1                                        deb     CVE-2026-85091    High        0.5% (40th)   0.4    (suppressed)  
+libtirpc-common      1.3.3+ds-1                                             deb     CVE-2026-85231    Medium      0.3% (22nd)   0.2    (suppressed)  
+libtirpc3            1.3.3+ds-1                                             deb     CVE-2026-85231    Medium      0.3% (22nd)   0.2    (suppressed)  
+libtirpc-common      1.3.3+ds-1                                             deb     CVE-2026-85977    Medium      0.4% (36th)   0.2    (suppressed)  
+libtirpc3            1.3.3+ds-1                                             deb     CVE-2026-85977    Medium      0.4% (36th)   0.2    (suppressed)  
+libc-bin             2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-8674     Medium      0.3% (24th)   0.2    (suppressed)  
+libc6                2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-8674     Medium      0.3% (24th)   0.2    (suppressed)  
+libc-bin             2.36-9+deb12u14                                        deb     CVE-2026-86805    Medium      < 0.1% (0th)  < 0.1  (suppressed)  
+libc6                2.36-9+deb12u14                                        deb     CVE-2026-86805    Medium      < 0.1% (0th)  < 0.1  (suppressed)  
+libgnutls30          3.7.9-2+deb12u7                                        deb     CVE-2026-88647    Negligible  0.2% (10th)   < 0.1  (suppressed)  
+libgnutls30          3.7.9-2+deb12u7                                        deb     CVE-2026-88648    Negligible  0.2% (10th)   < 0.1  (suppressed)  
+libc-bin             2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-89092    Medium      0.2% (14th)   0.1    (suppressed)  
+libc6                2.36-9+deb12u14         (won't fix)                    deb     CVE-2026-89092    Medium      0.2% (14th)   0.1    (suppressed)  
+libgnutls30          3.7.9-2+deb12u7                                        deb     CVE-2026-95184    Negligible  0.2% (5th)    < 0.1  (suppressed)  
+libgnutls30          3.7.9-2+deb12u7                                        deb     CVE-2026-95209    Negligible  0.2% (15th)   < 0.1  (suppressed)  
+libgnutls30          3.7.9-2+deb12u7                                        deb     CVE-2026-95210    Negligible  0.2% (4th)    < 0.1  (suppressed)  
+perl-base            5.36.0-7+deb12u4        (won't fix)                    deb     CVE-2026-9538     High        0.5% (43rd)   0.4    (suppressed)  
+gcc-12-base          12.2.0-14+deb12u1       (won't fix)                    deb     CVE-2026-95619    High        0.4% (38th)   0.3    (suppressed)  
+libgcc-s1            12.2.0-14+deb12u1       (won't fix)                    deb     CVE-2026-95619    High        0.4% (38th)   0.3    (suppressed)  
+libstdc++6           12.2.0-14+deb12u1       (won't fix)                    deb     CVE-2026-95619    High        0.4% (38th)   0.3    (suppressed)  
+libc-bin             2.36-9+deb12u14                                        deb     CVE-2026-95818    Low         0.1% (2nd)    < 0.1  (suppressed)  
+libc6                2.36-9+deb12u14                                        deb     CVE-2026-95818    Low         0.1% (2nd)    < 0.1  (suppressed)  
+libc-bin             2.36-9+deb12u14                                        deb     CVE-2026-97399    Low         0.3% (20th)   < 0.1  (suppressed)  
+libc6                2.36-9+deb12u14                                        deb     CVE-2026-97399    Low         0.3% (20th)   < 0.1  (suppressed)
+
+scan: FAIL (stage scan: grype exited 2: a fixed High or Critical match, or a scanner error; see the table above)
+ Network ke-scan-636583472_default Removing 
+ Volume ke-scan-636583472_scan-db Removing 
+ Volume ke-scan-636583472_scan-db Removed 
+ Network ke-scan-636583472_default Removed 
+== verify full: FAIL (exit 1) ==
+
+real	16m54.966s
+user	0m3.724s
+sys	0m3.754s
+verify exit: 1
+.env removed

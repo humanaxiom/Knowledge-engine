@@ -6692,7 +6692,8 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
        delete still ships pip; probe). Amends D10. Smoke: no pip in the api.
      - *L-5, L-9:* `licenses/CPython-3.12-incorporated.txt`: the "Licenses
        and Acknowledgements for Incorporated Software" part of `license.rst`
-       at `v3.12.15`; `licenses/CPython-3.12-HACL.txt`: the HACL* MIT header
+       at `v3.12.16` (`v3.12.15` before U7e; amended 2026-10-28, analyst;
+       bodies byte-identical); `licenses/CPython-3.12-HACL.txt`: the HACL* MIT header
        that list omits (`Modules/_hacl/Hacl_Hash_SHA2.c`). Both verbatim, Q48
        via the tarball = base `PYTHON_SHA256`; U4 ties the version to SBOM.
   10. **PSC-19 e2e:** after install and before launch, the offline client
@@ -6750,7 +6751,10 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
   - U7c: the `deb` and `apk` routes.
   - U7d: the committed lock and its every-verify coverage test.
   The coverage set is `classify_document(..., always, exempt)` rows with
-  `needs`. From the U3 fixtures that is 182 keys (152 Debian sources).
+  `needs`. From the U3 fixtures that is 183 keys (153 Debian sources).
+  *(Amended 2026-10-28, analyst; U7e: 182 and 152 at U7d; the base bump
+  added openssl and ca-certificates `~deb12u2` and removed ca-certificates
+  `~deb12u1`, `u7e/key-diff.txt`.)*
   `neo4j` is `manual` only (TOFU plus security's second fetch); every other
   kind is `generated`. Pending rulings:
   - O1: the postgres image's PGDG sources are not on snapshot.debian.org.

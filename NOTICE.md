@@ -71,7 +71,7 @@ directory and is listed in `THIRD_PARTY_NOTICES.md`.
 The shipped stage of `docker/app.Dockerfile` is `runtime`, which the last
 stage copies whole (`FROM scratch`, then `COPY --from=runtime / /`). It
 builds on
-`python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258`.
+`python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753`.
 Besides `/opt/venv` and `/app` it holds:
 
 - CPython 3.12 under `/usr/local`, under the Python License 2.0 (SPDX
@@ -119,19 +119,19 @@ unmodified, fetched over HTTPS from
 https://raw.githubusercontent.com/valkey-io/valkey/8.1.10/COPYING.
 
 `licenses/CPython-3.12-incorporated.txt` is the "Licenses and
-Acknowledgements for Incorporated Software" section of CPython 3.12.15's
+Acknowledgements for Incorporated Software" section of CPython 3.12.16's
 `Doc/license.rst`, unmodified, fetched over HTTPS from
-https://raw.githubusercontent.com/python/cpython/v3.12.15/Doc/license.rst;
+https://raw.githubusercontent.com/python/cpython/v3.12.16/Doc/license.rst;
 its header gives the fetched file's sha256.
 
 `licenses/CPython-3.12-HACL.txt` is the MIT licence header of
-`Modules/_hacl/Hacl_Hash_SHA2.c` in CPython 3.12.15's release tarball
-https://www.python.org/ftp/python/3.12.15/Python-3.12.15.tar.xz,
+`Modules/_hacl/Hacl_Hash_SHA2.c` in CPython 3.12.16's release tarball
+https://www.python.org/ftp/python/3.12.16/Python-3.12.16.tar.xz,
 unmodified; its header gives the tarball's sha256.
 
 `licenses/CPython-3.12-KaRaMeL.txt` is the licence header of
-`Modules/_hacl/include/krml/internal/target.h` in CPython 3.12.15's release
-tarball https://www.python.org/ftp/python/3.12.15/Python-3.12.15.tar.xz,
+`Modules/_hacl/include/krml/internal/target.h` in CPython 3.12.16's release
+tarball https://www.python.org/ftp/python/3.12.16/Python-3.12.16.tar.xz,
 unmodified; its header gives the tarball's sha256.
 
 `licenses/Apache-2.0.txt` is the Apache License 2.0 as Debian's

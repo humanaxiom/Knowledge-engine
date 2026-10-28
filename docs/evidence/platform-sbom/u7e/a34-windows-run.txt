@@ -1,0 +1,1706 @@
+Windows proof (A34; design-notes N0 amendment U7e R5: "A34 is required (two Dockerfiles): build.sh, bundle.sh, install.ps1 from the bundle
+and verify.sh full on Windows") -- platform-sbom, unit U7e: ke-app and ke-gates on python:3.12-slim-bookworm@sha256:6dd8b6da...9753 (3.12.16).
+HEAD 45411ae2ad3d (agent/platform-sbom) PLUS the uncommitted U7e working tree; host aria-alien1, Windows 11 Pro 10.0.26200, PowerShell 7.6.9,
+Docker Desktop Engine 29.5.2 (linux/amd64), Compose 5.1.4, Git Bash (MINGW64 3.6.7). Date 2026-10-28 (UTC), tester.
+
+VERDICT: PASS (steps 1-5).
+  1. scripts/build.sh (Git Bash, COMPOSE_PROJECT_NAME=ke-tester-u7ewin, KE_IMAGE_TAG=u7ewin-45411ae, own tag so :local is never moved): exit 0,
+     5 s (BuildKit cache of the developer's U7e build; ke-app/ke-gates created 2026-10-28T01:30Z). Re-run by the tester, not reused.
+     Probes on the built images: ke-app and ke-gates both Python 3.12.16, libssl3/openssl 3.0.22-1~deb12u2, base-files 12.4+deb12u15,
+     /usr/share/common-licenses/Apache-2.0 sha256 cfc7749b...3d30 (= APACHE_2_SHA256); ke-app: no pip, psycopg impl c, libpq 150019.
+  2. scripts/bundle.sh --out <scratch>/bundle-u7ewin-amd64: exit 0, 144 s; 6 images + 6 SBOMs; MANIFEST.sha256 verifies; release record
+     2d9fd2b1...f52c; ke-app SBOM: python 3.12.16, libssl3/openssl 3.0.22-1~deb12u2.
+  3. install.ps1 from that bundle (PowerShell, -ExpectManifest = the release record; install.ps1 hash = its MANIFEST line): exit 0, six images
+     loaded, override written; loaded ke-* ids equal step 1's ids. launch.ps1 in the target (COMPOSE_PROJECT_NAME=ke-tester-u7ewin-inst):
+     7/7 running healthy on the bundle images; /healthz 200, /readyz ready; installed api: Python 3.12.16, OpenSSL 3.0.22, libssl3/openssl
+     ~deb12u2, no pip, psycopg c. teardown.ps1 -Volumes exit 0; after: 0 containers, 0 networks, 0 volumes, 0 compose projects; target deleted.
+  4. Cleanup (Git Bash): ke-*:bundle-45411ae2ad3d tags restored to their pre-run images (diff vs tags-before: equal); tester tags u7ewin-45411ae
+     removed (0 left); scratch bundle, record and install parent deleted; 0 sbom/drift work dirs; 0 containers/volumes/networks of any
+     ke-tester-u7ewin* project; the 18 hashed files unchanged start to end.
+  5. scripts/verify.sh full: PASS (1132 s), Ran 1110 OK (skipped=8, the named Windows-only skips), integration Ran 15 OK (skipped=5, model host
+     unset), gates-it PASS, smoke PASS (psycopg c on libpq5 15.19-0+deb12u1, no pip, no fleet plugin), scan reached and green (no
+     CVE-2026-84782; libssl3/openssl ~deb12u2 only suppressed Negligible rows; unsuppressed rows are python 3.12.16 Medium/Negligible only),
+     drift ok "CPython 3.12.16 (3 licence files)" against 6dd8b6da...9753, offline_check PASS. Full output: a34-verify-full.txt. Throwaway
+     .env deleted after; no ke-verify/ke-scan/ke-offline project of the run left (containers 0, networks 0, volumes 0).
+Deviations from the U4b template, on purpose:
+  - Port: the installed stack's throwaway .env sets KE_API_PORT=47180 and KE_PHOENIX_PORT=47181, because 47100/47101 are held by a
+    `knowledge-engine` stack that was already running on this host (not this run's; untouched). Both ports were free before launch.
+  - Scope: the R5 steps only (build.sh, bundle.sh, install.ps1 + launch/teardown, verify full). No neo4j tree/config sections (U4b-only),
+    no refusal/shim sections, no Windows-only test phase (U7e changes no .ps1 file; the hashed scripts\*.ps1 are unchanged).
+  - Driver attempt 1 was discarded (Appendix A): $S was not exported, so bundle.sh refused at mkdir /bundle-u7ewin-amd64 before any tag or
+    save. Its build of the u7ewin tag was replaced by step 1's rebuild (containerd ids differ per build; content cached).
+  - Concurrent roles added docs/evidence/platform-sbom/u7e/review.md and size.md during the run (git status diff in step 4); not this run's.
+Redaction: profile path -> <profile>, session scratch dir -> <scratch>, ANSI colour codes stripped (PowerShell stderr), SIDs -> <sid> (none
+found), signed GitHub queries -> ?<query omitted> (none found). Usernames and host name kept. Output otherwise unedited.
+
+#### Git Bash: steps 0-2 (driver <scratch>/a34-u7e-build-bundle.sh) ##########################################
+==================== 0. metadata (Git Bash) ====================
+$ date -u +%FT%TZ; uname -srm; git rev-parse HEAD; git branch --show-current; docker version --format "engine {{.Server.Version}} {{.Server.Os}}/{{.Server.Arch}}"; docker compose version --short; jq --version; id -u; id -g
+2026-10-28T02:34:57Z
+MINGW64_NT-10.0-26200 3.6.7-fb42d713.x86_64 x86_64
+45411ae2ad3dbf9fc1c884a31a4f46b2e1a11efa
+agent/platform-sbom
+engine 29.5.2 linux/amd64
+5.1.4
+jq-1.8.2
+197610
+197121
+[exit code: 0] [elapsed: 1 s]
+
+$ echo "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME KE_IMAGE_TAG=$KE_IMAGE_TAG"; ls -a .env
+COMPOSE_PROJECT_NAME=ke-tester-u7ewin KE_IMAGE_TAG=u7ewin-45411ae
+ls: cannot access '.env': No such file or directory
+[exit code: 2] [elapsed: 0 s]
+
+$ grep -n "^FROM python" docker/app.Dockerfile docker/gates.Dockerfile
+docker/app.Dockerfile:13:FROM python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753 AS builder
+docker/app.Dockerfile:45:FROM python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753 AS runtime
+docker/gates.Dockerfile:9:FROM python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753
+[exit code: 0] [elapsed: 0 s]
+
+$ sha256sum docker/app.Dockerfile docker/gates.Dockerfile docker/neo4j.Dockerfile docker/gateway.Dockerfile docker-compose.yml NOTICE.md licenses/CPython-3.12-*.txt scripts/build.sh scripts/bundle.sh scripts/install.ps1 scripts/launch.ps1 scripts/teardown.ps1 uv.lock | tee "$S/out/hash-start.txt"
+d4f25d98ebc94211c3fb0cf2820993a1067f10ff76ae039707847cdabcf9227f *docker/app.Dockerfile
+86a7687b57e70f87582b02d1e510ad344ea81733cfd4366811d217da2fcce48f *docker/gates.Dockerfile
+4429ec7fd282b4b92b7863051b208b07ac080477133dafe92de313c2e5a950c6 *docker/neo4j.Dockerfile
+b91eb73dd9f9dbe8a3a757e79a55c9aeae0b6078731169db472445fa9faf80ab *docker/gateway.Dockerfile
+35e66b6ebe297a5ff9c481a24fea965db3f3cd99004ab625cc10ad0289ab0fe9 *docker-compose.yml
+c3f4b868580d1d3c832d5ea468451426e329f10a9cc6a4b3023d80b060bb0b38 *NOTICE.md
+298f499c334132c29e6428826d52f31e7e29e31e5ef08136c0517d99d4971179 *licenses/CPython-3.12-HACL.txt
+915b4f1def7b77deef1e2de266fd883781f0569e0aa64dc965532f4bc21bdc95 *licenses/CPython-3.12-KaRaMeL.txt
+50304751a3c8531122e4bec869eaa0422e23fb6dd004ecfb9579261d651b9be6 *licenses/CPython-3.12-incorporated.txt
+82ba32d27651e1478bdbd700f6f54b2981c76ff8737094c88e20db6eacc0580a *scripts/build.sh
+27013bf12529f9e6a51b96c9e1b23d5dddb594d821709e91f9d601618dcf1543 *scripts/bundle.sh
+7438fe1a8fde5638f91b337469ac734645fbfbe03dbbc53ec216f82a0e77c883 *scripts/install.ps1
+768fd837368584c7fadb855d523f86b832d396d1eddc75ebd7b56d1c70a78224 *scripts/launch.ps1
+17299c961b0ba6d9ce06a142f7aebbaf886783ed9adf25c167edc56adccdc061 *scripts/teardown.ps1
+feff883374df875719902dcd949e0ef30c52567da866ab8d5557c530c5b2a821 *uv.lock
+[exit code: 0] [elapsed: 0 s]
+
+$ git status --short | tee "$S/out/status-start.txt"
+ M CHANGELOG.md
+ M NOTICE.md
+ M docker/app.Dockerfile
+ M docker/gates.Dockerfile
+ M docker/sources.lock.json
+ M docs/architecture.md
+ M docs/evidence/platform-sbom/design-notes.md
+ M docs/evidence/platform-sbom/u7d/orchestrator-verify-full-final.txt
+ M docs/handoffs/platform-sbom.md
+ M docs/log.md
+ M docs/requirements.md
+ M licenses/CPython-3.12-HACL.txt
+ M licenses/CPython-3.12-KaRaMeL.txt
+ M licenses/CPython-3.12-incorporated.txt
+ M tests/fixtures/sbom-u3/ke-app.pkgs.tsv
+ M tests/test_notice_ke_app.py
+ M tests/test_psycopg_c.py
+ M tests/test_sbom_obligations.py
+ M tests/test_sources_lock.py
+ M tests/test_sources_lock_committed.py
+ M tests/test_sources_resolve.py
+?? docs/evidence/platform-sbom/u7e/base-dpkg-diff.txt
+?? docs/evidence/platform-sbom/u7e/base-provenance.md
+?? docs/evidence/platform-sbom/u7e/developer-build.txt
+?? docs/evidence/platform-sbom/u7e/developer-green.md
+?? docs/evidence/platform-sbom/u7e/developer-scan-direct.txt
+?? docs/evidence/platform-sbom/u7e/developer-verify-fast.txt
+?? docs/evidence/platform-sbom/u7e/developer-verify-full.txt
+?? docs/evidence/platform-sbom/u7e/fixture-diff.txt
+?? docs/evidence/platform-sbom/u7e/key-diff.txt
+?? docs/evidence/platform-sbom/u7e/lock-run-1.txt
+?? docs/evidence/platform-sbom/u7e/sboms/
+?? docs/evidence/platform-sbom/u7e/security-review.md
+?? docs/evidence/platform-sbom/u7e/security-scan-ke-app.txt
+?? docs/evidence/platform-sbom/u7e/security-scan-ke-gates.txt
+?? docs/evidence/platform-sbom/u7e/tester-red-verify-full.txt
+?? docs/evidence/platform-sbom/u7e/tester-repin-verify-full.txt
+?? docs/handoffs/NEXT-SESSION.md
+?? docs/knowledge-engine-claude-code-prompt.md
+[exit code: 0] [elapsed: 0 s]
+
+$ docker image ls --no-trunc --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep -E "^ke-(app|gateway|neo4j|gates):(bundle-45411ae2ad3d|u7ewin-45411ae) |^ke-vendor/" | sort | tee "$S/out/tags-before.txt"
+ke-app:bundle-45411ae2ad3d sha256:30c396ed3c06ccfb8872d71a698525314c3757af22237311d13e5512416a3f8a
+ke-app:u7ewin-45411ae sha256:3cd18b19eaf0a330eac3783e672200ee69d963b0dbd90fbbc4b1389862177659
+ke-gates:u7ewin-45411ae sha256:9fa05652cfa3cfacba95e1e5a3ea34b3f8529549a2b5c8f1dcfa78bafd111428
+ke-gateway:bundle-45411ae2ad3d sha256:65c9f1006322306f325c52c2fd118784519083098598f17108595448f0aad236
+ke-gateway:u7ewin-45411ae sha256:c02177b0f6c505e68b4aae94084a84578aed352a1ef087a926ccda91a00cbbbf
+ke-neo4j:bundle-45411ae2ad3d sha256:b30252f024706f922023a917d67f0d1fbc6e1627a7945546761c15f41e081b79
+ke-neo4j:u7ewin-45411ae sha256:e171905e57f9af7f0717c352133b28f21e5ab2c73d85ba836e3a28d6ed9cb9ae
+ke-vendor/neo4j:0a6e7aedf54a sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+ke-vendor/phoenix:fa28e9cd96dd sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c
+ke-vendor/postgres:0ea6700a3b4f sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
+ke-vendor/valkey:081c2f5cb575 sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507
+[exit code: 0] [elapsed: 1 s]
+
+$ docker ps -a -q --filter label=com.docker.compose.project=ke-tester-u7ewin | wc -l; docker ps -a -q --filter label=com.docker.compose.project=ke-tester-u7ewin-inst | wc -l; docker volume ls -q | grep -c "^ke-tester-u7ewin"; docker network ls -q --filter name=ke-tester-u7ewin | wc -l
+0
+0
+0
+0
+[exit code: 0] [elapsed: 1 s]
+
+==================== 1. scripts/build.sh (Git Bash) ====================
+$ scripts/build.sh
+time="2026-10-27T19:35:00-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:00-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:00-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:00-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:00-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:00-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:00-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:00-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:00-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:00-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:00-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:00-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:00-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:00-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+ Image ke-gates:u7ewin-45411ae Building 
+ Image ke-app:u7ewin-45411ae Building 
+ Image ke-neo4j:u7ewin-45411ae Building 
+ Image ke-app:u7ewin-45411ae Building 
+ Image ke-gateway:u7ewin-45411ae Building 
+ Image ke-gates:u7ewin-45411ae Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 2.79kB done
+#1 DONE 0.0s
+
+#2 [worker internal] load build definition from app.Dockerfile
+#2 transferring dockerfile: 3.26kB done
+#2 DONE 0.0s
+
+#3 [gates internal] load build definition from gates.Dockerfile
+#3 transferring dockerfile: 7.34kB done
+#3 DONE 0.0s
+
+#4 [neo4j internal] load build definition from neo4j.Dockerfile
+#4 transferring dockerfile: 1.33kB done
+#4 DONE 0.0s
+
+#5 [gateway internal] load build definition from gateway.Dockerfile
+#5 transferring dockerfile: 1.10kB done
+#5 DONE 0.0s
+
+#6 [gates-it internal] load metadata for ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#6 DONE 0.0s
+
+#7 [api internal] load metadata for docker.io/library/python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753
+#7 DONE 0.0s
+
+#8 [neo4j internal] load metadata for docker.io/library/neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+#8 DONE 0.0s
+
+#9 [gateway internal] load .dockerignore
+#9 transferring context: 97B done
+#9 DONE 0.0s
+
+#10 [gateway internal] load metadata for docker.io/nginxinc/nginx-unprivileged:1.28-alpine@sha256:7377697a821c131a924a7105fafbe7414db4e9fcc77a6f08f776f33f141ec3f8
+#10 DONE 0.0s
+
+#11 [gates-it internal] load build context
+#11 DONE 0.0s
+
+#12 [neo4j runtime 1/2] FROM docker.io/library/neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+#12 resolve docker.io/library/neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+#12 resolve docker.io/library/neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b 0.0s done
+#12 DONE 0.1s
+
+#13 [worker uv 1/1] FROM ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#13 resolve ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946 0.0s done
+#13 DONE 0.1s
+
+#14 [neo4j runtime 2/2] RUN rm -rf /var/lib/neo4j/products
+#14 CACHED
+
+#15 [neo4j stage-1 1/2] COPY --from=runtime / /
+#15 CACHED
+
+#16 [neo4j stage-1 2/2] WORKDIR /var/lib/neo4j
+#16 CACHED
+
+#17 [gates stage-1  1/13] FROM docker.io/library/python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753
+#17 resolve docker.io/library/python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753 0.0s done
+#17 DONE 0.1s
+
+#18 [gateway 1/7] FROM docker.io/nginxinc/nginx-unprivileged:1.28-alpine@sha256:7377697a821c131a924a7105fafbe7414db4e9fcc77a6f08f776f33f141ec3f8
+#18 resolve docker.io/nginxinc/nginx-unprivileged:1.28-alpine@sha256:7377697a821c131a924a7105fafbe7414db4e9fcc77a6f08f776f33f141ec3f8 0.0s done
+#18 DONE 0.0s
+
+#11 [gates-it internal] load build context
+#11 transferring context: 2.37kB done
+#11 DONE 0.0s
+
+#19 [gateway internal] load build context
+#19 transferring context: 7.25kB done
+#19 DONE 0.0s
+
+#20 [neo4j] exporting to image
+#20 exporting layers done
+#20 exporting manifest sha256:8db5c174f655a5da2b3dec199c411a3011bab4960339f3a7a1d5f9bb147069f0 done
+#20 exporting config sha256:c60d1c7d628364006b8e7a873b76bd49393da94dfeec9aaee231eb11a9b0c60f done
+#20 exporting attestation manifest sha256:997caaf73cb2209edcaa5a8152e3308e7c5b4831f44c039ee592c69cdc010a24 0.0s done
+#20 exporting manifest list sha256:ce3e5cf5e7dcd0febdf3be3197b4546ebae8be5ba83c07dfc19d01f2c3591617
+#20 exporting manifest list sha256:ce3e5cf5e7dcd0febdf3be3197b4546ebae8be5ba83c07dfc19d01f2c3591617 0.0s done
+#20 naming to docker.io/library/ke-neo4j:u7ewin-45411ae done
+#20 unpacking to docker.io/library/ke-neo4j:u7ewin-45411ae done
+#20 DONE 0.1s
+
+#21 [gates-it stage-1  5/13] RUN set -eu;     curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL -o /tmp/psa.nupkg       "https://www.powershellgallery.com/api/v2/package/PSScriptAnalyzer/1.25.0";     echo "e7fb573262e604bab29914ae62921d24b97c2f88b519b41277b403ef6ce163f14b7d1b36dc73449a68e5ae5a8d9502891b10c264131fd1813adf29bf131c1663  /tmp/psa.nupkg" | sha512sum -c -;     dir="/usr/local/share/powershell/Modules/PSScriptAnalyzer/1.25.0";     python3 -I -m zipfile -e /tmp/psa.nupkg "/usr/local/share/powershell/Modules/PSScriptAnalyzer/1.25.0";     rm -rf "$dir/_rels" "$dir/package" "$dir/[Content_Types].xml" "$dir/PSScriptAnalyzer.nuspec" "$dir/.signature.p7s" /tmp/psa.nupkg;     pwsh -NoProfile -NonInteractive -Command "Import-Module PSScriptAnalyzer -ErrorAction Stop"
+#21 CACHED
+
+#22 [gates-it stage-1  3/13] RUN apt-get update  && apt-get install -y --no-install-recommends git jq ca-certificates curl       shellcheck=0.9.0-1 libicu72 libssl3 zlib1g       gcc libc6-dev libpq-dev=15.19-0+deb12u1  && rm -rf /var/lib/apt/lists/*  && git config --system --add safe.directory /work  && git config --system core.autocrlf true
+#22 CACHED
+
+#23 [gates-it stage-1 10/13] COPY harness_telemetry ./harness_telemetry
+#23 CACHED
+
+#24 [gates-it stage-1  6/13] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x86_64; sha="c158ecc55adb3afb01bbd3539ed3b997d20c26dbdc418080506cc1bf5243ff57" ;;       arm64) arch=aarch64; sha="3e93cc6d1a686456a3b18eefdde26467a837a7a2b257af22e27cba1dbc1b2018" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker.tgz       "https://download.docker.com/linux/static/stable/$arch/docker-29.9.1.tgz";     echo "$sha  /tmp/docker.tgz" | sha256sum -c -;     tar -xzf /tmp/docker.tgz -C /usr/local/bin --strip-components=1       --no-same-owner docker/docker;     rm /tmp/docker.tgz
+#24 CACHED
+
+#25 [gates-it stage-1 11/13] COPY engine ./engine
+#25 CACHED
+
+#26 [gates-it stage-1  8/13] WORKDIR /work
+#26 CACHED
+
+#27 [gates-it stage-1  7/13] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x86_64; sha="40343e21ca777173e69cff5dbafeb37c6f81f3b0d57d9e597f036e95eb63e76a" ;;       arm64) arch=aarch64; sha="733ec76717ceb59052a9609b9dadfb523b2df8eab57a54212872d10a58078ea2" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose       "https://github.com/docker/compose/releases/download/v5.6.0/docker-compose-linux-$arch";     echo "$sha  /tmp/docker-compose" | sha256sum -c -;     mkdir -p /usr/local/lib/docker/cli-plugins;     install -m 0755 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose;     rm /tmp/docker-compose
+#27 CACHED
+
+#28 [gates-it stage-1  9/13] COPY pyproject.toml uv.lock ./
+#28 CACHED
+
+#29 [gates-it stage-1  4/13] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x64; sha="3fc5e1567c450bd7bd5ae69ebb0a9a4a4e0418bbc36b0232cf6dd547f0bfc0eb" ;;       arm64) arch=arm64; sha="d0c216cec4c6c866fc15a105f039740228b53206f8576d2ed0bcd656a35ed6f6" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     tarball="powershell-7.4.21-linux-${arch}.tar.gz";     curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball"       "https://github.com/PowerShell/PowerShell/releases/download/v7.4.21/$tarball";     echo "$sha  /tmp/$tarball" | sha256sum -c -;     mkdir -p /opt/microsoft/powershell;     tar -xzf "/tmp/$tarball" -C /opt/microsoft/powershell;     chmod +x /opt/microsoft/powershell/pwsh;     ln -s /opt/microsoft/powershell/pwsh /usr/local/bin/pwsh;     rm "/tmp/$tarball"
+#29 CACHED
+
+#30 [gates-it stage-1 12/13] COPY config ./config
+#30 CACHED
+
+#31 [gates stage-1 13/13] RUN uv sync --locked --group pq-build --no-install-project  && uv sync --locked --group pq-build --group pq-c --no-binary-package psycopg-c --no-install-project  && uv sync --locked --group pq-build --group pq-c --no-binary-package psycopg-c  && chown -R 10001:10001 /opt/venv /opt/uv-cache
+#31 CACHED
+
+#32 [gateway 4/7] COPY --chmod=0755 docker/gateway/10-ke-bind-check.sh /docker-entrypoint.d/10-ke-bind-check.sh
+#32 CACHED
+
+#33 [gateway 2/7] COPY docker/gateway/nginx.conf /etc/nginx/nginx.conf
+#33 CACHED
+
+#34 [gateway 5/7] COPY --chmod=0755 docker/gateway/11-ke-upstream-check.sh /docker-entrypoint.d/11-ke-upstream-check.sh
+#34 CACHED
+
+#35 [gateway 6/7] COPY --chmod=0755 docker/gateway/12-ke-port-check.sh /docker-entrypoint.d/12-ke-port-check.sh
+#35 CACHED
+
+#36 [gateway 3/7] COPY docker/gateway/templates/ /etc/nginx/templates/
+#36 CACHED
+
+#37 [worker builder  6/11] RUN uv sync --locked --no-dev --group pq-build --no-install-project
+#37 CACHED
+
+#38 [worker builder  8/11] COPY harness_telemetry ./harness_telemetry
+#38 CACHED
+
+#39 [worker builder  7/11] RUN uv sync --locked --no-dev --group pq-build --group pq-c     --no-binary-package psycopg-c --no-install-project
+#39 CACHED
+
+#40 [worker stage-3 3/5] COPY --from=builder /app /app
+#40 CACHED
+
+#41 [worker stage-1  2/13] COPY --from=uv /uv /usr/local/bin/uv
+#41 CACHED
+
+#42 [worker runtime 3/3] RUN python -m pip uninstall -y pip  && rm /usr/local/lib/python3.12/ensurepip/_bundled/pip-*.whl
+#42 CACHED
+
+#43 [worker builder  3/11] RUN apt-get update  && apt-get install -y --no-install-recommends gcc libc6-dev libpq-dev=15.19-0+deb12u1  && rm -rf /var/lib/apt/lists/*
+#43 CACHED
+
+#44 [worker builder 11/11] RUN uv sync --locked --no-dev --group pq-c --no-binary-package psycopg-c     --no-editable     && rm -f /opt/venv/.lock
+#44 CACHED
+
+#45 [worker stage-3 2/5] COPY --from=builder /opt/venv /opt/venv
+#45 CACHED
+
+#46 [worker stage-3 4/5] WORKDIR /app
+#46 CACHED
+
+#47 [worker stage-3 1/5] COPY --from=runtime / /
+#47 CACHED
+
+#48 [worker builder  4/11] WORKDIR /app
+#48 CACHED
+
+#49 [worker builder  9/11] COPY engine ./engine
+#49 CACHED
+
+#50 [worker runtime 2/3] RUN apt-get update  && apt-get install -y --no-install-recommends libpq5=15.19-0+deb12u1  && rm -rf /var/lib/apt/lists/*
+#50 CACHED
+
+#51 [worker builder  5/11] COPY pyproject.toml uv.lock ./
+#51 CACHED
+
+#52 [worker builder 10/11] COPY config ./config
+#52 CACHED
+
+#53 [gateway 7/7] RUN rm -f /etc/nginx/conf.d/default.conf  && mkdir -p /etc/nginx/stream-conf.d  && chown nginx:nginx /etc/nginx/conf.d /etc/nginx/stream-conf.d
+#53 CACHED
+
+#54 [worker stage-3 5/5] RUN useradd --no-create-home --uid 10001 ke
+#54 CACHED
+
+#55 [api] exporting to image
+#55 exporting layers done
+#55 exporting manifest sha256:ac5fe307a06f46a95873df42d3fa0846e7c45076890c1921688fda3742973244 0.0s done
+#55 exporting config sha256:4b5a95afe6e4b159dbcc2b20373bfec14dbc011c4d4a2ff7373e4fbcc2383b65
+#55 exporting config sha256:4b5a95afe6e4b159dbcc2b20373bfec14dbc011c4d4a2ff7373e4fbcc2383b65 0.0s done
+#55 exporting attestation manifest sha256:ef43500496b9a3355492e50828f611936b2b3475266903fec07985231dcce6b7
+#55 exporting attestation manifest sha256:ef43500496b9a3355492e50828f611936b2b3475266903fec07985231dcce6b7 0.2s done
+#55 exporting manifest list sha256:0fb9d2fa9e207192af5104da444c68e752582db8853c5ca3858dd67c8980d9a7
+#55 exporting manifest list sha256:0fb9d2fa9e207192af5104da444c68e752582db8853c5ca3858dd67c8980d9a7 0.1s done
+#55 naming to docker.io/library/ke-app:u7ewin-45411ae 0.1s done
+#55 unpacking to docker.io/library/ke-app:u7ewin-45411ae
+#55 unpacking to docker.io/library/ke-app:u7ewin-45411ae 0.1s done
+#55 DONE 0.7s
+
+#56 [gates] exporting to image
+#56 exporting layers done
+#56 exporting manifest sha256:bd95ab9f772665b5a45a44d4a9d38dddb606b5acc52a17f10196d02dff775f6f 0.0s done
+#56 exporting config sha256:24e50b07f401e481d1aaaed692b0bedbf2a3b0fc13a36d746974920074f3f17a 0.0s done
+#56 exporting attestation manifest sha256:c2564d42c79857735481fcc3ef190922c89deede8dc748621ecde5391b78b385 0.2s done
+#56 exporting manifest list sha256:5797e29ff6e3c14b13826714290c2ad47078aa45f989507673bee1929406572d 0.1s done
+#56 naming to docker.io/library/ke-gates:u7ewin-45411ae 0.2s done
+#56 unpacking to docker.io/library/ke-gates:u7ewin-45411ae 0.1s done
+#56 DONE 0.7s
+
+#57 [gateway] exporting to image
+#57 exporting layers 0.0s done
+#57 exporting manifest sha256:bd37e9689b6f4fdb2b0ae779702e9d478569ae52699f85444b7a7c5ce177b541 0.0s done
+#57 exporting config sha256:0d7c816d1aab11069e1e3155a7fe43e379e557bcc34251550d7022fa4af8815b 0.0s done
+#57 exporting attestation manifest sha256:16fe2927f4b2330c70cb21e04a76b810a3cdc2bb3bec47ca04841abeb58a12cd 0.2s done
+#57 exporting manifest list sha256:85d28cb05b2aadef1555e9727e599bbf89f65029e6d60e561afc58f33d317ebc 0.2s done
+#57 naming to docker.io/library/ke-gateway:u7ewin-45411ae 0.0s done
+#57 unpacking to docker.io/library/ke-gateway:u7ewin-45411ae 0.1s done
+#57 DONE 0.7s
+
+#58 [gates-it] exporting to image
+#58 exporting layers 0.0s done
+#58 exporting manifest sha256:8ec9c4490adeee8be6b50de4bd828010d386c52e1ac55deb3c78bdb00dd119a7 0.0s done
+#58 exporting config sha256:a01304058c70a6702f4b378ca6f1e451f9f114ece22cf3dd3240fb711f0a1cef 0.1s done
+#58 exporting attestation manifest sha256:7881e4535deb0f15f2b1955e0bddaf17f1099fd987a2f8a006eb56932ad5c658 0.2s done
+#58 exporting manifest list sha256:79566039f481d827cd012774911f4ef448026da085fb15f8631aaf7328797d3e 0.2s done
+#58 naming to docker.io/library/ke-gates:u7ewin-45411ae 0.0s done
+#58 unpacking to docker.io/library/ke-gates:u7ewin-45411ae 0.1s done
+#58 DONE 0.7s
+
+#59 [worker] exporting to image
+#59 exporting layers done
+#59 exporting manifest sha256:9a55fb4abb2cdd8515f48645661ef04abd88108c86cae7192c07c97ba54b30b0 0.0s done
+#59 exporting config sha256:fbf39cb5d8e34be20001b21e36148b6849cf4913286e2d1389ff281aea9c66ef 0.1s done
+#59 exporting attestation manifest sha256:73d2b67de7ed2d78b66be15e9ff2e0770cd2bd070b593fc40ec9c247bffa7804 0.3s done
+#59 exporting manifest list sha256:2f5a27d04abf87e47759e50cac7c1dd125d930f74ad33eb12d2d0abf29ac7770 0.1s done
+#59 naming to docker.io/library/ke-app:u7ewin-45411ae done
+#59 unpacking to docker.io/library/ke-app:u7ewin-45411ae 0.0s done
+#59 DONE 0.7s
+
+#60 [neo4j] resolving provenance for metadata file
+#60 DONE 0.0s
+
+#61 [api] resolving provenance for metadata file
+#61 DONE 0.2s
+
+#62 [gateway] resolving provenance for metadata file
+#62 DONE 0.1s
+
+#63 [gates] resolving provenance for metadata file
+#63 DONE 0.1s
+
+#64 [gates-it] resolving provenance for metadata file
+#64 DONE 0.0s
+
+#65 [worker] resolving provenance for metadata file
+#65 DONE 0.0s
+ Image ke-app:u7ewin-45411ae Built 
+ Image ke-gateway:u7ewin-45411ae Built 
+ Image ke-neo4j:u7ewin-45411ae Built 
+ Image ke-app:u7ewin-45411ae Built 
+ Image ke-gates:u7ewin-45411ae Built 
+ Image ke-gates:u7ewin-45411ae Built 
+time="2026-10-27T19:35:03-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:03-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:03-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:03-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:03-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:03-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:03-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:03-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:03-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:03-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:03-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:03-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:03-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:35:03-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+ Image ke-gateway:u7ewin-45411ae Skipped Image can be built
+ Image ke-gates:u7ewin-45411ae Skipped Image can be built
+ Image ke-app:u7ewin-45411ae Skipped Image can be built
+ Image ke-neo4j:u7ewin-45411ae Skipped Image can be built
+ Image ke-gates:u7ewin-45411ae Skipped Image can be built
+ Image ke-app:u7ewin-45411ae Skipped Image can be built
+ Image valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507 Pulling 
+ Image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 Pulling 
+ Image arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c Pulling 
+ Image valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507 Pulled 
+ Image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 Pulled 
+ Image arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c Pulled 
+[exit code: 0] [elapsed: 5 s]
+
+$ docker image inspect --format "{{index .RepoTags 0}} {{.Id}} {{.Os}}/{{.Architecture}} created={{.Created}}" ke-app:$KE_IMAGE_TAG ke-gateway:$KE_IMAGE_TAG ke-neo4j:$KE_IMAGE_TAG ke-gates:$KE_IMAGE_TAG | tee "$S/out/mine.txt"
+ke-app:u7ewin-45411ae sha256:2f5a27d04abf87e47759e50cac7c1dd125d930f74ad33eb12d2d0abf29ac7770 linux/amd64 created=2026-10-28T01:30:22.554154764Z
+ke-gateway:u7ewin-45411ae sha256:85d28cb05b2aadef1555e9727e599bbf89f65029e6d60e561afc58f33d317ebc linux/amd64 created=2026-10-19T04:13:41.827391046Z
+ke-neo4j:u7ewin-45411ae sha256:ce3e5cf5e7dcd0febdf3be3197b4546ebae8be5ba83c07dfc19d01f2c3591617 linux/amd64 created=2026-10-23T21:26:41.892773977Z
+ke-gates:u7ewin-45411ae sha256:79566039f481d827cd012774911f4ef448026da085fb15f8631aaf7328797d3e linux/amd64 created=2026-10-28T01:30:51.749215165Z
+[exit code: 0] [elapsed: 0 s]
+
+$ for i in app gates; do echo "ke-$i:"; MSYS_NO_PATHCONV=1 docker run --rm --network none --pull never --label com.docker.compose.project=ke-tester-u7ewin-probe --entrypoint sh ke-$i:$KE_IMAGE_TAG -c "python -V; dpkg-query -W libssl3 openssl ca-certificates tzdata base-files 2>&1; sha256sum /usr/share/common-licenses/Apache-2.0"; done
+ke-app:
+Python 3.12.16
+base-files	12.4+deb12u15
+ca-certificates	20250419~deb12u2
+libssl3:amd64	3.0.22-1~deb12u2
+openssl	3.0.22-1~deb12u2
+tzdata	2026e-0+deb12u1
+cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30  /usr/share/common-licenses/Apache-2.0
+ke-gates:
+Python 3.12.16
+base-files	12.4+deb12u15
+ca-certificates	20250419~deb12u2
+libssl3:amd64	3.0.22-1~deb12u2
+openssl	3.0.22-1~deb12u2
+tzdata	2026e-0+deb12u1
+cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30  /usr/share/common-licenses/Apache-2.0
+[exit code: 0] [elapsed: 1 s]
+
+$ MSYS_NO_PATHCONV=1 docker run --rm --network none --pull never --label com.docker.compose.project=ke-tester-u7ewin-probe --entrypoint python ke-app:$KE_IMAGE_TAG -I -c "import importlib.util as u; print(\"pip spec:\", u.find_spec(\"pip\")); import psycopg; print(\"psycopg impl:\", psycopg.pq.__impl__, psycopg.pq.version())"
+pip spec: None
+psycopg impl: c 150019
+[exit code: 0] [elapsed: 1 s]
+
+==================== 2. scripts/bundle.sh --out <scratch>/bundle-u7ewin-amd64 (Git Bash) ====================
+$ ls -d "$S/bundle-u7ewin-amd64" "$S/bundle-u7ewin-amd64.manifest.sha256"
+ls: cannot access '<scratch>/bundle-u7ewin-amd64': No such file or directory
+ls: cannot access '<scratch>/bundle-u7ewin-amd64.manifest.sha256': No such file or directory
+[exit code: 2] [elapsed: 0 s]
+
+$ scripts/bundle.sh --out "$S/bundle-u7ewin-amd64"
+ Container ke-tester-u7ewin-sbom-sbom-run-68566cc89aaa Creating 
+ Container ke-tester-u7ewin-sbom-sbom-run-68566cc89aaa Created 
+sbom_check: ke-app: unlicensed packages (no licence, NOASSERTION or unidentified text): 19 (deb: 18, generic: 1)
+sbom_check: ke-app:   pkg:deb/debian/base-files@12.4%2Bdeb12u15?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/debian-archive-keyring@2023.3%2Bdeb12u2?arch=all&distro=debian-12.15 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/gcc-12-base@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libc-bin@2.36-9%2Bdeb12u14?arch=amd64&distro=debian-12.15&upstream=glibc (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libc6@2.36-9%2Bdeb12u14?arch=amd64&distro=debian-12.15&upstream=glibc (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libcrypt1@1%3A4.4.33-2?arch=amd64&distro=debian-12.15&upstream=libxcrypt (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libgcc-s1@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libgcrypt20@1.10.1-3%2Bdeb12u1?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libgnutls30@3.7.9-2%2Bdeb12u7?arch=amd64&distro=debian-12.15&upstream=gnutls28 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libgssapi-krb5-2@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libk5crypto3@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libkrb5-3@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libkrb5support0@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libselinux1@3.4-1%2Bb6?arch=amd64&distro=debian-12.15&upstream=libselinux%403.4-1 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libsemanage-common@3.4-1?arch=all&distro=debian-12.15&upstream=libsemanage (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libsemanage2@3.4-1%2Bb5?arch=amd64&distro=debian-12.15&upstream=libsemanage%403.4-1 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libstdc%2B%2B6@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libtasn1-6@4.19.0-2%2Bdeb12u1?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: ke-app:   pkg:generic/python@3.12.16
+ Container ke-tester-u7ewin-sbom-sbom-run-0de26206c638 Creating 
+ Container ke-tester-u7ewin-sbom-sbom-run-0de26206c638 Created 
+sbom_check: ke-gateway: unlicensed packages (no licence, NOASSERTION or unidentified text): 0
+ Container ke-tester-u7ewin-sbom-sbom-run-41f40a044998 Creating 
+ Container ke-tester-u7ewin-sbom-sbom-run-41f40a044998 Created 
+sbom_check: ke-neo4j: unlicensed packages (no licence, NOASSERTION or unidentified text): 27 (deb: 9, generic: 1, maven: 17)
+sbom_check: ke-neo4j:   pkg:maven/net.sourceforge.argparse4j/argparse4j@0.9.0
+sbom_check: ke-neo4j:   pkg:maven/org.apache.commons/commons-lang3@3.18.0
+sbom_check: ke-neo4j:   pkg:maven/org.apache.commons/commons-text@1.10.0
+sbom_check: ke-neo4j:   pkg:deb/debian/debian-archive-keyring@2025.1?arch=all&distro=debian-13.7 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:deb/debian/gcc-14-base@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:maven/com.github.seancfoley.ipaddress/ipaddress@5.5.1
+sbom_check: ke-neo4j:   pkg:maven/jrt-fs/jrt-fs@21.0.12.1
+sbom_check: ke-neo4j:   pkg:maven/org.bitbucket.inkytonik.kiama/kiama_2.13@2.5.1
+sbom_check: ke-neo4j:   pkg:deb/debian/libcrypt-dev@1%3A4.4.38-1?arch=amd64&distro=debian-13.7&upstream=libxcrypt (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:deb/debian/libcrypt1@1%3A4.4.38-1?arch=amd64&distro=debian-13.7&upstream=libxcrypt (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:deb/debian/libgcc-s1@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:deb/debian/libgnutls30t64@3.8.9-3%2Bdeb13u4?arch=amd64&distro=debian-13.7&upstream=gnutls28 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:deb/debian/libstdc%2B%2B6@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:deb/debian/libtasn1-6@4.20.0-2%2Bdeb13u1?arch=amd64&distro=debian-13.7 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:maven/com.softwaremill.magnolia1_2/magnolia_2.13@1.1.8
+sbom_check: ke-neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection@12.0.0
+sbom_check: ke-neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection-netty@12.0.0
+sbom_check: ke-neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection-pooled@12.0.0
+sbom_check: ke-neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection-routed@12.0.0
+sbom_check: ke-neo4j:   pkg:maven/org.neo4j/neo4j-cypher-dsl@2024.2.0
+sbom_check: ke-neo4j:   pkg:generic/oracle/openjdk@21.0.12.1%2B1-LTS?repository_url=https%3A%2F%2Fgithub.com%2Fadoptium%2Fjdk21u.git
+sbom_check: ke-neo4j:   pkg:maven/picocli/picocli@4.7.6
+sbom_check: ke-neo4j:   pkg:maven/org.reactivestreams/reactive-streams@1.0.4
+sbom_check: ke-neo4j:   pkg:maven/org.scala-lang.modules/scala-collection-contrib_2.13@0.3.0
+sbom_check: ke-neo4j:   pkg:maven/org.slf4j/slf4j-api@2.0.11
+sbom_check: ke-neo4j:   pkg:deb/debian/wget@1.25.0-2?arch=amd64&distro=debian-13.7 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:maven/net.openhft/zero-allocation-hashing@0.27ea1
+ Container ke-tester-u7ewin-sbom-sbom-run-a2363269dc17 Creating 
+ Container ke-tester-u7ewin-sbom-sbom-run-a2363269dc17 Created 
+sbom_check: phoenix: unlicensed packages (no licence, NOASSERTION or unidentified text): 35 (deb: 14, generic: 1, none: 8, pypi: 12)
+sbom_check: phoenix:   pkg:pypi/aiosqlite@0.22.1
+sbom_check: phoenix:   SPDXRef-Package-binary-cli-3c111f636ab23ae2 cli (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-cli-32-864fbd8df8eebeff cli-32 (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-cli-64-58d92fd2583882cf cli-64 (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-cli-arm64-6de49882b0a31d2a cli-arm64 (no purl)
+sbom_check: phoenix:   pkg:pypi/daytona-analytics-api-client@0.223.1
+sbom_check: phoenix:   pkg:pypi/daytona-analytics-api-client-async@0.223.1
+sbom_check: phoenix:   pkg:generic/deno@2.1.4
+sbom_check: phoenix:   pkg:pypi/exceptiongroup@1.3.1
+sbom_check: phoenix:   pkg:deb/debian/gcc-14-base@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14 (unidentified licence text)
+sbom_check: phoenix:   SPDXRef-Package-binary-gui-90e51b43c7a824a9 gui (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-gui-32-bf5cb4b4bc756f59 gui-32 (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-gui-64-54afa822a7647b6f gui-64 (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-gui-arm64-b70024c9a835570f gui-arm64 (no purl)
+sbom_check: phoenix:   pkg:pypi/httpx-ws@0.9.0
+sbom_check: phoenix:   pkg:pypi/jinja2@3.1.6
+sbom_check: phoenix:   pkg:deb/debian/libcrypt1@1%3A4.4.38-1?arch=amd64&distro=debian-13.7&upstream=libxcrypt (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libgcc-s1@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14
+sbom_check: phoenix:   pkg:deb/debian/libgomp1@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14
+sbom_check: phoenix:   pkg:deb/debian/libgssapi-krb5-2@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libk5crypto3@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libkrb5-3@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libkrb5support0@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libncursesw6@6.5%2B20250216-2?arch=amd64&distro=debian-13.7&upstream=ncurses
+sbom_check: phoenix:   pkg:deb/debian/libpython3.13-minimal@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libpython3.13-stdlib@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libstdc%2B%2B6@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14
+sbom_check: phoenix:   pkg:pypi/markdown-it-py@4.2.0
+sbom_check: phoenix:   pkg:pypi/obstore@0.11.1
+sbom_check: phoenix:   pkg:pypi/pandas@2.3.3 (unidentified licence text)
+sbom_check: phoenix:   pkg:pypi/protobuf-py-ext@0.1.1
+sbom_check: phoenix:   pkg:pypi/pyqwest@0.10.0
+sbom_check: phoenix:   pkg:deb/debian/python3.13-minimal@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/python3.13-venv@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13
+sbom_check: phoenix:   pkg:pypi/synchronicity@0.12.6
+ Container ke-tester-u7ewin-sbom-sbom-run-f6963f0f3cd2 Creating 
+ Container ke-tester-u7ewin-sbom-sbom-run-f6963f0f3cd2 Created 
+sbom_check: postgres: unlicensed packages (no licence, NOASSERTION or unidentified text): 25 (deb: 22, golang: 3)
+sbom_check: postgres:   pkg:deb/debian/base-files@12.4%2Bdeb12u15?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/debian-archive-keyring@2023.3%2Bdeb12u2?arch=all&distro=debian-12.15 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/gcc-12-base@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: postgres:   pkg:golang/github.com/moby/sys/user@v0.1.0
+sbom_check: postgres:   pkg:golang/github.com/tianon/gosu@v1.19.0
+sbom_check: postgres:   pkg:golang/golang.org/x/sys@v0.1.0
+sbom_check: postgres:   pkg:deb/debian/libc-bin@2.36-9%2Bdeb12u14?arch=amd64&distro=debian-12.15&upstream=glibc (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libc-l10n@2.36-9%2Bdeb12u14?arch=all&distro=debian-12.15&upstream=glibc (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libc6@2.36-9%2Bdeb12u14?arch=amd64&distro=debian-12.15&upstream=glibc (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libcrypt1@1%3A4.4.33-2?arch=amd64&distro=debian-12.15&upstream=libxcrypt (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libgcc-s1@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libgcrypt20@1.10.1-3%2Bdeb12u1?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libgnutls30@3.7.9-2%2Bdeb12u7?arch=amd64&distro=debian-12.15&upstream=gnutls28 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libgssapi-krb5-2@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libk5crypto3@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libkrb5-3@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libkrb5support0@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libksba8@1.6.3-2?arch=amd64&distro=debian-12.15&upstream=libksba (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libselinux1@3.4-1%2Bb6?arch=amd64&distro=debian-12.15&upstream=libselinux%403.4-1 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libsemanage-common@3.4-1?arch=all&distro=debian-12.15&upstream=libsemanage (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libsemanage2@3.4-1%2Bb5?arch=amd64&distro=debian-12.15&upstream=libsemanage%403.4-1 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libstdc%2B%2B6@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libtasn1-6@4.19.0-2%2Bdeb12u1?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libxslt1.1@1.1.35-1%2Bdeb12u4?arch=amd64&distro=debian-12.15&upstream=libxslt (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/locales@2.36-9%2Bdeb12u14?arch=all&distro=debian-12.15&upstream=glibc (unidentified licence text)
+ Container ke-tester-u7ewin-sbom-sbom-run-09af25688f5f Creating 
+ Container ke-tester-u7ewin-sbom-sbom-run-09af25688f5f Created 
+sbom_check: valkey: unlicensed packages (no licence, NOASSERTION or unidentified text): 1 (generic: 1)
+sbom_check: valkey:   pkg:generic/valkey@8.1.10
+bundle written: <scratch>/bundle-u7ewin-amd64
+manifest sha256: 2d9fd2b15476e5ec0854e9ac42bfc705dd28f8fef7a82401e002f2c9d134f52c
+release record: <scratch>/bundle-u7ewin-amd64.manifest.sha256
+[exit code: 0] [elapsed: 144 s]
+
+$ ls -la "$S/bundle-u7ewin-amd64" "$S/bundle-u7ewin-amd64/images" "$S/bundle-u7ewin-amd64/app/sboms"; cat "$S/bundle-u7ewin-amd64.manifest.sha256"
+<scratch>/bundle-u7ewin-amd64:
+total 120
+drwxr-xr-x 1 adam 197121     0 Oct 27 19:37 .
+drwxr-xr-x 1 adam 197121     0 Oct 27 19:37 ..
+-rw-r--r-- 1 adam 197121  1067 Oct 27 19:35 LICENSE
+-rw-r--r-- 1 adam 197121  3109 Oct 27 19:37 MANIFEST.sha256
+-rw-r--r-- 1 adam 197121  8806 Oct 27 19:35 NOTICE.md
+-rw-r--r-- 1 adam 197121  6154 Oct 27 19:35 THIRD_PARTY_NOTICES.md
+drwxr-xr-x 1 adam 197121     0 Oct 27 19:35 app
+-rw-r--r-- 1 adam 197121  1147 Oct 27 19:35 bundle.json
+drwxr-xr-x 1 adam 197121     0 Oct 27 19:35 images
+-rw-r--r-- 1 adam 197121 44846 Oct 27 19:35 install.ps1
+-rwxr-xr-x 1 adam 197121 28744 Oct 27 19:35 install.sh
+drwxr-xr-x 1 adam 197121     0 Oct 27 19:35 licenses
+
+<scratch>/bundle-u7ewin-amd64/app/sboms:
+total 26576
+drwxr-xr-x 1 adam 197121       0 Oct 27 19:37 .
+drwxr-xr-x 1 adam 197121       0 Oct 27 19:35 ..
+-rw-r--r-- 1 adam 197121 4038126 Oct 27 19:35 ke-app.spdx.json
+-rw-r--r-- 1 adam 197121 1418658 Oct 27 19:35 ke-gateway.spdx.json
+-rw-r--r-- 1 adam 197121 6936392 Oct 27 19:36 ke-neo4j.spdx.json
+-rw-r--r-- 1 adam 197121 5078898 Oct 27 19:37 phoenix.spdx.json
+-rw-r--r-- 1 adam 197121 8993174 Oct 27 19:37 postgres.spdx.json
+-rw-r--r-- 1 adam 197121  734191 Oct 27 19:37 valkey.spdx.json
+
+<scratch>/bundle-u7ewin-amd64/images:
+total 915772
+drwxr-xr-x 1 adam 197121         0 Oct 27 19:35 .
+drwxr-xr-x 1 adam 197121         0 Oct 27 19:37 ..
+-rw-r--r-- 1 adam 197121  54872064 Oct 27 19:35 ke-app.tar
+-rw-r--r-- 1 adam 197121  23074816 Oct 27 19:35 ke-gateway.tar
+-rw-r--r-- 1 adam 197121 351918592 Oct 27 19:35 ke-neo4j.tar
+-rw-r--r-- 1 adam 197121 326907904 Oct 27 19:35 phoenix.tar
+-rw-r--r-- 1 adam 197121 163448832 Oct 27 19:35 postgres.tar
+-rw-r--r-- 1 adam 197121  17510912 Oct 27 19:35 valkey.tar
+2d9fd2b15476e5ec0854e9ac42bfc705dd28f8fef7a82401e002f2c9d134f52c  bundle-u7ewin-amd64/MANIFEST.sha256
+[exit code: 0] [elapsed: 0 s]
+
+$ jq -c ".images[] | {ref, as, file}" "$S/bundle-u7ewin-amd64/bundle.json"
+{"ref":"ke-app:u7ewin-45411ae","as":"ke-app:bundle-45411ae2ad3d","file":"images/ke-app.tar"}
+{"ref":"ke-gateway:u7ewin-45411ae","as":"ke-gateway:bundle-45411ae2ad3d","file":"images/ke-gateway.tar"}
+{"ref":"ke-neo4j:u7ewin-45411ae","as":"ke-neo4j:bundle-45411ae2ad3d","file":"images/ke-neo4j.tar"}
+{"ref":"arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c","as":"ke-vendor/phoenix:fa28e9cd96dd","file":"images/phoenix.tar"}
+{"ref":"postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4","as":"ke-vendor/postgres:0ea6700a3b4f","file":"images/postgres.tar"}
+{"ref":"valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507","as":"ke-vendor/valkey:081c2f5cb575","file":"images/valkey.tar"}
+[exit code: 0] [elapsed: 0 s]
+
+$ cd "$S/bundle-u7ewin-amd64" && sha256sum -c --quiet MANIFEST.sha256 && echo "MANIFEST.sha256: all entries verify"
+MANIFEST.sha256: all entries verify
+[exit code: 0] [elapsed: 2 s]
+
+$ jq -r ".packages[] | select(.name==\"python\" or .name==\"libssl3\" or .name==\"openssl\") | \"\(.name) \(.versionInfo)\"" "$S/bundle-u7ewin-amd64/app/sboms/ke-app.spdx.json" | sort -u
+libssl3 3.0.22-1~deb12u2
+openssl 3.0.22-1~deb12u2
+python 3.12.16
+[exit code: 0] [elapsed: 1 s]
+
+$ docker image ls --no-trunc --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep -E "^ke-(app|gateway|neo4j|gates):(bundle-45411ae2ad3d|u7ewin-45411ae) |^ke-vendor/" | sort | tee "$S/out/tags-after-bundle.txt"
+ke-app:bundle-45411ae2ad3d sha256:2f5a27d04abf87e47759e50cac7c1dd125d930f74ad33eb12d2d0abf29ac7770
+ke-app:u7ewin-45411ae sha256:2f5a27d04abf87e47759e50cac7c1dd125d930f74ad33eb12d2d0abf29ac7770
+ke-gates:u7ewin-45411ae sha256:79566039f481d827cd012774911f4ef448026da085fb15f8631aaf7328797d3e
+ke-gateway:bundle-45411ae2ad3d sha256:85d28cb05b2aadef1555e9727e599bbf89f65029e6d60e561afc58f33d317ebc
+ke-gateway:u7ewin-45411ae sha256:85d28cb05b2aadef1555e9727e599bbf89f65029e6d60e561afc58f33d317ebc
+ke-neo4j:bundle-45411ae2ad3d sha256:ce3e5cf5e7dcd0febdf3be3197b4546ebae8be5ba83c07dfc19d01f2c3591617
+ke-neo4j:u7ewin-45411ae sha256:ce3e5cf5e7dcd0febdf3be3197b4546ebae8be5ba83c07dfc19d01f2c3591617
+ke-vendor/neo4j:0a6e7aedf54a sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+ke-vendor/phoenix:fa28e9cd96dd sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c
+ke-vendor/postgres:0ea6700a3b4f sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
+ke-vendor/valkey:081c2f5cb575 sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507
+[exit code: 0] [elapsed: 0 s]
+
+[end build-bundle]
+
+#### PowerShell: step 3 (driver <scratch>/a34-u7e-install.ps1, run from Git Bash as pwsh -NoProfile -File <scratch>\a34-u7e-install.ps1 -S <scratch>) ##########################################
+==================== 3. install.ps1 from the step-2 bundle (PowerShell 7.6.9) ====================
+COMPOSE_PROJECT_NAME=ke-tester-u7ewin-inst; KE_IMAGE_TAG unset (an operator's install uses the override, not a tag)
+
+PS> bundle and release record: Test-Path; record content
+bundle: True; record: True
+2d9fd2b15476e5ec0854e9ac42bfc705dd28f8fef7a82401e002f2c9d134f52c  bundle-u7ewin-amd64/MANIFEST.sha256
+
+PS> install parent and target do not exist yet
+parent: False; target: False
+
+PS> leftovers for project ke-tester-u7ewin-inst: containers, volumes, networks
+containers: 0 volumes: 0 networks: 0
+
+PS> ke-*:bundle-45411ae2ad3d tags before install (bundle.sh moved them onto this run's images; restored by the Git Bash cleanup)
+ke-app:bundle-45411ae2ad3d sha256:2f5a27d04abf87e47759e50cac7c1dd125d930f74ad33eb12d2d0abf29ac7770
+ke-gateway:bundle-45411ae2ad3d sha256:85d28cb05b2aadef1555e9727e599bbf89f65029e6d60e561afc58f33d317ebc
+ke-neo4j:bundle-45411ae2ad3d sha256:ce3e5cf5e7dcd0febdf3be3197b4546ebae8be5ba83c07dfc19d01f2c3591617
+[exit code: 0]
+
+PS> Get-FileHash install.ps1 in the bundle vs its MANIFEST.sha256 line
+Get-FileHash: 7438fe1a8fde5638f91b337469ac734645fbfbe03dbbc53ec216f82a0e77c883
+MANIFEST:     7438fe1a8fde5638f91b337469ac734645fbfbe03dbbc53ec216f82a0e77c883  install.ps1
+equal: True
+
+PS> cd <bundle>; pwsh -NoProfile -File .\install.ps1 -Target <target> -ExpectManifest 2d9fd2b15476e5ec0854e9ac42bfc705dd28f8fef7a82401e002f2c9d134f52c
+manifest sha256: 2d9fd2b15476e5ec0854e9ac42bfc705dd28f8fef7a82401e002f2c9d134f52c (matches -ExpectManifest)
+loaded ke-app.tar as ke-app:bundle-45411ae2ad3d
+loaded ke-gateway.tar as ke-gateway:bundle-45411ae2ad3d
+loaded ke-neo4j.tar as ke-neo4j:bundle-45411ae2ad3d
+loaded phoenix.tar as ke-vendor/phoenix:fa28e9cd96dd
+loaded postgres.tar as ke-vendor/postgres:0ea6700a3b4f
+loaded valkey.tar as ke-vendor/valkey:081c2f5cb575
+manifest sha256: 2d9fd2b15476e5ec0854e9ac42bfc705dd28f8fef7a82401e002f2c9d134f52c
+installed to <scratch>\inst-u7ewin\ke
+next: cd '<scratch>\inst-u7ewin\ke'; Copy-Item .env.example .env; restrict .env to your account before adding secrets (see docs/quickstart.md, Offline bundle step 5); set real secrets in it; scripts\launch.ps1
+[exit code: 0]
+
+PS> target top level (Get-ChildItem -Force -Name)
+config
+docs
+sboms
+scripts
+.env.example
+docker-compose.override.yml
+docker-compose.yml
+
+PS> docker-compose.override.yml written by install.ps1
+services:
+  api:
+    image: "ke-app:bundle-45411ae2ad3d"
+    pull_policy: never
+  worker:
+    image: "ke-app:bundle-45411ae2ad3d"
+    pull_policy: never
+  gateway:
+    image: "ke-gateway:bundle-45411ae2ad3d"
+    pull_policy: never
+  neo4j:
+    image: "ke-neo4j:bundle-45411ae2ad3d"
+    pull_policy: never
+  phoenix:
+    image: "ke-vendor/phoenix:fa28e9cd96dd"
+    pull_policy: never
+  postgres:
+    image: "ke-vendor/postgres:0ea6700a3b4f"
+    pull_policy: never
+  valkey:
+    image: "ke-vendor/valkey:081c2f5cb575"
+    pull_policy: never
+
+PS> loaded image ids vs this run's build (<scratch>\out\mine.txt)
+ke-app:u7ewin-45411ae sha256:2f5a27d04abf87e47759e50cac7c1dd125d930f74ad33eb12d2d0abf29ac7770 linux/amd64 created=2026-10-28T01:30:22.554154764Z
+ke-gateway:u7ewin-45411ae sha256:85d28cb05b2aadef1555e9727e599bbf89f65029e6d60e561afc58f33d317ebc linux/amd64 created=2026-10-19T04:13:41.827391046Z
+ke-neo4j:u7ewin-45411ae sha256:ce3e5cf5e7dcd0febdf3be3197b4546ebae8be5ba83c07dfc19d01f2c3591617 linux/amd64 created=2026-10-23T21:26:41.892773977Z
+ke-gates:u7ewin-45411ae sha256:79566039f481d827cd012774911f4ef448026da085fb15f8631aaf7328797d3e linux/amd64 created=2026-10-28T01:30:51.749215165Z
+ke-app:bundle-45411ae2ad3d sha256:2f5a27d04abf87e47759e50cac7c1dd125d930f74ad33eb12d2d0abf29ac7770 linux/amd64
+ke-gateway:bundle-45411ae2ad3d sha256:85d28cb05b2aadef1555e9727e599bbf89f65029e6d60e561afc58f33d317ebc linux/amd64
+ke-neo4j:bundle-45411ae2ad3d sha256:ce3e5cf5e7dcd0febdf3be3197b4546ebae8be5ba83c07dfc19d01f2c3591617 linux/amd64
+[exit code: 0]
+
+PS> cd <target>; Copy-Item .env.example .env; Add-Content marker + KE_API_PORT=47180, KE_PHOENIX_PORT=47181 (47100/47101 are held by the running knowledge-engine stack, not this run's; throwaway, no real keys)
+=> # U7EWIN-THROWAWAY: tester copy of .env.example in the install target of the platform-sbom U7e Windows run; removed below
+=> KE_API_PORT=47180
+=> KE_PHOENIX_PORT=47181
+
+PS> host listeners on 47180/47181 before launch (empty = free)
+
+PS> pwsh -NoProfile -File scripts\launch.ps1 (in the target)
+ Network ke-tester-u7ewin-inst_edge Creating 
+ Network ke-tester-u7ewin-inst_edge Created 
+ Network ke-tester-u7ewin-inst_backend Creating 
+ Network ke-tester-u7ewin-inst_backend Created 
+ Volume ke-tester-u7ewin-inst_postgres-data Creating 
+ Volume ke-tester-u7ewin-inst_postgres-data Created 
+ Volume ke-tester-u7ewin-inst_phoenix-data Creating 
+ Volume ke-tester-u7ewin-inst_phoenix-data Created 
+ Volume ke-tester-u7ewin-inst_valkey-data Creating 
+ Volume ke-tester-u7ewin-inst_valkey-data Created 
+ Volume ke-tester-u7ewin-inst_neo4j-data Creating 
+ Volume ke-tester-u7ewin-inst_neo4j-data Created 
+ Container ke-tester-u7ewin-inst-gateway-1 Creating 
+ Container ke-tester-u7ewin-inst-neo4j-1 Creating 
+ Container ke-tester-u7ewin-inst-phoenix-1 Creating 
+ Container ke-tester-u7ewin-inst-valkey-1 Creating 
+ Container ke-tester-u7ewin-inst-postgres-1 Creating 
+ Container ke-tester-u7ewin-inst-valkey-1 Created 
+ Container ke-tester-u7ewin-inst-worker-1 Creating 
+ Container ke-tester-u7ewin-inst-neo4j-1 Created 
+ Container ke-tester-u7ewin-inst-postgres-1 Created 
+ Container ke-tester-u7ewin-inst-api-1 Creating 
+ Container ke-tester-u7ewin-inst-gateway-1 Created 
+ Container ke-tester-u7ewin-inst-phoenix-1 Created 
+ Container ke-tester-u7ewin-inst-worker-1 Created 
+ Container ke-tester-u7ewin-inst-api-1 Created 
+ Container ke-tester-u7ewin-inst-postgres-1 Starting 
+ Container ke-tester-u7ewin-inst-phoenix-1 Starting 
+ Container ke-tester-u7ewin-inst-valkey-1 Starting 
+ Container ke-tester-u7ewin-inst-gateway-1 Starting 
+ Container ke-tester-u7ewin-inst-neo4j-1 Starting 
+ Container ke-tester-u7ewin-inst-postgres-1 Started 
+ Container ke-tester-u7ewin-inst-phoenix-1 Started 
+ Container ke-tester-u7ewin-inst-valkey-1 Started 
+ Container ke-tester-u7ewin-inst-valkey-1 Waiting 
+ Container ke-tester-u7ewin-inst-neo4j-1 Started 
+ Container ke-tester-u7ewin-inst-valkey-1 Waiting 
+ Container ke-tester-u7ewin-inst-postgres-1 Waiting 
+ Container ke-tester-u7ewin-inst-neo4j-1 Waiting 
+ Container ke-tester-u7ewin-inst-gateway-1 Started 
+ Container ke-tester-u7ewin-inst-valkey-1 Healthy 
+ Container ke-tester-u7ewin-inst-postgres-1 Healthy 
+ Container ke-tester-u7ewin-inst-valkey-1 Healthy 
+ Container ke-tester-u7ewin-inst-worker-1 Starting 
+ Container ke-tester-u7ewin-inst-worker-1 Started 
+ Container ke-tester-u7ewin-inst-neo4j-1 Healthy 
+ Container ke-tester-u7ewin-inst-api-1 Starting 
+ Container ke-tester-u7ewin-inst-api-1 Started 
+ Container ke-tester-u7ewin-inst-valkey-1 Waiting 
+ Container ke-tester-u7ewin-inst-worker-1 Waiting 
+ Container ke-tester-u7ewin-inst-neo4j-1 Waiting 
+ Container ke-tester-u7ewin-inst-postgres-1 Waiting 
+ Container ke-tester-u7ewin-inst-api-1 Waiting 
+ Container ke-tester-u7ewin-inst-gateway-1 Waiting 
+ Container ke-tester-u7ewin-inst-phoenix-1 Waiting 
+ Container ke-tester-u7ewin-inst-valkey-1 Healthy 
+ Container ke-tester-u7ewin-inst-postgres-1 Healthy 
+ Container ke-tester-u7ewin-inst-gateway-1 Healthy 
+ Container ke-tester-u7ewin-inst-neo4j-1 Healthy 
+ Container ke-tester-u7ewin-inst-phoenix-1 Healthy 
+ Container ke-tester-u7ewin-inst-worker-1 Healthy 
+ Container ke-tester-u7ewin-inst-api-1 Healthy 
+stack is up:
+  api:     http://127.0.0.1:47180
+  phoenix: http://127.0.0.1:47181
+[exit code: 0]
+
+PS> docker compose ps --format json (service/image/state/health)
+api        ke-app:bundle-45411ae2ad3d           running  healthy
+gateway    ke-gateway:bundle-45411ae2ad3d       running  healthy
+neo4j      ke-neo4j:bundle-45411ae2ad3d         running  healthy
+phoenix    ke-vendor/phoenix:fa28e9cd96dd       running  healthy
+postgres   ke-vendor/postgres:0ea6700a3b4f      running  healthy
+valkey     ke-vendor/valkey:081c2f5cb575        running  healthy
+worker     ke-app:bundle-45411ae2ad3d           running  healthy
+[exit code: 0]
+
+PS> Invoke-WebRequest http://127.0.0.1:47180/healthz; /readyz
+200 {"status":"ok"}
+200 {"ready":true,"checks":{"postgres":{"ok":true,"reason":null},"neo4j":{"ok":true,"reason":null},"valkey":{"ok":true,"reason":null},"model_host":{"ok":false,"reason":"not_configured","required":false}}}
+
+PS> the installed api: python, libssl3/openssl, no pip, psycopg (docker compose exec -T api)
+3.12.16 OpenSSL 3.0.22 25 Aug 2026
+pip spec: None
+psycopg impl: c 150019
+[exit code: 0]
+libssl3:amd64	3.0.22-1~deb12u2
+openssl	3.0.22-1~deb12u2
+[exit code: 0]
+
+PS> pwsh -NoProfile -File scripts\teardown.ps1 -Volumes (in the target)
+ Container ke-tester-u7ewin-inst-api-1 Stopping 
+ Container ke-tester-u7ewin-inst-phoenix-1 Stopping 
+ Container ke-tester-u7ewin-inst-gateway-1 Stopping 
+ Container ke-tester-u7ewin-inst-worker-1 Stopping 
+ Container ke-tester-u7ewin-inst-worker-1 Stopped 
+ Container ke-tester-u7ewin-inst-worker-1 Removing 
+ Container ke-tester-u7ewin-inst-api-1 Stopped 
+ Container ke-tester-u7ewin-inst-api-1 Removing 
+ Container ke-tester-u7ewin-inst-worker-1 Removed 
+ Container ke-tester-u7ewin-inst-api-1 Removed 
+ Container ke-tester-u7ewin-inst-postgres-1 Stopping 
+ Container ke-tester-u7ewin-inst-neo4j-1 Stopping 
+ Container ke-tester-u7ewin-inst-valkey-1 Stopping 
+ Container ke-tester-u7ewin-inst-gateway-1 Stopped 
+ Container ke-tester-u7ewin-inst-gateway-1 Removing 
+ Container ke-tester-u7ewin-inst-gateway-1 Removed 
+ Container ke-tester-u7ewin-inst-valkey-1 Stopped 
+ Container ke-tester-u7ewin-inst-valkey-1 Removing 
+ Container ke-tester-u7ewin-inst-phoenix-1 Stopped 
+ Container ke-tester-u7ewin-inst-phoenix-1 Removing 
+ Container ke-tester-u7ewin-inst-valkey-1 Removed 
+ Container ke-tester-u7ewin-inst-postgres-1 Stopped 
+ Container ke-tester-u7ewin-inst-postgres-1 Removing 
+ Container ke-tester-u7ewin-inst-phoenix-1 Removed 
+ Container ke-tester-u7ewin-inst-postgres-1 Removed 
+ Container ke-tester-u7ewin-inst-neo4j-1 Stopped 
+ Container ke-tester-u7ewin-inst-neo4j-1 Removing 
+ Container ke-tester-u7ewin-inst-neo4j-1 Removed 
+ Network ke-tester-u7ewin-inst_backend Removing 
+ Volume ke-tester-u7ewin-inst_phoenix-data Removing 
+ Volume ke-tester-u7ewin-inst_valkey-data Removing 
+ Volume ke-tester-u7ewin-inst_postgres-data Removing 
+ Volume ke-tester-u7ewin-inst_neo4j-data Removing 
+ Network ke-tester-u7ewin-inst_edge Removing 
+ Volume ke-tester-u7ewin-inst_postgres-data Removed 
+ Volume ke-tester-u7ewin-inst_neo4j-data Removed 
+ Volume ke-tester-u7ewin-inst_valkey-data Removed 
+ Volume ke-tester-u7ewin-inst_phoenix-data Removed 
+ Network ke-tester-u7ewin-inst_backend Removed 
+ Network ke-tester-u7ewin-inst_edge Removed 
+[exit code: 0]
+
+PS> after teardown: containers, networks, volumes, compose projects of ke-tester-u7ewin-inst (all 0)
+containers: 0
+networks: 0
+volumes: 0 (by name ke-tester-u7ewin-inst_: 0)
+compose projects: 0
+
+PS> Remove-Item -Recurse -Force <parent> (target and its throwaway .env); Test-Path
+parent: False
+[end install]
+
+#### Git Bash: step 4 cleanup (driver <scratch>/a34-u7e-cleanup.sh) ##########################################
+==================== 4. cleanup (Git Bash) ====================
+$ cat "$S/out/tags-before.txt"
+ke-app:bundle-45411ae2ad3d sha256:30c396ed3c06ccfb8872d71a698525314c3757af22237311d13e5512416a3f8a
+ke-app:u7ewin-45411ae sha256:3cd18b19eaf0a330eac3783e672200ee69d963b0dbd90fbbc4b1389862177659
+ke-gates:u7ewin-45411ae sha256:9fa05652cfa3cfacba95e1e5a3ea34b3f8529549a2b5c8f1dcfa78bafd111428
+ke-gateway:bundle-45411ae2ad3d sha256:65c9f1006322306f325c52c2fd118784519083098598f17108595448f0aad236
+ke-gateway:u7ewin-45411ae sha256:c02177b0f6c505e68b4aae94084a84578aed352a1ef087a926ccda91a00cbbbf
+ke-neo4j:bundle-45411ae2ad3d sha256:b30252f024706f922023a917d67f0d1fbc6e1627a7945546761c15f41e081b79
+ke-neo4j:u7ewin-45411ae sha256:e171905e57f9af7f0717c352133b28f21e5ab2c73d85ba836e3a28d6ed9cb9ae
+ke-vendor/neo4j:0a6e7aedf54a sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+ke-vendor/phoenix:fa28e9cd96dd sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c
+ke-vendor/postgres:0ea6700a3b4f sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
+ke-vendor/valkey:081c2f5cb575 sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507
+[exit code: 0]
+
+$ docker image ls --no-trunc --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep -E "^ke-(app|gateway|neo4j):bundle-45411ae2ad3d " | sort
+ke-app:bundle-45411ae2ad3d sha256:2f5a27d04abf87e47759e50cac7c1dd125d930f74ad33eb12d2d0abf29ac7770
+ke-gateway:bundle-45411ae2ad3d sha256:85d28cb05b2aadef1555e9727e599bbf89f65029e6d60e561afc58f33d317ebc
+ke-neo4j:bundle-45411ae2ad3d sha256:ce3e5cf5e7dcd0febdf3be3197b4546ebae8be5ba83c07dfc19d01f2c3591617
+[exit code: 0]
+
+--- bundle-tag restore: each ke-*:bundle-45411ae2ad3d tag goes back to its image before this run
+$ docker tag sha256:30c396ed3c06ccfb8872d71a698525314c3757af22237311d13e5512416a3f8a ke-app:bundle-45411ae2ad3d
+[exit code: 0]
+
+$ docker tag sha256:65c9f1006322306f325c52c2fd118784519083098598f17108595448f0aad236 ke-gateway:bundle-45411ae2ad3d
+[exit code: 0]
+
+$ docker tag sha256:b30252f024706f922023a917d67f0d1fbc6e1627a7945546761c15f41e081b79 ke-neo4j:bundle-45411ae2ad3d
+[exit code: 0]
+
+$ docker image ls --no-trunc --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep -E "^ke-(app|gateway|neo4j):bundle-45411ae2ad3d |^ke-vendor/" | sort | diff <(grep -E "^ke-(app|gateway|neo4j):bundle-45411ae2ad3d |^ke-vendor/" "$S/out/tags-before.txt") - && echo "bundle and ke-vendor tags: as before this run"
+bundle and ke-vendor tags: as before this run
+[exit code: 0]
+
+--- the tester tag u7ewin-45411ae (built in step 1) removed; the tester's attempt-1 build of the same tag was already replaced by step 1's
+$ for r in ke-app ke-gateway ke-neo4j ke-gates; do docker image rm "$r:u7ewin-45411ae"; done
+Untagged: ke-app:u7ewin-45411ae
+Deleted: sha256:2f5a27d04abf87e47759e50cac7c1dd125d930f74ad33eb12d2d0abf29ac7770
+Untagged: ke-gateway:u7ewin-45411ae
+Deleted: sha256:85d28cb05b2aadef1555e9727e599bbf89f65029e6d60e561afc58f33d317ebc
+Untagged: ke-neo4j:u7ewin-45411ae
+Deleted: sha256:ce3e5cf5e7dcd0febdf3be3197b4546ebae8be5ba83c07dfc19d01f2c3591617
+Untagged: ke-gates:u7ewin-45411ae
+Deleted: sha256:79566039f481d827cd012774911f4ef448026da085fb15f8631aaf7328797d3e
+[exit code: 0]
+
+$ docker image ls --no-trunc --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep -c ":u7ewin-"
+0
+[exit code: 1]
+
+$ rm -rf -- "$S/bundle-u7ewin-amd64" "$S/bundle-u7ewin-amd64.manifest.sha256" "$S/inst-u7ewin"; ls -d "$S/bundle-u7ewin-amd64" "$S/bundle-u7ewin-amd64.manifest.sha256" "$S/inst-u7ewin"
+ls: cannot access '<scratch>/bundle-u7ewin-amd64': No such file or directory
+ls: cannot access '<scratch>/bundle-u7ewin-amd64.manifest.sha256': No such file or directory
+ls: cannot access '<scratch>/inst-u7ewin': No such file or directory
+[exit code: 2]
+
+$ ls -d "${TMPDIR:-/tmp}"/ke-sbom.* "$S"/.ke-sbom.* "$S"/.ke-drift.* 2>/dev/null | wc -l
+0
+[exit code: 0]
+
+$ for p in ke-tester-u7ewin ke-tester-u7ewin-inst ke-tester-u7ewin-sbom ke-tester-u7ewin-probe; do echo "$p: containers=$(docker ps -a -q --filter label=com.docker.compose.project=$p | wc -l) volumes=$(docker volume ls -q --filter label=com.docker.compose.project=$p | wc -l) networks=$(docker network ls -q --filter label=com.docker.compose.project=$p | wc -l)"; done; docker ps -a --format "{{.Names}}" | grep -c "ke-tester-u7ewin"
+ke-tester-u7ewin: containers=0 volumes=0 networks=0
+ke-tester-u7ewin-inst: containers=0 volumes=0 networks=0
+ke-tester-u7ewin-sbom: containers=0 volumes=0 networks=0
+ke-tester-u7ewin-probe: containers=0 volumes=0 networks=0
+0
+[exit code: 1]
+
+$ git status --short | diff "$S/out/status-start.txt" - && echo "git status: as at start"
+31a32
+> ?? docs/evidence/platform-sbom/u7e/review.md
+35a37
+> ?? docs/evidence/platform-sbom/u7e/size.md
+[exit code: 1]
+
+$ sha256sum -c --quiet "$S/out/hash-start.txt" && echo "hashed files: unchanged since start"
+hashed files: unchanged since start
+[exit code: 0]
+
+[end cleanup]
+
+#### Appendix A: driver attempt 1 (discarded; $S was not exported to the run() subshells, so every $S path was empty: tee/ls to /out failed and bundle.sh refused at mkdir /bundle-u7ewin-amd64 before any tag, save or record. build.sh in it built the u7ewin tags that step 1 above rebuilt from cache.) ##########################################
+==================== 0. metadata (Git Bash) ====================
+$ date -u +%FT%TZ; uname -srm; git rev-parse HEAD; git branch --show-current; docker version --format "engine {{.Server.Version}} {{.Server.Os}}/{{.Server.Arch}}"; docker compose version --short; jq --version; id -u; id -g
+2026-10-28T02:34:33Z
+MINGW64_NT-10.0-26200 3.6.7-fb42d713.x86_64 x86_64
+45411ae2ad3dbf9fc1c884a31a4f46b2e1a11efa
+agent/platform-sbom
+engine 29.5.2 linux/amd64
+5.1.4
+jq-1.8.2
+197610
+197121
+[exit code: 0] [elapsed: 1 s]
+
+$ echo "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME KE_IMAGE_TAG=$KE_IMAGE_TAG"; ls -a .env
+COMPOSE_PROJECT_NAME=ke-tester-u7ewin KE_IMAGE_TAG=u7ewin-45411ae
+ls: cannot access '.env': No such file or directory
+[exit code: 2] [elapsed: 0 s]
+
+$ grep -n "^FROM python" docker/app.Dockerfile docker/gates.Dockerfile
+docker/app.Dockerfile:13:FROM python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753 AS builder
+docker/app.Dockerfile:45:FROM python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753 AS runtime
+docker/gates.Dockerfile:9:FROM python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753
+[exit code: 0] [elapsed: 0 s]
+
+$ sha256sum docker/app.Dockerfile docker/gates.Dockerfile docker/neo4j.Dockerfile docker/gateway.Dockerfile docker-compose.yml NOTICE.md licenses/CPython-3.12-*.txt scripts/build.sh scripts/bundle.sh scripts/install.ps1 scripts/launch.ps1 scripts/teardown.ps1 uv.lock | tee "$S/out/hash-start.txt"
+tee: /out/hash-start.txt: No such file or directory
+d4f25d98ebc94211c3fb0cf2820993a1067f10ff76ae039707847cdabcf9227f *docker/app.Dockerfile
+86a7687b57e70f87582b02d1e510ad344ea81733cfd4366811d217da2fcce48f *docker/gates.Dockerfile
+4429ec7fd282b4b92b7863051b208b07ac080477133dafe92de313c2e5a950c6 *docker/neo4j.Dockerfile
+b91eb73dd9f9dbe8a3a757e79a55c9aeae0b6078731169db472445fa9faf80ab *docker/gateway.Dockerfile
+35e66b6ebe297a5ff9c481a24fea965db3f3cd99004ab625cc10ad0289ab0fe9 *docker-compose.yml
+c3f4b868580d1d3c832d5ea468451426e329f10a9cc6a4b3023d80b060bb0b38 *NOTICE.md
+298f499c334132c29e6428826d52f31e7e29e31e5ef08136c0517d99d4971179 *licenses/CPython-3.12-HACL.txt
+915b4f1def7b77deef1e2de266fd883781f0569e0aa64dc965532f4bc21bdc95 *licenses/CPython-3.12-KaRaMeL.txt
+50304751a3c8531122e4bec869eaa0422e23fb6dd004ecfb9579261d651b9be6 *licenses/CPython-3.12-incorporated.txt
+82ba32d27651e1478bdbd700f6f54b2981c76ff8737094c88e20db6eacc0580a *scripts/build.sh
+27013bf12529f9e6a51b96c9e1b23d5dddb594d821709e91f9d601618dcf1543 *scripts/bundle.sh
+7438fe1a8fde5638f91b337469ac734645fbfbe03dbbc53ec216f82a0e77c883 *scripts/install.ps1
+768fd837368584c7fadb855d523f86b832d396d1eddc75ebd7b56d1c70a78224 *scripts/launch.ps1
+17299c961b0ba6d9ce06a142f7aebbaf886783ed9adf25c167edc56adccdc061 *scripts/teardown.ps1
+feff883374df875719902dcd949e0ef30c52567da866ab8d5557c530c5b2a821 *uv.lock
+[exit code: 1] [elapsed: 0 s]
+
+$ git status --short | tee "$S/out/status-start.txt"
+tee: /out/status-start.txt: No such file or directory
+ M CHANGELOG.md
+ M NOTICE.md
+ M docker/app.Dockerfile
+ M docker/gates.Dockerfile
+ M docker/sources.lock.json
+ M docs/architecture.md
+ M docs/evidence/platform-sbom/design-notes.md
+ M docs/evidence/platform-sbom/u7d/orchestrator-verify-full-final.txt
+ M docs/handoffs/platform-sbom.md
+ M docs/log.md
+ M docs/requirements.md
+ M licenses/CPython-3.12-HACL.txt
+ M licenses/CPython-3.12-KaRaMeL.txt
+ M licenses/CPython-3.12-incorporated.txt
+ M tests/fixtures/sbom-u3/ke-app.pkgs.tsv
+ M tests/test_notice_ke_app.py
+ M tests/test_psycopg_c.py
+ M tests/test_sbom_obligations.py
+ M tests/test_sources_lock.py
+ M tests/test_sources_lock_committed.py
+ M tests/test_sources_resolve.py
+?? docs/evidence/platform-sbom/u7e/base-dpkg-diff.txt
+?? docs/evidence/platform-sbom/u7e/base-provenance.md
+?? docs/evidence/platform-sbom/u7e/developer-build.txt
+?? docs/evidence/platform-sbom/u7e/developer-green.md
+?? docs/evidence/platform-sbom/u7e/developer-scan-direct.txt
+?? docs/evidence/platform-sbom/u7e/developer-verify-fast.txt
+?? docs/evidence/platform-sbom/u7e/developer-verify-full.txt
+?? docs/evidence/platform-sbom/u7e/fixture-diff.txt
+?? docs/evidence/platform-sbom/u7e/key-diff.txt
+?? docs/evidence/platform-sbom/u7e/lock-run-1.txt
+?? docs/evidence/platform-sbom/u7e/sboms/
+?? docs/evidence/platform-sbom/u7e/security-review.md
+?? docs/evidence/platform-sbom/u7e/security-scan-ke-app.txt
+?? docs/evidence/platform-sbom/u7e/security-scan-ke-gates.txt
+?? docs/evidence/platform-sbom/u7e/tester-red-verify-full.txt
+?? docs/evidence/platform-sbom/u7e/tester-repin-verify-full.txt
+?? docs/handoffs/NEXT-SESSION.md
+?? docs/knowledge-engine-claude-code-prompt.md
+[exit code: 1] [elapsed: 0 s]
+
+$ docker image ls --no-trunc --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep -E "^ke-(app|gateway|neo4j|gates):(bundle-45411ae2ad3d|u7ewin-45411ae) |^ke-vendor/" | sort | tee "$S/out/tags-before.txt"
+tee: /out/tags-before.txt: No such file or directory
+ke-app:bundle-45411ae2ad3d sha256:30c396ed3c06ccfb8872d71a698525314c3757af22237311d13e5512416a3f8a
+ke-gateway:bundle-45411ae2ad3d sha256:65c9f1006322306f325c52c2fd118784519083098598f17108595448f0aad236
+ke-neo4j:bundle-45411ae2ad3d sha256:b30252f024706f922023a917d67f0d1fbc6e1627a7945546761c15f41e081b79
+ke-vendor/neo4j:0a6e7aedf54a sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+ke-vendor/phoenix:fa28e9cd96dd sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c
+ke-vendor/postgres:0ea6700a3b4f sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
+ke-vendor/valkey:081c2f5cb575 sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507
+[exit code: 1] [elapsed: 2 s]
+
+$ docker ps -a -q --filter label=com.docker.compose.project=ke-tester-u7ewin | wc -l; docker ps -a -q --filter label=com.docker.compose.project=ke-tester-u7ewin-inst | wc -l; docker volume ls -q | grep -c "^ke-tester-u7ewin"; docker network ls -q --filter name=ke-tester-u7ewin | wc -l
+0
+0
+0
+0
+[exit code: 0] [elapsed: 0 s]
+
+==================== 1. scripts/build.sh (Git Bash) ====================
+$ scripts/build.sh
+time="2026-10-27T19:34:36-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:36-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:36-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:36-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:36-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:36-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:36-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:36-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:36-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:36-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:36-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:36-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:36-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:36-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+ Image ke-app:u7ewin-45411ae Building 
+ Image ke-gates:u7ewin-45411ae Building 
+ Image ke-gateway:u7ewin-45411ae Building 
+ Image ke-gates:u7ewin-45411ae Building 
+ Image ke-app:u7ewin-45411ae Building 
+ Image ke-neo4j:u7ewin-45411ae Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 2.79kB done
+#1 DONE 0.0s
+
+#2 [api internal] load build definition from app.Dockerfile
+#2 transferring dockerfile: 3.26kB done
+#2 DONE 0.0s
+
+#3 [gateway internal] load build definition from gateway.Dockerfile
+#3 transferring dockerfile: 1.10kB done
+#3 DONE 0.0s
+
+#4 [neo4j internal] load build definition from neo4j.Dockerfile
+#4 transferring dockerfile: 1.33kB done
+#4 DONE 0.0s
+
+#5 [gates internal] load build definition from gates.Dockerfile
+#5 transferring dockerfile: 7.34kB done
+#5 DONE 0.0s
+
+#6 [gateway internal] load metadata for docker.io/nginxinc/nginx-unprivileged:1.28-alpine@sha256:7377697a821c131a924a7105fafbe7414db4e9fcc77a6f08f776f33f141ec3f8
+#6 DONE 0.1s
+
+#7 [gates internal] load metadata for docker.io/library/python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753
+#7 ...
+
+#8 [gateway internal] load .dockerignore
+#8 transferring context: 97B done
+#8 DONE 0.0s
+
+#9 [gateway 1/7] FROM docker.io/nginxinc/nginx-unprivileged:1.28-alpine@sha256:7377697a821c131a924a7105fafbe7414db4e9fcc77a6f08f776f33f141ec3f8
+#9 resolve docker.io/nginxinc/nginx-unprivileged:1.28-alpine@sha256:7377697a821c131a924a7105fafbe7414db4e9fcc77a6f08f776f33f141ec3f8 0.0s done
+#9 DONE 0.0s
+
+#10 [gateway internal] load build context
+#10 transferring context: 7.25kB done
+#10 DONE 0.0s
+
+#11 [gateway 4/7] COPY --chmod=0755 docker/gateway/10-ke-bind-check.sh /docker-entrypoint.d/10-ke-bind-check.sh
+#11 CACHED
+
+#12 [gateway 3/7] COPY docker/gateway/templates/ /etc/nginx/templates/
+#12 CACHED
+
+#13 [gateway 5/7] COPY --chmod=0755 docker/gateway/11-ke-upstream-check.sh /docker-entrypoint.d/11-ke-upstream-check.sh
+#13 CACHED
+
+#14 [gateway 2/7] COPY docker/gateway/nginx.conf /etc/nginx/nginx.conf
+#14 CACHED
+
+#15 [gateway 6/7] COPY --chmod=0755 docker/gateway/12-ke-port-check.sh /docker-entrypoint.d/12-ke-port-check.sh
+#15 CACHED
+
+#16 [gateway 7/7] RUN rm -f /etc/nginx/conf.d/default.conf  && mkdir -p /etc/nginx/stream-conf.d  && chown nginx:nginx /etc/nginx/conf.d /etc/nginx/stream-conf.d
+#16 CACHED
+
+#17 [gateway] exporting to image
+#17 exporting layers done
+#17 exporting manifest sha256:bd37e9689b6f4fdb2b0ae779702e9d478569ae52699f85444b7a7c5ce177b541 0.0s done
+#17 exporting config sha256:0d7c816d1aab11069e1e3155a7fe43e379e557bcc34251550d7022fa4af8815b 0.0s done
+#17 exporting attestation manifest sha256:cf91ed0723d3a44b5f6e803c4237d653456c6aae640e4fe3f1c801fcf7f988e0 0.0s done
+#17 exporting manifest list sha256:c02177b0f6c505e68b4aae94084a84578aed352a1ef087a926ccda91a00cbbbf 0.0s done
+#17 naming to docker.io/library/ke-gateway:u7ewin-45411ae done
+#17 unpacking to docker.io/library/ke-gateway:u7ewin-45411ae 0.0s done
+#17 DONE 0.2s
+
+#18 [neo4j internal] load metadata for docker.io/library/neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+#18 DONE 0.5s
+
+#19 [gates internal] load metadata for ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#19 ...
+
+#8 [neo4j internal] load .dockerignore
+#8 transferring context: 97B done
+#8 DONE 0.0s
+
+#7 [worker internal] load metadata for docker.io/library/python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753
+#7 DONE 0.5s
+
+#20 [neo4j runtime 1/2] FROM docker.io/library/neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+#20 resolve docker.io/library/neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b 0.0s done
+#20 DONE 0.0s
+
+#21 [neo4j runtime 2/2] RUN rm -rf /var/lib/neo4j/products
+#21 CACHED
+
+#22 [neo4j stage-1 1/2] COPY --from=runtime / /
+#22 CACHED
+
+#23 [neo4j stage-1 2/2] WORKDIR /var/lib/neo4j
+#23 CACHED
+
+#24 [gateway] resolving provenance for metadata file
+#24 DONE 0.0s
+
+#8 [worker internal] load .dockerignore
+#8 transferring context: 97B done
+#8 DONE 0.0s
+
+#19 [worker internal] load metadata for ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#19 DONE 0.7s
+
+#25 [gates internal] load build context
+#25 DONE 0.0s
+
+#26 [neo4j] exporting to image
+#26 exporting layers done
+#26 exporting manifest sha256:8db5c174f655a5da2b3dec199c411a3011bab4960339f3a7a1d5f9bb147069f0 0.0s done
+#26 exporting config sha256:c60d1c7d628364006b8e7a873b76bd49393da94dfeec9aaee231eb11a9b0c60f 0.0s done
+#26 exporting attestation manifest sha256:a04e323b4a04323acf66ebfb51b37b75d10e8a901801d1d33b9ec9a50bb8090b 0.0s done
+#26 exporting manifest list sha256:e171905e57f9af7f0717c352133b28f21e5ab2c73d85ba836e3a28d6ed9cb9ae 0.0s done
+#26 naming to docker.io/library/ke-neo4j:u7ewin-45411ae done
+#26 unpacking to docker.io/library/ke-neo4j:u7ewin-45411ae done
+#26 DONE 0.1s
+
+#27 [api uv 1/1] FROM ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#27 resolve ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946 0.1s done
+#27 resolve ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946 0.1s done
+#27 DONE 0.1s
+
+#28 [api builder  1/11] FROM docker.io/library/python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753
+#28 resolve docker.io/library/python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753 0.1s done
+#28 DONE 0.1s
+
+#29 [neo4j] resolving provenance for metadata file
+#29 DONE 0.0s
+
+#25 [gates-it internal] load build context
+#25 transferring context: 242.68kB 0.0s done
+#25 DONE 0.0s
+
+#30 [gates-it stage-1  8/13] WORKDIR /work
+#30 CACHED
+
+#31 [gates-it stage-1  9/13] COPY pyproject.toml uv.lock ./
+#31 CACHED
+
+#32 [gates-it stage-1 12/13] COPY config ./config
+#32 CACHED
+
+#33 [gates-it stage-1  3/13] RUN apt-get update  && apt-get install -y --no-install-recommends git jq ca-certificates curl       shellcheck=0.9.0-1 libicu72 libssl3 zlib1g       gcc libc6-dev libpq-dev=15.19-0+deb12u1  && rm -rf /var/lib/apt/lists/*  && git config --system --add safe.directory /work  && git config --system core.autocrlf true
+#33 CACHED
+
+#34 [gates-it stage-1 10/13] COPY harness_telemetry ./harness_telemetry
+#34 CACHED
+
+#35 [gates-it stage-1 11/13] COPY engine ./engine
+#35 CACHED
+
+#36 [gates-it stage-1  4/13] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x64; sha="3fc5e1567c450bd7bd5ae69ebb0a9a4a4e0418bbc36b0232cf6dd547f0bfc0eb" ;;       arm64) arch=arm64; sha="d0c216cec4c6c866fc15a105f039740228b53206f8576d2ed0bcd656a35ed6f6" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     tarball="powershell-7.4.21-linux-${arch}.tar.gz";     curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball"       "https://github.com/PowerShell/PowerShell/releases/download/v7.4.21/$tarball";     echo "$sha  /tmp/$tarball" | sha256sum -c -;     mkdir -p /opt/microsoft/powershell;     tar -xzf "/tmp/$tarball" -C /opt/microsoft/powershell;     chmod +x /opt/microsoft/powershell/pwsh;     ln -s /opt/microsoft/powershell/pwsh /usr/local/bin/pwsh;     rm "/tmp/$tarball"
+#36 CACHED
+
+#37 [gates-it stage-1  6/13] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x86_64; sha="c158ecc55adb3afb01bbd3539ed3b997d20c26dbdc418080506cc1bf5243ff57" ;;       arm64) arch=aarch64; sha="3e93cc6d1a686456a3b18eefdde26467a837a7a2b257af22e27cba1dbc1b2018" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker.tgz       "https://download.docker.com/linux/static/stable/$arch/docker-29.9.1.tgz";     echo "$sha  /tmp/docker.tgz" | sha256sum -c -;     tar -xzf /tmp/docker.tgz -C /usr/local/bin --strip-components=1       --no-same-owner docker/docker;     rm /tmp/docker.tgz
+#37 CACHED
+
+#38 [gates-it stage-1  5/13] RUN set -eu;     curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL -o /tmp/psa.nupkg       "https://www.powershellgallery.com/api/v2/package/PSScriptAnalyzer/1.25.0";     echo "e7fb573262e604bab29914ae62921d24b97c2f88b519b41277b403ef6ce163f14b7d1b36dc73449a68e5ae5a8d9502891b10c264131fd1813adf29bf131c1663  /tmp/psa.nupkg" | sha512sum -c -;     dir="/usr/local/share/powershell/Modules/PSScriptAnalyzer/1.25.0";     python3 -I -m zipfile -e /tmp/psa.nupkg "/usr/local/share/powershell/Modules/PSScriptAnalyzer/1.25.0";     rm -rf "$dir/_rels" "$dir/package" "$dir/[Content_Types].xml" "$dir/PSScriptAnalyzer.nuspec" "$dir/.signature.p7s" /tmp/psa.nupkg;     pwsh -NoProfile -NonInteractive -Command "Import-Module PSScriptAnalyzer -ErrorAction Stop"
+#38 CACHED
+
+#39 [gates-it builder  2/11] COPY --from=uv /uv /usr/local/bin/uv
+#39 CACHED
+
+#40 [gates-it stage-1  7/13] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x86_64; sha="40343e21ca777173e69cff5dbafeb37c6f81f3b0d57d9e597f036e95eb63e76a" ;;       arm64) arch=aarch64; sha="733ec76717ceb59052a9609b9dadfb523b2df8eab57a54212872d10a58078ea2" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose       "https://github.com/docker/compose/releases/download/v5.6.0/docker-compose-linux-$arch";     echo "$sha  /tmp/docker-compose" | sha256sum -c -;     mkdir -p /usr/local/lib/docker/cli-plugins;     install -m 0755 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose;     rm /tmp/docker-compose
+#40 CACHED
+
+#41 [gates-it stage-1 13/13] RUN uv sync --locked --group pq-build --no-install-project  && uv sync --locked --group pq-build --group pq-c --no-binary-package psycopg-c --no-install-project  && uv sync --locked --group pq-build --group pq-c --no-binary-package psycopg-c  && chown -R 10001:10001 /opt/venv /opt/uv-cache
+#41 CACHED
+
+#38 [gates stage-1  5/13] RUN set -eu;     curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL -o /tmp/psa.nupkg       "https://www.powershellgallery.com/api/v2/package/PSScriptAnalyzer/1.25.0";     echo "e7fb573262e604bab29914ae62921d24b97c2f88b519b41277b403ef6ce163f14b7d1b36dc73449a68e5ae5a8d9502891b10c264131fd1813adf29bf131c1663  /tmp/psa.nupkg" | sha512sum -c -;     dir="/usr/local/share/powershell/Modules/PSScriptAnalyzer/1.25.0";     python3 -I -m zipfile -e /tmp/psa.nupkg "/usr/local/share/powershell/Modules/PSScriptAnalyzer/1.25.0";     rm -rf "$dir/_rels" "$dir/package" "$dir/[Content_Types].xml" "$dir/PSScriptAnalyzer.nuspec" "$dir/.signature.p7s" /tmp/psa.nupkg;     pwsh -NoProfile -NonInteractive -Command "Import-Module PSScriptAnalyzer -ErrorAction Stop"
+#38 CACHED
+
+#36 [gates stage-1  4/13] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x64; sha="3fc5e1567c450bd7bd5ae69ebb0a9a4a4e0418bbc36b0232cf6dd547f0bfc0eb" ;;       arm64) arch=arm64; sha="d0c216cec4c6c866fc15a105f039740228b53206f8576d2ed0bcd656a35ed6f6" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     tarball="powershell-7.4.21-linux-${arch}.tar.gz";     curl --proto '=https' --tlsv1.2 -fsSL -o "/tmp/$tarball"       "https://github.com/PowerShell/PowerShell/releases/download/v7.4.21/$tarball";     echo "$sha  /tmp/$tarball" | sha256sum -c -;     mkdir -p /opt/microsoft/powershell;     tar -xzf "/tmp/$tarball" -C /opt/microsoft/powershell;     chmod +x /opt/microsoft/powershell/pwsh;     ln -s /opt/microsoft/powershell/pwsh /usr/local/bin/pwsh;     rm "/tmp/$tarball"
+#36 CACHED
+
+#33 [gates stage-1  3/13] RUN apt-get update  && apt-get install -y --no-install-recommends git jq ca-certificates curl       shellcheck=0.9.0-1 libicu72 libssl3 zlib1g       gcc libc6-dev libpq-dev=15.19-0+deb12u1  && rm -rf /var/lib/apt/lists/*  && git config --system --add safe.directory /work  && git config --system core.autocrlf true
+#33 CACHED
+
+#35 [gates stage-1 11/13] COPY engine ./engine
+#35 CACHED
+
+#37 [gates stage-1  6/13] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x86_64; sha="c158ecc55adb3afb01bbd3539ed3b997d20c26dbdc418080506cc1bf5243ff57" ;;       arm64) arch=aarch64; sha="3e93cc6d1a686456a3b18eefdde26467a837a7a2b257af22e27cba1dbc1b2018" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker.tgz       "https://download.docker.com/linux/static/stable/$arch/docker-29.9.1.tgz";     echo "$sha  /tmp/docker.tgz" | sha256sum -c -;     tar -xzf /tmp/docker.tgz -C /usr/local/bin --strip-components=1       --no-same-owner docker/docker;     rm /tmp/docker.tgz
+#37 CACHED
+
+#40 [gates stage-1  7/13] RUN set -eu;     case "$(dpkg --print-architecture)" in       amd64) arch=x86_64; sha="40343e21ca777173e69cff5dbafeb37c6f81f3b0d57d9e597f036e95eb63e76a" ;;       arm64) arch=aarch64; sha="733ec76717ceb59052a9609b9dadfb523b2df8eab57a54212872d10a58078ea2" ;;       *) echo "unsupported architecture" >&2; exit 1 ;;     esac;     curl --proto '=https' --tlsv1.2 -fsSL -o /tmp/docker-compose       "https://github.com/docker/compose/releases/download/v5.6.0/docker-compose-linux-$arch";     echo "$sha  /tmp/docker-compose" | sha256sum -c -;     mkdir -p /usr/local/lib/docker/cli-plugins;     install -m 0755 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose;     rm /tmp/docker-compose
+#40 CACHED
+
+#34 [gates stage-1 10/13] COPY harness_telemetry ./harness_telemetry
+#34 CACHED
+
+#32 [gates stage-1 12/13] COPY config ./config
+#32 CACHED
+
+#30 [gates stage-1  8/13] WORKDIR /work
+#30 CACHED
+
+#31 [gates stage-1  9/13] COPY pyproject.toml uv.lock ./
+#31 CACHED
+
+#42 [worker builder  4/11] WORKDIR /app
+#42 CACHED
+
+#43 [worker runtime 2/3] RUN apt-get update  && apt-get install -y --no-install-recommends libpq5=15.19-0+deb12u1  && rm -rf /var/lib/apt/lists/*
+#43 CACHED
+
+#44 [worker builder 11/11] RUN uv sync --locked --no-dev --group pq-c --no-binary-package psycopg-c     --no-editable     && rm -f /opt/venv/.lock
+#44 CACHED
+
+#45 [worker builder 10/11] COPY config ./config
+#45 CACHED
+
+#46 [worker builder  8/11] COPY harness_telemetry ./harness_telemetry
+#46 CACHED
+
+#47 [worker stage-3 2/5] COPY --from=builder /opt/venv /opt/venv
+#47 CACHED
+
+#48 [worker stage-3 1/5] COPY --from=runtime / /
+#48 CACHED
+
+#49 [worker builder  3/11] RUN apt-get update  && apt-get install -y --no-install-recommends gcc libc6-dev libpq-dev=15.19-0+deb12u1  && rm -rf /var/lib/apt/lists/*
+#49 CACHED
+
+#50 [worker runtime 3/3] RUN python -m pip uninstall -y pip  && rm /usr/local/lib/python3.12/ensurepip/_bundled/pip-*.whl
+#50 CACHED
+
+#39 [worker builder  2/11] COPY --from=uv /uv /usr/local/bin/uv
+#39 CACHED
+
+#51 [worker builder  5/11] COPY pyproject.toml uv.lock ./
+#51 CACHED
+
+#52 [worker stage-3 4/5] WORKDIR /app
+#52 CACHED
+
+#53 [worker builder  9/11] COPY engine ./engine
+#53 CACHED
+
+#54 [worker builder  6/11] RUN uv sync --locked --no-dev --group pq-build --no-install-project
+#54 CACHED
+
+#55 [worker builder  7/11] RUN uv sync --locked --no-dev --group pq-build --group pq-c     --no-binary-package psycopg-c --no-install-project
+#55 CACHED
+
+#56 [worker stage-3 3/5] COPY --from=builder /app /app
+#56 CACHED
+
+#57 [worker stage-3 5/5] RUN useradd --no-create-home --uid 10001 ke
+#57 CACHED
+
+#58 [worker] exporting to image
+#58 exporting layers done
+#58 exporting manifest sha256:9a55fb4abb2cdd8515f48645661ef04abd88108c86cae7192c07c97ba54b30b0 0.1s done
+#58 exporting config sha256:fbf39cb5d8e34be20001b21e36148b6849cf4913286e2d1389ff281aea9c66ef 0.1s done
+#58 exporting attestation manifest sha256:a99855a7aefe7d21458a9f93afa4f8cc78e7fd453704c1ba8f6c88dc5ae69ed6 0.1s done
+#58 exporting manifest list sha256:79cad9a94fcbed45131927c215b52ebd83d67cb4782257f6c4c284d1891127e2
+#58 exporting manifest list sha256:79cad9a94fcbed45131927c215b52ebd83d67cb4782257f6c4c284d1891127e2 0.1s done
+#58 naming to docker.io/library/ke-app:u7ewin-45411ae 0.0s done
+#58 unpacking to docker.io/library/ke-app:u7ewin-45411ae
+#58 unpacking to docker.io/library/ke-app:u7ewin-45411ae 0.0s done
+#58 DONE 0.4s
+
+#59 [gates-it] exporting to image
+#59 exporting layers done
+#59 exporting manifest sha256:8ec9c4490adeee8be6b50de4bd828010d386c52e1ac55deb3c78bdb00dd119a7 0.1s done
+#59 exporting config sha256:a01304058c70a6702f4b378ca6f1e451f9f114ece22cf3dd3240fb711f0a1cef 0.1s done
+#59 exporting attestation manifest sha256:d7b0f6d3c17942921aeab21b7c5d326cd2e97900a0be53e53ee6815a8af89c27 0.1s done
+#59 exporting manifest list sha256:8d6f33024b067789b006aeeeca4a4e205e02496e4a3909c9a455e009d48e7492 0.1s done
+#59 naming to docker.io/library/ke-gates:u7ewin-45411ae 0.0s done
+#59 unpacking to docker.io/library/ke-gates:u7ewin-45411ae 0.0s done
+#59 DONE 0.4s
+
+#60 [api] exporting to image
+#60 exporting layers done
+#60 exporting manifest sha256:ac5fe307a06f46a95873df42d3fa0846e7c45076890c1921688fda3742973244 0.1s done
+#60 exporting config sha256:4b5a95afe6e4b159dbcc2b20373bfec14dbc011c4d4a2ff7373e4fbcc2383b65 0.1s done
+#60 exporting attestation manifest sha256:9ad6fd2eaa5d9f2a02f29dfd5ba2b64143eaf1b9b24cabe5b7f5395c38a4bcf1 0.1s done
+#60 exporting manifest list sha256:3cd18b19eaf0a330eac3783e672200ee69d963b0dbd90fbbc4b1389862177659 0.1s done
+#60 naming to docker.io/library/ke-app:u7ewin-45411ae done
+#60 unpacking to docker.io/library/ke-app:u7ewin-45411ae 0.0s done
+#60 DONE 0.5s
+
+#61 [gates] exporting to image
+#61 exporting layers done
+#61 exporting manifest sha256:bd95ab9f772665b5a45a44d4a9d38dddb606b5acc52a17f10196d02dff775f6f 0.1s done
+#61 exporting config sha256:24e50b07f401e481d1aaaed692b0bedbf2a3b0fc13a36d746974920074f3f17a 0.1s done
+#61 exporting attestation manifest sha256:fcf15d40f8315cf3155a689800c0e0e9efb8e388ef23a4b5a265594d408f6029 0.1s done
+#61 exporting manifest list sha256:9fa05652cfa3cfacba95e1e5a3ea34b3f8529549a2b5c8f1dcfa78bafd111428 0.0s done
+#61 naming to docker.io/library/ke-gates:u7ewin-45411ae 0.0s done
+#61 unpacking to docker.io/library/ke-gates:u7ewin-45411ae 0.0s done
+#61 DONE 0.5s
+
+#62 [worker] resolving provenance for metadata file
+#62 ...
+
+#63 [api] resolving provenance for metadata file
+#63 DONE 0.1s
+
+#64 [gates-it] resolving provenance for metadata file
+#64 DONE 0.0s
+
+#62 [worker] resolving provenance for metadata file
+#62 DONE 0.1s
+
+#65 [gates] resolving provenance for metadata file
+#65 DONE 0.0s
+ Image ke-app:u7ewin-45411ae Built 
+ Image ke-app:u7ewin-45411ae Built 
+ Image ke-gateway:u7ewin-45411ae Built 
+ Image ke-neo4j:u7ewin-45411ae Built 
+ Image ke-gates:u7ewin-45411ae Built 
+ Image ke-gates:u7ewin-45411ae Built 
+time="2026-10-27T19:34:39-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:39-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:39-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:39-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:39-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:39-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:39-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:39-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:39-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:39-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:39-07:00" level=warning msg="The \"KE_ENV\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:39-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:39-07:00" level=warning msg="The \"KE_STORES__POSTGRES__PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-10-27T19:34:39-07:00" level=warning msg="The \"KE_STORES__NEO4J__PASSWORD\" variable is not set. Defaulting to a blank string."
+ Image ke-app:u7ewin-45411ae Skipped Image can be built
+ Image ke-gates:u7ewin-45411ae Skipped Image can be built
+ Image ke-gates:u7ewin-45411ae Skipped Image can be built
+ Image ke-app:u7ewin-45411ae Skipped Image can be built
+ Image valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507 Pulling 
+ Image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 Pulling 
+ Image arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c Pulling 
+ Image ke-neo4j:u7ewin-45411ae Skipped Image can be built
+ Image ke-gateway:u7ewin-45411ae Skipped Image can be built
+ Image valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507 Pulled 
+ Image postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4 Pulled 
+ Image arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c Pulled 
+[exit code: 0] [elapsed: 6 s]
+
+$ docker image inspect --format "{{index .RepoTags 0}} {{.Id}} {{.Os}}/{{.Architecture}} created={{.Created}}" ke-app:$KE_IMAGE_TAG ke-gateway:$KE_IMAGE_TAG ke-neo4j:$KE_IMAGE_TAG ke-gates:$KE_IMAGE_TAG | tee "$S/out/mine.txt"
+tee: /out/mine.txt: No such file or directory
+ke-app:u7ewin-45411ae sha256:3cd18b19eaf0a330eac3783e672200ee69d963b0dbd90fbbc4b1389862177659 linux/amd64 created=2026-10-28T01:30:22.554154764Z
+ke-gateway:u7ewin-45411ae sha256:c02177b0f6c505e68b4aae94084a84578aed352a1ef087a926ccda91a00cbbbf linux/amd64 created=2026-10-19T04:13:41.827391046Z
+ke-neo4j:u7ewin-45411ae sha256:e171905e57f9af7f0717c352133b28f21e5ab2c73d85ba836e3a28d6ed9cb9ae linux/amd64 created=2026-10-23T21:26:41.892773977Z
+ke-gates:u7ewin-45411ae sha256:9fa05652cfa3cfacba95e1e5a3ea34b3f8529549a2b5c8f1dcfa78bafd111428 linux/amd64 created=2026-10-28T01:30:51.749215165Z
+[exit code: 1] [elapsed: 0 s]
+
+$ for i in app gates; do echo "ke-$i:"; MSYS_NO_PATHCONV=1 docker run --rm --network none --pull never --label com.docker.compose.project=ke-tester-u7ewin-probe --entrypoint sh ke-$i:$KE_IMAGE_TAG -c "python -V; dpkg-query -W libssl3 openssl ca-certificates tzdata base-files 2>&1; sha256sum /usr/share/common-licenses/Apache-2.0"; done
+ke-app:
+Python 3.12.16
+base-files	12.4+deb12u15
+ca-certificates	20250419~deb12u2
+libssl3:amd64	3.0.22-1~deb12u2
+openssl	3.0.22-1~deb12u2
+tzdata	2026e-0+deb12u1
+cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30  /usr/share/common-licenses/Apache-2.0
+ke-gates:
+Python 3.12.16
+base-files	12.4+deb12u15
+ca-certificates	20250419~deb12u2
+libssl3:amd64	3.0.22-1~deb12u2
+openssl	3.0.22-1~deb12u2
+tzdata	2026e-0+deb12u1
+cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30  /usr/share/common-licenses/Apache-2.0
+[exit code: 0] [elapsed: 1 s]
+
+$ MSYS_NO_PATHCONV=1 docker run --rm --network none --pull never --label com.docker.compose.project=ke-tester-u7ewin-probe --entrypoint python ke-app:$KE_IMAGE_TAG -I -c "import importlib.util as u; print(\"pip spec:\", u.find_spec(\"pip\")); import psycopg; print(\"psycopg impl:\", psycopg.pq.__impl__, psycopg.pq.version())"
+pip spec: None
+psycopg impl: c 150019
+[exit code: 0] [elapsed: 1 s]
+
+==================== 2. scripts/bundle.sh --out <scratch>/bundle-u7ewin-amd64 (Git Bash) ====================
+$ ls -d "$S/bundle-u7ewin-amd64" "$S/bundle-u7ewin-amd64.manifest.sha256"
+ls: cannot access '/bundle-u7ewin-amd64': No such file or directory
+ls: cannot access '/bundle-u7ewin-amd64.manifest.sha256': No such file or directory
+[exit code: 2] [elapsed: 0 s]
+
+$ scripts/bundle.sh --out "$S/bundle-u7ewin-amd64"
+mkdir: cannot create directory '/bundle-u7ewin-amd64': Permission denied
+[exit code: 1] [elapsed: 5 s]
+
+$ ls -la "$S/bundle-u7ewin-amd64" "$S/bundle-u7ewin-amd64/images" "$S/bundle-u7ewin-amd64/app/sboms"; cat "$S/bundle-u7ewin-amd64.manifest.sha256"
+ls: cannot access '/bundle-u7ewin-amd64': No such file or directory
+ls: cannot access '/bundle-u7ewin-amd64/images': No such file or directory
+ls: cannot access '/bundle-u7ewin-amd64/app/sboms': No such file or directory
+cat: /bundle-u7ewin-amd64.manifest.sha256: No such file or directory
+[exit code: 1] [elapsed: 0 s]
+
+$ jq -c ".images[] | {ref, as, file}" "$S/bundle-u7ewin-amd64/bundle.json"
+jq: error: Could not open file C:/Program Files/Git/bundle-u7ewin-amd64/bundle.json: No such file or directory
+[exit code: 2] [elapsed: 0 s]
+
+$ cd "$S/bundle-u7ewin-amd64" && sha256sum -c --quiet MANIFEST.sha256 && echo "MANIFEST.sha256: all entries verify"
+bash: line 1: cd: /bundle-u7ewin-amd64: No such file or directory
+[exit code: 1] [elapsed: 0 s]
+
+$ jq -r ".packages[] | select(.name==\"python\" or .name==\"libssl3\" or .name==\"openssl\") | \"\(.name) \(.versionInfo)\"" "$S/bundle-u7ewin-amd64/app/sboms/ke-app.spdx.json" | sort -u
+jq: error: Could not open file C:/Program Files/Git/bundle-u7ewin-amd64/app/sboms/ke-app.spdx.json: No such file or directory
+[exit code: 0] [elapsed: 0 s]
+
+$ docker image ls --no-trunc --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep -E "^ke-(app|gateway|neo4j|gates):(bundle-45411ae2ad3d|u7ewin-45411ae) |^ke-vendor/" | sort | tee "$S/out/tags-after-bundle.txt"
+tee: /out/tags-after-bundle.txt: No such file or directory
+ke-app:bundle-45411ae2ad3d sha256:30c396ed3c06ccfb8872d71a698525314c3757af22237311d13e5512416a3f8a
+ke-app:u7ewin-45411ae sha256:3cd18b19eaf0a330eac3783e672200ee69d963b0dbd90fbbc4b1389862177659
+ke-gates:u7ewin-45411ae sha256:9fa05652cfa3cfacba95e1e5a3ea34b3f8529549a2b5c8f1dcfa78bafd111428
+ke-gateway:bundle-45411ae2ad3d sha256:65c9f1006322306f325c52c2fd118784519083098598f17108595448f0aad236
+ke-gateway:u7ewin-45411ae sha256:c02177b0f6c505e68b4aae94084a84578aed352a1ef087a926ccda91a00cbbbf
+ke-neo4j:bundle-45411ae2ad3d sha256:b30252f024706f922023a917d67f0d1fbc6e1627a7945546761c15f41e081b79
+ke-neo4j:u7ewin-45411ae sha256:e171905e57f9af7f0717c352133b28f21e5ab2c73d85ba836e3a28d6ed9cb9ae
+ke-vendor/neo4j:0a6e7aedf54a sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+ke-vendor/phoenix:fa28e9cd96dd sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c
+ke-vendor/postgres:0ea6700a3b4f sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
+ke-vendor/valkey:081c2f5cb575 sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507
+[exit code: 1] [elapsed: 1 s]
+
+[end build-bundle]
+
+==================== Tester file: <scratch>/a34-u7e-build-bundle.sh ====================
+#!/usr/bin/env bash
+# tester A34 driver, U7e: steps 0 (metadata), 1 (build.sh), 2 (bundle.sh) from Git Bash.
+set -u
+export S="$1"; cd /c/repos/Knowledge-engine || exit 1
+export PATH="$S/bin:$PATH"
+export COMPOSE_PROJECT_NAME=ke-tester-u7ewin
+export KE_IMAGE_TAG=u7ewin-45411ae
+run() { echo "\$ $*"; local t0=$SECONDS; bash -c "$*" 2>&1; local rc=$?; echo "[exit code: $rc] [elapsed: $((SECONDS-t0)) s]"; echo; return $rc; }
+echo "==================== 0. metadata (Git Bash) ===================="
+run 'date -u +%FT%TZ; uname -srm; git rev-parse HEAD; git branch --show-current; docker version --format "engine {{.Server.Version}} {{.Server.Os}}/{{.Server.Arch}}"; docker compose version --short; jq --version; id -u; id -g'
+run 'echo "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME KE_IMAGE_TAG=$KE_IMAGE_TAG"; ls -a .env'
+run 'grep -n "^FROM python" docker/app.Dockerfile docker/gates.Dockerfile'
+run 'sha256sum docker/app.Dockerfile docker/gates.Dockerfile docker/neo4j.Dockerfile docker/gateway.Dockerfile docker-compose.yml NOTICE.md licenses/CPython-3.12-*.txt scripts/build.sh scripts/bundle.sh scripts/install.ps1 scripts/launch.ps1 scripts/teardown.ps1 uv.lock | tee "$S/out/hash-start.txt"'
+run 'git status --short | tee "$S/out/status-start.txt"'
+run 'docker image ls --no-trunc --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep -E "^ke-(app|gateway|neo4j|gates):(bundle-45411ae2ad3d|u7ewin-45411ae) |^ke-vendor/" | sort | tee "$S/out/tags-before.txt"'
+run 'docker ps -a -q --filter label=com.docker.compose.project=ke-tester-u7ewin | wc -l; docker ps -a -q --filter label=com.docker.compose.project=ke-tester-u7ewin-inst | wc -l; docker volume ls -q | grep -c "^ke-tester-u7ewin"; docker network ls -q --filter name=ke-tester-u7ewin | wc -l'
+echo "==================== 1. scripts/build.sh (Git Bash) ===================="
+run 'scripts/build.sh'
+run 'docker image inspect --format "{{index .RepoTags 0}} {{.Id}} {{.Os}}/{{.Architecture}} created={{.Created}}" ke-app:$KE_IMAGE_TAG ke-gateway:$KE_IMAGE_TAG ke-neo4j:$KE_IMAGE_TAG ke-gates:$KE_IMAGE_TAG | tee "$S/out/mine.txt"'
+run 'for i in app gates; do echo "ke-$i:"; MSYS_NO_PATHCONV=1 docker run --rm --network none --pull never --label com.docker.compose.project=ke-tester-u7ewin-probe --entrypoint sh ke-$i:$KE_IMAGE_TAG -c "python -V; dpkg-query -W libssl3 openssl ca-certificates tzdata base-files 2>&1; sha256sum /usr/share/common-licenses/Apache-2.0"; done'
+run 'MSYS_NO_PATHCONV=1 docker run --rm --network none --pull never --label com.docker.compose.project=ke-tester-u7ewin-probe --entrypoint python ke-app:$KE_IMAGE_TAG -I -c "import importlib.util as u; print(\"pip spec:\", u.find_spec(\"pip\")); import psycopg; print(\"psycopg impl:\", psycopg.pq.__impl__, psycopg.pq.version())"'
+echo "==================== 2. scripts/bundle.sh --out <scratch>/bundle-u7ewin-amd64 (Git Bash) ===================="
+run 'ls -d "$S/bundle-u7ewin-amd64" "$S/bundle-u7ewin-amd64.manifest.sha256"'
+run 'scripts/bundle.sh --out "$S/bundle-u7ewin-amd64"'
+run 'ls -la "$S/bundle-u7ewin-amd64" "$S/bundle-u7ewin-amd64/images" "$S/bundle-u7ewin-amd64/app/sboms"; cat "$S/bundle-u7ewin-amd64.manifest.sha256"'
+run 'jq -c ".images[] | {ref, as, file}" "$S/bundle-u7ewin-amd64/bundle.json"'
+run 'cd "$S/bundle-u7ewin-amd64" && sha256sum -c --quiet MANIFEST.sha256 && echo "MANIFEST.sha256: all entries verify"'
+run 'jq -r ".packages[] | select(.name==\"python\" or .name==\"libssl3\" or .name==\"openssl\") | \"\(.name) \(.versionInfo)\"" "$S/bundle-u7ewin-amd64/app/sboms/ke-app.spdx.json" | sort -u'
+run 'docker image ls --no-trunc --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep -E "^ke-(app|gateway|neo4j|gates):(bundle-45411ae2ad3d|u7ewin-45411ae) |^ke-vendor/" | sort | tee "$S/out/tags-after-bundle.txt"'
+echo "[end build-bundle]"
+
+==================== Tester file: <scratch>/a34-u7e-install.ps1 ====================
+# tester A34 driver, U7e: step 3, install.ps1 from the step-2 bundle, launch.ps1 in the target, checks, teardown.ps1 -Volumes.
+param([Parameter(Mandatory)][string]$S)
+$ErrorActionPreference = 'Continue'
+$env:COMPOSE_PROJECT_NAME = 'ke-tester-u7ewin-inst'
+Remove-Item Env:KE_IMAGE_TAG -ErrorAction SilentlyContinue
+$bundle = Join-Path $S 'bundle-u7ewin-amd64'
+$record = "$bundle.manifest.sha256"
+$parent = Join-Path $S 'inst-u7ewin'
+$target = Join-Path $parent 'ke'
+$p = $env:COMPOSE_PROJECT_NAME
+function Step([string]$t) { Write-Output ''; Write-Output "PS> $t" }
+function Rc { Write-Output "[exit code: $LASTEXITCODE]" }
+Write-Output "==================== 3. install.ps1 from the step-2 bundle (PowerShell $($PSVersionTable.PSVersion)) ===================="
+Write-Output "COMPOSE_PROJECT_NAME=$p; KE_IMAGE_TAG unset (an operator's install uses the override, not a tag)"
+Step 'bundle and release record: Test-Path; record content'
+"bundle: $(Test-Path $bundle); record: $(Test-Path $record)"; Get-Content $record
+Step 'install parent and target do not exist yet'
+"parent: $(Test-Path $parent); target: $(Test-Path $target)"
+Step "leftovers for project ${p}: containers, volumes, networks"
+"containers: $(@(docker ps -a -q --filter label=com.docker.compose.project=$p).Count) volumes: $(@(docker volume ls -q --filter label=com.docker.compose.project=$p).Count) networks: $(@(docker network ls -q --filter label=com.docker.compose.project=$p).Count)"
+Step 'ke-*:bundle-45411ae2ad3d tags before install (bundle.sh moved them onto this run''s images; restored by the Git Bash cleanup)'
+docker image ls --no-trunc --format '{{.Repository}}:{{.Tag}} {{.ID}}' | Select-String -Pattern '^ke-(app|gateway|neo4j):bundle-45411ae2ad3d ' | ForEach-Object { $_.Line } | Sort-Object; Rc
+Step 'Get-FileHash install.ps1 in the bundle vs its MANIFEST.sha256 line'
+$h = (Get-FileHash (Join-Path $bundle 'install.ps1') -Algorithm SHA256).Hash.ToLowerInvariant()
+$m = (Get-Content (Join-Path $bundle 'MANIFEST.sha256') | Where-Object { $_ -match '\s\*?install\.ps1$' })
+"Get-FileHash: $h"; "MANIFEST:     $m"; "equal: $($m -match "^$h\s")"
+$expect = ((Get-Content $record) -split '\s+')[0]
+New-Item -ItemType Directory -Path $parent | Out-Null
+Step "cd <bundle>; pwsh -NoProfile -File .\install.ps1 -Target <target> -ExpectManifest $expect"
+Push-Location $bundle
+pwsh -NoProfile -File .\install.ps1 -Target $target -ExpectManifest $expect 2>&1; Rc
+Pop-Location
+Step 'target top level (Get-ChildItem -Force -Name)'
+Get-ChildItem -Force -Name $target
+Step 'docker-compose.override.yml written by install.ps1'
+Get-Content (Join-Path $target 'docker-compose.override.yml')
+Step 'loaded image ids vs this run''s build (<scratch>\out\mine.txt)'
+Get-Content (Join-Path $S 'out\mine.txt')
+foreach ($r in 'ke-app','ke-gateway','ke-neo4j') { docker image inspect --format "{{index .RepoTags 0}} {{.Id}} {{.Os}}/{{.Architecture}}" "${r}:bundle-45411ae2ad3d" }; Rc
+Push-Location $target
+Step 'cd <target>; Copy-Item .env.example .env; Add-Content marker + KE_API_PORT=47180, KE_PHOENIX_PORT=47181 (47100/47101 are held by the running knowledge-engine stack, not this run''s; throwaway, no real keys)'
+Copy-Item .env.example .env
+Add-Content .env '# U7EWIN-THROWAWAY: tester copy of .env.example in the install target of the platform-sbom U7e Windows run; removed below'
+Add-Content .env 'KE_API_PORT=47180'
+Add-Content .env 'KE_PHOENIX_PORT=47181'
+Compare-Object (Get-Content .env.example) (Get-Content .env) | ForEach-Object { "$($_.SideIndicator) $($_.InputObject)" }
+Step 'host listeners on 47180/47181 before launch (empty = free)'
+Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalPort -in 47180,47181 } | ForEach-Object { "$($_.LocalAddress):$($_.LocalPort) pid $($_.OwningProcess)" }
+Step 'pwsh -NoProfile -File scripts\launch.ps1 (in the target)'
+pwsh -NoProfile -File scripts\launch.ps1 2>&1; Rc
+Step 'docker compose ps --format json (service/image/state/health)'
+docker compose ps --format json | ForEach-Object { $_ | ConvertFrom-Json } | ForEach-Object { '{0,-10} {1,-36} {2,-8} {3}' -f $_.Service, $_.Image, $_.State, $_.Health } | Sort-Object; Rc
+Step 'Invoke-WebRequest http://127.0.0.1:47180/healthz; /readyz'
+try { $r = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:47180/healthz; "$($r.StatusCode) $($r.Content)" } catch { "healthz error: $_" }
+try { $r = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:47180/readyz; "$($r.StatusCode) $($r.Content)" } catch { "readyz error: $_" }
+Step 'the installed api: python, libssl3/openssl, no pip, psycopg (docker compose exec -T api)'
+docker compose exec -T api python -I -c "import sys, ssl, importlib.util as u; print(sys.version.split()[0], ssl.OPENSSL_VERSION); print('pip spec:', u.find_spec('pip')); import psycopg; print('psycopg impl:', psycopg.pq.__impl__, psycopg.pq.version())" 2>&1; Rc
+docker compose exec -T api sh -c 'dpkg-query -W libssl3 openssl' 2>&1; Rc
+Step 'pwsh -NoProfile -File scripts\teardown.ps1 -Volumes (in the target)'
+pwsh -NoProfile -File scripts\teardown.ps1 -Volumes 2>&1; Rc
+Pop-Location
+Step "after teardown: containers, networks, volumes, compose projects of $p (all 0)"
+"containers: $(@(docker ps -a -q --filter label=com.docker.compose.project=$p).Count)"
+"networks: $(@(docker network ls -q --filter label=com.docker.compose.project=$p).Count)"
+"volumes: $(@(docker volume ls -q --filter label=com.docker.compose.project=$p).Count) (by name ${p}_: $(@(docker volume ls -q | Where-Object { $_.StartsWith("${p}_") }).Count))"
+"compose projects: $(@(docker compose ls -a --format json | ConvertFrom-Json | Where-Object { $_.Name -eq $p }).Count)"
+Step 'Remove-Item -Recurse -Force <parent> (target and its throwaway .env); Test-Path'
+Remove-Item -Recurse -Force $parent; "parent: $(Test-Path $parent)"
+Write-Output '[end install]'
+
+==================== Tester file: <scratch>/a34-u7e-cleanup.sh ====================
+#!/usr/bin/env bash
+# tester A34 cleanup, U7e (Git Bash, after the install phase): bundle tags restored; scratch bundle deleted; tester tags removed.
+set -u
+export S="$1"; cd /c/repos/Knowledge-engine || exit 1
+run() { echo "\$ $*"; bash -c "$*" 2>&1; local rc=$?; echo "[exit code: $rc]"; echo; return $rc; }
+echo "==================== 4. cleanup (Git Bash) ===================="
+run 'cat "$S/out/tags-before.txt"'
+run 'docker image ls --no-trunc --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep -E "^ke-(app|gateway|neo4j):bundle-45411ae2ad3d " | sort'
+echo "--- bundle-tag restore: each ke-*:bundle-45411ae2ad3d tag goes back to its image before this run"
+for line in $(grep -E "^ke-(app|gateway|neo4j):bundle-45411ae2ad3d " "$S/out/tags-before.txt" | tr ' ' '='); do
+  tag="${line%%=*}"; id="${line#*=}"
+  run "docker tag $id $tag"
+done
+run 'docker image ls --no-trunc --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep -E "^ke-(app|gateway|neo4j):bundle-45411ae2ad3d |^ke-vendor/" | sort | diff <(grep -E "^ke-(app|gateway|neo4j):bundle-45411ae2ad3d |^ke-vendor/" "$S/out/tags-before.txt") - && echo "bundle and ke-vendor tags: as before this run"'
+echo "--- the tester tag u7ewin-45411ae (built in step 1) removed; the tester's attempt-1 build of the same tag was already replaced by step 1's"
+run 'for r in ke-app ke-gateway ke-neo4j ke-gates; do docker image rm "$r:u7ewin-45411ae"; done'
+run 'docker image ls --no-trunc --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep -c ":u7ewin-"'
+run 'rm -rf -- "$S/bundle-u7ewin-amd64" "$S/bundle-u7ewin-amd64.manifest.sha256" "$S/inst-u7ewin"; ls -d "$S/bundle-u7ewin-amd64" "$S/bundle-u7ewin-amd64.manifest.sha256" "$S/inst-u7ewin"'
+run 'ls -d "${TMPDIR:-/tmp}"/ke-sbom.* "$S"/.ke-sbom.* "$S"/.ke-drift.* 2>/dev/null | wc -l'
+run 'for p in ke-tester-u7ewin ke-tester-u7ewin-inst ke-tester-u7ewin-sbom ke-tester-u7ewin-probe; do echo "$p: containers=$(docker ps -a -q --filter label=com.docker.compose.project=$p | wc -l) volumes=$(docker volume ls -q --filter label=com.docker.compose.project=$p | wc -l) networks=$(docker network ls -q --filter label=com.docker.compose.project=$p | wc -l)"; done; docker ps -a --format "{{.Names}}" | grep -c "ke-tester-u7ewin"'
+run 'git status --short | diff "$S/out/status-start.txt" - && echo "git status: as at start"'
+run 'sha256sum -c --quiet "$S/out/hash-start.txt" && echo "hashed files: unchanged since start"'
+echo "[end cleanup]"
+
+==================== Tester file: <scratch>/bin/jq ====================
+#!/usr/bin/env bash
+# tester wrapper: the winget jq.exe in binary mode (-b, LF output), as in U3/U4/U4b
+exec "<profile>/AppData/Local/Microsoft/WinGet/Packages/jqlang.jq_Microsoft.Winget.Source_8wekyb3d8bbwe/jq.exe" -b "$@"
+
+==================== Tester file: <scratch>/tools/redact.py ====================
+import re, sys
+SEP = "[/" + chr(92) * 2 + "]"  # a slash or a backslash
+scr_tail = SEP.join(["AppData", "Local", "Temp", "claude", "c--repos-Knowledge-engine",
+                     "d5694db3-7c12-4346-835e-30f12d337cee", "scratchpad"])
+prof = "(?:<profile>|[Cc]:" + SEP + "Users" + SEP + "adam)"
+ansi = re.compile("\x1b\\[[0-9;]*m")
+def red(t):
+    t = ansi.sub("", t)
+    t = re.sub(prof + SEP + scr_tail, "<scratch>", t)
+    t = re.sub(prof, "<profile>", t)
+    t = re.sub(r"S-1-5-21-\d+-\d+-\d+(?:-\d+)?", "<sid>", t)
+    t = re.sub(r"(https://[^\s\"']*github[^\s\"'?]*)\?[^\s\"']+", r"\1?<query omitted>", t)
+    return t
+src, dst = sys.argv[1], sys.argv[2]
+with open(src, encoding="utf-8", errors="replace", newline="") as f: t = f.read()
+t = t.replace("\r\n", "\n")
+with open(dst, "w", encoding="utf-8", newline="\n") as f: f.write(red(t))

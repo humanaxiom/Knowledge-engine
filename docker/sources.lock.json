@@ -4955,32 +4955,32 @@
    "kind": "deb",
    "origin": "generated"
   },
-  "deb:ca-certificates@20250419~deb12u1": {
+  "deb:ca-certificates@20250419~deb12u2": {
    "arches": [
     "amd64"
    ],
    "files": [
     {
-     "name": "ca-certificates_20250419~deb12u1.dsc",
-     "sha256": "72339e810ef8237a4c346540b52baf49607172cc849c2680328a608ce0f6a34b",
-     "size": 1769,
+     "name": "ca-certificates_20250419~deb12u2.dsc",
+     "sha256": "a041820e6feb1effe0598f80e02fb62a40ef312678b85cfbb57d2864d0b5c0b7",
+     "size": 1924,
      "upstream": {
       "alg": "sha1",
       "from": "snapshot.debian.org mr/package fileinfo",
-      "value": "6c83f0c83f6589e5137f5000e2108c9a0f7912b3"
+      "value": "197e29fabc23db787ce0b5790c82e47db11df66a"
      },
-     "url": "https://snapshot.debian.org/file/6c83f0c83f6589e5137f5000e2108c9a0f7912b3"
+     "url": "https://snapshot.debian.org/file/197e29fabc23db787ce0b5790c82e47db11df66a"
     },
     {
-     "name": "ca-certificates_20250419~deb12u1.tar.xz",
-     "sha256": "b2a431cbab9a0ece921cffacbe238dc27a3e382ad4a1806dc8968c5eff30471d",
-     "size": 277244,
+     "name": "ca-certificates_20250419~deb12u2.tar.xz",
+     "sha256": "934942a985b2efd7a8c122cb1d42cd87911cf6ac365c545938619fcf268ea8f4",
+     "size": 277416,
      "upstream": {
       "alg": "sha256",
-      "from": "ca-certificates_20250419~deb12u1.dsc Checksums-Sha256",
-      "value": "b2a431cbab9a0ece921cffacbe238dc27a3e382ad4a1806dc8968c5eff30471d"
+      "from": "ca-certificates_20250419~deb12u2.dsc Checksums-Sha256",
+      "value": "934942a985b2efd7a8c122cb1d42cd87911cf6ac365c545938619fcf268ea8f4"
      },
-     "url": "https://snapshot.debian.org/file/ab7ed787f56c6ca86d0022213279936ddd2af735"
+     "url": "https://snapshot.debian.org/file/fde2c52fcb2eca9b91939d726dcce3cc6b6def90"
     }
    ],
    "kind": "deb",
@@ -9195,6 +9195,59 @@
       "value": "08ee68527218d6d9a0fa4741ec8ffef47646cdcad0ed0822b84bf11677c66108"
      },
      "url": "https://snapshot.debian.org/file/f884f096035976115beaea7d3c52d1a9d88cb03d"
+    }
+   ],
+   "kind": "deb",
+   "origin": "generated"
+  },
+  "deb:openssl@3.0.22-1~deb12u2": {
+   "arches": [
+    "amd64"
+   ],
+   "files": [
+    {
+     "name": "openssl_3.0.22-1~deb12u2.dsc",
+     "sha256": "7c45299a4363febec120676393d4314841c7c50da244a6e6a256f072d632d337",
+     "size": 2742,
+     "upstream": {
+      "alg": "sha1",
+      "from": "snapshot.debian.org mr/package fileinfo",
+      "value": "eb6d0239f546f68a2f309e70f791c93205412ef0"
+     },
+     "url": "https://snapshot.debian.org/file/eb6d0239f546f68a2f309e70f791c93205412ef0"
+    },
+    {
+     "name": "openssl_3.0.22.orig.tar.gz",
+     "sha256": "67ebca7e50d17383028045486653492195b83db95f8558709701bb47b5c1ef81",
+     "size": 15330396,
+     "upstream": {
+      "alg": "sha256",
+      "from": "openssl_3.0.22-1~deb12u2.dsc Checksums-Sha256",
+      "value": "67ebca7e50d17383028045486653492195b83db95f8558709701bb47b5c1ef81"
+     },
+     "url": "https://snapshot.debian.org/file/35825835dccec008fa886601c3b4d1e52a32544b"
+    },
+    {
+     "name": "openssl_3.0.22.orig.tar.gz.asc",
+     "sha256": "b0cc4a379a7731c3a74c349f6756d85253d83099fd63352cf12407bce4395d19",
+     "size": 931,
+     "upstream": {
+      "alg": "sha256",
+      "from": "openssl_3.0.22-1~deb12u2.dsc Checksums-Sha256",
+      "value": "b0cc4a379a7731c3a74c349f6756d85253d83099fd63352cf12407bce4395d19"
+     },
+     "url": "https://snapshot.debian.org/file/51e4e8ce6452a32a2a800cc933befafcec6e7199"
+    },
+    {
+     "name": "openssl_3.0.22-1~deb12u2.debian.tar.xz",
+     "sha256": "48971306c5df8124daea7f2bd0de2be7d711e18f2f53711c11327293732e42aa",
+     "size": 72104,
+     "upstream": {
+      "alg": "sha256",
+      "from": "openssl_3.0.22-1~deb12u2.dsc Checksums-Sha256",
+      "value": "48971306c5df8124daea7f2bd0de2be7d711e18f2f53711c11327293732e42aa"
+     },
+     "url": "https://snapshot.debian.org/file/8c2ffdb13c2e8e9e1ac6f740d66def6cba2549e7"
     }
    ],
    "kind": "deb",
