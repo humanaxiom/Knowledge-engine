@@ -860,9 +860,15 @@ Subcommands (names are the developer's to adjust):
   `THIRD_PARTY_NOTICES.md` from the index (N10).
 - `plan <arch> <set>`: prints the fetch plan (url, sha256, upstream check)
   for `bundle_fetch.sh` (N4). Sample selection lives only here.
+  *Superseded at U8 (N4 amendment, U8, item 1): no subcommand; the pure
+  `fetch_plan` is called in-process by `sources_fetch.py`.*
 - `verify <bundle_dir> <installed_dir>`: the PSC-19 e2e checks (N11).
 
 ## N4. The fetch step: `scripts/bundle_fetch.sh` and `sources-fetch`
+
+*Amended U8 (2026-10-28): see "N4 amendment, U8" below. It supersedes
+this section's curl client loop, `sources_fetch_client.sh` and mount list,
+and N3's `plan` subcommand.*
 
 Host script, verify-time and build-host, Linux and Git Bash (not bundled,
 not held to bash 3.2). The bundle's only network step besides `build.sh`.
@@ -926,6 +932,545 @@ at GREEN* the redirect targets from real fetches):
 | `repo1.maven.org` | `maven` (sources jars; jaxb-api, ruling 5, N8a) |
 
 The generator pull uses the registry hosts `build.sh` already needs.
+
+### N4 amendment, U8 (architect, 2026-10-28)
+
+Makes U8 (PSC-23; N15 row U8) implementable against the analyst's "U8
+precision" criteria U8-1..U8-14 (`docs/requirements.md`, PSC-23) and
+Q73-Q77. *Orchestrator rulings recorded here (2026-10-28):* **Q75 ruled**:
+the arch comes from the daemon, with an optional `--arch` that only asserts
+it (as `bundle.sh`); no `--evidence-dir`, the stdout lines are the record
+and the caller saves them. **Q76 ruled**: yes, a completion record written
+last in `--out` (set, arch, lock sha256); U9 refuses a directory without it
+or with a mismatch. **Q77 deferred** (not blocking U8). Q73 and Q74 are with
+the human *(amended 2026-10-28, analyst: both ruled by the human, Q73 option 2, Q74 69 min)*. It supersedes, for U8 on: N4's curl client loop and
+`sources_fetch_client.sh`; N4's mount list; N3's `plan` subcommand (no CLI;
+item 2); ADR-KE-016 point 3's curl wording (ADR "Amended U8"). It keeps:
+N4's command, stages, markers and content-addressed names; N1 amendment
+U2's pull form; N1 amendment U4 (the base pulls stay in `offline_check.sh`);
+U7c item 9 (e) (the apk API raw URL is requested as locked); U7b rework
+round 1 item 3 (hop rules); Q61/A72 (no retry here); U7d item 14 (third
+fetch). No spans: a build-time tool, not an agent step (N3, ADR).
+
+**1. Module boundaries (reuse, no fork).**
+- `scripts/sources_fetch.py` (new; stdlib, `python3 -I`, never bundled,
+  never imported by `engine/`). The fetch client: plan, disk check, fetch
+  loop, name checks, output, completion record. It holds no host, no URL
+  literal and no network code of its own (PS-1.2).
+- It loads its two siblings by path from its own directory
+  (`importlib.util.spec_from_file_location`; `-I` puts no script dir on
+  `sys.path`): `R = sources_resolve.py`, `S = sbom_check.py`. In the
+  container all three sit in `/opt/ke/`; tests load `scripts/sources_fetch.py`
+  the same way, so the siblings are the checkout's.
+- The one network hook stays `sources_resolve.OPENER`, reached as
+  `sources_fetch.R.OPENER` (U7b interface pin 1). No flag, no test mode,
+  nothing read from the environment.
+- Additions to `sources_resolve.py` (small, beside `stream()`; existing
+  behaviour and tests unchanged):
+  - `download(url, allow, fh, limit, algs, hops) -> (digests, size)`: ONE
+    `_fetch_once(url, allow, hops=hops)` (first-URL rules, hop rules,
+    5 hops, `TIMEOUT` 60 s, `_guarded`'s 600 s per-file `DEADLINE`, 4 GiB
+    `MAX_BYTES`, transport errors as item-4 texts), then each chunk is
+    checked `size + len(chunk) <= limit` *before* it is hashed or written
+    (`<host>: more than <limit> bytes: <url>`), hashed with
+    `{"sha256"} | set(algs)` and written to `fh`. **It has no `retries`
+    parameter and never calls `_attempts`**, so Q61's single call holds by
+    construction (stronger than "pass `retries=0`", U8-4).
+  - `dsc_listing(fields, dsc, src, ver) -> [(name, size, sha256)]`: the
+    part of `dsc_files` that is not snapshot-specific (Source/Version equal
+    the key; `Checksums-Sha256` and `Files` list the same names and sizes;
+    safe names; `Checksums-Sha1` if present agrees in names). `dsc_files`
+    calls it, then maps names to snapshot URLs as today.
+  - Header and docstring: the module's network core and parsers are also
+    loaded by `sources_fetch.py`, which runs in verify and CI; the
+    resolve routes (`resolve()`, `main`) still never run there.
+- Additions to `sbom_check.py` (pure):
+  - `lock_entry_problems(text, policy, today=None) -> list[str]`: exactly
+    `lock_problems`' steps before `lock_needs` (canonical text, top-level
+    keys, `format`, every `_entry_problems`: schema, URL charset, hosts,
+    per-kind binding, hashes, sizes, the neo4j `from` and date).
+    `lock_problems` calls it, then adds the pgdg suite binding and
+    coverage. Pure refactor: every U7a-U7e lock test is the control.
+  - *Amended 2026-10-28 (U8a rework rounds 1-2; security M-2 and L-6,
+    review R1-N1/R1-N2; architect records):* `_entry_stage` also runs
+    `_shared_sha256_problems`, so `lock_entry_problems` and
+    `lock_problems` (therefore `lock-check`, `sources_lock.sh` and U9's
+    `index`) refuse a lock in which one sha256 carries (1) more than one
+    `size`, or, per upstream alg, more than one upstream value, or (2)
+    more than one upstream alg. Texts: `lock: <key>: <name>: sha256 <sha>
+    is size <n> here but <m> in <key0>`; `... has <alg> <v> here but <v0>
+    in <key0>`; `... has upstream alg <alg> here but <alg0> in <key0>`.
+    `<key0>` is the first entry in lock order holding that sha256 (for a
+    digest, the first holding it under that alg). *Why:* item 4's dedup
+    holds a file once for every entry that names its sha256, so those
+    entries must agree on what the file is. The committed lock passes.
+    *Precision (2026-10-28, orchestrator ruling, U8a round 2):* a file
+    of `size` 0 is exempt from rule (2). The empty content can legally
+    sit under the files-API sha256 and under `sha512sums` in one entry
+    (U7d's size-0 GitLab apk ruling; the controls
+    `test_an_empty_gitlab_file_passes` and `test_an_empty_aports_file`).
+    The client's size check binds 0 bytes, and the empty-content sha256
+    binds the content. Rules (1) and the per-alg value rule still apply
+    to it.
+  - `fetch_plan(lock, arch, set) -> list[(key, file)]`: `sample` is
+    `sample_keys(lock, arch)` (Q63; N3's "sample selection lives only in
+    `sample_keys`" holds); `full` is every key whose `arches` holds `arch`.
+    Sorted by key, then the entry's file order. Call only after
+    `lock_entry_problems == []` (security U7a I-4).
+  - There is no `plan` CLI subcommand (N3's is dropped): the client calls
+    the function in-process.
+- Coverage against SBOMs is **not** checked by the fetch (U8-3): it runs
+  before `bundle.sh` makes SBOMs. Coverage is gated by
+  `tests/test_sources_lock_committed.py` in every verify and, from U9, by
+  `index`.
+- **Mechanism decision (the analyst's "pick one by amendment"): the
+  resolver's opener and hop code, not curl.** *Why:* (i) GitLab's API raw
+  endpoint, which 15 of the sample's 25 files use, was proven only with
+  the resolver's opener and its User-Agent (`knowledge-engine-sources-lock`;
+  U7c item 9), while the `/-/raw/` form drew an anti-bot challenge; a curl
+  client would send another User-Agent and TLS fingerprint, unproven
+  against that control. `download()` reuses `_default_opener` unchanged,
+  User-Agent included. (ii) One reviewed implementation of the hop rules,
+  the deadline and the byte cap (U8 must not fork them). (iii) Q61 holds by
+  construction (no retry path). PSC-23's curl flags are met in kind
+  (item 11).
+- *Alternatives rejected.* (a) N4's curl loop in shell: forks the hop,
+  deadline and cap rules that U7b/U7c reviewed into a second language, and
+  its User-Agent is unproven at GitLab.
+  (b) A `--fetch` mode inside `sources_resolve.py`: mixes the maintainer
+  tool's routes and retry budget into the verify-time entry point and grows
+  a 1,200-line file. (c) Extracting a shared `sources_net.py`: re-review
+  of U7b's reviewed code for no behaviour gain. (d) `stream()` with a sink:
+  `stream()` runs through `_attempts`, so the no-retry property would rest
+  on an argument, not on the code path.
+
+**2. Client CLI (`sources_fetch.py`).**
+```
+python3 -I /opt/ke/sources_fetch.py --lock L --policy P --out DIR --arch amd64|arm64 --set sample|full
+```
+- Exit 0: complete (every file plus `fetch.json`). 1: a failure; nothing
+  of this run is left in `DIR` (it removes its own `.part` file; the
+  script's trap is the guarantee, item 6). 2: a bad argument.
+- Every exception becomes one line, never a traceback (U7b rework round 1
+  item 1 form). Lines (U8-2, U8-4):
+  - `bundle_fetch: FAIL (stage lock: <first problem>; no retry)`, the first
+    20 problems on stderr before it;
+  - `bundle_fetch: FAIL (stage disk: need <n> bytes free in --out, found <m>; no retry)`;
+  - `bundle_fetch: FAIL (stage fetch: <host>: <file name>: <why>; no retry)`,
+    where `<host>` is the lock URL's host and `<why>` the resolver's item-4
+    text or this block's check texts (item 5); a write error (disk full
+    included) is `<why>` = `write failed: <OSError class>`;
+  - per file kept: `bundle_fetch: ok <key> <name> sha256=<64 hex> size=<n> hops=<h1>[,<h2>...]`;
+  - per file already held (item 4): `bundle_fetch: held <key> <name> sha256=<64 hex> size=<n> (fetched for <key0> <name0>)`;
+  - last: `bundle_fetch: fetched <files> files, <bytes> bytes, <keys> components (<set>, <arch>) in <s> s`.
+  Hops are hosts only, so no query is ever printed (U8-2); `_clean` on
+  every lock-derived string.
+- **Time budget, named `B-fetch`:** the `sources: fetch` stage (marker to
+  marker, `== sources: fetch ==` to `== sources: done ...==`) is budgeted
+  at **60 s on CI** for `--set sample` (estimate 20-60 s, item 8). It is
+  part of Q62's 180 s for the item's added stages, and the R16 record
+  reports it against `B-fetch`; over budget goes to the orchestrator (and
+  under Q62/Q74 to the human). It is a measurement on CI, never a
+  wall-clock assertion in a test (they flake on the runner).
+- Hard bound, enforced: the run deadline `RUN_DEADLINE = {"sample": 300,
+  "full": 10800}` s (5x `B-fetch`; the lock tool's 3 h for the operator's
+  full set), checked before each request; a mid-file stall is bounded by
+  the per-file `DEADLINE` 600 s and per-request `TIMEOUT` 60 s.
+  Failure `<why>` = `run deadline <n> s passed`. The clock is a
+  module-level `CLOCK = time.monotonic` so tests never wait (wall-clock
+  budgets flake on the CI runner).
+
+**3. The shell wrapper and the service.**
+```
+scripts/bundle_fetch.sh --set sample|full --out DIR [--arch amd64|arm64]
+```
+(Q75 ruled: arch from `docker info`, `bundle.sh`'s form; `--arch`
+only asserts it, mismatch exit 2 before any pull; no `--evidence-dir`, the
+stdout lines are the record and the caller tees them.) Host script, Linux
+and Git Bash; not bundled, not copied by `bundle.sh`, never in a stack
+`COMPOSE_FILE`. In order, each failure one line `bundle_fetch: FAIL (stage
+<s>: <why>; no retry)` and exit 1 unless stated:
+1. Arguments (exit 2 with usage on anything else, before any call);
+   `docker` on PATH; arch.
+2. `--out` (U8-1): a symlink, a non-directory, or a non-empty directory is
+   refused naming it, untouched. Absent: the script creates it (`mkdir`,
+   then `chmod 0700`; N1 U4's NTFS rule) and records `created=1`. An empty
+   directory is used in place (a mount point works; no rename across
+   filesystems is needed).
+3. `ke-gates:${KE_IMAGE_TAG:-local}` present (`docker image inspect`), else
+   `stage images: ke-gates:<tag> not found: run scripts/build.sh first`.
+   `user="$(id -u):$(id -g)"` must match `^[0-9]+:[0-9]+$` (U8-7).
+4. `== sources: pull ==`: the generator ref read with N1's `config
+   --images sbom` form, then N1 amendment U2's pull, one call. Failure:
+   `stage pull: pulling the SBOM generator <ref> failed`.
+5. `== sources: fetch ==`: `MSYS_NO_PATHCONV=1 KE_SOURCES_IN=/nonexistent
+   KE_SOURCES_OUT="$(hostpath "$out")" KE_SOURCES_USER="$user" docker
+   compose -p ke-fetch-<8 hex> --env-file .env.example -f
+   docker-compose.sources.yml run --rm --pull never sources-fetch --arch
+   <a> --set <s>`. `KE_SOURCES_IN` is N1 U2's dummy for the other
+   service's `:?` (compose interpolates the whole file; `run` creates only
+   the named service). A non-zero exit: `stage fetch: sources_fetch.py
+   exited <rc>` after the client's own line.
+6. `fetch.json` must be a regular file, not a link; then `== sources: done
+   (pull <a> s, fetch <b> s) ==`, exit 0.
+- EXIT/INT/TERM/HUP trap (as `scan.sh`, D4): `compose -p <project> ... down
+  --volumes` with the dummies, then on a non-zero exit: `rm -rf -- "$out"`
+  if `created=1`, else remove every entry inside `$out` (the empty
+  directory is returned as given). `COMPOSE_PROFILES` and
+  `COMPOSE_PATH_SEPARATOR` unset; `-f`/`-p` override the caller's.
+- *Service* `sources-fetch` in `docker-compose.sources.yml` (U8-7; the
+  file's header is corrected: two services, one started by the lock tool,
+  one by `bundle_fetch.sh`):
+  - `image: ke-gates:${KE_IMAGE_TAG:-local}`, `pull_policy: never`;
+    `user: ${KE_SOURCES_USER:?set by scripts/bundle_fetch.sh or scripts/sources_lock.sh}`;
+    `read_only: true`; `tmpfs: [/tmp]`; `cap_drop: [ALL]`;
+    `security_opt: [no-new-privileges:true]`; no `networks`,
+    `network_mode`, `ports`, `extra_hosts`, `dns`, `privileged`, socket.
+    The project's default bridge is its only route out.
+  - `entrypoint: [python3, -I, /opt/ke/sources_fetch.py, --lock,
+    /opt/ke/sources.lock.json, --policy, /opt/ke/source-policy.json,
+    --out, /out]`; `--arch`/`--set` come from the run line.
+  - Long-form binds, read-only: `./scripts/sources_fetch.py`,
+    `./scripts/sources_resolve.py`, `./scripts/sbom_check.py`,
+    `./docker/sources.lock.json`, `./docker/source-policy.json` (each to
+    `/opt/ke/<name>`); read-write, the only one:
+    `${KE_SOURCES_OUT:?...}` -> `/out`. No checkout mount, no `uv.lock`.
+  - `environment: {PYTHONDONTWRITEBYTECODE: "1"}`, literals only.
+  - `tests/test_stack_compose.py`'s bind rule gains a `sources-fetch`
+    exemption naming that service and these exact mounts (U7b pin 5).
+
+**4. Verification order, per run and per file.**
+1. Read the lock text and policy; `S.lock_entry_problems(text, policy)`
+   must be `[]`, else stage `lock`, **zero requests**.
+2. `S.fetch_plan(lock, arch, set)`; `allow` = the policy `hosts` (exact,
+   lower-cased; the only host source, U8-4).
+3. Disk: the plan's distinct bytes (one size per distinct sha256) must be
+   <= `shutil.disk_usage(out).free` (hook `DISK_FREE`), else stage `disk`.
+4. For each planned file, in order:
+   - **Dedup (U8-3, the architect's choice):** a sha256 already held is not
+     requested again, even from a different URL; the `held` line is
+     printed. *Why:* the stored name is the sha256, the bytes are exactly
+     what the second entry pins, and U9 ships by sha256. It keeps "no URL
+     requested twice" and cuts the full set from 876 to 716 requests.
+   - Open `<out>/.<sha256>.part` with `O_CREAT|O_EXCL|O_WRONLY`, mode 0644.
+   - `R.download(file.url, allow, fh, limit=file.size, algs=(upstream.alg,), hops)`.
+     The first request is the lock URL as written (U7c item 9 (e)); every
+     hop passes the U7b hop rules and `allow`.
+   - Checks, in this order, each a stage `fetch` failure with the `.part`
+     deleted: size == lock `size` (`<name>: size mismatch: got <n>, lock
+     says <m>`); sha256 == lock `sha256` (`<name>: sha256 mismatch: got
+     <x>, lock says <y>`); the `upstream.alg` digest == `upstream.value`
+     (`<name>: <alg> mismatch: got <x>, <from> says <y>`; defence in depth:
+     deb `.dsc` and maven by sha1, apk by sha512, as N11 re-computes).
+   - `fsync`, then `os.rename` to `<out>/<sha256>`. Nothing reads the bytes
+     before this point except the hashers.
+5. After all files of an entry are in place, the name checks (item 5).
+6. `fetch.json` (item 6) written to `.fetch.json.part`, then renamed.
+   Exit 0.
+
+- *Rework record, L-1 (2026-10-28, U8a):* query redaction happens at the
+  source for the refused-Location text: the resolver prints it through
+  `_retry_url`. The resolver's other texts quote only URLs that passed the
+  printable-ASCII check, so `sources_fetch._safe` can drop each full query
+  (`?<query omitted>`) in every FAIL line.
+
+**5. Name checks (U8-5; carried U7c N3; first test rows).** Read only
+from the renamed, verified file, as UTF-8, at most `R.TEXT_LIMIT` (1 MiB;
+larger fails `<name>: over 1 MiB, not checked`). Never sourced, unpacked
+or run.
+- `deb` **and `pgdg`** (confirmed: both entries are built from the `.dsc`,
+  U7d P4-P5): `R.parse_dsc(text, dsc)`, then `R.dsc_listing(fields, dsc,
+  src, ver)`. Its `(name, size, sha256)` set must equal exactly the
+  entry's non-`.dsc` files' set; otherwise `<dsc>: Files/Checksums-Sha256
+  differ from the lock entry`. Parser failures keep their own texts
+  (R1-N2's non-field line included).
+- `apk`: `R.parse_apkbuild(text, commit, ver, origin)` (A4, U7c item 3:
+  literal pkgver/pkgrel equal to the key, one top-level assignment). Its
+  `(name, sha512)` set must equal exactly the entry's `upstream.alg ==
+  sha512` files' `(name, upstream.value)` set; otherwise `APKBUILD at
+  <commit>: sha512sums names differ from the lock entry`. Skipped aports
+  symlinks are in neither set (U7d item 8).
+- Other kinds: none (one file each).
+
+**6. Output layout and completion record (U8-6; Q76 ruled: yes).**
+- Flat: `<out>/<sha256>` (64 lower-case hex, regular files, mode 0644,
+  the caller's uid:gid) and `<out>/fetch.json`. No subdirectory, no link,
+  no upstream name on disk. *Why not per-key directories with lock names
+  (the brief's suggestion):* keys contain `:` (invalid on NTFS, where
+  verify runs), upstream names hold `+`/`~` and could case-clash, and N9
+  ships by sha256 anyway; the names live in `fetch.json` and U9's index.
+- `fetch.json`, canonical (`S.lock_text` form), written last:
+  `{"format": 1, "set": "sample"|"full", "arch": "amd64", "lock_sha256": "<sha256 of the lock text>",
+    "components": {"<key>": [{"name": ..., "sha256": ..., "size": ...}, ...]}}`.
+  Its presence means complete; U9's `bundle.sh --sources` refuses a
+  directory without it, or with another set, arch or `lock_sha256`
+  (U9's RED, not U8's). Not 64-hex, so it cannot collide with a file.
+- No partial output: on any client failure only the current `.part` exists
+  and the client deletes it; the script's trap removes the run's output
+  (item 3); a SIGKILL can leave files but never `fetch.json`, which U9
+  refuses.
+
+**7. Network path, per context (the crux; U8-7, U8-8, CLAUDE.md).**
+The fetch runs only in the `sources-fetch` container, on its own
+`ke-fetch-<hex>` project's default bridge, started by `bundle_fetch.sh`
+from a host shell. It never runs in `gates` (no network) or `gates-it`
+(the internal `backend`, whose only way out is the gateway's forward to
+the model host), never on `backend`, `edge`, `offline` or through the
+stack gateway, and never in `dind` or `offline-client`.
+| Context | Started by | Egress |
+|---|---|---|
+| Operator / maintainer build host | the operator: `build.sh`, then `bundle_fetch.sh --set full`, then `bundle.sh` | the host's Docker NAT, then the site network (SFU egress must allow the ten `hosts` over 443; ADR point 3 records the list) |
+| `verify.sh full` on the Windows dev box | `offline_check.sh` host half, after `teardown_verify` and `scan.sh`, so the verify project and its gateway are already gone | Docker Desktop's VM NAT, then the dev box's network (the same path as `scan-db` and the image pulls) |
+| CI (`runs-on: ubuntu-24.04`) | the same `offline_check.sh` | the runner's dockerd bridge NAT, then GitHub's hosted-runner network (Azure; GitHub `meta` "actions" ranges). Not the dev box's or SFU's network |
+- This keeps CLAUDE.md's "Networking is disabled for the gate services"
+  true: `sources-fetch` is a host-half one-shot like `scan-db`, not a gate
+  service. CLAUDE.md's host-half sentence must name it (Q73; the
+  architect supports option 2's text; *ruled 2026-10-28: option 2*). `verify.sh` itself does not change.
+- The memory note "private 2-vCPU runner" means GitHub's standard hosted
+  runner for a private repo, not a self-hosted one, so the CI path is
+  network-independent of the dev box (item 10).
+
+**8. `offline_check.sh` wiring (U8-8).** The interim block (the echo, the
+`docker-compose.sbom.yml pull sbom` and its `die`) is replaced, at the
+same place (after the Compose version check, before the ke-app base pull),
+by:
+```
+fetch_rel="dist/${project}-sources"
+echo "offline: fetching the source sample (scripts/bundle_fetch.sh --set sample)"
+bash scripts/bundle_fetch.sh --set sample --out "$fetch_rel" \
+  || die "scripts/bundle_fetch.sh failed (see its FAIL line above); no retry"
+df_log "after fetch"
+```
+- The EXIT trap also runs `rm -rf -- "$fetch_rel"` (pass or fail).
+- `bundle.sh` does not read it until U9 (`--sources "$fetch_rel"`).
+- What the gate proves at U8: every `full` run, locally and on CI, pulls
+  the generator through `bundle_fetch.sh`, then fetches one entry per kind
+  (7 keys, 25 files, 136,571,547 B at 0630586; every file host of the
+  lock) through the hardened service and checks each against the reviewed
+  lock (size, sha256, upstream digest, name checks), with Q61. The offline
+  install still passes with no route out; `dind` and `offline-client` gain
+  no network. It does not prove shipping (U9) or the e2e (U10).
+- Time (Q62/Q74; budget `B-fetch` 60 s, item 2): estimate 20-60 s for `sources: fetch` on CI (25 small
+  sequential requests to snapshot, GitLab, distfiles, PGDG, PyPI, Maven
+  plus 136 MB from GitHub). The generator pull is not new time. Measured
+  by the markers, on CI only (D8; local timings never count).
+- Disk: +0.13 GiB under `dist/` (already in `df_paths`), inside the 7 GiB
+  floor (U7d item 13). U11 re-derives.
+- The header comment's stage list is updated by the developer.
+
+**9. Other U8 changes.**
+- `bundle.sh` refusal: `bundle: the SBOM generator image is not present
+  (<ref>); run scripts/bundle_fetch.sh first; this script never pulls`.
+  Header per U8-9 (N13).
+- `sources_lock.sh` (U8-12): after `lock-check` decides (exit 0 or 3) and
+  before the InRelease copies and the lock move: `mkdir -- "$evdir/sboms"`
+  (an existing `sboms` fails: `evidence: <evdir>/sboms exists`), then each
+  `$work/sboms/<image>.spdx.json` (the same files `lock-needs` and
+  `lock-check` read) copied with the item-6 link and regular-file rules.
+  Any failure: lock unchanged. Committing them: Q77 (the architect agrees
+  with option 2).
+- README / CLAUDE.md: U8-9 and Q73 (the human's file; same commit).
+
+**10. The third Neo4j fetch (U8-11; U7d item 14).**
+- Every `full` run's sample includes `neo4j:neo4j@5.26.32`, so U8's own
+  verify runs on the dev box also fetch it. Those are the dev box's
+  network (the same as the first and second fetches): information only.
+- The third fetch is the first green CI run that includes U8b. Its record
+  is the job log's `bundle_fetch: ok neo4j:neo4j@5.26.32 5.26.32.tar.gz
+  sha256=182ae2e5...91e3 size=20907800 hops=github.com,codeload.github.com`
+  line; a mismatch cannot print `ok` (it fails CI closed, Q61).
+- Capture (R18): `gh run view <run-id> --log` filtered to the
+  `bundle_fetch:` lines, the "Runner Image" / "Operating System" group and
+  the job's start and end, saved to `u8/ci-<run-id>-fetch.txt` (CI logs
+  expire). Security appends the dated section to `sources-provenance.md`
+  (U8-11 fields; egress per item 7).
+- Mismatch: CI red; new first and second fetches, a reviewed lock change.
+  Never a skip, a retry or a hand-edited hash.
+
+**11. Security properties (for review; each has a test row in item 12).**
+No URL outside the lock (the client builds none); hosts only from the
+policy; the only first-request query is the apk API raw `ref=<commit>`
+(the lock rules refuse any other, and they run before any request);
+redirects only by hand under the hop rules; TLS >= 1.2, `ProxyHandler({})`,
+`-I` (no environment, no user site, no proxy, no rc file: PSC-23's curl
+flags met in kind); no retry; byte cap = the lock size; nothing unpacked,
+built or run; no secret and no caller key (literal service env,
+`--env-file .env.example`); no `docs/evidence` read by any test; no URL
+literal in `sources_fetch.py`.
+
+**12. Test plan.** Fast, fake network via `F.R.OPENER` (U7b pin 1) and a
+synthetic lock with one valid entry per kind built in the test (the U7a
+fixture helpers); fake docker for the scripts (`tests/fake_docker.py`
+models `sources-fetch` as it models `sources-resolve`: real client, binds
+rewritten, `FAKE_RESOLVE_NET`). Names indicative (U8-13; no counts in
+names).
+- **U8a first RED rows** (`tests/test_sources_fetch.py`):
+  1. `test_source_fetch_checks_before_use`: bytes != lock sha256 -> exit
+     1, the exact `stage fetch` line, `--out` holds nothing (no
+     `<sha256>`, no `.part`, no `fetch.json`); same for a size mismatch and
+     an upstream sha512/sha1 mismatch.
+  2. `test_source_fetch_is_https_only_to_listed_hosts`: a hop to a host
+     not in `hosts`, to `http://`, with a port, with `%2e%2e` -> refused;
+     a lock URL whose host is not in `hosts`, or a non-apk URL with a
+     query -> stage `lock` and zero `OPENER` calls.
+  3. `test_source_fetch_never_retries`: a 503, a timeout, a mid-body
+     timeout each -> exactly one `OPENER` call, `R.SLEEP` never called.
+  4. `test_source_fetch_dsc_names_match_the_lock_entry` (deb and pgdg:
+     an extra, a missing, a size and a sha256 difference) and
+     `test_source_fetch_apkbuild_names_match_the_lock_entry` (name set
+     and sha512 value differences; a skipped symlink name absent from
+     both passes).
+  5. `test_source_fetch_leaves_no_out_on_failure`: a fault on the n-th
+     file of a set (middle, last) -> no `fetch.json`, no `.part`.
+  6. `test_source_fetch_set_is_the_plan`: `sample` requests exactly
+     `sample_keys`' files, `full` every file for the arch, the other arch
+     never; a shared sha256 is requested once (`held` line).
+  7. Byte cap: a body longer than the lock size stops at the cap and
+     nothing past it is written.
+  8. `fetch.json`: canonical, last, `lock_sha256` of the lock text; the
+     `ok` line format, hops without a query; the run deadline via
+     `CLOCK`; disk via `DISK_FREE`; CLI exit 2 rows; any exception one
+     line, no traceback; `https://` absent from `sources_fetch.py`.
+  9. `sbom_check`: `lock_entry_problems(committed lock) == []`; a stale
+     (uncovered) entry gives no problem there but does in
+     `lock_problems`; `fetch_plan` rows.
+  10. `sources_resolve`: `download` has no `retries` parameter and calls
+      `OPENER` once on 503; `dsc_files` output unchanged on the U7c rows
+      (control).
+- **U8b first RED rows**: `test_sources_fetch_service_is_hardened`
+  (static compose, every item-3 key); `test_bundle_fetch_refuses_an_unsafe_out`
+  (link, file, non-empty dir; absent and empty accepted); usage/arch exit
+  2 before any docker call; order `pull` then `run sources-fetch`, dummies
+  and `--env-file .env.example`, `user` pattern; a failing fetch leaves no
+  `--out` (created) or an empty one (given), project torn down;
+  `test_offline_check_fetches_the_sample` (replaces the U2 pull rows:
+  events `fetch, pull base, pull neo4j base, bundle, drift, neo4j, up
+  dind, ...`, `--set sample`, the dir under `dist/` removed on pass and
+  fail, a fetch failure stops before `bundle`);
+  `test_bundle_refuses_when_sbom_generator_absent` re-pinned to the new
+  text; `test_sources_lock_keeps_the_run_sboms` (copied before the move,
+  byte-identical, links refused, an existing `sboms` refused, a failed
+  copy leaves the lock unchanged).
+- **Controls: nothing weaker than last round.** Every existing test in
+  `test_sources_resolve.py`, `test_sources_lock.py`,
+  `test_sources_lock_committed.py`, `test_offline_check.py` and
+  `test_sbom_generator.py` stays, except the named re-pins, each of which
+  keeps every event or substring it had (the interim pull's events become
+  the `fetch` event; nothing dropped). The tester records the baseline
+  test-name list from SAVED copies before RED (U7d lesson) and the
+  after-list at each re-pin (`u8/u8a-controls.txt`, `u8/u8b-controls.txt`);
+  an insertion must not split a neighbouring loop (U7e lesson).
+
+**13. Split: three commits.**
+| Unit | Scope | Loop | A34 |
+|---|---|---|---|
+| U8a | `sources_fetch.py`; `download`, `dsc_listing` (resolver); `lock_entry_problems`, `fetch_plan` (checker); item 12 U8a rows. No compose, no script, no wiring. | `fast`; `full` before the gate (scripts/) | no (no compose or shell change) |
+| U8b | `sources-fetch` service; `bundle_fetch.sh`; `offline_check.sh` wiring; `bundle.sh` refusal and header; `sources_lock.sh` SBOM copies; `fake_docker.py`; README; CLAUDE.md (Q73); ADR pointer; the real sample run and the full-set run (O-1). | `full` | yes (compose, scripts) |
+| U8c | After the push (human, Q74): the CI extract, the third-fetch section in `sources-provenance.md`, `u8/ci-timing.md`. Evidence and docs only. | `fast` | no |
+*Why:* U8a is network code and gets its own review/security loop with a
+fake network, as U7b did; U8b is wiring that only `full` and A34 can prove;
+U8c cannot exist before a push.
+
+**14. Order, with every evidence record scheduled** (`u8/` =
+`docs/evidence/platform-sbom/u8/`; redaction per the evidence rule).
+- R1 orchestrator: Q75/Q76 ruled, Q77 deferred; rule O-1..O-3 below; Q73
+  (before U8b's commit) and Q74 (before the push) are with the human.
+  *(Amended 2026-10-28, analyst: Q73 (option 2) and Q74 (69 min) ruled by
+  the human.)*
+- R2 tester U8a RED: `u8/u8a-controls.txt` (baseline from saved copies),
+  `u8/u8a-tester-red-verify-fast.txt`.
+- R3 developer U8a GREEN: `u8/u8a-developer-verify-fast.txt`, then
+  `u8/u8a-developer-verify-full.txt`.
+- R4 reviewer and security in parallel: `u8/u8a-review.md`,
+  `u8/u8a-security.md` (the hop, cap and no-retry paths).
+- R5 tester re-pins/controls after-list (`u8/u8a-controls.txt` appended);
+  orchestrator `u8/u8a-orchestrator-verify-full.txt`; commit U8a.
+- R6 tester U8b RED: `u8/u8b-controls.txt`, `u8/u8b-tester-red-verify-full.txt`.
+- R7 developer U8b GREEN: `u8/u8b-developer-verify-full.txt` (the first
+  real sample fetch, dev box; its `bundle_fetch:` lines are the U8-14
+  sample record).
+- R8 **expected values recorded before any real run** (orchestrator's
+  rule): `u8/expected.md` from the committed lock by a one-liner (sample:
+  keys, files, bytes, per-file sha256; full: 183 keys, 876 files, 716
+  distinct sha256, distinct bytes; `lock_sha256`).
+- R9 developer real runs on the dev box: `bundle_fetch.sh --set sample`
+  (`u8/sample-run.txt`) and, if O-1, `--set full` into a scratch dir
+  outside the repo (`u8/full-run.txt`; it is the first fetch of every deb
+  orig/debian tarball, which lock time never fetched). `u8/hop-hosts.md`:
+  hop chain per kind and whether `objects.githubusercontent.com` was used
+  (U8-10, O-2).
+- R10 **size and time record** `u8/size.md`: the sample's and (O-1) the
+  full set's bytes on disk, `df` before and after the fetch in
+  `offline_check` (from R7's log), the `sources: pull` and `sources:
+  fetch` marker times, local only and labelled so (Q62 counts CI only).
+- R11 security: diff + network path + hop hosts + the full run
+  (`u8/u8b-security.md`). Reviewer: `u8/u8b-review.md`.
+- R12 A34 Windows proof (tester): `bundle_fetch.sh --set sample` and two
+  refusals (non-empty `--out`, `--arch` mismatch) on Git Bash, plus
+  build/bundle/install.ps1/launch/teardown and `verify.sh full`:
+  `u8/a34-windows-run.txt`, `u8/a34-verify-full.txt`.
+- R13 documenter (README, the `bundle.sh` header if not the developer's);
+  the CLAUDE.md sentence lands only with Q73's ruling (ruled 2026-10-28,
+  option 2); marketer CHANGELOG
+  bullet after the gate.
+- R14 orchestrator `u8/orchestrator-verify-full.txt` on the final tree;
+  commit U8b.
+- R15 Q74 ruled; push (human approval); PR #15 CI run.
+  *(Amended 2026-10-28, analyst: Q74 ruled, 69 min; its RED pin and
+  `ci.yml` GREEN land inside U8, before this push.)*
+- R16 orchestrator: `u8/ci-<run-id>-fetch.txt` (item 10) and
+  `u8/ci-timing.md` (job duration, the two marker deltas, `sources:
+  fetch` against `B-fetch` 60 s, the job against 35m53s/37 min; PSC-16/Q62
+  data for U11).
+- R17 security: the third-fetch section in `sources-provenance.md`.
+- R18 analyst: PSC-23 status; documenter: handoff close and archive;
+  commit U8c (`verify.sh fast` for docs, `full` before the commit per
+  CLAUDE.md).
+
+**15. Decisions.**
+- For the human (the analyst's numbers): **Q73** CLAUDE.md wording: the
+  architect supports option 2 (it names the check and the fail rule).
+  **Q74** CI headroom: supports option 1, and adds that PS-3.4's own rule
+  on the 35m53s run gives 54 min; U8 adds an estimated 20-60 s, so a push
+  under 37 min is likely red. Also waiting (handoff U7e (3)): accept the
+  CI runner as the third fetch (GitHub-hosted, so network-independent of
+  the dev box; item 7) and keep the ARM one-liner as optional before the
+  first operator bundle. Recommended: accept.
+  *(Amended 2026-10-28, analyst: the human ruled Q73 option 2 and Q74
+  `timeout-minutes` 69, not 54; see `docs/open-questions.md`.)*
+- Ruled by the orchestrator (recorded at the top): Q75 (built in item 3),
+  Q76 (built in item 6); Q77 deferred (the architect supports option 2
+  when it is ruled). Still for the orchestrator:
+  - **O-1** a full-set real fetch on the dev box at U8b (1.18 GB distinct,
+    716 requests; first proof of every orig/debian tarball against the
+    lock). Recommended: yes, before security's review; a mismatch there is
+    a lock defect, back to the architect and security, never edited by
+    hand.
+  - **O-2** if R9 shows `objects.githubusercontent.com` unused for every
+    kind, drop it from `hosts` in U8b (U8-10: design note, test change,
+    security review). Recommended: yes (narrower egress); if U8b's scope
+    is tight, a follow-up.
+  - **O-3** the layout departs from the brief's "per-key directories,
+    names as in the lock" (item 6's reasons). Recommended: accept.
+- *Risk, recorded:* the sample fetches 15 files through GitLab's API raw
+  endpoint. U7c found the `/-/raw/` form behind an anti-bot challenge from
+  the dev box; the API form answered 200 there, but a GitHub-hosted
+  runner's addresses may be treated differently. A challenge fails CI
+  closed (`HTTP 418`, Q61) and comes back to the architect; the recorded
+  next candidate is the blobs endpoint (U7c item 9). Also recorded:
+  GitHub tag tarballs are not promised byte-stable (N5), and a transient
+  snapshot or GitLab error turns `full` red by name (ADR consequences).
+
+- *Orchestrator rulings (2026-10-28, after reading items 1-15):* **O-1** yes: the
+  full-set real fetch runs on the dev box at U8b before security's review; a
+  mismatch is a lock defect (architect + security), never a hand edit. **O-2**
+  yes, as a reviewed change in U8b if R9 shows the host unused for every kind;
+  a follow-up if U8b's scope is tight. **O-3** accepted: the flat `<sha256>`
+  layout plus `fetch.json`. The mechanism ruling (the resolver's opener, not
+  curl; ADR-KE-016 amended) stands. Q73/Q74 and the third-fetch acceptance go
+  to the human with the architect's recommendations.
+  *(Amended 2026-10-28, analyst: Q73 (option 2) and Q74 (69 min) ruled by
+  the human.)*
 
 ## N5. The lock: `docker/sources.lock.json` (generated, reviewed)
 
@@ -1001,6 +1546,14 @@ Sample (Q63, ruled): for each `kind` present in the lock for this arch,
 the entry with the smallest total `size` (ties by key). `neo4j` and
 `temurin` have one entry each, so both are always fetched (estimate: the
 sample is a few hundred MB, dominated by those two).
+
+*Lock rule added 2026-10-28 (U8a rework; "N4 amendment, U8" item 1):*
+across the whole lock, one sha256 has exactly one `size`, exactly one
+upstream alg, and one upstream value for that alg. Otherwise
+`lock_problems` reports the entry against the first entry in lock order
+holding that sha256.
+A file of size 0 is exempt from the one-alg part (orchestrator ruling
+2026-10-28; U7d's size-0 GitLab apk rule).
 
 ### N5 amendment, U7 (architect, 2026-10-25)
 
@@ -4219,6 +4772,9 @@ L-13 closes once security confirms it on the U0 image.
 
 Proposed, landing in the unit that wires the fetch (U8). The orchestrator
 takes the CLAUDE.md text to the human at U8 (ruling 6):
+*(Amended 2026-10-28, analyst: Q73 ruled option 2, so the CLAUDE.md
+sentence is option 2's text in `docs/open-questions.md` Q73, which adds
+the lock check and the fail-closed, no-retry rule to the text below.)*
 - CLAUDE.md, § Verification, the sentence "In `full` the host half also
   builds and pulls images, runs the smoke check's network-control probe on
   the stack's `edge` network, and runs `scan-db`, a one-shot that fetches
@@ -4274,7 +4830,7 @@ column is the mode for the red/green loop.
 | U5 | PSC-15 classifier (N8), pure functions; ruling 5: NOASSERTION fall-through, token rule, URL-folded ids listed (N8a); hash ids unknown, needs source, listed "unidentified" (N8, H-1) | fast | no |
 | U6 | `docker/source-policy.json` gains `hosts` and `exempt` (`always` is U4's) and the three-key schema test; `exempt` for jna and javassist, security-reviewed (N8a 1, 3) | fast | no |
 | U7 | lock: `docker/sources.lock.json`, `scripts/sources_lock.sh`, provenance evidence (security's second fetch); `maven` kind, jaxb-api sources jar (N8a 2); `deb` gcc-12 and gcc-14 (N10) | full | no |
-| U8 | PSC-23 `bundle_fetch.sh`, `sources-fetch` and client loop, wired into `offline_check.sh` (replaces the generator pull only; the base pull stays, N1 amendment, U4); README and header wording; CLAUDE.md text to the human (ruling 6) | full | yes (compose) |
+| U8 | PSC-23 `bundle_fetch.sh`, `sources-fetch` and client loop, wired into `offline_check.sh` (replaces the generator pull only; the base pull stays, N1 amendment, U4); README and header wording; CLAUDE.md text to the human (ruling 6); split U8a-U8c by "N4 amendment, U8" item 13 | full | yes (compose) |
 | U9 | PSC-15/24 `index`, content-addressed copy, notices section (paths relative to `app/`, I-3, N10a), no-partial tests, install tamper tests (sh and ps1) | full | only if `install.ps1` changes |
 | U10 | PSC-19 e2e `verify`, `/install` size and memory pre-check; follow-up security U3 L-1: `build.sh` stamps `org.opencontainers.image.revision=<git HEAD>` on each first-party `ke-*` image, and `bundle.sh` refuses, before any write, an image whose label is absent or differs from its `git_sha` (else the SBOM creator and `bundle.json` name the wrong commit; U3's stale ke-app SBOM is the case). First test: the refusal on a mismatched or missing label (fake docker) | full | yes (compose) |
 | U11 | PSC-16 two CI runs, floor re-derivation, Q62 trigger, PS-3.4; full operator recorded run (Q63) | full (CI) | no |

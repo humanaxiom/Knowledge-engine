@@ -20,6 +20,11 @@ file is streamed into the hashers and never stored, within a 600 s deadline
 and a 4 GiB cap (item 1). Every key is checked against U7a's grammar before
 any URL is built (item 11). One call per file, no retry (Q61).
 
+U8: the network core (`_fetch_once`, `download`) and the parsers (`parse_dsc`,
+`dsc_listing`, `parse_apkbuild`) are also loaded by `sources_fetch.py`, which
+runs in verify and CI; the resolve routes (`resolve()`, `main`) still never
+run there.
+
 - temurin: the tag comes from the image's /opt/java/openjdk/release (passed in
   needs.json by `sbom_check.py lock-needs --tar`), cross-checked with the SBOM;
   the asset is checked against its `.sha256.txt`.
@@ -317,7 +322,7 @@ def _fetch_once(url: str, allow: set[str], *, timeout: float = TIMEOUT, hops: li
             if hop == MAX_HOPS:
                 break
             if not PRINTABLE.fullmatch(loc):  # before the join, which drops tabs and newlines
-                raise ResolveError(f"redirect to {_clean(loc)} refused: not printable ASCII")
+                raise ResolveError(f"redirect to {_retry_url(loc)} refused: not printable ASCII")
             if ":" in loc.split("/", 1)[0] and not loc.startswith("https://"):  # the join lower-cases a scheme
                 raise ResolveError(f"redirect to a non-https URL refused: {_clean(loc)}")
             current = urljoin(current, loc)
@@ -348,6 +353,27 @@ def stream(url: str, allow: set[str], algs: tuple[str, ...] = ("sha256",),
                 h.update(chunk)
         return {a: h.hexdigest() for a, h in hashers.items()}, size
     return _attempts(once, _retries(retries), before)
+
+
+def download(url: str, allow: set[str], fh: Any, limit: int, algs: tuple[str, ...],
+             hops: list[str]) -> tuple[dict[str, str], int]:
+    """U8: the body of `url` written to `fh` and hashed (sha256 plus `algs`)
+    in ONE attempt. It has no retries parameter and never calls `_attempts`,
+    so Q61's single call holds by construction. A chunk that would take the
+    body past `limit` is neither hashed nor written. `hops` collects the
+    host of every request (the first and each redirect)."""
+    r = _fetch_once(url, allow, hops=hops)
+    assert r is not None
+    hashers = {a: hashlib.new(a) for a in set(algs) | {"sha256"}}
+    size = 0
+    for chunk in r.body:
+        if size + len(chunk) > limit:
+            raise ResolveError(f"{hops[-1]}: more than {limit} bytes: {_retry_url(url)}")
+        size += len(chunk)
+        for h in hashers.values():
+            h.update(chunk)
+        fh.write(chunk)
+    return {a: h.hexdigest() for a, h in hashers.items()}, size
 
 
 def text(url: str, allow: set[str], limit: int = 1 << 20, first_allow: frozenset[str] = frozenset(),
@@ -652,8 +678,11 @@ def _dsc_lines(dsc: str, fields: dict[str, str], field: str, hexlen: int) -> lis
     return out
 
 
-def dsc_files(fields: dict[str, str], dsc: str, src: str, ver: str, names: dict[str, str]) -> list[dict[str, Any]]:
-    """D4-D6: the files the `.dsc` lists, as lock file entries."""
+def dsc_listing(fields: dict[str, str], dsc: str, src: str, ver: str) -> list[tuple[str, int, str]]:
+    """D4, D5: (name, size, sha256) per file the `.dsc` lists, once its
+    Source/Version equal the key, Checksums-Sha256 and Files list the same
+    names and sizes, every name is safe and a present Checksums-Sha1 names
+    the same files. Nothing here is snapshot-specific (U8 shares it)."""
     if (fields.get("Source"), fields.get("Version")) != (src, ver):
         raise ResolveError(f"{_clean(dsc)}: Source/Version is {_clean(fields.get('Source'))}/"
                            f"{_clean(fields.get('Version'))}, want {src}/{ver}")
@@ -670,14 +699,23 @@ def dsc_files(fields: dict[str, str], dsc: str, src: str, ver: str, names: dict[
     if sorted((n, z) for _, z, n in sha256s) != sorted((n, z) for _, z, n in md5s) or \
             len({n for _, _, n in sha256s}) != len(sha256s):
         raise ResolveError(f"{_clean(dsc)}: Checksums-Sha256 and Files list different files")
-    for _, _, name in sha256s:
+    if "Checksums-Sha1" in fields and sorted((n, z) for _, z, n in sha1s) != sorted((n, z) for _, z, n in sha256s):
+        raise ResolveError(f"{_clean(dsc)}: Checksums-Sha1 and Checksums-Sha256 list different files")
+    return [(name, size, h) for h, size, name in sha256s]
+
+
+def dsc_files(fields: dict[str, str], dsc: str, src: str, ver: str, names: dict[str, str]) -> list[dict[str, Any]]:
+    """D4-D6: the files the `.dsc` lists, as lock file entries."""
+    listing = dsc_listing(fields, dsc, src, ver)
+    sha1s = _dsc_lines(dsc, fields, "Checksums-Sha1", 40) if "Checksums-Sha1" in fields else []
+    for name, _, _ in listing:
         if name not in names:
             raise ResolveError(f"{_clean(name)} is in the .dsc but not in snapshot's srcfiles")
     for h, _, name in sha1s:
         if names.get(name) != h:
             raise ResolveError(f"{_clean(name)}: Checksums-Sha1 says {h}, {SNAPSHOT} says {names.get(name)}")
     return [_file(name, f"https://{SNAPSHOT}/file/{names[name]}", h, size, "sha256", h, f"{dsc} Checksums-Sha256")
-            for h, size, name in sha256s]
+            for name, size, h in listing]
 
 
 def resolve_deb(key: str, arch: str, allow: set[str]) -> dict[str, Any]:

@@ -304,6 +304,9 @@ architect U7 point O1; decide before U7d). *(Amended 2026-10-25, analyst, U7)*
 U7c Windows proof; decide before U7d's real lock run). *(Amended 2026-10-25, analyst, U7d)*
 **Q71 and Q72 were resolved by the human on 2026-10-25** (verbatim: "Ok to both 71 (pg) and 72 retry"). *(Amended 2026-10-25, analyst, U7d; human ruling.)*
 **Q61-Q72 are all resolved; none is open for platform-sbom.** *(Amended 2026-10-27, analyst.)*
+**Q73-Q77 are open** (raised 2026-10-28 by the analyst for U8, PSC-23 "U8 precision"): Q73 (CLAUDE.md wording) and Q74 (CI headroom, under A62) for the human; Q75-Q77 for the orchestrator. *(Amended 2026-10-28, analyst, U8 plan.)*
+**Q75 and Q76 were resolved by the orchestrator on 2026-10-28; Q77 is deferred (not blocking U8); Q73 and Q74 stay open for the human.** *(Amended 2026-10-28, analyst, U8 orchestrator rulings.)*
+**Q73 and Q74 were resolved by the human on 2026-10-28** (Q73 option 2, verbatim "Ok"; Q74 `timeout-minutes` 69, verbatim "Make it 69 seconds", read as minutes). None of Q61-Q76 is open; Q77 is deferred. *(Amended 2026-10-28, analyst, U8; human rulings.)*
 *Orchestrator refinement (2026-10-27; design notes U7d item 14).* The third,
 network-independent fetch of the Neo4j tarball moves to U8, so the U7d
 lock commit no longer waits for it.
@@ -798,6 +801,257 @@ lock commit no longer waits for it.
       flaky host stays visible.
   - Who rules: the human, because Q61 is a human ruling.
   - Deadline: before U7d's real lock run.
+
+- **Q73. Resolved 2026-10-28 (human ruling).** **A73:** option 2, the
+  analyst's and the architect's recommendation.
+  - CLAUDE.md § Verification's host-half sentence takes option 2's text
+    below: the `sources-fetch` clause, the host list, the check against
+    `docker/sources.lock.json` and the fail-closed, no-retry rule.
+  - It lands at U8b, in the same commit as the fetch wiring, as PSC-23
+    requires.
+  - The human's word, to the recommendation: "Ok". *(Amended 2026-10-28, analyst, U8; human ruling.)*
+
+  Original question, kept for the record: *Q73. Open (for the human;
+  before U8's commit). The CLAUDE.md network and verification wording for
+  the source fetch.* *(Added 2026-10-28, analyst, U8 plan.)*
+  - Context:
+    - PSC-23: once the fetch is wired, CLAUDE.md, the `bundle.sh` header
+      and the README say where the route out is. CLAUDE.md is the human's
+      file, so its change needs the human's approval and lands in the
+      same commit as the wiring (as Q56(a)). Design notes N13 drafted the
+      text, and ruling 6 sends it to the human at U8.
+    - CLAUDE.md § Verification today: "In `full` the host half also builds
+      and pulls images, runs the smoke check's network-control probe on
+      the stack's `edge` network, and runs `scan-db`, a one-shot that
+      fetches the image scanner's vulnerability database. The scan itself
+      runs with no network."
+    - The "Generated artifacts" row for `docker/sources.lock.json` is
+      already there (U7d, human approval). The generator pull moves into
+      `bundle_fetch.sh`, which "builds and pulls images" already covers.
+      "What CI runs that verify.sh does not" and the two-model-key
+      paragraph stay true: the fetch takes no key (PSC-6).
+  - Options:
+    1. N13's text: the sentence gains "and `sources-fetch`, a one-shot that
+       pulls nothing and fetches a sample of the bundle's third-party
+       source code over HTTPS from the hosts listed in
+       `docker/source-policy.json`."
+    2. N13's text plus the check and the failure rule. The sentence would
+       read: "In `full` the host half also builds and pulls images, runs
+       the smoke check's network-control probe on the stack's `edge`
+       network, runs `scan-db`, a one-shot that fetches the image
+       scanner's vulnerability database, and runs `sources-fetch`, a
+       one-shot that pulls nothing and fetches a fixed sample of the
+       bundle's third-party source code over HTTPS, only from the hosts
+       listed in `docker/source-policy.json`, checking every file against
+       `docker/sources.lock.json`; a failed or mismatched fetch fails the
+       run, with no retry. The scan itself runs with no network."
+    3. No CLAUDE.md change. Not compatible with PSC-23, which requires
+       CLAUDE.md to name the route out.
+  - **Recommended: option 2.** A reader of CLAUDE.md then knows that
+    `full` depends on third-party hosts besides the registry and the scan
+    database host, where those hosts are listed, and that an outage turns
+    `full` red by name (Q61). This is the same information the `scan-db`
+    clause gives. The cost is one longer sentence.
+  - Trade-off: option 1 is shorter, but it leaves the fail-closed rule to
+    be found in ADR-KE-016.
+  - Who rules: the human. Deadline: before U8's commit (PSC-23 puts the
+    change in the same commit).
+
+- **Q74. Resolved 2026-10-28 (human ruling).** **A74:** `timeout-minutes`
+  69 in `.github/workflows/ci.yml` (was 37).
+  - The human's words: "Make it 69 seconds". The orchestrator reads them
+    as 69 minutes: a 69-second timeout would fail every run, and the
+    recommendation answered was in minutes (54). The human may correct
+    this reading.
+  - 69 min is about 1.92x the slowest green run (35m53s), above the
+    54 min that PS-3.4's +50% rule gives (option 1). The value is the
+    human's ruling under A62, not the PS-3.4 formula; the reviewer checks
+    it against this ruling and the recorded 35m53s run.
+  - Option 2 (the runner factor's spread, or a CPU-time budget) stays a
+    later item.
+  - It goes in inside U8, before U8 is pushed: RED, the pin in
+    `tests/test_stack_ready_docs.py` (tester); GREEN,
+    `.github/workflows/ci.yml` (developer). *(Amended 2026-10-28, analyst, U8; human ruling.)*
+
+  Original question, kept for the record: *Q74. Open (for the human,
+  under Q62; before U8 is pushed). CI headroom before the fetch stage is
+  added.* *(Added 2026-10-28, analyst, U8 plan.)*
+  - Context:
+    - `.github/workflows/ci.yml` sets `timeout-minutes: 37` (PS-3.4/PSC-9).
+    - PR #15 CI run 40628987168 on 0630586 passed, with a verify job of
+      35m53s. That leaves about 67 s before the timeout. On 86f7831 (run
+      40244299450) the same job took 23m13s. The rise of about 12.7 min
+      came without a new stage; the lock and the U7e base landed in
+      between. Locally, `verify.sh full` went from 1000-1020 s to
+      1130-1160 s over the same commits.
+    - U8 adds the `sources: fetch` stage to every `full` run: the sample
+      is about 130 MiB from seven hosts, plus the container start. The
+      generator pull moves into the stage, so it is not new time.
+    - A62: if this item's added stages add more than 180 s to the slower
+      of two green CI runs, the measurement goes to the human before the
+      timeout is raised. The timeout is never raised without that
+      decision. A run that times out is red, and nothing merges on red.
+    - Whether the 12.7 min is this item's time or runner variance is not
+      known: no stage-by-stage comparison of the two runs is recorded.
+    - *Measured (orchestrator, 2026-10-28, from the two CI logs;
+      `docs/evidence/platform-sbom/u8/ci-timing-q74.md`).* *(Amended 2026-10-28, analyst.)*
+      - Run 40244299450 (86f7831): unit stage "Ran 1047 tests in
+        912.573s"; `offline_check` 195 s; `verify.sh full` 1388 s.
+      - Run 40628987168 (0630586): unit stage "Ran 1110 tests in
+        1566.982s"; `offline_check` 230 s; `verify.sh full` 2146 s.
+      - *Superseded attribution (wrong; kept for the record):* ~~"The
+        growth is the unit stage (+654 s for +63 tests, the U7d and U7e
+        lock tests) and the pre-test build and pull (+70 s); the offline
+        stage grew 35 s (together, the 758 s between the runs)."~~
+        *(Struck 2026-10-28, analyst, on the orchestrator's correction.)*
+    - *Corrected (orchestrator, 2026-10-28, from the tester's profile
+      `docs/evidence/platform-sbom/u8/test-profile-q74.md` and the
+      correction appended to `u8/ci-timing-q74.md`).* *(Amended 2026-10-28, analyst.)*
+      - The suite did not grow. Both trees, run in the gates image with
+        the gate's settings, take the same time: 86f7831 731.4 s wall /
+        645.5 CPU-s; 0630586 736.3 s wall / 646.4 CPU-s. The new tests
+        cost 12.1 s in total. Coverage and the 3.12.16 base change
+        nothing measurable.
+      - On CI, every unchanged module ran 1.6-1.9x slower between the two
+        runs. The `gates-it` resource probe shows the same work costing
+        1442 CPU-s instead of 844, with `cpu_steal_ticks` 0 both times
+        and `psi_cpu_some` 189 s -> 458 s. The runner host was under CPU
+        pressure from outside the job. The runner is GitHub-hosted on Azure
+        (job log setup group, `u8/ci-timing-q74.md` "The runner"), so this
+        is a hosted-pool noisy-neighbour effect that no one here controls.
+        *(Amended 2026-10-28, analyst.)*
+      - So CI wall time is about 735 s times a runner factor, and that
+        factor moved from 1.24x to 2.13x. A timeout sized from one run
+        fails intermittently as the factor moves.
+      - The cheap test savings the profile found (the InstallPs1 tamper
+        pair, a minimal LintScriptTest project, shared `bundle.sh` runs)
+        do not explain Q74. They become a separate small item.
+  - Options *(amended 2026-10-28, analyst, on the orchestrator's
+    correction; the first options, kept for the record, were: (1) compare
+    the two runs stage by stage and bring a PS-3.4 proposal before the
+    push; (2) push and accept a likely timeout; (3) raise the timeout
+    inside U8, which reduces to (1). The comparison of (1) is done above.)*:
+    1. Raise `timeout-minutes` by the PS-3.4 rule on the slowest green
+       run: 35m53s plus 50% is about 53.8 min, so 54 min.
+    2. Size the timeout on the runner factor's spread over more runs, or
+       set a CPU-time budget from the resource probe's `cg_cpu_usage_us`
+       instead of a wall-clock budget (the standing rule for this runner:
+       CPU-time, not wall-clock, budgets). This needs more runs, or a
+       change to what the gate measures.
+    - *Withdrawn (2026-10-28, analyst):* a third option, "find and remove
+      the outside load on the runner host", and the question to the human
+      about what shared it. The runner is GitHub-hosted, so the load is
+      the hosted pool's noisy neighbours, outside anyone's control. Only
+      options 1 and 2 stand.
+  - **Recommended: option 1 now (54 min), so that U8's push can be green;
+    option 2 as the better long-run rule, in a later item.**
+    - Option 1 follows PS-3.4's existing rule, so no new mechanism is
+      needed. It leaves about 18 min above the slowest green run (the
+      2.13x factor), for the U8 fetch stage and runner variance. A62 is
+      met because the measurement and the proposal go to the human before
+      the timeout changes.
+    - Option 2 matches the runner's standing rule (CPU-time, not
+      wall-clock, budgets), but it needs more runs or a gate change, so it
+      does not unblock U8.
+    - The test speed-ups are a separate small item, not Q74.
+  - Who rules: the human (A62; CI minutes are billed). Deadline: before
+    U8 is pushed.
+
+- **Q75. Resolved 2026-10-28 (orchestrator ruling).** **A75:** the arch
+  is the Docker daemon's; an optional `--arch` only asserts it. There is
+  no `--evidence-dir`: the per-file stdout lines are the record. (The
+  analyst's recommendation, arch option 1 and evidence option 1.) PSC-23
+  U8-1 records it. *(Amended 2026-10-28, analyst, U8 orchestrator rulings.)*
+
+  Original question, kept for the record: *Q75. Does `bundle_fetch.sh`
+  take `--arch` and `--evidence-dir`?* *(Added 2026-10-28, analyst, U8
+  plan.)*
+  - Context:
+    - ADR-KE-016 point 3 and N4 give only `--set full|sample --out <dir>`.
+      The lock is per arch (`arches`, `sample_keys(lock, arch)`), so the
+      fetch needs an arch.
+    - `bundle.sh` builds for the daemon's own arch; its `--arch` only
+      asserts it. `sources_lock.sh` requires `--arch`, because a
+      maintainer runs it for the arch whose images it reads.
+    - The U8 record is printed output: one line per file kept (U8-2).
+      CI keeps it in the job log. The full-set operator run is recorded
+      by hand (Q63), so its output must be saved as evidence.
+  - Options (arch):
+    1. The daemon's arch, read as `bundle.sh` reads it; an optional
+       `--arch` only asserts it, and a mismatch exits 2 before any pull.
+    2. `--arch` required, as `sources_lock.sh`.
+  - Options (evidence):
+    1. No `--evidence-dir`. The per-file lines on stdout are the record,
+       and the caller saves them (the CI log; `tee` into
+       `docs/evidence/` for the recorded operator run).
+    2. `--evidence-dir DIR`: the script also writes its per-file lines
+       there.
+  - **Recommended: arch option 1 and evidence option 1.** The bundle the
+    fetch serves is the daemon's arch, so one rule for both bundle steps
+    prevents an amd64 fetch feeding an arm64 bundle. A second evidence
+    path adds a writable location and tests for output that stdout
+    already carries.
+  - Who rules: the orchestrator (a design detail inside ADR-KE-016).
+    Deadline: before U8's RED.
+
+- **Q76. Resolved 2026-10-28 (orchestrator ruling).** **A76:** yes. A
+  completion record is written last in `--out`, naming the set, the arch
+  and the lock's SHA-256. U9 refuses a directory without it, or with a
+  mismatch. (The analyst's recommendation, option 2.) PSC-23 U8-6 records
+  it. *(Amended 2026-10-28, analyst, U8 orchestrator rulings.)*
+
+  Original question, kept for the record: *Q76. Does `--out` carry a
+  completion record?* *(Added 2026-10-28, analyst, U8 plan.)*
+  - Context:
+    - N4 and N9 make `--out` content-addressed files only
+      (`<sha256>`). On failure the script removes `--out` (U8-6), but a
+      SIGKILL or a power loss gives the trap no chance, and a partial
+      directory is left behind.
+    - At U9, `bundle.sh --sources <dir>` re-hashes every file it ships
+      against the lock (N3 `index`), so a missing or wrong file fails
+      there. From the files alone it cannot tell which set (`sample` or
+      `full`), which arch, or which lock the directory was fetched for.
+      A stale directory after a re-lock fails on a missing hash, not by
+      name.
+  - Options:
+    1. No record. U9 re-derives the expected files from the lock and the
+       set, and fails on the first missing one.
+    2. A record file written last, after every file has passed its
+       checks, naming the format, set, arch, the lock's SHA-256 and the
+       files fetched. Its presence means the directory is complete. U9
+       refuses a directory without it, or one whose set, arch or lock
+       digest differs. Its name must not look like a 64-hex file name.
+  - **Recommended: option 2.** "No partial output" then holds even when
+    the trap cannot run. The likely operator mistakes (a sample directory
+    for a full bundle; a fetch made before a re-lock) fail with their own
+    names. The cost is one small file, written last, and its U9 check.
+  - Who rules: the orchestrator. Deadline: before U8's RED, since the
+    record is U8's output and U9's input.
+
+- **Q77. Deferred 2026-10-28 (orchestrator): not blocking U8.** Decided
+  before the next real `sources_lock.sh` run. *(Amended 2026-10-28, analyst, U8 orchestrator rulings.)*
+  Are the lock run's SBOM copies committed?
+  *(Added 2026-10-28, analyst, U8 plan.)*
+  - Context:
+    - U8-12 (U7d item 13) makes `sources_lock.sh` copy the run's six
+      SPDX documents into `--evidence-dir/sboms/`. The purpose is to
+      compute within-key package counts from evidence (O3; R1-N2, the
+      neo4j 72 against 73 rows).
+    - The evidence dir of the real runs was under `docs/evidence/`
+      (`u7d/`), and its files were committed. The six SPDX documents'
+      size is not measured. The repository precedent is derived
+      fixtures (`tests/fixtures/sbom-u3/*.pkgs.tsv`), not whole SBOMs.
+  - Options:
+    1. Commit the six SBOMs with the run's evidence.
+    2. Keep them on the maintainer host, and commit a derived
+       per-key package-count file plus the SHA-256 of each SBOM.
+    3. Commit them only under a size budget the orchestrator sets.
+  - **Recommended: option 2**, after measuring their size at the first
+    real run. It follows the fixture precedent, keeps the repository
+    small, and still makes the O3 within-key comparison reviewable. The
+    hashes bind the counts to the documents the run read.
+  - Who rules: the orchestrator. Deadline: the next real
+    `sources_lock.sh` run (a re-lock; none is planned in U8).
 
 ## platform-skeleton
 

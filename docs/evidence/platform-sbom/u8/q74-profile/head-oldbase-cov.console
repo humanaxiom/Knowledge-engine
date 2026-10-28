@@ -1,0 +1,11 @@
+== head-oldbase cov: 46 modules; nproc=24; head=0630586
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 1ms
+Installed 1 package in 2ms
+== head-oldbase cov: real 799.572 s, user 575.152 s, sys 146.354 s (incl. all children)
+== head-oldbase cov: rc=0
+----------------------------------------------------------------------
+Ran 1140 tests in 797.604s
+
+OK (skipped=8)

@@ -1,0 +1,123 @@
+"""Timing wrapper around `python -m unittest <args>` (measurement only).
+
+Usage: profrun.py OUT.json <unittest args...>
+Records, per test: wall (startTest->stopTest), own-process CPU, reaped-children
+CPU, and the 'gap' before the test (setUpClass/setUpModule/tearDownClass of the
+previous class), so per-test stop-to-stop deltas sum to the whole run.
+"""
+import json
+import os
+import sys
+import time
+import unittest
+
+T0 = time.perf_counter()
+C0 = time.process_time()
+
+
+def _child_cpu():
+    t = os.times()
+    return t.children_user + t.children_system
+
+
+out_path = sys.argv[1]
+args = sys.argv[2:]
+# Behave like `python -m unittest`: cwd first on sys.path, not this script's dir.
+sys.path[0] = os.getcwd()
+
+records = []
+marks = {}
+spawns = []
+if os.environ.get("PROF_COUNT_SPAWNS") == "1":
+    import subprocess
+    _orig_init = subprocess.Popen.__init__
+
+    def _counting_init(self, args, *a, **k):
+        try:
+            argv0 = args if isinstance(args, (str, bytes)) else args[0]
+            spawns.append(os.path.basename(os.fsdecode(argv0)).split()[0] if argv0 else "?")
+        except Exception:
+            spawns.append("?")
+        return _orig_init(self, args, *a, **k)
+    subprocess.Popen.__init__ = _counting_init
+
+
+class TimingResult(unittest.TextTestResult):
+    def startTest(self, test):
+        now_w, now_c, now_k = time.perf_counter(), time.process_time(), _child_cpu()
+        last = marks.get("last")
+        if last is None:
+            last = (marks["load_end_w"], marks["load_end_c"], marks["load_end_k"])
+        self._sp = len(spawns)
+        self._st = (now_w, now_c, now_k, now_w - last[0], now_c - last[1], now_k - last[2])
+        super().startTest(test)
+
+    def _outcome(self, test, kind):
+        self._kind = kind
+
+    def addSuccess(self, test):
+        self._kind = "ok"; super().addSuccess(test)
+
+    def addFailure(self, test, err):
+        self._kind = "FAIL"; super().addFailure(test, err)
+
+    def addError(self, test, err):
+        self._kind = "ERROR"; super().addError(test, err)
+
+    def addSkip(self, test, reason):
+        self._kind = "skip"; super().addSkip(test, reason)
+
+    def addExpectedFailure(self, test, err):
+        self._kind = "xfail"; super().addExpectedFailure(test, err)
+
+    def addUnexpectedSuccess(self, test):
+        self._kind = "xpass"; super().addUnexpectedSuccess(test)
+
+    def stopTest(self, test):
+        super().stopTest(test)
+        now_w, now_c, now_k = time.perf_counter(), time.process_time(), _child_cpu()
+        w0, c0, k0, gw, gc, gk = self._st
+        records.append({
+            "id": test.id(),
+            "result": getattr(self, "_kind", "?"),
+            "wall": now_w - w0, "cpu": now_c - c0, "child_cpu": now_k - k0,
+            "gap_wall": gw, "gap_cpu": gc, "gap_child_cpu": gk,
+            "spawns": dict(__import__("collections").Counter(spawns[self._sp:])),
+        })
+        self._kind = "?"
+        marks["last"] = (now_w, now_c, now_k)
+
+
+class TimingRunner(unittest.TextTestRunner):
+    resultclass = TimingResult
+
+    def run(self, test):
+        marks["load_end_w"] = time.perf_counter()
+        marks["load_end_c"] = time.process_time()
+        marks["load_end_k"] = _child_cpu()
+        return super().run(test)
+
+
+prog = None
+rc = 0
+try:
+    prog = unittest.main(module=None, argv=["python -m unittest"] + args,
+                         testRunner=TimingRunner, exit=False)
+    rc = 0 if prog.result.wasSuccessful() else 1
+finally:
+    end_w, end_c, end_k = time.perf_counter(), time.process_time(), _child_cpu()
+    summary = {
+        "argv": args,
+        "total_wall": end_w - T0, "total_cpu": end_c - C0, "total_child_cpu": end_k,
+        "load_wall": marks.get("load_end_w", end_w) - T0,
+        "load_cpu": marks.get("load_end_c", end_c) - C0,
+        "tail_wall": end_w - marks["last"][0] if "last" in marks else None,
+        "tests": len(records),
+        "nproc": os.cpu_count(),
+        "sched_affinity": len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else None,
+        "coverage_active": "coverage" in sys.modules and bool(getattr(sys, "gettrace", lambda: None)()),
+        "records": records,
+    }
+    with open(out_path, "w") as f:
+        json.dump(summary, f, indent=1)
+sys.exit(rc)

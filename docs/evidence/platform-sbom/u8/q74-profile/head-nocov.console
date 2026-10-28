@@ -1,0 +1,7 @@
+== head nocov: 46 modules; nproc=24; head=0630586
+== head nocov: real 737.499 s, user 517.437 s, sys 135.694 s (incl. all children)
+== head nocov: rc=1
+----------------------------------------------------------------------
+Ran 1140 tests in 735.911s
+
+FAILED (failures=30, skipped=8)

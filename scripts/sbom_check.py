@@ -1565,23 +1565,18 @@ def _entry_problems(key: Any, entry: Any, hosts: set[str], today: Any) -> list[s
     return p
 
 
-def lock_problems(lock: Any, policy: dict[str, Any], docs: dict[str, Any], arch: str,
-                  today: Any = None) -> list[str]:
-    """The lock's text checked: schema, canonical form, every URL host in
-    the policy `hosts` and in its kind's hosts, per-kind file rules, and
-    coverage both ways for `arch` against what `docs` need (N5 amendment,
-    U7, items 2, 4, 6 and rework round 1). Wrong types are problems, never
-    exceptions."""
+def _entry_stage(lock: Any, policy: dict[str, Any], today: Any) -> tuple[list[str], dict[str, Any] | None]:
+    """The lock's own rules, before any SBOM is read: canonical text, the
+    top-level keys, `format` and every entry (`_entry_problems`). The second
+    value is the components object, or None when the text stopped the checks."""
     import datetime
     today = today or datetime.datetime.now(datetime.timezone.utc).date()
-    if arch not in LOCK_ARCHES:
-        return [f"lock: arch {_clean(repr(arch))} is not amd64 or arm64"]
     if not isinstance(lock, str):
-        return ["lock: the lock is not text"]
+        return ["lock: the lock is not text"], None
     try:
         data = json.loads(lock)
     except (ValueError, RecursionError) as exc:
-        return [f"lock: not JSON: {_clean(exc)}"]
+        return [f"lock: not JSON: {_clean(exc)}"], None
     p = []
     try:
         if lock != lock_text(data):
@@ -1589,15 +1584,73 @@ def lock_problems(lock: Any, policy: dict[str, Any], docs: dict[str, Any], arch:
     except (ValueError, RecursionError):
         p.append("lock: not in canonical form: regenerate")
     if not isinstance(data, dict) or set(data) != {"format", "components"}:
-        return p + ["lock: top-level keys are not exactly format and components"]
+        return p + ["lock: top-level keys are not exactly format and components"], None
     if data["format"] != 1 or type(data["format"]) is not int:
         p.append(f"lock: format {_clean(repr(data['format']))} is not 1")
     comps = data["components"]
     if not isinstance(comps, dict):
-        return p + ["lock: components is not an object"]
+        return p + ["lock: components is not an object"], None
     hosts = {h for h in policy.get("hosts") or [] if isinstance(h, str)}
     for key, entry in sorted(comps.items()):
         p += _entry_problems(key, entry, hosts, today)
+    return p + _shared_sha256_problems(comps), comps
+
+
+def _shared_sha256_problems(comps: dict[str, Any]) -> list[str]:
+    """U8 (security M-2): one sha256 carries one size, one upstream alg and
+    one upstream value across every entry and arch, so a file the fetch holds
+    once stands for the same size and digests wherever the lock lists it. The
+    reference is the first entry in lock order holding that sha256 (for a
+    digest, the first holding it under that alg). Malformed rows are left to
+    `_entry_problems`."""
+    p: list[str] = []
+    sizes: dict[str, tuple[int, str]] = {}
+    algs: dict[str, tuple[str, str]] = {}
+    values: dict[tuple[str, str], tuple[str, str]] = {}
+    for key, entry in sorted(comps.items()):
+        files = entry.get("files") if isinstance(entry, dict) else None
+        for f in files if isinstance(files, list) else []:
+            up = f.get("upstream") if isinstance(f, dict) else None
+            if not (isinstance(up, dict) and isinstance(f.get("sha256"), str) and type(f.get("size")) is int
+                    and isinstance(f.get("name"), str) and isinstance(up.get("alg"), str)
+                    and isinstance(up.get("value"), str)):
+                continue
+            sha, size = f["sha256"], f["size"]
+            where = f"lock: {_clean(key)}: {_clean(f['name'])}: sha256 {_clean(sha)}"
+            first = sizes.setdefault(sha, (size, key))
+            if first[0] != size:
+                p.append(f"{where} is size {size} here but {first[0]} in {_clean(first[1])}")
+            alg0, key0 = algs.setdefault(sha, (up["alg"], key))
+            if alg0 != up["alg"] and size > 0:  # an empty file is one content under any alg (U7d size-0 rule)
+                p.append(f"{where} has upstream alg {_clean(up['alg'])} here but {_clean(alg0)} in {_clean(key0)}")
+                continue
+            if alg0 != up["alg"]:
+                continue
+            ref = values.setdefault((sha, up["alg"]), (up["value"], key))
+            if ref[0] != up["value"]:
+                p.append(f"{where} has {_clean(up['alg'])} {_clean(up['value'])} here but {_clean(ref[0])} in {_clean(ref[1])}")
+    return p
+
+
+def lock_entry_problems(lock: Any, policy: dict[str, Any], today: Any = None) -> list[str]:
+    """`lock_problems` without the SBOM half (U8, design item 1): the lock's
+    text and every entry's rules, no coverage and no pgdg suite binding. The
+    fetch client runs it before any request."""
+    return _entry_stage(lock, policy, today)[0]
+
+
+def lock_problems(lock: Any, policy: dict[str, Any], docs: dict[str, Any], arch: str,
+                  today: Any = None) -> list[str]:
+    """The lock's text checked: schema, canonical form, every URL host in
+    the policy `hosts` and in its kind's hosts, per-kind file rules, and
+    coverage both ways for `arch` against what `docs` need (N5 amendment,
+    U7, items 2, 4, 6 and rework round 1). Wrong types are problems, never
+    exceptions."""
+    if arch not in LOCK_ARCHES:
+        return [f"lock: arch {_clean(repr(arch))} is not amd64 or arm64"]
+    p, comps = _entry_stage(lock, policy, today)
+    if comps is None:
+        return p
     needs, mapping = lock_needs(policy, docs)
     p += mapping
     for key in sorted(k for k in comps if isinstance(k, str) and k.startswith("pgdg:") and k in needs):
@@ -1655,6 +1708,19 @@ def sample_keys(lock: dict[str, Any], arch: str) -> list[str]:
         if kind not in best or (total, key) < best[kind]:
             best[kind] = (total, key)
     return sorted(k for _, k in best.values())
+
+
+def fetch_plan(lock: dict[str, Any], arch: str, which: str) -> list[tuple[str, dict[str, Any]]]:
+    """U8: the (key, file) pairs the fetch client requests, sorted by key then
+    the entry's file order. `sample` is `sample_keys`; `full` is every key
+    listed for `arch`; any other set is a ValueError. Call it only on a lock
+    `lock_entry_problems` passed."""
+    if which not in ("sample", "full"):
+        raise ValueError(f"set {which!r} is not sample or full")
+    comps = lock.get("components") or {}
+    keys = sample_keys(lock, arch) if which == "sample" else sorted(
+        k for k, e in comps.items() if arch in (e.get("arches") or []))
+    return [(k, f) for k in keys for f in comps[k]["files"]]
 
 
 def lock_check(a: argparse.Namespace) -> int:

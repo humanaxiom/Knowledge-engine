@@ -1,0 +1,662 @@
+# U8a security probes (2026-10-28, security). Fake network via F.R.OPENER only; socket.create_connection patched to fail.
+# Run: python -I probe.py <repo> ; python -I probe2.py <repo> probe.py (scripts below the output). Profile paths redacted.
+
+## probe.py output
+<profile>\AppData\Local\Temp\claude\c--repos-Knowledge-engine\d5694db3-7c12-4346-835e-30f12d337cee\scratchpad\u8a\probe.py:94: SyntaxWarning: invalid escape sequence '\@'
+  show("P5f backslash", run(j.text(), {T.JAXB_URL: (302, {"Location": "https://repo1.maven.org\@evil.example.org/x"}, b"")}))
+== P1 arm64 on amd64-only lock (sample)
+ rc=0 calls=0 listing=['fetch.json']
+ stdout='bundle_fetch: fetched 0 files, 0 bytes, 0 components (sample, arm64) in 0.0 s'
+ stderr=''
+
+== P1b arm64 full
+ rc=0 calls=0 listing=['fetch.json']
+ stdout='bundle_fetch: fetched 0 files, 0 bytes, 0 components (full, arm64) in 0.0 s'
+ stderr=''
+
+== P1c empty components
+ rc=0 calls=0 listing=['fetch.json']
+ stdout='bundle_fetch: fetched 0 files, 0 bytes, 0 components (sample, amd64) in 0.0 s'
+ stderr=''
+
+P2 lock_entry_problems: []
+== P2 held file with a wrong upstream sha512 (APKBUILD agrees with the wrong value)
+ rc=1 calls=2 listing=['98f3efa8507cf7233fe8be6f86cc94ee487804085f82ab28b49fbeb2f2dbe5dc']
+ stdout='bundle_fetch: ok apk:readline@8.2.13-r0 APKBUILD sha256=98f3efa8507cf7233fe8be6f86cc94ee487804085f82ab28b49fbeb2f2dbe5dc size=298 hops=gitlab.alpinelinux.org'
+ stderr='bundle_fetch: FAIL (stage fetch: distfiles.alpinelinux.org: readline-8.2.13.tar.gz: sha512 mismatch: got a6bf625ca40624d1339ccdf77c5bc54753b2e0cc277044ca2cadeedc44904c4c9261603d592413912332e0c2fd8d596eaa63658df9091179e65e902ee0205405, APKBUILD sha512sums at 190e313cb64eaa7a14dd5748fd18010d3f5310d0 says eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee; no retry)'
+
+P2b lock_entry_problems: []
+== P2b held file with a different lock size (dsc check catches?)
+ rc=1 calls=5 listing=['69c15fe535e35be836496c676aaefea226bb15ca29c988cfc44fa2f8fb48c4d3', '92406dedca6453a495d8755407aa5b3489f12a9933852dc4b0b65c0b8b192002', 'a314137092297d9dece12524f32e611bc00f6bb20d2b85646e10fa6dbf42c393', 'a4027c490bd9242f72c2d8c7162a9050d262997bd684e31299f6038441218846', 'e9d31a43fd8f76cc9f2cc97c4d925f39e3acc13f57938b4ca5b1bc23399ba5fd']
+ stdout='bundle_fetch: ok deb:bash@5.2.15-2 bash_5.2.15-2.dsc sha256=69c15fe535e35be836496c676aaefea226bb15ca29c988cfc44fa2f8fb48c4d3 size=427 hops=snapshot.debian.org\nbundle_fetch: ok deb:bash@5.2.15-2 bash_5.2.15.orig.tar.gz sha256=a314137092297d9dece12524f32e611bc00f6bb20d2b85646e10fa6dbf42c393 size=400 hops=snapshot.debian.org\nbundle_fetch: ok deb:bash@5.2.15-2 bash_5.2.15-2.debian.tar.xz sha256=92406dedca6453a495d8755407aa5b3489f12a9933852dc4b0b65c0b8b192002 size=120 hops=snapshot.debian.org\nbundle_fetch: ok deb:bash@5.2.15-2+deb12u1 bash_5.2.15-2+deb12u1.dsc sha256=a4027c490bd9242f72c2d8c7162a9050d262997bd684e31299f6038441218846 size=451 hops=snapshot.debian.org\nbundle_fetch: held deb:bash@5.2.15-2+deb12u1 bash_5.2.15.orig.tar.gz sha256=a314137092297d9dece12524f32e611bc00f6bb20d2b85646e10fa6dbf42c393 size=401 (fetched for deb:bash@5.2.15-2 bash_5.2.15.orig.tar.gz)\nbundle_fetch: ok deb:bash@5.2.15-2+deb12u1 bash_5.2.15-2+deb12u1.debian.tar.xz sha256=e9d31a43fd8f76cc9f2cc97c4d925f39e3acc13f57938b4ca5b1bc23399ba5fd size=100 hops=snapshot.debian.org'
+ stderr='bundle_fetch: FAIL (stage fetch: snapshot.debian.org: bash_5.2.15-2+deb12u1.dsc: Files/Checksums-Sha256 differ from the lock entry; no retry)'
+
+== P3 refused hop, query with a space
+ rc=1 calls=2 listing=[]
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage fetch: github.com: OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz: redirect to https://evil.example.org/x?<query omitted> BBBBLEAK&x=1 refused: not printable ASCII; no retry)'
+
+== P3b refused hop, query with NBSP
+ rc=1 calls=2 listing=[]
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage fetch: github.com: OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz: redirect to https://release-assets.githubusercontent.com/x?<query omitted>\xa0CCCCLEAK refused: not printable ASCII; no retry)'
+
+== P4 pre-existing .part
+ rc=1 calls=0 listing=['.8b07d220146c244c30a7f03e05cb3a163d9ce154c4598ef3e6c6969e4f915886.part']
+ stdout=''
+ stderr="bundle_fetch: FAIL (stage fetch: FileExistsError: [Errno 17] File exists: '<profile>\\\\AppData\\\\Local\\\\Temp\\\\u8a-probe-vaty8nd7\\\\out\\\\.8b07d220146c244c30a7f03e05cb3a163d9ce154c4598ef3e6c6969e4f915886.part'; no retry)"
+
+== P4b pre-existing <sha> holding junk (replaced?)
+ rc=0 calls=1 listing=['8b07d220146c244c30a7f03e05cb3a163d9ce154c4598ef3e6c6969e4f915886', 'fetch.json']
+ stdout='bundle_fetch: ok maven:javax.xml.bind:jaxb-api@2.2.12 jaxb-api-2.2.12-sources.jar sha256=8b07d220146c244c30a7f03e05cb3a163d9ce154c4598ef3e6c6969e4f915886 size=150 hops=repo1.maven.org\nbundle_fetch: fetched 1 files, 150 bytes, 1 components (sample, amd64) in 0.0 s'
+ stderr=''
+
+== P4c pre-existing <sha> is a directory
+ rc=1 calls=1 listing=['8b07d220146c244c30a7f03e05cb3a163d9ce154c4598ef3e6c6969e4f915886']
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage fetch: repo1.maven.org: jaxb-api-2.2.12-sources.jar: write failed: PermissionError; no retry)'
+
+== P4d pre-existing fetch.json, run fails
+ rc=1 calls=1 listing=['fetch.json']
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage fetch: repo1.maven.org: jaxb-api-2.2.12-sources.jar: HTTP 404: https://repo1.maven.org/maven2/javax/xml/bind/jaxb-api/2.2.12/jaxb-api-2.2.12-sources.jar; no retry)'
+
+== P4e pre-existing .fetch.json.part
+ rc=1 calls=1 listing=['8b07d220146c244c30a7f03e05cb3a163d9ce154c4598ef3e6c6969e4f915886']
+ stdout='bundle_fetch: ok maven:javax.xml.bind:jaxb-api@2.2.12 jaxb-api-2.2.12-sources.jar sha256=8b07d220146c244c30a7f03e05cb3a163d9ce154c4598ef3e6c6969e4f915886 size=150 hops=repo1.maven.org'
+ stderr='bundle_fetch: FAIL (stage fetch: fetch.json: write failed: FileExistsError; no retry)'
+
+  (symlink not permitted here: OSError )
+== P4f .part is a dangling symlink
+ rc=0 calls=1 listing=['8b07d220146c244c30a7f03e05cb3a163d9ce154c4598ef3e6c6969e4f915886', 'fetch.json']
+ stdout='bundle_fetch: ok maven:javax.xml.bind:jaxb-api@2.2.12 jaxb-api-2.2.12-sources.jar sha256=8b07d220146c244c30a7f03e05cb3a163d9ce154c4598ef3e6c6969e4f915886 size=150 hops=repo1.maven.org\nbundle_fetch: fetched 1 files, 150 bytes, 1 components (sample, amd64) in 0.0 s'
+ stderr=''
+
+== P5 maven -> files.pythonhosted.org (listed host, other kind)
+ rc=0 calls=2 listing=['8b07d220146c244c30a7f03e05cb3a163d9ce154c4598ef3e6c6969e4f915886', 'fetch.json']
+ stdout='bundle_fetch: ok maven:javax.xml.bind:jaxb-api@2.2.12 jaxb-api-2.2.12-sources.jar sha256=8b07d220146c244c30a7f03e05cb3a163d9ce154c4598ef3e6c6969e4f915886 size=150 hops=repo1.maven.org,files.pythonhosted.org\nbundle_fetch: fetched 1 files, 150 bytes, 1 components (sample, amd64) in 0.0 s'
+ stderr=''
+
+== P5b redirect loop past 5
+ rc=1 calls=6 listing=[]
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage fetch: repo1.maven.org: jaxb-api-2.2.12-sources.jar: more than 5 redirects: https://repo1.maven.org/maven2/javax/xml/bind/jaxb-api/2.2.12/jaxb-api-2.2.12-sources.jar; no retry)'
+
+== P5c scheme-relative to an unlisted host
+ rc=1 calls=1 listing=[]
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage fetch: repo1.maven.org: jaxb-api-2.2.12-sources.jar: redirect to evil.example.org refused: not in hosts; no retry)'
+
+== P5d trailing-dot host
+ rc=1 calls=1 listing=[]
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage fetch: repo1.maven.org: jaxb-api-2.2.12-sources.jar: redirect to repo1.maven.org. refused: not in hosts; no retry)'
+
+== P5e userinfo host confusion
+ rc=1 calls=1 listing=[]
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage fetch: repo1.maven.org: jaxb-api-2.2.12-sources.jar: redirect to https://repo1.maven.org@evil.example.org/x refused: userinfo; no retry)'
+
+== P5f backslash
+ rc=1 calls=1 listing=[]
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage fetch: repo1.maven.org: jaxb-api-2.2.12-sources.jar: redirect to https://repo1.maven.org\\@evil.example.org/x refused: userinfo; no retry)'
+
+== P5g 1xx/204 empty body
+ rc=1 calls=1 listing=[]
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage fetch: repo1.maven.org: jaxb-api-2.2.12-sources.jar: size mismatch: got 0, lock says 150; no retry)'
+
+== P7 policy hosts holds a number
+ rc=1 calls=0 listing=[]
+ stdout=''
+ stderr="bundle_fetch: FAIL (stage lock: AttributeError: 'int' object has no attribute 'lower'; no retry)"
+
+== P7b policy is a list
+ rc=1 calls=0 listing=[]
+ stdout=''
+ stderr="bundle_fetch: FAIL (stage lock: AttributeError: 'list' object has no attribute 'get'; no retry)"
+
+
+## probe2.py output
+Q2 lock_entry_problems: []
+== Q2 held apk distfile: B's upstream sha512 is not the bytes' sha512
+ rc=0 calls=3 listing=['3f541b706f299f6732ab251fc4b499aa9347a0253a570913129d736ae33cc7f3', '9198e4dbde4de640441270dd1cd5094256aed772e192cf9a9144c7c6afc90991', 'f7dd28b8956c2704c4de87dd7d3aaa7d4c3e92209dccbbc2080cb1da8cca1476', 'fetch.json']
+ stdout='bundle_fetch: ok apk:readline@8.2.13-r0 APKBUILD sha256=f7dd28b8956c2704c4de87dd7d3aaa7d4c3e92209dccbbc2080cb1da8cca1476 size=253 hops=gitlab.alpinelinux.org\nbundle_fetch: ok apk:readline@8.2.13-r0 readline-8.2.13.tar.gz sha256=9198e4dbde4de640441270dd1cd5094256aed772e192cf9a9144c7c6afc90991 size=300 hops=distfiles.alpinelinux.org\nbundle_fetch: ok apk:readline@8.2.13-r1 APKBUILD sha256=3f541b706f299f6732ab251fc4b499aa9347a0253a570913129d736ae33cc7f3 size=298 hops=gitlab.alpinelinux.org\nbundle_fetch: held apk:readline@8.2.13-r1 readline-8.2.13.tar.gz sha256=9198e4dbde4de640441270dd1cd5094256aed772e192cf9a9144c7c6afc90991 size=300 (fetched for apk:readline@8.2.13-r0 readline-8.2.13.tar.gz)\nbundle_fetch: fetched 3 files, 851 bytes, 2 components (full, amd64) in 0.0 s'
+ stderr=''
+
+Q2b lock_entry_problems: []
+== Q2b held apk distfile: B's lock size is not the bytes' size
+ rc=0 calls=3 listing=['6d30d7ca1ee05384bba2447efbf69faf2f84251769936f2e35c04e3f85fa5283', '9198e4dbde4de640441270dd1cd5094256aed772e192cf9a9144c7c6afc90991', 'f7dd28b8956c2704c4de87dd7d3aaa7d4c3e92209dccbbc2080cb1da8cca1476', 'fetch.json']
+ stdout='bundle_fetch: ok apk:readline@8.2.13-r0 APKBUILD sha256=f7dd28b8956c2704c4de87dd7d3aaa7d4c3e92209dccbbc2080cb1da8cca1476 size=253 hops=gitlab.alpinelinux.org\nbundle_fetch: ok apk:readline@8.2.13-r0 readline-8.2.13.tar.gz sha256=9198e4dbde4de640441270dd1cd5094256aed772e192cf9a9144c7c6afc90991 size=300 hops=distfiles.alpinelinux.org\nbundle_fetch: ok apk:readline@8.2.13-r1 APKBUILD sha256=6d30d7ca1ee05384bba2447efbf69faf2f84251769936f2e35c04e3f85fa5283 size=298 hops=gitlab.alpinelinux.org\nbundle_fetch: held apk:readline@8.2.13-r1 readline-8.2.13.tar.gz sha256=9198e4dbde4de640441270dd1cd5094256aed772e192cf9a9144c7c6afc90991 size=9999 (fetched for apk:readline@8.2.13-r0 readline-8.2.13.tar.gz)\nbundle_fetch: fetched 3 files, 851 bytes, 2 components (full, amd64) in 0.0 s'
+ stderr=''
+
+
+## probe.py
+"""U8a security probes: fake network via F.R.OPENER only; no real socket."""
+import contextlib, io, json, os, shutil, socket, sys, tempfile
+from pathlib import Path
+from types import SimpleNamespace
+ROOT = Path(sys.argv[1]).resolve()
+sys.path.insert(0, str(ROOT))
+from unittest import mock
+import tests.test_sources_fetch as T
+from tests.test_sources_lock import canon, policy
+
+def run(text, routes, arch="amd64", which="sample", pre=None, pol=None):
+    F = T.load_fetch()
+    tmp = Path(tempfile.mkdtemp(prefix="u8a-probe-"))
+    lp = tmp / "lock.json"; lp.write_bytes(text.encode())
+    pp = tmp / "pol.json"; pp.write_text(json.dumps(pol or policy()))
+    out = tmp / "out"; out.mkdir()
+    if pre: pre(out)
+    net = T.Net(routes, out)
+    o, e = io.StringIO(), io.StringIO()
+    with mock.patch.object(F.R, "OPENER", net), mock.patch.object(F.R, "SLEEP", lambda *a: (_ for _ in ()).throw(AssertionError("sleep"))), \
+         mock.patch("socket.create_connection", side_effect=AssertionError("real")), \
+         contextlib.redirect_stdout(o), contextlib.redirect_stderr(e):
+        rc = F.main(["--lock", str(lp), "--policy", str(pp), "--out", str(out), "--arch", arch, "--set", which])
+    listing = sorted(os.listdir(out))
+    shutil.rmtree(tmp, True)
+    return rc, o.getvalue(), e.getvalue(), net.calls, listing
+
+def show(title, r):
+    rc, o, e, calls, ls = r
+    print(f"== {title}\n rc={rc} calls={len(calls)} listing={ls}\n stdout={o.strip()!r}\n stderr={e.strip()!r}\n")
+
+b = T.one_per_kind()
+# P1 empty plan: arm64 on an amd64-only lock
+show("P1 arm64 on amd64-only lock (sample)", run(b.text(), b.routes(), arch="arm64"))
+show("P1b arm64 full", run(b.text(), b.routes(), arch="arm64", which="full"))
+# P1c components {}
+show("P1c empty components", run(canon({"format": 1, "components": {}}), {}))
+
+# P2 held path: entry B shares sha256 with A but lists a different size and upstream value
+w = T.LockBuilder()
+data = T.blob("readline tarball", 300)
+w.apk("apk:readline@8.2.13-r1", distfiles=[("readline-8.2.13.tar.gz", data)])
+c2 = w.apk("apk:readline@8.2.13-r0", branch="v3.22", distfiles=[("readline-8.2.13.tar.gz", data)],
+           sums=[("readline-8.2.13.tar.gz", "e" * 128)], pad=3)
+e2 = w.components["apk:readline@8.2.13-r0"]
+for f in e2["files"]:
+    if f["name"] == "readline-8.2.13.tar.gz":
+        f["upstream"]["value"] = "e" * 128
+from tests.test_sbom_bundle import load_sbom_check
+S = load_sbom_check()
+print("P2 lock_entry_problems:", S.lock_entry_problems(w.text(), policy()))
+show("P2 held file with a wrong upstream sha512 (APKBUILD agrees with the wrong value)", run(w.text(), w.routes(), which="full"))
+# P2b held with a different size
+w2 = T.LockBuilder()
+w2.deb("deb:bash@5.2.15-2", [("bash_5.2.15.orig.tar.gz", T.blob("bash orig", 400)), ("bash_5.2.15-2.debian.tar.xz", T.blob("d2", 120))])
+w2.deb("deb:bash@5.2.15-2+deb12u1", [("bash_5.2.15.orig.tar.gz", T.blob("bash orig", 400)), ("bash_5.2.15-2+deb12u1.debian.tar.xz", T.blob("d3", 100))])
+lk = w2.lock()
+for f in lk["components"]["deb:bash@5.2.15-2+deb12u1"]["files"]:
+    if f["name"] == "bash_5.2.15.orig.tar.gz": f["size"] = 401
+print("P2b lock_entry_problems:", S.lock_entry_problems(canon(lk), policy()))
+show("P2b held file with a different lock size (dsc check catches?)", run(canon(lk), w2.routes(), which="full"))
+
+# P3 redaction: Location with a space after the query
+tem = T.only(T.one_per_kind(), T.TEM_KEY)
+loc = "https://evil.example.org/x?sig=AAAA BBBBLEAK&x=1"
+show("P3 refused hop, query with a space", run(tem.text(), {T.TEM_URL: (302, {"Location": T.TEM_HOP}, b""), T.TEM_HOP: (302, {"Location": loc}, b"")}))
+loc2 = "https://release-assets.githubusercontent.com/x?sig=AAAA\xa0CCCCLEAK"
+show("P3b refused hop, query with NBSP", run(tem.text(), {T.TEM_URL: (302, {"Location": T.TEM_HOP}, b""), T.TEM_HOP: (302, {"Location": loc2}, b"")}))
+
+# P4 a pre-existing .part from a killed run, and a pre-existing <sha> file with junk
+j = T.only(T.one_per_kind(), T.JAXB_KEY)
+f0 = j.components[T.JAXB_KEY]["files"][0]
+show("P4 pre-existing .part", run(j.text(), j.routes(), pre=lambda out: (out / f".{f0['sha256']}.part").write_bytes(b"junk")))
+show("P4b pre-existing <sha> holding junk (replaced?)", run(j.text(), j.routes(), pre=lambda out: (out / f0['sha256']).write_bytes(b"junk")))
+show("P4c pre-existing <sha> is a directory", run(j.text(), j.routes(), pre=lambda out: (out / f0['sha256']).mkdir()))
+show("P4d pre-existing fetch.json, run fails", run(j.text(), {T.JAXB_URL: (404, {}, b"")}, pre=lambda out: (out / "fetch.json").write_text("{}")))
+show("P4e pre-existing .fetch.json.part", run(j.text(), j.routes(), pre=lambda out: (out / ".fetch.json.part").write_text("x")))
+def symlink_pre(out):
+    try:
+        os.symlink(str(out.parent / "outside"), str(out / f".{f0['sha256']}.part"))
+    except OSError as exc:
+        print("  (symlink not permitted here:", type(exc).__name__, ")")
+show("P4f .part is a dangling symlink", run(j.text(), j.routes(), pre=symlink_pre))
+
+# P5 a redirect to another listed host of another kind, and the 6-hop limit
+show("P5 maven -> files.pythonhosted.org (listed host, other kind)", run(j.text(), {T.JAXB_URL: (302, {"Location": "https://files.pythonhosted.org/x.jar"}, b""), "https://files.pythonhosted.org/x.jar": j.bodies[T.JAXB_URL]}))
+chain = {T.JAXB_URL: (302, {"Location": "https://repo1.maven.org/h1"}, b"")}
+for i in range(1, 8):
+    chain[f"https://repo1.maven.org/h{i}"] = (302, {"Location": f"https://repo1.maven.org/h{i+1}"}, b"")
+show("P5b redirect loop past 5", run(j.text(), chain))
+show("P5c scheme-relative to an unlisted host", run(j.text(), {T.JAXB_URL: (302, {"Location": "//evil.example.org/x"}, b"")}))
+show("P5d trailing-dot host", run(j.text(), {T.JAXB_URL: (302, {"Location": "https://repo1.maven.org./x"}, b"")}))
+show("P5e userinfo host confusion", run(j.text(), {T.JAXB_URL: (302, {"Location": "https://repo1.maven.org@evil.example.org/x"}, b"")}))
+show("P5f backslash", run(j.text(), {T.JAXB_URL: (302, {"Location": "https://repo1.maven.org\@evil.example.org/x"}, b"")}))
+show("P5g 1xx/204 empty body", run(j.text(), {T.JAXB_URL: (204, {}, b"")}))
+
+# P6 a non-UTF-8 / oversize dsc after verification; a dsc entry whose .dsc is held
+# P7 traceback hunting: a policy with a non-string host; a lock path that is a directory
+show("P7 policy hosts holds a number", run(j.text(), j.routes(), pol={**policy(), "hosts": policy()["hosts"] + [5]}))
+show("P7b policy is a list", run(j.text(), j.routes(), pol=[1]))
+
+## probe2.py
+import sys
+from pathlib import Path
+sys.argv_root = sys.argv[1]
+exec(Path(sys.argv[2]).read_text().split("b = T.one_per_kind()")[0])
+from tests.test_sbom_bundle import load_sbom_check
+S = load_sbom_check()
+data = T.blob("readline tarball", 300)
+# A = r0 (fetched first, true), B = r1 (held; lock upstream sha512 wrong, APKBUILD agrees with the lock)
+w = T.LockBuilder()
+w.apk("apk:readline@8.2.13-r0", branch="v3.22", distfiles=[("readline-8.2.13.tar.gz", data)])
+w.apk("apk:readline@8.2.13-r1", distfiles=[("readline-8.2.13.tar.gz", data)], sums=[("readline-8.2.13.tar.gz", "e" * 128)], pad=3)
+for f in w.components["apk:readline@8.2.13-r1"]["files"]:
+    if f["name"] == "readline-8.2.13.tar.gz":
+        f["upstream"]["value"] = "e" * 128
+print("Q2 lock_entry_problems:", S.lock_entry_problems(w.text(), policy()))
+show("Q2 held apk distfile: B's upstream sha512 is not the bytes' sha512", run(w.text(), w.routes(), which="full"))
+# B's held distfile with another size
+w = T.LockBuilder()
+w.apk("apk:readline@8.2.13-r0", branch="v3.22", distfiles=[("readline-8.2.13.tar.gz", data)])
+w.apk("apk:readline@8.2.13-r1", distfiles=[("readline-8.2.13.tar.gz", data)], pad=3)
+for f in w.components["apk:readline@8.2.13-r1"]["files"]:
+    if f["name"] == "readline-8.2.13.tar.gz":
+        f["size"] = 9999
+print("Q2b lock_entry_problems:", S.lock_entry_problems(w.text(), policy()))
+r = run(w.text(), w.routes(), which="full")
+show("Q2b held apk distfile: B's lock size is not the bytes' size", r)
+
+# ===== Re-audit, rework round 1 (2026-10-28, security): original probes and new probes on the current module =====
+## re-audit r1: probe.py (original probes, current module)
+<profile>\AppData\Local\Temp\claude\c--repos-Knowledge-engine\d5694db3-7c12-4346-835e-30f12d337cee\scratchpad\u8a\probe.py:94: SyntaxWarning: invalid escape sequence '\@'
+  show("P5f backslash", run(j.text(), {T.JAXB_URL: (302, {"Location": "https://repo1.maven.org\@evil.example.org/x"}, b"")}))
+== P1 arm64 on amd64-only lock (sample)
+ rc=1 calls=0 listing=[]
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage lock: the lock lists no entry for arm64; no retry)'
+
+== P1b arm64 full
+ rc=1 calls=0 listing=[]
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage lock: the lock lists no entry for arm64; no retry)'
+
+== P1c empty components
+ rc=1 calls=0 listing=[]
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage lock: the lock lists no entry for amd64; no retry)'
+
+P2 lock_entry_problems: ['lock: apk:readline@8.2.13-r1: readline-8.2.13.tar.gz: sha256 9198e4dbde4de640441270dd1cd5094256aed772e192cf9a9144c7c6afc90991 has sha512 a6bf625ca40624d1339ccdf77c5bc54753b2e0cc277044ca2cadeedc44904c4c9261603d592413912332e0c2fd8d596eaa63658df9091179e65e902ee0205405 here but eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee in apk:readline@8.2.13-r0']
+== P2 held file with a wrong upstream sha512 (APKBUILD agrees with the wrong value)
+ rc=1 calls=0 listing=[]
+ stdout=''
+ stderr='bundle_fetch: lock problem: lock: apk:readline@8.2.13-r1: readline-8.2.13.tar.gz: sha256 9198e4dbde4de640441270dd1cd5094256aed772e192cf9a9144c7c6afc90991 has sha512 a6bf625ca40624d1339ccdf77c5bc54753b2e0cc277044ca2cadeedc44904c4c9261603d592413912332e0c2fd8d596eaa63658df9091179e65e902ee0205405 here but eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee in apk:readline@8.2.13-r0\nbundle_fetch: FAIL (stage lock: lock: apk:readline@8.2.13-r1: readline-8.2.13.tar.gz: sha256 9198e4dbde4de640441270dd1cd5094256aed772e192cf9a9144c7c6afc90991 has sha512 a6bf625ca40624d1339ccdf77c5bc54753b2e0cc277044ca2cadeedc44904c4c9261603d592413912332e0c2fd8d596eaa63658df9091179e65e902ee0205405 here but eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee in apk:readline@8.2.13-r0; no retry)'
+
+P2b lock_entry_problems: ['lock: deb:bash@5.2.15-2+deb12u1: bash_5.2.15.orig.tar.gz: sha256 a314137092297d9dece12524f32e611bc00f6bb20d2b85646e10fa6dbf42c393 is size 401 here but 400 in deb:bash@5.2.15-2']
+== P2b held file with a different lock size (dsc check catches?)
+ rc=1 calls=0 listing=[]
+ stdout=''
+ stderr='bundle_fetch: lock problem: lock: deb:bash@5.2.15-2+deb12u1: bash_5.2.15.orig.tar.gz: sha256 a314137092297d9dece12524f32e611bc00f6bb20d2b85646e10fa6dbf42c393 is size 401 here but 400 in deb:bash@5.2.15-2\nbundle_fetch: FAIL (stage lock: lock: deb:bash@5.2.15-2+deb12u1: bash_5.2.15.orig.tar.gz: sha256 a314137092297d9dece12524f32e611bc00f6bb20d2b85646e10fa6dbf42c393 is size 401 here but 400 in deb:bash@5.2.15-2; no retry)'
+
+== P3 refused hop, query with a space
+ rc=1 calls=2 listing=[]
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage fetch: github.com: OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz: redirect to https://evil.example.org/x?<query omitted> refused: not printable ASCII; no retry)'
+
+== P3b refused hop, query with NBSP
+ rc=1 calls=2 listing=[]
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage fetch: github.com: OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz: redirect to https://release-assets.githubusercontent.com/x?<query omitted> refused: not printable ASCII; no retry)'
+
+== P4 pre-existing .part
+ rc=1 calls=0 listing=['.8b07d220146c244c30a7f03e05cb3a163d9ce154c4598ef3e6c6969e4f915886.part']
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage fetch: repo1.maven.org: jaxb-api-2.2.12-sources.jar: write failed: FileExistsError; no retry)'
+
+== P4b pre-existing <sha> holding junk (replaced?)
+ rc=0 calls=1 listing=['8b07d220146c244c30a7f03e05cb3a163d9ce154c4598ef3e6c6969e4f915886', 'fetch.json']
+ stdout='bundle_fetch: ok maven:javax.xml.bind:jaxb-api@2.2.12 jaxb-api-2.2.12-sources.jar sha256=8b07d220146c244c30a7f03e05cb3a163d9ce154c4598ef3e6c6969e4f915886 size=150 hops=repo1.maven.org\nbundle_fetch: fetched 1 files, 150 bytes, 1 components (sample, amd64) in 0.0 s'
+ stderr=''
+
+== P4c pre-existing <sha> is a directory
+ rc=1 calls=1 listing=['8b07d220146c244c30a7f03e05cb3a163d9ce154c4598ef3e6c6969e4f915886']
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage fetch: repo1.maven.org: jaxb-api-2.2.12-sources.jar: write failed: PermissionError; no retry)'
+
+== P4d pre-existing fetch.json, run fails
+ rc=1 calls=0 listing=['fetch.json']
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage lock: --out already holds fetch.json; no retry)'
+
+== P4e pre-existing .fetch.json.part
+ rc=1 calls=1 listing=['.fetch.json.part', '8b07d220146c244c30a7f03e05cb3a163d9ce154c4598ef3e6c6969e4f915886']
+ stdout='bundle_fetch: ok maven:javax.xml.bind:jaxb-api@2.2.12 jaxb-api-2.2.12-sources.jar sha256=8b07d220146c244c30a7f03e05cb3a163d9ce154c4598ef3e6c6969e4f915886 size=150 hops=repo1.maven.org'
+ stderr='bundle_fetch: FAIL (stage fetch: fetch.json: write failed: FileExistsError; no retry)'
+
+  (symlink not permitted here: OSError )
+== P4f .part is a dangling symlink
+ rc=0 calls=1 listing=['8b07d220146c244c30a7f03e05cb3a163d9ce154c4598ef3e6c6969e4f915886', 'fetch.json']
+ stdout='bundle_fetch: ok maven:javax.xml.bind:jaxb-api@2.2.12 jaxb-api-2.2.12-sources.jar sha256=8b07d220146c244c30a7f03e05cb3a163d9ce154c4598ef3e6c6969e4f915886 size=150 hops=repo1.maven.org\nbundle_fetch: fetched 1 files, 150 bytes, 1 components (sample, amd64) in 0.0 s'
+ stderr=''
+
+== P5 maven -> files.pythonhosted.org (listed host, other kind)
+ rc=0 calls=2 listing=['8b07d220146c244c30a7f03e05cb3a163d9ce154c4598ef3e6c6969e4f915886', 'fetch.json']
+ stdout='bundle_fetch: ok maven:javax.xml.bind:jaxb-api@2.2.12 jaxb-api-2.2.12-sources.jar sha256=8b07d220146c244c30a7f03e05cb3a163d9ce154c4598ef3e6c6969e4f915886 size=150 hops=repo1.maven.org,files.pythonhosted.org\nbundle_fetch: fetched 1 files, 150 bytes, 1 components (sample, amd64) in 0.0 s'
+ stderr=''
+
+== P5b redirect loop past 5
+ rc=1 calls=6 listing=[]
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage fetch: repo1.maven.org: jaxb-api-2.2.12-sources.jar: more than 5 redirects: https://repo1.maven.org/maven2/javax/xml/bind/jaxb-api/2.2.12/jaxb-api-2.2.12-sources.jar; no retry)'
+
+== P5c scheme-relative to an unlisted host
+ rc=1 calls=1 listing=[]
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage fetch: repo1.maven.org: jaxb-api-2.2.12-sources.jar: redirect to evil.example.org refused: not in hosts; no retry)'
+
+== P5d trailing-dot host
+ rc=1 calls=1 listing=[]
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage fetch: repo1.maven.org: jaxb-api-2.2.12-sources.jar: redirect to repo1.maven.org. refused: not in hosts; no retry)'
+
+== P5e userinfo host confusion
+ rc=1 calls=1 listing=[]
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage fetch: repo1.maven.org: jaxb-api-2.2.12-sources.jar: redirect to https://repo1.maven.org@evil.example.org/x refused: userinfo; no retry)'
+
+== P5f backslash
+ rc=1 calls=1 listing=[]
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage fetch: repo1.maven.org: jaxb-api-2.2.12-sources.jar: redirect to https://repo1.maven.org\\@evil.example.org/x refused: userinfo; no retry)'
+
+== P5g 1xx/204 empty body
+ rc=1 calls=1 listing=[]
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage fetch: repo1.maven.org: jaxb-api-2.2.12-sources.jar: size mismatch: got 0, lock says 150; no retry)'
+
+== P7 policy hosts holds a number
+ rc=1 calls=0 listing=[]
+ stdout=''
+ stderr="bundle_fetch: FAIL (stage lock: AttributeError: 'int' object has no attribute 'lower'; no retry)"
+
+== P7b policy is a list
+ rc=1 calls=0 listing=[]
+ stdout=''
+ stderr="bundle_fetch: FAIL (stage lock: AttributeError: 'list' object has no attribute 'get'; no retry)"
+
+
+## re-audit r1: probe2.py
+Q2 lock_entry_problems: ['lock: apk:readline@8.2.13-r1: readline-8.2.13.tar.gz: sha256 9198e4dbde4de640441270dd1cd5094256aed772e192cf9a9144c7c6afc90991 has sha512 eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee here but a6bf625ca40624d1339ccdf77c5bc54753b2e0cc277044ca2cadeedc44904c4c9261603d592413912332e0c2fd8d596eaa63658df9091179e65e902ee0205405 in apk:readline@8.2.13-r0']
+== Q2 held apk distfile: B's upstream sha512 is not the bytes' sha512
+ rc=1 calls=0 listing=[]
+ stdout=''
+ stderr='bundle_fetch: lock problem: lock: apk:readline@8.2.13-r1: readline-8.2.13.tar.gz: sha256 9198e4dbde4de640441270dd1cd5094256aed772e192cf9a9144c7c6afc90991 has sha512 eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee here but a6bf625ca40624d1339ccdf77c5bc54753b2e0cc277044ca2cadeedc44904c4c9261603d592413912332e0c2fd8d596eaa63658df9091179e65e902ee0205405 in apk:readline@8.2.13-r0\nbundle_fetch: FAIL (stage lock: lock: apk:readline@8.2.13-r1: readline-8.2.13.tar.gz: sha256 9198e4dbde4de640441270dd1cd5094256aed772e192cf9a9144c7c6afc90991 has sha512 eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee here but a6bf625ca40624d1339ccdf77c5bc54753b2e0cc277044ca2cadeedc44904c4c9261603d592413912332e0c2fd8d596eaa63658df9091179e65e902ee0205405 in apk:readline@8.2.13-r0; no retry)'
+
+Q2b lock_entry_problems: ['lock: apk:readline@8.2.13-r1: readline-8.2.13.tar.gz: sha256 9198e4dbde4de640441270dd1cd5094256aed772e192cf9a9144c7c6afc90991 is size 9999 here but 300 in apk:readline@8.2.13-r0']
+== Q2b held apk distfile: B's lock size is not the bytes' size
+ rc=1 calls=0 listing=[]
+ stdout=''
+ stderr='bundle_fetch: lock problem: lock: apk:readline@8.2.13-r1: readline-8.2.13.tar.gz: sha256 9198e4dbde4de640441270dd1cd5094256aed772e192cf9a9144c7c6afc90991 is size 9999 here but 300 in apk:readline@8.2.13-r0\nbundle_fetch: FAIL (stage lock: lock: apk:readline@8.2.13-r1: readline-8.2.13.tar.gz: sha256 9198e4dbde4de640441270dd1cd5094256aed772e192cf9a9144c7c6afc90991 is size 9999 here but 300 in apk:readline@8.2.13-r0; no retry)'
+
+
+## re-audit r1: probe3.py (new attempts)
+R1 lock_entry_problems: []
+== R1 held under another alg with a wrong sha512 (cross-alg residual of M-2)
+ rc=1 calls=2 listing=['5dab2a695527784b30fa1822fc2dac6f2192edb06616c2fd58038077deaf412c', 'aa1717c7675b6864253307b0b821e228f028ec1fe553b605060f5594bd48cc4d']
+ stdout='bundle_fetch: ok apk:aaa@1.0-r0 APKBUILD sha256=5dab2a695527784b30fa1822fc2dac6f2192edb06616c2fd58038077deaf412c size=92 hops=gitlab.alpinelinux.org\nbundle_fetch: ok apk:aaa@1.0-r0 shared.patch sha256=aa1717c7675b6864253307b0b821e228f028ec1fe553b605060f5594bd48cc4d size=90 hops=gitlab.alpinelinux.org'
+ stderr='bundle_fetch: FAIL (stage fetch: gitlab.alpinelinux.org: APKBUILD: APKBUILD at 9d96b0231d9154c0e68f422b210442ab8428431b: no sha512sums; no retry)'
+
+== R2 query starting with the marker (has a space: refused at PRINTABLE)
+ rc=1 calls=2 listing=[]
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage fetch: github.com: OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz: redirect to https://release-assets.githubusercontent.com/x?<query omitted> refused: not printable ASCII; no retry)'
+
+== R2b marker look-alike without a space, followed then 404
+ rc=1 calls=3 listing=[]
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage fetch: github.com: OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz: release-assets.githubusercontent.com: HTTP 404: https://release-assets.githubusercontent.com/x?<query omitted>; no retry)'
+
+== R2c double ? then marker-like text (space -> refused)
+ rc=1 calls=2 listing=[]
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage fetch: github.com: OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz: redirect to https://release-assets.githubusercontent.com/x?<query omitted> refused: not printable ASCII; no retry)'
+
+== R2d 503 and timeout at the signed hop (query omitted?)
+ rc=1 calls=2 listing=[]
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage fetch: github.com: OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz: release-assets.githubusercontent.com: timeout after 60 s: https://release-assets.githubusercontent.com/github-production-release-asset/602574963/0a1b2c3d?<query omitted>; no retry)'
+
+== R3 fetch.json is a directory
+ rc=1 calls=0 listing=['fetch.json']
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage lock: --out already holds fetch.json; no retry)'
+
+  (symlink not permitted here: OSError )
+== R3b fetch.json a dangling symlink
+ rc=0 calls=1 listing=['8b07d220146c244c30a7f03e05cb3a163d9ce154c4598ef3e6c6969e4f915886', 'fetch.json']
+ stdout='bundle_fetch: ok maven:javax.xml.bind:jaxb-api@2.2.12 jaxb-api-2.2.12-sources.jar sha256=8b07d220146c244c30a7f03e05cb3a163d9ce154c4598ef3e6c6969e4f915886 size=150 hops=repo1.maven.org\nbundle_fetch: fetched 1 files, 150 bytes, 1 components (sample, amd64) in 0.0 s'
+ stderr=''
+
+R4 size True -> 1 problems, no exception
+R4 upstream not dict -> 2 problems, no exception
+R4 sha256 int -> 2 problems, no exception
+R5 committed lock lock_entry_problems: []
+== R5b committed lock, arm64 sample (no network expected)
+ rc=1 calls=0 listing=[]
+ stdout=''
+ stderr='bundle_fetch: FAIL (stage lock: the lock lists no entry for arm64; no retry)'
+
+
+## re-audit r1: probe4.py (R1 corrected: cross-alg held residual)
+R1 lock_entry_problems: []
+== R1 held under another alg (sha256 first, sha512 held) with a WRONG sha512
+ rc=0 calls=4 listing=['239bdbb60d24eb163193284b7d9fb48223747047eaba43dd1a2dbdda29ce48e4', '868d654ccbcd64f33a7f97cc5342f8a2219abe8ec7fd412cdd696201862a6bff', 'aa1717c7675b6864253307b0b821e228f028ec1fe553b605060f5594bd48cc4d', 'c5df7d15f4346e438bbad52f315c9eacdc4e79970ef965ec91127159f238cf92', 'fetch.json']
+ stdout='bundle_fetch: ok apk:aaa@1.0-r0 APKBUILD sha256=868d654ccbcd64f33a7f97cc5342f8a2219abe8ec7fd412cdd696201862a6bff size=237 hops=gitlab.alpinelinux.org\nbundle_fetch: ok apk:aaa@1.0-r0 shared.patch sha256=aa1717c7675b6864253307b0b821e228f028ec1fe553b605060f5594bd48cc4d size=90 hops=gitlab.alpinelinux.org\nbundle_fetch: ok apk:aaa@1.0-r0 aaa-1.0.tar.gz sha256=c5df7d15f4346e438bbad52f315c9eacdc4e79970ef965ec91127159f238cf92 size=120 hops=distfiles.alpinelinux.org\nbundle_fetch: ok apk:bbb@1.0-r0 APKBUILD sha256=239bdbb60d24eb163193284b7d9fb48223747047eaba43dd1a2dbdda29ce48e4 size=235 hops=gitlab.alpinelinux.org\nbundle_fetch: held apk:bbb@1.0-r0 shared.patch sha256=aa1717c7675b6864253307b0b821e228f028ec1fe553b605060f5594bd48cc4d size=90 (fetched for apk:aaa@1.0-r0 shared.patch)\nbundle_fetch: fetched 4 files, 682 bytes, 2 components (full, amd64) in 0.0 s'
+ stderr=''
+
+== R1 control: true sha512
+ rc=0 calls=4 listing=['868d654ccbcd64f33a7f97cc5342f8a2219abe8ec7fd412cdd696201862a6bff', 'aa1717c7675b6864253307b0b821e228f028ec1fe553b605060f5594bd48cc4d', 'c5df7d15f4346e438bbad52f315c9eacdc4e79970ef965ec91127159f238cf92', 'fc7aa5e7b0537899a04296b4df64f98b879ea74df076259c7c250c51e1da7576', 'fetch.json']
+ stdout='bundle_fetch: ok apk:aaa@1.0-r0 APKBUILD sha256=868d654ccbcd64f33a7f97cc5342f8a2219abe8ec7fd412cdd696201862a6bff size=237 hops=gitlab.alpinelinux.org\nbundle_fetch: ok apk:aaa@1.0-r0 shared.patch sha256=aa1717c7675b6864253307b0b821e228f028ec1fe553b605060f5594bd48cc4d size=90 hops=gitlab.alpinelinux.org\nbundle_fetch: ok apk:aaa@1.0-r0 aaa-1.0.tar.gz sha256=c5df7d15f4346e438bbad52f315c9eacdc4e79970ef965ec91127159f238cf92 size=120 hops=distfiles.alpinelinux.org\nbundle_fetch: ok apk:bbb@1.0-r0 APKBUILD sha256=fc7aa5e7b0537899a04296b4df64f98b879ea74df076259c7c250c51e1da7576 size=235 hops=gitlab.alpinelinux.org\nbundle_fetch: held apk:bbb@1.0-r0 shared.patch sha256=aa1717c7675b6864253307b0b821e228f028ec1fe553b605060f5594bd48cc4d size=90 (fetched for apk:aaa@1.0-r0 shared.patch)\nbundle_fetch: fetched 4 files, 682 bytes, 2 components (full, amd64) in 0.0 s'
+ stderr=''
+
+
+## probe3.py
+"""U8a rework round 1 re-audit: new fail-open attempts on the new code paths."""
+import sys, os
+from pathlib import Path
+exec(Path(sys.argv[2]).read_text().split("b = T.one_per_kind()")[0])
+from tests.test_sbom_bundle import load_sbom_check
+S = load_sbom_check()
+
+# R1 cross-alg held residual: apk:a (sorts first) holds bytes X as a plain GitLab file (alg sha256);
+# apk:b lists the same bytes in sha512sums with a WRONG sha512 that its APKBUILD agrees with.
+X = T.blob("shared patch", 90)
+w = T.LockBuilder()
+w.apk("apk:aaa@1.0-r0", plain=[("shared.patch", X)])
+w.apk("apk:bbb@1.0-r0", patches=[("shared.patch", X)], sums=[("shared.patch", "e" * 128)])
+for f in w.components["apk:bbb@1.0-r0"]["files"]:
+    if f["name"] == "shared.patch":
+        f["upstream"]["value"] = "e" * 128
+print("R1 lock_entry_problems:", S.lock_entry_problems(w.text(), policy()))
+show("R1 held under another alg with a wrong sha512 (cross-alg residual of M-2)", run(w.text(), w.routes(), which="full"))
+
+# R1b same, but the held instance is sha1 (maven-style) after a sha256 instance: deb orig (sha256) then
+# a deb whose .dsc bytes... skipped: no sha1-alg file can share bytes with a sha256-alg file except by
+# lock corruption of the same kind; R1 is the representative case.
+
+# R2 a crafted query that starts with the redaction marker, through a followed hop then a 404
+tem = T.only(T.one_per_kind(), T.TEM_KEY)
+hop2 = "https://release-assets.githubusercontent.com/x?<query omitted>SECRETX"
+show("R2 query starting with the marker (has a space: refused at PRINTABLE)",
+     run(tem.text(), {T.TEM_URL: (302, {"Location": T.TEM_HOP}, b""), T.TEM_HOP: (302, {"Location": hop2}, b"")}))
+hop3 = "https://release-assets.githubusercontent.com/x?<query%20omitted>SECRETY"
+show("R2b marker look-alike without a space, followed then 404",
+     run(tem.text(), {T.TEM_URL: (302, {"Location": T.TEM_HOP}, b""), T.TEM_HOP: (302, {"Location": hop3}, b""), hop3: (404, {}, b"")}))
+hop4 = "https://release-assets.githubusercontent.com/x?a=1?<query omitted>"
+show("R2c double ? then marker-like text (space -> refused)",
+     run(tem.text(), {T.TEM_URL: (302, {"Location": T.TEM_HOP}, b""), T.TEM_HOP: (302, {"Location": hop4}, b"")}))
+show("R2d 503 and timeout at the signed hop (query omitted?)",
+     run(tem.text(), {T.TEM_URL: (302, {"Location": T.TEM_HOP}, b""), T.TEM_HOP: "timeout"}))
+
+# R3 --out holding fetch.json as a directory / as a dangling link
+j = T.only(T.one_per_kind(), T.JAXB_KEY)
+show("R3 fetch.json is a directory", run(j.text(), j.routes(), pre=lambda out: (out / "fetch.json").mkdir()))
+def dangling(out):
+    try:
+        os.symlink(str(out / "nowhere"), str(out / "fetch.json"))
+    except OSError as exc:
+        print("  (symlink not permitted here:", type(exc).__name__, ")")
+show("R3b fetch.json a dangling symlink", run(j.text(), j.routes(), pre=dangling))
+
+# R4 lock rule robustness: shared sha256 with odd types never raises
+for case, mut in (("size True", lambda f: f.__setitem__("size", True)),
+                  ("upstream not dict", lambda f: f.__setitem__("upstream", "x")),
+                  ("sha256 int", lambda f: f.__setitem__("sha256", 5))):
+    lk = T.wide().lock()
+    mut(lk["components"]["deb:bash@5.2.15-2+deb12u1"]["files"][1])
+    try:
+        print("R4", case, "->", len(S.lock_entry_problems(canon(lk), policy())), "problems, no exception")
+    except Exception as exc:
+        print("R4", case, "-> EXCEPTION", type(exc).__name__, exc)
+
+# R5 committed lock still passes and the arm64 run on it is refused
+lock_text = (ROOT / "docker" / "sources.lock.json").read_text(encoding="utf-8")
+print("R5 committed lock lock_entry_problems:", S.lock_entry_problems(lock_text, policy()))
+show("R5b committed lock, arm64 sample (no network expected)", run(lock_text, {}, arch="arm64"))
+
+## probe4.py
+"""R1 corrected: a valid apk:aaa (one sha512 distfile) that also holds bytes X as a plain GitLab file (alg sha256)."""
+import sys
+from pathlib import Path
+exec(Path(sys.argv[2]).read_text().split("b = T.one_per_kind()")[0])
+from tests.test_sbom_bundle import load_sbom_check
+S = load_sbom_check()
+X = T.blob("shared patch", 90)
+w = T.LockBuilder()
+w.apk("apk:aaa@1.0-r0", plain=[("shared.patch", X)], distfiles=[("aaa-1.0.tar.gz", T.blob("aaa tarball", 120))])
+w.apk("apk:bbb@1.0-r0", patches=[("shared.patch", X)], sums=[("shared.patch", "e" * 128)])
+for f in w.components["apk:bbb@1.0-r0"]["files"]:
+    if f["name"] == "shared.patch":
+        f["upstream"]["value"] = "e" * 128
+print("R1 lock_entry_problems:", S.lock_entry_problems(w.text(), policy()))
+show("R1 held under another alg (sha256 first, sha512 held) with a WRONG sha512", run(w.text(), w.routes(), which="full"))
+# control: the same with the true sha512 (expected exit 0)
+v = T.LockBuilder()
+v.apk("apk:aaa@1.0-r0", plain=[("shared.patch", X)], distfiles=[("aaa-1.0.tar.gz", T.blob("aaa tarball", 120))])
+v.apk("apk:bbb@1.0-r0", patches=[("shared.patch", X)])
+show("R1 control: true sha512", run(v.text(), v.routes(), which="full"))
+
+# ===== Re-audit addendum, rework round 2 (2026-10-28, security): probe5.py =====
+R1 problems: ['lock: apk:bbb@1.0-r0: shared.patch: sha256 aa1717c7675b6864253307b0b821e228f028ec1fe553b605060f5594bd48cc4d has upstream alg sha512 here but sha256 in apk:aaa@1.0-r0']
+== R1 (wrong sha512, cross-alg)
+ rc=1 calls=0 listing=[]
+ stdout=''
+ stderr='bundle_fetch: lock problem: lock: apk:bbb@1.0-r0: shared.patch: sha256 aa1717c7675b6864253307b0b821e228f028ec1fe553b605060f5594bd48cc4d has upstream alg sha512 here but sha256 in apk:aaa@1.0-r0\nbundle_fetch: FAIL (stage lock: lock: apk:bbb@1.0-r0: shared.patch: sha256 aa1717c7675b6864253307b0b821e228f028ec1fe553b605060f5594bd48cc4d has upstream alg sha512 here but sha256 in apk:aaa@1.0-r0; no retry)'
+
+R1c (true sha512, cross-alg) problems: ['lock: apk:bbb@1.0-r0: shared.patch: sha256 aa1717c7675b6864253307b0b821e228f028ec1fe553b605060f5594bd48cc4d has upstream alg sha512 here but sha256 in apk:aaa@1.0-r0']
+E1 size-0 under sha256 and sha512 problems: []
+== E1 fetch (empty served)
+ rc=0 calls=5 listing=['44b24586cda9577353a97cc8146d148259fa27a6c6f57cb3d9d85433c31866ec', '868d654ccbcd64f33a7f97cc5342f8a2219abe8ec7fd412cdd696201862a6bff', 'aa30d429cc120e62e2fcd9812cdd236ce654e5bc16bf2261b4a290067819c117', 'c5df7d15f4346e438bbad52f315c9eacdc4e79970ef965ec91127159f238cf92', 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 'fetch.json']
+ stdout='bundle_fetch: ok apk:aaa@1.0-r0 APKBUILD sha256=868d654ccbcd64f33a7f97cc5342f8a2219abe8ec7fd412cdd696201862a6bff size=237 hops=gitlab.alpinelinux.org\nbundle_fetch: ok apk:aaa@1.0-r0 empty.trigger sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 size=0 hops=gitlab.alpinelinux.org\nbundle_fetch: ok apk:aaa@1.0-r0 aaa-1.0.tar.gz sha256=c5df7d15f4346e438bbad52f315c9eacdc4e79970ef965ec91127159f238cf92 size=120 hops=distfiles.alpinelinux.org\nbundle_fetch: ok apk:bbb@1.0-r0 APKBUILD sha256=aa30d429cc120e62e2fcd9812cdd236ce654e5bc16bf2261b4a290067819c117 size=379 hops=gitlab.alpinelinux.org\nbundle_fetch: held apk:bbb@1.0-r0 empty.patch sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 size=0 (fetched for apk:aaa@1.0-r0 empty.trigger)\nbundle_fetch: ok apk:bbb@1.0-r0 bbb-1.0.tar.gz sha256=44b24586cda9577353a97cc8146d148259fa27a6c6f57cb3d9d85433c31866ec size=130 hops=distfiles.alpinelinux.org\nbundle_fetch: fetched 5 files, 866 bytes, 2 components (full, amd64) in 0.0 s'
+ stderr=''
+
+== E1b first empty copy served non-empty
+ rc=1 calls=2 listing=['868d654ccbcd64f33a7f97cc5342f8a2219abe8ec7fd412cdd696201862a6bff']
+ stdout='bundle_fetch: ok apk:aaa@1.0-r0 APKBUILD sha256=868d654ccbcd64f33a7f97cc5342f8a2219abe8ec7fd412cdd696201862a6bff size=237 hops=gitlab.alpinelinux.org'
+ stderr='bundle_fetch: FAIL (stage fetch: gitlab.alpinelinux.org: empty.trigger: more than 0 bytes: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Faaa%2Fempty.trigger/raw?<query omitted>; no retry)'
+
+E2 size 0, non-empty sha256 problems: ['lock: apk:bbb@1.0-r0: empty.patch: size 0 but sha256 is not the empty hash']
+E2b size 0, non-empty sha512 problems: ['lock: apk:bbb@1.0-r0: empty.patch: size 0 but sha512 is not the empty hash']
+== E3 size-0 claim, non-empty bytes
+ rc=1 calls=2 listing=['868d654ccbcd64f33a7f97cc5342f8a2219abe8ec7fd412cdd696201862a6bff']
+ stdout='bundle_fetch: ok apk:aaa@1.0-r0 APKBUILD sha256=868d654ccbcd64f33a7f97cc5342f8a2219abe8ec7fd412cdd696201862a6bff size=237 hops=gitlab.alpinelinux.org'
+ stderr='bundle_fetch: FAIL (stage fetch: gitlab.alpinelinux.org: empty.trigger: more than 0 bytes: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Faaa%2Fempty.trigger/raw?<query omitted>; no retry)'
+
+E3b size 0 on a distfiles url problems: ['lock: apk:aaa@1.0-r0: size 0 is not an int in 1..4294967296']
+E4 cross-alg, arm64 second: problems: ['lock: apk:bbb@1.0-r0: shared.patch: sha256 aa1717c7675b6864253307b0b821e228f028ec1fe553b605060f5594bd48cc4d has upstream alg sha512 here but sha256 in apk:aaa@1.0-r0']
+== E4 amd64 full run, arm64 second
+ rc=1 calls=0 listing=[]
+ stdout=''
+ stderr='bundle_fetch: lock problem: lock: apk:bbb@1.0-r0: shared.patch: sha256 aa1717c7675b6864253307b0b821e228f028ec1fe553b605060f5594bd48cc4d has upstream alg sha512 here but sha256 in apk:aaa@1.0-r0\nbundle_fetch: FAIL (stage lock: lock: apk:bbb@1.0-r0: shared.patch: sha256 aa1717c7675b6864253307b0b821e228f028ec1fe553b605060f5594bd48cc4d has upstream alg sha512 here but sha256 in apk:aaa@1.0-r0; no retry)'
+
+E4 cross-alg, arm64 first: problems: ['lock: apk:bbb@1.0-r0: shared.patch: sha256 aa1717c7675b6864253307b0b821e228f028ec1fe553b605060f5594bd48cc4d has upstream alg sha256 here but sha512 in apk:aaa@1.0-r0']
+== E4 amd64 full run, arm64 first
+ rc=1 calls=0 listing=[]
+ stdout=''
+ stderr='bundle_fetch: lock problem: lock: apk:bbb@1.0-r0: shared.patch: sha256 aa1717c7675b6864253307b0b821e228f028ec1fe553b605060f5594bd48cc4d has upstream alg sha256 here but sha512 in apk:aaa@1.0-r0\nbundle_fetch: FAIL (stage lock: lock: apk:bbb@1.0-r0: shared.patch: sha256 aa1717c7675b6864253307b0b821e228f028ec1fe553b605060f5594bd48cc4d has upstream alg sha256 here but sha512 in apk:aaa@1.0-r0; no retry)'
+
+E5 committed lock problems: []
+E5 size-0 files in the committed lock: 0 []
+
+## probe5.py
+"""U8a rework round 2: R1 re-run and the one-alg-per-sha256 rule's size-0 exemption edges."""
+import sys, hashlib, json
+from pathlib import Path
+exec(Path(sys.argv[2]).read_text().split("b = T.one_per_kind()")[0])
+from tests.test_sbom_bundle import load_sbom_check
+S = load_sbom_check()
+E256, E512 = hashlib.sha256(b"").hexdigest(), hashlib.sha512(b"").hexdigest()
+P = lambda b: S.lock_entry_problems(b if isinstance(b, str) else b.text(), policy())
+
+# R1 re-run (the L-6 fixture): sha256 first, sha512 held, wrong sha512
+X = T.blob("shared patch", 90)
+w = T.LockBuilder()
+w.apk("apk:aaa@1.0-r0", plain=[("shared.patch", X)], distfiles=[("aaa-1.0.tar.gz", T.blob("aaa tarball", 120))])
+w.apk("apk:bbb@1.0-r0", patches=[("shared.patch", X)], sums=[("shared.patch", "e" * 128)])
+for f in w.components["apk:bbb@1.0-r0"]["files"]:
+    if f["name"] == "shared.patch": f["upstream"]["value"] = "e" * 128
+print("R1 problems:", P(w))
+show("R1 (wrong sha512, cross-alg)", run(w.text(), w.routes(), which="full"))
+# R1 with the TRUE sha512: cross-alg now refused even when consistent
+v = T.LockBuilder()
+v.apk("apk:aaa@1.0-r0", plain=[("shared.patch", X)], distfiles=[("aaa-1.0.tar.gz", T.blob("aaa tarball", 120))])
+v.apk("apk:bbb@1.0-r0", patches=[("shared.patch", X)])
+print("R1c (true sha512, cross-alg) problems:", P(v))
+
+# E1 size-0 under two algs: aaa has an empty plain GitLab file (sha256), bbb an empty patch in sha512sums
+def two_empty():
+    b = T.LockBuilder()
+    b.apk("apk:aaa@1.0-r0", plain=[("empty.trigger", b"")], distfiles=[("aaa-1.0.tar.gz", T.blob("aaa tarball", 120))])
+    b.apk("apk:bbb@1.0-r0", patches=[("empty.patch", b"")], distfiles=[("bbb-1.0.tar.gz", T.blob("bbb tarball", 130))])
+    return b
+b = two_empty()
+print("E1 size-0 under sha256 and sha512 problems:", P(b))
+show("E1 fetch (empty served)", run(b.text(), b.routes(), which="full"))
+# E1b the held empty file served non-empty at the first (fetched) copy -> must fail at the cap
+r = b.routes(); url0 = next(f["url"] for f in b.components["apk:aaa@1.0-r0"]["files"] if f["name"] == "empty.trigger")
+r[url0] = b"NOT EMPTY"
+show("E1b first empty copy served non-empty", run(b.text(), r, which="full"))
+
+# E2 size 0 with a non-empty sha256 (and the matching upstream sha256)
+lk = two_empty().lock()
+f = next(f for f in lk["components"]["apk:bbb@1.0-r0"]["files"] if f["name"] == "empty.patch")
+f["sha256"] = hashlib.sha256(b"x").hexdigest()
+print("E2 size 0, non-empty sha256 problems:", P(canon(lk)))
+# E2b size 0, sha512 upstream not the empty hash
+lk = two_empty().lock()
+f = next(f for f in lk["components"]["apk:bbb@1.0-r0"]["files"] if f["name"] == "empty.patch")
+f["upstream"]["value"] = hashlib.sha512(b"x").hexdigest()
+print("E2b size 0, non-empty sha512 problems:", P(canon(lk)))
+
+# E3 lock claims size 0 + empty hashes for a URL whose bytes are not empty (served non-empty)
+b = T.LockBuilder()
+b.apk("apk:aaa@1.0-r0", plain=[("empty.trigger", b"")], distfiles=[("aaa-1.0.tar.gz", T.blob("aaa tarball", 120))])
+r = b.routes(); u = next(f["url"] for f in b.components["apk:aaa@1.0-r0"]["files"] if f["name"] == "empty.trigger")
+r[u] = b"real content"
+show("E3 size-0 claim, non-empty bytes", run(b.text(), r, which="full"))
+# E3b size 0 on a non-GitLab (distfiles) url
+lk = b.lock()
+f = next(f for f in lk["components"]["apk:aaa@1.0-r0"]["files"] if f["name"] == "aaa-1.0.tar.gz")
+f.update(size=0, sha256=E256); f["upstream"]["value"] = E512
+print("E3b size 0 on a distfiles url problems:", P(canon(lk)))
+
+# E4 a non-empty sha256 under two algs where the second entry is arm64-only (and the reverse order)
+for order in ("arm64 second", "arm64 first"):
+    b = T.LockBuilder()
+    k1, k2 = ("apk:aaa@1.0-r0", "apk:bbb@1.0-r0") if order == "arm64 second" else ("apk:bbb@1.0-r0", "apk:aaa@1.0-r0")
+    b.apk(k1, plain=[("shared.patch", X)], distfiles=[(k1[4:7] + "-1.0.tar.gz", T.blob(k1, 120))])
+    b.apk(k2, patches=[("shared.patch", X)], arches=("arm64",))
+    print(f"E4 cross-alg, {order}: problems:", P(b))
+    show(f"E4 amd64 full run, {order}", run(b.text(), b.routes(), which="full"))
+
+# E5 committed lock still passes; its size-0 files
+lock_text = (ROOT / "docker" / "sources.lock.json").read_text(encoding="utf-8")
+print("E5 committed lock problems:", P(lock_text))
+c = json.loads(lock_text)["components"]
+z = [(k, f["name"], f["upstream"]["alg"]) for k, e in c.items() for f in e["files"] if f["size"] == 0]
+print("E5 size-0 files in the committed lock:", len(z), sorted({a for *_, a in z}))

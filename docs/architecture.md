@@ -6773,3 +6773,35 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
   timeouts, with waits of 10, 30 and 60 s and every retry printed. It is
   off by default in `fetch()`, so U8 keeps Q61. The policy `hosts` grows
   to ten.
+- **Amended U8 (2026-10-28, architect; design-notes "N4 amendment, U8").**
+  Point 3's fetch is built as follows; the rest of point 3 stands.
+  - *Mechanism:* not curl. A new `scripts/sources_fetch.py` (stdlib,
+    `python3 -I`) reuses `sources_resolve.py`'s opener, User-Agent, hop
+    rules, deadline and byte cap through a new single-attempt
+    `download()` with no retry path (Q61 by construction). Why: GitLab's
+    API raw endpoint was proven only with that opener (U7c item 9), and
+    the hop rules stay in one reviewed place. PSC-23's curl flags are met
+    in kind: HTTPS on every hop, TLS 1.2 floor, no proxy, no environment
+    or rc file.
+  - *Service:* `sources-fetch` in `docker-compose.sources.yml` (`ke-gates`,
+    `pull_policy: never`, the project's default bridge only, read-only
+    root, no capabilities, the caller's uid:gid, literal env, the three
+    scripts plus the lock and the policy read-only, one writable `/out`).
+  - *Network path:* a host-half one-shot like `scan-db`, started by
+    `bundle_fetch.sh` (by hand for operators; from `offline_check.sh` in
+    verify `full` and CI). Never `gates`, `gates-it`, `backend` or the
+    stack gateway. The CI egress is GitHub's hosted-runner network.
+  - *Output:* flat `<out>/<sha256>` plus `fetch.json`, written last (set,
+    arch, lock sha256; Q76 ruled), which U9 requires. On failure, nothing
+    the run wrote is left.
+  - *Checks before use:* the lock's per-entry rules before any request,
+    then size, sha256 and the upstream digest per file, then the `.dsc`
+    (deb, pgdg) and APKBUILD name checks against the entry.
+  - *Arch (Q75 ruled):* from the daemon; `--arch` only asserts it. No
+    `--evidence-dir`.
+  - *Time:* budget `B-fetch` is 60 s on CI for the sample stage, and the
+    enforced run deadline is 300 s (sample) or 3 h (full). CI headroom is
+    with the human (Q74).
+  - *Units:* U8a (the client), U8b (the service, the script and the
+    wiring; A34), U8c (the third Neo4j fetch from CI, as evidence). The
+    CLAUDE.md sentence waits for Q73.

@@ -19,7 +19,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-24.04
-    timeout-minutes: 37  # PS-3.4/PSC-9 (platform-supply-chain): green CI runs 39713504156 (24.5 min) and 39713519072 (23.0 min); slower run + 50% = 36.75 -> 37 min, see docs/evidence/platform-supply-chain/ci
+    timeout-minutes: 69  # A74 (human ruling 2026-10-28, Q74): 69 min; PR #15 run 40628987168 verify job 35m53s on a GitHub-hosted runner at a 2.13x noisy-neighbour factor; docs/evidence/platform-sbom/u8/ci-timing-q74.md
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:

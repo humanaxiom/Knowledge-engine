@@ -101,3 +101,14 @@ it closes the M-NT1 remainder (no GPL source offer, incomplete SBOM). Branch:
 - Forward: next U8; keep the orchestrator's "record provenance before running" rule. Commit of U7d+U7e on a new draft PR needs the human.
 
 - 2026-10-28 documenter: U7e closed in this file; sections moved verbatim to archive/platform-sbom-part12.md. Status: U7e gate passed, commit in progress, next U8.
+
+## U8a (committed as <commit pending>) + Q74 (gate passed 2026-10-28; detail: archive/platform-sbom-part13.md)
+- Landed: `scripts/sources_fetch.py` (the fetch client: `main`, per-file size/sha256/upstream checks, `.dsc` and APKBUILD name checks, `fetch.json` written last); `download` and `dsc_listing` in `sources_resolve.py` (one attempt, no retries, Q61); `lock_entry_problems`, the shared-sha256 rules (one size, one upstream alg, one value per alg; size-0 exemption from the alg rule) and `fetch_plan` in `sbom_check.py`; `tests/test_sources_fetch.py`; `ci.yml` job timeout 37 -> 69 per A74. Q73 option 2 (CLAUDE.md sentence) lands at U8b.
+- Gates: tester RED/GREEN `u8/u8a-red..r2-green-verify-fast.txt` (1140 -> 1157 tests), controls `u8/u8a-controls.txt`; review `u8/u8a-review.md` APPROVED after rework 1 of 5 (2 rounds); security `u8/u8a-security.md` PASS after rounds 1-2 (probes `u8a-security-probes.txt`); Q74 `u8/q74-red-verify-fast.txt`, `q74-green-verify-fast.txt`; orchestrator `u8/orchestrator-verify-full-u8a.txt` PASS 1095 s. Developer full runs were blocked by Docker address pools (`u8a-developer-verify-full.txt`).
+- Rulings: A75 (arch from the daemon, no `--evidence-dir`); A76 (completion record last: set, arch, lock sha256; U9 refuses missing/mismatch); O-1 full-set real fetch at U8b; O-2 drop `objects.githubusercontent.com` if unused; O-3 flat `<out>/<sha256>` layout; M-2 and L-6 as lock rules (N4 am. U8 item 1, PSC-23 U8-3); A73 Q73 option 2; A74 Q74 timeout 69, the human's "69 seconds" read as minutes (the human may correct). Q74 profile: the suite did not grow (~735 s local); CI slowness is the hosted runner (1.24x-2.13x).
+- Carried to U8b: script's non-empty `--out` refusal and the trap row for a client exit 1 leaving verified files; stale `fetch.json` (L-3). Open for the human: security M-1 (ke-gates compose/uv pins), postgres openssl under Q70, Neo4j ARM third fetch.
+- Next: U8b: `sources-fetch` service in docker-compose.sources.yml, `bundle_fetch.sh`, `offline_check.sh` wiring (replaces only the generator pull), `bundle.sh` header, `sources_lock.sh` SBOM copies, README, the CLAUDE.md sentence per A73, real sample and full-set runs, A34 (full). Then U8c: CI extract and the third Neo4j fetch (provenance record). Not user-visible until U8b: README and CHANGELOG untouched.
+
+## 2026-10-28 — documenter (U8a + Q74 closed)
+- Moved the U8a/Q73/Q74 sections (lines 105-187) verbatim to archive/platform-sbom-part13.md; replaced them with the summary block above.
+- No README/CHANGELOG change (U8a not user-visible until U8b).

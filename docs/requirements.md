@@ -1214,6 +1214,7 @@ orchestrator.
   `[unit: test_ci_job_has_timeout]` (fast) asserts the job declares
   `timeout-minutes`; the value is checked by the reviewer against the
   recorded measurement. From `ci-triggers` on, the two green runs are a PR's `pull_request` run and its manual re-run (attempt 2) on the same head commit (CT-5).
+  *(Amended 2026-10-28, analyst, platform-sbom U8: the human's A74 ruling sets `timeout-minutes` to 69, an exception above the +50% formula (54 min on the 35m53s run); see Q74 in `docs/open-questions.md`.)*
 
 **Analyst review for `platform-offline` (2026-10-19).** PS-3.1–PS-3.4 above
 stand as written; the sub-bullets below make each one testable case by case,
@@ -3294,10 +3295,16 @@ item.
 ## Item: platform-sbom
 
 Status: **In progress (2026-10-28):** U0-U7c on main (PR #14 merged at
-86f7831); U7d committed as WIP 45411ae (scan red on openssl); U7e (PSC-27,
-base bump to python 3.12.16): tester's verify full PASS with the image scan
-green (`u7e/tester-repin-verify-full.txt`), security PASS, reviewer and A34
-in progress; PSC-27 PENDING until the orchestrator's gate; next U8. *(Amended 2026-10-28, analyst; U7e.)*
+86f7831); U7d (WIP 45411ae) and U7e (0630586; PSC-27 MET) pushed on draft
+PR #15, CI run 40628987168 PASS (verify job 35m53s against the 37-min
+timeout: Q74); U8 (PSC-23, the bounded source fetch) in plan: criteria in
+"U8 precision" under PSC-23; Q73 and Q74 open for the human, Q75 and Q76
+ruled, Q77 deferred. *(Amended 2026-10-28, analyst; U8 plan and orchestrator rulings.)*
+*(Amended 2026-10-28, analyst; human rulings: Q73 (option 2) and Q74 (`timeout-minutes` 69) are resolved; nothing in U8 is open for the human.)*
+*(Before, the same day: "U7d committed as WIP 45411ae (scan red on openssl);
+U7e (PSC-27, base bump to python 3.12.16): tester's verify full PASS with
+the image scan green, security PASS, reviewer and A34 in progress; PSC-27
+PENDING until the orchestrator's gate; next U8".)* *(Amended 2026-10-28, analyst; U7e.)*
 *(Before: "U0-U7c pushed (draft PR #14; CI 23 min); U7d gate passed; commit
 blocked on a fresh scan High (openssl) -> U7e first (PSC-27).")* *(Amended 2026-10-27, analyst.)* U7e: base bump to
 python 3.12.16 (human ruling). *(Amended 2026-10-27, analyst; human ruling.)*
@@ -3346,19 +3353,20 @@ Counts are not restated here; the evidence under
 |---|---|---|
 | PSC-13 SBOM per bundled image | MET | U3 (464fa11) |
 | PSC-14 notices complete for `ke-app` | MET (the generated "Source code" section is U9) | U1 (23e3c9b) |
-| PSC-15 GPL source offers | PENDING (classifier U5, policy U6, lock U7a-U7d (committed lock, 183 components; 182 at U7d, +openssl and ca-certificates `~deb12u2`, -ca-certificates `~deb12u1` with the U7e base bump); source archive in the bundle arrives U8/U9) | U5 (d8ffa2d), U6 (66781a9), U7a-U7c (9b1754f, 6d8fa4d, 86f7831), U7d (45411ae, WIP), U7e, U8, U9 |
-| PSC-16 CI cost and disk measured on CI | PENDING (measurements for U11: full operator source set 1.327 GB, verify sample 137 MB; full bundle ~8 GiB staged, over the 7 GiB floor; CI 23 min on 86f7831) | U11 |
+| PSC-15 GPL source offers | PENDING (classifier U5, policy U6, lock U7a-U7d (committed lock, 183 components; 182 at U7d, +openssl and ca-certificates `~deb12u2`, -ca-certificates `~deb12u1` with the U7e base bump); source fetch U8 (in plan), source archive in the bundle U9) | U5 (d8ffa2d), U6 (66781a9), U7a-U7c (9b1754f, 6d8fa4d, 86f7831), U7d (45411ae, WIP), U7e (0630586), U8, U9 |
+| PSC-16 CI cost and disk measured on CI | PENDING (measurements for U11: full operator source set 1.327 GB, verify sample 137 MB; full bundle ~8 GiB staged, over the 7 GiB floor; CI 23 min on 86f7831, 35m53s on 0630586 against the 37-min timeout, Q74) *(Amended 2026-10-28: Q74 ruled by the human, timeout 69 min, set in U8.)* | U11 |
 | PSC-19 end to end offline install | PENDING | U10 |
 | PSC-20 SBOM generator pinned and hardened | MET | U2 (98b6d27) |
 | PSC-21 per-arch bundles | PENDING (next recorded arm64 run) | U12 |
 | PSC-22 obligations not hidden | MET (report, drift check, `always` list; their `sources/` entries are U6-U7; generator-digest bump is a re-review trigger; `exempt` rules: versioned purl void on bump, reviewed reason, U6) | U4 (40e2181), U6 (66781a9) |
-| PSC-23 bounded source fetch | PENDING (hosts ten, U6 + U7d; fetch tool U8) | U6 (66781a9), U7d, U8 |
+| PSC-23 bounded source fetch | PENDING (hosts ten, U6 + U7d; fetch tool U8 in plan: "U8 precision" criteria 2026-10-28; Q73, Q74 open for the human; A75, A76 ruled) *(Amended 2026-10-28: Q73 (option 2) and Q74 (69 min) resolved by the human.)* | U6 (66781a9), U7d (45411ae), U8 |
 | PSC-24 no partial bundle, manifest rules | PENDING | U9 |
 | PSC-25 psycopg on Debian libpq | MET | U0 (31bfed4) |
 | PSC-26 first-party neo4j image | MET | U4b (c300d88) |
-| PSC-27 `ke-app` ships the fixed OpenSSL | PENDING (U7e: tester verify full PASS with the scan green, security PASS, reviewer and A34 in progress; U7d committed as WIP 45411ae, so U7e is its own commit) | U7e |
+| PSC-27 `ke-app` ships the fixed OpenSSL | MET (orchestrator verify full PASS 1162 s with the scan green; review APPROVED, security PASS, A34 PASS; CI run 40628987168 PASS) | U7e (0630586) |
 
 *(Rows PSC-15, PSC-16, PSC-22 and PSC-23 updated 2026-10-27, analyst.)*
+*(Rows PSC-15, PSC-16, PSC-23 and PSC-27 updated 2026-10-28, analyst, U8 plan.)*
 
 Outcome metric moved: **neither.** No draft is reviewed and no rule is
 ratified because of this item. It closes the M-NT1 remainder
@@ -4059,6 +4067,293 @@ full what it contains.
     fetch. It is recorded in
     `docs/evidence/platform-sbom/sources-provenance.md` with the run id,
     runner, date, hop hosts, and the sha256 and size it measured. *(Amended 2026-10-27, analyst.)*
+  - *U8 precision (analyst, 2026-10-28; unit U8: design notes N4, N13,
+    N15 row U8, N5 amendment U7 items 4-5, U7c N2/N3 carry, U7d items 13
+    and 14; ADR-KE-016 point 3).* *(Added 2026-10-28, analyst, U8 plan.)*
+    The criteria say what the fetch does, not how. Whether its loop is
+    curl (ADR-KE-016 point 3, N4) or `sources_resolve.py`'s `fetch()`
+    (U7b) is the architect's choice, recorded by amendment. Open points
+    (`docs/open-questions.md`): Q73 and Q74 for the human; Q75 and Q76
+    ruled by the orchestrator (2026-10-28) and folded into U8-1 and U8-6;
+    Q77 deferred. *(Amended 2026-10-28, analyst: Q73 and Q74 resolved by
+    the human; see U8-9 and U8-14.)* Lock facts at 0630586, for sizing
+    only: 183 keys, 876 files, 716 distinct SHA-256 values, full set
+    1,342,441,658 B; the amd64 sample (`sample_keys`) is 7 keys, 25 files,
+    136,571,547 B, and its files sit on every file host the lock uses.
+    - **U8-1 Command line.**
+      - `scripts/bundle_fetch.sh --set full|sample --out <dir>`. A missing
+        `--set` or `--out`, another `--set` value or an unknown argument
+        exits 2 with a usage line, before any pull, request or write.
+      - *A75 (orchestrator, 2026-10-28).* *(Amended 2026-10-28, analyst.)*
+        The arch is the Docker daemon's, read as `bundle.sh` reads it. An
+        optional `--arch amd64|arm64` only asserts it: another value exits
+        2; a value that differs from the daemon's exits 1 naming both,
+        before any pull or request (as `bundle.sh --arch`). There is no
+        `--evidence-dir`: the per-file stdout lines (U8-2) are the record,
+        and the caller saves them (the CI log; `tee` into
+        `docs/evidence/` for the recorded operator run).
+      - Given an `--out` that is a symlink, not a directory, or a
+        non-empty directory, the script exits 1 naming it, before any
+        pull or request, and leaves it untouched. An absent `--out` or an
+        empty directory is accepted. *(Why: on failure the script removes
+        `--out` (N4), so it must never be handed files it did not write;
+        `bundle.sh --out` has the same rule.)*
+      - A host script for Linux and Git Bash (N4). It is not bundled, not
+        copied by `bundle.sh`, and never in the stack's `COMPOSE_FILE`.
+    - **U8-2 Stages and what the run prints.**
+      - Stage `pull`: the SBOM generator, through `docker-compose.sbom.yml`
+        service `sbom` in the N1 amendment U2 form, one call. On failure:
+        `bundle_fetch: FAIL (stage pull: pulling the SBOM generator <ref>
+        failed; no retry)`, exit 1, and no `--out` left that the script
+        created.
+      - Stage `fetch`: the `sources-fetch` one-shot (U8-7).
+      - The markers `== sources: pull ==`, `== sources: fetch ==` and
+        `== sources: done ==`, with seconds per stage (N4 step 3), so CI
+        timestamps time them (PSC-16, Q62).
+      - For each file kept, one line with the component key, the upstream
+        file name, every hop host in order, the SHA-256 and the size.
+        This line is the record U8-11 cites. A URL with a query from a
+        redirect is never printed with its query (`?<query omitted>`, the
+        evidence redaction rule).
+    - **U8-3 What is fetched.**
+      - Before the first request, every lock entry passes the lock's
+        per-entry rules (U7a `lock_problems`: schema, URL charset, host
+        and path binding per kind, hashes, sizes). A lock that fails
+        makes no request and exits 1 naming the problem. The sample is
+        chosen only from such a lock (security U7a I-4). Coverage of the
+        SBOMs is not checked here; it is U9's `index`.
+      - Given a lock in which one SHA-256 has more than one `size`, more
+        than one upstream alg, or two upstream values for one alg, the
+        per-entry rules fail. They name the entry and the first entry in
+        lock order that holds that SHA-256. This also applies to
+        `lock-check`, `sources_lock.sh` and U9's `index`. *Why:* the fetch
+        stores a shared file once, by SHA-256. *(Added 2026-10-28,
+        architect for the analyst, U8a rework: security M-2 and L-6,
+        review R1-N1/R1-N2; design notes N4 amendment U8 item 1, N5.)*
+        - A file of size 0 is exempt from the one-alg rule. The empty
+          content may sit under the files-API SHA-256 and under
+          `sha512sums` in one entry (U7d size-0 rule). The size check
+          binds 0 bytes, and the empty-content SHA-256 binds the content.
+          *(Added 2026-10-28, architect for the analyst; orchestrator
+          ruling, U8a round 2.)*
+      - `--set sample` fetches exactly the files of `sample_keys(lock,
+        <arch>)` (Q63). `--set full` fetches every file of every entry
+        whose `arches` holds the arch. Nothing else is requested: no
+        metadata, API or resolution call (O2), no other URL.
+      - The first request for a file is its lock `url` exactly as
+        written. So the only query a first request can carry is the apk
+        GitLab API raw form's `ref=<commit>` (U7c item 9 (e)); the lock
+        rules refuse any other.
+      - No URL is requested twice in one run. Files that share a SHA-256
+        are stored once (U8-6). Whether a second URL with an already-held
+        SHA-256 is still fetched is the architect's choice, recorded.
+    - **U8-4 How it is fetched (PSC-23, Q61).**
+      - HTTPS only, on the first request and on every hop; TLS 1.2 at
+        least; no proxy, `.curlrc` or other client setting read from the
+        environment or a file.
+      - Redirects are followed one hop at a time, at most 5. Every hop
+        passes the resolver's hop rules (U7b rework round 1 item 3:
+        printable ASCII, `https://`, no userinfo, port or fragment, a plain
+        path with no `%`; a query allowed), and its host is in
+        `docker/source-policy.json` `hosts` (exact match after
+        lower-casing). Hosts come from that file only, never from a
+        literal in the fetch.
+      - Every request has a timeout, and every file a wall-clock deadline
+        and a byte cap. The values are in the design.
+      - Q61, strictly: one attempt per request and no retry. Q72's retry
+        is the lock tool's only. If `fetch()` is reused, every call passes
+        `retries=0`.
+      - Any of these ends the run at once, exit 1, with one line
+        `bundle_fetch: FAIL (stage fetch: <host>: <file name>: <why>; no
+        retry)`: a final status other than 2xx; a timeout or transport
+        error; a refused hop; more than 5 redirects; a size or SHA-256
+        mismatch; a U8-5 name mismatch; a write error (disk full
+        included).
+    - **U8-5 Checked before use (PSC-15, PSC-23).**
+      - A file's bytes are checked against the lock's `size` and `sha256`
+        before anything else reads them. A file that fails is deleted and
+        never placed in `--out`.
+      - The `.dsc` of a `deb` or `pgdg` entry, after its own check, is
+        parsed by the existing `parse_dsc` rules. Its `Files` and
+        `Checksums-Sha256` list exactly the entry's other files, by name,
+        size and SHA-256. Otherwise: `<dsc>: Files/Checksums-Sha256 differ
+        from the lock entry` (U7c N2 and N3 carry). `pgdg` is included
+        because its entries are built from the `.dsc` the same way (U7d
+        precision P4-P5); the architect confirms.
+      - The APKBUILD of an `apk` entry, after its own check, is read as
+        text by the existing A4 and U7c item 3 rules (never sourced or
+        run). The names in its top-level `sha512sums` equal exactly the
+        names of the entry's files whose `upstream.alg` is `sha512`.
+        Otherwise: `APKBUILD at <commit>: sha512sums names differ from the
+        lock entry`.
+      - These parsers are `sources_resolve.py`'s, called or mounted, never
+        re-implemented (U7c N3 precision).
+      - No fetched file is unpacked, built or run, on the host or in any
+        container. The two text reads above are the only parsing.
+    - **U8-6 `--out`, and no partial output.**
+      - On success, `--out` holds each fetched file once, as a regular
+        file named by its lower-case 64-hex SHA-256 (N4; the same name as
+        N9's `app/sources/files/<sha256>`), owned by the caller, with no
+        link and no subdirectory, plus the completion record below.
+      - *A76 (orchestrator, 2026-10-28).* *(Amended 2026-10-28, analyst.)*
+        The completion record is written last, only after every file of
+        the set has passed U8-4 and U8-5. It names at least the set, the
+        arch and the SHA-256 of the lock the run read. Its name can never
+        be taken for a 64-hex file name. A failed run never writes it.
+        From U9, `bundle.sh --sources` refuses a directory that has no
+        record, or whose record's set, arch or lock SHA-256 differs from
+        its own.
+      - Each file's bytes are exactly the bytes fetched (PSC-23: it ships
+        as fetched).
+      - Given a failure after `--out` was created, at any stage and on
+        any exit path the script can trap (error, INT, TERM, HUP), `--out`
+        is removed and the run exits non-zero. Given a fault on the n-th
+        file of a set, nothing of `--out` remains.
+      - The run's compose project is torn down on every exit path, as
+        `scan.sh` (D4).
+    - **U8-7 The `sources-fetch` service.**
+      - It lives in `docker-compose.sources.yml`, beside
+        `sources-resolve` (N5 amendment U7 item 4, which supersedes N1's
+        and N4's `docker-compose.sbom.yml`). The file's header, which says
+        today that only the lock tool starts it, is corrected.
+      - Image `ke-gates:${KE_IMAGE_TAG:-local}`, `pull_policy: never`, run
+        with `--pull never`: it pulls nothing.
+      - Its only route out is its own project's default bridge. No
+        `ports`, not privileged, no Docker socket, no `DOCKER_HOST`.
+      - `read_only: true`, tmpfs `/tmp`, `cap_drop: [ALL]`,
+        `no-new-privileges:true`, and `user:` the caller's numeric
+        uid:gid, set by the script and refused unless it matches
+        `^[0-9]+:[0-9]+$`.
+      - Mounts: the lock, the policy and the scripts it runs, read-only;
+        exactly one writable mount, the output directory. No checkout
+        mount.
+      - Environment: literals only, no pass-through. No `KE_*` key, no
+        model key, no token. Compose is called with `--env-file
+        .env.example`, so `.env` is never read (PSC-6).
+        `test_verify_full_takes_no_caller_ke_key_but_the_model_keys`
+        stays green.
+      - `gates` and `gates-it` are unchanged and stay offline (Q56(a)).
+    - **U8-8 Wiring into `offline_check.sh` (verify `full` and CI).**
+      - One call, `bash scripts/bundle_fetch.sh --set sample --out
+        <dir>`, replaces the interim generator pull (N1 amendment U2) at
+        the same place. `<dir>` is under `dist/` (in `df_paths`) and
+        outside the bundle directory. The ke-app and ke-neo4j base pulls
+        stay as they are (N1 amendment U4; U4b).
+      - A fetch failure fails `offline_check.sh` before `bundle.sh` runs,
+        and the fetch's FAIL line is in the output.
+      - The EXIT trap removes `<dir>` on every exit path, pass or fail.
+      - Verify and CI only ever run `--set sample` (Q63).
+      - Until U9, `bundle.sh` does not read `<dir>`: the bundle's file
+        list is the same as before U8. What the gate proves at U8: the
+        generator arrives through `bundle_fetch.sh`; one entry of each
+        kind, which covers every file host in the lock, is fetched over
+        the allowed hosts and checked; the offline install still passes
+        with no route out. The offline client and `dind` gain no network.
+      - Disk: the sample adds about 0.13 GiB under `dist/`, inside the
+        7 GiB floor (U7d item 13). U11 confirms on CI.
+    - **U8-9 Wording (PSC-23, N13).**
+      - `bundle.sh`'s refusal for an absent generator ends with `run
+        scripts/bundle_fetch.sh first` instead of `pull it first with:
+        docker pull <ref>` (N1). `--out` stays untouched.
+      - `bundle.sh`'s header keeps "makes no network call" and adds that
+        the source set is fetched beforehand by `scripts/bundle_fetch.sh`,
+        the only bundle step with a route out (N13).
+      - README says where the route out is and gives the operator order.
+        It does not say a bundle ships sources before U9 (standing rule
+        N1).
+      - CLAUDE.md: Q73, for the human. PSC-23 puts the CLAUDE.md change
+        in the same commit as the wiring, so U8 does not commit before
+        Q73 is ruled.
+        *(Amended 2026-10-28, analyst: Q73 ruled by the human, option 2;
+        the sentence lands at U8b in the same commit as the wiring.)*
+    - **U8-10 Hosts confirmed by real fetches.** The real sample fetch
+      (U8-14) records the hop hosts for each kind.
+      `objects.githubusercontent.com` was not used at U7b. Dropping or
+      adding a `hosts` entry is a design note amendment, a test change and
+      a security review, never the developer alone (N10 amendment U6 item
+      2). Until then a needed host that is not listed fails closed.
+    - **U8-11 The third Neo4j fetch (design notes U7d item 14).**
+      - The first green CI run of `verify.sh full` that includes U8 is the
+        third fetch. It runs after U8 is pushed (human approval), so its
+        record lands in the next commit.
+      - A dated section is appended to
+        `docs/evidence/platform-sbom/sources-provenance.md` (append only).
+        It gives the run id and URL; the runner name and image from the
+        job log (`runs-on: ubuntu-24.04`, a GitHub-hosted runner); the
+        UTC date; the hop hosts (`github.com` then `codeload.github.com`);
+        and the measured SHA-256 and size against
+        `182ae2e5c3807bc3d7a09770dbf450d2e8667080bde93b3b6c829125db0f91e3`
+        and 20,907,800 B.
+      - It names the egress: GitHub's hosted runner pool on Azure, a
+        network path independent of the dev box's and SFU's. The evidence
+        is the job log's setup group, which the security section copies
+        into `docs/evidence/platform-sbom/u8/` on the real run, as recorded
+        for run 40628987168 in `u8/ci-timing-q74.md` ("The runner"):
+        "Runner Image Provisioner: Hosted Compute Agent, Version
+        20261021.618, Region southcentralus, Cloud Azure"; Runner Image
+        ubuntu-24.04 20261012.334.1; runner 2.338.0. The U8 run's own
+        setup lines are copied, together with the fetch lines it cites,
+        because CI logs expire. *(Restored 2026-10-28, analyst, on the
+        orchestrator's finding from the job log.)*
+      - *Superseded (2026-10-28, analyst; kept for the record):* "It names
+        the runner's egress as far as it is known. … If the egress is the
+        same network path as the developer's and security's fetches, the
+        check is not network-independent, and the human's ARM one-liner is
+        needed before the first operator bundle." This was written when
+        the runner host was said to be the human's machine, which the job
+        log disproved.
+      - A mismatch fails the run closed. The fix is a new first fetch and
+        a new second fetch, then a reviewed lock change. Never a skip, a
+        retry or a hand-edited hash.
+      - The human's ARM one-liner stays the preferred check before the
+        first operator bundle (decision waiting, handoff U7e (3)).
+    - **U8-12 The lock tool keeps the run's SBOMs (U7d item 13; S6 carry;
+      its own RED).** After a `scripts/sources_lock.sh` run that writes
+      the lock (exit 0 or 3), `--evidence-dir/sboms/` holds exactly the six
+      bundled images' `<image>.spdx.json` from that run. Each is
+      byte-identical to the document that run's `lock-needs` and
+      `lock-check` read. They are copied before the lock moves, as regular
+      files with no link followed (item 6's rules, as for the InRelease).
+      A failed copy fails the run with the lock unchanged. Committing them
+      is Q77.
+    - **U8-13 Tests.** Names are indicative; the tester owns them, and no
+      name holds a count. All are `fast`, with a fake network or fake
+      docker; the real path runs in `full` (U8-8) and in A34.
+      - `[unit: test_source_fetch_is_https_only_to_listed_hosts]` and
+        `[unit: test_source_fetch_checks_before_use]` (PSC-23 above).
+      - `[unit: test_source_fetch_never_retries]`: a 503 and a timeout
+        each fail after exactly one request.
+      - `[unit: test_source_fetch_dsc_names_match_the_lock_entry]` (deb
+        and pgdg) and
+        `[unit: test_source_fetch_apkbuild_names_match_the_lock_entry]`.
+      - `[unit: test_source_fetch_leaves_no_out_on_failure]`: a fault on
+        a middle file leaves no `--out`.
+      - `[unit: test_bundle_fetch_refuses_an_unsafe_out]` (U8-1) and
+        `[unit: test_bundle_fetch_arch_is_the_daemons]` (A75).
+      - `[unit: test_bundle_fetch_writes_the_record_last]` (A76): no
+        record after a failure; the record names set, arch and lock
+        SHA-256.
+      - `[unit: test_sources_fetch_service_is_hardened]` (static compose,
+        U8-7).
+      - `[unit: test_offline_check_fetches_the_sample]`, which replaces
+        the U2 interim-pull rows; the base-pull rows stay.
+      - `test_bundle_refuses_when_sbom_generator_absent` with the new
+        message.
+      - `[unit: test_sources_lock_keeps_the_run_sboms]` (U8-12).
+    - **U8-14 Evidence and gate.**
+      - `docs/evidence/platform-sbom/u8/`: RED and GREEN verify output;
+        one real `--set sample` run on this host (each file's line, U8-2);
+        the A34 Windows run; the orchestrator's `verify.sh full`; after the
+        push, the CI extract (U8-11). Redaction rules apply.
+      - Gate: `scripts/verify.sh full`, plus a recorded A34 Windows run
+        (a compose file changes; N15 row U8). CI headroom before the
+        push: Q74.
+        *(Amended 2026-10-28, analyst: Q74 ruled by the human,
+        `timeout-minutes` 69 (not PS-3.4's 54), inside U8 before the push:
+        RED pin in `tests/test_stack_ready_docs.py`, GREEN `ci.yml`.)*
+    - **Outcome metric: neither.** U8 keeps the bundle deployable offline
+      and is the fetch half of PSC-15's source archive. No draft is
+      reviewed and no rule is ratified because of it.
 - **PSC-24 No partial bundle, and the manifest rules hold (added
   2026-10-22, analyst).**
   - Any SBOM, index or source failure makes the bundle step exit non-zero,

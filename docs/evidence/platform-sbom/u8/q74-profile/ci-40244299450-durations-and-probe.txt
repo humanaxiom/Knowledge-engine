@@ -1,0 +1,17 @@
+2026-10-25T23:38:44.3741344Z Slowest test durations
+2026-10-25T23:38:44.3742067Z ----------------------------------------------------------------------
+2026-10-25T23:38:44.3742891Z 56.037s    test_lint_runs_no_code_from_a_powershell_filename (tests.test_stack_scripts.LintScriptTest.test_lint_runs_no_code_from_a_powershell_filename)
+2026-10-25T23:38:44.3744470Z 24.225s    test_lint_with_real_tools_fails_on_a_planted_finding (tests.test_stack_scripts.LintScriptTest.test_lint_with_real_tools_fails_on_a_planted_finding)
+2026-10-25T23:38:44.3745534Z 23.362s    test_lint_covers_upper_case_ps1_and_psm1 (tests.test_stack_scripts.LintScriptTest.test_lint_covers_upper_case_ps1_and_psm1)
+2026-10-25T23:38:44.3746705Z 18.564s    test_bundle_manifest_rejects_tamper (tests.test_offline_bundle.InstallPs1Test.test_bundle_manifest_rejects_tamper)
+2026-10-25T23:38:44.3749024Z 18.338s    test_install_loads_nothing_when_manifest_fails (tests.test_offline_bundle.InstallPs1Test.test_install_loads_nothing_when_manifest_fails)
+2026-10-25T23:38:44.3750122Z 16.308s    test_bundle_maps_each_service_to_own_image_despite_dependencies (tests.test_offline_bundle.BundleScriptTest.test_bundle_maps_each_service_to_own_image_despite_dependencies)
+2026-10-25T23:38:44.3751061Z 16.015s    test_lint_shellchecks_upper_case_sh (tests.test_stack_scripts.LintScriptTest.test_lint_shellchecks_upper_case_sh)
+2026-10-25T23:38:44.3751974Z 13.121s    test_smoke_checks_psycopg_c_impl_in_api (tests.test_psycopg_c.SmokePsycopgTest.test_smoke_checks_psycopg_c_impl_in_api)
+2026-10-25T23:38:44.3752709Z 12.802s    test_install_refuses_unfit_target_or_daemon (tests.test_offline_bundle.InstallPs1Test.test_install_refuses_unfit_target_or_daemon)
+2026-10-25T23:38:44.3753456Z 11.989s    test_notices_vendor_row_parse_is_strict (tests.test_offline_bundle.BundleNoticesTest.test_notices_vendor_row_parse_is_strict)
+2026-10-25T23:38:44.3753888Z 
+2026-10-25T23:38:44.3754013Z ----------------------------------------------------------------------
+2026-10-25T23:38:44.3754292Z Ran 1047 tests in 912.573s
+2026-10-25T23:23:30.1303438Z resources: phase=start nproc=2 cpu_max_quota=max cpu_max_period=100000 cg_cpu_usage_us=5543257 cg_cpu_throttled_us=0 mem_total_kib=8128876 mem_available_kib=5899872 swap_total_kib=3145724 swap_free_kib=3145640 cg_mem_max=max cg_mem_peak=156954624 psi_cpu_some_us=50553740 psi_memory_some_us=393887 psi_memory_full_us=249594 psi_io_some_us=58431008 psi_io_full_us=47178745 cpu_steal_ticks=0 cpu_total_ticks=41511
+2026-10-25T23:38:44.5448079Z resources: phase=end nproc=2 cpu_max_quota=max cpu_max_period=100000 cg_cpu_usage_us=849525145 cg_cpu_throttled_us=0 mem_total_kib=8128876 mem_available_kib=5834696 swap_total_kib=3145724 swap_free_kib=3145644 cg_mem_max=max cg_mem_peak=560082944 psi_cpu_some_us=239612343 psi_memory_some_us=544266 psi_memory_full_us=310498 psi_io_some_us=58993059 psi_io_full_us=47553848 cpu_steal_ticks=0 cpu_total_ticks=223288

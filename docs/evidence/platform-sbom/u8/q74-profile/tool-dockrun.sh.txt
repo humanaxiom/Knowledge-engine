@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# dockrun.sh <label> <cov|nocov> <repo-dir> [extra docker args...] -- [inner override cmd]
+# The gates service's settings (docker-compose.yml x-gates + gates): network none,
+# uid 10001, cap_drop ALL, no-new-privileges, read-only checkout at /work,
+# tmpfs /tmp, the same environment. Adds /prof (ro) and /out (rw) only.
+set -euo pipefail
+label="$1"; mode="$2"; repo="$3"; shift 3
+S="<scratch>"
+export MSYS_NO_PATHCONV=1
+exec docker run --rm --network none --user 10001:10001 --cap-drop ALL \
+  --security-opt no-new-privileges:true \
+  -v "$(cygpath -w "$repo"):/work:ro" --tmpfs /tmp:exec,mode=1777 \
+  -e MYPY_CACHE_DIR=/tmp/mypy -e PYTHONDONTWRITEBYTECODE=1 -e GIT_OPTIONAL_LOCKS=0 \
+  -v "$(cygpath -w "$S/prof"):/prof:ro" -v "$(cygpath -w "$S/out"):/out" \
+  -w /work "$@" "${IMAGE:-ke-gates:wt-33a132fbfdd7}" bash /prof/inner.sh "$label" "$mode"

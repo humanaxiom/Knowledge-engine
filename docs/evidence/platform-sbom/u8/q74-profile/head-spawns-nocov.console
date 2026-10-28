@@ -1,0 +1,7 @@
+== head-spawns nocov: 46 modules; nproc=24; head=0630586
+== head-spawns nocov: real 766.311 s, user 539.860 s, sys 143.764 s (incl. all children)
+== head-spawns nocov: rc=0
+----------------------------------------------------------------------
+Ran 1140 tests in 764.812s
+
+OK (skipped=8)
