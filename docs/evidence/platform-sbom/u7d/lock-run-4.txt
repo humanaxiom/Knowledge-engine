@@ -1,0 +1,18 @@
+ Container ke-sources-3ebb73fe-sbom-sbom-run-13b58a7a7ab7 Creating 
+ Container ke-sources-3ebb73fe-sbom-sbom-run-13b58a7a7ab7 Created 
+ Container ke-sources-3ebb73fe-sbom-sbom-run-49bd8f5dbfff Creating 
+ Container ke-sources-3ebb73fe-sbom-sbom-run-49bd8f5dbfff Created 
+ Container ke-sources-3ebb73fe-sbom-sbom-run-9aad0a8f8400 Creating 
+ Container ke-sources-3ebb73fe-sbom-sbom-run-9aad0a8f8400 Created 
+ Container ke-sources-3ebb73fe-sbom-sbom-run-25c375635bf1 Creating 
+ Container ke-sources-3ebb73fe-sbom-sbom-run-25c375635bf1 Created 
+ Container ke-sources-3ebb73fe-sbom-sbom-run-5cdce6401ca9 Creating 
+ Container ke-sources-3ebb73fe-sbom-sbom-run-5cdce6401ca9 Created 
+ Container ke-sources-3ebb73fe-sbom-sbom-run-d8e64e1e14d6 Creating 
+ Container ke-sources-3ebb73fe-sbom-sbom-run-d8e64e1e14d6 Created 
+ Network ke-sources-3ebb73fe_default Creating 
+ Network ke-sources-3ebb73fe_default Created 
+ Container ke-sources-3ebb73fe-sources-resolve-run-82b64b166c18 Creating 
+ Container ke-sources-3ebb73fe-sources-resolve-run-82b64b166c18 Created 
+exit=0
+wall=98

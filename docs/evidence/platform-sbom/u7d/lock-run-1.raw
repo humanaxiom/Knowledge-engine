@@ -1,0 +1,21 @@
+ Container ke-sources-29e64acf-sbom-sbom-run-ce6c057cb33c Creating 
+ Container ke-sources-29e64acf-sbom-sbom-run-ce6c057cb33c Created 
+ Container ke-sources-29e64acf-sbom-sbom-run-03cc988cf36e Creating 
+ Container ke-sources-29e64acf-sbom-sbom-run-03cc988cf36e Created 
+ Container ke-sources-29e64acf-sbom-sbom-run-59ba13bdf76c Creating 
+ Container ke-sources-29e64acf-sbom-sbom-run-59ba13bdf76c Created 
+ Container ke-sources-29e64acf-sbom-sbom-run-e1d56f037cb3 Creating 
+ Container ke-sources-29e64acf-sbom-sbom-run-e1d56f037cb3 Created 
+ Container ke-sources-29e64acf-sbom-sbom-run-343bd9cf35e9 Creating 
+ Container ke-sources-29e64acf-sbom-sbom-run-343bd9cf35e9 Created 
+ Container ke-sources-29e64acf-sbom-sbom-run-bf92db36e66a Creating 
+ Container ke-sources-29e64acf-sbom-sbom-run-bf92db36e66a Created 
+ Network ke-sources-29e64acf_default Creating 
+ Network ke-sources-29e64acf_default Created 
+ Container ke-sources-29e64acf-sources-resolve-run-2d2397ba1d2c Creating 
+ Container ke-sources-29e64acf-sources-resolve-run-2d2397ba1d2c Created 
+sources_lock: FAIL (resolve: apk:alpine-baselayout@3.7.1-r8: alpine-baselayout: main/alpine-baselayout/alpine-baselayout.post-upgrade at dd4f6c3f0557fbcdaa88494e6de30c9aa7530be1 is not a regular file; the lock is unchanged)
+
+sources_lock: FAIL (resolve: scripts/sources_resolve.py exited 1; the lock is unchanged)
+exit=1
+wall1=100

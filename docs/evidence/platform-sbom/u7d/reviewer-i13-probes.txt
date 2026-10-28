@@ -1,0 +1,6 @@
+# reviewer U7d item 13 probe, 2026-10-26 (host python -I; stand-in copies of the lock in a temp dir; the committed lock untouched)
+  unchanged: NOT caught
+  an entry key `port: 8080`: caught
+  a file key `http_url`: caught
+  a number in upstream (`value: 8080`): caught
+  a top-level `listen: 8080`: caught

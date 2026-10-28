@@ -32,68 +32,34 @@ it closes the M-NT1 remainder (no GPL source offer, incomplete SBOM). Branch:
 - Further plan-phase rulings and the final U0 test list: archive/platform-sbom-part1.md
 
 ## U0 (committed 31bfed4; detail: docs/handoffs/archive/platform-sbom-part2.md)
-- Outcome: psycopg-c on Debian libpq5 15.19-0+deb12u1; ke-app 265 -> 259 MB, bundle tar -2.6%.
-- L-13 CLOSED (security).
-- A66 re-rated low, re-scoped to auth-audit.
-- Rework rounds used: 1 of 5 (B1-B3, M-1).
-- Orchestrator verify full PASS 694 s.
-- A34 proof at `docs/evidence/platform-sbom/u0/windows-run.txt`.
-- Open nits carried: none.
+- Outcome: psycopg-c built against Debian libpq5; ke-app 265 -> 259 MB. Rework 1 of 5; verify full PASS 694 s.
 
-## U1 (PSC-14; detail: archive/platform-sbom-part3.md and part4.md)
-- Commit 23e3c9b: ke-app flattened and pip dropped; NOTICE gains the Base of ke-app section (PSC-14).
-- Rework rounds used 4 of 5; review APPROVED, security PASS, verify full PASS 721 s.
-- Carried: I-1 to U5/U6 (libldap/libsasl2 GPL lines), I-3 to U9 (`app/sources/`); standing rule N1: no merge to main and no operator bundle before U3 and U9 land.
+## U1 (PSC-14; committed 23e3c9b; detail: archive/platform-sbom-part3.md and part4.md)
+- Outcome: ke-app flattened and pip dropped; NOTICE gains the Base of ke-app section. Rework 4 of 5; verify full PASS 721 s.
+- Still carried: I-3 to U9 (`app/sources/`); standing rule N1: no merge to main and no operator bundle before U9.
 
-## U2 (committed 98b6d27; detail: archive/platform-sbom-part5.md)
-- Commit 98b6d27: syft v1.54.1 pinned by index digest and hardened; `bundle.sh` refuses without it (PSC-20).
-- Rework rounds used 0 of 5; review APPROVED, security PASS, verify full PASS 699 s.
-- Carried: standing rule (security G5): record provenance BEFORE the first run of a newly pinned image.
+## U2 (PSC-20; committed 98b6d27; detail: archive/platform-sbom-part5.md)
+- Outcome: syft v1.54.1 pinned by index digest and hardened; `bundle.sh` refuses without it. Rework 0 of 5; verify full PASS 699 s.
 
-## U3 (PSC-13; detail: archive/platform-sbom-part5.md)
-- Commit 464fa11: one SPDX SBOM per bundled image in `app/sboms/` (PSC-13).
-- Rework rounds used: not recorded in the summary (see archive part5); review APPROVED, security PASS, verify full PASS 856 s.
-- Carried: ruling 5 to U5-U7 (jna, javassist Apache-2.0 OR exempt at U6; jaxb-api CDDL branch, maven sources jar at U7; classifier token rule at U5; NOASSERTION to the U4 report). Windows build hosts need jq on PATH, and `jq.exe` needs `-b`.
+## U3 (PSC-13; committed 464fa11; detail: archive/platform-sbom-part5.md)
+- Outcome: one SPDX SBOM per bundled image in `app/sboms/`. Rework not recorded in the summary; verify full PASS 856 s.
 
-## U4 (committed 40e2181; detail: archive/platform-sbom-part6.md and part7.md)
-- Commit 40e2181: obligations the generator could hide are surfaced (PSC-22).
-- Rework rounds used 1 of 5; review APPROVED, security PASS, verify full PASS 896 s.
-- Carried: to U5, security L-4, L-5, I-4, review R2 and R3, and a named LicenseRef fixture row.
+## U4 (PSC-22; committed 40e2181; detail: archive/platform-sbom-part6.md and part7.md)
+- Outcome: obligations the generator could hide are surfaced. Rework 1 of 5; verify full PASS 896 s.
 
-## U4b (PSC-26, Q67; detail: archive/platform-sbom-part7.md and part8.md)
-- Orchestrator rulings: the EXPOSE exemption (the scanner gains a Dockerfile exact-line rule, which security must review); checks in offline_check after drift; the file tree as evidence only; the NOTICE section; labels excluded; installers unchanged; Q68, ke-neo4j not scanned.
-- RED: 29 failing, 61 controls, reach PASS.
-- GREEN: verify full PASS 990 s; config identical; file tree equal minus products (two jars: the fleet-management and genai plugins); plugin absent from the tar; ke-neo4j unlicensed 27; tar -1.15%.
-- Review APPROVED, 0 rework rounds (doc nits N1-N3 fixed; N6/N7 and cosmetic carried to U5).
-- Security PASS, M-3 closed (L-1, I-2 carried to U5).
-- A34 Windows proof PASS, including install.ps1 from the bundle (`u4b/windows-run.txt`).
-- Orchestrator verify full PASS 995 s; committed c300d88.
+## U4b (PSC-26, Q67; committed c300d88; detail: archive/platform-sbom-part7.md and part8.md)
+- Outcome: our own ke-neo4j image without the fleet-management and genai plugins; EXPOSE exemption added to the scanner. Rework 0 of 5; verify full PASS 995 s.
 
-## 2026-10-23 — orchestrator (pushed; human rulings Q69, Q70)
-- U4b committed c300d88. Human approved push: `agent/platform-sbom` pushed, DRAFT PR #14
-  (do not merge before U9, rule N1); its pull_request CI run is the first Linux
-  classic-store run of the base `docker save name:tag@digest` and the sbom tmpfs mode.
-- Human: Q69 GCC runtime SOURCE ships (U7, deb kind, no exemption); Q70 no scanning of
-  the other bundled images for now. Analyst records both (uncommitted; ride with U5).
-- Next: watch PR #14 CI; then U5 (classifier). Brief: docs/handoffs/NEXT-SESSION.md.
+## 2026-10-23 — orchestrator (pushed; human rulings Q69, Q70; detail: archive/platform-sbom-part8.md)
+- U4b pushed as DRAFT PR #14 (no merge before U9); Q69 GCC runtime source ships (U7); Q70 no scanning of the other bundled images.
 
 ## U5 (PSC-15 classifier; committed d8ffa2d; detail: archive/platform-sbom-part9.md)
-- Outcome: pure classifier functions in `scripts/sbom_check.py`, fail-closed rules (N8 amendment U5, design-notes l.940-1171); also escaping, tree size, scanner continuation lines and the smoke prune.
-- Rework rounds 3 of 5: r1 B1-B3 + security lows, r2 leaf charset, r3 joiners/hash anywhere.
-- Review APPROVED r3, security PASS r3, orchestrator verify full PASS 999 s. CI run 40046377958 PASS 32m32s (feeds U11/Q62).
-- Carried to U6: I-r3-1 segment rule (first test row); security I-4 upper-hex hash (generator digest bump = re-review).
-- Watch at U11: review N8 smoke flake risk.
-- No CHANGELOG line until U9.
+- Outcome: pure fail-closed classifier functions in `scripts/sbom_check.py` (N8 amendment U5). Rework 3 of 5; verify full PASS 999 s; CI run 40046377958 PASS 32m32s (feeds U11/Q62). Still carried: security I-4 upper-hex hash (generator digest bump = re-review); watch review N8 smoke flake at U11; no CHANGELOG line until U9.
 
 ## U6 (hosts + exempt; committed 66781a9; detail: archive/platform-sbom-part9.md)
-- Outcome: `hosts` holds the nine N4 hosts; `exempt` holds jna and javassist (reviewed `security 2026-10-25`); `exempt_matches`, `classify_document` exempt and the segment rule landed. PSC-22 amended: `always` overrides only the classifier, and an exact-version exempt entry still clears.
-- Rework 0 of 5; review APPROVED, security PASS + exempt review PASS, orchestrator verify full PASS 962 s.
-- Rulings: libffi notice goes to the ke-neo4j NOTICE section at U9; a base-image digest bump re-triggers the exempt review.
-- First test rows carried to U7: a future `reviewed` date is rejected; a `#subpath` purl row.
-- First test rows carried to U9: an exempt entry matching more than one package is a problem; `index` runs `validate` first.
-- Also U9: drop the "no row both always and exempt" assertion when the first such entry lands; list "always, cleared by exemption".
+- Outcome: `hosts` (nine N4 hosts) and `exempt` (jna, javassist; reviewed `security 2026-10-25`) landed with `exempt_matches` and the segment rule. Rework 0 of 5; verify full PASS 962 s. Still carried to U9: libffi notice in the ke-neo4j NOTICE section; an exempt entry matching more than one package is a problem; `index` runs `validate` first; drop the "no row both always and exempt" assertion and list "always, cleared by exemption"; a base-image digest bump re-triggers the exempt review.
 
-## U7 (source lock; U7a 9b1754f, U7b 6d8fa4d committed; U7c in progress; detail: archive/platform-sbom-part10.md)
+## U7 (source lock; U7a 9b1754f, U7b 6d8fa4d, U7c 86f7831 committed, U7d gate passed (commit this session); detail: archive/platform-sbom-part10.md and part11.md)
 - Plan: the architect's split U7a-d; 182 keys = deb 152 / pgdg 3 / apk 19 / neo4j 1 / temurin 1 / maven 1 / pypi 5. The CLAUDE.md row draft is in N5 amendment U7 item 7, for the human at U7d.
 - U7a outcome: `lock_needs`, `lock_problems`, `sample_keys`, `lock_text` and `lock-check`; fail-closed URL, path and per-kind binding rules; no lock committed.
 - Rework 2 of 5; review APPROVED, security PASS, orchestrator verify full PASS 968 s.
@@ -105,69 +71,41 @@ it closes the M-NT1 remainder (no GPL source offer, incomplete SBOM). Branch:
 - U7b rulings: KE_IN_GATES accepted; second fetch stands, U7d adds a third fetch from another network; U7d compares key sets.
 - Carried to U7c first test rows: server-supplied URLs pass the hop rules; deadline within one read; six-image list derived.
 - Notes: host `ke-app:local` is stale, so U7d runs build.sh first; a tester driver bug caused 3 unintended real-network resolver runs, all failed closed, nothing written.
-- U7c rework round 1 in progress: rulings design-notes l.1894-1946+.
+- U7c outcome: deb route via the snapshot `.dsc`; apk route via the GitLab API raw form after the raw endpoint's bot challenge; strict deb822 and APKBUILD parsers; every aports file locked, distfiles streamed. Real `bash` and `pax-utils` resolve on Windows.
+- U7c rework 1 of 5; review APPROVED, security PASS, A34 PASS, verify full PASS 1004 s.
+- U7c rulings: R-1 stream distfiles; R-2 compose as source; gap rulings; item 9 URL form; two U7a apk rule changes.
+- Carried to U7d first rows: R1-N1 middle segments, R1-N2 non-field `.dsc` line, I-5 synthetic nonce.
+- U7d: Q71/Q72 ruled by the human 2026-10-25; CI run 40244299450 on 86f7831 PASS (verify 23 min); see the U7d block below.
 
-## 2026-10-25 — architect (U7c)
-- U7c precision D1-D7/A1-A5, R-1 stream distfiles, R-2 compose as source, gap rulings 1-5, two U7a apk rule changes.
-- Detail: archive/platform-sbom-part10.md; evidence design-notes U7c precision l.1565-1789, gap rulings l.1806-1892
+## U7d (source lock real run; gate passed 2026-10-26; commit pending in this session; detail: archive/platform-sbom-part11.md)
+- Outcome: pgdg route via the apt-archive InRelease-bound Sources; bounded retry 3x (10/30/60 s) on 5xx and timeouts plus a run budget (20 / 3 h); real-data rules: aports symlink skip, leading `_`, size-0 GitLab apk files, scanner skips the lock. The lock: 182 keys, 872 files, 1.327 GB full, 137 MB sample, 1 manual neo4j entry == second fetch. CLAUDE.md row added with the human's approval.
+- Gates: review APPROVED, security PASS + gpgv lock review PASS, A34 PASS, controls 0 unexpected, verify full PASS 1018 s (plus a final run after the CLAUDE.md row). Rework 1 of 5.
+- Rulings: A71 (pgdg kind + tenth host), A72 (lock-tool retry only), P-R1 (no signature verification in the tool), P-R2 (mid-body timeouts retried), item 14 (third Neo4j fetch deferred to U8's CI sample fetch; the ARM one-liner is still preferred before the first operator bundle).
+- Lessons: a change found during a real run goes back through RED; controls baselines come from SAVED copies.
+- Forward U8: keep the run's SBOMs in `--evidence-dir`; name checks of `.dsc` Files and APKBUILD sha512sums; cite the CI fetch in sources-provenance.md.
+- Forward U11: full operator bundle ~8 GiB staged > 7 GiB floor; CI verify 23 min. Forward U9: the U6 carried rows.
 
-## 2026-10-25 — tester (U7c RED)
-- U7c RED: 19 failing, reach PASS, controls 79 (0 unexpected).
-- Detail: archive/platform-sbom-part10.md; evidence u7c/red-verify-fast.txt, u7c/target-reach-verify-fast.txt, u7c/red-mutants.txt
 
-## 2026-10-25 — developer (U7c GREEN)
-- U7c GREEN: verify fast + full PASS 1003 s, controls 0 unexpected.
-- Detail: archive/platform-sbom-part10.md; evidence u7c/green-verify-fast.txt, u7c/green-verify-full.txt, u7c/green-controls.txt
+## 2026-10-27 — analyst (plan update U7d)
+- requirements.md: new status line (U7d gate passed, next U8); table rows PSC-15/16/22/23 updated; PSC-23 says U8's first CI sample fetch is the third Neo4j fetch (sources-provenance.md). open-questions.md: Q61-Q72 all resolved, plus the third-fetch refinement with the architect's caveat (ARM one-liner still preferred).
 
-## 2026-10-25 — reviewer (U7c)
-- CHANGES REQUESTED: B1 APKBUILD from a subdirectory, N1 duplicate deb822 fields, N2 first-assignment APKBUILD, N3 U8 name checks.
-- Detail: archive/platform-sbom-part10.md; evidence u7c/review.md, u7c/reviewer-controls.txt, u7c/reviewer-probes.txt
+## 2026-10-27 — marketer (CHANGELOG U5-U7d)
+- CHANGELOG "platform-sbom (in progress)" rewritten to U0-U7d in six bullets (U0-U4b merged in, U5-U7d added); no README change (no operator-facing shift until U9); no evidence file.
 
-## 2026-10-25 — security (U7c)
-- PASS: L-1 = B1, L-2 parse_dsc separators/duplicates, L-3 listing truncation, I-1 tree path encoding.
-- Detail: archive/platform-sbom-part10.md; evidence u7c/security.md, u7c/security-probes.txt
+## 2026-10-27 — orchestrator (U7d commit BLOCKED by a fresh scan High; U7e opened)
+- After the docs/CLAUDE.md row, the orchestrator's `verify.sh full` FAILED at the scan stage (`u7d/orchestrator-verify-full-after-claude-row.txt` l.2075-2372): ke-app's base carries openssl/libssl3 3.0.22-1~deb12u1, fixed in 3.0.22-1~deb12u2, CVE-2026-84782 High (+ Mediums/Lows in the same fix; CPython Mediums with no 3.12 fix). Unit + integration tests were green. Never commit on red: the U7d commit waits for U7e.
+- U7e (openssl 3.0.22-1~deb12u2 pinned in ke-app's runtime stage like libpq5; scan green; the lock regenerated with the new `deb:openssl@...deb12u2` key; the U3 fixtures refreshed and real-row tests re-pinned; NOTICE true; A34): analyst criteria, architect design (N0 amendment U7e) and security advisory confirmation dispatched 2026-10-27; next session runs tester RED -> GREEN (incl. the lock re-run) -> reviews -> one commit for U7d+U7e or two (architect recommends).
 
-## 2026-10-25 — tester (U7c Windows proof)
-- A34 FAIL on the real Alpine component: GitLab raw endpoint behind a bot challenge; steps 3-4 and the real deb PASS.
-- Detail: archive/platform-sbom-part10.md; evidence u7c/windows-run.txt
+## 2026-10-27 — architect (U7e)
+- Design: design-notes "N0 amendment, U7e" l.248-420. Pin `ARG OPENSSL_VERSION=3.0.22-1~deb12u2` and install `libssl3`/`openssl` beside libpq5 in the runtime stage only (not builder, not gates); no base-digest bump. Tests: static `test_openssl_pin_in_runtime_stage` + image-side `deb_pin_problems`; the scan is the proof; drift is unchanged (it compares names) and a NOTICE change is optional (analyst).
+- Lock: new key `deb:openssl@3.0.22-1~deb12u2` (ke-app); `~deb12u1` stays for postgres, so 183 keys. Refresh only `ke-app.pkgs.tsv`, and its diff must be exactly the two openssl rows, else stop. Incremental real lock run. A34 yes.
+- Recommend ONE commit for U7d+U7e: verify gates the whole tree and neither unit goes green alone. Flag for the human: the pinned postgres image carries the same vulnerable openssl, but Q70 means it is not scanned.
 
-## 2026-10-25 — tester (U7c rework r1 RED)
-- r1 RED: 39 failing, reach PASS, controls 34 (0 unexpected), item 9 apk API raw URL form.
-- Detail: archive/platform-sbom-part10.md; evidence u7c/r1-red-verify-fast.txt, u7c/r1-target-reach-verify-fast.txt, u7c/r1-red-mutants.txt
+## 2026-10-27 — analyst (U7e)
+- New PSC-27 in requirements.md (U7e, before U7d's commit). Pin libssl3/openssl 3.0.22-1~deb12u2 in the runtime apt RUN. The static and NOTICE tests split upgraded from added packages. Drift check on versions; scan clean with a fresh DB; lock gains deb:openssl@...u2 (tool-generated, security-reviewed); all six U3 fixtures refreshed (O3) and real rows re-pinned; the NOTICE base section names the upgrade; A34; gate full; metric neither. Status line and table updated.
+- Flag: postgres carries the same libssl3 u1 and is unscanned (A70), so deb:openssl@u1 stays in the lock for it.
 
-## 2026-10-25 — developer (U7c rework r1 GREEN)
-- U7c r1 GREEN: verify fast + full PASS 1004 s, controls 0 unexpected.
-- Detail: archive/platform-sbom-part10.md; evidence u7c/r1-green-verify-fast.txt, u7c/r1-green-verify-full.txt, u7c/r1-green-controls.txt
-
-## 2026-10-25 — tester (U7c r1 Windows re-run)
-- r1 Windows re-run PASS: pax-utils resolves on the API form in 5.2 s, bash byte-identical, snapshot 503/31 s observed.
-- Detail: archive/platform-sbom-part10.md; evidence u7c/windows-run.txt (addendum)
-
-## 2026-10-25 — reviewer (U7c rework r1)
-- Asked: re-check U7c rework round 1 (rulings l.1894-1984) and item 9 (l.1986-2105). Verdict: **APPROVED**. Detail: `u7c/review-r1.md`.
-- Closed:
-  - B1: the APKBUILD path is pinned on both the lock and resolver side.
-  - N1: duplicate fields fail, case-insensitively.
-  - N2: repeated top-level pkgver, pkgrel or sha512sums assignments fail.
-  - L-2: CRLF is folded and every other control or separator character fails.
-  - L-3: a full page needs an empty `x-next-page`.
-  - I-1: the tree path is encoded.
-- Item 9 is a rule change, not a loosening: the exact API raw form, ref = commit, canonical `<P>`, the decoded path rules, the query and `%` exempt only for apk on that shape, and `/-/raw/` refused.
-- Challenge rows: a 307 to a plain path then 418 gives the HTTP 418 line; a 307 that keeps the `%2F` path is refused by the hop rules. Both give one FAIL line and write nothing.
-- r1 controls re-run: 34/29/5, 0 unexpected (`u7c/reviewer-r1-controls.txt`). Probes: `u7c/reviewer-r1-probes.txt`.
-- Nits:
-  - R1-N1: the decoded middle segments of `<P>` accept any printable character (`..;`, `a?b`, `x&ref=0`); harmless on the wire, but looser than the resolver's safe_name. Suggest the lock name rule per segment.
-  - R1-N2: `parse_dsc` drops the continuation lines after a junk line; U8 N3 reuses the parser. Suggest refusing a non-field line.
-- Next: security re-check; orchestrator commit gate.
-
-## 2026-10-25 — security (U7c rework r1)
-- PASS: L-1/L-2/L-3/I-1 closed, item 9 holds, I-5 real nonce in a test -> U7d hygiene row.
-- Detail: archive/platform-sbom-part10.md; evidence u7c/security-r1.md, u7c/security-r1-probes.txt
-
-## 2026-10-25 — orchestrator (U7c commit gate)
-- Rework rounds used: 1 of 5 (B1 APKBUILD path, N1/N2 parser strictness, security L-2/L-3/I-1, item 9: GitLab raw endpoint behind a bot challenge -> apk URLs move to the API raw form `.../repository/files/<P>/raw?ref=<commit>`, old form refused). Rulings: design-notes N5 amendment U7 "U7c precision" l.1565-1804, "gap rulings" l.1806-1892, "rework round 1" l.1894-2105.
-- Review APPROVED (r1), security PASS (r1), A34 PASS (r1 Windows re-run: real `apk:pax-utils@1.3.8-r2` resolves on the API form in 5.2 s and passes lock-check; real `deb:bash@5.2.15-2` byte-identical across runs), controls 34 rows 0 unexpected.
-- Orchestrator verify full PASS 1004 s (1047 unit + 15 integration, sentinel ok; `u7c/orchestrator-verify-full.txt`). Diff read: deb/apk routes, parse_dsc, `_apk_api_shape`/`_apk_api_problem`, lock-needs apk route, sources_lock.sh `--tar` for every image. Sentinel untouched. No lock file committed (U7d).
-- Carried to U7d first rows: reviewer R1-N1 (decoded `<P>` middle segments held to the file-name rule), R1-N2 (a non-field `.dsc` line fails), security I-5 (replace the real challenge nonce in tests/test_sources_resolve.py with a synthetic value), security I-6/I-7 noted.
-- Observed for U7d (for the human): snapshot.debian.org returned a 503 once and took 31 s once; a full run makes ~304 snapshot requests with no retry (Q61), so one transient error aborts the run fail-closed. The analyst drafts Q72 (resume-from-partial vs a bounded retry exception). Also for the human: Q71 (PGDG host) gates the committed lock; the CLAUDE.md "Generated artifacts" row (draft in N5 amendment U7 item 7).
-- Commit APPROVED. Next: U7d needs Q71 and Q72 ruled, a fresh `scripts/build.sh`, the real full run, the committed lock + security review + third fetch, `.gitattributes` eol=lf, the CLAUDE.md row.
+## 2026-10-28 — security (openssl advisory)
+- **Confirmed:** CVE-2026-84782 (OpenSSL High, DTLS only) plus five Low/Medium, fixed for bookworm in `3.0.22-1~deb12u2` (DLA-4859-1), on deb.debian.org debian-security and snapshot (`.dsc` sha1 `eb6d0239...`, first_seen 20261026T032458Z); CPython Mediums have no 3.12 fix in grype and do not fail the `--only-fixed --fail-on high` policy. Detail: `u7e/security-openssl.md`.
+- **Prefer:** pin `libssl3=3.0.22-1~deb12u2 openssl=3.0.22-1~deb12u2` in the app runtime stage now; bump the base to `python:3.12-slim-bookworm@sha256:6dd8b6da...` (3.12.16 plus deb12u2, already published) as its own item with the CPython licence refresh. Either way the lock gains `deb:openssl@3.0.22-1~deb12u2` and the U3 ke-app fixture must move.
+- Other images: postgres also has deb12u1 (vulnerable, not scanned, Q70); phoenix and ke-neo4j have trixie `3.5.7-1~deb13u3` (fixed); FYI the Alpine gateway (3.5.5-r0) and valkey (3.5.8-r0) are below upstream 3.5.9 (backport not checked).

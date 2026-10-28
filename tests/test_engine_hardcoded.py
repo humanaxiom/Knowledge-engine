@@ -192,6 +192,33 @@ class ScannerContractTest(unittest.TestCase):
             text = 'X = "a" \\\n    "b"\nDEFAULT_COLLECTOR = "http://localhost:47101"\n'
             self.assertEqual(_scan({"harness_telemetry/tracing.py": text}, ["47101"], EXEMPTIONS), [])
 
+    def test_the_generated_lock_is_skipped(self):
+        """U7d round 1, item 13 (u7d/r1-green-verify-fast.txt: `"size": 8080` at
+        docker/sources.lock.json:8760): the generated source lock is skipped
+        whole, path-exact, through the allowed-files list (`_allowed`), never
+        a line exemption. The same text anywhere else is still flagged."""
+        from tests import hardcoded_scan
+
+        lock = ('{\n "components": {\n  "deb:x@8080-1": {\n   "files": [\n    {\n     "name": "x_8080-1.dsc",\n'
+                '     "size": 8080,\n     "upstream": {\n      "from": "snapshot.debian.org mr/package/x/8080/srcfiles"\n'
+                '     }\n    }\n   ]\n  }\n },\n "format": 1\n}\n')
+        path = "docker/sources.lock.json"
+        self.assertEqual(_scan({path: lock}, ["8080"]), [], "the lock's size and from lines are flagged")
+        self.assertIn(path, hardcoded_scan.ALLOWED_FILES)
+        self.assertTrue(hardcoded_scan._allowed(path))
+        self.assertIn("generated lock: sizes and hashes, PSC-15; checked by test_sources_lock_committed.py",
+                      open(hardcoded_scan.__file__, encoding="utf-8").read(),
+                      "the allowed-files entry does not give its reason")
+        for other in ("docker/other.json", "docker/sources.lock.json.bak", "docker/sub/sources.lock.json",
+                      "scripts/sources.lock.json", "docker/sources.lock.jsonl"):
+            with self.subTest(path=other):
+                self.assertFalse(hardcoded_scan._allowed(other))
+                found = {(f.line, str(f.value)) for f in _scan({other: lock}, ["8080"])}
+                self.assertEqual(found, {(7, "8080"), (9, "8080")})
+        with self.subTest(case="a Python :8080 literal"):
+            py = {"engine/app.py": 'UPSTREAM = "http://upstream.example:8080"\nport = 8080\n'}
+            self.assertEqual({f.line for f in _scan(py, ["8080"])}, {1, 2})
+
     def test_allowed_locations_are_never_flagged(self):
         for path in ("config/defaults.yaml", ".env.example", "config/verify.env",
                      "tests/test_x.py", "docs/architecture.md"):

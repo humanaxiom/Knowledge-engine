@@ -1,0 +1,40 @@
+ Container ke-developer-u7di13-gates-run-f6266ba78d46 Creating 
+ Container ke-developer-u7di13-gates-run-f6266ba78d46 Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.96ms
+Installed 1 package in 1ms
+repo lock + repo .gitattributes: 182 entries, 472945 bytes; kinds ['apk', 'deb', 'maven', 'neo4j', 'pgdg', 'pypi', 'temurin']
+ok  [target] repo lock + repo .gitattributes: test_canonical_lf_and_format      must pass | no problem
+ok  [target] repo lock + repo .gitattributes: test_every_needed_key_and_nothing_else must pass | no problem
+ok  [target] repo lock + repo .gitattributes: test_gitattributes_pins_lf        must pass | no problem
+ok  [target] repo lock + repo .gitattributes: test_no_lock_problems             must pass | no problem
+ok  [target] repo lock + repo .gitattributes: test_nothing_the_hardcoded_scan_would_miss must pass | no problem
+ok  [target] repo lock + repo .gitattributes: test_the_manual_neo4j_entry       must pass | no problem
+ok  [target] repo lock + repo .gitattributes: test_the_sample                   must pass | no problem
+ok  [baseline] no lock, no eol line (temp copy): test_canonical_lf_and_format     must fail | AssertionError: absent.json is not committed: run scripts/sources_lock.sh --arch amd64 (U7d S5) and commit it with its t
+ok  [baseline] no lock, no eol line (temp copy): test_every_needed_key_and_nothing_else must fail | AssertionError: absent.json is not committed: run scripts/sources_lock.sh --arch amd64 (U7d S5) and commit it with its t
+ok  [baseline] no lock, no eol line (temp copy): test_gitattributes_pins_lf       must fail | AssertionError: 'docker/sources.lock.json text eol=lf' not found in ['# Shell scripts run inside Linux containers and Gi
+ok  [baseline] no lock, no eol line (temp copy): test_no_lock_problems            must fail | AssertionError: absent.json is not committed: run scripts/sources_lock.sh --arch amd64 (U7d S5) and commit it with its t
+ok  [baseline] no lock, no eol line (temp copy): test_nothing_the_hardcoded_scan_would_miss must fail | AssertionError: absent.json is not committed: run scripts/sources_lock.sh --arch amd64 (U7d S5) and commit it with its t
+ok  [baseline] no lock, no eol line (temp copy): test_the_manual_neo4j_entry      must fail | AssertionError: absent.json is not committed: run scripts/sources_lock.sh --arch amd64 (U7d S5) and commit it with its t
+ok  [baseline] no lock, no eol line (temp copy): test_the_sample                  must fail | AssertionError: absent.json is not committed: run scripts/sources_lock.sh --arch amd64 (U7d S5) and commit it with its t
+ok  [repo] a missing lock is a named failure, not an error                    must fail | AssertionError: absent.json is not committed: run scripts/sources_lock.sh --arch amd64 (U7d S5) and commit it with its t
+ok  [mutant] a stale entry -> test_no_lock_problems                             must fail | -  'scripts/sources_lock.sh --arch amd64'] : lock_problems on the committed lock
+ok  [mutant] a missing key -> test_no_lock_problems                             must fail | -  'scripts/sources_lock.sh --arch amd64'] : lock_problems on the committed lock
+ok  [mutant] a missing key (key set) -> test_every_needed_key_and_nothing_else  must fail | 'deb:bash@5.2.15-2' : the committed lock's keys are not the fixtures' 182 needed keys
+ok  [mutant] CRLF line endings -> test_canonical_lf_and_format                  must fail | AssertionError: b'\r' unexpectedly found in b'{\r\n "components": {\r\n  "apk:alpine-baselayout@3.7.1-r8": {\r\n   "arch
+ok  [mutant] non-canonical spacing -> test_canonical_lf_and_format              must fail | AssertionError: '{\n  "components": {\n    "apk:alpine-baselay[537938 chars]n}\n' != '{\n "components": {\n  "apk:alpine
+ok  [mutant] a wrong neo4j sha256 -> test_the_manual_neo4j_entry                must fail | + ('182ae2e5c3807bc3d7a09770dbf450d2e8667080bde93b3b6c829125db0f91e3', 20907800) : the neo4j tarball is not security's s
+ok  [mutant] the neo4j entry generated, not manual -> test_the_manual_neo4j_entry must fail | + manual
+ok  [mutant] format 2 -> test_canonical_lf_and_format                           must fail | AssertionError: 2 != 1
+ok  [mutant] no pgdg entries (six kinds) -> test_the_sample                     must fail |  : ['apk:alpine-baselayout@3.7.1-r8', 'deb:hostname@3.23+nmu1', 'maven:javax.xml.bind:jaxb-api@2.2.12', 'neo4j:neo4j@5.2
+ok  [mutant] the .gitattributes line missing -> test_gitattributes_pins_lf      must fail | AssertionError: 'docker/sources.lock.json text eol=lf' not found in ['# Shell scripts run inside Linux containers and Gi
+ok  [mutant] a port key in an entry -> test_nothing_the_hardcoded_scan_would_miss must fail | -  'number 8080 at components/deb:bash@5.2.15-2/port'] : the lock holds what the hardcoded scan's skip would hide
+ok  [mutant] an http key at the top -> test_nothing_the_hardcoded_scan_would_miss must fail | + [] : the lock holds what the hardcoded scan's skip would hide
+ok  [mutant] a Port key in a file (case) -> test_nothing_the_hardcoded_scan_would_miss must fail | + [] : the lock holds what the hardcoded scan's skip would hide
+ok  [mutant] an integer in arches -> test_nothing_the_hardcoded_scan_would_miss must fail | + [] : the lock holds what the hardcoded scan's skip would hide
+ok  [mutant] an integer under another key -> test_nothing_the_hardcoded_scan_would_miss must fail | + [] : the lock holds what the hardcoded scan's skip would hide
+ok  [mutant] a float under another key -> test_nothing_the_hardcoded_scan_would_miss must fail | + [] : the lock holds what the hardcoded scan's skip would hide
+
+U7d S7 controls: 31 rows, 24 must-fail, 7 must-pass, 0 unexpected

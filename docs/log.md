@@ -686,3 +686,52 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-25T15:21:56Z | security | platform-sbom | U7c rework r1 re-check (APKBUILD pin, parse_dsc, truncation, GitLab API raw form) | security: PASS (L-1, L-2, L-3, I-1 closed; item 9 holds; no new finding)
 2026-10-25T15:23:28Z | documenter | platform-sbom | handoff trim: U7c round-1 sections to archive/platform-sbom-part10.md | docs: updated
 2026-10-25T15:34:48Z | orchestrator | platform-sbom | U7c gates judged: review APPROVED (r1), security PASS (r1), A34 PASS, verify full PASS 1004 s; commit approved | smoke: PASS
+2026-10-25T15:35:25Z | developer | platform-sbom | committed U7c on agent/platform-sbom | commit: done
+2026-10-25T15:36:30Z | analyst | platform-sbom | Q72 drafted (snapshot transient failures vs Q61) for the human; status U7c | plan: question drafted
+2026-10-25T15:37:09Z | documenter | platform-sbom | handoff: U7c closed to a summary, detail to archive/platform-sbom-part10.md; U7d blocked on Q71/Q72/CLAUDE.md row | docs: updated
+2026-10-25T23:20:55Z | orchestrator | platform-sbom | pushed agent/platform-sbom c300d88..86f7831 (U5-U7c) to draft PR #14 on the human's approval | push: done (draft PR)
+2026-10-26T02:14:30Z | analyst | platform-sbom | A71 pgdg kind + apt-archive.postgresql.org host; A72 bounded retry for the lock tool (human rulings) | plan: rulings recorded
+2026-10-26T02:16:41Z | architect | platform-sbom | U7d precision: pgdg route via apt-archive Sources index, bounded retry policy, U7d steps | plan: design amended
+2026-10-26T02:19:56Z | tester | platform-sbom | U7d RED held: PGDG suite probe shows bookworm-pgdg-archive exists but main/source/Sources.gz does not (only Sources, Sources.bz2); architect to amend P2's index form | tdd red: blocked (architect amendment needed)
+2026-10-26T02:24:32Z | security | platform-sbom | U7d design review (pgdg kind, apt-archive host, Q72 retry) | security: design review PASS
+2026-10-26T02:26:42Z | documenter | platform-sbom | handoff trim: U7d design-stage sections to archive/platform-sbom-part11.md | docs: updated
+2026-10-26T03:05:14Z | tester | platform-sbom | U7d RED: retry R1-R6 + security 3-6, pgdg route (InRelease-bound Sources), lock P5, lock-needs P1, ten hosts, carried R1-N1/R1-N2/I-5, 182-key coverage; targets reach PASS 1076 OK; controls 70 rows 0 unexpected | tdd red: 31 failing as expected
+2026-10-26T03:35:54Z | developer | platform-sbom | U7d GREEN: pgdg route, bounded retry, ten hosts, InRelease copy | tdd green: verify fast + full PASS
+2026-10-26T03:38:40Z | documenter | platform-sbom | handoff trim: U7d RED/GREEN sections to archive/platform-sbom-part11.md | docs: updated
+2026-10-26T03:43:38Z | security | platform-sbom | U7d code audit (pgdg route, Sources binding, retry, pgdg lock rules, copy step) | security: PASS (no critical/high/medium; L-1 copy step follows symlinks)
+2026-10-26T03:44:15Z | reviewer | platform-sbom | U7d review: B1 real-opener URLError-wrapped timeouts not retried; B2 untested sources_lock.sh hostpath change; nits N1-N4 (pgdg suite unbound) | review: changes requested
+2026-10-26T03:45:58Z | security | platform-sbom | U7d S8 third Neo4j fetch: model hosts not reachable non-interactively | security: blocked (third fetch needs the human)
+2026-10-26T03:46:00Z | architect | platform-sbom | U7d rework r1 rulings (URLError timeouts retried, hostpath save pinned, suite bound to lock-needs, InRelease copy before the move via --evidence-dir) | plan: design amended
+2026-10-26T03:46:06Z | documenter | platform-sbom | handoff trim: reviewer (U7d) section to archive/platform-sbom-part11.md | docs: updated
+2026-10-26T03:51:15Z | developer | platform-sbom | U7d real run 1 stopped: apk symlink post-upgrade not a regular file; docker save path fix in sources_lock.sh | lock run: exit 1
+2026-10-26T03:53:02Z | tester | platform-sbom | U7d S7 RED: committed-lock test module (6 methods, named failures until the lock lands); stand-in reach; controls 23 rows 0 unexpected | tdd red: 6 failing as expected
+2026-10-26T03:53:04Z | documenter | platform-sbom | handoff trim: U7d security x2 and real-run sections to archive/platform-sbom-part11.md | docs: updated
+2026-10-26T03:53:08Z | tester | platform-sbom | U7d A34 step 3 (refusals) on Windows PASS; happy path pending the developer's run (lock-run-1 failed on the aports symlink) | a34: PASS (step 3); happy path pending
+2026-10-26T04:25:40Z | tester | platform-sbom | U7d rework r1 RED: URLError unwrap, hostpath pin, suite binding, --evidence-dir copy before move (links refused), aports symlink rule; targets reach (only S7 fails); controls 33 rows 0 unexpected | tdd red: 20 failing as expected
+2026-10-26T04:29:57Z | documenter | platform-sbom | handoff trim: U7d S7/A34/r1 RED sections to archive/platform-sbom-part11.md | docs: updated
+2026-10-26T04:31:59Z | developer | platform-sbom | U7d r1+S7 targets applied; real run 2 stopped: apk-tools file _apk not a safe file name | lock run: exit 1
+2026-10-26T04:33:30Z | documenter | platform-sbom | handoff trim: U7d run-2 section to archive/platform-sbom-part11.md | docs: updated
+2026-10-26T04:34:33Z | documenter | platform-sbom | handoff: closed-unit summaries U0-U4b condensed to one line each, detail to archive/platform-sbom-part8.md | docs: updated
+2026-10-26T05:06:46Z | tester | platform-sbom | U7d r1 item 10: read-only aports probe (19 keys; only leading-_ names new) + RED for the _ rule and key-prefixed skip line; reach only S7 fails; controls 27 rows 0 unexpected | tdd red: 13 failing as expected
+2026-10-26T05:34:58Z | tester | platform-sbom | U7d r1 item 12 RED: empty GitLab apk files (size 0 with the empty hashes); reach only S7 fails; controls 35 rows 0 unexpected | tdd red: 4 failing as expected
+2026-10-26T06:16:44Z | developer | platform-sbom | U7d targets applied, lock written (182 keys, lock-check ok); verify RED on test_no_hardcoded_ports (size 8080 in lock) | tdd green: verify fast + full FAIL (1 scanner hit); lock run: exit 0
+2026-10-26T06:23:22Z | reviewer | platform-sbom | U7d rework r1 + lock review: B1/B2/N1/N2 closed; items 8/10/12 hold; lock 182 keys canonical, lock_problems empty; nits R1-N1 empty APKBUILD, R1-N2 drift counts | review: APPROVED
+2026-10-26T06:25:17Z | documenter | platform-sbom | handoff urgent trim: U7d r1 sections and U5/U6 summaries to archive | docs: updated
+2026-10-26T06:25:19Z | security | platform-sbom | U7d rework r1 code re-check, item 13 design, S8 lock review | security: PASS (code r1; item 13 acceptable); lock review: PASS (commit waits on the third Neo4j fetch)
+2026-10-26T06:57:36Z | tester | platform-sbom | U7d item 13 RED: whole-file scan skip for the generated lock + committed-lock guard + APKBUILD size>0 (R1-N1); reach verify fast PASS; s7 controls baseline fixed (--base repo 0 unexpected) | tdd red: 3 failing as expected
+2026-10-26T07:28:05Z | developer | platform-sbom | U7d item 13 GREEN: lock exempt in port scan, APKBUILD size 0 refused | tdd green: verify fast + full PASS
+2026-10-26T07:30:16Z | documenter | platform-sbom | handoff trim: U7d item-13 sections to archive/platform-sbom-part11.md | docs: updated
+2026-10-26T07:30:43Z | tester | platform-sbom | U7d item 13 controls baseline fixed to saved pre-13 copies; --base repo 14 rows 0 unexpected | controls: PASS (0 unexpected)
+2026-10-26T07:31:02Z | reviewer | platform-sbom | U7d item 13 re-check: path-exact lock skip, APKBUILD size>0 (R1-N1 closed), contract test catches port/http keys and stray numbers; U7d final | review: APPROVED
+2026-10-26T07:46:29Z | orchestrator | platform-sbom | U7d gates judged: review APPROVED, security PASS + lock review PASS, A34 PASS, verify full PASS 1018 s; commit HELD for the human's third Neo4j fetch and the CLAUDE.md row | smoke: PASS; commit: held
+2026-10-26T07:47:24Z | documenter | platform-sbom | handoff trim: U7d security r1, tester baseline, reviewer i13 sections to archive/platform-sbom-part11.md | docs: updated
+2026-10-26T16:32:07Z | developer | platform-sbom | CLAUDE.md generated-artifacts row for docker/sources.lock.json added | docs: CLAUDE.md row added; verify fast PASS
+2026-10-28T00:03:48Z | architect | platform-sbom | U7d item 14: third Neo4j fetch moves to U8's CI sample fetch (orchestrator refinement); CLAUDE.md row added | plan: design amended
+2026-10-28T00:04:48Z | security | platform-sbom | provenance: third Neo4j fetch deferred to U8 CI sample fetch (ruling refinement, U7d item 14) | security: provenance updated (third fetch deferred to U8 CI by ruling)
+2026-10-28T00:18:57Z | analyst | platform-sbom | plan update: status U7d gate passed, PSC-15/16/22/23 state, Q61-Q72 resolved, third-fetch refinement noted | plan: updated
+2026-10-28T00:19:05Z | documenter | platform-sbom | handoff: U7d closed to a summary; README status U5-U7d | docs: updated
+2026-10-28T00:19:09Z | marketer | platform-sbom | CHANGELOG: platform-sbom U5-U7d | docs: changelog
+2026-10-28T00:22:25Z | orchestrator | platform-sbom | U7d commit BLOCKED: verify full FAIL at scan (ke-app openssl 3.0.22-1~deb12u1, CVE-2026-84782 High, fixed deb12u2); U7e opened | smoke: FAIL (scan High); commit: blocked
+2026-10-28T00:24:06Z | architect | platform-sbom | U7e design: openssl 3.0.22-1~deb12u2 pin in ke-app, lock regeneration, fixture refresh | plan: design amended
+2026-10-28T00:24:30Z | analyst | platform-sbom | U7e criteria drafted: openssl 3.0.22-1~deb12u2 pin in ke-app, lock + fixture refresh; U7d commit blocked on it | plan: criteria drafted
+2026-10-28T00:26:27Z | security | platform-sbom | openssl advisory check for the U7d verify-full scan failure (CVE-2026-84782, DLA-4859-1) | security: advisory confirmed

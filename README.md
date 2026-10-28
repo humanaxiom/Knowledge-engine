@@ -33,7 +33,15 @@ report of packages with no licence, `NOASSERTION`, or a licence text syft
 could only hash (marked "unidentified licence text"). Any SBOM that fails
 validation refuses the bundle, with no manifest written. The bundle is not a
 release: the generated "Source code" section of `NOTICE.md` is not built yet.
-(Updated 2026-10-23, documenter, status)
+Behind that, the source-archive groundwork is in place but does not change
+what a build or a bundle does. `scripts/sbom_check.py` holds a fail-closed
+licence classifier (which packages need their source shipped);
+`docker/source-policy.json` lists the allowed source hosts and the reviewed
+exemptions; and `docker/sources.lock.json` pins, per component, the exact
+upstream source files by SHA-256. A maintainer regenerates the lock with
+`scripts/sources_lock.sh`; nothing fetches the locked sources until the
+source-archive step lands.
+(Updated 2026-10-27, documenter, status)
 
 The stack's neo4j service runs the first-party `ke-neo4j:${KE_IMAGE_TAG}`
 image, built by `build.sh`/`build.ps1` from `docker/neo4j.Dockerfile` on the

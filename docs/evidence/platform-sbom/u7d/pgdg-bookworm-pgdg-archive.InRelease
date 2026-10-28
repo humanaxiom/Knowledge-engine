@@ -1,0 +1,68 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Codename: bookworm-pgdg-archive
+Date: Wed, 21 Oct 2026 00:04:45 +0000
+Label: PostgreSQL for Debian/Ubuntu archive repository
+Origin: apt-archive.postgresql.org
+Suite: bookworm-pgdg-archive
+MD5Sum:
+ 94f07ece19b32c9a8820de69d27b5259         27582516 main/binary-amd64/Packages
+ a789208690b389ef06ec01a2cf00a309          4605256 main/binary-amd64/Packages.bz2
+ e8c71bfa4f63377b6a574795031cc092         26823452 main/binary-arm64/Packages
+ 35b3786c93556b7dfb2fa5964b8d4d7c          4509637 main/binary-arm64/Packages.bz2
+ cd08e058b0b085350788d3eda031cfd6         27459778 main/binary-ppc64el/Packages
+ 7eafb6272926a8e1bd24e477cc992ee3          4562082 main/binary-ppc64el/Packages.bz2
+ 70c2e3661191f29a97601add45bbca5f         10567882 main/binary-s390x/Packages
+ b96b9808fb2168ec8f783eadf26f8f5a          1735657 main/binary-s390x/Packages.bz2
+ 9a859d5d66fd0dffab6e0cad4c9ecb98          5043212 main/source/Sources
+ e2ea820db3151e9bc5550bcec684497c           734866 main/source/Sources.bz2
+SHA1:
+ e10426340051bd841ff2bdd75684ad2b075d514b         27582516 main/binary-amd64/Packages
+ cb5e4a6572660d73a21154c13ea3052f9b5956fa          4605256 main/binary-amd64/Packages.bz2
+ e78b56fef982885c05bb570dfeddd1cbe82093cb         26823452 main/binary-arm64/Packages
+ a5d8c11f706777b08aa04ec43f3bd0eb74c632b6          4509637 main/binary-arm64/Packages.bz2
+ 9898a1a5c2e7a4171cdeea9571a3e4c6feaf5bb2         27459778 main/binary-ppc64el/Packages
+ bd85b7202ee7255ed0a4e91ef5b55e6790001904          4562082 main/binary-ppc64el/Packages.bz2
+ f253e3dfe57ba09b6ede5f166d65c47af08c0883         10567882 main/binary-s390x/Packages
+ aa8a5c4a8c23eb8431510e0ab4c5347ee652b27c          1735657 main/binary-s390x/Packages.bz2
+ d380d000c0197de89d5c18d21a53f430c76fcfac          5043212 main/source/Sources
+ 8cbfefd463e2d92433133094f88d40515a146848           734866 main/source/Sources.bz2
+SHA256:
+ c8cd4ffe7773c2d9ee833b97dd9a3251d4996243b789fd8e6f455dd281610700         27582516 main/binary-amd64/Packages
+ 06d00a84ef4e538332bd4912c7e20c1073e0ba7949aaa5636df6d042d2c1323b          4605256 main/binary-amd64/Packages.bz2
+ 47069068665cabc4f6daa278acea54adc2df2562a391102857edb86250af78d4         26823452 main/binary-arm64/Packages
+ 6d07f0279fd9a4edc77ee782ff8f4f3308d067bc6ce37219e5804f9b8fda9660          4509637 main/binary-arm64/Packages.bz2
+ 89572d68051a5ec20724a442c05f7c7f345cc754ccd91ce817f13dad20495a2e         27459778 main/binary-ppc64el/Packages
+ 8f8fe2664ccc72c33b14e51ff4b52dc09bd0606ff2e664718fc2f4f13d4b6c01          4562082 main/binary-ppc64el/Packages.bz2
+ 8a85bc7c5b670acec58dbbfbe99eb7ac0f4da716f4818175bb11d836ad16d7ab         10567882 main/binary-s390x/Packages
+ 298106d6570e1769eba7394166bc3bb38f51ebd11612c2411dcc626257af03cd          1735657 main/binary-s390x/Packages.bz2
+ 9550c528bc74dc1ebfdc799385e0e8c9f211dc4bed5dbbb6bee5962b016fe722          5043212 main/source/Sources
+ b7963a2dcc18c27e49fa7cbbd21b0b2d16be502c5855c8e6095a852ceb23fd3a           734866 main/source/Sources.bz2
+SHA512:
+ dc03be83968629e96ea713fb22a166efb85b219acaf0391975055e1d5cd7cc0d9a2c094c8b38909537271a02a910a2cf1076ef62b0e4974413db1bb3394ec213         27582516 main/binary-amd64/Packages
+ b33f6cac1bc8fbd3227bbe704d89af8fa592548575488491e0a6676830832e1fb85db33e916a988399a850efbbc8ec54e4b23097e66c654d8b251e88ed3ec8b6          4605256 main/binary-amd64/Packages.bz2
+ 4e565f5499c113620cbd4a3d17fc0a016a999c2a8b89b1ea07da7a71ecc62ce461c5db36dd5a69069d2f07eebd53390eb602fb24ffadbce22e6108232d7d5b96         26823452 main/binary-arm64/Packages
+ abcd2aa503405b9e1bb2a52bbc5e24b58ccd6aa092ed2bb01a706907d9216a99eedd41dacd56ce9ffa5ef2c4363ab223160991dfdbdc9f08ef52da46edc0cf2b          4509637 main/binary-arm64/Packages.bz2
+ 05b0e7cbe5f23a5d90c3300cb51c5b344652413a9d5804f9911b015edecf9fff6e26f9320993d564b2d4d1bd1439ef2db8f3bed41ff933000faf1f1c5d1a819d         27459778 main/binary-ppc64el/Packages
+ ed6f3aa6fc532412baf440a5c208a462e0e42d17214c55f789fe29a5f5929f49a8790530877d5f0f4375827dd4550aa6998182f2e95fcb0bd1d8e231c9978601          4562082 main/binary-ppc64el/Packages.bz2
+ 901147cca6679b2d10c4a71cc9817def4ca2f2295337bb6211e419e1d917567bdd2459fba119eb3148c4e5e41f7ebb1beb159cb9e0c33d2241bcf24b1ba9a368         10567882 main/binary-s390x/Packages
+ b5afe8fdb6101cf6a33e82c79b0866f56bc917960254f5ceb3420d8aa4ad2dd49e4e18275d62f13c2f573148facbe1022728a27e6b9b1125a1fbce6cfefff1b1          1735657 main/binary-s390x/Packages.bz2
+ 359afed1923b2b8a6db43c8dd2e68b7764a00fc942dd4d0fa6a2452f627832b99a09c6ead209aeeabbe8b0325d2e692d9d051adca5b997316703978ca13d08ad          5043212 main/source/Sources
+ f52b49af64892345f4951f8641aaa7e9ef1a1d8f49d10b0c34e7cbdc5d4a2f32d869dd92caabc44e6192767c5e9669dab00d893671e70bf2e228ae3980034b4c           734866 main/source/Sources.bz2
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCgAdFiEEuXsK/KoaR/BE8kSgf8x9RqzMTPgFAmrYAZ8ACgkQf8x9RqzM
+TPiKdw//VS5VSqjNUTW2ttOCdkFW2erO6Cq7lw/5WnYqb09WiUrs2SA8mr5rbfEX
+U2UEOYWDix8w/xdcLWyWgePwI82RfxJtMipms66fnj8HsosxRGb/J+bTX2/j5g6T
+gXcsBa/DhZRjZOgPjNu5ggSuzfP4lF6FiA4q5BGfgzVO0vIwXvRDL/UMC20rZsLn
+r/07gGqq5/Uwf6VvqL2TU3DbW5tauX2fIW+CFwqvfk+QkegtEi3HZatm/k0pDiio
+uYfwWX9TeJmVmHvn4LvNv6M08AZnt6CEKkxZvs07yBTxVB+BsHVRyLwdrhSOfn20
+plXAA+zJYo742dBfAlh/ZxVEOlvGX1aMpOWjei2Xyez2kbnlVsdrBxJiFgWNY7C3
+Wi/5qaen8F/Bq5DG1Q/efddWPml8Z3GxUFwY3oqGCuV3lKVQ8fTa8SKjn0eE1YZW
+MxM/G43/j6vexs1wjpCg99CEqFHizzq6dSRAsYP40rX3Yc35bdtb31nfw2lrvm3z
+w0SMu43lpYJITkfi5+vJALhSHfohJP+QFZ3m6Cf04CduT4DcRBfjw86KK/esop4p
+kk2BlCyzbmmflcWm6iJW/gpPacrF5ibz3upCyio1299eFHgNznAliyawfLj7Q1wa
+kBQOoUOF1fuD0ASSmqIDrbK3Q9UDeoPqs2ufDlFdGpxFfYFbyBM=
+=Rrd6
+-----END PGP SIGNATURE-----

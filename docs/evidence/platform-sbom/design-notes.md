@@ -245,6 +245,179 @@ Fast unless stated; the tester names and places them.
   the builder's locked set is named in `NOTICE.md` with its sdist URL and
   hash. RED: psycopg-c is not named.
 
+### N0 amendment, U7e (architect, 2026-10-27)
+
+*Context.* A fresh grype DB reports a fixed High in ke-app's Debian base.
+`libssl3` and `openssl` are at 3.0.22-1~deb12u1, and the fix is in
+3.0.22-1~deb12u2 (CVE-2026-84782 High, plus three Mediums, all fixed in
+the same version). The record is
+`u7d/orchestrator-verify-full-after-claude-row.txt` l.2075-2372. The scan
+gate (PS-3.6) is red, so `verify.sh full` is red and the U7d commit is
+blocked. U7e is the fix.
+
+**1. Fix form: pin it in the runtime stage (recommended), not a base
+bump.**
+- `docker/app.Dockerfile` gains `ARG OPENSSL_VERSION=3.0.22-1~deb12u2`
+  beside `LIBPQ_VERSION`, with the same comment rule: Debian supersedes
+  it, the build then fails by name, and the fix is a bump, never an
+  unpin.
+- The runtime stage's one apt RUN becomes `apt-get install -y
+  --no-install-recommends libpq5=${LIBPQ_VERSION}
+  libssl3=${OPENSSL_VERSION} openssl=${OPENSSL_VERSION}`. That is one
+  layer, upgrading two base packages that apt resolves from
+  bookworm-security.
+- The last stage stays `FROM scratch` + `COPY --from=runtime / /`. The
+  flatten means no lower layer keeps the old libssl3 files or dpkg
+  record, so the scanner and syft see only deb12u2.
+- **The builder stage is not pinned.** It does not ship (only `/opt/venv`
+  and `/app` are copied out), and psycopg-c links libssl through libpq at
+  run time with the 3.0 ABI. **`docker/gates.Dockerfile` is not pinned.**
+  `ke-gates` is neither shipped nor scanned (`scan.sh` scans `ke-app`
+  only).
+- *Why not a base-digest bump:*
+  - a `python:3.12-slim-bookworm` digest carrying deb12u2 may not exist
+    yet (security is confirming availability);
+  - a bump moves every base package at once, and may move CPython's
+    micro version. That re-pins `licenses/CPython-3.12-*.txt`, the NOTICE
+    CPython bullet, U4's drift check and every fixture row of ke-app,
+    gates and the base;
+  - it also changes `gates.Dockerfile`'s matching digest (N0 drift test).
+
+  The pin changes two rows. A base bump stays the housekeeping follow-up
+  once the official image carries deb12u2, and it drops the pin then.
+- *Availability:* deb12u2 must be fetchable from deb.debian.org's
+  bookworm-security (for `build.sh`) and from snapshot.debian.org (for the
+  lock, item 2). Security confirms both before GREEN. If it is not on
+  bookworm-security, back to the architect.
+
+**1a. The tests that pin it** (in `tests/test_psycopg_c.py`, beside
+`test_libpq_pin_matches_bookworm_base`).
+- `test_openssl_pin_in_runtime_stage` (static, fast). The rules:
+  - `ARG OPENSSL_VERSION=` holds a `3.0.<n>-<m>~deb12u<k>` form (Debian
+    12 security form) on the `-bookworm` base;
+  - the runtime stage's apt RUN installs exactly `libssl3=${OPENSSL_VERSION}`
+    and `openssl=${OPENSSL_VERSION}`, alongside libpq5;
+  - the builder stage does not reference `OPENSSL_VERSION`;
+  - the last stage is still the `FROM scratch` flatten.
+
+  Controls: unpinned `libssl3`, `openssl` pinned to a different variable,
+  a pin in the builder only, a `+deb13u` pin, a missing ARG.
+- The image-side check, in U4's `full` SBOM test, the same place as the
+  libpq5 check. A pure `deb_pin_problems(app, {"libssl3": pin, "openssl":
+  pin})` in `sbom_check.py` requires each name to appear in the ke-app
+  SBOM at exactly the pin, with `libssl3`'s `upstream` equal to `openssl`.
+  Failure text: `the ke-app SBOM lists <name> at <versions>, want <pin>`.
+  `psycopg_problems` is unchanged.
+- The end-to-end proof is the scan gate in `verify.sh full`, with the
+  fresh DB: no High at or above the threshold. The python Mediums are
+  below it and unchanged.
+
+**1b. NOTICE and drift.**
+- `drift_problems` compares Debian package *names*: SBOM names minus
+  base names must equal `ADDED_PACKAGES`. `libssl3` and `openssl` are in
+  the base, so an upgrade leaves the name sets, and `ADDED_PACKAGES`,
+  unchanged. No drift change is needed.
+- NOTICE "Base of `ke-app`" names packages generically, with versions
+  only for libpq5. It does not list openssl, and the licence is
+  unchanged. So no NOTICE change is required.
+  *For the analyst:* an optional sentence such as "libssl3 and openssl at
+  `OPENSSL_VERSION` (a Debian security update over the base)" would make
+  the upgrade visible, with the static NOTICE test pinning it the way it
+  pins libpq5. Recommended but not required; the analyst's call.
+
+**2. Lock impact and the fixture refresh.**
+- *Keys.* In the U3 fixtures `openssl 3.0.22-1~deb12u1` is carried by
+  `ke-app` (libssl3, openssl) and `postgres` (libssl3, openssl, a
+  third-party image pinned by digest). ke-neo4j and phoenix carry
+  3.5.7-1~deb13u3, and the Alpine images their own `apk:` openssl. So:
+  - `deb:openssl@3.0.22-1~deb12u1` stays, needed by postgres only now;
+  - `deb:openssl@3.0.22-1~deb12u2` is new (ke-app).
+  - The total becomes 183 keys (deb 153).
+- *The lock.* A real `scripts/sources_lock.sh --arch amd64
+  --evidence-dir <dir>` run on the fresh images. It is incremental: one
+  new deb key resolved, about 2 min, and the rest kept. Expected exit 0,
+  with the Neo4j manual entry unchanged. Output goes to
+  `u7e/lock-run.txt`, redacted.
+- *The fixture refresh (ruling).* Only `tests/fixtures/sbom-u3/ke-app.pkgs.tsv`
+  is refreshed, from the fresh ke-app SBOM. It is the real
+  `app/sboms/ke-app.spdx.json` of a `bundle.sh` run on the U7e image,
+  with the same extraction as U3 (purl, versionInfo,
+  licenseDeclared|licenseConcluded per package, as `u3/gpl-family-packages.md`
+  describes).
+  - It is written first to `u7e/sboms/ke-app.pkgs.tsv`.
+  - The diff against the U3 fixture must be *exactly* the two openssl rows
+    (purl and version `~deb12u1` -> `~deb12u2`; the licence strings
+    identical). Any other changed row stops U7e and goes to the
+    orchestrator (the O3 rule).
+  - Then it is copied byte for byte into the fixture.
+  - `tests/sbom_support.py`'s provenance comment gains "ke-app.pkgs.tsv:
+    refreshed at U7e from `docs/evidence/platform-sbom/u7e/sboms/`".
+- *Not all six.* The other five fixtures are not regenerated. postgres,
+  phoenix and valkey are pinned by digest. ke-gateway did not move. And
+  `neo4j.pkgs.tsv` is deliberately the official image standing in for
+  ke-neo4j (N16, 72 against 73). Regenerating it would re-pin U4b-U6's
+  counts for no gain.
+- *Which tests re-pin.* The tester runs `fast` with only the fixture
+  refreshed and lists every failing test. Each failure must be explained
+  by the two rows alone. Expected:
+  - U7a's fixture-key set: 182 -> 183, adding
+    `deb:openssl@3.0.22-1~deb12u2`, with `~deb12u1` kept for postgres;
+  - any real-row snapshot that records purls or versions (U5/U6
+    classifier rows: two purls change, `needs` and flags unchanged).
+
+  The unlicensed counts (U4) and the U6 exempt rows are expected not to
+  move. Each re-pin names its reason, "U7e openssl ~deb12u2". A failure
+  not explained by the two rows stops the unit.
+- *O3.* The fresh key set must equal the refreshed fixtures' key set
+  (183).
+
+**3. A34, smoke and offline.**
+- A34: **yes**, because the Dockerfile changes. The Windows proof is
+  `build.sh`, `bundle.sh`, `install.ps1` from the bundle, and `verify.sh
+  full`, as U0 and U1 did, plus the `u7e/lock-run.txt` lock re-run if it
+  is done there.
+- The smoke `psycopg` step and the `no pip` step are unaffected.
+  `offline_check.sh`'s drift check is unaffected (1b). U4's image-side
+  SBOM test gains the `deb_pin_problems` call (1a). The scan stage is the
+  proof.
+- No compose change.
+
+**4. Order and commits (recommendation: one commit for U7d + U7e).**
+- Order:
+  1. U7e RED: 1a's static and image-side tests, plus the fixture-refresh
+     rows of item 2. The re-pins are made in RED, explained, failing
+     until GREEN.
+  2. GREEN: the Dockerfile pin, `deb_pin_problems`, the fixture refresh
+     from the real U7e image, then the real lock re-run (183 keys, exit
+     0) and the lock-sizes evidence updated.
+  3. Security: availability, the pin, and the one new lock entry.
+  4. Reviewer, on the U7e diff and the lock diff.
+  5. A34.
+  6. The orchestrator's `verify.sh full`, which must be green with the
+     scan included.
+  7. One commit.
+- *Why one commit, not two:*
+  - `verify.sh full` gates the working tree, and U7d's large uncommitted
+    diff cannot go green without U7e's fix (the scan). U7e cannot be
+    verified as committed without U7d's tree either, because the lock and
+    its test are U7d's.
+  - Two commits would mean committing a tree that was never verified as
+    such, or stashing U7d's diff, which is a risk to finished, reviewed
+    work.
+  - The message names both units, U7e's CVE first. The reviews stay
+    separate per diff (U7e's Dockerfile, tests and fixture; U7d's lock),
+    so each gets its own verdict.
+- If you prefer two commits, the only safe form is U7e first in a
+  separate worktree off HEAD 86f7831 plus U7d's resolver files. That is
+  not recommended, since it duplicates the verify runs.
+
+**Flag (not U7e scope; orchestrator or human).** The pinned `postgres`
+image ships the same libssl3/openssl 3.0.22-1~deb12u1 (U3 fixture
+l.103, l.124). Q70 ruled no scanning of the other bundled images, so no
+gate fires, but the fixed High is now known from its SBOM. Recommend
+raising a question to the human: bump the postgres digest when the
+upstream image is rebuilt, and accept the risk until then. That touches
+`postgres`'s lock keys at that time.
 
 ## N1. The SBOM generator run (`sbom` service)
 
@@ -2103,6 +2276,757 @@ asserts its substring (U7a round 1 item 8).
     round-trip row does.
 - Real (A34 re-run): `apk:pax-utils@1.3.8-r2` resolves, and its entry
   passes lock-check.
+
+**U7d precision (architect, 2026-10-25).** The human ruled Q71 option 1
+(a `pgdg` kind and the tenth host `apt-archive.postgresql.org`) and Q72
+option 3 (a bounded retry in the lock tool only). U7c is 86f7831. This
+block makes U7d implementable. It supersedes, for `pgdg`, U7a's
+"pgdg has no allowed host until Q71" and the U7c precision's "pgdg
+skipped" line.
+
+*P. The `pgdg` route.* The three keys from the U3 fixtures (item 2), all
+in `postgres`:
+- `pgdg:postgresql-16@16.15-1.pgdg12+2`;
+- `pgdg:postgresql-18@18.6-1.pgdg12+2` (its `libpq5`);
+- `pgdg:postgresql-common@293.pgdg12+1` (`postgresql-common` and
+  `postgresql-client-common`).
+
+1. **Route inputs (`lock-needs`).** The route is `{src, ver, suite}`.
+   - `suite` is `<codename>-pgdg-archive`, where `<codename>` comes from
+     the packages' purl `distro=debian-<major>.<minor>` through the fixed
+     table `{12: bookworm, 13: trixie}`.
+   - An unknown major, or packages of one key with different majors,
+     fails: `<key>: <image>: no pgdg suite for distro <d>`.
+   - apt-archive keeps every published version under the `-pgdg-archive`
+     suites; plain `bookworm-pgdg` holds only current versions.
+   - *Confirm at U7d by one probe before GREEN (fact, not ruling):*
+     `https://apt-archive.postgresql.org/pub/repos/apt/dists/bookworm-pgdg-archive/main/source/Sources.gz`
+     exists and lists the three versions. If the path or compression
+     differs, the architect amends the exact form. There is no fallback
+     chain in code.
+2. **The index, one fetch per suite per run.** It is
+   `GET https://apt-archive.postgresql.org/pub/repos/apt/dists/<suite>/main/source/Sources.gz`.
+   - It is streamed through `zlib.decompressobj(16 + zlib.MAX_WBITS)` and
+     parsed stanza by stanza, as deb822 with `parse_dsc`'s line rules:
+     LF only, no control characters, no duplicate fields, every line a
+     field or continuation.
+   - Only the stanzas whose `Package` is a needed `<src>` are kept; the
+     rest are discarded as read.
+   - Caps: 1 GiB compressed (the byte cap of this request) and 4 GiB
+     decompressed (`<suite> Sources: more than 4294967296 bytes
+     decompressed`). The index is estimated at tens of MB compressed and a
+     few hundred MB decompressed; U7d records the real sizes.
+   - *Index stanza rules.* The match is `Package == <src>` and `Version ==
+     <ver>`.
+     - None: `<suite> Sources has no <src> <ver>`.
+     - More than one: `<suite> Sources lists <src> <ver> more than once`.
+     - The stanza's `Directory` must be exactly `pool/main/<p>/<src>`,
+       where `<p>` is `<src>[:4]` if `<src>` starts with `lib`, else
+       `<src>[0]` (Debian's pool rule): `<src>: Sources Directory <d> is
+       not pool/main/<p>/<src>`.
+     - Its `Checksums-Sha256` must list `<src>_<ver without epoch>.dsc`:
+       `<suite> Sources: no .dsc for <src> <ver>`.
+3. **Trust chain, and no signature.**
+   - The `.dsc`'s SHA-256 comes from the Sources stanza, fetched over
+     HTTPS from the same host. That is the same Q48 form as deb's
+     snapshot SHA-1 from the mr API.
+   - Neither `Release`/`InRelease` nor the index signature is fetched or
+     verified. *Why:* the PGDG signing key would be a new trust root,
+     with key distribution and rotation to manage. deb's `.dsc` signatures
+     are not verified either (D4). The control is the per-file SHA-256
+     pinned in a lock that security and the human review, plus U8's
+     fetch-time check.
+   - *Ruling needed (P-R1):* confirm that the Release signature is not
+     verified.
+4. **The `.dsc`.** `GET https://apt-archive.postgresql.org/pub/repos/apt/pool/main/<p>/<src>/<dsc>`,
+   streamed with a 1 MiB limit, hashing SHA-256.
+   - It must equal the stanza's value: `<dsc>: sha256 mismatch: got <x>,
+     <suite> Sources says <y>`.
+   - It is parsed by `parse_dsc` with D4's and round 1's rules. `Source`
+     and `Version` equal the key; `Checksums-Sha256` and `Files` agree.
+   - *Cross-check:* the stanza's `Checksums-Sha256` names, minus the
+     `.dsc`, must equal the `.dsc`'s, with equal SHA-256s and sizes:
+     `<dsc>: Sources and .dsc list different files`.
+   - The other files are *not fetched*. Each gets a pool URL, and its
+     `sha256` and `size` come from the `.dsc`.
+5. **Lock rules (`lock_problems`, kind `pgdg`).**
+   - The entry has exactly `kind`, `arches`, `origin`, `files` and
+     `suite`. `suite` is a full match of `[a-z]+-pgdg-archive`.
+   - There is exactly one `.dsc`, named `<src>_<ver without epoch>.dsc`,
+     and at least one other file (as deb). Every file is `sha256`.
+   - Each url is `https://apt-archive.postgresql.org/pub/repos/apt/pool/main/<p>/<src>/<name>`
+     exactly. That means the host and the literal prefix, `<p>` and
+     `<src>` from the key by the pool rule, the last segment equal to
+     `name`, no query, no fragment, and a plain path. `+` and `~` stay
+     literal; no `%` escape is allowed.
+   - `upstream.from`: the `.dsc` is exactly `apt-archive.postgresql.org
+     <suite> Sources`; every other file is exactly `<dsc> Checksums-Sha256`.
+   - `apt-archive.postgresql.org` joins the policy `hosts` (ten), and the
+     U6 host-set test changes to ten. `KIND_HOSTS["pgdg"]` becomes that
+     host alone.
+6. **Requests and size.** One index fetch per suite (one: bookworm) and
+   three `.dsc` files of about 3-5 kB. The pgdg sources in the full set
+   are about 30-35 MB for postgresql-16 and postgresql-18 (orig.tar.bz2 /
+   .tar.xz) and well under 1 MB for postgresql-common (estimate). The
+   sample takes `postgresql-common`.
+
+*R. The retry policy (Q72; `sources_resolve.py` only).*
+1. **Where.** In `fetch()`, around one logical request: the first URL, its
+   redirect chain, and, through `stream()` and `text()`, its body read.
+   The budget is per logical request, not per file: a file that needs a
+   metadata call and a raw call has two budgets. `fetch(...,
+   retries=0)` is the default, and `resolve()` passes `RETRIES = 3`. So
+   U8, or any other caller that reuses `fetch`, gets Q61's single call
+   unless it opts in, which U8 must not (Q61).
+2. **Retried.** Only these:
+   - a final HTTP status 500-599 at any hop;
+   - `TimeoutError` or `socket.timeout`, raised by `OPENER` or during the
+     body read.
+
+   A mid-body timeout restarts the logical request from its first URL
+   with fresh hashers and a fresh size count. Nothing partial is kept
+   (Q72: no resume).
+   *Ruling needed (P-R2):* confirm that mid-body timeouts count as Q72's
+   "timeouts". The architect recommends yes: large tarballs are where they
+   occur.
+3. **Never retried:** any other status (4xx including 418, a 3xx with no
+   Location); a refused host, hop, scheme or path; more than 5 redirects;
+   any other `OSError` (e.g. `ConnectionResetError`) or
+   `http.client.HTTPException`; the byte cap; the deadline; any hash,
+   size, parse or binding failure.
+4. **Waits.** 10, 30 and 60 s (`RETRY_WAITS = (10, 30, 60)`), slept
+   through the module-level `SLEEP = time.sleep`. Tests patch `SLEEP` and
+   record the calls. There is no environment knob.
+5. **Printed line** (stderr, one per retry, before its wait):
+   - `retry <n>/3 in <wait> s: <host>: HTTP <code>: <url>`
+   - `retry <n>/3 in <wait> s: <host>: timeout: <url>`
+
+   `<url>` is the request URL that failed, cleaned. A signed query on a
+   GitHub hop is printed as-is; it is not a secret of ours, but U7d's
+   evidence redacts nothing else. After the third retry fails, the normal
+   item-4 failure line follows with the last error, and the lock is
+   unchanged. `sources_lock.sh` writes the run's stderr to the evidence
+   file, which is "recorded" (Q72).
+6. **Deadline.** Each attempt has its own 600 s per-file deadline, and
+   wait time is outside it. So a logical request is bounded by 4 × (600 +
+   60) s plus 100 s of waits, about 45 min worst case. `SNAPSHOT_PAUSE`
+   applies before every snapshot.debian.org request, retries included, in
+   addition to the retry wait.
+
+*S. U7d steps, in order (loop `full`; A34 yes, since `sources_lock.sh` and
+the policy change).*
+1. **Fresh images.** `scripts/build.sh` on the maintainer host, because
+   the host images are stale (`ke-app:local`; U7b note).
+2. **Tester RED:**
+   - `pgdg` (P1-P5, with a fake opener and a synthetic gzip index);
+   - retry (R1-R6: each retried and non-retried class, the exact lines,
+     the patched waits, budget exhaustion, a mid-body restart with fresh
+     hashers, the default `retries=0`);
+   - the carried rows:
+     - **U7c review R1-N1:** each decoded `<P>` middle segment is held to
+       the lock file-name rule (`[A-Za-z0-9][A-Za-z0-9._+~-]{0,254}`);
+     - **U7c review R1-N2:** a `.dsc` line that is not a field, a
+       continuation or blank fails: `<dsc>: line <n> is not a field or
+       continuation`;
+     - **security I-5:** the challenge test uses a synthetic
+       `__goaway_id` nonce, never the captured one;
+     - **the U6 host-set test** asserts ten hosts.
+3. **GREEN** (developer). `fast` for the loop, then `full`.
+4. **Security review** of the host and the kind (Q71): hop and redirect
+   behaviour of `apt-archive.postgresql.org` (real probe), the no-signature
+   decision (P3), and the index caps.
+5. **The real run.** The developer runs `scripts/sources_lock.sh --arch
+   amd64` on the maintainer host, capturing the full output to
+   `u7d/lock-run.txt`, redacted per the evidence rule: profile paths and
+   SIDs out, usernames and host names kept.
+   - The first run is expected to exit 3 with the Neo4j candidate. The
+     developer compares the candidate's sha256 and size with
+     `sources-provenance.md` and writes the `manual` entry (round 1 item
+     1). A re-run is then expected to exit 0.
+   - Any retry lines are kept in the evidence. If the run still fails,
+     Q72 sends it to the human.
+6. **O3 drift.** The fresh key set must equal the fixture key set (182).
+   An added or missing key stops U7d and goes to the orchestrator. A
+   different package count inside a shared key is information only: the
+   key, both counts and the differing purls (`neo4j:neo4j@5.26.32`: 72
+   fresh, 73 in the fixture, the U4b genai plugin) go in
+   `u7d/drift.txt`.
+7. **Commit content:**
+   - `docker/sources.lock.json`;
+   - the committed-lock test, `lock_problems(committed lock, committed
+     policy, six fixtures, "amd64") == []` and `lock_text(lock) == file
+     text`;
+   - `.gitattributes` with `docker/sources.lock.json text eol=lf`;
+   - `u7d/lock-sizes.txt` (item 5), the full set's size and the sample's
+     measured from the lock.
+8. **Security's lock review** (about 182 entries): the hosts and kinds,
+   the Neo4j manual entry, and spot re-fetches of a sample of `.dsc` and
+   apk files. It also includes the **third Neo4j fetch** from another
+   network path (the ARM model host or the CI runner; interface pins item
+   7), recorded in `sources-provenance.md`; a mismatch blocks the commit.
+9. **Reviewer**, then **A34** (`sources_lock.sh` on Windows), then the
+   orchestrator's `full`.
+10. **The CLAUDE.md row** (the human's file, same commit). Item 7's text
+    with the host list updated:
+```
+| `docker/sources.lock.json` | the bundled images' SBOMs (from `scripts/build.sh` images) and their upstream source metadata (snapshot.debian.org, apt-archive.postgresql.org, Alpine aports, GitHub, PyPI, Maven Central); `docker/source-policy.json`; `uv.lock` | `scripts/sources_lock.sh --arch <arch>` (maintainer, network; never run by verify or CI); security reviews every diff | `tests/test_sources_lock.py` runs `sbom_check.py`'s lock check on the committed lock in every verify run; from U9, `bundle.sh` (`sbom_check.py index`) refuses a package with no entry |
+```
+
+*Rulings needed (orchestrator).*
+- P-R1: confirm that the PGDG Release signature is not verified.
+- P-R2: confirm that mid-body timeouts are retried as whole restarts.
+- *Also:* the `suite` field is a fifth exact key on `pgdg` entries (a U7a
+  schema change, tested in U7d's RED).
+- *Ruled (orchestrator, 2026-10-25): P-R1 confirmed.*
+  - Neither the PGDG `Release` nor the `InRelease` signature is fetched or
+    verified.
+  - Trust rests on HTTPS, the `<suite>` Sources index SHA-256 of each
+    `.dsc`, the security- and human-reviewed lock, and U8's per-file
+    SHA-256.
+  - Security, reviewing the host at S4, will recommend whether a pinned
+    PGDG key is worth a new trust root. Adopting one would be a later
+    amendment, not U7d.
+- *Ruled (orchestrator, 2026-10-25): P-R2 confirmed.*
+  - A timeout during the body read is a Q72 timeout.
+  - It is retried as a full restart of the logical request from its first
+    URL, with fresh hashers and a fresh size count, inside the same
+    3-retry budget (R2).
+  - Nothing partial is kept.
+
+*P2 amended (probe 2026-10-26; `u7d/suite-probe.txt`; orchestrator ruling,
+architect's decisions).* This supersedes P1's *confirm* note and P2's
+index URL, decompression and caps.
+- *Probe facts.*
+  - `bookworm-pgdg-archive` exists; plain `bookworm-pgdg` gives 404 on
+    apt-archive.
+  - There is no `Sources.gz`. The source index exists only as
+    `main/source/Sources` (uncompressed, 5043212 B) and `Sources.bz2`
+    (734866 B).
+  - Each of the three keys has exactly one stanza, with `Directory:
+    pool/main/p/<src>` and `Checksums-Sha256` listing the `.dsc` and the
+    tarball.
+  - In Sources stanzas, `Checksums-Sha256:`, `Checksums-Sha1:` and
+    `Files:` carry their first entry on the field line itself.
+- **(1) The index (ruled).** `GET
+  https://apt-archive.postgresql.org/pub/repos/apt/dists/<suite>/main/source/Sources`,
+  uncompressed, so there is no decompression surface. It is streamed with
+  SHA-256 hashing under a **64 MiB** byte cap (`<suite> Sources: more than
+  67108864 bytes`). There is still one fetch per suite per run.
+- **(2) Release binding (architect's decision: yes).** Before the index,
+  the tool fetches `GET
+  https://apt-archive.postgresql.org/pub/repos/apt/dists/<suite>/Release`
+  as text (1 MiB cap; about 5 kB).
+  - Its `SHA256` field must hold exactly one entry whose path is
+    `main/source/Sources`, with 64 hex and a decimal size.
+  - None, or one without a valid hash: `Release lists no Sources sha256`.
+    More than one: `Release lists Sources sha256 more than once`.
+  - The streamed index's SHA-256 must equal that entry: `<suite> Sources:
+    sha256 mismatch against Release`.
+  - *Architect's precision:* its byte count must equal the entry's size.
+    The read stops as soon as the bytes pass that size: `<suite> Sources:
+    size <n> differs from Release <m>`. The 64 MiB cap still applies
+    above it.
+  - Stanzas are parsed as the bytes arrive, but no stanza is used until
+    the hash and size have matched at the end of the stream. Only the
+    needed stanzas are buffered.
+  - *Why:* it detects truncation or a mixed-up mirror state for one extra
+    small request on the same host. It is not a signature check: P-R1
+    stands, and Release is not verified cryptographically.
+  - The `.dsc`'s `upstream.from` stays `apt-archive.postgresql.org
+    <suite> Sources`. Release is an integrity check only, so no lock field
+    changes.
+- **(3) One shared deb822 parser (architect's decision: accept the first
+  entry on the field line, in both places).**
+  - `parse_deb822(text, label) -> list[dict]` (the paragraphs) serves
+    `parse_dsc` (one paragraph), the Sources stanzas and Release's `SHA256`
+    field.
+  - A multiline field's entries are its field-line value, if non-blank,
+    followed by its continuation lines. Each entry is checked by the same
+    per-field line rules (D4: three fields, hex length per field, decimal
+    size).
+  - Every existing rule holds in all three uses: CRLF folding, LF-only
+    split, U7c round 1 items 6 and 2 (control characters, duplicate
+    fields), and U7d RED's R1-N2 (a non-field line fails).
+  - *Why accept it in the `.dsc` too:* dpkg's deb822 allows it. One parser
+    means the Sources list and the `.dsc` list compare equal by
+    construction, which P4's cross-check needs. Debian `.dsc` files never
+    use the form, so accepting it costs nothing. This is a behaviour change
+    only if `parse_dsc` refused it before.
+  - Rows:
+    - a `.dsc` with its first `Checksums-Sha256` entry on the field line
+      parses equal to the same entry on a continuation line;
+    - a Sources stanza parses the same way;
+    - a field-line entry with a bad hex length fails like a continuation
+      line does.
+- **Updated failure texts (P2), exact:**
+  - `<suite> Sources: more than 67108864 bytes`;
+  - `Release lists no Sources sha256`;
+  - `Release lists Sources sha256 more than once`;
+  - `<suite> Sources: sha256 mismatch against Release`;
+  - `<suite> Sources: size <n> differs from Release <m>`.
+
+  These are unchanged from P2: `<suite> Sources has no <src> <ver>`,
+  `<suite> Sources lists <src> <ver> more than once`, `<src>: Sources
+  Directory <d> is not pool/main/<p>/<src>`, and `<suite> Sources: no .dsc
+  for <src> <ver>`.
+
+  The 4 GiB decompressed-size text is withdrawn.
+- *Tests:* a fake opener serves a synthetic `Release` and a plain
+  `Sources`, with no gzip. There are rows for each text above, plus a
+  Sources body one byte longer or shorter than Release says, and one with
+  the right size but a flipped byte.
+
+*Security design review adopted (orchestrator, 2026-10-26;
+`u7d/security-design.md`, PASS; A-1 is covered by the P2 amendment).*
+1. **Duplicate fields, per stanza.** `parse_deb822` refuses a duplicated
+   field within one paragraph only. A Sources index repeats `Package`,
+   `Version` and the rest in every stanza, and that is legal. The `.dsc`
+   (one paragraph) is unchanged. Rows:
+   - two stanzas, each with its own `Package`, parse;
+   - one stanza with `Package` twice fails (`<label>: duplicate field
+     Package`).
+2. **R-1, an offline signature check by security at S8.** The tool
+   itself still verifies no signature (P-R1).
+   - Security runs `gpgv` on the signed release file the run used,
+     against the fingerprint that the bundled `postgres` image already
+     pins, `B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8`.
+   - Security then checks that the Sources SHA-256 the run bound to and
+     the three stanzas' `.dsc` hashes equal the lock.
+   - It records the command, key source, result and hashes in
+     `sources-provenance.md`.
+
+   *Architect's precision, what "the InRelease the run used" means:*
+   - P2 amended (2) fetches `dists/<suite>/InRelease` instead of
+     `Release`. The clearsign armour is stripped with the `.dsc`'s rules,
+     dash-escapes undone, and the `SHA256` field read by `parse_deb822`.
+     The caps and failure texts are unchanged; the texts keep the word
+     `Release`.
+   - The resolver writes the raw bytes it fetched to
+     `/out/pgdg-<suite>.InRelease`. This is the second file it may write,
+     beside `lock.new.json`. Nothing else parses it.
+   - `sources_lock.sh` copies it into the work dir's evidence copy, and
+     the developer adds it to `u7d/` as `u7d/pgdg-<suite>.InRelease`.
+   - *Confirm by probe:* `InRelease` exists for `bookworm-pgdg-archive`.
+     If it does not, the tool fetches `Release` (bound as in P2) and
+     `Release.gpg`, saving both raw, and security runs `gpgv Release.gpg
+     Release`. The architect records which form holds; the code carries
+     one form, with no fallback.
+3. **R-2, run-wide bounds in `resolve()`.**
+   - **Retry budget:** at most 20 retries in total across all logical
+     requests of one run, on top of the 3 per request. The 21st retry
+     fails instead of waiting: `retry budget exhausted (20)`.
+   - **Run deadline:** 10800 s (3 h) of wall-clock time from the start of
+     `resolve()`, with waits and pauses counted. It is checked before every
+     request, every retry wait and every `SNAPSHOT_PAUSE`. A wait that
+     would end past the deadline fails at once: `run deadline 10800 s
+     passed`.
+   - Both lines go through item 1's `sources_lock: FAIL (resolve: <key>:
+     <text>; the lock is unchanged)` with the current key, and exit 1.
+   - Module constants `RUN_RETRIES = 20` and `RUN_DEADLINE = 10800` are
+     patched in tests; there is no environment knob.
+4. **R-3, pacing and 429.** `SNAPSHOT_PAUSE` applies before every attempt
+   to `snapshot.debian.org`, retries included (R6, unchanged). HTTP 429
+   is a 4xx, so it is never retried and fails closed with `<host>: HTTP
+   429: <url>`, even when a `Retry-After` header is present.
+5. **R-4, query redaction in retry lines.** In `retry <n>/3 in <wait> s:
+   ...` lines, the URL is printed with any query replaced by `?<query
+   omitted>`, for example a signed GitHub asset link.
+   *Architect's precision:* FAIL lines print the URL unchanged, as before.
+   A failing signed hop surfaces as `HTTP <code>` with its query. If
+   security wants the same redaction there, that is a one-line extension
+   by ruling.
+6. **R-5, never retried, pinned by rows.** Each case below makes exactly
+   one `OPENER` call, records no `SLEEP` and prints no retry line:
+   - `ssl.SSLError` and `ssl.SSLCertVerificationError`;
+   - `ConnectionResetError` and another `OSError`;
+   - `http.client.HTTPException` (`IncompleteRead`, `BadStatusLine`);
+   - a 3xx with no Location, or a non-https or unprintable Location;
+   - a sixth redirect;
+   - a hop to an unlisted host or with a non-plain path;
+   - the byte cap;
+   - the per-file deadline;
+   - a hash mismatch;
+   - a size mismatch against the `.dsc` or Release;
+   - HTTP 400, 403, 404, 418 and 429.
+
+   Contrast rows: 500, 502, 503 and 504, and a `socket.timeout` (head and
+   mid-body), are retried with waits `[10, 30, 60]`.
+7. **Confirmed (orchestrator, 2026-10-26; `u7d/security-design.md` §2).**
+   - `dists/bookworm-pgdg-archive/InRelease` exists. Security fetched it
+     and verified it with `gpgv` against
+     `B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8`.
+   - The InRelease form of item 2 holds. The `Release` plus `Release.gpg`
+     alternative is withdrawn, and the code carries the InRelease form
+     only.
+   - The second output file, `/out/pgdg-<suite>.InRelease`, is accepted.
+     It falls under the existing "writes only to `/out`" service and
+     compose rules.
+
+**U7d rework round 1 (orchestrator rulings, 2026-10-26).** These come from
+`u7d/review.md`. All fail closed.
+1. **B1, wrapped timeouts.**
+   - A `urllib.error.URLError` whose `.reason` is a `TimeoutError` (which
+     covers `socket.timeout`) is a Q72 timeout. That is the case for
+     connect, TLS handshake and send timeouts, which urllib wraps.
+   - `_default_opener` (or `_transport`) unwraps it, so the request is
+     retried with the waits 10, 30 and 60 s and the `retry <n>/3 in <wait>
+     s: <host>: timeout: <url>` line, inside the per-request and run-wide
+     budgets. Once retries are exhausted, it fails as `<host>: timeout
+     after <n> s: <url>`.
+   - Any other `URLError` is never retried and fails as `<host>: <reason
+     class>: <url>`. That covers a reason that is an `ssl.SSLError`
+     (certificate or handshake failure, `SSLCertVerificationError`
+     included), a `ConnectionRefusedError`, any other `OSError`, or a
+     plain string, which prints as `URLError`.
+   - The test is against the real `_default_opener`'s exception mapping,
+     not only the fake opener. Stub `urllib.request.build_opener` to raise
+     each case and assert the class it maps to. `HTTPError` keeps its
+     status path.
+   - Rows:
+     - `URLError(TimeoutError())` and `URLError(socket.timeout())` are
+       retried;
+     - `URLError(ssl.SSLCertVerificationError())`,
+       `URLError(ConnectionRefusedError())` and `URLError("x")` are not
+       (one `OPENER` call, no `SLEEP`).
+2. **B2, the `hostpath` fix to `docker save`, pinned.**
+   - The developer's change, `docker save -o "$(hostpath ...)"` in
+     `sources_lock.sh`, is accepted as the right fix. It was made after
+     `u7d/lock-run-0-failed-docker-save.txt` showed the Windows docker CLI
+     receiving a POSIX path.
+   - It must be pinned. A fast test puts a `cygpath` shim on `PATH` that
+     prints a recognisable `-m` form, runs the script under fake docker,
+     and asserts that every `save -o` argument fake docker records is that
+     form.
+   - A control row without the shim asserts the POSIX path is passed
+     through unchanged on Linux.
+   - *Lesson, recorded:* a production change made during a real run is a
+     process breach while it has no RED and is unreported. Any change
+     found necessary during a real run stops the run. It goes back through
+     RED, then GREEN, and is reported in the handoff before the run
+     resumes. Evidence of the run that found it is kept (as
+     `lock-run-0-*`).
+3. **N1, `suite` bound to its image.**
+   - In `lock_problems`, a `pgdg` entry's `suite` must equal the suite
+     that `lock-needs`' own function derives from the docs it is given.
+     One shared `pgdg_suite(distro)` maps `{12: bookworm, 13: trixie}` to
+     `<codename>-pgdg-archive`, used by both.
+   - Every package mapping to the key must derive the same suite. If they
+     differ: `<key>: packages derive suites <a>, <b>`.
+   - Otherwise a mismatch fails: `lock: <key>: suite <s> is not <expected>
+     (from <image> distro <d>)`.
+   - Rows: `evil-pgdg-archive` and `trixie-pgdg-archive` on a debian-12
+     package are problems; `bookworm-pgdg-archive` is good.
+4. **N2, the InRelease is copied before the move, to a given directory.**
+   - `sources_lock.sh` gains a required option `--evidence-dir <dir>`. The
+     directory must exist and be writable, else `sources_lock: FAIL
+     (evidence: <dir> is not a writable directory; the lock is
+     unchanged)`. No `u7d` path is hard-coded.
+   - After `lock-check` has passed, or returned 3 for pending neo4j, and
+     *before* the temp-file `mv` over `docker/sources.lock.json`, the
+     script copies every `/out/pgdg-*.InRelease` into that directory.
+   - A failed copy fails the run (`sources_lock: FAIL (evidence: copy of
+     <file> failed; the lock is unchanged)`). The EXIT trap removes the
+     temp file and the lock stays untouched.
+   - When no pgdg key was resolved, there is nothing to copy and the copy
+     step is skipped silently.
+   - Rows:
+     - the option is missing (exit 2), the directory is missing, or it is
+       read-only;
+     - a copy fails (via the fake);
+     - the order is pinned: the copy is recorded before the `mv`, and the
+       lock is unchanged when the copy fails.
+5. **N3:** cosmetic, no change. **N4:** noted, no change.
+6. **Security L-1, links in the copy step (orchestrator, 2026-10-26).**
+   - Before copying, item 4's step checks each `/out/pgdg-*.InRelease`
+     with `[ -L "$f" ]`. A link fails: `sources_lock: FAIL (evidence: <f>
+     is a link; the lock is unchanged)`.
+   - Anything that is not a regular file (`[ -f ]` false) fails the same
+     way, with `is not a regular file`.
+   - Regular files are copied with `cp -P -- "$f" "$dir/"`.
+   - The check and the copy both run before the lock move, so the lock
+     stays unchanged on failure.
+   - Rows: a symlink in `/out` pointing outside it; a directory named
+     `pgdg-x.InRelease`; a regular file, which is copied, with the copy
+     recorded before the `mv`.
+7. **Status, S8 part 1: the third Neo4j fetch (orchestrator,
+   2026-10-26).**
+   - This fetch is blocked on the human. ssh to the ARM hosts is refused
+     when non-interactive, and the options are recorded in
+     `sources-provenance.md`.
+   - Per the U7b ruling (interface pins item 7), the committed lock waits
+     for it. The U7d commit lands only after a third fetch over a
+     different network path matches the sha256 and size in the lock, and
+     is recorded in `sources-provenance.md`.
+   - Everything else in S1-S10 may proceed. A mismatch, or no third fetch,
+     means no lock commit.
+8. **Symlinks in aports (orchestrator ruling, 2026-10-26;
+   `u7d/lock-run-1.raw`).** The real run failed on the first apk key.
+   `main/alpine-baselayout/alpine-baselayout.post-upgrade` is a mode
+   `120000` entry. This supersedes, for mode `120000` only, the gap
+   rulings' "Mode `120000` (a symlink) ... fails".
+   - **How the target is read (architect: one form).** It comes from the
+     files-API metadata call the resolver already makes for files outside
+     `sha512sums`, `GET .../repository/files/<quote(path, safe='')>?ref=<commit>`
+     (a resolver call, never a lock URL). GitLab returns a symlink's blob,
+     whose git content is the target path, as JSON:
+     - `encoding` must be `base64`;
+     - `size` must be ≤ 1024;
+     - `content` is base64-decoded strictly (`validate=True`) to at most
+       1024 bytes;
+     - `content_sha256` must equal the SHA-256 of the decoded bytes.
+
+     The raw endpoint is not used for links. The decoded target must be
+     ASCII with no NUL, CR or LF; any other result is a failure.
+   - **Accepted only when all of these hold.**
+     - The target is one path segment: no `/`, not `.` or `..`, and it
+       passes the lock file-name rule.
+     - The same directory as the link, in the same recursive listing,
+       holds a tree entry of that name that is a blob of mode `100644` or
+       `100755`.
+   - **Then it is skipped.** It is not locked; its target is, so the
+     corresponding source is complete and a `git checkout` of the
+     directory reproduces the link. The resolver prints exactly one
+     information line on stderr, `<origin>: <path> -> <target> (symlink to
+     a locked file, skipped)`, with `_clean` applied.
+   - **Fails, with the existing text** `<origin>: <path> at <commit> is
+     not a regular file`, in each of these cases:
+     - a target with `/` (another directory, `../other/x`), or an absolute
+       path (`/etc/passwd`);
+     - `.`, `..`, or an empty target;
+     - a missing name, or a target that is a tree entry;
+     - a target that is itself mode `120000` (a chain);
+     - a target that fails the name rule;
+     - a decode or size failure.
+
+     Mode `160000` (a submodule) and any other mode still fail.
+   - *Architect's precision:* a skipped link's name that also appears in
+     `sha512sums` fails: `<origin>: <name> is a symlink named in
+     sha512sums`. The checksum would otherwise be checked against the
+     wrong bytes, or against distfiles.
+   - **Rows.**
+     - The real shape passes: `alpine-baselayout.post-upgrade` ->
+       `alpine-baselayout.post-install`, both in `main/alpine-baselayout`,
+       the target `100644`. The link is skipped, the target is locked, and
+       the information line is printed once.
+     - Each of these fails: a link to `../other/x`, to `/etc/passwd`, to a
+       missing name, to another symlink, or to a subdirectory.
+     - So do: a link whose `content` is not valid base64, a link over 1
+       KiB, and a link named in `sha512sums`.
+     - A `160000` entry still fails.
+9. **Record (orchestrator, 2026-10-26).** The run log confirms that item
+   2's `hostpath` fix to `docker save -o` was needed. Before it, the
+   Windows docker CLI received a POSIX path and the save failed
+   (`u7d/lock-run-0-failed-docker-save.txt`). Item 2's lesson stands: the
+   fix was right, but it should have gone through RED before the run
+   continued.
+10. **A leading underscore in file names (orchestrator ruling,
+    2026-10-26; `u7d/lock-run-2.txt`).** Run 2 stopped on
+    `apk:apk-tools@3.0.3-r1`, whose regular file `_apk` failed the name
+    rule's leading character.
+    - `LOCK_FILE_NAME_RE` becomes `[A-Za-z0-9_][A-Za-z0-9._+~-]{0,254}`,
+      in `sbom_check.py` (the lock side) and in `sources_resolve.py`'s
+      copy (the resolver side).
+    - A leading `-` or `.` is still refused, and so is `..` anywhere.
+    - The one pattern serves every use of the file-name rule, including
+      U7a round 1 item 3, the U7c gap rulings, the decoded `<P>` middle
+      segments (U7d R1-N1) and item 8's symlink targets. So all of them
+      now accept a leading `_`.
+    - Stored names are content-addressed (`app/sources/files/<sha256>`,
+      N9), so PSC-24's manifest path rule is unaffected.
+    - Rows:
+      - `_apk` and `_x.patch` are good;
+      - `-x`, `.x`, `a..b` and `_` followed by a `/` still fail;
+      - the two copies of the pattern in `sbom_check.py` and
+        `sources_resolve.py` are asserted equal, so they cannot drift.
+    - *The "printed twice" skip line (cosmetic), architect's reading:*
+      lines 17-18 of `lock-run-2.txt` come from two different keys. Keys
+      resolve in sorted order, and they are `apk:alpine-baselayout@3.7.1-r8`
+      (ke-gateway) and `apk:alpine-baselayout@3.7.2-r1` (valkey), each
+      with the same link in its own commit. That is one correct line per
+      key, not a duplicate. The fix is the prefix: the line becomes
+      `<key>: <path> -> <target> (symlink to a locked file, skipped)`,
+      which makes the two distinct. Within one key, the line still prints
+      exactly once per link. Row: two keys with the same link give two
+      lines with different keys.
+11. **Status (orchestrator, 2026-10-26).** The tester is probing all 19
+    aports package directories read-only, at each key's commit, recorded
+    in `u7d/aports-probe.txt`, so that any other real-data shape is ruled
+    in one pass. Any new shape comes back to the architect for a
+    design-note ruling before the tester's RED. It is never added in the
+    developer's code first (item 2's lesson).
+12. **Empty aports files, and the probe result (orchestrator, 2026-10-26;
+    `u7d/aports-probe.txt`).**
+    - **Rule.** An `apk` file whose url is the GitLab API raw form (item 9
+      of U7c round 1) may have `size == 0`. Empty aports files exist, have
+      a well-defined SHA-256, and are bound by the files-API
+      `content_sha256` or the APKBUILD's SHA-512.
+      - *Architect's precision:* when `size == 0`, `sha256` must be
+        exactly
+        `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`,
+        else `lock: <key>: <name>: size 0 but sha256 is not the empty
+        hash`. A `sha512` upstream must be the empty SHA-512.
+      - Every other file, apk distfiles included, keeps `0 < size <=
+        4294967296` (U7a round 1 item 10). The resolver streams a 0-byte
+        body as it does any other.
+      - Rows:
+        - a 0-byte `.post-install` at the API raw form with the empty hash
+          is good;
+        - size 0 with another hash fails;
+        - size 0 at a distfiles url fails, and so does size 0 on a deb or
+          maven file;
+        - `size: -1` and `false` still fail.
+    - **Probe result.** 59 read-only API requests across the 19 apk keys,
+      at each key's commit:
+      - The only shape that breaks a rule is a leading underscore: `_apk`
+        (apk-tools), and musl's `__stack_chk_fail_local.c` and
+        `__NR_riscv_hwprobe.patch`. Item 10 covers it.
+      - There is one symlink shape, alpine-baselayout's
+        `.post-upgrade -> .post-install`, covered by item 8.
+      - The largest listing is 80 entries, under `per_page=100`, so
+        truncation rule 7 is not triggered.
+      - There are no subdirectories, no basename collisions and no
+        main/community overlaps.
+      - Zero-size files were not probed, hence the rule above, ruled in
+        advance.
+
+      No other new shape was found, so the remaining real run should not
+      need another apk ruling. Any surprise still comes back here before
+      the RED (item 11).
+13. **The lock and the PS-1.2 hardcoded-port scanner (orchestrator,
+    2026-10-26).**
+    - `tests/hardcoded_scan.py` skips `docker/sources.lock.json` through
+      its path-exact allowed-files mechanism. It is never a line
+      exemption or a pattern. The reason is: "generated lock: sizes and
+      hashes (PSC-15); checked by test_sources_lock_committed.py".
+    - In return, the committed-lock test also asserts two things:
+      - no object in the lock has a key named `http` or `port`, or any key
+        outside U7a's exact key sets (already pinned, restated here);
+      - every JSON integer in the file is the value of a `size` key or of
+        the top-level `format`.
+
+      So nothing port-like can hide in the skipped file.
+    - Security reviews this as a PS-1.2 change.
+    - Rows:
+      - a lock with an extra integer field fails the committed-lock check,
+        and so does a URL with `:8443`, already refused by U7a's
+        no-port rule;
+      - the scanner's allowed-files entry is exact: another JSON path
+        under `docker/` is still scanned.
+    - *Review R1 (`u7d/review-r1.md`, APPROVED; orchestrator,
+      2026-10-26).*
+      - **R1-N1, the APKBUILD is never empty.** Item 12's `size == 0`
+        allowance does not apply to the apk file named `APKBUILD`. Its
+        `size` must be > 0 (`lock: <key>: APKBUILD: size 0`). The resolver
+        cannot produce an empty APKBUILD anyway, since A4 needs literal
+        `pkgver` and `pkgrel`, but the lock side now refuses one too.
+        Row: the fixture apk entry with an empty APKBUILD carrying the
+        empty hash fails with that text. A 0-byte `.post-install` stays
+        good.
+      - **R1-N2, recorded.** Package counts within keys were not compared,
+        because the run's SBOMs are deleted. The key-set check, which is
+        the O3 gate, passed, and the neo4j 72 against 73 count is already
+        on record from the U7b A34 proof. The recommendation in the
+        real-run results below (keep the run's SBOMs under
+        `--evidence-dir/sboms/`) stands, as a U8 change with its own RED.
+      - **R1-N4, optional pins, noted.** The committed-lock test pins the
+        neo4j entry to its provenance values. It could equally pin, with no
+        network:
+        - the temurin entry's sha256 to the sidecar value in
+          `sources-provenance.md`;
+        - ke-app's two `pypi:` entries' url, sha256 and size to their
+          `uv.lock` sdists.
+
+        The reviewer checked both by hand and found them equal. They are
+        not required for U7d; adding them is the tester's call, and they
+        are recommended as cheap drift guards.
+      - R1-N3 (the gates, not findings) is covered by item 7 (the third
+        fetch) and by this item's scanner entry.
+
+*Real-run results (U7d S5/S6; `u7d/lock-run-3.txt` exit 3, 759 s wall;
+`u7d/lock-run-4.txt` exit 0, 98 s wall).* These are measurements. They
+supersede item 5's and P6's estimates.
+- **Keys:** 182, equal to the fixture key set, so O3 holds and nothing was
+  added or missing.
+- **Files:** 872. 2 symlink skips (item 8, one per alpine-baselayout key).
+  0 retries.
+- **Neo4j:** the candidate equalled security's second fetch (sha256
+  `182ae2e5...91e3`, 20907800 B). The manual entry was written, then the
+  re-run exited 0.
+- **Lock-check:** ok (182 components, amd64) against the fixture SBOMs.
+- **Full set:** 1,327,035,158 B (about 1.24 GiB), at the low end of item
+  5's 1.3-1.6 GB estimate.
+  | kind | size |
+  |---|---|
+  | deb | 898.8 MB |
+  | apk | 238.1 MB |
+  | temurin | 115.1 MB |
+  | pgdg | 48.1 MB |
+  | neo4j | 20.9 MB |
+  | pypi | 5.8 MB |
+  | maven | 0.2 MB |
+- **Sample:** 7 keys, one per kind, 136,571,547 B (about 130 MiB), below
+  item 5's 200-300 MB estimate. Temurin dominates it.
+- **Manifest:** 872 source lines at 154 B each is about 131 kB, well under
+  install's 1 MiB cap (N9's limit of about 6,800 lines).
+- **The 7 GiB floor (R6), by Q63's derivation:** about 4.3 GiB today (the
+  bundle plus the dind store after load). A source file is present up to
+  three times: the fetch directory, the bundle copy and install's staging
+  in `/install`.
+  - *Sample, the verify path:* + 3 × 0.13 GiB ≈ +0.4 GiB, for about 4.7
+    GiB against 7 GiB, roughly 49% headroom. U8 and U11 confirm it on CI;
+    no floor change is expected.
+  - *Full set, the operator path:* + 3 × 1.24 GiB ≈ +3.7 GiB, for about
+    8.0 GiB. That exceeds the 7 GiB floor, so an operator full bundle
+    needs a larger floor or host, and the `/install` tmpfs grows by about
+    1.24 GiB (N14). U11 re-derives and states both.
+- **Run time:** the first full run was 759 s and the incremental re-run
+  98 s. Both are well inside S's estimate and the 3 h run deadline.
+- **Package counts within keys (O3 information) were not compared:** the
+  tool deletes the run's SBOMs with its work dir.
+  - *Architect's recommendation:* yes, keep them. `sources_lock.sh` copies
+    the fresh `*.spdx.json` into `--evidence-dir` as `sboms/<image>.spdx.json`,
+    before the lock move, with item 6's link and regular-file rules. Then
+    the within-key comparison (`neo4j:neo4j@5.26.32`, 72 against 73) can be
+    computed from evidence.
+  - This is a U8 or later change, with its own RED. It is not U7d.
+  - For U7d, the key-set equality above satisfies O3 (U7b round 1, the
+    O3 observation). The committed-lock test against the fixtures stays
+    the gate.
+
+14. **The third Neo4j fetch moves to U8 (orchestrator refinement,
+    2026-10-27).** This refines interface pins item 7 and supersedes item
+    7 of this block, "A mismatch, or no third fetch, means no lock
+    commit".
+    - **The U7d commit proceeds** without the third fetch.
+    - **What satisfies the network-independent check.** It is U8's first
+      bundle-time sample fetch on the CI runner.
+      - The Neo4j tarball is always in the sample: `neo4j` is a singleton
+        kind, so `sample_keys` always picks it.
+      - The fetch goes over the runner's network, and U8's Q61 rule fails
+        it closed on a sha256 or size mismatch.
+      - The CI job log is the record. It is cited in
+        `sources-provenance.md` at U8 with the run id, the date and the
+        line showing the matched sha256.
+      - This happens before any operator bundle exists. Rule N1 holds: no
+        operator bundle before U9, and U8 comes before U9.
+    - **Accepted earlier alternative.** The human's manual one-liner on an
+      ARM host, recorded in `sources-provenance.md` with host, date,
+      sha256 and size, satisfies the check if it comes first.
+    - **A mismatch at U8** means a new first fetch and a new second fetch,
+      then a reviewed lock change. It is never a skip, a retry (Q61) or a
+      hand-edited hash.
+    - *Architect's note:* the check is only as independent as the runner's
+      route out. The U8 record should name the runner's egress as far as
+      it is known. If that is the same network path as the developer's and
+      security's fetches, the ARM one-liner stays the stronger check, and
+      the orchestrator may still ask the human for it before the first
+      operator bundle.
+    - *Reason:* ssh to the ARM hosts is refused non-interactively (item 7),
+      and the human asked to resume.
+    - **Also recorded.** The CLAUDE.md "Generated artifacts" row for
+      `docker/sources.lock.json` was added with the human's approval
+      ("add it"), using the S10 text. `scripts/verify.sh fast` passed
+      afterwards (`u7d/claude-row-verify-fast.txt`).
 
 ## N6. The final SPDX document
 

@@ -1,0 +1,44 @@
+platform-sbom U7d design review: security probes of apt-archive.postgresql.org (security, 2026-10-26 UTC)
+Host: the x86 Windows dev box, Git Bash, curl 8.19.0 (Schannel), Python ssl for the certificate.
+Every request: curl -q --proto '=https' --proto-redir '=https' --tlsv1.2 -sS --max-time 60, no -L,
+into an empty scratch dir (<scratch>/sec-u7d-fetch). Nothing unpacked, built or run.
+Only apt-archive.postgresql.org was contacted (plus the local postgres image, read with docker create/cp).
+
+== 1. Release files (2026-10-26T02:18:40Z), base https://apt-archive.postgresql.org/pub/repos/apt/dists/bookworm-pgdg-archive/
+InRelease:   200, 5621 bytes, Server: AmazonS3, via CloudFront (2600:9000:...), Last-Modified Wed, 21 Oct 2026 00:05:04 GMT, no redirect
+Release:     200, 4739 bytes, same; equals the InRelease signed text
+Release.gpg: 404 (only InRelease is published)
+sha256: Release 650fcc10123836a6bed1c3a070b51a17ef82309c6110d9d3ac2f1df426a335c9, InRelease ed9bd2c7f72b2f01e4d05c9be0c5683611cef1e9a1e58ff40b3e473a44e512ec
+Release fields: Codename/Suite bookworm-pgdg-archive, Origin apt-archive.postgresql.org,
+  Label "PostgreSQL for Debian/Ubuntu archive repository", Date Wed, 21 Oct 2026 00:04:45 +0000, no Valid-Until.
+Source indexes listed in Release (no Sources.gz, no Sources.xz):
+  SHA256 9550c528bc74dc1ebfdc799385e0e8c9f211dc4bed5dbbb6bee5962b016fe722  5043212 main/source/Sources
+  SHA256 b7963a2dcc18c27e49fa7cbbd21b0b2d16be502c5855c8e6095a852ceb23fd3a   734866 main/source/Sources.bz2
+
+== 2. HEAD of the source indexes (2026-10-26T02:19:21Z), .../bookworm-pgdg-archive/main/source/
+Sources.gz   404 (X-Cache: Error from cloudfront)
+Sources.xz   404
+Sources.bz2  200, Content-Length 734866, Last-Modified Wed, 21 Oct 2026 00:05:08 GMT
+Sources      200, Content-Length 5043212, Last-Modified Wed, 21 Oct 2026 00:05:08 GMT, ETag "9a859d5d66fd0dffab6e0cad4c9ecb98" (= its Release MD5)
+
+== 3. TLS (Python ssl, default context)
+TLSv1.3 TLS_AES_128_GCM_SHA256; subject CN apt-archive.postgresql.org; issuer C=US, O=Amazon, CN=Amazon RSA 2048 M01;
+valid Jun 29 00:00:00 2026 GMT -> Jan 12 23:59:59 2027 GMT; SAN [apt-archive.postgresql.org] only.
+
+== 4. One .dsc (2026-10-26T02:19:38Z)
+https://apt-archive.postgresql.org/pub/repos/apt/pool/main/p/postgresql-common/postgresql-common_293.pgdg12+1.dsc
+200, 1538 bytes, no redirect, Last-Modified Fri, 17 Jul 2026 00:04:13 GMT (older than the Release: files persist while the index is rebuilt)
+sha256 fc1b229024670e6d0cf1c40f3987bf1509aecf146791a6e22966fbf764c391da
+Unsigned (line 1 is `Format: 3.0 (native)`, no PGP armour). Source postgresql-common, Version 293.pgdg12+1.
+Checksums-Sha256: 7a12dca9e636d56b72f45a00c52fb8cf054c3bf9aba8dc74bcca5fb6be17b07f 219688 postgresql-common_293.pgdg12+1.tar.xz
+The pool path follows Debian's rule (pool/main/p/postgresql-common/).
+
+== 5. Signature, checked out of band (gpgv; not part of the design)
+InRelease signature packet: RSA, SHA512, issuer fingerprint B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8, created 2026-10-21.
+The key the bundled postgres image already trusts (postgres:16-bookworm@sha256:0ea6700a..., /usr/local/share/keyrings/postgres.gpg.asc,
+  apt source `deb [ signed-by=... ] http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main 16`):
+  pub rsa4096/7FCC7D46ACCC4CF8 2011-10-13 [SC], fingerprint B97B 0AFC AA1A 47F0 44F2 44A0 7FCC 7D46 ACCC 4CF8, "PostgreSQL Debian Repository"
+gpgv --keyring <that key> InRelease:
+  gpgv: Signature made Tue Oct 20 17:04:47 2026 PDT
+  gpgv:                using RSA key B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8
+  gpgv: Good signature from "PostgreSQL Debian Repository"

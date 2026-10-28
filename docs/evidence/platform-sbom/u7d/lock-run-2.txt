@@ -1,0 +1,23 @@
+ Container ke-sources-a8c30ef9-sbom-sbom-run-e54a3564bb21 Creating 
+ Container ke-sources-a8c30ef9-sbom-sbom-run-e54a3564bb21 Created 
+ Container ke-sources-a8c30ef9-sbom-sbom-run-86680801646e Creating 
+ Container ke-sources-a8c30ef9-sbom-sbom-run-86680801646e Created 
+ Container ke-sources-a8c30ef9-sbom-sbom-run-68cdadfc23d6 Creating 
+ Container ke-sources-a8c30ef9-sbom-sbom-run-68cdadfc23d6 Created 
+ Container ke-sources-a8c30ef9-sbom-sbom-run-7442304df220 Creating 
+ Container ke-sources-a8c30ef9-sbom-sbom-run-7442304df220 Created 
+ Container ke-sources-a8c30ef9-sbom-sbom-run-42e27aa2acb2 Creating 
+ Container ke-sources-a8c30ef9-sbom-sbom-run-42e27aa2acb2 Created 
+ Container ke-sources-a8c30ef9-sbom-sbom-run-e9e1fc05e28f Creating 
+ Container ke-sources-a8c30ef9-sbom-sbom-run-e9e1fc05e28f Created 
+ Network ke-sources-a8c30ef9_default Creating 
+ Network ke-sources-a8c30ef9_default Created 
+ Container ke-sources-a8c30ef9-sources-resolve-run-f7ff1addf6a5 Creating 
+ Container ke-sources-a8c30ef9-sources-resolve-run-f7ff1addf6a5 Created 
+alpine-baselayout: main/alpine-baselayout/alpine-baselayout.post-upgrade -> alpine-baselayout.post-install (symlink to a locked file, skipped)
+alpine-baselayout: main/alpine-baselayout/alpine-baselayout.post-upgrade -> alpine-baselayout.post-install (symlink to a locked file, skipped)
+sources_lock: FAIL (resolve: apk:apk-tools@3.0.3-r1: _apk: not a safe file name; the lock is unchanged)
+
+sources_lock: FAIL (resolve: scripts/sources_resolve.py exited 1; the lock is unchanged)
+exit=1
+wall=139

@@ -1616,7 +1616,9 @@ class ReworkR1OfflineTest(toc._OfflineBase):
 # N8a 2. Exact list; a host N4 does not name is not added here.
 U6_HOSTS = {"snapshot.debian.org", "gitlab.alpinelinux.org", "distfiles.alpinelinux.org", "github.com",
             "codeload.github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com",
-            "files.pythonhosted.org", "repo1.maven.org"}
+            "files.pythonhosted.org", "repo1.maven.org",
+            # U7d (human ruling A71, Q71 option 1; design-notes "U7d precision" P5): the tenth host.
+            "apt-archive.postgresql.org"}
 # The policy's image name -> its tests/fixtures/sbom-u3 package list (U4b,
 # PSC-26: the U3 neo4j list stands in for ke-neo4j). Others: same name.
 U6_FIXTURE_OF = {policy: fixture for fixture, policy in U4B_POLICY_NAME.items()}
@@ -1741,7 +1743,9 @@ class PolicyU6SchemaTest(unittest.TestCase):
     def test_hosts_are_the_fetch_hosts(self):
         hosts = self._policy().get("hosts")
         self.assertIsInstance(hosts, list, "docker/source-policy.json has no `hosts` (U6, N4)")
-        self.assertEqual(set(hosts), U6_HOSTS, "`hosts` is not N4's host table plus repo1.maven.org")
+        self.assertEqual(set(hosts), U6_HOSTS, "`hosts` is not N4's host table plus repo1.maven.org and "
+                         "apt-archive.postgresql.org")
+        self.assertEqual(len(hosts), 10, "U7d P5: exactly ten hosts")
 
     def test_exempt_entries_jna_and_javassist(self):
         exempt = self._policy().get("exempt")

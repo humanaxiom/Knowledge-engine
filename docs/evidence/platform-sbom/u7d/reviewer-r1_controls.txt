@@ -1,0 +1,41 @@
+ Container ke-reviewer-u7d-gates-run-44840477c45d Creating 
+ Container ke-reviewer-u7d-gates-run-44840477c45d Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.72ms
+Installed 1 package in 1ms
+ok  [target] TARGET: the 13 round-1 tests                                           must pass | no problem
+ok  [target] TARGET: the 95 U7b, U7c and U7d tests                                  must pass | no problem
+ok  [target] TARGET: 30 lock and policy tests                                       must pass | no problem
+ok  [u7d] U7d RED targets: ReworkR1U7dUrlErrorTest.test_the_mapping              must fail | test_the_mapping: urllib.error.URLError: <urlopen error timed out>
+ok  [u7d] U7d RED targets: ReworkR1U7dUrlErrorTest.test_through_resolve          must fail | test_through_resolve: ?                                                        ^^^^^^^^^^^^ ^^^^^
+ok  [u7d] U7d RED targets: ReworkR1U7dSymlinkTest.test_refused_links             must fail | test_refused_links: + apk:alpine-baselayout@3.7.2-r1: alpine-baselayout: alpine-baselayout.post-upgrade is a s
+ok  [u7d] U7d RED targets: ReworkR1U7dSymlinkTest.test_the_real_shape            must fail | test_the_real_shape: AssertionError: ResolveError('apk:alpine-baselayout@3.7.2-r1: alpine-baselayout: main/alp
+ok  [u7d] U7d RED targets: ReworkR1U7dScriptTest.test_docker_save_gets_the_host_path must fail | test_docker_save_gets_the_host_path: AssertionError: False is not true : save -o '/tmp/tmp8k3h99ml/ke-sources.
+ok  [u7d] U7d RED targets: ReworkR1U7dScriptTest.test_failures_leave_the_lock    must fail | test_failures_leave_the_lock: AssertionError: 2 != 1 : usage: scripts/sources_lock.sh --arch amd64|arm64 [--re
+ok  [u7d] U7d RED targets: ReworkR1U7dScriptTest.test_the_directory_must_be_writable must fail | test_the_directory_must_be_writable: AssertionError: 2 != 1 : usage: scripts/sources_lock.sh --arch amd64|arm6
+ok  [u7d] U7d RED targets: ReworkR1U7dScriptTest.test_the_inrelease_is_copied_before_the_move must fail | test_the_inrelease_is_copied_before_the_move: AssertionError: 2 != 0 : usage: scripts/sources_lock.sh --arch a
+ok  [u7d] U7d RED targets: ReworkR1U7dScriptTest.test_the_option_is_required     must fail | test_the_option_is_required: sources_lock: FAIL (resolve: scripts/sources_resolve.py exited 1; the lock is unc
+ok  [u7d] U7d RED targets: ReworkR1U7dSuiteBindingTest.test_packages_that_derive_two_suites must fail | test_packages_that_derive_two_suites: AssertionError: 'pgdg:postgresql-common@293.pgdg12+1: packages derive su
+ok  [u7d] U7d RED targets: ReworkR1U7dSuiteBindingTest.test_the_suite_is_bound   must fail | test_the_suite_is_bound: AssertionError: 'lock: pgdg:postgresql-common@293.pgdg12+1: suite trixie-pgdg-archive
+ok  [u7d] U7d RED targets: U7dLockNeedsTest.test_trixie_and_unknown              must fail | test_trixie_and_unknown: AssertionError: 'pgdg:postgresql-common@293.pgdg13+1: packages derive suites bookworm
+ok  [u7d] U7d RED targets: U7dScriptStaticTest.test_the_inrelease_is_copied      must fail | test_the_inrelease_is_copied: AssertionError: 'cp -P -- ' not found in 'set -euo pipefail\n\nfail() { echo "so
+ok  [worktree] B2 on the working tree's script (the GREEN hostpath fix): test_docker_save_gets_the_host_path must pass | no problem
+ok  [mutant] URLError not unwrapped -> test_the_mapping                             must fail | test_the_mapping: urllib.error.URLError: <urlopen error timed out>
+ok  [mutant] URLError not unwrapped (resolve) -> test_through_resolve               must fail | test_through_resolve: ?                                                        ^^^^^^^^^^^^ ^^^^^
+ok  [mutant] an SSL URLError retried -> test_through_resolve                        must fail | test_through_resolve: ?                                                        +++++++++++++++   ^^ ^^^
+ok  [mutant] the suite unbound -> test_the_suite_is_bound                           must fail | test_the_suite_is_bound: AssertionError: 'lock: pgdg:postgresql-common@293.pgdg12+1: suite trixie-pgdg-archive
+ok  [mutant] two derived suites accepted -> test_packages_that_derive_two_suites    must fail | test_packages_that_derive_two_suites: AssertionError: 'pgdg:postgresql-common@293.pgdg12+1: packages derive su
+ok  [mutant] links locked as files -> test_the_real_shape                           must fail | test_the_real_shape: AssertionError: ResolveError('apk:alpine-baselayout@3.7.2-r1: gitlab.alpinelinux.org: HTT
+ok  [mutant] the link target not checked -> test_refused_links                      must fail | test_refused_links: AssertionError: ({'format': 1, 'components': {'apk:alpine-baselayout@3.7.2-r1': {'kind': '
+ok  [mutant] a link named in sha512sums accepted -> test_refused_links              must fail | test_refused_links: + apk:alpine-baselayout@3.7.2-r1: alpine-baselayout: alpine-baselayout.post-upgrade is a s
+ok  [mutant] the content_sha256 not bound -> test_refused_links                     must fail | test_refused_links: AssertionError: ({'format': 1, 'components': {'apk:alpine-baselayout@3.7.2-r1': {'kind': '
+ok  [mutant] hostpath dropped -> test_docker_save_gets_the_host_path                must fail | test_docker_save_gets_the_host_path: AssertionError: False is not true : save -o '/tmp/tmp1_g4ia_y/ke-sources.
+ok  [mutant] --evidence-dir optional -> test_the_option_is_required                 must fail | test_the_option_is_required: AssertionError: 1 != 2 : sources_lock: FAIL (evidence:  is not a writable directo
+ok  [mutant] the directory not checked -> test_the_directory_must_be_writable       must fail | test_the_directory_must_be_writable:  1 file changed, 104 insertions(+), 104 deletions(-)
+ok  [mutant] the copy after the move -> test_the_inrelease_is_copied_before_the_move must fail | test_the_inrelease_is_copied_before_the_move: AssertionError: 3 not less than 2 : the InRelease was copied aft
+ok  [mutant] a hard-coded evidence path -> test_the_inrelease_is_copied             must fail | test_the_inrelease_is_copied: AssertionError: 'u7d' unexpectedly found in 'set -euo pipefail\n\nfail() { echo 
+ok  [mutant] a failed copy ignored -> test_failures_leave_the_lock                  must fail | test_failures_leave_the_lock: cp: injected failure
+ok  [mutant] -f only (links followed) -> test_failures_leave_the_lock               must fail | test_failures_leave_the_lock:  1 file changed, 104 insertions(+), 104 deletions(-)
+
+U7d rework round 1 controls (repo): 33 rows, 29 must-fail, 4 must-pass, 0 unexpected

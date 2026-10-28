@@ -1,0 +1,28 @@
+U7d real run sizes (amd64), lock docker/sources.lock.json
+run 3 (exit 3, Neo4j candidate): wall 759 s; run 4 (exit 0, manual neo4j entry present): wall 98 s
+retry lines seen: none (runs 3 and 4)
+symlink-skipped lines (run 3):
+apk:alpine-baselayout@3.7.1-r8: main/alpine-baselayout/alpine-baselayout.post-upgrade -> alpine-baselayout.post-install (symlink to a locked file, skipped)
+apk:alpine-baselayout@3.7.2-r1: main/alpine-baselayout/alpine-baselayout.post-upgrade -> alpine-baselayout.post-install (symlink to a locked file, skipped)
+(run 4: none)
+
+problems: []
+components 182 files 872 total_bytes 1327035158
+  apk: 19 keys, 365 files, 238081002 bytes
+  deb: 152 keys, 491 files, 898777711 bytes
+  maven: 1 keys, 1 files, 245023 bytes
+  neo4j: 1 keys, 1 files, 20907800 bytes
+  pgdg: 3 keys, 8 files, 48113418 bytes
+  pypi: 5 keys, 5 files, 5783363 bytes
+  temurin: 1 keys, 1 files, 115126841 bytes
+sample_keys: 7 bytes 136571547
+   apk:alpine-baselayout@3.7.1-r8 33606
+   deb:hostname@3.23+nmu1 14157
+   maven:javax.xml.bind:jaxb-api@2.2.12 245023
+   neo4j:neo4j@5.26.32 20907800
+   pgdg:postgresql-common@293.pgdg12+1 221226
+   pypi:autocommand@2.2.2 22894
+   temurin:jdk-21.0.12.1+1 115126841
+
+lock-check against the six U3 fixture SBOMs (the run's own SBOMs were deleted by the tool's trap):
+lock-check: ok (182 components, amd64)

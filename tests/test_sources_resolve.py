@@ -30,6 +30,7 @@ docs/evidence.
 
 from __future__ import annotations
 
+import base64
 import contextlib
 import email.message
 import hashlib
@@ -41,6 +42,7 @@ import os
 import re
 import shutil
 import socket
+import ssl
 import stat
 import subprocess
 import sys
@@ -63,7 +65,7 @@ from tests import sbom_support as ss
 from tests.engine_support import ROOT
 from tests.test_offline_bundle import _BundleBase
 from tests.test_sbom_bundle import load_sbom_check
-from tests.test_sources_lock import FIXTURE_KEYS, fixture_docs, good_lock, policy
+from tests.test_sources_lock import FIXTURE_KEYS, fixture_docs, good_entry, good_lock, policy
 
 RESOLVER = ROOT / "scripts" / "sources_resolve.py"
 LOCK_SH = ROOT / "scripts" / "sources_lock.sh"
@@ -344,7 +346,10 @@ class ResolverParsersTest(unittest.TestCase):
 def resolve(mod: ModuleType, needs: dict[str, Any], lock: dict[str, Any] | None = None, *, refresh: bool = False
             ) -> tuple[dict[str, Any], list[Any], list[str]]:
     uv = (ROOT / "uv.lock").read_text(encoding="utf-8")
-    return mod.resolve(needs, lock or EMPTY_LOCK, policy(), uv, ARCH, refresh)
+    # U7d R4: the retry waits go through the module's SLEEP; route tests never wait,
+    # and their retry lines are not printed.
+    with mock.patch.object(mod, "SLEEP", lambda s: None, create=True), contextlib.redirect_stderr(io.StringIO()):
+        return mod.resolve(needs, lock or EMPTY_LOCK, policy(), uv, ARCH, refresh)
 
 
 TEM_DOCS = {"ke-neo4j": [{"purl": "pkg:generic/oracle/openjdk@21.0.12.1%2B1-LTS", "declared": "NOASSERTION"}]}
@@ -459,9 +464,9 @@ class ResolverMergeTest(unittest.TestCase):
         needs = {NEO_KEY: need(NEO_KEY, "ke-neo4j", "pkg:maven/org.neo4j/neo4j@5.26.32", {"ver": "5.26.32"}),
                  TEM_KEY: tem_need(),
                  "deb:bash@5.2.15-2": need("deb:bash@5.2.15-2", "postgres", "pkg:deb/debian/bash@5.2.15-2"),
-                 # U7c (design-notes "U7c precision"): deb has a route now, so the
-                 # kind with no route is pgdg (Q71); was deb:zlib until U7b.
-                 PGDG_KEY: need(PGDG_KEY, "postgres", "pkg:deb/debian/postgresql-common@293.pgdg12%2B1")}
+                 # U7d (A71): pgdg has a route now, so no kind is left without one; the
+                 # "no route" rows (deb:zlib until U7b, pgdg until U7d) are gone.
+                 }
         with network(mod, temurin_routes()) as net:
             new, cands, skipped = resolve(mod, needs, lock)
         comps = new["components"]
@@ -473,8 +478,7 @@ class ResolverMergeTest(unittest.TestCase):
         self.assertNotIn("maven:a:c@1", comps, "an entry left with no arch is removed")
         self.assertEqual(comps["neo4j:neo4j@1.0"], stale_manual, "an unneeded manual entry is kept (lock-check reports it)")
         self.assertEqual(comps["deb:bash@5.2.15-2"], deb_old, "a needed deb entry of U7c's kind is left untouched")
-        self.assertIn(PGDG_KEY, skipped, "a needed key of a kind with no route is named as skipped")
-        self.assertNotIn(PGDG_KEY, comps, "a kind with no route yet is never invented")
+        self.assertEqual(skipped, [], "U7d: every kind has a route")
         with self.subTest(case="--refresh never rewrites a manual entry"):
             with network(mod, temurin_routes()) as net:
                 again, cands, _ = resolve(mod, {NEO_KEY: needs[NEO_KEY]}, {"format": 1, "components": {NEO_KEY: manual}},
@@ -881,7 +885,7 @@ class SourcesLockScriptRunTest(_BundleBase, unittest.TestCase):
         table = self._images_table(self.stack)
         missing = sorted(r for r in self.stack.values() if r.split("/")[-1].startswith("ke-"))[0]
         del table[missing]
-        r, calls = self._lock_run(("--arch", "amd64"), images=table)
+        r, calls = self._lock_run(("--arch", "amd64", "--evidence-dir", str(self.tmp)), images=table)
         self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
         self.assertIn(f"sources_lock: FAIL (images: {missing} not found: run scripts/build.sh first; the lock is unchanged)",
                       r.stderr)
@@ -898,7 +902,7 @@ class SourcesLockScriptRunTest(_BundleBase, unittest.TestCase):
                 self.assertEqual(self.lock.read_bytes(), self.before)
 
     def test_refuses_below_the_floor(self):
-        r, calls = self._lock_run(("--arch", "amd64"), FAKE_DF_AVAIL_KB="1000")
+        r, calls = self._lock_run(("--arch", "amd64", "--evidence-dir", str(self.tmp)), FAKE_DF_AVAIL_KB="1000")
         self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
         self.assertIn("7 GiB", r.stderr)
         self.assertFalse([c for c in calls if c[:1] == ["save"]], "it saved an image below the floor")
@@ -1049,7 +1053,8 @@ def run_main(tmp: Path, needs: Any, opener: Any, *, out: Path | None = None, raw
             "--policy", str(ROOT / "docker" / "source-policy.json"), "--uv-lock", str(ROOT / "uv.lock"),
             "--out", str(out or tmp / "out"), "--arch", ARCH]
     o, e = io.StringIO(), io.StringIO()
-    with mock.patch.object(mod, "OPENER", opener), contextlib.redirect_stdout(o), contextlib.redirect_stderr(e):
+    with mock.patch.object(mod, "OPENER", opener), contextlib.redirect_stdout(o), contextlib.redirect_stderr(e), \
+            mock.patch.object(mod, "SLEEP", lambda s: None, create=True):  # U7d R4: never wait in tests
         try:
             code: Any = mod.main(argv)
         except BaseException as exc:  # noqa: BLE001 - the finding is any escape
@@ -1087,12 +1092,22 @@ class ReworkR1MainTest(unittest.TestCase):
         self._one_fail_line(got, "sources_lock: FAIL (resolve: ")
         self.assertEqual(fail_lines(got[2])[0], f"sources_lock: FAIL (resolve: {JAXB_KEY}: {MAVEN}: IncompleteRead: "
                                                f"{JAXB_URL}; the lock is unchanged)")
-        for case, exc, word in (("a mid-body timeout", TimeoutError(), "timeout after 60 s"),
-                                ("an InvalidURL at open", http.client.InvalidURL("x"), "InvalidURL")):
-            with self.subTest(case=case):
-                make = body_of([b"abc"], then=exc) if "body" in case else raising(exc)
-                got = self._main_with(JAXB_NEED, Opener({JAXB_URL + ".sha1": sidecar(), JAXB_URL: make}))
-                self._one_fail_line(got, f"sources_lock: FAIL (resolve: {JAXB_KEY}: {MAVEN}: {word}")
+        with self.subTest(case="an InvalidURL at open"):
+            got = self._main_with(JAXB_NEED, Opener({JAXB_URL + ".sha1": sidecar(),
+                                                     JAXB_URL: raising(http.client.InvalidURL("x"))}))
+            self._one_fail_line(got, f"sources_lock: FAIL (resolve: {JAXB_KEY}: {MAVEN}: InvalidURL")
+        with self.subTest(case="a mid-body timeout"):
+            # U7d R2/R5 (Q72, P-R2): a timeout is retried 3 times, each with its retry
+            # line, then the one FAIL line (until U7d: the FAIL line alone).
+            got = self._main_with(JAXB_NEED, Opener({JAXB_URL + ".sha1": sidecar(),
+                                                     JAXB_URL: body_of([b"abc"], then=TimeoutError())}))
+            code, _, err = got
+            lines = fail_lines(err)
+            self.assertEqual(code, 1, err)
+            self.assertEqual([ln.split(" s: ", 1)[0] for ln in lines[:-1]],
+                             ["retry 1/3 in 10", "retry 2/3 in 30", "retry 3/3 in 60"], err)
+            self.assertTrue(lines[-1].startswith(f"sources_lock: FAIL (resolve: {JAXB_KEY}: {MAVEN}: timeout after 60 s"),
+                            lines[-1])
 
     def test_an_error_writing_out_is_one_fail_line(self):
         got = self._main_with({}, Opener({}), out=self.tmp / "no-such-dir")
@@ -1332,8 +1347,13 @@ class ReworkR1LockScriptRunTest(_BundleBase, unittest.TestCase):
         return lock, docs, self.lock.read_bytes()
 
     def _run(self, docs: dict[str, Any], *, net: dict[str, Any] | None = None, stack: dict[str, str] | None = None,
-             path: str | None = None, args: tuple[str, ...] = ("--arch", "amd64")
+             path: str | None = None, args: tuple[str, ...] | None = None, extra_env: dict[str, str] | None = None
              ) -> tuple[subprocess.CompletedProcess, list[list[str]]]:
+        # U7d rework round 1, item 4: --evidence-dir is required (was --arch alone).
+        if args is None:
+            self.evdir = getattr(self, "evdir", self.tmp / "evidence")
+            self.evdir.mkdir(exist_ok=True)
+            args = ("--arch", "amd64", "--evidence-dir", str(self.evdir))
         for f in (self.log, self.json, self.df_log, self.syft_log, self.resolve_log):
             f.write_text("", encoding="utf-8")
         stack = self.stack if stack is None else stack
@@ -1358,6 +1378,7 @@ class ReworkR1LockScriptRunTest(_BundleBase, unittest.TestCase):
                "FAKE_RESOLVE_NET": json.dumps(net or {}), "FAKE_RESOLVE_LOG": str(self.resolve_log)}
         bash = shutil.which("bash")
         self.assertIsNotNone(bash)
+        env.update(extra_env or {})
         r = subprocess.run([str(bash), "scripts/sources_lock.sh", *args], env=env, cwd=self.repo,
                            capture_output=True, text=True, timeout=300)
         return r, [rec["argv"] for rec in fake_docker.records(self.json)]
@@ -1422,16 +1443,21 @@ class ReworkR1LockScriptRunTest(_BundleBase, unittest.TestCase):
         a later non-neo4j miss; the script must fail, lock untouched."""
         neo = [NEO_ROW] + [{"purl": f"pkg:maven/org.neo4j/neo4j-part{i:02d}@5.26.32", "declared": "GPL-3.0-only"}
                            for i in range(24)]
-        pg = {"purl": ss.deb("libpq5", "17.6-1.pgdg120+1"), "declared": "GPL-2.0-only"}
-        rows = with_rows({"ke-neo4j": neo, "postgres": [pg]})
-        docs = {img: ss.spdx_doc(img, r) for img, r in rows.items()}
-        pg_keys = {k for k in self.check.lock_needs(policy(), docs)[0] if k.startswith("pgdg:")}
-        self.assertEqual(len(pg_keys), 1, "fixture: one pgdg key")
-        lock, docs, before = self._commit_lock(rows, drop={NEO_KEY} | pg_keys)
+        # U7d (A71): a pgdg miss is resolvable now, so the hidden non-neo4j problem
+        # is a stale manual entry, which the resolver keeps and lock-check reports
+        # after every miss (was a pgdg miss until U7d).
+        rows = with_rows({"ke-neo4j": neo})
+        lock, docs, _ = self._commit_lock(rows, drop={NEO_KEY})
+        stale = "neo4j:neo4j@9.9.9"
+        lock["components"][stale] = good_entry(stale)
+        self.lock.write_text(json.dumps(lock, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
+        self._git("add", "-A")
+        self._git("commit", "-q", "-m", "a stale manual entry")
+        before = self.lock.read_bytes()
         problems = self.check.lock_problems(self.check.lock_text(lock), policy(), docs, ARCH)
         self.assertGreater(len(problems), 20, "fixture")
         self.assertTrue(all(f"the lock has no {NEO_KEY} for" in x for x in problems[:20]), "fixture")
-        self.assertIn("the lock has no pgdg:", problems[-1], "fixture")
+        self.assertIn(f"lock: {stale} is listed for amd64 but no image needs it", problems[-1], "fixture")
         r, _ = self._run(docs, net={NEO_URL: [200, {}, NEO_BODY.decode()]})
         self.assertEqual(r.returncode, 1, r.stdout + r.stderr[-3000:])
         self.assertIn("sources_lock: FAIL (check: ", r.stderr)
@@ -1892,8 +1918,11 @@ class U7cApkRouteTest(unittest.TestCase):
             "a tree 500": (dict(good, **{tree_main: (500, {}, b"")}), f"{GL}: HTTP 500: {tree_main}"),
             "more than 100 files": (dict(good, **{tree_main: (200, {"X-Next-Page": "2"}, fx.listing("main"))}),
                                     f"readline: more than 100 files at {c}"),
-            "a symlink": (listed({"id": "e" * 40, "name": "link", "type": "blob", "path": "main/readline/link",
-                                  "mode": "120000"}), f"readline: main/readline/link at {c} is not a regular file"),
+            # U7d rework round 1, item 8: a link is checked through its files-API metadata now; a
+            # link to a missing name is still not a regular file (until U7d every link failed).
+            "a symlink": (dict(listed({"id": "e" * 40, "name": "link", "type": "blob", "path": "main/readline/link",
+                                       "mode": "120000"}), **{fx.files_api("link"): link_meta(b"missing.patch")}),
+                          f"readline: main/readline/link at {c} is not a regular file"),
             "a submodule": (listed({"id": "e" * 40, "name": "sub", "type": "commit", "path": "main/readline/sub",
                                     "mode": "160000"}), f"readline: main/readline/sub at {c} is not a regular file"),
             "two blobs with one basename": (listed({"id": "e" * 40, "name": "fix-build.patch", "type": "blob",
@@ -2053,14 +2082,16 @@ class U7cCarriedTest(unittest.TestCase):
         self.assertEqual(len(times), 4)
         self.assertTrue(all(g >= 0.28 for g in gaps), f"snapshot requests not spaced by SNAPSHOT_PAUSE: {gaps}")
 
-    def test_pgdg_is_skipped_until_q71(self):
+    def test_pgdg_is_no_longer_skipped(self):
+        """U7d (A71) supersedes "pgdg is skipped until Q71": the key resolves
+        through the pgdg route and no skip line is printed."""
         tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, tmp, True)
-        net = Opener({})
-        code, _, err = run_main(tmp, {PGDG_KEY: need(PGDG_KEY, "postgres", "pkg:deb/debian/postgresql-common@293")}, net)
+        fx = PgdgFixture((PGDG_KEY,))
+        code, _, err = run_main(tmp, {PGDG_KEY: pg_need(PGDG_KEY)}, FakeNet(fx.routes()))
         self.assertEqual(code, 0, err)
-        self.assertIn(f"sources_resolve: skip: {PGDG_KEY} (no pgdg route until Q71)", err.splitlines())
-        self.assertEqual(net.calls, [])
+        self.assertFalse([ln for ln in err.splitlines() if "skip:" in ln], err)
+        self.assertIn(PGDG_KEY, json.loads((tmp / "out" / "lock.new.json").read_text(encoding="utf-8"))["components"])
 
 
 # --------------------------------------------------------------------------
@@ -2366,7 +2397,7 @@ class ReworkR1U7cApiUrlResolverTest(unittest.TestCase):
         the API path (%2F) is refused by the hop rules (U7b rework round 1
         item 3: a hop path has no %), which item 9 keeps."""
         fx = ApkFixture()
-        gid = "__goaway_id=e788cf47493a5646bec6ec8ddbefd5ba"
+        gid = "__goaway_id=0000synthetic0nonce0000000000000"
         plain = f"https://{GL}/.within.website/challenge?__goaway_challenge=cookie&{gid}"
         same = fx.raw("APKBUILD") + f"&__goaway_challenge=cookie&{gid}"
         for case, location, why in (
@@ -2381,6 +2412,1061 @@ class ReworkR1U7cApiUrlResolverTest(unittest.TestCase):
                 self.assertEqual(code, 1, err)
                 self.assertEqual(fail_lines(err), [f"sources_lock: FAIL (resolve: {RL_KEY}: {why}; the lock is unchanged)"])
                 self.assertNotIn("lock.new.json", os.listdir(tmp / "out"))
+
+
+# ==========================================================================
+# U7d (design-notes "U7d precision" P1-P6, R1-R6; "P2 amended"; the security
+# design review adopted, items 1-7; human rulings A71, A72; orchestrator
+# P-R1, P-R2). Fake network only.
+# Interface added (tester, U7d RED): `RETRIES` (3), `RETRY_WAITS` (10, 30,
+# 60), `SLEEP` (time.sleep), `RUN_RETRIES` (20), `RUN_DEADLINE` (10800),
+# module constants read when used; `fetch(url, allow, ..., retries=0)`;
+# `parse_deb822(text, label) -> list[dict]`; `parse_dsc` line numbers count
+# from the top of the file; main writes `<out>/pgdg-<suite>.InRelease`.
+# ==========================================================================
+
+PGDG_HOSTNAME = "apt-archive.postgresql.org"
+SUITE = "bookworm-pgdg-archive"
+PG_BASE = f"https://{PGDG_HOSTNAME}/pub/repos/apt"
+PG_KEYS = ("pgdg:postgresql-16@16.15-1.pgdg12+2", "pgdg:postgresql-18@18.6-1.pgdg12+2",
+           "pgdg:postgresql-common@293.pgdg12+1")
+
+
+def u7d_policy() -> dict[str, Any]:
+    """The committed policy; U7d's GREEN adds the tenth host to the file."""
+    return policy()
+
+
+class Recorder:
+    def __init__(self) -> None:
+        self.waits: list[float] = []
+
+    def __call__(self, s: float) -> None:
+        self.waits.append(s)
+
+
+class Seq:
+    """A fake OPENER whose url maps to a list of responses, one per call (the
+    last repeats); a response is a make() callable or a (status, headers,
+    body) tuple."""
+
+    def __init__(self, routes: dict[str, list[Any]]):
+        self.routes = routes
+        self.calls: list[str] = []
+
+    def __call__(self, url: str, timeout: float) -> Any:
+        self.calls.append(url)
+        seq = self.routes.get(url)
+        if not seq:
+            return SimpleNamespace(status=404, headers={}, body=[b""])
+        item = seq.pop(0) if len(seq) > 1 else seq[0]
+        if callable(item):
+            return item()
+        status, headers, body = item
+        data = body.encode() if isinstance(body, str) else body
+        return SimpleNamespace(status=status, headers={k.lower(): v for k, v in headers.items()}, body=[data])
+
+
+def resolve_raw(mod: ModuleType, needs: dict[str, Any], opener: Any, sleep: Any, *, pol: Any = None
+                ) -> tuple[Any, str]:
+    """mod.resolve with `opener` and `sleep`; (the result or the ResolveError, stderr)."""
+    uv = (ROOT / "uv.lock").read_text(encoding="utf-8")
+    e = io.StringIO()
+    with mock.patch.object(mod, "OPENER", opener), mock.patch.object(mod, "SLEEP", sleep, create=True), \
+            contextlib.redirect_stderr(e):
+        try:
+            got: Any = mod.resolve(needs, EMPTY_LOCK, pol or u7d_policy(), uv, ARCH, False)
+        except rfn("ResolveError") as exc:
+            got = exc
+    return got, e.getvalue()
+
+
+def retry_lines(err: str) -> list[str]:
+    return [ln for ln in err.splitlines() if ln.startswith("retry ")]
+
+
+class U7dRetryConstantsTest(unittest.TestCase):
+
+    def test_constants(self):
+        mod = load_resolver()
+        for name, want in (("RETRIES", 3), ("RETRY_WAITS", (10, 30, 60)), ("RUN_RETRIES", 20), ("RUN_DEADLINE", 10800)):
+            with self.subTest(name=name):
+                self.assertEqual(getattr(mod, name, None), want)
+        self.assertIs(getattr(mod, "SLEEP", None), time.sleep, "R4: SLEEP is time.sleep (tests patch it)")
+
+    def test_fetch_retries_nothing_by_default(self):
+        mod = load_resolver()
+        rec = Recorder()
+        net = Seq({JAXB_URL: [(503, {}, b""), (200, {}, JAR_BODY)]})
+        with mock.patch.object(mod, "OPENER", net), mock.patch.object(mod, "SLEEP", rec, create=True):
+            with self.assertRaises(rfn("ResolveError")) as caught:
+                rfn("fetch")(JAXB_URL, ALLOW)
+        self.assertEqual(str(caught.exception), f"{MAVEN}: HTTP 503: {JAXB_URL}")
+        self.assertEqual((net.calls, rec.waits), ([JAXB_URL], []), "R1: fetch() is Q61's single call unless asked")
+
+    def test_fetch_with_retries(self):
+        mod = load_resolver()
+        rec = Recorder()
+        net = Seq({JAXB_URL: [(503, {}, b""), (503, {}, b""), (200, {}, JAR_BODY)]})
+        e = io.StringIO()
+        with mock.patch.object(mod, "OPENER", net), mock.patch.object(mod, "SLEEP", rec, create=True), \
+                contextlib.redirect_stderr(e):
+            r = rfn("fetch")(JAXB_URL, ALLOW, retries=3)
+        self.assertEqual(b"".join(r.body), JAR_BODY)
+        self.assertEqual(rec.waits, [10, 30])
+
+
+class U7dRetryTest(unittest.TestCase):
+    """R1-R6 and the security review's items 3-6, through resolve() (RETRIES)."""
+
+    def _maven(self, jar: list[Any], *, sidecar_ok: bool = True) -> tuple[Any, str, Recorder, Seq]:
+        mod = load_resolver()
+        rec = Recorder()
+        net = Seq({JAXB_URL + ".sha1": [ok(f"{sha('sha1', JAR_BODY) if sidecar_ok else 'f' * 40}  {JAXB_JAR}\n")],
+                   JAXB_URL: jar})
+        got, err = resolve_raw(mod, JAXB_NEED, net, rec)
+        return got, err, rec, net
+
+    def test_retried_statuses(self):
+        for code in (500, 502, 503, 504):
+            with self.subTest(code=code):
+                got, err, rec, net = self._maven([(code, {}, b""), (200, {}, JAR_BODY)])
+                self.assertNotIsInstance(got, Exception, str(got))
+                self.assertEqual(rec.waits, [10])
+                self.assertEqual(retry_lines(err), [f"retry 1/3 in 10 s: {MAVEN}: HTTP {code}: {JAXB_URL}"])
+                self.assertEqual(got[0]["components"][JAXB_KEY]["files"][0]["sha256"], sha("sha256", JAR_BODY))
+
+    def test_the_lines_and_waits(self):
+        got, err, rec, net = self._maven([(503, {}, b""), (503, {}, b""), (200, {}, JAR_BODY)])
+        self.assertNotIsInstance(got, Exception, str(got))
+        self.assertEqual(rec.waits, [10, 30])
+        self.assertEqual(retry_lines(err), [f"retry 1/3 in 10 s: {MAVEN}: HTTP 503: {JAXB_URL}",
+                                            f"retry 2/3 in 30 s: {MAVEN}: HTTP 503: {JAXB_URL}"])
+
+    def test_the_budget_is_exhausted(self):
+        got, err, rec, net = self._maven([(503, {}, b"")])
+        self.assertIsInstance(got, rfn("ResolveError"))
+        self.assertEqual(str(got), f"{JAXB_KEY}: {MAVEN}: HTTP 503: {JAXB_URL}")
+        self.assertEqual(rec.waits, [10, 30, 60])
+        self.assertEqual(net.calls.count(JAXB_URL), 4)
+        self.assertEqual(len(retry_lines(err)), 3)
+
+    def test_timeouts_are_retried(self):
+        for case, first in (("socket.timeout at open", raising(socket.timeout("timed out"))),
+                            ("a timeout mid-body", body_of([b"partial "], then=TimeoutError()))):
+            with self.subTest(case=case):
+                got, err, rec, net = self._maven([first, (200, {}, JAR_BODY)])
+                self.assertNotIsInstance(got, Exception, str(got))
+                self.assertEqual(retry_lines(err), [f"retry 1/3 in 10 s: {MAVEN}: timeout: {JAXB_URL}"])
+                f = got[0]["components"][JAXB_KEY]["files"][0]
+                self.assertEqual((f["sha256"], f["size"]), (sha("sha256", JAR_BODY), len(JAR_BODY)),
+                                 "P-R2: a restart with fresh hashers and size")
+
+    def test_a_5xx_at_a_hop_restarts_from_the_first_url(self):
+        mod = load_resolver()
+        hop = "https://codeload.github.com/neo4j/neo4j/tar.gz/refs/tags/5.26.32"
+        rec = Recorder()
+        net = Seq({NEO_URL: [moved(hop)], hop: [(503, {}, b""), (200, {}, NEO_BODY)]})
+        got, err = resolve_raw(mod, {NEO_KEY: need(NEO_KEY, "ke-neo4j", "pkg:maven/org.neo4j/neo4j@5.26.32",
+                                                   {"ver": "5.26.32"})}, net, rec)
+        self.assertNotIsInstance(got, Exception, str(got))
+        self.assertEqual(net.calls, [NEO_URL, hop, NEO_URL, hop])
+        self.assertEqual(got[1][0]["sha256"], sha("sha256", NEO_BODY))
+
+    def test_a_query_is_omitted_from_retry_lines(self):
+        mod = load_resolver()
+        hop = "https://codeload.github.com/neo4j/neo4j/tar.gz/refs/tags/5.26.32?token=signed-abc"
+        rec = Recorder()
+        net = Seq({NEO_URL: [moved(hop)], hop: [(503, {}, b"")]})
+        got, err = resolve_raw(mod, {NEO_KEY: need(NEO_KEY, "ke-neo4j", "pkg:maven/org.neo4j/neo4j@5.26.32",
+                                                   {"ver": "5.26.32"})}, net, rec)
+        self.assertEqual(retry_lines(err)[0], "retry 1/3 in 10 s: codeload.github.com: HTTP 503: "
+                                              "https://codeload.github.com/neo4j/neo4j/tar.gz/refs/tags/5.26.32"
+                                              "?<query omitted>")
+        self.assertFalse([ln for ln in retry_lines(err) if "signed-abc" in ln])
+        self.assertIn("signed-abc", str(got), "security item 5: the FAIL line keeps the url as is")
+
+    def test_never_retried(self):
+        mod = load_resolver()
+        far = "https://evil.example.com/x.jar"
+        six = {f"https://repo1.maven.org/h{i}": [moved(f"https://repo1.maven.org/h{i + 1}")] for i in range(6)}
+        rows: dict[str, Any] = {
+            "400": [(400, {}, b"")], "403": [(403, {}, b"")], "404": [(404, {}, b"")], "418": [(418, {}, b"")],
+            "429 with Retry-After": [(429, {"Retry-After": "1"}, b"")],
+            "a 3xx with no Location": [(302, {}, b"")],
+            "a non-https Location": [moved("http://repo1.maven.org/x.jar")],
+            "an unprintable Location": [moved("https://repo1.maven.org/a" + chr(9) + "b.jar")],
+            "a hop to an unlisted host": [moved(far)],
+            "a hop with a non-plain path": [moved("https://repo1.maven.org/a%2Fb.jar")],
+            "ssl.SSLError": [raising(ssl.SSLError("bad record mac"))],
+            "ssl.SSLCertVerificationError": [raising(ssl.SSLCertVerificationError("self signed"))],
+            "ConnectionResetError": [raising(ConnectionResetError(104, "reset"))],
+            "another OSError": [raising(OSError("no route to host"))],
+            "IncompleteRead": [body_of([b"ab"], then=http.client.IncompleteRead(b"ab", 9))],
+            "BadStatusLine": [raising(http.client.BadStatusLine("x"))],
+        }
+        for case, jar in rows.items():
+            with self.subTest(case=case):
+                rec = Recorder()
+                net = Seq(dict({JAXB_URL + ".sha1": [ok(f"{sha('sha1', JAR_BODY)}  {JAXB_JAR}\n")], JAXB_URL: jar}))
+                got, err = resolve_raw(mod, JAXB_NEED, net, rec)
+                self.assertIsInstance(got, rfn("ResolveError"), case)
+                self.assertEqual((net.calls.count(JAXB_URL), rec.waits, retry_lines(err)), (1, [], []), str(got))
+        with self.subTest(case="a sixth redirect"):
+            rec = Recorder()
+            net = Seq(dict(six, **{JAXB_URL + ".sha1": [ok(f"{sha('sha1', JAR_BODY)}  {JAXB_JAR}\n")],
+                                   JAXB_URL: [moved("https://repo1.maven.org/h0")]}))
+            got, err = resolve_raw(mod, JAXB_NEED, net, rec)
+            self.assertIsInstance(got, rfn("ResolveError"))
+            self.assertEqual((net.calls.count(JAXB_URL), rec.waits), (1, []))
+        with self.subTest(case="the byte cap"):
+            rec = Recorder()
+            with mock.patch.object(mod, "MAX_BYTES", 100):
+                net = Seq({JAXB_URL + ".sha1": [ok(f"{sha('sha1', JAR_BODY)}  {JAXB_JAR}\n")],
+                           JAXB_URL: [body_of([b"x" * 60] * 3)]})
+                got, err = resolve_raw(mod, JAXB_NEED, net, rec)
+            self.assertIn("more than 100 bytes", str(got))
+            self.assertEqual((net.calls.count(JAXB_URL), rec.waits), (1, []))
+        with self.subTest(case="the per-file deadline"):
+            rec = Recorder()
+            with mock.patch.object(mod, "DEADLINE", 0.05):
+                net = Seq({JAXB_URL + ".sha1": [ok(f"{sha('sha1', JAR_BODY)}  {JAXB_JAR}\n")],
+                           JAXB_URL: [body_of([b"a", b"b"], sleep=0.1)]})
+                got, err = resolve_raw(mod, JAXB_NEED, net, rec)
+            self.assertIn("deadline", str(got))
+            self.assertEqual((net.calls.count(JAXB_URL), rec.waits), (1, []))
+        with self.subTest(case="a hash mismatch"):
+            got, err, rec, net = self._maven([(200, {}, JAR_BODY)], sidecar_ok=False)
+            self.assertIn("sha1 mismatch", str(got))
+            self.assertEqual((net.calls.count(JAXB_URL), rec.waits), (1, []))
+
+    def test_the_run_budget(self):
+        mod = load_resolver()
+        rec = Recorder()
+        net = Seq({JAXB_URL + ".sha1": [ok(f"{sha('sha1', JAR_BODY)}  {JAXB_JAR}\n")], JAXB_URL: [(503, {}, b"")]})
+        with mock.patch.object(mod, "RUN_RETRIES", 2, create=True):
+            got, err = resolve_raw(mod, JAXB_NEED, net, rec)
+        self.assertEqual(str(got), f"{JAXB_KEY}: retry budget exhausted (2)")
+        self.assertEqual(rec.waits, [10, 30])
+
+    def test_the_run_deadline(self):
+        mod = load_resolver()
+        for case, deadline, want_waits in (("already passed", -1, []), ("a wait that would end past it", 5, [])):
+            with self.subTest(case=case):
+                rec = Recorder()
+                net = Seq({JAXB_URL + ".sha1": [ok(f"{sha('sha1', JAR_BODY)}  {JAXB_JAR}\n")],
+                           JAXB_URL: [(503, {}, b"")]})
+                with mock.patch.object(mod, "RUN_DEADLINE", deadline, create=True):
+                    got, err = resolve_raw(mod, JAXB_NEED, net, rec)
+                self.assertEqual(str(got), f"{JAXB_KEY}: run deadline {deadline:g} s passed")
+                self.assertEqual(rec.waits, want_waits, "no wait that ends past the run deadline")
+
+    def test_the_snapshot_pause_holds_for_retries(self):
+        mod = load_resolver()
+        fx = DebFixture(BASH_KEY)
+        routes = fx.routes()
+        su = snap_url("bash", "5.2.15-2")
+        times: list[float] = []
+
+        class Timed(Seq):
+            def __call__(self, url: str, timeout: float) -> Any:
+                times.append(time.monotonic())
+                return super().__call__(url, timeout)
+        net = Timed({su: [(503, {}, b""), routes[su]], **{u: [v] for u, v in routes.items() if u != su}})
+        with mock.patch.object(mod, "SNAPSHOT_PAUSE", 0.3):
+            got, err = resolve_raw(mod, {BASH_KEY: deb_need(BASH_KEY)}, net, Recorder())
+        self.assertNotIsInstance(got, Exception, str(got))
+        self.assertEqual(len(times), 3)
+        self.assertTrue(all(b - a >= 0.28 for a, b in zip(times, times[1:])), f"R6: {times}")
+
+
+class U7dCarriedTest(unittest.TestCase):
+    """U7c review R1-N2 and the security review's item 1 (per-stanza
+    duplicates); the shared parse_deb822 (P2 amended (3))."""
+
+    def setUp(self) -> None:
+        self.mod = load_resolver()
+        no_pause(self, self.mod)
+
+    def test_a_line_that_is_not_a_field(self):
+        fx = DebFixture(BASH_KEY)
+        text_ = fx.text(armour=False)
+        lines = text_.split("\n")
+        lines.insert(3, "this is not a field")
+        with network(self.mod, fx.routes("\n".join(lines))):
+            with self.assertRaises(rfn("ResolveError")) as caught:
+                resolve(self.mod, {BASH_KEY: deb_need(BASH_KEY)})
+        self.assertEqual(str(caught.exception), f"{BASH_KEY}: {fx.dsc}: line 4 is not a field or continuation")
+
+    def test_parse_deb822(self):
+        p = rfn("parse_deb822")
+        two = "Package: a\nVersion: 1\n\nPackage: b\nVersion: 2\n Files: x\n"
+        self.assertEqual([x["Package"] for x in p(two, "Sources")], ["a", "b"], "two stanzas each with Package")
+        with self.assertRaises(rfn("ResolveError")) as caught:
+            p("Package: a\nPackage: b\n", "x Sources")
+        self.assertEqual(str(caught.exception), "x Sources: duplicate field Package")
+        on_line = p("Checksums-Sha256: " + "a" * 64 + " 3 x.dsc\n " + "b" * 64 + " 4 y.tar\n", "s")[0]
+        continued = p("Checksums-Sha256:\n " + "a" * 64 + " 3 x.dsc\n " + "b" * 64 + " 4 y.tar\n", "s")[0]
+        self.assertEqual(on_line, continued, "a first entry on the field line parses as a continuation does")
+
+    def test_a_dsc_with_its_first_entry_on_the_field_line(self):
+        fx = DebFixture(BASH_KEY)
+        good = fx.text(armour=False)
+        on_line = good.replace("Checksums-Sha256:\n ", "Checksums-Sha256: ", 1)
+        with network(self.mod, fx.routes(on_line)):
+            lock, _, _ = resolve(self.mod, {BASH_KEY: deb_need(BASH_KEY)})
+        self.assertEqual(sorted(f["name"] for f in lock["components"][BASH_KEY]["files"]),
+                         sorted([fx.dsc, *fx.files]))
+        bad = good.replace("Checksums-Sha256:\n ", "Checksums-Sha256: abc 12 x.tar.xz\n ", 1)
+        with network(self.mod, fx.routes(bad)):
+            with self.assertRaises(rfn("ResolveError")) as caught:
+                resolve(self.mod, {BASH_KEY: deb_need(BASH_KEY)})
+        self.assertEqual(str(caught.exception), f"{BASH_KEY}: {fx.dsc}: bad Checksums-Sha256 line")
+
+
+# --------------------------------------------------------------------------
+# The pgdg route (P1-P6 with "P2 amended" and the security review's item 2)
+# --------------------------------------------------------------------------
+
+def pg_pool(src: str) -> str:
+    return src[:4] if src.startswith("lib") else src[:1]
+
+
+class PgdgFixture:
+    """apt-archive.postgresql.org for a suite: a clearsigned InRelease whose
+    SHA256 binds the uncompressed Sources (first entries on the field line,
+    as the real index), the .dsc files in the pool."""
+
+    def __init__(self, keys: tuple[str, ...] = PG_KEYS, suite: str = SUITE):
+        self.suite = suite
+        self.debs: dict[str, DebFixture] = {}
+        for key in keys:
+            fx = DebFixture("deb:" + key.split(":", 1)[1])
+            fx.key = key
+            self.debs[key] = fx
+
+    def dsc_text(self, key: str) -> str:
+        return self.debs[key].text()
+
+    def stanza(self, key: str, *, directory: str | None = None, with_dsc: bool = True, dsc_sha: str | None = None,
+               dup_package: bool = False) -> str:
+        fx = self.debs[key]
+        body = self.dsc_text(key).encode()
+        listed = ([(dsc_sha or sha("sha256", body), len(body), fx.dsc)] if with_dsc else []) + [
+            (sha("sha256", b), len(b), n) for n, b in fx.files.items()]
+        md5 = [(hashlib.md5(body).hexdigest(), len(body), fx.dsc)] + [
+            (hashlib.md5(b).hexdigest(), len(b), n) for n, b in fx.files.items()]
+        lines = [f"Package: {fx.src}"] + (["Package: dup"] if dup_package else []) + [
+            "Format: 3.0 (quilt)", f"Binary: {fx.src}", "Architecture: any", f"Version: {fx.ver}",
+            "Maintainer: Fixture <fixture@example.invalid>",
+            f"Package-List: {fx.src} deb database optional arch=any", f" {fx.src}-doc deb doc optional arch=all",
+            f"Directory: {directory or f'pool/main/{pg_pool(fx.src)}/{fx.src}'}"]
+        for field, rows in (("Files", md5), ("Checksums-Sha256", listed)):
+            lines.append(f"{field}: {rows[0][0]} {rows[0][1]} {rows[0][2]}")
+            lines += [f" {h} {z} {n}" for h, z, n in rows[1:]]
+        return "\n".join(lines) + "\n"
+
+    def sources(self, **kw: Any) -> bytes:
+        other = ("Package: pgadmin4\nVersion: 9.9-1.pgdg12+1\nDirectory: pool/main/p/pgadmin4\n"
+                 "Checksums-Sha256: " + "c" * 64 + " 10 pgadmin4_9.9-1.pgdg12+1.dsc\n")
+        stanzas = [other] + [self.stanza(k, **(kw.get(k) or {})) for k in self.debs]
+        return "\n".join(stanzas).encode()
+
+    def inrelease(self, sources: bytes, *, entries: list[str] | None = None) -> bytes:
+        rows = entries if entries is not None else [
+            f" {'d' * 64} 1234 main/binary-amd64/Packages",
+            f" {sha('sha256', sources)} {len(sources)} main/source/Sources",
+            f" {'e' * 64} 99 main/source/Sources.bz2"]
+        body = ("Origin: apt-archive.postgresql.org\nLabel: PostgreSQL for Debian/Ubuntu archive repository\n"
+                f"Suite: {self.suite}\nCodename: {self.suite}\nMD5Sum:\n {'f' * 32} {len(sources)} main/source/Sources\n"
+                "SHA256:\n" + "\n".join(rows) + "\n")
+        return ("-----BEGIN PGP SIGNED MESSAGE-----\nHash: SHA512\n\n" + body
+                + "-----BEGIN PGP SIGNATURE-----\n\niQIzBAEBCgAdFiEEfixture\n=abcd\n-----END PGP SIGNATURE-----\n").encode()
+
+    def urls(self) -> dict[str, str]:
+        return {"inrelease": f"{PG_BASE}/dists/{self.suite}/InRelease",
+                "sources": f"{PG_BASE}/dists/{self.suite}/main/source/Sources"}
+
+    def pool(self, key: str, name: str) -> str:
+        fx = self.debs[key]
+        return f"{PG_BASE}/pool/main/{pg_pool(fx.src)}/{fx.src}/{name}"
+
+    def routes(self, *, sources: bytes | None = None, inrelease: bytes | None = None,
+               dsc: dict[str, bytes] | None = None) -> dict[str, Any]:
+        src = self.sources() if sources is None else sources
+        r: dict[str, Any] = {self.urls()["inrelease"]: ok(inrelease if inrelease is not None else self.inrelease(src)),
+                             self.urls()["sources"]: ok(src)}
+        for key, fx in self.debs.items():
+            r[self.pool(key, fx.dsc)] = ok((dsc or {}).get(key, self.dsc_text(key).encode()))
+        return r
+
+    def entry(self, key: str) -> dict[str, Any]:
+        fx = self.debs[key]
+        body = self.dsc_text(key).encode()
+        files = [{"name": fx.dsc, "url": self.pool(key, fx.dsc), "sha256": sha("sha256", body), "size": len(body),
+                  "upstream": {"alg": "sha256", "value": sha("sha256", body), "from": f"{PGDG_HOSTNAME} {self.suite} Sources"}}]
+        for n, b in fx.files.items():
+            files.append({"name": n, "url": self.pool(key, n), "sha256": sha("sha256", b), "size": len(b),
+                          "upstream": {"alg": "sha256", "value": sha("sha256", b), "from": f"{fx.dsc} Checksums-Sha256"}})
+        return {"kind": "pgdg", "arches": [ARCH], "origin": "generated", "suite": self.suite, "files": files}
+
+
+def pg_need(key: str, suite: str = SUITE, **route: Any) -> dict[str, Any]:
+    src, _, ver = key.split(":", 1)[1].rpartition("@")
+    r = {"src": src, "ver": ver, "suite": suite}
+    r.update(route)
+    return need(key, "postgres", f"pkg:deb/debian/{src}@{quote(ver, safe='')}?arch=amd64&distro=debian-12.15",
+                {k: v for k, v in r.items() if v is not ...})
+
+
+PG_DOCS = {"postgres": [{"purl": f"pkg:deb/debian/{k.split(':', 1)[1].rpartition('@')[0]}@"
+                                 f"{quote(k.rpartition('@')[2], safe='')}?arch=amd64&distro=debian-12.15",
+                         "declared": "GPL-2.0-only"} for k in PG_KEYS]}
+
+
+class U7dPgdgRouteTest(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self.mod = load_resolver()
+
+    def _resolve(self, routes: dict[str, Any], keys: tuple[str, ...] = PG_KEYS) -> tuple[Any, FakeNet]:
+        with network(self.mod, routes) as net:
+            try:
+                got: Any = resolve(self.mod, {k: pg_need(k) for k in keys})
+            except rfn("ResolveError") as exc:
+                got = exc
+        return got, net
+
+    def test_the_entries(self):
+        fx = PgdgFixture()
+        got, net = self._resolve(fx.routes())
+        self.assertNotIsInstance(got, Exception, str(got))
+        lock, _, skipped = got
+        self.assertEqual(skipped, [], "U7d: pgdg is not skipped")
+        for key in PG_KEYS:
+            with self.subTest(key=key):
+                self.assertEqual(by_name(lock["components"][key]), by_name(fx.entry(key)))
+        self.assertEqual(net.calls.count(fx.urls()["inrelease"]), 1, "one InRelease fetch per suite per run")
+        self.assertEqual(net.calls.count(fx.urls()["sources"]), 1, "one Sources fetch per suite per run")
+        self.assertEqual(net.calls[:2], [fx.urls()["inrelease"], fx.urls()["sources"]], "InRelease before Sources")
+        self.assertEqual(sorted(net.calls[2:]), sorted(fx.pool(k, fx.debs[k].dsc) for k in PG_KEYS),
+                         "only the .dsc files are fetched from the pool")
+        lock_ok(self, lock, docs_for(PG_DOCS))
+
+    def test_the_pool_rule(self):
+        key = "pgdg:libpqxx@7.8.1-1.pgdg12+1"
+        fx = PgdgFixture((key,))
+        got, net = self._resolve(fx.routes(), (key,))
+        self.assertNotIsInstance(got, Exception, str(got))
+        self.assertTrue(all(f["url"].startswith(f"{PG_BASE}/pool/main/libp/libpqxx/")
+                            for f in got[0]["components"][key]["files"]))
+
+    def test_main_writes_the_inrelease(self):
+        fx = PgdgFixture()
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        code, _, err = run_main(tmp, {k: pg_need(k) for k in PG_KEYS}, FakeNet(fx.routes()))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sorted(os.listdir(tmp / "out")), ["lock.new.json", f"pgdg-{SUITE}.InRelease"])
+        self.assertEqual((tmp / "out" / f"pgdg-{SUITE}.InRelease").read_bytes(), fx.inrelease(fx.sources()),
+                         "security R-1: the raw InRelease the run used")
+
+    def test_failures(self):
+        fx = PgdgFixture()
+        k = "pgdg:postgresql-common@293.pgdg12+1"
+        dsc = fx.debs[k].dsc
+        src = fx.sources()
+        n = len(src)
+        good = fx.routes()
+        bad_dsc = fx.dsc_text(k).encode() + b"tampered"
+        rows: dict[str, tuple[dict[str, Any], str]] = {
+            "InRelease without a Sources entry": (fx.routes(inrelease=fx.inrelease(src, entries=[
+                f" {'d' * 64} 1 main/binary-amd64/Packages"])), "Release lists no Sources sha256"),
+            "a Sources entry without a valid hash": (fx.routes(inrelease=fx.inrelease(src, entries=[
+                f" xyz {n} main/source/Sources"])), "Release lists no Sources sha256"),
+            "two Sources entries": (fx.routes(inrelease=fx.inrelease(src, entries=[
+                f" {sha('sha256', src)} {n} main/source/Sources", f" {'a' * 64} {n} main/source/Sources"])),
+                "Release lists Sources sha256 more than once"),
+            "Sources one byte longer": (dict(fx.routes(inrelease=fx.inrelease(src)), **{
+                fx.urls()["sources"]: ok(src + b"x")}), f"{SUITE} Sources: size {n + 1} differs from Release {n}"),
+            "Sources one byte shorter": (dict(fx.routes(inrelease=fx.inrelease(src)), **{
+                fx.urls()["sources"]: ok(src[:-1])}), f"{SUITE} Sources: size {n - 1} differs from Release {n}"),
+            "Sources with a flipped byte": (dict(fx.routes(inrelease=fx.inrelease(src)), **{
+                fx.urls()["sources"]: ok(src[:-2] + bytes([src[-2] ^ 1]) + src[-1:])}),
+                f"{SUITE} Sources: sha256 mismatch against Release"),
+            "no stanza": (fx.routes(sources=PgdgFixture(PG_KEYS[:2]).sources()),
+                          f"{SUITE} Sources has no postgresql-common 293.pgdg12+1"),
+            "the stanza twice": (fx.routes(sources=src + b"\n" + fx.stanza(k).encode()),
+                                 f"{SUITE} Sources lists postgresql-common 293.pgdg12+1 more than once"),
+            "a wrong Directory": (fx.routes(sources=fx.sources(**{k: {"directory": "pool/main/q/postgresql-common"}})),
+                                  "postgresql-common: Sources Directory pool/main/q/postgresql-common is not "
+                                  "pool/main/p/postgresql-common"),
+            "no .dsc in the stanza": (fx.routes(sources=fx.sources(**{k: {"with_dsc": False}})),
+                                      f"{SUITE} Sources: no .dsc for postgresql-common 293.pgdg12+1"),
+            "a duplicate field in a stanza": (fx.routes(sources=fx.sources(**{k: {"dup_package": True}})),
+                                              f"{SUITE} Sources: duplicate field Package"),
+            "the .dsc sha256": (dict(good, **{fx.pool(k, dsc): ok(bad_dsc)}),
+                                f"{dsc}: sha256 mismatch: got {sha('sha256', bad_dsc)}, {SUITE} Sources says "
+                                f"{sha('sha256', fx.dsc_text(k).encode())}"),
+        }
+        other = PgdgFixture()
+        other.debs[k].files = {f"postgresql-common_293.pgdg12+1.tar.xz": b"another tarball"}
+        rows["Sources and .dsc list different files"] = (
+            dict(fx.routes(sources=other.sources(**{k: {"dsc_sha": sha("sha256", fx.dsc_text(k).encode())}})),
+                 **{fx.pool(k, dsc): ok(fx.dsc_text(k).encode())}),
+            f"{dsc}: Sources and .dsc list different files")
+        for case, (routes, why) in rows.items():
+            with self.subTest(case=case):
+                got, net = self._resolve(routes, (k,))
+                self.assertIsInstance(got, rfn("ResolveError"), case)
+                self.assertEqual(str(got), f"{k}: {why}")
+                self.assertFalse([u for u in net.calls if u.endswith(".tar.xz") or u.endswith(".tar.bz2")])
+
+    def test_the_caps(self):
+        fx = PgdgFixture()
+        k = "pgdg:postgresql-common@293.pgdg12+1"
+        with self.subTest(case="Sources over 64 MiB"):
+            huge = 64 * 1048576 + 7
+            inrel = fx.inrelease(b"", entries=[f" {'a' * 64} {huge} main/source/Sources"])
+            routes = {fx.urls()["inrelease"]: lambda: SimpleNamespace(status=200, headers={}, body=[inrel]),
+                      fx.urls()["sources"]: body_of([b"\0" * 1048576] * 65)}
+            mod = self.mod
+            with mock.patch.object(mod, "OPENER", Opener(routes)), mock.patch.object(mod, "SLEEP", lambda s: None,
+                                                                                    create=True):
+                with self.assertRaises(rfn("ResolveError")) as caught:
+                    mod.resolve({k: pg_need(k)}, EMPTY_LOCK, u7d_policy(), "", ARCH, False)
+            self.assertEqual(str(caught.exception), f"{k}: {SUITE} Sources: more than 67108864 bytes")
+        with self.subTest(case="a .dsc over 1 MiB"):
+            pad = PgdgFixture()
+            big = pad.debs[k].text() + "X-Pad: " + "x" * 1048576 + "\n"
+            pad.dsc_text = lambda key, _t=big, _k=k, _o=pad.dsc_text: _t if key == _k else _o(key)  # type: ignore
+            got, net = self._resolve(pad.routes(), (k,))
+            self.assertEqual(str(got), f"{k}: {pad.debs[k].dsc}: more than 1048576 bytes")
+
+    def test_a_malformed_route(self):
+        for field, route in (("suite", {"suite": ...}), ("suite", {"suite": "bookworm-pgdg"}), ("src", {"src": "x"})):
+            with self.subTest(field=field, route=repr(route)):
+                with network(self.mod, PgdgFixture().routes()) as net:
+                    with self.assertRaises(rfn("ResolveError")) as caught:
+                        resolve(self.mod, {PG_KEYS[2]: pg_need(PG_KEYS[2], **route)})
+                self.assertTrue(str(caught.exception).startswith(f"{PG_KEYS[2]}: "), str(caught.exception))
+                self.assertEqual(net.calls, [], "a request was made with a malformed route")
+
+
+class U7dLockNeedsTest(unittest.TestCase):
+    """P1: the pgdg route {src, ver, suite}, the suite from the purl distro major."""
+
+    def _doc(self, rows: dict[str, list[dict[str, Any]]]) -> tuple[dict[str, Any], list[str]]:
+        return getattr(load_sbom_check(), "lock_needs_doc")(policy(), docs_for(rows), {}, {})
+
+    def test_the_fixture_routes(self):
+        doc, problems = getattr(load_sbom_check(), "lock_needs_doc")(policy(), fixture_docs(), {"ke-neo4j": RELEASE},
+                                                                    apk_inputs(fixture_docs()))
+        self.assertEqual(problems, [])
+        for key in PG_KEYS:
+            src, _, ver = key.split(":", 1)[1].rpartition("@")
+            self.assertEqual(doc["needs"][key]["route"], {"src": src, "ver": ver, "suite": SUITE})
+
+    def test_trixie_and_unknown(self):
+        k = "pgdg:postgresql-common@293.pgdg13+1"
+        purl = "pkg:deb/debian/postgresql-common@293.pgdg13%2B1?arch=amd64&distro=debian-{}"
+        doc, problems = self._doc({"postgres": [{"purl": purl.format("13.1"), "declared": "GPL-2.0-only"}]})
+        self.assertEqual((problems, doc["needs"][k]["route"]["suite"]), ([], "trixie-pgdg-archive"))
+        doc, problems = self._doc({"postgres": [{"purl": purl.format("11.9"), "declared": "GPL-2.0-only"}]})
+        self.assertIn(f"{k}: postgres: no pgdg suite for distro debian-11.9", problems)
+        self.assertNotIn(k, doc["needs"])
+        client = ("pkg:deb/debian/postgresql-client-common@293.pgdg13%2B1?arch=all&distro=debian-13.1"
+                  "&upstream=postgresql-common")
+        doc, problems = self._doc({"postgres": [{"purl": purl.format("12.1"), "declared": "GPL-2.0-only"},
+                                                {"purl": client, "declared": "GPL-2.0-only"}]})
+        # U7d rework round 1, item 3: one shared derivation, its text (was "no pgdg suite for distro ...").
+        self.assertIn(f"{k}: packages derive suites bookworm-pgdg-archive, trixie-pgdg-archive", problems)
+        self.assertNotIn(k, doc["needs"])
+
+
+class U7dCoverageTest(unittest.TestCase):
+    """The orchestrator's item 6: with the fixture docs and the ten-host
+    policy, all 182 keys resolve in the fake network (neo4j as the TOFU
+    candidate, written by hand) and the lock passes lock_problems."""
+
+    def test_the_182_keys(self):
+        mod = load_resolver()
+        no_pause(self, mod)
+        check = load_sbom_check()
+        docs = fixture_docs()
+        needs_all, problems = check.lock_needs(policy(), docs)
+        self.assertEqual((problems, len(needs_all)), ([], 182))
+        needs: dict[str, Any] = {}
+        routes: dict[str, Any] = {}
+        pg = PgdgFixture(tuple(k for k in needs_all if k.startswith("pgdg:")))
+        routes.update(pg.routes())
+        routes.update(maven_routes())
+        routes.update(temurin_routes())
+        routes[NEO_URL] = ok(NEO_BODY)
+        for key, e in sorted(needs_all.items()):
+            kind = key.split(":", 1)[0]
+            name, _, ver = key.split(":", 1)[1].rpartition("@")
+            route: dict[str, Any] = {}
+            if kind == "deb":
+                route = {"src": name, "ver": ver}
+                routes.update(DebFixture(key).routes())
+            elif kind == "pgdg":
+                route = {"src": name, "ver": ver, "suite": SUITE}
+            elif kind == "apk":
+                distro = {unquote(q.partition("=")[2]) for p in e["packages"]
+                          for q in str(p["purl"]).partition("?")[2].split("&") if q.startswith("distro=")}
+                x, y, _ = distro.pop().split("-", 1)[1].split(".")
+                fx = ApkFixture(key, commit=aports_commit(name, ver), branch=f"v{x}.{y}")
+                route = {"origin": name, "ver": ver, "commit": fx.commit, "branch": fx.branch}
+                routes.update(fx.routes())
+            elif kind == "temurin":
+                route = {"sbom_version": "21.0.12.1+1-LTS", "release": RELEASE}
+            elif kind == "neo4j":
+                route = {"ver": ver}
+            elif kind == "maven":
+                g, _, a = name.partition(":")
+                route = {"g": g, "a": a, "v": ver}
+            elif kind == "pypi":
+                route = {"name": name, "ver": ver}
+                body = f"sdist of {key}".encode()
+                dist = f"{name}-{ver}.tar.gz"
+                url = "https://files.pythonhosted.org/packages/ab/cd/" + sha("sha256", body)[:60] + "/" + dist
+                routes[f"https://pypi.org/pypi/{name}/{ver}/json"] = ok(json.dumps({
+                    "info": {"name": name, "version": ver},
+                    "urls": [{"packagetype": "sdist", "url": url, "digests": {"sha256": sha("sha256", body)},
+                              "size": len(body)}]}))
+                routes[url] = ok(body)
+            needs[key] = {"kind": kind, "packages": e["packages"], "route": route}
+        with network(mod, routes):
+            lock, cands, skipped = resolve(mod, needs)
+        self.assertEqual(skipped, [])
+        self.assertEqual([c["key"] for c in cands], [NEO_KEY])
+        lock["components"][NEO_KEY] = good_entry(NEO_KEY)
+        self.assertEqual(set(lock["components"]), set(needs_all))
+        self.assertEqual(check.lock_problems(check.lock_text(lock), u7d_policy(), docs, ARCH), [])
+
+
+class U7dScriptStaticTest(unittest.TestCase):
+    """Security item 2: sources_lock.sh keeps the run's InRelease for gpgv."""
+
+    def test_the_inrelease_is_copied(self):
+        # U7d rework round 1, items 4 and 6: to --evidence-dir, before the move, regular files only
+        # (was: any cp of pgdg-*.InRelease within 4 lines).
+        code = "\n".join(ln for ln in LOCK_SH.read_text(encoding="utf-8").splitlines() if not ln.lstrip().startswith("#"))
+        self.assertIn("pgdg-*.InRelease", code)
+        self.assertIn("cp -P -- ", code)
+        self.assertIn('[ -L "$f" ]', code)
+        self.assertIn("--evidence-dir", code)
+        self.assertNotIn("u7d", code, "no evidence path is hard-coded")
+        self.assertLess(code.index("cp -P -- "), code.index('mv -f -- "$tmp" docker/sources.lock.json'),
+                        "the InRelease is copied before the lock moves")
+
+
+# ==========================================================================
+# U7d rework round 1 (design-notes "U7d rework round 1", items 1-4, 6, 8;
+# u7d/review.md B1, B2, N1, N2; security L-1, I-2; u7d/lock-run-1.raw).
+# ==========================================================================
+
+def link_meta(target: bytes, **override: Any) -> Any:
+    """The files-API metadata of a symlink blob (its content is the target)."""
+    doc = {"file_name": "link", "encoding": "base64", "size": len(target),
+           "content": base64.b64encode(target).decode(), "content_sha256": sha("sha256", target)}
+    doc.update(override)
+    return ok(json.dumps(doc))
+
+
+def link_item(origin: str, name: str, rel: str | None = None, repo: str = "main") -> dict[str, Any]:
+    return {"id": sha("sha1", name.encode()), "name": name, "type": "blob", "path": f"{repo}/{origin}/{rel or name}",
+            "mode": "120000"}
+
+
+class ReworkR1U7dUrlErrorTest(unittest.TestCase):
+    """Item 1 (B1): the real opener unwraps URLError; a timeout reason is
+    retried, any other reason is not."""
+
+    def _fresh(self) -> ModuleType:
+        spec = importlib.util.spec_from_file_location("ke_sources_resolve_urlerror", RESOLVER)
+        assert spec is not None and spec.loader is not None
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    REASONS = (("TimeoutError", TimeoutError("timed out"), TimeoutError),
+               ("socket.timeout", socket.timeout("timed out"), TimeoutError),
+               ("SSLCertVerificationError", ssl.SSLCertVerificationError("bad cert"), ssl.SSLCertVerificationError),
+               ("ConnectionRefusedError", ConnectionRefusedError(111, "refused"), ConnectionRefusedError),
+               ("a string", "x", urllib.error.URLError))
+
+    def test_the_mapping(self):
+        mod = self._fresh()
+        for case, reason, cls in self.REASONS:
+            with self.subTest(case=case):
+                fake = SimpleNamespace(open=mock.Mock(side_effect=urllib.error.URLError(reason)))
+                with mock.patch("urllib.request.build_opener", return_value=fake):
+                    with self.assertRaises(cls) as caught:
+                        mod.OPENER(JAXB_URL, 5)
+                if cls is not urllib.error.URLError:
+                    self.assertNotIsInstance(caught.exception, urllib.error.URLError, "the URLError was not unwrapped")
+
+    def test_through_resolve(self):
+        mod = self._fresh()
+        sidecar_url = JAXB_URL + ".sha1"
+        for case, reason, cls in self.REASONS:
+            with self.subTest(case=case):
+                fake = SimpleNamespace(open=mock.Mock(side_effect=urllib.error.URLError(reason)))
+                rec = Recorder()
+                e = io.StringIO()
+                got: Any = None
+                with mock.patch("urllib.request.build_opener", return_value=fake),                         mock.patch.object(mod, "SLEEP", rec), contextlib.redirect_stderr(e):
+                    try:
+                        mod.resolve(JAXB_NEED, EMPTY_LOCK, u7d_policy(), "", ARCH, False)
+                    except mod.ResolveError as exc:
+                        got = exc
+                err = e.getvalue()
+                self.assertIsInstance(got, mod.ResolveError)
+                if cls is TimeoutError:
+                    self.assertEqual(str(got), f"{JAXB_KEY}: {MAVEN}: timeout after 60 s: {sidecar_url}")
+                    self.assertEqual((rec.waits, fake.open.call_count), ([10, 30, 60], 4))
+                    self.assertEqual(retry_lines(err)[0], f"retry 1/3 in 10 s: {MAVEN}: timeout: {sidecar_url}")
+                else:
+                    self.assertEqual(str(got), f"{JAXB_KEY}: {MAVEN}: {cls.__name__}: {sidecar_url}")
+                    self.assertEqual((rec.waits, fake.open.call_count, retry_lines(err)), ([], 1, []))
+
+
+class ReworkR1U7dSymlinkTest(unittest.TestCase):
+    """Item 8 (u7d/lock-run-1.raw): a mode-120000 entry is skipped when it
+    names a regular blob in its own directory; anything else is refused."""
+
+    KEY = "apk:alpine-baselayout@3.7.2-r1"
+
+    def _fx(self) -> ApkFixture:
+        fx = ApkFixture(self.KEY, commit=aports_commit("alpine-baselayout", "3.7.2-r1"), branch="v3.24")
+        return fx
+
+    def _resolve(self, fx: ApkFixture, routes: dict[str, Any]) -> tuple[Any, str]:
+        mod = load_resolver()
+        seq = Seq({u: [v] for u, v in routes.items()})
+        need_ = need(fx.key, "valkey", "pkg:apk/alpine/alpine-baselayout@3.7.2-r1?arch=x86_64&distro=alpine-3.24.2",
+                     {"origin": fx.origin, "ver": fx.ver, "commit": fx.commit, "branch": fx.branch})
+        return resolve_raw(mod, {fx.key: need_}, seq, Recorder())
+
+    def _routes(self, fx: ApkFixture, links: list[dict[str, Any]], metas: dict[str, Any],
+                apkbuild: str | None = None) -> dict[str, Any]:
+        r = fx.routes(apkbuild, listing=fx.listing("main", links))
+        r.update(metas)
+        return r
+
+    def test_the_real_shape(self):
+        fx = self._fx()
+        up, inst = "alpine-baselayout.post-upgrade", "alpine-baselayout.post-install"
+        routes = self._routes(fx, [link_item(fx.origin, up)], {fx.files_api(up): link_meta(inst.encode())})
+        got, err = self._resolve(fx, routes)
+        self.assertNotIsInstance(got, Exception, str(got))
+        self.assertEqual(by_name(got[0]["components"][self.KEY]), by_name(fx.entry()), "the link is not locked")
+        # U7d rework round 1, item 10: the line starts with the key (was the origin).
+        self.assertEqual([ln for ln in err.splitlines() if "symlink" in ln],
+                         [f"{self.KEY}: main/alpine-baselayout/{up} -> {inst} (symlink to a locked file, skipped)"])
+        lock_ok(self, got[0], docs_for({"valkey": [
+            {"purl": "pkg:apk/alpine/alpine-baselayout@3.7.2-r1?arch=x86_64&distro=alpine-3.24.2",
+             "declared": "GPL-2.0-only"}]}))
+
+    def test_refused_links(self):
+        fx = self._fx()
+        c = fx.commit
+        ln = "alpine-baselayout.post-upgrade"
+        inst = b"alpine-baselayout.post-install"
+        refused = f"alpine-baselayout: main/alpine-baselayout/{ln} at {c} is not a regular file"
+        rows: dict[str, tuple[list[dict[str, Any]], dict[str, Any]]] = {
+            "a link to another directory": ([], {fx.files_api(ln): link_meta(b"../other/x")}),
+            "an absolute target": ([], {fx.files_api(ln): link_meta(b"/etc/passwd")}),
+            "a missing name": ([], {fx.files_api(ln): link_meta(b"missing.patch")}),
+            "a tree": ([], {fx.files_api(ln): link_meta(b"patches")}),
+            "a target in a subdirectory": ([], {fx.files_api(ln): link_meta(b"sub-fix.patch")}),
+            "a dot": ([], {fx.files_api(ln): link_meta(b".")}),
+            "a target with a newline": ([], {fx.files_api(ln): link_meta(b"alpine-baselayout.post-install\n")}),
+            "invalid base64": ([], {fx.files_api(ln): link_meta(inst, content="!!!not base64!!!")}),
+            "over 1 KiB": ([], {fx.files_api(ln): link_meta(b"a" * 1025)}),
+            "not base64 encoded": ([], {fx.files_api(ln): link_meta(inst, encoding="text")}),
+            "content_sha256 mismatch": ([], {fx.files_api(ln): link_meta(inst, content_sha256="0" * 64)}),
+            "a chain": ([link_item(fx.origin, "second.link")], {fx.files_api(ln): link_meta(b"second.link"),
+                                                                 fx.files_api("second.link"): link_meta(inst)}),
+        }
+        for case, (extra_links, metas) in rows.items():
+            with self.subTest(case=case):
+                routes = self._routes(fx, [link_item(fx.origin, ln)] + extra_links, metas)
+                got, err = self._resolve(fx, routes)
+                self.assertIsInstance(got, rfn("ResolveError"), case)
+                self.assertIn(str(got), (f"{self.KEY}: {refused}",
+                                         f"{self.KEY}: alpine-baselayout: main/alpine-baselayout/second.link at {c} "
+                                         "is not a regular file"))
+        with self.subTest(case="a link named in sha512sums"):
+            sums = fx.sums() + f"{'a' * 128}  {ln}\n"
+            routes = self._routes(fx, [link_item(fx.origin, ln)], {fx.files_api(ln): link_meta(inst)},
+                                  apkbuild=fx.apkbuild(sums=sums))
+            got, err = self._resolve(fx, routes)
+            self.assertEqual(str(got), f"{self.KEY}: alpine-baselayout: {ln} is a symlink named in sha512sums")
+        with self.subTest(case="a submodule still fails"):
+            sub = {"id": "e" * 40, "name": "sub", "type": "commit", "path": "main/alpine-baselayout/sub", "mode": "160000"}
+            got, err = self._resolve(fx, self._routes(fx, [sub], {}))
+            self.assertEqual(str(got), f"{self.KEY}: alpine-baselayout: main/alpine-baselayout/sub at {c} is not a "
+                                       "regular file")
+
+
+class ReworkR1U7dScriptTest(_BundleBase, unittest.TestCase):
+    """Items 2 (B2), 4 (N2) and 6 (security L-1), through sources_lock.sh on
+    fake docker."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        for rel in ("docker/source-policy.json", SOURCES_YML):
+            (self.repo / rel).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ROOT / rel, self.repo / rel)
+        self.lock = self.repo / "docker" / "sources.lock.json"
+        self.check = load_sbom_check()
+        self.syft_log = self.tmp / "syft.jsonl"
+        self.resolve_log = self.tmp / "resolve.log"
+        self.evdir = self.tmp / "evidence"
+        self.evdir.mkdir()
+
+    _commit_lock = ReworkR1LockScriptRunTest._commit_lock
+    _run = ReworkR1LockScriptRunTest._run
+    _steps = staticmethod(ReworkR1LockScriptRunTest._steps)
+
+    def _temps(self) -> list[str]:
+        return sorted(p.name for p in (self.repo / "docker").iterdir() if p.name.startswith(".sources.lock.json."))
+
+    def _shims(self, plant: str | None = None, fail_cp: bool = False) -> tuple[str, Path]:
+        """A PATH with: a docker wrapper that plants `<out>/pgdg-...InRelease`
+        after the sources-resolve run, and cp/mv wrappers that log their calls."""
+        d = self.tmp / f"shims-{plant}-{fail_cp}"
+        d.mkdir()
+        log = d / "calls.log"
+        fake = self.tmp / "fakebin" / "docker"
+        planting = {"file": "printf 'signed release text\\n' > \"$KE_SOURCES_OUT/pgdg-bookworm-pgdg-archive.InRelease\"",
+                    "link": "ln -s /etc/hostname \"$KE_SOURCES_OUT/pgdg-bookworm-pgdg-archive.InRelease\"",
+                    "dir": "mkdir \"$KE_SOURCES_OUT/pgdg-bookworm-pgdg-archive.InRelease\"",
+                    None: ":"}[plant]
+        (d / "docker").write_text("#!/bin/bash\n" f"'{fake}' \"$@\"\nrc=$?\n"
+                                  "case \" $* \" in *\" docker-compose.sources.yml run \"*) " + planting + " ;; esac\n"
+                                  "exit $rc\n", encoding="utf-8", newline="\n")
+        for tool in ("cp", "mv"):
+            real = shutil.which(tool)
+            fail = ("for a in \"$@\"; do case \"$a\" in *InRelease*) echo 'cp: injected failure' >&2; exit 1 ;; esac; done\n"
+                    if (tool == "cp" and fail_cp) else "")
+            (d / tool).write_text("#!/bin/bash\n" f"echo \"{tool} $*\" >> '{log}'\n" + fail + f"exec '{real}' \"$@\"\n",
+                                  encoding="utf-8", newline="\n")
+        for f in d.iterdir():
+            f.chmod(0o755)
+        return f"{d}{os.pathsep}{self.path}", log
+
+    def test_the_option_is_required(self):
+        self._commit_lock(HAPPY_ROWS)
+        r, calls = self._run({}, args=("--arch", "amd64"))
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertEqual(calls, [], "docker was called without --evidence-dir")
+
+    def test_the_directory_must_be_writable(self):
+        _, docs, before = self._commit_lock(HAPPY_ROWS)
+        ro = self.tmp / "read-only"
+        ro.mkdir()
+        ro.chmod(0o555)
+        self.addCleanup(ro.chmod, 0o755)
+        for case, path in (("missing", self.tmp / "nowhere"), ("read-only", ro)):
+            with self.subTest(case=case):
+                if case == "read-only" and os.access(ro, os.W_OK):
+                    self.skipTest("running as root: a 0555 directory is writable")
+                r, calls = self._run(docs, args=("--arch", "amd64", "--evidence-dir", str(path)))
+                self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+                self.assertIn(f"sources_lock: FAIL (evidence: {path} is not a writable directory; the lock is unchanged)",
+                              r.stderr.splitlines())
+                self.assertFalse([c for c in calls if c[:1] == ["save"]], "it saved an image")
+                self.assertEqual(self.lock.read_bytes(), before)
+
+    def test_the_inrelease_is_copied_before_the_move(self):
+        _, docs, _ = self._commit_lock(HAPPY_ROWS)
+        path, log = self._shims("file")
+        r, _ = self._run(docs, path=path)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr[-3000:])
+        self.assertEqual((self.evdir / "pgdg-bookworm-pgdg-archive.InRelease").read_text(encoding="utf-8"),
+                         "signed release text\n")
+        lines = log.read_text(encoding="utf-8").splitlines()
+        cp_at = next(i for i, ln in enumerate(lines) if ln.startswith("cp ") and "InRelease" in ln)
+        mv_at = next(i for i, ln in enumerate(lines) if ln.startswith("mv ") and ln.endswith("docker/sources.lock.json"))
+        self.assertLess(cp_at, mv_at, "the InRelease was copied after the lock moved")
+        self.assertIn("cp -P -- ", lines[cp_at] + " ", "copied with cp -P")
+
+    def test_failures_leave_the_lock(self):
+        _, docs, before = self._commit_lock(HAPPY_ROWS)
+        for case, plant, fail_cp, why in (("a failed copy", "file", True, "copy of "),
+                                          ("a symlink", "link", False, "is a link"),
+                                          ("a directory", "dir", False, "is not a regular file")):
+            with self.subTest(case=case):
+                path, _ = self._shims(plant, fail_cp)
+                r, _ = self._run(docs, path=path)
+                self.assertEqual(r.returncode, 1, r.stdout + r.stderr[-3000:])
+                lines = [ln for ln in r.stderr.splitlines() if ln.startswith("sources_lock: FAIL (evidence: ")]
+                self.assertTrue(lines and why in lines[0] and lines[0].endswith("; the lock is unchanged)"), r.stderr)
+                self.assertEqual(self.lock.read_bytes(), before, "the lock changed")
+                self.assertEqual(self._temps(), [], "a temp lock file was left")
+                self.assertEqual(sorted(os.listdir(self.evdir)), [], "something was copied")
+
+    def test_docker_save_gets_the_host_path(self):
+        """Item 2 (B2): `docker save -o` takes `hostpath` (cygpath -m)."""
+        _, docs, _ = self._commit_lock(HAPPY_ROWS)
+        d = self.tmp / "cygpath-shim"
+        d.mkdir()
+        (d / "cygpath").write_text("#!/bin/sh\n[ \"$1\" = -m ] && shift\n[ \"$1\" = -- ] && shift\nprintf 'M:%s' \"$1\"\n",
+                                   encoding="utf-8", newline="\n")
+        (d / "cygpath").chmod(0o755)
+        r, calls = self._run(docs, path=f"{d}{os.pathsep}{self.path}")
+        if r.returncode == 2 and not calls:
+            # A script before round 1's --evidence-dir (the B2 fix landed first): its own arguments.
+            r, calls = self._run(docs, path=f"{d}{os.pathsep}{self.path}", args=("--arch", "amd64"))
+        saves = [c for c in calls if c[:1] == ["save"]]
+        self.assertTrue(saves, r.stderr[-2000:])
+        out = saves[0][saves[0].index("-o") + 1]
+        self.assertTrue(out.startswith("M:") and out.endswith(".tar"), f"save -o {out!r} is not the cygpath -m form")
+        with self.subTest(case="no cygpath: the POSIX path unchanged"):
+            r, calls = self._run(docs)
+            if r.returncode == 2 and not calls:
+                r, calls = self._run(docs, args=("--arch", "amd64"))
+            saves = [c for c in calls if c[:1] == ["save"]]
+            out = saves[0][saves[0].index("-o") + 1]
+            self.assertTrue(out.startswith(str(self.tmp)) and out.endswith(".tar"), out)
+
+
+# --------------------------------------------------------------------------
+# U7d rework round 1, item 10 (u7d/lock-run-2.txt; u7d/aports-probe.txt): a
+# leading `_` in file names; the symlink skip line names its key.
+# --------------------------------------------------------------------------
+
+ITEM10_NAME = "[A-Za-z0-9_][A-Za-z0-9._+~-]{0,254}"
+
+
+class ReworkR1U7dUnderscoreTest(unittest.TestCase):
+    """Item 10: one file-name pattern, `[A-Za-z0-9_][A-Za-z0-9._+~-]{0,254}`,
+    in sbom_check.py and in the resolver's copy; a leading `-` or `.` and
+    `..` anywhere still fail. The probe's real names: apk-tools `_apk`, musl
+    `__stack_chk_fail_local.c` and `__NR_riscv_hwprobe.patch`."""
+
+    def test_one_pattern(self):
+        res, chk = load_resolver(), load_sbom_check()
+        self.assertEqual(chk.LOCK_FILE_NAME_RE.pattern, ITEM10_NAME)
+        self.assertEqual(res.NAME_RE.pattern, chk.LOCK_FILE_NAME_RE.pattern,
+                         "the resolver's copy of the lock file-name pattern drifted from sbom_check.py's")
+
+    def test_safe_name(self):
+        mod = load_resolver()
+        for name in ("_apk", "_x.patch", "__stack_chk_fail_local.c", "__NR_riscv_hwprobe.patch", "a_b"):
+            with self.subTest(name=name):
+                self.assertTrue(mod.safe_name(name), name)
+        for name in ("-x", ".x", "a..b", "_..x", "_/x", "_x/", "", "_x y", "_" + "a" * 255):
+            with self.subTest(name=name):
+                self.assertFalse(mod.safe_name(name), name)
+
+    def _resolve(self, fx: ApkFixture, image: str, purl: str, routes: dict[str, Any]) -> tuple[Any, str]:
+        need_ = need(fx.key, image, purl, {"origin": fx.origin, "ver": fx.ver, "commit": fx.commit,
+                                           "branch": fx.branch})
+        return resolve_raw(load_resolver(), {fx.key: need_}, Seq({u: [v] for u, v in routes.items()}), Recorder())
+
+    def test_the_real_shapes(self):
+        shapes = {
+            "apk-tools _apk": ("apk:apk-tools@3.0.3-r1", "v3.23", "ke-gateway", "alpine-3.23.3",
+                               {"_apk": b"#compdef apk\n"}),
+            "musl __ names": ("apk:musl@1.2.5-r21", "v3.23", "ke-gateway", "alpine-3.23.3",
+                              {"__stack_chk_fail_local.c": b"void __stack_chk_fail_local(void) {}\n",
+                               "__NR_riscv_hwprobe.patch": b"--- a\n+++ b\n"}),
+            "a leading _ directory segment": ("apk:musl@1.2.6-r2", "v3.24", "valkey", "alpine-3.24.2",
+                                              {"_patches/_y.patch": b"--- y\n+++ y\n"}),
+        }
+        for case, (key, branch, image, distro, local) in shapes.items():
+            with self.subTest(case=case):
+                origin, _, ver = key.split(":", 1)[1].rpartition("@")
+                fx = ApkFixture(key, commit=aports_commit(origin, ver), branch=branch)
+                fx.local.update(local)
+                purl = f"pkg:apk/alpine/{origin}@{ver}?arch=x86_64&distro={distro}"
+                got, err = self._resolve(fx, image, purl, fx.routes())
+                self.assertNotIsInstance(got, Exception, str(got))
+                self.assertEqual(by_name(got[0]["components"][key]), by_name(fx.entry()))
+                lock_ok(self, got[0], docs_for({image: [{"purl": purl, "declared": "GPL-2.0-only"}]}))
+
+    def test_still_refused(self):
+        key = "apk:apk-tools@3.0.3-r1"
+        for bad in ("-x", ".x", "a..b"):
+            with self.subTest(where="a tree file", name=bad):
+                fx = ApkFixture(key, commit=aports_commit("apk-tools", "3.0.3-r1"))
+                fx.local[bad] = b"x"
+                got, _ = self._resolve(fx, "ke-gateway", "pkg:apk/alpine/apk-tools@3.0.3-r1?arch=x86_64&distro=alpine-3.23.3",
+                                       fx.routes())
+                self.assertIsInstance(got, rfn("ResolveError"))
+                self.assertEqual(str(got), f"{key}: {bad}: not a safe file name")
+            with self.subTest(where="a directory segment", name=bad):
+                fx = ApkFixture(key, commit=aports_commit("apk-tools", "3.0.3-r1"))
+                fx.local[f"{bad}/y.patch"] = b"y"
+                got, _ = self._resolve(fx, "ke-gateway", "pkg:apk/alpine/apk-tools@3.0.3-r1?arch=x86_64&distro=alpine-3.23.3",
+                                       fx.routes())
+                self.assertIsInstance(got, rfn("ResolveError"))
+                self.assertEqual(str(got), f"{key}: {bad}/y.patch: not a safe file name")
+            with self.subTest(where="a sha512sums name", name=bad):
+                mod = load_resolver()
+                with self.assertRaises(mod.ResolveError) as cm:
+                    mod.parse_apkbuild(f"pkgver=3.0.3\npkgrel=1\nsha512sums=\"\n{'a' * 128}  {bad}\n\"\n",
+                                       "c" * 40, "3.0.3-r1", "apk-tools")
+                self.assertEqual(str(cm.exception), f"{bad}: not a safe file name")
+
+    def test_a_link_to_an_underscore_name(self):
+        key = "apk:apk-tools@3.0.3-r1"
+        fx = ApkFixture(key, commit=aports_commit("apk-tools", "3.0.3-r1"))
+        fx.local["_apk"] = b"#compdef apk\n"
+        routes = fx.routes(listing=fx.listing("main", [link_item(fx.origin, "apk.zsh")]))
+        routes[fx.files_api("apk.zsh")] = link_meta(b"_apk")
+        got, err = self._resolve(fx, "ke-gateway", "pkg:apk/alpine/apk-tools@3.0.3-r1?arch=x86_64&distro=alpine-3.23.3",
+                                 routes)
+        self.assertNotIsInstance(got, Exception, str(got))
+        self.assertEqual(by_name(got[0]["components"][key]), by_name(fx.entry()), "the link is not locked")
+        self.assertEqual([ln for ln in err.splitlines() if "symlink" in ln],
+                         [f"{key}: main/apk-tools/apk.zsh -> _apk (symlink to a locked file, skipped)"])
+
+    def test_the_skip_line_names_the_key(self):
+        """Item 10 (the "printed twice" reading): run 2's two lines were two
+        keys with the same link; one line per link per key, starting with the
+        key, never deduplicated across keys."""
+        up, inst = "alpine-baselayout.post-upgrade", "alpine-baselayout.post-install"
+        needs, routes = {}, {}
+        for ver, branch, image, distro in (("3.7.1-r8", "v3.23", "ke-gateway", "alpine-3.23.3"),
+                                           ("3.7.2-r1", "v3.24", "valkey", "alpine-3.24.2")):
+            fx = ApkFixture(f"apk:alpine-baselayout@{ver}", commit=aports_commit("alpine-baselayout", ver), branch=branch)
+            routes.update(fx.routes(listing=fx.listing("main", [link_item(fx.origin, up)])))
+            routes[fx.files_api(up)] = link_meta(inst.encode())
+            needs[fx.key] = need(fx.key, image, f"pkg:apk/alpine/alpine-baselayout@{ver}?arch=x86_64&distro={distro}",
+                                 {"origin": fx.origin, "ver": fx.ver, "commit": fx.commit, "branch": fx.branch})
+        got, err = resolve_raw(load_resolver(), needs, Seq({u: [v] for u, v in routes.items()}), Recorder())
+        self.assertNotIsInstance(got, Exception, str(got))
+        self.assertEqual([ln for ln in err.splitlines() if "symlink" in ln], [
+            f"apk:alpine-baselayout@3.7.1-r8: main/alpine-baselayout/{up} -> {inst} (symlink to a locked file, skipped)",
+            f"apk:alpine-baselayout@3.7.2-r1: main/alpine-baselayout/{up} -> {inst} (symlink to a locked file, skipped)"])
+
+
+class ReworkR1U7dEmptyFileTest(unittest.TestCase):
+    """U7d rework round 1, item 12 (the aports probe's flag 1): an empty
+    aports file (GitLab API raw form) is locked with size 0 and passes
+    lock_problems; its sha256 is the empty string's."""
+
+    def test_an_empty_aports_file(self):
+        key = "apk:apk-tools@3.0.3-r1"
+        fx = ApkFixture(key, commit=aports_commit("apk-tools", "3.0.3-r1"))
+        fx.extra["apk-tools.trigger"] = b""  # a files-API (content_sha256) file
+        fx.local["empty.patch"] = b""  # a sha512sums file
+        purl = "pkg:apk/alpine/apk-tools@3.0.3-r1?arch=x86_64&distro=alpine-3.23.3"
+        need_ = need(key, "ke-gateway", purl, {"origin": fx.origin, "ver": fx.ver, "commit": fx.commit,
+                                               "branch": fx.branch})
+        got, _ = resolve_raw(load_resolver(), {key: need_}, Seq({u: [v] for u, v in fx.routes().items()}), Recorder())
+        self.assertNotIsInstance(got, Exception, str(got))
+        entry = got[0]["components"][key]
+        self.assertEqual(by_name(entry), by_name(fx.entry()))
+        empty = {f["name"]: (f["size"], f["sha256"]) for f in entry["files"] if f["size"] == 0}
+        self.assertEqual(empty, {n: (0, sha("sha256", b"")) for n in ("apk-tools.trigger", "empty.patch")})
+        lock_ok(self, got[0], docs_for({"ke-gateway": [{"purl": purl, "declared": "GPL-2.0-only"}]}))
 
 
 if __name__ == "__main__":

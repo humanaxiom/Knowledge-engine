@@ -6757,3 +6757,15 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
     Recommended: kind `pgdg` and host `apt-archive.postgresql.org`.
   - O2: phoenix's PyPI packages are not in `uv.lock`. Recommended:
     `pypi.org` JSON at lock time only, never a file host.
+- **Amended U7d (2026-10-25, architect; design-notes "U7d precision").**
+  Q71 adds a `pgdg` kind with source from `apt-archive.postgresql.org`:
+  - the `<codename>-pgdg-archive` `Sources.gz` index gives each `.dsc`'s
+    SHA-256;
+  - the `.dsc` gives the rest;
+  - the pool URLs are exact;
+  - the PGDG Release signature is not verified, so no new trust root.
+
+  Q72 adds a bounded retry in the lock tool only. It covers 5xx and
+  timeouts, with waits of 10, 30 and 60 s and every retry printed. It is
+  off by default in `fetch()`, so U8 keeps Q61. The policy `hosts` grows
+  to ten.

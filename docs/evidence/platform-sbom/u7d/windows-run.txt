@@ -1,0 +1,85 @@
+# platform-sbom U7d A34, step 3 on Windows (tester, 2026-10-26T03:41Z; Git Bash, Docker Desktop 29.5.2, Compose 5.1.4;
+# project ke-tester-u7ds7; tree: U7d GREEN, uncommitted on 86f7831 (the driver's header line still says 'U7c GREEN': a label left over from the U7c driver)). Paths redacted.
+#
+# VERDICT step 3: PASS.
+# - 3a bad arguments exit 2; 3b missing image; 3c the 7 GiB floor; 3d tools first (jq, git, docker); 3e six images (extra redis,
+#   missing valkey): every one refuses before any save, and leaves no lock, temp lock file or work dir behind.
+# - The new InRelease copy step is not reached by any refusal; it is covered statically (U7dScriptStaticTest).
+#   No pgdg-*.InRelease file was copied into docs/evidence/platform-sbom/u7d by these runs (0 before, 0 after).
+# - Section 6 lists one container under ke-tester-u7ds7: it was the tester's own verify.sh fast gates run in the same
+#   project, running at that moment; it was gone after that run ended (docker ps -a --filter label=...ke-tester-u7ds7: none).
+# - The 13 hashed files are identical at start and end; docker/sources.lock.json was never touched.
+# Steps 4-5 (the happy path): the developer's Git Bash run on this host is the Windows proof (orchestrator). Its first
+# log, u7d/lock-run-1.raw, ended in a failure on alpine-baselayout's .post-upgrade symlink (U7d rework round 1, item 8),
+# so the happy-path proof is pending the round-1 GREEN and a successful run.
+
+
+=== 0. host and versions (U7d GREEN) ===
+date (UTC): 2026-10-26T03:41:24Z
+MINGW64_NT-10.0-26200 aria-alien1 3.6.7-fb42d713.x86_64 2026-03-29 11:44 UTC x86_64 Msys
+engine 29.5.2 linux/amd64; compose 5.1.4
+git HEAD 86f78319ec4e3d68f47471e1486c0b5d5d382695 (agent/platform-sbom); working tree: U7c GREEN (uncommitted)
+id: 197610:197121
+0e6dc35d8dc869197afb7facb7273378e53311efaf69fd4daff34468b69bdd7e *scripts/sources_lock.sh
+685ee7dfae72d8e951dba76d14750e5aef4ff796a89f0634bcb32abb18fc23a1 *scripts/sources_resolve.py
+2eb1ccc86b272cbf96824e85b07588d20a8f211814b100c599c2d5fbe3c66180 *scripts/sbom_check.py
+23c6e98f55554a1c1dcaf6a43055cce7c0361cd0f72fa8d33b7480a8ca86b79c *docker-compose.sources.yml
+hashed 13 files -> hash-start.txt
+lock before: ls: cannot access 'docker/sources.lock.json': No such file or directory
+.env present (another role's; not read or touched by this run)
+
+=== 3. scripts/sources_lock.sh refusal paths ===
+--- 3a. bad arguments exit 2
+args [] -> exit 2: usage: scripts/sources_lock.sh --arch amd64|arm64 [--refresh]
+args [--arch x86_64] -> exit 2: usage: scripts/sources_lock.sh --arch amd64|arm64 [--refresh]
+args [--bogus] -> exit 2: usage: scripts/sources_lock.sh --arch amd64|arm64 [--refresh]
+args [--arch] -> exit 2: usage: scripts/sources_lock.sh --arch amd64|arm64 [--refresh]
+--- 3b. a missing image (KE_IMAGE_TAG=u7ds7-missing)
+sources_lock: FAIL (images: ke-app:u7ds7-missing not found: run scripts/build.sh first; the lock is unchanged)
+[exit 1]
+lock after 3b: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 3b: 0
+work dirs left in TMPDIR after 3b: 0
+--- 3c. the 7 GiB floor (a df shim first on PATH reports 1000 KiB free)
+sources_lock: FAIL (images: <scratch>/u7dwin/tmp/ke-sources.VJQ56YqN has 1000 KiB free, below the 7 GiB floor (R6); the lock is unchanged)
+[exit 1]
+containers unchanged by 3c (no save, no run)
+lock after 3c: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 3c: 0
+work dirs left in TMPDIR after 3c: 0
+--- 3d. tools first: PATH without each tool
+PATH without jq finds: [git docker dirname]
+sources_lock: FAIL (tools: jq not on PATH; the lock is unchanged)
+[exit 1]
+no container started
+PATH without git finds: [jq docker dirname]
+sources_lock: FAIL (tools: git not on PATH; the lock is unchanged)
+[exit 1]
+no container started
+PATH without docker finds: [jq git dirname]
+sources_lock: FAIL (tools: docker not on PATH; the lock is unchanged)
+[exit 1]
+no container started
+lock after 3d: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 3d: 0
+work dirs left in TMPDIR after 3d: 0
+--- 3e. exactly the six images: a scratch copy of the repo whose docker-compose.yml adds redis / drops valkey
+compose services: api gateway neo4j phoenix postgres redis valkey worker
+sources_lock: FAIL (images: redis is not one of the six bundled images; the lock is unchanged)
+[exit 1]
+no container started (no save, no run)
+compose services: api gateway neo4j phoenix postgres worker
+sources_lock: FAIL (images: valkey is missing from the stack; the lock is unchanged)
+[exit 1]
+no container started (no save, no run)
+lock after 3e: ls: cannot access 'docker/sources.lock.json': No such file or directory
+temp lock files in docker/ after 3e: 0
+work dirs left in TMPDIR after 3e: 0
+
+=== 6. nothing left behind ===
+project ke-tester-u7ds7: containers [bf9cf60089b6 ] networks [] volumes []
+project ke-tester-u7ds7-sbom: containers [] networks [] volumes []
+work dirs left in TMPDIR: 0
+pgdg InRelease copies in docs/evidence/platform-sbom/u7d before: [0] after: [0]
+hashes start = end (13/13 identical)
+temp lock files in docker/ at the end: 0

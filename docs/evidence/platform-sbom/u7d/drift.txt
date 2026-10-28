@@ -1,0 +1,4 @@
+O3 drift: lock key set vs the 182 fixture keys (tests.test_sources_lock.FIXTURE_KEYS)
+DRIFT fixture 182 lock 182 added [] missing []
+result: no key added, none missing.
+package-count differences inside a key: not compared (the run's SBOMs are removed by the tool; the lock does not record package counts).

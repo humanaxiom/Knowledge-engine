@@ -995,7 +995,7 @@ LOCK_KEY_RES = {
     "pypi": re.compile(r"pypi:[a-z0-9]+(-[a-z0-9]+)*@[0-9][A-Za-z0-9.+!-]*"),
     "maven": re.compile(r"maven:[A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+@[A-Za-z0-9_.+-]+"),
 }
-LOCK_FILE_NAME_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+~-]{0,254}")
+LOCK_FILE_NAME_RE = re.compile(r"[A-Za-z0-9_][A-Za-z0-9._+~-]{0,254}")  # U7d round 1, item 10: a leading _
 HEX_RE = re.compile(r"[0-9a-f]+")
 ALG_LEN = {"sha1": 40, "sha256": 64, "sha512": 128}
 NEO4J_FROM_RE = re.compile(r"second fetch: security (\d{4}-\d{2}-\d{2}), docs/evidence/platform-sbom/sources-provenance\.md")
@@ -1127,9 +1127,41 @@ MAX_FILE_SIZE = 4294967296  # 4 GiB (security U7a I-2)
 ENTRY_KEYS = {"kind", "arches", "origin", "files"}
 APK_KEYS = {"commit", "branch", "repo"}
 FILE_KEYS = {"name", "url", "sha256", "size", "upstream"}
+# U7d round 1, item 12: the SHA-256 and SHA-512 of the empty string.
+EMPTY_SHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+EMPTY_SHA512 = ("cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce"
+                "47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e")
 UPSTREAM_KEYS = {"alg", "value", "from"}
-# Per-kind file hosts (N4; N10 am. U6 item 2). pgdg has none until Q71.
-KIND_HOSTS = {"deb": ("snapshot.debian.org",), "pgdg": (), "apk": ("gitlab.alpinelinux.org", "distfiles.alpinelinux.org"),
+# Per-kind file hosts (N4; N10 am. U6 item 2); pgdg's from Q71 (U7d P5).
+PGDG_HOST = "apt-archive.postgresql.org"
+PGDG_SUITE_RE = re.compile(r"[a-z]+-pgdg-archive")
+PGDG_SUITES = {12: "bookworm", 13: "trixie"}  # U7d P1: the purl distro major -> its codename
+
+
+def pgdg_suite(distro: str) -> str | None:
+    """U7d P1 / rework round 1 item 3: `debian-<major>[.<minor>]` -> the
+    `<codename>-pgdg-archive` suite, or None."""
+    m = re.fullmatch(r"debian-(\d+)(\.\d+)*", distro)
+    code = PGDG_SUITES.get(int(m.group(1))) if m else None
+    return f"{code}-pgdg-archive" if code else None
+
+
+def _pgdg_key_suite(key: str, packages: list[dict[str, Any]]) -> tuple[str | None, list[str]]:
+    """The one suite every package of a pgdg key derives, or the problems."""
+    problems, suites = [], set()
+    for pkg in packages:
+        distro = _qualifiers(str(pkg.get("purl"))).get("distro", "")
+        suite = pgdg_suite(distro)
+        if suite is None:
+            problems.append(f"{_clean(key)}: {_clean(pkg['image'])}: no pgdg suite for distro {_clean(distro)}")
+        else:
+            suites.add(suite)
+    if problems:
+        return None, problems
+    if len(suites) != 1:
+        return None, [f"{_clean(key)}: packages derive suites {', '.join(sorted(suites))}"]
+    return suites.pop(), []
+KIND_HOSTS = {"deb": ("snapshot.debian.org",), "pgdg": (PGDG_HOST,), "apk": ("gitlab.alpinelinux.org", "distfiles.alpinelinux.org"),
               "neo4j": ("github.com",), "temurin": ("github.com",), "pypi": ("files.pythonhosted.org",),
               "maven": ("repo1.maven.org",)}
 # Rework round 2 (security R1-L1): the sdist name is split at its last `-`
@@ -1250,8 +1282,19 @@ def _file_problems(where: str, f: Any, hosts: set[str], kind: str | None = None)
     p += _str_problems(where, "sha256", f["sha256"])
     if isinstance(f["sha256"], str) and not re.fullmatch(r"[0-9a-f]{64}", f["sha256"]):
         p.append(f"{where}: sha256 is not 64 lower-case hex")
-    if type(f["size"]) is not int or not 0 < f["size"] <= MAX_FILE_SIZE:
-        p.append(f"{where}: size {_clean(repr(f['size']))} is not an int in 1..{MAX_FILE_SIZE}")
+    # U7d round 1, item 12: an apk file at the GitLab API raw form may be empty (its sha256 and the
+    # files-API content_sha256 still bind it); every other file keeps 0 < size.
+    low = 0 if kind == "apk" and isinstance(f["url"], str) and _apk_api_shape(f["url"]) is not None else 1
+    if type(f["size"]) is not int or not low <= f["size"] <= MAX_FILE_SIZE:
+        p.append(f"{where}: size {_clean(repr(f['size']))} is not an int in {low}..{MAX_FILE_SIZE}")
+    elif f["size"] == 0:  # item 12, architect's precision: the empty hashes
+        up0 = f["upstream"] if isinstance(f["upstream"], dict) else {}
+        if name == "APKBUILD":  # review R1-N1: an empty APKBUILD has no pkgver
+            p.append(f"{where}: APKBUILD: size 0")
+        if f["sha256"] != EMPTY_SHA256:
+            p.append(f"{where}: {_clean(name)}: size 0 but sha256 is not the empty hash")
+        if up0.get("alg") == "sha512" and up0.get("value") != EMPTY_SHA512:
+            p.append(f"{where}: {_clean(name)}: size 0 but sha512 is not the empty hash")
     up = f["upstream"]
     if not isinstance(up, dict):
         return p + [f"{where}: upstream is not an object"]
@@ -1293,6 +1336,8 @@ def _apk_api_problem(url: str, entry: dict[str, Any], origin: str, name: str) ->
     if (len(parts) < 3 or parts[0] != entry.get("repo") or parts[1] != origin or parts[-1] != name
             or any(x in ("", ".", "..") for x in parts)):
         return "the decoded path is not <repo>/<origin>(/<segment>)*/<name>"
+    if not all(LOCK_FILE_NAME_RE.fullmatch(x) for x in parts[2:-1]):  # U7c review R1-N1
+        return "a subdirectory segment fails the lock file-name rule"
     if name == "APKBUILD" and len(parts) != 3:
         return "the APKBUILD is not at <repo>/<origin>/APKBUILD"
     return None
@@ -1311,10 +1356,14 @@ def _binding_problems(where: str, key: str, kind: str, entry: dict[str, Any], f:
         return []
     host, path = u.netloc, u.path
     name_part, ver = _key_parts(key)
-    if kind == "pgdg":
-        return [f"{where}: {_clean(name)}: pgdg has no allowed host until Q71"]
     if host not in KIND_HOSTS[kind]:
         return [f"{where}: {_clean(name)}: url host {_clean(host)} is not a {kind} file host"]
+    if kind == "pgdg":  # U7d P5: exactly the pool url; + and ~ literal, no % escape
+        p_ = name_part[:4] if name_part.startswith("lib") else name_part[:1]
+        want_path = f"/pub/repos/apt/pool/main/{p_}/{name_part}/{name}"
+        if path != want_path:
+            return [f"{where}: {_clean(name)}: not a pgdg file url (want path {_clean(want_path)})"]
+        return []
     if kind == "deb":
         if not SNAPSHOT_PATH_RE.fullmatch(path):
             return [f"{where}: {_clean(name)}: not a deb file url (snapshot.debian.org /file/<sha1>)"]
@@ -1398,6 +1447,21 @@ def _kind_problems(key: str, kind: str, entry: dict[str, Any], today: Any) -> li
                         or _snapshot_sha1(f.get("url")) is None):
                     p.append(f"{where}: {_clean(f.get('name'))} is not sha256 from {_clean(dsc.get('name'))} "
                              "Checksums-Sha256 with a snapshot.debian.org/file/<sha1> url")
+    elif kind == "pgdg":  # U7d P5
+        suite = entry.get("suite")
+        if not isinstance(suite, str) or not PGDG_SUITE_RE.fullmatch(suite):
+            p.append(f"{where}: suite {_clean(repr(suite))} is missing or malformed")
+        dscs = [f for f in files if str(f.get("name")).endswith(".dsc")]
+        want = f"{name_part}_{ver.split(':', 1)[1] if ':' in ver else ver}.dsc"
+        if len(dscs) != 1 or dscs[0].get("name") != want:
+            p.append(f"{where}: pgdg: not exactly one .dsc named {_clean(want)}")
+        if len(files) - len(dscs) < 1:
+            p.append(f"{where}: pgdg: no file besides the .dsc")
+        for f in files:
+            fup = f.get("upstream") if isinstance(f.get("upstream"), dict) else {}
+            frm = f"{PGDG_HOST} {suite} Sources" if f in dscs else f"{want} Checksums-Sha256"
+            if fup.get("alg") != "sha256" or fup.get("from") != frm:
+                p.append(f"{where}: {_clean(f.get('name'))} is not sha256 from {_clean(frm)}")
     elif kind == "apk":
         for field, rx in (("commit", r"[0-9a-f]{40}"), ("branch", r"v\d+\.\d+"), ("repo", r"main|community")):
             if not isinstance(entry.get(field), str) or not re.fullmatch(rx, entry[field]):
@@ -1461,11 +1525,12 @@ def _entry_problems(key: Any, entry: Any, hosts: set[str], today: Any) -> list[s
         p.append(f"{where}: not a valid {kind} key")
     if not isinstance(entry, dict):
         return p + [f"{where}: the entry is not an object"]
-    want = ENTRY_KEYS | (APK_KEYS if kind == "apk" else set())
+    want = ENTRY_KEYS | (APK_KEYS if kind == "apk" else set()) | ({"suite"} if kind == "pgdg" else set())
     extra = [f"{where}: unexpected key {_clean(k)}" for k in sorted(set(entry) - want, key=str)]
     missing = [f"{where}: missing key {k}" for k in sorted(want - set(entry))]
     p += extra + missing
-    for field in ("kind", "origin") + (tuple(sorted(APK_KEYS)) if kind == "apk" else ()):
+    for field in ("kind", "origin") + (tuple(sorted(APK_KEYS)) if kind == "apk" else ()) + (
+            ("suite",) if kind == "pgdg" else ()):
         if field in entry:
             p += _str_problems(where, field, entry[field])
     if entry.get("kind") != kind:
@@ -1535,6 +1600,15 @@ def lock_problems(lock: Any, policy: dict[str, Any], docs: dict[str, Any], arch:
         p += _entry_problems(key, entry, hosts, today)
     needs, mapping = lock_needs(policy, docs)
     p += mapping
+    for key in sorted(k for k in comps if isinstance(k, str) and k.startswith("pgdg:") and k in needs):
+        # U7d rework round 1, item 3 (review N1, security I-2): the suite is bound to the image.
+        e = comps[key]
+        suite, why = _pgdg_key_suite(key, needs[key]["packages"])
+        p += why
+        if suite is not None and isinstance(e, dict) and e.get("suite") != suite:
+            pkg = needs[key]["packages"][0]
+            p.append(f"lock: {_clean(key)}: suite {_clean(e.get('suite'))} is not {suite} (from {_clean(pkg['image'])} "
+                     f"distro {_clean(_qualifiers(str(pkg.get('purl'))).get('distro', ''))})")
     covered = {k for k, e in comps.items() if isinstance(e, dict) and isinstance(e.get("arches"), list)
                and arch in e["arches"]}
     p += [line for _, line in _coverage_misses(needs, covered, arch)]
@@ -1729,8 +1803,14 @@ def lock_needs_doc(policy: dict[str, Any], docs: dict[str, Any], releases: dict[
         kind = entry["kind"]
         name, ver = _key_parts(key)
         route: dict[str, Any]
-        if kind in ("deb", "pgdg"):
+        if kind == "deb":
             route = {"src": name, "ver": ver}
+        elif kind == "pgdg":  # U7d P1: the suite from the purls' distro major (shared, round 1 item 3)
+            suite, why = _pgdg_key_suite(key, entry["packages"])
+            problems += why
+            if suite is None:
+                continue
+            route = {"src": name, "ver": ver, "suite": suite}
         elif kind == "apk":
             apk_route, why = _apk_route(key, name, ver, entry["packages"], apk or {})
             problems += why

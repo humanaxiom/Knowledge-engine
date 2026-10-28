@@ -298,7 +298,25 @@ human on 2026-10-23** (security U4 M-3); Q68 (raised by the analyst
 2026-10-23, from Q67) was resolved by the orchestrator on 2026-10-23.
 **Q69 and Q70 were resolved by the human on 2026-10-23.** *(Amended 2026-10-23, analyst, Q69/Q70)*
 **Q71 is open for the human** (raised 2026-10-25 by the analyst from
-architect U7 point O1; decide before U7c). *(Amended 2026-10-25, analyst, U7)*
+architect U7 point O1; decide before U7d). *(Amended 2026-10-25, analyst, U7)*
+*(Amended 2026-10-25, analyst, U7d: was "before U7c".)*
+**Q72 is open for the human** (raised 2026-10-25 by the analyst from the
+U7c Windows proof; decide before U7d's real lock run). *(Amended 2026-10-25, analyst, U7d)*
+**Q71 and Q72 were resolved by the human on 2026-10-25** (verbatim: "Ok to both 71 (pg) and 72 retry"). *(Amended 2026-10-25, analyst, U7d; human ruling.)*
+**Q61-Q72 are all resolved; none is open for platform-sbom.** *(Amended 2026-10-27, analyst.)*
+*Orchestrator refinement (2026-10-27; design notes U7d item 14).* The third,
+network-independent fetch of the Neo4j tarball moves to U8, so the U7d
+lock commit no longer waits for it.
+- It is satisfied by U8's first bundle-time sample fetch on the GitHub CI
+  runner, which fails closed on a sha256 or size mismatch (Q61). It is
+  recorded in `docs/evidence/platform-sbom/sources-provenance.md`.
+- Architect's caveat: the check is only as independent as the runner's
+  route out, and the private CI runner may share the site's egress.
+- So the human's one-liner on an ARM host, run before the first operator
+  bundle, is still preferred.
+- A mismatch means a new first fetch and a new second fetch, never a
+  skip or a retry.
+*(Amended 2026-10-27, analyst.)*
 
 - **Q61. Resolved 2026-10-22 (human ruling).** **A61:** FAIL CLOSED on a
   failed or checksum-mismatched source fetch: one call, no retry, naming the
@@ -646,7 +664,15 @@ architect U7 point O1; decide before U7c). *(Amended 2026-10-25, analyst, U7)*
   or fail mode (PSC-4, PSC-5), with the CI cost measured first?* Raised
   by A68. Who rules: the human.
 
-- **Q71. Open (raised 2026-10-25, analyst, U7).** *Where does the bundle
+- **Q71. Resolved 2026-10-25 (human ruling).** **A71:** option 1.
+  - The lock gains a `pgdg` kind and a tenth fetch host,
+    `apt-archive.postgresql.org`, for `postgresql-16`, `postgresql-18`
+    (with its `libpq5`) and `postgresql-common`.
+  - This amends the U6 host-set test to ten hosts and ADR-KE-016 point
+    4's egress list. Security reviews the host and the kind at U7d.
+  - The human's words: "Ok to both 71 (pg) and 72 retry". *(Amended 2026-10-25, analyst, U7d; human ruling.)*
+
+  Original question, kept for the record: *Q71. Where does the bundle
   get the source of the three postgres-image packages that come from the
   PostgreSQL project's Debian archive (PGDG), not from Debian?*
   *(Added 2026-10-25, analyst, U7)*
@@ -682,9 +708,96 @@ architect U7 point O1; decide before U7c). *(Amended 2026-10-25, analyst, U7)*
     Trade-off: the bundle-time fetch gains a route to a host that SFU's
     egress rules may need to allow.
   - Who rules: the human, because the SFU egress list is the human's.
-  - Deadline: before U7c (the `deb`, `apk` and `pgdg` routes). Until it is
-    ruled, U7c's `pgdg` route is not built, and the three keys stay
-    without an entry, so the source check fails closed (Q61).
+  - Deadline: before U7d. Once it is ruled, the `pgdg` route is U7d's
+    first unit of work. Until it is ruled, the `pgdg` route is not built,
+    and the three keys stay without an entry, so the source check fails
+    closed (Q61). *(Amended 2026-10-25, analyst, U7d: deadline moved from "before U7c", which shipped without the `pgdg` route.)*
+
+- **Q72. Resolved 2026-10-25 (human ruling).** **A72:** option 3 only.
+  - It covers the maintainer lock tool (`sources_resolve.py`, run by
+    `scripts/sources_lock.sh`): a bounded retry, at most 3 retries after
+    the first attempt, waiting 10 s, 30 s and 60 s.
+    - Retried: HTTP 5xx and timeouts only.
+    - Never retried: a 4xx, a refused host or hop, or a hash mismatch.
+    - Every retry is printed (host, status, attempt) and recorded in the
+      run's evidence.
+  - U8's bundle-time fetch keeps Q61 strictly: one call, no retry.
+  - Option 2 (resume from partial) is not adopted now. If the real U7d
+    run still fails, it falls back to the human.
+  - The analyst's recommendation (options 2 and 3) was adopted in part.
+  - The human's words: "Ok to both 71 (pg) and 72 retry". *(Amended 2026-10-25, analyst, U7d; human ruling.)*
+
+  Original question, kept for the record: *Q72. Does the maintainer
+  tool that writes the source lock keep Q61's rule (one call, no retry) when
+  `snapshot.debian.org` fails transiently, or may it resume or retry?*
+  *(Added 2026-10-25, analyst, U7d)*
+  - Context:
+    - What A61 rules on: the bundle-time source fetch (U8). It chose "one
+      call, no retry" over Q61 option 2 (one bounded retry on an
+      unreachable host).
+    - Where Q61 also reaches: design notes "N5 amendment, U7", point 5
+      applies the same rule to the lock tool (`sources_resolve.py`, run
+      by `scripts/sources_lock.sh` on the maintainer host). On any non-2xx
+      answer or timeout it stops at once and writes nothing.
+    - What the U7c Windows proof saw
+      (`docs/evidence/platform-sbom/u7c/windows-run.txt`, the r1 re-run):
+      `snapshot.debian.org` answered HTTP 503 once on
+      `mr/package/bash/5.2.15-2/srcfiles`, and the run failed closed with
+      the lock unchanged. The next run's `/file/<sha1>` request took about
+      31 s and passed.
+    - What U7d's real run makes: about 304 `snapshot.debian.org` requests
+      (152 `deb` keys, 2 each) and about 150 GitLab and distfiles
+      requests. Under Q61 a single transient error aborts all of it.
+      - Illustration only, not a measurement: if 1 request in 100 failed
+        transiently, a run of about 454 requests would complete about 1
+        time in 100.
+    - The tool skips keys that already have an entry in the committed
+      lock. The lock is written only when the run completes, so a first
+      run gains nothing from that.
+  - Options:
+    1. Keep Q61 literally. The whole tool is re-run until one run
+       succeeds.
+       - Cost: 10-45 min per attempt (an estimate), possibly many
+         attempts.
+       - Gain: the simplest rule, with no partial state.
+    2. Resume from partial. Within one run, the tool keeps a per-key
+       cache in its work dir. `--resume` reuses entries that this run has
+       already resolved and lock-checked.
+       - Still true: no failed request is retried, and the lock is
+         written only when it is complete.
+       - Cost: one more work-dir file to discard or keep, and a resume
+         path to test.
+       - Gain: a failure costs only the keys not yet resolved.
+    3. A bounded retry exception to Q61, for the lock tool only. For
+       example, at most 3 retries after the first attempt, waiting 10 s,
+       30 s and 60 s.
+       - Retried: HTTP 5xx and timeouts.
+       - Never retried: a 4xx, a refused host or hop, or a hash
+         mismatch.
+       - Cost: up to 100 s more per failing request, and a transient
+         failure no longer shows on the first error.
+       - Gain: most single transient errors no longer abort the run.
+    - Either way, U8's bundle-time fetch (the verify sample, about 10
+      requests) keeps Q61 strictly: one call, no retry.
+  - **Recommended (analyst): options 2 and 3 together, with 3 limited to
+    HTTP 5xx and timeouts.**
+    - The lock tool is not a bundle step. It runs on the maintainer
+      host, its output is a committed file that is lock-checked, and
+      security reviews it before any bundle uses it. A retry therefore
+      cannot let a wrong or missing source into a bundle. Q61's reason
+      for no retry (no bundle without its source, one rule for verify's
+      network steps) is about bundles and verify, and U8 keeps it.
+    - Integrity is unchanged. Every hash is still checked, a mismatch
+      still fails at once, and a 4xx or a refused host is never retried.
+    - Option 2 alone still loses the in-flight key on each failure.
+      Option 3 alone still re-runs every key after a failure that
+      outlasts the retries. Together, a run survives a short outage and
+      resumes cheaply after a long one.
+    - Trade-off: two mechanisms to build and test (U7d), and the run's
+      evidence must name each retry (host, status, attempt), so that a
+      flaky host stays visible.
+  - Who rules: the human, because Q61 is a human ruling.
+  - Deadline: before U7d's real lock run.
 
 ## platform-skeleton
 

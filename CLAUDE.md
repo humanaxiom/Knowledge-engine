@@ -93,6 +93,7 @@ Committed files generated from a source file, and how to regenerate them:
 | Artifact | Source | Regenerate | Drift check |
 |---|---|---|---|
 | `uv.lock` | `pyproject.toml` | `uv lock` (inside the gates image) | the gate scripts run uv with `--locked` |
+| `docker/sources.lock.json` | the bundled images' SBOMs (from `scripts/build.sh` images) and their upstream source metadata (snapshot.debian.org, Alpine aports, GitHub, PyPI, Maven Central, apt-archive.postgresql.org); `docker/source-policy.json`; `uv.lock` | `scripts/sources_lock.sh --arch <arch> --evidence-dir <dir>` (maintainer, network; never run by verify or CI); security reviews every diff | `tests/test_sources_lock_committed.py` checks the committed lock in every verify run; from U9, `bundle.sh` (`sbom_check.py index`) refuses a package with no entry |
 
 Add a row whenever a generated file is committed (for example the policy
 register, `docs/register.md`, arriving with `policy-book`).

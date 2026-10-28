@@ -1,0 +1,55 @@
+# platform-sbom U7d: the PGDG suite probe (tester, 2026-10-26T02:18-02:19Z, Windows host, curl with the
+# resolver's User-Agent `knowledge-engine-sources-lock`, no redirects followed). No secrets; nothing redacted.
+
+GET apt-archive.postgresql.org/pub/repos/apt/dists/bookworm-pgdg-archive/Release -> 200 binary/octet-stream 4739 B
+GET apt-archive.postgresql.org/pub/repos/apt/dists/bookworm-pgdg/Release -> 404 text/html 376 B
+HEAD apt-archive.postgresql.org/pub/repos/apt/dists/bookworm-pgdg-archive/main/source/Sources.gz -> 404
+GET apt-archive.postgresql.org/pub/repos/apt/dists/bookworm-pgdg-archive/main/source/Sources.bz2 -> 200 734866 B,
+    sha256 b7963a2dcc18c27e49fa7cbbd21b0b2d16be502c5855c8e6095a852ceb23fd3a (equals the Release SHA256 line)
+    bz2-decompressed: 5043212 B
+
+FINDING: the suite `bookworm-pgdg-archive` exists, but its source index is NOT `main/source/Sources.gz`.
+Release lists only `main/source/Sources` (5043212 B) and `main/source/Sources.bz2` (734866 B); no .gz or .xz.
+Per the U7d precision P1 ("if the path or compression differs, the architect amends the exact form"), the
+RED is held for the architect. The three keys' stanzas are present (below); note Checksums-Sha256 and Files
+carry their first entry on the field line itself (`Checksums-Sha256: <hash> <size> <name>`), the .dsc included.
+
+--- Release (head and the source index lines) ---
+Codename: bookworm-pgdg-archive
+Date: Wed, 21 Oct 2026 00:04:45 +0000
+Label: PostgreSQL for Debian/Ubuntu archive repository
+Origin: apt-archive.postgresql.org
+Suite: bookworm-pgdg-archive
+MD5Sum:
+ 9a859d5d66fd0dffab6e0cad4c9ecb98          5043212 main/source/Sources
+ e2ea820db3151e9bc5550bcec684497c           734866 main/source/Sources.bz2
+ d380d000c0197de89d5c18d21a53f430c76fcfac          5043212 main/source/Sources
+ 8cbfefd463e2d92433133094f88d40515a146848           734866 main/source/Sources.bz2
+ 9550c528bc74dc1ebfdc799385e0e8c9f211dc4bed5dbbb6bee5962b016fe722          5043212 main/source/Sources
+ b7963a2dcc18c27e49fa7cbbd21b0b2d16be502c5855c8e6095a852ceb23fd3a           734866 main/source/Sources.bz2
+ 359afed1923b2b8a6db43c8dd2e68b7764a00fc942dd4d0fa6a2452f627832b99a09c6ead209aeeabbe8b0325d2e692d9d051adca5b997316703978ca13d08ad          5043212 main/source/Sources
+ f52b49af64892345f4951f8641aaa7e9ef1a1d8f49d10b0c34e7cbdc5d4a2f32d869dd92caabc44e6192767c5e9669dab00d893671e70bf2e228ae3980034b4c           734866 main/source/Sources.bz2
+
+--- Sources stanza(s) for postgresql-16 16.15-1.pgdg12+2: 1 ---
+Package: postgresql-16
+Format: 3.0 (quilt)
+Version: 16.15-1.pgdg12+2
+Directory: pool/main/p/postgresql-16
+Checksums-Sha256: d98708df6b06bdb75baf484709065b354ef7e1c97e3f593e3414b371f7f91e05 3229 postgresql-16_16.15-1.pgdg12+2.dsc
+ c1575341fa7bd40f5274ea465b34390f4dc64cdd0770af327005caaeb9f6b7ed 25181309 postgresql-16_16.15.orig.tar.bz2
+ 5b11981332cf90a20ad6d17c6ea0e5f7472e8e982186414c3d266494f91d6812 37560 postgresql-16_16.15-1.pgdg12+2.debian.tar.xz
+--- Sources stanza(s) for postgresql-18 18.6-1.pgdg12+2: 1 ---
+Package: postgresql-18
+Format: 3.0 (quilt)
+Version: 18.6-1.pgdg12+2
+Directory: pool/main/p/postgresql-18
+Checksums-Sha256: 76fda1b633b578b0469d00418936e267a658bf1055deedd4fbb515a2c8689eec 3528 postgresql-18_18.6-1.pgdg12+2.dsc
+ 555610c24d53e4316da5b7d3fc25c279d96856d5e0e23ee308c328c5fa881d9f 22632314 postgresql-18_18.6.orig.tar.bz2
+ 264d4fa9cccc317b5f30dcccafe748d8d008f7e5c3fdff48a177f1bf273204d4 34252 postgresql-18_18.6-1.pgdg12+2.debian.tar.xz
+--- Sources stanza(s) for postgresql-common 293.pgdg12+1: 1 ---
+Package: postgresql-common
+Format: 3.0 (native)
+Version: 293.pgdg12+1
+Directory: pool/main/p/postgresql-common
+Checksums-Sha256: fc1b229024670e6d0cf1c40f3987bf1509aecf146791a6e22966fbf764c391da 1538 postgresql-common_293.pgdg12+1.dsc
+ 7a12dca9e636d56b72f45a00c52fb8cf054c3bf9aba8dc74bcca5fb6be17b07f 219688 postgresql-common_293.pgdg12+1.tar.xz

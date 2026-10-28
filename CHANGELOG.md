@@ -4,20 +4,19 @@ Maintained by the `marketer` agent. Follows a Keep a Changelog style.
 
 ## [Unreleased]
 
-### 2026-10-23 (platform-sbom, in progress)
+### 2026-10-27 (platform-sbom, in progress)
 
-In progress: not finished, and the bundle is not yet for operators.
+In progress: not finished, and the bundle is not yet for operators. Source fetching into the bundle arrives at U8, and the notices and index at U9.
 
 **Changed:**
-- ke-app builds psycopg against Debian's libpq instead of the psycopg-binary wheel, and no longer ships pip. Its image is flattened, so pip is also gone from the saved tar.
-- NOTICE.md gains a ke-app base section and licence files for CPython, HACL*, KaRaMeL and Apache-2.0.
-- `scripts/bundle.sh` needs the pinned SBOM generator image and refuses to build without it.
-- The stack runs its own neo4j image, built from the pinned official Neo4j Community image with the commercial fleet-management plugin and the unused GenAI plugin removed (the `products/` folder). Neo4j itself is unchanged. NOTICE.md describes it.
+- ke-app builds psycopg against Debian's libpq instead of the psycopg-binary wheel, no longer ships pip, and is flattened. NOTICE.md gains a ke-app base section and licence files for CPython, HACL*, KaRaMeL and Apache-2.0.
+- The stack runs its own ke-neo4j image: the official Neo4j Community image without the commercial fleet-management plugin or the unused GenAI plugin (the `products/` folder). Neo4j itself is unchanged. Its smoke check now walks volumes.
+- `docker/source-policy.json` lists the ten hosts a source fetch may use, and two security-reviewed exemptions (jna and javassist).
 
 **Added:**
-- Each bundle carries one SPDX 2.3 SBOM per image.
-- `scripts/bundle.sh` prints a per-image report of packages with no identifiable licence.
-- `scripts/verify.sh full` runs an image-side drift check on ke-app.
+- One SPDX 2.3 SBOM per bundled image. `scripts/bundle.sh` needs the pinned SBOM generator image and prints a per-image report of packages with no identifiable licence. `scripts/verify.sh full` runs an image-side drift check on ke-app.
+- A licence classifier that fails closed: SPDX expressions are read in full, and hash-named or unknown licences are marked as needing source.
+- A committed source lock, `docker/sources.lock.json`, with its maintainer tool `scripts/sources_lock.sh`. It has 182 components: one per Debian, Alpine and PGDG source package, plus Neo4j, Temurin, and the PyPI and Maven packages. It resolves against snapshot.debian.org, Alpine aports (via the GitLab API), the PGDG archive, GitHub, PyPI and Maven Central, with bounded retry. Verify and CI never run it. The full source set is about 1.3 GB; the verify sample is about 137 MB.
 
 ### 2026-10-21 (ci-triggers)
 

@@ -3293,9 +3293,12 @@ item.
 
 ## Item: platform-sbom
 
-Status: **In progress (2026-10-25):** U0-U5 committed (U5 d8ffa2d, not yet
-pushed; U0-U4b pushed as draft PR #14, whose CI run 40046377958 passed,
-verify job 32m32s); U6 in progress. *(Amended 2026-10-25, analyst, U6.)*
+Status: **In progress (2026-10-27):** U0-U7c pushed (draft PR #14; CI 23
+min); U7d gate passed; commit blocked on a fresh scan High (openssl) ->
+U7e first (PSC-27). *(Amended 2026-10-27, analyst.)*
+*(Earlier the same day: "U7d gate passed 2026-10-26 (commit landing); next U8".)* *(Amended 2026-10-27, analyst.)*
+*(Amended 2026-10-25, analyst, U7d; human ruling.)*
+*(Amended 2026-10-25, analyst, U7d.)* *(Amended 2026-10-25, analyst, U6.)*
 *(Amended 2026-10-24, documenter, review N7)*
 *(Updated 2026-10-23, documenter, status)* Opened (2026-10-21) right after `platform-supply-chain` (split
 accepted by the orchestrator, 2026-10-21), on `agent/platform-sbom`.
@@ -3338,16 +3341,19 @@ Counts are not restated here; the evidence under
 |---|---|---|
 | PSC-13 SBOM per bundled image | MET | U3 (464fa11) |
 | PSC-14 notices complete for `ke-app` | MET (the generated "Source code" section is U9) | U1 (23e3c9b) |
-| PSC-15 GPL source offers | PENDING (classifier landed in U5, d8ffa2d) | U5 (d8ffa2d), U6-U7, U9 |
-| PSC-16 CI cost and disk measured on CI | PENDING | U11 |
+| PSC-15 GPL source offers | PENDING (classifier U5, policy U6, lock U7a-U7d (committed lock, 182 components); source archive in the bundle arrives U8/U9) | U5 (d8ffa2d), U6 (66781a9), U7a-U7c (9b1754f, 6d8fa4d, 86f7831), U7d (landing), U8, U9 |
+| PSC-16 CI cost and disk measured on CI | PENDING (measurements for U11: full operator source set 1.327 GB, verify sample 137 MB; full bundle ~8 GiB staged, over the 7 GiB floor; CI 23 min on 86f7831) | U11 |
 | PSC-19 end to end offline install | PENDING | U10 |
 | PSC-20 SBOM generator pinned and hardened | MET | U2 (98b6d27) |
 | PSC-21 per-arch bundles | PENDING (next recorded arm64 run) | U12 |
-| PSC-22 obligations not hidden | MET (report, drift check, `always` list; their `sources/` entries are U6-U7) | U4 (40e2181) |
-| PSC-23 bounded source fetch | PENDING | U8 |
+| PSC-22 obligations not hidden | MET (report, drift check, `always` list; their `sources/` entries are U6-U7; generator-digest bump is a re-review trigger; `exempt` rules: versioned purl void on bump, reviewed reason, U6) | U4 (40e2181), U6 (66781a9) |
+| PSC-23 bounded source fetch | PENDING (hosts ten, U6 + U7d; fetch tool U8) | U6 (66781a9), U7d, U8 |
 | PSC-24 no partial bundle, manifest rules | PENDING | U9 |
 | PSC-25 psycopg on Debian libpq | MET | U0 (31bfed4) |
 | PSC-26 first-party neo4j image | MET | U4b (c300d88) |
+| PSC-27 `ke-app` ships the fixed OpenSSL | PENDING (blocks the U7d commit) | U7e |
+
+*(Rows PSC-15, PSC-16, PSC-22 and PSC-23 updated 2026-10-27, analyst.)*
 
 Outcome metric moved: **neither.** No draft is reviewed and no rule is
 ratified because of this item. It closes the M-NT1 remainder
@@ -3990,18 +3996,60 @@ full what it contains.
       check rejects a resolution host as a file host, for example
       `pypi.org`.
     - Design notes N5 lists the resolution endpoints.
-  - *PGDG sources (Q71, open for the human, before U7c).* Three postgres
+  - *PGDG sources (Q71, open for the human, before U7d; the `pgdg` route
+    is U7d's first unit of work once ruled).* *(Amended 2026-10-25, analyst, U7d: deadline moved from "before U7c", which shipped without the `pgdg` route.)* Three postgres
     packages come from PGDG, not Debian, so `snapshot.debian.org` cannot
     supply their source. The recommendation is a `pgdg` lock kind and a
     tenth host, `apt-archive.postgresql.org`. If it is ruled, the U6
     host-set test and ADR-KE-016 point 4 are amended, and security reviews
     the host and the kind. Until it is ruled, the three keys have no
     entry, and the source check fails closed. *(Amended 2026-10-25, analyst, U7.)*
+    - *Ruled (A71, human, 2026-10-25): option 1.* *(Amended 2026-10-25, analyst, U7d; human ruling.)*
+      - U7d adds the `pgdg` lock kind and the tenth host,
+        `apt-archive.postgresql.org`, to `docker/source-policy.json`
+        `hosts`. The U6 host-set test then expects exactly ten hosts, and
+        ADR-KE-016 point 4's egress list names the new host.
+      - Security reviews the host and the kind at U7d.
+      - Given the committed lock, each of the three PGDG keys
+        (`postgresql-16`, `postgresql-18`, `postgresql-common`) has a
+        `pgdg` entry whose file URLs are all on
+        `apt-archive.postgresql.org`.
+  - *Transient errors in the lock run (Q72, open for the human, before
+    U7d's real run).* The U7c Windows proof saw `snapshot.debian.org`
+    answer 503 once and take about 31 s once. U7d's real run makes about
+    450 requests, and under Q61's rule, which N5 applies to the lock tool
+    too, one transient error aborts the run with nothing written.
+    - The analyst recommends two changes, for the lock tool only:
+      resume-from-partial within a run, and a bounded retry on HTTP 5xx
+      and timeouts. A 4xx, a refused host or a hash mismatch is never
+      retried, and the lock is still written only when complete.
+    - U8's bundle-time fetch keeps Q61 strictly whatever the human rules.
+    *(Amended 2026-10-25, analyst, U7d.)*
+    - *Ruled (A72, human, 2026-10-25): option 3 only, for the lock tool
+      (`sources_resolve.py`, run by `scripts/sources_lock.sh`).* *(Amended 2026-10-25, analyst, U7d; human ruling.)*
+      - Given a request that gets an HTTP 5xx or times out, the tool
+        retries it at most 3 times after the first attempt, waiting 10 s,
+        30 s and 60 s. If a retry succeeds, the run goes on. If the last
+        retry also fails, the run fails closed, as before: one line, and
+        the lock is unchanged.
+      - Given a 4xx, a refused host or hop, or a hash mismatch, the tool
+        does not retry. It fails at once, as before.
+      - Every retry is printed, with the host, the status and the attempt
+        number, and recorded in the run's evidence.
+      - U8's bundle-time fetch keeps Q61 strictly: one call, no retry.
+      - Resume from partial (Q72 option 2) is not adopted now. If the real
+        U7d run still fails, it falls back to the human.
   - *Fixtures versus fresh images (orchestrator O3, 2026-10-25).* Before
     U7d commits the lock, the developer diffs the freshly built images'
     package lists against the U3 fixtures. If they differ in any way, U7d
     stops and goes to the orchestrator: refreshing the fixtures re-pins
     the real-row tests of U4-U6. *(Amended 2026-10-25, analyst, U7.)*
+  - *Third fetch of the Neo4j tarball (orchestrator refinement,
+    2026-10-27; design notes U7d item 14).* U8's first bundle-time sample
+    fetch on the CI runner is the recorded third, network-independent
+    fetch. It is recorded in
+    `docs/evidence/platform-sbom/sources-provenance.md` with the run id,
+    runner, date, hop hosts, and the sha256 and size it measured. *(Amended 2026-10-27, analyst.)*
 - **PSC-24 No partial bundle, and the manifest rules hold (added
   2026-10-22, analyst).**
   - Any SBOM, index or source failure makes the bundle step exit non-zero,
@@ -4325,6 +4373,121 @@ full what it contains.
       `offline_check.sh`'s bundle writes).
     - The stack smoke, the notices run and `[gate: image-scan]` (still
       `ke-app` only, Q68) stay green. *(Amended 2026-10-23, analyst, Q68.)*
+- **PSC-27 `ke-app` ships the fixed OpenSSL (unit U7e; added 2026-10-27,
+  analyst).** *(Added 2026-10-27, analyst.)* During the U7d gate, the image scan (PSC-4)
+  failed on `ke-app`. The pinned base carries `libssl3` and `openssl`
+  `3.0.22-1~deb12u1`, which have a fixed High: CVE-2026-84782, fixed in
+  `3.0.22-1~deb12u2`, plus Mediums and Lows fixed in the same version.
+  - Evidence:
+    `docs/evidence/platform-sbom/u7d/orchestrator-verify-full-after-claude-row.txt`
+    l.2075-2372.
+  - This blocks the U7d commit. U7e lands first.
+  - It is handled under PSC-4 and PSC-5 by upgrading the package, as
+    PSC-25's *Scan* bullet requires for `libpq5` and what it pulls in
+    (`libpq5` depends on `libssl3`). It is never handled by an ignore
+    entry, a loosened threshold or a skipped scan.
+  - Outcome metric moved: **neither.** This is a security fix to the
+    shipped image. It keeps `verify.sh full` green, and the item's
+    commits depend on that.
+  - Gate: `scripts/verify.sh full`, plus the A34 Windows proof, because
+    `docker/app.Dockerfile` changes.
+  - *Pin.* Given the pinned `ke-app` base, the shipped stage (`runtime`)
+    installs `libssl3=3.0.22-1~deb12u2` and `openssl=3.0.22-1~deb12u2`.
+    - They go in the same apt `RUN` as `libpq5`, each pinned to an exact
+      version as `LIBPQ_VERSION` pins `libpq5`, with no recommended
+      packages, and the apt lists are removed in that layer.
+    - The base reference and its digest are unchanged.
+    - These two packages upgrade packages the base already has. They are
+      not additions.
+  - *Static test.* `test_runtime_stage_has_no_compiler` (PSC-25) still
+    allows exactly one apt `RUN` plus the pip removal in the shipped
+    stage. That `RUN` may now also install the two pinned upgrades, and
+    nothing else.
+    - The NOTICE test (`tests/test_notice_ke_app.py`) requires every
+      package name the shipped stage installs to be either in
+      `ADDED_PACKAGES` or in a named set of upgraded base packages
+      (`libssl3`, `openssl`). No name may be in both.
+    - Controls that must fail:
+      - an unpinned `libssl3` or `openssl`;
+      - a version other than the pin;
+      - an upgraded name missing from the upgrade set.
+  - *Image-side drift check* (PSC-22, in `offline_check.sh`). Given the
+    fresh `ke-app` SBOM:
+    - its `libssl3` and `openssl` rows carry exactly
+      `3.0.22-1~deb12u2`;
+    - the base's SBOM still carries `3.0.22-1~deb12u1`;
+    - the dpkg names `ke-app` adds over the base still equal
+      `ADDED_PACKAGES`;
+    - each upgraded name exists in both SBOMs, at the pinned version in
+      `ke-app`.
+    A mismatch fails `full`, naming the package and both versions.
+  - *Scan.* With a freshly fetched vulnerability database (`scan-db`),
+    the `ke-app` scan passes under the unchanged policy. No `libssl3` or
+    `openssl` match at or above High remains unsuppressed, and
+    `docker/scan-ignore.yaml` gains no entry.
+  - *Lock.* The committed lock (`docker/sources.lock.json`) gains
+    `deb:openssl@3.0.22-1~deb12u2` for `ke-app`'s rows.
+    - The maintainer tool (`scripts/sources_lock.sh`) regenerates it; it
+      is never hand-edited.
+    - Security reviews the lock diff, as for U7d.
+    - The committed-lock test checks coverage both ways, so
+      `deb:openssl@3.0.22-1~deb12u1` stays exactly while another image
+      still needs it. At the U3 fixtures, postgres's `libssl3` is
+      `3.0.22-1~deb12u1`.
+  - *Fixtures (rule O3).* *(Amended 2026-10-27, analyst; orchestrator ruling, aligned with design notes N0 amendment U7e.)* This replaces the
+    first draft's "refresh all six".
+    - Only `tests/fixtures/sbom-u3/ke-app.pkgs.tsv` is refreshed. It comes
+      from a real `bundle.sh` SBOM of the U7e image, which is written
+      first under `docs/evidence/platform-sbom/u7e/sboms/`.
+    - Given the refreshed fixture, its diff against the old one is exactly
+      the two openssl rows: `libssl3` and `openssl`, from
+      `3.0.22-1~deb12u1` to `3.0.22-1~deb12u2`. Any other difference
+      stops the unit, and it goes back to the orchestrator.
+    - The other five fixtures do not change:
+      - postgres, phoenix and valkey are pinned by digest;
+      - `ke-gateway` is unchanged;
+      - neo4j is deliberately the official image.
+    - Each re-pinned real-row test is explained by those two rows in the
+      U7e evidence, among them U7a's fixture key set going from 182 to 183
+      keys. No other change is accepted.
+    - The lock changes, so PSC-22 calls for a security re-review of the
+      unlicensed list.
+  - *Notices.* `NOTICE.md`'s "Base of `ke-app`" section stays true. It
+    names the two upgraded packages and their pinned version as changed
+    from the base, under their own licences in
+    `/usr/share/doc/*/copyright`. Its added-packages line is unchanged.
+    The notices run (PS-3.8) and `test_notice_has_ke_app_base_paragraph`
+    stay green.
+    - Required, not optional (orchestrator ruling, 2026-10-27): the
+      section gains one sentence naming `libssl3` and `openssl` as
+      upgraded from the base to `3.0.22-1~deb12u2`. Without it, NOTICE
+      would say the base's packages ship as they are, which would be
+      false. *(Amended 2026-10-27, analyst; orchestrator ruling, aligned with design notes N0 amendment U7e.)*
+  - *Windows (A34).* The Dockerfile changes, so the PS-2.9 PowerShell
+    proof and `scripts/verify.sh fast` on Windows are recorded at
+    `docs/evidence/platform-sbom/u7e/windows-run.txt` before the unit
+    commits. The proof matches the branch head, or the diff since touches
+    none of the A34 files.
+  - *Size.* `ke-app`'s image and bundle tar sizes are recorded before and
+    after, for PSC-16.
+  - *Exposure, not a criterion.*
+    - A pinned exact version stops building once Debian's security
+      archive supersedes it. `libpq5`'s pin already has this exposure
+      (PSC-25), and the scan surfaces the next fix.
+    - The other bookworm images carry the same `libssl3` (postgres, at
+      the U3 fixtures). They are not scanned (A70), and this unit does
+      not rebuild them.
+      The orchestrator has raised postgres with the human: bump its digest
+      when upstream rebuilds, or accept the risk. *(Amended 2026-10-27, analyst; orchestrator ruling, aligned with design notes N0 amendment U7e.)*
+  - Tests:
+    - `[unit: test_runtime_stage_has_no_compiler]` (amended as above) and
+      the NOTICE added-versus-upgraded test (fast, static);
+    - `[full: ke-app SBOM carries the pinned openssl and libssl3]` (the
+      drift check);
+    - `[gate: image-scan]`;
+    - `test_sources_lock_committed` on the regenerated lock and the
+      refreshed fixtures;
+    - the stack smoke and the PSC-25 smoke check stay green.
 
 TDD order: PSC-14 → PSC-13 → PSC-15 → PSC-16. *Proposed by the analyst
 (2026-10-22), for the architect to confirm:* PSC-14 → PSC-20 → PSC-13 →
@@ -4335,6 +4498,7 @@ PSC-19 → PSC-16, with PSC-21 at the next recorded arm64 run. Gate: `scripts/ve
 run under A34 if the item changes Dockerfiles, compose files or a
 PowerShell script (`install.ps1` included, Q45).
 U4b (PSC-26) runs after U4 (PSC-22) and before U5. *(Added 2026-10-23, analyst, Q67.)*
+U7e (PSC-27) runs after U7d's gate and before U7d's commit. *(Added 2026-10-27, analyst.)*
 
 *Unit order (architecture N15), current:* U0 (PSC-25), U1 (PSC-14), U2
 (PSC-20), U3 (PSC-13), U4 (PSC-22), U4b (PSC-26), U5 (licence classifier), U6

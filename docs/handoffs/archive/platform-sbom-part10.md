@@ -515,3 +515,70 @@ Plan: design-notes N5 amendment U7.
 - Closed: L-1, L-2 (every separator in values, names, continuation, armour and trailer refused; duplicates case-blind), L-3 (100 entries need an empty `x-next-page`), I-1.
 - Item 9 holds: project, ref, `<P>` (`%252F`, `%2F..%2F`, `.%2F`, `%2e%2e`, lower hex, unicode, `%5C`, subdir APKBUILD, other origin/repo), metadata or `/-/raw/` forms, userinfo/port/case all refused; the form is apk-only. Challenge: no Location gives 307, the absolute challenge gives 418, a relative one is refused at the hop.
 - Info: I-5 a real `__goaway_id` nonce copied into a test and RED output (not a credential); I-6 U+FEFF/U+200B not refused but fail closed; I-7 relative challenge refused at the hop rather than reaching 418.
+
+## U7c region as it stood at commit 86f7831 (verbatim from the live doc)
+
+### 2026-10-25 — architect (U7c)
+- U7c precision D1-D7/A1-A5, R-1 stream distfiles, R-2 compose as source, gap rulings 1-5, two U7a apk rule changes.
+- Detail: archive/platform-sbom-part10.md; evidence design-notes U7c precision l.1565-1789, gap rulings l.1806-1892
+
+### 2026-10-25 — tester (U7c RED)
+- U7c RED: 19 failing, reach PASS, controls 79 (0 unexpected).
+- Detail: archive/platform-sbom-part10.md; evidence u7c/red-verify-fast.txt, u7c/target-reach-verify-fast.txt, u7c/red-mutants.txt
+
+### 2026-10-25 — developer (U7c GREEN)
+- U7c GREEN: verify fast + full PASS 1003 s, controls 0 unexpected.
+- Detail: archive/platform-sbom-part10.md; evidence u7c/green-verify-fast.txt, u7c/green-verify-full.txt, u7c/green-controls.txt
+
+### 2026-10-25 — reviewer (U7c)
+- CHANGES REQUESTED: B1 APKBUILD from a subdirectory, N1 duplicate deb822 fields, N2 first-assignment APKBUILD, N3 U8 name checks.
+- Detail: archive/platform-sbom-part10.md; evidence u7c/review.md, u7c/reviewer-controls.txt, u7c/reviewer-probes.txt
+
+### 2026-10-25 — security (U7c)
+- PASS: L-1 = B1, L-2 parse_dsc separators/duplicates, L-3 listing truncation, I-1 tree path encoding.
+- Detail: archive/platform-sbom-part10.md; evidence u7c/security.md, u7c/security-probes.txt
+
+### 2026-10-25 — tester (U7c Windows proof)
+- A34 FAIL on the real Alpine component: GitLab raw endpoint behind a bot challenge; steps 3-4 and the real deb PASS.
+- Detail: archive/platform-sbom-part10.md; evidence u7c/windows-run.txt
+
+### 2026-10-25 — tester (U7c rework r1 RED)
+- r1 RED: 39 failing, reach PASS, controls 34 (0 unexpected), item 9 apk API raw URL form.
+- Detail: archive/platform-sbom-part10.md; evidence u7c/r1-red-verify-fast.txt, u7c/r1-target-reach-verify-fast.txt, u7c/r1-red-mutants.txt
+
+### 2026-10-25 — developer (U7c rework r1 GREEN)
+- U7c r1 GREEN: verify fast + full PASS 1004 s, controls 0 unexpected.
+- Detail: archive/platform-sbom-part10.md; evidence u7c/r1-green-verify-fast.txt, u7c/r1-green-verify-full.txt, u7c/r1-green-controls.txt
+
+### 2026-10-25 — tester (U7c r1 Windows re-run)
+- r1 Windows re-run PASS: pax-utils resolves on the API form in 5.2 s, bash byte-identical, snapshot 503/31 s observed.
+- Detail: archive/platform-sbom-part10.md; evidence u7c/windows-run.txt (addendum)
+
+### 2026-10-25 — reviewer (U7c rework r1)
+- Asked: re-check U7c rework round 1 (rulings l.1894-1984) and item 9 (l.1986-2105). Verdict: **APPROVED**. Detail: `u7c/review-r1.md`.
+- Closed:
+  - B1: the APKBUILD path is pinned on both the lock and resolver side.
+  - N1: duplicate fields fail, case-insensitively.
+  - N2: repeated top-level pkgver, pkgrel or sha512sums assignments fail.
+  - L-2: CRLF is folded and every other control or separator character fails.
+  - L-3: a full page needs an empty `x-next-page`.
+  - I-1: the tree path is encoded.
+- Item 9 is a rule change, not a loosening: the exact API raw form, ref = commit, canonical `<P>`, the decoded path rules, the query and `%` exempt only for apk on that shape, and `/-/raw/` refused.
+- Challenge rows: a 307 to a plain path then 418 gives the HTTP 418 line; a 307 that keeps the `%2F` path is refused by the hop rules. Both give one FAIL line and write nothing.
+- r1 controls re-run: 34/29/5, 0 unexpected (`u7c/reviewer-r1-controls.txt`). Probes: `u7c/reviewer-r1-probes.txt`.
+- Nits:
+  - R1-N1: the decoded middle segments of `<P>` accept any printable character (`..;`, `a?b`, `x&ref=0`); harmless on the wire, but looser than the resolver's safe_name. Suggest the lock name rule per segment.
+  - R1-N2: `parse_dsc` drops the continuation lines after a junk line; U8 N3 reuses the parser. Suggest refusing a non-field line.
+- Next: security re-check; orchestrator commit gate.
+
+### 2026-10-25 — security (U7c rework r1)
+- PASS: L-1/L-2/L-3/I-1 closed, item 9 holds, I-5 real nonce in a test -> U7d hygiene row.
+- Detail: archive/platform-sbom-part10.md; evidence u7c/security-r1.md, u7c/security-r1-probes.txt
+
+### 2026-10-25 — orchestrator (U7c commit gate)
+- Rework rounds used: 1 of 5 (B1 APKBUILD path, N1/N2 parser strictness, security L-2/L-3/I-1, item 9: GitLab raw endpoint behind a bot challenge -> apk URLs move to the API raw form `.../repository/files/<P>/raw?ref=<commit>`, old form refused). Rulings: design-notes N5 amendment U7 "U7c precision" l.1565-1804, "gap rulings" l.1806-1892, "rework round 1" l.1894-2105.
+- Review APPROVED (r1), security PASS (r1), A34 PASS (r1 Windows re-run: real `apk:pax-utils@1.3.8-r2` resolves on the API form in 5.2 s and passes lock-check; real `deb:bash@5.2.15-2` byte-identical across runs), controls 34 rows 0 unexpected.
+- Orchestrator verify full PASS 1004 s (1047 unit + 15 integration, sentinel ok; `u7c/orchestrator-verify-full.txt`). Diff read: deb/apk routes, parse_dsc, `_apk_api_shape`/`_apk_api_problem`, lock-needs apk route, sources_lock.sh `--tar` for every image. Sentinel untouched. No lock file committed (U7d).
+- Carried to U7d first rows: reviewer R1-N1 (decoded `<P>` middle segments held to the file-name rule), R1-N2 (a non-field `.dsc` line fails), security I-5 (replace the real challenge nonce in tests/test_sources_resolve.py with a synthetic value), security I-6/I-7 noted.
+- Observed for U7d (for the human): snapshot.debian.org returned a 503 once and took 31 s once; a full run makes ~304 snapshot requests with no retry (Q61), so one transient error aborts the run fail-closed. The analyst drafts Q72 (resume-from-partial vs a bounded retry exception). Also for the human: Q71 (PGDG host) gates the committed lock; the CLAUDE.md "Generated artifacts" row (draft in N5 amendment U7 item 7).
+- Commit APPROVED. Next: U7d needs Q71 and Q72 ruled, a fresh `scripts/build.sh`, the real full run, the committed lock + security review + third fetch, `.gitattributes` eol=lf, the CLAUDE.md row.

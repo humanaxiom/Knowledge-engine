@@ -9,7 +9,9 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
 ALLOWED_PREFIXES = ("tests/", "docs/")
-ALLOWED_FILES = {"config/defaults.yaml", ".env.example", "config/verify.env"}
+# U7d round 1, item 13: docker/sources.lock.json is skipped whole, path-exact, never a line
+# exemption. Reason: generated lock: sizes and hashes, PSC-15; checked by test_sources_lock_committed.py
+ALLOWED_FILES = {"config/defaults.yaml", ".env.example", "config/verify.env", "docker/sources.lock.json"}
 
 # `${VAR:-default}` defaults declared in compose files are allowed, so they are
 # blanked before rule 1; the same syntax elsewhere hides a literal (review B4).
