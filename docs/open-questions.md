@@ -307,6 +307,9 @@ U7c Windows proof; decide before U7d's real lock run). *(Amended 2026-10-25, ana
 **Q73-Q77 are open** (raised 2026-10-28 by the analyst for U8, PSC-23 "U8 precision"): Q73 (CLAUDE.md wording) and Q74 (CI headroom, under A62) for the human; Q75-Q77 for the orchestrator. *(Amended 2026-10-28, analyst, U8 plan.)*
 **Q75 and Q76 were resolved by the orchestrator on 2026-10-28; Q77 is deferred (not blocking U8); Q73 and Q74 stay open for the human.** *(Amended 2026-10-28, analyst, U8 orchestrator rulings.)*
 **Q73 and Q74 were resolved by the human on 2026-10-28** (Q73 option 2, verbatim "Ok"; Q74 `timeout-minutes` 69, verbatim "Make it 69 seconds", read as minutes). None of Q61-Q76 is open; Q77 is deferred. *(Amended 2026-10-28, analyst, U8; human rulings.)*
+**Q78-Q80 are open for the orchestrator** (raised 2026-10-29 by the analyst for U9, PSC-24 "U9 precision"): Q78 (is `--sources` mandatory), Q79 (a recorded full-set bundle at U9), Q80 (exempt checksum compare, security U6 L-1). None is for the human. Q77 stays deferred (U9 runs no re-lock). *(Amended 2026-10-29, analyst, U9 plan.)*
+**Q78-Q80 were resolved by the orchestrator on 2026-10-29**, each option 1 as recommended. None of Q61-Q80 is open; Q77 is deferred. *(Amended 2026-10-29, analyst, U9 orchestrator rulings.)*
+**Q81 is open for the human** (raised 2026-10-29 by the analyst at U9b): the sample fetch's dependence on gitlab.alpinelinux.org. *(Amended 2026-10-29, analyst, U9b.)*
 *Orchestrator refinement (2026-10-27; design notes U7d item 14).* The third,
 network-independent fetch of the Neo4j tarball moves to U8, so the U7d
 lock commit no longer waits for it.
@@ -1052,6 +1055,254 @@ lock commit no longer waits for it.
     hashes bind the counts to the documents the run read.
   - Who rules: the orchestrator. Deadline: the next real
     `sources_lock.sh` run (a re-lock; none is planned in U8).
+  - *U9 check (analyst, 2026-10-29):* U9 runs no `sources_lock.sh`, so
+    Q77 stays deferred. If U9's real bundle finds lock drift, the fix is
+    a reviewed re-lock, and Q77 is decided before that run (PSC-24 "U9
+    precision").
+
+- **Q78. Resolved 2026-10-29 (orchestrator ruling).** **A78:** option 1.
+  `--sources` is mandatory; `--sources-set` defaults to `full`. (The
+  analyst's recommendation.) PSC-24 U9-1 records it; design notes "N9
+  amendment, U9" item 2. *(Amended 2026-10-29, analyst, U9 orchestrator
+  rulings.)*
+
+  Original question, kept for the record: *Q78. Open (for the
+  orchestrator; before U9's RED).* Is
+  `bundle.sh --sources` mandatory from U9? *(Added 2026-10-29, analyst,
+  U9 plan.)*
+  - Context:
+    - ADR-KE-016 point 3 gives `bundle.sh --sources <dir>`, with
+      `--sources-set sample` passed only by `offline_check.sh` (Q63). It
+      does not say whether a bundle may be cut without `--sources`.
+    - `NOTICE.md` already says that a bundle whose
+      `THIRD_PARTY_NOTICES.md` has no "Source code" section has no
+      `sources/` and does not itself provide the source. So a sourceless
+      bundle would be honest, but it would not meet PSC-15 (option 1,
+      source in every bundle).
+    - Every fake-docker `bundle.sh` test today calls it without
+      `--sources`. A mandatory flag re-pins them.
+  - Options:
+    1. Mandatory. No `--sources` exits 2 with the usage line. The expected
+       set is `full` unless `--sources-set sample` is given.
+    2. Optional. Without it the bundle has no `app/sources/` and no
+       generated "Source code" section, as before U9, and prints a
+       warning.
+    3. Optional, but the set is read from `fetch.json` and never asserted
+       by a flag.
+  - **Recommended: option 1.** It fails closed: no bundle that
+    redistributes GPL-family binaries without their source can be cut by
+    mistake, and a `sample` set can only reach a bundle by an explicit
+    flag. Option 2 leaves PSC-15 to operator discipline. Option 3 lets a
+    sample directory become an operator bundle silently, which is the
+    mistake A76's record exists to catch.
+  - Who rules: the orchestrator (a design point inside ADR-KE-016).
+    Recorded in PSC-24 "U9 precision" U9-1.
+
+- **Q79. Resolved 2026-10-29 (orchestrator ruling).** **A79:** option 1.
+  One recorded full-set `bundle_fetch.sh` + `bundle.sh` run at U9b,
+  bundle only, never installed and never handed over
+  (`u9/full-bundle-run.txt`, `u9/size.md`). (The analyst's
+  recommendation.) PSC-24 U9-13 records it. *(Amended 2026-10-29,
+  analyst, U9 orchestrator rulings.)*
+
+  Original question, kept for the record: *Q79. Open (for the
+  orchestrator; before U9's GREEN).* Does U9
+  include one recorded real `bundle.sh` run on the full source set?
+  *(Added 2026-10-29, analyst, U9 plan.)*
+  - Context:
+    - Verify and CI bundle only the sample (Q63). The rules that only
+      the full set exercises are: no `not-shipped` component in a `full`
+      bundle (N9), the 716-file copy, the manifest's size against
+      install's 1 MiB cap (PSC-24; N9 estimates about 154 B a line), and
+      `index` time at full size.
+    - N11 puts the recorded full-set run (`offline_check.sh --sources
+      full`, install included) at U10, and U11 re-derives the disk floor
+      (about 8 GiB staged, above the 7 GiB floor, U7d forward note).
+    - U8b's O-1 run proved the full fetch (716 files, 1,180,936,586 B;
+      `u8/full-run.txt`). That fetched directory was not kept.
+  - Options:
+    1. At U9, one recorded `bundle_fetch.sh --set full` plus
+       `bundle.sh --sources <dir>` on this host, with no install. Record
+       the bundle and source bytes, the manifest's bytes and lines, the
+       `index` seconds and the index's statuses (all `shipped`) in
+       `u9/size.md`.
+    2. None at U9. U10's recorded full-set run (N11) proves these, with
+       install.
+  - **Recommended: option 1.** The unit that writes the full-set rules
+    proves them on real data, and a defect in the full-set path is found
+    before U10 adds install and memory sizing on top. The cost is one
+    full fetch (about 1.2 GB) and disk for one bundle, by hand, not in
+    verify.
+  - Who rules: the orchestrator. Recorded in PSC-24 "U9 precision" U9-13.
+
+- **Q80. Resolved 2026-10-29 (orchestrator ruling).** **A80:** option 1.
+  No exempt checksum compare at U9; the multi-match rule (security U6 L-1
+  (a)) lands, and the digest pin and re-review trigger stand. (The
+  analyst's recommendation.) PSC-24 U9-4 records it. *(Amended
+  2026-10-29, analyst, U9 orchestrator rulings.)*
+
+  Original question, kept for the record: *Q80. Open (for the
+  orchestrator, with security; before U9's RED).*
+  Does `index` compare an exempt package's SBOM checksum with the
+  reviewed artifact? *(Added 2026-10-29, analyst, U9 plan.)*
+  - Context:
+    - Security U6 L-1 (`u6/security.md`) asks for two things at U9. (a)
+      An `exempt` entry that matches more than one package is a problem.
+      The orchestrator carried this as a U9 test row (PSC-24 U9-4). (b)
+      "U9's `index` should also compare the package's checksum in the
+      SBOM with the reviewed jar, where syft records one." Nobody has
+      ruled on (b).
+    - The `reason` records the jar's SHA-256. syft usually records a
+      SHA-1 for a jar, so the two values cannot be compared as they
+      stand.
+    - Security's exempt review I-2 accepted the gap while the base is
+      pinned by digest: a base-digest bump re-triggers the exempt review
+      (U6 ruling (c)).
+  - Options:
+    1. Not at U9. (a) only. The digest pin and the re-review trigger
+       stand as security I-2 accepted them.
+    2. `exempt` entries gain a field with the SHA-1 that syft records,
+       and `index` fails when the SBOM's checksum differs or is missing.
+       This changes the policy schema, and security reviews it.
+  - **Recommended: option 1.** The base image is pinned by digest, the
+    exact versioned purl voids an entry on a bump, and (a) closes the
+    two-jar case. Option 2 adds a schema field for a case that
+    the pin already covers. Security confirms in its U9 review.
+  - Who rules: the orchestrator, on security's advice.
+
+- **Q81. Open (for the human; before U11's CI runs, and U9b's `verify
+  full` runs are affected now). The sample fetch's dependence on
+  gitlab.alpinelinux.org.** *(Added 2026-10-29, analyst, U9b.)*
+  - Context:
+    - The verify sample (A63, `sample_keys`: the smallest entry per kind)
+      is 7 keys and 25 files (`u8/expected.md`). Its apk key,
+      `apk:alpine-baselayout@3.7.1-r8`, has 17 files: 15 through
+      GitLab's API raw endpoint on gitlab.alpinelinux.org (`APKBUILD` and
+      14 package files) and 2 on distfiles.alpinelinux.org
+      (`protocols-6.4`, `services-6.4`; plain files, not tarballs)
+      (`u8/hop-hosts.md`). The fetch runs in key order, so apk is first.
+    - Recorded outages of gitlab.alpinelinux.org (IPv4 and IPv6, from the
+      dev box and an external fetcher): 2026-10-28 about 13:50-18:03 UTC;
+      about 18:50 UTC to 2026-10-29 14:21 UTC; and again from about 18:40
+      UTC on 2026-10-29. Each one failed `verify.sh full` at the first
+      APKBUILD request (`u8/u8b-green-verify-full.txt`,
+      `u8/orchestrator-verify-full-u8b-attempt1-outage.txt`,
+      `u9/orchestrator-verify-full-u9a-attempt1-outage.txt`). During the
+      first outage distfiles.alpinelinux.org answered 200
+      (`u8/sample-run.txt`, diagnosis). That is the only distfiles
+      reading recorded during an outage.
+    - Q61 by design: one call, no retry. So every `verify.sh full` and
+      every CI run is red for as long as an outage lasts. The
+      orchestrator's commit gate has been blocked three times (U8b once,
+      U9a now).
+    - What Alpine published (read 2026-10-29):
+      - alpinelinux.org, 2026-10-28, "GitLab security incident: attempted
+        exploitation of CVE-2026-97229"
+        (https://alpinelinux.org/posts/GitLab-security-incident-CVE-2026-97229.html).
+        Its timeline: on Oct 21, "GitLab crashes, 502 errors"; on Oct 27,
+        "GitLab closed to everyone except developers and build servers;
+        rebuild started"; on Oct 28, "rebuild complete". "GitLab is being
+        tested before we open it to the public again." It gives no
+        reopening date. "our package mirrors, cgit, and mailing lists/IRC
+        are available as normal." "the aports repository, packages, and
+        the October 21 releases were not tampered with."
+      - fosstodon @alpinelinux (https://fosstodon.org/@alpinelinux.rss):
+        - 2026-10-21 15:52 UTC: most access to GitLab blocked, with only
+          certain IP addresses allowed.
+        - 2026-10-23 13:40 UTC: downtime for a resource increase.
+        - 2026-10-23 14:04 UTC: GitLab restored.
+        - 2026-10-28 21:27 UTC: the incident report.
+      - The Hacker News, 2026-10-29
+        (https://thehackernews.com/2026/10/attacker-tried-to-exploit-alpine-linuxs.html):
+        closed to the public, with no reopening date.
+      - LWN: no item found by web search.
+      - Not reconciled: the posts give dates, not times. They do not
+        explain the reachable windows recorded here on 2026-10-28 and
+        2026-10-29, which passed `verify full` and CI run 40907497118.
+        The analyst does not guess at the cause. Until Alpine reopens
+        GitLab, outages may come back with no end date.
+    - Integrity is not in question. Every file is pinned to an aports
+      commit and a SHA-256 in `docker/sources.lock.json`, and a mismatch
+      fails closed. This question is about availability only.
+  - Options:
+    1. Keep as is, and accept red gates during outages.
+       - Cost: nothing to build. Commits and CI wait for every GitLab
+         outage, and under the current closure that wait has no known end.
+       - Proves: every kind's fetch path, including the GitLab route,
+         on every run. The operator full-set fetch is the same in kind,
+         only delayed.
+    2. Choose an apk sample key whose lock files avoid GitLab.
+       - Checked against the lock: none exists. All 19 apk keys have
+         their `APKBUILD` on gitlab.alpinelinux.org. The fewest GitLab
+         files is 1 (`geoip`, `libidn2`, `libunistring`,
+         `pax-utils@1.3.9-r1`, `xz`: `APKBUILD` only).
+       - Cost: a change to the `sample_keys` rule.
+       - Proves: the same as option 1, with 1 GitLab request instead of
+         15. It does not remove the dependence, so it does not answer
+         this question. Listed for the record.
+    3. Fetch a distfiles-only subset for the sample's apk row. In
+       verify and CI, the sample fetches every kind's files as now,
+       except that for apk only the distfiles.alpinelinux.org file(s) are
+       fetched. The GitLab files are covered by the operator's full fetch
+       and by the lock's committed checks.
+       - Cost:
+         - A design change to `fetch_plan(.., "sample")`, with a test.
+         - Not only `fetch_plan`: U9-5 and U9a's `source_index` treat a
+           key as wholly `shipped` or wholly `not-shipped`. A
+           partly-fetched apk key would need a rule for its unfetched
+           files (for example, no `path`) in U9-5/U9-6 and in the
+           committed U9a code.
+         - It narrows A63's "one source of each kind" for apk, which is
+           a human ruling.
+         - With today's sample key the subset is two small plain files
+           (15,957 B), not a tarball. Whether the key changes too is the
+           architect's call.
+       - Proves: the distfiles route and the apk copy, index and install
+         path, on every run. Lock-rule coverage is unchanged; only
+         verify's network exposure shrinks.
+       - Does not prove in CI: the GitLab API raw route. That route is
+         proven only by operator full fetches and the recorded U8b runs
+         (`u8/full-run.txt`, `u8/sample-run.txt`, CI run 40907497118).
+    4. A retry window for the sample only.
+       - This contradicts A61 (one call, no retry) and A72 ("U8's
+         bundle-time fetch keeps Q61 strictly"). A retry also does not
+         outlast closures of hours or days.
+       - **Rejected unless the human reverses Q61.**
+    5. Fetch the aports files from a mirror at the pinned commit (for
+       example GitHub).
+       - Cost: gitlab.alpinelinux.org is the origin, so a third-party
+         mirror changes provenance (PSC-23 "as fetched"). It needs a new
+         host in `docker/source-policy.json` and on the SFU egress list,
+         new lock URLs (a reviewed re-lock, Q77) and a security review.
+       - A closer variant, not probed: Alpine's own cgit, which the
+         2026-10-28 post says stayed available. It is still a new host
+         and URL form for the architect to probe (U7c found an anti-bot
+         challenge on GitLab's `/-/raw/` form) and for security to
+         review.
+       - Proves: the same as option 1, with a different single point of
+         failure.
+  - **Recommended: option 3, as a small item next to U9b or in U10.**
+    - The sample's purpose (A63) is to prove the fetch path per kind
+      and the e2e on what ships. The apk kind's copy, index and install
+      path is still proven on every run. The GitLab route is proven by
+      every operator full fetch, which fails closed (Q61), and by U8b's
+      recorded runs.
+    - Counter-argument: the GitLab API raw route is the one most likely
+      to break. U7c found the `/-/raw/` form behind an anti-bot
+      challenge, and the design notes ("N4 amendment, U8", risk note)
+      name the blobs endpoint as the next candidate (U7c item 9).
+      Removing it from CI removes the early warning, so a break would
+      first show at an operator bundle. A mitigation for the architect
+      to weigh: a recorded GitLab-route fetch before each operator
+      bundle.
+    - Trade-off against option 1: option 1 keeps the strongest early
+      warning, but while Alpine's closure lasts, no change merges
+      (nothing merges on red).
+  - Who rules: the human, because A61 and A63 are human rulings and
+    option 5 touches the SFU egress list.
+  - Deadline: before U11's CI runs. U9b's `verify full` runs, and the
+    orchestrator's commit gate for U9a, are blocked now whenever GitLab
+    is unreachable.
 
 ## platform-skeleton
 

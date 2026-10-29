@@ -126,20 +126,25 @@ it closes the M-NT1 remainder (no GPL source offer, incomplete SBOM). Branch:
 - CHANGELOG gains one U8 bullet (assigned once by the orchestrator); README checked against the bundle_fetch.sh header, no drift.
 - Follow-up: CHANGELOG intro line now says the source fetch landed at U8 and shipping it with notices and index arrives at U9.
 
-## 2026-10-29 — tester (U8c O-2 RED: drop objects.githubusercontent.com)
-- RED `verify.sh fast`: 1201 tests, failures=5, all O-2 rows, all for "host still in the policy" (`u8/u8c-o2-red-verify-fast.txt`); names before/after and a scratch-copy control (policy less the host: 32/32 OK) in `u8/u8c-o2-controls.txt`.
-- Red: `PolicyU6SchemaTest.test_hosts_are_the_fetch_hosts` (U6_HOSTS re-pinned to nine), `...test_hosts_drop_the_unused_temurin_redirect_target`, `CommittedLockTest.test_policy_hosts_are_the_lock_url_hosts_and_their_redirect_targets`, `SourceFetchDroppedHostTest.test_source_fetch_refuses_a_temurin_redirect_to_the_dropped_host`, `U8cDroppedHostTest.test_a_temurin_redirect_to_the_dropped_host_is_refused`. Resolver fakes moved to release-assets (green).
-- No per-kind rule named the host (KIND_HOSTS binds lock URLs only; hops use policy `hosts`), so the developer's change is the policy line plus the design note; security reviews (U8-10).
-- Ambiguity for the orchestrator: the brief's list had `pypi.org`; the design (N0, O2 ruling) keeps it out of `hosts`, and the tests pin it out.
+## U8c (part 1 committed as 23bf33e; part 2 committed as <commit pending>; detail: archive/platform-sbom-part15.md)
+- Part 1: `objects.githubusercontent.com` dropped from `docker/source-policy.json` `hosts` (nine left; O-2, U8-10). Tester RED, developer GREEN (`verify full` PASS 1107 s, 1201 tests), review APPROVED, security PASS (`u8/u8c-o2-*`).
+- Part 2: the third Neo4j fetch, from PR #15 CI run 40907497118 on 5cf025c (GitHub-hosted Azure westus runner, ubuntu-24.04 20261025.353.1): sha256 182ae2e5...91e3, 20907800 B, hops github.com -> codeload.github.com. It equals the lock and the second fetch: three fetches, two networks, agree. Security PASS. Recorded last in `sources-provenance.md`; extract `u8/ci-40907497118-fetch.txt`, log `u8/ci-40907497118.log`.
+- Q74 data point (`u8/ci-timing-q74.md`): verify job 32m06s, unit stage 1261 s, offline_check 292 s, under the 69-min timeout.
+- Still optional, for the human: the ARM one-liner before the first operator bundle. It does not block U9.
 
-## 2026-10-29 — developer (U8c O-2 GREEN: policy hosts narrowed)
-- `docker/source-policy.json`: `objects.githubusercontent.com` removed from `hosts` (one entry); design-notes.md amended in 3 places (U8-10); architecture.md names no hosts, unchanged.
-- Evidence: `u8/u8c-o2-green-verify-full.txt`: `verify full` PASS 1107 s, 1201 tests OK, sample fetch Temurin hops=github.com,release-assets.githubusercontent.com; the 5 RED rows green. .env removed.
+## U9a (committed as <commit pending>; gate passed 2026-10-29; detail: archive/platform-sbom-part15.md)
+- Landed, `scripts/sbom_check.py` only: `fetch_record_problems`, `listing_problems`, `source_index`, `source_section`; the multi-match rule in `exempt_matches`; subcommands `sources-check`, `index`, `notices` (refuse, never escape); the shared `_open_regular` (no FIFO hang, no link or device swap). Install pins (12 tamper rows, sh and ps1) in `tests/test_offline_bundle.py`; new `tests/test_source_index.py` (67 tests). Not wired into `bundle.sh` yet.
+- Gates (evidence in `docs/evidence/platform-sbom/u9/`): RED/GREEN `u9a-red-verify-fast.txt`, `u9a-green-verify-fast.txt` (1201 -> 1251 tests, the 88 RED rows green); review `u9a-review.md` CHANGES REQUESTED (B-1, B-2) then APPROVED after rework 1 of 5; security `u9a-security.md` PASS twice (`u9a-security-probes.txt`); controls `u9a-controls.txt`; rework `u9a-r1-red-verify-fast.txt`, `u9a-r1-green-verify-fast.txt` (1270 OK, 8 skips), `u9a-r1-controls.txt`; orchestrator `orchestrator-verify-full-u9a.txt` PASS 1156 s (attempt 1 red at the GitLab outage: `orchestrator-verify-full-u9a-attempt1-outage.txt`).
+- Rulings: Q78-Q80 (option 1 each: `--sources` mandatory, recorded full-set bundle at U9, no exempt checksum compare at U9); O-9 (split U9a/U9b), O-10 (removal on failure), O-11 (A34 for U9b), O-12 (7 GiB floor unchanged), O-13 (1)-(8), O-14 and its precision (lock-key `_`/`!` print, backtick and `|` refused).
+- Carried to U9b: reviewer N-1, N-2 (architect: un-passed-image policy entries skipped silently; `always` field types unchecked), N-6, N-8, R1-N1..N3; security I-1, I-2, I-4 (closed by item 8: name == hash on shipped bytes), I-5 (`notices` reads past the cap if the file grows), I-6 (URL column relies on the lock host check); the O-10 removal test row.
+- Plan pointers: requirements.md l.4391-4727 (U9 precision, U9-1..U9-15); design-notes.md l.4237-4890 ("N9 amendment, U9"); ADR-KE-016 "Amended U9".
+- Next: U9b: `bundle.sh --sources` mandatory, `offline_check.sh` flags, NOTICE/libffi (security confirms the libffi text source first, R7), README and header, the real sample in `verify full`, the Q79 full-set bundle, A34. Write `u9/expected.md` before any real run.
 
-## 2026-10-29 — reviewer (U8c O-2 review: APPROVED)
-- Diff read: policy is exactly one host removed; tests add 5 rows, remove none, fakes retargeted equivalently; design notes additions only; full PASS 1201 OK with Temurin hop github.com -> release-assets.
-- No blocking findings; nits N-1 (redundant narrowed-lock test), N-2 ("nine hosts" message), N-3 (stage only U8c files) in `u8/u8c-o2-review.md`. Security review (U8-10) still required before commit.
+## 2026-10-29 — documenter (U8c + U9a handoff closed)
+- Moved the U8c part 1/2, analyst/architect U9 and U9a sections (tester through security rework 1) verbatim to archive/platform-sbom-part15.md; replaced them with the two blocks above.
+- CHANGELOG gains one U9a bullet; "ten hosts" corrected to nine (U8c part 1).
 
-## 2026-10-29 — security (U8c O-2: `hosts` change, U8-10)
-- PASS, no critical/high/medium. Narrowing only (10 -> 9, nothing added). `hosts` = the lock's 7 file-URL hosts plus the two observed redirect targets (codeload, release-assets). The dropped host appears 0 times in the sample, full and U8c runs. KIND_HOSTS unchanged. A refused hop names only the host, so no signed query is printed (probed with X-Amz-Signature, case and trailing-dot variants). The policy parses through sbom_check.
-- Evidence: `u8/u8c-o2-security.md`, `u8/u8c-o2-security-probes.txt`. Info I-1 (one tautological test, for the reviewer), I-2 (a future Temurin redirect change fails closed and needs a reviewed re-add), I-3 (pre-existing: the policy has no eol=lf attribute).
+## 2026-10-29 — analyst (Q81 raised)
+- Q81 (open-questions.md l.1173-1305, status l.312), for the human: the sample fetch's dependence on gitlab.alpinelinux.org. Checked: no apk lock key avoids GitLab (every APKBUILD is there), so option 2 does not remove it. Alpine's 2026-10-28 post (CVE-2026-97229) says GitLab is closed to the public, with no reopening date.
+- Recommended: option 3, distfiles-only apk files in the verify/CI sample (U9b-adjacent or U10). It also needs a partial-key rule in U9-5 and U9a's `source_index`. Counter-argument recorded: CI loses its early warning on the GitLab API raw route.
+- Next: the human rules before U11's CI runs; until then U9b's and the orchestrator's `verify full` runs stay red whenever GitLab is down (Q61).

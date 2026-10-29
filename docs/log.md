@@ -817,3 +817,22 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-29T15:24:59Z | security | platform-sbom | U8c O-2 security review of the hosts change | security: pass
 2026-10-29T15:44:26Z | orchestrator | platform-sbom | U8c O-2: review APPROVED, security PASS, orchestrator verify full PASS 1111 s; commit approved | smoke: pass
 2026-10-29T15:44:41Z | developer | platform-sbom | U8c O-2 committed 23bf33e | commit: pass
+2026-10-29T16:01:58Z | orchestrator | platform-sbom | pushed 3203054..5cf025c (U8a, U8b, U8c part 1) to origin agent/platform-sbom on the human's approval; PR #15 CI run pending | push: approved
+2026-10-29T16:11:03Z | analyst | platform-sbom | U9 precision criteria | plan: pending architect
+2026-10-29T16:15:26Z | architect | platform-sbom | N4 amendment U9 design | plan: pending orchestrator
+2026-10-29T16:16:28Z | orchestrator | platform-sbom | U9 plan gate PASS: Q78-Q80 and O-9..O-12 ruled | plan: pass
+2026-10-29T16:17:51Z | analyst | platform-sbom | Q78-Q80 and O-9..O-12 recorded; U9-10/11/15 amended | plan: pass
+2026-10-29T16:36:43Z | security | platform-sbom | U8c part 2: third Neo4j fetch recorded from CI run 40907497118 | security: pass
+2026-10-29T16:46:16Z | tester | platform-sbom | U9a RED: sources-check, index, notices functions and subcommands; install pins | tdd: red
+2026-10-29T17:06:16Z | developer | platform-sbom | U9a GREEN: sources-check, index, notices | tdd: green
+2026-10-29T17:14:53Z | reviewer | platform-sbom | U9a review | review: changes requested
+2026-10-29T17:15:10Z | security | platform-sbom | U9a security audit | security: pass
+2026-10-29T17:50:55Z | tester | platform-sbom | U9a rework 1 RED | tdd: red
+2026-10-29T17:53:13Z | tester | platform-sbom | U9a rework 1 RED: O-14 precision key-column control | tdd: red
+2026-10-29T18:22:08Z | developer | platform-sbom | U9a rework 1 GREEN | tdd: green
+2026-10-29T18:24:49Z | reviewer | platform-sbom | U9a review, rework 1 | review: approved
+2026-10-29T18:24:55Z | security | platform-sbom | U9a security re-audit, rework 1 | security: pass
+2026-10-29T18:26:12Z | documenter | platform-sbom | U8c + U9a handoff closed (part15); CHANGELOG U9a bullet | docs: pass
+2026-10-29T18:43:31Z | orchestrator | platform-sbom | U9a orchestrator verify full attempt 1: unit 1270 OK, red only at the sample fetch (gitlab.alpinelinux.org unreachable again, third outage) | smoke: blocked (upstream)
+2026-10-29T18:47:52Z | analyst | platform-sbom | Q81 raised: sample fetch dependence on gitlab.alpinelinux.org | plan: pending human
+2026-10-29T19:41:12Z | orchestrator | platform-sbom | U8c part 2 + U9a: orchestrator verify full PASS 1156 s with the real sample fetch (GitLab window 19:20Z); diff read; both commits approved | smoke: pass

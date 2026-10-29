@@ -167,6 +167,16 @@ def _pad_manifest(path: Path, size: int) -> None:
     path.write_bytes(out)
 
 
+# U9a (design-notes "N9 amendment, U9" item 10; U9-11): the bundle carries an
+# SBOM and the source archive; the installers check them by the manifest rules
+# they already have (no installer change, ADR-KE-016 point 6).
+FIXTURE_SBOM = "app/sboms/ke-app.spdx.json"
+FIXTURE_INDEX = "app/sources/index.json"
+SOURCE_BLOBS = (b"fixture source file one\n", b"fixture source file two\n")
+SOURCE_SHAS = tuple(hashlib.sha256(b).hexdigest() for b in SOURCE_BLOBS)
+UNLISTED_BESIDE = b"unlisted beside a shipped file\n"
+
+
 def _make_fixture(root: Path, entries: list[dict[str, str]] | None = None, arch: str = "amd64") -> None:
     root.mkdir(parents=True)
     for name in ("install.sh", "install.ps1"):
@@ -184,6 +194,12 @@ def _make_fixture(root: Path, entries: list[dict[str, str]] | None = None, arch:
     (root / "bundle.json").write_text(_bundle_json(FIXTURE_ENTRIES if entries is None else entries,
                                                    arch=arch),
                                       encoding="utf-8", newline="\n")
+    (root / "app" / "sboms").mkdir()
+    (root / FIXTURE_SBOM).write_text('{"spdxVersion": "SPDX-2.3"}\n', encoding="utf-8", newline="\n")
+    (root / "app" / "sources" / "files").mkdir(parents=True)
+    (root / FIXTURE_INDEX).write_text('{"format": 1}\n', encoding="utf-8", newline="\n")
+    for sha, data in zip(SOURCE_SHAS, SOURCE_BLOBS):
+        (root / "app" / "sources" / "files" / sha).write_bytes(data)
     _write_manifest(root)
 
 
@@ -361,6 +377,7 @@ class _InstallBase:
             # Architecture §2.5: a segment ending in a space (Windows strips it).
             "trailing_space": (listed_genuine("app/notes "), "app/notes", RULE_TRAILING_SPACE),
         }
+        cases.update(self._source_tamper_cases())
         if os.name == "nt":  # these names cannot be created on Windows; the gates image is Linux
             for k in [k for k in cases if k.startswith(("reserved_name", "trailing_dot", "trailing_space", "colon"))]:
                 del cases[k]
@@ -368,6 +385,75 @@ class _InstallBase:
             # Review N1: a fifo is refused by its own rule, in ps1 as in sh.
             cases["unlisted_fifo"] = (fifo, "app/pipe", RULE_FIFO)
         return cases
+
+    SOURCE_TAMPER_TAGS = ("source_index", "source_file", "sbom")
+    SOURCE_TAMPER_FORMS = ("deleted", "byte_flipped", "unlisted_beside", "listed_symlink")
+
+    def _source_tamper_cases(self) -> dict[str, tuple[Any, str | None, str | None]]:
+        """U9-11, design item 10: for `app/sources/index.json`, one
+        `app/sources/files/<sha256>` and one `app/sboms/<name>.spdx.json`:
+        deleted, one byte flipped, an unlisted file beside it (a 64-hex name
+        in files/), a listed symlink in its place (to the same bytes, so only
+        the link rule can refuse it)."""
+        def deleted(rel: str) -> Any:
+            return lambda b: (b / rel).unlink()
+
+        def flipped(rel: str) -> Any:
+            def apply(b: Path) -> None:
+                data = bytearray((b / rel).read_bytes())
+                data[0] ^= 0x01
+                (b / rel).write_bytes(bytes(data))
+            return apply
+
+        def beside(rel: str) -> Any:
+            return lambda b: (b / rel).write_bytes(UNLISTED_BESIDE)
+
+        def linked(rel: str) -> Any:
+            def apply(b: Path) -> None:
+                copy = self._outside_dir() / rel.replace("/", "_")
+                copy.write_bytes((b / rel).read_bytes())
+                (b / rel).unlink()
+                os.symlink(str(copy), b / rel)
+            return apply
+
+        paths = {"source_index": (FIXTURE_INDEX, "app/sources/extra.json"),
+                 "source_file": (f"app/sources/files/{SOURCE_SHAS[0]}",
+                                 f"app/sources/files/{hashlib.sha256(UNLISTED_BESIDE).hexdigest()}"),
+                 "sbom": (FIXTURE_SBOM, "app/sboms/extra.spdx.json")}
+        cases: dict[str, tuple[Any, str | None, str | None]] = {}
+        for tag in self.SOURCE_TAMPER_TAGS:
+            rel, extra = paths[tag]
+            cases[f"{tag}_deleted"] = (deleted(rel), rel, RULE_MISSING)
+            cases[f"{tag}_byte_flipped"] = (flipped(rel), rel, RULE_HASH)
+            cases[f"{tag}_unlisted_beside"] = (beside(extra), extra, RULE_UNLISTED)
+            cases[f"{tag}_listed_symlink"] = (linked(rel), rel, RULE_LINK)
+        return cases
+
+    def test_install_refuses_tampered_or_missing_source_file(self):
+        """PSC-15/24, U9-11: every source and SBOM tamper form is a case of
+        test_bundle_manifest_rejects_tamper and
+        test_install_loads_nothing_when_manifest_fails (both run them); the
+        control installs and the target holds sources/index.json and each
+        sources/files/<sha256> with the manifest's sha256."""
+        t: Any = self
+        cases = self._tamper_cases()
+        for tag in self.SOURCE_TAMPER_TAGS:
+            for form in self.SOURCE_TAMPER_FORMS:
+                t.assertIn(f"{tag}_{form}", cases, "a source/SBOM tamper form is missing from _tamper_cases")
+        bundle, target = self._fresh()
+        result, _, _ = self._install(bundle, target)
+        t.assertEqual(result.returncode, 0, self._out(result))
+        listed = {}
+        for line in (bundle / "MANIFEST.sha256").read_text(encoding="utf-8").splitlines():
+            digest, _, rel = line.partition("  ")
+            listed[rel] = digest
+        for rel in (FIXTURE_INDEX, FIXTURE_SBOM, *(f"app/sources/files/{s}" for s in SOURCE_SHAS)):
+            with t.subTest(path=rel):
+                t.assertIn(rel, listed, "the fixture manifest lists it")
+                installed = target / rel[len("app/"):]
+                t.assertTrue(installed.is_file() and not installed.is_symlink(), f"{installed} is not installed")
+                t.assertEqual(_sha256(installed), listed[rel], "installed bytes differ from the manifest's")
+        t.assertEqual(sorted(p.name for p in (target / "sources" / "files").iterdir()), sorted(SOURCE_SHAS))
 
     # ---- PS-3.1 Tamper cases ------------------------------------------------
 

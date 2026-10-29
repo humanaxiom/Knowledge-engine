@@ -6805,3 +6805,42 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
   - *Units:* U8a (the client), U8b (the service, the script and the
     wiring; A34), U8c (the third Neo4j fetch from CI, as evidence). The
     CLAUDE.md sentence waits for Q73.
+- **Amended U9 (2026-10-29, architect; design-notes "N9 amendment, U9").**
+  Proposed; Q78-Q80 and O-9..O-12 wait for the orchestrator. Points 3, 5
+  and 6 are built as follows; the rest stands.
+  - *Command:* `bundle.sh --out <dir>-<arch> --sources <dir>
+    [--sources-set full|sample]`. `--sources` is required (Q78). Only
+    `offline_check.sh` passes `sample` (Q63).
+  - *Before any write:* `sbom_check.py sources-check`, run in `ke-app` as
+    `finish` is (no network, read-only, `:ro` mounts), refuses a
+    directory whose `fetch.json` is absent, a link, not canonical, or of
+    another set, arch or lock SHA-256; whose `components` differ from
+    `fetch_plan`; or whose listing holds anything else (a link, an extra
+    entry, a missing file, a wrong size). It re-hashes every file.
+  - *Ship:* each file is copied, never linked, to
+    `app/sources/files/<sha256>`; layout flat, as fetched (O-3). Per-key
+    directories would add 160 files and 161 MB and break the path rule.
+  - *Index:* `sbom_check.py index` validates every SBOM first, then runs
+    `lock_problems` on this bundle's SBOMs (coverage both ways), the
+    `always` and `exempt` problems (an entry that matches more than one
+    package included) and the copied listing. It prints
+    `app/sources/index.json`: lock-key components `shipped` or (sample
+    only) `not-shipped`, `exempt` components with "always, cleared by
+    exemption <reviewed>" where both match, and `unparsed`,
+    `unidentified` and `unlicensed`.
+  - *Notices:* `notices` prints the "Source code" section from the index.
+    It prints lock keys, URLs, image names and policy strings only, and
+    refuses any `|`, backtick, angle bracket, backslash or control
+    character rather than escaping it. `NOTICE.md`,
+    `THIRD_PARTY_NOTICES.md`, `LICENSE` and `licenses/` are also copied
+    under `app/`. `NOTICE.md` gains the I-3 path sentence and libffi
+    (jna's licence text, fetched and hashed).
+  - *Manifest:* refuses a source file whose bytes do not match its name,
+    and a manifest over 1 MiB.
+  - *Failure:* after the first write, any failure removes the run's output
+    and the record (O-10).
+  - *Installers and `bundle.json`:* unchanged. Tamper tests pin the new
+    paths.
+  - *Units:* U9a, the checker functions, the subcommands and the install
+    pins (`fast`); U9b, the wiring, `NOTICE.md`, the real sample and a
+    recorded full-set bundle (Q79), with A34 (O-11).

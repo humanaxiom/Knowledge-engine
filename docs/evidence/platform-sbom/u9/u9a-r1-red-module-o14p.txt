@@ -1,0 +1,794 @@
+# O-14 precision re-run (tester, 2026-10-29): only tests/test_source_index.py, in the gates image (ke-gates:wt-33a132fbfdd7, network none):
+#   MSYS_NO_PATHCONV=1 KE_IMAGE_TAG=wt-33a132fbfdd7 COMPOSE_PROJECT_NAME=ke-tester-u9a-r1-mod COMPOSE_FILE=docker-compose.yml \
+#     docker compose --env-file .env.example --profile gates run --rm --pull never gates uv run --locked python -m unittest -v tests.test_source_index   -> exit 1
+ Container ke-tester-u9a-r1-mod-gates-run-54437c5b33d4 Creating 
+ Container ke-tester-u9a-r1-mod-gates-run-54437c5b33d4 Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.76ms
+Installed 1 package in 1ms
+test_classify_document_is_unchanged (tests.test_source_index.ExemptMultiMatchTest.test_classify_document_is_unchanged) ... ok
+test_control_the_committed_policy_matches_one_package_per_entry (tests.test_source_index.ExemptMultiMatchTest.test_control_the_committed_policy_matches_one_package_per_entry) ... ok
+test_exempt_entry_matching_more_than_one_package_is_a_problem (tests.test_source_index.ExemptMultiMatchTest.test_exempt_entry_matching_more_than_one_package_is_a_problem) ... ok
+test_a_deeply_nested_record_is_a_problem (tests.test_source_index.FetchRecordProblemsTest.test_a_deeply_nested_record_is_a_problem) ... 
+  test_a_deeply_nested_record_is_a_problem (tests.test_source_index.FetchRecordProblemsTest.test_a_deeply_nested_record_is_a_problem) (depth=1000) ... FAIL
+  test_a_deeply_nested_record_is_a_problem (tests.test_source_index.FetchRecordProblemsTest.test_a_deeply_nested_record_is_a_problem) (depth=2000) ... FAIL
+  test_a_deeply_nested_record_is_a_problem (tests.test_source_index.FetchRecordProblemsTest.test_a_deeply_nested_record_is_a_problem) (depth=5000) ... FAIL
+test_a_lock_failing_lock_entry_problems_is_named (tests.test_source_index.FetchRecordProblemsTest.test_a_lock_failing_lock_entry_problems_is_named) ... ok
+test_a_non_object_policy_is_a_problem (tests.test_source_index.FetchRecordProblemsTest.test_a_non_object_policy_is_a_problem) ... 
+  test_a_non_object_policy_is_a_problem (tests.test_source_index.FetchRecordProblemsTest.test_a_non_object_policy_is_a_problem) (case='a list') ... FAIL
+  test_a_non_object_policy_is_a_problem (tests.test_source_index.FetchRecordProblemsTest.test_a_non_object_policy_is_a_problem) (case='null') ... FAIL
+  test_a_non_object_policy_is_a_problem (tests.test_source_index.FetchRecordProblemsTest.test_a_non_object_policy_is_a_problem) (case='a string') ... FAIL
+  test_a_non_object_policy_is_a_problem (tests.test_source_index.FetchRecordProblemsTest.test_a_non_object_policy_is_a_problem) (case='a number') ... FAIL
+test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.FetchRecordProblemsTest.test_bundle_refuses_a_mismatched_fetch_record) ... ok
+test_control_the_fetch_clients_record_passes (tests.test_source_index.FetchRecordProblemsTest.test_control_the_fetch_clients_record_passes) ... ok
+test_record_text_in_a_refusal_is_escaped (tests.test_source_index.FetchRecordProblemsTest.test_record_text_in_a_refusal_is_escaped) ... ok
+test_the_first_failing_stage_stops_the_run (tests.test_source_index.FetchRecordProblemsTest.test_the_first_failing_stage_stops_the_run) ... ok
+test_wrong_types_are_problems_never_exceptions (tests.test_source_index.FetchRecordProblemsTest.test_wrong_types_are_problems_never_exceptions) ... ok
+test_index_cli_a_failed_listing_is_a_refusal (tests.test_source_index.IndexCliTest.test_index_cli_a_failed_listing_is_a_refusal) ... ok
+test_index_cli_exempt_lines_carry_the_index_prefix (tests.test_source_index.IndexCliTest.test_index_cli_exempt_lines_carry_the_index_prefix) ... ok
+test_index_cli_exit_2_on_a_bad_argument (tests.test_source_index.IndexCliTest.test_index_cli_exit_2_on_a_bad_argument) ... ok
+test_index_cli_exit_2_on_a_malformed_git_sha (tests.test_source_index.IndexCliTest.test_index_cli_exit_2_on_a_malformed_git_sha) ... ok
+test_index_cli_never_shows_a_traceback (tests.test_source_index.IndexCliTest.test_index_cli_never_shows_a_traceback) ... ok
+test_index_cli_prints_always_cleared_by_exemption (tests.test_source_index.IndexCliTest.test_index_cli_prints_always_cleared_by_exemption) ... ok
+test_index_cli_prints_the_canonical_index (tests.test_source_index.IndexCliTest.test_index_cli_prints_the_canonical_index) ... ok
+test_index_cli_refuses (tests.test_source_index.IndexCliTest.test_index_cli_refuses) ... ok
+test_a_missing_or_resized_planned_file_is_named (tests.test_source_index.ListingProblemsTest.test_a_missing_or_resized_planned_file_is_named) ... ok
+test_bundle_refuses_a_bad_sources_dir (tests.test_source_index.ListingProblemsTest.test_bundle_refuses_a_bad_sources_dir) ... ok
+test_control_exactly_the_planned_files (tests.test_source_index.ListingProblemsTest.test_control_exactly_the_planned_files) ... ok
+test_notices_exit_2_on_a_bad_argument (tests.test_source_index.NoticesCliTest.test_notices_exit_2_on_a_bad_argument) ... ok
+test_notices_never_shows_a_traceback (tests.test_source_index.NoticesCliTest.test_notices_never_shows_a_traceback) ... ok
+test_notices_prints_the_section (tests.test_source_index.NoticesCliTest.test_notices_prints_the_section) ... ok
+test_notices_refuses_and_prints_no_section (tests.test_source_index.NoticesCliTest.test_notices_refuses_and_prints_no_section) ... ok
+test_notices_refuses_a_device_index (tests.test_source_index.NoticesIndexReadTest.test_notices_refuses_a_device_index) ... FAIL
+test_notices_refuses_a_fifo_index (tests.test_source_index.NoticesIndexReadTest.test_notices_refuses_a_fifo_index) ... FAIL
+test_notices_refuses_an_index_over_the_size_cap (tests.test_source_index.NoticesIndexReadTest.test_notices_refuses_an_index_over_the_size_cap) ... 
+  test_notices_refuses_an_index_over_the_size_cap (tests.test_source_index.NoticesIndexReadTest.test_notices_refuses_an_index_over_the_size_cap) (case='one byte over 16 MiB') ... FAIL
+  test_notices_refuses_an_index_over_the_size_cap (tests.test_source_index.NoticesIndexReadTest.test_notices_refuses_an_index_over_the_size_cap) (case='a sparse 1 GiB file: refused by its size, never read') ... FAIL
+test_every_gpl_package_has_source (tests.test_source_index.SourceIndexGateTest.test_every_gpl_package_has_source) ... ok
+test_exempt_components_sorted_by_image_then_package (tests.test_source_index.SourceIndexGateTest.test_exempt_components_sorted_by_image_then_package) ... ok
+test_index_coverage_exempt_and_listing_stages_stop_in_order (tests.test_source_index.SourceIndexGateTest.test_index_coverage_exempt_and_listing_stages_stop_in_order) ... ok
+test_index_fails_on_always_and_exempt_problems (tests.test_source_index.SourceIndexGateTest.test_index_fails_on_always_and_exempt_problems) ... ok
+test_index_fails_on_coverage_gaps_both_ways (tests.test_source_index.SourceIndexGateTest.test_index_fails_on_coverage_gaps_both_ways) ... ok
+test_index_lists_always_cleared_by_exemption (tests.test_source_index.SourceIndexGateTest.test_index_lists_always_cleared_by_exemption) ... ok
+test_index_names_files_when_the_listing_cannot_be_read (tests.test_source_index.SourceIndexGateTest.test_index_names_files_when_the_listing_cannot_be_read) ... FAIL
+test_index_refuses_a_multi_match_exempt_entry (tests.test_source_index.SourceIndexGateTest.test_index_refuses_a_multi_match_exempt_entry) ... ok
+test_index_validates_first (tests.test_source_index.SourceIndexGateTest.test_index_validates_first) ... ok
+test_a_non_string_licence_is_null (tests.test_source_index.SourceIndexSchemaTest.test_a_non_string_licence_is_null) ... ok
+test_full_bundle_refuses_not_shipped (tests.test_source_index.SourceIndexSchemaTest.test_full_bundle_refuses_not_shipped) ... ok
+test_index_is_byte_identical_across_runs (tests.test_source_index.SourceIndexSchemaTest.test_index_is_byte_identical_across_runs) ... ok
+test_index_never_raises_on_hostile_input (tests.test_source_index.SourceIndexSchemaTest.test_index_never_raises_on_hostile_input) ... ok
+test_index_refuses_a_bad_files_listing (tests.test_source_index.SourceIndexSchemaTest.test_index_refuses_a_bad_files_listing) ... ok
+test_index_schema_and_order (tests.test_source_index.SourceIndexSchemaTest.test_index_schema_and_order) ... ok
+test_sample_bundle_ships_exactly_the_sample (tests.test_source_index.SourceIndexSchemaTest.test_sample_bundle_ships_exactly_the_sample) ... ok
+test_source_file_names_pass_the_manifest_rule (tests.test_source_index.SourceIndexSchemaTest.test_source_file_names_pass_the_manifest_rule) ... ok
+test_generator_text_never_reaches_the_section (tests.test_source_index.SourceSectionTest.test_generator_text_never_reaches_the_section) ... ok
+test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) ... 
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an image with '['") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an image with ']'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an image with '('") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an image with ')'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an image with '!'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an image with '*'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an image with '_'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an image with '#'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt package with '['") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt package with ']'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt package with '('") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt package with ')'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt package with '!'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt package with '*'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt package with '_'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt package with '#'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt image with '['") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt image with ']'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt image with '('") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt image with ')'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt image with '!'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt image with '*'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt image with '_'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt image with '#'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a reviewed value with '['") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a reviewed value with ']'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a reviewed value with '('") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a reviewed value with ')'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a reviewed value with '!'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a reviewed value with '*'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a reviewed value with '_'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a reviewed value with '#'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a listing with '['") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a listing with ']'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a listing with '('") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a listing with ')'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a listing with '!'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a listing with '*'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a listing with '_'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a listing with '#'") ... FAIL
+  test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case='the probe: a Markdown link in reviewed') ... FAIL
+test_notice_section_refuses_rather_than_escapes (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_rather_than_escapes) ... ok
+test_notice_source_code_heading_matches_generated (tests.test_source_index.SourceSectionTest.test_notice_source_code_heading_matches_generated) ... ok
+test_notices_source_code_section_rows (tests.test_source_index.SourceSectionTest.test_notices_source_code_section_rows) ... ok
+test_sample_banner_is_the_first_line_after_the_heading (tests.test_source_index.SourceSectionTest.test_sample_banner_is_the_first_line_after_the_heading) ... ok
+test_sample_bundle_notices_say_do_not_distribute (tests.test_source_index.SourceSectionTest.test_sample_bundle_notices_say_do_not_distribute) ... ok
+test_a_failed_listing_is_a_refusal_never_an_empty_listing (tests.test_source_index.SourcesCheckCliTest.test_a_failed_listing_is_a_refusal_never_an_empty_listing) ... ok
+test_bundle_refuses_a_bad_sources_dir (tests.test_source_index.SourcesCheckCliTest.test_bundle_refuses_a_bad_sources_dir) ... ok
+test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.SourcesCheckCliTest.test_bundle_refuses_a_mismatched_fetch_record) ... ok
+test_oversize_record_refusal_reads_as_ruled (tests.test_source_index.SourcesCheckCliTest.test_oversize_record_refusal_reads_as_ruled) ... ok
+test_record_text_in_a_cli_refusal_is_escaped (tests.test_source_index.SourcesCheckCliTest.test_record_text_in_a_cli_refusal_is_escaped) ... ok
+test_sources_check_exit_2_on_a_bad_argument (tests.test_source_index.SourcesCheckCliTest.test_sources_check_exit_2_on_a_bad_argument) ... ok
+test_sources_check_never_shows_a_traceback (tests.test_source_index.SourcesCheckCliTest.test_sources_check_never_shows_a_traceback) ... ok
+test_sources_check_never_writes_under_dir (tests.test_source_index.SourcesCheckCliTest.test_sources_check_never_writes_under_dir) ... ok
+test_sources_check_prints_the_sorted_sha256_list (tests.test_source_index.SourcesCheckCliTest.test_sources_check_prints_the_sorted_sha256_list) ... ok
+test_control_the_decoy_driver_passes_an_untouched_dir (tests.test_source_index.SwappedAfterListingTest.test_control_the_decoy_driver_passes_an_untouched_dir) ... ok
+test_fetch_record_swapped_for_a_fifo_is_refused (tests.test_source_index.SwappedAfterListingTest.test_fetch_record_swapped_for_a_fifo_is_refused) ... FAIL
+test_fetch_record_swapped_for_a_link_is_refused (tests.test_source_index.SwappedAfterListingTest.test_fetch_record_swapped_for_a_link_is_refused) ... FAIL
+test_planned_file_swapped_for_a_fifo_is_refused (tests.test_source_index.SwappedAfterListingTest.test_planned_file_swapped_for_a_fifo_is_refused) ... FAIL
+test_planned_file_swapped_for_a_link_is_refused (tests.test_source_index.SwappedAfterListingTest.test_planned_file_swapped_for_a_link_is_refused) ... ok
+
+======================================================================
+FAIL: test_a_deeply_nested_record_is_a_problem (tests.test_source_index.FetchRecordProblemsTest.test_a_deeply_nested_record_is_a_problem) (depth=1000)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 440, in test_a_deeply_nested_record_is_a_problem
+    got = self.problems(text)
+          ^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_source_index.py", line 287, in problems
+    got = self.check(record, lock if lock is not None else self.b.text(), self.pol, arch, which)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/scripts/sbom_check.py", line 2007, in fetch_record_problems
+    if lock_text(rec) != record_text:
+       ^^^^^^^^^^^^^^
+  File "/work/scripts/sbom_check.py", line 1133, in lock_text
+    return json.dumps(lock, indent=1, sort_keys=True, ensure_ascii=True) + "\n"
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/json/__init__.py", line 238, in dumps
+    **kw).encode(obj)
+          ^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/json/encoder.py", line 202, in encode
+    chunks = list(chunks)
+             ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/json/encoder.py", line 432, in _iterencode
+    yield from _iterencode_dict(o, _current_indent_level)
+  File "/usr/local/lib/python3.12/json/encoder.py", line 406, in _iterencode_dict
+    yield from chunks
+  File "/usr/local/lib/python3.12/json/encoder.py", line 326, in _iterencode_list
+    yield from chunks
+  File "/usr/local/lib/python3.12/json/encoder.py", line 326, in _iterencode_list
+    yield from chunks
+  File "/usr/local/lib/python3.12/json/encoder.py", line 326, in _iterencode_list
+    yield from chunks
+  [Previous line repeated 973 more times]
+  File "/usr/local/lib/python3.12/json/encoder.py", line 321, in _iterencode_list
+    chunks = _iterencode_list(value, _current_indent_level)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RecursionError: maximum recursion depth exceeded
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 442, in test_a_deeply_nested_record_is_a_problem
+    self.fail(f"{depth} deep: RecursionError escaped: {exc}")
+AssertionError: 1000 deep: RecursionError escaped: maximum recursion depth exceeded
+
+======================================================================
+FAIL: test_a_deeply_nested_record_is_a_problem (tests.test_source_index.FetchRecordProblemsTest.test_a_deeply_nested_record_is_a_problem) (depth=2000)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 440, in test_a_deeply_nested_record_is_a_problem
+    got = self.problems(text)
+          ^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_source_index.py", line 287, in problems
+    got = self.check(record, lock if lock is not None else self.b.text(), self.pol, arch, which)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/scripts/sbom_check.py", line 2007, in fetch_record_problems
+    if lock_text(rec) != record_text:
+       ^^^^^^^^^^^^^^
+  File "/work/scripts/sbom_check.py", line 1133, in lock_text
+    return json.dumps(lock, indent=1, sort_keys=True, ensure_ascii=True) + "\n"
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/json/__init__.py", line 238, in dumps
+    **kw).encode(obj)
+          ^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/json/encoder.py", line 202, in encode
+    chunks = list(chunks)
+             ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/json/encoder.py", line 432, in _iterencode
+    yield from _iterencode_dict(o, _current_indent_level)
+  File "/usr/local/lib/python3.12/json/encoder.py", line 406, in _iterencode_dict
+    yield from chunks
+  File "/usr/local/lib/python3.12/json/encoder.py", line 326, in _iterencode_list
+    yield from chunks
+  File "/usr/local/lib/python3.12/json/encoder.py", line 326, in _iterencode_list
+    yield from chunks
+  File "/usr/local/lib/python3.12/json/encoder.py", line 326, in _iterencode_list
+    yield from chunks
+  [Previous line repeated 973 more times]
+  File "/usr/local/lib/python3.12/json/encoder.py", line 321, in _iterencode_list
+    chunks = _iterencode_list(value, _current_indent_level)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RecursionError: maximum recursion depth exceeded
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 442, in test_a_deeply_nested_record_is_a_problem
+    self.fail(f"{depth} deep: RecursionError escaped: {exc}")
+AssertionError: 2000 deep: RecursionError escaped: maximum recursion depth exceeded
+
+======================================================================
+FAIL: test_a_deeply_nested_record_is_a_problem (tests.test_source_index.FetchRecordProblemsTest.test_a_deeply_nested_record_is_a_problem) (depth=5000)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 440, in test_a_deeply_nested_record_is_a_problem
+    got = self.problems(text)
+          ^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_source_index.py", line 287, in problems
+    got = self.check(record, lock if lock is not None else self.b.text(), self.pol, arch, which)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/scripts/sbom_check.py", line 2007, in fetch_record_problems
+    if lock_text(rec) != record_text:
+       ^^^^^^^^^^^^^^
+  File "/work/scripts/sbom_check.py", line 1133, in lock_text
+    return json.dumps(lock, indent=1, sort_keys=True, ensure_ascii=True) + "\n"
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/json/__init__.py", line 238, in dumps
+    **kw).encode(obj)
+          ^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/json/encoder.py", line 202, in encode
+    chunks = list(chunks)
+             ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/json/encoder.py", line 432, in _iterencode
+    yield from _iterencode_dict(o, _current_indent_level)
+  File "/usr/local/lib/python3.12/json/encoder.py", line 406, in _iterencode_dict
+    yield from chunks
+  File "/usr/local/lib/python3.12/json/encoder.py", line 326, in _iterencode_list
+    yield from chunks
+  File "/usr/local/lib/python3.12/json/encoder.py", line 326, in _iterencode_list
+    yield from chunks
+  File "/usr/local/lib/python3.12/json/encoder.py", line 326, in _iterencode_list
+    yield from chunks
+  [Previous line repeated 973 more times]
+  File "/usr/local/lib/python3.12/json/encoder.py", line 321, in _iterencode_list
+    chunks = _iterencode_list(value, _current_indent_level)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RecursionError: maximum recursion depth exceeded
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 442, in test_a_deeply_nested_record_is_a_problem
+    self.fail(f"{depth} deep: RecursionError escaped: {exc}")
+AssertionError: 5000 deep: RecursionError escaped: maximum recursion depth exceeded
+
+======================================================================
+FAIL: test_a_non_object_policy_is_a_problem (tests.test_source_index.FetchRecordProblemsTest.test_a_non_object_policy_is_a_problem) (case='a list')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 420, in test_a_non_object_policy_is_a_problem
+    got = self.check(rec, self.b.text(), pol, ARCH, "full")
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/scripts/sbom_check.py", line 2026, in fetch_record_problems
+    entry_problems = lock_entry_problems(lock_src, policy)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/scripts/sbom_check.py", line 1660, in lock_entry_problems
+    return _entry_stage(lock, policy, today)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/scripts/sbom_check.py", line 1614, in _entry_stage
+    hosts = {h for h in policy.get("hosts") or [] if isinstance(h, str)}
+                        ^^^^^^^^^^
+AttributeError: 'list' object has no attribute 'get'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 422, in test_a_non_object_policy_is_a_problem
+    self.fail(f"{case}: raised {type(exc).__name__}: {exc}")
+AssertionError: a list: raised AttributeError: 'list' object has no attribute 'get'
+
+======================================================================
+FAIL: test_a_non_object_policy_is_a_problem (tests.test_source_index.FetchRecordProblemsTest.test_a_non_object_policy_is_a_problem) (case='null')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 420, in test_a_non_object_policy_is_a_problem
+    got = self.check(rec, self.b.text(), pol, ARCH, "full")
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/scripts/sbom_check.py", line 2026, in fetch_record_problems
+    entry_problems = lock_entry_problems(lock_src, policy)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/scripts/sbom_check.py", line 1660, in lock_entry_problems
+    return _entry_stage(lock, policy, today)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/scripts/sbom_check.py", line 1614, in _entry_stage
+    hosts = {h for h in policy.get("hosts") or [] if isinstance(h, str)}
+                        ^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'get'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 422, in test_a_non_object_policy_is_a_problem
+    self.fail(f"{case}: raised {type(exc).__name__}: {exc}")
+AssertionError: null: raised AttributeError: 'NoneType' object has no attribute 'get'
+
+======================================================================
+FAIL: test_a_non_object_policy_is_a_problem (tests.test_source_index.FetchRecordProblemsTest.test_a_non_object_policy_is_a_problem) (case='a string')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 420, in test_a_non_object_policy_is_a_problem
+    got = self.check(rec, self.b.text(), pol, ARCH, "full")
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/scripts/sbom_check.py", line 2026, in fetch_record_problems
+    entry_problems = lock_entry_problems(lock_src, policy)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/scripts/sbom_check.py", line 1660, in lock_entry_problems
+    return _entry_stage(lock, policy, today)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/scripts/sbom_check.py", line 1614, in _entry_stage
+    hosts = {h for h in policy.get("hosts") or [] if isinstance(h, str)}
+                        ^^^^^^^^^^
+AttributeError: 'str' object has no attribute 'get'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 422, in test_a_non_object_policy_is_a_problem
+    self.fail(f"{case}: raised {type(exc).__name__}: {exc}")
+AssertionError: a string: raised AttributeError: 'str' object has no attribute 'get'
+
+======================================================================
+FAIL: test_a_non_object_policy_is_a_problem (tests.test_source_index.FetchRecordProblemsTest.test_a_non_object_policy_is_a_problem) (case='a number')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 420, in test_a_non_object_policy_is_a_problem
+    got = self.check(rec, self.b.text(), pol, ARCH, "full")
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/scripts/sbom_check.py", line 2026, in fetch_record_problems
+    entry_problems = lock_entry_problems(lock_src, policy)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/scripts/sbom_check.py", line 1660, in lock_entry_problems
+    return _entry_stage(lock, policy, today)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/scripts/sbom_check.py", line 1614, in _entry_stage
+    hosts = {h for h in policy.get("hosts") or [] if isinstance(h, str)}
+                        ^^^^^^^^^^
+AttributeError: 'int' object has no attribute 'get'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 422, in test_a_non_object_policy_is_a_problem
+    self.fail(f"{case}: raised {type(exc).__name__}: {exc}")
+AssertionError: a number: raised AttributeError: 'int' object has no attribute 'get'
+
+======================================================================
+FAIL: test_notices_refuses_a_device_index (tests.test_source_index.NoticesIndexReadTest.test_notices_refuses_a_device_index)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1728, in test_notices_refuses_a_device_index
+    self.assertRefusedWithoutReading(self.notices("/dev/zero"))
+  File "/work/tests/test_source_index.py", line 1714, in assertRefusedWithoutReading
+    self.assertNotIn("MemoryError", r.stderr, "refused by running out of memory, not by the check")
+AssertionError: 'MemoryError' unexpectedly found in 'notices: FAIL (MemoryError: )\n' : refused by running out of memory, not by the check
+
+======================================================================
+FAIL: test_notices_refuses_a_fifo_index (tests.test_source_index.NoticesIndexReadTest.test_notices_refuses_a_fifo_index)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1725, in test_notices_refuses_a_fifo_index
+    self.assertRefusedWithoutReading(self.notices(fifo))
+                                     ^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_source_index.py", line 1708, in notices
+    self.fail(f"notices --index {path} did not finish within {HANG_SECONDS} s (security L-3)")
+AssertionError: notices --index /tmp/tmpnk8j__cs/index.json did not finish within 10 s (security L-3)
+
+======================================================================
+FAIL: test_notices_refuses_an_index_over_the_size_cap (tests.test_source_index.NoticesIndexReadTest.test_notices_refuses_an_index_over_the_size_cap) (case='one byte over 16 MiB')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1733, in test_notices_refuses_an_index_over_the_size_cap
+    self.assertRefusedWithoutReading(r)
+  File "/work/tests/test_source_index.py", line 1712, in assertRefusedWithoutReading
+    self.assertRefused(r)
+  File "/work/tests/test_source_index.py", line 255, in assertRefused
+    self.assertEqual(r.returncode, 1, r.stdout[-500:] + r.stderr[-1500:])
+AssertionError: 0 != 1 : :psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |
+| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |
+| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |
+| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |
+
+
+======================================================================
+FAIL: test_notices_refuses_an_index_over_the_size_cap (tests.test_source_index.NoticesIndexReadTest.test_notices_refuses_an_index_over_the_size_cap) (case='a sparse 1 GiB file: refused by its size, never read')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1739, in test_notices_refuses_an_index_over_the_size_cap
+    self.assertRefusedWithoutReading(self.notices(sparse))
+  File "/work/tests/test_source_index.py", line 1714, in assertRefusedWithoutReading
+    self.assertNotIn("MemoryError", r.stderr, "refused by running out of memory, not by the check")
+AssertionError: 'MemoryError' unexpectedly found in 'notices: FAIL (MemoryError: )\n' : refused by running out of memory, not by the check
+
+======================================================================
+FAIL: test_index_names_files_when_the_listing_cannot_be_read (tests.test_source_index.SourceIndexGateTest.test_index_names_files_when_the_listing_cannot_be_read)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1244, in test_index_names_files_when_the_listing_cannot_be_read
+    got = self.refused("--files: cannot list", listing=Unreadable())
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_source_index.py", line 876, in refused
+    self.assertTrue(any(all(p in line for p in parts) for line in problems), f"no problem names {parts}: {problems}")
+AssertionError: False is not true : no problem names ('--files: cannot list',): ['.: cannot list']
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an image with '['")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | postgres[x | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |\n' is not None : an image with '[': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an image with ']'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | postgres]x | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |\n' is not None : an image with ']': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an image with '('")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | postgres(x | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |\n' is not None : an image with '(': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an image with ')'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | postgres)x | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |\n' is not None : an image with ')': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an image with '!'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | postgres!x | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |\n' is not None : an image with '!': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an image with '*'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | postgres*x | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |\n' is not None : an image with '*': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an image with '_'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | postgres_x | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |\n' is not None : an image with '_': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an image with '#'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | postgres#x | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |\n' is not None : an image with '#': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt package with '['")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0[x` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |\n' is not None : an exempt package with '[': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt package with ']'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0]x` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |\n' is not None : an exempt package with ']': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt package with '('")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0(x` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |\n' is not None : an exempt package with '(': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt package with ')'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0)x` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |\n' is not None : an exempt package with ')': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt package with '!'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0!x` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |\n' is not None : an exempt package with '!': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt package with '*'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0*x` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |\n' is not None : an exempt package with '*': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt package with '_'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0_x` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |\n' is not None : an exempt package with '_': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt package with '#'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0#x` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |\n' is not None : an exempt package with '#': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt image with '['")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j[x | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |\n' is not None : an exempt image with '[': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt image with ']'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j]x | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |\n' is not None : an exempt image with ']': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt image with '('")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j(x | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |\n' is not None : an exempt image with '(': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt image with ')'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j)x | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |\n' is not None : an exempt image with ')': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt image with '!'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j!x | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |\n' is not None : an exempt image with '!': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt image with '*'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j*x | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |\n' is not None : an exempt image with '*': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt image with '_'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j_x | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |\n' is not None : an exempt image with '_': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="an exempt image with '#'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j#x | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |\n' is not None : an exempt image with '#': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a reviewed value with '['")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security[x) |\n' is not None : a reviewed value with '[': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a reviewed value with ']'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security]x) |\n' is not None : a reviewed value with ']': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a reviewed value with '('")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security(x) |\n' is not None : a reviewed value with '(': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a reviewed value with ')'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security)x) |\n' is not None : a reviewed value with ')': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a reviewed value with '!'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security!x) |\n' is not None : a reviewed value with '!': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a reviewed value with '*'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security*x) |\n' is not None : a reviewed value with '*': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a reviewed value with '_'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security_x) |\n' is not None : a reviewed value with '_': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a reviewed value with '#'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security#x) |\n' is not None : a reviewed value with '#': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a listing with '['")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25[x) |\n' is not None : a listing with '[': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a listing with ']'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25]x) |\n' is not None : a listing with ']': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a listing with '('")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25(x) |\n' is not None : a listing with '(': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a listing with ')'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25)x) |\n' is not None : a listing with ')': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a listing with '!'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25!x) |\n' is not None : a listing with '!': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a listing with '*'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25*x) |\n' is not None : a listing with '*': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a listing with '_'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25_x) |\n' is not None : a listing with '_': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case="a listing with '#'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25#x) |\n' is not None : a listing with '#': a section was produced
+
+======================================================================
+FAIL: test_notice_section_refuses_markdown_syntax_outside_the_url (tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url) (case='the probe: a Markdown link in reviewed')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 1429, in test_notice_section_refuses_markdown_syntax_outside_the_url
+    self.assertIsNone(text, f"{case}: a section was produced")
+AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images hold, in `sources/files/`, each file named by its\nSHA-256. `sources/index.json` lists each file\'s upstream name, URL and checksums and the SBOM packages\nit covers.\n\n| Component | Images | Source |\n|---|---|---|\n| `apk:readline@8.2.13-r0` | ke-gateway | Upstream source: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=190e313cb64eaa7a14dd5748fd18010d3f5310d0 |\n| `apk:readline@8.2.13-r1` | valkey | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2` | postgres | source in `sources/` (see `sources/index.json`) |\n| `deb:bash@5.2.15-2+deb12u1` | postgres | Upstream source: https://snapshot.debian.org/file/17719d46d4e51cdce56381ba52c2fc5c6181f2a0 |\n| `maven:javax.xml.bind:jaxb-api@2.2.12` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `neo4j:neo4j@5.26.32` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pgdg:postgresql-common@293.pgdg12+1` | postgres | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg-c@3.3.6` | ke-app | source in `sources/` (see `sources/index.json`) |\n| `pypi:psycopg@3.3.6` | ke-app | Upstream source: https://files.pythonhosted.org/packages/b1/58/50aa87536f5b1dfb6420580cedc990a7a31ce048c22d7bb8e8096351899c/psycopg-3.3.6.tar.gz |\n| `temurin:jdk-21.0.12.1+1` | ke-neo4j | source in `sources/` (see `sources/index.json`) |\n| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security [x](javascript:alert(1))) |\n' is not None : the probe: a Markdown link in reviewed: a section was produced
+
+======================================================================
+FAIL: test_fetch_record_swapped_for_a_fifo_is_refused (tests.test_source_index.SwappedAfterListingTest.test_fetch_record_swapped_for_a_fifo_is_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 821, in test_fetch_record_swapped_for_a_fifo_is_refused
+    r = self.run_swapped(self.swap("fetch.json", "fifo"))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_source_index.py", line 811, in run_swapped
+    self.fail(f"sources-check did not finish within {HANG_SECONDS} s: the read blocked on what was "
+AssertionError: sources-check did not finish within 10 s: the read blocked on what was swapped in after the listing (security L-1)
+
+======================================================================
+FAIL: test_fetch_record_swapped_for_a_link_is_refused (tests.test_source_index.SwappedAfterListingTest.test_fetch_record_swapped_for_a_link_is_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 832, in test_fetch_record_swapped_for_a_link_is_refused
+    self.assertRefused(r, "fetch.json")
+  File "/work/tests/test_source_index.py", line 255, in assertRefused
+    self.assertEqual(r.returncode, 1, r.stdout[-500:] + r.stderr[-1500:])
+AssertionError: 0 != 1 : 6398045129af823a9be9f146e2219bd3b9c45944759d
+9e16d0061a9deb2c2d2f5db43a1b3ba026d42d1a6dd10c042ef738cd750908be
+a314137092297d9dece12524f32e611bc00f6bb20d2b85646e10fa6dbf42c393
+c4546f738a1235954862fa90c6a3ce38d5d0d4a668a7fe0eda843705ed1fd1b0
+e908c10563e6cae9e39a8881f1fed41f4c3ac991b7f421aae2809e8fecf96f2e
+e99c8d1f5e16848b0bb31e00048c8707f0cd41597cb6f60f59b337debefbd83c
+f32d16ff0a3c78e2c0a8385ebfb5990f0d127a544e7a6eaf12001b60be0376b3
+f3c67a3d3db98584dddd63ab715425aed93e9bea18c7fb151e5c7e9c5934e8ab
+sources-check: ok 17 files, 10153 bytes, 10 components (full, amd64)
+
+
+======================================================================
+FAIL: test_planned_file_swapped_for_a_fifo_is_refused (tests.test_source_index.SwappedAfterListingTest.test_planned_file_swapped_for_a_fifo_is_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/test_source_index.py", line 826, in test_planned_file_swapped_for_a_fifo_is_refused
+    r = self.run_swapped(self.swap(self.s0, "fifo"))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/tests/test_source_index.py", line 811, in run_swapped
+    self.fail(f"sources-check did not finish within {HANG_SECONDS} s: the read blocked on what was "
+AssertionError: sources-check did not finish within 10 s: the read blocked on what was swapped in after the listing (security L-1)
+
+----------------------------------------------------------------------
+Ran 67 tests in 39.398s
+
+FAILED (failures=56)
+

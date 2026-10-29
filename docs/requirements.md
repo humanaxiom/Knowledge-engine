@@ -3301,6 +3301,8 @@ timeout: Q74); U8 (PSC-23, the bounded source fetch) in plan: criteria in
 "U8 precision" under PSC-23; Q73 and Q74 open for the human, Q75 and Q76
 ruled, Q77 deferred. *(Amended 2026-10-28, analyst; U8 plan and orchestrator rulings.)*
 *(Amended 2026-10-28, analyst; human rulings: Q73 (option 2) and Q74 (`timeout-minutes` 69) are resolved; nothing in U8 is open for the human.)*
+*(Amended 2026-10-29, analyst, U9 plan: U8a, U8b and U8c part 1 committed and pushed to draft PR #15; U9 (PSC-15, PSC-24) in plan: criteria in "U9 precision" under PSC-24; Q78-Q80 open for the orchestrator; Q77 still deferred.)*
+*(Amended 2026-10-29, analyst: Q78-Q80 resolved by the orchestrator (option 1 each); O-9..O-12 ruled; U9 plan gate PASS; U9 splits into U9a and U9b.)*
 *(Before, the same day: "U7d committed as WIP 45411ae (scan red on openssl);
 U7e (PSC-27, base bump to python 3.12.16): tester's verify full PASS with
 the image scan green, security PASS, reviewer and A34 in progress; PSC-27
@@ -3367,6 +3369,12 @@ Counts are not restated here; the evidence under
 
 *(Rows PSC-15, PSC-16, PSC-22 and PSC-23 updated 2026-10-27, analyst.)*
 *(Rows PSC-15, PSC-16, PSC-23 and PSC-27 updated 2026-10-28, analyst, U8 plan.)*
+*(Note 2026-10-29, analyst, U9 plan; rows above not rewritten: U8a
+(3203054), U8b (98e465a) and U8c part 1 (23bf33e) are committed and on
+draft PR #15. PSC-23 stays PENDING until U8c's third-fetch record (U8-11).
+PSC-14's generated section, PSC-15 and PSC-24 are planned for U9: "U9
+precision" U9-1 to U9-15 under PSC-24; Q78-Q80 open for the
+orchestrator.)*
 
 Outcome metric moved: **neither.** No draft is reviewed and no rule is
 ratified because of this item. It closes the M-NT1 remainder
@@ -3714,6 +3722,9 @@ full what it contains.
       `THIRD_PARTY_NOTICES.md`. Unit U9.
       `[unit: test_notice_source_code_heading_matches_generated]` (fast).
       *(Amended 2026-10-23, analyst, U1 review.)*
+    - The U9 criteria for these checks (the fetched set consumed, the
+      index, the copy, the generated section) are "U9 precision" U9-1 to
+      U9-15 under PSC-24. *(Added 2026-10-29, analyst, U9 plan.)*
 - **PSC-16 CI cost and disk measured on CI.**
   - Two green CI runs record, from the runner's per-line timestamps: the
     SBOM generation per image, the source fetch, and the whole job; plus
@@ -4377,6 +4388,343 @@ full what it contains.
     (fast, fake docker), `[unit: test_source_file_names_pass_the_manifest_rule]`
     (fast, stubbed index), `[unit: test_install_refuses_tampered_or_missing_source_file]`
     (fast; `install.sh` and `install.ps1`).
+  - *U9 precision (analyst, 2026-10-29; unit U9: design notes N3
+    `index`/`notices`, N9, N10 "Generated `THIRD_PARTY_NOTICES.md`" and
+    "Under `app/`", N10 I-3, N10 amendment U6 and its correction, N15 row
+    U9, N4 amendment U8 items 1 and 6; ADR-KE-016 points 3, 5, 6 and 11;
+    A76; the U6 and U8b carried rows).* *(Added 2026-10-29, analyst, U9
+    plan.)* U9 moves PSC-15 (the archive ships), PSC-24 (no partial
+    bundle, manifest rules, install tamper tests), PSC-14's pending
+    generated section and PSC-22's bundle-failing checks. The criteria say
+    what `bundle.sh` and the bundle do, not how. Open points
+    (`docs/open-questions.md`): Q78-Q80, for the orchestrator. Q77 stays
+    deferred: U9 runs no `sources_lock.sh`. If U9's real run finds lock
+    drift, the fix is a reviewed re-lock, and Q77 is decided before it.
+    Facts for sizing only (lock sha256 `12eebc8c...761b` at 780d523,
+    `u8/expected.md`): amd64 sample 7 keys, 25 files, 25 distinct
+    sha256, 136,571,547 B; amd64 full 183 keys, 876 files, 716 distinct
+    sha256, 1,180,936,586 B (equal to the U8b O-1 real run,
+    `u8/full-run.txt`).
+    *(Amended 2026-10-29, analyst; orchestrator rulings at the U9 plan
+    gate, design notes "N9 amendment, U9" end: Q78, Q79 and Q80 option 1
+    each; O-9 two units, U9a (the `sbom_check.py` checkers, the
+    `sources-check`, `index` and `notices` subcommands, the install pins)
+    and U9b (`bundle.sh`, the `offline_check.sh` flags, NOTICE/libffi,
+    README, the real sample, the Q79 run, A34), no U9c; O-10, O-11 and
+    O-12 yes. U9 plan gate: PASS.)*
+    - **U9-1 Command line (PSC-15, PSC-24; ADR point 3; Q78).**
+      - `scripts/bundle.sh --out <dir>-<arch> [--arch amd64|arm64]
+        --sources <dir> [--sources-set sample]`. The expected set is
+        `full` unless `--sources-set sample` is given (ADR point 3: only
+        `offline_check.sh` passes it, Q63). Whether `--sources` is
+        mandatory is Q78.
+        *(Amended 2026-10-29, analyst: Q78 ruled option 1. `--sources` is
+        mandatory: absent, it exits 2 with the usage line before any
+        docker call. `--sources-set full|sample` defaults to `full`.)*
+      - A `--sources` or `--sources-set` with no value, a
+        `--sources-set` value other than `sample` or `full`, or a
+        repeated flag exits 2 with the usage line, before any docker call
+        or write.
+      - `bundle.sh` never writes to, deletes or renames anything under
+        `--sources`. Given a run that passes or fails, the directory's
+        listing and every file's bytes are unchanged.
+      - The header and the usage line name `--sources` and
+        `--sources-set`.
+    - **U9-2 The fetched directory's shape, before any write (A76;
+      PSC-24 "checks that can run before any write").**
+      - Given a `--sources` that is absent, a symlink, not a directory,
+        or a directory that cannot be listed, `bundle.sh` exits 1 with
+        one `bundle:` line naming it, before any tag, save or write to
+        `--out`, and leaves `--out` and the release record as they were.
+        A failed listing is a refusal, never an empty listing (the
+        reviewer's U8b B-1 pattern; U9-10).
+      - Given a directory with no `fetch.json`, the refusal names the
+        missing record and says to run `scripts/bundle_fetch.sh` (A76).
+      - Given any entry other than `fetch.json` and files named by 64
+        lower-case hex (a `.part` file, `.fetch.json.part`, an upper-case
+        or short name, a subdirectory, a symlink, a fifo or other
+        non-regular entry), the refusal names the first such entry.
+        Nothing extra is accepted.
+      - A `fetch.json` that is not valid JSON, is not in the canonical
+        `lock_text` form, or lacks or adds a top-level key beyond
+        `format`, `set`, `arch`, `lock_sha256` and `components` is
+        refused, naming the field. `format` is 1. Text from the record
+        printed in a refusal is escaped as PSC-22 L-3.
+    - **U9-3 The record matches this bundle, and every planned file is
+      present (A76; PSC-15 "matches the upstream checksum"; N4 am. U8
+      item 6).** Each is a refusal before any write, exit 1, one line
+      naming the field, both values and, for a file, its key and upstream
+      name:
+      - `set` differs from the expected set (U9-1): a `sample` directory
+        for a `full` bundle, or the reverse.
+      - `arch` differs from the daemon's arch (`bundle.sh`'s, A75).
+      - `lock_sha256` differs from the SHA-256 of the
+        `docker/sources.lock.json` text this run reads (a fetch made
+        before a re-lock).
+      - The committed lock fails `lock_entry_problems` (U8-3); the first
+        problem is named.
+      - `components` differs in any way from `fetch_plan(lock, arch,
+        set)` grouped by key: a key or file missing or extra, or a
+        `name`, `sha256` or `size` that differs.
+      - A planned SHA-256 has no file `<dir>/<sha256>`, or the file's
+        size or re-computed SHA-256 differs from the lock's. This run
+        re-hashes every file; the record is never trusted for bytes.
+      - A 64-hex file in `<dir>` that no planned file names (nothing
+        extra, U9-2).
+      - Control: given a directory that `bundle_fetch.sh` wrote for the
+        same set, arch and lock, none of the above fires.
+    - **U9-4 `index` gates the bundle (PSC-15, PSC-22; N3 `index`; N8
+      am. U5 items 2 and 7; N10 am. U6 and its correction; U6 carried
+      rows).** It runs after the SBOMs are written and before the
+      manifest. Any problem below exits non-zero, naming the image, the
+      package (purl, else SPDXID) and the fix, through `_clean` (PSC-22
+      L-3), and the bundle fails per U9-10.
+      - *Validate first (security U6 L-2, reviewer U6 N1).* Each final
+        SBOM passes `validate` before any classification. Given an SBOM
+        in which a GPL-family package reuses an exempted package's
+        SPDXID, the bundle fails at `validate` ("not unique"), and the
+        package is never cleared.
+      - *The lock against this bundle's SBOMs.* `lock_problems(lock,
+        policy, docs, arch)` on the bundle's own six SBOMs is `[]`:
+        coverage both ways. A package that needs source and has no lock
+        key fails, naming it and `scripts/sources_lock.sh --arch
+        <arch>`; a lock key for the arch that no image needs fails the
+        same way. A mapping problem (`component_key`, the jrt-fs version
+        rule) fails, never passes.
+      - *`always` and `exempt` problems fail the bundle* (PSC-22: "fails
+        the bundle from U9"): an `always` entry with no match, and an
+        `exempt` entry that is not a versioned purl or matches nothing at
+        its version.
+      - *Multi-match exempt (security U6 L-1).* An `exempt` entry that
+        matches more than one package in its image (for example jna's
+        purl and the same purl with `?type=jar`) is a problem naming the
+        entry and every matched SPDXID. Whether `index` also compares a
+        checksum the SBOM records for the package: Q80.
+        *(Amended 2026-10-29, analyst: Q80 ruled option 1, no checksum
+        compare at U9.)*
+      - *`needs` is the classifier's (N8 am. U5 item 7).* `index` takes
+        each row's `needs` from `classify_document(image, doc, always,
+        exempt)` and never re-derives it from `expression`.
+    - **U9-5 `app/sources/index.json` (N9).**
+      - It holds `format` 1, `set` (equal to the record's), `arch` and
+        `git_sha` (equal to `bundle.json`'s), and one component per lock
+        key the bundle's SBOMs need, plus one per `exempt`-cleared
+        package. Each component lists every SBOM package it covers
+        (image, SPDXID, purl, licence as the generator wrote it) and, for
+        a lock key, every file with its upstream `name`, `url`, `sha256`,
+        `upstream` (alg and value, equal to the lock's) and `path`.
+      - `path` is `sources/files/<sha256>`, relative to the installed
+        root (`app/`). Two files with one SHA-256 share one path.
+      - Status: in a `full` bundle every lock-key component is
+        `shipped`; any `not-shipped` fails the bundle (N9). In a `sample`
+        bundle exactly the `sample_keys(lock, arch)` components are
+        `shipped` and every other lock-key component is `not-shipped`.
+        An `exempt`-cleared package is `exempt`, with the entry's
+        `reason` and `reviewed` values verbatim.
+      - *"always, cleared by exemption" (PSC-22, orchestrator
+        2026-10-25).* A package that an `always` entry and a reviewed
+        `exempt` entry both match is listed with the text `always,
+        cleared by exemption <reviewed>`, `<reviewed>` being the entry's
+        `reviewed` value, and the bundle output prints the same line. No
+        real entry does this at U9 (jna and javassist match no `always`
+        entry), so the fast test uses a synthetic policy. The real-row
+        assertion that no row is both (`tests/test_sbom_classifier.py`
+        l.1134, reviewer U6 N2) stays at U9. The change that adds the
+        first such entry removes it, adds a real-row check of the listing
+        and goes to security, in one reviewed change.
+      - `unlicensed` per image equals `unlicensed_report` for that SBOM
+        (count and packages; PSC-22; N8 "U9: kept in the index").
+        `unparsed` and `unidentified` list every such row, including
+        rows with `needs` false.
+    - **U9-6 The content-addressed copy (ADR points 3 and 5; N9; PSC-24
+      path rule).**
+      - `app/sources/` holds exactly `index.json` and `files/`, and
+        `files/` holds exactly one regular file per distinct SHA-256 that
+        a `shipped` component names, named by that 64-hex value. Nothing
+        else: no fetched file of a not-shipped component, no
+        `fetch.json`, no upstream name on disk.
+      - Each file is copied from `<dir>/<sha256>`, not linked (ADR point
+        3: "re-hashes and copies"). No shipped file is a symbolic or hard
+        link into `--sources`.
+      - The `MANIFEST.sha256` line of every `app/sources/files/<sha256>`
+        carries that same `<sha256>`, so the bytes that ship are the
+        bytes the lock pins, checked after the copy (PSC-15 "every source
+        file is in the bundle manifest with its SHA-256").
+      - Every `path` in the index exists in the bundle, and every file
+        under `app/sources/files/` is some index `path`.
+      - Every path under `app/sources/` and `app/sboms/` passes the
+        manifest path rule unchanged (`[A-Za-z0-9._-]` per segment;
+        PSC-24's first option, ADR point 5). No installer's rule changes.
+    - **U9-7 The generated "Source code" section of
+      `THIRD_PARTY_NOTICES.md` (PSC-14, PSC-15; N10; I-3).**
+      - Its heading is exactly the one `NOTICE.md` names
+        (`test_notice_source_code_heading_matches_generated`, PSC-15).
+      - It says once, before any `sources/` path: "Paths here are
+        relative to the bundle's `app/` directory, which install
+        publishes as the install directory" (I-3).
+      - One row per index component. `shipped`: "source in `sources/`
+        (see `sources/index.json`)". `not-shipped`: the L-NT1 wording
+        "Upstream source: <url>", with the lock's URL. `exempt`: no claim
+        that source is in `sources/`; it names the reviewed exemption.
+        The section claims a source obligation met only for `shipped`
+        components (PSC-15). Security reviews the wording of every row
+        form.
+      - A `sample` bundle's section starts with: "Verification bundle:
+        this source set is a sample and is not complete; do not
+        distribute this bundle." A `full` bundle's section has no such
+        line.
+      - Generator text written into the section (names, purls, licences)
+        holds no C0 or C1 control character as-is (PSC-22 L-3), and a
+        `|` or line break in it cannot add a column or a row. The
+        architect confirms the escape form.
+    - **U9-8 The copies under `app/` (ADR point 6; N10 "Under `app/`";
+      orchestrator ruling 2).**
+      - `app/` carries `NOTICE.md`, `THIRD_PARTY_NOTICES.md`, `LICENSE`
+        and `licenses/`, each byte-identical to the bundle-root copy,
+        which stays. Today only the root carries them (`bundle.sh`
+        l.348-371 at 5cf025c), so install publishes none of them.
+      - For the root copy, the `app/` copy and the installed copy, the
+        test resolves `<app root of that copy>/sources/index.json` and
+        each `sources/files/<sha256>` the section names (I-3).
+    - **U9-9 `NOTICE.md` (PSC-14; U6 ruling (b)).**
+      - The "Source code" section keeps its pointer and the sentence "A
+        bundle whose `THIRD_PARTY_NOTICES.md` has no "Source code"
+        section has no `sources/` ..." (true after U9), and gains the I-3
+        path sentence of U9-7 (N10a: "U9 restates the paths per I-3").
+      - *libffi (security U6 exempt review L-1; orchestrator ruling
+        2026-10-25).* The "Base image of `ke-neo4j`" section names libffi
+        as embedded in the native `libjnidispatch` libraries of jna
+        5.15.0, and gives libffi's copyright and permission notice
+        verbatim, in `NOTICE.md` or in a tracked `licenses/` file it
+        names. The text is that of the libffi version jna 5.15.0 bundles;
+        security confirms the version at RED. `NOTICE.md` states where
+        the text was fetched and its SHA-256 (Q48 form) and cites no
+        `docs/evidence/` path (PSC-14). Security reviews it.
+      - The existing NOTICE tests stay green, among them
+        `test_notice_cites_no_repo_evidence_path` and
+        `test_notice_named_licence_files_are_tracked`.
+    - **U9-10 No partial bundle (PSC-24; reviewer U8b N-9).**
+      - Given a fault at any of these, `bundle.sh` exits non-zero with
+        one `bundle:` line naming the stage and the image or file, and
+        writes no `MANIFEST.sha256` and no release record: any U9-2 or
+        U9-3 refusal (before any write, so `--out` is untouched); an
+        `index` problem (U9-4); a copy or write error, disk full
+        included; the notices generation; a `MANIFEST.sha256` over
+        install's 1 MiB cap.
+      - The record and fetched-directory checks run before the first
+        tag, save or write, as the generator presence check does
+        (PSC-20).
+      - *N-9.* Given an `--out` that exists, is non-empty and cannot be
+        listed (mode 0300, uid 10001), `bundle.sh` exits 1 naming it and
+        leaves it untouched. Root bypasses the mode bits, so the test
+        skips with a named reason under uid 0. The same rule holds for
+        every listing `bundle.sh` makes of `--sources`.
+      - *(Amended 2026-10-29, analyst; orchestrator O-10.)* Beyond "no
+        manifest, no record": given a failure after the first write,
+        the run's output is removed (the `--out` directory if the run
+        created it, its contents if it was given). Design notes "N9
+        amendment, U9" item 9.
+    - **U9-11 Install refuses tampered sources (PSC-24).** In
+      `install.sh` and in `install.ps1` (under pwsh in the gates image),
+      for each of `app/sources/index.json`, one
+      `app/sources/files/<sha256>` and one `app/sboms/<name>.spdx.json`,
+      in a bundle whose manifest lists them:
+      - the file deleted, one byte changed, or an unlisted file added
+        beside it: install refuses before any `docker load`, with the
+        manifest check's existing message, and publishes nothing (the
+        `test_bundle_manifest_rejects_tamper` form);
+      - control: the untouched bundle installs, and the target holds
+        `sources/index.json` and every `sources/files/<sha256>` with the
+        manifest's SHA-256.
+      - If neither installer changes, no A34 Windows run is needed (N15
+        row U9). If `install.ps1` changes, A34 applies.
+        *(Amended 2026-10-29, analyst; orchestrator O-11: A34 runs for
+        U9b whether or not `install.ps1` changes, because `bundle.sh`
+        gains three `hostpath` mounts (the U8b precedent).)*
+    - **U9-12 Wiring and wording.**
+      - `offline_check.sh` passes `--sources "$fetch_rel" --sources-set
+        sample` to `bundle.sh`. The verify bundle carries the sample, and
+        the offline install of it still passes with no route out. The
+        e2e checks on the installed copy are U10 (PSC-19, N11).
+      - `bundle.sh`'s header says the bundle ships `app/sources/` from
+        the set `bundle_fetch.sh` fetched; it still "makes no network
+        call" (N13).
+      - README (documenter): the operator order `build.sh`, then
+        `bundle_fetch.sh --set full`, then `bundle.sh --sources <dir>`
+        (N13); the bundle now carries the source archive; a `sample`
+        bundle is for verification only.
+      - CHANGELOG (marketer): one U9 bullet ("no CHANGELOG line until
+        U9", U5).
+      - CLAUDE.md's `docker/sources.lock.json` row already says "from
+        U9, `bundle.sh` (`sbom_check.py index`) refuses a package with no
+        entry"; U9 makes it true and changes no CLAUDE.md text. Any
+        change there needs the human.
+    - **U9-13 Size and time records (PSC-16, Q62; ADR point 11).**
+      - `bundle.sh` prints a marker with seconds for its source stage
+        (record check, `index`, copy, notices), so CI timestamps can time
+        it as `sources: fetch` is timed.
+      - `docs/evidence/platform-sbom/u9/size.md`, from the real
+        `verify.sh full` run: the verify bundle's bytes with and without
+        `app/sources/`, the source bytes and file count against the
+        sample facts above, `MANIFEST.sha256` bytes and lines, and the
+        stage seconds. Local timings are informational; CI's are U11.
+        The added `/install` staging (about 0.13 GiB) is recorded for
+        U10's tmpfs sizing (N14).
+      - The full set's numbers (716 files, the manifest's size against
+        the 1 MiB cap, `index` seconds): Q79.
+        *(Amended 2026-10-29, analyst: Q79 ruled option 1. U9b includes
+        one recorded full-set `bundle_fetch.sh` + `bundle.sh` run, bundle
+        only, never installed or handed over: `u9/full-bundle-run.txt`
+        and `u9/size.md`. O-12: the 7 GiB floor stays until U11.)*
+    - **U9-14 Tests.** Names are indicative; the tester owns them, and
+      no name holds a count. All are `fast`, with fake docker or stubbed
+      SBOMs, lock and fetched directory; the real path runs in `full`
+      (U9-12).
+      - PSC-15/24's named tests: `test_every_gpl_package_has_source`,
+        `test_source_archive_hashes_in_manifest`,
+        `test_bundle_writes_no_manifest_when_sbom_or_source_fails`,
+        `test_source_file_names_pass_the_manifest_rule`,
+        `test_install_refuses_tampered_or_missing_source_file` (sh and
+        ps1), `test_notice_source_code_heading_matches_generated`.
+      - `test_bundle_refuses_a_bad_sources_dir` (U9-2, each shape) and
+        `test_bundle_refuses_a_mismatched_fetch_record` (U9-3: set, arch,
+        lock sha256, components, a missing, short, changed or extra
+        file), each with the matching-directory control.
+      - `test_index_validates_first`,
+        `test_index_fails_on_coverage_gaps_both_ways`,
+        `test_index_fails_on_always_and_exempt_problems`,
+        `test_index_refuses_a_multi_match_exempt_entry`,
+        `test_index_lists_always_cleared_by_exemption`,
+        `test_full_bundle_refuses_not_shipped`,
+        `test_sample_bundle_ships_exactly_the_sample`.
+      - `test_sources_are_copied_not_linked`,
+        `test_notices_source_code_section_rows`,
+        `test_sample_bundle_notices_say_do_not_distribute`,
+        `test_app_carries_the_notice_copies`,
+        `test_sources_paths_resolve_from_every_notice_copy` (I-3),
+        `test_notice_names_libffi_in_ke_neo4j_section`.
+      - `test_bundle_refuses_an_unlistable_out` (N-9) and
+        `test_bundle_leaves_sources_dir_unchanged` (U9-1).
+    - **U9-15 Evidence and gate.**
+      - `docs/evidence/platform-sbom/u9/`: RED and GREEN verify output;
+        `size.md` (U9-13); security's review of the notices wording, the
+        libffi text and the index rules; the review; the orchestrator's
+        `verify.sh full`; A34 only if `install.ps1` changes. Redaction
+        rules apply.
+        *(Amended 2026-10-29, analyst; orchestrator O-11 and O-9: A34 is
+        required for U9b (design notes "N9 amendment, U9" R13); each of
+        U9a and U9b runs `verify.sh full` before its commit (CLAUDE.md).)*
+      - Gate: `scripts/verify.sh full` (`bundle.sh`, `offline_check.sh`
+        and the install tests change; N15 row U9).
+      - Rule N1: U9 meets its condition for a merge to `main`, which
+        stays the human's action. No operator bundle is handed over
+        before the recorded full-set run (N11, Q63; U10) and the human's
+        decision on the Neo4j ARM check (handoff U7e (3)).
+    - **Outcome metric: neither.** U9 makes the bundle carry the
+      GPL-family source it redistributes (PSC-15 option 1). That closes
+      the "no GPL source offer" half of the M-NT1 remainder; U3 closed
+      the SBOM half. No draft is reviewed and no rule is ratified because
+      of it.
 
 - **PSC-25 psycopg on Debian libpq (Q64, unit U0).** *(Added 2026-10-22,
   analyst, Q64.)* The Q42 structural fix, ruled by the human. `ke-app`

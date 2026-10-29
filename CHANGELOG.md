@@ -11,7 +11,7 @@ In progress: not finished, and the bundle is not yet for operators. The source f
 **Changed:**
 - ke-app builds psycopg against Debian's libpq instead of the psycopg-binary wheel, no longer ships pip, and is flattened. NOTICE.md gains a ke-app base section and licence files for CPython, HACL*, KaRaMeL and Apache-2.0.
 - The stack runs its own ke-neo4j image: the official Neo4j Community image without the commercial fleet-management plugin or the unused GenAI plugin (the `products/` folder). Neo4j itself is unchanged. Its smoke check now walks volumes.
-- `docker/source-policy.json` lists the ten hosts a source fetch may use, and two security-reviewed exemptions (jna and javassist).
+- `docker/source-policy.json` lists the nine hosts a source fetch may use, and two security-reviewed exemptions (jna and javassist).
 - ke-app and ke-gates move to the Python 3.12 slim base at digest `sha256:6dd8b6da…9753` (CPython 3.12.16). The base brings openssl and libssl3 3.0.22-1~deb12u2, which closes CVE-2026-84782 (High) found by the image scan during U7d. The CPython licence files and NOTICE.md now name 3.12.16; the licence texts are unchanged. The source lock is regenerated with 183 components: the openssl and ca-certificates deb12u2 keys are added, the old ca-certificates key is dropped, and the old openssl key stays for the pinned postgres image.
 
 **Added:**
@@ -19,6 +19,7 @@ In progress: not finished, and the bundle is not yet for operators. The source f
 - A licence classifier that fails closed: SPDX expressions are read in full, and hash-named or unknown licences are marked as needing source.
 - A committed source lock, `docker/sources.lock.json`, with its maintainer tool `scripts/sources_lock.sh`. It has 182 components: one per Debian, Alpine and PGDG source package, plus Neo4j, Temurin, and the PyPI and Maven packages. It resolves against snapshot.debian.org, Alpine aports (via the GitLab API), the PGDG archive, GitHub, PyPI and Maven Central, with bounded retry. Verify and CI never run it. The full source set is about 1.3 GB; the verify sample is about 137 MB.
 - The source fetch (U8). `scripts/bundle_fetch.sh --set sample|full --out DIR` fetches the third-party source files named in the lock through the hardened `sources-fetch` one-shot (`docker-compose.sources.yml`), checking every file's size and checksums, and only from the hosts in `docker/source-policy.json`. `scripts/verify.sh full` now fetches the sample (25 files, about 137 MB) during the offline check. A failed or mismatched fetch fails closed, with no retry. The CI job timeout rises from 37 to 69 minutes. The fetched set is not yet shipped in the bundle (U9).
+- The bundle-side source index and the notices "Source code" section tooling (U9a): `scripts/sbom_check.py` gains `sources-check`, `index` and `notices`, which refuse a fetched set that does not match the lock, a bad `fetch.json`, or any link or special file. Not yet wired into `scripts/bundle.sh`, so the bundle still does not ship the sources (U9b).
 
 ### 2026-10-21 (ci-triggers)
 
