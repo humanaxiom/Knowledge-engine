@@ -836,3 +836,4 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-29T18:43:31Z | orchestrator | platform-sbom | U9a orchestrator verify full attempt 1: unit 1270 OK, red only at the sample fetch (gitlab.alpinelinux.org unreachable again, third outage) | smoke: blocked (upstream)
 2026-10-29T18:47:52Z | analyst | platform-sbom | Q81 raised: sample fetch dependence on gitlab.alpinelinux.org | plan: pending human
 2026-10-29T19:41:12Z | orchestrator | platform-sbom | U8c part 2 + U9a: orchestrator verify full PASS 1156 s with the real sample fetch (GitLab window 19:20Z); diff read; both commits approved | smoke: pass
+2026-10-29T19:41:39Z | developer | platform-sbom | U8c part 2 committed ecdd33f; U9a committed fc8bbf8 | commit: pass
