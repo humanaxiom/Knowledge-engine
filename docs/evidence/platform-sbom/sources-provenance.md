@@ -194,3 +194,68 @@ third fetch is deferred to U8 CI. The U7d lock commit no longer waits.**
   `.sha256.txt`.
 - **Neo4j:** the manual entry equals the second fetch above (`182ae2e5...91e3`, 20907800 B).
   **The third fetch is still blocked (previous section), so the commit waits on the human.**
+
+## 2026-10-29: security, third fetch of the Neo4j 5.26.32 tarball (U8-11; U7d item 14): DONE, from the GitHub CI runner
+
+The U8 sample fetch in PR #15 CI run **40907497118**
+(https://github.com/humanaxiom/Knowledge-engine/actions/runs/40907497118) is the third,
+network-independent fetch, as ruled by the human (the CI runner is accepted as the third fetch).
+It is the first CI run that includes the sample fetch. Source: the saved job log
+`u8/ci-40907497118.log` (4954 lines); the R18 extract and the comparison output are in
+`u8/ci-40907497118-fetch.txt`.
+
+**Run.** Head `5cf025c` (U8c part 1 included, so the policy is the narrowed one). The checkout is
+the PR merge ref: "HEAD is now at c8f3ed8 Merge 5cf025c... into 7f8559a..." (log l.118). The job
+ran 2026-10-29 16:01:50-16:33:56 UTC, verify full PASS.
+
+**Runner (log l.1-21).** GitHub-hosted. Runner version 2.338.0. "Runner Image Provisioner: Hosted
+Compute Agent, Version 20261021.618, Region westus, Cloud Azure". Operating System Ubuntu 24.04.5
+LTS. Runner Image `ubuntu-24.04`, Version 20261025.353.1. Its egress is GitHub's hosted-runner
+network on Azure. That is independent of the dev box `aria-alien1`, where the first fetch
+(developer) and the second fetch (security, 2026-10-25) both ran.
+
+**The record line (log l.4433):**
+```
+2026-10-29T16:29:18.4316742Z bundle_fetch: ok neo4j:neo4j@5.26.32 5.26.32.tar.gz sha256=182ae2e5c3807bc3d7a09770dbf450d2e8667080bde93b3b6c829125db0f91e3 size=20907800 hops=github.com,codeload.github.com
+2026-10-29T16:29:22.0128514Z bundle_fetch: fetched 25 files, 136571547 bytes, 7 components (sample, amd64) in 16.7 s
+```
+- **sha256 `182ae2e5c3807bc3d7a09770dbf450d2e8667080bde93b3b6c829125db0f91e3`, size 20907800 B.**
+  This equals the lock entry `neo4j:neo4j@5.26.32` and security's second fetch above. The hops are
+  `github.com` -> `codeload.github.com`, the same chain as the second fetch.
+- **Three fetches from two networks agree.** The client checks sha256 and size against the lock
+  and fails closed, so a mismatch cannot print `ok` (Q61).
+- The lock at `5cf025c` is byte-identical to the one `u8/expected.md` was derived from (sha256
+  `12eebc8c...761b`; `git diff 780d523 5cf025c -- docker/sources.lock.json` is empty).
+
+**The other 24 sample files.** I sorted the 25 `ok` lines as key|file|size|sha256 and diffed
+them against the "sample, amd64" table in `u8/expected.md`: **equal** (25 rows each, no
+difference).
+
+**Hop chains on CI, per kind (25 lines):**
+
+| Kind | Files | Hops |
+|---|---|---|
+| apk | 15 | `gitlab.alpinelinux.org` |
+| apk | 2 | `distfiles.alpinelinux.org` |
+| deb | 2 | `snapshot.debian.org` |
+| maven | 1 | `repo1.maven.org` |
+| neo4j | 1 | `github.com` -> `codeload.github.com` |
+| pgdg | 2 | `apt-archive.postgresql.org` |
+| pypi | 1 | `files.pythonhosted.org` |
+| temurin | 1 | `github.com` -> `release-assets.githubusercontent.com` |
+
+`objects.githubusercontent.com` appears 0 times in the whole log. U8c part 1 (U8-10, O-2) dropped
+it from `hosts`, and this run fetched under the narrowed policy.
+
+**What this proves, and what it does not.** GitHub served the same bytes to two independent
+networks on 2026-10-25 and 2026-10-29. The bytes are still not shown to be Neo4j's own: the tie to
+commit `27f24499b751708815d42c8cf26bfb6597b3516c` is the indirect one in the first section. Both
+networks reach the same origin (GitHub), so a change made at the origin would be served to both.
+The log's secret-pattern scan found no hits; the only masked value is the checkout token
+(`***`, 2 occurrences).
+
+**Still open (optional, for the human).** The ARM one-liner in the 2026-10-26 section, run on a
+model host before the first operator bundle. It stays an accepted, optional, stronger check
+(design-notes U7d item 14 architect's note), and it does not block U9. The "commit waits" note
+in the S8 lock review above is overtaken: U7d was committed under the item 14 refinement, and
+this section closes its third-fetch condition.

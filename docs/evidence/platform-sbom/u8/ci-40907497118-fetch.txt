@@ -1,0 +1,89 @@
+# U8c part 2 (security, 2026-10-29): extract of PR #15 CI run 40907497118 (R18), from u8/ci-40907497118.log (4954 lines)
+# https://github.com/humanaxiom/Knowledge-engine/actions/runs/40907497118 ; head 5cf025c (PR merge ref c8f3ed8 = 5cf025c into 7f8559a)
+
+## runner (log l.1-21)
+2026-10-29T16:01:55.6417175Z Current runner version: '2.338.0'
+2026-10-29T16:01:55.6448361Z ##[group]Runner Image Provisioner
+2026-10-29T16:01:55.6449588Z Hosted Compute Agent
+2026-10-29T16:01:55.6450308Z Version: 20261021.618
+2026-10-29T16:01:55.6451245Z Commit: 21505ad2541d5be6135ed84fc33697146cf75b8e
+2026-10-29T16:01:55.6452136Z Build Date: 2026-10-21T00:45:21Z
+2026-10-29T16:01:55.6453142Z Worker ID: {d14e9620-9592-40f1-a753-2521033dcb30}
+2026-10-29T16:01:55.6454159Z Region: westus
+2026-10-29T16:01:55.6455113Z Cloud: Azure
+2026-10-29T16:01:55.6455886Z ##[endgroup]
+2026-10-29T16:01:55.6458278Z ##[group]Operating System
+2026-10-29T16:01:55.6459173Z Ubuntu
+2026-10-29T16:01:55.6459941Z 24.04.5
+2026-10-29T16:01:55.6460572Z LTS
+2026-10-29T16:01:55.6461301Z ##[endgroup]
+2026-10-29T16:01:55.6462050Z ##[group]Runner Image
+2026-10-29T16:01:55.6462920Z Image: ubuntu-24.04
+2026-10-29T16:01:55.6463791Z Version: 20261025.353.1
+2026-10-29T16:01:55.6465308Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261025.353/images/ubuntu/Ubuntu2404-Readme.md
+2026-10-29T16:01:55.6467760Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261025.353
+2026-10-29T16:01:55.6469087Z ##[endgroup]
+
+## checkout (log l.118)
+2026-10-29T16:01:59.1448760Z HEAD is now at c8f3ed8 Merge 5cf025c4d42864c9c29af14d16b88c6893b05645 into 7f8559a53c8862d9b303175de6ea9910d94ebebf
+
+## bundle_fetch lines (log l.4380, 4413-4438)
+2026-10-29T16:29:02.0031105Z offline: fetching the source sample (scripts/bundle_fetch.sh --set sample)
+2026-10-29T16:29:05.8974188Z bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 APKBUILD sha256=c673459076838229d5ebef8f42586a46b4aa3d22e429f6b9ec008f5c6b3889d3 size=8427 hops=gitlab.alpinelinux.org
+2026-10-29T16:29:06.4061706Z bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 20locale.sh sha256=284a6ef56ab97a13a777c6b01ae14f2cc3d2b7a29c19e750e622e70cc3c73186 size=97 hops=gitlab.alpinelinux.org
+2026-10-29T16:29:06.9216453Z bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 aliases.conf sha256=3ebaba946f213670170c7d69949f690a3854553bd0b1560f1d980cba4c83a942 size=1545 hops=gitlab.alpinelinux.org
+2026-10-29T16:29:07.4266495Z bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 alpine-baselayout.post-install sha256=dd30b63bfbe4f7d8085f57840e15b84015b3518d6f282a3e0924f73a61000016 size=453 hops=gitlab.alpinelinux.org
+2026-10-29T16:29:07.9329595Z bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 alpine-baselayout.pre-install sha256=28ecff91a36f438ca26bc8cc08d857863378aa94eab399a1f413e52501b86f85 size=56 hops=gitlab.alpinelinux.org
+2026-10-29T16:29:08.4405797Z bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 alpine-baselayout.pre-upgrade sha256=3f35fa5402d397389f366e8934ba0f800a017a149f4281dc8c22762419e47e10 size=944 hops=gitlab.alpinelinux.org
+2026-10-29T16:29:08.9717060Z bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 blacklist.conf sha256=0e9ab848289bfb20b9b066d05c8b1383a7c92b97ff8072a50806054b5d3fd739 size=2247 hops=gitlab.alpinelinux.org
+2026-10-29T16:29:09.4936328Z bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 color_prompt.sh.disabled sha256=ba24425c6864a5d17fa0fdaf914c4d21419e47c4d62080c33830af059fe46617 size=447 hops=gitlab.alpinelinux.org
+2026-10-29T16:29:09.9988315Z bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 crontab sha256=575d810a9fae5f2f0671c9b2c0ce973e46c7207fbe5cb8d1b0d1836a6a0470e3 size=283 hops=gitlab.alpinelinux.org
+2026-10-29T16:29:10.5067296Z bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 group sha256=6fb6ab5a5526e6f4896b70c7e3c350fd475158a1f0d7b5fc0f3f9bd57f1c3be8 size=510 hops=gitlab.alpinelinux.org
+2026-10-29T16:29:11.0146607Z bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 i386.conf sha256=6c46c4cbfb8b7594f19eb94801a350fa2221ae9ac5239a8819d15555caa76ae8 size=122 hops=gitlab.alpinelinux.org
+2026-10-29T16:29:11.5177225Z bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 inittab sha256=7326d8ad56bf5fea63b1ca516a747ff6e6723e25ae84a93c31620b03de6c001d size=570 hops=gitlab.alpinelinux.org
+2026-10-29T16:29:12.0408277Z bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 passwd sha256=31a94f06f17bc3b9085fccab1d0fa6ee9e79c4a1e4d91f617fa5de95863be015 size=702 hops=gitlab.alpinelinux.org
+2026-10-29T16:29:12.5616790Z bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 profile sha256=87e8643d3ce156de0c09370d4d39446f30bd00d264bea248abc191c4d7b9df3e size=547 hops=gitlab.alpinelinux.org
+2026-10-29T16:29:13.0712521Z bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 usr_merge_nag.sh sha256=3add5845c64bec8ef8dfe27087401a83816ea7cdda20e77826d2ba5516c7434c size=699 hops=gitlab.alpinelinux.org
+2026-10-29T16:29:13.7883033Z bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 protocols-6.4 sha256=4959498abbadaa1e50894a266f8d0d94500101cfe5b5f09dcad82e9d5bdfab46 size=3144 hops=distfiles.alpinelinux.org
+2026-10-29T16:29:14.5309223Z bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 services-6.4 sha256=f6183055fd949f9c53d49ee620f85d0150123ea691d25ed1bba0c641b4ee2f48 size=12813 hops=distfiles.alpinelinux.org
+2026-10-29T16:29:14.5740680Z bundle_fetch: ok deb:hostname@3.23+nmu1 hostname_3.23+nmu1.dsc sha256=56f2189eaeee638e86d29a05356e7001632e33b2132a41a4634a9ff839264ea6 size=1281 hops=snapshot.debian.org
+2026-10-29T16:29:14.6059995Z bundle_fetch: ok deb:hostname@3.23+nmu1 hostname_3.23+nmu1.tar.xz sha256=f3fb39f30b00ba7dba2cec013195d7e1bb215f241153208ccd52da3eedfe7a7d size=12876 hops=snapshot.debian.org
+2026-10-29T16:29:14.7636983Z bundle_fetch: ok maven:javax.xml.bind:jaxb-api@2.2.12 jaxb-api-2.2.12-sources.jar sha256=fd104e7b20b6dbcd1bb27803aaca963a8393ad9b3e39eb8a5ba1b4da1462182e size=245023 hops=repo1.maven.org
+2026-10-29T16:29:18.4316742Z bundle_fetch: ok neo4j:neo4j@5.26.32 5.26.32.tar.gz sha256=182ae2e5c3807bc3d7a09770dbf450d2e8667080bde93b3b6c829125db0f91e3 size=20907800 hops=github.com,codeload.github.com
+2026-10-29T16:29:18.9699461Z bundle_fetch: ok pgdg:postgresql-common@293.pgdg12+1 postgresql-common_293.pgdg12+1.dsc sha256=fc1b229024670e6d0cf1c40f3987bf1509aecf146791a6e22966fbf764c391da size=1538 hops=apt-archive.postgresql.org
+2026-10-29T16:29:19.2846712Z bundle_fetch: ok pgdg:postgresql-common@293.pgdg12+1 postgresql-common_293.pgdg12+1.tar.xz sha256=7a12dca9e636d56b72f45a00c52fb8cf054c3bf9aba8dc74bcca5fb6be17b07f size=219688 hops=apt-archive.postgresql.org
+2026-10-29T16:29:19.3202982Z bundle_fetch: ok pypi:autocommand@2.2.2 autocommand-2.2.2.tar.gz sha256=878de9423c5596491167225c2a455043c3130fb5b7286ac83443d45e74955f34 size=22894 hops=files.pythonhosted.org
+2026-10-29T16:29:22.0120474Z bundle_fetch: ok temurin:jdk-21.0.12.1+1 OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz sha256=573057d03584ae793fb7ec9a14c76d826d9187a53efeefd99da47403a5308234 size=115126841 hops=github.com,release-assets.githubusercontent.com
+2026-10-29T16:29:22.0128514Z bundle_fetch: fetched 25 files, 136571547 bytes, 7 components (sample, amd64) in 16.7 s
+
+## stage markers
+2026-10-29T16:01:56.2617497Z Complete job name: verify
+2026-10-29T16:26:48.1710324Z Ran 1201 tests in 1261.043s
+2026-10-29T16:26:53.8439679Z Ran 15 tests in 4.453s
+2026-10-29T16:27:02.1539196Z == gates-it: PASS ==
+2026-10-29T16:33:53.1492944Z == offline_check: PASS (292s) ==
+2026-10-29T16:33:53.1514788Z == verify full: PASS (1914s) ==
+2026-10-29T16:33:53.4736228Z Cleaning up orphan processes
+
+## comparison: the 25 ok lines (key|file|size|sha256, sorted) vs expected.md 'sample, amd64' table
+## command: grep -o 'bundle_fetch: ok .*' LOG | awk '{print $3"|"$4"|"substr($6,6)"|"substr($5,8)}' | sort  vs  expected.md table rows, sorted; diff
+ci rows: 25; expected rows: 25
+diff: EQUAL (no difference)
+
+## hop chains per kind (count kind hops)
+      2 apk hops=distfiles.alpinelinux.org
+     15 apk hops=gitlab.alpinelinux.org
+      2 deb hops=snapshot.debian.org
+      1 maven hops=repo1.maven.org
+      1 neo4j hops=github.com,codeload.github.com
+      2 pgdg hops=apt-archive.postgresql.org
+      1 pypi hops=files.pythonhosted.org
+      1 temurin hops=github.com,release-assets.githubusercontent.com
+objects.githubusercontent.com occurrences in the whole log: 0
+
+## lock identity: committed docker/sources.lock.json at 5cf025c sha256 (expected.md was derived from 780d523, lock sha256 12eebc8c...761b)
+12eebc8cd09e5effc6934a1a3b67decc053cda923720dda07a8909a137fc761b *-
+lock diff 780d523..5cf025c (stat, empty = unchanged):
+
+## secret-pattern scan of the saved log (gh tokens, github_pat_, AKIA, private keys, X-Amz-Signature/Credential, sig/token/jwt query, Bearer, password=, DB URLs with creds, Windows profile paths, SIDs)
+hits: 0; masked '***' occurrences: 2 (GitHub masking of the checkout token)

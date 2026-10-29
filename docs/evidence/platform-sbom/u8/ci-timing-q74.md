@@ -42,3 +42,23 @@ the project's: the outside CPU pressure in the second run is a noisy-neighbour e
 hosted pool, and the CI sample fetch's egress is independent of the dev box and of SFU
 (U8-11's third-fetch independence holds). Q74 option 3 ("remove the outside load") is therefore
 not available; options 1 and 2 stand.
+
+## 2026-10-29: security, data point for Q74/U11: run 40907497118 (head 5cf025c, U8a-U8c part 1)
+
+From `u8/ci-40907497118.log` (extract: `u8/ci-40907497118-fetch.txt`). Timeout is now
+`timeout-minutes: 69` (A74). Runner: GitHub-hosted, Hosted Compute Agent 20261021.618, Region
+**westus** (0630586's run was in southcentralus), image ubuntu-24.04 20261025.353.1, runner 2.338.0.
+
+| Run | Head | Units | Unit stage | Integration | offline_check | verify full | Job wall |
+|---|---|---|---|---|---|---|---|
+| 40907497118 (2026-10-29) | 5cf025c | +U8a, U8b, U8c pt 1 | Ran 1201 tests in 1261.043s | 15 in 4.453s | PASS (292s) | PASS (1914s) | 32m06s |
+
+- Compared with 35m53s (0630586) and 23m13s (86f7831): 3m47s shorter than the last run with 91
+  more tests. The unit stage is 306 s shorter, so the runner factor moved again and not the work.
+- offline_check is +62 s over 0630586. The sample fetch takes 16.7 s of it ("fetched 25 files,
+  136571547 bytes ... in 16.7 s"), or about 20 s including the `sbom` image pull (16:29:02-16:29:22Z).
+- Resource probe (log l.2225 and l.3907, `resources: phase=start/end`): `cg_cpu_usage_us` 6925855 -> 1164648988,
+  which is 1157.7 CPU-s, and `psi_cpu_some_us` +309.6 s, `cpu_steal_ticks` 0. Compare 844 CPU-s
+  (86f7831) and 1442 CPU-s (0630586). The tree is larger here, so this is not the same work.
+- Headroom under the 69-min timeout: 36m54s (the job used 47% of it). The run is a data point for
+  U11's budget, not a new proposal.
