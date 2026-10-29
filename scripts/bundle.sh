@@ -4,8 +4,11 @@
 #   scripts/bundle.sh --out <dir>-<arch> [--arch amd64|arm64]
 #
 # Run from a checkout on a linux build host (amd64 or arm64; the bundle is for the
-# Docker daemon's own arch, and --arch only asserts it), after build.sh. It never
-# builds, pulls or pushes, and makes no network call. The bundle holds the
+# Docker daemon's own arch, and --arch only asserts it), after build.sh and
+# scripts/bundle_fetch.sh. It never builds, pulls or pushes, and makes no
+# network call: scripts/bundle_fetch.sh is the only bundle step with a route
+# out (it pulls the SBOM generator this script needs, and fetches the source
+# set that the bundle ships from U9 on). The bundle holds the
 # stack images only (one tar each, saved from a bundle tag with no
 # --platform), the files `install` copies (app/), the two installers, the
 # committed NOTICE.md and licenses/, a generated THIRD_PARTY_NOTICES.md (the
@@ -218,7 +221,7 @@ sbom_ref="$(KE_SBOM_IN=/nonexistent KE_SBOM_OUT=/nonexistent KE_SBOM_USER="$sbom
 [[ "$sbom_ref" =~ $ref_re && "$sbom_ref" == *"@sha256:"* ]] \
   || die "the SBOM generator reference has no digest pin or fails its pattern: $(printf '%q' "$sbom_ref")"
 sbom_platform="$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$sbom_ref" 2> /dev/null)" \
-  || die "the SBOM generator image is not present ($sbom_ref); pull it first with: docker pull $sbom_ref; this script never pulls"
+  || die "the SBOM generator image is not present ($sbom_ref); run scripts/bundle_fetch.sh first; this script never pulls"
 # Each bundle's SBOMs come from its own daemon's arch, never emulated (PSC-21).
 [ "$sbom_platform" = "linux/$arch" ] \
   || die "the SBOM generator image $sbom_ref is $(printf '%q' "$sbom_platform"), not linux/$arch (no emulation)"

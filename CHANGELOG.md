@@ -6,7 +6,7 @@ Maintained by the `marketer` agent. Follows a Keep a Changelog style.
 
 ### 2026-10-27 (platform-sbom, in progress)
 
-In progress: not finished, and the bundle is not yet for operators. Source fetching into the bundle arrives at U8, and the notices and index at U9.
+In progress: not finished, and the bundle is not yet for operators. The source fetch landed at U8 (`scripts/bundle_fetch.sh` and `verify.sh full`'s sample fetch); shipping the fetched set in the bundle, with the notices and index, arrives at U9.
 
 **Changed:**
 - ke-app builds psycopg against Debian's libpq instead of the psycopg-binary wheel, no longer ships pip, and is flattened. NOTICE.md gains a ke-app base section and licence files for CPython, HACL*, KaRaMeL and Apache-2.0.
@@ -18,6 +18,7 @@ In progress: not finished, and the bundle is not yet for operators. Source fetch
 - One SPDX 2.3 SBOM per bundled image. `scripts/bundle.sh` needs the pinned SBOM generator image and prints a per-image report of packages with no identifiable licence. `scripts/verify.sh full` runs an image-side drift check on ke-app.
 - A licence classifier that fails closed: SPDX expressions are read in full, and hash-named or unknown licences are marked as needing source.
 - A committed source lock, `docker/sources.lock.json`, with its maintainer tool `scripts/sources_lock.sh`. It has 182 components: one per Debian, Alpine and PGDG source package, plus Neo4j, Temurin, and the PyPI and Maven packages. It resolves against snapshot.debian.org, Alpine aports (via the GitLab API), the PGDG archive, GitHub, PyPI and Maven Central, with bounded retry. Verify and CI never run it. The full source set is about 1.3 GB; the verify sample is about 137 MB.
+- The source fetch (U8). `scripts/bundle_fetch.sh --set sample|full --out DIR` fetches the third-party source files named in the lock through the hardened `sources-fetch` one-shot (`docker-compose.sources.yml`), checking every file's size and checksums, and only from the hosts in `docker/source-policy.json`. `scripts/verify.sh full` now fetches the sample (25 files, about 137 MB) during the offline check. A failed or mismatched fetch fails closed, with no retry. The CI job timeout rises from 37 to 69 minutes. The fetched set is not yet shipped in the bundle (U9).
 
 ### 2026-10-21 (ci-triggers)
 

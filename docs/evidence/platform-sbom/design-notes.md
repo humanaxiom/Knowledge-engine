@@ -1471,6 +1471,34 @@ U8c cannot exist before a push.
   to the human with the architect's recommendations.
   *(Amended 2026-10-28, analyst: Q73 (option 2) and Q74 (69 min) ruled by
   the human.)*
+- *Orchestrator rulings at U8b RED (2026-10-28, on the tester's four named
+  ambiguities, `u8/u8b-red-verify-fast.txt`):* **O-4** an `--arch` that differs
+  from the daemon's exits 1 naming both arches (U8-1/A75 wins; item 3's "exit 2"
+  is amended to 1). **O-5** on a client failure `bundle_fetch.sh` passes the
+  client's FAIL line through, adds one line of its own naming the stage and the
+  client's exit code, and exits with that code (1, or 2 on a bad argument);
+  U8-4's "one FAIL line" reads as "one line from the client"; the script never
+  adds a third. **O-6** README and the `bundle.sh` header say the fetched set is
+  what the bundle ships from U9 and claim nothing about sources shipping now
+  (U8-9); the tests pin only the build -> fetch -> bundle order and "the only
+  bundle step with a route out". **O-7** RED evidence is the fast run
+  (`u8b-red-verify-fast.txt`); R6's `u8b-tester-red-verify-full.txt` is
+  satisfied by the developer's GREEN full run and the orchestrator's full run.
+  Also: `scripts/bundle_fetch.sh` is staged with `git add --chmod=+x` on Windows.
+- *Orchestrator ruling at U8b rework 1 (2026-10-28):* **O-8** `bundle_fetch.sh`
+  passes the compose run's exit code through unchanged; its own line names
+  compose only for codes the client never returns (125, 126, 127) and names
+  `sources_fetch.py` otherwise; the script never reads the client's output to
+  tell the two apart. Rework 1 scope: review B-1, B-2, N-2, N-3, N-5; security
+  L-1, L-2 (`u8/u8b-review.md`, `u8/u8b-security.md`).
+- *Orchestrator ruling after the U8b real runs (2026-10-28):* **O-2 answered**:
+  `u8/hop-hosts.md` shows `objects.githubusercontent.com` unused in both the
+  sample and the full set (Temurin redirects to
+  `release-assets.githubusercontent.com`). Dropping it from `hosts` is a
+  reviewed U8-10 change in U8c (policy, design note, lock-rule test, security),
+  not in U8b, whose scope is closed after rework 1. Real-run results: sample
+  25 files 136571547 B in 25 s; full 716 files 1180936586 B in 615 s; both
+  equal to `u8/expected.md`; `lock_sha256` equal (`u8/full-run.txt`, `size.md`).
 
 ## N5. The lock: `docker/sources.lock.json` (generated, reviewed)
 

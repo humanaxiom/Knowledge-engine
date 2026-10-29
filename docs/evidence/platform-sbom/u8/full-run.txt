@@ -1,0 +1,892 @@
+# U8b O-1 full-set real fetch, 2026-10-28 (developer). Command: COMPOSE_PROJECT_NAME=ke-dev-u8b-real scripts/bundle_fetch.sh --set full --out <scratch>/fullset (Git Bash). Result: exit 0; 716 files, 1180936586 bytes, 183 components; 716 distinct sha256 in the ok lines; fetch.json lock_sha256 12eebc8c...761b equal to expected.md; the out dir held 716 blobs + fetch.json (1181080083 bytes with fetch.json). Scratch dir deleted after.
+== sources: pull ==
+ Image anchore/syft:v1.54.1@sha256:3eb5379ba7b409c3f4069b686110527af0c47df993fa5c10d13e7cf34f49b1aa Pulling 
+ Image anchore/syft:v1.54.1@sha256:3eb5379ba7b409c3f4069b686110527af0c47df993fa5c10d13e7cf34f49b1aa Pulled 
+== sources: fetch ==
+ Network ke-fetch-94b428ae_default Creating 
+ Network ke-fetch-94b428ae_default Created 
+ Container ke-fetch-94b428ae-sources-fetch-run-e7a34c108861 Creating 
+ Container ke-fetch-94b428ae-sources-fetch-run-e7a34c108861 Created 
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 APKBUILD sha256=c673459076838229d5ebef8f42586a46b4aa3d22e429f6b9ec008f5c6b3889d3 size=8427 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 20locale.sh sha256=284a6ef56ab97a13a777c6b01ae14f2cc3d2b7a29c19e750e622e70cc3c73186 size=97 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 aliases.conf sha256=3ebaba946f213670170c7d69949f690a3854553bd0b1560f1d980cba4c83a942 size=1545 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 alpine-baselayout.post-install sha256=dd30b63bfbe4f7d8085f57840e15b84015b3518d6f282a3e0924f73a61000016 size=453 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 alpine-baselayout.pre-install sha256=28ecff91a36f438ca26bc8cc08d857863378aa94eab399a1f413e52501b86f85 size=56 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 alpine-baselayout.pre-upgrade sha256=3f35fa5402d397389f366e8934ba0f800a017a149f4281dc8c22762419e47e10 size=944 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 blacklist.conf sha256=0e9ab848289bfb20b9b066d05c8b1383a7c92b97ff8072a50806054b5d3fd739 size=2247 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 color_prompt.sh.disabled sha256=ba24425c6864a5d17fa0fdaf914c4d21419e47c4d62080c33830af059fe46617 size=447 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 crontab sha256=575d810a9fae5f2f0671c9b2c0ce973e46c7207fbe5cb8d1b0d1836a6a0470e3 size=283 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 group sha256=6fb6ab5a5526e6f4896b70c7e3c350fd475158a1f0d7b5fc0f3f9bd57f1c3be8 size=510 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 i386.conf sha256=6c46c4cbfb8b7594f19eb94801a350fa2221ae9ac5239a8819d15555caa76ae8 size=122 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 inittab sha256=7326d8ad56bf5fea63b1ca516a747ff6e6723e25ae84a93c31620b03de6c001d size=570 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 passwd sha256=31a94f06f17bc3b9085fccab1d0fa6ee9e79c4a1e4d91f617fa5de95863be015 size=702 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 profile sha256=87e8643d3ce156de0c09370d4d39446f30bd00d264bea248abc191c4d7b9df3e size=547 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 usr_merge_nag.sh sha256=3add5845c64bec8ef8dfe27087401a83816ea7cdda20e77826d2ba5516c7434c size=699 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 protocols-6.4 sha256=4959498abbadaa1e50894a266f8d0d94500101cfe5b5f09dcad82e9d5bdfab46 size=3144 hops=distfiles.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 services-6.4 sha256=f6183055fd949f9c53d49ee620f85d0150123ea691d25ed1bba0c641b4ee2f48 size=12813 hops=distfiles.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.2-r1 APKBUILD sha256=aef255516b71e39109860b92eb027a0986d90197427fb93ec91ebcd04bf59763 size=8670 hops=gitlab.alpinelinux.org
+bundle_fetch: held apk:alpine-baselayout@3.7.2-r1 20locale.sh sha256=284a6ef56ab97a13a777c6b01ae14f2cc3d2b7a29c19e750e622e70cc3c73186 size=97 (fetched for apk:alpine-baselayout@3.7.1-r8 20locale.sh)
+bundle_fetch: held apk:alpine-baselayout@3.7.2-r1 aliases.conf sha256=3ebaba946f213670170c7d69949f690a3854553bd0b1560f1d980cba4c83a942 size=1545 (fetched for apk:alpine-baselayout@3.7.1-r8 aliases.conf)
+bundle_fetch: held apk:alpine-baselayout@3.7.2-r1 alpine-baselayout.post-install sha256=dd30b63bfbe4f7d8085f57840e15b84015b3518d6f282a3e0924f73a61000016 size=453 (fetched for apk:alpine-baselayout@3.7.1-r8 alpine-baselayout.post-install)
+bundle_fetch: held apk:alpine-baselayout@3.7.2-r1 alpine-baselayout.pre-install sha256=28ecff91a36f438ca26bc8cc08d857863378aa94eab399a1f413e52501b86f85 size=56 (fetched for apk:alpine-baselayout@3.7.1-r8 alpine-baselayout.pre-install)
+bundle_fetch: held apk:alpine-baselayout@3.7.2-r1 alpine-baselayout.pre-upgrade sha256=3f35fa5402d397389f366e8934ba0f800a017a149f4281dc8c22762419e47e10 size=944 (fetched for apk:alpine-baselayout@3.7.1-r8 alpine-baselayout.pre-upgrade)
+bundle_fetch: held apk:alpine-baselayout@3.7.2-r1 blacklist.conf sha256=0e9ab848289bfb20b9b066d05c8b1383a7c92b97ff8072a50806054b5d3fd739 size=2247 (fetched for apk:alpine-baselayout@3.7.1-r8 blacklist.conf)
+bundle_fetch: held apk:alpine-baselayout@3.7.2-r1 color_prompt.sh.disabled sha256=ba24425c6864a5d17fa0fdaf914c4d21419e47c4d62080c33830af059fe46617 size=447 (fetched for apk:alpine-baselayout@3.7.1-r8 color_prompt.sh.disabled)
+bundle_fetch: held apk:alpine-baselayout@3.7.2-r1 crontab sha256=575d810a9fae5f2f0671c9b2c0ce973e46c7207fbe5cb8d1b0d1836a6a0470e3 size=283 (fetched for apk:alpine-baselayout@3.7.1-r8 crontab)
+bundle_fetch: held apk:alpine-baselayout@3.7.2-r1 group sha256=6fb6ab5a5526e6f4896b70c7e3c350fd475158a1f0d7b5fc0f3f9bd57f1c3be8 size=510 (fetched for apk:alpine-baselayout@3.7.1-r8 group)
+bundle_fetch: ok apk:alpine-baselayout@3.7.2-r1 hier.7 sha256=8a91913d8a05ad57316355ee74d966210a6eae7bd850d46dac53e799d3981cc2 size=6855 hops=gitlab.alpinelinux.org
+bundle_fetch: held apk:alpine-baselayout@3.7.2-r1 i386.conf sha256=6c46c4cbfb8b7594f19eb94801a350fa2221ae9ac5239a8819d15555caa76ae8 size=122 (fetched for apk:alpine-baselayout@3.7.1-r8 i386.conf)
+bundle_fetch: held apk:alpine-baselayout@3.7.2-r1 inittab sha256=7326d8ad56bf5fea63b1ca516a747ff6e6723e25ae84a93c31620b03de6c001d size=570 (fetched for apk:alpine-baselayout@3.7.1-r8 inittab)
+bundle_fetch: held apk:alpine-baselayout@3.7.2-r1 passwd sha256=31a94f06f17bc3b9085fccab1d0fa6ee9e79c4a1e4d91f617fa5de95863be015 size=702 (fetched for apk:alpine-baselayout@3.7.1-r8 passwd)
+bundle_fetch: held apk:alpine-baselayout@3.7.2-r1 profile sha256=87e8643d3ce156de0c09370d4d39446f30bd00d264bea248abc191c4d7b9df3e size=547 (fetched for apk:alpine-baselayout@3.7.1-r8 profile)
+bundle_fetch: ok apk:alpine-baselayout@3.7.2-r1 usr_merge_nag.sh sha256=ffab41e32add88a13483309172c22da013f50a82bc552b488765254a6e92115c size=677 hops=gitlab.alpinelinux.org
+bundle_fetch: held apk:alpine-baselayout@3.7.2-r1 protocols-6.4 sha256=4959498abbadaa1e50894a266f8d0d94500101cfe5b5f09dcad82e9d5bdfab46 size=3144 (fetched for apk:alpine-baselayout@3.7.1-r8 protocols-6.4)
+bundle_fetch: held apk:alpine-baselayout@3.7.2-r1 services-6.4 sha256=f6183055fd949f9c53d49ee620f85d0150123ea691d25ed1bba0c641b4ee2f48 size=12813 (fetched for apk:alpine-baselayout@3.7.1-r8 services-6.4)
+bundle_fetch: ok apk:apk-tools@3.0.3-r1 APKBUILD sha256=d22163ee6bcd1095d53534fdfa15b87c171eb111d305f38c61ea1b6a103caf0e size=4179 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:apk-tools@3.0.3-r1 _apk sha256=87824378d2caa2f6bc5e3d103ddec4a9e7cb7a95d03ce0fb7c0e311cdbc9efc6 size=17285 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:apk-tools@3.0.3-r1 repo-hash-sha1.patch sha256=0ef3ecc88a5c627ee9486632bbc26e66dd0073e6a9be0c143b25c6e366162df0 size=1245 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:apk-tools@3.0.3-r1 apk-tools-v3.0.3.tar.gz sha256=a45214cb2135fbb7cddbdb7a7daab6179300b42eb9040f6a6c6e06061c5dffca size=382606 hops=distfiles.alpinelinux.org
+bundle_fetch: ok apk:apk-tools@3.0.8-r0 APKBUILD sha256=492db5ec3ca2ca6cfd3cc4e5b52a0262ca7bd9c77299344efb4d786c596b7005 size=3962 hops=gitlab.alpinelinux.org
+bundle_fetch: held apk:apk-tools@3.0.8-r0 repo-hash-sha1.patch sha256=0ef3ecc88a5c627ee9486632bbc26e66dd0073e6a9be0c143b25c6e366162df0 size=1245 (fetched for apk:apk-tools@3.0.3-r1 repo-hash-sha1.patch)
+bundle_fetch: ok apk:apk-tools@3.0.8-r0 apk-tools-v3.0.8.tar.gz sha256=e81c64a6e7c3806d45d4622c253e757aee970be84048554fa0eed79310e9453e size=390114 hops=distfiles.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 APKBUILD sha256=fb2323ac3121c6cd1122c42cabbd19ec28a29a1cf434a4c0759792c63a1c63a8 size=24569 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0001-awk-fix-handling-of-literal-backslashes-in-replaceme.patch sha256=522e48b25b320b854885419f3ee3a092bd58ad2ed111da87a57cafbc8420feae size=2187 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0001-blkdiscard-ship-link-to-sbin-instead-of-usr-bin.patch sha256=f490ce643412a33dfd3c92aaaeff501a10c0f78662172d1cf55e5d632b7f8033 size=1100 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0001-hexdump-fix-regression-with-n4-e-u.patch sha256=c289b3ed7096557846069f6814e063226b2552e6d26a959c9e35116469dddf35 size=1619 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0001-init-add-support-for-separate-reboot-action.patch sha256=df5b272582ebf19de062341469ade926b1c747278871190855ac0d16c079f519 size=7263 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0001-mount-fix-parsing-proc-mounts-with-long-lines.patch sha256=5971026ad9e4b252370bf4be615f7da6ab146cccc58a7e5cb3f21b92c32ae50d size=2098 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0001-netstat-sanitize-process-names.patch sha256=daf4282120acbc4eb1d90721565d2e01c9ddc3eeeabed4c5f5faa04fe3d33dd3 size=970 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0001-tar-fix-16018-masking-of-potentially-malicious-tar-cpio-content.patch sha256=8b4262ffbaaa721d3c1d6a2b1deb84a794a99252b1b15e974ec76ccb9eb3c517 size=3442 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0001-tar-fix-TOCTOU-symlink-race-condition.patch sha256=1a65d0870075fc83d58d75e91a2e518d1bee1898083086fb950281eb79b7d3a8 size=1103 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0001-tunctl-fix-segfault-on-ioctl-failure.patch sha256=d8488651d7af4450310dce234bc62cf5737a473478f67e298a1ad50c6205a78c size=1387 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0001-wget-add-header-Accept.patch sha256=0edc53c34e0b7f82efb4010ac417c42c182890088f83944f1fb557ba5826968b size=3158 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0002-adduser-default-to-sbin-nologin-as-shell-for-system-.patch sha256=1f7d95849b0cda0a75d608afca994d782f0a67fe0f1cb47578424ebadeb266c7 size=789 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0003-ash-add-built-in-BB_ASH_VERSION-variable.patch sha256=9059fe07e7a872ed16e66f9cb711dbfcf4d5d28308f20dd9a6c36956326911c9 size=3423 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0004-Avoid-redefined-warnings-when-buiding-with-utmps.patch sha256=8ac54787fe6bfeb42a6c13e49b39ac7c61e839c4cea243d273c71ba10f1b4a2c size=3226 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0005-libbb-sockaddr2str-ensure-only-printable-characters-.patch sha256=3d16e43c11fa3afeb441c64129071168ce9a7a9e584fc78ccc18bbae99feda87 size=1313 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0006-modinfo-add-k-option-for-kernel-version.patch sha256=6832669fa413d9a236a22bb4d0519e6cc89771a0ef24abd723afd99ce52e900f size=4906 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0007-nologin-Install-applet-to-sbin-instead-of-usr-sbin.patch sha256=3bf06e5cdd1a0d4a0ad541c8a838004fd0c4e46e44ad3af6d146ad2f69967d3b size=1064 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0008-pgrep-add-support-for-matching-against-UID-and-RUID.patch sha256=c43b6ede059656adb473481aff2aa29239d232b998f735302e97a324650e77a3 size=4704 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0009-properly-fix-wget-https-support.patch sha256=4be0a9d28acaa4c117c694a4816fad4a2d3f78e224676dfc2d1407d3ad0dc17a size=2560 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0010-fsck-resolve-LABEL-.-UUID-.-spec-to-device.patch sha256=f45615c7a985b30465da5d93a3535404636f45a83cbeefafbd0bcb6b0c86371f size=1986 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0011-nslookup-sanitize-all-printed-strings-with-printable.patch sha256=a1f28268047e9e268f9760f3f3c9bf53f41eb5a712e0922f105dd23b96c00dc7 size=2412 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0012-ash-exec-busybox.static.patch sha256=813555bb69bc9b97ff3d7ec14569eb2763ec16bfd9650bba5f1f08ba5cd4226c size=841 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0013-app-location-for-cpio-vi-and-lspci.patch sha256=7f083b5705dac1cfa80953e32e83aaa65e4234c41a59f1578bfc403a1abf4eed size=1730 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0014-udhcpc-set-default-discover-retries-to-5.patch sha256=3e306b052a2df4134de61012de907893aebeb9cd107e9410e81770d60608c41d size=2459 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0015-ping-make-ping-work-without-root-privileges.patch sha256=802827589eb1c04f634ba8f69158cf0ba87e41061935ba5047ccc8322bf20f41 size=6389 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0016-fbsplash-support-console-switching.patch sha256=4db1b0fe9178c1a04f8ea63a9915db86159120398e8bd619c0231afa303472d4 size=5465 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0017-fbsplash-support-image-and-bar-alignment-and-positio.patch sha256=d128fa633cfad0845d6bd5f0aee634ab9971b2edd6001ad91d99b3c1be8aee91 size=5655 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0018-depmod-support-generating-kmod-binary-index-files.patch sha256=6817e14f68dae612a91aa7d75e76b1212a5bba8e9cfdff11336e606bdeed98eb size=14161 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0019-Add-flag-for-not-following-symlinks-when-recursing.patch sha256=a4f0e598874e0229071c6fe59380cd6c739d68ecbc74e1eef2de76e60ea49030 size=2471 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0020-udhcpc-Don-t-background-if-n-is-given.patch sha256=3cc2b21429514b57d75e66a48b6e4c2068c931f91e993e8625a8f22d04daad4b size=3578 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0021-tests-fix-tarball-creation.patch sha256=dd4c10e0d2a1479d2367cf116e05bda09f0f2921636f65af99428d0cff542412 size=1012 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0022-tests-musl-doesn-t-seem-to-recognize-UTC0-as-a-timez.patch sha256=ab1f225416915acf048a2cce3571dbbe942ecd7b114492401b9e0634567e633a size=1258 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0023-Hackfix-to-disable-HW-acceleration-for-MD5-SHA1-on-x.patch sha256=bb9858725f62c1aec9baeeace4a217a4a216ae8488a4a04e92fc225ef4f063c5 size=1731 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0024-umount-Implement-O-option-to-unmount-by-mount-option.patch sha256=fe1b1ed4983c26960bf9d88062e52f6f1f2735a54d15234361d2b2c53eef14ce size=6560 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0025-find-fix-xdev-depth-and-delete.patch sha256=d88146dbec6996345b825805408a8c855e616decb4ad25555012b37d605c6b62 size=8172 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0026-awk.c-fix-CVE-2023-42366-bug-15874.patch sha256=34a52455ba3866c43d53558047fa40edba5118218930a3f860d1d343dc7d09a8 size=926 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0027-awk-Mark-test-for-handling-of-start-of-word-pattern-.patch sha256=f478b2c38a12fad318b43839f4aa97c6116087d4c986ed6ce11320e19b8409c1 size=1572 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0028-od-Skip-od-B-on-big-endian.patch sha256=83483a14589224a6f7e7c03883abd8b54d68dc46f00628be59a61ecc68d79067 size=785 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0029-ash-reject-unknown-long-options.patch sha256=4ed1b9592b75abb740878804dc8cc48cffc5e6da6cd6d4319a8c35082b6b1a77 size=1500 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0030-hexdump-Skip-a-single-test-on-big-endian-systems.patch sha256=a03e66c5768d4fa5acb2778943019c1ccc96c9f7f5b8b56206df917c9d28967c size=1101 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0031-syslogd-fix-wrong-OPT_locallog-flag-detection.patch sha256=a4b8e95aefd53ac360bfc898f0f08ca7d86ef5178058a3499783a99e37247412 size=1225 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0032-lineedit-fix-some-tab-completions-written-to-stdout.patch sha256=032a2e416980a21a6dca1b702543b29b675a8ef843998d9c24d31eacb7fc27cb size=1551 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0033-lineedit-use-stdout-for-shell-history-builtin.patch sha256=61265873d32d0d0b12c429a736de6c949f0dbcd434e1ead1765bf3fd19cfc084 size=1499 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0034-adduser-remove-preconfigured-GECOS-full-name-field.patch sha256=b1b62318d5b4550c2a4ae6cad74330bbb9159dacdd8f0617759311d9d977dbbf size=1602 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 0035-cpio-map-F-to-file-long-option.patch sha256=6a65af49b8497220eb8ef502167d76bf12a30f7cf1a12eb620041e1efd0747b5 size=998 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 acpid-poweroff.sh sha256=745a5f25dd586f7574f5867fdb3d9b0f7cda97224cadc7a178fc72e26b51b7e7 size=19 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 acpid.initd sha256=e9a57d04084733e20b57c4f17e94e8d277ef42f2836f33d96be1250e9672b2a8 size=267 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 acpid.logrotate sha256=d608a3b7715886b5735def0cc50a6359fd364fac2e0e0a459c588c04be471031 size=140 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 bbsuid.c sha256=99f6275a53a4005d8f03d87e5361699419b33a52b2b2e2fe1c45e90ab6d51f58 size=2182 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 busybox-extras.post-install sha256=d9fc2353305920237a46b75c8b184166e6a2f9b6aaba5c96ed80d5234534141c size=79 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 busybox-extras.pre-deinstall sha256=921289ece87e6a645d15dcd7fea4cd96e3c1a3ad393f7a98f6cad03bb7266aea size=195 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 busybox.post-install sha256=13c120a1c714ecafa7fe1fc748406a89dfffc549118ebce324b53d4bbb4ba75f size=335 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 busybox.post-upgrade sha256=3cf0a22d2d6c6ed34be6b77ed3973b7c0b7434525744026c0159f5a76f827f49 size=1640 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 busybox.trigger sha256=c7840b111dd82669de2074ea3c7e345c063928db2bbff650a81289777b3ff98f size=576 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 busyboxconfig sha256=65b29f6085cd79ab5f032d7e4299534a86c3efad240e78c16186a19bf847fcca size=31637 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 busyboxconfig-extras sha256=1d539797a78b17e815acb6afb97e8883fe65d0c094801395c014ac5f7b3a7e98 size=37893 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 crond.confd sha256=d058d9ed0824f877b4e88158fe25d71ad76fca4b71542c4c6d7991ee2ecd20f8 size=54 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 crond.initd sha256=9c7955d5227326ea4a1e55c225606e34d148a831cca3e05b23ad5c58f525c8e0 size=204 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 dad.if-up sha256=2fd20d1bc67d9ee711990002b24f156635a73f56b8935b2f76592938817fa4e7 size=285 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 default.script sha256=c7b39bba4d7f1ce05dbdeba7d2fd97b96a8c3c0c1ebc0259f641fb8e1c3827d2 size=4010 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 dnsd.initd sha256=4a2b86475c9a3e06729265093cfc71711575089472b68671fe59158999f829c3 size=198 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 httpd.initd sha256=834284a025ef92049ffb6b67264591de2da0e61b85226eb48bd2eead52dce860 size=210 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 inetd.initd sha256=bc35f55a9cb9930f5ffbde4cd93037b29a384b155a45a9bd1e1c7ea0a9139138 size=216 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 klogd.confd sha256=f6cd63d6e5f384dcb01a4906c9a0b6c5923794380235dfe0d79b48a686b03c5d size=14 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 klogd.initd sha256=855bf399d4c689dcb8c67a1062e02f1f925297eb18e7ac6942219ab84330a547 size=280 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 loadkmap.confd sha256=85de66e8a23c60061d8ddf20075ce89ae3cab368a4b995aa863a6e9ec552a0d0 size=111 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 loadkmap.initd sha256=7778397c308a89ab2b49e22be498051808ee97c2918afca6563638c0d9d6aae3 size=289 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 mdev.initd sha256=754d37775157f138ed8834e041765ee6aed3a14915a783be480d1f34a6d5783d size=745 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 ntpd.confd sha256=4224e5c6b5ffeb815c15f3e9f17ddaa169d4e6b7da169dbd0939fe06dbe8914d size=106 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 ntpd.initd sha256=7c64ee24b972bee7397407955198d3d336c71deb83a784c7e2656709802c0040 size=305 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 rdate.confd sha256=521f5171e20a353e68155620ce7c847c53dcfb7c45ab02d7566efd99cff2dbf2 size=48 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 rdate.initd sha256=0c6eb4dc269386472f475cf9c549ba53b73aa33f044fbfb3b6bc6dd2574bb341 size=253 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 securetty sha256=713fcea5109728883b9147e822429133fcc8b5e253afd3c2a197b10cd0bc3b4d size=156 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 ssl_client.c sha256=f36fb83637a12fe0706f828a3e9a4181ac6ed452b59d5d30fcf4dbe1884b8aed size=3418 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 syslog.confd sha256=47b6e2ae625578903f8cf78410a981ab3103cb6de156a853034c57363bf39e0a size=18 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 syslog.initd sha256=f5e471c5bf96a706655b043516403f7aabe2c893f9597e345aa625b6a6375a7f size=292 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 udhcpc.conf sha256=5b372209e01cda07c87b8afa6d1ab3d7e8daf18a1f2332d744203a6dc289eb1a size=287 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 udhcpd.initd sha256=5c2d05f2cb2a47847c345881ea41de15afe7d1c10f76f8e3cbbadeb0cba4dc50 size=202 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 watchdog.confd sha256=77f6f9069afdbb477a7e822aa2c7265d64fd22fdd9338bb3beb0cee901d202ce size=40 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 watchdog.initd sha256=8bf9f4caa14f2e0a1ded5f76130bfec07c325e89045e5ba6fc10f890270b5752 size=315 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r30 busybox-1.37.0.tar.bz2 sha256=3311dff32e746499f4df0d5df04d7eb396382d7e108bb9250e7b519b837043a4 size=2565764 hops=distfiles.alpinelinux.org
+bundle_fetch: ok apk:busybox@1.37.0-r31 APKBUILD sha256=98f019f62291aff63cb798f046fb59dfd43340885de63ca2f127651fc21d0450 size=24569 hops=gitlab.alpinelinux.org
+bundle_fetch: held apk:busybox@1.37.0-r31 0001-awk-fix-handling-of-literal-backslashes-in-replaceme.patch sha256=522e48b25b320b854885419f3ee3a092bd58ad2ed111da87a57cafbc8420feae size=2187 (fetched for apk:busybox@1.37.0-r30 0001-awk-fix-handling-of-literal-backslashes-in-replaceme.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0001-blkdiscard-ship-link-to-sbin-instead-of-usr-bin.patch sha256=f490ce643412a33dfd3c92aaaeff501a10c0f78662172d1cf55e5d632b7f8033 size=1100 (fetched for apk:busybox@1.37.0-r30 0001-blkdiscard-ship-link-to-sbin-instead-of-usr-bin.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0001-hexdump-fix-regression-with-n4-e-u.patch sha256=c289b3ed7096557846069f6814e063226b2552e6d26a959c9e35116469dddf35 size=1619 (fetched for apk:busybox@1.37.0-r30 0001-hexdump-fix-regression-with-n4-e-u.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0001-init-add-support-for-separate-reboot-action.patch sha256=df5b272582ebf19de062341469ade926b1c747278871190855ac0d16c079f519 size=7263 (fetched for apk:busybox@1.37.0-r30 0001-init-add-support-for-separate-reboot-action.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0001-mount-fix-parsing-proc-mounts-with-long-lines.patch sha256=5971026ad9e4b252370bf4be615f7da6ab146cccc58a7e5cb3f21b92c32ae50d size=2098 (fetched for apk:busybox@1.37.0-r30 0001-mount-fix-parsing-proc-mounts-with-long-lines.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0001-netstat-sanitize-process-names.patch sha256=daf4282120acbc4eb1d90721565d2e01c9ddc3eeeabed4c5f5faa04fe3d33dd3 size=970 (fetched for apk:busybox@1.37.0-r30 0001-netstat-sanitize-process-names.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0001-tar-fix-16018-masking-of-potentially-malicious-tar-cpio-content.patch sha256=8b4262ffbaaa721d3c1d6a2b1deb84a794a99252b1b15e974ec76ccb9eb3c517 size=3442 (fetched for apk:busybox@1.37.0-r30 0001-tar-fix-16018-masking-of-potentially-malicious-tar-cpio-content.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0001-tar-fix-TOCTOU-symlink-race-condition.patch sha256=1a65d0870075fc83d58d75e91a2e518d1bee1898083086fb950281eb79b7d3a8 size=1103 (fetched for apk:busybox@1.37.0-r30 0001-tar-fix-TOCTOU-symlink-race-condition.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0001-tunctl-fix-segfault-on-ioctl-failure.patch sha256=d8488651d7af4450310dce234bc62cf5737a473478f67e298a1ad50c6205a78c size=1387 (fetched for apk:busybox@1.37.0-r30 0001-tunctl-fix-segfault-on-ioctl-failure.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0001-wget-add-header-Accept.patch sha256=0edc53c34e0b7f82efb4010ac417c42c182890088f83944f1fb557ba5826968b size=3158 (fetched for apk:busybox@1.37.0-r30 0001-wget-add-header-Accept.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0002-adduser-default-to-sbin-nologin-as-shell-for-system-.patch sha256=1f7d95849b0cda0a75d608afca994d782f0a67fe0f1cb47578424ebadeb266c7 size=789 (fetched for apk:busybox@1.37.0-r30 0002-adduser-default-to-sbin-nologin-as-shell-for-system-.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0003-ash-add-built-in-BB_ASH_VERSION-variable.patch sha256=9059fe07e7a872ed16e66f9cb711dbfcf4d5d28308f20dd9a6c36956326911c9 size=3423 (fetched for apk:busybox@1.37.0-r30 0003-ash-add-built-in-BB_ASH_VERSION-variable.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0004-Avoid-redefined-warnings-when-buiding-with-utmps.patch sha256=8ac54787fe6bfeb42a6c13e49b39ac7c61e839c4cea243d273c71ba10f1b4a2c size=3226 (fetched for apk:busybox@1.37.0-r30 0004-Avoid-redefined-warnings-when-buiding-with-utmps.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0005-libbb-sockaddr2str-ensure-only-printable-characters-.patch sha256=3d16e43c11fa3afeb441c64129071168ce9a7a9e584fc78ccc18bbae99feda87 size=1313 (fetched for apk:busybox@1.37.0-r30 0005-libbb-sockaddr2str-ensure-only-printable-characters-.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0006-modinfo-add-k-option-for-kernel-version.patch sha256=6832669fa413d9a236a22bb4d0519e6cc89771a0ef24abd723afd99ce52e900f size=4906 (fetched for apk:busybox@1.37.0-r30 0006-modinfo-add-k-option-for-kernel-version.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0007-nologin-Install-applet-to-sbin-instead-of-usr-sbin.patch sha256=3bf06e5cdd1a0d4a0ad541c8a838004fd0c4e46e44ad3af6d146ad2f69967d3b size=1064 (fetched for apk:busybox@1.37.0-r30 0007-nologin-Install-applet-to-sbin-instead-of-usr-sbin.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0008-pgrep-add-support-for-matching-against-UID-and-RUID.patch sha256=c43b6ede059656adb473481aff2aa29239d232b998f735302e97a324650e77a3 size=4704 (fetched for apk:busybox@1.37.0-r30 0008-pgrep-add-support-for-matching-against-UID-and-RUID.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0009-properly-fix-wget-https-support.patch sha256=4be0a9d28acaa4c117c694a4816fad4a2d3f78e224676dfc2d1407d3ad0dc17a size=2560 (fetched for apk:busybox@1.37.0-r30 0009-properly-fix-wget-https-support.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0010-fsck-resolve-LABEL-.-UUID-.-spec-to-device.patch sha256=f45615c7a985b30465da5d93a3535404636f45a83cbeefafbd0bcb6b0c86371f size=1986 (fetched for apk:busybox@1.37.0-r30 0010-fsck-resolve-LABEL-.-UUID-.-spec-to-device.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0011-nslookup-sanitize-all-printed-strings-with-printable.patch sha256=a1f28268047e9e268f9760f3f3c9bf53f41eb5a712e0922f105dd23b96c00dc7 size=2412 (fetched for apk:busybox@1.37.0-r30 0011-nslookup-sanitize-all-printed-strings-with-printable.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0012-ash-exec-busybox.static.patch sha256=813555bb69bc9b97ff3d7ec14569eb2763ec16bfd9650bba5f1f08ba5cd4226c size=841 (fetched for apk:busybox@1.37.0-r30 0012-ash-exec-busybox.static.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0013-app-location-for-cpio-vi-and-lspci.patch sha256=7f083b5705dac1cfa80953e32e83aaa65e4234c41a59f1578bfc403a1abf4eed size=1730 (fetched for apk:busybox@1.37.0-r30 0013-app-location-for-cpio-vi-and-lspci.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0014-udhcpc-set-default-discover-retries-to-5.patch sha256=3e306b052a2df4134de61012de907893aebeb9cd107e9410e81770d60608c41d size=2459 (fetched for apk:busybox@1.37.0-r30 0014-udhcpc-set-default-discover-retries-to-5.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0015-ping-make-ping-work-without-root-privileges.patch sha256=802827589eb1c04f634ba8f69158cf0ba87e41061935ba5047ccc8322bf20f41 size=6389 (fetched for apk:busybox@1.37.0-r30 0015-ping-make-ping-work-without-root-privileges.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0016-fbsplash-support-console-switching.patch sha256=4db1b0fe9178c1a04f8ea63a9915db86159120398e8bd619c0231afa303472d4 size=5465 (fetched for apk:busybox@1.37.0-r30 0016-fbsplash-support-console-switching.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0017-fbsplash-support-image-and-bar-alignment-and-positio.patch sha256=d128fa633cfad0845d6bd5f0aee634ab9971b2edd6001ad91d99b3c1be8aee91 size=5655 (fetched for apk:busybox@1.37.0-r30 0017-fbsplash-support-image-and-bar-alignment-and-positio.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0018-depmod-support-generating-kmod-binary-index-files.patch sha256=6817e14f68dae612a91aa7d75e76b1212a5bba8e9cfdff11336e606bdeed98eb size=14161 (fetched for apk:busybox@1.37.0-r30 0018-depmod-support-generating-kmod-binary-index-files.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0019-Add-flag-for-not-following-symlinks-when-recursing.patch sha256=a4f0e598874e0229071c6fe59380cd6c739d68ecbc74e1eef2de76e60ea49030 size=2471 (fetched for apk:busybox@1.37.0-r30 0019-Add-flag-for-not-following-symlinks-when-recursing.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0020-udhcpc-Don-t-background-if-n-is-given.patch sha256=3cc2b21429514b57d75e66a48b6e4c2068c931f91e993e8625a8f22d04daad4b size=3578 (fetched for apk:busybox@1.37.0-r30 0020-udhcpc-Don-t-background-if-n-is-given.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0021-tests-fix-tarball-creation.patch sha256=dd4c10e0d2a1479d2367cf116e05bda09f0f2921636f65af99428d0cff542412 size=1012 (fetched for apk:busybox@1.37.0-r30 0021-tests-fix-tarball-creation.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0022-tests-musl-doesn-t-seem-to-recognize-UTC0-as-a-timez.patch sha256=ab1f225416915acf048a2cce3571dbbe942ecd7b114492401b9e0634567e633a size=1258 (fetched for apk:busybox@1.37.0-r30 0022-tests-musl-doesn-t-seem-to-recognize-UTC0-as-a-timez.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0023-Hackfix-to-disable-HW-acceleration-for-MD5-SHA1-on-x.patch sha256=bb9858725f62c1aec9baeeace4a217a4a216ae8488a4a04e92fc225ef4f063c5 size=1731 (fetched for apk:busybox@1.37.0-r30 0023-Hackfix-to-disable-HW-acceleration-for-MD5-SHA1-on-x.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0024-umount-Implement-O-option-to-unmount-by-mount-option.patch sha256=fe1b1ed4983c26960bf9d88062e52f6f1f2735a54d15234361d2b2c53eef14ce size=6560 (fetched for apk:busybox@1.37.0-r30 0024-umount-Implement-O-option-to-unmount-by-mount-option.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0025-find-fix-xdev-depth-and-delete.patch sha256=d88146dbec6996345b825805408a8c855e616decb4ad25555012b37d605c6b62 size=8172 (fetched for apk:busybox@1.37.0-r30 0025-find-fix-xdev-depth-and-delete.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0026-awk.c-fix-CVE-2023-42366-bug-15874.patch sha256=34a52455ba3866c43d53558047fa40edba5118218930a3f860d1d343dc7d09a8 size=926 (fetched for apk:busybox@1.37.0-r30 0026-awk.c-fix-CVE-2023-42366-bug-15874.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0027-awk-Mark-test-for-handling-of-start-of-word-pattern-.patch sha256=f478b2c38a12fad318b43839f4aa97c6116087d4c986ed6ce11320e19b8409c1 size=1572 (fetched for apk:busybox@1.37.0-r30 0027-awk-Mark-test-for-handling-of-start-of-word-pattern-.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0028-od-Skip-od-B-on-big-endian.patch sha256=83483a14589224a6f7e7c03883abd8b54d68dc46f00628be59a61ecc68d79067 size=785 (fetched for apk:busybox@1.37.0-r30 0028-od-Skip-od-B-on-big-endian.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0029-ash-reject-unknown-long-options.patch sha256=4ed1b9592b75abb740878804dc8cc48cffc5e6da6cd6d4319a8c35082b6b1a77 size=1500 (fetched for apk:busybox@1.37.0-r30 0029-ash-reject-unknown-long-options.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0030-hexdump-Skip-a-single-test-on-big-endian-systems.patch sha256=a03e66c5768d4fa5acb2778943019c1ccc96c9f7f5b8b56206df917c9d28967c size=1101 (fetched for apk:busybox@1.37.0-r30 0030-hexdump-Skip-a-single-test-on-big-endian-systems.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0031-syslogd-fix-wrong-OPT_locallog-flag-detection.patch sha256=a4b8e95aefd53ac360bfc898f0f08ca7d86ef5178058a3499783a99e37247412 size=1225 (fetched for apk:busybox@1.37.0-r30 0031-syslogd-fix-wrong-OPT_locallog-flag-detection.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0032-lineedit-fix-some-tab-completions-written-to-stdout.patch sha256=032a2e416980a21a6dca1b702543b29b675a8ef843998d9c24d31eacb7fc27cb size=1551 (fetched for apk:busybox@1.37.0-r30 0032-lineedit-fix-some-tab-completions-written-to-stdout.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0033-lineedit-use-stdout-for-shell-history-builtin.patch sha256=61265873d32d0d0b12c429a736de6c949f0dbcd434e1ead1765bf3fd19cfc084 size=1499 (fetched for apk:busybox@1.37.0-r30 0033-lineedit-use-stdout-for-shell-history-builtin.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0034-adduser-remove-preconfigured-GECOS-full-name-field.patch sha256=b1b62318d5b4550c2a4ae6cad74330bbb9159dacdd8f0617759311d9d977dbbf size=1602 (fetched for apk:busybox@1.37.0-r30 0034-adduser-remove-preconfigured-GECOS-full-name-field.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 0035-cpio-map-F-to-file-long-option.patch sha256=6a65af49b8497220eb8ef502167d76bf12a30f7cf1a12eb620041e1efd0747b5 size=998 (fetched for apk:busybox@1.37.0-r30 0035-cpio-map-F-to-file-long-option.patch)
+bundle_fetch: held apk:busybox@1.37.0-r31 acpid-poweroff.sh sha256=745a5f25dd586f7574f5867fdb3d9b0f7cda97224cadc7a178fc72e26b51b7e7 size=19 (fetched for apk:busybox@1.37.0-r30 acpid-poweroff.sh)
+bundle_fetch: held apk:busybox@1.37.0-r31 acpid.initd sha256=e9a57d04084733e20b57c4f17e94e8d277ef42f2836f33d96be1250e9672b2a8 size=267 (fetched for apk:busybox@1.37.0-r30 acpid.initd)
+bundle_fetch: held apk:busybox@1.37.0-r31 acpid.logrotate sha256=d608a3b7715886b5735def0cc50a6359fd364fac2e0e0a459c588c04be471031 size=140 (fetched for apk:busybox@1.37.0-r30 acpid.logrotate)
+bundle_fetch: held apk:busybox@1.37.0-r31 bbsuid.c sha256=99f6275a53a4005d8f03d87e5361699419b33a52b2b2e2fe1c45e90ab6d51f58 size=2182 (fetched for apk:busybox@1.37.0-r30 bbsuid.c)
+bundle_fetch: held apk:busybox@1.37.0-r31 busybox-extras.post-install sha256=d9fc2353305920237a46b75c8b184166e6a2f9b6aaba5c96ed80d5234534141c size=79 (fetched for apk:busybox@1.37.0-r30 busybox-extras.post-install)
+bundle_fetch: held apk:busybox@1.37.0-r31 busybox-extras.pre-deinstall sha256=921289ece87e6a645d15dcd7fea4cd96e3c1a3ad393f7a98f6cad03bb7266aea size=195 (fetched for apk:busybox@1.37.0-r30 busybox-extras.pre-deinstall)
+bundle_fetch: held apk:busybox@1.37.0-r31 busybox.post-install sha256=13c120a1c714ecafa7fe1fc748406a89dfffc549118ebce324b53d4bbb4ba75f size=335 (fetched for apk:busybox@1.37.0-r30 busybox.post-install)
+bundle_fetch: held apk:busybox@1.37.0-r31 busybox.post-upgrade sha256=3cf0a22d2d6c6ed34be6b77ed3973b7c0b7434525744026c0159f5a76f827f49 size=1640 (fetched for apk:busybox@1.37.0-r30 busybox.post-upgrade)
+bundle_fetch: held apk:busybox@1.37.0-r31 busybox.trigger sha256=c7840b111dd82669de2074ea3c7e345c063928db2bbff650a81289777b3ff98f size=576 (fetched for apk:busybox@1.37.0-r30 busybox.trigger)
+bundle_fetch: held apk:busybox@1.37.0-r31 busyboxconfig sha256=65b29f6085cd79ab5f032d7e4299534a86c3efad240e78c16186a19bf847fcca size=31637 (fetched for apk:busybox@1.37.0-r30 busyboxconfig)
+bundle_fetch: held apk:busybox@1.37.0-r31 busyboxconfig-extras sha256=1d539797a78b17e815acb6afb97e8883fe65d0c094801395c014ac5f7b3a7e98 size=37893 (fetched for apk:busybox@1.37.0-r30 busyboxconfig-extras)
+bundle_fetch: held apk:busybox@1.37.0-r31 crond.confd sha256=d058d9ed0824f877b4e88158fe25d71ad76fca4b71542c4c6d7991ee2ecd20f8 size=54 (fetched for apk:busybox@1.37.0-r30 crond.confd)
+bundle_fetch: held apk:busybox@1.37.0-r31 crond.initd sha256=9c7955d5227326ea4a1e55c225606e34d148a831cca3e05b23ad5c58f525c8e0 size=204 (fetched for apk:busybox@1.37.0-r30 crond.initd)
+bundle_fetch: held apk:busybox@1.37.0-r31 dad.if-up sha256=2fd20d1bc67d9ee711990002b24f156635a73f56b8935b2f76592938817fa4e7 size=285 (fetched for apk:busybox@1.37.0-r30 dad.if-up)
+bundle_fetch: held apk:busybox@1.37.0-r31 default.script sha256=c7b39bba4d7f1ce05dbdeba7d2fd97b96a8c3c0c1ebc0259f641fb8e1c3827d2 size=4010 (fetched for apk:busybox@1.37.0-r30 default.script)
+bundle_fetch: held apk:busybox@1.37.0-r31 dnsd.initd sha256=4a2b86475c9a3e06729265093cfc71711575089472b68671fe59158999f829c3 size=198 (fetched for apk:busybox@1.37.0-r30 dnsd.initd)
+bundle_fetch: held apk:busybox@1.37.0-r31 httpd.initd sha256=834284a025ef92049ffb6b67264591de2da0e61b85226eb48bd2eead52dce860 size=210 (fetched for apk:busybox@1.37.0-r30 httpd.initd)
+bundle_fetch: held apk:busybox@1.37.0-r31 inetd.initd sha256=bc35f55a9cb9930f5ffbde4cd93037b29a384b155a45a9bd1e1c7ea0a9139138 size=216 (fetched for apk:busybox@1.37.0-r30 inetd.initd)
+bundle_fetch: held apk:busybox@1.37.0-r31 klogd.confd sha256=f6cd63d6e5f384dcb01a4906c9a0b6c5923794380235dfe0d79b48a686b03c5d size=14 (fetched for apk:busybox@1.37.0-r30 klogd.confd)
+bundle_fetch: held apk:busybox@1.37.0-r31 klogd.initd sha256=855bf399d4c689dcb8c67a1062e02f1f925297eb18e7ac6942219ab84330a547 size=280 (fetched for apk:busybox@1.37.0-r30 klogd.initd)
+bundle_fetch: held apk:busybox@1.37.0-r31 loadkmap.confd sha256=85de66e8a23c60061d8ddf20075ce89ae3cab368a4b995aa863a6e9ec552a0d0 size=111 (fetched for apk:busybox@1.37.0-r30 loadkmap.confd)
+bundle_fetch: ok apk:busybox@1.37.0-r31 loadkmap.initd sha256=99f679902e7addf649a54a5cea0cf9aec63922aa886100419c11184339eed22d size=293 hops=gitlab.alpinelinux.org
+bundle_fetch: held apk:busybox@1.37.0-r31 mdev.initd sha256=754d37775157f138ed8834e041765ee6aed3a14915a783be480d1f34a6d5783d size=745 (fetched for apk:busybox@1.37.0-r30 mdev.initd)
+bundle_fetch: held apk:busybox@1.37.0-r31 ntpd.confd sha256=4224e5c6b5ffeb815c15f3e9f17ddaa169d4e6b7da169dbd0939fe06dbe8914d size=106 (fetched for apk:busybox@1.37.0-r30 ntpd.confd)
+bundle_fetch: held apk:busybox@1.37.0-r31 ntpd.initd sha256=7c64ee24b972bee7397407955198d3d336c71deb83a784c7e2656709802c0040 size=305 (fetched for apk:busybox@1.37.0-r30 ntpd.initd)
+bundle_fetch: held apk:busybox@1.37.0-r31 rdate.confd sha256=521f5171e20a353e68155620ce7c847c53dcfb7c45ab02d7566efd99cff2dbf2 size=48 (fetched for apk:busybox@1.37.0-r30 rdate.confd)
+bundle_fetch: held apk:busybox@1.37.0-r31 rdate.initd sha256=0c6eb4dc269386472f475cf9c549ba53b73aa33f044fbfb3b6bc6dd2574bb341 size=253 (fetched for apk:busybox@1.37.0-r30 rdate.initd)
+bundle_fetch: held apk:busybox@1.37.0-r31 securetty sha256=713fcea5109728883b9147e822429133fcc8b5e253afd3c2a197b10cd0bc3b4d size=156 (fetched for apk:busybox@1.37.0-r30 securetty)
+bundle_fetch: held apk:busybox@1.37.0-r31 ssl_client.c sha256=f36fb83637a12fe0706f828a3e9a4181ac6ed452b59d5d30fcf4dbe1884b8aed size=3418 (fetched for apk:busybox@1.37.0-r30 ssl_client.c)
+bundle_fetch: held apk:busybox@1.37.0-r31 syslog.confd sha256=47b6e2ae625578903f8cf78410a981ab3103cb6de156a853034c57363bf39e0a size=18 (fetched for apk:busybox@1.37.0-r30 syslog.confd)
+bundle_fetch: held apk:busybox@1.37.0-r31 syslog.initd sha256=f5e471c5bf96a706655b043516403f7aabe2c893f9597e345aa625b6a6375a7f size=292 (fetched for apk:busybox@1.37.0-r30 syslog.initd)
+bundle_fetch: held apk:busybox@1.37.0-r31 udhcpc.conf sha256=5b372209e01cda07c87b8afa6d1ab3d7e8daf18a1f2332d744203a6dc289eb1a size=287 (fetched for apk:busybox@1.37.0-r30 udhcpc.conf)
+bundle_fetch: held apk:busybox@1.37.0-r31 udhcpd.initd sha256=5c2d05f2cb2a47847c345881ea41de15afe7d1c10f76f8e3cbbadeb0cba4dc50 size=202 (fetched for apk:busybox@1.37.0-r30 udhcpd.initd)
+bundle_fetch: held apk:busybox@1.37.0-r31 watchdog.confd sha256=77f6f9069afdbb477a7e822aa2c7265d64fd22fdd9338bb3beb0cee901d202ce size=40 (fetched for apk:busybox@1.37.0-r30 watchdog.confd)
+bundle_fetch: held apk:busybox@1.37.0-r31 watchdog.initd sha256=8bf9f4caa14f2e0a1ded5f76130bfec07c325e89045e5ba6fc10f890270b5752 size=315 (fetched for apk:busybox@1.37.0-r30 watchdog.initd)
+bundle_fetch: held apk:busybox@1.37.0-r31 busybox-1.37.0.tar.bz2 sha256=3311dff32e746499f4df0d5df04d7eb396382d7e108bb9250e7b519b837043a4 size=2565764 (fetched for apk:busybox@1.37.0-r30 busybox-1.37.0.tar.bz2)
+bundle_fetch: ok apk:gcc@15.2.0-r2 APKBUILD sha256=92b3dc5997085add8c4debbcca374af63101a17fc7fdb2038927c60029f26081 size=31418 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0001-LoongArch-Only-allow-valid-binary-op-when-optimize-c.patch sha256=cacd4041f1a0d7fcc74a13323b30b0e0c879adb90bc3642fa43fc53c85e20b5a size=4028 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0001-posix_memalign.patch sha256=d7d611f683e53f42b8f4928ec044075f0f04e109fc4236260c9877abc3dbc882 size=1435 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0001-tree-object-size.cc-Fix-assert-constant-offset-in-ch.patch sha256=a32d3f77984c4a551e3b6ef95559e85057dd3202906651a76ac1077ff13917f8 size=2397 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0002-gcc-poison-system-directories.patch sha256=8466aa1b19d862e83c7c95b3b3e577139ad302829f4775fde6869fefd13b48f8 size=9509 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0003-specs-turn-on-Wl-z-now-by-default.patch sha256=465bcd43c44591e19ce4b1aa0e5dd432e550f45542d65d0e99bb5ef1ab1ab66a size=1644 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0004-Turn-on-D_FORTIFY_SOURCE-2-by-default-for-C-C-ObjC-O.patch sha256=2dbb0fe518b6026999992a10781f39cf89ebd277580c1be87df1ed4aebe481bf size=1774 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0005-On-linux-targets-pass-as-needed-by-default-to-the-li.patch sha256=460166779c04872acd684a30e90b0603cc22f96a2315d60f6af8e68feae94d3f size=12097 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0006-Enable-Wformat-and-Wformat-security-by-default.patch sha256=a1e5c5b23cc7d4eb7c8e159d7186ecaffb7e1338d76cee22baaa31e6532b7758 size=1437 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0007-Enable-Wtrampolines-by-default.patch sha256=db68b9e21f882ad271865ba619299217c5a8d5b5675d7c9666079eeb0e7638e6 size=743 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0008-gcc-disable-SSP-on-ffreestanding-nostdlib-and-nodefa.patch sha256=5c8b38c74adcf2d87a5ac2eeee195fe60acdcf766aa50481baf5a96805987ae6 size=1253 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0009-gcc-params-set-default-ssp-buffer-size-to-4.patch sha256=ef0af1da070b627e6ff3a81f6f1d089645da6c080561a93d7fb47b58e8389eff size=963 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0010-Ensure-that-msgfmt-doesn-t-encounter-problems-during.patch sha256=8a094cbb17e832e7920915540030ac104d928e2ff0cf562883024ad60d42cd68 size=1771 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0011-Don-t-declare-asprintf-if-defined-as-a-macro.patch sha256=212eddf17bd479babe233f15c20b6379abad2ab8e4001f34ad81b339633e9d8c size=895 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0012-libiberty-copy-PIC-objects-during-build-process.patch sha256=388080f5b65c4799aa475e71d47e301449c09eaff9a75b6cd99f5d8803a9e746 size=716 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0013-libgcc_s.patch sha256=1fb11ba7b4a55517a6f78f44d9de0965d82a6c00c54d61bd27ee8ad5d37977cb size=2143 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0014-nopie.patch sha256=de050e328d18f085e50e9b59fecfb18229bbe31bab40335809f20a362e5d51c8 size=2455 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0015-ada-fix-shared-linking.patch sha256=4df63c8c0353e717e9f3b27602760c0ce0d9f3e0472f65dc97d62bdfabfdbd14 size=1614 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0016-build-fix-CXXFLAGS_FOR_BUILD-passing.patch sha256=9fc2ce9a2df8b498819fd4bc650f89c903801aab49a64f3d7c0c00a8d472495a size=696 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0017-add-fortify-headers-paths.patch sha256=0f378465137aa1c6b2d66a0c89e3a7359ec4125c50e73e0f200cf987b6aaab73 size=821 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0018-Alpine-musl-package-provides-libssp_nonshared.a.-We-.patch sha256=570197543425bf5e348f23179956a82562c3a701c5e7abc823d68f608d68a078 size=1204 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0019-DP-Use-push-state-pop-state-for-gold-as-well-when-li.patch sha256=9e4ddf59a0ba5dd39e06b0864c8b7b71604190be6364ddba1743b89d3d4b1084 size=3024 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0020-aarch64-disable-multilib-support.patch sha256=631a4068987630d1ffc053a0eee8c1bdf7ae4d58d6303a38730e6f6db4766721 size=1044 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0021-s390x-disable-multilib-support.patch sha256=15127f91185858c0ea7994ecd1543037328e4727dcd76f37d1eb3a156dc4a27d size=885 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0022-ppc64-le-disable-multilib-support.patch sha256=65eeb0637c8d52b2128e7c05199f2b0752cd503a28d4653ff177dbabe6de12ba size=3467 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0023-x86_64-disable-multilib-support.patch sha256=bfcf9bc83f7591e130b404d06ce5cab0903e727968854e9e3f98ff5f7c5b9c90 size=1066 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0024-riscv-disable-multilib-support.patch sha256=40dff2d834668966111d58e9e817447e07c38e643e0059742bcb2ef6bccef889 size=3506 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0025-always-build-libgcc_eh.a.patch sha256=0105b6896dc54c33c3b296e42b8fd6409a74f7a27ac0d7d3adc0384fe5d8fac9 size=1616 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0026-ada-libgnarl-remove-use-of-glibc-specific-pthread_rw.patch sha256=1b2ad766fdabb2d027ac025923aadd0a3c82c3a6ad33eefd8eff16fd42752b06 size=2299 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0027-ada-libgnarl-use-posix_openpt-instead-of-glibc-speci.patch sha256=49aeaa495d1b9c533979b054d89c977cdfb2a4ae99b51572d63ef3902f81b3f7 size=1790 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0028-ada-libgnarl-adaint-fix-sched.h-inclusion-for-musl.patch sha256=2b3e713059e754e008f855985afbc44882bd193a8b43ec53b984d32347c4c732 size=1365 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0029-configure-Add-enable-autolink-libatomic-use-in-LINK_.patch sha256=d4a73c034dd8ccfbbef46c3c5a65eda67673499cbe803a7abf459c9d7d83d6db size=9253 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0030-configure-fix-detection-of-atomic-builtins-in-libato.patch sha256=351454d833a3ace7bf46d52529790a8062125d9895aff671665bc0b026528177 size=2150 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0031-libstdc-do-not-throw-exceptions-for-non-C-locales-on.patch sha256=e338ea3906c22671cbcce334d26edae80ea5fbce416de13dbd9cbe153152ef8b size=941 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0032-gdc-unconditionally-link-libgphobos-against-libucont.patch sha256=de4217bc5b6a357e1c539bb31cc63c7525d32aeb32383fe09f695080501566cc size=827 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0033-druntime-link-against-libucontext-on-all-platforms.patch sha256=d4ad893f9fbcf1188725b05f0d74cdd048adc5f7593df08381d1347f3d5243b0 size=2056 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0034-libgnat-time_t-is-always-64-bit-on-musl-libc.patch sha256=ac043f2500ad3ec79f11e3efd5f627289d1f64dffb88fbb11ba40d88a73cd807 size=851 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0035-libphobos-do-not-use-LFS64-symbols.patch sha256=62cb57a3d33912b1fbc1ab80ce57b1625a93fe8cbcb1c814985d11d8c5384106 size=1081 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0036-libgo-fix-lfs64-use.patch sha256=b0650eae7315da9afa11c7e2813ec3991ba07d79f30adf1c8a9c3479e5db7488 size=6724 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0037-loongarch-disable-multilib-support.patch sha256=e5c508cfdebfc73c19e21979e604f65010692e69e5f90ba06fdf20e8d688d4ff size=1227 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0038-static-PIE-ensure-static-reaches-the-linker.patch sha256=07d87bb9aea8eecf86c6ea74f0a7d8a89c17afd12ebfea73c2977cbe84af0124 size=4030 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0039-except-Don-t-use-the-cached-value-of-the-gcc_except_.patch sha256=f271babf2a4413e2eef9f5922cf53db4b93ff0b89a03375da7874e36d323a0fb size=2830 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0040-ada-libgnat-use-stub-symbolic-module-name-functions.patch sha256=ea960840a7a751e9be4c82c478cf25c1af7ad42b9f80a09a831f038a0dbf6484 size=7320 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 0041-ada-libgnat-recognize-linux-musleabi-and-linux-muslg.patch sha256=6e9c993a1ccf88762453b4686c7a01eadfdfb4958e796b8c2049e0f05432205c size=817 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r2 gcc-15.2.0.tar.xz sha256=438fd996826b0c82485a29da03a72d71d6e3541a83ec702df4271f6fe025d24e size=101056276 hops=distfiles.alpinelinux.org
+bundle_fetch: ok apk:gcc@15.2.0-r5 APKBUILD sha256=71d831dbef88c2b0ff7b36b7422e878a07751419583a44b06cda2e561cdb82d4 size=31920 hops=gitlab.alpinelinux.org
+bundle_fetch: held apk:gcc@15.2.0-r5 0001-LoongArch-Only-allow-valid-binary-op-when-optimize-c.patch sha256=cacd4041f1a0d7fcc74a13323b30b0e0c879adb90bc3642fa43fc53c85e20b5a size=4028 (fetched for apk:gcc@15.2.0-r2 0001-LoongArch-Only-allow-valid-binary-op-when-optimize-c.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0001-posix_memalign.patch sha256=d7d611f683e53f42b8f4928ec044075f0f04e109fc4236260c9877abc3dbc882 size=1435 (fetched for apk:gcc@15.2.0-r2 0001-posix_memalign.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0001-tree-object-size.cc-Fix-assert-constant-offset-in-ch.patch sha256=a32d3f77984c4a551e3b6ef95559e85057dd3202906651a76ac1077ff13917f8 size=2397 (fetched for apk:gcc@15.2.0-r2 0001-tree-object-size.cc-Fix-assert-constant-offset-in-ch.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0002-gcc-poison-system-directories.patch sha256=8466aa1b19d862e83c7c95b3b3e577139ad302829f4775fde6869fefd13b48f8 size=9509 (fetched for apk:gcc@15.2.0-r2 0002-gcc-poison-system-directories.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0003-specs-turn-on-Wl-z-now-by-default.patch sha256=465bcd43c44591e19ce4b1aa0e5dd432e550f45542d65d0e99bb5ef1ab1ab66a size=1644 (fetched for apk:gcc@15.2.0-r2 0003-specs-turn-on-Wl-z-now-by-default.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0004-Turn-on-D_FORTIFY_SOURCE-2-by-default-for-C-C-ObjC-O.patch sha256=2dbb0fe518b6026999992a10781f39cf89ebd277580c1be87df1ed4aebe481bf size=1774 (fetched for apk:gcc@15.2.0-r2 0004-Turn-on-D_FORTIFY_SOURCE-2-by-default-for-C-C-ObjC-O.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0005-On-linux-targets-pass-as-needed-by-default-to-the-li.patch sha256=460166779c04872acd684a30e90b0603cc22f96a2315d60f6af8e68feae94d3f size=12097 (fetched for apk:gcc@15.2.0-r2 0005-On-linux-targets-pass-as-needed-by-default-to-the-li.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0006-Enable-Wformat-and-Wformat-security-by-default.patch sha256=a1e5c5b23cc7d4eb7c8e159d7186ecaffb7e1338d76cee22baaa31e6532b7758 size=1437 (fetched for apk:gcc@15.2.0-r2 0006-Enable-Wformat-and-Wformat-security-by-default.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0007-Enable-Wtrampolines-by-default.patch sha256=db68b9e21f882ad271865ba619299217c5a8d5b5675d7c9666079eeb0e7638e6 size=743 (fetched for apk:gcc@15.2.0-r2 0007-Enable-Wtrampolines-by-default.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0008-gcc-disable-SSP-on-ffreestanding-nostdlib-and-nodefa.patch sha256=5c8b38c74adcf2d87a5ac2eeee195fe60acdcf766aa50481baf5a96805987ae6 size=1253 (fetched for apk:gcc@15.2.0-r2 0008-gcc-disable-SSP-on-ffreestanding-nostdlib-and-nodefa.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0009-gcc-params-set-default-ssp-buffer-size-to-4.patch sha256=ef0af1da070b627e6ff3a81f6f1d089645da6c080561a93d7fb47b58e8389eff size=963 (fetched for apk:gcc@15.2.0-r2 0009-gcc-params-set-default-ssp-buffer-size-to-4.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0010-Ensure-that-msgfmt-doesn-t-encounter-problems-during.patch sha256=8a094cbb17e832e7920915540030ac104d928e2ff0cf562883024ad60d42cd68 size=1771 (fetched for apk:gcc@15.2.0-r2 0010-Ensure-that-msgfmt-doesn-t-encounter-problems-during.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0011-Don-t-declare-asprintf-if-defined-as-a-macro.patch sha256=212eddf17bd479babe233f15c20b6379abad2ab8e4001f34ad81b339633e9d8c size=895 (fetched for apk:gcc@15.2.0-r2 0011-Don-t-declare-asprintf-if-defined-as-a-macro.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0012-libiberty-copy-PIC-objects-during-build-process.patch sha256=388080f5b65c4799aa475e71d47e301449c09eaff9a75b6cd99f5d8803a9e746 size=716 (fetched for apk:gcc@15.2.0-r2 0012-libiberty-copy-PIC-objects-during-build-process.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0013-libgcc_s.patch sha256=1fb11ba7b4a55517a6f78f44d9de0965d82a6c00c54d61bd27ee8ad5d37977cb size=2143 (fetched for apk:gcc@15.2.0-r2 0013-libgcc_s.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0014-nopie.patch sha256=de050e328d18f085e50e9b59fecfb18229bbe31bab40335809f20a362e5d51c8 size=2455 (fetched for apk:gcc@15.2.0-r2 0014-nopie.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0015-ada-fix-shared-linking.patch sha256=4df63c8c0353e717e9f3b27602760c0ce0d9f3e0472f65dc97d62bdfabfdbd14 size=1614 (fetched for apk:gcc@15.2.0-r2 0015-ada-fix-shared-linking.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0016-build-fix-CXXFLAGS_FOR_BUILD-passing.patch sha256=9fc2ce9a2df8b498819fd4bc650f89c903801aab49a64f3d7c0c00a8d472495a size=696 (fetched for apk:gcc@15.2.0-r2 0016-build-fix-CXXFLAGS_FOR_BUILD-passing.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0017-add-fortify-headers-paths.patch sha256=0f378465137aa1c6b2d66a0c89e3a7359ec4125c50e73e0f200cf987b6aaab73 size=821 (fetched for apk:gcc@15.2.0-r2 0017-add-fortify-headers-paths.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0018-Alpine-musl-package-provides-libssp_nonshared.a.-We-.patch sha256=570197543425bf5e348f23179956a82562c3a701c5e7abc823d68f608d68a078 size=1204 (fetched for apk:gcc@15.2.0-r2 0018-Alpine-musl-package-provides-libssp_nonshared.a.-We-.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0019-DP-Use-push-state-pop-state-for-gold-as-well-when-li.patch sha256=9e4ddf59a0ba5dd39e06b0864c8b7b71604190be6364ddba1743b89d3d4b1084 size=3024 (fetched for apk:gcc@15.2.0-r2 0019-DP-Use-push-state-pop-state-for-gold-as-well-when-li.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0020-aarch64-disable-multilib-support.patch sha256=631a4068987630d1ffc053a0eee8c1bdf7ae4d58d6303a38730e6f6db4766721 size=1044 (fetched for apk:gcc@15.2.0-r2 0020-aarch64-disable-multilib-support.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0021-s390x-disable-multilib-support.patch sha256=15127f91185858c0ea7994ecd1543037328e4727dcd76f37d1eb3a156dc4a27d size=885 (fetched for apk:gcc@15.2.0-r2 0021-s390x-disable-multilib-support.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0022-ppc64-le-disable-multilib-support.patch sha256=65eeb0637c8d52b2128e7c05199f2b0752cd503a28d4653ff177dbabe6de12ba size=3467 (fetched for apk:gcc@15.2.0-r2 0022-ppc64-le-disable-multilib-support.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0023-x86_64-disable-multilib-support.patch sha256=bfcf9bc83f7591e130b404d06ce5cab0903e727968854e9e3f98ff5f7c5b9c90 size=1066 (fetched for apk:gcc@15.2.0-r2 0023-x86_64-disable-multilib-support.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0024-riscv-disable-multilib-support.patch sha256=40dff2d834668966111d58e9e817447e07c38e643e0059742bcb2ef6bccef889 size=3506 (fetched for apk:gcc@15.2.0-r2 0024-riscv-disable-multilib-support.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0025-always-build-libgcc_eh.a.patch sha256=0105b6896dc54c33c3b296e42b8fd6409a74f7a27ac0d7d3adc0384fe5d8fac9 size=1616 (fetched for apk:gcc@15.2.0-r2 0025-always-build-libgcc_eh.a.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0026-ada-libgnarl-remove-use-of-glibc-specific-pthread_rw.patch sha256=1b2ad766fdabb2d027ac025923aadd0a3c82c3a6ad33eefd8eff16fd42752b06 size=2299 (fetched for apk:gcc@15.2.0-r2 0026-ada-libgnarl-remove-use-of-glibc-specific-pthread_rw.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0027-ada-libgnarl-use-posix_openpt-instead-of-glibc-speci.patch sha256=49aeaa495d1b9c533979b054d89c977cdfb2a4ae99b51572d63ef3902f81b3f7 size=1790 (fetched for apk:gcc@15.2.0-r2 0027-ada-libgnarl-use-posix_openpt-instead-of-glibc-speci.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0028-ada-libgnarl-adaint-fix-sched.h-inclusion-for-musl.patch sha256=2b3e713059e754e008f855985afbc44882bd193a8b43ec53b984d32347c4c732 size=1365 (fetched for apk:gcc@15.2.0-r2 0028-ada-libgnarl-adaint-fix-sched.h-inclusion-for-musl.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0029-configure-Add-enable-autolink-libatomic-use-in-LINK_.patch sha256=d4a73c034dd8ccfbbef46c3c5a65eda67673499cbe803a7abf459c9d7d83d6db size=9253 (fetched for apk:gcc@15.2.0-r2 0029-configure-Add-enable-autolink-libatomic-use-in-LINK_.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0030-configure-fix-detection-of-atomic-builtins-in-libato.patch sha256=351454d833a3ace7bf46d52529790a8062125d9895aff671665bc0b026528177 size=2150 (fetched for apk:gcc@15.2.0-r2 0030-configure-fix-detection-of-atomic-builtins-in-libato.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0031-libstdc-do-not-throw-exceptions-for-non-C-locales-on.patch sha256=e338ea3906c22671cbcce334d26edae80ea5fbce416de13dbd9cbe153152ef8b size=941 (fetched for apk:gcc@15.2.0-r2 0031-libstdc-do-not-throw-exceptions-for-non-C-locales-on.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0032-gdc-unconditionally-link-libgphobos-against-libucont.patch sha256=de4217bc5b6a357e1c539bb31cc63c7525d32aeb32383fe09f695080501566cc size=827 (fetched for apk:gcc@15.2.0-r2 0032-gdc-unconditionally-link-libgphobos-against-libucont.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0033-druntime-link-against-libucontext-on-all-platforms.patch sha256=d4ad893f9fbcf1188725b05f0d74cdd048adc5f7593df08381d1347f3d5243b0 size=2056 (fetched for apk:gcc@15.2.0-r2 0033-druntime-link-against-libucontext-on-all-platforms.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0034-libgnat-time_t-is-always-64-bit-on-musl-libc.patch sha256=ac043f2500ad3ec79f11e3efd5f627289d1f64dffb88fbb11ba40d88a73cd807 size=851 (fetched for apk:gcc@15.2.0-r2 0034-libgnat-time_t-is-always-64-bit-on-musl-libc.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0035-libphobos-do-not-use-LFS64-symbols.patch sha256=62cb57a3d33912b1fbc1ab80ce57b1625a93fe8cbcb1c814985d11d8c5384106 size=1081 (fetched for apk:gcc@15.2.0-r2 0035-libphobos-do-not-use-LFS64-symbols.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0036-libgo-fix-lfs64-use.patch sha256=b0650eae7315da9afa11c7e2813ec3991ba07d79f30adf1c8a9c3479e5db7488 size=6724 (fetched for apk:gcc@15.2.0-r2 0036-libgo-fix-lfs64-use.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0037-loongarch-disable-multilib-support.patch sha256=e5c508cfdebfc73c19e21979e604f65010692e69e5f90ba06fdf20e8d688d4ff size=1227 (fetched for apk:gcc@15.2.0-r2 0037-loongarch-disable-multilib-support.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0038-static-PIE-ensure-static-reaches-the-linker.patch sha256=07d87bb9aea8eecf86c6ea74f0a7d8a89c17afd12ebfea73c2977cbe84af0124 size=4030 (fetched for apk:gcc@15.2.0-r2 0038-static-PIE-ensure-static-reaches-the-linker.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0039-except-Don-t-use-the-cached-value-of-the-gcc_except_.patch sha256=f271babf2a4413e2eef9f5922cf53db4b93ff0b89a03375da7874e36d323a0fb size=2830 (fetched for apk:gcc@15.2.0-r2 0039-except-Don-t-use-the-cached-value-of-the-gcc_except_.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0040-ada-libgnat-use-stub-symbolic-module-name-functions.patch sha256=ea960840a7a751e9be4c82c478cf25c1af7ad42b9f80a09a831f038a0dbf6484 size=7320 (fetched for apk:gcc@15.2.0-r2 0040-ada-libgnat-use-stub-symbolic-module-name-functions.patch)
+bundle_fetch: held apk:gcc@15.2.0-r5 0041-ada-libgnat-recognize-linux-musleabi-and-linux-muslg.patch sha256=6e9c993a1ccf88762453b4686c7a01eadfdfb4958e796b8c2049e0f05432205c size=817 (fetched for apk:gcc@15.2.0-r2 0041-ada-libgnat-recognize-linux-musleabi-and-linux-muslg.patch)
+bundle_fetch: ok apk:gcc@15.2.0-r5 0042-libsanitizer-struct_sock_fprog_sz.patch sha256=de29cfa21663011718cebca12b41d0a24759fb18a3176f513928255c9d26ce74 size=1345 hops=gitlab.alpinelinux.org
+bundle_fetch: held apk:gcc@15.2.0-r5 gcc-15.2.0.tar.xz sha256=438fd996826b0c82485a29da03a72d71d6e3541a83ec702df4271f6fe025d24e size=101056276 (fetched for apk:gcc@15.2.0-r2 gcc-15.2.0.tar.xz)
+bundle_fetch: ok apk:geoip@1.6.12-r6 APKBUILD sha256=8f9e47a0405fbc2ba289cd690f98c9caeb3098a1b9853c90e098763cd573c370 size=951 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:geoip@1.6.12-r6 GeoIP-1.6.12.tar.gz sha256=1dfb748003c5e4b7fd56ba8c4cd786633d5d6f409547584f6910398389636f80 size=473914 hops=distfiles.alpinelinux.org
+bundle_fetch: ok apk:gettext@0.24.1-r1 APKBUILD sha256=4fc99103187b3f804c7e2ad4a94c06c6ec088bc900d7db26966be195e2a8f2d7 size=3445 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gettext@0.24.1-r1 cwd.patch sha256=26346ac90ef96e419b76a9540aac5918ddbb82c841480047c10276308d35895a size=361 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gettext@0.24.1-r1 d0e2097_fix-am-nls-autoreconf.patch sha256=faaa45a18ed985182670027a84b14edcd21cfc4255c2630eb5f853d1001a5a85 size=1783 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gettext@0.24.1-r1 skip-meaningless-pthread-rwlock-test.patch sha256=37cbe713974f29740c46b8b0e02c8e9144bb98ccda4ae4c36dac337b9e964eeb size=522 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gettext@0.24.1-r1 skip-tests-musl.patch sha256=8cf472a6fb37da956fc016e018f1559136e164d48c865b5ca98ed838755557a0 size=2214 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:gettext@0.24.1-r1 gettext-0.24.1.tar.xz sha256=6164ec7aa61653ac9cdfb41d5c2344563b21f707da1562712e48715f1d2052a6 size=8382600 hops=distfiles.alpinelinux.org
+bundle_fetch: ok apk:libcap-ng@0.8.5-r2 APKBUILD sha256=33e35be55b055fc1f8e6cb08aa435c5462401ee6cea4b005a88d4a6337cfb205 size=1272 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:libcap-ng@0.8.5-r2 apply-disable.patch sha256=ea03209a708ff2ddcbcf158d377e7416a83d21eb3c4d5be4347ecd6cf892f92d size=817 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:libcap-ng@0.8.5-r2 libcap-ng-0.8.5.tar.gz sha256=3ba5294d1cbdfa98afaacfbc00b6af9ed2b83e8a21817185dfd844cc8c7ac6ff size=460149 hops=distfiles.alpinelinux.org
+bundle_fetch: ok apk:libidn2@2.3.8-r0 APKBUILD sha256=b10c820249ffdf9eea4864bee27618a56163a297f06708362203d553de54a34a size=1132 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:libidn2@2.3.8-r0 libidn2-2.3.8.tar.gz sha256=f557911bf6171621e1f72ff35f5b1825bb35b52ed45325dcdee931e5d3c0787a size=2234804 hops=distfiles.alpinelinux.org
+bundle_fetch: ok apk:libunistring@1.4.1-r0 APKBUILD sha256=ddc630f8bb1e09692aa35311a2f4a5ba49c508bdc3835c08a671de899fc2aa55 size=926 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:libunistring@1.4.1-r0 libunistring-1.4.1.tar.xz sha256=67d88430892527861903788868c77802a217b0959990f7449f2976126a307763 size=2769164 hops=distfiles.alpinelinux.org
+bundle_fetch: ok apk:musl@1.2.5-r21 APKBUILD sha256=410dae8403086688d5d60345d49d1ffb88320efac84800599764dce522bb26a7 size=8440 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:musl@1.2.5-r21 0001-add-stub-for-pthread_mutexattr_setprioceiling.patch sha256=b2067680c66af9eb9f4fdc1fa5d9337a9fd62bdab2c437b416aa97d79eb884ee size=896 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:musl@1.2.5-r21 CVE-2025-26519.patch sha256=ab382da2bb5e1cc32d8904be28fb13f8ad3ce813967bd4bf7f5b1c6baee33e17 size=2832 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:musl@1.2.5-r21 LoongArch64-add-new-reloc-types-and-NT_LOONGARCH_HW_.patch sha256=8a9b516a62b5d7f2fd739ac4f67080a6a9137a1074429e23be5d5b69e5cc4280 size=2569 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:musl@1.2.5-r21 __NR_riscv_hwprobe.patch sha256=8dc4d0771e915149a3b75205e4611f0093a57f1fe0f8365362c697dbec83655c size=984 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:musl@1.2.5-r21 __stack_chk_fail_local.c sha256=299a7d75a09de3e2e11e7fb4acc3182e4a14e868093d2f30938fce9bfcff13da size=133 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:musl@1.2.5-r21 backport-posix_getdents.patch sha256=b49cee4c3c095a30855d788cccb84436868e5c568f821967437c73004f330025 size=3587 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:musl@1.2.5-r21 fix-loongarch64-zero-len-extcontext.patch sha256=92c8e965798ed516c15cb2a4e7c4ac45ec1eb68b6abff16c73adff2a3bae1b14 size=738 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:musl@1.2.5-r21 getconf.c sha256=d87d0cbb3690ae2c5d8cc218349fd8278b93855dd625deaf7ae50e320aad247c size=11614 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:musl@1.2.5-r21 getent.c sha256=a6171c2db641cdd99c164169d3c5c6ca323617483cedec4cbbe3eb39c5834df0 size=11656 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:musl@1.2.5-r21 handle-aux-at_base.patch sha256=2a65e03b94217063d72fe998e5fb2e25cd01716078a3ba1b0ab574ab205111e6 size=1214 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:musl@1.2.5-r21 iconv.c sha256=f79a2930a2e5bb0624321589edf8b889d1e9b603e01e6b7ae214616605b3fdd7 size=2577 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:musl@1.2.5-r21 isatty-glibc-align.patch sha256=1321d542b40921a4c248bb2d15dbd03fcbbf008c8725eb2043d3cab62faeba48 size=456 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:musl@1.2.5-r21 ldconfig sha256=7065021e04a5060957b5c6907af671a7028230d91927fb0c25892cadd9312b7c size=393 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:musl@1.2.5-r21 ldso-fix-non-functional-fix-to-early-dynamic-PAGE_SI.patch sha256=7f5806124d4a89536e53a07bfe95fcd0a8f1b7a27fc0dfc89c78c724dea1c924 size=1486 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:musl@1.2.5-r21 loongarch64-Add-lsx-and-lasx-vector-structure-defini.patch sha256=28efacd507c01b89e1725ed33723f3f9fdfe6cb83eb78ffea1e2acb7fda8a52c size=907 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:musl@1.2.5-r21 loongarch64-add-TLSDESC-support.patch sha256=1efb4604e0b28b84e10faf37d17bad448510e73f6a3db89c8be47d38b9e85138 size=2527 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:musl@1.2.5-r21 loongarch64-add-bits-hwcap.h.patch sha256=8849080b49dff046b1f29db24e54ffe6262b5884078091994db77efdafca2505 size=1406 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:musl@1.2.5-r21 loongarch64-add-fpu-and-simd-context-to-signal.h.patch sha256=d73f85a90fe52930dd8b5d16cb7f3369a994918c0e41ae3c3dc9a25df4b45099 size=2142 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:musl@1.2.5-r21 s390x-dont-allow-br-r0-in-crtjmp.patch sha256=3568d09f086e1d8957542d195e7a5f14d17ae8805e4d793fd30a3b331eafe537 size=1031 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:musl@1.2.5-r21 stdio-skip-empty-iovec-when-buffering-is-disabled.patch sha256=7b405d6faf271cf13b415bc9688c1fbd728510fdef25d134fbd4a1b93db83e18 size=1157 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:musl@1.2.5-r21 musl-1.2.5.tar.gz sha256=a9a118bbe84d8764da0ea0d28b3ab3fae8477fc7e4085d90102b8596fc7c75e4 size=1080786 hops=distfiles.alpinelinux.org
+bundle_fetch: ok apk:musl@1.2.6-r2 APKBUILD sha256=db4e568cdf2b256815fdfdb55704cd2efdffdc0e8ecd0cb935fdc3e89e2140f4 size=6282 hops=gitlab.alpinelinux.org
+bundle_fetch: held apk:musl@1.2.6-r2 0001-add-stub-for-pthread_mutexattr_setprioceiling.patch sha256=b2067680c66af9eb9f4fdc1fa5d9337a9fd62bdab2c437b416aa97d79eb884ee size=896 (fetched for apk:musl@1.2.5-r21 0001-add-stub-for-pthread_mutexattr_setprioceiling.patch)
+bundle_fetch: ok apk:musl@1.2.6-r2 CVE-2026-40200.patch sha256=1ee29f64f9ca8e8ad7c349779d661ff6b52126a27575d3586981357a52c406fb size=5594 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:musl@1.2.6-r2 CVE-2026-6042.patch sha256=1d0be2e72b9d5bd16546b923aa8af861d271322f01644716a81823bec4065c99 size=7506 hops=gitlab.alpinelinux.org
+bundle_fetch: held apk:musl@1.2.6-r2 __stack_chk_fail_local.c sha256=299a7d75a09de3e2e11e7fb4acc3182e4a14e868093d2f30938fce9bfcff13da size=133 (fetched for apk:musl@1.2.5-r21 __stack_chk_fail_local.c)
+bundle_fetch: held apk:musl@1.2.6-r2 fix-loongarch64-zero-len-extcontext.patch sha256=92c8e965798ed516c15cb2a4e7c4ac45ec1eb68b6abff16c73adff2a3bae1b14 size=738 (fetched for apk:musl@1.2.5-r21 fix-loongarch64-zero-len-extcontext.patch)
+bundle_fetch: held apk:musl@1.2.6-r2 getconf.c sha256=d87d0cbb3690ae2c5d8cc218349fd8278b93855dd625deaf7ae50e320aad247c size=11614 (fetched for apk:musl@1.2.5-r21 getconf.c)
+bundle_fetch: held apk:musl@1.2.6-r2 getent.c sha256=a6171c2db641cdd99c164169d3c5c6ca323617483cedec4cbbe3eb39c5834df0 size=11656 (fetched for apk:musl@1.2.5-r21 getent.c)
+bundle_fetch: held apk:musl@1.2.6-r2 handle-aux-at_base.patch sha256=2a65e03b94217063d72fe998e5fb2e25cd01716078a3ba1b0ab574ab205111e6 size=1214 (fetched for apk:musl@1.2.5-r21 handle-aux-at_base.patch)
+bundle_fetch: held apk:musl@1.2.6-r2 iconv.c sha256=f79a2930a2e5bb0624321589edf8b889d1e9b603e01e6b7ae214616605b3fdd7 size=2577 (fetched for apk:musl@1.2.5-r21 iconv.c)
+bundle_fetch: held apk:musl@1.2.6-r2 ldconfig sha256=7065021e04a5060957b5c6907af671a7028230d91927fb0c25892cadd9312b7c size=393 (fetched for apk:musl@1.2.5-r21 ldconfig)
+bundle_fetch: ok apk:musl@1.2.6-r2 musl-1.2.6.tar.gz sha256=d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a size=1082499 hops=distfiles.alpinelinux.org
+bundle_fetch: ok apk:pax-utils@1.3.8-r2 APKBUILD sha256=d3ab7f1f1de34d023921a8f09cf80ba70063b05f1a99d8e2056ff8667c0f1213 size=1782 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:pax-utils@1.3.8-r2 unsigned.patch sha256=0a2f4088f5474603388091230c0332fbb7a7f8a7b93ca8f83f96ba2095450012 size=4037 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:pax-utils@1.3.8-r2 pax-utils-1.3.8.tar.xz sha256=12a168d1aeae2626efdbde3979da88a60ca80bb38e1db565e95ee441ff1d5a0c size=123556 hops=distfiles.alpinelinux.org
+bundle_fetch: ok apk:pax-utils@1.3.9-r1 APKBUILD sha256=f33df75f467601dcd73038b4e15029de60338a5f3f7d9a37574475a723b07c20 size=1568 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:pax-utils@1.3.9-r1 pax-utils-1.3.9.tar.xz sha256=7409f246b3c59b3e2d459d2232a6f7374469637ae6cf616c115b8d5830cab840 size=123560 hops=distfiles.alpinelinux.org
+bundle_fetch: ok apk:util-linux@2.42.3-r1 APKBUILD sha256=5347f9d386c8684e7f5cc160ae8595c5c3d3cfedcfdc758f5e022a46e560b944 size=11509 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:util-linux@2.42.3-r1 0001-libblkid-minix-don-t-detect-erofs-images-as-minix.patch sha256=ef2f71793fd76ce3500ea8df37ada9d0b70958502a24173600667064bd0f7c7b size=2001 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:util-linux@2.42.3-r1 CVE-2026-78408.patch sha256=bd5b45db9dbfb340622250e92a9f35dbfd9a3574045c4e89e3d034e2391f7697 size=2975 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:util-linux@2.42.3-r1 PATCH-test_enosys-Handle-musl-libc-error-strings.patch sha256=062b4ce8fb648f1a1394a21e5183c538711f701ac39bb12e8617194bf2bf722a size=2201 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:util-linux@2.42.3-r1 fix-login.c.patch sha256=e59c771511890f74e2fcd2de8c716fdc0e2d538f6a3dda1a9d54439e57185cda size=373 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:util-linux@2.42.3-r1 fix-nsenter.c.patch sha256=2de9f2ab0cde675ff79e260749a703e0da2372d256d68e2fa346833d2468c848 size=416 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:util-linux@2.42.3-r1 libmount-include.patch sha256=8eb0b8970bdc6de9f924264444d07f93c500a9f1f602784056928229ec541461 size=1375 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:util-linux@2.42.3-r1 rfkill.confd sha256=d34e754f2ea29b6377a06ca1d4c31a85767f08995b9bbe777b85c023c88d3343 size=321 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:util-linux@2.42.3-r1 rfkill.initd sha256=59637f63f66df13539d651166c33a9122c6de93ef0f102da471e97bdaff4fb04 size=898 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:util-linux@2.42.3-r1 su-l.pamd sha256=e498158ef3a93838eaf24e7c6672178fa2e0f8602de799bfc18807fd729bc855 size=202 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:util-linux@2.42.3-r1 ttydefaults.h sha256=46faf1198bd884d12c5d45019a5fec8dfdefeae6721d8c9f3da89921acdb2a6d size=965 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:util-linux@2.42.3-r1 util-linux-misc.post-upgrade sha256=ca26b40f191f935ab7bd9cf31bb1e521cbd7e7a8e5ece9f88986d2e067e042cd size=267 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:util-linux@2.42.3-r1 utmps.patch sha256=127c8a4bf9613bed2cec361a5e7f2d77db560a561d771f47e27c008c8eb2d722 size=690 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:util-linux@2.42.3-r1 util-linux-2.42.3.tar.xz sha256=66ac7c0e725278eb2b039e3104f2c91119341d941b41bac7a285c695f940bd57 size=10716216 hops=distfiles.alpinelinux.org
+bundle_fetch: ok apk:xz@5.8.2-r0 APKBUILD sha256=1b20b96575cf2151d76b5d5f0e77ef8a05353fc74e7b5826ab5422b60c54b9f6 size=1534 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:xz@5.8.2-r0 xz-5.8.2.tar.gz sha256=f21fdf2c1ee004de30ca40377a273e3369186e6b7ab7b50a410eaa2e2bbefafb size=1603572 hops=distfiles.alpinelinux.org
+bundle_fetch: ok deb:acl@2.3.1-3 acl_2.3.1-3.dsc sha256=7820eee88cce7244e0b8eb25cc4f51bdf10aff7a6c1a497f3d18c36bdce712cc size=2508 hops=snapshot.debian.org
+bundle_fetch: ok deb:acl@2.3.1-3 acl_2.3.1.orig.tar.xz sha256=c0234042e17f11306c23c038b08e5e070edb7be44bef6697fb8734dcff1c66b1 size=355676 hops=snapshot.debian.org
+bundle_fetch: ok deb:acl@2.3.1-3 acl_2.3.1.orig.tar.xz.asc sha256=54fb8fcd6ae6901f2257e18d503e5e18ad956babf8d80d2ea29f280fc7264662 size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:acl@2.3.1-3 acl_2.3.1-3.debian.tar.xz sha256=2eb052bba784a4b873e951b1f91af2abef62e4bf4b83c93f9821eea26f66c8e2 size=30968 hops=snapshot.debian.org
+bundle_fetch: ok deb:acl@2.3.2-2 acl_2.3.2-2.dsc sha256=1f42130ccb5442fe2db2aee1dcc03c51a31512dd2519a38e8fc9270c5abbc807 size=2604 hops=snapshot.debian.org
+bundle_fetch: ok deb:acl@2.3.2-2 acl_2.3.2.orig.tar.xz sha256=97203a72cae99ab89a067fe2210c1cbf052bc492b479eca7d226d9830883b0bd size=371680 hops=snapshot.debian.org
+bundle_fetch: ok deb:acl@2.3.2-2 acl_2.3.2.orig.tar.xz.asc sha256=184c6a903490885a096095db67b433a04542c6569f167cbe8115268c0f227273 size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:acl@2.3.2-2 acl_2.3.2-2.debian.tar.xz sha256=e27b6e194c0a7554595d76f96acdceb800631bdc46c36457b73bc7e4a0c5f2ee size=24296 hops=snapshot.debian.org
+bundle_fetch: ok deb:adduser@3.134 adduser_3.134.dsc sha256=608ed02073381a8af28f29c3a2e390ddff7caee6b013a533fffc16b660fa80a4 size=1671 hops=snapshot.debian.org
+bundle_fetch: ok deb:adduser@3.134 adduser_3.134.tar.xz sha256=ddfc63b55664381d326d98e7afcf5859a8f60d6d78d5d6941e491479a008b172 size=272044 hops=snapshot.debian.org
+bundle_fetch: ok deb:apt@2.6.1 apt_2.6.1.dsc sha256=e258c1b9c24e1747100271db9d6e5af7127bd3ef812a69bdf63de263abfdc6fd size=2933 hops=snapshot.debian.org
+bundle_fetch: ok deb:apt@2.6.1 apt_2.6.1.tar.xz sha256=86b888c901fa2e78f1bf52a2aaa2f400ff82a472b94ff0ac6631939ee68fa6fd size=2328508 hops=snapshot.debian.org
+bundle_fetch: ok deb:apt@3.0.3 apt_3.0.3.dsc sha256=ccf1666e5b268d76bf62aafb22db089a2fdae9c17d1d1c446546b3621768add7 size=3091 hops=snapshot.debian.org
+bundle_fetch: ok deb:apt@3.0.3 apt_3.0.3.tar.xz sha256=5b5f6f6d26121742a83aa80d4ed0eb0c6ce9bea259518db412edefd95760e4ef size=2422096 hops=snapshot.debian.org
+bundle_fetch: ok deb:attr@1:2.5.1-4 attr_2.5.1-4.dsc sha256=0e1486bff1649602cb5cbb6224dbb641436dc8cd28d5c336ad85d650e07d23dd size=2477 hops=snapshot.debian.org
+bundle_fetch: ok deb:attr@1:2.5.1-4 attr_2.5.1.orig.tar.xz sha256=db448a626f9313a1a970d636767316a8da32aede70518b8050fa0de7947adc32 size=318188 hops=snapshot.debian.org
+bundle_fetch: ok deb:attr@1:2.5.1-4 attr_2.5.1.orig.tar.xz.asc sha256=67bc632e754efbadba846d0b40138b3fc3e306c3b909a9ba868c6dba1e2689d0 size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:attr@1:2.5.1-4 attr_2.5.1-4.debian.tar.xz sha256=aea02a3c980a82804a5a333bf02e9e2737a8c5808671625595511290863d6791 size=32152 hops=snapshot.debian.org
+bundle_fetch: ok deb:attr@1:2.5.2-3 attr_2.5.2-3.dsc sha256=c2ae3e15db059029030ddf4fdac179d8f90d423f2310a6ef8c745ba28ac18b0a size=2576 hops=snapshot.debian.org
+bundle_fetch: ok deb:attr@1:2.5.2-3 attr_2.5.2.orig.tar.xz sha256=f2e97b0ab7ce293681ab701915766190d607a1dba7fae8a718138150b700a70b size=334180 hops=snapshot.debian.org
+bundle_fetch: ok deb:attr@1:2.5.2-3 attr_2.5.2.orig.tar.xz.asc sha256=eeac729088d3c6379e91b7596cb3582e46b047c47f0fa3c5c77f9c9e84dc3a4c size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:attr@1:2.5.2-3 attr_2.5.2-3.debian.tar.xz sha256=153f98c87575277ea021e24dae36293b7738699174438a2060b47e8312b771e3 size=32260 hops=snapshot.debian.org
+bundle_fetch: ok deb:audit@1:3.0.9-1 audit_3.0.9-1.dsc sha256=39d4efdc4e15420f4a1df2b8d7efd17864f2d7da6d84f3122a7c53b6c66a2a1d size=2402 hops=snapshot.debian.org
+bundle_fetch: ok deb:audit@1:3.0.9-1 audit_3.0.9.orig.tar.gz sha256=fd9570444df1573a274ca8ba23590082298a083cfc0618138957f590e845bc78 size=1210655 hops=snapshot.debian.org
+bundle_fetch: ok deb:audit@1:3.0.9-1 audit_3.0.9-1.debian.tar.xz sha256=b80d2685b79a617098a3389f41356ffd77d8d62d59bee03b189e31dd9b81580e size=18784 hops=snapshot.debian.org
+bundle_fetch: ok deb:audit@1:4.0.2-2+deb13u1 audit_4.0.2-2+deb13u1.dsc sha256=f72198219d4a50967e328a143c9c0a7ba981c8f3790b2880465b8a80ac33850e size=2761 hops=snapshot.debian.org
+bundle_fetch: ok deb:audit@1:4.0.2-2+deb13u1 audit_4.0.2.orig.tar.gz sha256=d5d1b5d50ee4a2d0d17875bc6ae6bd6a7d5b34d9557ea847a39faec531faaa0a size=1198769 hops=snapshot.debian.org
+bundle_fetch: ok deb:audit@1:4.0.2-2+deb13u1 audit_4.0.2-2+deb13u1.debian.tar.xz sha256=ab39cb2d6dc6b0440da37f085b643dffc86d8cc5370b5cc6502d36b53edaa862 size=25008 hops=snapshot.debian.org
+bundle_fetch: ok deb:base-files@12.4+deb12u15 base-files_12.4+deb12u15.dsc sha256=e531274d0c3916dacfe55bbd27148d775b004e1836bc2fbb01549f142d524e8c size=1137 hops=snapshot.debian.org
+bundle_fetch: ok deb:base-files@12.4+deb12u15 base-files_12.4+deb12u15.tar.xz sha256=9fb369194365fe9da74621da247ea70884fc3d1d9c063db310764ef0e43c02c5 size=66280 hops=snapshot.debian.org
+bundle_fetch: ok deb:base-files@13.8+deb13u7 base-files_13.8+deb13u7.dsc sha256=6240b5a02fc32bd6d925bb7776e00c467e80d930f8cf3c4a20c299ce692dc7e4 size=1247 hops=snapshot.debian.org
+bundle_fetch: ok deb:base-files@13.8+deb13u7 base-files_13.8+deb13u7.tar.xz sha256=be32803b9408ac9aa46b96f68c83ee45e88d04d89854a87999986efc4cb34c69 size=83444 hops=snapshot.debian.org
+bundle_fetch: ok deb:base-passwd@3.6.1 base-passwd_3.6.1.dsc sha256=b4e5fcdba73369657b241743033e8e7a65c26da43285503c652fa1436ce75d1f size=1740 hops=snapshot.debian.org
+bundle_fetch: ok deb:base-passwd@3.6.1 base-passwd_3.6.1.tar.xz sha256=6ff369be59d586ba63c0c5fcb00f75f9953fe49db88bc6c6428f2c92866f79af size=56072 hops=snapshot.debian.org
+bundle_fetch: ok deb:base-passwd@3.6.7 base-passwd_3.6.7.dsc sha256=23dafe71f85d7595d9e20efba17729c1c975a33bd469cf09bfad9e96b1f542f3 size=1891 hops=snapshot.debian.org
+bundle_fetch: ok deb:base-passwd@3.6.7 base-passwd_3.6.7.tar.xz sha256=cf869870fed7862b57bfa9e99cd5cd6f365e2349705a1b65af7fc182629bd1ab size=60872 hops=snapshot.debian.org
+bundle_fetch: ok deb:bash@5.2.15-2 bash_5.2.15-2.dsc sha256=f51753e946af43eb58549c81e03b35a47af9fe6c6364179ccd4ef862b7c3b2d3 size=2317 hops=snapshot.debian.org
+bundle_fetch: ok deb:bash@5.2.15-2 bash_5.2.15.orig.tar.gz sha256=7a315bc0e9d90713159e4390ec1096a41e4f33cd8cc3d1a749a8e5ad56600f51 size=9997221 hops=snapshot.debian.org
+bundle_fetch: ok deb:bash@5.2.15-2 bash_5.2.15-2.debian.tar.xz sha256=998f8ea5b754a734ae7d8306e149c43d713ddfcf49623a036004b729237dbcca size=97380 hops=snapshot.debian.org
+bundle_fetch: ok deb:bash@5.2.37-2 bash_5.2.37-2.dsc sha256=7e5f6d5a26093e812f8841d5cf3245054102e86986017d8edd859417b03707f9 size=2162 hops=snapshot.debian.org
+bundle_fetch: ok deb:bash@5.2.37-2 bash_5.2.37.orig.tar.xz sha256=370704c9c859f4060b7df19055e43bb9b5fa09d887699cf6ba87885c5485d36a size=5600932 hops=snapshot.debian.org
+bundle_fetch: ok deb:bash@5.2.37-2 bash_5.2.37-2.debian.tar.xz sha256=42e03ef523258b61fa765b8c9719d7bf461f2a274260d07fbe45ca7e4627923a size=88360 hops=snapshot.debian.org
+bundle_fetch: ok deb:bzip2@1.0.8-5 bzip2_1.0.8-5.dsc sha256=ed9c40f4de3f9e064535e15eac1c61a0f606763db98f4579dbc04067b94a8944 size=2206 hops=snapshot.debian.org
+bundle_fetch: ok deb:bzip2@1.0.8-5 bzip2_1.0.8.orig.tar.gz sha256=ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269 size=810029 hops=snapshot.debian.org
+bundle_fetch: ok deb:bzip2@1.0.8-5 bzip2_1.0.8-5.debian.tar.bz2 sha256=d68c6eba11d70e14319e24ef1451880a03023b2b75364646adb117086db36039 size=26787 hops=snapshot.debian.org
+bundle_fetch: ok deb:bzip2@1.0.8-6 bzip2_1.0.8-6.dsc sha256=cd3bfd77254a6b5ef1be144bdc90a0dd374bc8206afd98ba4abf828741b79820 size=1604 hops=snapshot.debian.org
+bundle_fetch: held deb:bzip2@1.0.8-6 bzip2_1.0.8.orig.tar.gz sha256=ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269 size=810029 (fetched for deb:bzip2@1.0.8-5 bzip2_1.0.8.orig.tar.gz)
+bundle_fetch: ok deb:bzip2@1.0.8-6 bzip2_1.0.8-6.debian.tar.bz2 sha256=648ed0dac9a041ba6951e0cca521628aa39947cefee78139f7b934a5dc502095 size=26991 hops=snapshot.debian.org
+bundle_fetch: ok deb:ca-certificates@20250419 ca-certificates_20250419.dsc sha256=3fc919369a3b84e34a959faa8bdffb9bd2c5a7d4a948a4b07a09a5d43e257030 size=1766 hops=snapshot.debian.org
+bundle_fetch: ok deb:ca-certificates@20250419 ca-certificates_20250419.tar.xz sha256=33b44ef78653ecd3f0f2f13e5bba6be466be2e7da72182f737912b81798ba5d2 size=277504 hops=snapshot.debian.org
+bundle_fetch: ok deb:ca-certificates@20250419~deb12u2 ca-certificates_20250419~deb12u2.dsc sha256=a041820e6feb1effe0598f80e02fb62a40ef312678b85cfbb57d2864d0b5c0b7 size=1924 hops=snapshot.debian.org
+bundle_fetch: ok deb:ca-certificates@20250419~deb12u2 ca-certificates_20250419~deb12u2.tar.xz sha256=934942a985b2efd7a8c122cb1d42cd87911cf6ac365c545938619fcf268ea8f4 size=277416 hops=snapshot.debian.org
+bundle_fetch: ok deb:cdebconf@0.270 cdebconf_0.270.dsc sha256=d7f396abbbfb2d38fc15589358d05618c9918f4f10facfe1ac259efef91e8a5f size=2703 hops=snapshot.debian.org
+bundle_fetch: ok deb:cdebconf@0.270 cdebconf_0.270.tar.xz sha256=c27ef57f7dc8a2e7e9651cd0e964f543677bb314a1cf9bc1019736818e342638 size=284336 hops=snapshot.debian.org
+bundle_fetch: ok deb:cdebconf@0.280 cdebconf_0.280.dsc sha256=36cdaa45fca445d2164fbdd81faad9918d748fa703678d8af237354d5744b1d1 size=2703 hops=snapshot.debian.org
+bundle_fetch: ok deb:cdebconf@0.280 cdebconf_0.280.tar.xz sha256=c42115131939845e452a323ceded937efad3b2e3e1b80a1a186f9d5c494a43a2 size=286132 hops=snapshot.debian.org
+bundle_fetch: ok deb:coreutils@9.1-1 coreutils_9.1-1.dsc sha256=2f2fca0a07a1a3f38e3ebeb4cbd97e97e675e77bed84f3e9d0b7e5da4cde75fc size=1848 hops=snapshot.debian.org
+bundle_fetch: ok deb:coreutils@9.1-1 coreutils_9.1.orig.tar.xz sha256=61a1f410d78ba7e7f37a5a4f50e6d1320aca33375484a3255eddf17a38580423 size=5712104 hops=snapshot.debian.org
+bundle_fetch: ok deb:coreutils@9.1-1 coreutils_9.1-1.debian.tar.xz sha256=45d4ae88d933a7d713ef038943e818a2488e759b6196a409788744cbc6df1832 size=30624 hops=snapshot.debian.org
+bundle_fetch: ok deb:coreutils@9.7-3 coreutils_9.7-3.dsc sha256=c3a207e3aaad165765c7a6fab89045f5fd20035fea6830b9f9ebbb92ebfbff89 size=2122 hops=snapshot.debian.org
+bundle_fetch: ok deb:coreutils@9.7-3 coreutils_9.7.orig.tar.xz sha256=e8bb26ad0293f9b5a1fc43fb42ba970e312c66ce92c1b0b16713d7500db251bf size=6158960 hops=snapshot.debian.org
+bundle_fetch: ok deb:coreutils@9.7-3 coreutils_9.7.orig.tar.xz.asc sha256=5070e9428bd372a7fa1f66b395b81092bb40c98f9f56a2e2bc55c47fd387e901 size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:coreutils@9.7-3 coreutils_9.7-3.debian.tar.xz sha256=483f77876a080577f63da1d004cc1cf17d16df65d6925aefdd3294c6101eccfb size=26820 hops=snapshot.debian.org
+bundle_fetch: ok deb:cyrus-sasl2@2.1.28+dfsg-10 cyrus-sasl2_2.1.28+dfsg-10.dsc sha256=cb9c913a6f4716456c93ed205dfef84915a37cf2c994160564e8336e86831d7a size=3324 hops=snapshot.debian.org
+bundle_fetch: ok deb:cyrus-sasl2@2.1.28+dfsg-10 cyrus-sasl2_2.1.28+dfsg.orig.tar.xz sha256=a15886d7da5958bd27f35b7c871dd872f6dc5b9917c9b6b15e3de014c7dab3d9 size=797472 hops=snapshot.debian.org
+bundle_fetch: ok deb:cyrus-sasl2@2.1.28+dfsg-10 cyrus-sasl2_2.1.28+dfsg-10.debian.tar.xz sha256=8c94a1c1982a1603d13ef055b0d2511054db4a43cbb1224702f31e5d985136b1 size=97056 hops=snapshot.debian.org
+bundle_fetch: ok deb:dash@0.5.12-12 dash_0.5.12-12.dsc sha256=589efc4d87a4ae4745c273bdb33198d7c4f28a71736a8ece81d3677cf9c6e5ce size=1460 hops=snapshot.debian.org
+bundle_fetch: ok deb:dash@0.5.12-12 dash_0.5.12.orig.tar.gz sha256=6a474ac46e8b0b32916c4c60df694c82058d3297d8b385b74508030ca4a8f28a size=246054 hops=snapshot.debian.org
+bundle_fetch: ok deb:dash@0.5.12-12 dash_0.5.12-12.debian.tar.xz sha256=a278acb5d9a1f5d9a086d36a547287cbf3105b8f33c0e62d86d264decf5ba1ad size=47300 hops=snapshot.debian.org
+bundle_fetch: ok deb:dash@0.5.12-2 dash_0.5.12-2.dsc sha256=25c0fb805c735fdb7470ce485ce76dae1a7b6c04efdfb0fdac5eab921cbd78a5 size=1520 hops=snapshot.debian.org
+bundle_fetch: held deb:dash@0.5.12-2 dash_0.5.12.orig.tar.gz sha256=6a474ac46e8b0b32916c4c60df694c82058d3297d8b385b74508030ca4a8f28a size=246054 (fetched for deb:dash@0.5.12-12 dash_0.5.12.orig.tar.gz)
+bundle_fetch: ok deb:dash@0.5.12-2 dash_0.5.12-2.debian.tar.xz sha256=bddd9129215eb60f4cc43a0ffdcc42d8f25e0bd09730520d599a2b7bc492e375 size=38512 hops=snapshot.debian.org
+bundle_fetch: ok deb:db5.3@5.3.28+dfsg2-1 db5.3_5.3.28+dfsg2-1.dsc sha256=fe84d3cd7cde381f1c5a18f223377cf84ea7627ced8063ef33ef8fd93f6e09f4 size=2887 hops=snapshot.debian.org
+bundle_fetch: ok deb:db5.3@5.3.28+dfsg2-1 db5.3_5.3.28+dfsg2.orig.tar.xz sha256=ad41b507415dec8316e828b2230242af2251d2c86eefa3c7aa9ef47c5239ef33 size=21287688 hops=snapshot.debian.org
+bundle_fetch: ok deb:db5.3@5.3.28+dfsg2-1 db5.3_5.3.28+dfsg2-1.debian.tar.xz sha256=52cb792fe53138c79a0328ffd1d771e3112791f546fd00e0dcd4b0e3efc5d916 size=34660 hops=snapshot.debian.org
+bundle_fetch: ok deb:db5.3@5.3.28+dfsg2-9 db5.3_5.3.28+dfsg2-9.dsc sha256=045f392c75dffc9d4f3bd44978b90ca8d45b935cf0ae4202bf79a760f2ce07b1 size=2373 hops=snapshot.debian.org
+bundle_fetch: held deb:db5.3@5.3.28+dfsg2-9 db5.3_5.3.28+dfsg2.orig.tar.xz sha256=ad41b507415dec8316e828b2230242af2251d2c86eefa3c7aa9ef47c5239ef33 size=21287688 (fetched for deb:db5.3@5.3.28+dfsg2-1 db5.3_5.3.28+dfsg2.orig.tar.xz)
+bundle_fetch: ok deb:db5.3@5.3.28+dfsg2-9 db5.3_5.3.28+dfsg2-9.debian.tar.xz sha256=21fe6ee0491c83d0c34fe52e0e0e423946172eff68262584a0cc8ef880c36b74 size=36412 hops=snapshot.debian.org
+bundle_fetch: ok deb:debian-archive-keyring@2023.3+deb12u2 debian-archive-keyring_2023.3+deb12u2.dsc sha256=e0b44b75906f4f448bba242294e9191ee796e2553f49cb906d19fc8f199b6e7d size=1293 hops=snapshot.debian.org
+bundle_fetch: ok deb:debian-archive-keyring@2023.3+deb12u2 debian-archive-keyring_2023.3+deb12u2.tar.xz sha256=3a34aaa3d753246f65191f5c1f675680a525512611eaffc96092d452dc812ddc size=137864 hops=snapshot.debian.org
+bundle_fetch: ok deb:debian-archive-keyring@2025.1 debian-archive-keyring_2025.1.dsc sha256=09604bd8d4562a1e942e5d1a19a6b82447cbdeb2e7c7f0df7c32a2503647ea47 size=1267 hops=snapshot.debian.org
+bundle_fetch: ok deb:debian-archive-keyring@2025.1 debian-archive-keyring_2025.1.tar.xz sha256=2d019c3fa19c42da4d37571e473c296286dad0214cb3bd5cafd99f04a8bf5471 size=138248 hops=snapshot.debian.org
+bundle_fetch: ok deb:debianutils@5.23.2 debianutils_5.23.2.dsc sha256=471b65deec232bb033f3e3e06d5bf64dac0ced474c6fd61d41538f3f3de876f8 size=1908 hops=snapshot.debian.org
+bundle_fetch: ok deb:debianutils@5.23.2 debianutils_5.23.2.tar.xz sha256=79e524b7526dba2ec5c409d0ee52ebec135815cf5b2907375d444122e0594b69 size=82376 hops=snapshot.debian.org
+bundle_fetch: ok deb:debianutils@5.7-0.5~deb12u1 debianutils_5.7-0.5~deb12u1.dsc sha256=b4340ffd82994d910f625236183d732a7407876cba127d4c824ea82db8ccb400 size=1944 hops=snapshot.debian.org
+bundle_fetch: ok deb:debianutils@5.7-0.5~deb12u1 debianutils_5.7.orig.tar.gz sha256=27ec9e0e7e44dc8ab611aa576330471bacb07e4491ffecf0d3aa6909c92f9022 size=257231 hops=snapshot.debian.org
+bundle_fetch: ok deb:debianutils@5.7-0.5~deb12u1 debianutils_5.7-0.5~deb12u1.debian.tar.xz sha256=977c601503f76eda4da17db9a1ba6f2c26484b106aaa64dbe3649cc6978b3edb size=23108 hops=snapshot.debian.org
+bundle_fetch: ok deb:diffutils@1:3.10-4 diffutils_3.10-4.dsc sha256=087b414ddfc92161a30186926bc4b4ac02c7cba589b0323561cacd54c8b48392 size=1875 hops=snapshot.debian.org
+bundle_fetch: ok deb:diffutils@1:3.10-4 diffutils_3.10.orig.tar.xz sha256=90e5e93cc724e4ebe12ede80df1634063c7a855692685919bfe60b556c9bd09e size=1624240 hops=snapshot.debian.org
+bundle_fetch: ok deb:diffutils@1:3.10-4 diffutils_3.10.orig.tar.xz.asc sha256=a94faf8f1baa04ff220f7b2ccb137c16337284e023ebc4a1d5df475c08d810f7 size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:diffutils@1:3.10-4 diffutils_3.10-4.debian.tar.xz sha256=8588b6ffb897ccff46c583e58ef50500b2511eee41949b21e8afa5439712c2c7 size=14304 hops=snapshot.debian.org
+bundle_fetch: ok deb:diffutils@1:3.8-4 diffutils_3.8-4.dsc sha256=783af1a151c2a0f42a8a427693cc4bb16037c0d17282d28672d906f2eab424b8 size=1705 hops=snapshot.debian.org
+bundle_fetch: ok deb:diffutils@1:3.8-4 diffutils_3.8.orig.tar.xz sha256=a6bdd7d1b31266d11c4f4de6c1b748d4607ab0231af5188fc2533d0ae2438fec size=1585120 hops=snapshot.debian.org
+bundle_fetch: ok deb:diffutils@1:3.8-4 diffutils_3.8.orig.tar.xz.asc sha256=500f423d0ffa8d28966d916ed5fc6b79fb160a20ed5cb74eeb1c94a30c340311 size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:diffutils@1:3.8-4 diffutils_3.8-4.debian.tar.xz sha256=36abe3a3174c32c3646ca6bad212169a322409086c4a98f967bb9ad58f11c8d4 size=14428 hops=snapshot.debian.org
+bundle_fetch: ok deb:dpkg@1.21.23 dpkg_1.21.23.dsc sha256=1c126e21ec723002e767d8e7855793d5b26aab024295924db0835b4fd707ed6a size=3160 hops=snapshot.debian.org
+bundle_fetch: ok deb:dpkg@1.21.23 dpkg_1.21.23.tar.xz sha256=fb14678feb1129380c6ca1d0facffa56db16db0c4f497b902e703a6f369291c1 size=5422988 hops=snapshot.debian.org
+bundle_fetch: ok deb:dpkg@1.22.22 dpkg_1.22.22.dsc sha256=fc481d9b87cd4416cd55673cc1fa716b57480a6b23253ac0d87c1abbfad4c964 size=3449 hops=snapshot.debian.org
+bundle_fetch: ok deb:dpkg@1.22.22 dpkg_1.22.22.tar.xz sha256=d5ea9f132deec8030b50ab2a02ade2b49f0c7a195805a302c8301156fe833a57 size=5746724 hops=snapshot.debian.org
+bundle_fetch: ok deb:e2fsprogs@1.47.0-2 e2fsprogs_1.47.0-2.dsc sha256=35b4de254e021f721362b767994598e249fea02e38ac446197cd9c22be1130fd size=2846 hops=snapshot.debian.org
+bundle_fetch: ok deb:e2fsprogs@1.47.0-2 e2fsprogs_1.47.0.orig.tar.gz sha256=6667afde56eef0c6af26684974400e4d2288ea49e9441bf5e6229195d51a3578 size=9637717 hops=snapshot.debian.org
+bundle_fetch: ok deb:e2fsprogs@1.47.0-2 e2fsprogs_1.47.0.orig.tar.gz.asc sha256=704928204a52ddaa0ac8ef549c1bfba3c38e66c361d3853c8a4c38e6082b90f1 size=488 hops=snapshot.debian.org
+bundle_fetch: ok deb:e2fsprogs@1.47.0-2 e2fsprogs_1.47.0-2.debian.tar.xz sha256=3a756e08d300666039e34577293d11d70c7a1da7850fad478580a81af6348277 size=87328 hops=snapshot.debian.org
+bundle_fetch: ok deb:e2fsprogs@1.47.2-3 e2fsprogs_1.47.2-3.dsc sha256=860abb653ecbe01a11bb7e41c9e09a45e83847bffa585f7a3d3c0f9401c9d4bb size=3035 hops=snapshot.debian.org
+bundle_fetch: ok deb:e2fsprogs@1.47.2-3 e2fsprogs_1.47.2.orig.tar.gz sha256=6dcd67ff9d8b13274ba3f088e4318be4f5b71412cd863524423fc49d39a6371f size=9996725 hops=snapshot.debian.org
+bundle_fetch: ok deb:e2fsprogs@1.47.2-3 e2fsprogs_1.47.2.orig.tar.gz.asc sha256=2063f62a198dd3df21f789c990c2cf9b4a5de24ed55f0b78d86e97e98daffc9d size=488 hops=snapshot.debian.org
+bundle_fetch: ok deb:e2fsprogs@1.47.2-3 e2fsprogs_1.47.2-3.debian.tar.xz sha256=5517aae5ce5196e49fa314492f0639ad7a1692c9521d703b6c81acff77a1564e size=103684 hops=snapshot.debian.org
+bundle_fetch: ok deb:findutils@4.10.0-3 findutils_4.10.0-3.dsc sha256=fa6b67056d9e5b4d8edbfc8ab95ac15ac769b140284426973f6a1ef07a4594ec size=2291 hops=snapshot.debian.org
+bundle_fetch: ok deb:findutils@4.10.0-3 findutils_4.10.0.orig.tar.xz sha256=1387e0b67ff247d2abde998f90dfbf70c1491391a59ddfecb8ae698789f0a4f5 size=2240712 hops=snapshot.debian.org
+bundle_fetch: ok deb:findutils@4.10.0-3 findutils_4.10.0.orig.tar.xz.asc sha256=7f53670eea6bd114e014571221eb652855c1129a3ed99f2a9257c2a313cc216f size=488 hops=snapshot.debian.org
+bundle_fetch: ok deb:findutils@4.10.0-3 findutils_4.10.0-3.debian.tar.xz sha256=7d19668508523a6fcfb7731f5646305a8b1a00a3105ee3f0a5f167adf93a8a46 size=33364 hops=snapshot.debian.org
+bundle_fetch: ok deb:findutils@4.9.0-4 findutils_4.9.0-4.dsc sha256=3bb39a6a5f96101f9bb28fed234db186fcec198e064478fef3c0fdf2434f0681 size=2304 hops=snapshot.debian.org
+bundle_fetch: ok deb:findutils@4.9.0-4 findutils_4.9.0.orig.tar.xz sha256=a2bfb8c09d436770edc59f50fa483e785b161a3b7b9d547573cb08065fd462fe size=2046252 hops=snapshot.debian.org
+bundle_fetch: ok deb:findutils@4.9.0-4 findutils_4.9.0.orig.tar.xz.asc sha256=924c3719d066eda1b3e47175f8b83e90e9a23f0a639ebe7445621917b283c385 size=488 hops=snapshot.debian.org
+bundle_fetch: ok deb:findutils@4.9.0-4 findutils_4.9.0-4.debian.tar.xz sha256=ae73dc487b02fb00b2135e43f93733d5561fc8ca7f0997075f21247f6742ec54 size=33192 hops=snapshot.debian.org
+bundle_fetch: ok deb:gcc-12@12.2.0-14+deb12u1 gcc-12_12.2.0-14+deb12u1.dsc sha256=3aed0b189189c744dc9f4b74798a51d3e512ea85e492568db788a927c88e20ba size=27330 hops=snapshot.debian.org
+bundle_fetch: ok deb:gcc-12@12.2.0-14+deb12u1 gcc-12_12.2.0.orig.tar.gz sha256=b8298be16aeeb96a889c6afed0a8e2241b47452e89cc81fe65ea849d5c740fcb size=87090343 hops=snapshot.debian.org
+bundle_fetch: ok deb:gcc-12@12.2.0-14+deb12u1 gcc-12_12.2.0-14+deb12u1.debian.tar.xz sha256=59f7f7763a0c355e3f27ff9e7ac80d06382b29939361a87e7b139226bfe7402e size=1675204 hops=snapshot.debian.org
+bundle_fetch: ok deb:gcc-14@14.2.0-19 gcc-14_14.2.0-19.dsc sha256=7db1e202cce66617e9134a662c877a3a773de5b612fd52179815877e0ecfb847 size=47347 hops=snapshot.debian.org
+bundle_fetch: ok deb:gcc-14@14.2.0-19 gcc-14_14.2.0.orig.tar.gz sha256=e162a5ef3f0077ecae598c6556908d2ab80841532df3398072a96a6df6e6aa29 size=94299633 hops=snapshot.debian.org
+bundle_fetch: ok deb:gcc-14@14.2.0-19 gcc-14_14.2.0-19.debian.tar.xz sha256=31cbab4bafa48aa1c540497bd8098cbcf98e673778f927651ed944709f687781 size=2577016 hops=snapshot.debian.org
+bundle_fetch: ok deb:gdbm@1.23-3 gdbm_1.23-3.dsc sha256=3e4a52655a1b65c51d33e032913edda3423dcae8cc282c16a455a0afd2d2738d size=2583 hops=snapshot.debian.org
+bundle_fetch: ok deb:gdbm@1.23-3 gdbm_1.23.orig.tar.gz sha256=74b1081d21fff13ae4bd7c16e5d6e504a4c26f7cde1dca0d963a484174bbcacd size=1115854 hops=snapshot.debian.org
+bundle_fetch: ok deb:gdbm@1.23-3 gdbm_1.23.orig.tar.gz.asc sha256=64ebb68cc68e8915d62cb20ea40323c00b56051f844589ee0a52169fff34cecb size=181 hops=snapshot.debian.org
+bundle_fetch: ok deb:gdbm@1.23-3 gdbm_1.23-3.debian.tar.xz sha256=a0ff17befcbd7c4b361cfe0d821a7a71334102a9c423537bd57f60f18f6802ea size=18552 hops=snapshot.debian.org
+bundle_fetch: ok deb:glibc@2.36-9+deb12u14 glibc_2.36-9+deb12u14.dsc sha256=cfe1f0b8dc1fa211ce5a45b3725cc38b29f88667f1140ebdca6de35cf9c6f1fd size=9765 hops=snapshot.debian.org
+bundle_fetch: ok deb:glibc@2.36-9+deb12u14 glibc_2.36.orig.tar.xz sha256=a543c02070d46ccaf866957efd13f10c924daa74c86a90a0254db09a92a708ee size=19363988 hops=snapshot.debian.org
+bundle_fetch: ok deb:glibc@2.36-9+deb12u14 glibc_2.36-9+deb12u14.debian.tar.xz sha256=cf4ac9cd98185452cae3ef34e2e4ee12753e3d93fd0c62c61396d4a47eec902f size=918488 hops=snapshot.debian.org
+bundle_fetch: ok deb:glibc@2.41-12+deb13u4 glibc_2.41-12+deb13u4.dsc sha256=0915324aa646bb99abfaa9aa6ecb734b30babd28454a3e51f3152912370fbd3e size=7576 hops=snapshot.debian.org
+bundle_fetch: ok deb:glibc@2.41-12+deb13u4 glibc_2.41.orig.tar.xz sha256=f24aa441021121a79266f0d75242706cab8843a47901fefe74527491807f1998 size=20323540 hops=snapshot.debian.org
+bundle_fetch: ok deb:glibc@2.41-12+deb13u4 glibc_2.41-12+deb13u4.debian.tar.xz sha256=dda4153511bfd543502d18e5bc9323110996fe9c531f14ae3fad6eb17f027c7d size=499524 hops=snapshot.debian.org
+bundle_fetch: ok deb:gmp@2:6.2.1+dfsg1-1.1 gmp_6.2.1+dfsg1-1.1.dsc sha256=2831ed4f83bc3304c2403474b335652ab2dc507cd517de44414d9142171748f0 size=2238 hops=snapshot.debian.org
+bundle_fetch: ok deb:gmp@2:6.2.1+dfsg1-1.1 gmp_6.2.1+dfsg1.orig.tar.xz sha256=471b9e463e04362a0124f215afc5f0a4b99caedeeb62634c61bbc12988efa64c size=1787428 hops=snapshot.debian.org
+bundle_fetch: ok deb:gmp@2:6.2.1+dfsg1-1.1 gmp_6.2.1+dfsg1-1.1.debian.tar.xz sha256=4e3e324d72fe688e409c716d33b35aa8657f6016cc1aabd5d9c7ec137412e5ef size=19444 hops=snapshot.debian.org
+bundle_fetch: ok deb:gmp@2:6.3.0+dfsg-3 gmp_6.3.0+dfsg-3.dsc sha256=f7b64af28f52b7346bb8581e01d3c19daf769639345f234f8ae1e29c42171443 size=2251 hops=snapshot.debian.org
+bundle_fetch: ok deb:gmp@2:6.3.0+dfsg-3 gmp_6.3.0+dfsg.orig.tar.xz sha256=bd2966e6d277f79328e894a5a9f3ba3fbf2ed2be81def5f48623e30c23fb1572 size=1870556 hops=snapshot.debian.org
+bundle_fetch: ok deb:gmp@2:6.3.0+dfsg-3 gmp_6.3.0+dfsg-3.debian.tar.xz sha256=1d890bbe25dd649d2ddba1926483176520e50f22115a00566f250b613b8c20ad size=19912 hops=snapshot.debian.org
+bundle_fetch: ok deb:gnupg2@2.2.40-1.1+deb12u2 gnupg2_2.2.40-1.1+deb12u2.dsc sha256=2424239219b00265dd99c5a2c5f9d50f9cafc15f0945946bb16ac1a50ec38310 size=3364 hops=snapshot.debian.org
+bundle_fetch: ok deb:gnupg2@2.2.40-1.1+deb12u2 gnupg2_2.2.40.orig.tar.bz2 sha256=1164b29a75e8ab93ea15033300149e1872a7ef6bdda3d7c78229a735f8204c28 size=7301631 hops=snapshot.debian.org
+bundle_fetch: ok deb:gnupg2@2.2.40-1.1+deb12u2 gnupg2_2.2.40.orig.tar.bz2.asc sha256=3907dc165299cd53c0b4aec862323c3bce6037c411600ec87dc5eed7a55eba4a size=228 hops=snapshot.debian.org
+bundle_fetch: ok deb:gnupg2@2.2.40-1.1+deb12u2 gnupg2_2.2.40-1.1+deb12u2.debian.tar.xz sha256=398ad74f63d81edd9365df97129d05061829599bf50e72824576e1dda23fbe62 size=67520 hops=snapshot.debian.org
+bundle_fetch: ok deb:gnutls28@3.7.9-2+deb12u7 gnutls28_3.7.9-2+deb12u7.dsc sha256=027b2f60e38add78ee611d099dbf34e977a6600d446cc39673534b736a182cb6 size=3421 hops=snapshot.debian.org
+bundle_fetch: ok deb:gnutls28@3.7.9-2+deb12u7 gnutls28_3.7.9.orig.tar.xz sha256=aaa03416cdbd54eb155187b359e3ec3ed52ec73df4df35a0edd49429ff64d844 size=6377212 hops=snapshot.debian.org
+bundle_fetch: ok deb:gnutls28@3.7.9-2+deb12u7 gnutls28_3.7.9.orig.tar.xz.asc sha256=da4a96b14edd3cd44971a36ba1e976af1057e57a2d6c21b0cc7025c983ee84cc size=996 hops=snapshot.debian.org
+bundle_fetch: ok deb:gnutls28@3.7.9-2+deb12u7 gnutls28_3.7.9-2+deb12u7.debian.tar.xz sha256=bcfcf396482ce7635df255abeff1c811321a84f016c95677db28f56908b25595 size=164116 hops=snapshot.debian.org
+bundle_fetch: ok deb:gnutls28@3.8.9-3+deb13u4 gnutls28_3.8.9-3+deb13u4.dsc sha256=f1153e91212bdf60acf66cb62713ad4ed577f2e85f578a04df31a5619624c1e1 size=3271 hops=snapshot.debian.org
+bundle_fetch: ok deb:gnutls28@3.8.9-3+deb13u4 gnutls28_3.8.9.orig.tar.xz sha256=69e113d802d1670c4d5ac1b99040b1f2d5c7c05daec5003813c049b5184820ed size=6847364 hops=snapshot.debian.org
+bundle_fetch: ok deb:gnutls28@3.8.9-3+deb13u4 gnutls28_3.8.9.orig.tar.xz.asc sha256=7631d47762865d4ef494492cca794cf0fe6a8be892a4aa02f362ae29006d3054 size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:gnutls28@3.8.9-3+deb13u4 gnutls28_3.8.9-3+deb13u4.debian.tar.xz sha256=f0b9c7d182072f0bbdb281304686aa6e2bfd343dadefa432ec4dab4893e9841f size=140880 hops=snapshot.debian.org
+bundle_fetch: ok deb:grep@3.11-4 grep_3.11-4.dsc sha256=dd6f8eb933bc05446e483f7792c8bf0a1aba9d498e65c6ccafe64e9bf27ac054 size=1642 hops=snapshot.debian.org
+bundle_fetch: ok deb:grep@3.11-4 grep_3.11.orig.tar.xz sha256=1db2aedde89d0dea42b16d9528f894c8d15dae4e190b59aecc78f5a951276eab size=1703776 hops=snapshot.debian.org
+bundle_fetch: ok deb:grep@3.11-4 grep_3.11.orig.tar.xz.asc sha256=89ec23ffd59b68822732dc8204fc89883c3af30a90ae390feb94346d9d09a589 size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:grep@3.11-4 grep_3.11-4.debian.tar.xz sha256=f10394b7589c58ca7de4b580692b1b59431f898cb2068e86222c174e093fdf49 size=20468 hops=snapshot.debian.org
+bundle_fetch: ok deb:grep@3.8-5 grep_3.8-5.dsc sha256=12b8d98e0112683e0439e61d5b3b7cdeafdfc579641c35aa25199bc0431061d0 size=1608 hops=snapshot.debian.org
+bundle_fetch: ok deb:grep@3.8-5 grep_3.8.orig.tar.xz sha256=498d7cc1b4fb081904d87343febb73475cf771e424fb7e6141aff66013abc382 size=1709536 hops=snapshot.debian.org
+bundle_fetch: ok deb:grep@3.8-5 grep_3.8.orig.tar.xz.asc sha256=347aec924499df3fa41a0d782f3cd3e4a51a15de98b44eaab04084cd34060cd0 size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:grep@3.8-5 grep_3.8-5.debian.tar.xz sha256=c49bb8ab9ed98fd1aa76f8af838ac9abd664e65042c0e40f99983c60ba03fba1 size=21048 hops=snapshot.debian.org
+bundle_fetch: ok deb:gzip@1.12-1 gzip_1.12-1.dsc sha256=49a287787a0b4fc816eb576c011c472d1f630ec1778dfa120bd7fce4a844c253 size=2009 hops=snapshot.debian.org
+bundle_fetch: ok deb:gzip@1.12-1 gzip_1.12.orig.tar.xz sha256=ce5e03e519f637e1f814011ace35c4f87b33c0bbabeec35baf5fbd3479e91956 size=825548 hops=snapshot.debian.org
+bundle_fetch: ok deb:gzip@1.12-1 gzip_1.12.orig.tar.xz.asc sha256=3ed9ab54452576e0be0d477c772c9f47baa36415133fef7dd1fcf7b15480ba32 size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:gzip@1.12-1 gzip_1.12-1.debian.tar.xz sha256=fcf2317e8eeddd66766ec5f3853025b109bd13815ec86ed6563e1af68d17193a size=18736 hops=snapshot.debian.org
+bundle_fetch: ok deb:gzip@1.13-1+deb13u1 gzip_1.13-1+deb13u1.dsc sha256=0c25763da4f7242fbe7e9185b69bcb3f986011b04446b66a84c52bbdf731d308 size=1708 hops=snapshot.debian.org
+bundle_fetch: ok deb:gzip@1.13-1+deb13u1 gzip_1.13.orig.tar.xz sha256=7454eb6935db17c6655576c2e1b0fabefd38b4d0936e0f87f48cd062ce91a057 size=838248 hops=snapshot.debian.org
+bundle_fetch: ok deb:gzip@1.13-1+deb13u1 gzip_1.13-1+deb13u1.debian.tar.xz sha256=ffc69d13290009f42dbb4d10a34839350eff3fdaf4be1fda03d10b238ba2f77d size=21364 hops=snapshot.debian.org
+bundle_fetch: ok deb:hostname@3.23+nmu1 hostname_3.23+nmu1.dsc sha256=56f2189eaeee638e86d29a05356e7001632e33b2132a41a4634a9ff839264ea6 size=1281 hops=snapshot.debian.org
+bundle_fetch: ok deb:hostname@3.23+nmu1 hostname_3.23+nmu1.tar.xz sha256=f3fb39f30b00ba7dba2cec013195d7e1bb215f241153208ccd52da3eedfe7a7d size=12876 hops=snapshot.debian.org
+bundle_fetch: ok deb:hostname@3.25 hostname_3.25.dsc sha256=80aadf116c3423044be69a4cef8ba2766f412bd4d46a500aacb61f303c19c4ef size=1519 hops=snapshot.debian.org
+bundle_fetch: ok deb:hostname@3.25 hostname_3.25.tar.xz sha256=5bb5d1be011158090157c9e7587ae5606c262a5020ecdc5caac6686b9910592e size=12804 hops=snapshot.debian.org
+bundle_fetch: ok deb:icu@72.1-3+deb12u1 icu_72.1-3+deb12u1.dsc sha256=8fd50a21664422b2dd5df4e20175dce3396c89a3a85363db26dd4529bba62a92 size=2284 hops=snapshot.debian.org
+bundle_fetch: ok deb:icu@72.1-3+deb12u1 icu_72.1.orig.tar.gz sha256=a2d2d38217092a7ed56635e34467f92f976b370e20182ad325edea6681a71d68 size=26303933 hops=snapshot.debian.org
+bundle_fetch: ok deb:icu@72.1-3+deb12u1 icu_72.1.orig.tar.gz.asc sha256=87b6ff610d587292cec0444fa8cbbfb12994cb89bade40578f5ba6470de245c7 size=659 hops=snapshot.debian.org
+bundle_fetch: ok deb:icu@72.1-3+deb12u1 icu_72.1-3+deb12u1.debian.tar.xz sha256=bd6b27fc0a18f6044a47cd96c7d687720b95e4f592718bf8e34c6391b7753a1d size=63620 hops=snapshot.debian.org
+bundle_fetch: ok deb:init-system-helpers@1.65.2+deb12u1 init-system-helpers_1.65.2+deb12u1.dsc sha256=d4c6d21578b0cc835b8941f2d0f1fc3de6c75af63c840d59e75a9a01a0fd4a09 size=2227 hops=snapshot.debian.org
+bundle_fetch: ok deb:init-system-helpers@1.65.2+deb12u1 init-system-helpers_1.65.2+deb12u1.tar.xz sha256=84e6f3d88a72004751a8b01b48aa21f6e6c47da57aa2337d010901e2d5862b56 size=44996 hops=snapshot.debian.org
+bundle_fetch: ok deb:init-system-helpers@1.69~deb13u1 init-system-helpers_1.69~deb13u1.dsc sha256=873082d72727267b6207e38df47e3002aeb0ed554f876db17c7bbfeb26174ee6 size=2266 hops=snapshot.debian.org
+bundle_fetch: ok deb:init-system-helpers@1.69~deb13u1 init-system-helpers_1.69~deb13u1.tar.xz sha256=bbd65c63420b6335b91cbf5daad9a70632a087657eb9078ea000f0a16c2d83da size=45852 hops=snapshot.debian.org
+bundle_fetch: ok deb:jq@1.7.1-6+deb13u4 jq_1.7.1-6+deb13u4.dsc sha256=5d569aab638047a984eb5df48943d626083fced2ed7bd85e1ce21228504c787f size=1687 hops=snapshot.debian.org
+bundle_fetch: ok deb:jq@1.7.1-6+deb13u4 jq_1.7.1.orig.tar.gz sha256=fc75b1824aba7a954ef0886371d951c3bf4b6e0a921d1aefc553f309702d6ed1 size=1323338 hops=snapshot.debian.org
+bundle_fetch: ok deb:jq@1.7.1-6+deb13u4 jq_1.7.1-6+deb13u4.debian.tar.xz sha256=212a072699dfaaff63406ce9f846827ba00b048726f1c644d159cffb1008b067 size=35488 hops=snapshot.debian.org
+bundle_fetch: ok deb:keyutils@1.6.3-2 keyutils_1.6.3-2.dsc sha256=77e6f0e5018f0f6cfb5a3689d7f185a014b2437d0a097609ffda32bfd3a64f28 size=2079 hops=snapshot.debian.org
+bundle_fetch: ok deb:keyutils@1.6.3-2 keyutils_1.6.3.orig.tar.gz sha256=a61d5706136ae4c05bd48f86186bcfdbd88dd8bd5107e3e195c924cfc1b39bb4 size=137022 hops=snapshot.debian.org
+bundle_fetch: ok deb:keyutils@1.6.3-2 keyutils_1.6.3-2.debian.tar.xz sha256=9b9b40729465d4895860838e82e13d2ee4ffc44a97c9acd1d47a51bd33ade899 size=13196 hops=snapshot.debian.org
+bundle_fetch: ok deb:keyutils@1.6.3-6 keyutils_1.6.3-6.dsc sha256=e63869474c390d5d5bdee8492f7b2f4d6034ff10d8190da18593620c0f35fbf8 size=2100 hops=snapshot.debian.org
+bundle_fetch: held deb:keyutils@1.6.3-6 keyutils_1.6.3.orig.tar.gz sha256=a61d5706136ae4c05bd48f86186bcfdbd88dd8bd5107e3e195c924cfc1b39bb4 size=137022 (fetched for deb:keyutils@1.6.3-2 keyutils_1.6.3.orig.tar.gz)
+bundle_fetch: ok deb:keyutils@1.6.3-6 keyutils_1.6.3-6.debian.tar.xz sha256=6fc3c1217b8e92df9dff73e4919c45dff4ada5fd414ab57329af487f4476466a size=16588 hops=snapshot.debian.org
+bundle_fetch: ok deb:krb5@1.20.1-2+deb12u5 krb5_1.20.1-2+deb12u5.dsc sha256=643c1e56f5d2022f7685f5d5490a4fc348adc68a4bb42adbc1780e4a5b1bb05e size=3982 hops=snapshot.debian.org
+bundle_fetch: ok deb:krb5@1.20.1-2+deb12u5 krb5_1.20.1.orig.tar.gz sha256=704aed49b19eb5a7178b34b2873620ec299db08752d6a8574f95d41879ab8851 size=8661660 hops=snapshot.debian.org
+bundle_fetch: ok deb:krb5@1.20.1-2+deb12u5 krb5_1.20.1.orig.tar.gz.asc sha256=2afeec5dbc586cc40b7975645e02b4c41c4d719dd02213e828c72d8239d55666 size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:krb5@1.20.1-2+deb12u5 krb5_1.20.1-2+deb12u5.debian.tar.xz sha256=195842a66252dfee21b3402b5048f8dea11ea92056742aedf71b356e26f4513f size=112068 hops=snapshot.debian.org
+bundle_fetch: ok deb:krb5@1.21.3-5+deb13u1 krb5_1.21.3-5+deb13u1.dsc sha256=d17d2840bc97fea2c2375245569ca67838a2b557ee083c6cbe42b129a317212c size=4189 hops=snapshot.debian.org
+bundle_fetch: ok deb:krb5@1.21.3-5+deb13u1 krb5_1.21.3.orig.tar.gz sha256=b7a4cd5ead67fb08b980b21abd150ff7217e85ea320c9ed0c6dadd304840ad35 size=9136145 hops=snapshot.debian.org
+bundle_fetch: ok deb:krb5@1.21.3-5+deb13u1 krb5_1.21.3.orig.tar.gz.asc sha256=85047c935fe949ef2e275885451b168557b923dd13a5aab0ef8fe6acd27b94d7 size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:krb5@1.21.3-5+deb13u1 krb5_1.21.3-5+deb13u1.debian.tar.xz sha256=02b873b239fbe7ddf016dfe44deba4130673f4606c18c93da0622e2bc8500fb4 size=105252 hops=snapshot.debian.org
+bundle_fetch: ok deb:less@590-2.1~deb12u2 less_590-2.1~deb12u2.dsc sha256=1a4219f8ec9342851805089d9ee5ec7c0150287d5722ecc914c50790673ad9a6 size=2228 hops=snapshot.debian.org
+bundle_fetch: ok deb:less@590-2.1~deb12u2 less_590.orig.tar.gz sha256=6aadf54be8bf57d0e2999a3c5d67b1de63808bb90deb8f77b028eafae3a08e10 size=352574 hops=snapshot.debian.org
+bundle_fetch: ok deb:less@590-2.1~deb12u2 less_590.orig.tar.gz.asc sha256=1bd54dbadb45eeaeaf58cee2b7b4a701c634c11866082bc494752838af37c3db size=163 hops=snapshot.debian.org
+bundle_fetch: ok deb:less@590-2.1~deb12u2 less_590-2.1~deb12u2.debian.tar.xz sha256=4a54c48a25cabb5408af6d7bc174cad96614e540b47d2b8962b3e13819fd9b30 size=23852 hops=snapshot.debian.org
+bundle_fetch: ok deb:libassuan@2.5.5-5 libassuan_2.5.5-5.dsc sha256=60be1d43dd5a7c4bce7a97f58513915990c8c615ea02c68b8cd5cf1e33b84a0c size=1997 hops=snapshot.debian.org
+bundle_fetch: ok deb:libassuan@2.5.5-5 libassuan_2.5.5.orig.tar.bz2 sha256=8e8c2fcc982f9ca67dcbb1d95e2dc746b1739a4668bc20b3a3c5be632edb34e4 size=572263 hops=snapshot.debian.org
+bundle_fetch: ok deb:libassuan@2.5.5-5 libassuan_2.5.5.orig.tar.bz2.asc sha256=8bb0d1d818ac91fa27a8ebed2975dac12eac9a6e075dfba225cc488ac9b4133f size=228 hops=snapshot.debian.org
+bundle_fetch: ok deb:libassuan@2.5.5-5 libassuan_2.5.5-5.debian.tar.xz sha256=9d46fe972ba45692e28a2618e457a7f9141afc122281a862bcb4aa16716c97d7 size=14256 hops=snapshot.debian.org
+bundle_fetch: ok deb:libcap-ng@0.8.3-1 libcap-ng_0.8.3-1.dsc sha256=1bf38dbc0c30bcbc776d2d5c25e31d89202de0858f9ca9379c993d55103d7ef0 size=1634 hops=snapshot.debian.org
+bundle_fetch: ok deb:libcap-ng@0.8.3-1 libcap-ng_0.8.3.orig.tar.gz sha256=bed6f6848e22bb2f83b5f764b2aef0ed393054e803a8e3a8711cb2a39e6b492d size=455383 hops=snapshot.debian.org
+bundle_fetch: ok deb:libcap-ng@0.8.3-1 libcap-ng_0.8.3-1.debian.tar.xz sha256=710577902c260f50f8cfc9d7e264131f880eab0581d12ceab17ebe48e2ac53c6 size=10488 hops=snapshot.debian.org
+bundle_fetch: ok deb:libcap-ng@0.8.5-4 libcap-ng_0.8.5-4.dsc sha256=a5745b7d68a11068ae5beddcc7fbc94cd87dd81cb2d7495e7d48610603be3526 size=1710 hops=snapshot.debian.org
+bundle_fetch: ok deb:libcap-ng@0.8.5-4 libcap-ng_0.8.5.orig.tar.gz sha256=e4be07fdd234f10b866433f224d183626003c65634ed0552b02e654a380244c2 size=59265 hops=snapshot.debian.org
+bundle_fetch: ok deb:libcap-ng@0.8.5-4 libcap-ng_0.8.5-4.debian.tar.xz sha256=f5d4e7f38bdbca87de77317ce95f973883081370ef257019b484e29e3368a20d size=7816 hops=snapshot.debian.org
+bundle_fetch: ok deb:libcap2@1:2.66-4+deb12u3 libcap2_2.66-4+deb12u3.dsc sha256=56b6fa8db84a0e80b48522cbcafb0353282a7dbb5605c81b021e0862b120d1c9 size=2236 hops=snapshot.debian.org
+bundle_fetch: ok deb:libcap2@1:2.66-4+deb12u3 libcap2_2.66.orig.tar.xz sha256=15c40ededb3003d70a283fe587a36b7d19c8b3b554e33f86129c059a4bb466b2 size=181592 hops=snapshot.debian.org
+bundle_fetch: ok deb:libcap2@1:2.66-4+deb12u3 libcap2_2.66-4+deb12u3.debian.tar.xz sha256=124ec52e286e8617a7fb8e576390abbf60f6674e065504459f32af20817eaa13 size=23944 hops=snapshot.debian.org
+bundle_fetch: ok deb:libcap2@1:2.75-10+deb13u1 libcap2_2.75-10+deb13u1.dsc sha256=cb6af220de216655ec55bb1f5abf3fa8f03e82c9956f120b313056e895c02ea6 size=2714 hops=snapshot.debian.org
+bundle_fetch: ok deb:libcap2@1:2.75-10+deb13u1 libcap2_2.75.orig.tar.xz sha256=de4e7e064c9ba451d5234dd46e897d7c71c96a9ebf9a0c445bc04f4742d83632 size=197868 hops=snapshot.debian.org
+bundle_fetch: ok deb:libcap2@1:2.75-10+deb13u1 libcap2_2.75.orig.tar.xz.asc sha256=c71b593e7c3160fd7f406641074d93462bbc4906c9243937a0e232f42d5c54d2 size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:libcap2@1:2.75-10+deb13u1 libcap2_2.75-10+deb13u1.debian.tar.xz sha256=d375de2f743f112835fc0eef2a9c305c1109371954cf53e109b7f046fe58c1bc size=24628 hops=snapshot.debian.org
+bundle_fetch: ok deb:libffi@3.4.4-1 libffi_3.4.4-1.dsc sha256=21c9ef156b6766535cb014e0765142c8104ffbcd73f003ecfa80cfb314baa4f0 size=1951 hops=snapshot.debian.org
+bundle_fetch: ok deb:libffi@3.4.4-1 libffi_3.4.4.orig.tar.gz sha256=d66c56ad259a82cf2a9dfc408b32bf5da52371500b84745f7fb8b645712df676 size=1362394 hops=snapshot.debian.org
+bundle_fetch: ok deb:libffi@3.4.4-1 libffi_3.4.4-1.debian.tar.xz sha256=161b210bfd2ada0b15b0d2a2a98ffc779cd4a68661a7fdf46f61732493db0895 size=10380 hops=snapshot.debian.org
+bundle_fetch: ok deb:libffi@3.4.8-2 libffi_3.4.8-2.dsc sha256=4424defe3f37c0084f062e03330b2ba3d3f927367c33be455cfacf7f85a78161 size=1948 hops=snapshot.debian.org
+bundle_fetch: ok deb:libffi@3.4.8-2 libffi_3.4.8.orig.tar.gz sha256=cbb7f0b3b095dc506387ec1e35b891bfb4891d05b90a495bc69a10f2293f80ff size=595051 hops=snapshot.debian.org
+bundle_fetch: ok deb:libffi@3.4.8-2 libffi_3.4.8-2.debian.tar.xz sha256=f23ac79a19895ebb6bbb539263d0d945ebc2d3e91217a597f5819777f08b401c size=11220 hops=snapshot.debian.org
+bundle_fetch: ok deb:libgcrypt20@1.10.1-3+deb12u1 libgcrypt20_1.10.1-3+deb12u1.dsc sha256=1bd12e7e03f5c60177a65ba4b838466033eaeca191111c570d444104d0d6e6d3 size=2975 hops=snapshot.debian.org
+bundle_fetch: ok deb:libgcrypt20@1.10.1-3+deb12u1 libgcrypt20_1.10.1.orig.tar.bz2 sha256=ef14ae546b0084cd84259f61a55e07a38c3b53afc0f546bffcef2f01baffe9de size=3778457 hops=snapshot.debian.org
+bundle_fetch: ok deb:libgcrypt20@1.10.1-3+deb12u1 libgcrypt20_1.10.1.orig.tar.bz2.asc sha256=9da6ae5e8b1c253607be7e951b568932740c143ee519f6b3392ece8211e84e33 size=228 hops=snapshot.debian.org
+bundle_fetch: ok deb:libgcrypt20@1.10.1-3+deb12u1 libgcrypt20_1.10.1-3+deb12u1.debian.tar.xz sha256=a827828973467fe4469729c51124a2b8a8682911369840f66842816190bd7e6c size=41076 hops=snapshot.debian.org
+bundle_fetch: ok deb:libgpg-error@1.46-1 libgpg-error_1.46-1.dsc sha256=f1fe4ca2f252f797c2819b0eae1e284e2f0b2c7ac8ec16209054ae45878aaafe size=2273 hops=snapshot.debian.org
+bundle_fetch: ok deb:libgpg-error@1.46-1 libgpg-error_1.46.orig.tar.bz2 sha256=b7e11a64246bbe5ef37748de43b245abd72cfcd53c9ae5e7fc5ca59f1c81268d size=1014291 hops=snapshot.debian.org
+bundle_fetch: ok deb:libgpg-error@1.46-1 libgpg-error_1.46.orig.tar.bz2.asc sha256=e0eb40e705068858ee43b6462b204aacf5a554fe4a17cfe63ea99e9612f72e9d size=228 hops=snapshot.debian.org
+bundle_fetch: ok deb:libgpg-error@1.46-1 libgpg-error_1.46-1.debian.tar.xz sha256=2f80416e16dead749fb6a31a0a3703ae9e562bd32fc4d72184636a1501cd86ef size=18532 hops=snapshot.debian.org
+bundle_fetch: ok deb:libidn2@2.3.3-1 libidn2_2.3.3-1.dsc sha256=13865e96a0fed8dcb82767db65c946b56ed44fc1806d80d407c512ded2a83984 size=2206 hops=snapshot.debian.org
+bundle_fetch: ok deb:libidn2@2.3.3-1 libidn2_2.3.3.orig.tar.gz sha256=f3ac987522c00d33d44b323cae424e2cffcb4c63c6aa6cd1376edacbf1c36eb0 size=2116946 hops=snapshot.debian.org
+bundle_fetch: ok deb:libidn2@2.3.3-1 libidn2_2.3.3.orig.tar.gz.asc sha256=e8f2bdce5def6c239c2cc3220e808b19b14d3f7eb3a0e14851dd5c16fc9ad0ec size=228 hops=snapshot.debian.org
+bundle_fetch: ok deb:libidn2@2.3.3-1 libidn2_2.3.3-1.debian.tar.xz sha256=b040c12276e1128394c2f84c97f7e45f340867fa9d0d0a0b9d8f043b1977db99 size=15964 hops=snapshot.debian.org
+bundle_fetch: ok deb:libidn2@2.3.8-2 libidn2_2.3.8-2.dsc sha256=af3327227dbbf12fff281f71b7feb90371d2dbe597f3129e38b93c3faadcea61 size=2961 hops=snapshot.debian.org
+bundle_fetch: ok deb:libidn2@2.3.8-2 libidn2_2.3.8.orig.tar.gz sha256=bbad1678d35d28e2c62e6a2577083829461402d9e47b908791c55314a5cb5e04 size=718637 hops=snapshot.debian.org
+bundle_fetch: ok deb:libidn2@2.3.8-2 libidn2_2.3.8.orig.tar.gz.asc sha256=8995cab7db361d9d6989eab26d9b521c74236960a5d78250121c8d369b013bd8 size=1223 hops=snapshot.debian.org
+bundle_fetch: ok deb:libidn2@2.3.8-2 libidn2_2.3.8-2.debian.tar.xz sha256=ab95c2bab110557505ba437bc162f67a5a85fa9d8a2e55501245dc7f0fe2e412 size=17532 hops=snapshot.debian.org
+bundle_fetch: ok deb:libjson-perl@4.10000-1 libjson-perl_4.10000-1.dsc sha256=7759c7cc963ae03bd6042dff53fc246843c68097be5a1e264bd810adf9f65b3e size=2495 hops=snapshot.debian.org
+bundle_fetch: ok deb:libjson-perl@4.10000-1 libjson-perl_4.10000.orig.tar.gz sha256=df8b5143d9a7de99c47b55f1a170bd1f69f711935c186a6dc0ab56dd05758e35 size=94342 hops=snapshot.debian.org
+bundle_fetch: ok deb:libjson-perl@4.10000-1 libjson-perl_4.10000-1.debian.tar.xz sha256=c9992d1b78bbb7033c4df7ea126c5de65bdf3f337ff8f0650786a7a6d20024c1 size=5296 hops=snapshot.debian.org
+bundle_fetch: ok deb:libksba@1.6.3-2 libksba_1.6.3-2.dsc sha256=cc3b1c34eafe187a16f6150607b9729beba2934192fff0b800ac1554746f6faf size=2482 hops=snapshot.debian.org
+bundle_fetch: ok deb:libksba@1.6.3-2 libksba_1.6.3.orig.tar.bz2 sha256=3f72c68db30971ebbf14367527719423f0a4d5f8103fc9f4a1c01a9fa440de5c size=668287 hops=snapshot.debian.org
+bundle_fetch: ok deb:libksba@1.6.3-2 libksba_1.6.3.orig.tar.bz2.asc sha256=d7c92cf335fe17864ae4a9c575b18a5c5749583d1268663b6d8a53008e40f7d2 size=228 hops=snapshot.debian.org
+bundle_fetch: ok deb:libksba@1.6.3-2 libksba_1.6.3-2.debian.tar.xz sha256=1b11861864d707e95009895185f4febee681c35852a918ffe3683a7a2af23486 size=14636 hops=snapshot.debian.org
+bundle_fetch: ok deb:libnsl@1.3.0-2 libnsl_1.3.0-2.dsc sha256=1da570eed6693c774cce51f3c33f989d1aa4bf1dcb8660818d8a834a1a3728ef size=1955 hops=snapshot.debian.org
+bundle_fetch: ok deb:libnsl@1.3.0-2 libnsl_1.3.0.orig.tar.xz sha256=eac3062957fa302c62eff4aed718a07bacbf9ceb0a058289f12a19bfdda3c8e2 size=321488 hops=snapshot.debian.org
+bundle_fetch: ok deb:libnsl@1.3.0-2 libnsl_1.3.0-2.debian.tar.xz sha256=7f8dccc706931b9e206448ffb475487a4a0abaded27cf611d418f4a34415dca7 size=4692 hops=snapshot.debian.org
+bundle_fetch: ok deb:libnsl@1.3.0-3 libnsl_1.3.0-3.dsc sha256=32ef29339eb7aa7aa8a150d4c71592475fdefc0cc45509b517f470dbdd88b371 size=1955 hops=snapshot.debian.org
+bundle_fetch: held deb:libnsl@1.3.0-3 libnsl_1.3.0.orig.tar.xz sha256=eac3062957fa302c62eff4aed718a07bacbf9ceb0a058289f12a19bfdda3c8e2 size=321488 (fetched for deb:libnsl@1.3.0-2 libnsl_1.3.0.orig.tar.xz)
+bundle_fetch: ok deb:libnsl@1.3.0-3 libnsl_1.3.0-3.debian.tar.xz sha256=a9172c5b27236cae278effdbe74447bdb2536afea8ad4c2a44d9661e02ae2d89 size=4748 hops=snapshot.debian.org
+bundle_fetch: ok deb:libonig@6.9.9-1 libonig_6.9.9-1.dsc sha256=c20de5d65f043340e776db59d6cfd1599a9e5260f853e48cef9149e13c4bfe06 size=1862 hops=snapshot.debian.org
+bundle_fetch: ok deb:libonig@6.9.9-1 libonig_6.9.9.orig.tar.gz sha256=001aa1202e78448f4c0bf1a48c76e556876b36f16d92ce3207eccfd61d99f2a0 size=645616 hops=snapshot.debian.org
+bundle_fetch: ok deb:libonig@6.9.9-1 libonig_6.9.9-1.debian.tar.xz sha256=01be609556b8e1f175464054bf87f7d64dc06ae01b2f78a6f731a837a4582a19 size=8960 hops=snapshot.debian.org
+bundle_fetch: ok deb:libseccomp@2.5.4-1+deb12u1 libseccomp_2.5.4-1+deb12u1.dsc sha256=0ab1448c7206ee928f97a24d04300cfd3bb26babb4238c82fb71f507b5148595 size=2708 hops=snapshot.debian.org
+bundle_fetch: ok deb:libseccomp@2.5.4-1+deb12u1 libseccomp_2.5.4.orig.tar.gz sha256=d82902400405cf0068574ef3dc1fe5f5926207543ba1ae6f8e7a1576351dcbdb size=637228 hops=snapshot.debian.org
+bundle_fetch: ok deb:libseccomp@2.5.4-1+deb12u1 libseccomp_2.5.4.orig.tar.gz.asc sha256=af37e70eb422e6f983c1f135a3abb342c3b787716520b71bd774e4906003807f size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:libseccomp@2.5.4-1+deb12u1 libseccomp_2.5.4-1+deb12u1.debian.tar.xz sha256=665fc6ad1b9887207b0af1a293a2d7975e2df503a2618d1808b970081f9672f6 size=18080 hops=snapshot.debian.org
+bundle_fetch: ok deb:libseccomp@2.6.0-2 libseccomp_2.6.0-2.dsc sha256=d05f94536558d34fa339326c6f958a3357b51efac8234470b5d97b69472db765 size=2622 hops=snapshot.debian.org
+bundle_fetch: ok deb:libseccomp@2.6.0-2 libseccomp_2.6.0.orig.tar.gz sha256=83b6085232d1588c379dc9b9cae47bb37407cf262e6e74993c61ba72d2a784dc size=685655 hops=snapshot.debian.org
+bundle_fetch: ok deb:libseccomp@2.6.0-2 libseccomp_2.6.0.orig.tar.gz.asc sha256=52e338fa958128293cbd25d2be189e34da41c4f4abbb1b641cf58f373c001f94 size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:libseccomp@2.6.0-2 libseccomp_2.6.0-2.debian.tar.xz sha256=ed705ec85719403e77d004c99c0b06b795f090c66fcae265c4bcf37ffea9cc27 size=20800 hops=snapshot.debian.org
+bundle_fetch: ok deb:libselinux@3.4-1 libselinux_3.4-1.dsc sha256=4035af53388d343f9b5c46ca2867ba32823cf4a2d218ddd590b34ae59c899157 size=2534 hops=snapshot.debian.org
+bundle_fetch: ok deb:libselinux@3.4-1 libselinux_3.4.orig.tar.gz sha256=77c294a927e6795c2e98f74b5c3adde9c8839690e9255b767c5fca6acff9b779 size=210061 hops=snapshot.debian.org
+bundle_fetch: ok deb:libselinux@3.4-1 libselinux_3.4.orig.tar.gz.asc sha256=5c370bdef7b756697445e6838ba1b2d934f668b244461e36e245f589ec994a24 size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:libselinux@3.4-1 libselinux_3.4-1.debian.tar.xz sha256=046ace4ad0092104bdfb0c6e5187131910216c89b8b81a4bce3c2067615c9196 size=29416 hops=snapshot.debian.org
+bundle_fetch: ok deb:libselinux@3.8.1-1 libselinux_3.8.1-1.dsc sha256=e430b782a396e266f86c32fa779efadebfd40e6a0d10ddbd786fc47905f723b9 size=3013 hops=snapshot.debian.org
+bundle_fetch: ok deb:libselinux@3.8.1-1 libselinux_3.8.1.orig.tar.gz sha256=ec2d2789f931152d21c1db1eb4bc202ce4eccede34d9be9e360e3b45243cee2c size=204411 hops=snapshot.debian.org
+bundle_fetch: ok deb:libselinux@3.8.1-1 libselinux_3.8.1.orig.tar.gz.asc sha256=7f983714a780d89f7677e7ba140ce29974022b8ba225f60246b6c33de1477dd6 size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:libselinux@3.8.1-1 libselinux_3.8.1-1.debian.tar.xz sha256=1af25952374f083cf3d6d0edd5beb938f2e53c30eb404afa1e32fcd1cb127db7 size=37812 hops=snapshot.debian.org
+bundle_fetch: ok deb:libsemanage@3.4-1 libsemanage_3.4-1.dsc sha256=be300e01bbd08706fb6f0ecd349b3585a535d9ff0957265a7c634545ac3515c8 size=2570 hops=snapshot.debian.org
+bundle_fetch: ok deb:libsemanage@3.4-1 libsemanage_3.4.orig.tar.gz sha256=93b423a21600b8e3fb59bb925d4583d1258f45bebf63c29bde304dfd3d52efd6 size=185177 hops=snapshot.debian.org
+bundle_fetch: ok deb:libsemanage@3.4-1 libsemanage_3.4.orig.tar.gz.asc sha256=58da87dd662c135b70c065a0b1ca800cd4b075b365f3d71e0ff02d71c7457883 size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:libsemanage@3.4-1 libsemanage_3.4-1.debian.tar.xz sha256=531c5294d5ec881ef4bc4396a9e1f38895558cd88c4fd6d3f6a673a4b2297a5c size=23248 hops=snapshot.debian.org
+bundle_fetch: ok deb:libsemanage@3.8.1-1 libsemanage_3.8.1-1.dsc sha256=b22bfc4ab2cd47fac46cc9e45d418bb30eb540c3e5c1052d6c669f53e180e4e5 size=2992 hops=snapshot.debian.org
+bundle_fetch: ok deb:libsemanage@3.8.1-1 libsemanage_3.8.1.orig.tar.gz sha256=7b39127b219cc70bfd935a4af6b0f2ba83d4b35c916f253c7e942c23ab490f07 size=184618 hops=snapshot.debian.org
+bundle_fetch: ok deb:libsemanage@3.8.1-1 libsemanage_3.8.1.orig.tar.gz.asc sha256=5b4856cb5823fba1b247ff1b5355692706da68a4df61a936d1b33b1f9e9b2f3d size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:libsemanage@3.8.1-1 libsemanage_3.8.1-1.debian.tar.xz sha256=6d1e5bd4d06bbd25ced1b75fba394c3e2157bd604cf1cd33fb581793d70bd7b8 size=37572 hops=snapshot.debian.org
+bundle_fetch: ok deb:libsepol@3.4-2.1 libsepol_3.4-2.1.dsc sha256=465877b26b9f0a3d71999691686a08bdd656ce354889e2cde9eba463306ce4ed size=2334 hops=snapshot.debian.org
+bundle_fetch: ok deb:libsepol@3.4-2.1 libsepol_3.4.orig.tar.gz sha256=fc277ac5b52d59d2cd81eec8b1cccd450301d8b54d9dd48a993aea0577cf0336 size=490628 hops=snapshot.debian.org
+bundle_fetch: ok deb:libsepol@3.4-2.1 libsepol_3.4.orig.tar.gz.asc sha256=ed127c08353dbc2c442d47d77e323e79e5bd47791a0a5bd4dfd077868f4346bc size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:libsepol@3.4-2.1 libsepol_3.4-2.1.debian.tar.xz sha256=98829ceaf6d497a7e9ff7750c261fdc48cdb41ee5258c437eb3b6a271bc3aeba size=22040 hops=snapshot.debian.org
+bundle_fetch: ok deb:libsepol@3.8.1-1 libsepol_3.8.1-1.dsc sha256=0351ffc8c3f66918c9e4ecae9244ae2af27857d8795e424e384ddda794718c34 size=2347 hops=snapshot.debian.org
+bundle_fetch: ok deb:libsepol@3.8.1-1 libsepol_3.8.1.orig.tar.gz sha256=0e78705305f955abd4c0654d37a5477ee26349ab74db9e2b03a7868897ae1ddf size=513830 hops=snapshot.debian.org
+bundle_fetch: ok deb:libsepol@3.8.1-1 libsepol_3.8.1.orig.tar.gz.asc sha256=183f6cf96054986704d4224f89518e9139370385c43a533078f45ca688dca8b6 size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:libsepol@3.8.1-1 libsepol_3.8.1-1.debian.tar.xz sha256=7aac515a941f8dd19581b16c664b3098962e6a8ed7fa0afdafd306a85c667619 size=21432 hops=snapshot.debian.org
+bundle_fetch: ok deb:libtasn1-6@4.19.0-2+deb12u1 libtasn1-6_4.19.0-2+deb12u1.dsc sha256=54eabe8526f590a52771d99ce8c592d3edd549e98d84ea6649db473d528cc6ec size=2694 hops=snapshot.debian.org
+bundle_fetch: ok deb:libtasn1-6@4.19.0-2+deb12u1 libtasn1-6_4.19.0.orig.tar.gz sha256=1613f0ac1cf484d6ec0ce3b8c06d56263cc7242f1c23b30d82d23de345a63f7a size=1786576 hops=snapshot.debian.org
+bundle_fetch: ok deb:libtasn1-6@4.19.0-2+deb12u1 libtasn1-6_4.19.0.orig.tar.gz.asc sha256=8410c0c004f3509c218a98b276b3308b9c46f48068e8b1a6d9ebfd61ea9f357a size=228 hops=snapshot.debian.org
+bundle_fetch: ok deb:libtasn1-6@4.19.0-2+deb12u1 libtasn1-6_4.19.0-2+deb12u1.debian.tar.xz sha256=878db2aeeb04e43a70750480a4f17498b7ed46fb5fe433acb6721b3e6d38088c size=24876 hops=snapshot.debian.org
+bundle_fetch: ok deb:libtasn1-6@4.20.0-2+deb13u1 libtasn1-6_4.20.0-2+deb13u1.dsc sha256=3f8b0e7ddd5325278b1164f260e45e785e5907309d76b703c8716d068f9cd7e9 size=2697 hops=snapshot.debian.org
+bundle_fetch: ok deb:libtasn1-6@4.20.0-2+deb13u1 libtasn1-6_4.20.0.orig.tar.gz sha256=92e0e3bd4c02d4aeee76036b2ddd83f0c732ba4cda5cb71d583272b23587a76c size=1783873 hops=snapshot.debian.org
+bundle_fetch: ok deb:libtasn1-6@4.20.0-2+deb13u1 libtasn1-6_4.20.0.orig.tar.gz.asc sha256=0faa628b6a3e4bb84ca5f00f127c6dfa1fc96a7ad88030dd7aa048753cf4b201 size=1223 hops=snapshot.debian.org
+bundle_fetch: ok deb:libtasn1-6@4.20.0-2+deb13u1 libtasn1-6_4.20.0-2+deb13u1.debian.tar.xz sha256=c1ba650436b6a9fc5fac5ea494ab20caf7adb29a3713067e8b665d2f2f325cb1 size=19196 hops=snapshot.debian.org
+bundle_fetch: ok deb:libtirpc@1.3.3+ds-1 libtirpc_1.3.3+ds-1.dsc sha256=c05c5d76027d4162d5a29d73eef90076559bde0fa5133b2e0045d82155e1b2af size=2129 hops=snapshot.debian.org
+bundle_fetch: ok deb:libtirpc@1.3.3+ds-1 libtirpc_1.3.3+ds.orig.tar.gz sha256=facd98473c3a16fe6564c6458ef96ebb84d144345d1171f034fa019424bba027 size=699030 hops=snapshot.debian.org
+bundle_fetch: ok deb:libtirpc@1.3.3+ds-1 libtirpc_1.3.3+ds-1.debian.tar.xz sha256=fd1865c49e905951a641082981c1dab7f018caea1a5e23af1791728a3320800e size=11232 hops=snapshot.debian.org
+bundle_fetch: ok deb:libtirpc@1.3.6+ds-1 libtirpc_1.3.6+ds-1.dsc sha256=737f9f15b21f8ea4226a2aa8c18c956e69e6eb3546c4c8ec9f5194380e2cd4e6 size=2154 hops=snapshot.debian.org
+bundle_fetch: ok deb:libtirpc@1.3.6+ds-1 libtirpc_1.3.6+ds.orig.tar.gz sha256=f9eeeb368d733e11f18ddb750a41bdf9089ba5f9476404da848c2cd295624f0d size=704513 hops=snapshot.debian.org
+bundle_fetch: ok deb:libtirpc@1.3.6+ds-1 libtirpc_1.3.6+ds-1.debian.tar.xz sha256=3aecc6669961a233b6adda8a1d2136777b68dcf64c61dd6986262199b2e5b95b size=11924 hops=snapshot.debian.org
+bundle_fetch: ok deb:libunistring@1.0-2 libunistring_1.0-2.dsc sha256=9b9a9d9d4cd1c2118df8cf5ca0dfb787d89afcd99400d7cd01b4c4e9b0bc1ae5 size=2181 hops=snapshot.debian.org
+bundle_fetch: ok deb:libunistring@1.0-2 libunistring_1.0.orig.tar.xz sha256=5bab55b49f75d77ed26b257997e919b693f29fd4a1bc22e0e6e024c246c72741 size=2367800 hops=snapshot.debian.org
+bundle_fetch: ok deb:libunistring@1.0-2 libunistring_1.0.orig.tar.xz.asc sha256=c1c2ae60eb971593da92e65384a5f1b181717e7b9654854f139f350c6cbe235d size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:libunistring@1.0-2 libunistring_1.0-2.debian.tar.xz sha256=e550d94935cd06eafb0defd7b5d7c914c7bb80a8e818a49efcf7675206572450 size=14520 hops=snapshot.debian.org
+bundle_fetch: ok deb:libunistring@1.3-2 libunistring_1.3-2.dsc sha256=0c09938cace7fbbf36c73af8bc2243fd2f70d3fe336539e8d4c10d0e61742571 size=2215 hops=snapshot.debian.org
+bundle_fetch: ok deb:libunistring@1.3-2 libunistring_1.3.orig.tar.xz sha256=f245786c831d25150f3dfb4317cda1acc5e3f79a5da4ad073ddca58886569527 size=2753448 hops=snapshot.debian.org
+bundle_fetch: ok deb:libunistring@1.3-2 libunistring_1.3.orig.tar.xz.asc sha256=62201b5b7ce9c0b033c50cefa5d7769dff4b7cee8205572e0cf917653cae9e33 size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:libunistring@1.3-2 libunistring_1.3-2.debian.tar.xz sha256=feaf9761d365430178ea46feefeb602b435c21acf5924918e2257238e0378fc9 size=28480 hops=snapshot.debian.org
+bundle_fetch: ok deb:libxcrypt@1:4.4.33-2 libxcrypt_4.4.33-2.dsc sha256=910ae411c9462f07667e46540af3dbb30f46413ddd90f1f176781666042dbb38 size=1591 hops=snapshot.debian.org
+bundle_fetch: ok deb:libxcrypt@1:4.4.33-2 libxcrypt_4.4.33.orig.tar.xz sha256=5e2da5cb5f263e9ac4c4b3f49c75e3b8523889210f45c60bb7e97b229c75a10b size=393372 hops=snapshot.debian.org
+bundle_fetch: ok deb:libxcrypt@1:4.4.33-2 libxcrypt_4.4.33-2.debian.tar.xz sha256=23194c9b0642533fb27fe8c33391d3fa838a55e17e5a88a419ed31548b0721c9 size=8196 hops=snapshot.debian.org
+bundle_fetch: ok deb:libxcrypt@1:4.4.38-1 libxcrypt_4.4.38-1.dsc sha256=feba1874a84616791c1c17f9a290c9e97562b2904b3b0200edc82a2db54f3f07 size=1573 hops=snapshot.debian.org
+bundle_fetch: ok deb:libxcrypt@1:4.4.38-1 libxcrypt_4.4.38.orig.tar.xz sha256=6a275a356622c64ba9f693892215dbb399c003a7a4afeed9c4c74070eaab20f4 size=394216 hops=snapshot.debian.org
+bundle_fetch: ok deb:libxcrypt@1:4.4.38-1 libxcrypt_4.4.38-1.debian.tar.xz sha256=6b87bcb5325e417ab3f4c01c364233444b4c9008a69ec1d6fababb3f6e693a5e size=8512 hops=snapshot.debian.org
+bundle_fetch: ok deb:libxslt@1.1.35-1+deb12u4 libxslt_1.1.35-1+deb12u4.dsc sha256=9d8870c419f1c5577e6ab6daae0697ec08c5ba85c69df5dce01682e6d56ae4c4 size=1842 hops=snapshot.debian.org
+bundle_fetch: ok deb:libxslt@1.1.35-1+deb12u4 libxslt_1.1.35.orig.tar.xz sha256=8247f33e9a872c6ac859aa45018bc4c4d00b97e2feac9eebc10c93ce1f34dd79 size=1827548 hops=snapshot.debian.org
+bundle_fetch: ok deb:libxslt@1.1.35-1+deb12u4 libxslt_1.1.35-1+deb12u4.debian.tar.xz sha256=1f7a6d0724f0daccd0eb9633af3eb0437bc2c74c73e3e8364273bf79cbfd1041 size=31316 hops=snapshot.debian.org
+bundle_fetch: ok deb:libzstd@1.5.4+dfsg2-5 libzstd_1.5.4+dfsg2-5.dsc sha256=8f602f92b575aa8b5e979196fb6ee82d78f233521dc9636526d3ecba1f63c1b1 size=2589 hops=snapshot.debian.org
+bundle_fetch: ok deb:libzstd@1.5.4+dfsg2-5 libzstd_1.5.4+dfsg2.orig.tar.xz sha256=8cf4bbb65e77ec348d052c8d6230eba66d435bddf64c8b5be2fcb16880c19953 size=1582660 hops=snapshot.debian.org
+bundle_fetch: ok deb:libzstd@1.5.4+dfsg2-5 libzstd_1.5.4+dfsg2.orig.tar.xz.asc sha256=be007507630aabfc7d88d5d3c467115935ca22025253491d525e0119bbb23d40 size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:libzstd@1.5.4+dfsg2-5 libzstd_1.5.4+dfsg2-5.debian.tar.xz sha256=82ce911445772861d0838bd4545f93bc50658bc7f3cefdb17a307dfb8ffca5d8 size=216092 hops=snapshot.debian.org
+bundle_fetch: ok deb:libzstd@1.5.7+dfsg-1 libzstd_1.5.7+dfsg-1.dsc sha256=8f6ab97fa772d921334e50fa5756a0951e23c718dc913e43a228f28c1a23adf9 size=2371 hops=snapshot.debian.org
+bundle_fetch: ok deb:libzstd@1.5.7+dfsg-1 libzstd_1.5.7+dfsg.orig.tar.xz sha256=0c092ef267edce57ba7f3f2645c861f72eaf5e76273c6c3632869423464b90a5 size=1834780 hops=snapshot.debian.org
+bundle_fetch: ok deb:libzstd@1.5.7+dfsg-1 libzstd_1.5.7+dfsg-1.debian.tar.xz sha256=5e88424d919941291f79e1bfada6cb1a6f748671d9de7d4b7d931f361f183a15 size=23036 hops=snapshot.debian.org
+bundle_fetch: ok deb:linux@6.12.113-1 linux_6.12.113-1.dsc sha256=7785e2db803dc74912f2dd4861eb454404cf3b9a2c2120f0cc3efda1f2337fa6 size=290418 hops=snapshot.debian.org
+bundle_fetch: ok deb:linux@6.12.113-1 linux_6.12.113.orig.tar.xz sha256=2efc477744741f5d580a199ee79c251abb01f899759c621d1af0c3d361380821 size=151589656 hops=snapshot.debian.org
+bundle_fetch: ok deb:linux@6.12.113-1 linux_6.12.113-1.debian.tar.xz sha256=e2d62aaf6d3771dce7116feea9c419b47d6bbf8cb957153896fbbc276f2a54f9 size=1954984 hops=snapshot.debian.org
+bundle_fetch: ok deb:lz4@1.10.0-4 lz4_1.10.0-4.dsc sha256=394c635aa75a21cd5896680e48821c05336645072ae866b2717d53f36b9ba851 size=1941 hops=snapshot.debian.org
+bundle_fetch: ok deb:lz4@1.10.0-4 lz4_1.10.0.orig.tar.gz sha256=537512904744b35e232912055ccf8ec66d768639ff3abe5788d90d792ec5f48b size=387114 hops=snapshot.debian.org
+bundle_fetch: ok deb:lz4@1.10.0-4 lz4_1.10.0-4.debian.tar.xz sha256=8d276c3254182c2c9cf319b9a6504cf257c56b441f37d3db8ad97d33d46a0911 size=8080 hops=snapshot.debian.org
+bundle_fetch: ok deb:lz4@1.9.4-1 lz4_1.9.4-1.dsc sha256=e16302bca544d08d106efc216541f4a0403c8f8a5fad5eaac7588223a55af263 size=1951 hops=snapshot.debian.org
+bundle_fetch: ok deb:lz4@1.9.4-1 lz4_1.9.4.orig.tar.gz sha256=0b0e3aa07c8c063ddf40b082bdf7e37a1562bda40a0ff5272957f3e987e0e54b size=354063 hops=snapshot.debian.org
+bundle_fetch: ok deb:lz4@1.9.4-1 lz4_1.9.4-1.debian.tar.xz sha256=47ceec5b95f42598f7b9280b03df9659f2ee6852720ec181488e83bd643f0e5f size=8128 hops=snapshot.debian.org
+bundle_fetch: ok deb:mawk@1.3.4.20200120-3.1 mawk_1.3.4.20200120-3.1.dsc sha256=ed0543e3111f718e918a73033292fe2616760c8791c13efa0da3818ca835cdc1 size=1776 hops=snapshot.debian.org
+bundle_fetch: ok deb:mawk@1.3.4.20200120-3.1 mawk_1.3.4.20200120.orig.tar.gz sha256=7fd4cd1e1fae9290fe089171181bbc6291dfd9bca939ca804f0ddb851c8b8237 size=468855 hops=snapshot.debian.org
+bundle_fetch: ok deb:mawk@1.3.4.20200120-3.1 mawk_1.3.4.20200120-3.1.debian.tar.xz sha256=7850d7c44aa826635c79a6666b0d457a03524bcb0307697b062dd717d6d9d491 size=14080 hops=snapshot.debian.org
+bundle_fetch: ok deb:mawk@1.3.4.20250131-1 mawk_1.3.4.20250131-1.dsc sha256=147dd01670e2ebf61f3c78470e0025b87d14e69c7ba9cfafd54da32a355dea84 size=2969 hops=snapshot.debian.org
+bundle_fetch: ok deb:mawk@1.3.4.20250131-1 mawk_1.3.4.20250131.orig.tar.gz sha256=51bcb82d577b141d896d9d9c3077d7aaa209490132e9f2b9573ba8511b3835be size=433213 hops=snapshot.debian.org
+bundle_fetch: ok deb:mawk@1.3.4.20250131-1 mawk_1.3.4.20250131.orig.tar.gz.asc sha256=bc83f127727edb42a91d516770c8d0d3cdb5f6e541aa3cb5213b79dae494db95 size=729 hops=snapshot.debian.org
+bundle_fetch: ok deb:mawk@1.3.4.20250131-1 mawk_1.3.4.20250131-1.debian.tar.xz sha256=23dea8244bf4f116ec3cd202ab5d4693207d82d986cd0a3d79442b916be4e2b7 size=16008 hops=snapshot.debian.org
+bundle_fetch: ok deb:netbase@6.4 netbase_6.4.dsc sha256=dc26cfcaa49fd874cc27c65216b2f8b6d3ad62845b78da4bdf0aea55592af756 size=898 hops=snapshot.debian.org
+bundle_fetch: ok deb:netbase@6.4 netbase_6.4.tar.xz sha256=fa6621826ff1150e581bd90bc3c8a4ecafe5df90404f207db6dcdf2c75f26ad7 size=32712 hops=snapshot.debian.org
+bundle_fetch: ok deb:netbase@6.5 netbase_6.5.dsc sha256=e8691899f57c06fcc383b0f2214b662137df539227d9d7811dc8223f32ebe4c7 size=899 hops=snapshot.debian.org
+bundle_fetch: ok deb:netbase@6.5 netbase_6.5.tar.xz sha256=9116047aebbaa1698934052d01c6e09b4c3aed643e93df63d2ddcbec243c26d1 size=32544 hops=snapshot.debian.org
+bundle_fetch: ok deb:nettle@3.10.1-1 nettle_3.10.1-1.dsc sha256=7b440850ce04b341363f3f5e23dfb9f96ebf7d52e0ef7ba2d07120c90ca61b3c size=2053 hops=snapshot.debian.org
+bundle_fetch: ok deb:nettle@3.10.1-1 nettle_3.10.1.orig.tar.gz sha256=b0fcdd7fc0cdea6e80dcf1dd85ba794af0d5b4a57e26397eee3bc193272d9132 size=2643267 hops=snapshot.debian.org
+bundle_fetch: ok deb:nettle@3.10.1-1 nettle_3.10.1-1.debian.tar.xz sha256=2d40d02ddac5985d8833532a17a0ef96cb685ee0547ee9617ec13793b22e34c6 size=25036 hops=snapshot.debian.org
+bundle_fetch: ok deb:nettle@3.8.1-2 nettle_3.8.1-2.dsc sha256=a437e204da67612efb656cab354835f358b44c077c5c0a46d6e8c30b5c0bddff size=2274 hops=snapshot.debian.org
+bundle_fetch: ok deb:nettle@3.8.1-2 nettle_3.8.1.orig.tar.gz sha256=364f3e2b77cd7dcde83fd7c45219c834e54b0c75e428b6f894a23d12dd41cbfe size=2406251 hops=snapshot.debian.org
+bundle_fetch: ok deb:nettle@3.8.1-2 nettle_3.8.1.orig.tar.gz.asc sha256=71fe31c44728fdc144cbf12f30ca5d483992c17fd23afabe58f89d4201f66ddb size=573 hops=snapshot.debian.org
+bundle_fetch: ok deb:nettle@3.8.1-2 nettle_3.8.1-2.debian.tar.xz sha256=8f1eae9c6afffe545de294140f33d53352261478268dafee5ef72d840e1b3d7b size=23396 hops=snapshot.debian.org
+bundle_fetch: ok deb:npth@1.6-3 npth_1.6-3.dsc sha256=002c2a7936d1499ebb5d72dbb9c7ca3e00ed5fe3b0aa48f20b7279fc90aa9e90 size=1931 hops=snapshot.debian.org
+bundle_fetch: ok deb:npth@1.6-3 npth_1.6.orig.tar.bz2 sha256=1393abd9adcf0762d34798dc34fdcf4d0d22a8410721e76f1e3afcd1daa4e2d1 size=300486 hops=snapshot.debian.org
+bundle_fetch: ok deb:npth@1.6-3 npth_1.6-3.debian.tar.xz sha256=efa188104de503add9c49c17bec7bec0df814f7d1db9fdc2017574a0af98155c size=10712 hops=snapshot.debian.org
+bundle_fetch: ok deb:openldap@2.5.13+dfsg-5 openldap_2.5.13+dfsg-5.dsc sha256=3192f78a46825039c6c9de6808ae98ab3d1c8846f43d2109ed654fd9c33fe472 size=3233 hops=snapshot.debian.org
+bundle_fetch: ok deb:openldap@2.5.13+dfsg-5 openldap_2.5.13+dfsg.orig.tar.xz sha256=1d95c400a3eae6730246614ef16883de3dbd1b14b01a1ebe3a9aa1ccad2c13ec size=3727704 hops=snapshot.debian.org
+bundle_fetch: ok deb:openldap@2.5.13+dfsg-5 openldap_2.5.13+dfsg-5.debian.tar.xz sha256=161e22c1c79e2f7c6013cfc2bbf0265d6bbb78d91a0fcfa9ca866837f2c31d88 size=164516 hops=snapshot.debian.org
+bundle_fetch: ok deb:openssl@3.0.22-1~deb12u1 openssl_3.0.22-1~deb12u1.dsc sha256=9eb196075ff65fed9512c743d5ccf918b77c3c637f6d518e4be550cf9065c655 size=2742 hops=snapshot.debian.org
+bundle_fetch: ok deb:openssl@3.0.22-1~deb12u1 openssl_3.0.22.orig.tar.gz sha256=67ebca7e50d17383028045486653492195b83db95f8558709701bb47b5c1ef81 size=15330396 hops=snapshot.debian.org
+bundle_fetch: ok deb:openssl@3.0.22-1~deb12u1 openssl_3.0.22.orig.tar.gz.asc sha256=b0cc4a379a7731c3a74c349f6756d85253d83099fd63352cf12407bce4395d19 size=931 hops=snapshot.debian.org
+bundle_fetch: ok deb:openssl@3.0.22-1~deb12u1 openssl_3.0.22-1~deb12u1.debian.tar.xz sha256=08ee68527218d6d9a0fa4741ec8ffef47646cdcad0ed0822b84bf11677c66108 size=56848 hops=snapshot.debian.org
+bundle_fetch: ok deb:openssl@3.0.22-1~deb12u2 openssl_3.0.22-1~deb12u2.dsc sha256=7c45299a4363febec120676393d4314841c7c50da244a6e6a256f072d632d337 size=2742 hops=snapshot.debian.org
+bundle_fetch: held deb:openssl@3.0.22-1~deb12u2 openssl_3.0.22.orig.tar.gz sha256=67ebca7e50d17383028045486653492195b83db95f8558709701bb47b5c1ef81 size=15330396 (fetched for deb:openssl@3.0.22-1~deb12u1 openssl_3.0.22.orig.tar.gz)
+bundle_fetch: held deb:openssl@3.0.22-1~deb12u2 openssl_3.0.22.orig.tar.gz.asc sha256=b0cc4a379a7731c3a74c349f6756d85253d83099fd63352cf12407bce4395d19 size=931 (fetched for deb:openssl@3.0.22-1~deb12u1 openssl_3.0.22.orig.tar.gz.asc)
+bundle_fetch: ok deb:openssl@3.0.22-1~deb12u2 openssl_3.0.22-1~deb12u2.debian.tar.xz sha256=48971306c5df8124daea7f2bd0de2be7d711e18f2f53711c11327293732e42aa size=72104 hops=snapshot.debian.org
+bundle_fetch: ok deb:openssl@3.5.7-1~deb13u3 openssl_3.5.7-1~deb13u3.dsc sha256=9cdb0d9daf0773ca5c0f3f5ea1fc59b1106a99e005a5c048948b826e8d3b47e1 size=2710 hops=snapshot.debian.org
+bundle_fetch: ok deb:openssl@3.5.7-1~deb13u3 openssl_3.5.7.orig.tar.gz sha256=a8c0d28a529ca480f9f36cf5792e2cd21984552a3c8e4aa11a24aa31aeac98e8 size=53153930 hops=snapshot.debian.org
+bundle_fetch: ok deb:openssl@3.5.7-1~deb13u3 openssl_3.5.7.orig.tar.gz.asc sha256=d3d082bee3f658c31db53af625eceecf29d777c7010394bed5787ebcc98abdf2 size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:openssl@3.5.7-1~deb13u3 openssl_3.5.7-1~deb13u3.debian.tar.xz sha256=0a427fdc3e773f4119a7dd5b36d1f0903a163cf4ea15d812bb823b251ff1cbc5 size=147344 hops=snapshot.debian.org
+bundle_fetch: ok deb:p11-kit@0.24.1-2 p11-kit_0.24.1-2.dsc sha256=b88a483cb9afd5556ea4ac64d5df4543123a53bf0e50d1c01454887220259a89 size=2501 hops=snapshot.debian.org
+bundle_fetch: ok deb:p11-kit@0.24.1-2 p11-kit_0.24.1.orig.tar.xz sha256=d8be783efd5cd4ae534cee4132338e3f40f182c3205d23b200094ec85faaaef8 size=838304 hops=snapshot.debian.org
+bundle_fetch: ok deb:p11-kit@0.24.1-2 p11-kit_0.24.1.orig.tar.xz.asc sha256=48041a234bac05f70519b0d4727e78a129ea80a51baf92c7d419f80b7cbdf0ab size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:p11-kit@0.24.1-2 p11-kit_0.24.1-2.debian.tar.xz sha256=9a14085b12cfd90e76008c2809e6557224243e1daeae4fbd7fad97e4396f730f size=23332 hops=snapshot.debian.org
+bundle_fetch: ok deb:p11-kit@0.25.5-3 p11-kit_0.25.5-3.dsc sha256=65e21a68dd942741bba82f5bf20901f616b64de91a976d92a54a0cb314896544 size=2538 hops=snapshot.debian.org
+bundle_fetch: ok deb:p11-kit@0.25.5-3 p11-kit_0.25.5.orig.tar.xz sha256=04d0a86450cdb1be018f26af6699857171a188ac6d5b8c90786a60854e1198e5 size=1002056 hops=snapshot.debian.org
+bundle_fetch: ok deb:p11-kit@0.25.5-3 p11-kit_0.25.5.orig.tar.xz.asc sha256=066c92b9d2accb2fda6a2f71e676fb6526fcc153051b1f04ee7d7c8c96a09989 size=228 hops=snapshot.debian.org
+bundle_fetch: ok deb:p11-kit@0.25.5-3 p11-kit_0.25.5-3.debian.tar.xz sha256=3800ea81e4615898813f533834ad37ec270f6f7d4c9413c84e712075a197849c size=24184 hops=snapshot.debian.org
+bundle_fetch: ok deb:pam@1.5.2-6+deb12u2 pam_1.5.2-6+deb12u2.dsc sha256=049316ffb7c8be35b14e6815351397b52d65f283041f90fecf884db2c0bec7b1 size=2038 hops=snapshot.debian.org
+bundle_fetch: ok deb:pam@1.5.2-6+deb12u2 pam_1.5.2.orig.tar.xz sha256=e4ec7131a91da44512574268f493c6d8ca105c87091691b8e9b56ca685d4f94d size=988784 hops=snapshot.debian.org
+bundle_fetch: ok deb:pam@1.5.2-6+deb12u2 pam_1.5.2-6+deb12u2.debian.tar.xz sha256=17f5ead07046651fd2847b13f657e559af8ef6b43d2092cf1c5a7eea305ae01c size=137648 hops=snapshot.debian.org
+bundle_fetch: ok deb:pam@1.7.0-5 pam_1.7.0-5.dsc sha256=5c127aa18c7cb52ec9ee91fa2099453b3a851bcc0088e79045384a2a508b341c size=2210 hops=snapshot.debian.org
+bundle_fetch: ok deb:pam@1.7.0-5 pam_1.7.0.orig.tar.xz sha256=57dcd7a6b966ecd5bbd95e1d11173734691e16b68692fa59661cdae9b13b1697 size=507824 hops=snapshot.debian.org
+bundle_fetch: ok deb:pam@1.7.0-5 pam_1.7.0.orig.tar.xz.asc sha256=7a8ea18ec7d9dd1f8cbf9055c32128cbca8241aa63e9fea44d56ce6f0e15e441 size=801 hops=snapshot.debian.org
+bundle_fetch: ok deb:pam@1.7.0-5 pam_1.7.0-5.debian.tar.xz sha256=d776d7cb6fc8b08273f96b7f843299356ef13c6756e30468c594ab28faf1701c size=145640 hops=snapshot.debian.org
+bundle_fetch: ok deb:perl@5.36.0-7+deb12u3 perl_5.36.0-7+deb12u3.dsc sha256=ac13a1eb3d4bb63ca8c91a3695ad563b10792a3e0f2f8b74d9600625a98a68fb size=2357 hops=snapshot.debian.org
+bundle_fetch: ok deb:perl@5.36.0-7+deb12u3 perl_5.36.0.orig-regen-configure.tar.xz sha256=10ac353bc5a933403afe60ed1817e7a456f99bdbcaf80c1cdb0eb3a08ea56d4e size=417784 hops=snapshot.debian.org
+bundle_fetch: ok deb:perl@5.36.0-7+deb12u3 perl_5.36.0.orig.tar.xz sha256=0f386dccbee8e26286404b2cca144e1005be65477979beb9b1ba272d4819bcf0 size=13051500 hops=snapshot.debian.org
+bundle_fetch: ok deb:perl@5.36.0-7+deb12u3 perl_5.36.0-7+deb12u3.debian.tar.xz sha256=5dfbe06b76fd23a4cc4aef586220845de535b245a9066ec0658eb60fbe21be1b size=177092 hops=snapshot.debian.org
+bundle_fetch: ok deb:perl@5.36.0-7+deb12u4 perl_5.36.0-7+deb12u4.dsc sha256=6f71e571ae69894ad2115013bbc3207e77dc796581e30a62be0297e7d90ee7b9 size=2922 hops=snapshot.debian.org
+bundle_fetch: held deb:perl@5.36.0-7+deb12u4 perl_5.36.0.orig-regen-configure.tar.xz sha256=10ac353bc5a933403afe60ed1817e7a456f99bdbcaf80c1cdb0eb3a08ea56d4e size=417784 (fetched for deb:perl@5.36.0-7+deb12u3 perl_5.36.0.orig-regen-configure.tar.xz)
+bundle_fetch: held deb:perl@5.36.0-7+deb12u4 perl_5.36.0.orig.tar.xz sha256=0f386dccbee8e26286404b2cca144e1005be65477979beb9b1ba272d4819bcf0 size=13051500 (fetched for deb:perl@5.36.0-7+deb12u3 perl_5.36.0.orig.tar.xz)
+bundle_fetch: ok deb:perl@5.36.0-7+deb12u4 perl_5.36.0-7+deb12u4.debian.tar.xz sha256=f49d224fa9a6a356e1140f95fb5c864864b5423c9aece94cc68b4d348a3694b6 size=190620 hops=snapshot.debian.org
+bundle_fetch: ok deb:perl@5.40.1-6+deb13u1 perl_5.40.1-6+deb13u1.dsc sha256=92d1cfb32167d77fada7284f1c291de72f93eb896f5cfd58247d020182b403a8 size=2404 hops=snapshot.debian.org
+bundle_fetch: ok deb:perl@5.40.1-6+deb13u1 perl_5.40.1.orig-regen-configure.tar.xz sha256=4ea023d08101443f6ed9dc3bdd9bb5f5e08087678dc9e443d195df22da36209a size=421056 hops=snapshot.debian.org
+bundle_fetch: ok deb:perl@5.40.1-6+deb13u1 perl_5.40.1.orig.tar.xz sha256=dfa20c2eef2b4af133525610bbb65dd13777ecf998c9c5b1ccf0d308e732ee3f size=13930924 hops=snapshot.debian.org
+bundle_fetch: ok deb:perl@5.40.1-6+deb13u1 perl_5.40.1-6+deb13u1.debian.tar.xz sha256=5ee76db601d6f4638433ab9b0f5bd5cfb15b102a79d902ff282e762becb7e724 size=186360 hops=snapshot.debian.org
+bundle_fetch: ok deb:pinentry@1.2.1-1 pinentry_1.2.1-1.dsc sha256=cb45060817fa5563d76591d99f0a7596aa069101710545852ec34a70a387597e size=2242 hops=snapshot.debian.org
+bundle_fetch: ok deb:pinentry@1.2.1-1 pinentry_1.2.1.orig.tar.bz2 sha256=457a185e5a85238fb945a955dc6352ab962dc8b48720b62fc9fa48c7540a4067 size=547698 hops=snapshot.debian.org
+bundle_fetch: ok deb:pinentry@1.2.1-1 pinentry_1.2.1.orig.tar.bz2.asc sha256=9f7d9c7509e4ff4161a043893d76183bd975230fcad671b643c90f78e500ba95 size=390 hops=snapshot.debian.org
+bundle_fetch: ok deb:pinentry@1.2.1-1 pinentry_1.2.1-1.debian.tar.xz sha256=ae1bd8af99fe91bd3877b6fd3d606facbfb1be02d0227da7cc81f54f7fe2f708 size=18568 hops=snapshot.debian.org
+bundle_fetch: ok deb:postgresql-15@15.19-0+deb12u1 postgresql-15_15.19-0+deb12u1.dsc sha256=d8319b3e4fb0acd532f223266fda5e282f9d12d0313c411b2d243e7ae75ed70b size=3926 hops=snapshot.debian.org
+bundle_fetch: ok deb:postgresql-15@15.19-0+deb12u1 postgresql-15_15.19.orig.tar.bz2 sha256=e1a64a87a46b825b88c082e4518161a47aab53c45694964f8ba1df28f7859f89 size=23452545 hops=snapshot.debian.org
+bundle_fetch: ok deb:postgresql-15@15.19-0+deb12u1 postgresql-15_15.19-0+deb12u1.debian.tar.xz sha256=f04031b5e96cb5e1ce02ec6f131f20329c31c2784731918bc49e0d9c39909b0c size=37708 hops=snapshot.debian.org
+bundle_fetch: ok deb:procps@2:4.0.4-9 procps_4.0.4-9.dsc sha256=0ea43605b8d5d7ac4306af0dcd2d01e237cbaba6603b0cf248dd7cfd4364ac7a size=2124 hops=snapshot.debian.org
+bundle_fetch: ok deb:procps@2:4.0.4-9 procps_4.0.4.orig.tar.xz sha256=22870d6feb2478adb617ce4f09a787addaf2d260c5a8aa7b17d889a962c5e42e size=1401540 hops=snapshot.debian.org
+bundle_fetch: ok deb:procps@2:4.0.4-9 procps_4.0.4-9.debian.tar.xz sha256=4821ca009f83b05522bc97ddac82661898938323ef0808416bca7830ce19bd97 size=45932 hops=snapshot.debian.org
+bundle_fetch: ok deb:python3.13@3.13.5-2+deb13u5 python3.13_3.13.5-2+deb13u5.dsc sha256=4be84e20fb902354fa86955e2fbea6e8bdbd158f54833423488308a9b3532662 size=4298 hops=snapshot.debian.org
+bundle_fetch: ok deb:python3.13@3.13.5-2+deb13u5 python3.13_3.13.5.orig.tar.xz sha256=93e583f243454e6e9e4588ca2c2662206ad961659863277afcdb96801647d640 size=22856016 hops=snapshot.debian.org
+bundle_fetch: ok deb:python3.13@3.13.5-2+deb13u5 python3.13_3.13.5.orig.tar.xz.asc sha256=da6e013d98dcf8fc6696cdb2872b0051fc8fdeb632f73ef9f54d7b5a68647401 size=963 hops=snapshot.debian.org
+bundle_fetch: ok deb:python3.13@3.13.5-2+deb13u5 python3.13_3.13.5-2+deb13u5.debian.tar.xz sha256=a51f456e654ce2c9b40cc1db8005e5041cdb0b2c3aa96ab0871c49fe95280366 size=299640 hops=snapshot.debian.org
+bundle_fetch: ok deb:readline@8.2-1.3 readline_8.2-1.3.dsc sha256=05497ea99bef3f14b8d502cbe3f84fe7bbc0bce1c4f139ca32f0fd60dcac977e size=2553 hops=snapshot.debian.org
+bundle_fetch: ok deb:readline@8.2-1.3 readline_8.2.orig.tar.gz sha256=3feb7171f16a84ee82ca18a36d7b9be109a52c04f492a053331d7d1095007c35 size=3043952 hops=snapshot.debian.org
+bundle_fetch: ok deb:readline@8.2-1.3 readline_8.2-1.3.debian.tar.xz sha256=8cd3c02d6c07b4cf57da607de168a9e347ee05c31857f0f6236fe3df4fc207d9 size=30016 hops=snapshot.debian.org
+bundle_fetch: ok deb:readline@8.2-6 readline_8.2-6.dsc sha256=6f94c7144d6b6b1ff88aaebd81480e87f8773b7638031782aac12ef93ffd2e71 size=2810 hops=snapshot.debian.org
+bundle_fetch: held deb:readline@8.2-6 readline_8.2.orig.tar.gz sha256=3feb7171f16a84ee82ca18a36d7b9be109a52c04f492a053331d7d1095007c35 size=3043952 (fetched for deb:readline@8.2-1.3 readline_8.2.orig.tar.gz)
+bundle_fetch: ok deb:readline@8.2-6 readline_8.2-6.debian.tar.xz sha256=d1cf806644dbce298cf929f1cc9b3af5a50cd7db97b6f69db280c1eb2f544376 size=38396 hops=snapshot.debian.org
+bundle_fetch: ok deb:rpcsvc-proto@1.4.3-1 rpcsvc-proto_1.4.3-1.dsc sha256=7d8e122bd18b02fe0de6d467a0ecdafff74035b3e1ed0da1c0c792d9c015682f size=1999 hops=snapshot.debian.org
+bundle_fetch: ok deb:rpcsvc-proto@1.4.3-1 rpcsvc-proto_1.4.3.orig.tar.xz sha256=69315e94430f4e79c74d43422f4a36e6259e97e67e2677b2c7d7060436bd99b1 size=167964 hops=snapshot.debian.org
+bundle_fetch: ok deb:rpcsvc-proto@1.4.3-1 rpcsvc-proto_1.4.3-1.debian.tar.xz sha256=02034b9dadcf3af5424f72eb65c3842c8d7117b6b78e7a3c798316ceb60843d1 size=4228 hops=snapshot.debian.org
+bundle_fetch: ok deb:rust-sequoia-sqv@1.3.0-3 rust-sequoia-sqv_1.3.0-3.dsc sha256=98ad852ed30d42d3b0d6ce40d2f56a96fb443cc6fa2caeaa12516fe5bbe544af size=2704 hops=snapshot.debian.org
+bundle_fetch: ok deb:rust-sequoia-sqv@1.3.0-3 rust-sequoia-sqv_1.3.0.orig.tar.gz sha256=8924571d26720b245292ad3c450e4061fcb24890461874790549747bffa35e60 size=140759 hops=snapshot.debian.org
+bundle_fetch: ok deb:rust-sequoia-sqv@1.3.0-3 rust-sequoia-sqv_1.3.0-3.debian.tar.xz sha256=be04e0365bc1206617a3e55d507bfce2e972819fb737e23a1112a717cc89b9bc size=3876 hops=snapshot.debian.org
+bundle_fetch: ok deb:sed@4.9-1+deb12u1 sed_4.9-1+deb12u1.dsc sha256=6bf366b84fd2025e355689e524132b3c38a2b4ef136de2e6129595be1e3bdd4f size=2038 hops=snapshot.debian.org
+bundle_fetch: ok deb:sed@4.9-1+deb12u1 sed_4.9.orig.tar.xz sha256=6e226b732e1cd739464ad6862bd1a1aba42d7982922da7a53519631d24975181 size=1397092 hops=snapshot.debian.org
+bundle_fetch: ok deb:sed@4.9-1+deb12u1 sed_4.9-1+deb12u1.debian.tar.xz sha256=4346634a4c0b3977bf6a6b6d27f187fb203f547dda8267bb8a42d1323487f6f0 size=63548 hops=snapshot.debian.org
+bundle_fetch: ok deb:sed@4.9-2+deb13u1 sed_4.9-2+deb13u1.dsc sha256=9fcc5dffe5e712b4631757c057228ae57919aec1cca1c91a80e76719167f443b size=2047 hops=snapshot.debian.org
+bundle_fetch: held deb:sed@4.9-2+deb13u1 sed_4.9.orig.tar.xz sha256=6e226b732e1cd739464ad6862bd1a1aba42d7982922da7a53519631d24975181 size=1397092 (fetched for deb:sed@4.9-1+deb12u1 sed_4.9.orig.tar.xz)
+bundle_fetch: ok deb:sed@4.9-2+deb13u1 sed_4.9-2+deb13u1.debian.tar.xz sha256=9c9aacda91e02802f33fb6a1a6e86f80be1bc67b92a4dae009e78f77e26e130a size=63644 hops=snapshot.debian.org
+bundle_fetch: ok deb:sensible-utils@0.0.17+nmu1 sensible-utils_0.0.17+nmu1.dsc sha256=764436dac8b6796ba49e9dd96e3c9ef8612cacad1953e6cd7525a17b99a9e4a1 size=1728 hops=snapshot.debian.org
+bundle_fetch: ok deb:sensible-utils@0.0.17+nmu1 sensible-utils_0.0.17+nmu1.tar.xz sha256=a4ead62e0dc8f965453221dcb09c964abc4f1bedad24f527d33c443a1570cb31 size=66476 hops=snapshot.debian.org
+bundle_fetch: ok deb:shadow@1:4.13+dfsg1-1+deb12u2 shadow_4.13+dfsg1-1+deb12u2.dsc sha256=624b24453887abb8d1e60cb6a159180685682ff149393095ba0a55fb2960e4f0 size=2433 hops=snapshot.debian.org
+bundle_fetch: ok deb:shadow@1:4.13+dfsg1-1+deb12u2 shadow_4.13+dfsg1.orig.tar.xz sha256=a8bb3a2aceff1cbe39d0f50687dcc1d7e7be0516a9d954d8e2eedb93f5906207 size=1811752 hops=snapshot.debian.org
+bundle_fetch: ok deb:shadow@1:4.13+dfsg1-1+deb12u2 shadow_4.13+dfsg1-1+deb12u2.debian.tar.xz sha256=76272ade06e374596e8d90af58e859dc83293a2fb85cb77ab407687b4f4fdb66 size=82876 hops=snapshot.debian.org
+bundle_fetch: ok deb:shadow@1:4.17.4-2 shadow_4.17.4-2.dsc sha256=920de0d3be5303f2c0511d5531c1815abc258b15af8f9c511c8aa6d8e1a91a86 size=2851 hops=snapshot.debian.org
+bundle_fetch: ok deb:shadow@1:4.17.4-2 shadow_4.17.4.orig.tar.xz sha256=554801054694ff7d8a7abdf0d6ece34e2f16e111673cc01b8c9ee1278451181e size=2326584 hops=snapshot.debian.org
+bundle_fetch: ok deb:shadow@1:4.17.4-2 shadow_4.17.4.orig.tar.xz.asc sha256=82437d2b54790b3a6734c526b757e693cd0c734ec6afd69f9a9cf0eb1dad8dc4 size=488 hops=snapshot.debian.org
+bundle_fetch: ok deb:shadow@1:4.17.4-2 shadow_4.17.4-2.debian.tar.xz sha256=97eaf0b3682a8a1a1ae6e4c4fac00885a7433d2487e636bde7c1c406e66bdb23 size=167792 hops=snapshot.debian.org
+bundle_fetch: ok deb:sqlite3@3.40.1-2+deb12u2 sqlite3_3.40.1-2+deb12u2.dsc sha256=ee3459ae9d00939741c7708fc1b8ce1bde12d8c3fb1dfa005bbbc8651d884e23 size=2519 hops=snapshot.debian.org
+bundle_fetch: ok deb:sqlite3@3.40.1-2+deb12u2 sqlite3_3.40.1.orig-www.tar.xz sha256=a5e95a18d1b59729278860559ded78751b9163ffb5bb906c5cd24c015f71d5fd size=5865720 hops=snapshot.debian.org
+bundle_fetch: ok deb:sqlite3@3.40.1-2+deb12u2 sqlite3_3.40.1.orig.tar.xz sha256=aaa776260ab4dc976db34aa7891819484c8676b5b2783123ebc6301e2ca5d655 size=8019048 hops=snapshot.debian.org
+bundle_fetch: ok deb:sqlite3@3.40.1-2+deb12u2 sqlite3_3.40.1-2+deb12u2.debian.tar.xz sha256=0843bc12e4364076477935ce313a6d0796fd899a989ff18ebb6545540e10e4ca size=34260 hops=snapshot.debian.org
+bundle_fetch: ok deb:sqlite3@3.46.1-7+deb13u2 sqlite3_3.46.1-7+deb13u2.dsc sha256=46e1eec171e11108fc436e45309b635b601029726b6ffd3bf435bb474e511638 size=2673 hops=snapshot.debian.org
+bundle_fetch: ok deb:sqlite3@3.46.1-7+deb13u2 sqlite3_3.46.1.orig-www.tar.xz sha256=648df41a8e532882b1905df45919aae4bafaf74c455f66bc86f1f52f45c8b8f0 size=5861820 hops=snapshot.debian.org
+bundle_fetch: ok deb:sqlite3@3.46.1-7+deb13u2 sqlite3_3.46.1.orig.tar.xz sha256=d0cdd2ece271b29e7ce18095745d892517ee26d0f270065b3a25c2e9eb11639c size=8456776 hops=snapshot.debian.org
+bundle_fetch: ok deb:sqlite3@3.46.1-7+deb13u2 sqlite3_3.46.1-7+deb13u2.debian.tar.xz sha256=59d33bc436258603702bb051d645743ab03612b82f79e7c7d638c65127c21261 size=37084 hops=snapshot.debian.org
+bundle_fetch: ok deb:systemd@252.39-1~deb12u2 systemd_252.39-1~deb12u2.dsc sha256=f2f952ae61fd40f1ef3ee48c8721e23eaaec5396ef5f1b0c2e138d78fade9c6e size=6574 hops=snapshot.debian.org
+bundle_fetch: ok deb:systemd@252.39-1~deb12u2 systemd_252.39.orig.tar.gz sha256=08a54a6c4d4cf969fc025eaa8922a55d6bc458100c242510b56c96e7d72af1c5 size=12399886 hops=snapshot.debian.org
+bundle_fetch: ok deb:systemd@252.39-1~deb12u2 systemd_252.39-1~deb12u2.debian.tar.xz sha256=27c548c678593cbe82e1701fc480bfe56e99b8f8750cbc09e720b6aa4fcbffaf size=177476 hops=snapshot.debian.org
+bundle_fetch: ok deb:systemd@257.13-1~deb13u1 systemd_257.13-1~deb13u1.dsc sha256=1b3405d671a82d1e20c9d99f52d4336aafe8543b28d04e91b7f1f586d3a667c7 size=8696 hops=snapshot.debian.org
+bundle_fetch: ok deb:systemd@257.13-1~deb13u1 systemd_257.13.orig.tar.gz sha256=1eb7d5f9ff8a426ff880a3cded9ce819613ba8003ac5ddde9eca162f14ddabe7 size=16543653 hops=snapshot.debian.org
+bundle_fetch: ok deb:systemd@257.13-1~deb13u1 systemd_257.13-1~deb13u1.debian.tar.xz sha256=9c6e435d613b996efcdb3b7dd9a4cebaa745333a3f64dc722f3fad646f1fdc1a size=183128 hops=snapshot.debian.org
+bundle_fetch: ok deb:sysvinit@3.06-4 sysvinit_3.06-4.dsc sha256=f153cd1ef48698089494aac14cebdcb8130ce4d4af5533a41cd3f1950e9e42fa size=2359 hops=snapshot.debian.org
+bundle_fetch: ok deb:sysvinit@3.06-4 sysvinit_3.06.orig.tar.gz sha256=233d784ca152ce2b4b42a0723948f0cd2d36d4eae5acb9dab1457c1dd85b1a66 size=466092 hops=snapshot.debian.org
+bundle_fetch: ok deb:sysvinit@3.06-4 sysvinit_3.06-4.debian.tar.xz sha256=a64de1c40fe55a5b5f1ed0aaf471a7b35a294292530637fab016cbcebd600a43 size=134904 hops=snapshot.debian.org
+bundle_fetch: ok deb:sysvinit@3.14-4 sysvinit_3.14-4.dsc sha256=1cfe65682218077e6f76011f0c5caacc9f2ab214d55893307d4a54c93312ac92 size=2375 hops=snapshot.debian.org
+bundle_fetch: ok deb:sysvinit@3.14-4 sysvinit_3.14.orig.tar.gz sha256=4e90a148707cf64113fc97343c053f9c0c9589551936b053999dcc69731f295f size=516357 hops=snapshot.debian.org
+bundle_fetch: ok deb:sysvinit@3.14-4 sysvinit_3.14-4.debian.tar.xz sha256=2ba0aa763232112696bce50ee5acc707a515fcbd5b2c194193bfa7a0a525bff6 size=122156 hops=snapshot.debian.org
+bundle_fetch: ok deb:tar@1.34+dfsg-1.2+deb12u1 tar_1.34+dfsg-1.2+deb12u1.dsc sha256=c092b25be17ab3b138aabb756497b038516a3f7d23604ccd4bf76ebbabff7a27 size=2185 hops=snapshot.debian.org
+bundle_fetch: ok deb:tar@1.34+dfsg-1.2+deb12u1 tar_1.34+dfsg.orig.tar.xz sha256=7d57029540cb928394defb3b377b3531237c947e795b51aa8acac0c5ba0e4844 size=1981736 hops=snapshot.debian.org
+bundle_fetch: ok deb:tar@1.34+dfsg-1.2+deb12u1 tar_1.34+dfsg-1.2+deb12u1.debian.tar.xz sha256=e7cdc112e6810a0827b6081f6a4115eb630679a5f3d7cceffbc236d6b8d46d69 size=21464 hops=snapshot.debian.org
+bundle_fetch: ok deb:tar@1.35+dfsg-3.1 tar_1.35+dfsg-3.1.dsc sha256=5bb58d4966d94c99a9f1b182676089ecc05058d62fdb927f5c07539d9cda4077 size=2017 hops=snapshot.debian.org
+bundle_fetch: ok deb:tar@1.35+dfsg-3.1 tar_1.35+dfsg.orig.tar.xz sha256=9ae57e981c1e73c0eebc2b26c9b0c4497fe310ef1d516ea430efb5470b71f7a8 size=2111608 hops=snapshot.debian.org
+bundle_fetch: ok deb:tar@1.35+dfsg-3.1 tar_1.35+dfsg-3.1.debian.tar.xz sha256=0d0278034b82ed84dce04a461879b6e1871e4cb416a0ff04d3d35ff05fc30a53 size=21540 hops=snapshot.debian.org
+bundle_fetch: ok deb:ucf@3.0043+nmu1+deb12u1 ucf_3.0043+nmu1+deb12u1.dsc sha256=f098e6f07226ed6dbd4373b55a385c9899432ae6e08c83657eda33ff15a47ec6 size=1574 hops=snapshot.debian.org
+bundle_fetch: ok deb:ucf@3.0043+nmu1+deb12u1 ucf_3.0043+nmu1+deb12u1.tar.xz sha256=b577bc16a7ed5c8544a5652c4d5f0992fe9fde13203db8170d950abb3ee20dfa size=70976 hops=snapshot.debian.org
+bundle_fetch: ok deb:usrmerge@37~deb12u1 usrmerge_37~deb12u1.dsc sha256=3a561ff99013607db5bc61721aae08a236afc4b04b13baab17fb2e8d18fc0b7f size=1643 hops=snapshot.debian.org
+bundle_fetch: ok deb:usrmerge@37~deb12u1 usrmerge_37~deb12u1.tar.xz sha256=351ed3d74135ac82d686b3b93700976f269229e7fae37491fa79758a45c96ff4 size=15136 hops=snapshot.debian.org
+bundle_fetch: ok deb:util-linux@2.38.1-5+deb12u3 util-linux_2.38.1-5+deb12u3.dsc sha256=0fe5fcd2b83d0465e32ca5cb9d8319e9b6fbf14c9a69abfd7ea905e45fa90b67 size=4579 hops=snapshot.debian.org
+bundle_fetch: ok deb:util-linux@2.38.1-5+deb12u3 util-linux_2.38.1.orig.tar.xz sha256=60492a19b44e6cf9a3ddff68325b333b8b52b6c59ce3ebd6a0ecaa4c5117e84f size=7495904 hops=snapshot.debian.org
+bundle_fetch: ok deb:util-linux@2.38.1-5+deb12u3 util-linux_2.38.1-5+deb12u3.debian.tar.xz sha256=d46b85313f536fc4831a69ba3fa2c8160450b5b26c7c5dfafce4f078fe4f205c size=121964 hops=snapshot.debian.org
+bundle_fetch: ok deb:util-linux@2.41.5-0+deb13u1 util-linux_2.41.5-0+deb13u1.dsc sha256=43e9b2cbebd10fdc598c4ad10217c8202c28de53af6eafc892c8e9b5cbf3a3a5 size=4988 hops=snapshot.debian.org
+bundle_fetch: ok deb:util-linux@2.41.5-0+deb13u1 util-linux_2.41.5.orig.tar.xz sha256=f586e35d320ff537aab3ffeca37e9ecd482ccbe013590db4429a414d8aa6a728 size=9474992 hops=snapshot.debian.org
+bundle_fetch: ok deb:util-linux@2.41.5-0+deb13u1 util-linux_2.41.5-0+deb13u1.debian.tar.xz sha256=5b327ccd22f0f4ed28a389870aa51d04ecedb8693e52a1d122850f2b3188cbf6 size=107604 hops=snapshot.debian.org
+bundle_fetch: ok deb:wget@1.25.0-2 wget_1.25.0-2.dsc sha256=32caf133042db927360a8c35357e4b2877eb83ff0ca144ceb64508947d894f55 size=2251 hops=snapshot.debian.org
+bundle_fetch: ok deb:wget@1.25.0-2 wget_1.25.0.orig.tar.gz sha256=766e48423e79359ea31e41db9e5c289675947a7fcf2efdcedb726ac9d0da3784 size=5263736 hops=snapshot.debian.org
+bundle_fetch: ok deb:wget@1.25.0-2 wget_1.25.0.orig.tar.gz.asc sha256=47f0989685931c3df6166061069659bc13a75b221a62041625007fa2dad7411b size=854 hops=snapshot.debian.org
+bundle_fetch: ok deb:wget@1.25.0-2 wget_1.25.0-2.debian.tar.xz sha256=45d4411e892d12af710ddff536d2daf430031387e336153f5f996cf536487b90 size=27884 hops=snapshot.debian.org
+bundle_fetch: ok deb:xxhash@0.8.1-1 xxhash_0.8.1-1.dsc sha256=4a961627c06efc8fa3bc4b06ee9dba6cfaf092f2550b88d63e9218a2728721b4 size=1966 hops=snapshot.debian.org
+bundle_fetch: ok deb:xxhash@0.8.1-1 xxhash_0.8.1.orig.tar.gz sha256=3bb6b7d6f30c591dd65aaaff1c8b7a5b94d81687998ca9400082c739a690436c size=171552 hops=snapshot.debian.org
+bundle_fetch: ok deb:xxhash@0.8.1-1 xxhash_0.8.1-1.debian.tar.xz sha256=d40aa223e90b85435082857b64573541ba9a995841717496e8975aed97241550 size=4572 hops=snapshot.debian.org
+bundle_fetch: ok deb:xxhash@0.8.3-2 xxhash_0.8.3-2.dsc sha256=9d1f7aaace7871fbdb8775d756c6eaca84e6ad5d8e9c6ac465b7e0adc06ff90c size=1969 hops=snapshot.debian.org
+bundle_fetch: ok deb:xxhash@0.8.3-2 xxhash_0.8.3.orig.tar.gz sha256=aae608dfe8213dfd05d909a57718ef82f30722c392344583d3f39050c7f29a80 size=1147630 hops=snapshot.debian.org
+bundle_fetch: ok deb:xxhash@0.8.3-2 xxhash_0.8.3-2.debian.tar.xz sha256=13824bfb2b2367225dfe3090d0ae050614f1c470a47db7232a2e9d4b2b14ad31 size=5144 hops=snapshot.debian.org
+bundle_fetch: ok deb:xz-utils@5.4.1-1+deb12u2 xz-utils_5.4.1-1+deb12u2.dsc sha256=bffc9917562b5787661379621bb1f7510bf7271b03d8ce4181cebc84b90d3c35 size=2442 hops=snapshot.debian.org
+bundle_fetch: ok deb:xz-utils@5.4.1-1+deb12u2 xz-utils_5.4.1.orig.tar.xz sha256=5d9827aa1875b21c288f78864bb26d2650b436ea8d2cad364e4921eb6266a5a5 size=1485272 hops=snapshot.debian.org
+bundle_fetch: ok deb:xz-utils@5.4.1-1+deb12u2 xz-utils_5.4.1-1+deb12u2.debian.tar.xz sha256=7e0b1d1448520ea4f88ec05136a88f07564cc4a1abd6dfcf53c1f822a3e4f64f size=95356 hops=snapshot.debian.org
+bundle_fetch: ok deb:xz-utils@5.8.1-1+deb13u1 xz-utils_5.8.1-1+deb13u1.dsc sha256=ddadd9d9f7c4bb80b08f9f17409e2701a29a4cf8fe25e15d19605e5281c1fc1b size=2736 hops=snapshot.debian.org
+bundle_fetch: ok deb:xz-utils@5.8.1-1+deb13u1 xz-utils_5.8.1.orig.tar.xz sha256=0b54f79df85912504de0b14aec7971e3f964491af1812d83447005807513cd9e size=1461872 hops=snapshot.debian.org
+bundle_fetch: ok deb:xz-utils@5.8.1-1+deb13u1 xz-utils_5.8.1.orig.tar.xz.asc sha256=4138f4ceca1aa7fd2085fb15a23f6d495d27bca6d3c49c429a8520ea622c27ae size=833 hops=snapshot.debian.org
+bundle_fetch: ok deb:xz-utils@5.8.1-1+deb13u1 xz-utils_5.8.1-1+deb13u1.debian.tar.xz sha256=0e48427971a9ce674ddbba26e34ac1dd009c683f3816ce17852d99dc7b0a8e46 size=25696 hops=snapshot.debian.org
+bundle_fetch: ok deb:xz-utils@5.8.1-1+deb13u2 xz-utils_5.8.1-1+deb13u2.dsc sha256=f02574465dcb7da3d5b7bdfc20ea350248c3371b0df36bb005152af80d61cdfc size=2562 hops=snapshot.debian.org
+bundle_fetch: held deb:xz-utils@5.8.1-1+deb13u2 xz-utils_5.8.1.orig.tar.xz sha256=0b54f79df85912504de0b14aec7971e3f964491af1812d83447005807513cd9e size=1461872 (fetched for deb:xz-utils@5.8.1-1+deb13u1 xz-utils_5.8.1.orig.tar.xz)
+bundle_fetch: held deb:xz-utils@5.8.1-1+deb13u2 xz-utils_5.8.1.orig.tar.xz.asc sha256=4138f4ceca1aa7fd2085fb15a23f6d495d27bca6d3c49c429a8520ea622c27ae size=833 (fetched for deb:xz-utils@5.8.1-1+deb13u1 xz-utils_5.8.1.orig.tar.xz.asc)
+bundle_fetch: ok deb:xz-utils@5.8.1-1+deb13u2 xz-utils_5.8.1-1+deb13u2.debian.tar.xz sha256=7dfcff43a8035561c4860a4893f7cf9de5e977e79a90aee4d101053e21912cb0 size=28044 hops=snapshot.debian.org
+bundle_fetch: ok deb:z3@4.8.12-3.1 z3_4.8.12-3.1.dsc sha256=0e5db5248212a72d3dc3fe99873181161649ff03d89de726bbe6f57604488008 size=2663 hops=snapshot.debian.org
+bundle_fetch: ok deb:z3@4.8.12-3.1 z3_4.8.12.orig.tar.gz sha256=e3aaefde68b839299cbc988178529535e66048398f7d083b40c69fe0da55f8b7 size=4803435 hops=snapshot.debian.org
+bundle_fetch: ok deb:z3@4.8.12-3.1 z3_4.8.12-3.1.debian.tar.xz sha256=5bb616648de1d82f5563377e1640e59dd653b6beac3b6513358362e5dbd925fb size=10420 hops=snapshot.debian.org
+bundle_fetch: ok maven:javax.xml.bind:jaxb-api@2.2.12 jaxb-api-2.2.12-sources.jar sha256=fd104e7b20b6dbcd1bb27803aaca963a8393ad9b3e39eb8a5ba1b4da1462182e size=245023 hops=repo1.maven.org
+bundle_fetch: ok neo4j:neo4j@5.26.32 5.26.32.tar.gz sha256=182ae2e5c3807bc3d7a09770dbf450d2e8667080bde93b3b6c829125db0f91e3 size=20907800 hops=github.com,codeload.github.com
+bundle_fetch: ok pgdg:postgresql-16@16.15-1.pgdg12+2 postgresql-16_16.15-1.pgdg12+2.dsc sha256=d98708df6b06bdb75baf484709065b354ef7e1c97e3f593e3414b371f7f91e05 size=3229 hops=apt-archive.postgresql.org
+bundle_fetch: ok pgdg:postgresql-16@16.15-1.pgdg12+2 postgresql-16_16.15.orig.tar.bz2 sha256=c1575341fa7bd40f5274ea465b34390f4dc64cdd0770af327005caaeb9f6b7ed size=25181309 hops=apt-archive.postgresql.org
+bundle_fetch: ok pgdg:postgresql-16@16.15-1.pgdg12+2 postgresql-16_16.15-1.pgdg12+2.debian.tar.xz sha256=5b11981332cf90a20ad6d17c6ea0e5f7472e8e982186414c3d266494f91d6812 size=37560 hops=apt-archive.postgresql.org
+bundle_fetch: ok pgdg:postgresql-18@18.6-1.pgdg12+2 postgresql-18_18.6-1.pgdg12+2.dsc sha256=76fda1b633b578b0469d00418936e267a658bf1055deedd4fbb515a2c8689eec size=3528 hops=apt-archive.postgresql.org
+bundle_fetch: ok pgdg:postgresql-18@18.6-1.pgdg12+2 postgresql-18_18.6.orig.tar.bz2 sha256=555610c24d53e4316da5b7d3fc25c279d96856d5e0e23ee308c328c5fa881d9f size=22632314 hops=apt-archive.postgresql.org
+bundle_fetch: ok pgdg:postgresql-18@18.6-1.pgdg12+2 postgresql-18_18.6-1.pgdg12+2.debian.tar.xz sha256=264d4fa9cccc317b5f30dcccafe748d8d008f7e5c3fdff48a177f1bf273204d4 size=34252 hops=apt-archive.postgresql.org
+bundle_fetch: ok pgdg:postgresql-common@293.pgdg12+1 postgresql-common_293.pgdg12+1.dsc sha256=fc1b229024670e6d0cf1c40f3987bf1509aecf146791a6e22966fbf764c391da size=1538 hops=apt-archive.postgresql.org
+bundle_fetch: ok pgdg:postgresql-common@293.pgdg12+1 postgresql-common_293.pgdg12+1.tar.xz sha256=7a12dca9e636d56b72f45a00c52fb8cf054c3bf9aba8dc74bcca5fb6be17b07f size=219688 hops=apt-archive.postgresql.org
+bundle_fetch: ok pypi:autocommand@2.2.2 autocommand-2.2.2.tar.gz sha256=878de9423c5596491167225c2a455043c3130fb5b7286ac83443d45e74955f34 size=22894 hops=files.pythonhosted.org
+bundle_fetch: ok pypi:ldap3@2.9.1 ldap3-2.9.1.tar.gz sha256=f3e7fc4718e3f09dda568b57100095e0ce58633bcabbed8667ce3f8fbaa4229f size=398830 hops=files.pythonhosted.org
+bundle_fetch: ok pypi:pandas@2.3.3 pandas-2.3.3.tar.gz sha256=e05e1af93b977f7eafa636d043f9f94c7ee3ac81af99c13508215942e64c993b size=4495223 hops=files.pythonhosted.org
+bundle_fetch: ok pypi:psycopg-c@3.3.6 psycopg_c-3.3.6.tar.gz sha256=29c568426ad61c1b702c7d73505c43ca2c9fc5d97a8431d8d9049e731e319ff8 size=698245 hops=files.pythonhosted.org
+bundle_fetch: ok pypi:psycopg@3.3.6 psycopg-3.3.6.tar.gz sha256=c081f2250df751a943036e42db6df4571c66cd0aabe8291a7a506512b12007d2 size=168171 hops=files.pythonhosted.org
+bundle_fetch: ok temurin:jdk-21.0.12.1+1 OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz sha256=573057d03584ae793fb7ec9a14c76d826d9187a53efeefd99da47403a5308234 size=115126841 hops=github.com,release-assets.githubusercontent.com
+bundle_fetch: fetched 716 files, 1180936586 bytes, 183 components (full, amd64) in 614.2 s
+== sources: done (pull 1 s, fetch 615 s) ==
+
+real	10m17.670s
+user	0m0.258s
+sys	0m0.502s
+exit 0

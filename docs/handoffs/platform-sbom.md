@@ -112,3 +112,16 @@ it closes the M-NT1 remainder (no GPL source offer, incomplete SBOM). Branch:
 ## 2026-10-28 — documenter (U8a + Q74 closed)
 - Moved the U8a/Q73/Q74 sections (lines 105-187) verbatim to archive/platform-sbom-part13.md; replaced them with the summary block above.
 - No README/CHANGELOG change (U8a not user-visible until U8b).
+
+## U8b (committed as <commit pending>; gate passed 2026-10-28; detail: archive/platform-sbom-part14.md)
+- Landed: `sources-fetch` service in `docker-compose.sources.yml`; `scripts/bundle_fetch.sh` (`--set sample|full --out DIR [--arch]`, fail closed, no retry, trap cleanup); `offline_check.sh` runs it with `--set sample` in place of only the generator pull; `bundle.sh` refusal text and header; `sources_lock.sh` keeps the run's SBOM copies (U8-12); README route-out and operator order; CLAUDE.md sentence per A73; `tests/test_bundle_fetch.py` plus re-pins.
+- Gates (all in `docs/evidence/platform-sbom/u8/`): RED `u8b-red-verify-fast.txt`; GREEN `u8b-green-verify-full.txt` (failed only at the gitlab.alpinelinux.org outage); review `u8b-review.md` APPROVED after rework 1 of 5; security `u8b-security.md` PASS (twice); rework `u8b-r1-red-verify-fast.txt`, `u8b-r1-green-verify-fast.txt`; `u8b-r1-green-verify-full.txt` PASS 1113 s with the real sample fetch (`sample-run.txt`); O-1 full set `full-run.txt` PASS (716 files, 1180936586 B, equal to `expected.md`); `size.md`, `hop-hosts.md`; A34 `a34-windows-run.txt` PASS; `orchestrator-verify-full-u8b.txt` PASS 1137 s (2026-10-29, after the outage; attempt 1 `orchestrator-verify-full-u8b-attempt1-outage.txt`).
+- Rulings: O-4..O-8; O-2 answered: `objects.githubusercontent.com` is unused, the drop is deferred to U8c as U8-10, a reviewed change.
+- Closed: the gitlab.alpinelinux.org outage (~13:50-18:03 UTC) that failed the first full run; Q61 fail-closed by design, no lock edit.
+- Carried: reviewer N-1 errno follow-up, N-4, N-6, N-9 (`bundle.sh` `ls -A`, to U9), R1-N1, R1-N2; security I-2..I-7.
+- Next: U8c: CI extract of the sample fetch as the third Neo4j fetch evidence in sources-provenance.md; O-2 host drop; then U9.
+
+## 2026-10-28 — documenter (U8b closed)
+- Moved the U8b sections (tester RED through the A34 proof and the developer's real runs) verbatim to archive/platform-sbom-part14.md; replaced them with the block above.
+- CHANGELOG gains one U8 bullet (assigned once by the orchestrator); README checked against the bundle_fetch.sh header, no drift.
+- Follow-up: CHANGELOG intro line now says the source fetch landed at U8 and shipping it with notices and index arrives at U9.

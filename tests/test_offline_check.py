@@ -474,6 +474,15 @@ _U4_HOST_FILES = ("scripts/sbom_check.py", cs.SBOM_COMPOSE_NAME, "docker/app.Doc
 
 _INSTALL_PRE = r'''parent_mode="$(stat -c %a "$(dirname "$1")" 2>/dev/null || echo missing)"'''
 
+# platform-sbom U8b (PSC-23 U8-8; design-notes N4 amendment U8 item 8; tester,
+# U8b RED): the stand-in for scripts/bundle_fetch.sh writes its --out dir (a
+# completion record in it), so the host half's EXIT trap has something to
+# remove; when FAKE_STUB_FAIL names it, it prints a fetch FAIL line first.
+_FETCH_PRE = r'''out=""; prev=""
+for a in "$@"; do [ "$prev" = "--out" ] && out="$a"; prev="$a"; done
+if [ -n "$out" ]; then mkdir -p "$out" && echo '{}' > "$out/fetch.json"; fi
+case "|${FAKE_STUB_FAIL:-}|" in *"|bundle_fetch.sh|"*) echo "bundle_fetch: FAIL (stage fetch: stub; no retry)" >&2 ;; esac'''
+
 _INSTALL_POST = r'''mkdir -p "$1/scripts"
 for s in launch smoke teardown; do
   sed "s/@NAME@/$s.sh/g" "$(dirname "$0")/stub.template" > "$1/scripts/$s.sh"
@@ -553,6 +562,9 @@ class OfflineCheckScriptTest(_OfflineBase):
                 (repo / rel).parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(src, repo / rel)
         _executable(repo / "scripts" / "bundle.sh", _stub("bundle.sh", pre=_BUNDLE_PRE))
+        # platform-sbom U8b (U8-8): the sample fetch's script, as a stub (tests/test_bundle_fetch.py
+        # tests the real one).
+        _executable(repo / "scripts" / "bundle_fetch.sh", _stub("bundle_fetch.sh", pre=_FETCH_PRE))
         _executable(repo / "scripts" / "teardown.sh", _stub("teardown.sh"))
         _executable(repo / "scripts" / "net_isolated.sh", _stub("net_isolated.sh"))
         return repo
@@ -608,6 +620,8 @@ class OfflineCheckScriptTest(_OfflineBase):
         argv = record["argv"]
         if argv[:1] == ["DF"]:
             return "df"
+        if argv[:2] == ["STUB", "bundle_fetch.sh"]:
+            return None  # platform-sbom U8b: the sample fetch is an `_event_u2` event ("fetch") only
         if argv[:1] == ["STUB"]:
             return {"bundle.sh": "bundle", "net_isolated.sh": "net_isolated",
                     "teardown.sh": "teardown"}.get(argv[1], argv[1])
@@ -1040,13 +1054,17 @@ fi'''.replace("@SBOM_STUB@", _SBOM_STUB.replace("\n", "\n  "))
         else:
             self.fail(f"no `compose run|up offline-client` call: {[s['label'] for s in snaps]}")
 
-    # ---- platform-sbom U2: the interim SBOM generator pull --------------------
+    # ---- platform-sbom U8b: the source sample fetch (was U2's interim pull) ----
     # PSC-20; design-notes "N1 amendment, U2" *Interim pull (U2 to U8)*: the host
-    # half pulls the generator through its own compose file, after the Compose
-    # version check and immediately before bundle.sh (which never pulls). U8
-    # replaces this step with scripts/bundle_fetch.sh.
+    # half pulled the generator through its own compose file, after the Compose
+    # version check and immediately before bundle.sh (which never pulls).
+    # PSC-23 U8-8 (design-notes "N4 amendment, U8" item 8; re-pinned by the
+    # tester, U8b RED): one `bash scripts/bundle_fetch.sh --set sample --out
+    # <dir>` replaces that pull at the same place; bundle_fetch.sh pulls the
+    # generator (tests/test_bundle_fetch.py). The interim pull's events become
+    # the "fetch" event; the base-pull rows stay.
 
-    SBOM_PULL_FAIL = "pulling the SBOM generator failed (docker-compose.sbom.yml, service sbom); no retry"
+    FETCH_FAIL = "offline_check: FAIL (scripts/bundle_fetch.sh failed (see its FAIL line above); no retry)"
 
     def _event_u2(self, record: dict) -> str | None:
         """`_event`, plus any pull: "pull sbom" when it names the generator's
@@ -1060,6 +1078,8 @@ fi'''.replace("@SBOM_STUB@", _SBOM_STUB.replace("\n", "\n  "))
         from tests import neo4j_support as ns
         from tests import sbom_support as ss
         argv = record["argv"]
+        if argv[:2] == ["STUB", "bundle_fetch.sh"]:
+            return "fetch"  # platform-sbom U8b (U8-8)
         digest = ss.base_ref().rsplit("@", 1)[1]
         neo4j_digest = ns.OFFICIAL_CONFIG_DIGEST
         if argv[:1] != ["STUB"] and ("pull" in argv or argv[:2] == ["image", "pull"]):
@@ -1080,71 +1100,81 @@ fi'''.replace("@SBOM_STUB@", _SBOM_STUB.replace("\n", "\n  "))
     def _events_u2(self, records: list[dict]) -> list[str]:
         return [e for e in (self._event_u2(r) for r in records) if e and e != "df"]
 
-    def test_offline_check_pulls_sbom_generator_before_bundle(self):
+    def _fetch_dir(self, record: dict, repo: Path) -> str:
+        argv = record["argv"][2:]
+        self.assertEqual(sorted(argv[::2]), ["--out", "--set"], f"want --set and --out only: {argv}")
+        pairs = dict(zip(argv[::2], argv[1::2]))
+        self.assertEqual(pairs.get("--set"), "sample", "verify and CI only ever fetch the sample (Q63, U8-8)")
+        return os.path.normpath(os.path.join(record["cwd"], pairs.get("--out", "")))
+
+    def test_offline_check_fetches_the_sample(self):
+        """PSC-23 U8-8 (design-notes N4 amendment U8 item 8), which replaces
+        the U2 interim-pull rows (test_offline_check_pulls_sbom_generator_before_bundle;
+        tester, U8b RED): one `bash scripts/bundle_fetch.sh --set sample --out
+        <dir>` at the interim pull's place (after the Compose version check,
+        before the ke-app and ke-neo4j base pulls); <dir> under dist/, outside
+        the bundle, removed by the EXIT trap; the host half no longer pulls the
+        generator itself (bundle_fetch.sh does)."""
         result, records, repo = self._host()
         out = self._out(result)
         self.assertEqual(result.returncode, 0, out)
-        # platform-sbom U4, orchestrator ruling 6 and design-notes "N1 amendment,
-        # U4" (docs/handoffs/platform-sbom.md, "U4 rulings", "architect (U4
-        # rulings)"): the host half also pulls the ke-app base by its pinned
-        # digest right after the generator pull and before bundle.sh, and runs
-        # the drift step after bundle.sh, so the exact order gains "pull base"
-        # and "drift" (re-targeted by the tester, U4 RED; the generator pull
-        # stays first and single).
-        # Platform-sbom U4b (PSC-26; design-notes N16; the placement is the
-        # tester's proposal, flagged to the architect): the official neo4j
-        # image is pulled by its digest after the ke-app base and before
-        # bundle.sh, and the ke-neo4j check runs after the drift step
-        # (re-targeted by the tester, U4b RED).
+        # The order U4/U4b pinned, with the interim pull's event replaced by the fetch.
         self.assertEqual(self._events_u2(records),
-                         ["pull sbom", "pull base", "pull neo4j base", "bundle", "drift", "neo4j", "up dind",
+                         ["fetch", "pull base", "pull neo4j base", "bundle", "drift", "neo4j", "up dind",
                           "net_isolated", "run client", "teardown"], out)
-        pulls = [r for r in records if self._event_u2(r) == "pull sbom"]
-        self.assertEqual(len(pulls), 1, "one pull of the generator")
-        argv, env = pulls[0]["argv"], pulls[0]["env"]
-        self.assertEqual(argv[:1], ["compose"], f"the pull goes through compose, not `docker pull`: {argv}")
-        self.assertIn(("--env-file", ".env.example"), self._pairs(argv),
-                      "--env-file .env.example: the repo-root .env (model keys) is never loaded")
-        files = [b for a, b in self._pairs(argv) if a in ("-f", "--file")]
-        self.assertEqual(files, [cs.SBOM_COMPOSE_NAME],
-                         "-f docker-compose.sbom.yml only (it overrides the exported COMPOSE_FILE)")
-        self.assertEqual(argv[-2:], ["pull", "sbom"], "pulls the `sbom` service only")
-        self.assertNotIn("--profile", argv)
-        for var in ("KE_SBOM_IN", "KE_SBOM_OUT"):
-            # Git Bash may rewrite /nonexistent to <git root>/nonexistent (N1 amendment).
-            self.assertTrue(env.get(var, "").endswith("/nonexistent"),
-                            f"{var} is the dummy /nonexistent for the pull (the file's ${{{var}:?}}): "
-                            f"{env.get(var)!r}")
-        # platform-sbom U3 (security L-2): the `user:` of the sbom service is
-        # ${KE_SBOM_USER:?}, and compose refuses to load the file for the pull
-        # while any ${VAR:?} it names is unset or empty (tester, U3 RED).
-        for var in sorted((set(cs.required_vars()) | {"KE_SBOM_USER"}) - {"KE_SBOM_IN", "KE_SBOM_OUT"}):
-            self.assertTrue(env.get(var), f"{var} is set (non-empty) for the pull, or compose refuses "
-                                          f"docker-compose.sbom.yml (its ${{{var}:?}}): {env.get(var)!r}")
+        fetches = [r for r in records if self._event_u2(r) == "fetch"]
+        self.assertEqual(len(fetches), 1, "one call of scripts/bundle_fetch.sh, never retried")
+        fetch_dir = self._fetch_dir(fetches[0], repo)
+        dist = os.path.normpath(os.path.join(str(repo), "dist"))
+        self.assertTrue(fetch_dir.startswith(dist + os.sep), f"the sample dir {fetch_dir} is not under dist/")
+        bundle = next(r for r in records if self._event(r) == "bundle")
+        bundle_dir = os.path.normpath(os.path.join(bundle["cwd"], bundle["argv"][bundle["argv"].index("--out") + 1]))
+        self.assertFalse(fetch_dir == bundle_dir or fetch_dir.startswith(bundle_dir + os.sep)
+                         or bundle_dir.startswith(fetch_dir + os.sep),
+                         f"the sample dir {fetch_dir} and the bundle {bundle_dir} overlap")
+        project = next(r for r in records if self._event(r) == "teardown")["env"].get("COMPOSE_PROJECT_NAME") or "?"
+        self.assertIn(project, os.path.basename(fetch_dir), "the sample dir is the run's own (named by its project)")
+        self.assertFalse(os.path.exists(fetch_dir), "the EXIT trap did not remove the sample dir")
+        generator_pulls = [r["argv"] for r in records if r["argv"][:1] == ["compose"] and "pull" in r["argv"]
+                           and cs.SBOM_COMPOSE_NAME in " ".join(r["argv"])]
+        self.assertEqual(generator_pulls, [], "the host half still pulls the generator (U8: bundle_fetch.sh does)")
         version = [i for i, r in enumerate(records) if r["argv"][:2] == ["compose", "version"]]
-        self.assertTrue(version and version[0] < records.index(pulls[0]),
-                        "the pull comes after the Compose version check")
+        self.assertTrue(version and version[0] < records.index(fetches[0]),
+                        "the fetch comes after the Compose version check")
+        self.assertIn("offline: fetching the source sample (scripts/bundle_fetch.sh --set sample)",
+                      result.stdout.splitlines(), "design item 8's stage line")
+        self.assertIn("offline: df after fetch", result.stdout.splitlines(), "df is logged after the fetch")
         self.assertEqual(self._bundle_dirs(repo), [])
+        text = OFFLINE_CHECK.read_text(encoding="utf-8")
+        head = "\n".join(ln for ln in text.splitlines()[:40] if ln.startswith("#"))
+        self.assertIn("bundle_fetch.sh", head, "the header's host-half stage list names the fetch (item 8)")
 
-    def test_offline_check_stops_when_sbom_pull_fails(self):
-        with self.subTest(case="the pull fails"):
-            result, records, repo = self._host(FAKE_DOCKER_FAIL="pull sbom")
+    def test_offline_check_stops_when_the_fetch_fails(self):
+        """U8-8: a fetch failure fails offline_check.sh before bundle.sh runs,
+        with the fetch's FAIL line in the output; no retry; the trap tears
+        down and removes the sample dir (replaces
+        test_offline_check_stops_when_sbom_pull_fails; tester, U8b RED)."""
+        with self.subTest(case="the fetch fails"):
+            result, records, repo = self._host(FAKE_STUB_FAIL="bundle_fetch.sh")
             out = self._out(result)
             self.assertNotEqual(result.returncode, 0, out)
-            self.assertIn(self.SBOM_PULL_FAIL, result.stderr, out)
+            self.assertIn(self.FETCH_FAIL, result.stderr.splitlines(), out)
+            self.assertIn("bundle_fetch: FAIL (stage fetch: stub; no retry)", result.stderr.splitlines(),
+                          "the fetch's own FAIL line is not in the output")
             self.assertNotRegex(out, r"(?i)\bpass(?:ed)?\b")
-            self.assertEqual(self._events_u2(records), ["pull sbom", "teardown"],
-                             "bundle.sh ran after a failed pull, the pull was retried, or teardown did not run once")
+            self.assertEqual(self._events_u2(records), ["fetch", "teardown"],
+                             "bundle.sh ran after a failed fetch, the fetch was retried, or teardown did not run once")
             teardown = next(r for r in records if self._event(r) == "teardown")
             self.assertEqual(teardown["argv"][2:], ["--volumes", "--profile", "offline"])
-            self.assertEqual(self._bundle_dirs(repo), [], "the bundle directory was left behind")
+            self.assertEqual(self._bundle_dirs(repo), [], "the bundle or the sample dir was left behind")
+            self.assertEqual(sorted((repo / "dist").glob("*sources*")), [], "the sample dir was left behind")
         for case, extra in (("below the disk floor", {"FAKE_DF_AVAIL_KB": str(3 * GIB_KB)}),
                             ("Compose below 2.27", {"FAKE_COMPOSE_VERSION": "2.20.0"})):
-            with self.subTest(case=f"{case}: no pull"):
+            with self.subTest(case=f"{case}: no fetch"):
                 result, records, _ = self._host(**extra)
                 self.assertNotEqual(result.returncode, 0, self._out(result))
                 self.assertEqual(self._events_u2(records), ["teardown"],
-                                 "the generator is pulled only after the disk and Compose checks")
+                                 "the sample is fetched only after the disk and Compose checks")
 
     # ---- client half ---------------------------------------------------------
 

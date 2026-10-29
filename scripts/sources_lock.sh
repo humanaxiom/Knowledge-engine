@@ -24,6 +24,8 @@
 #     `git diff --stat`.
 # Exit 0: written. 1: a failure, the lock unchanged. 2: a bad argument.
 # 3: written, with manual neo4j entries pending (security's second fetch).
+# The run's SBOMs are copied to <evidence-dir>/sboms/ on both the 0 and the 3
+# path (U8-12); an existing sboms entry in the evidence dir is refused.
 set -euo pipefail
 
 fail() { echo "sources_lock: FAIL ($1; the lock is unchanged)" >&2; exit 1; }
@@ -170,6 +172,18 @@ case "$check_rc" in
   3) pending=1 ;;
   *) cat -- "$work/check.err" >&2; fail "check: sbom_check.py lock-check found problems" ;;
 esac
+# U8-12 (design-notes N4 amendment U8 item 9): the run's SPDX documents (the files
+# lock-needs and lock-check read) are kept in <evidence-dir>/sboms/, before the
+# InRelease copies and the lock move. An existing sboms entry, a link or anything
+# but a regular file, or a failed copy fails, with the lock unchanged.
+# mkdir without -p fails on any existing entry, a link included.
+mkdir -- "$evdir/sboms" 2> /dev/null || fail "evidence: $evdir/sboms exists"
+for name in "${names[@]}"; do
+  f="$work/sboms/$name.spdx.json"
+  if [ -L "$f" ]; then fail "evidence: $f is a link"; fi
+  if [ ! -f "$f" ]; then fail "evidence: $f is not a regular file"; fi
+  cp -P -- "$f" "$evdir/sboms/" || fail "evidence: copy of $f failed"
+done
 # U7d rework round 1, items 4 and 6 (security R-1, L-1): each pgdg suite's InRelease the
 # run was bound to goes to --evidence-dir before the lock moves; a link or anything but a
 # regular file fails, and a failed copy fails, with the lock unchanged.

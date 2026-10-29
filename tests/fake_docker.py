@@ -386,6 +386,13 @@ never touches a real daemon. What it does:
   OPENER is replaced by FAKE_RESOLVE_NET (JSON url -> [status, headers,
   body text]; any other url is a 404); FAKE_RESOLVE_LOG gets one requested
   url per line. stdout, stderr and the exit status are the resolver's.
+- platform-sbom U8b (design-notes "N4 amendment, U8" item 12; tester, U8b
+  RED): `run [opts] sources-fetch ARGS` on the same file is modelled the
+  same way: the real scripts/sources_fetch.py from its bind, every container
+  path rewritten by the service's long-form binds, and the client's
+  `R.OPENER` (its loaded sources_resolve.py, U7b interface pin 1) replaced
+  by FAKE_RESOLVE_NET; FAKE_RESOLVE_LOG gets one requested url per line.
+  stdout, stderr and the exit status are the client's.
 - Every other call exits 0.
 """
 
@@ -1829,20 +1836,22 @@ if _u3_own and "run" in argv:
         with open(os.path.join(_work3, _spdx3[-1][len("/out/"):]), "w", encoding="utf-8", newline="\n") as fh:
             fh.write(_raw3)
         sys.exit(0)
-    if _svc3 == "sources-resolve":
+    if _svc3 in ("sources-resolve", "sources-fetch"):
         # platform-sbom U7b rework round 1 (design-notes, U7b rework round 1,
         # item 12): the real scripts/sources_resolve.py, read from its bind in
         # the compose file, under this interpreter; every bind of the service
         # maps its target to its source; OPENER is FAKE_RESOLVE_NET.
+        # U8b (N4 amendment U8 item 12): `sources-fetch` runs the real
+        # scripts/sources_fetch.py the same way; its hook is `R.OPENER`.
         import subprocess as _subprocess
         _env4 = interpolation_env()
         _path4 = next(f for f in _u3_files if os.path.basename(f) == _u3_own[0])
         try:
             import yaml as _yaml4
             with open(_path4, encoding="utf-8") as fh:
-                _svc4 = (_yaml4.safe_load(fh) or {})["services"]["sources-resolve"]
+                _svc4 = (_yaml4.safe_load(fh) or {})["services"][_svc3]
         except Exception as exc:  # the model must never pass silently
-            sys.stderr.write("fake sources-resolve: cannot read %s: %r" % (_path4, exc) + chr(10))
+            sys.stderr.write("fake %s: cannot read %s: %r" % (_svc3, _path4, exc) + chr(10))
             sys.exit(1)
 
         def _interp4(value):
@@ -1869,7 +1878,7 @@ if _u3_own and "run" in argv:
         _pairs4 = []
         for _vol4 in _svc4.get("volumes") or []:
             if not isinstance(_vol4, dict) or _vol4.get("type") != "bind":
-                sys.stderr.write("fake sources-resolve: only long-form binds are modelled" + chr(10))
+                sys.stderr.write("fake %s: only long-form binds are modelled" % _svc3 + chr(10))
                 sys.exit(1)
             _s4 = _interp4(_vol4["source"])
             if not os.path.isabs(_s4):
@@ -1890,7 +1899,7 @@ if _u3_own and "run" in argv:
 
         _entry4 = [str(x) for x in _svc4.get("entrypoint") or []]
         if _entry4[:2] != ["python3", "-I"] or len(_entry4) < 3:
-            sys.stderr.write("fake sources-resolve: want an entrypoint python3 -I <script> ..., got %r" % _entry4
+            sys.stderr.write("fake %s: want an entrypoint python3 -I <script> ..., got %r" % (_svc3, _entry4)
                              + chr(10))
             sys.exit(1)
         _script4 = _remap4(_entry4[2])
@@ -1899,10 +1908,12 @@ if _u3_own and "run" in argv:
             sys.exit(2)
         _boot4 = chr(10).join([
             "import importlib.util, json, os, sys, types",
-            "spec = importlib.util.spec_from_file_location('sources_resolve', sys.argv[1])",
+            "name = 'sources_fetch' if sys.argv[2] == 'sources-fetch' else 'sources_resolve'",
+            "spec = importlib.util.spec_from_file_location(name, sys.argv[1])",
             "mod = importlib.util.module_from_spec(spec)",
-            "sys.modules['sources_resolve'] = mod",
+            "sys.modules[name] = mod",
             "spec.loader.exec_module(mod)",
+            "hook = mod.R if name == 'sources_fetch' else mod",
             "net = json.loads(os.environ.get('FAKE_RESOLVE_NET') or '{}')",
             "log = os.environ.get('FAKE_RESOLVE_LOG')",
             "def opener(url, timeout):",
@@ -1912,11 +1923,11 @@ if _u3_own and "run" in argv:
             "    st, hd, body = net.get(url, [404, {}, 'not found'])",
             "    return types.SimpleNamespace(status=st, headers={k.lower(): v for k, v in hd.items()},",
             "                                 body=[body.encode('utf-8')])",
-            "mod.OPENER = opener",
-            "sys.exit(mod.main(sys.argv[2:]))",
+            "hook.OPENER = opener",
+            "sys.exit(mod.main(sys.argv[3:]))",
             ""])
         sys.stdout.flush()
-        _done4 = _subprocess.run([sys.executable, "-I", "-S", "-B", "-c", _boot4, _script4,
+        _done4 = _subprocess.run([sys.executable, "-I", "-S", "-B", "-c", _boot4, _script4, _svc3,
                                   *[_remap4(a) for a in _entry4[3:] + argv[_i3 + 1:]]])
         sys.exit(_done4.returncode)
 

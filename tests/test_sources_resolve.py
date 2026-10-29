@@ -746,7 +746,10 @@ class SourcesComposeTest(unittest.TestCase):
         self.assertTrue(SOURCES_COMPOSE.is_file(), "docker-compose.sources.yml is missing (U7b, N5 amendment U7 item 3.4)")
         data = yaml.safe_load(SOURCES_COMPOSE.read_text(encoding="utf-8"))
         self.assertEqual(sources_compose_problems(data), [])
-        self.assertEqual(sorted((data.get("services") or {})), ["sources-resolve"], "U8 adds sources-fetch, not U7b")
+        # Re-pinned by the tester, U8b RED (PSC-23 U8-7; design-notes N4 amendment U8 item 3): U8b adds
+        # `sources-fetch` beside `sources-resolve`, and nothing else (was ["sources-resolve"] at U7b).
+        self.assertEqual(sorted((data.get("services") or {})), ["sources-fetch", "sources-resolve"],
+                         "docker-compose.sources.yml holds exactly sources-resolve and, from U8b, sources-fetch")
 
     def test_hardening_check_rejects_loosened_services(self):
         base = {"services": {"sources-resolve": {
@@ -1351,8 +1354,10 @@ class ReworkR1LockScriptRunTest(_BundleBase, unittest.TestCase):
              ) -> tuple[subprocess.CompletedProcess, list[list[str]]]:
         # U7d rework round 1, item 4: --evidence-dir is required (was --arch alone).
         if args is None:
-            self.evdir = getattr(self, "evdir", self.tmp / "evidence")
-            self.evdir.mkdir(exist_ok=True)
+            # U8b RED (tester; PSC-23 U8-12, design-notes N4 amendment U8 item 9): a fresh, empty
+            # evidence dir per run, because the script now refuses an existing <evdir>/sboms (was one
+            # dir, tmp/evidence, reused by every run of a test).
+            self.evdir = Path(tempfile.mkdtemp(prefix="evidence-", dir=self.tmp))
             args = ("--arch", "amd64", "--evidence-dir", str(self.evdir))
         for f in (self.log, self.json, self.df_log, self.syft_log, self.resolve_log):
             f.write_text("", encoding="utf-8")
@@ -3312,7 +3317,11 @@ class ReworkR1U7dScriptTest(_BundleBase, unittest.TestCase):
                 self.assertTrue(lines and why in lines[0] and lines[0].endswith("; the lock is unchanged)"), r.stderr)
                 self.assertEqual(self.lock.read_bytes(), before, "the lock changed")
                 self.assertEqual(self._temps(), [], "a temp lock file was left")
-                self.assertEqual(sorted(os.listdir(self.evdir)), [], "something was copied")
+                # Re-pinned by the tester, U8b RED (PSC-23 U8-12; design-notes N4 amendment U8 item 9):
+                # the run's SBOMs go to <evdir>/sboms/ before the InRelease copies, so only that
+                # directory may be there; no InRelease was copied (was: the dir is empty).
+                self.assertEqual([n for n in sorted(os.listdir(self.evdir)) if n != "sboms"], [],
+                                 "something was copied")
 
     def test_docker_save_gets_the_host_path(self):
         """Item 2 (B2): `docker save -o` takes `hostpath` (cygpath -m)."""
@@ -3471,6 +3480,149 @@ class ReworkR1U7dEmptyFileTest(unittest.TestCase):
         empty = {f["name"]: (f["size"], f["sha256"]) for f in entry["files"] if f["size"] == 0}
         self.assertEqual(empty, {n: (0, sha("sha256", b"")) for n in ("apk-tools.trigger", "empty.patch")})
         lock_ok(self, got[0], docs_for({"ke-gateway": [{"purl": purl, "declared": "GPL-2.0-only"}]}))
+
+
+# ==========================================================================
+# U8b (PSC-23 "U8 precision" U8-12; design-notes "N4 amendment, U8" item 9,
+# U7d item 13, the S6 carry): sources_lock.sh keeps the run's SBOMs. After
+# lock-check decides (exit 0 or 3) and before the InRelease copies and the
+# lock move, `mkdir -- "$evdir/sboms"` (an existing one fails: `evidence:
+# <evdir>/sboms exists`), then each `$work/sboms/<image>.spdx.json` (the
+# files lock-needs and lock-check read) is copied with item 6's rules (a
+# link or anything but a regular file fails; a failed copy fails), the lock
+# unchanged on any failure (tester, U8b RED).
+# ==========================================================================
+
+SIX_SBOMS = sorted(f"{img}.spdx.json" for img in HAPPY_ROWS)
+
+
+class U8bLockSbomsTest(_BundleBase, unittest.TestCase):
+
+    def setUp(self) -> None:
+        super().setUp()
+        for rel in ("docker/source-policy.json", SOURCES_YML):
+            (self.repo / rel).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ROOT / rel, self.repo / rel)
+        self.lock = self.repo / "docker" / "sources.lock.json"
+        self.check = load_sbom_check()
+        self.syft_log = self.tmp / "syft.jsonl"
+        self.resolve_log = self.tmp / "resolve.log"
+        self.shims = 0
+
+    _commit_lock = ReworkR1LockScriptRunTest._commit_lock
+    _run = ReworkR1LockScriptRunTest._run
+
+    def _temps(self) -> list[str]:
+        return sorted(p.name for p in (self.repo / "docker").iterdir() if p.name.startswith(".sources.lock.json."))
+
+    def _evdir(self) -> Path:
+        return Path(tempfile.mkdtemp(prefix="u8b-evidence-", dir=self.tmp))
+
+    def _shims(self, evdir: Path, *, link: str | None = None, fail_cp: bool = False) -> tuple[str, Path, Path]:
+        """A PATH with: an `mv` that lists <evdir>/sboms when the lock moves; a
+        `cp` that logs (and, with fail_cp, fails on an .spdx.json); a docker
+        wrapper that, with `link`, turns the run's <link>.spdx.json into a
+        symlink to a copy right after its `sbom` run."""
+        self.shims += 1
+        d = self.tmp / f"u8b-shims-{self.shims}"
+        d.mkdir()
+        at_move, cp_log = d / "sboms-at-move.txt", d / "cp.log"
+        real_mv, real_cp = shutil.which("mv"), shutil.which("cp")
+        self.assertTrue(real_mv and real_cp)
+        (d / "mv").write_text(
+            "#!/bin/bash\n"
+            "for a in \"$@\"; do case \"$a\" in *docker/sources.lock.json)\n"
+            f"  if [ -d '{evdir}/sboms' ]; then ls -A '{evdir}/sboms' > '{at_move}'; "
+            f"else echo '<absent>' > '{at_move}'; fi ;;\n"
+            "esac; done\n"
+            f"exec '{real_mv}' \"$@\"\n", encoding="utf-8", newline="\n")
+        fail = ("for a in \"$@\"; do case \"$a\" in *.spdx.json) echo 'cp: injected failure' >&2; exit 1 ;; "
+                "esac; done\n" if fail_cp else "")
+        (d / "cp").write_text("#!/bin/bash\n" f"echo \"cp $*\" >> '{cp_log}'\n" + fail + f"exec '{real_cp}' \"$@\"\n",
+                              encoding="utf-8", newline="\n")
+        fake = self.tmp / "fakebin" / "docker"
+        planting = ":"
+        if link:
+            planting = (f"case \" $* \" in *\"spdx-json=/out/{link}.spdx.json\"*) "
+                        f"f=\"$KE_SBOM_OUT/{link}.spdx.json\"; '{real_mv}' \"$f\" \"$f.real\" && "
+                        "ln -s \"$f.real\" \"$f\" ;; esac")
+        (d / "docker").write_text("#!/bin/bash\n" f"'{fake}' \"$@\"\nrc=$?\n" + planting + "\nexit $rc\n",
+                                  encoding="utf-8", newline="\n")
+        for f in d.iterdir():
+            f.chmod(0o755)
+        return f"{d}{os.pathsep}{self.path}", at_move, cp_log
+
+    def _kept(self, evdir: Path, docs: dict[str, Any], at_move: Path) -> None:
+        sboms = evdir / "sboms"
+        self.assertTrue(sboms.is_dir() and not sboms.is_symlink(), "no <evidence-dir>/sboms directory (U8-12)")
+        self.assertEqual(sorted(os.listdir(sboms)), SIX_SBOMS, "exactly the six bundled images' SPDX documents")
+        for img, doc in docs.items():
+            with self.subTest(image=img):
+                f = sboms / f"{img}.spdx.json"
+                self.assertTrue(f.is_file() and not f.is_symlink(), f"{f.name} is not a regular file")
+                self.assertEqual(f.read_bytes(), json.dumps(doc).encode("utf-8"),
+                                 f"{f.name} is not byte-identical to the document the run's generator wrote")
+        self.assertTrue(at_move.is_file(), "the lock never moved through mv")
+        self.assertEqual(sorted(at_move.read_text(encoding="utf-8").split()), SIX_SBOMS,
+                         "the SBOMs were not all in <evidence-dir>/sboms when the lock moved (copied before the move)")
+
+    def test_sources_lock_keeps_the_run_sboms(self):
+        lock, docs, _ = self._commit_lock(HAPPY_ROWS)
+        evdir = self._evdir()
+        path, at_move, _ = self._shims(evdir)
+        r, _ = self._run(docs, path=path, args=("--arch", "amd64", "--evidence-dir", str(evdir)))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr[-3000:])
+        self.assertEqual(self.lock.read_text(encoding="utf-8"), self.check.lock_text(lock))
+        self._kept(evdir, docs, at_move)
+
+    def test_sources_lock_keeps_the_run_sboms_when_neo4j_is_pending(self):
+        _, docs, _ = self._commit_lock(with_rows({"ke-neo4j": [NEO_ROW]}), drop={NEO_KEY})
+        evdir = self._evdir()
+        path, at_move, _ = self._shims(evdir)
+        r, _ = self._run(docs, net={NEO_URL: [200, {}, NEO_BODY.decode()]}, path=path,
+                         args=("--arch", "amd64", "--evidence-dir", str(evdir)))
+        self.assertEqual(r.returncode, 3, r.stdout + r.stderr[-3000:])
+        self._kept(evdir, docs, at_move)
+
+    def test_sources_lock_refuses_an_existing_sboms_dir(self):
+        _, docs, before = self._commit_lock(HAPPY_ROWS)
+        evdir = self._evdir()
+        (evdir / "sboms").mkdir()
+        r, _ = self._run(docs, args=("--arch", "amd64", "--evidence-dir", str(evdir)))
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr[-3000:])
+        self.assertIn(f"sources_lock: FAIL (evidence: {evdir}/sboms exists; the lock is unchanged)",
+                      r.stderr.splitlines())
+        self.assertEqual(self.lock.read_bytes(), before, "the lock changed")
+        self.assertEqual(self._temps(), [], "a temp lock file was left")
+        self.assertEqual(os.listdir(evdir / "sboms"), [], "something was written into the existing sboms dir")
+
+    def test_sources_lock_refuses_a_linked_sbom(self):
+        _, docs, before = self._commit_lock(HAPPY_ROWS)
+        evdir = self._evdir()
+        path, _, _ = self._shims(evdir, link="ke-app")
+        r, _ = self._run(docs, path=path, args=("--arch", "amd64", "--evidence-dir", str(evdir)))
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr[-3000:])
+        lines = [ln for ln in r.stderr.splitlines() if ln.startswith("sources_lock: FAIL (evidence: ")]
+        self.assertTrue(lines and "ke-app.spdx.json" in lines[0] and "is a link" in lines[0]
+                        and lines[0].endswith("; the lock is unchanged)"), r.stderr[-3000:])
+        self.assertEqual(self.lock.read_bytes(), before, "the lock changed")
+        self.assertEqual(self._temps(), [], "a temp lock file was left")
+        self.assertFalse((evdir / "sboms" / "ke-app.spdx.json").exists(), "the link was followed and copied")
+
+    def test_sources_lock_fails_when_an_sbom_copy_fails(self):
+        _, docs, before = self._commit_lock(HAPPY_ROWS)
+        evdir = self._evdir()
+        path, at_move, cp_log = self._shims(evdir, fail_cp=True)
+        r, _ = self._run(docs, path=path, args=("--arch", "amd64", "--evidence-dir", str(evdir)))
+        self.assertTrue(cp_log.is_file() and ".spdx.json" in cp_log.read_text(encoding="utf-8"),
+                        "the script never copied an .spdx.json with cp (item 6's rules: cp -P): "
+                        + r.stderr[-2000:])
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr[-3000:])
+        lines = [ln for ln in r.stderr.splitlines() if ln.startswith("sources_lock: FAIL (evidence: ")]
+        self.assertTrue(lines and lines[0].endswith("; the lock is unchanged)"), r.stderr[-3000:])
+        self.assertEqual(self.lock.read_bytes(), before, "the lock changed")
+        self.assertEqual(self._temps(), [], "a temp lock file was left")
+        self.assertFalse(at_move.exists(), "the lock moved after a failed SBOM copy")
 
 
 if __name__ == "__main__":

@@ -813,15 +813,18 @@ class DriftOfflineCheckTest(toc._OfflineBase):
         at = {e: i for i, e in reversed(events) if e}
         saves, runs = self._drift_records(records)
         pulls = self._base_pulls(records)
-        sbom_pulls = [i for i, r in enumerate(records) if names_sbom_file(r["argv"]) and "pull" in r["argv"]]
-        with self.subTest(part="ruling 6 (N1 am. U4): one pull of the base by its digest, after the generator "
-                               "pull, before bundle.sh (a no-op when the daemon already holds it)"):
+        # Re-pinned by the tester, U8b RED (PSC-23 U8-8; design-notes N4 amendment U8 item 8): the
+        # generator now arrives through scripts/bundle_fetch.sh, which replaces the interim pull at
+        # the same place, so the base pull follows that call (was: the compose pull of the generator).
+        fetches = [i for i, r in enumerate(records) if r["argv"][:2] == ["STUB", "bundle_fetch.sh"]]
+        with self.subTest(part="ruling 6 (N1 am. U4): one pull of the base by its digest, after the sample "
+                               "fetch (U8-8), before bundle.sh (a no-op when the daemon already holds it)"):
             self.assertEqual(len(pulls), 1, f"want one `docker pull {ss.base_ref()}`: "
                                             f"{[records[i]['argv'] for i in pulls]}")
             self.assertEqual(self._pull_problems(records), [])
             if pulls:
-                self.assertTrue(sbom_pulls and sbom_pulls[0] < pulls[0] < at["bundle"],
-                                f"order: pull sbom, pull base, bundle: {events}")
+                self.assertTrue(fetches and fetches[0] < pulls[0] < at["bundle"],
+                                f"order: fetch, pull base, bundle: {events}")
         with self.subTest(part="the base is saved by its pinned reference, after bundle.sh, before dind"):
             self.assertEqual(len(saves), 1, f"want one `docker save` of {ss.base_ref()}: "
                                             f"{[r['argv'] for r in records if 'save' in r['argv'][:2]]}")

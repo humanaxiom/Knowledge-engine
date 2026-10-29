@@ -26,6 +26,32 @@ PORT_RANGE = range(47100, 47200)
 # (tester, U4b RED).
 FIRST_PARTY_REPOS = {"ke-app", "ke-gateway", "ke-gates", "ke-neo4j"}
 OFFLINE_SERVICES = ("dind", "offline-client")  # profile `offline` (architecture §2.5)
+# platform-sbom U8b (design-notes N4 amendment U8 item 3, "the bind rule gains a
+# `sources-fetch` exemption naming that service and these exact mounts"; PSC-23
+# U8-7; tester, U8b RED): (source, target, read_only) of every bind it may have.
+SOURCES_FETCH_MOUNTS = {
+    ("./scripts/sources_fetch.py", "/opt/ke/sources_fetch.py", True),
+    ("./scripts/sources_resolve.py", "/opt/ke/sources_resolve.py", True),
+    ("./scripts/sbom_check.py", "/opt/ke/sbom_check.py", True),
+    ("./docker/sources.lock.json", "/opt/ke/sources.lock.json", True),
+    ("./docker/source-policy.json", "/opt/ke/source-policy.json", True),
+    ("${KE_SOURCES_OUT}", "/out", False),
+}
+
+
+def sources_fetch_mounts(svc: dict[str, Any]) -> set[tuple[str, str, bool]]:
+    """`sources-fetch`'s mounts as (source, target, read_only); the out
+    dir's `${KE_SOURCES_OUT:?<message>}` is read as `${KE_SOURCES_OUT}`. A
+    mount that is not a long-form bind keeps its type in the source, so it
+    never equals a SOURCES_FETCH_MOUNTS row."""
+    out = set()
+    for v in svc.get("volumes") or []:
+        if not isinstance(v, dict) or v.get("type") != "bind":
+            out.add((f"<not a long-form bind: {v!r}>", "", False))
+            continue
+        source = re.sub(r"^\$\{KE_SOURCES_OUT:\?[^}]*\}$", "${KE_SOURCES_OUT}", str(v.get("source", "")))
+        out.add((source, str(v.get("target", "")), bool(v.get("read_only"))))
+    return out
 
 
 def unpinned_bases(text: str) -> list[str]:
@@ -309,6 +335,17 @@ class NetworksTest(unittest.TestCase):
             # out dir read-write by design. tests/test_sources_resolve.py
             # (SourcesComposeTest) pins those mounts and that nothing else is.
             if file == "docker-compose.sources.yml" and name == "sources-resolve":
+                continue
+            # platform-sbom U8b (design-notes N4 amendment U8 item 3; PSC-23
+            # U8-7): `sources-fetch` is scripts/bundle_fetch.sh's one-shot,
+            # never in the stack's COMPOSE_FILE; it binds its three scripts,
+            # the lock and the policy read-only and its out dir read-write by
+            # design. Exempt only with exactly those mounts;
+            # tests/test_bundle_fetch.py pins every other key.
+            if file == "docker-compose.sources.yml" and name == "sources-fetch":
+                with self.subTest(file=file, service=name):
+                    self.assertEqual(sources_fetch_mounts(svc), SOURCES_FETCH_MOUNTS,
+                                     "sources-fetch mounts other than its exempt binds")
                 continue
             for kind, source in cs.volume_sources(svc):
                 with self.subTest(file=file, service=name, source=source):

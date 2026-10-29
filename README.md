@@ -26,9 +26,9 @@ bundled image, listed in the manifest too. (Updated 2026-10-23, documenter, stat
 
 `bundle.sh` generates the SBOMs offline with the pinned `anchore/syft` image
 (`docker-compose.sbom.yml`, service `sbom`). It never pulls: if the image is
-not on the local Docker daemon it refuses before writing anything and prints
-the `docker pull` command to run. During `verify.sh full`, `offline_check.sh`
-pulls the generator first. While it runs, `bundle.sh` prints a per-image
+not on the local Docker daemon it refuses before writing anything and tells
+you to run `scripts/bundle_fetch.sh` first. During `verify.sh full`,
+`offline_check.sh` runs that script first. While it runs, `bundle.sh` prints a per-image
 report of packages with no licence, `NOASSERTION`, or a licence text syft
 could only hash (marked "unidentified licence text"). Any SBOM that fails
 validation refuses the bundle, with no manifest written. The bundle is not a
@@ -66,6 +66,13 @@ Two ways to get the stack running; both are written out step by step in
   run `install.sh` (Linux, macOS) or `install.ps1` (Windows) on the target. A
   bundle holds one architecture, `amd64` or `arm64`, so build one per target
   architecture.
+
+The operator order for a bundle is `scripts/build.sh`, then
+`scripts/bundle_fetch.sh --set full --out <dir>` (the only bundle step with a
+route out: it fetches the third-party source set, checked against
+`docker/sources.lock.json`, and pulls the SBOM generator), then
+`scripts/bundle.sh`. The fetched set is what the bundle ships from the
+source-shipping step on (`platform-sbom` U9); `bundle.sh` does not read it yet.
 
 Current limit: this release runs in dev mode only (`KE_ENV=dev`, loopback
 binding). `KE_ENV=prod` is refused until the stack has authentication, which
@@ -211,13 +218,24 @@ then tears the stack down, scans the `ke-app` image, and finally runs the
 offline check. Several runs can go in parallel. See
 [CLAUDE.md](CLAUDE.md) for which run a change needs.
 
+The route out for third-party source code is `scripts/bundle_fetch.sh`. It
+pulls the SBOM generator, then runs the `sources-fetch` one-shot
+(`docker-compose.sources.yml`: read-only, no capabilities, its own project's
+default bridge), which fetches the files named in `docker/sources.lock.json`
+over HTTPS, only from the hosts listed in `docker/source-policy.json`, and
+checks every file's size and checksums against the lock. `--set sample` (what
+`verify.sh full` runs, through the offline check) fetches one entry per kind;
+`--set full` fetches everything. A failed or mismatched fetch fails the run,
+with no retry.
+
 The offline check (`scripts/offline_check.sh`) builds a
 throwaway bundle for the local architecture and installs it from a client
 container with no network, against a Docker-in-Docker daemon that holds only
 the bundle's images. That daemon runs privileged, so a host or CI runner that
 refuses privileged containers cannot run `full`; there is no way around it. It
 also needs the 7 GiB of free disk that `bundle.sh` requires, and outbound
-access to pull the SBOM generator and, by its pinned digest, the `ke-app`
+access to fetch the source sample (`scripts/bundle_fetch.sh`, which also pulls
+the SBOM generator) and, by its pinned digest, the `ke-app`
 base image: the offline check compares `ke-app` with that base to prove it
 added only the expected Debian packages, no pip, CPython matching the shipped
 licence files, `libpq5` with `psycopg-c`, and no psycopg-binary. It also pulls the

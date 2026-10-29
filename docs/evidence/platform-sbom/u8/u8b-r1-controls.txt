@@ -1,0 +1,97 @@
+# U8b rework 1 RED controls (tester, 2026-10-28): test names in tests/test_bundle_fetch.py before/after
+# Only tests/test_bundle_fetch.py changed in this round; diff hunks are additions only (diff: 78a79, 293a295,334, 390a432,456, 1005a1072,1250).
+before sha256: d3f84895b4c126135ffd3ff759c2ac00f67fd90dfbaa9459de33eb870267e2f1
+after  sha256: 17cfbb3a275537751e55e1676a5a50ccc98350e2e70d96058f3190d6da00d1a1
+
+## BEFORE
+class SourcesFetchServiceTest(unittest.TestCase):
+    def test_sources_fetch_service_is_hardened(self):
+    def test_hardening_check_rejects_loosened_fetch_services(self):
+    def test_sources_compose_header_names_both_starters(self):
+class BundleFetchStaticTest(unittest.TestCase):
+    def test_bundle_fetch_sh_shape(self):
+    def test_bundle_fetch_has_no_network_step_but_the_service(self):
+    def test_bundle_fetch_is_a_host_tool_only(self):
+class BundleFetchDocsTest(unittest.TestCase):
+    def test_claude_md_names_the_source_fetch(self):
+    def test_readme_names_the_route_out_and_the_operator_order(self):
+    def test_bundle_header_names_the_fetch_step(self):
+class _FetchScriptBase(unittest.TestCase):
+class BundleFetchRunTest(_FetchScriptBase):
+    def test_bundle_fetch_refuses_bad_arguments(self):
+    def test_bundle_fetch_tools_first(self):
+    def test_bundle_fetch_refuses_an_unsafe_out(self):
+    def test_bundle_fetch_accepts_an_absent_or_empty_out(self):
+    def test_bundle_fetch_arch_is_the_daemons(self):
+    def test_bundle_fetch_pulls_then_fetches(self):
+    def test_bundle_fetch_full_set(self):
+    def test_bundle_fetch_stops_when_the_pull_fails(self):
+    def test_bundle_fetch_leaves_no_out_on_a_failed_fetch(self):
+    def test_bundle_fetch_never_retries(self):
+    def test_bundle_fetch_writes_the_record_last(self):
+    def test_bundle_fetch_needs_the_gates_image(self):
+    def test_bundle_fetch_refuses_a_bad_user(self):
+    def test_bundle_fetch_takes_no_caller_key(self):
+    def test_bundle_fetch_cleans_up_on_a_signal(self):
+
+## AFTER
+class SourcesFetchServiceTest(unittest.TestCase):
+    def test_sources_fetch_service_is_hardened(self):
+    def test_hardening_check_rejects_loosened_fetch_services(self):
+    def test_hardening_check_rejects_extra_service_and_bind_keys(self):
+    def test_sources_compose_header_names_both_starters(self):
+class BundleFetchStaticTest(unittest.TestCase):
+    def test_bundle_fetch_sh_shape(self):
+    def test_bundle_fetch_has_no_network_step_but_the_service(self):
+    def test_bundle_fetch_is_a_host_tool_only(self):
+    def test_bundle_fetch_cleanup_ignores_signals_before_clearing_exit_trap(self):
+class BundleFetchDocsTest(unittest.TestCase):
+    def test_claude_md_names_the_source_fetch(self):
+    def test_readme_names_the_route_out_and_the_operator_order(self):
+    def test_bundle_header_names_the_fetch_step(self):
+class _FetchScriptBase(unittest.TestCase):
+class BundleFetchRunTest(_FetchScriptBase):
+    def test_bundle_fetch_refuses_bad_arguments(self):
+    def test_bundle_fetch_tools_first(self):
+    def test_bundle_fetch_refuses_an_unsafe_out(self):
+    def test_bundle_fetch_accepts_an_absent_or_empty_out(self):
+    def test_bundle_fetch_arch_is_the_daemons(self):
+    def test_bundle_fetch_pulls_then_fetches(self):
+    def test_bundle_fetch_full_set(self):
+    def test_bundle_fetch_stops_when_the_pull_fails(self):
+    def test_bundle_fetch_leaves_no_out_on_a_failed_fetch(self):
+    def test_bundle_fetch_never_retries(self):
+    def test_bundle_fetch_writes_the_record_last(self):
+    def test_bundle_fetch_needs_the_gates_image(self):
+    def test_bundle_fetch_refuses_a_bad_user(self):
+    def test_bundle_fetch_takes_no_caller_key(self):
+    def test_bundle_fetch_cleans_up_on_a_signal(self):
+    def test_bundle_fetch_refuses_an_unlistable_out(self):
+    def test_bundle_fetch_refuses_a_linked_out_behind_slashes_or_dot(self):
+    def test_bundle_fetch_leaves_an_out_that_appears_after_the_check(self):
+    def test_bundle_fetch_passes_the_clients_bad_argument_exit_through(self):
+    def test_bundle_fetch_names_compose_when_compose_itself_fails(self):
+    def test_bundle_fetch_keeps_the_callers_platform_and_env_files_out(self):
+    def test_bundle_fetch_cleanup_survives_a_second_signal(self):
+
+## Removed (want none)
+
+## Added
+    def test_bundle_fetch_cleanup_ignores_signals_before_clearing_exit_trap(self):
+    def test_bundle_fetch_cleanup_survives_a_second_signal(self):
+    def test_bundle_fetch_keeps_the_callers_platform_and_env_files_out(self):
+    def test_bundle_fetch_leaves_an_out_that_appears_after_the_check(self):
+    def test_bundle_fetch_names_compose_when_compose_itself_fails(self):
+    def test_bundle_fetch_passes_the_clients_bad_argument_exit_through(self):
+    def test_bundle_fetch_refuses_a_linked_out_behind_slashes_or_dot(self):
+    def test_bundle_fetch_refuses_an_unlistable_out(self):
+    def test_hardening_check_rejects_extra_service_and_bind_keys(self):
+
+## Other test files' sha256 (unchanged this round)
+a72679ac3c3a6817de8af9182c790969d92f912d258ddb8fb15b32456f7ae88a *tests/fake_docker.py
+cc323e5cc4712f0a200f9df44d4483a67b4cb718e5fadc5659cdaeaa00808c04 *tests/test_offline_check.py
+068d3ca7a020bad28ac8330882493c647c42f703bbb8d6a3e7a00412cafc333f *tests/test_sbom_generator.py
+3617f8504aa287e93faae6eb5c2e206dced2017e6c7f7f0f4dd234d773cbd9fc *tests/test_sbom_obligations.py
+0fe80e4b83bb13c9a3f82e26a8939b6cbec51854923a653f4aaeb66720d05fb0 *tests/test_sources_resolve.py
+bca4495c200dc695c8978053768716087ffe5c39db5d98f5fda1e240d9bdcd93 *tests/test_stack_compose.py
+cf6bae6e22a7c7d4b6bbea5731dfac3f3e0b585086d73dfede6996fc92d0f620 *tests/test_image_scan.py

@@ -9,9 +9,11 @@
 #
 # Host half (no KE_OFFLINE_CLIENT): runs its own project ke-offline-<random>
 #   from the standalone docker-compose.offline.yml, and nothing else:
-#   disk floor (7 GiB) -> pulls (SBOM generator, ke-app base, ke-neo4j base)
-#   -> bundle.sh -> image-side drift check (the ke-app SBOM against an SBOM
-#   of its base) -> ke-neo4j check (its config against the official image's,
+#   disk floor (7 GiB) -> the source sample fetch (scripts/bundle_fetch.sh
+#   --set sample) -> base pulls (ke-app, ke-neo4j; the SBOM generator pull is
+#   in the fetch) -> bundle.sh -> image-side drift check (the ke-app SBOM
+#   against an SBOM of its base) -> ke-neo4j check (its config against the
+#   official image's,
 #   its saved tar and SBOM without the fleet plugin) -> `dind` up ->
 #   net_isolated.sh on the offline network -> `run offline-client`. The EXIT
 #   trap always runs
@@ -165,7 +167,7 @@ cleanup() {
     echo "offline_check: FAIL (teardown of project $project failed; remove it by hand: COMPOSE_FILE=docker-compose.offline.yml KE_OFFLINE_BUNDLE=$bundle_rel docker compose -p $project --profile offline down --volumes)" >&2
     if [ "$rc" -eq 0 ]; then rc=1; fi
   fi
-  rm -rf -- "$bundle_rel" "$bundle_rel.manifest.sha256"
+  rm -rf -- "$bundle_rel" "$bundle_rel.manifest.sha256" "dist/${project}-sources"
   if [ -n "$drift_work" ]; then rm -rf -- "$drift_work"; fi
   df_log "after teardown"
   if [ "$rc" -eq 0 ] && [ "$finished" -eq 1 ]; then echo "== offline_check: PASS ($(( $(date +%s) - started ))s) =="; fi
@@ -230,15 +232,19 @@ if [ -z "$compose_version" ] || ! at_least "$compose_minimum" "$compose_version"
   die "Docker Compose >= $compose_minimum is required for volume.subpath (found: ${compose_version:-none})"
 fi
 
-# platform-sbom U2 (PSC-20; design-notes "N1 amendment, U2" *Interim pull*):
-# bundle.sh never pulls and refuses without the SBOM generator, so this check
-# pulls it first, through its own compose file (the one place it is pinned).
-# U8 replaces these lines with scripts/bundle_fetch.sh. The ${VAR:?} mounts get
-# dummy values (pull reads no bind source); -f overrides COMPOSE_FILE.
-echo "offline: pulling the SBOM generator (docker-compose.sbom.yml, service sbom)"
-KE_SBOM_IN=/nonexistent KE_SBOM_OUT=/nonexistent KE_SBOM_USER="$(id -u):$(id -g)" \
-  docker compose --env-file .env.example -f docker-compose.sbom.yml pull sbom \
-  || die "pulling the SBOM generator failed (docker-compose.sbom.yml, service sbom); no retry"
+# platform-sbom U8b (PSC-23 U8-8; design-notes "N4 amendment, U8" item 8):
+# scripts/bundle_fetch.sh --set sample replaces U2's interim generator pull. It
+# pulls the SBOM generator (docker-compose.sbom.yml, where it is pinned), then
+# fetches one source entry per kind through the hardened `sources-fetch`
+# service and checks each file against docker/sources.lock.json. This is the
+# only fetch verify and CI ever run (the sample, never the full set). The dir
+# is under dist/, outside the bundle (bundle.sh reads it from U9) and removed
+# by the EXIT trap; a failure stops here, with no retry.
+fetch_rel="dist/${project}-sources"
+echo "offline: fetching the source sample (scripts/bundle_fetch.sh --set sample)"
+bash scripts/bundle_fetch.sh --set sample --out "$fetch_rel" \
+  || die "scripts/bundle_fetch.sh failed (see its FAIL line above); no retry"
+df_log "after fetch"
 
 # platform-sbom U4 (orchestrator ruling 6; design-notes "N1 amendment, U4"):
 # the ke-app base, for the drift step below, pulled by its pinned digest (a

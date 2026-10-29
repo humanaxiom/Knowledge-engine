@@ -793,3 +793,20 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-28T12:04:01Z | developer | platform-sbom | Q74 GREEN: ci.yml timeout-minutes 69 | tdd: green (fast PASS; full BLOCKED host)
 2026-10-28T12:26:32Z | orchestrator | platform-sbom | U8a + Q74: orchestrator verify full PASS 1095 s after the human's network prune; diff read; commit approved | smoke: pass
 2026-10-28T12:27:11Z | documenter | platform-sbom | U8a + Q74 handoff closed to a summary; detail archived in part13 | docs: pass
+2026-10-28T12:27:55Z | developer | platform-sbom | U8a + Q74 committed 3203054 | commit: pass
+2026-10-28T13:16:03Z | tester | platform-sbom | U8b RED: service, bundle_fetch.sh, offline_check wiring, docs | tdd: red
+2026-10-28T13:17:00Z | orchestrator | platform-sbom | U8b RED accepted; O-4..O-7 ruled on the tester's ambiguities | tdd: red
+2026-10-28T13:17:15Z | orchestrator | platform-sbom | U8b RED accepted; O-4..O-7 ruled on the tester's ambiguities | tdd: red
+2026-10-28T13:53:37Z | developer | platform-sbom | U8b GREEN: sources-fetch service, bundle_fetch.sh, offline_check wiring, docs; first real sample fetch BLOCKED (gitlab.alpinelinux.org unreachable from host) | tdd: blocked
+2026-10-28T14:05:40Z | security | platform-sbom | U8b security audit | security: pass
+2026-10-28T14:05:48Z | reviewer | platform-sbom | U8b review | review: changes requested
+2026-10-28T14:25:54Z | tester | platform-sbom | U8b rework 1 RED: B-1 B-2 N-2 N-3 N-5 L-1 L-2 rows | tdd: red
+2026-10-28T14:40:29Z | developer | platform-sbom | U8b rework 1 GREEN | tdd: green
+2026-10-28T14:43:34Z | security | platform-sbom | U8b security re-audit, rework 1 | security: pass
+2026-10-28T14:44:31Z | reviewer | platform-sbom | U8b review, rework 1 | review: approved
+2026-10-28T14:45:04Z | orchestrator | platform-sbom | U8b rework 1 accepted: review APPROVED, security PASS; waiting on the gitlab.alpinelinux.org outage for the real runs | review+security: pass
+2026-10-28T18:07:10Z | tester | platform-sbom | U8b A34 Windows proof of bundle_fetch.sh | a34: pass
+2026-10-28T18:34:51Z | developer | platform-sbom | U8b real runs: sample in verify full, full set (O-1) | smoke: pass
+2026-10-28T18:36:42Z | documenter | platform-sbom | U8b handoff closed to a summary (part14); CHANGELOG U8 bullet | docs: pass
+2026-10-28T18:54:10Z | orchestrator | platform-sbom | U8b orchestrator verify full attempt 1: unit 1195 OK, red only at the sample fetch (gitlab.alpinelinux.org unreachable again 18:52Z); waiting | smoke: blocked (upstream)
+2026-10-29T14:41:34Z | orchestrator | platform-sbom | U8b: orchestrator verify full PASS 1137 s with the real sample fetch; diff read; commit approved | smoke: pass

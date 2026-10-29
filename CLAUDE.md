@@ -26,9 +26,13 @@ CI) and calls the real gate scripts. Networking is disabled for the gate
 services: `gates` (`fast`) has no network, and `gates-it` (`full`) sits on the
 internal `backend` network, whose only way out is the stack gateway's forward
 to the model host. In `full` the host half also builds and pulls images, runs
-the smoke check's network-control probe on the stack's `edge` network, and
-runs `scan-db`, a one-shot that fetches the image scanner's vulnerability
-database. The scan itself runs with no network.
+the smoke check's network-control probe on the stack's `edge` network, runs
+`scan-db`, a one-shot that fetches the image scanner's vulnerability
+database, and runs `sources-fetch`, a one-shot that pulls nothing and fetches a
+fixed sample of the bundle's third-party source code over HTTPS, only from the
+hosts listed in `docker/source-policy.json`, checking every file against
+`docker/sources.lock.json`; a failed or mismatched fetch fails the run, with
+no retry. The scan itself runs with no network.
 If it cannot run where you are, report that as a blocker. Never substitute a
 narrower check and call the gate passed. On Windows run it from Git Bash
 (Claude Code's Bash tool already is).
