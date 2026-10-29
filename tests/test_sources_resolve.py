@@ -146,7 +146,9 @@ def network(mod: ModuleType, routes: dict[str, Any]) -> Any:
         yield net
 
 
-ALLOW = {"github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com", "codeload.github.com",
+# U8c O-2 (PSC-23 U8-10): objects.githubusercontent.com left `hosts`; the fakes
+# use the real Temurin redirect target, release-assets.githubusercontent.com.
+ALLOW = {"github.com", "release-assets.githubusercontent.com", "codeload.github.com",
          "repo1.maven.org", "files.pythonhosted.org", "pypi.org"}
 ASSET_BODY = b"jdk sources tarball bytes"
 JAR_BODY = b"jaxb sources jar bytes"
@@ -242,19 +244,20 @@ class ResolverHopsTest(unittest.TestCase):
         err, fetch, stream = rfn("ResolveError"), rfn("fetch"), rfn("stream")
         url = "https://github.com/a/b"
         with self.subTest(case="a redirect inside the allowlist is followed and streamed"):
-            with network(mod, {url: moved("https://objects.githubusercontent.com/x"),
-                               "https://objects.githubusercontent.com/x": ok(ASSET_BODY)}) as net:
+            with network(mod, {url: moved("https://release-assets.githubusercontent.com/x"),
+                               "https://release-assets.githubusercontent.com/x": ok(ASSET_BODY)}) as net:
                 digests, size = stream(url, ALLOW, ("sha256", "sha1"))
             self.assertEqual((digests["sha256"], digests["sha1"], size),
                              (sha("sha256", ASSET_BODY), sha("sha1", ASSET_BODY), len(ASSET_BODY)))
-            self.assertEqual(net.calls, [url, "https://objects.githubusercontent.com/x"])
+            self.assertEqual(net.calls, [url, "https://release-assets.githubusercontent.com/x"])
         five = {f"https://github.com/h{i}": moved(f"https://github.com/h{i + 1}") for i in range(5)}
         six = {f"https://github.com/h{i}": moved(f"https://github.com/h{i + 1}") for i in range(6)}
         rows = {
             "a redirect to a host outside hosts": ({url: moved("https://evil.example.com/x")},
                                                    url, "redirect to evil.example.com refused: not in hosts"),
-            "a redirect to http": ({url: moved("http://objects.githubusercontent.com/x")}, url,
-                                   "redirect to a non-https URL refused: http://objects.githubusercontent.com/x"),
+            "a redirect to http": (
+                {url: moved("http://release-assets.githubusercontent.com/x")}, url,
+                "redirect to a non-https URL refused: http://release-assets.githubusercontent.com/x"),
             "six redirects": (dict(six, **{"https://github.com/h6": ok(b"x")}), "https://github.com/h0",
                               "more than 5 redirects: https://github.com/h0"),
             "a 404": ({}, url, f"github.com: HTTP 404: {url}"),
@@ -1011,11 +1014,11 @@ class ReworkR1TransportTest(unittest.TestCase):
             with self.subTest(case=case):
                 self.assertEqual(self._stream_error({JAXB_URL: body_of([b"abc"], then=exc)}), want)
         with self.subTest(case="the host named is the hop's, after a redirect"):
-            hop = "https://objects.githubusercontent.com/x"
+            hop = "https://release-assets.githubusercontent.com/x"
             got = self._stream_error({"https://github.com/a/b": lambda: SimpleNamespace(
                 status=302, headers={"location": hop}, body=[b""]), hop: body_of([b"abc"], then=TimeoutError())},
                 url="https://github.com/a/b")
-            self.assertEqual(got, f"objects.githubusercontent.com: timeout after 60 s: {hop}")
+            self.assertEqual(got, f"release-assets.githubusercontent.com: timeout after 60 s: {hop}")
 
     def test_the_deadline(self):
         mod = load_resolver()
@@ -1150,7 +1153,7 @@ class ReworkR1RealOpenerTest(unittest.TestCase):
             with self.subTest(status=status):
                 fp = io.BytesIO(b"x" * (3 << 20))
                 hdrs = email.message.Message()
-                hdrs["Location"] = "https://objects.githubusercontent.com/x"
+                hdrs["Location"] = "https://release-assets.githubusercontent.com/x"
                 err = urllib.error.HTTPError(JAXB_URL, status, "status", hdrs, fp)
                 fake = SimpleNamespace(open=mock.Mock(side_effect=err))
                 with mock.patch("urllib.request.build_opener", return_value=fake):
@@ -1160,7 +1163,7 @@ class ReworkR1RealOpenerTest(unittest.TestCase):
                 self.assertLessEqual(sum(len(c) for c in r.body), 1048576)
                 if status == 302:
                     self.assertEqual({k.lower(): v for k, v in r.headers.items()}.get("location"),
-                                     "https://objects.githubusercontent.com/x")
+                                     "https://release-assets.githubusercontent.com/x")
 
 
 class ReworkR1HopRulesTest(unittest.TestCase):
@@ -1227,6 +1230,23 @@ class ReworkR1HopRulesTest(unittest.TestCase):
             with network(mod, {url: ok(b"x")}) as net:
                 rfn("stream")(url, ALLOW | {"gitlab.alpinelinux.org"})
             self.assertEqual(net.calls, [url])
+
+
+class U8cDroppedHostTest(unittest.TestCase):
+    """U8c O-2 (PSC-23 U8-10; design-notes "N4 amendment, U8" ruling O-2):
+    with the committed policy, the resolver refuses a Temurin redirect to
+    objects.githubusercontent.com (dropped from `hosts`, unused by the real
+    fetches) and never requests it. Tester, U8c RED, 2026-10-29."""
+
+    def test_a_temurin_redirect_to_the_dropped_host_is_refused(self):
+        mod = load_resolver()
+        to = "https://objects.githubusercontent.com/github-production-release-asset/1/asset"
+        routes = dict(temurin_routes(), **{TEM_URL: moved(to), to: ok(ASSET_BODY)})
+        with network(mod, routes) as net:
+            with self.assertRaises(rfn("ResolveError")) as caught:
+                resolve(mod, {TEM_KEY: tem_need()})
+        self.assertIn("redirect to objects.githubusercontent.com refused: not in hosts", str(caught.exception))
+        self.assertNotIn(to, net.calls, "a refused hop was requested")
 
 
 class ReworkR1PypiScopeTest(unittest.TestCase):

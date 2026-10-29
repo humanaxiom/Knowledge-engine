@@ -931,6 +931,8 @@ at GREEN* the redirect targets from real fetches):
 | `files.pythonhosted.org` | `pypi` (sdist URLs from `uv.lock`; `pypi.org`'s API is no longer needed, N0) |
 | `repo1.maven.org` | `maven` (sources jars; jaxb-api, ruling 5, N8a) |
 
+*(Amended 2026-10-29, U8c O-2: objects.githubusercontent.com dropped from `hosts`; Temurin's redirect target is release-assets.githubusercontent.com, u8/hop-hosts.md.)*
+
 The generator pull uses the registry hosts `build.sh` already needs.
 
 ### N4 amendment, U8 (architect, 2026-10-28)
@@ -2009,6 +2011,7 @@ these calls. No other endpoint is used.
     and reads `<asset>.sha256.txt` at the same path. Both are plain
     github.com file URLs, and their redirects go only to
     `objects.githubusercontent.com` or `release-assets.githubusercontent.com`.
+    *(Amended 2026-10-29, U8c O-2: objects.githubusercontent.com dropped from `hosts`; Temurin's redirect target is release-assets.githubusercontent.com, u8/hop-hosts.md.)*
   - Neo4j is the file URL
     `https://github.com/neo4j/neo4j/archive/refs/tags/<ver>.tar.gz`
     (redirect to `codeload.github.com`).
@@ -4602,6 +4605,7 @@ any other host on any hop (N4).
 - `github.com`: `neo4j` (tag tarball), `temurin` (release asset, first hop)
 - `codeload.github.com`: `neo4j` (the tarball redirect target)
 - `objects.githubusercontent.com`: `temurin` (release asset redirect target)
+*(Amended 2026-10-29, U8c O-2: objects.githubusercontent.com dropped from `hosts`; Temurin's redirect target is release-assets.githubusercontent.com, u8/hop-hosts.md.)*
 - `release-assets.githubusercontent.com`: `temurin` (release asset redirect target)
 - `files.pythonhosted.org`: `pypi`
 - `repo1.maven.org`: `maven` (N8a 2)

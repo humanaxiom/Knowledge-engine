@@ -39,6 +39,11 @@ NEO4J_SHA256 = "182ae2e5c3807bc3d7a09770dbf450d2e8667080bde93b3b6c829125db0f91e3
 NEO4J_SIZE = 20907800
 KINDS = {"deb", "pgdg", "apk", "neo4j", "temurin", "pypi", "maven"}
 EOL_LINE = "docker/sources.lock.json text eol=lf"
+# U8c O-2 (PSC-23 U8-10): the redirect targets the real U8b fetches used, one
+# per redirected kind (neo4j -> codeload.github.com, temurin ->
+# release-assets.githubusercontent.com); the values are copied here, the test
+# never reads docs/evidence. Every other policy host is a lock file URL host.
+REDIRECT_HOSTS = {"codeload.github.com", "release-assets.githubusercontent.com"}
 
 
 class CommittedLockTest(unittest.TestCase):
@@ -85,6 +90,31 @@ class CommittedLockTest(unittest.TestCase):
         check = load_sbom_check()
         problems = check.lock_problems(self._bytes().decode("utf-8"), policy(), fixture_docs(), ARCH)
         self.assertEqual(problems, [], "lock_problems on the committed lock")
+
+    def test_policy_hosts_are_the_lock_url_hosts_and_their_redirect_targets(self):
+        """U8c O-2 (PSC-23 U8-10): `hosts` lists exactly what the committed
+        lock's file URLs and their real redirects use, and nothing unused
+        (objects.githubusercontent.com is dropped)."""
+        from urllib.parse import urlsplit
+        url_hosts = {urlsplit(f.get("url", "")).hostname or ""
+                     for e in (self._lock().get("components") or {}).values() if isinstance(e, dict)
+                     for f in e.get("files") or [] if isinstance(f, dict)}
+        self.assertNotIn("", url_hosts, "a lock file with no url host")
+        self.assertEqual(url_hosts & REDIRECT_HOSTS, set(), "a redirect target is also a lock file URL host")
+        hosts = set(policy().get("hosts") or [])
+        self.assertEqual(sorted(hosts - (url_hosts | REDIRECT_HOSTS)), [],
+                         "docker/source-policy.json `hosts` lists a host no lock file URL or redirect uses (U8-10)")
+        self.assertEqual(sorted((url_hosts | REDIRECT_HOSTS) - hosts), [],
+                         "a lock file URL or redirect host is not in docker/source-policy.json `hosts`")
+
+    def test_no_lock_problems_without_the_dropped_host(self):
+        """U8c O-2: the committed lock still passes lock_problems against the
+        policy with objects.githubusercontent.com removed (green before and
+        after the drop: no lock file URL names it)."""
+        narrow = policy()
+        narrow["hosts"] = [h for h in narrow.get("hosts") or [] if h != "objects.githubusercontent.com"]
+        problems = load_sbom_check().lock_problems(self._bytes().decode("utf-8"), narrow, fixture_docs(), ARCH)
+        self.assertEqual(problems, [], "lock_problems on the committed lock with the narrowed policy")
 
     def test_every_needed_key_and_nothing_else(self):
         # 182 -> 183 in U7e: u7e/key-diff.txt l.6-8 (the lock re-run, u7e/lock-run-1.txt).

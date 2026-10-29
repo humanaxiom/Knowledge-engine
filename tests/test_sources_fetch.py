@@ -748,6 +748,32 @@ class SourceFetchHostsTest(_FetchCase):
         self.assertEqual(run.listing(), [])
 
 
+class SourceFetchDroppedHostTest(_FetchCase):
+    """U8c O-2 (PSC-23 U8-10; design-notes "N4 amendment, U8" ruling O-2):
+    with the committed policy, a Temurin redirect to
+    objects.githubusercontent.com (unused by the real fetches, dropped from
+    `hosts`) is refused before it is requested; the real redirect target
+    release-assets.githubusercontent.com is still followed. Tester, U8c RED,
+    2026-10-29."""
+
+    OLD_HOP = "https://objects.githubusercontent.com/github-production-release-asset/602574963/0a1b2c3d"
+
+    def test_source_fetch_refuses_a_temurin_redirect_to_the_dropped_host(self):
+        b = only(one_per_kind(), TEM_KEY)
+        data = b.bodies[TEM_URL]
+        run = self.run_fetch(b.text(), {TEM_URL: (302, {"Location": self.OLD_HOP}, b""), self.OLD_HOP: data})
+        self.assert_failed(run, fetch_fail("github.com", TEM_ASSET,
+                                           "redirect to objects.githubusercontent.com refused: not in hosts"))
+        self.assertEqual(run.net.calls, [TEM_URL], "a refused hop is never requested")
+        self.assertEqual(run.listing(), [])
+
+    def test_source_fetch_follows_the_real_temurin_redirect_target(self):
+        b = only(one_per_kind(), TEM_KEY)
+        run = self.run_fetch(b.text(), b.routes())
+        self.assertEqual(run.rc, 0, run.text)
+        self.assertIn("hops=github.com,release-assets.githubusercontent.com", run.out)
+
+
 class SourceFetchRetryTest(_FetchCase):
     """Row 3: Q61, one call, never a sleep."""
 

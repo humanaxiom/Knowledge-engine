@@ -1651,10 +1651,15 @@ class ReworkR1OfflineTest(toc._OfflineBase):
 
 # N4's host table (the fetch step's only egress), with repo1.maven.org from
 # N8a 2. Exact list; a host N4 does not name is not added here.
+# U8c (PSC-23 U8-10; design-notes "N4 amendment, U8" ruling O-2, answered after
+# the U8b real runs): objects.githubusercontent.com is dropped, unused by every
+# kind in the sample and full-set fetches (Temurin redirects to
+# release-assets.githubusercontent.com). Tester, U8c O-2 RED, 2026-10-29.
+U8C_DROPPED_HOST = "objects.githubusercontent.com"
 U6_HOSTS = {"snapshot.debian.org", "gitlab.alpinelinux.org", "distfiles.alpinelinux.org", "github.com",
-            "codeload.github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com",
+            "codeload.github.com", "release-assets.githubusercontent.com",
             "files.pythonhosted.org", "repo1.maven.org",
-            # U7d (human ruling A71, Q71 option 1; design-notes "U7d precision" P5): the tenth host.
+            # U7d (human ruling A71, Q71 option 1; design-notes "U7d precision" P5).
             "apt-archive.postgresql.org"}
 # The policy's image name -> its tests/fixtures/sbom-u3 package list (U4b,
 # PSC-26: the U3 neo4j list stands in for ke-neo4j). Others: same name.
@@ -1781,8 +1786,23 @@ class PolicyU6SchemaTest(unittest.TestCase):
         hosts = self._policy().get("hosts")
         self.assertIsInstance(hosts, list, "docker/source-policy.json has no `hosts` (U6, N4)")
         self.assertEqual(set(hosts), U6_HOSTS, "`hosts` is not N4's host table plus repo1.maven.org and "
-                         "apt-archive.postgresql.org")
-        self.assertEqual(len(hosts), 10, "U7d P5: exactly ten hosts")
+                         "apt-archive.postgresql.org, less objects.githubusercontent.com (U8-10, O-2)")
+        self.assertEqual(len(hosts), len(U6_HOSTS), "U8c O-2: exactly nine hosts (U7d P5's ten less one)")
+
+    def test_hosts_drop_the_unused_temurin_redirect_target(self):
+        """U8c O-2 (PSC-23 U8-10): the real fetches never used
+        objects.githubusercontent.com, so it leaves `hosts`; Temurin's redirect
+        target release-assets.githubusercontent.com stays, and pypi.org (a
+        resolution host only, N0 / O2 ruling) is still not a file host."""
+        hosts = self._policy().get("hosts")
+        self.assertIsInstance(hosts, list, "docker/source-policy.json has no `hosts` (U6, N4)")
+        with self.subTest(host=U8C_DROPPED_HOST):
+            self.assertNotIn(U8C_DROPPED_HOST, hosts, "U8-10 / O-2: the unused Temurin redirect target is "
+                             "still in docker/source-policy.json `hosts`")
+        with self.subTest(host="release-assets.githubusercontent.com"):
+            self.assertIn("release-assets.githubusercontent.com", hosts, "Temurin's real redirect target (U8b runs)")
+        with self.subTest(host="pypi.org"):
+            self.assertNotIn("pypi.org", hosts, "pypi.org is a resolution host, never a lock file host (N0, O2)")
 
     def test_exempt_entries_jna_and_javassist(self):
         exempt = self._policy().get("exempt")

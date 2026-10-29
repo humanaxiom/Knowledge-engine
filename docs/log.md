@@ -811,3 +811,8 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-28T18:54:10Z | orchestrator | platform-sbom | U8b orchestrator verify full attempt 1: unit 1195 OK, red only at the sample fetch (gitlab.alpinelinux.org unreachable again 18:52Z); waiting | smoke: blocked (upstream)
 2026-10-29T14:41:34Z | orchestrator | platform-sbom | U8b: orchestrator verify full PASS 1137 s with the real sample fetch; diff read; commit approved | smoke: pass
 2026-10-29T14:42:04Z | developer | platform-sbom | U8b committed 98e465a | commit: pass
+2026-10-29T15:01:34Z | tester | platform-sbom | U8c O-2 RED: drop objects.githubusercontent.com from the policy hosts | tdd: red
+2026-10-29T15:21:48Z | developer | platform-sbom | U8c O-2 GREEN: policy hosts narrowed | tdd: green
+2026-10-29T15:24:22Z | reviewer | platform-sbom | U8c O-2 review | review: approved
+2026-10-29T15:24:59Z | security | platform-sbom | U8c O-2 security review of the hosts change | security: pass
+2026-10-29T15:44:26Z | orchestrator | platform-sbom | U8c O-2: review APPROVED, security PASS, orchestrator verify full PASS 1111 s; commit approved | smoke: pass

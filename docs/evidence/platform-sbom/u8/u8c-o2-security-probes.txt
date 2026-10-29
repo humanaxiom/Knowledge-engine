@@ -1,0 +1,131 @@
+# U8c O-2 security probes (security, 2026-10-29). Run: uv run python -I <probe>.py <repo root>, scripts in the scratchpad (outside the repo); text below.
+
+## host cross-check (lock URL hosts vs policy hosts)
+lock url hosts {'gitlab.alpinelinux.org': 344, 'distfiles.alpinelinux.org': 21, 'snapshot.debian.org': 495, 'repo1.maven.org': 1, 'github.com': 2, 'apt-archive.postgresql.org': 8, 'files.pythonhosted.org': 5}
+by kind {'apk': ['distfiles.alpinelinux.org', 'gitlab.alpinelinux.org'], 'deb': ['snapshot.debian.org'], 'maven': ['repo1.maven.org'], 'neo4j': ['github.com'], 'pgdg': ['apt-archive.postgresql.org'], 'pypi': ['files.pythonhosted.org'], 'temurin': ['github.com']}
+9 ['apt-archive.postgresql.org', 'codeload.github.com', 'distfiles.alpinelinux.org', 'files.pythonhosted.org', 'github.com', 'gitlab.alpinelinux.org', 'release-assets.githubusercontent.com', 'repo1.maven.org', 'snapshot.debian.org'] nodup
+pol-minus-lock ['codeload.github.com', 'release-assets.githubusercontent.com']
+lock-minus-pol []
+policy bytes CRLF? False trailing NL True
+
+## observed hop chains (grep -o 'hops=[^ ]*' | sort | uniq -c) and objects.githubusercontent.com count
+== u8/full-run.txt objects.githubusercontent.com occurrences: 0
+      8 hops=apt-archive.postgresql.org
+     17 hops=distfiles.alpinelinux.org
+      5 hops=files.pythonhosted.org
+      1 hops=github.com,codeload.github.com
+      1 hops=github.com,release-assets.githubusercontent.com
+    201 hops=gitlab.alpinelinux.org
+      1 hops=repo1.maven.org
+    482 hops=snapshot.debian.org
+== u8/sample-run.txt objects.githubusercontent.com occurrences: 0
+      2 hops=apt-archive.postgresql.org
+      2 hops=distfiles.alpinelinux.org
+      1 hops=files.pythonhosted.org
+      1 hops=github.com,codeload.github.com
+      1 hops=github.com,release-assets.githubusercontent.com
+     15 hops=gitlab.alpinelinux.org
+      1 hops=repo1.maven.org
+      2 hops=snapshot.debian.org
+== u8/u8c-o2-green-verify-full.txt objects.githubusercontent.com occurrences: 0
+      2 hops=apt-archive.postgresql.org
+      2 hops=distfiles.alpinelinux.org
+      1 hops=files.pythonhosted.org
+      1 hops=github.com,codeload.github.com
+      1 hops=github.com,release-assets.githubusercontent.com
+     15 hops=gitlab.alpinelinux.org
+      1 hops=repo1.maven.org
+      2 hops=snapshot.debian.org
+
+## probe output (P1 policy parse, P2 sbom_check lock rules, P3 refusal lines with a signed query, P4 real target)
+P1 policy parses (json.loads): dict keys ['always', 'exempt', 'hosts']
+P1 hosts: 9 unique: 9 all lower-case str: True
+P1 objects.githubusercontent.com in hosts: False
+P2 sbom_check.lock_entry_problems(committed lock, committed policy): ['lock: the lock is not text']
+P2 control (github.com removed) problem count: 1 first: ['lock: the lock is not text']
+P3 loc host: objects.githubusercontent.com | resolver msg: redirect to objects.githubusercontent.com refused: not in hosts | fetch line: bundle_fetch: FAIL (stage fetch: github.com: redirect to objects.githubusercontent.com refused: not in hosts; no retry) | secret in msg: False | secret in line: False | requested: ['github.com']
+P3 loc host: OBJECTS.githubusercontent.com | resolver msg: redirect to objects.githubusercontent.com refused: not in hosts | fetch line: bundle_fetch: FAIL (stage fetch: github.com: redirect to objects.githubusercontent.com refused: not in hosts; no retry) | secret in msg: False | secret in line: False | requested: ['github.com']
+P3 loc host: objects.githubusercontent.com. | resolver msg: redirect to objects.githubusercontent.com. refused: not in hosts | fetch line: bundle_fetch: FAIL (stage fetch: github.com: redirect to objects.githubusercontent.com. refused: not in hosts; no retry) | secret in msg: False | secret in line: False | requested: ['github.com']
+P3 loc host: evil.example | resolver msg: redirect to evil.example refused: not in hosts | fetch line: bundle_fetch: FAIL (stage fetch: github.com: redirect to evil.example refused: not in hosts; no retry) | secret in msg: False | secret in line: False | requested: ['github.com']
+P4 real target followed: status 200 hops ['github.com', 'release-assets.githubusercontent.com']
+P2 lock_entry_problems(committed lock text, committed policy): []
+P2 control (github.com removed): 2 problems; first: ['lock: neo4j:neo4j@5.26.32: url host github.com is not in docker/source-policy.json hosts']
+P2 control (snapshot.debian.org removed): 495 problems; first: ['lock: deb:acl@2.3.1-3: url host snapshot.debian.org is not in docker/source-policy.json hosts']
+P2 KIND_HOSTS unchanged binding: {'deb': ('snapshot.debian.org',), 'pgdg': ('apt-archive.postgresql.org',), 'apk': ('gitlab.alpinelinux.org', 'distfiles.alpinelinux.org'), 'neo4j': ('github.com',), 'temurin': ('github.com',), 'pypi': ('files.pythonhosted.org',), 'maven': ('repo1.maven.org',)}
+
+## hosts.py
+import json,collections,sys
+from urllib.parse import urlsplit
+lock=json.load(open(sys.argv[1],encoding='utf-8'))
+c=collections.Counter(); bykind=collections.defaultdict(set)
+for k,e in lock['components'].items():
+    for f in e.get('files') or []:
+        u=urlsplit(f['url']); c[u.hostname]+=1; bykind[e.get('kind')].add(u.hostname)
+        assert u.scheme=='https', f['url']
+print('lock url hosts', dict(c)); print('by kind', {k:sorted(v) for k,v in bykind.items()})
+raw=open(sys.argv[2],'rb').read()
+pol=json.loads(raw)
+print(len(pol['hosts']), sorted(pol['hosts']), 'dup' if len(set(pol['hosts']))!=len(pol['hosts']) else 'nodup')
+print('pol-minus-lock', sorted(set(pol['hosts'])-set(c)))
+print('lock-minus-pol', sorted(set(c)-set(pol['hosts'])))
+print('policy bytes CRLF?', b'\r\n' in raw, 'trailing NL', raw.endswith(b'\n'))
+
+## u8c_probe.py
+import importlib.util, json, sys, io, contextlib
+root = sys.argv[1]
+def load(name):
+    spec = importlib.util.spec_from_file_location("probe_" + name, f"{root}/scripts/{name}.py")
+    m = importlib.util.module_from_spec(spec); sys.modules[spec.name] = m; spec.loader.exec_module(m); return m
+F = load("sources_fetch"); R = F.R; C = load("sbom_check")
+raw = open(f"{root}/docker/source-policy.json", "rb").read()
+pol = json.loads(raw)
+print("P1 policy parses (json.loads):", type(pol).__name__, "keys", sorted(pol))
+print("P1 hosts:", len(pol["hosts"]), "unique:", len(set(pol["hosts"])), "all lower-case str:", all(isinstance(h,str) and h==h.lower() and h.strip()==h for h in pol["hosts"]))
+print("P1 objects.githubusercontent.com in hosts:", "objects.githubusercontent.com" in pol["hosts"])
+lock = json.load(open(f"{root}/docker/sources.lock.json", encoding="utf-8"))
+print("P2 sbom_check.lock_entry_problems(committed lock, committed policy):", C.lock_entry_problems(lock, pol))
+wide = dict(pol); wide["hosts"] = [h for h in pol["hosts"] if h != "github.com"]
+print("P2 control (github.com removed) problem count:", len(C.lock_entry_problems(lock, wide)), "first:", C.lock_entry_problems(lock, wide)[:1])
+SECRET = "X-Amz-Signature=deadbeefSECRET&X-Amz-Credential=AKIAEXAMPLE"
+first = "https://github.com/adoptium/temurin17-binaries/releases/download/x/OpenJDK-sources.tar.gz"
+calls = []
+for target in ("https://objects.githubusercontent.com/github-production-release-asset/1/asset?" + SECRET,
+               "objects.githubusercontent.com"):
+    pass
+def opener_for(loc):
+    def op(url, timeout):
+        calls.append(url)
+        if url == first: return R.Response(302, {"Location": loc})
+        return R.Response(200, {}, b"body")
+    return op
+for loc in ("https://objects.githubusercontent.com/github-production-release-asset/1/asset?" + SECRET,
+            "https://OBJECTS.githubusercontent.com/a?" + SECRET,
+            "https://objects.githubusercontent.com./a?" + SECRET,
+            "https://evil.example/x?" + SECRET):
+    calls.clear(); R.OPENER = opener_for(loc)
+    try:
+        R.fetch(first, set(pol["hosts"])); print("P3 FOLLOWED (unexpected):", loc)
+    except R.ResolveError as e:
+        msg = str(e); line = F._fail_line("fetch", f"github.com: {msg}")
+        print("P3 loc host:", loc.split('/')[2], "| resolver msg:", msg, "| fetch line:", line,
+              "| secret in msg:", "SECRET" in msg or "AKIA" in msg, "| secret in line:", "SECRET" in line or "AKIA" in line,
+              "| requested:", [c.split('/')[2] for c in calls])
+loc = "https://release-assets.githubusercontent.com/github-production-release-asset/1/asset?" + SECRET
+calls.clear(); R.OPENER = opener_for(loc); hops = []
+r = R._fetch_once(first, set(pol["hosts"]), hops=hops)
+print("P4 real target followed: status", r.status, "hops", hops)
+
+## u8c_probe2.py
+import importlib.util, json, sys
+root = sys.argv[1]
+spec = importlib.util.spec_from_file_location("probe_sbom_check", f"{root}/scripts/sbom_check.py")
+C = importlib.util.module_from_spec(spec); sys.modules[spec.name] = C; spec.loader.exec_module(C)
+pol = json.load(open(f"{root}/docker/source-policy.json", encoding="utf-8"))
+text = open(f"{root}/docker/sources.lock.json", encoding="utf-8", newline="").read()
+print("P2 lock_entry_problems(committed lock text, committed policy):", C.lock_entry_problems(text, pol))
+for drop in ("github.com", "snapshot.debian.org"):
+    narrow = dict(pol, hosts=[h for h in pol["hosts"] if h != drop])
+    p = C.lock_entry_problems(text, narrow)
+    print(f"P2 control ({drop} removed): {len(p)} problems; first: {p[:1]}")
+wide = dict(pol, hosts=pol["hosts"] + ["objects.githubusercontent.com"])
+print("P2 KIND_HOSTS unchanged binding:", C.KIND_HOSTS)

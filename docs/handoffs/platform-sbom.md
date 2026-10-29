@@ -125,3 +125,21 @@ it closes the M-NT1 remainder (no GPL source offer, incomplete SBOM). Branch:
 - Moved the U8b sections (tester RED through the A34 proof and the developer's real runs) verbatim to archive/platform-sbom-part14.md; replaced them with the block above.
 - CHANGELOG gains one U8 bullet (assigned once by the orchestrator); README checked against the bundle_fetch.sh header, no drift.
 - Follow-up: CHANGELOG intro line now says the source fetch landed at U8 and shipping it with notices and index arrives at U9.
+
+## 2026-10-29 — tester (U8c O-2 RED: drop objects.githubusercontent.com)
+- RED `verify.sh fast`: 1201 tests, failures=5, all O-2 rows, all for "host still in the policy" (`u8/u8c-o2-red-verify-fast.txt`); names before/after and a scratch-copy control (policy less the host: 32/32 OK) in `u8/u8c-o2-controls.txt`.
+- Red: `PolicyU6SchemaTest.test_hosts_are_the_fetch_hosts` (U6_HOSTS re-pinned to nine), `...test_hosts_drop_the_unused_temurin_redirect_target`, `CommittedLockTest.test_policy_hosts_are_the_lock_url_hosts_and_their_redirect_targets`, `SourceFetchDroppedHostTest.test_source_fetch_refuses_a_temurin_redirect_to_the_dropped_host`, `U8cDroppedHostTest.test_a_temurin_redirect_to_the_dropped_host_is_refused`. Resolver fakes moved to release-assets (green).
+- No per-kind rule named the host (KIND_HOSTS binds lock URLs only; hops use policy `hosts`), so the developer's change is the policy line plus the design note; security reviews (U8-10).
+- Ambiguity for the orchestrator: the brief's list had `pypi.org`; the design (N0, O2 ruling) keeps it out of `hosts`, and the tests pin it out.
+
+## 2026-10-29 — developer (U8c O-2 GREEN: policy hosts narrowed)
+- `docker/source-policy.json`: `objects.githubusercontent.com` removed from `hosts` (one entry); design-notes.md amended in 3 places (U8-10); architecture.md names no hosts, unchanged.
+- Evidence: `u8/u8c-o2-green-verify-full.txt`: `verify full` PASS 1107 s, 1201 tests OK, sample fetch Temurin hops=github.com,release-assets.githubusercontent.com; the 5 RED rows green. .env removed.
+
+## 2026-10-29 — reviewer (U8c O-2 review: APPROVED)
+- Diff read: policy is exactly one host removed; tests add 5 rows, remove none, fakes retargeted equivalently; design notes additions only; full PASS 1201 OK with Temurin hop github.com -> release-assets.
+- No blocking findings; nits N-1 (redundant narrowed-lock test), N-2 ("nine hosts" message), N-3 (stage only U8c files) in `u8/u8c-o2-review.md`. Security review (U8-10) still required before commit.
+
+## 2026-10-29 — security (U8c O-2: `hosts` change, U8-10)
+- PASS, no critical/high/medium. Narrowing only (10 -> 9, nothing added). `hosts` = the lock's 7 file-URL hosts plus the two observed redirect targets (codeload, release-assets). The dropped host appears 0 times in the sample, full and U8c runs. KIND_HOSTS unchanged. A refused hop names only the host, so no signed query is printed (probed with X-Amz-Signature, case and trailing-dot variants). The policy parses through sbom_check.
+- Evidence: `u8/u8c-o2-security.md`, `u8/u8c-o2-security-probes.txt`. Info I-1 (one tautological test, for the reviewer), I-2 (a future Temurin redirect change fails closed and needs a reviewed re-add), I-3 (pre-existing: the policy has no eol=lf attribute).

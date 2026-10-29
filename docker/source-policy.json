@@ -1,5 +1,5 @@
 {
-  "hosts": ["snapshot.debian.org", "apt-archive.postgresql.org", "gitlab.alpinelinux.org", "distfiles.alpinelinux.org", "github.com", "codeload.github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com", "files.pythonhosted.org", "repo1.maven.org"],
+  "hosts": ["snapshot.debian.org", "apt-archive.postgresql.org", "gitlab.alpinelinux.org", "distfiles.alpinelinux.org", "github.com", "codeload.github.com", "release-assets.githubusercontent.com", "files.pythonhosted.org", "repo1.maven.org"],
   "always": [
     {"image": "valkey", "match": "pkg:apk/alpine/busybox", "why": "PSC-22: busybox (GPL-2.0-only) whatever the generator reports"},
     {"image": "valkey", "match": "pkg:apk/alpine/apk-tools", "why": "PSC-22: apk-tools (GPL-2.0-only)"},
