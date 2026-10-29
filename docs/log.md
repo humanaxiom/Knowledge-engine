@@ -810,3 +810,4 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-28T18:36:42Z | documenter | platform-sbom | U8b handoff closed to a summary (part14); CHANGELOG U8 bullet | docs: pass
 2026-10-28T18:54:10Z | orchestrator | platform-sbom | U8b orchestrator verify full attempt 1: unit 1195 OK, red only at the sample fetch (gitlab.alpinelinux.org unreachable again 18:52Z); waiting | smoke: blocked (upstream)
 2026-10-29T14:41:34Z | orchestrator | platform-sbom | U8b: orchestrator verify full PASS 1137 s with the real sample fetch; diff read; commit approved | smoke: pass
+2026-10-29T14:42:04Z | developer | platform-sbom | U8b committed 98e465a | commit: pass
