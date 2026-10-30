@@ -6844,3 +6844,30 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
   - *Units:* U9a, the checker functions, the subcommands and the install
     pins (`fast`); U9b, the wiring, `NOTICE.md`, the real sample and a
     recorded full-set bundle (Q79), with A34 (O-11).
+- **Amended U9c (2026-10-30, architect; design-notes "N9 amendment, U9c";
+  the human's A81 = Q81 option 3).** Proposed; O-19 and O-20 wait for the
+  orchestrator.
+  - *Context:* gitlab.alpinelinux.org, which serves every apk entry's
+    aports files, has been closed to the public since 2026-10-27 with no
+    reopening date. Each `verify.sh full` and CI run fetched 15 sample
+    files from it, with no retry (Q61), so nothing could merge.
+  - *Decision:* `fetch_plan(lock, arch, "sample")` keeps, for the apk
+    sample key, only the files on `APK_DISTFILES_HOST`
+    (distfiles.alpinelinux.org, one checker constant shared with the lock's
+    `KIND_HOSTS` binding), and fails closed if none is left. The sample key
+    is unchanged (A63's smallest-entry rule picks the same key either way).
+    The fetch skips the APKBUILD name check only when the set is `sample`
+    and the kind is `apk`, and prints one line saying so. `index.json`
+    gains the status `partial` (sample only, apk only; per-file `path`),
+    which a full bundle refuses. The notices section gains a partial row
+    that names the lock URL of the first unfetched file. Policy, lock,
+    compose, `bundle.sh` and the installers are unchanged.
+  - *Alternatives:* a `sample_hosts` policy key (a schema change to the
+    egress policy for one fact the checker already holds); moving the key
+    to an entry with a tarball (no extra proof, every pin rewritten);
+    a mirror or cgit route, a retry window (out of scope, U9c-8).
+  - *Consequences:* verify and CI no longer reach GitLab. Its API raw
+    route is proven only by operator full fetches, which fail closed
+    before any bundle (A81 accepts the lost early warning). A re-lock whose
+    smallest apk entry has no distfiles file turns the sample red by name
+    until a design amendment. Gate `full`; A34 not required.

@@ -74,7 +74,7 @@ from unittest import mock
 from tests import sbom_support as ss
 from tests.engine_support import ROOT
 from tests.test_sbom_bundle import load_sbom_check
-from tests.test_sources_fetch import LockBuilder, load_fetch, plan_of, wide
+from tests.test_sources_fetch import APK_KEY, LockBuilder, load_fetch, plan_of, sample_files, wide
 from tests.test_sources_lock import canon, fixture_docs, miss, policy, stale
 
 CHECK = ROOT / "scripts" / "sbom_check.py"
@@ -92,6 +92,10 @@ HEX64 = re.compile(r"[0-9a-f]{64}")
 I3 = "Paths here are relative to the bundle's `app/` directory, which install publishes as the install directory."
 BANNER = "Verification bundle: this source set is a sample and is not complete; do not distribute this bundle."
 SHIPPED_CELL = "source in `sources/` (see `sources/index.json`)"
+# U9c (A81; design-notes "N9 amendment, U9c" item 7): the partial row's fixed text, then the URL of
+# the component's first file with no path.
+PARTIAL_CELL = ("partial source (verification sample): only the files that `sources/index.json` lists with a "
+                "path are in `sources/files/`; Upstream source of the rest: ")
 TOP_KEYS = {"format", "set", "arch", "git_sha", "lock_sha256", "components", "unparsed", "unidentified", "unlicensed"}
 LOCK_COMPONENT_KEYS = {"key", "kind", "status", "packages", "files"}
 EXEMPT_COMPONENT_KEYS = LOCK_COMPONENT_KEYS | {"exempt", "listing"}
@@ -169,6 +173,16 @@ def record_text(b: LockBuilder, which: str, arch: str = ARCH, text: str | None =
         comps.setdefault(key, []).append({"name": f["name"], "sha256": f["sha256"], "size": f["size"]})
     return canon({"format": 1, "set": which, "arch": arch, "components": comps,
                   "lock_sha256": sha(lock_t.encode("utf-8"))})
+
+
+def pre_u9c_sample_record(b: LockBuilder, arch: str = ARCH) -> str:
+    """fetch.json of a sample fetched before U9c under the same lock: every
+    file of every sample key, the apk key's GitLab files included (U9c-2 (a))."""
+    lock = b.lock()
+    comps = {k: [{"name": f["name"], "sha256": f["sha256"], "size": f["size"]} for f in lock["components"][k]["files"]]
+             for k in load_sbom_check().sample_keys(lock, arch)}
+    return canon({"format": 1, "set": "sample", "arch": arch, "components": comps,
+                  "lock_sha256": sha(b.text().encode("utf-8"))})
 
 
 def distinct(b: LockBuilder, which: str, arch: str = ARCH) -> dict[str, int]:
@@ -348,6 +362,21 @@ class FetchRecordProblemsTest(unittest.TestCase):
         for case, (text, parts) in cases.items():
             with self.subTest(case=case):
                 self.assertNamed(self.problems(text), *parts)
+        # U9c RED (tester, 2026-10-30; A81, U9c-2 (a) and (b), design item 4): the U9-3 line names the
+        # apk sample key; it is the first key of the plan, so the only problem.
+        files = self.b.components[APK_KEY]["files"]
+        dist = sample_files(APK_KEY, files)
+        self.assertTrue(0 < len(dist) < len(files), "fixture: the apk sample key has GitLab and distfiles files")
+        with self.subTest(case="U9c-2 (a): a pre-U9c sample record (the apk entry lists its GitLab files too)"):
+            self.assertEqual(self.problems(pre_u9c_sample_record(self.b), "sample"),
+                             [f"fetch.json: {APK_KEY}: lists {len(files)} files, the lock's sample plan says "
+                              f"{len(dist)}"])
+        with self.subTest(case="U9c-2 (b): a full record whose apk entry holds only the distfiles files"):
+            rec = json.loads(record_text(self.b, "full"))
+            rec["components"][APK_KEY] = [{"name": f["name"], "sha256": f["sha256"], "size": f["size"]} for f in dist]
+            self.assertEqual(self.problems(canon(rec), "full"),
+                             [f"fetch.json: {APK_KEY}: lists {len(dist)} files, the lock's full plan says "
+                              f"{len(files)}"])
 
     def test_the_first_failing_stage_stops_the_run(self):
         # Item 3: a (the text) before b (this bundle): a non-canonical record
@@ -699,6 +728,43 @@ class SourcesCheckCliTest(_CliAsserts):
             write_fetched(d, self.b, "full")
             (d / "fetch.json").write_bytes(b"\xff\xfe{}")
             self.assertRefused(self.run_cli(directory=d), "fetch.json")
+        # U9c RED (tester, 2026-10-30; A81, U9c-2 (a)-(c), design item 4; (c) as O-21 rules: the line
+        # names the file, not the key).
+        lock = self.b.lock()
+        files = lock["components"][APK_KEY]["files"]
+        dist = sample_files(APK_KEY, files)
+        gitlab = [f for f in files if f not in dist]
+        with self.subTest(case="U9c-2 (a): a pre-U9c sample directory (the apk entry holds its GitLab files too)"):
+            d = self.tmp / "pre-u9c-sample"
+            d.mkdir()
+            for k in load_sbom_check().sample_keys(lock, ARCH):
+                for f in lock["components"][k]["files"]:
+                    (d / f["sha256"]).write_bytes(body_of(self.b, f))
+            (d / "fetch.json").write_bytes(pre_u9c_sample_record(self.b).encode("utf-8"))
+            r = self.run_cli("sample", directory=d)
+            self.assertRefused(r, f"fetch.json: {APK_KEY}: lists {len(files)} files, the lock's sample plan says "
+                                  f"{len(dist)}")
+            self.assertNoList(r)
+        with self.subTest(case="U9c-2 (b): a full record whose apk entry holds only the distfiles files"):
+            d = self.tmp / "full-apk-trimmed"
+            write_fetched(d, self.b, "full")
+            for f in gitlab:
+                (d / f["sha256"]).unlink()
+            rec = json.loads(record_text(self.b, "full"))
+            rec["components"][APK_KEY] = [{"name": f["name"], "sha256": f["sha256"], "size": f["size"]} for f in dist]
+            (d / "fetch.json").write_bytes(canon(rec).encode("utf-8"))
+            r = self.run_cli("full", directory=d)
+            self.assertRefused(r, f"fetch.json: {APK_KEY}: lists {len(dist)} files, the lock's full plan says "
+                                  f"{len(files)}")
+            self.assertNoList(r)
+        with self.subTest(case="U9c-2 (c): a sample directory that also holds a GitLab file of the apk sample key"):
+            d = self.tmp / "sample-plus-gitlab"
+            write_fetched(d, self.b, "sample")
+            extra = gitlab[0]
+            (d / extra["sha256"]).write_bytes(body_of(self.b, extra))
+            r = self.run_cli("sample", directory=d)
+            self.assertRefused(r, f"sbom_check: sources-check: {extra['sha256']}: not in the lock's plan")
+            self.assertNoList(r)
 
     def test_sources_check_never_writes_under_dir(self):
         before = snapshot(self.dir)
@@ -970,21 +1036,26 @@ class SourceIndexSchemaTest(_IndexCase):
         self.assertEqual(json.loads(self.S.lock_text(a)), a, "the index is plain JSON data")
 
     def test_sample_bundle_ships_exactly_the_sample(self):
+        # Re-pinned at U9c RED (tester, 2026-10-30; A81, U9c-4; design item 6 and item 14 *Controls*):
+        # the apk sample key is partial, every other sample key shipped; `path` per planned (key, name).
         index = self.ok("sample")
         lock = self.b.lock()
         sample = set(self.S.sample_keys(lock, ARCH))
+        self.assertIn(APK_KEY, sample, "fixture: the apk sample key")
+        planned = {(k, f["name"]) for k, f in plan_of(self.b, ARCH, "sample")}
         comps = self.lock_components(index)
-        self.assertEqual({c["key"] for c in comps if c["status"] == "shipped"}, sample)
+        self.assertEqual({c["key"] for c in comps if c["status"] == "shipped"}, sample - {APK_KEY})
+        self.assertEqual({c["key"] for c in comps if c["status"] == "partial"}, {APK_KEY})
         self.assertEqual({c["key"] for c in comps if c["status"] == "not-shipped"},
                          {k for k, e in lock["components"].items() if ARCH in e["arches"]} - sample)
         self.assertIn(NOT_SAMPLE, {c["key"] for c in comps if c["status"] == "not-shipped"})
         for c in comps:
             for f in c["files"]:
                 with self.subTest(key=c["key"], file=f["name"]):
-                    if c["status"] == "shipped":
+                    if (c["key"], f["name"]) in planned:
                         self.assertEqual(f["path"], f"sources/files/{f['sha256']}")
                     else:
-                        self.assertIsNone(f["path"], "path is null exactly when not shipped")
+                        self.assertIsNone(f["path"], "path is null exactly when the file is not in the sample plan")
         with self.subTest(case="a sha256 shared by a shipped and a not-shipped key"):
             byk = {c["key"]: c for c in comps}
             shared = {f["sha256"] for f in byk[SHARED_IN_SAMPLE]["files"]} & {f["sha256"] for f in byk[SHARED_OUT]["files"]}
@@ -1288,14 +1359,19 @@ class SourceSectionTest(_IndexCase):
                         want.append(f"| `{c['key']}` | {self.images(c)} | {SHIPPED_CELL} |")
                     elif c["status"] == "not-shipped":
                         want.append(f"| `{c['key']}` | {self.images(c)} | Upstream source: {c['files'][0]['url']} |")
+                    elif c["status"] == "partial":  # re-pinned at U9c RED (A81, U9c-4, design item 7)
+                        rest = [f for f in c["files"] if f["path"] is None]
+                        want.append(f"| `{c['key']}` | {self.images(c)} | {PARTIAL_CELL}{rest[0]['url']} |")
                     else:
                         want.append(f"| `{c['exempt']['package']}` | {c['exempt']['image']} | no source in this "
                                     f"bundle: cleared by a reviewed exemption ({c['listing']}) |")
                 self.assertEqual(rows, want, "one row per index component, in index order")
                 self.assertEqual(len([c for c in index["components"] if c["status"] == "not-shipped"]) > 0,
                                  which == "sample")
+                self.assertEqual([c["key"] for c in index["components"] if c["status"] == "partial"],
+                                 [APK_KEY] if which == "sample" else [], "a partial row in a sample only (U9c-4)")
                 for row in rows:
-                    if "Upstream source:" in row or "no source in this bundle" in row:
+                    if "Upstream source:" in row or "no source in this bundle" in row or PARTIAL_CELL in row:
                         self.assertNotIn("source in `sources/`", row, "a source claim only for shipped components")
 
     def test_sample_bundle_notices_say_do_not_distribute(self):

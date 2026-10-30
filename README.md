@@ -231,8 +231,11 @@ pulls the SBOM generator, then runs the `sources-fetch` one-shot
 default bridge), which fetches the files named in `docker/sources.lock.json`
 over HTTPS, only from the hosts listed in `docker/source-policy.json`, and
 checks every file's size and checksums against the lock. `--set sample` (what
-`verify.sh full` runs, through the offline check) fetches one entry per kind;
-`--set full` fetches everything. A failed or mismatched fetch fails the run,
+`verify.sh full` runs, through the offline check) fetches one entry per kind,
+except that for apk only the entry's distfiles.alpinelinux.org files are
+fetched, so verify and CI do not depend on gitlab.alpinelinux.org; a sample
+bundle's index and notices mark that apk entry as partial. `--set full`
+fetches everything, and so exercises the GitLab route, failing closed. A failed or mismatched fetch fails the run,
 with no retry.
 
 The offline check (`scripts/offline_check.sh`) builds a

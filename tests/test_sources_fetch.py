@@ -354,12 +354,28 @@ def only(b: LockBuilder, *keys: str) -> LockBuilder:
     return c
 
 
+APK_DISTFILES = "distfiles.alpinelinux.org"  # U9c (A81): the apk sample row's one host
+
+
+def sample_files(key: str, files: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """U9c (A81; design-notes "N9 amendment, U9c" item 3): a sample key's
+    planned files. For an apk key, only its distfiles.alpinelinux.org files,
+    in file order; every other kind, all of them. A mirror of the ruled
+    rule, never a call to `fetch_plan`."""
+    if key.split(":", 1)[0] != "apk":
+        return list(files)
+    return [f for f in files if host_of(f["url"]) == APK_DISTFILES]
+
+
 def plan_of(b: LockBuilder, arch: str, which: str) -> list[tuple[str, dict[str, Any]]]:
+    """The fetch plan, read independently of `fetch_plan`. Re-pinned at U9c
+    RED (tester, 2026-10-30; A81, U9c-1, design item 14 *Controls*): the
+    sample branch keeps only the distfiles files of an apk key."""
     lock = b.lock()
     if which == "sample":
         keys = load_sbom_check().sample_keys(lock, arch)
-    else:
-        keys = sorted(k for k, e in lock["components"].items() if arch in e["arches"])
+        return [(k, f) for k in keys for f in sample_files(k, lock["components"][k]["files"])]
+    keys = sorted(k for k, e in lock["components"].items() if arch in e["arches"])
     return [(k, f) for k in keys for f in lock["components"][k]["files"]]
 
 
@@ -834,7 +850,8 @@ class SourceFetchNameCheckTest(_FetchCase):
                 b = LockBuilder()
                 commit = b.apk(APK_KEY, patches=[patch_], plain=[("readline.trigger", blob("readline trigger", 40))],
                                distfiles=[dist], sums=sums)
-                run = self.run_fetch(b.text(), b.routes())
+                # Re-pinned at U9c RED (O-21 accepting O-20): the APKBUILD is fetched and checked in `full` only.
+                run = self.run_fetch(b.text(), b.routes(), which="full")
                 if case.startswith("control"):
                     self.assertEqual(run.rc, 0, run.text)
                     self.assertIn("fetch.json", run.listing())
@@ -971,9 +988,11 @@ class SourceFetchRecordTest(_FetchCase):
 
     def test_source_fetch_stops_at_the_run_deadline(self):
         b = one_per_kind()
-        plan = plan_of(b, ARCH, "sample")
         for which, jump, fails in (("sample", 301, True), ("full", 301, False), ("full", 10801, True)):
             with self.subTest(set=which, jump=jump):
+                # Re-pinned at U9c RED (A81, U9c-1): each run's own plan; the sample's first file is no
+                # longer the full set's first file (it was the same file before A81).
+                plan = plan_of(b, ARCH, which)
                 now = [1000.0]
                 routes = b.routes()
                 first = plan[0][1]["url"]
@@ -1580,7 +1599,8 @@ class FetchPlanTest(unittest.TestCase):
         comps = lock["components"]
         for arch in ("amd64", "arm64"):
             with self.subTest(arch=arch, set="sample"):
-                want = [(k, f) for k in sample_keys(lock, arch) for f in comps[k]["files"]]
+                # Re-pinned at U9c RED (A81, U9c-1): an apk key's distfiles files only.
+                want = [(k, f) for k in sample_keys(lock, arch) for f in sample_files(k, comps[k]["files"])]
                 self.assertEqual([tuple(x) for x in fetch_plan(lock, arch, "sample")], want)
             with self.subTest(arch=arch, set="full"):
                 want = [(k, f) for k in sorted(comps) if arch in comps[k]["arches"] for f in comps[k]["files"]]

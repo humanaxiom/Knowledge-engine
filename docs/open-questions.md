@@ -309,7 +309,8 @@ U7c Windows proof; decide before U7d's real lock run). *(Amended 2026-10-25, ana
 **Q73 and Q74 were resolved by the human on 2026-10-28** (Q73 option 2, verbatim "Ok"; Q74 `timeout-minutes` 69, verbatim "Make it 69 seconds", read as minutes). None of Q61-Q76 is open; Q77 is deferred. *(Amended 2026-10-28, analyst, U8; human rulings.)*
 **Q78-Q80 are open for the orchestrator** (raised 2026-10-29 by the analyst for U9, PSC-24 "U9 precision"): Q78 (is `--sources` mandatory), Q79 (a recorded full-set bundle at U9), Q80 (exempt checksum compare, security U6 L-1). None is for the human. Q77 stays deferred (U9 runs no re-lock). *(Amended 2026-10-29, analyst, U9 plan.)*
 **Q78-Q80 were resolved by the orchestrator on 2026-10-29**, each option 1 as recommended. None of Q61-Q80 is open; Q77 is deferred. *(Amended 2026-10-29, analyst, U9 orchestrator rulings.)*
-**Q81 is open for the human** (raised 2026-10-29 by the analyst at U9b): the sample fetch's dependence on gitlab.alpinelinux.org. *(Amended 2026-10-29, analyst, U9b.)*
+**Q81 resolved 2026-10-30 (human ruling): A81 = option 3**, a distfiles-only apk row in the verify/CI sample; the GitLab API raw route stays for operator full fetches. Planned as unit U9c before U10. *(Amended 2026-10-30, orchestrator.)*
+**Q82 ruled in part (A82a: diagnostic + measurement as U9d; D rejected)** (raised 2026-10-30 by the analyst from PR #15 CI run 40993359777): neo4j "unhealthy" at the offline client's launch, twice, with the runner's disk at 100% at the failure. For the orchestrator (A + C, a launch-failure diagnostic and runner measurement, recommended as U9d before U10); option D and any floor change are for the human. Deadline: before the next push of PR #15. *(Amended 2026-10-30, analyst, Q82.)*
 *Orchestrator refinement (2026-10-27; design notes U7d item 14).* The third,
 network-independent fetch of the Neo4j tarball moves to U8, so the U7d
 lock commit no longer waits for it.
@@ -1170,7 +1171,16 @@ lock commit no longer waits for it.
     the pin already covers. Security confirms in its U9 review.
   - Who rules: the orchestrator, on security's advice.
 
-- **Q81. Open (for the human; before U11's CI runs, and U9b's `verify
+- **Q81. Resolved 2026-10-30 (human ruling).** **A81:** option 3. The
+  verify/CI sample fetches, for the apk kind, only the
+  distfiles.alpinelinux.org file(s); the GitLab API raw route is proven by
+  operator full fetches (fail closed, Q61) and the recorded U8b runs. The
+  partial-key rule for U9-5/U9-6 and `source_index`, and whether the apk
+  sample key changes, are the architect's call in unit U9c. The human
+  wrote "Ok 3 it is" after the orchestrator explained that this GitLab is
+  Alpine's aports host, not the repo's (which is GitHub). *(Resolved
+  2026-10-30, orchestrator recording the human's ruling.)* Original text:
+  **Open (for the human; before U11's CI runs, and U9b's `verify
   full` runs are affected now). The sample fetch's dependence on
   gitlab.alpinelinux.org.** *(Added 2026-10-29, analyst, U9b.)*
   - Context:
@@ -1303,6 +1313,165 @@ lock commit no longer waits for it.
   - Deadline: before U11's CI runs. U9b's `verify full` runs, and the
     orchestrator's commit gate for U9a, are blocked now whenever GitLab
     is unreachable.
+
+- **Q82. Ruled in part 2026-10-30 (orchestrator, A82a): options A + C as unit U9d, after U9c's commit and before U10; D rejected (nothing merges on red); B and E only after U9d's CI measurement names the cause; the floor (O-12) and any push stay the human's.** Original text: **Open (for the orchestrator; option D and any floor change are
+  for the human). PR #15's CI fails at the offline client's launch:
+  `container knowledge-engine-neo4j-1 is unhealthy`.** *(Added
+  2026-10-30, analyst.)*
+  - Context:
+    - CI run 40993359777 (head 90db4b8: U8c-2, U9a, U9b) failed twice,
+      identically, in `offline_check.sh`'s client at `launch.sh`
+      (`compose up -d --no-build --wait`), with "dependency failed to
+      start: container knowledge-engine-neo4j-1 is unhealthy".
+      - Attempt 1: neo4j started 03:10:55.8Z, error 03:11:32.5Z (36.6 s).
+      - Attempt 2: neo4j started 04:09:13.5Z, error 04:09:56.0Z (42.5 s).
+      - Logs (`docs/evidence/platform-sbom/ci/`):
+        `ci-40993359777-attempt1.log` (saved by the analyst with
+        `gh run view 40993359777 --attempt 1 --log`),
+        `ci-40993359777-attempt2.log`, `ci-40993359777-launch-extract.txt`.
+    - Everything before it passed on the runner: the unit stage (`Ran
+      1328 tests`, `OK (skipped=7)`), gates-it, smoke, scan, the sample
+      fetch (GitLab answered), the bundle with sources and the install
+      (six image loads).
+    - The previous run, 40907497118 (head 5cf025c, 2026-10-29), passed
+      the same path: neo4j started 16:32:28.1Z and was healthy at
+      16:33:08.8Z, 40.7 s (`u8/ci-40907497118.log` l.4791-4805).
+    - Locally every `verify.sh full` passes this step
+      (`u9/orchestrator-verify-full-u9b.txt`, `u9c/green-verify-full.txt`).
+      The dev box (32 GB, Docker Desktop) is not the runner.
+  - Facts (analyst, from the logs, the tree and the upstream source):
+    1. **Not a timeout.** Docker counts a failed probe only after
+       `start_period` (20 s), and marks a container unhealthy after
+       `retries` (18) counted failures at `interval` (10 s). The earliest
+       time-out is therefore about 200 s after start, not 37-43 s.
+    2. **What compose reports.** Compose v2's dependency wait
+       (`isServiceHealthy`, docker/compose v2.40.0
+       `pkg/compose/convergence.go`) says "container X exited (N)" when
+       the state is `exited`, and "container X is unhealthy" when the
+       health status is `unhealthy`. Docker sets the status to `unhealthy`
+       when the health monitor stops, that is when the container's process
+       stops (moby `daemon/container/health.go`, `CloseMonitorChannel`:
+       "unhealthy when the monitor has stopped for compatibility reasons").
+       neo4j has `restart: unless-stopped` (`docker-compose.yml` l.141), so
+       a dead process moves to `restarting`, not `exited`, and compose
+       prints "is unhealthy". Reading: the neo4j process most likely died
+       (crash or kill) about 35-40 s after start. This is inferred from the
+       source; the client's compose version was not checked, and the log
+       does not say why the process died.
+    3. **What the client prints today: nothing about the failed
+       container.** `launch.sh` runs `compose up --wait` under `set -e`,
+       so the client exits on compose's line. The host half then prints
+       "offline_check: FAIL (the offline client failed (see its output
+       above))", a `df`, and tears dind down with its anonymous
+       `/var/lib/docker` volume. The container's state and logs are
+       destroyed. No `docker inspect` state (Status, ExitCode, OOMKilled,
+       Health.Log) and no `compose logs` are printed.
+    4. **The runner's disk was full at the failure.** `df` on `/dev/root`
+       (it holds `dist/` and the host daemon's root, where dind's
+       anonymous volume lives; free KiB):
+
+       | Run | after dind up | first reading after the client |
+       |---|---|---|
+       | 40907497118 (pass) | 5,723,360 | 1,035,356 ("after client run", after the inner teardown; the launch/smoke peak is not measured) |
+       | 40993359777 attempt 1 | 5,580,896 | 47,196 (100%, "before teardown") |
+       | 40993359777 attempt 2 | 5,581,428 | 47,576 (100%, "before teardown") |
+
+       The failing runs had 141,932 KiB (about 139 MiB) less free at dind
+       up. That matches the bundle's growth: the bundle stage used
+       2,450,960 KiB against 2,316,476 (+134,484 KiB); the sample is
+       136,571,547 B. The only reading after the failure is taken after
+       neo4j died, so the order (disk full, then neo4j died; or the
+       reverse) is not established. A full disk is the leading candidate,
+       not a proven cause.
+    5. **The 7 GiB floor did not catch it.** The floor (R6,
+       `offline_check.sh` l.200-204: basis 4.3 GiB measured at
+       platform-offline; O-12 kept it at U9a) passed at start (attempt 2:
+       8,578,232 KiB free, 8.18 GiB). By the failure the check had used
+       8,530,656 KiB (8.14 GiB) of that filesystem. The design-notes
+       estimate for the sample path, about 4.7 GiB (design-notes
+       l.3682-3683), is below the use measured here.
+    6. **Memory is not measured at launch.** Runner: `nproc=2`,
+       `mem_total_kib=8122984`, `swap_total_kib=3145724`,
+       `mem_available_kib` 5,854,544-5,908,188 at the gates-it probe
+       (`attempt2.log` l.2164, l.4033). The client's `/install` is a
+       tmpfs with no size (N14 is not built yet): install stages the whole
+       bundle there and keeps `app/` (now with `sources/`) while the stack
+       runs. Compose sets no memory options for neo4j, so it sizes its heap
+       and page cache from the RAM it sees. An OOM kill is the other
+       candidate; nothing in the log tells the two apart.
+    7. **Nothing the installed stack loads at launch changed** between
+       5cf025c and 90db4b8. `git diff 5cf025c 90db4b8 --stat --
+       docker-compose.yml docker-compose.offline.yml docker/
+       scripts/install.sh scripts/launch.sh` is empty. The vendor images
+       load under the same ids in both runs (phoenix fa28e9cd96dd, postgres
+       0ea6700a3b4f, valkey 081c2f5cb575). Outside docs and tests, only
+       `scripts/bundle.sh`, `scripts/offline_check.sh` (passes
+       `--sources`), `scripts/sbom_check.py`, NOTICE.md, README.md,
+       CHANGELOG.md and `licenses/libffi-jna-5.15.0.txt` changed. What
+       reaches the runner is size: the bundle gains `app/sources/` and
+       copies of the notices. U9c keeps the sample's byte size
+       (136,553,898 B, `u9/expected.md` "U9c"), so U9c does not change
+       this.
+  - Options:
+    - **A. A diagnostic first.** On a launch failure the client prints,
+      before it exits, the `docker inspect` state of each stack container
+      (Status, ExitCode, OOMKilled, the Health.Log tail) and `docker
+      compose logs --tail 50` for each unhealthy or exited service.
+      - Cost: a small change to `offline_check.sh`'s client half, with
+        tests; gate `full`. Verify-safe: it prints only on the failure
+        path and does not change pass or fail. The answer needs one CI
+        run, so one push (the human's approval).
+      - Proves: exited or killed (ExitCode, OOMKilled), neo4j's own last
+        lines (for example "No space left on device" or an
+        OutOfMemoryError), and the probe output. It does not fix CI.
+    - **B. Raise neo4j's start budget or set JVM heap/page-cache caps in
+      the installed compose.** Only with a measured cause.
+      - Cost: changes the shipped compose for every operator host, not
+        only the runner.
+      - Proves: nothing about the cause. A longer start budget cannot
+        help a process that died (facts 1, 2). Memory caps help only if A
+        shows OOMKilled.
+    - **C. Measure the runner in the same diagnostic.** Host `df` of the
+      measured paths and `MemAvailable`/swap from `/proc/meminfo`, inside
+      dind `docker system df` (images, containers, volumes), and `df -Pk
+      /install` in the client (already in N14). Taken after install, on a
+      launch failure, and after smoke before the inner teardown.
+      - Cost: a few lines, in the same unit as A.
+      - Proves: the peak disk and memory need of the sample path on the
+        runner. That is the number U10's `/install` sizing (N14) and U11's
+        floor re-derivation need, and it shows how close the passing run
+        was to the edge.
+    - **D. Accept CI red at launch until U11's floor re-derivation.**
+      - Cost: nothing to build.
+      - Contradicts "ship only after a full end-to-end smoke test" and
+        "nothing merges on red" (CLAUDE.md). PR #15 cannot merge, and
+        every later unit lands on red CI. Proves nothing. Rejected unless
+        the human reverses the shipping rule.
+    - **E. (Added by the analyst.) Fix the capacity once A and C name the
+      cause.** If disk: lower the offline check's peak, or raise the
+      floor to the measured need so a shortfall fails at the start with a
+      named message instead of as a neo4j death. If memory: size
+      `/install` (N14) or neo4j's memory.
+      - Cost: depends on the cause; the architect designs it. A floor
+        change pulls part of U11 forward. A CI-only step would break
+        "nothing CI runs that verify.sh does not".
+      - Proves: CI green on the measured margin.
+  - **Recommended: A + C now, as one small unit (U9d: after U9c's commit,
+    before U10), then one CI run on the human's push approval, then E as
+    the measurement says.**
+    - Without A, the next red run says no more than this one, because the
+      evidence is torn down with dind. C gives U10 (N14) and U11 the
+      measured numbers they are waiting for.
+    - The leading evidence (disk at 100%) points away from B.
+    - Counter-argument: A + C cost a CI round trip (about 40 min) before
+      any fix. Acting on the disk reading now (E) is quicker, but it rests
+      on one reading taken after the failure.
+  - Who rules: the orchestrator for A, C and the unit order (no recorded
+    ruling changes). The human for D, for the push that gives the CI run,
+    and for a floor change if it reaches the operator floor (U11; O-12
+    kept 7 GiB at U9a).
+  - Deadline: before the next push of PR #15. Nothing on platform-sbom
+    merges until this CI step is green.
 
 ## platform-skeleton
 

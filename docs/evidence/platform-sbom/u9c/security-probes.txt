@@ -1,0 +1,552 @@
+# U9c security probes (security, 2026-10-30)
+# Host: Windows, Python 3.12.13, run as `python -I <script> C:/repos/Knowledge-engine` from the session scratchpad
+# (no symlink, no network: run_fetch patches socket.create_connection to raise; fake R.OPENER only).
+# Repo state: working tree of agent/platform-sbom on 90db4b8 + the uncommitted U9c diff.
+# Profile paths redacted to <PROFILE> (evidence rule).
+
+## Script probe_u9c.py (sha256 02222a49209d5c2aa944ec8a690ad3380a4faf1cff36b0fdb5d4d95c77cc3972)
+
+"""Security probes, platform-sbom U9c (security, 2026-10-30). Run with
+`python -I probe_u9c.py <repo root>`; fake transport only (socket.create_connection
+is patched to raise), no network, nothing written outside temp dirs."""
+from __future__ import annotations
+
+import contextlib
+import io
+import json
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+ROOT = Path(sys.argv.pop(1)).resolve()
+sys.path.insert(0, str(ROOT))
+
+from tests.test_sources_fetch import (APK_KEY, ARCH, DEB_KEY, LockBuilder, _FetchCase, blob, h, host_of,  # noqa: E402
+                                      one_per_kind, wide)
+from tests.test_sbom_bundle import load_sbom_check  # noqa: E402
+from tests.test_source_index import GIT_SHA, _IndexCase, syn_policy  # noqa: E402
+
+GITLAB = "gitlab.alpinelinux.org"
+DIST = "distfiles.alpinelinux.org"
+
+
+def gl_calls(run):
+    return [u for u in run.net.calls if host_of(u) == GITLAB]
+
+
+def outcome_of(fn):
+    o = io.StringIO()
+    with contextlib.redirect_stdout(o):
+        try:
+            fn()
+            res = "returned"
+        except Exception as exc:  # noqa: BLE001
+            res = "raised " + type(exc).__name__
+    return res, o.getvalue()
+
+
+class P1_NoFailOpen(_FetchCase):
+    """(1) full fails closed without or with a bad APKBUILD; the sample still checks distfiles bytes."""
+
+    def test_p1a_full_plan_without_apkbuild_fails_closed(self):
+        b = one_per_kind()
+
+        def drop(real):
+            return lambda lock, arch, which: [(k, f) for k, f in real(lock, arch, which) if f["name"] != "APKBUILD"]
+        run = self.run_fetch(b.text(), b.routes(), which="full",
+                             patches=[lambda F: mock.patch.object(F.S, "fetch_plan", drop(F.S.fetch_plan))])
+        print("\n  P1a full, APKBUILD dropped from plan: rc=%d fail=%r skipped_in_text=%s record=%s"
+              % (run.rc, run.fail_lines, "skipped" in run.text, "fetch.json" in run.listing()))
+        self.assertEqual(run.rc, 1)
+        self.assertNotIn("skipped", run.text)
+        self.assertNotIn("fetch.json", run.listing())
+
+    def test_p1b_full_apkbuild_route_404_fails_closed(self):
+        b = one_per_kind()
+        routes = b.routes()
+        apkbuild = next(f for f in b.components[APK_KEY]["files"] if f["name"] == "APKBUILD")
+        routes[apkbuild["url"]] = (404, {}, b"")
+        run = self.run_fetch(b.text(), routes, which="full")
+        print("\n  P1b full, APKBUILD answers 404: rc=%d fail=%r gitlab_calls=%d"
+              % (run.rc, run.fail_lines, len(gl_calls(run))))
+        self.assertEqual(run.rc, 1)
+        self.assertNotIn("fetch.json", run.listing())
+        self.assertEqual(len(gl_calls(run)), 1)
+
+    def _apk_with_sums(self, sums_fn):
+        dist = ("readline-8.2.13.tar.gz", blob("readline tarball", 300))
+        patch_ = ("fix-build.patch", blob("readline patch", 90))
+        b = one_per_kind()
+        a = LockBuilder()
+        a.apk(APK_KEY, patches=[patch_], plain=[("readline.trigger", blob("readline trigger", 40))],
+              distfiles=[dist], sums=sums_fn(dist, patch_))
+        b.components[APK_KEY] = a.components[APK_KEY]
+        b.bodies.update(a.bodies)
+        return b
+
+    def test_p1c_sha512sums_digest_differs(self):
+        # The APKBUILD lists both names, but its sha512 for the distfile is not the lock value.
+        b = self._apk_with_sums(lambda d, p: [(d[0], "e" * 128), (p[0], h("sha512", p[1]))])
+        for which in ("full", "sample"):
+            run = self.run_fetch(b.text(), b.routes(), which=which)
+            print("\n  P1c sha512sums digest differs, %s: rc=%d fail=%r skip_lines=%d gitlab_calls=%d"
+                  % (which, run.rc, run.fail_lines, run.out.count("name check skipped"), len(gl_calls(run))))
+            if which == "full":
+                self.assertEqual(run.rc, 1)
+                self.assertIn("sha512sums names differ", run.fail_lines[0])
+                self.assertNotIn("fetch.json", run.listing())
+            else:  # the ruled A81 trade-off: the sample does not read the APKBUILD
+                self.assertEqual(run.rc, 0)
+                self.assertEqual(gl_calls(run), [])
+
+    def test_p1d_full_sha512sums_names_differ_fails(self):
+        b = self._apk_with_sums(lambda d, p: [(d[0], h("sha512", d[1]))])  # the patch name is missing
+        run = self.run_fetch(b.text(), b.routes(), which="full")
+        print("\n  P1d full, sha512sums names differ: rc=%d fail=%r" % (run.rc, run.fail_lines))
+        self.assertEqual(run.rc, 1)
+        self.assertIn("sha512sums names differ", run.fail_lines[0])
+
+    def test_p1e_sample_distfile_bytes_swapped_fails(self):
+        b = one_per_kind()
+        routes = b.routes()
+        dist = next(f for f in b.components[APK_KEY]["files"] if host_of(f["url"]) == DIST)
+        routes[dist["url"]] = blob("evil tarball", 300)
+        run = self.run_fetch(b.text(), routes)
+        print("\n  P1e sample, distfile bytes swapped (same size): rc=%d fail=%r placed=%s"
+              % (run.rc, run.fail_lines, dist["sha256"] in run.listing()))
+        self.assertEqual(run.rc, 1)
+        self.assertNotIn(dist["sha256"], run.listing())
+        self.assertNotIn("fetch.json", run.listing())
+
+    def test_p1f_sample_distfile_lock_sha512_false_fails(self):
+        b = one_per_kind()
+        dist = next(f for f in b.components[APK_KEY]["files"] if host_of(f["url"]) == DIST)
+        dist["upstream"]["value"] = "e" * 128
+        run = self.run_fetch(b.text(), b.routes())
+        print("\n  P1f sample, lock sha512 of the distfile false of its bytes: rc=%d fail=%r placed=%s calls=%d"
+              % (run.rc, run.fail_lines, dist["sha256"] in run.listing(), len(run.net.calls)))
+        self.assertEqual(run.rc, 1)
+        self.assertNotIn(dist["sha256"], run.listing())
+
+    def test_p1g_sample_distfile_one_byte_longer_fails(self):
+        b = one_per_kind()
+        routes = b.routes()
+        dist = next(f for f in b.components[APK_KEY]["files"] if host_of(f["url"]) == DIST)
+        routes[dist["url"]] = b.bodies[dist["url"]] + b"X"
+        run = self.run_fetch(b.text(), routes)
+        print("\n  P1g sample, distfile one byte longer: rc=%d fail=%r" % (run.rc, run.fail_lines))
+        self.assertEqual(run.rc, 1)
+        self.assertNotIn(dist["sha256"], run.listing())
+
+    def test_p1h_skip_keyed_on_set_and_kind_only(self):
+        F = self.F
+        b = one_per_kind()
+        lock = b.lock()
+        d = tempfile.mkdtemp()
+        res, printed = outcome_of(lambda: F._name_check(d, APK_KEY, lock["components"][APK_KEY], "full"))
+        print("\n  P1h _name_check(apk, full, APKBUILD not on disk): %s; printed=%r" % (res, printed))
+        self.assertNotEqual(res, "returned")
+        for which in ("Sample", "SAMPLE", "sample ", "", None, "partial"):
+            res, printed = outcome_of(lambda: F._name_check(d, APK_KEY, lock["components"][APK_KEY], which))
+            print("  P1h _name_check(apk, which=%r, APKBUILD not on disk): %s; skip printed=%s"
+                  % (which, res, "skipped" in printed))
+            self.assertNotIn("skipped", printed)
+            self.assertNotEqual(res, "returned")
+        res, printed = outcome_of(lambda: F._name_check(d, DEB_KEY, lock["components"][DEB_KEY], "sample"))
+        print("  P1h _name_check(deb, sample, .dsc not on disk): %s; printed=%r" % (res, printed))
+        self.assertNotEqual(res, "returned")
+        res, printed = outcome_of(lambda: F._name_check(d, APK_KEY, lock["components"][APK_KEY], "sample"))
+        print("  P1h control _name_check(apk, sample): %s; printed=%r" % (res, printed.strip()))
+
+
+class P2_Hosts(unittest.TestCase):
+    """(2) the plan only selects a host the lock rules bind to apk; odd URL forms are refused by the lock rules first."""
+
+    def setUp(self):
+        self.S = load_sbom_check()
+
+    def test_p2a_constant_in_kind_hosts_and_policy(self):
+        pol = json.loads((ROOT / "docker" / "source-policy.json").read_text(encoding="utf-8"))
+        print("\n  P2a KIND_HOSTS[apk]=%r; APK_DISTFILES_HOST in policy hosts=%s; policy hosts=%d"
+              % (self.S.KIND_HOSTS["apk"], self.S.APK_DISTFILES_HOST in pol["hosts"], len(pol["hosts"])))
+        self.assertIn(self.S.APK_DISTFILES_HOST, self.S.KIND_HOSTS["apk"])
+        self.assertIn(self.S.APK_DISTFILES_HOST, pol["hosts"])
+
+    def test_p2b_committed_sample_rows_are_full_rows(self):
+        lock = json.loads((ROOT / "docker" / "sources.lock.json").read_text(encoding="utf-8"))
+        pol = json.loads((ROOT / "docker" / "source-policy.json").read_text(encoding="utf-8"))
+        sample = self.S.fetch_plan(lock, "amd64", "sample")
+        full = self.S.fetch_plan(lock, "amd64", "full")
+        sh = sorted({host_of(f["url"]) for _, f in sample})
+        print("\n  P2b committed sample lock-URL hosts=%s; subset of policy hosts=%s; every sample row is a full row=%s"
+              % (sh, set(sh) <= set(pol["hosts"]), all(x in full for x in sample)))
+        self.assertNotIn(GITLAB, sh)
+        self.assertTrue(all(x in full for x in sample))
+
+    def test_p2c_odd_apk_url_forms_refused_by_lock_rules(self):
+        cases = {
+            "upper-case host": "https://DISTFILES.alpinelinux.org/distfiles/v3.23/readline-8.2.13.tar.gz",
+            "userinfo": "https://x@distfiles.alpinelinux.org/distfiles/v3.23/readline-8.2.13.tar.gz",
+            "port": "https://distfiles.alpinelinux.org:8443/distfiles/v3.23/readline-8.2.13.tar.gz",
+            "http": "http://distfiles.alpinelinux.org/distfiles/v3.23/readline-8.2.13.tar.gz",
+            "other host": "https://evil.example/distfiles/v3.23/readline-8.2.13.tar.gz",
+            "github for apk": "https://github.com/x/readline-8.2.13.tar.gz",
+            "trailing-dot host": "https://distfiles.alpinelinux.org./distfiles/v3.23/readline-8.2.13.tar.gz",
+        }
+        print()
+        for name, url in cases.items():
+            b = one_per_kind()
+            f = next(f for f in b.components[APK_KEY]["files"] if host_of(f["url"]) == DIST)
+            f["url"] = url
+            probs = self.S.lock_entry_problems(b.text(), syn_policy())
+            print("  P2c %-18s -> %s" % (name, (probs[0][:120] if probs else "ACCEPTED")))
+            self.assertTrue(probs, name)
+
+
+class P3_PartialNeverFull(_IndexCase):
+    """(3) a partial key never passes a full bundle; only the apk sample key may be partial."""
+
+    def _short(self, which, drop):
+        real = self.S.fetch_plan
+        return lambda lock, arch, w: [(k, f) for k, f in real(lock, arch, w) if not (w == which and drop(k, f))]
+
+    def _index(self, which, listing):
+        return self.build(which, listing=listing)
+
+    def test_p3a_index_full_partial_refused(self):
+        for label, dropf in (("apk GitLab files dropped", lambda k, f: k == APK_KEY and host_of(f["url"]) == GITLAB),
+                             ("deb one file dropped", lambda k, f: k == DEB_KEY and f["name"].endswith(".debian.tar.xz"))):
+            drop = self._short("full", dropf)
+            listing = {f["sha256"]: ("file", f["size"]) for _, f in drop(self.b.lock(), ARCH, "full")}
+            with mock.patch.object(self.S, "fetch_plan", side_effect=drop):
+                idx, probs = self._index("full", listing)
+            print("\n  P3a index full, %s: index produced=%s partial problems=%s"
+                  % (label, idx is not None, [p for p in probs if "partial" in p]))
+            self.assertIsNone(idx)
+            self.assertTrue([p for p in probs if "partial in a full bundle" in p])
+
+    def test_p3b_index_sample_non_apk_partial_refused(self):
+        drop = self._short("sample", lambda k, f: k == DEB_KEY and f["name"].endswith(".debian.tar.xz"))
+        listing = {f["sha256"]: ("file", f["size"]) for _, f in drop(self.b.lock(), ARCH, "sample")}
+        with mock.patch.object(self.S, "fetch_plan", side_effect=drop):
+            idx, probs = self._index("sample", listing)
+        print("\n  P3b index sample, deb partial: index produced=%s problems=%s"
+              % (idx is not None, [p for p in probs if "partial" in p]))
+        self.assertIsNone(idx)
+
+    def test_p3c_index_sample_listing_with_a_gitlab_file_refused(self):
+        plan = self.S.fetch_plan(self.b.lock(), ARCH, "sample")
+        listing = {f["sha256"]: ("file", f["size"]) for _, f in plan}
+        extra = next(f for f in self.b.lock()["components"][APK_KEY]["files"] if host_of(f["url"]) == GITLAB)
+        listing[extra["sha256"]] = ("file", extra["size"])
+        idx, probs = self._index("sample", listing)
+        print("\n  P3c index sample, --files also holds a GitLab file: index produced=%s problems=%s"
+              % (idx is not None, probs[:2]))
+        self.assertIsNone(idx)
+
+    def test_p3d_index_sample_control(self):
+        plan = self.S.fetch_plan(self.b.lock(), ARCH, "sample")
+        listing = {f["sha256"]: ("file", f["size"]) for _, f in plan}
+        idx, probs = self._index("sample", listing)
+        st = {}
+        for c in (idx or {}).get("components", []):
+            st[c["status"]] = st.get(c["status"], 0) + 1
+        print("\n  P3d control index sample: produced=%s statuses=%s problems=%s" % (idx is not None, st, probs[:2]))
+        self.assertIsNotNone(idx)
+
+    def _ix(self, which, key=APK_KEY):
+        lock = self.b.lock()
+        files = [dict(f, path=f"sources/files/{f['sha256']}" if (host_of(f["url"]) == DIST if key == APK_KEY else i == 0)
+                      else None) for i, f in enumerate(lock["components"][key]["files"])]
+        return {"format": 1, "set": which, "arch": ARCH, "git_sha": GIT_SHA, "lock_sha256": "0" * 64,
+                "components": [{"key": key, "kind": key.split(":", 1)[0], "status": "partial",
+                                "files": files, "packages": [{"image": "valkey", "spdxid": "SPDXRef-x"}]}],
+                "unparsed": [], "unidentified": [], "unlicensed": {}}
+
+    def test_p3e_notices_full_partial_refused(self):
+        text, probs = self.S.source_section(self._ix("full"))
+        print("\n  P3e notices, full index with a partial apk row: produced=%s problems=%s" % (text is not None, probs))
+        self.assertIsNone(text)
+        text, probs = self.S.source_section(self._ix("sample"))
+        print("  P3e control notices, sample index with the apk partial row: produced=%s" % (text is not None))
+        self.assertIsNotNone(text)
+
+    def test_p3f_notices_sample_deb_partial(self):
+        text, probs = self.S.source_section(self._ix("sample", DEB_KEY))
+        print("\n  P3f notices, hand-made sample index with a deb partial row: produced=%s problems=%s"
+              % (text is not None, probs))
+
+
+class P4_NoticesHostile(_IndexCase):
+    """(4) hostile key, URL or image in the partial row: refused, never escaped."""
+
+    def _ix(self):
+        lock = self.b.lock()
+        files = [dict(f, path=f"sources/files/{f['sha256']}" if host_of(f["url"]) == DIST else None)
+                 for f in lock["components"][APK_KEY]["files"]]
+        return {"format": 1, "set": "sample", "arch": ARCH, "git_sha": GIT_SHA, "lock_sha256": "0" * 64,
+                "components": [{"key": APK_KEY, "kind": "apk", "status": "partial", "files": files,
+                                "packages": [{"image": "valkey", "spdxid": "SPDXRef-x"}]}],
+                "unparsed": [], "unidentified": [], "unlicensed": {}}
+
+    def test_p4a_hostile_values_refused(self):
+        def url(v):
+            return lambda c: c["files"][0].update(url=v)
+        cases = {
+            "url pipe": url("https://gitlab.alpinelinux.org/a|b"),
+            "url backtick": url("https://gitlab.alpinelinux.org/a`b"),
+            "url html tag": url("https://gitlab.alpinelinux.org/<script>alert(1)</script>"),
+            "url backslash": url("https://gitlab.alpinelinux.org/a\b"),
+            "url space": url("https://gitlab.alpinelinux.org/a b"),
+            "url newline row": url("https://gitlab.alpinelinux.org/a\n| x | y | z |"),
+            "url CR": url("https://gitlab.alpinelinux.org/a\rb"),
+            "url RLO": url("https://gitlab.alpinelinux.org/\u202eb"),
+            "url empty": url(""),
+            "url list": url(["x"]),
+            "url None": url(None),
+            "key pipe": lambda c: c.update(key=APK_KEY + "|x"),
+            "key backtick": lambda c: c.update(key=APK_KEY + "`x"),
+            "key newline": lambda c: c.update(key=APK_KEY + "\n## x"),
+            "key int": lambda c: c.update(key=7),
+            "image md link": lambda c: c["packages"][0].update(image="[x](javascript:alert(1))"),
+            "image star": lambda c: c["packages"][0].update(image="valkey*"),
+            "image pipe": lambda c: c["packages"][0].update(image="a|b"),
+            "no packages": lambda c: c.update(packages=[]),
+            "files a string": lambda c: c.update(files="x"),
+            "files missing": lambda c: c.pop("files"),
+            "every file pathed": lambda c: [f.update(path="p") for f in c["files"]],
+            "no file pathed": lambda c: [f.update(path=None) for f in c["files"]],
+        }
+        print()
+        for name, change in cases.items():
+            ix = self._ix()
+            change(ix["components"][0])
+            text, probs = self.S.source_section(ix)
+            print("  P4a %-18s -> %s" % (name, "PRODUCED (not refused)" if text is not None
+                                         else "refused: " + probs[0][:110]))
+            self.assertIsNone(text, name)
+            if text is None:
+                self.assertTrue(all("|" not in (p.split(":", 1)[0]) for p in probs))
+
+    def test_p4b_hostile_lock_values_never_reach_the_index(self):
+        print()
+        for name, edit in (
+                ("pipe in the apk APKBUILD URL", lambda b: b.components[APK_KEY]["files"][0].update(
+                    url=b.components[APK_KEY]["files"][0]["url"] + "|x")),
+                ("backtick in the apk key", lambda b: b.components.__setitem__(APK_KEY.replace("@", "`@"),
+                                                                                 b.components.pop(APK_KEY))),
+                ("pipe in the apk key", lambda b: b.components.__setitem__(APK_KEY.replace("@", "|@"),
+                                                                             b.components.pop(APK_KEY)))):
+            b = wide()
+            edit(b)
+            probs = self.S.lock_entry_problems(b.text(), syn_policy())
+            print("  P4b lock with %-30s: lock_entry_problems -> %s" % (name, probs[0][:110] if probs else "ACCEPTED"))
+            self.assertTrue(probs)
+
+    def test_p4c_wording_row(self):
+        text, probs = self.S.source_section(self._ix())
+        lines = text.splitlines()
+        row = [ln for ln in lines if ln.startswith(f"| `{APK_KEY}`")][0]
+        print("\n  P4c row: %s" % row)
+        print("  P4c first non-blank lines: %r" % [ln for ln in lines if ln.strip()][:2])
+        self.assertNotIn("source in `sources/`", row)
+
+
+class P5_StageLockZeroRequests(_FetchCase):
+    def test_p5_no_distfiles_zero_requests(self):
+        b = LockBuilder()
+        b.apk(APK_KEY, patches=[("fix-build.patch", blob("readline patch", 90))],
+              plain=[("readline.trigger", blob("readline trigger", 40))])
+        b.deb(DEB_KEY, [("bash_5.2.15.orig.tar.gz", blob("bash orig", 400)),
+                        ("bash_5.2.15-2.debian.tar.xz", blob("bash debian 2", 120))])
+        run = self.run_fetch(b.text(), b.routes())
+        print("\n  P5 sample, apk sample key with no distfiles file: rc=%d fail=%r calls=%d listing=%s"
+              % (run.rc, run.fail_lines, len(run.net.calls), run.listing()))
+        self.assertEqual(run.rc, 1)
+        self.assertEqual(run.net.calls, [])
+        self.assertEqual(run.listing(), [])
+        run = self.run_fetch(b.text(), b.routes(), which="full")
+        print("  P5 control, full of the same lock: rc=%d calls=%d" % (run.rc, len(run.net.calls)))
+
+
+def _refuse(*a, **k):
+    raise ConnectionRefusedError(111, "Connection refused")
+
+
+class P6_GitLabClosed(_FetchCase):
+    @staticmethod
+    def closed(b):
+        routes = b.routes()
+        for u in list(routes):
+            if host_of(u) == GITLAB:
+                routes[u] = _refuse
+        return routes
+
+    def test_p6_sample_and_full(self):
+        for name, b in (("one_per_kind", one_per_kind()), ("wide", wide())):
+            run = self.run_fetch(b.text(), self.closed(b))
+            print("\n  P6 %s sample, GitLab refusing: rc=%d gitlab_calls=%d total_calls=%d record=%s"
+                  % (name, run.rc, len(gl_calls(run)), len(run.net.calls), "fetch.json" in run.listing()))
+            self.assertEqual(run.rc, 0)
+            self.assertEqual(gl_calls(run), [])
+        b = one_per_kind()
+        run = self.run_fetch(b.text(), self.closed(b), which="full",
+                             patches=[lambda F: mock.patch.object(F.R, "_ACTIVE_RETRIES", [3])])
+        print("  P6 full, GitLab refusing: rc=%d call hosts=%r sleeps=%r fail=%r"
+              % (run.rc, [host_of(u) for u in run.net.calls], run.sleeps.calls, run.fail_lines))
+        self.assertEqual(run.rc, 1)
+        self.assertEqual(len(run.net.calls), 1)
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
+
+## Script probe_bs.py (sha256 c6a7e77d159ec70f7e343a0af2fdb0e5bdce8d756b9e1a37de16b099fd371186)
+
+import sys
+from pathlib import Path
+ROOT = Path(sys.argv[1]).resolve()
+sys.path.insert(0, str(ROOT))
+from tests.test_sbom_bundle import load_sbom_check
+S = load_sbom_check()
+BS = chr(92)
+ix = {"format": 1, "set": "sample", "components": [{"key": "apk:a@1-r0", "kind": "apk", "status": "partial",
+      "packages": [{"image": "valkey"}],
+      "files": [{"url": "https://gitlab.alpinelinux.org/a" + BS + "b", "path": None},
+                {"url": "https://distfiles.alpinelinux.org/x", "path": "sources/files/" + "0" * 64}]}]}
+text, probs = S.source_section(ix)
+print("  P4d url with a real backslash (chr 92) ->", "PRODUCED" if text else "refused: " + probs[0][:110])
+ix["components"][0]["files"][0]["url"] = "https://gitlab.alpinelinux.org/ok"
+text, probs = S.source_section(ix)
+print("  P4d control, same index with a plain URL ->", "produced" if text else probs)
+
+## Output of probe_u9c.py (unedited except redaction)
+
+test_p1a_full_plan_without_apkbuild_fails_closed (__main__.P1_NoFailOpen.test_p1a_full_plan_without_apkbuild_fails_closed) ... ok
+test_p1b_full_apkbuild_route_404_fails_closed (__main__.P1_NoFailOpen.test_p1b_full_apkbuild_route_404_fails_closed) ... ok
+test_p1c_sha512sums_digest_differs (__main__.P1_NoFailOpen.test_p1c_sha512sums_digest_differs) ... ok
+test_p1d_full_sha512sums_names_differ_fails (__main__.P1_NoFailOpen.test_p1d_full_sha512sums_names_differ_fails) ... ok
+test_p1e_sample_distfile_bytes_swapped_fails (__main__.P1_NoFailOpen.test_p1e_sample_distfile_bytes_swapped_fails) ... ok
+test_p1f_sample_distfile_lock_sha512_false_fails (__main__.P1_NoFailOpen.test_p1f_sample_distfile_lock_sha512_false_fails) ... ok
+test_p1g_sample_distfile_one_byte_longer_fails (__main__.P1_NoFailOpen.test_p1g_sample_distfile_one_byte_longer_fails) ... ok
+test_p1h_skip_keyed_on_set_and_kind_only (__main__.P1_NoFailOpen.test_p1h_skip_keyed_on_set_and_kind_only) ... ok
+test_p2a_constant_in_kind_hosts_and_policy (__main__.P2_Hosts.test_p2a_constant_in_kind_hosts_and_policy) ... ok
+test_p2b_committed_sample_rows_are_full_rows (__main__.P2_Hosts.test_p2b_committed_sample_rows_are_full_rows) ... ok
+test_p2c_odd_apk_url_forms_refused_by_lock_rules (__main__.P2_Hosts.test_p2c_odd_apk_url_forms_refused_by_lock_rules) ... ok
+test_p3a_index_full_partial_refused (__main__.P3_PartialNeverFull.test_p3a_index_full_partial_refused) ... ok
+test_p3b_index_sample_non_apk_partial_refused (__main__.P3_PartialNeverFull.test_p3b_index_sample_non_apk_partial_refused) ... ok
+test_p3c_index_sample_listing_with_a_gitlab_file_refused (__main__.P3_PartialNeverFull.test_p3c_index_sample_listing_with_a_gitlab_file_refused) ... ok
+test_p3d_index_sample_control (__main__.P3_PartialNeverFull.test_p3d_index_sample_control) ... ok
+test_p3e_notices_full_partial_refused (__main__.P3_PartialNeverFull.test_p3e_notices_full_partial_refused) ... ok
+test_p3f_notices_sample_deb_partial (__main__.P3_PartialNeverFull.test_p3f_notices_sample_deb_partial) ... ok
+test_p4a_hostile_values_refused (__main__.P4_NoticesHostile.test_p4a_hostile_values_refused) ... 
+  P1a full, APKBUILD dropped from plan: rc=1 fail=["bundle_fetch: FAIL (stage fetch: FileNotFoundError: [Errno 2] No such file or directory: '<PROFILE>\\\\AppData\\\\Local\\\\Temp\\\\ke-u8a-ei4o9n9l\\\\out\\\\9e16d0061a9deb2c2d2f5db43a1b3ba026d42d1a6dd10c042ef738cd750908be'; no retry)"] skipped_in_text=False record=False
+
+  P1b full, APKBUILD answers 404: rc=1 fail=['bundle_fetch: FAIL (stage fetch: gitlab.alpinelinux.org: APKBUILD: HTTP 404: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?<query omitted>; no retry)'] gitlab_calls=1
+
+  P1c sha512sums digest differs, full: rc=1 fail=['bundle_fetch: FAIL (stage fetch: gitlab.alpinelinux.org: APKBUILD: APKBUILD at 164709483a69ff847763c0d3c9ffca929d1a7169: sha512sums names differ from the lock entry; no retry)'] skip_lines=0 gitlab_calls=3
+
+  P1c sha512sums digest differs, sample: rc=0 fail=[] skip_lines=1 gitlab_calls=0
+
+  P1d full, sha512sums names differ: rc=1 fail=['bundle_fetch: FAIL (stage fetch: gitlab.alpinelinux.org: APKBUILD: APKBUILD at 164709483a69ff847763c0d3c9ffca929d1a7169: sha512sums names differ from the lock entry; no retry)']
+
+  P1e sample, distfile bytes swapped (same size): rc=1 fail=['bundle_fetch: FAIL (stage fetch: distfiles.alpinelinux.org: readline-8.2.13.tar.gz: sha256 mismatch: got a7923a3dc11608f795d59a81e26a8d62b1e759e269e0d53decb84f8daaac207a, lock says 9198e4dbde4de640441270dd1cd5094256aed772e192cf9a9144c7c6afc90991; no retry)'] placed=False
+
+  P1f sample, lock sha512 of the distfile false of its bytes: rc=1 fail=['bundle_fetch: FAIL (stage fetch: distfiles.alpinelinux.org: readline-8.2.13.tar.gz: sha512 mismatch: got a6bf625ca40624d1339ccdf77c5bc54753b2e0cc277044ca2cadeedc44904c4c9261603d592413912332e0c2fd8d596eaa63658df9091179e65e902ee0205405, APKBUILD sha512sums at 164709483a69ff847763c0d3c9ffca929d1a7169 says eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee; no retry)'] placed=False calls=1
+
+  P1g sample, distfile one byte longer: rc=1 fail=['bundle_fetch: FAIL (stage fetch: distfiles.alpinelinux.org: readline-8.2.13.tar.gz: more than 300 bytes: https://distfiles.alpinelinux.org/distfiles/v3.23/readline-8.2.13.tar.gz; no retry)']
+
+  P1h _name_check(apk, full, APKBUILD not on disk): raised FileNotFoundError; printed=''
+  P1h _name_check(apk, which='Sample', APKBUILD not on disk): raised FileNotFoundError; skip printed=False
+  P1h _name_check(apk, which='SAMPLE', APKBUILD not on disk): raised FileNotFoundError; skip printed=False
+  P1h _name_check(apk, which='sample ', APKBUILD not on disk): raised FileNotFoundError; skip printed=False
+  P1h _name_check(apk, which='', APKBUILD not on disk): raised FileNotFoundError; skip printed=False
+  P1h _name_check(apk, which=None, APKBUILD not on disk): raised FileNotFoundError; skip printed=False
+  P1h _name_check(apk, which='partial', APKBUILD not on disk): raised FileNotFoundError; skip printed=False
+  P1h _name_check(deb, sample, .dsc not on disk): raised FileNotFoundError; printed=''
+  P1h control _name_check(apk, sample): returned; printed='bundle_fetch: apk apk:readline@8.2.13-r1: APKBUILD name check skipped (sample set, A81)'
+
+  P2a KIND_HOSTS[apk]=('gitlab.alpinelinux.org', 'distfiles.alpinelinux.org'); APK_DISTFILES_HOST in policy hosts=True; policy hosts=9
+
+  P2b committed sample lock-URL hosts=['apt-archive.postgresql.org', 'distfiles.alpinelinux.org', 'files.pythonhosted.org', 'github.com', 'repo1.maven.org', 'snapshot.debian.org']; subset of policy hosts=True; every sample row is a full row=True
+
+  P2c upper-case host    -> lock: apk:readline@8.2.13-r1: url host DISTFILES.alpinelinux.org is not in docker/source-policy.json hosts
+  P2c userinfo           -> lock: apk:readline@8.2.13-r1: url carries userinfo
+  P2c port               -> lock: apk:readline@8.2.13-r1: url carries a port
+  P2c http               -> lock: apk:readline@8.2.13-r1: url scheme is not https
+  P2c other host         -> lock: apk:readline@8.2.13-r1: url host evil.example is not in docker/source-policy.json hosts
+  P2c github for apk     -> lock: apk:readline@8.2.13-r1: readline-8.2.13.tar.gz: url host github.com is not a apk file host
+  P2c trailing-dot host  -> lock: apk:readline@8.2.13-r1: url host distfiles.alpinelinux.org. is not in docker/source-policy.json hosts
+
+  P3a index full, apk GitLab files dropped: index produced=False partial problems=['index: apk:readline@8.2.13-r1 is partial in a full bundle']
+
+  P3a index full, deb one file dropped: index produced=False partial problems=['index: deb:bash@5.2.15-2 is partial in a full bundle']
+
+  P3b index sample, deb partial: index produced=False problems=['index: deb:bash@5.2.15-2 is partial, and only the apk sample key may be (A81)']
+
+  P3c index sample, --files also holds a GitLab file: index produced=False problems=["9e16d0061a9deb2c2d2f5db43a1b3ba026d42d1a6dd10c042ef738cd750908be: not in the lock's plan"]
+
+  P3d control index sample: produced=True statuses={'not-shipped': 3, 'partial': 1, 'shipped': 6, 'exempt': 1} problems=[]
+
+  P3e notices, full index with a partial apk row: produced=False problems=['notices: apk:readline@8.2.13-r1 is partial in a full index']
+  P3e control notices, sample index with the apk partial row: produced=True
+
+  P3f notices, hand-made sample index with a deb partial row: produced=True problems=[]
+
+  P4a url pipe           -> refused: notices: URL 'https://gitlab.alpinelinux.org/a|b' cannot be printed in the Markdown table: refused, not escape
+  P4a url backtick       -> refused: notices: URL 'https://gitlab.alpinelinux.org/a`b' cannot be printed in the Markdown table: refused, not escape
+  P4a url html tag       -> refused: notices: URL 'https://gitlab.alpinelinux.org/<script>alert(1)</script>' cannot be printed in the Markdown tabl
+  P4a url backslash      -> refused: notices: URL 'https://gitlab.alpinelinux.org/a\x08' cannot be printed in the Markdown table: refused, not esca
+  P4a url space          -> refused: notices: URL 'https://gitlab.alpinelinux.org/a b' cannot be printed in the Markdown table: refused, not escape
+  P4a url newline row    -> refused: notices: URL 'https://gitlab.alpinelinux.org/a\n| x | y | z |' cannot be printed in the Markdown table: refuse
+  P4a url CR             -> refused: notices: URL 'https://gitlab.alpinelinux.org/a\rb' cannot be printed in the Markdown table: refused, not escap
+  P4a url RLO            -> refused: notices: URL 'https://gitlab.alpinelinux.org/\u202eb' cannot be printed in the Markdown table: refused, not es
+  P4a url empty          -> refused: notices: URL '' cannot be printed in the Markdown table: refused, not escaped
+  P4a url list           -> refused: notices: URL ['x'] cannot be printed in the Markdown table: refused, not escaped
+  P4a url None           -> refused: notices: URL None cannot be printed in the Markdown table: refused, not escaped
+  P4a key pipe           -> refused: notices: component key 'apk:readline@8.2.13-r1|x' cannot be printed in the Markdown table: refused, not escape
+  P4a key backtick       -> refused: notices: component key 'apk:readline@8.2.13-r1`x' cannot be printed in the Markdown table: refused, not escape
+  P4a key newline        -> refused: notices: component key 'apk:readline@8.2.13-r1\n## x' cannot be printed in the Markdown table: refused, not es
+  P4a key int            -> refused: notices: component key 7 cannot be printed in the Markdown table: refused, not escaped
+  P4a image md link      -> refused: notices: image '[x](javascript:alert(1))' cannot be printed in the Markdown table: refused, not escaped
+  P4a image star         -> refused: notices: image 'valkey*' cannot be printed in the Markdown table: refused, not escaped
+  P4a image pipe         -> refused: notices: image 'a|b' cannot be printed in the Markdown table: refused, not escaped
+  P4a no packages        -> refused: notices: apk:readline@8.2.13-r1 has no packages
+  P4a files a string     -> refused: notices: AttributeError: 'str' object has no attribute 'get'
+  P4a files missing      -> refused: notices: apk:readline@8.2.13-r1 is partial but lists no fetched file or no unfetched fileok
+test_p4b_hostile_lock_values_never_reach_the_index (__main__.P4_NoticesHostile.test_p4b_hostile_lock_values_never_reach_the_index) ... ok
+test_p4c_wording_row (__main__.P4_NoticesHostile.test_p4c_wording_row) ... ok
+test_p5_no_distfiles_zero_requests (__main__.P5_StageLockZeroRequests.test_p5_no_distfiles_zero_requests) ... ok
+test_p6_sample_and_full (__main__.P6_GitLabClosed.test_p6_sample_and_full) ... ok
+
+----------------------------------------------------------------------
+Ran 22 tests in 0.276s
+
+OK
+
+  P4a every file pathed  -> refused: notices: apk:readline@8.2.13-r1 is partial but lists no fetched file or no unfetched file
+  P4a no file pathed     -> refused: notices: apk:readline@8.2.13-r1 is partial but lists no fetched file or no unfetched file
+
+  P4b lock with pipe in the apk APKBUILD URL  : lock_entry_problems -> lock: apk:readline@8.2.13-r1: APKBUILD: not a apk file url (the ref is not the entry's commit)
+  P4b lock with backtick in the apk key       : lock_entry_problems -> lock: apk:readline`@8.2.13-r1: not a valid apk key
+  P4b lock with pipe in the apk key           : lock_entry_problems -> lock: apk:readline|@8.2.13-r1: not a valid apk key
+
+  P4c row: | `apk:readline@8.2.13-r1` | valkey | partial source (verification sample): only the files that `sources/index.json` lists with a path are in `sources/files/`; Upstream source of the rest: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?ref=164709483a69ff847763c0d3c9ffca929d1a7169 |
+  P4c first non-blank lines: ['## Source code', 'Verification bundle: this source set is a sample and is not complete; do not distribute this bundle.']
+
+  P5 sample, apk sample key with no distfiles file: rc=1 fail=['bundle_fetch: FAIL (stage lock: apk:readline@8.2.13-r1: the apk sample key has no file on distfiles.alpinelinux.org; the sample needs one (A81); no retry)'] calls=0 listing=[]
+  P5 control, full of the same lock: rc=0 calls=6
+
+  P6 one_per_kind sample, GitLab refusing: rc=0 gitlab_calls=0 total_calls=12 record=True
+
+  P6 wide sample, GitLab refusing: rc=0 gitlab_calls=0 total_calls=12 record=True
+  P6 full, GitLab refusing: rc=1 call hosts=['gitlab.alpinelinux.org'] sleeps=[] fail=['bundle_fetch: FAIL (stage fetch: gitlab.alpinelinux.org: APKBUILD: ConnectionRefusedError: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?<query omitted>; no retry)']
+rc1=0
+
+## Output of probe_bs.py (unedited except redaction)
+
+  P4d url with a real backslash (chr 92) -> refused: notices: URL 'https://gitlab.alpinelinux.org/a\\b' cannot be printed in the Markdown table: refused, not escap
+  P4d control, same index with a plain URL -> produced
+rc2=0

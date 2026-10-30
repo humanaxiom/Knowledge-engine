@@ -864,3 +864,24 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-30T01:57:46Z | tester | platform-sbom | Correction to the 01:57:35Z entry's gate: the tester's own verify full FAILED (exit 1, interference by the concurrent R15 .env) and did not reach smoke; A34 install/launch checks passed; R13 verify-full rests on the developer's PASS | smoke: fail
 2026-10-30T02:03:27Z | orchestrator | platform-sbom | U9b: orchestrator verify full PASS 1390 s on the final tree (real sample fetch + bundle; GitLab window); diff read; A34 PASS, Q79 re-run equal; commit approved | smoke: pass
 2026-10-30T02:04:04Z | developer | platform-sbom | U9b committed 0396699 | commit: pass
+2026-10-30T02:30:46Z | orchestrator | platform-sbom | Q81 ruled by the human: A81 = option 3 (distfiles-only apk sample row); recorded in open-questions; U9c plan gate dispatched (analyst) | plan: in progress
+2026-10-30T02:35:41Z | analyst | platform-sbom | U9c criteria (A81 option 3) | plan: criteria written
+2026-10-30T02:44:00Z | developer | platform-sbom | pushed agent/platform-sbom through 90db4b8 to PR #15 (human: proceed) | push: done
+2026-10-30T02:44:13Z | architect | platform-sbom | U9c design (A81 option 3) | plan: design written
+2026-10-30T02:44:25Z | orchestrator | platform-sbom | push approved by the human (proceed) and done through 90db4b8; PR #15 CI run 40993359777 in progress | push: done
+2026-10-30T02:46:50Z | orchestrator | platform-sbom | U9c plan gate PASS (criteria + design; O-21 accepts O-19/O-20); expected numbers recorded; U9b block archived; tester RED dispatched | plan: pass
+2026-10-30T03:40:01Z | tester | platform-sbom | U9c RED: 15 new rows (tests/test_sources_sample_apk.py) + U9c-2 (a)-(c) rows; re-pins R1-R5 as named plus R6 (run-deadline test, sample plan used for full); 38 tests red as ruled, candidate + 16 mutations in u9c/controls.txt | tdd: red
+2026-10-30T03:41:14Z | orchestrator | platform-sbom | U9c RED accepted (38 red, R1-R6 re-pins incl. the deadline row); developer GREEN dispatched | tdd: red
+2026-10-30T03:42:28Z | orchestrator | platform-sbom | CI run 40993359777 FAIL at the offline client's launch (neo4j unhealthy at 37 s; passing run had healthy at 40.7 s); fetch, bundle and install passed; failed job re-run | ci: fail
+2026-10-30T04:22:05Z | developer | platform-sbom | U9c GREEN: apk sample distfiles-only, APKBUILD skip, partial index status and notices row; fast 1343 OK, full PASS | tdd: green
+2026-10-30T04:24:33Z | orchestrator | platform-sbom | CI rerun 40993359777 attempt 2 FAIL identically (neo4j unhealthy ~43 s in the offline client); logs saved under evidence/ci; Q82 to the analyst; U9c GREEN accepted; reviewer + security dispatched | ci: fail
+2026-10-30T04:28:57Z | reviewer | platform-sbom | U9c review: APPROVED (0 blocking; nits N-1..N-4) | review: pass
+2026-10-30T04:30:06Z | documenter | platform-sbom | U9c docs: README sample wording, offline_check comment | docs: pass
+2026-10-30T04:30:20Z | marketer | platform-sbom | U9c CHANGELOG bullet | docs: pass
+2026-10-30T04:30:59Z | analyst | platform-sbom | Q82 raised: CI neo4j launch failure | plan: question raised
+2026-10-30T04:31:23Z | security | platform-sbom | U9c security: PASS (no L; I-1..I-3 informational; partial row wording approved) | security: pass
+2026-10-30T04:31:49Z | orchestrator | platform-sbom | Q82 ruled in part (A82a): diagnostic + runner measurement as U9d after U9c, before U10; D rejected; floor and push stay the human's | plan: ruling recorded
+2026-10-30T04:38:12Z | analyst | platform-sbom | U9d criteria (A82a: launch diagnostic + runner measurement) | plan: criteria written
+2026-10-30T04:52:03Z | architect | platform-sbom | U9d design (A82a) | plan: design written
+2026-10-30T04:52:54Z | orchestrator | platform-sbom | U9d plan gate PASS (criteria U9d-1..8, design N9 amendment U9d; O-22 on the three deviations); RED waits for the U9c commit | plan: pass
+2026-10-30T04:56:31Z | orchestrator | platform-sbom | U9c: orchestrator verify full PASS 1335 s on the final tree (sample 10 files, 0 GitLab hops, skip line); diff read; commit approved | smoke: pass

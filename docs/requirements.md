@@ -3303,6 +3303,7 @@ ruled, Q77 deferred. *(Amended 2026-10-28, analyst; U8 plan and orchestrator rul
 *(Amended 2026-10-28, analyst; human rulings: Q73 (option 2) and Q74 (`timeout-minutes` 69) are resolved; nothing in U8 is open for the human.)*
 *(Amended 2026-10-29, analyst, U9 plan: U8a, U8b and U8c part 1 committed and pushed to draft PR #15; U9 (PSC-15, PSC-24) in plan: criteria in "U9 precision" under PSC-24; Q78-Q80 open for the orchestrator; Q77 still deferred.)*
 *(Amended 2026-10-29, analyst: Q78-Q80 resolved by the orchestrator (option 1 each); O-9..O-12 ruled; U9 plan gate PASS; U9 splits into U9a and U9b.)*
+*(Amended 2026-10-30, analyst, U9c plan: U9b committed (0396699, not pushed). Q81 ruled by the human, A81 = option 3: the verify/CI sample fetches only the distfiles.alpinelinux.org file(s) for `apk`, and the GitLab route stays for operator full fetches. Unit U9c comes before U10; criteria are in "U9c precision" under PSC-24, and the architect's points are QA-1..QA-5 in the handoff.)*
 *(Before, the same day: "U7d committed as WIP 45411ae (scan red on openssl);
 U7e (PSC-27, base bump to python 3.12.16): tester's verify full PASS with
 the image scan green, security PASS, reviewer and A34 in progress; PSC-27
@@ -4127,6 +4128,7 @@ full what it contains.
         redirect is never printed with its query (`?<query omitted>`, the
         evidence redaction rule).
     - **U8-3 What is fetched.**
+      - *(Amended 2026-10-30, analyst, U9c (A81): `--set sample` fetches only the distfiles.alpinelinux.org file(s) of the apk sample key, and every other kind as before; see "U9c precision" U9c-1.)*
       - Before the first request, every lock entry passes the lock's
         per-entry rules (U7a `lock_problems`: schema, URL charset, host
         and path binding per kind, hashes, sizes). A lock that fails
@@ -4245,6 +4247,7 @@ full what it contains.
         stays green.
       - `gates` and `gates-it` are unchanged and stay offline (Q56(a)).
     - **U8-8 Wiring into `offline_check.sh` (verify `full` and CI).**
+      - *(Amended 2026-10-30, analyst, U9c (A81): the sample no longer covers gitlab.alpinelinux.org; it covers every file host except that one; see "U9c precision" U9c-6.)*
       - One call, `bash scripts/bundle_fetch.sh --set sample --out
         <dir>`, replaces the interim generator pull (N1 amendment U2) at
         the same place. `<dir>` is under `dist/` (in `df_paths`) and
@@ -4506,6 +4509,7 @@ full what it contains.
         each row's `needs` from `classify_document(image, doc, always,
         exempt)` and never re-derives it from `expression`.
     - **U9-5 `app/sources/index.json` (N9).**
+      - *(Amended 2026-10-30, analyst, U9c: in a `sample` bundle the apk sample key is neither `shipped` nor `not-shipped` but partial; see "U9c precision" U9c-4.)*
       - It holds `format` 1, `set` (equal to the record's), `arch` and
         `git_sha` (equal to `bundle.json`'s), and one component per lock
         key the bundle's SBOMs need, plus one per `exempt`-cleared
@@ -4538,6 +4542,7 @@ full what it contains.
         rows with `needs` false.
     - **U9-6 The content-addressed copy (ADR points 3 and 5; N9; PSC-24
       path rule).**
+      - *(Amended 2026-10-30, analyst, U9c: for a `sample` bundle the apk sample key is a partial component and `files/` also holds its fetched files; see "U9c precision" U9c-4.)*
       - `app/sources/` holds exactly `index.json` and `files/`, and
         `files/` holds exactly one regular file per distinct SHA-256 that
         a `shipped` component names, named by that 64-hex value. Nothing
@@ -4725,6 +4730,403 @@ full what it contains.
       the "no GPL source offer" half of the M-NT1 remainder; U3 closed
       the SBOM half. No draft is reviewed and no rule is ratified because
       of it.
+  - *U9c precision (analyst, 2026-10-30; unit U9c: A81, Q81 option 3,
+    `docs/open-questions.md` "Q81. Resolved"; A63, A61/Q61, A72, A76;
+    U8-3, U8-5, U8-8, U9-3, U9-5, U9-6, U9-7).* *(Added 2026-10-30,
+    analyst, U9c plan.)* The human ruled that the verify/CI sample fetches,
+    for the `apk` kind, only the distfiles.alpinelinux.org file(s), so
+    `verify.sh full` and CI no longer depend on gitlab.alpinelinux.org
+    (Alpine's aports host, closed to the public since 2026-10-27, no
+    reopening date). The GitLab API raw route stays for operator full
+    fetches. A81 narrows A63's "one source of each kind" for `apk` only:
+    every kind is still fetched and shipped in the sample, and for `apk`
+    that is the distfiles part of the sample key. Facts (lock sha256
+    `12eebc8c...761b`, read 2026-10-30): all 19 apk keys have their
+    `APKBUILD` and aports files on gitlab.alpinelinux.org and 1 or 2
+    files on distfiles.alpinelinux.org (21 in all). Today's apk sample
+    key `apk:alpine-baselayout@3.7.1-r8` has 15 GitLab files (17,649 B)
+    and 2 distfiles files, `protocols-6.4` (3,144 B) and `services-6.4`
+    (12,813 B). Open points for the architect are in the handoff
+    (QA-1..QA-5); they are not criteria.
+    - **U9c-1 The sample plan (A81).**
+      - `fetch_plan(lock, arch, "sample")` holds, for the apk sample key,
+        exactly that key's files whose lock `url` host is
+        distfiles.alpinelinux.org, in the entry's file order, and no file
+        on gitlab.alpinelinux.org. With today's key that is
+        `protocols-6.4` and `services-6.4`.
+      - For every other kind, the sample plan holds exactly what it
+        holds today: every file of the `sample_keys` entry, in the same
+        order. The sample's key list is unchanged unless the architect
+        changes the apk key (QA-1); a change is recorded in the design
+        notes and in the U9c-5 numbers.
+      - The apk sample row is never empty. Given a lock in which the apk
+        sample key has no distfiles file, the sample plan fails closed,
+        naming the key; there is no sample without an apk file.
+      - `fetch_plan(lock, arch, "full")` is unchanged: every file of every
+        entry for the arch (876 rows on amd64, `u8/expected.md`). arm64
+        is unchanged (no keys).
+      - Proof: `test_sample_plan_apk_is_distfiles_only`,
+        `test_sample_plan_other_kinds_unchanged`,
+        `test_full_plan_unchanged` (keys and rows equal to
+        `u8/expected.md` "full, amd64"),
+        `test_sample_plan_refuses_an_apk_key_without_distfiles`.
+    - **U9c-2 The completion record and `sources-check`.**
+      - A sample `bundle_fetch.sh` run writes `fetch.json` whose apk
+        component lists exactly the U9c-1 files (name, sha256, size).
+        The record's form is otherwise unchanged (A76, U9-2).
+      - `bundle.sh --sources-set sample` accepts that directory.
+      - Each of these is refused before any write, with the U9-3 line
+        naming the key: (a) a sample directory whose apk entry holds the
+        GitLab files too (a pre-U9c sample under the same lock); (b) a
+        record with `set` `full` whose apk entry holds only the distfiles
+        files; (c) a sample directory that also holds a 64-hex file of
+        one of the sample key's GitLab files (an extra file, U9-3).
+      - A sample record given to a full bundle is refused as today (set
+        mismatch). Control: an unchanged full directory (716 files)
+        passes a full bundle.
+      - Proof: new rows (a)-(c) in
+        `test_bundle_refuses_a_mismatched_fetch_record`;
+        `test_sample_record_accepts_the_partial_apk_entry`.
+      - *Amended 2026-10-30 (orchestrator, O-21 accepting the architect's
+        O-19):* for (c) the refusal line names the file
+        (`<sha256>: not in the lock's plan`), not the key.
+    - **U9c-3 The APKBUILD name check (U8-5).**
+      - In a sample run, the APKBUILD name check is not run for the apk
+        sample key, because its `APKBUILD` is not fetched. Whether it is
+        skipped or replaced by another check is the architect's (QA-3).
+        Either way:
+        - each distfiles file still passes its size, SHA-256 and upstream
+          sha512 checks before it is placed (U8-5). The sha512 is the
+          lock's, taken from the APKBUILD's `sha512sums` at the pinned
+          commit;
+        - the run prints one line naming the key and saying that the
+          APKBUILD name check was not run in the sample. The skip is
+          never silent.
+      - No fail-open. The skip depends on the set being `sample` and the
+        kind being `apk`. It never depends on the APKBUILD being absent
+        from what was fetched. In a full run every apk entry's `APKBUILD`
+        is fetched and checked as today. Given a full run in which the
+        APKBUILD's `sha512sums` names differ from the lock entry, the run
+        fails with the U8-5 line. The `.dsc` check of the deb and pgdg
+        sample keys still runs in the sample.
+      - Proof: `test_sample_fetch_skips_the_apkbuild_check_only_for_apk`
+        (with the printed line),
+        `test_full_fetch_apkbuild_mismatch_still_fails` (the existing row
+        stays green, unedited), `test_sample_fetch_dsc_check_still_runs`.
+      - *Amended 2026-10-30 (orchestrator, O-21 accepting the architect's
+        O-20):* the existing APKBUILD mismatch row gains `which="full"` and
+        nothing else (a named re-pin, listed at RED); every case and
+        assertion stays.
+    - **U9c-4 The partly fetched key in a sample bundle (amends U9-5,
+      U9-6 and U9-7 for `sample` only).**
+      - `index.json` still lists every file of the apk sample key, with
+        name, url, sha256 and upstream. Each fetched (distfiles) file
+        carries `path` `sources/files/<sha256>`. Each file not fetched
+        carries no `path`, as a `not-shipped` component's files do today.
+      - The component is not `shipped`. It is marked as the sample's
+        partial row, so a reader of `index.json` alone can tell that only
+        part of its source is in this bundle. The field and value are the
+        architect's (QA-2).
+      - U9-5's status rule in a sample bundle becomes: the sample keys
+        whose every file is in the sample plan are `shipped`; the apk
+        sample key is partial; every other lock key is `not-shipped`.
+        With today's lock: 6 `shipped`, 1 partial, 176 `not-shipped`,
+        plus the `exempt` components.
+      - U9-6 for a sample bundle: `files/` holds exactly one regular file
+        per distinct SHA-256 that a `shipped` component names or that the
+        partial component names with a `path`. Every `path` exists, every
+        file under `files/` is some `path`, and no GitLab file of the
+        partial key is on disk.
+      - A full bundle never has a partial component. Given a `full` index
+        build in which any key would be partial, the bundle fails, naming
+        the key, as `not-shipped` does (U9-5, N9).
+      - "Source code" section (U9-7): the partial row does not use the
+        `shipped` wording ("source in `sources/` ...") as it stands,
+        because PSC-15's "obligation met" claim is for `shipped`
+        components only. It says that part of the source is in
+        `sources/` and gives an upstream URL for the rest (which URL:
+        QA-4). The sample's "Verification bundle ... do not distribute"
+        line stays first. Security reviews the row's wording, as U9-7.
+      - Proof: `test_sample_index_marks_the_partial_apk_key`,
+        `test_partial_files_without_path_are_not_on_disk`,
+        `test_full_index_refuses_a_partial_key`,
+        `test_notices_partial_row`; `test_sample_bundle_ships_exactly_the_sample`
+        re-pinned to the U9c-4 counts.
+    - **U9c-5 Expected numbers before any real run (the R-row rule).**
+      - Before any real U9c fetch or bundle, the orchestrator appends a
+        dated "U9c" section to `u8/expected.md` and to `u9/expected.md`,
+        computed read-only from the U9c `fetch_plan`/`sample_keys` over
+        the committed lock. The earlier sections stay as written.
+      - If the key is unchanged, the analyst's arithmetic from
+        `u8/expected.md` gives: sample amd64 7 keys, 10 files, 10
+        distinct sha256, 136,553,898 B (was 25 files, 136,571,547 B; less
+        the 15 GitLab files, 17,649 B). For `u9`: 183 components (6
+        `shipped`, 1 partial, 176 `not-shipped`), `files/` 10 files,
+        136,553,898 B, 10 plan rows. The full rows are unchanged: 183
+        keys, 876 rows, 716 files, 1,180,936,586 B. If QA-1 changes the
+        key, the numbers are computed again in the same section.
+      - The real runs' output (the sample fetch, the sample bundle, the
+        U9-13 `size.md` rows, recorded under `u9c/`) equals the appended
+        section. A difference is a defect, never a hand edit.
+    - **U9c-6 Hosts, lock and wording.**
+      - `docker/source-policy.json` `hosts` is unchanged: nine hosts,
+        gitlab.alpinelinux.org included, because the full set needs it
+        (`U6_HOSTS` in `tests/test_sbom_obligations.py` stays green,
+        unedited). `docker/sources.lock.json` is byte-unchanged (sha256
+        `12eebc8c...761b`); no re-lock, Q77 stays deferred;
+        `tests/test_sources_lock_committed.py` stays green.
+      - U8-8's "one entry of each kind, which covers every file host in
+        the lock" becomes "every file host except gitlab.alpinelinux.org,
+        which only the full set uses". README (the `--set sample` "one
+        entry per kind" sentence) and any script header or comment that
+        says the same are corrected by the documenter: the sample's apk
+        entry is its distfiles part only, and the GitLab route is used
+        only by `--set full`.
+      - CLAUDE.md's sentence ("fetches a fixed sample of the bundle's
+        third-party source code over HTTPS, only from the hosts listed")
+        stays true, so CLAUDE.md does not change (any change there needs
+        the human). The marketer writes one CHANGELOG line for U9c.
+    - **U9c-7 The outcome: `verify full` and CI pass while
+      gitlab.alpinelinux.org refuses connections.**
+      - Fast: given a fake transport in which every request to
+        gitlab.alpinelinux.org fails as a refused connection, `--set
+        sample` passes, writes `fetch.json` and makes no request to that
+        host. Control: the same fake with `--set full` fails closed at
+        the first GitLab file with the U8-4 FAIL line, after one attempt
+        and no retry (Q61 unchanged for every host). Proof:
+        `test_sample_fetch_passes_with_gitlab_unreachable`,
+        `test_full_fetch_fails_with_gitlab_unreachable`.
+      - Real: in each U9c `verify.sh full` (developer GREEN and the
+        orchestrator's gate run), the fetch's per-file `hops=` lines name
+        no gitlab.alpinelinux.org. The lines are extracted to
+        `u9c/sample-run.txt`.
+      - During a closure: if gitlab.alpinelinux.org is unreachable during
+        the orchestrator's gate run, a host-side connection probe of it
+        (result and UTC time), taken just before and just after the run,
+        is recorded beside the PASS. That is the closure proof. If GitLab
+        is reachable throughout, the evidence says "closure not
+        observed", and the zero-request proof above stands alone. No
+        closure is simulated on the real network.
+      - CI: the first CI run of a pushed U9c (pushing is the human's
+        action) has its fetch lines extracted, as for
+        `u8/ci-40907497118-fetch.txt`, showing no GitLab hop. The closure
+        state at that time is recorded the same way.
+    - **U9c-8 Out of scope.** Option 5 (an aports mirror or Alpine's
+      cgit: a new host, new lock URLs, security review), option 4 (a
+      retry window) and option 2; any change to Q61, A72 or the GitLab
+      API raw route itself (the blobs endpoint, U7c item 9); a re-lock
+      (Q77); and a standing GitLab-route probe unless the architect
+      proposes one (QA-4). U10's items stay U10's: PSC-19 e2e `verify`
+      (which reads the partial row by U9c-4), `/install` sizing, the
+      revision label, and the O-18 deferrals I-15/N-8 and I-16/N-7. U11
+      (CI timing), U12 (arm64) and the Neo4j ARM one-liner are also out.
+    - **U9c-9 Tests, gate and evidence.**
+      - Test names are indicative; the tester owns them, and no name
+        holds a count. Existing tests that pin the 25-file sample or the
+        17-file apk sample record are re-pinned only where U9c-1 changes
+        them. The tester's RED section lists each re-pin; no other
+        expected value changes.
+      - Gate: `scripts/verify.sh full` (the fetch client, `sbom_check.py`
+        and the bundle path change). A34 applies only if `install.ps1` or
+        a compose mount changes (N15 row rule); the architect states
+        which. Review and security are merge-blocking. Security looks at
+        U9c-3 (no fail-open) and the U9c-4 row wording.
+      - Evidence: `docs/evidence/platform-sbom/u9c/`, plus the appended
+        U9c sections of `u8/expected.md` and `u9/expected.md` (U9c-5).
+        Redaction rules apply.
+    - **Outcome metric: neither.** U9c moves no reviewed draft and no
+      ratified rule. It lets the commit gate and CI run while Alpine's
+      GitLab is closed, so plan items can still merge (nothing merges on
+      red).
+  - *U9d precision (analyst, 2026-10-30; unit U9d: A82a,
+    `docs/open-questions.md` "Q82. Ruled in part", options A + C; PS-3.2,
+    R6, O-12, N14).* *(Added 2026-10-30, analyst, U9d plan.)* PR #15's CI
+    run 40993359777 failed twice at the offline client's launch ("container
+    knowledge-engine-neo4j-1 is unhealthy"; neo4j's process most likely
+    died 37-43 s after start, Q82 facts 1-2), with the runner's root
+    filesystem at 100% at the first reading after the failure (fact 4).
+    The client printed nothing about the failed container and the teardown
+    destroyed it (fact 3); memory was not measured (fact 6). U9d makes the
+    next run name the cause: a diagnostic on the launch-failure path
+    (option A) and runner measurements at fixed points (option C). It
+    fixes nothing; the capacity fix (E) follows the measurement. Open
+    points for the architect are in the handoff (QD-1..QD-6); they are not
+    criteria.
+    - **U9d-1 The launch-failure diagnostic (option A).**
+      - Given the client's launch step (`bash scripts/launch.sh` in the
+        installed tree) exits non-zero, then before the client exits it
+        prints one block per container of the installed stack's compose
+        project in the inner daemon (every container that exists, running
+        or not). Each block gives the container name, `State.Status`,
+        `State.ExitCode`, `State.OOMKilled`, `State.Health.Status` and the
+        tail of `State.Health.Log` (each entry's end time, exit code and
+        output; at most the entries Docker keeps). A field the container
+        does not have (no healthcheck, never started) is printed as absent
+        with one fixed token, never dropped.
+      - Then, for every container that is not healthy (its Status is not
+        `running`, or it has a Health.Status other than `healthy`), the
+        last 50 lines of its logs (`docker compose logs --tail 50` for its
+        service). A healthy container's logs are not printed.
+      - Every line of the diagnostic, including each line of a multi-line
+        probe output and each log line, starts with
+        `offline-client: diag: `, so `grep 'offline-client: diag:'` on the
+        host log gives the whole diagnostic and nothing else.
+      - The client then exits non-zero (never 0). A diagnostic command
+        that fails or times out (inner daemon gone, inspect error) prints
+        a named `diag:` line; the remaining blocks still run and the
+        client still exits non-zero.
+      - The host side is unchanged on this path: its FAIL line stays
+        exactly `offline_check: FAIL (the offline client failed (see its
+        output above))`, followed by the existing `offline: df` lines and
+        the teardown.
+      - Scope: the launch step only. A failure before it (store check,
+        clean daemon, pull probe, install) or after it (smoke, inner
+        teardown, image-name check) prints no diagnostic (smoke: QD-5).
+      - Never printed: a container's environment, command, args, labels,
+        mounts, or the full inspect JSON; only the fields above, the probe
+        output and the logs tail. (The client's stack runs with
+        `.env.example`'s placeholder secrets; security confirms that the
+        probe output and logs tails print no secret.)
+      - Proof: `test_offline_client_prints_diag_on_launch_failure`,
+        `test_offline_client_diag_survives_a_failing_inspect`.
+    - **U9d-2 The runner measurements (option C).**
+      - Client points: (C1) after install, before launch; (C2) on a launch
+        failure, with the diagnostic; (C3) after smoke, before the inner
+        teardown. At each, lines prefixed `offline-client: measure:` and
+        naming the point give:
+        - free and used space, in KiB, of the filesystem that holds the
+          host daemon's root (on the runner, `/dev/root`, the filesystem
+          at 100% in fact 4; how the client reads it: QD-3);
+        - `df -Pk /install` (the client's tmpfs), in KiB;
+        - `MemAvailable` and `SwapFree` from `/proc/meminfo`, in kB as
+          that file states them;
+        - the inner daemon's `docker system df` summary (images,
+          containers, local volumes, build cache: count, size,
+          reclaimable), in Docker's own units.
+      - Host points: (H1) after `dind` up, before the client runs; (H2)
+        when the client exits non-zero, before the FAIL line; (H3) after
+        the client exits 0. At each, lines prefixed `offline: measure:` and
+        naming the point give `MemAvailable` and `SwapFree` in kB of the
+        machine whose memory the daemon uses. Where `offline_check.sh`
+        cannot read that machine's memory (Docker Desktop, the same case
+        as the existing "DockerRootDir ... not measurable" line), it
+        prints one named "not measurable" line instead of a figure. The
+        host's disk figures stay in the existing `offline: df <stage>`
+        lines, unchanged (QD-3).
+      - Every number carries its unit. Each point is one contiguous block,
+        printed in the order the points are reached.
+      - Never changes the outcome: a measurement that fails, is missing
+        or times out prints a named `measure:` line and the run goes on.
+        A pass stays a pass; a failure stays the same failure with the
+        same FAIL line. U9d applies no threshold to any measured number
+        (the floor stays R6/O-12's).
+      - Proof: `test_offline_measure_points_on_a_pass`,
+        `test_offline_measure_points_on_a_launch_failure`,
+        `test_offline_measure_never_changes_the_outcome`.
+    - **U9d-3 Same lines everywhere; nothing CI-only; nothing private.**
+      - The diagnostic and the measurements are unconditional parts of
+        `offline_check.sh`'s path in every `scripts/verify.sh full`: no
+        branch on `CI`, `GITHUB_*` or any other runner variable, and no
+        new step in `.github/workflows/ci.yml` (it stays
+        `./scripts/verify.sh full` only; its existing test stays green,
+        unedited). A local `verify.sh full` prints the same `measure:`
+        lines at the same points (on Docker Desktop the client's figures
+        are the VM's).
+      - Printed values are limited to: sizes, counts and percentages;
+        mount points and filesystem names as `df` prints them; the stack
+        project's container and service names; the U9d-1 fields, probe
+        output and logs tail. No hostname, IP address, user name, home or
+        profile path, environment value, token or credential is added
+        beyond what `df` already prints. `docker system df` is its summary
+        form, never `-v`.
+      - Files saved under `docs/evidence/` follow the redaction rule
+        (profile paths and SIDs redacted).
+      - Proof: `test_offline_check_has_no_ci_only_branch`; the U9d-5
+        sentinel-secret assertion.
+    - **U9d-4 Cost.**
+      - Diagnostic on the failure path only: a passing client run prints
+        no `diag:` line and makes no inspect or logs call after launch
+        (the fake docker's call record shows none).
+      - Each measurement point's last line gives its elapsed whole seconds
+        (`... measure: <point> done in <N> s`). Bound: N <= 5 at every
+        point, and the sum over a passing run <= 15 s, read from those
+        lines in the developer's GREEN and the orchestrator's gate
+        `verify.sh full` logs, and reported for the CI run. Over the bound
+        is a defect sent back to the developer, not a bound change.
+      - Nothing can stall the check: every docker call in the measurements
+        and the diagnostic runs under `timeout` (at most 30 s each; values
+        the architect's), so a hung inner daemon costs a bounded time and
+        a named line. The architect states the diagnostic's worst case.
+      - Proof: the no-diag-on-pass assertion in
+        `test_offline_measure_points_on_a_pass`; a static row that every
+        such docker call is under `timeout` (as the pull probe's row).
+    - **U9d-5 Tests.**
+      - Launch failure (fake docker): `launch.sh` exits non-zero with at
+        least one healthy container, one unhealthy container with
+        Health.Log entries (one multi-line output) and one exited
+        container with no healthcheck (`OOMKilled` true, `ExitCode` 137).
+        Asserts: one block per container with each U9d-1 field and its
+        value; the absent-field token; logs tails for the unhealthy and
+        the exited containers and none for the healthy one; every diag
+        line prefixed; the client exits non-zero; a sentinel secret in the
+        fake's inspect `Config.Env` appears nowhere in the output.
+      - Measurements: a passing client run prints C1 (after the install
+        stub, before the launch stub) and C3 (after the smoke stub, before
+        the teardown stub) and no C2; a launch-failure run prints C1 and
+        C2 and no C3; a host run prints H1 and H3 on a pass, and H1 and H2
+        on a client failure, H2 before the FAIL line. Each line has its
+        unit. A row in which every measurement source fails still passes,
+        with named lines.
+      - Unchanged pass output: every existing `tests/test_offline_check.py`
+        row stays green, unedited; any re-pin is listed at RED with its
+        reason (expected: none). A row asserts that a passing run's output
+        with the `measure:` lines removed is the same sequence of lines as
+        before U9d.
+      - No test reads `docs/evidence/**`; no test name holds a count; the
+        names above are indicative (the tester owns them). The fake docker
+        gains what the rows need (inspect state with health, the project's
+        container list, compose logs, `system df`).
+    - **U9d-6 Evidence and the CI read.**
+      - Local: `docs/evidence/platform-sbom/u9d/` holds the RED/GREEN
+        outputs and the `measure:` lines extracted from the developer's
+        GREEN and the orchestrator's gate `verify.sh full`, with the U9d-4
+        timings.
+      - CI: after the push (the human's word), the first CI run on PR #15
+        has its full log saved as
+        `docs/evidence/platform-sbom/ci/ci-<run>-attempt<N>.log` (`gh run
+        view --log`) and its launch window extracted to
+        `ci-<run>-launch-extract.txt` (from `offline-client: launch` to the
+        client's exit, plus every `measure:`, `diag:` and `offline: df`
+        line), as for run 40993359777.
+      - The analyst reads the extract and records in Q82 what it shows: on
+        a failure, the cause the diagnostic names (exited or killed,
+        `OOMKilled`, exit code, neo4j's last lines, disk and memory at C2);
+        on a pass, the peak disk and memory at C1/C3 and the margin. The
+        analyst then proposes E (the capacity fix) as a follow-up question
+        or unit for the orchestrator, and for the human where it reaches
+        the floor.
+      - U9d's commit gate is the local `verify.sh full`; the CI run follows
+        the push. PR #15 still merges only on a green CI run (Q82
+        deadline; nothing merges on red).
+    - **U9d-7 Out of scope.** Any capacity change: option B (neo4j's start
+      budget, JVM heap or page-cache caps) and option E (a lower peak, a
+      higher floor), both after U9d-6's reading; option D (rejected,
+      A82a). The 7 GiB floor (R6, O-12; U11 re-derives it). `/install`
+      sizing and the `MemAvailable` pre-check (N14, U10): U9d prints the
+      `/install` `df` that N14 plans "after install and after smoke", and
+      U10 reuses those lines rather than adding a second copy. Any change
+      to `docker-compose*.yml`, Dockerfiles or images, `install.sh`,
+      `install.ps1`, `ci.yml` or CLAUDE.md; any operator-visible change to
+      `launch.sh` or `launch.ps1` unless the architect places the
+      diagnostic there (QD-1).
+    - **U9d-8 Gate.** `scripts/verify.sh full` (`scripts/` changes). A34
+      (the Windows run) applies only if `install.ps1` or a compose mount
+      changes; neither should, and the architect states which. Review and
+      security are merge-blocking; security checks U9d-1's never-printed
+      list and U9d-3.
+    - **Outcome metric: neither.** U9d moves no reviewed draft and no
+      ratified rule. It names the cause of the CI launch failure so the
+      fix can be chosen and PR #15 can merge on green.
 
 - **PSC-25 psycopg on Debian libpq (Q64, unit U0).** *(Added 2026-10-22,
   analyst, Q64.)* The Q42 structural fix, ruled by the human. `ke-app`

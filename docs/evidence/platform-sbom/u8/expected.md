@@ -46,3 +46,6 @@ Keys: `apk:alpine-baselayout@3.7.1-r8`, `apk:alpine-baselayout@3.7.2-r1`, `apk:a
 ## full, arm64: 0 keys, 0 files, 0 distinct sha256, 0 distinct bytes
 
 Keys: 
+
+## U9c amendment (A81 option 3; orchestrator, 2026-10-30, before any real run)
+The "sample, amd64" table above is superseded for the apk row: `bundle_fetch.sh --set sample` fetches only the sample key's distfiles.alpinelinux.org files (`protocols-6.4` 3144 B, `services-6.4` 12813 B; sha256 as in the table). Sample totals become 7 keys, 10 files, 10 distinct sha256, 136553898 distinct bytes. The 15 GitLab rows of the table are fetched only by `--set full`. Full totals unchanged. See `u9/expected.md` "U9c".

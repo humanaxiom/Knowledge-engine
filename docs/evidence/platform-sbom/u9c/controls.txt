@@ -1,0 +1,680 @@
+# U9c RED controls (tester, 2026-10-30; A81 = Q81 option 3; requirements "U9c precision" U9c-1..U9c-9 with O-21;
+# design-notes "N9 amendment, U9c" items 1-17). No production file is edited; no test reads docs/evidence; no symlink
+# is made on the Windows host; nothing staged.
+
+== Files this RED does not edit (sha256 unchanged before and after) ==
+scripts/sbom_check.py sha256=b7c933893b0d43299fc64821b2ab2425795e801d5e1902cae6c2724f4cf2f3e9
+scripts/sources_fetch.py sha256=9b89a5a95acf0105b7226075b62885621f8b2a0249e4c04cb83438b0a09b6ee7
+scripts/sources_resolve.py sha256=fffa44ff38fedae784ae2a943eaf441c2466827dc91714a5c4eadf4f25e61ade
+scripts/bundle.sh sha256=9624710b069b16b9a8dde489165cc24872cf2af2b14617f9788c05be409ff9dd
+scripts/bundle_fetch.sh sha256=552288bca4bc7825ac9daaee391ad6bac6f64c7ff9087f5b0b6e93f5d222cc40
+scripts/offline_check.sh sha256=48be0cb0e368165a526b2a5ecf352fe6456da2808e4b6d00ff92c2e687302138
+docker/sources.lock.json sha256=12eebc8cd09e5effc6934a1a3b67decc053cda923720dda07a8909a137fc761b
+docker/source-policy.json sha256=6261355fe8f764bfb86523eea4f03d53a710edef0d791d19ca0a71d95244ef21
+tests/test_bundle_sources.py sha256=d9273a2055147fd5641413c864fac5c40ae7daddf587d1e006876fdc115db018
+tests/test_offline_check.py sha256=577e6f285e64df7645c0550817b1a4929686bedbab2bd906db0a4ad121f3b1ca
+tests/test_bundle_fetch.py sha256=14617f315916375b04a0b66ddf1c4c30125224b4daa1eb83c5b5c9448d464cb6
+tests/test_offline_bundle.py sha256=ea89a8b697cd8ea1195c162297a35d516d3d495f1dc154c42d9b1518a9533870
+tests/test_sources_lock.py sha256=ba7b68bb1c1bb90a1e3a6aaa3e1bc983534050370695be65927952dac35f6429
+tests/test_sources_lock_committed.py sha256=c2bed6a721960e19db4fa043972509f327ecdb6f4097711a3c9c154f9e9206e6
+tests/test_sbom_obligations.py sha256=16a34a4a2d9ce865086761c3241bbfc163c67a032bc50e7e70fb38e79911ed81
+tests/test_sbom_bundle.py sha256=7eeb7f9fe6a1d2350cac4f9988250a3019ee70ec97741decb69fa418a8a44423
+tests/fake_docker.py sha256=a72679ac3c3a6817de8af9182c790969d92f912d258ddb8fb15b32456f7ae88a
+README.md sha256=5e0e3df57f800e953f95a020cb2da7edc161981a1f52819c58a84227b9b56418
+CLAUDE.md sha256=49505b658dc17043ad11d9b0deedf7a7cd2dd904f221c8e30ca7df8ef6e49f4a
+NOTICE.md sha256=0aee6bb880fd9406dbd2d033f5d4c35dd49dc67da0ce3e9e52c0cad59ffa4e49
+
+== Files edited or added (before -> after) ==
+tests/test_sources_fetch.py  c7590fc80f1768d0f36578b446eb4ab83ccb59d8a4899614a83e0cb64882cb22 -> 44170d730a3340a3b07c91b10d6280a29910abf3953777e18e84e6c1da3f5821
+tests/test_source_index.py   ea4b63a4b6a0536536d559fb0c1fe3e7af18abf45cbc143e2b5dc1bf8268898e -> eb6b6322e22f976a2e2fa26bbb543c40a334ff14714538061737ddf9e1a5d68a
+tests/test_sources_sample_apk.py  (new) -> 4681406c49c63496839001e73ac9da4844ab87111c61200d19581c2f0175d3e3
+
+== Named re-pins (each keeps every case and assertion it had, except where stated) ==
+R1 tests/test_sources_fetch.py `plan_of` (helper): the sample branch keeps only distfiles.alpinelinux.org files of an
+   apk key (new helper `sample_files`, a mirror of design item 3, never a call to fetch_plan; constant APK_DISTFILES).
+   Full branch unchanged. Design item 14 *Controls*.
+R2 tests/test_sources_fetch.py FetchPlanTest.test_fetch_plan_rows: the sample `want` filtered by `sample_files`.
+R3 tests/test_sources_fetch.py SourceFetchNameCheckTest.test_source_fetch_apkbuild_names_match_the_lock_entry: gains
+   `which="full"` only (O-21 accepting O-20); every case and assertion stays. Green at RED (full is unchanged).
+R4 tests/test_source_index.py SourceIndexSchemaTest.test_sample_bundle_ships_exactly_the_sample: shipped = sample keys
+   minus APK_KEY; partial = {APK_KEY}; not-shipped unchanged; `path` set iff (key, name) is in the sample plan (was:
+   iff the component is shipped); the shared-sha256 and full-listing subtests kept as they were.
+R5 tests/test_source_index.py SourceSectionTest.test_notices_source_code_section_rows: a `partial` branch in `want`
+   (PARTIAL_CELL + the URL of the first file with no path); one added assertion (a partial row in a sample only); the
+   "no source claim" loop also covers partial rows.
+R6 (NOT in the orchestrator's list; found at RED) tests/test_sources_fetch.py
+   SourceFetchRecordTest.test_source_fetch_stops_at_the_run_deadline: `plan = plan_of(b, ARCH, "sample")` taken once for
+   all three subtests becomes `plan = plan_of(b, ARCH, which)` per subtest; every case and assertion stays. Why: the
+   test used the sample plan's first two files for the `full` runs too, which was right only while the sample's apk
+   row began with the APKBUILD like the full plan. After R1 the sample starts at the distfiles tarball, so the
+   (full, 10801) subtest could never pass under any U9c implementation (shown red in the first RED verify run,
+   <scratch> red-verify-fast.raw.txt: "Lists differ: ['https://gitlab...'] != ['https://distfiles...']"). Cited
+   decision: A81 / U9c-1 (requirements "U9c precision"); design item 14's transitive list omitted this test.
+Transitive re-pins without edits (they read plan_of / record_text / listing_of / write_fetched, design item 14):
+   test_sources_fetch: test_source_fetch_set_is_the_plan, test_source_fetch_writes_the_record_last,
+   test_source_fetch_checks_disk_before_any_request, test_source_fetch_leaves_no_out_on_failure (green at RED: the
+   faulted file is in both plans);
+   test_source_index: every sample-set user of listing_of/record_text/write_fetched (see the red list below);
+   test_bundle_fetch: the BundleFetchRunTest rows that compare --out with plan_of's sample set (see the red list).
+Added rows inside existing tests (not re-pins; nothing removed):
+   FetchRecordProblemsTest.test_bundle_refuses_a_mismatched_fetch_record: subtests U9c-2 (a), (b).
+   SourcesCheckCliTest.test_bundle_refuses_a_mismatched_fetch_record: subtests U9c-2 (a), (b), (c) (c per O-21).
+   New helper in test_source_index.py: pre_u9c_sample_record; constant PARTIAL_CELL.
+
+== Names (ast; before = HEAD 90db4b8, after = this RED) ==
+## test_sources_fetch.py: before=49 after=49; removed: none; renamed: none
+## test_source_index.py: before=67 after=67; removed: none; renamed: none
+## test_bundle_sources.py: before=57 after=57 (file unedited)
+## test_offline_check.py: before=27 after=27 (file unedited)
+## test_sources_sample_apk.py (new): 15
+   added: SamplePlanTest.test_sample_plan_apk_is_distfiles_only                         U9c-1, items 2-3 (red)
+   added: SamplePlanTest.test_sample_plan_other_kinds_unchanged                         U9c-1 (green control; mutation [3])
+   added: SamplePlanTest.test_full_plan_unchanged                                       U9c-1 (green control; mutation [2])
+   added: SamplePlanTest.test_sample_plan_refuses_an_apk_key_without_distfiles          U9c-1, item 3 (red)
+   added: SampleFetchNameCheckTest.test_sample_fetch_skips_the_apkbuild_check_only_for_apk  U9c-3, item 5 (red)
+   added: SampleFetchNameCheckTest.test_full_fetch_apkbuild_mismatch_still_fails        U9c-3 no fail-open (green; [2][5][8])
+   added: SampleFetchNameCheckTest.test_sample_fetch_dsc_check_still_runs               U9c-3 (green control; mutation [6])
+   added: GitLabUnreachableTest.test_sample_fetch_passes_with_gitlab_unreachable        U9c-7 (red)
+   added: GitLabUnreachableTest.test_full_fetch_fails_with_gitlab_unreachable           U9c-7 (green control; mutation [2])
+   added: SampleRecordTest.test_sample_record_accepts_the_partial_apk_entry             U9c-2 (red)
+   added: PartialIndexTest.test_sample_index_marks_the_partial_apk_key                  U9c-4, item 6 (red)
+   added: PartialIndexTest.test_full_index_refuses_a_partial_key                        U9c-4, item 6 (red)
+   added: PartialIndexTest.test_index_refuses_a_partial_key_of_another_kind             item 6 (red)
+   added: PartialNoticesTest.test_notices_partial_row                                   U9c-4, item 7 (red)
+   added: PartialBundleTest.test_partial_files_without_path_are_not_on_disk             U9c-4 / U9-6 bundle level (red)
+No test name holds a count.
+
+== Rows red at RED (verify fast, u9c/red-verify-fast.txt: Ran 1343, failures=48 in 38 tests, skipped=8) ==
+New rows (tests/test_sources_sample_apk.py), each red because today's fetch_plan keeps the apk sample key's GitLab
+files and nothing knows `partial`:
+  test_sample_plan_apk_is_distfiles_only (4 subtests)  the apk rows hold APKBUILD and the GitLab files (fixture: 4 files,
+      committed: 17 incl. protocols-6.4/services-6.4); sbom_check has no APK_DISTFILES_HOST (None != 'distfiles...')
+  test_sample_plan_refuses_an_apk_key_without_distfiles (2)  "ValueError not raised"; the client fetches (rc 0) instead
+      of `stage lock: apk:...: the apk sample key has no file on distfiles.alpinelinux.org; the sample needs one (A81)`
+  test_sample_fetch_skips_the_apkbuild_check_only_for_apk (set='sample')  no skip line ([] != ['bundle_fetch: apk
+      apk:readline@8.2.13-r1: APKBUILD name check skipped (sample set, A81)']); the full subtest is green
+  test_sample_fetch_passes_with_gitlab_unreachable  rc 1: `stage fetch: gitlab.alpinelinux.org: APKBUILD:
+      ConnectionRefusedError: ...` (the sample still asks GitLab first)
+  test_sample_record_accepts_the_partial_apk_entry (3)  `fetch.json: apk:readline@8.2.13-r1: lists 1 files, the
+      lock's sample plan says 4` (pure, client's own record, sources-check); its two controls are green
+  test_sample_index_marks_the_partial_apk_key  index refused: the GitLab files of the key are "missing" from files/
+  test_full_index_refuses_a_partial_key  index returned (key-level `shipped`), no `index: <key> is partial in a full bundle`
+  test_index_refuses_a_partial_key_of_another_kind  index returned, no `... is partial, and only the apk sample key may be (A81)`
+  test_notices_partial_row  `notices: a component has status 'partial'`
+  test_partial_files_without_path_are_not_on_disk  bundle.sh fails at sources-check (`lists 1 files, ... says 2` for
+      apk:busybox@1.37.0-r19 of the relocked synthetic lock)
+Named re-pins and added rows:
+  R2 test_fetch_plan_rows (amd64, sample)  fetch_plan's apk rows begin with APKBUILD
+  R4 test_sample_bundle_ships_exactly_the_sample, R5 test_notices_source_code_section_rows (sample)  the sample index is
+      refused (`<sha> (apk:readline@8.2.13-r1 fix-build.patch): missing`): listing_of follows the U9c plan
+  test_bundle_refuses_a_mismatched_fetch_record: FetchRecordProblemsTest U9c-2 (a) ([] != [`lists 4 files ... says 1`]);
+      SourcesCheckCliTest (a) (exit 0: the pre-U9c directory passes) and (c) (`fetch.json: ...: lists 1 files` comes
+      first, not `<sha256>: not in the lock's plan`). Row (b) is green at RED in both (full is unchanged; mutation [2]).
+  R3 test_source_fetch_apkbuild_names_match_the_lock_entry: green (which="full"); R6 run deadline: (sample, 301) red only.
+Transitive (22 tests, no edit; they read the re-pinned helpers), each red for the same reason (today's sample plan has the GitLab
+files):
+  test_sources_fetch: test_source_fetch_set_is_the_plan, test_source_fetch_writes_the_record_last,
+      test_source_fetch_checks_disk_before_any_request (2: need 3547, the U9c sample needs 3018). (The run-deadline
+      test is red too, (sample, 301) only, but it is edited: R6.)
+  test_source_index: test_control_the_fetch_clients_record_passes (sample), test_sources_check_prints_the_sorted_sha256_list
+      (sample), test_index_cli_prints_the_canonical_index (sample), test_source_file_names_pass_the_manifest_rule,
+      test_notice_section_refuses_rather_than_escapes, test_notice_section_refuses_markdown_syntax_outside_the_url,
+      test_sample_banner_is_the_first_line_after_the_heading, test_sample_bundle_notices_say_do_not_distribute,
+      test_notices_prints_the_section, test_notices_refuses_and_prints_no_section, test_notices_refuses_a_fifo_index,
+      test_notices_refuses_a_device_index, test_notices_refuses_an_index_over_the_size_cap (all build ok("sample") or
+      write_fetched(sample)).
+  test_bundle_fetch (BundleFetchRunTest): test_bundle_fetch_pulls_then_fetches, test_bundle_fetch_accepts_an_absent_or_empty_out
+      (2), test_bundle_fetch_arch_is_the_daemons (2), test_bundle_fetch_keeps_the_callers_platform_and_env_files_out,
+      test_bundle_fetch_takes_no_caller_key, test_bundle_fetch_writes_the_record_last: --out holds the GitLab files
+      plan_of's sample set no longer lists.
+Outside this RED: nothing (HandoffCapTest green; NEXT-SESSION.md is 176 lines).
+
+== Rows green from the start (pins of behaviour that must not change; each has a mutation below) ==
+test_sample_plan_other_kinds_unchanged [3]; test_full_plan_unchanged [2]; test_full_fetch_apkbuild_mismatch_still_fails
+[2][5][8]; test_sample_fetch_dsc_check_still_runs [6]; test_full_fetch_fails_with_gitlab_unreachable [2]; U9c-2 (b) [2];
+the full subtest of test_sample_fetch_skips... [5]; R3 [2][5]. KIND_HOSTS refactor control: tests/test_sources_lock.py
+(every lock-rule test) and tests/test_sources_lock_committed.py run unedited under the candidate in [1] and pass.
+
+== Controls ==
+Driver: <scratch>/u9c/ctl/ctl.py (verbatim below), in the gates image (ke-gates:wt-33a132fbfdd7, /work read-only):
+  MSYS_NO_PATHCONV=1 KE_IMAGE_TAG=wt-33a132fbfdd7 COMPOSE_PROJECT_NAME=ke-test-u9c-ctl COMPOSE_FILE=docker-compose.yml \
+    docker compose --env-file .env.example --profile gates run --rm --pull never -v <scratch>/u9c/ctl:/scratch:ro gates \
+    uv run --locked python /scratch/ctl.py <indices>
+Per entry: /work copied to /tmp/m<i> (no .git, dist, .venv, docs/evidence, .env); the copy's sbom_check.py and
+sources_fetch.py are today's or the CONTROL-ONLY candidate (CAND, written only to the copy, never to the repository),
+plus at most ONE edit, which must match exactly the stated number of places or the driver stops. The candidate exists
+only to show the red rows pass once the ruled behaviour exists (they fail for the ruled reason, not a broken test); the
+developer is not bound to its text.
+Expected: [0] fails exactly the U9c rows that are red at RED; [1] fails nothing (two copy artefacts noted); each later
+entry fails exactly its own pins.
+Note on [1]: test_bundle_fetch_sh_shape and test_libffi_licence_file_is_the_fetched_text fail only because the copy has
+no .git (`git ls-files` / `git show`); both are green in red-verify-fast.txt and neither reads a file U9c changes.
+Note on [2]: FetchRecordProblemsTest and SourcesCheckCliTest share the method name test_bundle_refuses_a_mismatched_fetch_record;
+the first [2] run (in ctl-2-17 below) labelled both `rec_cli`; the driver now labels by class.method and [0] and [2] were
+run again (ctl-0-2b below). The why lines are the same.
+
+Output (verbatim, driver lines only; compose and uv setup lines dropped):
+--- run 1: indices 0 2 (relabelled driver; supersedes [0] and [2] of the earlier runs) ---
+sbom_check.py (today) sha256=b7c933893b0d43299fc64821b2ab2425795e801d5e1902cae6c2724f4cf2f3e9
+sources_fetch.py (today) sha256=9b89a5a95acf0105b7226075b62885621f8b2a0249e4c04cb83438b0a09b6ee7
+test_sources_sample_apk.py sha256=4681406c49c63496839001e73ac9da4844ab87111c61200d19581c2f0175d3e3
+test_sources_fetch.py sha256=44170d730a3340a3b07c91b10d6280a29910abf3953777e18e84e6c1da3f5821
+test_source_index.py sha256=eb6b6322e22f976a2e2fa26bbb543c40a334ff14714538061737ddf9e1a5d68a
+[0] today's sbom_check.py and sources_fetch.py (no edit)
+     rows=['plan_apk', 'plan_other', 'plan_full', 'plan_refuse', 'skip', 'full_apkbuild', 'dsc', 'gl_sample', 'gl_full', 'record', 'idx_partial', 'idx_full', 'idx_other', 'notices', 'bundle', 'rec_pure', 'rec_cli', 'ships', 'rows', 'plan_rows', 'apkbuild_row']
+     failed=['bundle', 'gl_sample', 'idx_full', 'idx_other', 'idx_partial', 'notices', 'plan_apk', 'plan_refuse', 'plan_rows', 'rec_cli', 'rec_pure', 'record', 'rows', 'ships', 'skip'] (Ran 21 tests in 2.963s FAILED (failures=22); 3 s)
+    FAIL: test_sample_plan_apk_is_distfiles_only (tests.test_sources_sample_apk.SamplePlanTest.test_sample_plan_apk_is_distfiles_only) (lock='one_per_kind')
+      why: AssertionError: Lists differ: [('ap[28 chars]e': 'APKBUILD', 'sha256': '9e16d0061a9deb2c2d2[1987 chars]z'})] != [('ap[28 chars]e': 'readline-8.2.13.tar.gz', 'sha256': '9198e[401 chars]z'})]
+    FAIL: test_sample_plan_apk_is_distfiles_only (tests.test_sources_sample_apk.SamplePlanTest.test_sample_plan_apk_is_distfiles_only) (lock='wide')
+      why: AssertionError: Lists differ: [('ap[28 chars]e': 'APKBUILD', 'sha256': '9e16d0061a9deb2c2d2[1987 chars]z'})] != [('ap[28 chars]e': 'readline-8.2.13.tar.gz', 'sha256': '9198e[401 chars]z'})]
+    FAIL: test_sample_plan_apk_is_distfiles_only (tests.test_sources_sample_apk.SamplePlanTest.test_sample_plan_apk_is_distfiles_only) (lock='committed (U9c-5: u8/ and u9/expected.md "U9c")')
+      why: AssertionError: Lists differ: ['APKBUILD', '20locale.sh', 'aliases.conf',[259 chars]6.4'] != ['protocols-6.4', 'services-6.4']
+    FAIL: test_sample_plan_apk_is_distfiles_only (tests.test_sources_sample_apk.SamplePlanTest.test_sample_plan_apk_is_distfiles_only) (case="the host is the checker's constant, shared with KIND_HOSTS (de
+      why: AssertionError: None != 'distfiles.alpinelinux.org'
+    FAIL: test_sample_plan_refuses_an_apk_key_without_distfiles (tests.test_sources_sample_apk.SamplePlanTest.test_sample_plan_refuses_an_apk_key_without_distfiles) (case='fetch_plan fails closed, naming 
+      why: AssertionError: ValueError not raised
+    FAIL: test_sample_plan_refuses_an_apk_key_without_distfiles (tests.test_sources_sample_apk.SamplePlanTest.test_sample_plan_refuses_an_apk_key_without_distfiles) (case='the fetch client: one stage-lock
+      why: AssertionError: 0 != 1 : bundle_fetch: ok apk:readline@8.2.13-r1 APKBUILD sha256=62a4f54bc53550053ee4a0481ba1a7475d025b6831d97a8dcefc77a65fb1a312 size=246 hops=gitlab.alpinelinux.org
+    FAIL: test_sample_fetch_skips_the_apkbuild_check_only_for_apk (tests.test_sources_sample_apk.SampleFetchNameCheckTest.test_sample_fetch_skips_the_apkbuild_check_only_for_apk) (set='sample')
+      why: AssertionError: Lists differ: [] != ['bundle_fetch: apk apk:readline@8.2.13-r1[44 chars]81)']
+    FAIL: test_sample_fetch_passes_with_gitlab_unreachable (tests.test_sources_sample_apk.GitLabUnreachableTest.test_sample_fetch_passes_with_gitlab_unreachable)
+      why: AssertionError: 1 != 0 : bundle_fetch: FAIL (stage fetch: gitlab.alpinelinux.org: APKBUILD: ConnectionRefusedError: https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw?<query omitted>; no retry)
+    FAIL: test_sample_record_accepts_the_partial_apk_entry (tests.test_sources_sample_apk.SampleRecordTest.test_sample_record_accepts_the_partial_apk_entry) (case="the record's apk entry is the distfiles 
+      why: AssertionError: Lists differ: ["fetch.json: apk:readline@8.2.13-r1: list[37 chars]s 4"] != []
+    FAIL: test_sample_record_accepts_the_partial_apk_entry (tests.test_sources_sample_apk.SampleRecordTest.test_sample_record_accepts_the_partial_apk_entry) (case="the fetch client's own _write_record ove
+      why: AssertionError: Lists differ: ["fetch.json: apk:readline@8.2.13-r1: list[37 chars]s 4"] != []
+    FAIL: test_sample_record_accepts_the_partial_apk_entry (tests.test_sources_sample_apk.SampleRecordTest.test_sample_record_accepts_the_partial_apk_entry) (case='sources-check --set sample accepts the d
+      why: AssertionError: 1 != 0 : sbom_check: sources-check: fetch.json: apk:readline@8.2.13-r1: lists 1 files, the lock's sample plan says 4
+    FAIL: test_sample_index_marks_the_partial_apk_key (tests.test_sources_sample_apk.PartialIndexTest.test_sample_index_marks_the_partial_apk_key)
+      why: AssertionError: Lists differ: ['69e228c8994e6136ac8586816834d34608f02e69[301 chars]ing'] != []
+    FAIL: test_full_index_refuses_a_partial_key (tests.test_sources_sample_apk.PartialIndexTest.test_full_index_refuses_a_partial_key)
+      why: AssertionError: {'format': 1, 'set': 'full', 'arch': 'amd64', 'git_sha': '0123456789abcdef0123456789abcdef01234567', 'lock_sha256': '0164bdb8bb443db66c25c6250ffdc1501e1c0c37bae07876c96cf8ce920260d4', 'components': [{'key': 'apk:readline@8.2.13-r0', 'kind': 'apk', 'status': 'shipped', 'packages': [{'
+    FAIL: test_index_refuses_a_partial_key_of_another_kind (tests.test_sources_sample_apk.PartialIndexTest.test_index_refuses_a_partial_key_of_another_kind)
+      why: AssertionError: {'format': 1, 'set': 'sample', 'arch': 'amd64', 'git_sha': '0123456789abcdef0123456789abcdef01234567', 'lock_sha256': '0164bdb8bb443db66c25c6250ffdc1501e1c0c37bae07876c96cf8ce920260d4', 'components': [{'key': 'apk:readline@8.2.13-r0', 'kind': 'apk', 'status': 'not-shipped', 'packages
+    FAIL: test_notices_partial_row (tests.test_sources_sample_apk.PartialNoticesTest.test_notices_partial_row)
+      why: AssertionError: Lists differ: ["notices: a component has status 'partial'"] != []
+    FAIL: test_partial_files_without_path_are_not_on_disk (tests.test_sources_sample_apk.PartialBundleTest.test_partial_files_without_path_are_not_on_disk)
+      why: AssertionError: 1 != 0 : bundle.sh failed on a fit build host with a fetched set:
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.FetchRecordProblemsTest.test_bundle_refuses_a_mismatched_fetch_record) (case='U9c-2 (a): a pre-U9c sample record (the apk e
+      why: AssertionError: Lists differ: [] != ["fetch.json: apk:readline@8.2.13-r1: list[37 chars]s 1"]
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.SourcesCheckCliTest.test_bundle_refuses_a_mismatched_fetch_record) (case='U9c-2 (a): a pre-U9c sample directory (the apk en
+      why: AssertionError: 0 != 1 : 2480d9a14071111afbc64708ad7c9857c02db8698175
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.SourcesCheckCliTest.test_bundle_refuses_a_mismatched_fetch_record) (case='U9c-2 (c): a sample directory that also holds a G
+      why: AssertionError: "sbom_check: sources-check: 9e16d0061a9deb2c2d2f5db43a1b3ba026d42d1a6dd10c042ef738cd750908be: not in the lock's plan" not found in "sbom_check: sources-check: fetch.json: apk:readline@8.2.13-r1: lists 1 files, the lock's sample plan says 4\n" : the refusal does not name "sbom_check: 
+    FAIL: test_sample_bundle_ships_exactly_the_sample (tests.test_source_index.SourceIndexSchemaTest.test_sample_bundle_ships_exactly_the_sample)
+      why: AssertionError: Lists differ: ['69e228c8994e6136ac8586816834d34608f02e69[301 chars]ing'] != []
+    FAIL: test_notices_source_code_section_rows (tests.test_source_index.SourceSectionTest.test_notices_source_code_section_rows) (which='sample')
+      why: AssertionError: Lists differ: ['69e228c8994e6136ac8586816834d34608f02e69[301 chars]ing'] != []
+    FAIL: test_fetch_plan_rows (tests.test_sources_fetch.FetchPlanTest.test_fetch_plan_rows) (arch='amd64', set='sample')
+      why: AssertionError: Lists differ: [('ap[28 chars]e': 'APKBUILD', 'sha256': '9e16d0061a9deb2c2d2[5816 chars]z'})] != [('ap[28 chars]e': 'readline-8.2.13.tar.gz', 'sha256': '9198e[4230 chars]z'})]
+[2] cand + the apk filter applied in full too
+     rows=['plan_full', 'gl_full', 'full_apkbuild', 'rec_pure', 'rec_cli', 'apkbuild_row']
+     failed=['apkbuild_row', 'full_apkbuild', 'gl_full', 'plan_full', 'rec_cli', 'rec_pure'] (Ran 6 tests in 1.459s FAILED (failures=22); 2 s)
+    FAIL: test_full_plan_unchanged (tests.test_sources_sample_apk.SamplePlanTest.test_full_plan_unchanged) (lock='one_per_kind', arch='amd64')
+      why: AssertionError: Lists differ: [('ap[28 chars]e': 'readline-8.2.13.tar.gz', 'sha256': '9198e[4230 chars]z'})] != [('ap[28 chars]e': 'APKBUILD', 'sha256': '9e16d0061a9deb2c2d2[5816 chars]z'})]
+    FAIL: test_full_plan_unchanged (tests.test_sources_sample_apk.SamplePlanTest.test_full_plan_unchanged) (lock='wide', arch='amd64')
+      why: AssertionError: Lists differ: [('ap[28 chars]e': 'readline-8.2.13.tar.gz', 'sha256': '9198e[6330 chars]z'})] != [('ap[28 chars]e': 'APKBUILD', 'sha256': '92695f1f03ab1ec9c5b[8419 chars]z'})]
+    FAIL: test_full_plan_unchanged (tests.test_sources_sample_apk.SamplePlanTest.test_full_plan_unchanged) (lock='committed', arch='amd64')
+      why: AssertionError: Lists differ: [('ap[36 chars]e': 'protocols-6.4', 'sha256': '4959498abbadaa[214326 chars]z'})] != [('ap[36 chars]e': 'APKBUILD', 'sha256': 'c673459076838229d5e[420879 chars]z'})]
+    FAIL: test_full_plan_unchanged (tests.test_sources_sample_apk.SamplePlanTest.test_full_plan_unchanged) (case='committed, amd64 (u8/expected.md "full, amd64")')
+      why: AssertionError: Tuples differ: (183, 532, 515, 1180315552) != (183, 876, 716, 1180936586)
+    FAIL: test_full_fetch_fails_with_gitlab_unreachable (tests.test_sources_sample_apk.GitLabUnreachableTest.test_full_fetch_fails_with_gitlab_unreachable)
+      why: AssertionError: Regex didn't match: '^bundle_fetch: FAIL \\(stage fetch: gitlab\\.alpinelinux\\.org: APKBUILD: (?:gitlab\\.alpinelinux\\.org: |APKBUILD: )?ConnectionRefusedError:\\ https://gitlab\\.alpinelinux\\.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw\\?<q
+    FAIL: test_full_fetch_apkbuild_mismatch_still_fails (tests.test_sources_sample_apk.SampleFetchNameCheckTest.test_full_fetch_apkbuild_mismatch_still_fails) (case="the sample key's APKBUILD names differ
+      why: AssertionError: Regex didn't match: '^bundle_fetch: FAIL \\(stage fetch: gitlab\\.alpinelinux\\.org: APKBUILD: (?:gitlab\\.alpinelinux\\.org: |APKBUILD: )?APKBUILD\\ at\\ 164709483a69ff847763c0d3c9ffca929d1a7169:\\ sha512sums\\ names\\ differ\\ from\\ the\\ lock\\ entry; no retry\\)$' not found in "
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.FetchRecordProblemsTest.test_bundle_refuses_a_mismatched_fetch_record) (case='a file missing')
+      why: AssertionError: False is not true : no problem names ('fetch.json', 'deb:bash@5.2.15-2+deb12u1'): ["fetch.json: apk:readline@8.2.13-r0: lists 2 files, the lock's full plan says 1"]
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.FetchRecordProblemsTest.test_bundle_refuses_a_mismatched_fetch_record) (case='a file extra')
+      why: AssertionError: False is not true : no problem names ('fetch.json', 'deb:bash@5.2.15-2+deb12u1'): ["fetch.json: apk:readline@8.2.13-r0: lists 2 files, the lock's full plan says 1"]
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.FetchRecordProblemsTest.test_bundle_refuses_a_mismatched_fetch_record) (case='two files swapped')
+      why: AssertionError: False is not true : no problem names ('fetch.json', 'deb:bash@5.2.15-2+deb12u1'): ["fetch.json: apk:readline@8.2.13-r0: lists 2 files, the lock's full plan says 1"]
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.FetchRecordProblemsTest.test_bundle_refuses_a_mismatched_fetch_record) (case='a name differs')
+      why: AssertionError: False is not true : no problem names ('fetch.json', 'deb:bash@5.2.15-2+deb12u1', 'name', 'other.tar.xz', 'bash_5.2.15.orig.tar.gz'): ["fetch.json: apk:readline@8.2.13-r0: lists 2 files, the lock's full plan says 1"]
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.FetchRecordProblemsTest.test_bundle_refuses_a_mismatched_fetch_record) (case='a sha256 differs')
+      why: AssertionError: False is not true : no problem names ('fetch.json', 'deb:bash@5.2.15-2+deb12u1', 'sha256', 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', 'a314137092297d9dece12524f32e611bc00f6bb20d2b85646e10fa6dbf42c393'): ["fetch.json: apk:readline@8.2.13-r0: lists 2 files, the
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.FetchRecordProblemsTest.test_bundle_refuses_a_mismatched_fetch_record) (case='a size differs')
+      why: AssertionError: False is not true : no problem names ("fetch.json: deb:bash@5.2.15-2+deb12u1: size is 401, the lock's full plan says 400",): ["fetch.json: apk:readline@8.2.13-r0: lists 2 files, the lock's full plan says 1"]
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.FetchRecordProblemsTest.test_bundle_refuses_a_mismatched_fetch_record) (case='U9c-2 (b): a full record whose apk entry hold
+      why: AssertionError: Lists differ: ["fet[14 chars]eadline@8.2.13-r0: lists 2 files, the lock's full plan says 1"] != ["fet[14 chars]eadline@8.2.13-r1: lists 1 files, the lock's full plan says 4"]
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.SourcesCheckCliTest.test_bundle_refuses_a_mismatched_fetch_record) (case='a planned file missing')
+      why: AssertionError: '8d70a60cd595bb6606e298924da79a2a92e58b991b273c0febccdc40edd561ed' not found in "sbom_check: sources-check: fetch.json: apk:readline@8.2.13-r0: lists 2 files, the lock's full plan says 1\n" : the refusal does not name '8d70a60cd595bb6606e298924da79a2a92e58b991b273c0febccdc40edd561ed'
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.SourcesCheckCliTest.test_bundle_refuses_a_mismatched_fetch_record) (case='a planned file short')
+      why: AssertionError: '8d70a60cd595bb6606e298924da79a2a92e58b991b273c0febccdc40edd561ed' not found in "sbom_check: sources-check: fetch.json: apk:readline@8.2.13-r0: lists 2 files, the lock's full plan says 1\n" : the refusal does not name '8d70a60cd595bb6606e298924da79a2a92e58b991b273c0febccdc40edd561ed'
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.SourcesCheckCliTest.test_bundle_refuses_a_mismatched_fetch_record) (case='a planned file changed, same size (re-hash, item 
+      why: AssertionError: '--sources: 8d70a60cd595bb6606e298924da79a2a92e58b991b273c0febccdc40edd561ed (pypi:psycopg@3.3.6 psycopg-3.3.6.tar.gz): sha256 mismatch: got cab5e3479e8b55b9ea732977fceadb175b44599927e133792f2b73fac36c23e3' not found in "sbom_check: sources-check: fetch.json: apk:readline@8.2.13-r0: 
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.SourcesCheckCliTest.test_bundle_refuses_a_mismatched_fetch_record) (case='an extra 64-hex file')
+      why: AssertionError: 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' not found in "sbom_check: sources-check: fetch.json: apk:readline@8.2.13-r0: lists 2 files, the lock's full plan says 1\n" : the refusal does not name 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.SourcesCheckCliTest.test_bundle_refuses_a_mismatched_fetch_record) (case='U9c-2 (b): a full record whose apk entry holds on
+      why: AssertionError: "fetch.json: apk:readline@8.2.13-r1: lists 1 files, the lock's full plan says 4" not found in "sbom_check: sources-check: fetch.json: apk:readline@8.2.13-r0: lists 2 files, the lock's full plan says 1\n" : the refusal does not name "fetch.json: apk:readline@8.2.13-r1: lists 1 files, 
+    FAIL: test_source_fetch_apkbuild_names_match_the_lock_entry (tests.test_sources_fetch.SourceFetchNameCheckTest.test_source_fetch_apkbuild_names_match_the_lock_entry) (case='control: equal; a GitLab fi
+      why: AssertionError: 1 != 0 : bundle_fetch: ok apk:readline@8.2.13-r1 readline-8.2.13.tar.gz sha256=9198e4dbde4de640441270dd1cd5094256aed772e192cf9a9144c7c6afc90991 size=300 hops=distfiles.alpinelinux.org
+    FAIL: test_source_fetch_apkbuild_names_match_the_lock_entry (tests.test_sources_fetch.SourceFetchNameCheckTest.test_source_fetch_apkbuild_names_match_the_lock_entry) (case='sha512sums names a file the
+      why: AssertionError: Regex didn't match: '^bundle_fetch: FAIL \\(stage fetch: gitlab\\.alpinelinux\\.org: APKBUILD: (?:gitlab\\.alpinelinux\\.org: |APKBUILD: )?APKBUILD\\ at\\ 164709483a69ff847763c0d3c9ffca929d1a7169:\\ sha512sums\\ names\\ differ\\ from\\ the\\ lock\\ entry; no retry\\)$' not found in "
+    FAIL: test_source_fetch_apkbuild_names_match_the_lock_entry (tests.test_sources_fetch.SourceFetchNameCheckTest.test_source_fetch_apkbuild_names_match_the_lock_entry) (case='a sha512 lock file not in s
+      why: AssertionError: Regex didn't match: '^bundle_fetch: FAIL \\(stage fetch: gitlab\\.alpinelinux\\.org: APKBUILD: (?:gitlab\\.alpinelinux\\.org: |APKBUILD: )?APKBUILD\\ at\\ 164709483a69ff847763c0d3c9ffca929d1a7169:\\ sha512sums\\ names\\ differ\\ from\\ the\\ lock\\ entry; no retry\\)$' not found in "
+    FAIL: test_source_fetch_apkbuild_names_match_the_lock_entry (tests.test_sources_fetch.SourceFetchNameCheckTest.test_source_fetch_apkbuild_names_match_the_lock_entry) (case='a sha512 value difference')
+      why: AssertionError: Regex didn't match: '^bundle_fetch: FAIL \\(stage fetch: gitlab\\.alpinelinux\\.org: APKBUILD: (?:gitlab\\.alpinelinux\\.org: |APKBUILD: )?APKBUILD\\ at\\ 164709483a69ff847763c0d3c9ffca929d1a7169:\\ sha512sums\\ names\\ differ\\ from\\ the\\ lock\\ entry; no retry\\)$' not found in "
+--- run 2: index 1 ---
+sbom_check.py (today) sha256=b7c933893b0d43299fc64821b2ab2425795e801d5e1902cae6c2724f4cf2f3e9
+sources_fetch.py (today) sha256=9b89a5a95acf0105b7226075b62885621f8b2a0249e4c04cb83438b0a09b6ee7
+test_sources_sample_apk.py sha256=4681406c49c63496839001e73ac9da4844ab87111c61200d19581c2f0175d3e3
+test_sources_fetch.py sha256=44170d730a3340a3b07c91b10d6280a29910abf3953777e18e84e6c1da3f5821
+test_source_index.py sha256=eb6b6322e22f976a2e2fa26bbb543c40a334ff14714538061737ddf9e1a5d68a
+[1] candidate items 2, 3, 5, 6, 7 (control only); every U9c row and the affected modules
+     rows=['plan_apk', 'plan_other', 'plan_full', 'plan_refuse', 'skip', 'full_apkbuild', 'dsc', 'gl_sample', 'gl_full', 'record', 'idx_partial', 'idx_full', 'idx_other', 'notices', 'bundle', 'rec_pure', 'rec_cli', 'ships', 'rows', 'plan_rows', 'apkbuild_row', 'tests.test_sources_sample_apk', 'tests.test_sources_fetch', 'tests.test_source_index', 'tests.test_sources_lock', 'tests.test_sources_lock_committed', 'tests.test_sbom_obligations', 'tests.test_bundle_fetch', 'tests.test_bundle_sources', 'tests.test_offline_check']
+     failed=['test_bundle_fetch_sh_shape', 'test_libffi_licence_file_is_the_fetched_text'] (Ran 373 tests in 251.063s FAILED (failures=2); 251 s)
+    FAIL: test_bundle_fetch_sh_shape (tests.test_bundle_fetch.BundleFetchStaticTest.test_bundle_fetch_sh_shape)
+      why: AssertionError: Regex didn't match: '^100755 ' not found in '' : scripts/bundle_fetch.sh is not in the index as executable (100755); git ls-files -s says ''
+    FAIL: test_libffi_licence_file_is_the_fetched_text (tests.test_bundle_sources.NoticeSourcesTextTest.test_libffi_licence_file_is_the_fetched_text)
+      why: AssertionError: 128 != 0 : fatal: not a git repository (or any parent up to mount point /)
+rc=0
+--- run 3: indices 2..17 (first driver; its [2] labels merged rec_pure into rec_cli, see the note) ---
+sbom_check.py (today) sha256=b7c933893b0d43299fc64821b2ab2425795e801d5e1902cae6c2724f4cf2f3e9
+sources_fetch.py (today) sha256=9b89a5a95acf0105b7226075b62885621f8b2a0249e4c04cb83438b0a09b6ee7
+test_sources_sample_apk.py sha256=4681406c49c63496839001e73ac9da4844ab87111c61200d19581c2f0175d3e3
+test_sources_fetch.py sha256=44170d730a3340a3b07c91b10d6280a29910abf3953777e18e84e6c1da3f5821
+test_source_index.py sha256=eb6b6322e22f976a2e2fa26bbb543c40a334ff14714538061737ddf9e1a5d68a
+[2] cand + the apk filter applied in full too
+     rows=['plan_full', 'gl_full', 'full_apkbuild', 'rec_pure', 'rec_cli', 'apkbuild_row']
+     failed=['apkbuild_row', 'full_apkbuild', 'gl_full', 'plan_full', 'rec_cli'] (Ran 6 tests in 1.338s FAILED (failures=22); 2 s)
+    FAIL: test_full_plan_unchanged (tests.test_sources_sample_apk.SamplePlanTest.test_full_plan_unchanged) (lock='one_per_kind', arch='amd64')
+      why: AssertionError: Lists differ: [('ap[28 chars]e': 'readline-8.2.13.tar.gz', 'sha256': '9198e[4230 chars]z'})] != [('ap[28 chars]e': 'APKBUILD', 'sha256': '9e16d0061a9deb2c2d2[5816 chars]z'})]
+    FAIL: test_full_plan_unchanged (tests.test_sources_sample_apk.SamplePlanTest.test_full_plan_unchanged) (lock='wide', arch='amd64')
+      why: AssertionError: Lists differ: [('ap[28 chars]e': 'readline-8.2.13.tar.gz', 'sha256': '9198e[6330 chars]z'})] != [('ap[28 chars]e': 'APKBUILD', 'sha256': '92695f1f03ab1ec9c5b[8419 chars]z'})]
+    FAIL: test_full_plan_unchanged (tests.test_sources_sample_apk.SamplePlanTest.test_full_plan_unchanged) (lock='committed', arch='amd64')
+      why: AssertionError: Lists differ: [('ap[36 chars]e': 'protocols-6.4', 'sha256': '4959498abbadaa[214326 chars]z'})] != [('ap[36 chars]e': 'APKBUILD', 'sha256': 'c673459076838229d5e[420879 chars]z'})]
+    FAIL: test_full_plan_unchanged (tests.test_sources_sample_apk.SamplePlanTest.test_full_plan_unchanged) (case='committed, amd64 (u8/expected.md "full, amd64")')
+      why: AssertionError: Tuples differ: (183, 532, 515, 1180315552) != (183, 876, 716, 1180936586)
+    FAIL: test_full_fetch_fails_with_gitlab_unreachable (tests.test_sources_sample_apk.GitLabUnreachableTest.test_full_fetch_fails_with_gitlab_unreachable)
+      why: AssertionError: Regex didn't match: '^bundle_fetch: FAIL \\(stage fetch: gitlab\\.alpinelinux\\.org: APKBUILD: (?:gitlab\\.alpinelinux\\.org: |APKBUILD: )?ConnectionRefusedError:\\ https://gitlab\\.alpinelinux\\.org/api/v4/projects/alpine%2Faports/repository/files/main%2Freadline%2FAPKBUILD/raw\\?<q
+    FAIL: test_full_fetch_apkbuild_mismatch_still_fails (tests.test_sources_sample_apk.SampleFetchNameCheckTest.test_full_fetch_apkbuild_mismatch_still_fails) (case="the sample key's APKBUILD names differ
+      why: AssertionError: Regex didn't match: '^bundle_fetch: FAIL \\(stage fetch: gitlab\\.alpinelinux\\.org: APKBUILD: (?:gitlab\\.alpinelinux\\.org: |APKBUILD: )?APKBUILD\\ at\\ 164709483a69ff847763c0d3c9ffca929d1a7169:\\ sha512sums\\ names\\ differ\\ from\\ the\\ lock\\ entry; no retry\\)$' not found in "
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.FetchRecordProblemsTest.test_bundle_refuses_a_mismatched_fetch_record) (case='a file missing')
+      why: AssertionError: False is not true : no problem names ('fetch.json', 'deb:bash@5.2.15-2+deb12u1'): ["fetch.json: apk:readline@8.2.13-r0: lists 2 files, the lock's full plan says 1"]
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.FetchRecordProblemsTest.test_bundle_refuses_a_mismatched_fetch_record) (case='a file extra')
+      why: AssertionError: False is not true : no problem names ('fetch.json', 'deb:bash@5.2.15-2+deb12u1'): ["fetch.json: apk:readline@8.2.13-r0: lists 2 files, the lock's full plan says 1"]
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.FetchRecordProblemsTest.test_bundle_refuses_a_mismatched_fetch_record) (case='two files swapped')
+      why: AssertionError: False is not true : no problem names ('fetch.json', 'deb:bash@5.2.15-2+deb12u1'): ["fetch.json: apk:readline@8.2.13-r0: lists 2 files, the lock's full plan says 1"]
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.FetchRecordProblemsTest.test_bundle_refuses_a_mismatched_fetch_record) (case='a name differs')
+      why: AssertionError: False is not true : no problem names ('fetch.json', 'deb:bash@5.2.15-2+deb12u1', 'name', 'other.tar.xz', 'bash_5.2.15.orig.tar.gz'): ["fetch.json: apk:readline@8.2.13-r0: lists 2 files, the lock's full plan says 1"]
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.FetchRecordProblemsTest.test_bundle_refuses_a_mismatched_fetch_record) (case='a sha256 differs')
+      why: AssertionError: False is not true : no problem names ('fetch.json', 'deb:bash@5.2.15-2+deb12u1', 'sha256', 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', 'a314137092297d9dece12524f32e611bc00f6bb20d2b85646e10fa6dbf42c393'): ["fetch.json: apk:readline@8.2.13-r0: lists 2 files, the
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.FetchRecordProblemsTest.test_bundle_refuses_a_mismatched_fetch_record) (case='a size differs')
+      why: AssertionError: False is not true : no problem names ("fetch.json: deb:bash@5.2.15-2+deb12u1: size is 401, the lock's full plan says 400",): ["fetch.json: apk:readline@8.2.13-r0: lists 2 files, the lock's full plan says 1"]
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.FetchRecordProblemsTest.test_bundle_refuses_a_mismatched_fetch_record) (case='U9c-2 (b): a full record whose apk entry hold
+      why: AssertionError: Lists differ: ["fet[14 chars]eadline@8.2.13-r0: lists 2 files, the lock's full plan says 1"] != ["fet[14 chars]eadline@8.2.13-r1: lists 1 files, the lock's full plan says 4"]
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.SourcesCheckCliTest.test_bundle_refuses_a_mismatched_fetch_record) (case='a planned file missing')
+      why: AssertionError: '8d70a60cd595bb6606e298924da79a2a92e58b991b273c0febccdc40edd561ed' not found in "sbom_check: sources-check: fetch.json: apk:readline@8.2.13-r0: lists 2 files, the lock's full plan says 1\n" : the refusal does not name '8d70a60cd595bb6606e298924da79a2a92e58b991b273c0febccdc40edd561ed'
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.SourcesCheckCliTest.test_bundle_refuses_a_mismatched_fetch_record) (case='a planned file short')
+      why: AssertionError: '8d70a60cd595bb6606e298924da79a2a92e58b991b273c0febccdc40edd561ed' not found in "sbom_check: sources-check: fetch.json: apk:readline@8.2.13-r0: lists 2 files, the lock's full plan says 1\n" : the refusal does not name '8d70a60cd595bb6606e298924da79a2a92e58b991b273c0febccdc40edd561ed'
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.SourcesCheckCliTest.test_bundle_refuses_a_mismatched_fetch_record) (case='a planned file changed, same size (re-hash, item 
+      why: AssertionError: '--sources: 8d70a60cd595bb6606e298924da79a2a92e58b991b273c0febccdc40edd561ed (pypi:psycopg@3.3.6 psycopg-3.3.6.tar.gz): sha256 mismatch: got cab5e3479e8b55b9ea732977fceadb175b44599927e133792f2b73fac36c23e3' not found in "sbom_check: sources-check: fetch.json: apk:readline@8.2.13-r0: 
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.SourcesCheckCliTest.test_bundle_refuses_a_mismatched_fetch_record) (case='an extra 64-hex file')
+      why: AssertionError: 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' not found in "sbom_check: sources-check: fetch.json: apk:readline@8.2.13-r0: lists 2 files, the lock's full plan says 1\n" : the refusal does not name 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
+    FAIL: test_bundle_refuses_a_mismatched_fetch_record (tests.test_source_index.SourcesCheckCliTest.test_bundle_refuses_a_mismatched_fetch_record) (case='U9c-2 (b): a full record whose apk entry holds on
+      why: AssertionError: "fetch.json: apk:readline@8.2.13-r1: lists 1 files, the lock's full plan says 4" not found in "sbom_check: sources-check: fetch.json: apk:readline@8.2.13-r0: lists 2 files, the lock's full plan says 1\n" : the refusal does not name "fetch.json: apk:readline@8.2.13-r1: lists 1 files, 
+    FAIL: test_source_fetch_apkbuild_names_match_the_lock_entry (tests.test_sources_fetch.SourceFetchNameCheckTest.test_source_fetch_apkbuild_names_match_the_lock_entry) (case='control: equal; a GitLab fi
+      why: AssertionError: 1 != 0 : bundle_fetch: ok apk:readline@8.2.13-r1 readline-8.2.13.tar.gz sha256=9198e4dbde4de640441270dd1cd5094256aed772e192cf9a9144c7c6afc90991 size=300 hops=distfiles.alpinelinux.org
+    FAIL: test_source_fetch_apkbuild_names_match_the_lock_entry (tests.test_sources_fetch.SourceFetchNameCheckTest.test_source_fetch_apkbuild_names_match_the_lock_entry) (case='sha512sums names a file the
+      why: AssertionError: Regex didn't match: '^bundle_fetch: FAIL \\(stage fetch: gitlab\\.alpinelinux\\.org: APKBUILD: (?:gitlab\\.alpinelinux\\.org: |APKBUILD: )?APKBUILD\\ at\\ 164709483a69ff847763c0d3c9ffca929d1a7169:\\ sha512sums\\ names\\ differ\\ from\\ the\\ lock\\ entry; no retry\\)$' not found in "
+    FAIL: test_source_fetch_apkbuild_names_match_the_lock_entry (tests.test_sources_fetch.SourceFetchNameCheckTest.test_source_fetch_apkbuild_names_match_the_lock_entry) (case='a sha512 lock file not in s
+      why: AssertionError: Regex didn't match: '^bundle_fetch: FAIL \\(stage fetch: gitlab\\.alpinelinux\\.org: APKBUILD: (?:gitlab\\.alpinelinux\\.org: |APKBUILD: )?APKBUILD\\ at\\ 164709483a69ff847763c0d3c9ffca929d1a7169:\\ sha512sums\\ names\\ differ\\ from\\ the\\ lock\\ entry; no retry\\)$' not found in "
+    FAIL: test_source_fetch_apkbuild_names_match_the_lock_entry (tests.test_sources_fetch.SourceFetchNameCheckTest.test_source_fetch_apkbuild_names_match_the_lock_entry) (case='a sha512 value difference')
+      why: AssertionError: Regex didn't match: '^bundle_fetch: FAIL \\(stage fetch: gitlab\\.alpinelinux\\.org: APKBUILD: (?:gitlab\\.alpinelinux\\.org: |APKBUILD: )?APKBUILD\\ at\\ 164709483a69ff847763c0d3c9ffca929d1a7169:\\ sha512sums\\ names\\ differ\\ from\\ the\\ lock\\ entry; no retry\\)$' not found in "
+[3] cand + the distfiles filter applied to every kind in the sample
+     rows=['plan_other']
+     failed=['plan_other'] (Ran 1 test in 0.050s FAILED (errors=4); 0 s)
+    ERROR: test_sample_plan_other_kinds_unchanged (tests.test_sources_sample_apk.SamplePlanTest.test_sample_plan_other_kinds_unchanged) (lock='one_per_kind', arch='amd64')
+      why: ValueError: deb:bash@5.2.15-2: the apk sample key has no file on distfiles.alpinelinux.org; the sample needs one (A81)
+    ERROR: test_sample_plan_other_kinds_unchanged (tests.test_sources_sample_apk.SamplePlanTest.test_sample_plan_other_kinds_unchanged) (lock='wide', arch='amd64')
+      why: ValueError: deb:bash@5.2.15-2: the apk sample key has no file on distfiles.alpinelinux.org; the sample needs one (A81)
+    ERROR: test_sample_plan_other_kinds_unchanged (tests.test_sources_sample_apk.SamplePlanTest.test_sample_plan_other_kinds_unchanged) (lock='wide', arch='arm64')
+      why: ValueError: deb:dash@0.5.12-2: the apk sample key has no file on distfiles.alpinelinux.org; the sample needs one (A81)
+    ERROR: test_sample_plan_other_kinds_unchanged (tests.test_sources_sample_apk.SamplePlanTest.test_sample_plan_other_kinds_unchanged) (lock='committed', arch='amd64')
+      why: ValueError: deb:hostname@3.23+nmu1: the apk sample key has no file on distfiles.alpinelinux.org; the sample needs one (A81)
+[4] cand + no refusal of an apk sample key without distfiles
+     rows=['plan_refuse']
+     failed=['plan_refuse'] (Ran 1 test in 0.070s FAILED (failures=2); 0 s)
+    FAIL: test_sample_plan_refuses_an_apk_key_without_distfiles (tests.test_sources_sample_apk.SamplePlanTest.test_sample_plan_refuses_an_apk_key_without_distfiles) (case='fetch_plan fails closed, naming 
+      why: AssertionError: ValueError not raised
+    FAIL: test_sample_plan_refuses_an_apk_key_without_distfiles (tests.test_sources_sample_apk.SamplePlanTest.test_sample_plan_refuses_an_apk_key_without_distfiles) (case='the fetch client: one stage-lock
+      why: AssertionError: 0 != 1 : bundle_fetch: ok deb:bash@5.2.15-2 bash_5.2.15-2.dsc sha256=3ded35d7f4537caf99c40b958c7da9792b01f02caf00c3fd80e68da7b935c842 size=427 hops=snapshot.debian.org
+[5] cand + the APKBUILD skip keyed on the kind only (full too)
+     rows=['full_apkbuild', 'skip', 'apkbuild_row']
+     failed=['apkbuild_row', 'full_apkbuild', 'skip'] (Ran 3 tests in 0.090s FAILED (failures=6); 0 s)
+    FAIL: test_full_fetch_apkbuild_mismatch_still_fails (tests.test_sources_sample_apk.SampleFetchNameCheckTest.test_full_fetch_apkbuild_mismatch_still_fails) (case="the sample key's APKBUILD names differ
+      why: AssertionError: 0 != 1 : bundle_fetch: ok apk:readline@8.2.13-r1 APKBUILD sha256=507030ba24480ea1dd1b1e2b4bcab0d47e9e22cf1e43201c1a1d8fb6c95a62b2 size=253 hops=gitlab.alpinelinux.org
+    FAIL: test_full_fetch_apkbuild_mismatch_still_fails (tests.test_sources_sample_apk.SampleFetchNameCheckTest.test_full_fetch_apkbuild_mismatch_still_fails) (case='no fail-open: a full run whose plan la
+      why: AssertionError: 0 != 1 : bundle_fetch: ok apk:readline@8.2.13-r1 fix-build.patch sha256=69e228c8994e6136ac8586816834d34608f02e6992b34e19561a8e1584941740 size=90 hops=gitlab.alpinelinux.org
+    FAIL: test_sample_fetch_skips_the_apkbuild_check_only_for_apk (tests.test_sources_sample_apk.SampleFetchNameCheckTest.test_sample_fetch_skips_the_apkbuild_check_only_for_apk) (set='full')
+      why: AssertionError: 'skipped' unexpectedly found in 'bundle_fetch: ok apk:readline@8.2.13-r1 APKBUILD sha256=9e16d0061a9deb2c2d2f5db43a1b3ba026d42d1a6dd10c042ef738cd750908be size=399 hops=gitlab.alpinelinux.org\nbundle_fetch: ok apk:readline@8.2.13-r1 fix-build.patch sha256=69e228c8994e6136ac8586816834d
+    FAIL: test_source_fetch_apkbuild_names_match_the_lock_entry (tests.test_sources_fetch.SourceFetchNameCheckTest.test_source_fetch_apkbuild_names_match_the_lock_entry) (case='sha512sums names a file the
+      why: AssertionError: 0 != 1 : bundle_fetch: ok apk:readline@8.2.13-r1 APKBUILD sha256=fb2b4c3730f70b84fbe85527adab212e55216eb2b9ecdec998f9b45d88b31f3a size=540 hops=gitlab.alpinelinux.org
+    FAIL: test_source_fetch_apkbuild_names_match_the_lock_entry (tests.test_sources_fetch.SourceFetchNameCheckTest.test_source_fetch_apkbuild_names_match_the_lock_entry) (case='a sha512 lock file not in s
+      why: AssertionError: 0 != 1 : bundle_fetch: ok apk:readline@8.2.13-r1 APKBUILD sha256=507030ba24480ea1dd1b1e2b4bcab0d47e9e22cf1e43201c1a1d8fb6c95a62b2 size=253 hops=gitlab.alpinelinux.org
+    FAIL: test_source_fetch_apkbuild_names_match_the_lock_entry (tests.test_sources_fetch.SourceFetchNameCheckTest.test_source_fetch_apkbuild_names_match_the_lock_entry) (case='a sha512 value difference')
+      why: AssertionError: 0 != 1 : bundle_fetch: ok apk:readline@8.2.13-r1 APKBUILD sha256=2eb4397a10dfb371ddb465546eefc2842266ff4395ed97c2bc7b1c6f91299ff6 size=399 hops=gitlab.alpinelinux.org
+[6] cand + the skip for every kind in the sample (.dsc too)
+     rows=['dsc', 'skip']
+     failed=['dsc', 'skip'] (Ran 2 tests in 0.124s FAILED (failures=3); 0 s)
+    FAIL: test_sample_fetch_dsc_check_still_runs (tests.test_sources_sample_apk.SampleFetchNameCheckTest.test_sample_fetch_dsc_check_still_runs) (kind='deb', case='an extra file in the lock entry')
+      why: AssertionError: 0 != 1 : bundle_fetch: ok apk:readline@8.2.13-r1 readline-8.2.13.tar.gz sha256=9198e4dbde4de640441270dd1cd5094256aed772e192cf9a9144c7c6afc90991 size=300 hops=distfiles.alpinelinux.org
+    FAIL: test_sample_fetch_dsc_check_still_runs (tests.test_sources_sample_apk.SampleFetchNameCheckTest.test_sample_fetch_dsc_check_still_runs) (kind='pgdg', case='an extra file in the lock entry')
+      why: AssertionError: 0 != 1 : bundle_fetch: ok apk:readline@8.2.13-r1 readline-8.2.13.tar.gz sha256=9198e4dbde4de640441270dd1cd5094256aed772e192cf9a9144c7c6afc90991 size=300 hops=distfiles.alpinelinux.org
+    FAIL: test_sample_fetch_skips_the_apkbuild_check_only_for_apk (tests.test_sources_sample_apk.SampleFetchNameCheckTest.test_sample_fetch_skips_the_apkbuild_check_only_for_apk) (set='sample')
+      why: AssertionError: Lists differ: ['bun[80 chars]A81)', 'bundle_fetch: apk deb:bash@5.2.15-2: A[519 chars]81)'] != ['bun[80 chars]A81)']
+[7] cand + a silent skip (no printed line)
+     rows=['skip']
+     failed=['skip'] (Ran 1 test in 0.036s FAILED (failures=1); 0 s)
+    FAIL: test_sample_fetch_skips_the_apkbuild_check_only_for_apk (tests.test_sources_sample_apk.SampleFetchNameCheckTest.test_sample_fetch_skips_the_apkbuild_check_only_for_apk) (set='sample')
+      why: AssertionError: Lists differ: [] != ['bundle_fetch: apk apk:readline@8.2.13-r1[44 chars]81)']
+[8] cand + the skip keyed on the APKBUILD being absent from --out (fail-open)
+     rows=['full_apkbuild', 'skip']
+     failed=['full_apkbuild'] (Ran 2 tests in 0.098s FAILED (failures=1); 0 s)
+    FAIL: test_full_fetch_apkbuild_mismatch_still_fails (tests.test_sources_sample_apk.SampleFetchNameCheckTest.test_full_fetch_apkbuild_mismatch_still_fails) (case='no fail-open: a full run whose plan la
+      why: AssertionError: 0 != 1 : bundle_fetch: ok apk:readline@8.2.13-r1 fix-build.patch sha256=69e228c8994e6136ac8586816834d34608f02e6992b34e19561a8e1584941740 size=90 hops=gitlab.alpinelinux.org
+[9] cand + fetch_plan's ValueError not turned into a stage-lock Fail
+     rows=['plan_refuse']
+     failed=['plan_refuse'] (Ran 1 test in 0.084s FAILED (failures=1); 0 s)
+    FAIL: test_sample_plan_refuses_an_apk_key_without_distfiles (tests.test_sources_sample_apk.SamplePlanTest.test_sample_plan_refuses_an_apk_key_without_distfiles) (case='the fetch client: one stage-lock
+      why: AssertionError: Regex didn't match: '^bundle_fetch:\\ FAIL\\ \\(stage\\ lock:\\ apk:readline@8\\.2\\.13\\-r1:\\ the\\ apk\\ sample\\ key\\ has\\ no\\ file\\ on\\ distfiles\\.alpinelinux\\.org;\\ the\\ sample\\ needs\\ one\\ \\(A81\\);\\ no\\ retry\\)$' not found in 'bundle_fetch: FAIL (stage lock: V
+[10] cand + a partial key not refused in a full index
+     rows=['idx_full']
+     failed=['idx_full'] (Ran 1 test in 0.027s FAILED (failures=1); 0 s)
+    FAIL: test_full_index_refuses_a_partial_key (tests.test_sources_sample_apk.PartialIndexTest.test_full_index_refuses_a_partial_key)
+      why: AssertionError: {'format': 1, 'set': 'full', 'arch': 'amd64', 'git_sha': '0123456789abcdef0123456789abcdef01234567', 'lock_sha256': '0164bdb8bb443db66c25c6250ffdc1501e1c0c37bae07876c96cf8ce920260d4', 'components': [{'key': 'apk:readline@8.2.13-r0', 'kind': 'apk', 'status': 'shipped', 'packages': [{'
+[11] cand + a non-apk partial key allowed in a sample index
+     rows=['idx_other']
+     failed=['idx_other'] (Ran 1 test in 0.027s FAILED (failures=1); 0 s)
+    FAIL: test_index_refuses_a_partial_key_of_another_kind (tests.test_sources_sample_apk.PartialIndexTest.test_index_refuses_a_partial_key_of_another_kind)
+      why: AssertionError: {'format': 1, 'set': 'sample', 'arch': 'amd64', 'git_sha': '0123456789abcdef0123456789abcdef01234567', 'lock_sha256': '0164bdb8bb443db66c25c6250ffdc1501e1c0c37bae07876c96cf8ce920260d4', 'components': [{'key': 'apk:readline@8.2.13-r0', 'kind': 'apk', 'status': 'not-shipped', 'packages
+[12] cand + path decided per sha256, not per (key, name)
+     rows=['idx_partial', 'ships']
+     failed=['idx_partial', 'ships'] (Ran 2 tests in 0.130s FAILED (failures=4); 0 s)
+    FAIL: test_sample_index_marks_the_partial_apk_key (tests.test_sources_sample_apk.PartialIndexTest.test_sample_index_marks_the_partial_apk_key) (case="a not-shipped key sharing the fetched tarball's sh
+      why: AssertionError: Lists differ: [None, 'sources/files/9198e4dbde4de640441270dd1c[35 chars]991'] != [None, None]
+    FAIL: test_sample_bundle_ships_exactly_the_sample (tests.test_source_index.SourceIndexSchemaTest.test_sample_bundle_ships_exactly_the_sample) (key='apk:readline@8.2.13-r0', file='readline-8.2.13.tar.g
+      why: AssertionError: 'sources/files/9198e4dbde4de640441270dd1cd5094256aed772e192cf9a9144c7c6afc90991' is not None : path is null exactly when the file is not in the sample plan
+    FAIL: test_sample_bundle_ships_exactly_the_sample (tests.test_source_index.SourceIndexSchemaTest.test_sample_bundle_ships_exactly_the_sample) (key='deb:bash@5.2.15-2+deb12u1', file='bash_5.2.15.orig.t
+      why: AssertionError: 'sources/files/a314137092297d9dece12524f32e611bc00f6bb20d2b85646e10fa6dbf42c393' is not None : path is null exactly when the file is not in the sample plan
+    FAIL: test_sample_bundle_ships_exactly_the_sample (tests.test_source_index.SourceIndexSchemaTest.test_sample_bundle_ships_exactly_the_sample) (case='a sha256 shared by a shipped and a not-shipped key'
+      why: AssertionError: Lists differ: ['sources/files/a314137092297d9dece12524f3[35 chars]393'] != [None]
+[13] cand + the partial row carries the shipped claim
+     rows=['notices', 'rows']
+     failed=['notices', 'rows'] (Ran 2 tests in 0.061s FAILED (failures=2); 0 s)
+    FAIL: test_notices_partial_row (tests.test_sources_sample_apk.PartialNoticesTest.test_notices_partial_row)
+      why: AssertionError: Lists differ: ['| `[30 chars]ey | source in `sources/` (see `sources/index.[463 chars]z |'] != ['| `[30 chars]ey | partial source (verification sample): onl[536 chars]z |']
+    FAIL: test_notices_source_code_section_rows (tests.test_source_index.SourceSectionTest.test_notices_source_code_section_rows) (which='sample')
+      why: AssertionError: Lists differ: ['| `[250 chars]ey | source in `sources/` (see `sources/index.[1240 chars]) |'] != ['| `[250 chars]ey | partial source (verification sample): onl[1313 chars]) |']
+[14] cand + the partial row's URL from the first file, not the first file with no path
+     rows=['notices']
+     failed=['notices'] (Ran 1 test in 0.024s FAILED (failures=1); 0 s)
+    FAIL: test_notices_partial_row (tests.test_sources_sample_apk.PartialNoticesTest.test_notices_partial_row) (case='the URL is the first file with no path, not the first file')
+      why: AssertionError: '| `a[188 chars]ps://distfiles.alpinelinux.org/distfiles/v3.23[21 chars]gz |' != '| `a[188 chars]ps://gitlab.alpinelinux.org/api/v4/projects/al[104 chars]69 |'
+[15] cand + a partial component in a full index not refused by notices
+     rows=['notices']
+     failed=['notices'] (Ran 1 test in 0.023s FAILED (failures=1); 0 s)
+    FAIL: test_notices_partial_row (tests.test_sources_sample_apk.PartialNoticesTest.test_notices_partial_row) (case='a partial component in a full index is refused')
+      why: AssertionError: '## Source code\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/`", this bundle carries the complete corresponding\nsource of that component, at the version its images 
+[16] cand + a partly planned key reported as shipped
+     rows=['idx_partial', 'ships', 'bundle']
+     failed=['bundle', 'idx_partial', 'ships'] (Ran 3 tests in 2.685s FAILED (failures=3); 3 s)
+    FAIL: test_sample_index_marks_the_partial_apk_key (tests.test_sources_sample_apk.PartialIndexTest.test_sample_index_marks_the_partial_apk_key)
+      why: AssertionError: 'shipped' != 'partial'
+    FAIL: test_sample_bundle_ships_exactly_the_sample (tests.test_source_index.SourceIndexSchemaTest.test_sample_bundle_ships_exactly_the_sample)
+      why: AssertionError: Items in the first set but not the second:
+    FAIL: test_partial_files_without_path_are_not_on_disk (tests.test_sources_sample_apk.PartialBundleTest.test_partial_files_without_path_are_not_on_disk)
+      why: AssertionError: 'shipped' != 'partial'
+[17] cand + no refusal of a partial component without fetched or unfetched files
+     rows=['notices']
+     failed=['notices'] (Ran 1 test in 0.023s FAILED (failures=1); 0 s)
+    FAIL: test_notices_partial_row (tests.test_sources_sample_apk.PartialNoticesTest.test_notices_partial_row) (case='a partial component with no fetched file is refused')
+      why: AssertionError: '## Source code\n\nVerification bundle: this source set is a sample and is not complete; do not distribute this bundle.\n\nPaths here are relative to the bundle\'s `app/` directory, which install publishes as the install directory.\n\nWhere the Source column says "source in `sources/
+
+== The driver, verbatim (<scratch>/u9c/ctl/ctl.py) ==
+"""U9c RED mutation controls (tester, 2026-10-30). Run in the gates image:
+/work is the repository (read-only). Per entry, /work is copied to /tmp/m<i>
+(no .git, dist, docs/evidence, .venv); the copy's scripts/sbom_check.py and
+scripts/sources_fetch.py are today's ("today") or a CONTROL-ONLY candidate of
+design-notes "N9 amendment, U9c" items 2, 3, 5, 6, 7 ("cand"), written only to
+the copy, plus at most ONE edit, which must match exactly the stated number of
+places or the driver stops. The candidate exists only to show the red rows
+pass once the ruled behaviour exists; the developer is not bound to its text.
+"""
+import hashlib
+import os
+import re
+import shutil
+import subprocess
+import sys
+import time
+
+M = "tests.test_sources_sample_apk."
+ROWS = {
+    "plan_apk": M + "SamplePlanTest.test_sample_plan_apk_is_distfiles_only",
+    "plan_other": M + "SamplePlanTest.test_sample_plan_other_kinds_unchanged",
+    "plan_full": M + "SamplePlanTest.test_full_plan_unchanged",
+    "plan_refuse": M + "SamplePlanTest.test_sample_plan_refuses_an_apk_key_without_distfiles",
+    "skip": M + "SampleFetchNameCheckTest.test_sample_fetch_skips_the_apkbuild_check_only_for_apk",
+    "full_apkbuild": M + "SampleFetchNameCheckTest.test_full_fetch_apkbuild_mismatch_still_fails",
+    "dsc": M + "SampleFetchNameCheckTest.test_sample_fetch_dsc_check_still_runs",
+    "gl_sample": M + "GitLabUnreachableTest.test_sample_fetch_passes_with_gitlab_unreachable",
+    "gl_full": M + "GitLabUnreachableTest.test_full_fetch_fails_with_gitlab_unreachable",
+    "record": M + "SampleRecordTest.test_sample_record_accepts_the_partial_apk_entry",
+    "idx_partial": M + "PartialIndexTest.test_sample_index_marks_the_partial_apk_key",
+    "idx_full": M + "PartialIndexTest.test_full_index_refuses_a_partial_key",
+    "idx_other": M + "PartialIndexTest.test_index_refuses_a_partial_key_of_another_kind",
+    "notices": M + "PartialNoticesTest.test_notices_partial_row",
+    "bundle": M + "PartialBundleTest.test_partial_files_without_path_are_not_on_disk",
+    "rec_pure": "tests.test_source_index.FetchRecordProblemsTest.test_bundle_refuses_a_mismatched_fetch_record",
+    "rec_cli": "tests.test_source_index.SourcesCheckCliTest.test_bundle_refuses_a_mismatched_fetch_record",
+    "ships": "tests.test_source_index.SourceIndexSchemaTest.test_sample_bundle_ships_exactly_the_sample",
+    "rows": "tests.test_source_index.SourceSectionTest.test_notices_source_code_section_rows",
+    "plan_rows": "tests.test_sources_fetch.FetchPlanTest.test_fetch_plan_rows",
+    "apkbuild_row": "tests.test_sources_fetch.SourceFetchNameCheckTest.test_source_fetch_apkbuild_names_match_the_lock_entry",
+}
+ALL = list(ROWS)
+MODULES = ["tests.test_sources_sample_apk", "tests.test_sources_fetch", "tests.test_source_index",
+           "tests.test_sources_lock", "tests.test_sources_lock_committed", "tests.test_sbom_obligations",
+           "tests.test_bundle_fetch", "tests.test_bundle_sources", "tests.test_offline_check"]
+
+CHECK = "scripts/sbom_check.py"
+FETCH = "scripts/sources_fetch.py"
+
+# The control-only candidate: (file, old, new, count).
+CAND = [
+    (CHECK, 'KIND_HOSTS = {"deb": ("snapshot.debian.org",), "pgdg": (PGDG_HOST,), "apk": ("gitlab.alpinelinux.org", '
+            '"distfiles.alpinelinux.org"),\n',
+     'APK_API_HOST = "gitlab.alpinelinux.org"\nAPK_DISTFILES_HOST = "distfiles.alpinelinux.org"\n'
+     'KIND_HOSTS = {"deb": ("snapshot.debian.org",), "pgdg": (PGDG_HOST,), "apk": (APK_API_HOST, APK_DISTFILES_HOST),\n',
+     1),
+    (CHECK, '    return [(k, f) for k in keys for f in comps[k]["files"]]\n',
+     '    out = []\n'
+     '    for k in keys:\n'
+     '        files = comps[k]["files"]\n'
+     '        if which == "sample" and k.split(":", 1)[0] == "apk":\n'
+     '            files = [f for f in files if (_split(f["url"]).hostname or "") == APK_DISTFILES_HOST]\n'
+     '            if not files:\n'
+     '                raise ValueError(f"{_clean(k)}: the apk sample key has no file on {APK_DISTFILES_HOST}; '
+     'the sample needs one (A81)")\n'
+     '        out += [(k, f) for f in files]\n'
+     '    return out\n', 1),
+    (CHECK, '    shipped = {k for k, _ in plan}\n', '    planned_names = {(k, f["name"]) for k, f in plan}\n', 1),
+    (CHECK,
+     '        is_shipped = key in shipped\n'
+     '        if which == "full" and not is_shipped:\n'
+     '            p.append(f"index: {_clean(key)} is not shipped in a full bundle")\n'
+     '        files = [dict(f, path=f"sources/files/{f[\'sha256\']}" if is_shipped else None) for f in entry["files"]]\n'
+     '        components.append({"key": key, "kind": key.split(":", 1)[0],\n'
+     '                           "status": "shipped" if is_shipped else "not-shipped",\n',
+     '        fetched = [(key, f["name"]) in planned_names for f in entry["files"]]\n'
+     '        status = "shipped" if fetched and all(fetched) else "partial" if any(fetched) else "not-shipped"\n'
+     '        if which == "full" and status == "not-shipped":\n'
+     '            p.append(f"index: {_clean(key)} is not shipped in a full bundle")\n'
+     '        if which == "full" and status == "partial":\n'
+     '            p.append(f"index: {_clean(key)} is partial in a full bundle")\n'
+     '        if which == "sample" and status == "partial" and key.split(":", 1)[0] != "apk":\n'
+     '            p.append(f"index: {_clean(key)} is partial, and only the apk sample key may be (A81)")\n'
+     '        files = [dict(f, path=f"sources/files/{f[\'sha256\']}" if got else None)\n'
+     '                 for f, got in zip(entry["files"], fetched)]\n'
+     '        components.append({"key": key, "kind": key.split(":", 1)[0],\n'
+     '                           "status": status,\n', 1),
+    (CHECK, '        elif status == "exempt":\n',
+     '        elif status == "partial":\n'
+     '            key = check("component key", c.get("key"), markdown=False)\n'
+     '            images = sorted({check("image", pk.get("image")) for pk in c.get("packages") or []})\n'
+     '            if not images:\n'
+     '                p.append(f"notices: {_show(key)} has no packages")\n'
+     '            pfiles = c.get("files") or []\n'
+     '            rest = [f for f in pfiles if f.get("path") is None]\n'
+     '            got = [f for f in pfiles if f.get("path") is not None]\n'
+     '            if index["set"] != "sample":\n'
+     '                p.append(f"notices: {_show(key)} is partial in a full index")\n'
+     '            if not rest or not got:\n'
+     '                p.append(f"notices: {_show(key)} is partial but lists no fetched file or no unfetched file")\n'
+     '                continue\n'
+     '            url = check("URL", rest[0].get("url"), markdown=False)\n'
+     '            rows.append(f"| `{key}` | {\', \'.join(images)} | partial source (verification sample): only the '
+     'files that `sources/index.json` lists with a path are in `sources/files/`; Upstream source of the rest: '
+     '{url} |")\n'
+     '        elif status == "exempt":\n', 1),
+    (FETCH, 'def _name_check(out: str, key: str, entry: dict[str, Any]) -> None:\n',
+     'def _name_check(out: str, key: str, entry: dict[str, Any], which: str) -> None:\n', 1),
+    (FETCH, '    kind = key.split(":", 1)[0]\n    files = entry["files"]\n',
+     '    kind = key.split(":", 1)[0]\n'
+     '    if kind == "apk" and which == "sample":\n'
+     '        print(f"bundle_fetch: apk {key}: APKBUILD name check skipped (sample set, A81)", flush=True)\n'
+     '        return\n'
+     '    files = entry["files"]\n', 1),
+    (FETCH, '        _name_check(args.out, key, lock["components"][key])\n',
+     '        _name_check(args.out, key, lock["components"][key], args.which)\n', 1),
+    (FETCH, '    plan = S.fetch_plan(lock, args.arch, args.which)\n',
+     '    try:\n'
+     '        plan = S.fetch_plan(lock, args.arch, args.which)\n'
+     '    except ValueError as exc:\n'
+     '        raise Fail("lock", str(exc)) from None\n', 1),
+]
+
+# Index -> (label, use candidate?, one edit or None, rows).
+ENTRIES = {
+    0: ("today's sbom_check.py and sources_fetch.py (no edit)", False, None, ALL),
+    1: ("candidate items 2, 3, 5, 6, 7 (control only); every U9c row and the affected modules", True, None,
+        ALL + MODULES),
+    2: ("cand + the apk filter applied in full too", True,
+        (CHECK, 'if which == "sample" and k.split(":", 1)[0] == "apk":', 'if k.split(":", 1)[0] == "apk":', 1),
+        ["plan_full", "gl_full", "full_apkbuild", "rec_pure", "rec_cli", "apkbuild_row"]),
+    3: ("cand + the distfiles filter applied to every kind in the sample", True,
+        (CHECK, 'if which == "sample" and k.split(":", 1)[0] == "apk":', 'if which == "sample":', 1),
+        ["plan_other"]),
+    4: ("cand + no refusal of an apk sample key without distfiles", True,
+        (CHECK, '            if not files:\n                raise ValueError(', '            if False:\n                raise ValueError(', 1),
+        ["plan_refuse"]),
+    5: ("cand + the APKBUILD skip keyed on the kind only (full too)", True,
+        (FETCH, 'if kind == "apk" and which == "sample":', 'if kind == "apk":', 1),
+        ["full_apkbuild", "skip", "apkbuild_row"]),
+    6: ("cand + the skip for every kind in the sample (.dsc too)", True,
+        (FETCH, 'if kind == "apk" and which == "sample":', 'if which == "sample":', 1),
+        ["dsc", "skip"]),
+    7: ("cand + a silent skip (no printed line)", True,
+        (FETCH, '        print(f"bundle_fetch: apk {key}: APKBUILD name check skipped (sample set, A81)", flush=True)\n',
+         '', 1),
+        ["skip"]),
+    8: ("cand + the skip keyed on the APKBUILD being absent from --out (fail-open)", True,
+        (FETCH, 'if kind == "apk" and which == "sample":',
+         'if kind == "apk" and not os.path.exists(os.path.join(out, next(f for f in entry["files"] '
+         'if f["name"] == "APKBUILD")["sha256"])):', 1),
+        ["full_apkbuild", "skip"]),
+    9: ("cand + fetch_plan's ValueError not turned into a stage-lock Fail", True,
+        (FETCH, '    except ValueError as exc:\n        raise Fail("lock", str(exc)) from None\n',
+         '    except KeyError as exc:\n        raise Fail("lock", str(exc)) from None\n', 1),
+        ["plan_refuse"]),
+    10: ("cand + a partial key not refused in a full index", True,
+         (CHECK, '            p.append(f"index: {_clean(key)} is partial in a full bundle")\n', '            pass\n', 1),
+         ["idx_full"]),
+    11: ("cand + a non-apk partial key allowed in a sample index", True,
+         (CHECK, '            p.append(f"index: {_clean(key)} is partial, and only the apk sample key may be (A81)")\n',
+          '            pass\n', 1),
+         ["idx_other"]),
+    12: ("cand + path decided per sha256, not per (key, name)", True,
+         (CHECK, 'if got else None)\n                 for f, got in zip(entry["files"], fetched)]',
+          'if f["sha256"] in {g["sha256"] for _, g in plan} else None)\n'
+          '                 for f, got in zip(entry["files"], fetched)]', 1),
+         ["idx_partial", "ships"]),
+    13: ("cand + the partial row carries the shipped claim", True,
+         (CHECK, "| partial source (verification sample): only the files that `sources/index.json` lists with a path "
+                 "are in `sources/files/`; Upstream source of the rest: {url} |",
+          "| source in `sources/` (see `sources/index.json`); Upstream source of the rest: {url} |", 1),
+         ["notices", "rows"]),
+    14: ("cand + the partial row's URL from the first file, not the first file with no path", True,
+         (CHECK, 'url = check("URL", rest[0].get("url"), markdown=False)',
+          'url = check("URL", pfiles[0].get("url"), markdown=False)', 1),
+         ["notices"]),
+    15: ("cand + a partial component in a full index not refused by notices", True,
+         (CHECK, '                p.append(f"notices: {_show(key)} is partial in a full index")\n', '                pass\n',
+          1),
+         ["notices"]),
+    16: ("cand + a partly planned key reported as shipped", True,
+         (CHECK, 'else "partial" if any(fetched) else', 'else "shipped" if any(fetched) else', 1),
+         ["idx_partial", "ships", "bundle"]),
+    17: ("cand + no refusal of a partial component without fetched or unfetched files", True,
+         (CHECK, '            if not rest or not got:\n', '            if not rest:\n', 1),
+         ["notices"]),
+}
+
+
+def sha(path):
+    with open(path, "rb") as fh:
+        return hashlib.sha256(fh.read()).hexdigest()
+
+
+def apply(path, old, new, count):
+    with open(path, encoding="utf-8") as fh:
+        text = fh.read()
+    n = text.count(old)
+    if n != count:
+        sys.exit(f"STOP: {path}: {old[:70]!r} matches {n} places, want {count}")
+    with open(path, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(text.replace(old, new))
+
+
+def run(i):
+    label, cand, edit, rows = ENTRIES[i]
+    dst = f"/tmp/m{i}"
+    shutil.rmtree(dst, ignore_errors=True)
+    shutil.copytree("/work", dst, symlinks=True,
+                    ignore=shutil.ignore_patterns(".git", "dist", ".venv", "__pycache__", "evidence", ".env"))
+    if cand:
+        for path, old, new, count in CAND:
+            apply(os.path.join(dst, path), old, new, count)
+    if edit:
+        path, old, new, count = edit
+        apply(os.path.join(dst, path), old, new, count)
+    ids = [ROWS.get(r, r) for r in rows]
+    t0 = time.time()
+    p = subprocess.run([sys.executable, "-m", "unittest", *ids], cwd=dst, capture_output=True, text=True)
+    out = p.stderr
+    tail = [ln for ln in out.splitlines() if ln.startswith(("Ran ", "OK", "FAILED"))]
+    failed = sorted({".".join(m.group(1).rsplit(".", 2)[-2:]) for m in re.finditer(r"^(?:FAIL|ERROR): \S+ \(([^)]+)\)", out, re.M)})
+    names = {".".join(v.rsplit(".", 2)[-2:]): k for k, v in ROWS.items()}
+    print(f"[{i}] {label}")
+    print(f"     rows={rows}")
+    print(f"     failed={sorted(names.get(f, f) for f in failed)} ({' '.join(tail)}; {time.time() - t0:.0f} s)")
+    blocks = re.split(r"^={70}\n", out, flags=re.M)
+    for b in blocks[1:]:
+        head = b.splitlines()[0]
+        why = [ln for ln in b.splitlines() if re.match(r"^[A-Za-z]*(Error|Exception)\b", ln)]
+        print(f"    {head[:200]}")
+        if why:
+            print(f"      why: {why[-1][:300]}")
+    sys.stdout.flush()
+    shutil.rmtree(dst, ignore_errors=True)
+
+
+if __name__ == "__main__":
+    print(f"sbom_check.py (today) sha256={sha('/work/scripts/sbom_check.py')}")
+    print(f"sources_fetch.py (today) sha256={sha('/work/scripts/sources_fetch.py')}")
+    print(f"test_sources_sample_apk.py sha256={sha('/work/tests/test_sources_sample_apk.py')}")
+    print(f"test_sources_fetch.py sha256={sha('/work/tests/test_sources_fetch.py')}")
+    print(f"test_source_index.py sha256={sha('/work/tests/test_source_index.py')}")
+    for arg in sys.argv[1:]:
+        run(int(arg))

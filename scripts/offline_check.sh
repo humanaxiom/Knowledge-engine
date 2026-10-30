@@ -235,7 +235,7 @@ fi
 # platform-sbom U8b (PSC-23 U8-8; design-notes "N4 amendment, U8" item 8):
 # scripts/bundle_fetch.sh --set sample replaces U2's interim generator pull. It
 # pulls the SBOM generator (docker-compose.sbom.yml, where it is pinned), then
-# fetches one source entry per kind through the hardened `sources-fetch`
+# fetches one source entry per kind (for apk, only its distfiles.alpinelinux.org files, A81) through the hardened `sources-fetch`
 # service and checks each file against docker/sources.lock.json. This is the
 # only fetch verify and CI ever run (the sample, never the full set). The dir
 # is under dist/, outside the bundle; bundle.sh --sources reads it (the sample

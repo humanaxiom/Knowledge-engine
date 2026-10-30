@@ -21,7 +21,9 @@ parsers) and `S` is sbom_check.py (lock rules and the plan).
 
 Order: the lock's entry rules (zero requests on a problem), the plan, the
 disk check, then per file one attempt (Q61), size, sha256 and the upstream
-digest against the lock, and per entry the `.dsc` or APKBUILD name check.
+digest against the lock, and per entry the `.dsc` or APKBUILD name check (the APKBUILD check in `full`
+only, A81: the sample's apk files are the distfiles ones, and a line says
+the check was skipped).
 A failing file is deleted; nothing unverified is left in `--out`.
 """
 
@@ -153,10 +155,15 @@ def _text(out: str, f: dict[str, Any]) -> str:
         raise _fetch_fail(f["url"], f["name"], "not UTF-8 text") from None
 
 
-def _name_check(out: str, key: str, entry: dict[str, Any]) -> None:
+def _name_check(out: str, key: str, entry: dict[str, Any], which: str) -> None:
     """Item 5: the `.dsc` (deb and pgdg) or the APKBUILD (apk) must list
-    exactly the entry's other files. Read from the verified file only."""
+    exactly the entry's other files. Read from the verified file only. A81:
+    for an apk key in the `sample` set the check is skipped and a line says
+    so; the condition reads only `which` and the kind, never the plan."""
     kind = key.split(":", 1)[0]
+    if kind == "apk" and which == "sample":
+        print(f"bundle_fetch: apk {key}: APKBUILD name check skipped (sample set, A81)", flush=True)
+        return
     files = entry["files"]
     name, _, ver = key.split(":", 1)[1].rpartition("@")
     if kind in ("deb", "pgdg"):
@@ -219,7 +226,10 @@ def _run(args: argparse.Namespace, stage: list[str]) -> None:
         raise Fail("lock", problems[0])
     allow = {h.lower() for h in policy["hosts"]}
     lock = json.loads(lock_text)
-    plan = S.fetch_plan(lock, args.arch, args.which)
+    try:
+        plan = S.fetch_plan(lock, args.arch, args.which)
+    except ValueError as exc:
+        raise Fail("lock", str(exc)) from None
     if not plan:
         raise Fail("lock", f"the lock lists no entry for {args.arch}")
 
@@ -250,7 +260,7 @@ def _run(args: argparse.Namespace, stage: list[str]) -> None:
             fetched += 1
             nbytes += size
             print(f"bundle_fetch: ok {key} {_safe(name)} sha256={sha} size={size} hops={','.join(hops)}", flush=True)
-        _name_check(args.out, key, lock["components"][key])
+        _name_check(args.out, key, lock["components"][key], args.which)
 
     _write_record(args.out, args.which, args.arch, lock_text, plan)
     print(f"bundle_fetch: fetched {fetched} files, {nbytes} bytes, {len({k for k, _ in plan})} components "

@@ -1183,7 +1183,11 @@ def _pgdg_key_suite(key: str, packages: list[dict[str, Any]]) -> tuple[str | Non
     if len(suites) != 1:
         return None, [f"{_clean(key)}: packages derive suites {', '.join(sorted(suites))}"]
     return suites.pop(), []
-KIND_HOSTS = {"deb": ("snapshot.debian.org",), "pgdg": (PGDG_HOST,), "apk": ("gitlab.alpinelinux.org", "distfiles.alpinelinux.org"),
+# U9c (A81): the two hosts an apk file may have. The sample plan keeps only
+# the files on the distfiles host (`fetch_plan`).
+APK_API_HOST = "gitlab.alpinelinux.org"
+APK_DISTFILES_HOST = "distfiles.alpinelinux.org"
+KIND_HOSTS = {"deb": ("snapshot.debian.org",), "pgdg": (PGDG_HOST,), "apk": (APK_API_HOST, APK_DISTFILES_HOST),
               "neo4j": ("github.com",), "temurin": ("github.com",), "pypi": ("files.pythonhosted.org",),
               "maven": ("repo1.maven.org",)}
 # Rework round 2 (security R1-L1): the sdist name is split at its last `-`
@@ -1242,7 +1246,6 @@ def _plain_path(path: str, url: str, kind: str | None) -> bool:
 # U7c rework round 1, item 9: the one GitLab form an apk file may have (the
 # API raw endpoint); its query and its %-encoded path segment are checked by
 # the apk binding, never accepted anywhere else.
-APK_API_HOST = "gitlab.alpinelinux.org"
 APK_API_PATH_RE = re.compile(r"/api/v4/projects/alpine%2Faports/repository/files/([^/?#]+)/raw")
 APK_API_QUERY_RE = re.compile(r"ref=([^&#=]*)")
 
@@ -1719,7 +1722,8 @@ def only_neo4j_misses(problems: list[str], text: str, policy: dict[str, Any], do
 
 def sample_keys(lock: dict[str, Any], arch: str) -> list[str]:
     """Q63 sample: per kind present for `arch`, the entry with the smallest
-    total size, ties broken by key (N5; amendment U7, item 5). Call it only
+    total size, ties broken by key (N5; amendment U7, item 5). The sample of
+    an `apk` key is its distfiles files only (A81, `fetch_plan`). Call it only
     on a lock `lock_problems` passed (security U7a I-4)."""
     best: dict[str, tuple[int, str]] = {}
     for key, entry in (lock.get("components") or {}).items():
@@ -1735,14 +1739,25 @@ def sample_keys(lock: dict[str, Any], arch: str) -> list[str]:
 def fetch_plan(lock: dict[str, Any], arch: str, which: str) -> list[tuple[str, dict[str, Any]]]:
     """U8: the (key, file) pairs the fetch client requests, sorted by key then
     the entry's file order. `sample` is `sample_keys`; `full` is every key
-    listed for `arch`; any other set is a ValueError. Call it only on a lock
-    `lock_entry_problems` passed."""
+    listed for `arch`; any other set is a ValueError. A81: in `sample`, an
+    `apk` key keeps only the files whose URL host is `APK_DISTFILES_HOST`
+    (file order), and a ValueError names the key when none is left. Call it
+    only on a lock `lock_entry_problems` passed."""
     if which not in ("sample", "full"):
         raise ValueError(f"set {which!r} is not sample or full")
     comps = lock.get("components") or {}
     keys = sample_keys(lock, arch) if which == "sample" else sorted(
         k for k, e in comps.items() if arch in (e.get("arches") or []))
-    return [(k, f) for k in keys for f in comps[k]["files"]]
+    plan = []
+    for k in keys:
+        files = comps[k]["files"]
+        if which == "sample" and k.split(":", 1)[0] == "apk":
+            files = [f for f in files if _split(f["url"]).hostname == APK_DISTFILES_HOST]
+            if not files:
+                raise ValueError(f"{_clean(k)}: the apk sample key has no file on {APK_DISTFILES_HOST}; "
+                                 "the sample needs one (A81)")
+        plan.extend((k, f) for f in files)
+    return plan
 
 
 def lock_check(a: argparse.Namespace) -> int:
@@ -2174,7 +2189,7 @@ def _source_index(docs: dict[str, Any], lock_src: str, policy: dict[str, Any], a
     p = listing_problems(listing, plan, False, "--files")
     if p:
         return None, p
-    shipped = {k for k, _ in plan}
+    planned = {(k, f["name"]) for k, f in plan}
     needs, _ = lock_needs(policy, docs)
     rows: dict[tuple[str, str], tuple[dict[str, Any], dict[str, Any]]] = {}
     ordered: dict[str, list[dict[str, Any]]] = {}
@@ -2194,12 +2209,19 @@ def _source_index(docs: dict[str, Any], lock_src: str, policy: dict[str, Any], a
     components: list[dict[str, Any]] = []
     for key in sorted(needs):
         entry = lock["components"][key]
-        is_shipped = key in shipped
-        if which == "full" and not is_shipped:
+        kind = key.split(":", 1)[0]
+        fetched = [(key, f["name"]) in planned for f in entry["files"]]
+        status = "shipped" if fetched and all(fetched) else "partial" if any(fetched) else "not-shipped"
+        if which == "full" and status == "not-shipped":
             p.append(f"index: {_clean(key)} is not shipped in a full bundle")
-        files = [dict(f, path=f"sources/files/{f['sha256']}" if is_shipped else None) for f in entry["files"]]
-        components.append({"key": key, "kind": key.split(":", 1)[0],
-                           "status": "shipped" if is_shipped else "not-shipped",
+        elif which == "full" and status == "partial":
+            p.append(f"index: {_clean(key)} is partial in a full bundle")
+        elif status == "partial" and kind != "apk":
+            p.append(f"index: {_clean(key)} is partial, and only the apk sample key may be (A81)")
+        files = [dict(f, path=f"sources/files/{f['sha256']}" if got else None)
+                 for f, got in zip(entry["files"], fetched)]
+        components.append({"key": key, "kind": kind,
+                           "status": status,
                            "packages": [package(pk["image"], pk["spdxid"]) for pk in needs[key]["packages"]],
                            "files": files})
     if p:
@@ -2272,7 +2294,22 @@ def _source_section(index: Any) -> tuple[str | None, list[str]]:
 
     for c in index["components"]:
         status = c.get("status")
-        if status in ("shipped", "not-shipped"):
+        if status == "partial":
+            key = check("component key", c.get("key"), markdown=False)
+            images = sorted({check("image", pk.get("image")) for pk in c.get("packages") or []})
+            if not images:
+                p.append(f"notices: {_show(key)} has no packages")
+            files = c.get("files") or []
+            rest = [f for f in files if f.get("path") is None]
+            if index["set"] != "sample":
+                p.append(f"notices: {_show(key)} is partial in a full index")
+            if not rest or len(rest) == len(files):
+                p.append(f"notices: {_show(key)} is partial but lists no fetched file or no unfetched file")
+            url = check("URL", rest[0].get("url") if rest else None, markdown=False)
+            rows.append(f"| `{key}` | {', '.join(images)} | partial source (verification sample): only the files "
+                        f"that `sources/index.json` lists with a path are in `sources/files/`; "
+                        f"Upstream source of the rest: {url} |")
+        elif status in ("shipped", "not-shipped"):
             key = check("component key", c.get("key"), markdown=False)
             images = sorted({check("image", pk.get("image")) for pk in c.get("packages") or []})
             if not images:
