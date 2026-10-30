@@ -5756,6 +5756,444 @@ R7 after a push (the human's word): the CI log and launch extract
   U9c commit (the tree under the orchestrator's U9c `verify full` must not
   move before that commit).
 
+- *Orchestrator rulings at U9d rework 1 (2026-10-30, **O-23**, on reviewer
+  B-1, N-1, N-2 in `u9d/review.md`):* B-1 accepted as a design amendment
+  (restart policy resets `ExitCode` and `OOMKilled`; the diagnostic must
+  survive a restart): the architect amends "N9 amendment, U9d" items 7-8
+  with `RestartCount`, `State.StartedAt`, `State.FinishedAt`, `State.Error`
+  in the template (and `fake_docker.DIAG_TEMPLATE`), and a `docker events`
+  stream (`--filter event=die --filter event=oom`, a fixed `--format` that
+  prints only time, action, name and exitCode) started before launch and
+  printed on the failure path only, bounded (timeout, line cap, killed on
+  every exit path); the events history is not queried afterwards (bounded
+  buffer, reviewer probe). The analyst amends U9d-1's field list to match.
+  N-1 accepted (drop `;q`); N-2 accepted as is (same order; the design text
+  says "by service name", the code sorts by container name; the architect
+  aligns the wording). Then tester RED (a restarted-container fixture whose
+  only evidence is RestartCount/FinishedAt and the die event), developer
+  GREEN, reviewer re-read, security re-audit of the template and the events
+  format. Rework 1 of 5.
+
+#### Amendment, rework 1 (O-23) (architect, 2026-10-30)
+
+Answers reviewer B-1, N-1, N-2 (`u9d/review.md`; probes P3-P5 in
+`u9d/review-probes.txt`, Docker 29.5.2) under ruling O-23. Items 1-16
+stand; this block replaces only what it names (item numbers below). Same
+scope: `scripts/offline_check.sh` client half, `tests/fake_docker.py`,
+`tests/test_offline_check.py`. No compose, image, `launch.sh`,
+`install.ps1` or CLAUDE.md change; no ADR (as the item header: no
+boundary is crossed; the new printed surface is fixed by U9d-1 and
+re-audited by security). No span (a gate script).
+
+*Why both mechanisms.* Every stack service has `restart: unless-stopped`
+(docker-compose.yml:24 via `x-app`, :64, :120, :141, :156, :169). Probe P3:
+`ExitCode 137 / OOMKilled true` live only in the ~100 ms `restarting`
+window; after the restart they read `0 / false`. What survives a restart is
+`RestartCount`, `State.StartedAt`, `State.FinishedAt` (and `State.Error` for
+a failed start): they prove *that* and *when* a container died, not *how*.
+The *how* (the death's exit code, the OOM kill) exists only in the daemon's
+`die` and `oom` events, and the event history is a bounded ring that
+healthcheck `exec_*` events evict (P5: 1 of 9 deaths kept). So the client
+records a live stream from just before launch.
+
+**A1 (amends item 7, the template; and `fake_docker.DIAG_TEMPLATE`).** Four
+lines are added after `State.OOMKilled`, before the Health part. The new
+`diag_tpl`, in full (continuation lines at column 0, as before):
+
+```bash
+  # shellcheck disable=SC2016  # a Go template for docker, not a shell expansion
+  diag_tpl='State.Status: {{.State.Status}}
+State.ExitCode: {{.State.ExitCode}}
+State.OOMKilled: {{.State.OOMKilled}}
+RestartCount: {{.RestartCount}}
+State.StartedAt: {{if or (eq .State.StartedAt "") (eq .State.StartedAt "0001-01-01T00:00:00Z")}}<absent>{{else}}{{.State.StartedAt}}{{end}}
+State.FinishedAt: {{if or (eq .State.FinishedAt "") (eq .State.FinishedAt "0001-01-01T00:00:00Z")}}<absent>{{else}}{{.State.FinishedAt}}{{end}}
+State.Error: {{if .State.Error}}{{json .State.Error}}{{else}}<absent>{{end}}
+{{if .State.Health}}State.Health.Status: {{.State.Health.Status}}
+{{range $i, $e := .State.Health.Log}}State.Health.Log[{{$i}}]: end {{$e.End}} exit {{$e.ExitCode}} output {{json $e.Output}}
+{{else}}State.Health.Log: <absent>
+{{end}}{{else}}State.Health.Status: <absent>
+State.Health.Log: <absent>
+{{end}}'
+```
+- `RestartCount` is top-level in inspect JSON (`.RestartCount`, not under
+  `.State`), so the printed label is `RestartCount:`, the field's own path.
+  It is always a number; `0` is a value, never `<absent>`.
+- `StartedAt` and `FinishedAt` are RFC 3339 strings in the API; Docker's
+  zero value `0001-01-01T00:00:00Z` (never started, never finished; P3's
+  `finished=` before the first death) prints `<absent>` (QD-6's token); an
+  empty string, the same. `State.Error` is empty unless the daemon failed to
+  start the container (for example a runtime or "no space left on device"
+  error on restart): empty prints `<absent>`, otherwise JSON-quoted on one
+  line, as the probe outputs (docker's `json` does not HTML-escape).
+- `fake_docker.DIAG_TEMPLATE` becomes the same text: four tuple items
+  inserted after `"State.OOMKilled: {{.State.OOMKilled}}",`:
+  `"RestartCount: {{.RestartCount}}",`,
+  `"State.StartedAt: {{if or (eq .State.StartedAt \"\") (eq .State.StartedAt \"0001-01-01T00:00:00Z\")}}<absent>{{else}}{{.State.StartedAt}}{{end}}",`,
+  `"State.FinishedAt: ..."` (same form, `FinishedAt`) and
+  `"State.Error: {{if .State.Error}}{{json .State.Error}}{{else}}<absent>{{end}}",`
+  (the test row compares the two texts byte for byte).
+- The fake's `_u9d_render` appends, after the OOMKilled line, in this order:
+  `"RestartCount: %s" % word(c.get("RestartCount", 0))` (a top-level key of
+  the container record, as in inspect); `State.StartedAt` and
+  `State.FinishedAt` from `st.get(...)`, `<absent>` when missing, `""` or
+  `0001-01-01T00:00:00Z`; `State.Error` `<absent>` when missing or `""`,
+  else `json.dumps(err, ensure_ascii=False)`. The no-`--format` JSON record
+  gains `"RestartCount"` (top level). Every existing fixture lacks these
+  keys and so renders `RestartCount: 0` and three `<absent>` lines.
+
+- *Checked on Docker 29.5.2 (architect, read-only):* the four new lines
+  render on an existing container (`RestartCount: 0`, both timestamps,
+  `State.Error: <absent>`), and `events_fmt` (A2) renders a past `die` as
+  `<N> die <name> exitCode=0 signal=` (`--since`/`--until` of the past hour).
+
+**A2 (amends items 7 and 8: the events stream).** New definitions in the
+client branch, after `diag_tpl`:
+
+```bash
+  events_fmt='{{.Time}} {{.Action}} {{.Actor.Attributes.name}} exitCode={{index .Actor.Attributes "exitCode"}} signal={{index .Actor.Attributes "signal"}}'
+  events_start() { # events_start: a bounded background stream of the stack's container deaths into a /tmp (tmpfs) file
+    events_pid="" events_file=""
+    events_file="$(mktemp /tmp/ke-offline-events.XXXXXX 2> /dev/null)" || { events_file=""; return 0; }
+    timeout 900 docker events --since "$(date +%s)" --filter type=container \
+      --filter label=com.docker.compose.project --filter event=die --filter event=oom --filter event=kill \
+      --format "$events_fmt" > "$events_file" 2> /dev/null < /dev/null &
+    events_pid=$!
+  }
+  events_stop() { # events_stop: stop the stream, keep its first 100 lines in memory, remove the file; never fails
+    events_state=none events_rc=0 events_out="" events_n=0
+    if [ -z "$events_pid" ]; then return 0; fi
+    if kill "$events_pid" 2> /dev/null; then events_state=stopped; else events_state=ended; fi
+    wait "$events_pid" 2> /dev/null || events_rc=$?
+    events_n="$(awk 'END { print NR }' "$events_file" 2> /dev/null)" || events_n=0
+    [[ "$events_n" =~ ^[0-9]+$ ]] || events_n=0
+    events_out="$(head -n 100 -- "$events_file" 2> /dev/null)" || events_out=""
+    rm -f -- "$events_file" || true
+  }
+```
+- *Filters.* `type=container` (only container events; image `load`/`tag`
+  events from install can never match), `label=com.docker.compose.project`
+  (presence, as the `ps` list, item 2), `event=die`, `event=oom`,
+  `event=kill` (same-key filters OR, different keys AND). `die` carries
+  `exitCode`; `oom` is the cgroup OOM kill (cgroup v2 counts any OOM kill
+  of a process in the container's cgroup); `kill` is a signal sent *by
+  Docker* (stop, kill, a compose stop) and carries `signal`. Not
+  `exec_die` and no health events: those are the ring's flood and say
+  nothing the template's Health.Log does not.
+- *Format: the only fields printed* are the event time (Unix seconds;
+  Docker's event templates have no date function; the analyst converts with
+  `date -u -d @<N>`), the action, the container name, `exitCode` and
+  `signal`. **`signal` is printed:** a `kill` line is the one way to tell
+  "Docker stopped it" (exit 137 or 143 after a `kill` line) from a kernel
+  kill. `index` yields `""` for a key the event lacks (`.Actor.Attributes.x`
+  would print `<no value>`), so the lines read
+  `1793354444 oom knowledge-engine-neo4j-1 exitCode= signal=` and
+  `1793354444 die knowledge-engine-neo4j-1 exitCode=137 signal=`. No other
+  attribute: the attribute map also holds every label and the image.
+- *`--since "$(date +%s)"`.* `docker events` subscribes a moment after it
+  is started; `--since` with the start second closes that gap (the daemon
+  replays the buffered events since that second and streams on, atomically,
+  no duplicates). It replays at most the second before launch, in a daemon
+  that holds no stack container yet; it is not a history query after the
+  fact (O-23): no `--until`, no second `events` call. `date` is evaluated in
+  the background child, so a failure there cannot stop the client (the
+  stream then ends at once and A3 names it).
+- *N = 900 s.* The bound must outlast launch. `launch.sh` runs
+  `compose up --wait` with no wait timeout; its worst case is neo4j reaching
+  `unhealthy` (start_period 20 s + 18 x (10 s interval + 10 s timeout) =
+  380 s) followed by its dependents' checks (about 60-120 s): about 500 s.
+  900 s leaves margin and is well inside the CI job (69 min). A launch longer
+  than 900 s loses only later events, and A3 names the cut (exit 124). The
+  timeout never costs time: it bounds an orphan, and the kill ends the
+  stream at launch's exit.
+- *File:* `mktemp /tmp/ke-offline-events.XXXXXX`. The client's `/tmp` is a
+  tmpfs (`docker-compose.offline.yml`, offline-client `tmpfs: /tmp`), so the
+  file is in the client container's memory, never on the host, under
+  `/install`, `dist/` or the bundle. `events_stop` reads it into variables
+  and removes it at launch's exit on both paths; the container's exit
+  removes the tmpfs anyway. A `mktemp` failure leaves no stream (A3 names
+  it) and never fails the run.
+- *Stopped on every exit path, without a trap.* The only command between
+  `events_start` and `events_stop` is `bash scripts/launch.sh ||
+  launch_rc=$?`, which cannot exit the client; `events_stop` runs once,
+  right after it, before either branch, so the stream is stopped before the
+  diagnostic and `exit "$launch_rc"` and before smoke on a pass. A signal
+  to the client is handled by the host (its EXIT trap tears the project
+  down, which removes the client container and every process in it). The
+  `kill` result says whether the stream was still running
+  (`events_state=stopped`) or had already ended (`ended`, with `wait`'s
+  status: 124 its timeout, 1 a daemon error); this avoids depending on the
+  exit status a killed `timeout`/docker pair reports. `kill`/`wait` stderr
+  goes to `/dev/null`; bash prints no job notice (probe: none on stderr).
+
+New client flow (amends item 8; the rest of item 8 stands):
+
+```bash
+  CDPATH='' cd -- "$target"
+  measure C1
+  say "launch"
+  launch_rc=0
+  events_start
+  bash scripts/launch.sh || launch_rc=$?
+  events_stop
+  if [ "$launch_rc" -ne 0 ]; then
+    measure C2
+    diag_launch "$launch_rc"
+    exit "$launch_rc"
+  fi
+  say "smoke (ci/offline included)"
+```
+
+**A3 (amends item 7: where the events print).** In `diag_launch`, right
+after its first line (`diag "launch exited $1; ..."`) and before the
+container list, insert:
+
+```bash
+    diag "events while launch ran (die, oom, kill; a stream started before launch, stopped when it exited):"
+    if [ "$events_state" = none ]; then
+      diag "  events: not recorded (no temporary file in /tmp)"
+    else
+      printf '%s\n' "$events_out" | diag_print "  events | "
+      if [ -z "$events_out" ]; then diag "  events: none"; fi
+      if [ "$events_n" -gt 100 ]; then
+        diag "  events: $((events_n - 100)) more lines not printed (the first 100 are shown)"
+      fi
+      if [ "$events_state" = ended ]; then
+        diag "  events: the stream ended before launch exited (exit $events_rc; 124: its 900 s timeout)"
+      fi
+    fi
+```
+- Printed on the launch-failure path only, through `diag_print` (prefix,
+  control characters as `?`, 2000-character cut), so every line starts
+  `offline-client: diag:   events | ` or `offline-client: diag:   events:`.
+  On a pass nothing of it prints (the variables are never read).
+- No printed line of this section starts with `container ` (the header
+  starts `events`), so the per-container block parsing is unchanged.
+- *Line cap 100, first lines kept.* Expected volume: one `die` (plus one
+  `oom`) per death. A container crash-looping under Docker's backoff (100 ms
+  doubling, reset after 10 s of uptime) dies about 9 times in neo4j's first
+  40 s, so even six crash-loopers leave neo4j's first death inside the first
+  100 lines. The first deaths name the cause; later ones repeat it and
+  `RestartCount` gives the total per container. Worst case adds 104 lines.
+- Order: chronological as streamed (`oom` precedes its `die`).
+- What a gap costs: a death between launch's exit and the inspect (about
+  1 s) is not in the stream; `RestartCount` and `FinishedAt` still show it.
+
+**A4 (N-1, amends item 7).** The two extractions become (sed reads to EOF,
+so `printf` can never take SIGPIPE under `pipefail`; the first match is kept
+in the shell):
+
+```bash
+        status="$(printf '%s\n' "$out" | sed -n '/^State\.Status: /{s///p}')"
+        health="$(printf '%s\n' "$out" | sed -n '/^State\.Health\.Status: /{s///p}')"
+        status="${status%%$'\n'*}" health="${health%%$'\n'*}"
+```
+(The template prints each label once and JSON-quotes every free-text field,
+so one match is expected; the trim is the guard.)
+
+**A5 (N-2, amends item 7's "Order").** Read "sorted by container name"
+(`LC_ALL=C sort -k 2`: field 2 to the end of the line, the container name
+then the service). For compose's `<project>-<service>-<n>` names this is the
+service order. Code unchanged.
+
+**A6 (U9d-6: what the diagnostic now proves; how the analyst reads it).**
+For each container: `RestartCount` >= 1 means it died at least once since
+launch created it (the inner daemon is fresh and asserted clean, so every
+container and every death is this launch's), `FinishedAt` says when the
+last one ended (a restarted container shows `StartedAt` after
+`FinishedAt`), and the events section gives each death's cause, its time
+matching `FinishedAt` to the second.
+- *OOM: yes.* An `oom <name>` line, then `die <name> exitCode=137`. The
+  container may now read `running / 0 / false / starting`; the events and
+  `RestartCount` say otherwise. C2 memory is read after the kill freed it,
+  so memory is named by the event, not by C2.
+- *Crash: yes.* A `die <name> exitCode=<N>` with no `oom` line and no
+  `kill` line before it. N != 137 is the process's own exit (a JVM error
+  exit is 1); the logs tail (it spans restarts) holds the first run's last
+  words before the next startup banner. `exitCode=137` with neither `oom`
+  nor `kill` is a SIGKILL from outside Docker and the cgroup (named so, not
+  read as OOM). A `kill <name> signal=<S>` line before the `die` means
+  Docker stopped it.
+- *Disk full: yes.* C2 `df /` at or near 100% (and the C1-to-C2 trend, the
+  inner `system df`), with a `die` that has no `oom` and neo4j's log line
+  "No space left on device"; a restart the daemon could not perform shows in
+  `State.Error` (JSON-quoted) with the status `exited` or `restarting`.
+- *Neither (new, and now distinguishable):* `events: none`, `RestartCount:
+  0`, status `running` with Health `starting` or `unhealthy`: nothing died;
+  the service did not become healthy in time (a slow start or a failing
+  probe, read from Health.Log).
+
+**A7 (amends item 10: never printed).** The list stands. The events
+format prints only the time, action, container name, `exitCode` and
+`signal`: never the attribute map (`.Actor.Attributes` whole, which carries
+every label and the image), `{{json .}}`, `.Actor.ID`, `.Actor.Attributes.image`
+or any label; no `--until` and no second `events` call (no history query).
+The new template fields are State timestamps, a count and the daemon's own
+start error. Security re-audits the template (A1) and `events_fmt` (A2).
+
+**A8 (amends item 12: timeouts and cost).** One row added:
+
+| Call | Timeout |
+|---|---|
+| `docker events --since ... --format ...` (background, launch only) | 900 s; stopped at launch's exit |
+
+- Pass: the stream costs nothing measurable. It is one idle connection to
+  the inner daemon during launch (no polling; a passing launch emits no
+  die/oom/kill event), and `events_stop` (kill, wait, awk, head, rm) takes
+  milliseconds; no `measure:` point moves. Nothing is printed and nothing is
+  written outside the client's `/tmp` tmpfs.
+- Failure path: no added wait (the stream is already stopped); the hang
+  ceilings of item 12 stand.
+
+**A9 (amends item 13: Controls for the tester).**
+- *Fake (`tests/fake_docker.py`), each inert unless set:*
+  - `DIAG_TEMPLATE` as A1; `_u9d_render` and the no-format JSON as A1.
+  - `EVENTS_FORMAT`: a module constant equal to `events_fmt` (A2), emitted
+    into the installed fake as `DIAG_TEMPLATE` is.
+  - `FAKE_DOCKER_EVENTS` (JSON list of event objects `{"Time", "Action",
+    "Actor": {"Attributes": {...}}}`): `docker events ...` with it set
+    requires `--format` == `EVENTS_FORMAT` (else exit 2, as the inspect
+    template), prints each event rendered as
+    `"%s %s %s exitCode=%s signal=%s" % (Time, Action, attrs.get("name",
+    "<no value>"), attrs.get("exitCode", ""), attrs.get("signal", ""))`,
+    flushes, installs a SIGTERM handler that appends the record
+    `{"argv": ["EVENTS", "stopped"]}` to `FAKE_DOCKER_JSON` and exits 143,
+    appends `{"argv": ["EVENTS", "ready"]}`, then sleeps up to 60 s and
+    exits 0 with no `stopped` record (so a missing kill shows as a missing
+    record, and no orphan outlives a minute). Unset: today's behaviour
+    (exit 0 at once, no output), so every existing row runs the stream as
+    "ended (exit 0)".
+  - The new rows' launch stub waits (up to 10 s) for the `EVENTS ready`
+    record before returning, so the kill never races the fake's start.
+- *New rows (names are the tester's):*
+  - First RED: a launch failure with a **restarted neo4j**: `State`
+    `{"Status": "running", "ExitCode": 0, "OOMKilled": false,
+    "StartedAt": "2026-10-30T10:00:44.6Z", "FinishedAt":
+    "2026-10-30T10:00:44.5Z", "Error": "", "Health": {"Status": "starting",
+    "Log": [...]}}`, top-level `"RestartCount": 1`, and
+    `FAKE_DOCKER_EVENTS` = an `oom` and a `die` (`exitCode` "137") event for
+    `knowledge-engine-neo4j-1` at `Time` 1793354444, each with
+    `image` and the sentinel label among the attributes. Asserts:
+    `RestartCount: 1`, both timestamps and `State.Error: <absent>` in
+    neo4j's block; the two `events | ` lines exact
+    (`1793354444 oom knowledge-engine-neo4j-1 exitCode= signal=`,
+    `1793354444 die knowledge-engine-neo4j-1 exitCode=137 signal=`), after
+    the diag's first line and before the first `container ` line; no
+    `events: ... ended` line; the `EVENTS stopped` record precedes the first
+    `ps` call; neither the sentinel nor the image reference prints; exit 7.
+    Subtests: *crash* (one `die` `exitCode` "1", no `oom`: no `oom` line);
+    *cap* (130 events: exactly 100 `events | ` lines, then
+    `events: 30 more lines not printed ...`); *start error* (a container
+    with `Error` "no space left on device" and a never-started one: the
+    error JSON-quoted on one line; both timestamps `<absent>` for the
+    never-started one); *ended early* (`FAKE_DOCKER_FAIL=event=oom`, with a
+    launch stub that waits for the `events` call record and then 1 s, so
+    the failed call has exited before the kill: a named
+    `events: the stream ended before launch exited (exit 1; ...)` line, the
+    container blocks still print, exit 7).
+  - A pass with `FAKE_DOCKER_EVENTS` set: no `events` and no `diag:` line,
+    stdout minus `measure:` lines equals `U9D_CLIENT_PASS`, stderr empty,
+    the `events` call record after `STUB install.sh` and before
+    `STUB launch.sh`, and `EVENTS stopped` after `STUB launch.sh` and
+    before `STUB smoke.sh`.
+- *Existing rows that change:*
+  - `test_offline_diag_template_prints_only_allowed_fields`: body unchanged
+    for the template (it follows the new `DIAG_TEMPLATE`); it gains the
+    events allow-list: the client half's `events_fmt` value equals
+    `fake_docker.EVENTS_FORMAT`; the comment-stripped client half holds none
+    of `.Actor.Attributes}}`, `json .Actor`, `.Actor.ID`, `--until`; exactly
+    one `docker events` call.
+  - `test_offline_diag_and_measure_docker_calls_are_bounded`: `U9D_KINDS`
+    gains `"events": r"events\b"`, with its own ceiling: N == 900 for
+    `events` (the four existing kinds keep N <= 30); the `events` call
+    carries exactly the filters `type=container`,
+    `label=com.docker.compose.project`, `event=die`, `event=oom`,
+    `event=kill`, a `--since` and `--format "$events_fmt"`.
+- *Existing rows that stay green unedited (and why):*
+  `test_offline_client_prints_diag_on_launch_failure` (new lines are
+  additions; `_has_state` looks fields up; the events header starts
+  `events`, so `_containers` still finds three blocks; the knob is unset, so
+  the section prints `events: none` and, depending on whether the fake had
+  exited before the kill, the `ended (exit 0)` line: racy, so no row may
+  assert it either way; neither has a banned word or a secret); `..._diag_survives_a_failing_inspect`
+  (`inspect#1` counts no `events` call; `FAKE_DOCKER_FAIL=label=...`
+  also fails the `events` call at once, which adds at most the named
+  `ended` line, not a `cannot list`/`ps` line); `..._measure_points_on_a_pass`
+  (`_diag_calls` and `_measure_calls` do not count `events`);
+  `..._measure_points_on_a_launch_failure`,
+  `..._measure_never_changes_the_outcome`,
+  `..._output_unchanged_but_for_measure_lines` (nothing prints on a pass;
+  no stderr), `..._uses_neutral_words`, `..._has_no_ci_only_branch`,
+  `..._meminfo_seam_is_client_only`; every host row and every earlier
+  client row (`_client_event` returns None for `events`; the stream starts
+  after install, so the cert and clean-daemon rows hold). The tester
+  greps the client rows' `FAKE_DOCKER_FAIL`/`FAIL_NTH` patterns against the
+  new `events` argv and lists any match in the controls file.
+- Baseline and after lists: `u9d/controls-r1.txt`.
+
+**A10 (U9d-1 wording proposed to the analyst; the analyst applies it).**
+- In the first bullet, replace "Each block gives the container name,
+  `State.Status`, `State.ExitCode`, `State.OOMKilled`, `State.Health.Status`
+  and the tail of `State.Health.Log` (...)" with: "Each block gives the
+  container name, `State.Status`, `State.ExitCode`, `State.OOMKilled`,
+  `RestartCount`, `State.StartedAt`, `State.FinishedAt`, `State.Error`
+  (JSON-quoted on one line), `State.Health.Status` and the tail of
+  `State.Health.Log` (each entry's end time, exit code and output; at most
+  the entries Docker keeps). A field the container does not have (no
+  healthcheck, never started, never finished, no start error) is printed as
+  absent with one fixed token, never dropped; `RestartCount` is always a
+  number."
+- New bullet after it: "Because every stack service restarts itself
+  (`restart: unless-stopped`) and a restart resets `ExitCode` and
+  `OOMKilled`, the client also records the stack's container `die`, `oom`
+  and `kill` events from a stream it starts just before the launch step and
+  stops as soon as that step exits, on every path (bounded by a timeout; no
+  query of the daemon's event history afterwards). On the launch-failure
+  path the diagnostic prints them first, one line per event: the event time
+  (Unix seconds), the action, the container name, the exit code (`die`) and
+  the signal (`kill`); at most 100 lines, then a named line giving how many
+  more were not printed; `none` when there were none; a named line when the
+  stream ended before launch exited or could not start. On a passing launch
+  none of it is printed."
+- "Never printed" bullet: append "; of an event, nothing but the five
+  fields above (no labels, no image, no other attribute)".
+- Proof line: add the restarted-container row and the pass-with-stream row
+  (tester's names).
+- U9d-4: add "The event stream is bounded by `timeout 900` and stopped at
+  launch's exit; on a pass it adds no measurable time."
+- U9d-6: in "the cause the diagnostic names (...)", read "(the `oom`/`die`
+  events and their exit code, `RestartCount` and `FinishedAt`, exited or
+  killed, `OOMKilled`, neo4j's last lines, disk and memory at C2)".
+
+**A11 (order).** R1 analyst applies A10 to U9d-1/U9d-4/U9d-6; orchestrator
+plan gate. R2 tester RED (A9; `u9d/controls-r1.txt`,
+`u9d/red-r1-verify-fast.txt`). R3 developer GREEN (A1-A5;
+`u9d/green-r1-verify-fast.txt`, `u9d/green-r1-verify-full.txt`). R4
+reviewer re-read and security re-audit (A1, A2, A7). Then item 15's R5-R7.
+
+- *O-23 precision (orchestrator, 2026-10-30, at the rework-1 plan gate):*
+  the architect's amendment A1-A11 and the analyst's U9d-1/4/6 text are
+  accepted; `kill` events with the `signal` field are accepted (they tell a
+  Docker stop from a kernel kill). Security's first-audit items are folded
+  into this rework round: L-1 (container name and service label sanitised;
+  logs only for a `svc` matching `^[A-Za-z0-9][A-Za-z0-9._-]*$`, passed
+  after `--`), L-2 (`##[` rewritten to `#?[` in every printed line), I-1
+  (`meminfo_line` reads at most 64 KiB under `timeout 5 head -c 65536`).
+  `State.Error` and the events lines print through the same sanitiser.
+  I-2, I-3, I-4 recorded, no action. Plan gate PASS for rework 1.
+
+- *Orchestrator rulings at U9d rework-1 verdicts (2026-10-30, **O-24**;
+  reviewer APPROVED `u9d/r1-review.md`, security PASS `u9d/r1-security.md`):*
+  deferred to U10 as design rows, none reachable by this stack today:
+  security L-3 (a container label named `exitCode` or `signal` shadows the
+  event's field; fix: print an event line only if it matches
+  `^[0-9]+ (die|oom|kill) [A-Za-z0-9][A-Za-z0-9_.-]* exitCode=[0-9]* signal=[0-9]*$`,
+  else a fixed named line), I-5 (skip ids that are not 64 hex or pass
+  `-- "$id"` to inspect), I-6 (cap `diag` lines), I-3 (`timeout -k`),
+  reviewer r1 N-1 (a `##[` pin on the `diag` path). I-7: the untracked
+  next-session note is redacted (never committed). U9d code is final;
+  orchestrator `verify full` then commit.
+
 ## N10. Committed files and their rules
 
 - `docker/source-policy.json` (hand-written, security reviews every diff):

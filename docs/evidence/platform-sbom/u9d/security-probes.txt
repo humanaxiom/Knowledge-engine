@@ -1,0 +1,450 @@
+platform-sbom U9d security probes (security, 2026-10-30). Read-only against the tree.
+Environment: ke-gates:local, `docker run --rm --network none --user 10001:10001` (the offline client's uid),
+repo bind-mounted read-only at /work, probes in a scratch dir (not in the repo). Real-docker probe (section D):
+two throwaway containers on the host daemon, `--network none --pull never`, label ke-sec-u9d=1, removed after.
+
+== A. Fake-docker probes (probe_u9d.py subclasses OfflineCheckScriptTest; client/host halves as the tests run them).
+Note: the test harness's env has no LANG, so the client's bash ran in the C locale here; the real client runs
+with the image's LANG=C.UTF-8 (section C). Python decodes stdout with universal newlines, so a bare CR shows
+as a line break below, the same way the GitHub runner's line reader treats it.
+Side effect: the subclass also re-ran the 28 inherited OfflineCheckScriptTest methods: all ok
+("Ran 33 tests ... FAILED (errors=1)"; the one error is P3's 200 MiB case, which hit the harness's 120 s
+subprocess timeout; see B).
+
+== P1 hostile Health.Log output + compose log lines (fake docker): exit 7; stdout 6076 bytes
+   line 26: non-ASCII format/C1 chars present ['0x2028', '0x202e', '0x85', '0x9b']: 'offline-client: diag:   State.Health.Log[0]: end 2026-10-30 10:00:31 +0000 UTC exit 1 output "ok\\n::'
+   line 26: contains the V1 marker mid-line: 'offline-client: diag:   State.Health.Log[0]: end 2026-10-30 10:00:31 +0000 UTC exit 1 output "ok\\n::set-output'
+   line 32: non-ASCII format/C1 chars present ['0x202e']: 'offline-client: diag:   neo4j | \u202e::error::rtl'
+   line 33: contains the V1 marker mid-line: 'offline-client: diag:   neo4j | x ##[warning]legacy-v1-mid-line'
+   line 34: contains the V1 marker mid-line: 'offline-client: diag:   neo4j | ##[add-mask]legacy-at-start'
+   line 35: non-ASCII format/C1 chars present ['0x2028']: 'offline-client: diag:   neo4j | a\u2028::error::after-LS'
+   line 36: non-ASCII format/C1 chars present ['0x85']: 'offline-client: diag:   neo4j | b\x85::error::after-NEL'
+   unprefixed or raw-control lines: 0
+   stderr tail: ['stub launch.sh: failing']
+   secret sentinel in output: False
+    'offline-client: diag:   State.Health.Log[0]: end 2026-10-30 10:00:31 +0000 UTC exit 1 output "ok\\n::set-output name=x::y\\r::add-mask::abc\\u001b[2J\u202e::error::rtl?'
+    'offline-client: diag:   neo4j | ::set-output name=a::b'
+    'offline-client: diag:   neo4j | ?::add-mask::secret-in-log'
+    'offline-client: diag:   neo4j |   ::error::leading-space'
+    'offline-client: diag:   neo4j | ?]0;title?osc'
+    'offline-client: diag:   neo4j | \u202e::error::rtl'
+    'offline-client: diag:   neo4j | x ##[warning]legacy-v1-mid-line'
+    'offline-client: diag:   neo4j | ##[add-mask]legacy-at-start'
+    'offline-client: diag:   neo4j | a'
+    'offline-client: diag:   neo4j | b'
+    'offline-client: diag:   neo4j | c?::error::after-VT'
+    'offline-client: diag:   neo4j | d?::error::after-FF'
+    'offline-client: diag:   neo4j | e?::error::after-DEL'
+    'offline-client: diag:   neo4j | LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL'
+   cut lines (chars): [2038]
+   call: container inspect --format <template 411 chars> <template 64 chars>
+   call: compose logs --no-color --no-log-prefix --timestamps --tail 50 neo4j
+   call: container inspect --format <template 411 chars> <template 64 chars>
+   call: container inspect --format <template 411 chars> <template 64 chars>
+   call: compose logs --no-color --no-log-prefix --timestamps --tail 50 worker
+== P2 hostile service label / container name: exit 7; stdout 3691 bytes
+   line 30: STARTS a workflow command: '::error::cr-in-label\x1b[31m)'
+   line 37: STARTS a workflow command: '::error::cr-in-label\x1b[31m (docker compose logs --tail 50):'
+   line 39: STARTS a workflow command: '::error::cr-in-label\x1b[31m | no such service: svc?::error::cr-in-label?[31m'
+   unprefixed or raw-control lines: 4
+   BAD (29, True, ['0x1b'], b'offline-client: diag: container evil\x1b[2Jname (service svc')
+   BAD (30, False, ['0x1b'], b'::error::cr-in-label\x1b[31m)')
+   BAD (37, False, ['0x1b'], b'::error::cr-in-label\x1b[31m (docker compose logs --tail 50):')
+   BAD (39, False, ['0x1b'], b'::error::cr-in-label\x1b[31m | no such service: svc?::error::cr-in-label?[31m')
+   stderr tail: ['stub launch.sh: failing']
+    "offline-client: diag: launch exited 7; the installed stack's containers in the inner daemon follow"
+    'offline-client: diag: container dash-1 (service --follow)'
+    'offline-client: diag:   State.Status: exited'
+    'offline-client: diag:   State.ExitCode: 1'
+    'offline-client: diag:   State.OOMKilled: false'
+    'offline-client: diag:   State.Health.Status: <absent>'
+    'offline-client: diag:   State.Health.Log: <absent>'
+    'offline-client: diag:   logs of service --follow (docker compose logs --tail 50):'
+    'offline-client: diag:   --follow | n'
+    'offline-client: diag: container evil\x1b[2Jname (service svc'
+    'offline-client: diag:   State.Status: exited'
+    'offline-client: diag:   State.ExitCode: 1'
+    'offline-client: diag:   State.OOMKilled: false'
+    'offline-client: diag:   State.Health.Status: <absent>'
+    'offline-client: diag:   State.Health.Log: <absent>'
+    'offline-client: diag:   logs of service svc'
+    'offline-client: diag:   svc'
+    'offline-client: diag:   docker compose logs returned exit 1 (124: the 20 s timeout)'
+    'offline-client: diag: container nl-1 (service x)'
+    'offline-client: diag:   State.Status: exited'
+    'offline-client: diag:   State.ExitCode: 1'
+    'offline-client: diag:   State.OOMKilled: false'
+    'offline-client: diag:   State.Health.Status: <absent>'
+    'offline-client: diag:   State.Health.Log: <absent>'
+    'offline-client: diag:   logs of service x (docker compose logs --tail 50):'
+    'offline-client: diag:   x | no such service: x'
+    'offline-client: diag:   docker compose logs returned exit 1 (124: the 20 s timeout)'
+    'offline-client: diag: container y (service <absent>)'
+    'offline-client: diag:   no service label, so no logs'
+    'offline-client: diag: end of the launch diagnostic'
+   logs call argv tail: ['--tail', '50', '--follow']
+   logs call argv tail: ['--tail', '50', 'svc\r::error::cr-in-label\x1b[31m']
+   logs call argv tail: ['--tail', '50', 'x']
+== P3 KE_OFFLINE_MEMINFO='/etc/shadow (uid 10001)': exit 0, whole client run 0.3 s
+    'offline-client: measure: C1 memory: not measured (/etc/shadow gave no MemAvailable and SwapFree in kB within 5 s)'
+    'offline-client: measure: C3 memory: not measured (/etc/shadow gave no MemAvailable and SwapFree in kB within 5 s)'
+   SECRETHASH printed: False ; unprefixed lines: []
+== P3 KE_OFFLINE_MEMINFO='crafted non-numeric first rows': exit 0, whole client run 0.3 s
+    'offline-client: measure: C1 memory: not measured (/tmp/tmpab1djkth/crafted gave no MemAvailable and SwapFree in kB within 5 s)'
+    'offline-client: measure: C3 memory: not measured (/tmp/tmpab1djkth/crafted gave no MemAvailable and SwapFree in kB within 5 s)'
+   SECRETHASH printed: False ; unprefixed lines: []
+== P3 KE_OFFLINE_MEMINFO='crafted with a secret row': exit 0, whole client run 0.3 s
+    'offline-client: measure: C1 memory: MemAvailable 123 kB SwapFree 456 kB'
+    'offline-client: measure: C3 memory: MemAvailable 123 kB SwapFree 456 kB'
+   SECRETHASH printed: False ; unprefixed lines: []
+== P3 KE_OFFLINE_MEMINFO='FIFO with no writer': exit 0, whole client run 10.3 s
+    'offline-client: measure: C1 memory: not measured (/tmp/tmpab1djkth/fifo gave no MemAvailable and SwapFree in kB within 5 s)'
+    'offline-client: measure: C3 memory: not measured (/tmp/tmpab1djkth/fifo gave no MemAvailable and SwapFree in kB within 5 s)'
+   SECRETHASH printed: False ; unprefixed lines: []
+== P4 host half with KE_OFFLINE_MEMINFO set, DockerRootDir on host: exit 0
+    offline: measure: H1 memory: MemAvailable 21867448 kB SwapFree 4948096 kB
+    offline: measure: H1 done in 0 s
+    offline: measure: H3 memory: MemAvailable 21868428 kB SwapFree 4948096 kB
+    offline: measure: H3 done in 0 s
+   planted path mentioned: False
+== P5 host, client fails, DockerRootDir on host (H2 measured): exit 1
+   stderr: "fake docker: failing on 'offline-client'\noffline_check: FAIL (the offline client failed (see its output above))\n"
+   H2 lines: ['offline: measure: H2 memory: MemAvailable 21861532 kB SwapFree 4948096 kB', 'offline: measure: H2 done in 0 s']
+
+== B. meminfo_line on large or odd inputs (the function sed-extracted from scripts/offline_check.sh and
+eval'd; ke-gates, --network none --memory 3g, uid 10001; times are wall clock):
+P3b big            rc=1 227.1 s out=''        <- 200 MiB, one line, no newline
+P3b bigrows        rc=1 5.1 s out=''          <- 200 MiB of "MemAvailable: 1 kB" rows (cat killed at 5 s)
+P3b /dev/zero      rc=1 5.0 s out=<bash: command substitution: ignored null byte in input>
+P3b /dev/urandom   rc=1 35.9 s out=<bash: command substitution: ignored null byte in input>
+P3b fifo           rc=1 5.0 s out=''          <- FIFO, no writer: timeout ends the open()
+P3b /proc/meminfo  rc=0 0.0 s out=MemAvailable 22434892 kB SwapFree 4948096 kB
+Reading: output is always numeric-only or "not measured"; but `timeout 5` bounds only the read, not the
+processing of what was read (227 s for 200 MiB). Only reachable through the KE_OFFLINE_MEMINFO test seam.
+
+== C. diag_print under the client's real locale (ke-gates LANG=C.UTF-8, uid 10001), od -c of the output for
+input lines a<U+2028>, b<U+2029>, c<U+202E>, d<U+0085>, e<U+009B>[2J, "f ##[add-mask]v1", <CR>::error::cr:
+LANG=C.UTF-8
+0000000   o   f   f   l   i   n   e   -   c   l   i   e   n   t   :    
+0000020   d   i   a   g   :               n   e   o   4   j       |    
+0000040   a   ?   :   :   e   r   r   o   r   :   :   L   S  \n   o   f
+0000060   f   l   i   n   e   -   c   l   i   e   n   t   :       d   i
+0000100   a   g   :               n   e   o   4   j       |       b   ?
+0000120   :   :   e   r   r   o   r   :   :   P   S  \n   o   f   f   l
+0000140   i   n   e   -   c   l   i   e   n   t   :       d   i   a   g
+0000160   :               n   e   o   4   j       |       c 342 200 256
+0000200   :   :   e   r   r   o   r   :   :   R   L   O  \n   o   f   f
+0000220   l   i   n   e   -   c   l   i   e   n   t   :       d   i   a
+0000240   g   :               n   e   o   4   j       |       d   ?   :
+0000260   :   e   r   r   o   r   :   :   N   E   L  \n   o   f   f   l
+0000300   i   n   e   -   c   l   i   e   n   t   :       d   i   a   g
+0000320   :               n   e   o   4   j       |       e   ?   [   2
+0000340   J   8   b   i   t   C   S   I  \n   o   f   f   l   i   n   e
+0000360   -   c   l   i   e   n   t   :       d   i   a   g   :        
+0000400       n   e   o   4   j       |       f       #   #   [   a   d
+0000420   d   -   m   a   s   k   ]   v   1  \n   o   f   f   l   i   n
+0000440   e   -   c   l   i   e   n   t   :       d   i   a   g   :    
+0000460           n   e   o   4   j       |       ?   :   :   e   r   r
+0000500   o   r   :   :   c   r  \n
+0000507
+Reading: LS, PS, NEL, 8-bit CSI, CR, ESC, DEL all become '?'. U+202E (bytes 342 200 256) passes through.
+"##[add-mask]" passes through after the prefix.
+
+== D. Real Docker CLI + daemon render of the script's diag_tpl (template extracted from the script by sed;
+md5 of the template text e4d560722bbed66dcd383ea36ec46e94). Container h: healthcheck prints
+'a\n::set-output name=x::y\r::add-mask::abc ESC[2J U+202E rtl DEL U+0085 nel U+2028 ls ##[error]v1
+NEO4J_AUTH=$SECRET_ENV' and exits 1; env SECRET_ENV=env-sentinel-4k; label com.example.secret=lbl-sentinel-9q;
+bind mount /probe. Container x: no healthcheck, `kill -9 $$` (exited).
+Container x render:
+State.Status: exited
+State.ExitCode: 0
+State.OOMKilled: false
+State.Health.Status: <absent>
+State.Health.Log: <absent>
+
+Container h render, first entry (od -c, from offset 0240): Go's `json` escapes \n \r ESC(\u001b) U+2028(\u2028);
+leaves DEL (177), U+0085 (302 205), U+202E (342 200 256) and "##[" raw:
+0000240   x   i   t       1       o   u   t   p   u   t       "   a   \
+0000260   n   :   :   s   e   t   -   o   u   t   p   u   t       n   a
+0000300   m   e   =   x   :   :   y   \   r   :   :   a   d   d   -   m
+0000320   a   s   k   :   :   a   b   c   \   u   0   0   1   b   [   2
+0000340   J 342 200 256   r   t   l 177   d   e   l 302 205   n   e   l
+0000360   \   u   2   0   2   8   l   s       #   #   [   e   r   r   o
+0000400   r   ]   v   1       N   E   O   4   J   _   A   U   T   H   =
+0000420   e   n   v   -   s   e   n   t   i   n   e   l   -   4   k   \
+0000440   n   "  \n   S   t   a   t   e   .   H   e   a   l   t   h   .
+0000460   L   o   g   [   1   ]   :       e   n   d       2   0   2   6
+Sentinels in the raw render: env-sentinel-4k appears only inside Health.Log output (the probe echoed it on purpose);
+lbl-sentinel-9q, the /probe mount, the health command (hc.sh) and the entrypoint (sleep): 0
+Real render piped through diag_print (C.UTF-8): per line: prefixed?, raw control bytes, bare CR:
+0 True [] False
+1 True [] False
+2 True [] False
+3 True [] False
+4 True [] False
+5 True [] False
+6 True [] False
+7 True [] False
+8 True [] False
+9 True [] False
+10 True [] False
+11 True [] False
+12 True [] False
+13 True [] False
+Probe containers removed: docker rm -f ke-sec-u9d-probe-h ke-sec-u9d-probe-x (done).
+
+=====================================================================================================================
+== rework 1 (security re-audit, 2026-10-30). Read-only against the tree (scripts/offline_check.sh sha256 at audit:
+== see r1-security.md). Environment: ke-gates:local (bash 5.2.15, GNU timeout 9.1, docker CLI 29.9.1, LANG=C.UTF-8),
+== `docker run --rm --network none --user 10001:10001`, repo bind-mounted read-only at /work, probe scripts and outputs
+== in a scratch dir outside the repo. Fake-docker probes subclass tests.test_offline_check.OfflineCheckScriptTest
+== (client half as the tests run it). Real-Docker probes (R1-R6): the same image as root with the host daemon's
+== socket (Docker 29.5.2), throwaway containers labelled ke-sec-u9dr1=1 and compose project ke-sec-u9dr1
+== (network none, pull never), all removed after (count left: 0).
+=====================================================================================================================
+
+== RA. L-1: hostile container names and service labels (fake docker). Labels: CR/ESC/`::error::`, `--follow`, `-f`,
+== `;rm -rf /`, `neo4j;rm -rf /`, a 10 KiB valid name, a 10 KiB name with `;`, `##[group]svc`, and a label holding a
+== newline that forges a second ps row (`--size knowledge-engine-inj##[error]-1 neo4j`). Name with CR, `##[`, ESC.
+== L-1 hostile names and service labels (0.7 s): exit 7; stdout 48771 bytes; stderr 24 bytes
+   unprefixed or raw-control lines: 0; lines starting :: or ##[: 0; lines holding ##[: 0; lines over 2100 chars (index, chars): [(70, 10306), (80, 10313), (81, 10279), (82, 10305)]
+   secret/image/actor sentinels in stdout+stderr: []
+   stderr: ['stub launch.sh: failing']
+   /tmp/ke-offline-events.* left: []
+     'offline-client: diag: container knowledge-engine-cr?#?[error]n?[2J-1 (service svc?::error::cr-in-label?[31m)'
+     'offline-client: diag:   the service label is not a service name, so no logs'
+     'offline-client: diag: container knowledge-engine-dash-1 (service -f)'
+     'offline-client: diag:   the service label is not a service name, so no logs'
+     'offline-client: diag: container knowledge-engine-follow-1 (service --follow)'
+     'offline-client: diag:   the service label is not a service name, so no logs'
+     'offline-client: diag: container knowledge-engine-hash-1 (service #?[group]svc)'
+     'offline-client: diag:   the service label is not a service name, so no logs'
+     'offline-client: diag: container knowledge-engine-inj#?[error]-1 (service neo4j)'
+     'offline-client: diag:   logs of service neo4j (docker compose logs --tail 50):'
+     'offline-client: diag:   neo4j | NEO-MARK #?[error]in-log'
+     'offline-client: diag: container knowledge-engine-long-1 (service aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' ...(10306 chars)
+     'offline-client: diag:   logs of service aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' ...(10313 chars)
+     'offline-client: diag:   aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' ...(10279 chars)
+     'offline-client: diag: container knowledge-engine-longbad-1 (service bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' ...(10305 chars)
+     'offline-client: diag:   the service label is not a service name, so no logs'
+     'offline-client: diag: container knowledge-engine-nl-1 (service x)'
+     'offline-client: diag:   logs of service x (docker compose logs --tail 50):'
+     'offline-client: diag:   x | no such service: x'
+     'offline-client: diag:   docker compose logs returned exit 1 (124: the 20 s timeout)'
+     'offline-client: diag: container knowledge-engine-semi-1 (service ;rm -rf /)'
+     'offline-client: diag:   the service label is not a service name, so no logs'
+     'offline-client: diag: container knowledge-engine-semi2-1 (service neo4j;rm -rf /)'
+     'offline-client: diag:   the service label is not a service name, so no logs'
+   inspect argv tail: ['--format', '<804 chars>', 'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd']
+   inspect argv tail: ['--format', '<804 chars>', 'llllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll']
+   inspect argv tail: ['--format', '<804 chars>', 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee']
+   inspect argv tail: ['--format', '<804 chars>', 'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk']
+   inspect argv tail: ['--format', '<804 chars>', '--size']
+   logs argv: ['compose', 'logs', '--no-color', '--no-log-prefix', '--timestamps', '--tail', '50', '--', 'neo4j']
+   inspect argv tail: ['--format', '<804 chars>', 'hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh']
+   logs argv: ['compose', 'logs', '--no-color', '--no-log-prefix', '--timestamps', '--tail', '50', '--', '<10240 chars>']
+   inspect argv tail: ['--format', '<804 chars>', 'iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii']
+   inspect argv tail: ['--format', '<804 chars>', 'jjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj']
+   logs argv: ['compose', 'logs', '--no-color', '--no-log-prefix', '--timestamps', '--tail', '50', '--', 'x']
+   inspect argv tail: ['--format', '<804 chars>', 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff']
+   inspect argv tail: ['--format', '<804 chars>', 'gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg']
+
+== RB. L-2: `##[` in Health.Log output, a compose log line, State.Error (with CR LF and a host path), an event name and
+== exitCode, a `docker system df` row; plus `###[` and `##<CR>[`.
+== L-2 ##[ in Health.Log, log line, State.Error, event name/exitCode, system df row: exit 7; stdout 7027 bytes; stderr 24 bytes
+   unprefixed or raw-control lines: 0; lines starting :: or ##[: 0; lines holding ##[: 0; lines over 2100 chars (index, chars): []
+   secret/image/actor sentinels in stdout+stderr: []
+   stderr: ['stub launch.sh: failing']
+   /tmp/ke-offline-events.* left: []
+     'offline-client: measure: C1 inner docker system df: Images #?[group]df-row?[1m total 7 active 2 size 3.214GB reclaimable 1.07GB (33%)'
+     'offline-client: measure: C2 inner docker system df: Images #?[group]df-row?[1m total 7 active 2 size 3.214GB reclaimable 1.07GB (33%)'
+     'offline-client: diag:   events | 1793354444 die ev?#?[warning]event-name?[0m exitCode=137 #?[error]x signal='
+     'offline-client: diag:   events | 1793354444 kill #?[section]n2 exitCode= signal=15'
+     'offline-client: diag:   State.Error: <absent>'
+     'offline-client: diag:   State.Health.Log[0]: end 2026-10-30 10:00:55.5 +0000 UTC exit 1 output "#?[section]probe-start x #?[error]probe-mid ##?[warning]triple ##\\r[cr-spl' ...(173 chars)
+     'offline-client: diag:   State.Error: <absent>'
+     'offline-client: diag:   State.Error: "start #?[error]state-error /var/lib/docker/x\\r\\n::error::forged"'
+     'offline-client: diag:   worker | #?[add-mask]log-start'
+     'offline-client: diag:   worker | x #?[section]log-mid'
+
+== RC. I-1: meminfo_line as in the script (sed-extracted, eval'd; --memory 3g), then the whole client half with
+== KE_OFFLINE_MEMINFO set. First audit, same inputs: 200 MiB one line 227.1 s, /dev/urandom 35.9 s.
+I-1 big            rc=1 0.00 s out=''
+I-1 bigrows        rc=1 0.00 s out=''
+I-1 /dev/zero      rc=1 0.00 s out=/probe/p3.sh:\ line\ 4:\ warning:\ command\ substitution:\ ignored\ null\ byte\ in\ input
+I-1 /dev/urandom   rc=1 0.01 s out=/probe/p3.sh:\ line\ 4:\ warning:\ command\ substitution:\ ignored\ null\ byte\ in\ input
+I-1 fifo           rc=1 5.00 s out=''
+I-1 /proc/meminfo  rc=0 0.00 s out=MemAvailable\ 22007948\ kB\ SwapFree\ 4948352\ kB
+== I-1 KE_OFFLINE_MEMINFO=200 MiB one-line regular file: exit 0, whole client run 0.3 s
+     'offline-client: measure: C1 memory: not measured (/tmp/tmpp95nfw03/big gave no MemAvailable and SwapFree in kB within 5 s)'
+     'offline-client: measure: C1 done in 0 s'
+     'offline-client: measure: C3 memory: not measured (/tmp/tmpp95nfw03/big gave no MemAvailable and SwapFree in kB within 5 s)'
+     'offline-client: measure: C3 done in 0 s'
+    unprefixed stdout lines: []
+    stderr: []
+== I-1 KE_OFFLINE_MEMINFO=/dev/urandom: exit 0, whole client run 0.3 s
+     'offline-client: measure: C1 memory: not measured (/dev/urandom gave no MemAvailable and SwapFree in kB within 5 s)'
+     'offline-client: measure: C1 done in 0 s'
+     'offline-client: measure: C3 memory: not measured (/dev/urandom gave no MemAvailable and SwapFree in kB within 5 s)'
+     'offline-client: measure: C3 done in 1 s'
+    unprefixed stdout lines: []
+    stderr: ['/tmp/tmpp95nfw03/opt/ke/offline_check.sh: line 48: warning: command substitution: ignored null byte in input', '/tmp/tmpp95nfw03/opt/ke/offline_check.sh: line 48: warning: command substitution: ignored null byte in input']
+
+== RD. The event stream through the fake: hostile name, attribute map holding labels/image/ID; a pass with a live
+== stream; a stream that ended before launch exited.
+== EV hostile name + attribute map with labels/image (fake): exit 7; stdout 6999 bytes; stderr 24 bytes
+   unprefixed or raw-control lines: 0; lines starting :: or ##[: 0; lines holding ##[: 0; lines over 2100 chars (index, chars): []
+   secret/image/actor sentinels in stdout+stderr: []
+   stderr: ['stub launch.sh: failing']
+   /tmp/ke-offline-events.* left: []
+     'offline-client: diag: events while launch ran (die, oom, kill; a stream started before launch, stopped when it exited):'
+     'offline-client: diag:   events | 1793354444 oom knowledge-engine-neo4j-1?::error::forged?]0;t? exitCode= signal='
+     'offline-client: diag:   events | 1793354444 die knowledge-engine-neo4j-1 exitCode=137 signal='
+     'offline-client: diag:   events | 1793354444 kill knowledge-engine-neo4j-1 exitCode= signal=9'
+    label sentinels printed: []
+== EV pass with a live stream: exit 0; non-measure stdout == pre-U9d pass: True; stderr ''; event text printed: False
+    EVENTS stopped records: 1 ; /tmp/ke-offline-events.* left: []
+== EV stream ended before launch exited (fake events exits 1): exit 7; stdout 6839 bytes; stderr 24 bytes
+   unprefixed or raw-control lines: 0; lines starting :: or ##[: 0; lines holding ##[: 0; lines over 2100 chars (index, chars): []
+   secret/image/actor sentinels in stdout+stderr: []
+   stderr: ['stub launch.sh: failing']
+   /tmp/ke-offline-events.* left: []
+     'offline-client: diag: events while launch ran (die, oom, kill; a stream started before launch, stopped when it exited):'
+     'offline-client: diag:   events: none'
+     'offline-client: diag:   events: the stream ended before launch exited (exit 1; 124: its 900 s timeout)'
+
+== RE. 10000-event flood (a wrapper ahead of the fake on PATH: FAKE_DOCKER_EVENTS cannot carry 10000 events, the
+== kernel's per-string limit), and a stream that ignores SIGTERM (exits on its own after 20 s).
+== EV flood: 10000 die events from a wrapper stream (0.5 s): exit 7; stdout 16075 bytes; stderr 24 bytes
+   unprefixed or raw-control lines: 0; lines starting :: or ##[: 0; lines holding ##[: 0; lines over 2100 chars (index, chars): []
+   secret/image/actor sentinels in stdout+stderr: []
+   stderr: ['stub launch.sh: failing']
+   /tmp/ke-offline-events.* left: []
+     'offline-client: diag:   events: 9900 more lines not printed (the first 100 are shown)'
+    events | lines: 100 ; first: '1793354444 die knowledge-engine-neo4j-1 exitCode=0 signal=' ; last: '1793354543 die knowledge-engine-neo4j-1 exitCode=99 signal='
+    EVENTS records: ['ready', 'stopped']
+== EV stream that ignores SIGTERM (wrapper sleeps 20 s): client run 20.4 s: exit 7; stdout 6975 bytes; stderr 24 bytes
+   unprefixed or raw-control lines: 0; lines starting :: or ##[: 0; lines holding ##[: 0; lines over 2100 chars (index, chars): []
+   secret/image/actor sentinels in stdout+stderr: []
+   stderr: ['stub launch.sh: failing']
+   /tmp/ke-offline-events.* left: []
+     'offline-client: diag: events while launch ran (die, oom, kill; a stream started before launch, stopped when it exited):'
+     'offline-client: diag:   events | 1793354444 die knowledge-engine-neo4j-1 exitCode=0 signal='
+     'offline-client: diag:   events | 1793354445 die knowledge-engine-neo4j-1 exitCode=1 signal='
+     'offline-client: diag:   events | 1793354446 die knowledge-engine-neo4j-1 exitCode=2 signal='
+    EVENTS records: ['ready', 'exited-unkilled']
+
+== RF. mktemp cannot create the events file (--read-only, no /tmp tmpfs; the harness on TMPDIR=/scratch). The 10 s
+== run time is the probe's launch stub waiting for a stream that never started (a harness artefact).
+== EV hostile name + attribute map with labels/image (fake): exit 7; stdout 6780 bytes; stderr 24 bytes
+   secret/image/actor sentinels in stdout+stderr: []
+   stderr: ['stub launch.sh: failing']
+   /tmp/ke-offline-events.* left: []
+     'offline-client: diag: events while launch ran (die, oom, kill; a stream started before launch, stopped when it exited):'
+     'offline-client: diag:   events: not recorded (no temporary file in /tmp)'
+
+== RG. Real Docker CLI + daemon (R0-R5): the script's own diag_tpl, events_fmt, neutralise, diag_print, events_start
+== and events_stop, sed-extracted and eval'd. Containers carry labels com.example.secret=lbl-sentinel-9q,
+== exitCode=LBL-EXITCODE-SENTINEL, signal=LBL-SIGNAL-SENTINEL and a CR/`##[` service label; env
+== SECRET_ENV=env-sentinel-4k; a tmpfs mount at /mnt-sentinel-7w. oom: --memory 64m, python allocates 512 MiB;
+== crash: exit 3; kill: docker kill -s TERM; starterr: an entrypoint path holding CR and `##[`.
+R0 docker client 29.9.1 server 29.5.2; LANG=C.UTF-8; uid 0
+R0 diag_tpl md5 737e263ab1adf26683d110f6400ff983, events_fmt: {{.Time}} {{.Action}} {{.Actor.Attributes.name}} exitCode={{index .Actor.Attributes "exitCode"}} signal={{index .Actor.Attributes "signal"}}
+== R1 the script's own events_start/events_stop against the real daemon
+R1 events_pid=48 file=/tmp/ke-offline-events.GHyLoy
+R1 docker start of the bad entrypoint: exit 1
+R1 events_stop took 0.01 s; state=stopped rc=143 n=4; file left: 0; stderr of events_stop: 0 bytes
+R1 raw events_out (od -c of the first two lines' control bytes, if any):
+0000020   e   -   s   e   c   -   u   9   d   r   1   -   o   o   m    
+0000160   u   9   d   r   1   -   o   o   m       e   x   i   t   C   o
+R1 events_out through diag_print (only this probe's containers):
+offline-client: diag:   events | 1793348751 oom ke-sec-u9dr1-oom exitCode=LBL-EXITCODE-SENTINEL signal=LBL-SIGNAL-SENTINEL
+offline-client: diag:   events | 1793348752 die ke-sec-u9dr1-oom exitCode=LBL-EXITCODE-SENTINEL signal=LBL-SIGNAL-SENTINEL
+offline-client: diag:   events | 1793348752 die ke-sec-u9dr1-crash exitCode=LBL-EXITCODE-SENTINEL signal=LBL-SIGNAL-SENTINEL
+offline-client: diag:   events | 1793348755 kill ke-sec-u9dr1-kill exitCode=LBL-EXITCODE-SENTINEL signal=LBL-SIGNAL-SENTINEL
+R1 sentinels in events_out:       4 LBL-EXITCODE-SENTINEL;      4 LBL-SIGNAL-SENTINEL;
+R1 for contrast, the attribute map of the same die event ({{json .Actor.Attributes}}, this probe only, keys):
+['com.docker.compose.project', 'com.docker.compose.service', 'com.docker.compose.version', 'com.example.secret', 'desktop.docker.io/ports.scheme', 'execDuration', 'exitCode', 'image', 'ke-sec-u9dr1', 'name', 'signal'] exitCode= 'LBL-EXITCODE-SENTINEL' signal= 'LBL-SIGNAL-SENTINEL'
+== R2 the script's template on each probe container, through diag_print
+-- ke-sec-u9dr1-oom
+R2 offline-client: diag:   State.Status: exited
+R2 offline-client: diag:   State.ExitCode: 137
+R2 offline-client: diag:   State.OOMKilled: true
+R2 offline-client: diag:   RestartCount: 0
+R2 offline-client: diag:   State.StartedAt: 2026-10-30T08:25:51.833494564Z
+R2 offline-client: diag:   State.FinishedAt: 2026-10-30T08:25:51.959170755Z
+R2 offline-client: diag:   State.Error: <absent>
+R2 offline-client: diag:   State.Health.Status: <absent>
+R2 offline-client: diag:   State.Health.Log: <absent>
+-- ke-sec-u9dr1-crash
+R2 offline-client: diag:   State.Status: exited
+R2 offline-client: diag:   State.ExitCode: 3
+R2 offline-client: diag:   State.OOMKilled: false
+R2 offline-client: diag:   RestartCount: 0
+R2 offline-client: diag:   State.StartedAt: 2026-10-30T08:25:52.012742126Z
+R2 offline-client: diag:   State.FinishedAt: 2026-10-30T08:25:52.094797646Z
+R2 offline-client: diag:   State.Error: <absent>
+R2 offline-client: diag:   State.Health.Status: <absent>
+R2 offline-client: diag:   State.Health.Log: <absent>
+-- ke-sec-u9dr1-kill
+R2 offline-client: diag:   State.Status: running
+R2 offline-client: diag:   State.ExitCode: 0
+R2 offline-client: diag:   State.OOMKilled: false
+R2 offline-client: diag:   RestartCount: 0
+R2 offline-client: diag:   State.StartedAt: 2026-10-30T08:25:52.223681422Z
+R2 offline-client: diag:   State.FinishedAt: <absent>
+R2 offline-client: diag:   State.Error: <absent>
+R2 offline-client: diag:   State.Health.Status: <absent>
+R2 offline-client: diag:   State.Health.Log: <absent>
+-- ke-sec-u9dr1-starterr
+R2 offline-client: diag:   State.Status: created
+R2 offline-client: diag:   State.ExitCode: 127
+R2 offline-client: diag:   State.OOMKilled: false
+R2 offline-client: diag:   RestartCount: 0
+R2 offline-client: diag:   State.StartedAt: <absent>
+R2 offline-client: diag:   State.FinishedAt: <absent>
+R2 offline-client: diag:   State.Error: "failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: exec: \"/nonexistent\\r#?[error]start-err\": stat /nonexistent\r#?[error]start-err: no such file or directory"
+R2 offline-client: diag:   State.Health.Status: <absent>
+R2 offline-client: diag:   State.Health.Log: <absent>
+R2 sentinels in all renders:       2 nonexistent;
+== R3 a newline in a service label splits the ps listing (the script's ps format)
+R3 row: <64-hex id> ke-sec-u9dr1-nl x--format={{.Config.Env}} ke-sec-u9dr1-oom neo4j
+R3 inspect with a forged '--format=...' id: exit 1; env sentinel printed: 0; first line: docker: 'docker container inspect' requires at least 1 argument
+R3 inspect with a forged '--size' id: exit 1; first line: docker: 'docker container inspect' requires at least 1 argument
+R3 inspect with a forged '--help' id: exit 0; lines 13
+== R4 docker compose logs with '--' before the service name (real compose)
+R4 up: exit 0
+R4 logs -- svc1: exit 0; lines: 2
+R4 logs -- --follow: exit 0; 
+R4 down: exit 0
+== R5 bash as PID 1 (the client's shape, no init) with a background timeout 900 stream
+R5 processes:  bash -c timeout 900 sleep 900 > /dev/null < /dev/null & sleep 1000; echo after; timeout 900 sleep 900; sleep 1000; sleep 900;
+R5 after SIGTERM to PID 1: state running
+R5 after docker stop: state exited exit 137; docker top: Error response from daemon: container 6fa521db2dfd392aa776c662b067bd8c2b14fbc3b28583d5746f625cb4fcaf46 is not running
+== cleanup
+left with label ke-sec-u9dr1=1: 0
+
+== RH. Where a newline in a label goes (CLI vs the Engine API), and labels named exitCode/signal in the stack images
+== (local images of every stack service; docker-compose.yml and docker/*.Dockerfile grep for those label names: 0).
+== R3b where the newline goes: CLI create, then the API's stored value, then ps --format
+R3b stored label (inspect, json): "xforged-id forged-name neo4j"
+R3b ps row: <id> ke-sec-u9dr1-nl2 xforged-id forged-name neo4j
+-- through the Engine API directly (as compose's Go client would), label value with LF
+R3b API create: 201 b'{"Id":"518db7ea5fae1cb56eb6544d866c68e64119d1814cd38ce4158ef6a433627157","Warnin'
+R3b stored label (inspect, json): "x\nforged-id forged-name neo4j"
+R3b ps row: <id> ke-sec-u9dr1-nl3 x
+R3b ps row: forged-id forged-name neo4j
+== R6 image labels named exitCode or signal in the local stack images
+R6 ke-app:local: 0 label(s) named exitCode/signal
+R6 ke-neo4j:bundle-06305865d097: 0 label(s) named exitCode/signal
+R6 ke-neo4j:bundle-90db4b8bb1e8: 0 label(s) named exitCode/signal
+R6 ke-neo4j:bundle-9b1754f460d4: 0 label(s) named exitCode/signal
+R6 ke-neo4j:bundle-d8ffa2d451ef: 0 label(s) named exitCode/signal
+R6 ke-neo4j:bundle-86f78319ec4e: 0 label(s) named exitCode/signal
+R6 ke-neo4j:bundle-45411ae2ad3d: 0 label(s) named exitCode/signal
+R6 ke-neo4j:bundle-66781a9cee0d: 0 label(s) named exitCode/signal
+R6 ke-neo4j:bundle-c300d881cd94: 0 label(s) named exitCode/signal
+R6 ke-neo4j:bundle-5d4ab4687870: 0 label(s) named exitCode/signal
+R6 ke-neo4j:bundle-5cf025c4d428: 0 label(s) named exitCode/signal
+R6 ke-neo4j:local: 0 label(s) named exitCode/signal
+left with label ke-sec-u9dr1=1: 0

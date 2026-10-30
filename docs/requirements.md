@@ -4963,6 +4963,35 @@ full what it contains.
         output; at most the entries Docker keeps). A field the container
         does not have (no healthcheck, never started) is printed as absent
         with one fixed token, never dropped.
+      - *Amended 2026-10-30 (analyst, O-23, on reviewer B-1 in
+        `u9d/review.md`):* every stack service has `restart:
+        unless-stopped`, and a restart resets `State.ExitCode` and
+        `State.OOMKilled` (probes P3-P4 in `u9d/review-probes.txt`), so a
+        restarted neo4j that was OOM-killed or crashed would read
+        `ExitCode 0 / OOMKilled false`. The field list above now reads:
+        each block gives the container name, `State.Status`,
+        `State.ExitCode`, `State.OOMKilled`, `RestartCount`,
+        `State.StartedAt`, `State.FinishedAt`, `State.Error` (JSON-quoted
+        on one line), `State.Health.Status` and the tail of
+        `State.Health.Log` (each entry's end time, exit code and output;
+        at most the entries Docker keeps). A field the container does not
+        have (no healthcheck, never started, never finished, no start
+        error) is printed as absent with one fixed token, never dropped;
+        `RestartCount` is always a number.
+      - *Amended 2026-10-30 (analyst, O-23; new criterion):* because
+        every stack service restarts itself (`restart: unless-stopped`)
+        and a restart resets `ExitCode` and `OOMKilled`, the client also
+        records the stack's container `die`, `oom` and `kill` events from
+        a stream it starts just before the launch step and stops as soon
+        as that step exits, on every path (bounded by a timeout; no query
+        of the daemon's event history afterwards). On the launch-failure
+        path the diagnostic prints them first, one line per event: the
+        event time (Unix seconds), the action, the container name, the
+        exit code (`die`) and the signal (`kill`); at most 100 lines, then
+        a named line giving how many more were not printed; `none` when
+        there were none; a named line when the stream ended before launch
+        exited or could not start. On a passing launch none of it is
+        printed.
       - Then, for every container that is not healthy (its Status is not
         `running`, or it has a Health.Status other than `healthy`), the
         last 50 lines of its logs (`docker compose logs --tail 50` for its
@@ -4987,8 +5016,22 @@ full what it contains.
         output and the logs tail. (The client's stack runs with
         `.env.example`'s placeholder secrets; security confirms that the
         probe output and logs tails print no secret.)
+      - *Amended 2026-10-30 (analyst, O-23):* the never-printed bullet
+        reads, after "only the fields above, the probe output and the logs
+        tail": "; of an event, nothing but the five fields above (no
+        labels, no image, no other attribute)" (the five: event time,
+        action, container name, exit code, signal). Security re-audits the
+        amended field list and the event format (O-23).
       - Proof: `test_offline_client_prints_diag_on_launch_failure`,
         `test_offline_client_diag_survives_a_failing_inspect`.
+      - *Amended 2026-10-30 (analyst, O-23):* proof adds two rows (names
+        are the tester's): a launch failure with a restarted neo4j
+        (`running`, `ExitCode` 0, `OOMKilled` false, `RestartCount` 1,
+        `FinishedAt` set) whose only evidence of the death is
+        `RestartCount`, `FinishedAt` and its `oom` and `die` events,
+        asserting that all three print; and a passing launch with the
+        event stream recording, asserting the stream is stopped before
+        smoke and none of it prints.
     - **U9d-2 The runner measurements (option C).**
       - Client points: (C1) after install, before launch; (C2) on a launch
         failure, with the diagnostic; (C3) after smoke, before the inner
@@ -5057,6 +5100,11 @@ full what it contains.
         and the diagnostic runs under `timeout` (at most 30 s each; values
         the architect's), so a hung inner daemon costs a bounded time and
         a named line. The architect states the diagnostic's worst case.
+      - *Amended 2026-10-30 (analyst, O-23):* the event stream
+        (U9d-1, amended) is bounded by `timeout 900` and stopped at
+        launch's exit; on a pass it adds no measurable time. It is the
+        only docker call not held to the 30 s ceiling above; every other
+        measurement and diagnostic call keeps it.
       - Proof: the no-diag-on-pass assertion in
         `test_offline_measure_points_on_a_pass`; a static row that every
         such docker call is under `timeout` (as the pull probe's row).
@@ -5105,6 +5153,11 @@ full what it contains.
         analyst then proposes E (the capacity fix) as a follow-up question
         or unit for the orchestrator, and for the human where it reaches
         the floor.
+      - *Amended 2026-10-30 (analyst, O-23):* a restart resets
+        `ExitCode` and `OOMKilled` (U9d-1, amended), so "the cause the
+        diagnostic names (...)" above reads: "(the `oom`/`die` events and
+        their exit code, `RestartCount` and `FinishedAt`, exited or
+        killed, `OOMKilled`, neo4j's last lines, disk and memory at C2)".
       - U9d's commit gate is the local `verify.sh full`; the CI run follows
         the push. PR #15 still merges only on a green CI run (Q82
         deadline; nothing merges on red).

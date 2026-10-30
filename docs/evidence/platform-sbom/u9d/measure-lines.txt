@@ -1,0 +1,42 @@
+offline: measure: H1 memory: not measurable (the daemon's DockerRootDir is not on this host, so this /proc/meminfo is not the daemon's machine; Docker Desktop keeps it in a VM)
+offline: measure: H1 done in 0 s
+offline-client: measure: C1 df / (the host daemon's storage): filesystem overlay size 1055762868 KiB used 204439428 KiB available 797619968 KiB capacity 21%
+offline-client: measure: C1 df /install: filesystem tmpfs size 16291856 KiB used 161004 KiB available 16130852 KiB capacity 1%
+offline-client: measure: C1 memory: MemAvailable 21797392 kB SwapFree 4948096 kB
+offline-client: measure: C1 inner docker system df: Images total 6 active 0 size 3.392GB reclaimable 3.392GB (100%)
+offline-client: measure: C1 inner docker system df: Containers total 0 active 0 size 0B reclaimable 0B
+offline-client: measure: C1 inner docker system df: Local Volumes total 0 active 0 size 0B reclaimable 0B
+offline-client: measure: C1 inner docker system df: Build Cache total 0 active 0 size 0B reclaimable 0B
+offline-client: measure: C1 done in 1 s
+offline-client: measure: C3 df / (the host daemon's storage): filesystem overlay size 1055762868 KiB used 205372456 KiB available 796686940 KiB capacity 21%
+offline-client: measure: C3 df /install: filesystem tmpfs size 16291856 KiB used 161008 KiB available 16130848 KiB capacity 1%
+offline-client: measure: C3 memory: MemAvailable 21079276 kB SwapFree 4948096 kB
+offline-client: measure: C3 inner docker system df: Images total 6 active 6 size 3.392GB reclaimable 0B (0%)
+offline-client: measure: C3 inner docker system df: Containers total 7 active 7 size 364MB reclaimable 0B (0%)
+offline-client: measure: C3 inner docker system df: Local Volumes total 5 active 5 size 589.9MB reclaimable 0B (0%)
+offline-client: measure: C3 inner docker system df: Build Cache total 0 active 0 size 0B reclaimable 0B
+offline-client: measure: C3 done in 0 s
+offline: measure: H3 memory: not measurable (the daemon's DockerRootDir is not on this host, so this /proc/meminfo is not the daemon's machine; Docker Desktop keeps it in a VM)
+offline: measure: H3 done in 0 s
+
+## 2026-10-30 rework 1 GREEN run (scripts/verify.sh full, 1373 s; offline_check PASS 225 s; no events output on the pass)
+offline: measure: H1 memory: not measurable (the daemon's DockerRootDir is not on this host, so this /proc/meminfo is not the daemon's machine; Docker Desktop keeps it in a VM)
+offline: measure: H1 done in 0 s
+offline-client: measure: C1 df / (the host daemon's storage): filesystem overlay size 1055762868 KiB used 205166712 KiB available 796892684 KiB capacity 21%
+offline-client: measure: C1 df /install: filesystem tmpfs size 16291856 KiB used 161004 KiB available 16130852 KiB capacity 1%
+offline-client: measure: C1 memory: MemAvailable 22260288 kB SwapFree 4948352 kB
+offline-client: measure: C1 inner docker system df: Images total 6 active 0 size 3.392GB reclaimable 3.392GB (100%)
+offline-client: measure: C1 inner docker system df: Containers total 0 active 0 size 0B reclaimable 0B
+offline-client: measure: C1 inner docker system df: Local Volumes total 0 active 0 size 0B reclaimable 0B
+offline-client: measure: C1 inner docker system df: Build Cache total 0 active 0 size 0B reclaimable 0B
+offline-client: measure: C1 done in 0 s
+offline-client: measure: C3 df / (the host daemon's storage): filesystem overlay size 1055762868 KiB used 206100124 KiB available 795959272 KiB capacity 21%
+offline-client: measure: C3 df /install: filesystem tmpfs size 16291856 KiB used 161008 KiB available 16130848 KiB capacity 1%
+offline-client: measure: C3 memory: MemAvailable 20669420 kB SwapFree 4948352 kB
+offline-client: measure: C3 inner docker system df: Images total 6 active 6 size 3.392GB reclaimable 0B (0%)
+offline-client: measure: C3 inner docker system df: Containers total 7 active 7 size 364MB reclaimable 0B (0%)
+offline-client: measure: C3 inner docker system df: Local Volumes total 5 active 5 size 589.9MB reclaimable 0B (0%)
+offline-client: measure: C3 inner docker system df: Build Cache total 0 active 0 size 0B reclaimable 0B
+offline-client: measure: C3 done in 0 s
+offline: measure: H3 memory: not measurable (the daemon's DockerRootDir is not on this host, so this /proc/meminfo is not the daemon's machine; Docker Desktop keeps it in a VM)
+offline: measure: H3 done in 0 s

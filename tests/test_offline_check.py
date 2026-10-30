@@ -435,6 +435,17 @@ class NetIsolatedScriptTest(unittest.TestCase):
 _STUB = r'''#!/usr/bin/env bash
 # Stand-in for @NAME@: one JSON record in the fake docker's call log.
 @PRE@
+# platform-sbom U9d rework 1 (O-23, A9): the stub FAKE_STUB_WAIT_NAME names
+# waits, before its record, up to 10 s for the fixed string FAKE_STUB_WAIT_FOR
+# in the call log, then FAKE_STUB_WAIT_THEN seconds. Inert unless both are set.
+if [ -n "${FAKE_STUB_WAIT_FOR:-}" ] && [ "${FAKE_STUB_WAIT_NAME:-}" = "@NAME@" ]; then
+  _w=0
+  while [ "$_w" -lt 100 ] && ! grep -qF -- "$FAKE_STUB_WAIT_FOR" "$FAKE_DOCKER_JSON" 2> /dev/null; do
+    sleep 0.1
+    _w=$((_w + 1))
+  done
+  sleep "${FAKE_STUB_WAIT_THEN:-0}"
+fi
 args=""
 for a in "$@"; do args="$args, \"$a\""; done
 printf '{"argv": ["STUB", "@NAME@"%s], "env": {"COMPOSE_PROJECT_NAME": "%s", "KE_SMOKE_OWNS_PROJECT": "%s", "PARENT_MODE": "%s"}, "cwd": "%s", "project_dir": "", "dotenv_present": false}\n' \
@@ -1409,6 +1420,941 @@ fi'''.replace("@SBOM_STUB@", _SBOM_STUB.replace("\n", "\n  "))
                                  "the cert check comes before any call to the inner daemon")
                 self.assertIsNone(SKIP_RX.search(out), "never a skip")
                 self.assertNotIn("nothing was pulled", out)
+
+
+    # ---- platform-sbom U9d: the launch diagnostic and the runner measurements --
+    # Criteria: docs/requirements.md "U9d precision" U9d-1..U9d-5 (A82a). Design:
+    # design-notes "N9 amendment, U9d" items 5-13 and ruling O-22 (Health.Log
+    # output JSON-quoted on one prefixed line; KE_OFFLINE_MEMINFO a client-only
+    # seam). Fake knobs: tests/fake_docker.py "platform-sbom U9d". Tester, U9d
+    # RED. No existing row above changes (expected re-pins: none).
+
+    def _u9d_meminfo(self, text: str = "", name: str = "meminfo") -> Path:
+        path = self.tmp / name
+        path.write_text(text or U9D_MEMINFO, encoding="utf-8")
+        return path
+
+    def _client_u9d(self, **extra: str) -> tuple[subprocess.CompletedProcess, list[dict], Path]:
+        """The client half with fixed measurement sources: a meminfo file, df
+        figures for `/` and the install root, and four `system df` rows."""
+        defaults = {"KE_OFFLINE_MEMINFO": str(self._u9d_meminfo()),
+                    "FAKE_DF_TOTAL_KB": str(U9D_DF_TOTAL_KB),
+                    "FAKE_DF_AVAIL_BY_PATH": json.dumps({"/": U9D_ROOT_AVAIL_KB,
+                                                         str(self.tmp / "install"): U9D_INSTALL_AVAIL_KB}),
+                    "FAKE_DOCKER_SYSTEM_DF": json.dumps(U9D_SYSTEM_DF)}
+        defaults.update(extra)
+        return self._client(**defaults)
+
+    def _launch_failure(self, **extra: str) -> tuple[subprocess.CompletedProcess, list[dict], Path]:
+        env = {"FAKE_STUB_FAIL": "launch.sh", "FAKE_DOCKER_CONTAINERS": json.dumps(U9D_CONTAINERS),
+               "FAKE_COMPOSE_LOGS": json.dumps(U9D_LOGS)}
+        env.update(extra)
+        return self._client_u9d(**env)
+
+    def _host_merged(self, **extra: str) -> tuple[subprocess.CompletedProcess, list[dict], Path]:
+        """`_host` with stderr merged into stdout, so the order of a stdout
+        line and the FAIL line (stderr) can be read (design item 13)."""
+        repo = self._host_setup()
+        self.json.write_text("", encoding="utf-8")
+        env_vars = {"FAKE_DOCKER_ROOT_DIR": str(self.tmp / "no-such-docker-root")}
+        env_vars.update(self._sbom_env(repo))
+        env_vars.update(extra)
+        env = self._base_env(COMPOSE_PROJECT_NAME="ke-verify-1234", KE_SMOKE_OWNS_PROJECT="1", **env_vars)
+        result = subprocess.run(["bash", "scripts/offline_check.sh"], cwd=repo, env=env,
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=120)
+        return result, fake_docker.records(self.json), repo
+
+    def _point(self, lines: list[str], prefix: str, point: str) -> tuple[int, int, list[str]]:
+        """The contiguous block of `<prefix><point> ...` lines, ending with
+        `<prefix><point> done in <N> s` (U9d-2, U9d-4)."""
+        idx = [i for i, line in enumerate(lines) if line.startswith(f"{prefix}{point} ")]
+        self.assertTrue(idx, f"no `{prefix}{point} ...` line (U9d-2):\n" + "\n".join(lines))
+        self.assertEqual(idx, list(range(idx[0], idx[-1] + 1)),
+                         f"{point} is not one contiguous block (U9d-2):\n" + "\n".join(lines))
+        block = [lines[i] for i in idx]
+        self.assertRegex(block[-1], rf"^{re.escape(prefix)}{point} done in \d+ s$",
+                         f"{point}'s last line gives its elapsed whole seconds (U9d-4)")
+        for line in block:
+            self.assertIsNone(U9D_BANNED.search(line), f"a measure line uses a gate word: {line}")
+        return idx[0], idx[-1], block
+
+    def _no_point(self, lines: list[str], prefix: str, point: str) -> None:
+        self.assertEqual([line for line in lines if line.startswith(f"{prefix}{point} ")], [],
+                         f"{point} printed where it must not be")
+
+    def _assert_client_figures(self, block: list[str], point: str, root: Path) -> None:
+        p = f"offline-client: measure: {point} "
+        used = U9D_DF_TOTAL_KB - U9D_ROOT_AVAIL_KB
+        slash = [line for line in block if re.match(rf"{re.escape(p)}df /[ :(]", line)]
+        self.assertEqual(len(slash), 1, f"{point}: one `df /` line (the host daemon's storage, QD-3): {block}")
+        self.assertIn(f"used {used} KiB", slash[0], "used space of `/`, in KiB")
+        self.assertIn(f"available {U9D_ROOT_AVAIL_KB} KiB", slash[0], "free space of `/`, in KiB")
+        inst = [line for line in block if line.startswith(f"{p}df {root}")]
+        self.assertEqual(len(inst), 1, f"{point}: one `df -Pk /install` line: {block}")
+        self.assertIn(f"used {U9D_DF_TOTAL_KB - U9D_INSTALL_AVAIL_KB} KiB", inst[0])
+        self.assertIn(f"available {U9D_INSTALL_AVAIL_KB} KiB", inst[0])
+        mem = [line for line in block if line.startswith(f"{p}memory")]
+        self.assertEqual(len(mem), 1, f"{point}: one memory line: {block}")
+        self.assertIn("MemAvailable 1234567 kB", mem[0], "MemAvailable in kB, as /proc/meminfo states it")
+        self.assertIn("SwapFree 2048 kB", mem[0], "SwapFree in kB, as /proc/meminfo states it")
+        for row in U9D_SYSTEM_DF:
+            rx = (rf"system df\b.*\b{re.escape(row['Type'])}\b.*\b{row['TotalCount']}\b.*"
+                  rf"{re.escape(row['Size'])}.*{re.escape(row['Reclaimable'])}")
+            with self.subTest(point=point, system_df=row["Type"]):
+                self.assertEqual(len([line for line in block if re.search(rx, line)]), 1,
+                                 f"{point}: the inner `docker system df` {row['Type']} row (count, size, "
+                                 f"reclaimable, Docker's units): {block}")
+
+    @staticmethod
+    def _measure_calls(records: list[dict]) -> list[int]:
+        return [i for i, r in enumerate(records) if r["argv"][:1] == ["DF"] or r["argv"][:2] == ["system", "df"]]
+
+    @staticmethod
+    def _stub_at(records: list[dict], name: str) -> int:
+        return next(i for i, r in enumerate(records) if r["argv"][:2] == ["STUB", name])
+
+    @staticmethod
+    def _diag_calls(records: list[dict]) -> list[list[str]]:
+        out = []
+        for r in records:
+            a = r["argv"]
+            if (a[:1] in (["ps"], ["inspect"]) or a[:2] in (["container", "inspect"], ["container", "ls"],
+                                                             ["container", "list"], ["container", "ps"])
+                    or (a[:1] == ["compose"] and "logs" in a)):
+                out.append(a)
+        return out
+
+    def _diag_block(self, stdout: str) -> list[str]:
+        lines = stdout.splitlines()
+        idx = [i for i, line in enumerate(lines) if line.startswith(U9D_DIAG)]
+        self.assertTrue(idx, "no `offline-client: diag:` line after a launch failure (U9d-1):\n" + stdout)
+        self.assertEqual(idx, list(range(idx[0], idx[-1] + 1)),
+                         "the diagnostic is not one block of prefixed lines: a line inside it lacks "
+                         "`offline-client: diag: ` (U9d-1):\n" + stdout)
+        self.assertEqual(idx[-1], len(lines) - 1, "the client printed after its diagnostic:\n" + stdout)
+        return [lines[i][len(U9D_DIAG):] for i in idx]
+
+    def _containers(self, diag: list[str]) -> dict[str, list[str]]:
+        heads = [(k, m.group(1)) for k, line in enumerate(diag) if (m := re.match(r"container (\S+)", line))]
+        names = [name for _, name in heads]
+        self.assertEqual(sorted(names), sorted(c["Names"] for c in U9D_CONTAINERS),
+                         "one block per container of the stack, each once (U9d-1):\n" + "\n".join(diag))
+        out = {}
+        for n, (k, name) in enumerate(heads):
+            end = heads[n + 1][0] if n + 1 < len(heads) else len(diag)
+            out[name] = diag[k:end]
+        return out
+
+    def _has_state(self, block: list[str], field: str, value: str) -> None:
+        self.assertTrue([line for line in block if re.fullmatch(rf"\s*{re.escape(field)}: {re.escape(value)}", line)],
+                        f"`{field}: {value}` missing (U9d-1):\n" + "\n".join(block))
+
+    def test_offline_client_prints_diag_on_launch_failure(self):
+        """U9d-1, U9d-5: on a launch failure, one prefixed block per container
+        with the allowed State fields (`<absent>` for one it lacks), Health.Log
+        entries JSON-quoted on one line each (O-22), and the last 50 log lines
+        of each non-healthy service only; nothing private; launch's status."""
+        result, records, root = self._launch_failure()
+        out = self._out(result)
+        self.assertEqual(result.returncode, 7, "the client exits with launch's own status (QD-6):\n" + out)
+        self.assertNotIn("smoke", self._client_events(records), "smoke ran after a failed launch")
+        diag = self._diag_block(result.stdout)
+        blocks = self._containers(diag)
+        pg, neo, worker = (blocks["knowledge-engine-postgres-1"], blocks["knowledge-engine-neo4j-1"],
+                           blocks["knowledge-engine-worker-1"])
+        with self.subTest(container="healthy (postgres)"):
+            for field, value in (("State.Status", "running"), ("State.ExitCode", "0"),
+                                 ("State.OOMKilled", "false"), ("State.Health.Status", "healthy")):
+                self._has_state(pg, field, value)
+            self.assertNotIn("pg-ok-1", out, "a healthy container's logs are printed (U9d-1)")
+        with self.subTest(container="unhealthy (neo4j)"):
+            for field, value in (("State.Status", "running"), ("State.ExitCode", "0"),
+                                 ("State.OOMKilled", "false"), ("State.Health.Status", "unhealthy")):
+                self._has_state(neo, field, value)
+            for entry in U9D_CONTAINERS[1]["State"]["Health"]["Log"]:
+                quoted = json.dumps(entry["Output"])
+                hits = [line for line in neo if entry["End"] in line and quoted in line
+                        and re.search(rf"\bexit {entry['ExitCode']}\b", line)]
+                self.assertEqual(len(hits), 1, f"Health.Log entry {entry['End']}: its end time, exit code and "
+                                 f"output JSON-quoted on one line (O-22):\n" + "\n".join(neo))
+            self.assertEqual([line for line in result.stdout.splitlines() if "Unable to connect" in line],
+                             [U9D_DIAG + next(line for line in neo if "Unable to connect" in line)],
+                             "a multi-line probe output is one prefixed line")
+            kept, cut = U9D_LOGS["neo4j"][-50:], U9D_LOGS["neo4j"][:-50]
+            for line in kept[:-1]:
+                self.assertTrue([d for d in neo if d.endswith(line)], f"neo4j log line missing: {line}")
+            for line in cut:
+                self.assertFalse([d for d in neo if d.endswith(line)], f"more than 50 log lines: {line}")
+            self.assertTrue([d for d in neo if "java.lang.OutOfMemoryError: Java heap space" in d],
+                            "neo4j's last log line (its last words) is printed")
+        with self.subTest(container="exited, OOM-killed, no healthcheck (worker)"):
+            for field, value in (("State.Status", "exited"), ("State.ExitCode", "137"),
+                                 ("State.OOMKilled", "true"), ("State.Health.Status", "<absent>"),
+                                 ("State.Health.Log", "<absent>")):
+                self._has_state(worker, field, value)
+            for line in ("worker starting", "::error::worker last words", "::warning::forged"):
+                self.assertTrue([d for d in worker if line in d], f"worker log line missing: {line}")
+        with self.subTest(check="logs calls"):
+            logs = [a for a in self._diag_calls(records) if a[:1] == ["compose"]]
+            services = sorted(a[-1] for a in logs)
+            self.assertEqual(services, ["neo4j", "worker"], "logs of the non-healthy services only (U9d-1)")
+            for a in logs:
+                self.assertTrue(("--tail", "50") in self._pairs(a) or "--tail=50" in a, f"--tail 50: {a}")
+                self.assertFalse({"-f", "--follow"} & set(a), f"a following logs call never returns: {a}")
+        with self.subTest(check="every line prefixed; nothing private; control characters"):
+            for line in result.stdout.splitlines():
+                self.assertTrue(line.startswith(("offline-client: ")), f"an unprefixed stdout line: {line!r}")
+            self.assertNotIn(U9D_SECRET, out, "a secret from Config.Env, Args, Mounts or a label was printed")
+            self.assertNotIn("com.example.secret", out, "a label other than the service name was printed")
+            self.assertNotIn("\x1b", out, "a control character reached the log (design item 10)")
+            for line in diag:
+                self.assertIsNone(U9D_BANNED.search(line), f"a diag line uses a gate word: {line}")
+        with self.subTest(check="C2 with the diagnostic"):
+            lines = result.stdout.splitlines()
+            self._point(lines, U9D_CM, "C1")
+            _, c2_end, c2 = self._point(lines, U9D_CM, "C2")
+            self._assert_client_figures(c2, "C2", root)
+            self.assertLess(c2_end, lines.index(U9D_DIAG + diag[0]), "C2 comes before the diagnostic")
+            self._no_point(lines, U9D_CM, "C3")
+
+    def test_offline_client_diag_survives_a_failing_inspect(self):
+        """U9d-1: a diagnostic command that fails prints a named `diag:` line;
+        the other blocks still print and the client still exits non-zero."""
+        with self.subTest(case="the first container inspect fails"):
+            result, _, _ = self._launch_failure(FAKE_DOCKER_FAIL_NTH="inspect#1")
+            out = self._out(result)
+            self.assertEqual(result.returncode, 7, out)
+            diag = self._diag_block(result.stdout)
+            self.assertTrue([line for line in diag if re.search(r"inspect\b.*\bexit 1\b", line)],
+                            "no named line for the failing inspect:\n" + "\n".join(diag))
+            blocks = self._containers(diag)
+            with_state = [n for n, b in blocks.items() if [line for line in b if "State.Status:" in line]]
+            self.assertEqual(len(with_state), len(U9D_CONTAINERS) - 1, "the other blocks still print")
+            failed = next(n for n in blocks if n not in with_state)
+            svc = next(c["Labels"]["com.docker.compose.service"] for c in U9D_CONTAINERS if c["Names"] == failed)
+            self.assertTrue([line for line in blocks[failed] if U9D_LOG_MARK[svc] in line],
+                            f"{failed}: an unreadable container's logs still print (design item 7)")
+        with self.subTest(case="the container list fails"):
+            result, _, _ = self._launch_failure(FAKE_DOCKER_FAIL="label=com.docker.compose.project")
+            self.assertEqual(result.returncode, 7, self._out(result))
+            diag = self._diag_block(result.stdout)
+            self.assertTrue([line for line in diag if re.search(r"(?:cannot list|\bps\b).*\bexit 1\b", line)],
+                            "no named line for the failing container list:\n" + "\n".join(diag))
+        with self.subTest(case="a logs call fails"):
+            logs = {k: v for k, v in U9D_LOGS.items() if k != "worker"}
+            result, _, _ = self._launch_failure(FAKE_COMPOSE_LOGS=json.dumps(logs))
+            self.assertEqual(result.returncode, 7, self._out(result))
+            diag = self._diag_block(result.stdout)
+            self.assertTrue([line for line in diag if re.search(r"logs\b.*\bexit 1\b", line)],
+                            "no named line for the failing logs call:\n" + "\n".join(diag))
+            self.assertEqual(len(self._containers(diag)), len(U9D_CONTAINERS))
+
+    def test_offline_measure_points_on_a_pass(self):
+        """U9d-2, U9d-4: C1 after install and before launch, C3 after smoke and
+        before teardown, no C2 and no diagnostic call; H1 after dind up, H3
+        after the client run. Every figure carries its unit."""
+        result, records, root = self._client_u9d()
+        out = self._out(result)
+        self.assertEqual(result.returncode, 0, out)
+        lines = result.stdout.splitlines()
+        with self.subTest(half="client"):
+            c1_start, c1_end, c1 = self._point(lines, U9D_CM, "C1")
+            c3_start, c3_end, c3 = self._point(lines, U9D_CM, "C3")
+            self._no_point(lines, U9D_CM, "C2")
+            self.assertLess(lines.index("offline-client: install"), c1_start, "C1 comes after install")
+            self.assertLess(c1_end, lines.index("offline-client: launch"), "C1 comes before launch")
+            self.assertLess(lines.index("offline-client: smoke (ci/offline included)"), c3_start, "C3 after smoke")
+            self.assertLess(c3_end, lines.index("offline-client: teardown"), "C3 comes before teardown")
+            self._assert_client_figures(c1, "C1", root)
+            self._assert_client_figures(c3, "C3", root)
+            self.assertEqual([line for line in lines if line.startswith(U9D_DIAG)], [], "a diag line on a pass")
+            self.assertEqual(self._diag_calls(records), [], "an inspect, ps or logs call on a pass (U9d-4)")
+            calls = self._measure_calls(records)
+            install, launch = self._stub_at(records, "install.sh"), self._stub_at(records, "launch.sh")
+            smoke, teardown = self._stub_at(records, "smoke.sh"), self._stub_at(records, "teardown.sh")
+            self.assertTrue([i for i in calls if install < i < launch], "no measurement between install and launch")
+            self.assertTrue([i for i in calls if smoke < i < teardown], "no measurement between smoke and teardown")
+            self.assertEqual([i for i in calls if not (install < i < launch or smoke < i < teardown)], [],
+                             "a measurement outside C1 and C3 on a pass")
+            for r in records:
+                if r["argv"][:2] == ["system", "df"]:
+                    self.assertFalse({"-v", "--verbose"} & set(r["argv"]), "`docker system df -v` (U9d-3)")
+        for case, on_host in (("DockerRootDir not on this host", False), ("DockerRootDir on this host", True)):
+            with self.subTest(half="host", case=case):
+                env = {}
+                if on_host:
+                    root_dir = self.tmp / "docker-root"
+                    root_dir.mkdir(exist_ok=True)
+                    env["FAKE_DOCKER_ROOT_DIR"] = str(root_dir)
+                result, _, _ = self._host(**env)
+                self.assertEqual(result.returncode, 0, self._out(result))
+                lines = result.stdout.splitlines()
+                h1_start, h1_end, h1 = self._point(lines, U9D_HM, "H1")
+                h3_start, h3_end, h3 = self._point(lines, U9D_HM, "H3")
+                self._no_point(lines, U9D_HM, "H2")
+                self.assertLess(lines.index("offline: df after dind up"), h1_start, "H1 comes after dind up")
+                self.assertLess(h1_end, lines.index("offline: running the offline client"))
+                self.assertLess(lines.index("offline: running the offline client"), h3_start)
+                self.assertLess(h3_end, lines.index("offline: df after client run"), "H3 after the client run")
+                for point, block in (("H1", h1), ("H3", h3)):
+                    mem = [line for line in block if line.startswith(f"{U9D_HM}{point} memory")]
+                    self.assertEqual(len(mem), 1, f"{point}: one memory line: {block}")
+                    if on_host:
+                        self.assertRegex(mem[0], r"MemAvailable \d+ kB\b.*\bSwapFree \d+ kB\b")
+                    else:
+                        self.assertIn("not measurable", mem[0], "the daemon's memory is not this host's")
+                        self.assertNotRegex(mem[0], r"MemAvailable \d", "a figure from the wrong machine")
+
+    def test_offline_measure_points_on_a_launch_failure(self):
+        """U9d-2, U9d-1 scope: a launch failure prints C1 and C2, no C3; the host
+        prints H1 and H2, H2 before the unchanged FAIL line; a failure at any
+        other step prints no diagnostic."""
+        with self.subTest(case="client, launch fails"):
+            result, records, root = self._client_u9d(FAKE_STUB_FAIL="launch.sh")
+            self.assertEqual(result.returncode, 7, self._out(result))
+            lines = result.stdout.splitlines()
+            c1_start, c1_end, _ = self._point(lines, U9D_CM, "C1")
+            c2_start, c2_end, c2 = self._point(lines, U9D_CM, "C2")
+            self._no_point(lines, U9D_CM, "C3")
+            self.assertLess(lines.index("offline-client: install"), c1_start)
+            self.assertLess(c1_end, lines.index("offline-client: launch"))
+            self.assertLess(lines.index("offline-client: launch"), c2_start, "C2 is taken after the failure")
+            self._assert_client_figures(c2, "C2", root)
+            diag = [i for i, line in enumerate(lines) if line.startswith(U9D_DIAG)]
+            self.assertTrue(diag and c2_end < diag[0], "C2, then the diagnostic (design item 8)")
+            launch = self._stub_at(records, "launch.sh")
+            self.assertTrue([i for i in self._measure_calls(records) if i > launch], "no C2 measurement")
+        for case, extra, points in (
+                ("smoke fails", {"FAKE_STUB_FAIL": "smoke.sh"}, ["C1"]),
+                ("teardown fails", {"FAKE_STUB_FAIL": "teardown.sh"}, ["C1", "C3"]),
+                ("the image names differ", {"FAKE_DOCKER_LS_AFTER": json.dumps(AS_SET[:-1])}, ["C1", "C3"]),
+                ("the daemon is not clean", {"FAKE_DOCKER_LS_BEFORE": json.dumps(["leftover/img:1"])}, [])):
+            with self.subTest(case=f"client, {case}"):
+                result, records, _ = self._client_u9d(**extra)
+                self.assertNotEqual(result.returncode, 0, self._out(result))
+                lines = result.stdout.splitlines()
+                for point in ("C1", "C2", "C3"):
+                    if point in points:
+                        self._point(lines, U9D_CM, point)
+                    else:
+                        self._no_point(lines, U9D_CM, point)
+                self.assertEqual([line for line in lines if line.startswith(U9D_DIAG)], [],
+                                 "a diagnostic outside the launch step (QD-5: launch only)")
+                self.assertEqual(self._diag_calls(records), [])
+        with self.subTest(case="host, the client fails (merged streams)"):
+            result, _, _ = self._host_merged(FAKE_DOCKER_FAIL="offline-client")
+            self.assertNotEqual(result.returncode, 0, result.stdout)
+            lines = result.stdout.splitlines()
+            _, h1_end, _ = self._point(lines, U9D_HM, "H1")
+            h2_start, h2_end, _ = self._point(lines, U9D_HM, "H2")
+            self._no_point(lines, U9D_HM, "H3")
+            run = lines.index("offline: running the offline client")
+            self.assertLess(h1_end, run)
+            self.assertLess(run, h2_start)
+            fail = lines.index(U9D_FAIL_LINE)
+            self.assertLess(h2_end, fail, "H2 comes before the FAIL line (U9d-2)")
+            self.assertEqual(lines[fail + 1], "offline: df before teardown",
+                             "the FAIL line is followed by the existing df lines and the teardown")
+        with self.subTest(case="host, the client fails (stderr apart)"):
+            result, _, _ = self._host(FAKE_DOCKER_FAIL="offline-client")
+            self.assertEqual(result.stderr.splitlines(),
+                             ["fake docker: failing on 'offline-client'", U9D_FAIL_LINE],
+                             "the host's stderr on a client failure is unchanged, FAIL line byte for byte")
+
+    def test_offline_measure_never_changes_the_outcome(self):
+        """U9d-2: every measurement source failing (df, the meminfo file,
+        `docker system df`) prints named `measure:` lines; a pass stays a pass
+        with the same output, and a launch failure keeps launch's status."""
+        sources = {"FAKE_DF_FAIL": "1", "KE_OFFLINE_MEMINFO": str(self.tmp / "no-such-meminfo"),
+                   "FAKE_DOCKER_FAIL": "system df"}
+        for case, extra in (("every source fails", sources),
+                            ("meminfo without MemAvailable or SwapFree",
+                             {"KE_OFFLINE_MEMINFO": str(self._u9d_meminfo("MemTotal: 16384000 kB\n", "short"))})):
+            with self.subTest(case=case):
+                result, _, root = self._client_u9d(**extra)
+                self.assertEqual(result.returncode, 0, "a failed measurement changed a pass:\n" + self._out(result))
+                lines = result.stdout.splitlines()
+                self.assertEqual([line for line in lines if not line.startswith(U9D_CM)], U9D_CLIENT_PASS,
+                                 "a pass with failing measurements prints the same lines otherwise")
+                for point in ("C1", "C3"):
+                    _, _, block = self._point(lines, U9D_CM, point)
+                    p = f"{U9D_CM}{point} "
+                    wanted = {"memory": rf"{re.escape(p)}memory\b.*not measured"}
+                    if extra is sources:
+                        wanted.update({"df /": rf"{re.escape(p)}df /[ :(].*not measured",
+                                       "df /install": rf"{re.escape(p)}df {re.escape(str(root))}\b.*not measured",
+                                       "system df": rf"{re.escape(p)}.*system df\b.*not measured"})
+                    for source, rx in wanted.items():
+                        self.assertEqual(len([line for line in block if re.match(rx, line)]), 1,
+                                         f"{point}: no named `not measured` line for {source}: {block}")
+        with self.subTest(case="every source fails on a launch failure"):
+            result, _, _ = self._launch_failure(**sources)
+            self.assertEqual(result.returncode, 7, self._out(result))
+            lines = result.stdout.splitlines()
+            self._point(lines, U9D_CM, "C2")
+            self.assertEqual(len(self._containers(self._diag_block(result.stdout))), len(U9D_CONTAINERS))
+
+    def test_offline_check_output_unchanged_but_for_measure_lines(self):
+        """U9d-5 control: a run's output with the `measure:` lines removed is
+        the pre-U9d sequence (captured at RED from the unchanged script;
+        project names, image references, df rows, the tmp dir and checker
+        detail normalised). Green at RED by construction."""
+        with self.subTest(run="client pass"):
+            result, _, _ = self._client()
+            self.assertEqual(result.returncode, 0, self._out(result))
+            self.assertEqual([line for line in result.stdout.splitlines() if not line.startswith(U9D_CM)],
+                             U9D_CLIENT_PASS)
+            self.assertEqual(result.stderr, "")
+        with self.subTest(run="host pass"):
+            result, _, _ = self._host()
+            self.assertEqual(result.returncode, 0, self._out(result))
+            self.assertEqual(_u9d_normalise(result.stdout, self.tmp), U9D_HOST_PASS)
+            self.assertEqual(result.stderr, "")
+        with self.subTest(run="host, the client fails"):
+            result, _, _ = self._host(FAKE_DOCKER_FAIL="offline-client")
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(_u9d_normalise(result.stdout, self.tmp), U9D_HOST_CLIENT_FAILS)
+
+    # ---- U9d static rows -----------------------------------------------------
+
+    def test_offline_check_has_no_ci_only_branch(self):
+        """U9d-3: the diagnostic and the measurements run the same everywhere;
+        no branch on CI, GITHUB_* or RUNNER_* (comments excluded)."""
+        self._require_script()
+        body = _u9d_code()
+        for rx in (r"\$\{?CI\b", r"\bCI\b", r"\bGITHUB_[A-Z_]*", r"\bRUNNER_[A-Z_]*"):
+            with self.subTest(pattern=rx):
+                self.assertNotRegex(body, rx, "offline_check.sh branches on a runner variable")
+
+    def test_offline_diag_and_measure_docker_calls_are_bounded(self):
+        """U9d-4: every docker call of the diagnostic and the measurements
+        (`ps`, `container inspect`, `compose logs`, `system df`) runs as
+        `timeout <N> docker ...` with N <= 30, as the pull probe does.
+        U9d-4 as amended (O-23; A2, A8, A9): the event stream runs as
+        `timeout 900 docker events` with exactly the stack's container
+        die/oom/kill filters, a `--since` and `--format "$events_fmt"`."""
+        self._require_script()
+        found: dict[str, list[re.Match]] = {k: [] for k in U9D_KINDS}
+        for m in U9D_DOCKER_CALL.finditer(_u9d_code()):
+            for kind, rx in U9D_KINDS.items():
+                if re.match(rx, m.group("rest")):
+                    found[kind].append(m)
+        for kind, calls in found.items():
+            with self.subTest(call=kind):
+                self.assertTrue(calls, f"offline_check.sh has no `docker {kind}` call (U9d-1, U9d-2)")
+                for m in calls:
+                    self.assertEqual(m.group("timeout"), "timeout", f"unbounded: docker {m.group('rest')}")
+                    if kind == "events":
+                        self._assert_events_call(m)
+                        continue
+                    self.assertLessEqual(int(m.group("secs")), 30, f"over 30 s: {m.group(0)}")
+                    if kind == "system df":
+                        self.assertNotRegex(m.group("rest"), r"\s(?:-v|--verbose)\b", "summary form only (U9d-3)")
+
+    def test_offline_diag_template_prints_only_allowed_fields(self):
+        """U9d-1 never-printed list, design item 10: the inspect template is the
+        State-only template, and the client half names no Config, Mounts,
+        Args, Path, HostConfig or NetworkSettings field, no `{{json .}}`, no
+        inspect without --format and no `compose config`. Amended (O-23; A2,
+        A7, A9): the event format is the design's (`fake_docker.EVENTS_FORMAT`:
+        time, action, name, exitCode, signal), the client half reads no
+        attribute map, `.Actor.ID` or `--until`, and has one `docker events`
+        call."""
+        self._require_script()
+        _, client, _ = _u9d_halves()
+        m = re.search(r"'([^']*\{\{\s*\.State\.Status\s*\}\}[^']*)'", client)
+        self.assertIsNotNone(m, "the client half holds no inspect template with {{.State.Status}} (U9d-1)")
+        assert m is not None
+        self.assertEqual(m.group(1), fake_docker.DIAG_TEMPLATE, "the template is the design's (item 7)")
+        code = _u9d_strip(client)
+        for token in ("json .}}", ".Config", ".Mounts", ".Args", ".Path", ".HostConfig", ".NetworkSettings",
+                      "compose config", "--verbose"):
+            with self.subTest(token=token):
+                self.assertNotIn(token, code, f"the client half reads {token} (never printed, U9d-1)")
+        for call in U9D_DOCKER_CALL.finditer(code):
+            if re.match(U9D_KINDS["container inspect"], call.group("rest")):
+                self.assertIn("--format", call.group("rest"), f"inspect without --format: {call.group(0)}")
+        with self.subTest(check="the event format (O-23, A2, A7)"):
+            fmt = re.search(r"(?m)^\s*events_fmt='([^']*)'", client)
+            self.assertIsNotNone(fmt, "the client half defines no events_fmt (A2)")
+            assert fmt is not None
+            self.assertEqual(fmt.group(1), fake_docker.EVENTS_FORMAT,
+                             "the event format is the design's: time, action, name, exitCode, signal (A2)")
+        for token in (".Actor.Attributes}}", "json .Actor", ".Actor.ID", "--until"):
+            with self.subTest(token=token):
+                self.assertNotIn(token, code, f"the client half reads {token} (an event prints five fields only; "
+                                 "no history query, A7)")
+        with self.subTest(check="one docker events call (A2, A7)"):
+            events = [c for c in U9D_DOCKER_CALL.finditer(code) if re.match(U9D_KINDS["events"], c.group("rest"))]
+            self.assertEqual(len(events), 1, "exactly one `docker events` call: no second, history call (A7)")
+
+    def test_offline_measure_and_diag_lines_use_neutral_words(self):
+        """Design item 11: every new line starts with `offline-client: measure:`,
+        `offline-client: diag:` or `offline: measure:`, and none says pass,
+        skip, FAIL, inconclusive, "not clean" or "nothing was pulled"."""
+        self._require_script()
+        say = re.compile(r"(?:^|[;&|]|\b(?:then|else|do)\b)\s*(?:m|diag)\s+\"")
+        lines = [line for line in _u9d_code().splitlines()
+                 if re.search(r"offline(?:-client)?: (?:measure|diag):", line) or say.search(line)]
+        for prefix in ("offline-client: measure:", "offline-client: diag:", "offline: measure:"):
+            with self.subTest(prefix=prefix):
+                self.assertTrue([line for line in lines if prefix in line], f"offline_check.sh prints no `{prefix}` line")
+        for line in lines:
+            with self.subTest(line=line.strip()):
+                self.assertIsNone(U9D_BANNED.search(line), "a new line uses a gate word")
+
+    def test_offline_meminfo_seam_is_client_only(self):
+        """Ruling O-22 (3), design item 6: KE_OFFLINE_MEMINFO is a client-only
+        test seam, listed in the header; the host half reads /proc/meminfo."""
+        self._require_script()
+        header, client, host = _u9d_halves()
+        self.assertIn("KE_OFFLINE_MEMINFO", header, "the header lists the test seam")
+        self.assertIn("KE_OFFLINE_MEMINFO", _u9d_strip(client), "the client half reads the seam")
+        self.assertNotIn("KE_OFFLINE_MEMINFO", _u9d_strip(host), "the host half reads no seam")
+        self.assertIn("/proc/meminfo", _u9d_strip(host), "the host half reads /proc/meminfo (H-points)")
+
+    # ---- U9d rework 1 (O-23) -------------------------------------------------
+    # Criteria: docs/requirements.md "U9d precision" U9d-1, U9d-4, U9d-6 as
+    # amended 2026-10-30 (O-23). Design: design-notes "Amendment, rework 1
+    # (O-23)" A1-A3, A7-A9, and the O-23 precision folding in security L-1,
+    # L-2 and I-1 (u9d/security.md). Fake knobs: tests/fake_docker.py
+    # "platform-sbom U9d rework 1" and the stub's FAKE_STUB_WAIT_* (_STUB).
+    # Tester, U9d rework-1 RED. Re-pinned rows (A9): the bounded-calls row and
+    # the allowed-fields row above.
+
+    def _restarted_failure(self, events: list[dict[str, Any]] | None,
+                           containers: list[dict[str, Any]] | None = None,
+                           **extra: str) -> tuple[subprocess.CompletedProcess, list[dict], Path]:
+        """A launch failure whose launch stub returns only once the event
+        stream is up (A9), so the kill never races the fake's start."""
+        env = {"FAKE_DOCKER_CONTAINERS": json.dumps(containers or _u9d_restarted()),
+               "FAKE_STUB_WAIT_NAME": "launch.sh", "FAKE_STUB_WAIT_FOR": U9D_EVENTS_READY}
+        if events is not None:
+            env["FAKE_DOCKER_EVENTS"] = json.dumps(events)
+        env.update(extra)
+        return self._launch_failure(**env)
+
+    @staticmethod
+    def _event_lines(diag: list[str]) -> list[tuple[int, str]]:
+        """(index, event) of each `events | <event>` line of the diagnostic (A3)."""
+        return [(k, m.group(1)) for k, line in enumerate(diag) if (m := re.fullmatch(r"\s*events \| (.*)", line))]
+
+    @staticmethod
+    def _first_container(diag: list[str]) -> int:
+        return next((k for k, line in enumerate(diag) if line.startswith("container ")), len(diag))
+
+    def _all_prefixed(self, result: subprocess.CompletedProcess) -> None:
+        for line in result.stdout.splitlines():
+            self.assertTrue(line.startswith("offline-client: "), f"an unprefixed stdout line: {line!r}")
+
+    def _assert_events_call(self, m: re.Match) -> None:
+        rest = m.group("rest")
+        self.assertEqual(int(m.group("secs")), 900, f"the stream is bounded by `timeout 900` (A2, A8): {m.group(0)}")
+        filters = sorted(f.strip("'\"") for f in re.findall(r"--filter(?:=|\s+)(\S+)", rest))
+        self.assertEqual(filters, sorted(U9D_EVENT_FILTERS),
+                         f"exactly the stack's container die, oom and kill filters (A2): {rest}")
+        self.assertRegex(rest, r"--since(?:=|\s+)\S", f"`--since` the stream's start (A2): {rest}")
+        self.assertIn('--format "$events_fmt"', rest, f"the fixed event format (A2, A7): {rest}")
+        self.assertNotIn("--until", rest, "a history query (A7)")
+
+    def test_offline_diag_names_the_deaths_of_a_restarted_container(self):
+        """U9d-1 as amended (O-23), A1-A3, A9: a neo4j that Docker restarted
+        reads `running / 0 / false`; its block gives RestartCount, StartedAt,
+        FinishedAt and State.Error, and the events section, printed first,
+        gives each death's own lines from a stream started before launch and
+        killed when launch exited, before any diagnostic call. Of an event,
+        only the time, action, name, exitCode and signal print."""
+        neo4j = "knowledge-engine-neo4j-1"
+        with self.subTest(case="an oom kill, then a restart"):
+            result, records, _ = self._restarted_failure([_u9d_event("oom"), _u9d_event("die", exitCode="137")])
+            out = self._out(result)
+            self.assertEqual(result.returncode, 7, "the client exits with launch's own status:\n" + out)
+            self._all_prefixed(result)
+            diag = self._diag_block(result.stdout)
+            neo = self._containers(diag)[neo4j]
+            for field, value in (("State.Status", "running"), ("State.ExitCode", "0"), ("State.OOMKilled", "false"),
+                                 ("RestartCount", "1"), ("State.StartedAt", U9D_RESTARTED_STATE["StartedAt"]),
+                                 ("State.FinishedAt", U9D_RESTARTED_STATE["FinishedAt"]),
+                                 ("State.Error", "<absent>")):
+                self._has_state(neo, field, value)
+            events = self._event_lines(diag)
+            self.assertEqual([e for _, e in events], [f"{U9D_EVENT_TIME} oom {neo4j} exitCode= signal=",
+                                                      f"{U9D_EVENT_TIME} die {neo4j} exitCode=137 signal="],
+                             "the death's oom and die events, one `events | ` line each (A2, A3):\n" + "\n".join(diag))
+            first = self._first_container(diag)
+            for k, _ in events:
+                self.assertTrue(0 < k < first, "the events print after the diagnostic's first line and before the "
+                                "first container block (A3):\n" + "\n".join(diag))
+            self.assertEqual([line for line in diag if re.search(r"\bevents:.*\bended\b", line)], [],
+                             "the stream still ran at launch's exit: no `ended` line (A3)")
+            self.assertEqual([line for line in diag if re.fullmatch(r"\s*events: none", line)], [])
+            stopped = [i for i, r in enumerate(records) if r["argv"] == ["EVENTS", "stopped"]]
+            ps = [i for i, r in enumerate(records) if r["argv"][:1] == ["ps"]]
+            self.assertEqual(len(stopped), 1, "the stream was not killed when launch exited (A2 events_stop)")
+            self.assertTrue(ps and stopped[0] < ps[0], "the stream is stopped before the first diagnostic call (A2)")
+            for leak in (U9D_SECRET, U9D_EVENT_IMAGE, U9D_EVENT_ACTOR):
+                self.assertNotIn(leak, out, "an event field other than time, action, name, exitCode and signal "
+                                 "printed (A7)")
+        with self.subTest(case="a crash (a die with no oom)"):
+            result, _, _ = self._restarted_failure([_u9d_event("die", exitCode="1")])
+            self.assertEqual(result.returncode, 7, self._out(result))
+            diag = self._diag_block(result.stdout)
+            self.assertEqual([e for _, e in self._event_lines(diag)],
+                             [f"{U9D_EVENT_TIME} die {neo4j} exitCode=1 signal="],
+                             "one die line with the process's own exit code and no oom line (A6):\n" + "\n".join(diag))
+        with self.subTest(case="more events than the cap"):
+            many = [_u9d_event("die", time=U9D_EVENT_TIME + i, exitCode=str(i)) for i in range(130)]
+            result, _, _ = self._restarted_failure(many)
+            self.assertEqual(result.returncode, 7, self._out(result))
+            diag = self._diag_block(result.stdout)
+            events = self._event_lines(diag)
+            self.assertEqual([e for _, e in events],
+                             [f"{U9D_EVENT_TIME + i} die {neo4j} exitCode={i} signal=" for i in range(100)],
+                             "the first 100 events, in stream order (A3)")
+            cap = [k for k, line in enumerate(diag) if re.match(r"\s*events: 30 more lines not printed\b", line)]
+            self.assertEqual(len(cap), 1, "a named line gives the 30 events not printed (A3):\n" + "\n".join(diag))
+            self.assertTrue(events[-1][0] < cap[0] < self._first_container(diag), "the cap line follows the 100 lines")
+        with self.subTest(case="a start error and a never-started container"):
+            never = {"Status": "created", "ExitCode": 0, "OOMKilled": False, "StartedAt": U9D_ZERO_TIME,
+                     "FinishedAt": U9D_ZERO_TIME, "Error": ""}
+            failed = {"Status": "exited", "ExitCode": 128, "OOMKilled": False, "StartedAt": "2026-10-30T10:00:40.1Z",
+                      "FinishedAt": "2026-10-30T10:00:47.9Z", "Error": U9D_START_ERROR}
+            containers = [_u9d_container("a", "postgres", never), _u9d_restarted()[1],
+                          dict(_u9d_container("c", "worker", failed), RestartCount=3)]
+            result, _, _ = self._restarted_failure([], containers)
+            self.assertEqual(result.returncode, 7, self._out(result))
+            self._all_prefixed(result)
+            diag = self._diag_block(result.stdout)
+            blocks = self._containers(diag)
+            with self.subTest(container="start error (worker)"):
+                worker = blocks["knowledge-engine-worker-1"]
+                self._has_state(worker, "State.Error", json.dumps(U9D_START_ERROR))
+                self._has_state(worker, "RestartCount", "3")
+                self.assertEqual(len([line for line in result.stdout.splitlines() if "no space left" in line]), 1,
+                                 "the start error is one JSON-quoted line; its CR never reaches the log raw (A1)")
+            with self.subTest(container="never started (postgres)"):
+                pg = blocks["knowledge-engine-postgres-1"]
+                for field, value in (("State.StartedAt", "<absent>"), ("State.FinishedAt", "<absent>"),
+                                     ("RestartCount", "0"), ("State.Error", "<absent>")):
+                    self._has_state(pg, field, value)
+            with self.subTest(check="no event"):
+                self.assertEqual(len([line for line in diag if re.fullmatch(r"\s*events: none", line)]), 1,
+                                 "a stream with no event prints `events: none` (A3):\n" + "\n".join(diag))
+        with self.subTest(case="the stream ended before launch exited"):
+            result, _, _ = self._restarted_failure([_u9d_event("die", exitCode="137")], FAKE_DOCKER_FAIL="event=oom",
+                                                   FAKE_STUB_WAIT_FOR=U9D_EVENTS_CALLED, FAKE_STUB_WAIT_THEN="1")
+            self.assertEqual(result.returncode, 7, self._out(result))
+            diag = self._diag_block(result.stdout)
+            ended = [line for line in diag
+                     if re.match(r"\s*events: the stream ended before launch exited \(exit 1\b", line)]
+            self.assertEqual(len(ended), 1, "a named line for a stream that ended early (A3):\n" + "\n".join(diag))
+            blocks = self._containers(diag)
+            self.assertEqual(len([n for n, b in blocks.items() if [line for line in b if "State.Status:" in line]]),
+                             len(U9D_CONTAINERS), "the container blocks still print")
+
+    def test_offline_events_stream_is_stopped_and_silent_on_a_pass(self):
+        """U9d-1 as amended (O-23), A2, A3, A8: on a passing launch the stream
+        starts after install and before launch, is killed after launch exits
+        and before smoke, and nothing of it prints: the output is the pre-U9d
+        pass but for the measure lines, and stderr is empty."""
+        result, records, _ = self._client_u9d(
+            FAKE_DOCKER_EVENTS=json.dumps([_u9d_event("oom"), _u9d_event("die", exitCode="137")]),
+            FAKE_STUB_WAIT_NAME="launch.sh", FAKE_STUB_WAIT_FOR=U9D_EVENTS_READY)
+        out = self._out(result)
+        self.assertEqual(result.returncode, 0, out)
+        lines = result.stdout.splitlines()
+        self.assertEqual([line for line in lines if "events" in line or line.startswith(U9D_DIAG)], [],
+                         "an events or diag line on a pass (A3)")
+        self.assertNotIn(str(U9D_EVENT_TIME), out, "an event printed on a pass")
+        self.assertEqual([line for line in lines if not line.startswith(U9D_CM)], U9D_CLIENT_PASS)
+        self.assertEqual(result.stderr, "")
+        calls = [i for i, r in enumerate(records) if r["argv"][:1] == ["events"]]
+        self.assertEqual(len(calls), 1, "one `docker events` call (A2)")
+        install, launch = self._stub_at(records, "install.sh"), self._stub_at(records, "launch.sh")
+        smoke = self._stub_at(records, "smoke.sh")
+        self.assertTrue(install < calls[0] < launch, "the stream starts after install and before launch (A2)")
+        stopped = [i for i, r in enumerate(records) if r["argv"] == ["EVENTS", "stopped"]]
+        self.assertEqual(len(stopped), 1, "the stream was not killed when launch exited (A2 events_stop)")
+        self.assertTrue(launch < stopped[0] < smoke, "the stream is stopped after launch and before smoke (A2)")
+
+    def test_offline_diag_sanitises_container_names_and_service_labels(self):
+        """Security L-1 (O-23 precision): a container name and a service label
+        from `docker ps` print through the control-character sanitiser; logs
+        are fetched only for a label that is a compose service name
+        (`^[A-Za-z0-9][A-Za-z0-9._-]*$`), passed after `--`, so a label can
+        neither forge a runner line nor become a `compose logs` option."""
+        exited = {"Status": "exited", "ExitCode": 1, "OOMKilled": False}
+        odd = _u9d_container("d", "odd", exited)
+        odd["Names"] = U9D_ODD_NAME
+        odd["Labels"]["com.docker.compose.service"] = U9D_ODD_LABEL
+        follow = _u9d_container("e", "follow", exited)
+        follow["Labels"]["com.docker.compose.service"] = "--follow"
+        logs = {"worker": U9D_LOGS["worker"], "--follow": ["follow-log-marker"], U9D_ODD_LABEL: ["odd-log-marker"]}
+        result, records, _ = self._launch_failure(FAKE_DOCKER_CONTAINERS=json.dumps([odd, follow, U9D_CONTAINERS[2]]),
+                                                  FAKE_COMPOSE_LOGS=json.dumps(logs))
+        out = self._out(result)
+        self.assertEqual(result.returncode, 7, out)
+        self._all_prefixed(result)
+        self.assertNotIn("\x1b", out, "a control character from a name or label reached the log")
+        diag = self._diag_block(result.stdout)
+        for text, what in ((U9D_ODD_NAME_SHOWN, "the container name"), (U9D_ODD_LABEL_SHOWN, "the service label")):
+            self.assertTrue([line for line in diag if text in line],
+                            f"{what} prints with its control characters as `?`:\n" + "\n".join(diag))
+        calls = [r["argv"] for r in records if r["argv"][:1] == ["compose"] and "logs" in r["argv"]]
+        self.assertEqual([a[-1] for a in calls], ["worker"], "logs only for a label that is a compose service name")
+        for a in calls:
+            self.assertEqual(a[-2], "--", f"the service name is passed after `--`: {a}")
+            self.assertFalse({"-f", "--follow"} & set(a[:-2]), f"a label became a logs option: {a}")
+        self.assertNotIn("follow-log-marker", out)
+        self.assertNotIn("odd-log-marker", out)
+        heads = [k for k, line in enumerate(diag) if line.startswith("container ")]
+        for name in (U9D_ODD_NAME_SHOWN, "knowledge-engine-follow-1"):
+            with self.subTest(container=name):
+                k = next((k for k in heads if diag[k].startswith(f"container {name} ")), None)
+                self.assertIsNotNone(k, f"no block for {name}:\n" + "\n".join(diag))
+                assert k is not None
+                end = next((j for j in heads if j > k), len(diag))
+                self.assertTrue([line for line in diag[k:end] if "no logs" in line],
+                                f"{name}: a named `no logs` line for a label that is not a service name")
+
+    def test_offline_printed_lines_neutralise_runner_markers(self):
+        """Security L-2 (O-23 precision): `##[` anywhere in a printed diag or
+        measure line is rewritten to `#?[`, so the runner's legacy parser sees
+        no marker: probe output, a log line, State.Error, an event line (its
+        CR and ESC as `?`) and a `docker system df` row."""
+        neo_state = dict(U9D_RESTARTED_STATE, Health={"Status": "starting", "Log": [
+            {"End": "2026-10-30 10:00:55.5 +0000 UTC", "ExitCode": 1, "Output": "x ##[section]probe-marker"}]})
+        worker_state = {"Status": "exited", "ExitCode": 1, "OOMKilled": False, "Error": "start ##[error]error-marker"}
+        containers = [U9D_CONTAINERS[0], dict(_u9d_container("b", "neo4j", neo_state), RestartCount=1),
+                      _u9d_container("c", "worker", worker_state)]
+        logs = dict(U9D_LOGS, worker=["##[add-mask]logs-marker"])
+        system_df = [dict(U9D_SYSTEM_DF[0], Type="Images ##[group]df-marker"), *U9D_SYSTEM_DF[1:]]
+        result, _, _ = self._restarted_failure([_u9d_event("die", name="ev\r##[warning]event-marker\x1b[0m",
+                                                           exitCode="137")], containers,
+                                               FAKE_COMPOSE_LOGS=json.dumps(logs),
+                                               FAKE_DOCKER_SYSTEM_DF=json.dumps(system_df))
+        out = self._out(result)
+        self.assertEqual(result.returncode, 7, out)
+        self.assertNotIn("##[", out, "a `##[` marker reached the log")
+        for source, marker in (("Health.Log output", "#?[section]probe-marker"),
+                               ("a log line", "#?[add-mask]logs-marker"),
+                               ("State.Error", "#?[error]error-marker"), ("a system df row", "#?[group]df-marker")):
+            with self.subTest(source=source):
+                self.assertTrue([line for line in result.stdout.splitlines()
+                                 if line.startswith("offline-client: ") and marker in line],
+                                f"{source}: `##[` printed as `#?[`:\n" + result.stdout)
+        with self.subTest(source="an event line"):
+            events = self._event_lines(self._diag_block(result.stdout))
+            self.assertEqual([e for _, e in events], [f"{U9D_EVENT_TIME} die ev?#?[warning]event-marker?[0m "
+                                                      "exitCode=137 signal="],
+                             "an event line goes through the same sanitiser (A3)")
+
+    def test_offline_meminfo_read_is_bounded(self):
+        """Security I-1 (O-23 precision): meminfo_line reads at most 64 KiB
+        (`timeout 5 head -c 65536`), so a huge KE_OFFLINE_MEMINFO cannot stall
+        a point: figures past the first 64 KiB are never read, the point prints
+        `not measured` within its 5 s bound (U9d-4), and the pass is unchanged."""
+        self._require_script()
+        with self.subTest(check="the read is bounded (static)"):
+            m = re.search(r"(?ms)^meminfo_line\(\) \{.*?^\}", OFFLINE_CHECK.read_text(encoding="utf-8"))
+            self.assertIsNotNone(m, "offline_check.sh defines no meminfo_line")
+            assert m is not None
+            self.assertRegex(m.group(0), r'timeout 5 head -c 65536 -- "\$1"', "meminfo_line reads at most 64 KiB")
+        big = self.tmp / "meminfo-large"
+        with big.open("w", encoding="utf-8", newline="\n") as fh:
+            fh.write("Filler: " + "x" * (4 * 1024 * 1024) + " kB\n")
+            fh.write("MemAvailable:    1234567 kB\nSwapFree:           2048 kB\n")
+        with self.subTest(check="a large meminfo file"):
+            result, _, _ = self._client_u9d(KE_OFFLINE_MEMINFO=str(big))
+            self.assertEqual(result.returncode, 0, self._out(result))
+            lines = result.stdout.splitlines()
+            self.assertEqual([line for line in lines if not line.startswith(U9D_CM)], U9D_CLIENT_PASS)
+            self.assertNotIn("MemAvailable 1234567", result.stdout, "figures past the first 64 KiB were read (I-1)")
+            for point in ("C1", "C3"):
+                _, _, block = self._point(lines, U9D_CM, point)
+                p = f"{U9D_CM}{point} "
+                mem = [line for line in block if re.match(rf"{re.escape(p)}memory\b.*not measured", line)]
+                self.assertEqual(len(mem), 1, f"{point}: a named `not measured` memory line: {block}")
+                secs = int(block[-1].rsplit(" ", 2)[-2])
+                self.assertLessEqual(secs, 5, f"{point} took {secs} s on a large meminfo file (U9d-4: 5 s per point)")
+
+
+# --------------------------------------------------------------------------
+# platform-sbom U9d fixtures and helpers (tester, U9d RED)
+# --------------------------------------------------------------------------
+
+U9D_CM = "offline-client: measure: "
+U9D_HM = "offline: measure: "
+U9D_DIAG = "offline-client: diag: "
+U9D_FAIL_LINE = "offline_check: FAIL (the offline client failed (see its output above))"
+U9D_BANNED = re.compile(r"(?i:\b(?:pass(?:ed)?|skip(?:ped|ping)?|inconclusive)\b|not clean|nothing was pulled)"
+                        r"|\bFAIL\b")
+U9D_SECRET = "u9d-sentinel-secret-7f3a9c"
+U9D_MEMINFO = ("MemTotal:       16384000 kB\nMemFree:          512000 kB\nMemAvailable:    1234567 kB\n"
+               "Buffers:           10000 kB\nSwapTotal:       4194300 kB\nSwapFree:           2048 kB\n")
+U9D_DF_TOTAL_KB = 75085112
+U9D_ROOT_AVAIL_KB = 47196
+U9D_INSTALL_AVAIL_KB = 900000
+U9D_SYSTEM_DF = [
+    {"Type": "Images", "TotalCount": "7", "Active": "2", "Size": "3.214GB", "Reclaimable": "1.07GB (33%)"},
+    {"Type": "Containers", "TotalCount": "3", "Active": "1", "Size": "12.5MB", "Reclaimable": "4.1MB (32%)"},
+    {"Type": "Local Volumes", "TotalCount": "4", "Active": "4", "Size": "812.3MB", "Reclaimable": "0B (0%)"},
+    {"Type": "Build Cache", "TotalCount": "0", "Active": "0", "Size": "0B", "Reclaimable": "0B"},
+]
+
+
+def _u9d_container(cid: str, svc: str, state: dict[str, Any]) -> dict[str, Any]:
+    return {"ID": cid * 64, "Names": f"knowledge-engine-{svc}-1",
+            "Labels": {"com.docker.compose.project": "knowledge-engine", "com.docker.compose.service": svc,
+                       "com.example.secret": U9D_SECRET},
+            "Config": {"Env": [f"NEO4J_AUTH=neo4j/{U9D_SECRET}", "PATH=/usr/bin"]},
+            "Args": ["--password", U9D_SECRET], "Path": "/startup/docker-entrypoint.sh",
+            "Mounts": [{"Source": f"/srv/{U9D_SECRET}", "Destination": "/data"}], "State": state}
+
+
+U9D_CONTAINERS = [
+    _u9d_container("a", "postgres", {"Status": "running", "ExitCode": 0, "OOMKilled": False, "Health": {
+        "Status": "healthy", "Log": [{"End": "2026-10-30 10:00:05.5 +0000 UTC", "ExitCode": 0,
+                                      "Output": "/var/run/postgresql:5432 - accepting connections\n"}]}}),
+    _u9d_container("b", "neo4j", {"Status": "running", "ExitCode": 0, "OOMKilled": False, "Health": {
+        "Status": "unhealthy", "Log": [
+            {"End": "2026-10-30 10:00:31.25 +0000 UTC", "ExitCode": 1,
+             "Output": "Connection refused\nUnable to connect to localhost:7687"},
+            {"End": "2026-10-30 10:00:41.75 +0000 UTC", "ExitCode": 1, "Output": "Connection refused"}]}}),
+    _u9d_container("c", "worker", {"Status": "exited", "ExitCode": 137, "OOMKilled": True}),
+]
+U9D_LOGS = {
+    "postgres": ["pg-ok-1 database system is ready to accept connections"],
+    "neo4j": [f"neo4j log line {i:02d}" for i in range(1, 56)]
+             + ["\x1b[31mjava.lang.OutOfMemoryError: Java heap space\x1b[0m"],
+    "worker": ["worker starting", "::error::worker last words\r::warning::forged"],
+}
+U9D_LOG_MARK = {"postgres": "pg-ok-1", "neo4j": "neo4j log line 55", "worker": "worker starting"}
+
+# The pre-U9d client and host output (captured at RED, 2026-10-30, from the
+# unchanged scripts/offline_check.sh under this file's fakes).
+U9D_CLIENT_PASS = [
+    "offline-client: inner daemon uses the containerd image store",
+    "offline-client: a registry pull fails, as expected with no route out",
+    "offline-client: install",
+    "offline-client: launch",
+    "offline-client: smoke (ci/offline included)",
+    "offline-client: teardown",
+    "offline-client: image names equal the bundle's; nothing was pulled",
+]
+
+
+def _u9d_df(stage: str) -> list[str]:
+    return [f"offline: df {stage}", "Filesystem     1024-blocks      Used Available Capacity Mounted on", "<df row>"]
+
+
+_U9D_HOST_HEAD = [
+    *_u9d_df("start"),
+    "offline: the daemon's DockerRootDir (<tmp>/no-such-docker-root) is not on this host (Docker Desktop "
+    "keeps it in a VM): not measurable, only dist/ is checked",
+    "offline: fetching the source sample (scripts/bundle_fetch.sh --set sample)",
+    *_u9d_df("after fetch"),
+    "offline: pulling the ke-app base (<ref>)",
+    "offline: pulling the ke-neo4j base (<ref>)",
+    *_u9d_df("after bundle"),
+    "sbom_check: drift:",
+    "offline: image-side drift check: the ke-app SBOM matches its base (<ref>)",
+    *_u9d_df("after drift check"),
+    "sbom_check: ke-neo4j:",
+    "offline: ke-neo4j check: config equals <ref>; no products/ or fleet-management plugin in its tar or SBOM",
+    *_u9d_df("after ke-neo4j check"),
+    "offline: starting dind (privileged) in project ke-offline-<N>",
+    *_u9d_df("after dind up"),
+    "offline: running the offline client",
+]
+U9D_HOST_PASS = [*_U9D_HOST_HEAD, *_u9d_df("after client run"), *_u9d_df("before teardown"),
+                 *_u9d_df("after teardown"), "== offline_check: PASS (<N>s) =="]
+U9D_HOST_CLIENT_FAILS = [*_U9D_HOST_HEAD, *_u9d_df("before teardown"), *_u9d_df("after teardown")]
+
+
+def _u9d_normalise(text: str, tmp: Path) -> list[str]:
+    out = []
+    for line in text.splitlines():
+        if line.startswith((U9D_HM, U9D_CM)):
+            continue
+        line = line.replace(str(tmp), "<tmp>")
+        line = re.sub(r"ke-offline-\d+", "ke-offline-<N>", line)
+        line = re.sub(r"[A-Za-z0-9][\w./:-]*@sha256:[0-9a-f]{64}", "<ref>", line)
+        line = re.sub(r"^== offline_check: PASS \(\d+s\) ==$", "== offline_check: PASS (<N>s) ==", line)
+        line = re.sub(r"^(sbom_check: [^:]+:).*$", r"\1", line)
+        if re.match(r"/dev/fake\s", line):
+            line = "<df row>"
+        out.append(line)
+    return out
+
+
+def _u9d_strip(text: str) -> str:
+    """Comment lines dropped, backslash continuations joined."""
+    text = text.replace("\\\n", " ")
+    return "\n".join(line for line in text.splitlines() if not line.lstrip().startswith("#"))
+
+
+def _u9d_code() -> str:
+    return _u9d_strip(OFFLINE_CHECK.read_text(encoding="utf-8"))
+
+
+def _u9d_halves() -> tuple[str, str, str]:
+    """(header comment, client half, host half) of offline_check.sh."""
+    text = OFFLINE_CHECK.read_text(encoding="utf-8")
+    client = text.index('if [ "${KE_OFFLINE_CLIENT:-}" = 1 ]; then')
+    host = text.index("\n# Host half\n")  # the section marker, not the header's "# Host half (...)" line
+    if host < client:
+        raise AssertionError("offline_check.sh: the host-half section marker precedes the client half")
+    return text[:text.index("set -euo pipefail")], text[client:host], text[host:]
+
+
+# A docker call at a command position (line start, `$(`, after ; & | ! or a
+# keyword, past VAR=value words), optionally under `timeout [opts] <N>`. Text
+# that mentions docker inside a message is not at a command position.
+U9D_DOCKER_CALL = re.compile(
+    r"(?:^|\$\(|[;&|!]|\b(?:then|do|else|if|while|until)\b)\s*(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*"
+    r"(?:(?P<timeout>timeout)\s+(?:-\S+\s+)*(?P<secs>\d+)s?\s+)?docker\s+(?P<rest>[^\n]*)", re.M)
+U9D_KINDS = {
+    "ps": r"(?:ps|container\s+(?:ls|list|ps))\b",
+    "container inspect": r"(?:container\s+)?inspect\b",
+    "compose logs": r"compose\b.*\blogs\b",
+    "system df": r"system\s+df\b",
+    "events": r"events\b",  # U9d rework 1 (O-23, A9): its own ceiling, N == 900
+}
+
+# platform-sbom U9d rework 1 fixtures (O-23; tester, U9d rework-1 RED)
+U9D_EVENT_TIME = 1793354444
+U9D_EVENT_IMAGE = "ke-neo4j:u9d-event-image-sentinel"
+U9D_EVENT_ACTOR = "f" * 64
+U9D_EVENTS_READY = '"argv": ["EVENTS", "ready"]'
+U9D_EVENTS_CALLED = '"argv": ["events"'
+U9D_EVENT_FILTERS = ("type=container", "label=com.docker.compose.project", "event=die", "event=oom", "event=kill")
+U9D_ZERO_TIME = "0001-01-01T00:00:00Z"
+U9D_START_ERROR = ("failed to create task for container: write /var/lib/docker/u9d: no space left on device\r\n"
+                   "::error::forged")
+U9D_RESTARTED_STATE = {"Status": "running", "ExitCode": 0, "OOMKilled": False, "StartedAt": "2026-10-30T10:00:44.6Z",
+                       "FinishedAt": "2026-10-30T10:00:44.5Z", "Error": "", "Health": {"Status": "starting", "Log": [
+                           {"End": "2026-10-30 10:00:55.5 +0000 UTC", "ExitCode": 1, "Output": "Connection refused"}]}}
+U9D_ODD_NAME = "knowledge-engine-odd\x1b[31m-1"
+U9D_ODD_NAME_SHOWN = "knowledge-engine-odd?[31m-1"
+U9D_ODD_LABEL = "svc\r::error::cr-in-label\x1b[31m"
+U9D_ODD_LABEL_SHOWN = "svc?::error::cr-in-label?[31m"
+
+
+def _u9d_event(action: str, name: str = "knowledge-engine-neo4j-1", time: int = U9D_EVENT_TIME,
+               **attrs: str) -> dict[str, Any]:
+    """A daemon event as `docker events` sees it: the attribute map also holds
+    the image and every label (A2, A7: never printed)."""
+    return {"Time": time, "Action": action, "Actor": {"ID": U9D_EVENT_ACTOR, "Attributes": {
+        "name": name, "image": U9D_EVENT_IMAGE, "com.docker.compose.service": "neo4j",
+        "com.example.secret": U9D_SECRET, **attrs}}}
+
+
+def _u9d_restarted() -> list[dict[str, Any]]:
+    """U9D_CONTAINERS with neo4j restarted once by Docker (A9): running, exit 0,
+    not OOM-killed, RestartCount 1, StartedAt after FinishedAt."""
+    return [U9D_CONTAINERS[0], dict(_u9d_container("b", "neo4j", U9D_RESTARTED_STATE), RestartCount=1),
+            U9D_CONTAINERS[2]]
 
 
 if __name__ == "__main__":

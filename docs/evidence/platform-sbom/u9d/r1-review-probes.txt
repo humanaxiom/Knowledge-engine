@@ -1,0 +1,111 @@
+# U9d rework 1 reviewer probes (reviewer, 2026-10-30). Read-only on the tree; nothing staged.
+# Gates image ke-gates:local (bash 5.2.15, GNU coreutils timeout 9.1), `--network none --read-only
+# --tmpfs /tmp --cap-drop ALL`, the probe script bind-mounted read-only from the session scratchpad.
+# Host Docker 29.5.2 for R3 (throwaway containers named ke-rev-u9dr1-*, --network none, no compose
+# project, no network created; all removed with `docker rm -f` by name). dist/ and running stacks untouched.
+
+== R1: events_start/events_stop shape (same kill/wait/awk/head/rm lines; stand-in stream and launch) ==
+-- probe script --
+#!/usr/bin/env bash
+# Reviewer probes for U9d rework 1: the events_start/events_stop shape with stand-in commands.
+set -euo pipefail
+cd /tmp
+run() { # run NAME STREAMCMD LAUNCHCMD
+  local name="$1" stream="$2" launch="$3"
+  events_pid="" events_file=""
+  events_file="$(mktemp /tmp/ke-offline-events.XXXXXX 2> /dev/null)" || { events_file=""; }
+  t_start=$SECONDS
+  # same shape as events_start: timeout 900 <cmd> > file 2>/dev/null </dev/null &
+  timeout 900 bash -c "$stream" _ "$(date +%s)" > "$events_file" 2> /dev/null < /dev/null &
+  events_pid=$!
+  launch_rc=0
+  bash -c "$launch" || launch_rc=$?
+  events_state=none events_rc=0 events_out="" events_n=0
+  if kill "$events_pid" 2> /dev/null; then events_state=stopped; else events_state=ended; fi
+  wait "$events_pid" 2> /dev/null || events_rc=$?
+  events_n="$(awk 'END { print NR }' "$events_file" 2> /dev/null)" || events_n=0
+  events_out="$(head -n 100 -- "$events_file" 2> /dev/null)" || events_out=""
+  rm -f -- "$events_file" || true
+  left="$(find /tmp -maxdepth 1 -name "ke-offline-events.*" | wc -l)"
+  orphans=0; for f in /proc/[0-9]*/cmdline; do c="$(tr "\0" " " < "$f" 2> /dev/null || true)"; case "$c" in "sleep 77"*|"timeout 900"*) orphans=$((orphans + 1));; esac; done
+  echo "$name: launch_rc=$launch_rc state=$events_state rc=$events_rc n=$events_n out=[${events_out//$'\n'/|}] tmpfiles_left=$left orphans=$orphans"
+}
+# P-a: stream running (a child that dies by SIGTERM, like the docker CLI), launch fails
+run "running+signal-death" 'echo since=$1; exec sleep 77' 'sleep 0.3; exit 7'
+# P-b: stream that traps TERM and exits 143 (the fake)
+run "running+trap143" 'trap "exit 143" TERM; echo since=$1; sleep 77 & wait' 'sleep 0.3; exit 7'
+# P-c: stream ended early (exit 1) well before launch exits
+run "ended-early" 'echo since=$1; exit 1' 'sleep 0.5; exit 7'
+# P-d: launch killed by a signal (SIGKILL on itself)
+run "launch-sigkill" 'exec sleep 77' 'kill -9 $$'
+# P-e: launch passes
+run "launch-pass" 'exec sleep 77' 'sleep 0.2; exit 0'
+# P-f: 130 lines then hang
+run "cap" 'for i in $(seq 1 130); do echo "$i die x exitCode=$i signal="; done; exec sleep 77' 'sleep 0.3; exit 7'
+echo "--- expansion order: is \$(date) in the background command evaluated in the child?"
+t0=$(date +%s%N)
+timeout 5 echo "$(sleep 1; echo x)" > /dev/null &
+t1=$(date +%s%N); wait $! || true
+echo "parent continued after $(( (t1 - t0) / 1000000 )) ms (about 0 = expanded in the child; about 1000 = in the parent)"
+echo "--- errexit with a failing substitution in the background command"
+timeout 5 echo "$(exit 3)" > /dev/null & wait $! ; echo "client still running after a failing \$(...) in the bg args: rc=$?"
+echo "--- stderr of the whole probe is captured separately"
+-- stdout (cap case's 100 lines elided) --
+running+signal-death: launch_rc=7 state=stopped rc=143 n=1 out=[since=1793348453] tmpfiles_left=0 orphans=0
+running+trap143: launch_rc=7 state=stopped rc=143 n=1 out=[since=1793348453] tmpfiles_left=0 orphans=0
+ended-early: launch_rc=7 state=ended rc=1 n=1 out=[since=1793348454] tmpfiles_left=0 orphans=0
+launch-sigkill: launch_rc=137 state=stopped rc=143 n=0 out=[] tmpfiles_left=0 orphans=0
+launch-pass: launch_rc=0 state=stopped rc=143 n=0 out=[] tmpfiles_left=0 orphans=0
+cap: launch_rc=7 state=stopped rc=143 n=130 out=[<lines 1..100>] tmpfiles_left=0 orphans=0
+--- expansion order: is $(date) in the background command evaluated in the child?
+parent continued after 1 ms (about 0 = expanded in the child; about 1000 = in the parent)
+--- errexit with a failing substitution in the background command
+client still running after a failing $(...) in the bg args: rc=0
+--- stderr of the whole probe is captured separately
+-- stderr --
+/p/probe.sh: line 5:    62 Killed                  bash -c "$launch"
+Reading: on every path the temp file is gone (tmpfiles_left=0) and no `timeout 900`/stream child survives
+(orphans=0). `kill` + `wait ... || events_rc=$?` never trips `set -e`: a stream killed by TERM (as the docker CLI
+is; timeout re-raises it) gives rc 143 and no job notice on stderr; one that traps TERM gives 143 too; one that
+ended early is `ended` with its own status (1). A launch killed by SIGKILL gives launch_rc=137 and events_stop still
+runs. The only stderr line is bash's FOREGROUND job notice for the SIGKILLed launch stand-in (pre-existing
+behaviour for any signalled launch.sh, not the stream). The cap case keeps lines 1..100 and counts n=130.
+`$(date +%s)` in the background command's arguments is expanded in the forked child: the parent went on after
+1 ms (with a 1 s substitution), and a failing substitution there does not stop the parent.
+(The `bash -x` trace of the first attempt also shows `bash -c 'sleep 0.3; exit 7'` traced before `date +%s`.)
+
+== R2: neutralise under bash 5.2 (patsub_replacement on) ==
+'a ##[error]x' -> 'a #?[error]x'; '###[x' -> '##?[x'; '##[##[' -> '#?[#?['; '#&##[&' -> '#&#?[&' (no `&`
+substitution: the replacement is quoted); '##' and '[##' unchanged; '::error::x' unchanged (every printed line
+carries the `offline-client: ` prefix, so `::` is never at line start). No output of neutralise holds `##[`.
+
+== R3: the client's exact `docker events` call against a real daemon (host Docker 29.5.2) ==
+since=$(date +%s); a labelled container exits 5 BEFORE the stream is started (same second); then
+timeout 60 docker events --since "$since" --filter type=container --filter label=com.docker.compose.project
+  --filter event=die --filter event=oom --filter event=kill --format "$events_fmt" (events_fmt verbatim, l.135)
+then: a labelled container exits 3; an "unlabelled" one exits 9; a labelled one (extra label
+ke.secret=SENTINEL-u9dr1) is `docker kill`ed; a labelled one with --memory 48m allocates 400 MiB.
+-- events.txt --
+1793348519 die ke-rev-u9dr1-early-1 exitCode=5 signal=
+1793348522 die ke-rev-u9dr1-crash-1 exitCode=3 signal=
+1793348522 die ke-rev-u9dr1-nolabel-1 exitCode=9 signal=
+1793348523 kill ke-rev-u9dr1-stopme-1 exitCode= signal=9
+1793348523 die ke-rev-u9dr1-stopme-1 exitCode=137 signal=
+1793348523 oom ke-rev-u9dr1-oom-1 exitCode= signal=
+1793348523 die ke-rev-u9dr1-oom-1 exitCode=137 signal=
+1793348523 die infra-martin-1 exitCode=1 signal=
+-- stderr: empty; stream wait rc=143; SENTINEL count in events.txt: 0; no ke-rev-u9dr1 container left --
+Reading: `--since` replays a death that happened before the CLI subscribed (early-1), so the subscription gap is
+closed. crash = die with its own code and no oom/kill; Docker stop = kill signal=9 then die 137; cgroup OOM = oom
+then die 137. Only the five fields print (the sentinel label and the image never do).
+Artefacts, not script behaviour: "nolabel-1" matched because ke-gates:local was built by compose and carries
+com.docker.compose.project in its image labels (`docker image inspect`: project ke-dev-u7e), which a container
+inherits; infra-martin-1 is another stack on this host that died in that second (not touched by this probe).
+In the client the inner daemon is fresh and asserted clean, so only the installed stack's containers exist.
+
+== R4: verbatim checks ==
+design-notes A1 (l.5804-5817) == offline_check.sh l.121-134; A2 (l.5854-5872) == l.135-153; A3 (l.5952-5964)
+== l.157-169 modulo indentation; A4 (l.5987-5989) == l.189-191; client flow (l.5932-5944) == l.246-258.
+Test files sha256 (LF working tree): tests/test_offline_check.py d3961c07...4737125, tests/fake_docker.py
+d661f33d...9302f4 = controls-r1.txt "after" hashes: GREEN edited no test.
+offline_check duration on a pass: 228 s (green-verify-full.txt) -> 225 s (r1-green-verify-full.txt).

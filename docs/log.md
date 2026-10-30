@@ -885,3 +885,21 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-30T04:52:03Z | architect | platform-sbom | U9d design (A82a) | plan: design written
 2026-10-30T04:52:54Z | orchestrator | platform-sbom | U9d plan gate PASS (criteria U9d-1..8, design N9 amendment U9d; O-22 on the three deviations); RED waits for the U9c commit | plan: pass
 2026-10-30T04:56:31Z | orchestrator | platform-sbom | U9c: orchestrator verify full PASS 1335 s on the final tree (sample 10 files, 0 GitLab hops, skip line); diff read; commit approved | smoke: pass
+2026-10-30T04:56:44Z | developer | platform-sbom | U9c committed 9c3183d | commit: pass
+2026-10-30T05:33:42Z | tester | platform-sbom | U9d RED: 11 new offline_check rows (launch diag, C1-C3/H1-H3 measure points, never-changes-outcome, static timeout/template/neutral-word/seam rows) + inert fake_docker knobs; 24 new subtests red for missing behaviour, 1343 existing green; 17/17 mutants killed | tdd: red
+2026-10-30T05:35:02Z | orchestrator | platform-sbom | U9d RED accepted (24 subtests, 17/17 mutants); handoff U9c/U9d sections archived to part18; developer GREEN dispatched | tdd: red
+2026-10-30T06:16:25Z | developer | platform-sbom | U9d GREEN: offline_check.sh measure C1-C3/H1-H3 and launch diagnostic; fast 1354 OK, full PASS | tdd: green
+2026-10-30T06:26:10Z | reviewer | platform-sbom | U9d review: CHANGES REQUESTED | review: changes requested
+2026-10-30T06:27:14Z | orchestrator | platform-sbom | U9d review CHANGES REQUESTED (B-1 restart resets ExitCode/OOMKilled); O-23: design amendment (RestartCount/StartedAt/FinishedAt/Error + docker events stream); rework 1 of 5; architect dispatched | review: changes requested
+2026-10-30T06:35:58Z | architect | platform-sbom | U9d design amendment (O-23: restart-safe diagnostic + events stream) | plan: design amended
+2026-10-30T06:37:16Z | orchestrator | platform-sbom | U9d design amendment (O-23) accepted: template +RestartCount/StartedAt/FinishedAt/Error, docker events die/oom/kill stream, 100-line cap, 900 s bound; analyst text + tester RED dispatched | plan: pass
+2026-10-30T06:38:00Z | security | platform-sbom | U9d security: PASS (L-1 label/name unsanitised, L-2 ##[ passes; I-1..I-4; GREEN diff, pre-rework-1) | security: pass
+2026-10-30T06:38:15Z | analyst | platform-sbom | U9d-1/4/6 amended (O-23) | plan: criteria amended
+2026-10-30T06:38:52Z | orchestrator | platform-sbom | U9d rework-1 plan gate PASS (amendment + criteria; kill events accepted; security L-1/L-2/I-1 folded in); tester RED running with the addition | plan: pass
+2026-10-30T07:31:37Z | tester | platform-sbom | U9d rework 1 RED: 5 new rows (restarted container + events, pass-with-stream, L-1, L-2, I-1) + 2 re-pinned (A9); 19 subtests red for missing behaviour; 24/24 mutants killed on a scratch prototype | tdd: red
+2026-10-30T07:33:01Z | orchestrator | platform-sbom | U9d rework 1 RED accepted (19 subtests, 24/24 mutants); handoff archived; developer GREEN dispatched | tdd: red
+2026-10-30T08:16:10Z | developer | platform-sbom | U9d rework 1 GREEN: events stream, 4 template fields, L-1/L-2/I-1, N-1 in offline_check.sh; fast 1359 OK, full PASS | tdd: green
+2026-10-30T08:25:27Z | reviewer | platform-sbom | U9d rework 1 review: APPROVED | review: pass
+2026-10-30T08:31:24Z | security | platform-sbom | U9d rework 1 security: PASS (L-1, L-2, I-1 closed; new L-3 low: exitCode/signal labels shadow event fields; I-3, I-5..I-7 info) | security: pass
+2026-10-30T08:32:31Z | orchestrator | platform-sbom | U9d rework-1 verdicts: reviewer APPROVED, security PASS; O-24 defers L-3/I-3/I-5/I-6/N-1 to U10; handoff archived; orchestrator verify full starting | review: pass
+2026-10-30T08:56:20Z | orchestrator | platform-sbom | U9d: orchestrator verify full PASS 1367 s on the final tree (measure points 0 s, no diag on a pass); diff read; commit approved | smoke: pass
