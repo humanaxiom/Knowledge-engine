@@ -686,3 +686,4 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-25T15:21:56Z | security | platform-sbom | U7c rework r1 re-check (APKBUILD pin, parse_dsc, truncation, GitLab API raw form) | security: PASS (L-1, L-2, L-3, I-1 closed; item 9 holds; no new finding)
 2026-10-25T15:23:28Z | documenter | platform-sbom | handoff trim: U7c round-1 sections to archive/platform-sbom-part10.md | docs: updated
 2026-10-25T15:34:48Z | orchestrator | platform-sbom | U7c gates judged: review APPROVED (r1), security PASS (r1), A34 PASS, verify full PASS 1004 s; commit approved | smoke: PASS
+2026-10-30T23:56:45Z | orchestrator | funder-summary | wrote docs/funder-summary-licensing-and-stack.md (licensing, content sources, model and platform decisions across SFU assistant projects) | verify: blocked (no Docker daemon in cloud session)
