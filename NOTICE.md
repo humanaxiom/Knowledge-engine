@@ -49,6 +49,17 @@ under GPL-3.0 (`/var/lib/neo4j/LICENSE.txt` inside the image, GNU GPL version
 3, Neo4j Sweden AB); the licence text is `licenses/GPL-3.0.txt`. Upstream
 source: https://github.com/neo4j/neo4j (tag 5.26.32).
 
+`/var/lib/neo4j/lib/jna-5.15.0.jar` (Java Native Access 5.15.0) carries native
+`libjnidispatch` libraries that include libffi 3.4.4, the copy JNA vendors in
+its `native/libffi` directory. libffi is under an MIT-style licence ("libffi -
+Copyright (c) 1996-2022  Anthony Green, Red Hat, Inc and others."), and its
+copyright and permission notice is not in Neo4j's notices. The full text is
+`licenses/libffi-jna-5.15.0.txt`: JNA's `native/libffi/LICENSE` at tag 5.15.0,
+unmodified, fetched over HTTPS from
+https://raw.githubusercontent.com/java-native-access/jna/5.15.0/native/libffi/LICENSE
+(sha256 `2c9c2acb9743e6b007b91350475308aee44691d96aa20eacef8e199988c8c388`); its
+header gives the same sha256.
+
 ## psycopg (LGPL-3.0-only)
 
 The `ke-app` image installs `psycopg` and `psycopg-c` 3.3.6 from PyPI,
@@ -101,6 +112,8 @@ packages pip vendors.
 uv is not shipped: it runs only in the `builder` stage, which does not ship.
 
 ## Source code
+
+Paths here are relative to the bundle's `app/` directory, which install publishes as the install directory.
 
 `THIRD_PARTY_NOTICES.md` says, in its "Source code" section, for each
 GPL-family component whether its source is in `sources/` of this bundle.

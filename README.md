@@ -31,17 +31,20 @@ you to run `scripts/bundle_fetch.sh` first. During `verify.sh full`,
 `offline_check.sh` runs that script first. While it runs, `bundle.sh` prints a per-image
 report of packages with no licence, `NOASSERTION`, or a licence text syft
 could only hash (marked "unidentified licence text"). Any SBOM that fails
-validation refuses the bundle, with no manifest written. The bundle is not a
-release: the generated "Source code" section of `NOTICE.md` is not built yet.
-Behind that, the source-archive groundwork is in place but does not change
-what a build or a bundle does. `scripts/sbom_check.py` holds a fail-closed
-licence classifier (which packages need their source shipped);
-`docker/source-policy.json` lists the allowed source hosts and the reviewed
-exemptions; and `docker/sources.lock.json` pins, per component, the exact
-upstream source files by SHA-256. A maintainer regenerates the lock with
-`scripts/sources_lock.sh`; nothing fetches the locked sources until the
-source-archive step lands.
-(Updated 2026-10-27, documenter, status)
+validation refuses the bundle, with no manifest written.
+`bundle.sh --sources <dir>` is required: it checks the directory that
+`scripts/bundle_fetch.sh` wrote (its `fetch.json`, its exact listing, every
+file's SHA-256) before it writes anything, copies the files into
+`app/sources/files/<sha256>`, writes `app/sources/index.json` (each component's
+source files, URLs and checksums, and the SBOM packages it covers) and appends
+a generated "Source code" section to `THIRD_PARTY_NOTICES.md`. The manifest
+covers all of it, and a failure leaves no bundle behind. `scripts/sbom_check.py`
+holds the fail-closed licence classifier (which packages need their source
+shipped); `docker/source-policy.json` lists the allowed source hosts and the
+reviewed exemptions; and `docker/sources.lock.json` pins, per component, the
+exact upstream source files by SHA-256. A maintainer regenerates the lock with
+`scripts/sources_lock.sh`.
+(Updated 2026-10-29, documenter, status)
 
 The stack's neo4j service runs the first-party `ke-neo4j:${KE_IMAGE_TAG}`
 image, built by `build.sh`/`build.ps1` from `docker/neo4j.Dockerfile` on the
@@ -71,8 +74,12 @@ The operator order for a bundle is `scripts/build.sh`, then
 `scripts/bundle_fetch.sh --set full --out <dir>` (the only bundle step with a
 route out: it fetches the third-party source set, checked against
 `docker/sources.lock.json`, and pulls the SBOM generator), then
-`scripts/bundle.sh`. The fetched set is what the bundle ships from the
-source-shipping step on (`platform-sbom` U9); `bundle.sh` does not read it yet.
+`scripts/bundle.sh --out <dir>-<arch> --sources <dir>`. The bundle ships the
+fetched set under `app/sources/`; `--sources-set` defaults to `full`. A
+`--sources-set sample` bundle (what `verify.sh full` builds, from
+`bundle_fetch.sh --set sample`) holds only a sample of the sources: it is for
+verification only and must not be distributed. Its notices say so.
+The parent of `--out` must exist, and `--out` must not exist or be an empty directory. Relative paths for `--out` and `--sources` resolve against the current directory and may not contain `.` or `..` segments (write `dist/x`, not `./dist/x`; do not run from `/`). Run `bundle.sh` as an ordinary user, in a directory only that user can write.
 
 Current limit: this release runs in dev mode only (`KE_ENV=dev`, loopback
 binding). `KE_ENV=prod` is refused until the stack has authentication, which
@@ -117,7 +124,7 @@ Prerequisites: Git, and Docker Engine 28 or later with Compose 2.24 or later.
 Linux (bash) and Windows (PowerShell) are supported for the code-first install;
 macOS only through the offline bundle. A host that builds an offline bundle also
 needs `jq` and at least 7 GiB free, checked on the output directory (`--out`)
-and on its parent (`bundle.sh` refuses otherwise). On a Windows build host
+and on its parent (`bundle.sh` refuses otherwise); the parent of `--out` must exist. On a Windows build host
 run `bundle.sh` from Git Bash with `jq` on `PATH`; a winget `jq.exe` writes
 CRLF, so it has to be run as `jq.exe -b`. The pinned SBOM generator image must be local: see
 "Licence" above. See [docs/quickstart.md](docs/quickstart.md).

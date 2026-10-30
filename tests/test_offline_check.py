@@ -1176,6 +1176,35 @@ fi'''.replace("@SBOM_STUB@", _SBOM_STUB.replace("\n", "\n  "))
                 self.assertEqual(self._events_u2(records), ["teardown"],
                                  "the sample is fetched only after the disk and Compose checks")
 
+    # ---- platform-sbom U9b: bundle.sh bundles the fetched sample ----------------
+
+    def test_offline_check_bundles_the_sample_sources(self):
+        """U9-12 (design-notes "N9 amendment, U9" items 2 and 14; Q63; tester,
+        U9b RED): offline_check.sh passes `--sources <the dir bundle_fetch.sh
+        wrote> --sources-set sample` to bundle.sh, each once; and a bundle.sh
+        failure still stops the check before the offline client (no retry)."""
+        result, records, repo = self._host()
+        out = self._out(result)
+        self.assertEqual(result.returncode, 0, out)
+        fetch = next(r for r in records if self._event_u2(r) == "fetch")
+        fetch_dir = self._fetch_dir(fetch, repo)
+        bundles = [r for r in records if self._event(r) == "bundle"]
+        self.assertEqual(len(bundles), 1, "one bundle.sh call")
+        argv = bundles[0]["argv"][2:]
+        self.assertEqual(argv.count("--sources"), 1, f"want one --sources: {argv}")
+        self.assertEqual(argv.count("--sources-set"), 1, f"want one --sources-set: {argv}")
+        pairs = dict(zip(argv, argv[1:]))
+        self.assertEqual(pairs.get("--sources-set"), "sample", "verify and CI bundle the sample only (Q63, U9-12)")
+        given = os.path.normpath(os.path.join(bundles[0]["cwd"], pairs.get("--sources", "")))
+        self.assertEqual(given, fetch_dir, "bundle.sh is not given the directory bundle_fetch.sh wrote")
+        with self.subTest(case="bundle.sh fails"):
+            result, records, repo = self._host(FAKE_STUB_FAIL="bundle.sh")
+            self.assertNotEqual(result.returncode, 0, self._out(result))
+            self.assertEqual(self._events_u2(records), ["fetch", "pull base", "pull neo4j base", "bundle", "teardown"],
+                             "the check went on after bundle.sh failed, or retried it")
+            self.assertEqual(self._bundle_dirs(repo), [], "the bundle was left behind")
+            self.assertEqual(sorted((repo / "dist").glob("*sources*")), [], "the sample dir was left behind")
+
     # ---- client half ---------------------------------------------------------
 
     def _client(self, entries: list[dict[str, str]] | None = None,

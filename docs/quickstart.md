@@ -65,8 +65,10 @@ refuses every command.
 amd64, against the local daemon on a Linux build host:
 
 ```bash
+mkdir -p dist
 bash scripts/build.sh
-bash scripts/bundle.sh --out dist/bundle-amd64
+bash scripts/bundle_fetch.sh --set full --out dist/sources-amd64
+bash scripts/bundle.sh --out dist/bundle-amd64 --sources dist/sources-amd64
 ```
 
 arm64 (for example a GB10 or an Apple-silicon Mac), against an arm64 host
@@ -74,13 +76,15 @@ reached through a Docker context. Build and bundle with the same context:
 
 ```bash
 export DOCKER_CONTEXT=<arm host context>   # e.g. docker context create <name> --docker host=ssh://<alias>
+mkdir -p dist
 bash scripts/build.sh
-bash scripts/bundle.sh --out dist/bundle-arm64
+bash scripts/bundle_fetch.sh --set full --out dist/sources-arm64
+bash scripts/bundle.sh --out dist/bundle-arm64 --sources dist/sources-arm64
 ```
 
 The `--out` name must end in `-<arch>` (`-amd64` or `-arm64`). `--arch` is only
 an assertion that the daemon has that architecture; it never selects one.
-`bundle.sh` prints the SHA-256 of the bundle's `MANIFEST.sha256` and writes it
+`bundle_fetch.sh` is the only bundle step that uses the network: it fetches the third-party source set the bundle ships under `app/sources/`. The parent of `--out` must exist (`mkdir -p dist` above), and `--out` must not exist or be an empty directory. Relative paths resolve against the current directory and may not contain `.` or `..` segments (write `dist/x`, not `./dist/x`; do not run from `/`). `bundle.sh` prints the SHA-256 of the bundle's `MANIFEST.sha256` and writes it
 to `dist/bundle-<arch>.manifest.sha256`, beside the bundle and not inside it.
 
 ### 2. Carry it across

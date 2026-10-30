@@ -3070,10 +3070,98 @@ def _md_table(text: str, *needed: str) -> list[dict[str, str]]:
     return found[0]
 
 
+
+# ---- platform-sbom U9b: the synthetic fetched set (tester, U9b RED) --------
+#
+# Q78 makes `--sources` mandatory, and design-notes "N9 amendment, U9" item 14
+# (*Controls*) re-pins every bundle.sh run by adding `--sources` and a
+# synthetic set, with every assertion kept. _BundleBase therefore writes a
+# synthetic docker/sources.lock.json and docker/source-policy.json into its
+# throwaway repository (committed with the fixture, so the tree stays clean)
+# and, per daemon arch and set, a fetched directory beside the bundles (never
+# under --out or the repository): one file per distinct planned sha256, named
+# by it, and `fetch.json` in the U8a client's own form. The lock covers
+# exactly the keys the fake syft's documents need (tests/fake_docker.py
+# `_syft_doc`: base-files and libc6 in every image, psycopg and psycopg-c in
+# ke-app at their uv.lock versions), for both arches, so `index` finds no
+# coverage gap either way (tests/test_bundle_sources.py FakeSyftNeedsTest
+# pins that). The deb entries share one file (one sha256), so the copy's
+# one-file-per-sha256 rule (U9-6) shows in every full bundle. The policy keeps
+# the committed hosts, with no `always` and no `exempt` entry (a test that
+# needs one relocks). No network; nothing reads docs/evidence.
+
+SRC_ARCHES = ("amd64", "arm64")
+FAKE_SYFT_DEBS = {"base-files": "12.4+deb12u13", "libc6": "2.36-9+deb12u13"}
+SHARED_SOURCE = "ke-fixture-shared_1.0.orig.tar.gz"
+_SOURCES_DEFAULT: Any = object()
+
+
+def _default_source_keys() -> list[str]:
+    """The lock keys the fake syft's default documents need (FakeSyftNeedsTest)."""
+    pkgs = _runtime_packages()
+    keys = [f"deb:{n}@{v}" for n, v in FAKE_SYFT_DEBS.items()]
+    keys += [f"pypi:{n}@{pkgs[n]}" for n in ("psycopg", "psycopg-c")]
+    return sorted(keys)
+
+
+def _synthetic_lock(keys: Any) -> Any:
+    """A tests.test_sources_fetch.LockBuilder holding one valid entry per key
+    (every hash and size true of its bytes), listed for both arches."""
+    from tests.test_sources_fetch import NEO_KEY, TEM_KEY, LockBuilder, blob, key_parts
+    b = LockBuilder()
+    shared = blob("ke fixture shared orig", 333)
+    for i, key in enumerate(sorted(set(keys))):
+        kind = key.split(":", 1)[0]
+        name, ver = key_parts(key)
+        plain = ver.split(":", 1)[-1]
+        data = blob(f"{key} source", 150 + 41 * i)
+        if kind == "deb":
+            b.deb(key, [(SHARED_SOURCE, shared), (f"{name}_{plain}.debian.tar.xz", data)], arches=SRC_ARCHES)
+        elif kind == "pgdg":
+            b.pgdg(key, [(f"{name}_{plain}.tar.xz", data)], arches=SRC_ARCHES)
+        elif kind == "apk":
+            b.apk(key, distfiles=[(f"{name}-{ver.rsplit('-r', 1)[0]}.tar.gz", data)], arches=SRC_ARCHES)
+        elif kind == "pypi":
+            b.pypi(key, name.replace("-", "_"), data)
+        elif kind == "maven":
+            group, _, artifact = name.partition(":")
+            jar = f"{artifact}-{ver}-sources.jar"
+            url = f"https://repo1.maven.org/maven2/{group.replace('.', '/')}/{artifact}/{ver}/{jar}"
+            b._add(key, [b._file(jar, url, data, "sha1", f"{jar}.sha1")], SRC_ARCHES)
+        elif key == NEO_KEY:
+            b.neo4j(data)
+        elif key == TEM_KEY:
+            b.temurin(data)
+        else:
+            raise AssertionError(f"the synthetic lock has no entry form for {key}")
+        b.components[key]["arches"] = list(SRC_ARCHES)
+    return b
+
+
+def _synthetic_policy(exempt: list[dict[str, str]] | None = None,
+                      always: list[dict[str, str]] | None = None) -> dict[str, Any]:
+    hosts = json.loads((ROOT / "docker" / "source-policy.json").read_text(encoding="utf-8"))["hosts"]
+    return {"hosts": list(hosts), "always": list(always or []), "exempt": list(exempt or [])}
+
+
+def _write_fetched(directory: Path, b: Any, which: str, arch: str) -> None:
+    """The directory scripts/bundle_fetch.sh would write for this lock, set
+    and arch: each planned file once, named by its sha256, then fetch.json."""
+    from tests.test_source_index import record_text
+    from tests.test_sources_fetch import plan_of
+    directory.mkdir(parents=True)
+    for _, f in plan_of(b, arch, which):
+        (directory / f["sha256"]).write_bytes(b.bodies[f["url"]])
+    (directory / "fetch.json").write_bytes(record_text(b, which, arch).encode("utf-8"))
+
+
 class _BundleBase:
     """bundle.sh in a throwaway git repository holding the files it copies,
     with the fake docker and fake df first on PATH. The fake logs and the
-    bundle live outside that repository, so they never make it dirty."""
+    bundle live outside that repository, so they never make it dirty.
+    platform-sbom U9b: every run takes `--sources` (the synthetic set above)."""
+
+    sources_fixture = True
 
     def setUp(self) -> None:  # noqa: D401 - unittest hook
         t: Any = self
@@ -3091,6 +3179,11 @@ class _BundleBase:
             elif src.is_file():
                 (self.repo / rel).parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(src, self.repo / rel)
+        # platform-sbom U9b (Q78; design item 14 *Controls*): the synthetic
+        # lock and policy, committed with the fixture.
+        self._fetched_dirs: dict[tuple[str, str], Path] = {}
+        if self.sources_fixture:
+            self._write_sources_fixture(_synthetic_lock(_default_source_keys()), _synthetic_policy())
         self._git("init", "-q")
         self._git("add", "-A")
         self._git("commit", "-q", "-m", "fixture")
@@ -3116,6 +3209,46 @@ class _BundleBase:
         self.sbom_ref = cs.sbom_generator_ref(sbom_file)
         self.sbom_required = cs.required_vars(sbom_file)
 
+    # ---- platform-sbom U9b: the synthetic lock, policy and fetched set ------
+    def _write_sources_fixture(self, b: Any, policy: dict[str, Any]) -> None:
+        from tests.test_sources_lock import canon
+        d = self.repo / "docker"
+        d.mkdir(exist_ok=True)
+        (d / "sources.lock.json").write_bytes(b.text().encode("utf-8"))
+        (d / "source-policy.json").write_bytes(canon(policy).encode("utf-8"))
+        self.src_lock = b
+        self.src_policy = policy
+        self._fetched_dirs = {}
+
+    def _relock(self, b: Any, policy: dict[str, Any] | None = None) -> None:
+        """Commit another synthetic lock (and policy) in the throwaway
+        repository; self.sha follows the new commit."""
+        self._write_sources_fixture(b, self.src_policy if policy is None else policy)
+        self._git("add", "-A")
+        self._git("commit", "-q", "--allow-empty", "-m", "fixture: relock")
+        self.sha = self._git("rev-parse", "HEAD").strip()
+
+    def _relock_for(self, docs: dict[str, Any]) -> None:
+        """Relock to cover the fake syft's defaults plus what `docs` (raw
+        documents a test hands the fake syft) need."""
+        from tests.test_sbom_bundle import load_sbom_check
+        needs, problems = load_sbom_check().lock_needs(self.src_policy, docs)
+        t: Any = self
+        t.assertEqual(problems, [], "fixture: every needs row of the test's documents maps to a lock key")
+        self._relock(_synthetic_lock(set(_default_source_keys()) | set(needs)))
+
+    def _fetched(self, arch: str = "amd64", which: str = "full") -> Path:
+        """The fetched directory for this lock, arch and set (written once)."""
+        if (arch, which) not in self._fetched_dirs:
+            d = self.tmp / f"fetched-{len(self._fetched_dirs) + 1}-{which}-{arch}"
+            n = 1
+            while d.exists():
+                n += 1
+                d = self.tmp / f"fetched-{len(self._fetched_dirs) + 1}-{which}-{arch}-{n}"
+            _write_fetched(d, self.src_lock, which, arch)
+            self._fetched_dirs[(arch, which)] = d
+        return self._fetched_dirs[(arch, which)]
+
     def _git(self, *args: str) -> str:
         env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": str(self.tmp),
                "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull}
@@ -3130,15 +3263,41 @@ class _BundleBase:
         refs = set(stack.values()) | set(_profile_images().values()) | {self.sbom_ref}
         return {r: _image_record(r, arch.get(r, default)) for r in refs}
 
-    def _bundle(self, out: Path | None = None, *, stack: dict[str, str] | None = None,
-                images: dict[str, Any] | None = None, args: tuple[str, ...] = (), **env: str
-                ) -> tuple[subprocess.CompletedProcess, list[list[str]], Path]:
+    def _bundle(self, out: Path | None = None, **kw: Any) -> tuple[subprocess.CompletedProcess, list[list[str]], Path]:
+        """Run bundle.sh (see `_bundle_cmd`) and return its result, the fake
+        docker's calls and --out."""
+        argv, run_env, out = self._bundle_cmd(out, **kw)
+        result = subprocess.run(argv, env=run_env, cwd=self.repo, capture_output=True, text=True, timeout=180)
+        calls = [r["argv"] for r in fake_docker.records(self.json)]
+        return result, calls, out
+
+    def _bundle_cmd(self, out: Path | None = None, *, stack: dict[str, str] | None = None,
+                    images: dict[str, Any] | None = None, args: tuple[str, ...] = (),
+                    sources: Any = _SOURCES_DEFAULT, sources_set: str | None = None, tail: tuple[str, ...] = (),
+                    raw_out: str | None = None, **env: str) -> tuple[list[str], dict[str, str], Path]:
+        """platform-sbom U9b (Q78): `--sources <the fetched set for the
+        daemon's arch>` unless `sources` is given (None: no --sources; a str
+        is passed verbatim); `--sources-set` only when `sources_set` is given
+        (the default set is full, U9-1); `tail` goes after `--out <dir>` (a
+        flag with no value). U9b rework 1 (O-16 (1), (2)): `raw_out` is passed
+        verbatim as --out (a `..`, `.`, `//` or trailing slash survives, which
+        a Path would drop) and its parent is not created; the returned Path
+        is `Path(raw_out)`. Returns the argv, the environment and --out."""
         self.n += 1
         # PS-3.1 *Arch recorded*: the --out basename ends in -<arch>. The
         # default follows the fake daemon (FAKE_DOCKER_ARCH, unset = x86_64).
         daemon_arch = ARCH_OF.get(env.get("FAKE_DOCKER_ARCH", "x86_64"), "amd64")
-        out = out or self.tmp / f"out{self.n}" / f"bundle-{daemon_arch}"
-        (out.parent).mkdir(parents=True, exist_ok=True)
+        if sources is _SOURCES_DEFAULT:
+            sources = self._fetched(daemon_arch, sources_set or "full")
+        src_args = (["--sources", str(sources)] if sources is not None else []) + (
+            ["--sources-set", sources_set] if sources_set is not None else [])
+        if raw_out is not None:
+            out_arg = raw_out
+            out = Path(raw_out)
+        else:
+            out = out or self.tmp / f"out{self.n}" / f"bundle-{daemon_arch}"
+            (out.parent).mkdir(parents=True, exist_ok=True)
+            out_arg = str(out)
         for f in (self.log, self.json, self.df_log):
             f.write_text("", encoding="utf-8")
         stack = self.stack if stack is None else stack
@@ -3171,10 +3330,7 @@ class _BundleBase:
             "FAKE_IMAGE_PATHS": json.dumps({"/opt/venv": str(self.venv), "/app": str(ROOT)}),
         }
         run_env.update(env)
-        result = subprocess.run(["bash", "scripts/bundle.sh", *args, "--out", str(out)], env=run_env,
-                                cwd=self.repo, capture_output=True, text=True, timeout=180)
-        calls = [r["argv"] for r in fake_docker.records(self.json)]
-        return result, calls, out
+        return ["bash", "scripts/bundle.sh", *src_args, *args, "--out", out_arg, *tail], run_env, out
 
     @staticmethod
     def _out(result: subprocess.CompletedProcess) -> str:
@@ -4212,7 +4368,8 @@ class BundleNoticesTest(_BundleBase, unittest.TestCase):
     def test_bundle_contents(self):
         # Things the bundle must leave behind, present in the build tree.
         shutil.copyfile(ROOT / "docker-compose.offline.yml", self.repo / "docker-compose.offline.yml")
-        (self.repo / "docker").mkdir()
+        # platform-sbom U9b: docker/ already holds the synthetic lock and policy (_BundleBase).
+        (self.repo / "docker").mkdir(exist_ok=True)
         shutil.copyfile(ROOT / "docker" / "app.Dockerfile", self.repo / "docker" / "app.Dockerfile")
         self._git("add", "-A")
         self._git("commit", "-q", "-m", "fixture: offline compose and docker/")
@@ -4225,9 +4382,17 @@ class BundleNoticesTest(_BundleBase, unittest.TestCase):
             # app/ also holds one SPDX document per bundled image, named after its
             # tar, at app/sboms/<name>.spdx.json (tester, U3 RED, 2026-10-23).
             sboms = {f"sboms/{Path(e['file']).stem}.spdx.json" for e in self._expected().values()}
+            # platform-sbom U9b (tester, U9b RED; contradiction resolved here, requirements U9-6
+            # and U9-8, design-notes "N9 amendment, U9" items 4 and 7): app/ also holds
+            # sources/index.json, one sources/files/<sha256> per distinct shipped sha256, and
+            # the copies of NOTICE.md, THIRD_PARTY_NOTICES.md, LICENSE and licenses/.
+            shipped = {f"sources/files/{p.name}" for p in self._fetched().iterdir() if p.name != "fetch.json"}
+            tracked_licences = {f for f in self._git("ls-files", "licenses").split()}
+            notice_copies = {"NOTICE.md", self.NOTICES, "LICENSE", *tracked_licences}
             expected = sorted({"docker-compose.yml", ".env.example", "docs/quickstart.md", *tracked_config,
                                *(f"scripts/{s}" for s in ("launch.sh", "teardown.sh", "smoke.sh", "launch.ps1",
-                                                          "teardown.ps1", "net_isolated.sh")), *sboms},
+                                                          "teardown.ps1", "net_isolated.sh")), *sboms,
+                               "sources/index.json", *shipped, *notice_copies},
                               key=lambda s: s.encode("utf-8"))
             self.assertEqual(_regular_files(out / "app"), expected, "app/ holds exactly §2.5 Bundle step 3")
         with self.subTest(part="the root is exact"):

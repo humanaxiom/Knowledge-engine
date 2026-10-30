@@ -1,0 +1,184 @@
+platform-sbom U9b RED: controls (tester, 2026-10-29)
+====================================================
+
+Baseline: SAVED copies taken before any edit, at HEAD 1a7a9e2 (working tree clean for every file below).
+Names: every `test*` method of every class, by an `ast` walk of the saved copy and of the edited file
+(the U7e lesson: never from a live run). Hashes: sha256 of the file bytes.
+
+1. Files touched by U9b RED (tests only; no production code, no fixture under tests/fixtures)
+--------------------------------------------------------------------------------------------
+tests/test_offline_bundle.py    74306991503a186726e4c796f49afd05c8242e69f831e1605370077e1a0a77e9 -> 287fd165317261485bfee6533fa3ebf46dcb39612f9681cb73ebf8b2aa724502
+tests/test_sbom_obligations.py  9e524d3df63b51c3dd807f066e868d02c350eec0b6a36719bc3f366fd0639efd -> 16a34a4a2d9ce865086761c3241bbfc163c67a032bc50e7e70fb38e79911ed81
+tests/test_sbom_bundle.py       7dcb41d86b497b5ad64d97d1b78d5abec98029b4a45857d00ac953e8ffb297db -> 7eeb7f9fe6a1d2350cac4f9988250a3019ee70ec97741decb69fa418a8a44423
+tests/test_offline_check.py     cc323e5cc4712f0a200f9df44d4483a67b4cb718e5fadc5659cdaeaa00808c04 -> 577e6f285e64df7645c0550817b1a4929686bedbab2bd906db0a4ad121f3b1ca
+tests/test_bundle_sources.py    (new)                                                             -> 1d4ae554c818013eba06a115bce32099db1fd03bf23fbda8e81d981ffea3d03c
+tests/fake_docker.py            unchanged (the fake already runs any `sbom_check.py` subcommand with binds rewritten)
+CLAUDE.md                       49505b658dc17043ad11d9b0deedf7a7cd2dd904f221c8e30ca7df8ef6e49f4a -> unchanged (U9-12)
+
+2. Test names, before -> after (the 12 saved test modules, 502 names)
+----------------------------------------------------------------------
+Removed: none. Renamed: none. Added: 32
+  test_offline_check.py::OfflineCheckScriptTest.test_offline_check_bundles_the_sample_sources
+  test_bundle_sources.py (31): BundleSourcesCommandLineTest x3, BundleSourcesRefusalTest x4,
+  BundleSourcesStagesTest x3, BundleSourcesCopyTest x4, BundleSourcesIndexNoticesTest x2,
+  BundleSourcesNoPartialTest x3, BundleSourcesNoticeCopiesTest x4, NoticeSourcesTextTest x3,
+  BundleSourcesDocsTest x4, FakeSyftNeedsTest x1.
+No insertion splits a loop: the new test_offline_check row sits between two methods; the re-pins
+below add lines before a loop or a call, never inside one.
+
+3. Re-pins of existing rows (design item 14 *Controls*: only --sources/--sources-set and the
+   synthetic set are added; every assertion kept, or a contradiction resolved with its citation)
+----------------------------------------------------------------------------------------------
+a. _BundleBase (tests/test_offline_bundle.py): setUp writes and commits a synthetic
+   docker/sources.lock.json and docker/source-policy.json (committed hosts, no always, no exempt);
+   _bundle passes `--sources <fetched dir for the daemon's arch>` by default (`sources=None` omits it,
+   `sources_set=` adds --sources-set, `tail=` goes after --out); _relock/_relock_for/_fetched helpers.
+   Every _BundleBase bundle.sh row in seven modules now runs with --sources. Assertions unchanged.
+b. tests/test_sbom_obligations.py UnlicensedBundleOutputTest.test_bundle_output_lists_unlicensed_packages_per_image
+   and ReworkR1BundleTest.test_bundle_output_marks_unidentified_and_escapes_generator_text, and
+   tests/test_sbom_bundle.py SbomBundleRunTest (the valkey raw-document subtest of the namespace test):
+   one `self._relock_for({...})` line before the run, so the lock covers the raw document they hand
+   the fake syft. Assertions unchanged.
+c. CONTRADICTION resolved (U9-6, U9-8; design items 4 and 7): BundleNoticesTest.test_bundle_contents
+   "app/ is exact" now also expects sources/index.json, one sources/files/<sha256> per distinct
+   shipped sha256 and the app/ copies of NOTICE.md, THIRD_PARTY_NOTICES.md, LICENSE and licenses/;
+   its own `docker/` mkdir takes exist_ok (docker/ now holds the synthetic lock). Every other
+   assertion of the test unchanged.
+d. CONTRADICTION resolved (design item 1: sources-check, index and notices run sbom_check.py in
+   ke-app): SbomBundleRunTest.test_sbom_generator_run_is_pinned "one checker run per image" counts
+   the `finish` runs (new helper _checker_subcommand); the hardening check still runs on each of
+   them, and test_bundle_sources pins the same hardening on the three new runs.
+e. Not re-pinned, stronger and consistent with the design (left as they are): test_sbom_obligations
+   "every checker -v source is cygpath's output" and "MSYS_NO_PATHCONV=1 on every checker run" now
+   cover the three new runs too (design item 1: binds through hostpath, MSYS_NO_PATHCONV=1).
+
+4. Harness controls (green before RED; scratch probes in the gates image, no repo writes)
+----------------------------------------------------------------------------------------
+- What the fake syft's documents need (today's bundle.sh, no --sources, app/sboms read back,
+  lock_needs with the synthetic policy): deb:base-files@12.4+deb12u13 and deb:libc6@2.36-9+deb12u13
+  in all six images, pypi:psycopg@3.3.6 and pypi:psycopg-c@3.3.6 in ke-app; no mapping problem.
+  Pinned in the repo as FakeSyftNeedsTest (green in the RED run).
+- U9a's real CLI on the synthetic set and those SBOMs: sources-check ok and index ok for
+  full/sample x amd64/arm64 (full: 7 files, 2137 B, 4 components, 8 plan rows: the shared deb file;
+  sample: 4 files, 1201 B, 2 components, deb:base-files and pypi:psycopg-c shipped, the other two
+  not-shipped); notices ok (15 / 17 lines).
+- The three re-pinned raw documents, after _relock_for: sources-check and index ok
+  (valkey: + apk:busybox@1.37.0-r19; neo4j unlicensed: + maven:net.java.dev.jna:jna@5.15.0,
+  neo4j:neo4j@5.26.32; neo4j hash+evil: + 4 deb and 6 maven keys).
+- New-row fixtures: the exempt policy (psycopg exempted, its key dropped) gives index ok and
+  `index: ke-app: pkg:pypi/psycopg@3.3.6: exempt, reviewed security 2026-10-25`; the stale key
+  deb:zlib-fixture@1.0-1 gives sources-check ok and index exit 1 "lock: deb:zlib-fixture@1.0-1 is
+  listed for amd64 but no image needs it"; the long-path config makes today's MANIFEST.sha256
+  1153509 B (355 lines), over the 1 MiB cap before any source line is added.
+- A bundle built by today's fake flow installs under install.sh and install.ps1 with the fake
+  docker (FAKE_DOCKER_LOAD from bundle.json, FAKE_COMPOSE_IMAGES the stack): exit 0 for both.
+
+5. U9a install pins: untouched (tests/test_offline_bundle.py _make_fixture, _tamper_cases,
+   _source_tamper_cases unchanged); green in the RED run (see u9b-red-verify-fast.txt).
+
+6. RED classification of u9b-red-verify-fast.txt (classifier over the FAIL blocks; 0 ERROR)
+------------------------------------------------------------------------------------
+Ran 1302 (1270 at U9a r1 + 32 new); failures=201 (subtests counted), skipped=8 (the 8 U9a skips, all Windows/ownership rows).
+- 74 in the new rows (73 test_bundle_sources subtests + test_offline_check_bundles_the_sample_sources).
+- 127 in 62 existing methods, all re-pinned by --sources: 117 blocks show today's usage line
+  (`usage: scripts/bundle.sh --out <dir>-<arch> [--arch amd64|arm64]`, exit 2 on the unknown flag); the other 10
+  assert a stage never reached for the same reason ("the refusal did not come from the notices generator",
+  "precondition: the generator ran", "the harness never reached config --format json").
+- Green from the start (controls): FakeSyftNeedsTest.test_synthetic_lock_covers_exactly_the_fake_syft_needs,
+  BundleSourcesDocsTest.test_claude_md_lock_row_is_unchanged, both U9a install pins
+  (InstallShTest/InstallPs1Test.test_install_refuses_tampered_or_missing_source_file), the U8b docs rows.
+
+existing tests (distinct methods): 62
+  test_image_scan.ScanBundleTest.test_bundle_has_no_scanner_or_db  x1
+  test_neo4j_image.BundleKeNeo4jTest.test_bundle_saves_ke_neo4j_as_first_party  x1
+  test_offline_bundle.BundleNoticesTest.test_bundle_contents  x1
+  test_offline_bundle.BundleNoticesTest.test_bundle_has_third_party_notices  x1
+  test_offline_bundle.BundleNoticesTest.test_bundle_ships_tracked_licenses_only  x1
+  test_offline_bundle.BundleNoticesTest.test_notices_accept_crlf_notice_md  x1
+  test_offline_bundle.BundleNoticesTest.test_notices_fail_when_package_licence_missing  x5
+  test_offline_bundle.BundleNoticesTest.test_notices_licence_operators_sit_between_ids  x2
+  test_offline_bundle.BundleNoticesTest.test_notices_licence_tokens_are_spdx_characters  x3
+  test_offline_bundle.BundleNoticesTest.test_notices_list_every_stack_image_with_licence  x1
+  test_offline_bundle.BundleNoticesTest.test_notices_malformed_row_refusal_names_row_and_reason  x3
+  test_offline_bundle.BundleNoticesTest.test_notices_mark_phoenix_as_exception  x1
+  test_offline_bundle.BundleNoticesTest.test_notices_neo4j_has_source_url  x1
+  test_offline_bundle.BundleNoticesTest.test_notices_refuse_output_without_package_table  x4
+  test_offline_bundle.BundleNoticesTest.test_notices_run_carries_its_own_compose_label  x1
+  test_offline_bundle.BundleNoticesTest.test_notices_vendor_row_parse_is_strict  x16
+  test_offline_bundle.BundleScriptTest.test_arch_normalisation  x6
+  test_offline_bundle.BundleScriptTest.test_bundle_always_ships_net_isolated  x1
+  test_offline_bundle.BundleScriptTest.test_bundle_arch_comes_from_daemon  x3
+  test_offline_bundle.BundleScriptTest.test_bundle_fails_below_free_disk  x4
+  test_offline_bundle.BundleScriptTest.test_bundle_fails_when_pinned_digest_unresolved  x1
+  test_offline_bundle.BundleScriptTest.test_bundle_has_no_wheels  x1
+  test_offline_bundle.BundleScriptTest.test_bundle_holds_stack_images_only  x1
+  test_offline_bundle.BundleScriptTest.test_bundle_json_marks_dirty_tree  x2
+  test_offline_bundle.BundleScriptTest.test_bundle_json_names_every_image  x1
+  test_offline_bundle.BundleScriptTest.test_bundle_json_records_arch  x2
+  test_offline_bundle.BundleScriptTest.test_bundle_json_records_file_ref_as  x1
+  test_offline_bundle.BundleScriptTest.test_bundle_lists_every_compose_image  x1
+  test_offline_bundle.BundleScriptTest.test_bundle_manifest_covers_every_file  x1
+  test_offline_bundle.BundleScriptTest.test_bundle_maps_each_service_to_own_image_despite_dependencies  x6
+  test_offline_bundle.BundleScriptTest.test_bundle_out_name_carries_arch  x2
+  test_offline_bundle.BundleScriptTest.test_bundle_prints_manifest_hash  x1
+  test_offline_bundle.BundleScriptTest.test_bundle_reads_available_column_when_filesystem_has_spaces  x2
+  test_offline_bundle.BundleScriptTest.test_bundle_refuses_empty_json_model  x4
+  test_offline_bundle.BundleScriptTest.test_bundle_refuses_existing_manifest_record  x1
+  test_offline_bundle.BundleScriptTest.test_bundle_refuses_image_of_other_arch  x4
+  test_offline_bundle.BundleScriptTest.test_bundle_refuses_service_without_image_in_model  x3
+  test_offline_bundle.BundleScriptTest.test_bundle_refuses_unpinned_third_party_image  x1
+  test_offline_bundle.BundleScriptTest.test_bundle_refuses_when_compose_json_model_fails  x2
+  test_offline_bundle.BundleScriptTest.test_bundle_refuses_without_jq_before_any_docker_call  x1
+  test_offline_bundle.BundleScriptTest.test_bundle_saves_one_tar_per_image_without_platform  x1
+  test_offline_bundle.BundleScriptTest.test_bundle_writes_manifest_hash_beside_bundle  x1
+  test_sbom_bundle.SbomBundleRunTest.test_bundle_has_sbom_per_image  x1
+  test_sbom_bundle.SbomBundleRunTest.test_bundle_refuses_on_sbom_failure  x5
+  test_sbom_bundle.SbomBundleRunTest.test_bundle_refuses_ref_starting_with_dash  x2
+  test_sbom_bundle.SbomBundleRunTest.test_sbom_generator_is_daemon_arch  x2
+  test_sbom_bundle.SbomBundleRunTest.test_sbom_generator_run_is_pinned  x1
+  test_sbom_bundle.SbomBundleRunTest.test_sbom_is_spdx_2_3  x1
+  test_sbom_bundle.SbomBundleRunTest.test_sbom_lists_every_locked_runtime_package  x1
+  test_sbom_generator.SbomBundleTest.test_bundle_has_no_sbom_generator  x1
+  test_sbom_generator.SbomBundleTest.test_bundle_refuses_when_sbom_generator_absent  x5
+  test_sbom_obligations.ReworkR1BundleTest.test_bundle_output_marks_unidentified_and_escapes_generator_text  x1
+  test_sbom_obligations.ReworkR1BundleTest.test_bundle_syft_runs_print_no_cache_warning  x1
+  test_sbom_obligations.ReworkR1DiskFloorTest.test_bundle_floor_both_filesystems_fit  x1
+  test_sbom_obligations.ReworkR1DiskFloorTest.test_bundle_floor_on_out_parent_when_out_exists  x1
+  test_sbom_obligations.ReworkR1DiskFloorTest.test_bundle_floor_on_out_when_out_exists  x1
+  test_sbom_obligations.ReworkR1DiskFloorTest.test_bundle_floor_probes_once_on_one_filesystem  x1
+  test_sbom_obligations.SbomCarryU4Test.test_bundle_hands_host_paths_through_cygpath  x1
+  test_sbom_obligations.SbomCarryU4Test.test_bundle_sbom_work_dir_is_private  x1
+  test_sbom_obligations.SbomCarryU4Test.test_bundle_sbom_work_dir_on_out_filesystem  x1
+  test_sbom_obligations.SbomCarryU4Test.test_bundle_sets_msys_no_pathconv_on_container_runs_only  x1
+  test_sbom_obligations.UnlicensedBundleOutputTest.test_bundle_output_lists_unlicensed_packages_per_image  x1
+new-row methods:
+  BundleSourcesCommandLineTest.test_bundle_refuses_a_bad_sources_set  x5
+  BundleSourcesCommandLineTest.test_bundle_requires_sources  x3
+  BundleSourcesCommandLineTest.test_bundle_sources_set_defaults_to_full  x4
+  BundleSourcesCopyTest.test_a_source_file_changed_after_the_check_is_refused  x1
+  BundleSourcesCopyTest.test_sample_bundle_ships_exactly_the_sample  x1
+  BundleSourcesCopyTest.test_source_archive_hashes_in_manifest  x1
+  BundleSourcesCopyTest.test_sources_are_copied_not_linked  x1
+  BundleSourcesDocsTest.test_bundle_copies_sources_with_cp_dash_p_only  x1
+  BundleSourcesDocsTest.test_bundle_header_names_the_sources_step  x4
+  BundleSourcesDocsTest.test_readme_gives_the_operator_order_with_sources  x1
+  BundleSourcesIndexNoticesTest.test_index_json_is_the_checkers_index  x2
+  BundleSourcesIndexNoticesTest.test_third_party_notices_end_with_the_source_code_section  x2
+  BundleSourcesNoPartialTest.test_bundle_leaves_sources_dir_unchanged  x1
+  BundleSourcesNoPartialTest.test_bundle_refuses_an_unlistable_out  x1
+  BundleSourcesNoPartialTest.test_bundle_writes_no_manifest_when_sbom_or_source_fails  x12
+  BundleSourcesNoticeCopiesTest.test_app_carries_the_notice_copies  x1
+  BundleSourcesNoticeCopiesTest.test_bundle_with_sources_installs_under_install_ps1  x2
+  BundleSourcesNoticeCopiesTest.test_bundle_with_sources_installs_under_install_sh  x2
+  BundleSourcesNoticeCopiesTest.test_sources_paths_resolve_from_every_notice_copy  x1
+  BundleSourcesRefusalTest.test_bundle_refuses_a_bad_sources_dir  x9
+  BundleSourcesRefusalTest.test_bundle_refuses_a_mismatched_fetch_record  x2
+  BundleSourcesRefusalTest.test_bundle_refuses_an_unlistable_sources_dir  x1
+  BundleSourcesRefusalTest.test_bundle_refuses_sources_overlapping_out  x3
+  BundleSourcesStagesTest.test_bundle_checks_sources_in_ke_app_before_the_first_write  x1
+  BundleSourcesStagesTest.test_bundle_prints_the_exempt_listing  x1
+  BundleSourcesStagesTest.test_bundle_prints_the_sources_marker  x1
+  NoticeSourcesTextTest.test_libffi_licence_file_is_the_fetched_text  x1
+  NoticeSourcesTextTest.test_notice_names_libffi_in_ke_neo4j_section  x7
+  NoticeSourcesTextTest.test_notice_source_code_section_starts_with_the_i3_sentence  x1
+  OfflineCheckScriptTest.test_offline_check_bundles_the_sample_sources  x1

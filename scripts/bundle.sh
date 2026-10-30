@@ -1,31 +1,55 @@
 #!/usr/bin/env bash
 # Writes the offline bundle (PS-3.1, architecture §2.5 Bundle):
 #
-#   scripts/bundle.sh --out <dir>-<arch> [--arch amd64|arm64]
+#   scripts/bundle.sh --out <dir>-<arch> --sources <dir> [--sources-set full|sample] [--arch amd64|arm64]
 #
 # Run from a checkout on a linux build host (amd64 or arm64; the bundle is for the
 # Docker daemon's own arch, and --arch only asserts it), after build.sh and
 # scripts/bundle_fetch.sh. It never builds, pulls or pushes, and makes no
 # network call: scripts/bundle_fetch.sh is the only bundle step with a route
 # out (it pulls the SBOM generator this script needs, and fetches the source
-# set that the bundle ships from U9 on). The bundle holds the
+# set). --sources is required: the directory scripts/bundle_fetch.sh wrote
+# (--sources-set says which set it must hold, default full; sample is for
+# verification only). Before anything is written, the sources-check stage
+# re-hashes it against docker/sources.lock.json in the ke-app image (no
+# network, read-only mounts); the bundle then ships each file as
+# app/sources/files/<sha256>, app/sources/index.json (from the lock, the
+# policy and the SBOMs; a package with no entry refuses the bundle) and a
+# generated "Source code" section of THIRD_PARTY_NOTICES.md. The bundle holds the
 # stack images only (one tar each, saved from a bundle tag with no
-# --platform), the files `install` copies (app/), the two installers, the
-# committed NOTICE.md and licenses/, a generated THIRD_PARTY_NOTICES.md (the
-# ke-app image's package licences, read inside that image with no network, and
-# the stack images' licences from NOTICE.md; any package or digest-pinned image
-# without a licence refuses the bundle before anything is written), one SPDX
-# 2.3 SBOM per image under app/sboms/ (the pinned generator reads each saved
-# tar with no network; scripts/sbom_check.py finishes and checks it), a
-# bundle.json record and MANIFEST.sha256 over every other file.
+# --platform), the files `install` copies (app/, which also carries copies of
+# NOTICE.md, THIRD_PARTY_NOTICES.md, LICENSE and licenses/), the two
+# installers, the committed NOTICE.md and licenses/, a generated
+# THIRD_PARTY_NOTICES.md (the ke-app image's package licences, read inside
+# that image with no network, and the stack images' licences from NOTICE.md;
+# any package or digest-pinned image without a licence refuses the bundle
+# before anything is written), one SPDX 2.3 SBOM per image under app/sboms/
+# (the pinned generator reads each saved tar with no network;
+# scripts/sbom_check.py finishes and checks it), a bundle.json record and
+# MANIFEST.sha256 over every other file. A failure after the first write
+# removes what this run wrote (the --out directory it created, or the
+# contents of the empty one it was given); no manifest and no record are left.
+# Just before the first write --out is claimed with mkdir, or (when given) checked
+# again to be a real directory and not a link (O-17 (1)); a record chmod that
+# fails ends the run and leaves a record this run did not fully write (O-17 (2)).
+# Paths (O-16): --out and --sources are made absolute, every trailing slash is
+# stripped, and a path with an empty, . or .. segment is refused, never
+# resolved. The parent of --out must exist: the run claims --out with a plain
+# mkdir, and the release record is written under noclobber.
 set -euo pipefail
 export LC_ALL=C
 
-usage() { echo "usage: scripts/bundle.sh --out <dir>-<arch> [--arch amd64|arm64]" >&2; exit 2; }
+usage() { echo "usage: scripts/bundle.sh --out <dir>-<arch> --sources <dir> [--sources-set full|sample] [--arch amd64|arm64]" >&2; exit 2; }
 die() { echo "bundle: $*" >&2; exit 1; }
+# A refusal at a named stage (O-15): one line.
+stage_die() { echo "bundle: FAIL (stage $1: $2)" >&2; exit 1; }
 
 out=""
 asserted_arch=""
+sources=""
+sources_set=""
+have_sources=0
+have_sources_set=0
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --out)
@@ -38,15 +62,54 @@ while [ "$#" -gt 0 ]; do
       asserted_arch="$2"
       shift 2
       ;;
+    --sources)
+      [ "$#" -ge 2 ] || usage
+      [ "$have_sources" -eq 0 ] || usage
+      have_sources=1
+      sources="$2"
+      shift 2
+      ;;
+    --sources-set)
+      [ "$#" -ge 2 ] || usage
+      [ "$have_sources_set" -eq 0 ] || usage
+      have_sources_set=1
+      sources_set="$2"
+      shift 2
+      ;;
     *) usage ;;
   esac
 done
 [ -n "$out" ] || usage
+[ -n "$sources" ] || usage
+if [ "$have_sources_set" -eq 0 ]; then sources_set=full; fi
+case "$sources_set" in
+  full | sample) ;;
+  *) usage ;;
+esac
+case "$sources" in
+  /*) ;;
+  *) sources="$PWD/$sources" ;;
+esac
 case "$out" in
   /*) ;;
   *) out="$PWD/$out" ;;
 esac
-out="${out%/}"
+# Every trailing slash goes, not one (O-16 (1)); a value empty after that is an
+# argument-shape problem (exit 2).
+while [ "${sources%/}" != "$sources" ]; do sources="${sources%/}"; done
+[ -n "$sources" ] || usage
+while [ "${out%/}" != "$out" ]; do out="${out%/}"; done
+[ -n "$out" ] || usage
+# A path with an empty, `.` or `..` segment is refused before any check runs
+# (O-16 (1)); a `..` is refused, never resolved.
+segment_bad() {  # $1: an absolute path with no trailing slash
+  case "$1" in
+    *//* | */./* | */. | */../* | */..) return 0 ;;
+  esac
+  return 1
+}
+if segment_bad "$out"; then stage_die out "--out has an empty, . or .. path segment: $out"; fi
+if segment_bad "$sources"; then stage_die sources-check "--sources has an empty, . or .. path segment: $sources"; fi
 
 case "$asserted_arch" in
   "" | amd64 | arm64) ;;
@@ -57,7 +120,7 @@ CDPATH='' cd -- "$(dirname -- "$0")/.."
 repo_root="$PWD"
 
 # jq reads each service's image from the resolved compose model (defect D1); it
-# is a build-host prerequisite, checked before anything else runs.
+# is a build-host prerequisite; the path rule above runs first.
 command -v jq > /dev/null 2>&1 \
   || die "jq is required on the build host (it reads the resolved compose model); install it first (for example apt-get install jq, brew install jq)"
 
@@ -80,9 +143,13 @@ esac
 if [ -L "$out" ]; then
   die "--out is a symlink: $out"
 fi
+created=1
 if [ -e "$out" ]; then
+  created=0
   [ -d "$out" ] || die "--out exists and is not a directory: $out"
-  if [ -n "$(ls -A -- "$out")" ]; then
+  # A listing that fails is a refusal, never an empty directory (reviewer N-9).
+  out_entries="$(ls -A -- "$out")" || stage_die out "cannot list --out: $out"
+  if [ -n "$out_entries" ]; then
     die "--out is not empty: $out"
   fi
 fi
@@ -91,6 +158,36 @@ record="$out.manifest.sha256"
 if [ -e "$record" ] || [ -L "$record" ]; then
   die "the manifest record already exists: $record"
 fi
+
+# --- the fetched source set: shell checks (U9-1, U9-2) ---------------------
+# Nothing is written under --sources, ever; it is read through a :ro mount and
+# `cp -P`. The rest of its check (fetch.json, the exact listing, every hash) is
+# the sources-check stage below, in the ke-app image, before the first write.
+if [ -L "$sources" ]; then stage_die sources-check "--sources is a symlink: $sources"; fi
+[ -e "$sources" ] || stage_die sources-check "--sources does not exist: $sources"
+[ -d "$sources" ] || stage_die sources-check "--sources is not a directory: $sources"
+ls -A -- "$sources" > /dev/null 2>&1 || stage_die sources-check "cannot list --sources: $sources"
+if [ -L "$sources/fetch.json" ] || [ ! -f "$sources/fetch.json" ]; then
+  stage_die sources-check "--sources $sources has no fetch.json (or it is not a regular file); run scripts/bundle_fetch.sh --set $sources_set first"
+fi
+# Equal to, inside or containing --out, compared segment-wise after resolving
+# links (--out at its nearest existing ancestor): no write may land under --sources.
+real_dir() { ( CDPATH='' cd -P -- "$1" > /dev/null 2>&1 && pwd -P ); }
+sources_real="$(real_dir "$sources")" || stage_die sources-check "cannot resolve --sources: $sources"
+out_anc="$out"
+out_rest=""
+while [ ! -e "$out_anc" ]; do
+  out_rest="/${out_anc##*/}$out_rest"
+  out_anc="$(dirname -- "$out_anc")"
+done
+out_anc_real="$(real_dir "$out_anc")" || stage_die sources-check "cannot resolve --out: $out"
+out_real="${out_anc_real%/}$out_rest"
+case "$sources_real/" in
+  "$out_real/"*) stage_die sources-check "--sources $sources is --out or inside it ($out); no write may land under --sources" ;;
+esac
+case "$out_real/" in
+  "$sources_real/"*) stage_die sources-check "--out $out is inside --sources ($sources); no write may land under --sources" ;;
+esac
 
 # --- free disk (R6): 7 GiB, before any save --------------------------------
 # Basis (ruling 1, docs/evidence/platform-offline/ci-39359710258.log): the
@@ -312,15 +409,89 @@ case "$package_table" in
   *) die "the licence notices generator printed no package table" ;;
 esac
 
+# --- sources-check (U9-2, U9-3): before the first write -----------------------
+# The same hardened ke-app run as `finish` below (no network, read-only root, no
+# capabilities, the caller's uid:gid, every mount :ro). It prints the distinct
+# sha256 of the planned files, sorted; --out does not exist yet.
+# Git Bash rewrites container paths in arguments; MSYS_NO_PATHCONV stops that, so host
+# paths for mounts and KE_SBOM_* are handed over in Windows form (cygpath -m) where it exists.
+hostpath() { if command -v cygpath > /dev/null 2>&1; then cygpath -m -- "$1"; else printf "%s" "$1"; fi; }
+check_run() {  # $1...: the subcommand and its arguments; check_mounts holds the extra -v mounts
+  MSYS_NO_PATHCONV=1 \
+  docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --pull never \
+    --user "$sbom_user" --label "com.docker.compose.project=${project}-sbomcheck" \
+    -v "$(hostpath "$repo_root")/scripts/sbom_check.py:/opt/ke/sbom_check.py:ro" \
+    -v "$(hostpath "$repo_root")/docker/sources.lock.json:/opt/ke/sources.lock.json:ro" \
+    -v "$(hostpath "$repo_root")/docker/source-policy.json:/opt/ke/source-policy.json:ro" \
+    "${check_mounts[@]}" \
+    --entrypoint python "$app_ref" -I /opt/ke/sbom_check.py "$@"
+}
+t_mark=$SECONDS
+check_mounts=(-v "$(hostpath "$sources"):/sources:ro")
+check_text="$(check_run sources-check --lock /opt/ke/sources.lock.json --policy /opt/ke/source-policy.json \
+  --dir /sources --arch "$arch" --set "$sources_set")" \
+  || stage_die sources-check "the source set in --sources failed its check (see above); no bundle written"
+[ -n "$check_text" ] || stage_die sources-check "the check listed no source file"
+mapfile -t source_shas <<< "$check_text"
+for sha in "${source_shas[@]}"; do
+  [[ "$sha" =~ ^[0-9a-f]{64}$ ]] || stage_die sources-check "the check printed a line that is not a sha256"
+done
+t_check=$((SECONDS - t_mark))
+
 dirty=false
 if [ -n "$(git status --porcelain)" ]; then dirty=true; fi
 
 # --- write the bundle ------------------------------------------------------
+# The first write. From here a non-zero exit removes what this run wrote (O-10):
+# --out itself when this run created it, else its contents (it was given empty);
+# the record only if this run wrote it. INT, TERM and HUP become a non-zero exit.
+sbom_project="${project}-sbom"
+sbom_work=""
+wrote=0
+record_made=0
+bundle_cleanup() {
+  local rc=$?
+  trap '' INT TERM HUP
+  trap - EXIT
+  CDPATH='' cd -- "$repo_root" > /dev/null 2>&1 || true
+  if [ "$rc" -ne 0 ] && [ "$wrote" -eq 1 ]; then
+    if [ "$created" -eq 1 ]; then
+      rm -rf -- "$out" || echo "bundle: warning: could not remove $out" >&2
+    else
+      find -- "$out" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + > /dev/null 2>&1 \
+        || echo "bundle: warning: could not remove all of the contents of $out" >&2
+    fi
+    if [ "$record_made" -eq 1 ]; then rm -f -- "$record" || echo "bundle: warning: could not remove $record" >&2; fi
+  fi
+  if [ -n "$sbom_work" ]; then
+    # `down` binds nothing, so the raw (non-hostpath) KE_SBOM_* values below are harmless here.
+    ( KE_SBOM_IN="$out/images" KE_SBOM_OUT="$sbom_work" KE_SBOM_USER="$sbom_user" \
+        docker compose -p "$sbom_project" --env-file .env.example -f docker-compose.sbom.yml down ) \
+      > /dev/null 2>&1 || echo "bundle: warning: docker compose -p $sbom_project down failed" >&2
+    rm -rf -- "$sbom_work" || echo "bundle: warning: could not remove $sbom_work" >&2
+  fi
+  exit "$rc"
+}
+trap bundle_cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
+# --out is claimed with a plain mkdir (no -p): it fails if --out appeared since
+# the check above (a directory or a link) or its parent is missing, and then
+# nothing has been written (O-16 (2), O-17 (1)); `created` was decided once, at
+# the early check, and the cleanup removes only a directory this run made. A
+# given (empty) --out is re-checked to be still a real directory, not a link.
+if [ "$created" -eq 1 ]; then
+  mkdir -- "$out" || stage_die out "--out appeared after its check (or cannot be created; its parent must exist, and --out must not): $out; no bundle written"
+else
+  { [ ! -L "$out" ] && [ -d "$out" ]; } || stage_die out "--out was replaced after its check (it is no longer a real directory): $out; no bundle written"
+fi
+wrote=1
 mkdir -p -- "$out/images"
 for ref in "${refs[@]}"; do
   as="${ref_as[$ref]}"
-  docker tag "$ref" "$as"
-  docker save -o "$out/images/${ref_name[$ref]}.tar" "$as"
+  docker tag "$ref" "$as" || die "tagging image ${ref_name[$ref]} ($ref) failed; no bundle written"
+  docker save -o "$out/images/${ref_name[$ref]}.tar" "$as" || die "saving image ${ref_name[$ref]} failed; no bundle written"
 done
 
 app="$out/app"
@@ -394,22 +565,9 @@ done < <(git ls-files -z -- licenses)
 # final document: the image named by its ref and its tar's config digest, a
 # fresh urn:uuid namespace, and for ke-app the runtime packages checked
 # against uv.lock. Any failure stops here, before the manifest and the record.
-sbom_project="${project}-sbom"
 # Beside --out, so the 7 GiB floor measured above covers the unpack (review N6).
 sbom_work="$(mktemp -d "$(dirname -- "$out")/.ke-sbom.XXXXXXXX")" || die "cannot create the SBOM work dir"
-# `down` binds nothing, so the raw (non-hostpath) KE_SBOM_* values below are harmless here.
-sbom_cleanup() {
-  ( CDPATH='' cd -- "$repo_root" \
-      && KE_SBOM_IN="$out/images" KE_SBOM_OUT="$sbom_work" KE_SBOM_USER="$sbom_user" \
-        docker compose -p "$sbom_project" --env-file .env.example -f docker-compose.sbom.yml down ) \
-    > /dev/null 2>&1 || echo "bundle: warning: docker compose -p $sbom_project down failed" >&2
-  if [ -n "$sbom_work" ]; then rm -rf -- "$sbom_work"; fi
-}
-trap sbom_cleanup EXIT
 mkdir -p -- "$app/sboms"
-# Git Bash rewrites container paths in arguments; MSYS_NO_PATHCONV stops that, so host
-# paths for mounts and KE_SBOM_* are handed over in Windows form (cygpath -m) where it exists.
-hostpath() { if command -v cygpath > /dev/null 2>&1; then cygpath -m -- "$1"; else printf "%s" "$1"; fi; }
 for ref in "${refs[@]}"; do
   name="${ref_name[$ref]}"
   work="$sbom_work/$name"
@@ -435,28 +593,99 @@ for ref in "${refs[@]}"; do
     > "$app/sboms/$name.spdx.json" || die "the SBOM check failed for image $name ($ref); no bundle written"
 done
 
+# --- the source set (PSC-15, PSC-24; design-notes "N9 amendment, U9") ---------
+# The copy: each distinct sha256 sources-check listed, as a regular file named by
+# its sha256. `cp -P`, no -p, no link, no reflink: a link that replaced a checked
+# file is copied as a link and the manifest step refuses it, and a later write
+# to --sources cannot change shipped bytes. The shipped bytes are hashed again
+# against their names below.
+t_mark=$SECONDS
+mkdir -- "$app/sources" "$app/sources/files" || stage_die copy "cannot create app/sources/; no bundle written"
+for sha in "${source_shas[@]}"; do
+  cp -P -- "$sources/$sha" "$app/sources/files/$sha" \
+    || stage_die copy "copying source file $sha failed; no bundle written"
+done
+t_copy=$((SECONDS - t_mark))
+
+# index.json: from the lock, the policy, this bundle's SBOMs and the copied files
+# (validate first; a package with no lock entry, or a file not shipped, refuses).
+# Its stderr (the exempt components' lines) is passed through.
+t_mark=$SECONDS
+index_sboms=()
+for ref in "${refs[@]}"; do
+  index_sboms+=(--sbom "${ref_name[$ref]}=/sboms/${ref_name[$ref]}.spdx.json")
+done
+check_mounts=(-v "$(hostpath "$app/sboms"):/sboms:ro" -v "$(hostpath "$app/sources/files"):/files:ro")
+check_run index --lock /opt/ke/sources.lock.json --policy /opt/ke/source-policy.json \
+  --arch "$arch" --set "$sources_set" --git-sha "$git_sha" --files /files "${index_sboms[@]}" \
+  > "$app/sources/index.json" \
+  || stage_die index "the source index failed (see above); no bundle written"
+t_index=$((SECONDS - t_mark))
+
+# The "Source code" section of THIRD_PARTY_NOTICES.md, from the shipped index.
+t_mark=$SECONDS
+check_mounts=(-v "$(hostpath "$app/sources"):/idx:ro")
+check_run notices --index /idx/index.json > "$sbom_work/source-code.md" \
+  || stage_die notices "the Source code section failed (see above); no bundle written"
+{ printf '\n'; cat -- "$sbom_work/source-code.md"; } >> "$out/THIRD_PARTY_NOTICES.md" \
+  || stage_die notices "cannot append the Source code section; no bundle written"
+t_notices=$((SECONDS - t_mark))
+echo "bundle: sources: check $t_check s, copy $t_copy s, index $t_index s, notices $t_notices s"
+
+# app/ carries the notices too (U9-8), so the section's paths resolve from the
+# installed copy: byte-identical to the bundle-root copies, which stay.
+# Taken from the bundle-root copies under --out, not the tree, so they match
+# those copies by construction (O-16 (7), reviewer N-2).
+cp -- "$out/NOTICE.md" "$app/NOTICE.md" || stage_die copy "app/NOTICE.md could not be copied; no bundle written"
+cp -- "$out/THIRD_PARTY_NOTICES.md" "$app/THIRD_PARTY_NOTICES.md" \
+  || stage_die copy "app/THIRD_PARTY_NOTICES.md could not be copied; no bundle written"
+cp -- "$out/LICENSE" "$app/LICENSE" || stage_die copy "app/LICENSE could not be copied; no bundle written"
+while IFS= read -r -d '' f; do
+  mkdir -p -- "$app/$(dirname -- "$f")" || stage_die copy "app/$(dirname -- "$f")/ could not be created; no bundle written"
+  cp -P -- "$out/$f" "$app/$f" || stage_die copy "app/$f could not be copied; no bundle written"
+done < <(git ls-files -z -- licenses)
+
 # --- manifest: every regular file except itself, LC_ALL=C order ------------
 CDPATH='' cd -- "$out"
 if [ -n "$(find . -mindepth 1 ! -type f ! -type d -print -quit)" ]; then
-  die "the bundle holds an entry that is neither a file nor a directory (symlink?)"
+  stage_die manifest "the bundle holds an entry that is neither a file nor a directory (symlink?); no bundle written"
 fi
 mapfile -d '' -t files < <(find . -type f -print0 | sort -z)
 : > MANIFEST.sha256.tmp
+source_lines=0
 for f in "${files[@]}"; do
   rel="${f#./}"
   [[ "$rel" =~ ^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$ ]] \
-    || die "a bundle path fails the manifest pattern: $(printf '%q' "$rel")"
+    || stage_die manifest "a bundle path fails the manifest pattern: $(printf '%q' "$rel"); no bundle written"
   sum="$(sha256sum -- "$rel")"
+  if [[ "$rel" == app/sources/files/* ]]; then
+    # ADR point 3, on the bytes that ship: the name is the sha256 (security I-4).
+    [[ "$rel" =~ ^app/sources/files/[0-9a-f]{64}$ && "${rel##*/}" == "${sum:0:64}" ]] \
+      || stage_die manifest "$rel: the bytes do not match the name; no bundle written"
+    source_lines=$((source_lines + 1))
+  fi
   printf '%s  %s\n' "${sum:0:64}" "$rel" >> MANIFEST.sha256.tmp
 done
+[ "$source_lines" -eq "${#source_shas[@]}" ] \
+  || stage_die manifest "app/sources/files/ holds $source_lines files, the check listed ${#source_shas[@]}; no bundle written"
+# install refuses a manifest over 1 MiB; the cap is never raised.
+manifest_bytes="$(wc -c < MANIFEST.sha256.tmp)"
+manifest_bytes="${manifest_bytes//[[:space:]]/}"
+if [ "$manifest_bytes" -gt 1048576 ]; then
+  stage_die manifest "MANIFEST.sha256 would be $manifest_bytes bytes, over install's 1 MiB cap; no bundle written"
+fi
 mv -- MANIFEST.sha256.tmp MANIFEST.sha256
 
 sum="$(sha256sum -- MANIFEST.sha256)"
 manifest_sha="${sum:0:64}"
 # The release record: one sha256sum-format line, outside the bundle and
 # outside its manifest, to be handed to the operator through another channel.
-printf '%s  %s/MANIFEST.sha256\n' "$manifest_sha" "$(basename -- "$out")" > "$record"
-chmod 0644 -- "$record"
+# Written under noclobber: a record that appeared since the check is never
+# overwritten, and then the run ends non-zero with the O-10 cleanup (O-16 (3)).
+( set -C; printf '%s  %s/MANIFEST.sha256\n' "$manifest_sha" "$(basename -- "$out")" > "$record" ) \
+  || die "cannot write the release record $record (it exists, or is not writable); no bundle written"
+chmod 0644 -- "$record" || die "cannot set the mode of the release record $record; no bundle written"
+record_made=1
 echo "bundle written: $out"
 echo "manifest sha256: $manifest_sha"
 echo "release record: $record"

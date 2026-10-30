@@ -412,6 +412,8 @@ class UnlicensedBundleOutputTest(_BundleBase, unittest.TestCase):
         # saved as ke-neo4j (images/ke-neo4j.tar, app/sboms/ke-neo4j.spdx.json); re-targeted
         # by the tester, U4b RED.
         raw = neo4j_unlicensed_doc()
+        # platform-sbom U9b (design item 14 *Controls*): the synthetic lock covers this document too.
+        self._relock_for({"ke-neo4j": raw})
         result, _, out = self._bundle(COMPOSE_PROJECT_NAME=PROJECT,
                                       FAKE_SYFT_RAW=json.dumps({"ke-neo4j": json.dumps(raw)}))
         output = self._out(result)
@@ -1538,6 +1540,8 @@ class ReworkR1BundleTest(_BundleBase, unittest.TestCase):
         # saved as ke-neo4j (images/ke-neo4j.tar, app/sboms/ke-neo4j.spdx.json); re-targeted
         # by the tester, U4b RED.
         raw = ss.spdx_doc("ke-neo4j", hash_rows() + evil_rows())
+        # platform-sbom U9b (design item 14 *Controls*): the synthetic lock covers this document too.
+        self._relock_for({"ke-neo4j": raw})
         result, _, out, _ = self._good(FAKE_SYFT_RAW=json.dumps({"ke-neo4j": json.dumps(raw)}))
         output = self._out(result)
         doc = json.loads((out / "app" / "sboms" / "ke-neo4j.spdx.json").read_text(encoding="utf-8"))

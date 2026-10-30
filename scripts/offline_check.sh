@@ -238,8 +238,8 @@ fi
 # fetches one source entry per kind through the hardened `sources-fetch`
 # service and checks each file against docker/sources.lock.json. This is the
 # only fetch verify and CI ever run (the sample, never the full set). The dir
-# is under dist/, outside the bundle (bundle.sh reads it from U9) and removed
-# by the EXIT trap; a failure stops here, with no retry.
+# is under dist/, outside the bundle; bundle.sh --sources reads it (the sample
+# set only, U9b) and the EXIT trap removes it. A failure stops here, no retry.
 fetch_rel="dist/${project}-sources"
 echo "offline: fetching the source sample (scripts/bundle_fetch.sh --set sample)"
 bash scripts/bundle_fetch.sh --set sample --out "$fetch_rel" \
@@ -265,7 +265,7 @@ neo4j_base="$(sed -n 's/^FROM \([^ ]*\) AS runtime$/\1/p' docker/neo4j.Dockerfil
 echo "offline: pulling the ke-neo4j base ($neo4j_base)"
 docker pull "$neo4j_base" > /dev/null || die "pulling the ke-neo4j base failed ($neo4j_base); no retry"
 
-bash scripts/bundle.sh --out "$bundle_rel" || die "bundle.sh failed"
+bash scripts/bundle.sh --out "$bundle_rel" --sources "$fetch_rel" --sources-set sample || die "bundle.sh failed"
 # CI run 39364201188: bundle.sh writes private (0600) files but the offline client runs as uid 10001; open only this throwaway dir, read-only.
 chmod -R a+rX -- "$bundle_rel"
 df_log "after bundle"

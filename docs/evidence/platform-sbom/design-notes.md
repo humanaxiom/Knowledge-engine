@@ -4876,6 +4876,131 @@ see `docs/architecture.md`, ADR-KE-016, the "Amended U9" bullet.
   `_`, pypi versions `!`) nor the URL column. The item-7 set (`|`, backtick,
   `<`, `>`, `\`, control characters) stays refused in every field, keys and
   URLs included.
+- *Orchestrator rulings at U9b RED (2026-10-29, **O-15**, on the tester's A1-A8,
+  `u9/u9b-red-verify-fast.txt`):* A1 accepted: Q78 makes every existing bundle
+  row red until GREEN (the `_BundleBase` re-pin is right). A2: the marker is item
+  12's form, `bundle: sources: check <a> s, copy <b> s, index <c> s, notices <d> s`.
+  A3: `docker info` (the arch) may precede the `--sources` shell checks; no other
+  docker call may. A4: each refusal is one `bundle: FAIL (stage <stage>: <why>)`
+  line in bundle.sh's existing die form, the stage being sources-check, copy,
+  index, notices, manifest or out. A5: the developer updates the stale README
+  sentence ("not built yet") at GREEN; the documenter re-reads at close. A6
+  accepted. A7: O-13 (7) stands over item 6's `bundle:` form. A8: `--sources ""`
+  exits 2 with the usage line. R7 done: `u9/libffi-provenance.md` (security PASS);
+  the developer ships `licenses/libffi-jna-5.15.0.txt` from it at GREEN.
+- *Orchestrator rulings at U9b rework 1 (2026-10-29, **O-16**, on reviewer
+  B-1..B-3, N-1..N-11 in `u9/u9b-review.md` and security L-4, I-7..I-12 in
+  `u9/u9b-security.md`):*
+  (1) Path rule (B-1, L-4, I-8, I-9): after `--out` and `--sources` are made
+  absolute, every trailing slash is stripped (not one), and a path holding an
+  empty, `.` or `..` segment is refused before any check runs: `--sources` as
+  `bundle: FAIL (stage sources-check: ...)`, `--out` as `bundle: FAIL (stage
+  out: ...)`, exit 1 (usage exit 2 stays for argument shape only). No lexical
+  canonicalisation: a `..` is refused, never resolved.
+  (2) `--out` is claimed with `mkdir --` (no `-p`) at the first write when the
+  run creates it; a failure is `stage out`, exit 1, and the run has written
+  nothing. The parent of `--out` must therefore exist (README says so). This
+  closes N-3 and I-10; `created` is decided from the l.126 check, not re-tested.
+  (3) The release record is written under noclobber (`set -C` in a subshell
+  around the redirect); `record_made=1` only after the write succeeds (M-3).
+  (4) B-3: `docker tag` and `docker save` get `|| die "... no bundle written"`;
+  each `app/` copy gets `|| stage_die copy`. Tester adds the SIGTERM runtime row
+  after the first write (expect non-zero, `--out` removed or emptied, no
+  record), the static trap-order pin, the save fault, an `app/` copy fault and
+  the given-`--out` variant of the I-4 name check, each with created and given
+  `--out` where the row writes.
+  (5) B-2: A2 is pinned by a fullmatch of the ruled marker; A3 by "every
+  recorded docker call before an item-2 shell refusal is `info`"; A4 by
+  `^bundle: FAIL \(stage <stage>: .+\)$` per named stage; A8 by a `--sources ""`
+  row (exit 2, no docker call). The module docstring cites O-15.
+  (6) A4 scope (N-6): the manifest stage's refusals, new and existing (the
+  non-regular-file check and the path pattern), become `stage_die manifest`.
+  The pre-U9 `--out` and record refusals keep their `die` text; the `out`
+  stage holds only the N-9 listing refusal, rule (1) and rule (2).
+  (7) Accepted for the developer in this rework: N-2 (`app/` copies taken from
+  the bundle-root copies in `$out`, so U9-8 holds by construction), N-4
+  (cleanup prints `bundle: warning: could not remove ...` and carries on; no
+  `set -e` abort inside the trap), N-5 (`[ -n "$check_text" ]`), N-9. N-1: the
+  tester widens `_strip_messages` to `(?:stage_die\s+\S+|die|echo|printf)` and
+  the no-fetch.json refusal then uses `stage_die`. N-7: the tester adds the
+  link-swap row (fake-docker hook, gates).
+  (8) Deferred, recorded open: N-8 = I-7 (FIFO or device swapped into the
+  operator's own `--sources` after the check: hang or unbounded copy, DoS only;
+  no fix in U9b), I-11 (path-only overlap; a bind mount can alias; the
+  operator's own host), I-12 (a sample bundle warns only in its notices and
+  index; an `install` warning goes with U10's install work). N-10: the Q79
+  bundle half records MANIFEST bytes and lines, the real bundle bytes with and
+  without `app/sources/`, and the index counts against expected.md (R10/R11).
+  N-11: documenter at close. Carried reviewer N-1 and N-2 (sbom_check policy
+  entries naming an un-passed image; `always` field types): deferred to U10
+  with a design row; unreachable from bundle.sh, and the committed policy is
+  guarded at test time.
+  (9) Order: tester RED (rows, pins, controls; `verify.sh fast`), developer
+  GREEN (`fast`, then `full` in a GitLab window), security re-audits the L-4
+  scope, reviewer re-reads the rework diff; then the Q79 bundle half, A34, the
+  orchestrator's `verify full`, documenter close, commit.
+  *O-16 precision at rework-1 RED (tester's two questions,
+  `u9/u9b-r1-red-verify-fast.txt`):* (a) N-7: a link swapped in after
+  sources-check is refused at `stage index` (U9a's `index` opens every copied
+  file with O_NOFOLLOW and runs before the manifest); the row accepting an A4
+  line at `index` or `manifest` stands, and the manifest's non-regular check
+  has its own row. (b) `--sources //` (or any value that is empty once every
+  trailing slash is stripped) is an argument-shape problem: exit 2 with the
+  usage line, as A8's `--sources ""`. The tester's 1-or-2 row stands.
+- *Orchestrator rulings at U9b rework 2 (2026-10-29, **O-17**, on reviewer
+  rework-1 B-1, B-2, N-2..N-6 in `u9/u9b-r1-review.md` and security I-13, I-14
+  in `u9/u9b-r1-security.md`):*
+  (1) B-1 = I-13: `created` is decided once, in the early `--out` block
+  (where emptiness is checked), and the re-test before the first write goes.
+  A given `--out` is re-checked to be a real directory (not a link) right
+  before the first write; a `--out` that appeared since the early check, as a
+  directory or a link to one, is refused as `bundle: FAIL (stage out: ...)`
+  with nothing written. Tester: two rows (a directory, a link to a directory,
+  planted at `--out` by a hook on the sources-check run; an operator file in
+  it untouched; no tag, save, record or `.ke-sbom.*`), plus the trailing-`..`
+  control and rows for the N-4 warning and the N-5 empty-output check.
+  (2) I-14: `record_made=1` only after `chmod` succeeds, and `chmod` gets
+  `|| die`; the cleanup never removes a record it did not fully write. Tester:
+  one row (a link to a non-regular file at the record path).
+  (3) N-3 (the dead `-ge 1`) and N-4 (the jq comment) go with the developer's
+  change. N-5 and N-6 are recorded as information, no action.
+  (4) B-2 and N-2, N-11: documenter at close updates `docs/quickstart.md`
+  (the fetch step, `--sources`, `mkdir -p dist` on a fresh clone), README
+  (relative paths resolve against the cwd; the parent of `--out` must exist)
+  and the stale "Updated" line. R14 names quickstart.md from now on.
+  (5) The Q79 record (`u9/full-bundle-run.txt`, `size.md`) stands across
+  rework 2: the success path is untouched by (1)-(3). If the rework-2 diff
+  reaches any line the success path runs, R10 is re-run (about 3 minutes;
+  the sources are kept).
+  (6) Order: tester RED (`fast`), developer GREEN (`fast`, then `full` in a
+  GitLab window), reviewer re-read and security re-read of the rework-2 diff
+  in parallel, A34 (R13), the orchestrator's `verify full`, documenter close,
+  commit.
+- *Orchestrator rulings at U9b rework-2 verdicts (2026-10-30, **O-18**; reviewer
+  APPROVED `u9/u9b-r2-review.md`, security PASS `u9/u9b-r2-security.md`):*
+  (1) Reviewer N-8 = security I-15 (a given `--out` is re-checked for type but
+  not emptiness before the first write; two runs given the same empty
+  directory can adopt or empty each other's files): deferred to U10 as a design
+  row ("re-check emptiness and claim with a plain `mkdir -- "$out/images"`
+  before `wrote=1`"); within O-17 (1) and O-10, no link followed, operator's
+  own directory.
+  (2) Reviewer N-7 = security I-16 (the record write and `chmod` follow a link
+  to a non-regular file when the `chmod` can succeed; as root, a local user who
+  can write the parent of `--out` gets a FIFO or device truncate-written and
+  re-moded): deferred to U10 as a design row ("write the record to a `mktemp`
+  file, `chmod` it, then link or rename it into place; refuse a parent of
+  `--out` writable by another user, or refuse uid 0"). No doc tells the
+  operator to run as root; `fs.protected_symlinks` covers world-writable
+  parents; the same actor can replace the record after the run. Older than
+  rework 2 (O-16 (3)). The documenter adds one README sentence: run
+  `bundle.sh` as an ordinary user in a directory only that user can write.
+  (3) O-17 (5) read literally: the diff touches success-path lines (:146,
+  :485, :687-688), so R10 is re-run (dispatched with A34; `u9/full-bundle-run.txt`
+  "rework 2 re-run" section). The record stands if the numbers are equal.
+  (4) U9b code is final at bundle.sh sha256 9624710b... (the reviewer's hash).
+  Before the commit: the documenter's B-2 (quickstart.md), N-2 and N-11
+  (README), the (2) sentence, CHANGELOG, the handoff archive; A34 (R13); the
+  orchestrator's `verify full` on the final tree (R15).
 
 ## N10. Committed files and their rules
 

@@ -324,13 +324,16 @@ def standalone_problems(paths: list[Path]) -> list[str]:
 
 
 def _strip_messages(text: str) -> str:
-    """bundle.sh without comments and without the text of die/echo/printf
-    messages (they may say "pull it first" or "never pulls")."""
+    """bundle.sh without comments and without the text of die/stage_die/
+    echo/printf messages (they may say "pull it first" or "never pulls").
+    platform-sbom U9b rework 1 (O-16 (7), reviewer N-1): `stage_die <stage>`
+    is a message too; the old pattern's word-bounded `die` never matched
+    it (`_` is a word character)."""
     out = []
     for line in text.splitlines():
         if line.lstrip().startswith("#"):
             continue
-        line = re.sub(r"""\b(?:die|echo|printf)\s+(["']).*$""", "", line)
+        line = re.sub(r"""\b(?:stage_die\s+\S+|die|echo|printf)\s+(["']).*$""", "", line)
         out.append(line)
     return "\n".join(out)
 
