@@ -166,7 +166,7 @@ class SamplePlanTest(_FetchCase):
             plan = self.plan(lock, "full")
             shas = {f["sha256"]: f["size"] for _, f in plan}
             self.assertEqual((len({k for k, _ in plan}), len(plan), len(shas), sum(shas.values())),
-                             (183, 876, 716, 1180936586))
+                             (184, 879, 718, 1181039856))
             apk_keys = sorted({k for k, _ in plan if k.startswith("apk:")})
             self.assertTrue(apk_keys)
             for k in apk_keys:

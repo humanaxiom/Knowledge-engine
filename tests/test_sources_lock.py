@@ -184,13 +184,16 @@ SMALL_KEYS = frozenset({"deb:bash@5.2.15-2", "deb:attr@1:2.5.1-4", "pypi:psycopg
                         "apk:readline@8.2.13-r1", "neo4j:neo4j@5.26.32", "temurin:jdk-21.0.12.1+1",
                         "maven:javax.xml.bind:jaxb-api@2.2.12", "pypi:psycopg@3.3.6"})
 
-# The 183 lock keys the six U3 fixtures need with the committed policy (N5
+# The 184 lock keys the six U3 fixtures need with the committed policy (N5
 # amendment, U7, item 2; the architect's run and the tester's agree; 182 until U7e).
 # U7e R4 re-pin (base 6dd8b6da): +deb:openssl@3.0.22-1~deb12u2 and
 # +deb:ca-certificates@20250419~deb12u2, -deb:ca-certificates@20250419~deb12u1
 # (only ke-app needed it); openssl ~deb12u1 stays for postgres; tzdata has no
 # key (public domain). Explained by docs/evidence/platform-sbom/u7e/key-diff.txt
 # l.6-8 <- base-dpkg-diff.txt (libssl3/openssl and ca-certificates moved).
+# Q83 (a) re-lock 2026-11-02 (183 -> 184): +deb:cyrus-sasl2@2.1.28+dfsg-10+deb12u1
+# (ke-app's libsasl2-2 and libsasl2-modules-db, rebuilt image); the -10 key stays
+# for postgres. relock-20261102/fixture-derivation.txt.
 FIXTURE_KEYS = frozenset({
     "apk:alpine-baselayout@3.7.1-r8", "apk:alpine-baselayout@3.7.2-r1", "apk:apk-tools@3.0.3-r1",
     "apk:apk-tools@3.0.8-r0", "apk:busybox@1.37.0-r30", "apk:busybox@1.37.0-r31", "apk:gcc@15.2.0-r2",
@@ -203,6 +206,7 @@ FIXTURE_KEYS = frozenset({
     "deb:bash@5.2.15-2", "deb:bash@5.2.37-2", "deb:bzip2@1.0.8-5", "deb:bzip2@1.0.8-6",
     "deb:ca-certificates@20250419", "deb:ca-certificates@20250419~deb12u2", "deb:cdebconf@0.270",
     "deb:cdebconf@0.280", "deb:coreutils@9.1-1", "deb:coreutils@9.7-3", "deb:cyrus-sasl2@2.1.28+dfsg-10",
+    "deb:cyrus-sasl2@2.1.28+dfsg-10+deb12u1",
     "deb:dash@0.5.12-12", "deb:dash@0.5.12-2", "deb:db5.3@5.3.28+dfsg2-1", "deb:db5.3@5.3.28+dfsg2-9",
     "deb:debian-archive-keyring@2023.3+deb12u2", "deb:debian-archive-keyring@2025.1", "deb:debianutils@5.23.2",
     "deb:debianutils@5.7-0.5~deb12u1", "deb:diffutils@1:3.10-4", "deb:diffutils@1:3.8-4", "deb:dpkg@1.21.23",
@@ -271,7 +275,8 @@ class LockNeedsTest(unittest.TestCase):
                                                    f"extra {sorted(set(needs) - FIXTURE_KEYS)[:5]}")
         self.assertEqual(Counter(k.split(":", 1)[0] for k in needs),
                          # deb 152 -> 153 in U7e: u7e/key-diff.txt l.6-8 (+2 -1 deb keys).
-                         Counter(deb=153, pgdg=3, apk=19, neo4j=1, temurin=1, maven=1, pypi=5))
+                         # deb 153 -> 154 at the Q83 (a) re-lock (+deb:cyrus-sasl2@2.1.28+dfsg-10+deb12u1).
+                         Counter(deb=154, pgdg=3, apk=19, neo4j=1, temurin=1, maven=1, pypi=5))
         for key, entry in needs.items():
             with self.subTest(key=key):
                 self.assertEqual(entry.get("kind"), key.split(":", 1)[0])

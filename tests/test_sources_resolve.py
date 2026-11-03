@@ -2018,7 +2018,7 @@ class U7cApkRouteTest(unittest.TestCase):
 
 
 class U7cCoverageTest(unittest.TestCase):
-    """Ruling 3: the 153 deb and 19 apk fixture keys all resolve (none is
+    """Ruling 3: the 154 deb and 19 apk fixture keys all resolve (none is
     skipped) and every entry passes U7a's lock_problems."""
 
     def test_the_fixture_keys(self):
@@ -2047,7 +2047,8 @@ class U7cCoverageTest(unittest.TestCase):
                 routes.update(fx.routes())
         # deb 152 -> 153 in U7e: u7e/key-diff.txt l.6-8 (+openssl~deb12u2, +ca-certificates~deb12u2,
         # -ca-certificates~deb12u1; base-dpkg-diff.txt).
-        self.assertEqual((sum(k.startswith("deb:") for k in needs), sum(k.startswith("apk:") for k in needs)), (153, 19))
+        # deb 153 -> 154 at the Q83 (a) re-lock (+deb:cyrus-sasl2@2.1.28+dfsg-10+deb12u1).
+        self.assertEqual((sum(k.startswith("deb:") for k in needs), sum(k.startswith("apk:") for k in needs)), (154, 19))
         with network(mod, routes):
             lock, _, skipped = resolve(mod, needs)
         self.assertEqual(skipped, [])
@@ -3013,7 +3014,7 @@ class U7dLockNeedsTest(unittest.TestCase):
 
 class U7dCoverageTest(unittest.TestCase):
     """The orchestrator's item 6: with the fixture docs and the ten-host
-    policy, every fixture key (183 since U7e, 182 in U7d; the count is
+    policy, every fixture key (184 since the Q83 (a) re-lock, 183 since U7e, 182 in U7d; the count is
     pinned in the method, not its name) resolves in the fake network (neo4j as the TOFU
     candidate, written by hand) and the lock passes lock_problems."""
 
@@ -3024,7 +3025,8 @@ class U7dCoverageTest(unittest.TestCase):
         docs = fixture_docs()
         needs_all, problems = check.lock_needs(policy(), docs)
         # 182 -> 183 in U7e: u7e/key-diff.txt l.6-8 (+2 -1 deb keys; base-dpkg-diff.txt).
-        self.assertEqual((problems, len(needs_all)), ([], 183))
+        # 183 -> 184 at the Q83 (a) re-lock (+deb:cyrus-sasl2@2.1.28+dfsg-10+deb12u1).
+        self.assertEqual((problems, len(needs_all)), ([], 184))
         needs: dict[str, Any] = {}
         routes: dict[str, Any] = {}
         pg = PgdgFixture(tuple(k for k in needs_all if k.startswith("pgdg:")))

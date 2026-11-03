@@ -118,8 +118,9 @@ class CommittedLockTest(unittest.TestCase):
 
     def test_every_needed_key_and_nothing_else(self):
         # 182 -> 183 in U7e: u7e/key-diff.txt l.6-8 (the lock re-run, u7e/lock-run-1.txt).
+        # 183 -> 184 at the Q83 (a) re-lock 2026-11-02 (relock-20261102/fixture-derivation.txt).
         self.assertEqual(set(self._lock().get("components") or {}), set(FIXTURE_KEYS),
-                         "the committed lock's keys are not the fixtures' 183 needed keys")
+                         "the committed lock's keys are not the fixtures' 184 needed keys")
 
     def test_canonical_lf_and_format(self):
         raw = self._bytes()

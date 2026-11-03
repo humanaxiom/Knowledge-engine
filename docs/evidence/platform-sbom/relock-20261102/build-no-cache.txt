@@ -1,0 +1,447 @@
+ Image ke-app:local Building 
+ Image ke-neo4j:local Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 982B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from app.Dockerfile
+#2 transferring dockerfile: 3.26kB done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#3 ...
+
+#4 [internal] load metadata for docker.io/library/python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753
+#4 DONE 0.5s
+
+#3 [internal] load metadata for ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#3 DONE 0.7s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 97B done
+#5 DONE 0.0s
+
+#6 [uv 1/1] FROM ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946
+#6 resolve ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946 0.0s done
+#6 CACHED
+
+#7 [builder  1/11] FROM docker.io/library/python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753
+#7 resolve docker.io/library/python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753 0.0s done
+#7 CACHED
+
+#8 [internal] load build context
+#8 transferring context: 2.37kB done
+#8 DONE 0.0s
+
+#9 [builder  2/11] COPY --from=uv /uv /usr/local/bin/uv
+#9 DONE 0.4s
+
+#10 [runtime 2/3] RUN apt-get update  && apt-get install -y --no-install-recommends libpq5=15.19-0+deb12u1  && rm -rf /var/lib/apt/lists/*
+#10 0.754 Get:1 http://deb.debian.org/debian bookworm InRelease [151 kB]
+#10 0.899 Get:2 http://deb.debian.org/debian bookworm-updates InRelease [55.4 kB]
+#10 0.907 Get:3 http://deb.debian.org/debian-security bookworm-security InRelease [34.8 kB]
+#10 0.953 Get:4 http://deb.debian.org/debian bookworm/main amd64 Packages [8790 kB]
+#10 2.501 Get:5 http://deb.debian.org/debian bookworm-updates/main amd64 Packages [6924 B]
+#10 2.502 Get:6 http://deb.debian.org/debian-security bookworm-security/main amd64 Packages [360 kB]
+#10 3.066 Fetched 9398 kB in 3s (3469 kB/s)
+#10 3.066 Reading package lists...
+#10 3.482 Reading package lists...
+#10 3.821 Building dependency tree...
+#10 3.908 Reading state information...
+#10 3.984 The following additional packages will be installed:
+#10 3.984   libldap-2.5-0 libsasl2-2 libsasl2-modules-db
+#10 3.985 Recommended packages:
+#10 3.985   libldap-common libsasl2-modules
+#10 4.007 The following NEW packages will be installed:
+#10 4.007   libldap-2.5-0 libpq5 libsasl2-2 libsasl2-modules-db
+#10 4.028 0 upgraded, 4 newly installed, 0 to remove and 1 not upgraded.
+#10 4.028 Need to get 467 kB of archives.
+#10 4.028 After this operation, 1709 kB of additional disk space will be used.
+#10 4.028 Get:1 http://deb.debian.org/debian-security bookworm-security/main amd64 libsasl2-modules-db amd64 2.1.28+dfsg-10+deb12u1 [20.5 kB]
+#10 4.035 Get:2 http://deb.debian.org/debian-security bookworm-security/main amd64 libsasl2-2 amd64 2.1.28+dfsg-10+deb12u1 [59.9 kB]
+#10 4.059 Get:3 http://deb.debian.org/debian bookworm/main amd64 libldap-2.5-0 amd64 2.5.13+dfsg-5 [183 kB]
+#10 4.076 Get:4 http://deb.debian.org/debian-security bookworm-security/main amd64 libpq5 amd64 15.19-0+deb12u1 [203 kB]
+#10 4.204 debconf: delaying package configuration, since apt-utils is not installed
+#10 4.225 Fetched 467 kB in 0s (5699 kB/s)
+#10 4.249 Selecting previously unselected package libsasl2-modules-db:amd64.
+#10 4.249 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 6701 files and directories currently installed.)
+#10 4.264 Preparing to unpack .../libsasl2-modules-db_2.1.28+dfsg-10+deb12u1_amd64.deb ...
+#10 4.270 Unpacking libsasl2-modules-db:amd64 (2.1.28+dfsg-10+deb12u1) ...
+#10 4.305 Selecting previously unselected package libsasl2-2:amd64.
+#10 4.306 Preparing to unpack .../libsasl2-2_2.1.28+dfsg-10+deb12u1_amd64.deb ...
+#10 4.313 Unpacking libsasl2-2:amd64 (2.1.28+dfsg-10+deb12u1) ...
+#10 4.352 Selecting previously unselected package libldap-2.5-0:amd64.
+#10 4.352 Preparing to unpack .../libldap-2.5-0_2.5.13+dfsg-5_amd64.deb ...
+#10 4.356 Unpacking libldap-2.5-0:amd64 (2.5.13+dfsg-5) ...
+#10 4.402 Selecting previously unselected package libpq5:amd64.
+#10 4.403 Preparing to unpack .../libpq5_15.19-0+deb12u1_amd64.deb ...
+#10 4.408 Unpacking libpq5:amd64 (15.19-0+deb12u1) ...
+#10 4.448 Setting up libsasl2-modules-db:amd64 (2.1.28+dfsg-10+deb12u1) ...
+#10 4.464 Setting up libsasl2-2:amd64 (2.1.28+dfsg-10+deb12u1) ...
+#10 4.480 Setting up libldap-2.5-0:amd64 (2.5.13+dfsg-5) ...
+#10 4.500 Setting up libpq5:amd64 (15.19-0+deb12u1) ...
+#10 4.513 Processing triggers for libc-bin (2.36-9+deb12u14) ...
+#10 DONE 4.6s
+
+#11 [runtime 3/3] RUN python -m pip uninstall -y pip  && rm /usr/local/lib/python3.12/ensurepip/_bundled/pip-*.whl
+#11 1.592 Found existing installation: pip 25.0.1
+#11 1.619 Uninstalling pip-25.0.1:
+#11 1.775   Successfully uninstalled pip-25.0.1
+#11 1.788 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#11 DONE 1.9s
+
+#12 [builder  3/11] RUN apt-get update  && apt-get install -y --no-install-recommends gcc libc6-dev libpq-dev=15.19-0+deb12u1  && rm -rf /var/lib/apt/lists/*
+#12 0.623 Get:1 http://deb.debian.org/debian bookworm InRelease [151 kB]
+#12 0.750 Get:2 http://deb.debian.org/debian bookworm-updates InRelease [55.4 kB]
+#12 0.780 Get:3 http://deb.debian.org/debian-security bookworm-security InRelease [34.8 kB]
+#12 0.812 Get:4 http://deb.debian.org/debian bookworm/main amd64 Packages [8790 kB]
+#12 2.056 Get:5 http://deb.debian.org/debian bookworm-updates/main amd64 Packages [6924 B]
+#12 2.057 Get:6 http://deb.debian.org/debian-security bookworm-security/main amd64 Packages [360 kB]
+#12 2.642 Fetched 9398 kB in 2s (3894 kB/s)
+#12 2.642 Reading package lists...
+#12 3.071 Reading package lists...
+#12 3.427 Building dependency tree...
+#12 3.508 Reading state information...
+#12 3.580 The following additional packages will be installed:
+#12 3.580   binutils binutils-common binutils-x86-64-linux-gnu cpp cpp-12 gcc-12
+#12 3.580   libasan8 libatomic1 libbinutils libc-dev-bin libcc1-0 libcrypt-dev
+#12 3.580   libctf-nobfd0 libctf0 libgcc-12-dev libgomp1 libgprofng0 libisl23 libitm1
+#12 3.580   libjansson4 libldap-2.5-0 liblsan0 libmpc3 libmpfr6 libnsl-dev libpq5
+#12 3.580   libquadmath0 libsasl2-2 libsasl2-modules-db libssl-dev libtirpc-dev libtsan2
+#12 3.581   libubsan1 linux-libc-dev rpcsvc-proto
+#12 3.581 Suggested packages:
+#12 3.581   binutils-doc cpp-doc gcc-12-locales cpp-12-doc gcc-multilib make
+#12 3.581   manpages-dev autoconf automake libtool flex bison gdb gcc-doc
+#12 3.581   gcc-12-multilib gcc-12-doc glibc-doc postgresql-doc-15 libssl-doc
+#12 3.581 Recommended packages:
+#12 3.581   manpages manpages-dev libc-devtools libldap-common libsasl2-modules
+#12 3.656 The following NEW packages will be installed:
+#12 3.656   binutils binutils-common binutils-x86-64-linux-gnu cpp cpp-12 gcc gcc-12
+#12 3.656   libasan8 libatomic1 libbinutils libc-dev-bin libc6-dev libcc1-0 libcrypt-dev
+#12 3.656   libctf-nobfd0 libctf0 libgcc-12-dev libgomp1 libgprofng0 libisl23 libitm1
+#12 3.656   libjansson4 libldap-2.5-0 liblsan0 libmpc3 libmpfr6 libnsl-dev libpq-dev
+#12 3.656   libpq5 libquadmath0 libsasl2-2 libsasl2-modules-db libssl-dev libtirpc-dev
+#12 3.657   libtsan2 libubsan1 linux-libc-dev rpcsvc-proto
+#12 3.683 0 upgraded, 38 newly installed, 0 to remove and 1 not upgraded.
+#12 3.683 Need to get 53.8 MB of archives.
+#12 3.683 After this operation, 216 MB of additional disk space will be used.
+#12 3.683 Get:1 http://deb.debian.org/debian bookworm/main amd64 binutils-common amd64 2.40-2 [2487 kB]
+#12 3.899 Get:2 http://deb.debian.org/debian bookworm/main amd64 libbinutils amd64 2.40-2 [572 kB]
+#12 3.949 Get:3 http://deb.debian.org/debian bookworm/main amd64 libctf-nobfd0 amd64 2.40-2 [153 kB]
+#12 3.962 Get:4 http://deb.debian.org/debian bookworm/main amd64 libctf0 amd64 2.40-2 [89.8 kB]
+#12 3.970 Get:5 http://deb.debian.org/debian bookworm/main amd64 libgprofng0 amd64 2.40-2 [812 kB]
+#12 4.085 Get:6 http://deb.debian.org/debian bookworm/main amd64 libjansson4 amd64 2.14-2 [40.8 kB]
+#12 4.089 Get:7 http://deb.debian.org/debian bookworm/main amd64 binutils-x86-64-linux-gnu amd64 2.40-2 [2246 kB]
+#12 4.278 Get:8 http://deb.debian.org/debian bookworm/main amd64 binutils amd64 2.40-2 [65.0 kB]
+#12 4.283 Get:9 http://deb.debian.org/debian bookworm/main amd64 libisl23 amd64 0.25-1.1 [683 kB]
+#12 4.347 Get:10 http://deb.debian.org/debian bookworm/main amd64 libmpfr6 amd64 4.2.0-1 [701 kB]
+#12 4.401 Get:11 http://deb.debian.org/debian bookworm/main amd64 libmpc3 amd64 1.3.1-1 [51.5 kB]
+#12 4.405 Get:12 http://deb.debian.org/debian bookworm/main amd64 cpp-12 amd64 12.2.0-14+deb12u1 [9768 kB]
+#12 5.254 Get:13 http://deb.debian.org/debian bookworm/main amd64 cpp amd64 4:12.2.0-3 [6836 B]
+#12 5.254 Get:14 http://deb.debian.org/debian bookworm/main amd64 libcc1-0 amd64 12.2.0-14+deb12u1 [41.7 kB]
+#12 5.256 Get:15 http://deb.debian.org/debian bookworm/main amd64 libgomp1 amd64 12.2.0-14+deb12u1 [116 kB]
+#12 5.268 Get:16 http://deb.debian.org/debian bookworm/main amd64 libitm1 amd64 12.2.0-14+deb12u1 [26.1 kB]
+#12 5.269 Get:17 http://deb.debian.org/debian bookworm/main amd64 libatomic1 amd64 12.2.0-14+deb12u1 [9376 B]
+#12 5.269 Get:18 http://deb.debian.org/debian bookworm/main amd64 libasan8 amd64 12.2.0-14+deb12u1 [2193 kB]
+#12 5.467 Get:19 http://deb.debian.org/debian bookworm/main amd64 liblsan0 amd64 12.2.0-14+deb12u1 [969 kB]
+#12 5.540 Get:20 http://deb.debian.org/debian bookworm/main amd64 libtsan2 amd64 12.2.0-14+deb12u1 [2197 kB]
+#12 5.714 Get:21 http://deb.debian.org/debian bookworm/main amd64 libubsan1 amd64 12.2.0-14+deb12u1 [883 kB]
+#12 5.804 Get:22 http://deb.debian.org/debian bookworm/main amd64 libquadmath0 amd64 12.2.0-14+deb12u1 [145 kB]
+#12 5.815 Get:23 http://deb.debian.org/debian bookworm/main amd64 libgcc-12-dev amd64 12.2.0-14+deb12u1 [2437 kB]
+#12 6.012 Get:24 http://deb.debian.org/debian bookworm/main amd64 gcc-12 amd64 12.2.0-14+deb12u1 [19.3 MB]
+#12 ...
+
+#13 [stage-3 1/5] COPY --from=runtime / /
+#13 DONE 0.4s
+
+#12 [builder  3/11] RUN apt-get update  && apt-get install -y --no-install-recommends gcc libc6-dev libpq-dev=15.19-0+deb12u1  && rm -rf /var/lib/apt/lists/*
+#12 7.637 Get:25 http://deb.debian.org/debian bookworm/main amd64 gcc amd64 4:12.2.0-3 [5216 B]
+#12 7.637 Get:26 http://deb.debian.org/debian bookworm/main amd64 libc-dev-bin amd64 2.36-9+deb12u14 [48.1 kB]
+#12 7.639 Get:27 http://deb.debian.org/debian-security bookworm-security/main amd64 linux-libc-dev amd64 6.1.190-1 [2409 kB]
+#12 7.830 Get:28 http://deb.debian.org/debian bookworm/main amd64 libcrypt-dev amd64 1:4.4.33-2 [118 kB]
+#12 7.840 Get:29 http://deb.debian.org/debian bookworm/main amd64 libtirpc-dev amd64 1.3.3+ds-1 [191 kB]
+#12 7.858 Get:30 http://deb.debian.org/debian bookworm/main amd64 libnsl-dev amd64 1.3.0-2 [66.4 kB]
+#12 7.864 Get:31 http://deb.debian.org/debian bookworm/main amd64 rpcsvc-proto amd64 1.4.3-1 [63.3 kB]
+#12 7.869 Get:32 http://deb.debian.org/debian bookworm/main amd64 libc6-dev amd64 2.36-9+deb12u14 [1904 kB]
+#12 8.032 Get:33 http://deb.debian.org/debian-security bookworm-security/main amd64 libsasl2-modules-db amd64 2.1.28+dfsg-10+deb12u1 [20.5 kB]
+#12 8.034 Get:34 http://deb.debian.org/debian-security bookworm-security/main amd64 libsasl2-2 amd64 2.1.28+dfsg-10+deb12u1 [59.9 kB]
+#12 8.039 Get:35 http://deb.debian.org/debian bookworm/main amd64 libldap-2.5-0 amd64 2.5.13+dfsg-5 [183 kB]
+#12 8.082 Get:36 http://deb.debian.org/debian-security bookworm-security/main amd64 libpq5 amd64 15.19-0+deb12u1 [203 kB]
+#12 8.103 Get:37 http://deb.debian.org/debian-security bookworm-security/main amd64 libssl-dev amd64 3.0.22-1~deb12u2 [2450 kB]
+#12 8.343 Get:38 http://deb.debian.org/debian-security bookworm-security/main amd64 libpq-dev amd64 15.19-0+deb12u1 [156 kB]
+#12 8.428 debconf: delaying package configuration, since apt-utils is not installed
+#12 8.446 Fetched 53.8 MB in 5s (11.5 MB/s)
+#12 8.461 Selecting previously unselected package binutils-common:amd64.
+#12 8.461 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 6701 files and directories currently installed.)
+#12 8.464 Preparing to unpack .../00-binutils-common_2.40-2_amd64.deb ...
+#12 8.467 Unpacking binutils-common:amd64 (2.40-2) ...
+#12 8.598 Selecting previously unselected package libbinutils:amd64.
+#12 8.599 Preparing to unpack .../01-libbinutils_2.40-2_amd64.deb ...
+#12 8.605 Unpacking libbinutils:amd64 (2.40-2) ...
+#12 8.656 Selecting previously unselected package libctf-nobfd0:amd64.
+#12 8.656 Preparing to unpack .../02-libctf-nobfd0_2.40-2_amd64.deb ...
+#12 8.661 Unpacking libctf-nobfd0:amd64 (2.40-2) ...
+#12 8.693 Selecting previously unselected package libctf0:amd64.
+#12 8.694 Preparing to unpack .../03-libctf0_2.40-2_amd64.deb ...
+#12 8.697 Unpacking libctf0:amd64 (2.40-2) ...
+#12 8.726 Selecting previously unselected package libgprofng0:amd64.
+#12 8.727 Preparing to unpack .../04-libgprofng0_2.40-2_amd64.deb ...
+#12 8.730 Unpacking libgprofng0:amd64 (2.40-2) ...
+#12 8.788 Selecting previously unselected package libjansson4:amd64.
+#12 8.789 Preparing to unpack .../05-libjansson4_2.14-2_amd64.deb ...
+#12 8.792 Unpacking libjansson4:amd64 (2.14-2) ...
+#12 8.822 Selecting previously unselected package binutils-x86-64-linux-gnu.
+#12 8.823 Preparing to unpack .../06-binutils-x86-64-linux-gnu_2.40-2_amd64.deb ...
+#12 8.826 Unpacking binutils-x86-64-linux-gnu (2.40-2) ...
+#12 8.944 Selecting previously unselected package binutils.
+#12 8.945 Preparing to unpack .../07-binutils_2.40-2_amd64.deb ...
+#12 8.948 Unpacking binutils (2.40-2) ...
+#12 8.977 Selecting previously unselected package libisl23:amd64.
+#12 8.978 Preparing to unpack .../08-libisl23_0.25-1.1_amd64.deb ...
+#12 8.982 Unpacking libisl23:amd64 (0.25-1.1) ...
+#12 9.035 Selecting previously unselected package libmpfr6:amd64.
+#12 9.035 Preparing to unpack .../09-libmpfr6_4.2.0-1_amd64.deb ...
+#12 9.039 Unpacking libmpfr6:amd64 (4.2.0-1) ...
+#12 9.081 Selecting previously unselected package libmpc3:amd64.
+#12 9.082 Preparing to unpack .../10-libmpc3_1.3.1-1_amd64.deb ...
+#12 9.086 Unpacking libmpc3:amd64 (1.3.1-1) ...
+#12 9.111 Selecting previously unselected package cpp-12.
+#12 9.111 Preparing to unpack .../11-cpp-12_12.2.0-14+deb12u1_amd64.deb ...
+#12 9.115 Unpacking cpp-12 (12.2.0-14+deb12u1) ...
+#12 9.484 Selecting previously unselected package cpp.
+#12 9.485 Preparing to unpack .../12-cpp_4%3a12.2.0-3_amd64.deb ...
+#12 9.489 Unpacking cpp (4:12.2.0-3) ...
+#12 9.517 Selecting previously unselected package libcc1-0:amd64.
+#12 9.517 Preparing to unpack .../13-libcc1-0_12.2.0-14+deb12u1_amd64.deb ...
+#12 9.521 Unpacking libcc1-0:amd64 (12.2.0-14+deb12u1) ...
+#12 9.547 Selecting previously unselected package libgomp1:amd64.
+#12 9.548 Preparing to unpack .../14-libgomp1_12.2.0-14+deb12u1_amd64.deb ...
+#12 9.551 Unpacking libgomp1:amd64 (12.2.0-14+deb12u1) ...
+#12 9.580 Selecting previously unselected package libitm1:amd64.
+#12 9.581 Preparing to unpack .../15-libitm1_12.2.0-14+deb12u1_amd64.deb ...
+#12 9.584 Unpacking libitm1:amd64 (12.2.0-14+deb12u1) ...
+#12 9.611 Selecting previously unselected package libatomic1:amd64.
+#12 9.611 Preparing to unpack .../16-libatomic1_12.2.0-14+deb12u1_amd64.deb ...
+#12 9.615 Unpacking libatomic1:amd64 (12.2.0-14+deb12u1) ...
+#12 9.639 Selecting previously unselected package libasan8:amd64.
+#12 9.640 Preparing to unpack .../17-libasan8_12.2.0-14+deb12u1_amd64.deb ...
+#12 9.645 Unpacking libasan8:amd64 (12.2.0-14+deb12u1) ...
+#12 9.767 Selecting previously unselected package liblsan0:amd64.
+#12 9.767 Preparing to unpack .../18-liblsan0_12.2.0-14+deb12u1_amd64.deb ...
+#12 9.771 Unpacking liblsan0:amd64 (12.2.0-14+deb12u1) ...
+#12 9.838 Selecting previously unselected package libtsan2:amd64.
+#12 9.839 Preparing to unpack .../19-libtsan2_12.2.0-14+deb12u1_amd64.deb ...
+#12 9.842 Unpacking libtsan2:amd64 (12.2.0-14+deb12u1) ...
+#12 9.965 Selecting previously unselected package libubsan1:amd64.
+#12 9.965 Preparing to unpack .../20-libubsan1_12.2.0-14+deb12u1_amd64.deb ...
+#12 9.969 Unpacking libubsan1:amd64 (12.2.0-14+deb12u1) ...
+#12 10.04 Selecting previously unselected package libquadmath0:amd64.
+#12 10.04 Preparing to unpack .../21-libquadmath0_12.2.0-14+deb12u1_amd64.deb ...
+#12 10.04 Unpacking libquadmath0:amd64 (12.2.0-14+deb12u1) ...
+#12 10.07 Selecting previously unselected package libgcc-12-dev:amd64.
+#12 10.07 Preparing to unpack .../22-libgcc-12-dev_12.2.0-14+deb12u1_amd64.deb ...
+#12 10.08 Unpacking libgcc-12-dev:amd64 (12.2.0-14+deb12u1) ...
+#12 10.19 Selecting previously unselected package gcc-12.
+#12 10.19 Preparing to unpack .../23-gcc-12_12.2.0-14+deb12u1_amd64.deb ...
+#12 10.20 Unpacking gcc-12 (12.2.0-14+deb12u1) ...
+#12 10.60 Selecting previously unselected package gcc.
+#12 10.60 Preparing to unpack .../24-gcc_4%3a12.2.0-3_amd64.deb ...
+#12 10.61 Unpacking gcc (4:12.2.0-3) ...
+#12 10.63 Selecting previously unselected package libc-dev-bin.
+#12 10.63 Preparing to unpack .../25-libc-dev-bin_2.36-9+deb12u14_amd64.deb ...
+#12 10.63 Unpacking libc-dev-bin (2.36-9+deb12u14) ...
+#12 10.65 Selecting previously unselected package linux-libc-dev:amd64.
+#12 10.65 Preparing to unpack .../26-linux-libc-dev_6.1.190-1_amd64.deb ...
+#12 10.66 Unpacking linux-libc-dev:amd64 (6.1.190-1) ...
+#12 10.74 Selecting previously unselected package libcrypt-dev:amd64.
+#12 10.74 Preparing to unpack .../27-libcrypt-dev_1%3a4.4.33-2_amd64.deb ...
+#12 10.75 Unpacking libcrypt-dev:amd64 (1:4.4.33-2) ...
+#12 10.77 Selecting previously unselected package libtirpc-dev:amd64.
+#12 10.77 Preparing to unpack .../28-libtirpc-dev_1.3.3+ds-1_amd64.deb ...
+#12 10.78 Unpacking libtirpc-dev:amd64 (1.3.3+ds-1) ...
+#12 10.81 Selecting previously unselected package libnsl-dev:amd64.
+#12 10.81 Preparing to unpack .../29-libnsl-dev_1.3.0-2_amd64.deb ...
+#12 10.81 Unpacking libnsl-dev:amd64 (1.3.0-2) ...
+#12 10.84 Selecting previously unselected package rpcsvc-proto.
+#12 10.84 Preparing to unpack .../30-rpcsvc-proto_1.4.3-1_amd64.deb ...
+#12 10.84 Unpacking rpcsvc-proto (1.4.3-1) ...
+#12 10.87 Selecting previously unselected package libc6-dev:amd64.
+#12 10.87 Preparing to unpack .../31-libc6-dev_2.36-9+deb12u14_amd64.deb ...
+#12 10.87 Unpacking libc6-dev:amd64 (2.36-9+deb12u14) ...
+#12 10.97 Selecting previously unselected package libsasl2-modules-db:amd64.
+#12 10.97 Preparing to unpack .../32-libsasl2-modules-db_2.1.28+dfsg-10+deb12u1_amd64.deb ...
+#12 10.98 Unpacking libsasl2-modules-db:amd64 (2.1.28+dfsg-10+deb12u1) ...
+#12 11.00 Selecting previously unselected package libsasl2-2:amd64.
+#12 11.00 Preparing to unpack .../33-libsasl2-2_2.1.28+dfsg-10+deb12u1_amd64.deb ...
+#12 11.01 Unpacking libsasl2-2:amd64 (2.1.28+dfsg-10+deb12u1) ...
+#12 11.03 Selecting previously unselected package libldap-2.5-0:amd64.
+#12 11.03 Preparing to unpack .../34-libldap-2.5-0_2.5.13+dfsg-5_amd64.deb ...
+#12 11.04 Unpacking libldap-2.5-0:amd64 (2.5.13+dfsg-5) ...
+#12 11.07 Selecting previously unselected package libpq5:amd64.
+#12 11.07 Preparing to unpack .../35-libpq5_15.19-0+deb12u1_amd64.deb ...
+#12 11.07 Unpacking libpq5:amd64 (15.19-0+deb12u1) ...
+#12 11.10 Selecting previously unselected package libssl-dev:amd64.
+#12 11.10 Preparing to unpack .../36-libssl-dev_3.0.22-1~deb12u2_amd64.deb ...
+#12 11.11 Unpacking libssl-dev:amd64 (3.0.22-1~deb12u2) ...
+#12 11.22 Selecting previously unselected package libpq-dev.
+#12 11.22 Preparing to unpack .../37-libpq-dev_15.19-0+deb12u1_amd64.deb ...
+#12 11.22 Unpacking libpq-dev (15.19-0+deb12u1) ...
+#12 11.26 Setting up binutils-common:amd64 (2.40-2) ...
+#12 11.27 Setting up linux-libc-dev:amd64 (6.1.190-1) ...
+#12 11.28 Setting up libctf-nobfd0:amd64 (2.40-2) ...
+#12 11.29 Setting up libgomp1:amd64 (12.2.0-14+deb12u1) ...
+#12 11.30 Setting up libjansson4:amd64 (2.14-2) ...
+#12 11.30 Setting up libsasl2-modules-db:amd64 (2.1.28+dfsg-10+deb12u1) ...
+#12 11.31 Setting up libtirpc-dev:amd64 (1.3.3+ds-1) ...
+#12 11.32 Setting up rpcsvc-proto (1.4.3-1) ...
+#12 11.33 Setting up libmpfr6:amd64 (4.2.0-1) ...
+#12 11.34 Setting up libquadmath0:amd64 (12.2.0-14+deb12u1) ...
+#12 11.35 Setting up libssl-dev:amd64 (3.0.22-1~deb12u2) ...
+#12 11.36 Setting up libmpc3:amd64 (1.3.1-1) ...
+#12 11.37 Setting up libatomic1:amd64 (12.2.0-14+deb12u1) ...
+#12 11.37 Setting up libsasl2-2:amd64 (2.1.28+dfsg-10+deb12u1) ...
+#12 11.38 Setting up libubsan1:amd64 (12.2.0-14+deb12u1) ...
+#12 11.39 Setting up libnsl-dev:amd64 (1.3.0-2) ...
+#12 11.40 Setting up libcrypt-dev:amd64 (1:4.4.33-2) ...
+#12 11.41 Setting up libasan8:amd64 (12.2.0-14+deb12u1) ...
+#12 11.42 Setting up libtsan2:amd64 (12.2.0-14+deb12u1) ...
+#12 11.43 Setting up libbinutils:amd64 (2.40-2) ...
+#12 11.44 Setting up libisl23:amd64 (0.25-1.1) ...
+#12 11.45 Setting up libc-dev-bin (2.36-9+deb12u14) ...
+#12 11.46 Setting up libcc1-0:amd64 (12.2.0-14+deb12u1) ...
+#12 11.47 Setting up liblsan0:amd64 (12.2.0-14+deb12u1) ...
+#12 11.48 Setting up libitm1:amd64 (12.2.0-14+deb12u1) ...
+#12 11.49 Setting up libctf0:amd64 (2.40-2) ...
+#12 11.49 Setting up cpp-12 (12.2.0-14+deb12u1) ...
+#12 11.50 Setting up libldap-2.5-0:amd64 (2.5.13+dfsg-5) ...
+#12 11.51 Setting up libgprofng0:amd64 (2.40-2) ...
+#12 11.52 Setting up libgcc-12-dev:amd64 (12.2.0-14+deb12u1) ...
+#12 11.53 Setting up cpp (4:12.2.0-3) ...
+#12 11.56 Setting up libc6-dev:amd64 (2.36-9+deb12u14) ...
+#12 11.57 Setting up binutils-x86-64-linux-gnu (2.40-2) ...
+#12 11.58 Setting up libpq5:amd64 (15.19-0+deb12u1) ...
+#12 11.59 Setting up libpq-dev (15.19-0+deb12u1) ...
+#12 11.60 Setting up binutils (2.40-2) ...
+#12 11.61 Setting up gcc-12 (12.2.0-14+deb12u1) ...
+#12 11.62 Setting up gcc (4:12.2.0-3) ...
+#12 11.64 Processing triggers for libc-bin (2.36-9+deb12u14) ...
+#12 DONE 11.8s
+
+#14 [builder  4/11] WORKDIR /app
+#14 DONE 0.0s
+
+#15 [builder  5/11] COPY pyproject.toml uv.lock ./
+#15 DONE 0.0s
+
+#16 [builder  6/11] RUN uv sync --locked --no-dev --group pq-build --no-install-project
+#16 0.348 Using CPython 3.12.16 interpreter at: /usr/local/bin/python3
+#16 0.348 Creating virtual environment at: /opt/venv
+#16 0.352 Resolved 54 packages in 0.82ms
+#16 0.502 Downloading pydantic-core (2.1MiB)
+#16 1.334  Downloaded pydantic-core
+#16 1.334 Prepared 44 packages in 981ms
+#16 1.493 Installed 44 packages in 158ms
+#16 1.493  + annotated-doc==0.0.5
+#16 1.493  + annotated-types==0.8.0
+#16 1.493  + anyio==4.15.1
+#16 1.493  + certifi==2026.10.19
+#16 1.493  + charset-normalizer==3.5.2
+#16 1.493  + click==8.5.0
+#16 1.493  + croniter==6.2.4
+#16 1.493  + fastapi==0.146.0
+#16 1.493  + googleapis-common-protos==1.75.5
+#16 1.493  + h11==0.16.0
+#16 1.493  + httpcore==1.0.9
+#16 1.493  + httpx==0.28.1
+#16 1.493  + idna==3.20
+#16 1.493  + neo4j==6.4.1
+#16 1.493  + openinference-semantic-conventions==0.1.41
+#16 1.493  + opentelemetry-api==1.45.1
+#16 1.493  + opentelemetry-exporter-http-transport==0.66b1
+#16 1.493  + opentelemetry-exporter-otlp-common==0.66b1
+#16 1.493  + opentelemetry-exporter-otlp-proto-common==1.45.1
+#16 1.493  + opentelemetry-exporter-otlp-proto-http==1.45.1
+#16 1.493  + opentelemetry-proto==1.45.1
+#16 1.493  + opentelemetry-sdk==1.45.1
+#16 1.493  + opentelemetry-semantic-conventions==0.66b1
+#16 1.493  + packaging==26.3
+#16 1.493  + protobuf==7.36.2
+#16 1.493  + psycopg==3.3.6
+#16 1.493  + pydantic==2.14.1
+#16 1.493  + pydantic-core==2.50.1
+#16 1.493  + pydantic-settings==2.16.0
+#16 1.493  + python-dateutil==2.9.0.post0
+#16 1.493  + python-dotenv==1.2.4
+#16 1.493  + pytz==2026.5
+#16 1.493  + pyyaml==6.0.3
+#16 1.493  + redis==8.1.0
+#16 1.493  + requests==2.34.2
+#16 1.493  + rq==2.12.0
+#16 1.493  + setuptools==83.0.0
+#16 1.493  + six==1.17.0
+#16 1.493  + starlette==1.9.0
+#16 1.493  + typing-extensions==4.16.0
+#16 1.493  + typing-inspection==0.4.4
+#16 1.493  + urllib3==2.8.0
+#16 1.493  + uvicorn==0.54.0
+#16 1.493  + wheel==0.48.0
+#16 DONE 1.6s
+
+#17 [builder  7/11] RUN uv sync --locked --no-dev --group pq-build --group pq-c     --no-binary-package psycopg-c --no-install-project
+#17 0.401 Resolved 54 packages in 1ms
+#17 0.504    Building psycopg-c==3.3.6
+#17 19.86       Built psycopg-c==3.3.6
+#17 19.87 Prepared 1 package in 19.46s
+#17 19.88 Installed 1 package in 9ms
+#17 19.88  + psycopg-c==3.3.6
+#17 DONE 19.9s
+
+#18 [builder  8/11] COPY harness_telemetry ./harness_telemetry
+#18 DONE 0.1s
+
+#19 [builder  9/11] COPY engine ./engine
+#19 DONE 0.0s
+
+#20 [builder 10/11] COPY config ./config
+#20 DONE 0.0s
+
+#21 [builder 11/11] RUN uv sync --locked --no-dev --group pq-c --no-binary-package psycopg-c     --no-editable     && rm -f /opt/venv/.lock
+#21 0.237 Resolved 54 packages in 0.88ms
+#21 0.240    Building knowledge-engine @ file:///app
+#21 0.542       Built knowledge-engine @ file:///app
+#21 0.544 Prepared 1 package in 305ms
+#21 0.578 Uninstalled 3 packages in 33ms
+#21 0.581 Installed 1 package in 3ms
+#21 0.581  + knowledge-engine==0.1.0 (from file:///app)
+#21 0.581  - packaging==26.3
+#21 0.581  - setuptools==83.0.0
+#21 0.581  - wheel==0.48.0
+#21 DONE 0.6s
+
+#22 [stage-3 2/5] COPY --from=builder /opt/venv /opt/venv
+#22 DONE 0.3s
+
+#23 [stage-3 3/5] COPY --from=builder /app /app
+#23 DONE 0.1s
+
+#24 [stage-3 4/5] WORKDIR /app
+#24 DONE 0.0s
+
+#25 [stage-3 5/5] RUN useradd --no-create-home --uid 10001 ke
+#25 DONE 0.3s
+
+#26 exporting to image
+#26 exporting layers
+#26 exporting layers 2.5s done
+#26 exporting manifest sha256:2cebe5036bce439efccaf7c647f09cc47eb013946845549d0134cc419ddfd316 0.0s done
+#26 exporting config sha256:f5099ad85793a3ba03e39630274b448c319b95a5d495f80fd99b3d61173d94d8 0.0s done
+#26 exporting attestation manifest sha256:5497d12319fe7208e8f92d79005efcc10e7c87547f3b18ff0ef5ca900f401fa3 0.0s done
+#26 exporting manifest list sha256:f887d8ae70c54b055aafe4ff5afaacd91b0c660ca159d83ba56442ae4acb95f5 0.0s done
+#26 naming to docker.io/library/ke-app:local done
+#26 unpacking to docker.io/library/ke-app:local
+#26 unpacking to docker.io/library/ke-app:local 0.9s done
+#26 DONE 3.5s
+
+#27 resolving provenance for metadata file
+#27 DONE 0.0s
+ Image ke-app:local Built 

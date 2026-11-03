@@ -1,0 +1,4 @@
+libldap-2.5-0:amd64	2.5.13+dfsg-5
+libpq5:amd64	15.19-0+deb12u1
+libsasl2-2:amd64	2.1.28+dfsg-10+deb12u1
+libsasl2-modules-db:amd64	2.1.28+dfsg-10+deb12u1

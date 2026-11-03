@@ -5185,6 +5185,48 @@
    "kind": "deb",
    "origin": "generated"
   },
+  "deb:cyrus-sasl2@2.1.28+dfsg-10+deb12u1": {
+   "arches": [
+    "amd64"
+   ],
+   "files": [
+    {
+     "name": "cyrus-sasl2_2.1.28+dfsg-10+deb12u1.dsc",
+     "sha256": "088990ef19c88abfbf66321eba0d0c3566ee2a5ce135e165eff5b6c2716a2ff0",
+     "size": 3670,
+     "upstream": {
+      "alg": "sha1",
+      "from": "snapshot.debian.org mr/package fileinfo",
+      "value": "4602f48152c33d44ae1c10e21dddc9779fa4a56d"
+     },
+     "url": "https://snapshot.debian.org/file/4602f48152c33d44ae1c10e21dddc9779fa4a56d"
+    },
+    {
+     "name": "cyrus-sasl2_2.1.28+dfsg.orig.tar.xz",
+     "sha256": "a15886d7da5958bd27f35b7c871dd872f6dc5b9917c9b6b15e3de014c7dab3d9",
+     "size": 797472,
+     "upstream": {
+      "alg": "sha256",
+      "from": "cyrus-sasl2_2.1.28+dfsg-10+deb12u1.dsc Checksums-Sha256",
+      "value": "a15886d7da5958bd27f35b7c871dd872f6dc5b9917c9b6b15e3de014c7dab3d9"
+     },
+     "url": "https://snapshot.debian.org/file/8b00d7de5bcbcab525463f12e23c4b813ebed244"
+    },
+    {
+     "name": "cyrus-sasl2_2.1.28+dfsg-10+deb12u1.debian.tar.xz",
+     "sha256": "390fa9435dc9e7de7c4fe18423cf04b5c2e54050ef0fd344972dab50980fb8b4",
+     "size": 99600,
+     "upstream": {
+      "alg": "sha256",
+      "from": "cyrus-sasl2_2.1.28+dfsg-10+deb12u1.dsc Checksums-Sha256",
+      "value": "390fa9435dc9e7de7c4fe18423cf04b5c2e54050ef0fd344972dab50980fb8b4"
+     },
+     "url": "https://snapshot.debian.org/file/a8d9eb37d38c36cc63ad2d5d4063a1e18dde1952"
+    }
+   ],
+   "kind": "deb",
+   "origin": "generated"
+  },
   "deb:dash@0.5.12-12": {
    "arches": [
     "amd64"
