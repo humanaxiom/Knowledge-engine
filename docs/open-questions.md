@@ -308,9 +308,10 @@ U7c Windows proof; decide before U7d's real lock run). *(Amended 2026-10-25, ana
 **Q75 and Q76 were resolved by the orchestrator on 2026-10-28; Q77 is deferred (not blocking U8); Q73 and Q74 stay open for the human.** *(Amended 2026-10-28, analyst, U8 orchestrator rulings.)*
 **Q73 and Q74 were resolved by the human on 2026-10-28** (Q73 option 2, verbatim "Ok"; Q74 `timeout-minutes` 69, verbatim "Make it 69 seconds", read as minutes). None of Q61-Q76 is open; Q77 is deferred. *(Amended 2026-10-28, analyst, U8; human rulings.)*
 **Q78-Q80 are open for the orchestrator** (raised 2026-10-29 by the analyst for U9, PSC-24 "U9 precision"): Q78 (is `--sources` mandatory), Q79 (a recorded full-set bundle at U9), Q80 (exempt checksum compare, security U6 L-1). None is for the human. Q77 stays deferred (U9 runs no re-lock). *(Amended 2026-10-29, analyst, U9 plan.)*
-**Q78-Q80 were resolved by the orchestrator on 2026-10-29**, each option 1 as recommended. None of Q61-Q80 is open; Q77 is deferred. *(Amended 2026-10-29, analyst, U9 orchestrator rulings.)*
+**Q78-Q80 were resolved by the orchestrator on 2026-10-29**, each option 1 as recommended. None of Q61-Q80 is open; Q77 was deferred, then resolved 2026-11-02 (A77: option 2, derived counts plus SBOM hashes) before the Q83 (a) re-lock. *(Amended 2026-10-29, analyst, U9 orchestrator rulings.)*
 **Q81 resolved 2026-10-30 (human ruling): A81 = option 3**, a distfiles-only apk row in the verify/CI sample; the GitLab API raw route stays for operator full fetches. Planned as unit U9c before U10. *(Amended 2026-10-30, orchestrator.)*
-**Q82 ruled in part (A82a: diagnostic + measurement as U9d; D rejected)** (raised 2026-10-30 by the analyst from PR #15 CI run 40993359777): neo4j "unhealthy" at the offline client's launch, twice, with the runner's disk at 100% at the failure. For the orchestrator (A + C, a launch-failure diagnostic and runner measurement, recommended as U9d before U10); option D and any floor change are for the human. Deadline: before the next push of PR #15. *(Amended 2026-10-30, analyst, Q82.)*
+**Q82 ruled in part (A82a: diagnostic + measurement as U9d; D rejected)** (raised 2026-10-30 by the analyst from PR #15 CI run 40993359777): neo4j "unhealthy" at the offline client's launch, twice, with the runner's disk at 100% at the failure. For the orchestrator (A + C, a launch-failure diagnostic and runner measurement, recommended as U9d before U10); option D and any floor change are for the human. Deadline: before the next push of PR #15. *(Amended 2026-10-30, analyst, Q82.)* *2026-11-02:* CI run 41533322861 (head bc5e65e) failed at `bundle.sh` stage index before the client's launch, so U9d's measurement did not run; the U9d-6 reading waits for the next CI run that reaches the launch, which waits on Q83. *(Amended 2026-11-02, analyst, Q82.)*
+**Q83 is open for the human** (raised 2026-11-02 by the analyst from PR #15 CI run 41533322861): the source lock drifts when Debian updates an unpinned dependency of a pinned package (cyrus-sasl2 under libpq5), and CI fails at `bundle.sh` stage index until a maintainer re-locks. Options: (a) re-lock now; (b) (a) plus pinning libpq5's three apt-added dependencies; (c) (a) plus a re-lock cadence in CLAUDE.md. Recommended: (a), then (b). The orchestrator rules Q77 before the re-lock. Deadline: before the next push of PR #15. *(Amended 2026-11-02, analyst, Q83.)*
 *Orchestrator refinement (2026-10-27; design notes U7d item 14).* The third,
 network-independent fetch of the Neo4j tarball moves to U8, so the U7d
 lock commit no longer waits for it.
@@ -1032,7 +1033,7 @@ lock commit no longer waits for it.
   - Who rules: the orchestrator. Deadline: before U8's RED, since the
     record is U8's output and U9's input.
 
-- **Q77. Deferred 2026-10-28 (orchestrator): not blocking U8.** Decided
+- **Q77. Resolved 2026-11-02 (orchestrator ruling, before the Q83 (a) re-lock).** **A77:** option 2. The six SBOMs stay on the maintainer host; the run's evidence commits a derived file with the per-key package counts and the SHA-256 of each SBOM, plus the SBOMs' sizes measured at this first real run. The size budget (option 3) is revisited only if a later run needs the whole documents. Previously: Deferred 2026-10-28 (orchestrator): not blocking U8. Decided
   before the next real `sources_lock.sh` run. *(Amended 2026-10-28, analyst, U8 orchestrator rulings.)*
   Are the lock run's SBOM copies committed?
   *(Added 2026-10-28, analyst, U8 plan.)*
@@ -1472,6 +1473,136 @@ lock commit no longer waits for it.
     kept 7 GiB at U9a).
   - Deadline: before the next push of PR #15. Nothing on platform-sbom
     merges until this CI step is green.
+  - *2026-11-02 measurement attempt (analyst).* CI run 41533322861 (PR
+    #15, head bc5e65e: U9c + U9d; job 21:59:52Z-22:45:37Z) did not reach
+    the offline client's launch, so it is not the Q82 measurement.
+    - Every gates and gates-it test passed. The offline host half failed
+      at 22:45:33Z in `bundle.sh` stage index ("the source index failed
+      ...; no bundle written"): `sbom_check: index: ke-app` refused
+      `libsasl2-2` and `libsasl2-modules-db` `2.1.28+dfsg-10+deb12u1`,
+      because the lock has no `deb:cyrus-sasl2@2.1.28+dfsg-10+deb12u1`
+      for amd64 (it holds `deb:cyrus-sasl2@2.1.28+dfsg-10`). Cause and
+      options: Q83.
+    - The client never started: no `measure:`, `diag:` or events line
+      exists, and U9d's code did not run on the runner.
+    - Runner disk (`/dev/root`, free KiB): 8,573,868 (89%, 8.18 GiB) at
+      "offline: df start" (the 7 GiB floor passed; run 40993359777
+      attempt 2 had 8,578,232), 8,350,404 after the sample fetch, and
+      8,350,248 (89%, about 7.96 GiB) at the failure. All of these
+      precede dind, the bundle and the install, so they say nothing
+      about the launch peak.
+    - Evidence: `docs/evidence/platform-sbom/ci/ci-41533322861-attempt1.log`,
+      `ci-41533322861-launch-extract.txt`.
+    - So Q82's cause (disk or memory at neo4j's launch) is still
+      unmeasured. The U9d-6 reading of the launch extract, and E after
+      it, wait for the next CI run that reaches the launch, and that run
+      needs Q83 first. A82a and the deadline stand.
+- **Q83. Open (for the human; before the next push of PR #15). The source
+  lock drifts when Debian updates an unpinned dependency of a pinned
+  package, and CI goes red at `bundle.sh` stage index until a maintainer
+  re-locks.** *(Added 2026-11-02, analyst, from CI run 41533322861; Q82.)*
+  - Context:
+    - `docker/app.Dockerfile`'s runtime stage pins `libpq5=${LIBPQ_VERSION}`
+      (PSC-25: "never unpin"; a version that leaves the mirror fails the
+      build by name). apt adds libpq5's missing dependencies unpinned.
+      Recorded at U0 (`docs/evidence/platform-sbom/u0-psycopg-c.md`
+      l.19): apt added only libldap-2.5-0 (source `openldap`,
+      2.5.13+dfsg-5), libsasl2-2 and libsasl2-modules-db (source
+      `cyrus-sasl2`, 2.1.28+dfsg-10); the krb5 libraries and libkeyutils1
+      come with the digest-pinned base.
+    - No other bundled image installs packages at build time: ke-gateway
+      and ke-neo4j add none to their digest-pinned bases, and the vendor
+      images are pulled by digest (`scripts/build.sh`, PS-2.9). The
+      builder stage and `gates.Dockerfile` do not ship.
+    - Debian published `cyrus-sasl2 2.1.28+dfsg-10+deb12u1` after the
+      lock's last change (commit 0630586, 2026-10-27). CI builds ke-app
+      fresh and got it. The dev box's ke-app (built 2026-10-27, reused
+      from the build cache) still has -10, so U9b's, U9c's and U9d's
+      local `verify.sh full` passed while CI failed: local and CI verify
+      can disagree on the same commit.
+    - U9 works as designed: `sbom_check.py index` refuses a package with
+      no lock entry (CLAUDE.md, generated artifacts). Only
+      `scripts/sources_lock.sh --arch <arch> --evidence-dir <dir>`
+      regenerates the lock (maintainer, network, never in verify or CI),
+      and security reviews every lock diff.
+    - What a re-lock needs (read from `scripts/sources_lock.sh` and
+      `scripts/sources_resolve.py`):
+      - The six bundled images built locally at build.sh's tags, with
+        ke-app rebuilt without the build cache first; otherwise its SBOM
+        still lists -10 and the lock does not change. `scripts/build.sh`
+        has no option for that.
+      - Without `--refresh`, a key already locked for the arch is not
+        resolved again (`_resolve_keys`): only new keys are fetched, and
+        a generated key no image needs loses the arch (here
+        `deb:cyrus-sasl2@2.1.28+dfsg-10` is dropped). The one new key
+        here is a deb, resolved on snapshot.debian.org only (srcfiles
+        JSON, the .dsc and the files it lists). Other policy hosts are
+        reached only for other new keys.
+      - **The Alpine closure (Q81) does not block it.** The apk route
+        (`resolve_apk`, gitlab.alpinelinux.org's API) runs only for a new
+        apk key, and the apk images (ke-gateway, valkey) install nothing
+        on their pinned bases, so their keys do not change. `--refresh`
+        would re-resolve every apk key through GitLab and fail while it
+        is closed; it is not needed here.
+      - snapshot.debian.org must already index +deb12u1 (not checked;
+        no network here).
+      - Q77 (commit the run's SBOMs, or a derived count plus hashes) is
+        to be decided before the next real `sources_lock.sh` run (Q77,
+        "U9 check"); the orchestrator rules it.
+    - It recurs: any Debian update to openldap or cyrus-sasl2 in bookworm
+      repeats it on any push, with no repo change. Whether +deb12u1 is a
+      security fix is not checked (no network here).
+  - Options:
+    - **(a) Re-lock now.** The maintainer rebuilds ke-app without cache
+      and runs `scripts/sources_lock.sh --arch amd64 --evidence-dir
+      <dir>`; security reviews the lock diff; the orchestrator runs
+      `verify.sh full` on it; the developer commits; the human approves
+      the push.
+      - Cost: one maintainer run with network, a security review and one
+        CI run (about 45 min). No code change.
+      - Gives: CI past stage index, so the next run reaches the launch
+        and yields the Q82 measurement (U9d-6).
+      - Does not stop the next drift: the next Debian update to these
+        sources turns CI red at the same stage, about 45 min into the run.
+    - **(b) (a), then pin the three apt-added dependencies too**
+      (`libldap-2.5-0`, `libsasl2-2`, `libsasl2-modules-db`) in the
+      runtime stage, at the versions the new lock holds, by the libpq5
+      rule (PSC-25).
+      - Cost: a small unit (Dockerfile and its tests, gate `full`,
+        review, security), then a pin bump with each such Debian update,
+        as for libpq5. No second re-lock if the pins equal the locked
+        versions.
+      - Gives: the local and CI images agree (a changed pin line
+        invalidates the cache). Drift shows as an apt failure at build,
+        naming the package, when the pinned version leaves the mirror,
+        not at stage index.
+      - Against: until then the image keeps the pinned version and does
+        not pick up a Debian fix; the ke-app scan (`scripts/scan.sh` in
+        `verify.sh full`) is the signal. It extends a recorded rule to
+        new packages, so it is the human's call.
+    - **(c) (a), plus a rule: re-lock at a fixed cadence or before each
+      push, recorded as a maintenance step in CLAUDE.md.**
+      - Cost: a maintainer run with network, a no-cache rebuild and a
+        security review each time, even when nothing drifted; a CLAUDE.md
+        change.
+      - Does not prevent red: Debian can publish between the re-lock and
+        CI's build, and the cached local image still hides it.
+  - **Recommended: (a) now, then (b) as a small unit before U10; not (c).**
+    - (a) is the only route to the Q82 measurement and is U9's designed
+      recovery. (b) turns a late CI red at stage index into an early
+      build failure that names the package, and ends the local/CI
+      difference for ke-app.
+    - (c) adds a recurring chore without closing the window.
+    - Counter-argument: (b) trades drift for staleness of three
+      packages; with (a) alone the image always takes Debian's current
+      version, at the cost of a red CI and a re-lock each time.
+  - Who rules: the human for running the re-lock (network) or naming who
+    runs it, for the push, for (b)'s pin policy and for (c) (CLAUDE.md).
+    The orchestrator for Q77 before the run and for the unit order of
+    (b). Security reviews the lock diff (CLAUDE.md).
+  - Deadline: before the next push of PR #15. Nothing on platform-sbom
+    merges until CI is green (Q82).
+  - *2026-11-02, orchestrator (after the (a) run):* the re-lock added `deb:cyrus-sasl2@2.1.28+dfsg-10+deb12u1` and kept the -10 key, which the digest-pinned postgres image still needs; the context bullet above that expected the -10 key to drop is superseded. Security PASS on the diff (`relock-20261102/security.md`); its low L-1 (postgres ships the vulnerable -10 and only ke-app is scanned) is a follow-up question for the analyst to raise with (b).
 
 ## platform-skeleton
 

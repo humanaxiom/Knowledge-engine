@@ -1,0 +1,191 @@
+# CI run 41533322861 attempt 1 (PR #15, head bc5e65e, pushed 2026-11-02 21:59Z). Job verify 21:59:52Z-22:45:37Z, FAIL.
+# The run did not reach the offline client launch: bundle.sh failed at stage index, so this is NOT the Q82 measurement.
+# No measure:/diag:/events lines exist (the client never started). Extract: the offline host half from 'df start' to the verdict.
+
+2026-11-02T22:44:10.5528164Z offline: df start
+2026-11-02T22:44:10.5573252Z Filesystem     1024-blocks     Used Available Capacity Mounted on
+2026-11-02T22:44:10.5574006Z /dev/root         75085112 66494860   8573868      89% /
+2026-11-02T22:44:10.5574571Z /dev/root         75085112 66494860   8573868      89% /
+2026-11-02T22:44:10.6370381Z offline: fetching the source sample (scripts/bundle_fetch.sh --set sample)
+2026-11-02T22:44:10.7373937Z == sources: pull ==
+2026-11-02T22:44:10.9172756Z  sbom Pulling 
+2026-11-02T22:44:11.7470963Z  2e94121cf727 Pulling fs layer 
+2026-11-02T22:44:11.7472406Z  5af2db993a54 Pulling fs layer 
+2026-11-02T22:44:11.7473322Z  2aa91f012d86 Pulling fs layer 
+2026-11-02T22:44:11.9263238Z  5af2db993a54 Downloading [==================================================>]      93B/93B
+2026-11-02T22:44:11.9264392Z  5af2db993a54 Verifying Checksum 
+2026-11-02T22:44:11.9265409Z  5af2db993a54 Download complete 
+2026-11-02T22:44:11.9293733Z  2e94121cf727 Downloading [=>                                                 ]  3.499kB/129.5kB
+2026-11-02T22:44:11.9294993Z  2aa91f012d86 Downloading [>                                                  ]  327.1kB/31.08MB
+2026-11-02T22:44:11.9310144Z  2e94121cf727 Downloading [==================================================>]  129.5kB/129.5kB
+2026-11-02T22:44:11.9312949Z  2e94121cf727 Verifying Checksum 
+2026-11-02T22:44:11.9313434Z  2e94121cf727 Download complete 
+2026-11-02T22:44:11.9330728Z  2e94121cf727 Extracting [============>                                      ]  32.77kB/129.5kB
+2026-11-02T22:44:11.9348117Z  2e94121cf727 Extracting [==================================================>]  129.5kB/129.5kB
+2026-11-02T22:44:11.9351830Z  2e94121cf727 Extracting [==================================================>]  129.5kB/129.5kB
+2026-11-02T22:44:11.9440172Z  2e94121cf727 Pull complete 
+2026-11-02T22:44:11.9467083Z  5af2db993a54 Extracting [==================================================>]      93B/93B
+2026-11-02T22:44:11.9468784Z  5af2db993a54 Extracting [==================================================>]      93B/93B
+2026-11-02T22:44:11.9706945Z  5af2db993a54 Pull complete 
+2026-11-02T22:44:12.0293050Z  2aa91f012d86 Downloading [=========================================>         ]  25.54MB/31.08MB
+2026-11-02T22:44:12.0467564Z  2aa91f012d86 Verifying Checksum 
+2026-11-02T22:44:12.0470119Z  2aa91f012d86 Download complete 
+2026-11-02T22:44:12.0561284Z  2aa91f012d86 Extracting [>                                                  ]  327.7kB/31.08MB
+2026-11-02T22:44:12.1565676Z  2aa91f012d86 Extracting [===========>                                       ]  6.881MB/31.08MB
+2026-11-02T22:44:12.2603260Z  2aa91f012d86 Extracting [=====================>                             ]  13.11MB/31.08MB
+2026-11-02T22:44:12.3619578Z  2aa91f012d86 Extracting [==============================>                    ]  19.01MB/31.08MB
+2026-11-02T22:44:12.4649431Z  2aa91f012d86 Extracting [========================================>          ]  25.23MB/31.08MB
+2026-11-02T22:44:12.5591946Z  2aa91f012d86 Extracting [==================================================>]  31.08MB/31.08MB
+2026-11-02T22:44:12.6911735Z  2aa91f012d86 Pull complete 
+2026-11-02T22:44:12.7343030Z  sbom Pulled 
+2026-11-02T22:44:12.7410944Z == sources: fetch ==
+2026-11-02T22:44:12.8342091Z  Network ke-fetch-760d46d7_default  Creating
+2026-11-02T22:44:12.8874009Z  Network ke-fetch-760d46d7_default  Created
+2026-11-02T22:44:13.8799159Z bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 protocols-6.4 sha256=4959498abbadaa1e50894a266f8d0d94500101cfe5b5f09dcad82e9d5bdfab46 size=3144 hops=distfiles.alpinelinux.org
+2026-11-02T22:44:14.4523739Z bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 services-6.4 sha256=f6183055fd949f9c53d49ee620f85d0150123ea691d25ed1bba0c641b4ee2f48 size=12813 hops=distfiles.alpinelinux.org
+2026-11-02T22:44:14.4525642Z bundle_fetch: apk apk:alpine-baselayout@3.7.1-r8: APKBUILD name check skipped (sample set, A81)
+2026-11-02T22:44:14.5680209Z bundle_fetch: ok deb:hostname@3.23+nmu1 hostname_3.23+nmu1.dsc sha256=56f2189eaeee638e86d29a05356e7001632e33b2132a41a4634a9ff839264ea6 size=1281 hops=snapshot.debian.org
+2026-11-02T22:44:14.6290985Z bundle_fetch: ok deb:hostname@3.23+nmu1 hostname_3.23+nmu1.tar.xz sha256=f3fb39f30b00ba7dba2cec013195d7e1bb215f241153208ccd52da3eedfe7a7d size=12876 hops=snapshot.debian.org
+2026-11-02T22:44:14.7602633Z bundle_fetch: ok maven:javax.xml.bind:jaxb-api@2.2.12 jaxb-api-2.2.12-sources.jar sha256=fd104e7b20b6dbcd1bb27803aaca963a8393ad9b3e39eb8a5ba1b4da1462182e size=245023 hops=repo1.maven.org
+2026-11-02T22:44:17.9876981Z bundle_fetch: ok neo4j:neo4j@5.26.32 5.26.32.tar.gz sha256=182ae2e5c3807bc3d7a09770dbf450d2e8667080bde93b3b6c829125db0f91e3 size=20907800 hops=github.com,codeload.github.com
+2026-11-02T22:44:18.1727730Z bundle_fetch: ok pgdg:postgresql-common@293.pgdg12+1 postgresql-common_293.pgdg12+1.dsc sha256=fc1b229024670e6d0cf1c40f3987bf1509aecf146791a6e22966fbf764c391da size=1538 hops=apt-archive.postgresql.org
+2026-11-02T22:44:18.5036337Z bundle_fetch: ok pgdg:postgresql-common@293.pgdg12+1 postgresql-common_293.pgdg12+1.tar.xz sha256=7a12dca9e636d56b72f45a00c52fb8cf054c3bf9aba8dc74bcca5fb6be17b07f size=219688 hops=apt-archive.postgresql.org
+2026-11-02T22:44:18.5461900Z bundle_fetch: ok pypi:autocommand@2.2.2 autocommand-2.2.2.tar.gz sha256=878de9423c5596491167225c2a455043c3130fb5b7286ac83443d45e74955f34 size=22894 hops=files.pythonhosted.org
+2026-11-02T22:44:20.5414032Z bundle_fetch: ok temurin:jdk-21.0.12.1+1 OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz sha256=573057d03584ae793fb7ec9a14c76d826d9187a53efeefd99da47403a5308234 size=115126841 hops=github.com,release-assets.githubusercontent.com
+2026-11-02T22:44:20.5425165Z bundle_fetch: fetched 10 files, 136553898 bytes, 7 components (sample, amd64) in 7.3 s
+2026-11-02T22:44:20.6566183Z == sources: done (pull 2 s, fetch 8 s) ==
+2026-11-02T22:44:20.8297185Z offline: df after fetch
+2026-11-02T22:44:20.8313718Z Filesystem     1024-blocks     Used Available Capacity Mounted on
+2026-11-02T22:44:20.8314629Z /dev/root         75085112 66718324   8350404      89% /
+2026-11-02T22:44:20.8315486Z /dev/root         75085112 66718324   8350404      89% /
+2026-11-02T22:44:20.8342743Z offline: pulling the ke-app base (python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753)
+2026-11-02T22:44:21.8669462Z offline: pulling the ke-neo4j base (neo4j:5-community@sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b)
+2026-11-02T22:44:24.4010716Z sources-check: ok 10 files, 136553898 bytes, 7 components (sample, amd64)
+2026-11-02T22:44:53.9596086Z sbom_check: ke-app: unlicensed packages (no licence, NOASSERTION or unidentified text): 19 (deb: 18, generic: 1)
+2026-11-02T22:44:53.9598557Z sbom_check: ke-app:   pkg:deb/debian/base-files@12.4%2Bdeb12u15?arch=amd64&distro=debian-12.15 (unidentified licence text)
+2026-11-02T22:44:53.9600845Z sbom_check: ke-app:   pkg:deb/debian/debian-archive-keyring@2023.3%2Bdeb12u2?arch=all&distro=debian-12.15 (unidentified licence text)
+2026-11-02T22:44:53.9603379Z sbom_check: ke-app:   pkg:deb/debian/gcc-12-base@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+2026-11-02T22:44:53.9605806Z sbom_check: ke-app:   pkg:deb/debian/libc-bin@2.36-9%2Bdeb12u14?arch=amd64&distro=debian-12.15&upstream=glibc (unidentified licence text)
+2026-11-02T22:44:53.9607673Z sbom_check: ke-app:   pkg:deb/debian/libc6@2.36-9%2Bdeb12u14?arch=amd64&distro=debian-12.15&upstream=glibc (unidentified licence text)
+2026-11-02T22:44:53.9609167Z sbom_check: ke-app:   pkg:deb/debian/libcrypt1@1%3A4.4.33-2?arch=amd64&distro=debian-12.15&upstream=libxcrypt (unidentified licence text)
+2026-11-02T22:44:53.9610850Z sbom_check: ke-app:   pkg:deb/debian/libgcc-s1@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+2026-11-02T22:44:53.9612598Z sbom_check: ke-app:   pkg:deb/debian/libgcrypt20@1.10.1-3%2Bdeb12u1?arch=amd64&distro=debian-12.15 (unidentified licence text)
+2026-11-02T22:44:53.9615702Z sbom_check: ke-app:   pkg:deb/debian/libgnutls30@3.7.9-2%2Bdeb12u7?arch=amd64&distro=debian-12.15&upstream=gnutls28 (unidentified licence text)
+2026-11-02T22:44:53.9617410Z sbom_check: ke-app:   pkg:deb/debian/libgssapi-krb5-2@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+2026-11-02T22:44:53.9641413Z sbom_check: ke-app:   pkg:deb/debian/libk5crypto3@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+2026-11-02T22:44:53.9643072Z sbom_check: ke-app:   pkg:deb/debian/libkrb5-3@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+2026-11-02T22:44:53.9644943Z sbom_check: ke-app:   pkg:deb/debian/libkrb5support0@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+2026-11-02T22:44:53.9646448Z sbom_check: ke-app:   pkg:deb/debian/libselinux1@3.4-1%2Bb6?arch=amd64&distro=debian-12.15&upstream=libselinux%403.4-1 (unidentified licence text)
+2026-11-02T22:44:53.9647961Z sbom_check: ke-app:   pkg:deb/debian/libsemanage-common@3.4-1?arch=all&distro=debian-12.15&upstream=libsemanage (unidentified licence text)
+2026-11-02T22:44:53.9649464Z sbom_check: ke-app:   pkg:deb/debian/libsemanage2@3.4-1%2Bb5?arch=amd64&distro=debian-12.15&upstream=libsemanage%403.4-1 (unidentified licence text)
+2026-11-02T22:44:53.9651409Z sbom_check: ke-app:   pkg:deb/debian/libstdc%2B%2B6@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+2026-11-02T22:44:53.9652812Z sbom_check: ke-app:   pkg:deb/debian/libtasn1-6@4.19.0-2%2Bdeb12u1?arch=amd64&distro=debian-12.15 (unidentified licence text)
+2026-11-02T22:44:53.9653774Z sbom_check: ke-app:   pkg:generic/python@3.12.16
+2026-11-02T22:44:56.8901806Z sbom_check: ke-gateway: unlicensed packages (no licence, NOASSERTION or unidentified text): 0
+2026-11-02T22:45:06.0941543Z sbom_check: ke-neo4j: unlicensed packages (no licence, NOASSERTION or unidentified text): 27 (deb: 9, generic: 1, maven: 17)
+2026-11-02T22:45:06.0945879Z sbom_check: ke-neo4j:   pkg:maven/net.sourceforge.argparse4j/argparse4j@0.9.0
+2026-11-02T22:45:06.0949800Z sbom_check: ke-neo4j:   pkg:maven/org.apache.commons/commons-lang3@3.18.0
+2026-11-02T22:45:06.0953576Z sbom_check: ke-neo4j:   pkg:maven/org.apache.commons/commons-text@1.10.0
+2026-11-02T22:45:06.0958506Z sbom_check: ke-neo4j:   pkg:deb/debian/debian-archive-keyring@2025.1?arch=all&distro=debian-13.7 (unidentified licence text)
+2026-11-02T22:45:06.0960274Z sbom_check: ke-neo4j:   pkg:deb/debian/gcc-14-base@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14 (unidentified licence text)
+2026-11-02T22:45:06.0961736Z sbom_check: ke-neo4j:   pkg:maven/com.github.seancfoley.ipaddress/ipaddress@5.5.1
+2026-11-02T22:45:06.0965562Z sbom_check: ke-neo4j:   pkg:maven/jrt-fs/jrt-fs@21.0.12.1
+2026-11-02T22:45:06.0968878Z sbom_check: ke-neo4j:   pkg:maven/org.bitbucket.inkytonik.kiama/kiama_2.13@2.5.1
+2026-11-02T22:45:06.0973986Z sbom_check: ke-neo4j:   pkg:deb/debian/libcrypt-dev@1%3A4.4.38-1?arch=amd64&distro=debian-13.7&upstream=libxcrypt (unidentified licence text)
+2026-11-02T22:45:06.0975852Z sbom_check: ke-neo4j:   pkg:deb/debian/libcrypt1@1%3A4.4.38-1?arch=amd64&distro=debian-13.7&upstream=libxcrypt (unidentified licence text)
+2026-11-02T22:45:06.0977377Z sbom_check: ke-neo4j:   pkg:deb/debian/libgcc-s1@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14 (unidentified licence text)
+2026-11-02T22:45:06.0981486Z sbom_check: ke-neo4j:   pkg:deb/debian/libgnutls30t64@3.8.9-3%2Bdeb13u4?arch=amd64&distro=debian-13.7&upstream=gnutls28 (unidentified licence text)
+2026-11-02T22:45:06.0985986Z sbom_check: ke-neo4j:   pkg:deb/debian/libstdc%2B%2B6@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14 (unidentified licence text)
+2026-11-02T22:45:06.0990165Z sbom_check: ke-neo4j:   pkg:deb/debian/libtasn1-6@4.20.0-2%2Bdeb13u1?arch=amd64&distro=debian-13.7 (unidentified licence text)
+2026-11-02T22:45:06.0994078Z sbom_check: ke-neo4j:   pkg:maven/com.softwaremill.magnolia1_2/magnolia_2.13@1.1.8
+2026-11-02T22:45:06.0997863Z sbom_check: ke-neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection@12.0.0
+2026-11-02T22:45:06.1001677Z sbom_check: ke-neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection-netty@12.0.0
+2026-11-02T22:45:06.1005457Z sbom_check: ke-neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection-pooled@12.0.0
+2026-11-02T22:45:06.1009415Z sbom_check: ke-neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection-routed@12.0.0
+2026-11-02T22:45:06.1013028Z sbom_check: ke-neo4j:   pkg:maven/org.neo4j/neo4j-cypher-dsl@2024.2.0
+2026-11-02T22:45:06.1017343Z sbom_check: ke-neo4j:   pkg:generic/oracle/openjdk@21.0.12.1%2B1-LTS?repository_url=https%3A%2F%2Fgithub.com%2Fadoptium%2Fjdk21u.git
+2026-11-02T22:45:06.1021231Z sbom_check: ke-neo4j:   pkg:maven/picocli/picocli@4.7.6
+2026-11-02T22:45:06.1025856Z sbom_check: ke-neo4j:   pkg:maven/org.reactivestreams/reactive-streams@1.0.4
+2026-11-02T22:45:06.1027247Z sbom_check: ke-neo4j:   pkg:maven/org.scala-lang.modules/scala-collection-contrib_2.13@0.3.0
+2026-11-02T22:45:06.1028268Z sbom_check: ke-neo4j:   pkg:maven/org.slf4j/slf4j-api@2.0.11
+2026-11-02T22:45:06.1029332Z sbom_check: ke-neo4j:   pkg:deb/debian/wget@1.25.0-2?arch=amd64&distro=debian-13.7 (unidentified licence text)
+2026-11-02T22:45:06.1030720Z sbom_check: ke-neo4j:   pkg:maven/net.openhft/zero-allocation-hashing@0.27ea1
+2026-11-02T22:45:19.9822588Z sbom_check: phoenix: unlicensed packages (no licence, NOASSERTION or unidentified text): 35 (deb: 14, generic: 1, none: 8, pypi: 12)
+2026-11-02T22:45:19.9824487Z sbom_check: phoenix:   pkg:pypi/aiosqlite@0.22.1
+2026-11-02T22:45:19.9826002Z sbom_check: phoenix:   SPDXRef-Package-binary-cli-3c111f636ab23ae2 cli (no purl)
+2026-11-02T22:45:19.9827613Z sbom_check: phoenix:   SPDXRef-Package-binary-cli-32-864fbd8df8eebeff cli-32 (no purl)
+2026-11-02T22:45:19.9829057Z sbom_check: phoenix:   SPDXRef-Package-binary-cli-64-58d92fd2583882cf cli-64 (no purl)
+2026-11-02T22:45:19.9831329Z sbom_check: phoenix:   SPDXRef-Package-binary-cli-arm64-6de49882b0a31d2a cli-arm64 (no purl)
+2026-11-02T22:45:19.9832828Z sbom_check: phoenix:   pkg:pypi/daytona-analytics-api-client@0.223.1
+2026-11-02T22:45:19.9834357Z sbom_check: phoenix:   pkg:pypi/daytona-analytics-api-client-async@0.223.1
+2026-11-02T22:45:19.9835226Z sbom_check: phoenix:   pkg:generic/deno@2.1.4
+2026-11-02T22:45:19.9836173Z sbom_check: phoenix:   pkg:pypi/exceptiongroup@1.3.1
+2026-11-02T22:45:19.9837882Z sbom_check: phoenix:   pkg:deb/debian/gcc-14-base@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14 (unidentified licence text)
+2026-11-02T22:45:19.9839706Z sbom_check: phoenix:   SPDXRef-Package-binary-gui-90e51b43c7a824a9 gui (no purl)
+2026-11-02T22:45:19.9842109Z sbom_check: phoenix:   SPDXRef-Package-binary-gui-32-bf5cb4b4bc756f59 gui-32 (no purl)
+2026-11-02T22:45:19.9844089Z sbom_check: phoenix:   SPDXRef-Package-binary-gui-64-54afa822a7647b6f gui-64 (no purl)
+2026-11-02T22:45:19.9845735Z sbom_check: phoenix:   SPDXRef-Package-binary-gui-arm64-b70024c9a835570f gui-arm64 (no purl)
+2026-11-02T22:45:19.9847102Z sbom_check: phoenix:   pkg:pypi/httpx-ws@0.9.0
+2026-11-02T22:45:19.9848152Z sbom_check: phoenix:   pkg:pypi/jinja2@3.1.6
+2026-11-02T22:45:19.9849779Z sbom_check: phoenix:   pkg:deb/debian/libcrypt1@1%3A4.4.38-1?arch=amd64&distro=debian-13.7&upstream=libxcrypt (unidentified licence text)
+2026-11-02T22:45:19.9852227Z sbom_check: phoenix:   pkg:deb/debian/libgcc-s1@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14
+2026-11-02T22:45:19.9853849Z sbom_check: phoenix:   pkg:deb/debian/libgomp1@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14
+2026-11-02T22:45:19.9855715Z sbom_check: phoenix:   pkg:deb/debian/libgssapi-krb5-2@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5 (unidentified licence text)
+2026-11-02T22:45:19.9859318Z sbom_check: phoenix:   pkg:deb/debian/libk5crypto3@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5 (unidentified licence text)
+2026-11-02T22:45:19.9865157Z sbom_check: phoenix:   pkg:deb/debian/libkrb5-3@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5 (unidentified licence text)
+2026-11-02T22:45:19.9868517Z sbom_check: phoenix:   pkg:deb/debian/libkrb5support0@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5 (unidentified licence text)
+2026-11-02T22:45:19.9874460Z sbom_check: phoenix:   pkg:deb/debian/libncursesw6@6.5%2B20250216-2?arch=amd64&distro=debian-13.7&upstream=ncurses
+2026-11-02T22:45:19.9878676Z sbom_check: phoenix:   pkg:deb/debian/libpython3.13-minimal@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13 (unidentified licence text)
+2026-11-02T22:45:19.9883244Z sbom_check: phoenix:   pkg:deb/debian/libpython3.13-stdlib@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13 (unidentified licence text)
+2026-11-02T22:45:19.9891172Z sbom_check: phoenix:   pkg:deb/debian/libstdc%2B%2B6@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14
+2026-11-02T22:45:19.9892738Z sbom_check: phoenix:   pkg:pypi/markdown-it-py@4.2.0
+2026-11-02T22:45:19.9893915Z sbom_check: phoenix:   pkg:pypi/obstore@0.11.1
+2026-11-02T22:45:19.9895165Z sbom_check: phoenix:   pkg:pypi/pandas@2.3.3 (unidentified licence text)
+2026-11-02T22:45:19.9896505Z sbom_check: phoenix:   pkg:pypi/protobuf-py-ext@0.1.1
+2026-11-02T22:45:19.9897758Z sbom_check: phoenix:   pkg:pypi/pyqwest@0.10.0
+2026-11-02T22:45:19.9899511Z sbom_check: phoenix:   pkg:deb/debian/python3.13-minimal@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13 (unidentified licence text)
+2026-11-02T22:45:19.9902533Z sbom_check: phoenix:   pkg:deb/debian/python3.13-venv@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13
+2026-11-02T22:45:19.9904142Z sbom_check: phoenix:   pkg:pypi/synchronicity@0.12.6
+2026-11-02T22:45:29.1660858Z sbom_check: postgres: unlicensed packages (no licence, NOASSERTION or unidentified text): 25 (deb: 22, golang: 3)
+2026-11-02T22:45:29.1669458Z sbom_check: postgres:   pkg:deb/debian/base-files@12.4%2Bdeb12u15?arch=amd64&distro=debian-12.15 (unidentified licence text)
+2026-11-02T22:45:29.1677869Z sbom_check: postgres:   pkg:deb/debian/debian-archive-keyring@2023.3%2Bdeb12u2?arch=all&distro=debian-12.15 (unidentified licence text)
+2026-11-02T22:45:29.1686488Z sbom_check: postgres:   pkg:deb/debian/gcc-12-base@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+2026-11-02T22:45:29.1694057Z sbom_check: postgres:   pkg:golang/github.com/moby/sys/user@v0.1.0
+2026-11-02T22:45:29.1701174Z sbom_check: postgres:   pkg:golang/github.com/tianon/gosu@v1.19.0
+2026-11-02T22:45:29.1708412Z sbom_check: postgres:   pkg:golang/golang.org/x/sys@v0.1.0
+2026-11-02T22:45:29.1715983Z sbom_check: postgres:   pkg:deb/debian/libc-bin@2.36-9%2Bdeb12u14?arch=amd64&distro=debian-12.15&upstream=glibc (unidentified licence text)
+2026-11-02T22:45:29.1724434Z sbom_check: postgres:   pkg:deb/debian/libc-l10n@2.36-9%2Bdeb12u14?arch=all&distro=debian-12.15&upstream=glibc (unidentified licence text)
+2026-11-02T22:45:29.1732580Z sbom_check: postgres:   pkg:deb/debian/libc6@2.36-9%2Bdeb12u14?arch=amd64&distro=debian-12.15&upstream=glibc (unidentified licence text)
+2026-11-02T22:45:29.1740246Z sbom_check: postgres:   pkg:deb/debian/libcrypt1@1%3A4.4.33-2?arch=amd64&distro=debian-12.15&upstream=libxcrypt (unidentified licence text)
+2026-11-02T22:45:29.1748359Z sbom_check: postgres:   pkg:deb/debian/libgcc-s1@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+2026-11-02T22:45:29.1786287Z sbom_check: postgres:   pkg:deb/debian/libgcrypt20@1.10.1-3%2Bdeb12u1?arch=amd64&distro=debian-12.15 (unidentified licence text)
+2026-11-02T22:45:29.1788525Z sbom_check: postgres:   pkg:deb/debian/libgnutls30@3.7.9-2%2Bdeb12u7?arch=amd64&distro=debian-12.15&upstream=gnutls28 (unidentified licence text)
+2026-11-02T22:45:29.1790706Z sbom_check: postgres:   pkg:deb/debian/libgssapi-krb5-2@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+2026-11-02T22:45:29.1792637Z sbom_check: postgres:   pkg:deb/debian/libk5crypto3@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+2026-11-02T22:45:29.1794462Z sbom_check: postgres:   pkg:deb/debian/libkrb5-3@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+2026-11-02T22:45:29.1796313Z sbom_check: postgres:   pkg:deb/debian/libkrb5support0@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+2026-11-02T22:45:29.1798104Z sbom_check: postgres:   pkg:deb/debian/libksba8@1.6.3-2?arch=amd64&distro=debian-12.15&upstream=libksba (unidentified licence text)
+2026-11-02T22:45:29.1800259Z sbom_check: postgres:   pkg:deb/debian/libselinux1@3.4-1%2Bb6?arch=amd64&distro=debian-12.15&upstream=libselinux%403.4-1 (unidentified licence text)
+2026-11-02T22:45:29.1802205Z sbom_check: postgres:   pkg:deb/debian/libsemanage-common@3.4-1?arch=all&distro=debian-12.15&upstream=libsemanage (unidentified licence text)
+2026-11-02T22:45:29.1803820Z sbom_check: postgres:   pkg:deb/debian/libsemanage2@3.4-1%2Bb5?arch=amd64&distro=debian-12.15&upstream=libsemanage%403.4-1 (unidentified licence text)
+2026-11-02T22:45:29.1805458Z sbom_check: postgres:   pkg:deb/debian/libstdc%2B%2B6@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+2026-11-02T22:45:29.1807094Z sbom_check: postgres:   pkg:deb/debian/libtasn1-6@4.19.0-2%2Bdeb12u1?arch=amd64&distro=debian-12.15 (unidentified licence text)
+2026-11-02T22:45:29.1808677Z sbom_check: postgres:   pkg:deb/debian/libxslt1.1@1.1.35-1%2Bdeb12u4?arch=amd64&distro=debian-12.15&upstream=libxslt (unidentified licence text)
+2026-11-02T22:45:29.1810593Z sbom_check: postgres:   pkg:deb/debian/locales@2.36-9%2Bdeb12u14?arch=all&distro=debian-12.15&upstream=glibc (unidentified licence text)
+2026-11-02T22:45:31.5685140Z sbom_check: valkey: unlicensed packages (no licence, NOASSERTION or unidentified text): 1 (generic: 1)
+2026-11-02T22:45:31.5686566Z sbom_check: valkey:   pkg:generic/valkey@8.1.10
+2026-11-02T22:45:33.2701695Z sbom_check: index: ke-app: pkg:deb/debian/libsasl2-2@2.1.28%2Bdfsg-10%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=cyrus-sasl2 needs source; the lock has no deb:cyrus-sasl2@2.1.28+dfsg-10+deb12u1 for amd64: run scripts/sources_lock.sh --arch amd64
+2026-11-02T22:45:33.2705829Z sbom_check: index: ke-app: pkg:deb/debian/libsasl2-modules-db@2.1.28%2Bdfsg-10%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=cyrus-sasl2 needs source; the lock has no deb:cyrus-sasl2@2.1.28+dfsg-10+deb12u1 for amd64: run scripts/sources_lock.sh --arch amd64
+2026-11-02T22:45:33.3621138Z bundle: FAIL (stage index: the source index failed (see above); no bundle written)
+2026-11-02T22:45:33.6999861Z offline_check: FAIL (bundle.sh failed)
+2026-11-02T22:45:33.7001475Z offline: df before teardown
+2026-11-02T22:45:33.7017635Z Filesystem     1024-blocks     Used Available Capacity Mounted on
+2026-11-02T22:45:33.7018649Z /dev/root         75085112 66718480   8350248      89% /
+2026-11-02T22:45:33.7019551Z /dev/root         75085112 66718480   8350248      89% /
+2026-11-02T22:45:33.9552005Z offline: df after teardown
+2026-11-02T22:45:33.9564635Z Filesystem     1024-blocks     Used Available Capacity Mounted on
+2026-11-02T22:45:33.9569116Z /dev/root         75085112 66585096   8483632      89% /
+2026-11-02T22:45:33.9570010Z /dev/root         75085112 66585096   8483632      89% /
+2026-11-02T22:45:33.9575619Z == verify full: FAIL (exit 1) ==
+2026-11-02T22:45:33.9665409Z ##[error]Process completed with exit code 1.
+﻿2026-11-02T22:45:33.9911091Z Post job cleanup.
