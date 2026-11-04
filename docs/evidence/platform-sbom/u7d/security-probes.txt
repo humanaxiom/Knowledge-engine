@@ -1,0 +1,96 @@
+platform-sbom U7d gate: security probes (security, 2026-10-26 UTC)
+Tree: HEAD 86f7831 (U7c) + working tree; sources_resolve.py, sbom_check.py, source-policy.json == u7d/target-*; sources_lock.sh differs only by the docker save hostpath line.
+Script: u7d/security_probes.py; fake network, pure parsers, fixture lock; no external request. Retry lines (stderr) come first.
+Gates image, python -I, COMPOSE_PROJECT_NAME=ke-security-u5, scratch dir read-only at /scratch. Output unedited except
+compose/uv preamble lines dropped and raw control bytes in output shown as <xNN>.
+
+retry 1/3 in 10 s: github.com: HTTP 503: https://github.com/a
+retry 2/3 in 30 s: github.com: HTTP 503: https://github.com/a
+retry 3/3 in 60 s: github.com: HTTP 503: https://github.com/a
+retry 1/3 in 10 s: github.com: HTTP 503: https://github.com/a
+retry 2/3 in 30 s: github.com: HTTP 503: https://github.com/a
+retry 3/3 in 60 s: github.com: HTTP 503: https://github.com/a
+retry 1/3 in 10 s: github.com: timeout: https://github.com/a
+retry 1/3 in 10 s: github.com: timeout: https://github.com/a
+retry 1/3 in 10 s: github.com: HTTP 502: https://github.com/b
+retry 1/3 in 10 s: github.com: HTTP 503: https://github.com/a
+retry 2/3 in 30 s: github.com: HTTP 503: https://github.com/a
+retry 1/3 in 10 s: snapshot.debian.org: HTTP 503: https://snapshot.debian.org/mr/package/bash/5.2.15-2/srcfiles?<query omitted>
+retry 2/3 in 30 s: snapshot.debian.org: HTTP 503: https://snapshot.debian.org/mr/package/bash/5.2.15-2/srcfiles?<query omitted>
+retry 3/3 in 60 s: snapshot.debian.org: HTTP 503: https://snapshot.debian.org/mr/package/bash/5.2.15-2/srcfiles?<query omitted>
+retry 1/3 in 10 s: github.com: HTTP 503: https://github.com/a?<query omitted>
+retry 2/3 in 30 s: github.com: HTTP 503: https://github.com/a?<query omitted>
+retry 3/3 in 60 s: github.com: HTTP 503: https://github.com/a?<query omitted>
+== U7d-1. InRelease stripping (_release_sources_sha256) ==
+  baseline                                                     -> ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 5043212)
+  a second signed block after the first                        -> ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 5043212)
+  trailer text after END SIGNATURE with a SHA256 line          -> ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 5043212)
+  unsigned prefix before BEGIN SIGNED MESSAGE                  -> ResolveError: Release: line 4 is not a field or continuation
+  prefix line then the signed block                            -> ResolveError: Release: line 1 is not a field or continuation
+  dash-escaped SHA256 field ('- SHA256:')                      -> ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 5043212)
+  dash-escaped continuation line                               -> ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 5043212)
+  CRLF throughout                                              -> ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 5043212)
+  Sources listed twice in SHA256                               -> ResolveError: Release lists Sources sha256 more than once
+  Sources line injected as continuation of another field       -> ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 5043212)
+  a second SHA256 field (duplicate)                            -> ResolveError: Release: duplicate field SHA256
+  sha256 field 'sha256' lower-case duplicate                   -> ResolveError: Release: duplicate field sha256
+  Sources entry with upper-hex                                 -> ResolveError: Release lists no Sources sha256
+  a path variant ./main/source/Sources only                    -> ResolveError: Release lists no Sources sha256
+  armour header with U+2028                                    -> ResolveError: Release: control character in field -
+  NUL inside the signed body                                   -> ResolveError: Release: control character in field X
+
+== U7d-2. Sources binding (pgdg_index, fake network) ==
+  baseline                                                     -> kept=[('postgresql-common', '293.pgdg12+1')] pulled=371
+  body longer than Release size: read stops at size+1 chunk    -> ResolveError: bookworm-pgdg-archive Sources: size 371 differs from Release 365 (pulled 371 of 284365)
+  hash mismatch with the needed stanza inside: nothing kept    -> ResolveError: bookworm-pgdg-archive Sources: sha256 mismatch against Release (pulled 371 of 365)
+  body shorter than Release size                               -> ResolveError: bookworm-pgdg-archive Sources: size 365 differs from Release 370 (pulled 371 of 365)
+  CRLF stanza boundaries                                       -> kept=[('postgresql-common', '293.pgdg12+1')] pulled=378
+  needed stanza twice (same Package/Version)                   -> kept=[('postgresql-common', '293.pgdg12+1')] pulled=581
+  duplicate field inside one stanza                            -> ResolveError: bookworm-pgdg-archive Sources: duplicate field Version (pulled 224 of 222)
+  whitespace-only line splits a stanza (deb822 rule)           -> kept=[('postgresql-common', '293.pgdg12+1')] pulled=217
+  U+2028 inside an unrelated stanza                            -> ResolveError: bookworm-pgdg-archive Sources: duplicate field Package (pulled 399 of 394)
+  non-UTF-8 byte in an unrelated stanza                        -> ResolveError: bookworm-pgdg-archive Sources: not UTF-8 text (pulled 392 of 391)
+  60 MiB with no blank line (buffer rescanned per chunk): 19.3s
+
+== U7d-3. Retry loop (patched SLEEP; run state active) ==
+  503 x3 then 200                                  requests=4 sleeps=[10, 30, 60] -> 2
+  503 x4 (budget per request exhausted)            requests=4 sleeps=[10, 30, 60] -> ResolveError: github.com: HTTP 503: https://github.com/a
+  404 (never retried)                              requests=1 sleeps=[] -> ResolveError: github.com: HTTP 404: https://github.com/a
+  418 (never retried)                              requests=1 sleeps=[] -> ResolveError: github.com: HTTP 418: https://github.com/a
+  429 (never retried)                              requests=1 sleeps=[] -> ResolveError: github.com: HTTP 429: https://github.com/a
+  ConnectionResetError (never retried)             requests=1 sleeps=[] -> ResolveError: github.com: ConnectionResetError: https://github.com/a
+  ssl.SSLError (never retried)                     requests=1 sleeps=[] -> ResolveError: github.com: SSLError: https://github.com/a
+  TimeoutError x1 then 200                         requests=2 sleeps=[10] -> 2
+  mid-body timeout then 200 (fresh hashers)        requests=2 sleeps=[10] -> True
+  5xx on hop 2 restarts from hop 1                 requests=4 sleeps=[10] -> 2
+  run budget 2: third retry refused, no sleep      requests=3 sleeps=[10, 30] -> ResolveError: retry budget exhausted (2)
+  run deadline: a wait past it fails before sleeping requests=1 sleeps=[] -> ResolveError: run deadline 100 s passed
+  run deadline already passed: no request          requests=0 sleeps=[] -> ResolveError: run deadline 100 s passed
+  retries=0 default for fetch()                    requests=1 sleeps=[] -> ResolveError: github.com: HTTP 503: https://github.com/a
+  snapshot 503 x3 then 200: pause per attempt      requests=4 sleeps=[10, 30, 60] -> ResolveError: snapshot.debian.org srcfiles is not the expected JSON
+  snapshot pauses before attempts: 4
+  final error after retries keeps the full URL     requests=4 sleeps=[10, 30, 60] -> ResolveError: github.com: HTTP 503: https://github.com/a?sig=SECRET
+  retry line text                                  requests=2 sleeps=[10] -> 2
+  retry line: retry 1/3 in 10 s: github.com: HTTP 503: https://github.com/a?<query omitted>
+
+== U7d-4. pgdg lock rules (fixture lock, 182 keys) ==
+  baseline problems: []
+  baseline pgdg urls: ['https://apt-archive.postgresql.org/pub/repos/apt/pool/main/p/postgresql-common/postgresql-common_293.pgdg12+1.dsc', 'https://apt-archive.postgresql.org/pub/repos/apt/pool/main/p/postgresql-common/postgresql-common_293.pgdg12+1.orig.tar.xz'] suite bookworm-pgdg-archive
+  pool letter q instead of p                               accepted=False ['lock: pgdg:postgresql-common@293.pgdg12+1: postgresql-common_293.pgdg12+1.dsc: not a pgdg file url (want path ']
+  pool letter post (lib-style for a non-lib src)           accepted=False ['lock: pgdg:postgresql-common@293.pgdg12+1: postgresql-common_293.pgdg12+1.dsc: not a pgdg file url (want path ']
+  dists path instead of pool                               accepted=False ['lock: pgdg:postgresql-common@293.pgdg12+1: postgresql-common_293.pgdg12+1.dsc: not a pgdg file url (want path ']
+  + encoded as %2B                                         accepted=False ['lock: pgdg:postgresql-common@293.pgdg12+1: url path is not a plain path']
+  another src directory                                    accepted=False ['lock: pgdg:postgresql-common@293.pgdg12+1: postgresql-common_293.pgdg12+1.dsc: not a pgdg file url (want path ']
+  apt.postgresql.org host                                  accepted=False ['lock: pgdg:postgresql-common@293.pgdg12+1: url host apt.postgresql.org is not in docker/source-policy.json hos']
+  snapshot.debian.org host                                 accepted=False ['lock: pgdg:postgresql-common@293.pgdg12+1: postgresql-common_293.pgdg12+1.dsc: url host snapshot.debian.org is']
+  query on the url                                         accepted=False ['lock: pgdg:postgresql-common@293.pgdg12+1: url carries a query']
+  suite bookworm-pgdg (non-archive)                        accepted=False ["lock: pgdg:postgresql-common@293.pgdg12+1: suite 'bookworm-pgdg' is missing or malformed"]
+  suite with a slash                                       accepted=False ["lock: pgdg:postgresql-common@293.pgdg12+1: suite 'bookworm-pgdg-archive/../x' is missing or malformed"]
+  suite upper case                                         accepted=False ["lock: pgdg:postgresql-common@293.pgdg12+1: suite 'Bookworm-pgdg-archive' is missing or malformed"]
+  suite trixie-pgdg-archive (packages are bookworm)        accepted=True  []
+  from naming another suite than the entry                 accepted=False ['lock: pgdg:postgresql-common@293.pgdg12+1: postgresql-common_293.pgdg12+1.dsc is not sha256 from apt-archive.p']
+  suite missing                                            accepted=False ['lock: pgdg:postgresql-common@293.pgdg12+1: missing key suite']
+  a sixth key                                              accepted=False ['lock: pgdg:postgresql-common@293.pgdg12+1: unexpected key x']
+  sha1 upstream on the .dsc                                accepted=False ['lock: pgdg:postgresql-common@293.pgdg12+1: postgresql-common_293.pgdg12+1.dsc is not sha256 from apt-archive.p']
+  .dsc only                                                accepted=False ['lock: pgdg:postgresql-common@293.pgdg12+1: pgdg: no file besides the .dsc']
+  libp pool rule (sbom_check binding) for a lib src: ('apt-archive.postgresql.org',) libp lib p

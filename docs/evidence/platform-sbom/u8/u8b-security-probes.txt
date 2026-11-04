@@ -1,0 +1,211 @@
+# U8b security probes, 2026-10-28 (security). Redaction: profile paths -> <scratch>. Nothing ran against the real daemon or the network.
+# Part A: scripts/bundle_fetch.sh (copied to <scratch>/u8b/repo) run from Git Bash against a probe fake docker (<scratch>/u8b/bin/docker: logs argv with printf %q and the KE_/COMPOSE_ env; info/image/compose answers fixed; never contacts a daemon). 'injection markers created' counts files named PWN<n> (none may exist).
+# Symlink probes (a linked --out, a fetch.json link) cannot run on this host: creating a symlink needs privilege on this Windows box (an attempt fell back to a deep copy, removed). They are covered by the Linux rows test_bundle_fetch_refuses_an_unsafe_out and test_bundle_fetch_writes_the_record_last, ok in u8b-green-verify-full.txt, and by code reading (finding L-1).
+
+### P1 --out holding $(), backticks, ;, a newline and a leading -rf
+rc=0
+  | == sources: pull ==
+  | == sources: fetch ==
+  | == sources: done (pull 0 s, fetch 0 s) ==
+  docker calls: 6
+  injection markers created: 0
+  run line + KE_SOURCES_OUT as passed (printf %q):
+CALL compose -p ke-fetch-a3258167 --env-file .env.example -f docker-compose.sources.yml run --rm --pull never sources-fetch --arch amd64 --set sample
+  literal out value seen in env records: 1
+### P2a --set with ;
+rc=2
+  | usage: scripts/bundle_fetch.sh --set sample|full --out DIR [--arch amd64|arm64]
+  docker calls: 0
+  injection markers created: 0
+### P2b --arch with $()
+rc=2
+  | usage: scripts/bundle_fetch.sh --set sample|full --out DIR [--arch amd64|arm64]
+  docker calls: 0
+  injection markers created: 0
+### P2c 40 random bytes as --set
+rc=2
+  | usage: scripts/bundle_fetch.sh --set sample|full --out DIR [--arch amd64|arm64]
+  docker calls: 0
+  injection markers created: 0
+### P3a daemon arch string with $() and backticks
+rc=1
+  | bundle_fetch: FAIL (stage arch: the Docker daemon reports an unsupported architecture: x86_64\$\(touch\ PWN6\)\`touch\ PWN7\`; no retry)
+  docker calls: 1
+  injection markers created: 0
+### P3b daemon arch string with a newline (line forging)
+rc=1
+  | bundle_fetch: FAIL (stage arch: the Docker daemon reports an unsupported architecture: $'x86_64\nbundle_fetch: FAIL forged'; no retry)
+  docker calls: 1
+  injection markers created: 0
+### P4 --arch arm64 on an x86_64 daemon
+rc=1
+  | bundle_fetch: FAIL (stage arch: --arch arm64 does not match the Docker daemon (amd64, reported as x86_64); no retry)
+  docker calls: 1
+  injection markers created: 0
+### P5 a pre-existing fetch.json in --out
+rc=1
+  | bundle_fetch: FAIL (stage out: <scratch>/u8b/work/o5 is not empty; no retry)
+  docker calls: 1
+  injection markers created: 0
+  o5/fetch.json after: {"format":1}
+### P6 --out /
+rc=1
+  | mkdir: cannot create directory '': No such file or directory
+  | bundle_fetch: FAIL (stage out: cannot create ; no retry)
+  docker calls: 3
+  injection markers created: 0
+### P7 KE_IMAGE_TAG with $(), gates image absent
+rc=1
+  | bundle_fetch: FAIL (stage images: ke-gates:x$(touch PWN8) not found: run scripts/build.sh first; no retry)
+  docker calls: 2
+  injection markers created: 0
+### P8a client fails after writing a file; --out created by the script
+rc=1
+  | == sources: pull ==
+  | == sources: fetch ==
+  | bundle_fetch: FAIL (stage fetch: h: f: OSError: https://h/p?<query omitted>; no retry)
+  | bundle_fetch: FAIL (stage fetch: sources_fetch.py exited 1; no retry)
+  docker calls: 6
+  injection markers created: 0
+  o8a exists after: no
+  teardown:
+    CALL compose -p ke-fetch-708d2e6d --env-file .env.example -f docker-compose.sources.yml down --volumes
+      ENV KE_SOURCES_IN=/nonexistent
+      ENV KE_SOURCES_OUT=/nonexistent
+      ENV KE_SOURCES_USER=197610:197121
+### P8b client fails; --out an empty dir the caller gave
+rc=1
+  | == sources: pull ==
+  | == sources: fetch ==
+  | bundle_fetch: FAIL (stage fetch: h: f: OSError: https://h/p?<query omitted>; no retry)
+  | bundle_fetch: FAIL (stage fetch: sources_fetch.py exited 1; no retry)
+  docker calls: 6
+  injection markers created: 0
+  o8b after: dir, 0 entries; sibling.txt: keep
+### P9 caller env: KE_SOURCES_*=/etc,0:0, COMPOSE_*
+rc=0
+  | == sources: pull ==
+  | == sources: fetch ==
+  | == sources: done (pull 0 s, fetch 1 s) ==
+  docker calls: 6
+  injection markers created: 0
+  compose calls with the env the fake saw:
+    CALL info --format \{\{.Architecture\}\}
+      ENV COMPOSE_PROJECT_NAME=caller
+      ENV KE_SOURCES_IN=/etc
+      ENV KE_SOURCES_OUT=/etc
+      ENV KE_SOURCES_USER=0:0
+    CALL image inspect --format \{\{.Os\}\}/\{\{.Architecture\}\} ke-gates:local
+      ENV COMPOSE_PROJECT_NAME=caller
+      ENV KE_SOURCES_IN=/etc
+      ENV KE_SOURCES_OUT=/etc
+      ENV KE_SOURCES_USER=0:0
+    CALL compose --env-file .env.example -f docker-compose.sbom.yml config --images sbom
+      ENV COMPOSE_PROJECT_NAME=caller
+      ENV KE_SBOM_IN=/nonexistent
+      ENV KE_SBOM_OUT=/nonexistent
+      ENV KE_SBOM_USER=197610:197121
+      ENV KE_SOURCES_IN=/etc
+      ENV KE_SOURCES_OUT=/etc
+      ENV KE_SOURCES_USER=0:0
+    CALL compose --env-file .env.example -f docker-compose.sbom.yml pull sbom
+      ENV COMPOSE_PROJECT_NAME=caller
+      ENV KE_SBOM_IN=/nonexistent
+      ENV KE_SBOM_OUT=/nonexistent
+      ENV KE_SBOM_USER=197610:197121
+      ENV KE_SOURCES_IN=/etc
+      ENV KE_SOURCES_OUT=/etc
+      ENV KE_SOURCES_USER=0:0
+    CALL compose -p ke-fetch-a6e24f79 --env-file .env.example -f docker-compose.sources.yml run --rm --pull never sources-fetch --arch amd64 --set sample
+      ENV COMPOSE_PROJECT_NAME=caller
+      ENV KE_SOURCES_IN=/nonexistent
+      ENV KE_SOURCES_OUT=<scratch>/u8b/work/o9
+      ENV KE_SOURCES_USER=197610:197121
+    CALL compose -p ke-fetch-a6e24f79 --env-file .env.example -f docker-compose.sources.yml down --volumes
+      ENV COMPOSE_PROJECT_NAME=caller
+      ENV KE_SOURCES_IN=/nonexistent
+      ENV KE_SOURCES_OUT=/nonexistent
+      ENV KE_SOURCES_USER=197610:197121
+
+# Part B: the effective sources-fetch model, rendered by the real compose CLI with DOCKER_HOST=tcp://127.0.0.1:9 (no daemon) and leak candidates in the caller env (KE_MODEL_UPSTREAM, HTTPS_PROXY, GITHUB_TOKEN):
+# DOCKER_HOST=tcp://127.0.0.1:9 MSYS_NO_PATHCONV=1 KE_SOURCES_IN=/nonexistent KE_SOURCES_OUT=C:/x/out KE_SOURCES_USER=1000:1000 KE_MODEL_UPSTREAM=leak HTTPS_PROXY=http://leak GITHUB_TOKEN=leak docker compose -p ke-fetch-deadbeef --env-file .env.example -f docker-compose.sources.yml config sources-fetch
+name: ke-fetch-deadbeef
+services:
+  sources-fetch:
+    cap_drop:
+      - ALL
+    entrypoint:
+      - python3
+      - -I
+      - /opt/ke/sources_fetch.py
+      - --lock
+      - /opt/ke/sources.lock.json
+      - --policy
+      - /opt/ke/source-policy.json
+      - --out
+      - /out
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+    image: ke-gates:local
+    networks:
+      default: null
+    pull_policy: never
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+    user: 1000:1000
+    volumes:
+      - type: bind
+        source: C:\repos\Knowledge-engine\scripts\sources_fetch.py
+        target: /opt/ke/sources_fetch.py
+        read_only: true
+      - type: bind
+        source: C:\repos\Knowledge-engine\scripts\sources_resolve.py
+        target: /opt/ke/sources_resolve.py
+        read_only: true
+      - type: bind
+        source: C:\repos\Knowledge-engine\scripts\sbom_check.py
+        target: /opt/ke/sbom_check.py
+        read_only: true
+      - type: bind
+        source: C:\repos\Knowledge-engine\docker\sources.lock.json
+        target: /opt/ke/sources.lock.json
+        read_only: true
+      - type: bind
+        source: C:\repos\Knowledge-engine\docker\source-policy.json
+        target: /opt/ke/source-policy.json
+        read_only: true
+      - type: bind
+        source: C:/x/out
+        target: /out
+networks:
+  default:
+    name: ke-fetch-deadbeef_default
+
+# Part C: CLAUDE.md sentence == Q73 option 2 (whitespace-normalised substring): True; CLAUDE.md diff hunks: 1.
+# Part D: secret-pattern grep over git diff HEAD + staged + tests/test_bundle_fetch.py (2277 lines): 0 hits. URL/host literals in scripts/bundle_fetch.sh and in added script/compose lines: 0. New u8/ evidence files: 0 signed-query/profile-path/SID/token hits.
+
+# Part E: the probe fake docker
+#!/usr/bin/env bash
+# probe fake docker: logs argv (NUL-safe via %q) and the KE_/COMPOSE_ env; never contacts a daemon
+{ printf 'CALL'; printf ' %q' "$@"; printf '\n'; env | grep -E '^(KE_|COMPOSE_)' | sort | sed 's/^/  ENV /'; } >> "$PROBE_LOG"
+case "$1" in
+  info) printf '%s\n' "${PROBE_ARCH-x86_64}"; exit 0 ;;
+  image) [ -n "${PROBE_NO_IMAGE:-}" ] && exit 1; echo linux/amd64; exit 0 ;;
+esac
+if [ "$1" = compose ]; then
+  case " $* " in
+    *" config --images sbom "*) echo 'anchore/syft:v1.54.1@sha256:3eb5379ba7b409c3f4069b686110527af0c47df993fa5c10d13e7cf34f49b1aa'; exit 0 ;;
+    *" pull sbom "*) exit 0 ;;
+    *" down "*) exit 0 ;;
+    *" run "*)
+      if [ -n "${PROBE_RUN_FAIL:-}" ]; then
+        printf 'x' > "$KE_SOURCES_OUT/$(printf 'a%.0s' $(seq 64))"
+        echo "bundle_fetch: FAIL (stage fetch: h: f: OSError: https://h/p?<query omitted>; no retry)" >&2; exit 1
+      fi
+      printf '{}' > "$KE_SOURCES_OUT/fetch.json"; exit 0 ;;
+  esac
+fi
+exit 0

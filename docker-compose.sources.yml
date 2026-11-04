@@ -1,18 +1,29 @@
-# The source lock's resolver (platform-sbom U7b; PSC-15, PSC-23; design-notes
-# N5 and its U7 amendment, item 3). Standalone and never bundled; only the
-# maintainer tool scripts/sources_lock.sh starts it, never verify or CI:
+# The source lock's resolver and the source fetch (platform-sbom U7b, U8b;
+# PSC-15, PSC-23; design-notes N5 and N4 amendment U8). Standalone and never
+# bundled; verify and CI never start either service directly. Two services,
+# two starters, each the project's own `-p` run with no top-level name:
+#
+# sources-resolve is started by the maintainer tool scripts/sources_lock.sh:
 #   KE_SOURCES_IN=<work>/in KE_SOURCES_OUT=<work>/out KE_SOURCES_USER=<uid:gid>
 #   docker compose -p ke-sources-<random> --env-file .env.example
 #     -f docker-compose.sources.yml run --rm --pull never sources-resolve
 #     --arch <arch> [--refresh]
-# No top-level name: the run's -p wins. U8 adds `sources-fetch` here.
+# sources-fetch is started by scripts/bundle_fetch.sh (the operator's step
+# after build.sh, and scripts/offline_check.sh's sample fetch):
+#   KE_SOURCES_IN=/nonexistent KE_SOURCES_OUT=<dir> KE_SOURCES_USER=<uid:gid>
+#   docker compose -p ke-fetch-<8 hex> --env-file .env.example
+#     -f docker-compose.sources.yml run --rm --pull never sources-fetch
+#     --arch <arch> --set sample|full
+# KE_SOURCES_IN is a dummy there: compose interpolates the whole file.
 #
-# sources-resolve runs scripts/sources_resolve.py (stdlib, python3 -I) in the
-# gates image. Its one route out is the project's default bridge (no other
-# network, no published port). Read-only root with /tmp as tmpfs, no
-# capabilities, no socket, the caller's uid:gid. It reads needs.json and a
-# copy of the lock (/in), the policy and uv.lock, all read-only; its one
-# writable mount is /out, where it writes lock.new.json. The environment is
+# sources-resolve runs scripts/sources_resolve.py and sources-fetch runs
+# scripts/sources_fetch.py (stdlib, python3 -I) in the gates image. Each one's
+# only route out is the project's default bridge (no other network, no
+# published port). Read-only root with /tmp as tmpfs, no capabilities, no
+# socket, the caller's uid:gid. sources-resolve reads needs.json and a copy of
+# the lock (/in), the policy and uv.lock, all read-only, and writes
+# lock.new.json to /out. sources-fetch reads the lock and the policy and the
+# three scripts, all read-only, and writes only /out. The environment is
 # literals only: no KE_* key, no model key, no token (PSC-6, PSC-23).
 services:
   sources-resolve:
@@ -59,6 +70,54 @@ services:
         read_only: true
       - type: bind
         source: ${KE_SOURCES_OUT:?set by scripts/sources_lock.sh}
+        target: /out
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+
+  sources-fetch:
+    image: ke-gates:${KE_IMAGE_TAG:-local}
+    pull_policy: never
+    user: ${KE_SOURCES_USER:?set by scripts/bundle_fetch.sh or scripts/sources_lock.sh}
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    entrypoint:
+      - python3
+      - -I
+      - /opt/ke/sources_fetch.py
+      - --lock
+      - /opt/ke/sources.lock.json
+      - --policy
+      - /opt/ke/source-policy.json
+      - --out
+      - /out
+    volumes:
+      - type: bind
+        source: ./scripts/sources_fetch.py
+        target: /opt/ke/sources_fetch.py
+        read_only: true
+      - type: bind
+        source: ./scripts/sources_resolve.py
+        target: /opt/ke/sources_resolve.py
+        read_only: true
+      - type: bind
+        source: ./scripts/sbom_check.py
+        target: /opt/ke/sbom_check.py
+        read_only: true
+      - type: bind
+        source: ./docker/sources.lock.json
+        target: /opt/ke/sources.lock.json
+        read_only: true
+      - type: bind
+        source: ./docker/source-policy.json
+        target: /opt/ke/source-policy.json
+        read_only: true
+      - type: bind
+        source: ${KE_SOURCES_OUT:?set by scripts/bundle_fetch.sh}
         target: /out
     environment:
       PYTHONDONTWRITEBYTECODE: "1"

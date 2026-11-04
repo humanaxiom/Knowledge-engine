@@ -1,0 +1,11 @@
+== head cov: 45 modules; nproc=24; head=0630586
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.79ms
+Installed 1 package in 1ms
+== head cov: real 738.420 s, user 517.671 s, sys 130.346 s (incl. all children)
+== head cov: rc=0
+----------------------------------------------------------------------
+Ran 1110 tests in 736.310s
+
+OK (skipped=8)

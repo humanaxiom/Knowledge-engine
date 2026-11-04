@@ -9,12 +9,11 @@
   local `verify.sh full` takes from the caller's environment or the
   operator's `.env`, with the tests skipping by name when either is unset.
 - `test_ci_job_has_timeout` (PS-3.4): every CI job sets `timeout-minutes`
-  to CI_TIMEOUT_MINUTES, which is the slower of the latest two green CI runs
-  + 50%, rounded up. PSC-9 (platform-supply-chain) re-measured on 34fc0c1:
-  push run 39713504156 took 24.5 min (1469 s, 02:49:44 to 03:14:13) and
-  pull_request run 39713519072 took 23.0 min (1380 s, 02:49:55 to 03:12:55);
-  docs/evidence/platform-supply-chain/ci/. The slower run + 50% =
-  24.5 x 1.5 = 36.75, rounded up to 37. Earlier pin: ci-speed CS-7, 32.
+  to CI_TIMEOUT_MINUTES = 69, the Q74 ruling 2026-10-28 (human): PR #15 run
+  40628987168's verify job took 35m53s on a GitHub-hosted runner at a 2.13x
+  noisy-neighbour factor (docs/evidence/platform-sbom/u8/ci-timing-q74.md).
+  Earlier pins: PSC-9 (platform-supply-chain), 37 (24.5 min x 1.5 = 36.75,
+  rounded up); ci-speed CS-7, 32.
 - `CiTriggersTest` (ci-triggers, ADR-KE-015): ci.yml's `on:` has exactly
   `push` (only `branches: [DEFAULT_BRANCH]`) and an unfiltered
   `pull_request` (CT-1, Q-CT1); concurrency stays `ci-${{ github.ref }}` with
@@ -35,12 +34,12 @@ CLAUDE_MD = ROOT / "CLAUDE.md"
 CI = ROOT / ".github" / "workflows" / "ci.yml"
 VERIFY_ONLY = "What verify.sh runs that CI cannot"
 CI_ONLY = "What CI runs that verify.sh does not"
-# PS-3.4, PSC-9 platform-supply-chain (measured + 50%, using the slower green
-# run): runs 39713504156 at 24.5 min and 39713519072 at 23.0 min
-# (docs/evidence/platform-supply-chain/ci/ci-39713504156.log,
-# ci-39713519072.log). The slower run sets the bound: 24.5 x 1.5 = 36.75,
-# rounded up to 37. Before it, ci-speed CS-7 set 32.
-CI_TIMEOUT_MINUTES = 37
+# PS-3.4, Q74 ruling 2026-10-28 (human): 69 min. PR #15 run 40628987168's
+# verify job took 35m53s on a GitHub-hosted runner at a 2.13x noisy-neighbour
+# factor (docs/evidence/platform-sbom/u8/ci-timing-q74.md). Before it,
+# PSC-9 platform-supply-chain set 37 (24.5 x 1.5 = 36.75, rounded up) and
+# ci-speed CS-7 set 32.
+CI_TIMEOUT_MINUTES = 69
 # ci-triggers CT-1, Q-CT5: the repo's default branch, pinned literally because
 # `$default-branch` works only in workflow templates. Renaming the default
 # branch must update this constant and the `push: branches:` list in ci.yml
@@ -101,10 +100,11 @@ class CiTimeoutTest(unittest.TestCase):
                 self.assertGreater(value, 0)
                 self.assertEqual(value, CI_TIMEOUT_MINUTES,
                                  f"job {name}: timeout-minutes is {value}, the ruling is "
-                                 f"{CI_TIMEOUT_MINUTES} (PS-3.4, PSC-9 platform-supply-chain: "
-                                 f"green CI runs 39713504156 24.5 min and "
-                                 f"39713519072 23.0 min; slower run + 50% = "
-                                 f"36.75 -> 37)")
+                                 f"{CI_TIMEOUT_MINUTES} (PS-3.4, Q74 ruling 2026-10-28 "
+                                 f"(human): 69 min; PR #15 run 40628987168 verify job "
+                                 f"35m53s on a GitHub-hosted runner at a 2.13x "
+                                 f"noisy-neighbour factor, see "
+                                 f"docs/evidence/platform-sbom/u8/ci-timing-q74.md)")
 
 
 def _flat(text: str) -> str:

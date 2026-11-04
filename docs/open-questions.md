@@ -298,7 +298,33 @@ human on 2026-10-23** (security U4 M-3); Q68 (raised by the analyst
 2026-10-23, from Q67) was resolved by the orchestrator on 2026-10-23.
 **Q69 and Q70 were resolved by the human on 2026-10-23.** *(Amended 2026-10-23, analyst, Q69/Q70)*
 **Q71 is open for the human** (raised 2026-10-25 by the analyst from
-architect U7 point O1; decide before U7c). *(Amended 2026-10-25, analyst, U7)*
+architect U7 point O1; decide before U7d). *(Amended 2026-10-25, analyst, U7)*
+*(Amended 2026-10-25, analyst, U7d: was "before U7c".)*
+**Q72 is open for the human** (raised 2026-10-25 by the analyst from the
+U7c Windows proof; decide before U7d's real lock run). *(Amended 2026-10-25, analyst, U7d)*
+**Q71 and Q72 were resolved by the human on 2026-10-25** (verbatim: "Ok to both 71 (pg) and 72 retry"). *(Amended 2026-10-25, analyst, U7d; human ruling.)*
+**Q61-Q72 are all resolved; none is open for platform-sbom.** *(Amended 2026-10-27, analyst.)*
+**Q73-Q77 are open** (raised 2026-10-28 by the analyst for U8, PSC-23 "U8 precision"): Q73 (CLAUDE.md wording) and Q74 (CI headroom, under A62) for the human; Q75-Q77 for the orchestrator. *(Amended 2026-10-28, analyst, U8 plan.)*
+**Q75 and Q76 were resolved by the orchestrator on 2026-10-28; Q77 is deferred (not blocking U8); Q73 and Q74 stay open for the human.** *(Amended 2026-10-28, analyst, U8 orchestrator rulings.)*
+**Q73 and Q74 were resolved by the human on 2026-10-28** (Q73 option 2, verbatim "Ok"; Q74 `timeout-minutes` 69, verbatim "Make it 69 seconds", read as minutes). None of Q61-Q76 is open; Q77 is deferred. *(Amended 2026-10-28, analyst, U8; human rulings.)*
+**Q78-Q80 are open for the orchestrator** (raised 2026-10-29 by the analyst for U9, PSC-24 "U9 precision"): Q78 (is `--sources` mandatory), Q79 (a recorded full-set bundle at U9), Q80 (exempt checksum compare, security U6 L-1). None is for the human. Q77 stays deferred (U9 runs no re-lock). *(Amended 2026-10-29, analyst, U9 plan.)*
+**Q78-Q80 were resolved by the orchestrator on 2026-10-29**, each option 1 as recommended. None of Q61-Q80 is open; Q77 was deferred, then resolved 2026-11-02 (A77: option 2, derived counts plus SBOM hashes) before the Q83 (a) re-lock. *(Amended 2026-10-29, analyst, U9 orchestrator rulings.)*
+**Q81 resolved 2026-10-30 (human ruling): A81 = option 3**, a distfiles-only apk row in the verify/CI sample; the GitLab API raw route stays for operator full fetches. Planned as unit U9c before U10. *(Amended 2026-10-30, orchestrator.)*
+**Q82 ruled in part (A82a: diagnostic + measurement as U9d; D rejected)** (raised 2026-10-30 by the analyst from PR #15 CI run 40993359777): neo4j "unhealthy" at the offline client's launch, twice, with the runner's disk at 100% at the failure. For the orchestrator (A + C, a launch-failure diagnostic and runner measurement, recommended as U9d before U10); option D and any floor change are for the human. Deadline: before the next push of PR #15. *(Amended 2026-10-30, analyst, Q82.)* *2026-11-02:* CI run 41533322861 (head bc5e65e) failed at `bundle.sh` stage index before the client's launch, so U9d's measurement did not run; the U9d-6 reading waits for the next CI run that reaches the launch, which waits on Q83. *(Amended 2026-11-02, analyst, Q82.)*
+**Q83 is open for the human** (raised 2026-11-02 by the analyst from PR #15 CI run 41533322861): the source lock drifts when Debian updates an unpinned dependency of a pinned package (cyrus-sasl2 under libpq5), and CI fails at `bundle.sh` stage index until a maintainer re-locks. Options: (a) re-lock now; (b) (a) plus pinning libpq5's three apt-added dependencies; (c) (a) plus a re-lock cadence in CLAUDE.md. Recommended: (a), then (b). The orchestrator rules Q77 before the re-lock. Deadline: before the next push of PR #15. *(Amended 2026-11-02, analyst, Q83.)*
+*Orchestrator refinement (2026-10-27; design notes U7d item 14).* The third,
+network-independent fetch of the Neo4j tarball moves to U8, so the U7d
+lock commit no longer waits for it.
+- It is satisfied by U8's first bundle-time sample fetch on the GitHub CI
+  runner, which fails closed on a sha256 or size mismatch (Q61). It is
+  recorded in `docs/evidence/platform-sbom/sources-provenance.md`.
+- Architect's caveat: the check is only as independent as the runner's
+  route out, and the private CI runner may share the site's egress.
+- So the human's one-liner on an ARM host, run before the first operator
+  bundle, is still preferred.
+- A mismatch means a new first fetch and a new second fetch, never a
+  skip or a retry.
+*(Amended 2026-10-27, analyst.)*
 
 - **Q61. Resolved 2026-10-22 (human ruling).** **A61:** FAIL CLOSED on a
   failed or checksum-mismatched source fetch: one call, no retry, naming the
@@ -646,7 +672,15 @@ architect U7 point O1; decide before U7c). *(Amended 2026-10-25, analyst, U7)*
   or fail mode (PSC-4, PSC-5), with the CI cost measured first?* Raised
   by A68. Who rules: the human.
 
-- **Q71. Open (raised 2026-10-25, analyst, U7).** *Where does the bundle
+- **Q71. Resolved 2026-10-25 (human ruling).** **A71:** option 1.
+  - The lock gains a `pgdg` kind and a tenth fetch host,
+    `apt-archive.postgresql.org`, for `postgresql-16`, `postgresql-18`
+    (with its `libpq5`) and `postgresql-common`.
+  - This amends the U6 host-set test to ten hosts and ADR-KE-016 point
+    4's egress list. Security reviews the host and the kind at U7d.
+  - The human's words: "Ok to both 71 (pg) and 72 retry". *(Amended 2026-10-25, analyst, U7d; human ruling.)*
+
+  Original question, kept for the record: *Q71. Where does the bundle
   get the source of the three postgres-image packages that come from the
   PostgreSQL project's Debian archive (PGDG), not from Debian?*
   *(Added 2026-10-25, analyst, U7)*
@@ -682,9 +716,893 @@ architect U7 point O1; decide before U7c). *(Amended 2026-10-25, analyst, U7)*
     Trade-off: the bundle-time fetch gains a route to a host that SFU's
     egress rules may need to allow.
   - Who rules: the human, because the SFU egress list is the human's.
-  - Deadline: before U7c (the `deb`, `apk` and `pgdg` routes). Until it is
-    ruled, U7c's `pgdg` route is not built, and the three keys stay
-    without an entry, so the source check fails closed (Q61).
+  - Deadline: before U7d. Once it is ruled, the `pgdg` route is U7d's
+    first unit of work. Until it is ruled, the `pgdg` route is not built,
+    and the three keys stay without an entry, so the source check fails
+    closed (Q61). *(Amended 2026-10-25, analyst, U7d: deadline moved from "before U7c", which shipped without the `pgdg` route.)*
+
+- **Q72. Resolved 2026-10-25 (human ruling).** **A72:** option 3 only.
+  - It covers the maintainer lock tool (`sources_resolve.py`, run by
+    `scripts/sources_lock.sh`): a bounded retry, at most 3 retries after
+    the first attempt, waiting 10 s, 30 s and 60 s.
+    - Retried: HTTP 5xx and timeouts only.
+    - Never retried: a 4xx, a refused host or hop, or a hash mismatch.
+    - Every retry is printed (host, status, attempt) and recorded in the
+      run's evidence.
+  - U8's bundle-time fetch keeps Q61 strictly: one call, no retry.
+  - Option 2 (resume from partial) is not adopted now. If the real U7d
+    run still fails, it falls back to the human.
+  - The analyst's recommendation (options 2 and 3) was adopted in part.
+  - The human's words: "Ok to both 71 (pg) and 72 retry". *(Amended 2026-10-25, analyst, U7d; human ruling.)*
+
+  Original question, kept for the record: *Q72. Does the maintainer
+  tool that writes the source lock keep Q61's rule (one call, no retry) when
+  `snapshot.debian.org` fails transiently, or may it resume or retry?*
+  *(Added 2026-10-25, analyst, U7d)*
+  - Context:
+    - What A61 rules on: the bundle-time source fetch (U8). It chose "one
+      call, no retry" over Q61 option 2 (one bounded retry on an
+      unreachable host).
+    - Where Q61 also reaches: design notes "N5 amendment, U7", point 5
+      applies the same rule to the lock tool (`sources_resolve.py`, run
+      by `scripts/sources_lock.sh` on the maintainer host). On any non-2xx
+      answer or timeout it stops at once and writes nothing.
+    - What the U7c Windows proof saw
+      (`docs/evidence/platform-sbom/u7c/windows-run.txt`, the r1 re-run):
+      `snapshot.debian.org` answered HTTP 503 once on
+      `mr/package/bash/5.2.15-2/srcfiles`, and the run failed closed with
+      the lock unchanged. The next run's `/file/<sha1>` request took about
+      31 s and passed.
+    - What U7d's real run makes: about 304 `snapshot.debian.org` requests
+      (152 `deb` keys, 2 each) and about 150 GitLab and distfiles
+      requests. Under Q61 a single transient error aborts all of it.
+      - Illustration only, not a measurement: if 1 request in 100 failed
+        transiently, a run of about 454 requests would complete about 1
+        time in 100.
+    - The tool skips keys that already have an entry in the committed
+      lock. The lock is written only when the run completes, so a first
+      run gains nothing from that.
+  - Options:
+    1. Keep Q61 literally. The whole tool is re-run until one run
+       succeeds.
+       - Cost: 10-45 min per attempt (an estimate), possibly many
+         attempts.
+       - Gain: the simplest rule, with no partial state.
+    2. Resume from partial. Within one run, the tool keeps a per-key
+       cache in its work dir. `--resume` reuses entries that this run has
+       already resolved and lock-checked.
+       - Still true: no failed request is retried, and the lock is
+         written only when it is complete.
+       - Cost: one more work-dir file to discard or keep, and a resume
+         path to test.
+       - Gain: a failure costs only the keys not yet resolved.
+    3. A bounded retry exception to Q61, for the lock tool only. For
+       example, at most 3 retries after the first attempt, waiting 10 s,
+       30 s and 60 s.
+       - Retried: HTTP 5xx and timeouts.
+       - Never retried: a 4xx, a refused host or hop, or a hash
+         mismatch.
+       - Cost: up to 100 s more per failing request, and a transient
+         failure no longer shows on the first error.
+       - Gain: most single transient errors no longer abort the run.
+    - Either way, U8's bundle-time fetch (the verify sample, about 10
+      requests) keeps Q61 strictly: one call, no retry.
+  - **Recommended (analyst): options 2 and 3 together, with 3 limited to
+    HTTP 5xx and timeouts.**
+    - The lock tool is not a bundle step. It runs on the maintainer
+      host, its output is a committed file that is lock-checked, and
+      security reviews it before any bundle uses it. A retry therefore
+      cannot let a wrong or missing source into a bundle. Q61's reason
+      for no retry (no bundle without its source, one rule for verify's
+      network steps) is about bundles and verify, and U8 keeps it.
+    - Integrity is unchanged. Every hash is still checked, a mismatch
+      still fails at once, and a 4xx or a refused host is never retried.
+    - Option 2 alone still loses the in-flight key on each failure.
+      Option 3 alone still re-runs every key after a failure that
+      outlasts the retries. Together, a run survives a short outage and
+      resumes cheaply after a long one.
+    - Trade-off: two mechanisms to build and test (U7d), and the run's
+      evidence must name each retry (host, status, attempt), so that a
+      flaky host stays visible.
+  - Who rules: the human, because Q61 is a human ruling.
+  - Deadline: before U7d's real lock run.
+
+- **Q73. Resolved 2026-10-28 (human ruling).** **A73:** option 2, the
+  analyst's and the architect's recommendation.
+  - CLAUDE.md § Verification's host-half sentence takes option 2's text
+    below: the `sources-fetch` clause, the host list, the check against
+    `docker/sources.lock.json` and the fail-closed, no-retry rule.
+  - It lands at U8b, in the same commit as the fetch wiring, as PSC-23
+    requires.
+  - The human's word, to the recommendation: "Ok". *(Amended 2026-10-28, analyst, U8; human ruling.)*
+
+  Original question, kept for the record: *Q73. Open (for the human;
+  before U8's commit). The CLAUDE.md network and verification wording for
+  the source fetch.* *(Added 2026-10-28, analyst, U8 plan.)*
+  - Context:
+    - PSC-23: once the fetch is wired, CLAUDE.md, the `bundle.sh` header
+      and the README say where the route out is. CLAUDE.md is the human's
+      file, so its change needs the human's approval and lands in the
+      same commit as the wiring (as Q56(a)). Design notes N13 drafted the
+      text, and ruling 6 sends it to the human at U8.
+    - CLAUDE.md § Verification today: "In `full` the host half also builds
+      and pulls images, runs the smoke check's network-control probe on
+      the stack's `edge` network, and runs `scan-db`, a one-shot that
+      fetches the image scanner's vulnerability database. The scan itself
+      runs with no network."
+    - The "Generated artifacts" row for `docker/sources.lock.json` is
+      already there (U7d, human approval). The generator pull moves into
+      `bundle_fetch.sh`, which "builds and pulls images" already covers.
+      "What CI runs that verify.sh does not" and the two-model-key
+      paragraph stay true: the fetch takes no key (PSC-6).
+  - Options:
+    1. N13's text: the sentence gains "and `sources-fetch`, a one-shot that
+       pulls nothing and fetches a sample of the bundle's third-party
+       source code over HTTPS from the hosts listed in
+       `docker/source-policy.json`."
+    2. N13's text plus the check and the failure rule. The sentence would
+       read: "In `full` the host half also builds and pulls images, runs
+       the smoke check's network-control probe on the stack's `edge`
+       network, runs `scan-db`, a one-shot that fetches the image
+       scanner's vulnerability database, and runs `sources-fetch`, a
+       one-shot that pulls nothing and fetches a fixed sample of the
+       bundle's third-party source code over HTTPS, only from the hosts
+       listed in `docker/source-policy.json`, checking every file against
+       `docker/sources.lock.json`; a failed or mismatched fetch fails the
+       run, with no retry. The scan itself runs with no network."
+    3. No CLAUDE.md change. Not compatible with PSC-23, which requires
+       CLAUDE.md to name the route out.
+  - **Recommended: option 2.** A reader of CLAUDE.md then knows that
+    `full` depends on third-party hosts besides the registry and the scan
+    database host, where those hosts are listed, and that an outage turns
+    `full` red by name (Q61). This is the same information the `scan-db`
+    clause gives. The cost is one longer sentence.
+  - Trade-off: option 1 is shorter, but it leaves the fail-closed rule to
+    be found in ADR-KE-016.
+  - Who rules: the human. Deadline: before U8's commit (PSC-23 puts the
+    change in the same commit).
+
+- **Q74. Resolved 2026-10-28 (human ruling).** **A74:** `timeout-minutes`
+  69 in `.github/workflows/ci.yml` (was 37).
+  - The human's words: "Make it 69 seconds". The orchestrator reads them
+    as 69 minutes: a 69-second timeout would fail every run, and the
+    recommendation answered was in minutes (54). The human may correct
+    this reading.
+  - 69 min is about 1.92x the slowest green run (35m53s), above the
+    54 min that PS-3.4's +50% rule gives (option 1). The value is the
+    human's ruling under A62, not the PS-3.4 formula; the reviewer checks
+    it against this ruling and the recorded 35m53s run.
+  - Option 2 (the runner factor's spread, or a CPU-time budget) stays a
+    later item.
+  - It goes in inside U8, before U8 is pushed: RED, the pin in
+    `tests/test_stack_ready_docs.py` (tester); GREEN,
+    `.github/workflows/ci.yml` (developer). *(Amended 2026-10-28, analyst, U8; human ruling.)*
+
+  Original question, kept for the record: *Q74. Open (for the human,
+  under Q62; before U8 is pushed). CI headroom before the fetch stage is
+  added.* *(Added 2026-10-28, analyst, U8 plan.)*
+  - Context:
+    - `.github/workflows/ci.yml` sets `timeout-minutes: 37` (PS-3.4/PSC-9).
+    - PR #15 CI run 40628987168 on 0630586 passed, with a verify job of
+      35m53s. That leaves about 67 s before the timeout. On 86f7831 (run
+      40244299450) the same job took 23m13s. The rise of about 12.7 min
+      came without a new stage; the lock and the U7e base landed in
+      between. Locally, `verify.sh full` went from 1000-1020 s to
+      1130-1160 s over the same commits.
+    - U8 adds the `sources: fetch` stage to every `full` run: the sample
+      is about 130 MiB from seven hosts, plus the container start. The
+      generator pull moves into the stage, so it is not new time.
+    - A62: if this item's added stages add more than 180 s to the slower
+      of two green CI runs, the measurement goes to the human before the
+      timeout is raised. The timeout is never raised without that
+      decision. A run that times out is red, and nothing merges on red.
+    - Whether the 12.7 min is this item's time or runner variance is not
+      known: no stage-by-stage comparison of the two runs is recorded.
+    - *Measured (orchestrator, 2026-10-28, from the two CI logs;
+      `docs/evidence/platform-sbom/u8/ci-timing-q74.md`).* *(Amended 2026-10-28, analyst.)*
+      - Run 40244299450 (86f7831): unit stage "Ran 1047 tests in
+        912.573s"; `offline_check` 195 s; `verify.sh full` 1388 s.
+      - Run 40628987168 (0630586): unit stage "Ran 1110 tests in
+        1566.982s"; `offline_check` 230 s; `verify.sh full` 2146 s.
+      - *Superseded attribution (wrong; kept for the record):* ~~"The
+        growth is the unit stage (+654 s for +63 tests, the U7d and U7e
+        lock tests) and the pre-test build and pull (+70 s); the offline
+        stage grew 35 s (together, the 758 s between the runs)."~~
+        *(Struck 2026-10-28, analyst, on the orchestrator's correction.)*
+    - *Corrected (orchestrator, 2026-10-28, from the tester's profile
+      `docs/evidence/platform-sbom/u8/test-profile-q74.md` and the
+      correction appended to `u8/ci-timing-q74.md`).* *(Amended 2026-10-28, analyst.)*
+      - The suite did not grow. Both trees, run in the gates image with
+        the gate's settings, take the same time: 86f7831 731.4 s wall /
+        645.5 CPU-s; 0630586 736.3 s wall / 646.4 CPU-s. The new tests
+        cost 12.1 s in total. Coverage and the 3.12.16 base change
+        nothing measurable.
+      - On CI, every unchanged module ran 1.6-1.9x slower between the two
+        runs. The `gates-it` resource probe shows the same work costing
+        1442 CPU-s instead of 844, with `cpu_steal_ticks` 0 both times
+        and `psi_cpu_some` 189 s -> 458 s. The runner host was under CPU
+        pressure from outside the job. The runner is GitHub-hosted on Azure
+        (job log setup group, `u8/ci-timing-q74.md` "The runner"), so this
+        is a hosted-pool noisy-neighbour effect that no one here controls.
+        *(Amended 2026-10-28, analyst.)*
+      - So CI wall time is about 735 s times a runner factor, and that
+        factor moved from 1.24x to 2.13x. A timeout sized from one run
+        fails intermittently as the factor moves.
+      - The cheap test savings the profile found (the InstallPs1 tamper
+        pair, a minimal LintScriptTest project, shared `bundle.sh` runs)
+        do not explain Q74. They become a separate small item.
+  - Options *(amended 2026-10-28, analyst, on the orchestrator's
+    correction; the first options, kept for the record, were: (1) compare
+    the two runs stage by stage and bring a PS-3.4 proposal before the
+    push; (2) push and accept a likely timeout; (3) raise the timeout
+    inside U8, which reduces to (1). The comparison of (1) is done above.)*:
+    1. Raise `timeout-minutes` by the PS-3.4 rule on the slowest green
+       run: 35m53s plus 50% is about 53.8 min, so 54 min.
+    2. Size the timeout on the runner factor's spread over more runs, or
+       set a CPU-time budget from the resource probe's `cg_cpu_usage_us`
+       instead of a wall-clock budget (the standing rule for this runner:
+       CPU-time, not wall-clock, budgets). This needs more runs, or a
+       change to what the gate measures.
+    - *Withdrawn (2026-10-28, analyst):* a third option, "find and remove
+      the outside load on the runner host", and the question to the human
+      about what shared it. The runner is GitHub-hosted, so the load is
+      the hosted pool's noisy neighbours, outside anyone's control. Only
+      options 1 and 2 stand.
+  - **Recommended: option 1 now (54 min), so that U8's push can be green;
+    option 2 as the better long-run rule, in a later item.**
+    - Option 1 follows PS-3.4's existing rule, so no new mechanism is
+      needed. It leaves about 18 min above the slowest green run (the
+      2.13x factor), for the U8 fetch stage and runner variance. A62 is
+      met because the measurement and the proposal go to the human before
+      the timeout changes.
+    - Option 2 matches the runner's standing rule (CPU-time, not
+      wall-clock, budgets), but it needs more runs or a gate change, so it
+      does not unblock U8.
+    - The test speed-ups are a separate small item, not Q74.
+  - Who rules: the human (A62; CI minutes are billed). Deadline: before
+    U8 is pushed.
+
+- **Q75. Resolved 2026-10-28 (orchestrator ruling).** **A75:** the arch
+  is the Docker daemon's; an optional `--arch` only asserts it. There is
+  no `--evidence-dir`: the per-file stdout lines are the record. (The
+  analyst's recommendation, arch option 1 and evidence option 1.) PSC-23
+  U8-1 records it. *(Amended 2026-10-28, analyst, U8 orchestrator rulings.)*
+
+  Original question, kept for the record: *Q75. Does `bundle_fetch.sh`
+  take `--arch` and `--evidence-dir`?* *(Added 2026-10-28, analyst, U8
+  plan.)*
+  - Context:
+    - ADR-KE-016 point 3 and N4 give only `--set full|sample --out <dir>`.
+      The lock is per arch (`arches`, `sample_keys(lock, arch)`), so the
+      fetch needs an arch.
+    - `bundle.sh` builds for the daemon's own arch; its `--arch` only
+      asserts it. `sources_lock.sh` requires `--arch`, because a
+      maintainer runs it for the arch whose images it reads.
+    - The U8 record is printed output: one line per file kept (U8-2).
+      CI keeps it in the job log. The full-set operator run is recorded
+      by hand (Q63), so its output must be saved as evidence.
+  - Options (arch):
+    1. The daemon's arch, read as `bundle.sh` reads it; an optional
+       `--arch` only asserts it, and a mismatch exits 2 before any pull.
+    2. `--arch` required, as `sources_lock.sh`.
+  - Options (evidence):
+    1. No `--evidence-dir`. The per-file lines on stdout are the record,
+       and the caller saves them (the CI log; `tee` into
+       `docs/evidence/` for the recorded operator run).
+    2. `--evidence-dir DIR`: the script also writes its per-file lines
+       there.
+  - **Recommended: arch option 1 and evidence option 1.** The bundle the
+    fetch serves is the daemon's arch, so one rule for both bundle steps
+    prevents an amd64 fetch feeding an arm64 bundle. A second evidence
+    path adds a writable location and tests for output that stdout
+    already carries.
+  - Who rules: the orchestrator (a design detail inside ADR-KE-016).
+    Deadline: before U8's RED.
+
+- **Q76. Resolved 2026-10-28 (orchestrator ruling).** **A76:** yes. A
+  completion record is written last in `--out`, naming the set, the arch
+  and the lock's SHA-256. U9 refuses a directory without it, or with a
+  mismatch. (The analyst's recommendation, option 2.) PSC-23 U8-6 records
+  it. *(Amended 2026-10-28, analyst, U8 orchestrator rulings.)*
+
+  Original question, kept for the record: *Q76. Does `--out` carry a
+  completion record?* *(Added 2026-10-28, analyst, U8 plan.)*
+  - Context:
+    - N4 and N9 make `--out` content-addressed files only
+      (`<sha256>`). On failure the script removes `--out` (U8-6), but a
+      SIGKILL or a power loss gives the trap no chance, and a partial
+      directory is left behind.
+    - At U9, `bundle.sh --sources <dir>` re-hashes every file it ships
+      against the lock (N3 `index`), so a missing or wrong file fails
+      there. From the files alone it cannot tell which set (`sample` or
+      `full`), which arch, or which lock the directory was fetched for.
+      A stale directory after a re-lock fails on a missing hash, not by
+      name.
+  - Options:
+    1. No record. U9 re-derives the expected files from the lock and the
+       set, and fails on the first missing one.
+    2. A record file written last, after every file has passed its
+       checks, naming the format, set, arch, the lock's SHA-256 and the
+       files fetched. Its presence means the directory is complete. U9
+       refuses a directory without it, or one whose set, arch or lock
+       digest differs. Its name must not look like a 64-hex file name.
+  - **Recommended: option 2.** "No partial output" then holds even when
+    the trap cannot run. The likely operator mistakes (a sample directory
+    for a full bundle; a fetch made before a re-lock) fail with their own
+    names. The cost is one small file, written last, and its U9 check.
+  - Who rules: the orchestrator. Deadline: before U8's RED, since the
+    record is U8's output and U9's input.
+
+- **Q77. Resolved 2026-11-02 (orchestrator ruling, before the Q83 (a) re-lock).** **A77:** option 2. The six SBOMs stay on the maintainer host; the run's evidence commits a derived file with the per-key package counts and the SHA-256 of each SBOM, plus the SBOMs' sizes measured at this first real run. The size budget (option 3) is revisited only if a later run needs the whole documents. Previously: Deferred 2026-10-28 (orchestrator): not blocking U8. Decided
+  before the next real `sources_lock.sh` run. *(Amended 2026-10-28, analyst, U8 orchestrator rulings.)*
+  Are the lock run's SBOM copies committed?
+  *(Added 2026-10-28, analyst, U8 plan.)*
+  - Context:
+    - U8-12 (U7d item 13) makes `sources_lock.sh` copy the run's six
+      SPDX documents into `--evidence-dir/sboms/`. The purpose is to
+      compute within-key package counts from evidence (O3; R1-N2, the
+      neo4j 72 against 73 rows).
+    - The evidence dir of the real runs was under `docs/evidence/`
+      (`u7d/`), and its files were committed. The six SPDX documents'
+      size is not measured. The repository precedent is derived
+      fixtures (`tests/fixtures/sbom-u3/*.pkgs.tsv`), not whole SBOMs.
+  - Options:
+    1. Commit the six SBOMs with the run's evidence.
+    2. Keep them on the maintainer host, and commit a derived
+       per-key package-count file plus the SHA-256 of each SBOM.
+    3. Commit them only under a size budget the orchestrator sets.
+  - **Recommended: option 2**, after measuring their size at the first
+    real run. It follows the fixture precedent, keeps the repository
+    small, and still makes the O3 within-key comparison reviewable. The
+    hashes bind the counts to the documents the run read.
+  - Who rules: the orchestrator. Deadline: the next real
+    `sources_lock.sh` run (a re-lock; none is planned in U8).
+  - *U9 check (analyst, 2026-10-29):* U9 runs no `sources_lock.sh`, so
+    Q77 stays deferred. If U9's real bundle finds lock drift, the fix is
+    a reviewed re-lock, and Q77 is decided before that run (PSC-24 "U9
+    precision").
+
+- **Q78. Resolved 2026-10-29 (orchestrator ruling).** **A78:** option 1.
+  `--sources` is mandatory; `--sources-set` defaults to `full`. (The
+  analyst's recommendation.) PSC-24 U9-1 records it; design notes "N9
+  amendment, U9" item 2. *(Amended 2026-10-29, analyst, U9 orchestrator
+  rulings.)*
+
+  Original question, kept for the record: *Q78. Open (for the
+  orchestrator; before U9's RED).* Is
+  `bundle.sh --sources` mandatory from U9? *(Added 2026-10-29, analyst,
+  U9 plan.)*
+  - Context:
+    - ADR-KE-016 point 3 gives `bundle.sh --sources <dir>`, with
+      `--sources-set sample` passed only by `offline_check.sh` (Q63). It
+      does not say whether a bundle may be cut without `--sources`.
+    - `NOTICE.md` already says that a bundle whose
+      `THIRD_PARTY_NOTICES.md` has no "Source code" section has no
+      `sources/` and does not itself provide the source. So a sourceless
+      bundle would be honest, but it would not meet PSC-15 (option 1,
+      source in every bundle).
+    - Every fake-docker `bundle.sh` test today calls it without
+      `--sources`. A mandatory flag re-pins them.
+  - Options:
+    1. Mandatory. No `--sources` exits 2 with the usage line. The expected
+       set is `full` unless `--sources-set sample` is given.
+    2. Optional. Without it the bundle has no `app/sources/` and no
+       generated "Source code" section, as before U9, and prints a
+       warning.
+    3. Optional, but the set is read from `fetch.json` and never asserted
+       by a flag.
+  - **Recommended: option 1.** It fails closed: no bundle that
+    redistributes GPL-family binaries without their source can be cut by
+    mistake, and a `sample` set can only reach a bundle by an explicit
+    flag. Option 2 leaves PSC-15 to operator discipline. Option 3 lets a
+    sample directory become an operator bundle silently, which is the
+    mistake A76's record exists to catch.
+  - Who rules: the orchestrator (a design point inside ADR-KE-016).
+    Recorded in PSC-24 "U9 precision" U9-1.
+
+- **Q79. Resolved 2026-10-29 (orchestrator ruling).** **A79:** option 1.
+  One recorded full-set `bundle_fetch.sh` + `bundle.sh` run at U9b,
+  bundle only, never installed and never handed over
+  (`u9/full-bundle-run.txt`, `u9/size.md`). (The analyst's
+  recommendation.) PSC-24 U9-13 records it. *(Amended 2026-10-29,
+  analyst, U9 orchestrator rulings.)*
+
+  Original question, kept for the record: *Q79. Open (for the
+  orchestrator; before U9's GREEN).* Does U9
+  include one recorded real `bundle.sh` run on the full source set?
+  *(Added 2026-10-29, analyst, U9 plan.)*
+  - Context:
+    - Verify and CI bundle only the sample (Q63). The rules that only
+      the full set exercises are: no `not-shipped` component in a `full`
+      bundle (N9), the 716-file copy, the manifest's size against
+      install's 1 MiB cap (PSC-24; N9 estimates about 154 B a line), and
+      `index` time at full size.
+    - N11 puts the recorded full-set run (`offline_check.sh --sources
+      full`, install included) at U10, and U11 re-derives the disk floor
+      (about 8 GiB staged, above the 7 GiB floor, U7d forward note).
+    - U8b's O-1 run proved the full fetch (716 files, 1,180,936,586 B;
+      `u8/full-run.txt`). That fetched directory was not kept.
+  - Options:
+    1. At U9, one recorded `bundle_fetch.sh --set full` plus
+       `bundle.sh --sources <dir>` on this host, with no install. Record
+       the bundle and source bytes, the manifest's bytes and lines, the
+       `index` seconds and the index's statuses (all `shipped`) in
+       `u9/size.md`.
+    2. None at U9. U10's recorded full-set run (N11) proves these, with
+       install.
+  - **Recommended: option 1.** The unit that writes the full-set rules
+    proves them on real data, and a defect in the full-set path is found
+    before U10 adds install and memory sizing on top. The cost is one
+    full fetch (about 1.2 GB) and disk for one bundle, by hand, not in
+    verify.
+  - Who rules: the orchestrator. Recorded in PSC-24 "U9 precision" U9-13.
+
+- **Q80. Resolved 2026-10-29 (orchestrator ruling).** **A80:** option 1.
+  No exempt checksum compare at U9; the multi-match rule (security U6 L-1
+  (a)) lands, and the digest pin and re-review trigger stand. (The
+  analyst's recommendation.) PSC-24 U9-4 records it. *(Amended
+  2026-10-29, analyst, U9 orchestrator rulings.)*
+
+  Original question, kept for the record: *Q80. Open (for the
+  orchestrator, with security; before U9's RED).*
+  Does `index` compare an exempt package's SBOM checksum with the
+  reviewed artifact? *(Added 2026-10-29, analyst, U9 plan.)*
+  - Context:
+    - Security U6 L-1 (`u6/security.md`) asks for two things at U9. (a)
+      An `exempt` entry that matches more than one package is a problem.
+      The orchestrator carried this as a U9 test row (PSC-24 U9-4). (b)
+      "U9's `index` should also compare the package's checksum in the
+      SBOM with the reviewed jar, where syft records one." Nobody has
+      ruled on (b).
+    - The `reason` records the jar's SHA-256. syft usually records a
+      SHA-1 for a jar, so the two values cannot be compared as they
+      stand.
+    - Security's exempt review I-2 accepted the gap while the base is
+      pinned by digest: a base-digest bump re-triggers the exempt review
+      (U6 ruling (c)).
+  - Options:
+    1. Not at U9. (a) only. The digest pin and the re-review trigger
+       stand as security I-2 accepted them.
+    2. `exempt` entries gain a field with the SHA-1 that syft records,
+       and `index` fails when the SBOM's checksum differs or is missing.
+       This changes the policy schema, and security reviews it.
+  - **Recommended: option 1.** The base image is pinned by digest, the
+    exact versioned purl voids an entry on a bump, and (a) closes the
+    two-jar case. Option 2 adds a schema field for a case that
+    the pin already covers. Security confirms in its U9 review.
+  - Who rules: the orchestrator, on security's advice.
+
+- **Q81. Resolved 2026-10-30 (human ruling).** **A81:** option 3. The
+  verify/CI sample fetches, for the apk kind, only the
+  distfiles.alpinelinux.org file(s); the GitLab API raw route is proven by
+  operator full fetches (fail closed, Q61) and the recorded U8b runs. The
+  partial-key rule for U9-5/U9-6 and `source_index`, and whether the apk
+  sample key changes, are the architect's call in unit U9c. The human
+  wrote "Ok 3 it is" after the orchestrator explained that this GitLab is
+  Alpine's aports host, not the repo's (which is GitHub). *(Resolved
+  2026-10-30, orchestrator recording the human's ruling.)* Original text:
+  **Open (for the human; before U11's CI runs, and U9b's `verify
+  full` runs are affected now). The sample fetch's dependence on
+  gitlab.alpinelinux.org.** *(Added 2026-10-29, analyst, U9b.)*
+  - Context:
+    - The verify sample (A63, `sample_keys`: the smallest entry per kind)
+      is 7 keys and 25 files (`u8/expected.md`). Its apk key,
+      `apk:alpine-baselayout@3.7.1-r8`, has 17 files: 15 through
+      GitLab's API raw endpoint on gitlab.alpinelinux.org (`APKBUILD` and
+      14 package files) and 2 on distfiles.alpinelinux.org
+      (`protocols-6.4`, `services-6.4`; plain files, not tarballs)
+      (`u8/hop-hosts.md`). The fetch runs in key order, so apk is first.
+    - Recorded outages of gitlab.alpinelinux.org (IPv4 and IPv6, from the
+      dev box and an external fetcher): 2026-10-28 about 13:50-18:03 UTC;
+      about 18:50 UTC to 2026-10-29 14:21 UTC; and again from about 18:40
+      UTC on 2026-10-29. Each one failed `verify.sh full` at the first
+      APKBUILD request (`u8/u8b-green-verify-full.txt`,
+      `u8/orchestrator-verify-full-u8b-attempt1-outage.txt`,
+      `u9/orchestrator-verify-full-u9a-attempt1-outage.txt`). During the
+      first outage distfiles.alpinelinux.org answered 200
+      (`u8/sample-run.txt`, diagnosis). That is the only distfiles
+      reading recorded during an outage.
+    - Q61 by design: one call, no retry. So every `verify.sh full` and
+      every CI run is red for as long as an outage lasts. The
+      orchestrator's commit gate has been blocked three times (U8b once,
+      U9a now).
+    - What Alpine published (read 2026-10-29):
+      - alpinelinux.org, 2026-10-28, "GitLab security incident: attempted
+        exploitation of CVE-2026-97229"
+        (https://alpinelinux.org/posts/GitLab-security-incident-CVE-2026-97229.html).
+        Its timeline: on Oct 21, "GitLab crashes, 502 errors"; on Oct 27,
+        "GitLab closed to everyone except developers and build servers;
+        rebuild started"; on Oct 28, "rebuild complete". "GitLab is being
+        tested before we open it to the public again." It gives no
+        reopening date. "our package mirrors, cgit, and mailing lists/IRC
+        are available as normal." "the aports repository, packages, and
+        the October 21 releases were not tampered with."
+      - fosstodon @alpinelinux (https://fosstodon.org/@alpinelinux.rss):
+        - 2026-10-21 15:52 UTC: most access to GitLab blocked, with only
+          certain IP addresses allowed.
+        - 2026-10-23 13:40 UTC: downtime for a resource increase.
+        - 2026-10-23 14:04 UTC: GitLab restored.
+        - 2026-10-28 21:27 UTC: the incident report.
+      - The Hacker News, 2026-10-29
+        (https://thehackernews.com/2026/10/attacker-tried-to-exploit-alpine-linuxs.html):
+        closed to the public, with no reopening date.
+      - LWN: no item found by web search.
+      - Not reconciled: the posts give dates, not times. They do not
+        explain the reachable windows recorded here on 2026-10-28 and
+        2026-10-29, which passed `verify full` and CI run 40907497118.
+        The analyst does not guess at the cause. Until Alpine reopens
+        GitLab, outages may come back with no end date.
+    - Integrity is not in question. Every file is pinned to an aports
+      commit and a SHA-256 in `docker/sources.lock.json`, and a mismatch
+      fails closed. This question is about availability only.
+  - Options:
+    1. Keep as is, and accept red gates during outages.
+       - Cost: nothing to build. Commits and CI wait for every GitLab
+         outage, and under the current closure that wait has no known end.
+       - Proves: every kind's fetch path, including the GitLab route,
+         on every run. The operator full-set fetch is the same in kind,
+         only delayed.
+    2. Choose an apk sample key whose lock files avoid GitLab.
+       - Checked against the lock: none exists. All 19 apk keys have
+         their `APKBUILD` on gitlab.alpinelinux.org. The fewest GitLab
+         files is 1 (`geoip`, `libidn2`, `libunistring`,
+         `pax-utils@1.3.9-r1`, `xz`: `APKBUILD` only).
+       - Cost: a change to the `sample_keys` rule.
+       - Proves: the same as option 1, with 1 GitLab request instead of
+         15. It does not remove the dependence, so it does not answer
+         this question. Listed for the record.
+    3. Fetch a distfiles-only subset for the sample's apk row. In
+       verify and CI, the sample fetches every kind's files as now,
+       except that for apk only the distfiles.alpinelinux.org file(s) are
+       fetched. The GitLab files are covered by the operator's full fetch
+       and by the lock's committed checks.
+       - Cost:
+         - A design change to `fetch_plan(.., "sample")`, with a test.
+         - Not only `fetch_plan`: U9-5 and U9a's `source_index` treat a
+           key as wholly `shipped` or wholly `not-shipped`. A
+           partly-fetched apk key would need a rule for its unfetched
+           files (for example, no `path`) in U9-5/U9-6 and in the
+           committed U9a code.
+         - It narrows A63's "one source of each kind" for apk, which is
+           a human ruling.
+         - With today's sample key the subset is two small plain files
+           (15,957 B), not a tarball. Whether the key changes too is the
+           architect's call.
+       - Proves: the distfiles route and the apk copy, index and install
+         path, on every run. Lock-rule coverage is unchanged; only
+         verify's network exposure shrinks.
+       - Does not prove in CI: the GitLab API raw route. That route is
+         proven only by operator full fetches and the recorded U8b runs
+         (`u8/full-run.txt`, `u8/sample-run.txt`, CI run 40907497118).
+    4. A retry window for the sample only.
+       - This contradicts A61 (one call, no retry) and A72 ("U8's
+         bundle-time fetch keeps Q61 strictly"). A retry also does not
+         outlast closures of hours or days.
+       - **Rejected unless the human reverses Q61.**
+    5. Fetch the aports files from a mirror at the pinned commit (for
+       example GitHub).
+       - Cost: gitlab.alpinelinux.org is the origin, so a third-party
+         mirror changes provenance (PSC-23 "as fetched"). It needs a new
+         host in `docker/source-policy.json` and on the SFU egress list,
+         new lock URLs (a reviewed re-lock, Q77) and a security review.
+       - A closer variant, not probed: Alpine's own cgit, which the
+         2026-10-28 post says stayed available. It is still a new host
+         and URL form for the architect to probe (U7c found an anti-bot
+         challenge on GitLab's `/-/raw/` form) and for security to
+         review.
+       - Proves: the same as option 1, with a different single point of
+         failure.
+  - **Recommended: option 3, as a small item next to U9b or in U10.**
+    - The sample's purpose (A63) is to prove the fetch path per kind
+      and the e2e on what ships. The apk kind's copy, index and install
+      path is still proven on every run. The GitLab route is proven by
+      every operator full fetch, which fails closed (Q61), and by U8b's
+      recorded runs.
+    - Counter-argument: the GitLab API raw route is the one most likely
+      to break. U7c found the `/-/raw/` form behind an anti-bot
+      challenge, and the design notes ("N4 amendment, U8", risk note)
+      name the blobs endpoint as the next candidate (U7c item 9).
+      Removing it from CI removes the early warning, so a break would
+      first show at an operator bundle. A mitigation for the architect
+      to weigh: a recorded GitLab-route fetch before each operator
+      bundle.
+    - Trade-off against option 1: option 1 keeps the strongest early
+      warning, but while Alpine's closure lasts, no change merges
+      (nothing merges on red).
+  - Who rules: the human, because A61 and A63 are human rulings and
+    option 5 touches the SFU egress list.
+  - Deadline: before U11's CI runs. U9b's `verify full` runs, and the
+    orchestrator's commit gate for U9a, are blocked now whenever GitLab
+    is unreachable.
+
+- **Q82. Ruled in part 2026-10-30 (orchestrator, A82a): options A + C as unit U9d, after U9c's commit and before U10; D rejected (nothing merges on red); B and E only after U9d's CI measurement names the cause; the floor (O-12) and any push stay the human's.** Original text: **Open (for the orchestrator; option D and any floor change are
+  for the human). PR #15's CI fails at the offline client's launch:
+  `container knowledge-engine-neo4j-1 is unhealthy`.** *(Added
+  2026-10-30, analyst.)*
+  - Context:
+    - CI run 40993359777 (head 90db4b8: U8c-2, U9a, U9b) failed twice,
+      identically, in `offline_check.sh`'s client at `launch.sh`
+      (`compose up -d --no-build --wait`), with "dependency failed to
+      start: container knowledge-engine-neo4j-1 is unhealthy".
+      - Attempt 1: neo4j started 03:10:55.8Z, error 03:11:32.5Z (36.6 s).
+      - Attempt 2: neo4j started 04:09:13.5Z, error 04:09:56.0Z (42.5 s).
+      - Logs (`docs/evidence/platform-sbom/ci/`):
+        `ci-40993359777-attempt1.log` (saved by the analyst with
+        `gh run view 40993359777 --attempt 1 --log`),
+        `ci-40993359777-attempt2.log`, `ci-40993359777-launch-extract.txt`.
+    - Everything before it passed on the runner: the unit stage (`Ran
+      1328 tests`, `OK (skipped=7)`), gates-it, smoke, scan, the sample
+      fetch (GitLab answered), the bundle with sources and the install
+      (six image loads).
+    - The previous run, 40907497118 (head 5cf025c, 2026-10-29), passed
+      the same path: neo4j started 16:32:28.1Z and was healthy at
+      16:33:08.8Z, 40.7 s (`u8/ci-40907497118.log` l.4791-4805).
+    - Locally every `verify.sh full` passes this step
+      (`u9/orchestrator-verify-full-u9b.txt`, `u9c/green-verify-full.txt`).
+      The dev box (32 GB, Docker Desktop) is not the runner.
+  - Facts (analyst, from the logs, the tree and the upstream source):
+    1. **Not a timeout.** Docker counts a failed probe only after
+       `start_period` (20 s), and marks a container unhealthy after
+       `retries` (18) counted failures at `interval` (10 s). The earliest
+       time-out is therefore about 200 s after start, not 37-43 s.
+    2. **What compose reports.** Compose v2's dependency wait
+       (`isServiceHealthy`, docker/compose v2.40.0
+       `pkg/compose/convergence.go`) says "container X exited (N)" when
+       the state is `exited`, and "container X is unhealthy" when the
+       health status is `unhealthy`. Docker sets the status to `unhealthy`
+       when the health monitor stops, that is when the container's process
+       stops (moby `daemon/container/health.go`, `CloseMonitorChannel`:
+       "unhealthy when the monitor has stopped for compatibility reasons").
+       neo4j has `restart: unless-stopped` (`docker-compose.yml` l.141), so
+       a dead process moves to `restarting`, not `exited`, and compose
+       prints "is unhealthy". Reading: the neo4j process most likely died
+       (crash or kill) about 35-40 s after start. This is inferred from the
+       source; the client's compose version was not checked, and the log
+       does not say why the process died.
+    3. **What the client prints today: nothing about the failed
+       container.** `launch.sh` runs `compose up --wait` under `set -e`,
+       so the client exits on compose's line. The host half then prints
+       "offline_check: FAIL (the offline client failed (see its output
+       above))", a `df`, and tears dind down with its anonymous
+       `/var/lib/docker` volume. The container's state and logs are
+       destroyed. No `docker inspect` state (Status, ExitCode, OOMKilled,
+       Health.Log) and no `compose logs` are printed.
+    4. **The runner's disk was full at the failure.** `df` on `/dev/root`
+       (it holds `dist/` and the host daemon's root, where dind's
+       anonymous volume lives; free KiB):
+
+       | Run | after dind up | first reading after the client |
+       |---|---|---|
+       | 40907497118 (pass) | 5,723,360 | 1,035,356 ("after client run", after the inner teardown; the launch/smoke peak is not measured) |
+       | 40993359777 attempt 1 | 5,580,896 | 47,196 (100%, "before teardown") |
+       | 40993359777 attempt 2 | 5,581,428 | 47,576 (100%, "before teardown") |
+
+       The failing runs had 141,932 KiB (about 139 MiB) less free at dind
+       up. That matches the bundle's growth: the bundle stage used
+       2,450,960 KiB against 2,316,476 (+134,484 KiB); the sample is
+       136,571,547 B. The only reading after the failure is taken after
+       neo4j died, so the order (disk full, then neo4j died; or the
+       reverse) is not established. A full disk is the leading candidate,
+       not a proven cause.
+    5. **The 7 GiB floor did not catch it.** The floor (R6,
+       `offline_check.sh` l.200-204: basis 4.3 GiB measured at
+       platform-offline; O-12 kept it at U9a) passed at start (attempt 2:
+       8,578,232 KiB free, 8.18 GiB). By the failure the check had used
+       8,530,656 KiB (8.14 GiB) of that filesystem. The design-notes
+       estimate for the sample path, about 4.7 GiB (design-notes
+       l.3682-3683), is below the use measured here.
+    6. **Memory is not measured at launch.** Runner: `nproc=2`,
+       `mem_total_kib=8122984`, `swap_total_kib=3145724`,
+       `mem_available_kib` 5,854,544-5,908,188 at the gates-it probe
+       (`attempt2.log` l.2164, l.4033). The client's `/install` is a
+       tmpfs with no size (N14 is not built yet): install stages the whole
+       bundle there and keeps `app/` (now with `sources/`) while the stack
+       runs. Compose sets no memory options for neo4j, so it sizes its heap
+       and page cache from the RAM it sees. An OOM kill is the other
+       candidate; nothing in the log tells the two apart.
+    7. **Nothing the installed stack loads at launch changed** between
+       5cf025c and 90db4b8. `git diff 5cf025c 90db4b8 --stat --
+       docker-compose.yml docker-compose.offline.yml docker/
+       scripts/install.sh scripts/launch.sh` is empty. The vendor images
+       load under the same ids in both runs (phoenix fa28e9cd96dd, postgres
+       0ea6700a3b4f, valkey 081c2f5cb575). Outside docs and tests, only
+       `scripts/bundle.sh`, `scripts/offline_check.sh` (passes
+       `--sources`), `scripts/sbom_check.py`, NOTICE.md, README.md,
+       CHANGELOG.md and `licenses/libffi-jna-5.15.0.txt` changed. What
+       reaches the runner is size: the bundle gains `app/sources/` and
+       copies of the notices. U9c keeps the sample's byte size
+       (136,553,898 B, `u9/expected.md` "U9c"), so U9c does not change
+       this.
+  - Options:
+    - **A. A diagnostic first.** On a launch failure the client prints,
+      before it exits, the `docker inspect` state of each stack container
+      (Status, ExitCode, OOMKilled, the Health.Log tail) and `docker
+      compose logs --tail 50` for each unhealthy or exited service.
+      - Cost: a small change to `offline_check.sh`'s client half, with
+        tests; gate `full`. Verify-safe: it prints only on the failure
+        path and does not change pass or fail. The answer needs one CI
+        run, so one push (the human's approval).
+      - Proves: exited or killed (ExitCode, OOMKilled), neo4j's own last
+        lines (for example "No space left on device" or an
+        OutOfMemoryError), and the probe output. It does not fix CI.
+    - **B. Raise neo4j's start budget or set JVM heap/page-cache caps in
+      the installed compose.** Only with a measured cause.
+      - Cost: changes the shipped compose for every operator host, not
+        only the runner.
+      - Proves: nothing about the cause. A longer start budget cannot
+        help a process that died (facts 1, 2). Memory caps help only if A
+        shows OOMKilled.
+    - **C. Measure the runner in the same diagnostic.** Host `df` of the
+      measured paths and `MemAvailable`/swap from `/proc/meminfo`, inside
+      dind `docker system df` (images, containers, volumes), and `df -Pk
+      /install` in the client (already in N14). Taken after install, on a
+      launch failure, and after smoke before the inner teardown.
+      - Cost: a few lines, in the same unit as A.
+      - Proves: the peak disk and memory need of the sample path on the
+        runner. That is the number U10's `/install` sizing (N14) and U11's
+        floor re-derivation need, and it shows how close the passing run
+        was to the edge.
+    - **D. Accept CI red at launch until U11's floor re-derivation.**
+      - Cost: nothing to build.
+      - Contradicts "ship only after a full end-to-end smoke test" and
+        "nothing merges on red" (CLAUDE.md). PR #15 cannot merge, and
+        every later unit lands on red CI. Proves nothing. Rejected unless
+        the human reverses the shipping rule.
+    - **E. (Added by the analyst.) Fix the capacity once A and C name the
+      cause.** If disk: lower the offline check's peak, or raise the
+      floor to the measured need so a shortfall fails at the start with a
+      named message instead of as a neo4j death. If memory: size
+      `/install` (N14) or neo4j's memory.
+      - Cost: depends on the cause; the architect designs it. A floor
+        change pulls part of U11 forward. A CI-only step would break
+        "nothing CI runs that verify.sh does not".
+      - Proves: CI green on the measured margin.
+  - **Recommended: A + C now, as one small unit (U9d: after U9c's commit,
+    before U10), then one CI run on the human's push approval, then E as
+    the measurement says.**
+    - Without A, the next red run says no more than this one, because the
+      evidence is torn down with dind. C gives U10 (N14) and U11 the
+      measured numbers they are waiting for.
+    - The leading evidence (disk at 100%) points away from B.
+    - Counter-argument: A + C cost a CI round trip (about 40 min) before
+      any fix. Acting on the disk reading now (E) is quicker, but it rests
+      on one reading taken after the failure.
+  - Who rules: the orchestrator for A, C and the unit order (no recorded
+    ruling changes). The human for D, for the push that gives the CI run,
+    and for a floor change if it reaches the operator floor (U11; O-12
+    kept 7 GiB at U9a).
+  - Deadline: before the next push of PR #15. Nothing on platform-sbom
+    merges until this CI step is green.
+  - *2026-11-02 measurement attempt (analyst).* CI run 41533322861 (PR
+    #15, head bc5e65e: U9c + U9d; job 21:59:52Z-22:45:37Z) did not reach
+    the offline client's launch, so it is not the Q82 measurement.
+    - Every gates and gates-it test passed. The offline host half failed
+      at 22:45:33Z in `bundle.sh` stage index ("the source index failed
+      ...; no bundle written"): `sbom_check: index: ke-app` refused
+      `libsasl2-2` and `libsasl2-modules-db` `2.1.28+dfsg-10+deb12u1`,
+      because the lock has no `deb:cyrus-sasl2@2.1.28+dfsg-10+deb12u1`
+      for amd64 (it holds `deb:cyrus-sasl2@2.1.28+dfsg-10`). Cause and
+      options: Q83.
+    - The client never started: no `measure:`, `diag:` or events line
+      exists, and U9d's code did not run on the runner.
+    - Runner disk (`/dev/root`, free KiB): 8,573,868 (89%, 8.18 GiB) at
+      "offline: df start" (the 7 GiB floor passed; run 40993359777
+      attempt 2 had 8,578,232), 8,350,404 after the sample fetch, and
+      8,350,248 (89%, about 7.96 GiB) at the failure. All of these
+      precede dind, the bundle and the install, so they say nothing
+      about the launch peak.
+    - Evidence: `docs/evidence/platform-sbom/ci/ci-41533322861-attempt1.log`,
+      `ci-41533322861-launch-extract.txt`.
+    - So Q82's cause (disk or memory at neo4j's launch) is still
+      unmeasured. The U9d-6 reading of the launch extract, and E after
+      it, wait for the next CI run that reaches the launch, and that run
+      needs Q83 first. A82a and the deadline stand.
+- **Q83. Open (for the human; before the next push of PR #15). The source
+  lock drifts when Debian updates an unpinned dependency of a pinned
+  package, and CI goes red at `bundle.sh` stage index until a maintainer
+  re-locks.** *(Added 2026-11-02, analyst, from CI run 41533322861; Q82.)*
+  - Context:
+    - `docker/app.Dockerfile`'s runtime stage pins `libpq5=${LIBPQ_VERSION}`
+      (PSC-25: "never unpin"; a version that leaves the mirror fails the
+      build by name). apt adds libpq5's missing dependencies unpinned.
+      Recorded at U0 (`docs/evidence/platform-sbom/u0-psycopg-c.md`
+      l.19): apt added only libldap-2.5-0 (source `openldap`,
+      2.5.13+dfsg-5), libsasl2-2 and libsasl2-modules-db (source
+      `cyrus-sasl2`, 2.1.28+dfsg-10); the krb5 libraries and libkeyutils1
+      come with the digest-pinned base.
+    - No other bundled image installs packages at build time: ke-gateway
+      and ke-neo4j add none to their digest-pinned bases, and the vendor
+      images are pulled by digest (`scripts/build.sh`, PS-2.9). The
+      builder stage and `gates.Dockerfile` do not ship.
+    - Debian published `cyrus-sasl2 2.1.28+dfsg-10+deb12u1` after the
+      lock's last change (commit 0630586, 2026-10-27). CI builds ke-app
+      fresh and got it. The dev box's ke-app (built 2026-10-27, reused
+      from the build cache) still has -10, so U9b's, U9c's and U9d's
+      local `verify.sh full` passed while CI failed: local and CI verify
+      can disagree on the same commit.
+    - U9 works as designed: `sbom_check.py index` refuses a package with
+      no lock entry (CLAUDE.md, generated artifacts). Only
+      `scripts/sources_lock.sh --arch <arch> --evidence-dir <dir>`
+      regenerates the lock (maintainer, network, never in verify or CI),
+      and security reviews every lock diff.
+    - What a re-lock needs (read from `scripts/sources_lock.sh` and
+      `scripts/sources_resolve.py`):
+      - The six bundled images built locally at build.sh's tags, with
+        ke-app rebuilt without the build cache first; otherwise its SBOM
+        still lists -10 and the lock does not change. `scripts/build.sh`
+        has no option for that.
+      - Without `--refresh`, a key already locked for the arch is not
+        resolved again (`_resolve_keys`): only new keys are fetched, and
+        a generated key no image needs loses the arch (here
+        `deb:cyrus-sasl2@2.1.28+dfsg-10` is dropped). The one new key
+        here is a deb, resolved on snapshot.debian.org only (srcfiles
+        JSON, the .dsc and the files it lists). Other policy hosts are
+        reached only for other new keys.
+      - **The Alpine closure (Q81) does not block it.** The apk route
+        (`resolve_apk`, gitlab.alpinelinux.org's API) runs only for a new
+        apk key, and the apk images (ke-gateway, valkey) install nothing
+        on their pinned bases, so their keys do not change. `--refresh`
+        would re-resolve every apk key through GitLab and fail while it
+        is closed; it is not needed here.
+      - snapshot.debian.org must already index +deb12u1 (not checked;
+        no network here).
+      - Q77 (commit the run's SBOMs, or a derived count plus hashes) is
+        to be decided before the next real `sources_lock.sh` run (Q77,
+        "U9 check"); the orchestrator rules it.
+    - It recurs: any Debian update to openldap or cyrus-sasl2 in bookworm
+      repeats it on any push, with no repo change. Whether +deb12u1 is a
+      security fix is not checked (no network here).
+  - Options:
+    - **(a) Re-lock now.** The maintainer rebuilds ke-app without cache
+      and runs `scripts/sources_lock.sh --arch amd64 --evidence-dir
+      <dir>`; security reviews the lock diff; the orchestrator runs
+      `verify.sh full` on it; the developer commits; the human approves
+      the push.
+      - Cost: one maintainer run with network, a security review and one
+        CI run (about 45 min). No code change.
+      - Gives: CI past stage index, so the next run reaches the launch
+        and yields the Q82 measurement (U9d-6).
+      - Does not stop the next drift: the next Debian update to these
+        sources turns CI red at the same stage, about 45 min into the run.
+    - **(b) (a), then pin the three apt-added dependencies too**
+      (`libldap-2.5-0`, `libsasl2-2`, `libsasl2-modules-db`) in the
+      runtime stage, at the versions the new lock holds, by the libpq5
+      rule (PSC-25).
+      - Cost: a small unit (Dockerfile and its tests, gate `full`,
+        review, security), then a pin bump with each such Debian update,
+        as for libpq5. No second re-lock if the pins equal the locked
+        versions.
+      - Gives: the local and CI images agree (a changed pin line
+        invalidates the cache). Drift shows as an apt failure at build,
+        naming the package, when the pinned version leaves the mirror,
+        not at stage index.
+      - Against: until then the image keeps the pinned version and does
+        not pick up a Debian fix; the ke-app scan (`scripts/scan.sh` in
+        `verify.sh full`) is the signal. It extends a recorded rule to
+        new packages, so it is the human's call.
+    - **(c) (a), plus a rule: re-lock at a fixed cadence or before each
+      push, recorded as a maintenance step in CLAUDE.md.**
+      - Cost: a maintainer run with network, a no-cache rebuild and a
+        security review each time, even when nothing drifted; a CLAUDE.md
+        change.
+      - Does not prevent red: Debian can publish between the re-lock and
+        CI's build, and the cached local image still hides it.
+  - **Recommended: (a) now, then (b) as a small unit before U10; not (c).**
+    - (a) is the only route to the Q82 measurement and is U9's designed
+      recovery. (b) turns a late CI red at stage index into an early
+      build failure that names the package, and ends the local/CI
+      difference for ke-app.
+    - (c) adds a recurring chore without closing the window.
+    - Counter-argument: (b) trades drift for staleness of three
+      packages; with (a) alone the image always takes Debian's current
+      version, at the cost of a red CI and a re-lock each time.
+  - Who rules: the human for running the re-lock (network) or naming who
+    runs it, for the push, for (b)'s pin policy and for (c) (CLAUDE.md).
+    The orchestrator for Q77 before the run and for the unit order of
+    (b). Security reviews the lock diff (CLAUDE.md).
+  - Deadline: before the next push of PR #15. Nothing on platform-sbom
+    merges until CI is green (Q82).
+  - *2026-11-02, orchestrator (after the (a) run):* the re-lock added `deb:cyrus-sasl2@2.1.28+dfsg-10+deb12u1` and kept the -10 key, which the digest-pinned postgres image still needs; the context bullet above that expected the -10 key to drop is superseded. Security PASS on the diff (`relock-20261102/security.md`); its low L-1 (postgres ships the vulnerable -10 and only ke-app is scanned) is a follow-up question for the analyst to raise with (b).
 
 ## platform-skeleton
 

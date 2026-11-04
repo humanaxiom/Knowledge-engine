@@ -4,20 +4,24 @@ Maintained by the `marketer` agent. Follows a Keep a Changelog style.
 
 ## [Unreleased]
 
-### 2026-10-23 (platform-sbom, in progress)
+### 2026-10-27 (platform-sbom, in progress)
 
-In progress: not finished, and the bundle is not yet for operators.
+In progress: not finished, and the bundle is not yet for operators. The source fetch landed at U8 (`scripts/bundle_fetch.sh` and `verify.sh full`'s sample fetch); the fetched set now ships in the bundle (U9b).
 
 **Changed:**
-- ke-app builds psycopg against Debian's libpq instead of the psycopg-binary wheel, and no longer ships pip. Its image is flattened, so pip is also gone from the saved tar.
-- NOTICE.md gains a ke-app base section and licence files for CPython, HACL*, KaRaMeL and Apache-2.0.
-- `scripts/bundle.sh` needs the pinned SBOM generator image and refuses to build without it.
-- The stack runs its own neo4j image, built from the pinned official Neo4j Community image with the commercial fleet-management plugin and the unused GenAI plugin removed (the `products/` folder). Neo4j itself is unchanged. NOTICE.md describes it.
+- ke-app builds psycopg against Debian's libpq instead of the psycopg-binary wheel, no longer ships pip, and is flattened. NOTICE.md gains a ke-app base section and licence files for CPython, HACL*, KaRaMeL and Apache-2.0.
+- The stack runs its own ke-neo4j image: the official Neo4j Community image without the commercial fleet-management plugin or the unused GenAI plugin (the `products/` folder). Neo4j itself is unchanged. Its smoke check now walks volumes.
+- `docker/source-policy.json` lists the nine hosts a source fetch may use, and two security-reviewed exemptions (jna and javassist).
+- ke-app and ke-gates move to the Python 3.12 slim base at digest `sha256:6dd8b6da…9753` (CPython 3.12.16). The base brings openssl and libssl3 3.0.22-1~deb12u2, which closes CVE-2026-84782 (High) found by the image scan during U7d. The CPython licence files and NOTICE.md now name 3.12.16; the licence texts are unchanged. The source lock is regenerated with 183 components: the openssl and ca-certificates deb12u2 keys are added, the old ca-certificates key is dropped, and the old openssl key stays for the pinned postgres image.
 
 **Added:**
-- Each bundle carries one SPDX 2.3 SBOM per image.
-- `scripts/bundle.sh` prints a per-image report of packages with no identifiable licence.
-- `scripts/verify.sh full` runs an image-side drift check on ke-app.
+- One SPDX 2.3 SBOM per bundled image. `scripts/bundle.sh` needs the pinned SBOM generator image and prints a per-image report of packages with no identifiable licence. `scripts/verify.sh full` runs an image-side drift check on ke-app.
+- A licence classifier that fails closed: SPDX expressions are read in full, and hash-named or unknown licences are marked as needing source.
+- A committed source lock, `docker/sources.lock.json`, with its maintainer tool `scripts/sources_lock.sh`. It has 182 components: one per Debian, Alpine and PGDG source package, plus Neo4j, Temurin, and the PyPI and Maven packages. It resolves against snapshot.debian.org, Alpine aports (via the GitLab API), the PGDG archive, GitHub, PyPI and Maven Central, with bounded retry. Verify and CI never run it. The full source set is about 1.3 GB; the verify sample is about 137 MB.
+- The source fetch (U8). `scripts/bundle_fetch.sh --set sample|full --out DIR` fetches the third-party source files named in the lock through the hardened `sources-fetch` one-shot (`docker-compose.sources.yml`), checking every file's size and checksums, and only from the hosts in `docker/source-policy.json`. `scripts/verify.sh full` now fetches the sample (25 files, about 137 MB) during the offline check. A failed or mismatched fetch fails closed, with no retry. The CI job timeout rises from 37 to 69 minutes. The fetched set is not yet shipped in the bundle (U9).
+- The bundle-side source index and the notices "Source code" section tooling (U9a): `scripts/sbom_check.py` gains `sources-check`, `index` and `notices`, which refuse a fetched set that does not match the lock, a bad `fetch.json`, or any link or special file. Not yet wired into `scripts/bundle.sh`, so the bundle still does not ship the sources (U9b).
+- The bundle ships the fetched source set (U9b). `scripts/bundle.sh` takes a required `--sources <dir>` (the directory `scripts/bundle_fetch.sh` wrote) and `--sources-set full|sample` (default `full`; a sample bundle is for verification only and says so in its notices). The sources-check runs before the first write, with no network. The bundle then holds each file as `app/sources/files/<sha256>`, `app/sources/index.json` and a generated "Source code" section of `THIRD_PARTY_NOTICES.md`, all covered by the manifest. A failure after the first write removes what the run wrote, leaving no manifest or record. `--out` and `--sources` are made absolute; a path with an empty, `.` or `..` segment is refused, and the parent of `--out` must exist. NOTICE.md gains the libffi notice (the copy JNA vendors) with `licenses/libffi-jna-5.15.0.txt`. `scripts/offline_check.sh` builds and checks the sample bundle.
+- The verify/CI source sample no longer depends on gitlab.alpinelinux.org (Alpine's aports host, closed to the public since 2026-10-27). For the apk kind the sample fetches only the sample entry's distfiles.alpinelinux.org files: the sample is now 10 files, about 137 MB, 7 components. The APKBUILD name check is skipped for that entry in the sample, with a printed line, and still runs for every full fetch. A sample bundle's index and "Source code" notices mark that entry as partial, with the upstream URL for the rest; a full bundle never has a partial entry. Operator full fetches still use the GitLab route and fail closed on it.
 
 ### 2026-10-21 (ci-triggers)
 

@@ -386,6 +386,53 @@ never touches a real daemon. What it does:
   OPENER is replaced by FAKE_RESOLVE_NET (JSON url -> [status, headers,
   body text]; any other url is a 404); FAKE_RESOLVE_LOG gets one requested
   url per line. stdout, stderr and the exit status are the resolver's.
+- platform-sbom U8b (design-notes "N4 amendment, U8" item 12; tester, U8b
+  RED): `run [opts] sources-fetch ARGS` on the same file is modelled the
+  same way: the real scripts/sources_fetch.py from its bind, every container
+  path rewritten by the service's long-form binds, and the client's
+  `R.OPENER` (its loaded sources_resolve.py, U7b interface pin 1) replaced
+  by FAKE_RESOLVE_NET; FAKE_RESOLVE_LOG gets one requested url per line.
+  stdout, stderr and the exit status are the client's.
+- platform-sbom U9d (A82a; design-notes "N9 amendment, U9d" item 13; tester,
+  U9d RED). Each is inert unless its variable is set:
+  - FAKE_DOCKER_CONTAINERS entries may give `State` as an object {"Status",
+    "ExitCode", "OOMKilled", optional "Health": {"Status", "Log": [{"End",
+    "ExitCode", "Output"}]}} and optional `Config` (e.g. {"Env": [...]}),
+    `Args`, `Path`, `Mounts`. The listing reads `State.Status` where it read
+    the `State` string. `inspect` / `container inspect` of such a container
+    (ID, ID prefix of 4+ or name) renders `--format DIAG_TEMPLATE` (this
+    module's constant, matched exactly) as Docker would; any other template
+    exits 2; no `--format` prints the whole record (Config.Env included).
+  - FAKE_COMPOSE_LOGS (JSON object, service -> list of lines): `compose ...
+    logs [opts] <svc>...` prints each named service's lines, the last N with
+    `--tail N`/`-n N`; a service not in it exits 1 "no such service".
+  - `system df`: `--format` renders `{{.Type}}`, `{{.TotalCount}}`,
+    `{{.Active}}`, `{{.Size}}`, `{{.Reclaimable}}` (and `{{json .}}`) per row
+    of FAKE_DOCKER_SYSTEM_DF (JSON list of such objects; default four rows:
+    Images, Containers, Local Volumes, Build Cache); an unknown field exits
+    2. `-v`/`--verbose` adds a per-object section (the call record shows it).
+  - Fake df: FAKE_DF_FAIL (`1`: every call; else `|`-separated path
+    arguments) logs the call, then exits 1 with a df error on stderr.
+- platform-sbom U9d rework 1 (ruling O-23; design-notes "Amendment, rework 1
+  (O-23)" A1, A9; tester, U9d rework-1 RED). Each is inert unless set:
+  - DIAG_TEMPLATE gains `RestartCount`, `State.StartedAt`, `State.FinishedAt`
+    and `State.Error` (A1). The render reads `RestartCount` from the
+    container record's top level (0 when missing), the two timestamps and
+    `Error` from `State`: a timestamp that is missing, "" or Docker's zero
+    value `0001-01-01T00:00:00Z` prints `<absent>`; an Error that is missing
+    or "" prints `<absent>`, else JSON-quoted. The no-`--format` record gains
+    `RestartCount`.
+  - EVENTS_FORMAT (module constant, written into the fake by install()):
+    the one `docker events --format` the client may use (A2's `events_fmt`).
+  - FAKE_DOCKER_EVENTS (JSON list of {"Time", "Action", "Actor":
+    {"Attributes": {...}}}): `events ...` requires `--format` EVENTS_FORMAT
+    (else exit 2), prints each event as `<Time> <Action> <name> exitCode=<x>
+    signal=<s>` (a missing name `<no value>`, a missing exitCode or signal
+    empty), flushes, installs a SIGTERM handler that appends the record
+    {"argv": ["EVENTS", "stopped"]} to FAKE_DOCKER_JSON and exits 143,
+    appends {"argv": ["EVENTS", "ready"]}, then sleeps up to 60 s and exits 0
+    (no `stopped` record: a stream nobody killed). Unset: `events` exits 0 at
+    once with no output, as before.
 - Every other call exits 0.
 """
 
@@ -395,6 +442,35 @@ import sys
 from pathlib import Path
 
 VERSION = "2.29.7"
+
+# platform-sbom U9d (design-notes "N9 amendment, U9d" item 7): the one
+# `container inspect --format` template the launch diagnostic may use. The
+# fake renders exactly this text (tests/test_offline_check.py compares the
+# script's template with it); any other template exits 2.
+DIAG_TEMPLATE = "\n".join((
+    "State.Status: {{.State.Status}}",
+    "State.ExitCode: {{.State.ExitCode}}",
+    "State.OOMKilled: {{.State.OOMKilled}}",
+    "RestartCount: {{.RestartCount}}",
+    "State.StartedAt: {{if or (eq .State.StartedAt \"\") (eq .State.StartedAt \"0001-01-01T00:00:00Z\")}}<absent>"
+    "{{else}}{{.State.StartedAt}}{{end}}",
+    "State.FinishedAt: {{if or (eq .State.FinishedAt \"\") (eq .State.FinishedAt \"0001-01-01T00:00:00Z\")}}"
+    "<absent>{{else}}{{.State.FinishedAt}}{{end}}",
+    "State.Error: {{if .State.Error}}{{json .State.Error}}{{else}}<absent>{{end}}",
+    "{{if .State.Health}}State.Health.Status: {{.State.Health.Status}}",
+    "{{range $i, $e := .State.Health.Log}}State.Health.Log[{{$i}}]: end {{$e.End}} exit {{$e.ExitCode}}"
+    " output {{json $e.Output}}",
+    "{{else}}State.Health.Log: <absent>",
+    "{{end}}{{else}}State.Health.Status: <absent>",
+    "State.Health.Log: <absent>",
+    "{{end}}",
+))
+
+# platform-sbom U9d rework 1 (O-23; design-notes "Amendment, rework 1 (O-23)"
+# A2, A9): the one `docker events --format` the client's event stream may use.
+# The fake renders exactly this format (FAKE_DOCKER_EVENTS); any other exits 2.
+EVENTS_FORMAT = ('{{.Time}} {{.Action}} {{.Actor.Attributes.name}} exitCode={{index .Actor.Attributes "exitCode"}}'
+                 ' signal={{index .Actor.Attributes "signal"}}')
 
 _SCRIPT = r'''
 import json, os, sys
@@ -588,6 +664,152 @@ for item in filter(None, os.environ.get("FAKE_DOCKER_FAIL_NTH", "").split("|")):
 ISOLATED = {"com.docker.network.bridge.gateway_mode_ipv4": "isolated"}
 CLIENT_VERSION = "27.0.0"
 project = os.environ.get("COMPOSE_PROJECT_NAME") or "knowledge-engine"
+
+# --- platform-sbom U9d (A82a; design-notes "N9 amendment, U9d" item 13) -----
+# Each is inert unless its variable is set (system df prints default rows, but
+# no earlier caller runs it).
+def _u9d_state(c):
+    st = c.get("State", "running")
+    return st.get("Status", "running") if isinstance(st, dict) else st
+
+def _u9d_render(c):
+    st = c["State"]
+    def word(v):
+        return ("true" if v else "false") if isinstance(v, bool) else str(v)
+    lines = ["State.Status: %s" % st.get("Status", ""), "State.ExitCode: %s" % word(st.get("ExitCode", 0)),
+             "State.OOMKilled: %s" % word(st.get("OOMKilled", False))]
+
+    def stamp(v):  # rework 1 (O-23, A1): Docker's zero time and "" are absent
+        return "<absent>" if v in (None, "", "0001-01-01T00:00:00Z") else str(v)
+    err = st.get("Error")
+    lines += ["RestartCount: %s" % word(c.get("RestartCount", 0)),
+              "State.StartedAt: %s" % stamp(st.get("StartedAt")),
+              "State.FinishedAt: %s" % stamp(st.get("FinishedAt")),
+              "State.Error: %s" % (json.dumps(err, ensure_ascii=False) if err else "<absent>")]
+    health = st.get("Health")
+    if health is not None:
+        lines.append("State.Health.Status: %s" % health.get("Status", ""))
+        log_entries = health.get("Log") or []
+        for i, e in enumerate(log_entries):
+            lines.append("State.Health.Log[%d]: end %s exit %s output %s"
+                         % (i, e.get("End", ""), word(e.get("ExitCode", 0)),
+                            json.dumps(e.get("Output", ""), ensure_ascii=False)))
+        if not log_entries:
+            lines.append("State.Health.Log: <absent>")
+    else:
+        lines += ["State.Health.Status: <absent>", "State.Health.Log: <absent>"]
+    return "\n".join(lines) + "\n"  # the template ends in a newline; inspect adds one more
+
+if (os.environ.get("FAKE_DOCKER_CONTAINERS") is not None
+        and (argv[:1] == ["inspect"] or argv[:2] == ["container", "inspect"])):
+    _u9d_cts = [c for c in json.loads(os.environ["FAKE_DOCKER_CONTAINERS"]) if isinstance(c.get("State"), dict)]
+    _u9d_rest = argv[1:] if argv[0] == "inspect" else argv[2:]
+    _u9d_fmt = opt_values("--format") + opt_values("-f")
+    _u9d_skip = set(_u9d_fmt) | set(opt_values("--type"))
+    _u9d_names = [a for a in _u9d_rest if not a.startswith("-") and a not in _u9d_skip]
+
+    def _u9d_hit(n):
+        return next((c for c in _u9d_cts if n in (c.get("ID"), c.get("Names"))
+                     or (len(n) >= 4 and str(c.get("ID", "")).startswith(n))), None)
+
+    if _u9d_names and all(_u9d_hit(n) for n in _u9d_names):
+        _u9d_found = [_u9d_hit(n) for n in _u9d_names]
+        if not _u9d_fmt:
+            print(json.dumps([{"Id": c["ID"], "Name": "/" + c.get("Names", ""), "Path": c.get("Path", ""),
+                               "Args": c.get("Args", []), "State": c["State"], "Mounts": c.get("Mounts", []),
+                               "RestartCount": c.get("RestartCount", 0),
+                               "Config": dict(c.get("Config") or {}, Labels=c.get("Labels", {}))}
+                              for c in _u9d_found], indent=4))
+            sys.exit(0)
+        if _u9d_fmt[-1] != DIAG_TEMPLATE:
+            sys.stderr.write("fake docker: unsupported container inspect --format %r\n" % _u9d_fmt[-1])
+            sys.exit(2)
+        for c in _u9d_found:
+            print(_u9d_render(c))
+        sys.exit(0)
+
+if argv[:1] == ["compose"] and "logs" in argv and os.environ.get("FAKE_COMPOSE_LOGS") is not None:
+    _u9d_table = json.loads(os.environ["FAKE_COMPOSE_LOGS"])
+    _u9d_tail, _u9d_svcs, _i = None, [], argv.index("logs") + 1
+    while _i < len(argv):
+        _a = argv[_i]
+        if _a in ("--tail", "-n", "--since", "--until", "--index") and _i + 1 < len(argv):
+            if _a in ("--tail", "-n"):
+                _u9d_tail = argv[_i + 1]
+            _i += 2
+            continue
+        if _a.startswith("--tail="):
+            _u9d_tail = _a.split("=", 1)[1]
+        elif not _a.startswith("-"):
+            _u9d_svcs.append(_a)
+        _i += 1
+    for _s in _u9d_svcs:
+        if _s not in _u9d_table:
+            sys.stderr.write("no such service: %s\n" % _s)
+            sys.exit(1)
+    for _s in _u9d_svcs or list(_u9d_table):
+        _lines = list(_u9d_table[_s])
+        if _u9d_tail not in (None, "all"):
+            _lines = _lines[len(_lines) - int(_u9d_tail):] if int(_u9d_tail) > 0 else []
+        for _l in _lines:
+            print(_l)
+    sys.exit(0)
+
+if argv[:2] == ["system", "df"]:
+    import re as _re
+    _u9d_rows = json.loads(os.environ.get("FAKE_DOCKER_SYSTEM_DF") or "null") or [
+        {"Type": "Images", "TotalCount": "5", "Active": "0", "Size": "3.2GB", "Reclaimable": "3.2GB (100%)"},
+        {"Type": "Containers", "TotalCount": "0", "Active": "0", "Size": "0B", "Reclaimable": "0B"},
+        {"Type": "Local Volumes", "TotalCount": "0", "Active": "0", "Size": "0B", "Reclaimable": "0B"},
+        {"Type": "Build Cache", "TotalCount": "0", "Active": "0", "Size": "0B", "Reclaimable": "0B"}]
+    _u9d_fmt = opt_values("--format")
+    if _u9d_fmt:
+        for _r in _u9d_rows:
+            def _u9d_sub(m, _r=_r):
+                if m.group(1) is None:
+                    return json.dumps(_r)
+                if m.group(1) not in _r:
+                    sys.stderr.write("fake docker: unsupported system df field %r\n" % m.group(1))
+                    sys.exit(2)
+                return str(_r[m.group(1)])
+            print(_re.sub(r"\{\{\s*(?:json\s+\.|\.([A-Za-z]+))\s*\}\}", _u9d_sub, _u9d_fmt[-1]))
+    else:
+        print("TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE")
+        for _r in _u9d_rows:
+            print("%-15s %-9s %-9s %-9s %s" % (_r["Type"], _r["TotalCount"], _r["Active"], _r["Size"],
+                                               _r["Reclaimable"]))
+    if "-v" in argv or "--verbose" in argv:
+        print("\nImages space usage:\n\nREPOSITORY   TAG   IMAGE ID   SIZE   (verbose: per object)")
+    sys.exit(0)
+
+# --- platform-sbom U9d rework 1 (O-23, A9): the client's event stream --------
+if argv[:1] == ["events"] and os.environ.get("FAKE_DOCKER_EVENTS") is not None:
+    _ev_fmt = opt_values("--format")
+    if not _ev_fmt or _ev_fmt[-1] != EVENTS_FORMAT:
+        sys.stderr.write("fake docker: unsupported events --format %r\n" % (_ev_fmt[-1] if _ev_fmt else None))
+        sys.exit(2)
+    for _ev in json.loads(os.environ["FAKE_DOCKER_EVENTS"]):
+        _at = (_ev.get("Actor") or {}).get("Attributes") or {}
+        sys.stdout.write("%s %s %s exitCode=%s signal=%s\n" % (_ev.get("Time", ""), _ev.get("Action", ""),
+                                                              _at.get("name", "<no value>"),
+                                                              _at.get("exitCode", ""), _at.get("signal", "")))
+    sys.stdout.flush()
+
+    def _ev_record(word):
+        if jlog:
+            with open(jlog, "a", encoding="utf-8") as fh:
+                fh.write(json.dumps({"argv": ["EVENTS", word], "env": {}, "cwd": os.getcwd(),
+                                     "project_dir": "", "dotenv_present": False}) + "\n")
+
+    def _ev_term(signum, frame):
+        _ev_record("stopped")
+        os._exit(143)
+
+    import signal as _signal, time as _time
+    _signal.signal(_signal.SIGTERM, _ev_term)
+    _ev_record("ready")
+    _time.sleep(60)
+    sys.exit(0)
 
 # --- platform-sbom U0 (PSC-25): psycopg, libpq and dpkg inside the api ------
 def _pq_number(debver):
@@ -1072,7 +1294,7 @@ if os.environ.get("FAKE_DOCKER_CONTAINERS") is not None and (_CT_LIST or _CT_RM)
             if not hit:
                 sys.stderr.write("Error response from daemon: No such container: %s\n" % t)
                 rc = 1
-            elif hit[0]["State"] == "running" and not _is_forced_rm(argv):
+            elif _u9d_state(hit[0]) == "running" and not _is_forced_rm(argv):
                 sys.stderr.write("Error response from daemon: cannot remove container \"/%s\": container is "
                                  "running: stop the container before removing or force remove\n" % hit[0]["Names"])
                 rc = 1
@@ -1084,7 +1306,7 @@ if os.environ.get("FAKE_DOCKER_CONTAINERS") is not None and (_CT_LIST or _CT_RM)
                           + opt_values("--format")])
     show_all = "--all" in argv or "a" in flags
     quiet = "--quiet" in argv or "q" in flags
-    rows = [c for c in containers if show_all or c["State"] == "running"]
+    rows = [c for c in containers if show_all or _u9d_state(c) == "running"]
     for f in opt_values("--filter") + opt_values("-f"):
         key, _, val = f.partition("=")
         if key == "label":
@@ -1093,7 +1315,7 @@ if os.environ.get("FAKE_DOCKER_CONTAINERS") is not None and (_CT_LIST or _CT_RM)
         elif key == "name":
             rows = [c for c in rows if _re.search(val, c["Names"])]
         elif key == "status":
-            rows = [c for c in rows if c["State"] == val]
+            rows = [c for c in rows if _u9d_state(c) == val]
         elif key == "id":
             rows = [c for c in rows if c["ID"].startswith(val)]
         else:
@@ -1108,7 +1330,7 @@ if os.environ.get("FAKE_DOCKER_CONTAINERS") is not None and (_CT_LIST or _CT_RM)
             line = t.replace("{{json .}}", json.dumps(c))
             line = _re.sub(r'\{\{\s*\.Label\s+"([^"]*)"\s*\}\}', lambda m: c["Labels"].get(m.group(1), ""), line)
             line = line.replace("{{.ID}}", c["ID"]).replace("{{.Names}}", c["Names"])
-            line = line.replace("{{.State}}", c["State"])
+            line = line.replace("{{.State}}", _u9d_state(c))
             line = line.replace("{{.Labels}}", ",".join("%s=%s" % kv for kv in c["Labels"].items()))
             if "{{" in line:
                 sys.stderr.write("fake docker: ps template %r is not modelled\n" % fmt[-1])
@@ -1829,20 +2051,22 @@ if _u3_own and "run" in argv:
         with open(os.path.join(_work3, _spdx3[-1][len("/out/"):]), "w", encoding="utf-8", newline="\n") as fh:
             fh.write(_raw3)
         sys.exit(0)
-    if _svc3 == "sources-resolve":
+    if _svc3 in ("sources-resolve", "sources-fetch"):
         # platform-sbom U7b rework round 1 (design-notes, U7b rework round 1,
         # item 12): the real scripts/sources_resolve.py, read from its bind in
         # the compose file, under this interpreter; every bind of the service
         # maps its target to its source; OPENER is FAKE_RESOLVE_NET.
+        # U8b (N4 amendment U8 item 12): `sources-fetch` runs the real
+        # scripts/sources_fetch.py the same way; its hook is `R.OPENER`.
         import subprocess as _subprocess
         _env4 = interpolation_env()
         _path4 = next(f for f in _u3_files if os.path.basename(f) == _u3_own[0])
         try:
             import yaml as _yaml4
             with open(_path4, encoding="utf-8") as fh:
-                _svc4 = (_yaml4.safe_load(fh) or {})["services"]["sources-resolve"]
+                _svc4 = (_yaml4.safe_load(fh) or {})["services"][_svc3]
         except Exception as exc:  # the model must never pass silently
-            sys.stderr.write("fake sources-resolve: cannot read %s: %r" % (_path4, exc) + chr(10))
+            sys.stderr.write("fake %s: cannot read %s: %r" % (_svc3, _path4, exc) + chr(10))
             sys.exit(1)
 
         def _interp4(value):
@@ -1869,7 +2093,7 @@ if _u3_own and "run" in argv:
         _pairs4 = []
         for _vol4 in _svc4.get("volumes") or []:
             if not isinstance(_vol4, dict) or _vol4.get("type") != "bind":
-                sys.stderr.write("fake sources-resolve: only long-form binds are modelled" + chr(10))
+                sys.stderr.write("fake %s: only long-form binds are modelled" % _svc3 + chr(10))
                 sys.exit(1)
             _s4 = _interp4(_vol4["source"])
             if not os.path.isabs(_s4):
@@ -1890,7 +2114,7 @@ if _u3_own and "run" in argv:
 
         _entry4 = [str(x) for x in _svc4.get("entrypoint") or []]
         if _entry4[:2] != ["python3", "-I"] or len(_entry4) < 3:
-            sys.stderr.write("fake sources-resolve: want an entrypoint python3 -I <script> ..., got %r" % _entry4
+            sys.stderr.write("fake %s: want an entrypoint python3 -I <script> ..., got %r" % (_svc3, _entry4)
                              + chr(10))
             sys.exit(1)
         _script4 = _remap4(_entry4[2])
@@ -1899,10 +2123,12 @@ if _u3_own and "run" in argv:
             sys.exit(2)
         _boot4 = chr(10).join([
             "import importlib.util, json, os, sys, types",
-            "spec = importlib.util.spec_from_file_location('sources_resolve', sys.argv[1])",
+            "name = 'sources_fetch' if sys.argv[2] == 'sources-fetch' else 'sources_resolve'",
+            "spec = importlib.util.spec_from_file_location(name, sys.argv[1])",
             "mod = importlib.util.module_from_spec(spec)",
-            "sys.modules['sources_resolve'] = mod",
+            "sys.modules[name] = mod",
             "spec.loader.exec_module(mod)",
+            "hook = mod.R if name == 'sources_fetch' else mod",
             "net = json.loads(os.environ.get('FAKE_RESOLVE_NET') or '{}')",
             "log = os.environ.get('FAKE_RESOLVE_LOG')",
             "def opener(url, timeout):",
@@ -1912,11 +2138,11 @@ if _u3_own and "run" in argv:
             "    st, hd, body = net.get(url, [404, {}, 'not found'])",
             "    return types.SimpleNamespace(status=st, headers={k.lower(): v for k, v in hd.items()},",
             "                                 body=[body.encode('utf-8')])",
-            "mod.OPENER = opener",
-            "sys.exit(mod.main(sys.argv[2:]))",
+            "hook.OPENER = opener",
+            "sys.exit(mod.main(sys.argv[3:]))",
             ""])
         sys.stdout.flush()
-        _done4 = _subprocess.run([sys.executable, "-I", "-S", "-B", "-c", _boot4, _script4,
+        _done4 = _subprocess.run([sys.executable, "-I", "-S", "-B", "-c", _boot4, _script4, _svc3,
                                   *[_remap4(a) for a in _entry4[3:] + argv[_i3 + 1:]]])
         sys.exit(_done4.returncode)
 
@@ -2144,7 +2370,8 @@ def install(bin_dir: Path) -> Path:
     """Write the fake `docker` into `bin_dir` and return its path."""
     bin_dir.mkdir(parents=True, exist_ok=True)
     fake = bin_dir / "docker"
-    fake.write_text(f"#!{sys.executable}\nVERSION = {VERSION!r}\nLIBPQ_PIN = {_libpq_pin()!r}\n{_SCRIPT}",
+    fake.write_text(f"#!{sys.executable}\nVERSION = {VERSION!r}\nLIBPQ_PIN = {_libpq_pin()!r}\n"
+                    f"DIAG_TEMPLATE = {DIAG_TEMPLATE!r}\nEVENTS_FORMAT = {EVENTS_FORMAT!r}\n{_SCRIPT}",
                     encoding="utf-8", newline="\n")
     fake.chmod(0o755)
     return fake
@@ -2163,6 +2390,10 @@ if jlog:
     with open(jlog, "a", encoding="utf-8") as fh:
         fh.write(json.dumps({"argv": ["DF"] + argv, "env": {}, "cwd": os.getcwd(),
                              "project_dir": "", "dotenv_present": False}) + "\n")
+_fail = os.environ.get("FAKE_DF_FAIL") or ""
+if _fail and (_fail == "1" or set(a for a in argv if not a.startswith("-")) & set(_fail.split("|"))):
+    sys.stderr.write("df: cannot read table of mounted file systems: fake failure\n")
+    sys.exit(1)
 by_path = json.loads(os.environ.get("FAKE_DF_AVAIL_BY_PATH") or "{}")
 default_avail = int(os.environ.get("FAKE_DF_AVAIL_KB") or str(50 * 1024 * 1024))
 fs = os.environ.get("FAKE_DF_FILESYSTEM") or "/dev/fake"

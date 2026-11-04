@@ -1214,6 +1214,7 @@ orchestrator.
   `[unit: test_ci_job_has_timeout]` (fast) asserts the job declares
   `timeout-minutes`; the value is checked by the reviewer against the
   recorded measurement. From `ci-triggers` on, the two green runs are a PR's `pull_request` run and its manual re-run (attempt 2) on the same head commit (CT-5).
+  *(Amended 2026-10-28, analyst, platform-sbom U8: the human's A74 ruling sets `timeout-minutes` to 69, an exception above the +50% formula (54 min on the 35m53s run); see Q74 in `docs/open-questions.md`.)*
 
 **Analyst review for `platform-offline` (2026-10-19).** PS-3.1–PS-3.4 above
 stand as written; the sub-bullets below make each one testable case by case,
@@ -3293,9 +3294,26 @@ item.
 
 ## Item: platform-sbom
 
-Status: **In progress (2026-10-25):** U0-U5 committed (U5 d8ffa2d, not yet
-pushed; U0-U4b pushed as draft PR #14, whose CI run 40046377958 passed,
-verify job 32m32s); U6 in progress. *(Amended 2026-10-25, analyst, U6.)*
+Status: **In progress (2026-10-28):** U0-U7c on main (PR #14 merged at
+86f7831); U7d (WIP 45411ae) and U7e (0630586; PSC-27 MET) pushed on draft
+PR #15, CI run 40628987168 PASS (verify job 35m53s against the 37-min
+timeout: Q74); U8 (PSC-23, the bounded source fetch) in plan: criteria in
+"U8 precision" under PSC-23; Q73 and Q74 open for the human, Q75 and Q76
+ruled, Q77 deferred. *(Amended 2026-10-28, analyst; U8 plan and orchestrator rulings.)*
+*(Amended 2026-10-28, analyst; human rulings: Q73 (option 2) and Q74 (`timeout-minutes` 69) are resolved; nothing in U8 is open for the human.)*
+*(Amended 2026-10-29, analyst, U9 plan: U8a, U8b and U8c part 1 committed and pushed to draft PR #15; U9 (PSC-15, PSC-24) in plan: criteria in "U9 precision" under PSC-24; Q78-Q80 open for the orchestrator; Q77 still deferred.)*
+*(Amended 2026-10-29, analyst: Q78-Q80 resolved by the orchestrator (option 1 each); O-9..O-12 ruled; U9 plan gate PASS; U9 splits into U9a and U9b.)*
+*(Amended 2026-10-30, analyst, U9c plan: U9b committed (0396699, not pushed). Q81 ruled by the human, A81 = option 3: the verify/CI sample fetches only the distfiles.alpinelinux.org file(s) for `apk`, and the GitLab route stays for operator full fetches. Unit U9c comes before U10; criteria are in "U9c precision" under PSC-24, and the architect's points are QA-1..QA-5 in the handoff.)*
+*(Before, the same day: "U7d committed as WIP 45411ae (scan red on openssl);
+U7e (PSC-27, base bump to python 3.12.16): tester's verify full PASS with
+the image scan green, security PASS, reviewer and A34 in progress; PSC-27
+PENDING until the orchestrator's gate; next U8".)* *(Amended 2026-10-28, analyst; U7e.)*
+*(Before: "U0-U7c pushed (draft PR #14; CI 23 min); U7d gate passed; commit
+blocked on a fresh scan High (openssl) -> U7e first (PSC-27).")* *(Amended 2026-10-27, analyst.)* U7e: base bump to
+python 3.12.16 (human ruling). *(Amended 2026-10-27, analyst; human ruling.)*
+*(Earlier the same day: "U7d gate passed 2026-10-26 (commit landing); next U8".)* *(Amended 2026-10-27, analyst.)*
+*(Amended 2026-10-25, analyst, U7d; human ruling.)*
+*(Amended 2026-10-25, analyst, U7d.)* *(Amended 2026-10-25, analyst, U6.)*
 *(Amended 2026-10-24, documenter, review N7)*
 *(Updated 2026-10-23, documenter, status)* Opened (2026-10-21) right after `platform-supply-chain` (split
 accepted by the orchestrator, 2026-10-21), on `agent/platform-sbom`.
@@ -3338,16 +3356,26 @@ Counts are not restated here; the evidence under
 |---|---|---|
 | PSC-13 SBOM per bundled image | MET | U3 (464fa11) |
 | PSC-14 notices complete for `ke-app` | MET (the generated "Source code" section is U9) | U1 (23e3c9b) |
-| PSC-15 GPL source offers | PENDING (classifier landed in U5, d8ffa2d) | U5 (d8ffa2d), U6-U7, U9 |
-| PSC-16 CI cost and disk measured on CI | PENDING | U11 |
+| PSC-15 GPL source offers | PENDING (classifier U5, policy U6, lock U7a-U7d (committed lock, 183 components; 182 at U7d, +openssl and ca-certificates `~deb12u2`, -ca-certificates `~deb12u1` with the U7e base bump); source fetch U8 (in plan), source archive in the bundle U9) | U5 (d8ffa2d), U6 (66781a9), U7a-U7c (9b1754f, 6d8fa4d, 86f7831), U7d (45411ae, WIP), U7e (0630586), U8, U9 |
+| PSC-16 CI cost and disk measured on CI | PENDING (measurements for U11: full operator source set 1.327 GB, verify sample 137 MB; full bundle ~8 GiB staged, over the 7 GiB floor; CI 23 min on 86f7831, 35m53s on 0630586 against the 37-min timeout, Q74) *(Amended 2026-10-28: Q74 ruled by the human, timeout 69 min, set in U8.)* | U11 |
 | PSC-19 end to end offline install | PENDING | U10 |
 | PSC-20 SBOM generator pinned and hardened | MET | U2 (98b6d27) |
 | PSC-21 per-arch bundles | PENDING (next recorded arm64 run) | U12 |
-| PSC-22 obligations not hidden | MET (report, drift check, `always` list; their `sources/` entries are U6-U7) | U4 (40e2181) |
-| PSC-23 bounded source fetch | PENDING | U8 |
+| PSC-22 obligations not hidden | MET (report, drift check, `always` list; their `sources/` entries are U6-U7; generator-digest bump is a re-review trigger; `exempt` rules: versioned purl void on bump, reviewed reason, U6) | U4 (40e2181), U6 (66781a9) |
+| PSC-23 bounded source fetch | PENDING (hosts ten, U6 + U7d; fetch tool U8 in plan: "U8 precision" criteria 2026-10-28; Q73, Q74 open for the human; A75, A76 ruled) *(Amended 2026-10-28: Q73 (option 2) and Q74 (69 min) resolved by the human.)* | U6 (66781a9), U7d (45411ae), U8 |
 | PSC-24 no partial bundle, manifest rules | PENDING | U9 |
 | PSC-25 psycopg on Debian libpq | MET | U0 (31bfed4) |
 | PSC-26 first-party neo4j image | MET | U4b (c300d88) |
+| PSC-27 `ke-app` ships the fixed OpenSSL | MET (orchestrator verify full PASS 1162 s with the scan green; review APPROVED, security PASS, A34 PASS; CI run 40628987168 PASS) | U7e (0630586) |
+
+*(Rows PSC-15, PSC-16, PSC-22 and PSC-23 updated 2026-10-27, analyst.)*
+*(Rows PSC-15, PSC-16, PSC-23 and PSC-27 updated 2026-10-28, analyst, U8 plan.)*
+*(Note 2026-10-29, analyst, U9 plan; rows above not rewritten: U8a
+(3203054), U8b (98e465a) and U8c part 1 (23bf33e) are committed and on
+draft PR #15. PSC-23 stays PENDING until U8c's third-fetch record (U8-11).
+PSC-14's generated section, PSC-15 and PSC-24 are planned for U9: "U9
+precision" U9-1 to U9-15 under PSC-24; Q78-Q80 open for the
+orchestrator.)*
 
 Outcome metric moved: **neither.** No draft is reviewed and no rule is
 ratified because of this item. It closes the M-NT1 remainder
@@ -3459,22 +3487,25 @@ full what it contains.
       "Licenses and Acknowledgements for Incorporated Software") ship as
       `licenses/CPython-3.12-incorporated.txt`. *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)* (Security L-5.)
     - The file is that section, extracted from `Doc/license.rst` at the
-      CPython tag that matches the image's CPython (`v3.12.15` today), and
+      CPython tag that matches the image's CPython (`v3.12.16` today; `v3.12.15` before U7e), and
       it names that CPython version. A maintainer fetches it over HTTPS
       (the fetch needs network), and its source URL and sha256 are
       recorded; security fetches it a second time and the sha256 must
       match (Q48 form). It is git-tracked, because `scripts/bundle.sh`
-      ships only `git ls-files -- licenses` (security I-4). *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)*
-    - CPython 3.12.15 also builds `_md5`, `_sha1`, `_sha2` and `_sha3` from
+      ships only `git ls-files -- licenses` (security I-4). *(Amended 2026-10-23, analyst, U1 round 2; pip dropped, human.)* *(Amended 2026-10-28, analyst; U7e: v3.12.16; `license.rst` sha256 unchanged,
+      `341832873fd316a37927e79385093fbbfd40a467428480835fe435a80cadf4e5`.)*
+    - CPython 3.12.16 also builds `_md5`, `_sha1`, `_sha2` and `_sha3` from
       HACL* code under MIT (`Modules/_hacl/`), and `Doc/license.rst` omits
       it (security L-9). The bundle therefore also ships
       `licenses/CPython-3.12-HACL.txt`: the MIT header copied as-is from
       `Modules/_hacl/Hacl_Hash_SHA2.c` in the security-verified
-      `Python-3.12.15.tar.xz` (sha256
-      `c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a`,
+      `Python-3.12.16.tar.xz` (sha256
+      `b5796915dc45ff745cfb4e990a7e7c93d6f546328a102ce31448d69ebc37575c`,
       equal to the base's `PYTHON_SHA256`), under a header that names the
-      source file and the tarball sha256. *(Amended 2026-10-23, analyst, U1 round 3.)*
-    - CPython 3.12.15's HACL* modules compile in KaRaMeL headers
+      source file and the tarball sha256. *(Amended 2026-10-23, analyst, U1 round 3.)* *(Amended 2026-10-28, analyst; U7e: was
+      3.12.15, tarball sha256 `c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a`;
+      the licence bodies are byte-identical, only the headers moved.)*
+    - CPython 3.12.16's HACL* modules compile in KaRaMeL headers
       (`Modules/_hacl/include/krml/`, Copyright INRIA and Microsoft
       Corporation, Apache-2.0), per the security ruling of 2026-10-23
       (security L-9b). The bundle therefore also ships two files:
@@ -3488,7 +3519,8 @@ full what it contains.
         base (Debian `base-files` 12.4+deb12u15, sha256
         `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`).
       Both are git-tracked, as `scripts/bundle.sh` ships only
-      `git ls-files -- licenses`. *(Amended 2026-10-23, analyst, U1 round 4.)*
+      `git ls-files -- licenses`. *(Amended 2026-10-23, analyst, U1 round 4.)* *(Amended 2026-10-28,
+      analyst; U7e: 3.12.15 -> 3.12.16, same tarball as above; KaRaMeL body unchanged.)*
     - `NOTICE.md` names `licenses/CPython-3.12-incorporated.txt`,
       `licenses/CPython-3.12-HACL.txt`, `licenses/CPython-3.12-KaRaMeL.txt`
       and `licenses/Apache-2.0.txt`.
@@ -3691,6 +3723,9 @@ full what it contains.
       `THIRD_PARTY_NOTICES.md`. Unit U9.
       `[unit: test_notice_source_code_heading_matches_generated]` (fast).
       *(Amended 2026-10-23, analyst, U1 review.)*
+    - The U9 criteria for these checks (the fetched set consumed, the
+      index, the copy, the generated section) are "U9 precision" U9-1 to
+      U9-15 under PSC-24. *(Added 2026-10-29, analyst, U9 plan.)*
 - **PSC-16 CI cost and disk measured on CI.**
   - Two green CI runs record, from the runner's per-line timestamps: the
     SBOM generation per image, the source fetch, and the whole job; plus
@@ -3990,18 +4025,349 @@ full what it contains.
       check rejects a resolution host as a file host, for example
       `pypi.org`.
     - Design notes N5 lists the resolution endpoints.
-  - *PGDG sources (Q71, open for the human, before U7c).* Three postgres
+  - *PGDG sources (Q71, open for the human, before U7d; the `pgdg` route
+    is U7d's first unit of work once ruled).* *(Amended 2026-10-25, analyst, U7d: deadline moved from "before U7c", which shipped without the `pgdg` route.)* Three postgres
     packages come from PGDG, not Debian, so `snapshot.debian.org` cannot
     supply their source. The recommendation is a `pgdg` lock kind and a
     tenth host, `apt-archive.postgresql.org`. If it is ruled, the U6
     host-set test and ADR-KE-016 point 4 are amended, and security reviews
     the host and the kind. Until it is ruled, the three keys have no
     entry, and the source check fails closed. *(Amended 2026-10-25, analyst, U7.)*
+    - *Ruled (A71, human, 2026-10-25): option 1.* *(Amended 2026-10-25, analyst, U7d; human ruling.)*
+      - U7d adds the `pgdg` lock kind and the tenth host,
+        `apt-archive.postgresql.org`, to `docker/source-policy.json`
+        `hosts`. The U6 host-set test then expects exactly ten hosts, and
+        ADR-KE-016 point 4's egress list names the new host.
+      - Security reviews the host and the kind at U7d.
+      - Given the committed lock, each of the three PGDG keys
+        (`postgresql-16`, `postgresql-18`, `postgresql-common`) has a
+        `pgdg` entry whose file URLs are all on
+        `apt-archive.postgresql.org`.
+  - *Transient errors in the lock run (Q72, open for the human, before
+    U7d's real run).* The U7c Windows proof saw `snapshot.debian.org`
+    answer 503 once and take about 31 s once. U7d's real run makes about
+    450 requests, and under Q61's rule, which N5 applies to the lock tool
+    too, one transient error aborts the run with nothing written.
+    - The analyst recommends two changes, for the lock tool only:
+      resume-from-partial within a run, and a bounded retry on HTTP 5xx
+      and timeouts. A 4xx, a refused host or a hash mismatch is never
+      retried, and the lock is still written only when complete.
+    - U8's bundle-time fetch keeps Q61 strictly whatever the human rules.
+    *(Amended 2026-10-25, analyst, U7d.)*
+    - *Ruled (A72, human, 2026-10-25): option 3 only, for the lock tool
+      (`sources_resolve.py`, run by `scripts/sources_lock.sh`).* *(Amended 2026-10-25, analyst, U7d; human ruling.)*
+      - Given a request that gets an HTTP 5xx or times out, the tool
+        retries it at most 3 times after the first attempt, waiting 10 s,
+        30 s and 60 s. If a retry succeeds, the run goes on. If the last
+        retry also fails, the run fails closed, as before: one line, and
+        the lock is unchanged.
+      - Given a 4xx, a refused host or hop, or a hash mismatch, the tool
+        does not retry. It fails at once, as before.
+      - Every retry is printed, with the host, the status and the attempt
+        number, and recorded in the run's evidence.
+      - U8's bundle-time fetch keeps Q61 strictly: one call, no retry.
+      - Resume from partial (Q72 option 2) is not adopted now. If the real
+        U7d run still fails, it falls back to the human.
   - *Fixtures versus fresh images (orchestrator O3, 2026-10-25).* Before
     U7d commits the lock, the developer diffs the freshly built images'
     package lists against the U3 fixtures. If they differ in any way, U7d
     stops and goes to the orchestrator: refreshing the fixtures re-pins
     the real-row tests of U4-U6. *(Amended 2026-10-25, analyst, U7.)*
+  - *Third fetch of the Neo4j tarball (orchestrator refinement,
+    2026-10-27; design notes U7d item 14).* U8's first bundle-time sample
+    fetch on the CI runner is the recorded third, network-independent
+    fetch. It is recorded in
+    `docs/evidence/platform-sbom/sources-provenance.md` with the run id,
+    runner, date, hop hosts, and the sha256 and size it measured. *(Amended 2026-10-27, analyst.)*
+  - *U8 precision (analyst, 2026-10-28; unit U8: design notes N4, N13,
+    N15 row U8, N5 amendment U7 items 4-5, U7c N2/N3 carry, U7d items 13
+    and 14; ADR-KE-016 point 3).* *(Added 2026-10-28, analyst, U8 plan.)*
+    The criteria say what the fetch does, not how. Whether its loop is
+    curl (ADR-KE-016 point 3, N4) or `sources_resolve.py`'s `fetch()`
+    (U7b) is the architect's choice, recorded by amendment. Open points
+    (`docs/open-questions.md`): Q73 and Q74 for the human; Q75 and Q76
+    ruled by the orchestrator (2026-10-28) and folded into U8-1 and U8-6;
+    Q77 deferred. *(Amended 2026-10-28, analyst: Q73 and Q74 resolved by
+    the human; see U8-9 and U8-14.)* Lock facts at 0630586, for sizing
+    only: 183 keys, 876 files, 716 distinct SHA-256 values, full set
+    1,342,441,658 B; the amd64 sample (`sample_keys`) is 7 keys, 25 files,
+    136,571,547 B, and its files sit on every file host the lock uses.
+    - **U8-1 Command line.**
+      - `scripts/bundle_fetch.sh --set full|sample --out <dir>`. A missing
+        `--set` or `--out`, another `--set` value or an unknown argument
+        exits 2 with a usage line, before any pull, request or write.
+      - *A75 (orchestrator, 2026-10-28).* *(Amended 2026-10-28, analyst.)*
+        The arch is the Docker daemon's, read as `bundle.sh` reads it. An
+        optional `--arch amd64|arm64` only asserts it: another value exits
+        2; a value that differs from the daemon's exits 1 naming both,
+        before any pull or request (as `bundle.sh --arch`). There is no
+        `--evidence-dir`: the per-file stdout lines (U8-2) are the record,
+        and the caller saves them (the CI log; `tee` into
+        `docs/evidence/` for the recorded operator run).
+      - Given an `--out` that is a symlink, not a directory, or a
+        non-empty directory, the script exits 1 naming it, before any
+        pull or request, and leaves it untouched. An absent `--out` or an
+        empty directory is accepted. *(Why: on failure the script removes
+        `--out` (N4), so it must never be handed files it did not write;
+        `bundle.sh --out` has the same rule.)*
+      - A host script for Linux and Git Bash (N4). It is not bundled, not
+        copied by `bundle.sh`, and never in the stack's `COMPOSE_FILE`.
+    - **U8-2 Stages and what the run prints.**
+      - Stage `pull`: the SBOM generator, through `docker-compose.sbom.yml`
+        service `sbom` in the N1 amendment U2 form, one call. On failure:
+        `bundle_fetch: FAIL (stage pull: pulling the SBOM generator <ref>
+        failed; no retry)`, exit 1, and no `--out` left that the script
+        created.
+      - Stage `fetch`: the `sources-fetch` one-shot (U8-7).
+      - The markers `== sources: pull ==`, `== sources: fetch ==` and
+        `== sources: done ==`, with seconds per stage (N4 step 3), so CI
+        timestamps time them (PSC-16, Q62).
+      - For each file kept, one line with the component key, the upstream
+        file name, every hop host in order, the SHA-256 and the size.
+        This line is the record U8-11 cites. A URL with a query from a
+        redirect is never printed with its query (`?<query omitted>`, the
+        evidence redaction rule).
+    - **U8-3 What is fetched.**
+      - *(Amended 2026-10-30, analyst, U9c (A81): `--set sample` fetches only the distfiles.alpinelinux.org file(s) of the apk sample key, and every other kind as before; see "U9c precision" U9c-1.)*
+      - Before the first request, every lock entry passes the lock's
+        per-entry rules (U7a `lock_problems`: schema, URL charset, host
+        and path binding per kind, hashes, sizes). A lock that fails
+        makes no request and exits 1 naming the problem. The sample is
+        chosen only from such a lock (security U7a I-4). Coverage of the
+        SBOMs is not checked here; it is U9's `index`.
+      - Given a lock in which one SHA-256 has more than one `size`, more
+        than one upstream alg, or two upstream values for one alg, the
+        per-entry rules fail. They name the entry and the first entry in
+        lock order that holds that SHA-256. This also applies to
+        `lock-check`, `sources_lock.sh` and U9's `index`. *Why:* the fetch
+        stores a shared file once, by SHA-256. *(Added 2026-10-28,
+        architect for the analyst, U8a rework: security M-2 and L-6,
+        review R1-N1/R1-N2; design notes N4 amendment U8 item 1, N5.)*
+        - A file of size 0 is exempt from the one-alg rule. The empty
+          content may sit under the files-API SHA-256 and under
+          `sha512sums` in one entry (U7d size-0 rule). The size check
+          binds 0 bytes, and the empty-content SHA-256 binds the content.
+          *(Added 2026-10-28, architect for the analyst; orchestrator
+          ruling, U8a round 2.)*
+      - `--set sample` fetches exactly the files of `sample_keys(lock,
+        <arch>)` (Q63). `--set full` fetches every file of every entry
+        whose `arches` holds the arch. Nothing else is requested: no
+        metadata, API or resolution call (O2), no other URL.
+      - The first request for a file is its lock `url` exactly as
+        written. So the only query a first request can carry is the apk
+        GitLab API raw form's `ref=<commit>` (U7c item 9 (e)); the lock
+        rules refuse any other.
+      - No URL is requested twice in one run. Files that share a SHA-256
+        are stored once (U8-6). Whether a second URL with an already-held
+        SHA-256 is still fetched is the architect's choice, recorded.
+    - **U8-4 How it is fetched (PSC-23, Q61).**
+      - HTTPS only, on the first request and on every hop; TLS 1.2 at
+        least; no proxy, `.curlrc` or other client setting read from the
+        environment or a file.
+      - Redirects are followed one hop at a time, at most 5. Every hop
+        passes the resolver's hop rules (U7b rework round 1 item 3:
+        printable ASCII, `https://`, no userinfo, port or fragment, a plain
+        path with no `%`; a query allowed), and its host is in
+        `docker/source-policy.json` `hosts` (exact match after
+        lower-casing). Hosts come from that file only, never from a
+        literal in the fetch.
+      - Every request has a timeout, and every file a wall-clock deadline
+        and a byte cap. The values are in the design.
+      - Q61, strictly: one attempt per request and no retry. Q72's retry
+        is the lock tool's only. If `fetch()` is reused, every call passes
+        `retries=0`.
+      - Any of these ends the run at once, exit 1, with one line
+        `bundle_fetch: FAIL (stage fetch: <host>: <file name>: <why>; no
+        retry)`: a final status other than 2xx; a timeout or transport
+        error; a refused hop; more than 5 redirects; a size or SHA-256
+        mismatch; a U8-5 name mismatch; a write error (disk full
+        included).
+    - **U8-5 Checked before use (PSC-15, PSC-23).**
+      - A file's bytes are checked against the lock's `size` and `sha256`
+        before anything else reads them. A file that fails is deleted and
+        never placed in `--out`.
+      - The `.dsc` of a `deb` or `pgdg` entry, after its own check, is
+        parsed by the existing `parse_dsc` rules. Its `Files` and
+        `Checksums-Sha256` list exactly the entry's other files, by name,
+        size and SHA-256. Otherwise: `<dsc>: Files/Checksums-Sha256 differ
+        from the lock entry` (U7c N2 and N3 carry). `pgdg` is included
+        because its entries are built from the `.dsc` the same way (U7d
+        precision P4-P5); the architect confirms.
+      - The APKBUILD of an `apk` entry, after its own check, is read as
+        text by the existing A4 and U7c item 3 rules (never sourced or
+        run). The names in its top-level `sha512sums` equal exactly the
+        names of the entry's files whose `upstream.alg` is `sha512`.
+        Otherwise: `APKBUILD at <commit>: sha512sums names differ from the
+        lock entry`.
+      - These parsers are `sources_resolve.py`'s, called or mounted, never
+        re-implemented (U7c N3 precision).
+      - No fetched file is unpacked, built or run, on the host or in any
+        container. The two text reads above are the only parsing.
+    - **U8-6 `--out`, and no partial output.**
+      - On success, `--out` holds each fetched file once, as a regular
+        file named by its lower-case 64-hex SHA-256 (N4; the same name as
+        N9's `app/sources/files/<sha256>`), owned by the caller, with no
+        link and no subdirectory, plus the completion record below.
+      - *A76 (orchestrator, 2026-10-28).* *(Amended 2026-10-28, analyst.)*
+        The completion record is written last, only after every file of
+        the set has passed U8-4 and U8-5. It names at least the set, the
+        arch and the SHA-256 of the lock the run read. Its name can never
+        be taken for a 64-hex file name. A failed run never writes it.
+        From U9, `bundle.sh --sources` refuses a directory that has no
+        record, or whose record's set, arch or lock SHA-256 differs from
+        its own.
+      - Each file's bytes are exactly the bytes fetched (PSC-23: it ships
+        as fetched).
+      - Given a failure after `--out` was created, at any stage and on
+        any exit path the script can trap (error, INT, TERM, HUP), `--out`
+        is removed and the run exits non-zero. Given a fault on the n-th
+        file of a set, nothing of `--out` remains.
+      - The run's compose project is torn down on every exit path, as
+        `scan.sh` (D4).
+    - **U8-7 The `sources-fetch` service.**
+      - It lives in `docker-compose.sources.yml`, beside
+        `sources-resolve` (N5 amendment U7 item 4, which supersedes N1's
+        and N4's `docker-compose.sbom.yml`). The file's header, which says
+        today that only the lock tool starts it, is corrected.
+      - Image `ke-gates:${KE_IMAGE_TAG:-local}`, `pull_policy: never`, run
+        with `--pull never`: it pulls nothing.
+      - Its only route out is its own project's default bridge. No
+        `ports`, not privileged, no Docker socket, no `DOCKER_HOST`.
+      - `read_only: true`, tmpfs `/tmp`, `cap_drop: [ALL]`,
+        `no-new-privileges:true`, and `user:` the caller's numeric
+        uid:gid, set by the script and refused unless it matches
+        `^[0-9]+:[0-9]+$`.
+      - Mounts: the lock, the policy and the scripts it runs, read-only;
+        exactly one writable mount, the output directory. No checkout
+        mount.
+      - Environment: literals only, no pass-through. No `KE_*` key, no
+        model key, no token. Compose is called with `--env-file
+        .env.example`, so `.env` is never read (PSC-6).
+        `test_verify_full_takes_no_caller_ke_key_but_the_model_keys`
+        stays green.
+      - `gates` and `gates-it` are unchanged and stay offline (Q56(a)).
+    - **U8-8 Wiring into `offline_check.sh` (verify `full` and CI).**
+      - *(Amended 2026-10-30, analyst, U9c (A81): the sample no longer covers gitlab.alpinelinux.org; it covers every file host except that one; see "U9c precision" U9c-6.)*
+      - One call, `bash scripts/bundle_fetch.sh --set sample --out
+        <dir>`, replaces the interim generator pull (N1 amendment U2) at
+        the same place. `<dir>` is under `dist/` (in `df_paths`) and
+        outside the bundle directory. The ke-app and ke-neo4j base pulls
+        stay as they are (N1 amendment U4; U4b).
+      - A fetch failure fails `offline_check.sh` before `bundle.sh` runs,
+        and the fetch's FAIL line is in the output.
+      - The EXIT trap removes `<dir>` on every exit path, pass or fail.
+      - Verify and CI only ever run `--set sample` (Q63).
+      - Until U9, `bundle.sh` does not read `<dir>`: the bundle's file
+        list is the same as before U8. What the gate proves at U8: the
+        generator arrives through `bundle_fetch.sh`; one entry of each
+        kind, which covers every file host in the lock, is fetched over
+        the allowed hosts and checked; the offline install still passes
+        with no route out. The offline client and `dind` gain no network.
+      - Disk: the sample adds about 0.13 GiB under `dist/`, inside the
+        7 GiB floor (U7d item 13). U11 confirms on CI.
+    - **U8-9 Wording (PSC-23, N13).**
+      - `bundle.sh`'s refusal for an absent generator ends with `run
+        scripts/bundle_fetch.sh first` instead of `pull it first with:
+        docker pull <ref>` (N1). `--out` stays untouched.
+      - `bundle.sh`'s header keeps "makes no network call" and adds that
+        the source set is fetched beforehand by `scripts/bundle_fetch.sh`,
+        the only bundle step with a route out (N13).
+      - README says where the route out is and gives the operator order.
+        It does not say a bundle ships sources before U9 (standing rule
+        N1).
+      - CLAUDE.md: Q73, for the human. PSC-23 puts the CLAUDE.md change
+        in the same commit as the wiring, so U8 does not commit before
+        Q73 is ruled.
+        *(Amended 2026-10-28, analyst: Q73 ruled by the human, option 2;
+        the sentence lands at U8b in the same commit as the wiring.)*
+    - **U8-10 Hosts confirmed by real fetches.** The real sample fetch
+      (U8-14) records the hop hosts for each kind.
+      `objects.githubusercontent.com` was not used at U7b. Dropping or
+      adding a `hosts` entry is a design note amendment, a test change and
+      a security review, never the developer alone (N10 amendment U6 item
+      2). Until then a needed host that is not listed fails closed.
+    - **U8-11 The third Neo4j fetch (design notes U7d item 14).**
+      - The first green CI run of `verify.sh full` that includes U8 is the
+        third fetch. It runs after U8 is pushed (human approval), so its
+        record lands in the next commit.
+      - A dated section is appended to
+        `docs/evidence/platform-sbom/sources-provenance.md` (append only).
+        It gives the run id and URL; the runner name and image from the
+        job log (`runs-on: ubuntu-24.04`, a GitHub-hosted runner); the
+        UTC date; the hop hosts (`github.com` then `codeload.github.com`);
+        and the measured SHA-256 and size against
+        `182ae2e5c3807bc3d7a09770dbf450d2e8667080bde93b3b6c829125db0f91e3`
+        and 20,907,800 B.
+      - It names the egress: GitHub's hosted runner pool on Azure, a
+        network path independent of the dev box's and SFU's. The evidence
+        is the job log's setup group, which the security section copies
+        into `docs/evidence/platform-sbom/u8/` on the real run, as recorded
+        for run 40628987168 in `u8/ci-timing-q74.md` ("The runner"):
+        "Runner Image Provisioner: Hosted Compute Agent, Version
+        20261021.618, Region southcentralus, Cloud Azure"; Runner Image
+        ubuntu-24.04 20261012.334.1; runner 2.338.0. The U8 run's own
+        setup lines are copied, together with the fetch lines it cites,
+        because CI logs expire. *(Restored 2026-10-28, analyst, on the
+        orchestrator's finding from the job log.)*
+      - *Superseded (2026-10-28, analyst; kept for the record):* "It names
+        the runner's egress as far as it is known. … If the egress is the
+        same network path as the developer's and security's fetches, the
+        check is not network-independent, and the human's ARM one-liner is
+        needed before the first operator bundle." This was written when
+        the runner host was said to be the human's machine, which the job
+        log disproved.
+      - A mismatch fails the run closed. The fix is a new first fetch and
+        a new second fetch, then a reviewed lock change. Never a skip, a
+        retry or a hand-edited hash.
+      - The human's ARM one-liner stays the preferred check before the
+        first operator bundle (decision waiting, handoff U7e (3)).
+    - **U8-12 The lock tool keeps the run's SBOMs (U7d item 13; S6 carry;
+      its own RED).** After a `scripts/sources_lock.sh` run that writes
+      the lock (exit 0 or 3), `--evidence-dir/sboms/` holds exactly the six
+      bundled images' `<image>.spdx.json` from that run. Each is
+      byte-identical to the document that run's `lock-needs` and
+      `lock-check` read. They are copied before the lock moves, as regular
+      files with no link followed (item 6's rules, as for the InRelease).
+      A failed copy fails the run with the lock unchanged. Committing them
+      is Q77.
+    - **U8-13 Tests.** Names are indicative; the tester owns them, and no
+      name holds a count. All are `fast`, with a fake network or fake
+      docker; the real path runs in `full` (U8-8) and in A34.
+      - `[unit: test_source_fetch_is_https_only_to_listed_hosts]` and
+        `[unit: test_source_fetch_checks_before_use]` (PSC-23 above).
+      - `[unit: test_source_fetch_never_retries]`: a 503 and a timeout
+        each fail after exactly one request.
+      - `[unit: test_source_fetch_dsc_names_match_the_lock_entry]` (deb
+        and pgdg) and
+        `[unit: test_source_fetch_apkbuild_names_match_the_lock_entry]`.
+      - `[unit: test_source_fetch_leaves_no_out_on_failure]`: a fault on
+        a middle file leaves no `--out`.
+      - `[unit: test_bundle_fetch_refuses_an_unsafe_out]` (U8-1) and
+        `[unit: test_bundle_fetch_arch_is_the_daemons]` (A75).
+      - `[unit: test_bundle_fetch_writes_the_record_last]` (A76): no
+        record after a failure; the record names set, arch and lock
+        SHA-256.
+      - `[unit: test_sources_fetch_service_is_hardened]` (static compose,
+        U8-7).
+      - `[unit: test_offline_check_fetches_the_sample]`, which replaces
+        the U2 interim-pull rows; the base-pull rows stay.
+      - `test_bundle_refuses_when_sbom_generator_absent` with the new
+        message.
+      - `[unit: test_sources_lock_keeps_the_run_sboms]` (U8-12).
+    - **U8-14 Evidence and gate.**
+      - `docs/evidence/platform-sbom/u8/`: RED and GREEN verify output;
+        one real `--set sample` run on this host (each file's line, U8-2);
+        the A34 Windows run; the orchestrator's `verify.sh full`; after the
+        push, the CI extract (U8-11). Redaction rules apply.
+      - Gate: `scripts/verify.sh full`, plus a recorded A34 Windows run
+        (a compose file changes; N15 row U8). CI headroom before the
+        push: Q74.
+        *(Amended 2026-10-28, analyst: Q74 ruled by the human,
+        `timeout-minutes` 69 (not PS-3.4's 54), inside U8 before the push:
+        RED pin in `tests/test_stack_ready_docs.py`, GREEN `ci.yml`.)*
+    - **Outcome metric: neither.** U8 keeps the bundle deployable offline
+      and is the fetch half of PSC-15's source archive. No draft is
+      reviewed and no rule is ratified because of it.
 - **PSC-24 No partial bundle, and the manifest rules hold (added
   2026-10-22, analyst).**
   - Any SBOM, index or source failure makes the bundle step exit non-zero,
@@ -4025,6 +4391,795 @@ full what it contains.
     (fast, fake docker), `[unit: test_source_file_names_pass_the_manifest_rule]`
     (fast, stubbed index), `[unit: test_install_refuses_tampered_or_missing_source_file]`
     (fast; `install.sh` and `install.ps1`).
+  - *U9 precision (analyst, 2026-10-29; unit U9: design notes N3
+    `index`/`notices`, N9, N10 "Generated `THIRD_PARTY_NOTICES.md`" and
+    "Under `app/`", N10 I-3, N10 amendment U6 and its correction, N15 row
+    U9, N4 amendment U8 items 1 and 6; ADR-KE-016 points 3, 5, 6 and 11;
+    A76; the U6 and U8b carried rows).* *(Added 2026-10-29, analyst, U9
+    plan.)* U9 moves PSC-15 (the archive ships), PSC-24 (no partial
+    bundle, manifest rules, install tamper tests), PSC-14's pending
+    generated section and PSC-22's bundle-failing checks. The criteria say
+    what `bundle.sh` and the bundle do, not how. Open points
+    (`docs/open-questions.md`): Q78-Q80, for the orchestrator. Q77 stays
+    deferred: U9 runs no `sources_lock.sh`. If U9's real run finds lock
+    drift, the fix is a reviewed re-lock, and Q77 is decided before it.
+    Facts for sizing only (lock sha256 `12eebc8c...761b` at 780d523,
+    `u8/expected.md`): amd64 sample 7 keys, 25 files, 25 distinct
+    sha256, 136,571,547 B; amd64 full 183 keys, 876 files, 716 distinct
+    sha256, 1,180,936,586 B (equal to the U8b O-1 real run,
+    `u8/full-run.txt`).
+    *(Amended 2026-10-29, analyst; orchestrator rulings at the U9 plan
+    gate, design notes "N9 amendment, U9" end: Q78, Q79 and Q80 option 1
+    each; O-9 two units, U9a (the `sbom_check.py` checkers, the
+    `sources-check`, `index` and `notices` subcommands, the install pins)
+    and U9b (`bundle.sh`, the `offline_check.sh` flags, NOTICE/libffi,
+    README, the real sample, the Q79 run, A34), no U9c; O-10, O-11 and
+    O-12 yes. U9 plan gate: PASS.)*
+    - **U9-1 Command line (PSC-15, PSC-24; ADR point 3; Q78).**
+      - `scripts/bundle.sh --out <dir>-<arch> [--arch amd64|arm64]
+        --sources <dir> [--sources-set sample]`. The expected set is
+        `full` unless `--sources-set sample` is given (ADR point 3: only
+        `offline_check.sh` passes it, Q63). Whether `--sources` is
+        mandatory is Q78.
+        *(Amended 2026-10-29, analyst: Q78 ruled option 1. `--sources` is
+        mandatory: absent, it exits 2 with the usage line before any
+        docker call. `--sources-set full|sample` defaults to `full`.)*
+      - A `--sources` or `--sources-set` with no value, a
+        `--sources-set` value other than `sample` or `full`, or a
+        repeated flag exits 2 with the usage line, before any docker call
+        or write.
+      - `bundle.sh` never writes to, deletes or renames anything under
+        `--sources`. Given a run that passes or fails, the directory's
+        listing and every file's bytes are unchanged.
+      - The header and the usage line name `--sources` and
+        `--sources-set`.
+    - **U9-2 The fetched directory's shape, before any write (A76;
+      PSC-24 "checks that can run before any write").**
+      - Given a `--sources` that is absent, a symlink, not a directory,
+        or a directory that cannot be listed, `bundle.sh` exits 1 with
+        one `bundle:` line naming it, before any tag, save or write to
+        `--out`, and leaves `--out` and the release record as they were.
+        A failed listing is a refusal, never an empty listing (the
+        reviewer's U8b B-1 pattern; U9-10).
+      - Given a directory with no `fetch.json`, the refusal names the
+        missing record and says to run `scripts/bundle_fetch.sh` (A76).
+      - Given any entry other than `fetch.json` and files named by 64
+        lower-case hex (a `.part` file, `.fetch.json.part`, an upper-case
+        or short name, a subdirectory, a symlink, a fifo or other
+        non-regular entry), the refusal names the first such entry.
+        Nothing extra is accepted.
+      - A `fetch.json` that is not valid JSON, is not in the canonical
+        `lock_text` form, or lacks or adds a top-level key beyond
+        `format`, `set`, `arch`, `lock_sha256` and `components` is
+        refused, naming the field. `format` is 1. Text from the record
+        printed in a refusal is escaped as PSC-22 L-3.
+    - **U9-3 The record matches this bundle, and every planned file is
+      present (A76; PSC-15 "matches the upstream checksum"; N4 am. U8
+      item 6).** Each is a refusal before any write, exit 1, one line
+      naming the field, both values and, for a file, its key and upstream
+      name:
+      - `set` differs from the expected set (U9-1): a `sample` directory
+        for a `full` bundle, or the reverse.
+      - `arch` differs from the daemon's arch (`bundle.sh`'s, A75).
+      - `lock_sha256` differs from the SHA-256 of the
+        `docker/sources.lock.json` text this run reads (a fetch made
+        before a re-lock).
+      - The committed lock fails `lock_entry_problems` (U8-3); the first
+        problem is named.
+      - `components` differs in any way from `fetch_plan(lock, arch,
+        set)` grouped by key: a key or file missing or extra, or a
+        `name`, `sha256` or `size` that differs.
+      - A planned SHA-256 has no file `<dir>/<sha256>`, or the file's
+        size or re-computed SHA-256 differs from the lock's. This run
+        re-hashes every file; the record is never trusted for bytes.
+      - A 64-hex file in `<dir>` that no planned file names (nothing
+        extra, U9-2).
+      - Control: given a directory that `bundle_fetch.sh` wrote for the
+        same set, arch and lock, none of the above fires.
+    - **U9-4 `index` gates the bundle (PSC-15, PSC-22; N3 `index`; N8
+      am. U5 items 2 and 7; N10 am. U6 and its correction; U6 carried
+      rows).** It runs after the SBOMs are written and before the
+      manifest. Any problem below exits non-zero, naming the image, the
+      package (purl, else SPDXID) and the fix, through `_clean` (PSC-22
+      L-3), and the bundle fails per U9-10.
+      - *Validate first (security U6 L-2, reviewer U6 N1).* Each final
+        SBOM passes `validate` before any classification. Given an SBOM
+        in which a GPL-family package reuses an exempted package's
+        SPDXID, the bundle fails at `validate` ("not unique"), and the
+        package is never cleared.
+      - *The lock against this bundle's SBOMs.* `lock_problems(lock,
+        policy, docs, arch)` on the bundle's own six SBOMs is `[]`:
+        coverage both ways. A package that needs source and has no lock
+        key fails, naming it and `scripts/sources_lock.sh --arch
+        <arch>`; a lock key for the arch that no image needs fails the
+        same way. A mapping problem (`component_key`, the jrt-fs version
+        rule) fails, never passes.
+      - *`always` and `exempt` problems fail the bundle* (PSC-22: "fails
+        the bundle from U9"): an `always` entry with no match, and an
+        `exempt` entry that is not a versioned purl or matches nothing at
+        its version.
+      - *Multi-match exempt (security U6 L-1).* An `exempt` entry that
+        matches more than one package in its image (for example jna's
+        purl and the same purl with `?type=jar`) is a problem naming the
+        entry and every matched SPDXID. Whether `index` also compares a
+        checksum the SBOM records for the package: Q80.
+        *(Amended 2026-10-29, analyst: Q80 ruled option 1, no checksum
+        compare at U9.)*
+      - *`needs` is the classifier's (N8 am. U5 item 7).* `index` takes
+        each row's `needs` from `classify_document(image, doc, always,
+        exempt)` and never re-derives it from `expression`.
+    - **U9-5 `app/sources/index.json` (N9).**
+      - *(Amended 2026-10-30, analyst, U9c: in a `sample` bundle the apk sample key is neither `shipped` nor `not-shipped` but partial; see "U9c precision" U9c-4.)*
+      - It holds `format` 1, `set` (equal to the record's), `arch` and
+        `git_sha` (equal to `bundle.json`'s), and one component per lock
+        key the bundle's SBOMs need, plus one per `exempt`-cleared
+        package. Each component lists every SBOM package it covers
+        (image, SPDXID, purl, licence as the generator wrote it) and, for
+        a lock key, every file with its upstream `name`, `url`, `sha256`,
+        `upstream` (alg and value, equal to the lock's) and `path`.
+      - `path` is `sources/files/<sha256>`, relative to the installed
+        root (`app/`). Two files with one SHA-256 share one path.
+      - Status: in a `full` bundle every lock-key component is
+        `shipped`; any `not-shipped` fails the bundle (N9). In a `sample`
+        bundle exactly the `sample_keys(lock, arch)` components are
+        `shipped` and every other lock-key component is `not-shipped`.
+        An `exempt`-cleared package is `exempt`, with the entry's
+        `reason` and `reviewed` values verbatim.
+      - *"always, cleared by exemption" (PSC-22, orchestrator
+        2026-10-25).* A package that an `always` entry and a reviewed
+        `exempt` entry both match is listed with the text `always,
+        cleared by exemption <reviewed>`, `<reviewed>` being the entry's
+        `reviewed` value, and the bundle output prints the same line. No
+        real entry does this at U9 (jna and javassist match no `always`
+        entry), so the fast test uses a synthetic policy. The real-row
+        assertion that no row is both (`tests/test_sbom_classifier.py`
+        l.1134, reviewer U6 N2) stays at U9. The change that adds the
+        first such entry removes it, adds a real-row check of the listing
+        and goes to security, in one reviewed change.
+      - `unlicensed` per image equals `unlicensed_report` for that SBOM
+        (count and packages; PSC-22; N8 "U9: kept in the index").
+        `unparsed` and `unidentified` list every such row, including
+        rows with `needs` false.
+    - **U9-6 The content-addressed copy (ADR points 3 and 5; N9; PSC-24
+      path rule).**
+      - *(Amended 2026-10-30, analyst, U9c: for a `sample` bundle the apk sample key is a partial component and `files/` also holds its fetched files; see "U9c precision" U9c-4.)*
+      - `app/sources/` holds exactly `index.json` and `files/`, and
+        `files/` holds exactly one regular file per distinct SHA-256 that
+        a `shipped` component names, named by that 64-hex value. Nothing
+        else: no fetched file of a not-shipped component, no
+        `fetch.json`, no upstream name on disk.
+      - Each file is copied from `<dir>/<sha256>`, not linked (ADR point
+        3: "re-hashes and copies"). No shipped file is a symbolic or hard
+        link into `--sources`.
+      - The `MANIFEST.sha256` line of every `app/sources/files/<sha256>`
+        carries that same `<sha256>`, so the bytes that ship are the
+        bytes the lock pins, checked after the copy (PSC-15 "every source
+        file is in the bundle manifest with its SHA-256").
+      - Every `path` in the index exists in the bundle, and every file
+        under `app/sources/files/` is some index `path`.
+      - Every path under `app/sources/` and `app/sboms/` passes the
+        manifest path rule unchanged (`[A-Za-z0-9._-]` per segment;
+        PSC-24's first option, ADR point 5). No installer's rule changes.
+    - **U9-7 The generated "Source code" section of
+      `THIRD_PARTY_NOTICES.md` (PSC-14, PSC-15; N10; I-3).**
+      - Its heading is exactly the one `NOTICE.md` names
+        (`test_notice_source_code_heading_matches_generated`, PSC-15).
+      - It says once, before any `sources/` path: "Paths here are
+        relative to the bundle's `app/` directory, which install
+        publishes as the install directory" (I-3).
+      - One row per index component. `shipped`: "source in `sources/`
+        (see `sources/index.json`)". `not-shipped`: the L-NT1 wording
+        "Upstream source: <url>", with the lock's URL. `exempt`: no claim
+        that source is in `sources/`; it names the reviewed exemption.
+        The section claims a source obligation met only for `shipped`
+        components (PSC-15). Security reviews the wording of every row
+        form.
+      - A `sample` bundle's section starts with: "Verification bundle:
+        this source set is a sample and is not complete; do not
+        distribute this bundle." A `full` bundle's section has no such
+        line.
+      - Generator text written into the section (names, purls, licences)
+        holds no C0 or C1 control character as-is (PSC-22 L-3), and a
+        `|` or line break in it cannot add a column or a row. The
+        architect confirms the escape form.
+    - **U9-8 The copies under `app/` (ADR point 6; N10 "Under `app/`";
+      orchestrator ruling 2).**
+      - `app/` carries `NOTICE.md`, `THIRD_PARTY_NOTICES.md`, `LICENSE`
+        and `licenses/`, each byte-identical to the bundle-root copy,
+        which stays. Today only the root carries them (`bundle.sh`
+        l.348-371 at 5cf025c), so install publishes none of them.
+      - For the root copy, the `app/` copy and the installed copy, the
+        test resolves `<app root of that copy>/sources/index.json` and
+        each `sources/files/<sha256>` the section names (I-3).
+    - **U9-9 `NOTICE.md` (PSC-14; U6 ruling (b)).**
+      - The "Source code" section keeps its pointer and the sentence "A
+        bundle whose `THIRD_PARTY_NOTICES.md` has no "Source code"
+        section has no `sources/` ..." (true after U9), and gains the I-3
+        path sentence of U9-7 (N10a: "U9 restates the paths per I-3").
+      - *libffi (security U6 exempt review L-1; orchestrator ruling
+        2026-10-25).* The "Base image of `ke-neo4j`" section names libffi
+        as embedded in the native `libjnidispatch` libraries of jna
+        5.15.0, and gives libffi's copyright and permission notice
+        verbatim, in `NOTICE.md` or in a tracked `licenses/` file it
+        names. The text is that of the libffi version jna 5.15.0 bundles;
+        security confirms the version at RED. `NOTICE.md` states where
+        the text was fetched and its SHA-256 (Q48 form) and cites no
+        `docs/evidence/` path (PSC-14). Security reviews it.
+      - The existing NOTICE tests stay green, among them
+        `test_notice_cites_no_repo_evidence_path` and
+        `test_notice_named_licence_files_are_tracked`.
+    - **U9-10 No partial bundle (PSC-24; reviewer U8b N-9).**
+      - Given a fault at any of these, `bundle.sh` exits non-zero with
+        one `bundle:` line naming the stage and the image or file, and
+        writes no `MANIFEST.sha256` and no release record: any U9-2 or
+        U9-3 refusal (before any write, so `--out` is untouched); an
+        `index` problem (U9-4); a copy or write error, disk full
+        included; the notices generation; a `MANIFEST.sha256` over
+        install's 1 MiB cap.
+      - The record and fetched-directory checks run before the first
+        tag, save or write, as the generator presence check does
+        (PSC-20).
+      - *N-9.* Given an `--out` that exists, is non-empty and cannot be
+        listed (mode 0300, uid 10001), `bundle.sh` exits 1 naming it and
+        leaves it untouched. Root bypasses the mode bits, so the test
+        skips with a named reason under uid 0. The same rule holds for
+        every listing `bundle.sh` makes of `--sources`.
+      - *(Amended 2026-10-29, analyst; orchestrator O-10.)* Beyond "no
+        manifest, no record": given a failure after the first write,
+        the run's output is removed (the `--out` directory if the run
+        created it, its contents if it was given). Design notes "N9
+        amendment, U9" item 9.
+    - **U9-11 Install refuses tampered sources (PSC-24).** In
+      `install.sh` and in `install.ps1` (under pwsh in the gates image),
+      for each of `app/sources/index.json`, one
+      `app/sources/files/<sha256>` and one `app/sboms/<name>.spdx.json`,
+      in a bundle whose manifest lists them:
+      - the file deleted, one byte changed, or an unlisted file added
+        beside it: install refuses before any `docker load`, with the
+        manifest check's existing message, and publishes nothing (the
+        `test_bundle_manifest_rejects_tamper` form);
+      - control: the untouched bundle installs, and the target holds
+        `sources/index.json` and every `sources/files/<sha256>` with the
+        manifest's SHA-256.
+      - If neither installer changes, no A34 Windows run is needed (N15
+        row U9). If `install.ps1` changes, A34 applies.
+        *(Amended 2026-10-29, analyst; orchestrator O-11: A34 runs for
+        U9b whether or not `install.ps1` changes, because `bundle.sh`
+        gains three `hostpath` mounts (the U8b precedent).)*
+    - **U9-12 Wiring and wording.**
+      - `offline_check.sh` passes `--sources "$fetch_rel" --sources-set
+        sample` to `bundle.sh`. The verify bundle carries the sample, and
+        the offline install of it still passes with no route out. The
+        e2e checks on the installed copy are U10 (PSC-19, N11).
+      - `bundle.sh`'s header says the bundle ships `app/sources/` from
+        the set `bundle_fetch.sh` fetched; it still "makes no network
+        call" (N13).
+      - README (documenter): the operator order `build.sh`, then
+        `bundle_fetch.sh --set full`, then `bundle.sh --sources <dir>`
+        (N13); the bundle now carries the source archive; a `sample`
+        bundle is for verification only.
+      - CHANGELOG (marketer): one U9 bullet ("no CHANGELOG line until
+        U9", U5).
+      - CLAUDE.md's `docker/sources.lock.json` row already says "from
+        U9, `bundle.sh` (`sbom_check.py index`) refuses a package with no
+        entry"; U9 makes it true and changes no CLAUDE.md text. Any
+        change there needs the human.
+    - **U9-13 Size and time records (PSC-16, Q62; ADR point 11).**
+      - `bundle.sh` prints a marker with seconds for its source stage
+        (record check, `index`, copy, notices), so CI timestamps can time
+        it as `sources: fetch` is timed.
+      - `docs/evidence/platform-sbom/u9/size.md`, from the real
+        `verify.sh full` run: the verify bundle's bytes with and without
+        `app/sources/`, the source bytes and file count against the
+        sample facts above, `MANIFEST.sha256` bytes and lines, and the
+        stage seconds. Local timings are informational; CI's are U11.
+        The added `/install` staging (about 0.13 GiB) is recorded for
+        U10's tmpfs sizing (N14).
+      - The full set's numbers (716 files, the manifest's size against
+        the 1 MiB cap, `index` seconds): Q79.
+        *(Amended 2026-10-29, analyst: Q79 ruled option 1. U9b includes
+        one recorded full-set `bundle_fetch.sh` + `bundle.sh` run, bundle
+        only, never installed or handed over: `u9/full-bundle-run.txt`
+        and `u9/size.md`. O-12: the 7 GiB floor stays until U11.)*
+    - **U9-14 Tests.** Names are indicative; the tester owns them, and
+      no name holds a count. All are `fast`, with fake docker or stubbed
+      SBOMs, lock and fetched directory; the real path runs in `full`
+      (U9-12).
+      - PSC-15/24's named tests: `test_every_gpl_package_has_source`,
+        `test_source_archive_hashes_in_manifest`,
+        `test_bundle_writes_no_manifest_when_sbom_or_source_fails`,
+        `test_source_file_names_pass_the_manifest_rule`,
+        `test_install_refuses_tampered_or_missing_source_file` (sh and
+        ps1), `test_notice_source_code_heading_matches_generated`.
+      - `test_bundle_refuses_a_bad_sources_dir` (U9-2, each shape) and
+        `test_bundle_refuses_a_mismatched_fetch_record` (U9-3: set, arch,
+        lock sha256, components, a missing, short, changed or extra
+        file), each with the matching-directory control.
+      - `test_index_validates_first`,
+        `test_index_fails_on_coverage_gaps_both_ways`,
+        `test_index_fails_on_always_and_exempt_problems`,
+        `test_index_refuses_a_multi_match_exempt_entry`,
+        `test_index_lists_always_cleared_by_exemption`,
+        `test_full_bundle_refuses_not_shipped`,
+        `test_sample_bundle_ships_exactly_the_sample`.
+      - `test_sources_are_copied_not_linked`,
+        `test_notices_source_code_section_rows`,
+        `test_sample_bundle_notices_say_do_not_distribute`,
+        `test_app_carries_the_notice_copies`,
+        `test_sources_paths_resolve_from_every_notice_copy` (I-3),
+        `test_notice_names_libffi_in_ke_neo4j_section`.
+      - `test_bundle_refuses_an_unlistable_out` (N-9) and
+        `test_bundle_leaves_sources_dir_unchanged` (U9-1).
+    - **U9-15 Evidence and gate.**
+      - `docs/evidence/platform-sbom/u9/`: RED and GREEN verify output;
+        `size.md` (U9-13); security's review of the notices wording, the
+        libffi text and the index rules; the review; the orchestrator's
+        `verify.sh full`; A34 only if `install.ps1` changes. Redaction
+        rules apply.
+        *(Amended 2026-10-29, analyst; orchestrator O-11 and O-9: A34 is
+        required for U9b (design notes "N9 amendment, U9" R13); each of
+        U9a and U9b runs `verify.sh full` before its commit (CLAUDE.md).)*
+      - Gate: `scripts/verify.sh full` (`bundle.sh`, `offline_check.sh`
+        and the install tests change; N15 row U9).
+      - Rule N1: U9 meets its condition for a merge to `main`, which
+        stays the human's action. No operator bundle is handed over
+        before the recorded full-set run (N11, Q63; U10) and the human's
+        decision on the Neo4j ARM check (handoff U7e (3)).
+    - **Outcome metric: neither.** U9 makes the bundle carry the
+      GPL-family source it redistributes (PSC-15 option 1). That closes
+      the "no GPL source offer" half of the M-NT1 remainder; U3 closed
+      the SBOM half. No draft is reviewed and no rule is ratified because
+      of it.
+  - *U9c precision (analyst, 2026-10-30; unit U9c: A81, Q81 option 3,
+    `docs/open-questions.md` "Q81. Resolved"; A63, A61/Q61, A72, A76;
+    U8-3, U8-5, U8-8, U9-3, U9-5, U9-6, U9-7).* *(Added 2026-10-30,
+    analyst, U9c plan.)* The human ruled that the verify/CI sample fetches,
+    for the `apk` kind, only the distfiles.alpinelinux.org file(s), so
+    `verify.sh full` and CI no longer depend on gitlab.alpinelinux.org
+    (Alpine's aports host, closed to the public since 2026-10-27, no
+    reopening date). The GitLab API raw route stays for operator full
+    fetches. A81 narrows A63's "one source of each kind" for `apk` only:
+    every kind is still fetched and shipped in the sample, and for `apk`
+    that is the distfiles part of the sample key. Facts (lock sha256
+    `12eebc8c...761b`, read 2026-10-30): all 19 apk keys have their
+    `APKBUILD` and aports files on gitlab.alpinelinux.org and 1 or 2
+    files on distfiles.alpinelinux.org (21 in all). Today's apk sample
+    key `apk:alpine-baselayout@3.7.1-r8` has 15 GitLab files (17,649 B)
+    and 2 distfiles files, `protocols-6.4` (3,144 B) and `services-6.4`
+    (12,813 B). Open points for the architect are in the handoff
+    (QA-1..QA-5); they are not criteria.
+    - **U9c-1 The sample plan (A81).**
+      - `fetch_plan(lock, arch, "sample")` holds, for the apk sample key,
+        exactly that key's files whose lock `url` host is
+        distfiles.alpinelinux.org, in the entry's file order, and no file
+        on gitlab.alpinelinux.org. With today's key that is
+        `protocols-6.4` and `services-6.4`.
+      - For every other kind, the sample plan holds exactly what it
+        holds today: every file of the `sample_keys` entry, in the same
+        order. The sample's key list is unchanged unless the architect
+        changes the apk key (QA-1); a change is recorded in the design
+        notes and in the U9c-5 numbers.
+      - The apk sample row is never empty. Given a lock in which the apk
+        sample key has no distfiles file, the sample plan fails closed,
+        naming the key; there is no sample without an apk file.
+      - `fetch_plan(lock, arch, "full")` is unchanged: every file of every
+        entry for the arch (876 rows on amd64, `u8/expected.md`). arm64
+        is unchanged (no keys).
+      - Proof: `test_sample_plan_apk_is_distfiles_only`,
+        `test_sample_plan_other_kinds_unchanged`,
+        `test_full_plan_unchanged` (keys and rows equal to
+        `u8/expected.md` "full, amd64"),
+        `test_sample_plan_refuses_an_apk_key_without_distfiles`.
+    - **U9c-2 The completion record and `sources-check`.**
+      - A sample `bundle_fetch.sh` run writes `fetch.json` whose apk
+        component lists exactly the U9c-1 files (name, sha256, size).
+        The record's form is otherwise unchanged (A76, U9-2).
+      - `bundle.sh --sources-set sample` accepts that directory.
+      - Each of these is refused before any write, with the U9-3 line
+        naming the key: (a) a sample directory whose apk entry holds the
+        GitLab files too (a pre-U9c sample under the same lock); (b) a
+        record with `set` `full` whose apk entry holds only the distfiles
+        files; (c) a sample directory that also holds a 64-hex file of
+        one of the sample key's GitLab files (an extra file, U9-3).
+      - A sample record given to a full bundle is refused as today (set
+        mismatch). Control: an unchanged full directory (716 files)
+        passes a full bundle.
+      - Proof: new rows (a)-(c) in
+        `test_bundle_refuses_a_mismatched_fetch_record`;
+        `test_sample_record_accepts_the_partial_apk_entry`.
+      - *Amended 2026-10-30 (orchestrator, O-21 accepting the architect's
+        O-19):* for (c) the refusal line names the file
+        (`<sha256>: not in the lock's plan`), not the key.
+    - **U9c-3 The APKBUILD name check (U8-5).**
+      - In a sample run, the APKBUILD name check is not run for the apk
+        sample key, because its `APKBUILD` is not fetched. Whether it is
+        skipped or replaced by another check is the architect's (QA-3).
+        Either way:
+        - each distfiles file still passes its size, SHA-256 and upstream
+          sha512 checks before it is placed (U8-5). The sha512 is the
+          lock's, taken from the APKBUILD's `sha512sums` at the pinned
+          commit;
+        - the run prints one line naming the key and saying that the
+          APKBUILD name check was not run in the sample. The skip is
+          never silent.
+      - No fail-open. The skip depends on the set being `sample` and the
+        kind being `apk`. It never depends on the APKBUILD being absent
+        from what was fetched. In a full run every apk entry's `APKBUILD`
+        is fetched and checked as today. Given a full run in which the
+        APKBUILD's `sha512sums` names differ from the lock entry, the run
+        fails with the U8-5 line. The `.dsc` check of the deb and pgdg
+        sample keys still runs in the sample.
+      - Proof: `test_sample_fetch_skips_the_apkbuild_check_only_for_apk`
+        (with the printed line),
+        `test_full_fetch_apkbuild_mismatch_still_fails` (the existing row
+        stays green, unedited), `test_sample_fetch_dsc_check_still_runs`.
+      - *Amended 2026-10-30 (orchestrator, O-21 accepting the architect's
+        O-20):* the existing APKBUILD mismatch row gains `which="full"` and
+        nothing else (a named re-pin, listed at RED); every case and
+        assertion stays.
+    - **U9c-4 The partly fetched key in a sample bundle (amends U9-5,
+      U9-6 and U9-7 for `sample` only).**
+      - `index.json` still lists every file of the apk sample key, with
+        name, url, sha256 and upstream. Each fetched (distfiles) file
+        carries `path` `sources/files/<sha256>`. Each file not fetched
+        carries no `path`, as a `not-shipped` component's files do today.
+      - The component is not `shipped`. It is marked as the sample's
+        partial row, so a reader of `index.json` alone can tell that only
+        part of its source is in this bundle. The field and value are the
+        architect's (QA-2).
+      - U9-5's status rule in a sample bundle becomes: the sample keys
+        whose every file is in the sample plan are `shipped`; the apk
+        sample key is partial; every other lock key is `not-shipped`.
+        With today's lock: 6 `shipped`, 1 partial, 176 `not-shipped`,
+        plus the `exempt` components.
+      - U9-6 for a sample bundle: `files/` holds exactly one regular file
+        per distinct SHA-256 that a `shipped` component names or that the
+        partial component names with a `path`. Every `path` exists, every
+        file under `files/` is some `path`, and no GitLab file of the
+        partial key is on disk.
+      - A full bundle never has a partial component. Given a `full` index
+        build in which any key would be partial, the bundle fails, naming
+        the key, as `not-shipped` does (U9-5, N9).
+      - "Source code" section (U9-7): the partial row does not use the
+        `shipped` wording ("source in `sources/` ...") as it stands,
+        because PSC-15's "obligation met" claim is for `shipped`
+        components only. It says that part of the source is in
+        `sources/` and gives an upstream URL for the rest (which URL:
+        QA-4). The sample's "Verification bundle ... do not distribute"
+        line stays first. Security reviews the row's wording, as U9-7.
+      - Proof: `test_sample_index_marks_the_partial_apk_key`,
+        `test_partial_files_without_path_are_not_on_disk`,
+        `test_full_index_refuses_a_partial_key`,
+        `test_notices_partial_row`; `test_sample_bundle_ships_exactly_the_sample`
+        re-pinned to the U9c-4 counts.
+    - **U9c-5 Expected numbers before any real run (the R-row rule).**
+      - Before any real U9c fetch or bundle, the orchestrator appends a
+        dated "U9c" section to `u8/expected.md` and to `u9/expected.md`,
+        computed read-only from the U9c `fetch_plan`/`sample_keys` over
+        the committed lock. The earlier sections stay as written.
+      - If the key is unchanged, the analyst's arithmetic from
+        `u8/expected.md` gives: sample amd64 7 keys, 10 files, 10
+        distinct sha256, 136,553,898 B (was 25 files, 136,571,547 B; less
+        the 15 GitLab files, 17,649 B). For `u9`: 183 components (6
+        `shipped`, 1 partial, 176 `not-shipped`), `files/` 10 files,
+        136,553,898 B, 10 plan rows. The full rows are unchanged: 183
+        keys, 876 rows, 716 files, 1,180,936,586 B. If QA-1 changes the
+        key, the numbers are computed again in the same section.
+      - The real runs' output (the sample fetch, the sample bundle, the
+        U9-13 `size.md` rows, recorded under `u9c/`) equals the appended
+        section. A difference is a defect, never a hand edit.
+    - **U9c-6 Hosts, lock and wording.**
+      - `docker/source-policy.json` `hosts` is unchanged: nine hosts,
+        gitlab.alpinelinux.org included, because the full set needs it
+        (`U6_HOSTS` in `tests/test_sbom_obligations.py` stays green,
+        unedited). `docker/sources.lock.json` is byte-unchanged (sha256
+        `12eebc8c...761b`); no re-lock, Q77 stays deferred;
+        `tests/test_sources_lock_committed.py` stays green.
+      - U8-8's "one entry of each kind, which covers every file host in
+        the lock" becomes "every file host except gitlab.alpinelinux.org,
+        which only the full set uses". README (the `--set sample` "one
+        entry per kind" sentence) and any script header or comment that
+        says the same are corrected by the documenter: the sample's apk
+        entry is its distfiles part only, and the GitLab route is used
+        only by `--set full`.
+      - CLAUDE.md's sentence ("fetches a fixed sample of the bundle's
+        third-party source code over HTTPS, only from the hosts listed")
+        stays true, so CLAUDE.md does not change (any change there needs
+        the human). The marketer writes one CHANGELOG line for U9c.
+    - **U9c-7 The outcome: `verify full` and CI pass while
+      gitlab.alpinelinux.org refuses connections.**
+      - Fast: given a fake transport in which every request to
+        gitlab.alpinelinux.org fails as a refused connection, `--set
+        sample` passes, writes `fetch.json` and makes no request to that
+        host. Control: the same fake with `--set full` fails closed at
+        the first GitLab file with the U8-4 FAIL line, after one attempt
+        and no retry (Q61 unchanged for every host). Proof:
+        `test_sample_fetch_passes_with_gitlab_unreachable`,
+        `test_full_fetch_fails_with_gitlab_unreachable`.
+      - Real: in each U9c `verify.sh full` (developer GREEN and the
+        orchestrator's gate run), the fetch's per-file `hops=` lines name
+        no gitlab.alpinelinux.org. The lines are extracted to
+        `u9c/sample-run.txt`.
+      - During a closure: if gitlab.alpinelinux.org is unreachable during
+        the orchestrator's gate run, a host-side connection probe of it
+        (result and UTC time), taken just before and just after the run,
+        is recorded beside the PASS. That is the closure proof. If GitLab
+        is reachable throughout, the evidence says "closure not
+        observed", and the zero-request proof above stands alone. No
+        closure is simulated on the real network.
+      - CI: the first CI run of a pushed U9c (pushing is the human's
+        action) has its fetch lines extracted, as for
+        `u8/ci-40907497118-fetch.txt`, showing no GitLab hop. The closure
+        state at that time is recorded the same way.
+    - **U9c-8 Out of scope.** Option 5 (an aports mirror or Alpine's
+      cgit: a new host, new lock URLs, security review), option 4 (a
+      retry window) and option 2; any change to Q61, A72 or the GitLab
+      API raw route itself (the blobs endpoint, U7c item 9); a re-lock
+      (Q77); and a standing GitLab-route probe unless the architect
+      proposes one (QA-4). U10's items stay U10's: PSC-19 e2e `verify`
+      (which reads the partial row by U9c-4), `/install` sizing, the
+      revision label, and the O-18 deferrals I-15/N-8 and I-16/N-7. U11
+      (CI timing), U12 (arm64) and the Neo4j ARM one-liner are also out.
+    - **U9c-9 Tests, gate and evidence.**
+      - Test names are indicative; the tester owns them, and no name
+        holds a count. Existing tests that pin the 25-file sample or the
+        17-file apk sample record are re-pinned only where U9c-1 changes
+        them. The tester's RED section lists each re-pin; no other
+        expected value changes.
+      - Gate: `scripts/verify.sh full` (the fetch client, `sbom_check.py`
+        and the bundle path change). A34 applies only if `install.ps1` or
+        a compose mount changes (N15 row rule); the architect states
+        which. Review and security are merge-blocking. Security looks at
+        U9c-3 (no fail-open) and the U9c-4 row wording.
+      - Evidence: `docs/evidence/platform-sbom/u9c/`, plus the appended
+        U9c sections of `u8/expected.md` and `u9/expected.md` (U9c-5).
+        Redaction rules apply.
+    - **Outcome metric: neither.** U9c moves no reviewed draft and no
+      ratified rule. It lets the commit gate and CI run while Alpine's
+      GitLab is closed, so plan items can still merge (nothing merges on
+      red).
+  - *U9d precision (analyst, 2026-10-30; unit U9d: A82a,
+    `docs/open-questions.md` "Q82. Ruled in part", options A + C; PS-3.2,
+    R6, O-12, N14).* *(Added 2026-10-30, analyst, U9d plan.)* PR #15's CI
+    run 40993359777 failed twice at the offline client's launch ("container
+    knowledge-engine-neo4j-1 is unhealthy"; neo4j's process most likely
+    died 37-43 s after start, Q82 facts 1-2), with the runner's root
+    filesystem at 100% at the first reading after the failure (fact 4).
+    The client printed nothing about the failed container and the teardown
+    destroyed it (fact 3); memory was not measured (fact 6). U9d makes the
+    next run name the cause: a diagnostic on the launch-failure path
+    (option A) and runner measurements at fixed points (option C). It
+    fixes nothing; the capacity fix (E) follows the measurement. Open
+    points for the architect are in the handoff (QD-1..QD-6); they are not
+    criteria.
+    - **U9d-1 The launch-failure diagnostic (option A).**
+      - Given the client's launch step (`bash scripts/launch.sh` in the
+        installed tree) exits non-zero, then before the client exits it
+        prints one block per container of the installed stack's compose
+        project in the inner daemon (every container that exists, running
+        or not). Each block gives the container name, `State.Status`,
+        `State.ExitCode`, `State.OOMKilled`, `State.Health.Status` and the
+        tail of `State.Health.Log` (each entry's end time, exit code and
+        output; at most the entries Docker keeps). A field the container
+        does not have (no healthcheck, never started) is printed as absent
+        with one fixed token, never dropped.
+      - *Amended 2026-10-30 (analyst, O-23, on reviewer B-1 in
+        `u9d/review.md`):* every stack service has `restart:
+        unless-stopped`, and a restart resets `State.ExitCode` and
+        `State.OOMKilled` (probes P3-P4 in `u9d/review-probes.txt`), so a
+        restarted neo4j that was OOM-killed or crashed would read
+        `ExitCode 0 / OOMKilled false`. The field list above now reads:
+        each block gives the container name, `State.Status`,
+        `State.ExitCode`, `State.OOMKilled`, `RestartCount`,
+        `State.StartedAt`, `State.FinishedAt`, `State.Error` (JSON-quoted
+        on one line), `State.Health.Status` and the tail of
+        `State.Health.Log` (each entry's end time, exit code and output;
+        at most the entries Docker keeps). A field the container does not
+        have (no healthcheck, never started, never finished, no start
+        error) is printed as absent with one fixed token, never dropped;
+        `RestartCount` is always a number.
+      - *Amended 2026-10-30 (analyst, O-23; new criterion):* because
+        every stack service restarts itself (`restart: unless-stopped`)
+        and a restart resets `ExitCode` and `OOMKilled`, the client also
+        records the stack's container `die`, `oom` and `kill` events from
+        a stream it starts just before the launch step and stops as soon
+        as that step exits, on every path (bounded by a timeout; no query
+        of the daemon's event history afterwards). On the launch-failure
+        path the diagnostic prints them first, one line per event: the
+        event time (Unix seconds), the action, the container name, the
+        exit code (`die`) and the signal (`kill`); at most 100 lines, then
+        a named line giving how many more were not printed; `none` when
+        there were none; a named line when the stream ended before launch
+        exited or could not start. On a passing launch none of it is
+        printed.
+      - Then, for every container that is not healthy (its Status is not
+        `running`, or it has a Health.Status other than `healthy`), the
+        last 50 lines of its logs (`docker compose logs --tail 50` for its
+        service). A healthy container's logs are not printed.
+      - Every line of the diagnostic, including each line of a multi-line
+        probe output and each log line, starts with
+        `offline-client: diag: `, so `grep 'offline-client: diag:'` on the
+        host log gives the whole diagnostic and nothing else.
+      - The client then exits non-zero (never 0). A diagnostic command
+        that fails or times out (inner daemon gone, inspect error) prints
+        a named `diag:` line; the remaining blocks still run and the
+        client still exits non-zero.
+      - The host side is unchanged on this path: its FAIL line stays
+        exactly `offline_check: FAIL (the offline client failed (see its
+        output above))`, followed by the existing `offline: df` lines and
+        the teardown.
+      - Scope: the launch step only. A failure before it (store check,
+        clean daemon, pull probe, install) or after it (smoke, inner
+        teardown, image-name check) prints no diagnostic (smoke: QD-5).
+      - Never printed: a container's environment, command, args, labels,
+        mounts, or the full inspect JSON; only the fields above, the probe
+        output and the logs tail. (The client's stack runs with
+        `.env.example`'s placeholder secrets; security confirms that the
+        probe output and logs tails print no secret.)
+      - *Amended 2026-10-30 (analyst, O-23):* the never-printed bullet
+        reads, after "only the fields above, the probe output and the logs
+        tail": "; of an event, nothing but the five fields above (no
+        labels, no image, no other attribute)" (the five: event time,
+        action, container name, exit code, signal). Security re-audits the
+        amended field list and the event format (O-23).
+      - Proof: `test_offline_client_prints_diag_on_launch_failure`,
+        `test_offline_client_diag_survives_a_failing_inspect`.
+      - *Amended 2026-10-30 (analyst, O-23):* proof adds two rows (names
+        are the tester's): a launch failure with a restarted neo4j
+        (`running`, `ExitCode` 0, `OOMKilled` false, `RestartCount` 1,
+        `FinishedAt` set) whose only evidence of the death is
+        `RestartCount`, `FinishedAt` and its `oom` and `die` events,
+        asserting that all three print; and a passing launch with the
+        event stream recording, asserting the stream is stopped before
+        smoke and none of it prints.
+    - **U9d-2 The runner measurements (option C).**
+      - Client points: (C1) after install, before launch; (C2) on a launch
+        failure, with the diagnostic; (C3) after smoke, before the inner
+        teardown. At each, lines prefixed `offline-client: measure:` and
+        naming the point give:
+        - free and used space, in KiB, of the filesystem that holds the
+          host daemon's root (on the runner, `/dev/root`, the filesystem
+          at 100% in fact 4; how the client reads it: QD-3);
+        - `df -Pk /install` (the client's tmpfs), in KiB;
+        - `MemAvailable` and `SwapFree` from `/proc/meminfo`, in kB as
+          that file states them;
+        - the inner daemon's `docker system df` summary (images,
+          containers, local volumes, build cache: count, size,
+          reclaimable), in Docker's own units.
+      - Host points: (H1) after `dind` up, before the client runs; (H2)
+        when the client exits non-zero, before the FAIL line; (H3) after
+        the client exits 0. At each, lines prefixed `offline: measure:` and
+        naming the point give `MemAvailable` and `SwapFree` in kB of the
+        machine whose memory the daemon uses. Where `offline_check.sh`
+        cannot read that machine's memory (Docker Desktop, the same case
+        as the existing "DockerRootDir ... not measurable" line), it
+        prints one named "not measurable" line instead of a figure. The
+        host's disk figures stay in the existing `offline: df <stage>`
+        lines, unchanged (QD-3).
+      - Every number carries its unit. Each point is one contiguous block,
+        printed in the order the points are reached.
+      - Never changes the outcome: a measurement that fails, is missing
+        or times out prints a named `measure:` line and the run goes on.
+        A pass stays a pass; a failure stays the same failure with the
+        same FAIL line. U9d applies no threshold to any measured number
+        (the floor stays R6/O-12's).
+      - Proof: `test_offline_measure_points_on_a_pass`,
+        `test_offline_measure_points_on_a_launch_failure`,
+        `test_offline_measure_never_changes_the_outcome`.
+    - **U9d-3 Same lines everywhere; nothing CI-only; nothing private.**
+      - The diagnostic and the measurements are unconditional parts of
+        `offline_check.sh`'s path in every `scripts/verify.sh full`: no
+        branch on `CI`, `GITHUB_*` or any other runner variable, and no
+        new step in `.github/workflows/ci.yml` (it stays
+        `./scripts/verify.sh full` only; its existing test stays green,
+        unedited). A local `verify.sh full` prints the same `measure:`
+        lines at the same points (on Docker Desktop the client's figures
+        are the VM's).
+      - Printed values are limited to: sizes, counts and percentages;
+        mount points and filesystem names as `df` prints them; the stack
+        project's container and service names; the U9d-1 fields, probe
+        output and logs tail. No hostname, IP address, user name, home or
+        profile path, environment value, token or credential is added
+        beyond what `df` already prints. `docker system df` is its summary
+        form, never `-v`.
+      - Files saved under `docs/evidence/` follow the redaction rule
+        (profile paths and SIDs redacted).
+      - Proof: `test_offline_check_has_no_ci_only_branch`; the U9d-5
+        sentinel-secret assertion.
+    - **U9d-4 Cost.**
+      - Diagnostic on the failure path only: a passing client run prints
+        no `diag:` line and makes no inspect or logs call after launch
+        (the fake docker's call record shows none).
+      - Each measurement point's last line gives its elapsed whole seconds
+        (`... measure: <point> done in <N> s`). Bound: N <= 5 at every
+        point, and the sum over a passing run <= 15 s, read from those
+        lines in the developer's GREEN and the orchestrator's gate
+        `verify.sh full` logs, and reported for the CI run. Over the bound
+        is a defect sent back to the developer, not a bound change.
+      - Nothing can stall the check: every docker call in the measurements
+        and the diagnostic runs under `timeout` (at most 30 s each; values
+        the architect's), so a hung inner daemon costs a bounded time and
+        a named line. The architect states the diagnostic's worst case.
+      - *Amended 2026-10-30 (analyst, O-23):* the event stream
+        (U9d-1, amended) is bounded by `timeout 900` and stopped at
+        launch's exit; on a pass it adds no measurable time. It is the
+        only docker call not held to the 30 s ceiling above; every other
+        measurement and diagnostic call keeps it.
+      - Proof: the no-diag-on-pass assertion in
+        `test_offline_measure_points_on_a_pass`; a static row that every
+        such docker call is under `timeout` (as the pull probe's row).
+    - **U9d-5 Tests.**
+      - Launch failure (fake docker): `launch.sh` exits non-zero with at
+        least one healthy container, one unhealthy container with
+        Health.Log entries (one multi-line output) and one exited
+        container with no healthcheck (`OOMKilled` true, `ExitCode` 137).
+        Asserts: one block per container with each U9d-1 field and its
+        value; the absent-field token; logs tails for the unhealthy and
+        the exited containers and none for the healthy one; every diag
+        line prefixed; the client exits non-zero; a sentinel secret in the
+        fake's inspect `Config.Env` appears nowhere in the output.
+      - Measurements: a passing client run prints C1 (after the install
+        stub, before the launch stub) and C3 (after the smoke stub, before
+        the teardown stub) and no C2; a launch-failure run prints C1 and
+        C2 and no C3; a host run prints H1 and H3 on a pass, and H1 and H2
+        on a client failure, H2 before the FAIL line. Each line has its
+        unit. A row in which every measurement source fails still passes,
+        with named lines.
+      - Unchanged pass output: every existing `tests/test_offline_check.py`
+        row stays green, unedited; any re-pin is listed at RED with its
+        reason (expected: none). A row asserts that a passing run's output
+        with the `measure:` lines removed is the same sequence of lines as
+        before U9d.
+      - No test reads `docs/evidence/**`; no test name holds a count; the
+        names above are indicative (the tester owns them). The fake docker
+        gains what the rows need (inspect state with health, the project's
+        container list, compose logs, `system df`).
+    - **U9d-6 Evidence and the CI read.**
+      - Local: `docs/evidence/platform-sbom/u9d/` holds the RED/GREEN
+        outputs and the `measure:` lines extracted from the developer's
+        GREEN and the orchestrator's gate `verify.sh full`, with the U9d-4
+        timings.
+      - CI: after the push (the human's word), the first CI run on PR #15
+        has its full log saved as
+        `docs/evidence/platform-sbom/ci/ci-<run>-attempt<N>.log` (`gh run
+        view --log`) and its launch window extracted to
+        `ci-<run>-launch-extract.txt` (from `offline-client: launch` to the
+        client's exit, plus every `measure:`, `diag:` and `offline: df`
+        line), as for run 40993359777.
+      - The analyst reads the extract and records in Q82 what it shows: on
+        a failure, the cause the diagnostic names (exited or killed,
+        `OOMKilled`, exit code, neo4j's last lines, disk and memory at C2);
+        on a pass, the peak disk and memory at C1/C3 and the margin. The
+        analyst then proposes E (the capacity fix) as a follow-up question
+        or unit for the orchestrator, and for the human where it reaches
+        the floor.
+      - *Amended 2026-10-30 (analyst, O-23):* a restart resets
+        `ExitCode` and `OOMKilled` (U9d-1, amended), so "the cause the
+        diagnostic names (...)" above reads: "(the `oom`/`die` events and
+        their exit code, `RestartCount` and `FinishedAt`, exited or
+        killed, `OOMKilled`, neo4j's last lines, disk and memory at C2)".
+      - U9d's commit gate is the local `verify.sh full`; the CI run follows
+        the push. PR #15 still merges only on a green CI run (Q82
+        deadline; nothing merges on red).
+    - **U9d-7 Out of scope.** Any capacity change: option B (neo4j's start
+      budget, JVM heap or page-cache caps) and option E (a lower peak, a
+      higher floor), both after U9d-6's reading; option D (rejected,
+      A82a). The 7 GiB floor (R6, O-12; U11 re-derives it). `/install`
+      sizing and the `MemAvailable` pre-check (N14, U10): U9d prints the
+      `/install` `df` that N14 plans "after install and after smoke", and
+      U10 reuses those lines rather than adding a second copy. Any change
+      to `docker-compose*.yml`, Dockerfiles or images, `install.sh`,
+      `install.ps1`, `ci.yml` or CLAUDE.md; any operator-visible change to
+      `launch.sh` or `launch.ps1` unless the architect places the
+      diagnostic there (QD-1).
+    - **U9d-8 Gate.** `scripts/verify.sh full` (`scripts/` changes). A34
+      (the Windows run) applies only if `install.ps1` or a compose mount
+      changes; neither should, and the architect states which. Review and
+      security are merge-blocking; security checks U9d-1's never-printed
+      list and U9d-3.
+    - **Outcome metric: neither.** U9d moves no reviewed draft and no
+      ratified rule. It names the cause of the CI launch failure so the
+      fix can be chosen and PR #15 can merge on green.
 
 - **PSC-25 psycopg on Debian libpq (Q64, unit U0).** *(Added 2026-10-22,
   analyst, Q64.)* The Q42 structural fix, ruled by the human. `ke-app`
@@ -4325,6 +5480,149 @@ full what it contains.
       `offline_check.sh`'s bundle writes).
     - The stack smoke, the notices run and `[gate: image-scan]` (still
       `ke-app` only, Q68) stay green. *(Amended 2026-10-23, analyst, Q68.)*
+- **PSC-27 `ke-app` ships the fixed OpenSSL (unit U7e; added 2026-10-27,
+  analyst).** *(Added 2026-10-27, analyst.)* During the U7d gate, the image scan (PSC-4)
+  failed on `ke-app`. The pinned base carries `libssl3` and `openssl`
+  `3.0.22-1~deb12u1`, which have a fixed High: CVE-2026-84782, fixed in
+  `3.0.22-1~deb12u2`, plus Mediums and Lows fixed in the same version.
+  - Evidence:
+    `docs/evidence/platform-sbom/u7d/orchestrator-verify-full-after-claude-row.txt`
+    l.2075-2372.
+  - This blocks the U7d commit. U7e lands first. *(Amended 2026-10-28,
+    analyst; U7e: superseded. U7d was committed as WIP 45411ae on the
+    human's instruction with the scan red; U7e is its own commit on top.)*
+  - It is handled under PSC-4 and PSC-5 by upgrading the package, as
+    PSC-25's *Scan* bullet requires for `libpq5` and what it pulls in
+    (`libpq5` depends on `libssl3`). It is never handled by an ignore
+    entry, a loosened threshold or a skipped scan.
+  - *Human ruling, 2026-10-27 ("get the fixed python").* The upgrade
+    comes from a new base image, not a package pin. The first draft's
+    *Pin* and the added-versus-upgraded package split are withdrawn.
+    Source: `docs/evidence/platform-sbom/u7e/security-openssl.md`. *(Amended 2026-10-27, analyst; human ruling.)*
+  - Outcome metric moved: **neither.** This is a security fix to the
+    shipped image. It keeps `verify.sh full` green, and the item's
+    commits depend on that.
+  - Gate: `scripts/verify.sh full`, plus the A34 Windows proof, because
+    `docker/app.Dockerfile` and `docker/gates.Dockerfile` change. *(Amended 2026-10-27, analyst; human ruling.)*
+  - *Base* (replaces *Pin*). *(Amended 2026-10-27, analyst; human ruling.)*
+    - Every `FROM python:3.12-slim-bookworm@sha256:...` line in
+      `docker/app.Dockerfile` (the `builder` and `runtime` stages) and
+      `docker/gates.Dockerfile` names
+      `python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753`.
+      That base carries CPython 3.12.16 and `libssl3` and `openssl`
+      `3.0.22-1~deb12u2`.
+    - The new digest is pinned in the PSC-1 form. Before the first build
+      from it, security records its provenance, including a second fetch
+      of `Python-3.12.16.tar.xz` whose SHA-256 equals the base's
+      `PYTHON_SHA256`.
+    - No package pin is added. The shipped stage's apt `RUN` is unchanged,
+      and `test_runtime_stage_has_no_compiler` (PSC-25) and the
+      `ADDED_PACKAGES` rule in `tests/test_notice_ke_app.py` stay as they
+      are.
+  - *CPython licence files.* *(Amended 2026-10-27, analyst; human ruling.)*
+    - `licenses/CPython-3.12-incorporated.txt`, `CPython-3.12-HACL.txt` and
+      `CPython-3.12-KaRaMeL.txt` are refreshed to CPython 3.12.16: the
+      version, the source and the tarball lines.
+    - NOTICE's CPython line and `tests/test_notice_ke_app.py`'s header are
+      refreshed to 3.12.16 too.
+    - The PSC-22 drift check passes on the fresh image: the `ke-app`
+      SBOM's CPython version equals the version the incorporated-licence
+      file names.
+  - *libpq5 pin.* `test_libpq_pin_matches_bookworm_base` is re-checked
+    against the new base. PSC-25's `libpq5` pin changes only if the new
+    base moved it; otherwise it stays `15.19-0+deb12u1`. *(Amended 2026-10-27, analyst; human ruling.)*
+  - *Image-side drift check* (PSC-22, in `offline_check.sh`). *(Amended 2026-10-27, analyst; human ruling.)*
+    - It pulls the new base by its digest.
+    - The dpkg names `ke-app` adds over that base still equal
+      `ADDED_PACKAGES`, and the SBOM lists no pip package.
+    - Withdrawn (was: "The `ke-app` SBOM's `libssl3` and `openssl` rows
+      carry `3.0.22-1~deb12u2`."): the drift check holds no
+      package-version check, and one would go stale at every base bump.
+      The fixed OpenSSL is proved instead by (1) the image scan in
+      `scripts/verify.sh full`: CVE-2026-84782 absent and no fixed High
+      unsuppressed (`u7e/tester-repin-verify-full.txt` l.2083-2367), and
+      (2) the refreshed `ke-app` fixture: `tests/fixtures/sbom-u3/ke-app.pkgs.tsv`
+      l.93 (`libssl3`) and l.114 (`openssl`) at `3.0.22-1~deb12u2`
+      (`u7e/fixture-diff.txt`). *(Amended 2026-10-28, analyst; U7e,
+      reviewer B-2, orchestrator ruling.)*
+  - *Scan.* With a freshly fetched vulnerability database (`scan-db`),
+    the `ke-app` scan passes under the unchanged policy. No `libssl3` or
+    `openssl` match at or above High remains unsuppressed, and
+    `docker/scan-ignore.yaml` gains no entry.
+  - *Lock.* *(Amended 2026-10-27, analyst; human ruling.)* The maintainer tool
+    (`scripts/sources_lock.sh`) is re-run, and the committed lock
+    (`docker/sources.lock.json`) is never hand-edited.
+    - The lock gains every new `deb:` key the new `ke-app` needs, among
+      them `deb:openssl@3.0.22-1~deb12u2`.
+    - The old keys stay while another image still needs them; postgres
+      keeps `deb:openssl@3.0.22-1~deb12u1`.
+    - The committed-lock test checks coverage both ways. So a key that
+      only the old `ke-app` needed leaves the lock, and the lock diff lists
+      it.
+    - Security reviews the lock diff, as for U7d.
+  - *Fixtures (rule O3).* *(Amended 2026-10-27, analyst; human ruling.)* This replaces the
+    earlier same-day two-row rule, which assumed a package pin.
+    - Only `tests/fixtures/sbom-u3/ke-app.pkgs.tsv` is refreshed, and the
+      whole file is replaced. It comes from a real `bundle.sh` SBOM of the
+      U7e image, which is written first under
+      `docs/evidence/platform-sbom/u7e/sboms/`.
+    - Every row difference against the old fixture is explained, in the
+      U7e evidence, by the dpkg diff between the old base and the new
+      base, or by the CPython 3.12.15 to 3.12.16 change. Any difference
+      they do not explain stops the unit, and it goes back to the
+      orchestrator.
+    - The other five fixtures do not change: postgres, phoenix and valkey
+      are pinned by digest; `ke-gateway` is unchanged; neo4j is
+      deliberately the official image.
+    - Each re-pinned real-row test (U4-U7, U7a's fixture key set among
+      them) is explained by those differences.
+    - The lock changes, so PSC-22 calls for a security re-review of the
+      unlicensed list.
+  - *Notices.* *(Amended 2026-10-27, analyst; human ruling.)* `NOTICE.md`'s "Base of `ke-app`"
+    section stays true.
+    - Its base reference is the new digest, byte for byte from the
+      `FROM`.
+    - Its CPython line names 3.12.16.
+    - Its added-packages line is unchanged.
+    - The earlier "upgraded from the base" sentence is withdrawn with the
+      pin: with the base bump, the base ships these packages as they are.
+    - The notices run (PS-3.8) and `test_notice_has_ke_app_base_paragraph`
+      stay green.
+  - *Windows (A34).* Two Dockerfiles change, so the PS-2.9 PowerShell
+    proof and `scripts/verify.sh fast` on Windows are recorded at
+    `docs/evidence/platform-sbom/u7e/windows-run.txt` before the unit
+    commits. The proof matches the branch head, or the diff since touches
+    none of the A34 files.
+  - *Size.* `ke-app`'s image and bundle tar sizes are recorded before and
+    after, for PSC-16.
+  - *Exposure, not a criterion.* *(Amended 2026-10-27, analyst; human ruling.)*
+    - The next Debian fix in the base arrives with the next base-digest
+      bump, and the scan (PSC-4) surfaces it as this one did.
+    - The other bookworm images carry the same `libssl3`
+      `3.0.22-1~deb12u1` (postgres, at the U3 fixtures). They are not
+      scanned (A70), and this unit does not rebuild them. The orchestrator
+      has raised postgres with the human: bump its digest when upstream
+      rebuilds, or accept the risk.
+    - The Alpine images, `ke-gateway` (Alpine 3.23.3, `libssl3` 3.5.5-r0)
+      and valkey (Alpine 3.24.2, 3.5.8-r0), are below upstream OpenSSL
+      3.5.9. Whether Alpine backported the fix is not checked; this is
+      information only (security, `u7e/security-openssl.md`).
+  - *Follow-up closed.* Security suggested the base bump to
+    `6dd8b6da...` "as its own plan item", after a package pin. The human's
+    ruling folds it into U7e, so no separate plan item is opened. *(Amended 2026-10-27, analyst; human ruling.)*
+  - Tests: *(Amended 2026-10-27, analyst; human ruling.)*
+    - `[unit: test_runtime_stage_has_no_compiler]` and the
+      `ADDED_PACKAGES` rule stay green and unchanged.
+    - Existing tests that pin the base digest move to the new digest;
+      none is removed or loosened.
+    - `test_libpq_pin_matches_bookworm_base` passes against the new
+      base.
+    - `[full: ke-app SBOM's CPython version matches the incorporated-licence file]`
+      (3.12.16), and the drift check on the new base.
+    - `[gate: image-scan]` passes with a fresh database.
+    - `test_sources_lock_committed` passes on the re-run lock and the
+      refreshed `ke-app` fixture.
+    - The stack smoke and the PSC-25 smoke check stay green.
 
 TDD order: PSC-14 → PSC-13 → PSC-15 → PSC-16. *Proposed by the analyst
 (2026-10-22), for the architect to confirm:* PSC-14 → PSC-20 → PSC-13 →
@@ -4335,6 +5633,10 @@ PSC-19 → PSC-16, with PSC-21 at the next recorded arm64 run. Gate: `scripts/ve
 run under A34 if the item changes Dockerfiles, compose files or a
 PowerShell script (`install.ps1` included, Q45).
 U4b (PSC-26) runs after U4 (PSC-22) and before U5. *(Added 2026-10-23, analyst, Q67.)*
+U7e (PSC-27) runs after U7d's gate and before U7d's commit. *(Added 2026-10-27, analyst.)*
+*(Amended 2026-10-28, analyst; U7e: U7d was committed as WIP 45411ae on the
+human's instruction with the image scan red; U7e is its own commit on top of
+it and turns the scan green.)*
 
 *Unit order (architecture N15), current:* U0 (PSC-25), U1 (PSC-14), U2
 (PSC-20), U3 (PSC-13), U4 (PSC-22), U4b (PSC-26), U5 (licence classifier), U6

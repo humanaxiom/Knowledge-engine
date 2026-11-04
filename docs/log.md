@@ -686,3 +686,231 @@ Format: `<ISO timestamp> | <role> | <plan-item-slug> | <action> | <gate result>`
 2026-10-25T15:21:56Z | security | platform-sbom | U7c rework r1 re-check (APKBUILD pin, parse_dsc, truncation, GitLab API raw form) | security: PASS (L-1, L-2, L-3, I-1 closed; item 9 holds; no new finding)
 2026-10-25T15:23:28Z | documenter | platform-sbom | handoff trim: U7c round-1 sections to archive/platform-sbom-part10.md | docs: updated
 2026-10-25T15:34:48Z | orchestrator | platform-sbom | U7c gates judged: review APPROVED (r1), security PASS (r1), A34 PASS, verify full PASS 1004 s; commit approved | smoke: PASS
+2026-10-25T15:35:25Z | developer | platform-sbom | committed U7c on agent/platform-sbom | commit: done
+2026-10-25T15:36:30Z | analyst | platform-sbom | Q72 drafted (snapshot transient failures vs Q61) for the human; status U7c | plan: question drafted
+2026-10-25T15:37:09Z | documenter | platform-sbom | handoff: U7c closed to a summary, detail to archive/platform-sbom-part10.md; U7d blocked on Q71/Q72/CLAUDE.md row | docs: updated
+2026-10-25T23:20:55Z | orchestrator | platform-sbom | pushed agent/platform-sbom c300d88..86f7831 (U5-U7c) to draft PR #14 on the human's approval | push: done (draft PR)
+2026-10-26T02:14:30Z | analyst | platform-sbom | A71 pgdg kind + apt-archive.postgresql.org host; A72 bounded retry for the lock tool (human rulings) | plan: rulings recorded
+2026-10-26T02:16:41Z | architect | platform-sbom | U7d precision: pgdg route via apt-archive Sources index, bounded retry policy, U7d steps | plan: design amended
+2026-10-26T02:19:56Z | tester | platform-sbom | U7d RED held: PGDG suite probe shows bookworm-pgdg-archive exists but main/source/Sources.gz does not (only Sources, Sources.bz2); architect to amend P2's index form | tdd red: blocked (architect amendment needed)
+2026-10-26T02:24:32Z | security | platform-sbom | U7d design review (pgdg kind, apt-archive host, Q72 retry) | security: design review PASS
+2026-10-26T02:26:42Z | documenter | platform-sbom | handoff trim: U7d design-stage sections to archive/platform-sbom-part11.md | docs: updated
+2026-10-26T03:05:14Z | tester | platform-sbom | U7d RED: retry R1-R6 + security 3-6, pgdg route (InRelease-bound Sources), lock P5, lock-needs P1, ten hosts, carried R1-N1/R1-N2/I-5, 182-key coverage; targets reach PASS 1076 OK; controls 70 rows 0 unexpected | tdd red: 31 failing as expected
+2026-10-26T03:35:54Z | developer | platform-sbom | U7d GREEN: pgdg route, bounded retry, ten hosts, InRelease copy | tdd green: verify fast + full PASS
+2026-10-26T03:38:40Z | documenter | platform-sbom | handoff trim: U7d RED/GREEN sections to archive/platform-sbom-part11.md | docs: updated
+2026-10-26T03:43:38Z | security | platform-sbom | U7d code audit (pgdg route, Sources binding, retry, pgdg lock rules, copy step) | security: PASS (no critical/high/medium; L-1 copy step follows symlinks)
+2026-10-26T03:44:15Z | reviewer | platform-sbom | U7d review: B1 real-opener URLError-wrapped timeouts not retried; B2 untested sources_lock.sh hostpath change; nits N1-N4 (pgdg suite unbound) | review: changes requested
+2026-10-26T03:45:58Z | security | platform-sbom | U7d S8 third Neo4j fetch: model hosts not reachable non-interactively | security: blocked (third fetch needs the human)
+2026-10-26T03:46:00Z | architect | platform-sbom | U7d rework r1 rulings (URLError timeouts retried, hostpath save pinned, suite bound to lock-needs, InRelease copy before the move via --evidence-dir) | plan: design amended
+2026-10-26T03:46:06Z | documenter | platform-sbom | handoff trim: reviewer (U7d) section to archive/platform-sbom-part11.md | docs: updated
+2026-10-26T03:51:15Z | developer | platform-sbom | U7d real run 1 stopped: apk symlink post-upgrade not a regular file; docker save path fix in sources_lock.sh | lock run: exit 1
+2026-10-26T03:53:02Z | tester | platform-sbom | U7d S7 RED: committed-lock test module (6 methods, named failures until the lock lands); stand-in reach; controls 23 rows 0 unexpected | tdd red: 6 failing as expected
+2026-10-26T03:53:04Z | documenter | platform-sbom | handoff trim: U7d security x2 and real-run sections to archive/platform-sbom-part11.md | docs: updated
+2026-10-26T03:53:08Z | tester | platform-sbom | U7d A34 step 3 (refusals) on Windows PASS; happy path pending the developer's run (lock-run-1 failed on the aports symlink) | a34: PASS (step 3); happy path pending
+2026-10-26T04:25:40Z | tester | platform-sbom | U7d rework r1 RED: URLError unwrap, hostpath pin, suite binding, --evidence-dir copy before move (links refused), aports symlink rule; targets reach (only S7 fails); controls 33 rows 0 unexpected | tdd red: 20 failing as expected
+2026-10-26T04:29:57Z | documenter | platform-sbom | handoff trim: U7d S7/A34/r1 RED sections to archive/platform-sbom-part11.md | docs: updated
+2026-10-26T04:31:59Z | developer | platform-sbom | U7d r1+S7 targets applied; real run 2 stopped: apk-tools file _apk not a safe file name | lock run: exit 1
+2026-10-26T04:33:30Z | documenter | platform-sbom | handoff trim: U7d run-2 section to archive/platform-sbom-part11.md | docs: updated
+2026-10-26T04:34:33Z | documenter | platform-sbom | handoff: closed-unit summaries U0-U4b condensed to one line each, detail to archive/platform-sbom-part8.md | docs: updated
+2026-10-26T05:06:46Z | tester | platform-sbom | U7d r1 item 10: read-only aports probe (19 keys; only leading-_ names new) + RED for the _ rule and key-prefixed skip line; reach only S7 fails; controls 27 rows 0 unexpected | tdd red: 13 failing as expected
+2026-10-26T05:34:58Z | tester | platform-sbom | U7d r1 item 12 RED: empty GitLab apk files (size 0 with the empty hashes); reach only S7 fails; controls 35 rows 0 unexpected | tdd red: 4 failing as expected
+2026-10-26T06:16:44Z | developer | platform-sbom | U7d targets applied, lock written (182 keys, lock-check ok); verify RED on test_no_hardcoded_ports (size 8080 in lock) | tdd green: verify fast + full FAIL (1 scanner hit); lock run: exit 0
+2026-10-26T06:23:22Z | reviewer | platform-sbom | U7d rework r1 + lock review: B1/B2/N1/N2 closed; items 8/10/12 hold; lock 182 keys canonical, lock_problems empty; nits R1-N1 empty APKBUILD, R1-N2 drift counts | review: APPROVED
+2026-10-26T06:25:17Z | documenter | platform-sbom | handoff urgent trim: U7d r1 sections and U5/U6 summaries to archive | docs: updated
+2026-10-26T06:25:19Z | security | platform-sbom | U7d rework r1 code re-check, item 13 design, S8 lock review | security: PASS (code r1; item 13 acceptable); lock review: PASS (commit waits on the third Neo4j fetch)
+2026-10-26T06:57:36Z | tester | platform-sbom | U7d item 13 RED: whole-file scan skip for the generated lock + committed-lock guard + APKBUILD size>0 (R1-N1); reach verify fast PASS; s7 controls baseline fixed (--base repo 0 unexpected) | tdd red: 3 failing as expected
+2026-10-26T07:28:05Z | developer | platform-sbom | U7d item 13 GREEN: lock exempt in port scan, APKBUILD size 0 refused | tdd green: verify fast + full PASS
+2026-10-26T07:30:16Z | documenter | platform-sbom | handoff trim: U7d item-13 sections to archive/platform-sbom-part11.md | docs: updated
+2026-10-26T07:30:43Z | tester | platform-sbom | U7d item 13 controls baseline fixed to saved pre-13 copies; --base repo 14 rows 0 unexpected | controls: PASS (0 unexpected)
+2026-10-26T07:31:02Z | reviewer | platform-sbom | U7d item 13 re-check: path-exact lock skip, APKBUILD size>0 (R1-N1 closed), contract test catches port/http keys and stray numbers; U7d final | review: APPROVED
+2026-10-26T07:46:29Z | orchestrator | platform-sbom | U7d gates judged: review APPROVED, security PASS + lock review PASS, A34 PASS, verify full PASS 1018 s; commit HELD for the human's third Neo4j fetch and the CLAUDE.md row | smoke: PASS; commit: held
+2026-10-26T07:47:24Z | documenter | platform-sbom | handoff trim: U7d security r1, tester baseline, reviewer i13 sections to archive/platform-sbom-part11.md | docs: updated
+2026-10-26T16:32:07Z | developer | platform-sbom | CLAUDE.md generated-artifacts row for docker/sources.lock.json added | docs: CLAUDE.md row added; verify fast PASS
+2026-10-28T00:03:48Z | architect | platform-sbom | U7d item 14: third Neo4j fetch moves to U8's CI sample fetch (orchestrator refinement); CLAUDE.md row added | plan: design amended
+2026-10-28T00:04:48Z | security | platform-sbom | provenance: third Neo4j fetch deferred to U8 CI sample fetch (ruling refinement, U7d item 14) | security: provenance updated (third fetch deferred to U8 CI by ruling)
+2026-10-28T00:18:57Z | analyst | platform-sbom | plan update: status U7d gate passed, PSC-15/16/22/23 state, Q61-Q72 resolved, third-fetch refinement noted | plan: updated
+2026-10-28T00:19:05Z | documenter | platform-sbom | handoff: U7d closed to a summary; README status U5-U7d | docs: updated
+2026-10-28T00:19:09Z | marketer | platform-sbom | CHANGELOG: platform-sbom U5-U7d | docs: changelog
+2026-10-28T00:22:25Z | orchestrator | platform-sbom | U7d commit BLOCKED: verify full FAIL at scan (ke-app openssl 3.0.22-1~deb12u1, CVE-2026-84782 High, fixed deb12u2); U7e opened | smoke: FAIL (scan High); commit: blocked
+2026-10-28T00:24:06Z | architect | platform-sbom | U7e design: openssl 3.0.22-1~deb12u2 pin in ke-app, lock regeneration, fixture refresh | plan: design amended
+2026-10-28T00:24:30Z | analyst | platform-sbom | U7e criteria drafted: openssl 3.0.22-1~deb12u2 pin in ke-app, lock + fixture refresh; U7d commit blocked on it | plan: criteria drafted
+2026-10-28T00:26:27Z | security | platform-sbom | openssl advisory check for the U7d verify-full scan failure (CVE-2026-84782, DLA-4859-1) | security: advisory confirmed
+2026-10-28T00:30:10Z | developer | platform-sbom | committed U7d as WIP on agent/platform-sbom (scan gate red; human instruction) | commit: done (WIP)
+2026-10-28T00:31:21Z | orchestrator | platform-sbom | committed U7d as WIP 45411ae and pushed to draft PR #14 on the human's instruction (scan gate red; U7e next) | push: done (WIP; CI expected red at scan)
+2026-10-28T00:57:38Z | orchestrator | platform-sbom | human ruling: U7e is a base-digest bump to python:3.12-slim-bookworm (3.12.16, openssl deb12u2); provenance, design and criteria re-targeted for the new session | plan: ruling recorded
+2026-10-28T00:58:25Z | analyst | platform-sbom | PSC-27 amended: U7e is a base-digest bump to python:3.12.16 (human ruling), licence refresh, ke-app fixture + lock re-run | plan: criteria amended
+2026-10-28T00:59:15Z | architect | platform-sbom | U7e re-targeted by human ruling: python:3.12-slim-bookworm digest bump (3.12.16, openssl deb12u2), licence refresh, full ke-app fixture + lock re-run | plan: design amended
+2026-10-28T01:01:32Z | security | platform-sbom | U7e base provenance (python 3.12.16-slim-bookworm, PSC-1, G5) | security: provenance recorded (python 3.12.16 base)
+2026-10-28T01:04:41Z | orchestrator | platform-sbom | human pre-approved creating the new draft PR for agent/platform-sbom in the next session; session closed after U7e re-target | plan: ruling recorded
+2026-10-28T01:06:51Z | orchestrator | platform-sbom | created draft PR #15 for agent/platform-sbom (head 45411ae, U7d WIP; pre-approved by the human); U7e dispatched: tester RED + security dpkg diff | plan: PR created
+2026-10-28T01:07:58Z | security | platform-sbom | U7e R3 base dpkg diff recorded: 105=105 pkgs, 0 added/removed, 4 moved (libssl3/openssl u2, ca-certificates u2, tzdata 2026e); ADDED_PACKAGES holds; libpq5 pin current | security: pass (R3 dpkg diff)
+2026-10-28T01:26:53Z | tester | platform-sbom | U7e TDD RED: 4 tests red by expected value (ruled base digest in 3 FROM lines; CPython 3.12.16 + PYTHON_SHA256 licence headers; NOTICE base ref + 3.12.16 URLs; real ke-app rows CPython = ruled release); old 3.12.16 drift control moved to 3.12.99 | tdd red: verify full FAIL as expected, 4 failures (expected), 1110 run, 8 named skips
+2026-10-28T02:07:41Z | developer | platform-sbom | U7e GREEN: base bump to python 3.12.16 digest, licence files, NOTICE, ke-app fixture, lock re-run (+2/-1 keys) | tdd green: 3 of 4 target tests pass; 1 test has a NameError defect, 9 fixture pins left for tester
+2026-10-28T02:10:03Z | marketer | platform-sbom | U7e changelog bullet held: gate not green (verify full FAIL after developer GREEN; R4 pins open); README has no 3.12.15 or old digest | docs: changelog held (U7e gate red)
+2026-10-28T02:10:52Z | analyst | platform-sbom | U7e: amended current-value lines to CPython 3.12.16 and 183-key lock (requirements PSC-14/PSC-15/PSC-27 row, status; architecture l.6695, l.6754) | plan: pass (PSC-27 PENDING; U7e GREEN, review round)
+2026-10-28T02:17:46Z | security | platform-sbom | U7e GREEN diff review: base digest, licence bodies, 2 new lock entries re-fetched, ke-app fixture, scans (M-1 ke-gates compose/uv fixable High, non-blocking) | security: pass
+2026-10-28T02:31:33Z | tester | platform-sbom | U7e: restored the misplaced line-1 control to test_ke_app_sbom_cpython_matches_licence_files; re-pinned FIXTURE_KEYS/counts to 183 keys (deb 153) per u7e/key-diff.txt; B2 stays (79,6) | smoke: pass (verify full PASS 1152s, scan green)
+2026-10-28T02:33:06Z | marketer | platform-sbom | U7e changelog bullet added to platform-sbom in-progress entry (base 3.12.16 digest, openssl deb12u2, lock 183) | docs: changelog
+2026-10-28T02:33:18Z | analyst | platform-sbom | U7e: status line and PSC-27 row record tester verify full PASS (scan green) and security PASS; unit-order note amended (U7d WIP, U7e own commit) | plan: pass (PSC-27 PENDING; reviewer and A34 in progress)
+2026-10-28T02:36:51Z | reviewer | platform-sbom | U7e diff review: code/tests sound; 2 blocking docs/evidence gaps (PSC-27 size record missing; libssl drift criterion has no check) | review: changes requested
+2026-10-28T02:38:08Z | analyst | platform-sbom | U7e rework 1: PSC-27 drift-check version claim withdrawn (proof = scan + fixture rows, reviewer B-2); stale 'blocks the U7d commit' noted (N-2) | plan: pass (PSC-27 PENDING)
+2026-10-28T02:38:12Z | developer | platform-sbom | U7e size evidence (reviewer B-1): ke-app image and bundle tar before/after | evidence: size.md written
+2026-10-28T03:01:28Z | tester | platform-sbom | U7e A34 Windows proof (build.sh, bundle.sh, install.ps1+launch/teardown, verify full) and L-2 comment fix | a34: pass (verify full PASS 1132 s, scan green)
+2026-10-28T03:15:26Z | tester | platform-sbom | U7e reviewer nits N-1 (rename test_the_182_keys -> test_every_fixture_key_resolves) and N-3 (drift-test docstring as history); no assertion change | unit tests: pass (verify fast PASS 757 s)
+2026-10-28T03:16:35Z | reviewer | platform-sbom | U7e re-review (rework round 1): B-1 size record and B-2 requirement amendment closed; N-1/N-3/L-2 closed | review: approved
+2026-10-28T03:17:01Z | analyst | platform-sbom | U7e re-review nit: unit-order sentence has one occurrence (req l.4538), already amended at l.4539-4541; no edit | plan: pass (PSC-27 PENDING)
+2026-10-28T03:35:47Z | orchestrator | platform-sbom | U7e gate: orchestrator verify full PASS 1162 s on the final tree (1110 unit OK, 15 integration OK, gates-it, smoke, scan green, offline_check); review APPROVED after rework 1, security PASS, A34 PASS; commit approved | smoke: pass
+2026-10-28T03:36:29Z | documenter | platform-sbom | closed U7e in handoff; archived to platform-sbom-part12.md | docs: handoff closed U7e
+2026-10-28T03:37:49Z | developer | platform-sbom | committed U7e 0630586 on agent/platform-sbom (not pushed) | commit: done
+2026-10-28T03:50:54Z | orchestrator | platform-sbom | pushed U7e 0630586 to origin agent/platform-sbom (draft PR #15) on the human's approval; CI run pending | push: done
+2026-10-28T04:28:03Z | orchestrator | platform-sbom | PR #15 CI run 40628987168 on 0630586 PASS (verify job 35m53s, up from 23m13s on 86f7831: U11/Q62 data point; first Linux run with the lock and the 3.12.16 base) | ci: pass
+2026-10-28T04:58:12Z | orchestrator | platform-sbom | U8 opened on the human's go: analyst (PSC-23 U8 precision, Q73+) and architect (N4 amendment U8) dispatched in parallel | plan: in progress
+2026-10-28T05:06:23Z | analyst | platform-sbom | U8 plan: PSC-23 'U8 precision' criteria U8-1..U8-14 in requirements.md; Q73-Q77 raised in open-questions.md; status line and PSC-15/16/23/27 rows updated (PSC-27 MET) | plan: pass (U8 criteria ready for the architect; Q73/Q74 for the human, Q75-Q77 for the orchestrator)
+2026-10-28T05:09:00Z | analyst | platform-sbom | U8 orchestrator rulings recorded: A75 (daemon arch, no --evidence-dir), A76 (completion record), Q77 deferred, Q74 measured CI data; PSC-23 U8-1/U8-6/U8-13 amended | plan: pass (Q73, Q74 open for the human)
+2026-10-28T05:09:55Z | architect | platform-sbom | U8 design: N4 amendment U8 (sources_fetch.py reusing the resolver opener, download() single attempt; sources-fetch host-half one-shot; flat sha256 out + fetch.json; B-fetch 60 s; split U8a/U8b/U8c) and ADR-KE-016 Amended U8 | plan: design ready (Q73/Q74 with the human; O-1..O-3 for the orchestrator)
+2026-10-28T05:10:32Z | orchestrator | platform-sbom | U8 plan gate passed (PSC-23 U8 precision + N4 amendment U8); rulings O-1 yes (full-set real fetch at U8b), O-2 yes as a reviewed hosts change, O-3 flat sha256 layout; Q73/Q74 to the human; U8a RED dispatched | plan: pass
+2026-10-28T05:37:27Z | tester | platform-sbom | U8a RED: tests/test_sources_fetch.py (client rows 1-8, A75/A76, helpers download/dsc_listing/lock_entry_problems/fetch_plan); controls baseline u8/u8a-controls.txt | tdd red: 30 new fails for the expected reason (module/function absent), nothing else red
+2026-10-28T05:55:04Z | developer | platform-sbom | U8a GREEN: sources_fetch.py client, resolver download/dsc_listing, sbom_check lock_entry_problems/fetch_plan; 30 RED rows green, verify fast PASS 1140 tests | tdd green: verify fast pass
+2026-10-28T06:03:53Z | security | platform-sbom | U8a audit: sources_fetch client, download/dsc_listing, lock_entry_problems/fetch_plan; probes via OPENER/CLOCK/DISK_FREE; 2 medium (empty plan exits 0 complete; held file skips size/upstream checks), 5 low | security: pass (no critical/high; M-1, M-2 recommended for rework)
+2026-10-28T06:04:26Z | reviewer | platform-sbom | U8a review: design items 1/2/4/6/11 conform, lock_problems split behaviour-preserving, ambiguities fine; B-1 U8-4 write-error line untested and the .part open path misses its form; nits N-1..N-10 | review: changes requested
+2026-10-28T06:05:18Z | tester | platform-sbom | Q74 unit-suite profile: U7d/U7e adds 12 s (731->736 s local, same CPU); CI 912->1567 s is runner speed (cgroup CPU 844->1442 CPU-s, all modules 1.6-1.9x); top costs InstallPs1Test, LintScriptTest, per-test bundle.sh | measure: done (verify fast PASS, 1140 tests, 726.8 s)
+2026-10-28T06:05:27Z | orchestrator | platform-sbom | U8a rework round 1 of 5: security M-1 (empty plan exits 0) and M-2 (held file skips size/upstream checks; ruled: a pure lock rule one sha256 = one size and one upstream per alg), reviewer B-1 (part-open OSError bypasses the fail line form) plus the lows/nits; tester RED rows dispatched, developer GREEN follows | review: changes requested (rework 1)
+2026-10-28T06:07:10Z | analyst | platform-sbom | Q74 corrected: +654 s attribution struck; runner factor 1.24x->2.13x recorded; options amended (54-min PS-3.4 timeout, factor/CPU-time budget, remove runner-host load); U8-11 runner claim made neutral | plan: pass (Q73, Q74 open for the human)
+2026-10-28T06:08:42Z | analyst | platform-sbom | Runner settled as GitHub-hosted Azure: U8-11 restored (independent egress, setup log lines as evidence); Q74 option 3 and runner-host question withdrawn; rec. option 1 (54 min) now, option 2 later | plan: pass (Q73, Q74 open for the human)
+2026-10-28T06:28:16Z | tester | platform-sbom | U8a rework 1 RED: 10 new rows (M-1, M-2 lock rule, B-1/N-3 foreign .part, L-1 source redaction, L-3 fetch.json in --out, L-5 Sha1, N-4) + 5 coverage rows (B-1b, N-2, N-9, L-4a/b) in tests/test_sources_fetch.py; controls unchanged | tdd red: rework 1, 30 fails only in the 10 new rows for the expected reason; coverage rows green; nothing else red
+2026-10-28T06:45:40Z | developer | platform-sbom | U8a rework r1 GREEN: M-1,M-2,L-1,L-3,L-5,B-1,N-1,N-3..N-6 applied; verify fast pass 1155; verify full blocked by docker address pool exhaustion | tdd green: fast pass; full blocked
+2026-10-28T06:49:17Z | security | platform-sbom | U8a re-audit rework round 1: M-1, M-2, L-1..L-5, I-1 closed (probes P1-P7, Q2/Q2b re-run; R1-R5 new); new L-6 low: held copy under another upstream alg unchecked | security: pass (L-6 low, non-blocking)
+2026-10-28T06:50:33Z | reviewer | platform-sbom | U8a re-review rework 1: B-1 and N-1..N-9 closed; M-1, M-2, L-1 (source + _safe net complete, no U7c test change), L-3..L-5 fine; 22 mutation probes caught, 2 equivalent; nits: record M-2 lock rule in design/PSC-23 | review: approved (verify full still due)
+2026-10-28T06:51:41Z | architect | platform-sbom | U8a rework record: shared-sha256 lock rules (one size, one upstream alg, one value per alg) in N4 am. U8 item 1, N5 and PSC-23 U8-3; L-1 redaction note | plan: design amended
+2026-10-28T07:04:31Z | tester | platform-sbom | U8a rework 2 RED: one-upstream-alg-per-sha256 lock rule rows (pure + client on probe R1) and the round-1 cross-alg control flipped to a problem; LockEntryProblemsTest docstring (R1-N1) | tdd red: rework 2, 4 fails only in the new/flipped rows for the expected reason; nothing else red
+2026-10-28T07:30:11Z | developer | platform-sbom | U8a rework r2 GREEN: one sha256 one upstream alg (size-0 exempt); verify fast pass 1157; full blocked by docker address pools | tdd green: fast pass; full blocked
+2026-10-28T07:31:07Z | architect | platform-sbom | U8a round 2 record: size-0 files exempt from the one-upstream-alg-per-sha256 rule (orchestrator ruling) in N4 am. U8 item 1, N5 and PSC-23 U8-3 | plan: design amended
+2026-10-28T07:31:48Z | security | platform-sbom | U8a re-audit rework round 2: L-6 closed by the one-alg-per-sha256 lock rule; size-0 exemption probed (E1-E5), opens nothing | security: pass
+2026-10-28T07:32:20Z | orchestrator | platform-sbom | U8a review gates passed (security PASS after rounds 1-2, review APPROVED, verify fast PASS 1157); orchestrator verify full BLOCKED: Docker address pool exhausted by 15 empty networks of other projects, removal denied by the permission mode; waiting on the human (free the pool; Q73; Q74) | smoke: blocked (host)
+2026-10-28T11:40:17Z | analyst | platform-sbom | Q73 (option 2) and Q74 (69 min) recorded as human rulings | plan: pass
+2026-10-28T11:40:54Z | analyst | platform-sbom | PS-3.4 amended to point at A74 | plan: pass
+2026-10-28T11:50:48Z | tester | platform-sbom | Q74 RED: CI timeout pin 69 min | tdd: red
+2026-10-28T12:04:01Z | developer | platform-sbom | Q74 GREEN: ci.yml timeout-minutes 69 | tdd: green (fast PASS; full BLOCKED host)
+2026-10-28T12:26:32Z | orchestrator | platform-sbom | U8a + Q74: orchestrator verify full PASS 1095 s after the human's network prune; diff read; commit approved | smoke: pass
+2026-10-28T12:27:11Z | documenter | platform-sbom | U8a + Q74 handoff closed to a summary; detail archived in part13 | docs: pass
+2026-10-28T12:27:55Z | developer | platform-sbom | U8a + Q74 committed 3203054 | commit: pass
+2026-10-28T13:16:03Z | tester | platform-sbom | U8b RED: service, bundle_fetch.sh, offline_check wiring, docs | tdd: red
+2026-10-28T13:17:00Z | orchestrator | platform-sbom | U8b RED accepted; O-4..O-7 ruled on the tester's ambiguities | tdd: red
+2026-10-28T13:17:15Z | orchestrator | platform-sbom | U8b RED accepted; O-4..O-7 ruled on the tester's ambiguities | tdd: red
+2026-10-28T13:53:37Z | developer | platform-sbom | U8b GREEN: sources-fetch service, bundle_fetch.sh, offline_check wiring, docs; first real sample fetch BLOCKED (gitlab.alpinelinux.org unreachable from host) | tdd: blocked
+2026-10-28T14:05:40Z | security | platform-sbom | U8b security audit | security: pass
+2026-10-28T14:05:48Z | reviewer | platform-sbom | U8b review | review: changes requested
+2026-10-28T14:25:54Z | tester | platform-sbom | U8b rework 1 RED: B-1 B-2 N-2 N-3 N-5 L-1 L-2 rows | tdd: red
+2026-10-28T14:40:29Z | developer | platform-sbom | U8b rework 1 GREEN | tdd: green
+2026-10-28T14:43:34Z | security | platform-sbom | U8b security re-audit, rework 1 | security: pass
+2026-10-28T14:44:31Z | reviewer | platform-sbom | U8b review, rework 1 | review: approved
+2026-10-28T14:45:04Z | orchestrator | platform-sbom | U8b rework 1 accepted: review APPROVED, security PASS; waiting on the gitlab.alpinelinux.org outage for the real runs | review+security: pass
+2026-10-28T18:07:10Z | tester | platform-sbom | U8b A34 Windows proof of bundle_fetch.sh | a34: pass
+2026-10-28T18:34:51Z | developer | platform-sbom | U8b real runs: sample in verify full, full set (O-1) | smoke: pass
+2026-10-28T18:36:42Z | documenter | platform-sbom | U8b handoff closed to a summary (part14); CHANGELOG U8 bullet | docs: pass
+2026-10-28T18:54:10Z | orchestrator | platform-sbom | U8b orchestrator verify full attempt 1: unit 1195 OK, red only at the sample fetch (gitlab.alpinelinux.org unreachable again 18:52Z); waiting | smoke: blocked (upstream)
+2026-10-29T14:41:34Z | orchestrator | platform-sbom | U8b: orchestrator verify full PASS 1137 s with the real sample fetch; diff read; commit approved | smoke: pass
+2026-10-29T14:42:04Z | developer | platform-sbom | U8b committed 98e465a | commit: pass
+2026-10-29T15:01:34Z | tester | platform-sbom | U8c O-2 RED: drop objects.githubusercontent.com from the policy hosts | tdd: red
+2026-10-29T15:21:48Z | developer | platform-sbom | U8c O-2 GREEN: policy hosts narrowed | tdd: green
+2026-10-29T15:24:22Z | reviewer | platform-sbom | U8c O-2 review | review: approved
+2026-10-29T15:24:59Z | security | platform-sbom | U8c O-2 security review of the hosts change | security: pass
+2026-10-29T15:44:26Z | orchestrator | platform-sbom | U8c O-2: review APPROVED, security PASS, orchestrator verify full PASS 1111 s; commit approved | smoke: pass
+2026-10-29T15:44:41Z | developer | platform-sbom | U8c O-2 committed 23bf33e | commit: pass
+2026-10-29T16:01:58Z | orchestrator | platform-sbom | pushed 3203054..5cf025c (U8a, U8b, U8c part 1) to origin agent/platform-sbom on the human's approval; PR #15 CI run pending | push: approved
+2026-10-29T16:11:03Z | analyst | platform-sbom | U9 precision criteria | plan: pending architect
+2026-10-29T16:15:26Z | architect | platform-sbom | N4 amendment U9 design | plan: pending orchestrator
+2026-10-29T16:16:28Z | orchestrator | platform-sbom | U9 plan gate PASS: Q78-Q80 and O-9..O-12 ruled | plan: pass
+2026-10-29T16:17:51Z | analyst | platform-sbom | Q78-Q80 and O-9..O-12 recorded; U9-10/11/15 amended | plan: pass
+2026-10-29T16:36:43Z | security | platform-sbom | U8c part 2: third Neo4j fetch recorded from CI run 40907497118 | security: pass
+2026-10-29T16:46:16Z | tester | platform-sbom | U9a RED: sources-check, index, notices functions and subcommands; install pins | tdd: red
+2026-10-29T17:06:16Z | developer | platform-sbom | U9a GREEN: sources-check, index, notices | tdd: green
+2026-10-29T17:14:53Z | reviewer | platform-sbom | U9a review | review: changes requested
+2026-10-29T17:15:10Z | security | platform-sbom | U9a security audit | security: pass
+2026-10-29T17:50:55Z | tester | platform-sbom | U9a rework 1 RED | tdd: red
+2026-10-29T17:53:13Z | tester | platform-sbom | U9a rework 1 RED: O-14 precision key-column control | tdd: red
+2026-10-29T18:22:08Z | developer | platform-sbom | U9a rework 1 GREEN | tdd: green
+2026-10-29T18:24:49Z | reviewer | platform-sbom | U9a review, rework 1 | review: approved
+2026-10-29T18:24:55Z | security | platform-sbom | U9a security re-audit, rework 1 | security: pass
+2026-10-29T18:26:12Z | documenter | platform-sbom | U8c + U9a handoff closed (part15); CHANGELOG U9a bullet | docs: pass
+2026-10-29T18:43:31Z | orchestrator | platform-sbom | U9a orchestrator verify full attempt 1: unit 1270 OK, red only at the sample fetch (gitlab.alpinelinux.org unreachable again, third outage) | smoke: blocked (upstream)
+2026-10-29T18:47:52Z | analyst | platform-sbom | Q81 raised: sample fetch dependence on gitlab.alpinelinux.org | plan: pending human
+2026-10-29T19:41:12Z | orchestrator | platform-sbom | U8c part 2 + U9a: orchestrator verify full PASS 1156 s with the real sample fetch (GitLab window 19:20Z); diff read; both commits approved | smoke: pass
+2026-10-29T19:41:39Z | developer | platform-sbom | U8c part 2 committed ecdd33f; U9a committed fc8bbf8 | commit: pass
+2026-10-29T19:44:45Z | security | platform-sbom | U9b R7: libffi licence provenance | security: pass
+2026-10-29T20:15:08Z | tester | platform-sbom | U9b RED: bundle.sh --sources, copy, index/notices stages, no-partial, offline_check flags, NOTICE, README | tdd: red
+2026-10-29T21:31:07Z | developer | platform-sbom | U9b GREEN: bundle.sh --sources, copy, index/notices, no-partial, offline_check, NOTICE/libffi, README | tdd: green
+2026-10-29T21:40:51Z | tester | platform-sbom | Q79 full fetch: PASS, 716 files 1180936586 B 183 components (876 rows), fetch.json full/amd64/lock 12eebc8c; dist/ke-q79-sources kept | smoke: pass
+2026-10-29T21:41:28Z | reviewer | platform-sbom | U9b review: CHANGES REQUESTED (B-1 path normalisation, B-2 O-15 pins, B-3 O-10 rows/signals) | review: changes requested
+2026-10-29T21:42:24Z | security | platform-sbom | U9b security: FAIL (L-4 high: unnormalised --out lets the O-10 cleanup rm -rf a pre-existing dir and bypasses the --sources overlap; 6 info; libffi body sha256 = R7) | security: fail
+2026-10-29T21:44:03Z | orchestrator | platform-sbom | U9b review CHANGES REQUESTED + security FAIL read; rulings O-16 recorded; U9b sections archived to part16; rework 1 of 5 dispatched (tester RED) | review: changes requested
+2026-10-29T22:36:40Z | tester | platform-sbom | U9b rework 1 RED: 20 new rows + O-15 pins per O-16 (path rule, plain mkdir, noclobber, SIGTERM/trap, tag/save/app copy faults, stage manifest, stage_die-only, N-2, N-7); verify fast Ran 1322 failures=33 (12 new rows red, 1302 existing green, 8 skips); 19 mutation controls pass; N-7 refused at stage index not manifest (flagged) | tdd: red
+2026-10-29T22:38:01Z | orchestrator | platform-sbom | U9b rework 1: RED accepted (12 rows, controls); O-16 precision (a)(b) recorded; developer GREEN dispatched | tdd: red
+2026-10-29T23:20:38Z | developer | platform-sbom | U9b rework 1 GREEN: O-16 path rule, mkdir claim, noclobber record, tag/save/copy dies, stage manifest, app/ copies from --out; fast 1322 OK, full PASS 1422 s | tdd: green
+2026-10-29T23:22:30Z | orchestrator | platform-sbom | U9b rework 1 GREEN accepted (fast 1322 OK, full PASS 1422 s); security re-audit, reviewer re-read and Q79 bundle half dispatched in parallel | tdd: green
+2026-10-29T23:29:13Z | reviewer | platform-sbom | U9b rework 1 review: CHANGES REQUESTED (B-1 created re-tested at bundle.sh:449 contra O-16 (2), late --out adopted and emptied; B-2 quickstart bundle.sh lacks --sources/bundle_fetch; old B-1..B-3 closed) | review: changes requested
+2026-10-29T23:29:39Z | tester | platform-sbom | Q79 full-set bundle run: PASS (716 files/1180936586 B, 183 shipped + 2 exempt, MANIFEST 111025 B/764 lines, bundle 2147272340 B; R10/R11; size.md replaced) | smoke: pass
+2026-10-29T23:35:28Z | security | platform-sbom | U9b rework 1 security: PASS (L-4 closed: path rule, plain mkdir, noclobber probed; I-13 medium = reviewer B-1 created re-test race; I-14 low) | security: pass
+2026-10-29T23:36:29Z | orchestrator | platform-sbom | U9b rework-1 verdicts read (security PASS, review CHANGES REQUESTED B-1 created re-test); Q79 run accepted; rulings O-17; rework 2 of 5 dispatched (tester RED) | review: changes requested
+2026-10-30T00:13:28Z | tester | platform-sbom | U9b rework 2 RED: 6 new rows + trailing-.. subTest (O-17 (1)/(2), N-4, N-5); fast Ran 1328 failures=6: 5 O-17 rows red as ruled + handoff cap on NEXT-SESSION.md (201 lines, not this RED); controls u9b-r2-controls.txt | tdd: red
+2026-10-30T00:15:02Z | orchestrator | platform-sbom | U9b rework 2 RED accepted (4 O-17 rows); NEXT-SESSION.md trimmed 201->160 (cap test); developer GREEN dispatched | tdd: red
+2026-10-30T01:05:00Z | developer | platform-sbom | U9b rework 2 GREEN: O-17 (1)-(3) in bundle.sh; 4 rows green; fast Ran 1328 OK skipped=8; full PASS | tdd: green
+2026-10-30T01:06:32Z | orchestrator | platform-sbom | U9b rework 2 GREEN accepted (fast 1328 OK, full PASS 1365 s); reviewer + security re-reads and A34 + Q79 re-run dispatched | tdd: green
+2026-10-30T01:10:54Z | reviewer | platform-sbom | U9b rework 2 review: APPROVED | review: pass
+2026-10-30T01:17:26Z | security | platform-sbom | U9b rework 2 security: PASS (I-13 closed, I-14 closed as filed; new I-15 low given --out emptiness, I-16 medium record chmod via link under root) | security: pass
+2026-10-30T01:18:12Z | orchestrator | platform-sbom | U9b rework 2 verdicts: reviewer APPROVED, security PASS; O-18 defers I-15/N-8 and I-16/N-7 to U10; code final; waiting on A34 + Q79 re-run, then documenter close | review: pass
+2026-10-30T01:36:28Z | documenter | platform-sbom | U9b docs close: quickstart B-2, README N-2/N-11/O-18, CHANGELOG | docs: pass
+2026-10-30T01:57:35Z | tester | platform-sbom | U9b A34 Windows proof + Q79 re-run: Q79 PASS (all rows = first run); A34 steps 1-6 PASS (sample fetch/bundle = expected, install.ps1 7/7 healthy, 2 refusals); own verify full FAIL by interference (orchestrator R15 .env mid-run), developer full PASS cited | smoke: pass
+2026-10-30T01:57:46Z | tester | platform-sbom | Correction to the 01:57:35Z entry's gate: the tester's own verify full FAILED (exit 1, interference by the concurrent R15 .env) and did not reach smoke; A34 install/launch checks passed; R13 verify-full rests on the developer's PASS | smoke: fail
+2026-10-30T02:03:27Z | orchestrator | platform-sbom | U9b: orchestrator verify full PASS 1390 s on the final tree (real sample fetch + bundle; GitLab window); diff read; A34 PASS, Q79 re-run equal; commit approved | smoke: pass
+2026-10-30T02:04:04Z | developer | platform-sbom | U9b committed 0396699 | commit: pass
+2026-10-30T02:30:46Z | orchestrator | platform-sbom | Q81 ruled by the human: A81 = option 3 (distfiles-only apk sample row); recorded in open-questions; U9c plan gate dispatched (analyst) | plan: in progress
+2026-10-30T02:35:41Z | analyst | platform-sbom | U9c criteria (A81 option 3) | plan: criteria written
+2026-10-30T02:44:00Z | developer | platform-sbom | pushed agent/platform-sbom through 90db4b8 to PR #15 (human: proceed) | push: done
+2026-10-30T02:44:13Z | architect | platform-sbom | U9c design (A81 option 3) | plan: design written
+2026-10-30T02:44:25Z | orchestrator | platform-sbom | push approved by the human (proceed) and done through 90db4b8; PR #15 CI run 40993359777 in progress | push: done
+2026-10-30T02:46:50Z | orchestrator | platform-sbom | U9c plan gate PASS (criteria + design; O-21 accepts O-19/O-20); expected numbers recorded; U9b block archived; tester RED dispatched | plan: pass
+2026-10-30T03:40:01Z | tester | platform-sbom | U9c RED: 15 new rows (tests/test_sources_sample_apk.py) + U9c-2 (a)-(c) rows; re-pins R1-R5 as named plus R6 (run-deadline test, sample plan used for full); 38 tests red as ruled, candidate + 16 mutations in u9c/controls.txt | tdd: red
+2026-10-30T03:41:14Z | orchestrator | platform-sbom | U9c RED accepted (38 red, R1-R6 re-pins incl. the deadline row); developer GREEN dispatched | tdd: red
+2026-10-30T03:42:28Z | orchestrator | platform-sbom | CI run 40993359777 FAIL at the offline client's launch (neo4j unhealthy at 37 s; passing run had healthy at 40.7 s); fetch, bundle and install passed; failed job re-run | ci: fail
+2026-10-30T04:22:05Z | developer | platform-sbom | U9c GREEN: apk sample distfiles-only, APKBUILD skip, partial index status and notices row; fast 1343 OK, full PASS | tdd: green
+2026-10-30T04:24:33Z | orchestrator | platform-sbom | CI rerun 40993359777 attempt 2 FAIL identically (neo4j unhealthy ~43 s in the offline client); logs saved under evidence/ci; Q82 to the analyst; U9c GREEN accepted; reviewer + security dispatched | ci: fail
+2026-10-30T04:28:57Z | reviewer | platform-sbom | U9c review: APPROVED (0 blocking; nits N-1..N-4) | review: pass
+2026-10-30T04:30:06Z | documenter | platform-sbom | U9c docs: README sample wording, offline_check comment | docs: pass
+2026-10-30T04:30:20Z | marketer | platform-sbom | U9c CHANGELOG bullet | docs: pass
+2026-10-30T04:30:59Z | analyst | platform-sbom | Q82 raised: CI neo4j launch failure | plan: question raised
+2026-10-30T04:31:23Z | security | platform-sbom | U9c security: PASS (no L; I-1..I-3 informational; partial row wording approved) | security: pass
+2026-10-30T04:31:49Z | orchestrator | platform-sbom | Q82 ruled in part (A82a): diagnostic + runner measurement as U9d after U9c, before U10; D rejected; floor and push stay the human's | plan: ruling recorded
+2026-10-30T04:38:12Z | analyst | platform-sbom | U9d criteria (A82a: launch diagnostic + runner measurement) | plan: criteria written
+2026-10-30T04:52:03Z | architect | platform-sbom | U9d design (A82a) | plan: design written
+2026-10-30T04:52:54Z | orchestrator | platform-sbom | U9d plan gate PASS (criteria U9d-1..8, design N9 amendment U9d; O-22 on the three deviations); RED waits for the U9c commit | plan: pass
+2026-10-30T04:56:31Z | orchestrator | platform-sbom | U9c: orchestrator verify full PASS 1335 s on the final tree (sample 10 files, 0 GitLab hops, skip line); diff read; commit approved | smoke: pass
+2026-10-30T04:56:44Z | developer | platform-sbom | U9c committed 9c3183d | commit: pass
+2026-10-30T05:33:42Z | tester | platform-sbom | U9d RED: 11 new offline_check rows (launch diag, C1-C3/H1-H3 measure points, never-changes-outcome, static timeout/template/neutral-word/seam rows) + inert fake_docker knobs; 24 new subtests red for missing behaviour, 1343 existing green; 17/17 mutants killed | tdd: red
+2026-10-30T05:35:02Z | orchestrator | platform-sbom | U9d RED accepted (24 subtests, 17/17 mutants); handoff U9c/U9d sections archived to part18; developer GREEN dispatched | tdd: red
+2026-10-30T06:16:25Z | developer | platform-sbom | U9d GREEN: offline_check.sh measure C1-C3/H1-H3 and launch diagnostic; fast 1354 OK, full PASS | tdd: green
+2026-10-30T06:26:10Z | reviewer | platform-sbom | U9d review: CHANGES REQUESTED | review: changes requested
+2026-10-30T06:27:14Z | orchestrator | platform-sbom | U9d review CHANGES REQUESTED (B-1 restart resets ExitCode/OOMKilled); O-23: design amendment (RestartCount/StartedAt/FinishedAt/Error + docker events stream); rework 1 of 5; architect dispatched | review: changes requested
+2026-10-30T06:35:58Z | architect | platform-sbom | U9d design amendment (O-23: restart-safe diagnostic + events stream) | plan: design amended
+2026-10-30T06:37:16Z | orchestrator | platform-sbom | U9d design amendment (O-23) accepted: template +RestartCount/StartedAt/FinishedAt/Error, docker events die/oom/kill stream, 100-line cap, 900 s bound; analyst text + tester RED dispatched | plan: pass
+2026-10-30T06:38:00Z | security | platform-sbom | U9d security: PASS (L-1 label/name unsanitised, L-2 ##[ passes; I-1..I-4; GREEN diff, pre-rework-1) | security: pass
+2026-10-30T06:38:15Z | analyst | platform-sbom | U9d-1/4/6 amended (O-23) | plan: criteria amended
+2026-10-30T06:38:52Z | orchestrator | platform-sbom | U9d rework-1 plan gate PASS (amendment + criteria; kill events accepted; security L-1/L-2/I-1 folded in); tester RED running with the addition | plan: pass
+2026-10-30T07:31:37Z | tester | platform-sbom | U9d rework 1 RED: 5 new rows (restarted container + events, pass-with-stream, L-1, L-2, I-1) + 2 re-pinned (A9); 19 subtests red for missing behaviour; 24/24 mutants killed on a scratch prototype | tdd: red
+2026-10-30T07:33:01Z | orchestrator | platform-sbom | U9d rework 1 RED accepted (19 subtests, 24/24 mutants); handoff archived; developer GREEN dispatched | tdd: red
+2026-10-30T08:16:10Z | developer | platform-sbom | U9d rework 1 GREEN: events stream, 4 template fields, L-1/L-2/I-1, N-1 in offline_check.sh; fast 1359 OK, full PASS | tdd: green
+2026-10-30T08:25:27Z | reviewer | platform-sbom | U9d rework 1 review: APPROVED | review: pass
+2026-10-30T08:31:24Z | security | platform-sbom | U9d rework 1 security: PASS (L-1, L-2, I-1 closed; new L-3 low: exitCode/signal labels shadow event fields; I-3, I-5..I-7 info) | security: pass
+2026-10-30T08:32:31Z | orchestrator | platform-sbom | U9d rework-1 verdicts: reviewer APPROVED, security PASS; O-24 defers L-3/I-3/I-5/I-6/N-1 to U10; handoff archived; orchestrator verify full starting | review: pass
+2026-10-30T08:56:20Z | orchestrator | platform-sbom | U9d: orchestrator verify full PASS 1367 s on the final tree (measure points 0 s, no diag on a pass); diff read; commit approved | smoke: pass
+2026-10-30T08:56:35Z | developer | platform-sbom | U9d committed bc5e65e | commit: pass
+2026-11-02T22:00:18Z | orchestrator | platform-sbom | pushed U9c 9c3183d + U9d bc5e65e to PR #15 on the human's word; CI run 41533322861 is the Q82 measurement | push: approved by human
+2026-11-02T22:47:30Z | orchestrator | platform-sbom | CI run 41533322861 FAILED at bundle stage index: cyrus-sasl2 +deb12u1 in ke-app not in the lock (lock drift); client never launched, Q82 unmeasured | ci: fail
+2026-11-02T22:52:10Z | analyst | platform-sbom | Q82 amended (run 41533322861 stopped at bundle stage index before the launch; U9d-6 reading deferred); Q83 raised for the human (source-lock drift from libpq5's unpinned apt deps; recommended re-lock now, then pin the three) | plan: Q82 amended, Q83 raised
+2026-11-02T23:30:58Z | orchestrator | platform-sbom | human: commit and continue; ruled A77 option 2; starting Q83 (a) re-lock after the docs commit | plan: A77; Q83 (a) approved
+2026-11-02T23:51:53Z | orchestrator | platform-sbom | pre-commit verify full on the docs tree FAILED at scan: cached ke-app has cyrus-sasl2 -10 with CVE-2026-107161 High fixed in +deb12u1; docs commit waits for the rebuild + re-lock | smoke: fail
+2026-11-03T00:13:51Z | developer | platform-sbom | Q83 (a) re-lock: ke-app rebuilt no-cache, lock gains deb:cyrus-sasl2@2.1.28+dfsg-10+deb12u1; verify full red on 5 fixture-pinned tests | smoke: fail
+2026-11-03T00:18:38Z | security | platform-sbom | re-lock diff review: one new key deb:cyrus-sasl2@2.1.28+dfsg-10+deb12u1, hashes verified live against snapshot.debian.org, SBOMs match sboms.md, +deb12u1 fixes CVE-2026-107161 (DLA-4871-1); low L-1 postgres still -10 unscanned | security: pass
+2026-11-03T01:18:29Z | tester | platform-sbom | re-lock fixtures: ke-app sasl rows re-derived from the re-lock SBOM, FIXTURE_KEYS 184, deb pins 154, full-plan tuple (184, 879, 718, 1181039856), u8/expected.md full amd64 | tdd: pass (fast attempt 1 fail on missed pin, attempt 2 pass; full pass 1394 s)
+2026-11-03T01:42:52Z | orchestrator | platform-sbom | Q83 (a) re-lock: orchestrator verify full PASS 1397 s; diff read; two commits approved (docs, then re-lock) | smoke: pass; commit: approved
+2026-11-03T01:43:20Z | developer | platform-sbom | committed docs 9492aa7; committing the Q83 (a) re-lock | commit: approved by orchestrator

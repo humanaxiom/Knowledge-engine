@@ -1,0 +1,7 @@
+== pre nocov: 44 modules; nproc=24; head=86f7831
+== pre nocov: real 738.897 s, user 517.729 s, sys 133.199 s (incl. all children)
+== pre nocov: rc=1
+----------------------------------------------------------------------
+Ran 1047 tests in 737.315s
+
+FAILED (failures=2, skipped=8)

@@ -1,0 +1,36 @@
+# platform-sbom U7d S7 RED: controls/mutants for tests/test_sources_lock_committed.py (full output)
+# command: COMPOSE_PROJECT_NAME=ke-tester-u7ds7 COMPOSE_FILE=docker-compose.yml docker compose --env-file .env.example --profile gates run --rm gates uv run --locked python docs/evidence/platform-sbom/u7d/s7_controls.py
+# 2026-10-26, tester, on the U7d GREEN tree; the stand-in lock is built in a temp dir from the fake-network coverage run (never docker/sources.lock.json); exit 0.
+
+ Container ke-tester-u7ds7-gates-run-b256c2a90d83 Creating 
+ Container ke-tester-u7ds7-gates-run-b256c2a90d83 Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.77ms
+Installed 1 package in 1ms
+stand-in lock: 182 entries, 270040 bytes; kinds ['apk', 'deb', 'maven', 'neo4j', 'pgdg', 'pypi', 'temurin']
+ok  [target] stand-in + target .gitattributes: test_canonical_lf_and_format     must pass | no problem
+ok  [target] stand-in + target .gitattributes: test_every_needed_key_and_nothing_else must pass | no problem
+ok  [target] stand-in + target .gitattributes: test_gitattributes_pins_lf       must pass | no problem
+ok  [target] stand-in + target .gitattributes: test_no_lock_problems            must pass | no problem
+ok  [target] stand-in + target .gitattributes: test_the_manual_neo4j_entry      must pass | no problem
+ok  [target] stand-in + target .gitattributes: test_the_sample                  must pass | no problem
+ok  [repo] the repository today (no lock, no eol line): test_canonical_lf_and_format must fail | AssertionError: absent.json is not committed: run scripts/sources_lock.sh --arch amd64 (U7d S5) and commit it with its t
+ok  [repo] the repository today (no lock, no eol line): test_every_needed_key_and_nothing_else must fail | AssertionError: absent.json is not committed: run scripts/sources_lock.sh --arch amd64 (U7d S5) and commit it with its t
+ok  [repo] the repository today (no lock, no eol line): test_gitattributes_pins_lf must fail | AssertionError: 'docker/sources.lock.json text eol=lf' not found in ['# Shell scripts run inside Linux containers and Gi
+ok  [repo] the repository today (no lock, no eol line): test_no_lock_problems must fail | AssertionError: absent.json is not committed: run scripts/sources_lock.sh --arch amd64 (U7d S5) and commit it with its t
+ok  [repo] the repository today (no lock, no eol line): test_the_manual_neo4j_entry must fail | AssertionError: absent.json is not committed: run scripts/sources_lock.sh --arch amd64 (U7d S5) and commit it with its t
+ok  [repo] the repository today (no lock, no eol line): test_the_sample       must fail | AssertionError: absent.json is not committed: run scripts/sources_lock.sh --arch amd64 (U7d S5) and commit it with its t
+ok  [repo] a missing lock is a named failure, not an error                    must fail | AssertionError: absent.json is not committed: run scripts/sources_lock.sh --arch amd64 (U7d S5) and commit it with its t
+ok  [mutant] a stale entry -> test_no_lock_problems                             must fail | -  'scripts/sources_lock.sh --arch amd64'] : lock_problems on the committed lock
+ok  [mutant] a missing key -> test_no_lock_problems                             must fail | -  'scripts/sources_lock.sh --arch amd64'] : lock_problems on the committed lock
+ok  [mutant] a missing key (key set) -> test_every_needed_key_and_nothing_else  must fail | 'deb:bash@5.2.15-2' : the committed lock's keys are not the fixtures' 182 needed keys
+ok  [mutant] CRLF line endings -> test_canonical_lf_and_format                  must fail | AssertionError: b'\r' unexpectedly found in b'{\r\n "components": {\r\n  "apk:alpine-baselayout@3.7.1-r8": {\r\n   "arch
+ok  [mutant] non-canonical spacing -> test_canonical_lf_and_format              must fail | AssertionError: '{\n  "components": {\n    "apk:alpine-baselay[312923 chars]n}\n' != '{\n "components": {\n  "apk:alpine
+ok  [mutant] a wrong neo4j sha256 -> test_the_manual_neo4j_entry                must fail | + ('182ae2e5c3807bc3d7a09770dbf450d2e8667080bde93b3b6c829125db0f91e3', 20907800) : the neo4j tarball is not security's s
+ok  [mutant] the neo4j entry generated, not manual -> test_the_manual_neo4j_entry must fail | + manual
+ok  [mutant] format 2 -> test_canonical_lf_and_format                           must fail | AssertionError: 2 != 1
+ok  [mutant] no pgdg entries (six kinds) -> test_the_sample                     must fail |  : ['apk:xz@5.8.2-r0', 'deb:apt@2.6.1', 'maven:javax.xml.bind:jaxb-api@2.2.12', 'neo4j:neo4j@5.26.32', 'pypi:ldap3@2.9.1
+ok  [mutant] the .gitattributes line missing -> test_gitattributes_pins_lf      must fail | AssertionError: 'docker/sources.lock.json text eol=lf' not found in ['# Shell scripts run inside Linux containers and Gi
+
+U7d S7 controls: 23 rows, 17 must-fail, 6 must-pass, 0 unexpected

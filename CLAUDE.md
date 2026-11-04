@@ -26,9 +26,13 @@ CI) and calls the real gate scripts. Networking is disabled for the gate
 services: `gates` (`fast`) has no network, and `gates-it` (`full`) sits on the
 internal `backend` network, whose only way out is the stack gateway's forward
 to the model host. In `full` the host half also builds and pulls images, runs
-the smoke check's network-control probe on the stack's `edge` network, and
-runs `scan-db`, a one-shot that fetches the image scanner's vulnerability
-database. The scan itself runs with no network.
+the smoke check's network-control probe on the stack's `edge` network, runs
+`scan-db`, a one-shot that fetches the image scanner's vulnerability
+database, and runs `sources-fetch`, a one-shot that pulls nothing and fetches a
+fixed sample of the bundle's third-party source code over HTTPS, only from the
+hosts listed in `docker/source-policy.json`, checking every file against
+`docker/sources.lock.json`; a failed or mismatched fetch fails the run, with
+no retry. The scan itself runs with no network.
 If it cannot run where you are, report that as a blocker. Never substitute a
 narrower check and call the gate passed. On Windows run it from Git Bash
 (Claude Code's Bash tool already is).
@@ -93,6 +97,7 @@ Committed files generated from a source file, and how to regenerate them:
 | Artifact | Source | Regenerate | Drift check |
 |---|---|---|---|
 | `uv.lock` | `pyproject.toml` | `uv lock` (inside the gates image) | the gate scripts run uv with `--locked` |
+| `docker/sources.lock.json` | the bundled images' SBOMs (from `scripts/build.sh` images) and their upstream source metadata (snapshot.debian.org, Alpine aports, GitHub, PyPI, Maven Central, apt-archive.postgresql.org); `docker/source-policy.json`; `uv.lock` | `scripts/sources_lock.sh --arch <arch> --evidence-dir <dir>` (maintainer, network; never run by verify or CI); security reviews every diff | `tests/test_sources_lock_committed.py` checks the committed lock in every verify run; from U9, `bundle.sh` (`sbom_check.py index`) refuses a package with no entry |
 
 Add a row whenever a generated file is committed (for example the policy
 register, `docs/register.md`, arriving with `policy-book`).

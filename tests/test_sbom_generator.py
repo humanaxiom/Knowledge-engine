@@ -53,7 +53,10 @@ Interface pinned by these tests (tester, RED U2, 2026-10-23):
   naming the reference, with --out untouched, no record file, no tag, save
   or pull. Absent, stderr holds exactly (N1, from U2 until U8):
   `bundle: the SBOM generator image is not present (<ref>); pull it first
-  with: docker pull <ref>; this script never pulls`. Real compose refuses to
+  with: docker pull <ref>; this script never pulls`. From U8b (PSC-23 U8-9;
+  design-notes N4 amendment U8 item 9; re-pinned by the tester, U8b RED):
+  `bundle: the SBOM generator image is not present (<ref>); run
+  scripts/bundle_fetch.sh first; this script never pulls`. Real compose refuses to
   load the file while `${KE_SBOM_IN:?}` / `${KE_SBOM_OUT:?}` are unset, and so
   does the fake (tests/fake_docker.py FAKE_COMPOSE_FILE_REQUIRED): N1 sets
   them to dummy values for the read (`--no-interpolate` would also load it).
@@ -107,10 +110,13 @@ REQUIRED_ENV = {
     "SYFT_PYTHON_SEARCH_REMOTE_LICENSES": "false",
     "SYFT_CPP_VCPKG_ALLOW_GIT_CLONE": "false",
 }
-# N1 presence check, absent (U2 until U8; U8 swaps the middle clause for
-# `run scripts/bundle_fetch.sh first` in the commit that adds that script).
+# N1 presence check, absent. U2 until U8: "...; pull it first with: docker
+# pull {ref}; this script never pulls". Re-pinned by the tester, U8b RED
+# (PSC-23 U8-9; design-notes N4 amendment U8 item 9): U8b swaps the middle
+# clause for `run scripts/bundle_fetch.sh first` in the commit that adds that
+# script; the reference is still named once, and "never pulls" stays.
 REFUSAL = ("bundle: the SBOM generator image is not present ({ref}); "
-           "pull it first with: docker pull {ref}; this script never pulls")
+           "run scripts/bundle_fetch.sh first; this script never pulls")
 # N1 *Confirm at GREEN* fallback: a literal HOME / XDG_CACHE_HOME. Security
 # I-2 (u2/security.md; U2 commit gate carry list): at or under /tmp (tmpfs),
 # never under the host-writable /out (U3 RED, 2026-10-23).
@@ -318,13 +324,16 @@ def standalone_problems(paths: list[Path]) -> list[str]:
 
 
 def _strip_messages(text: str) -> str:
-    """bundle.sh without comments and without the text of die/echo/printf
-    messages (they may say "pull it first" or "never pulls")."""
+    """bundle.sh without comments and without the text of die/stage_die/
+    echo/printf messages (they may say "pull it first" or "never pulls").
+    platform-sbom U9b rework 1 (O-16 (7), reviewer N-1): `stage_die <stage>`
+    is a message too; the old pattern's word-bounded `die` never matched
+    it (`_` is a word character)."""
     out = []
     for line in text.splitlines():
         if line.lstrip().startswith("#"):
             continue
-        line = re.sub(r"""\b(?:die|echo|printf)\s+(["']).*$""", "", line)
+        line = re.sub(r"""\b(?:stage_die\s+\S+|die|echo|printf)\s+(["']).*$""", "", line)
         out.append(line)
     return "\n".join(out)
 
@@ -480,7 +489,7 @@ class SbomBundleTest(_BundleBase, unittest.TestCase):
                 FAKE_COMPOSE_FILE_IMAGES=json.dumps({cs.SBOM_COMPOSE_NAME: {"sbom": other}}))
             self._refused(result, calls, out, other)
             self.assertIn(REFUSAL.format(ref=other), result.stderr,
-                          "the message names the reference compose gives, twice (N1)")
+                          "the message names the reference compose gives (N1; U8b: once, U8-9)")
         with self.subTest(case="a tag-only reference is refused even when present"):
             tag_only = "anchore/syft:latest"
             images = self._images_table(self.stack)

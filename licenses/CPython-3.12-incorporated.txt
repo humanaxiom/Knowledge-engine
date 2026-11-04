@@ -1,5 +1,5 @@
-CPython 3.12.15: "Licenses and Acknowledgements for Incorporated Software"
-Source: https://raw.githubusercontent.com/python/cpython/v3.12.15/Doc/license.rst
+CPython 3.12.16: "Licenses and Acknowledgements for Incorporated Software"
+Source: https://raw.githubusercontent.com/python/cpython/v3.12.16/Doc/license.rst
 Source sha256: 341832873fd316a37927e79385093fbbfd40a467428480835fe435a80cadf4e5
 Extract: from that heading line to the end of the file, unmodified.
 

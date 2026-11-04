@@ -1,0 +1,33 @@
+# u7e fixture-diff: tests/fixtures/sbom-u3/ke-app.pkgs.tsv, U7d fixture (HEAD, LF) vs fresh bundle.sh SBOM of ke-app on base 6dd8b6da (extracted purl/versionInfo/declared|concluded in document order; whole file replaced).
+# 154 rows before and after; 6 rows differ; each explained below. Nothing else differs.
+# ca-certificates 20250419~deb12u1 -> ~deb12u2 : base-dpkg-diff.txt (ca-certificates moved)
+# libssl3 3.0.22-1~deb12u1 -> ~deb12u2        : base-dpkg-diff.txt (libssl3/openssl moved)
+# openssl 3.0.22-1~deb12u1 -> ~deb12u2        : base-dpkg-diff.txt (libssl3/openssl moved)
+# python (pkg:generic) 3.12.15 -> 3.12.16     : CPython release change of the base (PYTHON_VERSION)
+# tzdata 2026c-0+deb12u1 -> 2026e-0+deb12u1   : base-dpkg-diff.txt (tzdata moved)
+# pkg:oci image-root row: digest of the rebuilt ke-app image (new base layers)
+
+10c10
+< pkg:deb/debian/ca-certificates@20250419~deb12u1?arch=all&distro=debian-12.15	20250419~deb12u1	GPL-2.0-only AND GPL-2.0-or-later AND MPL-2.0|NOASSERTION
+---
+> pkg:deb/debian/ca-certificates@20250419~deb12u2?arch=all&distro=debian-12.15	20250419~deb12u2	GPL-2.0-only AND GPL-2.0-or-later AND MPL-2.0|NOASSERTION
+93c93
+< pkg:deb/debian/libssl3@3.0.22-1~deb12u1?arch=amd64&distro=debian-12.15&upstream=openssl	3.0.22-1~deb12u1	Apache-2.0 AND LicenseRef-Artistic AND GPL-1.0-only AND GPL-1.0-or-later|NOASSERTION
+---
+> pkg:deb/debian/libssl3@3.0.22-1~deb12u2?arch=amd64&distro=debian-12.15&upstream=openssl	3.0.22-1~deb12u2	Apache-2.0 AND LicenseRef-Artistic AND GPL-1.0-only AND GPL-1.0-or-later|NOASSERTION
+114c114
+< pkg:deb/debian/openssl@3.0.22-1~deb12u1?arch=amd64&distro=debian-12.15	3.0.22-1~deb12u1	Apache-2.0 AND LicenseRef-Artistic AND GPL-1.0-only AND GPL-1.0-or-later|NOASSERTION
+---
+> pkg:deb/debian/openssl@3.0.22-1~deb12u2?arch=amd64&distro=debian-12.15	3.0.22-1~deb12u2	Apache-2.0 AND LicenseRef-Artistic AND GPL-1.0-only AND GPL-1.0-or-later|NOASSERTION
+131c131
+< pkg:generic/python@3.12.15	3.12.15	NOASSERTION|NOASSERTION
+---
+> pkg:generic/python@3.12.16	3.12.16	NOASSERTION|NOASSERTION
+147c147
+< pkg:deb/debian/tzdata@2026c-0%2Bdeb12u1?arch=all&distro=debian-12.15	2026c-0+deb12u1	LicenseRef-public-domain|NOASSERTION
+---
+> pkg:deb/debian/tzdata@2026e-0%2Bdeb12u1?arch=all&distro=debian-12.15	2026e-0+deb12u1	LicenseRef-public-domain|NOASSERTION
+154c154
+< pkg:oci/%2Fin%2Fke-app.tar@sha256%3Aea2db218a976aa891470dd61269a2a911178ccb5d5a7952382f488ff5aa32518?arch=amd64	sha256:ea2db218a976aa891470dd61269a2a911178ccb5d5a7952382f488ff5aa32518	NOASSERTION|NOASSERTION
+---
+> pkg:oci/%2Fin%2Fke-app.tar@sha256%3A1c7c08b26ed20db1b2a278edc9c7b924c1829a65f2b95dc2df01a10714863f7d?arch=amd64	sha256:1c7c08b26ed20db1b2a278edc9c7b924c1829a65f2b95dc2df01a10714863f7d	NOASSERTION|NOASSERTION

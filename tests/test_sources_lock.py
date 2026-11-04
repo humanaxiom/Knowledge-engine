@@ -18,7 +18,9 @@ Interface pinned by these tests (tester, U7a RED, 2026-10-25). All in
 - `sample_keys(lock, arch) -> list[str]`: on the parsed lock.
 - `sbom_check.py lock-check --lock L --policy P --arch A --sbom IMG=PATH...`.
 
-pgdg (Q71 pending): the committed `hosts` has no `apt-archive.postgresql.org`
+pgdg: Q71 is ruled (A71, U7d precision P5): `apt-archive.postgresql.org` is
+the tenth host and pgdg entries carry `suite`; the paragraph below is U7a
+round 1's, kept for its history.
 (ruling 1). Rework round 1 (N5 amendment U7, "Rework round 1", item 3):
 until Q71 the kind has no allowed host, so every pgdg file is a problem and
 the tests no longer add that host to a policy copy (the U7a RED did:
@@ -50,7 +52,8 @@ from tests.engine_support import ROOT
 from tests.test_sbom_bundle import load_sbom_check
 
 POLICY = ROOT / "docker" / "source-policy.json"
-PGDG_HOST = "apt-archive.postgresql.org"  # O1 (a), Q71: not in the committed hosts (ruling 1)
+PGDG_HOST = "apt-archive.postgresql.org"  # O1 (a), Q71: the tenth host (A71, U7d P5)
+PGDG_SUITE = "bookworm-pgdg-archive"
 ARCH = "amd64"
 FROM_NEO4J = "second fetch: security 2026-10-25, docs/evidence/platform-sbom/sources-provenance.md"
 
@@ -108,9 +111,11 @@ def good_entry(key: str, size: int = 1000) -> dict[str, Any]:
                 _f(orig, f"https://snapshot.debian.org/file/{o1}", key + orig, "sha256", None, f"{dsc} Checksums-Sha256",
                    size)]
         else:
-            pool = f"https://{PGDG_HOST}/pub/repos/apt/pool/main/{name[0]}/{name}"
+            # U7d P5: the pool rule, `suite`, and the exact from texts (was a placeholder until Q71).
+            pool = f"https://{PGDG_HOST}/pub/repos/apt/pool/main/{name[:4] if name.startswith('lib') else name[0]}/{name}"
+            entry["suite"] = PGDG_SUITE
             entry["files"] = [
-                _f(dsc, f"{pool}/{dsc}", key + dsc, "sha256", None, f"https://{PGDG_HOST}/pub/repos/apt Sources", size),
+                _f(dsc, f"{pool}/{dsc}", key + dsc, "sha256", None, f"{PGDG_HOST} {PGDG_SUITE} Sources", size),
                 _f(orig, f"{pool}/{orig}", key + orig, "sha256", None, f"{dsc} Checksums-Sha256", size)]
     elif kind == "apk":
         commit = _h("sha1", key)
@@ -179,8 +184,16 @@ SMALL_KEYS = frozenset({"deb:bash@5.2.15-2", "deb:attr@1:2.5.1-4", "pypi:psycopg
                         "apk:readline@8.2.13-r1", "neo4j:neo4j@5.26.32", "temurin:jdk-21.0.12.1+1",
                         "maven:javax.xml.bind:jaxb-api@2.2.12", "pypi:psycopg@3.3.6"})
 
-# The 182 lock keys the six U3 fixtures need with the committed policy (N5
-# amendment, U7, item 2; the architect's run and the tester's agree).
+# The 184 lock keys the six U3 fixtures need with the committed policy (N5
+# amendment, U7, item 2; the architect's run and the tester's agree; 182 until U7e).
+# U7e R4 re-pin (base 6dd8b6da): +deb:openssl@3.0.22-1~deb12u2 and
+# +deb:ca-certificates@20250419~deb12u2, -deb:ca-certificates@20250419~deb12u1
+# (only ke-app needed it); openssl ~deb12u1 stays for postgres; tzdata has no
+# key (public domain). Explained by docs/evidence/platform-sbom/u7e/key-diff.txt
+# l.6-8 <- base-dpkg-diff.txt (libssl3/openssl and ca-certificates moved).
+# Q83 (a) re-lock 2026-11-02 (183 -> 184): +deb:cyrus-sasl2@2.1.28+dfsg-10+deb12u1
+# (ke-app's libsasl2-2 and libsasl2-modules-db, rebuilt image); the -10 key stays
+# for postgres. relock-20261102/fixture-derivation.txt.
 FIXTURE_KEYS = frozenset({
     "apk:alpine-baselayout@3.7.1-r8", "apk:alpine-baselayout@3.7.2-r1", "apk:apk-tools@3.0.3-r1",
     "apk:apk-tools@3.0.8-r0", "apk:busybox@1.37.0-r30", "apk:busybox@1.37.0-r31", "apk:gcc@15.2.0-r2",
@@ -191,8 +204,9 @@ FIXTURE_KEYS = frozenset({
     "deb:attr@1:2.5.1-4", "deb:attr@1:2.5.2-3", "deb:audit@1:3.0.9-1", "deb:audit@1:4.0.2-2+deb13u1",
     "deb:base-files@12.4+deb12u15", "deb:base-files@13.8+deb13u7", "deb:base-passwd@3.6.1", "deb:base-passwd@3.6.7",
     "deb:bash@5.2.15-2", "deb:bash@5.2.37-2", "deb:bzip2@1.0.8-5", "deb:bzip2@1.0.8-6",
-    "deb:ca-certificates@20250419", "deb:ca-certificates@20250419~deb12u1", "deb:cdebconf@0.270",
+    "deb:ca-certificates@20250419", "deb:ca-certificates@20250419~deb12u2", "deb:cdebconf@0.270",
     "deb:cdebconf@0.280", "deb:coreutils@9.1-1", "deb:coreutils@9.7-3", "deb:cyrus-sasl2@2.1.28+dfsg-10",
+    "deb:cyrus-sasl2@2.1.28+dfsg-10+deb12u1",
     "deb:dash@0.5.12-12", "deb:dash@0.5.12-2", "deb:db5.3@5.3.28+dfsg2-1", "deb:db5.3@5.3.28+dfsg2-9",
     "deb:debian-archive-keyring@2023.3+deb12u2", "deb:debian-archive-keyring@2025.1", "deb:debianutils@5.23.2",
     "deb:debianutils@5.7-0.5~deb12u1", "deb:diffutils@1:3.10-4", "deb:diffutils@1:3.8-4", "deb:dpkg@1.21.23",
@@ -216,7 +230,8 @@ FIXTURE_KEYS = frozenset({
     "deb:libzstd@1.5.7+dfsg-1", "deb:linux@6.12.113-1", "deb:lz4@1.10.0-4", "deb:lz4@1.9.4-1",
     "deb:mawk@1.3.4.20200120-3.1", "deb:mawk@1.3.4.20250131-1", "deb:netbase@6.4", "deb:netbase@6.5",
     "deb:nettle@3.10.1-1", "deb:nettle@3.8.1-2", "deb:npth@1.6-3", "deb:openldap@2.5.13+dfsg-5",
-    "deb:openssl@3.0.22-1~deb12u1", "deb:openssl@3.5.7-1~deb13u3", "deb:p11-kit@0.24.1-2", "deb:p11-kit@0.25.5-3",
+    "deb:openssl@3.0.22-1~deb12u1", "deb:openssl@3.0.22-1~deb12u2", "deb:openssl@3.5.7-1~deb13u3",
+    "deb:p11-kit@0.24.1-2", "deb:p11-kit@0.25.5-3",
     "deb:pam@1.5.2-6+deb12u2", "deb:pam@1.7.0-5", "deb:perl@5.36.0-7+deb12u3", "deb:perl@5.36.0-7+deb12u4",
     "deb:perl@5.40.1-6+deb13u1", "deb:pinentry@1.2.1-1", "deb:postgresql-15@15.19-0+deb12u1",
     "deb:procps@2:4.0.4-9", "deb:python3.13@3.13.5-2+deb13u5", "deb:readline@8.2-1.3", "deb:readline@8.2-6",
@@ -259,7 +274,9 @@ class LockNeedsTest(unittest.TestCase):
         self.assertEqual(set(needs), FIXTURE_KEYS, f"missing {sorted(FIXTURE_KEYS - set(needs))[:5]}, "
                                                    f"extra {sorted(set(needs) - FIXTURE_KEYS)[:5]}")
         self.assertEqual(Counter(k.split(":", 1)[0] for k in needs),
-                         Counter(deb=152, pgdg=3, apk=19, neo4j=1, temurin=1, maven=1, pypi=5))
+                         # deb 152 -> 153 in U7e: u7e/key-diff.txt l.6-8 (+2 -1 deb keys).
+                         # deb 153 -> 154 at the Q83 (a) re-lock (+deb:cyrus-sasl2@2.1.28+dfsg-10+deb12u1).
+                         Counter(deb=154, pgdg=3, apk=19, neo4j=1, temurin=1, maven=1, pypi=5))
         for key, entry in needs.items():
             with self.subTest(key=key):
                 self.assertEqual(entry.get("kind"), key.split(":", 1)[0])
@@ -442,11 +459,9 @@ class LockSchemaTest(unittest.TestCase):
         self.assertEqual(lock_problems_of(good_lock(SMALL_KEYS)), [])
 
     def test_good_full_lock_passes(self):
-        # Rework round 1 item 3: the 3 pgdg entries' files are the only problems.
-        problems = lock_problems_of(good_lock(FIXTURE_KEYS), docs=fixture_docs())
-        self.assertEqual(pgdg_free(problems), [])
-        self.assertEqual({p.split(": ", 2)[1] for p in problems},
-                         {k for k in FIXTURE_KEYS if k.startswith("pgdg:")})
+        # U7d (A71, P5): pgdg is legal now, so the full fixture lock has no problem
+        # (until U7d its 3 pgdg entries' files were the only problems).
+        self.assertEqual(lock_problems_of(good_lock(FIXTURE_KEYS), docs=fixture_docs()), [])
 
     def test_bad_shapes(self):
         def mut(key: str, change: Callable[[dict[str, Any]], Any]) -> dict[str, Any]:
@@ -888,20 +903,22 @@ class ReworkR1BindingTest(_R1Rows):
                                         "not a safe file name"),
         })
 
-    def test_any_pgdg_file_is_a_problem_until_q71(self):
+    def test_pgdg_files_need_the_tenth_host(self):
+        """U7d (A71, P5) supersedes "any pgdg file is a problem until Q71":
+        pgdg files are legal with the committed (ten-host) policy and refused
+        when a policy copy drops apt-archive.postgresql.org."""
         docs = small_docs()
         docs["postgres"] = ss.spdx_doc("postgres", [
             {"purl": ss.deb("bash", "5.2.15-2+b13", upstream="bash@5.2.15-2"), "declared": "GPL-3.0-or-later"},
             {"purl": ss.deb("libattr1", "1:2.5.1-4", upstream="attr"), "declared": "LGPL-2.1-or-later"},
             {"purl": ss.deb("postgresql-common", "293.pgdg12+1"), "declared": "GPL-2.0-only"}])
         lock = r1_lock(keys=SMALL_KEYS | {R1_PGDG})
-        with_host = policy()
-        with_host["hosts"] = list(with_host["hosts"]) + [PGDG_HOST]
-        for case, pol in {"the committed hosts": policy(), "even with the PGDG host in a policy copy": with_host}.items():
-            with self.subTest(case=case):
-                problems = lock_problems_of(lock, docs=docs, pol=pol)
-                hits = [p for p in problems if "pgdg has no allowed host until Q71" in p]
-                self.assertEqual(len(hits), 2, f"each of the 2 pgdg files is a problem: {problems}")
+        self.assertEqual(lock_problems_of(lock, docs=docs), [], "pgdg files with the committed hosts")
+        without = policy()
+        without["hosts"] = [h for h in without["hosts"] if h != PGDG_HOST]
+        problems = lock_problems_of(lock, docs=docs, pol=without)
+        hits = [p for p in problems if "is not in docker/source-policy.json hosts" in p]
+        self.assertEqual(len(hits), 2, f"each of the 2 pgdg files is refused without the host: {problems}")
 
     def test_good_names(self):
         for name in ("psycopg_c-3.3.6.tar.gz", "psycopg-c-3.3.6.tar.gz", "Psycopg_C-3.3.6.tar.gz"):
@@ -1439,6 +1456,203 @@ class ReworkR1U7cApiUrlTest(_R1Rows):
                 "https://distfiles.alpinelinux.org/distfiles/v3.23%2Freadline-8.2.13.tar.gz")), "plain path"),
         }
         self.rows(rows)
+
+
+# --------------------------------------------------------------------------
+# U7d P5 (A71): the pgdg lock rules; U7c review R1-N1 (subdirectory segments
+# of an apk GitLab path pass the file-name rule).
+# --------------------------------------------------------------------------
+
+def pgdg_docs() -> dict[str, Any]:
+    docs = small_docs()
+    docs["postgres"] = ss.spdx_doc("postgres", [
+        {"purl": ss.deb("bash", "5.2.15-2+b13", upstream="bash@5.2.15-2"), "declared": "GPL-3.0-or-later"},
+        {"purl": ss.deb("libattr1", "1:2.5.1-4", upstream="attr"), "declared": "LGPL-2.1-or-later"},
+        {"purl": ss.deb("postgresql-common", "293.pgdg12+1"), "declared": "GPL-2.0-only"}])
+    return docs
+
+
+def pgdg_lock(change: Callable[[dict[str, Any]], Any] | None = None) -> dict[str, Any]:
+    return r1_lock((lambda d: change(d["components"][R1_PGDG])) if change else None, keys=SMALL_KEYS | {R1_PGDG})
+
+
+class U7dPgdgLockRulesTest(_R1Rows):
+
+    def test_the_good_entry(self):
+        self.assertEqual(lock_problems_of(pgdg_lock(), docs=pgdg_docs()), [])
+        e = good_entry(R1_PGDG)
+        self.assertEqual(set(e), {"kind", "arches", "origin", "files", "suite"})
+
+    def test_bad_entries(self):
+        key = f"lock: {R1_PGDG}"
+        pool = f"https://{PGDG_HOST}/pub/repos/apt/pool/main/p/postgresql-common/"
+
+        def f0(change: Callable[[dict[str, Any]], Any], i: int = 0) -> dict[str, Any]:
+            return pgdg_lock(lambda e: change(e["files"][i]))
+
+        def resuite(e: dict[str, Any], suite: str) -> None:
+            """Only the suite rule can fail: the .dsc's from follows the suite."""
+            e["suite"] = suite
+            e["files"][0]["upstream"]["from"] = f"{PGDG_HOST} {suite} Sources"
+        rows = {
+            "no suite": (pgdg_lock(lambda e: e.pop("suite")), "missing key suite"),
+            "a plain bookworm-pgdg suite": (pgdg_lock(lambda e: resuite(e, "bookworm-pgdg")), key),
+            "an upper-case suite": (pgdg_lock(lambda e: resuite(e, "Bookworm-pgdg-archive")), key),
+            "another entry key": (pgdg_lock(lambda e: e.update(commit="a" * 40)), "unexpected key commit"),
+            "two .dsc files": (pgdg_lock(lambda e: e["files"].append(dict(copy.deepcopy(e["files"][0])))), key),
+            "the .dsc named for another version": (f0(lambda f: f.update(
+                name="postgresql-common_292.pgdg12+1.dsc", url=pool + "postgresql-common_292.pgdg12+1.dsc")), key),
+            "no file besides the .dsc": (pgdg_lock(lambda e: e["files"].pop(1)), key),
+            "a sha512 file": (f0(lambda f: f["upstream"].update(alg="sha512", value=_h("sha512", "x")), 1), key),
+            "the .dsc from another text": (f0(lambda f: f["upstream"].update(**{"from": "apt-archive Sources"})), key),
+            "another file from another text": (f0(lambda f: f["upstream"].update(**{"from": "Sources"}), 1), key),
+            "a snapshot url": (f0(lambda f: f.update(url="https://snapshot.debian.org/file/" + "a" * 40)),
+                               "is not a pgdg file host"),
+            "a wrong pool letter": (f0(lambda f: f.update(url=f["url"].replace("/main/p/", "/main/q/"))),
+                                    "not a pgdg file url"),
+            "another source dir": (f0(lambda f: f.update(url=f["url"].replace("/postgresql-common/", "/postgresql-16/"))),
+                                   "not a pgdg file url"),
+            "a last segment that is not the name": (f0(lambda f: f.update(url=pool + "other.dsc")), key),
+            "a query": (f0(lambda f: f.update(url=f["url"] + "?x=1")), "url carries a query"),
+            "a fragment": (f0(lambda f: f.update(url=f["url"] + "#f")), "url carries a fragment"),
+            "an escaped +": (f0(lambda f: f.update(url=f["url"].replace("+", "%2B"))), "plain path"),
+            "the dists path": (f0(lambda f: f.update(url=f["url"].replace("/pool/main/p/postgresql-common/",
+                                                                          "/dists/bookworm-pgdg-archive/"))),
+                               "not a pgdg file url"),
+        }
+        self.rows(rows, docs=pgdg_docs())
+
+
+class U7dApkSegmentNameTest(_R1Rows):
+    """U7c review R1-N1: each decoded <P> middle segment passes the lock
+    file-name rule."""
+
+    def test_middle_segments(self):
+        self.rows({
+            "a segment starting with -": (_reurl("sub-fix.patch", lambda c: apk_api_url(
+                c, "main/readline/-patches/sub-fix.patch")), "not a apk file url"),
+            "a segment with :": (_reurl("sub-fix.patch", lambda c: apk_api_url(
+                c, "main/readline/pa:tches/sub-fix.patch")), "not a apk file url"),
+        })
+        self.assertEqual([p for p in lock_problems_of(u7c_apk_lock()) if R1_APK in p], [], "patches/ stays good")
+
+
+class ReworkR1U7dSuiteBindingTest(_R1Rows):
+    """U7d rework round 1, item 3 (review N1, security I-2): a pgdg entry's
+    `suite` is the one its packages' distro derives."""
+
+    @staticmethod
+    def _suited(suite: str) -> dict[str, Any]:
+        def change(e: dict[str, Any]) -> None:
+            e["suite"] = suite
+            e["files"][0]["upstream"]["from"] = f"{PGDG_HOST} {suite} Sources"
+        return pgdg_lock(change)
+
+    def test_the_suite_is_bound(self):
+        self.assertEqual(lock_problems_of(self._suited("bookworm-pgdg-archive"), docs=pgdg_docs()), [])
+        for suite in ("trixie-pgdg-archive", "evil-pgdg-archive"):
+            with self.subTest(suite=suite):
+                problems = lock_problems_of(self._suited(suite), docs=pgdg_docs())
+                self.assertIn(f"lock: {R1_PGDG}: suite {suite} is not bookworm-pgdg-archive "
+                              "(from postgres distro debian-12.15)", problems)
+
+    def test_packages_that_derive_two_suites(self):
+        docs = pgdg_docs()
+        docs["ke-app"] = ss.spdx_doc("ke-app", [
+            {"purl": ss.deb("postgresql-client-common", "293.pgdg12+1", upstream="postgresql-common",
+                            distro="debian-13.1"), "declared": "GPL-2.0-only"}])
+        problems = lock_problems_of(pgdg_lock(), docs=docs)
+        self.assertIn(f"{R1_PGDG}: packages derive suites bookworm-pgdg-archive, trixie-pgdg-archive", problems)
+
+
+class ReworkR1U7dUnderscoreLockTest(_R1Rows):
+    """U7d rework round 1, item 10 (u7d/lock-run-2.txt; u7d/aports-probe.txt):
+    the lock file-name rule takes a leading `_`, in file names and in the
+    decoded <P> middle segments; a leading `-` or `.` and `..` still fail."""
+
+    PATTERN = "[A-Za-z0-9_][A-Za-z0-9._+~-]{0,254}"
+
+    @staticmethod
+    def _with(*files: tuple[str, str]) -> dict[str, Any]:
+        def add(e: dict[str, Any]) -> None:
+            c = e["commit"]
+            for name, path in files:
+                e["files"].append(_f(name, apk_api_url(c, path), "item10 " + path, "sha512",
+                                     _h("sha512", "item10 " + path), f"APKBUILD sha512sums at {c}"))
+        return u7c_apk_lock(add)
+
+    def test_the_pattern(self):
+        self.assertEqual(load_sbom_check().LOCK_FILE_NAME_RE.pattern, self.PATTERN)
+
+    def test_a_leading_underscore_passes(self):
+        lock = self._with(("_apk", "main/readline/_apk"), ("_x.patch", "main/readline/_x.patch"),
+                          ("__stack_chk_fail_local.c", "main/readline/__stack_chk_fail_local.c"),
+                          ("__NR_riscv_hwprobe.patch", "main/readline/__NR_riscv_hwprobe.patch"),
+                          ("y.patch", "main/readline/_patches/y.patch"))
+        self.assertEqual([p for p in lock_problems_of(lock) if R1_APK in p], [])
+
+    def test_still_refused(self):
+        self.rows({
+            "a name with a leading -": (self._with(("-x", "main/readline/-x")), "not a safe file name"),
+            "a name with a leading .": (self._with((".x", "main/readline/.x")), "not a safe file name"),
+            "a name with ..": (self._with(("a..b", "main/readline/a..b")), "not a safe file name"),
+            "_ then a /": (self._with(("_/x", "main/readline/_/x")), "not a safe file name"),
+            "a middle segment with a leading .": (self._with(("y.patch", "main/readline/.patches/y.patch")),
+                                                  "not a apk file url"),
+            "a middle segment with a leading -": (self._with(("y.patch", "main/readline/-patches/y.patch")),
+                                                  "not a apk file url"),
+        })
+
+
+EMPTY_SHA256 = hashlib.sha256(b"").hexdigest()
+EMPTY_SHA512 = hashlib.sha512(b"").hexdigest()
+
+
+class ReworkR1U7dEmptyFileLockTest(_R1Rows):
+    """U7d rework round 1, item 12: an apk file at the GitLab API raw form may
+    have size 0; every other file (distfiles, deb, pgdg, neo4j, temurin,
+    pypi, maven) keeps 0 < size."""
+
+    def test_an_empty_gitlab_file_passes(self):
+        def empty(e: dict[str, Any]) -> None:
+            for f in e["files"]:
+                if f["name"] in ("readline.post-install", "sub-fix.patch"):
+                    f.update(size=0, sha256=EMPTY_SHA256)
+                    f["upstream"]["value"] = EMPTY_SHA256 if f["upstream"]["alg"] == "sha256" else EMPTY_SHA512
+        self.assertEqual([p for p in lock_problems_of(u7c_apk_lock(empty)) if R1_APK in p], [],
+                         "an empty install script (files API) and an empty patch (sha512sums) are legal")
+
+    def test_an_empty_apkbuild_fails(self):
+        """Review R1-N1 (item 13 RED): the APKBUILD keeps size > 0 under item 12;
+        an empty APKBUILD has no pkgver, so the resolver can never produce it."""
+        def empty(f: dict[str, Any]) -> None:
+            f.update(size=0, sha256=EMPTY_SHA256)
+            f["upstream"]["value"] = EMPTY_SHA256
+        problems = lock_problems_of(u7c_apk_lock(_apk_file("APKBUILD")(empty)))
+        self.assertIn(f"lock: {R1_APK}: APKBUILD: size 0", problems)
+
+    def test_still_refused(self):
+        def dist(change: Callable[[dict[str, Any]], Any]) -> dict[str, Any]:
+            return u7c_apk_lock(lambda e: change(next(f for f in e["files"] if "distfiles" in f["url"])))
+        post = _apk_file("readline.post-install")
+        self.rows({
+            "size 0 with another sha256": (u7c_apk_lock(post(lambda f: f.update(size=0))),
+                                           "readline.post-install: size 0 but sha256 is not the empty hash"),
+            "size 0, the empty sha256, another sha512 upstream": (u7c_apk_lock(_apk_file("sub-fix.patch")(
+                lambda f: f.update(size=0, sha256=EMPTY_SHA256))), "sub-fix.patch: size 0 but"),
+            "an empty distfiles apk file": (dist(lambda f: f.update(size=0, sha256=EMPTY_SHA256)),
+                                            "size 0 is not an int in 1..4294967296"),
+            "an empty maven file": (r1_file("maven:javax.xml.bind:jaxb-api@2.2.12", lambda f: f.update(size=0)),
+                                    "size 0 is not an int in 1..4294967296"),
+            "a GitLab apk file of size false": (u7c_apk_lock(post(lambda f: f.update(size=False))),
+                                                "size False is not an int"),
+            "an empty deb file": (r1_file(R1_DEB, lambda f: f.update(size=0)), "size 0 is not an int in 1..4294967296"),
+            "an empty pypi file": (r1_file(R1_PYP, lambda f: f.update(size=0)), "size 0 is not an int in 1..4294967296"),
+            "a GitLab apk file of size -1": (u7c_apk_lock(post(lambda f: f.update(size=-1))), "size -1 is not an int"),
+            "a GitLab apk file of size true": (u7c_apk_lock(post(lambda f: f.update(size=True))), "size True is not an int"),
+            "a GitLab apk file of 4 GiB + 1": (u7c_apk_lock(post(lambda f: f.update(size=4294967297))),
+                                               "size 4294967297 is not an int"),
+        })
 
 
 if __name__ == "__main__":

@@ -9,9 +9,11 @@
 #
 # Host half (no KE_OFFLINE_CLIENT): runs its own project ke-offline-<random>
 #   from the standalone docker-compose.offline.yml, and nothing else:
-#   disk floor (7 GiB) -> pulls (SBOM generator, ke-app base, ke-neo4j base)
-#   -> bundle.sh -> image-side drift check (the ke-app SBOM against an SBOM
-#   of its base) -> ke-neo4j check (its config against the official image's,
+#   disk floor (7 GiB) -> the source sample fetch (scripts/bundle_fetch.sh
+#   --set sample) -> base pulls (ke-app, ke-neo4j; the SBOM generator pull is
+#   in the fetch) -> bundle.sh -> image-side drift check (the ke-app SBOM
+#   against an SBOM of its base) -> ke-neo4j check (its config against the
+#   official image's,
 #   its saved tar and SBOM without the fleet plugin) -> `dind` up ->
 #   net_isolated.sh on the offline network -> `run offline-client`. The EXIT
 #   trap always runs
@@ -24,10 +26,52 @@
 #   the bundle's image names, so nothing was pulled.
 #   KE_OFFLINE_BUNDLE_DIR (default /bundle) and KE_OFFLINE_INSTALL_ROOT
 #   (default /install) are TEST SEAMS ONLY: the container sets neither, and
-#   the host half never reads them.
+#   the host half never reads them. KE_OFFLINE_MEMINFO (default /proc/meminfo)
+#   is a third client-only test seam, read by the client's measure block alone.
+#
+# platform-sbom U9d (A82a): the client prints disk and memory at fixed points
+#   (`offline-client: measure:` C1-C3), and on a launch failure a per-container
+#   diagnostic (`offline-client: diag:`), then exits with launch's own status.
+#   Rework 1 (O-23): a bounded `docker events` stream (die, oom, kill; timeout
+#   900) runs from just before launch.sh to its exit, in a /tmp file of the
+#   client; it is stopped on every path before the branches, printed first in
+#   the diagnostic on a failure and never printed on a pass.
+#   The host prints memory at H1-H3 (`offline: measure:`). Neither changes
+#   the outcome of a run.
 set -euo pipefail
 
 die() { echo "offline_check: FAIL ($*)" >&2; exit 1; }
+
+# platform-sbom U9d (A82a; design-notes "N9 amendment, U9d").
+meminfo_line() { # meminfo_line FILE: "MemAvailable <N> kB SwapFree <N> kB", or status 1
+  local text pair avail swap
+  text="$(timeout 5 head -c 65536 -- "$1" 2> /dev/null)" || return 1
+  pair="$(printf '%s\n' "$text" | awk '
+    $1 == "MemAvailable:" && $3 == "kB" && a == "" { a = $2 }
+    $1 == "SwapFree:" && $3 == "kB" && s == "" { s = $2 }
+    END { print a, s }')" || return 1
+  avail="${pair% *}"
+  swap="${pair#* }"
+  [[ "$avail" =~ ^[0-9]+$ && "$swap" =~ ^[0-9]+$ ]] || return 1
+  echo "MemAvailable $avail kB SwapFree $swap kB"
+}
+df_line() { # df_line PATH: "filesystem <fs> size <N> KiB used <N> KiB available <N> KiB capacity <P>%", or status 1
+  local text line
+  text="$(timeout 5 df -Pk -- "$1" 2> /dev/null)" || return 1
+  line="$(printf '%s\n' "$text" | awk '
+    NR == 2 && v == "" {
+      for (i = 5; i <= NF; i++) {
+        if ($i ~ /^[0-9]+%$/ && $(i-1) ~ /^[0-9]+$/ && $(i-2) ~ /^[0-9]+$/ && $(i-3) ~ /^[0-9]+$/) {
+          fs = $1; for (j = 2; j <= i - 4; j++) fs = fs " " $j
+          v = "filesystem " fs " size " $(i-3) " KiB used " $(i-2) " KiB available " $(i-1) " KiB capacity " $i
+          break
+        }
+      }
+    }
+    END { print v }')" || return 1
+  [ -n "$line" ] || return 1
+  echo "$line"
+}
 
 # ---------------------------------------------------------------------------
 # Client half
@@ -37,6 +81,126 @@ if [ "${KE_OFFLINE_CLIENT:-}" = 1 ]; then
   root="${KE_OFFLINE_INSTALL_ROOT:-/install}"
   [ -w "${HOME:-/nonexistent}" ] || export HOME=/tmp
   say() { echo "offline-client: $*"; }
+  meminfo="${KE_OFFLINE_MEMINFO:-/proc/meminfo}" # TEST SEAM ONLY (header list)
+  neutralise() { # neutralise TEXT: print it and a newline; a runner's legacy `##[` marker becomes `#?[`
+    local mark='##[' safe='#?['
+    printf '%s\n' "${1//"$mark"/"$safe"}"
+  }
+  m() { neutralise "offline-client: measure: $*"; }
+  measure() { # measure POINT (C1, C2 or C3): one contiguous block; never fails the run
+    local t0="$SECONDS" line l rc=0
+    if line="$(df_line /)"; then m "$1 df / (the host daemon's storage): $line"
+    else m "$1 df / (the host daemon's storage): not measured (df -Pk gave no figures within 5 s)"; fi
+    if line="$(df_line "$root")"; then m "$1 df $root: $line"
+    else m "$1 df $root: not measured (df -Pk gave no figures within 5 s)"; fi
+    if line="$(meminfo_line "$meminfo")"; then m "$1 memory: $line"
+    else m "$1 memory: not measured ($meminfo gave no MemAvailable and SwapFree in kB within 5 s)"; fi
+    line="$(timeout 10 docker system df \
+      --format '{{.Type}} total {{.TotalCount}} active {{.Active}} size {{.Size}} reclaimable {{.Reclaimable}}' \
+      2> /dev/null < /dev/null)" || rc=$?
+    if [ "$rc" -eq 0 ] && [ -n "$line" ]; then
+      while IFS= read -r l; do
+        if [ -n "$l" ]; then m "$1 inner docker system df: ${l//[[:cntrl:]]/?}"; fi
+      done <<< "$line"
+    else
+      m "$1 inner docker system df: not measured (exit $rc; 124 is the 10 s timeout)"
+    fi
+    m "$1 done in $((SECONDS - t0)) s"
+  }
+
+  diag() { neutralise "offline-client: diag: $*"; }
+  diag_print() { # diag_print LABEL: one diag line per non-empty stdin line; control characters as ?; cut at 2000
+    local l
+    while IFS= read -r l || [ -n "$l" ]; do
+      l="${l//[[:cntrl:]]/?}"
+      if [ -z "$l" ]; then continue; fi
+      if [ "${#l}" -gt 2000 ]; then l="${l:0:2000} [cut]"; fi
+      neutralise "offline-client: diag: $1$l"
+    done
+  }
+  # shellcheck disable=SC2016  # a Go template for docker, not a shell expansion
+  diag_tpl='State.Status: {{.State.Status}}
+State.ExitCode: {{.State.ExitCode}}
+State.OOMKilled: {{.State.OOMKilled}}
+RestartCount: {{.RestartCount}}
+State.StartedAt: {{if or (eq .State.StartedAt "") (eq .State.StartedAt "0001-01-01T00:00:00Z")}}<absent>{{else}}{{.State.StartedAt}}{{end}}
+State.FinishedAt: {{if or (eq .State.FinishedAt "") (eq .State.FinishedAt "0001-01-01T00:00:00Z")}}<absent>{{else}}{{.State.FinishedAt}}{{end}}
+State.Error: {{if .State.Error}}{{json .State.Error}}{{else}}<absent>{{end}}
+{{if .State.Health}}State.Health.Status: {{.State.Health.Status}}
+{{range $i, $e := .State.Health.Log}}State.Health.Log[{{$i}}]: end {{$e.End}} exit {{$e.ExitCode}} output {{json $e.Output}}
+{{else}}State.Health.Log: <absent>
+{{end}}{{else}}State.Health.Status: <absent>
+State.Health.Log: <absent>
+{{end}}'
+  events_fmt='{{.Time}} {{.Action}} {{.Actor.Attributes.name}} exitCode={{index .Actor.Attributes "exitCode"}} signal={{index .Actor.Attributes "signal"}}'
+  events_start() { # events_start: a bounded background stream of the stack's container deaths into a /tmp (tmpfs) file
+    events_pid="" events_file=""
+    events_file="$(mktemp /tmp/ke-offline-events.XXXXXX 2> /dev/null)" || { events_file=""; return 0; }
+    timeout 900 docker events --since "$(date +%s)" --filter type=container \
+      --filter label=com.docker.compose.project --filter event=die --filter event=oom --filter event=kill \
+      --format "$events_fmt" > "$events_file" 2> /dev/null < /dev/null &
+    events_pid=$!
+  }
+  events_stop() { # events_stop: stop the stream, keep its first 100 lines in memory, remove the file; never fails
+    events_state=none events_rc=0 events_out="" events_n=0
+    if [ -z "$events_pid" ]; then return 0; fi
+    if kill "$events_pid" 2> /dev/null; then events_state=stopped; else events_state=ended; fi
+    wait "$events_pid" 2> /dev/null || events_rc=$?
+    events_n="$(awk 'END { print NR }' "$events_file" 2> /dev/null)" || events_n=0
+    [[ "$events_n" =~ ^[0-9]+$ ]] || events_n=0
+    events_out="$(head -n 100 -- "$events_file" 2> /dev/null)" || events_out=""
+    rm -f -- "$events_file" || true
+  }
+  diag_launch() { # diag_launch RC: one block per container of the installed stack; never exits
+    local rc=0 list id name svc out status health
+    diag "launch exited $1; the installed stack's containers in the inner daemon follow"
+    diag "events while launch ran (die, oom, kill; a stream started before launch, stopped when it exited):"
+    if [ "$events_state" = none ]; then
+      diag "  events: not recorded (no temporary file in /tmp)"
+    else
+      printf '%s\n' "$events_out" | diag_print "  events | "
+      if [ -z "$events_out" ]; then diag "  events: none"; fi
+      if [ "$events_n" -gt 100 ]; then
+        diag "  events: $((events_n - 100)) more lines not printed (the first 100 are shown)"
+      fi
+      if [ "$events_state" = ended ]; then
+        diag "  events: the stream ended before launch exited (exit $events_rc; 124: its 900 s timeout)"
+      fi
+    fi
+    list="$(timeout 10 docker ps --all --no-trunc --filter label=com.docker.compose.project \
+      --format '{{.ID}} {{.Names}} {{.Label "com.docker.compose.service"}}' 2> /dev/null < /dev/null)" || rc=$?
+    if [ "$rc" -ne 0 ]; then
+      diag "cannot list the containers: docker ps returned exit $rc (124: the 10 s timeout)"
+      list=""
+    elif [ -z "$list" ]; then
+      diag "no container of the installed stack exists"
+    fi
+    while read -r id name svc; do
+      if [ -z "$id" ]; then continue; fi
+      name="${name//[[:cntrl:]]/?}" svc="${svc//[[:cntrl:]]/?}"
+      diag "container $name (service ${svc:-<absent>})"
+      rc=0
+      out="$(timeout 10 docker container inspect --format "$diag_tpl" "$id" 2> /dev/null < /dev/null)" || rc=$?
+      if [ "$rc" -ne 0 ]; then
+        diag "  docker container inspect returned exit $rc (124: the 10 s timeout); its logs follow"
+        status="" health=""
+      else
+        printf '%s\n' "$out" | diag_print "  "
+        status="$(printf '%s\n' "$out" | sed -n '/^State\.Status: /{s///p}')"
+        health="$(printf '%s\n' "$out" | sed -n '/^State\.Health\.Status: /{s///p}')"
+        status="${status%%$'\n'*}" health="${health%%$'\n'*}"
+      fi
+      if [ "$status" = running ] && { [ "$health" = healthy ] || [ "$health" = "<absent>" ]; }; then continue; fi
+      if [ -z "$svc" ]; then diag "  no service label, so no logs"; continue; fi
+      if ! [[ "$svc" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then diag "  the service label is not a service name, so no logs"; continue; fi
+      diag "  logs of service $svc (docker compose logs --tail 50):"
+      rc=0
+      out="$(timeout 20 docker compose logs --no-color --no-log-prefix --timestamps --tail 50 -- "$svc" 2>&1 < /dev/null)" || rc=$?
+      printf '%s\n' "$out" | diag_print "  $svc | "
+      if [ "$rc" -ne 0 ]; then diag "  docker compose logs returned exit $rc (124: the 20 s timeout)"; fi
+    done <<< "$(printf '%s\n' "$list" | LC_ALL=C sort -k 2)"
+    diag "end of the launch diagnostic"
+  }
 
   # Fail closed (security L-OCb): the CA private key stays out of this
   # container only because Compose mounts the `client` subpath. If a `ca` or
@@ -80,10 +244,20 @@ if [ "${KE_OFFLINE_CLIENT:-}" = 1 ]; then
   say "install"
   bash "$bundle/install.sh" "$target"
   CDPATH='' cd -- "$target"
+  measure C1
   say "launch"
-  bash scripts/launch.sh
+  launch_rc=0
+  events_start
+  bash scripts/launch.sh || launch_rc=$?
+  events_stop
+  if [ "$launch_rc" -ne 0 ]; then
+    measure C2
+    diag_launch "$launch_rc"
+    exit "$launch_rc"
+  fi
   say "smoke (ci/offline included)"
   KE_SMOKE_OWNS_PROJECT=1 bash scripts/smoke.sh
+  measure C3
   say "teardown"
   bash scripts/teardown.sh --volumes
 
@@ -156,6 +330,18 @@ df_log() { # df_log STAGE
   df -Pk -- "${df_paths[@]}" || true
 }
 
+measure_host() { # measure_host POINT (H1, H2 or H3): never fails the run
+  local t0="$SECONDS" line
+  if [ "${#df_paths[@]}" -eq 1 ]; then
+    echo "offline: measure: $1 memory: not measurable (the daemon's DockerRootDir is not on this host, so this /proc/meminfo is not the daemon's machine; Docker Desktop keeps it in a VM)"
+  elif line="$(meminfo_line /proc/meminfo)"; then
+    echo "offline: measure: $1 memory: $line"
+  else
+    echo "offline: measure: $1 memory: not measured (/proc/meminfo gave no MemAvailable and SwapFree in kB within 5 s)"
+  fi
+  echo "offline: measure: $1 done in $((SECONDS - t0)) s"
+}
+
 # shellcheck disable=SC2317  # runs from the EXIT trap
 cleanup() {
   local rc=$?
@@ -165,7 +351,7 @@ cleanup() {
     echo "offline_check: FAIL (teardown of project $project failed; remove it by hand: COMPOSE_FILE=docker-compose.offline.yml KE_OFFLINE_BUNDLE=$bundle_rel docker compose -p $project --profile offline down --volumes)" >&2
     if [ "$rc" -eq 0 ]; then rc=1; fi
   fi
-  rm -rf -- "$bundle_rel" "$bundle_rel.manifest.sha256"
+  rm -rf -- "$bundle_rel" "$bundle_rel.manifest.sha256" "dist/${project}-sources"
   if [ -n "$drift_work" ]; then rm -rf -- "$drift_work"; fi
   df_log "after teardown"
   if [ "$rc" -eq 0 ] && [ "$finished" -eq 1 ]; then echo "== offline_check: PASS ($(( $(date +%s) - started ))s) =="; fi
@@ -230,15 +416,19 @@ if [ -z "$compose_version" ] || ! at_least "$compose_minimum" "$compose_version"
   die "Docker Compose >= $compose_minimum is required for volume.subpath (found: ${compose_version:-none})"
 fi
 
-# platform-sbom U2 (PSC-20; design-notes "N1 amendment, U2" *Interim pull*):
-# bundle.sh never pulls and refuses without the SBOM generator, so this check
-# pulls it first, through its own compose file (the one place it is pinned).
-# U8 replaces these lines with scripts/bundle_fetch.sh. The ${VAR:?} mounts get
-# dummy values (pull reads no bind source); -f overrides COMPOSE_FILE.
-echo "offline: pulling the SBOM generator (docker-compose.sbom.yml, service sbom)"
-KE_SBOM_IN=/nonexistent KE_SBOM_OUT=/nonexistent KE_SBOM_USER="$(id -u):$(id -g)" \
-  docker compose --env-file .env.example -f docker-compose.sbom.yml pull sbom \
-  || die "pulling the SBOM generator failed (docker-compose.sbom.yml, service sbom); no retry"
+# platform-sbom U8b (PSC-23 U8-8; design-notes "N4 amendment, U8" item 8):
+# scripts/bundle_fetch.sh --set sample replaces U2's interim generator pull. It
+# pulls the SBOM generator (docker-compose.sbom.yml, where it is pinned), then
+# fetches one source entry per kind (for apk, only its distfiles.alpinelinux.org files, A81) through the hardened `sources-fetch`
+# service and checks each file against docker/sources.lock.json. This is the
+# only fetch verify and CI ever run (the sample, never the full set). The dir
+# is under dist/, outside the bundle; bundle.sh --sources reads it (the sample
+# set only, U9b) and the EXIT trap removes it. A failure stops here, no retry.
+fetch_rel="dist/${project}-sources"
+echo "offline: fetching the source sample (scripts/bundle_fetch.sh --set sample)"
+bash scripts/bundle_fetch.sh --set sample --out "$fetch_rel" \
+  || die "scripts/bundle_fetch.sh failed (see its FAIL line above); no retry"
+df_log "after fetch"
 
 # platform-sbom U4 (orchestrator ruling 6; design-notes "N1 amendment, U4"):
 # the ke-app base, for the drift step below, pulled by its pinned digest (a
@@ -259,7 +449,7 @@ neo4j_base="$(sed -n 's/^FROM \([^ ]*\) AS runtime$/\1/p' docker/neo4j.Dockerfil
 echo "offline: pulling the ke-neo4j base ($neo4j_base)"
 docker pull "$neo4j_base" > /dev/null || die "pulling the ke-neo4j base failed ($neo4j_base); no retry"
 
-bash scripts/bundle.sh --out "$bundle_rel" || die "bundle.sh failed"
+bash scripts/bundle.sh --out "$bundle_rel" --sources "$fetch_rel" --sources-set sample || die "bundle.sh failed"
 # CI run 39364201188: bundle.sh writes private (0600) files but the offline client runs as uid 10001; open only this throwaway dir, read-only.
 chmod -R a+rX -- "$bundle_rel"
 df_log "after bundle"
@@ -339,11 +529,13 @@ if ! compose up -d --wait dind; then
   die "dind did not come up. It runs privileged: a daemon that refuses privileged containers is a blocker for this check, and there is no way around it"
 fi
 df_log "after dind up"
+measure_host H1
 
 bash scripts/net_isolated.sh "${project}_offline" || die "the offline network ${project}_offline is not internal and isolated"
 
 echo "offline: running the offline client"
-compose run --rm offline-client || die "the offline client failed (see its output above)"
+compose run --rm offline-client || { measure_host H2; die "the offline client failed (see its output above)"; }
+measure_host H3
 df_log "after client run"
 finished=1
 exit 0

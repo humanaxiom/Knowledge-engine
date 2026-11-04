@@ -663,6 +663,12 @@ def run_option_problems(rest: list[str], name: str) -> list[str]:
     return p
 
 
+def _checker_subcommand(argv: list[str]) -> str | None:
+    """The word after the last `.../sbom_check.py` in a `docker run` argv."""
+    at = [i for i, a in enumerate(argv) if a.replace("\\", "/").rsplit("/", 1)[-1] == "sbom_check.py"]
+    return argv[at[-1] + 1] if at and at[-1] + 1 < len(argv) else None
+
+
 def finish_run_problems(argv: list[str], app_refs: set[str], repo: Path) -> list[str]:
     """N3: the checker's `docker run` in the ke-app image."""
     p = []
@@ -860,6 +866,8 @@ class SbomBundleRunTest(_BundleBase, unittest.TestCase):
         with self.subTest(part="finish changes only name, namespace, creators and annotations (N6)"):
             raw = raw_doc("valkey", self.syft_version)
             self.assertIn("valkey", images, "precondition: valkey is a bundled image")
+            # platform-sbom U9b (design item 14 *Controls*): the synthetic lock covers this document too.
+            self._relock_for({"valkey": raw})
             _, out3, _, _ = self._good(FAKE_SYFT_RAW=json.dumps({"valkey": json.dumps(raw)}))
             doc = self._doc(out3, "valkey")
             for key in sorted(set(raw) | set(doc)):
@@ -951,8 +959,13 @@ class SbomBundleRunTest(_BundleBase, unittest.TestCase):
             self.assertNotIn(SBOM_PROJECT, (PROJECT, f"{PROJECT}-notices"))
         with self.subTest(part="teardown (review N1)"):
             self.assertEqual(self._downs_after_runs(recs), [])
+        # platform-sbom U9b (tester, U9b RED; contradiction resolved here, design-notes "N9
+        # amendment, U9" item 1): `sources-check`, `index` and `notices` also run sbom_check.py in
+        # the ke-app image, so this count is of the `finish` runs (the subcommand after the
+        # script); tests/test_bundle_sources.py pins the three new runs' hardening.
         checks = [(i, r) for i, r in enumerate(recs) if r["argv"][:1] == ["run"]
-                  and any(a.replace("\\", "/").rsplit("/", 1)[-1] == "sbom_check.py" for a in r["argv"])]
+                  and any(a.replace("\\", "/").rsplit("/", 1)[-1] == "sbom_check.py" for a in r["argv"])
+                  and _checker_subcommand(r["argv"]) == "finish"]
         with self.subTest(part="one checker run per image, after its generator run"):
             self.assertEqual(len(checks), len(images), [c["argv"] for _, c in checks])
             for name in images:

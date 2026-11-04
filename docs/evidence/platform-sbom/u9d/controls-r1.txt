@@ -1,0 +1,125 @@
+# U9d rework 1 RED controls (tester, 2026-10-30; ruling O-23 and its precision; design-notes "N9 amendment, U9d" ->
+# "Amendment, rework 1 (O-23)" A1-A11, A9 = these controls; security u9d/security.md L-1, L-2, I-1 folded in by
+# the orchestrator; requirements "U9d precision" U9d-1/4/6 as amended 2026-10-30). No production file is edited;
+# no test reads docs/evidence; no symlink on the Windows host; nothing staged.
+
+== Files this RED does not edit (sha256 of the working tree, unchanged by this RED) ==
+scripts/offline_check.sh   354d9f38e3461dcfa1d01d085067032e63c9a0458bd4b0692e0e94c7338b2417 (the uncommitted U9d GREEN)
+scripts/launch.sh          408ca3a166cf1cb9e01c87f62b2a2f4403d9fe3a869c45e398ff75166198be52
+docker-compose.yml         35e66b6ebe297a5ff9c481a24fea965db3f3cd99004ab625cc10ad0289ab0fe9
+docker-compose.offline.yml 057fac20760235e5f6e632aa5d229e81d0363fcb6c5ce3f82866ae56df05d18b
+CLAUDE.md                  49505b658dc17043ad11d9b0deedf7a7cd2dd904f221c8e30ca7df8ef6e49f4a
+
+== Files edited (sha256 before -> after; before = U9d GREEN's tests, as review.md recorded) ==
+tests/test_offline_check.py 5ba4255cc83378de802bc7d57a90cc3c1866647d2b1683c94d2a6f975b410a0e -> d3961c077f5be75458a2afa29fc2c2afb3a49bd9af93b60e41b4524465737125
+tests/fake_docker.py        83f7a647c9705608d8b488001ee2f06fee202c9161e1c286d36063f8529c5a54 -> d661f33dba0e3ff8516d0b4e0e4367bbf83d3ced316f36d04ca13a673b9302f4
+
+== tests/fake_docker.py (docstring section "platform-sbom U9d rework 1"; each inert unless set) ==
+- DIAG_TEMPLATE: A1's text (four lines after State.OOMKilled), matched exactly; _u9d_render prints RestartCount (top
+  level, 0 when missing), State.StartedAt/FinishedAt (<absent> for missing, "" or 0001-01-01T00:00:00Z), State.Error
+  (<absent> for missing or "", else json.dumps(ensure_ascii=False)); the no-format record gains RestartCount.
+- EVENTS_FORMAT: A2's events_fmt, written into the installed fake as DIAG_TEMPLATE is.
+- FAKE_DOCKER_EVENTS: `events` requires --format == EVENTS_FORMAT (else exit 2), prints each event as A9 renders it,
+  flushes, sets a SIGTERM handler (record {"argv": ["EVENTS", "stopped"]}, exit 143), records ["EVENTS", "ready"],
+  sleeps up to 60 s, exits 0 with no stopped record. Unset: `events` exits 0 at once with no output (as before).
+- Stub (tests/test_offline_check.py _STUB): FAKE_STUB_WAIT_NAME / FAKE_STUB_WAIT_FOR / FAKE_STUB_WAIT_THEN: the named
+  stub waits up to 10 s for a fixed string in the call log before its record, then N s (A9: launch waits for
+  `EVENTS ready`; ended-early waits for the `events` call record, then 1 s). Inert unless both are set.
+
+== Re-pinned rows (A9 "Existing rows that change"; decision record: O-23 + design-notes A9, requirements U9d-1/U9d-4
+   as amended 2026-10-30) ==
+test_offline_diag_template_prints_only_allowed_fields  + events_fmt == fake_docker.EVENTS_FORMAT; client half holds
+   none of `.Actor.Attributes}}`, `json .Actor`, `.Actor.ID`, `--until`; exactly one `docker events` call.
+   Template body unchanged (it follows the new DIAG_TEMPLATE).
+test_offline_diag_and_measure_docker_calls_are_bounded  U9D_KINDS + "events": r"events\b"; the events call: N == 900,
+   filters exactly {type=container, label=com.docker.compose.project, event=die, event=oom, event=kill}, a --since,
+   --format "$events_fmt", no --until (helper _assert_events_call). The four other kinds keep N <= 30.
+Nothing renamed or removed; no count in a test name.
+
+== New rows (OfflineCheckScriptTest, appended) and their RED reason against the unchanged script ==
+test_offline_diag_names_the_deaths_of_a_restarted_container (A9 first RED; subtests)
+   oom kill, then a restart        RED: `State.Status: running` missing (fake exit 2: the script's template is pre-A1)
+   crash (a die with no oom)       RED: no `events | ` line ([] != [die exitCode=1])
+   more events than the cap        RED: no `events | ` line ([] != the first 100)
+   start error / never started     RED: State.Error / StartedAt <absent> missing; no `events: none` line
+   the stream ended before launch  RED: no `events: the stream ended before launch exited (exit 1` line
+test_offline_events_stream_is_stopped_and_silent_on_a_pass    RED: 0 != 1 `docker events` call
+test_offline_diag_sanitises_container_names_and_service_labels (L-1)  RED: unprefixed stdout line
+   '::error::cr-in-label\x1b[31m)' (a raw CR in the label)
+test_offline_printed_lines_neutralise_runner_markers (L-2)    RED: '##[' found in the output
+test_offline_meminfo_read_is_bounded (I-1)  RED: static: no `timeout 5 head -c 65536 -- "$1"`; dynamic: figures past
+   64 KiB were read (`MemAvailable 1234567` printed)
+
+== Existing rows red at RED that the amendment says stay green unedited ==
+test_offline_client_prints_diag_on_launch_failure (4 subtests) and test_offline_client_diag_survives_a_failing_inspect
+(inspect#1 case): the fake renders only the exact DIAG_TEMPLATE (A1, A9: "matched exactly"), so the unchanged script's
+pre-A1 template gets exit 2 and no State lines. Not edited; green again under the design prototype (below). A9's
+"stay green unedited" holds after GREEN, not at RED.
+
+== FAKE_DOCKER_FAIL / FAIL_NTH / hook patterns against the events argv (A9) ==
+argv joined: events --since <N> --filter type=container --filter label=com.docker.compose.project --filter event=die
+--filter event=oom --filter event=kill --format <EVENTS_FORMAT>
+- "label=com.docker.compose.project" (diag_survives, "the container list fails"): MATCHES. The events call fails at
+  once; the prototype prints the named `ended (exit 1; ...)` line; the row stays green (asserts only the list line).
+- "event=oom" (new ended-early subtest): MATCHES, by design.
+- "inspect#1" (FAIL_NTH regex `inspect`): no match (and no events record is counted). "system df": no match.
+- "network inspect", "offline-client", "dind", hooks on "offline-client": host-half rows only; no match anyway.
+
+== Test-validation probe (scratch only; never in the tree) ==
+A1-A4 plus L-1 (name/svc through [[:cntrl:]] -> ? and ##[ -> #?[; logs only for svc =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$,
+else "not a compose service name, so no logs"; `-- "$svc"`), L-2 (`l="${l//'##['/'#?['}"` in diag_print and the
+measure system df line) and I-1 (`timeout 5 head -c 65536 -- "$1"`) applied to a COPY of offline_check.sh (sha256
+c8d9106b0e255be488462876f5b9d9bb6a60804b4116502893ddca43a1cbc596), bind-mounted read-only over
+/work/scripts/offline_check.sh in one-off ke-gates:wt-33a132fbfdd7 containers (--network none, uid 10001, cap_drop
+ALL, read-only checkout, tmpfs /tmp); `uv run --locked python -m unittest tests.test_offline_check`.
+  unchanged script : Ran 43, FAILED (failures=19)  -- the new/re-pinned subtests above + the 5 template-mismatch ones
+  design prototype : Ran 43, OK; shellcheck -x on it: clean
+
+== Mutation controls (prototype + one defect; each turns the named rows red) ==
+R01 template without RestartCount            -> template_allowed_fields, restarted (oom, start error, never started,
+                                                ended), markers (Health.Log, State.Error), prints_diag (x4), survives
+R02 stream not killed (no kill, no wait)     -> restarted (oom: no stopped record; ended), stopped_and_silent_on_a_pass
+R03 events printed on a pass                 -> stopped_and_silent_on_a_pass, restarted (oom, crash, cap), markers (event)
+R04 cap missing (first 1000 kept)            -> restarted (cap)
+R05 cap line not printed                     -> restarted (cap)
+R06 --until present                          -> bounded (events), allowed_fields (token --until)
+R07 events_fmt prints .Actor.Attributes      -> allowed_fields (format, token), restarted (oom, crash, cap: fake exit 2),
+                                                pass row, markers (event)
+R08 events_fmt without signal                -> allowed_fields (format), restarted (oom, crash, cap), pass row, markers
+R09 stream started after launch              -> stopped_and_silent_on_a_pass (order), restarted (x4), markers (event)
+R10 no --since                               -> bounded (events)
+R11 timeout 30, not 900                      -> bounded (events)
+R12 kill filter missing                      -> bounded (events)
+R13 a second (history) events call           -> allowed_fields (one events call), bounded (events), restarted (oom)
+R14 ended line missing                       -> restarted (ended)
+R15 `events: none` missing                   -> restarted (start error / never started: no event)
+R16 events section moved after the blocks    -> restarted (oom, cap: position)
+R17 State.Error not JSON-quoted              -> as R01 (template exact match)
+R18 container name not sanitised             -> sanitises_names_and_labels
+R19 service label not sanitised              -> sanitises_names_and_labels
+R20 no service-name check before logs        -> sanitises_names_and_labels
+R21 no `--` before the service               -> sanitises_names_and_labels
+R22 no ##[ rewrite in diag_print             -> neutralise_runner_markers
+R23 no ##[ rewrite in the measure df line    -> neutralise_runner_markers (system df row)
+R24 meminfo read by cat (unbounded)          -> meminfo_read_is_bounded (static and large file)
+24 of 24 mutants killed. Outside the two template-mismatch rows under R01/R17 (same cause as at RED), no
+pre-existing row went red under any mutant.
+
+== Not pinned, and why ==
+- An Error holding CR printing as `?` (orchestrator note): the template JSON-quotes State.Error ({{json}}, A1), so a CR
+  arrives as the two characters `\r` and never reaches the sanitiser raw. Pinned instead: the start error with
+  CR/LF is one JSON-quoted prefixed line (restarted row, start error), and `##[` in State.Error prints `#?[` (L-2 row),
+  which proves State.Error passes through diag_print. CR in an event line IS pinned as `?` (L-2 row, event line).
+- The exact `no logs` wording for a label that is not a service name: the row pins a line holding "no logs" in that
+  container's block, not the wording (none is in the design text).
+- A4 (N-1, sed reads to EOF) and A5 (N-2 wording): no row (an inspect output over 64 KiB is not reachable through the
+  fake's fixed template; A5 is text only).
+- `events: not recorded (no temporary file in /tmp)` (mktemp failure): /tmp is fixed in A2; no seam to fail mktemp.
+- The 900 s timeout firing (exit 124): static only (bounded row pins N == 900); a live run would cost 900 s.
+- I-1 timing: the large-file row pins `done in N s` with N <= 5 per point (U9d-4); the deterministic pin is content
+  (figures placed past 64 KiB must not be read). Under the prototype the point takes 0-1 s.
+- events_stop never failing (rm/awk errors) and the kill-vs-ended race on an unset knob: not driven (A9 says the
+  existing rows must not assert the race either way).
+
+== Gate run (RED) ==
+scripts/verify.sh fast: see u9d/r1-red-verify-fast.txt.

@@ -1,0 +1,15 @@
+# U8b RED reach proof (tester, 2026-10-28). The affected modules run in ke-gates:wt-33a132fbfdd7 (--network none, uid 10001, read-only /work) on a SCRATCH COPY of the RED tree with throwaway tester targets (a bundle_fetch.sh, the sources-fetch service, the offline_check wiring, the bundle.sh text, the sources_lock.sh SBOM copies, the CLAUDE.md/README text) per design items 3, 8, 9 and A73. The targets lived in the scratchpad only and were deleted; nothing was written to the repository. Expected leftovers: test_bundle_fetch_sh_shape (the copy has no .git index) and test_sbom_generator_is_pinned (no .git, no docs/evidence in the copy).
+## run 1 (found 3 harness defects, fixed in tests/test_bundle_fetch.py: a [ -e ] test read as docker -e; README order matched first occurrences; an eager listdir in a message)
+ERROR: test_bundle_fetch_leaves_no_out_on_a_failed_fetch (tests.test_bundle_fetch.BundleFetchRunTest.test_bundle_fetch_leaves_no_out_on_a_failed_fetch) (case='--out absent')
+ERROR: test_sbom_generator_is_pinned (tests.test_sbom_generator.SbomComposeTest.test_sbom_generator_is_pinned) (part='one committed place: docker-compose.sbom.yml, once')
+FAIL: test_readme_names_the_route_out_and_the_operator_order (tests.test_bundle_fetch.BundleFetchDocsTest.test_readme_names_the_route_out_and_the_operator_order)
+FAIL: test_bundle_fetch_has_no_network_step_but_the_service (tests.test_bundle_fetch.BundleFetchStaticTest.test_bundle_fetch_has_no_network_step_but_the_service)
+FAIL: test_bundle_fetch_sh_shape (tests.test_bundle_fetch.BundleFetchStaticTest.test_bundle_fetch_sh_shape)
+FAIL: test_sbom_generator_is_pinned (tests.test_sbom_generator.SbomComposeTest.test_sbom_generator_is_pinned) (part='provenance recorded before the pin (PSC-1 form, N2)')
+Ran 106 tests in 71.397s
+FAILED (failures=4, errors=2)
+## run 2 (tests/test_bundle_fetch.py after the fixes)
+FAIL: test_bundle_fetch_sh_shape (tests.test_bundle_fetch.BundleFetchStaticTest.test_bundle_fetch_sh_shape)
+AssertionError: Regex didn't match: '^100755 ' not found in '' : scripts/bundle_fetch.sh is not in the index as executable (100755); git ls-files -s says ''
+Ran 24 tests in 8.185s
+FAILED (failures=1)

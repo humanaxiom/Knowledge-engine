@@ -1,0 +1,128 @@
+# U9a rework round 1 controls (tester, 2026-10-29; orchestrator O-14). RED edits one file: tests/test_source_index.py.
+# Baseline = the U9a RED file (GREEN edited no test), copied before any edit; names parsed by ast (class.method,
+# inherited test methods included). No production file is edited; no test reads docs/evidence.
+
+== Files this RED does not edit (sha256 unchanged before and after) ==
+scripts/sbom_check.py sha256=cc07749d55be6335126f3febebacb3ad3d3f00a55257250cafad15caaa2b9876
+tests/test_offline_bundle.py sha256=74306991503a186726e4c796f49afd05c8242e69f831e1605370077e1a0a77e9
+tests/test_sbom_classifier.py sha256=9bc2bf4b1d52ab66e14f5b53fa7ce54ff587ab41368d2db1416430484957ab01
+tests/test_sources_lock.py sha256=ba7b68bb1c1bb90a1e3a6aaa3e1bc983534050370695be65927952dac35f6429
+tests/test_sources_fetch.py sha256=c7590fc80f1768d0f36578b446eb4ab83ccb59d8a4899614a83e0cb64882cb22
+tests/test_sbom_bundle.py sha256=7dcb41d86b497b5ad64d97d1b78d5abec98029b4a45857d00ac953e8ffb297db
+tests/test_sources_lock_committed.py sha256=c2bed6a721960e19db4fa043972509f327ecdb6f4097711a3c9c154f9e9206e6
+tests/test_sbom_obligations.py sha256=9e524d3df63b51c3dd807f066e868d02c350eec0b6a36719bc3f366fd0639efd
+
+== Names and hashes (before = U9a RED b781ef37..., after = this RED) ==
+## before: test_source_index.py sha256=b781ef37344c198bacd2c5423d0aa2bb390da6afbf32d608024cf9532e92b6f5 tests=48
+## after: test_source_index.py sha256=a3a4b8893c229776f0fc46f55a99a5c0f8a5a94792459d0878f89e98e9a47571 tests=67
+## removed: none
+## added:
+tests.test_source_index.FetchRecordProblemsTest.test_record_text_in_a_refusal_is_escaped
+tests.test_source_index.FetchRecordProblemsTest.test_a_non_object_policy_is_a_problem
+tests.test_source_index.FetchRecordProblemsTest.test_a_deeply_nested_record_is_a_problem
+tests.test_source_index.SourcesCheckCliTest.test_oversize_record_refusal_reads_as_ruled
+tests.test_source_index.SourcesCheckCliTest.test_record_text_in_a_cli_refusal_is_escaped
+tests.test_source_index.SwappedAfterListingTest.test_control_the_decoy_driver_passes_an_untouched_dir
+tests.test_source_index.SwappedAfterListingTest.test_fetch_record_swapped_for_a_fifo_is_refused
+tests.test_source_index.SwappedAfterListingTest.test_planned_file_swapped_for_a_fifo_is_refused
+tests.test_source_index.SwappedAfterListingTest.test_fetch_record_swapped_for_a_link_is_refused
+tests.test_source_index.SwappedAfterListingTest.test_planned_file_swapped_for_a_link_is_refused
+tests.test_source_index.SourceIndexGateTest.test_index_coverage_exempt_and_listing_stages_stop_in_order
+tests.test_source_index.SourceIndexGateTest.test_index_names_files_when_the_listing_cannot_be_read
+tests.test_source_index.SourceSectionTest.test_sample_banner_is_the_first_line_after_the_heading
+tests.test_source_index.SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url
+tests.test_source_index.IndexCliTest.test_index_cli_exit_2_on_a_malformed_git_sha
+tests.test_source_index.IndexCliTest.test_index_cli_exempt_lines_carry_the_index_prefix
+tests.test_source_index.NoticesIndexReadTest.test_notices_refuses_a_fifo_index
+tests.test_source_index.NoticesIndexReadTest.test_notices_refuses_a_device_index
+tests.test_source_index.NoticesIndexReadTest.test_notices_refuses_an_index_over_the_size_cap
+## renamed: none; no assertion of a pre-existing row was removed, weakened or edited. The only edit to existing text
+## is the module docstring's "Tester's readings" paragraph, which now cites O-13 (1)-(4), (6), (7) and O-14.
+
+== Rows red at RED (expected; scripts/verify.sh fast, u9a-r1-red-verify-fast.txt) and why ==
+FetchRecordProblemsTest.test_a_non_object_policy_is_a_problem             N-3: AttributeError raised for [], None, "x", 5
+FetchRecordProblemsTest.test_a_deeply_nested_record_is_a_problem          I-3: RecursionError escapes (lock_text re-dump)
+SwappedAfterListingTest.test_fetch_record_swapped_for_a_fifo_is_refused   L-1/N-4: plain open blocks on the FIFO; 10 s timeout
+SwappedAfterListingTest.test_planned_file_swapped_for_a_fifo_is_refused   L-1/N-4: _sha256_of has no O_NONBLOCK; 10 s timeout
+SwappedAfterListingTest.test_fetch_record_swapped_for_a_link_is_refused   L-1/N-4: plain open follows the link; exit 0
+SourceIndexGateTest.test_index_names_files_when_the_listing_cannot_be_read N-7: got ['.: cannot list']
+SourceSectionTest.test_notice_section_refuses_markdown_syntax_outside_the_url  L-2: a section is produced (57 subtests);
+                                                                          its URL control subtest passes
+NoticesIndexReadTest.test_notices_refuses_a_fifo_index                    L-3: open blocks; 10 s timeout
+NoticesIndexReadTest.test_notices_refuses_a_device_index                  L-3: /dev/zero read to MemoryError (768 MiB cap)
+NoticesIndexReadTest.test_notices_refuses_an_index_over_the_size_cap      L-3: 16 MiB+1 printed (exit 0); sparse 1 GiB read
+                                                                          to MemoryError; boundary control (16 MiB) passes
+
+== Rows green from the start (they pin behaviour GREEN already has) ==
+SourcesCheckCliTest.test_oversize_record_refusal_reads_as_ruled           O-13 (2)
+SourceSectionTest.test_sample_banner_is_the_first_line_after_the_heading  O-13 (4), U9-7
+IndexCliTest.test_index_cli_exit_2_on_a_malformed_git_sha                 O-13 (6)
+IndexCliTest.test_index_cli_exempt_lines_carry_the_index_prefix           O-13 (7)
+FetchRecordProblemsTest.test_record_text_in_a_refusal_is_escaped          B-2 (pure)
+SourcesCheckCliTest.test_record_text_in_a_cli_refusal_is_escaped          B-2 (CLI)
+SourceIndexGateTest.test_index_coverage_exempt_and_listing_stages_stop_in_order  N-9
+SwappedAfterListingTest.test_planned_file_swapped_for_a_link_is_refused   L-1 (O_NOFOLLOW already in _sha256_of)
+SwappedAfterListingTest.test_control_the_decoy_driver_passes_an_untouched_dir   control of the swap driver itself
+
+== Mutation controls for the rows green from the start ==
+Driver: <scratch>/r1/ctl/ctl.py, run in the gates image (ke-gates:wt-33a132fbfdd7, network none, uid 10001, /work
+read-only, /tmp tmpfs, the driver mounted read-only at /scratch):
+  MSYS_NO_PATHCONV=1 KE_IMAGE_TAG=wt-33a132fbfdd7 COMPOSE_PROJECT_NAME=ke-tester-u9a-r1-ctl COMPOSE_FILE=docker-compose.yml \
+    docker compose --env-file .env.example --profile gates run --rm --pull never -v <scratch>/r1/ctl:/scratch:ro gates \
+    uv run --locked python /scratch/ctl.py
+Per mutation: ONE edit to a copy of the GREEN scripts/sbom_check.py written to /tmp/m<i>/ (the edit must match exactly
+the stated number of places, else the driver stops); tests.test_sbom_bundle.SBOM_CHECK and tests.test_source_index.CHECK
+point at the copy. Rows run: the nine above plus three older rows (`*-old`) that the review called loose
+(test_bundle_refuses_a_mismatched_fetch_record, test_sample_bundle_notices_say_do_not_distribute,
+test_index_cli_prints_the_canonical_index): they stay green under the mutations, the new pins do not.
+  O-13 (2): `bytes, over 4 MiB"]` -> `bytes, too large"]` (2 places, _record_text)
+  O-13 (4): out += [SECTION_PATHS, "", SECTION_INTRO, "" ... -> out[2:2] = [SECTION_PATHS, ""]; out += [SECTION_INTRO, "" ...
+  O-13 (6): index_cli `if not SHA_RE.fullmatch(a.git_sha):` -> `if False:`
+  O-13 (7): print(f"index: {_clean(...)}...") -> print(f"{_clean(...)}...")
+  B-2:      _show: `return _clean(value)[:120]` -> `return str(value)[:120]`
+  N-9 3->4: the `if p: return None, p` after lock_problems removed
+  N-9 4->5: the `if p: return None, p` after the always/exempt loop removed and `p = listing_problems` -> `p +=`
+  L-1:      _sha256_of: O_NOFOLLOW dropped
+Output (expected: the control fails nothing; each mutation fails exactly its own pin; first 4 subtests shown per row):
+sbom_check.py under control sha256=cc07749d55be6335126f3febebacb3ad3d3f00a55257250cafad15caaa2b9876
+none (control)                                                 failed=[]
+O-13 (2): oversize text 'over 4 MiB' -> 'too large'            failed=['O13-2']
+    O13-2: test_oversize_record_refusal_reads_as_ruled
+O-13 (4): I-3 sentence moved before the banner (item 7 order)  failed=['O13-4']
+    O13-4: test_sample_banner_is_the_first_line_after_the_heading
+O-13 (6): --git-sha check in index_cli disabled                failed=['O13-6']
+    O13-6: test_index_cli_exit_2_on_a_malformed_git_sha (case='upper-case hex')
+    O13-6: test_index_cli_exit_2_on_a_malformed_git_sha (case='39 hex digits')
+    O13-6: test_index_cli_exit_2_on_a_malformed_git_sha (case='41 hex digits')
+    O13-6: test_index_cli_exit_2_on_a_malformed_git_sha (case='a trailing newline')
+O-13 (7): 'index: ' prefix dropped                             failed=['O13-7']
+    O13-7: test_index_cli_exempt_lines_carry_the_index_prefix
+B-2: _show prints raw                                          failed=['B2-cli', 'B2-pure']
+    B2-cli: test_record_text_in_a_cli_refusal_is_escaped (case='an ESC in set')
+    B2-cli: test_record_text_in_a_cli_refusal_is_escaped (case='a C1 CSI in a file name')
+    B2-pure: test_record_text_in_a_refusal_is_escaped (case='an ESC in set')
+    B2-pure: test_record_text_in_a_refusal_is_escaped (case='a C1 CSI in a file name')
+    B2-pure: test_record_text_in_a_refusal_is_escaped (case='a BEL in an extra component key')
+N-9 (3->4): stage 3 does not stop                              failed=['N9']
+    N9: test_index_coverage_exempt_and_listing_stages_stop_in_order (case='a coverage gap, an exempt problem and a bad listing: the gap only')
+N-9 (4->5): stage 4 does not stop                              failed=['N9']
+    N9: test_index_coverage_exempt_and_listing_stages_stop_in_order (case='an exempt problem and a bad listing: the exempt problem only')
+L-1: O_NOFOLLOW dropped from _sha256_of                        failed=['L1-link']
+    L1-link: test_planned_file_swapped_for_a_link_is_refused
+
+== Flag for the orchestrator (not resolved here) ==
+L-2 applies to lock keys too (O-14: every printed field except the URL). LOCK_KEY_RES allows '_' in apk and maven keys
+and '!' in pypi versions; no key in docker/sources.lock.json has any of [ ] ( ) ! * _ # today (checked 2026-10-29),
+and 58 committed URLs contain '(' or '_' (the URL column stays exempt). A future re-lock adding such a key would be
+refused by 'notices' at bundle time, although keys print inside a code span.
+
+== O-14 precision (orchestrator ruling on the flag above, 2026-10-29) ==
+test_notice_section_refuses_markdown_syntax_outside_the_url edited (no other row touched): the two lock-key fields leave the
+L-2 refusal set; in their place, controls: a shipped and a not-shipped key with '_' or '!' still print (`| `<key>` |`), and
+the same keys with a backtick or '|' are still refused (item 7). Image, exempt package, exempt image, reviewed, listing and
+the probe stay refused for all of [ ] ( ) ! * _ #; the URL control is unchanged.
+## after (O-14 precision): test_source_index.py sha256=ea4b63a4b6a0536536d559fb0c1fe3e7af18abf45cbc143e2b5dc1bf8268898e tests=67
+Module re-run in the gates image (u9a-r1-red-module-o14p.txt): Ran 67 tests, FAILED (failures=56). That is the 72 from
+u9a-r1-red-verify-fast.txt minus the 16 key subtests now turned into controls. The L-2 row fails 41 subtests (5 fields x 8
+characters + the probe), and its 4 key controls, 4 key refusals and the URL control pass. The other red rows are unchanged.
+The mutation controls above don't touch this row and still hold.

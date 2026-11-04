@@ -412,6 +412,8 @@ class UnlicensedBundleOutputTest(_BundleBase, unittest.TestCase):
         # saved as ke-neo4j (images/ke-neo4j.tar, app/sboms/ke-neo4j.spdx.json); re-targeted
         # by the tester, U4b RED.
         raw = neo4j_unlicensed_doc()
+        # platform-sbom U9b (design item 14 *Controls*): the synthetic lock covers this document too.
+        self._relock_for({"ke-neo4j": raw})
         result, _, out = self._bundle(COMPOSE_PROJECT_NAME=PROJECT,
                                       FAKE_SYFT_RAW=json.dumps({"ke-neo4j": json.dumps(raw)}))
         output = self._out(result)
@@ -656,12 +658,46 @@ class DriftLogicTest(unittest.TestCase):
         for rel in ss.LICENCE_FILES:
             with self.subTest(case=f"{rel} names another version"):
                 texts = dict(self.texts)
-                texts[rel] = texts[rel].replace(f"CPython {want}:", "CPython 3.12.16:", 1)
+                # 3.12.99, never a real release: U7e makes 3.12.16 the files'
+                # own version, so this control's old "3.12.16" would be a
+                # no-op there (PSC-27, N0 amendment U7e R2).
+                texts[rel] = texts[rel].replace(f"CPython {want}:", "CPython 3.12.99:", 1)
+                self.assertNotEqual(texts[rel], self.texts[rel], f"the {rel} control changed nothing")
                 self._fails(self._run(texts=texts), Path(rel).name)
             with self.subTest(case=f"{rel} line 1 does not parse"):
                 texts = dict(self.texts)
                 texts[rel] = "garbage\n" + texts[rel]
                 self._fails(self._run(texts=texts), Path(rel).name)
+
+    def test_ke_app_real_rows_cpython_is_the_ruled_release(self):
+        """U7e (PSC-27 *CPython licence files*, PSC-22 drift; N0 amendment
+        U7e R2, R4), the fast stand-in for the full-mode drift check: on
+        ke-app's real package rows (tests/fixtures/sbom-u3/ke-app.pkgs.tsv,
+        the image's syft rows), CPython is exactly CPYTHON_RELEASE and the
+        drift check finds no CPython mismatch against the committed licence
+        files. The full-mode check (offline_check.sh -> sbom_check.py drift
+        on the fresh image's SBOM) compares the same pair and reads its
+        expected version only from the licence headers. History (U7e): at RED
+        the real rows were CPython 3.12.15 against the ruled 3.12.16; GREEN
+        refreshed the fixture from the U7e image to 3.12.16 (R4)."""
+        from tests.test_notice_ke_app import CPYTHON_RELEASE
+        app = ss.u3_doc("ke-app")
+        texts = ss.licence_texts()
+
+        def cpython_problems(t: dict[str, str]) -> list[str]:
+            return [p for p in self._run(app=copy.deepcopy(app), texts=t) if "CPython" in p]
+
+        with self.subTest(case="control: licence headers one release ahead of the real rows fail drift"):
+            have = sorted(fn("_cpython")(app))
+            self.assertEqual(len(have), 1, f"the real ke-app rows list CPython at {have}")
+            ahead = {rel: re.sub(r"^CPython \d+\.\d+\.\d+:", "CPython 3.12.99:", text, count=1)
+                     for rel, text in texts.items()}
+            self._fails(cpython_problems(ahead), "3.12.99", have[0])
+        with self.subTest(case="the real rows' CPython matches the committed licence files"):
+            self.assertEqual(cpython_problems(texts), [])
+        with self.subTest(case="the real rows' CPython is the ruled release"):
+            self.assertEqual(sorted(fn("_cpython")(app)), [CPYTHON_RELEASE],
+                             "ke-app's real rows list another CPython than the ruled base's (PSC-27, U7e R4)")
 
     def test_ke_app_sbom_lists_libpq5_and_psycopg_c_not_binary(self):
         check = fn("psycopg_problems")
@@ -779,15 +815,18 @@ class DriftOfflineCheckTest(toc._OfflineBase):
         at = {e: i for i, e in reversed(events) if e}
         saves, runs = self._drift_records(records)
         pulls = self._base_pulls(records)
-        sbom_pulls = [i for i, r in enumerate(records) if names_sbom_file(r["argv"]) and "pull" in r["argv"]]
-        with self.subTest(part="ruling 6 (N1 am. U4): one pull of the base by its digest, after the generator "
-                               "pull, before bundle.sh (a no-op when the daemon already holds it)"):
+        # Re-pinned by the tester, U8b RED (PSC-23 U8-8; design-notes N4 amendment U8 item 8): the
+        # generator now arrives through scripts/bundle_fetch.sh, which replaces the interim pull at
+        # the same place, so the base pull follows that call (was: the compose pull of the generator).
+        fetches = [i for i, r in enumerate(records) if r["argv"][:2] == ["STUB", "bundle_fetch.sh"]]
+        with self.subTest(part="ruling 6 (N1 am. U4): one pull of the base by its digest, after the sample "
+                               "fetch (U8-8), before bundle.sh (a no-op when the daemon already holds it)"):
             self.assertEqual(len(pulls), 1, f"want one `docker pull {ss.base_ref()}`: "
                                             f"{[records[i]['argv'] for i in pulls]}")
             self.assertEqual(self._pull_problems(records), [])
             if pulls:
-                self.assertTrue(sbom_pulls and sbom_pulls[0] < pulls[0] < at["bundle"],
-                                f"order: pull sbom, pull base, bundle: {events}")
+                self.assertTrue(fetches and fetches[0] < pulls[0] < at["bundle"],
+                                f"order: fetch, pull base, bundle: {events}")
         with self.subTest(part="the base is saved by its pinned reference, after bundle.sh, before dind"):
             self.assertEqual(len(saves), 1, f"want one `docker save` of {ss.base_ref()}: "
                                             f"{[r['argv'] for r in records if 'save' in r['argv'][:2]]}")
@@ -1501,6 +1540,8 @@ class ReworkR1BundleTest(_BundleBase, unittest.TestCase):
         # saved as ke-neo4j (images/ke-neo4j.tar, app/sboms/ke-neo4j.spdx.json); re-targeted
         # by the tester, U4b RED.
         raw = ss.spdx_doc("ke-neo4j", hash_rows() + evil_rows())
+        # platform-sbom U9b (design item 14 *Controls*): the synthetic lock covers this document too.
+        self._relock_for({"ke-neo4j": raw})
         result, _, out, _ = self._good(FAKE_SYFT_RAW=json.dumps({"ke-neo4j": json.dumps(raw)}))
         output = self._out(result)
         doc = json.loads((out / "app" / "sboms" / "ke-neo4j.spdx.json").read_text(encoding="utf-8"))
@@ -1614,9 +1655,16 @@ class ReworkR1OfflineTest(toc._OfflineBase):
 
 # N4's host table (the fetch step's only egress), with repo1.maven.org from
 # N8a 2. Exact list; a host N4 does not name is not added here.
+# U8c (PSC-23 U8-10; design-notes "N4 amendment, U8" ruling O-2, answered after
+# the U8b real runs): objects.githubusercontent.com is dropped, unused by every
+# kind in the sample and full-set fetches (Temurin redirects to
+# release-assets.githubusercontent.com). Tester, U8c O-2 RED, 2026-10-29.
+U8C_DROPPED_HOST = "objects.githubusercontent.com"
 U6_HOSTS = {"snapshot.debian.org", "gitlab.alpinelinux.org", "distfiles.alpinelinux.org", "github.com",
-            "codeload.github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com",
-            "files.pythonhosted.org", "repo1.maven.org"}
+            "codeload.github.com", "release-assets.githubusercontent.com",
+            "files.pythonhosted.org", "repo1.maven.org",
+            # U7d (human ruling A71, Q71 option 1; design-notes "U7d precision" P5).
+            "apt-archive.postgresql.org"}
 # The policy's image name -> its tests/fixtures/sbom-u3 package list (U4b,
 # PSC-26: the U3 neo4j list stands in for ke-neo4j). Others: same name.
 U6_FIXTURE_OF = {policy: fixture for fixture, policy in U4B_POLICY_NAME.items()}
@@ -1741,7 +1789,24 @@ class PolicyU6SchemaTest(unittest.TestCase):
     def test_hosts_are_the_fetch_hosts(self):
         hosts = self._policy().get("hosts")
         self.assertIsInstance(hosts, list, "docker/source-policy.json has no `hosts` (U6, N4)")
-        self.assertEqual(set(hosts), U6_HOSTS, "`hosts` is not N4's host table plus repo1.maven.org")
+        self.assertEqual(set(hosts), U6_HOSTS, "`hosts` is not N4's host table plus repo1.maven.org and "
+                         "apt-archive.postgresql.org, less objects.githubusercontent.com (U8-10, O-2)")
+        self.assertEqual(len(hosts), len(U6_HOSTS), "U8c O-2: exactly nine hosts (U7d P5's ten less one)")
+
+    def test_hosts_drop_the_unused_temurin_redirect_target(self):
+        """U8c O-2 (PSC-23 U8-10): the real fetches never used
+        objects.githubusercontent.com, so it leaves `hosts`; Temurin's redirect
+        target release-assets.githubusercontent.com stays, and pypi.org (a
+        resolution host only, N0 / O2 ruling) is still not a file host."""
+        hosts = self._policy().get("hosts")
+        self.assertIsInstance(hosts, list, "docker/source-policy.json has no `hosts` (U6, N4)")
+        with self.subTest(host=U8C_DROPPED_HOST):
+            self.assertNotIn(U8C_DROPPED_HOST, hosts, "U8-10 / O-2: the unused Temurin redirect target is "
+                             "still in docker/source-policy.json `hosts`")
+        with self.subTest(host="release-assets.githubusercontent.com"):
+            self.assertIn("release-assets.githubusercontent.com", hosts, "Temurin's real redirect target (U8b runs)")
+        with self.subTest(host="pypi.org"):
+            self.assertNotIn("pypi.org", hosts, "pypi.org is a resolution host, never a lock file host (N0, O2)")
 
     def test_exempt_entries_jna_and_javassist(self):
         exempt = self._policy().get("exempt")

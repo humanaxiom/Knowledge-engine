@@ -20,6 +20,11 @@ file is streamed into the hashers and never stored, within a 600 s deadline
 and a 4 GiB cap (item 1). Every key is checked against U7a's grammar before
 any URL is built (item 11). One call per file, no retry (Q61).
 
+U8: the network core (`_fetch_once`, `download`) and the parsers (`parse_dsc`,
+`dsc_listing`, `parse_apkbuild`) are also loaded by `sources_fetch.py`, which
+runs in verify and CI; the resolve routes (`resolve()`, `main`) still never
+run there.
+
 - temurin: the tag comes from the image's /opt/java/openjdk/release (passed in
   needs.json by `sbom_check.py lock-needs --tar`), cross-checked with the SBOM;
   the asset is checked against its `.sha256.txt`.
@@ -72,13 +77,28 @@ SNAPSHOT = "snapshot.debian.org"
 GITLAB = "gitlab.alpinelinux.org"
 DISTFILES = "distfiles.alpinelinux.org"
 APORTS_API = f"https://{GITLAB}/api/v4/projects/alpine%2Faports/repository"
-NAME_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+~-]{0,254}")  # the U7a lock name rule
+NAME_RE = re.compile(r"[A-Za-z0-9_][A-Za-z0-9._+~-]{0,254}")  # the lock name rule (U7d round 1, item 10)
 _LAST_SNAPSHOT: list[float] = []
 ARCHES = ("amd64", "arm64")
 PYPI_JSON_HOST = "pypi.org"  # resolution only, never a lock file URL (O2)
 GITHUB = "github.com"
 MAVEN = "repo1.maven.org"
-ROUTES = ("temurin", "maven", "pypi", "neo4j", "deb", "apk")
+ROUTES = ("temurin", "maven", "pypi", "neo4j", "deb", "apk", "pgdg")
+# U7d R1-R6 (Q72): a bounded retry for this tool only; fetch() defaults to none.
+RETRIES = 3
+RETRY_WAITS = (10, 30, 60)
+SLEEP = time.sleep
+_ACTIVE_RETRIES = [0]  # resolve() sets RETRIES for its run
+# Security's U7d design review: a run-wide retry budget and a run wall clock.
+RUN_RETRIES = 20
+RUN_DEADLINE = 10800  # seconds, 3 h
+_RUN: dict[str, float] = {"retries": 0, "start": 0.0, "active": 0}
+_PGDG_INRELEASE: dict[str, bytes] = {}  # suite -> the raw InRelease the run used (security R-1)
+# U7d P: the pgdg route (Q71, A71).
+PGDG = "apt-archive.postgresql.org"
+SOURCES_CAP = 67108864  # 64 MiB, the uncompressed Sources index (P2 amended)
+_PGDG_INDEX: dict[str, dict[tuple[str, str], list[dict[str, str]]]] = {}
+_PGDG_WANT: set[str] = set()
 HEX = {"sha1": 40, "sha256": 64, "sha512": 128}
 # U7a's key grammar (item 6 (c)), a minimal copy: sbom_check.py is not mounted
 # in the sources-resolve service (round 1, items 3 and 11).
@@ -106,6 +126,54 @@ def valid_key(key: Any) -> bool:
 
 class ResolveError(Exception):
     """A fail-closed stop; the message is item 4's `<why>`."""
+
+
+class _Retryable(ResolveError):
+    """A final 5xx or a timeout (R2): `retry` is the retry line's tail."""
+
+    def __init__(self, message: str, retry: str):
+        super().__init__(message)
+        self.retry = retry
+
+
+def _attempts(fn: Callable[[], Any], retries: int, before: Callable[[], None] | None = None) -> Any:
+    """R1-R5: run `fn` up to 1 + retries times; only _Retryable is retried,
+    after `retry <n>/<retries> in <wait> s: <why>` and SLEEP(wait)."""
+    for n in range(retries + 1):
+        _run_clock()
+        if before is not None:
+            before()
+        try:
+            return fn()
+        except _Retryable as exc:
+            if n == retries:
+                raise ResolveError(str(exc)) from None
+            if _RUN["active"]:
+                if _RUN["retries"] >= RUN_RETRIES:
+                    raise ResolveError(f"retry budget exhausted ({RUN_RETRIES})") from None
+                _RUN["retries"] += 1
+            wait = RETRY_WAITS[n]
+            _run_clock(wait)
+            print(f"retry {n + 1}/{retries} in {wait:g} s: {exc.retry}", file=sys.stderr, flush=True)
+            SLEEP(wait)
+    raise AssertionError("unreachable")
+
+
+def _run_clock(ahead: float = 0.0) -> None:
+    """Security R-2: checked before every request, retry wait and snapshot
+    pause; a wait that would end past the run deadline fails at once."""
+    if _RUN["active"] and time.monotonic() - _RUN["start"] + ahead > RUN_DEADLINE:
+        raise ResolveError(f"run deadline {RUN_DEADLINE:g} s passed")
+
+
+def _retry_url(url: str) -> str:
+    """A retry line never prints a query (security: signed hop URLs)."""
+    head, sep, _ = url.partition("?")
+    return _clean(head) + ("?<query omitted>" if sep else "")
+
+
+def _retries(value: int | None) -> int:
+    return _ACTIVE_RETRIES[0] if value is None else value
 
 
 class Response:
@@ -136,6 +204,10 @@ def _default_opener(url: str, timeout: float) -> Response:  # pragma: no cover -
     except urllib.error.HTTPError as exc:  # 3xx and errors arrive here with NoRedirect
         exc.read(ERROR_BODY_LIMIT)  # read up to 1 MiB and drop it: never parsed or printed (I-1)
         return Response(exc.code, dict(exc.headers or {}), b"")
+    except urllib.error.URLError as exc:  # U7d rework round 1, item 1: connect/TLS/send failures
+        if isinstance(exc.reason, BaseException):
+            raise exc.reason from None  # a TimeoutError is retried (Q72); any other reason is not
+        raise
 
     def chunks() -> Iterable[bytes]:
         while True:
@@ -181,7 +253,7 @@ def _hop_refusal(url: str, first: bool) -> str | None:
 
 def _transport(host: str, url: str, exc: BaseException, timeout: float) -> ResolveError:
     if isinstance(exc, (TimeoutError, socket.timeout)):
-        return ResolveError(f"{host}: timeout after {timeout:g} s: {_clean(url)}")
+        return _Retryable(f"{host}: timeout after {timeout:g} s: {_clean(url)}", f"{host}: timeout: {_retry_url(url)}")
     return ResolveError(f"{host}: {type(exc).__name__}: {_clean(url)}")
 
 
@@ -205,9 +277,15 @@ def _guarded(r: Response, host: str, url: str, started: float, timeout: float) -
         yield chunk
 
 
-def fetch(url: str, allow: set[str], *, timeout: float = TIMEOUT, hops: list[str] | None = None,
-          first_allow: set[str] | frozenset[str] = frozenset(), supplied: bool = False,
-          missing_ok: bool = False) -> Response | None:
+def fetch(url: str, allow: set[str], *, retries: int = 0, **kw: Any) -> Response | None:
+    """One logical request (the first URL and its redirects) with R1's retry
+    budget; `retries=0` (the default) is Q61's single call."""
+    return _attempts(lambda: _fetch_once(url, allow, **kw), retries)
+
+
+def _fetch_once(url: str, allow: set[str], *, timeout: float = TIMEOUT, hops: list[str] | None = None,
+                first_allow: set[str] | frozenset[str] = frozenset(), supplied: bool = False,
+                missing_ok: bool = False) -> Response | None:
     """GET with hop-by-hop redirects: at most 5, each passing `_hop_refusal`
     and its host in `allow` (exact, lower-cased); `first_allow` widens only
     the first request (pypi.org's JSON, round 1, item 8). Item 4's messages;
@@ -232,6 +310,7 @@ def fetch(url: str, allow: set[str], *, timeout: float = TIMEOUT, hops: list[str
             hops.append(host)
         if time.monotonic() - started > DEADLINE:
             raise ResolveError(f"{host}: deadline {DEADLINE:g} s passed: {_clean(current)}")
+        _run_clock()
         try:
             r = OPENER(current, timeout)
         except (OSError, ValueError, http.client.HTTPException) as exc:
@@ -243,13 +322,15 @@ def fetch(url: str, allow: set[str], *, timeout: float = TIMEOUT, hops: list[str
             if hop == MAX_HOPS:
                 break
             if not PRINTABLE.fullmatch(loc):  # before the join, which drops tabs and newlines
-                raise ResolveError(f"redirect to {_clean(loc)} refused: not printable ASCII")
+                raise ResolveError(f"redirect to {_retry_url(loc)} refused: not printable ASCII")
             if ":" in loc.split("/", 1)[0] and not loc.startswith("https://"):  # the join lower-cases a scheme
                 raise ResolveError(f"redirect to a non-https URL refused: {_clean(loc)}")
             current = urljoin(current, loc)
             continue
         if missing_ok and r.status == 404:
             return None
+        if 500 <= r.status < 600:  # R2: a final 5xx at any hop is retried
+            raise _Retryable(f"{host}: HTTP {r.status}: {_clean(current)}", f"{host}: HTTP {r.status}: {_retry_url(current)}")
         if not 200 <= r.status < 300:
             raise ResolveError(f"{host}: HTTP {r.status}: {_clean(current)}")
         return Response(r.status, r.headers, _guarded(r, host, current, started, timeout))
@@ -257,27 +338,56 @@ def fetch(url: str, allow: set[str], *, timeout: float = TIMEOUT, hops: list[str
 
 
 def stream(url: str, allow: set[str], algs: tuple[str, ...] = ("sha256",),
-           hops: list[str] | None = None, supplied: bool = False) -> tuple[dict[str, str], int]:
-    """The body's digests and size; the bytes are hashed, never stored."""
-    r = fetch(url, allow, hops=hops, supplied=supplied)
+           hops: list[str] | None = None, supplied: bool = False, retries: int | None = None,
+           before: Callable[[], None] | None = None) -> tuple[dict[str, str], int]:
+    """The body's digests and size; the bytes are hashed, never stored. A
+    retried attempt restarts with fresh hashers and size (R2, P-R2)."""
+    def once() -> tuple[dict[str, str], int]:
+        r = _fetch_once(url, allow, hops=hops, supplied=supplied)
+        assert r is not None
+        hashers = {a: hashlib.new(a) for a in set(algs) | {"sha256"}}
+        size = 0
+        for chunk in r.body:
+            size += len(chunk)
+            for h in hashers.values():
+                h.update(chunk)
+        return {a: h.hexdigest() for a, h in hashers.items()}, size
+    return _attempts(once, _retries(retries), before)
+
+
+def download(url: str, allow: set[str], fh: Any, limit: int, algs: tuple[str, ...],
+             hops: list[str]) -> tuple[dict[str, str], int]:
+    """U8: the body of `url` written to `fh` and hashed (sha256 plus `algs`)
+    in ONE attempt. It has no retries parameter and never calls `_attempts`,
+    so Q61's single call holds by construction. A chunk that would take the
+    body past `limit` is neither hashed nor written. `hops` collects the
+    host of every request (the first and each redirect)."""
+    r = _fetch_once(url, allow, hops=hops)
     assert r is not None
     hashers = {a: hashlib.new(a) for a in set(algs) | {"sha256"}}
     size = 0
     for chunk in r.body:
+        if size + len(chunk) > limit:
+            raise ResolveError(f"{hops[-1]}: more than {limit} bytes: {_retry_url(url)}")
         size += len(chunk)
         for h in hashers.values():
             h.update(chunk)
+        fh.write(chunk)
     return {a: h.hexdigest() for a, h in hashers.items()}, size
 
 
-def text(url: str, allow: set[str], limit: int = 1 << 20, first_allow: frozenset[str] = frozenset()) -> str:
-    r = fetch(url, allow, first_allow=first_allow)
-    assert r is not None
-    data = b""
-    for chunk in r.body:
-        data += chunk
-        if len(data) > limit:
-            raise ResolveError(f"{_clean(url)}: more than {limit} bytes")
+def text(url: str, allow: set[str], limit: int = 1 << 20, first_allow: frozenset[str] = frozenset(),
+         retries: int | None = None, before: Callable[[], None] | None = None) -> str:
+    def once() -> bytes:
+        r = _fetch_once(url, allow, first_allow=first_allow)
+        assert r is not None
+        data = b""
+        for chunk in r.body:
+            data += chunk
+            if len(data) > limit:
+                raise ResolveError(f"{_clean(url)}: more than {limit} bytes")
+        return data
+    data = _attempts(once, _retries(retries), before)
     try:
         return data.decode("utf-8")
     except UnicodeDecodeError:
@@ -431,26 +541,30 @@ def _snapshot_wait() -> None:
     if _LAST_SNAPSHOT:
         wait = SNAPSHOT_PAUSE - (time.monotonic() - _LAST_SNAPSHOT[-1])
         if wait > 0:
+            _run_clock(wait)
             time.sleep(wait)
     _LAST_SNAPSHOT[:] = [time.monotonic()]
 
 
 def capped(url: str, allow: set[str], name: str, limit: int = TEXT_LIMIT,
-           algs: tuple[str, ...] = ("sha256",), missing_ok: bool = False) -> tuple[bytes, dict[str, str]] | None:
+           algs: tuple[str, ...] = ("sha256",), missing_ok: bool = False, retries: int | None = None,
+           before: Callable[[], None] | None = None) -> tuple[bytes, dict[str, str]] | None:
     """The body, at most `limit` bytes (`<name>: more than <limit> bytes`),
     hashed while read."""
-    r = fetch(url, allow, missing_ok=missing_ok)
-    if r is None:
-        return None
-    hashers = {a: hashlib.new(a) for a in set(algs) | {"sha256"}}
-    data = bytearray()
-    for chunk in r.body:
-        data += chunk
-        if len(data) > limit:
-            raise ResolveError(f"{_clean(name)}: more than {limit} bytes")
-        for h in hashers.values():
-            h.update(chunk)
-    return bytes(data), {a: h.hexdigest() for a, h in hashers.items()}
+    def once() -> tuple[bytes, dict[str, str]] | None:
+        r = _fetch_once(url, allow, missing_ok=missing_ok)
+        if r is None:
+            return None
+        hashers = {a: hashlib.new(a) for a in set(algs) | {"sha256"}}
+        data = bytearray()
+        for chunk in r.body:
+            data += chunk
+            if len(data) > limit:
+                raise ResolveError(f"{_clean(name)}: more than {limit} bytes")
+            for h in hashers.values():
+                h.update(chunk)
+        return bytes(data), {a: h.hexdigest() for a, h in hashers.items()}
+    return _attempts(once, _retries(retries), before)
 
 
 def srcfiles_map(doc: Any) -> dict[str, str]:
@@ -477,58 +591,80 @@ def srcfiles_map(doc: Any) -> dict[str, str]:
 DSC_BAD_CHARS = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f\u2028\u2029]")
 
 
+def _paragraphs(lines: list[tuple[int, str]], label: str) -> list[dict[str, str]]:
+    """deb822 paragraphs of (line number, line) pairs with every round-1 and
+    U7d rule: control characters, duplicate fields (case-blind, per
+    paragraph), a line that is neither a field, a continuation nor blank."""
+    paras: list[dict[str, list[str]]] = []
+    fields: dict[str, list[str]] = {}
+    seen: set[str] = set()
+    current = None
+    for no, ln in lines:
+        if not ln.strip():
+            if DSC_BAD_CHARS.search(ln):
+                raise ResolveError(f"{_clean(label)}: control character in field {current or '-'}")
+            if fields:
+                paras.append(fields)
+            fields, seen, current = {}, set(), None
+            continue
+        if ln[0] in " \t":
+            if current is None:
+                raise ResolveError(f"{_clean(label)}: line {no} is not a field or continuation")
+            if DSC_BAD_CHARS.search(ln):
+                raise ResolveError(f"{_clean(label)}: control character in field {_clean(current)}")
+            fields[current].append(ln.strip())
+            continue
+        field, sep, value = ln.partition(":")
+        ok = bool(sep and field and " " not in field and "\t" not in field)
+        if DSC_BAD_CHARS.search(ln):
+            raise ResolveError(f"{_clean(label)}: control character in field {_clean(field) if ok else '-'}")
+        if not ok:
+            raise ResolveError(f"{_clean(label)}: line {no} is not a field or continuation")
+        if field.lower() in seen:
+            raise ResolveError(f"{_clean(label)}: duplicate field {_clean(field)}")
+        seen.add(field.lower())
+        current = field
+        fields[current] = [value.strip()]
+    if fields:
+        paras.append(fields)
+    return [{k: "\n".join(v).strip() for k, v in p.items()} for p in paras]
+
+
+def parse_deb822(body: str, label: str) -> list[dict[str, str]]:
+    """U7d P2 amended (3): the one deb822 parser (the .dsc, Sources stanzas,
+    Release). CRLF folded, split on LF only. A multiline field's value is its
+    field-line value (if any) and its continuation lines, joined with LF."""
+    lines = body.replace("\r\n", "\n").split("\n")
+    return _paragraphs(list(enumerate(lines, 1)), label)
+
+
 def parse_dsc(body: str, name: str = ".dsc") -> dict[str, str]:
     """D4: the deb822 fields of a `.dsc` (clearsign armour stripped, `- `
-    dash-escapes undone, the signature not verified). A field's value is its
-    first line and its continuation lines, joined with newlines and stripped.
-    Round 1: CRLF folded, split on LF only; a control or line-separator
-    character fails (`<name>: control character in field <field>`, `-` in
-    the armour or before the first field); a field named twice (case-blind)
-    fails (`<name>: duplicate field <field>`)."""
-    lines = body.replace("\r\n", "\n").split("\n")
+    dash-escapes undone, the signature not verified), by parse_deb822's rules;
+    line numbers count from the top of the file. Its paragraphs are one."""
+    lines = list(enumerate(body.replace("\r\n", "\n").split("\n"), 1))
     body_lines = lines
-    armour: list[str] = []
-    if lines and lines[0].startswith("-----BEGIN PGP SIGNED MESSAGE"):
+    if lines and lines[0][1].startswith("-----BEGIN PGP SIGNED MESSAGE"):
         rest = lines[1:]
-        start = rest.index("") + 1 if "" in rest else len(rest)
-        armour = lines[:start + 1]
-        rest = rest[start:]
-        for k, ln in enumerate(rest):
+        blank = next((k for k, (_, ln) in enumerate(rest) if ln == ""), len(rest))
+        armour = lines[:blank + 2]
+        rest = rest[blank + 1:]
+        for k, (_, ln) in enumerate(rest):
             if ln.startswith("-----BEGIN PGP SIGNATURE"):
                 armour += rest[k:]
                 rest = rest[:k]
                 break
-        body_lines = [ln[2:] if ln.startswith("- ") else ln for ln in rest]
-    for ln in armour:
-        if DSC_BAD_CHARS.search(ln):
-            raise ResolveError(f"{_clean(name)}: control character in field -")
-    fields: dict[str, list[str]] = {}
-    seen: set[str] = set()
-    current = None
-    for ln in body_lines:
-        if not ln.strip():
+        for _, ln in armour:
             if DSC_BAD_CHARS.search(ln):
-                raise ResolveError(f"{_clean(name)}: control character in field {current or '-'}")
-            current = None
-            continue
-        if ln[0] in " \t" and current is not None:
-            if DSC_BAD_CHARS.search(ln):
-                raise ResolveError(f"{_clean(name)}: control character in field {_clean(current)}")
-            fields[current].append(ln.strip())
-            continue
-        field, sep, value = ln.partition(":")
-        if DSC_BAD_CHARS.search(ln):
-            raise ResolveError(f"{_clean(name)}: control character in field "
-                               f"{_clean(field) if sep and field and ' ' not in field else '-'}")
-        if not sep or not field or " " in field:
-            current = None
-            continue
-        if field.lower() in seen:
-            raise ResolveError(f"{_clean(name)}: duplicate field {_clean(field)}")
-        seen.add(field.lower())
-        current = field
-        fields[current] = [value.strip()]
-    return {k: "\n".join(v).strip() for k, v in fields.items()}
+                raise ResolveError(f"{_clean(name)}: control character in field -")
+        body_lines = [(no, ln[2:] if ln.startswith("- ") else ln) for no, ln in rest]
+    merged: dict[str, str] = {}
+    for para in _paragraphs(body_lines, name):
+        for k, v in para.items():
+            if k.lower() in {x.lower() for x in merged}:
+                raise ResolveError(f"{_clean(name)}: duplicate field {_clean(k)}")
+            merged[k] = v
+    return merged
 
 
 def _dsc_lines(dsc: str, fields: dict[str, str], field: str, hexlen: int) -> list[tuple[str, int, str]]:
@@ -542,8 +678,11 @@ def _dsc_lines(dsc: str, fields: dict[str, str], field: str, hexlen: int) -> lis
     return out
 
 
-def dsc_files(fields: dict[str, str], dsc: str, src: str, ver: str, names: dict[str, str]) -> list[dict[str, Any]]:
-    """D4-D6: the files the `.dsc` lists, as lock file entries."""
+def dsc_listing(fields: dict[str, str], dsc: str, src: str, ver: str) -> list[tuple[str, int, str]]:
+    """D4, D5: (name, size, sha256) per file the `.dsc` lists, once its
+    Source/Version equal the key, Checksums-Sha256 and Files list the same
+    names and sizes, every name is safe and a present Checksums-Sha1 names
+    the same files. Nothing here is snapshot-specific (U8 shares it)."""
     if (fields.get("Source"), fields.get("Version")) != (src, ver):
         raise ResolveError(f"{_clean(dsc)}: Source/Version is {_clean(fields.get('Source'))}/"
                            f"{_clean(fields.get('Version'))}, want {src}/{ver}")
@@ -560,22 +699,30 @@ def dsc_files(fields: dict[str, str], dsc: str, src: str, ver: str, names: dict[
     if sorted((n, z) for _, z, n in sha256s) != sorted((n, z) for _, z, n in md5s) or \
             len({n for _, _, n in sha256s}) != len(sha256s):
         raise ResolveError(f"{_clean(dsc)}: Checksums-Sha256 and Files list different files")
-    for _, _, name in sha256s:
+    if "Checksums-Sha1" in fields and sorted((n, z) for _, z, n in sha1s) != sorted((n, z) for _, z, n in sha256s):
+        raise ResolveError(f"{_clean(dsc)}: Checksums-Sha1 and Checksums-Sha256 list different files")
+    return [(name, size, h) for h, size, name in sha256s]
+
+
+def dsc_files(fields: dict[str, str], dsc: str, src: str, ver: str, names: dict[str, str]) -> list[dict[str, Any]]:
+    """D4-D6: the files the `.dsc` lists, as lock file entries."""
+    listing = dsc_listing(fields, dsc, src, ver)
+    sha1s = _dsc_lines(dsc, fields, "Checksums-Sha1", 40) if "Checksums-Sha1" in fields else []
+    for name, _, _ in listing:
         if name not in names:
             raise ResolveError(f"{_clean(name)} is in the .dsc but not in snapshot's srcfiles")
     for h, _, name in sha1s:
         if names.get(name) != h:
             raise ResolveError(f"{_clean(name)}: Checksums-Sha1 says {h}, {SNAPSHOT} says {names.get(name)}")
     return [_file(name, f"https://{SNAPSHOT}/file/{names[name]}", h, size, "sha256", h, f"{dsc} Checksums-Sha256")
-            for h, size, name in sha256s]
+            for name, size, h in listing]
 
 
 def resolve_deb(key: str, arch: str, allow: set[str]) -> dict[str, Any]:
     src, _, ver = key.split(":", 1)[1].rpartition("@")
     url = f"https://{SNAPSHOT}/mr/package/{quote(src, safe='')}/{quote(ver, safe='')}/srcfiles?fileinfo=1"
-    _snapshot_wait()
     try:
-        doc = json.loads(text(url, allow, TEXT_LIMIT))
+        doc = json.loads(text(url, allow, TEXT_LIMIT, before=_snapshot_wait))
     except ValueError:
         raise ResolveError(f"{SNAPSHOT} srcfiles is not the expected JSON") from None
     names = srcfiles_map(doc)
@@ -583,8 +730,7 @@ def resolve_deb(key: str, arch: str, allow: set[str]) -> dict[str, Any]:
     if dsc not in names:
         raise ResolveError(f"{SNAPSHOT} has no {dsc} in srcfiles")
     durl = f"https://{SNAPSHOT}/file/{names[dsc]}"
-    _snapshot_wait()
-    got = capped(durl, allow, dsc, TEXT_LIMIT, ("sha1", "sha256"))
+    got = capped(durl, allow, dsc, TEXT_LIMIT, ("sha1", "sha256"), before=_snapshot_wait)
     assert got is not None
     data, digests = got
     if digests["sha1"] != names[dsc]:
@@ -642,21 +788,28 @@ def parse_apkbuild(body: str, commit: str, ver: str, origin: str = "-") -> list[
 
 
 def _json(url: str, allow: set[str], what: str, missing_ok: bool = False) -> tuple[Any, dict[str, str]] | None:
-    r = fetch(url, allow, missing_ok=missing_ok)
-    if r is None:
+    def once() -> tuple[bytes, dict[str, str]] | None:
+        r = _fetch_once(url, allow, missing_ok=missing_ok)
+        if r is None:
+            return None
+        data = bytearray()
+        for chunk in r.body:
+            data += chunk
+            if len(data) > TEXT_LIMIT:
+                raise ResolveError(f"{what}: more than {TEXT_LIMIT} bytes")
+        return bytes(data), r.headers
+    got = _attempts(once, _retries(None))
+    if got is None:
         return None
-    data = bytearray()
-    for chunk in r.body:
-        data += chunk
-        if len(data) > TEXT_LIMIT:
-            raise ResolveError(f"{what}: more than {TEXT_LIMIT} bytes")
+    data, headers = got
     try:
-        return json.loads(bytes(data).decode("utf-8")), r.headers
+        return json.loads(data.decode("utf-8")), headers
     except ValueError:
         raise ResolveError(f"{what} is not the expected JSON") from None
 
 
-def _tree_blobs(listing: Any, repo: str, origin: str, commit: str) -> dict[str, str]:
+def _tree_blobs(listing: Any, repo: str, origin: str, commit: str,
+                links: dict[str, str] | None = None) -> dict[str, str]:
     """A2 (ruling 1): basename -> path under `<repo>/<origin>/` of every blob
     of the recursive listing; each path segment passes the lock name rule;
     two blobs with one basename fail."""
@@ -672,16 +825,58 @@ def _tree_blobs(listing: Any, repo: str, origin: str, commit: str) -> dict[str, 
         path, name = e.get("path"), e.get("name")
         if not isinstance(path, str) or not isinstance(name, str) or not path.startswith(prefix):
             raise ResolveError(f"{GITLAB} tree listing is not the expected JSON")
-        if e.get("type") != "blob" or e.get("mode") not in ("100644", "100755"):
+        link = e.get("type") == "blob" and e.get("mode") == "120000" and links is not None
+        if not link and (e.get("type") != "blob" or e.get("mode") not in ("100644", "100755")):
             raise ResolveError(f"{origin}: {_clean(path)} at {commit} is not a regular file")
         rel = path[len(prefix):]
         segs = rel.split("/")
         if segs[-1] != name or not all(safe_name(x) for x in segs):
             raise ResolveError(f"{_clean(rel)}: not a safe file name")
-        if name in out:
+        if name in out or (links is not None and name in links):
             raise ResolveError(f"{origin}: two files named {name} at {commit}")
+        if link:
+            assert links is not None
+            links[name] = rel  # U7d rework round 1, item 8: checked, then skipped or refused
+            continue
         out[name] = rel
     return out
+
+
+def _check_link(key: str, origin: str, repo: str, commit: str, name: str, rel: str, blobs: dict[str, str],
+                sums: dict[str, str], allow: set[str]) -> None:
+    """U7d rework round 1, item 8: a mode-120000 entry is skipped only when
+    its target (the files-API metadata `content`, base64, <= 1 KiB, bound by
+    content_sha256) is one segment naming a regular blob in the same
+    directory; anything else is not a regular file."""
+    import base64
+    import binascii
+    path = f"{repo}/{origin}/{rel}"
+    refused = ResolveError(f"{origin}: {_clean(path)} at {commit} is not a regular file")
+    if name in sums:
+        raise ResolveError(f"{origin}: {_clean(name)} is a symlink named in sha512sums")
+    meta = _json(f"{APORTS_API}/files/{quote(path, safe='')}?ref={commit}", allow, f"{GITLAB} files API")
+    assert meta is not None
+    doc = meta[0] if isinstance(meta[0], dict) else {}
+    size, content, want = doc.get("size"), doc.get("content"), doc.get("content_sha256")
+    if doc.get("encoding") != "base64" or type(size) is not int or not 0 < size <= 1024 or not isinstance(content, str):
+        raise refused
+    try:
+        target_bytes = base64.b64decode(content, validate=True)
+    except (binascii.Error, ValueError):
+        raise refused from None
+    if len(target_bytes) > 1024 or hashlib.sha256(target_bytes).hexdigest() != want:
+        raise refused
+    try:
+        target = target_bytes.decode("ascii")
+    except UnicodeDecodeError:
+        raise refused from None
+    if any(c in target for c in "\x00\r\n/") or target in ("", ".", "..") or not safe_name(target):
+        raise refused
+    there = blobs.get(target)
+    if there is None or os.path.dirname(there) != os.path.dirname(rel):
+        raise refused
+    # U7d round 1, item 10: the line names its key (two keys may hold the same link).
+    print(f"{_clean(key)}: {_clean(path)} -> {_clean(target)} (symlink to a locked file, skipped)", file=sys.stderr)
 
 
 def resolve_apk(key: str, route: dict[str, Any], arch: str, allow: set[str]) -> dict[str, Any]:
@@ -692,6 +887,7 @@ def resolve_apk(key: str, route: dict[str, Any], arch: str, allow: set[str]) -> 
         if not isinstance(value, str) or not re.fullmatch(rx, value):
             raise ResolveError(f"apk {key}: route is malformed ({field})")
     found: dict[str, dict[str, str]] = {}
+    found_links: dict[str, dict[str, str]] = {}
     for repo in ("main", "community"):
         got = _json(f"{APORTS_API}/tree?path={quote(f'{repo}/{origin}', safe='')}&ref={commit}&recursive=true&per_page=100", allow,
                     f"{GITLAB} tree listing", missing_ok=True)
@@ -702,9 +898,11 @@ def resolve_apk(key: str, route: dict[str, Any], arch: str, allow: set[str]) -> 
             raise ResolveError(f"{origin}: listing may be truncated at {commit}")  # round 1, item 7
         if headers.get("x-next-page"):
             raise ResolveError(f"{origin}: more than 100 files at {commit}")
-        blobs = _tree_blobs(listing, repo, origin, commit)
+        repo_links: dict[str, str] = {}
+        blobs = _tree_blobs(listing, repo, origin, commit, repo_links)
         if blobs:  # ruling 2: an empty listing is "not here"
             found[repo] = blobs
+            found_links[repo] = repo_links
     if len(found) == 2:
         raise ResolveError(f"{origin}: in both main and community at {commit}")
     if not found:
@@ -737,6 +935,8 @@ def resolve_apk(key: str, route: dict[str, Any], arch: str, allow: set[str]) -> 
     except UnicodeDecodeError:
         raise ResolveError("APKBUILD: not UTF-8 text") from None
     sums = dict(parse_apkbuild(body, commit, ver, origin))
+    for name, rel in sorted(found_links.get(repo, {}).items()):
+        _check_link(key, origin, repo, commit, name, rel, blobs, sums, allow)
     files = [_file("APKBUILD", api_raw("APKBUILD"), want, len(data), "sha256", want, gl_from)]
     # Ruling 3: every regular file of the package directory is locked.
     for name, rel in sorted(blobs.items(), key=lambda kv: kv[1]):
@@ -767,6 +967,142 @@ def resolve_apk(key: str, route: dict[str, Any], arch: str, allow: set[str]) -> 
         files.append(_file(name, url, hashed["sha256"], size, "sha512", sha512, f"APKBUILD sha512sums at {commit}"))
     entry = _entry("apk", arch, files)
     entry.update({"commit": commit, "branch": branch, "repo": repo})
+    return entry
+
+
+
+# --- U7d: the pgdg route (design-notes "U7d precision" P1-P6, "P2 amended") ---
+
+def pgdg_pool(src: str) -> str:
+    """Debian's pool letter: `lib` plus one, else the first letter."""
+    return src[:4] if src.startswith("lib") else src[:1]
+
+
+def _release_sources_sha256(body: str) -> tuple[str, int]:
+    """P2 amended (2): Release's SHA256 entry for main/source/Sources."""
+    hits = []
+    for ln in parse_dsc(body, "Release").get("SHA256", "").split("\n"):
+        parts = ln.split()
+        if len(parts) == 3 and parts[2] == "main/source/Sources":
+            hits.append(parts)
+    if len(hits) > 1:
+        raise ResolveError("Release lists Sources sha256 more than once")
+    if not hits or not re.fullmatch(r"[0-9a-f]{64}", hits[0][0]) or not re.fullmatch(r"[0-9]+", hits[0][1]):
+        raise ResolveError("Release lists no Sources sha256")
+    return hits[0][0], int(hits[0][1])
+
+
+def pgdg_index(suite: str, allow: set[str], want: set[str]) -> dict[tuple[str, str], list[dict[str, str]]]:
+    """P2 amended (1), (2): the suite's uncompressed Sources, bound to its
+    Release's SHA256 line by hash and size, 64 MiB cap; (Package, Version) ->
+    the stanzas for the wanted sources only. Used only after the checks."""
+    base = f"https://{PGDG}/pub/repos/apt/dists/{suite}"
+    # Security R-1: InRelease (clearsigned; armour stripped as a .dsc's, never verified here);
+    # its raw bytes are kept for /out/pgdg-<suite>.InRelease and security's offline gpgv.
+    got = capped(f"{base}/InRelease", allow, "InRelease", TEXT_LIMIT)
+    assert got is not None
+    raw = got[0]
+    try:
+        release = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        raise ResolveError("InRelease: not UTF-8 text") from None
+    want_sha, want_size = _release_sources_sha256(release)
+    _PGDG_INRELEASE[suite] = raw
+    label = f"{suite} Sources"
+
+    def once() -> dict[tuple[str, str], list[dict[str, str]]]:
+        r = _fetch_once(f"{base}/main/source/Sources", allow)
+        assert r is not None
+        h = hashlib.sha256()
+        size = 0
+        buf = b""
+        kept: dict[tuple[str, str], list[dict[str, str]]] = {}
+
+        def take(stanza: bytes) -> None:
+            try:
+                txt = stanza.decode("utf-8")
+            except UnicodeDecodeError:
+                raise ResolveError(f"{label}: not UTF-8 text") from None
+            for para in parse_deb822(txt, label):
+                if para.get("Package") in want:
+                    kept.setdefault((para["Package"], para.get("Version", "")), []).append(para)
+        for chunk in r.body:
+            size += len(chunk)
+            if size > SOURCES_CAP:
+                raise ResolveError(f"{label}: more than {SOURCES_CAP} bytes")
+            if size > want_size:
+                raise ResolveError(f"{label}: size {size} differs from Release {want_size}")
+            h.update(chunk)
+            buf += chunk
+            while b"\n\n" in buf:
+                stanza, buf = buf.split(b"\n\n", 1)
+                take(stanza)
+        if size != want_size:
+            raise ResolveError(f"{label}: size {size} differs from Release {want_size}")
+        if h.hexdigest() != want_sha:
+            raise ResolveError(f"{label}: sha256 mismatch against Release")
+        if buf.strip():
+            take(buf)
+        return kept
+    return _attempts(once, _retries(None))
+
+
+def resolve_pgdg(key: str, route: dict[str, Any], arch: str, allow: set[str]) -> dict[str, Any]:
+    src, _, ver = key.split(":", 1)[1].rpartition("@")
+    suite = route.get("suite")
+    for field, value, rx in (("src", route.get("src"), re.escape(src)), ("ver", route.get("ver"), re.escape(ver)),
+                             ("suite", suite, r"[a-z]+-pgdg-archive")):
+        if not isinstance(value, str) or not re.fullmatch(rx, value):
+            raise ResolveError(f"pgdg {key}: route is malformed ({field})")
+    assert isinstance(suite, str)
+    if suite not in _PGDG_INDEX:
+        _PGDG_INDEX[suite] = pgdg_index(suite, allow, _PGDG_WANT | {src})
+    hits = _PGDG_INDEX[suite].get((src, ver), [])
+    if not hits:
+        raise ResolveError(f"{suite} Sources has no {src} {ver}")
+    if len(hits) > 1:
+        raise ResolveError(f"{suite} Sources lists {src} {ver} more than once")
+    stanza = hits[0]
+    p = pgdg_pool(src)
+    if stanza.get("Directory") != f"pool/main/{p}/{src}":
+        raise ResolveError(f"{src}: Sources Directory {_clean(stanza.get('Directory'))} is not pool/main/{p}/{src}")
+    listed = {n: (h, z) for h, z, n in _dsc_lines(f"{suite} Sources", stanza, "Checksums-Sha256", 64)}
+    dsc = f"{src}_{ver.split(':', 1)[1] if ':' in ver else ver}.dsc"
+    if dsc not in listed:
+        raise ResolveError(f"{suite} Sources: no .dsc for {src} {ver}")
+    pool = f"https://{PGDG}/pub/repos/apt/pool/main/{p}/{src}"
+    got = capped(f"{pool}/{dsc}", allow, dsc, TEXT_LIMIT)
+    assert got is not None
+    data, digests = got
+    if digests["sha256"] != listed[dsc][0]:
+        raise ResolveError(f"{dsc}: sha256 mismatch: got {digests['sha256']}, {suite} Sources says {listed[dsc][0]}")
+    try:
+        body = data.decode("utf-8")
+    except UnicodeDecodeError:
+        raise ResolveError(f"{dsc}: not UTF-8 text") from None
+    fields = parse_dsc(body, dsc)
+    if (fields.get("Source"), fields.get("Version")) != (src, ver):
+        raise ResolveError(f"{_clean(dsc)}: Source/Version is {_clean(fields.get('Source'))}/"
+                           f"{_clean(fields.get('Version'))}, want {src}/{ver}")
+    if not fields.get("Checksums-Sha256"):
+        raise ResolveError(f"{_clean(dsc)}: no Checksums-Sha256")
+    if not fields.get("Files"):
+        raise ResolveError(".dsc has no Files")
+    sha256s = _dsc_lines(dsc, fields, "Checksums-Sha256", 64)
+    md5s = _dsc_lines(dsc, fields, "Files", 32)
+    for _, _, name in sha256s + md5s:
+        if not safe_name(name):
+            raise ResolveError(f"{_clean(name)}: not a safe file name")
+    if sorted((n, z) for _, z, n in sha256s) != sorted((n, z) for _, z, n in md5s) or \
+            len({n for _, _, n in sha256s}) != len(sha256s) or not sha256s:
+        raise ResolveError(f"{_clean(dsc)}: Checksums-Sha256 and Files list different files")
+    if {n: (h, z) for h, z, n in sha256s} != {n: v for n, v in listed.items() if n != dsc}:
+        raise ResolveError(f"{dsc}: Sources and .dsc list different files")
+    files = [_file(dsc, f"{pool}/{dsc}", digests["sha256"], len(data), "sha256", listed[dsc][0],
+                   f"{PGDG} {suite} Sources")]
+    files += [_file(n, f"{pool}/{n}", h, z, "sha256", h, f"{dsc} Checksums-Sha256") for h, z, n in sha256s]
+    entry = _entry("pgdg", arch, files)
+    entry["suite"] = suite
     return entry
 
 
@@ -803,6 +1139,22 @@ def resolve(needs: dict[str, Any], lock: dict[str, Any], policy: dict[str, Any],
             raise ResolveError(f"{_clean(key)}: the needs entry is not an object")
     comps: dict[str, Any] = json.loads(json.dumps(lock.get("components") or {}))
     candidates, skipped = [], []
+    _ACTIVE_RETRIES[0] = RETRIES  # R1: this tool's run retries; other callers of fetch() do not
+    _RUN.update(retries=0, start=time.monotonic(), active=1)
+    _PGDG_INDEX.clear()
+    _PGDG_INRELEASE.clear()
+    _PGDG_WANT.clear()
+    _PGDG_WANT.update(k.split(":", 1)[1].rpartition("@")[0] for k in needs if k.startswith("pgdg:"))
+    try:
+        return _resolve_keys(needs, comps, candidates, skipped, arch, allow, uv_lock_text, refresh)
+    finally:
+        _ACTIVE_RETRIES[0] = 0
+        _RUN["active"] = 0
+
+
+def _resolve_keys(needs: dict[str, Any], comps: dict[str, Any], candidates: list[dict[str, Any]], skipped: list[str],
+                  arch: str, allow: set[str], uv_lock_text: str, refresh: bool
+                  ) -> tuple[dict[str, Any], list[dict[str, Any]], list[str]]:
     for key in sorted(needs):
         kind = key.split(":", 1)[0]
         old = comps.get(key)
@@ -814,6 +1166,7 @@ def resolve(needs: dict[str, Any], lock: dict[str, Any], policy: dict[str, Any],
         if isinstance(old, dict) and arch in (old.get("arches") or []) and not refresh:
             continue
         try:
+            _run_clock()
             if kind == "neo4j":
                 candidates.append(neo4j_candidate(key, allow))
                 continue
@@ -825,6 +1178,8 @@ def resolve(needs: dict[str, Any], lock: dict[str, Any], policy: dict[str, Any],
                 entry = resolve_deb(key, arch, allow)
             elif kind == "apk":
                 entry = resolve_apk(key, (needs[key] or {}).get("route") or {}, arch, allow)
+            elif kind == "pgdg":
+                entry = resolve_pgdg(key, (needs[key] or {}).get("route") or {}, arch, allow)
             else:
                 entry = resolve_pypi(key, arch, allow, uv_lock_text)
         except ResolveError as exc:
@@ -873,6 +1228,11 @@ def main(argv: list[str]) -> int:
         return 1
     try:
         new, candidates, skipped = resolve(needs, lock, policy, uv, a.arch, a.refresh)
+        for suite, raw in sorted(_PGDG_INRELEASE.items()):  # security R-1: the second permitted output
+            itmp = os.path.join(a.out, f".pgdg-{suite}.InRelease.tmp")
+            with open(itmp, "wb") as bh:
+                bh.write(raw)
+            os.replace(itmp, os.path.join(a.out, f"pgdg-{suite}.InRelease"))
         tmp = os.path.join(a.out, ".lock.new.json.tmp")
         with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
             fh.write(lock_text(new))
@@ -885,7 +1245,7 @@ def main(argv: list[str]) -> int:
               file=sys.stderr)
         return 1
     for key in skipped:
-        print(f"sources_resolve: skip: {_clean(key)} (no {key.split(':', 1)[0]} route until Q71)", file=sys.stderr)
+        print(f"sources_resolve: skip: {_clean(key)} (no {key.split(':', 1)[0]} route)", file=sys.stderr)
     for c in candidates:
         print("neo4j candidate: " + json.dumps(c, sort_keys=True))
     return 3 if candidates else 0

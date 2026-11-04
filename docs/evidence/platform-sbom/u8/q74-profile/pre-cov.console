@@ -1,0 +1,11 @@
+== pre cov: 44 modules; nproc=24; head=86f7831
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.84ms
+Installed 1 package in 1ms
+== pre cov: real 733.769 s, user 519.106 s, sys 128.235 s (incl. all children)
+== pre cov: rc=1
+----------------------------------------------------------------------
+Ran 1047 tests in 731.418s
+
+FAILED (failures=2, skipped=8)

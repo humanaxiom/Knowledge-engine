@@ -1,0 +1,589 @@
+# U8b reviewer probes (2026-10-28). Read-only: the repo mounted :ro at /work in ke-gates:local, --network none, tmpfs /tmp; drivers in a scratch dir mounted :ro at /probe. Fake docker (tests/fake_docker.py) through the tests' own _FetchScriptBase / BundleFetchRunTest. Paths are container tmp paths.
+
+## 1. U8b test rows, read-only (python -m unittest tests.test_bundle_fetch + the U8b rows of test_offline_check, test_sources_resolve U8bLockSbomsTest and SourcesComposeTest, test_stack_compose, test_sbom_generator)
+.............................................................
+----------------------------------------------------------------------
+Ran 61 tests in 30.750s
+
+OK
+
+## 2. Random argument lists (PROBE_SEED=20261028, PROBE_N=150): driver probe_args.py
+"""Reviewer probe (U8b): random argument lists against scripts/bundle_fetch.sh on
+fake docker, the way tests/test_bundle_fetch.py runs it. Read-only on the repo."""
+import json, os, random, re, sys, unittest
+sys.path.insert(0, "/work")
+from tests.test_bundle_fetch import _FetchScriptBase
+
+SEED = int(os.environ.get("PROBE_SEED", "20261028"))
+FLAGS = ["--set", "--out", "--arch"]
+JUNK = ["", "-", "--", "-e", "--set=sample", "--out=x", "--ARCH", "sample", "full", "amd64", "arm64", "x86_64",
+        "partial", "SAMPLE", " sample", "sample ", "--evidence-dir", "-h", "--help", "*", "$(touch PWNED)",
+        "a b", "a\nb", ";touch PWNED", "`touch PWNED`", "../x", "/", "//", "."]
+
+def spec_valid(args):
+    """U8-1 / A75 grammar: flags with a value; --set in {sample, full}; --out non-empty;
+    --arch absent or in {amd64, arm64}; nothing else. Repeats: last wins (not in the spec)."""
+    i, seen = 0, {}
+    while i < len(args):
+        a = args[i]
+        if a not in FLAGS or i + 1 >= len(args):
+            return False
+        seen[a] = args[i + 1]
+        i += 2
+    if seen.get("--set") not in ("sample", "full"):
+        return False
+    if not seen.get("--out"):
+        return False
+    return seen.get("--arch", "") in ("", "amd64", "arm64")
+
+class Probe(_FetchScriptBase):
+    def test_random_args(self):
+        rng = random.Random(SEED)
+        stats = {"invalid": 0, "valid": 0, "explicit-empty-arch": 0}
+        report = []
+        for n in range(int(os.environ.get("PROBE_N", "120"))):
+            out = str(self._out())
+            toks = []
+            for _ in range(rng.randint(0, 7)):
+                r = rng.random()
+                if r < 0.45:
+                    toks.append(rng.choice(FLAGS))
+                elif r < 0.6:
+                    toks.append(out)
+                else:
+                    toks.append(rng.choice(JUNK))
+            if rng.random() < 0.35:  # bias towards near-valid lists
+                toks = ["--set", rng.choice(["sample", "full", "partial", ""]), "--out", rng.choice([out, ""]),
+                        *rng.choice([[], ["--arch", rng.choice(["amd64", "arm64", "", "x86_64"])]])]
+                rng.shuffle_pairs = None
+            valid = spec_valid(toks)
+            r, recs = self._run(*toks)
+            pwned = [p for p in (self.repo / "PWNED", self.tmp / "PWNED") if p.exists()]
+            self.assertEqual(pwned, [], f"injection via {toks!r}")
+            line = f"{n:03d} valid={valid} rc={r.returncode} docker_calls={len(recs)} args={toks!r}"
+            report.append(line)
+            if not valid:
+                stats["invalid"] += 1
+                if "--arch" in toks and toks[toks.index("--arch") + 1:toks.index("--arch") + 2] == [""] and r.returncode != 2:
+                    stats["explicit-empty-arch"] += 1
+                    report.append("     ^ explicit --arch '' accepted (spec: another value exits 2)")
+                    continue
+                self.assertEqual(r.returncode, 2, line + "\n" + r.stderr)
+                self.assertEqual(recs, [], line)
+                self.assertTrue(any(l.startswith("usage: scripts/bundle_fetch.sh") for l in r.stderr.splitlines()), line)
+                self.assertFalse(os.path.lexists(out), line)
+            else:
+                stats["valid"] += 1
+                self.assertIn(r.returncode, (0, 1), line + "\n" + r.stderr[-2000:])
+                self.assertNotIn("Traceback", r.stdout + r.stderr, line)
+                if r.returncode == 1:
+                    self.assertFalse(os.path.lexists(out) and os.listdir(out), line)
+        print("\n".join(report))
+        print("STATS", json.dumps(stats))
+
+if __name__ == "__main__":
+    unittest.main()
+### output
+test_random_args (__main__.Probe.test_random_args) ... 000 valid=False rc=2 docker_calls=0 args=[]
+001 valid=False rc=2 docker_calls=0 args=['--arch', '--out', '--set']
+002 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-jj7n4q8g/out-3', '`touch PWNED`', '--help']
+003 valid=True rc=0 docker_calls=6 args=['--set', 'full', '--out', '/tmp/ke-u8b-jj7n4q8g/out-4']
+004 valid=False rc=2 docker_calls=0 args=['--arch', '--set', '`touch PWNED`', 'a\nb', '--set', '/tmp/ke-u8b-jj7n4q8g/out-5', '--out']
+005 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '']
+006 valid=False rc=2 docker_calls=0 args=[]
+007 valid=False rc=2 docker_calls=0 args=['--set', 'sample', '--out', '', '--arch', 'x86_64']
+008 valid=False rc=2 docker_calls=0 args=['--help', ';touch PWNED', '-h', '--arch', 'sample']
+009 valid=False rc=2 docker_calls=0 args=['--set', ';touch PWNED']
+010 valid=False rc=2 docker_calls=0 args=['--set']
+011 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '/tmp/ke-u8b-jj7n4q8g/out-12', '--arch', '']
+012 valid=False rc=2 docker_calls=0 args=['--out', '/tmp/ke-u8b-jj7n4q8g/out-13', '--arch', '--set', 'sample', '--arch']
+013 valid=False rc=2 docker_calls=0 args=[]
+014 valid=False rc=2 docker_calls=0 args=['--set', 'sample', '--out', '', '--arch', 'arm64']
+015 valid=False rc=2 docker_calls=0 args=['amd64', '/tmp/ke-u8b-jj7n4q8g/out-16', 'a b', '--set', '/tmp/ke-u8b-jj7n4q8g/out-16', '--arch', 'a b']
+016 valid=False rc=2 docker_calls=0 args=['--arch', '--out', '/tmp/ke-u8b-jj7n4q8g/out-17', '--out=x', '--out=x', '/tmp/ke-u8b-jj7n4q8g/out-17', 'arm64']
+017 valid=False rc=2 docker_calls=0 args=['--set', 'sample', '--out', '', '--arch', 'amd64']
+018 valid=False rc=2 docker_calls=0 args=['--set', 'sample', '--out', '', '--arch', 'x86_64']
+019 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '', '--arch', 'amd64']
+020 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '', '--arch', 'arm64']
+021 valid=False rc=2 docker_calls=0 args=['--arch', '--arch', '--out', '--out']
+022 valid=False rc=2 docker_calls=0 args=['--set', 'full', '--out', '', '--arch', '']
+023 valid=False rc=2 docker_calls=0 args=[]
+024 valid=False rc=2 docker_calls=0 args=['--help', ';touch PWNED', '--set', '--arch']
+025 valid=False rc=2 docker_calls=0 args=['-', 'sample', '--arch', 'full', 'a b', '../x']
+026 valid=False rc=2 docker_calls=0 args=[';touch PWNED']
+027 valid=False rc=2 docker_calls=0 args=['--out', '--arch', '--arch']
+028 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '/tmp/ke-u8b-jj7n4q8g/out-29', '--arch', 'x86_64']
+029 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '/tmp/ke-u8b-jj7n4q8g/out-30']
+030 valid=False rc=2 docker_calls=0 args=['--set', '$(touch PWNED)', '--out=x', '--set=sample']
+031 valid=False rc=2 docker_calls=0 args=[]
+032 valid=False rc=2 docker_calls=0 args=['amd64', '/']
+033 valid=True rc=1 docker_calls=1 args=['--set', 'full', '--out', '/tmp/ke-u8b-jj7n4q8g/out-34', '--arch', 'arm64']
+034 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '', '--arch', 'x86_64']
+035 valid=False rc=2 docker_calls=0 args=['full', '--arch']
+036 valid=False rc=2 docker_calls=0 args=['--out', '--out=x', '/tmp/ke-u8b-jj7n4q8g/out-37', '--set']
+037 valid=False rc=2 docker_calls=0 args=['--evidence-dir', '.', '/tmp/ke-u8b-jj7n4q8g/out-38', 'SAMPLE']
+038 valid=False rc=2 docker_calls=0 args=['../x', '--arch', '`touch PWNED`', '--help', '--set']
+039 valid=False rc=2 docker_calls=0 args=['--set', 'full', '--out', '', '--arch', '']
+040 valid=False rc=2 docker_calls=0 args=['--arch', '-h', '--set', '--arch']
+041 valid=False rc=2 docker_calls=0 args=['--out', 'sample']
+042 valid=False rc=2 docker_calls=0 args=['--', '/tmp/ke-u8b-jj7n4q8g/out-43', '../x']
+043 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '']
+044 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '/tmp/ke-u8b-jj7n4q8g/out-45']
+045 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '', '--arch', 'arm64']
+046 valid=True rc=0 docker_calls=6 args=['--set', 'sample', '--out', '/tmp/ke-u8b-jj7n4q8g/out-47']
+047 valid=False rc=2 docker_calls=0 args=['--set', 'sample', '--out', '']
+048 valid=False rc=2 docker_calls=0 args=['--set', '/', '/tmp/ke-u8b-jj7n4q8g/out-49', '--help', '.', '`touch PWNED`', '--out']
+049 valid=False rc=2 docker_calls=0 args=['--set', 'full', '--out', '/tmp/ke-u8b-jj7n4q8g/out-50', '--arch', 'x86_64']
+050 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-jj7n4q8g/out-51', '--set', '--set', '--out', '/tmp/ke-u8b-jj7n4q8g/out-51', '--help']
+051 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '/tmp/ke-u8b-jj7n4q8g/out-52']
+052 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '']
+053 valid=False rc=2 docker_calls=0 args=['--set', '--arch', '', '--out', ';touch PWNED', ' sample']
+054 valid=False rc=2 docker_calls=0 args=['--out', '--']
+055 valid=False rc=2 docker_calls=0 args=['--', '--set', '--set', 'a\nb']
+056 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-jj7n4q8g/out-57', '--out', '../x', '--out', '/tmp/ke-u8b-jj7n4q8g/out-57']
+057 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-jj7n4q8g/out-58', '--arch', '-e', '--arch', '--out', '--set']
+058 valid=False rc=2 docker_calls=0 args=['--arch', '--set', '--evidence-dir', 'amd64', 'a\nb', '--set']
+059 valid=False rc=2 docker_calls=0 args=['--out', '/tmp/ke-u8b-jj7n4q8g/out-60', '--out', '--out', '--set']
+060 valid=False rc=2 docker_calls=0 args=['--out', '', '--set', '--out', '--arch', '--out', '--arch']
+061 valid=False rc=2 docker_calls=0 args=['--ARCH', '/tmp/ke-u8b-jj7n4q8g/out-62', 'arm64', 'a\nb', '/tmp/ke-u8b-jj7n4q8g/out-62']
+062 valid=False rc=2 docker_calls=0 args=['--out', '/', '--arch']
+063 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '']
+064 valid=False rc=2 docker_calls=0 args=['--set', 'full', '--out', '']
+065 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '']
+066 valid=False rc=2 docker_calls=0 args=[]
+067 valid=False rc=2 docker_calls=0 args=['--set', 'sample', '--out', '', '--arch', 'amd64']
+068 valid=False rc=2 docker_calls=0 args=['a b', '/tmp/ke-u8b-jj7n4q8g/out-69', ';touch PWNED', '/']
+069 valid=False rc=2 docker_calls=0 args=[]
+070 valid=False rc=2 docker_calls=0 args=['--out']
+071 valid=False rc=2 docker_calls=0 args=['x86_64', '--out', '--set', '--out=x', '--arch']
+072 valid=False rc=2 docker_calls=0 args=['--out', '--out']
+073 valid=False rc=2 docker_calls=0 args=['--ARCH', '/tmp/ke-u8b-jj7n4q8g/out-74']
+074 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '/tmp/ke-u8b-jj7n4q8g/out-75']
+075 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '', '--arch', 'arm64']
+076 valid=False rc=2 docker_calls=0 args=['--arch', ';touch PWNED', '--out', '--out']
+077 valid=False rc=2 docker_calls=0 args=['--set', 'sample', '--out', '', '--arch', '']
+078 valid=True rc=1 docker_calls=1 args=['--set', 'sample', '--out', '/tmp/ke-u8b-jj7n4q8g/out-79', '--arch', 'arm64']
+079 valid=False rc=2 docker_calls=0 args=['--set', 'full', '--out', '', '--arch', 'arm64']
+080 valid=False rc=2 docker_calls=0 args=['--arch', '--set', '--set', '/tmp/ke-u8b-jj7n4q8g/out-81', '--arch', '--out', '']
+081 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '/tmp/ke-u8b-jj7n4q8g/out-82']
+082 valid=False rc=2 docker_calls=0 args=['--set', '--arch', '/tmp/ke-u8b-jj7n4q8g/out-83', '-']
+083 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '', '--arch', 'x86_64']
+084 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-jj7n4q8g/out-85', '--out', '--out', '/tmp/ke-u8b-jj7n4q8g/out-85', '-e', '.']
+085 valid=False rc=2 docker_calls=0 args=['--arch']
+086 valid=False rc=2 docker_calls=0 args=['--arch', '//', '--arch', '--set']
+087 valid=False rc=2 docker_calls=0 args=['--set', 'full', '--out', '/tmp/ke-u8b-jj7n4q8g/out-88', '--arch', 'x86_64']
+088 valid=False rc=2 docker_calls=0 args=['--set', 'sample', '--out', '']
+089 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-jj7n4q8g/out-90', '--out']
+090 valid=False rc=2 docker_calls=0 args=[]
+091 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '/tmp/ke-u8b-jj7n4q8g/out-92', '--arch', 'x86_64']
+092 valid=False rc=2 docker_calls=0 args=['../x', '--set', 'x86_64']
+093 valid=False rc=2 docker_calls=0 args=['-e', '--out', '--set']
+094 valid=False rc=2 docker_calls=0 args=['--out', '.', '--out', '--out', '--out', '--out', 'a\nb']
+095 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '/tmp/ke-u8b-jj7n4q8g/out-96', '--arch', 'arm64']
+096 valid=True rc=0 docker_calls=6 args=['--set', 'full', '--out', '/tmp/ke-u8b-jj7n4q8g/out-97', '--arch', 'amd64']
+097 valid=False rc=2 docker_calls=0 args=['--set', 'full', '--out', '', '--arch', 'arm64']
+098 valid=False rc=2 docker_calls=0 args=[]
+099 valid=True rc=0 docker_calls=6 args=['--set', 'sample', '--out', '/tmp/ke-u8b-jj7n4q8g/out-100']
+100 valid=False rc=2 docker_calls=0 args=['--out', 'a b', '--arch', '/', '--arch']
+101 valid=False rc=2 docker_calls=0 args=['partial', 'a\nb']
+102 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '']
+103 valid=False rc=2 docker_calls=0 args=['--set', '--arch', '--out', '/tmp/ke-u8b-jj7n4q8g/out-104', '.', '--set', '--arch']
+104 valid=False rc=2 docker_calls=0 args=['--set', 'sample', '--out', '']
+105 valid=False rc=2 docker_calls=0 args=['--set', 'full', '--out', '/tmp/ke-u8b-jj7n4q8g/out-106', '--arch', 'x86_64']
+106 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '', '--arch', 'arm64']
+107 valid=False rc=2 docker_calls=0 args=['--set', '--arch', '--set', '--out']
+108 valid=False rc=2 docker_calls=0 args=['--set', '--arch', '']
+109 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-jj7n4q8g/out-110', '--arch']
+110 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '/tmp/ke-u8b-jj7n4q8g/out-111', '--arch', 'x86_64']
+111 valid=False rc=2 docker_calls=0 args=['--set']
+112 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-jj7n4q8g/out-113', '', '/tmp/ke-u8b-jj7n4q8g/out-113']
+113 valid=False rc=2 docker_calls=0 args=['//', '--set', '--set', '--arch', '--arch']
+114 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '/tmp/ke-u8b-jj7n4q8g/out-115', '--arch', 'arm64']
+115 valid=False rc=2 docker_calls=0 args=['--arch', 'sample']
+116 valid=False rc=2 docker_calls=0 args=['--set', '-', 'a\nb', 'sample ', '/tmp/ke-u8b-jj7n4q8g/out-117']
+117 valid=False rc=2 docker_calls=0 args=['$(touch PWNED)', '/tmp/ke-u8b-jj7n4q8g/out-118', '--ARCH', 'x86_64']
+118 valid=False rc=2 docker_calls=0 args=['--out', '--arch', '--arch', '--set', '--set', '--out']
+119 valid=False rc=2 docker_calls=0 args=['--arch', '--arch', '/tmp/ke-u8b-jj7n4q8g/out-120', '`touch PWNED`', '--set=sample', 'sample ', '--set']
+120 valid=False rc=2 docker_calls=0 args=['--set', '--out=x', '/tmp/ke-u8b-jj7n4q8g/out-121', '--arch', '--out']
+121 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '/tmp/ke-u8b-jj7n4q8g/out-122', '--arch', 'arm64']
+122 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '/tmp/ke-u8b-jj7n4q8g/out-123']
+123 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-jj7n4q8g/out-124', '--set', 'a b', '/tmp/ke-u8b-jj7n4q8g/out-124', '--ARCH']
+124 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '', '--arch', 'amd64']
+125 valid=False rc=2 docker_calls=0 args=['--', '/tmp/ke-u8b-jj7n4q8g/out-126', 'amd64', '/tmp/ke-u8b-jj7n4q8g/out-126', '/tmp/ke-u8b-jj7n4q8g/out-126']
+126 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '', '--arch', '']
+127 valid=False rc=2 docker_calls=0 args=['$(touch PWNED)', 'amd64', '.', '--arch']
+128 valid=False rc=2 docker_calls=0 args=['`touch PWNED`', '/tmp/ke-u8b-jj7n4q8g/out-129', '--out=x', '--help']
+129 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '/tmp/ke-u8b-jj7n4q8g/out-130', '--arch', 'x86_64']
+130 valid=False rc=2 docker_calls=0 args=['--help', '--arch', '$(touch PWNED)', '--arch', '-h', '--set', 'SAMPLE']
+131 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '']
+132 valid=False rc=2 docker_calls=0 args=['--set', '--arch']
+133 valid=False rc=2 docker_calls=0 args=['--out', '/tmp/ke-u8b-jj7n4q8g/out-134', '--out=x', '--set', '--out', 'partial', '--out']
+134 valid=False rc=2 docker_calls=0 args=['--evidence-dir', 'x86_64', '--arch']
+135 valid=False rc=2 docker_calls=0 args=['--out', 'arm64', '`touch PWNED`', '/tmp/ke-u8b-jj7n4q8g/out-136', '--set', 'SAMPLE', '-h']
+136 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-jj7n4q8g/out-137', '--evidence-dir', 'amd64', '/', '*']
+137 valid=False rc=2 docker_calls=0 args=['--out', '-e', '--out']
+138 valid=False rc=2 docker_calls=0 args=['--arch', 'sample ', '--out', '--out', '--out', 'partial', '--arch']
+139 valid=False rc=2 docker_calls=0 args=['x86_64']
+140 valid=False rc=2 docker_calls=0 args=[';touch PWNED', 'sample', 'sample']
+141 valid=False rc=2 docker_calls=0 args=['SAMPLE', '--out']
+142 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '']
+143 valid=False rc=2 docker_calls=0 args=['--arch', '--arch', '--arch', '--ARCH', '--out']
+144 valid=False rc=2 docker_calls=0 args=['--set', 'full', '--out', '', '--arch', 'x86_64']
+145 valid=True rc=1 docker_calls=1 args=['--set', 'sample', '--out', '/tmp/ke-u8b-jj7n4q8g/out-146', '--arch', 'arm64']
+146 valid=False rc=2 docker_calls=0 args=['amd64']
+147 valid=False rc=2 docker_calls=0 args=[]
+148 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '']
+149 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-jj7n4q8g/out-150', '/tmp/ke-u8b-jj7n4q8g/out-150', '/tmp/ke-u8b-jj7n4q8g/out-150']ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.540s
+
+OK
+
+STATS {"invalid": 143, "valid": 7, "explicit-empty-arch": 0}
+
+## 3. Deterministic edges, uid 10001 (non-root): driver probe_edges.py (part 1; its trailing _bad_middle_file error is a driver bug, re-run as part 2)
+"""Reviewer probe (U8b): deterministic argument and --out edge cases on fake docker."""
+import os, sys, unittest
+sys.path.insert(0, "/work")
+from tests.test_bundle_fetch import BundleFetchRunTest as _FetchScriptBase
+
+class Edges(_FetchScriptBase):
+    def _show(self, label, r, recs, out=None):
+        fails = [l for l in (r.stdout + r.stderr).splitlines() if "FAIL" in l or l.startswith("usage")]
+        extra = ""
+        if out is not None:
+            extra = f" out_exists={os.path.lexists(out)}" + (f" out_list={sorted(os.listdir(out))[:3]}" if os.path.isdir(out) else "")
+        print(f"[{label}] rc={r.returncode} docker_calls={len(recs)}{extra} lines={fails[:3]}")
+
+    def test_edges(self):
+        if os.environ.get("PART2"): return self._part2()
+        print("uid", os.getuid())
+        o = str(self._out())
+        r, recs = self._run("--set", "sample", "--out", o, "--arch", ""); self._show("explicit --arch ''", r, recs, o)
+        o = str(self._out())
+        r, recs = self._run("--set", "full", "--set", "sample", "--out", o); self._show("--set twice (last wins?)", r, recs, o)
+        o1, o2 = str(self._out()), str(self._out())
+        r, recs = self._run("--set", "sample", "--out", o1, "--out", o2); self._show("--out twice", r, recs, o2)
+        print("   first --out exists:", os.path.lexists(o1))
+        r, recs = self._run("--set", "sample", "--out", "--arch"); self._show("--out --arch (dash value)", r, recs, str(self.repo / "--arch"))
+        r, recs = self._run("--set", "sample", "--out", "/"); self._show("--out /", r, recs)
+        r, recs = self._run("--set", "sample", "--out", "$(touch PWNED)"); self._show("--out $(...)", r, recs, str(self.repo / "$(touch PWNED)"))
+        print("   PWNED:", (self.repo / "PWNED").exists(), (self.tmp / "PWNED").exists())
+        o = self.tmp / "unreadable"; o.mkdir(); (o / "operator.txt").write_text("keep\n"); os.chmod(o, 0o300)
+        r, recs = self._run("--set", "sample", "--out", str(o)); os.chmod(o, 0o700); self._show("unreadable non-empty dir (0300)", r, recs, str(o))
+        o = self.tmp / "unreadable2"; o.mkdir(); (o / "operator.txt").write_text("keep\n"); os.chmod(o, 0o300)
+        net, _, _ = self._bad_middle_file()
+        r, recs = self._run("--set", "sample", "--out", str(o), net=net); os.chmod(o, 0o700); self._show("unreadable non-empty dir + failing fetch", r, recs, str(o))
+        o = self.tmp / "parent-missing" / "child"
+        r, recs = self._run("--set", "sample", "--out", str(o)); self._show("parent missing", r, recs, str(o))
+        o = str(self._out())
+        r, recs = self._run("--set", "sample", "--out", o + "/"); self._show("trailing slash", r, recs, o)
+
+if __name__ == "__main__":
+    unittest.main()
+
+### output
+E
+======================================================================
+ERROR: test_edges (__main__.Edges.test_edges)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/probe/probe_edges.py", line 30, in test_edges
+    net, _, _ = self._bad_middle_file()
+                ^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'Edges' object has no attribute '_bad_middle_file'
+----------------------------------------------------------------------
+Ran 1 test in 1.854s
+FAILED (errors=1)
+uid 10001
+[explicit --arch ''] rc=0 docker_calls=6 out_exists=True out_list=['19ab396bb607afafec74b1c92275764b4ddee7b27e87d5e02019cabd8b67ef1b', '3ded35d7f4537caf99c40b958c7da9792b01f02caf00c3fd80e68da7b935c842', '668d2a7dcbac5afd7cc673416fc17cdabc9c123db6b8eb1bbfad5a6c838a7f34'] lines=[]
+[--set twice (last wins?)] rc=0 docker_calls=6 out_exists=True out_list=['19ab396bb607afafec74b1c92275764b4ddee7b27e87d5e02019cabd8b67ef1b', '3ded35d7f4537caf99c40b958c7da9792b01f02caf00c3fd80e68da7b935c842', '668d2a7dcbac5afd7cc673416fc17cdabc9c123db6b8eb1bbfad5a6c838a7f34'] lines=[]
+[--out twice] rc=0 docker_calls=6 out_exists=True out_list=['19ab396bb607afafec74b1c92275764b4ddee7b27e87d5e02019cabd8b67ef1b', '3ded35d7f4537caf99c40b958c7da9792b01f02caf00c3fd80e68da7b935c842', '668d2a7dcbac5afd7cc673416fc17cdabc9c123db6b8eb1bbfad5a6c838a7f34'] lines=[]
+   first --out exists: False
+[--out --arch (dash value)] rc=0 docker_calls=6 out_exists=True out_list=['19ab396bb607afafec74b1c92275764b4ddee7b27e87d5e02019cabd8b67ef1b', '3ded35d7f4537caf99c40b958c7da9792b01f02caf00c3fd80e68da7b935c842', '668d2a7dcbac5afd7cc673416fc17cdabc9c123db6b8eb1bbfad5a6c838a7f34'] lines=[]
+[--out /] rc=1 docker_calls=3 lines=['bundle_fetch: FAIL (stage out: cannot create ; no retry)']
+[--out $(...)] rc=0 docker_calls=6 out_exists=True out_list=['19ab396bb607afafec74b1c92275764b4ddee7b27e87d5e02019cabd8b67ef1b', '3ded35d7f4537caf99c40b958c7da9792b01f02caf00c3fd80e68da7b935c842', '668d2a7dcbac5afd7cc673416fc17cdabc9c123db6b8eb1bbfad5a6c838a7f34'] lines=[]
+   PWNED: False False
+[unreadable non-empty dir (0300)] rc=0 docker_calls=6 out_exists=True out_list=['19ab396bb607afafec74b1c92275764b4ddee7b27e87d5e02019cabd8b67ef1b', '3ded35d7f4537caf99c40b958c7da9792b01f02caf00c3fd80e68da7b935c842', '668d2a7dcbac5afd7cc673416fc17cdabc9c123db6b8eb1bbfad5a6c838a7f34'] lines=[]
+
+## 4. Part 2, uid 10001: driver probe_edges2.py
+"""Reviewer probe (U8b), part 2: failing fetch into an unreadable dir, a missing parent, a trailing slash, O-5."""
+import os, sys, unittest
+sys.path.insert(0, "/work")
+from tests.test_bundle_fetch import BundleFetchRunTest
+
+class Edges2(BundleFetchRunTest):
+    def _show(self, label, r, recs, out=None):
+        fails = [l for l in (r.stdout + r.stderr).splitlines() if "FAIL" in l or l.startswith("usage")]
+        extra = ""
+        if out is not None:
+            extra = f" out_exists={os.path.lexists(out)}" + (f" out_list={sorted(os.listdir(out))}" if os.path.isdir(out) else "")
+        print(f"[{label}] rc={r.returncode} docker_calls={len(recs)}{extra} lines={fails[:3]}")
+
+    def test_part2(self):
+        print("uid", os.getuid())
+        net, _, _ = self._bad_middle_file()
+        o = self.tmp / "unreadable2"; o.mkdir(); (o / "operator.txt").write_text("keep\n"); os.chmod(o, 0o300)
+        r, recs = self._run("--set", "sample", "--out", str(o), net=net); os.chmod(o, 0o700)
+        self._show("unreadable non-empty dir + failing fetch", r, recs, str(o))
+        o = self.tmp / "parent-missing" / "child"
+        r, recs = self._run("--set", "sample", "--out", str(o)); self._show("parent missing", r, recs, str(o))
+        o = str(self._out())
+        r, recs = self._run("--set", "sample", "--out", o + "/"); self._show("trailing slash", r, recs, o)
+        o = str(self._out())
+        r, recs = self._run("--set", "sample", "--out", o, net=net)
+        err = r.stderr.splitlines()
+        i = [k for k, l in enumerate(err) if l.startswith("bundle_fetch: FAIL (stage fetch: ") and "exited" not in l]
+        print("[O-5] rc", r.returncode, "stderr after client FAIL:", err[i[0] + 1:] if i else err)
+
+if __name__ == "__main__":
+    unittest.main(argv=[sys.argv[0], "Edges2.test_part2"])
+### output
+.
+----------------------------------------------------------------------
+Ran 1 test in 1.048s
+OK
+uid 10001
+[unreadable non-empty dir + failing fetch] rc=1 docker_calls=6 out_exists=True out_list=['3ded35d7f4537caf99c40b958c7da9792b01f02caf00c3fd80e68da7b935c842', '69e228c8994e6136ac8586816834d34608f02e6992b34e19561a8e1584941740', '9198e4dbde4de640441270dd1cd5094256aed772e192cf9a9144c7c6afc90991', '9e16d0061a9deb2c2d2f5db43a1b3ba026d42d1a6dd10c042ef738cd750908be', 'a314137092297d9dece12524f32e611bc00f6bb20d2b85646e10fa6dbf42c393', 'e99c8d1f5e16848b0bb31e00048c8707f0cd41597cb6f60f59b337debefbd83c', 'operator.txt'] lines=['bundle_fetch: FAIL (stage fetch: snapshot.debian.org: bash_5.2.15-2.debian.tar.xz: sha256 mismatch: got 1e96d95bd57173e06c759fce6fb143551f316c5748ece289ca9e36c44b397c47, lock says 8cc4ccd6ced509b86c222480d9a14071111afbc64708ad7c9857c02db8698175; no retry)', 'bundle_fetch: FAIL (stage fetch: sources_fetch.py exited 1; no retry)']
+[parent missing] rc=1 docker_calls=3 out_exists=False lines=['bundle_fetch: FAIL (stage out: cannot create /tmp/ke-u8b-8mzj08j8/parent-missing/child; no retry)']
+[trailing slash] rc=0 docker_calls=6 out_exists=True out_list=['19ab396bb607afafec74b1c92275764b4ddee7b27e87d5e02019cabd8b67ef1b', '3ded35d7f4537caf99c40b958c7da9792b01f02caf00c3fd80e68da7b935c842', '668d2a7dcbac5afd7cc673416fc17cdabc9c123db6b8eb1bbfad5a6c838a7f34', '69e228c8994e6136ac8586816834d34608f02e6992b34e19561a8e1584941740', '8b07d220146c244c30a7f03e05cb3a163d9ce154c4598ef3e6c6969e4f915886', '8cc4ccd6ced509b86c222480d9a14071111afbc64708ad7c9857c02db8698175', '9198e4dbde4de640441270dd1cd5094256aed772e192cf9a9144c7c6afc90991', '9e16d0061a9deb2c2d2f5db43a1b3ba026d42d1a6dd10c042ef738cd750908be', 'a314137092297d9dece12524f32e611bc00f6bb20d2b85646e10fa6dbf42c393', 'e908c10563e6cae9e39a8881f1fed41f4c3ac991b7f421aae2809e8fecf96f2e', 'e99c8d1f5e16848b0bb31e00048c8707f0cd41597cb6f60f59b337debefbd83c', 'f32d16ff0a3c78e2c0a8385ebfb5990f0d127a544e7a6eaf12001b60be0376b3', 'f3c67a3d3db98584dddd63ab715425aed93e9bea18c7fb151e5c7e9c5934e8ab', 'fetch.json'] lines=[]
+[O-5] rc 1 stderr after client FAIL: ['bundle_fetch: FAIL (stage fetch: sources_fetch.py exited 1; no retry)']
+
+# Rework round 1 re-run (reviewer, 2026-10-28). Same read-only setup, uid 10001; the same drivers, unchanged.
+## R1-1. python -m unittest tests.test_bundle_fetch + test_offline_check fetch rows + tests.test_stack_compose
+Ran 59 tests in 22.566s
+
+OK
+## R1-2. probe_args.py, seed 20261028, N=120
+STATS {"invalid": 114, "valid": 6, "explicit-empty-arch": 0}
+OK
+## R1-3. probe_args.py, seed 4242, N=200
+000 valid=False rc=2 docker_calls=0 args=['--arch', '--out', '--arch', '/tmp/ke-u8b-vu3te5td/out-1', '--out=x', '--arch']
+001 valid=True rc=0 docker_calls=6 args=['--set', 'full', '--out', '/tmp/ke-u8b-vu3te5td/out-2']
+002 valid=False rc=2 docker_calls=0 args=['//', 'a b']
+003 valid=False rc=2 docker_calls=0 args=['--out', '--out', '--evidence-dir', '--out', 'partial', '--out', 'x86_64']
+004 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '', '--arch', 'x86_64']
+005 valid=False rc=2 docker_calls=0 args=['--set', 'full', '--out', '', '--arch', 'arm64']
+006 valid=False rc=2 docker_calls=0 args=['.']
+007 valid=False rc=2 docker_calls=0 args=['--set', ';touch PWNED', '/tmp/ke-u8b-vu3te5td/out-8']
+008 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '']
+009 valid=False rc=2 docker_calls=0 args=['', '/tmp/ke-u8b-vu3te5td/out-10', '--set', '../x', 'sample', '/tmp/ke-u8b-vu3te5td/out-10']
+010 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-vu3te5td/out-11']
+011 valid=True rc=0 docker_calls=6 args=['--set', 'full', '--out', '/tmp/ke-u8b-vu3te5td/out-12']
+012 valid=False rc=2 docker_calls=0 args=['--out', 'arm64', '--out']
+013 valid=False rc=2 docker_calls=0 args=[]
+014 valid=True rc=0 docker_calls=6 args=['--set', 'sample', '--out', '/tmp/ke-u8b-vu3te5td/out-15', '--arch', 'amd64']
+015 valid=False rc=2 docker_calls=0 args=['--out']
+016 valid=False rc=2 docker_calls=0 args=['--arch', '/tmp/ke-u8b-vu3te5td/out-17', '--arch', '/tmp/ke-u8b-vu3te5td/out-17']
+017 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '', '--arch', 'amd64']
+018 valid=False rc=2 docker_calls=0 args=['.', '--out', '', '$(touch PWNED)', '/tmp/ke-u8b-vu3te5td/out-19', '--out']
+019 valid=False rc=2 docker_calls=0 args=['--set=sample', '--out']
+020 valid=False rc=2 docker_calls=0 args=['x86_64', '/tmp/ke-u8b-vu3te5td/out-21', '--arch']
+021 valid=False rc=2 docker_calls=0 args=['--set', 'sample', '--out', '']
+022 valid=False rc=2 docker_calls=0 args=['--set', '$(touch PWNED)', '--set', '--set', '--arch']
+023 valid=False rc=2 docker_calls=0 args=['--out', '--arch', '/tmp/ke-u8b-vu3te5td/out-24', '--evidence-dir', '--out', ' sample', '-']
+024 valid=False rc=2 docker_calls=0 args=['--out', '--arch', '--out', '/tmp/ke-u8b-vu3te5td/out-25', '--out', '--help', '/tmp/ke-u8b-vu3te5td/out-25']
+025 valid=False rc=2 docker_calls=0 args=['--set', 'full', '--out', '--out', '/tmp/ke-u8b-vu3te5td/out-26', '/tmp/ke-u8b-vu3te5td/out-26', '--out=x']
+026 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '']
+027 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-vu3te5td/out-28', 'partial', '--out', '--set=sample']
+028 valid=False rc=2 docker_calls=0 args=['--set', 'sample', '--out', '/tmp/ke-u8b-vu3te5td/out-29', '--arch', 'x86_64']
+029 valid=False rc=2 docker_calls=0 args=['a\nb']
+030 valid=False rc=2 docker_calls=0 args=['--set', ' sample', 'full']
+031 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-vu3te5td/out-32']
+032 valid=False rc=2 docker_calls=0 args=['sample']
+033 valid=False rc=2 docker_calls=0 args=['--set', 'full', '--out', '']
+034 valid=False rc=2 docker_calls=0 args=['//', '--set', '/tmp/ke-u8b-vu3te5td/out-35', '--out', '--set']
+035 valid=False rc=2 docker_calls=0 args=['--set', '/tmp/ke-u8b-vu3te5td/out-36', '--out', '.', '--arch', '--set']
+036 valid=False rc=2 docker_calls=0 args=['.']
+037 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-vu3te5td/out-38', '/tmp/ke-u8b-vu3te5td/out-38', ';touch PWNED', 'SAMPLE']
+038 valid=False rc=2 docker_calls=0 args=['//', '--arch', 'a b', 'sample ']
+039 valid=False rc=2 docker_calls=0 args=['../x', '--arch', '--set', '--out']
+040 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '']
+041 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '/tmp/ke-u8b-vu3te5td/out-42']
+042 valid=False rc=2 docker_calls=0 args=['--out', 'arm64']
+043 valid=False rc=2 docker_calls=0 args=['--set']
+044 valid=False rc=2 docker_calls=0 args=[]
+045 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '']
+046 valid=False rc=2 docker_calls=0 args=['--out', '--out=x', '--set', '--out', ';touch PWNED']
+047 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '/tmp/ke-u8b-vu3te5td/out-48', '--arch', 'amd64']
+048 valid=False rc=2 docker_calls=0 args=['--out', '/tmp/ke-u8b-vu3te5td/out-49', '--out', ';touch PWNED', '--set']
+049 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '/tmp/ke-u8b-vu3te5td/out-50']
+050 valid=False rc=2 docker_calls=0 args=['a\nb', 'partial', '--set', '/tmp/ke-u8b-vu3te5td/out-51', '--set', 'sample', '--arch']
+051 valid=False rc=2 docker_calls=0 args=['--evidence-dir', '--set', '--out', ';touch PWNED', '--set', '--out', '--out']
+052 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '/tmp/ke-u8b-vu3te5td/out-53', '--arch', 'arm64']
+053 valid=False rc=2 docker_calls=0 args=['--set', '--set', '--arch', '$(touch PWNED)', '--out', 'amd64', 'SAMPLE']
+054 valid=False rc=2 docker_calls=0 args=['--out', '-', '--set', '`touch PWNED`', '/tmp/ke-u8b-vu3te5td/out-55']
+055 valid=False rc=2 docker_calls=0 args=['--set', '--set', '/tmp/ke-u8b-vu3te5td/out-56', '--out', 'a b']
+056 valid=False rc=2 docker_calls=0 args=['--set', 'full', '--out', '']
+057 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '', '--arch', 'x86_64']
+058 valid=False rc=2 docker_calls=0 args=['/', '--arch', '--set', '*', '--set', '//']
+059 valid=True rc=1 docker_calls=1 args=['--set', 'full', '--out', '/tmp/ke-u8b-vu3te5td/out-60', '--arch', 'arm64']
+060 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-vu3te5td/out-61', '--ARCH', '--out', 'a b']
+061 valid=False rc=2 docker_calls=0 args=['--set', 'full', '--out', '', '--arch', 'amd64']
+062 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-vu3te5td/out-63', '--set', '--set']
+063 valid=False rc=2 docker_calls=0 args=['a\nb']
+064 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '/tmp/ke-u8b-vu3te5td/out-65']
+065 valid=False rc=2 docker_calls=0 args=['']
+066 valid=False rc=2 docker_calls=0 args=['//', '--set']
+067 valid=False rc=2 docker_calls=0 args=[]
+068 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '/tmp/ke-u8b-vu3te5td/out-69', '--arch', 'x86_64']
+069 valid=False rc=2 docker_calls=0 args=['`touch PWNED`', '--out', '--out=x', '--out']
+070 valid=False rc=2 docker_calls=0 args=['--set', 'x86_64', '--out', '--arch']
+071 valid=False rc=2 docker_calls=0 args=['-h', '/tmp/ke-u8b-vu3te5td/out-72', '/tmp/ke-u8b-vu3te5td/out-72', '--out', '--evidence-dir', '--arch']
+072 valid=True rc=0 docker_calls=6 args=['--set', 'full', '--out', '/tmp/ke-u8b-vu3te5td/out-73']
+073 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-vu3te5td/out-74', '/tmp/ke-u8b-vu3te5td/out-74', '--ARCH', '/tmp/ke-u8b-vu3te5td/out-74', '--set']
+074 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '/tmp/ke-u8b-vu3te5td/out-75', '--arch', 'arm64']
+075 valid=False rc=2 docker_calls=0 args=['x86_64', '--arch', '--set', '--out', '--out']
+076 valid=False rc=2 docker_calls=0 args=['arm64', '--arch', '--arch']
+077 valid=False rc=2 docker_calls=0 args=['--out', '/tmp/ke-u8b-vu3te5td/out-78', '*', '--arch']
+078 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '/tmp/ke-u8b-vu3te5td/out-79', '--arch', '']
+079 valid=False rc=2 docker_calls=0 args=['--set', 'sample', '--out', '']
+080 valid=False rc=2 docker_calls=0 args=['--arch', 'full', 'arm64', '/']
+081 valid=False rc=2 docker_calls=0 args=['--']
+082 valid=False rc=2 docker_calls=0 args=['partial', '/tmp/ke-u8b-vu3te5td/out-83', '$(touch PWNED)', '--arch', '--set', '--out', '--arch']
+083 valid=True rc=0 docker_calls=6 args=['--set', 'sample', '--out', '/tmp/ke-u8b-vu3te5td/out-84', '--arch', '']
+084 valid=False rc=2 docker_calls=0 args=['--out', '/tmp/ke-u8b-vu3te5td/out-85', '--out', '--set', '--evidence-dir', '/tmp/ke-u8b-vu3te5td/out-85']
+085 valid=False rc=2 docker_calls=0 args=['--set', '--out', '--set', '--arch', '/tmp/ke-u8b-vu3te5td/out-86', 'sample ']
+086 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '/tmp/ke-u8b-vu3te5td/out-87']
+087 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-vu3te5td/out-88', '--set=sample', '--set', '--set']
+088 valid=False rc=2 docker_calls=0 args=['-', '--arch', '--arch', '`touch PWNED`', '//', '/tmp/ke-u8b-vu3te5td/out-89']
+089 valid=False rc=2 docker_calls=0 args=['--arch', '--arch']
+090 valid=False rc=2 docker_calls=0 args=['a\nb', '--arch', '--set']
+091 valid=False rc=2 docker_calls=0 args=[]
+092 valid=False rc=2 docker_calls=0 args=['--out', 'sample', '--', '--set', '.', '--set', '--set']
+093 valid=False rc=2 docker_calls=0 args=['--set', 'full', '--out', '', '--arch', 'x86_64']
+094 valid=False rc=2 docker_calls=0 args=['--arch']
+095 valid=False rc=2 docker_calls=0 args=['--out', '--set', '--out', '--arch']
+096 valid=False rc=2 docker_calls=0 args=['--out', '--set', '-e', 'a\nb', '--ARCH', '/tmp/ke-u8b-vu3te5td/out-97']
+097 valid=False rc=2 docker_calls=0 args=['--set', '//', '--set', '/tmp/ke-u8b-vu3te5td/out-98', '--arch', '--arch', '/tmp/ke-u8b-vu3te5td/out-98']
+098 valid=False rc=2 docker_calls=0 args=['--set', 'full', '--out', '', '--arch', 'arm64']
+099 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '', '--arch', 'arm64']
+100 valid=False rc=2 docker_calls=0 args=['--set', 'full', '--out', '/tmp/ke-u8b-vu3te5td/out-101', '--arch', 'x86_64']
+101 valid=False rc=2 docker_calls=0 args=['--out', '/', '-e', '/tmp/ke-u8b-vu3te5td/out-102', '--set', '/', '--arch']
+102 valid=False rc=2 docker_calls=0 args=['amd64']
+103 valid=False rc=2 docker_calls=0 args=['-', '--set', '--', '`touch PWNED`']
+104 valid=False rc=2 docker_calls=0 args=['--set', 'full', '--out', '', '--arch', 'x86_64']
+105 valid=False rc=2 docker_calls=0 args=['--arch', 'arm64', '--arch', '--arch', '/', '/tmp/ke-u8b-vu3te5td/out-106', '/tmp/ke-u8b-vu3te5td/out-106']
+106 valid=False rc=2 docker_calls=0 args=['-e', '--out', '`touch PWNED`', '-h', '--arch']
+107 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '/tmp/ke-u8b-vu3te5td/out-108', '--arch', 'arm64']
+108 valid=False rc=2 docker_calls=0 args=['--', '../x', '--set', '--set', '/tmp/ke-u8b-vu3te5td/out-109', 'SAMPLE', '--out']
+109 valid=False rc=2 docker_calls=0 args=['../x', 'sample ', '--arch', '//', '--set']
+110 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-vu3te5td/out-111']
+111 valid=False rc=2 docker_calls=0 args=['--out', '--arch', '--set', '--arch']
+112 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-vu3te5td/out-113', '/tmp/ke-u8b-vu3te5td/out-113', 'a b', '-e', '--out']
+113 valid=False rc=2 docker_calls=0 args=[]
+114 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-vu3te5td/out-115', '--out', '/tmp/ke-u8b-vu3te5td/out-115']
+115 valid=False rc=2 docker_calls=0 args=['--set', 'arm64', '--evidence-dir', '--arch', '--set', '--out', '']
+116 valid=False rc=2 docker_calls=0 args=['--arch', '--arch', '--set', '--out', ';touch PWNED', '-h']
+117 valid=False rc=2 docker_calls=0 args=['full', '/tmp/ke-u8b-vu3te5td/out-118', 'x86_64', '/tmp/ke-u8b-vu3te5td/out-118', 'sample']
+118 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '', '--arch', 'amd64']
+119 valid=False rc=2 docker_calls=0 args=['--out', '/tmp/ke-u8b-vu3te5td/out-120', 'partial']
+120 valid=False rc=2 docker_calls=0 args=['--out', '--', '*', '--out', '', '', '--out']
+121 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '']
+122 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-vu3te5td/out-123', '--set=sample']
+123 valid=False rc=2 docker_calls=0 args=['sample', '--set', '--set', '$(touch PWNED)', 'partial', '-h', '/tmp/ke-u8b-vu3te5td/out-124']
+124 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-vu3te5td/out-125', '--out', '', 'x86_64', ';touch PWNED', '-', 'amd64']
+125 valid=False rc=2 docker_calls=0 args=['$(touch PWNED)', '`touch PWNED`', '/tmp/ke-u8b-vu3te5td/out-126', 'SAMPLE', '--arch']
+126 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '/tmp/ke-u8b-vu3te5td/out-127', '--arch', 'amd64']
+127 valid=False rc=2 docker_calls=0 args=['../x', '--out']
+128 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '', '--arch', 'x86_64']
+129 valid=False rc=2 docker_calls=0 args=['--out', '../x', '--ARCH', '/tmp/ke-u8b-vu3te5td/out-130', '--help', '--arch', '--set']
+130 valid=False rc=2 docker_calls=0 args=['--set', 'full', '--out', '']
+131 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-vu3te5td/out-132', '/']
+132 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-vu3te5td/out-133', '--set', '/', 'x86_64', '--set=sample']
+133 valid=False rc=2 docker_calls=0 args=['--out', '--arch', '--out']
+134 valid=False rc=2 docker_calls=0 args=['--set', '--set']
+135 valid=False rc=2 docker_calls=0 args=['--set', 'full', '--out', '', '--arch', 'x86_64']
+136 valid=True rc=0 docker_calls=6 args=['--set', 'full', '--out', '/tmp/ke-u8b-vu3te5td/out-137', '--arch', '']
+137 valid=False rc=2 docker_calls=0 args=['--out', '$(touch PWNED)', '--arch']
+138 valid=False rc=2 docker_calls=0 args=['--set', 'sample', '--out', '', '--arch', 'amd64']
+139 valid=False rc=2 docker_calls=0 args=['sample', '/tmp/ke-u8b-vu3te5td/out-140']
+140 valid=False rc=2 docker_calls=0 args=['--set', '--set', '/tmp/ke-u8b-vu3te5td/out-141', '--out']
+141 valid=False rc=2 docker_calls=0 args=['-', '--arch', '/tmp/ke-u8b-vu3te5td/out-142', 'a b', 'full']
+142 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-vu3te5td/out-143', '/']
+143 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-vu3te5td/out-144', '--out', '--help']
+144 valid=False rc=2 docker_calls=0 args=[]
+145 valid=False rc=2 docker_calls=0 args=['--out', '/tmp/ke-u8b-vu3te5td/out-146', 'amd64', '']
+146 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-vu3te5td/out-147', '-h', '--out', '/tmp/ke-u8b-vu3te5td/out-147', '--ARCH', '--set', '-h']
+147 valid=False rc=2 docker_calls=0 args=['--arch', '--out', '--arch', '--set', '/tmp/ke-u8b-vu3te5td/out-148', '--set', 'full']
+148 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '', '--arch', 'amd64']
+149 valid=False rc=2 docker_calls=0 args=['-h']
+150 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-vu3te5td/out-151', '/tmp/ke-u8b-vu3te5td/out-151', '/tmp/ke-u8b-vu3te5td/out-151', '/tmp/ke-u8b-vu3te5td/out-151']
+151 valid=False rc=2 docker_calls=0 args=['--out', '/tmp/ke-u8b-vu3te5td/out-152', ' sample', '--set']
+152 valid=True rc=1 docker_calls=1 args=['--set', 'full', '--out', '/tmp/ke-u8b-vu3te5td/out-153', '--arch', 'arm64']
+153 valid=False rc=2 docker_calls=0 args=[]
+154 valid=True rc=0 docker_calls=6 args=['--set', 'full', '--out', '/tmp/ke-u8b-vu3te5td/out-155', '--arch', 'amd64']
+155 valid=False rc=2 docker_calls=0 args=['--set', 'sample', '--out', '', '--arch', '']
+156 valid=False rc=2 docker_calls=0 args=['--set', '.', '--set', '--arch', '--set', '--set', '--help']
+157 valid=False rc=2 docker_calls=0 args=['--out', '/tmp/ke-u8b-vu3te5td/out-158', '--set=sample', '--arch']
+158 valid=False rc=2 docker_calls=0 args=['--set', 'full', '--out', '']
+159 valid=False rc=2 docker_calls=0 args=['--set', 'sample', '--out', '']
+160 valid=False rc=2 docker_calls=0 args=['--set', 'full', '--out', '', '--arch', 'x86_64']
+161 valid=False rc=2 docker_calls=0 args=['--set', '-', '*']
+162 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-vu3te5td/out-163', 'sample', '--', '/tmp/ke-u8b-vu3te5td/out-163', '/tmp/ke-u8b-vu3te5td/out-163', '--out']
+163 valid=True rc=0 docker_calls=6 args=['--set', 'sample', '--out', '/tmp/ke-u8b-vu3te5td/out-164']
+164 valid=False rc=2 docker_calls=0 args=['*', '--out', '/', '--set', '--arch']
+165 valid=False rc=2 docker_calls=0 args=['--out=x', '--out', '--', '--out', '/tmp/ke-u8b-vu3te5td/out-166', '--arch', '--set']
+166 valid=False rc=2 docker_calls=0 args=['--out', '--out']
+167 valid=False rc=2 docker_calls=0 args=['--arch', '--out', '$(touch PWNED)', '-', '--out', '--set', '--out']
+168 valid=False rc=2 docker_calls=0 args=['--out', '--ARCH', '--arch', '--out=x', '//', '--set']
+169 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-vu3te5td/out-170', '--out', '--set', '']
+170 valid=True rc=0 docker_calls=6 args=['--set', 'sample', '--out', '/tmp/ke-u8b-vu3te5td/out-171', '--arch', 'amd64']
+171 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '/tmp/ke-u8b-vu3te5td/out-172', '--arch', 'arm64']
+172 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '/tmp/ke-u8b-vu3te5td/out-173', '--arch', '']
+173 valid=False rc=2 docker_calls=0 args=['--set', 'sample', '--out', '', '--arch', 'x86_64']
+174 valid=False rc=2 docker_calls=0 args=['--out', '--out', '--set', '--set']
+175 valid=False rc=2 docker_calls=0 args=['--set', 'sample', '--out', '', '--arch', 'x86_64']
+176 valid=False rc=2 docker_calls=0 args=['--arch', '--set']
+177 valid=False rc=2 docker_calls=0 args=['--set', ' sample', '--set', '/tmp/ke-u8b-vu3te5td/out-178', '--set', '--set']
+178 valid=False rc=2 docker_calls=0 args=['x86_64', 'arm64', '--arch']
+179 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-vu3te5td/out-180', ';touch PWNED']
+180 valid=True rc=0 docker_calls=6 args=['--set', 'sample', '--out', '/tmp/ke-u8b-vu3te5td/out-181']
+181 valid=False rc=2 docker_calls=0 args=[]
+182 valid=False rc=2 docker_calls=0 args=['--set', 'partial', '--out', '/tmp/ke-u8b-vu3te5td/out-183']
+183 valid=False rc=2 docker_calls=0 args=['-e', '--set', ' sample', '/tmp/ke-u8b-vu3te5td/out-184', 'full']
+184 valid=False rc=2 docker_calls=0 args=['--out', '/tmp/ke-u8b-vu3te5td/out-185', '--set', '--arch']
+185 valid=False rc=2 docker_calls=0 args=['--set', '--arch']
+186 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-vu3te5td/out-187']
+187 valid=False rc=2 docker_calls=0 args=['--set', 'arm64']
+188 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-vu3te5td/out-189', '--out', '--out', 'full', '--out', '--out', '--out']
+189 valid=False rc=2 docker_calls=0 args=['--set']
+190 valid=False rc=2 docker_calls=0 args=['/tmp/ke-u8b-vu3te5td/out-191', '--help', '../x', '$(touch PWNED)', '--out', '--set']
+191 valid=False rc=2 docker_calls=0 args=['a b']
+192 valid=False rc=2 docker_calls=0 args=['--set', 'sample', '--out', '']
+193 valid=False rc=2 docker_calls=0 args=['--out', '--out', 'a\nb', '--out', '--ARCH', '--out', '--arch']
+194 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '']
+195 valid=False rc=2 docker_calls=0 args=['--set', '', '--out', '/tmp/ke-u8b-vu3te5td/out-196', '--arch', 'arm64']
+196 valid=False rc=2 docker_calls=0 args=[]
+197 valid=False rc=2 docker_calls=0 args=['--']
+198 valid=False rc=2 docker_calls=0 args=['--set', '--out', '--set']
+199 valid=True rc=0 docker_calls=6 args=['--set', 'sample', '--out', '/tmp/ke-u8b-vu3te5td/out-200'].
+STATS {"invalid": 187, "valid": 13, "explicit-empty-arch": 0}
+
+----------------------------------------------------------------------
+Ran 1 test in 3.468s
+
+OK
+## R1-4. probe_edges.py
+OK
+uid 10001
+[explicit --arch ''] rc=0 docker_calls=6 out_exists=True out_list=['19ab396bb607afafec74b1c92275764b4ddee7b27e87d5e02019cabd8b67ef1b', '3ded35d7f4537caf99c40b958c7da9792b01f02caf00c3fd80e68da7b935c842', '668d2a7dcbac5afd7cc673416fc17cdabc9c123db6b8eb1bbfad5a6c838a7f34'] lines=[]
+[--set twice (last wins?)] rc=0 docker_calls=6 out_exists=True out_list=['19ab396bb607afafec74b1c92275764b4ddee7b27e87d5e02019cabd8b67ef1b', '3ded35d7f4537caf99c40b958c7da9792b01f02caf00c3fd80e68da7b935c842', '668d2a7dcbac5afd7cc673416fc17cdabc9c123db6b8eb1bbfad5a6c838a7f34'] lines=[]
+[--out twice] rc=0 docker_calls=6 out_exists=True out_list=['19ab396bb607afafec74b1c92275764b4ddee7b27e87d5e02019cabd8b67ef1b', '3ded35d7f4537caf99c40b958c7da9792b01f02caf00c3fd80e68da7b935c842', '668d2a7dcbac5afd7cc673416fc17cdabc9c123db6b8eb1bbfad5a6c838a7f34'] lines=[]
+   first --out exists: False
+[--out --arch (dash value)] rc=0 docker_calls=6 out_exists=True out_list=['19ab396bb607afafec74b1c92275764b4ddee7b27e87d5e02019cabd8b67ef1b', '3ded35d7f4537caf99c40b958c7da9792b01f02caf00c3fd80e68da7b935c842', '668d2a7dcbac5afd7cc673416fc17cdabc9c123db6b8eb1bbfad5a6c838a7f34'] lines=[]
+[--out /] rc=1 docker_calls=3 lines=['bundle_fetch: FAIL (stage out: cannot create  (it appeared after the check, or the parent is not writable); no retry)']
+[--out $(...)] rc=0 docker_calls=6 out_exists=True out_list=['19ab396bb607afafec74b1c92275764b4ddee7b27e87d5e02019cabd8b67ef1b', '3ded35d7f4537caf99c40b958c7da9792b01f02caf00c3fd80e68da7b935c842', '668d2a7dcbac5afd7cc673416fc17cdabc9c123db6b8eb1bbfad5a6c838a7f34'] lines=[]
+   PWNED: False False
+[unreadable non-empty dir (0300)] rc=1 docker_calls=1 out_exists=True out_list=['operator.txt'] lines=['bundle_fetch: FAIL (stage out: cannot list /tmp/ke-u8b-t0t3hx8y/unreadable; no retry)']
+[unreadable non-empty dir + failing fetch] rc=1 docker_calls=1 out_exists=True out_list=['operator.txt'] lines=['bundle_fetch: FAIL (stage out: cannot list /tmp/ke-u8b-t0t3hx8y/unreadable2; no retry)']
+[parent missing] rc=1 docker_calls=3 out_exists=False lines=['bundle_fetch: FAIL (stage out: cannot create /tmp/ke-u8b-t0t3hx8y/parent-missing/child (it appeared after the check, or the parent is not writable); no retry)']
+[trailing slash] rc=0 docker_calls=6 out_exists=True out_list=['19ab396bb607afafec74b1c92275764b4ddee7b27e87d5e02019cabd8b67ef1b', '3ded35d7f4537caf99c40b958c7da9792b01f02caf00c3fd80e68da7b935c842', '668d2a7dcbac5afd7cc673416fc17cdabc9c123db6b8eb1bbfad5a6c838a7f34'] lines=[]
+## R1-5. probe_edges2.py
+OK
+uid 10001
+[unreadable non-empty dir + failing fetch] rc=1 docker_calls=1 out_exists=True out_list=['operator.txt'] lines=['bundle_fetch: FAIL (stage out: cannot list /tmp/ke-u8b-408boipi/unreadable2; no retry)']
+[parent missing] rc=1 docker_calls=3 out_exists=False lines=['bundle_fetch: FAIL (stage out: cannot create /tmp/ke-u8b-408boipi/parent-missing/child (it appeared after the check, or the parent is not writable); no retry)']
+[trailing slash] rc=0 docker_calls=6 out_exists=True out_list=['19ab396bb607afafec74b1c92275764b4ddee7b27e87d5e02019cabd8b67ef1b', '3ded35d7f4537caf99c40b958c7da9792b01f02caf00c3fd80e68da7b935c842', '668d2a7dcbac5afd7cc673416fc17cdabc9c123db6b8eb1bbfad5a6c838a7f34', '69e228c8994e6136ac8586816834d34608f02e6992b34e19561a8e1584941740', '8b07d220146c244c30a7f03e05cb3a163d9ce154c4598ef3e6c6969e4f915886', '8cc4ccd6ced509b86c222480d9a14071111afbc64708ad7c9857c02db8698175', '9198e4dbde4de640441270dd1cd5094256aed772e192cf9a9144c7c6afc90991', '9e16d0061a9deb2c2d2f5db43a1b3ba026d42d1a6dd10c042ef738cd750908be', 'a314137092297d9dece12524f32e611bc00f6bb20d2b85646e10fa6dbf42c393', 'e908c10563e6cae9e39a8881f1fed41f4c3ac991b7f421aae2809e8fecf96f2e', 'e99c8d1f5e16848b0bb31e00048c8707f0cd41597cb6f60f59b337debefbd83c', 'f32d16ff0a3c78e2c0a8385ebfb5990f0d127a544e7a6eaf12001b60be0376b3', 'f3c67a3d3db98584dddd63ab715425aed93e9bea18c7fb151e5c7e9c5934e8ab', 'fetch.json'] lines=[]
+[O-5] rc 1 stderr after client FAIL: ['bundle_fetch: FAIL (stage fetch: sources_fetch.py exited 1; no retry)']

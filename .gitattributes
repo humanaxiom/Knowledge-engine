@@ -6,3 +6,5 @@ Dockerfile text eol=lf
 # Licence texts ship verbatim (PS-3.8): no line-ending conversion, so the bytes
 # match the gnu.org originals whatever core.autocrlf says.
 licenses/* -text
+# The committed source lock (platform-sbom U7d S7): canonical JSON, LF only.
+docker/sources.lock.json text eol=lf

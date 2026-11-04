@@ -1,0 +1,13 @@
+# platform-sbom U9b: the sample bundle with sources, after rework 1 (2026-10-29, developer; extract of u9b-r1-green-verify-full.txt; verify full PASS 1422 s). Replaces the GREEN run of u9b-green-verify-full.txt (1273 s).
+
+bundle_fetch: fetched 25 files, 136571547 bytes, 7 components (sample, amd64) in 23.8 s
+sources-check: ok 25 files, 136571547 bytes, 7 components (sample, amd64)
+index: ke-neo4j: pkg:maven/com.sun.jna/jna@5.15.0: exempt, reviewed security 2026-10-25
+index: ke-neo4j: pkg:maven/org.javassist/javassist@3.30.2-GA: exempt, reviewed security 2026-10-25
+bundle: sources: check 1 s, copy 1 s, index 1 s, notices 1 s
+bundle written: /c/repos/Knowledge-engine/dist/ke-offline-12154669-amd64
+manifest sha256: 80107001797e91b12eb16c0bdd399d5b09838c100334cf72e6753eaef2d5b9ca
+release record: /c/repos/Knowledge-engine/dist/ke-offline-12154669-amd64.manifest.sha256
+offline: image-side drift check: the ke-app SBOM matches its base (python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753)
+== offline_check: PASS (249s) ==
+== verify full: PASS (1422s) ==

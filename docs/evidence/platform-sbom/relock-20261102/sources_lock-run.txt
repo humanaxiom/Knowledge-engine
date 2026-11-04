@@ -1,0 +1,18 @@
+ Container ke-sources-ae145daf-sbom-sbom-run-faebd44c8e94 Creating 
+ Container ke-sources-ae145daf-sbom-sbom-run-faebd44c8e94 Created 
+ Container ke-sources-ae145daf-sbom-sbom-run-70c81cedba72 Creating 
+ Container ke-sources-ae145daf-sbom-sbom-run-70c81cedba72 Created 
+ Container ke-sources-ae145daf-sbom-sbom-run-5713dd015b77 Creating 
+ Container ke-sources-ae145daf-sbom-sbom-run-5713dd015b77 Created 
+ Container ke-sources-ae145daf-sbom-sbom-run-db5e239751e2 Creating 
+ Container ke-sources-ae145daf-sbom-sbom-run-db5e239751e2 Created 
+ Container ke-sources-ae145daf-sbom-sbom-run-b597ef1077ac Creating 
+ Container ke-sources-ae145daf-sbom-sbom-run-b597ef1077ac Created 
+ Container ke-sources-ae145daf-sbom-sbom-run-9b553cb3c15c Creating 
+ Container ke-sources-ae145daf-sbom-sbom-run-9b553cb3c15c Created 
+ Network ke-sources-ae145daf_default Creating 
+ Network ke-sources-ae145daf_default Created 
+ Container ke-sources-ae145daf-sources-resolve-run-8073bca9cc01 Creating 
+ Container ke-sources-ae145daf-sources-resolve-run-8073bca9cc01 Created 
+ docker/sources.lock.json | 42 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 42 insertions(+)

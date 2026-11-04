@@ -1,0 +1,189 @@
+# U8b rework 1 security probes, 2026-10-28 (security). Redaction: profile paths -> <scratch>. No docker call reached the real daemon (a probe fake docker answered every call); nothing touched the network.
+# Part A: Windows Git Bash, scripts/bundle_fetch.sh at the staged rework copied to <scratch>/u8b/repo, fake docker <scratch>/u8b/bin/docker (now also PROBE_RUN_RC). No symlink was made on the host.
+
+### R1 --out /
+rc=1
+  | mkdir: cannot create directory '': No such file or directory
+  | bundle_fetch: FAIL (stage out: cannot create  (it appeared after the check, or the parent is not writable); no retry)
+  docker calls: 3
+  injection markers created: 0
+### R2 --out //
+rc=1
+  | mkdir: cannot create directory '': No such file or directory
+  | bundle_fetch: FAIL (stage out: cannot create  (it appeared after the check, or the parent is not writable); no retry)
+  docker calls: 3
+  injection markers created: 0
+### R3 --out ..
+rc=1
+  | bundle_fetch: FAIL (stage out: <scratch>/u8b/work/.. ends in a . or .. component; no retry)
+  docker calls: 0
+  injection markers created: 0
+### R4 --out .
+rc=1
+  | bundle_fetch: FAIL (stage out: <scratch>/u8b/work/. ends in a . or .. component; no retry)
+  docker calls: 0
+  injection markers created: 0
+### R5 --out d5/. (empty dir, dot last)
+rc=1
+  | bundle_fetch: FAIL (stage out: <scratch>/u8b/work/d5/. ends in a . or .. component; no retry)
+  docker calls: 0
+  injection markers created: 0
+### R6 --out d5/x/.. 
+rc=1
+  | bundle_fetch: FAIL (stage out: <scratch>/u8b/work/d5/x/.. ends in a . or .. component; no retry)
+  docker calls: 0
+  injection markers created: 0
+### R7 --out d7/// (empty dir, slashes stripped, accepted)
+rc=0
+  | == sources: pull ==
+  | == sources: fetch ==
+  | == sources: done (pull 0 s, fetch 0 s) ==
+  docker calls: 6
+  injection markers created: 0
+  run KE_SOURCES_OUT: <work>/d7
+### R8 --out with $(), backticks, ;, newline, -rf
+rc=0
+  | == sources: pull ==
+  | == sources: fetch ==
+  | == sources: done (pull 1 s, fetch 0 s) ==
+  docker calls: 6
+  injection markers created: 0
+### R9 random bytes as --out (no NUL)
+rc=0
+  | == sources: pull ==
+  | == sources: fetch ==
+  | == sources: done (pull 0 s, fetch 0 s) ==
+  docker calls: 6
+  injection markers created: 0
+### R10 random bytes as --set
+rc=2
+  | usage: scripts/bundle_fetch.sh --set sample|full --out DIR [--arch amd64|arm64]
+  docker calls: 0
+  injection markers created: 0
+### R11 daemon arch newline + $()
+rc=1
+  | bundle_fetch: FAIL (stage arch: the Docker daemon reports an unsupported architecture: $'x86_64\nbundle_fetch: FAIL forged $(touch PWN4)'; no retry)
+  docker calls: 1
+  injection markers created: 0
+### R12 compose run exits 125 (--out created)
+rc=125
+  | == sources: pull ==
+  | == sources: fetch ==
+  | bundle_fetch: FAIL (stage fetch: docker compose run exited 125; no retry)
+  docker calls: 6
+  injection markers created: 0
+  o12 exists after: no
+### R13 run exits 2 (client usage code)
+rc=2
+  | == sources: pull ==
+  | == sources: fetch ==
+  | bundle_fetch: FAIL (stage fetch: sources_fetch.py exited 2; no retry)
+  docker calls: 6
+  injection markers created: 0
+### R14 client fails; given empty dir emptied, sibling kept
+rc=1
+  | == sources: pull ==
+  | == sources: fetch ==
+  | bundle_fetch: FAIL (stage fetch: h: f: OSError: https://h/p?<query omitted>; no retry)
+  | bundle_fetch: FAIL (stage fetch: sources_fetch.py exited 1; no retry)
+  docker calls: 6
+  injection markers created: 0
+  o14 entries: 0; sibling: keep
+### R15 caller DOCKER_DEFAULT_PLATFORM/COMPOSE_ENV_FILES
+rc=0
+  | == sources: pull ==
+  | == sources: fetch ==
+  | == sources: done (pull 1 s, fetch 0 s) ==
+  docker calls: 6
+  injection markers created: 0
+  env records naming them: 0
+### R15b DOCKER_DEFAULT_PLATFORM=linux/arm64 COMPOSE_ENV_FILES=/etc/x, fake now logs DOCKER_DEFAULT_PLATFORM too
+rc=0 CALLs=6 records naming DOCKER_DEFAULT_PLATFORM or COMPOSE_ENV_FILES: 0
+
+# Part B: link probes inside ke-gates:local (e7222767bbd8): docker run --rm --network none --read-only --tmpfs /tmp:exec --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges:true -v <scratch>/u8b:/probe:ro --entrypoint bash ke-gates:local /probe/probes-links.sh
+# The script inside copies the repo copy and the same fake docker to /tmp; docker inside the container is the fake (no socket mounted).
+
+uid=1000 gid=1000 bash=5.2.15(1)-release
+### L1 --out link (link to an empty dir)
+rc=1
+  | bundle_fetch: FAIL (stage out: /tmp/w/link is a symlink; no retry)
+  docker calls: 1
+### L1 --out link/ (link to an empty dir)
+rc=1
+  | bundle_fetch: FAIL (stage out: /tmp/w/link is a symlink; no retry)
+  docker calls: 1
+### L1 --out link// (link to an empty dir)
+rc=1
+  | bundle_fetch: FAIL (stage out: /tmp/w/link is a symlink; no retry)
+  docker calls: 1
+### L1 --out link/// (link to an empty dir)
+rc=1
+  | bundle_fetch: FAIL (stage out: /tmp/w/link is a symlink; no retry)
+  docker calls: 1
+### L1 --out link/. (link to an empty dir)
+rc=1
+  | bundle_fetch: FAIL (stage out: /tmp/w/link/. ends in a . or .. component; no retry)
+  docker calls: 0
+### L1 --out link/./ (link to an empty dir)
+rc=1
+  | bundle_fetch: FAIL (stage out: /tmp/w/link/. ends in a . or .. component; no retry)
+  docker calls: 0
+### L1 --out link//. (link to an empty dir)
+rc=1
+  | bundle_fetch: FAIL (stage out: /tmp/w/link//. ends in a . or .. component; no retry)
+  docker calls: 0
+  tgt entries after L1: 0; link still a link: yes
+### L4 --out holding a fetch.json symlink
+rc=1
+  | bundle_fetch: FAIL (stage out: /tmp/w/o4 is not empty; no retry)
+  docker calls: 1
+  o4/fetch.json still a link: yes
+### L5 --out holding only a dangling link
+rc=1
+  | bundle_fetch: FAIL (stage out: /tmp/w/o5 is not empty; no retry)
+  docker calls: 1
+### L6 --out plink/out (link as a middle component, out absent)
+rc=0
+  | == sources: pull ==
+  | == sources: fetch ==
+  | == sources: done (pull 0 s, fetch 0 s) ==
+  docker calls: 6
+  out landed in real/: yes (residual: middle components are not checked)
+### L7 unlistable non-empty --out (mode 0300)
+rc=1
+  | ls: cannot open directory '/tmp/w/o7': Permission denied
+  | bundle_fetch: FAIL (stage out: cannot list /tmp/w/o7; no retry)
+  docker calls: 1
+  o7 after: operator.txt
+### L8 fetch.json a link after the client (--out created)
+rc=1
+  | == sources: pull ==
+  | == sources: fetch ==
+  | bundle_fetch: FAIL (stage fetch: /tmp/w/o8/fetch.json is not a regular file; no retry)
+  docker calls: 6
+  o8 exists after: no
+
+# Part C: probes-links.sh
+#!/usr/bin/env bash
+# U8b rework 1 link probes, run inside ke-gates (network none, read-only root, uid 1000), with the probe fake docker.
+set -u
+W=/tmp/w; rm -rf "$W"; mkdir -p "$W/bin" "$W/repo"; cp -r /probe/repo/. "$W/repo/"; cp /probe/bin/docker "$W/bin/docker"; chmod +x "$W/bin/docker"
+cd "$W"; export PATH="$W/bin:$PATH" PROBE_LOG="$W/docker.log" HOME=/tmp
+B="bash $W/repo/scripts/bundle_fetch.sh"
+run() { echo "### $1"; shift; : > "$PROBE_LOG"; "$@" > out.txt 2>&1; echo "rc=$?"; sed 's/^/  | /' out.txt; echo "  docker calls: $(grep -c '^CALL' "$PROBE_LOG")"; }
+echo "uid=$(id -u) gid=$(id -g) bash=$BASH_VERSION"
+mkdir tgt; ln -s tgt link
+for o in link link/ link// link/// link/. link/./ link//. ; do run "L1 --out $o (link to an empty dir)" $B --set sample --out "$W/$o"; done
+echo "  tgt entries after L1: $(ls -A tgt | wc -l); link still a link: $([ -L link ] && echo yes)"
+mkdir o4; ln -s /etc/hostname o4/fetch.json; run "L4 --out holding a fetch.json symlink" $B --set sample --out "$W/o4"; echo "  o4/fetch.json still a link: $([ -L o4/fetch.json ] && echo yes)"
+mkdir o5; ln -s /nonexistent o5/dangling; run "L5 --out holding only a dangling link" $B --set sample --out "$W/o5"
+mkdir real; ln -s real plink; run "L6 --out plink/out (link as a middle component, out absent)" $B --set sample --out "$W/plink/out"; echo "  out landed in real/: $([ -d real/out ] && echo yes) (residual: middle components are not checked)"
+mkdir o7; echo keep > o7/operator.txt; chmod 0300 o7; run "L7 unlistable non-empty --out (mode 0300)" $B --set sample --out "$W/o7"; chmod 0700 o7; echo "  o7 after: $(ls -A o7)"
+cat > "$W/bin/docker-wrap" <<'WR'
+#!/usr/bin/env bash
+"$PROBE_REAL" "$@"; rc=$?
+case " $* " in *" run "*" sources-fetch "*) [ "$rc" -eq 0 ] && mv -- "$KE_SOURCES_OUT/fetch.json" /tmp/w/moved.json && ln -s /tmp/w/moved.json "$KE_SOURCES_OUT/fetch.json" ;; esac
+exit $rc
+WR
+mkdir "$W/bin2"; cp "$W/bin/docker-wrap" "$W/bin2/docker"; chmod +x "$W/bin2/docker"
+PROBE_REAL="$W/bin/docker" PATH="$W/bin2:$PATH" run "L8 fetch.json a link after the client (--out created)" $B --set sample --out "$W/o8"; echo "  o8 exists after: $([ -e o8 ] || [ -L o8 ] && echo yes || echo no)"

@@ -1,0 +1,782 @@
+# U9a security probes (security, 2026-10-29). Tree: HEAD 5cf025c + the uncommitted U9a diff (scripts/sbom_check.py,
+# tests/test_offline_bundle.py, tests/test_source_index.py). Read-only against the checkout; every write, link and FIFO
+# is under the container's /tmp. No symlink was made on the Windows host.
+# Command (from the repo root, Git Bash; <scratch> = the session scratchpad, not committed):
+#   MSYS_NO_PATHCONV=1 KE_IMAGE_TAG=wt-33a132fbfdd7 COMPOSE_PROJECT_NAME=ke-security-u9a docker compose --env-file .env.example \
+#     --profile gates run --rm --pull never -v <scratch>/probe:/scratch:ro gates uv run --locked python -I /scratch/probe.py
+# (gates service: network none, uid 10001, cap_drop ALL, /work read-only). Exit 0.
+# P3 swaps are made by a patched lstat / _lstat_listing in the probe process (a deterministic stand-in for a racing writer).
+
+== 1. Secret and profile-path scan ==
+# git diff HEAD -- scripts/sbom_check.py tests/test_offline_bundle.py + tests/test_source_index.py, grep -Ei for:
+# AKIA.., ghp_/gho_/github_pat_, xox[baprs]-, sk-.., PRIVATE KEY, password/secret/token =/:, api_key, scheme://user:pass@,
+# Authorization:/Bearer, C:\Users, C:/Users, /home/<x>, /Users/<x>, S-1-5-21, AppData
+hits: 0
+# docs/evidence/platform-sbom/u9/*.txt (u9a-red/green-verify-fast, u9a-controls) for profile paths, SIDs, tokens: hits 0
+# (u9a-controls.txt names its scratch dir as <scratch>).
+
+== 2. Probe output (unedited, container progress lines removed) ==
+== P0 control: a good full set ==
+[control] exit=0 stdout_lines=17 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sources-check: ok 17 files, 10153 bytes, 10 components (full, amd64)
+
+== P1 hostile fetch.json ==
+[4MiB+1] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json is 4194305 bytes, over 4 MiB
+[sparse 8 GiB (took 0.13s)] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json is 8589934592 bytes, over 4 MiB
+[200000-deep nesting] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: not valid JSON
+[5000-deep (inside cap)] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sources-check: FAIL (RecursionError: maximum recursion depth exceeded)
+[900-deep (loads; dumps may recurse)] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: not in the canonical form (the fetch client's own text)
+[duplicate key arch (last wins amd64)] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: not in the canonical form (the fetch client's own text)
+[raw NUL byte in a string] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: not valid JSON
+    (escaped probe text check: changed=True valid=True)
+[escaped NUL/ESC in set] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: set is full\x00\x1b[31m, this bundle needs full
+[non-UTF-8] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: not UTF-8
+[UTF-8 BOM] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: not valid JSON
+[format true (bool)] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: format is True, want 1
+[format 1.0] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: format is 1.0, want 1
+[format NaN] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: format is nan, want 1
+[size as float, canonical] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: apk:readline@8.2.13-r0: size is 3253.0, the lock's full plan says 3253
+[extra file key, canonical] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: apk:readline@8.2.13-r0: a file is not an object with exactly name, sha256 and size
+[size true, canonical] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: apk:readline@8.2.13-r0: size is True, the lock's full plan says 3253
+[5000-digit int] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: not valid JSON
+[CRLF record] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: not in the canonical form (the fetch client's own text)
+
+== P2 links ==
+[fetch.json is a link to a good record] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: is not a regular file
+[--dir is a link] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: --dir /tmp/tmpsrliysl3/dirlink21 is not a directory (or is a link)
+[--dir is a link given with a trailing slash] exit=0 stdout_lines=17 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sources-check: ok 17 files, 10153 bytes, 10 components (full, amd64)
+[an unplanned link to /etc/passwd] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: not in the lock's plan
+[planned name a link to /dev/zero] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: 19ab396bb607afafec74b1c92275764b4ddee7b27e87d5e02019cabd8b67ef1b: is a link, not a regular file
+
+== P3 TOCTOU between lstat and open ==
+[fetch.json swapped for a link after lstat] read='{"leak": "content of another file"}\n' problems=[]
+[planned file a link at open] refused by O_NOFOLLOW: OSError errno=40
+[planned file swapped for a FIFO after the listing] TIMEOUT after 8 s: open() blocks on the FIFO
+[fetch.json swapped for a FIFO after lstat] TIMEOUT after 8 s: open() blocks on the FIFO
+
+== P4 listing refusal and nothing written ==
+[--dir mode 0300 (unlistable)] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: /tmp/tmpsrliysl3/d28: cannot list
+[--dir mode 0000] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sources-check: FAIL (PermissionError: [Errno 13] Permission denied: '/tmp/tmpsrliysl3/d29/fetch.json')
+[a planned file mode 0000] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: --sources: 19ab396bb607afafec74b1c92275764b4ddee7b27e87d5e02019cabd8b67ef1b (neo4j:neo4j@5.26.32 5.26.32.tar.gz): cannot read (PermissionError)
+[nothing written under --dir] ok_exit=0 refused_exit=1 unchanged=True
+
+== P5 source_section with hostile strings ==
+[control index] problems=[] components=11
+[control section] rows=12 problems=[]
+[key] 'a|b'=REF 'a`b'=REF '<script>'=REF 'a>b'=REF 'a\x08'=REF 'a\nb'=REF 'a\rb'=REF 'a\tb'=REF 'a\x00b'=REF 'a\x1b[31mb'=REF 'a\u202eb'=REF 'a\xa0b'=REF 'a b'=REF ''=REF None=REF 7=REF ['x']=REF '[click](jav=ok '![img](http=ok '*bold*_x_'=ok '&lt;b&gt;'=ok '#heading'=ok
+[image] 'a|b'=REF 'a`b'=REF '<script>'=REF 'a>b'=REF 'a\x08'=REF 'a\nb'=REF 'a\rb'=REF 'a\tb'=REF 'a\x00b'=REF 'a\x1b[31mb'=REF 'a\u202eb'=REF 'a\xa0b'=REF 'a b'=REF ''=REF None=REF 7=REF ['x']=REF '[click](jav=ok '![img](http=ok '*bold*_x_'=ok '&lt;b&gt;'=ok '#heading'=ok
+[url] 'a|b'=REF 'a`b'=REF '<script>'=REF 'a>b'=REF 'a\x08'=REF 'a\nb'=REF 'a\rb'=REF 'a\tb'=REF 'a\x00b'=REF 'a\x1b[31mb'=REF 'a\u202eb'=REF 'a\xa0b'=REF 'a b'=REF ''=REF None=REF 7=REF ['x']=REF '[click](jav=ok '![img](http=ok '*bold*_x_'=ok '&lt;b&gt;'=ok '#heading'=ok
+[exempt.package] 'a|b'=REF 'a`b'=REF '<script>'=REF 'a>b'=REF 'a\x08'=REF 'a\nb'=REF 'a\rb'=REF 'a\tb'=REF 'a\x00b'=REF 'a\x1b[31mb'=REF 'a\u202eb'=REF 'a\xa0b'=REF 'a b'=REF ''=REF None=REF 7=REF ['x']=REF '[click](jav=ok '![img](http=ok '*bold*_x_'=ok '&lt;b&gt;'=ok '#heading'=ok
+[exempt.image] 'a|b'=REF 'a`b'=REF '<script>'=REF 'a>b'=REF 'a\x08'=REF 'a\nb'=REF 'a\rb'=REF 'a\tb'=REF 'a\x00b'=REF 'a\x1b[31mb'=REF 'a\u202eb'=REF 'a\xa0b'=REF 'a b'=REF ''=REF None=REF 7=REF ['x']=REF '[click](jav=ok '![img](http=ok '*bold*_x_'=ok '&lt;b&gt;'=ok '#heading'=ok
+[exempt.reviewed] 'a|b'=REF 'a`b'=REF '<script>'=REF 'a>b'=REF 'a\x08'=REF 'a\nb'=REF 'a\rb'=REF 'a\tb'=REF 'a\x00b'=REF 'a\x1b[31mb'=REF 'a\u202eb'=REF 'a\xa0b'=REF 'a b'=ok ''=REF None=REF 7=REF ['x']=REF '[click](jav=ok '![img](http=ok '*bold*_x_'=ok '&lt;b&gt;'=ok '#heading'=ok
+[listing] 'a|b'=REF 'a`b'=REF '<script>'=REF 'a>b'=REF 'a\x08'=REF 'a\nb'=REF 'a\rb'=REF 'a\tb'=REF 'a\x00b'=REF 'a\x1b[31mb'=REF 'a\u202eb'=REF 'a\xa0b'=REF 'a b'=ok ''=REF None=REF 7=REF ['x']=REF '[click](jav=ok '![img](http=ok '*bold*_x_'=ok '&lt;b&gt;'=ok '#heading'=ok
+[gen:pkg.name] 'a|b'=ok 'a`b'=ok '<script>'=ok 'a>b'=ok 'a\x08'=ok 'a\nb'=ok 'a\rb'=ok 'a\tb'=ok 'a\x00b'=ok 'a\x1b[31mb'=ok 'a\u202eb'=ok 'a\xa0b'=ok 'a b'=ok ''=ok None=ok 7=ok ['x']=ok '[click](jav=ok '![img](http=ok '*bold*_x_'=ok '&lt;b&gt;'=ok '#heading'=ok
+[gen:pkg.purl] 'a|b'=ok 'a`b'=ok '<script>'=ok 'a>b'=ok 'a\x08'=ok 'a\nb'=ok 'a\rb'=ok 'a\tb'=ok 'a\x00b'=ok 'a\x1b[31mb'=ok 'a\u202eb'=ok 'a\xa0b'=ok 'a b'=ok ''=ok None=ok 7=ok ['x']=ok '[click](jav=ok '![img](http=ok '*bold*_x_'=ok '&lt;b&gt;'=ok '#heading'=ok
+[gen:licence.declared] 'a|b'=ok 'a`b'=ok '<script>'=ok 'a>b'=ok 'a\x08'=ok 'a\nb'=ok 'a\rb'=ok 'a\tb'=ok 'a\x00b'=ok 'a\x1b[31mb'=ok 'a\u202eb'=ok 'a\xa0b'=ok 'a b'=ok ''=ok None=ok 7=ok ['x']=ok '[click](jav=ok '![img](http=ok '*bold*_x_'=ok '&lt;b&gt;'=ok '#heading'=ok
+[gen:expression] 'a|b'=ok 'a`b'=ok '<script>'=ok 'a>b'=ok 'a\x08'=ok 'a\nb'=ok 'a\rb'=ok 'a\tb'=ok 'a\x00b'=ok 'a\x1b[31mb'=ok 'a\u202eb'=ok 'a\xa0b'=ok 'a b'=ok ''=ok None=ok 7=ok ['x']=ok '[click](jav=ok '![img](http=ok '*bold*_x_'=ok '&lt;b&gt;'=ok '#heading'=ok
+[pol:exempt.reason] 'a|b'=ok 'a`b'=ok '<script>'=ok 'a>b'=ok 'a\x08'=ok 'a\nb'=ok 'a\rb'=ok 'a\tb'=ok 'a\x00b'=ok 'a\x1b[31mb'=ok 'a\u202eb'=ok 'a\xa0b'=ok 'a b'=ok ''=ok None=ok 7=ok ['x']=ok '[click](jav=ok '![img](http=ok '*bold*_x_'=ok '&lt;b&gt;'=ok '#heading'=ok
+[lock:files[0].name] 'a|b'=ok 'a`b'=ok '<script>'=ok 'a>b'=ok 'a\x08'=ok 'a\nb'=ok 'a\rb'=ok 'a\tb'=ok 'a\x00b'=ok 'a\x1b[31mb'=ok 'a\u202eb'=ok 'a\xa0b'=ok 'a b'=ok ''=ok None=ok 7=ok ['x']=ok '[click](jav=ok '![img](http=ok '*bold*_x_'=ok '&lt;b&gt;'=ok '#heading'=ok
+   values that pass the refusal in printed fields: [('exempt.image', '![img](http://evil/x.png)'), ('exempt.image', '#heading'), ('exempt.image', '&lt;b&gt;'), ('exempt.image', '*bold*_x_'), ('exempt.image', '[click](javascript:alert(1))'), ('exempt.package', '![img](http://evil/x.png)'), ('exempt.package', '#heading'), ('exempt.package', '&lt;b&gt;'), ('exempt.package', '*bold*_x_'), ('exempt.package', '[click](javascript:alert(1))'), ('exempt.reviewed', '![img](http://evil/x.png)'), ('exempt.reviewed', '#heading'), ('exempt.reviewed', '&lt;b&gt;'), ('exempt.reviewed', '*bold*_x_'), ('exempt.reviewed', '[click](javascript:alert(1))'), ('exempt.reviewed', 'a b'), ('image', '![img](http://evil/x.png)'), ('image', '#heading'), ('image', '&lt;b&gt;'), ('image', '*bold*_x_'), ('image', '[click](javascript:alert(1))'), ('key', '![img](http://evil/x.png)'), ('key', '#heading'), ('key', '&lt;b&gt;'), ('key', '*bold*_x_'), ('key', '[click](javascript:alert(1))'), ('listing', '![img](http://evil/x.png)'), ('listing', '#heading'), ('listing', '&lt;b&gt;'), ('listing', '*bold*_x_'), ('listing', '[click](javascript:alert(1))'), ('listing', 'a b'), ('url', '![img](http://evil/x.png)'), ('url', '#heading'), ('url', '&lt;b&gt;'), ('url', '*bold*_x_'), ('url', '[click](javascript:alert(1))')]
+[packages not a list] text=False problems=["notices: AttributeError: 'str' object has no attribute 'get'"]
+[files[0] a string] text=False problems=["notices: AttributeError: 'str' object has no attribute 'get'"]
+[index a list] text=False problems=['notices: the index is not a source index (set, components)']
+[status unknown] text=False problems=["notices: a component has status 'x|y'"]
+
+== P6 index: hostile policy and SBOM strings ==
+[policy a list] index=refused problems=['policy: not a JSON object'] section=refused []
+[exempt not a list] index=refused problems=['policy: exempt is not a list of objects'] section=refused []
+[exempt reviewed int] index=refused problems=['policy: an exempt entry lacks a string image, package, reason or reviewed'] section=refused []
+[exempt reviewed with |] index=built problems=[] section=refused ["notices: reviewed 'security 2026-10-25 | x' cannot be printed in the Markdown table: refused, not es"]
+[exempt reviewed with newline] index=built problems=[] section=refused ["notices: reviewed 'security\\n| x | y |' cannot be printed in the Markdown table: refused, not escape"]
+[exempt reviewed with a md link] index=built problems=[] section=printed []
+[exempt reason with | and newline] index=built problems=[] section=printed []
+[hostile SBOM name/licence] index built; in index.json=True; ensure_ascii output has raw newline in a value=False; section printed=True; text in section=False; problems=[]
+[duplicate SPDXID on jna (validate first)] refused=True first=['ke-neo4j: package SPDXID SPDXRef-Package-jna-ecbe854e78355cf3 is not unique']
+[jna twice, distinct SPDXIDs (multi-match)] refused=True first=['ke-neo4j: exempt entry matches 2 packages: pkg:maven/com.sun.jna/jna@5.15.0 (SPDXRef-Package-jna-ecbe854e78355cf3, SPDXRef-jna-2); an exemption clears exactly one package']
+[git_sha '0000000000000000000] refused=True ['index: git sha 000000000000000000000000000000000000000 is not 40 lower-case hex digits']
+[git_sha '0000000000000000000] refused=True ['index: git sha 0000000000000000000000000000000000000000\\x0a is not 40 lower-case hex digits']
+[git_sha 'AAAAAAAAAAAAAAAAAAA] refused=True ['index: git sha AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA is not 40 lower-case hex digits']
+[git_sha None] refused=True ['index: git sha None is not 40 lower-case hex digits']
+[git_sha 'ggggggggggggggggggg] refused=True ['index: git sha gggggggggggggggggggggggggggggggggggggggg is not 40 lower-case hex digits']
+[byte-identical, in-process] True
+
+== P7 CLIs: --git-sha, links, random bytes ==
+[index control] exit=0 stdout_lines=534 traceback=False raw_control_in_stderr=False stderr_lines=1
+    index: ke-neo4j: pkg:maven/com.sun.jna/jna@5.15.0: exempt, reviewed security 2026-10-25
+    byte-identical stdout across two CLI runs: True; stdout ascii-only=True
+[notices control] exit=0 stdout_lines=22 traceback=False raw_control_in_stderr=False stderr_lines=0
+[--git-sha '00000000000000000000000] exit=2 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: index: --git-sha '0000000000000000000000000000000000000000\n' is not 40 lower-case hex digits
+[--git-sha '00000000000000000000000] exit=2 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: index: --git-sha '00000000000000000000000000000000000000000' is not 40 lower-case hex digits
+[--git-sha 'ABCDEF00000000000000000] exit=2 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: index: --git-sha 'ABCDEF0000000000000000000000000000000000' is not 40 lower-case hex digits
+[--git-sha '\x1b[31m000000000000000] exit=2 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: index: --git-sha '\x1b[31m00000000000000000000000000000000000' is not 40 lower-case hex digits
+[--git-sha '00000000000000000000000] exit=2 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: index: --git-sha '0000000000000000000000000000000000000000\u202e' is not 40 lower-case hex digits
+[--git-sha ''] exit=2 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: index: --git-sha '' is not 40 lower-case hex digits
+[index --files given as a link (followed)] exit=0 stdout_lines=534 traceback=False raw_control_in_stderr=False stderr_lines=1
+    index: ke-neo4j: pkg:maven/com.sun.jna/jna@5.15.0: exempt, reviewed security 2026-10-25
+[notices --index /dev/zero] TIMEOUT (hang)
+[notices deep index] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    notices: FAIL (RecursionError: maximum recursion depth exceeded while decoding a JSON array from a unicode string)
+[unrecognized trailing raw ESC arg (argparse)] exit=2 stdout_lines=0 traceback=False raw_control_in_stderr=True stderr_lines=4
+    usage: sbom_check.py [-h]
+                         {finish,drift,neo4j,tree,lock-check,lock-needs,sources-check,index,notices}
+                         ...
+[150 random-bytes argv runs] exits=['0', '1', '2'] tracebacks=0 stderr_with_raw_control=9
+    e.g. 'rror: unrecognized arguments: \\udc91\\udce0\n>\\udc91\\udca3\\udc99\\udca9En\\udcc1\\udccf+0 \\udca2\x06U\\udc87\\udc8a\\udcf5\x1e\\udccbś\\udcd2^\\udcfel\\udcec`\\udcc1\\udcff\\udc8c\x7f\x13'
+    e.g. 's,sources-check,index,notices}\n                     ...\nsbom_check.py: error: unrecognized arguments: \\udca8W\\udc88\\udceft\r\\udce2\\udcbf\x0fE$\\udccd7H \\udc9c\x16\\udca3'
+    e.g. '             ...\nsbom_check.py: error: unrecognized arguments: \\udc90y\\udcff\\udc98@R\\udcf9\\udcfe\\udcecE{\\udc80`\x0c\\udccc\x7f ke-app=/tmp/tmpsrliysl3/ke-app.spdx.json'
+    e.g. 'ds,sources-check,index,notices}\n                     ...\nsbom_check.py: error: unrecognized arguments: ,\x19\\udcd5pmѱy\\udcbb\\udcfcO\\udce3\\udcb4\x02|>\\udca6\\udc96$-_\x7f#'
+
+== 3. Probe source (<scratch>/probe/probe.py, concatenated from p1..p5; and the two child scripts) ==
+"""U9a security probes (security, 2026-10-29). Read-only against /work; all
+writes under /tmp in the gates container. Prints one block per probe."""
+import json, os, random, subprocess, sys, tempfile, time, copy
+from pathlib import Path
+from unittest import mock
+sys.path.insert(0, "/work")
+os.chdir("/work")
+from tests import test_source_index as T
+from tests.test_sbom_bundle import load_sbom_check
+
+S = load_sbom_check()
+CHECK = "/work/scripts/sbom_check.py"
+b = T.wide()
+TMP = Path(tempfile.mkdtemp(dir="/tmp"))
+lock = TMP / "lock.json"; lock.write_bytes(b.text().encode())
+pol = TMP / "pol.json"; pol.write_text(json.dumps(T.syn_policy()))
+n = [0]
+
+def fresh(which="full"):
+    n[0] += 1
+    d = TMP / f"d{n[0]}"; T.write_fetched(d, b, which); return d
+
+def cli(*args, timeout=60):
+    try:
+        return subprocess.run([sys.executable, "-I", CHECK, *args], capture_output=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return None
+
+def sc(d, which="full", arch="amd64"):
+    return cli("sources-check", "--lock", str(lock), "--policy", str(pol), "--dir", str(d), "--arch", arch, "--set", which)
+
+def has_ctl(s):
+    return any((ord(c) < 0x20 and c != "\n") or 0x7f <= ord(c) <= 0x9f for c in s)
+
+def show(name, r):
+    if r is None:
+        print(f"[{name}] TIMEOUT (hang)"); return
+    err = r.stderr.decode("utf-8", "replace")
+    lines = [l for l in err.splitlines() if l.strip()]
+    print(f"[{name}] exit={r.returncode} stdout_lines={len(r.stdout.splitlines())} traceback={'Traceback' in err} "
+          f"raw_control_in_stderr={has_ctl(err)} stderr_lines={len(lines)}")
+    for l in lines[:3]:
+        print("    " + l[:220])
+print("== P0 control: a good full set ==")
+show("control", sc(fresh()))
+
+print("\n== P1 hostile fetch.json ==")
+d = fresh(); (d / "fetch.json").write_bytes(b" " * (4 * 1024 * 1024 + 1)); show("4MiB+1", sc(d))
+d = fresh(); fh = open(d / "fetch.json", "wb"); fh.truncate(8 * 1024**3); fh.close()
+t = time.time(); r = sc(d); show(f"sparse 8 GiB (took {time.time()-t:.2f}s)", r)
+d = fresh(); (d / "fetch.json").write_text("[" * 200000 + "]" * 200000); show("200000-deep nesting", sc(d))
+d = fresh(); (d / "fetch.json").write_text('{"components":' + "[" * 5000 + "]" * 5000 + "}"); show("5000-deep (inside cap)", sc(d))
+d = fresh(); (d / "fetch.json").write_text('{"components":' + "[" * 900 + "]" * 900 + "}"); show("900-deep (loads; dumps may recurse)", sc(d))
+rec = T.record_text(b, "full")
+dup = rec.replace('"arch": "amd64"', '"arch": "arm64",\n "arch": "amd64"', 1)
+d = fresh(); (d / "fetch.json").write_text(dup); show("duplicate key arch (last wins amd64)", sc(d))
+d = fresh(); (d / "fetch.json").write_bytes(rec.encode().replace(b'"full"', b'"fu\x00ll"', 1)); show("raw NUL byte in a string", sc(d))
+esc = rec.replace('"set": "full"', '"set": "full' + chr(92) + 'u0000' + chr(92) + 'u001b[31m"', 1)
+print("    (escaped probe text check: changed=%s valid=%s)" % (esc != rec, bool(json.loads(esc))))
+d = fresh(); (d / "fetch.json").write_text(esc); show("escaped NUL/ESC in set", sc(d))
+d = fresh(); (d / "fetch.json").write_bytes(b"\xff\xfe" + rec.encode()); show("non-UTF-8", sc(d))
+d = fresh(); (d / "fetch.json").write_bytes(b"\xef\xbb\xbf" + rec.encode()); show("UTF-8 BOM", sc(d))
+d = fresh(); (d / "fetch.json").write_text(rec.replace('"format": 1', '"format": true')); show("format true (bool)", sc(d))
+d = fresh(); (d / "fetch.json").write_text(rec.replace('"format": 1', '"format": 1.0')); show("format 1.0", sc(d))
+d = fresh(); (d / "fetch.json").write_text(rec.replace('"format": 1', '"format": NaN')); show("format NaN", sc(d))
+r0 = json.loads(rec); k0 = sorted(r0["components"])[0]
+r1 = copy.deepcopy(r0); r1["components"][k0][0]["size"] = float(r1["components"][k0][0]["size"])
+d = fresh(); (d / "fetch.json").write_text(S.lock_text(r1)); show("size as float, canonical", sc(d))
+r1 = copy.deepcopy(r0); r1["components"][k0][0]["extra"] = "x"
+d = fresh(); (d / "fetch.json").write_text(S.lock_text(r1)); show("extra file key, canonical", sc(d))
+r1 = copy.deepcopy(r0); r1["components"][k0][0]["size"] = True
+d = fresh(); (d / "fetch.json").write_text(S.lock_text(r1)); show("size true, canonical", sc(d))
+d = fresh(); (d / "fetch.json").write_text(rec.replace('"format": 1', '"format": ' + "9" * 5000)); show("5000-digit int", sc(d))
+d = fresh(); (d / "fetch.json").write_text(rec.replace("\n", "\r\n")); show("CRLF record", sc(d))
+
+print("\n== P2 links ==")
+d = fresh(); (d / "fetch.json").rename(TMP / f"rec{n[0]}"); os.symlink(TMP / f"rec{n[0]}", d / "fetch.json"); show("fetch.json is a link to a good record", sc(d))
+d = fresh(); link = TMP / f"dirlink{n[0]}"; os.symlink(d, link); show("--dir is a link", sc(link))
+show("--dir is a link given with a trailing slash", sc(str(link) + "/"))
+d = fresh(); os.symlink("/etc/passwd", d / ("a" * 64)); show("an unplanned link to /etc/passwd", sc(d))
+d = fresh(); s0 = sorted(T.distinct(b, "full"))[0]; (d / s0).unlink(); os.symlink("/dev/zero", d / s0); show("planned name a link to /dev/zero", sc(d))
+print("\n== P3 TOCTOU between lstat and open ==")
+d = fresh(); other = TMP / "other.json"; other.write_text('{"leak": "content of another file"}\n')
+real_lstat = os.lstat
+swapped_once = []
+def swap_after_lstat(path, *a, **k):
+    st = real_lstat(path, *a, **k)
+    if str(path).endswith("fetch.json") and not swapped_once:
+        swapped_once.append(1); os.unlink(path); os.symlink(other, path)
+    return st
+with mock.patch.object(S.os, "lstat", swap_after_lstat):
+    text, probs = S._record_text(str(d))
+print(f"[fetch.json swapped for a link after lstat] read={text!r:.70} problems={probs}")
+d = fresh(); s0 = sorted(T.distinct(b, "full"))[0]
+cp = TMP / "copy0"; cp.write_bytes((d / s0).read_bytes()); os.unlink(d / s0); os.symlink(cp, d / s0)
+try:
+    S._sha256_of(str(d / s0)); print("[planned file a link at open] FOLLOWED")
+except OSError as e:
+    print(f"[planned file a link at open] refused by O_NOFOLLOW: {type(e).__name__} errno={e.errno}")
+d = fresh(); s0 = sorted(T.distinct(b, "full"))[0]
+try:
+    r = subprocess.run([sys.executable, "-I", "/scratch/child_fifo_file.py", str(lock), str(pol), str(d), s0], capture_output=True, timeout=8)
+    show("planned file swapped for a FIFO after the listing", r)
+except subprocess.TimeoutExpired:
+    print("[planned file swapped for a FIFO after the listing] TIMEOUT after 8 s: open() blocks on the FIFO")
+d = fresh()
+try:
+    r = subprocess.run([sys.executable, "-I", "/scratch/child_fifo_record.py", str(d)], capture_output=True, timeout=8)
+    print("[fetch.json swapped for a FIFO after lstat]", r.returncode, r.stdout[:200], r.stderr[-200:])
+except subprocess.TimeoutExpired:
+    print("[fetch.json swapped for a FIFO after lstat] TIMEOUT after 8 s: open() blocks on the FIFO")
+
+print("\n== P4 listing refusal and nothing written ==")
+d = fresh(); os.chmod(d, 0o300); show("--dir mode 0300 (unlistable)", sc(d)); os.chmod(d, 0o700)
+d = fresh(); os.chmod(d, 0o000); show("--dir mode 0000", sc(d)); os.chmod(d, 0o700)
+d = fresh(); s0 = sorted(T.distinct(b, "full"))[0]; os.chmod(d / s0, 0o000); show("a planned file mode 0000", sc(d))
+d = fresh()
+def snap(p):
+    out = {".": os.lstat(p).st_mtime_ns}
+    for e in os.scandir(p):
+        st = os.lstat(e.path); out[e.name] = (st.st_mtime_ns, st.st_size, st.st_mode)
+    return out
+before = snap(d); r1 = sc(d); r2 = sc(d, "sample"); after = snap(d)
+print(f"[nothing written under --dir] ok_exit={r1.returncode} refused_exit={r2.returncode} unchanged={before == after}")
+print("\n== P5 source_section with hostile strings ==")
+idx, probs = S.source_index(T.syn_docs(), b.text(), T.syn_policy(), "amd64", "full", T.GIT_SHA, T.listing_of(b, "full", record=False))
+print(f"[control index] problems={probs[:2]} components={len(idx['components'])}")
+txt, p = S.source_section(idx)
+print(f"[control section] rows={sum(1 for l in txt.splitlines() if l.startswith('| '))} problems={p}")
+hostile = ["a|b", "a`b", "<script>", "a>b", "a\b", "a\nb", "a\rb", "a\tb", "a\x00b", "a\x1b[31mb", "a‮b",
+           "a b", "a b", "", None, 7, ["x"], "[click](javascript:alert(1))", "![img](http://evil/x.png)",
+           "*bold*_x_", "&lt;b&gt;", "#heading"]
+def mut(where, val):
+    j = copy.deepcopy(idx)
+    lockc = [c for c in j["components"] if c["status"] == "shipped"][0]
+    ex = [c for c in j["components"] if c["status"] == "exempt"][0]
+    if where == "key": lockc["key"] = val
+    elif where == "image": lockc["packages"][0]["image"] = val
+    elif where == "url": lockc["status"] = "not-shipped"; lockc["files"][0]["url"] = val
+    elif where == "exempt.package": ex["exempt"]["package"] = val
+    elif where == "exempt.image": ex["exempt"]["image"] = val
+    elif where == "exempt.reviewed": ex["exempt"]["reviewed"] = val
+    elif where == "listing": ex["listing"] = val
+    elif where == "gen:pkg.name": lockc["packages"][0]["name"] = val
+    elif where == "gen:pkg.purl": lockc["packages"][0]["purl"] = val
+    elif where == "gen:licence.declared": lockc["packages"][0]["licence"]["declared"] = val
+    elif where == "gen:expression": lockc["packages"][0]["expression"] = val
+    elif where == "pol:exempt.reason": ex["exempt"]["reason"] = val
+    elif where == "lock:files[0].name": lockc["files"][0]["name"] = val
+    return j
+passed = []
+for where in ("key", "image", "url", "exempt.package", "exempt.image", "exempt.reviewed", "listing",
+              "gen:pkg.name", "gen:pkg.purl", "gen:licence.declared", "gen:expression", "pol:exempt.reason",
+              "lock:files[0].name"):
+    res = []
+    for v in hostile:
+        t, pr = S.source_section(mut(where, v))
+        res.append("ok" if t is not None else "REF")
+        printed_field = ":" not in where
+        if t is not None and isinstance(v, str) and v and printed_field:
+            passed.append((where, v))
+        if t is not None and not printed_field and isinstance(v, str) and len(v) > 1 and v in t:
+            print(f"   !! non-printed field text {v!r} reached the section via {where}")
+    print(f"[{where}] " + " ".join(f"{h!r:.12}={x}" for h, x in zip(hostile, res)))
+print("   values that pass the refusal in printed fields:", sorted(set(passed)))
+for name, bad in {"packages not a list": {"set": "full", "components": [{"status": "shipped", "key": "k", "packages": "ab"}]},
+                  "files[0] a string": {"set": "full", "components": [{"status": "not-shipped", "key": "k", "packages": [{"image": "a"}], "files": ["x"]}]},
+                  "index a list": [1], "status unknown": {"set": "full", "components": [{"status": "x|y"}]}}.items():
+    t, pr = S.source_section(bad); print(f"[{name}] text={t is not None} problems={[x[:120] for x in pr]}")
+
+print("\n== P6 index: hostile policy and SBOM strings ==")
+def ix(docs=None, polx=None, which="full", listing=None, git=T.GIT_SHA):
+    return S.source_index(docs if docs is not None else T.syn_docs(), b.text(), polx if polx is not None else T.syn_policy(),
+                          "amd64", which, git, listing if listing is not None else T.listing_of(b, which, record=False))
+E = T.exempt_entry()
+for name, pp in {
+    "policy a list": [1],
+    "exempt not a list": dict(T.syn_policy(), exempt={"a": 1}),
+    "exempt reviewed int": dict(T.syn_policy(), exempt=[dict(E, reviewed=3)]),
+    "exempt reviewed with |": dict(T.syn_policy(), exempt=[dict(E, reviewed="security 2026-10-25 | x")]),
+    "exempt reviewed with newline": dict(T.syn_policy(), exempt=[dict(E, reviewed="security\n| x | y |")]),
+    "exempt reviewed with a md link": dict(T.syn_policy(), exempt=[dict(E, reviewed="security [x](javascript:alert(1))")]),
+    "exempt reason with | and newline": dict(T.syn_policy(), exempt=[dict(E, reason="a|b\n| c |")]),
+}.items():
+    i2, pr = ix(polx=pp)
+    sec = S.source_section(i2) if i2 is not None else (None, [])
+    print(f"[{name}] index={'built' if i2 else 'refused'} problems={[x[:100] for x in pr[:1]]} "
+          f"section={'printed' if sec[0] else 'refused'} {[x[:100] for x in sec[1][:1]]}")
+dd = T.syn_docs()
+for pk in dd["postgres"]["packages"]:
+    pk["name"] = "evil|name\n| injected | row |"; pk["licenseConcluded"] = "x|y`<b>"
+i2, pr = ix(docs=dd)
+if i2:
+    sec, sp = S.source_section(i2)
+    print(f"[hostile SBOM name/licence] index built; in index.json={'evil|name' in json.dumps(i2)}; "
+          f"ensure_ascii output has raw newline in a value={'evil|name' + chr(10) in S.lock_text(i2)}; "
+          f"section printed={sec is not None}; text in section={sec is not None and 'evil' in sec}; problems={sp}")
+else:
+    print(f"[hostile SBOM name/licence] index refused: {pr[:1]}")
+dd = T.syn_docs(); dd["ke-neo4j"]["packages"].append(copy.deepcopy(dd["ke-neo4j"]["packages"][-1]))
+i2, pr = ix(docs=dd); print(f"[duplicate SPDXID on jna (validate first)] refused={i2 is None} first={[x[:140] for x in pr[:1]]}")
+dd = T.syn_docs(); extra = copy.deepcopy(dd["ke-neo4j"]["packages"][-1]); extra["SPDXID"] = "SPDXRef-jna-2"
+dd["ke-neo4j"]["packages"].append(extra)
+i2, pr = ix(docs=dd); print(f"[jna twice, distinct SPDXIDs (multi-match)] refused={i2 is None} first={[x[:170] for x in pr[:1]]}")
+for g in ["0" * 39, "0" * 40 + "\n", "A" * 40, None, "g" * 40]:
+    i2, pr = ix(git=g); print(f"[git_sha {g!r:.20}] refused={i2 is None} {pr[:1]}")
+i_a, _ = ix(); i_b, _ = ix(); print(f"[byte-identical, in-process] {S.lock_text(i_a) == S.lock_text(i_b)}")
+print("\n== P7 CLIs: --git-sha, links, random bytes ==")
+files = TMP / "files"; files.mkdir()
+for _, f in T.plan_of(b, "amd64", "full"):
+    (files / f["sha256"]).write_bytes(T.body_of(b, f))
+sb = []
+for image, doc in T.syn_docs().items():
+    p_ = TMP / f"{image}.spdx.json"; p_.write_text(json.dumps(doc)); sb += ["--sbom", f"{image}={p_}"]
+def base_ix(fdir=files):
+    return ["index", "--lock", str(lock), "--policy", str(pol), "--arch", "amd64", "--set", "full", "--files", str(fdir)] + sb
+r1 = cli(*base_ix(), "--git-sha", T.GIT_SHA); r2 = cli(*base_ix(), "--git-sha", T.GIT_SHA)
+show("index control", r1); print(f"    byte-identical stdout across two CLI runs: {r1.stdout == r2.stdout}; "
+                                 f"stdout ascii-only={all(c < 128 for c in r1.stdout)}")
+ixf = TMP / "index.json"; ixf.write_bytes(r1.stdout); show("notices control", cli("notices", "--index", str(ixf)))
+for g in ["0" * 40 + "\n", "0" * 41, "ABCDEF" + "0" * 34, "\x1b[31m" + "0" * 35, "0" * 40 + "‮", ""]:
+    show(f"--git-sha {g!r:.24}", cli(*base_ix(), "--git-sha", g))
+fl = TMP / "flink"; os.symlink(files, fl); show("index --files given as a link (followed)", cli(*base_ix(fl), "--git-sha", T.GIT_SHA))
+show("notices --index /dev/zero", cli("notices", "--index", "/dev/zero", timeout=20))
+ixd = TMP / "deep-index.json"; ixd.write_text("[" * 100000 + "]" * 100000); show("notices deep index", cli("notices", "--index", str(ixd)))
+show("unrecognized trailing raw ESC arg (argparse)", cli("notices", "--index", str(ixf), "\x1b[2Jx"))
+rnd = random.Random(20261029)
+exits, tb, ctl, ex = set(), 0, 0, []
+def rb():
+    return os.fsdecode(bytes(rnd.randrange(1, 256) for _ in range(rnd.randrange(1, 24))))
+for i in range(150):
+    cmd = rnd.choice(["sources-check", "index", "notices"])
+    if cmd == "sources-check":
+        args = ["sources-check", "--lock", rnd.choice([str(lock), rb()]), "--policy", rnd.choice([str(pol), rb()]),
+                "--dir", rnd.choice([str(TMP / "d1"), rb()]), "--arch", rnd.choice(["amd64", rb()]),
+                "--set", rnd.choice(["full", rb()])]
+    elif cmd == "index":
+        args = ["index"] + [x if rnd.random() > 0.15 else rb() for x in base_ix()[1:]] + ["--git-sha", rnd.choice([T.GIT_SHA, rb()])]
+    else:
+        args = ["notices", "--index", rnd.choice([str(ixf), rb()])]
+    if rnd.random() < 0.15:
+        args.append(rb())
+    r = cli(*args, timeout=30)
+    if r is None:
+        exits.add("TIMEOUT"); continue
+    err = r.stderr.decode("utf-8", "replace"); exits.add(r.returncode)
+    tb += "Traceback" in err
+    if has_ctl(err):
+        ctl += 1
+        if len(ex) < 4: ex.append(err.strip()[-160:])
+print(f"[150 random-bytes argv runs] exits={sorted(map(str, exits))} tracebacks={tb} stderr_with_raw_control={ctl}")
+for e in ex:
+    print("    e.g. " + repr(e))
+
+# --- child_fifo_file.py
+# argv: lock pol dir sha -- swap a planned file for a FIFO after the listing
+import sys, os
+sys.path.insert(0, "/work"); os.chdir("/work")
+from tests.test_sbom_bundle import load_sbom_check
+S = load_sbom_check()
+lock, pol, d, s0 = sys.argv[1:5]
+real = S._lstat_listing
+def swapped(directory):
+    out = real(directory)
+    os.unlink(os.path.join(directory, s0)); os.mkfifo(os.path.join(directory, s0))
+    return out
+S._lstat_listing = swapped
+sys.exit(S.main(["sources-check", "--lock", lock, "--policy", pol, "--dir", d, "--arch", "amd64", "--set", "full"]))
+# --- child_fifo_record.py
+# argv: dir -- swap fetch.json for a FIFO right after its lstat
+import sys, os
+sys.path.insert(0, "/work"); os.chdir("/work")
+from tests.test_sbom_bundle import load_sbom_check
+S = load_sbom_check()
+d = sys.argv[1]
+real = os.lstat
+done = []
+def sw(p, *a, **k):
+    st = real(p, *a, **k)
+    if str(p).endswith("fetch.json") and not done:
+        done.append(1); os.unlink(p); os.mkfifo(p)
+    return st
+S.os.lstat = sw
+print(S._record_text(d))
+
+==================================================================================================
+# Rework round 1 re-audit (security, 2026-10-29). Tree: HEAD 5cf025c + the U9a rework-1 diff (_open_regular, MARKDOWN_RE,
+# RecursionError around the canonical compare, INDEX_MAX). Same command and container as above, script probe-r1.py =
+# probe.py + p6.py (sections R1-R5) and child_swap_record.py / child_swap_file.py. Exit 0.
+# Changed against the first run: P1 5000-deep, P3 (all four swaps now refused, no hang), P5 Markdown rows, P6 reviewed link, P7 /dev/zero.
+
+== Probe output, rework round 1 (unedited, container progress lines removed) ==
+== P0 control: a good full set ==
+[control] exit=0 stdout_lines=17 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sources-check: ok 17 files, 10153 bytes, 10 components (full, amd64)
+
+== P1 hostile fetch.json ==
+[4MiB+1] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json is 4194305 bytes, over 4 MiB
+[sparse 8 GiB (took 0.12s)] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json is 8589934592 bytes, over 4 MiB
+[200000-deep nesting] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: not valid JSON
+[5000-deep (inside cap)] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: nested too deeply to check
+[900-deep (loads; dumps may recurse)] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: not in the canonical form (the fetch client's own text)
+[duplicate key arch (last wins amd64)] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: not in the canonical form (the fetch client's own text)
+[raw NUL byte in a string] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: not valid JSON
+    (escaped probe text check: changed=True valid=True)
+[escaped NUL/ESC in set] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: set is full\x00\x1b[31m, this bundle needs full
+[non-UTF-8] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: not UTF-8
+[UTF-8 BOM] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: not valid JSON
+[format true (bool)] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: format is True, want 1
+[format 1.0] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: format is 1.0, want 1
+[format NaN] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: format is nan, want 1
+[size as float, canonical] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: apk:readline@8.2.13-r0: size is 3253.0, the lock's full plan says 3253
+[extra file key, canonical] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: apk:readline@8.2.13-r0: a file is not an object with exactly name, sha256 and size
+[size true, canonical] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: apk:readline@8.2.13-r0: size is True, the lock's full plan says 3253
+[5000-digit int] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: not valid JSON
+[CRLF record] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: not in the canonical form (the fetch client's own text)
+
+== P2 links ==
+[fetch.json is a link to a good record] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: is not a regular file
+[--dir is a link] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: --dir /tmp/tmpjxkhvanp/dirlink21 is not a directory (or is a link)
+[--dir is a link given with a trailing slash] exit=0 stdout_lines=17 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sources-check: ok 17 files, 10153 bytes, 10 components (full, amd64)
+[an unplanned link to /etc/passwd] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: not in the lock's plan
+[planned name a link to /dev/zero] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: 19ab396bb607afafec74b1c92275764b4ddee7b27e87d5e02019cabd8b67ef1b: is a link, not a regular file
+
+== P3 TOCTOU between lstat and open ==
+[fetch.json swapped for a link after lstat] read=None problems=['fetch.json: cannot read (OSError): is not a regular file or cannot be opened']
+[planned file a link at open] refused by O_NOFOLLOW: OSError errno=40
+[planned file swapped for a FIFO after the listing] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: --sources: 19ab396bb607afafec74b1c92275764b4ddee7b27e87d5e02019cabd8b67ef1b (neo4j:neo4j@5.26.32 5.26.32.tar.gz): cannot read (OSError)
+[fetch.json swapped for a FIFO after lstat] 0 b"(None, ['fetch.json: cannot read (OSError): is not a regular file or cannot be opened'])\n" b''
+
+== P4 listing refusal and nothing written ==
+[--dir mode 0300 (unlistable)] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: /tmp/tmpjxkhvanp/d28: cannot list
+[--dir mode 0000] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sources-check: FAIL (PermissionError: [Errno 13] Permission denied: '/tmp/tmpjxkhvanp/d29/fetch.json')
+[a planned file mode 0000] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: --sources: 19ab396bb607afafec74b1c92275764b4ddee7b27e87d5e02019cabd8b67ef1b (neo4j:neo4j@5.26.32 5.26.32.tar.gz): cannot read (PermissionError)
+[nothing written under --dir] ok_exit=0 refused_exit=1 unchanged=True
+
+== P5 source_section with hostile strings ==
+[control index] problems=[] components=11
+[control section] rows=12 problems=[]
+[key] 'a|b'=REF 'a`b'=REF '<script>'=REF 'a>b'=REF 'a\x08'=REF 'a\nb'=REF 'a\rb'=REF 'a\tb'=REF 'a\x00b'=REF 'a\x1b[31mb'=REF 'a\u202eb'=REF 'a\xa0b'=REF 'a b'=REF ''=REF None=REF 7=REF ['x']=REF '[click](jav=ok '![img](http=ok '*bold*_x_'=ok '&lt;b&gt;'=ok '#heading'=ok
+[image] 'a|b'=REF 'a`b'=REF '<script>'=REF 'a>b'=REF 'a\x08'=REF 'a\nb'=REF 'a\rb'=REF 'a\tb'=REF 'a\x00b'=REF 'a\x1b[31mb'=REF 'a\u202eb'=REF 'a\xa0b'=REF 'a b'=REF ''=REF None=REF 7=REF ['x']=REF '[click](jav=REF '![img](http=REF '*bold*_x_'=REF '&lt;b&gt;'=ok '#heading'=REF
+[url] 'a|b'=REF 'a`b'=REF '<script>'=REF 'a>b'=REF 'a\x08'=REF 'a\nb'=REF 'a\rb'=REF 'a\tb'=REF 'a\x00b'=REF 'a\x1b[31mb'=REF 'a\u202eb'=REF 'a\xa0b'=REF 'a b'=REF ''=REF None=REF 7=REF ['x']=REF '[click](jav=ok '![img](http=ok '*bold*_x_'=ok '&lt;b&gt;'=ok '#heading'=ok
+[exempt.package] 'a|b'=REF 'a`b'=REF '<script>'=REF 'a>b'=REF 'a\x08'=REF 'a\nb'=REF 'a\rb'=REF 'a\tb'=REF 'a\x00b'=REF 'a\x1b[31mb'=REF 'a\u202eb'=REF 'a\xa0b'=REF 'a b'=REF ''=REF None=REF 7=REF ['x']=REF '[click](jav=REF '![img](http=REF '*bold*_x_'=REF '&lt;b&gt;'=ok '#heading'=REF
+[exempt.image] 'a|b'=REF 'a`b'=REF '<script>'=REF 'a>b'=REF 'a\x08'=REF 'a\nb'=REF 'a\rb'=REF 'a\tb'=REF 'a\x00b'=REF 'a\x1b[31mb'=REF 'a\u202eb'=REF 'a\xa0b'=REF 'a b'=REF ''=REF None=REF 7=REF ['x']=REF '[click](jav=REF '![img](http=REF '*bold*_x_'=REF '&lt;b&gt;'=ok '#heading'=REF
+[exempt.reviewed] 'a|b'=REF 'a`b'=REF '<script>'=REF 'a>b'=REF 'a\x08'=REF 'a\nb'=REF 'a\rb'=REF 'a\tb'=REF 'a\x00b'=REF 'a\x1b[31mb'=REF 'a\u202eb'=REF 'a\xa0b'=REF 'a b'=ok ''=REF None=REF 7=REF ['x']=REF '[click](jav=REF '![img](http=REF '*bold*_x_'=REF '&lt;b&gt;'=ok '#heading'=REF
+[listing] 'a|b'=REF 'a`b'=REF '<script>'=REF 'a>b'=REF 'a\x08'=REF 'a\nb'=REF 'a\rb'=REF 'a\tb'=REF 'a\x00b'=REF 'a\x1b[31mb'=REF 'a\u202eb'=REF 'a\xa0b'=REF 'a b'=ok ''=REF None=REF 7=REF ['x']=REF '[click](jav=REF '![img](http=REF '*bold*_x_'=REF '&lt;b&gt;'=ok '#heading'=REF
+[gen:pkg.name] 'a|b'=ok 'a`b'=ok '<script>'=ok 'a>b'=ok 'a\x08'=ok 'a\nb'=ok 'a\rb'=ok 'a\tb'=ok 'a\x00b'=ok 'a\x1b[31mb'=ok 'a\u202eb'=ok 'a\xa0b'=ok 'a b'=ok ''=ok None=ok 7=ok ['x']=ok '[click](jav=ok '![img](http=ok '*bold*_x_'=ok '&lt;b&gt;'=ok '#heading'=ok
+[gen:pkg.purl] 'a|b'=ok 'a`b'=ok '<script>'=ok 'a>b'=ok 'a\x08'=ok 'a\nb'=ok 'a\rb'=ok 'a\tb'=ok 'a\x00b'=ok 'a\x1b[31mb'=ok 'a\u202eb'=ok 'a\xa0b'=ok 'a b'=ok ''=ok None=ok 7=ok ['x']=ok '[click](jav=ok '![img](http=ok '*bold*_x_'=ok '&lt;b&gt;'=ok '#heading'=ok
+[gen:licence.declared] 'a|b'=ok 'a`b'=ok '<script>'=ok 'a>b'=ok 'a\x08'=ok 'a\nb'=ok 'a\rb'=ok 'a\tb'=ok 'a\x00b'=ok 'a\x1b[31mb'=ok 'a\u202eb'=ok 'a\xa0b'=ok 'a b'=ok ''=ok None=ok 7=ok ['x']=ok '[click](jav=ok '![img](http=ok '*bold*_x_'=ok '&lt;b&gt;'=ok '#heading'=ok
+[gen:expression] 'a|b'=ok 'a`b'=ok '<script>'=ok 'a>b'=ok 'a\x08'=ok 'a\nb'=ok 'a\rb'=ok 'a\tb'=ok 'a\x00b'=ok 'a\x1b[31mb'=ok 'a\u202eb'=ok 'a\xa0b'=ok 'a b'=ok ''=ok None=ok 7=ok ['x']=ok '[click](jav=ok '![img](http=ok '*bold*_x_'=ok '&lt;b&gt;'=ok '#heading'=ok
+[pol:exempt.reason] 'a|b'=ok 'a`b'=ok '<script>'=ok 'a>b'=ok 'a\x08'=ok 'a\nb'=ok 'a\rb'=ok 'a\tb'=ok 'a\x00b'=ok 'a\x1b[31mb'=ok 'a\u202eb'=ok 'a\xa0b'=ok 'a b'=ok ''=ok None=ok 7=ok ['x']=ok '[click](jav=ok '![img](http=ok '*bold*_x_'=ok '&lt;b&gt;'=ok '#heading'=ok
+[lock:files[0].name] 'a|b'=ok 'a`b'=ok '<script>'=ok 'a>b'=ok 'a\x08'=ok 'a\nb'=ok 'a\rb'=ok 'a\tb'=ok 'a\x00b'=ok 'a\x1b[31mb'=ok 'a\u202eb'=ok 'a\xa0b'=ok 'a b'=ok ''=ok None=ok 7=ok ['x']=ok '[click](jav=ok '![img](http=ok '*bold*_x_'=ok '&lt;b&gt;'=ok '#heading'=ok
+   values that pass the refusal in printed fields: [('exempt.image', '&lt;b&gt;'), ('exempt.package', '&lt;b&gt;'), ('exempt.reviewed', '&lt;b&gt;'), ('exempt.reviewed', 'a b'), ('image', '&lt;b&gt;'), ('key', '![img](http://evil/x.png)'), ('key', '#heading'), ('key', '&lt;b&gt;'), ('key', '*bold*_x_'), ('key', '[click](javascript:alert(1))'), ('listing', '&lt;b&gt;'), ('listing', 'a b'), ('url', '![img](http://evil/x.png)'), ('url', '#heading'), ('url', '&lt;b&gt;'), ('url', '*bold*_x_'), ('url', '[click](javascript:alert(1))')]
+[packages not a list] text=False problems=["notices: AttributeError: 'str' object has no attribute 'get'"]
+[files[0] a string] text=False problems=["notices: AttributeError: 'str' object has no attribute 'get'"]
+[index a list] text=False problems=['notices: the index is not a source index (set, components)']
+[status unknown] text=False problems=["notices: a component has status 'x|y'"]
+
+== P6 index: hostile policy and SBOM strings ==
+[policy a list] index=refused problems=['policy: not a JSON object'] section=refused []
+[exempt not a list] index=refused problems=['policy: exempt is not a list of objects'] section=refused []
+[exempt reviewed int] index=refused problems=['policy: an exempt entry lacks a string image, package, reason or reviewed'] section=refused []
+[exempt reviewed with |] index=built problems=[] section=refused ["notices: reviewed 'security 2026-10-25 | x' cannot be printed in the Markdown table: refused, not es"]
+[exempt reviewed with newline] index=built problems=[] section=refused ["notices: reviewed 'security\\n| x | y |' cannot be printed in the Markdown table: refused, not escape"]
+[exempt reviewed with a md link] index=built problems=[] section=refused ["notices: reviewed 'security [x](javascript:alert(1))' cannot be printed in the Markdown table: refus"]
+[exempt reason with | and newline] index=built problems=[] section=printed []
+[hostile SBOM name/licence] index built; in index.json=True; ensure_ascii output has raw newline in a value=False; section printed=True; text in section=False; problems=[]
+[duplicate SPDXID on jna (validate first)] refused=True first=['ke-neo4j: package SPDXID SPDXRef-Package-jna-ecbe854e78355cf3 is not unique']
+[jna twice, distinct SPDXIDs (multi-match)] refused=True first=['ke-neo4j: exempt entry matches 2 packages: pkg:maven/com.sun.jna/jna@5.15.0 (SPDXRef-Package-jna-ecbe854e78355cf3, SPDXRef-jna-2); an exemption clears exactly one package']
+[git_sha '0000000000000000000] refused=True ['index: git sha 000000000000000000000000000000000000000 is not 40 lower-case hex digits']
+[git_sha '0000000000000000000] refused=True ['index: git sha 0000000000000000000000000000000000000000\\x0a is not 40 lower-case hex digits']
+[git_sha 'AAAAAAAAAAAAAAAAAAA] refused=True ['index: git sha AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA is not 40 lower-case hex digits']
+[git_sha None] refused=True ['index: git sha None is not 40 lower-case hex digits']
+[git_sha 'ggggggggggggggggggg] refused=True ['index: git sha gggggggggggggggggggggggggggggggggggggggg is not 40 lower-case hex digits']
+[byte-identical, in-process] True
+
+== P7 CLIs: --git-sha, links, random bytes ==
+[index control] exit=0 stdout_lines=534 traceback=False raw_control_in_stderr=False stderr_lines=1
+    index: ke-neo4j: pkg:maven/com.sun.jna/jna@5.15.0: exempt, reviewed security 2026-10-25
+    byte-identical stdout across two CLI runs: True; stdout ascii-only=True
+[notices control] exit=0 stdout_lines=22 traceback=False raw_control_in_stderr=False stderr_lines=0
+[--git-sha '00000000000000000000000] exit=2 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: index: --git-sha '0000000000000000000000000000000000000000\n' is not 40 lower-case hex digits
+[--git-sha '00000000000000000000000] exit=2 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: index: --git-sha '00000000000000000000000000000000000000000' is not 40 lower-case hex digits
+[--git-sha 'ABCDEF00000000000000000] exit=2 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: index: --git-sha 'ABCDEF0000000000000000000000000000000000' is not 40 lower-case hex digits
+[--git-sha '\x1b[31m000000000000000] exit=2 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: index: --git-sha '\x1b[31m00000000000000000000000000000000000' is not 40 lower-case hex digits
+[--git-sha '00000000000000000000000] exit=2 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: index: --git-sha '0000000000000000000000000000000000000000\u202e' is not 40 lower-case hex digits
+[--git-sha ''] exit=2 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: index: --git-sha '' is not 40 lower-case hex digits
+[index --files given as a link (followed)] exit=0 stdout_lines=534 traceback=False raw_control_in_stderr=False stderr_lines=1
+    index: ke-neo4j: pkg:maven/com.sun.jna/jna@5.15.0: exempt, reviewed security 2026-10-25
+[notices --index /dev/zero] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    notices: FAIL (OSError: [Errno 22] is not a regular file)
+[notices deep index] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    notices: FAIL (RecursionError: maximum recursion depth exceeded while decoding a JSON array from a unicode string)
+[unrecognized trailing raw ESC arg (argparse)] exit=2 stdout_lines=0 traceback=False raw_control_in_stderr=True stderr_lines=4
+    usage: sbom_check.py [-h]
+                         {finish,drift,neo4j,tree,lock-check,lock-needs,sources-check,index,notices}
+                         ...
+[150 random-bytes argv runs] exits=['0', '1', '2'] tracebacks=0 stderr_with_raw_control=9
+    e.g. 'rror: unrecognized arguments: \\udc91\\udce0\n>\\udc91\\udca3\\udc99\\udca9En\\udcc1\\udccf+0 \\udca2\x06U\\udc87\\udc8a\\udcf5\x1e\\udccbś\\udcd2^\\udcfel\\udcec`\\udcc1\\udcff\\udc8c\x7f\x13'
+    e.g. 's,sources-check,index,notices}\n                     ...\nsbom_check.py: error: unrecognized arguments: \\udca8W\\udc88\\udceft\r\\udce2\\udcbf\x0fE$\\udccd7H \\udc9c\x16\\udca3'
+    e.g. '             ...\nsbom_check.py: error: unrecognized arguments: \\udc90y\\udcff\\udc98@R\\udcf9\\udcfe\\udcecE{\\udc80`\x0c\\udccc\x7f ke-app=/tmp/tmpjxkhvanp/ke-app.spdx.json'
+    e.g. 'ds,sources-check,index,notices}\n                     ...\nsbom_check.py: error: unrecognized arguments: ,\x19\\udcd5pmѱy\\udcbb\\udcfcO\\udce3\\udcb4\x02|>\\udca6\\udc96$-_\x7f#'
+
+== R1. Rework round 1: swap probes after lstat / after the listing (subprocess, 20 s timeout) ==
+[fetch.json swapped after lstat: fifo] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: cannot read (OSError): is not a regular file or cannot be opened
+[fetch.json swapped after lstat: link] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: cannot read (OSError): is not a regular file or cannot be opened
+[fetch.json swapped after lstat: devlink] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: cannot read (OSError): is not a regular file or cannot be opened
+[fetch.json swapped after lstat: sparse] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json is 8589934592 bytes, over 4 MiB
+[fetch.json swapped after lstat: dir] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: fetch.json: cannot read (OSError): is not a regular file or cannot be opened
+[planned file swapped after the listing: fifo (0.2s)] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: --sources: 19ab396bb607afafec74b1c92275764b4ddee7b27e87d5e02019cabd8b67ef1b (neo4j:neo4j@5.26.32 5.26.32.tar.gz): cannot read (OSError)
+[planned file swapped after the listing: link (0.2s)] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: --sources: 19ab396bb607afafec74b1c92275764b4ddee7b27e87d5e02019cabd8b67ef1b (neo4j:neo4j@5.26.32 5.26.32.tar.gz): cannot read (OSError)
+[planned file swapped after the listing: devlink (0.3s)] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: --sources: 19ab396bb607afafec74b1c92275764b4ddee7b27e87d5e02019cabd8b67ef1b (neo4j:neo4j@5.26.32 5.26.32.tar.gz): cannot read (OSError)
+[planned file swapped after the listing: dir (0.3s)] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: --sources: 19ab396bb607afafec74b1c92275764b4ddee7b27e87d5e02019cabd8b67ef1b (neo4j:neo4j@5.26.32 5.26.32.tar.gz): cannot read (OSError)
+[planned file swapped after the listing: grow (2.3s)] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: sources-check: --sources: 19ab396bb607afafec74b1c92275764b4ddee7b27e87d5e02019cabd8b67ef1b (neo4j:neo4j@5.26.32 5.26.32.tar.gz): sha256 mismatch: got 41a46e39ac9de5ac52eae071313c92b79beb35d83796a615fac5ea295b
+
+== R2. _open_regular directly ==
+[/dev/zero] refused: OSError errno=22 is not a regular file
+[/dev/null] refused: OSError errno=22 is not a regular file
+[/tmp/tmpjxkhvanp/r2fifo] refused: OSError errno=22 is not a regular file
+[/tmp/tmpjxkhvanp/r2lnk] refused: OSError errno=40 Too many levels of symbolic links
+[/tmp/tmpjxkhvanp] refused: OSError errno=22 is not a regular file
+[/tmp/tmpjxkhvanp/lock.json] opened, size=12059
+
+== R3. notices --index hostile ==
+[notices --index /dev/zero (0.1s)] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    notices: FAIL (OSError: [Errno 22] is not a regular file)
+[notices --index FIFO (0.1s)] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    notices: FAIL (OSError: [Errno 22] is not a regular file)
+[notices --index link to a good index (0.1s)] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    notices: FAIL (OSError: [Errno 40] Too many levels of symbolic links: '/tmp/tmpjxkhvanp/ixlink')
+[notices --index sparse 8 GiB (0.1s)] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: notices: --index /tmp/tmpjxkhvanp/big-index.json is 8589934592 bytes, over 16 MiB
+[notices --index 16 MiB + 1 spaces (0.1s)] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    sbom_check: notices: --index /tmp/tmpjxkhvanp/ix16 is 16777217 bytes, over 16 MiB
+[notices --index directory (0.1s)] exit=1 stdout_lines=0 traceback=False raw_control_in_stderr=False stderr_lines=1
+    notices: FAIL (OSError: [Errno 22] is not a regular file)
+
+== R4. Markdown (O-14 precision) ==
+[key] '[x](javascr=ok '![i](http:/=ok '*b*'=ok '_u_'=ok '#h'=ok 'a(b)'=ok 'a!b'=ok 'a[b]'=ok
+[image] '[x](javascr=REF '![i](http:/=REF '*b*'=REF '_u_'=REF '#h'=REF 'a(b)'=REF 'a!b'=REF 'a[b]'=REF
+[url] '[x](javascr=ok '![i](http:/=ok '*b*'=ok '_u_'=ok '#h'=ok 'a(b)'=ok 'a!b'=ok 'a[b]'=ok
+[exempt.package] '[x](javascr=REF '![i](http:/=REF '*b*'=REF '_u_'=REF '#h'=REF 'a(b)'=REF 'a!b'=REF 'a[b]'=REF
+[exempt.image] '[x](javascr=REF '![i](http:/=REF '*b*'=REF '_u_'=REF '#h'=REF 'a(b)'=REF 'a!b'=REF 'a[b]'=REF
+[exempt.reviewed] '[x](javascr=REF '![i](http:/=REF '*b*'=REF '_u_'=REF '#h'=REF 'a(b)'=REF 'a!b'=REF 'a[b]'=REF
+[listing] '[x](javascr=REF '![i](http:/=REF '*b*'=REF '_u_'=REF '#h'=REF 'a(b)'=REF 'a!b'=REF 'a[b]'=REF
+[reviewed md link via policy] index=built section=refused ["notices: reviewed 'security [x](javascript:alert(1))' cannot be printed in the Markdown table: refused, not es"]
+[reviewed with _] index=built section=refused ["notices: reviewed 'security_team 2026-10-25' cannot be printed in the Markdown table: refused, not escaped"]
+[reviewed plain] index=built section=printed []
+[control section on the synthetic index] printed=True problems=[]
+[committed lock] keys=183 refused=0; urls=876 refused=0
+[committed exempt pkg:maven/com.sun.jna/jna@5.15.0] package_refused=False image_refused=False reviewed_refused=False
+[committed exempt pkg:maven/org.javassist/javassist@3.30.2-GA] package_refused=False image_refused=False reviewed_refused=False
+
+== R5. deep record inside the cap (I-3), pure function ==
+[fetch_record_problems 5000-deep] ['fetch.json: nested too deeply to check']
+[depth 950] ["fetch.json: not in the canonical form (the fetch client's own text)"]
+[depth 990] ["fetch.json: not in the canonical form (the fetch client's own text)"]
+[depth 2000] ['fetch.json: nested too deeply to check']
+[depth 20000] ['fetch.json: not valid JSON']
+[policy a list, pure] ['policy: not a JSON object']
+
+== Rework-round-1 probe source: p6.py and the two child scripts ==
+print("\n== R1. Rework round 1: swap probes after lstat / after the listing (subprocess, 20 s timeout) ==")
+for mode in ("fifo", "link", "devlink", "sparse", "dir"):
+    d = fresh()
+    try:
+        r = subprocess.run([sys.executable, "-I", "/scratch/child_swap_record.py", str(lock), str(pol), str(d), mode], capture_output=True, timeout=20)
+        show(f"fetch.json swapped after lstat: {mode}", r)
+    except subprocess.TimeoutExpired:
+        print(f"[fetch.json swapped after lstat: {mode}] TIMEOUT (hang)")
+s0 = sorted(T.distinct(b, "full"))[0]
+for mode in ("fifo", "link", "devlink", "dir", "grow"):
+    d = fresh()
+    t0 = time.time()
+    try:
+        r = subprocess.run([sys.executable, "-I", "/scratch/child_swap_file.py", str(lock), str(pol), str(d), s0, mode], capture_output=True, timeout=120)
+        show(f"planned file swapped after the listing: {mode} ({time.time()-t0:.1f}s)", r)
+    except subprocess.TimeoutExpired:
+        print(f"[planned file swapped after the listing: {mode}] TIMEOUT (hang)")
+print("\n== R2. _open_regular directly ==")
+fifo = TMP / "r2fifo"; os.mkfifo(fifo); lnk = TMP / "r2lnk"; os.symlink(lock, lnk)
+for pth in ["/dev/zero", "/dev/null", str(fifo), str(lnk), str(TMP), str(lock)]:
+    try:
+        fd, size = S._open_regular(pth); os.close(fd); print(f"[{pth}] opened, size={size}")
+    except OSError as e:
+        print(f"[{pth}] refused: {type(e).__name__} errno={e.errno} {e.strerror}")
+print("\n== R3. notices --index hostile ==")
+big = TMP / "big-index.json"; fh = open(big, "wb"); fh.truncate(8 * 1024**3); fh.close()
+for name, pth in [("/dev/zero", "/dev/zero"), ("FIFO", str(fifo)), ("link to a good index", None), ("sparse 8 GiB", str(big)),
+                  ("16 MiB + 1 spaces", None), ("directory", str(TMP))]:
+    if name == "link to a good index":
+        pth = str(TMP / "ixlink"); os.symlink(ixf, pth)
+    if name == "16 MiB + 1 spaces":
+        pth = str(TMP / "ix16"); open(pth, "wb").write(b" " * (16 * 1024 * 1024 + 1))
+    t0 = time.time(); r = cli("notices", "--index", pth, timeout=30); show(f"notices --index {name} ({time.time()-t0:.1f}s)", r)
+print("\n== R4. Markdown (O-14 precision) ==")
+md = ["[x](javascript:alert(1))", "![i](http://e/x.png)", "*b*", "_u_", "#h", "a(b)", "a!b", "a[b]"]
+for where in ("key", "image", "url", "exempt.package", "exempt.image", "exempt.reviewed", "listing"):
+    res = []
+    for v in md:
+        t, pr = S.source_section(mut(where, v)); res.append("ok" if t is not None else "REF")
+    print(f"[{where}] " + " ".join(f"{h!r:.12}={x}" for h, x in zip(md, res)))
+for name, val in {"reviewed md link via policy": "security [x](javascript:alert(1))",
+                  "reviewed with _": "security_team 2026-10-25", "reviewed plain": "security 2026-10-25"}.items():
+    i2, pr = ix(polx=dict(T.syn_policy(), exempt=[dict(E, reviewed=val)]))
+    sec = S.source_section(i2) if i2 is not None else (None, [])
+    print(f"[{name}] index={'built' if i2 else 'refused'} section={'printed' if sec[0] else 'refused'} {[x[:110] for x in sec[1][:1]]}")
+t, pr = S.source_section(idx); print(f"[control section on the synthetic index] printed={t is not None} problems={pr}")
+real_lock = json.loads(open("/work/docker/sources.lock.json").read())
+keys = list(real_lock["components"]); urls = [f["url"] for e in real_lock["components"].values() for f in e["files"]]
+bad_k = [k for k in keys if S._cell_problem("k", k, markdown=False)]; bad_u = [u for u in urls if S._cell_problem("u", u, markdown=False)]
+print(f"[committed lock] keys={len(keys)} refused={len(bad_k)}; urls={len(urls)} refused={len(bad_u)}")
+cp_ = json.loads(open("/work/docker/source-policy.json").read())
+for e in cp_["exempt"]:
+    print(f"[committed exempt {e['package']}] package_refused={bool(S._cell_problem('p', e['package']))} "
+          f"image_refused={bool(S._cell_problem('i', e['image']))} reviewed_refused={bool(S._cell_problem('r', e['reviewed'], S.FROM_PRINTABLE_RE))}")
+print("\n== R5. deep record inside the cap (I-3), pure function ==")
+deep = '{"components":' + "[" * 5000 + "]" * 5000 + "}"
+try:
+    print("[fetch_record_problems 5000-deep]", S.fetch_record_problems(deep, b.text(), T.syn_policy(), "amd64", "full"))
+except Exception as e:
+    print("[fetch_record_problems 5000-deep] RAISED", type(e).__name__)
+for depth in (950, 990, 2000, 20000):
+    dd_ = '{"components":' + "[" * depth + "]" * depth + "}"
+    try:
+        print(f"[depth {depth}]", S.fetch_record_problems(dd_, b.text(), T.syn_policy(), "amd64", "full"))
+    except Exception as e:
+        print(f"[depth {depth}] RAISED", type(e).__name__)
+print("[policy a list, pure]", S.fetch_record_problems(T.record_text(b, "full"), b.text(), [1], "amd64", "full"))
+# --- child_swap_record.py
+# argv: lockpath polpath dir mode -- swap fetch.json right after its lstat (mode: fifo|link|sparse|dir|devlink), then run sources-check
+import sys, os
+sys.path.insert(0, "/work"); os.chdir("/work")
+from tests.test_sbom_bundle import load_sbom_check
+S = load_sbom_check()
+lock, pol, d, mode = sys.argv[1:5]
+real = os.lstat
+done = []
+def sw(p, *a, **k):
+    st = real(p, *a, **k)
+    if str(p).endswith("fetch.json") and not done:
+        done.append(1)
+        good = open(p, "rb").read()
+        os.unlink(p)
+        if mode == "fifo": os.mkfifo(p)
+        elif mode == "link":
+            other = os.path.join(os.path.dirname(d), os.path.basename(d) + "-other.json")
+            open(other, "wb").write(good); os.symlink(other, p)
+        elif mode == "devlink": os.symlink("/dev/zero", p)
+        elif mode == "sparse":
+            fh = open(p, "wb"); fh.truncate(8 * 1024**3); fh.close()
+        elif mode == "dir": os.mkdir(p)
+    return st
+S.os.lstat = sw
+sys.exit(S.main(["sources-check", "--lock", lock, "--policy", pol, "--dir", d, "--arch", "amd64", "--set", "full"]))
+# --- child_swap_file.py
+# argv: lock pol dir sha mode -- swap a planned file after the listing (mode: fifo|link|devlink|dir|grow)
+import sys, os
+sys.path.insert(0, "/work"); os.chdir("/work")
+from tests.test_sbom_bundle import load_sbom_check
+S = load_sbom_check()
+lock, pol, d, s0, mode = sys.argv[1:6]
+real = S._lstat_listing
+def swapped(directory):
+    out = real(directory)
+    p = os.path.join(directory, s0)
+    good = open(p, "rb").read(); os.unlink(p)
+    if mode == "fifo": os.mkfifo(p)
+    elif mode == "link":
+        other = p + "-copy-outside"; other = os.path.join(os.path.dirname(directory), "copy-" + s0)
+        open(other, "wb").write(good); os.symlink(other, p)
+    elif mode == "devlink": os.symlink("/dev/zero", p)
+    elif mode == "dir": os.mkdir(p)
+    elif mode == "grow":
+        fh = open(p, "wb"); fh.write(good); fh.truncate(8 * 1024**3); fh.close()
+    return out
+S._lstat_listing = swapped
+sys.exit(S.main(["sources-check", "--lock", lock, "--policy", pol, "--dir", d, "--arch", "amd64", "--set", "full"]))

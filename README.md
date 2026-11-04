@@ -26,14 +26,25 @@ bundled image, listed in the manifest too. (Updated 2026-10-23, documenter, stat
 
 `bundle.sh` generates the SBOMs offline with the pinned `anchore/syft` image
 (`docker-compose.sbom.yml`, service `sbom`). It never pulls: if the image is
-not on the local Docker daemon it refuses before writing anything and prints
-the `docker pull` command to run. During `verify.sh full`, `offline_check.sh`
-pulls the generator first. While it runs, `bundle.sh` prints a per-image
+not on the local Docker daemon it refuses before writing anything and tells
+you to run `scripts/bundle_fetch.sh` first. During `verify.sh full`,
+`offline_check.sh` runs that script first. While it runs, `bundle.sh` prints a per-image
 report of packages with no licence, `NOASSERTION`, or a licence text syft
 could only hash (marked "unidentified licence text"). Any SBOM that fails
-validation refuses the bundle, with no manifest written. The bundle is not a
-release: the generated "Source code" section of `NOTICE.md` is not built yet.
-(Updated 2026-10-23, documenter, status)
+validation refuses the bundle, with no manifest written.
+`bundle.sh --sources <dir>` is required: it checks the directory that
+`scripts/bundle_fetch.sh` wrote (its `fetch.json`, its exact listing, every
+file's SHA-256) before it writes anything, copies the files into
+`app/sources/files/<sha256>`, writes `app/sources/index.json` (each component's
+source files, URLs and checksums, and the SBOM packages it covers) and appends
+a generated "Source code" section to `THIRD_PARTY_NOTICES.md`. The manifest
+covers all of it, and a failure leaves no bundle behind. `scripts/sbom_check.py`
+holds the fail-closed licence classifier (which packages need their source
+shipped); `docker/source-policy.json` lists the allowed source hosts and the
+reviewed exemptions; and `docker/sources.lock.json` pins, per component, the
+exact upstream source files by SHA-256. A maintainer regenerates the lock with
+`scripts/sources_lock.sh`.
+(Updated 2026-10-29, documenter, status)
 
 The stack's neo4j service runs the first-party `ke-neo4j:${KE_IMAGE_TAG}`
 image, built by `build.sh`/`build.ps1` from `docker/neo4j.Dockerfile` on the
@@ -58,6 +69,17 @@ Two ways to get the stack running; both are written out step by step in
   run `install.sh` (Linux, macOS) or `install.ps1` (Windows) on the target. A
   bundle holds one architecture, `amd64` or `arm64`, so build one per target
   architecture.
+
+The operator order for a bundle is `scripts/build.sh`, then
+`scripts/bundle_fetch.sh --set full --out <dir>` (the only bundle step with a
+route out: it fetches the third-party source set, checked against
+`docker/sources.lock.json`, and pulls the SBOM generator), then
+`scripts/bundle.sh --out <dir>-<arch> --sources <dir>`. The bundle ships the
+fetched set under `app/sources/`; `--sources-set` defaults to `full`. A
+`--sources-set sample` bundle (what `verify.sh full` builds, from
+`bundle_fetch.sh --set sample`) holds only a sample of the sources: it is for
+verification only and must not be distributed. Its notices say so.
+The parent of `--out` must exist, and `--out` must not exist or be an empty directory. Relative paths for `--out` and `--sources` resolve against the current directory and may not contain `.` or `..` segments (write `dist/x`, not `./dist/x`; do not run from `/`). Run `bundle.sh` as an ordinary user, in a directory only that user can write.
 
 Current limit: this release runs in dev mode only (`KE_ENV=dev`, loopback
 binding). `KE_ENV=prod` is refused until the stack has authentication, which
@@ -102,7 +124,7 @@ Prerequisites: Git, and Docker Engine 28 or later with Compose 2.24 or later.
 Linux (bash) and Windows (PowerShell) are supported for the code-first install;
 macOS only through the offline bundle. A host that builds an offline bundle also
 needs `jq` and at least 7 GiB free, checked on the output directory (`--out`)
-and on its parent (`bundle.sh` refuses otherwise). On a Windows build host
+and on its parent (`bundle.sh` refuses otherwise); the parent of `--out` must exist. On a Windows build host
 run `bundle.sh` from Git Bash with `jq` on `PATH`; a winget `jq.exe` writes
 CRLF, so it has to be run as `jq.exe -b`. The pinned SBOM generator image must be local: see
 "Licence" above. See [docs/quickstart.md](docs/quickstart.md).
@@ -203,13 +225,27 @@ then tears the stack down, scans the `ke-app` image, and finally runs the
 offline check. Several runs can go in parallel. See
 [CLAUDE.md](CLAUDE.md) for which run a change needs.
 
+The route out for third-party source code is `scripts/bundle_fetch.sh`. It
+pulls the SBOM generator, then runs the `sources-fetch` one-shot
+(`docker-compose.sources.yml`: read-only, no capabilities, its own project's
+default bridge), which fetches the files named in `docker/sources.lock.json`
+over HTTPS, only from the hosts listed in `docker/source-policy.json`, and
+checks every file's size and checksums against the lock. `--set sample` (what
+`verify.sh full` runs, through the offline check) fetches one entry per kind,
+except that for apk only the entry's distfiles.alpinelinux.org files are
+fetched, so verify and CI do not depend on gitlab.alpinelinux.org; a sample
+bundle's index and notices mark that apk entry as partial. `--set full`
+fetches everything, and so exercises the GitLab route, failing closed. A failed or mismatched fetch fails the run,
+with no retry.
+
 The offline check (`scripts/offline_check.sh`) builds a
 throwaway bundle for the local architecture and installs it from a client
 container with no network, against a Docker-in-Docker daemon that holds only
 the bundle's images. That daemon runs privileged, so a host or CI runner that
 refuses privileged containers cannot run `full`; there is no way around it. It
 also needs the 7 GiB of free disk that `bundle.sh` requires, and outbound
-access to pull the SBOM generator and, by its pinned digest, the `ke-app`
+access to fetch the source sample (`scripts/bundle_fetch.sh`, which also pulls
+the SBOM generator) and, by its pinned digest, the `ke-app`
 base image: the offline check compares `ke-app` with that base to prove it
 added only the expected Debian packages, no pip, CPython matching the shipped
 licence files, `libpq5` with `psycopg-c`, and no psycopg-binary. It also pulls the

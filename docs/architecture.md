@@ -6692,7 +6692,8 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
        delete still ships pip; probe). Amends D10. Smoke: no pip in the api.
      - *L-5, L-9:* `licenses/CPython-3.12-incorporated.txt`: the "Licenses
        and Acknowledgements for Incorporated Software" part of `license.rst`
-       at `v3.12.15`; `licenses/CPython-3.12-HACL.txt`: the HACL* MIT header
+       at `v3.12.16` (`v3.12.15` before U7e; amended 2026-10-28, analyst;
+       bodies byte-identical); `licenses/CPython-3.12-HACL.txt`: the HACL* MIT header
        that list omits (`Modules/_hacl/Hacl_Hash_SHA2.c`). Both verbatim, Q48
        via the tarball = base `PYTHON_SHA256`; U4 ties the version to SBOM.
   10. **PSC-19 e2e:** after install and before launch, the offline client
@@ -6750,10 +6751,123 @@ Proposed text; the orchestrator applies the CLAUDE.md change in the
   - U7c: the `deb` and `apk` routes.
   - U7d: the committed lock and its every-verify coverage test.
   The coverage set is `classify_document(..., always, exempt)` rows with
-  `needs`. From the U3 fixtures that is 182 keys (152 Debian sources).
+  `needs`. From the U3 fixtures that is 183 keys (153 Debian sources).
+  *(Amended 2026-10-28, analyst; U7e: 182 and 152 at U7d; the base bump
+  added openssl and ca-certificates `~deb12u2` and removed ca-certificates
+  `~deb12u1`, `u7e/key-diff.txt`.)*
   `neo4j` is `manual` only (TOFU plus security's second fetch); every other
   kind is `generated`. Pending rulings:
   - O1: the postgres image's PGDG sources are not on snapshot.debian.org.
     Recommended: kind `pgdg` and host `apt-archive.postgresql.org`.
   - O2: phoenix's PyPI packages are not in `uv.lock`. Recommended:
     `pypi.org` JSON at lock time only, never a file host.
+- **Amended U7d (2026-10-25, architect; design-notes "U7d precision").**
+  Q71 adds a `pgdg` kind with source from `apt-archive.postgresql.org`:
+  - the `<codename>-pgdg-archive` `Sources.gz` index gives each `.dsc`'s
+    SHA-256;
+  - the `.dsc` gives the rest;
+  - the pool URLs are exact;
+  - the PGDG Release signature is not verified, so no new trust root.
+
+  Q72 adds a bounded retry in the lock tool only. It covers 5xx and
+  timeouts, with waits of 10, 30 and 60 s and every retry printed. It is
+  off by default in `fetch()`, so U8 keeps Q61. The policy `hosts` grows
+  to ten.
+- **Amended U8 (2026-10-28, architect; design-notes "N4 amendment, U8").**
+  Point 3's fetch is built as follows; the rest of point 3 stands.
+  - *Mechanism:* not curl. A new `scripts/sources_fetch.py` (stdlib,
+    `python3 -I`) reuses `sources_resolve.py`'s opener, User-Agent, hop
+    rules, deadline and byte cap through a new single-attempt
+    `download()` with no retry path (Q61 by construction). Why: GitLab's
+    API raw endpoint was proven only with that opener (U7c item 9), and
+    the hop rules stay in one reviewed place. PSC-23's curl flags are met
+    in kind: HTTPS on every hop, TLS 1.2 floor, no proxy, no environment
+    or rc file.
+  - *Service:* `sources-fetch` in `docker-compose.sources.yml` (`ke-gates`,
+    `pull_policy: never`, the project's default bridge only, read-only
+    root, no capabilities, the caller's uid:gid, literal env, the three
+    scripts plus the lock and the policy read-only, one writable `/out`).
+  - *Network path:* a host-half one-shot like `scan-db`, started by
+    `bundle_fetch.sh` (by hand for operators; from `offline_check.sh` in
+    verify `full` and CI). Never `gates`, `gates-it`, `backend` or the
+    stack gateway. The CI egress is GitHub's hosted-runner network.
+  - *Output:* flat `<out>/<sha256>` plus `fetch.json`, written last (set,
+    arch, lock sha256; Q76 ruled), which U9 requires. On failure, nothing
+    the run wrote is left.
+  - *Checks before use:* the lock's per-entry rules before any request,
+    then size, sha256 and the upstream digest per file, then the `.dsc`
+    (deb, pgdg) and APKBUILD name checks against the entry.
+  - *Arch (Q75 ruled):* from the daemon; `--arch` only asserts it. No
+    `--evidence-dir`.
+  - *Time:* budget `B-fetch` is 60 s on CI for the sample stage, and the
+    enforced run deadline is 300 s (sample) or 3 h (full). CI headroom is
+    with the human (Q74).
+  - *Units:* U8a (the client), U8b (the service, the script and the
+    wiring; A34), U8c (the third Neo4j fetch from CI, as evidence). The
+    CLAUDE.md sentence waits for Q73.
+- **Amended U9 (2026-10-29, architect; design-notes "N9 amendment, U9").**
+  Proposed; Q78-Q80 and O-9..O-12 wait for the orchestrator. Points 3, 5
+  and 6 are built as follows; the rest stands.
+  - *Command:* `bundle.sh --out <dir>-<arch> --sources <dir>
+    [--sources-set full|sample]`. `--sources` is required (Q78). Only
+    `offline_check.sh` passes `sample` (Q63).
+  - *Before any write:* `sbom_check.py sources-check`, run in `ke-app` as
+    `finish` is (no network, read-only, `:ro` mounts), refuses a
+    directory whose `fetch.json` is absent, a link, not canonical, or of
+    another set, arch or lock SHA-256; whose `components` differ from
+    `fetch_plan`; or whose listing holds anything else (a link, an extra
+    entry, a missing file, a wrong size). It re-hashes every file.
+  - *Ship:* each file is copied, never linked, to
+    `app/sources/files/<sha256>`; layout flat, as fetched (O-3). Per-key
+    directories would add 160 files and 161 MB and break the path rule.
+  - *Index:* `sbom_check.py index` validates every SBOM first, then runs
+    `lock_problems` on this bundle's SBOMs (coverage both ways), the
+    `always` and `exempt` problems (an entry that matches more than one
+    package included) and the copied listing. It prints
+    `app/sources/index.json`: lock-key components `shipped` or (sample
+    only) `not-shipped`, `exempt` components with "always, cleared by
+    exemption <reviewed>" where both match, and `unparsed`,
+    `unidentified` and `unlicensed`.
+  - *Notices:* `notices` prints the "Source code" section from the index.
+    It prints lock keys, URLs, image names and policy strings only, and
+    refuses any `|`, backtick, angle bracket, backslash or control
+    character rather than escaping it. `NOTICE.md`,
+    `THIRD_PARTY_NOTICES.md`, `LICENSE` and `licenses/` are also copied
+    under `app/`. `NOTICE.md` gains the I-3 path sentence and libffi
+    (jna's licence text, fetched and hashed).
+  - *Manifest:* refuses a source file whose bytes do not match its name,
+    and a manifest over 1 MiB.
+  - *Failure:* after the first write, any failure removes the run's output
+    and the record (O-10).
+  - *Installers and `bundle.json`:* unchanged. Tamper tests pin the new
+    paths.
+  - *Units:* U9a, the checker functions, the subcommands and the install
+    pins (`fast`); U9b, the wiring, `NOTICE.md`, the real sample and a
+    recorded full-set bundle (Q79), with A34 (O-11).
+- **Amended U9c (2026-10-30, architect; design-notes "N9 amendment, U9c";
+  the human's A81 = Q81 option 3).** Proposed; O-19 and O-20 wait for the
+  orchestrator.
+  - *Context:* gitlab.alpinelinux.org, which serves every apk entry's
+    aports files, has been closed to the public since 2026-10-27 with no
+    reopening date. Each `verify.sh full` and CI run fetched 15 sample
+    files from it, with no retry (Q61), so nothing could merge.
+  - *Decision:* `fetch_plan(lock, arch, "sample")` keeps, for the apk
+    sample key, only the files on `APK_DISTFILES_HOST`
+    (distfiles.alpinelinux.org, one checker constant shared with the lock's
+    `KIND_HOSTS` binding), and fails closed if none is left. The sample key
+    is unchanged (A63's smallest-entry rule picks the same key either way).
+    The fetch skips the APKBUILD name check only when the set is `sample`
+    and the kind is `apk`, and prints one line saying so. `index.json`
+    gains the status `partial` (sample only, apk only; per-file `path`),
+    which a full bundle refuses. The notices section gains a partial row
+    that names the lock URL of the first unfetched file. Policy, lock,
+    compose, `bundle.sh` and the installers are unchanged.
+  - *Alternatives:* a `sample_hosts` policy key (a schema change to the
+    egress policy for one fact the checker already holds); moving the key
+    to an entry with a tarball (no extra proof, every pin rewritten);
+    a mirror or cgit route, a retry window (out of scope, U9c-8).
+  - *Consequences:* verify and CI no longer reach GitLab. Its API raw
+    route is proven only by operator full fetches, which fail closed
+    before any bundle (A81 accepts the lost early warning). A re-lock whose
+    smallest apk entry has no distfiles file turns the sample red by name
+    until a design amendment. Gate `full`; A34 not required.

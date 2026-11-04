@@ -1,0 +1,105 @@
+# U9d RED controls (tester, 2026-10-30; A82a = Q82 options A + C; requirements "U9d precision" U9d-1..U9d-8;
+# design-notes "N9 amendment, U9d" items 1-16 and ruling O-22). No production file is edited; no test reads
+# docs/evidence; no symlink is made on the Windows host; nothing staged. Taken after the U9c commit 9c3183d.
+
+== Files this RED does not edit (sha256 of the working tree = HEAD 9c3183d) ==
+scripts/offline_check.sh sha256=5e7b1d3911e8f8f13af74357d8bc4d5bad53d24d84ed2f92bb51a4634a226cbb
+scripts/launch.sh sha256=408ca3a166cf1cb9e01c87f62b2a2f4403d9fe3a869c45e398ff75166198be52
+scripts/install.sh sha256=204ab6a2ffc3128b97cc09f3fe2e889ab2208a23cdf99bf582470058c8e2ab45
+docker-compose.yml sha256=35e66b6ebe297a5ff9c481a24fea965db3f3cd99004ab625cc10ad0289ab0fe9
+docker-compose.offline.yml sha256=057fac20760235e5f6e632aa5d229e81d0363fcb6c5ce3f82866ae56df05d18b
+CLAUDE.md sha256=49505b658dc17043ad11d9b0deedf7a7cd2dd904f221c8e30ca7df8ef6e49f4a
+.github/workflows/ci.yml: no content diff against HEAD (`git diff --stat` empty; the work-tree hash differs by line
+  endings only).
+
+== Files edited (before = HEAD blob -> after) ==
+tests/test_offline_check.py  577e6f285e64df7645c0550817b1a4929686bedbab2bd906db0a4ad121f3b1ca -> 5ba4255cc83378de802bc7d57a90cc3c1866647d2b1683c94d2a6f975b410a0e
+tests/fake_docker.py         efa4228b9d31270d655bc0bc452c8645cc1beb7ee7623b6247c961a4582b5e60 -> 83f7a647c9705608d8b488001ee2f06fee202c9161e1c286d36063f8529c5a54
+
+== Re-pins: none ==
+No existing row of tests/test_offline_check.py changes (design item 13 Controls: expected re-pins none). New methods,
+helpers and fixtures are appended at the end of OfflineCheckScriptTest and below it; `_host`, `_client`, `_event(s)`,
+`_client_event(s)` and every existing row are byte-unchanged. Nothing renamed or removed. No count in a test name.
+
+== tests/fake_docker.py additions (each inert unless set; docstring section "platform-sbom U9d") ==
+- DIAG_TEMPLATE (module constant, written into the fake by install()): design item 7's template, matched exactly.
+- FAKE_DOCKER_CONTAINERS entries may carry `State` as an object (Status, ExitCode, OOMKilled, optional Health
+  {Status, Log [{End, ExitCode, Output}]}) plus Config/Args/Path/Mounts. The listing reads State.Status where it
+  read the State string (`_u9d_state`; string States behave exactly as before). `inspect`/`container inspect` of
+  such a container renders DIAG_TEMPLATE as Docker would ({{json}} of Output, `<absent>` branches, a trailing
+  newline); any other template exits 2; no --format prints the whole record, Config.Env included (so a leak shows).
+- `ps --all --filter label=K --format '{{.ID}} {{.Names}} {{.Label "K"}}'`: already modelled; no change needed.
+- FAKE_COMPOSE_LOGS: `compose ... logs [opts] <svc>` prints that service's lines, the last N with --tail N;
+  an unknown service exits 1.
+- `system df`: --format rows from FAKE_DOCKER_SYSTEM_DF (default four); -v/--verbose adds a section. No caller ran
+  `system df` before U9d.
+- Fake df: FAKE_DF_FAIL (`1` = every call, else `|`-separated paths) exits 1 after logging.
+
+== New rows (all in OfflineCheckScriptTest) and their RED reason ==
+test_offline_client_prints_diag_on_launch_failure        RED: no `offline-client: diag:` line after a launch failure
+test_offline_client_diag_survives_a_failing_inspect      RED: same (3 subtests: inspect#1 fails, list fails, logs fails)
+test_offline_measure_points_on_a_pass                    RED: no `offline-client: measure: C1` / `offline: measure: H1`
+test_offline_measure_points_on_a_launch_failure          RED: no C1 (client subtests), no H1 (host merged subtest);
+                                                         the host stderr-apart subtest (FAIL line byte-identical) is
+                                                         green at RED, as it must stay
+test_offline_measure_never_changes_the_outcome           RED: no C1 / C2 block (exit statuses already hold)
+test_offline_diag_and_measure_docker_calls_are_bounded   RED: no `docker ps|container inspect|compose logs|system df`
+                                                         call at a command position in offline_check.sh
+test_offline_diag_template_prints_only_allowed_fields    RED: no inspect template with {{.State.Status}}
+test_offline_measure_and_diag_lines_use_neutral_words    RED: the script prints no measure/diag line
+test_offline_meminfo_seam_is_client_only                 RED: the header does not list KE_OFFLINE_MEMINFO
+Green at RED by design (controls, must stay green unedited after GREEN):
+test_offline_check_output_unchanged_but_for_measure_lines  the pre-U9d client and host lines (pass; host with a
+   failing client), captured at RED from the unchanged script with this file's fakes; normalised: ke-offline-<N>,
+   image refs, df rows, the tmp dir, PASS seconds, sbom_check detail after its "<name>:" prefix.
+test_offline_check_has_no_ci_only_branch  no CI / GITHUB_* / RUNNER_* outside comments (U9d-3); a regression guard.
+
+== Test-validation probe (scratch only, deleted) ==
+To prove the new rows are red for missing behaviour and not broken, design items 5-9 were applied verbatim to a COPY
+of offline_check.sh in the tester's scratch dir (sha256 3c5ce11607cb1177939fc0864c352d778279a4aa557e471a0de87d5dc7d2e2f5),
+bind-mounted read-only over /work/scripts/offline_check.sh in a one-off ke-gates:wt-33a132fbfdd7 container
+(--network none, uid 10001, read-only checkout); `python -m unittest tests.test_offline_check`. Never in the tree,
+never handed over; deleted after the mutation run.
+  unchanged script : Ran 38, FAILED (failures=24)  -- the 24 new subtests above, nothing else
+  design prototype : Ran 38, OK; shellcheck -x on it: clean
+Found and fixed by the probe (in the new helper only): `_u9d_halves` first matched the header line
+"# Host half (no KE_OFFLINE_CLIENT)...", leaving an empty client slice; it now anchors on the "\n# Host half\n"
+section marker and raises if the marker precedes the client half.
+
+== Mutation controls (prototype + one defect; each must turn the named row red) ==
+M01 ps without --all (exited worker unseen)        -> prints_diag_on_launch_failure, diag_survives (inspect, logs), never_changes (launch failure)
+M02 logs printed for the healthy container         -> prints_diag (healthy postgres; logs calls)
+M03 no control-character scrub in diag_print       -> prints_diag, diag_survives (inspect), never_changes (launch failure)
+M04 `docker system df` without timeout             -> docker_calls_are_bounded (system df)
+M05 no C3                                          -> measure_points_on_a_pass (client), on_a_launch_failure (teardown, image names), never_changes (x2)
+M06 no H2 before the FAIL line                     -> measure_points_on_a_launch_failure (host merged)
+M07 an unguarded df read under set -e              -> never_changes_the_outcome (every source fails; on a launch failure)
+M08 exit 0 after the diagnostic                    -> prints_diag, diag_survives (x3), never_changes, on_a_launch_failure
+M09 a branch on ${CI}                              -> has_no_ci_only_branch
+M10 inspect without --format (full JSON)           -> template_prints_only_allowed_fields, prints_diag (incl. the sentinel), diag_survives
+M11 "skipped" in a measure line                    -> neutral_words, never_changes (x2)
+M12 `docker system df -v`                          -> docker_calls_are_bounded, measure_points_on_a_pass (call record)
+M13 `--tail 100`                                   -> prints_diag (neo4j: more than 50 lines; logs calls)
+M14 host half reads KE_OFFLINE_MEMINFO             -> meminfo_seam_is_client_only
+M15 no C1                                          -> measure_points_on_a_pass, on_a_launch_failure (x4), never_changes (x2), prints_diag (C2 check)
+M16 H1 before dind up                              -> measure_points_on_a_pass (host, both cases)
+M17 a diagnostic on a smoke failure (QD-5)         -> measure_points_on_a_launch_failure (smoke fails)
+17 of 17 mutants killed; no existing row went red under any mutant.
+
+== Not pinned by a fast row, and why ==
+- U9d-4 timing bound (N <= 5 per point, <= 15 s per run): read from the `done in N s` lines of the GREEN and gate
+  `verify.sh full` logs (U9d-4 says so). The rows assert the line and its integer, not the bound: on the 2-vCPU CI
+  runner a fake-docker run under the parallel suite could exceed it without a defect.
+- A hung call (exit 124): not driven dynamically (each would cost 10-20 s of suite time); the static row pins
+  `timeout <N> docker` with N <= 30 for every ps/inspect/logs/system df call.
+- Host memory "not measured" (root dir on the host but /proc/meminfo unreadable): no host seam exists (O-22 (3)
+  forbids one), so only the measurable and not-measurable host cases run.
+- Not pinned on purpose (design text, not criteria): the container order, the "end of the launch diagnostic" line,
+  the 2000-character cut, the exact parenthetical wording of measure lines (rows pin the prefix, point, source,
+  units, figures, "not measured", "not measurable" and `done in <N> s`).
+- U9d-6 (CI log and launch extract, the analyst's reading): evidence, not a test.
+
+== Gate run (RED) ==
+scripts/verify.sh fast (9c3183d+dirty): lint PASS; Ran 1354 tests (the 1343 of U9c's GREEN + 11 new methods),
+FAILED (failures=24, skipped=8). The 24 failures are exactly the new subtests listed above; the 8 skips are U9c
+GREEN's 8 (OK skipped=8). Full output: docs/evidence/platform-sbom/u9d/red-verify-fast.txt.

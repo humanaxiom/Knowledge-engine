@@ -1,0 +1,208 @@
+# U9b rework round 1 controls (tester, 2026-10-29; orchestrator O-16). RED edits three test files only.
+# Baseline = saved copies taken before any edit (the U9b GREEN state; GREEN edited no test). Names parsed by ast
+# (class.method, inherited test methods included). No production file is edited; no test reads docs/evidence.
+
+== Files this RED does not edit (sha256 unchanged before and after) ==
+scripts/bundle.sh sha256=cb91bb2cedb4cb6785b2b78671c35868585d5ba55dd3518dfeb735ece0a2664e
+scripts/offline_check.sh sha256=67c25fd23066e5a447126d0e933b6eb9063a93fdfa530f214fb5b5796895ac2f
+scripts/sbom_check.py sha256=b7c933893b0d43299fc64821b2ab2425795e801d5e1902cae6c2724f4cf2f3e9
+tests/fake_docker.py sha256=a72679ac3c3a6817de8af9182c790969d92f912d258ddb8fb15b32456f7ae88a
+tests/test_bundle_fetch.py sha256=14617f315916375b04a0b66ddf1c4c30125224b4daa1eb83c5b5c9448d464cb6
+tests/test_offline_check.py sha256=577e6f285e64df7645c0550817b1a4929686bedbab2bd906db0a4ad121f3b1ca
+tests/test_sbom_bundle.py sha256=7eeb7f9fe6a1d2350cac4f9988250a3019ee70ec97741decb69fa418a8a44423
+tests/test_sbom_obligations.py sha256=16a34a4a2d9ce865086761c3241bbfc163c67a032bc50e7e70fb38e79911ed81
+NOTICE.md sha256=0aee6bb880fd9406dbd2d033f5d4c35dd49dc67da0ce3e9e52c0cad59ffa4e49
+README.md sha256=761ad31bcda921f44afc09cf35d3bf0d105f75593e744206a53510d1ef67d7f7
+CLAUDE.md sha256=49505b658dc17043ad11d9b0deedf7a7cd2dd904f221c8e30ca7df8ef6e49f4a (U9-12: unchanged)
+
+== Files edited (before -> after) ==
+tests/test_bundle_sources.py  1d4ae554c818013eba06a115bce32099db1fd03bf23fbda8e81d981ffea3d03c -> c92195388a66ca63fe33fea47b34f0cf393061411d5aca2c4d8d5fbefd6001fc
+tests/test_offline_bundle.py  287fd165317261485bfee6533fa3ebf46dcb39612f9681cb73ebf8b2aa724502 -> ea89a8b697cd8ea1195c162297a35d516d3d495f1dc154c42d9b1518a9533870
+tests/test_sbom_generator.py  068d3ca7a020bad28ac8330882493c647c42f703bbb8d6a3e7a00412cafc333f -> 33d673db2a13f0b3459abe67e153304250edb7a03fb18ce923785beac945e3d4
+- tests/test_offline_bundle.py: helper refactor only. `_BundleBase._bundle` now calls the new `_bundle_cmd` (returns
+  argv, env, out) and runs it; behaviour unchanged for every existing caller. `_bundle_cmd` gains `raw_out` (a verbatim
+  --out string, no parent mkdir) for the O-16 (1)/(2) rows; the SIGTERM row Popens its argv/env. No test method touched.
+- tests/test_sbom_generator.py: `_strip_messages` widened to `(?:stage_die\s+\S+|die|echo|printf)` (O-16 (7), N-1).
+- tests/test_bundle_sources.py: module docstring cites O-15 and O-16; MARKER_RE is now the fullmatch of O-15 A2
+  (MARKER_LOOSE_RE keeps the old shape check); A4_RE/_a4_lines; `_assert_refused_untouched(stage=, info_only=)`;
+  `_assert_no_partial_bundle(a4=)`; `_cp_shim(pattern, name)` (default unchanged); the new rows below.
+
+== Names (before = U9b GREEN, after = this RED) ==
+## test_bundle_sources.py: before=31 after=51
+## removed: none
+   added: BundleSourcesNoPartialTest.test_a_source_file_changed_after_the_check_is_refused_in_a_given_out
+   added: BundleSourcesNoPartialTest.test_a_source_file_swapped_for_a_link_after_the_check_is_refused
+   added: BundleSourcesNoPartialTest.test_bundle_names_the_file_when_an_app_notice_copy_fails
+   added: BundleSourcesNoPartialTest.test_bundle_names_the_image_when_tag_or_save_fails
+   added: BundleSourcesNoPartialTest.test_bundle_never_overwrites_a_record_that_appears_during_the_run
+   added: BundleSourcesNoPartialTest.test_bundle_non_regular_file_refusal_is_stage_manifest
+   added: BundleSourcesNoPartialTest.test_bundle_path_pattern_refusal_is_stage_manifest
+   added: BundleSourcesNoPartialTest.test_bundle_removes_its_output_on_sigterm
+   added: BundleSourcesNoticeCopiesTest.test_app_notice_copies_are_taken_from_the_bundle_root
+   added: BundleSourcesPathRuleTest.test_bundle_overlap_check_is_segment_wise
+   added: BundleSourcesPathRuleTest.test_bundle_refuses_a_sources_path_with_a_dot_dot_dot_or_empty_segment
+   added: BundleSourcesPathRuleTest.test_bundle_refuses_a_symlinked_sources_given_with_trailing_slashes_or_a_dot
+   added: BundleSourcesPathRuleTest.test_bundle_refuses_an_out_path_with_a_dot_dot_dot_or_empty_segment
+   added: BundleSourcesPathRuleTest.test_bundle_refuses_an_out_under_a_link_into_sources
+   added: BundleSourcesPathRuleTest.test_bundle_refuses_an_out_whose_parent_is_missing
+   added: BundleSourcesPathRuleTest.test_bundle_strips_every_trailing_slash
+   added: BundleSourcesShellFormTest.test_bundle_cleanup_ignores_signals_before_clearing_exit_trap
+   added: BundleSourcesShellFormTest.test_bundle_turns_int_term_and_hup_into_a_non_zero_exit
+   added: BundleSourcesShellFormTest.test_every_stage_refusal_goes_through_stage_die
+   added: BundleSourcesShellFormTest.test_strip_messages_strips_the_text_of_stage_die
+## test_offline_bundle.py: before=167 after=167
+## removed: none
+## test_sbom_generator.py: before=4 after=4
+## removed: none
+## renamed: none. No assertion of an existing row was removed or weakened. Existing rows gained assertions (all green
+## at RED): test_bundle_requires_sources (+ case `--sources ""`, A8); test_bundle_refuses_a_bad_sources_dir (A4 on all
+## nine cases, A3 info-only on the six shell cases); test_bundle_refuses_an_unlistable_sources_dir (A4, A3);
+## test_bundle_refuses_a_mismatched_fetch_record and test_bundle_sources_set_defaults_to_full (A4 sources-check);
+## test_bundle_refuses_sources_overlapping_out (A3 on every case; A4 on the absent-out case only, note 1);
+## test_bundle_prints_the_sources_marker (A2 fullmatch); test_a_source_file_changed_after_the_check_is_refused
+## (A4 manifest); test_bundle_writes_no_manifest_when_sbom_or_source_fails (A4 copy/index/notices/manifest per case;
+## SBOM generation is not an A4 stage); test_bundle_refuses_an_unlistable_out (A4 out).
+
+== Rows red at RED (scripts/verify.sh fast, u9b-r1-red-verify-fast.txt: Ran 1322, failures=33, skipped=8) ==
+PathRuleTest.test_bundle_refuses_an_out_path_with_a_dot_dot_dot_or_empty_segment  O-16 (1)/L-4: 5 cases exit 0 (the
+    bundle lands in --sources or in the earlier bundle; `..`, `.`, `//` are not refused)
+PathRuleTest.test_bundle_refuses_a_sources_path_with_a_dot_dot_dot_or_empty_segment  O-16 (1): 4 cases exit 0 (its
+    `//` case is green: no fetch.json at `/`, exit 1, info only)
+PathRuleTest.test_bundle_refuses_a_symlinked_sources_given_with_trailing_slashes_or_a_dot  O-16 (1)/I-9: `<link>//`
+    and `<link>///` get past `[ -L ]` (compose/inspect calls follow); `<link>/.` exit 0
+PathRuleTest.test_bundle_strips_every_trailing_slash  O-16 (1)/I-8: exit 2 "the --out name must end in -amd64 (got )"
+PathRuleTest.test_bundle_refuses_an_out_whose_parent_is_missing  O-16 (2): `mkdir -p` makes the parent; exit 0 (2)
+NoPartialTest.test_bundle_never_overwrites_a_record_that_appears_during_the_run  O-16 (3): exit 0, record overwritten (2)
+NoPartialTest.test_bundle_names_the_image_when_tag_or_save_fails  O-16 (4)/B-3: set -e exit, no `bundle:` line (4)
+NoPartialTest.test_bundle_names_the_file_when_an_app_notice_copy_fails  O-16 (4)/B-3: no `bundle:` line (4)
+NoPartialTest.test_bundle_path_pattern_refusal_is_stage_manifest  O-16 (6): plain die "a bundle path fails the
+    manifest pattern: app/config/bad\ name.txt" (2)
+NoPartialTest.test_bundle_non_regular_file_refusal_is_stage_manifest  O-16 (6): plain die "the bundle holds an entry
+    that is neither a file nor a directory (symlink?)" (2)
+NoticeCopiesTest.test_app_notice_copies_are_taken_from_the_bundle_root  N-2/O-16 (7): app/ copies read the tree (3)
+ShellFormTest.test_every_stage_refusal_goes_through_stage_die  O-16 (7)/N-1: the no-fetch.json `echo` line (1)
+
+== Rows green from the start (pins of behaviour GREEN already has; each has a mutation control below) ==
+PathRuleTest.test_bundle_refuses_an_out_under_a_link_into_sources (B-1, cd -P); test_bundle_overlap_check_is_segment_wise
+(B-1, the `/` of both patterns); NoPartialTest.test_bundle_removes_its_output_on_sigterm (B-3);
+test_a_source_file_changed_after_the_check_is_refused_in_a_given_out (B-3, I-4 given); test_a_source_file_swapped_for_a_
+link_after_the_check_is_refused (N-7, note 2); ShellFormTest.test_bundle_cleanup_ignores_signals_before_clearing_exit_trap
+and test_bundle_turns_int_term_and_hup_into_a_non_zero_exit (B-3); test_strip_messages_strips_the_text_of_stage_die (N-1;
+green because the helper, a test file, is widened in this RED); the A2/A3/A4/A8 assertions added to existing rows.
+Rows red at RED need no mutation: today's bundle.sh is the failing mutant (O-16 (2): today's `mkdir -p` is what turns
+test_bundle_refuses_an_out_whose_parent_is_missing red).
+
+== Notes (the tester's own corrections between attempt 1 and attempt 2; attempt 1 = u9b-r1-red-verify-fast-attempt1.txt) ==
+1. The A4 pin first covered every case of test_bundle_refuses_sources_overlapping_out. Its two existing-out cases are
+   refused by the pre-U9 "--out is not empty" check, whose `die` text O-16 (6) keeps, so attempt 1 turned that existing
+   row red from the tester's own new assertion (no production gap). A4 now covers the absent-out case only, the one the
+   overlap check refuses.
+2. O-16 (7) asked the N-7 link-swap row to expect `stage manifest`. Attempt 1 showed `bundle: FAIL (stage index: the
+   source index failed (see above); no bundle written)`: U9a's `index` opens each copied file with O_NOFOLLOW and runs
+   before the manifest, so the link never reaches the manifest's non-regular check. The row now accepts one A4 line at
+   `index` or `manifest` (green today; mutation [17] shows it catches a link-following copy). The manifest's
+   non-regular check (O-16 (6)) is pinned directly by test_bundle_non_regular_file_refusal_is_stage_manifest (a tracked
+   config symlink). For the orchestrator to confirm.
+
+== Mutation controls ==
+Driver: <scratch>/r1/ctl/ctl.py, run in the gates image (ke-gates:wt-33a132fbfdd7, uid 10001, /work read-only, /tmp
+tmpfs, the driver mounted read-only at /scratch):
+  MSYS_NO_PATHCONV=1 KE_IMAGE_TAG=wt-33a132fbfdd7 COMPOSE_PROJECT_NAME=ke-test-u9br1-ctl COMPOSE_FILE=docker-compose.yml \
+    docker compose --env-file .env.example --profile gates run --rm --pull never -v <scratch>/r1/ctl:/scratch:ro gates \
+    uv run --locked python /scratch/ctl.py
+Per mutation: /work copied to /tmp/m<i> (no .git, dist, docs/evidence); ONE edit to the copy's scripts/bundle.sh (for
+[18], tests/test_sbom_generator.py), which must match exactly the stated number of places or the driver stops; the named
+rows run from the copy (the tests' ROOT is the copy, so the throwaway bundle repo gets the mutated bundle.sh).
+  [1]  A2: `echo "bundle: sources: check` -> `echo "sources: check` (1)
+  [2]  A3: `docker compose -f docker-compose.yml --env-file .env.example config --services > /dev/null` inserted before
+       `if [ -L "$sources" ]; then stage_die sources-check` (1)
+  [3]  A4: stage_die() prints `bundle: $1: $2` instead of `bundle: FAIL (stage $1: $2)` (1)
+  [4]-[9] A4 per stage: `stage_die copy ` -> `copying ` (2), `index ` -> `indexing ` (1), `notices ` -> `notice ` (2),
+       `manifest ` -> `manifests ` (3), `out ` -> `output ` (1), `sources-check ` -> `sources ` (11)
+  [10] A8: the first `[ -n "$sources" ] || usage` -> `[ "$have_sources" -eq 1 ] || usage` (1)
+  [11] B-1: real_dir `cd -P ... && pwd -P` -> `cd ... && pwd` (1)
+  [12] B-1: `"$out_real/"*)` -> `"$out_real"*)` (1);  [13] `"$sources_real/"*)` -> `"$sources_real"*)` (1)
+  [14] B-3: in bundle_cleanup, `trap - EXIT` moved before `trap '' INT TERM HUP` (1)
+  [15] B-3: `trap 'exit 143' TERM` removed (1)
+  [16] O-10: the given-out `find ... -exec rm -rf` -> `true` (1)
+  [17] N-7: `cp -P -- "$sources/$sha"` -> `cp -L -- "$sources/$sha"` (1)
+  [18] N-1: _strip_messages regex back to `(?:die|echo|printf)` (1)
+Output (verbatim; expected: the control fails nothing; each mutation fails exactly its own pins; first 4 subtests per row):
+bundle.sh under control sha256=cb91bb2cedb4cb6785b2b78671c35868585d5ba55dd3518dfeb735ece0a2664e
+test_bundle_sources.py sha256=c92195388a66ca63fe33fea47b34f0cf393061411d5aca2c4d8d5fbefd6001fc
+test_offline_bundle.py sha256=ea89a8b697cd8ea1195c162297a35d516d3d495f1dc154c42d9b1518a9533870
+test_sbom_generator.py sha256=33d673db2a13f0b3459abe67e153304250edb7a03fb18ce923785beac945e3d4
+[0] none (control)                                                           failed=[] (Ran 18 tests in 62.220s OK; 62 s)
+[1] A2: marker without the `bundle: ` prefix                                 failed=['marker'] (Ran 1 test in 2.294s FAILED (failures=1); 2 s)
+    FAIL marker: test_bundle_prints_the_sources_marker
+[2] A3: a docker call (compose config) before the --sources shell checks     failed=['baddir', 'overlap', 'unlistsrc'] (Ran 3 tests in 2.965s FAILED (failures=8); 3 s)
+    FAIL baddir: test_bundle_refuses_a_bad_sources_dir (case='absent')
+    FAIL baddir: test_bundle_refuses_a_bad_sources_dir (case='a symlink to a good fetch')
+    FAIL baddir: test_bundle_refuses_a_bad_sources_dir (case='not a directory')
+    FAIL baddir: test_bundle_refuses_a_bad_sources_dir (case='no fetch.json')
+    FAIL unlistsrc: test_bundle_refuses_an_unlistable_sources_dir
+    FAIL overlap: test_bundle_refuses_sources_overlapping_out (case='--out inside --sources (absent)')
+[3] A4: stage_die prints the plain die form                                  failed=['baddir', 'i4', 'i4given', 'mismatch', 'overlap', 'setdefault', 'unlistout', 'unlistsrc'] (Ran 8 tests in 15.180s FAILED (failures=15); 15 s)
+    FAIL setdefault: test_bundle_sources_set_defaults_to_full (case='no --sources-set, a sample fetch: refused')
+    FAIL setdefault: test_bundle_sources_set_defaults_to_full (case='--sources-set sample, a full fetch: refused')
+    FAIL baddir: test_bundle_refuses_a_bad_sources_dir (case='absent')
+    FAIL baddir: test_bundle_refuses_a_bad_sources_dir (case='a symlink to a good fetch')
+    FAIL baddir: test_bundle_refuses_a_bad_sources_dir (case='not a directory')
+    FAIL baddir: test_bundle_refuses_a_bad_sources_dir (case='a .part file beside the planned files')
+    FAIL unlistsrc: test_bundle_refuses_an_unlistable_sources_dir
+    FAIL mismatch: test_bundle_refuses_a_mismatched_fetch_record (case='arch: an arm64 fetch on an amd64 daemon')
+    FAIL mismatch: test_bundle_refuses_a_mismatched_fetch_record (case='lock_sha256: a fetch made before a re-lock')
+    FAIL overlap: test_bundle_refuses_sources_overlapping_out (case='--out inside --sources (absent)')
+    FAIL i4: test_a_source_file_changed_after_the_check_is_refused
+    FAIL unlistout: test_bundle_refuses_an_unlistable_out
+    FAIL i4given: test_a_source_file_changed_after_the_check_is_refused_in_a_given_out
+[4] A4 copy: stage named `copying`                                           failed=['nopartial'] (Ran 1 test in 27.570s FAILED (failures=2); 28 s)
+    FAIL nopartial: test_bundle_writes_no_manifest_when_sbom_or_source_fails (case='copying a source file fails (disk full)', out='created by the run')
+    FAIL nopartial: test_bundle_writes_no_manifest_when_sbom_or_source_fails (case='copying a source file fails (disk full)', out='given empty')
+[5] A4 index: stage named `indexing`                                         failed=['nopartial'] (Ran 1 test in 28.148s FAILED (failures=4); 28 s)
+    FAIL nopartial: test_bundle_writes_no_manifest_when_sbom_or_source_fails (case='the index stage fails', out='created by the run')
+    FAIL nopartial: test_bundle_writes_no_manifest_when_sbom_or_source_fails (case='the index stage fails', out='given empty')
+    FAIL nopartial: test_bundle_writes_no_manifest_when_sbom_or_source_fails (case='index refuses a lock key no image needs', out='created by the run')
+    FAIL nopartial: test_bundle_writes_no_manifest_when_sbom_or_source_fails (case='index refuses a lock key no image needs', out='given empty')
+[6] A4 notices: stage named `notice`                                         failed=['nopartial'] (Ran 1 test in 27.713s FAILED (failures=2); 28 s)
+    FAIL nopartial: test_bundle_writes_no_manifest_when_sbom_or_source_fails (case='the notices stage fails', out='created by the run')
+    FAIL nopartial: test_bundle_writes_no_manifest_when_sbom_or_source_fails (case='the notices stage fails', out='given empty')
+[7] A4 manifest: stage named `manifests`                                     failed=['i4', 'i4given', 'nopartial'] (Ran 3 tests in 32.833s FAILED (failures=4); 33 s)
+    FAIL nopartial: test_bundle_writes_no_manifest_when_sbom_or_source_fails (case="MANIFEST.sha256 would pass install's 1 MiB cap", out='created by the run')
+    FAIL nopartial: test_bundle_writes_no_manifest_when_sbom_or_source_fails (case="MANIFEST.sha256 would pass install's 1 MiB cap", out='given empty')
+    FAIL i4: test_a_source_file_changed_after_the_check_is_refused
+    FAIL i4given: test_a_source_file_changed_after_the_check_is_refused_in_a_given_out
+[8] A4 out: stage named `output`                                             failed=['unlistout'] (Ran 1 test in 0.181s FAILED (failures=1); 0 s)
+    FAIL unlistout: test_bundle_refuses_an_unlistable_out
+[9] A4 sources-check: stage named `sources`                                  failed=['baddir', 'mismatch', 'overlap', 'setdefault'] (Ran 4 tests in 10.186s FAILED (failures=11); 10 s)
+    FAIL setdefault: test_bundle_sources_set_defaults_to_full (case='no --sources-set, a sample fetch: refused')
+    FAIL setdefault: test_bundle_sources_set_defaults_to_full (case='--sources-set sample, a full fetch: refused')
+    FAIL baddir: test_bundle_refuses_a_bad_sources_dir (case='absent')
+    FAIL baddir: test_bundle_refuses_a_bad_sources_dir (case='a symlink to a good fetch')
+    FAIL baddir: test_bundle_refuses_a_bad_sources_dir (case='not a directory')
+    FAIL baddir: test_bundle_refuses_a_bad_sources_dir (case='a .part file beside the planned files')
+    FAIL mismatch: test_bundle_refuses_a_mismatched_fetch_record (case='arch: an arm64 fetch on an amd64 daemon')
+    FAIL mismatch: test_bundle_refuses_a_mismatched_fetch_record (case='lock_sha256: a fetch made before a re-lock')
+    FAIL overlap: test_bundle_refuses_sources_overlapping_out (case='--out inside --sources (absent)')
+[10] A8: `--sources ""` passes the argument check                             failed=['requires'] (Ran 1 test in 0.244s FAILED (failures=1); 0 s)
+    FAIL requires: test_bundle_requires_sources (case='--sources empty (O-15 A8)')
+[11] B-1: real_dir without -P (links not resolved)                            failed=['linkalias'] (Ran 1 test in 2.472s FAILED (failures=1); 3 s)
+    FAIL linkalias: test_bundle_refuses_an_out_under_a_link_into_sources
+[12] B-1: `"$out_real/"*` loses its `/`                                       failed=['segwise'] (Ran 1 test in 2.334s FAILED (failures=1); 3 s)
+    FAIL segwise: test_bundle_overlap_check_is_segment_wise (case='--out `<t>/bundle-amd64`, --sources `<t>/bundle-amd64-fetch`')
+[13] B-1: `"$sources_real/"*` loses its `/`                                   failed=['segwise'] (Ran 1 test in 2.509s FAILED (failures=1); 3 s)
+    FAIL segwise: test_bundle_overlap_check_is_segment_wise (case='--out `<t>/fetch2/bundle-amd64`, --sources `<t>/fetch`')
+[14] B-3: `trap - EXIT` before `trap '' INT TERM HUP` in bundle_cleanup       failed=['traporder'] (Ran 1 test in 0.013s FAILED (failures=1); 0 s)
+    FAIL traporder: test_bundle_cleanup_ignores_signals_before_clearing_exit_trap
+[15] B-3: the TERM trap removed                                               failed=['sigterm', 'trapexit'] (Ran 2 tests in 7.835s FAILED (failures=3); 8 s)
+    FAIL sigterm: test_bundle_removes_its_output_on_sigterm (out='created by the run')
+    FAIL sigterm: test_bundle_removes_its_output_on_sigterm (out='given empty')
+    FAIL trapexit: test_bundle_turns_int_term_and_hup_into_a_non_zero_exit (signal='TERM')
+[16] O-10: a given --out is not emptied on failure                            failed=['i4given'] (Ran 1 test in 2.467s FAILED (failures=1); 3 s)
+    FAIL i4given: test_a_source_file_changed_after_the_check_is_refused_in_a_given_out
+[17] N-7: the source copy follows links (cp -L)                               failed=['linkswap'] (Ran 1 test in 4.834s FAILED (failures=2); 5 s)
+    FAIL linkswap: test_a_source_file_swapped_for_a_link_after_the_check_is_refused (out='created by the run')
+    FAIL linkswap: test_a_source_file_swapped_for_a_link_after_the_check_is_refused (out='given empty')
+[18] N-1: _strip_messages back to die|echo|printf                             failed=['strip'] (Ran 1 test in 0.016s FAILED (failures=1); 0 s)
+    FAIL strip: test_strip_messages_strips_the_text_of_stage_die
+exit=0

@@ -1,0 +1,59 @@
+platform-sbom U8c O-2 RED: test controls (tester, 2026-10-29)
+Scope: PSC-23 U8-10; design-notes "N4 amendment, U8" ruling O-2 (answered after the U8b real runs).
+No production code and no docker/source-policy.json change. Tests never read docs/evidence/**.
+
+== Changed rows (old pin updated in place, not contradicted) ==
+tests/test_sbom_obligations.py
+  U6_HOSTS                                   before: 10 hosts incl. objects.githubusercontent.com
+                                             after:  9 hosts, objects.githubusercontent.com removed (U8C_DROPPED_HOST)
+  PolicyU6SchemaTest.test_hosts_are_the_fetch_hosts
+                                             before: set == U6_HOSTS, len == 10 ("U7d P5: exactly ten hosts")
+                                             after:  set == U6_HOSTS, len == len(U6_HOSTS) ("U8c O-2: exactly nine hosts")
+                                             RED now: objects.githubusercontent.com extra in the policy
+
+== New rows ==
+tests/test_sbom_obligations.py
+  PolicyU6SchemaTest.test_hosts_drop_the_unused_temurin_redirect_target
+    subTests: objects.githubusercontent.com absent (RED now); release-assets.githubusercontent.com present (green);
+              pypi.org absent (green; resolution host only, N0 / O2 ruling)
+tests/test_sources_lock_committed.py
+  CommittedLockTest.test_policy_hosts_are_the_lock_url_hosts_and_their_redirect_targets
+    policy hosts == {committed lock file URL hosts} | REDIRECT_HOSTS {codeload.github.com,
+    release-assets.githubusercontent.com}; RED now (objects.githubusercontent.com unused)
+  CommittedLockTest.test_no_lock_problems_without_the_dropped_host
+    lock_problems(committed lock, policy less objects.githubusercontent.com) == []; green (control: the drop is safe)
+tests/test_sources_fetch.py
+  SourceFetchDroppedHostTest.test_source_fetch_refuses_a_temurin_redirect_to_the_dropped_host
+    committed policy; github.com -> objects.githubusercontent.com is refused, never requested, nothing placed; RED now
+  SourceFetchDroppedHostTest.test_source_fetch_follows_the_real_temurin_redirect_target
+    github.com -> release-assets.githubusercontent.com kept; green (control)
+tests/test_sources_resolve.py
+  U8cDroppedHostTest.test_a_temurin_redirect_to_the_dropped_host_is_refused
+    resolve() with the committed policy; the redirect is refused "not in hosts", never requested; RED now
+
+== Fakes retargeted to release-assets.githubusercontent.com (local allow set; green before and after) ==
+tests/test_sources_resolve.py
+  ALLOW                                      objects.githubusercontent.com removed
+  ResolverHopsTest.test_hop_rules_and_messages  "a redirect inside the allowlist" and "a redirect to http" cases
+  ReworkR1TransportTest.test_errors_while_reading_the_body  "the host named is the hop's, after a redirect"
+  ReworkR1RealOpenerTest.test_error_bodies_are_read_to_1_mib_only  the 302 Location
+After the edit, `grep objects.githubusercontent.com tests/*.py` hits only the new O-2 rows and comments.
+
+== Per-kind host binding (item 2 of the brief) ==
+scripts/sbom_check.py KIND_HOSTS binds lock file URL hosts only (temurin: github.com; neo4j: github.com);
+it never named objects.githubusercontent.com. scripts/sources_resolve.py and scripts/sources_fetch.py have
+no per-kind redirect rule: every hop is checked against the policy `hosts` (plus pypi.org for the one JSON
+request). So the redirect refusal is pinned through the committed policy (the fetch and resolver rows above).
+
+== Control: the RED rows go green when only the policy drops the host ==
+Scratch copy: `git archive HEAD` into <scratch>/u8c-ctl, the four edited test files copied in,
+`"objects.githubusercontent.com", ` removed from docker/source-policy.json there (the repo file untouched).
+$ uv run python -m unittest tests.test_sbom_obligations.PolicyU6SchemaTest tests.test_sources_lock_committed \
+    tests.test_sources_fetch.SourceFetchDroppedHostTest tests.test_sources_fetch.SourceFetchHostsTest \
+    tests.test_sources_resolve.U8cDroppedHostTest tests.test_sources_resolve.ResolverHopsTest \
+    tests.test_sources_resolve.ReworkR1TransportTest tests.test_sources_resolve.ReworkR1RealOpenerTest \
+    tests.test_sources_resolve.ReworkR1HopRulesTest tests.test_sources_resolve.ResolverRoutesTest
+  repo (policy as committed): Ran 32 tests ... FAILED (failures=5)  -- the five RED rows above, nothing else
+  scratch (host dropped):     Ran 32 tests in 2.075s ... OK
+Host-side runs of the shell-driven modules (test_offline_bundle, test_bundle_fetch) are not meaningful on
+Windows outside the gates image (WSL bash missing) and are not used as evidence; verify.sh fast is.

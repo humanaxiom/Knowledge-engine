@@ -1,0 +1,23 @@
+ Container ke-sources-c817384b-sbom-sbom-run-baf3f18af2dd Creating 
+ Container ke-sources-c817384b-sbom-sbom-run-baf3f18af2dd Created 
+ Container ke-sources-c817384b-sbom-sbom-run-1d098df41478 Creating 
+ Container ke-sources-c817384b-sbom-sbom-run-1d098df41478 Created 
+ Container ke-sources-c817384b-sbom-sbom-run-fef068b4e1b6 Creating 
+ Container ke-sources-c817384b-sbom-sbom-run-fef068b4e1b6 Created 
+ Container ke-sources-c817384b-sbom-sbom-run-8e3947377a11 Creating 
+ Container ke-sources-c817384b-sbom-sbom-run-8e3947377a11 Created 
+ Container ke-sources-c817384b-sbom-sbom-run-b8f0054a4af0 Creating 
+ Container ke-sources-c817384b-sbom-sbom-run-b8f0054a4af0 Created 
+ Container ke-sources-c817384b-sbom-sbom-run-d23dba40c767 Creating 
+ Container ke-sources-c817384b-sbom-sbom-run-d23dba40c767 Created 
+ Network ke-sources-c817384b_default Creating 
+ Network ke-sources-c817384b_default Created 
+ Container ke-sources-c817384b-sources-resolve-run-6aa53cc2b407 Creating 
+ Container ke-sources-c817384b-sources-resolve-run-6aa53cc2b407 Created 
+apk:alpine-baselayout@3.7.1-r8: main/alpine-baselayout/alpine-baselayout.post-upgrade -> alpine-baselayout.post-install (symlink to a locked file, skipped)
+apk:alpine-baselayout@3.7.2-r1: main/alpine-baselayout/alpine-baselayout.post-upgrade -> alpine-baselayout.post-install (symlink to a locked file, skipped)
+neo4j candidate: {"date": "2026-10-26", "host": "codeload.github.com", "key": "neo4j:neo4j@5.26.32", "name": "5.26.32.tar.gz", "origin": "manual (pending security's second fetch)", "sha256": "182ae2e5c3807bc3d7a09770dbf450d2e8667080bde93b3b6c829125db0f91e3", "size": 20907800, "url": "https://github.com/neo4j/neo4j/archive/refs/tags/5.26.32.tar.gz"}
+
+sources_lock: written; neo4j entries pending: security's second fetch, then the entry by hand
+exit=3
+wall=759

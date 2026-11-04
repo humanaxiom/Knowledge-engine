@@ -1,0 +1,67 @@
+platform-sbom U7e: dpkg diff of the old and new ke-app / ke-gates base (design-notes R3)
+Recorded by security, 2026-10-28 (UTC). Offline read: docker create + docker cp only; no
+container was started. Profile paths are redacted as <scratch>.
+
+OLD base (current FROM lines, PYTHON_VERSION=3.12.15):
+  python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+NEW base (ruled 2026-10-27, PYTHON_VERSION=3.12.16):
+  python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753
+
+Commands (Git Bash, Docker 29.5.2 linux/amd64 server):
+  docker pull python:3.12-slim-bookworm@<OLD>      # pull only ("Image is up to date")
+  docker pull python:3.12-slim-bookworm@<NEW>      # pull only ("Downloaded newer image")
+  for arch in amd64 arm64; for d in OLD NEW:
+    cid=$(docker create --platform linux/$arch python:3.12-slim-bookworm@$d)
+    MSYS_NO_PATHCONV=1 docker cp "$cid:/var/lib/dpkg/status" <scratch>/status-<old|new>-$arch
+    docker rm "$cid"
+  python -I <scratch>/dpkgdiff.py status-old-$arch status-new-$arch
+    (deb822 paragraphs keyed by Package; compares Version and Source; Source empty = the
+     package name; also checks every Status is "install ok installed")
+  Afterwards: no container from either image remains (docker ps -a --filter ancestor=python: 0).
+
+sha256 of the copied files:
+  status-old-amd64  1cbb44b75c6da9ec6698d9495dc8fa371b9fdc68edb4661eb81957b8c19c10be
+  status-new-amd64  2fc499b497d4e08ed86614096583af6ba176aeacb38e2b697255056d02df2fa2
+  status-old-arm64  0e24bbc9b63fcfb5f0b43dbd2f1e3a2adf8f4b51338504695b75024b578bf515
+  status-new-arm64  5162cc93263ebb96e4bf186ec78bda5f2dd38e6a549551d557ba48a4676f4c3c
+
+Counts (all "install ok installed"):
+  amd64: old 105, new 105
+  arm64: old 105, new 105
+  The package name/version/source sets are identical between amd64 and arm64 in each base.
+
+Packages whose version differs (identical on amd64 and arm64):
+  | Package         | Old version        | New version        | Source (old = new)      |
+  |-----------------|--------------------|--------------------|-------------------------|
+  | ca-certificates | 20250419~deb12u1   | 20250419~deb12u2   | ca-certificates (self)  |
+  | libssl3         | 3.0.22-1~deb12u1   | 3.0.22-1~deb12u2   | openssl                 |
+  | openssl         | 3.0.22-1~deb12u1   | 3.0.22-1~deb12u2   | openssl (self)          |
+  | tzdata          | 2026c-0+deb12u1    | 2026e-0+deb12u1    | tzdata (self)           |
+
+  Source versions that moved (the only base-derived lock key changes R4 may explain):
+    openssl          3.0.22-1~deb12u1 -> 3.0.22-1~deb12u2   (DLA-4859-1, CVE-2026-84782)
+    ca-certificates  20250419~deb12u1 -> 20250419~deb12u2
+    tzdata           2026c-0+deb12u1  -> 2026e-0+deb12u1
+  No Source field changed for any package.
+
+Packages added (in NEW, not in OLD): none (both arches)
+Packages removed (in OLD, not in NEW): none (both arches)
+
+ADDED_PACKAGES (tests/test_notice_ke_app.py l.145:
+  {"libpq5", "libldap-2.5-0", "libsasl2-2", "libsasl2-modules-db"}):
+  libpq5               old: absent  new: absent
+  libldap-2.5-0        old: absent  new: absent
+  libsasl2-2           old: absent  new: absent
+  libsasl2-modules-db  old: absent  new: absent
+  -> ADDED_PACKAGES still holds; no re-pin is needed (R3). With no package added or removed,
+     apt's dependency closure for libpq5 on the new base is the same set as on the old base.
+
+libpq5 pin (PSC-25, LIBPQ_VERSION=15.19-0+deb12u1):
+  Still current. Prior finding, u7e/base-provenance.md section 4 (2026-10-28): 15.19-0+deb12u1
+  is the newest postgresql-15 on snapshot.debian.org; libpq5 amd64/arm64 and libpq-dev amd64
+  return HEAD 200 from deb.debian.org/debian-security/pool/updates/main/p/postgresql-15/ (404
+  in the bookworm main pool); the new base's apt sources include bookworm-security. Not
+  re-fetched for this file.
+
+Unchanged and relevant to the lock: libc6 2.36-9+deb12u14 (glibc), libgcc-s1 / libstdc++6 /
+gcc-12-base 12.2.0-14+deb12u1 (gcc-12).

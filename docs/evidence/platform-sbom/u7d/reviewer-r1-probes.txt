@@ -1,0 +1,47 @@
+# reviewer U7d r1 + lock probes, 2026-10-26 (host python -I; read-only on docker/sources.lock.json)
+## probe_lock.py
+bytes 472945 | CR present: False | canonical: True | format 1
+keys 182 == FIXTURE_KEYS: True
+kinds {'apk': 19, 'deb': 152, 'maven': 1, 'neo4j': 1, 'pgdg': 3, 'pypi': 5, 'temurin': 1}
+lock_problems(fixture docs): 0 []
+arches set: {('amd64',)} | origins: {'generated': 181, 'manual': 1}
+files 872 | total bytes 1327035158
+hosts used: {'gitlab.alpinelinux.org': 344, 'distfiles.alpinelinux.org': 21, 'snapshot.debian.org': 491, 'repo1.maven.org': 1, 'github.com': 2, 'apt-archive.postgresql.org': 8, 'files.pythonhosted.org': 5}
+upstream algs by kind: {'deb': {'sha1': 152, 'sha256': 339}, 'pgdg': {'sha256': 8}, 'apk': {'sha256': 36, 'sha512': 329}, 'neo4j': {'sha256': 1}, 'temurin': {'sha256': 1}, 'pypi': {'sha256': 5}, 'maven': {'sha1': 1}}
+from forms:
+    344 '<dsc> Checksums-Sha256'
+    329 'APKBUILD sha512sums at <c>'
+    152 'snapshot.debian.org mr/package fileinfo'
+    36 'gitlab files API content_sha256 at <c>'
+    3 'apt-archive.postgresql.org bookworm-pgdg-archive Sources'
+    2 'uv.lock'
+    1 'jaxb-api-2.2.12-sources.jar.sha1'
+    1 'second fetch: security 2026-10-25, docs/evidence/platform-sbom/sources-provenance.md'
+    1 'pypi.org JSON autocommand 2.2.2'
+    1 'pypi.org JSON ldap3 2.9.1'
+    1 'pypi.org JSON pandas 2.3.3'
+    1 'OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz.sha256.txt'
+zero-size files: []
+underscore names: [('apk:apk-tools@3.0.3-r1', '_apk'), ('apk:musl@1.2.5-r21', '__NR_riscv_hwprobe.patch'), ('apk:musl@1.2.5-r21', '__stack_chk_fail_local.c'), ('apk:musl@1.2.6-r2', '__stack_chk_fail_local.c')]
+query urls by kind: {'apk': 344}
+percent urls by kind: {'apk': 344, 'temurin': 1}
+neo4j: {"arches": ["amd64"], "files": [{"name": "5.26.32.tar.gz", "sha256": "182ae2e5c3807bc3d7a09770dbf450d2e8667080bde93b3b6c829125db0f91e3", "size": 20907800, "upstream": {"alg": "sha256", "from": "second fetch: security 2026-10-25, docs/evidence/platform-sbom/sources-provenance.md", "value": "182ae2e5c3807bc3d7a09770dbf450d2e8667080bde93b3b6c829125db0f91e3"}, "url": "https://github.com/neo4j/neo4j/ar
+temurin: {"arches": ["amd64"], "files": [{"name": "OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz", "sha256": "573057d03584ae793fb7ec9a14c76d826d9187a53efeefd99da47403a5308234", "size": 115126841, "upstream": {"alg": "sha256", "from": "OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz.sha256.txt", "value": "573057d03584ae793fb7ec9a14c76d826d9187a53efeefd99da47403a5308234"}, "url": "https://github.com/adoptium/temurin21-binaries/releases/d
+pgdg:postgresql-16@16.15-1.pgdg12+2 suite bookworm-pgdg-archive [('postgresql-16_16.15-1.pgdg12+2.dsc', 'apt-archive.postgresql.org bookworm-pgdg-archive Sources'), ('postgresql-16_16.15.orig.tar.bz2', 'postgresql-16_16.15-1.pgdg12+2.dsc Checksums-Sha256'), ('postgresql-16_16.15-1.pgdg12+2.debian.tar.xz', 'postgresql-16_16.15-1.pgdg12+2.dsc Checksums-Sha256')]
+pgdg:postgresql-18@18.6-1.pgdg12+2 suite bookworm-pgdg-archive [('postgresql-18_18.6-1.pgdg12+2.dsc', 'apt-archive.postgresql.org bookworm-pgdg-archive Sources'), ('postgresql-18_18.6.orig.tar.bz2', 'postgresql-18_18.6-1.pgdg12+2.dsc Checksums-Sha256'), ('postgresql-18_18.6-1.pgdg12+2.debian.tar.xz', 'postgresql-18_18.6-1.pgdg12+2.dsc Checksums-Sha256')]
+pgdg:postgresql-common@293.pgdg12+1 suite bookworm-pgdg-archive [('postgresql-common_293.pgdg12+1.dsc', 'apt-archive.postgresql.org bookworm-pgdg-archive Sources'), ('postgresql-common_293.pgdg12+1.tar.xz', 'postgresql-common_293.pgdg12+1.dsc Checksums-Sha256')]
+maven: {"arches": ["amd64"], "files": [{"name": "jaxb-api-2.2.12-sources.jar", "sha256": "fd104e7b20b6dbcd1bb27803aaca963a8393ad9b3e39eb8a5ba1b4da1462182e", "size": 245023, "upstream": {"alg": "sha1", "from": "jaxb-api-2.2.12-sources.jar.sha1", "value": "614c7681949a44e0884a1745ac21c4eb6811c019"}, "url": "https://repo1.maven.org/maven2/javax/xml/bind/jaxb-api/2.2.12/jaxb-api-2.2.12-sources.jar"}], "kind": "maven", "origin":
+pypi urls: ['/packages/5b/18/774bddb96bc0dc0a2b8ac2d2...autocommand-2.2.2.tar.gz', '/packages/43/ac/96bd5464e3edbc61595d0d69...ldap3-2.9.1.tar.gz', '/packages/33/01/d40b85317f86cf08d853a4f4...pandas-2.3.3.tar.gz', '/packages/58/53/bf15aa48cd6f0ad0039b9f48...psycopg_c-3.3.6.tar.gz', '/packages/76/26/3ea4ca5eaea1c0debcdf7ee7...psycopg-3.3.6.tar.gz'] ['pypi.org JSON autocommand 2.2.2', 'pypi.org JSON ldap3 2.9.1', 'pypi.org JSON pandas 2.3.3', 'uv.lock', 'uv.lock']
+alpine-baselayout files: ['APKBUILD', '20locale.sh', 'aliases.conf', 'alpine-baselayout.post-install', 'alpine-baselayout.pre-install', 'alpine-baselayout.pre-upgrade', 'blacklist.conf', 'color_prompt.sh.disabled', 'crontab', 'group', 'hier.7', 'i386.conf', 'inittab', 'passwd', 'profile', 'usr_merge_nag.sh', 'protocols-6.4', 'services-6.4'] main v3.24
+deb bash: [('bash_5.2.15-2.dsc', 'sha1', 'snapshot.debian.org mr/package fileinfo'), ('bash_5.2.15.orig.tar.gz', 'sha256', 'bash_5.2.15-2.dsc Checksums-Sha256'), ('bash_5.2.15-2.debian.tar.xz', 'sha256', 'bash_5.2.15-2.dsc Checksums-Sha256')]
+sample: ['apk:alpine-baselayout@3.7.1-r8', 'deb:hostname@3.23+nmu1', 'maven:javax.xml.bind:jaxb-api@2.2.12', 'neo4j:neo4j@5.26.32', 'pgdg:postgresql-common@293.pgdg12+1', 'pypi:autocommand@2.2.2', 'temurin:jdk-21.0.12.1+1']
+gcc keys: ['deb:gcc-12@12.2.0-14+deb12u1', 'deb:gcc-14@14.2.0-19']
+
+## pypi vs uv.lock: psycopg and psycopg-c url, sha256 and size equal uv.lock's sdist
+
+## probe_u7d_r1.py
+## item 12 size 0 at the GitLab API raw form
+  an empty .post-install (ruled good): PASSES
+  an empty APKBUILD (resolver can never produce it): PASSES
+
+## host: tests.test_sources_lock_committed 7 OK; RepositoryScanTest fails on docker/sources.lock.json:8760 value 8080 (item 13, pending)

@@ -1,0 +1,43 @@
+ Container ke-developer-u7dr1-gates-run-d096a66ef2ef Creating 
+ Container ke-developer-u7dr1-gates-run-d096a66ef2ef Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 0.79ms
+Installed 1 package in 1ms
+ok  [target] TARGET: the 13 item-10 and item-12 tests                               must pass | no problem
+ok  [target] TARGET: the 150 round-1, U7b-U7d and lock tests                        must pass | no problem
+ok  [pre10] ReworkR1U7dUnderscoreTest.test_a_link_to_an_underscore_name            must fail | test_a_link_to_an_underscore_name: AssertionError: ResolveError('apk:apk-tools@3.0.3-r1: _apk: not a safe file
+ok  [pre10] ReworkR1U7dUnderscoreTest.test_one_pattern                             must fail | test_one_pattern: ?           +
+ok  [pre10] ReworkR1U7dUnderscoreTest.test_safe_name                               must fail | test_safe_name: AssertionError: False is not true : _apk
+ok  [pre10] guard ReworkR1U7dUnderscoreTest.test_still_refused                     must pass | no problem
+ok  [pre10] ReworkR1U7dUnderscoreTest.test_the_real_shapes                         must fail | test_the_real_shapes: AssertionError: ResolveError('apk:apk-tools@3.0.3-r1: _apk: not a safe file name') is an
+ok  [pre10] ReworkR1U7dUnderscoreTest.test_the_skip_line_names_the_key             must fail | test_the_skip_line_names_the_key:    'alpine-baselayout.post-install (symlink to a locked file, skipped)']
+ok  [pre10] ReworkR1U7dUnderscoreLockTest.test_a_leading_underscore_passes         must fail | test_a_leading_underscore_passes: -  'segment fails the lock file-name rule)']
+ok  [pre10] guard ReworkR1U7dUnderscoreLockTest.test_still_refused                 must pass | no problem
+ok  [pre10] ReworkR1U7dUnderscoreLockTest.test_the_pattern                         must fail | test_the_pattern: ?           +
+ok  [pre10] ReworkR1U7dEmptyFileTest.test_an_empty_aports_file                     must fail | test_an_empty_aports_file: -  'lock: apk:apk-tools@3.0.3-r1: size 0 is not an int in 1..4294967296'] : a resol
+ok  [pre10] ReworkR1U7dEmptyFileLockTest.test_an_empty_gitlab_file_passes          must fail | test_an_empty_gitlab_file_passes: -  'lock: apk:readline@8.2.13-r1: size 0 is not an int in 1..4294967296'] : 
+ok  [pre10] ReworkR1U7dEmptyFileLockTest.test_still_refused                        must fail | test_still_refused: AssertionError: [] is not true : size 0 with another sha256: no problem contains 'readline
+ok  [pre10] ReworkR1U7dSymlinkTest.test_the_real_shape                             must fail | test_the_real_shape:    'alpine-baselayout.post-install (symlink to a locked file, skipped)']
+ok  [mutant] resolver keeps the old pattern (one pattern) -> test_one_pattern       must fail | test_one_pattern:  : the resolver's copy of the lock file-name pattern drifted from sbom_check.py's
+ok  [mutant] resolver keeps the old pattern (real shapes) -> test_the_real_shapes   must fail | test_the_real_shapes: AssertionError: ResolveError('apk:apk-tools@3.0.3-r1: _apk: not a safe file name') is an
+ok  [mutant] lock side keeps the old pattern (one pattern) -> test_one_pattern      must fail | test_one_pattern: ?           +
+ok  [mutant] lock side keeps the old pattern (lock rows) -> test_a_leading_underscore_passes must fail | test_a_leading_underscore_passes: -  'segment fails the lock file-name rule)']
+ok  [mutant] lock side keeps the old pattern (resolved entry fails lock_ok) -> test_the_real_shapes must fail | test_the_real_shapes: + [] : a resolved entry fails sbom_check.py lock_problems
+ok  [mutant] resolver lead too wide (- and . allowed) -> test_still_refused         must fail | test_still_refused: AssertionError: ({'format': 1, 'components': {'apk:apk-tools@3.0.3-r1': {'kind': 'apk', 'a
+ok  [mutant] lock lead too wide (- and . allowed) -> test_still_refused             must fail | test_still_refused: AssertionError: [] is not true : a name with a leading -: no problem contains 'not a safe 
+ok  [mutant] resolver drops the .. rule -> test_still_refused                       must fail | test_still_refused: AssertionError: ({'format': 1, 'components': {'apk:apk-tools@3.0.3-r1': {'kind': 'apk', 'a
+ok  [mutant] lock middle segments keep the old pattern -> test_a_leading_underscore_passes must fail | test_a_leading_underscore_passes: -  'segment fails the lock file-name rule)']
+ok  [mutant] resolver directory segments keep the old rule -> test_the_real_shapes  must fail | test_the_real_shapes: AssertionError: ResolveError('apk:musl@1.2.6-r2: _patches/_y.patch: not a safe file name
+ok  [mutant] symlink targets keep the old rule -> test_a_link_to_an_underscore_name must fail | test_a_link_to_an_underscore_name: AssertionError: ResolveError('apk:apk-tools@3.0.3-r1: apk-tools: main/apk-t
+ok  [mutant] skip line names the origin -> test_the_skip_line_names_the_key         must fail | test_the_skip_line_names_the_key:    'alpine-baselayout.post-install (symlink to a locked file, skipped)']
+ok  [mutant] skip line names the origin (one key) -> test_the_real_shape            must fail | test_the_real_shape:    'alpine-baselayout.post-install (symlink to a locked file, skipped)']
+ok  [mutant] skip line deduplicated across keys -> test_the_skip_line_names_the_key must fail | test_the_skip_line_names_the_key:    'alpine-baselayout.post-install (symlink to a locked file, skipped)']
+ok  [mutant] skip line printed twice -> test_a_link_to_an_underscore_name           must fail | test_a_link_to_an_underscore_name:    'file, skipped)']
+ok  [mutant] size 0 accepted everywhere -> test_still_refused                       must fail | test_still_refused: AssertionError: [] is not true : an empty distfiles apk file: no problem contains 'size 0 
+ok  [mutant] size 0 refused for GitLab apk (lock rows) -> test_an_empty_gitlab_file_passes must fail | test_an_empty_gitlab_file_passes: -  'lock: apk:readline@8.2.13-r1: size 0 is not an int in 1..4294967296'] : 
+ok  [mutant] size 0 refused for GitLab apk (resolved entry) -> test_an_empty_aports_file must fail | test_an_empty_aports_file: -  'lock: apk:apk-tools@3.0.3-r1: size 0 is not an int in 1..4294967296'] : a resol
+ok  [mutant] size 0 with any sha256 -> test_still_refused                           must fail | test_still_refused: AssertionError: [] is not true : size 0 with another sha256: no problem contains 'readline
+ok  [mutant] size 0 with any sha512 upstream -> test_still_refused                  must fail | test_still_refused: AssertionError: [] is not true : size 0, the empty sha256, another sha512 upstream: no pro
+
+U7d rework round 1 items 10 and 12 controls: 35 rows, 31 must-fail, 4 must-pass, 0 unexpected

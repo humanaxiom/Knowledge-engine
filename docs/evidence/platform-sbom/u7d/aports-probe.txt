@@ -1,0 +1,238 @@
+aports probe (U7d round 1, item 11): read-only; GitLab API only (tree listing, files-API metadata); no raw endpoint, no distfiles
+keys: 19 of 19 (origin, version, commit from lib/apk/db/installed o:/V:/c: of the local ke-gateway:local and valkey/valkey:8-alpine@sha256:081c2f5c... images; branch from etc/alpine-release)
+rules: current name rule [A-Za-z0-9][A-Za-z0-9._+~-]{0,254} (+ no '..'); item 10 rule [A-Za-z0-9_][A-Za-z0-9._+~-]{0,254}
+
+== apk:alpine-baselayout@3.7.1-r8  image=ke-gateway branch=v3.23 commit=dd4f6c3f0557fbcdaa88494e6de30c9aa7530be1
+  main: HTTP 200, entries=16, x-next-page='', x-total='16'
+  community: HTTP 404, entries=None, x-next-page=None, x-total=None
+  _tree_blobs (current rule): ok
+  _tree_blobs (item 10 rule): ok
+  APKBUILD: 8427 bytes, content_sha256 binds: True
+  parse_apkbuild (current rule): ok, 13 sha512sums names
+  parse_apkbuild (item 10 rule): ok, 13 sha512sums names
+  sha512sums: 13 names; 11 in the tree, 2 from distfiles
+    distfile: protocols-6.4
+    distfile: services-6.4
+  tree files not in sha512sums (locked by content_sha256): ['alpine-baselayout.post-install', 'alpine-baselayout.pre-install', 'alpine-baselayout.pre-upgrade']
+  symlink: alpine-baselayout.post-upgrade -> 'alpine-baselayout.post-install' (size 30; target a top-level regular blob: True; named in sha512sums: False)
+
+== apk:alpine-baselayout@3.7.2-r1  image=valkey branch=v3.24 commit=60a7585bbab2fa0f762504eb617dbca90216e31f
+  main: HTTP 200, entries=17, x-next-page='', x-total='17'
+  community: HTTP 404, entries=None, x-next-page=None, x-total=None
+  _tree_blobs (current rule): ok
+  _tree_blobs (item 10 rule): ok
+  APKBUILD: 8670 bytes, content_sha256 binds: True
+  parse_apkbuild (current rule): ok, 14 sha512sums names
+  parse_apkbuild (item 10 rule): ok, 14 sha512sums names
+  sha512sums: 14 names; 12 in the tree, 2 from distfiles
+    distfile: protocols-6.4
+    distfile: services-6.4
+  tree files not in sha512sums (locked by content_sha256): ['alpine-baselayout.post-install', 'alpine-baselayout.pre-install', 'alpine-baselayout.pre-upgrade']
+  symlink: alpine-baselayout.post-upgrade -> 'alpine-baselayout.post-install' (size 30; target a top-level regular blob: True; named in sha512sums: False)
+
+== apk:apk-tools@3.0.3-r1  image=ke-gateway branch=v3.23 commit=b7ab616ba639f0c93be528dfc4f1e0e906a98449
+  main: HTTP 200, entries=3, x-next-page='', x-total='3'
+  community: HTTP 404, entries=None, x-next-page=None, x-total=None
+  name: _apk: fails current rule ['_apk']; fails item-10 rule []
+  _tree_blobs (current rule): refused: _apk: not a safe file name
+  _tree_blobs (item 10 rule): ok
+  APKBUILD: 4179 bytes, content_sha256 binds: True
+  parse_apkbuild (current rule): refused: _apk: not a safe file name
+  parse_apkbuild (item 10 rule): ok, 3 sha512sums names
+  sha512sums: 3 names; 2 in the tree, 1 from distfiles
+    distfile: apk-tools-v3.0.3.tar.gz
+
+== apk:apk-tools@3.0.8-r0  image=valkey branch=v3.24 commit=4588b452722bd4800efdc6cce4f6e980e02a997f
+  main: HTTP 200, entries=2, x-next-page='', x-total='2'
+  community: HTTP 404, entries=None, x-next-page=None, x-total=None
+  _tree_blobs (current rule): ok
+  _tree_blobs (item 10 rule): ok
+  APKBUILD: 3962 bytes, content_sha256 binds: True
+  parse_apkbuild (current rule): ok, 2 sha512sums names
+  parse_apkbuild (item 10 rule): ok, 2 sha512sums names
+  sha512sums: 2 names; 1 in the tree, 1 from distfiles
+    distfile: apk-tools-v3.0.8.tar.gz
+
+== apk:busybox@1.37.0-r30  image=ke-gateway branch=v3.23 commit=1e823a60eb85606954b3a5af5f8e5bbd1ea680cf
+  main: HTTP 200, entries=80, x-next-page='', x-total='80'
+  community: HTTP 404, entries=None, x-next-page=None, x-total=None
+  _tree_blobs (current rule): ok
+  _tree_blobs (item 10 rule): ok
+  APKBUILD: 24569 bytes, content_sha256 binds: True
+  parse_apkbuild (current rule): ok, 75 sha512sums names
+  parse_apkbuild (item 10 rule): ok, 75 sha512sums names
+  sha512sums: 75 names; 74 in the tree, 1 from distfiles
+    distfile: busybox-1.37.0.tar.bz2
+  tree files not in sha512sums (locked by content_sha256): ['busybox-extras.post-install', 'busybox-extras.pre-deinstall', 'busybox.post-install', 'busybox.post-upgrade', 'busybox.trigger']
+
+== apk:busybox@1.37.0-r31  image=valkey branch=v3.24 commit=c3ef5d10e6ef6528852c51f0564963e2f8c1be19
+  main: HTTP 200, entries=80, x-next-page='', x-total='80'
+  community: HTTP 404, entries=None, x-next-page=None, x-total=None
+  _tree_blobs (current rule): ok
+  _tree_blobs (item 10 rule): ok
+  APKBUILD: 24569 bytes, content_sha256 binds: True
+  parse_apkbuild (current rule): ok, 75 sha512sums names
+  parse_apkbuild (item 10 rule): ok, 75 sha512sums names
+  sha512sums: 75 names; 74 in the tree, 1 from distfiles
+    distfile: busybox-1.37.0.tar.bz2
+  tree files not in sha512sums (locked by content_sha256): ['busybox-extras.post-install', 'busybox-extras.pre-deinstall', 'busybox.post-install', 'busybox.post-upgrade', 'busybox.trigger']
+
+== apk:gcc@15.2.0-r2  image=ke-gateway branch=v3.23 commit=7fa6e7fd3465c5ff89cc33a56d20bf4d59105aaf
+  main: HTTP 200, entries=44, x-next-page='', x-total='44'
+  community: HTTP 404, entries=None, x-next-page=None, x-total=None
+  _tree_blobs (current rule): ok
+  _tree_blobs (item 10 rule): ok
+  APKBUILD: 31418 bytes, content_sha256 binds: True
+  parse_apkbuild (current rule): ok, 44 sha512sums names
+  parse_apkbuild (item 10 rule): ok, 44 sha512sums names
+  sha512sums: 44 names; 43 in the tree, 1 from distfiles
+    distfile: gcc-15.2.0.tar.xz
+
+== apk:gcc@15.2.0-r5  image=valkey branch=v3.24 commit=423a8ad043d07f2c7546c8ec3e2b0384cda360ae
+  main: HTTP 200, entries=45, x-next-page='', x-total='45'
+  community: HTTP 404, entries=None, x-next-page=None, x-total=None
+  _tree_blobs (current rule): ok
+  _tree_blobs (item 10 rule): ok
+  APKBUILD: 31920 bytes, content_sha256 binds: True
+  parse_apkbuild (current rule): ok, 45 sha512sums names
+  parse_apkbuild (item 10 rule): ok, 45 sha512sums names
+  sha512sums: 45 names; 44 in the tree, 1 from distfiles
+    distfile: gcc-15.2.0.tar.xz
+
+== apk:geoip@1.6.12-r6  image=ke-gateway branch=v3.23 commit=6db81e6559d66572861f28962c24459c4a583da1
+  main: HTTP 200, entries=1, x-next-page='', x-total='1'
+  community: HTTP 404, entries=None, x-next-page=None, x-total=None
+  _tree_blobs (current rule): ok
+  _tree_blobs (item 10 rule): ok
+  APKBUILD: 951 bytes, content_sha256 binds: True
+  parse_apkbuild (current rule): ok, 1 sha512sums names
+  parse_apkbuild (item 10 rule): ok, 1 sha512sums names
+  sha512sums: 1 names; 0 in the tree, 1 from distfiles
+    distfile: GeoIP-1.6.12.tar.gz
+
+== apk:gettext@0.24.1-r1  image=ke-gateway branch=v3.23 commit=c82bd9e35f215c0e39ee43d1aa8c55c230bfbeec
+  main: HTTP 200, entries=5, x-next-page='', x-total='5'
+  community: HTTP 404, entries=None, x-next-page=None, x-total=None
+  _tree_blobs (current rule): ok
+  _tree_blobs (item 10 rule): ok
+  APKBUILD: 3445 bytes, content_sha256 binds: True
+  parse_apkbuild (current rule): ok, 5 sha512sums names
+  parse_apkbuild (item 10 rule): ok, 5 sha512sums names
+  sha512sums: 5 names; 4 in the tree, 1 from distfiles
+    distfile: gettext-0.24.1.tar.xz
+
+== apk:libcap-ng@0.8.5-r2  image=valkey branch=v3.24 commit=5218322ff9abeee315a9a19f9be7a1440f89d042
+  main: HTTP 200, entries=2, x-next-page='', x-total='2'
+  community: HTTP 404, entries=None, x-next-page=None, x-total=None
+  _tree_blobs (current rule): ok
+  _tree_blobs (item 10 rule): ok
+  APKBUILD: 1272 bytes, content_sha256 binds: True
+  parse_apkbuild (current rule): ok, 2 sha512sums names
+  parse_apkbuild (item 10 rule): ok, 2 sha512sums names
+  sha512sums: 2 names; 1 in the tree, 1 from distfiles
+    distfile: libcap-ng-0.8.5.tar.gz
+
+== apk:libidn2@2.3.8-r0  image=ke-gateway branch=v3.23 commit=8240e09aa2fdd8f9979b2016be082273965aff0c
+  main: HTTP 200, entries=1, x-next-page='', x-total='1'
+  community: HTTP 404, entries=None, x-next-page=None, x-total=None
+  _tree_blobs (current rule): ok
+  _tree_blobs (item 10 rule): ok
+  APKBUILD: 1132 bytes, content_sha256 binds: True
+  parse_apkbuild (current rule): ok, 1 sha512sums names
+  parse_apkbuild (item 10 rule): ok, 1 sha512sums names
+  sha512sums: 1 names; 0 in the tree, 1 from distfiles
+    distfile: libidn2-2.3.8.tar.gz
+
+== apk:libunistring@1.4.1-r0  image=ke-gateway branch=v3.23 commit=cd5407e1341869af38d836fe83f9dbc98799f43a
+  main: HTTP 200, entries=1, x-next-page='', x-total='1'
+  community: HTTP 404, entries=None, x-next-page=None, x-total=None
+  _tree_blobs (current rule): ok
+  _tree_blobs (item 10 rule): ok
+  APKBUILD: 926 bytes, content_sha256 binds: True
+  parse_apkbuild (current rule): ok, 1 sha512sums names
+  parse_apkbuild (item 10 rule): ok, 1 sha512sums names
+  sha512sums: 1 names; 0 in the tree, 1 from distfiles
+    distfile: libunistring-1.4.1.tar.xz
+
+== apk:musl@1.2.5-r21  image=ke-gateway branch=v3.23 commit=f2036bfe000ab05e1f300c6fce57be3da9db426e
+  main: HTTP 200, entries=21, x-next-page='', x-total='21'
+  community: HTTP 404, entries=None, x-next-page=None, x-total=None
+  name: __NR_riscv_hwprobe.patch: fails current rule ['__NR_riscv_hwprobe.patch']; fails item-10 rule []
+  name: __stack_chk_fail_local.c: fails current rule ['__stack_chk_fail_local.c']; fails item-10 rule []
+  _tree_blobs (current rule): refused: __NR_riscv_hwprobe.patch: not a safe file name
+  _tree_blobs (item 10 rule): ok
+  APKBUILD: 8440 bytes, content_sha256 binds: True
+  parse_apkbuild (current rule): refused: __NR_riscv_hwprobe.patch: not a safe file name
+  parse_apkbuild (item 10 rule): ok, 21 sha512sums names
+  sha512sums: 21 names; 20 in the tree, 1 from distfiles
+    distfile: musl-1.2.5.tar.gz
+
+== apk:musl@1.2.6-r2  image=valkey branch=v3.24 commit=f5640d3a10f664c9119720c60515265d3d6f6d01
+  main: HTTP 200, entries=11, x-next-page='', x-total='11'
+  community: HTTP 404, entries=None, x-next-page=None, x-total=None
+  name: __stack_chk_fail_local.c: fails current rule ['__stack_chk_fail_local.c']; fails item-10 rule []
+  _tree_blobs (current rule): refused: __stack_chk_fail_local.c: not a safe file name
+  _tree_blobs (item 10 rule): ok
+  APKBUILD: 6282 bytes, content_sha256 binds: True
+  parse_apkbuild (current rule): refused: __stack_chk_fail_local.c: not a safe file name
+  parse_apkbuild (item 10 rule): ok, 11 sha512sums names
+  sha512sums: 11 names; 10 in the tree, 1 from distfiles
+    distfile: musl-1.2.6.tar.gz
+
+== apk:pax-utils@1.3.8-r2  image=ke-gateway branch=v3.23 commit=3912b4fa83437852312ad3c37a00229ff59fab1c
+  main: HTTP 200, entries=2, x-next-page='', x-total='2'
+  community: HTTP 404, entries=None, x-next-page=None, x-total=None
+  _tree_blobs (current rule): ok
+  _tree_blobs (item 10 rule): ok
+  APKBUILD: 1782 bytes, content_sha256 binds: True
+  parse_apkbuild (current rule): ok, 2 sha512sums names
+  parse_apkbuild (item 10 rule): ok, 2 sha512sums names
+  sha512sums: 2 names; 1 in the tree, 1 from distfiles
+    distfile: pax-utils-1.3.8.tar.xz
+
+== apk:pax-utils@1.3.9-r1  image=valkey branch=v3.24 commit=c61801eeacb3ffcd9c2025b09e402153bb93fb39
+  main: HTTP 200, entries=1, x-next-page='', x-total='1'
+  community: HTTP 404, entries=None, x-next-page=None, x-total=None
+  _tree_blobs (current rule): ok
+  _tree_blobs (item 10 rule): ok
+  APKBUILD: 1568 bytes, content_sha256 binds: True
+  parse_apkbuild (current rule): ok, 1 sha512sums names
+  parse_apkbuild (item 10 rule): ok, 1 sha512sums names
+  sha512sums: 1 names; 0 in the tree, 1 from distfiles
+    distfile: pax-utils-1.3.9.tar.xz
+
+== apk:util-linux@2.42.3-r1  image=valkey branch=v3.24 commit=d98c55af59055e6ca60fbe36e171546918709965
+  main: HTTP 200, entries=13, x-next-page='', x-total='13'
+  community: HTTP 404, entries=None, x-next-page=None, x-total=None
+  _tree_blobs (current rule): ok
+  _tree_blobs (item 10 rule): ok
+  APKBUILD: 11509 bytes, content_sha256 binds: True
+  parse_apkbuild (current rule): ok, 12 sha512sums names
+  parse_apkbuild (item 10 rule): ok, 12 sha512sums names
+  sha512sums: 12 names; 11 in the tree, 1 from distfiles
+    distfile: util-linux-2.42.3.tar.xz
+  tree files not in sha512sums (locked by content_sha256): ['util-linux-misc.post-upgrade']
+
+== apk:xz@5.8.2-r0  image=ke-gateway branch=v3.23 commit=cc9bc015d3f4556c7205d4700e9c76fe7b718e12
+  main: HTTP 200, entries=1, x-next-page='', x-total='1'
+  community: HTTP 404, entries=None, x-next-page=None, x-total=None
+  _tree_blobs (current rule): ok
+  _tree_blobs (item 10 rule): ok
+  APKBUILD: 1534 bytes, content_sha256 binds: True
+  parse_apkbuild (current rule): ok, 1 sha512sums names
+  parse_apkbuild (item 10 rule): ok, 1 sha512sums names
+  sha512sums: 1 names; 0 in the tree, 1 from distfiles
+    distfile: xz-5.8.2.tar.gz
+
+requests: 59 (all to the GitLab API; none raw)
+
+SUMMARY (every shape found):
+  apk:alpine-baselayout@3.7.1-r8: symlink alpine-baselayout.post-upgrade -> alpine-baselayout.post-install (skip rule holds)
+  apk:alpine-baselayout@3.7.2-r1: symlink alpine-baselayout.post-upgrade -> alpine-baselayout.post-install (skip rule holds)
+  apk:apk-tools@3.0.3-r1: name _apk (current: refused, item 10: ok)
+  apk:apk-tools@3.0.3-r1: parse_apkbuild (current) refused: _apk: not a safe file name
+  apk:musl@1.2.5-r21: name __NR_riscv_hwprobe.patch (current: refused, item 10: ok)
+  apk:musl@1.2.5-r21: name __stack_chk_fail_local.c (current: refused, item 10: ok)
+  apk:musl@1.2.5-r21: parse_apkbuild (current) refused: __NR_riscv_hwprobe.patch: not a safe file name
+  apk:musl@1.2.6-r2: name __stack_chk_fail_local.c (current: refused, item 10: ok)
+  apk:musl@1.2.6-r2: parse_apkbuild (current) refused: __stack_chk_fail_local.c: not a safe file name

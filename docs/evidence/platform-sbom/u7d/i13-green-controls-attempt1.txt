@@ -1,0 +1,23 @@
+ Container ke-developer-u7di13-gates-run-44e02a435e13 Creating 
+ Container ke-developer-u7di13-gates-run-44e02a435e13 Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 1ms
+Installed 1 package in 1ms
+ok  [target] TARGET: all 24 hardcoded-scan tests                                      must pass | no problem
+BAD [baseline] repository scanner: test_the_generated_lock_is_skipped                   must fail | no problem
+BAD [baseline] repository scanner: test_no_hardcoded_ports (lock in the tree)           must fail | no problem
+ok  [mutant] a line exemption instead (size lines only) -> test_the_generated_lock_is_skipped must fail | test_the_generated_lock_is_skipped: + [] : the lock's size and from lines are flagged
+ok  [mutant] the skip widened to docker/*.json -> test_the_generated_lock_is_skipped  must fail | test_the_generated_lock_is_skipped: AssertionError: True is not false
+ok  [mutant] the skip by suffix (sources.lock.json anywhere) -> test_the_generated_lock_is_skipped must fail | test_the_generated_lock_is_skipped: AssertionError: True is not false
+ok  [mutant] the skip by prefix (docker/sources.lock.json*) -> test_the_generated_lock_is_skipped must fail | test_the_generated_lock_is_skipped: AssertionError: True is not false
+ok  [mutant] the skip dropped (contract row) -> test_the_generated_lock_is_skipped    must fail | test_the_generated_lock_is_skipped: -  Finding(path='docker/sources.lock.json', line=9, value='8080')] : the lock's size
+ok  [mutant] the skip dropped (repository scan) -> test_no_hardcoded_ports            must fail | test_no_hardcoded_ports: docker/sources.lock.json:8760: 8080
+ok  [mutant] the reason dropped -> test_the_generated_lock_is_skipped                 must fail | test_the_generated_lock_is_skipped: AssertionError: 'generated lock: sizes and hashes, PSC-15; checked by test_sources_l
+ok  [mutant] Python rule 2 lost for the skip (all .py skipped) -> test_the_generated_lock_is_skipped must fail | test_the_generated_lock_is_skipped: 2
+ok  [target] sbom_check target: all 3 ReworkR1U7dEmptyFileLockTest methods            must pass | no problem
+BAD [baseline] repository sbom_check: test_an_empty_apkbuild_fails                      must fail | no problem
+ok  [mutant] the APKBUILD clause dropped -> test_an_empty_apkbuild_fails              must fail | test_an_empty_apkbuild_fails: AssertionError: 'lock: apk:readline@8.2.13-r1: APKBUILD: size 0' not found in []
+
+U7d item 13 controls: 14 rows, 12 must-fail, 2 must-pass, 3 unexpected
+

@@ -1,0 +1,1283 @@
+Windows proof (A34; design-notes "N9 amendment, U9" step R13, ruling O-11) -- platform-sbom, unit U9b: scripts/bundle_fetch.sh --set sample,
+scripts/bundle.sh --sources/--sources-set sample (its three new hostpath mounts: --sources, app/sboms, app/sources), install.ps1 from that
+bundle with launch/teardown, and two refusals, run from Git Bash/PowerShell against the real Docker Desktop daemon with real network.
+HEAD 1a7a9e2 (agent/platform-sbom) PLUS the uncommitted U9b rework-2 tree (review APPROVED, security PASS; bundle.sh 9624710b...ff9dd);
+host aria-alien1, Windows 11 Pro 10.0.26200, Docker Desktop 29.5.2 (linux/amd64, 24 CPUs), Compose 5.1.4, Git Bash (MINGW64 3.6.7),
+PowerShell 7.6.9, jq 1.8.2 (WinGet, on PATH). Date 2026-10-30 (UTC), tester. Drivers <scratch>/a34u9b-drv/a34-u9b.sh (steps 0-4),
+a34-u9b-install.ps1 (step 5), a34-u9b-cleanup.sh (step 6), verify.sh (step 7); not committed, appended below. Projects: ke-a34u9b
+(bundle; its SBOM runs ke-a34u9b-sbom), ke-a34u9b-inst (installed stack), ke-fetch-<8 hex> (bundle_fetch's own). 17 files hashed at step 0.
+GitLab probe (https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports): 200 at 01:07:28Z, 01:15:34Z and 01:36:51Z.
+
+VERDICT: PASS for steps 1-6 (the Windows build-host proof). Step 7 (this run's own verify full) FAIL from interference by a concurrent run,
+not counted as a pass; the R13 verify-full proof on this host is cited from the developer's run (u9b-r2-green-verify-full.txt, PASS 1365 s).
+  1. bundle_fetch.sh --set sample --out <scratch>/a34u9b/fetch (absent, created by the script): exit 0, 27 s (pull 2 s, fetch 24 s);
+     `fetched 25 files, 136571547 bytes, 7 components (sample, amd64) in 23.3 s`. The 25 ok lines (key, name, sha256, size) equal
+     u8/expected.md's "sample, amd64" table row for row (diff empty); --out holds exactly the 25 files named by sha256 (names = the 25
+     distinct sha256) plus fetch.json; every file's sha256 equals its name; 136571547 B; fetch.json set sample, arch amd64, lock_sha256
+     12eebc8c...fc761b, 7 components.
+  2. bundle.sh --out <scratch>/a34u9b/bundle-amd64 --sources <scratch>/a34u9b/fetch --sources-set sample: exit 0, 1m57.9s.
+     `sources-check: ok 25 files, 136571547 bytes, 7 components (sample, amd64)` and both `index:` exempt lines (jna 5.15.0, javassist
+     3.30.2-GA) identical to u9/sample-bundle-run.txt; marker `bundle: sources: check 1 s, copy 1 s, index 1 s, notices 0 s` (the
+     reference run had `notices 1 s`; whole-second timing only). Release record beside --out, `sha256sum -c` OK; MANIFEST self-check OK.
+     app/sources/files: 25 regular files, 136571547 B, every name = its sha256, name set = the fetched set. index.json 830617 B: set
+     sample, arch amd64, git_sha 1a7a9e2..., lock_sha256 12eebc8c...fc761b; 185 components = shipped 7 (the 7 sample keys) + not-shipped
+     176 + exempt 2; 183 lock keys; 25 rows with a path (the shipped rows). `## Source code` at l.64 of THIRD_PARTY_NOTICES.md and
+     app/THIRD_PARTY_NOTICES.md (byte-identical), with the sample warning at l.66 ("Verification bundle: this source set is a sample and is
+     not complete; do not distribute this bundle."). licenses/libffi-jna-5.15.0.txt and app/licenses/libffi-jna-5.15.0.txt both present,
+     sha256 = the committed file (24026d7c...b6e9), both in MANIFEST. 6 images, 6 SBOMs. MANIFEST.sha256 8066 B, 73 lines (25 under
+     app/sources/files/). du -sb: bundle 1102759214 B, app/sources 137402164 B, without app/sources 965357050 B. --sources unchanged
+     (name, size, mtime, mode); bundle and ke-vendor tags unchanged (they already pointed at the :local ids, see Notes).
+     All against u9/expected.md "sample, amd64": 183 components, 7 shipped, 176 not-shipped, 25 files, 136571547 B, 25 plan rows,
+     lock_sha256 equal in fetch.json and index.json: match.
+  3. Refusal, a --sources directory with no fetch.json (the 25 blobs copied, regular files, no fetch.json): exit 1, 0 s, one line
+     `bundle: FAIL (stage sources-check: --sources <scratch>/a34u9b/nofetch has no fetch.json (or it is not a regular file); run
+     scripts/bundle_fetch.sh --set sample first)`. --out and its record not created, the <scratch>/a34u9b listing unchanged (no
+     .ke-sbom.*), the --sources listing unchanged, no tag moved.
+  4. Refusal, the sample directory for a --sources-set full bundle: exit 1, 4 s. The checker names the set (`sbom_check: sources-check:
+     fetch.json: set is sample, this bundle needs full`, the design-notes l.4334 wording), then `bundle: FAIL (stage sources-check: the
+     source set in --sources failed its check (see above); no bundle written)`. Nothing written (same checks as step 3).
+  5. install.ps1 from the step-2 bundle (PowerShell 7.6.9; install.ps1 hash = its MANIFEST line; -ExpectManifest = the release record
+     f2cc20ba...e3f2): exit 0, 73 s; six images loaded as their `as` tags, and the loaded ke-* ids equal the bundled :local ids; override
+     written; only the target left in the parent (staging removed). Installed sources: sources/files 25 regular files, 136571547 B,
+     Get-FileHash = name for all 25; sources/index.json = the bundle's (830617 B; shipped 7, not-shipped 176, exempt 2); installed
+     THIRD_PARTY_NOTICES.md = the bundle's (Source code l.64, sample warning l.66); licenses/libffi-jna-5.15.0.txt sha256 24026d7c...;
+     6 SBOMs. launch.ps1 (COMPOSE_PROJECT_NAME=ke-a34u9b-inst; throwaway target .env = .env.example + marker + KE_API_PORT=47180,
+     KE_PHOENIX_PORT=47181, both free before launch): exit 0, 21 s; 7/7 running healthy on the bundle images; /healthz 200
+     {"status":"ok"}, /readyz 200 ready (postgres, neo4j, valkey ok; model_host not_configured, not required); api Python 3.12.16,
+     OpenSSL 3.0.22, no pip, psycopg c 150019. teardown.ps1 -Volumes exit 0; after: 0 containers, 0 networks, 0 volumes, 0 compose
+     projects; target and parent deleted.
+  6. Cleanup (Git Bash): scratch bundle, record, fetch and nofetch dirs deleted (1375906446 B), <scratch>/a34u9b removed; 0
+     ke-sbom.* work dirs; the 17 hashed files unchanged start to end; bundle/ke-vendor tags as at step 0; the human's knowledge-engine
+     stack still running(7), untouched.
+  7. scripts/verify.sh full (COMPOSE_PROJECT_NAME=ke-a34-u9b, no repo-root .env at its start): FAIL, exit 1, 1053 s
+     (u9/a34-verify-full.txt). Unit Ran 1328 OK (skipped=8). Integration Ran 15, failures=1, skipped=5 (model host unset):
+     test_gates_it_cannot_read_repo_env read a host .env that the orchestrator's concurrent R15 verify full created at 01:39:56Z, after
+     this run had decided on no mask at 01:36:52Z. The test did its job; the cause is the concurrent run, not U9b. Not re-run: the
+     orchestrator's R15 run (ke-verify-1348623419) was still in flight and another overlapping run would have interfered with it again.
+     Per the dispatch, the developer's PASS is cited for R13.
+  Leftovers after every step: 0 containers, 0 networks, 0 volumes, 0 compose projects for ke-a34u9b, ke-a34u9b-sbom, ke-a34u9b-inst
+  (and by name ke-a34u9b*), ke-fetch-* (bundle_fetch used ke-fetch-f725b393), ke-verify-1434432275 (step 7), ke-a34-u9b. No prune, no
+  network rm, no symlink created; no other project touched.
+Notes:
+  - build.sh was not re-run (the dispatch listed steps (a)-(e), with no build step). The bundled first-party images are ke-app:local
+    7d6a0c84... (Created 2026-10-28T01:30:22Z), ke-gateway:local 06324664... (2026-10-19), ke-neo4j:local 942e76d5... (2026-10-23).
+    verify full's own build of this tree (ke-*:wt-33a132fbfdd7, ids ad16007a.../557e48f9.../5fb92549...) has the same Created times, so
+    the :local images are this tree's build content under other ids.
+  - Bundle tags: the Q79 re-run earlier this session (u9/full-bundle-run.txt, "rework 2 re-run") moved ke-{app,gateway,neo4j}:
+    bundle-1a7a9e276d57 from the wt-33a132fbfdd7 ids onto the :local ids. A34 moved no tag. The tester did not restore them: the
+    orchestrator's concurrent R15 verify full (offline_check) re-tags the same three names during its own run, and retagging under it
+    could change what it saves. The original ids are still tagged ke-*:wt-33a132fbfdd7, so nothing is lost.
+  - Repo-root .env incident (for the orchestrator). Step 0 at 01:15:33Z saw no .env. A .env then appeared before 01:19:24Z (the
+    documenter's verify fast started with the gates mask on). At 01:22:19Z the tester's `cp .env.example .env` (meant to create the
+    step-7 throwaway) overwrote it without checking first. Its previous content is lost; afterwards it held .env.example plus one
+    `# A34U9B-THROWAWAY` line, no secrets. Its owner deleted it between 01:36:17Z and 01:36:51Z; the tester did not delete it. The
+    orchestrator's R15 throwaway (`# throwaway: orchestrator verify u9b`, with KE_IMAGE_TAG=local) appeared at 01:39:56Z. If the first
+    .env was the orchestrator's, it was overwritten while no ke-verify project was running (01:22:29Z check: only ke-doc-u9b).
+  - "dangling images" (`docker images -f dangling=true`) went 165 -> 171 over steps 0-6. On this containerd-store daemon the filter
+    also lists tagged ids (it lists 7d6a0c84 = ke-app:local), and the daemon is shared with other projects, so the count is not
+    attributable; recorded as information only.
+  - Under Git Bash on NTFS the created --out and fetch dirs show drwxr-xr-x (chmod 0700 does not map to Windows ACLs; as U8b).
+Redaction: session scratch dir -> <scratch>; profile -> <profile>; SIDs -> <sid> (none found); signed GitHub queries -> ?<query omitted>
+(none found); ANSI codes stripped. Usernames and host name kept. Output otherwise unedited.
+
+#### Git Bash transcript, steps 0-4 (driver <scratch>/a34u9b-drv/a34-u9b.sh) ##########################################################
+
+==================== 0. metadata (Git Bash) ====================
+$ date -u +%FT%TZ; uname -srm; git rev-parse HEAD; git branch --show-current; docker version --format "engine {{.Server.Version}} {{.Server.Os}}/{{.Server.Arch}}"; docker compose version --short; jq --version; pwsh -NoProfile -Command "\$PSVersionTable.PSVersion.ToString()"; id -u; id -g; echo "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME KE_IMAGE_TAG=${KE_IMAGE_TAG-<unset>} MSYS_NO_PATHCONV=${MSYS_NO_PATHCONV-<unset>}"
+2026-10-30T01:15:33Z
+MINGW64_NT-10.0-26200 3.6.7-fb42d713.x86_64 x86_64
+1a7a9e276d57a6a7c89490e44c795ff2ef7f685b
+agent/platform-sbom
+engine 29.5.2 linux/amd64
+5.1.4
+jq-1.8.2
+7.6.9
+197610
+197121
+COMPOSE_PROJECT_NAME=ke-a34u9b KE_IMAGE_TAG=<unset> MSYS_NO_PATHCONV=<unset>
+[exit code: 0] [elapsed: 1 s]
+
+$ sha256sum scripts/bundle.sh scripts/bundle_fetch.sh scripts/sources_fetch.py scripts/sbom_check.py scripts/offline_check.sh scripts/install.ps1 scripts/install.sh scripts/launch.ps1 scripts/teardown.ps1 docker-compose.yml docker-compose.sources.yml docker-compose.sbom.yml .env.example docker/sources.lock.json docker/source-policy.json NOTICE.md licenses/libffi-jna-5.15.0.txt | tee "$D/out/hash-start.txt"
+9624710b069b16b9a8dde489165cc24872cf2af2b14617f9788c05be409ff9dd *scripts/bundle.sh
+552288bca4bc7825ac9daaee391ad6bac6f64c7ff9087f5b0b6e93f5d222cc40 *scripts/bundle_fetch.sh
+9b89a5a95acf0105b7226075b62885621f8b2a0249e4c04cb83438b0a09b6ee7 *scripts/sources_fetch.py
+b7c933893b0d43299fc64821b2ab2425795e801d5e1902cae6c2724f4cf2f3e9 *scripts/sbom_check.py
+48be0cb0e368165a526b2a5ecf352fe6456da2808e4b6d00ff92c2e687302138 *scripts/offline_check.sh
+7438fe1a8fde5638f91b337469ac734645fbfbe03dbbc53ec216f82a0e77c883 *scripts/install.ps1
+204ab6a2ffc3128b97cc09f3fe2e889ab2208a23cdf99bf582470058c8e2ab45 *scripts/install.sh
+768fd837368584c7fadb855d523f86b832d396d1eddc75ebd7b56d1c70a78224 *scripts/launch.ps1
+17299c961b0ba6d9ce06a142f7aebbaf886783ed9adf25c167edc56adccdc061 *scripts/teardown.ps1
+35e66b6ebe297a5ff9c481a24fea965db3f3cd99004ab625cc10ad0289ab0fe9 *docker-compose.yml
+8fad544246840de6df0d5b022f88ddba804122768ee26c73bc402170655118c8 *docker-compose.sources.yml
+edbf61b2e54fbc79a06770dc26a0aa9cfbb2056f6d9e99825729dfe67cca1010 *docker-compose.sbom.yml
+b7645141b5ec5dd588c817957a3ab4946b1de4d7cf9e041dd91627ec5d855183 *.env.example
+12eebc8cd09e5effc6934a1a3b67decc053cda923720dda07a8909a137fc761b *docker/sources.lock.json
+6261355fe8f764bfb86523eea4f03d53a710edef0d791d19ca0a71d95244ef21 *docker/source-policy.json
+0aee6bb880fd9406dbd2d033f5d4c35dd49dc67da0ce3e9e52c0cad59ffa4e49 *NOTICE.md
+24026d7cef7c72950663578517c854560567c9f49bdf2d645e66b2146b5cb9e6 *licenses/libffi-jna-5.15.0.txt
+[exit code: 0] [elapsed: 0 s]
+
+$ ls -a .env; git status --short > "$D/out/status-start.txt"; wc -l < "$D/out/status-start.txt"
+ls: cannot access '.env': No such file or directory
+42
+[exit code: 0] [elapsed: 0 s]
+
+$ curl -s -o /dev/null -w "gitlab.alpinelinux.org aports API: %{http_code}\n" --max-time 20 "https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports"
+gitlab.alpinelinux.org aports API: 200
+[exit code: 0] [elapsed: 1 s]
+
+$ docker image inspect --format "{{index .RepoTags 0}} {{.Id}} {{.Os}}/{{.Architecture}} created={{.Created}}" ke-app:local ke-gateway:local ke-neo4j:local ke-gates:local
+ke-app:bundle-1a7a9e276d57 sha256:7d6a0c8413af6a4476582cf06ca5381e40335f6e1e11c907a4a5376418af3995 linux/amd64 created=2026-10-28T01:30:22.554154764Z
+ke-gateway:bundle-1a7a9e276d57 sha256:06324664fbd672137709611f66f7baf15c662127b16e7e5c951e4b0742dc6714 linux/amd64 created=2026-10-19T04:13:41.827391046Z
+ke-neo4j:bundle-1a7a9e276d57 sha256:942e76d5a7e87b2af5f1bc50b8e8d9ba3d07114d8f7898f7ee7ff1d9e22e55b4 linux/amd64 created=2026-10-23T21:26:41.892773977Z
+ke-gates:local sha256:e7222767bbd8ae4605a36432a5899a09f2c50398fc5a1f7cead82b21a4091370 linux/amd64 created=2026-10-28T01:30:51.749215165Z
+[exit code: 0] [elapsed: 0 s]
+
+$ tags > "$D/out/tags-start.txt"; wc -l < "$D/out/tags-start.txt"; grep -E "bundle-1a7a9e276d57|^ke-vendor/" "$D/out/tags-start.txt"
+87
+ke-app:bundle-1a7a9e276d57 sha256:7d6a0c8413af6a4476582cf06ca5381e40335f6e1e11c907a4a5376418af3995
+ke-gateway:bundle-1a7a9e276d57 sha256:06324664fbd672137709611f66f7baf15c662127b16e7e5c951e4b0742dc6714
+ke-neo4j:bundle-1a7a9e276d57 sha256:942e76d5a7e87b2af5f1bc50b8e8d9ba3d07114d8f7898f7ee7ff1d9e22e55b4
+ke-vendor/neo4j:0a6e7aedf54a sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+ke-vendor/phoenix:fa28e9cd96dd sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c
+ke-vendor/postgres:0ea6700a3b4f sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
+ke-vendor/valkey:081c2f5cb575 sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507
+[exit code: 0] [elapsed: 1 s]
+
+$ echo "dangling images: $(docker images -q --filter dangling=true | wc -l)"; df -Pk "$S" | tail -1
+dangling images: 165
+C:              3967116284 693295008 3273821276      18% /c
+[exit code: 0] [elapsed: 1 s]
+
+$ ls -d "$A" 2>&1
+ls: cannot access '<scratch>/a34u9b': No such file or directory
+[exit code: 2] [elapsed: 0 s]
+
+$ leftovers
+ke-a34u9b: containers=0 networks=0 volumes=0
+ke-a34u9b-sbom: containers=0 networks=0 volumes=0
+ke-a34u9b-inst: containers=0 networks=0 volumes=0
+by name ke-a34u9b*: containers=0 networks=0 volumes=0
+ke-fetch-*: containers=0 networks=0 volumes=0
+compose projects ke-a34u9b*/ke-fetch-*: 0
+[exit code: 0] [elapsed: 3 s]
+
+==================== 1. bundle_fetch.sh --set sample --out <scratch>/a34u9b/fetch (absent; created by the script) ====================
+$ ls -A "$A" | wc -l; ls -ld "$A/fetch" 2>&1
+0
+ls: cannot access '<scratch>/a34u9b/fetch': No such file or directory
+[exit code: 2] [elapsed: 0 s]
+
+$ bash scripts/bundle_fetch.sh --set sample --out "$A/fetch"
+== sources: pull ==
+ Image anchore/syft:v1.54.1@sha256:3eb5379ba7b409c3f4069b686110527af0c47df993fa5c10d13e7cf34f49b1aa Pulling 
+ Image anchore/syft:v1.54.1@sha256:3eb5379ba7b409c3f4069b686110527af0c47df993fa5c10d13e7cf34f49b1aa Pulled 
+== sources: fetch ==
+ Network ke-fetch-f725b393_default Creating 
+ Network ke-fetch-f725b393_default Created 
+ Container ke-fetch-f725b393-sources-fetch-run-c9c9f9bc43d9 Creating 
+ Container ke-fetch-f725b393-sources-fetch-run-c9c9f9bc43d9 Created 
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 APKBUILD sha256=c673459076838229d5ebef8f42586a46b4aa3d22e429f6b9ec008f5c6b3889d3 size=8427 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 20locale.sh sha256=284a6ef56ab97a13a777c6b01ae14f2cc3d2b7a29c19e750e622e70cc3c73186 size=97 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 aliases.conf sha256=3ebaba946f213670170c7d69949f690a3854553bd0b1560f1d980cba4c83a942 size=1545 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 alpine-baselayout.post-install sha256=dd30b63bfbe4f7d8085f57840e15b84015b3518d6f282a3e0924f73a61000016 size=453 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 alpine-baselayout.pre-install sha256=28ecff91a36f438ca26bc8cc08d857863378aa94eab399a1f413e52501b86f85 size=56 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 alpine-baselayout.pre-upgrade sha256=3f35fa5402d397389f366e8934ba0f800a017a149f4281dc8c22762419e47e10 size=944 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 blacklist.conf sha256=0e9ab848289bfb20b9b066d05c8b1383a7c92b97ff8072a50806054b5d3fd739 size=2247 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 color_prompt.sh.disabled sha256=ba24425c6864a5d17fa0fdaf914c4d21419e47c4d62080c33830af059fe46617 size=447 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 crontab sha256=575d810a9fae5f2f0671c9b2c0ce973e46c7207fbe5cb8d1b0d1836a6a0470e3 size=283 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 group sha256=6fb6ab5a5526e6f4896b70c7e3c350fd475158a1f0d7b5fc0f3f9bd57f1c3be8 size=510 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 i386.conf sha256=6c46c4cbfb8b7594f19eb94801a350fa2221ae9ac5239a8819d15555caa76ae8 size=122 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 inittab sha256=7326d8ad56bf5fea63b1ca516a747ff6e6723e25ae84a93c31620b03de6c001d size=570 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 passwd sha256=31a94f06f17bc3b9085fccab1d0fa6ee9e79c4a1e4d91f617fa5de95863be015 size=702 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 profile sha256=87e8643d3ce156de0c09370d4d39446f30bd00d264bea248abc191c4d7b9df3e size=547 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 usr_merge_nag.sh sha256=3add5845c64bec8ef8dfe27087401a83816ea7cdda20e77826d2ba5516c7434c size=699 hops=gitlab.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 protocols-6.4 sha256=4959498abbadaa1e50894a266f8d0d94500101cfe5b5f09dcad82e9d5bdfab46 size=3144 hops=distfiles.alpinelinux.org
+bundle_fetch: ok apk:alpine-baselayout@3.7.1-r8 services-6.4 sha256=f6183055fd949f9c53d49ee620f85d0150123ea691d25ed1bba0c641b4ee2f48 size=12813 hops=distfiles.alpinelinux.org
+bundle_fetch: ok deb:hostname@3.23+nmu1 hostname_3.23+nmu1.dsc sha256=56f2189eaeee638e86d29a05356e7001632e33b2132a41a4634a9ff839264ea6 size=1281 hops=snapshot.debian.org
+bundle_fetch: ok deb:hostname@3.23+nmu1 hostname_3.23+nmu1.tar.xz sha256=f3fb39f30b00ba7dba2cec013195d7e1bb215f241153208ccd52da3eedfe7a7d size=12876 hops=snapshot.debian.org
+bundle_fetch: ok maven:javax.xml.bind:jaxb-api@2.2.12 jaxb-api-2.2.12-sources.jar sha256=fd104e7b20b6dbcd1bb27803aaca963a8393ad9b3e39eb8a5ba1b4da1462182e size=245023 hops=repo1.maven.org
+bundle_fetch: ok neo4j:neo4j@5.26.32 5.26.32.tar.gz sha256=182ae2e5c3807bc3d7a09770dbf450d2e8667080bde93b3b6c829125db0f91e3 size=20907800 hops=github.com,codeload.github.com
+bundle_fetch: ok pgdg:postgresql-common@293.pgdg12+1 postgresql-common_293.pgdg12+1.dsc sha256=fc1b229024670e6d0cf1c40f3987bf1509aecf146791a6e22966fbf764c391da size=1538 hops=apt-archive.postgresql.org
+bundle_fetch: ok pgdg:postgresql-common@293.pgdg12+1 postgresql-common_293.pgdg12+1.tar.xz sha256=7a12dca9e636d56b72f45a00c52fb8cf054c3bf9aba8dc74bcca5fb6be17b07f size=219688 hops=apt-archive.postgresql.org
+bundle_fetch: ok pypi:autocommand@2.2.2 autocommand-2.2.2.tar.gz sha256=878de9423c5596491167225c2a455043c3130fb5b7286ac83443d45e74955f34 size=22894 hops=files.pythonhosted.org
+bundle_fetch: ok temurin:jdk-21.0.12.1+1 OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz sha256=573057d03584ae793fb7ec9a14c76d826d9187a53efeefd99da47403a5308234 size=115126841 hops=github.com,release-assets.githubusercontent.com
+bundle_fetch: fetched 25 files, 136571547 bytes, 7 components (sample, amd64) in 23.3 s
+== sources: done (pull 2 s, fetch 24 s) ==
+[exit code: 0] [elapsed: 27 s]
+
+$ ls -l "$A/fetch"
+total 133430
+-rw-r--r-- 1 adam 197121      2247 Oct 29 18:15 0e9ab848289bfb20b9b066d05c8b1383a7c92b97ff8072a50806054b5d3fd739
+-rw-r--r-- 1 adam 197121  20907800 Oct 29 18:15 182ae2e5c3807bc3d7a09770dbf450d2e8667080bde93b3b6c829125db0f91e3
+-rw-r--r-- 1 adam 197121        97 Oct 29 18:15 284a6ef56ab97a13a777c6b01ae14f2cc3d2b7a29c19e750e622e70cc3c73186
+-rwxr-xr-x 1 adam 197121        56 Oct 29 18:15 28ecff91a36f438ca26bc8cc08d857863378aa94eab399a1f413e52501b86f85
+-rw-r--r-- 1 adam 197121       702 Oct 29 18:15 31a94f06f17bc3b9085fccab1d0fa6ee9e79c4a1e4d91f617fa5de95863be015
+-rwxr-xr-x 1 adam 197121       699 Oct 29 18:15 3add5845c64bec8ef8dfe27087401a83816ea7cdda20e77826d2ba5516c7434c
+-rw-r--r-- 1 adam 197121      1545 Oct 29 18:15 3ebaba946f213670170c7d69949f690a3854553bd0b1560f1d980cba4c83a942
+-rwxr-xr-x 1 adam 197121       944 Oct 29 18:15 3f35fa5402d397389f366e8934ba0f800a017a149f4281dc8c22762419e47e10
+-rw-r--r-- 1 adam 197121      3144 Oct 29 18:15 4959498abbadaa1e50894a266f8d0d94500101cfe5b5f09dcad82e9d5bdfab46
+-rw-r--r-- 1 adam 197121      1281 Oct 29 18:15 56f2189eaeee638e86d29a05356e7001632e33b2132a41a4634a9ff839264ea6
+-rw-r--r-- 1 adam 197121 115126841 Oct 29 18:16 573057d03584ae793fb7ec9a14c76d826d9187a53efeefd99da47403a5308234
+-rw-r--r-- 1 adam 197121       283 Oct 29 18:15 575d810a9fae5f2f0671c9b2c0ce973e46c7207fbe5cb8d1b0d1836a6a0470e3
+-rw-r--r-- 1 adam 197121       122 Oct 29 18:15 6c46c4cbfb8b7594f19eb94801a350fa2221ae9ac5239a8819d15555caa76ae8
+-rw-r--r-- 1 adam 197121       510 Oct 29 18:15 6fb6ab5a5526e6f4896b70c7e3c350fd475158a1f0d7b5fc0f3f9bd57f1c3be8
+-rw-r--r-- 1 adam 197121       570 Oct 29 18:15 7326d8ad56bf5fea63b1ca516a747ff6e6723e25ae84a93c31620b03de6c001d
+-rw-r--r-- 1 adam 197121    219688 Oct 29 18:15 7a12dca9e636d56b72f45a00c52fb8cf054c3bf9aba8dc74bcca5fb6be17b07f
+-rw-r--r-- 1 adam 197121     22894 Oct 29 18:15 878de9423c5596491167225c2a455043c3130fb5b7286ac83443d45e74955f34
+-rw-r--r-- 1 adam 197121       547 Oct 29 18:15 87e8643d3ce156de0c09370d4d39446f30bd00d264bea248abc191c4d7b9df3e
+-rw-r--r-- 1 adam 197121       447 Oct 29 18:15 ba24425c6864a5d17fa0fdaf914c4d21419e47c4d62080c33830af059fe46617
+-rw-r--r-- 1 adam 197121      8427 Oct 29 18:15 c673459076838229d5ebef8f42586a46b4aa3d22e429f6b9ec008f5c6b3889d3
+-rwxr-xr-x 1 adam 197121       453 Oct 29 18:15 dd30b63bfbe4f7d8085f57840e15b84015b3518d6f282a3e0924f73a61000016
+-rw-r--r-- 1 adam 197121     12876 Oct 29 18:15 f3fb39f30b00ba7dba2cec013195d7e1bb215f241153208ccd52da3eedfe7a7d
+-rw-r--r-- 1 adam 197121     12813 Oct 29 18:15 f6183055fd949f9c53d49ee620f85d0150123ea691d25ed1bba0c641b4ee2f48
+-rw-r--r-- 1 adam 197121      1538 Oct 29 18:15 fc1b229024670e6d0cf1c40f3987bf1509aecf146791a6e22966fbf764c391da
+-rw-r--r-- 1 adam 197121    245023 Oct 29 18:15 fd104e7b20b6dbcd1bb27803aaca963a8393ad9b3e39eb8a5ba1b4da1462182e
+-rw-r--r-- 1 adam 197121      4043 Oct 29 18:16 fetch.json
+[exit code: 0] [elapsed: 0 s]
+
+$ (u8/expected.md sample amd64 table vs this run's "bundle_fetch: ok" lines, as "key name sha256=.. size=..", sorted)
+expected rows: 25; ok lines: 25
+COMPARE: ok lines == u8/expected.md (all 25 key/name/sha256/size equal)
+$ (files in --out named by sha256 vs expected distinct sha256; each file hashed and sized)
+files besides fetch.json: 25; expected distinct sha256: 25
+NAMES: equal
+hashed 25 files, mismatches 0
+blob bytes (fetch.json excluded): 136571547 (expected 136571547)
+
+$ python -I -c "import json,sys; d=json.load(open(sys.argv[1])); print(\"fetch.json set\", d[\"set\"], \"arch\", d[\"arch\"], \"lock_sha256\", d[\"lock_sha256\"], \"components\", len(d[\"components\"]))" "$A/fetch/fetch.json"; sha256sum "$A/fetch/fetch.json" | sed "s#$A#<a34u9b>#"
+fetch.json set sample arch amd64 lock_sha256 12eebc8cd09e5effc6934a1a3b67decc053cda923720dda07a8909a137fc761b components 7
+ba1aa9c8e6af2f1f85651c0f0b7b7a71754d7d4bf30e4e410d97db62649036c2 *<a34u9b>/fetch/fetch.json
+[exit code: 0] [elapsed: 1 s]
+
+$ leftovers
+ke-a34u9b: containers=0 networks=0 volumes=0
+ke-a34u9b-sbom: containers=0 networks=0 volumes=0
+ke-a34u9b-inst: containers=0 networks=0 volumes=0
+by name ke-a34u9b*: containers=0 networks=0 volumes=0
+ke-fetch-*: containers=0 networks=0 volumes=0
+compose projects ke-a34u9b*/ke-fetch-*: 0
+[exit code: 0] [elapsed: 3 s]
+
+==================== 2. bundle.sh --out <scratch>/a34u9b/bundle-amd64 --sources <scratch>/a34u9b/fetch --sources-set sample ====================
+$ ls -d "$A/bundle-amd64" "$A/bundle-amd64.manifest.sha256" 2>&1; ls -A "$A"
+ls: cannot access '<scratch>/a34u9b/bundle-amd64': No such file or directory
+ls: cannot access '<scratch>/a34u9b/bundle-amd64.manifest.sha256': No such file or directory
+fetch
+[exit code: 0] [elapsed: 0 s]
+
+$ time bash scripts/bundle.sh --out "$A/bundle-amd64" --sources "$A/fetch" --sources-set sample
+sources-check: ok 25 files, 136571547 bytes, 7 components (sample, amd64)
+ Container ke-a34u9b-sbom-sbom-run-6fe77bb709d1 Creating 
+ Container ke-a34u9b-sbom-sbom-run-6fe77bb709d1 Created 
+sbom_check: ke-app: unlicensed packages (no licence, NOASSERTION or unidentified text): 19 (deb: 18, generic: 1)
+sbom_check: ke-app:   pkg:deb/debian/base-files@12.4%2Bdeb12u15?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/debian-archive-keyring@2023.3%2Bdeb12u2?arch=all&distro=debian-12.15 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/gcc-12-base@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libc-bin@2.36-9%2Bdeb12u14?arch=amd64&distro=debian-12.15&upstream=glibc (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libc6@2.36-9%2Bdeb12u14?arch=amd64&distro=debian-12.15&upstream=glibc (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libcrypt1@1%3A4.4.33-2?arch=amd64&distro=debian-12.15&upstream=libxcrypt (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libgcc-s1@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libgcrypt20@1.10.1-3%2Bdeb12u1?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libgnutls30@3.7.9-2%2Bdeb12u7?arch=amd64&distro=debian-12.15&upstream=gnutls28 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libgssapi-krb5-2@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libk5crypto3@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libkrb5-3@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libkrb5support0@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libselinux1@3.4-1%2Bb6?arch=amd64&distro=debian-12.15&upstream=libselinux%403.4-1 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libsemanage-common@3.4-1?arch=all&distro=debian-12.15&upstream=libsemanage (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libsemanage2@3.4-1%2Bb5?arch=amd64&distro=debian-12.15&upstream=libsemanage%403.4-1 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libstdc%2B%2B6@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libtasn1-6@4.19.0-2%2Bdeb12u1?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: ke-app:   pkg:generic/python@3.12.16
+ Container ke-a34u9b-sbom-sbom-run-d1926eba0796 Creating 
+ Container ke-a34u9b-sbom-sbom-run-d1926eba0796 Created 
+sbom_check: ke-gateway: unlicensed packages (no licence, NOASSERTION or unidentified text): 0
+ Container ke-a34u9b-sbom-sbom-run-72e07fb01489 Creating 
+ Container ke-a34u9b-sbom-sbom-run-72e07fb01489 Created 
+sbom_check: ke-neo4j: unlicensed packages (no licence, NOASSERTION or unidentified text): 27 (deb: 9, generic: 1, maven: 17)
+sbom_check: ke-neo4j:   pkg:maven/net.sourceforge.argparse4j/argparse4j@0.9.0
+sbom_check: ke-neo4j:   pkg:maven/org.apache.commons/commons-lang3@3.18.0
+sbom_check: ke-neo4j:   pkg:maven/org.apache.commons/commons-text@1.10.0
+sbom_check: ke-neo4j:   pkg:deb/debian/debian-archive-keyring@2025.1?arch=all&distro=debian-13.7 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:deb/debian/gcc-14-base@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:maven/com.github.seancfoley.ipaddress/ipaddress@5.5.1
+sbom_check: ke-neo4j:   pkg:maven/jrt-fs/jrt-fs@21.0.12.1
+sbom_check: ke-neo4j:   pkg:maven/org.bitbucket.inkytonik.kiama/kiama_2.13@2.5.1
+sbom_check: ke-neo4j:   pkg:deb/debian/libcrypt-dev@1%3A4.4.38-1?arch=amd64&distro=debian-13.7&upstream=libxcrypt (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:deb/debian/libcrypt1@1%3A4.4.38-1?arch=amd64&distro=debian-13.7&upstream=libxcrypt (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:deb/debian/libgcc-s1@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:deb/debian/libgnutls30t64@3.8.9-3%2Bdeb13u4?arch=amd64&distro=debian-13.7&upstream=gnutls28 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:deb/debian/libstdc%2B%2B6@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:deb/debian/libtasn1-6@4.20.0-2%2Bdeb13u1?arch=amd64&distro=debian-13.7 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:maven/com.softwaremill.magnolia1_2/magnolia_2.13@1.1.8
+sbom_check: ke-neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection@12.0.0
+sbom_check: ke-neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection-netty@12.0.0
+sbom_check: ke-neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection-pooled@12.0.0
+sbom_check: ke-neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection-routed@12.0.0
+sbom_check: ke-neo4j:   pkg:maven/org.neo4j/neo4j-cypher-dsl@2024.2.0
+sbom_check: ke-neo4j:   pkg:generic/oracle/openjdk@21.0.12.1%2B1-LTS?repository_url=https%3A%2F%2Fgithub.com%2Fadoptium%2Fjdk21u.git
+sbom_check: ke-neo4j:   pkg:maven/picocli/picocli@4.7.6
+sbom_check: ke-neo4j:   pkg:maven/org.reactivestreams/reactive-streams@1.0.4
+sbom_check: ke-neo4j:   pkg:maven/org.scala-lang.modules/scala-collection-contrib_2.13@0.3.0
+sbom_check: ke-neo4j:   pkg:maven/org.slf4j/slf4j-api@2.0.11
+sbom_check: ke-neo4j:   pkg:deb/debian/wget@1.25.0-2?arch=amd64&distro=debian-13.7 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:maven/net.openhft/zero-allocation-hashing@0.27ea1
+ Container ke-a34u9b-sbom-sbom-run-7475af4f50a9 Creating 
+ Container ke-a34u9b-sbom-sbom-run-7475af4f50a9 Created 
+sbom_check: phoenix: unlicensed packages (no licence, NOASSERTION or unidentified text): 35 (deb: 14, generic: 1, none: 8, pypi: 12)
+sbom_check: phoenix:   pkg:pypi/aiosqlite@0.22.1
+sbom_check: phoenix:   SPDXRef-Package-binary-cli-3c111f636ab23ae2 cli (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-cli-32-864fbd8df8eebeff cli-32 (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-cli-64-58d92fd2583882cf cli-64 (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-cli-arm64-6de49882b0a31d2a cli-arm64 (no purl)
+sbom_check: phoenix:   pkg:pypi/daytona-analytics-api-client@0.223.1
+sbom_check: phoenix:   pkg:pypi/daytona-analytics-api-client-async@0.223.1
+sbom_check: phoenix:   pkg:generic/deno@2.1.4
+sbom_check: phoenix:   pkg:pypi/exceptiongroup@1.3.1
+sbom_check: phoenix:   pkg:deb/debian/gcc-14-base@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14 (unidentified licence text)
+sbom_check: phoenix:   SPDXRef-Package-binary-gui-90e51b43c7a824a9 gui (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-gui-32-bf5cb4b4bc756f59 gui-32 (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-gui-64-54afa822a7647b6f gui-64 (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-gui-arm64-b70024c9a835570f gui-arm64 (no purl)
+sbom_check: phoenix:   pkg:pypi/httpx-ws@0.9.0
+sbom_check: phoenix:   pkg:pypi/jinja2@3.1.6
+sbom_check: phoenix:   pkg:deb/debian/libcrypt1@1%3A4.4.38-1?arch=amd64&distro=debian-13.7&upstream=libxcrypt (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libgcc-s1@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14
+sbom_check: phoenix:   pkg:deb/debian/libgomp1@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14
+sbom_check: phoenix:   pkg:deb/debian/libgssapi-krb5-2@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libk5crypto3@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libkrb5-3@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libkrb5support0@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libncursesw6@6.5%2B20250216-2?arch=amd64&distro=debian-13.7&upstream=ncurses
+sbom_check: phoenix:   pkg:deb/debian/libpython3.13-minimal@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libpython3.13-stdlib@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libstdc%2B%2B6@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14
+sbom_check: phoenix:   pkg:pypi/markdown-it-py@4.2.0
+sbom_check: phoenix:   pkg:pypi/obstore@0.11.1
+sbom_check: phoenix:   pkg:pypi/pandas@2.3.3 (unidentified licence text)
+sbom_check: phoenix:   pkg:pypi/protobuf-py-ext@0.1.1
+sbom_check: phoenix:   pkg:pypi/pyqwest@0.10.0
+sbom_check: phoenix:   pkg:deb/debian/python3.13-minimal@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/python3.13-venv@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13
+sbom_check: phoenix:   pkg:pypi/synchronicity@0.12.6
+ Container ke-a34u9b-sbom-sbom-run-97a8b8b0fcf4 Creating 
+ Container ke-a34u9b-sbom-sbom-run-97a8b8b0fcf4 Created 
+sbom_check: postgres: unlicensed packages (no licence, NOASSERTION or unidentified text): 25 (deb: 22, golang: 3)
+sbom_check: postgres:   pkg:deb/debian/base-files@12.4%2Bdeb12u15?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/debian-archive-keyring@2023.3%2Bdeb12u2?arch=all&distro=debian-12.15 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/gcc-12-base@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: postgres:   pkg:golang/github.com/moby/sys/user@v0.1.0
+sbom_check: postgres:   pkg:golang/github.com/tianon/gosu@v1.19.0
+sbom_check: postgres:   pkg:golang/golang.org/x/sys@v0.1.0
+sbom_check: postgres:   pkg:deb/debian/libc-bin@2.36-9%2Bdeb12u14?arch=amd64&distro=debian-12.15&upstream=glibc (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libc-l10n@2.36-9%2Bdeb12u14?arch=all&distro=debian-12.15&upstream=glibc (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libc6@2.36-9%2Bdeb12u14?arch=amd64&distro=debian-12.15&upstream=glibc (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libcrypt1@1%3A4.4.33-2?arch=amd64&distro=debian-12.15&upstream=libxcrypt (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libgcc-s1@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libgcrypt20@1.10.1-3%2Bdeb12u1?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libgnutls30@3.7.9-2%2Bdeb12u7?arch=amd64&distro=debian-12.15&upstream=gnutls28 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libgssapi-krb5-2@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libk5crypto3@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libkrb5-3@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libkrb5support0@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libksba8@1.6.3-2?arch=amd64&distro=debian-12.15&upstream=libksba (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libselinux1@3.4-1%2Bb6?arch=amd64&distro=debian-12.15&upstream=libselinux%403.4-1 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libsemanage-common@3.4-1?arch=all&distro=debian-12.15&upstream=libsemanage (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libsemanage2@3.4-1%2Bb5?arch=amd64&distro=debian-12.15&upstream=libsemanage%403.4-1 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libstdc%2B%2B6@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libtasn1-6@4.19.0-2%2Bdeb12u1?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libxslt1.1@1.1.35-1%2Bdeb12u4?arch=amd64&distro=debian-12.15&upstream=libxslt (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/locales@2.36-9%2Bdeb12u14?arch=all&distro=debian-12.15&upstream=glibc (unidentified licence text)
+ Container ke-a34u9b-sbom-sbom-run-f7e45851f1f1 Creating 
+ Container ke-a34u9b-sbom-sbom-run-f7e45851f1f1 Created 
+sbom_check: valkey: unlicensed packages (no licence, NOASSERTION or unidentified text): 1 (generic: 1)
+sbom_check: valkey:   pkg:generic/valkey@8.1.10
+index: ke-neo4j: pkg:maven/com.sun.jna/jna@5.15.0: exempt, reviewed security 2026-10-25
+index: ke-neo4j: pkg:maven/org.javassist/javassist@3.30.2-GA: exempt, reviewed security 2026-10-25
+bundle: sources: check 1 s, copy 1 s, index 1 s, notices 0 s
+bundle written: <scratch>/a34u9b/bundle-amd64
+manifest sha256: f2cc20bafd05378e8ffa1db4c88fa7a088784977b9161501a0e7baa49b96e3f2
+release record: <scratch>/a34u9b/bundle-amd64.manifest.sha256
+
+real	1m57.864s
+user	0m5.092s
+sys	0m5.066s
+[exit code: 0] [elapsed: 118 s]
+
+$ (the sources-check, index and marker lines of this run vs u9/sample-bundle-run.txt)
+sources-check: ok 25 files, 136571547 bytes, 7 components (sample, amd64)
+index: ke-neo4j: pkg:maven/com.sun.jna/jna@5.15.0: exempt, reviewed security 2026-10-25
+index: ke-neo4j: pkg:maven/org.javassist/javassist@3.30.2-GA: exempt, reviewed security 2026-10-25
+bundle: sources: check 1 s, copy 1 s, index 1 s, notices 0 s
+4c4
+< bundle: sources: check 1 s, copy 1 s, index 1 s, notices 1 s
+---
+> bundle: sources: check 1 s, copy 1 s, index 1 s, notices 0 s
+
+$ cat "$A/bundle-amd64.manifest.sha256"; ls -l "$A/bundle-amd64.manifest.sha256" | sed "s#$A#<a34u9b>#"; cd "$A" && sha256sum -c bundle-amd64.manifest.sha256
+f2cc20bafd05378e8ffa1db4c88fa7a088784977b9161501a0e7baa49b96e3f2  bundle-amd64/MANIFEST.sha256
+-rw-r--r-- 1 adam 197121 95 Oct 29 18:18 <a34u9b>/bundle-amd64.manifest.sha256
+bundle-amd64/MANIFEST.sha256: OK
+[exit code: 0] [elapsed: 0 s]
+
+$ cd "$B" && sha256sum -c --quiet MANIFEST.sha256 && echo "MANIFEST: all entries ok"
+MANIFEST: all entries ok
+[exit code: 0] [elapsed: 2 s]
+
+$ ls -A "$B/app/sources"; ls -A "$B/app/sources/files" | wc -l; find "$B/app/sources/files" -type f -printf "%s\n" | awk "{s+=\$1} END {print s\" bytes\"}"; echo "non-regular in files/: $(find "$B/app/sources/files" -mindepth 1 ! -type f | wc -l)"
+files
+index.json
+25
+136571547 bytes
+non-regular in files/: 0
+[exit code: 0] [elapsed: 1 s]
+
+$ cd "$B/app/sources/files" && sha256sum -- * | awk -f "$S/tools/namehash.awk"
+hashed 25 files, mismatches 0
+[exit code: 0] [elapsed: 0 s]
+
+$ diff <(ls -A "$B/app/sources/files" | sort) "$D/out/got-names.txt" && echo "files/ name set == the fetched set (fetch.json excluded)"
+files/ name set == the fetched set (fetch.json excluded)
+[exit code: 0] [elapsed: 0 s]
+
+$ stat -c "%s bytes" "$B/app/sources/index.json"; python -I "$S/tools/idx.py" "$B/app/sources/index.json"
+830617 bytes
+format 1 set sample arch amd64 git_sha 1a7a9e276d57a6a7c89490e44c795ff2ef7f685b
+lock_sha256 12eebc8cd09e5effc6934a1a3b67decc053cda923720dda07a8909a137fc761b
+components 185 status {'exempt': 2, 'not-shipped': 176, 'shipped': 7}
+distinct keys 183
+file rows 876 rows with path 25 distinct sha 716
+distinct bytes 1180936586
+exempt ke-neo4j pkg:maven/com.sun.jna/jna@5.15.0 exempt, reviewed security 2026-10-25
+exempt ke-neo4j pkg:maven/org.javassist/javassist@3.30.2-GA exempt, reviewed security 2026-10-25
+unparsed 65 unidentified 59
+[exit code: 0] [elapsed: 0 s]
+
+$ python -I -c "import json,sys; d=json.load(open(sys.argv[1])); s=[x for x in d[\"components\"] if x[\"status\"]==\"shipped\"]; print(\"shipped keys:\", sorted(x[\"key\"] for x in s)); print(\"shipped file rows:\", sum(len(x[\"files\"]) for x in s)); n=[x for x in d[\"components\"] if x[\"status\"]==\"not-shipped\"]; print(\"not-shipped:\", len(n), \"with any file row:\", sum(1 for x in n if x[\"files\"]))" "$B/app/sources/index.json"
+shipped keys: ['apk:alpine-baselayout@3.7.1-r8', 'deb:hostname@3.23+nmu1', 'maven:javax.xml.bind:jaxb-api@2.2.12', 'neo4j:neo4j@5.26.32', 'pgdg:postgresql-common@293.pgdg12+1', 'pypi:autocommand@2.2.2', 'temurin:jdk-21.0.12.1+1']
+shipped file rows: 25
+not-shipped: 176 with any file row: 176
+[exit code: 0] [elapsed: 0 s]
+
+$ stat -c "%s bytes" "$B/MANIFEST.sha256"; wc -l < "$B/MANIFEST.sha256"; echo "MANIFEST lines under app/sources/files/: $(grep -c " app/sources/files/" "$B/MANIFEST.sha256")"
+8066 bytes
+73
+MANIFEST lines under app/sources/files/: 25
+[exit code: 0] [elapsed: 0 s]
+
+$ echo "$(du -sb "$B" | cut -f1) bundle"; echo "$(du -sb "$B/app/sources" | cut -f1) app/sources"; echo "without app/sources: $(( $(du -sb "$B" | cut -f1) - $(du -sb "$B/app/sources" | cut -f1) ))"
+1102759214 bundle
+137402164 app/sources
+without app/sources: 965357050
+[exit code: 0] [elapsed: 1 s]
+
+$ cd "$B" && ls -la . app
+.:
+total 152
+drwxr-xr-x 1 adam 197121     0 Oct 29 18:18 .
+drwxr-xr-x 1 adam 197121     0 Oct 29 18:18 ..
+-rw-r--r-- 1 adam 197121  1067 Oct 29 18:16 LICENSE
+-rw-r--r-- 1 adam 197121  8066 Oct 29 18:18 MANIFEST.sha256
+-rw-r--r-- 1 adam 197121  9616 Oct 29 18:16 NOTICE.md
+-rw-r--r-- 1 adam 197121 33586 Oct 29 18:18 THIRD_PARTY_NOTICES.md
+drwxr-xr-x 1 adam 197121     0 Oct 29 18:18 app
+-rw-r--r-- 1 adam 197121  1120 Oct 29 18:16 bundle.json
+drwxr-xr-x 1 adam 197121     0 Oct 29 18:16 images
+-rw-r--r-- 1 adam 197121 44846 Oct 29 18:16 install.ps1
+-rwxr-xr-x 1 adam 197121 28744 Oct 29 18:16 install.sh
+drwxr-xr-x 1 adam 197121     0 Oct 29 18:16 licenses
+
+app:
+total 80
+drwxr-xr-x 1 adam 197121     0 Oct 29 18:18 .
+drwxr-xr-x 1 adam 197121     0 Oct 29 18:18 ..
+-rw-r--r-- 1 adam 197121  1809 Oct 29 18:16 .env.example
+-rw-r--r-- 1 adam 197121  1067 Oct 29 18:18 LICENSE
+-rw-r--r-- 1 adam 197121  9616 Oct 29 18:18 NOTICE.md
+-rw-r--r-- 1 adam 197121 33586 Oct 29 18:18 THIRD_PARTY_NOTICES.md
+drwxr-xr-x 1 adam 197121     0 Oct 29 18:16 config
+-rw-r--r-- 1 adam 197121  7743 Oct 29 18:16 docker-compose.yml
+drwxr-xr-x 1 adam 197121     0 Oct 29 18:16 docs
+drwxr-xr-x 1 adam 197121     0 Oct 29 18:18 licenses
+drwxr-xr-x 1 adam 197121     0 Oct 29 18:18 sboms
+drwxr-xr-x 1 adam 197121     0 Oct 29 18:16 scripts
+drwxr-xr-x 1 adam 197121     0 Oct 29 18:18 sources
+[exit code: 0] [elapsed: 0 s]
+
+$ cd "$B" && grep -n "^## Source code" THIRD_PARTY_NOTICES.md app/THIRD_PARTY_NOTICES.md; cmp THIRD_PARTY_NOTICES.md app/THIRD_PARTY_NOTICES.md && echo "THIRD_PARTY_NOTICES.md == app/THIRD_PARTY_NOTICES.md"; echo "sample warning lines: $(grep -c "Verification bundle: this source set is a sample" THIRD_PARTY_NOTICES.md)"; grep -n "Verification bundle" THIRD_PARTY_NOTICES.md | cut -c1-240; echo "rows with source in sources/: $(grep -c "source in \`sources/\`" THIRD_PARTY_NOTICES.md)"
+THIRD_PARTY_NOTICES.md:64:## Source code
+app/THIRD_PARTY_NOTICES.md:64:## Source code
+THIRD_PARTY_NOTICES.md == app/THIRD_PARTY_NOTICES.md
+sample warning lines: 1
+66:Verification bundle: this source set is a sample and is not complete; do not distribute this bundle.
+rows with source in sources/: 8
+[exit code: 0] [elapsed: 0 s]
+
+$ cd "$B" && ls -l licenses/libffi-jna-5.15.0.txt app/licenses/libffi-jna-5.15.0.txt && sha256sum "$R/licenses/libffi-jna-5.15.0.txt" licenses/libffi-jna-5.15.0.txt app/licenses/libffi-jna-5.15.0.txt && grep -c "licenses/libffi-jna-5.15.0.txt" MANIFEST.sha256
+-rw-r--r-- 1 adam 197121 1368 Oct 29 18:18 app/licenses/libffi-jna-5.15.0.txt
+-rw-r--r-- 1 adam 197121 1368 Oct 29 18:16 licenses/libffi-jna-5.15.0.txt
+24026d7cef7c72950663578517c854560567c9f49bdf2d645e66b2146b5cb9e6 */c/repos/Knowledge-engine/licenses/libffi-jna-5.15.0.txt
+24026d7cef7c72950663578517c854560567c9f49bdf2d645e66b2146b5cb9e6 *licenses/libffi-jna-5.15.0.txt
+24026d7cef7c72950663578517c854560567c9f49bdf2d645e66b2146b5cb9e6 *app/licenses/libffi-jna-5.15.0.txt
+2
+[exit code: 0] [elapsed: 0 s]
+
+$ cd "$B" && ls app/sboms images && jq -c ".images[] | {ref, as, file}" bundle.json
+app/sboms:
+ke-app.spdx.json
+ke-gateway.spdx.json
+ke-neo4j.spdx.json
+phoenix.spdx.json
+postgres.spdx.json
+valkey.spdx.json
+
+images:
+ke-app.tar
+ke-gateway.tar
+ke-neo4j.tar
+phoenix.tar
+postgres.tar
+valkey.tar
+{"ref":"ke-app:local","as":"ke-app:bundle-1a7a9e276d57","file":"images/ke-app.tar"}
+{"ref":"ke-gateway:local","as":"ke-gateway:bundle-1a7a9e276d57","file":"images/ke-gateway.tar"}
+{"ref":"ke-neo4j:local","as":"ke-neo4j:bundle-1a7a9e276d57","file":"images/ke-neo4j.tar"}
+{"ref":"arizephoenix/phoenix:version-20.22.0@sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c","as":"ke-vendor/phoenix:fa28e9cd96dd","file":"images/phoenix.tar"}
+{"ref":"postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4","as":"ke-vendor/postgres:0ea6700a3b4f","file":"images/postgres.tar"}
+{"ref":"valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507","as":"ke-vendor/valkey:081c2f5cb575","file":"images/valkey.tar"}
+[exit code: 0] [elapsed: 0 s]
+
+$ (cd "$A/fetch" && find . -printf "%p %s %T@ %m\n" | sort) | diff "$D/out/fetch-listing-1.txt" - && echo "--sources listing (name size mtime mode) unchanged by the bundle run"
+--sources listing (name size mtime mode) unchanged by the bundle run
+[exit code: 0] [elapsed: 0 s]
+
+$ tags | diff "$D/out/tags-start.txt" - && echo "bundle and ke-vendor tags: as at step 0"
+bundle and ke-vendor tags: as at step 0
+[exit code: 0] [elapsed: 1 s]
+
+$ ls -A "$A"; ls -d "$A"/.ke-sbom.* "${TMPDIR:-/tmp}"/ke-sbom.* 2>/dev/null | wc -l
+bundle-amd64
+bundle-amd64.manifest.sha256
+fetch
+0
+[exit code: 0] [elapsed: 0 s]
+
+$ leftovers
+ke-a34u9b: containers=0 networks=0 volumes=0
+ke-a34u9b-sbom: containers=0 networks=0 volumes=0
+ke-a34u9b-inst: containers=0 networks=0 volumes=0
+by name ke-a34u9b*: containers=0 networks=0 volumes=0
+ke-fetch-*: containers=0 networks=0 volumes=0
+compose projects ke-a34u9b*/ke-fetch-*: 0
+[exit code: 0] [elapsed: 3 s]
+
+==================== 3. refusal: a --sources directory with no fetch.json ====================
+$ ls -A "$A/nofetch" | wc -l; ls "$A/nofetch/fetch.json" 2>&1 | sed "s#$A#<a34u9b>#"; echo "non-regular: $(find "$A/nofetch" -mindepth 1 ! -type f | wc -l)"
+25
+ls: cannot access '<a34u9b>/nofetch/fetch.json': No such file or directory
+non-regular: 0
+[exit code: 0] [elapsed: 0 s]
+
+$ ls -d "$A/refuse-nofetch-amd64" "$A/refuse-nofetch-amd64.manifest.sha256" 2>&1
+ls: cannot access '<scratch>/a34u9b/refuse-nofetch-amd64': No such file or directory
+ls: cannot access '<scratch>/a34u9b/refuse-nofetch-amd64.manifest.sha256': No such file or directory
+[exit code: 2] [elapsed: 0 s]
+
+$ bash scripts/bundle.sh --out "$A/refuse-nofetch-amd64" --sources "$A/nofetch" --sources-set sample
+bundle: FAIL (stage sources-check: --sources <scratch>/a34u9b/nofetch has no fetch.json (or it is not a regular file); run scripts/bundle_fetch.sh --set sample first)
+[exit code: 1] [elapsed: 0 s]
+
+$ ls -d "$A/refuse-nofetch-amd64" "$A/refuse-nofetch-amd64.manifest.sha256" 2>&1
+ls: cannot access '<scratch>/a34u9b/refuse-nofetch-amd64': No such file or directory
+ls: cannot access '<scratch>/a34u9b/refuse-nofetch-amd64.manifest.sha256': No such file or directory
+[exit code: 2] [elapsed: 0 s]
+
+$ ls -A "$A" | diff "$D/out/a-before-3.txt" - && echo "<scratch>/a34u9b listing: as before (nothing written beside --out, no .ke-sbom.*)"
+<scratch>/a34u9b listing: as before (nothing written beside --out, no .ke-sbom.*)
+[exit code: 0] [elapsed: 1 s]
+
+$ (cd "$A/nofetch" && find . -printf "%p %s %T@ %m\n" | sort) | diff "$D/out/nofetch-listing.txt" - && echo "--sources listing unchanged"
+--sources listing unchanged
+[exit code: 0] [elapsed: 0 s]
+
+$ tags | diff "$D/out/tags-start.txt" - && echo "bundle and ke-vendor tags: as at step 0 (no tag moved)"
+bundle and ke-vendor tags: as at step 0 (no tag moved)
+[exit code: 0] [elapsed: 0 s]
+
+$ leftovers
+ke-a34u9b: containers=0 networks=0 volumes=0
+ke-a34u9b-sbom: containers=0 networks=0 volumes=0
+ke-a34u9b-inst: containers=0 networks=0 volumes=0
+by name ke-a34u9b*: containers=0 networks=0 volumes=0
+ke-fetch-*: containers=0 networks=0 volumes=0
+compose projects ke-a34u9b*/ke-fetch-*: 0
+[exit code: 0] [elapsed: 4 s]
+
+==================== 4. refusal: the sample directory given for a --sources-set full bundle ====================
+$ ls -d "$A/refuse-full-amd64" "$A/refuse-full-amd64.manifest.sha256" 2>&1
+ls: cannot access '<scratch>/a34u9b/refuse-full-amd64': No such file or directory
+ls: cannot access '<scratch>/a34u9b/refuse-full-amd64.manifest.sha256': No such file or directory
+[exit code: 2] [elapsed: 0 s]
+
+$ bash scripts/bundle.sh --out "$A/refuse-full-amd64" --sources "$A/fetch" --sources-set full
+sbom_check: sources-check: fetch.json: set is sample, this bundle needs full
+bundle: FAIL (stage sources-check: the source set in --sources failed its check (see above); no bundle written)
+[exit code: 1] [elapsed: 4 s]
+
+$ ls -d "$A/refuse-full-amd64" "$A/refuse-full-amd64.manifest.sha256" 2>&1
+ls: cannot access '<scratch>/a34u9b/refuse-full-amd64': No such file or directory
+ls: cannot access '<scratch>/a34u9b/refuse-full-amd64.manifest.sha256': No such file or directory
+[exit code: 2] [elapsed: 0 s]
+
+$ ls -A "$A" | diff "$D/out/a-before-4.txt" - && echo "<scratch>/a34u9b listing: as before (nothing written beside --out, no .ke-sbom.*)"
+<scratch>/a34u9b listing: as before (nothing written beside --out, no .ke-sbom.*)
+[exit code: 0] [elapsed: 0 s]
+
+$ (cd "$A/fetch" && find . -printf "%p %s %T@ %m\n" | sort) | diff "$D/out/fetch-listing-1.txt" - && echo "--sources listing unchanged"
+--sources listing unchanged
+[exit code: 0] [elapsed: 1 s]
+
+$ tags | diff "$D/out/tags-start.txt" - && echo "bundle and ke-vendor tags: as at step 0 (no tag moved)"
+bundle and ke-vendor tags: as at step 0 (no tag moved)
+[exit code: 0] [elapsed: 1 s]
+
+$ leftovers
+ke-a34u9b: containers=0 networks=0 volumes=0
+ke-a34u9b-sbom: containers=0 networks=0 volumes=0
+ke-a34u9b-inst: containers=0 networks=0 volumes=0
+by name ke-a34u9b*: containers=0 networks=0 volumes=0
+ke-fetch-*: containers=0 networks=0 volumes=0
+compose projects ke-a34u9b*/ke-fetch-*: 0
+[exit code: 0] [elapsed: 3 s]
+
+$ date -u +%FT%TZ
+2026-10-30T01:18:32Z
+[exit code: 0] [elapsed: 0 s]
+
+[end a34-u9b git bash 0-4]
+
+#### PowerShell transcript, step 5 (driver <scratch>/a34u9b-drv/a34-u9b-install.ps1, run from Git Bash as pwsh -NoProfile -File <scratch>\a34u9b-drv\a34-u9b-install.ps1 -S <scratch>) ####
+
+==================== 5. install.ps1 from the step-2 bundle (PowerShell 7.6.9) ====================
+2026-10-30T01:19:31Z; COMPOSE_PROJECT_NAME=ke-a34u9b-inst; KE_IMAGE_TAG unset (an operator's install uses the override, not a tag)
+
+PS> bundle and release record: Test-Path; record content
+bundle: True; record: True
+f2cc20bafd05378e8ffa1db4c88fa7a088784977b9161501a0e7baa49b96e3f2  bundle-amd64/MANIFEST.sha256
+
+PS> install parent and target do not exist yet
+parent: False; target: False
+
+PS> leftovers for project ke-a34u9b-inst before
+containers: 0
+networks: 0
+volumes: 0 (by name ke-a34u9b-inst_: 0)
+compose projects: 0
+
+PS> Get-FileHash install.ps1 in the bundle vs its MANIFEST.sha256 line
+Get-FileHash: 7438fe1a8fde5638f91b337469ac734645fbfbe03dbbc53ec216f82a0e77c883
+MANIFEST:     7438fe1a8fde5638f91b337469ac734645fbfbe03dbbc53ec216f82a0e77c883  install.ps1
+equal: True
+
+PS> cd <bundle>; pwsh -NoProfile -File .\install.ps1 -Target <target> -ExpectManifest f2cc20bafd05378e8ffa1db4c88fa7a088784977b9161501a0e7baa49b96e3f2
+manifest sha256: f2cc20bafd05378e8ffa1db4c88fa7a088784977b9161501a0e7baa49b96e3f2 (matches -ExpectManifest)
+loaded ke-app.tar as ke-app:bundle-1a7a9e276d57
+loaded ke-gateway.tar as ke-gateway:bundle-1a7a9e276d57
+loaded ke-neo4j.tar as ke-neo4j:bundle-1a7a9e276d57
+loaded phoenix.tar as ke-vendor/phoenix:fa28e9cd96dd
+loaded postgres.tar as ke-vendor/postgres:0ea6700a3b4f
+loaded valkey.tar as ke-vendor/valkey:081c2f5cb575
+manifest sha256: f2cc20bafd05378e8ffa1db4c88fa7a088784977b9161501a0e7baa49b96e3f2
+installed to <scratch>\a34u9b\inst\ke
+next: cd '<scratch>\a34u9b\inst\ke'; Copy-Item .env.example .env; restrict .env to your account before adding secrets (see docs/quickstart.md, Offline bundle step 5); set real secrets in it; scripts\launch.ps1
+[exit code: 0]
+[elapsed: 73 s]
+
+PS> target top level (Get-ChildItem -Force -Name)
+config
+docs
+licenses
+sboms
+scripts
+sources
+.env.example
+docker-compose.override.yml
+docker-compose.yml
+LICENSE
+NOTICE.md
+THIRD_PARTY_NOTICES.md
+
+PS> parent holds only the target (staging removed)
+ke
+
+PS> docker-compose.override.yml written by install.ps1
+services:
+  api:
+    image: "ke-app:bundle-1a7a9e276d57"
+    pull_policy: never
+  worker:
+    image: "ke-app:bundle-1a7a9e276d57"
+    pull_policy: never
+  gateway:
+    image: "ke-gateway:bundle-1a7a9e276d57"
+    pull_policy: never
+  neo4j:
+    image: "ke-neo4j:bundle-1a7a9e276d57"
+    pull_policy: never
+  phoenix:
+    image: "ke-vendor/phoenix:fa28e9cd96dd"
+    pull_policy: never
+  postgres:
+    image: "ke-vendor/postgres:0ea6700a3b4f"
+    pull_policy: never
+  valkey:
+    image: "ke-vendor/valkey:081c2f5cb575"
+    pull_policy: never
+
+PS> loaded image ids (ke-*:bundle-1a7a9e276d57) vs the ids bundled (ke-*:local)
+ke-app:bundle-1a7a9e276d57 sha256:7d6a0c8413af6a4476582cf06ca5381e40335f6e1e11c907a4a5376418af3995
+ke-app:bundle-1a7a9e276d57 sha256:7d6a0c8413af6a4476582cf06ca5381e40335f6e1e11c907a4a5376418af3995 linux/amd64
+ke-gateway:bundle-1a7a9e276d57 sha256:06324664fbd672137709611f66f7baf15c662127b16e7e5c951e4b0742dc6714
+ke-gateway:bundle-1a7a9e276d57 sha256:06324664fbd672137709611f66f7baf15c662127b16e7e5c951e4b0742dc6714 linux/amd64
+ke-neo4j:bundle-1a7a9e276d57 sha256:942e76d5a7e87b2af5f1bc50b8e8d9ba3d07114d8f7898f7ee7ff1d9e22e55b4
+ke-neo4j:bundle-1a7a9e276d57 sha256:942e76d5a7e87b2af5f1bc50b8e8d9ba3d07114d8f7898f7ee7ff1d9e22e55b4 linux/amd64
+[exit code: 0]
+
+PS> installed sources: sources\files (count, bytes, non-files, each Get-FileHash == its name), sources\index.json
+entries: 25; regular files: 25; bytes: 136571547
+Get-FileHash != name: 0
+index.json: 830617 bytes; equal to the bundle's app\sources\index.json: True
+index.json set=sample arch=amd64 lock_sha256=12eebc8cd09e5effc6934a1a3b67decc053cda923720dda07a8909a137fc761b
+status exempt: 2
+status not-shipped: 176
+status shipped: 7
+
+PS> installed notices and licences: THIRD_PARTY_NOTICES.md Source code section + sample warning; licenses\libffi-jna-5.15.0.txt; sboms
+THIRD_PARTY_NOTICES.md:64: ## Source code
+THIRD_PARTY_NOTICES.md:66: Verification bundle: this source set is a sample and is not complete; do not distribute this bundle.
+THIRD_PARTY_NOTICES.md equal to the bundle's: True (7b362bdfef427d2d98d2d7ed2808a439b1a21287afe32d636bfc4641d0ecb8a6)
+libffi-jna-5.15.0.txt: 24026d7cef7c72950663578517c854560567c9f49bdf2d645e66b2146b5cb9e6
+sboms: ke-app.spdx.json ke-gateway.spdx.json ke-neo4j.spdx.json phoenix.spdx.json postgres.spdx.json valkey.spdx.json
+
+PS> cd <target>; Copy-Item .env.example .env; Add-Content marker + KE_API_PORT=47180, KE_PHOENIX_PORT=47181 (47100/47101 are held by the running knowledge-engine stack, not this run's; throwaway, no real keys)
+=> # A34U9B-THROWAWAY: tester copy of .env.example in the install target of the platform-sbom U9b Windows run; removed below
+=> KE_API_PORT=47180
+=> KE_PHOENIX_PORT=47181
+
+PS> host listeners on 47180/47181 before launch (empty = free)
+
+PS> pwsh -NoProfile -File scripts\launch.ps1 (in the target)
+ Network ke-a34u9b-inst_backend Creating 
+ Network ke-a34u9b-inst_backend Created 
+ Network ke-a34u9b-inst_edge Creating 
+ Network ke-a34u9b-inst_edge Created 
+ Volume ke-a34u9b-inst_neo4j-data Creating 
+ Volume ke-a34u9b-inst_neo4j-data Created 
+ Volume ke-a34u9b-inst_postgres-data Creating 
+ Volume ke-a34u9b-inst_postgres-data Created 
+ Volume ke-a34u9b-inst_valkey-data Creating 
+ Volume ke-a34u9b-inst_valkey-data Created 
+ Volume ke-a34u9b-inst_phoenix-data Creating 
+ Volume ke-a34u9b-inst_phoenix-data Created 
+ Container ke-a34u9b-inst-gateway-1 Creating 
+ Container ke-a34u9b-inst-neo4j-1 Creating 
+ Container ke-a34u9b-inst-postgres-1 Creating 
+ Container ke-a34u9b-inst-valkey-1 Creating 
+ Container ke-a34u9b-inst-phoenix-1 Creating 
+ Container ke-a34u9b-inst-neo4j-1 Created 
+ Container ke-a34u9b-inst-valkey-1 Created 
+ Container ke-a34u9b-inst-worker-1 Creating 
+ Container ke-a34u9b-inst-postgres-1 Created 
+ Container ke-a34u9b-inst-api-1 Creating 
+ Container ke-a34u9b-inst-phoenix-1 Created 
+ Container ke-a34u9b-inst-gateway-1 Created 
+ Container ke-a34u9b-inst-worker-1 Created 
+ Container ke-a34u9b-inst-api-1 Created 
+ Container ke-a34u9b-inst-valkey-1 Starting 
+ Container ke-a34u9b-inst-neo4j-1 Starting 
+ Container ke-a34u9b-inst-phoenix-1 Starting 
+ Container ke-a34u9b-inst-postgres-1 Starting 
+ Container ke-a34u9b-inst-gateway-1 Starting 
+ Container ke-a34u9b-inst-valkey-1 Started 
+ Container ke-a34u9b-inst-valkey-1 Waiting 
+ Container ke-a34u9b-inst-neo4j-1 Started 
+ Container ke-a34u9b-inst-phoenix-1 Started 
+ Container ke-a34u9b-inst-postgres-1 Started 
+ Container ke-a34u9b-inst-valkey-1 Waiting 
+ Container ke-a34u9b-inst-postgres-1 Waiting 
+ Container ke-a34u9b-inst-neo4j-1 Waiting 
+ Container ke-a34u9b-inst-gateway-1 Started 
+ Container ke-a34u9b-inst-valkey-1 Healthy 
+ Container ke-a34u9b-inst-postgres-1 Healthy 
+ Container ke-a34u9b-inst-valkey-1 Healthy 
+ Container ke-a34u9b-inst-worker-1 Starting 
+ Container ke-a34u9b-inst-worker-1 Started 
+ Container ke-a34u9b-inst-neo4j-1 Healthy 
+ Container ke-a34u9b-inst-api-1 Starting 
+ Container ke-a34u9b-inst-api-1 Started 
+ Container ke-a34u9b-inst-worker-1 Waiting 
+ Container ke-a34u9b-inst-valkey-1 Waiting 
+ Container ke-a34u9b-inst-api-1 Waiting 
+ Container ke-a34u9b-inst-gateway-1 Waiting 
+ Container ke-a34u9b-inst-phoenix-1 Waiting 
+ Container ke-a34u9b-inst-neo4j-1 Waiting 
+ Container ke-a34u9b-inst-postgres-1 Waiting 
+ Container ke-a34u9b-inst-valkey-1 Healthy 
+ Container ke-a34u9b-inst-gateway-1 Healthy 
+ Container ke-a34u9b-inst-neo4j-1 Healthy 
+ Container ke-a34u9b-inst-postgres-1 Healthy 
+ Container ke-a34u9b-inst-phoenix-1 Healthy 
+ Container ke-a34u9b-inst-worker-1 Healthy 
+ Container ke-a34u9b-inst-api-1 Healthy 
+stack is up:
+  api:     http://127.0.0.1:47180
+  phoenix: http://127.0.0.1:47181
+[exit code: 0]
+[elapsed: 21 s]
+
+PS> docker compose ps --format json (service/image/state/health)
+api        ke-app:bundle-1a7a9e276d57           running  healthy
+gateway    ke-gateway:bundle-1a7a9e276d57       running  healthy
+neo4j      ke-neo4j:bundle-1a7a9e276d57         running  healthy
+phoenix    ke-vendor/phoenix:fa28e9cd96dd       running  healthy
+postgres   ke-vendor/postgres:0ea6700a3b4f      running  healthy
+valkey     ke-vendor/valkey:081c2f5cb575        running  healthy
+worker     ke-app:bundle-1a7a9e276d57           running  healthy
+[exit code: 0]
+
+PS> Invoke-WebRequest http://127.0.0.1:47180/healthz; /readyz
+200 {"status":"ok"}
+200 {"ready":true,"checks":{"postgres":{"ok":true,"reason":null},"neo4j":{"ok":true,"reason":null},"valkey":{"ok":true,"reason":null},"model_host":{"ok":false,"reason":"not_configured","required":false}}}
+
+PS> the installed api: python, openssl, no pip, psycopg (docker compose exec -T api)
+3.12.16 OpenSSL 3.0.22 25 Aug 2026
+pip spec: None
+psycopg impl: c 150019
+[exit code: 0]
+
+PS> pwsh -NoProfile -File scripts\teardown.ps1 -Volumes (in the target)
+ Container ke-a34u9b-inst-phoenix-1 Stopping 
+ Container ke-a34u9b-inst-api-1 Stopping 
+ Container ke-a34u9b-inst-gateway-1 Stopping 
+ Container ke-a34u9b-inst-worker-1 Stopping 
+ Container ke-a34u9b-inst-worker-1 Stopped 
+ Container ke-a34u9b-inst-worker-1 Removing 
+ Container ke-a34u9b-inst-worker-1 Removed 
+ Container ke-a34u9b-inst-api-1 Stopped 
+ Container ke-a34u9b-inst-api-1 Removing 
+ Container ke-a34u9b-inst-api-1 Removed 
+ Container ke-a34u9b-inst-valkey-1 Stopping 
+ Container ke-a34u9b-inst-neo4j-1 Stopping 
+ Container ke-a34u9b-inst-postgres-1 Stopping 
+ Container ke-a34u9b-inst-gateway-1 Stopped 
+ Container ke-a34u9b-inst-gateway-1 Removing 
+ Container ke-a34u9b-inst-gateway-1 Removed 
+ Container ke-a34u9b-inst-valkey-1 Stopped 
+ Container ke-a34u9b-inst-valkey-1 Removing 
+ Container ke-a34u9b-inst-postgres-1 Stopped 
+ Container ke-a34u9b-inst-postgres-1 Removing 
+ Container ke-a34u9b-inst-valkey-1 Removed 
+ Container ke-a34u9b-inst-postgres-1 Removed 
+ Container ke-a34u9b-inst-phoenix-1 Stopped 
+ Container ke-a34u9b-inst-phoenix-1 Removing 
+ Container ke-a34u9b-inst-phoenix-1 Removed 
+ Container ke-a34u9b-inst-neo4j-1 Stopped 
+ Container ke-a34u9b-inst-neo4j-1 Removing 
+ Container ke-a34u9b-inst-neo4j-1 Removed 
+ Volume ke-a34u9b-inst_neo4j-data Removing 
+ Volume ke-a34u9b-inst_valkey-data Removing 
+ Network ke-a34u9b-inst_backend Removing 
+ Volume ke-a34u9b-inst_postgres-data Removing 
+ Network ke-a34u9b-inst_edge Removing 
+ Volume ke-a34u9b-inst_phoenix-data Removing 
+ Volume ke-a34u9b-inst_neo4j-data Removed 
+ Volume ke-a34u9b-inst_postgres-data Removed 
+ Volume ke-a34u9b-inst_valkey-data Removed 
+ Volume ke-a34u9b-inst_phoenix-data Removed 
+ Network ke-a34u9b-inst_backend Removed 
+ Network ke-a34u9b-inst_edge Removed 
+[exit code: 0]
+
+PS> after teardown: containers, networks, volumes, compose projects of ke-a34u9b-inst (all 0)
+containers: 0
+networks: 0
+volumes: 0 (by name ke-a34u9b-inst_: 0)
+compose projects: 0
+
+PS> Remove-Item -Recurse -Force <parent> (target and its throwaway .env); Test-Path
+parent: False
+[end install 2026-10-30T01:21:14Z]
+
+#### Git Bash transcript, step 6 (driver <scratch>/a34u9b-drv/a34-u9b-cleanup.sh) ##########################################
+
+==================== 6. cleanup (Git Bash) ====================
+$ date -u +%FT%TZ; ls -A "$A"; du -sb "$A"
+2026-10-30T01:21:36Z
+bundle-amd64
+bundle-amd64.manifest.sha256
+fetch
+nofetch
+1375906446	<scratch>/a34u9b
+[exit code: 0] [elapsed: 1 s]
+
+$ rm -rf -- "$A/bundle-amd64" "$A/bundle-amd64.manifest.sha256" "$A/fetch" "$A/nofetch"; ls -A "$A" | wc -l; rmdir -- "$A"; ls -d "$A" 2>&1
+0
+ls: cannot access '<scratch>/a34u9b': No such file or directory
+[exit code: 2] [elapsed: 0 s]
+
+$ ls -d "${TMPDIR:-/tmp}"/ke-sbom.* "$S"/.ke-sbom.* 2>/dev/null | wc -l
+0
+[exit code: 0] [elapsed: 0 s]
+
+$ leftovers
+ke-a34u9b: containers=0 networks=0 volumes=0
+ke-a34u9b-sbom: containers=0 networks=0 volumes=0
+ke-a34u9b-inst: containers=0 networks=0 volumes=0
+by name ke-a34u9b*: containers=0 networks=0 volumes=0
+ke-fetch-*: containers=0 networks=0 volumes=0
+compose projects ke-a34u9b*/ke-fetch-*: 0
+[exit code: 0] [elapsed: 3 s]
+
+$ tags | diff "$D/out/tags-start.txt" - && echo "bundle and ke-vendor tags: as at step 0"
+bundle and ke-vendor tags: as at step 0
+[exit code: 0] [elapsed: 1 s]
+
+$ echo "dangling images: $(docker images -q --filter dangling=true | wc -l)"
+dangling images: 171
+[exit code: 0] [elapsed: 0 s]
+
+$ docker compose ls --format "{{.Name}} {{.Status}}" 2>/dev/null | grep "^knowledge-engine " || docker compose ls | grep "^knowledge-engine "
+knowledge-engine                running(7)          C:\repos\Knowledge-engine\docker-compose.yml
+[exit code: 0] [elapsed: 1 s]
+
+$ git status --short | diff "$D/out/status-start.txt" -; echo "(diff above: lines this run added to the tree)"
+0a1
+>  M CHANGELOG.md
+5a7
+>  M docs/quickstart.md
+34a37
+> ?? docs/evidence/platform-sbom/u9/u9b-r2-security.md
+(diff above: lines this run added to the tree)
+[exit code: 0] [elapsed: 0 s]
+
+$ sha256sum -c --quiet "$D/out/hash-start.txt" && echo "hashed files: unchanged since step 0"
+hashed files: unchanged since step 0
+[exit code: 0] [elapsed: 0 s]
+
+[end cleanup 2026-10-30T01:21:42Z]
+
+#### Step 7 (driver <scratch>/a34u9b-drv/verify.sh): full output in u9/a34-verify-full.txt; first 3 and the result lines here ####
+
+start 2026-10-30T01:36:52Z
+verify full: KE_MODEL_UPSTREAM and KE_EGRESS_ALLOWLIST must both be set to reach the model host; running without it (model-calling tests skip)
+== verify full: project ke-verify-1434432275 ==
+...
+Ran 1328 tests in 1010.785s
+
+OK (skipped=8)
+test_gates_it_cannot_read_repo_env (tests.integration.test_gate_least_privilege.GateLeastPrivilegeTest.test_gates_it_cannot_read_repo_env) ... FAIL
+FAIL: test_gates_it_cannot_read_repo_env (tests.integration.test_gate_least_privilege.GateLeastPrivilegeTest.test_gates_it_cannot_read_repo_env)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/tests/integration/test_gate_least_privilege.py", line 84, in test_gates_it_cannot_read_repo_env
+    self.assertEqual(env.read_bytes(), b"",
+AssertionError: b'# Deployment configuration template. Copy[1849 chars]9b\n' != b'' : /work/.env is not the empty mask: the gate can read the host .env
+
+----------------------------------------------------------------------
+Ran 15 tests in 4.034s
+
+FAILED (failures=1, skipped=5)
+verify full: FAIL (test.sh exited non-zero)
+...
+== verify full: FAIL (exit 1) ==
+exit 1 (elapsed 1053 s) end 2026-10-30T01:54:25Z
+
+#### Step 7 follow-up checks (Git Bash, 01:54:44Z-01:55:33Z) ####
+$ ls -la .env; tail -n 2 .env   (after the run)
+-rw-r--r-- 1 adam 197121 1846 2026-10-29 18:39:56.766687400 -0700 .env
+KE_IMAGE_TAG=local
+# throwaway: orchestrator verify u9b
+$ docker compose ls -a | grep ^ke-
+ke-verify-1348623419            running(8)              C:\repos\Knowledge-engine\docker-compose.yml,C:\repos\Knowledge-engine\docker-compose.verify.yml,C:\repos\Knowledge-engine\docker-compose.gates-mask.yml
+$ (repr of the current .env as unittest prints it)
+bytes 1846 repr chars 1894; prefix '# Deployment configuration template. Copy'; suffix 'b\n'; elided 1850 (the test printed [1849 chars] ... 9b\n)
+$ leftovers of this run (by name): ke-verify-1434432275, ke-a34-u9b, ke-offline, ke-scan
+ke-verify-1434432275: containers=0 networks=0 volumes=0 projects=0
+ke-a34-u9b: containers=0 networks=0 volumes=0 projects=0
+ke-offline: containers=0 networks=0 volumes=0 projects=0
+ke-scan: containers=0 networks=0 volumes=0 projects=0
+$ sha256sum -c --quiet <the 17 step-0 hashes>
+hashed files unchanged
+
+==================== Tester file: <scratch>/a34u9b-drv/a34-u9b.sh ====================
+#!/usr/bin/env bash
+# tester A34 driver, U9b (R13, O-11): steps 0 (metadata), 1 (bundle_fetch.sh sample), 2 (bundle.sh --sources sample),
+# 3-4 (two refusals) from Git Bash against the real Docker Desktop daemon.
+set -u
+export S="$1"; export D="$S/a34u9b-drv"; export A="$S/a34u9b"; export R=/c/repos/Knowledge-engine
+cd "$R" || exit 1
+export PATH="$PATH:<profile>/AppData/Local/Microsoft/WinGet/Packages/jqlang.jq_Microsoft.Winget.Source_8wekyb3d8bbwe"
+export COMPOSE_PROJECT_NAME=ke-a34u9b
+unset KE_IMAGE_TAG
+run() { echo "\$ $*"; local t0=$SECONDS; bash -c "$*" 2>&1; local rc=$?; echo "[exit code: $rc] [elapsed: $((SECONDS-t0)) s]"; echo; return $rc; }
+tags() { docker image ls --no-trunc --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep -E "^ke-(app|gateway|neo4j):bundle-|^ke-vendor/" | sort; }
+leftovers() {
+  for p in ke-a34u9b ke-a34u9b-sbom ke-a34u9b-inst; do
+    echo "$p: containers=$(docker ps -a -q --filter label=com.docker.compose.project=$p | wc -l) networks=$(docker network ls -q --filter label=com.docker.compose.project=$p | wc -l) volumes=$(docker volume ls -q --filter label=com.docker.compose.project=$p | wc -l)"
+  done
+  echo "by name ke-a34u9b*: containers=$(docker ps -a --format '{{.Names}}' | grep -c '^ke-a34u9b') networks=$(docker network ls --format '{{.Name}}' | grep -c '^ke-a34u9b') volumes=$(docker volume ls --format '{{.Name}}' | grep -c '^ke-a34u9b')"
+  echo "ke-fetch-*: containers=$(docker ps -a --format '{{.Names}}' | grep -c '^ke-fetch-') networks=$(docker network ls --format '{{.Name}}' | grep -c '^ke-fetch-') volumes=$(docker volume ls --format '{{.Name}}' | grep -c '^ke-fetch-')"
+  echo "compose projects ke-a34u9b*/ke-fetch-*: $(docker compose ls -a --format json | grep -oE '"Name":"ke-(a34u9b|fetch-)[^"]*"' | wc -l)"
+}
+export -f tags leftovers
+left() { run leftovers; }
+
+echo "==================== 0. metadata (Git Bash) ===================="
+run 'date -u +%FT%TZ; uname -srm; git rev-parse HEAD; git branch --show-current; docker version --format "engine {{.Server.Version}} {{.Server.Os}}/{{.Server.Arch}}"; docker compose version --short; jq --version; pwsh -NoProfile -Command "\$PSVersionTable.PSVersion.ToString()"; id -u; id -g; echo "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME KE_IMAGE_TAG=${KE_IMAGE_TAG-<unset>} MSYS_NO_PATHCONV=${MSYS_NO_PATHCONV-<unset>}"'
+run 'sha256sum scripts/bundle.sh scripts/bundle_fetch.sh scripts/sources_fetch.py scripts/sbom_check.py scripts/offline_check.sh scripts/install.ps1 scripts/install.sh scripts/launch.ps1 scripts/teardown.ps1 docker-compose.yml docker-compose.sources.yml docker-compose.sbom.yml .env.example docker/sources.lock.json docker/source-policy.json NOTICE.md licenses/libffi-jna-5.15.0.txt | tee "$D/out/hash-start.txt"'
+run 'ls -a .env; git status --short > "$D/out/status-start.txt"; wc -l < "$D/out/status-start.txt"'
+run 'curl -s -o /dev/null -w "gitlab.alpinelinux.org aports API: %{http_code}\n" --max-time 20 "https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports"'
+run 'docker image inspect --format "{{index .RepoTags 0}} {{.Id}} {{.Os}}/{{.Architecture}} created={{.Created}}" ke-app:local ke-gateway:local ke-neo4j:local ke-gates:local'
+run 'tags > "$D/out/tags-start.txt"; wc -l < "$D/out/tags-start.txt"; grep -E "bundle-1a7a9e276d57|^ke-vendor/" "$D/out/tags-start.txt"'
+run 'echo "dangling images: $(docker images -q --filter dangling=true | wc -l)"; df -Pk "$S" | tail -1'
+run 'ls -d "$A" 2>&1'
+left
+
+echo "==================== 1. bundle_fetch.sh --set sample --out <scratch>/a34u9b/fetch (absent; created by the script) ===================="
+mkdir "$A"
+run 'ls -A "$A" | wc -l; ls -ld "$A/fetch" 2>&1'
+echo "\$ bash scripts/bundle_fetch.sh --set sample --out \"\$A/fetch\""
+t0=$SECONDS; bash scripts/bundle_fetch.sh --set sample --out "$A/fetch" > "$D/out/fetch.log" 2>&1; rc=$?; cat "$D/out/fetch.log"; echo "[exit code: $rc] [elapsed: $((SECONDS-t0)) s]"; echo
+run 'ls -l "$A/fetch"'
+echo '$ (u8/expected.md sample amd64 table vs this run'"'"'s "bundle_fetch: ok" lines, as "key name sha256=.. size=..", sorted)'
+grep '^| `' docs/evidence/platform-sbom/u8/expected.md | awk -F'|' '{for(i=2;i<=5;i++){gsub(/^ +| +$/,"",$i); gsub(/`/,"",$i)}; print $2" "$3" sha256="$5" size="$4}' | sort > "$D/out/exp.txt"
+grep '^bundle_fetch: ok ' "$D/out/fetch.log" | sed 's/^bundle_fetch: ok //; s/ hops=.*$//' | sort > "$D/out/got.txt"
+echo "expected rows: $(wc -l < "$D/out/exp.txt"); ok lines: $(wc -l < "$D/out/got.txt")"
+diff "$D/out/exp.txt" "$D/out/got.txt" && echo "COMPARE: ok lines == u8/expected.md (all 25 key/name/sha256/size equal)"
+echo '$ (files in --out named by sha256 vs expected distinct sha256; each file hashed and sized)'
+(cd "$A/fetch" && ls -A | grep -v '^fetch\.json$' | sort) > "$D/out/got-names.txt"
+sed 's/.*sha256=\([0-9a-f]*\) .*/\1/' "$D/out/exp.txt" | sort -u > "$D/out/exp-sha.txt"
+echo "files besides fetch.json: $(wc -l < "$D/out/got-names.txt"); expected distinct sha256: $(wc -l < "$D/out/exp-sha.txt")"
+diff "$D/out/exp-sha.txt" "$D/out/got-names.txt" && echo "NAMES: equal"
+(cd "$A/fetch" && sha256sum $(cat "$D/out/got-names.txt")) | awk -f "$S/tools/namehash.awk"
+echo "blob bytes (fetch.json excluded): $(cd "$A/fetch" && stat -c %s $(cat "$D/out/got-names.txt") | awk '{s+=$1} END {print s}') (expected 136571547)"
+echo
+run 'python -I -c "import json,sys; d=json.load(open(sys.argv[1])); print(\"fetch.json set\", d[\"set\"], \"arch\", d[\"arch\"], \"lock_sha256\", d[\"lock_sha256\"], \"components\", len(d[\"components\"]))" "$A/fetch/fetch.json"; sha256sum "$A/fetch/fetch.json" | sed "s#$A#<a34u9b>#"'
+(cd "$A/fetch" && find . -printf '%p %s %T@ %m\n' | sort) > "$D/out/fetch-listing-1.txt"
+left
+
+echo "==================== 2. bundle.sh --out <scratch>/a34u9b/bundle-amd64 --sources <scratch>/a34u9b/fetch --sources-set sample ===================="
+run 'ls -d "$A/bundle-amd64" "$A/bundle-amd64.manifest.sha256" 2>&1; ls -A "$A"'
+echo "\$ time bash scripts/bundle.sh --out \"\$A/bundle-amd64\" --sources \"\$A/fetch\" --sources-set sample"
+t0=$SECONDS; ( time bash scripts/bundle.sh --out "$A/bundle-amd64" --sources "$A/fetch" --sources-set sample ) > "$D/out/bundle.log" 2>&1; rc=$?; cat "$D/out/bundle.log"; echo "[exit code: $rc] [elapsed: $((SECONDS-t0)) s]"; echo
+export B="$A/bundle-amd64"
+echo '$ (the sources-check, index and marker lines of this run vs u9/sample-bundle-run.txt)'
+grep -E '^(sources-check:|index:|bundle: sources:)' "$D/out/bundle.log" > "$D/out/lines-got.txt"
+grep -E '^(sources-check:|index:|bundle: sources:)' docs/evidence/platform-sbom/u9/sample-bundle-run.txt > "$D/out/lines-exp.txt"
+cat "$D/out/lines-got.txt"
+diff "$D/out/lines-exp.txt" "$D/out/lines-got.txt" && echo "LINES: identical to sample-bundle-run.txt"
+echo
+run 'cat "$A/bundle-amd64.manifest.sha256"; ls -l "$A/bundle-amd64.manifest.sha256" | sed "s#$A#<a34u9b>#"; cd "$A" && sha256sum -c bundle-amd64.manifest.sha256'
+run 'cd "$B" && sha256sum -c --quiet MANIFEST.sha256 && echo "MANIFEST: all entries ok"'
+run 'ls -A "$B/app/sources"; ls -A "$B/app/sources/files" | wc -l; find "$B/app/sources/files" -type f -printf "%s\n" | awk "{s+=\$1} END {print s\" bytes\"}"; echo "non-regular in files/: $(find "$B/app/sources/files" -mindepth 1 ! -type f | wc -l)"'
+run 'cd "$B/app/sources/files" && sha256sum -- * | awk -f "$S/tools/namehash.awk"'
+run 'diff <(ls -A "$B/app/sources/files" | sort) "$D/out/got-names.txt" && echo "files/ name set == the fetched set (fetch.json excluded)"'
+run 'stat -c "%s bytes" "$B/app/sources/index.json"; python -I "$S/tools/idx.py" "$B/app/sources/index.json"'
+run 'python -I -c "import json,sys; d=json.load(open(sys.argv[1])); s=[x for x in d[\"components\"] if x[\"status\"]==\"shipped\"]; print(\"shipped keys:\", sorted(x[\"key\"] for x in s)); print(\"shipped file rows:\", sum(len(x[\"files\"]) for x in s)); n=[x for x in d[\"components\"] if x[\"status\"]==\"not-shipped\"]; print(\"not-shipped:\", len(n), \"with any file row:\", sum(1 for x in n if x[\"files\"]))" "$B/app/sources/index.json"'
+run 'stat -c "%s bytes" "$B/MANIFEST.sha256"; wc -l < "$B/MANIFEST.sha256"; echo "MANIFEST lines under app/sources/files/: $(grep -c " app/sources/files/" "$B/MANIFEST.sha256")"'
+run 'echo "$(du -sb "$B" | cut -f1) bundle"; echo "$(du -sb "$B/app/sources" | cut -f1) app/sources"; echo "without app/sources: $(( $(du -sb "$B" | cut -f1) - $(du -sb "$B/app/sources" | cut -f1) ))"'
+run 'cd "$B" && ls -la . app'
+run 'cd "$B" && grep -n "^## Source code" THIRD_PARTY_NOTICES.md app/THIRD_PARTY_NOTICES.md; cmp THIRD_PARTY_NOTICES.md app/THIRD_PARTY_NOTICES.md && echo "THIRD_PARTY_NOTICES.md == app/THIRD_PARTY_NOTICES.md"; echo "sample warning lines: $(grep -c "Verification bundle: this source set is a sample" THIRD_PARTY_NOTICES.md)"; grep -n "Verification bundle" THIRD_PARTY_NOTICES.md | cut -c1-240; echo "rows with source in sources/: $(grep -c "source in \`sources/\`" THIRD_PARTY_NOTICES.md)"'
+run 'cd "$B" && ls -l licenses/libffi-jna-5.15.0.txt app/licenses/libffi-jna-5.15.0.txt && sha256sum "$R/licenses/libffi-jna-5.15.0.txt" licenses/libffi-jna-5.15.0.txt app/licenses/libffi-jna-5.15.0.txt && grep -c "licenses/libffi-jna-5.15.0.txt" MANIFEST.sha256'
+run 'cd "$B" && ls app/sboms images && jq -c ".images[] | {ref, as, file}" bundle.json'
+run '(cd "$A/fetch" && find . -printf "%p %s %T@ %m\n" | sort) | diff "$D/out/fetch-listing-1.txt" - && echo "--sources listing (name size mtime mode) unchanged by the bundle run"'
+run 'tags | diff "$D/out/tags-start.txt" - && echo "bundle and ke-vendor tags: as at step 0"'
+run 'ls -A "$A"; ls -d "$A"/.ke-sbom.* "${TMPDIR:-/tmp}"/ke-sbom.* 2>/dev/null | wc -l'
+left
+
+echo "==================== 3. refusal: a --sources directory with no fetch.json ===================="
+mkdir "$A/nofetch"
+(cd "$A/fetch" && cp -p -- $(cat "$D/out/got-names.txt") "$A/nofetch/")
+run 'ls -A "$A/nofetch" | wc -l; ls "$A/nofetch/fetch.json" 2>&1 | sed "s#$A#<a34u9b>#"; echo "non-regular: $(find "$A/nofetch" -mindepth 1 ! -type f | wc -l)"'
+(cd "$A/nofetch" && find . -printf '%p %s %T@ %m\n' | sort) > "$D/out/nofetch-listing.txt"
+ls -A "$A" > "$D/out/a-before-3.txt"
+run 'ls -d "$A/refuse-nofetch-amd64" "$A/refuse-nofetch-amd64.manifest.sha256" 2>&1'
+run 'bash scripts/bundle.sh --out "$A/refuse-nofetch-amd64" --sources "$A/nofetch" --sources-set sample'
+run 'ls -d "$A/refuse-nofetch-amd64" "$A/refuse-nofetch-amd64.manifest.sha256" 2>&1'
+run 'ls -A "$A" | diff "$D/out/a-before-3.txt" - && echo "<scratch>/a34u9b listing: as before (nothing written beside --out, no .ke-sbom.*)"'
+run '(cd "$A/nofetch" && find . -printf "%p %s %T@ %m\n" | sort) | diff "$D/out/nofetch-listing.txt" - && echo "--sources listing unchanged"'
+run 'tags | diff "$D/out/tags-start.txt" - && echo "bundle and ke-vendor tags: as at step 0 (no tag moved)"'
+left
+
+echo "==================== 4. refusal: the sample directory given for a --sources-set full bundle ===================="
+ls -A "$A" > "$D/out/a-before-4.txt"
+run 'ls -d "$A/refuse-full-amd64" "$A/refuse-full-amd64.manifest.sha256" 2>&1'
+run 'bash scripts/bundle.sh --out "$A/refuse-full-amd64" --sources "$A/fetch" --sources-set full'
+run 'ls -d "$A/refuse-full-amd64" "$A/refuse-full-amd64.manifest.sha256" 2>&1'
+run 'ls -A "$A" | diff "$D/out/a-before-4.txt" - && echo "<scratch>/a34u9b listing: as before (nothing written beside --out, no .ke-sbom.*)"'
+run '(cd "$A/fetch" && find . -printf "%p %s %T@ %m\n" | sort) | diff "$D/out/fetch-listing-1.txt" - && echo "--sources listing unchanged"'
+run 'tags | diff "$D/out/tags-start.txt" - && echo "bundle and ke-vendor tags: as at step 0 (no tag moved)"'
+left
+run 'date -u +%FT%TZ'
+echo "[end a34-u9b git bash 0-4]"
+
+==================== Tester file: <scratch>/a34u9b-drv/a34-u9b-install.ps1 ====================
+# tester A34 driver, U9b: step 5, install.ps1 from the step-2 sample bundle, the installed sources/notices/licence checks,
+# launch.ps1 in the target, stack checks, teardown.ps1 -Volumes. Form of the U7e driver.
+param([Parameter(Mandatory)][string]$S)
+$ErrorActionPreference = 'Continue'
+$env:COMPOSE_PROJECT_NAME = 'ke-a34u9b-inst'
+Remove-Item Env:KE_IMAGE_TAG -ErrorAction SilentlyContinue
+$A = Join-Path $S 'a34u9b'
+$bundle = Join-Path $A 'bundle-amd64'
+$record = "$bundle.manifest.sha256"
+$parent = Join-Path $A 'inst'
+$target = Join-Path $parent 'ke'
+$p = $env:COMPOSE_PROJECT_NAME
+function Step([string]$t) { Write-Output ''; Write-Output "PS> $t" }
+function Rc { Write-Output "[exit code: $LASTEXITCODE]" }
+function Left {
+  "containers: $(@(docker ps -a -q --filter label=com.docker.compose.project=$p).Count)"
+  "networks: $(@(docker network ls -q --filter label=com.docker.compose.project=$p).Count)"
+  "volumes: $(@(docker volume ls -q --filter label=com.docker.compose.project=$p).Count) (by name ${p}_: $(@(docker volume ls -q | Where-Object { $_.StartsWith("${p}_") }).Count))"
+  "compose projects: $(@(docker compose ls -a --format json | ConvertFrom-Json | Where-Object { $_.Name -eq $p }).Count)"
+}
+Write-Output "==================== 5. install.ps1 from the step-2 bundle (PowerShell $($PSVersionTable.PSVersion)) ===================="
+Write-Output "$(Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ssZ'); COMPOSE_PROJECT_NAME=$p; KE_IMAGE_TAG unset (an operator's install uses the override, not a tag)"
+Step 'bundle and release record: Test-Path; record content'
+"bundle: $(Test-Path $bundle); record: $(Test-Path $record)"; Get-Content $record
+Step 'install parent and target do not exist yet'
+"parent: $(Test-Path $parent); target: $(Test-Path $target)"
+Step "leftovers for project ${p} before"
+Left
+Step 'Get-FileHash install.ps1 in the bundle vs its MANIFEST.sha256 line'
+$h = (Get-FileHash (Join-Path $bundle 'install.ps1') -Algorithm SHA256).Hash.ToLowerInvariant()
+$m = (Get-Content (Join-Path $bundle 'MANIFEST.sha256') | Where-Object { $_ -match '\s\*?install\.ps1$' })
+"Get-FileHash: $h"; "MANIFEST:     $m"; "equal: $($m -match "^$h\s")"
+$expect = ((Get-Content $record) -split '\s+')[0]
+New-Item -ItemType Directory -Path $parent | Out-Null
+Step "cd <bundle>; pwsh -NoProfile -File .\install.ps1 -Target <target> -ExpectManifest $expect"
+$t0 = Get-Date
+Push-Location $bundle
+pwsh -NoProfile -File .\install.ps1 -Target $target -ExpectManifest $expect 2>&1; Rc
+Pop-Location
+"[elapsed: $([int]((Get-Date) - $t0).TotalSeconds) s]"
+Step 'target top level (Get-ChildItem -Force -Name)'
+Get-ChildItem -Force -Name $target
+Step 'parent holds only the target (staging removed)'
+Get-ChildItem -Force -Name $parent
+Step 'docker-compose.override.yml written by install.ps1'
+Get-Content (Join-Path $target 'docker-compose.override.yml')
+Step 'loaded image ids (ke-*:bundle-1a7a9e276d57) vs the ids bundled (ke-*:local)'
+foreach ($r in 'ke-app','ke-gateway','ke-neo4j') { docker image inspect --format "{{index .RepoTags 0}} {{.Id}}" "${r}:local"; docker image inspect --format "${r}:bundle-1a7a9e276d57 {{.Id}} {{.Os}}/{{.Architecture}}" "${r}:bundle-1a7a9e276d57" }; Rc
+Step 'installed sources: sources\files (count, bytes, non-files, each Get-FileHash == its name), sources\index.json'
+$files = @(Get-ChildItem -Force (Join-Path $target 'sources\files'))
+$reg = @($files | Where-Object { -not $_.PSIsContainer -and -not $_.LinkType })
+"entries: $($files.Count); regular files: $($reg.Count); bytes: $(($reg | Measure-Object Length -Sum).Sum)"
+$bad = @($reg | Where-Object { (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() -ne $_.Name })
+"Get-FileHash != name: $($bad.Count)"
+$idx = Join-Path $target 'sources\index.json'
+$ih = (Get-FileHash $idx -Algorithm SHA256).Hash.ToLowerInvariant(); $bh = (Get-FileHash (Join-Path $bundle 'app\sources\index.json') -Algorithm SHA256).Hash.ToLowerInvariant()
+"index.json: $((Get-Item $idx).Length) bytes; equal to the bundle's app\sources\index.json: $($ih -eq $bh)"
+$j = Get-Content $idx -Raw | ConvertFrom-Json
+"index.json set=$($j.set) arch=$($j.arch) lock_sha256=$($j.lock_sha256)"
+$j.components | Group-Object status | Sort-Object Name | ForEach-Object { "status $($_.Name): $($_.Count)" }
+Step 'installed notices and licences: THIRD_PARTY_NOTICES.md Source code section + sample warning; licenses\libffi-jna-5.15.0.txt; sboms'
+Select-String -Path (Join-Path $target 'THIRD_PARTY_NOTICES.md') -Pattern '^## Source code', '^Verification bundle' | ForEach-Object { "THIRD_PARTY_NOTICES.md:$($_.LineNumber): $($_.Line)" }
+$tn = (Get-FileHash (Join-Path $target 'THIRD_PARTY_NOTICES.md') -Algorithm SHA256).Hash.ToLowerInvariant(); $bn = (Get-FileHash (Join-Path $bundle 'THIRD_PARTY_NOTICES.md') -Algorithm SHA256).Hash.ToLowerInvariant()
+"THIRD_PARTY_NOTICES.md equal to the bundle's: $($tn -eq $bn) ($tn)"
+"libffi-jna-5.15.0.txt: $((Get-FileHash (Join-Path $target 'licenses\libffi-jna-5.15.0.txt') -Algorithm SHA256).Hash.ToLowerInvariant())"
+"sboms: $((Get-ChildItem -Name (Join-Path $target 'sboms')) -join ' ')"
+Push-Location $target
+Step 'cd <target>; Copy-Item .env.example .env; Add-Content marker + KE_API_PORT=47180, KE_PHOENIX_PORT=47181 (47100/47101 are held by the running knowledge-engine stack, not this run''s; throwaway, no real keys)'
+Copy-Item .env.example .env
+Add-Content .env '# A34U9B-THROWAWAY: tester copy of .env.example in the install target of the platform-sbom U9b Windows run; removed below'
+Add-Content .env 'KE_API_PORT=47180'
+Add-Content .env 'KE_PHOENIX_PORT=47181'
+Compare-Object (Get-Content .env.example) (Get-Content .env) | ForEach-Object { "$($_.SideIndicator) $($_.InputObject)" }
+Step 'host listeners on 47180/47181 before launch (empty = free)'
+Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalPort -in 47180,47181 } | ForEach-Object { "$($_.LocalAddress):$($_.LocalPort) pid $($_.OwningProcess)" }
+Step 'pwsh -NoProfile -File scripts\launch.ps1 (in the target)'
+$t0 = Get-Date
+pwsh -NoProfile -File scripts\launch.ps1 2>&1; Rc
+"[elapsed: $([int]((Get-Date) - $t0).TotalSeconds) s]"
+Step 'docker compose ps --format json (service/image/state/health)'
+docker compose ps --format json | ForEach-Object { $_ | ConvertFrom-Json } | ForEach-Object { '{0,-10} {1,-36} {2,-8} {3}' -f $_.Service, $_.Image, $_.State, $_.Health } | Sort-Object; Rc
+Step 'Invoke-WebRequest http://127.0.0.1:47180/healthz; /readyz'
+try { $r = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:47180/healthz; "$($r.StatusCode) $($r.Content)" } catch { "healthz error: $_" }
+try { $r = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:47180/readyz; "$($r.StatusCode) $($r.Content)" } catch { "readyz error: $_" }
+Step 'the installed api: python, openssl, no pip, psycopg (docker compose exec -T api)'
+docker compose exec -T api python -I -c "import sys, ssl, importlib.util as u; print(sys.version.split()[0], ssl.OPENSSL_VERSION); print('pip spec:', u.find_spec('pip')); import psycopg; print('psycopg impl:', psycopg.pq.__impl__, psycopg.pq.version())" 2>&1; Rc
+Step 'pwsh -NoProfile -File scripts\teardown.ps1 -Volumes (in the target)'
+pwsh -NoProfile -File scripts\teardown.ps1 -Volumes 2>&1; Rc
+Pop-Location
+Step "after teardown: containers, networks, volumes, compose projects of $p (all 0)"
+Left
+Step 'Remove-Item -Recurse -Force <parent> (target and its throwaway .env); Test-Path'
+Remove-Item -Recurse -Force $parent; "parent: $(Test-Path $parent)"
+Write-Output "[end install $(Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ssZ')]"
+
+==================== Tester file: <scratch>/a34u9b-drv/a34-u9b-cleanup.sh ====================
+#!/usr/bin/env bash
+# tester A34 cleanup, U9b (Git Bash, after the install phase): scratch bundle, record, fetch dirs deleted; checks.
+set -u
+export S="$1"; export D="$S/a34u9b-drv"; export A="$S/a34u9b"; export R=/c/repos/Knowledge-engine
+cd "$R" || exit 1
+run() { echo "\$ $*"; local t0=$SECONDS; bash -c "$*" 2>&1; local rc=$?; echo "[exit code: $rc] [elapsed: $((SECONDS-t0)) s]"; echo; return $rc; }
+tags() { docker image ls --no-trunc --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep -E "^ke-(app|gateway|neo4j):bundle-|^ke-vendor/" | sort; }
+leftovers() {
+  for p in ke-a34u9b ke-a34u9b-sbom ke-a34u9b-inst; do
+    echo "$p: containers=$(docker ps -a -q --filter label=com.docker.compose.project=$p | wc -l) networks=$(docker network ls -q --filter label=com.docker.compose.project=$p | wc -l) volumes=$(docker volume ls -q --filter label=com.docker.compose.project=$p | wc -l)"
+  done
+  echo "by name ke-a34u9b*: containers=$(docker ps -a --format '{{.Names}}' | grep -c '^ke-a34u9b') networks=$(docker network ls --format '{{.Name}}' | grep -c '^ke-a34u9b') volumes=$(docker volume ls --format '{{.Name}}' | grep -c '^ke-a34u9b')"
+  echo "ke-fetch-*: containers=$(docker ps -a --format '{{.Names}}' | grep -c '^ke-fetch-') networks=$(docker network ls --format '{{.Name}}' | grep -c '^ke-fetch-') volumes=$(docker volume ls --format '{{.Name}}' | grep -c '^ke-fetch-')"
+  echo "compose projects ke-a34u9b*/ke-fetch-*: $(docker compose ls -a --format json | grep -oE '"Name":"ke-(a34u9b|fetch-)[^"]*"' | wc -l)"
+}
+export -f tags leftovers
+echo "==================== 6. cleanup (Git Bash) ===================="
+run 'date -u +%FT%TZ; ls -A "$A"; du -sb "$A"'
+run 'rm -rf -- "$A/bundle-amd64" "$A/bundle-amd64.manifest.sha256" "$A/fetch" "$A/nofetch"; ls -A "$A" | wc -l; rmdir -- "$A"; ls -d "$A" 2>&1'
+run 'ls -d "${TMPDIR:-/tmp}"/ke-sbom.* "$S"/.ke-sbom.* 2>/dev/null | wc -l'
+run leftovers
+run 'tags | diff "$D/out/tags-start.txt" - && echo "bundle and ke-vendor tags: as at step 0"'
+run 'echo "dangling images: $(docker images -q --filter dangling=true | wc -l)"'
+run 'docker compose ls --format "{{.Name}} {{.Status}}" 2>/dev/null | grep "^knowledge-engine " || docker compose ls | grep "^knowledge-engine "'
+run 'git status --short | diff "$D/out/status-start.txt" -; echo "(diff above: lines this run added to the tree)"'
+run 'sha256sum -c --quiet "$D/out/hash-start.txt" && echo "hashed files: unchanged since step 0"'
+echo "[end cleanup $(date -u +%FT%TZ)]"
+
+==================== Tester file: <scratch>/a34u9b-drv/verify.sh ====================
+#!/usr/bin/env bash
+cd /c/repos/Knowledge-engine || exit 1
+export PATH="$PATH:<profile>/AppData/Local/Microsoft/WinGet/Packages/jqlang.jq_Microsoft.Winget.Source_8wekyb3d8bbwe"
+export COMPOSE_PROJECT_NAME=ke-a34-u9b
+unset KE_IMAGE_TAG
+echo "start $(date -u +%FT%TZ)"
+t0=$SECONDS
+scripts/verify.sh full
+rc=$?
+echo "exit $rc (elapsed $((SECONDS-t0)) s) end $(date -u +%FT%TZ)"
+
+==================== Tester file: <scratch>/a34u9b-drv/redact.py ====================
+import re, sys
+SEP = "[/" + chr(92) * 2 + "]"  # a slash or a backslash
+scr_tail = SEP.join(["AppData", "Local", "Temp", "claude", "c--repos-Knowledge-engine",
+                     "d5694db3-7c12-4346-835e-30f12d337cee", "scratchpad"])
+prof = "(?:<profile>|[Cc]:" + SEP + "Users" + SEP + "adam)"
+ansi = re.compile("\x1b\\[[0-9;]*[A-Za-z]")
+def red(t):
+    t = ansi.sub("", t)
+    t = re.sub(prof + SEP + scr_tail, "<scratch>", t)
+    t = re.sub(prof, "<profile>", t)
+    t = re.sub(r"S-1-5-21-\d+-\d+-\d+(?:-\d+)?", "<sid>", t)
+    t = re.sub(r"(https://[^\s\"']*github[^\s\"'?]*)\?[^\s\"']+", r"\1?<query omitted>", t)
+    return t
+out = []
+for src in sys.argv[2:]:
+    with open(src, encoding="utf-8", errors="replace", newline="") as f:
+        out.append(red(f.read().replace("\r\n", "\n")))
+with open(sys.argv[1], "w", encoding="utf-8", newline="\n") as f:
+    f.write("".join(out))
+t = "".join(out)
+print("lines", t.count("\n"), "leftover profile/SID hits:", len(re.findall(r"(?i)users[/\\]adam|S-1-5-21", t)))
+

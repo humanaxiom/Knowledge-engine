@@ -245,6 +245,302 @@ Fast unless stated; the tester names and places them.
   the builder's locked set is named in `NOTICE.md` with its sdist URL and
   hash. RED: psycopg-c is not named.
 
+### N0 amendment, U7e (architect, 2026-10-27)
+
+*Context.* A fresh grype DB reports a fixed High in ke-app's Debian base.
+`libssl3` and `openssl` are at 3.0.22-1~deb12u1, and the fix is in
+3.0.22-1~deb12u2 (CVE-2026-84782 High, plus three Mediums, all fixed in
+the same version). The record is
+`u7d/orchestrator-verify-full-after-claude-row.txt` l.2075-2372. The scan
+gate (PS-3.6) is red, so `verify.sh full` is red and the U7d commit is
+blocked. U7e is the fix.
+
+**1. Fix form: pin it in the runtime stage (recommended), not a base
+bump.**
+- `docker/app.Dockerfile` gains `ARG OPENSSL_VERSION=3.0.22-1~deb12u2`
+  beside `LIBPQ_VERSION`, with the same comment rule: Debian supersedes
+  it, the build then fails by name, and the fix is a bump, never an
+  unpin.
+- The runtime stage's one apt RUN becomes `apt-get install -y
+  --no-install-recommends libpq5=${LIBPQ_VERSION}
+  libssl3=${OPENSSL_VERSION} openssl=${OPENSSL_VERSION}`. That is one
+  layer, upgrading two base packages that apt resolves from
+  bookworm-security.
+- The last stage stays `FROM scratch` + `COPY --from=runtime / /`. The
+  flatten means no lower layer keeps the old libssl3 files or dpkg
+  record, so the scanner and syft see only deb12u2.
+- **The builder stage is not pinned.** It does not ship (only `/opt/venv`
+  and `/app` are copied out), and psycopg-c links libssl through libpq at
+  run time with the 3.0 ABI. **`docker/gates.Dockerfile` is not pinned.**
+  `ke-gates` is neither shipped nor scanned (`scan.sh` scans `ke-app`
+  only).
+- *Why not a base-digest bump:*
+  - a `python:3.12-slim-bookworm` digest carrying deb12u2 may not exist
+    yet (security is confirming availability);
+  - a bump moves every base package at once, and may move CPython's
+    micro version. That re-pins `licenses/CPython-3.12-*.txt`, the NOTICE
+    CPython bullet, U4's drift check and every fixture row of ke-app,
+    gates and the base;
+  - it also changes `gates.Dockerfile`'s matching digest (N0 drift test).
+
+  The pin changes two rows. A base bump stays the housekeeping follow-up
+  once the official image carries deb12u2, and it drops the pin then.
+- *Availability:* deb12u2 must be fetchable from deb.debian.org's
+  bookworm-security (for `build.sh`) and from snapshot.debian.org (for the
+  lock, item 2). Security confirms both before GREEN. If it is not on
+  bookworm-security, back to the architect.
+
+**1a. The tests that pin it** (in `tests/test_psycopg_c.py`, beside
+`test_libpq_pin_matches_bookworm_base`).
+- `test_openssl_pin_in_runtime_stage` (static, fast). The rules:
+  - `ARG OPENSSL_VERSION=` holds a `3.0.<n>-<m>~deb12u<k>` form (Debian
+    12 security form) on the `-bookworm` base;
+  - the runtime stage's apt RUN installs exactly `libssl3=${OPENSSL_VERSION}`
+    and `openssl=${OPENSSL_VERSION}`, alongside libpq5;
+  - the builder stage does not reference `OPENSSL_VERSION`;
+  - the last stage is still the `FROM scratch` flatten.
+
+  Controls: unpinned `libssl3`, `openssl` pinned to a different variable,
+  a pin in the builder only, a `+deb13u` pin, a missing ARG.
+- The image-side check, in U4's `full` SBOM test, the same place as the
+  libpq5 check. A pure `deb_pin_problems(app, {"libssl3": pin, "openssl":
+  pin})` in `sbom_check.py` requires each name to appear in the ke-app
+  SBOM at exactly the pin, with `libssl3`'s `upstream` equal to `openssl`.
+  Failure text: `the ke-app SBOM lists <name> at <versions>, want <pin>`.
+  `psycopg_problems` is unchanged.
+- The end-to-end proof is the scan gate in `verify.sh full`, with the
+  fresh DB: no High at or above the threshold. The python Mediums are
+  below it and unchanged.
+
+**1b. NOTICE and drift.**
+- `drift_problems` compares Debian package *names*: SBOM names minus
+  base names must equal `ADDED_PACKAGES`. `libssl3` and `openssl` are in
+  the base, so an upgrade leaves the name sets, and `ADDED_PACKAGES`,
+  unchanged. No drift change is needed.
+- NOTICE "Base of `ke-app`" names packages generically, with versions
+  only for libpq5. It does not list openssl, and the licence is
+  unchanged. So no NOTICE change is required.
+  *For the analyst:* an optional sentence such as "libssl3 and openssl at
+  `OPENSSL_VERSION` (a Debian security update over the base)" would make
+  the upgrade visible, with the static NOTICE test pinning it the way it
+  pins libpq5. Recommended but not required; the analyst's call.
+
+**2. Lock impact and the fixture refresh.**
+- *Keys.* In the U3 fixtures `openssl 3.0.22-1~deb12u1` is carried by
+  `ke-app` (libssl3, openssl) and `postgres` (libssl3, openssl, a
+  third-party image pinned by digest). ke-neo4j and phoenix carry
+  3.5.7-1~deb13u3, and the Alpine images their own `apk:` openssl. So:
+  - `deb:openssl@3.0.22-1~deb12u1` stays, needed by postgres only now;
+  - `deb:openssl@3.0.22-1~deb12u2` is new (ke-app).
+  - The total becomes 183 keys (deb 153).
+- *The lock.* A real `scripts/sources_lock.sh --arch amd64
+  --evidence-dir <dir>` run on the fresh images. It is incremental: one
+  new deb key resolved, about 2 min, and the rest kept. Expected exit 0,
+  with the Neo4j manual entry unchanged. Output goes to
+  `u7e/lock-run.txt`, redacted.
+- *The fixture refresh (ruling).* Only `tests/fixtures/sbom-u3/ke-app.pkgs.tsv`
+  is refreshed, from the fresh ke-app SBOM. It is the real
+  `app/sboms/ke-app.spdx.json` of a `bundle.sh` run on the U7e image,
+  with the same extraction as U3 (purl, versionInfo,
+  licenseDeclared|licenseConcluded per package, as `u3/gpl-family-packages.md`
+  describes).
+  - It is written first to `u7e/sboms/ke-app.pkgs.tsv`.
+  - The diff against the U3 fixture must be *exactly* the two openssl rows
+    (purl and version `~deb12u1` -> `~deb12u2`; the licence strings
+    identical). Any other changed row stops U7e and goes to the
+    orchestrator (the O3 rule).
+  - Then it is copied byte for byte into the fixture.
+  - `tests/sbom_support.py`'s provenance comment gains "ke-app.pkgs.tsv:
+    refreshed at U7e from `docs/evidence/platform-sbom/u7e/sboms/`".
+- *Not all six.* The other five fixtures are not regenerated. postgres,
+  phoenix and valkey are pinned by digest. ke-gateway did not move. And
+  `neo4j.pkgs.tsv` is deliberately the official image standing in for
+  ke-neo4j (N16, 72 against 73). Regenerating it would re-pin U4b-U6's
+  counts for no gain.
+- *Which tests re-pin.* The tester runs `fast` with only the fixture
+  refreshed and lists every failing test. Each failure must be explained
+  by the two rows alone. Expected:
+  - U7a's fixture-key set: 182 -> 183, adding
+    `deb:openssl@3.0.22-1~deb12u2`, with `~deb12u1` kept for postgres;
+  - any real-row snapshot that records purls or versions (U5/U6
+    classifier rows: two purls change, `needs` and flags unchanged).
+
+  The unlicensed counts (U4) and the U6 exempt rows are expected not to
+  move. Each re-pin names its reason, "U7e openssl ~deb12u2". A failure
+  not explained by the two rows stops the unit.
+- *O3.* The fresh key set must equal the refreshed fixtures' key set
+  (183).
+
+**3. A34, smoke and offline.**
+- A34: **yes**, because the Dockerfile changes. The Windows proof is
+  `build.sh`, `bundle.sh`, `install.ps1` from the bundle, and `verify.sh
+  full`, as U0 and U1 did, plus the `u7e/lock-run.txt` lock re-run if it
+  is done there.
+- The smoke `psycopg` step and the `no pip` step are unaffected.
+  `offline_check.sh`'s drift check is unaffected (1b). U4's image-side
+  SBOM test gains the `deb_pin_problems` call (1a). The scan stage is the
+  proof.
+- No compose change.
+
+**4. Order and commits (recommendation: one commit for U7d + U7e).**
+- Order:
+  1. U7e RED: 1a's static and image-side tests, plus the fixture-refresh
+     rows of item 2. The re-pins are made in RED, explained, failing
+     until GREEN.
+  2. GREEN: the Dockerfile pin, `deb_pin_problems`, the fixture refresh
+     from the real U7e image, then the real lock re-run (183 keys, exit
+     0) and the lock-sizes evidence updated.
+  3. Security: availability, the pin, and the one new lock entry.
+  4. Reviewer, on the U7e diff and the lock diff.
+  5. A34.
+  6. The orchestrator's `verify.sh full`, which must be green with the
+     scan included.
+  7. One commit.
+- *Why one commit, not two:*
+  - `verify.sh full` gates the working tree, and U7d's large uncommitted
+    diff cannot go green without U7e's fix (the scan). U7e cannot be
+    verified as committed without U7d's tree either, because the lock and
+    its test are U7d's.
+  - Two commits would mean committing a tree that was never verified as
+    such, or stashing U7d's diff, which is a risk to finished, reviewed
+    work.
+  - The message names both units, U7e's CVE first. The reviews stay
+    separate per diff (U7e's Dockerfile, tests and fixture; U7d's lock),
+    so each gets its own verdict.
+- If you prefer two commits, the only safe form is U7e first in a
+  separate worktree off HEAD 86f7831 plus U7d's resolver files. That is
+  not recommended, since it duplicates the verify runs.
+
+**Flag (not U7e scope; orchestrator or human).** The pinned `postgres`
+image ships the same libssl3/openssl 3.0.22-1~deb12u1 (U3 fixture
+l.103, l.124). Q70 ruled no scanning of the other bundled images, so no
+gate fires, but the fixed High is now known from its SBOM. Recommend
+raising a question to the human: bump the postgres digest when the
+upstream image is rebuilt, and accept the risk until then. That touches
+`postgres`'s lock keys at that time.
+
+**Ruled by the human: base bump (2026-10-27, verbatim "get the fixed
+python").** U7e takes the new base
+`python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753`.
+Security read it offline: openssl/libssl3 3.0.22-1~deb12u2,
+`PYTHON_VERSION` 3.12.16 (`u7e/security-openssl.md`).
+
+*Withdrawn* (pin-only text):
+- item 1's `ARG OPENSSL_VERSION` and the libssl3/openssl apt pin;
+- item 1a in full (`test_openssl_pin_in_runtime_stage` and
+  `deb_pin_problems`);
+- item 1b's optional NOTICE sentence;
+- item 2's "the diff is exactly the two openssl rows" rule, replaced by
+  R4 below.
+
+Item 2's "only ke-app's fixture is refreshed" and item 4's one-commit
+recommendation (U7d + U7e) stand.
+
+- **R1, the digests.**
+  - All three python `FROM` lines change together to the new digest: the
+    builder and runtime stages in `docker/app.Dockerfile`, and
+    `docker/gates.Dockerfile`. N0's drift test keeps them identical and
+    `-bookworm`. There is no libssl pin.
+  - *PSC-1 form, before the first build (security G5):* security records
+    the digest's provenance in `u7e/base-provenance.md`: the tag, the
+    index and amd64/arm64 digests from `docker buildx imagetools inspect`
+    (no pull, no run), the date, and `PYTHON_VERSION` and
+    `PYTHON_SHA256` from the config.
+  - Security also makes a second fetch of
+    `https://www.python.org/ftp/python/3.12.16/Python-3.12.16.tar.xz`,
+    whose sha256 must equal the base's `PYTHON_SHA256`, as U1 did. A
+    mismatch stops U7e.
+  - `NOTICE.md`'s base reference (l.74) is the new `FROM` line, byte for
+    byte, under the existing static test.
+  - `offline_check.sh` reads `base_ref` from the runtime `FROM`, so it
+    pulls the new digest with no change.
+  - `docs/requirements.md` and `docs/architecture.md` lines naming the old
+    digest as current go to the analyst. History stays as written.
+- **R2, the CPython licence files** (3.12.15 -> 3.12.16).
+  - `licenses/CPython-3.12-incorporated.txt` is re-extracted from
+    `https://raw.githubusercontent.com/python/cpython/v3.12.16/Doc/license.rst`
+    (the same heading-to-end rule; header line 1 `CPython 3.12.16: ...`;
+    a new source sha256).
+  - `CPython-3.12-HACL.txt` and `CPython-3.12-KaRaMeL.txt` are re-read
+    from the 3.12.16 tarball (R1's verified sha256 in their headers), at
+    the same files (`Modules/_hacl/Hacl_Hash_SHA2.c`,
+    `.../krml/internal/target.h`).
+  - Security diffs each body against the 3.12.15 one. A changed
+    incorporated list, or a new third-party header under `Modules/_hacl/`,
+    is re-reviewed before NOTICE's M-2 sentences are kept.
+  - `NOTICE.md` l.122-134 change to the 3.12.16 URLs and version, and
+    `test_notice_ke_app`'s header and URL tests follow. U4's drift check
+    (the SBOM's CPython equals the licence headers) is the image-side
+    proof.
+- **R3, the drift check and the libpq5 pin.**
+  - libpq5 is not in the base (`ADDED_PACKAGES`). The pin
+    `15.19-0+deb12u1` stays unless bookworm-security has superseded it.
+    `build.sh` then fails by name, and PSC-25's pin bumps in both
+    Dockerfiles.
+  - At RED, security reads the new base's `/var/lib/dpkg/status` offline
+    (`docker create` + `docker cp`, never run) and diffs it against the
+    old base's, recorded in `u7e/base-dpkg-diff.txt`.
+  - That diff also shows whether `ADDED_PACKAGES` still holds: libpq5's
+    dependencies that apt adds may now be in the base, or vice versa. Any
+    change re-pins `ADDED_PACKAGES`, with the dpkg diff as the reason.
+  - `test_libpq_pin_matches_bookworm_base` passes unchanged once all three
+    FROM lines move together.
+- **R4, the lock and the fixture.**
+  - ke-app's key set may change beyond openssl: any base package whose
+    *source* version moved between the two bases. So the *whole*
+    `tests/fixtures/sbom-u3/ke-app.pkgs.tsv` is replaced from the fresh
+    `bundle.sh` SBOM (via `u7e/sboms/ke-app.pkgs.tsv`, U3 extraction).
+    Only ke-app's fixture changes.
+  - The lock re-run (`sources_lock.sh --arch amd64 --evidence-dir ...`,
+    exit 0) adds every new `deb:` key. Keys that only ke-app needed and
+    that left it lose amd64, unless postgres still needs them, as with
+    `openssl@~deb12u1`.
+  - *O3:* `u7e/key-diff.txt` lists every key added and removed against
+    the U7d lock. Each must be explained by a line of
+    `u7e/base-dpkg-diff.txt`, or by the libpq5 dependencies. An
+    unexplained key stops U7e and goes to the orchestrator.
+  - The tester re-pins the fixture-dependent counts after GREEN produces
+    the fixture, each with that reason: the U7a key set (183 or more),
+    U4 unlicensed counts if they move, and the U5/U6 real-row snapshots.
+  - Security reviews the new lock entries.
+- **R5, A34 and the checks.** A34 is required (two Dockerfiles):
+  `build.sh`, `bundle.sh`, `install.ps1` from the bundle and `verify.sh
+  full` on Windows. The smoke `no pip` and `psycopg` steps are unchanged,
+  and the scan stage is the proof.
+- **R6, the gates image.** `build.sh` rebuilds `ke-gates` on the new base.
+  `uv.lock` is unchanged and `uv sync --locked` still holds. `ke-gates`
+  gets its own PSC-1 provenance row in `u7e/base-provenance.md` (the same
+  digest).
+- **R7, order.**
+  1. Security provenance and the second tarball fetch first (G5), plus
+     the dpkg diff.
+  2. Tester RED.
+  3. Developer GREEN: digests, licence files, NOTICE, `build.sh`, the
+     fresh SBOM and fixture, the lock re-run.
+  4. Tester re-pins with reasons.
+  5. Security and reviewer.
+  6. A34.
+  7. The orchestrator's `verify.sh full`, scan green.
+  8. One commit (U7d + U7e). The push and a new draft PR need the human's
+     approval.
+- **First RED tests:**
+  - (a) a static test that all three python `FROM` lines equal the ruled
+    digest `...6dd8b6dab6b3adc7...9753`;
+  - (b) the three licence files' line-1 version is `3.12.16`, and the two
+    tarball headers carry `PYTHON_SHA256`;
+  - (c) NOTICE's base reference and CPython URLs name the new digest and
+    3.12.16 (the existing tests with the new expected values);
+  - (d) the full-mode U4 drift check (CPython in the SBOM equals the
+    headers), red on today's image.
+
+  Each is red on HEAD by expected value only. The fixture and lock re-pins
+  wait for GREEN's data (R4).
+- *Update (architect, 2026-10-27, from the handoff):* U7d is already
+  committed as WIP `45411ae`, on the human's instruction, with the scan
+  red. So R7 step 8 becomes **one U7e commit** on top of `45411ae`, which
+  turns the scan green. Item 4's "one commit for U7d + U7e" is moot. PR
+  #14 was merged at 86f7831, so U7e lands on a new draft PR for
+  `agent/platform-sbom`, opened or approved by the human.
 
 ## N1. The SBOM generator run (`sbom` service)
 
@@ -564,9 +860,15 @@ Subcommands (names are the developer's to adjust):
   `THIRD_PARTY_NOTICES.md` from the index (N10).
 - `plan <arch> <set>`: prints the fetch plan (url, sha256, upstream check)
   for `bundle_fetch.sh` (N4). Sample selection lives only here.
+  *Superseded at U8 (N4 amendment, U8, item 1): no subcommand; the pure
+  `fetch_plan` is called in-process by `sources_fetch.py`.*
 - `verify <bundle_dir> <installed_dir>`: the PSC-19 e2e checks (N11).
 
 ## N4. The fetch step: `scripts/bundle_fetch.sh` and `sources-fetch`
+
+*Amended U8 (2026-10-28): see "N4 amendment, U8" below. It supersedes
+this section's curl client loop, `sources_fetch_client.sh` and mount list,
+and N3's `plan` subcommand.*
 
 Host script, verify-time and build-host, Linux and Git Bash (not bundled,
 not held to bash 3.2). The bundle's only network step besides `build.sh`.
@@ -629,7 +931,576 @@ at GREEN* the redirect targets from real fetches):
 | `files.pythonhosted.org` | `pypi` (sdist URLs from `uv.lock`; `pypi.org`'s API is no longer needed, N0) |
 | `repo1.maven.org` | `maven` (sources jars; jaxb-api, ruling 5, N8a) |
 
+*(Amended 2026-10-29, U8c O-2: objects.githubusercontent.com dropped from `hosts`; Temurin's redirect target is release-assets.githubusercontent.com, u8/hop-hosts.md.)*
+
 The generator pull uses the registry hosts `build.sh` already needs.
+
+### N4 amendment, U8 (architect, 2026-10-28)
+
+Makes U8 (PSC-23; N15 row U8) implementable against the analyst's "U8
+precision" criteria U8-1..U8-14 (`docs/requirements.md`, PSC-23) and
+Q73-Q77. *Orchestrator rulings recorded here (2026-10-28):* **Q75 ruled**:
+the arch comes from the daemon, with an optional `--arch` that only asserts
+it (as `bundle.sh`); no `--evidence-dir`, the stdout lines are the record
+and the caller saves them. **Q76 ruled**: yes, a completion record written
+last in `--out` (set, arch, lock sha256); U9 refuses a directory without it
+or with a mismatch. **Q77 deferred** (not blocking U8). Q73 and Q74 are with
+the human *(amended 2026-10-28, analyst: both ruled by the human, Q73 option 2, Q74 69 min)*. It supersedes, for U8 on: N4's curl client loop and
+`sources_fetch_client.sh`; N4's mount list; N3's `plan` subcommand (no CLI;
+item 2); ADR-KE-016 point 3's curl wording (ADR "Amended U8"). It keeps:
+N4's command, stages, markers and content-addressed names; N1 amendment
+U2's pull form; N1 amendment U4 (the base pulls stay in `offline_check.sh`);
+U7c item 9 (e) (the apk API raw URL is requested as locked); U7b rework
+round 1 item 3 (hop rules); Q61/A72 (no retry here); U7d item 14 (third
+fetch). No spans: a build-time tool, not an agent step (N3, ADR).
+
+**1. Module boundaries (reuse, no fork).**
+- `scripts/sources_fetch.py` (new; stdlib, `python3 -I`, never bundled,
+  never imported by `engine/`). The fetch client: plan, disk check, fetch
+  loop, name checks, output, completion record. It holds no host, no URL
+  literal and no network code of its own (PS-1.2).
+- It loads its two siblings by path from its own directory
+  (`importlib.util.spec_from_file_location`; `-I` puts no script dir on
+  `sys.path`): `R = sources_resolve.py`, `S = sbom_check.py`. In the
+  container all three sit in `/opt/ke/`; tests load `scripts/sources_fetch.py`
+  the same way, so the siblings are the checkout's.
+- The one network hook stays `sources_resolve.OPENER`, reached as
+  `sources_fetch.R.OPENER` (U7b interface pin 1). No flag, no test mode,
+  nothing read from the environment.
+- Additions to `sources_resolve.py` (small, beside `stream()`; existing
+  behaviour and tests unchanged):
+  - `download(url, allow, fh, limit, algs, hops) -> (digests, size)`: ONE
+    `_fetch_once(url, allow, hops=hops)` (first-URL rules, hop rules,
+    5 hops, `TIMEOUT` 60 s, `_guarded`'s 600 s per-file `DEADLINE`, 4 GiB
+    `MAX_BYTES`, transport errors as item-4 texts), then each chunk is
+    checked `size + len(chunk) <= limit` *before* it is hashed or written
+    (`<host>: more than <limit> bytes: <url>`), hashed with
+    `{"sha256"} | set(algs)` and written to `fh`. **It has no `retries`
+    parameter and never calls `_attempts`**, so Q61's single call holds by
+    construction (stronger than "pass `retries=0`", U8-4).
+  - `dsc_listing(fields, dsc, src, ver) -> [(name, size, sha256)]`: the
+    part of `dsc_files` that is not snapshot-specific (Source/Version equal
+    the key; `Checksums-Sha256` and `Files` list the same names and sizes;
+    safe names; `Checksums-Sha1` if present agrees in names). `dsc_files`
+    calls it, then maps names to snapshot URLs as today.
+  - Header and docstring: the module's network core and parsers are also
+    loaded by `sources_fetch.py`, which runs in verify and CI; the
+    resolve routes (`resolve()`, `main`) still never run there.
+- Additions to `sbom_check.py` (pure):
+  - `lock_entry_problems(text, policy, today=None) -> list[str]`: exactly
+    `lock_problems`' steps before `lock_needs` (canonical text, top-level
+    keys, `format`, every `_entry_problems`: schema, URL charset, hosts,
+    per-kind binding, hashes, sizes, the neo4j `from` and date).
+    `lock_problems` calls it, then adds the pgdg suite binding and
+    coverage. Pure refactor: every U7a-U7e lock test is the control.
+  - *Amended 2026-10-28 (U8a rework rounds 1-2; security M-2 and L-6,
+    review R1-N1/R1-N2; architect records):* `_entry_stage` also runs
+    `_shared_sha256_problems`, so `lock_entry_problems` and
+    `lock_problems` (therefore `lock-check`, `sources_lock.sh` and U9's
+    `index`) refuse a lock in which one sha256 carries (1) more than one
+    `size`, or, per upstream alg, more than one upstream value, or (2)
+    more than one upstream alg. Texts: `lock: <key>: <name>: sha256 <sha>
+    is size <n> here but <m> in <key0>`; `... has <alg> <v> here but <v0>
+    in <key0>`; `... has upstream alg <alg> here but <alg0> in <key0>`.
+    `<key0>` is the first entry in lock order holding that sha256 (for a
+    digest, the first holding it under that alg). *Why:* item 4's dedup
+    holds a file once for every entry that names its sha256, so those
+    entries must agree on what the file is. The committed lock passes.
+    *Precision (2026-10-28, orchestrator ruling, U8a round 2):* a file
+    of `size` 0 is exempt from rule (2). The empty content can legally
+    sit under the files-API sha256 and under `sha512sums` in one entry
+    (U7d's size-0 GitLab apk ruling; the controls
+    `test_an_empty_gitlab_file_passes` and `test_an_empty_aports_file`).
+    The client's size check binds 0 bytes, and the empty-content sha256
+    binds the content. Rules (1) and the per-alg value rule still apply
+    to it.
+  - `fetch_plan(lock, arch, set) -> list[(key, file)]`: `sample` is
+    `sample_keys(lock, arch)` (Q63; N3's "sample selection lives only in
+    `sample_keys`" holds); `full` is every key whose `arches` holds `arch`.
+    Sorted by key, then the entry's file order. Call only after
+    `lock_entry_problems == []` (security U7a I-4).
+  - There is no `plan` CLI subcommand (N3's is dropped): the client calls
+    the function in-process.
+- Coverage against SBOMs is **not** checked by the fetch (U8-3): it runs
+  before `bundle.sh` makes SBOMs. Coverage is gated by
+  `tests/test_sources_lock_committed.py` in every verify and, from U9, by
+  `index`.
+- **Mechanism decision (the analyst's "pick one by amendment"): the
+  resolver's opener and hop code, not curl.** *Why:* (i) GitLab's API raw
+  endpoint, which 15 of the sample's 25 files use, was proven only with
+  the resolver's opener and its User-Agent (`knowledge-engine-sources-lock`;
+  U7c item 9), while the `/-/raw/` form drew an anti-bot challenge; a curl
+  client would send another User-Agent and TLS fingerprint, unproven
+  against that control. `download()` reuses `_default_opener` unchanged,
+  User-Agent included. (ii) One reviewed implementation of the hop rules,
+  the deadline and the byte cap (U8 must not fork them). (iii) Q61 holds by
+  construction (no retry path). PSC-23's curl flags are met in kind
+  (item 11).
+- *Alternatives rejected.* (a) N4's curl loop in shell: forks the hop,
+  deadline and cap rules that U7b/U7c reviewed into a second language, and
+  its User-Agent is unproven at GitLab.
+  (b) A `--fetch` mode inside `sources_resolve.py`: mixes the maintainer
+  tool's routes and retry budget into the verify-time entry point and grows
+  a 1,200-line file. (c) Extracting a shared `sources_net.py`: re-review
+  of U7b's reviewed code for no behaviour gain. (d) `stream()` with a sink:
+  `stream()` runs through `_attempts`, so the no-retry property would rest
+  on an argument, not on the code path.
+
+**2. Client CLI (`sources_fetch.py`).**
+```
+python3 -I /opt/ke/sources_fetch.py --lock L --policy P --out DIR --arch amd64|arm64 --set sample|full
+```
+- Exit 0: complete (every file plus `fetch.json`). 1: a failure; nothing
+  of this run is left in `DIR` (it removes its own `.part` file; the
+  script's trap is the guarantee, item 6). 2: a bad argument.
+- Every exception becomes one line, never a traceback (U7b rework round 1
+  item 1 form). Lines (U8-2, U8-4):
+  - `bundle_fetch: FAIL (stage lock: <first problem>; no retry)`, the first
+    20 problems on stderr before it;
+  - `bundle_fetch: FAIL (stage disk: need <n> bytes free in --out, found <m>; no retry)`;
+  - `bundle_fetch: FAIL (stage fetch: <host>: <file name>: <why>; no retry)`,
+    where `<host>` is the lock URL's host and `<why>` the resolver's item-4
+    text or this block's check texts (item 5); a write error (disk full
+    included) is `<why>` = `write failed: <OSError class>`;
+  - per file kept: `bundle_fetch: ok <key> <name> sha256=<64 hex> size=<n> hops=<h1>[,<h2>...]`;
+  - per file already held (item 4): `bundle_fetch: held <key> <name> sha256=<64 hex> size=<n> (fetched for <key0> <name0>)`;
+  - last: `bundle_fetch: fetched <files> files, <bytes> bytes, <keys> components (<set>, <arch>) in <s> s`.
+  Hops are hosts only, so no query is ever printed (U8-2); `_clean` on
+  every lock-derived string.
+- **Time budget, named `B-fetch`:** the `sources: fetch` stage (marker to
+  marker, `== sources: fetch ==` to `== sources: done ...==`) is budgeted
+  at **60 s on CI** for `--set sample` (estimate 20-60 s, item 8). It is
+  part of Q62's 180 s for the item's added stages, and the R16 record
+  reports it against `B-fetch`; over budget goes to the orchestrator (and
+  under Q62/Q74 to the human). It is a measurement on CI, never a
+  wall-clock assertion in a test (they flake on the runner).
+- Hard bound, enforced: the run deadline `RUN_DEADLINE = {"sample": 300,
+  "full": 10800}` s (5x `B-fetch`; the lock tool's 3 h for the operator's
+  full set), checked before each request; a mid-file stall is bounded by
+  the per-file `DEADLINE` 600 s and per-request `TIMEOUT` 60 s.
+  Failure `<why>` = `run deadline <n> s passed`. The clock is a
+  module-level `CLOCK = time.monotonic` so tests never wait (wall-clock
+  budgets flake on the CI runner).
+
+**3. The shell wrapper and the service.**
+```
+scripts/bundle_fetch.sh --set sample|full --out DIR [--arch amd64|arm64]
+```
+(Q75 ruled: arch from `docker info`, `bundle.sh`'s form; `--arch`
+only asserts it, mismatch exit 2 before any pull; no `--evidence-dir`, the
+stdout lines are the record and the caller tees them.) Host script, Linux
+and Git Bash; not bundled, not copied by `bundle.sh`, never in a stack
+`COMPOSE_FILE`. In order, each failure one line `bundle_fetch: FAIL (stage
+<s>: <why>; no retry)` and exit 1 unless stated:
+1. Arguments (exit 2 with usage on anything else, before any call);
+   `docker` on PATH; arch.
+2. `--out` (U8-1): a symlink, a non-directory, or a non-empty directory is
+   refused naming it, untouched. Absent: the script creates it (`mkdir`,
+   then `chmod 0700`; N1 U4's NTFS rule) and records `created=1`. An empty
+   directory is used in place (a mount point works; no rename across
+   filesystems is needed).
+3. `ke-gates:${KE_IMAGE_TAG:-local}` present (`docker image inspect`), else
+   `stage images: ke-gates:<tag> not found: run scripts/build.sh first`.
+   `user="$(id -u):$(id -g)"` must match `^[0-9]+:[0-9]+$` (U8-7).
+4. `== sources: pull ==`: the generator ref read with N1's `config
+   --images sbom` form, then N1 amendment U2's pull, one call. Failure:
+   `stage pull: pulling the SBOM generator <ref> failed`.
+5. `== sources: fetch ==`: `MSYS_NO_PATHCONV=1 KE_SOURCES_IN=/nonexistent
+   KE_SOURCES_OUT="$(hostpath "$out")" KE_SOURCES_USER="$user" docker
+   compose -p ke-fetch-<8 hex> --env-file .env.example -f
+   docker-compose.sources.yml run --rm --pull never sources-fetch --arch
+   <a> --set <s>`. `KE_SOURCES_IN` is N1 U2's dummy for the other
+   service's `:?` (compose interpolates the whole file; `run` creates only
+   the named service). A non-zero exit: `stage fetch: sources_fetch.py
+   exited <rc>` after the client's own line.
+6. `fetch.json` must be a regular file, not a link; then `== sources: done
+   (pull <a> s, fetch <b> s) ==`, exit 0.
+- EXIT/INT/TERM/HUP trap (as `scan.sh`, D4): `compose -p <project> ... down
+  --volumes` with the dummies, then on a non-zero exit: `rm -rf -- "$out"`
+  if `created=1`, else remove every entry inside `$out` (the empty
+  directory is returned as given). `COMPOSE_PROFILES` and
+  `COMPOSE_PATH_SEPARATOR` unset; `-f`/`-p` override the caller's.
+- *Service* `sources-fetch` in `docker-compose.sources.yml` (U8-7; the
+  file's header is corrected: two services, one started by the lock tool,
+  one by `bundle_fetch.sh`):
+  - `image: ke-gates:${KE_IMAGE_TAG:-local}`, `pull_policy: never`;
+    `user: ${KE_SOURCES_USER:?set by scripts/bundle_fetch.sh or scripts/sources_lock.sh}`;
+    `read_only: true`; `tmpfs: [/tmp]`; `cap_drop: [ALL]`;
+    `security_opt: [no-new-privileges:true]`; no `networks`,
+    `network_mode`, `ports`, `extra_hosts`, `dns`, `privileged`, socket.
+    The project's default bridge is its only route out.
+  - `entrypoint: [python3, -I, /opt/ke/sources_fetch.py, --lock,
+    /opt/ke/sources.lock.json, --policy, /opt/ke/source-policy.json,
+    --out, /out]`; `--arch`/`--set` come from the run line.
+  - Long-form binds, read-only: `./scripts/sources_fetch.py`,
+    `./scripts/sources_resolve.py`, `./scripts/sbom_check.py`,
+    `./docker/sources.lock.json`, `./docker/source-policy.json` (each to
+    `/opt/ke/<name>`); read-write, the only one:
+    `${KE_SOURCES_OUT:?...}` -> `/out`. No checkout mount, no `uv.lock`.
+  - `environment: {PYTHONDONTWRITEBYTECODE: "1"}`, literals only.
+  - `tests/test_stack_compose.py`'s bind rule gains a `sources-fetch`
+    exemption naming that service and these exact mounts (U7b pin 5).
+
+**4. Verification order, per run and per file.**
+1. Read the lock text and policy; `S.lock_entry_problems(text, policy)`
+   must be `[]`, else stage `lock`, **zero requests**.
+2. `S.fetch_plan(lock, arch, set)`; `allow` = the policy `hosts` (exact,
+   lower-cased; the only host source, U8-4).
+3. Disk: the plan's distinct bytes (one size per distinct sha256) must be
+   <= `shutil.disk_usage(out).free` (hook `DISK_FREE`), else stage `disk`.
+4. For each planned file, in order:
+   - **Dedup (U8-3, the architect's choice):** a sha256 already held is not
+     requested again, even from a different URL; the `held` line is
+     printed. *Why:* the stored name is the sha256, the bytes are exactly
+     what the second entry pins, and U9 ships by sha256. It keeps "no URL
+     requested twice" and cuts the full set from 876 to 716 requests.
+   - Open `<out>/.<sha256>.part` with `O_CREAT|O_EXCL|O_WRONLY`, mode 0644.
+   - `R.download(file.url, allow, fh, limit=file.size, algs=(upstream.alg,), hops)`.
+     The first request is the lock URL as written (U7c item 9 (e)); every
+     hop passes the U7b hop rules and `allow`.
+   - Checks, in this order, each a stage `fetch` failure with the `.part`
+     deleted: size == lock `size` (`<name>: size mismatch: got <n>, lock
+     says <m>`); sha256 == lock `sha256` (`<name>: sha256 mismatch: got
+     <x>, lock says <y>`); the `upstream.alg` digest == `upstream.value`
+     (`<name>: <alg> mismatch: got <x>, <from> says <y>`; defence in depth:
+     deb `.dsc` and maven by sha1, apk by sha512, as N11 re-computes).
+   - `fsync`, then `os.rename` to `<out>/<sha256>`. Nothing reads the bytes
+     before this point except the hashers.
+5. After all files of an entry are in place, the name checks (item 5).
+6. `fetch.json` (item 6) written to `.fetch.json.part`, then renamed.
+   Exit 0.
+
+- *Rework record, L-1 (2026-10-28, U8a):* query redaction happens at the
+  source for the refused-Location text: the resolver prints it through
+  `_retry_url`. The resolver's other texts quote only URLs that passed the
+  printable-ASCII check, so `sources_fetch._safe` can drop each full query
+  (`?<query omitted>`) in every FAIL line.
+
+**5. Name checks (U8-5; carried U7c N3; first test rows).** Read only
+from the renamed, verified file, as UTF-8, at most `R.TEXT_LIMIT` (1 MiB;
+larger fails `<name>: over 1 MiB, not checked`). Never sourced, unpacked
+or run.
+- `deb` **and `pgdg`** (confirmed: both entries are built from the `.dsc`,
+  U7d P4-P5): `R.parse_dsc(text, dsc)`, then `R.dsc_listing(fields, dsc,
+  src, ver)`. Its `(name, size, sha256)` set must equal exactly the
+  entry's non-`.dsc` files' set; otherwise `<dsc>: Files/Checksums-Sha256
+  differ from the lock entry`. Parser failures keep their own texts
+  (R1-N2's non-field line included).
+- `apk`: `R.parse_apkbuild(text, commit, ver, origin)` (A4, U7c item 3:
+  literal pkgver/pkgrel equal to the key, one top-level assignment). Its
+  `(name, sha512)` set must equal exactly the entry's `upstream.alg ==
+  sha512` files' `(name, upstream.value)` set; otherwise `APKBUILD at
+  <commit>: sha512sums names differ from the lock entry`. Skipped aports
+  symlinks are in neither set (U7d item 8).
+- Other kinds: none (one file each).
+
+**6. Output layout and completion record (U8-6; Q76 ruled: yes).**
+- Flat: `<out>/<sha256>` (64 lower-case hex, regular files, mode 0644,
+  the caller's uid:gid) and `<out>/fetch.json`. No subdirectory, no link,
+  no upstream name on disk. *Why not per-key directories with lock names
+  (the brief's suggestion):* keys contain `:` (invalid on NTFS, where
+  verify runs), upstream names hold `+`/`~` and could case-clash, and N9
+  ships by sha256 anyway; the names live in `fetch.json` and U9's index.
+- `fetch.json`, canonical (`S.lock_text` form), written last:
+  `{"format": 1, "set": "sample"|"full", "arch": "amd64", "lock_sha256": "<sha256 of the lock text>",
+    "components": {"<key>": [{"name": ..., "sha256": ..., "size": ...}, ...]}}`.
+  Its presence means complete; U9's `bundle.sh --sources` refuses a
+  directory without it, or with another set, arch or `lock_sha256`
+  (U9's RED, not U8's). Not 64-hex, so it cannot collide with a file.
+- No partial output: on any client failure only the current `.part` exists
+  and the client deletes it; the script's trap removes the run's output
+  (item 3); a SIGKILL can leave files but never `fetch.json`, which U9
+  refuses.
+
+**7. Network path, per context (the crux; U8-7, U8-8, CLAUDE.md).**
+The fetch runs only in the `sources-fetch` container, on its own
+`ke-fetch-<hex>` project's default bridge, started by `bundle_fetch.sh`
+from a host shell. It never runs in `gates` (no network) or `gates-it`
+(the internal `backend`, whose only way out is the gateway's forward to
+the model host), never on `backend`, `edge`, `offline` or through the
+stack gateway, and never in `dind` or `offline-client`.
+| Context | Started by | Egress |
+|---|---|---|
+| Operator / maintainer build host | the operator: `build.sh`, then `bundle_fetch.sh --set full`, then `bundle.sh` | the host's Docker NAT, then the site network (SFU egress must allow the ten `hosts` over 443; ADR point 3 records the list) |
+| `verify.sh full` on the Windows dev box | `offline_check.sh` host half, after `teardown_verify` and `scan.sh`, so the verify project and its gateway are already gone | Docker Desktop's VM NAT, then the dev box's network (the same path as `scan-db` and the image pulls) |
+| CI (`runs-on: ubuntu-24.04`) | the same `offline_check.sh` | the runner's dockerd bridge NAT, then GitHub's hosted-runner network (Azure; GitHub `meta` "actions" ranges). Not the dev box's or SFU's network |
+- This keeps CLAUDE.md's "Networking is disabled for the gate services"
+  true: `sources-fetch` is a host-half one-shot like `scan-db`, not a gate
+  service. CLAUDE.md's host-half sentence must name it (Q73; the
+  architect supports option 2's text; *ruled 2026-10-28: option 2*). `verify.sh` itself does not change.
+- The memory note "private 2-vCPU runner" means GitHub's standard hosted
+  runner for a private repo, not a self-hosted one, so the CI path is
+  network-independent of the dev box (item 10).
+
+**8. `offline_check.sh` wiring (U8-8).** The interim block (the echo, the
+`docker-compose.sbom.yml pull sbom` and its `die`) is replaced, at the
+same place (after the Compose version check, before the ke-app base pull),
+by:
+```
+fetch_rel="dist/${project}-sources"
+echo "offline: fetching the source sample (scripts/bundle_fetch.sh --set sample)"
+bash scripts/bundle_fetch.sh --set sample --out "$fetch_rel" \
+  || die "scripts/bundle_fetch.sh failed (see its FAIL line above); no retry"
+df_log "after fetch"
+```
+- The EXIT trap also runs `rm -rf -- "$fetch_rel"` (pass or fail).
+- `bundle.sh` does not read it until U9 (`--sources "$fetch_rel"`).
+- What the gate proves at U8: every `full` run, locally and on CI, pulls
+  the generator through `bundle_fetch.sh`, then fetches one entry per kind
+  (7 keys, 25 files, 136,571,547 B at 0630586; every file host of the
+  lock) through the hardened service and checks each against the reviewed
+  lock (size, sha256, upstream digest, name checks), with Q61. The offline
+  install still passes with no route out; `dind` and `offline-client` gain
+  no network. It does not prove shipping (U9) or the e2e (U10).
+- Time (Q62/Q74; budget `B-fetch` 60 s, item 2): estimate 20-60 s for `sources: fetch` on CI (25 small
+  sequential requests to snapshot, GitLab, distfiles, PGDG, PyPI, Maven
+  plus 136 MB from GitHub). The generator pull is not new time. Measured
+  by the markers, on CI only (D8; local timings never count).
+- Disk: +0.13 GiB under `dist/` (already in `df_paths`), inside the 7 GiB
+  floor (U7d item 13). U11 re-derives.
+- The header comment's stage list is updated by the developer.
+
+**9. Other U8 changes.**
+- `bundle.sh` refusal: `bundle: the SBOM generator image is not present
+  (<ref>); run scripts/bundle_fetch.sh first; this script never pulls`.
+  Header per U8-9 (N13).
+- `sources_lock.sh` (U8-12): after `lock-check` decides (exit 0 or 3) and
+  before the InRelease copies and the lock move: `mkdir -- "$evdir/sboms"`
+  (an existing `sboms` fails: `evidence: <evdir>/sboms exists`), then each
+  `$work/sboms/<image>.spdx.json` (the same files `lock-needs` and
+  `lock-check` read) copied with the item-6 link and regular-file rules.
+  Any failure: lock unchanged. Committing them: Q77 (the architect agrees
+  with option 2).
+- README / CLAUDE.md: U8-9 and Q73 (the human's file; same commit).
+
+**10. The third Neo4j fetch (U8-11; U7d item 14).**
+- Every `full` run's sample includes `neo4j:neo4j@5.26.32`, so U8's own
+  verify runs on the dev box also fetch it. Those are the dev box's
+  network (the same as the first and second fetches): information only.
+- The third fetch is the first green CI run that includes U8b. Its record
+  is the job log's `bundle_fetch: ok neo4j:neo4j@5.26.32 5.26.32.tar.gz
+  sha256=182ae2e5...91e3 size=20907800 hops=github.com,codeload.github.com`
+  line; a mismatch cannot print `ok` (it fails CI closed, Q61).
+- Capture (R18): `gh run view <run-id> --log` filtered to the
+  `bundle_fetch:` lines, the "Runner Image" / "Operating System" group and
+  the job's start and end, saved to `u8/ci-<run-id>-fetch.txt` (CI logs
+  expire). Security appends the dated section to `sources-provenance.md`
+  (U8-11 fields; egress per item 7).
+- Mismatch: CI red; new first and second fetches, a reviewed lock change.
+  Never a skip, a retry or a hand-edited hash.
+
+**11. Security properties (for review; each has a test row in item 12).**
+No URL outside the lock (the client builds none); hosts only from the
+policy; the only first-request query is the apk API raw `ref=<commit>`
+(the lock rules refuse any other, and they run before any request);
+redirects only by hand under the hop rules; TLS >= 1.2, `ProxyHandler({})`,
+`-I` (no environment, no user site, no proxy, no rc file: PSC-23's curl
+flags met in kind); no retry; byte cap = the lock size; nothing unpacked,
+built or run; no secret and no caller key (literal service env,
+`--env-file .env.example`); no `docs/evidence` read by any test; no URL
+literal in `sources_fetch.py`.
+
+**12. Test plan.** Fast, fake network via `F.R.OPENER` (U7b pin 1) and a
+synthetic lock with one valid entry per kind built in the test (the U7a
+fixture helpers); fake docker for the scripts (`tests/fake_docker.py`
+models `sources-fetch` as it models `sources-resolve`: real client, binds
+rewritten, `FAKE_RESOLVE_NET`). Names indicative (U8-13; no counts in
+names).
+- **U8a first RED rows** (`tests/test_sources_fetch.py`):
+  1. `test_source_fetch_checks_before_use`: bytes != lock sha256 -> exit
+     1, the exact `stage fetch` line, `--out` holds nothing (no
+     `<sha256>`, no `.part`, no `fetch.json`); same for a size mismatch and
+     an upstream sha512/sha1 mismatch.
+  2. `test_source_fetch_is_https_only_to_listed_hosts`: a hop to a host
+     not in `hosts`, to `http://`, with a port, with `%2e%2e` -> refused;
+     a lock URL whose host is not in `hosts`, or a non-apk URL with a
+     query -> stage `lock` and zero `OPENER` calls.
+  3. `test_source_fetch_never_retries`: a 503, a timeout, a mid-body
+     timeout each -> exactly one `OPENER` call, `R.SLEEP` never called.
+  4. `test_source_fetch_dsc_names_match_the_lock_entry` (deb and pgdg:
+     an extra, a missing, a size and a sha256 difference) and
+     `test_source_fetch_apkbuild_names_match_the_lock_entry` (name set
+     and sha512 value differences; a skipped symlink name absent from
+     both passes).
+  5. `test_source_fetch_leaves_no_out_on_failure`: a fault on the n-th
+     file of a set (middle, last) -> no `fetch.json`, no `.part`.
+  6. `test_source_fetch_set_is_the_plan`: `sample` requests exactly
+     `sample_keys`' files, `full` every file for the arch, the other arch
+     never; a shared sha256 is requested once (`held` line).
+  7. Byte cap: a body longer than the lock size stops at the cap and
+     nothing past it is written.
+  8. `fetch.json`: canonical, last, `lock_sha256` of the lock text; the
+     `ok` line format, hops without a query; the run deadline via
+     `CLOCK`; disk via `DISK_FREE`; CLI exit 2 rows; any exception one
+     line, no traceback; `https://` absent from `sources_fetch.py`.
+  9. `sbom_check`: `lock_entry_problems(committed lock) == []`; a stale
+     (uncovered) entry gives no problem there but does in
+     `lock_problems`; `fetch_plan` rows.
+  10. `sources_resolve`: `download` has no `retries` parameter and calls
+      `OPENER` once on 503; `dsc_files` output unchanged on the U7c rows
+      (control).
+- **U8b first RED rows**: `test_sources_fetch_service_is_hardened`
+  (static compose, every item-3 key); `test_bundle_fetch_refuses_an_unsafe_out`
+  (link, file, non-empty dir; absent and empty accepted); usage/arch exit
+  2 before any docker call; order `pull` then `run sources-fetch`, dummies
+  and `--env-file .env.example`, `user` pattern; a failing fetch leaves no
+  `--out` (created) or an empty one (given), project torn down;
+  `test_offline_check_fetches_the_sample` (replaces the U2 pull rows:
+  events `fetch, pull base, pull neo4j base, bundle, drift, neo4j, up
+  dind, ...`, `--set sample`, the dir under `dist/` removed on pass and
+  fail, a fetch failure stops before `bundle`);
+  `test_bundle_refuses_when_sbom_generator_absent` re-pinned to the new
+  text; `test_sources_lock_keeps_the_run_sboms` (copied before the move,
+  byte-identical, links refused, an existing `sboms` refused, a failed
+  copy leaves the lock unchanged).
+- **Controls: nothing weaker than last round.** Every existing test in
+  `test_sources_resolve.py`, `test_sources_lock.py`,
+  `test_sources_lock_committed.py`, `test_offline_check.py` and
+  `test_sbom_generator.py` stays, except the named re-pins, each of which
+  keeps every event or substring it had (the interim pull's events become
+  the `fetch` event; nothing dropped). The tester records the baseline
+  test-name list from SAVED copies before RED (U7d lesson) and the
+  after-list at each re-pin (`u8/u8a-controls.txt`, `u8/u8b-controls.txt`);
+  an insertion must not split a neighbouring loop (U7e lesson).
+
+**13. Split: three commits.**
+| Unit | Scope | Loop | A34 |
+|---|---|---|---|
+| U8a | `sources_fetch.py`; `download`, `dsc_listing` (resolver); `lock_entry_problems`, `fetch_plan` (checker); item 12 U8a rows. No compose, no script, no wiring. | `fast`; `full` before the gate (scripts/) | no (no compose or shell change) |
+| U8b | `sources-fetch` service; `bundle_fetch.sh`; `offline_check.sh` wiring; `bundle.sh` refusal and header; `sources_lock.sh` SBOM copies; `fake_docker.py`; README; CLAUDE.md (Q73); ADR pointer; the real sample run and the full-set run (O-1). | `full` | yes (compose, scripts) |
+| U8c | After the push (human, Q74): the CI extract, the third-fetch section in `sources-provenance.md`, `u8/ci-timing.md`. Evidence and docs only. | `fast` | no |
+*Why:* U8a is network code and gets its own review/security loop with a
+fake network, as U7b did; U8b is wiring that only `full` and A34 can prove;
+U8c cannot exist before a push.
+
+**14. Order, with every evidence record scheduled** (`u8/` =
+`docs/evidence/platform-sbom/u8/`; redaction per the evidence rule).
+- R1 orchestrator: Q75/Q76 ruled, Q77 deferred; rule O-1..O-3 below; Q73
+  (before U8b's commit) and Q74 (before the push) are with the human.
+  *(Amended 2026-10-28, analyst: Q73 (option 2) and Q74 (69 min) ruled by
+  the human.)*
+- R2 tester U8a RED: `u8/u8a-controls.txt` (baseline from saved copies),
+  `u8/u8a-tester-red-verify-fast.txt`.
+- R3 developer U8a GREEN: `u8/u8a-developer-verify-fast.txt`, then
+  `u8/u8a-developer-verify-full.txt`.
+- R4 reviewer and security in parallel: `u8/u8a-review.md`,
+  `u8/u8a-security.md` (the hop, cap and no-retry paths).
+- R5 tester re-pins/controls after-list (`u8/u8a-controls.txt` appended);
+  orchestrator `u8/u8a-orchestrator-verify-full.txt`; commit U8a.
+- R6 tester U8b RED: `u8/u8b-controls.txt`, `u8/u8b-tester-red-verify-full.txt`.
+- R7 developer U8b GREEN: `u8/u8b-developer-verify-full.txt` (the first
+  real sample fetch, dev box; its `bundle_fetch:` lines are the U8-14
+  sample record).
+- R8 **expected values recorded before any real run** (orchestrator's
+  rule): `u8/expected.md` from the committed lock by a one-liner (sample:
+  keys, files, bytes, per-file sha256; full: 183 keys, 876 files, 716
+  distinct sha256, distinct bytes; `lock_sha256`).
+- R9 developer real runs on the dev box: `bundle_fetch.sh --set sample`
+  (`u8/sample-run.txt`) and, if O-1, `--set full` into a scratch dir
+  outside the repo (`u8/full-run.txt`; it is the first fetch of every deb
+  orig/debian tarball, which lock time never fetched). `u8/hop-hosts.md`:
+  hop chain per kind and whether `objects.githubusercontent.com` was used
+  (U8-10, O-2).
+- R10 **size and time record** `u8/size.md`: the sample's and (O-1) the
+  full set's bytes on disk, `df` before and after the fetch in
+  `offline_check` (from R7's log), the `sources: pull` and `sources:
+  fetch` marker times, local only and labelled so (Q62 counts CI only).
+- R11 security: diff + network path + hop hosts + the full run
+  (`u8/u8b-security.md`). Reviewer: `u8/u8b-review.md`.
+- R12 A34 Windows proof (tester): `bundle_fetch.sh --set sample` and two
+  refusals (non-empty `--out`, `--arch` mismatch) on Git Bash, plus
+  build/bundle/install.ps1/launch/teardown and `verify.sh full`:
+  `u8/a34-windows-run.txt`, `u8/a34-verify-full.txt`.
+- R13 documenter (README, the `bundle.sh` header if not the developer's);
+  the CLAUDE.md sentence lands only with Q73's ruling (ruled 2026-10-28,
+  option 2); marketer CHANGELOG
+  bullet after the gate.
+- R14 orchestrator `u8/orchestrator-verify-full.txt` on the final tree;
+  commit U8b.
+- R15 Q74 ruled; push (human approval); PR #15 CI run.
+  *(Amended 2026-10-28, analyst: Q74 ruled, 69 min; its RED pin and
+  `ci.yml` GREEN land inside U8, before this push.)*
+- R16 orchestrator: `u8/ci-<run-id>-fetch.txt` (item 10) and
+  `u8/ci-timing.md` (job duration, the two marker deltas, `sources:
+  fetch` against `B-fetch` 60 s, the job against 35m53s/37 min; PSC-16/Q62
+  data for U11).
+- R17 security: the third-fetch section in `sources-provenance.md`.
+- R18 analyst: PSC-23 status; documenter: handoff close and archive;
+  commit U8c (`verify.sh fast` for docs, `full` before the commit per
+  CLAUDE.md).
+
+**15. Decisions.**
+- For the human (the analyst's numbers): **Q73** CLAUDE.md wording: the
+  architect supports option 2 (it names the check and the fail rule).
+  **Q74** CI headroom: supports option 1, and adds that PS-3.4's own rule
+  on the 35m53s run gives 54 min; U8 adds an estimated 20-60 s, so a push
+  under 37 min is likely red. Also waiting (handoff U7e (3)): accept the
+  CI runner as the third fetch (GitHub-hosted, so network-independent of
+  the dev box; item 7) and keep the ARM one-liner as optional before the
+  first operator bundle. Recommended: accept.
+  *(Amended 2026-10-28, analyst: the human ruled Q73 option 2 and Q74
+  `timeout-minutes` 69, not 54; see `docs/open-questions.md`.)*
+- Ruled by the orchestrator (recorded at the top): Q75 (built in item 3),
+  Q76 (built in item 6); Q77 deferred (the architect supports option 2
+  when it is ruled). Still for the orchestrator:
+  - **O-1** a full-set real fetch on the dev box at U8b (1.18 GB distinct,
+    716 requests; first proof of every orig/debian tarball against the
+    lock). Recommended: yes, before security's review; a mismatch there is
+    a lock defect, back to the architect and security, never edited by
+    hand.
+  - **O-2** if R9 shows `objects.githubusercontent.com` unused for every
+    kind, drop it from `hosts` in U8b (U8-10: design note, test change,
+    security review). Recommended: yes (narrower egress); if U8b's scope
+    is tight, a follow-up.
+  - **O-3** the layout departs from the brief's "per-key directories,
+    names as in the lock" (item 6's reasons). Recommended: accept.
+- *Risk, recorded:* the sample fetches 15 files through GitLab's API raw
+  endpoint. U7c found the `/-/raw/` form behind an anti-bot challenge from
+  the dev box; the API form answered 200 there, but a GitHub-hosted
+  runner's addresses may be treated differently. A challenge fails CI
+  closed (`HTTP 418`, Q61) and comes back to the architect; the recorded
+  next candidate is the blobs endpoint (U7c item 9). Also recorded:
+  GitHub tag tarballs are not promised byte-stable (N5), and a transient
+  snapshot or GitLab error turns `full` red by name (ADR consequences).
+
+- *Orchestrator rulings (2026-10-28, after reading items 1-15):* **O-1** yes: the
+  full-set real fetch runs on the dev box at U8b before security's review; a
+  mismatch is a lock defect (architect + security), never a hand edit. **O-2**
+  yes, as a reviewed change in U8b if R9 shows the host unused for every kind;
+  a follow-up if U8b's scope is tight. **O-3** accepted: the flat `<sha256>`
+  layout plus `fetch.json`. The mechanism ruling (the resolver's opener, not
+  curl; ADR-KE-016 amended) stands. Q73/Q74 and the third-fetch acceptance go
+  to the human with the architect's recommendations.
+  *(Amended 2026-10-28, analyst: Q73 (option 2) and Q74 (69 min) ruled by
+  the human.)*
+- *Orchestrator rulings at U8b RED (2026-10-28, on the tester's four named
+  ambiguities, `u8/u8b-red-verify-fast.txt`):* **O-4** an `--arch` that differs
+  from the daemon's exits 1 naming both arches (U8-1/A75 wins; item 3's "exit 2"
+  is amended to 1). **O-5** on a client failure `bundle_fetch.sh` passes the
+  client's FAIL line through, adds one line of its own naming the stage and the
+  client's exit code, and exits with that code (1, or 2 on a bad argument);
+  U8-4's "one FAIL line" reads as "one line from the client"; the script never
+  adds a third. **O-6** README and the `bundle.sh` header say the fetched set is
+  what the bundle ships from U9 and claim nothing about sources shipping now
+  (U8-9); the tests pin only the build -> fetch -> bundle order and "the only
+  bundle step with a route out". **O-7** RED evidence is the fast run
+  (`u8b-red-verify-fast.txt`); R6's `u8b-tester-red-verify-full.txt` is
+  satisfied by the developer's GREEN full run and the orchestrator's full run.
+  Also: `scripts/bundle_fetch.sh` is staged with `git add --chmod=+x` on Windows.
+- *Orchestrator ruling at U8b rework 1 (2026-10-28):* **O-8** `bundle_fetch.sh`
+  passes the compose run's exit code through unchanged; its own line names
+  compose only for codes the client never returns (125, 126, 127) and names
+  `sources_fetch.py` otherwise; the script never reads the client's output to
+  tell the two apart. Rework 1 scope: review B-1, B-2, N-2, N-3, N-5; security
+  L-1, L-2 (`u8/u8b-review.md`, `u8/u8b-security.md`).
+- *Orchestrator ruling after the U8b real runs (2026-10-28):* **O-2 answered**:
+  `u8/hop-hosts.md` shows `objects.githubusercontent.com` unused in both the
+  sample and the full set (Temurin redirects to
+  `release-assets.githubusercontent.com`). Dropping it from `hosts` is a
+  reviewed U8-10 change in U8c (policy, design note, lock-rule test, security),
+  not in U8b, whose scope is closed after rework 1. Real-run results: sample
+  25 files 136571547 B in 25 s; full 716 files 1180936586 B in 615 s; both
+  equal to `u8/expected.md`; `lock_sha256` equal (`u8/full-run.txt`, `size.md`).
 
 ## N5. The lock: `docker/sources.lock.json` (generated, reviewed)
 
@@ -705,6 +1576,14 @@ Sample (Q63, ruled): for each `kind` present in the lock for this arch,
 the entry with the smallest total `size` (ties by key). `neo4j` and
 `temurin` have one entry each, so both are always fetched (estimate: the
 sample is a few hundred MB, dominated by those two).
+
+*Lock rule added 2026-10-28 (U8a rework; "N4 amendment, U8" item 1):*
+across the whole lock, one sha256 has exactly one `size`, exactly one
+upstream alg, and one upstream value for that alg. Otherwise
+`lock_problems` reports the entry against the first entry in lock order
+holding that sha256.
+A file of size 0 is exempt from the one-alg part (orchestrator ruling
+2026-10-28; U7d's size-0 GitLab apk rule).
 
 ### N5 amendment, U7 (architect, 2026-10-25)
 
@@ -1132,6 +2011,7 @@ these calls. No other endpoint is used.
     and reads `<asset>.sha256.txt` at the same path. Both are plain
     github.com file URLs, and their redirects go only to
     `objects.githubusercontent.com` or `release-assets.githubusercontent.com`.
+    *(Amended 2026-10-29, U8c O-2: objects.githubusercontent.com dropped from `hosts`; Temurin's redirect target is release-assets.githubusercontent.com, u8/hop-hosts.md.)*
   - Neo4j is the file URL
     `https://github.com/neo4j/neo4j/archive/refs/tags/<ver>.tar.gz`
     (redirect to `codeload.github.com`).
@@ -2104,6 +2984,757 @@ asserts its substring (U7a round 1 item 8).
 - Real (A34 re-run): `apk:pax-utils@1.3.8-r2` resolves, and its entry
   passes lock-check.
 
+**U7d precision (architect, 2026-10-25).** The human ruled Q71 option 1
+(a `pgdg` kind and the tenth host `apt-archive.postgresql.org`) and Q72
+option 3 (a bounded retry in the lock tool only). U7c is 86f7831. This
+block makes U7d implementable. It supersedes, for `pgdg`, U7a's
+"pgdg has no allowed host until Q71" and the U7c precision's "pgdg
+skipped" line.
+
+*P. The `pgdg` route.* The three keys from the U3 fixtures (item 2), all
+in `postgres`:
+- `pgdg:postgresql-16@16.15-1.pgdg12+2`;
+- `pgdg:postgresql-18@18.6-1.pgdg12+2` (its `libpq5`);
+- `pgdg:postgresql-common@293.pgdg12+1` (`postgresql-common` and
+  `postgresql-client-common`).
+
+1. **Route inputs (`lock-needs`).** The route is `{src, ver, suite}`.
+   - `suite` is `<codename>-pgdg-archive`, where `<codename>` comes from
+     the packages' purl `distro=debian-<major>.<minor>` through the fixed
+     table `{12: bookworm, 13: trixie}`.
+   - An unknown major, or packages of one key with different majors,
+     fails: `<key>: <image>: no pgdg suite for distro <d>`.
+   - apt-archive keeps every published version under the `-pgdg-archive`
+     suites; plain `bookworm-pgdg` holds only current versions.
+   - *Confirm at U7d by one probe before GREEN (fact, not ruling):*
+     `https://apt-archive.postgresql.org/pub/repos/apt/dists/bookworm-pgdg-archive/main/source/Sources.gz`
+     exists and lists the three versions. If the path or compression
+     differs, the architect amends the exact form. There is no fallback
+     chain in code.
+2. **The index, one fetch per suite per run.** It is
+   `GET https://apt-archive.postgresql.org/pub/repos/apt/dists/<suite>/main/source/Sources.gz`.
+   - It is streamed through `zlib.decompressobj(16 + zlib.MAX_WBITS)` and
+     parsed stanza by stanza, as deb822 with `parse_dsc`'s line rules:
+     LF only, no control characters, no duplicate fields, every line a
+     field or continuation.
+   - Only the stanzas whose `Package` is a needed `<src>` are kept; the
+     rest are discarded as read.
+   - Caps: 1 GiB compressed (the byte cap of this request) and 4 GiB
+     decompressed (`<suite> Sources: more than 4294967296 bytes
+     decompressed`). The index is estimated at tens of MB compressed and a
+     few hundred MB decompressed; U7d records the real sizes.
+   - *Index stanza rules.* The match is `Package == <src>` and `Version ==
+     <ver>`.
+     - None: `<suite> Sources has no <src> <ver>`.
+     - More than one: `<suite> Sources lists <src> <ver> more than once`.
+     - The stanza's `Directory` must be exactly `pool/main/<p>/<src>`,
+       where `<p>` is `<src>[:4]` if `<src>` starts with `lib`, else
+       `<src>[0]` (Debian's pool rule): `<src>: Sources Directory <d> is
+       not pool/main/<p>/<src>`.
+     - Its `Checksums-Sha256` must list `<src>_<ver without epoch>.dsc`:
+       `<suite> Sources: no .dsc for <src> <ver>`.
+3. **Trust chain, and no signature.**
+   - The `.dsc`'s SHA-256 comes from the Sources stanza, fetched over
+     HTTPS from the same host. That is the same Q48 form as deb's
+     snapshot SHA-1 from the mr API.
+   - Neither `Release`/`InRelease` nor the index signature is fetched or
+     verified. *Why:* the PGDG signing key would be a new trust root,
+     with key distribution and rotation to manage. deb's `.dsc` signatures
+     are not verified either (D4). The control is the per-file SHA-256
+     pinned in a lock that security and the human review, plus U8's
+     fetch-time check.
+   - *Ruling needed (P-R1):* confirm that the Release signature is not
+     verified.
+4. **The `.dsc`.** `GET https://apt-archive.postgresql.org/pub/repos/apt/pool/main/<p>/<src>/<dsc>`,
+   streamed with a 1 MiB limit, hashing SHA-256.
+   - It must equal the stanza's value: `<dsc>: sha256 mismatch: got <x>,
+     <suite> Sources says <y>`.
+   - It is parsed by `parse_dsc` with D4's and round 1's rules. `Source`
+     and `Version` equal the key; `Checksums-Sha256` and `Files` agree.
+   - *Cross-check:* the stanza's `Checksums-Sha256` names, minus the
+     `.dsc`, must equal the `.dsc`'s, with equal SHA-256s and sizes:
+     `<dsc>: Sources and .dsc list different files`.
+   - The other files are *not fetched*. Each gets a pool URL, and its
+     `sha256` and `size` come from the `.dsc`.
+5. **Lock rules (`lock_problems`, kind `pgdg`).**
+   - The entry has exactly `kind`, `arches`, `origin`, `files` and
+     `suite`. `suite` is a full match of `[a-z]+-pgdg-archive`.
+   - There is exactly one `.dsc`, named `<src>_<ver without epoch>.dsc`,
+     and at least one other file (as deb). Every file is `sha256`.
+   - Each url is `https://apt-archive.postgresql.org/pub/repos/apt/pool/main/<p>/<src>/<name>`
+     exactly. That means the host and the literal prefix, `<p>` and
+     `<src>` from the key by the pool rule, the last segment equal to
+     `name`, no query, no fragment, and a plain path. `+` and `~` stay
+     literal; no `%` escape is allowed.
+   - `upstream.from`: the `.dsc` is exactly `apt-archive.postgresql.org
+     <suite> Sources`; every other file is exactly `<dsc> Checksums-Sha256`.
+   - `apt-archive.postgresql.org` joins the policy `hosts` (ten), and the
+     U6 host-set test changes to ten. `KIND_HOSTS["pgdg"]` becomes that
+     host alone.
+6. **Requests and size.** One index fetch per suite (one: bookworm) and
+   three `.dsc` files of about 3-5 kB. The pgdg sources in the full set
+   are about 30-35 MB for postgresql-16 and postgresql-18 (orig.tar.bz2 /
+   .tar.xz) and well under 1 MB for postgresql-common (estimate). The
+   sample takes `postgresql-common`.
+
+*R. The retry policy (Q72; `sources_resolve.py` only).*
+1. **Where.** In `fetch()`, around one logical request: the first URL, its
+   redirect chain, and, through `stream()` and `text()`, its body read.
+   The budget is per logical request, not per file: a file that needs a
+   metadata call and a raw call has two budgets. `fetch(...,
+   retries=0)` is the default, and `resolve()` passes `RETRIES = 3`. So
+   U8, or any other caller that reuses `fetch`, gets Q61's single call
+   unless it opts in, which U8 must not (Q61).
+2. **Retried.** Only these:
+   - a final HTTP status 500-599 at any hop;
+   - `TimeoutError` or `socket.timeout`, raised by `OPENER` or during the
+     body read.
+
+   A mid-body timeout restarts the logical request from its first URL
+   with fresh hashers and a fresh size count. Nothing partial is kept
+   (Q72: no resume).
+   *Ruling needed (P-R2):* confirm that mid-body timeouts count as Q72's
+   "timeouts". The architect recommends yes: large tarballs are where they
+   occur.
+3. **Never retried:** any other status (4xx including 418, a 3xx with no
+   Location); a refused host, hop, scheme or path; more than 5 redirects;
+   any other `OSError` (e.g. `ConnectionResetError`) or
+   `http.client.HTTPException`; the byte cap; the deadline; any hash,
+   size, parse or binding failure.
+4. **Waits.** 10, 30 and 60 s (`RETRY_WAITS = (10, 30, 60)`), slept
+   through the module-level `SLEEP = time.sleep`. Tests patch `SLEEP` and
+   record the calls. There is no environment knob.
+5. **Printed line** (stderr, one per retry, before its wait):
+   - `retry <n>/3 in <wait> s: <host>: HTTP <code>: <url>`
+   - `retry <n>/3 in <wait> s: <host>: timeout: <url>`
+
+   `<url>` is the request URL that failed, cleaned. A signed query on a
+   GitHub hop is printed as-is; it is not a secret of ours, but U7d's
+   evidence redacts nothing else. After the third retry fails, the normal
+   item-4 failure line follows with the last error, and the lock is
+   unchanged. `sources_lock.sh` writes the run's stderr to the evidence
+   file, which is "recorded" (Q72).
+6. **Deadline.** Each attempt has its own 600 s per-file deadline, and
+   wait time is outside it. So a logical request is bounded by 4 × (600 +
+   60) s plus 100 s of waits, about 45 min worst case. `SNAPSHOT_PAUSE`
+   applies before every snapshot.debian.org request, retries included, in
+   addition to the retry wait.
+
+*S. U7d steps, in order (loop `full`; A34 yes, since `sources_lock.sh` and
+the policy change).*
+1. **Fresh images.** `scripts/build.sh` on the maintainer host, because
+   the host images are stale (`ke-app:local`; U7b note).
+2. **Tester RED:**
+   - `pgdg` (P1-P5, with a fake opener and a synthetic gzip index);
+   - retry (R1-R6: each retried and non-retried class, the exact lines,
+     the patched waits, budget exhaustion, a mid-body restart with fresh
+     hashers, the default `retries=0`);
+   - the carried rows:
+     - **U7c review R1-N1:** each decoded `<P>` middle segment is held to
+       the lock file-name rule (`[A-Za-z0-9][A-Za-z0-9._+~-]{0,254}`);
+     - **U7c review R1-N2:** a `.dsc` line that is not a field, a
+       continuation or blank fails: `<dsc>: line <n> is not a field or
+       continuation`;
+     - **security I-5:** the challenge test uses a synthetic
+       `__goaway_id` nonce, never the captured one;
+     - **the U6 host-set test** asserts ten hosts.
+3. **GREEN** (developer). `fast` for the loop, then `full`.
+4. **Security review** of the host and the kind (Q71): hop and redirect
+   behaviour of `apt-archive.postgresql.org` (real probe), the no-signature
+   decision (P3), and the index caps.
+5. **The real run.** The developer runs `scripts/sources_lock.sh --arch
+   amd64` on the maintainer host, capturing the full output to
+   `u7d/lock-run.txt`, redacted per the evidence rule: profile paths and
+   SIDs out, usernames and host names kept.
+   - The first run is expected to exit 3 with the Neo4j candidate. The
+     developer compares the candidate's sha256 and size with
+     `sources-provenance.md` and writes the `manual` entry (round 1 item
+     1). A re-run is then expected to exit 0.
+   - Any retry lines are kept in the evidence. If the run still fails,
+     Q72 sends it to the human.
+6. **O3 drift.** The fresh key set must equal the fixture key set (182).
+   An added or missing key stops U7d and goes to the orchestrator. A
+   different package count inside a shared key is information only: the
+   key, both counts and the differing purls (`neo4j:neo4j@5.26.32`: 72
+   fresh, 73 in the fixture, the U4b genai plugin) go in
+   `u7d/drift.txt`.
+7. **Commit content:**
+   - `docker/sources.lock.json`;
+   - the committed-lock test, `lock_problems(committed lock, committed
+     policy, six fixtures, "amd64") == []` and `lock_text(lock) == file
+     text`;
+   - `.gitattributes` with `docker/sources.lock.json text eol=lf`;
+   - `u7d/lock-sizes.txt` (item 5), the full set's size and the sample's
+     measured from the lock.
+8. **Security's lock review** (about 182 entries): the hosts and kinds,
+   the Neo4j manual entry, and spot re-fetches of a sample of `.dsc` and
+   apk files. It also includes the **third Neo4j fetch** from another
+   network path (the ARM model host or the CI runner; interface pins item
+   7), recorded in `sources-provenance.md`; a mismatch blocks the commit.
+9. **Reviewer**, then **A34** (`sources_lock.sh` on Windows), then the
+   orchestrator's `full`.
+10. **The CLAUDE.md row** (the human's file, same commit). Item 7's text
+    with the host list updated:
+```
+| `docker/sources.lock.json` | the bundled images' SBOMs (from `scripts/build.sh` images) and their upstream source metadata (snapshot.debian.org, apt-archive.postgresql.org, Alpine aports, GitHub, PyPI, Maven Central); `docker/source-policy.json`; `uv.lock` | `scripts/sources_lock.sh --arch <arch>` (maintainer, network; never run by verify or CI); security reviews every diff | `tests/test_sources_lock.py` runs `sbom_check.py`'s lock check on the committed lock in every verify run; from U9, `bundle.sh` (`sbom_check.py index`) refuses a package with no entry |
+```
+
+*Rulings needed (orchestrator).*
+- P-R1: confirm that the PGDG Release signature is not verified.
+- P-R2: confirm that mid-body timeouts are retried as whole restarts.
+- *Also:* the `suite` field is a fifth exact key on `pgdg` entries (a U7a
+  schema change, tested in U7d's RED).
+- *Ruled (orchestrator, 2026-10-25): P-R1 confirmed.*
+  - Neither the PGDG `Release` nor the `InRelease` signature is fetched or
+    verified.
+  - Trust rests on HTTPS, the `<suite>` Sources index SHA-256 of each
+    `.dsc`, the security- and human-reviewed lock, and U8's per-file
+    SHA-256.
+  - Security, reviewing the host at S4, will recommend whether a pinned
+    PGDG key is worth a new trust root. Adopting one would be a later
+    amendment, not U7d.
+- *Ruled (orchestrator, 2026-10-25): P-R2 confirmed.*
+  - A timeout during the body read is a Q72 timeout.
+  - It is retried as a full restart of the logical request from its first
+    URL, with fresh hashers and a fresh size count, inside the same
+    3-retry budget (R2).
+  - Nothing partial is kept.
+
+*P2 amended (probe 2026-10-26; `u7d/suite-probe.txt`; orchestrator ruling,
+architect's decisions).* This supersedes P1's *confirm* note and P2's
+index URL, decompression and caps.
+- *Probe facts.*
+  - `bookworm-pgdg-archive` exists; plain `bookworm-pgdg` gives 404 on
+    apt-archive.
+  - There is no `Sources.gz`. The source index exists only as
+    `main/source/Sources` (uncompressed, 5043212 B) and `Sources.bz2`
+    (734866 B).
+  - Each of the three keys has exactly one stanza, with `Directory:
+    pool/main/p/<src>` and `Checksums-Sha256` listing the `.dsc` and the
+    tarball.
+  - In Sources stanzas, `Checksums-Sha256:`, `Checksums-Sha1:` and
+    `Files:` carry their first entry on the field line itself.
+- **(1) The index (ruled).** `GET
+  https://apt-archive.postgresql.org/pub/repos/apt/dists/<suite>/main/source/Sources`,
+  uncompressed, so there is no decompression surface. It is streamed with
+  SHA-256 hashing under a **64 MiB** byte cap (`<suite> Sources: more than
+  67108864 bytes`). There is still one fetch per suite per run.
+- **(2) Release binding (architect's decision: yes).** Before the index,
+  the tool fetches `GET
+  https://apt-archive.postgresql.org/pub/repos/apt/dists/<suite>/Release`
+  as text (1 MiB cap; about 5 kB).
+  - Its `SHA256` field must hold exactly one entry whose path is
+    `main/source/Sources`, with 64 hex and a decimal size.
+  - None, or one without a valid hash: `Release lists no Sources sha256`.
+    More than one: `Release lists Sources sha256 more than once`.
+  - The streamed index's SHA-256 must equal that entry: `<suite> Sources:
+    sha256 mismatch against Release`.
+  - *Architect's precision:* its byte count must equal the entry's size.
+    The read stops as soon as the bytes pass that size: `<suite> Sources:
+    size <n> differs from Release <m>`. The 64 MiB cap still applies
+    above it.
+  - Stanzas are parsed as the bytes arrive, but no stanza is used until
+    the hash and size have matched at the end of the stream. Only the
+    needed stanzas are buffered.
+  - *Why:* it detects truncation or a mixed-up mirror state for one extra
+    small request on the same host. It is not a signature check: P-R1
+    stands, and Release is not verified cryptographically.
+  - The `.dsc`'s `upstream.from` stays `apt-archive.postgresql.org
+    <suite> Sources`. Release is an integrity check only, so no lock field
+    changes.
+- **(3) One shared deb822 parser (architect's decision: accept the first
+  entry on the field line, in both places).**
+  - `parse_deb822(text, label) -> list[dict]` (the paragraphs) serves
+    `parse_dsc` (one paragraph), the Sources stanzas and Release's `SHA256`
+    field.
+  - A multiline field's entries are its field-line value, if non-blank,
+    followed by its continuation lines. Each entry is checked by the same
+    per-field line rules (D4: three fields, hex length per field, decimal
+    size).
+  - Every existing rule holds in all three uses: CRLF folding, LF-only
+    split, U7c round 1 items 6 and 2 (control characters, duplicate
+    fields), and U7d RED's R1-N2 (a non-field line fails).
+  - *Why accept it in the `.dsc` too:* dpkg's deb822 allows it. One parser
+    means the Sources list and the `.dsc` list compare equal by
+    construction, which P4's cross-check needs. Debian `.dsc` files never
+    use the form, so accepting it costs nothing. This is a behaviour change
+    only if `parse_dsc` refused it before.
+  - Rows:
+    - a `.dsc` with its first `Checksums-Sha256` entry on the field line
+      parses equal to the same entry on a continuation line;
+    - a Sources stanza parses the same way;
+    - a field-line entry with a bad hex length fails like a continuation
+      line does.
+- **Updated failure texts (P2), exact:**
+  - `<suite> Sources: more than 67108864 bytes`;
+  - `Release lists no Sources sha256`;
+  - `Release lists Sources sha256 more than once`;
+  - `<suite> Sources: sha256 mismatch against Release`;
+  - `<suite> Sources: size <n> differs from Release <m>`.
+
+  These are unchanged from P2: `<suite> Sources has no <src> <ver>`,
+  `<suite> Sources lists <src> <ver> more than once`, `<src>: Sources
+  Directory <d> is not pool/main/<p>/<src>`, and `<suite> Sources: no .dsc
+  for <src> <ver>`.
+
+  The 4 GiB decompressed-size text is withdrawn.
+- *Tests:* a fake opener serves a synthetic `Release` and a plain
+  `Sources`, with no gzip. There are rows for each text above, plus a
+  Sources body one byte longer or shorter than Release says, and one with
+  the right size but a flipped byte.
+
+*Security design review adopted (orchestrator, 2026-10-26;
+`u7d/security-design.md`, PASS; A-1 is covered by the P2 amendment).*
+1. **Duplicate fields, per stanza.** `parse_deb822` refuses a duplicated
+   field within one paragraph only. A Sources index repeats `Package`,
+   `Version` and the rest in every stanza, and that is legal. The `.dsc`
+   (one paragraph) is unchanged. Rows:
+   - two stanzas, each with its own `Package`, parse;
+   - one stanza with `Package` twice fails (`<label>: duplicate field
+     Package`).
+2. **R-1, an offline signature check by security at S8.** The tool
+   itself still verifies no signature (P-R1).
+   - Security runs `gpgv` on the signed release file the run used,
+     against the fingerprint that the bundled `postgres` image already
+     pins, `B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8`.
+   - Security then checks that the Sources SHA-256 the run bound to and
+     the three stanzas' `.dsc` hashes equal the lock.
+   - It records the command, key source, result and hashes in
+     `sources-provenance.md`.
+
+   *Architect's precision, what "the InRelease the run used" means:*
+   - P2 amended (2) fetches `dists/<suite>/InRelease` instead of
+     `Release`. The clearsign armour is stripped with the `.dsc`'s rules,
+     dash-escapes undone, and the `SHA256` field read by `parse_deb822`.
+     The caps and failure texts are unchanged; the texts keep the word
+     `Release`.
+   - The resolver writes the raw bytes it fetched to
+     `/out/pgdg-<suite>.InRelease`. This is the second file it may write,
+     beside `lock.new.json`. Nothing else parses it.
+   - `sources_lock.sh` copies it into the work dir's evidence copy, and
+     the developer adds it to `u7d/` as `u7d/pgdg-<suite>.InRelease`.
+   - *Confirm by probe:* `InRelease` exists for `bookworm-pgdg-archive`.
+     If it does not, the tool fetches `Release` (bound as in P2) and
+     `Release.gpg`, saving both raw, and security runs `gpgv Release.gpg
+     Release`. The architect records which form holds; the code carries
+     one form, with no fallback.
+3. **R-2, run-wide bounds in `resolve()`.**
+   - **Retry budget:** at most 20 retries in total across all logical
+     requests of one run, on top of the 3 per request. The 21st retry
+     fails instead of waiting: `retry budget exhausted (20)`.
+   - **Run deadline:** 10800 s (3 h) of wall-clock time from the start of
+     `resolve()`, with waits and pauses counted. It is checked before every
+     request, every retry wait and every `SNAPSHOT_PAUSE`. A wait that
+     would end past the deadline fails at once: `run deadline 10800 s
+     passed`.
+   - Both lines go through item 1's `sources_lock: FAIL (resolve: <key>:
+     <text>; the lock is unchanged)` with the current key, and exit 1.
+   - Module constants `RUN_RETRIES = 20` and `RUN_DEADLINE = 10800` are
+     patched in tests; there is no environment knob.
+4. **R-3, pacing and 429.** `SNAPSHOT_PAUSE` applies before every attempt
+   to `snapshot.debian.org`, retries included (R6, unchanged). HTTP 429
+   is a 4xx, so it is never retried and fails closed with `<host>: HTTP
+   429: <url>`, even when a `Retry-After` header is present.
+5. **R-4, query redaction in retry lines.** In `retry <n>/3 in <wait> s:
+   ...` lines, the URL is printed with any query replaced by `?<query
+   omitted>`, for example a signed GitHub asset link.
+   *Architect's precision:* FAIL lines print the URL unchanged, as before.
+   A failing signed hop surfaces as `HTTP <code>` with its query. If
+   security wants the same redaction there, that is a one-line extension
+   by ruling.
+6. **R-5, never retried, pinned by rows.** Each case below makes exactly
+   one `OPENER` call, records no `SLEEP` and prints no retry line:
+   - `ssl.SSLError` and `ssl.SSLCertVerificationError`;
+   - `ConnectionResetError` and another `OSError`;
+   - `http.client.HTTPException` (`IncompleteRead`, `BadStatusLine`);
+   - a 3xx with no Location, or a non-https or unprintable Location;
+   - a sixth redirect;
+   - a hop to an unlisted host or with a non-plain path;
+   - the byte cap;
+   - the per-file deadline;
+   - a hash mismatch;
+   - a size mismatch against the `.dsc` or Release;
+   - HTTP 400, 403, 404, 418 and 429.
+
+   Contrast rows: 500, 502, 503 and 504, and a `socket.timeout` (head and
+   mid-body), are retried with waits `[10, 30, 60]`.
+7. **Confirmed (orchestrator, 2026-10-26; `u7d/security-design.md` §2).**
+   - `dists/bookworm-pgdg-archive/InRelease` exists. Security fetched it
+     and verified it with `gpgv` against
+     `B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8`.
+   - The InRelease form of item 2 holds. The `Release` plus `Release.gpg`
+     alternative is withdrawn, and the code carries the InRelease form
+     only.
+   - The second output file, `/out/pgdg-<suite>.InRelease`, is accepted.
+     It falls under the existing "writes only to `/out`" service and
+     compose rules.
+
+**U7d rework round 1 (orchestrator rulings, 2026-10-26).** These come from
+`u7d/review.md`. All fail closed.
+1. **B1, wrapped timeouts.**
+   - A `urllib.error.URLError` whose `.reason` is a `TimeoutError` (which
+     covers `socket.timeout`) is a Q72 timeout. That is the case for
+     connect, TLS handshake and send timeouts, which urllib wraps.
+   - `_default_opener` (or `_transport`) unwraps it, so the request is
+     retried with the waits 10, 30 and 60 s and the `retry <n>/3 in <wait>
+     s: <host>: timeout: <url>` line, inside the per-request and run-wide
+     budgets. Once retries are exhausted, it fails as `<host>: timeout
+     after <n> s: <url>`.
+   - Any other `URLError` is never retried and fails as `<host>: <reason
+     class>: <url>`. That covers a reason that is an `ssl.SSLError`
+     (certificate or handshake failure, `SSLCertVerificationError`
+     included), a `ConnectionRefusedError`, any other `OSError`, or a
+     plain string, which prints as `URLError`.
+   - The test is against the real `_default_opener`'s exception mapping,
+     not only the fake opener. Stub `urllib.request.build_opener` to raise
+     each case and assert the class it maps to. `HTTPError` keeps its
+     status path.
+   - Rows:
+     - `URLError(TimeoutError())` and `URLError(socket.timeout())` are
+       retried;
+     - `URLError(ssl.SSLCertVerificationError())`,
+       `URLError(ConnectionRefusedError())` and `URLError("x")` are not
+       (one `OPENER` call, no `SLEEP`).
+2. **B2, the `hostpath` fix to `docker save`, pinned.**
+   - The developer's change, `docker save -o "$(hostpath ...)"` in
+     `sources_lock.sh`, is accepted as the right fix. It was made after
+     `u7d/lock-run-0-failed-docker-save.txt` showed the Windows docker CLI
+     receiving a POSIX path.
+   - It must be pinned. A fast test puts a `cygpath` shim on `PATH` that
+     prints a recognisable `-m` form, runs the script under fake docker,
+     and asserts that every `save -o` argument fake docker records is that
+     form.
+   - A control row without the shim asserts the POSIX path is passed
+     through unchanged on Linux.
+   - *Lesson, recorded:* a production change made during a real run is a
+     process breach while it has no RED and is unreported. Any change
+     found necessary during a real run stops the run. It goes back through
+     RED, then GREEN, and is reported in the handoff before the run
+     resumes. Evidence of the run that found it is kept (as
+     `lock-run-0-*`).
+3. **N1, `suite` bound to its image.**
+   - In `lock_problems`, a `pgdg` entry's `suite` must equal the suite
+     that `lock-needs`' own function derives from the docs it is given.
+     One shared `pgdg_suite(distro)` maps `{12: bookworm, 13: trixie}` to
+     `<codename>-pgdg-archive`, used by both.
+   - Every package mapping to the key must derive the same suite. If they
+     differ: `<key>: packages derive suites <a>, <b>`.
+   - Otherwise a mismatch fails: `lock: <key>: suite <s> is not <expected>
+     (from <image> distro <d>)`.
+   - Rows: `evil-pgdg-archive` and `trixie-pgdg-archive` on a debian-12
+     package are problems; `bookworm-pgdg-archive` is good.
+4. **N2, the InRelease is copied before the move, to a given directory.**
+   - `sources_lock.sh` gains a required option `--evidence-dir <dir>`. The
+     directory must exist and be writable, else `sources_lock: FAIL
+     (evidence: <dir> is not a writable directory; the lock is
+     unchanged)`. No `u7d` path is hard-coded.
+   - After `lock-check` has passed, or returned 3 for pending neo4j, and
+     *before* the temp-file `mv` over `docker/sources.lock.json`, the
+     script copies every `/out/pgdg-*.InRelease` into that directory.
+   - A failed copy fails the run (`sources_lock: FAIL (evidence: copy of
+     <file> failed; the lock is unchanged)`). The EXIT trap removes the
+     temp file and the lock stays untouched.
+   - When no pgdg key was resolved, there is nothing to copy and the copy
+     step is skipped silently.
+   - Rows:
+     - the option is missing (exit 2), the directory is missing, or it is
+       read-only;
+     - a copy fails (via the fake);
+     - the order is pinned: the copy is recorded before the `mv`, and the
+       lock is unchanged when the copy fails.
+5. **N3:** cosmetic, no change. **N4:** noted, no change.
+6. **Security L-1, links in the copy step (orchestrator, 2026-10-26).**
+   - Before copying, item 4's step checks each `/out/pgdg-*.InRelease`
+     with `[ -L "$f" ]`. A link fails: `sources_lock: FAIL (evidence: <f>
+     is a link; the lock is unchanged)`.
+   - Anything that is not a regular file (`[ -f ]` false) fails the same
+     way, with `is not a regular file`.
+   - Regular files are copied with `cp -P -- "$f" "$dir/"`.
+   - The check and the copy both run before the lock move, so the lock
+     stays unchanged on failure.
+   - Rows: a symlink in `/out` pointing outside it; a directory named
+     `pgdg-x.InRelease`; a regular file, which is copied, with the copy
+     recorded before the `mv`.
+7. **Status, S8 part 1: the third Neo4j fetch (orchestrator,
+   2026-10-26).**
+   - This fetch is blocked on the human. ssh to the ARM hosts is refused
+     when non-interactive, and the options are recorded in
+     `sources-provenance.md`.
+   - Per the U7b ruling (interface pins item 7), the committed lock waits
+     for it. The U7d commit lands only after a third fetch over a
+     different network path matches the sha256 and size in the lock, and
+     is recorded in `sources-provenance.md`.
+   - Everything else in S1-S10 may proceed. A mismatch, or no third fetch,
+     means no lock commit.
+8. **Symlinks in aports (orchestrator ruling, 2026-10-26;
+   `u7d/lock-run-1.raw`).** The real run failed on the first apk key.
+   `main/alpine-baselayout/alpine-baselayout.post-upgrade` is a mode
+   `120000` entry. This supersedes, for mode `120000` only, the gap
+   rulings' "Mode `120000` (a symlink) ... fails".
+   - **How the target is read (architect: one form).** It comes from the
+     files-API metadata call the resolver already makes for files outside
+     `sha512sums`, `GET .../repository/files/<quote(path, safe='')>?ref=<commit>`
+     (a resolver call, never a lock URL). GitLab returns a symlink's blob,
+     whose git content is the target path, as JSON:
+     - `encoding` must be `base64`;
+     - `size` must be ≤ 1024;
+     - `content` is base64-decoded strictly (`validate=True`) to at most
+       1024 bytes;
+     - `content_sha256` must equal the SHA-256 of the decoded bytes.
+
+     The raw endpoint is not used for links. The decoded target must be
+     ASCII with no NUL, CR or LF; any other result is a failure.
+   - **Accepted only when all of these hold.**
+     - The target is one path segment: no `/`, not `.` or `..`, and it
+       passes the lock file-name rule.
+     - The same directory as the link, in the same recursive listing,
+       holds a tree entry of that name that is a blob of mode `100644` or
+       `100755`.
+   - **Then it is skipped.** It is not locked; its target is, so the
+     corresponding source is complete and a `git checkout` of the
+     directory reproduces the link. The resolver prints exactly one
+     information line on stderr, `<origin>: <path> -> <target> (symlink to
+     a locked file, skipped)`, with `_clean` applied.
+   - **Fails, with the existing text** `<origin>: <path> at <commit> is
+     not a regular file`, in each of these cases:
+     - a target with `/` (another directory, `../other/x`), or an absolute
+       path (`/etc/passwd`);
+     - `.`, `..`, or an empty target;
+     - a missing name, or a target that is a tree entry;
+     - a target that is itself mode `120000` (a chain);
+     - a target that fails the name rule;
+     - a decode or size failure.
+
+     Mode `160000` (a submodule) and any other mode still fail.
+   - *Architect's precision:* a skipped link's name that also appears in
+     `sha512sums` fails: `<origin>: <name> is a symlink named in
+     sha512sums`. The checksum would otherwise be checked against the
+     wrong bytes, or against distfiles.
+   - **Rows.**
+     - The real shape passes: `alpine-baselayout.post-upgrade` ->
+       `alpine-baselayout.post-install`, both in `main/alpine-baselayout`,
+       the target `100644`. The link is skipped, the target is locked, and
+       the information line is printed once.
+     - Each of these fails: a link to `../other/x`, to `/etc/passwd`, to a
+       missing name, to another symlink, or to a subdirectory.
+     - So do: a link whose `content` is not valid base64, a link over 1
+       KiB, and a link named in `sha512sums`.
+     - A `160000` entry still fails.
+9. **Record (orchestrator, 2026-10-26).** The run log confirms that item
+   2's `hostpath` fix to `docker save -o` was needed. Before it, the
+   Windows docker CLI received a POSIX path and the save failed
+   (`u7d/lock-run-0-failed-docker-save.txt`). Item 2's lesson stands: the
+   fix was right, but it should have gone through RED before the run
+   continued.
+10. **A leading underscore in file names (orchestrator ruling,
+    2026-10-26; `u7d/lock-run-2.txt`).** Run 2 stopped on
+    `apk:apk-tools@3.0.3-r1`, whose regular file `_apk` failed the name
+    rule's leading character.
+    - `LOCK_FILE_NAME_RE` becomes `[A-Za-z0-9_][A-Za-z0-9._+~-]{0,254}`,
+      in `sbom_check.py` (the lock side) and in `sources_resolve.py`'s
+      copy (the resolver side).
+    - A leading `-` or `.` is still refused, and so is `..` anywhere.
+    - The one pattern serves every use of the file-name rule, including
+      U7a round 1 item 3, the U7c gap rulings, the decoded `<P>` middle
+      segments (U7d R1-N1) and item 8's symlink targets. So all of them
+      now accept a leading `_`.
+    - Stored names are content-addressed (`app/sources/files/<sha256>`,
+      N9), so PSC-24's manifest path rule is unaffected.
+    - Rows:
+      - `_apk` and `_x.patch` are good;
+      - `-x`, `.x`, `a..b` and `_` followed by a `/` still fail;
+      - the two copies of the pattern in `sbom_check.py` and
+        `sources_resolve.py` are asserted equal, so they cannot drift.
+    - *The "printed twice" skip line (cosmetic), architect's reading:*
+      lines 17-18 of `lock-run-2.txt` come from two different keys. Keys
+      resolve in sorted order, and they are `apk:alpine-baselayout@3.7.1-r8`
+      (ke-gateway) and `apk:alpine-baselayout@3.7.2-r1` (valkey), each
+      with the same link in its own commit. That is one correct line per
+      key, not a duplicate. The fix is the prefix: the line becomes
+      `<key>: <path> -> <target> (symlink to a locked file, skipped)`,
+      which makes the two distinct. Within one key, the line still prints
+      exactly once per link. Row: two keys with the same link give two
+      lines with different keys.
+11. **Status (orchestrator, 2026-10-26).** The tester is probing all 19
+    aports package directories read-only, at each key's commit, recorded
+    in `u7d/aports-probe.txt`, so that any other real-data shape is ruled
+    in one pass. Any new shape comes back to the architect for a
+    design-note ruling before the tester's RED. It is never added in the
+    developer's code first (item 2's lesson).
+12. **Empty aports files, and the probe result (orchestrator, 2026-10-26;
+    `u7d/aports-probe.txt`).**
+    - **Rule.** An `apk` file whose url is the GitLab API raw form (item 9
+      of U7c round 1) may have `size == 0`. Empty aports files exist, have
+      a well-defined SHA-256, and are bound by the files-API
+      `content_sha256` or the APKBUILD's SHA-512.
+      - *Architect's precision:* when `size == 0`, `sha256` must be
+        exactly
+        `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`,
+        else `lock: <key>: <name>: size 0 but sha256 is not the empty
+        hash`. A `sha512` upstream must be the empty SHA-512.
+      - Every other file, apk distfiles included, keeps `0 < size <=
+        4294967296` (U7a round 1 item 10). The resolver streams a 0-byte
+        body as it does any other.
+      - Rows:
+        - a 0-byte `.post-install` at the API raw form with the empty hash
+          is good;
+        - size 0 with another hash fails;
+        - size 0 at a distfiles url fails, and so does size 0 on a deb or
+          maven file;
+        - `size: -1` and `false` still fail.
+    - **Probe result.** 59 read-only API requests across the 19 apk keys,
+      at each key's commit:
+      - The only shape that breaks a rule is a leading underscore: `_apk`
+        (apk-tools), and musl's `__stack_chk_fail_local.c` and
+        `__NR_riscv_hwprobe.patch`. Item 10 covers it.
+      - There is one symlink shape, alpine-baselayout's
+        `.post-upgrade -> .post-install`, covered by item 8.
+      - The largest listing is 80 entries, under `per_page=100`, so
+        truncation rule 7 is not triggered.
+      - There are no subdirectories, no basename collisions and no
+        main/community overlaps.
+      - Zero-size files were not probed, hence the rule above, ruled in
+        advance.
+
+      No other new shape was found, so the remaining real run should not
+      need another apk ruling. Any surprise still comes back here before
+      the RED (item 11).
+13. **The lock and the PS-1.2 hardcoded-port scanner (orchestrator,
+    2026-10-26).**
+    - `tests/hardcoded_scan.py` skips `docker/sources.lock.json` through
+      its path-exact allowed-files mechanism. It is never a line
+      exemption or a pattern. The reason is: "generated lock: sizes and
+      hashes (PSC-15); checked by test_sources_lock_committed.py".
+    - In return, the committed-lock test also asserts two things:
+      - no object in the lock has a key named `http` or `port`, or any key
+        outside U7a's exact key sets (already pinned, restated here);
+      - every JSON integer in the file is the value of a `size` key or of
+        the top-level `format`.
+
+      So nothing port-like can hide in the skipped file.
+    - Security reviews this as a PS-1.2 change.
+    - Rows:
+      - a lock with an extra integer field fails the committed-lock check,
+        and so does a URL with `:8443`, already refused by U7a's
+        no-port rule;
+      - the scanner's allowed-files entry is exact: another JSON path
+        under `docker/` is still scanned.
+    - *Review R1 (`u7d/review-r1.md`, APPROVED; orchestrator,
+      2026-10-26).*
+      - **R1-N1, the APKBUILD is never empty.** Item 12's `size == 0`
+        allowance does not apply to the apk file named `APKBUILD`. Its
+        `size` must be > 0 (`lock: <key>: APKBUILD: size 0`). The resolver
+        cannot produce an empty APKBUILD anyway, since A4 needs literal
+        `pkgver` and `pkgrel`, but the lock side now refuses one too.
+        Row: the fixture apk entry with an empty APKBUILD carrying the
+        empty hash fails with that text. A 0-byte `.post-install` stays
+        good.
+      - **R1-N2, recorded.** Package counts within keys were not compared,
+        because the run's SBOMs are deleted. The key-set check, which is
+        the O3 gate, passed, and the neo4j 72 against 73 count is already
+        on record from the U7b A34 proof. The recommendation in the
+        real-run results below (keep the run's SBOMs under
+        `--evidence-dir/sboms/`) stands, as a U8 change with its own RED.
+      - **R1-N4, optional pins, noted.** The committed-lock test pins the
+        neo4j entry to its provenance values. It could equally pin, with no
+        network:
+        - the temurin entry's sha256 to the sidecar value in
+          `sources-provenance.md`;
+        - ke-app's two `pypi:` entries' url, sha256 and size to their
+          `uv.lock` sdists.
+
+        The reviewer checked both by hand and found them equal. They are
+        not required for U7d; adding them is the tester's call, and they
+        are recommended as cheap drift guards.
+      - R1-N3 (the gates, not findings) is covered by item 7 (the third
+        fetch) and by this item's scanner entry.
+
+*Real-run results (U7d S5/S6; `u7d/lock-run-3.txt` exit 3, 759 s wall;
+`u7d/lock-run-4.txt` exit 0, 98 s wall).* These are measurements. They
+supersede item 5's and P6's estimates.
+- **Keys:** 182, equal to the fixture key set, so O3 holds and nothing was
+  added or missing.
+- **Files:** 872. 2 symlink skips (item 8, one per alpine-baselayout key).
+  0 retries.
+- **Neo4j:** the candidate equalled security's second fetch (sha256
+  `182ae2e5...91e3`, 20907800 B). The manual entry was written, then the
+  re-run exited 0.
+- **Lock-check:** ok (182 components, amd64) against the fixture SBOMs.
+- **Full set:** 1,327,035,158 B (about 1.24 GiB), at the low end of item
+  5's 1.3-1.6 GB estimate.
+  | kind | size |
+  |---|---|
+  | deb | 898.8 MB |
+  | apk | 238.1 MB |
+  | temurin | 115.1 MB |
+  | pgdg | 48.1 MB |
+  | neo4j | 20.9 MB |
+  | pypi | 5.8 MB |
+  | maven | 0.2 MB |
+- **Sample:** 7 keys, one per kind, 136,571,547 B (about 130 MiB), below
+  item 5's 200-300 MB estimate. Temurin dominates it.
+- **Manifest:** 872 source lines at 154 B each is about 131 kB, well under
+  install's 1 MiB cap (N9's limit of about 6,800 lines).
+- **The 7 GiB floor (R6), by Q63's derivation:** about 4.3 GiB today (the
+  bundle plus the dind store after load). A source file is present up to
+  three times: the fetch directory, the bundle copy and install's staging
+  in `/install`.
+  - *Sample, the verify path:* + 3 × 0.13 GiB ≈ +0.4 GiB, for about 4.7
+    GiB against 7 GiB, roughly 49% headroom. U8 and U11 confirm it on CI;
+    no floor change is expected.
+  - *Full set, the operator path:* + 3 × 1.24 GiB ≈ +3.7 GiB, for about
+    8.0 GiB. That exceeds the 7 GiB floor, so an operator full bundle
+    needs a larger floor or host, and the `/install` tmpfs grows by about
+    1.24 GiB (N14). U11 re-derives and states both.
+- **Run time:** the first full run was 759 s and the incremental re-run
+  98 s. Both are well inside S's estimate and the 3 h run deadline.
+- **Package counts within keys (O3 information) were not compared:** the
+  tool deletes the run's SBOMs with its work dir.
+  - *Architect's recommendation:* yes, keep them. `sources_lock.sh` copies
+    the fresh `*.spdx.json` into `--evidence-dir` as `sboms/<image>.spdx.json`,
+    before the lock move, with item 6's link and regular-file rules. Then
+    the within-key comparison (`neo4j:neo4j@5.26.32`, 72 against 73) can be
+    computed from evidence.
+  - This is a U8 or later change, with its own RED. It is not U7d.
+  - For U7d, the key-set equality above satisfies O3 (U7b round 1, the
+    O3 observation). The committed-lock test against the fixtures stays
+    the gate.
+
+14. **The third Neo4j fetch moves to U8 (orchestrator refinement,
+    2026-10-27).** This refines interface pins item 7 and supersedes item
+    7 of this block, "A mismatch, or no third fetch, means no lock
+    commit".
+    - **The U7d commit proceeds** without the third fetch.
+    - **What satisfies the network-independent check.** It is U8's first
+      bundle-time sample fetch on the CI runner.
+      - The Neo4j tarball is always in the sample: `neo4j` is a singleton
+        kind, so `sample_keys` always picks it.
+      - The fetch goes over the runner's network, and U8's Q61 rule fails
+        it closed on a sha256 or size mismatch.
+      - The CI job log is the record. It is cited in
+        `sources-provenance.md` at U8 with the run id, the date and the
+        line showing the matched sha256.
+      - This happens before any operator bundle exists. Rule N1 holds: no
+        operator bundle before U9, and U8 comes before U9.
+    - **Accepted earlier alternative.** The human's manual one-liner on an
+      ARM host, recorded in `sources-provenance.md` with host, date,
+      sha256 and size, satisfies the check if it comes first.
+    - **A mismatch at U8** means a new first fetch and a new second fetch,
+      then a reviewed lock change. It is never a skip, a retry (Q61) or a
+      hand-edited hash.
+    - *Architect's note:* the check is only as independent as the runner's
+      route out. The U8 record should name the runner's egress as far as
+      it is known. If that is the same network path as the developer's and
+      security's fetches, the ARM one-liner stays the stronger check, and
+      the orchestrator may still ask the human for it before the first
+      operator bundle.
+    - *Reason:* ssh to the ARM hosts is refused non-interactively (item 7),
+      and the human asked to resume.
+    - **Also recorded.** The CLAUDE.md "Generated artifacts" row for
+      `docker/sources.lock.json` was added with the human's approval
+      ("add it"), using the S10 text. `scripts/verify.sh fast` passed
+      afterwards (`u7d/claude-row-verify-fast.txt`).
+
 ## N6. The final SPDX document
 
 `finish` keeps syft's packages, files and relationships and changes only:
@@ -2570,6 +4201,10 @@ id. Fail closed. Real-row effect: none (reviewer and security simulated).
 
 ## N9. `sources/index.json` and the stored names (PSC-15, PSC-24)
 
+*Amended U9 (2026-10-29): see "N9 amendment, U9" below. It adds the
+`sources-check`/`index`/`notices` split and supersedes this section's
+index schema where its item 5 says so.*
+
 Stored names are content-addressed: `app/sources/files/<sha256>`
 (64 lowercase hex; passes the manifest rule, never case-clashes, never a
 Windows reserved name, and dedups a file two components share).
@@ -2598,6 +4233,1966 @@ Windows reserved name, and dedups a file two components share).
 - Manifest size: each source line is 64 + 2 + 87 + 1 = 154 bytes, so the
   1 MiB cap allows about 6,800 files. Estimate for the full set: under
   1,000 (PSC-16 measures).
+
+### N9 amendment, U9 (architect, 2026-10-29)
+
+Makes U9 (PSC-15, PSC-24; N15 row U9) implementable against the analyst's
+"U9 precision" criteria U9-1..U9-15 (`docs/requirements.md`, under
+PSC-24) and Q78-Q80 (`docs/open-questions.md`, for the orchestrator).
+*Keeps:* N9's stored names (`app/sources/files/<sha256>`) and `path`
+rule; ADR points 3 (`--sources`, `--sources-set sample` only from
+`offline_check.sh`, "re-hashes and copies offline"), 5 (path rule
+unchanged) and 6 (`bundle.json` and both installers unchanged); N4
+amendment U8 items 1 and 6 (`lock_entry_problems`, `fetch_plan`, the flat
+fetched layout, `fetch.json` written last, O-3); N8 amendment U5 item 7
+(`needs` never re-derived); the N10 amendment U6 correction (`always`
+overrides only the classifier; the listing); N10 I-3; N11 (the e2e
+`verify`) stays U10. *Supersedes:* N3's single `index` that also read the
+fetched directory (split into `sources-check`, before any write, and
+`index`, after the SBOMs: items 3 and 5; PSC-24 "checks that can run before
+any write still run before it"); N9's index schema where item 5 says
+otherwise. No spans: a build-time tool, not an agent step (N3, ADR).
+
+**1. Module boundaries (one checker, no new file, no new dependency).**
+- `scripts/sbom_check.py` gains pure functions (no I/O; the CLI wrappers
+  do the reads and the directory listing):
+  - `fetch_record_problems(record_text, lock_text, policy, arch, which) -> list[str]`
+    (item 3 a-d);
+  - `listing_problems(listing, plan, record) -> list[str]`, where
+    `listing` is `{name: (kind, size)}` built by the CLI with
+    `os.scandir` + `lstat` (never following a link), `kind` one of
+    `file`, `link`, `dir`, `other`, and `record` says whether `fetch.json`
+    belongs in it (True for `--sources`, False for the copied
+    `app/sources/files/`) (item 3 e, item 5 step 5);
+  - `exempt_matches` gains the multi-match problem (item 6);
+  - `source_index(docs, lock_text, policy, arch, which, git_sha, listing) -> (index | None, problems)`
+    (item 5);
+  - `source_section(index) -> (text | None, problems)` (item 7).
+- Three subcommands, each N3's form (argv paths only, read-only inputs,
+  stdout only, first 20 problems on stderr, exit 1; exit 2 on a bad
+  argument; every exception one line, never a traceback, the U7b rework
+  round 1 form): `sources-check`, `index`, `notices` (N3's name).
+- All three run where `finish` runs: inside the `ke-app` image being
+  bundled, `docker run --rm --network none --read-only --cap-drop ALL
+  --security-opt no-new-privileges --pull never --user "$sbom_user"
+  --label "com.docker.compose.project=${project}-sbomcheck"`,
+  `MSYS_NO_PATHCONV=1`, binds through `hostpath`, all `:ro`. No compose
+  change, no new service, no new image. `tests/fake_docker.py` already
+  runs the real checker with binds rewritten (U3), so no model change is
+  expected; a mount form it does not model is a fake change, never a
+  script change.
+- *Why in `sbom_check.py`:* N3 (one checker) and ADR point 2; the lock
+  sha256, `lock_entry_problems` and `fetch_plan` already live there.
+- *Alternatives rejected.* (a) jq and `sha256sum` in `bundle.sh`: a second
+  implementation of the plan, the canonical form and the lock hash (N3
+  rejected jq). (b) Host `python3`: not a build-host prerequisite of
+  `bundle.sh` (jq and docker are). (c) In `sources_fetch.py`: the network
+  tool; it never runs in the bundle step. (d) One `index` run after the
+  SBOMs that also checks the fetched directory (N3 as written): U9-2/U9-3
+  require the refusal before any tag, save or write.
+
+**2. `bundle.sh` command line and stage order (U9-1; Q78).**
+```
+scripts/bundle.sh --out <dir>-<arch> --sources <dir> [--sources-set full|sample] [--arch amd64|arm64]
+```
+- `--sources` is required (Q78 option 1, recommended): absent, without a
+  value, or repeated exits 2 with the usage line before any docker call.
+  `--sources-set` defaults to `full`; a value other than `full` or
+  `sample`, no value, or a repeat exits 2. Header and usage name both.
+- `--sources` is made absolute as `--out` is. Refused (exit 1, one
+  `bundle:` line naming it, before any docker call): a symlink; absent or
+  not a directory; `fetch.json` absent, a link or not a regular file
+  (`bundle: --sources <dir> has no fetch.json (or it is not a regular
+  file); run scripts/bundle_fetch.sh --set <set> first`, A76); `--sources`
+  equal to, inside, or containing `--out` (compared after `cd -P` of
+  `--sources` and of `--out`'s nearest existing ancestor, segment-wise),
+  so no write can land under `--sources` (U9-1).
+- Order of the whole script (new steps in **bold**): arguments; jq; arch;
+  `--out` checks (with the N-9 fix, item 9); record absent; **`--sources`
+  shell checks**; floor; compose model and refs; images present; generator
+  present; vendor notices; `engine.notices`; **`sources-check` (item 3)**;
+  dirty; *first write*: **`mkdir` of `--out` if absent (`created=1`)**,
+  tag and save; `app/`; root notices; `bundle.json`; SBOMs; **copy (item
+  4)**; **`index` (item 5)**; **`notices` appended (item 7)**; **`app/`
+  notice copies (item 7)**; manifest (**item 8 checks**); record. Every
+  refusal before *first write* leaves `--out` and the record as they were.
+- `bundle.sh` reads `--sources` only through `:ro` mounts and `cp` reads;
+  it never writes, deletes or renames under it (U9-1).
+
+**3. `sources-check` (before any write; U9-2, U9-3).**
+```
+sbom_check.py sources-check --lock L --policy P --dir D --arch A --set S
+```
+Mounts: `--sources` at `/sources:ro`; `docker/sources.lock.json` and
+`docker/source-policy.json` at `/opt/ke/<name>:ro`; `sbom_check.py`. In
+order; the first failing stage stops the run:
+- a. *The record's text.* `D/fetch.json`, `lstat` a regular file, at most
+  4 MiB (full is 143,497 B), UTF-8, a JSON object whose text equals
+  `lock_text(parsed)` (canonical, as `sources_fetch.py` writes it); keys
+  exactly `format`, `set`, `arch`, `lock_sha256`, `components`; `format`
+  is 1. Problems name the field; record text is printed through `_clean`.
+- b. *Matches this bundle.* `set` == `--set` (`fetch.json: set is sample,
+  this bundle needs full`); `arch` == `--arch` (the daemon's, A75);
+  `lock_sha256` == `sha256(lock text)`, the text read with `newline=""`
+  and encoded UTF-8, exactly `sources_fetch._write_record`'s form
+  (`fetch.json: lock_sha256 <x> is not the lock's <y>: fetch again after
+  the re-lock`).
+- c. `lock_entry_problems(lock_text, policy) == []` (first problem named;
+  before `fetch_plan`, security U7a I-4).
+- d. `components` == `{key: [{"name", "sha256", "size"}, ...]}` built from
+  `fetch_plan(lock, arch, set)` in plan order: the same keys, the same
+  files in the same order, equal values. The first difference is named
+  (`fetch.json: <key>: <field> is <x>, the lock's <set> plan says <y>`,
+  or the missing or extra key).
+- e. *The listing* (`listing_problems(..., record=True)`): exactly
+  `fetch.json` plus one entry per distinct planned sha256. The first
+  other entry is named (a `.part`, `.fetch.json.part`, an upper-case or
+  short name, a 64-hex name not planned, a subdirectory); a link, fifo or
+  other non-regular entry is named as such; a missing `<sha256>` is named
+  with its key and upstream name; a size other than the lock's is named
+  with both values. A failed `scandir` or `lstat` is a problem, never an
+  empty listing (U9-2; the U8b B-1 pattern).
+- f. *Re-hash* (U9-3: "this run re-hashes every file; the record is never
+  trusted for bytes"): each planned file opened with `O_NOFOLLOW` where
+  the platform has it, read in 1 MiB chunks, sha256 equal to the lock's,
+  else `--sources: <sha256> (<key> <name>): sha256 mismatch: got <x>`.
+  The upstream digest is not re-computed here: the fetch checked it
+  against the same lock, and the sha256 binds the bytes.
+- Success: stdout is the distinct planned sha256 list, sorted, one per
+  line; stderr one line `sources-check: ok <files> files, <bytes> bytes,
+  <keys> components (<set>, <arch>)`. `bundle.sh` reads stdout with
+  `mapfile`, requires each line to match `^[0-9a-f]{64}$` and at least one
+  line, else refuses. Failure: `bundle: the source set in --sources failed
+  its check (see above); no bundle written`.
+
+**4. The copy (U9-6).**
+- After the SBOM loop: `mkdir -- "$app/sources" "$app/sources/files"`,
+  then for each sha256 from item 3: `cp -P -- "$sources/$sha"
+  "$app/sources/files/$sha"`. `-P`: a link that replaced a checked file
+  is copied as a link, and the manifest step's existing "neither a file
+  nor a directory" check refuses it. No `-p`, no `--reflink`, no `-l`:
+  never a hard link or reflink (a hard link would let a later write to
+  `--sources` change shipped bytes after the manifest; U9-6). A `cp`
+  failure, disk full included, is `bundle: copying source file <sha> failed;
+  no bundle written` (item 9).
+- `fetch.json` is not copied; `index.json` replaces it.
+- A file swapped in `--sources` between item 3 and the copy is caught on
+  the bytes that ship (item 8, name == hash); the copy is the TOCTOU's end.
+
+**5. `index` (after the SBOMs, before the manifest; U9-4, U9-5).**
+```
+sbom_check.py index --lock L --policy P --arch A --set S --git-sha G --files DIR --sbom IMAGE=PATH [--sbom ...]
+```
+Mounts: `$app/sboms` at `/sboms:ro`, `$app/sources/files` at `/files:ro`,
+the lock, the policy, the checker. One `--sbom` per bundled image, named
+as `bundle.json` names it. Stdout is redirected to
+`$app/sources/index.json`. Stages, each stopping at its first failing
+stage, problems through `_clean`, naming image, package (purl, else
+SPDXID) and the fix:
+1. Read: lock text, policy, each SBOM (JSON). Read errors one line.
+2. **`validate(doc)` on every SBOM before any classification** (security
+   U6 L-2, reviewer U6 N1): `<image>: <validate problem>`. A duplicate
+   SPDXID shared with an exempt package fails here ("not unique").
+3. `lock_problems(lock_text, policy, docs, arch)`: entry rules, mapping
+   (`component_key`, jrt-fs), pgdg suite, coverage both ways for `arch`
+   on this bundle's own SBOMs. Coverage misses name
+   `scripts/sources_lock.sh --arch <arch>` (U7a texts, unchanged).
+4. Per image: `always_matches` problems and `exempt_matches` problems
+   (item 6 included).
+5. `listing_problems(listing of --files, plan, record=False)`: exactly
+   the `shipped` sha256 set, regular files, the lock's sizes. No hash
+   here: item 3 hashed before the copy and item 8 hashes the shipped bytes.
+6. Build; a `full` index with any `not-shipped` component is a problem
+   (`index: <key> is not shipped in a full bundle`). It cannot follow
+   stages 3 and 5 plus item 3 d; it is asserted anyway (N9).
+- *Output*, `lock_text` form (canonical, `ensure_ascii`, sorted keys,
+  `indent=1`), no timestamp, so two runs on the same inputs are
+  byte-identical:
+```
+{"format": 1, "set": "full"|"sample", "arch": "amd64", "git_sha": "<40 hex>", "lock_sha256": "<64 hex>",
+ "components": [
+   {"key": "deb:glibc@2.36-9+deb12u14", "kind": "deb", "status": "shipped"|"not-shipped",
+    "packages": [{"image", "spdxid", "purl", "name", "always": bool,
+                  "licence": {"declared": <raw or null>, "concluded": <raw or null>}, "expression": <licence_input>}],
+    "files": [{"name", "url", "sha256", "size", "upstream": {"alg", "value", "from"}, "path": "sources/files/<sha256>"|null}]},
+   {"key": null, "kind": null, "status": "exempt", "packages": [<one row, as above>], "files": [],
+    "exempt": {"image", "package", "reason", "reviewed"}, "listing": "exempt, reviewed security 2026-10-25"
+                                                               |"always, cleared by exemption security 2026-10-25"}],
+ "unparsed": [{"image", "spdxid", "purl", "name", "needs": bool}],
+ "unidentified": [{"image", "spdxid", "purl", "name", "needs": bool}],
+ "unlicensed": {"<image>": <unlicensed_report(doc), as returned>}}
+```
+- *Rules.* Lock-key components: one per key `lock_needs` returns, sorted
+  by key; `packages` are that key's `needs` rows, image then document
+  order. `status` is `shipped` iff the key is in `fetch_plan(lock, arch,
+  set)` (full: all; sample: exactly `sample_keys`), else `not-shipped`.
+  `files` are the lock entry's, `upstream` verbatim; `path` is
+  `sources/files/<sha256>` iff `shipped`, else `null`, so every `path`
+  exists in the bundle (U9-6) and two files with one sha256 share one
+  `path`. Exempt components: one per row `classify_document` marks
+  `exempt`, after the lock-key components, sorted by (image, package);
+  `reason` and `reviewed` are the entry's values verbatim. `unparsed` and
+  `unidentified` hold every row so flagged, `needs` true or false (U9-5),
+  image then document order. `unlicensed` keeps the U4 shape.
+- *Precisions against N9 and U9-5.* "licence as the generator wrote it"
+  is `licence.declared`/`licence.concluded`, the SBOM's raw strings
+  (non-string values become `null`), beside `expression`
+  (`licence_input`); neither is ever re-read for `needs` (N8 am. U5 item
+  7). N9's `reason` field moves under `exempt`; `lock_sha256` is added (it
+  binds the index to the lock). `git_sha` is `bundle.json`'s.
+- *Size:* full set estimated at 0.5-1 MB (about 1,000 package rows and 876
+  file rows); measured at Q79 (item 12).
+
+**6. Multi-match exempt and the "always, cleared by exemption" listing
+(U9-4, U9-5; the U6 carried rows).**
+- `exempt_matches`: an entry whose `package` flags more than one SPDXID
+  in its image adds the problem `<image>: exempt entry matches <n>
+  packages: <package> (<spdxid>, <spdxid>, ...); an exemption clears
+  exactly one package: review again`. The SPDXIDs are still flagged, so
+  `classify_document`, which drops problems, is unchanged; `index` (stage
+  4) refuses. The committed policy on the U3 fixtures matches exactly one
+  package per entry (`neo4j.pkgs.tsv` l.79, l.113): a control row.
+- Q80 (security U6 L-1 (b), the checksum compare): recommended option 1,
+  not at U9. syft records a SHA-1 for a jar and the `reason` holds the
+  jar's SHA-256, so nothing comparable exists without a policy schema
+  change and a re-review of both entries; the digest-pinned base and the
+  re-review trigger (U6 ruling (c)) stand, as security I-2 accepted.
+- The listing string is exactly `always, cleared by exemption <reviewed>`
+  (`<reviewed>` the entry's value, e.g. `security 2026-10-25`), else
+  `exempt, reviewed <reviewed>`. `bundle.sh` prints each exempt
+  component's line on stderr after `index` (`bundle: <image>: <package>:
+  <listing>`; `index` prints them, `bundle.sh` passes stderr through),
+  so the bundle output shows the clearance (U9-5).
+- `tests/test_sbom_classifier.py` l.1134 ("never always and exempt") stays
+  at U9; the change that adds the first such entry removes it, adds a
+  real-row check of the listing and goes to security (U9-5). U9's listing
+  test uses a synthetic policy.
+
+**7. The "Source code" section, `NOTICE.md`, the `app/` copies (U9-7,
+U9-8, U9-9).**
+- `sbom_check.py notices --index /idx/index.json` (mount `$app/sources`
+  at `/idx:ro`) prints the section; `bundle.sh` appends it to
+  `$out/THIRD_PARTY_NOTICES.md` after `index`. Text (facts fixed here;
+  the analyst owns the wording; security reviews every row form):
+```
+## Source code
+
+Paths here are relative to the bundle's `app/` directory, which install publishes as the install directory.
+
+Verification bundle: this source set is a sample and is not complete; do not distribute this bundle.   <- sample only
+
+Where the Source column says "source in `sources/`", this bundle carries the complete corresponding
+source of that component, at the version its images hold, in `sources/files/`, each file named by its
+SHA-256. `sources/index.json` lists each file's upstream name, URL and checksums and the SBOM packages
+it covers.
+
+| Component | Images | Source |
+|---|---|---|
+| `deb:glibc@2.36-9+deb12u14` | ke-app, postgres | source in `sources/` (see `sources/index.json`) |
+| `deb:bash@5.2.15-2` | postgres | Upstream source: <url of the entry's first file> |                     <- not-shipped
+| `pkg:maven/com.sun.jna/jna@5.15.0` | ke-neo4j | no source in this bundle: cleared by a reviewed exemption (exempt, reviewed security 2026-10-25) |
+```
+- *The escape form (U9-7 asks the architect): refuse, never escape.* The
+  section prints no generator text at all: only lock keys, lock URLs,
+  image names (`NAME_RE`), the policy entry's `package` and `reviewed`,
+  and fixed text. Each printed value must fullmatch `[\x21-\x7e]+`
+  (`reviewed` `[\x20-\x7e]+`) and hold none of `|`, backtick, `<`, `>`,
+  `\`; otherwise `source_section` returns a problem, exit 1, no section
+  (item 9). So no `|`, line break or control character from any input can
+  add a column or row. The committed lock and policy pass (architect's
+  check at 5cf025c: 0 of 183 keys and 876 URLs hold any of them).
+- The heading is exactly `## Source code`, the heading `NOTICE.md` names
+  (`test_notice_source_code_heading_matches_generated`).
+- `NOTICE.md` "Source code" (U9-9): gains the I-3 sentence above as its
+  first line, identical in both files; keeps the pointer and the L-6
+  sentence (still true: every U9 bundle has the section).
+- libffi (security U6 exempt review L-1, ruling (b); U9-9): the "Base
+  image of `ke-neo4j`" section gains one paragraph: jna 5.15.0
+  (`/var/lib/neo4j/lib/jna-5.15.0.jar`) carries native `libjnidispatch`
+  libraries that include libffi; libffi's copyright and permission notice
+  is not in Neo4j's notices, and its text is `licenses/libffi-jna-5.15.0.txt`:
+  jna's `native/libffi/LICENSE` at tag `5.15.0`, unmodified, fetched over
+  HTTPS from
+  `https://raw.githubusercontent.com/java-native-access/jna/5.15.0/native/libffi/LICENSE`;
+  its header gives the fetched file's sha256 (the CPython files' Q48
+  form). *Confirm at RED* (security, U9-9): the path exists at that tag
+  and is the libffi jna 5.15.0 bundles; another source of the text is a
+  design amendment, never the developer's choice. Tracked (`git add`), so
+  `git ls-files licenses` ships it and
+  `test_notice_named_licence_files_are_tracked` covers it.
+- *The `app/` copies (U9-8, ADR point 6):* after `notices` is appended:
+  `cp -- NOTICE.md "$app/NOTICE.md"`, `cp -- "$out/THIRD_PARTY_NOTICES.md"
+  "$app/"`, `cp -- LICENSE "$app/LICENSE"`, and each tracked
+  `licenses/*` (the same `git ls-files -z -- licenses` loop) to
+  `$app/licenses/`. Byte-identical to the root copies, which stay. With
+  I-3's sentence, `sources/index.json` resolves from `<bundle>/app/` for
+  both bundle copies and from the install directory for the installed
+  copy (U9-8 test).
+
+**8. The manifest covers the sources (U9-6; PSC-24).**
+- The existing loop already lists every regular file (sources, index,
+  `app/` copies). Two additions inside it:
+  - for a path `app/sources/files/<name>`: `<name>` must equal the
+    computed sha256 (`bundle: app/sources/files/<name>: the bytes do not
+    match the name; no bundle written`): ADR point 3's re-hash, on the
+    bytes that ship;
+  - the count of `app/sources/files/` lines must equal item 3's list.
+- After the loop, before the rename: `MANIFEST.sha256.tmp` over 1,048,576
+  bytes is refused (`bundle: MANIFEST.sha256 would be <n> bytes, over
+  install's 1 MiB cap; no bundle written`). The cap is never raised.
+  Estimate, full: 716 source lines of 149 B, about 107 kB, plus today's.
+
+**9. No partial bundle, and N-9 (U9-10; O-10).**
+- Before *first write*, every refusal exits with `--out` and the record
+  untouched (an absent `--out` is created only at *first write*).
+- One EXIT trap (it absorbs `sbom_cleanup`; INT, TERM and HUP trapped and
+  turned into a non-zero exit): on a non-zero status after *first write*,
+  `rm -rf -- "$out"` when `created=1`, else every entry inside `$out` is
+  removed (the given empty directory is returned empty, as
+  `bundle_fetch.sh` does); `rm -f -- "$record"` only when this run wrote
+  it; then the compose `down` and the SBOM work dir, as today. So any
+  later failure (a save, an SBOM, the copy, `index`, `notices`, an `app/`
+  copy, the manifest's name or cap check, the record) leaves no
+  `MANIFEST.sha256`, no record and no partial bundle. `bundle written`
+  is printed only after the record. This is stronger than U9-10's minimum
+  (no manifest, no record): O-10.
+- *N-9 (reviewer U8b):* l.85's `[ -n "$(ls -A -- "$out")" ]` fails open
+  when `ls` fails. Replace with `entries="$(ls -A -- "$out")" || die
+  "cannot list --out: $out"` and then the empty test. Test: `--out` mode
+  0300, non-empty; skipped with a named reason under uid 0 (U9-10).
+- The floor (7 GiB on `--out` and its parent) is unchanged at U9 (O-12):
+  it covers `bundle.sh`'s own need with the full set (bundle about 2.0
+  GiB plus the SBOM work dir). The whole-pipeline floor (fetch + bundle +
+  install staging + dind, about 8.0 GiB full) is U11's (N5 am. U7 item 13).
+
+**10. Install side (U9-11).** No change to `install.sh` or `install.ps1`
+(ADR point 6). Their manifest rules already refuse a changed, missing,
+unlisted or linked file under any path; the new names pass the path rule
+by construction (64 lower-hex, `index.json`, `<image>.spdx.json`).
+- Tests: `_make_fixture` gains `app/sources/index.json` and two
+  `app/sources/files/<sha256 of its bytes>`; `_tamper_cases` gains, for
+  each of `app/sources/index.json`, one `app/sources/files/<sha>` and one
+  `app/sboms/<name>.spdx.json`: deleted (RULE_MISSING), one byte flipped
+  (RULE_HASH), an unlisted file beside it (RULE_UNLISTED, for files/ a
+  64-hex name), and a listed symlink in its place (RULE_LINK). Both
+  `InstallShTest` and `InstallPs1Test` run them through
+  `test_bundle_manifest_rejects_tamper` and
+  `test_install_loads_nothing_when_manifest_fails`; the control installs
+  and the target holds `sources/index.json` and each
+  `sources/files/<sha>` with the manifest's sha256.
+- They pass on today's installers: pins, not RED. The tester proves each
+  would fail by a scratch-copy mutation (the hash compare, the missing
+  test, the unlisted scan, the link test each disabled in a copy of
+  `install.sh` and of `install.ps1`), recorded in `u9/u9a-controls.txt`
+  (the U8 controls pattern).
+- Install cost, full set: one more copy of 1.18 GB into staging and one
+  sha256 pass over 716 files (`install.sh` spawns one `sha256sum` per
+  file, milliseconds each on Linux; `install.ps1` hashes in-process).
+
+**11. Layout: flat by sha256 plus the generated index (recommended; N9,
+O-3, ADR point 5).** Numbers from the committed lock (lock sha256
+`12eebc8c...761b`, amd64): 183 keys, 876 listed files, 1,342,441,658 B;
+716 distinct sha256, 1,180,936,586 B. 148 of the 876 upstream names hold
+`+` or `~`; every key holds `:` and `@`.
+- *Flat* (`app/sources/files/<sha256>` + `index.json`): 716 files,
+  1.18 GB. Names pass the path rule as they are, never case-clash, are
+  never a Windows reserved name; dedup is free; the fetched layout is
+  copied as is (O-3); the manifest check is a string compare (item 8).
+- *Per-key directories with upstream names:* 876 files (+160) and
+  +161,505,072 B (+13.7%) in the bundle, in install staging (the e2e's
+  tmpfs is memory, N14) and in every hash pass; and keys and 148 names
+  fail the path rule, so either the rule loosens in `bundle.sh`,
+  `install.sh` and `install.ps1` (a security control; PSC-24 "never
+  loosened silently") or names are mapped, which is the index again.
+- *Per-key directories of sha256 files* (`<kind>/<mapped key>/<sha256>`):
+  still needs a key mapping, and dedup across directories brings the
+  index back. No gain.
+- Install-side cost is linear in files and bytes, and flat is the minimum
+  of both. Recommended: flat.
+
+**12. Sizes, time and the full-set proof (U9-13; Q62, Q79).**
+- The bundle grows by the set's distinct bytes: sample +136,571,547 B
+  (verify, CI); full +1,180,936,586 B (operator: 941 MiB today, about
+  2.0 GiB after), plus `index.json` and the small `app/` notice copies.
+  Each source byte sits up to three times in an e2e run: fetched dir,
+  bundle, `/install` staging (memory; +0.13 GiB for the sample, recorded
+  for U10's N14 sizing).
+- *Marker (U9-13):* `bundle.sh` prints one line after the copies, from
+  bash `SECONDS` deltas: `bundle: sources: <files> files, <bytes> bytes,
+  <keys> components (<set>, <arch>); check <a> s, copy <b> s, index <c> s,
+  notices <d> s`. CI's per-line timestamps time it, as `sources: fetch`.
+- *Budget `B-sources-bundle`:* 30 s on CI for the sample's added
+  `bundle.sh` time (the marker's four stages plus the manifest's extra
+  hashing; estimate 5-15 s: 136 MB hashed twice and copied once). Part of
+  Q62's 180 s with `B-fetch` (60 s); over budget goes to the orchestrator.
+  Never a wall-clock assertion in a test (the runner's 1.24x-2.13x
+  noise).
+- *Verify carries only the sample (Q63).* U9's unit tests use a synthetic
+  fetched set (item 14); `full` bundles the real sample once per run.
+- *The full-set proof (Q79 option 1, recommended; the analyst's form, no
+  install):* once, by hand, on the dev box, before security's review:
+  `build.sh`, `bundle_fetch.sh --set full --out <scratch>/fetch`,
+  `bundle.sh --out <scratch>/ke-bundle-amd64 --sources <scratch>/fetch`.
+  Saved as `u9/full-bundle-run.txt` (both scripts' stdout and stderr,
+  redacted); its numbers in `u9/size.md`: bundle bytes with and without
+  `app/sources/`, 716 files, `MANIFEST.sha256` bytes and lines against the
+  cap, `index.json` bytes, every component `shipped`, the marker's stage
+  seconds (local only, labelled so). The scratch directory is deleted
+  afterwards and the bundle is never handed over (rule N1; U10's N11 run
+  and the Neo4j ARM decision come first, U9-15).
+
+**13. Security properties (for review; each has a test row in item 14).**
+Nothing under `--sources` is written, deleted or renamed; every input is a
+`:ro` mount into a `--network none`, read-only, capability-free container
+as the caller's uid:gid. The record is never trusted for bytes (re-hash
+before the copy, re-hash of the shipped bytes against their names after).
+No link is followed (`lstat`, `O_NOFOLLOW`, `cp -P`, the manifest's link
+check) and no hard link or reflink is made. Nothing extra is accepted in
+either listing. Generator text never reaches Markdown (item 7); every
+printed or JSON string goes through `_clean` or `ensure_ascii`. `validate`
+runs before any classification. Any refusal leaves no manifest, no record
+and no partial bundle. Installers and `bundle.json` unchanged. No URL is
+fetched and no host is added.
+
+**14. Test plan.** Fast, synthetic. *The synthetic fetched set:* in
+`_BundleBase`'s throwaway repository (tests already run `bundle.sh` there),
+the test writes its own `docker/sources.lock.json` (one valid entry per
+kind it needs, the U7a/U8a fixture helpers), `docker/source-policy.json`
+(`always`/`exempt` as the row needs), fake syft SBOMs whose packages map
+exactly to those keys, and a fetched directory of files with known bytes
+named by their computed sha256 plus a `fetch.json` written with
+`lock_text`. No network; no test reads `docs/evidence`. Names indicative
+(U9-14 holds the analyst's; no counts in names).
+- **U9a first RED rows** (`tests/test_source_index.py`, new, plus
+  `tests/test_offline_bundle.py` pins):
+  1. `test_bundle_refuses_a_bad_sources_dir` (pure and CLI): each U9-2
+     shape and item 3 e row, with the matching-directory control.
+  2. `test_bundle_refuses_a_mismatched_fetch_record`: set, arch,
+     `lock_sha256`, non-canonical, an extra or missing key, `format` 2,
+     components differing in a key, a file, a name, a sha256, a size; a
+     missing, short, changed (same size, one byte flipped: item 3 f) or
+     extra file.
+  3. `test_index_validates_first`: the duplicate-SPDXID row; a
+     `classify_document` replaced by one that raises is never called.
+  4. `test_index_fails_on_coverage_gaps_both_ways`,
+     `test_index_fails_on_always_and_exempt_problems`,
+     `test_index_refuses_a_multi_match_exempt_entry` (jna and
+     `jna?type=jar`; the committed-policy-on-fixtures control: one match
+     per entry).
+  5. `test_index_lists_always_cleared_by_exemption` (synthetic policy).
+  6. `test_full_bundle_refuses_not_shipped`,
+     `test_sample_bundle_ships_exactly_the_sample`; schema, sort order,
+     `path` null iff not-shipped, two runs byte-identical.
+  7. `test_every_gpl_package_has_source` on the real data: `source_index`
+     over `ss.u3_doc` of the six fixtures with the committed lock and
+     policy, `full`, a listing supplied as data: no problem, every
+     lock-key component `shipped`, the exempt components are jna and
+     javassist with `exempt, reviewed security 2026-10-25`. If `u3_doc`
+     does not pass `validate`, the test wraps it with N6's required
+     fields; `validate` is never weakened.
+  8. `test_notices_source_code_section_rows`,
+     `test_sample_bundle_notices_say_do_not_distribute`, the refuse-form
+     rows (a key, URL or `reviewed` with `|`, a backtick, a newline, a
+     control byte: problem, no section), and
+     `test_notice_source_code_heading_matches_generated`.
+  9. `test_source_file_names_pass_the_manifest_rule`: every `path` in an
+     index fullmatches the installers' path and reserved-name rules.
+  10. `test_install_refuses_tampered_or_missing_source_file` (sh and
+      ps1; item 10 pins, with the mutation controls).
+  11. CLI: exit 2 rows; any exception one line, no traceback.
+- **U9b first RED rows** (fake docker, `tests/test_offline_bundle.py`,
+  `tests/test_sbom_bundle.py`, `tests/test_offline_check.py`):
+  `--sources` required and `--sources-set` rows (exit 2, no docker call);
+  the shell refusals of item 2 (no `save` call, `--out` untouched, no
+  record); `test_bundle_leaves_sources_dir_unchanged` (listing and bytes
+  before and after, pass and fail); `test_sources_are_copied_not_linked`
+  (regular files, `st_nlink == 1`, different inode from the source);
+  `test_source_archive_hashes_in_manifest` (each `app/sources/files/<sha>`
+  line carries `<sha>`; a file swapped after `sources-check` by a fake
+  docker hook is refused by item 8);
+  `test_bundle_writes_no_manifest_when_sbom_or_source_fails` (a fault at
+  each write stage of item 9: `--out` absent when created, empty when
+  given, no record, no `bundle written`; the manifest over 1 MiB row);
+  `test_bundle_refuses_an_unlistable_out` (N-9);
+  `test_app_carries_the_notice_copies`,
+  `test_sources_paths_resolve_from_every_notice_copy` (I-3);
+  `test_notice_names_libffi_in_ke_neo4j_section`;
+  `test_offline_check_bundles_the_sample_sources` (`--sources
+  "$fetch_rel" --sources-set sample`); the marker line's form.
+- **Controls: nothing weaker.** Every existing `bundle.sh` test is
+  re-pinned only by adding `--sources`/`--sources-set` and the synthetic
+  set; each keeps every assertion it had (the no-partial rule only adds
+  absences). The tester records the baseline test-name list from SAVED
+  copies before RED and the after-list at each re-pin
+  (`u9/u9a-controls.txt`, `u9/u9b-controls.txt`); an insertion must not
+  split a neighbouring loop (U7e lesson).
+
+**15. Split: two commits (O-9).**
+| Unit | Scope | Loop | A34 |
+|---|---|---|---|
+| U9a | `sbom_check.py`: `fetch_record_problems`, `listing_problems`, the `exempt_matches` multi-match rule, `source_index`, `source_section`; subcommands `sources-check`, `index`, `notices`; the install pins (item 10). No `bundle.sh`, NOTICE, README or wiring change. | `fast`; `full` before the gate (scripts/) | no |
+| U9b | `bundle.sh` (item 2 CLI and order, copy, `index`/`notices` calls, `app/` copies, manifest checks, no-partial trap, N-9, marker, header); `offline_check.sh` flags; `NOTICE.md` (I-3, libffi) and `licenses/libffi-jna-5.15.0.txt`; README; ADR pointer; the real sample in `verify full`; the Q79 full-set proof. | `full` | yes (O-11) |
+*Why not the suggested U9c (install + tamper):* the installers do not
+change (ADR point 6), so a U9c would be a commit of pins that cannot be
+RED, costing a full review, security and `verify full` cycle. The pins are
+fast, fixture-only and independent of `bundle.sh`, so they ride with
+U9a's fast loop, with mutation controls standing in for RED. *Why U9a
+apart from U9b:* U9a is the checker logic (validate-first, coverage,
+exempt, listing, refuse-form), reviewable with synthetic data as U8a was;
+U9b is wiring that only `full` and A34 prove, plus data (the real sample
+and the full-set proof) and wording (security's notice review).
+
+**16. Order, with every evidence record scheduled** (`u9/` =
+`docs/evidence/platform-sbom/u9/`; redaction per the evidence rule).
+- R1 orchestrator: rule Q78-Q80 and O-9..O-12; confirm the libffi text
+  source with security (item 7) before U9b's RED.
+- R2 tester U9a RED: `u9/u9a-controls.txt` (baseline from saved copies;
+  the install pins' mutation controls), `u9/u9a-red-verify-fast.txt`.
+- R3 developer U9a GREEN: `u9/u9a-green-verify-fast.txt`, then
+  `u9/u9a-developer-verify-full.txt`.
+- R4 reviewer and security in parallel: `u9/u9a-review.md`,
+  `u9/u9a-security.md` (listing, re-hash, validate-first, multi-match,
+  refuse-form).
+- R5 tester after-list; orchestrator `u9/orchestrator-verify-full-u9a.txt`;
+  commit U9a.
+- R6 **expected values before any real run** (orchestrator's rule):
+  `u9/expected.md`: the sample's 7 keys, 25 files, 136,571,547 B and its
+  sha256 list (from `u8/expected.md`, re-derived at HEAD by a one-liner),
+  the full set's 716 files and 1,180,936,586 B, manifest line and byte
+  estimates, and the index component counts by status from the item 14
+  row 7 run.
+- R7 security: the libffi text fetched once and its sha256 recorded
+  (`u9/libffi-provenance.md`), before the developer commits the file.
+- R8 tester U9b RED: `u9/u9b-controls.txt`, `u9/u9b-red-verify-fast.txt`.
+- R9 developer U9b GREEN: `u9/u9b-green-verify-full.txt` (the first real
+  sample bundle with sources; its marker and exempt lines are the record).
+- R10 developer, Q79: `u9/full-bundle-run.txt`.
+- R11 size and time record `u9/size.md` (item 12; R9 and R10).
+- R12 security (`u9/u9b-security.md`: diff, notice wording of every row
+  form, libffi, the full-set run) and reviewer (`u9/u9b-review.md`) in
+  parallel.
+- R13 A34 Windows proof (tester, O-11): build, `bundle_fetch.sh --set
+  sample`, `bundle.sh --sources <dir> --sources-set sample` on Git Bash,
+  `install.ps1`, launch, teardown, two refusals (no `fetch.json`; a sample
+  directory for a `full` bundle), and `verify.sh full`:
+  `u9/a34-windows-run.txt`, `u9/a34-verify-full.txt`.
+- R14 documenter (README order and the sample warning, `bundle.sh`
+  header if not the developer's); marketer: the U9 CHANGELOG bullet;
+  analyst: PSC-14/15/22/24 status rows.
+- R15 orchestrator `u9/orchestrator-verify-full-u9b.txt` on the final
+  tree; commit U9b.
+- R16 after a push (the human's approval): `u9/ci-timing.md` (the marker's
+  stages against `B-sources-bundle` 30 s; the job against its 69 min) for
+  U11.
+
+**17. ADR-KE-016 pointer text** (appended to the ADR as "Amended U9"):
+see `docs/architecture.md`, ADR-KE-016, the "Amended U9" bullet.
+
+**18. Decisions and risks.**
+- For the orchestrator (the analyst's Q78-Q80 and O-9..O-12):
+  - **Q78** `--sources` mandatory: option 1 (item 2).
+  - **Q79** full-set proof at U9: option 1, bundle only, no install
+    (item 12).
+  - **Q80** exempt checksum compare: option 1, not at U9 (item 6).
+  - **O-9** two units, the install pins in U9a, no U9c (item 15).
+  - **O-10** no partial bundle by removal: on a failure after the first
+    write, the run's output in `--out` is removed (created: the directory;
+    given: its contents), beyond U9-10's "no manifest, no record"
+    (item 9). Recommended: yes (the `bundle_fetch.sh` rule).
+  - **O-11** A34 for U9b. U9-11/U9-15 and N15 say A34 only if
+    `install.ps1` changes; it does not, but `bundle.sh` gains three new
+    `docker run` mounts (`--sources`, `app/sboms`, `app/sources`) through
+    `hostpath`/`MSYS_NO_PATHCONV` on Git Bash, and README supports a
+    Windows build host. Recommended: yes (the U8b precedent for a new
+    host-side mount). If ruled no, U9-15 stands and R13 drops.
+  - **O-12** `bundle.sh`'s 7 GiB floor unchanged at U9; U11 re-derives
+    (item 9).
+- For the human: none new. Standing: the Neo4j ARM third fetch before the
+  first operator bundle (U7e (3)); merge to `main` (rule N1 is met by U9,
+  the merge stays the human's).
+- *Risks, recorded.*
+  - *First real coverage check in verify:* until U9, coverage was checked
+    against the U3 fixtures only. `index` checks it on the images
+    `build.sh` just built. A drift is `full` red at U9b GREEN; the fix is
+    a reviewed re-lock (`sources_lock.sh`, security; Q77 decided first),
+    never a skip.
+  - *Memory in the offline client:* `/install` is unsized until U10;
+    the sample adds about 0.13 GiB of staging there.
+  - *CI time:* the runner's noisy-neighbour factor (1.24x-2.13x);
+    `B-sources-bundle` is measured, never asserted.
+  - *Windows path length:* `<target>\sources\files\<64 hex>` (and the
+    staging path) under a deep target can pass 260 characters for tools
+    without long-path support; A34 (O-11) runs the real path once.
+  - *libffi text source unconfirmed* until security's R7.
+  - *Existing tests* that assert leftovers after a failure would
+    contradict item 9; the tester names any such re-pin (none expected:
+    today's rows assert absences).
+  - Carried: GitHub tag tarballs are not promised byte-stable (N5); a
+    re-fetch that differs fails closed (Q61) before any bundle.
+
+- *Orchestrator rulings (2026-10-29, U9 plan gate; items 1-18 read):* **Q78**
+  option 1: `--sources` is mandatory; `--sources-set` defaults to `full`.
+  **Q79** option 1: one recorded full-set `bundle_fetch.sh` + `bundle.sh` run at
+  U9b, bundle only, never installed and never handed over (`u9/full-bundle-run.txt`,
+  `u9/size.md`). **Q80** option 1: no exempt checksum compare at U9. **O-9** yes:
+  U9a (checkers, the three subcommands, install pins) and U9b (bundle.sh,
+  offline_check flags, NOTICE/libffi, README, real sample, Q79 run, A34); no U9c.
+  **O-10** yes: a failure after the first write removes the run's output (the
+  directory if created, its contents if given). **O-11** yes: A34 runs for U9b;
+  U9-11 and U9-15 are amended to require it (the three new hostpath mounts are
+  the U8b precedent). **O-12** yes: the 7 GiB floor stays until U11. U9 Plan gate:
+  PASS. The U9a RED follows (item 14's rows); `u9/expected.md` (R-row) before any
+  real run.
+- *Orchestrator rulings at U9a RED (2026-10-29, **O-13**, on the tester's eight
+  points, `u9/u9a-red-verify-fast.txt`):* (1) `sources-check: ok` counts distinct
+  files and distinct bytes, as `bundle_fetch.sh` does. (2) the oversize refusal
+  reads `fetch.json is <n> bytes, over 4 MiB`. (3) multi-match SPDXIDs in
+  document order. (4) in a sample bundle the do-not-distribute banner is the
+  first line after the section heading, the I-3 path sentence follows it (U9-7
+  wins over item 7's order). (5) the shipped set is `fetch_plan(lock, arch, set)`;
+  nothing else defines it. (6) a malformed `--git-sha` exits 2. (7) `index`'s
+  exempt lines on stderr are `index: <image>: <package>: <listing>`. (8)
+  `listing_problems` catches the listing's OSError and returns one problem
+  `<dir>: cannot list` (no exception escapes); the CLI row stays as the proof.
+- *Orchestrator ruling, U9a rework round 1 of 5 (2026-10-29, **O-14**;
+  `u9/u9a-review.md` CHANGES REQUESTED, `u9/u9a-security.md` PASS):* scope =
+  reviewer B-1 (pins for O-13 (2), (4), (6), (7) and U9-7), B-2 (escaped record
+  text in refusals), N-4 = security L-1 (one shared open helper: O_RDONLY |
+  O_NOFOLLOW | O_NONBLOCK | O_BINARY, fstat regular-file check, the cap, for
+  fetch.json, every planned file and `notices --index`), N-7 (the `where` name
+  in the pure path's message), N-9 (index stages 3-5 stop in order), N-3 (a
+  non-object policy is a problem in `fetch_record_problems`), security L-2
+  (`source_section` also refuses `[`, `]`, `(`, `)`, `!`, `*`, `_`, `#` in every
+  printed field except the URL column), L-3 (16 MiB cap and regular-file check
+  on `--index`), I-3 (RecursionError caught around the canonical compare).
+  Carried to U9b (architect): reviewer N-1 (policy entries naming an image not
+  passed as --sbom), N-2 (`always` entry field types), security I-4 (the window
+  between sources-check and the copy, closed by item 8). Nits N-5, N-6, N-8
+  optional.
+  *O-14 precision (2026-10-29, on the tester's question):* the L-2 set
+  (`[ ] ( ) ! * _ #`) applies to every printed free-text field (image, package,
+  status, listing, reason-derived text, reviewed) but NOT to the lock-key column
+  (printed in a code span, where that syntax is inert; apk/maven keys carry
+  `_`, pypi versions `!`) nor the URL column. The item-7 set (`|`, backtick,
+  `<`, `>`, `\`, control characters) stays refused in every field, keys and
+  URLs included.
+- *Orchestrator rulings at U9b RED (2026-10-29, **O-15**, on the tester's A1-A8,
+  `u9/u9b-red-verify-fast.txt`):* A1 accepted: Q78 makes every existing bundle
+  row red until GREEN (the `_BundleBase` re-pin is right). A2: the marker is item
+  12's form, `bundle: sources: check <a> s, copy <b> s, index <c> s, notices <d> s`.
+  A3: `docker info` (the arch) may precede the `--sources` shell checks; no other
+  docker call may. A4: each refusal is one `bundle: FAIL (stage <stage>: <why>)`
+  line in bundle.sh's existing die form, the stage being sources-check, copy,
+  index, notices, manifest or out. A5: the developer updates the stale README
+  sentence ("not built yet") at GREEN; the documenter re-reads at close. A6
+  accepted. A7: O-13 (7) stands over item 6's `bundle:` form. A8: `--sources ""`
+  exits 2 with the usage line. R7 done: `u9/libffi-provenance.md` (security PASS);
+  the developer ships `licenses/libffi-jna-5.15.0.txt` from it at GREEN.
+- *Orchestrator rulings at U9b rework 1 (2026-10-29, **O-16**, on reviewer
+  B-1..B-3, N-1..N-11 in `u9/u9b-review.md` and security L-4, I-7..I-12 in
+  `u9/u9b-security.md`):*
+  (1) Path rule (B-1, L-4, I-8, I-9): after `--out` and `--sources` are made
+  absolute, every trailing slash is stripped (not one), and a path holding an
+  empty, `.` or `..` segment is refused before any check runs: `--sources` as
+  `bundle: FAIL (stage sources-check: ...)`, `--out` as `bundle: FAIL (stage
+  out: ...)`, exit 1 (usage exit 2 stays for argument shape only). No lexical
+  canonicalisation: a `..` is refused, never resolved.
+  (2) `--out` is claimed with `mkdir --` (no `-p`) at the first write when the
+  run creates it; a failure is `stage out`, exit 1, and the run has written
+  nothing. The parent of `--out` must therefore exist (README says so). This
+  closes N-3 and I-10; `created` is decided from the l.126 check, not re-tested.
+  (3) The release record is written under noclobber (`set -C` in a subshell
+  around the redirect); `record_made=1` only after the write succeeds (M-3).
+  (4) B-3: `docker tag` and `docker save` get `|| die "... no bundle written"`;
+  each `app/` copy gets `|| stage_die copy`. Tester adds the SIGTERM runtime row
+  after the first write (expect non-zero, `--out` removed or emptied, no
+  record), the static trap-order pin, the save fault, an `app/` copy fault and
+  the given-`--out` variant of the I-4 name check, each with created and given
+  `--out` where the row writes.
+  (5) B-2: A2 is pinned by a fullmatch of the ruled marker; A3 by "every
+  recorded docker call before an item-2 shell refusal is `info`"; A4 by
+  `^bundle: FAIL \(stage <stage>: .+\)$` per named stage; A8 by a `--sources ""`
+  row (exit 2, no docker call). The module docstring cites O-15.
+  (6) A4 scope (N-6): the manifest stage's refusals, new and existing (the
+  non-regular-file check and the path pattern), become `stage_die manifest`.
+  The pre-U9 `--out` and record refusals keep their `die` text; the `out`
+  stage holds only the N-9 listing refusal, rule (1) and rule (2).
+  (7) Accepted for the developer in this rework: N-2 (`app/` copies taken from
+  the bundle-root copies in `$out`, so U9-8 holds by construction), N-4
+  (cleanup prints `bundle: warning: could not remove ...` and carries on; no
+  `set -e` abort inside the trap), N-5 (`[ -n "$check_text" ]`), N-9. N-1: the
+  tester widens `_strip_messages` to `(?:stage_die\s+\S+|die|echo|printf)` and
+  the no-fetch.json refusal then uses `stage_die`. N-7: the tester adds the
+  link-swap row (fake-docker hook, gates).
+  (8) Deferred, recorded open: N-8 = I-7 (FIFO or device swapped into the
+  operator's own `--sources` after the check: hang or unbounded copy, DoS only;
+  no fix in U9b), I-11 (path-only overlap; a bind mount can alias; the
+  operator's own host), I-12 (a sample bundle warns only in its notices and
+  index; an `install` warning goes with U10's install work). N-10: the Q79
+  bundle half records MANIFEST bytes and lines, the real bundle bytes with and
+  without `app/sources/`, and the index counts against expected.md (R10/R11).
+  N-11: documenter at close. Carried reviewer N-1 and N-2 (sbom_check policy
+  entries naming an un-passed image; `always` field types): deferred to U10
+  with a design row; unreachable from bundle.sh, and the committed policy is
+  guarded at test time.
+  (9) Order: tester RED (rows, pins, controls; `verify.sh fast`), developer
+  GREEN (`fast`, then `full` in a GitLab window), security re-audits the L-4
+  scope, reviewer re-reads the rework diff; then the Q79 bundle half, A34, the
+  orchestrator's `verify full`, documenter close, commit.
+  *O-16 precision at rework-1 RED (tester's two questions,
+  `u9/u9b-r1-red-verify-fast.txt`):* (a) N-7: a link swapped in after
+  sources-check is refused at `stage index` (U9a's `index` opens every copied
+  file with O_NOFOLLOW and runs before the manifest); the row accepting an A4
+  line at `index` or `manifest` stands, and the manifest's non-regular check
+  has its own row. (b) `--sources //` (or any value that is empty once every
+  trailing slash is stripped) is an argument-shape problem: exit 2 with the
+  usage line, as A8's `--sources ""`. The tester's 1-or-2 row stands.
+- *Orchestrator rulings at U9b rework 2 (2026-10-29, **O-17**, on reviewer
+  rework-1 B-1, B-2, N-2..N-6 in `u9/u9b-r1-review.md` and security I-13, I-14
+  in `u9/u9b-r1-security.md`):*
+  (1) B-1 = I-13: `created` is decided once, in the early `--out` block
+  (where emptiness is checked), and the re-test before the first write goes.
+  A given `--out` is re-checked to be a real directory (not a link) right
+  before the first write; a `--out` that appeared since the early check, as a
+  directory or a link to one, is refused as `bundle: FAIL (stage out: ...)`
+  with nothing written. Tester: two rows (a directory, a link to a directory,
+  planted at `--out` by a hook on the sources-check run; an operator file in
+  it untouched; no tag, save, record or `.ke-sbom.*`), plus the trailing-`..`
+  control and rows for the N-4 warning and the N-5 empty-output check.
+  (2) I-14: `record_made=1` only after `chmod` succeeds, and `chmod` gets
+  `|| die`; the cleanup never removes a record it did not fully write. Tester:
+  one row (a link to a non-regular file at the record path).
+  (3) N-3 (the dead `-ge 1`) and N-4 (the jq comment) go with the developer's
+  change. N-5 and N-6 are recorded as information, no action.
+  (4) B-2 and N-2, N-11: documenter at close updates `docs/quickstart.md`
+  (the fetch step, `--sources`, `mkdir -p dist` on a fresh clone), README
+  (relative paths resolve against the cwd; the parent of `--out` must exist)
+  and the stale "Updated" line. R14 names quickstart.md from now on.
+  (5) The Q79 record (`u9/full-bundle-run.txt`, `size.md`) stands across
+  rework 2: the success path is untouched by (1)-(3). If the rework-2 diff
+  reaches any line the success path runs, R10 is re-run (about 3 minutes;
+  the sources are kept).
+  (6) Order: tester RED (`fast`), developer GREEN (`fast`, then `full` in a
+  GitLab window), reviewer re-read and security re-read of the rework-2 diff
+  in parallel, A34 (R13), the orchestrator's `verify full`, documenter close,
+  commit.
+- *Orchestrator rulings at U9b rework-2 verdicts (2026-10-30, **O-18**; reviewer
+  APPROVED `u9/u9b-r2-review.md`, security PASS `u9/u9b-r2-security.md`):*
+  (1) Reviewer N-8 = security I-15 (a given `--out` is re-checked for type but
+  not emptiness before the first write; two runs given the same empty
+  directory can adopt or empty each other's files): deferred to U10 as a design
+  row ("re-check emptiness and claim with a plain `mkdir -- "$out/images"`
+  before `wrote=1`"); within O-17 (1) and O-10, no link followed, operator's
+  own directory.
+  (2) Reviewer N-7 = security I-16 (the record write and `chmod` follow a link
+  to a non-regular file when the `chmod` can succeed; as root, a local user who
+  can write the parent of `--out` gets a FIFO or device truncate-written and
+  re-moded): deferred to U10 as a design row ("write the record to a `mktemp`
+  file, `chmod` it, then link or rename it into place; refuse a parent of
+  `--out` writable by another user, or refuse uid 0"). No doc tells the
+  operator to run as root; `fs.protected_symlinks` covers world-writable
+  parents; the same actor can replace the record after the run. Older than
+  rework 2 (O-16 (3)). The documenter adds one README sentence: run
+  `bundle.sh` as an ordinary user in a directory only that user can write.
+  (3) O-17 (5) read literally: the diff touches success-path lines (:146,
+  :485, :687-688), so R10 is re-run (dispatched with A34; `u9/full-bundle-run.txt`
+  "rework 2 re-run" section). The record stands if the numbers are equal.
+  (4) U9b code is final at bundle.sh sha256 9624710b... (the reviewer's hash).
+  Before the commit: the documenter's B-2 (quickstart.md), N-2 and N-11
+  (README), the (2) sentence, CHANGELOG, the handoff archive; A34 (R13); the
+  orchestrator's `verify full` on the final tree (R15).
+
+### N9 amendment, U9c (architect, 2026-10-30)
+
+Makes U9c implementable against the analyst's "U9c precision" criteria
+U9c-1..U9c-9 (`docs/requirements.md`, under PSC-24) and answers QA-1..QA-5
+(handoff, analyst 2026-10-30). Ruling: **A81** (Q81 option 3, the human,
+2026-10-30). *Keeps:* A61/Q61 and A72 (one attempt, no retry, every host);
+A76 and the `fetch.json` form (format 1); U7c item 9 (the GitLab API raw
+route, used by `--set full` only); "N4 amendment, U8" items 1-8 except the
+sample's apk rows; "N9 amendment, U9" items 2-4 and 8-14 unchanged;
+`docker/source-policy.json` and `docker/sources.lock.json` byte-unchanged
+(Q77 stays deferred); `bundle.sh`, `bundle_fetch.sh`, compose files and both
+installers unchanged in code. *Supersedes:* "N4 amendment, U8" item 4 step 2
+and item 8's "every file host of the lock" for `sample`; "N9 amendment, U9"
+item 5's two-valued `status` rule and item 7's row forms (a third row form).
+No spans: a build-time tool, not an agent step (N3, ADR).
+
+**1. QA-1: the apk sample key does not change; A63 reads as before.**
+- `sample_keys` is unchanged: per kind, the entry with the smallest total
+  size, ties by key. Today that is `apk:alpine-baselayout@3.7.1-r8`
+  (33,606 B). The alternative rule "smallest distfiles part" picks the same
+  key (15,957 B, tied with `@3.7.2-r1`, key order wins), so no rule change
+  is needed to get a good key, and none is made.
+- Tarball versus plain files: rejected as a reason to move the key. The
+  fetch never unpacks (U8-5); a tarball and a plain file take the same path
+  through the same host, hop rules, cap and three digests. Moving to
+  `pax-utils@1.3.8-r2` (one 123,556 B `.tar.xz`) would prove nothing more,
+  would rewrite `u8/expected.md`'s key list and every sample pin, and would
+  need its own A63 exception.
+- A63 then reads: "every run fetches and ships one source of each kind;
+  the source of a kind is its `sample_keys` entry, and for `apk` (A81) only
+  that entry's distfiles.alpinelinux.org files." The key list is unchanged.
+
+**2. QA-5: selection by the lock URL's host, against one checker constant.**
+- `sbom_check.py` gains `APK_DISTFILES_HOST = "distfiles.alpinelinux.org"`,
+  defined before `KIND_HOSTS`, and `KIND_HOSTS["apk"]` becomes
+  `(APK_API_HOST, APK_DISTFILES_HOST)`, with `APK_API_HOST` moved up beside
+  it (pure refactor; the lock rule tests are the control). So the host the
+  plan selects is, by construction, one of the two hosts the lock rules
+  already bind every apk file to (U7a/U7c, reviewed).
+- *Why not a `sample_hosts` key in `source-policy.json`:* the policy's
+  `hosts` is the egress allow list; a second host list there would need a
+  schema rule (types, subset of `hosts`) in the checker's policy shape
+  checks, security review of a policy change, and a `policy` parameter on
+  `fetch_plan` (every caller and pin changes), to state one fact the
+  checker already holds in `KIND_HOSTS`. *Why not "the policy host whose
+  name starts with `distfiles.`":* still a literal, plus a string rule.
+- U8-4's "hosts come from that file only, never from a literal in the
+  fetch" is about the allow list and still holds: `sources_fetch.py` keeps
+  no host literal, `allow` is still exactly the policy's `hosts`, and the
+  selection only removes rows from the plan; it never permits a request.
+
+**3. `fetch_plan` (U9c-1).** Signature unchanged:
+`fetch_plan(lock, arch, which) -> list[(key, file)]`.
+- `full`: unchanged (every file of every key for `arch`).
+- `sample`: for each `sample_keys` key, the entry's files in file order;
+  for a key whose kind is `apk`, only the files whose
+  `_split(url).hostname == APK_DISTFILES_HOST`, in file order. If that
+  leaves none: `raise ValueError(f"{_clean(key)}: the apk sample key has no
+  file on {APK_DISTFILES_HOST}; the sample needs one (A81)")`.
+- Docstrings of `sample_keys` and `fetch_plan` say so, citing A81. N3's
+  "sample selection lives only in `sample_keys`" now reads "in
+  `sample_keys` and `fetch_plan`".
+- Callers and the fail-closed path: `sources_fetch._run` wraps the call,
+  `except ValueError as exc: raise Fail("lock", str(exc)) from None`, so
+  the run prints `bundle_fetch: FAIL (stage lock: apk:<key>: the apk sample
+  key has no file on distfiles.alpinelinux.org; the sample needs one (A81);
+  no retry)` with zero requests. `fetch_record_problems` (via
+  `sources-check`'s catch-all: `sources-check: FAIL (ValueError: ...)`,
+  exit 1) and `source_index` (its catch-all: `index: ValueError: ...`) fail
+  closed unchanged.
+
+**4. The record and `sources-check` (U9c-2): no code change.**
+`_write_record` and `fetch_record_problems` both build from `fetch_plan`,
+so the record simply lists two files for the apk key (format 1, otherwise
+unchanged). The three refusals follow from the plan, with existing texts:
+- (a) a pre-U9c sample directory, same lock: `fetch.json: apk:<key>: lists
+  17 files, the lock's sample plan says 2` (item 3 d);
+- (b) `set` `full`, apk entry trimmed to the distfiles files: `fetch.json:
+  apk:<key>: lists 2 files, the lock's full plan says 17`;
+- (c) a sample directory plus a 64-hex file of one of the key's GitLab
+  files: `<sha256>: not in the lock's plan` (item 3 e, U9-3's extra-file
+  line). This line names the file, not the key: U9-3 defines no key for an
+  unplanned file. See item 12, O-19.
+- A sample record for a full bundle: `fetch.json: set is sample, this
+  bundle needs full` (unchanged).
+
+**5. The APKBUILD name check in the sample (U9c-3, QA-3): skipped, printed.**
+- `_name_check(out, key, entry, which)` (one new positional parameter;
+  `_run` passes `args.which`). First statement after `kind` is computed:
+  `if kind == "apk" and which == "sample": print(f"bundle_fetch: apk {key}:
+  APKBUILD name check skipped (sample set, A81)", flush=True); return`.
+  stdout, as the `ok` lines, once per apk sample key, after that key's
+  files.
+- The condition reads only `which` and the kind, never the plan, the
+  listing or whether an `APKBUILD` was fetched. In `full` the code path is
+  today's: the APKBUILD is in the plan, read, and a mismatch is the U8-5
+  line. deb and pgdg `.dsc` checks run in both sets (unchanged).
+- *Not replaced by another check:* the only other apk check available
+  without GitLab is the distfiles files' sha512 against the lock, which
+  `_place` already makes before the rename (size, sha256, sha512; U8-5).
+- Module docstring: the "per entry the `.dsc` or APKBUILD name check"
+  sentence gains "(the APKBUILD check in `full` only, A81)".
+
+**6. `source_index`: the partial status (U9c-4, QA-2).**
+- `status` gains one value, `"partial"`; no new field (a reader of
+  `index.json` alone sees `status: "partial"` and which files have a
+  `path`). Replace the key-set rule with a per-file one:
+  `planned = {(k, f["name"]) for k, f in plan}` (names are unique in an
+  entry, lock rule l.1583); per lock-key component,
+  `fetched = [(key, f["name"]) in planned for f in entry["files"]]`;
+  `status = "shipped" if fetched and all(fetched) else "partial" if
+  any(fetched) else "not-shipped"`; each file's `path` is
+  `sources/files/<sha256>` iff its own flag is true, else `null` (as a
+  not-shipped file's today).
+- Problems (stage 6, collected as today):
+  - `which == "full"` and `not-shipped`: unchanged text;
+  - `which == "full"` and `partial`: `index: <key> is partial in a full
+    bundle`;
+  - `which == "sample"`, `partial` and kind not `apk`: `index: <key> is
+    partial, and only the apk sample key may be (A81)`.
+- A file of a partial key that shares a sha256 with a planned file of
+  another key gets `path` `null` (decided per (key, name), not per sha256);
+  none exists in the committed lock (checked: 0 of the key's 15 GitLab
+  sha256 are in the sample plan).
+- U9-6 for sample needs no new code: stage 5's `listing_problems` already
+  requires `files/` to be exactly the plan's distinct sha256, which is
+  exactly the shipped files plus the partial key's pathed files.
+
+**7. `source_section`: the partial row (U9c-4, QA-4).**
+- New branch for `status == "partial"`: key checked as the key column
+  (`markdown=False`), images as today; `rest` = the files with `path` null,
+  `got` = those with a path; problems: `notices: <key> is partial in a full
+  index` when `index["set"] != "sample"`; `notices: <key> is partial but
+  lists no fetched file or no unfetched file` when either is empty. The
+  URL is `rest[0]["url"]`, checked as the URL column (`markdown=False`).
+- Row, exact (fixed text; security reviews it, U9-7):
+  `` | `<key>` | <images> | partial source (verification sample): only the files that `sources/index.json` lists with a path are in `sources/files/`; Upstream source of the rest: <url> | ``
+  It never contains the shipped claim `` source in `sources/` ``, which the
+  intro reserves for complete source.
+- *Which URL (QA-4):* the lock has no aports-tree `source` field, and
+  building one would put a URL literal in code. The row prints the lock
+  URL of the component's first unfetched file, from the index (which holds
+  the lock's `url` verbatim). For every apk entry that file is `APKBUILD`,
+  so the URL is the GitLab API raw URL at `ref=<commit>`: it names the
+  pinned commit, and it is the same form the not-shipped apk rows print
+  today. The do-not-distribute banner stays first (O-13 (4)).
+
+**8. The Q81 mitigation (QA-4): the operator full fetch, nothing added.**
+The GitLab route is exercised by every operator `bundle_fetch.sh --set
+full`, which fails closed at its first GitLab file (Q61) before any bundle
+exists, and by the recorded U8b runs. A separate recorded GitLab fetch
+before each operator bundle would be the same requests one step earlier,
+so none is added. No standing probe (U9c-8).
+
+**9. Expected numbers (U9c-5), committed lock `12eebc8c...761b`, amd64**
+(architect's read-only check of the item-3 rule; the orchestrator's
+appended sections are the record): sample 7 keys, 10 files, 10 distinct
+sha256, 136,553,898 B; apk rows `protocols-6.4` (3,144 B) and
+`services-6.4` (12,813 B). Lines: `bundle_fetch: fetched 10 files,
+136553898 bytes, 7 components (sample, amd64)`, one `apk
+apk:alpine-baselayout@3.7.1-r8: APKBUILD name check skipped` line;
+`sources-check: ok 10 files, 136553898 bytes, 7 components (sample,
+amd64)`. Index: 6 `shipped`, 1 `partial`, 176 `not-shipped`, 2 `exempt`;
+`files/` 10 files. Full unchanged (183 keys, 876 rows, 716 files,
+1,180,936,586 B). arm64: 0 everywhere.
+
+**10. Wording (U9c-6).** Developer: the docstrings above. Documenter:
+README l.234 ("fetches one entry per kind") and `scripts/offline_check.sh`
+l.238 comment ("one source entry per kind"): the sample's apk entry is its
+distfiles part; the GitLab route is used only by `--set full`. CLAUDE.md
+unchanged. Marketer: one CHANGELOG line.
+
+**11. Proof (U9c-7) and speed.**
+- Fast (fake `R.OPENER`): a transport that raises a refused connection for
+  any `gitlab.alpinelinux.org` URL; `--set sample` exits 0, writes
+  `fetch.json`, and the call log holds no GitLab URL; `--set full` exits 1
+  with the U8-4 line at the first GitLab file and exactly one call to it.
+- Real: `grep '^bundle_fetch: ' <verify log>` to `u9c/sample-run.txt`;
+  the count of `hops=` lines naming gitlab.alpinelinux.org is 0. Closure
+  probe, host side, just before and just after the orchestrator's gate run,
+  appended to `u9c/gitlab-probe.txt`: `date -u +%FT%TZ; curl -sS -o
+  /dev/null -w '%{http_code}\n' --connect-timeout 10 --max-time 20
+  https://gitlab.alpinelinux.org/; echo "rc=$?"`. Not part of verify.
+- Speed: the sample loses 15 sequential small requests (17,649 B) on the
+  route that was slowest per file; `B-fetch` falls slightly; no bundle or
+  install time change; the fast suite gains about 12 rows of pure or
+  fake-network work (seconds).
+
+**12. Decisions for the orchestrator.**
+- **O-19** (U9c-2 (c)): the extra-GitLab-file refusal uses U9-3's existing
+  line `<sha256>: not in the lock's plan`, which names the file, not the
+  key. Recommended: accept (U9-3 names a key only for planned files). If
+  the key must be named, the smallest change is an optional
+  `known: dict[sha256, (key, name)]` argument to `listing_problems` built
+  from the full plan, a U9a function change for a message.
+- **O-20** (U9c-3 "the existing row stays green, unedited"):
+  `test_source_fetch_apkbuild_names_match_the_lock_entry` runs with
+  `run_fetch`'s default `which="sample"`, so under A81 its mismatch rows
+  would pass. It must gain `which="full"`; every case and assertion stays.
+  That is the only edit. Recommended: accept as a named re-pin.
+- *Orchestrator ruling at the U9c plan gate (2026-10-30, **O-21**):* O-19
+  accepted (the file-naming line stands; no `listing_problems` change).
+  O-20 accepted as a named re-pin (`which="full"` on the APKBUILD mismatch
+  row, nothing else; the tester lists it at RED). QA-1..QA-5 as designed.
+  U9c-2 (c) and U9c-3 in requirements read with these two amendments.
+  Expected numbers recorded before any real run in `u9/expected.md` "U9c"
+  and `u8/expected.md` "U9c amendment" (checked read-only: 10 files,
+  136553898 B; every apk key has a distfiles file). Plan gate PASS.
+
+**13. Security properties (each has a row in item 14).** No new host, URL
+or request; the plan only shrinks. The skip depends on `which` and kind
+only (no fail-open on absence). A partial key never passes a full bundle
+(index stage 6 and `notices` both refuse). The partial row prints only a
+lock key, image names and a lock URL, under the same refuse-not-escape
+rules. `sources_fetch.py` gains no literal.
+
+**14. Tests.** Names indicative; the tester owns them.
+- *First RED* (pure, fast): `test_sample_plan_apk_is_distfiles_only` (the
+  fixture and the committed lock: `[protocols-6.4, services-6.4]`),
+  `test_sample_plan_refuses_an_apk_key_without_distfiles` (ValueError
+  naming the key; the client's stage-lock line, zero calls), then
+  `test_sample_fetch_skips_the_apkbuild_check_only_for_apk` (the line,
+  once; no read of an APKBUILD; `full` still reads it).
+- Then: `test_sample_plan_other_kinds_unchanged`, `test_full_plan_unchanged`,
+  `test_sample_fetch_dsc_check_still_runs`,
+  `test_sample_fetch_passes_with_gitlab_unreachable`,
+  `test_full_fetch_fails_with_gitlab_unreachable`; rows (a)-(c) in
+  `test_bundle_refuses_a_mismatched_fetch_record` and
+  `test_sample_record_accepts_the_partial_apk_entry`;
+  `test_sample_index_marks_the_partial_apk_key`,
+  `test_partial_files_without_path_are_not_on_disk` (bundle level: a copy
+  of `test_bundle_sources.py`'s synthetic lock with one apk entry added;
+  its existing fixture has no apk key and stays as is),
+  `test_full_index_refuses_a_partial_key` (patch `fetch_plan` to drop the
+  apk key's GitLab files in `full`, the U9a stage-6 precedent),
+  `test_index_refuses_a_partial_key_of_another_kind`,
+  `test_notices_partial_row` (exact row; the shipped claim absent; URL =
+  first unpathed file; partial in a full index refused).
+- **Controls (re-pins, each keeping every assertion it had):**
+  - `tests/test_sources_fetch.py` `plan_of` (helper): the sample branch
+    keeps only distfiles-host files for apk keys (a mirror, not a call to
+    `fetch_plan`). Transitively re-pins, without edits:
+    `test_source_fetch_leaves_no_out_on_failure`,
+    `test_source_fetch_set_is_the_plan`,
+    `test_source_fetch_writes_the_record_last`, and `test_source_index.py`'s
+    `listing_of`/`record_text`/`write_fetched` users.
+  - `test_fetch_plan_rows`: the sample `want` filtered as above.
+  - `test_source_fetch_apkbuild_names_match_the_lock_entry`: `which="full"`
+    (O-20).
+  - `test_source_index.py::test_sample_bundle_ships_exactly_the_sample`:
+    shipped = sample keys minus `APK_KEY`; partial = `{APK_KEY}`; `path`
+    per planned (key, name); the shared-sha256 and full-listing subtests
+    kept.
+  - `test_notices_source_code_section_rows`: a `partial` branch in `want`;
+    the "no source claim" loop covers partial rows.
+  - Must stay green unedited: every lock-rule test (the `KIND_HOSTS`
+    refactor), `test_source_fetch_dsc_names_match_the_lock_entry`,
+    `tests/test_sources_lock_committed.py`, `U6_HOSTS`,
+    `test_every_gpl_package_has_source`, `test_bundle_sources.py`,
+    `test_offline_check.py`, the install tamper pins. Baseline and
+    after-lists from saved copies: `u9c/u9c-controls.txt`.
+
+**15. Unit.**
+| Unit | Scope | Loop | A34 |
+|---|---|---|---|
+| U9c | `sbom_check.py`: `APK_DISTFILES_HOST` (`KIND_HOSTS` refactor), `fetch_plan` sample rule, `source_index` partial status and per-file `path`, `source_section` partial row; `sources_fetch.py`: `_name_check` skip line, `fetch_plan` ValueError as stage `lock`, docstring; README l.234 and `offline_check.sh` l.238 comment (documenter); item 14 tests; `u8`/`u9` expected sections; `u9c/` evidence. | `full` (scripts/, the fetch client, the checker) | no: no compose file, mount, `install.ps1`, `bundle.sh` or `bundle_fetch.sh` code change (N15 row rule) |
+
+**16. Order** (`u9c/` = `docs/evidence/platform-sbom/u9c/`; redaction per
+the evidence rule). R1 orchestrator: plan gate, O-19, O-20. R2
+orchestrator: the U9c sections of `u8/expected.md` and `u9/expected.md`
+before any real run. R3 tester RED (`u9c-controls.txt`,
+`u9c-red-verify-fast.txt`). R4 developer GREEN (`u9c-green-verify-fast.txt`,
+`u9c-green-verify-full.txt`, `sample-run.txt`). R5 reviewer and security
+in parallel (`u9c-review.md`, `u9c-security.md`: item 5 no fail-open,
+item 7 row wording). R6 documenter, marketer. R7 orchestrator gate run
+with the probe (`gitlab-probe.txt`, `orchestrator-verify-full-u9c.txt`,
+`size.md` rows), commit. R8 after a push (human): `ci-<run-id>-fetch.txt`
+with the closure state.
+
+**17. Risks.**
+- *A future apk sample key with no distfiles file* (a re-lock where the
+  smallest apk entry is aports-only): verify and CI fail closed at stage
+  `lock`, naming the key. Fix by amendment, not by hand: `sample_keys`
+  picks, for apk, the smallest entry with a distfiles file (today the same
+  key). That changes A63's reading, so the orchestrator rules it then.
+- *`from` semantics:* each distfiles file's `upstream.from` is `APKBUILD
+  sha512sums at <commit>`. In the sample its sha512 is checked against the
+  lock's value, which the lock tool read from that APKBUILD at lock time
+  (U7c, reviewed); the sample no longer re-reads the APKBUILD, so the live
+  cross-check runs only in `full`. The `from` text stays true; no lock
+  change.
+- *The partial row's URL* is on GitLab, unreachable while Alpine's closure
+  lasts, as for every not-shipped apk row; only sample bundles (do not
+  distribute) carry a partial row.
+- *CI's early warning on the GitLab API route is gone* (A81, accepted); a
+  break first shows at an operator full fetch, closed before any bundle.
+
+### N9 amendment, U9d (architect, 2026-10-30)
+
+Makes U9d implementable against the analyst's "U9d precision" U9d-1..U9d-8
+(`docs/requirements.md` l.4941-5129) and answers QD-1..QD-6 (handoff,
+analyst 2026-10-30). Ruling: **A82a** (Q82 options A + C). Orchestrator
+rulings applied: QD-5 = launch only; no operator-visible change; no
+CI-only branch; no compose, image, `install.ps1` or CLAUDE.md change.
+*Keeps:* `offline_check.sh`'s stage order, every FAIL line, the
+`offline: df <stage>` lines, the 7 GiB floor (R6, O-12), the EXIT trap;
+`docker-compose.offline.yml`, `launch.sh`, `launch.ps1`, `install.sh`,
+`install.ps1`, `ci.yml` byte-unchanged. *Code change:*
+`scripts/offline_check.sh` only (plus tests and `tests/fake_docker.py`).
+*Delivers:* N14's "the client logs `df -Pk /install` after install and
+after smoke" (C1, C3; U10 adds no second copy). No spans: a gate script,
+not an agent step. No ADR: no boundary is crossed (no dependency, schema,
+workflow, public interface or new security decision; what may be printed
+is fixed by U9d-1/U9d-3 and checked by security under U9d-8; the check
+stays inside ADR-KE-012's §2.5 offline check).
+
+**1. QD-1: the diagnostic lives in `offline_check.sh`'s client half.** It
+is possible there: the client already holds the inner daemon's CLI
+(`DOCKER_HOST`, TLS), runs `bash scripts/launch.sh` itself, and sits in the
+installed tree (`cd -- "$target"`), so it sees launch's exit status and can
+run `docker compose logs` against the same project. `launch.sh` and
+`launch.ps1` stay unchanged, so operators run exactly what they run today
+and no Windows parity work arises.
+
+**2. QD-2: list by label, read by `docker container inspect`.** `docker
+compose ps --format json` has no `Health.Log` and no `OOMKilled`, so it
+cannot carry U9d-1. The list is one `docker ps --all` filtered on the
+compose project label; each container is then read by one `docker container
+inspect --format <fixed template>` (item 7). The filter is the label's
+presence (`label=com.docker.compose.project`), not a value: the inner
+daemon is fresh (dind's anonymous volume) and asserted clean before
+install, so every compose container in it is the installed stack's, and
+the client needs no copy of the project name (`name: knowledge-engine`,
+which `launch.sh` resolves through compose).
+
+**3. QD-3: the client reads the runner's root filesystem through its own
+`/`.** The client container runs on the host daemon; its `/` is an overlay
+mount whose upper layer lives in the host daemon's storage. Linux overlayfs
+answers `statfs` with the upper filesystem's figures, so `df -Pk /` in the
+client prints filesystem `overlay`, mount `/`, and the size, used and
+available KiB of the filesystem that holds the host daemon's storage. On
+the runner that is `/dev/root` (75,085,112 KiB, fact 4), the same
+filesystem that holds `dist/` and dind's anonymous `/var/lib/docker`
+volume; the analyst cross-checks by the size column, which equals the
+host's `offline: df` `/dev/root` row. On Docker Desktop it is the VM's disk
+(U9d-3 allows this). No bind of the host root: it would be a compose mount
+change (out of scope, and an A34 trigger), would hand the client a read
+view of the whole host filesystem (a security regression for no gain), and
+adds nothing `/` does not already give. The host H-points measure memory
+only; the host's disk stays in the existing `offline: df <stage>` lines,
+unchanged.
+
+**4. QD-4: host memory is measurable exactly when the daemon's
+`DockerRootDir` is on this host.** That is the predicate behind the
+existing "DockerRootDir ... not measurable" line: `df_paths` has two
+entries when `[ -d "$root_dir" ]`. On the runner it holds (the host df
+rows show two `/dev/root` lines) and the runner's `/proc/meminfo` is the
+daemon's machine. Under Git Bash on Docker Desktop, `/proc/meminfo` is
+Cygwin's view of Windows memory and `DockerRootDir` is not a directory
+here, so the host prints one named "not measurable" line instead (item 9);
+the VM's memory is in the client's C-points. One predicate keeps one notion
+of "the daemon is on this host". Rejected: comparing `docker info
+{{.MemTotal}}` with `MemTotal` (exact on a Linux host running Docker
+Desktop with a stray `/var/lib/docker`, but a new host docker call and
+fixture for a case the df floor already misreads the same way). *U10 (N14)
+reuse:* U10's host `MemAvailable` pre-check reuses `meminfo_line` and this
+predicate; the `/install` figures are C1 and C3.
+
+**5. Shared helpers (both halves).** Defined after `die`, before the
+client branch. Each prints one line or returns 1; neither exits; neither
+writes a file.
+
+```bash
+# platform-sbom U9d (A82a; design-notes "N9 amendment, U9d").
+meminfo_line() { # meminfo_line FILE: "MemAvailable <N> kB SwapFree <N> kB", or status 1
+  local text pair avail swap
+  text="$(timeout 5 cat -- "$1" 2> /dev/null)" || return 1
+  pair="$(printf '%s\n' "$text" | awk '
+    $1 == "MemAvailable:" && $3 == "kB" && a == "" { a = $2 }
+    $1 == "SwapFree:" && $3 == "kB" && s == "" { s = $2 }
+    END { print a, s }')" || return 1
+  avail="${pair% *}"
+  swap="${pair#* }"
+  [[ "$avail" =~ ^[0-9]+$ && "$swap" =~ ^[0-9]+$ ]] || return 1
+  echo "MemAvailable $avail kB SwapFree $swap kB"
+}
+df_line() { # df_line PATH: "filesystem <fs> size <N> KiB used <N> KiB available <N> KiB capacity <P>%", or status 1
+  local text line
+  text="$(timeout 5 df -Pk -- "$1" 2> /dev/null)" || return 1
+  line="$(printf '%s\n' "$text" | awk '
+    NR == 2 && v == "" {
+      for (i = 5; i <= NF; i++) {
+        if ($i ~ /^[0-9]+%$/ && $(i-1) ~ /^[0-9]+$/ && $(i-2) ~ /^[0-9]+$/ && $(i-3) ~ /^[0-9]+$/) {
+          fs = $1; for (j = 2; j <= i - 4; j++) fs = fs " " $j
+          v = "filesystem " fs " size " $(i-3) " KiB used " $(i-2) " KiB available " $(i-1) " KiB capacity " $i
+          break
+        }
+      }
+    }
+    END { print v }')" || return 1
+  [ -n "$line" ] || return 1
+  echo "$line"
+}
+```
+The column rule is `avail_kb`'s (a filesystem name may hold spaces, as
+`df -P` prints it). `/proc/meminfo` states kB; the line keeps `kB` (U9d-2).
+
+**6. Client: the measure block (C1-C3).** Inside the client branch, after
+`say()`:
+
+```bash
+  meminfo="${KE_OFFLINE_MEMINFO:-/proc/meminfo}"  # TEST SEAM ONLY (header list)
+  m() { echo "offline-client: measure: $*"; }
+  measure() { # measure POINT (C1, C2 or C3): one contiguous block; never fails the run
+    local t0="$SECONDS" line l rc=0
+    if line="$(df_line /)"; then m "$1 df / (the host daemon's storage): $line"
+    else m "$1 df / (the host daemon's storage): not measured (df -Pk gave no figures within 5 s)"; fi
+    if line="$(df_line "$root")"; then m "$1 df $root: $line"
+    else m "$1 df $root: not measured (df -Pk gave no figures within 5 s)"; fi
+    if line="$(meminfo_line "$meminfo")"; then m "$1 memory: $line"
+    else m "$1 memory: not measured ($meminfo gave no MemAvailable and SwapFree in kB within 5 s)"; fi
+    line="$(timeout 10 docker system df \
+      --format '{{.Type}} total {{.TotalCount}} active {{.Active}} size {{.Size}} reclaimable {{.Reclaimable}}' \
+      2> /dev/null < /dev/null)" || rc=$?
+    if [ "$rc" -eq 0 ] && [ -n "$line" ]; then
+      while IFS= read -r l; do
+        if [ -n "$l" ]; then m "$1 inner docker system df: ${l//[[:cntrl:]]/?}"; fi
+      done <<< "$line"
+    else
+      m "$1 inner docker system df: not measured (exit $rc; 124 is the 10 s timeout)"
+    fi
+    m "$1 done in $((SECONDS - t0)) s"
+  }
+```
+- Lines (C1 shown; `$root` is `/install` in the container):
+  `offline-client: measure: C1 df / (the host daemon's storage): filesystem overlay size <N> KiB used <N> KiB available <N> KiB capacity <P>%`;
+  `offline-client: measure: C1 df /install: filesystem tmpfs size <N> KiB used <N> KiB available <N> KiB capacity <P>%`;
+  `offline-client: measure: C1 memory: MemAvailable <N> kB SwapFree <N> kB`;
+  one `offline-client: measure: C1 inner docker system df: <Type> total <n> active <n> size <S> reclaimable <R>`
+  per type Docker prints (Images, Containers, Local Volumes, Build Cache;
+  sizes in Docker's units, reclaimable with Docker's `(<P>%)`); last
+  `offline-client: measure: C1 done in <N> s`.
+- `docker system df` is the summary form, never `-v` (U9d-3).
+- `KE_OFFLINE_MEMINFO` is a third client-only test seam, beside
+  `KE_OFFLINE_BUNDLE_DIR` and `KE_OFFLINE_INSTALL_ROOT` (the header lists
+  it; the container sets none of them; the host half reads none). It
+  exists so the "every source fails" row can make the meminfo read fail.
+
+**7. Client: the launch diagnostic (U9d-1).** Also in the client branch:
+
+```bash
+  diag() { echo "offline-client: diag: $*"; }
+  diag_print() { # diag_print LABEL: one diag line per non-empty stdin line; control characters as ?; cut at 2000
+    local l
+    while IFS= read -r l || [ -n "$l" ]; do
+      l="${l//[[:cntrl:]]/?}"
+      if [ -z "$l" ]; then continue; fi
+      if [ "${#l}" -gt 2000 ]; then l="${l:0:2000} [cut]"; fi
+      printf 'offline-client: diag: %s%s\n' "$1" "$l"
+    done
+  }
+  # shellcheck disable=SC2016  # a Go template for docker, not a shell expansion
+  diag_tpl='State.Status: {{.State.Status}}
+State.ExitCode: {{.State.ExitCode}}
+State.OOMKilled: {{.State.OOMKilled}}
+{{if .State.Health}}State.Health.Status: {{.State.Health.Status}}
+{{range $i, $e := .State.Health.Log}}State.Health.Log[{{$i}}]: end {{$e.End}} exit {{$e.ExitCode}} output {{json $e.Output}}
+{{else}}State.Health.Log: <absent>
+{{end}}{{else}}State.Health.Status: <absent>
+State.Health.Log: <absent>
+{{end}}'
+  diag_launch() { # diag_launch RC: one block per container of the installed stack; never exits
+    local rc=0 list id name svc out status health
+    diag "launch exited $1; the installed stack's containers in the inner daemon follow"
+    list="$(timeout 10 docker ps --all --no-trunc --filter label=com.docker.compose.project \
+      --format '{{.ID}} {{.Names}} {{.Label "com.docker.compose.service"}}' 2> /dev/null < /dev/null)" || rc=$?
+    if [ "$rc" -ne 0 ]; then diag "cannot list the containers: docker ps returned exit $rc (124: the 10 s timeout)"; list=""
+    elif [ -z "$list" ]; then diag "no container of the installed stack exists"; fi
+    while read -r id name svc; do
+      if [ -z "$id" ]; then continue; fi
+      diag "container $name (service ${svc:-<absent>})"
+      rc=0
+      out="$(timeout 10 docker container inspect --format "$diag_tpl" "$id" 2> /dev/null < /dev/null)" || rc=$?
+      if [ "$rc" -ne 0 ]; then
+        diag "  docker container inspect returned exit $rc (124: the 10 s timeout); its logs follow"
+        status="" health=""
+      else
+        printf '%s\n' "$out" | diag_print "  "
+        status="$(printf '%s\n' "$out" | sed -n '/^State\.Status: /{s///p;q}')"
+        health="$(printf '%s\n' "$out" | sed -n '/^State\.Health\.Status: /{s///p;q}')"
+      fi
+      if [ "$status" = running ] && { [ "$health" = healthy ] || [ "$health" = "<absent>" ]; }; then continue; fi
+      if [ -z "$svc" ]; then diag "  no service label, so no logs"; continue; fi
+      diag "  logs of service $svc (docker compose logs --tail 50):"
+      rc=0
+      out="$(timeout 20 docker compose logs --no-color --no-log-prefix --timestamps --tail 50 "$svc" 2>&1 < /dev/null)" || rc=$?
+      printf '%s\n' "$out" | diag_print "  $svc | "
+      if [ "$rc" -ne 0 ]; then diag "  docker compose logs returned exit $rc (124: the 20 s timeout)"; fi
+    done <<< "$(printf '%s\n' "$list" | LC_ALL=C sort -k 2)"
+    diag "end of the launch diagnostic"
+  }
+```
+- *The template lists only the allowed fields:* `.State.Status`,
+  `.State.ExitCode`, `.State.OOMKilled`, `.State.Health` (presence),
+  `.State.Health.Status`, and per `.State.Health.Log` entry `.End`,
+  `.ExitCode`, `.Output`. The listing reads `.ID` (used, not printed),
+  `.Names` and one label value, the service name (U9d-3 allows container
+  and service names). The template's continuation lines start at column 0
+  (indentation would be printed).
+- *Absent-field token:* `<absent>` (QD-6): no healthcheck, or never
+  started (Docker sets `State.Health` only once a container with a
+  healthcheck starts); an empty Health.Log prints the same token.
+- *Probe output is one line per entry:* `{{json $e.Output}}` prints it
+  JSON-quoted, so a multi-line output is one `diag:` line with `\n`
+  escapes. That meets "every line ... starts with the prefix", keeps each
+  output attached to its entry, and leaves no in-band line that could
+  stand for a `State.Status:` line. (If the orchestrator wants split
+  lines, that is a template change only.)
+- *Healthy* (no logs): Status `running` and Health.Status `healthy` or
+  `<absent>`. Anything else, and a container whose inspect returned
+  non-zero, gets its logs. `docker compose logs` runs in the installed
+  tree, so compose resolves the project as `launch.sh` did (same `.env`;
+  `KE_ENV_FILE` is unset in the client); `2>&1` keeps container stderr
+  lines (a JVM's last words) and compose's own error. Logs span restarts,
+  so a `restarting` neo4j shows its death lines.
+- Order: sorted by service name; per container `container <name> (service
+  <svc>)`, the State lines (Health.Log one per entry), then for a
+  non-healthy one `  logs of service <svc> (...):` and up to 50
+  `offline-client: diag:   <svc> | <line>` lines. Last line
+  `offline-client: diag: end of the launch diagnostic`.
+- *Pitfall pinned:* every docker call in the loop reads `< /dev/null`; a
+  docker call reading the loop's here-string would end the loop early.
+
+**8. Client flow (the only change to the client's sequence).**
+
+```bash
+  CDPATH='' cd -- "$target"
+  measure C1
+  say "launch"
+  launch_rc=0
+  bash scripts/launch.sh || launch_rc=$?
+  if [ "$launch_rc" -ne 0 ]; then
+    measure C2
+    diag_launch "$launch_rc"
+    exit "$launch_rc"
+  fi
+  say "smoke (ci/offline included)"
+  KE_SMOKE_OWNS_PROJECT=1 bash scripts/smoke.sh
+  measure C3
+  say "teardown"
+```
+- QD-6 exit status: `launch.sh`'s own non-zero status, as today (under
+  `set -e` the client already exited with it); `launch_rc` is non-zero by
+  construction in that branch, so the client never exits 0 after a
+  diagnostic. `launch.sh` is a child bash, so its own `set -e` is not
+  suppressed by the `||`.
+- C2 comes before the diagnostic: the reading closest to the failure.
+- QD-5 (ruled): a failure before launch, in smoke, in the inner teardown
+  or at the image-name check prints no `diag:` line; smoke exits under
+  `set -e` before `measure C3`.
+
+**9. Host: H1-H3 (memory only).** After `df_log()`:
+
+```bash
+measure_host() { # measure_host POINT (H1, H2 or H3): never fails the run
+  local t0="$SECONDS" line
+  if [ "${#df_paths[@]}" -eq 1 ]; then
+    echo "offline: measure: $1 memory: not measurable (the daemon's DockerRootDir is not on this host, so this /proc/meminfo is not the daemon's machine; Docker Desktop keeps it in a VM)"
+  elif line="$(meminfo_line /proc/meminfo)"; then
+    echo "offline: measure: $1 memory: $line"
+  else
+    echo "offline: measure: $1 memory: not measured (/proc/meminfo gave no MemAvailable and SwapFree in kB within 5 s)"
+  fi
+  echo "offline: measure: $1 done in $((SECONDS - t0)) s"
+}
+```
+- H1: right after `df_log "after dind up"`. H2 and H3 replace the run line:
+```bash
+compose run --rm offline-client || { measure_host H2; die "the offline client failed (see its output above)"; }
+measure_host H3
+df_log "after client run"
+```
+- The FAIL line text is byte-identical; the trap's `df_log "before
+  teardown"` and teardown follow as today. H2 runs on any client failure
+  (U9d-2 "when the client exits non-zero"). The host half reads no seam.
+
+**10. Never printed (U9d-1, U9d-3; a security property).** No container's
+environment, command, args, entrypoint, labels (other than the service
+name value), mounts, networks, host config, healthcheck definition, or full
+inspect JSON: no `docker inspect` without `--format`, no `{{json .}}`, no
+`.Config`, `.Mounts`, `.Args`, `.Path`, `.HostConfig`, `.NetworkSettings`
+in any template; no `docker system df -v`; no env file or `compose config`
+output; no hostname, IP, user name, home or profile path. Logs come only
+from `docker compose logs --tail 50` of non-healthy services. *CI-log
+hardening:* every printed line starts with a fixed prefix and has control
+characters replaced by `?` (`\r` included), so no container or probe text
+can begin a GitHub Actions workflow command (`::...`) or a `##[` marker,
+or rewrite a line. The neo4j probe passes its password as a `cypher-shell`
+argument; the template never prints the probe definition and the probe's
+stdout goes to `/dev/null` (security confirms on the real extract that no
+secret prints; the stack runs with `.env.example`'s placeholders).
+
+**11. Wording rules.** Every new line starts with `offline-client:
+measure:`, `offline-client: diag:` or `offline: measure:`. No new line
+contains the words pass, passed, skip, skipped, skipping, FAIL,
+inconclusive, "not clean" or "nothing was pulled" (existing rows assert
+their absence on failure paths). Failures read "not measured (...)",
+"returned exit <rc> (...)", "cannot list ...".
+
+**12. Timeouts, cost and worst cases (U9d-4).**
+
+| Call | Timeout |
+|---|---|
+| `cat /proc/meminfo`, `df -Pk /`, `df -Pk /install` (client); `cat /proc/meminfo` (host) | 5 s each |
+| `docker system df --format ...` (C-points) | 10 s |
+| `docker ps --all --filter label=...` (diag) | 10 s |
+| `docker container inspect --format ...` (per container) | 10 s |
+| `docker compose logs --tail 50 <svc>` (per non-healthy service) | 20 s |
+
+- Every docker call in `measure` and `diag_launch` is `timeout <N>
+  docker`, N <= 30 (the static row).
+- Passing run: expected C1 and C3 about 1 s each, H1 and H3 0 s; bound
+  N <= 5 per point and <= 15 s per run (U9d-4), read from the `done in`
+  lines.
+- Hang ceilings (a daemon that accepts and never answers): a C-point 25 s
+  (5 + 5 + 5 + 10), an H-point 5 s, the diagnostic 10 + 7 x (10 + 20) =
+  220 s for the 7 stack containers (gateway, api, worker, postgres, neo4j,
+  valkey, phoenix); the launch-failure path adds at most 250 s. A dead
+  daemon refuses at once: a few seconds. The 5 s bound applies to the
+  logged points of a passing run; a timeout line is itself the named
+  defect.
+- `SECONDS` gives whole seconds; a 0.2 s point can read 1 s.
+
+**13. Tests (the tester owns the names; first RED targets).**
+- First failing tests: `test_offline_client_prints_diag_on_launch_failure`
+  (`FAKE_STUB_FAIL=launch.sh`; three containers: healthy; unhealthy with
+  Health.Log including one multi-line output; exited, no healthcheck,
+  `OOMKilled` true, `ExitCode` 137; a sentinel secret in `Config.Env`) and
+  `test_offline_measure_points_on_a_pass` (client C1 between the install
+  and launch stubs, C3 between smoke and teardown, no C2, no `diag:` line,
+  no `container inspect`, `ps --all` or `compose logs` call; host H1 after
+  `up dind`, H3 after `run client`).
+- Then: `test_offline_client_diag_survives_a_failing_inspect`
+  (`FAKE_DOCKER_FAIL_NTH` on the first `container inspect`: a named line,
+  the other blocks and logs still print, exit non-zero);
+  `test_offline_measure_points_on_a_launch_failure` (C1, C2, no C3);
+  `test_offline_measure_never_changes_the_outcome` (fake `df` fails, the
+  meminfo seam names a missing file, `system df` fails; host with the
+  default absent `FAKE_DOCKER_ROOT_DIR`: named lines, still exit 0); host
+  H2 before the FAIL line (run with `stderr=subprocess.STDOUT`: `_host`
+  captures the streams apart, so the order needs a merged run);
+  `test_offline_check_has_no_ci_only_branch` (the comment-stripped body
+  names no `CI`, `GITHUB_*`, `RUNNER_*`); a static row that every `docker`
+  call in `measure` and `diag_launch` is `timeout <N> docker` with N <= 30
+  (as the pull probe row); a static template row (the template equals the
+  test's constant and holds none of `json .}}`, `.Config`, `.Mounts`,
+  `.Args`, `.Path`, `.HostConfig`, `.NetworkSettings`); `system df` never
+  with `-v` (call record); the unchanged-pass-output row (passing client
+  and host output with `measure:` lines removed equals the pre-U9d
+  sequence, project names and df figures normalised, captured at RED from
+  the unchanged script).
+- **Controls.**
+  - `tests/test_offline_check.py`: **no existing row changes; expected
+    re-pins: none.** Must stay green unedited, and why. Host rows
+    (`..._host_half_runs_stages_in_order`, `..._fails_below_free_disk`,
+    `..._logs_disk_around_each_stage`, `..._tears_down_on_failure`,
+    `..._tears_down_on_interrupt`,
+    `..._signal_exits_with_its_status_and_no_pass`,
+    `..._fails_without_privileged_daemon`, the bundle-permission and fetch
+    rows): the host adds no docker or df call (H-points read
+    `/proc/meminfo` only), so `_event`/`_events` and the DF records are
+    unchanged; the `offline: df` count is unchanged (`offline: measure`
+    lines do not start with `offline: df`); H2's text has no "pass".
+    Client rows (`..._client_half_runs_install_launch_smoke_teardown`,
+    `..._asserts_clean_daemon` with its pull-timeout static row, the
+    image-name rows, `..._dind_uses_containerd_store`,
+    `..._client_refuses_ca_or_server_certs`): `_client_event` ignores
+    `system df` and DF records; C1 comes after install, so the cert row's
+    "no docker call before the cert check" holds; a failure before launch
+    prints no new line; the image-name failure path prints C1 and C3 lines
+    only. Compose rows: no compose change.
+  - `tests/fake_docker.py` gains, each inert unless set: a `State` object
+    in `FAKE_DOCKER_CONTAINERS` entries (Status, ExitCode, OOMKilled,
+    optional Health {Status, Log [{End, ExitCode, Output}]}) and an
+    optional `Config.Env`, rendered by `container inspect --format <the
+    U9d template>` (exact-template match; any other template keeps today's
+    exit 2); `ps` with the combined `{{.ID}} {{.Names}} {{.Label "K"}}`
+    format; `compose logs ... <svc>` printing `FAKE_COMPOSE_LOGS[svc]`
+    (JSON object of lists); `system df --format` printing
+    `FAKE_DOCKER_SYSTEM_DF` rows (default four); the fake `df` gains a
+    failure knob (`FAKE_DF_FAIL`). Every other fake user (the whole suite)
+    stays green unedited.
+  - Unedited elsewhere: `tests/test_stack_scripts.py` verify-order rows
+    (offline_check stubbed), the `ci.yml` row, `lint.sh` shellcheck (the
+    template carries its SC2016 disable comment).
+  - Baseline and after lists: `u9d/u9d-controls.txt`.
+
+**14. Unit.**
+
+| Unit | Scope | Loop | A34 |
+|---|---|---|---|
+| U9d | `offline_check.sh`: `meminfo_line`, `df_line`; client `measure` (C1-C3), `diag_launch`, the launch branch, seam `KE_OFFLINE_MEMINFO` and header text; host `measure_host` (H1-H3); item 13 tests and fake; `u9d/` evidence | `full` (`scripts/`; RED/GREEN rows run in `fast`; the real `measure:` lines and timings come only from `full`) | no: no `install.ps1`, compose file or mount, `launch.ps1` or image change |
+
+**15. Order** (`u9d/` = `docs/evidence/platform-sbom/u9d/`; redaction per
+the evidence rule). R1 orchestrator plan gate. R2 tester RED
+(`u9d-controls.txt`, `u9d-red-verify-fast.txt`). R3 developer GREEN
+(`u9d-green-verify-fast.txt`, `u9d-green-verify-full.txt`,
+`measure-lines-green.txt`: `grep -E 'offline-client: (measure|diag):|offline: measure:'`
+with the U9d-4 sums). R4 reviewer and security in parallel (security:
+item 10, U9d-3). R5 documenter (the script header; README only if it
+describes the offline check's output); marketer if the orchestrator wants
+a CHANGELOG line. R6 orchestrator gate `verify.sh full`
+(`orchestrator-verify-full-u9d.txt`, `measure-lines-gate.txt`), commit.
+R7 after a push (the human's word): the CI log and launch extract
+(U9d-6), read by the analyst.
+
+**16. Risks.**
+- *The measurement's own disk use:* none. Everything is held in shell
+  variables and pipes; nothing is written under `dist/`, `/install` or the
+  inner daemon. Bash here-strings in the client use a pipe or `/tmp`,
+  which is the client's tmpfs (memory). `docker system df` writes nothing.
+  A full runner disk cannot break the measurement that reports it.
+- *A hung `docker` call on a dying daemon:* bounded per item 12 (220 s for
+  the diagnostic at worst); each call is named on its own line, and the
+  exit status stays launch's. A dead daemon fails fast.
+- *Output volume in the CI log:* typically one or two non-healthy
+  containers, about 100 lines. Worst case 7 containers x (up to 9 state
+  lines + 50 log lines) plus three measure blocks, about 450 lines; a log
+  line is cut at 2000 characters; Docker keeps 5 Health.Log entries of at
+  most 4 KiB output each. Acceptable for one failing run.
+- *`docker system df` cost on the containerd store:* it walks active
+  snapshots and volumes; small at C1 (no volumes yet) and C3 (fresh stack
+  data). A GREEN or gate run with N > 5 at a point is a defect for the
+  developer (U9d-4); if the only fix is a different command, the architect
+  amends.
+- *`set -e` in the client:* helpers return 1 only inside `if` or `||`; an
+  unguarded new command that fails would turn a pass into a failure. The
+  "every source fails" row is the control.
+- *What it cannot prove:* C2 is taken after neo4j died, as fact 4's
+  reading was: disk and memory at the failure, not before it. C1 and the
+  inner `system df` give the trend; the order (disk full then death, or
+  the reverse) comes from neo4j's own last lines and `OOMKilled`.
+
+- *Orchestrator rulings at the U9d plan gate (2026-10-30, **O-22**, on the
+  architect's three deviations in "N9 amendment, U9d"):* (1) each Health.Log
+  output is printed JSON-quoted on one prefixed line (U9d-1 reads so); (2) the
+  5 s per-point bound (U9d-4) applies when every source answers; a `timeout`
+  line at a point is the named defect, and the bound is read from the
+  `measure: <point> done in <N> s` lines; (3) the client-only seam
+  `KE_OFFLINE_MEMINFO` is accepted, listed in the script header, never read
+  by the host half. QD-5: launch only. Plan gate PASS; tester RED after the
+  U9c commit (the tree under the orchestrator's U9c `verify full` must not
+  move before that commit).
+
+- *Orchestrator rulings at U9d rework 1 (2026-10-30, **O-23**, on reviewer
+  B-1, N-1, N-2 in `u9d/review.md`):* B-1 accepted as a design amendment
+  (restart policy resets `ExitCode` and `OOMKilled`; the diagnostic must
+  survive a restart): the architect amends "N9 amendment, U9d" items 7-8
+  with `RestartCount`, `State.StartedAt`, `State.FinishedAt`, `State.Error`
+  in the template (and `fake_docker.DIAG_TEMPLATE`), and a `docker events`
+  stream (`--filter event=die --filter event=oom`, a fixed `--format` that
+  prints only time, action, name and exitCode) started before launch and
+  printed on the failure path only, bounded (timeout, line cap, killed on
+  every exit path); the events history is not queried afterwards (bounded
+  buffer, reviewer probe). The analyst amends U9d-1's field list to match.
+  N-1 accepted (drop `;q`); N-2 accepted as is (same order; the design text
+  says "by service name", the code sorts by container name; the architect
+  aligns the wording). Then tester RED (a restarted-container fixture whose
+  only evidence is RestartCount/FinishedAt and the die event), developer
+  GREEN, reviewer re-read, security re-audit of the template and the events
+  format. Rework 1 of 5.
+
+#### Amendment, rework 1 (O-23) (architect, 2026-10-30)
+
+Answers reviewer B-1, N-1, N-2 (`u9d/review.md`; probes P3-P5 in
+`u9d/review-probes.txt`, Docker 29.5.2) under ruling O-23. Items 1-16
+stand; this block replaces only what it names (item numbers below). Same
+scope: `scripts/offline_check.sh` client half, `tests/fake_docker.py`,
+`tests/test_offline_check.py`. No compose, image, `launch.sh`,
+`install.ps1` or CLAUDE.md change; no ADR (as the item header: no
+boundary is crossed; the new printed surface is fixed by U9d-1 and
+re-audited by security). No span (a gate script).
+
+*Why both mechanisms.* Every stack service has `restart: unless-stopped`
+(docker-compose.yml:24 via `x-app`, :64, :120, :141, :156, :169). Probe P3:
+`ExitCode 137 / OOMKilled true` live only in the ~100 ms `restarting`
+window; after the restart they read `0 / false`. What survives a restart is
+`RestartCount`, `State.StartedAt`, `State.FinishedAt` (and `State.Error` for
+a failed start): they prove *that* and *when* a container died, not *how*.
+The *how* (the death's exit code, the OOM kill) exists only in the daemon's
+`die` and `oom` events, and the event history is a bounded ring that
+healthcheck `exec_*` events evict (P5: 1 of 9 deaths kept). So the client
+records a live stream from just before launch.
+
+**A1 (amends item 7, the template; and `fake_docker.DIAG_TEMPLATE`).** Four
+lines are added after `State.OOMKilled`, before the Health part. The new
+`diag_tpl`, in full (continuation lines at column 0, as before):
+
+```bash
+  # shellcheck disable=SC2016  # a Go template for docker, not a shell expansion
+  diag_tpl='State.Status: {{.State.Status}}
+State.ExitCode: {{.State.ExitCode}}
+State.OOMKilled: {{.State.OOMKilled}}
+RestartCount: {{.RestartCount}}
+State.StartedAt: {{if or (eq .State.StartedAt "") (eq .State.StartedAt "0001-01-01T00:00:00Z")}}<absent>{{else}}{{.State.StartedAt}}{{end}}
+State.FinishedAt: {{if or (eq .State.FinishedAt "") (eq .State.FinishedAt "0001-01-01T00:00:00Z")}}<absent>{{else}}{{.State.FinishedAt}}{{end}}
+State.Error: {{if .State.Error}}{{json .State.Error}}{{else}}<absent>{{end}}
+{{if .State.Health}}State.Health.Status: {{.State.Health.Status}}
+{{range $i, $e := .State.Health.Log}}State.Health.Log[{{$i}}]: end {{$e.End}} exit {{$e.ExitCode}} output {{json $e.Output}}
+{{else}}State.Health.Log: <absent>
+{{end}}{{else}}State.Health.Status: <absent>
+State.Health.Log: <absent>
+{{end}}'
+```
+- `RestartCount` is top-level in inspect JSON (`.RestartCount`, not under
+  `.State`), so the printed label is `RestartCount:`, the field's own path.
+  It is always a number; `0` is a value, never `<absent>`.
+- `StartedAt` and `FinishedAt` are RFC 3339 strings in the API; Docker's
+  zero value `0001-01-01T00:00:00Z` (never started, never finished; P3's
+  `finished=` before the first death) prints `<absent>` (QD-6's token); an
+  empty string, the same. `State.Error` is empty unless the daemon failed to
+  start the container (for example a runtime or "no space left on device"
+  error on restart): empty prints `<absent>`, otherwise JSON-quoted on one
+  line, as the probe outputs (docker's `json` does not HTML-escape).
+- `fake_docker.DIAG_TEMPLATE` becomes the same text: four tuple items
+  inserted after `"State.OOMKilled: {{.State.OOMKilled}}",`:
+  `"RestartCount: {{.RestartCount}}",`,
+  `"State.StartedAt: {{if or (eq .State.StartedAt \"\") (eq .State.StartedAt \"0001-01-01T00:00:00Z\")}}<absent>{{else}}{{.State.StartedAt}}{{end}}",`,
+  `"State.FinishedAt: ..."` (same form, `FinishedAt`) and
+  `"State.Error: {{if .State.Error}}{{json .State.Error}}{{else}}<absent>{{end}}",`
+  (the test row compares the two texts byte for byte).
+- The fake's `_u9d_render` appends, after the OOMKilled line, in this order:
+  `"RestartCount: %s" % word(c.get("RestartCount", 0))` (a top-level key of
+  the container record, as in inspect); `State.StartedAt` and
+  `State.FinishedAt` from `st.get(...)`, `<absent>` when missing, `""` or
+  `0001-01-01T00:00:00Z`; `State.Error` `<absent>` when missing or `""`,
+  else `json.dumps(err, ensure_ascii=False)`. The no-`--format` JSON record
+  gains `"RestartCount"` (top level). Every existing fixture lacks these
+  keys and so renders `RestartCount: 0` and three `<absent>` lines.
+
+- *Checked on Docker 29.5.2 (architect, read-only):* the four new lines
+  render on an existing container (`RestartCount: 0`, both timestamps,
+  `State.Error: <absent>`), and `events_fmt` (A2) renders a past `die` as
+  `<N> die <name> exitCode=0 signal=` (`--since`/`--until` of the past hour).
+
+**A2 (amends items 7 and 8: the events stream).** New definitions in the
+client branch, after `diag_tpl`:
+
+```bash
+  events_fmt='{{.Time}} {{.Action}} {{.Actor.Attributes.name}} exitCode={{index .Actor.Attributes "exitCode"}} signal={{index .Actor.Attributes "signal"}}'
+  events_start() { # events_start: a bounded background stream of the stack's container deaths into a /tmp (tmpfs) file
+    events_pid="" events_file=""
+    events_file="$(mktemp /tmp/ke-offline-events.XXXXXX 2> /dev/null)" || { events_file=""; return 0; }
+    timeout 900 docker events --since "$(date +%s)" --filter type=container \
+      --filter label=com.docker.compose.project --filter event=die --filter event=oom --filter event=kill \
+      --format "$events_fmt" > "$events_file" 2> /dev/null < /dev/null &
+    events_pid=$!
+  }
+  events_stop() { # events_stop: stop the stream, keep its first 100 lines in memory, remove the file; never fails
+    events_state=none events_rc=0 events_out="" events_n=0
+    if [ -z "$events_pid" ]; then return 0; fi
+    if kill "$events_pid" 2> /dev/null; then events_state=stopped; else events_state=ended; fi
+    wait "$events_pid" 2> /dev/null || events_rc=$?
+    events_n="$(awk 'END { print NR }' "$events_file" 2> /dev/null)" || events_n=0
+    [[ "$events_n" =~ ^[0-9]+$ ]] || events_n=0
+    events_out="$(head -n 100 -- "$events_file" 2> /dev/null)" || events_out=""
+    rm -f -- "$events_file" || true
+  }
+```
+- *Filters.* `type=container` (only container events; image `load`/`tag`
+  events from install can never match), `label=com.docker.compose.project`
+  (presence, as the `ps` list, item 2), `event=die`, `event=oom`,
+  `event=kill` (same-key filters OR, different keys AND). `die` carries
+  `exitCode`; `oom` is the cgroup OOM kill (cgroup v2 counts any OOM kill
+  of a process in the container's cgroup); `kill` is a signal sent *by
+  Docker* (stop, kill, a compose stop) and carries `signal`. Not
+  `exec_die` and no health events: those are the ring's flood and say
+  nothing the template's Health.Log does not.
+- *Format: the only fields printed* are the event time (Unix seconds;
+  Docker's event templates have no date function; the analyst converts with
+  `date -u -d @<N>`), the action, the container name, `exitCode` and
+  `signal`. **`signal` is printed:** a `kill` line is the one way to tell
+  "Docker stopped it" (exit 137 or 143 after a `kill` line) from a kernel
+  kill. `index` yields `""` for a key the event lacks (`.Actor.Attributes.x`
+  would print `<no value>`), so the lines read
+  `1793354444 oom knowledge-engine-neo4j-1 exitCode= signal=` and
+  `1793354444 die knowledge-engine-neo4j-1 exitCode=137 signal=`. No other
+  attribute: the attribute map also holds every label and the image.
+- *`--since "$(date +%s)"`.* `docker events` subscribes a moment after it
+  is started; `--since` with the start second closes that gap (the daemon
+  replays the buffered events since that second and streams on, atomically,
+  no duplicates). It replays at most the second before launch, in a daemon
+  that holds no stack container yet; it is not a history query after the
+  fact (O-23): no `--until`, no second `events` call. `date` is evaluated in
+  the background child, so a failure there cannot stop the client (the
+  stream then ends at once and A3 names it).
+- *N = 900 s.* The bound must outlast launch. `launch.sh` runs
+  `compose up --wait` with no wait timeout; its worst case is neo4j reaching
+  `unhealthy` (start_period 20 s + 18 x (10 s interval + 10 s timeout) =
+  380 s) followed by its dependents' checks (about 60-120 s): about 500 s.
+  900 s leaves margin and is well inside the CI job (69 min). A launch longer
+  than 900 s loses only later events, and A3 names the cut (exit 124). The
+  timeout never costs time: it bounds an orphan, and the kill ends the
+  stream at launch's exit.
+- *File:* `mktemp /tmp/ke-offline-events.XXXXXX`. The client's `/tmp` is a
+  tmpfs (`docker-compose.offline.yml`, offline-client `tmpfs: /tmp`), so the
+  file is in the client container's memory, never on the host, under
+  `/install`, `dist/` or the bundle. `events_stop` reads it into variables
+  and removes it at launch's exit on both paths; the container's exit
+  removes the tmpfs anyway. A `mktemp` failure leaves no stream (A3 names
+  it) and never fails the run.
+- *Stopped on every exit path, without a trap.* The only command between
+  `events_start` and `events_stop` is `bash scripts/launch.sh ||
+  launch_rc=$?`, which cannot exit the client; `events_stop` runs once,
+  right after it, before either branch, so the stream is stopped before the
+  diagnostic and `exit "$launch_rc"` and before smoke on a pass. A signal
+  to the client is handled by the host (its EXIT trap tears the project
+  down, which removes the client container and every process in it). The
+  `kill` result says whether the stream was still running
+  (`events_state=stopped`) or had already ended (`ended`, with `wait`'s
+  status: 124 its timeout, 1 a daemon error); this avoids depending on the
+  exit status a killed `timeout`/docker pair reports. `kill`/`wait` stderr
+  goes to `/dev/null`; bash prints no job notice (probe: none on stderr).
+
+New client flow (amends item 8; the rest of item 8 stands):
+
+```bash
+  CDPATH='' cd -- "$target"
+  measure C1
+  say "launch"
+  launch_rc=0
+  events_start
+  bash scripts/launch.sh || launch_rc=$?
+  events_stop
+  if [ "$launch_rc" -ne 0 ]; then
+    measure C2
+    diag_launch "$launch_rc"
+    exit "$launch_rc"
+  fi
+  say "smoke (ci/offline included)"
+```
+
+**A3 (amends item 7: where the events print).** In `diag_launch`, right
+after its first line (`diag "launch exited $1; ..."`) and before the
+container list, insert:
+
+```bash
+    diag "events while launch ran (die, oom, kill; a stream started before launch, stopped when it exited):"
+    if [ "$events_state" = none ]; then
+      diag "  events: not recorded (no temporary file in /tmp)"
+    else
+      printf '%s\n' "$events_out" | diag_print "  events | "
+      if [ -z "$events_out" ]; then diag "  events: none"; fi
+      if [ "$events_n" -gt 100 ]; then
+        diag "  events: $((events_n - 100)) more lines not printed (the first 100 are shown)"
+      fi
+      if [ "$events_state" = ended ]; then
+        diag "  events: the stream ended before launch exited (exit $events_rc; 124: its 900 s timeout)"
+      fi
+    fi
+```
+- Printed on the launch-failure path only, through `diag_print` (prefix,
+  control characters as `?`, 2000-character cut), so every line starts
+  `offline-client: diag:   events | ` or `offline-client: diag:   events:`.
+  On a pass nothing of it prints (the variables are never read).
+- No printed line of this section starts with `container ` (the header
+  starts `events`), so the per-container block parsing is unchanged.
+- *Line cap 100, first lines kept.* Expected volume: one `die` (plus one
+  `oom`) per death. A container crash-looping under Docker's backoff (100 ms
+  doubling, reset after 10 s of uptime) dies about 9 times in neo4j's first
+  40 s, so even six crash-loopers leave neo4j's first death inside the first
+  100 lines. The first deaths name the cause; later ones repeat it and
+  `RestartCount` gives the total per container. Worst case adds 104 lines.
+- Order: chronological as streamed (`oom` precedes its `die`).
+- What a gap costs: a death between launch's exit and the inspect (about
+  1 s) is not in the stream; `RestartCount` and `FinishedAt` still show it.
+
+**A4 (N-1, amends item 7).** The two extractions become (sed reads to EOF,
+so `printf` can never take SIGPIPE under `pipefail`; the first match is kept
+in the shell):
+
+```bash
+        status="$(printf '%s\n' "$out" | sed -n '/^State\.Status: /{s///p}')"
+        health="$(printf '%s\n' "$out" | sed -n '/^State\.Health\.Status: /{s///p}')"
+        status="${status%%$'\n'*}" health="${health%%$'\n'*}"
+```
+(The template prints each label once and JSON-quotes every free-text field,
+so one match is expected; the trim is the guard.)
+
+**A5 (N-2, amends item 7's "Order").** Read "sorted by container name"
+(`LC_ALL=C sort -k 2`: field 2 to the end of the line, the container name
+then the service). For compose's `<project>-<service>-<n>` names this is the
+service order. Code unchanged.
+
+**A6 (U9d-6: what the diagnostic now proves; how the analyst reads it).**
+For each container: `RestartCount` >= 1 means it died at least once since
+launch created it (the inner daemon is fresh and asserted clean, so every
+container and every death is this launch's), `FinishedAt` says when the
+last one ended (a restarted container shows `StartedAt` after
+`FinishedAt`), and the events section gives each death's cause, its time
+matching `FinishedAt` to the second.
+- *OOM: yes.* An `oom <name>` line, then `die <name> exitCode=137`. The
+  container may now read `running / 0 / false / starting`; the events and
+  `RestartCount` say otherwise. C2 memory is read after the kill freed it,
+  so memory is named by the event, not by C2.
+- *Crash: yes.* A `die <name> exitCode=<N>` with no `oom` line and no
+  `kill` line before it. N != 137 is the process's own exit (a JVM error
+  exit is 1); the logs tail (it spans restarts) holds the first run's last
+  words before the next startup banner. `exitCode=137` with neither `oom`
+  nor `kill` is a SIGKILL from outside Docker and the cgroup (named so, not
+  read as OOM). A `kill <name> signal=<S>` line before the `die` means
+  Docker stopped it.
+- *Disk full: yes.* C2 `df /` at or near 100% (and the C1-to-C2 trend, the
+  inner `system df`), with a `die` that has no `oom` and neo4j's log line
+  "No space left on device"; a restart the daemon could not perform shows in
+  `State.Error` (JSON-quoted) with the status `exited` or `restarting`.
+- *Neither (new, and now distinguishable):* `events: none`, `RestartCount:
+  0`, status `running` with Health `starting` or `unhealthy`: nothing died;
+  the service did not become healthy in time (a slow start or a failing
+  probe, read from Health.Log).
+
+**A7 (amends item 10: never printed).** The list stands. The events
+format prints only the time, action, container name, `exitCode` and
+`signal`: never the attribute map (`.Actor.Attributes` whole, which carries
+every label and the image), `{{json .}}`, `.Actor.ID`, `.Actor.Attributes.image`
+or any label; no `--until` and no second `events` call (no history query).
+The new template fields are State timestamps, a count and the daemon's own
+start error. Security re-audits the template (A1) and `events_fmt` (A2).
+
+**A8 (amends item 12: timeouts and cost).** One row added:
+
+| Call | Timeout |
+|---|---|
+| `docker events --since ... --format ...` (background, launch only) | 900 s; stopped at launch's exit |
+
+- Pass: the stream costs nothing measurable. It is one idle connection to
+  the inner daemon during launch (no polling; a passing launch emits no
+  die/oom/kill event), and `events_stop` (kill, wait, awk, head, rm) takes
+  milliseconds; no `measure:` point moves. Nothing is printed and nothing is
+  written outside the client's `/tmp` tmpfs.
+- Failure path: no added wait (the stream is already stopped); the hang
+  ceilings of item 12 stand.
+
+**A9 (amends item 13: Controls for the tester).**
+- *Fake (`tests/fake_docker.py`), each inert unless set:*
+  - `DIAG_TEMPLATE` as A1; `_u9d_render` and the no-format JSON as A1.
+  - `EVENTS_FORMAT`: a module constant equal to `events_fmt` (A2), emitted
+    into the installed fake as `DIAG_TEMPLATE` is.
+  - `FAKE_DOCKER_EVENTS` (JSON list of event objects `{"Time", "Action",
+    "Actor": {"Attributes": {...}}}`): `docker events ...` with it set
+    requires `--format` == `EVENTS_FORMAT` (else exit 2, as the inspect
+    template), prints each event rendered as
+    `"%s %s %s exitCode=%s signal=%s" % (Time, Action, attrs.get("name",
+    "<no value>"), attrs.get("exitCode", ""), attrs.get("signal", ""))`,
+    flushes, installs a SIGTERM handler that appends the record
+    `{"argv": ["EVENTS", "stopped"]}` to `FAKE_DOCKER_JSON` and exits 143,
+    appends `{"argv": ["EVENTS", "ready"]}`, then sleeps up to 60 s and
+    exits 0 with no `stopped` record (so a missing kill shows as a missing
+    record, and no orphan outlives a minute). Unset: today's behaviour
+    (exit 0 at once, no output), so every existing row runs the stream as
+    "ended (exit 0)".
+  - The new rows' launch stub waits (up to 10 s) for the `EVENTS ready`
+    record before returning, so the kill never races the fake's start.
+- *New rows (names are the tester's):*
+  - First RED: a launch failure with a **restarted neo4j**: `State`
+    `{"Status": "running", "ExitCode": 0, "OOMKilled": false,
+    "StartedAt": "2026-10-30T10:00:44.6Z", "FinishedAt":
+    "2026-10-30T10:00:44.5Z", "Error": "", "Health": {"Status": "starting",
+    "Log": [...]}}`, top-level `"RestartCount": 1`, and
+    `FAKE_DOCKER_EVENTS` = an `oom` and a `die` (`exitCode` "137") event for
+    `knowledge-engine-neo4j-1` at `Time` 1793354444, each with
+    `image` and the sentinel label among the attributes. Asserts:
+    `RestartCount: 1`, both timestamps and `State.Error: <absent>` in
+    neo4j's block; the two `events | ` lines exact
+    (`1793354444 oom knowledge-engine-neo4j-1 exitCode= signal=`,
+    `1793354444 die knowledge-engine-neo4j-1 exitCode=137 signal=`), after
+    the diag's first line and before the first `container ` line; no
+    `events: ... ended` line; the `EVENTS stopped` record precedes the first
+    `ps` call; neither the sentinel nor the image reference prints; exit 7.
+    Subtests: *crash* (one `die` `exitCode` "1", no `oom`: no `oom` line);
+    *cap* (130 events: exactly 100 `events | ` lines, then
+    `events: 30 more lines not printed ...`); *start error* (a container
+    with `Error` "no space left on device" and a never-started one: the
+    error JSON-quoted on one line; both timestamps `<absent>` for the
+    never-started one); *ended early* (`FAKE_DOCKER_FAIL=event=oom`, with a
+    launch stub that waits for the `events` call record and then 1 s, so
+    the failed call has exited before the kill: a named
+    `events: the stream ended before launch exited (exit 1; ...)` line, the
+    container blocks still print, exit 7).
+  - A pass with `FAKE_DOCKER_EVENTS` set: no `events` and no `diag:` line,
+    stdout minus `measure:` lines equals `U9D_CLIENT_PASS`, stderr empty,
+    the `events` call record after `STUB install.sh` and before
+    `STUB launch.sh`, and `EVENTS stopped` after `STUB launch.sh` and
+    before `STUB smoke.sh`.
+- *Existing rows that change:*
+  - `test_offline_diag_template_prints_only_allowed_fields`: body unchanged
+    for the template (it follows the new `DIAG_TEMPLATE`); it gains the
+    events allow-list: the client half's `events_fmt` value equals
+    `fake_docker.EVENTS_FORMAT`; the comment-stripped client half holds none
+    of `.Actor.Attributes}}`, `json .Actor`, `.Actor.ID`, `--until`; exactly
+    one `docker events` call.
+  - `test_offline_diag_and_measure_docker_calls_are_bounded`: `U9D_KINDS`
+    gains `"events": r"events\b"`, with its own ceiling: N == 900 for
+    `events` (the four existing kinds keep N <= 30); the `events` call
+    carries exactly the filters `type=container`,
+    `label=com.docker.compose.project`, `event=die`, `event=oom`,
+    `event=kill`, a `--since` and `--format "$events_fmt"`.
+- *Existing rows that stay green unedited (and why):*
+  `test_offline_client_prints_diag_on_launch_failure` (new lines are
+  additions; `_has_state` looks fields up; the events header starts
+  `events`, so `_containers` still finds three blocks; the knob is unset, so
+  the section prints `events: none` and, depending on whether the fake had
+  exited before the kill, the `ended (exit 0)` line: racy, so no row may
+  assert it either way; neither has a banned word or a secret); `..._diag_survives_a_failing_inspect`
+  (`inspect#1` counts no `events` call; `FAKE_DOCKER_FAIL=label=...`
+  also fails the `events` call at once, which adds at most the named
+  `ended` line, not a `cannot list`/`ps` line); `..._measure_points_on_a_pass`
+  (`_diag_calls` and `_measure_calls` do not count `events`);
+  `..._measure_points_on_a_launch_failure`,
+  `..._measure_never_changes_the_outcome`,
+  `..._output_unchanged_but_for_measure_lines` (nothing prints on a pass;
+  no stderr), `..._uses_neutral_words`, `..._has_no_ci_only_branch`,
+  `..._meminfo_seam_is_client_only`; every host row and every earlier
+  client row (`_client_event` returns None for `events`; the stream starts
+  after install, so the cert and clean-daemon rows hold). The tester
+  greps the client rows' `FAKE_DOCKER_FAIL`/`FAIL_NTH` patterns against the
+  new `events` argv and lists any match in the controls file.
+- Baseline and after lists: `u9d/controls-r1.txt`.
+
+**A10 (U9d-1 wording proposed to the analyst; the analyst applies it).**
+- In the first bullet, replace "Each block gives the container name,
+  `State.Status`, `State.ExitCode`, `State.OOMKilled`, `State.Health.Status`
+  and the tail of `State.Health.Log` (...)" with: "Each block gives the
+  container name, `State.Status`, `State.ExitCode`, `State.OOMKilled`,
+  `RestartCount`, `State.StartedAt`, `State.FinishedAt`, `State.Error`
+  (JSON-quoted on one line), `State.Health.Status` and the tail of
+  `State.Health.Log` (each entry's end time, exit code and output; at most
+  the entries Docker keeps). A field the container does not have (no
+  healthcheck, never started, never finished, no start error) is printed as
+  absent with one fixed token, never dropped; `RestartCount` is always a
+  number."
+- New bullet after it: "Because every stack service restarts itself
+  (`restart: unless-stopped`) and a restart resets `ExitCode` and
+  `OOMKilled`, the client also records the stack's container `die`, `oom`
+  and `kill` events from a stream it starts just before the launch step and
+  stops as soon as that step exits, on every path (bounded by a timeout; no
+  query of the daemon's event history afterwards). On the launch-failure
+  path the diagnostic prints them first, one line per event: the event time
+  (Unix seconds), the action, the container name, the exit code (`die`) and
+  the signal (`kill`); at most 100 lines, then a named line giving how many
+  more were not printed; `none` when there were none; a named line when the
+  stream ended before launch exited or could not start. On a passing launch
+  none of it is printed."
+- "Never printed" bullet: append "; of an event, nothing but the five
+  fields above (no labels, no image, no other attribute)".
+- Proof line: add the restarted-container row and the pass-with-stream row
+  (tester's names).
+- U9d-4: add "The event stream is bounded by `timeout 900` and stopped at
+  launch's exit; on a pass it adds no measurable time."
+- U9d-6: in "the cause the diagnostic names (...)", read "(the `oom`/`die`
+  events and their exit code, `RestartCount` and `FinishedAt`, exited or
+  killed, `OOMKilled`, neo4j's last lines, disk and memory at C2)".
+
+**A11 (order).** R1 analyst applies A10 to U9d-1/U9d-4/U9d-6; orchestrator
+plan gate. R2 tester RED (A9; `u9d/controls-r1.txt`,
+`u9d/red-r1-verify-fast.txt`). R3 developer GREEN (A1-A5;
+`u9d/green-r1-verify-fast.txt`, `u9d/green-r1-verify-full.txt`). R4
+reviewer re-read and security re-audit (A1, A2, A7). Then item 15's R5-R7.
+
+- *O-23 precision (orchestrator, 2026-10-30, at the rework-1 plan gate):*
+  the architect's amendment A1-A11 and the analyst's U9d-1/4/6 text are
+  accepted; `kill` events with the `signal` field are accepted (they tell a
+  Docker stop from a kernel kill). Security's first-audit items are folded
+  into this rework round: L-1 (container name and service label sanitised;
+  logs only for a `svc` matching `^[A-Za-z0-9][A-Za-z0-9._-]*$`, passed
+  after `--`), L-2 (`##[` rewritten to `#?[` in every printed line), I-1
+  (`meminfo_line` reads at most 64 KiB under `timeout 5 head -c 65536`).
+  `State.Error` and the events lines print through the same sanitiser.
+  I-2, I-3, I-4 recorded, no action. Plan gate PASS for rework 1.
+
+- *Orchestrator rulings at U9d rework-1 verdicts (2026-10-30, **O-24**;
+  reviewer APPROVED `u9d/r1-review.md`, security PASS `u9d/r1-security.md`):*
+  deferred to U10 as design rows, none reachable by this stack today:
+  security L-3 (a container label named `exitCode` or `signal` shadows the
+  event's field; fix: print an event line only if it matches
+  `^[0-9]+ (die|oom|kill) [A-Za-z0-9][A-Za-z0-9_.-]* exitCode=[0-9]* signal=[0-9]*$`,
+  else a fixed named line), I-5 (skip ids that are not 64 hex or pass
+  `-- "$id"` to inspect), I-6 (cap `diag` lines), I-3 (`timeout -k`),
+  reviewer r1 N-1 (a `##[` pin on the `diag` path). I-7: the untracked
+  next-session note is redacted (never committed). U9d code is final;
+  orchestrator `verify full` then commit.
 
 ## N10. Committed files and their rules
 
@@ -2974,6 +6569,7 @@ any other host on any hop (N4).
 - `github.com`: `neo4j` (tag tarball), `temurin` (release asset, first hop)
 - `codeload.github.com`: `neo4j` (the tarball redirect target)
 - `objects.githubusercontent.com`: `temurin` (release asset redirect target)
+*(Amended 2026-10-29, U8c O-2: objects.githubusercontent.com dropped from `hosts`; Temurin's redirect target is release-assets.githubusercontent.com, u8/hop-hosts.md.)*
 - `release-assets.githubusercontent.com`: `temurin` (release asset redirect target)
 - `files.pythonhosted.org`: `pypi`
 - `repo1.maven.org`: `maven` (N8a 2)
@@ -3172,6 +6768,9 @@ L-13 closes once security confirms it on the U0 image.
 
 Proposed, landing in the unit that wires the fetch (U8). The orchestrator
 takes the CLAUDE.md text to the human at U8 (ruling 6):
+*(Amended 2026-10-28, analyst: Q73 ruled option 2, so the CLAUDE.md
+sentence is option 2's text in `docs/open-questions.md` Q73, which adds
+the lock check and the fail-closed, no-retry rule to the text below.)*
 - CLAUDE.md, § Verification, the sentence "In `full` the host half also
   builds and pulls images, runs the smoke check's network-control probe on
   the stack's `edge` network, and runs `scan-db`, a one-shot that fetches
@@ -3227,11 +6826,13 @@ column is the mode for the red/green loop.
 | U5 | PSC-15 classifier (N8), pure functions; ruling 5: NOASSERTION fall-through, token rule, URL-folded ids listed (N8a); hash ids unknown, needs source, listed "unidentified" (N8, H-1) | fast | no |
 | U6 | `docker/source-policy.json` gains `hosts` and `exempt` (`always` is U4's) and the three-key schema test; `exempt` for jna and javassist, security-reviewed (N8a 1, 3) | fast | no |
 | U7 | lock: `docker/sources.lock.json`, `scripts/sources_lock.sh`, provenance evidence (security's second fetch); `maven` kind, jaxb-api sources jar (N8a 2); `deb` gcc-12 and gcc-14 (N10) | full | no |
-| U8 | PSC-23 `bundle_fetch.sh`, `sources-fetch` and client loop, wired into `offline_check.sh` (replaces the generator pull only; the base pull stays, N1 amendment, U4); README and header wording; CLAUDE.md text to the human (ruling 6) | full | yes (compose) |
+| U8 | PSC-23 `bundle_fetch.sh`, `sources-fetch` and client loop, wired into `offline_check.sh` (replaces the generator pull only; the base pull stays, N1 amendment, U4); README and header wording; CLAUDE.md text to the human (ruling 6); split U8a-U8c by "N4 amendment, U8" item 13 | full | yes (compose) |
 | U9 | PSC-15/24 `index`, content-addressed copy, notices section (paths relative to `app/`, I-3, N10a), no-partial tests, install tamper tests (sh and ps1) | full | only if `install.ps1` changes |
 | U10 | PSC-19 e2e `verify`, `/install` size and memory pre-check; follow-up security U3 L-1: `build.sh` stamps `org.opencontainers.image.revision=<git HEAD>` on each first-party `ke-*` image, and `bundle.sh` refuses, before any write, an image whose label is absent or differs from its `git_sha` (else the SBOM creator and `bundle.json` name the wrong commit; U3's stale ke-app SBOM is the case). First test: the refusal on a mismatched or missing label (fake docker) | full | yes (compose) |
 | U11 | PSC-16 two CI runs, floor re-derivation, Q62 trigger, PS-3.4; full operator recorded run (Q63) | full (CI) | no |
 | U12 | PSC-21 recorded arm64 run (Q51 form) | full (arm64) | no |
+
+*(Amended 2026-10-29, analyst; orchestrator O-9 and O-11: row U9 splits into U9a and U9b ("N9 amendment, U9" item 15), and its Windows column reads "yes" for U9b: A34 runs whether or not `install.ps1` changes, because `bundle.sh` gains three `hostpath` mounts.)*
 
 Dropped by Q64: U4's vendored injection and two-way drift check, and U1's
 vendored table. First tests for U1, U2 and U5 are unchanged:

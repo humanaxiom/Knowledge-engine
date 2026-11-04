@@ -1,0 +1,7 @@
+# reviewer U7d probes, 2026-10-26 (host python -I; working tree; loopback only for the timeout probe)
+## pgdg suite on a postgres (debian-12, bookworm) package
+  bookworm-pgdg-archive (expected): PASSES
+  trixie-pgdg-archive (wrong codename for debian-12): PASSES
+  evil-pgdg-archive (no such codename): PASSES
+real opener raised: URLError | reason: TimeoutError
+_transport -> ResolveError | retryable: False | 127.0.0.1: URLError: https://127.0.0.1/x

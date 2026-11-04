@@ -305,3 +305,22 @@ Rulings: design-notes N10 amendment U6.
 - Rulings recorded here: (a) `always` overrides only the classifier; an exact-version `exempt` still clears (PSC-22 amended; GCC fallback stays open); (b) libffi notice (security exempt L-1) goes to the ke-neo4j NOTICE section at U9; (c) a base-image digest bump re-triggers the exempt review (security I-2).
 - Carried as first test rows: U7: reviewer N3 / security I-1 future `reviewed` date rejected; N5 a `#subpath` purl row. U9: security L-1 an exempt entry matching more than one package is a problem; security L-2 / reviewer N1 `index` runs `validate` before `classify_document`; reviewer N2 drop the "no row both always and exempt" assertion when the first such entry lands; `index` lists "always, cleared by exemption <reviewed>".
 - Commit APPROVED. Next: U7 (source lock: `docker/sources.lock.json`, `scripts/sources_lock.sh`, `maven` kind for jaxb-api, `deb` gcc-12/gcc-14 per Q69; security second fetch for provenance).
+
+## U5/U6 live-doc summaries as they stood 2026-10-26
+
+### U5 (PSC-15 classifier; committed d8ffa2d; detail: archive/platform-sbom-part9.md)
+- Outcome: pure classifier functions in `scripts/sbom_check.py`, fail-closed rules (N8 amendment U5, design-notes l.940-1171); also escaping, tree size, scanner continuation lines and the smoke prune.
+- Rework rounds 3 of 5: r1 B1-B3 + security lows, r2 leaf charset, r3 joiners/hash anywhere.
+- Review APPROVED r3, security PASS r3, orchestrator verify full PASS 999 s. CI run 40046377958 PASS 32m32s (feeds U11/Q62).
+- Carried to U6: I-r3-1 segment rule (first test row); security I-4 upper-hex hash (generator digest bump = re-review).
+- Watch at U11: review N8 smoke flake risk.
+- No CHANGELOG line until U9.
+
+### U6 (hosts + exempt; committed 66781a9; detail: archive/platform-sbom-part9.md)
+- Outcome: `hosts` holds the nine N4 hosts; `exempt` holds jna and javassist (reviewed `security 2026-10-25`); `exempt_matches`, `classify_document` exempt and the segment rule landed. PSC-22 amended: `always` overrides only the classifier, and an exact-version exempt entry still clears.
+- Rework 0 of 5; review APPROVED, security PASS + exempt review PASS, orchestrator verify full PASS 962 s.
+- Rulings: libffi notice goes to the ke-neo4j NOTICE section at U9; a base-image digest bump re-triggers the exempt review.
+- First test rows carried to U7: a future `reviewed` date is rejected; a `#subpath` purl row.
+- First test rows carried to U9: an exempt entry matching more than one package is a problem; `index` runs `validate` first.
+- Also U9: drop the "no row both always and exempt" assertion when the first such entry lands; list "always, cleared by exemption".
+

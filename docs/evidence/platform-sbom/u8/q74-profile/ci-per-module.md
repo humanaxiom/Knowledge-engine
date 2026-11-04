@@ -1,0 +1,50 @@
+CI 86f7831 unit stage 914 s; CI 0630586 unit stage 1570 s; local head-cov 736 s
+
+| module | CI 86f7831 s | CI 0630586 s | CI ratio | local 0630586 s | CI 0630586 / local |
+|---|---:|---:|---:|---:|---:|
+| test_offline_bundle | 338.3 | 574.0 | 1.70 | 271.5 | 2.11 |
+| test_stack_scripts | 192.0 | 315.1 | 1.64 | 114.3 | 2.76 |
+| test_harness_followups | 55.4 | 96.7 | 1.75 | 47.3 | 2.05 |
+| test_sbom_obligations | 39.8 | 69.2 | 1.74 | 33.2 | 2.08 |
+| test_sbom_bundle | 41.1 | 69.0 | 1.68 | 33.3 | 2.07 |
+| test_offline_netprobe | 35.2 | 57.0 | 1.62 | 27.4 | 2.08 |
+| test_psycopg_c | 28.3 | 48.2 | 1.70 | 22.9 | 2.10 |
+| test_neo4j_image | 26.7 | 47.2 | 1.77 | 23.3 | 2.02 |
+| test_sources_resolve | 16.1 | 47.1 | 2.93 | 27.0 | 1.75 |
+| test_offline_check | 26.3 | 45.4 | 1.72 | 23.0 | 1.97 |
+| test_block_main_commit_hook | 23.9 | 44.4 | 1.86 | 20.7 | 2.14 |
+| test_ke_app_no_pip | 17.1 | 28.2 | 1.65 | 13.2 | 2.13 |
+| test_sources_lock | 11.2 | 21.6 | 1.93 | 7.1 | 3.05 |
+| test_image_scan | 14.9 | 20.9 | 1.41 | 15.8 | 1.33 |
+| test_stack_readiness | 15.0 | 20.0 | 1.34 | 14.8 | 1.36 |
+| test_sbom_generator | 8.6 | 14.4 | 1.67 | 12.5 | 1.15 |
+| test_sbom_classifier | 5.0 | 12.8 | 2.57 | 2.3 | 5.66 |
+| test_stack_entrypoints | 7.6 | 12.2 | 1.62 | 6.4 | 1.92 |
+| test_stack_compose | 1.7 | 6.6 | 3.85 | 1.7 | 4.02 |
+| test_engine_startup | 1.9 | 3.8 | 1.99 | 1.9 | 2.06 |
+| test_stack_bind_address | 1.9 | 3.3 | 1.69 | 2.3 | 1.40 |
+| test_stack_model_keys | 1.1 | 2.4 | 2.24 | 1.0 | 2.39 |
+| test_gate_least_privilege | 0.9 | 2.4 | 2.68 | 0.9 | 2.64 |
+| test_resource_probe | 0.6 | 1.0 | 1.66 | 0.9 | 1.20 |
+| test_stack_model_skip | 0.5 | 1.0 | 2.06 | 0.6 | 1.55 |
+| test_engine_tracing_guard | 0.5 | 0.9 | 1.84 | 0.8 | 1.09 |
+| test_engine_telemetry | 0.4 | 0.8 | 1.82 | 0.5 | 1.67 |
+| test_engine_config | 0.4 | 0.7 | 1.83 | 0.4 | 1.84 |
+| test_engine_hardcoded | 0.6 | 0.7 | 1.24 | 7.8 | 0.09 |
+| test_sources_lock_committed | 0.0 | 0.7 | nan | 0.3 | 2.33 |
+| test_stack_worker | 0.2 | 0.6 | 3.03 | 0.2 | 3.28 |
+| test_gates_docker_cli | 0.1 | 0.5 | 3.52 | 0.2 | 2.61 |
+| test_engine_egress | 0.3 | 0.5 | 1.46 | 0.3 | 1.62 |
+| test_notice_ke_app | 0.3 | 0.3 | 1.09 | 0.2 | 1.89 |
+| test_stack_ready_compose | 0.3 | 0.3 | 1.01 | 0.1 | 2.03 |
+| test_harness_port | 0.0 | 0.1 | 1.70 | 0.2 | 0.21 |
+| test_engine_notices | 0.0 | 0.0 | 1.95 | 0.0 | nan |
+| test_engine_llm | 0.0 | 0.0 | 1.76 | 0.0 | nan |
+| test_stack_ready_docs | 0.1 | 0.0 | 0.42 | 0.0 | nan |
+| test_stack_carry_ins | 0.0 | 0.0 | 1.58 | 0.0 | nan |
+| test_engine_quality | 0.0 | 0.0 | 1.71 | 0.0 | nan |
+| test_log_event | 0.0 | 0.0 | 0.62 | 0.0 | nan |
+| test_tracing | 0.0 | 0.0 | 3.84 | 0.0 | nan |
+| test_engine_deploy_files | 0.0 | 0.0 | 1.37 | 0.0 | nan |
+| test_sentinel | 0.0 | 0.0 | 5.03 | 0.0 | nan |
+| **total** | 914.2 | 1570.1 | 1.72 | 736.3 | 2.13 |

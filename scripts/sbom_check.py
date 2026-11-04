@@ -58,6 +58,20 @@ scripts/sources_resolve.py: per lock key its kind, packages and route
 inputs; Temurin's release file is read from the image's saved tar. Exit 1
 naming the first 20 problems, 2 on a bad argument.
 
+  sbom_check.py sources-check --lock LOCK --policy POLICY --dir DIR --arch A --set full|sample
+  sbom_check.py index --lock LOCK --policy POLICY --arch A --set S --git-sha G
+                      --files DIR --sbom IMAGE=PATH [--sbom ...]
+  sbom_check.py notices --index PATH
+
+U9a (design-notes "N9 amendment, U9"). `sources-check` runs before any write:
+fetch.json canonical and matching this bundle, the directory's exact listing,
+every planned file re-hashed; it prints the sorted distinct sha256 list.
+`index` (after the SBOMs) prints app/sources/index.json: validate first, the
+lock both ways, always/exempt problems, the copied listing. `notices` prints
+the "Source code" section from that index, refusing (never escaping) any text
+that could add a column or row. Exit 0, 1 (one FAIL line for an exception,
+never a traceback) or 2 (bad argument).
+
 `tree` compares two `docker export` tars: ke-neo4j equals the official
 image minus /var/lib/neo4j/products (type, mode, owner, group, size, link;
 a hard link counts as its target file in both, U5).
@@ -71,9 +85,13 @@ from __future__ import annotations
 
 import argparse
 import ast
+import errno
+import hashlib
 import importlib.metadata
 import json
+import os
 import re
+import stat
 import sys
 import tarfile
 import time
@@ -598,6 +616,10 @@ def exempt_matches(image: str, doc: dict[str, Any], exempt: list[dict[str, Any]]
         if not hits:
             problems.append(f"{image}: exempt entry matches nothing: {_clean(want)}; the version moved or the "
                             "package left: review again")
+        elif len(hits) > 1:  # U9 item 6 (security U6 L-1): an exemption clears exactly one package
+            problems.append(f"{image}: exempt entry matches {len(hits)} packages: {_clean(want)} "
+                            f"({', '.join(_clean(h) for h in hits)}); an exemption clears exactly one package: "
+                            "review again")
         flagged += [h for h in hits if h not in flagged]
     return flagged, problems
 
@@ -995,7 +1017,7 @@ LOCK_KEY_RES = {
     "pypi": re.compile(r"pypi:[a-z0-9]+(-[a-z0-9]+)*@[0-9][A-Za-z0-9.+!-]*"),
     "maven": re.compile(r"maven:[A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+@[A-Za-z0-9_.+-]+"),
 }
-LOCK_FILE_NAME_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+~-]{0,254}")
+LOCK_FILE_NAME_RE = re.compile(r"[A-Za-z0-9_][A-Za-z0-9._+~-]{0,254}")  # U7d round 1, item 10: a leading _
 HEX_RE = re.compile(r"[0-9a-f]+")
 ALG_LEN = {"sha1": 40, "sha256": 64, "sha512": 128}
 NEO4J_FROM_RE = re.compile(r"second fetch: security (\d{4}-\d{2}-\d{2}), docs/evidence/platform-sbom/sources-provenance\.md")
@@ -1127,9 +1149,45 @@ MAX_FILE_SIZE = 4294967296  # 4 GiB (security U7a I-2)
 ENTRY_KEYS = {"kind", "arches", "origin", "files"}
 APK_KEYS = {"commit", "branch", "repo"}
 FILE_KEYS = {"name", "url", "sha256", "size", "upstream"}
+# U7d round 1, item 12: the SHA-256 and SHA-512 of the empty string.
+EMPTY_SHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+EMPTY_SHA512 = ("cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce"
+                "47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e")
 UPSTREAM_KEYS = {"alg", "value", "from"}
-# Per-kind file hosts (N4; N10 am. U6 item 2). pgdg has none until Q71.
-KIND_HOSTS = {"deb": ("snapshot.debian.org",), "pgdg": (), "apk": ("gitlab.alpinelinux.org", "distfiles.alpinelinux.org"),
+# Per-kind file hosts (N4; N10 am. U6 item 2); pgdg's from Q71 (U7d P5).
+PGDG_HOST = "apt-archive.postgresql.org"
+PGDG_SUITE_RE = re.compile(r"[a-z]+-pgdg-archive")
+PGDG_SUITES = {12: "bookworm", 13: "trixie"}  # U7d P1: the purl distro major -> its codename
+
+
+def pgdg_suite(distro: str) -> str | None:
+    """U7d P1 / rework round 1 item 3: `debian-<major>[.<minor>]` -> the
+    `<codename>-pgdg-archive` suite, or None."""
+    m = re.fullmatch(r"debian-(\d+)(\.\d+)*", distro)
+    code = PGDG_SUITES.get(int(m.group(1))) if m else None
+    return f"{code}-pgdg-archive" if code else None
+
+
+def _pgdg_key_suite(key: str, packages: list[dict[str, Any]]) -> tuple[str | None, list[str]]:
+    """The one suite every package of a pgdg key derives, or the problems."""
+    problems, suites = [], set()
+    for pkg in packages:
+        distro = _qualifiers(str(pkg.get("purl"))).get("distro", "")
+        suite = pgdg_suite(distro)
+        if suite is None:
+            problems.append(f"{_clean(key)}: {_clean(pkg['image'])}: no pgdg suite for distro {_clean(distro)}")
+        else:
+            suites.add(suite)
+    if problems:
+        return None, problems
+    if len(suites) != 1:
+        return None, [f"{_clean(key)}: packages derive suites {', '.join(sorted(suites))}"]
+    return suites.pop(), []
+# U9c (A81): the two hosts an apk file may have. The sample plan keeps only
+# the files on the distfiles host (`fetch_plan`).
+APK_API_HOST = "gitlab.alpinelinux.org"
+APK_DISTFILES_HOST = "distfiles.alpinelinux.org"
+KIND_HOSTS = {"deb": ("snapshot.debian.org",), "pgdg": (PGDG_HOST,), "apk": (APK_API_HOST, APK_DISTFILES_HOST),
               "neo4j": ("github.com",), "temurin": ("github.com",), "pypi": ("files.pythonhosted.org",),
               "maven": ("repo1.maven.org",)}
 # Rework round 2 (security R1-L1): the sdist name is split at its last `-`
@@ -1188,7 +1246,6 @@ def _plain_path(path: str, url: str, kind: str | None) -> bool:
 # U7c rework round 1, item 9: the one GitLab form an apk file may have (the
 # API raw endpoint); its query and its %-encoded path segment are checked by
 # the apk binding, never accepted anywhere else.
-APK_API_HOST = "gitlab.alpinelinux.org"
 APK_API_PATH_RE = re.compile(r"/api/v4/projects/alpine%2Faports/repository/files/([^/?#]+)/raw")
 APK_API_QUERY_RE = re.compile(r"ref=([^&#=]*)")
 
@@ -1250,8 +1307,19 @@ def _file_problems(where: str, f: Any, hosts: set[str], kind: str | None = None)
     p += _str_problems(where, "sha256", f["sha256"])
     if isinstance(f["sha256"], str) and not re.fullmatch(r"[0-9a-f]{64}", f["sha256"]):
         p.append(f"{where}: sha256 is not 64 lower-case hex")
-    if type(f["size"]) is not int or not 0 < f["size"] <= MAX_FILE_SIZE:
-        p.append(f"{where}: size {_clean(repr(f['size']))} is not an int in 1..{MAX_FILE_SIZE}")
+    # U7d round 1, item 12: an apk file at the GitLab API raw form may be empty (its sha256 and the
+    # files-API content_sha256 still bind it); every other file keeps 0 < size.
+    low = 0 if kind == "apk" and isinstance(f["url"], str) and _apk_api_shape(f["url"]) is not None else 1
+    if type(f["size"]) is not int or not low <= f["size"] <= MAX_FILE_SIZE:
+        p.append(f"{where}: size {_clean(repr(f['size']))} is not an int in {low}..{MAX_FILE_SIZE}")
+    elif f["size"] == 0:  # item 12, architect's precision: the empty hashes
+        up0 = f["upstream"] if isinstance(f["upstream"], dict) else {}
+        if name == "APKBUILD":  # review R1-N1: an empty APKBUILD has no pkgver
+            p.append(f"{where}: APKBUILD: size 0")
+        if f["sha256"] != EMPTY_SHA256:
+            p.append(f"{where}: {_clean(name)}: size 0 but sha256 is not the empty hash")
+        if up0.get("alg") == "sha512" and up0.get("value") != EMPTY_SHA512:
+            p.append(f"{where}: {_clean(name)}: size 0 but sha512 is not the empty hash")
     up = f["upstream"]
     if not isinstance(up, dict):
         return p + [f"{where}: upstream is not an object"]
@@ -1293,6 +1361,8 @@ def _apk_api_problem(url: str, entry: dict[str, Any], origin: str, name: str) ->
     if (len(parts) < 3 or parts[0] != entry.get("repo") or parts[1] != origin or parts[-1] != name
             or any(x in ("", ".", "..") for x in parts)):
         return "the decoded path is not <repo>/<origin>(/<segment>)*/<name>"
+    if not all(LOCK_FILE_NAME_RE.fullmatch(x) for x in parts[2:-1]):  # U7c review R1-N1
+        return "a subdirectory segment fails the lock file-name rule"
     if name == "APKBUILD" and len(parts) != 3:
         return "the APKBUILD is not at <repo>/<origin>/APKBUILD"
     return None
@@ -1311,10 +1381,14 @@ def _binding_problems(where: str, key: str, kind: str, entry: dict[str, Any], f:
         return []
     host, path = u.netloc, u.path
     name_part, ver = _key_parts(key)
-    if kind == "pgdg":
-        return [f"{where}: {_clean(name)}: pgdg has no allowed host until Q71"]
     if host not in KIND_HOSTS[kind]:
         return [f"{where}: {_clean(name)}: url host {_clean(host)} is not a {kind} file host"]
+    if kind == "pgdg":  # U7d P5: exactly the pool url; + and ~ literal, no % escape
+        p_ = name_part[:4] if name_part.startswith("lib") else name_part[:1]
+        want_path = f"/pub/repos/apt/pool/main/{p_}/{name_part}/{name}"
+        if path != want_path:
+            return [f"{where}: {_clean(name)}: not a pgdg file url (want path {_clean(want_path)})"]
+        return []
     if kind == "deb":
         if not SNAPSHOT_PATH_RE.fullmatch(path):
             return [f"{where}: {_clean(name)}: not a deb file url (snapshot.debian.org /file/<sha1>)"]
@@ -1398,6 +1472,21 @@ def _kind_problems(key: str, kind: str, entry: dict[str, Any], today: Any) -> li
                         or _snapshot_sha1(f.get("url")) is None):
                     p.append(f"{where}: {_clean(f.get('name'))} is not sha256 from {_clean(dsc.get('name'))} "
                              "Checksums-Sha256 with a snapshot.debian.org/file/<sha1> url")
+    elif kind == "pgdg":  # U7d P5
+        suite = entry.get("suite")
+        if not isinstance(suite, str) or not PGDG_SUITE_RE.fullmatch(suite):
+            p.append(f"{where}: suite {_clean(repr(suite))} is missing or malformed")
+        dscs = [f for f in files if str(f.get("name")).endswith(".dsc")]
+        want = f"{name_part}_{ver.split(':', 1)[1] if ':' in ver else ver}.dsc"
+        if len(dscs) != 1 or dscs[0].get("name") != want:
+            p.append(f"{where}: pgdg: not exactly one .dsc named {_clean(want)}")
+        if len(files) - len(dscs) < 1:
+            p.append(f"{where}: pgdg: no file besides the .dsc")
+        for f in files:
+            fup = f.get("upstream") if isinstance(f.get("upstream"), dict) else {}
+            frm = f"{PGDG_HOST} {suite} Sources" if f in dscs else f"{want} Checksums-Sha256"
+            if fup.get("alg") != "sha256" or fup.get("from") != frm:
+                p.append(f"{where}: {_clean(f.get('name'))} is not sha256 from {_clean(frm)}")
     elif kind == "apk":
         for field, rx in (("commit", r"[0-9a-f]{40}"), ("branch", r"v\d+\.\d+"), ("repo", r"main|community")):
             if not isinstance(entry.get(field), str) or not re.fullmatch(rx, entry[field]):
@@ -1461,11 +1550,12 @@ def _entry_problems(key: Any, entry: Any, hosts: set[str], today: Any) -> list[s
         p.append(f"{where}: not a valid {kind} key")
     if not isinstance(entry, dict):
         return p + [f"{where}: the entry is not an object"]
-    want = ENTRY_KEYS | (APK_KEYS if kind == "apk" else set())
+    want = ENTRY_KEYS | (APK_KEYS if kind == "apk" else set()) | ({"suite"} if kind == "pgdg" else set())
     extra = [f"{where}: unexpected key {_clean(k)}" for k in sorted(set(entry) - want, key=str)]
     missing = [f"{where}: missing key {k}" for k in sorted(want - set(entry))]
     p += extra + missing
-    for field in ("kind", "origin") + (tuple(sorted(APK_KEYS)) if kind == "apk" else ()):
+    for field in ("kind", "origin") + (tuple(sorted(APK_KEYS)) if kind == "apk" else ()) + (
+            ("suite",) if kind == "pgdg" else ()):
         if field in entry:
             p += _str_problems(where, field, entry[field])
     if entry.get("kind") != kind:
@@ -1500,23 +1590,18 @@ def _entry_problems(key: Any, entry: Any, hosts: set[str], today: Any) -> list[s
     return p
 
 
-def lock_problems(lock: Any, policy: dict[str, Any], docs: dict[str, Any], arch: str,
-                  today: Any = None) -> list[str]:
-    """The lock's text checked: schema, canonical form, every URL host in
-    the policy `hosts` and in its kind's hosts, per-kind file rules, and
-    coverage both ways for `arch` against what `docs` need (N5 amendment,
-    U7, items 2, 4, 6 and rework round 1). Wrong types are problems, never
-    exceptions."""
+def _entry_stage(lock: Any, policy: dict[str, Any], today: Any) -> tuple[list[str], dict[str, Any] | None]:
+    """The lock's own rules, before any SBOM is read: canonical text, the
+    top-level keys, `format` and every entry (`_entry_problems`). The second
+    value is the components object, or None when the text stopped the checks."""
     import datetime
     today = today or datetime.datetime.now(datetime.timezone.utc).date()
-    if arch not in LOCK_ARCHES:
-        return [f"lock: arch {_clean(repr(arch))} is not amd64 or arm64"]
     if not isinstance(lock, str):
-        return ["lock: the lock is not text"]
+        return ["lock: the lock is not text"], None
     try:
         data = json.loads(lock)
     except (ValueError, RecursionError) as exc:
-        return [f"lock: not JSON: {_clean(exc)}"]
+        return [f"lock: not JSON: {_clean(exc)}"], None
     p = []
     try:
         if lock != lock_text(data):
@@ -1524,17 +1609,84 @@ def lock_problems(lock: Any, policy: dict[str, Any], docs: dict[str, Any], arch:
     except (ValueError, RecursionError):
         p.append("lock: not in canonical form: regenerate")
     if not isinstance(data, dict) or set(data) != {"format", "components"}:
-        return p + ["lock: top-level keys are not exactly format and components"]
+        return p + ["lock: top-level keys are not exactly format and components"], None
     if data["format"] != 1 or type(data["format"]) is not int:
         p.append(f"lock: format {_clean(repr(data['format']))} is not 1")
     comps = data["components"]
     if not isinstance(comps, dict):
-        return p + ["lock: components is not an object"]
+        return p + ["lock: components is not an object"], None
     hosts = {h for h in policy.get("hosts") or [] if isinstance(h, str)}
     for key, entry in sorted(comps.items()):
         p += _entry_problems(key, entry, hosts, today)
+    return p + _shared_sha256_problems(comps), comps
+
+
+def _shared_sha256_problems(comps: dict[str, Any]) -> list[str]:
+    """U8 (security M-2): one sha256 carries one size, one upstream alg and
+    one upstream value across every entry and arch, so a file the fetch holds
+    once stands for the same size and digests wherever the lock lists it. The
+    reference is the first entry in lock order holding that sha256 (for a
+    digest, the first holding it under that alg). Malformed rows are left to
+    `_entry_problems`."""
+    p: list[str] = []
+    sizes: dict[str, tuple[int, str]] = {}
+    algs: dict[str, tuple[str, str]] = {}
+    values: dict[tuple[str, str], tuple[str, str]] = {}
+    for key, entry in sorted(comps.items()):
+        files = entry.get("files") if isinstance(entry, dict) else None
+        for f in files if isinstance(files, list) else []:
+            up = f.get("upstream") if isinstance(f, dict) else None
+            if not (isinstance(up, dict) and isinstance(f.get("sha256"), str) and type(f.get("size")) is int
+                    and isinstance(f.get("name"), str) and isinstance(up.get("alg"), str)
+                    and isinstance(up.get("value"), str)):
+                continue
+            sha, size = f["sha256"], f["size"]
+            where = f"lock: {_clean(key)}: {_clean(f['name'])}: sha256 {_clean(sha)}"
+            first = sizes.setdefault(sha, (size, key))
+            if first[0] != size:
+                p.append(f"{where} is size {size} here but {first[0]} in {_clean(first[1])}")
+            alg0, key0 = algs.setdefault(sha, (up["alg"], key))
+            if alg0 != up["alg"] and size > 0:  # an empty file is one content under any alg (U7d size-0 rule)
+                p.append(f"{where} has upstream alg {_clean(up['alg'])} here but {_clean(alg0)} in {_clean(key0)}")
+                continue
+            if alg0 != up["alg"]:
+                continue
+            ref = values.setdefault((sha, up["alg"]), (up["value"], key))
+            if ref[0] != up["value"]:
+                p.append(f"{where} has {_clean(up['alg'])} {_clean(up['value'])} here but {_clean(ref[0])} in {_clean(ref[1])}")
+    return p
+
+
+def lock_entry_problems(lock: Any, policy: dict[str, Any], today: Any = None) -> list[str]:
+    """`lock_problems` without the SBOM half (U8, design item 1): the lock's
+    text and every entry's rules, no coverage and no pgdg suite binding. The
+    fetch client runs it before any request."""
+    return _entry_stage(lock, policy, today)[0]
+
+
+def lock_problems(lock: Any, policy: dict[str, Any], docs: dict[str, Any], arch: str,
+                  today: Any = None) -> list[str]:
+    """The lock's text checked: schema, canonical form, every URL host in
+    the policy `hosts` and in its kind's hosts, per-kind file rules, and
+    coverage both ways for `arch` against what `docs` need (N5 amendment,
+    U7, items 2, 4, 6 and rework round 1). Wrong types are problems, never
+    exceptions."""
+    if arch not in LOCK_ARCHES:
+        return [f"lock: arch {_clean(repr(arch))} is not amd64 or arm64"]
+    p, comps = _entry_stage(lock, policy, today)
+    if comps is None:
+        return p
     needs, mapping = lock_needs(policy, docs)
     p += mapping
+    for key in sorted(k for k in comps if isinstance(k, str) and k.startswith("pgdg:") and k in needs):
+        # U7d rework round 1, item 3 (review N1, security I-2): the suite is bound to the image.
+        e = comps[key]
+        suite, why = _pgdg_key_suite(key, needs[key]["packages"])
+        p += why
+        if suite is not None and isinstance(e, dict) and e.get("suite") != suite:
+            pkg = needs[key]["packages"][0]
+            p.append(f"lock: {_clean(key)}: suite {_clean(e.get('suite'))} is not {suite} (from {_clean(pkg['image'])} "
+                     f"distro {_clean(_qualifiers(str(pkg.get('purl'))).get('distro', ''))})")
     covered = {k for k, e in comps.items() if isinstance(e, dict) and isinstance(e.get("arches"), list)
                and arch in e["arches"]}
     p += [line for _, line in _coverage_misses(needs, covered, arch)]
@@ -1570,7 +1722,8 @@ def only_neo4j_misses(problems: list[str], text: str, policy: dict[str, Any], do
 
 def sample_keys(lock: dict[str, Any], arch: str) -> list[str]:
     """Q63 sample: per kind present for `arch`, the entry with the smallest
-    total size, ties broken by key (N5; amendment U7, item 5). Call it only
+    total size, ties broken by key (N5; amendment U7, item 5). The sample of
+    an `apk` key is its distfiles files only (A81, `fetch_plan`). Call it only
     on a lock `lock_problems` passed (security U7a I-4)."""
     best: dict[str, tuple[int, str]] = {}
     for key, entry in (lock.get("components") or {}).items():
@@ -1581,6 +1734,30 @@ def sample_keys(lock: dict[str, Any], arch: str) -> list[str]:
         if kind not in best or (total, key) < best[kind]:
             best[kind] = (total, key)
     return sorted(k for _, k in best.values())
+
+
+def fetch_plan(lock: dict[str, Any], arch: str, which: str) -> list[tuple[str, dict[str, Any]]]:
+    """U8: the (key, file) pairs the fetch client requests, sorted by key then
+    the entry's file order. `sample` is `sample_keys`; `full` is every key
+    listed for `arch`; any other set is a ValueError. A81: in `sample`, an
+    `apk` key keeps only the files whose URL host is `APK_DISTFILES_HOST`
+    (file order), and a ValueError names the key when none is left. Call it
+    only on a lock `lock_entry_problems` passed."""
+    if which not in ("sample", "full"):
+        raise ValueError(f"set {which!r} is not sample or full")
+    comps = lock.get("components") or {}
+    keys = sample_keys(lock, arch) if which == "sample" else sorted(
+        k for k, e in comps.items() if arch in (e.get("arches") or []))
+    plan = []
+    for k in keys:
+        files = comps[k]["files"]
+        if which == "sample" and k.split(":", 1)[0] == "apk":
+            files = [f for f in files if _split(f["url"]).hostname == APK_DISTFILES_HOST]
+            if not files:
+                raise ValueError(f"{_clean(k)}: the apk sample key has no file on {APK_DISTFILES_HOST}; "
+                                 "the sample needs one (A81)")
+        plan.extend((k, f) for f in files)
+    return plan
 
 
 def lock_check(a: argparse.Namespace) -> int:
@@ -1729,8 +1906,14 @@ def lock_needs_doc(policy: dict[str, Any], docs: dict[str, Any], releases: dict[
         kind = entry["kind"]
         name, ver = _key_parts(key)
         route: dict[str, Any]
-        if kind in ("deb", "pgdg"):
+        if kind == "deb":
             route = {"src": name, "ver": ver}
+        elif kind == "pgdg":  # U7d P1: the suite from the purls' distro major (shared, round 1 item 3)
+            suite, why = _pgdg_key_suite(key, entry["packages"])
+            problems += why
+            if suite is None:
+                continue
+            route = {"src": name, "ver": ver, "suite": suite}
         elif kind == "apk":
             apk_route, why = _apk_route(key, name, ver, entry["packages"], apk or {})
             problems += why
@@ -1809,6 +1992,531 @@ def lock_needs_cli(a: argparse.Namespace) -> int:
     return 0
 
 
+# --- PSC-15, PSC-24: the source set, the index and the notices (U9a) ---------
+# Design-notes "N9 amendment, U9" items 1, 3, 5, 6, 7. Pure functions; the
+# CLI wrappers below do the reads and the directory listing.
+
+SHA64_RE = re.compile(r"[0-9a-f]{64}")
+RECORD_KEYS = {"format", "set", "arch", "lock_sha256", "components"}
+RECORD_FILE_KEYS = ("name", "sha256", "size")
+RECORD_MAX = 4 * 1024 * 1024
+UNSAFE_CELL_RE = re.compile(r"[|`<>\\]")
+MARKDOWN_RE = re.compile(r"[\[\]()!*_#]")
+INDEX_MAX = 16 * 1024 * 1024
+HASH_CHUNK = 1 << 20
+
+
+def _show(value: Any) -> str:
+    return _clean(value)[:120]
+
+
+def _lock_sha256(lock_src: str) -> str:
+    return hashlib.sha256(lock_src.encode("utf-8")).hexdigest()
+
+
+def fetch_record_problems(record_text: str, lock_src: str, policy: dict[str, Any], arch: str,
+                          which: str) -> list[str]:
+    """Item 3 a-d, in order; the first failing stage stops the run. `a`: the
+    record's text (canonical, exactly these keys, format 1); `b`: it matches
+    this bundle (set, arch, the lock's sha256); `c`: the lock passes
+    `lock_entry_problems`; `d`: components equal `fetch_plan` grouped by key."""
+    if not isinstance(policy, dict):
+        return ["policy: not a JSON object"]
+    try:
+        rec = json.loads(record_text)
+    except (ValueError, RecursionError):
+        return ["fetch.json: not valid JSON"]
+    if not isinstance(rec, dict):
+        return ["fetch.json: not a JSON object"]
+    try:
+        canonical = lock_text(rec) == record_text
+    except RecursionError:
+        return ["fetch.json: nested too deeply to check"]
+    if not canonical:
+        return ["fetch.json: not in the canonical form (the fetch client's own text)"]
+    if set(rec) != RECORD_KEYS:
+        missing, extra = sorted(RECORD_KEYS - set(rec)), sorted(set(rec) - RECORD_KEYS)
+        return [f"fetch.json: key {_show(k)} is missing" for k in missing] + [
+            f"fetch.json: key {_show(k)} is not allowed" for k in extra]
+    if type(rec["format"]) is not int or rec["format"] != 1:
+        return [f"fetch.json: format is {_show(rec['format'])}, want 1"]
+    p = []
+    if rec["set"] != which:
+        p.append(f"fetch.json: set is {_show(rec['set'])}, this bundle needs {which}")
+    if rec["arch"] != arch:
+        p.append(f"fetch.json: arch is {_show(rec['arch'])}, this bundle is {arch}")
+    want_sha = _lock_sha256(lock_src)
+    if rec["lock_sha256"] != want_sha:
+        p.append(f"fetch.json: lock_sha256 {_show(rec['lock_sha256'])} is not the lock's {want_sha}: "
+                 "fetch again after the re-lock")
+    if p:
+        return p
+    entry_problems = lock_entry_problems(lock_src, policy)
+    if entry_problems:
+        return [entry_problems[0]]
+    plan = fetch_plan(json.loads(lock_src), arch, which)
+    expected: dict[str, list[dict[str, Any]]] = {}
+    for key, f in plan:
+        expected.setdefault(key, []).append({k: f[k] for k in RECORD_FILE_KEYS})
+    comps = rec["components"]
+    if not isinstance(comps, dict):
+        return ["fetch.json: components is not an object"]
+    for key in sorted(set(expected) - set(comps)):
+        return [f"fetch.json: {_show(key)}: missing, the lock's {which} plan has it"]
+    for key in sorted(set(comps) - set(expected)):
+        return [f"fetch.json: {_show(key)}: not in the lock's {which} plan"]
+    for key in sorted(expected):
+        got, want = comps[key], expected[key]
+        if not isinstance(got, list):
+            return [f"fetch.json: {_show(key)}: files is not a list"]
+        if len(got) != len(want):
+            return [f"fetch.json: {_show(key)}: lists {len(got)} files, the lock's {which} plan says {len(want)}"]
+        for g, w in zip(got, want):
+            if not isinstance(g, dict) or set(g) != set(RECORD_FILE_KEYS):
+                return [f"fetch.json: {_show(key)}: a file is not an object with exactly name, sha256 and size"]
+            for field in RECORD_FILE_KEYS:
+                if type(g[field]) is not type(w[field]) or g[field] != w[field]:
+                    return [f"fetch.json: {_show(key)}: {field} is {_show(g[field])}, the lock's {which} plan says "
+                            f"{_show(w[field])}"]
+    return []
+
+
+def _planned(plan: list[tuple[str, dict[str, Any]]]) -> dict[str, tuple[str, dict[str, Any]]]:
+    """The distinct planned sha256 values, each with its first (key, file)."""
+    out: dict[str, tuple[str, dict[str, Any]]] = {}
+    for key, f in plan:
+        out.setdefault(f["sha256"], (key, f))
+    return out
+
+
+def listing_problems(listing: Any, plan: list[tuple[str, dict[str, Any]]], record: bool,
+                     where: str = ".") -> list[str]:
+    """Item 3 e and item 5 stage 5: `listing` is `{name: (kind, size)}` (kind
+    file, link, dir or other, from `lstat`); it must hold exactly one regular
+    file per distinct planned sha256 at the lock's size, plus `fetch.json`
+    when `record`. An OSError while the listing is read is one problem."""
+    try:
+        entries = dict(listing)
+    except OSError:
+        return [f"{_clean(where)}: cannot list"]
+    planned = _planned(plan)
+    p: list[str] = []
+    for name in sorted(entries):
+        kind = entries[name][0]
+        shown = _clean(name)
+        if name == "fetch.json":
+            if not record:
+                p.append("fetch.json: not part of the shipped source files")
+            elif kind != "file":
+                p.append(f"fetch.json: is not a regular file ({kind})")
+            continue
+        if not SHA64_RE.fullmatch(name):
+            p.append(f"{shown}: not a planned source file (a name is 64 lower-case hex digits)")
+        elif name not in planned:
+            p.append(f"{shown}: not in the lock's plan")
+        elif kind == "link":
+            p.append(f"{shown}: is a link, not a regular file")
+        elif kind != "file":
+            p.append(f"{shown}: is not a regular file ({kind})")
+    if record and "fetch.json" not in entries:
+        p.append("fetch.json: missing; run scripts/bundle_fetch.sh first")
+    for sha, (key, f) in sorted(planned.items()):
+        label = f"{sha} ({_clean(key)} {_clean(f['name'])})"
+        if sha not in entries:
+            p.append(f"{label}: missing")
+        elif entries[sha][0] == "file" and entries[sha][1] != f["size"]:
+            p.append(f"{label}: size is {entries[sha][1]}, the lock's is {f['size']}")
+    return p
+
+
+def _licence_raw(pkg: dict[str, Any], field: str) -> Any:
+    value = pkg.get(field)
+    return value if isinstance(value, str) else None
+
+
+def _policy_shape_problems(policy: Any) -> list[str]:
+    if not isinstance(policy, dict):
+        return ["policy: not a JSON object"]
+    p = []
+    for field in ("always", "exempt"):
+        rows = policy.get(field)
+        if not isinstance(rows, list) or not all(isinstance(r, dict) for r in rows):
+            p.append(f"policy: {field} is not a list of objects")
+    if not p:
+        for e in policy["exempt"]:
+            if not all(isinstance(e.get(k), str) for k in ("image", "package", "reason", "reviewed")):
+                p.append("policy: an exempt entry lacks a string image, package, reason or reviewed")
+                break
+    return p
+
+
+def source_index(docs: dict[str, Any], lock_src: str, policy: dict[str, Any], arch: str, which: str,
+                 git_sha: str, listing: Any) -> tuple[dict[str, Any] | None, list[str]]:
+    """Item 5: (index, []) or (None, problems), stopping at the first failing
+    stage: read, `validate` of every SBOM, `lock_problems` both ways,
+    `always`/`exempt` problems, the copied listing, then the build."""
+    try:
+        return _source_index(docs, lock_src, policy, arch, which, git_sha, listing)
+    except Exception as exc:  # noqa: BLE001 - fail closed: a problem, never an exception
+        return None, [f"index: {type(exc).__name__}: {_clean(exc)}"]
+
+
+def _source_index(docs: dict[str, Any], lock_src: str, policy: dict[str, Any], arch: str, which: str,
+                  git_sha: str, listing: Any) -> tuple[dict[str, Any] | None, list[str]]:
+    if arch not in LOCK_ARCHES or which not in ("full", "sample"):
+        return None, [f"index: arch {_show(arch)} or set {_show(which)} is not valid"]
+    if not isinstance(git_sha, str) or not SHA_RE.fullmatch(git_sha):
+        return None, [f"index: git sha {_show(git_sha)} is not 40 lower-case hex digits"]
+    try:
+        lock = json.loads(lock_src)
+    except (ValueError, RecursionError):
+        return None, ["index: the lock is not valid JSON"]
+    bad = _policy_shape_problems(policy)
+    if bad or not isinstance(docs, dict) or not isinstance(lock, dict):
+        return None, bad or ["index: the lock or the SBOMs are not objects"]
+    p = [f"{_clean(image)}: {line}" for image in sorted(docs) for line in validate(docs[image])]
+    if p:
+        return None, p
+    p = lock_problems(lock_src, policy, docs, arch)
+    if p:
+        return None, p
+    always, exempt = policy["always"], policy["exempt"]
+    for image in sorted(docs):
+        p += always_matches(image, docs[image], always)[1] + exempt_matches(image, docs[image], exempt)[1]
+    if p:
+        return None, p
+    plan = fetch_plan(lock, arch, which)
+    p = listing_problems(listing, plan, False, "--files")
+    if p:
+        return None, p
+    planned = {(k, f["name"]) for k, f in plan}
+    needs, _ = lock_needs(policy, docs)
+    rows: dict[tuple[str, str], tuple[dict[str, Any], dict[str, Any]]] = {}
+    ordered: dict[str, list[dict[str, Any]]] = {}
+    for image in sorted(docs):
+        pkgs = {str(pk.get("SPDXID")): pk for pk in _packages(docs[image])}
+        ordered[image] = classify_document(image, docs[image], always, exempt)
+        for row in ordered[image]:
+            rows[(image, str(row["spdxid"]))] = (row, pkgs[str(row["spdxid"])])
+
+    def package(image: str, spdxid: Any) -> dict[str, Any]:
+        row, pkg = rows[(image, str(spdxid))]
+        return {"image": image, "spdxid": row["spdxid"], "purl": row["purl"], "name": row["name"],
+                "always": row["always"], "expression": row["expression"],
+                "licence": {"declared": _licence_raw(pkg, "licenseDeclared"),
+                            "concluded": _licence_raw(pkg, "licenseConcluded")}}
+
+    components: list[dict[str, Any]] = []
+    for key in sorted(needs):
+        entry = lock["components"][key]
+        kind = key.split(":", 1)[0]
+        fetched = [(key, f["name"]) in planned for f in entry["files"]]
+        status = "shipped" if fetched and all(fetched) else "partial" if any(fetched) else "not-shipped"
+        if which == "full" and status == "not-shipped":
+            p.append(f"index: {_clean(key)} is not shipped in a full bundle")
+        elif which == "full" and status == "partial":
+            p.append(f"index: {_clean(key)} is partial in a full bundle")
+        elif status == "partial" and kind != "apk":
+            p.append(f"index: {_clean(key)} is partial, and only the apk sample key may be (A81)")
+        files = [dict(f, path=f"sources/files/{f['sha256']}" if got else None)
+                 for f, got in zip(entry["files"], fetched)]
+        components.append({"key": key, "kind": kind,
+                           "status": status,
+                           "packages": [package(pk["image"], pk["spdxid"]) for pk in needs[key]["packages"]],
+                           "files": files})
+    if p:
+        return None, p
+    exempt_components = []
+    for image in sorted(docs):
+        for row in ordered[image]:
+            if not row["exempt"]:
+                continue
+            entry = next(e for e in exempt if e["image"] == image and e["package"] == _purl_base(row["purl"] or ""))
+            how = "always, cleared by exemption" if row["always"] else "exempt, reviewed"
+            exempt_components.append({
+                "key": None, "kind": None, "status": "exempt", "files": [],
+                "packages": [package(image, row["spdxid"])],
+                "exempt": {"image": image, "package": entry["package"], "reason": entry["reason"],
+                           "reviewed": entry["reviewed"]},
+                "listing": f"{how} {entry['reviewed']}"})
+    exempt_components.sort(key=lambda c: (c["exempt"]["image"], c["exempt"]["package"]))
+    flagged = {field: [{"image": image, "spdxid": r["spdxid"], "purl": r["purl"], "name": r["name"],
+                        "needs": r["needs"]} for image in sorted(docs) for r in ordered[image] if r[field]]
+               for field in ("unparsed", "unidentified")}
+    return {"format": 1, "set": which, "arch": arch, "git_sha": git_sha,
+            "lock_sha256": _lock_sha256(lock_src),
+            "components": components + exempt_components, "unparsed": flagged["unparsed"],
+            "unidentified": flagged["unidentified"],
+            "unlicensed": {image: unlicensed_report(docs[image]) for image in sorted(docs)}}, []
+
+
+def _cell_problem(what: str, value: Any, pattern: re.Pattern[str] = PRINTABLE_RE,
+                  markdown: bool = True) -> str | None:
+    if not isinstance(value, str) or not pattern.fullmatch(value) or UNSAFE_CELL_RE.search(value)             or (markdown and MARKDOWN_RE.search(value)):
+        return f"notices: {what} {_show(repr(value))} cannot be printed in the Markdown table: refused, not escaped"
+    return None
+
+
+SECTION_INTRO = (
+    "Where the Source column says \"source in `sources/`\", this bundle carries the complete corresponding\n"
+    "source of that component, at the version its images hold, in `sources/files/`, each file named by its\n"
+    "SHA-256. `sources/index.json` lists each file's upstream name, URL and checksums and the SBOM packages\n"
+    "it covers.")
+SECTION_PATHS = ("Paths here are relative to the bundle's `app/` directory, which install publishes as the "
+                 "install directory.")
+SECTION_SAMPLE = ("Verification bundle: this source set is a sample and is not complete; do not distribute "
+                  "this bundle.")
+
+
+def source_section(index: Any) -> tuple[str | None, list[str]]:
+    """Item 7: the generated "Source code" section. It prints no generator
+    text: only lock keys and URLs, image names, the policy entry's package and
+    reviewed, and fixed text. Any value that could add a column or row is a
+    problem, never escaped (U9-7)."""
+    try:
+        return _source_section(index)
+    except Exception as exc:  # noqa: BLE001 - a problem, never an exception
+        return None, [f"notices: {type(exc).__name__}: {_clean(exc)}"]
+
+
+def _source_section(index: Any) -> tuple[str | None, list[str]]:
+    if not isinstance(index, dict) or index.get("set") not in ("full", "sample") \
+            or not isinstance(index.get("components"), list):
+        return None, ["notices: the index is not a source index (set, components)"]
+    rows: list[str] = []
+    p: list[str] = []
+
+    def check(what: str, value: Any, pattern: re.Pattern[str] = PRINTABLE_RE, markdown: bool = True) -> str:
+        problem = _cell_problem(what, value, pattern, markdown)
+        if problem:
+            p.append(problem)
+        return str(value)
+
+    for c in index["components"]:
+        status = c.get("status")
+        if status == "partial":
+            key = check("component key", c.get("key"), markdown=False)
+            images = sorted({check("image", pk.get("image")) for pk in c.get("packages") or []})
+            if not images:
+                p.append(f"notices: {_show(key)} has no packages")
+            files = c.get("files") or []
+            rest = [f for f in files if f.get("path") is None]
+            if index["set"] != "sample":
+                p.append(f"notices: {_show(key)} is partial in a full index")
+            if not rest or len(rest) == len(files):
+                p.append(f"notices: {_show(key)} is partial but lists no fetched file or no unfetched file")
+            url = check("URL", rest[0].get("url") if rest else None, markdown=False)
+            rows.append(f"| `{key}` | {', '.join(images)} | partial source (verification sample): only the files "
+                        f"that `sources/index.json` lists with a path are in `sources/files/`; "
+                        f"Upstream source of the rest: {url} |")
+        elif status in ("shipped", "not-shipped"):
+            key = check("component key", c.get("key"), markdown=False)
+            images = sorted({check("image", pk.get("image")) for pk in c.get("packages") or []})
+            if not images:
+                p.append(f"notices: {_show(key)} has no packages")
+            if status == "shipped":
+                source = "source in `sources/` (see `sources/index.json`)"
+            else:
+                files = c.get("files") or [{}]
+                source = f"Upstream source: {check('URL', files[0].get('url'), markdown=False)}"
+            rows.append(f"| `{key}` | {', '.join(images)} | {source} |")
+        elif status == "exempt":
+            ex = c.get("exempt") or {}
+            package = check("exempt package", ex.get("package"))
+            image = check("exempt image", ex.get("image"))
+            check("reviewed", ex.get("reviewed"), FROM_PRINTABLE_RE)
+            listing = check("listing", c.get("listing"), FROM_PRINTABLE_RE)
+            rows.append(f"| `{package}` | {image} | no source in this bundle: cleared by a reviewed exemption "
+                        f"({listing}) |")
+        else:
+            p.append(f"notices: a component has status {_show(repr(status))}")
+    if p:
+        return None, p
+    out = ["## Source code", ""]
+    if index["set"] == "sample":
+        out += [SECTION_SAMPLE, ""]
+    out += [SECTION_PATHS, "", SECTION_INTRO, "", "| Component | Images | Source |", "|---|---|---|"] + rows
+    return "\n".join(out) + "\n", []
+
+
+def _lstat_listing(directory: str) -> dict[str, tuple[str, int]]:
+    """`{name: (kind, size)}` by `scandir` and `lstat`; never follows a link.
+    An OSError propagates: a failed listing is a refusal, never an empty one."""
+    out: dict[str, tuple[str, int]] = {}
+    with os.scandir(directory) as it:
+        for entry in it:
+            st = os.lstat(os.path.join(directory, entry.name))
+            kind = ("file" if stat.S_ISREG(st.st_mode) else "link" if stat.S_ISLNK(st.st_mode)
+                    else "dir" if stat.S_ISDIR(st.st_mode) else "other")
+            out[entry.name] = (kind, st.st_size)
+    return out
+
+
+def _fail(command: str, exc: BaseException) -> int:
+    print(f"{command}: FAIL ({type(exc).__name__}: {_clean(exc)})", file=sys.stderr)
+    return 1
+
+
+def _refuse(command: str, problems: list[str]) -> int:
+    for line in problems[:20]:
+        print(f"sbom_check: {command}: {line}", file=sys.stderr)
+    return 1
+
+
+def _open_regular(path: str) -> tuple[int, int]:
+    """Open `path` for reading without following a link or blocking on a
+    FIFO; the open fd must be a regular file. Returns (fd, size); an OSError
+    when it cannot be opened or is not a regular file."""
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_BINARY", 0)
+    fd = os.open(path, flags)
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode):
+            raise OSError(errno.EINVAL, "is not a regular file")
+    except BaseException:
+        os.close(fd)
+        raise
+    return fd, st.st_size
+
+
+def _read_text(path: str) -> str:
+    with open(path, encoding="utf-8", newline="") as fh:
+        return fh.read()
+
+
+def _sha256_of(path: str) -> str:
+    fd, _ = _open_regular(path)
+    h = hashlib.sha256()
+    with os.fdopen(fd, "rb") as fh:
+        for chunk in iter(lambda: fh.read(HASH_CHUNK), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _record_text(directory: str) -> tuple[str | None, list[str]]:
+    path = os.path.join(directory, "fetch.json")
+    try:
+        st = os.lstat(path)
+    except FileNotFoundError:
+        return None, ["fetch.json: missing; run scripts/bundle_fetch.sh first"]
+    if not stat.S_ISREG(st.st_mode):
+        return None, ["fetch.json: is not a regular file"]
+    if st.st_size > RECORD_MAX:
+        return None, [f"fetch.json is {st.st_size} bytes, over 4 MiB"]
+    try:
+        fd, size = _open_regular(path)
+    except OSError as exc:
+        return None, [f"fetch.json: cannot read ({type(exc).__name__}): is not a regular file or cannot be opened"]
+    if size > RECORD_MAX:
+        os.close(fd)
+        return None, [f"fetch.json is {size} bytes, over 4 MiB"]
+    with os.fdopen(fd, "rb") as fh:
+        data = fh.read(RECORD_MAX + 1)
+    if len(data) > RECORD_MAX:
+        return None, [f"fetch.json is {len(data)} bytes, over 4 MiB"]
+    try:
+        return data.decode("utf-8"), []
+    except UnicodeDecodeError:
+        return None, ["fetch.json: not UTF-8"]
+
+
+def sources_check(a: argparse.Namespace) -> int:
+    try:
+        text = _read_text(a.lock)
+        json.loads(text)
+        with open(a.policy, encoding="utf-8") as fh:
+            policy = json.load(fh)
+        if not stat.S_ISDIR(os.lstat(a.dir).st_mode):
+            return _refuse("sources-check", [f"--dir {_clean(a.dir)} is not a directory (or is a link)"])
+        record, problems = _record_text(a.dir)
+        if record is not None:
+            problems = fetch_record_problems(record, text, policy, a.arch, a.set)
+        if problems:
+            return _refuse("sources-check", problems)
+        plan = fetch_plan(json.loads(text), a.arch, a.set)
+        try:
+            listing = _lstat_listing(a.dir)
+        except OSError:
+            return _refuse("sources-check", [f"{_clean(a.dir)}: cannot list"])
+        problems = listing_problems(listing, plan, True, a.dir)
+        if problems:
+            return _refuse("sources-check", problems)
+        planned = _planned(plan)
+        for sha, (key, f) in sorted(planned.items()):
+            label = f"--sources: {sha} ({_clean(key)} {_clean(f['name'])})"
+            try:
+                got = _sha256_of(os.path.join(a.dir, sha))
+            except OSError as exc:
+                problems.append(f"{label}: cannot read ({type(exc).__name__})")
+                continue
+            if got != sha:
+                problems.append(f"{label}: sha256 mismatch: got {got}")
+        if problems:
+            return _refuse("sources-check", problems)
+    except Exception as exc:  # noqa: BLE001 - one FAIL line, never a traceback (as lock-check)
+        return _fail("sources-check", exc)
+    for sha in sorted(planned):
+        print(sha)
+    print(f"sources-check: ok {len(planned)} files, {sum(f['size'] for _, f in planned.values())} bytes, "
+          f"{len({k for k, _ in plan})} components ({a.set}, {a.arch})", file=sys.stderr)
+    return 0
+
+
+def index_cli(a: argparse.Namespace) -> int:
+    if not SHA_RE.fullmatch(a.git_sha):
+        print(f"sbom_check: index: --git-sha {a.git_sha!r} is not 40 lower-case hex digits", file=sys.stderr)
+        return 2
+    paths: dict[str, str] = {}
+    for spec in a.sbom:
+        image, sep, path = spec.partition("=")
+        if not sep or not NAME_RE.fullmatch(image) or not path or image in paths:
+            print(f"sbom_check: index: --sbom {spec!r} is not a new IMAGE=PATH", file=sys.stderr)
+            return 2
+        paths[image] = path
+    try:
+        text = _read_text(a.lock)
+        json.loads(text)
+        with open(a.policy, encoding="utf-8") as fh:
+            policy = json.load(fh)
+        docs = {}
+        for image, path in paths.items():
+            with open(path, encoding="utf-8") as fh:
+                docs[image] = json.load(fh)
+        try:
+            listing = _lstat_listing(a.files)
+        except OSError:
+            return _refuse("index", [f"{_clean(a.files)}: cannot list"])
+        index, problems = source_index(docs, text, policy, a.arch, a.set, a.git_sha, listing)
+        if index is None:
+            return _refuse("index", problems)
+        out = lock_text(index)
+    except Exception as exc:  # noqa: BLE001 - one FAIL line, never a traceback
+        return _fail("index", exc)
+    for c in index["components"]:
+        if c["status"] == "exempt":
+            print(f"index: {_clean(c['exempt']['image'])}: {_clean(c['exempt']['package'])}: {_clean(c['listing'])}",
+                  file=sys.stderr)
+    sys.stdout.write(out)
+    return 0
+
+
+def notices_cli(a: argparse.Namespace) -> int:
+    try:
+        fd, size = _open_regular(a.index)
+        if size > INDEX_MAX:
+            os.close(fd)
+            return _refuse("notices", [f"--index {_clean(a.index)} is {size} bytes, over 16 MiB"])
+        with os.fdopen(fd, "r", encoding="utf-8") as fh:
+            index = json.load(fh)
+        text, problems = source_section(index)
+    except Exception as exc:  # noqa: BLE001 - one FAIL line, never a traceback
+        return _fail("notices", exc)
+    if text is None:
+        return _refuse("notices", problems)
+    sys.stdout.write(text)
+    return 0
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="sbom_check.py")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -1836,6 +2544,19 @@ def main(argv: list[str]) -> int:
     ln.add_argument("--policy", required=True)
     ln.add_argument("--sbom", action="append", required=True)
     ln.add_argument("--tar", action="append")
+    sc = sub.add_parser("sources-check")
+    for opt in ("--lock", "--policy", "--dir"):
+        sc.add_argument(opt, required=True)
+    sc.add_argument("--arch", required=True, choices=LOCK_ARCHES)
+    sc.add_argument("--set", required=True, choices=("full", "sample"))
+    ix = sub.add_parser("index")
+    for opt in ("--lock", "--policy", "--git-sha", "--files"):
+        ix.add_argument(opt, required=True)
+    ix.add_argument("--arch", required=True, choices=LOCK_ARCHES)
+    ix.add_argument("--set", required=True, choices=("full", "sample"))
+    ix.add_argument("--sbom", action="append", required=True)
+    nt = sub.add_parser("notices")
+    nt.add_argument("--index", required=True)
     args = parser.parse_args(argv)
     if args.command == "finish":
         return finish(args)
@@ -1849,6 +2570,12 @@ def main(argv: list[str]) -> int:
         return lock_check(args)
     if args.command == "lock-needs":
         return lock_needs_cli(args)
+    if args.command == "sources-check":
+        return sources_check(args)
+    if args.command == "index":
+        return index_cli(args)
+    if args.command == "notices":
+        return notices_cli(args)
     return 2
 
 

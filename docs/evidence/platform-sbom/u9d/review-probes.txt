@@ -1,0 +1,203 @@
+# U9d review probes (reviewer, 2026-10-30). Host Docker Desktop, client/server 29.5.2. Throwaway compose
+# project ke-rev-u9d (network_mode none, image ke-gates:local, pull_policy never), torn down after.
+# The diag functions are offline_check.sh's own lines (diag() .. diag_launch), extracted by sed; the only
+# edit is the ps filter narrowed to label=com.docker.compose.project=ke-rev-u9d (this host runs other stacks).
+
+== compose file (SICK = the sick.sh text below, passed via env) ==
+name: ke-rev-u9d
+services:
+  healthy:
+    image: ke-gates:local
+    pull_policy: never
+    network_mode: none
+    entrypoint: ["sh", "-c", "echo healthy-up; sleep 300"]
+    healthcheck: {test: ["CMD", "true"], interval: 1s, retries: 1}
+  sick:
+    image: ke-gates:local
+    pull_policy: never
+    network_mode: none
+    entrypoint: ["sh", "-c", "printf %s \"$$SICK\" | sh"]
+    environment: {SICK: "${SICK}"}
+    healthcheck: {test: ["CMD-SHELL", "printf 'Connection refused\nUnable to connect \"q\"\n' >&2; exit 1"], interval: 1s, retries: 1}
+  dead:
+    image: ke-gates:local
+    pull_policy: never
+    network_mode: none
+    entrypoint: ["sh", "-c", "echo dying; exit 137"]
+    healthcheck: {disable: true}
+  never:
+    image: ke-gates:local
+    pull_policy: never
+    network_mode: none
+    entrypoint: ["sh", "-c", "sleep 300"]
+    healthcheck: {test: ["CMD", "true"], interval: 1s}
+  oom:
+    image: ke-gates:local
+    pull_policy: never
+    network_mode: none
+    restart: unless-stopped
+    mem_limit: 48m
+    memswap_limit: 48m
+    entrypoint: ["python3", "-c", "import time,sys; print('oom start', flush=True); time.sleep(3); x=bytearray(400*1024*1024); print('never')"]
+    healthcheck: {test: ["CMD", "true"], interval: 1s, retries: 1}
+== sick.sh ==
+seq 1 60 | sed 's/^/sick line /'
+printf '\033[31mlast words\033[0m\n'
+printf '::error::forged\r::warning::x\n'
+echo stderr-line >&2
+exec sleep 300
+
+== P1: diag_launch, first run (healthy, dead exit 137 no healthcheck, never-started, sick died at exec) ==
+offline-client: diag: launch exited 1; the installed stack's containers in the inner daemon follow
+offline-client: diag: container ke-rev-u9d-dead-1 (service dead)
+offline-client: diag:   State.Status: exited
+offline-client: diag:   State.ExitCode: 137
+offline-client: diag:   State.OOMKilled: false
+offline-client: diag:   State.Health.Status: <absent>
+offline-client: diag:   State.Health.Log: <absent>
+offline-client: diag:   logs of service dead (docker compose logs --tail 50):
+offline-client: diag:   dead | 2026-10-30T06:19:56.151786255Z dying
+offline-client: diag: container ke-rev-u9d-healthy-1 (service healthy)
+offline-client: diag:   State.Status: running
+offline-client: diag:   State.ExitCode: 0
+offline-client: diag:   State.OOMKilled: false
+offline-client: diag:   State.Health.Status: healthy
+offline-client: diag:   State.Health.Log[0]: end 2026-10-30 06:20:04.596334231 +0000 UTC exit 0 output ""
+offline-client: diag:   State.Health.Log[1]: end 2026-10-30 06:20:05.648560527 +0000 UTC exit 0 output ""
+offline-client: diag:   State.Health.Log[2]: end 2026-10-30 06:20:06.675055513 +0000 UTC exit 0 output ""
+offline-client: diag:   State.Health.Log[3]: end 2026-10-30 06:20:07.738387615 +0000 UTC exit 0 output ""
+offline-client: diag:   State.Health.Log[4]: end 2026-10-30 06:20:08.790282281 +0000 UTC exit 0 output ""
+offline-client: diag: container ke-rev-u9d-never-1 (service never)
+offline-client: diag:   State.Status: created
+offline-client: diag:   State.ExitCode: 0
+offline-client: diag:   State.OOMKilled: false
+offline-client: diag:   State.Health.Status: <absent>
+offline-client: diag:   State.Health.Log: <absent>
+offline-client: diag:   logs of service never (docker compose logs --tail 50):
+offline-client: diag: container ke-rev-u9d-sick-1 (service sick)
+offline-client: diag:   State.Status: exited
+offline-client: diag:   State.ExitCode: 255
+offline-client: diag:   State.OOMKilled: false
+offline-client: diag:   State.Health.Status: unhealthy
+offline-client: diag:   State.Health.Log: <absent>
+offline-client: diag:   logs of service sick (docker compose logs --tail 50):
+offline-client: diag:   sick | 2026-10-30T06:19:56.155286157Z exec /usr/bin/sh: invalid argument
+offline-client: diag: end of the launch diagnostic
+AFTER rc=0
+
+== P2: diag_launch, sick recreated (running, unhealthy, multi-line probe output, ESC and CR in logs) ==
+offline-client: diag: container ke-rev-u9d-sick-1 (service sick)
+offline-client: diag:   State.Status: running
+offline-client: diag:   State.ExitCode: 0
+offline-client: diag:   State.OOMKilled: false
+offline-client: diag:   State.Health.Status: unhealthy
+offline-client: diag:   State.Health.Log[0]: end 2026-10-30 06:20:37.056283858 +0000 UTC exit 1 output "Connection refused\nUnable to connect \"q\"\n"
+offline-client: diag:   State.Health.Log[1]: end 2026-10-30 06:20:38.112829176 +0000 UTC exit 1 output "Connection refused\nUnable to connect \"q\"\n"
+offline-client: diag:   State.Health.Log[2]: end 2026-10-30 06:20:39.157171312 +0000 UTC exit 1 output "Connection refused\nUnable to connect \"q\"\n"
+offline-client: diag:   State.Health.Log[3]: end 2026-10-30 06:20:40.210360934 +0000 UTC exit 1 output "Connection refused\nUnable to connect \"q\"\n"
+offline-client: diag:   logs of service sick (docker compose logs --tail 50):
+offline-client: diag:   sick | 2026-10-30T06:20:36.019405627Z sick line 14
+offline-client: diag:   sick | 2026-10-30T06:20:36.019406161Z sick line 15
+offline-client: diag:   sick | 2026-10-30T06:20:36.019406648Z sick line 16
+offline-client: diag:   sick | 2026-10-30T06:20:36.019407210Z sick line 17
+offline-client: diag:   sick | 2026-10-30T06:20:36.019407736Z sick line 18
+offline-client: diag:   sick | 2026-10-30T06:20:36.019408260Z sick line 19
+offline-client: diag:   sick | 2026-10-30T06:20:36.019408792Z sick line 20
+offline-client: diag:   sick | 2026-10-30T06:20:36.019409309Z sick line 21
+offline-client: diag:   sick | 2026-10-30T06:20:36.019409813Z sick line 22
+offline-client: diag:   sick | 2026-10-30T06:20:36.019410303Z sick line 23
+offline-client: diag:   sick | 2026-10-30T06:20:36.019410857Z sick line 24
+offline-client: diag:   sick | 2026-10-30T06:20:36.019411408Z sick line 25
+offline-client: diag:   sick | 2026-10-30T06:20:36.019411925Z sick line 26
+offline-client: diag:   sick | 2026-10-30T06:20:36.019412406Z sick line 27
+offline-client: diag:   sick | 2026-10-30T06:20:36.019412934Z sick line 28
+offline-client: diag:   sick | 2026-10-30T06:20:36.019413427Z sick line 29
+offline-client: diag:   sick | 2026-10-30T06:20:36.019413905Z sick line 30
+offline-client: diag:   sick | 2026-10-30T06:20:36.019414571Z sick line 31
+offline-client: diag:   sick | 2026-10-30T06:20:36.019415064Z sick line 32
+offline-client: diag:   sick | 2026-10-30T06:20:36.019415600Z sick line 33
+offline-client: diag:   sick | 2026-10-30T06:20:36.019416123Z sick line 34
+offline-client: diag:   sick | 2026-10-30T06:20:36.019416608Z sick line 35
+offline-client: diag:   sick | 2026-10-30T06:20:36.019418439Z sick line 36
+offline-client: diag:   sick | 2026-10-30T06:20:36.019419035Z sick line 37
+offline-client: diag:   sick | 2026-10-30T06:20:36.019419561Z sick line 38
+offline-client: diag:   sick | 2026-10-30T06:20:36.019420034Z sick line 39
+offline-client: diag:   sick | 2026-10-30T06:20:36.019420520Z sick line 40
+offline-client: diag:   sick | 2026-10-30T06:20:36.019421044Z sick line 41
+offline-client: diag:   sick | 2026-10-30T06:20:36.019421552Z sick line 42
+offline-client: diag:   sick | 2026-10-30T06:20:36.019422064Z sick line 43
+offline-client: diag:   sick | 2026-10-30T06:20:36.019422577Z sick line 44
+offline-client: diag:   sick | 2026-10-30T06:20:36.019423073Z sick line 45
+offline-client: diag:   sick | 2026-10-30T06:20:36.019423579Z sick line 46
+offline-client: diag:   sick | 2026-10-30T06:20:36.019424110Z sick line 47
+offline-client: diag:   sick | 2026-10-30T06:20:36.019424623Z sick line 48
+offline-client: diag:   sick | 2026-10-30T06:20:36.019425128Z sick line 49
+offline-client: diag:   sick | 2026-10-30T06:20:36.019425627Z sick line 50
+offline-client: diag:   sick | 2026-10-30T06:20:36.019428767Z sick line 51
+offline-client: diag:   sick | 2026-10-30T06:20:36.019429407Z sick line 52
+offline-client: diag:   sick | 2026-10-30T06:20:36.019429963Z sick line 53
+offline-client: diag:   sick | 2026-10-30T06:20:36.019430513Z sick line 54
+offline-client: diag:   sick | 2026-10-30T06:20:36.019431016Z sick line 55
+offline-client: diag:   sick | 2026-10-30T06:20:36.019431545Z sick line 56
+offline-client: diag:   sick | 2026-10-30T06:20:36.019432122Z sick line 57
+offline-client: diag:   sick | 2026-10-30T06:20:36.019432691Z sick line 58
+offline-client: diag:   sick | 2026-10-30T06:20:36.019433251Z sick line 59
+offline-client: diag:   sick | 2026-10-30T06:20:36.019433873Z sick line 60
+offline-client: diag:   sick | 2026-10-30T06:20:36.019519247Z stderr-line
+offline-client: diag:   sick | 2026-10-30T06:20:36.019542970Z ?[31mlast words?[0m
+offline-client: diag:   sick | 2026-10-30T06:20:36.019551625Z ::error::forged?::warning::x
+offline-client: diag: end of the launch diagnostic
+AFTER rc=0
+
+== P3: OOM container (mem_limit 48m, restart unless-stopped) polled every 0.5 s; uniq -c ==
+      2 running exit=0 oom=false restarts=0 health=starting/0 started=2026-10-30T06:21:21.335039359Z finished=0001-01-01T00:00:00Z
+      1 running exit=0 oom=false restarts=0 health=healthy/1 started=2026-10-30T06:21:21.335039359Z finished=0001-01-01T00:00:00Z
+      1 running exit=0 oom=false restarts=0 health=healthy/2 started=2026-10-30T06:21:21.335039359Z finished=0001-01-01T00:00:00Z
+      1 restarting exit=137 oom=true restarts=1 health=unhealthy/2 started=2026-10-30T06:21:21.335039359Z finished=2026-10-30T06:21:24.42917629Z
+      1 running exit=0 oom=false restarts=1 health=starting/2 started=2026-10-30T06:21:24.56389253Z finished=2026-10-30T06:21:24.42917629Z
+      2 running exit=0 oom=false restarts=1 health=healthy/3 started=2026-10-30T06:21:24.56389253Z finished=2026-10-30T06:21:24.42917629Z
+      1 running exit=0 oom=false restarts=1 health=healthy/4 started=2026-10-30T06:21:24.56389253Z finished=2026-10-30T06:21:24.42917629Z
+      2 running exit=0 oom=false restarts=2 health=starting/4 started=2026-10-30T06:21:27.9169016Z finished=2026-10-30T06:21:27.685307347Z
+      3 running exit=0 oom=false restarts=2 health=healthy/5 started=2026-10-30T06:21:27.9169016Z finished=2026-10-30T06:21:27.685307347Z
+      1 restarting exit=137 oom=true restarts=3 health=unhealthy/5 started=2026-10-30T06:21:27.9169016Z finished=2026-10-30T06:21:31.042156706Z
+      1 running exit=0 oom=false restarts=3 health=starting/5 started=2026-10-30T06:21:31.548477272Z finished=2026-10-30T06:21:31.042156706Z
+      3 running exit=0 oom=false restarts=3 health=healthy/5 started=2026-10-30T06:21:31.548477272Z finished=2026-10-30T06:21:31.042156706Z
+      1 restarting exit=137 oom=true restarts=4 health=unhealthy/5 started=2026-10-30T06:21:31.548477272Z finished=2026-10-30T06:21:34.649960324Z
+      2 running exit=0 oom=false restarts=4 health=starting/5 started=2026-10-30T06:21:35.503901811Z finished=2026-10-30T06:21:34.649960324Z
+      2 running exit=0 oom=false restarts=4 health=healthy/5 started=2026-10-30T06:21:35.503901811Z finished=2026-10-30T06:21:34.649960324Z
+=> ExitCode 137 / OOMKilled true are visible only in the 'restarting' window (one 0.5 s sample per death); once
+   restarted, both read 0 / false. RestartCount and State.FinishedAt survive the restart.
+
+== P4: diag_launch later (the OOM container now in a growing backoff, caught 'restarting') ==
+offline-client: diag: container ke-rev-u9d-oom-1 (service oom)
+offline-client: diag:   State.Status: restarting
+offline-client: diag:   State.ExitCode: 137
+offline-client: diag:   State.OOMKilled: true
+offline-client: diag:   State.Health.Status: unhealthy
+offline-client: diag:   State.Health.Log[0]: end 2026-10-30 06:21:48.816953318 +0000 UTC exit 0 output ""
+offline-client: diag:   State.Health.Log[1]: end 2026-10-30 06:21:57.319812146 +0000 UTC exit 0 output ""
+offline-client: diag:   State.Health.Log[2]: end 2026-10-30 06:21:58.358142604 +0000 UTC exit 0 output ""
+offline-client: diag:   State.Health.Log[3]: end 2026-10-30 06:22:13.22360099 +0000 UTC exit 0 output ""
+offline-client: diag:   State.Health.Log[4]: end 2026-10-30 06:22:14.281104907 +0000 UTC exit 0 output ""
+offline-client: diag:   logs of service oom (docker compose logs --tail 50):
+offline-client: diag:   oom | time="2026-10-29T23:22:20-07:00" level=warning msg="The \"SICK\" variable is not set. Defaulting to a blank string."
+offline-client: diag:   oom | 2026-10-30T06:21:21.396274746Z oom start
+offline-client: diag:   oom | 2026-10-30T06:21:24.658356373Z oom start
+offline-client: diag:   oom | 2026-10-30T06:21:28.017052993Z oom start
+offline-client: diag:   oom | 2026-10-30T06:21:31.625361748Z oom start
+offline-client: diag:   oom | 2026-10-30T06:21:35.608187717Z oom start
+offline-client: diag:   oom | 2026-10-30T06:21:40.348126185Z oom start
+offline-client: diag:   oom | 2026-10-30T06:21:46.708929344Z oom start
+offline-client: diag:   oom | 2026-10-30T06:21:56.265495335Z oom start
+offline-client: diag:   oom | 2026-10-30T06:22:12.204977571Z oom start
+offline-client: diag: container ke-rev-u9d-sick-1 (service sick)
+offline-client: diag:   State.Status: running
+offline-client: diag:   State.ExitCode: 0
+offline-client: diag:   State.OOMKilled: false
+offline-client: diag:   State.Health.Status: unhealthy
+offline-client: diag:   State.Health.Log[0]: end 2026-10-30 06:22:16.765049244 +0000 UTC exit 1 output "Connection refused\nUnable to connect \"q\"\n"
+
+== P5: docker events history after the fact ==
+docker events --since 10m --until 0s --filter label=...=ke-rev-u9d --filter event=oom --filter event=die : 1 oom + 1 die (of 9 deaths)
+same query a minute later: 0 lines; unfiltered history for the project: 120 events, mostly exec_create/exec_start/exec_die of healthchecks
+=> the daemon's event history is a bounded ring; healthcheck execs evict die/oom. Only a live stream started before launch is reliable.

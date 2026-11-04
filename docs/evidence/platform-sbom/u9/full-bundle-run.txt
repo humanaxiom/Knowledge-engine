@@ -1,0 +1,618 @@
+# U9b Q79 full-set bundle run (second half of the Q79 recorded full-set run; R10/R11), 2026-10-29 (tester).
+# Host: aria-alien1 (Windows 11 dev box, Docker Desktop 29.5.2, linux/amd64 daemon, 24 CPUs). HEAD 1a7a9e2 + the uncommitted U9b rework-1 GREEN edits (scripts/bundle.sh as in u9b-r1-green-verify-full.txt).
+# Command (Git Bash, repo root; jq 1.8.2 from WinGet on PATH; COMPOSE_PROJECT_NAME=ke-q79; no .env needed, bundle.sh reads .env.example only):
+#   time bash scripts/bundle.sh --out dist/ke-q79-bundle-amd64 --sources dist/ke-q79-sources --sources-set full
+# --sources = the full fetch of u9/full-fetch-run.txt (716 blobs + fetch.json, set full, arch amd64).
+# Preconditions checked first (nothing built or pulled): the six stack images (ke-app:local, ke-gateway:local, ke-neo4j:local, phoenix, postgres, valkey by digest) and the generator anchore/syft:v1.54.1@sha256:3eb5379b... all present, linux/amd64; df on C: 3279534420 KiB available.
+# Start 2026-10-29T23:24:01Z, end 23:26:39Z, exit 0. Redaction: none needed (no profile path, SID or signed URL in the output).
+
+== bundle.sh stdout+stderr (unedited) ==
+sources-check: ok 716 files, 1180936586 bytes, 183 components (full, amd64)
+ Container ke-q79-sbom-sbom-run-d5a10dbad4bd Creating 
+ Container ke-q79-sbom-sbom-run-d5a10dbad4bd Created 
+sbom_check: ke-app: unlicensed packages (no licence, NOASSERTION or unidentified text): 19 (deb: 18, generic: 1)
+sbom_check: ke-app:   pkg:deb/debian/base-files@12.4%2Bdeb12u15?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/debian-archive-keyring@2023.3%2Bdeb12u2?arch=all&distro=debian-12.15 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/gcc-12-base@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libc-bin@2.36-9%2Bdeb12u14?arch=amd64&distro=debian-12.15&upstream=glibc (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libc6@2.36-9%2Bdeb12u14?arch=amd64&distro=debian-12.15&upstream=glibc (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libcrypt1@1%3A4.4.33-2?arch=amd64&distro=debian-12.15&upstream=libxcrypt (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libgcc-s1@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libgcrypt20@1.10.1-3%2Bdeb12u1?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libgnutls30@3.7.9-2%2Bdeb12u7?arch=amd64&distro=debian-12.15&upstream=gnutls28 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libgssapi-krb5-2@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libk5crypto3@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libkrb5-3@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libkrb5support0@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libselinux1@3.4-1%2Bb6?arch=amd64&distro=debian-12.15&upstream=libselinux%403.4-1 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libsemanage-common@3.4-1?arch=all&distro=debian-12.15&upstream=libsemanage (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libsemanage2@3.4-1%2Bb5?arch=amd64&distro=debian-12.15&upstream=libsemanage%403.4-1 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libstdc%2B%2B6@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libtasn1-6@4.19.0-2%2Bdeb12u1?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: ke-app:   pkg:generic/python@3.12.16
+ Container ke-q79-sbom-sbom-run-8b5ad36ed436 Creating 
+ Container ke-q79-sbom-sbom-run-8b5ad36ed436 Created 
+sbom_check: ke-gateway: unlicensed packages (no licence, NOASSERTION or unidentified text): 0
+ Container ke-q79-sbom-sbom-run-ee8782749d3e Creating 
+ Container ke-q79-sbom-sbom-run-ee8782749d3e Created 
+sbom_check: ke-neo4j: unlicensed packages (no licence, NOASSERTION or unidentified text): 27 (deb: 9, generic: 1, maven: 17)
+sbom_check: ke-neo4j:   pkg:maven/net.sourceforge.argparse4j/argparse4j@0.9.0
+sbom_check: ke-neo4j:   pkg:maven/org.apache.commons/commons-lang3@3.18.0
+sbom_check: ke-neo4j:   pkg:maven/org.apache.commons/commons-text@1.10.0
+sbom_check: ke-neo4j:   pkg:deb/debian/debian-archive-keyring@2025.1?arch=all&distro=debian-13.7 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:deb/debian/gcc-14-base@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:maven/com.github.seancfoley.ipaddress/ipaddress@5.5.1
+sbom_check: ke-neo4j:   pkg:maven/jrt-fs/jrt-fs@21.0.12.1
+sbom_check: ke-neo4j:   pkg:maven/org.bitbucket.inkytonik.kiama/kiama_2.13@2.5.1
+sbom_check: ke-neo4j:   pkg:deb/debian/libcrypt-dev@1%3A4.4.38-1?arch=amd64&distro=debian-13.7&upstream=libxcrypt (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:deb/debian/libcrypt1@1%3A4.4.38-1?arch=amd64&distro=debian-13.7&upstream=libxcrypt (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:deb/debian/libgcc-s1@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:deb/debian/libgnutls30t64@3.8.9-3%2Bdeb13u4?arch=amd64&distro=debian-13.7&upstream=gnutls28 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:deb/debian/libstdc%2B%2B6@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:deb/debian/libtasn1-6@4.20.0-2%2Bdeb13u1?arch=amd64&distro=debian-13.7 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:maven/com.softwaremill.magnolia1_2/magnolia_2.13@1.1.8
+sbom_check: ke-neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection@12.0.0
+sbom_check: ke-neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection-netty@12.0.0
+sbom_check: ke-neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection-pooled@12.0.0
+sbom_check: ke-neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection-routed@12.0.0
+sbom_check: ke-neo4j:   pkg:maven/org.neo4j/neo4j-cypher-dsl@2024.2.0
+sbom_check: ke-neo4j:   pkg:generic/oracle/openjdk@21.0.12.1%2B1-LTS?repository_url=https%3A%2F%2Fgithub.com%2Fadoptium%2Fjdk21u.git
+sbom_check: ke-neo4j:   pkg:maven/picocli/picocli@4.7.6
+sbom_check: ke-neo4j:   pkg:maven/org.reactivestreams/reactive-streams@1.0.4
+sbom_check: ke-neo4j:   pkg:maven/org.scala-lang.modules/scala-collection-contrib_2.13@0.3.0
+sbom_check: ke-neo4j:   pkg:maven/org.slf4j/slf4j-api@2.0.11
+sbom_check: ke-neo4j:   pkg:deb/debian/wget@1.25.0-2?arch=amd64&distro=debian-13.7 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:maven/net.openhft/zero-allocation-hashing@0.27ea1
+ Container ke-q79-sbom-sbom-run-d6636906eafa Creating 
+ Container ke-q79-sbom-sbom-run-d6636906eafa Created 
+sbom_check: phoenix: unlicensed packages (no licence, NOASSERTION or unidentified text): 35 (deb: 14, generic: 1, none: 8, pypi: 12)
+sbom_check: phoenix:   pkg:pypi/aiosqlite@0.22.1
+sbom_check: phoenix:   SPDXRef-Package-binary-cli-3c111f636ab23ae2 cli (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-cli-32-864fbd8df8eebeff cli-32 (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-cli-64-58d92fd2583882cf cli-64 (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-cli-arm64-6de49882b0a31d2a cli-arm64 (no purl)
+sbom_check: phoenix:   pkg:pypi/daytona-analytics-api-client@0.223.1
+sbom_check: phoenix:   pkg:pypi/daytona-analytics-api-client-async@0.223.1
+sbom_check: phoenix:   pkg:generic/deno@2.1.4
+sbom_check: phoenix:   pkg:pypi/exceptiongroup@1.3.1
+sbom_check: phoenix:   pkg:deb/debian/gcc-14-base@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14 (unidentified licence text)
+sbom_check: phoenix:   SPDXRef-Package-binary-gui-90e51b43c7a824a9 gui (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-gui-32-bf5cb4b4bc756f59 gui-32 (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-gui-64-54afa822a7647b6f gui-64 (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-gui-arm64-b70024c9a835570f gui-arm64 (no purl)
+sbom_check: phoenix:   pkg:pypi/httpx-ws@0.9.0
+sbom_check: phoenix:   pkg:pypi/jinja2@3.1.6
+sbom_check: phoenix:   pkg:deb/debian/libcrypt1@1%3A4.4.38-1?arch=amd64&distro=debian-13.7&upstream=libxcrypt (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libgcc-s1@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14
+sbom_check: phoenix:   pkg:deb/debian/libgomp1@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14
+sbom_check: phoenix:   pkg:deb/debian/libgssapi-krb5-2@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libk5crypto3@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libkrb5-3@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libkrb5support0@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libncursesw6@6.5%2B20250216-2?arch=amd64&distro=debian-13.7&upstream=ncurses
+sbom_check: phoenix:   pkg:deb/debian/libpython3.13-minimal@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libpython3.13-stdlib@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libstdc%2B%2B6@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14
+sbom_check: phoenix:   pkg:pypi/markdown-it-py@4.2.0
+sbom_check: phoenix:   pkg:pypi/obstore@0.11.1
+sbom_check: phoenix:   pkg:pypi/pandas@2.3.3 (unidentified licence text)
+sbom_check: phoenix:   pkg:pypi/protobuf-py-ext@0.1.1
+sbom_check: phoenix:   pkg:pypi/pyqwest@0.10.0
+sbom_check: phoenix:   pkg:deb/debian/python3.13-minimal@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/python3.13-venv@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13
+sbom_check: phoenix:   pkg:pypi/synchronicity@0.12.6
+ Container ke-q79-sbom-sbom-run-e5c8f0453194 Creating 
+ Container ke-q79-sbom-sbom-run-e5c8f0453194 Created 
+sbom_check: postgres: unlicensed packages (no licence, NOASSERTION or unidentified text): 25 (deb: 22, golang: 3)
+sbom_check: postgres:   pkg:deb/debian/base-files@12.4%2Bdeb12u15?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/debian-archive-keyring@2023.3%2Bdeb12u2?arch=all&distro=debian-12.15 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/gcc-12-base@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: postgres:   pkg:golang/github.com/moby/sys/user@v0.1.0
+sbom_check: postgres:   pkg:golang/github.com/tianon/gosu@v1.19.0
+sbom_check: postgres:   pkg:golang/golang.org/x/sys@v0.1.0
+sbom_check: postgres:   pkg:deb/debian/libc-bin@2.36-9%2Bdeb12u14?arch=amd64&distro=debian-12.15&upstream=glibc (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libc-l10n@2.36-9%2Bdeb12u14?arch=all&distro=debian-12.15&upstream=glibc (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libc6@2.36-9%2Bdeb12u14?arch=amd64&distro=debian-12.15&upstream=glibc (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libcrypt1@1%3A4.4.33-2?arch=amd64&distro=debian-12.15&upstream=libxcrypt (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libgcc-s1@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libgcrypt20@1.10.1-3%2Bdeb12u1?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libgnutls30@3.7.9-2%2Bdeb12u7?arch=amd64&distro=debian-12.15&upstream=gnutls28 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libgssapi-krb5-2@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libk5crypto3@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libkrb5-3@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libkrb5support0@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libksba8@1.6.3-2?arch=amd64&distro=debian-12.15&upstream=libksba (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libselinux1@3.4-1%2Bb6?arch=amd64&distro=debian-12.15&upstream=libselinux%403.4-1 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libsemanage-common@3.4-1?arch=all&distro=debian-12.15&upstream=libsemanage (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libsemanage2@3.4-1%2Bb5?arch=amd64&distro=debian-12.15&upstream=libsemanage%403.4-1 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libstdc%2B%2B6@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libtasn1-6@4.19.0-2%2Bdeb12u1?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libxslt1.1@1.1.35-1%2Bdeb12u4?arch=amd64&distro=debian-12.15&upstream=libxslt (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/locales@2.36-9%2Bdeb12u14?arch=all&distro=debian-12.15&upstream=glibc (unidentified licence text)
+ Container ke-q79-sbom-sbom-run-9d398aac21d3 Creating 
+ Container ke-q79-sbom-sbom-run-9d398aac21d3 Created 
+sbom_check: valkey: unlicensed packages (no licence, NOASSERTION or unidentified text): 1 (generic: 1)
+sbom_check: valkey:   pkg:generic/valkey@8.1.10
+index: ke-neo4j: pkg:maven/com.sun.jna/jna@5.15.0: exempt, reviewed security 2026-10-25
+index: ke-neo4j: pkg:maven/org.javassist/javassist@3.30.2-GA: exempt, reviewed security 2026-10-25
+bundle: sources: check 7 s, copy 12 s, index 2 s, notices 0 s
+bundle written: /c/repos/Knowledge-engine/dist/ke-q79-bundle-amd64
+manifest sha256: b871bcd39e2f9b42e0d97809c150d2cde34a6ef14f00d6cafab17134b5de2e53
+release record: /c/repos/Knowledge-engine/dist/ke-q79-bundle-amd64.manifest.sha256
+
+real	2m37.922s
+user	0m16.275s
+sys	0m17.611s
+exit 0
+
+== tester checks after the run (scratch script, unedited output) ==
+== checks 2026-10-29T23:27:39Z
+-- record beside --out
+-rw-r--r-- 1 adam 197121 102 Oct 29 16:26 dist/ke-q79-bundle-amd64.manifest.sha256
+b871bcd39e2f9b42e0d97809c150d2cde34a6ef14f00d6cafab17134b5de2e53  ke-q79-bundle-amd64/MANIFEST.sha256
+-- record verifies MANIFEST
+ke-q79-bundle-amd64/MANIFEST.sha256: OK
+-- MANIFEST self-check
+MANIFEST: all entries ok
+-- app/sources/files count
+716
+-- app/sources/files bytes
+1180936586
+-- non-regular entries in files/
+0
+-- name == sha256 for every file
+hashed 716 files, mismatches 0
+-- files set == fetched set (minus fetch.json)
+identical name sets
+-- index.json
+894587 bytes /c/repos/Knowledge-engine/dist/ke-q79-bundle-amd64/app/sources/index.json
+format 1 set full arch amd64 git_sha 1a7a9e276d57a6a7c89490e44c795ff2ef7f685b
+lock_sha256 12eebc8cd09e5effc6934a1a3b67decc053cda923720dda07a8909a137fc761b
+components 185 status {'exempt': 2, 'shipped': 183}
+distinct keys 183
+file rows 876 rows with path 876 distinct sha 716
+distinct bytes 1180936586
+exempt ke-neo4j pkg:maven/com.sun.jna/jna@5.15.0 exempt, reviewed security 2026-10-25
+exempt ke-neo4j pkg:maven/org.javassist/javassist@3.30.2-GA exempt, reviewed security 2026-10-25
+unparsed 65 unidentified 59
+-- index lock_sha256 vs fetch.json
+fetch.json lock_sha256 12eebc8cd09e5effc6934a1a3b67decc053cda923720dda07a8909a137fc761b
+-- MANIFEST.sha256
+111025 bytes
+764
+under 1048576: yes (111025)
+MANIFEST lines under app/sources/files/: 716
+-- du -sb
+2147272340	/c/repos/Knowledge-engine/dist/ke-q79-bundle-amd64
+1181831173	/c/repos/Knowledge-engine/dist/ke-q79-bundle-amd64/app/sources
+without app/sources: 965441167
+-- top level
+total 244
+drwxr-xr-x 1 adam 197121      0 Oct 29 16:26 .
+drwxr-xr-x 1 adam 197121      0 Oct 29 16:26 ..
+-rw-r--r-- 1 adam 197121   1067 Oct 29 16:24 LICENSE
+-rw-r--r-- 1 adam 197121 111025 Oct 29 16:26 MANIFEST.sha256
+-rw-r--r-- 1 adam 197121   9616 Oct 29 16:24 NOTICE.md
+-rw-r--r-- 1 adam 197121  24165 Oct 29 16:26 THIRD_PARTY_NOTICES.md
+drwxr-xr-x 1 adam 197121      0 Oct 29 16:26 app
+-rw-r--r-- 1 adam 197121   1120 Oct 29 16:24 bundle.json
+drwxr-xr-x 1 adam 197121      0 Oct 29 16:24 images
+-rw-r--r-- 1 adam 197121  44846 Oct 29 16:24 install.ps1
+-rwxr-xr-x 1 adam 197121  28744 Oct 29 16:24 install.sh
+drwxr-xr-x 1 adam 197121      0 Oct 29 16:24 licenses
+total 68
+drwxr-xr-x 1 adam 197121     0 Oct 29 16:26 .
+drwxr-xr-x 1 adam 197121     0 Oct 29 16:26 ..
+-rw-r--r-- 1 adam 197121  1809 Oct 29 16:24 .env.example
+-rw-r--r-- 1 adam 197121  1067 Oct 29 16:26 LICENSE
+-rw-r--r-- 1 adam 197121  9616 Oct 29 16:26 NOTICE.md
+-rw-r--r-- 1 adam 197121 24165 Oct 29 16:26 THIRD_PARTY_NOTICES.md
+drwxr-xr-x 1 adam 197121     0 Oct 29 16:24 config
+-rw-r--r-- 1 adam 197121  7743 Oct 29 16:24 docker-compose.yml
+drwxr-xr-x 1 adam 197121     0 Oct 29 16:24 docs
+drwxr-xr-x 1 adam 197121     0 Oct 29 16:26 licenses
+drwxr-xr-x 1 adam 197121     0 Oct 29 16:26 sboms
+drwxr-xr-x 1 adam 197121     0 Oct 29 16:24 scripts
+drwxr-xr-x 1 adam 197121     0 Oct 29 16:26 sources
+-- Source code section
+/c/repos/Knowledge-engine/dist/ke-q79-bundle-amd64/THIRD_PARTY_NOTICES.md:64:## Source code
+/c/repos/Knowledge-engine/dist/ke-q79-bundle-amd64/app/THIRD_PARTY_NOTICES.md:64:## Source code
+THIRD_PARTY_NOTICES.md and app/THIRD_PARTY_NOTICES.md byte-identical
+48cba7f8efd609ca066c49cbe14320d7511a7325a16713562795e7d3cc523b97 *dist/ke-q79-bundle-amd64/THIRD_PARTY_NOTICES.md
+48cba7f8efd609ca066c49cbe14320d7511a7325a16713562795e7d3cc523b97 *dist/ke-q79-bundle-amd64/app/THIRD_PARTY_NOTICES.md
+sample warning present? 0
+'source in `sources/`' rows: 184
+-- --sources unchanged
+listing (name size mtime mode, 718 lines) identical before/after
+5889c9269f210259c0e4e7f8e4e155f5668b1f4ab0addabdd42eb6a50be84661 *dist/ke-q79-sources/fetch.json
+5889c9269f210259c0e4e7f8e4e155f5668b1f4ab0addabdd42eb6a50be84661 *dist/ke-q79-sources/fetch.json
+1181080083	dist/ke-q79-sources
+(The Source code section table: 186 lines beginning "| " = 1 header + 183 shipped component rows + 2 exempt rows (jna, javassist); the 184 "source in `sources/`" matches = 183 rows + the section intro sentence.)
+
+== against u9/expected.md "full, amd64" ==
+| Item | expected.md | this run | |
+|---|---|---|---|
+| components (lock keys, amd64) | 183 | sources-check `183 components (full, amd64)`; index.json 183 distinct keys | match |
+| shipped / not-shipped keys | 183 / 0 | index.json status shipped 183, not-shipped 0 (absent) | match |
+| exempt components | one per matching exempt entry (count read at the run) | 2: ke-neo4j jna@5.15.0, javassist@3.30.2-GA (`index:` lines and index.json) | recorded |
+| app/sources/files/ files | 716 | 716 regular files, 0 non-regular; name set identical to the fetched set | match |
+| app/sources/files/ bytes | 1180936586 | 1180936586 (sum of sizes; index.json distinct bytes the same) | match |
+| plan rows | 876 | index.json file rows 876, every one with a path | match |
+| every file's sha256 = its name | (U9-8) | hashed 716, mismatches 0 | match |
+| fetch.json lock_sha256 | 12eebc8c...fc761b | 12eebc8cd09e5effc6934a1a3b67decc053cda923720dda07a8909a137fc761b | match |
+| index.json lock_sha256 | the same | 12eebc8cd09e5effc6934a1a3b67decc053cda923720dda07a8909a137fc761b | match |
+| index.json set / arch / git_sha | full / amd64 / HEAD | full / amd64 / 1a7a9e276d57... | match |
+| MANIFEST.sha256 | under 1048576 B (U9 cap) | 111025 B (10.6% of the cap), 764 lines (716 under app/sources/files/) | match |
+| release record beside --out | one sha256sum line | dist/ke-q79-bundle-amd64.manifest.sha256, 102 B, `sha256sum -c` OK; MANIFEST self-check all OK | match |
+| Source code section | in both notices, byte-identical | `## Source code` at l.64 of THIRD_PARTY_NOTICES.md and app/THIRD_PARTY_NOTICES.md; cmp identical (sha256 48cba7f8...); no sample warning (full set) | match |
+| nothing written under --sources | (item 13) | 718-line listing (name, size, mtime, mode) identical before/after; fetch.json sha256 5889c926...84661 before and after; du -sb 1181080083 before and after | match |
+
+== sizes (du -sb, real bytes) ==
+bundle 2147272340 B (2.00 GiB); app/sources 1181831173 B (= 1180936586 files + 894587 index.json); without app/sources 965441167 B (920.7 MiB).
+
+== cleanup ==
+2026-10-29T23:28:52Z rm -rf -- dist/ke-q79-bundle-amd64 dist/ke-q79-bundle-amd64.manifest.sha256
+removed
+dist/ now:
+ke-q79-sources
+dist/ke-q79-sources kept for A34: 717 entries, 1181080083 B, fetch.json 5889c9269f210259c0e4e7f8e4e155f5668b1f4ab0addabdd42eb6a50be84661
+docker ps -a | grep ke-q79: 0 containers
+docker network ls | grep ke-q79: 0 networks
+compose projects named ke-q79*: 0
+no prune, no network rm; the bundle tags ke-*:bundle-1a7a9e276d57 and ke-vendor/* existed before the run (image list unchanged).
+
+#######################################################################################################################
+# 2026-10-30 rework 2 re-run (design-notes O-17 (5); R10), tester.
+# Code: HEAD 1a7a9e2 + the uncommitted U9b rework-2 GREEN tree (scripts/bundle.sh sha256 9624710b...ff9dd; fast Ran 1328 OK,
+# full PASS 1365 s in u9b-r2-green-verify-full.txt). Host, Docker, jq and command as above (COMPOSE_PROJECT_NAME=ke-q79,
+# KE_IMAGE_TAG unset, jq 1.8.2 from WinGet on PATH); --sources = the same kept dist/ke-q79-sources.
+# Images bundled: ke-app:local 7d6a0c84..., ke-gateway:local 06324664..., ke-neo4j:local 942e76d5... (created 2026-10-28/19/23;
+# content the same images as the first run, see "bundle tags" below) and the four digest-pinned vendor images.
+# Start 2026-10-30T01:08:17Z, end 01:10:48Z, exit 0. Redaction: none needed (no profile path, SID or signed URL in the output).
+# Driver slip (no effect on the bundle or on any row below): the driver's scratch path was not exported to its `bash -c` steps, so
+# four bookkeeping steps (save the start hashes, save the tag list, and the two end comparisons) wrote no file; both lists were
+# printed in full at step 0, and the comparisons were re-done from the printed lists at 01:11:16Z (results below).
+
+== verdict
+PASS: every Q79 row equals the first run's (table below). Numbers that moved: wall time 2m31.2s (was 2m37.9s), stage seconds
+check 6/copy 12/index 1/notices 1 (was 7/12/2/0), and the manifest digest (per run by design: each SBOM gets a fresh
+documentNamespace urn:uuid4 and bundle.json a `created` time, sbom_check.py l.770, bundle.sh l.545-546; MANIFEST bytes and
+lines are unchanged). Nothing changed under dist/ke-q79-sources.
+
+== step 0 (preconditions; unedited except the tag list, cut as marked)
+== 0. preconditions 2026-10-30T01:08:14Z
+$ git rev-parse HEAD; git branch --show-current; docker version --format "engine {{.Server.Version}} {{.Server.Os}}/{{.Server.Arch}}"; docker compose version --short; jq --version; echo "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME KE_IMAGE_TAG=${KE_IMAGE_TAG-<unset>}"
+1a7a9e276d57a6a7c89490e44c795ff2ef7f685b
+agent/platform-sbom
+engine 29.5.2 linux/amd64
+5.1.4
+jq-1.8.2
+COMPOSE_PROJECT_NAME=ke-q79 KE_IMAGE_TAG=<unset>
+[exit code: 0] [elapsed: 0 s]
+
+$ sha256sum scripts/bundle.sh scripts/bundle_fetch.sh scripts/offline_check.sh scripts/sbom_check.py scripts/sources_fetch.py scripts/install.ps1 scripts/install.sh docker/sources.lock.json docker/source-policy.json NOTICE.md licenses/libffi-jna-5.15.0.txt | tee "$S/q79r2/hash-start.txt"
+tee: /q79r2/hash-start.txt: No such file or directory
+9624710b069b16b9a8dde489165cc24872cf2af2b14617f9788c05be409ff9dd *scripts/bundle.sh
+552288bca4bc7825ac9daaee391ad6bac6f64c7ff9087f5b0b6e93f5d222cc40 *scripts/bundle_fetch.sh
+48be0cb0e368165a526b2a5ecf352fe6456da2808e4b6d00ff92c2e687302138 *scripts/offline_check.sh
+b7c933893b0d43299fc64821b2ab2425795e801d5e1902cae6c2724f4cf2f3e9 *scripts/sbom_check.py
+9b89a5a95acf0105b7226075b62885621f8b2a0249e4c04cb83438b0a09b6ee7 *scripts/sources_fetch.py
+7438fe1a8fde5638f91b337469ac734645fbfbe03dbbc53ec216f82a0e77c883 *scripts/install.ps1
+204ab6a2ffc3128b97cc09f3fe2e889ab2208a23cdf99bf582470058c8e2ab45 *scripts/install.sh
+12eebc8cd09e5effc6934a1a3b67decc053cda923720dda07a8909a137fc761b *docker/sources.lock.json
+6261355fe8f764bfb86523eea4f03d53a710edef0d791d19ca0a71d95244ef21 *docker/source-policy.json
+0aee6bb880fd9406dbd2d033f5d4c35dd49dc67da0ce3e9e52c0cad59ffa4e49 *NOTICE.md
+24026d7cef7c72950663578517c854560567c9f49bdf2d645e66b2146b5cb9e6 *licenses/libffi-jna-5.15.0.txt
+[exit code: 1] [elapsed: 0 s]
+
+$ docker image inspect --format "{{index .RepoTags 0}} {{.Id}} {{.Os}}/{{.Architecture}} created={{.Created}}" ke-app:local ke-gateway:local ke-neo4j:local
+ke-app:local sha256:7d6a0c8413af6a4476582cf06ca5381e40335f6e1e11c907a4a5376418af3995 linux/amd64 created=2026-10-28T01:30:22.554154764Z
+ke-gateway:local sha256:06324664fbd672137709611f66f7baf15c662127b16e7e5c951e4b0742dc6714 linux/amd64 created=2026-10-19T04:13:41.827391046Z
+ke-neo4j:local sha256:942e76d5a7e87b2af5f1bc50b8e8d9ba3d07114d8f7898f7ee7ff1d9e22e55b4 linux/amd64 created=2026-10-23T21:26:41.892773977Z
+[exit code: 0] [elapsed: 1 s]
+
+$ docker image ls --no-trunc --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep -E "^ke-(app|gateway|neo4j):bundle-|^ke-vendor/" | sort | tee "$S/q79r2/tags-before.txt"
+(87 lines printed: 83 ke-*:bundle-<12 hex> tags (35 commits) and the four ke-vendor tags; cut here to the HEAD and vendor lines:)
+ke-app:bundle-1a7a9e276d57 sha256:ad16007a5c991d4b00bc5d6ba86242880580ae1301d615baf0285082c8b538bb
+ke-gateway:bundle-1a7a9e276d57 sha256:557e48f929ee2beac2c3095f10a49ab1ad46c7940cf03b14cb541d409a784089
+ke-neo4j:bundle-1a7a9e276d57 sha256:5fb92549545d5e321fd8a728bf4991d1646913693e2a24635bb407e19ed411d6
+ke-vendor/neo4j:0a6e7aedf54a sha256:0a6e7aedf54a531f76286032d4365ead65b11cca05e4a15cdf23b8e53d6db02b
+ke-vendor/phoenix:fa28e9cd96dd sha256:fa28e9cd96dd554a63ff9bf55ca40799d470ec75bdd7dd85a2dee97b9e8c704c
+ke-vendor/postgres:0ea6700a3b4f sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
+ke-vendor/valkey:081c2f5cb575 sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507
+[exit code: 1] [elapsed: 1 s]
+
+$ ls -d dist/ke-q79-bundle-amd64 dist/ke-q79-bundle-amd64.manifest.sha256; df -Pk /c/repos/Knowledge-engine/dist | tail -1
+ls: cannot access 'dist/ke-q79-bundle-amd64': No such file or directory
+ls: cannot access 'dist/ke-q79-bundle-amd64.manifest.sha256': No such file or directory
+C:              3967116284 692591564 3274524720      18% /c
+[exit code: 0] [elapsed: 0 s]
+
+$ wc -l < "$S/src-before.txt"; cat "$S/fetchjson-before.txt"; du -sb dist/ke-q79-sources
+bash: line 1: /src-before.txt: No such file or directory
+cat: /fetchjson-before.txt: No such file or directory
+1181080083	dist/ke-q79-sources
+[exit code: 0] [elapsed: 0 s]
+
+$ echo "ke-q79 containers: $(docker ps -a -q --filter label=com.docker.compose.project=ke-q79 | wc -l) ke-q79-sbom: $(docker ps -a -q --filter label=com.docker.compose.project=ke-q79-sbom | wc -l) networks: $(docker network ls --format "{{.Name}}" | grep -c "^ke-q79") volumes: $(docker volume ls --format "{{.Name}}" | grep -c "^ke-q79") projects: $(docker compose ls -a --format json | grep -o "\"Name\":\"ke-q79[^\"]*\"" | wc -l)"
+ke-q79 containers: 0 ke-q79-sbom: 0 networks: 0 volumes: 0 projects: 0
+[exit code: 0] [elapsed: 1 s]
+
+== bundle.sh stdout+stderr (unedited)
+$ time bash scripts/bundle.sh --out dist/ke-q79-bundle-amd64 --sources dist/ke-q79-sources --sources-set full
+sources-check: ok 716 files, 1180936586 bytes, 183 components (full, amd64)
+ Container ke-q79-sbom-sbom-run-7448e06092eb Creating 
+ Container ke-q79-sbom-sbom-run-7448e06092eb Created 
+sbom_check: ke-app: unlicensed packages (no licence, NOASSERTION or unidentified text): 19 (deb: 18, generic: 1)
+sbom_check: ke-app:   pkg:deb/debian/base-files@12.4%2Bdeb12u15?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/debian-archive-keyring@2023.3%2Bdeb12u2?arch=all&distro=debian-12.15 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/gcc-12-base@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libc-bin@2.36-9%2Bdeb12u14?arch=amd64&distro=debian-12.15&upstream=glibc (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libc6@2.36-9%2Bdeb12u14?arch=amd64&distro=debian-12.15&upstream=glibc (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libcrypt1@1%3A4.4.33-2?arch=amd64&distro=debian-12.15&upstream=libxcrypt (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libgcc-s1@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libgcrypt20@1.10.1-3%2Bdeb12u1?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libgnutls30@3.7.9-2%2Bdeb12u7?arch=amd64&distro=debian-12.15&upstream=gnutls28 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libgssapi-krb5-2@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libk5crypto3@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libkrb5-3@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libkrb5support0@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libselinux1@3.4-1%2Bb6?arch=amd64&distro=debian-12.15&upstream=libselinux%403.4-1 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libsemanage-common@3.4-1?arch=all&distro=debian-12.15&upstream=libsemanage (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libsemanage2@3.4-1%2Bb5?arch=amd64&distro=debian-12.15&upstream=libsemanage%403.4-1 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libstdc%2B%2B6@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: ke-app:   pkg:deb/debian/libtasn1-6@4.19.0-2%2Bdeb12u1?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: ke-app:   pkg:generic/python@3.12.16
+ Container ke-q79-sbom-sbom-run-2cb56fd58459 Creating 
+ Container ke-q79-sbom-sbom-run-2cb56fd58459 Created 
+sbom_check: ke-gateway: unlicensed packages (no licence, NOASSERTION or unidentified text): 0
+ Container ke-q79-sbom-sbom-run-a1a16f905010 Creating 
+ Container ke-q79-sbom-sbom-run-a1a16f905010 Created 
+sbom_check: ke-neo4j: unlicensed packages (no licence, NOASSERTION or unidentified text): 27 (deb: 9, generic: 1, maven: 17)
+sbom_check: ke-neo4j:   pkg:maven/net.sourceforge.argparse4j/argparse4j@0.9.0
+sbom_check: ke-neo4j:   pkg:maven/org.apache.commons/commons-lang3@3.18.0
+sbom_check: ke-neo4j:   pkg:maven/org.apache.commons/commons-text@1.10.0
+sbom_check: ke-neo4j:   pkg:deb/debian/debian-archive-keyring@2025.1?arch=all&distro=debian-13.7 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:deb/debian/gcc-14-base@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:maven/com.github.seancfoley.ipaddress/ipaddress@5.5.1
+sbom_check: ke-neo4j:   pkg:maven/jrt-fs/jrt-fs@21.0.12.1
+sbom_check: ke-neo4j:   pkg:maven/org.bitbucket.inkytonik.kiama/kiama_2.13@2.5.1
+sbom_check: ke-neo4j:   pkg:deb/debian/libcrypt-dev@1%3A4.4.38-1?arch=amd64&distro=debian-13.7&upstream=libxcrypt (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:deb/debian/libcrypt1@1%3A4.4.38-1?arch=amd64&distro=debian-13.7&upstream=libxcrypt (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:deb/debian/libgcc-s1@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:deb/debian/libgnutls30t64@3.8.9-3%2Bdeb13u4?arch=amd64&distro=debian-13.7&upstream=gnutls28 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:deb/debian/libstdc%2B%2B6@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:deb/debian/libtasn1-6@4.20.0-2%2Bdeb13u1?arch=amd64&distro=debian-13.7 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:maven/com.softwaremill.magnolia1_2/magnolia_2.13@1.1.8
+sbom_check: ke-neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection@12.0.0
+sbom_check: ke-neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection-netty@12.0.0
+sbom_check: ke-neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection-pooled@12.0.0
+sbom_check: ke-neo4j:   pkg:maven/org.neo4j.bolt/neo4j-bolt-connection-routed@12.0.0
+sbom_check: ke-neo4j:   pkg:maven/org.neo4j/neo4j-cypher-dsl@2024.2.0
+sbom_check: ke-neo4j:   pkg:generic/oracle/openjdk@21.0.12.1%2B1-LTS?repository_url=https%3A%2F%2Fgithub.com%2Fadoptium%2Fjdk21u.git
+sbom_check: ke-neo4j:   pkg:maven/picocli/picocli@4.7.6
+sbom_check: ke-neo4j:   pkg:maven/org.reactivestreams/reactive-streams@1.0.4
+sbom_check: ke-neo4j:   pkg:maven/org.scala-lang.modules/scala-collection-contrib_2.13@0.3.0
+sbom_check: ke-neo4j:   pkg:maven/org.slf4j/slf4j-api@2.0.11
+sbom_check: ke-neo4j:   pkg:deb/debian/wget@1.25.0-2?arch=amd64&distro=debian-13.7 (unidentified licence text)
+sbom_check: ke-neo4j:   pkg:maven/net.openhft/zero-allocation-hashing@0.27ea1
+ Container ke-q79-sbom-sbom-run-a09a15426ae8 Creating 
+ Container ke-q79-sbom-sbom-run-a09a15426ae8 Created 
+sbom_check: phoenix: unlicensed packages (no licence, NOASSERTION or unidentified text): 35 (deb: 14, generic: 1, none: 8, pypi: 12)
+sbom_check: phoenix:   pkg:pypi/aiosqlite@0.22.1
+sbom_check: phoenix:   SPDXRef-Package-binary-cli-3c111f636ab23ae2 cli (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-cli-32-864fbd8df8eebeff cli-32 (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-cli-64-58d92fd2583882cf cli-64 (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-cli-arm64-6de49882b0a31d2a cli-arm64 (no purl)
+sbom_check: phoenix:   pkg:pypi/daytona-analytics-api-client@0.223.1
+sbom_check: phoenix:   pkg:pypi/daytona-analytics-api-client-async@0.223.1
+sbom_check: phoenix:   pkg:generic/deno@2.1.4
+sbom_check: phoenix:   pkg:pypi/exceptiongroup@1.3.1
+sbom_check: phoenix:   pkg:deb/debian/gcc-14-base@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14 (unidentified licence text)
+sbom_check: phoenix:   SPDXRef-Package-binary-gui-90e51b43c7a824a9 gui (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-gui-32-bf5cb4b4bc756f59 gui-32 (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-gui-64-54afa822a7647b6f gui-64 (no purl)
+sbom_check: phoenix:   SPDXRef-Package-binary-gui-arm64-b70024c9a835570f gui-arm64 (no purl)
+sbom_check: phoenix:   pkg:pypi/httpx-ws@0.9.0
+sbom_check: phoenix:   pkg:pypi/jinja2@3.1.6
+sbom_check: phoenix:   pkg:deb/debian/libcrypt1@1%3A4.4.38-1?arch=amd64&distro=debian-13.7&upstream=libxcrypt (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libgcc-s1@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14
+sbom_check: phoenix:   pkg:deb/debian/libgomp1@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14
+sbom_check: phoenix:   pkg:deb/debian/libgssapi-krb5-2@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libk5crypto3@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libkrb5-3@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libkrb5support0@1.21.3-5%2Bdeb13u1?arch=amd64&distro=debian-13.7&upstream=krb5 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libncursesw6@6.5%2B20250216-2?arch=amd64&distro=debian-13.7&upstream=ncurses
+sbom_check: phoenix:   pkg:deb/debian/libpython3.13-minimal@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libpython3.13-stdlib@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/libstdc%2B%2B6@14.2.0-19?arch=amd64&distro=debian-13.7&upstream=gcc-14
+sbom_check: phoenix:   pkg:pypi/markdown-it-py@4.2.0
+sbom_check: phoenix:   pkg:pypi/obstore@0.11.1
+sbom_check: phoenix:   pkg:pypi/pandas@2.3.3 (unidentified licence text)
+sbom_check: phoenix:   pkg:pypi/protobuf-py-ext@0.1.1
+sbom_check: phoenix:   pkg:pypi/pyqwest@0.10.0
+sbom_check: phoenix:   pkg:deb/debian/python3.13-minimal@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13 (unidentified licence text)
+sbom_check: phoenix:   pkg:deb/debian/python3.13-venv@3.13.5-2%2Bdeb13u5?arch=amd64&distro=debian-13.7&upstream=python3.13
+sbom_check: phoenix:   pkg:pypi/synchronicity@0.12.6
+ Container ke-q79-sbom-sbom-run-b8bd28a2f173 Creating 
+ Container ke-q79-sbom-sbom-run-b8bd28a2f173 Created 
+sbom_check: postgres: unlicensed packages (no licence, NOASSERTION or unidentified text): 25 (deb: 22, golang: 3)
+sbom_check: postgres:   pkg:deb/debian/base-files@12.4%2Bdeb12u15?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/debian-archive-keyring@2023.3%2Bdeb12u2?arch=all&distro=debian-12.15 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/gcc-12-base@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: postgres:   pkg:golang/github.com/moby/sys/user@v0.1.0
+sbom_check: postgres:   pkg:golang/github.com/tianon/gosu@v1.19.0
+sbom_check: postgres:   pkg:golang/golang.org/x/sys@v0.1.0
+sbom_check: postgres:   pkg:deb/debian/libc-bin@2.36-9%2Bdeb12u14?arch=amd64&distro=debian-12.15&upstream=glibc (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libc-l10n@2.36-9%2Bdeb12u14?arch=all&distro=debian-12.15&upstream=glibc (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libc6@2.36-9%2Bdeb12u14?arch=amd64&distro=debian-12.15&upstream=glibc (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libcrypt1@1%3A4.4.33-2?arch=amd64&distro=debian-12.15&upstream=libxcrypt (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libgcc-s1@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libgcrypt20@1.10.1-3%2Bdeb12u1?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libgnutls30@3.7.9-2%2Bdeb12u7?arch=amd64&distro=debian-12.15&upstream=gnutls28 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libgssapi-krb5-2@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libk5crypto3@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libkrb5-3@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libkrb5support0@1.20.1-2%2Bdeb12u5?arch=amd64&distro=debian-12.15&upstream=krb5 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libksba8@1.6.3-2?arch=amd64&distro=debian-12.15&upstream=libksba (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libselinux1@3.4-1%2Bb6?arch=amd64&distro=debian-12.15&upstream=libselinux%403.4-1 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libsemanage-common@3.4-1?arch=all&distro=debian-12.15&upstream=libsemanage (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libsemanage2@3.4-1%2Bb5?arch=amd64&distro=debian-12.15&upstream=libsemanage%403.4-1 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libstdc%2B%2B6@12.2.0-14%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=gcc-12 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libtasn1-6@4.19.0-2%2Bdeb12u1?arch=amd64&distro=debian-12.15 (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/libxslt1.1@1.1.35-1%2Bdeb12u4?arch=amd64&distro=debian-12.15&upstream=libxslt (unidentified licence text)
+sbom_check: postgres:   pkg:deb/debian/locales@2.36-9%2Bdeb12u14?arch=all&distro=debian-12.15&upstream=glibc (unidentified licence text)
+ Container ke-q79-sbom-sbom-run-75f7d15cf29f Creating 
+ Container ke-q79-sbom-sbom-run-75f7d15cf29f Created 
+sbom_check: valkey: unlicensed packages (no licence, NOASSERTION or unidentified text): 1 (generic: 1)
+sbom_check: valkey:   pkg:generic/valkey@8.1.10
+index: ke-neo4j: pkg:maven/com.sun.jna/jna@5.15.0: exempt, reviewed security 2026-10-25
+index: ke-neo4j: pkg:maven/org.javassist/javassist@3.30.2-GA: exempt, reviewed security 2026-10-25
+bundle: sources: check 6 s, copy 12 s, index 1 s, notices 1 s
+bundle written: /c/repos/Knowledge-engine/dist/ke-q79-bundle-amd64
+manifest sha256: 27effd893b08e7ae518b2107dfc84846d18304242b4ae2fe137b5cc3a04d094e
+release record: /c/repos/Knowledge-engine/dist/ke-q79-bundle-amd64.manifest.sha256
+
+real	2m31.213s
+user	0m15.251s
+sys	0m15.977s
+exit 0 start 2026-10-30T01:08:17Z end 2026-10-30T01:10:48Z
+
+== tester checks after the run (scratch tools/checks.sh, the first run's script; unedited output)
+== checks 2026-10-30T01:10:48Z
+-- record beside --out
+-rw-r--r-- 1 adam 197121 102 Oct 29 18:10 dist/ke-q79-bundle-amd64.manifest.sha256
+27effd893b08e7ae518b2107dfc84846d18304242b4ae2fe137b5cc3a04d094e  ke-q79-bundle-amd64/MANIFEST.sha256
+-- record verifies MANIFEST
+ke-q79-bundle-amd64/MANIFEST.sha256: OK
+-- MANIFEST self-check
+MANIFEST: all entries ok
+-- app/sources/files count
+716
+-- app/sources/files bytes
+1180936586
+-- non-regular entries in files/
+0
+-- name == sha256 for every file
+hashed 716 files, mismatches 0
+-- files set == fetched set (minus fetch.json)
+identical name sets
+-- index.json
+894587 bytes /c/repos/Knowledge-engine/dist/ke-q79-bundle-amd64/app/sources/index.json
+format 1 set full arch amd64 git_sha 1a7a9e276d57a6a7c89490e44c795ff2ef7f685b
+lock_sha256 12eebc8cd09e5effc6934a1a3b67decc053cda923720dda07a8909a137fc761b
+components 185 status {'exempt': 2, 'shipped': 183}
+distinct keys 183
+file rows 876 rows with path 876 distinct sha 716
+distinct bytes 1180936586
+exempt ke-neo4j pkg:maven/com.sun.jna/jna@5.15.0 exempt, reviewed security 2026-10-25
+exempt ke-neo4j pkg:maven/org.javassist/javassist@3.30.2-GA exempt, reviewed security 2026-10-25
+unparsed 65 unidentified 59
+-- index lock_sha256 vs fetch.json
+fetch.json lock_sha256 12eebc8cd09e5effc6934a1a3b67decc053cda923720dda07a8909a137fc761b
+-- MANIFEST.sha256
+111025 bytes
+764
+under 1048576: yes (111025)
+MANIFEST lines under app/sources/files/: 716
+-- du -sb
+2147272340	/c/repos/Knowledge-engine/dist/ke-q79-bundle-amd64
+1181831173	/c/repos/Knowledge-engine/dist/ke-q79-bundle-amd64/app/sources
+without app/sources: 965441167
+-- top level
+total 244
+drwxr-xr-x 1 adam 197121      0 Oct 29 18:10 .
+drwxr-xr-x 1 adam 197121      0 Oct 29 18:10 ..
+-rw-r--r-- 1 adam 197121   1067 Oct 29 18:08 LICENSE
+-rw-r--r-- 1 adam 197121 111025 Oct 29 18:10 MANIFEST.sha256
+-rw-r--r-- 1 adam 197121   9616 Oct 29 18:08 NOTICE.md
+-rw-r--r-- 1 adam 197121  24165 Oct 29 18:10 THIRD_PARTY_NOTICES.md
+drwxr-xr-x 1 adam 197121      0 Oct 29 18:10 app
+-rw-r--r-- 1 adam 197121   1120 Oct 29 18:08 bundle.json
+drwxr-xr-x 1 adam 197121      0 Oct 29 18:08 images
+-rw-r--r-- 1 adam 197121  44846 Oct 29 18:08 install.ps1
+-rwxr-xr-x 1 adam 197121  28744 Oct 29 18:08 install.sh
+drwxr-xr-x 1 adam 197121      0 Oct 29 18:08 licenses
+total 68
+drwxr-xr-x 1 adam 197121     0 Oct 29 18:10 .
+drwxr-xr-x 1 adam 197121     0 Oct 29 18:10 ..
+-rw-r--r-- 1 adam 197121  1809 Oct 29 18:08 .env.example
+-rw-r--r-- 1 adam 197121  1067 Oct 29 18:10 LICENSE
+-rw-r--r-- 1 adam 197121  9616 Oct 29 18:10 NOTICE.md
+-rw-r--r-- 1 adam 197121 24165 Oct 29 18:10 THIRD_PARTY_NOTICES.md
+drwxr-xr-x 1 adam 197121     0 Oct 29 18:08 config
+-rw-r--r-- 1 adam 197121  7743 Oct 29 18:08 docker-compose.yml
+drwxr-xr-x 1 adam 197121     0 Oct 29 18:08 docs
+drwxr-xr-x 1 adam 197121     0 Oct 29 18:10 licenses
+drwxr-xr-x 1 adam 197121     0 Oct 29 18:10 sboms
+drwxr-xr-x 1 adam 197121     0 Oct 29 18:08 scripts
+drwxr-xr-x 1 adam 197121     0 Oct 29 18:10 sources
+-- Source code section
+/c/repos/Knowledge-engine/dist/ke-q79-bundle-amd64/THIRD_PARTY_NOTICES.md:64:## Source code
+/c/repos/Knowledge-engine/dist/ke-q79-bundle-amd64/app/THIRD_PARTY_NOTICES.md:64:## Source code
+THIRD_PARTY_NOTICES.md and app/THIRD_PARTY_NOTICES.md byte-identical
+48cba7f8efd609ca066c49cbe14320d7511a7325a16713562795e7d3cc523b97 *dist/ke-q79-bundle-amd64/THIRD_PARTY_NOTICES.md
+48cba7f8efd609ca066c49cbe14320d7511a7325a16713562795e7d3cc523b97 *dist/ke-q79-bundle-amd64/app/THIRD_PARTY_NOTICES.md
+sample warning present? 0
+'source in `sources/`' rows: 184
+-- --sources unchanged
+listing (name size mtime mode, 718 lines) identical before/after
+5889c9269f210259c0e4e7f8e4e155f5668b1f4ab0addabdd42eb6a50be84661 *dist/ke-q79-sources/fetch.json
+5889c9269f210259c0e4e7f8e4e155f5668b1f4ab0addabdd42eb6a50be84661 *dist/ke-q79-sources/fetch.json
+1181080083	dist/ke-q79-sources
+
+== the four bookkeeping steps, re-done at 2026-10-30T01:11:16Z from the lists printed at step 0
+$ sha256sum -c --quiet <the 11 hashes printed at step 0>
+hashed files: unchanged since step 0
+$ (ke-*:bundle-* and ke-vendor tags now) vs (the 87-line list printed at step 0)
+4c4
+< ke-app:bundle-1a7a9e276d57 sha256:ad16007a5c991d4b00bc5d6ba86242880580ae1301d615baf0285082c8b538bb
+---
+> ke-app:bundle-1a7a9e276d57 sha256:7d6a0c8413af6a4476582cf06ca5381e40335f6e1e11c907a4a5376418af3995
+39c39
+< ke-gateway:bundle-1a7a9e276d57 sha256:557e48f929ee2beac2c3095f10a49ab1ad46c7940cf03b14cb541d409a784089
+---
+> ke-gateway:bundle-1a7a9e276d57 sha256:06324664fbd672137709611f66f7baf15c662127b16e7e5c951e4b0742dc6714
+72c72
+< ke-neo4j:bundle-1a7a9e276d57 sha256:5fb92549545d5e321fd8a728bf4991d1646913693e2a24635bb407e19ed411d6
+---
+> ke-neo4j:bundle-1a7a9e276d57 sha256:942e76d5a7e87b2af5f1bc50b8e8d9ba3d07114d8f7898f7ee7ff1d9e22e55b4
+bundle tags: bundle.sh's tag step moved the three HEAD bundle tags from ids also tagged ke-*:wt-33a132fbfdd7 (same Created
+times as :local, i.e. the same build content under another id) onto the :local ids. Not a defect (bundle.sh tags `as` from the
+compose ref); the tester restores the three tags to their step-0 ids after A34 (recorded in u9/a34-windows-run.txt).
+ke-vendor tags and the other 84 lines: unchanged.
+
+== against the first run (2026-10-29) and u9/expected.md "full, amd64"
+| Item | expected / first run | rework-2 re-run | |
+|---|---|---|---|
+| sources-check line | `ok 716 files, 1180936586 bytes, 183 components (full, amd64)` | identical | match |
+| index.json components / status | 185: shipped 183, not-shipped 0, exempt 2 (jna, javassist) | 185: shipped 183, exempt 2 (same two `index:` lines) | match |
+| index.json distinct keys / file rows | 183 / 876 (all with path) / 716 distinct sha | 183 / 876 / 716 | match |
+| index.json bytes | 894587 | 894587 | match |
+| lock_sha256 (index.json, fetch.json) | 12eebc8c...fc761b | 12eebc8c...fc761b (both) | match |
+| app/sources/files | 716 files, 1180936586 B, 0 non-regular, name = sha256, set = fetched set | the same, mismatches 0 | match |
+| MANIFEST.sha256 | 111025 B, 764 lines (716 under app/sources/files/), under 1048576 | 111025 B, 764 lines (716), under the cap | match |
+| manifest digest | b871bcd3...2e53 | 27effd89...094e | differs per run by design (SBOM uuid4 namespace, bundle.json created) |
+| release record | 102 B beside --out, `sha256sum -c` OK; MANIFEST self-check OK | 102 B, OK; self-check all OK | match |
+| du -sb bundle / app/sources / without | 2147272340 / 1181831173 / 965441167 | 2147272340 / 1181831173 / 965441167 | match |
+| Source code section | l.64 in both notices, byte-identical, sha256 48cba7f8...3b97, no sample warning, 184 matches | identical (same sha256) | match |
+| --sources unchanged | 718-line listing, fetch.json 5889c926...84661, 1181080083 B | identical before/after | match |
+| wall time / stage seconds | 2m37.9s; check 7, copy 12, index 2, notices 0 | 2m31.2s; check 6, copy 12, index 1, notices 1 | informational |
+
+== cleanup (unedited)
+== 3. cleanup 2026-10-30T01:10:57Z
+$ rm -rf -- dist/ke-q79-bundle-amd64 dist/ke-q79-bundle-amd64.manifest.sha256; ls -A dist/
+ke-q79-sources
+[exit code: 0] [elapsed: 1 s]
+
+$ echo "ke-q79 containers: $(docker ps -a -q --filter label=com.docker.compose.project=ke-q79 | wc -l) ke-q79-sbom: $(docker ps -a -q --filter label=com.docker.compose.project=ke-q79-sbom | wc -l) networks: $(docker network ls --format "{{.Name}}" | grep -c "^ke-q79") volumes: $(docker volume ls --format "{{.Name}}" | grep -c "^ke-q79") projects: $(docker compose ls -a --format json | grep -o "\"Name\":\"ke-q79[^\"]*\"" | wc -l)"
+ke-q79 containers: 0 ke-q79-sbom: 0 networks: 0 volumes: 0 projects: 0
+[exit code: 0] [elapsed: 1 s]
+
+$ ls -d dist/.ke-sbom.* "${TMPDIR:-/tmp}"/ke-sbom.* 2>/dev/null | wc -l
+0
+[exit code: 0] [elapsed: 0 s]
+
+
+[end q79r2 2026-10-30T01:10:59Z]
+(the start-hash comparison of the driver's last step is the re-done one above.) dist/ke-q79-sources kept.

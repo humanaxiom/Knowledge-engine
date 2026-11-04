@@ -1,0 +1,39 @@
+"""Per-module wall time of the top-level unit run from two CI logs (timestamps of
+test result lines), next to the local head-cov profile. Usage: ci_modules.py OUTDIR"""
+import re, sys, json, os, datetime, collections
+d = sys.argv[1]
+TS = re.compile(r"(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+)Z (.*)$")
+ID = re.compile(r"^(test_\w+) \((tests\.(test_\w+)\.\w+\.\w+)\)")
+RES = re.compile(r"\.\.\. (ok|FAIL|ERROR|skipped.*|expected failure|unexpected success)\s*$")
+def parse(path):
+    lines = open(path, encoding="utf-8", errors="replace").read().splitlines()
+    start = end = None; ends = collections.OrderedDict(); order = []
+    for ln in lines:
+        m = TS.search(ln)
+        if not m: continue
+        t = datetime.datetime.fromisoformat(m.group(1)[:26]); body = m.group(2)
+        if start is None and "resources: phase=start" in body: start = t; continue
+        if start is None: continue
+        if body.startswith("Ran ") and end is None: end = t; break
+        i = ID.search(body)
+        if i:
+            cur = i.group(3)
+            if cur not in ends: order.append(cur); ends[cur] = None
+        if RES.search(body) and order:
+            ends[order[-1]] = t
+    out = {}; prev = start
+    for mod in order:
+        out[mod] = (ends[mod] - prev).total_seconds(); prev = ends[mod]
+    return out, (end - start).total_seconds()
+a, ta = parse(os.path.join(d, "ci-40244299450.log"))
+b, tb = parse(os.path.join(d, "ci-40628987168.log"))
+loc = collections.defaultdict(float)
+for r in json.load(open(os.path.join(d, "head-cov.json")))["records"]:
+    loc[r["id"].split(".")[1]] += r["wall"] + r["gap_wall"]
+print(f"CI 86f7831 unit stage {ta:.0f} s; CI 0630586 unit stage {tb:.0f} s; local head-cov {sum(loc.values()):.0f} s\n")
+print("| module | CI 86f7831 s | CI 0630586 s | CI ratio | local 0630586 s | CI 0630586 / local |")
+print("|---|---:|---:|---:|---:|---:|")
+for mod in sorted(set(a) | set(b), key=lambda m: -b.get(m, 0)):
+    x, y, l = a.get(mod, 0), b.get(mod, 0), loc.get(mod, 0)
+    print(f"| {mod} | {x:.1f} | {y:.1f} | {y/x if x else float('nan'):.2f} | {l:.1f} | {y/l if l > 0.05 else float('nan'):.2f} |")
+print(f"| **total** | {sum(a.values()):.1f} | {sum(b.values()):.1f} | {sum(b.values())/sum(a.values()):.2f} | {sum(loc.values()):.1f} | {sum(b.values())/sum(loc.values()):.2f} |")

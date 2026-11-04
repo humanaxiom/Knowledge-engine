@@ -1,0 +1,11 @@
+== head-cpus2 cov: 46 modules; nproc=24; head=0630586
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 1ms
+Installed 1 package in 1ms
+== head-cpus2 cov: real 821.147 s, user 565.161 s, sys 141.690 s (incl. all children)
+== head-cpus2 cov: rc=0
+----------------------------------------------------------------------
+Ran 1140 tests in 819.241s
+
+OK (skipped=8)

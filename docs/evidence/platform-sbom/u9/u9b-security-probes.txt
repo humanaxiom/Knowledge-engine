@@ -1,0 +1,989 @@
+# platform-sbom U9b security probes (security, 2026-10-29)
+#
+# Where: ke-gates:local, docker run --rm --network none --user 0 (root only for mknod in P4),
+# label com.docker.compose.project=ke-sec-u9b; the repo mounted :ro at /repo, the probe scripts
+# (kept in <scratch>, outside the repo) mounted :ro at /probe. No symlink, FIFO or device was
+# created on the Windows host; every one was made inside the container's own /tmp.
+# Fragments of scripts/bundle.sh are taken verbatim by line range (sed -n) from the working tree
+# under audit and eval'd; each probe checks its fragment's first line to catch drift. P7, P9, P10
+# and P13 run the real scripts/bundle.sh with a fake docker that answers only 'info' (x86_64) and
+# refuses everything else, so a run that reaches 'docker compose config' has passed every --out and
+# --sources shell check; nothing is written by those runs. P12 ran on the host Docker CLI (docker
+# create only; both specs were refused, so nothing was created).
+# Line refs: l.86 sources%/, l.92 out%/, l.122-138 --out checks, l.144-170 --sources checks and
+# overlap, l.414-418 sha list, l.433 created=, l.434-455 bundle_cleanup, l.461 first mkdir,
+# l.576 cp -P, l.618 non-regular refusal, l.631 name == hash, l.637 count, l.651-652 record.
+
+===================================================================== probe.sh
+#!/usr/bin/env bash
+# U9b security probes. Runs inside ke-gates:local, --network none, repo mounted :ro at /repo.
+# Fragments of /repo/scripts/bundle.sh are extracted verbatim by line range (sed -n) and eval'd.
+set -u
+B=/repo/scripts/bundle.sh
+frag() { sed -n "$1,$2p" "$B"; }
+die() { echo "DIE: $*"; return 1; }
+stage_die() { echo "STAGE_DIE ($1): $2"; return 1; }
+OVERLAP="$(frag 155 170)"     # real_dir + overlap compare
+OUTCHK="$(frag 122 138)"      # --out symlink/exists/empty + record checks
+CLEAN="$(frag 433 455)"       # created=; bundle_cleanup()
+grep -q '^real_dir()' <<< "$OVERLAP" || { echo "fragment drift (overlap)"; exit 9; }
+grep -q '^bundle_cleanup() {' <<< "$CLEAN" || { echo "fragment drift (cleanup)"; exit 9; }
+grep -q '^if \[ -L "\$out" \]' <<< "$OUTCHK" || { echo "fragment drift (out)"; exit 9; }
+
+overlap() {  # $1 sources (as bundle.sh holds it), $2 out
+  ( sources="$1"; out="$2"; stage_die() { echo "  REFUSED: $2"; exit 1; }
+    eval "$OVERLAP"; echo "  PASSED overlap check: sources_real=$sources_real out_real=$out_real" )
+}
+W=$(mktemp -d); cd "$W"
+echo "== P1 overlap check (bundle.sh l.155-170) =="
+mkdir -p d/src d/other
+echo "P1a out directly inside sources:"; overlap "$W/d/src" "$W/d/src/x-amd64"
+echo "P1b out = <nonexistent>/../src/x-amd64:"; overlap "$W/d/src" "$W/d/new/../src/x-amd64"
+echo "P1c sources inside out via <nonexistent>/..:"; mkdir -p d/b-amd64/src; overlap "$W/d/b-amd64/src" "$W/d/new2/../b-amd64"
+echo "P1d sources = / (--sources // after the single %/ strip):"; overlap "/" "$W/d/x-amd64"
+echo "P1e pwd -P of //:"; ( cd -P -- // && pwd -P )
+echo "P1f out via a symlinked ancestor into sources (in-container link):"; ln -s "$W/d/src" d/lnk; overlap "$W/d/src" "$W/d/lnk/x-amd64"
+echo "P1g out with a '.' segment:"; overlap "$W/d/src" "$W/d/src/./x-amd64"
+
+echo "== P2 --out checks (l.122-138) + cleanup (l.433-455) with out=<nonexistent>/../victim-amd64 =="
+mkdir -p d/victim-amd64/keep; echo precious > d/victim-amd64/keep/data.txt; echo oldrecord > d/victim-amd64.manifest.sha256
+echo "before:"; find d/victim-amd64 d/victim-amd64.manifest.sha256 | sort
+( out="$W/d/ghost/../victim-amd64"; repo_root=/; sbom_work=""; wrote=0; record_made=0; project=p; sbom_user=1:1
+  eval "$OUTCHK" || { echo "  out checks refused"; exit 1; }
+  echo "  out checks PASSED (exists/empty/record checks saw nothing; -e out=$([ -e "$out" ] && echo yes || echo no))"
+  eval "$CLEAN"; echo "  created=$created"
+  trap bundle_cleanup EXIT
+  wrote=1; mkdir -p -- "$out/images"; echo "  mkdir -p wrote into: $(cd "$W/d/victim-amd64" && ls)"
+  false_failure() { return 1; }; exit 1 )
+echo "  run exit=$?"
+echo "after:"; ls -la d | sed 's/^/  /'; [ -e d/victim-amd64 ] && echo "  victim-amd64 still there" || echo "  victim-amd64 (pre-existing, non-empty, not created by the run) DELETED"
+
+echo "== P3 cleanup with --out swapped for a symlink before the trap (created=0 branch, find) =="
+mkdir -p d/given-amd64 d/elsewhere; echo keep > d/elsewhere/f
+( out="$W/d/given-amd64"; repo_root=/; sbom_work=""; record="$out.manifest.sha256"
+  eval "$CLEAN"; trap bundle_cleanup EXIT; wrote=1
+  rmdir "$out"; ln -s "$W/d/elsewhere" "$out"; exit 1 )
+echo "  elsewhere after find cleanup: $(ls d/elsewhere)"
+echo "== P3b created=1 branch, --out swapped for a symlink =="
+rm -f d/given-amd64; mkdir -p d/elsewhere2; echo keep > d/elsewhere2/f
+( out="$W/d/made-amd64"; repo_root=/; sbom_work=""; record="$out.manifest.sha256"
+  eval "$CLEAN"; trap bundle_cleanup EXIT; wrote=1; mkdir "$out"; rmdir "$out"; ln -s "$W/d/elsewhere2" "$out"; exit 1 )
+echo "  elsewhere2 after rm -rf: $(ls d/elsewhere2); link left: $([ -L d/made-amd64 ] && echo yes || echo no)"
+
+echo "== P4 cp -P on swapped entries (copy line l.576; manifest check l.618) =="
+mkdir -p S F; printf 'good' > S/real; sha=aaaa
+ln -s "$W/S/real" S/link; cp -P -- S/link F/link; echo "  link -> $(stat -c %F F/link)"
+mkdir S/dir; cp -P -- S/dir F/dir; echo "  dir exit=$?"
+ln S/real S/hard; cp -P -- S/hard F/hard; echo "  hardlink -> $(stat -c '%F links=%h' F/hard), inode differs: $([ "$(stat -c %i S/real)" != "$(stat -c %i F/hard)" ] && echo yes)"
+mkfifo S/fifo; timeout 3 cp -P -- S/fifo F/fifo; echo "  fifo: exit=$? (124 = timeout: cp blocks reading the FIFO)"
+if mknod S/zero c 1 5 2>/dev/null; then timeout 2 cp -P -- S/zero F/zero; echo "  char device /dev/zero: exit=$? copied $(stat -c %s F/zero) bytes in 2 s (unbounded)"; else echo "  mknod not permitted"; fi
+echo "  manifest non-regular check (l.618 form): $(cd F && find . -mindepth 1 ! -type f ! -type d -print | sort | tr '\n' ' ')"
+
+echo "== P5 sha list validation (l.414-418, verbatim) =="
+SHAV="$(grep -n 'mapfile -t source_shas' "$B" | cut -d: -f1)"; frag "$SHAV" $((SHAV+4)) > shav.sh; cat shav.sh | sed 's/^/  | /'
+good=$(printf '%064d' 0 | tr 0 a)
+for case in "$good" "$good"$'\r' "$good"$'\n'"../../etc" "" "$good"$'\n'"$good" "${good:0:63}A" "$good"$'\n' " $good"; do
+  ( check_text="$case"; stage_die() { echo "  REFUSED: $(printf %q "$check_text")"; exit 1; }
+    source "$W/shav.sh"; echo "  accepted ${#source_shas[@]} line(s): $(printf %q "$check_text")" )
+done
+echo "== done =="
+
+===================================================================== run1.txt
+== P1 overlap check (bundle.sh l.155-170) ==
+P1a out directly inside sources:
+  REFUSED: --out /tmp/tmp.IqmJ0G4dMZ/d/src/x-amd64 is inside --sources (/tmp/tmp.IqmJ0G4dMZ/d/src); no write may land under --sources
+P1b out = <nonexistent>/../src/x-amd64:
+  PASSED overlap check: sources_real=/tmp/tmp.IqmJ0G4dMZ/d/src out_real=/tmp/tmp.IqmJ0G4dMZ/d/new/../src/x-amd64
+P1c sources inside out via <nonexistent>/..:
+  PASSED overlap check: sources_real=/tmp/tmp.IqmJ0G4dMZ/d/b-amd64/src out_real=/tmp/tmp.IqmJ0G4dMZ/d/new2/../b-amd64
+P1d sources = / (--sources // after the single %/ strip):
+  PASSED overlap check: sources_real=/ out_real=/tmp/tmp.IqmJ0G4dMZ/d/x-amd64
+P1e pwd -P of //:
+//
+P1f out via a symlinked ancestor into sources (in-container link):
+  REFUSED: --out /tmp/tmp.IqmJ0G4dMZ/d/lnk/x-amd64 is inside --sources (/tmp/tmp.IqmJ0G4dMZ/d/src); no write may land under --sources
+P1g out with a '.' segment:
+  REFUSED: --out /tmp/tmp.IqmJ0G4dMZ/d/src/./x-amd64 is inside --sources (/tmp/tmp.IqmJ0G4dMZ/d/src); no write may land under --sources
+== P2 --out checks (l.122-138) + cleanup (l.433-455) with out=<nonexistent>/../victim-amd64 ==
+before:
+d/victim-amd64
+d/victim-amd64.manifest.sha256
+d/victim-amd64/keep
+d/victim-amd64/keep/data.txt
+  out checks PASSED (exists/empty/record checks saw nothing; -e out=no)
+  created=1
+  mkdir -p wrote into: images
+keep
+  run exit=1
+after:
+  total 28
+  drwxr-xr-x 6 root root 4096 Oct 29 21:36 .
+  drwx------ 3 root root 4096 Oct 29 21:36 ..
+  drwxr-xr-x 3 root root 4096 Oct 29 21:36 b-amd64
+  drwxr-xr-x 2 root root 4096 Oct 29 21:36 ghost
+  lrwxrwxrwx 1 root root   25 Oct 29 21:36 lnk -> /tmp/tmp.IqmJ0G4dMZ/d/src
+  drwxr-xr-x 2 root root 4096 Oct 29 21:36 other
+  drwxr-xr-x 2 root root 4096 Oct 29 21:36 src
+  -rw-r--r-- 1 root root   10 Oct 29 21:36 victim-amd64.manifest.sha256
+  victim-amd64 (pre-existing, non-empty, not created by the run) DELETED
+== P3 cleanup with --out swapped for a symlink before the trap (created=0 branch, find) ==
+/probe/probe.sh: line 54: created: unbound variable
+  elsewhere after find cleanup: f
+== P3b created=1 branch, --out swapped for a symlink ==
+/probe/probe.sh: line 65: record_made: unbound variable
+  elsewhere2 after rm -rf: f; link left: no
+== P4 cp -P on swapped entries (copy line l.576; manifest check l.618) ==
+  link -> symbolic link
+cp: -r not specified; omitting directory 'S/dir'
+  dir exit=1
+  hardlink -> regular file links=1, inode differs: yes
+  fifo: exit=124 (124 = timeout: cp blocks reading the FIFO)
+  char device /dev/zero: exit=124 copied 3981246464 bytes in 2 s (unbounded)
+  manifest non-regular check (l.618 form): ./link 
+== P5 sha list validation (l.414-418, verbatim) ==
+  | mapfile -t source_shas <<< "$check_text"
+  | [ "${#source_shas[@]}" -ge 1 ] || stage_die sources-check "the check listed no source file"
+  | for sha in "${source_shas[@]}"; do
+  |   [[ "$sha" =~ ^[0-9a-f]{64}$ ]] || stage_die sources-check "the check printed a line that is not a sha256"
+  | done
+  accepted 1 line(s): aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  REFUSED: $'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\r'
+  REFUSED: $'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n../../etc'
+  REFUSED: ''
+  accepted 2 line(s): $'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+  REFUSED: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaA
+  REFUSED: $'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n'
+  REFUSED: \ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+== done ==
+
+===================================================================== probe2.sh
+#!/usr/bin/env bash
+# U9b probes, round 2 (ke-gates:local, --network none, repo :ro at /repo).
+set -u
+B=/repo/scripts/bundle.sh
+frag() { sed -n "$1,$2p" "$B"; }
+CLEAN="$(frag 433 455)"; grep -q '^bundle_cleanup() {' <<< "$CLEAN" || { echo "fragment drift"; exit 9; }
+W=$(mktemp -d); cd "$W"; mkdir d
+echo "== P3 cleanup when --out is swapped for a symlink after the first write =="
+mkdir -p d/given-amd64 d/elsewhere; echo keep > d/elsewhere/f
+( out="$W/d/given-amd64"; repo_root=/; sbom_work=""; record="$out.manifest.sha256"; created=0; record_made=0
+  eval "$CLEAN"; echo "  created=$created (given empty)"; trap bundle_cleanup EXIT; wrote=1
+  rmdir "$out"; ln -s "$W/d/elsewhere" "$out"; exit 1 )
+echo "  created=0 branch (find -mindepth 1 on a link): elsewhere/ now holds: [$(ls d/elsewhere)]; link left: $([ -L d/given-amd64 ] && echo yes || echo no)"
+mkdir -p d/elsewhere2; echo keep > d/elsewhere2/f
+( out="$W/d/made-amd64"; repo_root=/; sbom_work=""; record="$out.manifest.sha256"; created=0; record_made=0
+  eval "$CLEAN"; echo "  created=$created (absent)"; trap bundle_cleanup EXIT; wrote=1; mkdir "$out"; rmdir "$out"; ln -s "$W/d/elsewhere2" "$out"; exit 1 )
+echo "  created=1 branch (rm -rf on a link): elsewhere2/ now holds: [$(ls d/elsewhere2)]; link left: $([ -L d/made-amd64 ] && echo yes || echo no)"
+echo "== P3c cleanup with created=1 when a concurrent writer fills --out between the -e test and mkdir =="
+( out="$W/d/race-amd64"; repo_root=/; sbom_work=""; record="$out.manifest.sha256"; created=0; record_made=0
+  eval "$CLEAN"; mkdir -p "$out"; echo other > "$out/other-process.txt"; trap bundle_cleanup EXIT; wrote=1; mkdir -p -- "$out/images"; exit 1 )
+echo "  race-amd64 exists after cleanup: $([ -e d/race-amd64 ] && echo yes || echo 'no (the other writer'\''s file went with it; mkdir -p adopted the directory)')"
+
+echo "== P7 the real scripts/bundle.sh, fake docker (answers only 'info'), --out <nonexistent>/../victim-amd64 =="
+mkdir -p d/victim-amd64/keep d/src fakebin; echo precious > d/victim-amd64/keep/data.txt; echo '{}' > d/src/fetch.json
+cat > fakebin/docker <<'EOD'
+#!/bin/sh
+if [ "$1" = info ]; then echo x86_64; exit 0; fi
+echo "FAKE docker: refusing '$*' (probe stops here; nothing was written)" >&2; exit 1
+EOD
+chmod +x fakebin/docker
+PATH="$W/fakebin:$PATH" bash "$B" --out "$W/d/ghost/../victim-amd64" --sources "$W/d/src"; echo "  exit=$?"
+echo "  (reaching compose means the --out symlink/exists/empty/record checks and the --sources overlap check all passed)"
+PATH="$W/fakebin:$PATH" bash "$B" --out "$W/d/src/x-amd64" --sources "$W/d/src"; echo "  control (out inside sources, plain path): exit=$?"
+PATH="$W/fakebin:$PATH" bash "$B" --out "$W/d/victim-amd64" --sources "$W/d/src"; echo "  control (victim named plainly): exit=$?"
+echo "== P8 duplicate/extra sha lines: count rule (l.637-638) =="
+grep -n 'source_lines -eq' "$B"
+echo "== done =="
+
+===================================================================== run2.txt
+== P3 cleanup when --out is swapped for a symlink after the first write ==
+  created=0 (given empty)
+  created=0 branch (find -mindepth 1 on a link): elsewhere/ now holds: [f]; link left: yes
+  created=1 (absent)
+  created=1 branch (rm -rf on a link): elsewhere2/ now holds: [f]; link left: no
+== P3c cleanup with created=1 when a concurrent writer fills --out between the -e test and mkdir ==
+  race-amd64 exists after cleanup: no (the other writer's file went with it; mkdir -p adopted the directory)
+== P7 the real scripts/bundle.sh, fake docker (answers only 'info'), --out <nonexistent>/../victim-amd64 ==
+FAKE docker: refusing 'compose -f docker-compose.yml --env-file .env.example config --services' (probe stops here; nothing was written)
+bundle: docker compose config --services failed
+  exit=1
+  (reaching compose means the --out symlink/exists/empty/record checks and the --sources overlap check all passed)
+bundle: FAIL (stage sources-check: --out /tmp/tmp.O9fplo2zKx/d/src/x-amd64 is inside --sources (/tmp/tmp.O9fplo2zKx/d/src); no write may land under --sources)
+  control (out inside sources, plain path): exit=1
+bundle: --out is not empty: /tmp/tmp.O9fplo2zKx/d/victim-amd64
+  control (victim named plainly): exit=1
+== P8 duplicate/extra sha lines: count rule (l.637-638) ==
+== done ==
+
+===================================================================== probe3.sh
+#!/usr/bin/env bash
+# U9b probes, round 3: the real bundle.sh's overlap check with a `..` --out (ke-gates:local, network none).
+set -u
+B=/repo/scripts/bundle.sh
+W=$(mktemp -d); cd "$W"; mkdir -p d/src fakebin; echo '{}' > d/src/fetch.json
+printf '#!/bin/sh\nif [ "$1" = info ]; then echo x86_64; exit 0; fi\necho "FAKE docker: refusing ($1 $2 ...); nothing was written" >&2; exit 1\n' > fakebin/docker; chmod +x fakebin/docker
+echo "== P9 --out <nonexistent>/../src/x-amd64 with --sources src (real script) =="
+PATH="$W/fakebin:$PATH" bash "$B" --out "$W/d/ghost/../src/x-amd64" --sources "$W/d/src"; echo "  exit=$? (a compose refusal means the overlap check passed)"
+echo "== P10 --sources // (real script) =="
+PATH="$W/fakebin:$PATH" bash "$B" --out "$W/d/y-amd64" --sources //; echo "  exit=$?"
+echo "  (/fetch.json does not exist here, so the fetch.json refusal stops it; the overlap compare runs after that line)"
+echo "== P11 duplicate sha lines, count rule =="
+grep -n 'source_lines" -eq' "$B"
+
+===================================================================== run3.txt
+== P9 --out <nonexistent>/../src/x-amd64 with --sources src (real script) ==
+FAKE docker: refusing (compose -f ...); nothing was written
+bundle: docker compose config --services failed
+  exit=1 (a compose refusal means the overlap check passed)
+== P10 --sources // (real script) ==
+bundle: FAIL (stage sources-check: --sources / has no fetch.json (or it is not a regular file); run scripts/bundle_fetch.sh --set full first)
+  exit=1
+  (/fetch.json does not exist here, so the fetch.json refusal stops it; the overlap compare runs after that line)
+== P11 duplicate sha lines, count rule ==
+637:[ "$source_lines" -eq "${#source_shas[@]}" ] \
+
+===================================================================== run4.txt
+== P12 docker -v with a ':'-bearing --sources (host CLI, Windows client; docker create only, then rm) ==
+spec: C:/x:/opt/ke/sbom_check.py:/sources:ro
+  -> docker: invalid spec: C:/x:/opt/ke/sbom_check.py:/sources:ro: too many colons
+
+Run 'docker create --help' for more information
+spec: C:/x:rw:/sources:ro
+  -> docker: invalid spec: C:/x:rw:/sources:ro: too many colons
+
+Run 'docker create --help' for more information
+
+===================================================================== probe4.sh
+#!/usr/bin/env bash
+# U9b probes, round 4: carried I-1 at the shell level (link-to-dir --sources with trailing slashes).
+set -u
+B=/repo/scripts/bundle.sh
+W=$(mktemp -d); cd "$W"; mkdir -p d/src fakebin; echo '{}' > d/src/fetch.json; ln -s "$W/d/src" d/srclink
+printf '#!/bin/sh\nif [ "$1" = info ]; then echo x86_64; exit 0; fi\necho "FAKE docker: refusing ($1 $2 ...); nothing was written" >&2; exit 1\n' > fakebin/docker; chmod +x fakebin/docker
+for s in "$W/d/srclink" "$W/d/srclink/" "$W/d/srclink//"; do
+  echo "== P13 --sources ${s#$W/} =="; PATH="$W/fakebin:$PATH" bash "$B" --out "$W/d/z-amd64" --sources "$s" 2>&1 | sed "s#$W#<w>#g"; echo "  exit=${PIPESTATUS[0]}"
+done
+
+===================================================================== run5.txt
+== P13 --sources d/srclink ==
+bundle: FAIL (stage sources-check: --sources is a symlink: <w>/d/srclink)
+  exit=1
+== P13 --sources d/srclink/ ==
+bundle: FAIL (stage sources-check: --sources is a symlink: <w>/d/srclink)
+  exit=1
+== P13 --sources d/srclink// ==
+FAKE docker: refusing (compose -f ...); nothing was written
+bundle: docker compose config --services failed
+  exit=1
+
+
+
+######################################################################################################
+# rework 1 (security, 2026-10-29): re-probe of the L-4 scope after O-16
+#
+# Where: ke-gates:wt-33a132fbfdd7 (this checkout's verify tag), docker run --rm --network none
+# --user 10001:10001 --cap-drop ALL --security-opt no-new-privileges, label
+# com.docker.compose.project=ke-sec-u9br1, the repo :ro at /work, the probe scripts (kept in <scratch>,
+# outside the repo) :ro at /probe, /tmp a tmpfs. Every symlink was made in the container's /tmp; W1/W2
+# ran on the Windows host in Git Bash with plain directories only (no symlink). <t>, <w> = the
+# container temp dir; <S> = the host scratch dir (a profile path, redacted).
+# probe_r1.py drives the real scripts/bundle.sh through the tests' own _SourcesBase harness
+# (tests/fake_docker.py, the synthetic lock and fetched set). R2/R3 put a one-line docker shim ahead of
+# the fake: on a call whose argv contains a substring it runs one action (mkdir, ln -s, echo), then execs
+# the fake. The first R2/R3 run (not shown) had an unquoted case pattern in the shim and every call
+# failed at info; run-py2 is the corrected run. probe_r1.sh evals bundle.sh fragments located by pattern.
+
+===================================================================== probe_r1.sh
+#!/usr/bin/env bash
+# U9b rework-1 fragment probes (ke-gates, --network none, repo :ro at /work). Fragments are taken
+# verbatim from /work/scripts/bundle.sh by pattern and eval'd.
+set -u
+B=/work/scripts/bundle.sh
+a=$(grep -n '^segment_bad() {' "$B" | cut -d: -f1)
+SEG="$(sed -n "${a},$((a+5))p" "$B")"
+STRIP="$(grep -n 'while \[ "${out%/}" != "$out" \]' "$B" | cut -d: -f1)"
+echo "== F1 segment_bad (bundle.sh l.$a-$((a+5)), verbatim) =="; sed 's/^/  | /' <<< "$SEG"
+eval "$SEG"
+for p in /a/b /a//b //a /a/./b /a/. /. /a/../b /a/.. /.. /a/... /a/.b /a/b. /a/..b /a/b.. $'/a/..\n/b' '/a/*/b' '/a/[.]/b' "/c/repos/x" "C:/repos/x" '/a\..\b' '/a/b\' ; do
+  if segment_bad "$p"; then r=REFUSED; else r=passes; fi
+  printf '  %-18s %s\n' "$(printf %q "$p")" "$r"
+done
+echo "== F2 trailing-slash strip + empty check (bundle.sh l.$STRIP), verbatim =="
+STR="$(sed -n "${STRIP}p" "$B")"; echo "  | $STR"
+for v in /a/ /a/// / /// /a; do out="$v"; eval "$STR"; printf '  %-6s -> %q\n' "$v" "$out"; done
+echo "== F3 the claim line (O-16 (2)) when --out appeared after created=1 (verbatim mkdir line) =="
+c=$(grep -n '^if \[ "\$created" -eq 1 \]; then$' "$B" | head -1 | cut -d: -f1)
+CLAIM="$(sed -n "${c},$((c+2))p" "$B")"; sed 's/^/  | /' <<< "$CLAIM"
+W=$(mktemp -d)
+stage_die() { echo "  REFUSED stage $1: ${2//$W/<w>}"; return 1; }
+for kind in dir link-to-dir dangling-link file missing-parent; do
+  out="$W/$kind/bundle-amd64"; mkdir -p "$W/$kind"; mkdir -p "$W/tgt-$kind"
+  case "$kind" in
+    dir) mkdir "$out"; echo other > "$out/o.txt" ;;
+    link-to-dir) ln -s "$W/tgt-$kind" "$out" ;;
+    dangling-link) ln -s "$W/nowhere" "$out" ;;
+    file) echo f > "$out" ;;
+    missing-parent) out="$W/$kind/nope/bundle-amd64" ;;
+  esac
+  created=1
+  echo "  -- $kind:"; eval "$CLAIM" || true
+done
+echo "== F4 where 'created' is decided (O-16 (2): from the --out check, not re-tested) =="
+grep -n 'created=\|if \[ ! -e "\$out" \]\|if \[ -e "\$out" \]' "$B" | sed 's/^/  /'
+echo "== F5 noclobber redirect (bash set -C) against planted objects (record line verbatim) =="
+r=$(grep -n '( set -C; printf' "$B" | cut -d: -f1); REC="$(sed -n "${r}p" "$B")"; echo "  | $REC"
+manifest_sha=abc; out="$W/rec/bundle-amd64"; mkdir -p "$W/rec"
+for kind in absent file link-to-file dangling-link dir link-to-devnull; do
+  record="$W/rec/$kind.manifest.sha256"; rm -rf "$W/rec/t-$kind"
+  case "$kind" in
+    file) echo planted > "$record" ;;
+    link-to-file) echo tgt > "$W/rec/t-$kind"; ln -s "$W/rec/t-$kind" "$record" ;;
+    dangling-link) ln -s "$W/rec/t-$kind" "$record" ;;
+    dir) mkdir "$record" ;;
+    link-to-devnull) ln -s /dev/null "$record" ;;
+  esac
+  if eval "${REC::-2}" 2>/dev/null; then res=WRITTEN; else res=refused; fi
+  printf '  %-16s %-8s record=%s target=%s\n' "$kind" "$res" \
+    "$( [ -L "$record" ] && echo "link" || { [ -d "$record" ] && echo dir || cat "$record" 2>/dev/null || echo absent; } | tr '\n' ' ')" \
+    "$(cat "$W/rec/t-$kind" 2>/dev/null | tr '\n' ' ' || true)"
+done
+echo "== done =="
+
+===================================================================== run-sh.txt
+== F1 segment_bad (bundle.sh l.102-107, verbatim) ==
+  | segment_bad() {  # $1: an absolute path with no trailing slash
+  |   case "$1" in
+  |     *//* | */./* | */. | */../* | */..) return 0 ;;
+  |   esac
+  |   return 1
+  | }
+  /a/b               passes
+  /a//b              REFUSED
+  //a                REFUSED
+  /a/./b             REFUSED
+  /a/.               REFUSED
+  /.                 REFUSED
+  /a/../b            REFUSED
+  /a/..              REFUSED
+  /..                REFUSED
+  /a/...             passes
+  /a/.b              passes
+  /a/b.              passes
+  /a/..b             passes
+  /a/b..             passes
+  $'/a/..\n/b'       passes
+  /a/\*/b            passes
+  /a/\[.\]/b         passes
+  /c/repos/x         passes
+  C:/repos/x         passes
+  /a\\..\\b          passes
+  /a/b\\             passes
+== F2 trailing-slash strip + empty check (bundle.sh l.98), verbatim ==
+  | while [ "${out%/}" != "$out" ]; do out="${out%/}"; done
+  /a/    -> /a
+  /a///  -> /a
+  /      -> ''
+  ///    -> ''
+  /a     -> /a
+== F3 the claim line (O-16 (2)) when --out appeared after created=1 (verbatim mkdir line) ==
+  | if [ "$created" -eq 1 ]; then
+  |   mkdir -- "$out" || stage_die out "cannot create --out (its parent must exist, and --out must not): $out; no bundle written"
+  | fi
+  -- dir:
+mkdir: cannot create directory ‘/tmp/tmp.ZU2tA7XD4T/dir/bundle-amd64’: File exists
+  REFUSED stage out: cannot create --out (its parent must exist, and --out must not): <w>/dir/bundle-amd64; no bundle written
+  -- link-to-dir:
+mkdir: cannot create directory ‘/tmp/tmp.ZU2tA7XD4T/link-to-dir/bundle-amd64’: File exists
+  REFUSED stage out: cannot create --out (its parent must exist, and --out must not): <w>/link-to-dir/bundle-amd64; no bundle written
+  -- dangling-link:
+mkdir: cannot create directory ‘/tmp/tmp.ZU2tA7XD4T/dangling-link/bundle-amd64’: File exists
+  REFUSED stage out: cannot create --out (its parent must exist, and --out must not): <w>/dangling-link/bundle-amd64; no bundle written
+  -- file:
+mkdir: cannot create directory ‘/tmp/tmp.ZU2tA7XD4T/file/bundle-amd64’: File exists
+  REFUSED stage out: cannot create --out (its parent must exist, and --out must not): <w>/file/bundle-amd64; no bundle written
+  -- missing-parent:
+mkdir: cannot create directory ‘/tmp/tmp.ZU2tA7XD4T/missing-parent/nope/bundle-amd64’: No such file or directory
+  REFUSED stage out: cannot create --out (its parent must exist, and --out must not): <w>/missing-parent/nope/bundle-amd64; no bundle written
+== F4 where 'created' is decided (O-16 (2): from the --out check, not re-tested) ==
+  143:if [ -e "$out" ]; then
+  446:created=0
+  449:if [ ! -e "$out" ]; then created=1; fi
+== F5 noclobber redirect (bash set -C) against planted objects (record line verbatim) ==
+  | ( set -C; printf '%s  %s/MANIFEST.sha256\n' "$manifest_sha" "$(basename -- "$out")" > "$record" ) \
+  absent           WRITTEN  record=abc  bundle-amd64/MANIFEST.sha256  target=
+  file             refused  record=planted  target=
+  link-to-file     refused  record=link target=tgt 
+  dangling-link    refused  record=link target=
+  dir              refused  record=dir  target=
+  link-to-devnull  WRITTEN  record=link target=
+== done ==
+
+===================================================================== probe_r1.py
+"""U9b rework-1 security probes (security, 2026-10-29). Not a repo test.
+
+Runs the real scripts/bundle.sh with tests/fake_docker.py through the
+tests' own _SourcesBase harness, inside ke-gates, --network none. Every
+symlink is made in the container's /tmp. Each case prints one result line.
+"""
+from __future__ import annotations
+
+import os
+import shutil
+from pathlib import Path
+
+from tests.test_bundle_sources import _SourcesBase, _snapshot
+
+
+def _short(text: str, t: Path) -> str:
+    lines = [ln for ln in text.splitlines() if ln.startswith(("bundle", "usage"))]
+    return " | ".join(lines[-2:]).replace(str(t), "<t>")
+
+
+class Probe(_SourcesBase):
+
+    def _shim(self, on: str, do: str) -> str:
+        """A docker ahead of the fake: on a call whose argv matches the glob `on`, run `do` first."""
+        d = self.tmp / f"shim{self.n + 1}"
+        d.mkdir()
+        (d / "action.sh").write_text(do + "\n", encoding="utf-8", newline="\n")
+        s = d / "docker"
+        s.write_text("#!/bin/sh\n" + f'case "$*" in *"{on}"*) sh {d / "action.sh"} ;; esac\n'
+                     + f'exec {self.tmp / "fakebin" / "docker"} "$@"\n', encoding="utf-8", newline="\n")
+        s.chmod(0o755)
+        return f"{d}{os.pathsep}{self.path}"
+
+    def _line(self, case: str, result, calls, extra: str = "") -> None:
+        beyond = [c[0] for c in calls if c[:1] != ["info"]]
+        print(f"  {case}: exit={result.returncode} docker-beyond-info={len(beyond)} "
+              f"writes={len(self._writes(calls))} :: {_short(result.stdout + result.stderr, self.tmp)}"
+              + (f" :: {extra}" if extra else ""), flush=True)
+
+    def test_1_path_rule(self):
+        print("\n== R1 path rule (O-16 (1)), real script ==", flush=True)
+        t = self.tmp
+        good = self._fetched()
+        src = t / "src"
+        shutil.copytree(good, src)
+        victim = t / "victim-amd64"
+        (victim / "keep").mkdir(parents=True)
+        (victim / "keep" / "data.txt").write_text("precious\n")
+        (t / "victim-amd64.manifest.sha256").write_text("old record\n")
+        bamd = t / "b-amd64"
+        shutil.copytree(good, bamd / "src")
+        lnk = t / "srclink"
+        lnk.symlink_to(good, target_is_directory=True)
+        olnk = t / "outlink-amd64"
+        (t / "olnk-target").mkdir()
+        olnk.symlink_to(t / "olnk-target", target_is_directory=True)
+        holder = t / "holder"
+        holder.mkdir()
+        watched = [victim, src, good, bamd, t / "olnk-target"]
+        out_cases = {
+            "P7  --out <missing>/../victim-amd64": (f"{t}/ghost/../victim-amd64", good),
+            "P9  --out <missing>/../src/x-amd64, --sources src": (f"{t}/ghost/../src/x-amd64", src),
+            "P1c --out <missing>/../b-amd64, --sources b-amd64/src": (f"{t}/ghost2/../b-amd64", bamd / "src"),
+            "--out <existing>/../y-amd64": (f"{holder}/../y-amd64", good),
+            "--out <t>//dbl-amd64 (empty segment)": (f"{t}//dbl-amd64", good),
+            "--out //<t>/lead-amd64 (leading //)": (f"/{t}/lead-amd64", good),
+            "--out victim-amd64/. (trailing .)": (f"{victim}/.", good),
+            "--out victim-amd64/./ (trailing ./)": (f"{victim}/./", good),
+            "--out <t>/new-amd64/.. (trailing ..)": (f"{t}/new-amd64/..", good),
+            "--out <link>/.": (f"{olnk}/.", good),
+            "--out <link>// (link test after strip)": (f"{olnk}//", good),
+            "--out victim-amd64// (stripped, then not empty)": (f"{victim}//", good),
+            "--out ./rel-amd64 (relative, leading ./)": ("./rel-amd64", good),
+            "--out ../rel-amd64 (relative ..)": ("../rel-amd64", good),
+            "--out .": (".", good),
+            "--out ..": ("..", good),
+            "--out /": ("/", good),
+            "--out ///": ("///", good),
+            "--out <t>/a/.../b-amd64 (a ... name; parent missing)": (f"{t}/a/.../b-amd64", good),
+            "--out <t>/..<NL>/nl-amd64 (newline-bearing segment)": (f"{t}/..\n/nl-amd64", good),
+        }
+        for case, (raw, sources) in out_cases.items():
+            before = {p: _snapshot(p) for p in watched}
+            rec_before = (t / "victim-amd64.manifest.sha256").read_bytes()
+            result, calls, _ = self._bundle(raw_out=raw, sources=sources)
+            changed = [p.name for p in watched if _snapshot(p) != before[p]]
+            if (t / "victim-amd64.manifest.sha256").read_bytes() != rec_before:
+                changed.append("victim record")
+            made = [n for n in ("ghost", "ghost2", "rel-amd64", "dbl-amd64", "lead-amd64", "new-amd64", "a", "y-amd64")
+                    if os.path.lexists(t / n)]
+            self._line(case, result, calls, f"changed={changed} created={made}")
+        src_cases = {
+            "--sources <holder>/../<fetch> (.. into a good fetch)": f"{holder}/../{good.name}",
+            "--sources <t>/./<fetch>": f"{t}/./{good.name}",
+            "--sources <t>//<fetch>": f"{t}//{good.name}",
+            "P13 --sources <link>//": f"{lnk}//",
+            "--sources <link>/.": f"{lnk}/.",
+            "--sources <link>///": f"{lnk}///",
+            "--sources <fetch>/..": f"{good}/..",
+            "P10 --sources //": "//",
+            "--sources . (relative)": ".",
+            "--sources ./x (relative leading ./)": "./x",
+        }
+        for case, raw in src_cases.items():
+            before = {p: _snapshot(p) for p in watched}
+            result, calls, out = self._bundle(sources=raw)
+            changed = [p.name for p in watched if _snapshot(p) != before[p]]
+            self._line(case, result, calls, f"changed={changed} out-created={os.path.lexists(out)}")
+        (t / "okp").mkdir()
+        result, calls, _ = self._bundle(raw_out=f"{t}/okp/bundle-amd64///", sources=f"{good}///")
+        self._line("control: --out <t>/okp/bundle-amd64///, --sources <fetch>///", result, calls,
+                   "manifest=" + str((t / "okp" / "bundle-amd64" / "MANIFEST.sha256").is_file()))
+
+    def test_2_claim(self):
+        print("\n== R2 claim of --out (O-16 (2), I-10): --out appears during the run, before the first write ==",
+              flush=True)
+        for when in ("sbom_check.py sources-check", "compose -f docker-compose.yml"):
+            for fail in (None, "sbom_check.py notices"):
+                parent = self.tmp / f"race{self.n + 1}"
+                parent.mkdir()
+                out = parent / "bundle-amd64"
+                do = f"[ -e {out} ] || {{ mkdir {out} && echo other-process > {out}/other.txt; }}"
+                env = {"PATH": self._shim(when, do)}
+                if fail:
+                    env["FAKE_DOCKER_FAIL"] = fail
+                result, calls, _ = self._bundle(out, **env)
+                mf = out / "MANIFEST.sha256"
+                manifest = mf.read_text() if mf.is_file() else ""
+                self._line(f"dir+file appears at [{when}]; later failure={fail}", result, calls,
+                           f"out-exists={out.exists()} other.txt-survives={(out / 'other.txt').is_file()} "
+                           f"other.txt-in-manifest={'other.txt' in manifest} record={self._record(out).exists()}")
+        for fail in (None, "sbom_check.py notices"):
+            parent = self.tmp / f"race{self.n + 1}"
+            parent.mkdir()
+            out = parent / "bundle-amd64"
+            elsewhere = parent / "elsewhere"
+            elsewhere.mkdir()
+            (elsewhere / "keep.txt").write_text("keep\n")
+            env = {"PATH": self._shim("sbom_check.py sources-check", f"ln -s {elsewhere} {out}")}
+            if fail:
+                env["FAKE_DOCKER_FAIL"] = fail
+            result, calls, _ = self._bundle(out, **env)
+            self._line(f"link->dir appears at sources-check; later failure={fail}", result, calls,
+                       f"elsewhere now holds={sorted(os.listdir(elsewhere))[:5]} link-left={out.is_symlink()} "
+                       f"record={self._record(out).exists()}")
+        parent = self.tmp / f"race{self.n + 1}"
+        parent.mkdir()
+        out = parent / "bundle-amd64"
+        target = parent / "dangling-target"
+        result, calls, _ = self._bundle(out, PATH=self._shim("sbom_check.py sources-check",
+                                                             f"ln -s {target} {out}"))
+        self._line("dangling link appears at sources-check", result, calls,
+                   f"target-created={os.path.lexists(target)} link-left={out.is_symlink()}")
+
+    def test_3_record(self):
+        print("\n== R3 record under noclobber (O-16 (3), M-3): object planted at the record path during notices ==",
+              flush=True)
+        for given in (False, True):
+            for kind in ("file", "link->file", "dangling link", "dir", "link->/dev/null"):
+                parent = self.tmp / f"rec{self.n + 1}"
+                parent.mkdir()
+                out = parent / "bundle-amd64"
+                if given:
+                    out.mkdir()
+                record = self._record(out)
+                tgt = parent / "target.txt"
+                if kind == "file":
+                    do = f"echo planted > {record}"
+                elif kind == "link->file":
+                    tgt.write_text("target bytes\n")
+                    do = f"ln -s {tgt} {record}"
+                elif kind == "dangling link":
+                    do = f"ln -s {tgt} {record}"
+                elif kind == "dir":
+                    do = f"mkdir {record}"
+                else:
+                    do = f"ln -s /dev/null {record}"
+                result, calls, _ = self._bundle(out, PATH=self._shim("sbom_check.py notices", do))
+                if record.is_symlink():
+                    state = "link->" + os.readlink(record).replace(str(self.tmp), "<t>")
+                elif record.is_dir():
+                    state = "dir"
+                else:
+                    state = repr(record.read_text()) if record.exists() else "absent"
+                tgt_state = repr(tgt.read_text()) if tgt.exists() else "absent"
+                left = "absent" if not out.exists() else ("empty" if not os.listdir(out) else "NON-EMPTY")
+                who = "given" if given else "created"
+                self._line(f"[{who}] record planted as {kind}", result, calls,
+                           f"record now={state} target={tgt_state} out={left}")
+
+===================================================================== run-py.txt (R1; its R2/R3 lines are the broken-shim run, omitted)
+== R1 path rule (O-16 (1)), real script ==
+  P7  --out <missing>/../victim-amd64: exit=1 docker-beyond-info=0 writes=0 :: bundle: FAIL (stage out: --out has an empty, . or .. path segment: <t>/ghost/../victim-amd64) :: changed=[] created=[]
+  P9  --out <missing>/../src/x-amd64, --sources src: exit=1 docker-beyond-info=0 writes=0 :: bundle: FAIL (stage out: --out has an empty, . or .. path segment: <t>/ghost/../src/x-amd64) :: changed=[] created=[]
+  P1c --out <missing>/../b-amd64, --sources b-amd64/src: exit=1 docker-beyond-info=0 writes=0 :: bundle: FAIL (stage out: --out has an empty, . or .. path segment: <t>/ghost2/../b-amd64) :: changed=[] created=[]
+  --out <existing>/../y-amd64: exit=1 docker-beyond-info=0 writes=0 :: bundle: FAIL (stage out: --out has an empty, . or .. path segment: <t>/holder/../y-amd64) :: changed=[] created=[]
+  --out <t>//dbl-amd64 (empty segment): exit=1 docker-beyond-info=0 writes=0 :: bundle: FAIL (stage out: --out has an empty, . or .. path segment: <t>//dbl-amd64) :: changed=[] created=[]
+  --out //<t>/lead-amd64 (leading //): exit=1 docker-beyond-info=0 writes=0 :: bundle: FAIL (stage out: --out has an empty, . or .. path segment: /<t>/lead-amd64) :: changed=[] created=[]
+  --out victim-amd64/. (trailing .): exit=1 docker-beyond-info=0 writes=0 :: bundle: FAIL (stage out: --out has an empty, . or .. path segment: <t>/victim-amd64/.) :: changed=[] created=[]
+  --out victim-amd64/./ (trailing ./): exit=1 docker-beyond-info=0 writes=0 :: bundle: FAIL (stage out: --out has an empty, . or .. path segment: <t>/victim-amd64/.) :: changed=[] created=[]
+  --out <t>/new-amd64/.. (trailing ..): exit=1 docker-beyond-info=0 writes=0 :: bundle: FAIL (stage out: --out has an empty, . or .. path segment: <t>/new-amd64/..) :: changed=[] created=[]
+  --out <link>/.: exit=1 docker-beyond-info=0 writes=0 :: bundle: FAIL (stage out: --out has an empty, . or .. path segment: <t>/outlink-amd64/.) :: changed=[] created=[]
+  --out <link>// (link test after strip): exit=1 docker-beyond-info=0 writes=0 :: bundle: --out is a symlink: <t>/outlink-amd64 :: changed=[] created=[]
+  --out victim-amd64// (stripped, then not empty): exit=1 docker-beyond-info=0 writes=0 :: bundle: --out is not empty: <t>/victim-amd64 :: changed=[] created=[]
+  --out ./rel-amd64 (relative, leading ./): exit=1 docker-beyond-info=0 writes=0 :: bundle: FAIL (stage out: --out has an empty, . or .. path segment: <t>/repo/./rel-amd64) :: changed=[] created=[]
+  --out ../rel-amd64 (relative ..): exit=1 docker-beyond-info=0 writes=0 :: bundle: FAIL (stage out: --out has an empty, . or .. path segment: <t>/repo/../rel-amd64) :: changed=[] created=[]
+  --out .: exit=1 docker-beyond-info=0 writes=0 :: bundle: FAIL (stage out: --out has an empty, . or .. path segment: <t>/repo/.) :: changed=[] created=[]
+  --out ..: exit=1 docker-beyond-info=0 writes=0 :: bundle: FAIL (stage out: --out has an empty, . or .. path segment: <t>/repo/..) :: changed=[] created=[]
+  --out /: exit=2 docker-beyond-info=0 writes=0 :: usage: scripts/bundle.sh --out <dir>-<arch> --sources <dir> [--sources-set full|sample] [--arch amd64|arm64] :: changed=[] created=[]
+  --out ///: exit=2 docker-beyond-info=0 writes=0 :: usage: scripts/bundle.sh --out <dir>-<arch> --sources <dir> [--sources-set full|sample] [--arch amd64|arm64] :: changed=[] created=[]
+  --out <t>/a/.../b-amd64 (a ... name; parent missing): exit=1 docker-beyond-info=12 writes=0 :: bundle: FAIL (stage out: cannot create --out (its parent must exist, and --out must not): <t>/a/.../b-amd64; no bundle written) :: changed=[] created=[]
+  --out <t>/..<NL>/nl-amd64 (newline-bearing segment): exit=1 docker-beyond-info=12 writes=0 :: bundle: FAIL (stage out: cannot create --out (its parent must exist, and --out must not): <t>/.. :: changed=[] created=[]
+  --sources <holder>/../<fetch> (.. into a good fetch): exit=1 docker-beyond-info=0 writes=0 :: bundle: FAIL (stage sources-check: --sources has an empty, . or .. path segment: <t>/holder/../fetched-1-full-amd64) :: changed=[] out-created=False
+  --sources <t>/./<fetch>: exit=1 docker-beyond-info=0 writes=0 :: bundle: FAIL (stage sources-check: --sources has an empty, . or .. path segment: <t>/./fetched-1-full-amd64) :: changed=[] out-created=False
+  --sources <t>//<fetch>: exit=1 docker-beyond-info=0 writes=0 :: bundle: FAIL (stage sources-check: --sources has an empty, . or .. path segment: <t>//fetched-1-full-amd64) :: changed=[] out-created=False
+  P13 --sources <link>//: exit=1 docker-beyond-info=0 writes=0 :: bundle: FAIL (stage sources-check: --sources is a symlink: <t>/srclink) :: changed=[] out-created=False
+  --sources <link>/.: exit=1 docker-beyond-info=0 writes=0 :: bundle: FAIL (stage sources-check: --sources has an empty, . or .. path segment: <t>/srclink/.) :: changed=[] out-created=False
+  --sources <link>///: exit=1 docker-beyond-info=0 writes=0 :: bundle: FAIL (stage sources-check: --sources is a symlink: <t>/srclink) :: changed=[] out-created=False
+  --sources <fetch>/..: exit=1 docker-beyond-info=0 writes=0 :: bundle: FAIL (stage sources-check: --sources has an empty, . or .. path segment: <t>/fetched-1-full-amd64/..) :: changed=[] out-created=False
+  P10 --sources //: exit=2 docker-beyond-info=0 writes=0 :: usage: scripts/bundle.sh --out <dir>-<arch> --sources <dir> [--sources-set full|sample] [--arch amd64|arm64] :: changed=[] out-created=False
+  --sources . (relative): exit=1 docker-beyond-info=0 writes=0 :: bundle: FAIL (stage sources-check: --sources has an empty, . or .. path segment: <t>/repo/.) :: changed=[] out-created=False
+  --sources ./x (relative leading ./): exit=1 docker-beyond-info=0 writes=0 :: bundle: FAIL (stage sources-check: --sources has an empty, . or .. path segment: <t>/repo/./x) :: changed=[] out-created=False
+  control: --out <t>/okp/bundle-amd64///, --sources <fetch>///: exit=0 docker-beyond-info=39 writes=12 :: bundle: sources: check 0 s, copy 0 s, index 0 s, notices 1 s | bundle written: <t>/okp/bundle-amd64 :: manifest=True
+ok
+
+===================================================================== run-py2.txt (R2, R3)
+test_2_claim (probe_r1.Probe.test_2_claim) ... 
+== R2 claim of --out (O-16 (2), I-10): --out appears during the run, before the first write ==
+  dir+file appears at [sbom_check.py sources-check]; later failure=None: exit=0 docker-beyond-info=39 writes=12 :: bundle: sources: check 0 s, copy 0 s, index 0 s, notices 0 s | bundle written: <t>/race1/bundle-amd64 :: out-exists=True other.txt-survives=True other.txt-in-manifest=True record=True
+  dir+file appears at [sbom_check.py sources-check]; later failure=sbom_check.py notices: exit=1 docker-beyond-info=39 writes=12 :: bundle: FAIL (stage notices: the Source code section failed (see above); no bundle written) :: out-exists=True other.txt-survives=False other.txt-in-manifest=False record=False
+  dir+file appears at [compose -f docker-compose.yml]; later failure=None: exit=0 docker-beyond-info=39 writes=12 :: bundle: sources: check 0 s, copy 0 s, index 0 s, notices 0 s | bundle written: <t>/race3/bundle-amd64 :: out-exists=True other.txt-survives=True other.txt-in-manifest=True record=True
+  dir+file appears at [compose -f docker-compose.yml]; later failure=sbom_check.py notices: exit=1 docker-beyond-info=39 writes=12 :: bundle: FAIL (stage notices: the Source code section failed (see above); no bundle written) :: out-exists=True other.txt-survives=False other.txt-in-manifest=False record=False
+  link->dir appears at sources-check; later failure=None: exit=0 docker-beyond-info=39 writes=12 :: bundle: sources: check 0 s, copy 0 s, index 0 s, notices 1 s | bundle written: <t>/race5/bundle-amd64 :: elsewhere now holds=['LICENSE', 'MANIFEST.sha256', 'NOTICE.md', 'THIRD_PARTY_NOTICES.md', 'app'] link-left=True record=True
+  link->dir appears at sources-check; later failure=sbom_check.py notices: exit=1 docker-beyond-info=39 writes=12 :: bundle: FAIL (stage notices: the Source code section failed (see above); no bundle written) :: elsewhere now holds=['LICENSE', 'NOTICE.md', 'THIRD_PARTY_NOTICES.md', 'app', 'bundle.json'] link-left=True record=False
+  dangling link appears at sources-check: exit=1 docker-beyond-info=12 writes=0 :: bundle: FAIL (stage out: cannot create --out (its parent must exist, and --out must not): <t>/race7/bundle-amd64; no bundle written) :: target-created=False link-left=True
+ok
+test_3_record (probe_r1.Probe.test_3_record) ... 
+== R3 record under noclobber (O-16 (3), M-3): object planted at the record path during notices ==
+  [created] record planted as file: exit=1 docker-beyond-info=39 writes=12 :: bundle: sources: check 0 s, copy 0 s, index 0 s, notices 0 s | bundle: cannot write the release record <t>/rec1/bundle-amd64.manifest.sha256 (it exists, or is not writable); no bundle written :: record now='planted\n' target=absent out=absent
+  [created] record planted as link->file: exit=1 docker-beyond-info=39 writes=12 :: bundle: sources: check 0 s, copy 0 s, index 0 s, notices 1 s | bundle: cannot write the release record <t>/rec2/bundle-amd64.manifest.sha256 (it exists, or is not writable); no bundle written :: record now=link-><t>/rec2/target.txt target='target bytes\n' out=absent
+  [created] record planted as dangling link: exit=1 docker-beyond-info=39 writes=12 :: bundle: sources: check 0 s, copy 0 s, index 0 s, notices 0 s | bundle: cannot write the release record <t>/rec3/bundle-amd64.manifest.sha256 (it exists, or is not writable); no bundle written :: record now=link-><t>/rec3/target.txt target=absent out=absent
+  [created] record planted as dir: exit=1 docker-beyond-info=39 writes=12 :: bundle: sources: check 0 s, copy 0 s, index 1 s, notices 0 s | bundle: cannot write the release record <t>/rec4/bundle-amd64.manifest.sha256 (it exists, or is not writable); no bundle written :: record now=dir target=absent out=absent
+  [created] record planted as link->/dev/null: exit=1 docker-beyond-info=39 writes=12 :: bundle: sources: check 0 s, copy 0 s, index 0 s, notices 0 s :: record now=absent target=absent out=absent
+  [given] record planted as file: exit=1 docker-beyond-info=39 writes=12 :: bundle: sources: check 0 s, copy 0 s, index 1 s, notices 0 s | bundle: cannot write the release record <t>/rec6/bundle-amd64.manifest.sha256 (it exists, or is not writable); no bundle written :: record now='planted\n' target=absent out=empty
+  [given] record planted as link->file: exit=1 docker-beyond-info=39 writes=12 :: bundle: sources: check 0 s, copy 0 s, index 0 s, notices 0 s | bundle: cannot write the release record <t>/rec7/bundle-amd64.manifest.sha256 (it exists, or is not writable); no bundle written :: record now=link-><t>/rec7/target.txt target='target bytes\n' out=empty
+  [given] record planted as dangling link: exit=1 docker-beyond-info=39 writes=12 :: bundle: sources: check 0 s, copy 0 s, index 1 s, notices 0 s | bundle: cannot write the release record <t>/rec8/bundle-amd64.manifest.sha256 (it exists, or is not writable); no bundle written :: record now=link-><t>/rec8/target.txt target=absent out=empty
+  [given] record planted as dir: exit=1 docker-beyond-info=39 writes=12 :: bundle: sources: check 0 s, copy 0 s, index 0 s, notices 0 s | bundle: cannot write the release record <t>/rec9/bundle-amd64.manifest.sha256 (it exists, or is not writable); no bundle written :: record now=dir target=absent out=empty
+  [given] record planted as link->/dev/null: exit=1 docker-beyond-info=39 writes=12 :: bundle: sources: check 0 s, copy 0 s, index 0 s, notices 0 s :: record now=absent target=absent out=empty
+ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 40.401s
+
+OK
+
+===================================================================== run-win.txt (W1, W2: Git Bash host)
+== W1 Git Bash (MINGW64, host; plain directories only, no symlink): how MSYS resolves '..' and '\' ==
+  <S>/missing/../existing-amd64 :: -e(raw)=no as-bundle.sh-holds-it=<S>/missing/../existing-amd64 segment_bad=REFUSED -e=no
+  <S>/missing\..\existing-amd64 :: -e(raw)=yes as-bundle.sh-holds-it=<S>/missing\..\existing-amd64 segment_bad=passes -e=yes
+  <S>\existing-amd64 :: -e(raw)=yes as-bundle.sh-holds-it=<S>\existing-amd64 segment_bad=passes -e=yes
+  <S-mixed>/existing-amd64 :: -e(raw)=yes as-bundle.sh-holds-it=/c/repos/Knowledge-engine/<S-mixed>/existing-amd64 segment_bad=passes -e=no
+  plain mkdir <S>/missing3\..\new-amd64 -> created: ls: cannot access 'missing3': No such file or directory new-amd64 
+== W2 the overlap fragment (bundle.sh real_dir..esac, verbatim) with backslash forms, --sources <S>/src ==
+  <S>/src\x-amd64 -> REFUSED (sources-check)
+  <S>/other\..\src\x-amd64 -> REFUSED (sources-check)
+  <S>/ghost\..\src\x-amd64 -> REFUSED (sources-check)
+
+# =====================================================================================================
+# rework 2 (security, 2026-10-29): re-probe of I-13 and I-14 after O-17 (1)-(3)
+#
+# Where: ke-gates:wt-33a132fbfdd7, docker run --rm --network none --cap-drop ALL
+# --security-opt no-new-privileges, label com.docker.compose.project=ke-sec-u9br2, the repo :ro at /work,
+# probe_r2.py (kept in <scratch>, outside the repo) :ro at /probe, /tmp a tmpfs. Two runs:
+#   non-root: --user 10001:10001, python -m unittest -v probe_r2            (R4, R5, R7; R6 skipped)
+#   root:     --user 0:0 --cap-add CHOWN --cap-add FOWNER --cap-add DAC_OVERRIDE (root's usual powers over
+#             files it does not own), python -m unittest -v probe_r2.Probe.test_6_record_as_root
+# Every symlink and FIFO was made in the container's /tmp; nothing was made on the Windows host.
+# bundle.sh under audit: sha256 9624710b069b16b9a8dde489165cc24872cf2af2b14617f9788c05be409ff9dd.
+# probe_r2.py drives the real scripts/bundle.sh through the tests' own _SourcesBase harness with
+# tests/fake_docker.py. A one-line docker shim ahead of the fake runs one shell action when a call's
+# argv contains a substring, then execs the fake. "sbom_check.py sources-check" is the last docker
+# call before the first write (bundle.sh l.421), so R4 plants there. <t> = the container temp dir.
+# The kernel in the Docker VM has fs.protected_symlinks=1 and fs.protected_fifos=1.
+
+===================================================================== probe_r2.py
+"""U9b rework-2 security probes (security, 2026-10-29). Not a repo test.
+
+Runs the real scripts/bundle.sh with tests/fake_docker.py through the tests'
+own _SourcesBase harness, inside ke-gates, --network none. Every symlink and
+FIFO is made in the container's /tmp. A one-line docker shim ahead of the fake
+runs one shell action when a call's argv contains a substring, then execs the
+fake (as in rework 1). Each case prints one result line.
+"""
+from __future__ import annotations
+
+import os
+import stat
+from pathlib import Path
+
+from tests.test_bundle_sources import _SourcesBase, _snapshot
+
+NL = chr(10)
+
+
+def _short(text: str, t: Path) -> str:
+    lines = [ln for ln in text.splitlines() if ln.startswith(("bundle", "usage"))]
+    return " | ".join(lines[-2:]).replace(str(t), "<t>")
+
+
+class Probe(_SourcesBase):
+
+    def _shim(self, on: str, do: str) -> str:
+        d = self.tmp / f"shim{self.n + 1}"
+        d.mkdir()
+        (d / "action.sh").write_text(do + NL, encoding="utf-8", newline=NL)
+        s = d / "docker"
+        body = ["#!/bin/sh",
+                'case "$*" in *"' + on + '"*) sh ' + str(d / "action.sh") + " ;; esac",
+                "exec " + str(self.tmp / "fakebin" / "docker") + ' "$@"', ""]
+        s.write_text(NL.join(body), encoding="utf-8", newline=NL)
+        s.chmod(0o755)
+        return f"{d}{os.pathsep}{self.path}"
+
+    def _line(self, case: str, result, calls, extra: str = "") -> None:
+        beyond = [c[0] for c in calls if c[:1] != ["info"]]
+        a4 = [ln for ln in result.stderr.splitlines() if ln.startswith("bundle: FAIL (stage ")]
+        msg = (f"  {case}: exit={result.returncode} docker-beyond-info={len(beyond)} "
+               f"writes={len(self._writes(calls))} A4-lines={len(a4)} :: "
+               f"{_short(result.stdout + result.stderr, self.tmp)}")
+        if extra:
+            msg += " :: " + extra.replace(str(self.tmp), "<t>")
+        print(msg, flush=True)
+
+    def _side(self, parent: Path) -> str:
+        rec = self._record(parent / "bundle-amd64")
+        sb = [p.name for p in parent.iterdir() if p.name.startswith(".ke-sbom.")]
+        return f"record={os.path.lexists(rec)} ke-sbom-left={sb}"
+
+    @staticmethod
+    def _state(out: Path) -> str:
+        if out.is_symlink():
+            return "link->" + os.readlink(out)
+        if out.is_dir():
+            names = sorted(os.listdir(out))
+            body = {n: (out / n).read_text().strip() for n in names if n.endswith(".txt") and (out / n).is_file()}
+            mf = out / "MANIFEST.sha256"
+            inm = ("other.txt" in mf.read_text()) if mf.is_file() else False
+            return f"dir entries={len(names)} txt={body} other.txt-in-manifest={inm}"
+        if out.exists():
+            return "file " + repr(out.read_text().strip())
+        return "absent"
+
+    # ------------------------------------------------------------------ R4
+    def test_4_claim(self):
+        if os.geteuid() == 0:
+            self.skipTest("non-root pass")
+        print(NL + "== R4 O-17 (1): --out raced at the sources-check call (the last docker call before the first write) ==",
+              flush=True)
+        on = "sbom_check.py sources-check"
+        for kind in ("dir+file", "link->dir", "dangling link", "regular file"):
+            parent = self.tmp / f"race{self.n + 1}"
+            parent.mkdir()
+            out = parent / "bundle-amd64"
+            tgt = parent / "elsewhere"
+            if kind == "dir+file":
+                do = f"mkdir {out} && echo operator-bytes > {out}/operator.txt"
+            elif kind == "link->dir":
+                tgt.mkdir()
+                (tgt / "keep.txt").write_text("keep" + NL)
+                do = f"ln -s {tgt} {out}"
+            elif kind == "dangling link":
+                do = f"ln -s {tgt} {out}"
+            else:
+                do = f"echo file-bytes > {out}"
+            before = _snapshot(tgt) if tgt.exists() else None
+            result, calls, _ = self._bundle(out, PATH=self._shim(on, do))
+            if before is not None:
+                tgt_st = "unchanged" if _snapshot(tgt) == before else "CHANGED " + str(sorted(os.listdir(tgt)))
+            else:
+                tgt_st = "created" if os.path.lexists(tgt) else "absent"
+            self._line(f"[absent --out] {kind} appears", result, calls,
+                       f"--out now={self._state(out)} target={tgt_st} {self._side(parent)}")
+        for kind in ("link->dir", "link->file", "regular file", "removed", "fresh real dir+file",
+                     "file written into it", "file written into it; later failure"):
+            parent = self.tmp / f"race{self.n + 1}"
+            parent.mkdir()
+            out = parent / "bundle-amd64"
+            out.mkdir()
+            tgt = parent / "elsewhere"
+            env = {}
+            if kind == "link->dir":
+                tgt.mkdir()
+                (tgt / "keep.txt").write_text("keep" + NL)
+                do = f"rmdir {out} && ln -s {tgt} {out}"
+            elif kind == "link->file":
+                tgt.write_text("target bytes" + NL)
+                do = f"rmdir {out} && ln -s {tgt} {out}"
+            elif kind == "regular file":
+                do = f"rmdir {out} && echo file-bytes > {out}"
+            elif kind == "removed":
+                do = f"rmdir {out}"
+            elif kind == "fresh real dir+file":
+                do = f"rmdir {out} && mkdir {out} && echo other > {out}/other.txt"
+            else:
+                do = f"echo other > {out}/other.txt"
+                if "failure" in kind:
+                    env["FAKE_DOCKER_FAIL"] = "sbom_check.py notices"
+            before = _snapshot(tgt) if tgt.exists() else None
+            result, calls, _ = self._bundle(out, PATH=self._shim(on, do), **env)
+            if before is not None:
+                tgt_st = "unchanged" if _snapshot(tgt) == before else "CHANGED"
+            else:
+                tgt_st = "created" if os.path.lexists(tgt) else "absent"
+            self._line(f"[given --out] {kind}", result, calls,
+                       f"--out now={self._state(out)} target={tgt_st} {self._side(parent)}")
+        for given in (False, True):
+            parent = self.tmp / f"race{self.n + 1}"
+            parent.mkdir()
+            out = parent / "bundle-amd64"
+            if given:
+                out.mkdir()
+            result, calls, _ = self._bundle(out)
+            self._line(f"control, {'given' if given else 'absent'} --out, no race", result, calls,
+                       f"manifest={(out / 'MANIFEST.sha256').is_file()} {self._side(parent)}")
+
+    # ------------------------------------------------------------------ R5
+    def test_5_record(self):
+        if os.geteuid() == 0:
+            self.skipTest("non-root pass")
+        print(NL + f"== R5 O-17 (2): object planted at the record path at the notices call (uid {os.geteuid()}) ==",
+              flush=True)
+        dn = os.stat(os.devnull)
+        print(f"  /dev/null before: mode={stat.filemode(dn.st_mode)} rdev={dn.st_rdev}", flush=True)
+        for given in (False, True):
+            for kind in ("link->/dev/null", "link->regular file", "link->own FIFO, reader attached"):
+                parent = self.tmp / f"rec{self.n + 1}"
+                parent.mkdir()
+                out = parent / "bundle-amd64"
+                if given:
+                    out.mkdir()
+                record = self._record(out)
+                tgt = parent / "target"
+                if kind == "link->/dev/null":
+                    do = f"ln -s /dev/null {record}"
+                elif kind == "link->regular file":
+                    tgt.write_text("target bytes" + NL)
+                    do = f"ln -s {tgt} {record}"
+                else:
+                    os.mkfifo(tgt, 0o600)
+                    do = f"( timeout 120 cat {tgt} > {parent}/fifo-read.txt & ) ; ln -s {tgt} {record}"
+                result, calls, _ = self._bundle(out, PATH=self._shim("sbom_check.py notices", do))
+                if record.is_symlink():
+                    rec = "link->" + os.readlink(record)
+                else:
+                    rec = repr(record.read_text()) if record.exists() else "absent"
+                if tgt.exists() and stat.S_ISFIFO(os.stat(tgt).st_mode):
+                    rd = parent / "fifo-read.txt"
+                    got = rd.read_text().strip()[:16] if rd.exists() else ""
+                    tg = f"fifo mode={stat.filemode(os.stat(tgt).st_mode)} reader-got={got!r}..."
+                elif tgt.exists():
+                    tg = repr(tgt.read_text().strip())
+                else:
+                    tg = "-"
+                left = "absent" if not out.exists() else ("empty" if not os.listdir(out) else "NON-EMPTY")
+                self._line(f"[{'given' if given else 'created'}] record planted as {kind}", result, calls,
+                           f"record now={rec} target={tg} out={left}")
+        dn2 = os.stat(os.devnull)
+        same = dn2.st_mode == dn.st_mode and dn2.st_rdev == dn.st_rdev
+        print(f"  /dev/null after: mode={stat.filemode(dn2.st_mode)} rdev={dn2.st_rdev} same={same}", flush=True)
+
+    # ------------------------------------------------------------------ R6
+    def test_6_record_as_root(self):
+        if os.geteuid() != 0:
+            self.skipTest("root pass")
+        print(NL + "== R6 O-17 (2), bundle.sh as root: record path planted as a link to a FIFO owned by uid 10002 ==",
+              flush=True)
+        for given in (False, True):
+            parent = self.tmp / f"root{self.n + 1}"
+            parent.mkdir()
+            out = parent / "bundle-amd64"
+            if given:
+                out.mkdir()
+            record = self._record(out)
+            tgt = parent / "other-users-fifo"
+            os.mkfifo(tgt, 0o600)
+            os.chown(tgt, 10002, 10002)
+            m0 = stat.filemode(os.stat(tgt).st_mode)
+            do = f"( timeout 120 cat {tgt} > {parent}/fifo-read.txt & ) ; ln -s {tgt} {record}"
+            result, calls, _ = self._bundle(out, PATH=self._shim("sbom_check.py notices", do))
+            st = os.stat(tgt)
+            rec = ("link->" + os.readlink(record)) if record.is_symlink() else "not a link"
+            self._line(f"[{'given' if given else 'created'}] root run, link->uid-10002 FIFO", result, calls,
+                       f"record now={rec} fifo owner={st.st_uid} mode {m0}->{stat.filemode(st.st_mode)}")
+
+    # ------------------------------------------------------------------ R7
+    def test_7_after_the_recheck(self):
+        if os.geteuid() == 0:
+            self.skipTest("non-root pass")
+        print(NL + "== R7 swap after the re-check (at the first tag call, after mkdir -p out/images), later failure ==",
+              flush=True)
+        for given in (False, True):
+            parent = self.tmp / f"swap{self.n + 1}"
+            parent.mkdir()
+            out = parent / "bundle-amd64"
+            if given:
+                out.mkdir()
+            tgt = parent / "elsewhere"
+            (tgt / "images").mkdir(parents=True)
+            (tgt / "keep.txt").write_text("keep" + NL)
+            do = f"[ -L {out} ] || {{ mv {out} {parent}/moved && ln -s {tgt} {out}; }}"
+            result, calls, _ = self._bundle(out, PATH=self._shim("tag ", do), FAKE_DOCKER_FAIL="sbom_check.py notices")
+            moved = parent / "moved"
+            self._line(f"[{'given' if given else 'created'}] --out swapped for link->dir at tag", result, calls,
+                       f"link-left={out.is_symlink()} target holds={sorted(os.listdir(tgt))} "
+                       f"keep.txt={(tgt / 'keep.txt').read_text().strip()} "
+                       f"moved holds={sorted(os.listdir(moved)) if moved.exists() else '-'}")
+
+===================================================================== run-nonroot.txt (uid 10001)
+test_4_claim (probe_r2.Probe.test_4_claim) ... 
+== R4 O-17 (1): --out raced at the sources-check call (the last docker call before the first write) ==
+  [absent --out] dir+file appears: exit=1 docker-beyond-info=12 writes=0 A4-lines=1 :: bundle: FAIL (stage out: --out appeared after its check (or cannot be created; its parent must exist, and --out must not): <t>/race1/bundle-amd64; no bundle written) :: --out now=dir entries=1 txt={'operator.txt': 'operator-bytes'} other.txt-in-manifest=False target=absent record=False ke-sbom-left=[]
+  [absent --out] link->dir appears: exit=1 docker-beyond-info=12 writes=0 A4-lines=1 :: bundle: FAIL (stage out: --out appeared after its check (or cannot be created; its parent must exist, and --out must not): <t>/race2/bundle-amd64; no bundle written) :: --out now=link-><t>/race2/elsewhere target=unchanged record=False ke-sbom-left=[]
+  [absent --out] dangling link appears: exit=1 docker-beyond-info=12 writes=0 A4-lines=1 :: bundle: FAIL (stage out: --out appeared after its check (or cannot be created; its parent must exist, and --out must not): <t>/race3/bundle-amd64; no bundle written) :: --out now=link-><t>/race3/elsewhere target=absent record=False ke-sbom-left=[]
+  [absent --out] regular file appears: exit=1 docker-beyond-info=12 writes=0 A4-lines=1 :: bundle: FAIL (stage out: --out appeared after its check (or cannot be created; its parent must exist, and --out must not): <t>/race4/bundle-amd64; no bundle written) :: --out now=file 'file-bytes' target=absent record=False ke-sbom-left=[]
+  [given --out] link->dir: exit=1 docker-beyond-info=12 writes=0 A4-lines=1 :: bundle: FAIL (stage out: --out was replaced after its check (it is no longer a real directory): <t>/race5/bundle-amd64; no bundle written) :: --out now=link-><t>/race5/elsewhere target=unchanged record=False ke-sbom-left=[]
+  [given --out] link->file: exit=1 docker-beyond-info=12 writes=0 A4-lines=1 :: bundle: FAIL (stage out: --out was replaced after its check (it is no longer a real directory): <t>/race6/bundle-amd64; no bundle written) :: --out now=link-><t>/race6/elsewhere target=unchanged record=False ke-sbom-left=[]
+  [given --out] regular file: exit=1 docker-beyond-info=12 writes=0 A4-lines=1 :: bundle: FAIL (stage out: --out was replaced after its check (it is no longer a real directory): <t>/race7/bundle-amd64; no bundle written) :: --out now=file 'file-bytes' target=absent record=False ke-sbom-left=[]
+  [given --out] removed: exit=1 docker-beyond-info=12 writes=0 A4-lines=1 :: bundle: FAIL (stage out: --out was replaced after its check (it is no longer a real directory): <t>/race8/bundle-amd64; no bundle written) :: --out now=absent target=absent record=False ke-sbom-left=[]
+  [given --out] fresh real dir+file: exit=0 docker-beyond-info=39 writes=12 A4-lines=0 :: bundle: sources: check 0 s, copy 0 s, index 0 s, notices 0 s | bundle written: <t>/race9/bundle-amd64 :: --out now=dir entries=11 txt={'other.txt': 'other'} other.txt-in-manifest=True target=absent record=True ke-sbom-left=[]
+  [given --out] file written into it: exit=0 docker-beyond-info=39 writes=12 A4-lines=0 :: bundle: sources: check 1 s, copy 0 s, index 0 s, notices 0 s | bundle written: <t>/race10/bundle-amd64 :: --out now=dir entries=11 txt={'other.txt': 'other'} other.txt-in-manifest=True target=absent record=True ke-sbom-left=[]
+  [given --out] file written into it; later failure: exit=1 docker-beyond-info=39 writes=12 A4-lines=1 :: bundle: FAIL (stage notices: the Source code section failed (see above); no bundle written) :: --out now=dir entries=0 txt={} other.txt-in-manifest=False target=absent record=False ke-sbom-left=[]
+  control, absent --out, no race: exit=0 docker-beyond-info=39 writes=12 A4-lines=0 :: bundle: sources: check 0 s, copy 0 s, index 0 s, notices 0 s | bundle written: <t>/race12/bundle-amd64 :: manifest=True record=True ke-sbom-left=[]
+  control, given --out, no race: exit=0 docker-beyond-info=39 writes=12 A4-lines=0 :: bundle: sources: check 0 s, copy 0 s, index 0 s, notices 0 s | bundle written: <t>/race13/bundle-amd64 :: manifest=True record=True ke-sbom-left=[]
+ok
+test_5_record (probe_r2.Probe.test_5_record) ... 
+== R5 O-17 (2): object planted at the record path at the notices call (uid 10001) ==
+  /dev/null before: mode=crw-rw-rw- rdev=259
+  [created] record planted as link->/dev/null: exit=1 docker-beyond-info=39 writes=12 A4-lines=0 :: bundle: sources: check 0 s, copy 0 s, index 0 s, notices 0 s | bundle: cannot set the mode of the release record <t>/rec1/bundle-amd64.manifest.sha256; no bundle written :: record now=link->/dev/null target=- out=absent
+  [created] record planted as link->regular file: exit=1 docker-beyond-info=39 writes=12 A4-lines=0 :: bundle: sources: check 0 s, copy 0 s, index 0 s, notices 0 s | bundle: cannot write the release record <t>/rec2/bundle-amd64.manifest.sha256 (it exists, or is not writable); no bundle written :: record now=link-><t>/rec2/target target='target bytes' out=absent
+  [created] record planted as link->own FIFO, reader attached: exit=0 docker-beyond-info=39 writes=12 A4-lines=0 :: bundle: sources: check 0 s, copy 0 s, index 0 s, notices 1 s | bundle written: <t>/rec3/bundle-amd64 :: record now=link-><t>/rec3/target target=fifo mode=prw-r--r-- reader-got='dea7f679b05b86c6'... out=NON-EMPTY
+  [given] record planted as link->/dev/null: exit=1 docker-beyond-info=39 writes=12 A4-lines=0 :: bundle: sources: check 0 s, copy 0 s, index 0 s, notices 0 s | bundle: cannot set the mode of the release record <t>/rec4/bundle-amd64.manifest.sha256; no bundle written :: record now=link->/dev/null target=- out=empty
+  [given] record planted as link->regular file: exit=1 docker-beyond-info=39 writes=12 A4-lines=0 :: bundle: sources: check 0 s, copy 0 s, index 0 s, notices 1 s | bundle: cannot write the release record <t>/rec5/bundle-amd64.manifest.sha256 (it exists, or is not writable); no bundle written :: record now=link-><t>/rec5/target target='target bytes' out=empty
+  [given] record planted as link->own FIFO, reader attached: exit=0 docker-beyond-info=39 writes=12 A4-lines=0 :: bundle: sources: check 0 s, copy 0 s, index 0 s, notices 0 s | bundle written: <t>/rec6/bundle-amd64 :: record now=link-><t>/rec6/target target=fifo mode=prw-r--r-- reader-got='b02840cac06039db'... out=NON-EMPTY
+  /dev/null after: mode=crw-rw-rw- rdev=259 same=True
+ok
+test_6_record_as_root (probe_r2.Probe.test_6_record_as_root) ... skipped 'root pass'
+test_7_after_the_recheck (probe_r2.Probe.test_7_after_the_recheck) ... 
+== R7 swap after the re-check (at the first tag call, after mkdir -p out/images), later failure ==
+  [created] --out swapped for link->dir at tag: exit=1 docker-beyond-info=39 writes=12 A4-lines=1 :: bundle: FAIL (stage notices: the Source code section failed (see above); no bundle written) :: link-left=False target holds=['LICENSE', 'NOTICE.md', 'THIRD_PARTY_NOTICES.md', 'app', 'bundle.json', 'images', 'install.ps1', 'install.sh', 'keep.txt', 'licenses'] keep.txt=keep moved holds=['images']
+  [given] --out swapped for link->dir at tag: exit=1 docker-beyond-info=39 writes=12 A4-lines=1 :: bundle: FAIL (stage notices: the Source code section failed (see above); no bundle written) :: link-left=True target holds=['LICENSE', 'NOTICE.md', 'THIRD_PARTY_NOTICES.md', 'app', 'bundle.json', 'images', 'install.ps1', 'install.sh', 'keep.txt', 'licenses'] keep.txt=keep moved holds=['images']
+ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 37.743s
+
+OK (skipped=1)
+
+===================================================================== run-root.txt (uid 0)
+test_6_record_as_root (probe_r2.Probe.test_6_record_as_root) ... 
+== R6 O-17 (2), bundle.sh as root: record path planted as a link to a FIFO owned by uid 10002 ==
+  [created] root run, link->uid-10002 FIFO: exit=0 docker-beyond-info=39 writes=12 A4-lines=0 :: bundle: sources: check 0 s, copy 0 s, index 0 s, notices 1 s | bundle written: <t>/root1/bundle-amd64 :: record now=link-><t>/root1/other-users-fifo fifo owner=10002 mode prw-------->prw-r--r--
+  [given] root run, link->uid-10002 FIFO: exit=0 docker-beyond-info=39 writes=12 A4-lines=0 :: bundle: sources: check 0 s, copy 0 s, index 0 s, notices 0 s | bundle written: <t>/root2/bundle-amd64 :: record now=link-><t>/root2/other-users-fifo fifo owner=10002 mode prw-------->prw-r--r--
+ok
+
+----------------------------------------------------------------------
+Ran 1 test in 4.913s
+
+OK

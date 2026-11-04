@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Runs inside the ke-gates container, cwd /work. $1 = label, $2 = cov|nocov.
+# Mirrors scripts/test.sh's top-level unit run (one process, all tests/test*.py
+# modules, -v), wrapping unittest with /prof/profrun.py for per-test timings.
+set -uo pipefail
+label="$1"; mode="$2"
+shopt -s nullglob
+mods=()
+for f in ${ONLY:-tests/test*.py}; do m="${f%.py}"; mods+=("${m//\//.}"); done
+echo "== $label $mode: ${#mods[@]} modules; nproc=$(nproc); head=$(git rev-parse --short HEAD 2>&1)"
+TIMEFORMAT="== $label $mode: real %R s, user %U s, sys %S s (incl. all children)"
+rc=0
+if [ "$mode" = cov ]; then
+  uv run --locked python -m coverage erase
+  time { uv run --locked python -m coverage run -p --data-file=/tmp/.coverage.toplevel \
+    /prof/profrun.py "/out/$label-$mode.json" -v "${mods[@]}" > "/out/$label-$mode.log" 2>&1 || rc=$?; }
+else
+  time { uv run --locked python /prof/profrun.py "/out/$label-$mode.json" -v "${mods[@]}" \
+    > "/out/$label-$mode.log" 2>&1 || rc=$?; }
+fi
+echo "== $label $mode: rc=$rc"
+tail -4 "/out/$label-$mode.log"
+exit "$rc"

@@ -1,0 +1,126 @@
+platform-sbom U7d rework r1 (code) and S8 lock review: security probes (security, 2026-10-26 UTC)
+Tree: HEAD 86f7831 (U7c) + working tree; sources_resolve.py, sbom_check.py, sources_lock.sh == u7d/r1-target-*; docker/sources.lock.json as written by lock-run-4.
+Scripts: u7d/security_r1_probes.py (code, loopback + fake network), u7d/security_s8_review.py (the lock, no network). Network re-fetches: part C below.
+Gates image, python -I, COMPOSE_PROJECT_NAME=ke-security-u5, scratch dir read-only at /scratch. Output unedited except
+compose/uv preamble lines dropped and raw control bytes in output shown as <xNN>.
+
+apk:x@1-r0: main/x/sub/l -> real (symlink to a locked file, skipped)
+== R1-A1. Real opener: what URLError reasons become (loopback) ==
+  TLS handshake to a silent server (timeout 1 s): TimeoutError (URLError=False) -> retried
+  TLS handshake answered with plain text:      SSLError (URLError=False) -> not retried
+  connection refused (closed port):           ConnectionRefusedError (URLError=False) -> not retried
+  unknown host name:                          gaierror (URLError=False) -> not retried
+  _transport on ssl.SSLError: ResolveError; on TimeoutError: _Retryable
+
+== R1-A2. Item 8: aports symlinks (_check_link with a fake files API) ==
+  link to a sibling regular blob                       -> skipped (accepted)
+  link to a blob in another directory                  -> refused: x: main/x/sub/l at 1111111111111111111111111111111111111111 is not a regular fil
+  link with ../                                        -> refused: x: main/x/sub/l at 1111111111111111111111111111111111111111 is not a regular fil
+  link to a subdirectory path real/x                   -> refused: x: main/x/sub/l at 1111111111111111111111111111111111111111 is not a regular fil
+  link to a name not in the tree                       -> refused: x: main/x/sub/l at 1111111111111111111111111111111111111111 is not a regular fil
+  link to .                                            -> refused: x: main/x/sub/l at 1111111111111111111111111111111111111111 is not a regular fil
+  link target with NUL                                 -> refused: x: main/x/sub/l at 1111111111111111111111111111111111111111 is not a regular fil
+  link target non-ASCII                                -> refused: x: main/x/sub/l at 1111111111111111111111111111111111111111 is not a regular fil
+  content not strict base64 (spaces)                   -> refused: x: main/x/sub/l at 1111111111111111111111111111111111111111 is not a regular fil
+  content_sha256 does not match content                -> refused: x: main/x/sub/l at 1111111111111111111111111111111111111111 is not a regular fil
+  size 2000 (> 1 KiB)                                  -> refused: x: main/x/sub/l at 1111111111111111111111111111111111111111 is not a regular fil
+  size 0                                               -> refused: x: main/x/sub/l at 1111111111111111111111111111111111111111 is not a regular fil
+  encoding text                                        -> refused: x: main/x/sub/l at 1111111111111111111111111111111111111111 is not a regular fil
+  link named in sha512sums                             -> refused: x: l is a symlink named in sha512sums
+  link to the APKBUILD (same dir? APKBUILD is top)     -> refused: x: main/x/sub/l at 1111111111111111111111111111111111111111 is not a regular fil
+  _tree_blobs: a link whose name equals a blob name -> refused: x: two files named a at 1111111111111111111111111111111111111111
+  _tree_blobs: a 120000 link with links=None (old callers) -> refused: x: main/x/l at 1111111111111111111111111111111111111111 is n
+
+== R1-A3. Items 10 and 12 in lock-check (fixture lock) ==
+  baseline problems: []
+  apk GitLab file, size 0, empty sha256                    accepted=True  []
+  apk GitLab file, size 0, other sha256                    accepted=False ['lock: apk:busybox@1.37.0-r30: empty.patch: size 0 but sha256 is not the empty hash']
+  apk GitLab file, size -1                                 accepted=False ['lock: apk:busybox@1.37.0-r30: size -1 is not an int in 0..4294967296']
+  apk distfiles file, size 0, empty hashes                 accepted=False ['lock: apk:busybox@1.37.0-r30: size 0 is not an int in 1..4294967296']
+  apk GitLab sha512 file, size 0, wrong sha512             accepted=False ['lock: apk:busybox@1.37.0-r30: e.patch: size 0 but sha512 is not the empty hash']
+  deb file size 0 (empty hash)                             accepted=False ['lock: deb:bash@5.2.15-2: size 0 is not an int in 1..4294967296']
+  name with a leading underscore (_service)                accepted=True  []
+  name '_' alone                                           accepted=True  []
+  name '_..x' (dot-dot)                                    accepted=False ['lock: apk:busybox@1.37.0-r30: _..x: not a safe file name']
+  name '-x' (leading dash still refused)                   accepted=False ['lock: apk:busybox@1.37.0-r30: -x: not a safe file name']
+  N1: pgdg entry suite trixie for bookworm packages -> ['lock: pgdg:postgresql-common@293.pgdg12+1: suite trixie-pgdg-archive is not bookworm-pgdg-archive (from postgr']
+
+
+=== PART B: lock review in the gates image (u7d/security_s8_review.py) ===
+== S8-1. lock_problems (committed lock, committed policy, six U3 fixtures, amd64) ==
+  problems: []
+  canonical text: True | bytes 472945 | CRLF present: False
+  committed policy hosts: 10 | keys: ['always', 'exempt', 'hosts']
+
+== S8-2. Shape review of all entries ==
+  entries: 182 {'apk': 19, 'deb': 152, 'maven': 1, 'neo4j': 1, 'pgdg': 3, 'pypi': 5, 'temurin': 1}
+  files: 872
+  arches values: Counter({('amd64',): 182})
+  origin values: Counter({('deb', 'generated'): 152, ('apk', 'generated'): 19, ('pypi', 'generated'): 5, ('pgdg', 'generated'): 3, ('maven', 'generated'): 1, ('neo4j', 'manual'): 1, ('temurin', 'generated'): 1})
+  (kind, host) pairs: {('apk', 'distfiles.alpinelinux.org'): 21, ('apk', 'gitlab.alpinelinux.org'): 344, ('deb', 'snapshot.debian.org'): 491, ('maven', 'repo1.maven.org'): 1, ('neo4j', 'github.com'): 1, ('pgdg', 'apt-archive.postgresql.org'): 8, ('pypi', 'files.pythonhosted.org'): 5, ('temurin', 'github.com'): 1}
+  URL shapes: {'https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/<P>/raw?ref=<commit>': 344, 'https://distfiles.alpinelinux.org/distfiles/<branch>/<name>': 21, 'https://snapshot.debian.org/file/<sha1>': 491, 'https://repo1.maven.org/maven2/<g>/<a>/<v>/<name>': 1, 'https://github.com/neo4j/neo4j/archive/refs/tags/5.26.32.tar.gz': 1, 'https://apt-archive.postgresql.org/pub/repos/apt/pool/main/<p>/<src>/<name>': 8, 'https://files.pythonhosted.org/packages/<2>/<2>/<60>/<name>': 5, 'https://github.com/adoptium/temurin21-binaries/releases/download/<tag>/<asset>': 1}
+  (kind, alg, from) templates:
+      36 ('apk', 'sha256', 'gitlab files API content_sha256 at <commit>')
+     329 ('apk', 'sha512', 'APKBUILD sha512sums at <commit>')
+     152 ('deb', 'sha1', 'snapshot.debian.org mr/package fileinfo')
+     339 ('deb', 'sha256', '<dsc> Checksums-Sha256')
+       1 ('maven', 'sha1', '<jar>.sha1')
+       1 ('neo4j', 'sha256', 'second fetch: security 2026-10-25, docs/evidence/platform-sbom/sources-provenance.md')
+       5 ('pgdg', 'sha256', '<dsc> Checksums-Sha256')
+       3 ('pgdg', 'sha256', 'apt-archive.postgresql.org bookworm-pgdg-archive Sources')
+       3 ('pypi', 'sha256', 'pypi.org JSON <n> <v>')
+       2 ('pypi', 'sha256', 'uv.lock')
+       1 ('temurin', 'sha256', '<asset>.sha256.txt')
+  sizes: min 14 max 151589656 total 1327035158; size 0: []
+  URLs used more than once: 11
+    2x https://snapshot.debian.org/file/bf7badf7e248e0ecf465d33c2f5aeec774209227 [('deb:bzip2@1.0.8-5', 'bzip2_1.0.8.orig.tar.gz', 'ab5a03176ee1'), ('deb:bzip2@1.0.8-6', 'bzip2_1.0.8.orig.tar.gz', 'ab5a03176ee1')]
+    2x https://snapshot.debian.org/file/e15444a93853f693774df003f87d9040ab600a5e [('deb:dash@0.5.12-12', 'dash_0.5.12.orig.tar.gz', '6a474ac46e8b'), ('deb:dash@0.5.12-2', 'dash_0.5.12.orig.tar.gz', '6a474ac46e8b')]
+    2x https://snapshot.debian.org/file/c2e52e52021c4df2ebff57f1fb68e2879d65376a [('deb:db5.3@5.3.28+dfsg2-1', 'db5.3_5.3.28+dfsg2.orig.tar.xz', 'ad41b507415d'), ('deb:db5.3@5.3.28+dfsg2-9', 'db5.3_5.3.28+dfsg2.orig.tar.xz', 'ad41b507415d')]
+    2x https://snapshot.debian.org/file/7e5112d68eef5677e474d062282a0e1d1f19904c [('deb:keyutils@1.6.3-2', 'keyutils_1.6.3.orig.tar.gz', 'a61d5706136a'), ('deb:keyutils@1.6.3-6', 'keyutils_1.6.3.orig.tar.gz', 'a61d5706136a')]
+    2x https://snapshot.debian.org/file/c078bdf2469d666626a61152f640531829994005 [('deb:libnsl@1.3.0-2', 'libnsl_1.3.0.orig.tar.xz', 'eac3062957fa'), ('deb:libnsl@1.3.0-3', 'libnsl_1.3.0.orig.tar.xz', 'eac3062957fa')]
+    2x https://snapshot.debian.org/file/482ccf337df6318fad5c2621afbe6794d58a0ec5 [('deb:perl@5.36.0-7+deb12u3', 'perl_5.36.0.orig-regen-configure.tar.xz', '10ac353bc5a9'), ('deb:perl@5.36.0-7+deb12u4', 'perl_5.36.0.orig-regen-configure.tar.xz', '10ac353bc5a9')]
+    2x https://snapshot.debian.org/file/938c56a77ae094eb7f5019318a5e4efb2d9c74fa [('deb:perl@5.36.0-7+deb12u3', 'perl_5.36.0.orig.tar.xz', '0f386dccbee8'), ('deb:perl@5.36.0-7+deb12u4', 'perl_5.36.0.orig.tar.xz', '0f386dccbee8')]
+    2x https://snapshot.debian.org/file/97ad98be243a857b639c0f3da2fe7d81c6d1d36e [('deb:readline@8.2-1.3', 'readline_8.2.orig.tar.gz', '3feb7171f16a'), ('deb:readline@8.2-6', 'readline_8.2.orig.tar.gz', '3feb7171f16a')]
+    2x https://snapshot.debian.org/file/8ded1b543f1f558cbd5d7b713602f6a8ee84bde4 [('deb:sed@4.9-1+deb12u1', 'sed_4.9.orig.tar.xz', '6e226b732e1c'), ('deb:sed@4.9-2+deb13u1', 'sed_4.9.orig.tar.xz', '6e226b732e1c')]
+    2x https://snapshot.debian.org/file/c29df8058b6279bfab2744f3e79b2940229207a3 [('deb:xz-utils@5.8.1-1+deb13u1', 'xz-utils_5.8.1.orig.tar.xz', '0b54f79df859'), ('deb:xz-utils@5.8.1-1+deb13u2', 'xz-utils_5.8.1.orig.tar.xz', '0b54f79df859')]
+  one sha256 under several URLs: 147
+  one URL with different sha256s: []
+  queries in URLs (kinds): Counter({'apk': 344})
+  any signed-query marker (sig=, X-Amz, jwt, token, __goaway): []
+
+== S8-3. The manual neo4j entry ==
+   {"arches": ["amd64"], "files": [{"name": "5.26.32.tar.gz", "sha256": "182ae2e5c3807bc3d7a09770dbf450d2e8667080bde93b3b6c829125db0f91e3", "size": 20907800, "upstream": {"alg": "sha256", "from": "second fetch: security 2026-10-25, docs/evidence/platform-sbom/sources-provenance.md", "value": "182ae2e5c3807bc3d7a09770dbf450d2e8667080bde93b3b6c829125db0f91e3"}, "url": "https://github.com/neo4j/neo4j/archive/refs/tags/5.26.32.tar.gz"}], "kind": "neo4j", "origin": "manual"}
+
+== S8-4. Spot-check candidates (smallest file per kind) ==
+  apk: apk:busybox@1.37.0-r30 klogd.confd size=14 sha256=f6cd63d6e5f384dcb01a4906c9a0b6c5923794380235dfe0d79b48a686b03c5d url=https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/repository/files/main%2Fbusybox%2Fklogd.confd/raw?ref=1e823a60eb85606954b3a5af5f8e5bbd1ea680cf
+  deb: deb:less@590-2.1~deb12u2 less_590.orig.tar.gz.asc size=163 sha256=1bd54dbadb45eeaeaf58cee2b7b4a701c634c11866082bc494752838af37c3db url=https://snapshot.debian.org/file/ef145bfa44358173e9c405bdc3df92f3493dc805
+  maven: maven:javax.xml.bind:jaxb-api@2.2.12 jaxb-api-2.2.12-sources.jar size=245023 sha256=fd104e7b20b6dbcd1bb27803aaca963a8393ad9b3e39eb8a5ba1b4da1462182e url=https://repo1.maven.org/maven2/javax/xml/bind/jaxb-api/2.2.12/jaxb-api-2.2.12-sources.jar
+  neo4j: neo4j:neo4j@5.26.32 5.26.32.tar.gz size=20907800 sha256=182ae2e5c3807bc3d7a09770dbf450d2e8667080bde93b3b6c829125db0f91e3 url=https://github.com/neo4j/neo4j/archive/refs/tags/5.26.32.tar.gz
+  pgdg: pgdg:postgresql-common@293.pgdg12+1 postgresql-common_293.pgdg12+1.dsc size=1538 sha256=fc1b229024670e6d0cf1c40f3987bf1509aecf146791a6e22966fbf764c391da url=https://apt-archive.postgresql.org/pub/repos/apt/pool/main/p/postgresql-common/postgresql-common_293.pgdg12+1.dsc
+  pypi: pypi:autocommand@2.2.2 autocommand-2.2.2.tar.gz size=22894 sha256=878de9423c5596491167225c2a455043c3130fb5b7286ac83443d45e74955f34 url=https://files.pythonhosted.org/packages/5b/18/774bddb96bc0dc0a2b8ac2d2a0e686639744378883da0fc3b96a54192d7a/autocommand-2.2.2.tar.gz
+  temurin: temurin:jdk-21.0.12.1+1 OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz size=115126841 sha256=573057d03584ae793fb7ec9a14c76d826d9187a53efeefd99da47403a5308234 url=https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz
+  apk distfiles: apk:alpine-baselayout@3.7.1-r8 protocols-6.4 size=3144 sha256=4959498abbadaa1e50894a266f8d0d94500101cfe5b5f09dcad82e9d5bdfab46 sha512=3a00083bcdf5a9e8.. url=https://distfiles.alpinelinux.org/distfiles/v3.23/protocols-6.4
+  deb .dsc: deb:netbase@6.4 netbase_6.4.dsc size=898 sha256=dc26cfcaa49fd874cc27c65216b2f8b6d3ad62845b78da4bdf0aea55592af756 sha1=66c74bb2deb9285d044701e86fa37123d4e03c1d url=https://snapshot.debian.org/file/66c74bb2deb9285d044701e86fa37123d4e03c1d
+  maven: maven:javax.xml.bind:jaxb-api@2.2.12 jaxb-api-2.2.12-sources.jar size=245023 sha256=fd104e7b20b6dbcd1bb27803aaca963a8393ad9b3e39eb8a5ba1b4da1462182e upstream={'alg': 'sha1', 'from': 'jaxb-api-2.2.12-sources.jar.sha1', 'value': '614c7681949a44e0884a1745ac21c4eb6811c019'} url=https://repo1.maven.org/maven2/javax/xml/bind/jaxb-api/2.2.12/jaxb-api-2.2.12-sources.jar
+  temurin: temurin:jdk-21.0.12.1+1 OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz size=115126841 sha256=573057d03584ae793fb7ec9a14c76d826d9187a53efeefd99da47403a5308234 upstream={'alg': 'sha256', 'from': 'OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz.sha256.txt', 'value': '573057d03584ae793fb7ec9a14c76d826d9187a53efeefd99da47403a5308234'} url=https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz
+
+=== PART C: S8 network checks from the dev box (2026-10-26T06:21-06:23Z; curl https only, no profile path) ===
+gpgv --keyring <key from postgres:16-bookworm@sha256:0ea6700a... /usr/local/share/keyrings/postgres.gpg.asc> docs/evidence/platform-sbom/u7d/pgdg-bookworm-pgdg-archive.InRelease
+  gpgv: Signature made Tue Oct 20 17:04:47 2026 PDT
+  gpgv:                using RSA key B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8
+  gpgv: Good signature from "PostgreSQL Debian Repository"      (rc 0)
+  saved InRelease sha256 ed9bd2c7f72b2f01e4d05c9be0c5683611cef1e9a1e58ff40b3e473a44e512ec = the design-review fetch (5621 B)
+  its SHA256 line: 9550c528bc74dc1ebfdc799385e0e8c9f211dc4bed5dbbb6bee5962b016fe722 5043212 main/source/Sources
+GET https://apt-archive.postgresql.org/pub/repos/apt/dists/bookworm-pgdg-archive/main/source/Sources -> 200 5043212 B, no redirect,
+  sha256 9550c528bc74dc1ebfdc799385e0e8c9f211dc4bed5dbbb6bee5962b016fe722 (= the signed line)
+3 .dsc from https://apt-archive.postgresql.org/pub/repos/apt/pool/main/p/<src>/<dsc> -> 200, no redirect:
+  pgdg:postgresql-16@16.15-1.pgdg12+2: 1 stanza, Directory pool/main/p/postgresql-16, lock files == stanza files: True; .dsc d98708df.. 3229 B == lock: True
+  pgdg:postgresql-18@18.6-1.pgdg12+2: 1 stanza, Directory pool/main/p/postgresql-18, lock files == stanza files: True; .dsc 76fda1b6.. 3528 B == lock: True
+  pgdg:postgresql-common@293.pgdg12+1: 1 stanza, Directory pool/main/p/postgresql-common, lock files == stanza files: True; .dsc fc1b2290.. 1538 B == lock: True
+Spot re-fetch, one file per kind (curl -L --max-redirs 5, https only; final host shown, query not recorded):
+  deb:netbase@6.4 netbase_6.4.dsc            snapshot.debian.org, 0 redirects: sha256, size 898, sha1 (= its /file/<sha1>) all == lock
+  apk:busybox@1.37.0-r30 klogd.confd         gitlab.alpinelinux.org API raw, 0 redirects: sha256, size 14, sha512 == lock
+  apk:alpine-baselayout@3.7.1-r8 protocols-6.4  distfiles.alpinelinux.org, 0 redirects: sha256, size 3144, sha512 == lock
+  maven:javax.xml.bind:jaxb-api@2.2.12 jar   repo1.maven.org, 0 redirects: sha256, size 245023, sha1 == lock; the .sha1 body 614c7681... == sha1 of the jar
+  pypi:autocommand@2.2.2 sdist               files.pythonhosted.org, 0 redirects: sha256, size 22894 == lock
+  temurin sidecar .sha256.txt                github.com -> release-assets.githubusercontent.com (1 redirect): 573057d0...8234 == lock upstream.value

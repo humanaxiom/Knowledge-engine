@@ -1,0 +1,110 @@
+# platform-sbom Q83 (a) re-lock: fixture derivation (tester, 2026-11-02)
+# Paths: <scratch> = the session scratchpad. SBOM: <scratch>/relock-20261102-sboms/ke-app.spdx.json (untrusted; read by python -I from <scratch>/tools-relockfix/).
+
+## 1. Derivation method (u3 precedent): tests/sbom_support.py l.176-183 (fixtures = <image>.pkgs.tsv); the tsv subcommand of the u3 tester helper sbom_evidence.py, docs/evidence/platform-sbom/u3/windows-run.txt l.1982-1995; U7e (0630586) replaced ke-app.pkgs.tsv whole from a fresh SBOM the same way.
+==== <scratch>/tools-relockfix/sbom_tsv.py
+"""Tester helper (relock fixtures 2026-11-02): the tsv subcommand of the u3 sbom_evidence.py
+(docs/evidence/platform-sbom/u3/windows-run.txt l.1982-1995), verbatim logic: purl ('-' if none),
+versionInfo, licenseDeclared|licenseConcluded, document order, LF. argv: <spdx.json> <out.tsv>"""
+import json, pathlib, sys
+
+def tsv(path):
+    doc = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
+    out = []
+    for p in doc.get("packages") or []:
+        purl = next((r.get("referenceLocator") for r in p.get("externalRefs") or [] if r.get("referenceType") == "purl"), None) or "-"
+        out.append(f"{purl}\t{p.get('versionInfo', '')}\t{p.get('licenseDeclared', '')}|{p.get('licenseConcluded', '')}")
+    return "\n".join(out) + "\n"
+
+pathlib.Path(sys.argv[2]).write_bytes(tsv(sys.argv[1]).encode("utf-8"))
+
+$ .venv/Scripts/python.exe -I <scratch>/tools-relockfix/sbom_tsv.py <scratch>/relock-20261102-sboms/ke-app.spdx.json <scratch>/tools-relockfix/ke-app.relock.pkgs.tsv
+SBOM sha256: 1f3f8d8112c263f3a2b95f34d119dc260ec94e26a076453df3128d6af0bfaec0 (compare relock-20261102/sboms.md)
+derived TSV sha256: d874eed69ba885ad5848a1d69d3edc7dc5c393e459486fbd95d0fd299871615f, 154 rows
+
+$ diff <HEAD tests/fixtures/sbom-u3/ke-app.pkgs.tsv> <derived>
+83,84c83,84
+< pkg:deb/debian/libsasl2-2@2.1.28%2Bdfsg-10?arch=amd64&distro=debian-12.15&upstream=cyrus-sasl2	2.1.28+dfsg-10	BSD-2-Clause AND LicenseRef-BSD-2.2-clause AND BSD-3-Clause AND LicenseRef-BSD-3-clause-JANET AND LicenseRef-BSD-3-clause-PADL AND BSD-4-Clause AND LicenseRef-BSD-4-clause-KTH AND BSD-4-Clause-UC AND FSFULLR AND GPL-3.0-only AND GPL-3.0-or-later AND LicenseRef-IBM-as-is AND MIT-CMU AND LicenseRef-MIT-Export AND LicenseRef-MIT-OpenVision AND LicenseRef-OpenLDAP AND OpenSSL AND RSA-MD AND LicenseRef-SSLeay|NOASSERTION
+< pkg:deb/debian/libsasl2-modules-db@2.1.28%2Bdfsg-10?arch=amd64&distro=debian-12.15&upstream=cyrus-sasl2	2.1.28+dfsg-10	BSD-2-Clause AND LicenseRef-BSD-2.2-clause AND BSD-3-Clause AND LicenseRef-BSD-3-clause-JANET AND LicenseRef-BSD-3-clause-PADL AND BSD-4-Clause AND LicenseRef-BSD-4-clause-KTH AND BSD-4-Clause-UC AND FSFULLR AND GPL-3.0-only AND GPL-3.0-or-later AND LicenseRef-IBM-as-is AND MIT-CMU AND LicenseRef-MIT-Export AND LicenseRef-MIT-OpenVision AND LicenseRef-OpenLDAP AND OpenSSL AND RSA-MD AND LicenseRef-SSLeay|NOASSERTION
+---
+> pkg:deb/debian/libsasl2-2@2.1.28%2Bdfsg-10%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=cyrus-sasl2	2.1.28+dfsg-10+deb12u1	BSD-2-Clause AND LicenseRef-BSD-2.2-clause AND BSD-3-Clause AND LicenseRef-BSD-3-clause-JANET AND LicenseRef-BSD-3-clause-PADL AND BSD-4-Clause AND LicenseRef-BSD-4-clause-KTH AND BSD-4-Clause-UC AND FSFULLR AND GPL-3.0-only AND GPL-3.0-or-later AND LicenseRef-IBM-as-is AND MIT-CMU AND LicenseRef-MIT-Export AND LicenseRef-MIT-OpenVision AND LicenseRef-OpenLDAP AND OpenSSL AND RSA-MD AND LicenseRef-SSLeay|NOASSERTION
+> pkg:deb/debian/libsasl2-modules-db@2.1.28%2Bdfsg-10%2Bdeb12u1?arch=amd64&distro=debian-12.15&upstream=cyrus-sasl2	2.1.28+dfsg-10+deb12u1	BSD-2-Clause AND LicenseRef-BSD-2.2-clause AND BSD-3-Clause AND LicenseRef-BSD-3-clause-JANET AND LicenseRef-BSD-3-clause-PADL AND BSD-4-Clause AND LicenseRef-BSD-4-clause-KTH AND BSD-4-Clause-UC AND FSFULLR AND GPL-3.0-only AND GPL-3.0-or-later AND LicenseRef-IBM-as-is AND MIT-CMU AND LicenseRef-MIT-Export AND LicenseRef-MIT-OpenVision AND LicenseRef-OpenLDAP AND OpenSSL AND RSA-MD AND LicenseRef-SSLeay|NOASSERTION
+154c154
+< pkg:oci/%2Fin%2Fke-app.tar@sha256%3A1c7c08b26ed20db1b2a278edc9c7b924c1829a65f2b95dc2df01a10714863f7d?arch=amd64	sha256:1c7c08b26ed20db1b2a278edc9c7b924c1829a65f2b95dc2df01a10714863f7d	NOASSERTION|NOASSERTION
+---
+> pkg:oci/%2Fin%2Fke-app.tar@sha256%3Ad3b2c8407297d6fcc3523cc3a1ed98eefc475edbb84bec4e7b305ece9118981e?arch=amd64	sha256:d3b2c8407297d6fcc3523cc3a1ed98eefc475edbb84bec4e7b305ece9118981e	NOASSERTION|NOASSERTION
+(3 rows: libsasl2-2, libsasl2-modules-db (version + purl), and the pkg:oci image-root row (new image digest; u3_rows() skips it, spdx_doc() adds its own root). The derived file was copied over the fixture whole.)
+
+$ docker run --rm --entrypoint dpkg-query ke-app:local -W libsasl2-2 libsasl2-modules-db
+libsasl2-2:amd64	2.1.28+dfsg-10+deb12u1
+libsasl2-modules-db:amd64	2.1.28+dfsg-10+deb12u1
+$ docker image inspect ke-app:local --format "{{.Id}} {{.Created}}"
+sha256:f887d8ae70c54b055aafe4ff5afaacd91b0c660ca159d83ba56442ae4acb95f5 2026-11-02T23:53:17.413029073Z
+
+## 2. Expected full-plan tuple, computed with the test's own function (load_sbom_check().fetch_plan(lock, arch, 'full'))
+==== <scratch>/tools-relockfix/plan_tuple.py
+"""Tester helper: the expected full-plan tuple of test_full_plan_unchanged, computed with the
+function the test calls (tests.test_sbom_bundle.load_sbom_check().fetch_plan(lock, "amd64", "full")).
+argv: <repo root> <lock json> [<lock json>...]"""
+import json, pathlib, sys
+sys.path.insert(0, sys.argv[1])
+from tests.test_sbom_bundle import load_sbom_check
+S = load_sbom_check()
+for path in sys.argv[2:]:
+    lock = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
+    plan = [tuple(x) for x in S.fetch_plan(lock, "amd64", "full")]
+    shas = {f["sha256"]: f["size"] for _, f in plan}
+    keys = {k for k, _ in plan}
+    print(f"{pathlib.Path(path).name}: (keys, files, distinct sha256, bytes of distinct) = "
+          f"{(len(keys), len(plan), len(shas), sum(shas.values()))}; arm64 plan rows {len(S.fetch_plan(lock, 'arm64', 'full'))}")
+    print(f"  components listed {len(lock['components'])}")
+    if len(sys.argv) > 3 and path == sys.argv[3]:
+        old = json.loads(pathlib.Path(sys.argv[2]).read_text(encoding="utf-8"))
+        oplan = [tuple(x) for x in S.fetch_plan(old, "amd64", "full")]
+        print("  keys added:", sorted(keys - {k for k, _ in oplan}), "removed:", sorted({k for k, _ in oplan} - keys))
+        new = [f for k, f in plan if k not in {kk for kk, _ in oplan}]
+        oshas = {f["sha256"] for _, f in oplan}
+        for f in new:
+            print(f"  + {f['name']} size {f['size']} sha256 {f['sha256']} {'(already in plan)' if f['sha256'] in oshas else '(new sha256)'}")
+$ git show HEAD:docker/sources.lock.json > <scratch>/tools-relockfix/sources.lock.HEAD.json
+$ .venv/Scripts/python.exe -I <scratch>/tools-relockfix/plan_tuple.py <repo> <scratch>/tools-relockfix/sources.lock.HEAD.json <repo>/docker/sources.lock.json
+sources.lock.HEAD.json: (keys, files, distinct sha256, bytes of distinct) = (183, 876, 716, 1180936586); arm64 plan rows 0
+  components listed 183
+sources.lock.json: (keys, files, distinct sha256, bytes of distinct) = (184, 879, 718, 1181039856); arm64 plan rows 0
+  components listed 184
+  keys added: ['deb:cyrus-sasl2@2.1.28+dfsg-10+deb12u1'] removed: []
+  + cyrus-sasl2_2.1.28+dfsg-10+deb12u1.dsc size 3670 sha256 088990ef19c88abfbf66321eba0d0c3566ee2a5ce135e165eff5b6c2716a2ff0 (new sha256)
+  + cyrus-sasl2_2.1.28+dfsg.orig.tar.xz size 797472 sha256 a15886d7da5958bd27f35b7c871dd872f6dc5b9917c9b6b15e3de014c7dab3d9 (already in plan)
+  + cyrus-sasl2_2.1.28+dfsg-10+deb12u1.debian.tar.xz size 99600 sha256 390fa9435dc9e7de7c4fe18423cf04b5c2e54050ef0fd344972dab50980fb8b4 (new sha256)
+check: 1180936586 + 3670 + 99600 = 1181039856; 876+3 = 879; 716+2 = 718
+
+## 3. u8/expected.md 'full, amd64' key line regenerated from the new plan; sample unchanged
+==== <scratch>/tools-relockfix/u8_check.py
+"""Tester helper: sample/full plans of the HEAD and regenerated locks with sbom_check (the test's
+functions), and the u8/expected.md "full, amd64" key line regenerated from the new plan.
+argv: <repo root> <HEAD lock> <new lock> <expected.md> <out keyline file>"""
+import json, pathlib, re, sys
+sys.path.insert(0, sys.argv[1])
+from tests.test_sbom_bundle import load_sbom_check
+S = load_sbom_check()
+old, new = (json.loads(pathlib.Path(p).read_text(encoding="utf-8")) for p in sys.argv[2:4])
+for arch in ("amd64", "arm64"):
+    so, sn = S.sample_keys(old, arch), S.sample_keys(new, arch)
+    po, pn = S.fetch_plan(old, arch, "sample"), S.fetch_plan(new, arch, "sample")
+    print(f"sample {arch}: keys equal {so == sn}; plan equal {[tuple(x) for x in po] == [tuple(x) for x in pn]}; keys {sn}")
+keys = sorted({k for k, _ in S.fetch_plan(new, "amd64", "full")})
+line = "Keys: " + ", ".join(f"`{k}`" for k in keys)
+md = pathlib.Path(sys.argv[4]).read_text(encoding="utf-8")
+doc_line = next(l for l in md.splitlines() if l.startswith("Keys: `"))
+doc_keys = re.findall(r"`([^`]+)`", doc_line)
+okeys = sorted({k for k, _ in S.fetch_plan(old, "amd64", "full")})
+print("doc key line == HEAD-lock full keys (same order):", doc_keys == okeys, len(doc_keys))
+print("new keys - doc keys:", sorted(set(keys) - set(doc_keys)), "doc keys - new keys:", sorted(set(doc_keys) - set(keys)))
+pathlib.Path(sys.argv[5]).write_text(line + "\n", encoding="utf-8")
+print("new key line written,", len(keys), "keys")
+sample amd64: keys equal True; plan equal True; keys ['apk:alpine-baselayout@3.7.1-r8', 'deb:hostname@3.23+nmu1', 'maven:javax.xml.bind:jaxb-api@2.2.12', 'neo4j:neo4j@5.26.32', 'pgdg:postgresql-common@293.pgdg12+1', 'pypi:autocommand@2.2.2', 'temurin:jdk-21.0.12.1+1']
+sample arm64: keys equal True; plan equal True; keys []
+doc key line == HEAD-lock full keys (same order): False 184
+new keys - doc keys: [] doc keys - new keys: []
+new key line written, 184 keys
+(run after the edit, so 'doc key line == HEAD-lock' is now False by design; before the edit it printed True 183 and the only new key was deb:cyrus-sasl2@2.1.28+dfsg-10+deb12u1)

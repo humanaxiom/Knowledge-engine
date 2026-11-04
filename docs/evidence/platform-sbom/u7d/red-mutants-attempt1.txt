@@ -1,0 +1,80 @@
+ Container ke-tester-u7d-gates-run-331e62835945 Creating 
+ Container ke-tester-u7d-gates-run-331e62835945 Created 
+   Building knowledge-engine @ file:///work
+      Built knowledge-engine @ file:///work
+Uninstalled 1 package in 1ms
+Installed 1 package in 1ms
+ok  [target] TARGET: the 34 U7d tests                                               must pass | no problem
+BAD [target] TARGET: the 69 U7b and U7c tests                                       must pass | test_sources_lock_sh_shape: + []
+ok  [target] TARGET: 24 U7a/U7c lock and U6 policy tests                            must pass | no problem
+ok  [u7c] U7c baseline: U7dRetryConstantsTest.test_constants                     must fail | test_constants: AssertionError: None != 3
+ok  [u7c] U7c baseline: U7dRetryConstantsTest.test_fetch_retries_nothing_by_default (guard) must pass | no problem
+ok  [u7c] U7c baseline: U7dRetryConstantsTest.test_fetch_with_retries            must fail | test_fetch_with_retries: TypeError: fetch() got an unexpected keyword argument 'retries'
+ok  [u7c] U7c baseline: U7dRetryTest.test_a_5xx_at_a_hop_restarts_from_the_first_url must fail | test_a_5xx_at_a_hop_restarts_from_the_first_url: AssertionError: ResolveError('neo4j:neo4j@5.26.32: codeload.g
+ok  [u7c] U7c baseline: U7dRetryTest.test_a_query_is_omitted_from_retry_lines    must fail | test_a_query_is_omitted_from_retry_lines: IndexError: list index out of range
+ok  [u7c] U7c baseline: U7dRetryTest.test_never_retried (guard)                  must pass | no problem
+ok  [u7c] U7c baseline: U7dRetryTest.test_retried_statuses                       must fail | test_retried_statuses: AssertionError: ResolveError('maven:javax.xml.bind:jaxb-api@2.2.12: repo1.maven.org: HT
+ok  [u7c] U7c baseline: U7dRetryTest.test_the_budget_is_exhausted                must fail | test_the_budget_is_exhausted: + [10, 30, 60]
+ok  [u7c] U7c baseline: U7dRetryTest.test_the_lines_and_waits                    must fail | test_the_lines_and_waits: AssertionError: ResolveError('maven:javax.xml.bind:jaxb-api@2.2.12: repo1.maven.org:
+ok  [u7c] U7c baseline: U7dRetryTest.test_the_run_budget                         must fail | test_the_run_budget: + maven:javax.xml.bind:jaxb-api@2.2.12: retry budget exhausted (2)
+ok  [u7c] U7c baseline: U7dRetryTest.test_the_run_deadline                       must fail | test_the_run_deadline: + maven:javax.xml.bind:jaxb-api@2.2.12: run deadline -1 s passed
+ok  [u7c] U7c baseline: U7dRetryTest.test_the_snapshot_pause_holds_for_retries   must fail | test_the_snapshot_pause_holds_for_retries: AssertionError: ResolveError('deb:bash@5.2.15-2: snapshot.debian.or
+ok  [u7c] U7c baseline: U7dRetryTest.test_timeouts_are_retried                   must fail | test_timeouts_are_retried: AssertionError: ResolveError('maven:javax.xml.bind:jaxb-api@2.2.12: repo1.maven.org
+ok  [u7c] U7c baseline: U7dCarriedTest.test_a_dsc_with_its_first_entry_on_the_field_line (guard) must pass | no problem
+ok  [u7c] U7c baseline: U7dCarriedTest.test_a_line_that_is_not_a_field           must fail | test_a_line_that_is_not_a_field: AssertionError: ResolveError not raised
+ok  [u7c] U7c baseline: U7dCarriedTest.test_parse_deb822                         must fail | test_parse_deb822: AssertionError: scripts/sources_resolve.py has no parse_deb822 (U7b interface, tests/test_s
+ok  [u7c] U7c baseline: U7dPgdgRouteTest.test_a_malformed_route                  must fail | test_a_malformed_route: AssertionError: ResolveError not raised
+ok  [u7c] U7c baseline: U7dPgdgRouteTest.test_failures                           must fail | test_failures: AssertionError: ({'format': 1, 'components': {}}, [], ['pgdg:postgresql-common@293.pgdg12+1']) 
+ok  [u7c] U7c baseline: U7dPgdgRouteTest.test_main_writes_the_inrelease          must fail | test_main_writes_the_inrelease: + ['lock.new.json', 'pgdg-bookworm-pgdg-archive.InRelease']
+ok  [u7c] U7c baseline: U7dPgdgRouteTest.test_the_caps                           must fail | test_the_caps: AssertionError: ResolveError not raised
+ok  [u7c] U7c baseline: U7dPgdgRouteTest.test_the_entries                        must fail | test_the_entries: -  'pgdg:postgresql-common@293.pgdg12+1'] : U7d: pgdg is not skipped
+ok  [u7c] U7c baseline: U7dPgdgRouteTest.test_the_pool_rule                      must fail | test_the_pool_rule: KeyError: 'pgdg:libpqxx@7.8.1-1.pgdg12+1'
+ok  [u7c] U7c baseline: U7dLockNeedsTest.test_the_fixture_routes                 must fail | test_the_fixture_routes: +  'ver': '16.15-1.pgdg12+2'}
+ok  [u7c] U7c baseline: U7dLockNeedsTest.test_trixie_and_unknown                 must fail | test_trixie_and_unknown: KeyError: 'suite'
+ok  [u7c] U7c baseline: U7dCoverageTest.test_the_182_keys                        must fail | test_the_182_keys: -  'pgdg:postgresql-common@293.pgdg12+1']
+ok  [u7c] U7c baseline: U7dScriptStaticTest.test_the_inrelease_is_copied         must fail | test_the_inrelease_is_copied: AssertionError: [] is not true : sources_lock.sh does not copy the run's pgdg-<s
+ok  [u7c] U7c baseline: U7dPgdgLockRulesTest.test_bad_entries                    must fail | test_bad_entries: AssertionError: [] is not true : no suite: no problem contains 'missing key suite': ['lock: 
+ok  [u7c] U7c baseline: U7dPgdgLockRulesTest.test_the_good_entry                 must fail | test_the_good_entry: -  'Q71']
+ok  [u7c] U7c baseline: U7dApkSegmentNameTest.test_middle_segments               must fail | test_middle_segments: AssertionError: [] is not true : a segment starting with -: no problem contains 'not a a
+ok  [u7c] U7c baseline: PolicyU6SchemaTest.test_hosts_are_the_fetch_hosts        must fail | test_hosts_are_the_fetch_hosts: 'apt-archive.postgresql.org' : `hosts` is not N4's host table plus repo1.maven
+ok  [u7c] U7c baseline: U7cCarriedTest.test_pgdg_is_no_longer_skipped            must fail | test_pgdg_is_no_longer_skipped: AssertionError: ['sources_resolve: skip: pgdg:postgresql-common@293.pgdg12+1 (
+ok  [u7c] U7c baseline: ReworkR1MainTest.test_a_body_error_is_one_fail_line      must fail | test_a_body_error_is_one_fail_line: + ['retry 1/3 in 10', 'retry 2/3 in 30', 'retry 3/3 in 60'] : sources_lock
+ok  [u7c] U7c baseline: LockSchemaTest.test_good_full_lock_passes                must fail | test_good_full_lock_passes: Diff is 1770 characters long. Set self.maxDiff to None to see it.
+ok  [u7c] U7c baseline: ReworkR1BindingTest.test_pgdg_files_need_the_tenth_host  must fail | test_pgdg_files_need_the_tenth_host: -  'Q71'] : pgdg files with the committed hosts
+ok  [mutant] retry: none at all -> test_the_lines_and_waits                         must fail | test_the_lines_and_waits: AssertionError: ResolveError('maven:javax.xml.bind:jaxb-api@2.2.12: repo1.maven.org:
+retry 1/3 in 10 s: repo1.maven.org: HTTP 503: https://repo1.maven.org/maven2/javax/xml/bind/jaxb-api/2.2.12/jaxb-api-2.2.12-sources.jar
+ok  [mutant] retry: fetch() retries by default -> test_fetch_retries_nothing_by_default must fail | test_fetch_retries_nothing_by_default: AssertionError: ResolveError not raised
+ok  [mutant] retry: other waits -> test_the_lines_and_waits                         must fail | test_the_lines_and_waits: + [10, 30]
+ok  [mutant] retry: 5xx not retried -> test_retried_statuses                        must fail | test_retried_statuses: AssertionError: ResolveError('maven:javax.xml.bind:jaxb-api@2.2.12: repo1.maven.org: HT
+ok  [mutant] retry: 4xx retried too -> test_never_retried                           must fail | test_never_retried: -   'https://repo1.maven.org/maven2/javax/xml/bind/jaxb-api/2.2.12/jaxb-api-2.2.12-sources
+ok  [mutant] retry: other OSErrors retried -> test_never_retried                    must fail | test_never_retried: -  ['retry 1/3 in 10 s: x', 'retry 2/3 in 30 s: x', 'retry 3/3 in 60 s: x']) : maven:javax
+ok  [mutant] retry: the query printed -> test_a_query_is_omitted_from_retry_lines   must fail | test_a_query_is_omitted_from_retry_lines: ?                                                                   
+ok  [mutant] retry: no run budget -> test_the_run_budget                            must fail | test_the_run_budget: + maven:javax.xml.bind:jaxb-api@2.2.12: retry budget exhausted (2)
+ok  [mutant] retry: no run deadline -> test_the_run_deadline                        must fail | test_the_run_deadline: + maven:javax.xml.bind:jaxb-api@2.2.12: run deadline -1 s passed
+ok  [mutant] retry: the wait not checked against the run deadline -> test_the_run_deadline must fail | test_the_run_deadline: + maven:javax.xml.bind:jaxb-api@2.2.12: run deadline 5 s passed
+ok  [mutant] retry: the pause skipped on retries -> test_the_snapshot_pause_holds_for_retries must fail | test_the_snapshot_pause_holds_for_retries: AssertionError: False is not true : R6: [1294253.34350863, 1294253.
+ok  [mutant] deb822: a non-field line skipped -> test_a_line_that_is_not_a_field    must fail | test_a_line_that_is_not_a_field: AssertionError: ResolveError not raised
+ok  [mutant] deb822: duplicates across stanzas refused -> test_parse_deb822         must fail | test_parse_deb822: ke_sources_resolve_under_test_aa923a3db67b.ResolveError: Sources: duplicate field Package
+ok  [mutant] pgdg: no route (skipped) -> test_the_entries                           must fail | test_the_entries: -  'pgdg:postgresql-common@293.pgdg12+1'] : U7d: pgdg is not skipped
+ok  [mutant] pgdg: Sources not bound to Release (sha) -> test_failures              must fail | test_failures: + pgdg:postgresql-common@293.pgdg12+1: bookworm-pgdg-archive Sources: sha256 mismatch against R
+ok  [mutant] pgdg: Sources not bound to Release (size) -> test_failures             must fail | test_failures: ?                                                                      ^^^^  ^^^^^^^^^^^^^^    
+ok  [mutant] pgdg: two Release entries accepted -> test_failures                    must fail | test_failures: AssertionError: ({'format': 1, 'components': {'pgdg:postgresql-common@293.pgdg12+1': {'kind': '
+ok  [mutant] pgdg: the 64 MiB cap dropped -> test_the_caps                          must fail | test_the_caps: ?                                                                     ^^^  ^^ ^       ^^^^^^^^
+ok  [mutant] pgdg: Directory not checked -> test_failures                           must fail | test_failures: AssertionError: ({'format': 1, 'components': {'pgdg:postgresql-common@293.pgdg12+1': {'kind': '
+ok  [mutant] pgdg: the .dsc sha256 not compared -> test_failures                    must fail | test_failures: AssertionError: ({'format': 1, 'components': {'pgdg:postgresql-common@293.pgdg12+1': {'kind': '
+ok  [mutant] pgdg: Sources and .dsc not cross-checked -> test_failures              must fail | test_failures: AssertionError: ({'format': 1, 'components': {'pgdg:postgresql-common@293.pgdg12+1': {'kind': '
+ok  [mutant] pgdg: the pool letter always the first -> test_the_pool_rule           must fail | test_the_pool_rule: AssertionError: ResolveError('pgdg:libpqxx@7.8.1-1.pgdg12+1: libpqxx: Sources Directory po
+ok  [mutant] pgdg: InRelease not written -> test_main_writes_the_inrelease          must fail | test_main_writes_the_inrelease: + ['lock.new.json', 'pgdg-bookworm-pgdg-archive.InRelease']
+ok  [mutant] pgdg: the route not checked -> test_a_malformed_route                  must fail | test_a_malformed_route: AssertionError
+ok  [mutant] lock: pgdg host dropped -> test_the_good_entry                         must fail | test_the_good_entry: -  'apt-archive.postgresql.org is not a pgdg file host']
+ok  [mutant] lock: suite not required -> test_bad_entries                           must fail | test_bad_entries: AssertionError: [] is not true : no suite: no problem contains 'missing key suite': ['lock: 
+BAD [mutant] lock: suite any text -> test_bad_entries                               must fail | no problem
+ok  [mutant] lock: the pool path not exact -> test_bad_entries                      must fail | test_bad_entries: AssertionError: [] is not true : a wrong pool letter: no problem contains 'not a pgdg file u
+ok  [mutant] lock: pgdg from texts not checked -> test_bad_entries                  must fail | test_bad_entries: AssertionError: [] is not true : the .dsc from another text: no problem contains 'lock: pgdg
+ok  [mutant] lock: R1-N1 dropped -> test_middle_segments                            must fail | test_middle_segments: AssertionError: [] is not true : a segment starting with -: no problem contains 'not a a
+ok  [mutant] lock-needs: the suite always bookworm -> test_trixie_and_unknown       must fail | test_trixie_and_unknown: ?       ^ ^^^^
+ok  [mutant] policy: nine hosts -> test_hosts_are_the_fetch_hosts                   must fail | test_hosts_are_the_fetch_hosts: 'apt-archive.postgresql.org' : `hosts` is not N4's host table plus repo1.maven
+ok  [mutant] script: the InRelease not copied -> test_the_inrelease_is_copied       must fail | test_the_inrelease_is_copied: AssertionError: False is not true : sources_lock.sh does not copy the run's pgdg
+
+U7d controls (targets): 70 rows, 64 must-fail, 6 must-pass, 2 unexpected
+

@@ -67,6 +67,14 @@ BUILDER_GROUPS = ("pq-c",)
 IMAGE_GROUPS = ("pq-c", "pq-build")
 LIBPQ_PIN_RE = re.compile(r"^\d+\.\d+-\d+\+deb12u\d+$")
 PYTHON_BOOKWORM_RE = re.compile(r"^python:3\.12-slim-bookworm@sha256:[0-9a-f]{64}$")
+# The ruled base of ke-app (builder and runtime) and ke-gates (platform-sbom
+# U7e, PSC-27 *Base*; human ruling 2026-10-27 "get the fixed python";
+# design-notes N0 amendment U7e R1). Its PSC-1 provenance (index digest,
+# PYTHON_VERSION 3.12.16, PYTHON_SHA256, the second tarball fetch) is security's
+# record, written before the first build. A base bump moves this pin, the three
+# python FROM lines, NOTICE.md and the CPython licence headers together.
+RULED_PYTHON_BASE = ("python:3.12-slim-bookworm@sha256:"
+                     "6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753")
 SHA256_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 LIBPQ_VAR_RE = r"(?:\$\{LIBPQ_VERSION\}|\$LIBPQ_VERSION)"
 # A compiler, a build tool, or a -dev package, as a word of a RUN.
@@ -560,6 +568,21 @@ def pin_base_problems(app: Path, gates: Path) -> list[str]:
     return problems
 
 
+def ruled_base_problems(app: Path, gates: Path, want: str = RULED_PYTHON_BASE) -> list[str]:
+    """test_python_bases_are_the_ruled_digest on `app` and `gates`: every
+    python FROM (any registry prefix) is `want`, byte for byte; app has two
+    (builder and runtime), gates one."""
+    problems: list[str] = []
+    for path, count in ((app, 2), (gates, 1)):
+        refs = [s["ref"] for s in _stages(path) if re.match(r"^(?:[^\s/]+/)*python[:@]", s["ref"])]
+        if len(refs) != count:
+            problems.append(f"{path.name}: {len(refs)} python FROM lines, want {count}")
+        for ref in refs:
+            if ref != want:
+                problems.append(f"{path.name}: python base {ref!r} is not the ruled {want!r} (PSC-27, U7e R1)")
+    return problems
+
+
 # --------------------------------------------------------------------------
 # pyproject.toml
 # --------------------------------------------------------------------------
@@ -1003,6 +1026,11 @@ class PsycopgCStaticTest(unittest.TestCase):
         self.assertEqual(pin_base_problems(app, gates), [],
                          "LIBPQ_VERSION is a +deb12u pin on the -bookworm base, the same in both images (N0 Drift)")
 
+    def assert_ruled_base(self, app: Path = APP_DOCKERFILE, gates: Path = GATES_DOCKERFILE,
+                          want: str = RULED_PYTHON_BASE) -> None:
+        self.assertEqual(ruled_base_problems(app, gates, want), [],
+                         "all three python FROM lines name the ruled base digest (PSC-27 Base, N0 amendment U7e R1)")
+
     def assert_notice(self, notice: Path = NOTICE, lock: Path = UV_LOCK) -> None:
         self.assertEqual(notice_problems(notice, lock), [],
                          "NOTICE.md's psycopg section names each psycopg package the builder installs, with its "
@@ -1138,6 +1166,36 @@ class PsycopgCStaticTest(unittest.TestCase):
                        {k: (s.write(a, "app.Dockerfile"), s.write(g, "gates.Dockerfile"))
                         for k, (a, g) in controls.items()})
         self.assert_pin_base(APP_DOCKERFILE, GATES_DOCKERFILE)
+
+    def test_python_bases_are_the_ruled_digest(self):
+        """PSC-27 *Base* (U7e; human ruling 2026-10-27; N0 amendment U7e R1):
+        the builder and runtime FROM lines of app.Dockerfile and the FROM of
+        gates.Dockerfile all name RULED_PYTHON_BASE byte for byte (CPython
+        3.12.16, libssl3/openssl 3.0.22-1~deb12u2). N0's drift test above
+        still keeps them -bookworm and the app's two identical. RED (U7e): all
+        three name the old base sha256:34386ef0...7258."""
+        s = _Scratch(self)
+        want = "python:3.12-slim-bookworm@sha256:" + "9" * 64
+        app, gates = TARGET_APP.replace(_BASE, want), TARGET_GATES.replace(_BASE, want)
+        controls = {
+            "all three on the old digest": (TARGET_APP, TARGET_GATES),
+            "builder not moved": (app.replace(f"FROM {want} AS builder", f"FROM {_BASE} AS builder"), gates),
+            "runtime not moved": (TARGET_APP.replace(_BASE, want, 1), gates),
+            "gates not moved": (app, TARGET_GATES),
+            "gates on the tag only": (app, gates.replace(f"FROM {want}", "FROM python:3.12-slim-bookworm")),
+            "gates on a registry-prefixed other digest": (
+                app, gates.replace(f"FROM {want}", f"FROM docker.io/library/{_BASE}")),
+            "a third python stage on another digest": (
+                app.replace("FROM ghcr.io", f"FROM {_BASE} AS extra\nFROM ghcr.io", 1), gates),
+            "app loses a python stage": (app.replace(f"FROM {want} AS builder", "FROM debian:bookworm AS builder"),
+                                         gates),
+        }
+        self._controls(lambda a, g: self.assert_ruled_base(a, g, want),
+                       (s.write(app, "app.Dockerfile"), s.write(gates, "gates.Dockerfile")),
+                       {k: (s.write(a, "app.Dockerfile"), s.write(g, "gates.Dockerfile"))
+                        for k, (a, g) in controls.items()})
+        self.assertTrue(PYTHON_BOOKWORM_RE.match(RULED_PYTHON_BASE), "the ruled base is a -bookworm digest pin")
+        self.assert_ruled_base(APP_DOCKERFILE, GATES_DOCKERFILE)
 
     # ---- 8 ------------------------------------------------------------------
 
